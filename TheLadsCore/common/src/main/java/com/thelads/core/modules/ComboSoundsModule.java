@@ -42,8 +42,11 @@ public class ComboSoundsModule extends Module {
     static final long CONFIRM_NANOS = 1_000_000_000L;
     /** A player your arrow crossed this recently can be the one the arrow-hit-player event is about (ping and lag included). */
     static final long ARROW_NANOS = 1_000_000_000L;
-    /** A mob's hurt and your arrow crossing it pair up within this, either first (a closer pairing: other hits are around). */
+    /** A mob's hurt pairs with your arrow crossing it this soon after (the other way round, the server's word comes later: a
+     * lagging server takes up to {@link #ARROW_NANOS}). */
     static final long PAIR_NANOS = 500_000_000L;
+    /** QA: log every bow signal and how it paired. */
+    public static boolean trace;
     /** The arrow-hit-player event follows its victim's hurt in the same server tick: a hurt this recent names the victim. */
     static final long HURT_NANOS = 100_000_000L;
     public static final int AFTER_RANDOM = 0, AFTER_IN_ORDER = 1, AFTER_SHUFFLE = 2;
@@ -192,6 +195,7 @@ public class ComboSoundsModule extends Module {
 
     /** One of your arrows crossed entity {@code id}'s box {@code distance} blocks from you, in its head or not. Returns the sounds to play. */
     public int arrowCrossed(int id, boolean player, boolean head, double distance, long now) {
+        if (trace) LOGGER.info("Lads bow QA: crossed {} (player {}, head {}, {} blocks); waiting for {}", id, player, head, (int) distance, waitId);
         if (!player && !bowMobs.get()) return 0;
         crossings.values().removeIf(crossing -> now - crossing.at() > ARROW_NANOS);
         if (id == waitId && now - waitAt <= (waitHeadOnly ? ARROW_NANOS : PAIR_NANOS)) { // the server confirmed this hit first
@@ -210,7 +214,9 @@ public class ComboSoundsModule extends Module {
         hurtAt = now;
         if (player || !bowMobs.get()) return 0; // players: the arrow-hit-player event says whose arrow it was
         Crossing crossing = crossings.get(id);
-        if (crossing != null && now - crossing.at() <= PAIR_NANOS) {
+        if (trace) LOGGER.info("Lads bow QA: hurt {} (player {}, {} blocks); crossed {} ms before", id, player, (int) distance,
+            crossing == null ? "never" : String.valueOf((now - crossing.at()) / 1_000_000));
+        if (crossing != null && now - crossing.at() <= ARROW_NANOS) {
             crossings.remove(id);
             return landed(distance, crossing.head());
         }

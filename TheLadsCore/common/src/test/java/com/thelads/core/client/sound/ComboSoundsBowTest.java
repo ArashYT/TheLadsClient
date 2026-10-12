@@ -168,6 +168,10 @@ class ComboSoundsBowTest {
         assertEquals(0, combo.arrowCrossed(5, false, true, 60, t + 4500 * MS), "too late: another shot");
         combo.arrowCrossed(6, false, true, 10, t + 6000 * MS);
         assertEquals(HEAD, combo.bowHurt(6, false, 10, t + 6010 * MS), "close: a headshot only");
+        combo.arrowCrossed(7, false, false, 60, t + 8000 * MS);
+        assertEquals(LONG, combo.bowHurt(7, false, 60, t + 8800 * MS), "a lagging server confirms your crossing late");
+        combo.bowHurt(8, false, 60, t + 10_000 * MS);
+        assertEquals(0, combo.arrowCrossed(8, false, false, 60, t + 10_800 * MS), "but a hurt long before your arrow got there is another hit");
     }
 
     @Test

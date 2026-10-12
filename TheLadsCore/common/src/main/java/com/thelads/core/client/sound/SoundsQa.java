@@ -416,6 +416,7 @@ public final class SoundsQa {
         });
         // Bow sounds: a villager 30 blocks away, an arrow in its head.
         steps.add(() -> {
+            ComboSoundsModule.trace = true;
             combo.setEnabled(true);
             combo.bowMobs.set(true);
             combo.longShots.set(true);
@@ -468,6 +469,7 @@ public final class SoundsQa {
         steps.add(() -> {
             if (combo.bowPlayed() < bowBefore + 2 && patience < 60) return false;
             check(combo.bowPlayed() == bowBefore + 2, "with no sound picked, the built-in level-up chime and anvil clink play (" + (combo.bowPlayed() - bowBefore) + " played)");
+            ComboSoundsModule.trace = false;
             game.removeArcheryTarget();
             return true;
         });
