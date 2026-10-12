@@ -98,10 +98,11 @@ public final class EntityCulling189 {
     private static volatile long changeVersion = 0;
 
     private static final class LongIntTable {
-        final long[] keys;
-        final int[] values;
-        final boolean[] occupied;
-        final int mask;
+        private long[] keys;
+        private int[] values;
+        private boolean[] occupied;
+        private int mask;
+        private int size;
 
         LongIntTable(int capacity) {
             int cap = Math.max(16, Integer.highestOneBit(capacity * 2 - 1) << 1);
@@ -109,9 +110,11 @@ public final class EntityCulling189 {
             this.values = new int[cap];
             this.occupied = new boolean[cap];
             this.mask = cap - 1;
+            this.size = 0;
         }
 
         void put(long key, int value) {
+            if ((size + 1) * 2 > keys.length) resize();
             int idx = hash(key) & mask;
             while (occupied[idx]) {
                 if (keys[idx] == key) {
@@ -123,11 +126,37 @@ public final class EntityCulling189 {
             occupied[idx] = true;
             keys[idx] = key;
             values[idx] = value;
+            size++;
+        }
+
+        private void resize() {
+            int oldCap = keys.length;
+            int newCap = oldCap << 1;
+            long[] oldKeys = keys;
+            int[] oldValues = values;
+            boolean[] oldOccupied = occupied;
+
+            keys = new long[newCap];
+            values = new int[newCap];
+            occupied = new boolean[newCap];
+            mask = newCap - 1;
+            for (int i = 0; i < oldCap; i++) {
+                if (oldOccupied[i]) {
+                    int idx = hash(oldKeys[i]) & mask;
+                    while (occupied[idx]) {
+                        idx = (idx + 1) & mask;
+                    }
+                    occupied[idx] = true;
+                    keys[idx] = oldKeys[i];
+                    values[idx] = oldValues[i];
+                }
+            }
         }
 
         int get(long key, int defaultVal) {
             int idx = hash(key) & mask;
-            while (occupied[idx]) {
+            int limit = keys.length;
+            while (occupied[idx] && limit-- > 0) {
                 if (keys[idx] == key) return values[idx];
                 idx = (idx + 1) & mask;
             }
@@ -143,18 +172,21 @@ public final class EntityCulling189 {
     }
 
     private static final class LongSet {
-        final long[] keys;
-        final boolean[] occupied;
-        final int mask;
+        private long[] keys;
+        private boolean[] occupied;
+        private int mask;
+        private int size;
 
         LongSet(int capacity) {
             int cap = Math.max(16, Integer.highestOneBit(capacity * 2 - 1) << 1);
             this.keys = new long[cap];
             this.occupied = new boolean[cap];
             this.mask = cap - 1;
+            this.size = 0;
         }
 
         void add(long key) {
+            if ((size + 1) * 2 > keys.length) resize();
             int idx = hash(key) & mask;
             while (occupied[idx]) {
                 if (keys[idx] == key) return;
@@ -162,11 +194,34 @@ public final class EntityCulling189 {
             }
             occupied[idx] = true;
             keys[idx] = key;
+            size++;
+        }
+
+        private void resize() {
+            int oldCap = keys.length;
+            int newCap = oldCap << 1;
+            long[] oldKeys = keys;
+            boolean[] oldOccupied = occupied;
+
+            keys = new long[newCap];
+            occupied = new boolean[newCap];
+            mask = newCap - 1;
+            for (int i = 0; i < oldCap; i++) {
+                if (oldOccupied[i]) {
+                    int idx = hash(oldKeys[i]) & mask;
+                    while (occupied[idx]) {
+                        idx = (idx + 1) & mask;
+                    }
+                    occupied[idx] = true;
+                    keys[idx] = oldKeys[i];
+                }
+            }
         }
 
         boolean contains(long key) {
             int idx = hash(key) & mask;
-            while (occupied[idx]) {
+            int limit = keys.length;
+            while (occupied[idx] && limit-- > 0) {
                 if (keys[idx] == key) return true;
                 idx = (idx + 1) & mask;
             }
@@ -179,6 +234,28 @@ public final class EntityCulling189 {
             h = (h ^ (h >>> 13)) * 0xc2b2ae35;
             return (int) (h ^ (h >>> 16));
         }
+    }
+
+    static boolean selfTestTables() {
+        LongIntTable table = new LongIntTable(4);
+        for (int i = 0; i < 200; i++) {
+            table.put(i * 1000L, i);
+        }
+        for (int i = 0; i < 200; i++) {
+            if (table.get(i * 1000L, -1) != i) return false;
+        }
+        if (table.get(999999L, -1) != -1) return false;
+
+        LongSet set = new LongSet(4);
+        for (int i = 0; i < 200; i++) {
+            set.add(i * 1000L);
+        }
+        for (int i = 0; i < 200; i++) {
+            if (!set.contains(i * 1000L)) return false;
+        }
+        if (set.contains(999999L)) return false;
+
+        return true;
     }
 
     private static volatile LongIntTable sectionSnap = new LongIntTable(16);
@@ -355,7 +432,7 @@ public final class EntityCulling189 {
     }
 
     /** OptiFine's shadow pass draws entities from the sun: the camera's culling must not apply there. */
-    public static boolean inShadowPass() {
+    private static boolean inShadowPass() {
         if (!shadowLooked) {
             shadowLooked = true;
             try { shadowPass = Class.forName("net.optifine.shaders.Shaders").getField("isShadowPass"); }
@@ -518,7 +595,7 @@ public final class EntityCulling189 {
 
         private char[] load(int cx, int cy, int cz) {
             int slot = ((cx * 31 + cz) * 31 + cy) & 63;
-            int key = ((cx & 0x3FFF) << 14) | ((cz & 0x3FFF) << 4) | (cy & 0xF);
+            int key = ((cx & 0x3FFF) << 18) | ((cz & 0x3FFF) << 4) | (cy & 0xF);
             if (cacheEpochs[slot] == cacheEpoch && cacheKeys[slot] == key) {
                 someChanged = cacheSomeChanged[slot];
                 return cacheData[slot];

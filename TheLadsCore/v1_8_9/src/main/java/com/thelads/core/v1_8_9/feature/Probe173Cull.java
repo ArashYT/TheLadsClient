@@ -85,6 +85,7 @@ final class Probe173Cull {
         boolean physics = floorCase >= 3;
         if (ticks == 0) {
             if (floorCase == 0) {
+                check(EntityCulling189.selfTestTables(), "culling snapshot open-addressing tables dynamically resize under load");
                 px = (int) Math.floor(mc.thePlayer.posX);
                 pz = (int) Math.floor(mc.thePlayer.posZ);
                 gy = mc.theWorld.getHeight(new BlockPos(px, 0, pz)).getY();
