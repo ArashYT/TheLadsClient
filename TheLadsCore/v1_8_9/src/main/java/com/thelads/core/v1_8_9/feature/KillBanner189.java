@@ -17,8 +17,6 @@ import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.audio.ISound;
-import net.minecraft.client.audio.PositionedSound;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -219,7 +217,7 @@ public final class KillBanner189 {
             text = KillDetector.deathLine(death.getKey(), args);
         }
         if (text == null) text = event.message.getUnformattedText();
-        if (KillDetector.myDeath(text, me)) BANNER.endStreak();
+        if (KillDetector.myDeath(text, me)) { BANNER.endStreak(); return; } // the player's own death is never also a kill
         kill(KillBanners.DETECTOR.chat(text, me, KillBanner189::players, System.nanoTime()));
     }
 
@@ -335,17 +333,10 @@ public final class KillBanner189 {
         BANNER.freeze(age);
     }
 
-    /** "theladscore:<skin>_kill_<n>" from the Kill Banner sounds.json, "" the plain chime (1.8.9's orb pickup), at the module's volume. */
-    private static void play(String sound, final float level) {
+    /** "theladscore:<skin>_kill_<n>" from the Kill Banner sounds.json, "" the plain chime (1.8.9's orb pickup), at the module's volume, in both ears. */
+    private static void play(String sound, float level) {
         if (sound == null) return;
-        final ResourceLocation id = new ResourceLocation(sound.isEmpty() ? "random.orb" : sound);
-        Minecraft.getMinecraft().getSoundHandler().playSound(new PositionedSound(id) {
-            {
-                volume = level;
-                pitch = 1.0F;
-                attenuationType = ISound.AttenuationType.NONE;
-            }
-        });
+        Minecraft.getMinecraft().getSoundHandler().playSound(new ListenerSound189(new ResourceLocation(sound.isEmpty() ? "random.orb" : sound), level, 1.0F));
     }
 
     /** Kill Banner picker: a skin's one-kill sound. */
