@@ -19,7 +19,9 @@ import com.thelads.core.config.Module;
 import com.thelads.core.config.Option;
 import com.thelads.core.modules.ItemPhysicsModule;
 import com.thelads.core.modules.KillBannerModule;
+import com.thelads.core.modules.SkinLayersModule;
 import java.io.File;
+import java.lang.reflect.Field;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
@@ -68,10 +70,39 @@ final class Probe173Perf {
     static final String WORLD = "Lads Perf 1_8_9";
     private static final int SECONDS = Math.min(90, Integer.getInteger("thelads.perfSeconds", 60)), WARM = 10, SWAPS = 10;
     private static final double X = 0.5, Y = 4, Z = 0.5; // the grass top of the "2;7,2x3,2;1;" preset is y 3
-    static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe173Perf::setup,
-        scene("empty", 20), scene("crowd", WARM), scene("items", WARM), scene("hud", WARM), scene("banner", WARM), scene("particles", WARM),
-        Probe173Perf::swap, Probe173Perf::swap, Probe173Perf::swap, Probe173Perf::swap, Probe173Perf::swap, Probe173Perf::swap, Probe173Perf::swap,
-        Probe173Perf::swap, Probe173Perf::swap, Probe173Perf::swap, Probe173Perf::swaps, Probe173Perf::write);
+    static final List<CoreProbe.Step> STEPS = initSteps();
+
+    private static List<CoreProbe.Step> initSteps() {
+        List<CoreProbe.Step> steps = new ArrayList<CoreProbe.Step>();
+        steps.add(Probe173Perf::setup);
+        String scenesEnv = System.getProperty("thelads.perfScenes", System.getenv("LADS_VERIFY_PERF_SCENES"));
+        if (scenesEnv == null || scenesEnv.trim().isEmpty()) {
+            steps.add(scene("empty", 20));
+            steps.add(scene("crowd", WARM));
+            steps.add(scene("items", WARM));
+            steps.add(scene("hud", WARM));
+            steps.add(scene("banner", WARM));
+            steps.add(scene("particles", WARM));
+            for (int i = 0; i < SWAPS; i++) steps.add(Probe173Perf::swap);
+            steps.add(Probe173Perf::swaps);
+        } else {
+            String[] parts = scenesEnv.split(",");
+            for (String p : parts) {
+                String name = p.trim();
+                if (name.isEmpty()) continue;
+                if ("swap".equalsIgnoreCase(name)) {
+                    for (int i = 0; i < SWAPS; i++) steps.add(Probe173Perf::swap);
+                    steps.add(Probe173Perf::swaps);
+                } else if ("empty".equalsIgnoreCase(name)) {
+                    steps.add(scene("empty", 20));
+                } else {
+                    steps.add(scene(name, WARM));
+                }
+            }
+        }
+        steps.add(Probe173Perf::write);
+        return steps;
+    }
     private static final JsonObject report = new JsonObject(), scenes = new JsonObject();
     private static final Map<Option, JsonElement> optionsWere = new LinkedHashMap<Option, JsonElement>();
     private static final Map<Module, Boolean> enabledWere = new LinkedHashMap<Module, Boolean>();
@@ -100,6 +131,19 @@ final class Probe173Perf {
     private static boolean setup(Minecraft mc) {
         for (String c : new String[] {"gamerule doDaylightCycle false", "gamerule doMobSpawning false", "time set 6000", "weather clear 1000000",
             "difficulty 0", "kill @e[type=!Player]", "tp @p " + X + " " + Y + " " + Z + " 0 0"}) command(mc, c);
+        String sl = System.getProperty("thelads.skinlayers", System.getenv("LADS_VERIFY_SKINLAYERS"));
+        if (sl != null) {
+            boolean on = !"0".equals(sl) && !"false".equalsIgnoreCase(sl) && !"off".equalsIgnoreCase(sl);
+            remember(mc, SkinLayersModule.NAME);
+            Module m = Options189.module(SkinLayersModule.NAME);
+            if (m != null) m.setEnabled(on);
+        }
+        String lod = System.getProperty("thelads.skinlayersLod", System.getenv("LADS_VERIFY_SKINLAYERS_LOD"));
+        if (lod != null) {
+            try {
+                setSkinLayersLod(Integer.parseInt(lod.trim()));
+            } catch (NumberFormatException ignored) {}
+        }
         report.addProperty("seconds", SECONDS);
         report.addProperty("renderDistance", mc.gameSettings.renderDistanceChunks);
         report.addProperty("maxFps", mc.gameSettings.limitFramerate);
@@ -112,9 +156,11 @@ final class Probe173Perf {
         String optiFine;
         try { optiFine = String.valueOf(Class.forName("Config").getField("VERSION").get(null)); } catch (Throwable absent) { optiFine = "absent"; }
         report.addProperty("optifine", optiFine);
+        report.addProperty("skinLayers", SkinLayersModule.layersOn());
+        report.addProperty("skinLayersLod", getSkinLayersLod());
         report.add("scenes", scenes);
-        LOG.info("Lads 1.8.9 perf BEGIN: {} s per scene, render distance {}, max FPS {}, VSync {}, {}", SECONDS, mc.gameSettings.renderDistanceChunks,
-            mc.gameSettings.limitFramerate, mc.gameSettings.enableVsync, optiFine);
+        LOG.info("Lads 1.8.9 perf BEGIN: {} s per scene, render distance {}, max FPS {}, VSync {}, {}, skinLayers {} (LOD {})", SECONDS, mc.gameSettings.renderDistanceChunks,
+            mc.gameSettings.limitFramerate, mc.gameSettings.enableVsync, optiFine, SkinLayersModule.layersOn(), getSkinLayersLod());
         return after(40);
     }
 
@@ -159,6 +205,14 @@ final class Probe173Perf {
     }
 
     private static void build(Minecraft mc, String name) {
+        if (name.endsWith("_noskin")) {
+            remember(mc, SkinLayersModule.NAME);
+            if (Options189.module(SkinLayersModule.NAME) != null) Options189.module(SkinLayersModule.NAME).setEnabled(false);
+        }
+        if (Probe192Players.isPlayerScene(name)) {
+            Probe192Players.build(mc, name);
+            return;
+        }
         switch (name) {
             case "crowd": {
                 // A stone wall 8 blocks ahead; 70 entities behind it, 30 in front (armour stands and players, all with nametags).
@@ -237,6 +291,10 @@ final class Probe173Perf {
 
     /** Every client tick of a scene: what keeps it busy. */
     private static void tick(Minecraft mc, String name, int tick) {
+        if (Probe192Players.isPlayerScene(name)) {
+            Probe192Players.tick(mc, name, tick);
+            return;
+        }
         switch (name) {
             case "hud": // 20 chat lines a second, half of them from players (Chat Heads)
                 mc.ingameGUI.getChatGUI().printChatMessage(new ChatComponentText(tick % 2 == 0 ? "<PerfBot" + tick % 7 + "> chat spam line " + tick
@@ -258,6 +316,9 @@ final class Probe173Perf {
     }
 
     private static void teardown(Minecraft mc, String name) {
+        if (Probe192Players.isPlayerScene(name)) {
+            Probe192Players.teardown(mc, name);
+        }
         switch (name) {
             case "crowd":
                 for (int i = 0; i < 100; i++) mc.theWorld.removeEntityFromWorld(-17300 - i);
@@ -308,6 +369,12 @@ final class Probe173Perf {
             for (Object entity : mc.theWorld.loadedEntityList) if (entity instanceof EntityItem) items++;
             check(items == 300, "perf items: 300 dropped items in the world, none merged (" + items + ")");
         }
+        if (Probe192Players.isPlayerScene(name)) {
+            int count = Probe192Players.countFor(name);
+            check(mc.theWorld.loadedEntityList.size() >= count + 1, "perf " + name + ": at least " + (count + 1) + " entities in the world (" + mc.theWorld.loadedEntityList.size() + ")");
+        }
+        mc.mcProfiler.clearProfiling();
+        mc.mcProfiler.profilingEnabled = true;
         KillBanner189.recordFrames(SECONDS * 3000); // up to 3000 FPS uncapped
         FrameWork189.record(SECONDS * 3000);
         gpu = new Probe170r.GpuTimer();
@@ -329,6 +396,23 @@ final class Probe173Perf {
         KillBanner189.recordFrames(0);
         FrameWork189.record(0);
         check(times.length > SECONDS * 5 && work.length > SECONDS * 5, "perf " + name + ": frames recorded (" + times.length + ", work of " + work.length + ")");
+        mc.mcProfiler.profilingEnabled = false;
+        List<net.minecraft.profiler.Profiler.Result> levelResults = mc.mcProfiler.getProfilingData("root.gameRenderer.level");
+        if (levelResults == null || levelResults.isEmpty()) {
+            levelResults = mc.mcProfiler.getProfilingData("gameRenderer.level");
+        }
+        double entitiesPct = 0, terrainPct = 0, particlesPct = 0;
+        if (levelResults != null) {
+            for (net.minecraft.profiler.Profiler.Result res : levelResults) {
+                String sName = getResultName(res);
+                double use = getResultUse(res);
+                if ("entities".equals(sName)) entitiesPct = use;
+                else if ("terrain".equals(sName)) terrainPct = use;
+                else if ("particles".equals(sName)) particlesPct = use;
+            }
+        }
+        mc.mcProfiler.clearProfiling();
+
         JsonObject s = stats(times, work);
         s.addProperty("cpuMs", round(cpu / 1e6 / times.length));
         s.addProperty("gpuMs", round(gpu.milliseconds()));
@@ -336,6 +420,16 @@ final class Probe173Perf {
         s.addProperty("gcCount", gc[1] - gcCount0);
         s.addProperty("allocMBps", round(alloc / 1048576.0 / (elapsed / 1e9)));
         s.addProperty("sysCpuPct", round(loadSamples == 0 ? -1 : loadSum / loadSamples * 100)); // the whole machine, this game included
+        JsonObject profiler = new JsonObject();
+        profiler.addProperty("entities", round(entitiesPct));
+        profiler.addProperty("terrain", round(terrainPct));
+        profiler.addProperty("particles", round(particlesPct));
+        s.add("profiler", profiler);
+        s.addProperty("profilerEntitiesPct", round(entitiesPct));
+        s.addProperty("profilerTerrainPct", round(terrainPct));
+        s.addProperty("profilerParticlesPct", round(particlesPct));
+        s.addProperty("skinLayers", SkinLayersModule.layersOn());
+        s.addProperty("skinLayersLod", getSkinLayersLod());
         gpu.close();
         scenes.add(name, s);
         LOG.info("Lads 1.8.9 perf {}: {}", name, s);
@@ -457,6 +551,51 @@ final class Probe173Perf {
         scenes.add("swap", s);
         check(SWAPS_DONE.size() == SWAPS, "perf swap: " + SWAPS + " leave/join cycles timed");
         return after(20);
+    }
+
+    static int getSkinLayersLod() {
+        try {
+            Class<?> modBase = Class.forName("dev.tr7zw.skinlayers.versionless.ModBase");
+            Object cfg = modBase.getField("config").get(null);
+            if (cfg != null) return cfg.getClass().getField("renderDistanceLOD").getInt(cfg);
+        } catch (Throwable ignored) {}
+        return -1;
+    }
+
+    static void setSkinLayersLod(int lod) {
+        try {
+            Class<?> modBase = Class.forName("dev.tr7zw.skinlayers.versionless.ModBase");
+            Object cfg = modBase.getField("config").get(null);
+            if (cfg != null) cfg.getClass().getField("renderDistanceLOD").setInt(cfg, lod);
+        } catch (Throwable ignored) {}
+    }
+
+    private static String getResultName(net.minecraft.profiler.Profiler.Result res) {
+        try {
+            Field f = res.getClass().getField("field_76331_c");
+            return (String) f.get(res);
+        } catch (Throwable t1) {
+            try {
+                Field f = res.getClass().getField("profilerName");
+                return (String) f.get(res);
+            } catch (Throwable t2) {
+                return "";
+            }
+        }
+    }
+
+    private static double getResultUse(net.minecraft.profiler.Profiler.Result res) {
+        try {
+            Field f = res.getClass().getField("field_76332_a");
+            return f.getDouble(res);
+        } catch (Throwable t1) {
+            try {
+                Field f = res.getClass().getField("usePercentage");
+                return f.getDouble(res);
+            } catch (Throwable t2) {
+                return 0.0;
+            }
+        }
     }
 
     private static boolean write(Minecraft mc) throws Exception {
