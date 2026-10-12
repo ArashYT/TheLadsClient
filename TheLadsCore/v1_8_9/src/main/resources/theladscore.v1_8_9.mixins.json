@@ -33,6 +33,7 @@
     "GuiIngameForgeMixin",
     "GuiIngameMixin",
     "GuiIngameMenuMixin",
+    "GuiMainMenuMixin",
     "ChatLineMixin",
     "GuiNewChatMixin",
     "GuiPlayerTabOverlayMixin",
