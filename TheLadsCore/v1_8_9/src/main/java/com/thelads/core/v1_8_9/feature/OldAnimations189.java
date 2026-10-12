@@ -94,7 +94,22 @@ public final class OldAnimations189 {
         if (player == null || mc.currentScreen != null || !player.isUsingItem() || !MODULE.swingOnAttack(PLATFORM, use(player, player.getItemInUse())))
             return;
         attacked = true;
-        swing(player);
+        swingAnyway(player);
+        hit(Hook.SWING);
+    }
+
+    /** QA only (Probe191Fixes): clicks swing as vanilla decides, to count the swings it skips. */
+    public static volatile boolean qaVanillaSwing;
+
+    /**
+     * An attack click (Minecraft.clickMouse, or a press during a use above): the arm swings from the start whether or not vanilla
+     * restarted it (it refuses in a swing's first half, and for 10 ticks after a miss clickMouse does nothing), so fast clicking
+     * never skips a swing. Drawn only: no packet, no attack. LegacySwing and the 1.7 swing poses draw this same swing.
+     */
+    public static void swingAnyway(EntityPlayerSP player) {
+        if (player == null || qaVanillaSwing) return;
+        player.swingProgressInt = -1;
+        player.isSwingInProgress = true;
     }
 
     /** EntityLivingBase.swingItem without EntityPlayerSP's packet; 3 is its restart at half a swing (6 ticks, without haste). */

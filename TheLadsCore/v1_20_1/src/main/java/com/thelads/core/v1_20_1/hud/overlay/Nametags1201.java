@@ -15,6 +15,8 @@ import net.minecraft.world.entity.LivingEntity;
 /** Nametags (26.3 OwnNametagMixin, NametagBackgroundMixin, NativeNicknames): own tag in third person, background, shadow, renames. */
 public final class Nametags1201 {
     private static final String MODULE = "Nametags";
+    /** A name tag is drawing (render thread only): its shadowed text goes in front of the shadow (NametagShadowDepthMixin). */
+    public static boolean drawing;
 
     private Nametags1201() {}
 

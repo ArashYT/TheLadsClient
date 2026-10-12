@@ -30,7 +30,11 @@ public interface LadsGameBridge {
     default float getMasterVolume() { return 1f; }
     /** An open-file dialog for an uploaded sound (.mp3/.wav); completes off the game thread, with null when cancelled. */
     default java.util.concurrent.CompletableFuture<java.nio.file.Path> chooseSoundFile() {
-        return com.thelads.core.client.sound.CustomSounds.awtChooser("Choose a sound (MP3 or WAV)");
+        return com.thelads.core.client.util.FileDialogs.openFile("Choose a sound (MP3 or WAV)", "Sounds (MP3, WAV)", "mp3", "wav");
+    }
+    /** The game's own file dialog, which FileDialogs opens off Windows (SDL on 26.x, tinyfd on 1.20.1; AWT, files only, here). */
+    default java.util.concurrent.CompletableFuture<java.nio.file.Path> gameFileDialog(String title, boolean folder, String filterName, String... extensions) {
+        return com.thelads.core.client.util.FileDialogs.awt(title, folder, filterName, extensions);
     }
     /** Combo Sounds' built-in sound when a step has no upload: a note block pling at {@code pitch}. */
     default void playComboSound(float pitch, float volume) {}

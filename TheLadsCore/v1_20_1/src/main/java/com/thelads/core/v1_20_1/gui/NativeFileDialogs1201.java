@@ -8,38 +8,31 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 /**
- * The platform's native Explorer dialog (tinyfd, bundled with Minecraft 1.20.1). It blocks its caller until the player picks,
- * so it runs on its own thread; the result completes on that thread, and callers hop back to the game thread.
+ * The game's own dialog (tinyfd, bundled with Minecraft 1.20.1), which FileDialogs opens off Windows (VanillaGameBridge1201.gameFileDialog).
+ * It blocks its caller until the player picks, so it runs on its own thread; the result completes on that thread, and callers hop
+ * back to the game thread.
  */
 public final class NativeFileDialogs1201 {
     private static final AtomicBoolean OPEN = new AtomicBoolean();
 
     private NativeFileDialogs1201() {}
 
-    public static CompletableFuture<Path> choose(boolean folder) {
-        return choose(folder, folder ? "Add world save folder" : "Add skin PNG");
-    }
-
-    public static CompletableFuture<Path> choose(boolean folder, String title) {
-        return choose(folder, title, false);
-    }
-
-    /** An uploaded sound: the dialog lists MP3 and WAV files. */
-    public static CompletableFuture<Path> chooseSound() {
-        return choose(false, "Choose a sound (MP3 or WAV)", true);
-    }
-
-    private static CompletableFuture<Path> choose(boolean folder, String title, boolean sounds) {
+    public static CompletableFuture<Path> choose(boolean folder, String title, String filterName, String... extensions) {
         if (!OPEN.compareAndSet(false, true)) {
             return CompletableFuture.failedFuture(new IllegalStateException("A file dialog is already open"));
         }
         var result = new CompletableFuture<Path>();
         Thread thread = new Thread(() -> {
             try (MemoryStack stack = MemoryStack.stackPush()) {
-                PointerBuffer patterns = sounds ? stack.pointers(stack.UTF8("*.mp3"), stack.UTF8("*.wav")) : null;
+                PointerBuffer patterns = null;
+                if (extensions.length > 0) {
+                    patterns = stack.mallocPointer(extensions.length);
+                    for (String extension : extensions) patterns.put(stack.UTF8("*." + extension));
+                    patterns.flip();
+                }
                 String picked = folder
-                    ? TinyFileDialogs.tinyfd_selectFolderDialog(title, (CharSequence) null)
-                    : TinyFileDialogs.tinyfd_openFileDialog(title, (CharSequence) null, patterns, sounds ? "Sounds (MP3, WAV)" : null, false);
+                    ? TinyFileDialogs.tinyfd_selectFolderDialog(title, "") // LWJGL refuses a null default path
+                    : TinyFileDialogs.tinyfd_openFileDialog(title, (CharSequence) null, patterns, extensions.length > 0 ? filterName : null, false);
                 result.complete(picked == null ? null : Path.of(picked));
             } catch (Throwable failure) {
                 result.completeExceptionally(failure);

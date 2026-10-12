@@ -164,7 +164,7 @@ public final class WorldSourcesScreen1201 extends Screen {
 
     private void addCustomFolder() {
         addFolder.active = false;
-        NativeFileDialogs1201.choose(true).whenComplete((folder, failure) -> minecraft.execute(() -> {
+        com.thelads.core.client.util.FileDialogs.openFolder("Add world save folder").whenComplete((folder, failure) -> minecraft.execute(() -> {
             addFolder.active = true;
             if (failure != null) {
                 error = "Folder selection failed: " + failure.getMessage();

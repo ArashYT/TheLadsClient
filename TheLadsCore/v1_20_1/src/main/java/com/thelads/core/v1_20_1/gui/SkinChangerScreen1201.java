@@ -53,7 +53,7 @@ public final class SkinChangerScreen1201 extends Screen {
             if (busy) return;
             busy = true;
             status = "Choose a skin PNG in the file dialog";
-            NativeFileDialogs1201.choose(false).whenComplete((file, error) -> minecraft.execute(() -> {
+            com.thelads.core.client.util.FileDialogs.openFile("Add skin PNG", "Skins (PNG)", "png").whenComplete((file, error) -> minecraft.execute(() -> {
                 busy = false;
                 if (error != null) status = "File dialog failed";
                 else if (file != null) load(file.toString());

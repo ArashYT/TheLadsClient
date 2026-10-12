@@ -101,7 +101,7 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener, O
    protected void init() {
       var addFolder=net.minecraft.client.gui.components.Button.builder(Component.literal("Add folder"), button->{
          button.active=false;
-         com.thelads.core.v26_2.gui.NativeFileDialogs.choose(true,"Add screenshot folder").whenComplete((folder,error)->minecraft.execute(()->{
+         com.thelads.core.client.util.FileDialogs.openFolder("Add screenshot folder").whenComplete((folder,error)->minecraft.execute(()->{
             button.active=true;
             if(error!=null){ScreenshotViewerUtils.fileError("Choose folder",new File("screenshots"),error);return;}
             if(folder==null)return;

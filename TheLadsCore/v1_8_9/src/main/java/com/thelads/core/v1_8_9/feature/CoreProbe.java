@@ -32,7 +32,6 @@ import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.GuiLanguage;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.gui.GuiYesNo;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.MathHelper;
@@ -61,7 +60,7 @@ public final class CoreProbe {
         CoreProbe::titleMore, CoreProbe::backupPrompt, CoreProbe::backupWarning, CoreProbe::backupDone, CoreProbe::title,
         CoreProbe::menuAtTitle, CoreProbe::menuRendered, CoreProbe::searchClicked, CoreProbe::typed, CoreProbe::erased, CoreProbe::editingLeft,
         CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::bridgeInWorld, CoreProbe::menuInWorld, CoreProbe::installedMods, CoreProbe::closedToGame,
-        CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerConfirm, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
+        CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerList, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
     /** -Dthelads.verify189Focus: only the title screen and Probe170Misc's steps of that name (with Essential as players have it). */
     private static final String FOCUS = System.getProperty("thelads.verify189Focus");
@@ -183,6 +182,10 @@ public final class CoreProbe {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
             STEPS.addAll(Probe191World.STEPS);
+        } else if ("fixes".equals(only) || "dialogs".equals(only)) { // 1.9.1 fixes lane (Probe191Fixes); "fixes" ends out of the world
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
+            STEPS.addAll("fixes".equals(only) ? Probe191Fixes.fixes() : Probe191Fixes.dialogs());
         } else if ("raised".equals(only) || "leave".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
@@ -212,8 +215,10 @@ public final class CoreProbe {
             STEPS.addAll(Probe170F3Fov.STEPS);
             STEPS.addAll(Probe145.PACING);
         }
-        STEPS.add(CoreProbe::leaveWorld);
-        STEPS.add(CoreProbe::leftWorld);
+        if (!"fixes".equals(only)) {
+            STEPS.add(CoreProbe::leaveWorld);
+            STEPS.add(CoreProbe::leftWorld);
+        }
         }
     }
     private static int step, passed, delay, waited;
@@ -622,24 +627,25 @@ public final class CoreProbe {
         return after(10);
     }
 
-    /** The grouped pause menu (PauseMenuLayout) and its Multiplayer button, which asks before leaving the world (Stay in game here). */
+    /** The grouped pause menu (PauseMenuLayout) and its Multiplayer button, which opens the server list over the world. */
     private static boolean pauseMultiplayer(Minecraft mc) throws Exception {
         GuiButton lads = ((LadsPauseButton) pause).ladsButton(), multiplayer = ((LadsPauseButton) pause).ladsMultiplayerButton();
         check(mc.currentScreen == pause && multiplayer != null && multiplayer.visible && multiplayer.width == lads.width
             && multiplayer.yPosition > lads.yPosition && multiplayer.xPosition < lads.xPosition && lads.yPosition + lads.height <= pause.height,
             "the pause menu is in groups: Options | Lads Client, then Multiplayer on the next row");
+        Probe191Fixes.localServersOnly(); // the server list it opens pings every entry
         click(multiplayer.xPosition + multiplayer.width / 2, multiplayer.yPosition + multiplayer.height / 2);
         return after(10);
     }
 
-    private static boolean multiplayerConfirm(Minecraft mc) throws Exception {
-        if (mc.currentScreen instanceof GuiYesNo) {
-            check(mc.theWorld != null, "Multiplayer on the pause menu asks before saving and leaving the QA world");
+    private static boolean multiplayerList(Minecraft mc) throws Exception {
+        if (mc.currentScreen instanceof net.minecraft.client.gui.GuiMultiplayer) {
+            check(mc.theWorld != null, "Multiplayer on the pause menu opens the server list over the QA world, which stays open");
             screenshot(mc, "c1-pause-multiplayer");
-            click(mc.currentScreen.width / 2 + 80, mc.currentScreen.height / 6 + 106); // GuiYesNo's second button: Stay in game
+            click(mc.currentScreen.width / 2 + 4 + 76 + 75 / 2, mc.currentScreen.height - 28 + 10); // GuiMultiplayer's Cancel (createButtons)
             return retry(10);
         }
-        check(mc.currentScreen == pause && mc.theWorld != null, "Stay in game returns to the pause menu, still in the world");
+        check(mc.currentScreen == pause && mc.theWorld != null, "Cancel returns to the pause menu, still in the world");
         return after(2);
     }
 

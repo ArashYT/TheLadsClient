@@ -4,20 +4,16 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.lwjgl.sdl.*;
 import org.lwjgl.system.MemoryUtil;
-/** SDL opens the platform's native asynchronous Explorer dialog on Windows. */
+/** The game's own dialog (SDL's), which FileDialogs opens off Windows (VanillaGameBridge26.gameFileDialog). */
 public final class NativeFileDialogs {
     private static final AtomicBoolean OPEN=new AtomicBoolean();
     private record Retired(SDL_DialogFileCallback callback,long after) {}
     private static final java.util.concurrent.ConcurrentLinkedQueue<Retired> RETIRED=new java.util.concurrent.ConcurrentLinkedQueue<>();
     private static boolean registered;
     private NativeFileDialogs(){}
-    public static CompletableFuture<Path> choose(boolean folder){return choose(folder,folder?"Add world save folder":"Add skin PNG");}
-    public static CompletableFuture<Path> choose(boolean folder,String title){return choose(folder,title,false);}
-    /** An uploaded sound: the dialog lists MP3 and WAV files. */
-    public static CompletableFuture<Path> chooseSound(){return choose(false,"Choose a sound (MP3 or WAV)",true);}
-    /** SDL reads the filter list until the callback runs, so it lives as long as the game (two short strings). */
-    private static SDL_DialogFileFilter.Buffer soundFilter;
-    private static CompletableFuture<Path> choose(boolean folder,String title,boolean sounds){
+    /** SDL reads a filter list until the callback runs, so each one lives as long as the game (a few short strings). */
+    private static final java.util.Map<String,SDL_DialogFileFilter.Buffer> FILTERS=new java.util.concurrent.ConcurrentHashMap<>();
+    public static CompletableFuture<Path> choose(boolean folder,String title,String filterName,String... extensions){
         if(!OPEN.compareAndSet(false,true))return CompletableFuture.failedFuture(new IllegalStateException("A file dialog is already open"));
         var result=new CompletableFuture<Path>();
         var mc=net.minecraft.client.Minecraft.getInstance();
@@ -39,9 +35,10 @@ public final class NativeFileDialogs {
                 try{
                     SDLProperties.SDL_SetPointerProperty(props,SDLDialog.SDL_PROP_FILE_DIALOG_WINDOW_POINTER,mc.getWindow().handle());
                     SDLProperties.SDL_SetStringProperty(props,SDLDialog.SDL_PROP_FILE_DIALOG_TITLE_STRING,title);
-                    if(sounds){
-                        if(soundFilter==null){soundFilter=SDL_DialogFileFilter.calloc(1);soundFilter.get(0).name(MemoryUtil.memUTF8("Sounds (MP3, WAV)")).pattern(MemoryUtil.memUTF8("mp3;wav"));}
-                        SDLProperties.SDL_SetPointerProperty(props,SDLDialog.SDL_PROP_FILE_DIALOG_FILTERS_POINTER,soundFilter.address());
+                    if(!folder&&extensions.length>0){
+                        String name=filterName!=null?filterName:String.join(", ",extensions),pattern=String.join(";",extensions);
+                        var filter=FILTERS.computeIfAbsent(name+"|"+pattern,key->{var f=SDL_DialogFileFilter.calloc(1);f.get(0).name(MemoryUtil.memUTF8(name)).pattern(MemoryUtil.memUTF8(pattern));return f;});
+                        SDLProperties.SDL_SetPointerProperty(props,SDLDialog.SDL_PROP_FILE_DIALOG_FILTERS_POINTER,filter.address());
                         SDLProperties.SDL_SetNumberProperty(props,SDLDialog.SDL_PROP_FILE_DIALOG_NFILTERS_NUMBER,1);
                     }
                     SDLDialog.SDL_ShowFileDialogWithProperties(folder?SDLDialog.SDL_FILEDIALOG_OPENFOLDER:SDLDialog.SDL_FILEDIALOG_OPENFILE,holder[0],0,props);

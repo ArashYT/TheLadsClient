@@ -14,7 +14,7 @@ public final class SkinChangerScreen extends Screen {
         int x=Math.max(128,width/2-60),w=Math.min(245,width-x-12);
         source=new EditBox(font,x,57,w,20,Component.literal("Username, UUID or skin URL"));source.setMaxLength(2048);source.setHint(Component.literal("Username, UUID or URL"));addRenderableWidget(source);
         addRenderableWidget(new LadsButton(x,85,w,20,Component.literal("Load skin"),b->load(source.getValue())));
-        addRenderableWidget(new LadsButton(x,113,w,20,Component.literal("Add File"),b->{if(busy)return;busy=true;status="Choose a skin PNG in the file dialog";NativeFileDialogs.choose(false).whenComplete((file,error)->minecraft.execute(()->{busy=false;if(error!=null)status="File dialog failed";else if(file!=null)load(file.toString());else status="Selection canceled";}));}));
+        addRenderableWidget(new LadsButton(x,113,w,20,Component.literal("Add File"),b->{if(busy)return;busy=true;status="Choose a skin PNG in the file dialog";com.thelads.core.client.util.FileDialogs.openFile("Add skin PNG","Skins (PNG)","png").whenComplete((file,error)->minecraft.execute(()->{busy=false;if(error!=null)status="File dialog failed";else if(file!=null)load(file.toString());else status="Selection canceled";}));}));
         addRenderableWidget(new LadsButton(x,141,w,20,Component.literal("Model: "+(slim?"Slim":"Classic")),b->{if(busy)return;slim=!slim;LocalSkins.setModel(slim);b.setMessage(Component.literal("Model: "+(slim?"Slim":"Classic")));}));
         addRenderableWidget(new LadsButton(x,169,w,20,Component.literal("Use account skin"),b->{LocalSkins.reset();status="Using account skin";}));
         addRenderableWidget(new LadsButton(width/2-60,height-28,120,20,Component.literal("Done"),b->onClose()));

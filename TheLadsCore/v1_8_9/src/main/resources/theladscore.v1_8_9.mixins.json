@@ -85,6 +85,7 @@
     "ServerListEntryNormalMixin",
     "OldServerPingerMixin",
     "EssentialFirewallMixin189",
-    "GuiMultiplayerMixin189"
+    "GuiMultiplayerMixin189",
+    "GuiConnectingMixin189"
   ]
 }

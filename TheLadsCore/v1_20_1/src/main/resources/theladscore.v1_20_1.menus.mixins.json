@@ -31,6 +31,8 @@
     "WorldFoldersMixin",
     "DisconnectedScreenAccess",
     "ReconnectTargetMixin",
+    "ConnectLeavesWorldMixin",
+    "PauseWithoutWorldMixin",
     "ReconnectRealmsMixin",
     "SkinTextureAccessor",
     "LocalSkinMixin",

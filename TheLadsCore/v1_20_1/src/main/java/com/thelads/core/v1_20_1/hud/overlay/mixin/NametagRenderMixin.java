@@ -8,13 +8,26 @@ import net.minecraft.network.chat.Component;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** Nametags: renames, background and text shadow on every name tag (players' too: PlayerRenderer draws through this method). */
 @Mixin(EntityRenderer.class)
 public class NametagRenderMixin {
     private static final String DRAW = "Lnet/minecraft/client/gui/Font;drawInBatch(Lnet/minecraft/network/chat/Component;FFIZLorg/joml/Matrix4f;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/client/gui/Font$DisplayMode;II)I";
+
+    /** While a name tag draws, Font puts its text in front of the shadow (NametagShadowDepthMixin). */
+    @Inject(method = "renderNameTag", at = @At("HEAD"))
+    private void lads$tagStart(CallbackInfo ci) {
+        Nametags1201.drawing = true;
+    }
+
+    @Inject(method = "renderNameTag", at = @At("RETURN"))
+    private void lads$tagEnd(CallbackInfo ci) {
+        Nametags1201.drawing = false;
+    }
 
     @ModifyVariable(method = "renderNameTag", at = @At("HEAD"), argsOnly = true)
     private Component lads$rename(Component name) {

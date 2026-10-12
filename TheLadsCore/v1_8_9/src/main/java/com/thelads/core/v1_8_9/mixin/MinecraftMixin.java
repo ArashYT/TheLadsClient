@@ -14,6 +14,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -22,6 +23,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * Opening a world a newer version saved asks for a backup first (WorldBackup189).
  * 1.7 Animations: the use key blocks, draws a bow or eats while the attack key mines a block, as in 1.7 (1.8 waits for the mining).
  * Item Physics: with right-click pickup on, the use key on a dropped item picks it up.
+ * Every attack click swings the arm, even when vanilla refuses (OldAnimations189.swingAnyway).
+ * The pause menu without a world (after a join from its server list left it) is the main menu, as no screen is.
  * QA (Probe173Perf): each frame's work up to Display.update (FrameWork189). */
 @Mixin(Minecraft.class)
 public abstract class MinecraftMixin {
@@ -63,6 +66,17 @@ public abstract class MinecraftMixin {
         if (!ItemPhysics189.pickUp((Minecraft) (Object) this)) return;
         rightClickDelayTimer = 4;
         ci.cancel();
+    }
+
+    /** After vanilla's clickMouse, which swings only outside the first half of a swing and not at all for 10 ticks after a miss. */
+    @Inject(method = "clickMouse", at = @At("RETURN"), require = 1)
+    private void ladsSwingAnyway(CallbackInfo ci) {
+        OldAnimations189.swingAnyway(thePlayer);
+    }
+
+    @ModifyVariable(method = "displayGuiScreen", at = @At("HEAD"), argsOnly = true, require = 1)
+    private net.minecraft.client.gui.GuiScreen ladsNoPauseWithoutWorld(net.minecraft.client.gui.GuiScreen screen) {
+        return screen instanceof net.minecraft.client.gui.GuiIngameMenu && theWorld == null ? new net.minecraft.client.gui.GuiMainMenu() : screen;
     }
 
     @Inject(method = "runGameLoop", at = @At("HEAD"), require = 0)

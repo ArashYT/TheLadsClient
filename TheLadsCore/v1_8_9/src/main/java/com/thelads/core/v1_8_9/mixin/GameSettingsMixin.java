@@ -1,5 +1,6 @@
 package com.thelads.core.v1_8_9.mixin;
 
+import com.thelads.core.v1_8_9.feature.Fullbright189;
 import com.thelads.core.v1_8_9.feature.Zoom189;
 import java.io.File;
 import java.io.IOException;
@@ -24,6 +25,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
@@ -40,6 +42,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(GameSettings.class)
 public abstract class GameSettingsMixin {
     @Shadow private File optionsFile;
+
+    /** options.txt gets the player's own Brightness, not Fullbright's (Fullbright189.saving). */
+    @Inject(method = "saveOptions", at = @At("HEAD"), require = 1)
+    private void ladsSaveOwnBrightness(CallbackInfo ci) {
+        Fullbright189.saving((GameSettings) (Object) this, true);
+    }
+
+    @Inject(method = "saveOptions", at = @At("RETURN"), require = 1)
+    private void ladsShowFullbrightAgain(CallbackInfo ci) {
+        Fullbright189.saving((GameSettings) (Object) this, false);
+    }
 
     @Inject(method = "isKeyDown", at = @At("HEAD"), cancellable = true, require = 1)
     private static void ladsOnlyZoom(KeyBinding key, CallbackInfoReturnable<Boolean> cir) {
