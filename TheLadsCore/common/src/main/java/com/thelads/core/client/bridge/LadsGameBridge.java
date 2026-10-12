@@ -130,7 +130,17 @@ public interface LadsGameBridge {
 
     float getXpProgress();
 
+    /** Your latency as the tab list lists it (fake on Hypixel: see hypixel.RealPing, which the Ping HUD and PingView go through). */
     int getPing();
+
+    /** Every tab-list row's listed latency in ms (RealPing's fake-listing check); empty when not connected. */
+    default int[] getListedLatencies() { return new int[0]; }
+    /** The connected server's socket address (RealPing's status ping), or null in singleplayer or when not connected. */
+    default java.net.InetSocketAddress getServerSocketAddress() { return null; }
+    /** Sends a line as the player would type it: a command when it starts with "/" (Hypixel mods). */
+    default void sendChatLine(String text) {}
+    /** Sends a plugin message (custom payload) to the server; false when this version or connection cannot (RealPing). */
+    default boolean sendPluginMessage(String channel, byte[] data) { return false; }
 
     double getSpeed();
 

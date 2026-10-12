@@ -229,6 +229,8 @@ public class ModuleManager {
         register(packets, Module.Category.SERVER);
 
         register(new DiscordRpcModule(), Module.Category.SERVER);
+        // 1.9.1: the Hypixel mods (Auto GG, Auto Friend, Auto Tip, Auto Play Again, Auto Who, Chat Cleanup), active only on Hypixel.
+        for (Module hypixel : com.thelads.core.client.hypixel.HypixelMods.modules()) register(hypixel, Module.Category.HYPIXEL);
 
         Module sb = new Module("Scoreboard", "Resize, reposition and restyle the scoreboard sidebar.");
         sb.addOption(new SliderOption("Size", 100, 50, 150, 25));

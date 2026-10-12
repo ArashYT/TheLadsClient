@@ -31,13 +31,16 @@ public final class HypixelSafetyManager {
         DISALLOWED_MODULES.add("ShulkerBoxUtils");
     }
 
+    /** QA only (the Hypixel QA routines set it for their run): the singleplayer QA world counts as Hypixel. */
+    public static volatile boolean qaOverride;
+
     private HypixelSafetyManager() {}
 
     /**
      * Checks if the currently active game connection is on Hypixel.
      */
     public static boolean isHypixel() {
-        return isHypixelAddress(LadsGameBridge.get().getServerAddress());
+        return qaOverride || isHypixelAddress(LadsGameBridge.get().getServerAddress());
     }
 
     /**

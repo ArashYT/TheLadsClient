@@ -1,0 +1,307 @@
+[
+ {
+  "mode": "bedwars",
+  "raw": "   §cRed §f- §6§lWINNER!  ",
+  "kind": "game_end"
+ },
+ {
+  "mode": "bedwars",
+  "raw": "   §aWinners: §6[MVP+] Arash§e, §a[VIP] Steve_42",
+  "kind": "game_end"
+ },
+ {
+  "mode": "skywars",
+  "raw": "   §6Winner #1 (4 Kills): §aArash §e(Warrior)",
+  "kind": "game_end"
+ },
+ {
+  "mode": "duels",
+  "raw": "   §eClassic Duel §7- §b0:42",
+  "kind": "game_end"
+ },
+ {
+  "mode": "duels",
+  "raw": "   §bPlayer of the match: §aArash §e(5 Goals)",
+  "kind": "game_end"
+ },
+ {
+  "mode": "duels",
+  "raw": "   §eSumo Duel §7- §b0:18",
+  "kind": "game_end"
+ },
+ {
+  "mode": "uhc",
+  "raw": "   §aWinners: §eArash, Steve_42",
+  "kind": "game_end"
+ },
+ {
+  "mode": "megawalls",
+  "raw": "   §6[MVP+] Arash §7- §e5 Final Kills",
+  "kind": "game_end"
+ },
+ {
+  "mode": "blitz",
+  "raw": "   §6Winner #1 (8 Kills): §aArash §7(Knight)",
+  "kind": "game_end"
+ },
+ {
+  "mode": "murdermystery",
+  "raw": "   §cMurderer: §eSteve_42 §7(6 Kills)",
+  "kind": "game_end"
+ },
+ {
+  "mode": "murdermystery",
+  "raw": "   §cAlpha Infected: §exX_Nick_Xx §7(4 infections)",
+  "kind": "game_end"
+ },
+ {
+  "mode": "tntgames",
+  "raw": "   §aWinner: §eArash",
+  "kind": "game_end"
+ },
+ {
+  "mode": "arcade",
+  "raw": "   §cZombies §7- §e12:45 §7(Round 20)",
+  "kind": "game_end"
+ },
+ {
+  "mode": "arcade",
+  "raw": "   §aYou survived §e15 §arounds!",
+  "kind": "game_end"
+ },
+ {
+  "mode": "arcade",
+  "raw": "   §aThey captured all wools!",
+  "kind": "game_end"
+ },
+ {
+  "mode": "arcade",
+  "raw": "   §61st Killer §7- §6[MVP+] Arash §7- §e25 Kills",
+  "kind": "game_end"
+ },
+ {
+  "mode": "cvc",
+  "raw": "   §cCriminals won the game!",
+  "kind": "game_end"
+ },
+ {
+  "mode": "cvc",
+  "raw": "   §9Cops won the game!",
+  "kind": "game_end"
+ },
+ {
+  "mode": "warlords",
+  "raw": "   §e52.4k/31.2k §cBerserker",
+  "kind": "game_end"
+ },
+ {
+  "mode": "smashheroes",
+  "raw": " 1st Place: [MVP+] Arash (Bulk) - 3 Kills",
+  "kind": "game_end"
+ },
+ {
+  "mode": "buildbattle",
+  "raw": " 1st Place: [MVP+] Arash",
+  "kind": "game_end"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§m-----------------------------------------------------\n§9Friend request from §b[MVP+] Steve_42\n§a§l[ACCEPT] §7- §c§l[DENY] §7- §4§l[BLOCK]\n§m-----------------------------------------------------",
+  "kind": "friend_request"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§9Friend request from §7xX_Nick_Xx",
+  "kind": "friend_request"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§aYou tipped §e3 players §ain §e2 different games!§r",
+  "kind": "tip"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§aYou tipped §eSteve_42 §ain §eBed Wars!§r",
+  "kind": "tip"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§aYou were tipped by §e5 players §ain the last minute!§r",
+  "kind": "tip"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§cYou already tipped everyone that has boosters active, so there isn't anybody to be tipped right now!",
+  "kind": "tip"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§cNo one has a network booster active right now! Try again later.",
+  "kind": "tip"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§cSlow down! You can only use /tip every few seconds.",
+  "kind": "tip"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§6[MVP§c++§6] Arash §7slid into the lobby!§r",
+  "kind": "lobby_join"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§6[MVP§c++§6] Steve_42 §7joined the lobby!§r",
+  "kind": "lobby_join"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§6[MVP§c++§6] xX_Nick_Xx §7spooked into the lobby!§r",
+  "kind": "lobby_join"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§6[MVP§c++§6] Alex_99 §7sled into the lobby!§r",
+  "kind": "lobby_join"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§6[MVP+] Steve_42§f: party join Steve_42 bedwars 4s any stats",
+  "kind": "spam"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§7Steve_42: Lowballing 500m budget /visit Steve_42 my ah",
+  "kind": "spam"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§7Steve_42: pls buy me vip or mvp rank upgrade please",
+  "kind": "spam"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§7Steve_42: Join our active guild discord.gg/hypixelguild",
+  "kind": "spam"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§7Steve_42: duel me classic duel /duel Steve_42",
+  "kind": "spam"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§dThey have gifted 5 ranks so far!",
+  "kind": "spam"
+ },
+ {
+  "mode": "skywars",
+  "raw": "§aSteve_42 §ehas found §6Legendary Knight Kit §ein the Soul Well!",
+  "kind": "spam"
+ },
+ {
+  "mode": "lobby",
+  "raw": "§d+5 Karma!",
+  "kind": "spam"
+ },
+ {
+  "mode": "bedwars",
+  "raw": "§6+10 coins! (Kill)",
+  "kind": "spam"
+ },
+ {
+  "mode": "bedwars",
+  "raw": "§6+20 coins! (Final Kill)",
+  "kind": "spam"
+ },
+ {
+  "mode": "bedwars",
+  "raw": "§b+10 BedWars Experience Received (Regular Kill).",
+  "kind": "spam"
+ },
+ {
+  "mode": "skywars",
+  "raw": "§b+1 Soul!",
+  "kind": "spam"
+ },
+ {
+  "mode": "blitz",
+  "raw": "§6+100 coins! (Taunt Kill)",
+  "kind": "spam"
+ },
+ {
+  "mode": "general",
+  "raw": "§f<Steve_42> §7Arash was killed by Steve_42.",
+  "kind": "none"
+ },
+ {
+  "mode": "general",
+  "raw": "§6[MVP+] Steve_42§f: §7Bob was killed by Arash. FINAL KILL!",
+  "kind": "none"
+ },
+ {
+  "mode": "general",
+  "raw": "§6[MVP+] Steve_42§f: §7gg Arash",
+  "kind": "none"
+ },
+ {
+  "mode": "general",
+  "raw": "§f<Steve_42> §7Arash ez",
+  "kind": "none"
+ },
+ {
+  "mode": "general",
+  "raw": "§cSteve_42§7 was killed by §aArash2§7.",
+  "kind": "none"
+ },
+ {
+  "mode": "general",
+  "raw": "§cSteve_42§7 was slain by §aArashi§7.",
+  "kind": "none"
+ },
+ {
+  "mode": "general",
+  "raw": "§cArash2§7 was knocked into the void by §aSteve_42§7.",
+  "kind": "none"
+ },
+ {
+  "mode": "general",
+  "raw": "§9Party > §6[MVP+] Steve_42§f: Arash was killed by Bob",
+  "kind": "none"
+ },
+ {
+  "mode": "general",
+  "raw": "§2Guild > §7Steve_42§f: I just killed Arash in duels",
+  "kind": "none"
+ },
+ {
+  "mode": "general",
+  "raw": "§dFrom §a[VIP] Steve_42§7: you killed me Arash",
+  "kind": "none"
+ },
+ {
+  "mode": "bedwars",
+  "raw": "§c§lBED DESTRUCTION > §cRed Bed §7was destroyed by §aArash§7!",
+  "kind": "none"
+ },
+ {
+  "mode": "duels",
+  "raw": "§aArash §escored a goal! §7(1-0)",
+  "kind": "none"
+ },
+ {
+  "mode": "duels",
+  "raw": "§eYour stats did not change because you /duel'ed your opponent!",
+  "kind": "none"
+ },
+ {
+  "mode": "general",
+  "raw": "§cYou were spawned in Limbo.",
+  "kind": "none"
+ },
+ {
+  "mode": "general",
+  "raw": "§2Bob was kicked from the guild by Arash!",
+  "kind": "none"
+ }
+]
