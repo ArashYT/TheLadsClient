@@ -17,7 +17,7 @@ import com.thelads.core.v1_20_1.feature.screenshots.config.ScreenshotViewerOptio
 import com.thelads.core.v1_20_1.feature.screenshots.screen.IconButtonWidget;
 import com.thelads.core.v1_20_1.feature.screenshots.screen.ScreenshotViewerConfigScreen;
 import com.thelads.core.v1_20_1.feature.screenshots.screen.ScreenshotViewerTexts;
-import com.thelads.core.v1_20_1.gui.NativeFileDialogs1201;
+import com.thelads.core.client.util.FileDialogs;
 import java.io.File;
 import java.util.List;
 import java.util.Optional;
@@ -89,7 +89,7 @@ public class ManageScreenshotsScreen extends Screen implements ConfigListener {
    protected void init() {
       var addFolder = Button.builder(Component.literal("Add folder"), button -> {
          button.active = false;
-         NativeFileDialogs1201.choose(true, "Add screenshot folder").whenComplete((folder, error) -> minecraft.execute(() -> {
+         FileDialogs.openFolder("Add screenshot folder").whenComplete((folder, error) -> minecraft.execute(() -> {
             button.active = true;
             if (error != null) { ScreenshotViewerUtils.fileError("Choose folder", new File("screenshots"), error); return; }
             if (folder == null) return;

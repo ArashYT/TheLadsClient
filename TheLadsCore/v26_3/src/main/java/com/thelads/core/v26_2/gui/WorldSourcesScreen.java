@@ -94,7 +94,7 @@ public final class WorldSourcesScreen extends Screen {
     private int pageSize(){return Math.max(1,(height-155)/26);}
     private void addCustomFolder(){
         addFolder.active=false;
-        NativeFileDialogs.choose(true).whenComplete((folder,failure)->minecraft.execute(()->{
+        com.thelads.core.client.util.FileDialogs.openFolder("Add world save folder").whenComplete((folder,failure)->minecraft.execute(()->{
             addFolder.active=true;
             if(failure!=null){error="Folder selection failed: "+failure.getMessage();refresh();return;}
             if(folder==null)return;

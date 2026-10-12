@@ -27,6 +27,9 @@ dependencies {
     compileOnly 'org.ow2.asm:asm-analysis:9.10.1'
     testImplementation 'org.ow2.asm:asm-tree:9.10.1'
     testImplementation 'org.ow2.asm:asm-analysis:9.10.1'
+    // FileDialogs: every game ships JNA (3.4.0 with 1.8.9, 5.x with 1.20.1 and 26.x); only API all of them have is used.
+    compileOnly 'net.java.dev.jna:jna:5.12.1'
+    testImplementation 'net.java.dev.jna:jna:5.12.1'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

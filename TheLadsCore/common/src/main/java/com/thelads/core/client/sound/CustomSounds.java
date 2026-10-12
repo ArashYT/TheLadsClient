@@ -12,7 +12,6 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -197,47 +196,10 @@ public final class CustomSounds {
         }
     }
     private static final java.util.Set<String> FAILED_LINES = ConcurrentHashMap.newKeySet();
-    private static final java.util.concurrent.atomic.AtomicBoolean DIALOG_OPEN = new java.util.concurrent.atomic.AtomicBoolean();
 
     /** QA: sound lines opened so far, and the last file played. */
     public static int linesOpened() { return OPENED.get(); }
     public static String lastPlayed() { return lastPlayed; }
     /** QA/preview: the decoded sound (null when it can't be read). */
     public static Pcm decoded(String file) { Pcm pcm = load(file); return pcm == FAILED ? null : pcm; }
-
-    /**
-     * The open-file dialog where the game has no native one (1.8.9): AWT's, on its own thread so the game keeps drawing.
-     * Completes with null when cancelled.
-     */
-    public static CompletableFuture<Path> awtChooser(String title) {
-        CompletableFuture<Path> result = new CompletableFuture<>();
-        if (java.awt.GraphicsEnvironment.isHeadless()) {
-            result.completeExceptionally(new IllegalStateException("No file dialog in this game"));
-            return result;
-        }
-        if (!DIALOG_OPEN.compareAndSet(false, true)) {
-            result.completeExceptionally(new IllegalStateException("A file dialog is already open"));
-            return result;
-        }
-        Thread thread = new Thread(() -> {
-            java.awt.FileDialog dialog = null;
-            try {
-                dialog = new java.awt.FileDialog((java.awt.Frame) null, title, java.awt.FileDialog.LOAD);
-                dialog.setFile("*.mp3;*.wav"); // the Windows dialog's filter
-                dialog.setFilenameFilter((dir, name) -> supported(name));
-                dialog.setAlwaysOnTop(true);
-                dialog.setVisible(true);
-                String file = dialog.getFile(), directory = dialog.getDirectory();
-                result.complete(file == null ? null : directory == null ? Path.of(file) : Path.of(directory, file));
-            } catch (Throwable failure) {
-                result.completeExceptionally(failure);
-            } finally {
-                if (dialog != null) dialog.dispose();
-                DIALOG_OPEN.set(false);
-            }
-        }, "Lads file dialog");
-        thread.setDaemon(true);
-        thread.start();
-        return result;
-    }
 }

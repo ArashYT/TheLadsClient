@@ -4,7 +4,7 @@ import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.FlashbackModule;
-import com.thelads.core.v26_2.gui.NativeFileDialogs;
+import com.thelads.core.client.util.FileDialogs;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import net.fabricmc.loader.api.FabricLoader;
@@ -32,7 +32,7 @@ public final class NativeFlashback {
         }
         ModuleSupport.registerSettingsOnly(FlashbackModule.NAME);
         FlashbackModule module = module();
-        module.browse.setAction(() -> NativeFileDialogs.choose(true, "Flashback replay folder").whenComplete((folder, error) ->
+        module.browse.setAction(() -> FileDialogs.openFolder("Flashback replay folder").whenComplete((folder, error) ->
             Minecraft.getInstance().execute(() -> { if (folder != null) { module.replayFolder.setValue(folder.toString()); ConfigManager.save(); } })));
         module.defaultFolder.setAction(() -> { module.replayFolder.setValue(""); ConfigManager.save(); });
     }
