@@ -326,8 +326,9 @@ public final class BiomeCapture {
         yaw = to;
         turned = true;
         renderedSince = 0;
+        // Pockets look a little down: their floors (sculk, nylium, moss) say which biome it is.
         teleport(mc.getSingleplayerServer(), String.format(Locale.ROOT, "execute in %s run tp @a %.2f %.2f %.2f %.1f %.1f",
-            mine.get(index).dimension().identifier(), p.x(), p.y(), p.z(), to, PITCH));
+            mine.get(index).dimension().identifier(), p.x(), p.y(), p.z(), to, mine.get(index).pocket() ? 15f : PITCH));
     }
 
     /** The camera is in that dimension near x, z, its chunks stopped arriving and every section is built (at most 90 s). */
@@ -425,8 +426,14 @@ public final class BiomeCapture {
             for (String id : possible.get(dimension)) if (!wanted.contains(id)) result.add(pocket(level, id));
             for (String id : wanted) if (!found.containsKey(id)) LOG.warn("Lads biome capture: {} not found on the surface", id);
         }
+        // The Nether's biomes do not change with height: its most interior cells come from the same grid (at the bedrock roof's
+        // height), then the camera goes to the air pocket around the middle of the Nether's height there.
         ServerLevel nether = server.getLevel(Level.NETHER);
-        for (String id : possible.get(Level.NETHER)) result.add(pocket(nether, id));
+        var inside = surface(nether, possible.get(Level.NETHER), 1024, 32);
+        for (String id : possible.get(Level.NETHER)) {
+            Target t = inside.get(id);
+            result.add(t == null ? pocket(nether, id) : new Target(id, Level.NETHER, t.x(), 64, t.z(), -90, -90, true));
+        }
         result.removeIf(java.util.Objects::isNull);
         LOG.info("Lads biome capture: scan took {} ms, {} targets", (System.nanoTime() - started) / 1_000_000, result.size());
         return result;
@@ -510,6 +517,12 @@ public final class BiomeCapture {
             if (alike > bestAlike) { bestAlike = alike; centre = q; }
         }
         p = centre;
+        if (id.equals("deep_dark")) {
+            // Its open halls with sculk are in its ancient cities (floors at y -51); the biome's nearest point is mostly solid rock.
+            BlockPos city = level.findNearestMapStructure(net.minecraft.tags.StructureTags.ON_ANCIENT_CITY_MAPS, BlockPos.ZERO, 100, false);
+            if (city != null) p = new BlockPos(city.getX(), -40, city.getZ());
+            LOG.info("Lads biome capture: deep_dark ancient city {}", city == null ? "not found" : city.toShortString());
+        }
         LOG.info("Lads biome capture: {} {} at {} (pocket, {} of 27 alike)", level.dimension().identifier().getPath(), id, p.toShortString(), bestAlike);
         return new Target(id, level.dimension(), p.getX(), p.getY(), p.getZ(), -90, -90, true);
     }
@@ -527,26 +540,30 @@ public final class BiomeCapture {
             return new Place(t.x() + 0.5, feet, t.z() + 0.5, (float) east[0], (float) west[0]);
         }
         boolean nether = level.dimension() == Level.NETHER;
-        int reach = nether ? 32 : 16, step = nether ? 4 : 2, below = nether ? 30 : 12, above = nether ? 40 : 12;
+        int reach = 32, step = nether ? 4 : 3, below = nether ? 30 : 20, above = nether ? 40 : 20;
         double bestScore = -1;
         Place best = null;
         var pos = new BlockPos.MutableBlockPos();
         for (int dx = -reach; dx <= reach; dx += step) for (int dz = -reach; dz <= reach; dz += step) for (int dy = -below; dy <= above; dy++) {
             int x = t.x() + dx, y = t.y() + dy, z = t.z() + dz;
+            if (y <= level.getMinY() + 1 || y >= level.getMinY() + level.getHeight() - 4) continue; // never in the void under bedrock
             if (!air(level, pos.set(x, y, z)) || !air(level, pos.set(x, y + 1, z)) || !air(level, pos.set(x, y + 2, z))) continue;
             if (!t.biome().equals(level.getBiome(pos.set(x, y, z)).unwrapKey().map(k -> k.identifier().getPath()).orElse(""))) continue;
-            boolean floor = false;
-            for (int f = 1; f <= 4 && !floor; f++) floor = level.getBlockState(pos.set(x, y - f, z)).isSolid();
+            // Standing on the biome's ground (nylium, soul soil, moss, sculk): mid-air views over a Nether void show no biome.
+            var ground = level.getBlockState(pos.set(x, y - 1, z));
+            if (!ground.isSolid() || !ground.getFluidState().isEmpty() || ground.is(net.minecraft.world.level.block.Blocks.GLOWSTONE)
+                || ground.is(net.minecraft.world.level.block.Blocks.SHROOMLIGHT)) continue; // not on a lamp hanging from the ceiling
             for (int k = 0; k < 8; k++) {
                 float yaw = k * 45 - 180;
-                double vx = -Math.sin(Math.toRadians(yaw)), vz = Math.cos(Math.toRadians(yaw));
-                // The open air ahead that is still the biome (a long view out of it shows another biome).
-                int free = 0, alike = 0;
-                while (free < 48 && air(level, pos.set((int) Math.floor(x + 0.5 + vx * (free + 1)), y + 1, (int) Math.floor(z + 0.5 + vz * (free + 1))))) {
-                    free++;
-                    if (t.biome().equals(level.getBiome(pos).unwrapKey().map(key -> key.identifier().getPath()).orElse(""))) alike++;
+                // The open air ahead that is still the biome (a long view out of it shows another biome), straight ahead and 25
+                // degrees to each side: a wall beside the camera fills half the picture.
+                int alike = 0;
+                for (int side = -1; side <= 1; side++) {
+                    double vx = -Math.sin(Math.toRadians(yaw + side * 25)), vz = Math.cos(Math.toRadians(yaw + side * 25));
+                    for (int free = 1; free <= 24 && air(level, pos.set((int) Math.floor(x + 0.5 + vx * free), y + 1, (int) Math.floor(z + 0.5 + vz * free))); free++)
+                        if (t.biome().equals(level.getBiome(pos).unwrapKey().map(key -> key.identifier().getPath()).orElse(""))) alike++;
                 }
-                double score = alike + (floor ? 10 : 0);
+                double score = alike - 0.001 * (dx * dx + dy * dy + dz * dz); // ties: the one nearest the biome's middle
                 if (score > bestScore) { bestScore = score; best = new Place(x + 0.5, y, z + 0.5, yaw, yaw); }
             }
         }
