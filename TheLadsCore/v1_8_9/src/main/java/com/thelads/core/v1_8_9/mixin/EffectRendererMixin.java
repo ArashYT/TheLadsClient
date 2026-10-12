@@ -37,4 +37,20 @@ public abstract class EffectRendererMixin {
     private void ladsBudget(int id, double x, double y, double z, double dx, double dy, double dz, int[] parameters, CallbackInfoReturnable<EntityFX> cir) {
         if (!ParticleCore189.allow(id, x, y, z)) cir.setReturnValue(null);
     }
+
+    @org.spongepowered.asm.mixin.Shadow
+    protected abstract void tickParticle(EntityFX particle);
+
+    /** In-place removal of dead particles avoids allocating intermediate ArrayLists and calling removeAll 8 times per tick. */
+    @Inject(method = "updateEffectAlphaLayer", at = @At("HEAD"), cancellable = true, require = 0)
+    private void ladsUpdateEffectAlphaLayer(java.util.List<EntityFX> list, CallbackInfo ci) {
+        for (int i = 0; i < list.size(); i++) {
+            EntityFX particle = list.get(i);
+            tickParticle(particle);
+            if (particle.isDead) {
+                list.remove(i--);
+            }
+        }
+        ci.cancel();
+    }
 }
