@@ -45,7 +45,7 @@ public abstract class RenderScaleMixin {
             if (succeeded) com.thelads.core.v26_2.feature.NativeWelcomeProbe.renderedFrame(mainRenderTarget);
             if (succeeded) com.thelads.core.v26_2.feature.NativeWorldVerification.renderedFrame(mainRenderTarget);
             if (succeeded) com.thelads.core.v26_2.feature.qa.LoadingScreenCapture.frame(mainRenderTarget);
-            if (succeeded) com.thelads.core.v26_2.feature.qa.BiomeCapture.frame(mainRenderTarget);
+            if (succeeded && com.thelads.core.v26_2.feature.qa.BiomeCapture.ACTIVE) com.thelads.core.v26_2.feature.qa.BiomeCapture.frame(mainRenderTarget);
         }
     }
 

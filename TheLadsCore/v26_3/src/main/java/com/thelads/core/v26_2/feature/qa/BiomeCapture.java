@@ -42,6 +42,8 @@ import org.slf4j.LoggerFactory;
 public final class BiomeCapture {
     private static final Logger LOG = LoggerFactory.getLogger("TheLadsCore");
     private static final String SPEC = System.getProperty("thelads.verifyBiomeCapture");
+    /** Only a QA run started with -Dthelads.verifyBiomeCapture (the harness's LADS_VERIFY_CAPTURE_BIOMES); players never have it. */
+    public static final boolean ACTIVE = SPEC != null;
     private static final String WORLD = "LadsBiomes";
     private static final long SEED = 20261011L;
     private static final int RENDER_DISTANCE = 10, SCAN_RADIUS = 4096, SCAN_STEP = 32;
@@ -60,6 +62,7 @@ public final class BiomeCapture {
     private record UiStep(String shot, Runnable action) {}
     private static final List<UiStep> UI_STEPS = new ArrayList<>();
     private static int uiStep;
+    private static boolean titleShot;
     private static Phase phase = Phase.TITLE;
     private static long since, firstTitle, titleSince, loadStable, renderedSince;
     private static int lastChunks, index, shot, saved, failed;
@@ -78,7 +81,7 @@ public final class BiomeCapture {
 
     /** Each completed frame (RenderScaleMixin). */
     public static void frame(RenderTarget target) {
-        if (SPEC == null || phase == Phase.DONE) return;
+        if (!ACTIVE || phase == Phase.DONE) return;
         try { step(Minecraft.getInstance(), target, System.nanoTime()); }
         catch (Throwable failure) { finish("FAILED: " + failure); LOG.error("Lads biome capture FAILED", failure); }
     }
@@ -97,9 +100,9 @@ public final class BiomeCapture {
                 if (game.getParent() == null || !game.getParent().getFileName().toString().equals("verification")
                     || game.getParent().getParent() == null || !game.getParent().getParent().getFileName().toString().equals("artifacts"))
                     throw new IllegalStateException("not an isolated QA folder: " + game);
-                if (UI && uiStep == 0) {
+                if (UI && !titleShot) {
                     // Live Game on the title screen: the chosen biome stands in.
-                    uiStep = -1;
+                    titleShot = true;
                     crosshair().background.setIndex(com.thelads.core.client.CrosshairBackground.LIVE);
                     openSettings(mc);
                     next(Phase.TITLE_UI, now);
@@ -124,7 +127,6 @@ public final class BiomeCapture {
                 next(Phase.SAVING, now);
                 shoot(target, "ui-0-title-live-fallback", () -> {
                     if (Minecraft.getInstance().gui.screen() != null) Minecraft.getInstance().gui.screen().onClose(); // back to the title
-                    uiStep = 0;
                     titleSince = System.nanoTime() - 20_000_000_000L;
                     next(Phase.TITLE, System.nanoTime());
                 });
