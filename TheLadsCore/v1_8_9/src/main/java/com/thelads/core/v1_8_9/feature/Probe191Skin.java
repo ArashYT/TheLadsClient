@@ -12,6 +12,7 @@ import com.sun.net.httpserver.HttpServer;
 import com.thelads.core.client.QaSkin;
 import com.thelads.core.v1_8_9.gui.SkinChangerScreen189;
 import com.thelads.core.v1_8_9.gui.SkinCustomizationScreen189;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
@@ -19,6 +20,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import javax.imageio.ImageIO;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.gui.GuiButton;
@@ -26,6 +28,7 @@ import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiOptions;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.EnumPlayerModelParts;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
@@ -35,22 +38,22 @@ import org.lwjgl.input.Keyboard;
 /**
  * QA only (LADS_VERIFY_189_ONLY=skin): the Skin Customization and Skin changer screens, through real clicks. From the title screen:
  * Options > Skin Customization, a drag on the preview, Change skin, a skin loaded from a file (QaSkin: checkerboard outer layers), from
- * a web address (a server on this machine) and from a player name, the slim model, Done, the layer toggles; then in the QA world the
+ * a web address (a server on this machine), a player name and a UUID, an old 64 x 32 file, the slim model, Done, the layer toggles; then in the QA world the
  * same screen from the pause menu, and the skin on the player (third person). A skin saved by an earlier run must be on again at the
  * start. Photos: lads-qa/screenshots/skin-*.png. Layer toggles and the camera are put back as found; the saved skin stays for the next run.
  */
 final class Probe191Skin {
     static final List<CoreProbe.Step> TITLE = Arrays.<CoreProbe.Step>asList(Probe191Skin::start, Probe191Skin::optionsOpened, Probe191Skin::customization,
         Probe191Skin::turned, Probe191Skin::changer, Probe191Skin::classicLoad, Probe191Skin::loaded, Probe191Skin::slimModel, Probe191Skin::fromUrl, Probe191Skin::fromName,
-        Probe191Skin::fromFileAgain, Probe191Skin::backToCustomization, Probe191Skin::layersOff, Probe191Skin::layersOn, Probe191Skin::closed,
+        Probe191Skin::fromUuid, Probe191Skin::legacyFile, Probe191Skin::fromFileAgain, Probe191Skin::backToCustomization, Probe191Skin::layers3dOn, Probe191Skin::layers3dOff, Probe191Skin::layers3dBack, Probe191Skin::layersOff, Probe191Skin::layersOn, Probe191Skin::closed,
         Probe191Skin::toTitle);
     static final List<CoreProbe.Step> WORLD = Arrays.<CoreProbe.Step>asList(Probe191Skin::worldPlayer, Probe191Skin::worldPlayerShot,
         Probe191Skin::pauseOptions, Probe191Skin::pauseSkin, Probe191Skin::pauseCustomization, Probe191Skin::accountSkin,
         Probe191Skin::accountSkinBack, Probe191Skin::saved);
     private static final String[] LAYER_TOGGLES = {"Hat", "Jacket", "Left Sleeve", "Right Pants Leg"};
     private static Set<EnumPlayerModelParts> partsWere;
-    private static boolean started, restarted;
-    private static int viewWas, nameWaits;
+    private static boolean started, restarted, optionWas;
+    private static int viewWas, nameWaits, boxWaits;
     private static volatile int hits;
     private static float pitchWas, gammaWas, yawBefore;
     private static File skinFile;
@@ -185,6 +188,33 @@ final class Probe191Skin {
         if ("Loading skin...".equals(screen.status()) && ++nameWaits < 60) return retry(10);
         LogManager.getLogger("TheLadsCore").info("Lads 1.8.9 skin probe: the player name Dinnerbone answered: {}", screen.status());
         check(!"Loading skin...".equals(screen.status()), "a player name lookup finished: " + screen.status());
+        nameWaits = 0;
+        screen.source().setText("61699b2ed3274a019f1e0ea8c3f06bc6"); // the same player by UUID: no name lookup, the session server alone
+        press(mc, screen, "Load skin");
+        return after(5);
+    }
+
+    private static boolean fromUuid(Minecraft mc) throws Exception {
+        SkinChangerScreen189 screen = (SkinChangerScreen189) mc.currentScreen;
+        if ("Loading skin...".equals(screen.status()) && ++nameWaits < 60) return retry(10);
+        LogManager.getLogger("TheLadsCore").info("Lads 1.8.9 skin probe: the UUID of Dinnerbone answered: {}", screen.status());
+        check(!"Loading skin...".equals(screen.status()), "a UUID lookup finished: " + screen.status());
+        // The old 64 x 32 layout: only the right leg has pixels; vanilla's conversion must mirror them into the left leg of a 64 x 64 texture.
+        BufferedImage legacy = new BufferedImage(64, 32, BufferedImage.TYPE_INT_ARGB);
+        for (int x = 0; x < 16; x++) for (int y = 16; y < 32; y++) legacy.setRGB(x, y, 0xFFFF0000);
+        File file = gameFile(mc, "lads-qa/legacy-64x32.png");
+        ImageIO.write(legacy, "png", file);
+        textureBefore = LocalSkins189.current() == null ? "" : LocalSkins189.current().texture.toString();
+        screen.source().setText(file.getAbsolutePath());
+        press(mc, screen, "Load skin");
+        return after(5);
+    }
+
+    private static boolean legacyFile(Minecraft mc) throws Exception {
+        SkinChangerScreen189 screen = (SkinChangerScreen189) mc.currentScreen;
+        if (LocalSkins189.current() == null || LocalSkins189.current().texture.toString().equals(textureBefore) || !"Skin applied locally".equals(screen.status())) return retry(10);
+        int[] pixels = ((DynamicTexture) mc.getTextureManager().getTexture(LocalSkins189.current().texture)).getTextureData();
+        check(pixels.length == 64 * 64 && (pixels[58 * 64 + 22] & 0xFFFFFF) == 0xFF0000, "a 64 x 32 skin file became a 64 x 64 texture with its right leg mirrored into the left");
         screen.source().setText(skinFile.getAbsolutePath());
         press(mc, screen, "Load skin");
         return after(5);
@@ -200,6 +230,32 @@ final class Probe191Skin {
 
     private static boolean backToCustomization(Minecraft mc) throws Exception {
         check(mc.currentScreen instanceof SkinCustomizationScreen189, "Done in the Skin changer goes back to Skin Customization");
+        return after(2);
+    }
+
+    /** The QA skin's outer layers as 3D boxes (the 3D layers button is on), then the same screen with the button off: the flat layers. */
+    private static boolean layers3dOn(Minecraft mc) throws Exception {
+        SkinCustomizationScreen189 screen = (SkinCustomizationScreen189) mc.currentScreen;
+        if (screen.previewBoxes() == 0 && ++boxWaits < 30) return retry(5); // the first frame reads the skin back
+        if (!shoot(mc, "skin-6a-3d-layers-on")) return retry(4);
+        optionWas = SkinLayers189.previewOn();
+        check(optionWas && screen.button("3D layers: ON") != null, "the 3D layers button says " + screen.button("3D layers").displayString + " (the module option as shipped)");
+        check(screen.previewBoxes() > 300, "the preview drew the QA skin's outer layers as " + screen.previewBoxes() + " 3D boxes");
+        press(mc, screen, "3D layers");
+        return after(10);
+    }
+
+    private static boolean layers3dOff(Minecraft mc) throws Exception {
+        if (!shoot(mc, "skin-6b-3d-layers-off")) return retry(4);
+        SkinCustomizationScreen189 screen = (SkinCustomizationScreen189) mc.currentScreen;
+        check(!SkinLayers189.previewOn() && screen.button("3D layers: OFF") != null && screen.previewBoxes() == 0, "3D layers: OFF turned the module's 3D Preview off and the preview back to the flat layers");
+        press(mc, screen, "3D layers");
+        return after(10);
+    }
+
+    private static boolean layers3dBack(Minecraft mc) throws Exception {
+        SkinCustomizationScreen189 screen = (SkinCustomizationScreen189) mc.currentScreen;
+        check(SkinLayers189.previewOn() == optionWas && screen.button("3D layers: ON") != null, "3D layers: ON again");
         return after(2);
     }
 
