@@ -18,6 +18,8 @@ public final class KillBannerTimeline {
     private boolean headshot;
     private KillBannerModule.Pick pick;
     private double frozen = Double.NaN;
+    /** GUI pixels the banner on screen is raised (KillBanners.lift), NaN until its first frame decides. */
+    private float lift = Float.NaN;
 
     /**
      * A kill: it counts toward the streak now (a new streak when more than {@code window} ns passed since the last kill;
@@ -66,6 +68,7 @@ public final class KillBannerTimeline {
         pick = shown;
         frozen = Double.NaN;
         cutAt = -1;
+        lift = Float.NaN;
     }
 
     public double age(long now) {
@@ -74,6 +77,8 @@ public final class KillBannerTimeline {
     }
     /** QA: the banner stays {@code age} seconds after its kill until the next kill or clear (NaN plays it again). */
     public void freeze(double age) { frozen = age; }
+    public float lift() { return lift; }
+    public void lift(float pixels) { lift = pixels; }
     /** The banner on screen: 1 to 5 kills. */
     public int sequence() { return sequence; }
     /** Kills in the current streak (past 5 too); 0 before the first. */

@@ -389,6 +389,7 @@ public final class KillBanner189 {
         GlStateManager.disableDepth();
         KillBannerArt189.begin();
         if (backdrop != 0) drawBackdrop(event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
+        GlStateManager.pushMatrix(); // render may raise the banner (KillBanners.lift)
         try {
             render(module, age, event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
         } catch (RuntimeException | LinkageError failure) {
@@ -400,6 +401,7 @@ public final class KillBanner189 {
                 LOGGER.warn("Lads kill banner skipped: its art could not be drawn", failure);
             }
         } finally {
+            GlStateManager.popMatrix();
             KillBannerArt189.end();
             if (!blend) GlStateManager.disableBlend();
             if (depth) GlStateManager.enableDepth();
@@ -425,6 +427,9 @@ public final class KillBanner189 {
         if (qaBreak) throw new IllegalStateException("QA: kill banner art unavailable");
         KillBannerModule.Pick pick = KillBanners.shown(module);
         KillBannerStyle style = pick.style();
+        // Above an action bar that showed over it as it started, for its whole animation (KillBanners.lift).
+        GlStateManager.translate(0, -KillBanners.lift(new com.thelads.core.v1_8_9.adapter.GuiLadsAdapter(null, width, height), style,
+            (float) module.size.getValue() / 100f), 0);
         if (style == null) {
             renderBase(module, age, width, height);
             return;

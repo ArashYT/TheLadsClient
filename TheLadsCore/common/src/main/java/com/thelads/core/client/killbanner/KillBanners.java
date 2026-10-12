@@ -1,6 +1,8 @@
 package com.thelads.core.client.killbanner;
 
 import com.thelads.core.client.KillBannerTimeline;
+import com.thelads.core.client.bridge.LadsGraphics;
+import com.thelads.core.client.hud.ActionBar;
 import com.thelads.core.client.hud.HudFrameCap;
 import com.thelads.core.client.sound.CustomSounds;
 import com.thelads.core.modules.KillBannerModule;
@@ -9,6 +11,8 @@ import com.thelads.core.modules.KillBannerModule;
 public final class KillBanners {
     public static final KillDetector DETECTOR = new KillDetector();
     public static final KillBannerTimeline TIMELINE = new KillBannerTimeline();
+    /** GUI pixels between a raised banner's bottom and the action bar under it. */
+    static final int ACTION_BAR_GAP = 2;
 
     private KillBanners() {}
 
@@ -59,6 +63,29 @@ public final class KillBanners {
         if (pick.soundStyle() == null) return "";
         int seq = Math.max(1, Math.min(pick.soundStyle().soundCount, TIMELINE.sequence()));
         return "theladscore:" + pick.soundStyle().soundId(pick.soundStyle() == pick.style() ? pick.variant() : 0) + "_kill_" + seq;
+    }
+
+    /**
+     * GUI pixels the banner on screen is raised: one that starts while an action bar shows over it plays just above that action bar
+     * for its whole animation, even once the action bar fades; the next banner decides again at its own first frame. {@code g} is
+     * in GUI units; the banner is where the adapters draw a skin ({@code size} 1 = 100%): its ring centre at 79.4% of the screen
+     * height, down to its HEADSHOT label's bottom and as wide as its frame.
+     */
+    public static float lift(LadsGraphics g, KillBannerStyle style, float size) {
+        float lift = TIMELINE.lift();
+        if (!Float.isNaN(lift)) return lift;
+        lift = 0;
+        int[] bar = ActionBar.spot(g);
+        if (bar != null) {
+            KillBannerStyle s = style != null ? style : KillBannerStyle.DEFAULT;
+            float k = g.getScaledHeight() * KillBannerStyle.SCREEN_SCALE / 1080f * size * KillBannerStyle.ART_SCALE;
+            float cx = g.getScaledWidth() / 2f, cy = g.getScaledHeight() * .794f, half = s.ring * 1.6f * k;
+            float bottom = cy + (s.labelY + s.ring * 1.45f * 27 / 105f) * k;
+            if (bar[0] < cx + half && bar[2] > cx - half && bar[1] < bottom && bar[3] > cy - half)
+                lift = Math.min(bottom - bar[1] + ACTION_BAR_GAP, cy - half); // its top stays on screen
+        }
+        TIMELINE.lift(lift);
+        return lift;
     }
 
     /** What the banner on screen shows: its kill's pick, else the module's current choice. */
