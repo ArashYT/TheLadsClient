@@ -143,7 +143,7 @@ public final class NativeFeatures {
         return fullbright < 0 ? vanilla : (float) Math.max(vanilla, fullbright);
     }
     /** The gamma Fullbright gives the lightmap (slider and multiplier), or -1 while it is off. */
-    private static double fullbrightGamma() {
+    public static double fullbrightGamma() {
         return module("Fullbright") instanceof FullbrightModule fullbright && fullbright.isEnabled() && Minecraft.getInstance().level != null
             ? fullbright.effectiveGamma() : -1;
     }

@@ -22,6 +22,7 @@
     "MouseHandlerMixin",
     "MouseTweaksMixin",
     "FullbrightMixin",
+    "FullbrightShadersMixin",
     "ZoomMixin",
     "BetterF3Mixin",
     "CustomFovPlayerMixin",

@@ -9,6 +9,7 @@
   "client": [
     "ZoomMixin",
     "FullbrightMixin",
+    "FullbrightShadersMixin",
     "LocalPlayerAccessor",
     "LocalPlayerMixin",
     "KeyboardInputMixin",
