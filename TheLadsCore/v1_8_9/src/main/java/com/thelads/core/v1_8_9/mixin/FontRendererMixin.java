@@ -1,7 +1,9 @@
 package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.v1_8_9.feature.FontCache189;
+import com.thelads.core.v1_8_9.feature.FontShadow189;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.resources.IResourceManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -12,15 +14,26 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * The string width cache (FontCache189). OptiFine replaces this class (HD fonts, custom colours); these hooks sit on methods it
- * keeps. Injected at HEAD only (Mixin 0.7); the hook calls the original method again with its flag set to measure for real.
+ * The string width cache (FontCache189) and shadow-only draw pass (FontShadow189). OptiFine replaces this class (HD fonts,
+ * custom colours); these hooks sit on methods it keeps. Injected at HEAD only (Mixin 0.7); the hook calls the original method
+ * again with its flag set to measure for real.
  */
 @Mixin(FontRenderer.class)
-public abstract class FontRendererMixin implements FontCache189.Holder {
+public abstract class FontRendererMixin implements FontCache189.Holder, FontShadow189 {
     @Unique private FontCache189 ladsPlain, ladsUnicode;
     @Unique private boolean ladsMeasuring;
 
     @Shadow public abstract int getStringWidth(String text);
+    @Shadow protected abstract void resetStyles();
+    @Shadow private int renderString(String text, float x, float y, int color, boolean dropShadow) { return 0; }
+
+    @Override
+    public int ladsDrawShadow(String text, float x, float y, int color) {
+        if (text == null) return 0;
+        GlStateManager.enableAlpha();
+        resetStyles();
+        return renderString(text, x + 1.0F, y + 1.0F, color, true);
+    }
 
     @Override
     public FontCache189 ladsCache() {

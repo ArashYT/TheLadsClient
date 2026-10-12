@@ -1,6 +1,7 @@
 package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.client.NametagDepth;
+import com.thelads.core.v1_8_9.feature.FontShadow189;
 import com.thelads.core.v1_8_9.feature.Nametags189;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.GlStateManager;
@@ -29,9 +30,9 @@ public abstract class NametagRenderMixin {
     }
 
     /**
-     * A shadowed draw just before vanilla's normal pass, which redraws the same text on top; the see-through pass stays flat. The
-     * shadow lies in the text's plane, so it writes no depth: with it, the shadow won the depth test over parts of the text (black
-     * lines through the tag that flickered as the camera moved).
+     * A shadow-only draw just before vanilla's normal pass, which draws the opaque text on top; the see-through pass stays flat.
+     * The shadow lies in the text's plane, so it writes no depth: with depthMask(false), the shadow never occludes the foreground
+     * text, eliminating z-fighting black lines while skipping the redundant foreground text pass of drawString(..., true).
      */
     @Inject(method = "renderLivingLabel", at = @At(value = "INVOKE",
         target = "Lnet/minecraft/client/gui/FontRenderer;drawString(Ljava/lang/String;III)I", ordinal = 1), require = 0)
@@ -39,7 +40,13 @@ public abstract class NametagRenderMixin {
         if (!Nametags189.shadow()) return;
         FontRenderer font = getFontRendererFromRenderManager();
         if (!NametagDepth.qaVanilla) GlStateManager.depthMask(false);
-        font.drawString(str, -font.getStringWidth(str) / 2, "deadmau5".equals(str) ? -10 : 0, -1, true);
+        int xPos = -font.getStringWidth(str) / 2;
+        int yPos = "deadmau5".equals(str) ? -10 : 0;
+        if (font instanceof FontShadow189) {
+            ((FontShadow189) font).ladsDrawShadow(str, xPos, yPos, -1);
+        } else {
+            font.drawString(str, xPos, yPos, -1, true);
+        }
         GlStateManager.depthMask(true); // vanilla's normal pass writes depth
     }
 }
