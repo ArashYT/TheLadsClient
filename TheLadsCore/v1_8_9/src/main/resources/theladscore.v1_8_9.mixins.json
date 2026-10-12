@@ -66,6 +66,7 @@
     "OpenGlHelperMixin",
     "NicknameTabMixin",
     "RenderEntityItemMixin",
+    "RenderItemModelMixin",
     "RenderFishMixin",
     "RenderPlayerMixin",
     "RenderManagerCullMixin",
