@@ -32,6 +32,13 @@ public interface LadsGameBridge {
     default java.util.concurrent.CompletableFuture<java.nio.file.Path> chooseSoundFile() {
         return com.thelads.core.client.sound.CustomSounds.awtChooser("Choose a sound (MP3 or WAV)");
     }
+    /**
+     * An open-file dialog for a picture (.png/.jpg), Crosshair Tweaks' own background; completes off the game thread, with null when
+     * cancelled. Each version opens the same dialog its sound upload uses.
+     */
+    default java.util.concurrent.CompletableFuture<java.nio.file.Path> chooseImageFile() {
+        return com.thelads.core.client.sound.CustomSounds.awtChooser("Choose a picture (PNG or JPG)", "*.png;*.jpg;*.jpeg");
+    }
     /** Combo Sounds' built-in sound when a step has no upload: a note block pling at {@code pitch}. */
     default void playComboSound(float pitch, float volume) {}
     default String getServerAddress() { return "Singleplayer"; }

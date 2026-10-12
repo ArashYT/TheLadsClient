@@ -210,6 +210,11 @@ public final class CustomSounds {
      * Completes with null when cancelled.
      */
     public static CompletableFuture<Path> awtChooser(String title) {
+        return awtChooser(title, "*.mp3;*.wav");
+    }
+
+    /** The same dialog listing only files that match {@code patterns} ("*.png;*.jpg"). */
+    public static CompletableFuture<Path> awtChooser(String title, String patterns) {
         CompletableFuture<Path> result = new CompletableFuture<>();
         if (java.awt.GraphicsEnvironment.isHeadless()) {
             result.completeExceptionally(new IllegalStateException("No file dialog in this game"));
@@ -223,8 +228,9 @@ public final class CustomSounds {
             java.awt.FileDialog dialog = null;
             try {
                 dialog = new java.awt.FileDialog((java.awt.Frame) null, title, java.awt.FileDialog.LOAD);
-                dialog.setFile("*.mp3;*.wav"); // the Windows dialog's filter
-                dialog.setFilenameFilter((dir, name) -> supported(name));
+                dialog.setFile(patterns); // the Windows dialog's filter
+                dialog.setFilenameFilter((dir, name) -> java.util.Arrays.stream(patterns.split(";"))
+                    .anyMatch(pattern -> name.toLowerCase(Locale.ROOT).endsWith(pattern.substring(1).toLowerCase(Locale.ROOT))));
                 dialog.setAlwaysOnTop(true);
                 dialog.setVisible(true);
                 String file = dialog.getFile(), directory = dialog.getDirectory();

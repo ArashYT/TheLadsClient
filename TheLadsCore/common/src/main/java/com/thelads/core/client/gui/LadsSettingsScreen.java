@@ -1,6 +1,6 @@
 package com.thelads.core.client.gui;
 
-import com.thelads.core.client.CrosshairDesign;
+import com.thelads.core.client.CrosshairBackground;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.hud.HudElement;
 import com.thelads.core.client.hud.HudManager;
@@ -129,7 +129,10 @@ public final class LadsSettingsScreen {
     /** Where the last frame drew the live game view (GUI pixels), or null (QA measures the world there). */
     public Rect gameViewBounds() { return gameView; }
     /** True while the open page draws the live game view in its preview (Fullbright): 1.8.9 copies the framebuffer before the menu paints. */
-    public boolean showsGameView() { return detail != null && "Fullbright".equalsIgnoreCase(detail.getName()); }
+    public boolean showsGameView() {
+        return detail != null && ("Fullbright".equalsIgnoreCase(detail.getName())
+            || detail instanceof CrosshairModule crosshair && crosshair.background.getIndex() == CrosshairBackground.LIVE);
+    }
     /** The reset confirmation (QA reads its bounds and clicks them). */
     public ConfirmDialog confirmDialog() { return confirm; }
     public List<String> visibleModuleNames() { return getFilteredModules().stream().map(Module::getName).toList(); }
@@ -641,13 +644,19 @@ public final class LadsSettingsScreen {
                     variantTiles(g, banner, varSkin, boxX + 4, boxY + bannerH + 6, boxW - 8, mx, my);
                 }
             } else if (m instanceof CrosshairModule) {
-                // The crosshair as the game draws it with these options, over a checker (white, black and inverse-blended shapes all show);
-                // the scissor keeps a large Scale inside the box. Versions that cannot draw it keep a plain reticle.
+                // The crosshair as the game draws it with these options, over the chosen background (a biome, gradient, colour, your
+                // image or the live game: CrosshairBackground); the scissor keeps a large Scale inside the box. Versions that cannot
+                // draw it keep a plain reticle.
+                CrosshairModule crosshair = (CrosshairModule) m;
                 int bx = boxX + 3, by = boxY + 3, bw = boxW - 6, bh = boxH - 6;
                 g.enableScissor(bx, by, bx + bw, by + bh);
-                g.fill(bx, by, bx + bw, by + bh, CrosshairDesign.BACKDROP_DARK);
-                for (CrosshairDesign.Rect tile : CrosshairDesign.checker(bw, bh))
-                    g.fill(bx + tile.left(), by + tile.top(), bx + tile.right(), by + tile.bottom(), CrosshairDesign.BACKDROP_LIGHT);
+                CrosshairBackground.draw(g, crosshair, bx, by, bw, bh);
+                String caption = fit(g, CrosshairBackground.caption(crosshair, g.getGame().isIngame()), bw - 16);
+                if (!caption.isEmpty()) {
+                    int labelW = g.textWidth(caption) + 10;
+                    round(g, centerX - labelW / 2, by + bh - 18, labelW, 14, 0xC0000000);
+                    g.drawCenteredText(caption, centerX, by + bh - 14, TEXT, false);
+                }
                 if (!g.drawCrosshairPreview(centerX, centerY)) {
                     g.fill(centerX - 10, centerY - 1, centerX - 3, centerY + 1, 0xFFFFFFFF);
                     g.fill(centerX + 3, centerY - 1, centerX + 10, centerY + 1, 0xFFFFFFFF);
@@ -1523,6 +1532,7 @@ public final class LadsSettingsScreen {
             .filter(o -> !(detail instanceof ToggleSprintModule toggles && toggles.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.ChatModule chat && chat.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.DynamicLightsModule lights && lights.hidden(o)))
+            .filter(o -> !(detail instanceof CrosshairModule crosshair && crosshair.hidden(o)))
             .sorted((a, b) -> {
                 if ("Ignore HUD FPS Cap".equals(a.getName())) return 1;
                 if ("Ignore HUD FPS Cap".equals(b.getName())) return -1;

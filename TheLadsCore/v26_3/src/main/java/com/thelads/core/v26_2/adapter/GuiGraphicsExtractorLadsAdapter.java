@@ -42,6 +42,9 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     @Override public boolean drawCrosshairPreview(int cx, int cy) {
         return com.thelads.core.v26_2.feature.crosshair.NativeCrosshair.preview(g, cx, cy);
     }
+    @Override public boolean drawImage(String source, int x, int y, int width, int height) {
+        return com.thelads.core.v26_2.feature.crosshair.CrosshairBackdrop.draw(g, source, x, y, width, height);
+    }
     @Override public void drawModIcon(String id,int x,int y,int size){if(!com.thelads.core.v26_2.gui.ModIcons.draw(g,id,x,y,size))LadsGraphics.super.drawModIcon(id,x,y,size);}
 
     @Override public void drawBossBars(int x,int y,int max,boolean names,boolean preview) {
