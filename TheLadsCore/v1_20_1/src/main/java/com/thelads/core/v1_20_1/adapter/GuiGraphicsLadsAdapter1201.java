@@ -352,11 +352,18 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
         guiGraphics.pose().scale(sx, sy, 1.0f);
     }
 
-    /** Popups sit 400 in front (vanilla's tooltip depth): text and items drawn earlier are in front of a fill at the same depth. */
+    /** How far in front the last popup went this frame (an adapter draws one frame). */
+    private float overlayDepth;
+
+    /**
+     * Popups sit 400 in front (vanilla's tooltip depth): text and items drawn earlier are in front of a fill at the same depth. Each
+     * popup goes 400 further than the one before it, or the earlier one's text shows through it (the sound library's rows over
+     * its delete question).
+     */
     @Override
     public void overlay(Runnable draw) {
         guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0.0f, 0.0f, 400.0f);
+        guiGraphics.pose().translate(0.0f, 0.0f, overlayDepth += 400.0f);
         try {
             draw.run();
         } finally {
