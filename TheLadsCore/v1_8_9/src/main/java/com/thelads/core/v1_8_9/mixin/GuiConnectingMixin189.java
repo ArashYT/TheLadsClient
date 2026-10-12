@@ -18,9 +18,4 @@ public abstract class GuiConnectingMixin189 {
         PauseMultiplayer189.leaveWorld(mc);
         mc.loadWorld(world);
     }
-
-    @org.spongepowered.asm.mixin.injection.Inject(method = "connect", at = @At("HEAD"))
-    private void ladsPreResolve(String ip, int port, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-        com.thelads.core.v1_8_9.feature.ServerDnsCache189.preResolve(ip);
-    }
 }
