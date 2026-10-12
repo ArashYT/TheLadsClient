@@ -12,11 +12,13 @@ import com.thelads.core.v1_8_9.mixin.NetworkPlayerInfoAccessor;
 import java.util.Arrays;
 import java.util.List;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.model.ModelPlayer;
 import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
 /**
  * QA only: the SkinLayers module over the bundled 3D Skin Layers, run by CoreProbe first in its QA world. The local player wears
@@ -114,8 +116,14 @@ final class Probe170Skin {
 
     private static Module module() { return ModuleManager.getInstance().getModule(SkinLayersModule.NAME); }
 
+    /**
+     * The player info the local player's skin comes from (AbstractClientPlayer.getPlayerInfo keeps the first it finds). The
+     * integrated server lists a joining player twice (to everyone, then everyone to them), so when a frame drew the player between
+     * the two, the tab list's entry is a newer copy and changing that one would not change the skin the player wears.
+     */
     private static NetworkPlayerInfoAccessor info(Minecraft mc) {
-        return (NetworkPlayerInfoAccessor) mc.getNetHandler().getPlayerInfo(mc.thePlayer.getUniqueID());
+        Object own = ReflectionHelper.getPrivateValue(AbstractClientPlayer.class, mc.thePlayer, "playerInfo", "field_175157_a");
+        return (NetworkPlayerInfoAccessor) (own != null ? own : mc.getNetHandler().getPlayerInfo(mc.thePlayer.getUniqueID()));
     }
 
     private static ModelPlayer model(Minecraft mc) {

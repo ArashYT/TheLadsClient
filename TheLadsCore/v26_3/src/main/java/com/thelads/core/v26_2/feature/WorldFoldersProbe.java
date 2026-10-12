@@ -38,7 +38,7 @@ public final class WorldFoldersProbe {
                 if(mc.gui.screen()!=null)mc.gui.screen().onClose();
                 if(!(mc.gui.screen() instanceof SelectWorldScreen))global.onPress(null);
             }
-            qa.check(mc.gui.screen() instanceof SelectWorldScreen,"Folder choice opens vanilla world selection with version safeguards");
+            qa.check(mc.gui.screen() instanceof SelectWorldScreen,"Folder choice opens vanilla world selection with version safeguards (screen "+(mc.gui.screen()==null?"none":mc.gui.screen().getClass().getName())+")");
             qa.check(mc.gui.screen().children().stream().anyMatch(c->c instanceof Button b&&b.getMessage().getString().startsWith("World folders")),"World list exposes folder categories");
             qa.check(mc.gui.screen().children().stream().anyMatch(c->c instanceof EditBox),"World-name search remains available");
         }finally{((WorldStorageAccessor)mc).ladsSetLevelSource(storage);mc.setScreenAndShow(original);}
