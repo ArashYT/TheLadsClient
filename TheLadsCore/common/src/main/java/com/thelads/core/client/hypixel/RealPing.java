@@ -153,21 +153,24 @@ public final class RealPing {
         return true;
     }
 
-    /** QA: a Mod API ping is waiting for its answer. */
-    public static boolean waiting() { return sentAt != 0; }
+    /** QA: how long the Mod API ping has been waiting for its answer (ns), or -1. */
+    public static long waiting(long now) { long sent = sentAt; return sent == 0 ? -1 : now - sent; }
 
     /** True while the listed latencies on this server are fake (Hypixel, or all at 1 ms or less). */
     public static boolean fakeListing() { return fake; }
 
-    /** The ping to show for yourself: the measured one where the listing is fake (-1 until there is one), else the listed one. */
+    /** "No real value" (shown as "-"): kept apart from the -1 Minecraft lists for a latency it does not know yet. */
+    public static final int NONE = Integer.MIN_VALUE;
+
+    /** The ping to show for yourself: the measured one where the listing is fake ({@link #NONE} until there is one), else the listed one. */
     public static int own(int listed) {
         if (!fake) return listed;
-        return measured >= 0 && clock - measuredAt < STALE ? measured : -1;
+        return measured >= 0 && clock - measuredAt < STALE ? measured : NONE;
     }
 
-    /** A tab-list row's ping: your own as {@link #own}; anyone else's -1 (no real value) where the listing is fake. */
+    /** A tab-list row's ping: your own as {@link #own}; anyone else's {@link #NONE} where the listing is fake. */
     public static int row(int listed, boolean self) {
-        return self ? own(listed) : fake ? -1 : listed;
+        return self ? own(listed) : fake ? NONE : listed;
     }
 
     /** The host name for the status handshake: the address typed (without its port), else the IP. */

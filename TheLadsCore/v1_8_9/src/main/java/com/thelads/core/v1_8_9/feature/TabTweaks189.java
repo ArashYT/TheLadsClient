@@ -80,8 +80,8 @@ public final class TabTweaks189 {
 
     /** PingView's number where the ping bars go (GuiPlayerTabOverlay.drawPing's slot width, x and y), coloured by latency band. */
     public static void drawPing(FontRenderer font, int slotWidth, int x, int y, int ping) {
-        int color = ping < 0 ? 0xFF808080 : PING_COLORS[ping < 75 ? 0 : ping < 145 ? 1 : ping < 200 ? 2 : ping < 300 ? 3 : ping < 400 ? 4 : 5];
-        String text = hideFalsePing && (ping <= 1 || ping >= 999) ? "" : ping < 0 ? "-" : String.valueOf(ping);
+        int color = ping == com.thelads.core.client.hypixel.RealPing.NONE ? 0xFF808080 : ping < 0 ? -5636096 : PING_COLORS[ping < 75 ? 0 : ping < 145 ? 1 : ping < 200 ? 2 : ping < 300 ? 3 : ping < 400 ? 4 : 5];
+        String text = hideFalsePing && (ping <= 1 || ping >= 999) ? "" : ping == com.thelads.core.client.hypixel.RealPing.NONE ? "-" : String.valueOf(ping);
         int width = font.getStringWidth(text);
         pings++;
         if (scalePingDisplay) {

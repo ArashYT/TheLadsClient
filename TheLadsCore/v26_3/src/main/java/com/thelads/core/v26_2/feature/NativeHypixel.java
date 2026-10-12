@@ -58,8 +58,9 @@ public final class NativeHypixel {
         }
         // QA only (HypixelCapture): the integrated server answers like Hypixel ("pong"), so the QA world exercises the whole round trip.
         if (channel && "1".equals(System.getenv("LADS_VERIFY_CAPTURE_HYPIXEL")))
-            answersQa = ServerPlayNetworking.registerGlobalReceiver(TYPE, (payload, context) ->
-                ServerPlayNetworking.send(context.player(), new PingPayload(new byte[] {1, 1, 4, 'p', 'o', 'n', 'g'}, 0)));
+            answersQa = ServerPlayNetworking.registerGlobalReceiver(TYPE, (payload, context) -> // 37 ms later: told apart from singleplayer's 0 ms
+                java.util.concurrent.CompletableFuture.delayedExecutor(37, java.util.concurrent.TimeUnit.MILLISECONDS).execute(() ->
+                    ServerPlayNetworking.send(context.player(), new PingPayload(new byte[] {1, 1, 4, 'p', 'o', 'n', 'g'}, 0))));
     }
 
     /** QA: the integrated server answers hypixel:ping this run. */

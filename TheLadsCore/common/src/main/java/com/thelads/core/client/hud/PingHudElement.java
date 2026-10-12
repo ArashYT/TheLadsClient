@@ -19,14 +19,14 @@ public class PingHudElement extends TextHudElement {
         int ping = RealPing.own(g.getGame().getPing());
         preparedPing = ping;
         boolean label = optBool("Show label", true);
-        return (label ? "Ping: " : "") + (ping < 0 ? "-" : ping + "ms");
+        return (label ? "Ping: " : "") + (ping == RealPing.NONE ? "-" : ping + "ms");
     }
 
     @Override protected int textColor() {
         boolean colorByPing = optBool("Color by ping", true);
 
         int c = resolveColor();
-        if (colorByPing && preparedPing >= 0) {
+        if (colorByPing && preparedPing != RealPing.NONE) {
             if (preparedPing < 60) c = 0xFF55FF55;
             else if (preparedPing < 120) c = 0xFFFFFF55;
             else c = 0xFFFF5555;

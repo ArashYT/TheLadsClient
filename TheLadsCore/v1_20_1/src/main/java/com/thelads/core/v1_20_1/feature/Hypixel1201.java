@@ -9,6 +9,8 @@ import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.v1_20_1.gui.LadsSettingsScreen1201;
 import com.thelads.core.v1_20_1.hud.Mods1201;
 import io.netty.buffer.Unpooled;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -49,8 +51,10 @@ public final class Hypixel1201 {
         if (!Boolean.getBoolean("thelads.verifyAutoWorld") && System.getProperty("thelads.qaScript") == null) return;
         // QA only: the integrated server answers like Hypixel ("pong"), so the QA world exercises the whole round trip; and the script
         // verb "hypixel" runs the common Hypixel routine (HypixelQa, screenshots/hypixel-*.png). Plain Fabric and Zero SMP.
+        // The answer waits 37 ms, so the measured round trip is told apart from the listed 0 ms of singleplayer.
         if (channel) ServerPlayNetworking.registerGlobalReceiver(CHANNEL, (server, player, handler, buf, sender) ->
-            sender.sendPacket(CHANNEL, new FriendlyByteBuf(Unpooled.wrappedBuffer(new byte[] {1, 1, 4, 'p', 'o', 'n', 'g'}))));
+            CompletableFuture.delayedExecutor(37, TimeUnit.MILLISECONDS).execute(() ->
+                sender.sendPacket(CHANNEL, new FriendlyByteBuf(Unpooled.wrappedBuffer(new byte[] {1, 1, 4, 'p', 'o', 'n', 'g'})))));
         QaProbe1201.registerStep("hypixel", args -> {
             if (qa == null) qa = new HypixelQa();
             try {

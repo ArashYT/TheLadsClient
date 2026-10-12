@@ -186,14 +186,14 @@ class HypixelModsTest {
     @Test void realPingOnHypixelHidesOthersAndMeasuresYours() {
         RealPing.tick(game, connection, 0);
         assertTrue(RealPing.fakeListing());
-        assertEquals(-1, RealPing.own(1), "no measured ping yet: no number");
-        assertEquals(-1, RealPing.row(1, false));
+        assertEquals(RealPing.NONE, RealPing.own(1), "no measured ping yet: no number");
+        assertEquals(RealPing.NONE, RealPing.row(1, false));
         RealPing.tick(game, connection, 2 * S);
         assertEquals(1, payloads.size(), "a Mod API ping went out");
         assertTrue(RealPing.receive(RealPing.CHANNEL, new byte[] {1, 1, 4, 'p', 'o', 'n', 'g'}, 2 * S + 42_000_000L));
         assertEquals(42, RealPing.own(1));
         assertEquals(42, RealPing.row(1, true));
-        assertEquals(-1, RealPing.row(1, false));
+        assertEquals(RealPing.NONE, RealPing.row(1, false));
         RealPing.tick(game, connection, 3 * S);
         assertEquals(1, payloads.size(), "at most one ping every 5 s");
         RealPing.tick(game, connection, 7 * S + 1);
@@ -268,7 +268,7 @@ class HypixelModsTest {
         ModuleManager.getInstance().getModule(HypixelMods.PLAY_AGAIN).setEnabled(true);
         ModuleManager.getInstance().getModule(HypixelMods.AUTO_TIP).setEnabled(false);
         ((com.thelads.core.config.TextOption) ModuleManager.getInstance().getModule(HypixelMods.AUTO_GG).getOption("Second Message")).setValue("good game");
-        ((com.thelads.core.config.SliderOption) ModuleManager.getInstance().getModule(HypixelMods.AUTO_GG).getOption("Second Delay")).setValue(0);
+        ((com.thelads.core.config.SliderOption) ModuleManager.getInstance().getModule(HypixelMods.AUTO_GG).getOption("Second Message seconds")).setValue(0);
         HypixelMods.tick(game, world, connection, 0);
         HypixelMods.tick(game, world, connection, 2 * S);
         assertEquals(List.of("/locraw"), sent);
@@ -332,7 +332,7 @@ class HypixelModsTest {
         HypixelMods.chat("§eThe game starts in §r§c1§r§e second!", S);
         for (long t = S; t <= 5 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
         assertEquals(List.of("/who"), sent);
-        ModuleManager.getInstance().getModule(HypixelMods.CLEANUP).getOption("Lobby join messages").load(new com.google.gson.JsonPrimitive(false));
+        ModuleManager.getInstance().getModule(HypixelMods.CLEANUP).getOption("Lobby joins").load(new com.google.gson.JsonPrimitive(false));
         assertFalse(HypixelMods.chat("[MVP+] Steve joined the lobby!", 6 * S), "that kind switched off");
         server = "play.example.net";
         sent.clear();

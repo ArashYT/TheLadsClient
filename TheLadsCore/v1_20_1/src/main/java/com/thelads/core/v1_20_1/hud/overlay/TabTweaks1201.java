@@ -119,14 +119,14 @@ public final class TabTweaks1201 {
         Minecraft mc = Minecraft.getInstance();
         // 1.9.1: Hypixel lists everyone at 1 ms: your own row shows the measured ping, the others no number (RealPing).
         int latency = com.thelads.core.client.hypixel.RealPing.row(info.getLatency(), mc.player != null && info.getProfile().getId().equals(mc.player.getUUID()));
-        int color = latency < 0 ? 0xFF808080 : -5636096;
+        int color = latency == com.thelads.core.client.hypixel.RealPing.NONE ? 0xFF808080 : -5636096;
         if (latency >= 0 && latency < 75) color = pingColorOne;
         else if (latency >= 75 && latency < 145) color = pingColorTwo;
         else if (latency >= 145 && latency < 200) color = pingColorThree;
         else if (latency >= 200 && latency < 300) color = pingColorFour;
         else if (latency >= 300 && latency < 400) color = pingColorFive;
         else if (latency >= 400) color = pingColorSix;
-        String text = hideFalsePing && (latency <= 1 || latency >= 999) ? "" : latency < 0 ? "-" : String.valueOf(latency);
+        String text = hideFalsePing && (latency <= 1 || latency >= 999) ? "" : latency == com.thelads.core.client.hypixel.RealPing.NONE ? "-" : String.valueOf(latency);
         int width = mc.font.width(text);
         boolean shadow = !removePingShadow;
         if (scalePingDisplay) {

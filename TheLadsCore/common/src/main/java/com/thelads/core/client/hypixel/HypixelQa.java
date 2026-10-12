@@ -85,9 +85,9 @@ public final class HypixelQa {
                     m.getOptions().forEach(Option::reset);
                     m.setEnabled(true);
                 }
-                module(HypixelMods.AUTO_GG).getOption("Delay").load(new JsonPrimitive(0.5));
+                module(HypixelMods.AUTO_GG).getOption("Delay seconds").load(new JsonPrimitive(0.5));
                 module(HypixelMods.AUTO_GG).getOption("Second Message").load(new JsonPrimitive("good game"));
-                module(HypixelMods.PLAY_AGAIN).getOption("Delay").load(new JsonPrimitive(2));
+                module(HypixelMods.PLAY_AGAIN).getOption("Delay seconds").load(new JsonPrimitive(5)); // after both gg lines
                 HypixelMods.SENT.clear();
                 hiddenBefore = HypixelMods.hidden;
                 game.command("scoreboard objectives add ladsqa dummy");
@@ -105,7 +105,8 @@ public final class HypixelQa {
             }
             case 3 -> { // the real ping
                 if (!game.serverAnswersPings()) {
-                    if (!until(RealPing.waiting(), "a Mod API ping went out (hypixel:ping)")) break;
+                    long age = RealPing.waiting(System.nanoTime()); // a fresh one: the answer's 1-tick delay is then the round trip
+                    if (!until(age >= 0 && age < 150_000_000L, "a Mod API ping went out (hypixel:ping)")) break;
                     wait = 1;
                 }
             }
@@ -114,9 +115,10 @@ public final class HypixelQa {
             }
             case 5 -> {
                 int own = RealPing.own(1);
-                if (!until(RealPing.fakeListing() && own >= 0, "real ping measured over the Mod API: " + own + " ms; others "
-                    + RealPing.row(1, false) + " (no number)")) break;
-                check(RealPing.row(1, false) == -1, "another player's listed 1 ms shows no number");
+                if (!until(RealPing.fakeListing() && own != RealPing.NONE, "real ping measured over the Mod API: " + own + " ms; others "
+                    + (RealPing.row(1, false) == RealPing.NONE ? "-" : String.valueOf(RealPing.row(1, false))) + " (no number)")) break;
+                check(RealPing.row(1, false) == RealPing.NONE, "another player's listed 1 ms shows no number");
+                check(own >= 30, "the round trip includes the answer's 37 ms wait (1.8.9: one tick): " + own + " ms");
                 game.holdTab(true);
                 wait = 10;
             }

@@ -43,20 +43,20 @@ public final class HypixelChat {
 
     /** Chat Cleanup's kinds of line, in its option order. */
     public enum Spam {
-        LOBBY_JOIN("Lobby join messages", Pattern.compile("(?:>>> )?\\[[^\\]]+\\] \\w{1,16} [A-Za-z ]{3,30} the lobby!(?: <<<)?")),
-        MYSTERY_BOX("Mystery Box and Soul Well", Pattern.compile("(?:✦ )?(?:\\[[^\\]]+\\] )?\\w{1,16} (?:found|has found) .*(?:Mystery Box|in the Soul Well)!")),
+        LOBBY_JOIN("Lobby joins", Pattern.compile("(?:>>> )?\\[[^\\]]+\\] \\w{1,16} [A-Za-z ]{3,30} the lobby!(?: <<<)?")),
+        MYSTERY_BOX("Boxes and Soul Well", Pattern.compile("(?:✦ )?(?:\\[[^\\]]+\\] )?\\w{1,16} (?:found|has found) .*(?:Mystery Box|in the Soul Well)!")),
         GIFTS("Rank gifts", Pattern.compile("They have gifted \\d+ ranks? so far!|(?:\\[[^\\]]+\\] )?\\w{1,16} gifted .*\\branks?\\b.*")),
-        TIPS("Tip messages", Pattern.compile("You (?:\\(anonymously\\) )?tipped .+|You were tipped by .+|You(?:'ve)? already tipped .+"
+        TIPS("Tips", Pattern.compile("You (?:\\(anonymously\\) )?tipped .+|You were tipped by .+|You(?:'ve)? already tipped .+"
             + "|No one has a network booster active right now!.*|That player is not online, try another user!|Slow down! You can only use /tip .+")),
-        BOOSTERS("Booster messages", Pattern.compile("➲ .+|✘ \\w{1,16}'s Network Booster expired!|.*Network Boosters? (?:are available )?at https?://store\\.hypixel\\.net.*")),
-        ADS("Store and server ads", Pattern.compile(".*\\bstore\\.hypixel\\.net\\b.*|You are playing on .*MC\\.HYPIXEL\\.NET.*")),
-        WATCHDOG("Watchdog announcements", Pattern.compile("\\[WATCHDOG ANNOUNCEMENT\\]|Watchdog has banned [\\d,]+ players? in the last .+"
+        BOOSTERS("Boosters", Pattern.compile("➲ .+|✘ \\w{1,16}'s Network Booster expired!|.*Network Boosters? (?:are available )?at https?://store\\.hypixel\\.net.*")),
+        ADS("Store ads", Pattern.compile(".*\\bstore\\.hypixel\\.net\\b.*|You are playing on .*MC\\.HYPIXEL\\.NET.*")),
+        WATCHDOG("Watchdog news", Pattern.compile("\\[WATCHDOG ANNOUNCEMENT\\]|Watchdog has banned [\\d,]+ players? in the last .+"
             + "|Staff have banned an additional [\\d,]+ in the last .+|Blacklisted modifications are a bannable offense!")),
-        KARMA("Karma messages", Pattern.compile("\\+\\d+ Karma!")),
+        KARMA("Karma", Pattern.compile("\\+\\d+ Karma!")),
         /** Off by default: game rewards some players want to see. */
-        REWARDS("Coins, XP and token messages", false, Pattern.compile("\\+[\\d,]+ (?:coins|tokens|Souls?|.*Experience|.*EXP)\\b.*")),
+        REWARDS("Coins and XP lines", false, Pattern.compile("\\+[\\d,]+ (?:coins|tokens|Souls?|.*Experience|.*EXP)\\b.*")),
         /** Off by default: other players' public chat (party, guild and private messages never) advertising parties, guilds, links. */
-        PLAYER_ADS("Player ads in public chat", false, Pattern.compile("(?i)(?!(?:party|guild|officer|friend) > |from |to )[^:]{1,60}: (?:"
+        PLAYER_ADS("Player ads", false, Pattern.compile("(?i)(?!(?:party|guild|officer|friend) > |from |to )[^:]{1,60}: (?:"
             + ".*\\b(?:party join|p join|join (?:my |our )?(?:party|guild)|guild join|g join|duel me|lowball\\w*)\\b.*"
             + "|.*(?:/visit|/p join|/party join|/g join|discord\\.gg|youtube\\.com|youtu\\.be|twitch\\.tv).*"
             + "|.*\\b(?:buy|gift|give) me\\b.*\\b(?:rank|vip|mvp)\\b.*)"));
