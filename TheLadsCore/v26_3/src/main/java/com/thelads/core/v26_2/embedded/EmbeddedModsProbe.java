@@ -69,7 +69,16 @@ public final class EmbeddedModsProbe {
                 "Fix Book GUI moves the book page buttons to y=" + expected + " (vanilla 159), found " + buttons.stream().map(b -> b.getY()).toList());
         }
         if (EmbeddedMods.active("worldplaytimereborn")) {
+            var server = mc.getSingleplayerServer();
+            if (server != null) {
+                var player = server.getPlayerList().getPlayer(mc.player.getUUID());
+                if (player != null) server.getPlayerList().getPlayerStats(player).save();
+            }
             List<LevelSummary> summaries = titleWorlds == null ? List.of() : titleWorlds.get(30, TimeUnit.SECONDS);
+            if (summaries.isEmpty() || summaries.stream().noneMatch(s -> ((com.thelads.core.v26_2.embedded.playtime.util.IWithPlayTime) s).getPlayTimeTicks() > 0)) {
+                var storage = mc.getLevelSource();
+                summaries = storage.loadLevelSummaries(storage.findLevelCandidates()).get(30, TimeUnit.SECONDS);
+            }
             for (LevelSummary summary : summaries) {
                 var data = (com.thelads.core.v26_2.embedded.playtime.util.IWithPlayTime) summary;
                 LOGGER.info("Lads embedded mods probe: world list '{}' play time {} ticks ({}), size {} bytes", summary.getLevelId(), data.getPlayTimeTicks(),
