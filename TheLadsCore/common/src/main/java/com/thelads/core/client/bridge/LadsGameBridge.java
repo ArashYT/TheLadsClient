@@ -34,6 +34,8 @@ public interface LadsGameBridge {
     }
     /** Combo Sounds' built-in sound when a step has no upload: a note block pling at {@code pitch}. */
     default void playComboSound(float pitch, float volume) {}
+    /** Combo Sounds' built-in bow sounds when none is picked: the level-up chime for a long shot, a high anvil clink for a headshot. */
+    default void playBowSound(boolean headshot, float volume) {}
     default String getServerAddress() { return "Singleplayer"; }
     default String getItemCountText(int selection) { return "Items: 0"; }
     default String getRecentReachText() { return "Reach: --"; }
