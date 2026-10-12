@@ -1,6 +1,7 @@
 package com.thelads.core.client.hud;
 
 import com.thelads.core.client.bridge.LadsGraphics;
+import com.thelads.core.client.hypixel.RealPing;
 
 public class PingHudElement extends TextHudElement {
     private int preparedPing;
@@ -14,17 +15,18 @@ public class PingHudElement extends TextHudElement {
 
     @Override
     protected String updateText(LadsGraphics g) {
-        int ping = g.getGame().getPing();
+        // 1.9.1: where the tab list's ping is fake (Hypixel's 1 ms) this is the measured one, "-" until there is one.
+        int ping = RealPing.own(g.getGame().getPing());
         preparedPing = ping;
         boolean label = optBool("Show label", true);
-        return (label ? "Ping: " : "") + ping + "ms";
+        return (label ? "Ping: " : "") + (ping == RealPing.NONE ? "-" : ping + "ms");
     }
 
     @Override protected int textColor() {
         boolean colorByPing = optBool("Color by ping", true);
 
         int c = resolveColor();
-        if (colorByPing) {
+        if (colorByPing && preparedPing != RealPing.NONE) {
             if (preparedPing < 60) c = 0xFF55FF55;
             else if (preparedPing < 120) c = 0xFFFFFF55;
             else c = 0xFFFF5555;

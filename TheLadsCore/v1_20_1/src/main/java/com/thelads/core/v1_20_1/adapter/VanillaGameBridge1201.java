@@ -112,6 +112,27 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
         return 0;
     }
 
+    @Override public int[] getListedLatencies() {
+        var connection = Minecraft.getInstance().getConnection();
+        return connection == null ? new int[0] : connection.getListedOnlinePlayers().stream().mapToInt(PlayerInfo::getLatency).toArray();
+    }
+
+    @Override public java.net.InetSocketAddress getServerSocketAddress() {
+        var connection = Minecraft.getInstance().getConnection();
+        return connection != null && connection.getConnection().getRemoteAddress() instanceof java.net.InetSocketAddress address ? address : null;
+    }
+
+    @Override public void sendChatLine(String text) {
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection == null) return;
+        if (text.startsWith("/")) connection.sendCommand(text.substring(1));
+        else connection.sendChat(text);
+    }
+
+    @Override public boolean sendPluginMessage(String channel, byte[] data) {
+        return com.thelads.core.v1_20_1.feature.Hypixel1201.send(channel, data);
+    }
+
     @Override
     public float getHealth() {
         Minecraft mc = Minecraft.getInstance();

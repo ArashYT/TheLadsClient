@@ -65,7 +65,7 @@ public final class LadsSettingsScreen {
     private Runnable onOpenHudEditor = () -> {}, onClose = () -> {}, onOpenResourcePacks = () -> {}, onOpenVideoSettings = () -> {};
     private Consumer<String> onNarrate = ignored -> {};
     private Supplier<String> clipboardReader = () -> "";
-    private static final String[] CATEGORIES = {"All", "HUD", "Gameplay", "Performance", "Server"};
+    private static final String[] CATEGORIES = {"All", "HUD", "Gameplay", "Performance", "Server", "Hypixel"};
     private static final Set<String> PERFORMANCE = Set.of("Performance", "DynamicFPS", "UnfocusedFpsCap", "Exordium", "BetterResolution", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore", "Async", com.thelads.core.client.ParticleCore.MODULE);
     // Installed mods view: its own state, search and "mods:" row ids, so the native catalog above stays native-only.
     private record ModLine(ModInventoryModel.Row row, int depth) {}
@@ -86,7 +86,7 @@ public final class LadsSettingsScreen {
     /** Menu category of a Lads module, shared with the launcher catalog. */
     public static String categoryOf(Module m) {
         return m.getCategory() == Module.Category.HUD ? "HUD" : m.getCategory() == Module.Category.SERVER ? "Server"
-            : PERFORMANCE.contains(m.getName()) ? "Performance" : "Gameplay";
+            : m.getCategory() == Module.Category.HYPIXEL ? "Hypixel" : PERFORMANCE.contains(m.getName()) ? "Performance" : "Gameplay";
     }
 
     public void setOnOpenHudEditor(Runnable action) { onOpenHudEditor = action; }
@@ -151,7 +151,8 @@ public final class LadsSettingsScreen {
         if (hoverStates.size() > 1024) hoverStates.clear();
         width = g.getScaledWidth(); height = g.getScaledHeight(); controls.clear(); tipModule = null; gameView = null;
         g.fill(0, 0, width, height, BG);
-        int pad = width < 450 ? 10 : 20, side = width >= 530 && height >= 340 ? 118 : 0;
+        // The side bar needs room for six categories and Installed mods above Edit HUD (1.9.1 added Hypixel): 356 GUI px.
+        int pad = width < 450 ? 10 : 20, side = width >= 530 && height >= 356 ? 118 : 0;
         g.fill(0, 0, width, 2, ACCENT);
         g.drawText("THE LADS", pad, 15, ACCENT);
         String fpsBtnLabel = "HUD FPS: " + (HudSettings.getInstance().isHudFpsCapEnabled() ? HudSettings.formatFpsLimit(HudSettings.getInstance().getHudFpsLimit()) : "Off");
@@ -1573,8 +1574,10 @@ public final class LadsSettingsScreen {
             .filter(m -> ModuleSupport.isBuiltIn(m.getName()))
             .filter(m -> currentCategory.equals("All") || currentCategory.equals("HUD") && m.getCategory() == Module.Category.HUD
                 || currentCategory.equals("Server") && m.getCategory() == Module.Category.SERVER
+                || currentCategory.equals("Hypixel") && m.getCategory() == Module.Category.HYPIXEL
                 || currentCategory.equals("Performance") && PERFORMANCE.contains(m.getName())
-                || currentCategory.equals("Gameplay") && m.getCategory() != Module.Category.HUD && m.getCategory() != Module.Category.SERVER && !PERFORMANCE.contains(m.getName()))
+                || currentCategory.equals("Gameplay") && m.getCategory() != Module.Category.HUD && m.getCategory() != Module.Category.SERVER
+                    && m.getCategory() != Module.Category.HYPIXEL && !PERFORMANCE.contains(m.getName()))
             .filter(m -> !enabledOnly || m.isEnabled())
             .filter(m -> !favoritesOnly || m.isFavorite())
             .filter(m -> (m.getName() + " " + m.getDescription()).toLowerCase(Locale.ROOT).contains(query))

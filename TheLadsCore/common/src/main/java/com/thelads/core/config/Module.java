@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Module {
-    public enum Category { ALL, NEW, HUD, SERVER, MECHANIC }
+    public enum Category { ALL, NEW, HUD, SERVER, MECHANIC, HYPIXEL }
     
     private final String name;
     private final String description;

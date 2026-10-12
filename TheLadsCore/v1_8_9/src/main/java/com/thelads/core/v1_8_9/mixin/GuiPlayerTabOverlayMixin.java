@@ -197,7 +197,9 @@ public abstract class GuiPlayerTabOverlayMixin {
     private void ladsPing(int slotWidth, int x, int y, NetworkPlayerInfo info, CallbackInfo ci) {
         if (TabTweaks189.removePing) ci.cancel();
         else if (TabTweaks189.showPingInTab) {
-            TabTweaks189.drawPing(mc.fontRendererObj, slotWidth, x, y, info.getResponseTime());
+            // 1.9.1: Hypixel lists everyone at 1 ms: your own row shows the measured ping, the others no number (RealPing).
+            boolean self = mc.thePlayer != null && mc.thePlayer.getUniqueID().equals(info.getGameProfile().getId());
+            TabTweaks189.drawPing(mc.fontRendererObj, slotWidth, x, y, com.thelads.core.client.hypixel.RealPing.row(info.getResponseTime(), self));
             ci.cancel();
         }
     }

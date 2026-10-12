@@ -235,6 +235,34 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     }
 
     @Override
+    public int[] getListedLatencies() {
+        Minecraft mc = mc();
+        if (mc.getNetHandler() == null) return new int[0];
+        java.util.Collection<NetworkPlayerInfo> players = mc.getNetHandler().getPlayerInfoMap();
+        int[] latencies = new int[players.size()];
+        int i = 0;
+        for (NetworkPlayerInfo info : players) if (i < latencies.length) latencies[i++] = info.getResponseTime();
+        return latencies;
+    }
+
+    @Override
+    public java.net.InetSocketAddress getServerSocketAddress() {
+        Minecraft mc = mc();
+        java.net.SocketAddress address = mc.getNetHandler() == null ? null : mc.getNetHandler().getNetworkManager().getRemoteAddress();
+        return address instanceof java.net.InetSocketAddress ? (java.net.InetSocketAddress) address : null;
+    }
+
+    @Override
+    public void sendChatLine(String text) {
+        if (mc().thePlayer != null) mc().thePlayer.sendChatMessage(text);
+    }
+
+    @Override
+    public boolean sendPluginMessage(String channel, byte[] data) {
+        return com.thelads.core.v1_8_9.feature.Hypixel189.send(channel, data);
+    }
+
+    @Override
     public double getSpeed() {
         if (mc().thePlayer == null) return 0.0;
         double x = mc().thePlayer.motionX, z = mc().thePlayer.motionZ;
