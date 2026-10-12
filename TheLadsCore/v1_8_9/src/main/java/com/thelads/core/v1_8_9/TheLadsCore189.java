@@ -33,6 +33,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import org.apache.logging.log4j.LogManager;
@@ -109,6 +110,30 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(this);
         com.thelads.core.v1_8_9.feature.fastquit.FastQuitProbe189.initialize();
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
+    }
+
+    @Mod.EventHandler
+    public void postInit(FMLLoadCompleteEvent event) {
+        wipeLaunchClassLoader();
+    }
+
+    /** Clears LaunchClassLoader's resource cache to free class byte[] arrays retained after startup (FoamFix-style). */
+    public static void wipeLaunchClassLoader() {
+        try {
+            java.lang.reflect.Field field = net.minecraft.launchwrapper.Launch.classLoader.getClass().getDeclaredField("resourceCache");
+            field.setAccessible(true);
+            Object cache = field.get(net.minecraft.launchwrapper.Launch.classLoader);
+            if (cache instanceof java.util.Map) {
+                java.util.Map<?, ?> map = (java.util.Map<?, ?>) cache;
+                if (!map.isEmpty()) {
+                    int size = map.size();
+                    map.clear();
+                    LOGGER.info("LaunchClassLoader resource cache wiped ({} classes cleared)", size);
+                }
+            }
+        } catch (Throwable t) {
+            LOGGER.warn("Could not wipe LaunchClassLoader resource cache: {}", t.getMessage());
+        }
     }
 
     public static final String[] GAMEPLAY_MODULES = {
