@@ -10,6 +10,7 @@ import net.minecraft.network.INetHandler;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.Packet;
 import net.minecraft.network.ThreadQuickExitException;
+import net.minecraft.network.play.server.S3FPacketCustomPayload;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -21,6 +22,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * SignalLoss (SignalLoss189), as 26.x ConnectionActivityMixin: each connection's last received server packet, on the network thread.
+ * Real ping (Hypixel189): the hypixel:ping answer's arrival.
  * IgnorePacketErrors: a play packet whose handler throws on the network thread is logged and skipped instead of disconnecting
  * ("Internal Exception"). Handlers that run on the client thread only log their errors in 1.8.9 anyway.
  */
@@ -31,7 +33,10 @@ public abstract class NetworkManagerMixin implements SignalLoss189.PacketActivit
 
     @Inject(method = "channelRead0(Lio/netty/channel/ChannelHandlerContext;Lnet/minecraft/network/Packet;)V", at = @At("HEAD"), require = 1)
     private void ladsReceived(ChannelHandlerContext context, Packet<?> packet, CallbackInfo ci) {
-        if (direction == EnumPacketDirection.CLIENTBOUND) ladsLastPacketNanos = System.nanoTime();
+        if (direction != EnumPacketDirection.CLIENTBOUND) return;
+        ladsLastPacketNanos = System.nanoTime();
+        // 1.9.1 real ping: the Hypixel Mod API's answer as it arrives (Hypixel189).
+        if (packet instanceof S3FPacketCustomPayload) com.thelads.core.v1_8_9.feature.Hypixel189.payload((S3FPacketCustomPayload) packet);
     }
 
     @Redirect(method = "channelRead0(Lio/netty/channel/ChannelHandlerContext;Lnet/minecraft/network/Packet;)V", require = 1,

@@ -161,6 +161,9 @@ public final class CoreProbe {
         } else if ("sounds".equals(only)) { // 1.9.0 uploaded sounds: Combo Sounds and Kill Banner "Your sounds" (Probe190Sounds)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe190Sounds::run));
+        } else if ("hypixel".equals(only)) { // 1.9.1 Hypixel modules and real ping in the QA world, counted as Hypixel (Probe191Hypixel)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe191Hypixel::run));
         } else if ("raised".equals(only) || "leave".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
