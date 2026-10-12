@@ -76,8 +76,8 @@ public final class Food189 {
 
     @SubscribeEvent
     public void overlayStart(RenderGameOverlayEvent.Pre event) {
-        int width = event.resolution.getScaledWidth(), height = event.resolution.getScaledHeight();
         if (event.type == ElementType.HEALTH) {
+            int height = event.resolution.getScaledHeight();
             EntityPlayer player = Minecraft.getMinecraft().thePlayer;
             float hearts = (player.getMaxHealth() + player.getAbsorptionAmount()) / 2;
             heartsTop = height - GuiIngameForge.left_height;
@@ -87,6 +87,7 @@ public final class Food189 {
             lastHeartX = lastHeartY = Integer.MIN_VALUE;
             if (heartX.length < heartsLeft) { heartX = new int[heartsLeft]; heartY = new int[heartsLeft]; }
         } else if (event.type == ElementType.FOOD) {
+            int width = event.resolution.getScaledWidth(), height = event.resolution.getScaledHeight();
             foodRight = width / 2 + 91;
             int top = height - GuiIngameForge.right_height;
             Arrays.fill(foodY, top);
@@ -125,7 +126,7 @@ public final class Food189 {
 
     @SubscribeEvent
     public void overlayEnd(RenderGameOverlayEvent.Post event) {
-        if (!on() || event.type != ElementType.FOOD && event.type != ElementType.HEALTH) return;
+        if (event.type != ElementType.FOOD && event.type != ElementType.HEALTH || !on()) return;
         Minecraft mc = Minecraft.getMinecraft();
         EntityPlayer player = mc.thePlayer;
         EntityPlayerMP own = serverPlayer(player);
