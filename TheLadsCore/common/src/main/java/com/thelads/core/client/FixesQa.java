@@ -109,7 +109,7 @@ public final class FixesQa {
             case 3 -> { pendingShot = game.screenshot("fb-night-on"); wait = 10; }
             case 4 -> {
                 if ((nightOn = luma()) < 0) return retry();
-                check(nightOn > Math.max(2 * nightOff, nightOff + 40), "Fullbright lights the midnight ground: off " + f(nightOff) + ", on " + f(nightOn));
+                check(lit(nightOff, nightOn), "Fullbright lights the midnight ground: off " + f(nightOff) + ", on " + f(nightOn));
                 int x = floor(home[0]), y = floor(home[1]), z = floor(home[2]);
                 game.fill(x - 4, y - 1, z - 4, x + 4, y + 5, z + 4, true);
                 look(game, 0, 20);
@@ -120,7 +120,7 @@ public final class FixesQa {
             case 7 -> { pendingShot = game.screenshot("fb-cave-off"); wait = 10; }
             case 8 -> {
                 if ((caveOff = luma()) < 0) return retry();
-                check(caveOn > Math.max(2 * caveOff, caveOff + 40), "Fullbright lights a closed stone room: off " + f(caveOff) + ", on " + f(caveOn));
+                check(lit(caveOff, caveOn), "Fullbright lights a closed stone room: off " + f(caveOff) + ", on " + f(caveOn));
                 int x = floor(home[0]), y = floor(home[1]), z = floor(home[2]);
                 game.fill(x - 4, y, z - 4, x + 4, y + 5, z + 4, false);
                 game.command("time set 6000");
@@ -253,6 +253,9 @@ public final class FixesQa {
         looking = true;
         game.look(yaw, pitch);
     }
+
+    /** Fullbright made the frame clearly brighter (a pack's own Brightness may already be at vanilla's brightest: Zero SMP's is). */
+    private static boolean lit(double off, double on) { return on >= 1.5 * off && on - off >= 25; }
 
     private static int floor(double v) { return (int) Math.floor(v); }
 
