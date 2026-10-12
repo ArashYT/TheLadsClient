@@ -72,16 +72,19 @@ public final class Tooltips189 {
         if (!sideFits && width + 10 <= screenWidth) { // Forge's wrap
             int wrap = x > screenWidth / 2 ? x - 20 : screenWidth - 16 - x;
             count = 0;
-            for (String line : lines) count += font.listFormattedStringToWidth(line, wrap).size();
-            if (height(count) + 10 <= screenHeight) return false;
+            if (wrap > 0) for (String line : lines) count += font.listFormattedStringToWidth(line, wrap).size();
+            if (wrap > 0 && height(count) + 10 <= screenHeight) return false;
         } else if (sideFits && height(count) + 10 <= screenHeight) return false;
         float scale = TooltipFit.scale(width, height(lines.size()), screenWidth, screenHeight, new ScaledResolution(Minecraft.getMinecraft()).getScaleFactor());
         int scaledWidth = (int) (screenWidth / scale), scaledX = (int) (x / scale);
         if (scaledX + 12 + width + 4 > scaledWidth && scaledX - 16 - width < 4) scaledX = 4 - 12; // left edge, as later versions place it (no wrap)
         GlStateManager.pushMatrix();
         GlStateManager.scale(scale, scale, 1F);
-        GuiUtils.drawHoveringText(lines, scaledX, (int) (y / scale), scaledWidth, (int) (screenHeight / scale), -1, font);
-        GlStateManager.popMatrix();
+        try {
+            GuiUtils.drawHoveringText(lines, scaledX, (int) (y / scale), scaledWidth, (int) (screenHeight / scale), -1, font);
+        } finally {
+            GlStateManager.popMatrix();
+        }
         return true;
     }
 

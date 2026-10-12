@@ -165,7 +165,7 @@ public final class BakedBlockEntities1201 {
     public static boolean skipRenderer(BlockEntity entity) {
         BlockState state = entity.getBlockState();
         if (!((Flag) state).lads$baked() || entity instanceof SignBlockEntity) return false; // signs: only the board is baked
-        if (entity.getLevel() != Minecraft.getInstance().level) return false; // only the client level's sections hold baked models (not item, preview or mod levels)
+        if (entity.getLevel() == null || entity.getLevel() != Minecraft.getInstance().level) return false; // only the client level's sections hold baked models (not item, preview or mod levels)
         BlockPos pos = entity.getBlockPos();
         long key = pos.asLong();
         if (BakedBlockEntities.setAnimating(key, animating(entity))) markDirty(pos);

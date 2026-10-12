@@ -308,8 +308,8 @@ public final class BakedBlockEntities189 {
         if (destroyStage >= 0 || !baking() || entity instanceof TileEntitySign) return false; // breaking cracks draw through it
         if (!(entity instanceof TileEntityChest) && !(entity instanceof TileEntityEnderChest)) return false;
         // Only the client world's chunk meshes hold baked models: the item renderer's world-less chests (held, in the inventory,
-        // dropped, in item frames, chest minecarts) at 0,0,0 were skipped as if baked, so every chest item was invisible.
-        if (entity.getWorld() != Minecraft.getMinecraft().theWorld) return false;
+        // dropped, in item frames, chest minecarts, menus without a world) at 0,0,0 were skipped as if baked, so every chest item was invisible.
+        if (entity.getWorld() == null || entity.getWorld() != Minecraft.getMinecraft().theWorld) return false;
         BlockPos pos = entity.getPos();
         long key = pos.toLong();
         if (BakedBlockEntities.setAnimating(key, animating(entity))) {

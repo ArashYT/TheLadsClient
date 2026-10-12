@@ -23,7 +23,7 @@ public abstract class GuiContainerMouseTweaksMixin extends GuiScreen implements 
     /** As later versions: any button but left, right and creative pick-block swaps the hovered slot with the hotbar slot bound to it. */
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     private void ladsHotbarButton(int x, int y, int button, CallbackInfo ci) {
-        if (button == 0 || button == 1 || button - 100 == mc.gameSettings.keyBindPickBlock.getKeyCode() && mc.playerController.isInCreativeMode()) return;
+        if (button == 0 || button == 1 || button - 100 == mc.gameSettings.keyBindPickBlock.getKeyCode() && mc.playerController != null && mc.playerController.isInCreativeMode()) return;
         if (checkHotbarKeys(button - 100)) ci.cancel(); // mouse binds are stored as button - 100
     }
 
