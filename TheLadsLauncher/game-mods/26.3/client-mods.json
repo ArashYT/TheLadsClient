@@ -678,21 +678,6 @@
       "projectUrl": "https://modrinth.com/mod/simple-voice-chat"
     },
     {
-      "projectId": "kYuIpRLv",
-      "projectSlug": "wavey-capes",
-      "name": "Wavey Capes",
-      "modId": "waveycapes",
-      "versionId": "btMqe7fQ",
-      "version": "1.11.2",
-      "fileName": "waveycapes-fabric-1.11.2-mc26.3.jar",
-      "url": "https://cdn.modrinth.com/data/kYuIpRLv/versions/btMqe7fQ/waveycapes-fabric-1.11.2-mc26.3.jar",
-      "sha512": "37258922ea1fc332f43612e14f8dbc6cc8b60cb3341adc6a6b9b49422ccd1c661607f84c6dad9ae07e24eb70d48ca0e6034f02e4b0e0abe80c108172d890d2b4",
-      "size": 1771311,
-      "license": "LicenseRef-tr7zw-Protective-License",
-      "sourceUrl": "https://github.com/tr7zw/WaveyCapes",
-      "projectUrl": "https://modrinth.com/mod/wavey-capes"
-    },
-    {
       "projectId": "1bokaNcj",
       "projectSlug": "xaeros-minimap",
       "name": "Xaero's Minimap",
@@ -1127,6 +1112,15 @@
         "547a3467dc7019b1b8cec942d3cf6ee7f13684b115eb9df9e935961b717f1c3d9c3a897256210a69fa0ce8b39fc507b91b237e57361dfcb9243fc8717e042a66"
       ],
       "reason": "Replaced by native Lads Core functionality in 1.8.5 (built-in baked block entities)."
+    },
+    {
+      "modId": "waveycapes",
+      "projectId": "kYuIpRLv",
+      "name": "Wavey Capes",
+      "sha512": [
+        "37258922ea1fc332f43612e14f8dbc6cc8b60cb3341adc6a6b9b49422ccd1c661607f84c6dad9ae07e24eb70d48ca0e6034f02e4b0e0abe80c108172d890d2b4"
+      ],
+      "reason": "Replaced by native Lads Core functionality in 1.9.1 (Wavy Capes module)."
     }
   ]
 }
