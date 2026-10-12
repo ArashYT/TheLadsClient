@@ -52,6 +52,7 @@
     "ItemRendererMixin",
     "ItemStackTooltipMixin",
     "KeyEntryAccessor",
+    "KeyBindingMixin",
     "LocalSkinMixin189",
     "LayerArmorBaseMixin",
     "LayerHeldItemMixin",
