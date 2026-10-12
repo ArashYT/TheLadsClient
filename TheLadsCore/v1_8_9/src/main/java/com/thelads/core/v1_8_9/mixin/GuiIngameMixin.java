@@ -19,11 +19,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class GuiIngameMixin {
     @Shadow private int recordPlayingUpFor;
 
-    @Inject(method = "setRecordPlaying(Ljava/lang/String;Z)V", at = @At("HEAD"), cancellable = true, require = 1)
+    // With the Action Bar module on, vanilla still stores the message (other features and mods read it); only its timer is zeroed so vanilla never draws it.
+    @Inject(method = "setRecordPlaying(Ljava/lang/String;Z)V", at = @At("RETURN"), require = 1)
     private void ladsActionBar(String message, boolean playing, CallbackInfo ci) {
-        if (!com.thelads.core.client.hud.ActionBar.set(message, playing)) return;
-        recordPlayingUpFor = 0;
-        ci.cancel();
+        if (com.thelads.core.client.hud.ActionBar.set(message, playing)) recordPlayingUpFor = 0;
     }
 
     @Inject(method = "updateTick", at = @At("HEAD"), require = 1)

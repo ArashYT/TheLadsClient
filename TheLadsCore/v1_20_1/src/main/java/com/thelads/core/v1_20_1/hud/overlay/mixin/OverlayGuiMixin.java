@@ -25,11 +25,10 @@ public class OverlayGuiMixin {
         callback.cancel();
     }
 
-    @Inject(method = "setOverlayMessage", at = @At("HEAD"), cancellable = true)
+    // With the Action Bar module on, vanilla still stores the message (other features and mods read it); only its timer is zeroed so vanilla never draws it.
+    @Inject(method = "setOverlayMessage", at = @At("RETURN"))
     private void lads$actionBar(Component message, boolean animate, CallbackInfo callback) {
-        if (!com.thelads.core.client.hud.ActionBar.set(message, animate)) return;
-        overlayMessageTime = 0;
-        callback.cancel();
+        if (com.thelads.core.client.hud.ActionBar.set(message, animate)) overlayMessageTime = 0;
     }
 
     @Inject(method = "tick()V", at = @At("HEAD"))

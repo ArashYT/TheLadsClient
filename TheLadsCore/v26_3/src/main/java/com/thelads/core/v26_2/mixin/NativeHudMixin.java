@@ -72,12 +72,11 @@ public class NativeHudMixin {
         graphics.pose().popMatrix();
     }
 
-    // The Action Bar module (ActionBar): every message the server or a record sends; with the module on it shows it, not vanilla.
-    @Inject(method = "setOverlayMessage", at = @At("HEAD"), cancellable = true, require = 1)
+    // The Action Bar module (ActionBar): every message the server or a record sends; with the module on it shows it, not vanilla:
+    // vanilla still stores the message (other features and mods read it); only its timer is zeroed so vanilla never draws it.
+    @Inject(method = "setOverlayMessage", at = @At("RETURN"), require = 1)
     private void lads$actionBar(Component message, boolean animate, CallbackInfo callback) {
-        if (!com.thelads.core.client.hud.ActionBar.set(message, animate)) return;
-        overlayMessageTime = 0;
-        callback.cancel();
+        if (com.thelads.core.client.hud.ActionBar.set(message, animate)) overlayMessageTime = 0;
     }
 
     @Inject(method = "tick()V", at = @At("HEAD"), require = 1)
