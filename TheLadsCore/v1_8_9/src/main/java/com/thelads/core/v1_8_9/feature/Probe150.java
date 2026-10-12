@@ -2,6 +2,7 @@ package com.thelads.core.v1_8_9.feature;
 
 import static com.thelads.core.v1_8_9.feature.CoreProbe.after;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.check;
+import static com.thelads.core.v1_8_9.feature.CoreProbe.retry;
 import static com.thelads.core.v1_8_9.feature.CoreProbe.screenshot;
 
 import com.mojang.authlib.GameProfile;
@@ -151,6 +152,7 @@ final class Probe150 {
     }
 
     private static boolean chat(Minecraft mc) {
+        if (Chat189.animated <= animated) return retry(1);
         check(Chat189.messages >= messages + 2, "Chat: both messages went through printChatMessageWithOptionalDeletion");
         check(Chat189.animated > animated, "Chat: the newest message's lines slid in over " + (Chat189.animated - animated) + " line draws");
         check(mc.ingameGUI.getChatGUI().getChatWidth() == 200, "Chat: Chat Width sizes 1.8.9's chat (" + mc.ingameGUI.getChatGUI().getChatWidth() + " px)");
