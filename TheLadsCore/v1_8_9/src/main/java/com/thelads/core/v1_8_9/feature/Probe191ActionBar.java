@@ -27,8 +27,8 @@ final class Probe191ActionBar {
     }
 
     private static final ActionBarQa.Game GAME = new ActionBarQa.Game() {
-        @Override public void actionBar(String text) {
-            Minecraft.getMinecraft().getNetHandler().handleChat(new S02PacketChat(new ChatComponentText(text), (byte) 2));
+        @Override public void actionBar(String legacy, String json) { // 1.8 servers (Hypixel) send formatting codes in the text
+            Minecraft.getMinecraft().getNetHandler().handleChat(new S02PacketChat(new ChatComponentText(legacy), (byte) 2));
         }
 
         @Override public void nowPlaying(String song) { Minecraft.getMinecraft().ingameGUI.setRecordPlayingMessage(song); }

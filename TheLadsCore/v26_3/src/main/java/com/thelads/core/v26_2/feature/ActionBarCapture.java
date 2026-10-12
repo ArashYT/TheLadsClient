@@ -30,7 +30,9 @@ final class ActionBarCapture {
         if (done) return;
         if (!running) {
             Path request = game.resolve(".lads-qa-capture-actionbar");
-            if (!ready || !Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS)) return;
+            // Not beside the screenshots gallery probe, whose screen would cover the frames.
+            if (!ready || !Files.isRegularFile(request, LinkOption.NOFOLLOW_LINKS)
+                || com.thelads.core.v26_2.feature.screenshots.screen.manage_screenshots.NativeScreenshotsProbe.pending()) return;
             try { Files.delete(request); } catch (Exception ignored) {}
             qa = new ActionBarQa();
             running = true;
@@ -64,8 +66,10 @@ final class ActionBarCapture {
     }
 
     private static final ActionBarQa.Game GAME = new ActionBarQa.Game() {
-        @Override public void actionBar(String text) {
-            Minecraft.getInstance().getConnection().setActionBarText(new ClientboundSetActionBarTextPacket(Component.literal(text)));
+        @Override public void actionBar(String legacy, String json) {
+            Component text = json == null ? Component.literal(legacy) : net.minecraft.network.chat.ComponentSerialization.CODEC
+                .parse(com.mojang.serialization.JsonOps.INSTANCE, com.google.gson.JsonParser.parseString(json)).getOrThrow();
+            Minecraft.getInstance().getConnection().setActionBarText(new ClientboundSetActionBarTextPacket(text));
         }
 
         @Override public void nowPlaying(String song) { Minecraft.getInstance().gui.hud.setNowPlaying(Component.literal(song)); }

@@ -30,8 +30,9 @@ final class ActionBarQa1201 {
     }
 
     private static final ActionBarQa.Game GAME = new ActionBarQa.Game() {
-        @Override public void actionBar(String text) {
-            Minecraft.getInstance().getConnection().setActionBarText(new ClientboundSetActionBarTextPacket(Component.literal(text)));
+        @Override public void actionBar(String legacy, String json) {
+            Component text = json == null ? Component.literal(legacy) : Component.Serializer.fromJson(json);
+            Minecraft.getInstance().getConnection().setActionBarText(new ClientboundSetActionBarTextPacket(text));
         }
 
         @Override public void nowPlaying(String song) { Minecraft.getInstance().gui.setNowPlaying(Component.literal(song)); }
