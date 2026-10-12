@@ -194,6 +194,9 @@ bool uiCaptureVerification = autoWorldVerification && !capabilities.Forge && !ca
 bool itemPhysicsCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_ITEMPHYSICS") == "1";
 // Fabric versions: the survival and creative inventories with and without potion effects, centred (InventoryCapture). 1.8.9: LADS_VERIFY_189_FOCUS=inventory (ProbeInventory).
 bool inventoryCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_INVENTORY") == "1";
+// 1.9.1 (ItemsCapture, common ItemsQa): block entity items drawn everywhere, hotbar keys on mouse buttons in inventories, oversized
+// tooltips scaled down. 1.8.9: LADS_VERIFY_189_ONLY=items; 1.20.1 (plain and Zero SMP): the script verb "items".
+bool itemsCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_ITEMS") == "1";
 // Fabric versions: the Lads title screen and its More screen photographed before the QA world opens (NativeWorldVerification).
 // 1.8.9's self-test (CoreProbe) always captures them.
 bool titleCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_TITLE") == "1";
@@ -396,6 +399,8 @@ string itemPhysicsCaptureRequest = Path.Combine(directory, ".lads-qa-capture-ite
 if (autoWorldVerification && File.Exists(itemPhysicsCaptureRequest)) File.Delete(itemPhysicsCaptureRequest);
 string inventoryCaptureRequest = Path.Combine(directory, ".lads-qa-capture-inventory");
 if (autoWorldVerification && File.Exists(inventoryCaptureRequest)) File.Delete(inventoryCaptureRequest);
+string itemsCaptureRequest = Path.Combine(directory, ".lads-qa-capture-items");
+if (autoWorldVerification && File.Exists(itemsCaptureRequest)) File.Delete(itemsCaptureRequest);
 string serverCaptureRequest = Path.Combine(directory, ".lads-qa-capture-server");
 if (autoWorldVerification && File.Exists(serverCaptureRequest)) File.Delete(serverCaptureRequest);
 string f3FovCaptureRequest = Path.Combine(directory, ".lads-qa-capture-f3fov");
@@ -447,7 +452,7 @@ var passedMarkers = new System.Collections.Concurrent.ConcurrentDictionary<strin
 var failedCaptures = new System.Collections.Concurrent.ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
 string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:", "Lads HUD capture END:", "Lads HUD editor probe END:",
     "Lads kill banner capture END:", "Lads kill streak capture END:", "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
-    "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads server features capture END:",
+    "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads items END:", "Lads server features capture END:",
     "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads hud layout END:", "Lads mouse tweaks capture END:",
     "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads particle core capture END:", "Lads render 1.8.5 capture END:", "Lads EBE probe END:", "Lads sounds capture END:"];
 // A requested capture is settled once all its END markers passed or one of them failed; one not requested always is.
@@ -468,6 +473,7 @@ bool CapturesSettled(bool resolutionRequested) =>
     && Settled(uiCaptureVerification, "Lads UI capture END:")
     && Settled(itemPhysicsCaptureVerification, "Lads item physics capture END:")
     && Settled(inventoryCaptureVerification, "Lads inventory capture END:")
+    && Settled(itemsCaptureVerification, "Lads items END:")
     && Settled(serverCaptureVerification, "Lads server features capture END:")
     && Settled(f3FovCaptureVerification && !capabilities.Forge, "Lads F3/FOV capture END:")
     && Settled(hudInfoCaptureVerification, "Lads HUD info capture END:")
@@ -523,7 +529,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads native screenshots probe FAILED", "Lads native crosshair probe FAILED", "Lads shared content probe FAILED",
     "Lads mod request probe FAILED", "Lads mods inventory snapshot FAILED", "Lads welcome probe FAILED", "Lads menu access probe FAILED",
     "Lads HUD pipeline probe FAILED", "Lads 1.8.9 core probe FAILED", "Lads cheats probe FAILED", "Lads zoom capture FAILED", "Lads sprint capture FAILED", "Lads add-server probe FAILED",
-    "Lads HUD 1.7.0 capture FAILED", "Lads item physics capture FAILED", "Lads inventory capture FAILED",
+    "Lads HUD 1.7.0 capture FAILED", "Lads item physics capture FAILED", "Lads inventory capture FAILED", "Lads items FAILED",
     "Lads server features capture FAILED", "Lads chat heads capture FAILED", "Lads F3/FOV capture FAILED", "Lads HUD info capture FAILED",
     "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads hud layout FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
     "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED", "Lads async stress probe FAILED",
@@ -1062,6 +1068,7 @@ try
                     (uiCaptureVerification, uiCaptureRequest, "Answer the reset questions and drag Fullbright's slider with its menu open."),
                     (itemPhysicsCaptureVerification, itemPhysicsCaptureRequest, "Drop items in an Item Physics arena and capture its frames."),
                     (inventoryCaptureVerification, inventoryCaptureRequest, "Capture the inventories with and without potion effects in the QA world."),
+                    (itemsCaptureVerification, itemsCaptureRequest, "Photograph block entity items, swap with hotbar keys on mouse buttons and fit oversized tooltips in the QA world."),
                     (serverCaptureVerification, serverCaptureRequest, "Check the multiplayer features in the QA world and capture their frames."),
                     (f3FovCaptureVerification && !capabilities.Forge, f3FovCaptureRequest, "Capture Better F3 frames and log Custom FOV values."),
                     (hudInfoCaptureVerification, hudInfoCaptureRequest, "Photograph food previews, tooltips and crosshair styles in the QA world."),
@@ -1219,6 +1226,7 @@ try
             "The requested Item Physics capture did not pass. Inspect production-smoke.log.");
         Require(!inventoryCaptureVerification || passedMarkers.ContainsKey("Lads inventory capture END:"),
             "The requested inventory capture did not pass. Inspect production-smoke.log.");
+        Require(!itemsCaptureVerification || passedMarkers.ContainsKey("Lads items END:"), "The 1.9.1 items capture did not pass (Lads items END: ..., 0 failed).");
         Require(!titleCaptureVerification || passedMarkers.ContainsKey("Lads title capture END:") && passedMarkers.ContainsKey("Lads title More capture END:"),
             "The requested title and More frames were not both captured. Inspect production-smoke.log.");
         Require(!serverCaptureVerification || passedMarkers.ContainsKey("Lads server features capture END:"),

@@ -171,6 +171,7 @@ public final class NativeWorldVerification {
             UiCapture.tick(gameDirectory, captureReady && (UiCapture.busy() || !captureBusy()));
             ItemPhysicsCapture.tick(gameDirectory, captureReady && (ItemPhysicsCapture.busy() || !captureBusy()));
             InventoryCapture.tick(gameDirectory, captureReady && (InventoryCapture.busy() || !captureBusy()));
+            ItemsCapture.tick(gameDirectory, captureReady && (ItemsCapture.busy() || !captureBusy()));
             CheatsProbe.tick(gameDirectory, captureReady);
             ServerFeaturesCapture.tick(gameDirectory, captureReady && (ServerFeaturesCapture.busy() || !captureBusy()));
             // After the Chat module's own capture, so its message does not land among the heads, and after the render scale probe,
@@ -342,6 +343,7 @@ public final class NativeWorldVerification {
         UiCapture.frame(target, gameDirectory);
         ItemPhysicsCapture.frame(target, gameDirectory);
         InventoryCapture.frame(target, gameDirectory);
+        ItemsCapture.frame(target, gameDirectory);
         ServerFeaturesCapture.frame(target, gameDirectory);
         ChatHeadsCapture.frame(target, gameDirectory);
         F3FovCapture.frame(target, gameDirectory);
@@ -490,7 +492,7 @@ public final class NativeWorldVerification {
         return HudInfoCapture.busy() || KillBannerCapture.busy() || KillStreakCapture.busy() || OldAnimationsCapture.busy() || Anim172Capture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
             ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || HudLayoutCapture.busy() || MouseTweaksCapture.busy() ||
             ResolutionCapture.busy() || DynamicLightsCapture.busy() || com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() ||
-            SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || UiCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy() || ParticleCoreCapture.busy() || SoundsCapture.busy();
+            SkinLayersCapture.busy() || SprintCapture.busy() || Hud170Capture.busy() || HudFlickerCapture.busy() || UiCapture.busy() || ItemPhysicsCapture.busy() || InventoryCapture.busy() || ItemsCapture.busy() || ParticleCoreCapture.busy() || SoundsCapture.busy();
     }
     public static boolean worldReady() {
         Minecraft mc = Minecraft.getInstance();
