@@ -1,5 +1,6 @@
 package com.thelads.core.client.util;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
@@ -62,12 +63,13 @@ public final class LocalSkinSource {
     /** The skin in a session server profile's {@code textures} property. */
     public static Texture texture(String profileJson) throws IOException {
         JsonObject skin = null;
-        for (var entry : JsonParser.parseString(profileJson).getAsJsonObject().getAsJsonArray("properties")) {
+        JsonArray properties = JsonParser.parseString(profileJson).getAsJsonObject().getAsJsonArray("properties");
+        if (properties != null) for (var entry : properties) {
             JsonObject property = entry.getAsJsonObject();
-            if (!property.get("name").getAsString().equals("textures")) continue;
+            if (!property.has("name") || !property.get("name").getAsString().equals("textures") || !property.has("value")) continue;
             JsonObject textures = JsonParser.parseString(text(Base64.getDecoder().decode(property.get("value").getAsString())))
                 .getAsJsonObject().getAsJsonObject("textures");
-            if (textures.has("SKIN")) skin = textures.getAsJsonObject("SKIN");
+            if (textures != null && textures.has("SKIN")) skin = textures.getAsJsonObject("SKIN");
         }
         if (skin == null) throw new IOException("This profile has no custom skin");
         JsonObject metadata = skin.has("metadata") ? skin.getAsJsonObject("metadata") : null;
@@ -76,7 +78,12 @@ public final class LocalSkinSource {
 
     /** A page or image from a web server, at most 1 MB; redirects (also http to https, which Mojang's texture server uses) are followed. */
     public static byte[] fetch(String url) throws IOException {
-        URI uri = URI.create(url);
+        URI uri;
+        try {
+            uri = URI.create(url);
+        } catch (IllegalArgumentException malformed) {
+            throw new IOException("Use an HTTP(S) image URL");
+        }
         for (int redirects = 0; redirects <= 5; redirects++) {
             if (!"https".equals(uri.getScheme()) && !"http".equals(uri.getScheme())) throw new IOException("Use an HTTP(S) image URL");
             HttpURLConnection connection = (HttpURLConnection) uri.toURL().openConnection();

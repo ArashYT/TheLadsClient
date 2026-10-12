@@ -42,6 +42,10 @@ class LocalSkinSourceTest {
         assertTrue(slim.slim());
         assertEquals("This profile has no custom skin", assertThrows(IOException.class,
             () -> LocalSkinSource.texture(profile("{\"textures\":{\"CAPE\":{\"url\":\"http://x/cape\"}}}"))).getMessage());
+        // a profile with nothing in it, or a textures property with no textures, has no skin either (no crash)
+        assertEquals("This profile has no custom skin", assertThrows(IOException.class, () -> LocalSkinSource.texture("{\"id\":\"x\"}")).getMessage());
+        assertEquals("This profile has no custom skin", assertThrows(IOException.class, () -> LocalSkinSource.texture(profile("{}"))).getMessage());
+        assertEquals("This profile has no custom skin", assertThrows(IOException.class, () -> LocalSkinSource.texture("{\"properties\":[{\"value\":\"x\"},{\"name\":\"textures\"}]}")).getMessage());
     }
 
     @Test void aFileIsReadAsItIsWithTheAskedModel(@TempDir Path folder) throws IOException {
@@ -87,6 +91,7 @@ class LocalSkinSourceTest {
             assertEquals("Server returned 404", assertThrows(IOException.class, () -> LocalSkinSource.fetch(base + "/missing")).getMessage());
             assertEquals("Response exceeds 1 MB", assertThrows(IOException.class, () -> LocalSkinSource.fetch(base + "/huge")).getMessage());
             assertEquals("Use an HTTP(S) image URL", assertThrows(IOException.class, () -> LocalSkinSource.fetch("file:///c:/skin.png")).getMessage());
+            assertEquals("Use an HTTP(S) image URL", assertThrows(IOException.class, () -> LocalSkinSource.fetch("http://bad host/skin.png")).getMessage());
         } finally {
             server.stop(0);
         }
