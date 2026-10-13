@@ -25,7 +25,7 @@ public final class LocalSkinSource {
     public record Texture(String url, boolean slim) {}
 
     public static final int MAX_BYTES = 1024 * 1024;
-    private static final String USER_AGENT = "LadsClient/1.9.3";
+    private static final String USER_AGENT = "LadsClient/1.9.4";
 
     private LocalSkinSource() {}
 
