@@ -312,4 +312,31 @@ class OldAnimationsTest {
         }
         assertEquals(1.62f, OldAnimations.sneakEyeHeight(1.62f, 1.62f), 0);
     }
+
+    @Test void clickMidSwingDoesNotCutAnimationOff() {
+        int duration = 6; // vanilla 1.8.9 default swing duration
+        int half = duration / 2; // 3
+
+        // Idle hand or queued restart: click starts swing
+        assertTrue(OldAnimations.shouldRestartSwing(false, 0, duration), "idle hand starts swing");
+        assertTrue(OldAnimations.shouldRestartSwing(true, -1, duration), "queued swing starts");
+
+        // First half (mid-swing): clicks must not restart swing or snap arm back
+        for (int tick = 0; tick < half; tick++) {
+            assertFalse(OldAnimations.shouldRestartSwing(true, tick, duration),
+                "mid-swing at tick " + tick + " of " + duration + " must not snap arm back");
+        }
+
+        // Past halfway: clicks restart swing smoothly into the next strike
+        for (int tick = half; tick < duration; tick++) {
+            assertTrue(OldAnimations.shouldRestartSwing(true, tick, duration),
+                "past halfway at tick " + tick + " of " + duration + " restarts smoothly");
+        }
+
+        // Haste (duration 4, half 2) and fatigue (duration 8, half 4) scaling
+        assertFalse(OldAnimations.shouldRestartSwing(true, 1, 4), "haste: tick 1 of 4 is mid-swing");
+        assertTrue(OldAnimations.shouldRestartSwing(true, 2, 4), "haste: tick 2 of 4 is past half");
+        assertFalse(OldAnimations.shouldRestartSwing(true, 3, 8), "fatigue: tick 3 of 8 is mid-swing");
+        assertTrue(OldAnimations.shouldRestartSwing(true, 4, 8), "fatigue: tick 4 of 8 is past half");
+    }
 }

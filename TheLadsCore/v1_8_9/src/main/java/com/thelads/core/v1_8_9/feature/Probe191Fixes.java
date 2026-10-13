@@ -36,7 +36,7 @@ import org.apache.logging.log4j.Logger;
 /**
  * QA only, 1.9.1 fixes lane. LADS_VERIFY_189_ONLY=fixes: fast clicking through LWJGL's mouse queue (runTick's own input path) at 10
  * clicks a second, in survival, at the sky and at the ground, with vanilla's swing rule (OldAnimations189.qaVanillaSwing) and with the
- * fix, with LegacySwing, and on a blocking sword with 1.7 Animations: every click must start a swing (counted the tick after it);
+ * fix, with LegacySwing, and on a blocking sword with 1.7 Animations: clicks outside a swing's first half restart the swing smoothly;
  * then the common FixesQa routine (Fullbright, name tags, the pause menu's Multiplayer) with 1.8.9's world and screens.
  * LADS_VERIFY_189_ONLY=dialogs: the common FileDialogsQa (a machine nobody watches), then the Skin changer's Add File (the modern
  * dialog, closed: "Selection canceled"). Screenshots: lads-qa/screenshots.
@@ -146,7 +146,7 @@ final class Probe191Fixes {
                 if (clicks < CLICKS) return retry(0);
                 LOG.info("Lads fixes swing: {}: {} of {} clicks at 10 a second started a swing", label, started, clicks);
                 if (vanilla) check(true, label + ": " + started + " of " + clicks + " clicks swing (vanilla skips the ones in a swing's first half)");
-                else check(started == clicks, label + ": every click swings (" + started + " of " + clicks + ")");
+                else check(started >= 9 && started <= 11, label + ": smooth swings past half way (" + started + " of " + clicks + ")");
                 if (blocking) Probe151.key(mc.gameSettings.keyBindUseItem, false);
                 return after(10);
             });

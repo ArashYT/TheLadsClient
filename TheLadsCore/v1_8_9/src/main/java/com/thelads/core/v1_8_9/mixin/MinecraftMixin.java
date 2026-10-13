@@ -75,7 +75,7 @@ public abstract class MinecraftMixin {
         ci.cancel();
     }
 
-    /** After vanilla's clickMouse, which swings only outside the first half of a swing and not at all for 10 ticks after a miss. */
+    /** After vanilla's clickMouse: restart outside the first half of a swing (or when idle), so clicking mid-swing finishes smoothly. */
     @Inject(method = "clickMouse", at = @At("RETURN"), require = 1)
     private void ladsSwingAnyway(CallbackInfo ci) {
         OldAnimations189.swingAnyway(thePlayer);

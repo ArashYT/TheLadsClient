@@ -191,6 +191,19 @@ public final class OldAnimations {
         return target <= current ? target : target - (target - current) * 0.4f;
     }
 
+    /**
+     * Whether an attack click should restart the arm swing: 1.7, 1.8 and modern only restart outside a swing's first
+     * half (or when not swinging), so clicking mid-swing does not snap the arm back to the start; the running swing
+     * finishes smoothly (vanilla 1.8 {@code swingProgressInt >= getArmSwingAnimationEnd() / 2 || < 0}).
+     *
+     * @param swingInProgress  whether a swing is currently active
+     * @param swingProgressInt the current swing tick counter (0..duration-1, or -1 when queued)
+     * @param swingDuration    total swing duration in ticks (e.g. 1.8.9 {@code getArmSwingAnimationEnd()})
+     */
+    public static boolean shouldRestartSwing(boolean swingInProgress, int swingProgressInt, int swingDuration) {
+        return !swingInProgress || swingProgressInt >= Math.max(1, swingDuration) / 2 || swingProgressInt < 0;
+    }
+
     private static void eat(Sink out, int side, float left, int max) {
         float done = 1 - left / max;                                  // 1.7.10: share of the use already done
         out.translate(0, done > 0.2f ? Math.abs(cos(left / 4 * PI) * 0.1f) : 0, 0);  // 1.7.10: 0.1 jiggle per 4 ticks after 20%

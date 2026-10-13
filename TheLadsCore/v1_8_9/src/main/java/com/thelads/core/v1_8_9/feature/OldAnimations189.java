@@ -13,9 +13,11 @@ import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.resources.model.IBakedModel;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
+import net.minecraft.potion.Potion;
 import net.minecraft.item.ItemBed;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemDoor;
@@ -94,27 +96,37 @@ public final class OldAnimations189 {
         if (player == null || mc.currentScreen != null || !player.isUsingItem() || !MODULE.swingOnAttack(PLATFORM, use(player, player.getItemInUse())))
             return;
         attacked = true;
-        swingAnyway(player);
-        hit(Hook.SWING);
+        if (swingAnyway(player)) hit(Hook.SWING);
     }
 
     /** QA only (Probe191Fixes): clicks swing as vanilla decides, to count the swings it skips. */
     public static volatile boolean qaVanillaSwing;
 
-    /**
-     * An attack click (Minecraft.clickMouse, or a press during a use above): the arm swings from the start whether or not vanilla
-     * restarted it (it refuses in a swing's first half, and for 10 ticks after a miss clickMouse does nothing), so fast clicking
-     * never skips a swing. Drawn only: no packet, no attack. LegacySwing and the 1.7 swing poses draw this same swing.
-     */
-    public static void swingAnyway(EntityPlayerSP player) {
-        if (player == null || qaVanillaSwing) return;
-        player.swingProgressInt = -1;
-        player.isSwingInProgress = true;
+    /** The swing duration in ticks: 6 ticks, shortened by Haste or lengthened by Mining Fatigue as in EntityLivingBase. */
+    public static int swingDuration(EntityLivingBase player) {
+        if (player.isPotionActive(Potion.digSpeed))
+            return 6 - (1 + player.getActivePotionEffect(Potion.digSpeed).getAmplifier());
+        if (player.isPotionActive(Potion.digSlowdown))
+            return 6 + (1 + player.getActivePotionEffect(Potion.digSlowdown).getAmplifier()) * 2;
+        return 6;
     }
 
-    /** EntityLivingBase.swingItem without EntityPlayerSP's packet; 3 is its restart at half a swing (6 ticks, without haste). */
+    /**
+     * An attack click (Minecraft.clickMouse, or a press during a use above): starts a swing only outside a swing's first
+     * half (or when idle), matching 1.7 / Lunar / vanilla 1.8 (OldAnimations.shouldRestartSwing), so clicking mid-swing
+     * does not snap the arm back to the start; the running swing finishes smoothly. Drawn only: no packet, no attack.
+     */
+    public static boolean swingAnyway(EntityPlayerSP player) {
+        if (player == null || qaVanillaSwing) return false;
+        if (!OldAnimations.shouldRestartSwing(player.isSwingInProgress, player.swingProgressInt, swingDuration(player))) return false;
+        player.swingProgressInt = -1;
+        player.isSwingInProgress = true;
+        return true;
+    }
+
+    /** EntityLivingBase.swingItem without EntityPlayerSP's packet, respecting OldAnimations.shouldRestartSwing. */
     private static void swing(EntityPlayerSP player) {
-        if (player.isSwingInProgress && player.swingProgressInt < 3 && player.swingProgressInt >= 0) return;
+        if (!OldAnimations.shouldRestartSwing(player.isSwingInProgress, player.swingProgressInt, swingDuration(player))) return;
         player.swingProgressInt = -1;
         player.isSwingInProgress = true;
         hit(Hook.SWING);
