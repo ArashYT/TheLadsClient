@@ -53,7 +53,7 @@ public static class ExperiencesService
         ServerAddress: "nikzerosmp.my.pebble.host",
         IconAsset: "avares://TheLadsLauncher/Assets/zero_smp_icon.png",
         RecommendedRamMb: 6144,
-        PackArchiveUrl: "" // set to the hosted zero-smp-1.20.1 pack archive when it is published
+        PackArchiveUrl: "https://bot.arashyt.ca/packs/zero-smp-1.20.1.zip"
     );
 
     public static readonly IReadOnlyList<ExperienceDefinition> AllExperiences = new[] { ZeroSmp };
