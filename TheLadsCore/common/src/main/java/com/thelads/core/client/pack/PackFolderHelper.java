@@ -63,6 +63,33 @@ public final class PackFolderHelper {
     }
 
     /**
+     * Computes the normalized relative path of a pack from the resourcepacks directory it lives in.
+     * Walks up parent folders to find the nearest ancestor named "resourcepacks" (case-insensitive).
+     * If found, returns relative path (e.g. "PvP/pack.zip" or "pack.zip").
+     * If not found, returns the filename of the pack.
+     */
+    public static String getRelativePackPath(Path packPath) {
+        if (packPath == null) return "";
+        Path cur = packPath.toAbsolutePath().normalize();
+        Path parent = cur.getParent();
+        while (parent != null) {
+            Path fileName = parent.getFileName();
+            if (fileName != null && fileName.toString().equalsIgnoreCase("resourcepacks")) {
+                try {
+                    return parent.relativize(cur).toString().replace('\\', '/');
+                } catch (IllegalArgumentException ignored) {}
+            }
+            parent = parent.getParent();
+        }
+        Path fn = cur.getFileName();
+        return fn != null ? fn.toString() : "";
+    }
+
+    public static String getRelativePackPath(File packFile) {
+        return packFile != null ? getRelativePackPath(packFile.toPath()) : "";
+    }
+
+    /**
      * Returns parent relative path or empty string if at root level.
      * E.g. "PvP/Bedwars" -> "PvP", "PvP" -> "", "" -> null.
      */

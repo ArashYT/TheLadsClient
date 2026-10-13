@@ -91,6 +91,10 @@ public final class CoreProbe {
             STEPS.add(CoreProbe::quickWorld);
             STEPS.add(CoreProbe::worldReady);
             STEPS.add(Probe193Packs189::runInGamePacks);
+        } else if ("packs_relaunch".equals(only)) {
+            STEPS.clear();
+            STEPS.add(CoreProbe::titleShown);
+            STEPS.add(Probe193Packs189::runRelaunchPacks);
         } else {
         if ("itemphysics".equals(only)) {
             STEPS.clear();

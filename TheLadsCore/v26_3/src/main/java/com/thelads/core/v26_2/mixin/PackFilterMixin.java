@@ -125,7 +125,7 @@ public abstract class PackFilterMixin extends Screen implements FolderNav26 {
                 }
             }
             if (searching) {
-                return PackFilterHelper.matches(e.getTitle().getString(), e.getDescription().getString(), query)
+                return PackFilterHelper.matches(query, e.getTitle().getString(), e.getDescription().getString())
                     || e.getId().toLowerCase(java.util.Locale.ROOT).contains(query.toLowerCase(java.util.Locale.ROOT));
             }
             return true;
@@ -144,7 +144,7 @@ public abstract class PackFilterMixin extends Screen implements FolderNav26 {
                 back.setX(list.getRowLeft());
                 back.setWidth(list.getRowWidth());
                 back.setHeight(36);
-                list.children().add(insertIndex++, back);
+                ((AbstractSelectionListAccessor) list).ladsGetChildren().add(insertIndex++, back);
             }
 
             Path currentDir = ladsCurrentSubfolder.isEmpty() ? this.packDir : this.packDir.resolve(ladsCurrentSubfolder);
@@ -156,7 +156,7 @@ public abstract class PackFilterMixin extends Screen implements FolderNav26 {
                     folderEntry.setX(list.getRowLeft());
                     folderEntry.setWidth(list.getRowWidth());
                     folderEntry.setHeight(36);
-                    list.children().add(insertIndex++, folderEntry);
+                    ((AbstractSelectionListAccessor) list).ladsGetChildren().add(insertIndex++, folderEntry);
                 }
             }
             ((AbstractSelectionListAccessor) list).ladsInvokeRepositionEntries();

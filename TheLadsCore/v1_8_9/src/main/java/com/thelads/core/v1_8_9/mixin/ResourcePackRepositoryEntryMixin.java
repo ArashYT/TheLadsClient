@@ -2,7 +2,6 @@ package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.client.pack.PackFolderHelper;
 import java.io.File;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.ResourcePackRepository;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,16 +20,9 @@ public abstract class ResourcePackRepositoryEntryMixin {
     @Inject(method = "getResourcePackName", at = @At("HEAD"), cancellable = true)
     private void ladsRelativePackName(CallbackInfoReturnable<String> cir) {
         if (resourcePackFile == null) return;
-        Minecraft mc = Minecraft.getMinecraft();
-        if (mc == null) return;
-        ResourcePackRepository repo = mc.getResourcePackRepository();
-        if (repo == null) return;
-        File root = repo.getDirResourcepacks();
-        if (root != null && root.isDirectory()) {
-            String rel = PackFolderHelper.getRelativePath(root.toPath(), resourcePackFile.toPath());
-            if (!rel.isEmpty() && !rel.equals(resourcePackFile.getName())) {
-                cir.setReturnValue(rel);
-            }
+        String rel = PackFolderHelper.getRelativePackPath(resourcePackFile);
+        if (!rel.isEmpty() && !rel.equals(resourcePackFile.getName())) {
+            cir.setReturnValue(rel);
         }
     }
 }

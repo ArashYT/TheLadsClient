@@ -147,6 +147,35 @@ public final class Probe193Packs189 {
         return true;
     }
 
+    public static boolean runRelaunchPacks(Minecraft mc) throws Exception {
+        if (wait > 0) { wait--; return false; }
+        switch (step) {
+            case 0:
+                boolean hasPvPPack = false;
+                for (String p : mc.gameSettings.resourcePacks) {
+                    if (p.contains("PvPPackOne")) {
+                        hasPvPPack = true;
+                        break;
+                    }
+                }
+                LOG.info("Lads packs relaunch check: gameSettings.resourcePacks=" + mc.gameSettings.resourcePacks + ", hasPvPPack=" + hasPvPPack);
+                if (!hasPvPPack) {
+                    LOG.error("Lads packs probe FAILED: PvPPackOne not found in gameSettings.resourcePacks!");
+                }
+                mc.displayGuiScreen(new GuiScreenResourcePacks(mc.currentScreen));
+                wait = 20;
+                step++;
+                return false;
+            case 1:
+                CoreProbe.screenshot(mc, "189-packs-relaunch");
+                mc.displayGuiScreen(new net.minecraft.client.gui.GuiMainMenu());
+                LOG.info("Lads packs relaunch PASS: 189-packs-relaunch captured successfully");
+                step = 0;
+                return true;
+        }
+        return true;
+    }
+
     private static void setSearchText(GuiScreen screen, String text) {
         try {
             for (Field f : screen.getClass().getDeclaredFields()) {
@@ -155,6 +184,11 @@ public final class Probe193Packs189 {
                     GuiTextField tf = (GuiTextField) f.get(screen);
                     if (tf != null) {
                         tf.setText(text);
+                        try {
+                            java.lang.reflect.Method m = screen.getClass().getDeclaredMethod("ladsApplyFilter");
+                            m.setAccessible(true);
+                            m.invoke(screen);
+                        } catch (Exception ignored) {}
                         return;
                     }
                 }

@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -75,6 +76,11 @@ public abstract class PackSelectionScreenMixin extends Screen implements FolderN
             return;
         }
         screen.renderDirtBackground(graphics);
+    }
+
+    @Redirect(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;drawCenteredString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V"))
+    private void ladsSuppressVanillaHeader(GuiGraphics graphics, Font font, Component text, int x, int y, int color) {
+        // Suppress vanilla title and drag-and-drop subtitle so they don't collide with the search bar
     }
 
     @Inject(method = "render", at = @At("RETURN"))

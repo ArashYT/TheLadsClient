@@ -34,17 +34,9 @@ public abstract class FolderRepositorySourceMixin {
 
     @Inject(method = "nameFromPath", at = @At("HEAD"), cancellable = true)
     private static void ladsNameFromPath(Path path, CallbackInfoReturnable<String> cir) {
-        try {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc != null) {
-                Path root = mc.getResourcePackDirectory();
-                if (root != null && path.startsWith(root)) {
-                    String rel = PackFolderHelper.getRelativePath(root, path);
-                    if (rel != null && !rel.isEmpty()) {
-                        cir.setReturnValue(rel);
-                    }
-                }
-            }
-        } catch (Throwable ignored) {}
+        String rel = PackFolderHelper.getRelativePackPath(path);
+        if (!rel.isEmpty() && !rel.equals(path.getFileName().toString())) {
+            cir.setReturnValue(rel);
+        }
     }
 }

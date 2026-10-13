@@ -8,4 +8,7 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 public interface AbstractSelectionListAccessor {
     @Invoker("repositionEntries")
     void ladsInvokeRepositionEntries();
+
+    @org.spongepowered.asm.mixin.gen.Accessor("children")
+    java.util.List ladsGetChildren();
 }

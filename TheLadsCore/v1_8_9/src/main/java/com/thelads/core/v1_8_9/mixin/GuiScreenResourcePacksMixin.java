@@ -177,6 +177,20 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
                     }
                 }
             }
+            // Sync relative ordering of visible items into ladsMasterSelected
+            List<ResourcePackListEntry> visible = new ArrayList<>();
+            for (ResourcePackListEntry entry : selectedResourcePacks) {
+                if (ladsMasterSelected.contains(entry)) {
+                    visible.add(entry);
+                }
+            }
+            int vIdx = 0;
+            for (int i = 0; i < ladsMasterSelected.size() && vIdx < visible.size(); i++) {
+                ResourcePackListEntry current = ladsMasterSelected.get(i);
+                if (visible.contains(current)) {
+                    ladsMasterSelected.set(i, visible.get(vIdx++));
+                }
+            }
         }
     }
 

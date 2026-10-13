@@ -53,6 +53,36 @@ public class PackFolderHelperTest {
     }
 
     @Test
+    public void testRelativePackPath() {
+        // Direct child of resourcepacks
+        Path rootPack = Path.of("C:/Users/Arash/AppData/Roaming/.minecraft/resourcepacks/AlphaPack.zip");
+        assertEquals("AlphaPack.zip", PackFolderHelper.getRelativePackPath(rootPack));
+
+        // Subfolder child of resourcepacks
+        Path subPack = Path.of("C:/Users/Arash/AppData/Roaming/.minecraft/resourcepacks/PvP/PvPPackOne.zip");
+        assertEquals("PvP/PvPPackOne.zip", PackFolderHelper.getRelativePackPath(subPack));
+
+        // Deep subfolder child of resourcepacks
+        Path deepPack = Path.of("C:/minecraft/resourcepacks/PvP/Bedwars/Pack.zip");
+        assertEquals("PvP/Bedwars/Pack.zip", PackFolderHelper.getRelativePackPath(deepPack));
+
+        // Folder pack (directory) inside subfolder
+        Path folderPack = Path.of("/home/user/.minecraft/resourcepacks/Folders/CustomPack");
+        assertEquals("Folders/CustomPack", PackFolderHelper.getRelativePackPath(folderPack));
+
+        // Case-insensitivity on RESOURCEPACKS directory name
+        Path upperPack = Path.of("D:/games/RESOURCEPACKS/PvP/pack.zip");
+        assertEquals("PvP/pack.zip", PackFolderHelper.getRelativePackPath(upperPack));
+
+        // Path not inside a resourcepacks directory falls back to filename
+        Path otherPack = Path.of("C:/custom/path/pack.zip");
+        assertEquals("pack.zip", PackFolderHelper.getRelativePackPath(otherPack));
+
+        // Null and empty checks
+        assertEquals("", PackFolderHelper.getRelativePackPath((Path) null));
+    }
+
+    @Test
     public void testIsInsideFolder() {
         // Non-recursive
         assertTrue(PackFolderHelper.isInsideFolder("pack1.zip", "", false));
