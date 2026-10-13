@@ -13,19 +13,7 @@ import net.minecraft.world.storage.WorldInfo;
  * cheats in the world, and the LAN screen starts on the host's last choice for joined players.
  */
 public final class Cheats189 {
-    private static IntegratedServer opened;
-    private static volatile boolean own;
-    private static boolean agreed;
     private Cheats189() {}
-
-    /** IntegratedServer.loadAllWorlds: the world's own switch, read before Essential puts its own on the world. */
-    public static void loaded(IntegratedServer server) {
-        own = server.worldServers[0].getWorldInfo().areCommandsAllowed();
-    }
-
-    /** Every client tick. */
-    public static void tick(Minecraft mc) {
-    }
 
     /** GuiShareToLan's Start LAN World: Allow Cheats keeps the host's cheats with the world, and the choice is kept for next time. */
     public static void lan(Minecraft mc, boolean cheats) {
@@ -33,7 +21,6 @@ public final class Cheats189 {
         if (server == null) return;
         WorldCheats.guests(folder(mc, server), cheats);
         if (!cheats) return;
-        own = true;
         info(server).setAllowCommands(true);
     }
 

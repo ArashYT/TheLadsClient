@@ -5,7 +5,7 @@ import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.NotEnoughAnimationsModule;
 import com.thelads.core.modules.NotEnoughAnimationsModule.Family;
 import com.thelads.core.modules.OldAnimationsModule;
-import com.thelads.core.v1_20_1.game.ModPresence1201;
+import com.thelads.core.v1_20_1.compat.ModPresence1201;
 import com.thelads.core.v1_20_1.game.anim.NativeOldAnimations1201;
 import java.lang.reflect.Method;
 import java.util.Map;

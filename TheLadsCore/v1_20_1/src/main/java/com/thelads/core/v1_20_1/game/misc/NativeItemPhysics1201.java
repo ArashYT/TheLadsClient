@@ -5,6 +5,7 @@ import com.thelads.core.client.ItemPhysics;
 import com.thelads.core.client.OldAnimations;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.modules.ItemPhysicsModule;
+import com.thelads.core.v1_20_1.game.Gameplay1201;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -144,7 +145,8 @@ public final class NativeItemPhysics1201 {
             pose.popPose();
         }
         drawn++;
-        lastDrawn = String.format("yaw=%.1f pitch=%.1f raise=%.3f copies=%d flat=%b", yaw, pitch, raise, copies, sizeZ <= ItemPhysics.FLAT);
+        if (Gameplay1201.qaActive())
+            lastDrawn = String.format("yaw=%.1f pitch=%.1f raise=%.3f copies=%d flat=%b", yaw, pitch, raise, copies, sizeZ <= ItemPhysics.FLAT);
         return true;
     }
 

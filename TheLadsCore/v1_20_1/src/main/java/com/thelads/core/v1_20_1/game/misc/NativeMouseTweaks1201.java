@@ -2,7 +2,7 @@ package com.thelads.core.v1_20_1.game.misc;
 
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.modules.MouseTweaksModule;
-import com.thelads.core.v1_20_1.game.ModPresence1201;
+import com.thelads.core.v1_20_1.compat.ModPresence1201;
 import com.thelads.core.v1_20_1.game.misc.mixin.CreativeTabAccessor1201;
 import java.util.ArrayList;
 import java.util.List;

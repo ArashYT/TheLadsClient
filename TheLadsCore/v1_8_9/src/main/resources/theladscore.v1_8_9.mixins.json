@@ -43,7 +43,6 @@
     "GuiSlotMixin",
     "GuiSlotAccessor",
     "FoodStatsAccessor",
-    "IntegratedServerMixin",
     "IntegratedServerLogoutMixin189",
     "InventoryEffectRendererMixin",
     "ItemFoodFields",

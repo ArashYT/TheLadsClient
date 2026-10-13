@@ -4,7 +4,7 @@ import com.thelads.core.client.DynamicLights;
 import com.thelads.core.client.ItemPhysics;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.v1_20_1.game.Gameplay1201;
-import com.thelads.core.v1_20_1.game.ModPresence1201;
+import com.thelads.core.v1_20_1.compat.ModPresence1201;
 import com.thelads.core.v1_20_1.game.misc.mixin.ContainerAccess1201;
 import com.thelads.core.v1_20_1.game.misc.mixin.MouseAccess1201;
 import java.util.ArrayList;

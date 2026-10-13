@@ -12,7 +12,7 @@ import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.SkinLayersModule;
 import com.thelads.core.v1_20_1.game.Gameplay1201;
-import com.thelads.core.v1_20_1.game.ModPresence1201;
+import com.thelads.core.v1_20_1.compat.ModPresence1201;
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.util.LinkedHashMap;
