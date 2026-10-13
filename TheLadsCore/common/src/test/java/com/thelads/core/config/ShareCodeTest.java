@@ -357,8 +357,10 @@ class ShareCodeTest {
 
         JsonObject mods = new JsonObject();
         mods.add("CPS", new JsonObject());
-        mods.add("FPS", new JsonObject());
         payload.add("modules", mods);
+        assertEquals("1 module, layout", ShareCode.summarize(payload));
+
+        mods.add("FPS", new JsonObject());
         assertEquals("2 modules, layout", ShareCode.summarize(payload));
     }
 

@@ -315,7 +315,8 @@ public final class ShareCode {
         if (payload.has("modules") && payload.get("modules").isJsonObject()) {
             count = payload.getAsJsonObject("modules").size();
         }
-        return count + " modules, layout";
+        String unit = count == 1 ? "module" : "modules";
+        return count + " " + unit + ", layout";
     }
 
     public static boolean isExcludedModule(String moduleName) {

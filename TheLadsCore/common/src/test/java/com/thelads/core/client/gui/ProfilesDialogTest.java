@@ -86,6 +86,6 @@ class ProfilesDialogTest {
         // Perform import via reflection or simulate click
         // Let's verify ShareCode decoding with clipboard
         JsonObject decoded = ShareCode.decode(code);
-        assertEquals("1 modules, layout", ShareCode.summarize(decoded));
+        assertEquals("1 module, layout", ShareCode.summarize(decoded));
     }
 }
