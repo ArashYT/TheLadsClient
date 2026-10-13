@@ -43,7 +43,7 @@ public final class HypixelQa {
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
-    private static final String[] MODULES = {HypixelMods.HYPIXEL_MODS, "PingHUD", "PingView"};
+    private static final String[] MODULES = {HypixelMods.HYPIXEL_MODS, "PingHUD", "PingView", "Coordinates"};
     private final List<String> failures = new ArrayList<>();
     private final Map<Module, Boolean> enabled = new LinkedHashMap<>();
     private final Map<Option, JsonElement> options = new LinkedHashMap<>();
@@ -181,9 +181,69 @@ public final class HypixelQa {
                 wait = 5;
             }
             case 16 -> { menu = game.openSettings(HypixelMods.HYPIXEL_MODS); wait = 10; }
-            case 17 -> { game.screenshot("hypixel-mods"); wait = 5; }
-            case 18 -> { game.screenshot("hypixel-auto-gg"); wait = 5; }
-            case 19 -> { game.screenshot("hypixel-chat-cleanup"); wait = 5; }
+            case 17 -> {
+                check(!menu.currentDetailHasPreview(), "Hypixel Mods module settings has NO preview panel");
+                LadsSettingsScreen.Rect first = menu.controlBounds("option:" + HypixelMods.AUTO_GG);
+                LadsSettingsScreen.Rect second = menu.controlBounds("option:" + HypixelMods.AUTO_GG + ": Message");
+                check(first != null && second != null && second.x() > first.x() + 100, "Hypixel Mods settings in two columns: first=" + (first != null ? first.x() : -1) + ", second=" + (second != null ? second.x() : -1));
+                game.screenshot("hypixel-mods");
+                wait = 5;
+            }
+            case 18 -> {
+                int initial = menu.getScrollOffset();
+                menu.scrollBy(100);
+                int scrolled = menu.getScrollOffset();
+                check(scrolled > initial, "scrolled Hypixel Mods settings: " + scrolled + " > " + initial);
+                wait = 5;
+            }
+            case 19 -> {
+                check(menu.getScrollOffset() > 0, "Hypixel Mods settings offset is scrolled: " + menu.getScrollOffset());
+                game.screenshot("hypixel-mods-scrolled");
+                wait = 5;
+            }
+            case 20 -> {
+                menu = game.openSettings("Coordinates");
+                wait = 10;
+            }
+            case 21 -> {
+                check(menu.currentDetailHasPreview(), "Coordinates module settings HAS live HUD preview panel");
+                game.screenshot("hud-preview-settings");
+                wait = 5;
+            }
+            case 22 -> {
+                int initial = menu.getScrollOffset();
+                boolean downHandled = menu.keyPressed(264, 0); // Down arrow
+                int afterDown = menu.getScrollOffset();
+                check(downHandled && afterDown == initial + 28, "down arrow key scrolled settings by 28px: " + afterDown);
+
+                boolean upHandled = menu.keyPressed(265, 0); // Up arrow
+                int afterUp = menu.getScrollOffset();
+                check(upHandled && afterUp == initial, "up arrow key scrolled settings back to initial: " + afterUp);
+
+                LadsSettingsScreen.Rect track = menu.scrollbarTrackBounds();
+                LadsSettingsScreen.Rect thumb = menu.scrollbarThumbBounds();
+                check(track != null && thumb != null, "scrollbar track and thumb bounds exist: " + track + ", " + thumb);
+                if (track != null && thumb != null) {
+                    menu.mouseClicked(thumb.x() + 2, thumb.y() + thumb.height() / 2, 0);
+                    check(menu.isDraggingScrollbar(), "scrollbar thumb click starts dragging");
+                    menu.mouseDragged(thumb.x() + 2, thumb.y() + 40, 0, 0, 40);
+                    int afterDrag = menu.getScrollOffset();
+                    check(afterDrag > 0, "dragging scrollbar thumb updated scrollOffset: " + afterDrag);
+                    menu.mouseReleased(thumb.x() + 2, thumb.y() + 40, 0);
+                    check(!menu.isDraggingScrollbar(), "scrollbar thumb released");
+
+                    menu.scrollBy(-10000);
+                    menu.mouseClicked(track.x() + 2, track.y() + track.height() - 2, 0);
+                    int afterPageDown = menu.getScrollOffset();
+                    check(afterPageDown > 0, "clicking scrollbar track below thumb paged down: " + afterPageDown);
+                }
+                wait = 5;
+            }
+            case 23 -> {
+                check(menu.getScrollOffset() > 0, "Coordinates settings offset is scrolled: " + menu.getScrollOffset());
+                game.screenshot("scrollbar-scrolled");
+                wait = 5;
+            }
             default -> {
                 game.closeScreen();
                 HypixelSafetyManager.qaOverride = false;

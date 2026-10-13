@@ -54,8 +54,11 @@ public final class ModuleSupport {
     }
     public static String externalModId(String name) { return EXTERNAL_MOD_IDS.get(name); }
     public static String getExternalId(String name) { return EXTERNAL_IDS.get(name); }
-    public static boolean isBuiltIn(String name) { return BUILT_IN.contains(name); }
-    /** Same rule as the in-game card toggle: only built-in modules that are not settings-only. */
+    public static boolean isBuiltIn(String name) {
+        if (BUILT_IN.contains(name)) return true;
+        for (String b : BUILT_IN) if (b.equalsIgnoreCase(name)) return true;
+        return false;
+    }
     public static boolean isToggleable(String name) { return isBuiltIn(name) && !isSettingsOnly(name); }
     /** Catalog support kind: builtIn, external (wraps an upstream mod), unavailable, or pending (never registered here). */
     public static String support(String name) {
