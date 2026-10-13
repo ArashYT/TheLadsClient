@@ -445,8 +445,9 @@ public final class KillBanner189 {
     /** After Forge's whole overlay, as the other versions draw at the HUD's end; F1 skips 1.8.9's overlay, hiding it as on 26.x. */
     @SubscribeEvent
     public void overlay(RenderGameOverlayEvent.Post event) {
+        if (event.type != RenderGameOverlayEvent.ElementType.ALL) return;
         KillBannerModule module = module();
-        if (event.type != RenderGameOverlayEvent.ElementType.ALL || !eligible() || module == null) return;
+        if (!eligible() || module == null) return;
         double age = BANNER.age(System.nanoTime());
         if (age < 0) return;
         long started = System.nanoTime(); // QA only: what the banner costs a frame (renderTimes)

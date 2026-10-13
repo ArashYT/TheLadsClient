@@ -20,6 +20,7 @@ public static class BundledModInstaller
     {
         GameVersionPolicy.ValidateMinecraftVersion(minecraftVersion);
         cancellationToken.ThrowIfCancellationRequested();
+        InstallConfiguredDefaults(bundleRoot, gameDir, minecraftVersion);
         // 1.8.9's Core is a Forge mod (mcmod.info); every other version's is the Fabric one. Neither is ever used for the other.
         var forge = GameVersionPolicy.UsesForge(minecraftVersion);
         var bundle = Path.GetFullPath(bundleRoot);
@@ -261,5 +262,23 @@ public static class BundledModInstaller
             catch (DirectoryNotFoundException) { }
         }
         return fullPath;
+    }
+
+    /// <summary>Installs bundled configured-defaults for the version if present, without overwriting existing files.</summary>
+    public static void InstallConfiguredDefaults(string bundleRoot, string gameDir, string minecraftVersion)
+    {
+        var source = Path.Combine(bundleRoot, "game-mods", minecraftVersion, PackDefaults.FolderName);
+        if (!Directory.Exists(source)) return;
+        var target = Path.Combine(gameDir, PackDefaults.FolderName);
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(source, file);
+            var dest = Path.Combine(target, relative);
+            if (!File.Exists(dest) && !Directory.Exists(dest))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
+                File.Copy(file, dest);
+            }
+        }
     }
 }

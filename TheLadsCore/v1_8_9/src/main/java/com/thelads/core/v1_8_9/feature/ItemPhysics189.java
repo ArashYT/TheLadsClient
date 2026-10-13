@@ -162,9 +162,12 @@ public final class ItemPhysics189 {
     public void clientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.START) return;
         Minecraft mc = Minecraft.getMinecraft();
+        if (!mc.isIntegratedServerRunning() || mc.thePlayer == null || mc.currentScreen != null || mc.thePlayer.isSpectator()) {
+            CHARGE.reset();
+            return;
+        }
         ItemPhysicsModule module = module();
-        if (module == null || !module.isEnabled() || !module.charged.get() || !mc.isIntegratedServerRunning() || mc.thePlayer == null
-            || mc.currentScreen != null || mc.thePlayer.isSpectator()) {
+        if (module == null || !module.isEnabled() || !module.charged.get()) {
             CHARGE.reset();
             return;
         }
@@ -190,8 +193,9 @@ public final class ItemPhysics189 {
     /** The charge, as a thin bar under the crosshair (after the whole HUD: a Lads crosshair replaces vanilla's). */
     @SubscribeEvent
     public void overlay(RenderGameOverlayEvent.Post event) {
+        if (event.type != RenderGameOverlayEvent.ElementType.ALL) return;
         float shown = CHARGE.shown();
-        if (event.type != RenderGameOverlayEvent.ElementType.ALL || shown <= 0) return;
+        if (shown <= 0) return;
         int x = event.resolution.getScaledWidth() / 2 - 8, y = event.resolution.getScaledHeight() / 2 + 9;
         Gui.drawRect(x, y, x + 16, y + 2, 0x80000000);
         Gui.drawRect(x, y, x + Math.round(16 * shown), y + 2, 0xE0FFFFFF);

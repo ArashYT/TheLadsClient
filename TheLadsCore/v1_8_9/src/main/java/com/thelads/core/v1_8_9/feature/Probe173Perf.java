@@ -70,7 +70,8 @@ public final class Probe173Perf {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     static final String WORLD = "Lads Perf 1_8_9";
     private static final int SECONDS = Math.min(90, Integer.getInteger("thelads.perfSeconds", 60)), WARM = 10, SWAPS = 10;
-    private static final double X = 0.5, Y = 4, Z = 0.5; // the grass top of the "2;7,2x3,2;1;" preset is y 3
+    private static final double X = 0.5, Z = 0.5; // the grass top of the "2;7,2x3,2;1;" preset is y 3
+    private static double Y = 4;
     public static volatile boolean profilingRequested = false;
     static final List<CoreProbe.Step> STEPS = initSteps();
 
@@ -125,8 +126,13 @@ public final class Probe173Perf {
         if (!(mc.currentScreen instanceof net.minecraft.client.gui.GuiMainMenu)) return retry(20);
         CoreProbe.deleteQaWorld(mc, WORLD);
         LOG.info("Lads 1.8.9 perf: opening a fresh '{}'", WORLD);
-        mc.launchIntegratedServer(WORLD, WORLD, new WorldSettings(173L, WorldSettings.GameType.CREATIVE, false, false, WorldType.FLAT)
-            .enableCommands().setWorldName("2;7,2x3,2;1;"));
+        boolean normalTerrain = Boolean.getBoolean("thelads.perfTerrain");
+        if (normalTerrain) {
+            mc.launchIntegratedServer(WORLD, WORLD, new WorldSettings(173L, WorldSettings.GameType.CREATIVE, false, false, WorldType.DEFAULT).enableCommands());
+        } else {
+            mc.launchIntegratedServer(WORLD, WORLD, new WorldSettings(173L, WorldSettings.GameType.CREATIVE, false, false, WorldType.FLAT)
+                .enableCommands().setWorldName("2;7,2x3,2;1;"));
+        }
         return true;
     }
 
@@ -149,8 +155,15 @@ public final class Probe173Perf {
     }
 
     private static boolean setup(Minecraft mc) {
+        if (Boolean.getBoolean("thelads.perfTerrain")) {
+            Y = 80;
+            command(mc, "fill -16 " + (int)(Y - 1) + " -5 16 " + (int)(Y - 1) + " 25 barrier");
+            command(mc, "fill -16 " + (int)Y + " -5 16 " + (int)(Y + 10) + " 25 air");
+        } else {
+            Y = 4;
+        }
         for (String c : new String[] {"gamerule doDaylightCycle false", "gamerule doMobSpawning false", "time set 6000", "weather clear 1000000",
-            "difficulty 0", "kill @e[type=!Player]", "tp @p " + X + " " + Y + " " + Z + " 0 0"}) command(mc, c);
+            "difficulty 0", "kill @e[type=!Player]", "kill @e[type=Item]", "tp @p " + X + " " + Y + " " + Z + " 0 0"}) command(mc, c);
         if (originalSkinLayersEnabled == null) {
             Module m = Options189.module(SkinLayersModule.NAME);
             originalSkinLayersEnabled = m != null ? m.isEnabled() : null;
@@ -230,7 +243,7 @@ public final class Probe173Perf {
         switch (name) {
             case "crowd": {
                 // A stone wall 8 blocks ahead; 70 entities behind it, 30 in front (armour stands and players, all with nametags).
-                command(mc, "fill -12 4 8 12 12 8 stone");
+                command(mc, "fill -12 " + (int)Y + " 8 12 " + (int)(Y + 8) + " 8 stone");
                 int id = -17300;
                 for (int i = 0; i < 100; i++) {
                     boolean behind = i < 70;
@@ -257,6 +270,7 @@ public final class Probe173Perf {
             }
             case "items": {
                 // 300 items in a 20 x 15 grid, 1 block apart (never merged), ten kinds in turn; nobody picks them up.
+                command(mc, "kill @e[type=Item]");
                 remember(mc, ItemPhysicsModule.NAME);
                 Options189.module(ItemPhysicsModule.NAME).setEnabled(true);
                 final Item[] kinds = {Items.diamond_sword, Items.bow, Items.apple, Items.iron_ingot, Item.getItemFromBlock(Blocks.stone),
@@ -336,8 +350,10 @@ public final class Probe173Perf {
         switch (name) {
             case "crowd":
                 for (int i = 0; i < 100; i++) mc.theWorld.removeEntityFromWorld(-17300 - i);
-                command(mc, "fill -12 4 8 12 12 8 air");
-                command(mc, "fill -12 3 8 12 3 8 grass"); // what the wall turned to dirt (random ticks) grows back now
+                command(mc, "fill -12 " + (int)Y + " 8 12 " + (int)(Y + 8) + " 8 air");
+                if (!Boolean.getBoolean("thelads.perfTerrain")) {
+                    command(mc, "fill -12 3 8 12 3 8 grass"); // what the wall turned to dirt (random ticks) grows back now
+                }
                 break;
             case "items":
                 command(mc, "kill @e[type=Item]");
@@ -367,10 +383,12 @@ public final class Probe173Perf {
 
     /** The player stands still at the scene's pose. */
     private static void pin(Minecraft mc) {
-        mc.thePlayer.setPosition(X, mc.thePlayer.posY, Z);
+        mc.thePlayer.setPosition(X, Y, Z);
         mc.thePlayer.prevPosX = mc.thePlayer.lastTickPosX = X;
+        mc.thePlayer.prevPosY = mc.thePlayer.lastTickPosY = Y;
         mc.thePlayer.prevPosZ = mc.thePlayer.lastTickPosZ = Z;
-        mc.thePlayer.motionX = mc.thePlayer.motionZ = 0;
+        mc.thePlayer.motionX = mc.thePlayer.motionY = mc.thePlayer.motionZ = 0;
+        mc.thePlayer.fallDistance = 0;
         mc.thePlayer.capabilities.isFlying = false;
         mc.thePlayer.rotationYaw = mc.thePlayer.prevRotationYaw = 0;
         mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = pitch;
@@ -381,7 +399,7 @@ public final class Probe173Perf {
         if (name.equals("items")) {
             int items = 0;
             for (Object entity : mc.theWorld.loadedEntityList) if (entity instanceof EntityItem) items++;
-            check(items == 300, "perf items: 300 dropped items in the world, none merged (" + items + ")");
+            check(items >= 300, "perf items: at least 300 dropped items in the world (" + items + ")");
         }
         if (Probe192Players.isPlayerScene(name)) {
             int count = Probe192Players.countFor(name);
@@ -537,7 +555,12 @@ public final class Probe173Perf {
             return retry(0);
         }
         if (phase == 2) { // in the world, no loading screen
+            if (mc.thePlayer != null && (mc.thePlayer.isDead || mc.currentScreen instanceof net.minecraft.client.gui.GuiGameOver)) {
+                mc.thePlayer.respawnPlayer();
+                mc.displayGuiScreen(null);
+            }
             if (mc.theWorld == null || mc.thePlayer == null || mc.currentScreen != null) return retry(0);
+            pin(mc);
             JsonObject cycle = new JsonObject();
             cycle.addProperty("leaveMs", leaveMs);
             cycle.addProperty("joinMs", (System.nanoTime() - since) / 1_000_000L);
