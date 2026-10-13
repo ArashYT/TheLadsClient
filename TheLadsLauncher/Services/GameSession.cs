@@ -52,7 +52,16 @@ public static class GameSession
         startInfo.Environment["THELADS_DIR"] = gameDirectory;
         startInfo.Environment[SharedContentService.RootEnvironmentVariable] = sharedRoot;
         startInfo.Environment[GameOptionsService.LunarEnvironmentVariable] = GameOptionsService.LunarRoot();
-        if (minecraftVersion != null) GameOptionsService.EnsureDataVersion(gameDirectory, minecraftVersion);
+        if (minecraftVersion != null)
+        {
+            GameOptionsService.EnsureDataVersion(gameDirectory, minecraftVersion);
+            if (GameOptionsService.IsLegacy18(minecraftVersion))
+            {
+                GameOptionsService.EnsureDefaultOptiFine18(Path.Combine(gameDirectory, "optionsof.txt"));
+                var optionsFile = Path.Combine(gameDirectory, "options.txt");
+                if (!File.Exists(optionsFile)) GameOptionsService.WriteAtomically(optionsFile, "useVbo:true\n");
+            }
+        }
         PackDefaults.Apply(gameDirectory);
     }
 
