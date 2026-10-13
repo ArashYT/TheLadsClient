@@ -8,12 +8,15 @@ import org.apache.logging.log4j.Logger;
 
 /**
  * Automatically disables OptiFine's Fast Render when a shader pack is switched ON, and restores Fast Render back ON
- * when shaders are switched back OFF (only if we disabled it).
+ * when shaders are switched back OFF (only if we disabled it). Better Resolution holds it off the same way while it scales the
+ * world: OptiFine turns framebuffers off under Fast Render, which would leave Better Resolution doing nothing.
  */
 public final class OptiFineShaderLink189 {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     private static boolean disabledByUs = false;
     private static boolean shadersActive = false;
+    /** Better Resolution is scaling the world and needs framebuffers (RenderScale189). */
+    private static boolean scaleHolds = false;
 
     private OptiFineShaderLink189() {}
 
@@ -52,12 +55,29 @@ public final class OptiFineShaderLink189 {
             }
             shadersActive = true;
         } else {
-            if (disabledByUs) {
+            if (disabledByUs && !scaleHolds) {
                 disabledByUs = false;
                 setFastRender(true);
                 LOG.info("OptiFine Fast Render restored automatically after shader pack disabled");
             }
             shadersActive = false;
+        }
+    }
+
+    /** RenderScale189, when Better Resolution starts or stops wanting a non-native scale. */
+    public static void betterResolution(boolean scaling) {
+        if (scaling == scaleHolds) return;
+        scaleHolds = scaling;
+        if (scaling) {
+            if (isFastRenderOn()) {
+                disabledByUs = true;
+                setFastRender(false);
+                LOG.info("OptiFine Fast Render disabled automatically for Better Resolution");
+            }
+        } else if (disabledByUs && !shadersActive) {
+            disabledByUs = false;
+            setFastRender(true);
+            LOG.info("OptiFine Fast Render restored automatically after Better Resolution");
         }
     }
 

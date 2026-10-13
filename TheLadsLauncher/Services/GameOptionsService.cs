@@ -341,6 +341,18 @@ public static class GameOptionsService
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or JsonException) { return null; }
     }
 
+    /// <summary>OptiFine's shaders.txt names a shader pack other than OFF / (internal).</summary>
+    static bool ShaderPackSelected(string gameDirectory)
+    {
+        var shaders = Path.Combine(gameDirectory, "optionsshaders.txt");
+        if (!File.Exists(shaders)) return false;
+        // optionsshaders.txt is key=value ("shaderPack=Sildurs.zip"), unlike options.txt
+        var line = File.ReadLines(shaders).FirstOrDefault(l => l.StartsWith("shaderPack=", StringComparison.Ordinal));
+        var pack = line?["shaderPack=".Length..].Trim();
+        return !string.IsNullOrEmpty(pack) && !pack.Equals("OFF", StringComparison.OrdinalIgnoreCase)
+            && !pack.Equals("(internal)", StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Writes default OptiFine options for a 1.8.9 instance, applying defaults to existing installs once.</summary>
     public static void EnsureDefaultOptions18(string gameDirectory)
     {
@@ -350,14 +362,20 @@ public static class GameOptionsService
 
         if (!optionsMap.ContainsKey("theladsOfDefaultsMigrated"))
         {
+            // Once per install (owner, 1.9.2): VBOs, Fast Render and Fast Math on. Render Regions and Smart Animations stay
+            // new-install defaults only (below), and Fast Render stays off while a shader pack is selected (it breaks shaders).
+            bool newInstall = !File.Exists(optiFineFile);
             optionsMap["theladsOfDefaultsMigrated"] = "true";
             optionsMap["useVbo"] = "true";
             WriteAtomically(optionsFile, SerializeOptions(optionsMap));
 
-            var ofMap = File.Exists(optiFineFile) ? ParseOptions(File.ReadAllText(optiFineFile)) : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            ofMap["ofRenderRegions"] = "true";
-            ofMap["ofSmartAnimations"] = "true";
-            ofMap["ofFastRender"] = "true";
+            var ofMap = newInstall ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) : ParseOptions(File.ReadAllText(optiFineFile));
+            if (newInstall)
+            {
+                ofMap["ofRenderRegions"] = "true";
+                ofMap["ofSmartAnimations"] = "true";
+            }
+            if (!ShaderPackSelected(gameDirectory)) ofMap["ofFastRender"] = "true";
             ofMap["ofFastMath"] = "true";
             WriteAtomically(optiFineFile, SerializeOptions(ofMap));
         }

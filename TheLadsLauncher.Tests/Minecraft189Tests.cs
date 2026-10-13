@@ -321,10 +321,20 @@ public class Minecraft189Tests
         Assert.Equal("true", instance["useVbo"]);
         Assert.Equal("true", instance["theladsOfDefaultsMigrated"]);
         ofOptions = Options(optiFine);
-        Assert.Equal("true", ofOptions["ofRenderRegions"]);
-        Assert.Equal("true", ofOptions["ofSmartAnimations"]);
+        Assert.Equal("false", ofOptions["ofRenderRegions"]);   // new-install defaults only
+        Assert.Equal("false", ofOptions["ofSmartAnimations"]);
         Assert.Equal("true", ofOptions["ofFastRender"]);
         Assert.Equal("true", ofOptions["ofFastMath"]);
+
+        // Existing unmigrated install with a shader pack selected: Fast Render stays off (it breaks shaders)
+        File.WriteAllText(options, "useVbo:false\n");
+        File.WriteAllText(optiFine, "ofFastRender:false\nofFastMath:false\n");
+        File.WriteAllText(Path.Combine(l.Game189, "optionsshaders.txt"), "shaderPack=BSL.zip\n");
+        await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+        ofOptions = Options(optiFine);
+        Assert.Equal("false", ofOptions["ofFastRender"]);
+        Assert.Equal("true", ofOptions["ofFastMath"]);
+        File.Delete(Path.Combine(l.Game189, "optionsshaders.txt"));
 
         // Migrated player's subsequent choice: set everything to false, keeping theladsOfDefaultsMigrated:true
         File.WriteAllText(options, "theladsOfDefaultsMigrated:true\nuseVbo:false\n");
