@@ -109,7 +109,34 @@ public final class UiQa1201 {
             LOGGER.info("Lads qa ui hud controls: {}", ui.controls().stream().map(c -> c.id()).toList());
             return true;
         }
-        if (!op.equals("click")) throw new IllegalArgumentException("ui hud click <id> | ui hud ids");
+        if (op.equals("profiles")) {
+            if (id.equals("open")) {
+                var b = ui.controls().stream().filter(c -> c.id().equals("profiles")).findFirst().orElseThrow().bounds();
+                screen.mouseClicked(b.x() + b.width() / 2.0, b.y() + b.height() / 2.0, 0);
+                screen.mouseReleased(b.x() + b.width() / 2.0, b.y() + b.height() / 2.0, 0);
+                return true;
+            }
+            if (id.equals("close")) {
+                screen.keyPressed(256, 0, 0);
+                return true;
+            }
+            if (id.equals("import")) {
+                var sample = new com.google.gson.JsonObject();
+                sample.addProperty("v", 1);
+                var mods = new com.google.gson.JsonObject();
+                var cps = new com.google.gson.JsonObject();
+                cps.addProperty("enabled", true);
+                mods.add("CPS", cps);
+                sample.add("modules", mods);
+                String code = com.thelads.core.config.ShareCode.encode(sample);
+                ui.setClipboardReader(() -> code);
+                var b = ui.profilesDialog().importBounds();
+                screen.mouseClicked(b.x() + b.width() / 2.0, b.y() + b.height() / 2.0, 0);
+                screen.mouseReleased(b.x() + b.width() / 2.0, b.y() + b.height() / 2.0, 0);
+                return true;
+            }
+        }
+        if (!op.equals("click")) throw new IllegalArgumentException("ui hud click <id> | ui hud ids | ui hud profiles <open|close|import>");
         var control = ui.controls().stream().filter(c -> c.id().equals(id)).findFirst()
             .orElseThrow(() -> new IllegalStateException("ui hud click: no control '" + id + "'"));
         double x = control.bounds().x() + control.bounds().width() / 2.0, y = control.bounds().y() + control.bounds().height() / 2.0;

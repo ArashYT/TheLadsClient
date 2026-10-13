@@ -121,6 +121,27 @@ final class Probe172Ui {
             check(hud().boundsFor("CPS") != null, "the HUD editor shows the fixture layout");
             layout = snapshot();
             screenshot(mc, "ui172-hud-1-before");
+            return pressHud("profiles", 4);
+        });
+        STEPS.add(mc -> {
+            check(hud().profilesDialog().isOpen(), "Profiles dialog opens");
+            screenshot(mc, "hp-profiles-panel");
+            com.google.gson.JsonObject sample = new com.google.gson.JsonObject();
+            sample.addProperty("v", 1);
+            com.google.gson.JsonObject mods = new com.google.gson.JsonObject();
+            com.google.gson.JsonObject cps = new com.google.gson.JsonObject();
+            cps.addProperty("enabled", true);
+            mods.add("CPS", cps);
+            sample.add("modules", mods);
+            String code = com.thelads.core.config.ShareCode.encode(sample);
+            hud().setClipboardReader(() -> code);
+            clickRect(hud().profilesDialog().importBounds());
+            return after(4);
+        });
+        STEPS.add(mc -> {
+            check(hud().profilesDialog().mode() == com.thelads.core.client.gui.ProfilesDialog.Mode.CHOICE_IMPORT, "Import dialog opens in choice mode");
+            screenshot(mc, "hp-import-dialog");
+            hud().profilesDialog().close();
             return pressHud("reset", 4);
         });
         STEPS.add(mc -> {

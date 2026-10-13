@@ -50,9 +50,10 @@ final class NativeHudEditorProbe implements AutoCloseable {
     private int shotFrames;
     private boolean shotTaken;
     private Throwable shotFailure;
+    private boolean directShot;
     private static final Set<String> PAIR = Set.of("CPS", "Day");
     private static final List<String> FIXTURE = List.of("CPS", "Day", "FPS", "Health");
-    private static final int STAGES = 15;
+    private static final int STAGES = 17;
 
     DraggableHudScreen26 open() {
         check(NativeWorldVerification.worldReady(), "strict isolated QA world guard");
@@ -124,17 +125,38 @@ final class NativeHudEditorProbe implements AutoCloseable {
                 shot("hud-editor-default");
             }
             case 1 -> {
+                button("profiles");
+                check(controller.profilesDialog().isOpen(), "Profiles dialog opens");
+                shotDirect("hp-profiles-panel");
+            }
+            case 2 -> {
+                com.google.gson.JsonObject sample = new com.google.gson.JsonObject();
+                sample.addProperty("v", 1);
+                com.google.gson.JsonObject mods = new com.google.gson.JsonObject();
+                com.google.gson.JsonObject cps = new com.google.gson.JsonObject();
+                cps.addProperty("enabled", true);
+                mods.add("CPS", cps);
+                sample.add("modules", mods);
+                String code = com.thelads.core.config.ShareCode.encode(sample);
+                controller.setClipboardReader(() -> code);
+                clickScreen(controller.profilesDialog().importBounds());
+                check(controller.profilesDialog().mode() == com.thelads.core.client.gui.ProfilesDialog.Mode.CHOICE_IMPORT, "Import dialog opens in choice mode");
+                shotDirect("hp-import-dialog");
+            }
+            case 3 -> {
+                controller.profilesDialog().close();
+                check(!controller.profilesDialog().isOpen(), "Profiles dialog closed");
                 button("previews");
                 check(controller.isShowingAll() && controller.listedNames().size() > FIXTURE.size()
                     && controller.listedNames().contains("Memory"), "Show disabled lists switched-off HUDs");
                 shot("hud-editor-all");
             }
-            case 2 -> {
+            case 4 -> {
                 check(controller.boundsFor("Memory") != null, "Show disabled previews switched-off HUDs");
                 button("previews");
                 check(!controller.isShowingAll() && controller.listedNames().equals(FIXTURE), "Show disabled off lists switched-on HUDs again");
             }
-            case 3 -> {
+            case 5 -> {
                 check(controller.boundsFor("Memory") == null, "and previews only them");
                 click(bounds("CPS"), 0); click(bounds("Day"), 2);
                 check(controller.selectedNames().equals(PAIR), "native Ctrl-click selects two HUDs");
@@ -142,14 +164,14 @@ final class NativeHudEditorProbe implements AutoCloseable {
                 key(71, 2);
                 check(PAIR.equals(settings.getGroupMembers("CPS")), "native Ctrl-G creates a persistent group");
             }
-            case 4 -> {
+            case 6 -> {
                 beforeCps = bounds("CPS"); beforeDay = bounds("Day");
                 check(Math.abs((beforeCps.x()+beforeCps.width()/2)-(beforeDay.x()+beforeDay.width()/2))<=1, "group centers align with mixed module scales");
                 check(beforeDay.y()==beforeCps.bottom()+2,"group stack packs rows without overlap");
                 drag(beforeCps, 10000, -10000, 0);
                 check(relative(bounds("CPS"), bounds("Day"), beforeCps, beforeDay), "group border drag preserves both offsets");
             }
-            case 5 -> {
+            case 7 -> {
                 Rect cps = bounds("CPS"), day = bounds("Day");
                 check(relative(cps, day, beforeCps, beforeDay), "next completed render preserves grouped offsets");
                 check(cps.x() >= 0 && day.x() >= 0 && Math.max(cps.right(), day.right()) == screen.width
@@ -166,7 +188,7 @@ final class NativeHudEditorProbe implements AutoCloseable {
                 click(cps, 0);
                 check(controller.selectedNames().equals(PAIR), "locked group remains selectable for unlocking");
             }
-            case 6 -> {
+            case 8 -> {
                 button("unlock");
                 check(!settings.isLocked("CPS") && !settings.isLocked("Day"), "Unlock releases both group members");
                 key(263, 0); key(264, 1);
@@ -182,7 +204,7 @@ final class NativeHudEditorProbe implements AutoCloseable {
                 screen.mouseClicked(new MouseButtonEvent(controller.screenX(b.x()+1), controller.screenY(b.y()+1), new MouseButtonInfo(InputConstants.MOUSE_BUTTON_RIGHT, 0)), false);
                 check(controller.selectedNames().equals(PAIR), "right-click preserves multi-selection for grouping");
             }
-            case 7 -> {
+            case 9 -> {
                 var group = controller.contextControls().stream().filter(c -> c.id().equals("group")).findFirst().orElseThrow();
                 check(group.enabled(), "context Group is enabled for two selected modules"); clickScreen(group.bounds());
                 check(PAIR.equals(settings.getGroupMembers("Day")), "right-click Group creates the centered stack");
@@ -198,7 +220,7 @@ final class NativeHudEditorProbe implements AutoCloseable {
                     "the FPS row switch disables the module and its row leaves the default list");
                 button("previews");
             }
-            case 8 -> {
+            case 10 -> {
                 // The list is alphabetical and this window shows few rows: FPS's row is only drawn (and clickable) once scrolled into view.
                 if (controller.toggleBoundsFor("FPS") == null) {
                     controller.revealRow("FPS");
@@ -210,7 +232,7 @@ final class NativeHudEditorProbe implements AutoCloseable {
                 check(ModuleManager.getInstance().getModule("FPS").isEnabled(), "the row switch turns FPS back on");
                 button("previews");
             }
-            case 9 -> {
+            case 11 -> {
                 // A plain drop: Health dragged until it docks under the CPS + Day stack, left mid-drag for the capture.
                 Rect day = bounds("Day"), health = bounds("Health");
                 press(health, 0); moveTo(health, day.x() + 1 - health.x(), day.bottom() + 2 - health.y());
@@ -218,14 +240,14 @@ final class NativeHudEditorProbe implements AutoCloseable {
                     "snapping docks Health under Day during the drag: " + bounds("Health") + " under " + day);
                 shot("hud-editor-dragging");
             }
-            case 10 -> {
+            case 12 -> {
                 Rect day = bounds("Day");
                 releaseAt(bounds("Health"), 0);
                 check(settings.getGroupMembers("Health") == null && PAIR.equals(settings.getGroupMembers("Day")), "a plain drop docks Health without grouping it");
                 check(bounds("Health").y() == day.bottom() && saved("Health", bounds("Health")), "the docked drop is saved where it shows: " + bounds("Health"));
                 shot("hud-editor-plain-drop");
             }
-            case 11 -> {
+            case 13 -> {
                 // The same drop with Shift held from press to release: Health joins the stack's group.
                 Rect health = bounds("Health");
                 press(health, 1); moveTo(health, 0, 30); moveTo(health, 0, 0); releaseAt(health, 1);
@@ -233,7 +255,7 @@ final class NativeHudEditorProbe implements AutoCloseable {
                 click(bounds("Health"), 0); // selected, so the capture shows the group outline
                 shot("hud-editor-shift-group");
             }
-            case 12 -> {
+            case 14 -> {
                 // The edited layout in game: the editor closes; the next frames draw the Lads HUD itself.
                 // FPS keeps its saved 10000,10 and is only clamped on screen, in game as in the preview.
                 for (String name : List.of("CPS", "Day", "Health")) check(saved(name, bounds(name)), name + " is saved where the preview shows it");
@@ -243,11 +265,11 @@ final class NativeHudEditorProbe implements AutoCloseable {
                 mc.setScreenAndShow(null);
                 nextStep = System.nanoTime() + 1_000_000_000L;
             }
-            case 13 -> {
+            case 15 -> {
                 check(mc.gui.screen() == null, "the editor closed to gameplay");
                 shot("hud-ingame-after-edit");
             }
-            case 14 -> {
+            case 16 -> {
                 inGame = false;
                 mc.setScreenAndShow(screen);
                 // Capture the organized defaults with every HUD previewed, restoring the fixture on close.
@@ -266,19 +288,34 @@ final class NativeHudEditorProbe implements AutoCloseable {
     boolean inGame() { return inGame; }
     boolean readyForCapture() { return stage >= STAGES && shot == null && System.nanoTime() >= readyAt; }
 
-    /** A completed frame: once the requested state has drawn a few frames, it is saved as native-NAME-TIME.png. */
+    /** A completed frame: once the requested state has drawn a few frames, it is saved as native-NAME-TIME.png or directly as NAME.png. */
     void frame(com.mojang.blaze3d.pipeline.RenderTarget target, Path gameDirectory) {
         if (shot == null || shotTaken || ++shotFrames < 4) return;
         shotTaken = true;
         String name = shot;
-        Path output = gameDirectory.resolve("screenshots").resolve("native-" + name + "-" + System.currentTimeMillis() + ".png");
+        boolean direct = directShot;
+        Path output = direct
+            ? gameDirectory.resolve("screenshots").resolve(name + ".png")
+            : gameDirectory.resolve("screenshots").resolve("native-" + name + "-" + System.currentTimeMillis() + ".png");
         net.minecraft.client.Screenshot.takeScreenshot(target, image -> {
-            try { image.writeToFile(output); LoggerFactory.getLogger("TheLadsCore").info("Lads HUD editor capture {}: {}", name, output); }
+            try {
+                if (direct) {
+                    java.nio.file.Files.createDirectories(output.getParent());
+                }
+                image.writeToFile(output);
+                if (direct) {
+                    Path copy = gameDirectory.resolve("screenshots").resolve("ui172").resolve(name + ".png");
+                    java.nio.file.Files.createDirectories(copy.getParent());
+                    java.nio.file.Files.copy(output, copy, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                }
+                LoggerFactory.getLogger("TheLadsCore").info("Lads HUD editor capture {}: {}", name, output);
+            }
             catch (Exception failure) { shotFailure = failure; }
-            finally { image.close(); shot = null; shotTaken = false; }
+            finally { image.close(); shot = null; shotTaken = false; directShot = false; }
         });
     }
     private void shot(String name) { shot = name; shotFrames = 0; }
+    private void shotDirect(String name) { directShot = true; shot(name); }
 
     private void size(String name, double value) {
         var option = ModuleManager.getInstance().getModule(name).getOption("Size");
