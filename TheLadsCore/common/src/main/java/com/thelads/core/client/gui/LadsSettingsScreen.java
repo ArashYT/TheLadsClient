@@ -1,6 +1,7 @@
 package com.thelads.core.client.gui;
 
 import com.thelads.core.client.CrosshairBackground;
+import com.thelads.core.client.CrosshairProfiles;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.hud.HudElement;
 import com.thelads.core.client.hud.HudManager;
@@ -1220,11 +1221,13 @@ public final class LadsSettingsScreen {
     }
     /** An option row is 43 px; a sound list, and Combo Sounds' sets, add 24 px for each entry. */
     private int rowHeight(Option option) {
+        if (option instanceof CrosshairModule.ProfilesOption) return 62;
         if (option instanceof SoundListOption list) return 43 + list.size() * 24;
         if (option instanceof ComboSoundsModule.SoundSets && detail instanceof ComboSoundsModule combo) return 43 + combo.soundSets().size() * 24;
         return 43;
     }
     private void optionRow(LadsGraphics g, Option option, int x, int y, int w, int mx, int my) {
+        if (option instanceof CrosshairModule.ProfilesOption profiles) { profilesRow(g, profiles, x, y, w, mx, my); return; }
         if (option instanceof SoundOption sound) { soundRow(g, sound, x, y, w, mx, my); return; }
         if (option instanceof SoundListOption list) { soundListRow(g, list, x, y, w, mx, my); return; }
         if (option instanceof ComboSoundsModule.SoundSets && detail instanceof ComboSoundsModule combo) { setsRow(g, combo, x, y, w, mx, my); return; }
@@ -1378,6 +1381,95 @@ public final class LadsSettingsScreen {
         };
         startEdit(renaming);
     }
+    private TextOption savingProfileOption;
+    private void profilesRow(LadsGraphics g, CrosshairModule.ProfilesOption profilesOpt, int x, int y, int w, int mx, int my) {
+        round(g, x, y, w, 56, CARD);
+        String id = "option:" + profilesOpt.getName();
+        List<String> list = CrosshairProfiles.list();
+        String current = profilesOpt.getSelected();
+        if ((current.isEmpty() || !CrosshairProfiles.has(current)) && !list.isEmpty()) {
+            current = list.get(0);
+        }
+        int dropW = Math.min(150, w / 2);
+
+        // Top line: title "Profiles" and dropdown of saved profiles
+        g.drawText(fit(g, "Profiles", w - dropW - 20), x + 9, y + 15, TEXT);
+        String dropLabel = list.isEmpty() ? "< None >" : "< " + current + " >";
+        Rect dropRect = new Rect(x + w - dropW - 6, y + 6, dropW, 22);
+        button(g, id + ":dropdown", dropLabel, dropRect, () -> cycleProfile(false), !list.isEmpty(), mx, my, false);
+
+        int delW = g.textWidth("Delete") + 12;
+        boolean editingSave = editingOption != null && editingOption == savingProfileOption;
+        int saveW = editingSave ? Math.max(g.textWidth("Save as...") + 12, dropW - delW - 4) : g.textWidth("Save as...") + 12;
+        Rect delRect = new Rect(x + w - delW - 6, y + 31, delW, 20);
+        Rect saveRect = new Rect(delRect.x - 4 - saveW, y + 31, saveW, 20);
+
+        // Bottom line: description and Save as... / Delete buttons
+        int descAvail = saveRect.x - (x + 9) - 4;
+        g.drawText(fit(g, "Saved profiles", descAvail), x + 9, y + 39, MUTED);
+
+        button(g, id + ":save", editingSave ? inputWindow(g, saveRect.width - 10) : "Save as...", saveRect, () -> {
+            startSaveProfile(profilesOpt);
+        }, true, mx, my, editingSave);
+
+        final String delTarget = current;
+        button(g, id + ":delete", "Delete", delRect, () -> {
+            if (delTarget.isEmpty()) return;
+            confirm.open("Delete crosshair profile?", "Delete profile '" + delTarget + "'?", () -> {
+                CrosshairProfiles.delete(delTarget);
+                List<String> rem = CrosshairProfiles.list();
+                profilesOpt.setSelected(rem.isEmpty() ? "" : rem.get(0));
+                if (!rem.isEmpty()) {
+                    CrosshairProfiles.apply(rem.get(0));
+                }
+                changed(detail);
+            });
+        }, !list.isEmpty() && !current.isEmpty(), mx, my, false);
+    }
+
+    private void cycleProfile(boolean back) {
+        List<String> list = CrosshairProfiles.list();
+        if (list.isEmpty()) return;
+        CrosshairModule.ProfilesOption opt = detail instanceof CrosshairModule cm ? cm.profiles : null;
+        if (opt == null) return;
+        String current = opt.getSelected();
+        if ((current.isEmpty() || !CrosshairProfiles.has(current)) && !list.isEmpty()) {
+            current = list.get(0);
+        }
+        int idx = -1;
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).equalsIgnoreCase(current)) {
+                idx = i;
+                break;
+            }
+        }
+        int nextIdx = back ? (idx - 1 + list.size()) % list.size() : (idx + 1) % list.size();
+        String nextName = list.get(nextIdx);
+        opt.setSelected(nextName);
+        CrosshairProfiles.apply(nextName);
+        notice = "Profile: " + nextName;
+        changed(detail);
+    }
+
+    private void startSaveProfile(CrosshairModule.ProfilesOption profilesOpt) {
+        String defaultName = CrosshairProfiles.nextDefaultName();
+        savingProfileOption = new TextOption("Profile name", defaultName) {
+            @Override
+            public void setValue(String value) {
+                super.setValue(value);
+                String trimmed = CrosshairProfiles.validateName(value);
+                if (trimmed != null && CrosshairProfiles.save(trimmed)) {
+                    profilesOpt.setSelected(trimmed);
+                    CrosshairProfiles.apply(trimmed);
+                    notice = "Saved profile: " + trimmed;
+                    changed(detail);
+                } else {
+                    notice = "Name must be 1-32 characters.";
+                }
+            }
+        };
+        startEdit(savingProfileOption);
+    }
     private void button(LadsGraphics g, String id, String label, Rect r, Runnable action, boolean enabled, int mx, int my, boolean selected) {
         boolean content = contentControl(id);
         if (content && (r.y + r.height <= viewport.y || r.y >= viewport.y + viewport.height)) return;
@@ -1520,6 +1612,10 @@ public final class LadsSettingsScreen {
                 if (o instanceof DropdownOption d) {
                     if (button == 1 || x < c.rect.x + c.rect.width / 2.0) d.cycleBack(); else d.cycle();
                     changed(detail); return true;
+                }
+                if (c.id.equals("option:Profiles:dropdown")) {
+                    cycleProfile(button == 1 || x < c.rect.x + c.rect.width / 2.0);
+                    return true;
                 }
             }
             if (button == 0) c.action.run();

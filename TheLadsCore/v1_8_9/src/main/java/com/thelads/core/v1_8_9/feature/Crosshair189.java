@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.thelads.core.client.CrosshairDesign;
 import com.thelads.core.client.CrosshairDrawing;
+import com.thelads.core.client.CrosshairDrawingStore;
 import com.thelads.core.modules.CrosshairModule;
 import com.thelads.core.v1_8_9.gui.CrosshairDrawingScreen189;
 import java.awt.Color;
@@ -70,12 +71,13 @@ public final class Crosshair189 {
     public static void register() {
         CrosshairModule module = module();
         if (module == null) return;
-        drawing = load(defaultDrawing());
+        drawing = CrosshairDrawingStore.load(defaultDrawing());
+        CrosshairDrawingStore.setDrawingChangedListener(() -> { drawing = CrosshairDrawingStore.load(defaultDrawing()); geometryKey = ""; });
         module.drawingEditor.setAction(() -> Minecraft.getMinecraft().displayGuiScreen(new CrosshairDrawingScreen189(Minecraft.getMinecraft().currentScreen)));
     }
 
     public static CrosshairDrawing drawing() { return drawing.copy(); }
-    public static void commitDrawing(CrosshairDrawing next) throws IOException { save(next); drawing = next.copy(); geometryKey = ""; }
+    public static void commitDrawing(CrosshairDrawing next) throws IOException { CrosshairDrawingStore.save(next); drawing = next.copy(); geometryKey = ""; }
 
     private static CrosshairDrawing defaultDrawing() {
         CrosshairDrawing value = new CrosshairDrawing(17, 17);
@@ -348,41 +350,5 @@ public final class Crosshair189 {
                 result.add(new CrosshairDesign.Rect(start + minX, y + minY, x + minX, y + minY + 1));
             }
         return result;
-    }
-
-    private static File file() { return new File(Loader.instance().getConfigDir(), "thelads/crosshair-drawing.json"); }
-
-    /** The drawing as 26.x CrosshairDrawingStore keeps it: {width, height, rows ("#" set, "." clear)}. */
-    private static CrosshairDrawing load(CrosshairDrawing fallback) {
-        try {
-            File file = file();
-            if (!file.isFile() || file.length() > 16384) return fallback;
-            JsonObject data = new JsonParser().parse(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8)).getAsJsonObject();
-            List<String> rows = new ArrayList<>();
-            for (JsonElement row : data.getAsJsonArray("rows")) rows.add(row.getAsString());
-            return CrosshairDrawing.fromRows(data.get("width").getAsInt(), data.get("height").getAsInt(), rows);
-        } catch (Exception failure) {
-            LogManager.getLogger("TheLadsCore").warn("Could not read crosshair drawing; using default", failure);
-            return fallback;
-        }
-    }
-
-    private static void save(CrosshairDrawing drawing) throws IOException {
-        File file = file();
-        Files.createDirectories(file.getParentFile().toPath());
-        JsonObject json = new JsonObject();
-        json.addProperty("width", drawing.width());
-        json.addProperty("height", drawing.height());
-        JsonArray rows = new JsonArray();
-        for (String row : drawing.rows()) rows.add(new com.google.gson.JsonPrimitive(row));
-        json.add("rows", rows);
-        java.nio.file.Path temp = Files.createTempFile(file.getParentFile().toPath(), "crosshair-", ".tmp");
-        try {
-            Files.write(temp, new Gson().toJson(json).getBytes(StandardCharsets.UTF_8));
-            try { Files.move(temp, file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE); }
-            catch (java.nio.file.AtomicMoveNotSupportedException e) { Files.move(temp, file.toPath(), StandardCopyOption.REPLACE_EXISTING); }
-        } finally {
-            Files.deleteIfExists(temp);
-        }
     }
 }

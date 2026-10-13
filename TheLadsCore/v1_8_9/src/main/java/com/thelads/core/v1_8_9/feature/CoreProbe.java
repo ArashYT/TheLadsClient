@@ -157,6 +157,7 @@ public final class CoreProbe {
         } else if ("xhair".equals(only)) { // the Crosshair Tweaks settings page and drawing editor with their live previews (ProbeCrosshairPreview189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
+            STEPS.addAll(ProbeCrosshairPreview189.STEPS);
         } else if ("ofdefaults".equals(only)) {
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::ofDefaults));
