@@ -445,6 +445,76 @@ class KillDetectorTest {
         assertEquals(module.chosen(), module.next(), "an empty pool falls back to the chosen banner");
     }
 
+    @Test void randomizerPerLife() {
+        KillBannerModule module = new KillBannerModule();
+        module.randomize.setIndex(KillBannerModule.RANDOM_PER_LIFE);
+
+        // 1. Same skin across kills 1..n
+        KillBannerModule.Pick life1 = module.next();
+        assertNotNull(life1.style(), "first kill gets a skin");
+        for (int i = 0; i < 20; i++) {
+            KillBannerModule.Pick kill = module.next();
+            assertEquals(life1.style(), kill.style(), "same skin across kills 1..n");
+            assertEquals(life1.variant(), kill.variant(), "same variant across kills 1..n");
+        }
+
+        // 2. New skin after death
+        module.death();
+        KillBannerModule.Pick life2 = module.next();
+        assertNotEquals(life1.style(), life2.style(), "new skin after death");
+        for (int i = 0; i < 10; i++) {
+            KillBannerModule.Pick kill = module.next();
+            assertEquals(life2.style(), kill.style(), "same skin across kills in life 2");
+        }
+
+        // 3. New skin after the streak timer reset
+        // (a) explicit streak reset
+        module.resetStreak();
+        KillBannerModule.Pick life3 = module.next();
+        assertNotEquals(life2.style(), life3.style(), "new skin after streak reset");
+
+        // (b) streak timer expiration via time delta (streakReset is 45s)
+        long t = 10_000_000_000L;
+        KillBannerModule.Pick timed1 = module.next(t);
+        KillBannerModule.Pick timed2 = module.next(t + 20_000_000_000L); // 20s later (within 45s)
+        assertEquals(timed1.style(), timed2.style(), "same skin within streak reset window");
+        KillBannerModule.Pick timed3 = module.next(t + 70_000_000_000L); // 50s later (> 45s streak reset window)
+        assertNotEquals(timed2.style(), timed3.style(), "new skin after streak timer reset");
+
+        // 4. No immediate repeat across many lives
+        KillBannerStyle prevStyle = timed3.style();
+        for (int i = 0; i < 100; i++) {
+            module.death();
+            KillBannerModule.Pick nextLife = module.next();
+            assertNotEquals(prevStyle, nextLife.style(), "no immediate repeat of the skin across lives");
+            prevStyle = nextLife.style();
+        }
+
+        // 5. Per life (Chosen)
+        module.randomize.setIndex(KillBannerModule.RANDOM_PER_LIFE_CHOSEN);
+        module.randomPool.setValue("");
+        module.togglePool(KillBannerStyle.ROGUE, 1);
+        module.togglePool(KillBannerStyle.REAVER, 2);
+        module.resetStreak();
+        KillBannerModule.Pick chosen1 = module.next();
+        for (int i = 0; i < 10; i++) assertEquals(chosen1, module.next(), "Per life (Chosen) keeps skin across kills");
+        module.death();
+        KillBannerModule.Pick chosen2 = module.next();
+        assertNotEquals(chosen1.style(), chosen2.style(), "Per life (Chosen) alternates styles");
+
+        // Single skin in chosen pool with multiple variants avoids immediate variant repeat
+        module.randomPool.setValue("");
+        module.togglePool(KillBannerStyle.REAVER, 0);
+        module.togglePool(KillBannerStyle.REAVER, 1);
+        module.resetStreak();
+        KillBannerModule.Pick reaver1 = module.next();
+        module.death();
+        KillBannerModule.Pick reaver2 = module.next();
+        assertEquals(KillBannerStyle.REAVER, reaver1.style());
+        assertEquals(KillBannerStyle.REAVER, reaver2.style());
+        assertNotEquals(reaver1.variant(), reaver2.variant(), "Per life (Chosen) with 1 skin avoids immediate variant repeat");
+    }
+
     @Test void headshotOptionsStartOn() {
         KillBannerModule module = new KillBannerModule();
         assertTrue(module.headshotBanner.get(), "the HEADSHOT banner shows from the start");

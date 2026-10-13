@@ -101,7 +101,11 @@ public final class KillBanner189 {
             trackedConnection = mc.getNetHandler();
             trackedWorld = mc.theWorld;
         }
-        if (!mc.thePlayer.isEntityAlive()) BANNER.clear();
+        if (!mc.thePlayer.isEntityAlive()) {
+            BANNER.clear();
+            KillBannerModule module = module();
+            if (module != null) module.death();
+        }
         arrows(mc);
         KillBannerModule module = module();
         if (module != null) {
@@ -280,7 +284,12 @@ public final class KillBanner189 {
             text = KillDetector.deathLine(death.getKey(), args);
         }
         if (text == null) text = event.message.getUnformattedText();
-        if (KillDetector.myDeath(text, me)) { BANNER.endStreak(); return; } // the player's own death is never also a kill
+        if (KillDetector.myDeath(text, me)) {
+            BANNER.endStreak();
+            KillBannerModule module = module();
+            if (module != null) module.death();
+            return;
+        } // the player's own death is never also a kill
         kill(KillBanners.DETECTOR.chat(text, me, KillBanner189::players, System.nanoTime()));
     }
 

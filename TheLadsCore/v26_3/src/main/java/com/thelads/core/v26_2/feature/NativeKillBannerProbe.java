@@ -95,6 +95,32 @@ final class NativeKillBannerProbe {
             death(victim);
             require(NativeKillBanner.timeline().streak() == 1, "the same kill's death event does not count twice"); passed++;
 
+            // "Per life" keeps the skin across two kills and changes after a forced streak reset
+            module.mobs.set(true);
+            module.randomize.setIndex(KillBannerModule.RANDOM_PER_LIFE);
+            module.resetStreak();
+            NativeKillBanner.timeline().clear();
+
+            Entity pLife1 = spawn(EntityTypes.ZOMBIE, next++);
+            NativeKillBanner.attacked(pLife1);
+            death(pLife1);
+            KillBannerModule.Pick pickLife1 = NativeKillBanner.timeline().pick();
+            require(pickLife1 != null && pickLife1.style() != null, "Per life: first kill selects a skin"); passed++;
+
+            Entity pLife2 = spawn(EntityTypes.ZOMBIE, next++);
+            NativeKillBanner.attacked(pLife2);
+            death(pLife2);
+            KillBannerModule.Pick pickLife2 = NativeKillBanner.timeline().pick();
+            require(pickLife2 != null && pickLife2.style() == pickLife1.style(), "Per life: keeps the skin across two kills"); passed++;
+
+            NativeKillBanner.timeline().endStreak();
+            Entity pLife3 = spawn(EntityTypes.ZOMBIE, next++);
+            NativeKillBanner.attacked(pLife3);
+            death(pLife3);
+            KillBannerModule.Pick pickLife3 = NativeKillBanner.timeline().pick();
+            require(pickLife3 != null && pickLife3.style() != pickLife1.style(), "Per life: changes skin after a forced streak reset"); passed++;
+            module.randomize.setIndex(KillBannerModule.RANDOM_OFF);
+
             require(minecraft.getResourceManager().getResource(Identifier.fromNamespaceAndPath("theladscore", "textures/gui/base_kill_banner.png")).isPresent(), "base_kill_banner resource loads"); passed++;
             passed += assets();
             LoggerFactory.getLogger("TheLadsCore").info("Lads kill banner probe END: {} passed, 0 failed (synthetic packets about client-only stand-ins; no real kill claimed)", passed);
