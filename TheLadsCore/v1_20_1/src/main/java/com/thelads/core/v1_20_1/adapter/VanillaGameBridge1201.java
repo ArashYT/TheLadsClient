@@ -38,6 +38,12 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
     }
 
     @Override
+    public String getPlayerName() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.player != null ? mc.player.getGameProfile().getName() : "";
+    }
+
+    @Override
     public int getPlayerX() {
         Minecraft mc = Minecraft.getInstance();
         return mc.player != null ? mc.player.getBlockX() : 0;

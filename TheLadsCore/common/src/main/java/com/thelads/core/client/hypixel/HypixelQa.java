@@ -163,10 +163,60 @@ public final class HypixelQa {
             }
             case 12 -> { game.screenshot("hypixel-chat"); wait = 5; }
             case 13 -> {
+                game.closeScreen();
+                Module hyp = module(HypixelMods.HYPIXEL_MODS);
+                hyp.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.REPLAY_WHEN).load(new JsonPrimitive("After death"));
+                hyp.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.WAIT_PARTY).load(new JsonPrimitive(true));
+                hyp.getOption(HypixelMods.PLAY_AGAIN + ": Delay seconds").load(new JsonPrimitive(0.1));
+                HypixelMods.rearmForQa();
+                say(game, "You have joined Teammate_Bob's party!");
+                wait = 5;
+            }
+            case 14 -> {
+                say(game, "The game starts in 1 second!");
+                wait = 5;
+            }
+            case 15 -> {
+                say(game, "You died! You will respawn in 5 seconds!");
+                wait = 5;
+            }
+            case 16 -> {
+                check(!HypixelMods.isSelfOut(), "Bed Wars respawn death does not count as self out");
+                say(game, "You died! Want to play again? Click here to play again!");
+                wait = 10;
+            }
+            case 17 -> {
+                check(HypixelMods.isSelfOut(), "Bed Wars final death / Click here to play again counts as self out");
+                check(!sent("/play bedwars_eight_one"), "party of 2: you die -> no /play while teammate alive " + HypixelMods.SENT);
+                say(game, "Teammate_Bob was killed by Enemy. FINAL KILL!");
+            }
+            case 18 -> {
+                if (!until(sent("/play bedwars_eight_one"), "party of 2: teammate final-killed -> /play sent " + HypixelMods.SENT)) break;
+                Module hyp = module(HypixelMods.HYPIXEL_MODS);
+                hyp.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.REPLAY_WHEN).load(new JsonPrimitive("When game ends"));
+                HypixelMods.rearmForQa();
+                say(game, "The game starts in 1 second!");
+                wait = 5;
+            }
+            case 19 -> {
+                say(game, "You died! Want to play again? Click here to play again!");
+                wait = 10;
+            }
+            case 20 -> {
+                check(!sent("/play bedwars_eight_one"), "'When game ends': death sends nothing " + HypixelMods.SENT);
+                say(game, "                       1st Killer - [MVP+] Steve - 7");
+                say(game, "                       2nd Killer - Alex - 3");
+            }
+            case 21 -> {
+                if (!until(sent("/play bedwars_eight_one"), "'When game ends': game over sends /play " + HypixelMods.SENT)) break;
+                Module hyp = module(HypixelMods.HYPIXEL_MODS);
+                hyp.getOption(HypixelMods.PLAY_AGAIN + ": Delay seconds").load(new JsonPrimitive(3));
+            }
+            case 22 -> {
                 menu = game.openSettings(null);
                 wait = 10;
             }
-            case 14 -> {
+            case 23 -> {
                 LadsSettingsScreen.Rect tab = menu.controlBounds("category:Hypixel");
                 check(tab != null, "the settings have a Hypixel category " + menu.controlIds());
                 if (tab != null) {
@@ -175,15 +225,53 @@ public final class HypixelQa {
                 }
                 wait = 10;
             }
-            case 15 -> {
+            case 24 -> {
                 check(menu.visibleModuleNames().equals(List.of(HypixelMods.HYPIXEL_MODS)), "the Hypixel category lists the one module " + menu.visibleModuleNames());
                 game.screenshot("hypixel-settings");
                 wait = 5;
             }
-            case 16 -> { menu = game.openSettings(HypixelMods.HYPIXEL_MODS); wait = 10; }
-            case 17 -> { game.screenshot("hypixel-mods"); wait = 5; }
-            case 18 -> { game.screenshot("hypixel-auto-gg"); wait = 5; }
-            case 19 -> { game.screenshot("hypixel-chat-cleanup"); wait = 5; }
+            case 25 -> { menu = game.openSettings(HypixelMods.HYPIXEL_MODS); patience = 0; wait = 10; }
+            case 26 -> {
+                if (menu.controlBounds("option:" + HypixelMods.PLAY_AGAIN + ": " + HypixelMods.WAIT_PARTY) != null) {
+                    patience = 0;
+                    check(menu.controlBounds("option:" + HypixelMods.PLAY_AGAIN + ": " + HypixelMods.REPLAY_WHEN) != null,
+                        "Replay when option rendered in settings");
+                    check(menu.controlBounds("option:" + HypixelMods.PLAY_AGAIN + ": " + HypixelMods.WAIT_PARTY) != null,
+                        "Wait for party option rendered in settings");
+                    game.screenshot("hypixel-mods");
+                    menu.scrollBy(-100000);
+                    wait = 10;
+                } else if (++patience < 30) {
+                    menu.scrollBy(43);
+                    step--;
+                    wait = 2;
+                } else {
+                    patience = 0;
+                    check(false, "Wait for party option rendered in settings " + menu.controlIds());
+                    menu.scrollBy(-100000);
+                    wait = 10;
+                }
+            }
+            case 27 -> {
+                game.screenshot("hypixel-auto-gg");
+                patience = 0;
+                wait = 5;
+            }
+            case 28 -> {
+                if (menu.controlBounds("option:" + HypixelMods.CLEANUP) != null) {
+                    patience = 0;
+                    game.screenshot("hypixel-chat-cleanup");
+                    wait = 5;
+                } else if (++patience < 30) {
+                    menu.scrollBy(43);
+                    step--;
+                    wait = 2;
+                } else {
+                    patience = 0;
+                    game.screenshot("hypixel-chat-cleanup");
+                    wait = 5;
+                }
+            }
             default -> {
                 game.closeScreen();
                 HypixelSafetyManager.qaOverride = false;

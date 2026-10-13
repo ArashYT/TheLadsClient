@@ -55,6 +55,8 @@ public interface LadsGameBridge {
     default void disconnectWithReason(String title, String message) {}
     default String getItemCountText(int selection) { return "Items: 0"; }
     default String getRecentReachText() { return "Reach: --"; }
+    /** The logged-in local player's username; empty when not playing or unavailable. */
+    default String getPlayerName() { return ""; }
 
     boolean isIngame();
 
