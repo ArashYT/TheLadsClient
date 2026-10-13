@@ -77,7 +77,7 @@ class HypixelModsTest {
             HypixelMods.AUTO_FRIEND, false, HypixelMods.PLAY_AGAIN, false, HypixelMods.AUTO_WHO, false), on, "Auto Friend: anyone could add you, opt in");
         DropdownOption replayWhen = (DropdownOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.REPLAY_WHEN);
         assertNotNull(replayWhen);
-        assertEquals("When game ends", replayWhen.getValue());
+        assertEquals("After death", replayWhen.getValue());
         BoolOption waitParty = (BoolOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.WAIT_PARTY);
         assertNotNull(waitParty);
         assertTrue(waitParty.get());

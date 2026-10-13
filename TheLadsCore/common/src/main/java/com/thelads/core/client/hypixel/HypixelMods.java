@@ -71,7 +71,7 @@ public final class HypixelMods {
         m.addOption(new SliderOption(AUTO_TIP + ": Every minutes", 15, 5, 60, 5));
         m.addOption(new BoolOption(PLAY_AGAIN, false));
         m.addOption(new SliderOption(PLAY_AGAIN + ": Delay seconds", 3, 0, 15, 1));
-        m.addOption(new DropdownOption(PLAY_AGAIN + ": " + REPLAY_WHEN, 1, "After death", "When game ends"));
+        m.addOption(new DropdownOption(PLAY_AGAIN + ": " + REPLAY_WHEN, 0, "After death", "When game ends"));
         m.addOption(new BoolOption(PLAY_AGAIN + ": " + WAIT_PARTY, true));
         m.addOption(new BoolOption(AUTO_WHO, false));
         m.addOption(new BoolOption(CLEANUP, true));
@@ -103,7 +103,7 @@ public final class HypixelMods {
 
     public static String replayWhenMode() {
         Option o = option(PLAY_AGAIN, REPLAY_WHEN);
-        return o instanceof DropdownOption d ? d.getValue() : "When game ends";
+        return o instanceof DropdownOption d ? d.getValue() : "After death";
     }
 
     public static boolean waitParty() {
