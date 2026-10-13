@@ -30,6 +30,7 @@ public class LadsSettingsScreen26 extends Screen {
         });
         this.ui.setOnOpenResourcePacks(this::openResourcePacks);
         this.ui.setClipboardReader(() -> Minecraft.getInstance().keyboardHandler.getClipboard());
+        this.ui.setClipboardWriter(text -> Minecraft.getInstance().keyboardHandler.setClipboard(text));
         this.ui.setOnOpenVideoSettings(() ->
             minecraft.gui.setScreen(new VideoSettingsScreen(this, minecraft, minecraft.options)));
         this.ui.setOnOpenModSettings(modId -> ExternalModSettings.open(modId, this));

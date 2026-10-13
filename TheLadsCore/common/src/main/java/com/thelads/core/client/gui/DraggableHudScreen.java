@@ -41,7 +41,13 @@ public class DraggableHudScreen {
     private boolean contextOpen;
     private final ColorPicker colorPicker = new ColorPicker();
     private final ConfirmDialog confirm = new ConfirmDialog();
+    private final ProfilesDialog profilesDialog = new ProfilesDialog();
+    private java.util.function.Supplier<String> clipboardReader = () -> "";
+    private java.util.function.Consumer<String> clipboardWriter = text -> {};
     public void setOnSettings(java.util.function.Consumer<String> action){onSettings=action;}
+    public ProfilesDialog profilesDialog(){return profilesDialog;}
+    public void setClipboardReader(java.util.function.Supplier<String> reader){this.clipboardReader=reader!=null?reader:()->"";this.profilesDialog.setClipboardReader(this.clipboardReader);}
+    public void setClipboardWriter(java.util.function.Consumer<String> writer){this.clipboardWriter=writer!=null?writer:text->{};this.profilesDialog.setClipboardWriter(this.clipboardWriter);}
     private final Set<HudElement> selected=new LinkedHashSet<>();
     private final Map<HudElement,Rect> measuredBounds=new IdentityHashMap<>();
     private final Map<HudElement,Rect> renderedBounds=new IdentityHashMap<>();
@@ -66,7 +72,7 @@ public class DraggableHudScreen {
     private static final int GRID=10,SNAP=4,TOP=26,STATUS=14,GAP=6,ROW=18;
 
     public DraggableHudScreen(){this(ConfigManager::save);}
-    public DraggableHudScreen(Runnable saveConfig){this.saveConfig=Objects.requireNonNull(saveConfig);}
+    public DraggableHudScreen(Runnable saveConfig){this.saveConfig=Objects.requireNonNull(saveConfig);this.profilesDialog.setOnSave(saveConfig);}
     public void setOnClose(Runnable action){onClose=action;}
     /** The reset confirmation (QA reads its bounds and clicks them). */
     public ConfirmDialog confirmDialog(){return confirm;}
@@ -104,7 +110,7 @@ public class DraggableHudScreen {
 
     public void render(LadsGraphics graphics,int pointerX,int pointerY){
         // A dialog is modal: the editor under it neither highlights nor reacts to the pointer.
-        boolean modal=confirm.isOpen()||colorPicker.isOpen();
+        boolean modal=confirm.isOpen()||colorPicker.isOpen()||profilesDialog.isOpen();
         int mouseX=modal?-100000:pointerX,mouseY=modal?-100000:pointerY;
         finishHiddenDrag();
         int width=graphics.getScaledWidth(),height=graphics.getScaledHeight();
@@ -133,6 +139,7 @@ public class DraggableHudScreen {
         if(contextOpen)graphics.overlay(()->drawContext(graphics,pointerX,pointerY));
         graphics.overlay(()->colorPicker.render(graphics,pointerX,pointerY));
         graphics.overlay(()->confirm.render(graphics,pointerX,pointerY));
+        graphics.overlay(()->profilesDialog.render(graphics,pointerX,pointerY));
     }
 
     /** Toolbar across the top, element list on the left, and the largest preview with the game's aspect ratio in the rest. */
@@ -198,10 +205,11 @@ public class DraggableHudScreen {
 
     private void drawToolbar(LadsGraphics g,int mx,int my){
         boolean locked=selected.stream().anyMatch(this::isLocked);
-        String[][] buttons={{"group","Group"},{"ungroup","Ungroup"},{locked?"unlock":"lock",locked?"Unlock":"Lock"},{"snap",showGrid?"Snap: on":"Snap: off"},{"done","Done"}};
+        String[][] buttons={{"profiles","Profiles"},{"group","Group"},{"ungroup","Ungroup"},{locked?"unlock":"lock",locked?"Unlock":"Lock"},{"snap",showGrid?"Snap: on":"Snap: off"},{"done","Done"}};
         var bounds=new Rect[buttons.length];
+        int pad=viewportWidth<380?6:14,spacing=viewportWidth<380?2:4;
         int x=viewportWidth-GAP;
-        for(int i=buttons.length-1;i>=0;i--){int w=g.textWidth(buttons[i][1])+14;x-=w;bounds[i]=new Rect(x,5,w,17);x-=4;}
+        for(int i=buttons.length-1;i>=0;i--){int w=g.textWidth(buttons[i][1])+pad;x-=w;bounds[i]=new Rect(x,5,w,17);x-=spacing;}
         int titleRoom=x-GAP-4;
         if(titleRoom>=g.textWidth("THE LADS")){
             g.drawText("THE LADS",GAP+2,10,LadsPalette.ACCENT,false);
@@ -330,6 +338,7 @@ public class DraggableHudScreen {
     public boolean mouseClicked(double x,double y,int button,int modifiers){
         if(confirm.isOpen())return confirm.click(x,y,button);
         if(colorPicker.click(x,y,button))return true;
+        if(profilesDialog.isOpen())return profilesDialog.click(x,y,button);
         finishHiddenDrag();
         if(contextOpen){
             if(button==0)for(var c:contextControls)if(c.bounds().contains(x,y)){contextOpen=false;if(c.enabled())perform(c.id());return true;}
@@ -432,6 +441,7 @@ public class DraggableHudScreen {
     public boolean mouseReleased(double x,double y,int button,int modifiers){
         if(confirm.isOpen())return true;
         if(colorPicker.release())return true;
+        if(profilesDialog.isOpen())return profilesDialog.release();
         finishHiddenDrag();if(button!=0)return false;
         if(marquee){marqueeX=gameX(x);marqueeY=gameY(y);Rect box=marqueeBounds();marquee=false;if(box.width()>3||box.height()>3){if(!marqueeAdditive)selected.clear();for(var entry:renderedBounds.entrySet())if(box.intersects(entry.getValue()))selected.addAll(groupElements(entry.getKey()));}return true;}
         if(isDragging()){finishDrag((modifiers&1)!=0);return true;}return false;
@@ -439,6 +449,7 @@ public class DraggableHudScreen {
     public boolean mouseScrolled(double x,double y,double amount){
         if(confirm.isOpen())return true;
         if(colorPicker.isOpen())return true;
+        if(profilesDialog.isOpen())return profilesDialog.scroll(x,y,amount);
         if(!list.contains(x,y))return false;
         listScroll=Math.max(0,Math.min(maxListScroll,listScroll-(int)Math.round(amount*ROW)));return true;
     }
@@ -448,6 +459,7 @@ public class DraggableHudScreen {
     public boolean keyPressed(int key,int modifiers){
         if(confirm.isOpen())return confirm.key(key);
         if(colorPicker.key(key))return true;
+        if(profilesDialog.isOpen())return profilesDialog.key(key,modifiers);
         if(editingSearch){
             if(key==256||key==257)editingSearch=false;
             else if(key==259&&!search.isEmpty()){search=search.substring(0,search.offsetByCodePoints(search.length(),-1));listScroll=0;}
@@ -472,6 +484,7 @@ public class DraggableHudScreen {
     private void perform(String id){
         finishDrag(false);marquee=false;notice="";
         switch(id){
+            case "profiles"->profilesDialog.open();
             case "group"->{if(selectedNames().size()>=2){
                 HudSettings.getInstance().addGroup(selectedNames());
                 if(selected.stream().noneMatch(this::isLocked))stackSelection();
@@ -549,10 +562,11 @@ public class DraggableHudScreen {
     }
     public boolean charTyped(int codePoint){
         if(confirm.isOpen())return true;
+        if(profilesDialog.isOpen())return profilesDialog.type(codePoint);
         if(editingSearch){if(codePoint>=32&&codePoint!=127&&search.length()<32){search+=new String(Character.toChars(codePoint));listScroll=0;}return true;}
         return colorPicker.type(codePoint);
     }
-    public void close(){finishDrag(false);marquee=false;editingSearch=false;confirm.close();}
+    public void close(){finishDrag(false);marquee=false;editingSearch=false;confirm.close();profilesDialog.close();}
     /**
      * Ends a drag and saves where every member landed. Only a drop with {@code join} (Shift held) groups: the dropped HUDs join
      * each HUD they now dock against (edge to edge, aligned), together with that HUD's own group.

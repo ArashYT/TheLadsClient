@@ -27,49 +27,119 @@ public class ProfileManager {
     private final LinkedHashMap<String, JsonObject> profiles = new LinkedHashMap<>();
     private final LinkedHashMap<String, String> bindings = new LinkedHashMap<>(); // context key -> profile name
     private String lastContext = null;
+    private File testFile = null;
+    private boolean loaded = false;
 
     public static ProfileManager get() {
         return INSTANCE;
     }
 
+    public void setTestFile(File f) {
+        this.testFile = f;
+        this.loaded = false;
+        this.profiles.clear();
+        this.bindings.clear();
+    }
+
+    public void ensureLoaded() {
+        if (!loaded) {
+            loaded = true;
+            load();
+        }
+    }
+
     private File file() {
+        if (testFile != null) {
+            return testFile;
+        }
         return ClientPaths.getBaseDir().resolve("thelads_profiles.json").toFile();
     }
 
     public List<String> getProfileNames() {
+        ensureLoaded();
         return new ArrayList<>(profiles.keySet());
     }
 
     public Map<String, String> getBindings() {
+        ensureLoaded();
         return bindings;
     }
 
     public boolean hasProfile(String name) {
+        ensureLoaded();
         return profiles.containsKey(name);
+    }
+
+    public JsonObject getProfile(String name) {
+        ensureLoaded();
+        return profiles.get(name);
     }
 
     /** Snapshot the current config under a name. */
     public void saveAs(String name) {
+        ensureLoaded();
         profiles.put(name, ConfigManager.toJson());
         persist();
     }
 
-    /** Apply a stored profile to the live config. */
+    /** Apply a stored profile to the live config (all modules and settings). */
     public void apply(String name) {
+        apply(name, ShareCode.ImportMode.BOTH);
+    }
+
+    /** Apply a stored profile with the specified ImportMode (Mods, Settings, or Both). */
+    public void apply(String name, ShareCode.ImportMode mode) {
+        ensureLoaded();
         JsonObject snap = profiles.get(name);
         if (snap != null) {
-            ConfigManager.applyJson(snap);
-            ConfigManager.save();
+            saveAs("Before import");
+            if (mode == null || mode == ShareCode.ImportMode.BOTH) {
+                ConfigManager.applyJson(snap);
+            } else {
+                JsonObject prepared = ShareCode.prepareImportJson(snap, mode);
+                ConfigManager.applyJson(prepared);
+            }
+            ConfigManager.saveLater();
         }
     }
 
+    public boolean rename(String oldName, String newName) {
+        ensureLoaded();
+        if (oldName == null || newName == null || newName.isBlank() || !profiles.containsKey(oldName)
+                || (profiles.containsKey(newName) && !oldName.equals(newName))) {
+            return false;
+        }
+        if (oldName.equals(newName)) {
+            return true;
+        }
+        LinkedHashMap<String, JsonObject> updated = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonObject> e : profiles.entrySet()) {
+            if (e.getKey().equals(oldName)) {
+                updated.put(newName, e.getValue());
+            } else {
+                updated.put(e.getKey(), e.getValue());
+            }
+        }
+        profiles.clear();
+        profiles.putAll(updated);
+        for (Map.Entry<String, String> e : bindings.entrySet()) {
+            if (oldName.equals(e.getValue())) {
+                e.setValue(newName);
+            }
+        }
+        persist();
+        return true;
+    }
+
     public void delete(String name) {
+        ensureLoaded();
         profiles.remove(name);
         bindings.values().removeIf(name::equals);
         persist();
     }
 
     public String nextDefaultName() {
+        ensureLoaded();
         int n = 1;
         while (profiles.containsKey("Profile " + n)) {
             n++;
@@ -78,6 +148,7 @@ public class ProfileManager {
     }
 
     public void bind(String contextKey, String profileName) {
+        ensureLoaded();
         if (profileName == null) {
             bindings.remove(contextKey);
         } else {
@@ -87,6 +158,7 @@ public class ProfileManager {
     }
 
     public String getBinding(String contextKey) {
+        ensureLoaded();
         return bindings.get(contextKey);
     }
 
@@ -96,6 +168,7 @@ public class ProfileManager {
             return;
         }
         lastContext = contextKey;
+        ensureLoaded();
         String prof = bindings.get(contextKey);
         if (prof != null && profiles.containsKey(prof)) {
             ConfigManager.applyJson(profiles.get(prof));
@@ -104,6 +177,9 @@ public class ProfileManager {
     }
 
     public void load() {
+        loaded = true;
+        profiles.clear();
+        bindings.clear();
         File f = file();
         if (!f.exists()) {
             return;

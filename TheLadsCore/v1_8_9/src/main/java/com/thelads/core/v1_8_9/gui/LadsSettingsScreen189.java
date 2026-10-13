@@ -23,6 +23,7 @@ public class LadsSettingsScreen189 extends GuiScreen {
         ui.setOnOpenResourcePacks(() -> Minecraft.getMinecraft().displayGuiScreen(new GuiScreenResourcePacks(this)));
         ui.setOnOpenVideoSettings(() -> Minecraft.getMinecraft().displayGuiScreen(new GuiVideoSettings(this, Minecraft.getMinecraft().gameSettings)));
         ui.setClipboardReader(GuiScreen::getClipboardString);
+        ui.setClipboardWriter(GuiScreen::setClipboardString);
         ui.setOnOpenHudEditor(() -> Minecraft.getMinecraft().displayGuiScreen(new DraggableHudScreen189(this)));
     }
 

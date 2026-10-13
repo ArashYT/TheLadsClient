@@ -21,6 +21,8 @@ public class DraggableHudScreen1201 extends Screen {
         this.parent = parent;
         this.ui = java.util.Objects.requireNonNull(controller);
         this.ui.setOnClose(this::onClose);
+        this.ui.setClipboardReader(() -> Minecraft.getInstance().keyboardHandler.getClipboard());
+        this.ui.setClipboardWriter(text -> Minecraft.getInstance().keyboardHandler.setClipboard(text));
         this.ui.setOnSettings(name -> {
             var settings = new LadsSettingsScreen1201(this);
             settings.openModule(name);
