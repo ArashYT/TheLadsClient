@@ -1,7 +1,7 @@
 # Signs a CI-built release draft so launchers install it (TheLadsLauncher/UpdateSignature.cs). Run on the owner's PC after
 # verifying the draft and before publishing it: the private key never goes to GitHub, so a release made by anyone else
 # (a stolen GitHub login, a compromised CI action) has no valid signature and every launcher refuses it.
-#   ./tools/Sign-Release.ps1 -Version 1.9.5 [-Key $HOME\Documents\TheLads-release-signing-key.pem]
+#   ./tools/Sign-Release.ps1 -Version 1.9.6 [-Key $HOME\Documents\TheLads-release-signing-key.pem]
 param(
     [Parameter(Mandatory)] [string] $Version,
     [string] $Key = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'TheLads-release-signing-key.pem'),
