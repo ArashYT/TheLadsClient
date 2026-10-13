@@ -190,8 +190,7 @@ final class Probe172Ui {
         });
         STEPS.add(mc -> {
             ui().setReducedMotion(true);
-            ui().mouseScrolled(300, 200, -10);
-            CoreProbe.wheel(300, 200, -30);
+            ui().scrollBy(1000);
             return after(15);
         }); // Reset options sits below the last option
         STEPS.add(mc -> {
