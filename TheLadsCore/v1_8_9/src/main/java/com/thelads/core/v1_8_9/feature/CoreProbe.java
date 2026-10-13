@@ -84,6 +84,13 @@ public final class CoreProbe {
         } else if ("title".equals(only)) { // only the title screen's layout at every GUI scale, and its More, then Switch Versions
             STEPS.subList(3, STEPS.size()).clear();
             STEPS.add(CoreProbe::versionSwitch);
+        } else if ("packs".equals(only)) {
+            STEPS.clear();
+            STEPS.add(CoreProbe::titleShown);
+            STEPS.add(Probe193Packs189::runTitlePacks);
+            STEPS.add(CoreProbe::quickWorld);
+            STEPS.add(CoreProbe::worldReady);
+            STEPS.add(Probe193Packs189::runInGamePacks);
         } else {
         if ("itemphysics".equals(only)) {
             STEPS.clear();

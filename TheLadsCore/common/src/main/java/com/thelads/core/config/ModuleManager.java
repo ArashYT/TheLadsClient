@@ -288,6 +288,12 @@ public class ModuleManager {
         register(new Module("ModernAdvancements", "Search advancements, track goals and customize advancement toasts."));
         register(new Module("Resourcify", "Browse and update resource packs, data packs, shaders and worlds."));
 
+        Module packs = new Module(com.thelads.core.client.pack.PackMenuSettings.MODULE_NAME,
+            "Resource pack menu search, folder navigation and transparent layout.");
+        packs.addOption(new BoolOption(com.thelads.core.client.pack.PackMenuSettings.OPTION_TRANSPARENT, true));
+        packs.setEnabled(true);
+        register(packs, Module.Category.MECHANIC);
+
         Module disableNarrator = new Module("DisableNarrator", "Disables narrator.");
         disableNarrator.setEnabled(true);
         register(disableNarrator);

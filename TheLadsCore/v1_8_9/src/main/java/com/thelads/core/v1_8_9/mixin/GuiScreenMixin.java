@@ -32,6 +32,10 @@ public abstract class GuiScreenMixin extends Gui implements LadsButtonPress {
 
     @Inject(method = "drawBackground", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsBackdrop(int tint, CallbackInfo ci) {
+        if ((Object) this instanceof net.minecraft.client.gui.GuiScreenResourcePacks && com.thelads.core.client.pack.PackMenuSettings.isTransparent()) {
+            ci.cancel();
+            return;
+        }
         drawGradientRect(0, 0, width, height, LadsPalette.BACKGROUND, 0xFF30111C);
         ci.cancel();
     }

@@ -11,7 +11,9 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -35,16 +37,48 @@ public abstract class GuiSlotMixin implements SmoothScroll189.Target {
             ci.cancel();
             return;
         }
+        if ((Object) this instanceof net.minecraft.client.gui.GuiResourcePackList && com.thelads.core.client.pack.PackMenuSettings.isTransparent()) {
+            ci.cancel();
+            return;
+        }
         Gui.drawRect(left, top, right, bottom, LadsPalette.PANEL);
         ci.cancel();
     }
 
-    /** The header and footer bands. */
     @Inject(method = "overlayBackground", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsBand(int startY, int endY, int startAlpha, int endAlpha, CallbackInfo ci) {
+        if ((Object) this instanceof net.minecraft.client.gui.GuiResourcePackList && com.thelads.core.client.pack.PackMenuSettings.isTransparent()) {
+            ci.cancel();
+            return;
+        }
         Gui.drawRect(left, startY, left + width, endY, (startAlpha << 24) | (LadsPalette.BACKGROUND & 0xFFFFFF));
         Gui.drawRect(left, startY == 0 ? endY - 1 : startY, left + width, startY == 0 ? endY : startY + 1, LadsPalette.BORDER);
         ci.cancel();
+    }
+
+    @ModifyConstant(method = "drawScreen", constant = @Constant(intValue = 4), require = 0)
+    private int ladsNoShadowsIfTransparent(int shadowHeight) {
+        if ((Object) this instanceof net.minecraft.client.gui.GuiResourcePackList && com.thelads.core.client.pack.PackMenuSettings.isTransparent()) {
+            return 0;
+        }
+        return shadowHeight;
+    }
+
+    @Inject(method = "drawSelectionBox", at = @At("HEAD"), require = 0)
+    private void ladsScissorStart(int p_148120_1_, int p_148120_2_, int mouseX, int mouseY, CallbackInfo ci) {
+        if ((Object) this instanceof net.minecraft.client.gui.GuiResourcePackList && com.thelads.core.client.pack.PackMenuSettings.isTransparent()) {
+            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+            int scale = new net.minecraft.client.gui.ScaledResolution(mc).getScaleFactor();
+            org.lwjgl.opengl.GL11.glEnable(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST);
+            org.lwjgl.opengl.GL11.glScissor(left * scale, (mc.displayHeight - bottom * scale), (right - left) * scale, (bottom - top) * scale);
+        }
+    }
+
+    @Inject(method = "drawSelectionBox", at = @At("RETURN"), require = 0)
+    private void ladsScissorEnd(int p_148120_1_, int p_148120_2_, int mouseX, int mouseY, CallbackInfo ci) {
+        if ((Object) this instanceof net.minecraft.client.gui.GuiResourcePackList && com.thelads.core.client.pack.PackMenuSettings.isTransparent()) {
+            org.lwjgl.opengl.GL11.glDisable(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST);
+        }
     }
 
     /** The wheel step handleMouseInput just added (half a row, inside the list) becomes the glide's target instead. */

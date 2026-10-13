@@ -1,0 +1,56 @@
+package com.thelads.core.v1_8_9.gui;
+
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.GuiScreenResourcePacks;
+import net.minecraft.client.resources.ResourcePackListEntry;
+
+public class ResourcePackBackEntry189 extends ResourcePackListEntry {
+
+    public ResourcePackBackEntry189(GuiScreenResourcePacks screen) {
+        super(screen);
+    }
+
+    @Override
+    protected int func_183019_a() {
+        return 1;
+    }
+
+    @Override
+    protected String func_148311_a() {
+        return "Go up to parent folder";
+    }
+
+    @Override
+    protected String func_148312_b() {
+        return "..";
+    }
+
+    @Override
+    protected void func_148313_c() {
+    }
+
+    @Override
+    public void drawEntry(int slotIndex, int x, int y, int listWidth, int slotHeight, int mouseX, int mouseY, boolean isSelected) {
+        boolean hovered = mouseX >= x && mouseX <= x + listWidth && mouseY >= y && mouseY <= y + slotHeight;
+        int iconBg = hovered ? 0x5500AAFF : 0x3300AAFF;
+        Gui.drawRect(x, y, x + 32, y + 32, iconBg);
+        this.mc.fontRendererObj.drawStringWithShadow("§b..", x + 12, y + 12, 0xFFFFFF);
+        this.mc.fontRendererObj.drawStringWithShadow("§b.. (Up)", x + 36, y + 4, 0xFFFFFF);
+        this.mc.fontRendererObj.drawStringWithShadow("Go up to parent folder", x + 36, y + 16, 0xAAAAAA);
+    }
+
+    @Override
+    public boolean mousePressed(int slotIndex, int mouseX, int mouseY, int mouseEvent, int relativeX, int relativeY) {
+        if (this.resourcePacksGUI instanceof FolderNav189) {
+            ((FolderNav189) this.resourcePacksGUI).ladsCdUp();
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void mouseReleased(int slotIndex, int x, int y, int mouseEvent, int relativeX, int relativeY) {}
+
+    @Override
+    public void setSelected(int p_178011_1_, int p_178011_2_, int p_178011_3_) {}
+}
