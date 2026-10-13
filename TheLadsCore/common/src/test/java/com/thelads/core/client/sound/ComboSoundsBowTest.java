@@ -204,6 +204,75 @@ class ComboSoundsBowTest {
         }
     }
 
+    @Test
+    void trimVolumeSavesLoadsAndDefaultsTo100Percent(@TempDir Path base) throws Exception {
+        ClientPaths.setBaseDir(base);
+        try {
+            // 1. Missing trim data defaults to 100% (1.0)
+            assertEquals(1.0, CustomSounds.volume("untrimmed.wav"));
+            assertEquals(TrimData.DEFAULT, CustomSounds.loadTrimData("untrimmed.wav"));
+
+            // 2. Old save without volume field (e.g. {"start": 0.0, "end": 5.0}) defaults to 1.0 (100%)
+            Path folder = CustomSounds.folder();
+            Files.createDirectories(folder);
+            Path oldTrim = folder.resolve("legacy.wav.trim");
+            Files.writeString(oldTrim, "{\"start\": 0.0, \"end\": 5.0}");
+            assertEquals(1.0, CustomSounds.loadTrimData("legacy.wav").volume(), "old save without volume defaults to 100%");
+            assertEquals(1.0, CustomSounds.volume("legacy.wav"));
+
+            // Empty JSON defaults to 1.0 (100%)
+            Files.writeString(oldTrim, "{}");
+            assertEquals(1.0, CustomSounds.loadTrimData("legacy.wav").volume(), "empty JSON defaults to 100%");
+
+            // Corrupted file defaults to 100%
+            Files.writeString(oldTrim, "not-json");
+            assertEquals(1.0, CustomSounds.loadTrimData("legacy.wav").volume(), "invalid JSON defaults to 100%");
+
+            // 3. Save and load custom volume (e.g. 150% = 1.5)
+            CustomSounds.saveTrimData("custom.wav", new TrimData(1.5));
+            assertEquals(1.5, CustomSounds.loadTrimData("custom.wav").volume());
+            assertEquals(1.5, CustomSounds.volume("custom.wav"));
+
+            // 4. SaveTrim with volume persists it
+            AudioFormat format = new AudioFormat(8000, 16, 1, true, false);
+            byte[] data = new byte[8000 * 2]; // 1s
+            CustomSounds.Pcm pcm = new CustomSounds.Pcm(format, data);
+            String saved = CustomSounds.saveTrim("boosted.wav", pcm, 0, 1, 1.75);
+            assertEquals(1.75, CustomSounds.volume(saved), "saved trim keeps the chosen volume");
+            assertTrue(Files.exists(CustomSounds.trimDataFile(saved)), "trim data file created");
+
+            // Deleting the sound also removes the trim data file
+            CustomSounds.delete(saved);
+            assertFalse(Files.exists(CustomSounds.trimDataFile(saved)), "trim data removed on delete");
+            assertEquals(1.0, CustomSounds.volume(saved), "deleted sound defaults back to 100%");
+        } finally {
+            ClientPaths.setBaseDir(null);
+        }
+    }
+
+    @Test
+    void playbackAppliesPerSoundVolume(@TempDir Path base) throws Exception {
+        ClientPaths.setBaseDir(base);
+        try {
+            AudioFormat format = new AudioFormat(8000, 16, 1, true, false);
+            byte[] data = new byte[8000 * 2];
+            CustomSounds.Pcm pcm = new CustomSounds.Pcm(format, data);
+            String sound1 = CustomSounds.saveTrim("loud.wav", pcm, 0, 1, 1.5);
+            CustomSounds.play(sound1, 0.6);
+            assertEquals(0.6 * 1.5, CustomSounds.lastVolume(), 1e-6, "eff volume is module volume * sound volume");
+
+            String sound2 = CustomSounds.saveTrim("quiet.wav", pcm, 0, 1, 0.5);
+            CustomSounds.play(sound2, 0.8);
+            assertEquals(0.8 * 0.5, CustomSounds.lastVolume(), 1e-6);
+
+            // Preview in trimmer
+            CustomSounds.preview(pcm, 0.6 * 1.5, "preview");
+            assertEquals(0.9, CustomSounds.lastVolume(), 1e-6);
+        } finally {
+            ClientPaths.setBaseDir(null);
+        }
+    }
+
     private static byte[] wav(AudioFormat format, byte[] data) throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         javax.sound.sampled.AudioSystem.write(new javax.sound.sampled.AudioInputStream(new java.io.ByteArrayInputStream(data), format, data.length / 2),

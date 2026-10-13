@@ -59,9 +59,10 @@ public final class CustomSounds {
         thread.setDaemon(true);
         return thread;
     });
-    /** QA: lines opened since start, and the last file played. */
+    /** QA: lines opened since start, the last file played, and the effective volume of the last play/preview. */
     private static final AtomicInteger OPENED = new AtomicInteger();
     private static volatile String lastPlayed = "";
+    private static volatile double lastVolume = 0;
     private static final Map<String, AtomicInteger> PLAYS = new ConcurrentHashMap<>();
     /** The trimmer's preview: a newer one (or stopPreview) cuts it off. */
     private static final AtomicInteger PREVIEW = new AtomicInteger();
@@ -127,7 +128,26 @@ public final class CustomSounds {
         Path folder = folder().normalize(), path = folder.resolve(file).normalize();
         if (!folder.equals(path.getParent())) throw new IOException("Not a sound in the sounds folder: " + file);
         Files.deleteIfExists(path);
+        Files.deleteIfExists(trimDataFile(file));
         CACHE.remove(file);
+    }
+
+    public static Path trimDataFile(String file) {
+        return folder().resolve(file + ".trim");
+    }
+
+    public static TrimData loadTrimData(String file) {
+        if (file == null || file.isEmpty()) return TrimData.DEFAULT;
+        return TrimData.load(trimDataFile(file));
+    }
+
+    public static void saveTrimData(String file, TrimData data) throws IOException {
+        if (file == null || file.isEmpty()) return;
+        data.save(trimDataFile(file));
+    }
+
+    public static double volume(String file) {
+        return loadTrimData(file).volume();
     }
 
     /** The trimmer's copy of {@code source} (its first {@link #MAX_TRIM_SECONDS}), decoded off the game thread. */
@@ -142,9 +162,9 @@ public final class CustomSounds {
 
     /**
      * Saves seconds {@code start} to {@code end} of {@code pcm} (at most {@link #MAX_SECONDS}) as a WAV in {@link #folder}, named
-     * after {@code source} and the cut ("song 3.2s-15.2s.wav"); returns the stored name.
+     * after {@code source} and the cut ("song 3.2s-15.2s.wav") with per-sound {@code volume}; returns the stored name.
      */
-    public static String saveTrim(String source, Pcm pcm, double start, double end) throws IOException {
+    public static String saveTrim(String source, Pcm pcm, double start, double end, double volume) throws IOException {
         double rate = pcm.format().getSampleRate();
         int frame = pcm.format().getFrameSize();
         long from = Math.max(0, Math.round(start * rate)), to = Math.min(pcm.frames(), Math.round(Math.min(end, start + MAX_SECONDS) * rate));
@@ -154,7 +174,13 @@ public final class CustomSounds {
         AudioSystem.write(new AudioInputStream(new ByteArrayInputStream(part), pcm.format(), to - from), AudioFileFormat.Type.WAVE, wav);
         String stem = cleanName(source);
         if (stem.lastIndexOf('.') > 0) stem = stem.substring(0, stem.lastIndexOf('.'));
-        return store(String.format(Locale.ROOT, "%s %.1fs-%.1fs.wav", stem, from / rate, to / rate), wav.toByteArray());
+        String stored = store(String.format(Locale.ROOT, "%s %.1fs-%.1fs.wav", stem, from / rate, to / rate), wav.toByteArray());
+        saveTrimData(stored, new TrimData(volume));
+        return stored;
+    }
+
+    public static String saveTrim(String source, Pcm pcm, double start, double end) throws IOException {
+        return saveTrim(source, pcm, start, end, TrimData.DEFAULT_VOLUME);
     }
 
     /** Runs {@code work} (a decode, a copy) off the game thread. */
@@ -168,12 +194,14 @@ public final class CustomSounds {
         }, POOL);
     }
 
-    /** Plays the uploaded {@code file} at {@code volume} (0 to 1) times the game's master volume; returns at once. */
+    /** Plays the uploaded {@code file} at {@code volume} (0 to 1) times the per-sound volume times the game's master volume; returns at once. */
     public static void play(String file, double volume) {
         if (file == null || file.isEmpty()) return;
-        float gain = gain(volume);
+        double effVol = volume * volume(file);
+        float gain = gain(effVol);
         if (gain <= 0 || CACHE.get(file) == FAILED) return;
         if (PLAYING.incrementAndGet() > VOICES) { PLAYING.decrementAndGet(); return; }
+        lastVolume = effVol;
         try {
             POOL.execute(() -> {
                 try {
@@ -192,13 +220,14 @@ public final class CustomSounds {
     public static void preview(Pcm pcm, double volume, String label) {
         int preview = PREVIEW.incrementAndGet();
         float gain = gain(volume);
+        lastVolume = volume;
         if (gain > 0 && pcm != null && pcm.frames() > 0) POOL.execute(() -> write(pcm, gain, label, preview));
     }
 
     public static void stopPreview() { PREVIEW.incrementAndGet(); }
 
     private static float gain(double volume) {
-        return (float) Math.max(0, Math.min(1, volume * LadsGameBridge.get().getMasterVolume()));
+        return (float) Math.max(0, Math.min(2.0, volume * LadsGameBridge.get().getMasterVolume()));
     }
 
     /** The cached sound, decoded now if new (outside the cache's lock: the game thread asks it too); FAILED (logged once) when it can't be read. */
@@ -296,6 +325,7 @@ public final class CustomSounds {
                 int n = Math.min(chunk.length, data.length - at);
                 for (int i = 0; i + 1 < n; i += 2) {
                     int sample = Math.round((short) (data[at + i] & 0xFF | data[at + i + 1] << 8) * gain);
+                    sample = Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, sample));
                     chunk[i] = (byte) sample;
                     chunk[i + 1] = (byte) (sample >> 8);
                 }
@@ -311,6 +341,8 @@ public final class CustomSounds {
     /** QA: sound lines opened so far, and the last file played. */
     public static int linesOpened() { return OPENED.get(); }
     public static String lastPlayed() { return lastPlayed; }
+    /** QA: effective volume of the last sound played or previewed. */
+    public static double lastVolume() { return lastVolume; }
     /** QA: how many times {@code file} started playing. */
     public static int plays(String file) { AtomicInteger n = PLAYS.get(file); return n == null ? 0 : n.get(); }
     /** Tests: sounds in the cache now. */
