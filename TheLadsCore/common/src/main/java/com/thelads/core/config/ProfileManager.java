@@ -224,10 +224,25 @@ public class ProfileManager {
             b.addProperty(e.getKey(), e.getValue());
         }
         json.add("bindings", b);
-        try (FileWriter w = new FileWriter(f)) {
+        File temp = new File(f.getParentFile(), f.getName() + ".tmp");
+        try (FileWriter w = new FileWriter(temp)) {
             GSON.toJson(json, w);
+            w.flush();
         } catch (IOException e) {
             e.printStackTrace();
+            return;
+        }
+        try {
+            java.nio.file.Files.move(temp.toPath(), f.toPath(),
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            try {
+                java.nio.file.Files.move(temp.toPath(), f.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e2) {
+                e2.printStackTrace();
+            }
         }
     }
 }

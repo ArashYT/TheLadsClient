@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.thelads.core.modules.HudModule;
@@ -137,18 +138,32 @@ public final class ShareCode {
                 : null;
 
             JsonObject mOut = new JsonObject();
-            boolean enabled = srcObj != null && srcObj.has("enabled")
-                ? srcObj.get("enabled").getAsBoolean()
-                : m.isEnabled();
+            boolean enabled = m.isEnabled();
+            if (srcObj != null && srcObj.has("enabled") && srcObj.get("enabled").isJsonPrimitive()) {
+                JsonPrimitive p = srcObj.getAsJsonPrimitive("enabled");
+                if (p.isBoolean()) {
+                    enabled = p.getAsBoolean();
+                }
+            }
             mOut.addProperty("enabled", enabled);
 
             if (m instanceof HudModule hm) {
-                boolean useGlobal = srcObj != null && srcObj.has("useGlobalColor")
-                    ? srcObj.get("useGlobalColor").getAsBoolean()
-                    : hm.isUseGlobalColor();
-                int custom = srcObj != null && srcObj.has("customColor")
-                    ? srcObj.get("customColor").getAsInt()
-                    : hm.getCustomColor();
+                boolean useGlobal = hm.isUseGlobalColor();
+                int custom = hm.getCustomColor();
+                if (srcObj != null) {
+                    if (srcObj.has("useGlobalColor") && srcObj.get("useGlobalColor").isJsonPrimitive()) {
+                        JsonPrimitive p = srcObj.getAsJsonPrimitive("useGlobalColor");
+                        if (p.isBoolean()) {
+                            useGlobal = p.getAsBoolean();
+                        }
+                    }
+                    if (srcObj.has("customColor") && srcObj.get("customColor").isJsonPrimitive()) {
+                        JsonPrimitive p = srcObj.getAsJsonPrimitive("customColor");
+                        if (p.isNumber()) {
+                            custom = p.getAsInt();
+                        }
+                    }
+                }
                 mOut.addProperty("useGlobalColor", useGlobal);
                 mOut.addProperty("customColor", custom);
             }
@@ -161,7 +176,7 @@ public final class ShareCode {
                 for (Map.Entry<String, JsonElement> e : optsIn.entrySet()) {
                     String optName = e.getKey();
                     JsonElement optVal = e.getValue();
-                    if (isExcludedOption(name, optName) || optVal.isJsonNull()) {
+                    if (isExcludedOption(name, optName) || optVal == null || optVal.isJsonNull()) {
                         continue;
                     }
                     optsOut.add(optName, optVal.deepCopy());
@@ -233,24 +248,33 @@ public final class ShareCode {
                 JsonObject mOut = new JsonObject();
 
                 if (mode == ImportMode.MODS || mode == ImportMode.BOTH) {
-                    if (mIn.has("enabled")) {
-                        mOut.addProperty("enabled", mIn.get("enabled").getAsBoolean());
+                    if (mIn.has("enabled") && mIn.get("enabled").isJsonPrimitive()) {
+                        JsonPrimitive p = mIn.getAsJsonPrimitive("enabled");
+                        if (p.isBoolean()) {
+                            mOut.addProperty("enabled", p.getAsBoolean());
+                        }
                     }
                 }
 
                 if (mode == ImportMode.SETTINGS || mode == ImportMode.BOTH) {
-                    if (mIn.has("useGlobalColor")) {
-                        mOut.addProperty("useGlobalColor", mIn.get("useGlobalColor").getAsBoolean());
+                    if (mIn.has("useGlobalColor") && mIn.get("useGlobalColor").isJsonPrimitive()) {
+                        JsonPrimitive p = mIn.getAsJsonPrimitive("useGlobalColor");
+                        if (p.isBoolean()) {
+                            mOut.addProperty("useGlobalColor", p.getAsBoolean());
+                        }
                     }
-                    if (mIn.has("customColor")) {
-                        mOut.addProperty("customColor", mIn.get("customColor").getAsInt());
+                    if (mIn.has("customColor") && mIn.get("customColor").isJsonPrimitive()) {
+                        JsonPrimitive p = mIn.getAsJsonPrimitive("customColor");
+                        if (p.isNumber()) {
+                            mOut.addProperty("customColor", p.getAsInt());
+                        }
                     }
                     if (mIn.has("options") && mIn.get("options").isJsonObject()) {
                         JsonObject optsIn = mIn.getAsJsonObject("options");
                         JsonObject optsOut = new JsonObject();
                         for (Map.Entry<String, JsonElement> optEntry : optsIn.entrySet()) {
                             String optName = optEntry.getKey();
-                            if (!isExcludedOption(modName, optName) && !optEntry.getValue().isJsonNull()) {
+                            if (!isExcludedOption(modName, optName) && optEntry.getValue() != null && !optEntry.getValue().isJsonNull()) {
                                 optsOut.add(optName, optEntry.getValue().deepCopy());
                             }
                         }

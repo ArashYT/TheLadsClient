@@ -363,6 +363,36 @@ class ShareCodeTest {
     }
 
     @Test
+    void malformedInteriorJsonTypesIgnoredSafely() {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("v", 1);
+        JsonObject mods = new JsonObject();
+
+        JsonObject badCps = new JsonObject();
+        badCps.add("enabled", new JsonObject()); // non-primitive object
+        badCps.add("customColor", new JsonPrimitive("not_a_number")); // non-numeric
+        badCps.add("useGlobalColor", new com.google.gson.JsonArray()); // array
+        mods.add("CPS", badCps);
+
+        JsonObject nullFps = new JsonObject();
+        nullFps.add("enabled", com.google.gson.JsonNull.INSTANCE);
+        nullFps.add("customColor", com.google.gson.JsonNull.INSTANCE);
+        mods.add("FPS", nullFps);
+
+        payload.add("modules", mods);
+
+        // Neither MODS, SETTINGS, nor BOTH should throw UnsupportedOperationException or NumberFormatException
+        assertDoesNotThrow(() -> {
+            JsonObject outMods = ShareCode.prepareImportJson(payload, ShareCode.ImportMode.MODS);
+            assertNotNull(outMods);
+            JsonObject outSettings = ShareCode.prepareImportJson(payload, ShareCode.ImportMode.SETTINGS);
+            assertNotNull(outSettings);
+            JsonObject outBoth = ShareCode.prepareImportJson(payload, ShareCode.ImportMode.BOTH);
+            assertNotNull(outBoth);
+        });
+    }
+
+    @Test
     void typicalShareCodeSize() {
         JsonObject full = ConfigManager.toJson();
         JsonObject payload = ShareCode.createSharePayload(full);

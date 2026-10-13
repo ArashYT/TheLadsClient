@@ -7,6 +7,7 @@ import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.ProfileManager;
 import com.thelads.core.config.ShareCode;
 import com.thelads.core.config.ShareCode.ImportMode;
+import com.thelads.core.config.ShareCodeClient;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -65,6 +66,34 @@ public final class ProfilesDialog {
     private Rect listArea = new Rect(0, 0, 0, 0);
     private final Map<String, Rect> profileRows = new LinkedHashMap<>();
 
+    private static java.util.concurrent.Executor asyncExecutor = java.util.concurrent.Executors.newCachedThreadPool();
+    private final java.util.Queue<Runnable> mainThreadTasks = new java.util.concurrent.ConcurrentLinkedQueue<>();
+
+    public static void setAsyncExecutor(java.util.concurrent.Executor executor) {
+        asyncExecutor = executor != null ? executor : java.util.concurrent.Executors.newCachedThreadPool();
+    }
+
+    public void postToMainThread(Runnable task) {
+        if (task != null) {
+            mainThreadTasks.add(task);
+        }
+    }
+
+    public void processMainThreadTasks() {
+        Runnable task;
+        while ((task = mainThreadTasks.poll()) != null) {
+            try {
+                task.run();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void tick() {
+        processMainThreadTasks();
+    }
+
     public void setClipboardReader(Supplier<String> reader) {
         this.clipboardReader = reader != null ? reader : () -> "";
     }
@@ -84,8 +113,8 @@ public final class ProfilesDialog {
         this.toast = "";
         this.listScroll = 0;
         List<String> names = ProfileManager.get().getProfileNames();
-        if (selectedProfile == null || !names.contains(selectedProfile)) {
-            selectedProfile = names.isEmpty() ? null : names.get(0);
+        if (selectedProfile != null && !names.contains(selectedProfile)) {
+            selectedProfile = null;
         }
     }
 
@@ -124,6 +153,10 @@ public final class ProfilesDialog {
         return previewText;
     }
 
+    public JsonObject importedPayload() {
+        return importedPayload;
+    }
+
     public Rect bounds() { return box; }
     public Rect closeBounds() { return closeBtn; }
     public Rect loadBounds() { return loadBtn; }
@@ -150,6 +183,7 @@ public final class ProfilesDialog {
     }
 
     public void render(LadsGraphics g, int mx, int my) {
+        processMainThreadTasks();
         if (!open) return;
         int width = g.getScaledWidth(), height = g.getScaledHeight();
         int dw = Math.min(380, width - 20);
@@ -372,24 +406,30 @@ public final class ProfilesDialog {
                 }
             }
             case CHOICE_LOAD -> {
-                if (choiceMods.contains(x, y)) {
-                    ProfileManager.get().apply(selectedProfile, ImportMode.MODS);
-                    onSave.run();
-                    showToast("Loaded (Mods)");
-                    mode = Mode.LIST;
-                    return true;
-                }
-                if (choiceSettings.contains(x, y)) {
-                    ProfileManager.get().apply(selectedProfile, ImportMode.SETTINGS);
-                    onSave.run();
-                    showToast("Loaded (Settings)");
-                    mode = Mode.LIST;
-                    return true;
-                }
-                if (choiceBoth.contains(x, y)) {
-                    ProfileManager.get().apply(selectedProfile, ImportMode.BOTH);
-                    onSave.run();
-                    showToast("Loaded (Both)");
+                try {
+                    if (choiceMods.contains(x, y)) {
+                        ProfileManager.get().apply(selectedProfile, ImportMode.MODS);
+                        onSave.run();
+                        showToast("Loaded (Mods)");
+                        mode = Mode.LIST;
+                        return true;
+                    }
+                    if (choiceSettings.contains(x, y)) {
+                        ProfileManager.get().apply(selectedProfile, ImportMode.SETTINGS);
+                        onSave.run();
+                        showToast("Loaded (Settings)");
+                        mode = Mode.LIST;
+                        return true;
+                    }
+                    if (choiceBoth.contains(x, y)) {
+                        ProfileManager.get().apply(selectedProfile, ImportMode.BOTH);
+                        onSave.run();
+                        showToast("Loaded (Both)");
+                        mode = Mode.LIST;
+                        return true;
+                    }
+                } catch (Exception ex) {
+                    errorText = "Load failed: " + ex.getMessage();
                     mode = Mode.LIST;
                     return true;
                 }
@@ -399,24 +439,30 @@ public final class ProfilesDialog {
                 }
             }
             case CHOICE_IMPORT -> {
-                if (choiceMods.contains(x, y) && importedPayload != null) {
-                    ShareCode.applySharePayload(importedPayload, ImportMode.MODS);
-                    onSave.run();
-                    showToast("Imported (Mods)");
-                    mode = Mode.LIST;
-                    return true;
-                }
-                if (choiceSettings.contains(x, y) && importedPayload != null) {
-                    ShareCode.applySharePayload(importedPayload, ImportMode.SETTINGS);
-                    onSave.run();
-                    showToast("Imported (Settings)");
-                    mode = Mode.LIST;
-                    return true;
-                }
-                if (choiceBoth.contains(x, y) && importedPayload != null) {
-                    ShareCode.applySharePayload(importedPayload, ImportMode.BOTH);
-                    onSave.run();
-                    showToast("Imported (Both)");
+                try {
+                    if (choiceMods.contains(x, y) && importedPayload != null) {
+                        ShareCode.applySharePayload(importedPayload, ImportMode.MODS);
+                        onSave.run();
+                        showToast("Imported (Mods)");
+                        mode = Mode.LIST;
+                        return true;
+                    }
+                    if (choiceSettings.contains(x, y) && importedPayload != null) {
+                        ShareCode.applySharePayload(importedPayload, ImportMode.SETTINGS);
+                        onSave.run();
+                        showToast("Imported (Settings)");
+                        mode = Mode.LIST;
+                        return true;
+                    }
+                    if (choiceBoth.contains(x, y) && importedPayload != null) {
+                        ShareCode.applySharePayload(importedPayload, ImportMode.BOTH);
+                        onSave.run();
+                        showToast("Imported (Both)");
+                        mode = Mode.LIST;
+                        return true;
+                    }
+                } catch (Exception ex) {
+                    errorText = "Import failed: " + ex.getMessage();
                     mode = Mode.LIST;
                     return true;
                 }
@@ -468,34 +514,78 @@ public final class ProfilesDialog {
     }
 
     private void performCopy() {
+        if (clipboardWriter == null) return;
         try {
             JsonObject full = selectedProfile != null && ProfileManager.get().hasProfile(selectedProfile)
                 ? ProfileManager.get().getProfile(selectedProfile)
                 : ConfigManager.toJson();
             JsonObject payload = ShareCode.createSharePayload(full);
-            String code = ShareCode.encode(payload);
-            clipboardWriter.accept(code);
-            showToast("Copied");
+            final String longCode = ShareCode.encode(payload);
             errorText = "";
+
+            asyncExecutor.execute(() -> {
+                String shortCode = null;
+                try {
+                    shortCode = ShareCodeClient.postShare(longCode);
+                } catch (Exception ignored) {
+                }
+
+                final String resultShortCode = shortCode;
+                postToMainThread(() -> {
+                    if (resultShortCode != null) {
+                        clipboardWriter.accept(resultShortCode);
+                        showToast("Copied " + resultShortCode);
+                    } else {
+                        clipboardWriter.accept(longCode);
+                        showToast("Server offline - copied long code");
+                    }
+                });
+            });
         } catch (Exception ex) {
             errorText = "Copy failed: " + ex.getMessage();
         }
     }
 
     private void performImport() {
-        String text = clipboardReader != null ? clipboardReader.get() : "";
-        if (text == null || text.isBlank()) {
+        String raw = clipboardReader != null ? clipboardReader.get() : "";
+        if (raw == null || raw.trim().isEmpty()) {
             errorText = "Clipboard is empty";
             return;
         }
-        try {
-            JsonObject decoded = ShareCode.decode(text);
-            importedPayload = decoded;
-            previewText = ShareCode.summarize(decoded);
+        final String text = raw.trim();
+        if (ShareCodeClient.isShortCode(text)) {
             errorText = "";
-            mode = Mode.CHOICE_IMPORT;
-        } catch (Exception ex) {
-            errorText = ex.getMessage();
+            asyncExecutor.execute(() -> {
+                try {
+                    String downloadedPayload = ShareCodeClient.getShare(text);
+                    JsonObject decoded = ShareCode.decode(downloadedPayload);
+                    String summary = ShareCode.summarize(decoded);
+                    postToMainThread(() -> {
+                        importedPayload = decoded;
+                        previewText = summary;
+                        errorText = "";
+                        mode = Mode.CHOICE_IMPORT;
+                    });
+                } catch (ShareCodeClient.ShareNotFoundException e) {
+                    postToMainThread(() -> {
+                        errorText = "Code not found";
+                    });
+                } catch (Exception e) {
+                    postToMainThread(() -> {
+                        errorText = "Can't reach the share server";
+                    });
+                }
+            });
+        } else {
+            try {
+                JsonObject decoded = ShareCode.decode(text);
+                importedPayload = decoded;
+                previewText = ShareCode.summarize(decoded);
+                errorText = "";
+                mode = Mode.CHOICE_IMPORT;
+            } catch (Exception ex) {
+                errorText = ex.getMessage();
+            }
         }
     }
 
