@@ -1394,15 +1394,15 @@ public final class LadsSettingsScreen {
         Rect dropRect = new Rect(x + w - dropW - 6, y + 6, dropW, 22);
         button(g, id + ":dropdown", dropLabel, dropRect, () -> cycleProfile(false), !list.isEmpty(), mx, my, false);
 
-        int delW = g.textWidth("Delete") + 14;
+        int delW = g.textWidth("Delete") + 12;
         boolean editingSave = editingOption != null && editingOption == savingProfileOption;
-        int saveW = editingSave ? Math.max(g.textWidth("Save as...") + 14, dropW - delW - 4) : g.textWidth("Save as...") + 14;
+        int saveW = editingSave ? Math.max(g.textWidth("Save as...") + 12, dropW - delW - 4) : g.textWidth("Save as...") + 12;
         Rect delRect = new Rect(x + w - delW - 6, y + 31, delW, 20);
         Rect saveRect = new Rect(delRect.x - 4 - saveW, y + 31, saveW, 20);
 
         // Bottom line: description and Save as... / Delete buttons
-        int descAvail = saveRect.x - (x + 9) - 8;
-        g.drawText(fit(g, "Saved crosshair profiles", descAvail), x + 9, y + 39, MUTED);
+        int descAvail = saveRect.x - (x + 9) - 4;
+        g.drawText(fit(g, "Saved profiles", descAvail), x + 9, y + 39, MUTED);
 
         button(g, id + ":save", editingSave ? inputWindow(g, saveRect.width - 10) : "Save as...", saveRect, () -> {
             startSaveProfile(profilesOpt);
