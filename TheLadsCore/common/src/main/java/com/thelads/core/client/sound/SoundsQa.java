@@ -305,6 +305,17 @@ public final class SoundsQa {
             double[] sel = menu.soundLibrary().selection();
             check(Math.abs(sel[2] - longSeconds) < .5 && sel[0] == 0 && Math.abs(sel[1] - 12) < .01, String.format(java.util.Locale.ROOT,
                 "the trimmer reads all %.0f s and starts on the first 12: %.2f-%.2f of %.2f", longSeconds, sel[0], sel[1], sel[2]));
+            check(Math.abs(menu.soundLibrary().trimmerVolume() - 1.0) < .01, "the trimmer volume slider starts at 100%");
+            LadsSettingsScreen.Rect volRect = menu.soundLibrary().bounds("volume");
+            check(volRect != null, "the trimmer has a volume slider");
+            if (volRect != null) {
+                double vx = volRect.x() + 4 + (volRect.width() - 8) * 0.75;
+                double vy = volRect.y() + volRect.height() / 2.0;
+                menu.mouseClicked(vx, vy, 0);
+                menu.mouseReleased(vx, vy, 0);
+                check(Math.abs(menu.soundLibrary().trimmerVolume() - 1.5) < .06,
+                    "volume slider clicked to 150% (" + (int) Math.round(menu.soundLibrary().trimmerVolume() * 100) + "%)");
+            }
             LadsSettingsScreen.Rect wave = menu.soundLibrary().bounds("wave");
             double y = wave.y() + wave.height() / 2.0;
             double total = sel[2];
@@ -325,6 +336,7 @@ public final class SoundsQa {
         });
         steps.add(() -> {
             check(CustomSounds.linesOpened() > lines, "Space previews the selection (" + CustomSounds.lastPlayed() + ")");
+            check(Math.abs(CustomSounds.lastVolume() - 1.5) < .1, "preview plays at 150% volume (" + CustomSounds.lastVolume() + ")");
             game.screenshot("sounds-trimmer");
             wait = 10;
             return true;
@@ -339,6 +351,10 @@ public final class SoundsQa {
             CustomSounds.Pcm pcm = CustomSounds.decoded(trimmed);
             check(trimmed.startsWith(longName.substring(0, longName.lastIndexOf('.')) + " ") && trimmed.endsWith(".wav") && pcm != null && Math.abs(pcm.seconds() - 11) < .4,
                 "Save puts the part in Combo 1 as a WAV: " + trimmed + " (" + (pcm == null ? "unreadable" : pcm.seconds() + " s") + ")");
+            check(Math.abs(CustomSounds.volume(trimmed) - 1.5) < .06, "the saved sound keeps 150% volume in trim data (" + (int) Math.round(CustomSounds.volume(trimmed) * 100) + "%)");
+            combo.play(1);
+            check(Math.abs(CustomSounds.lastVolume() - combo.volume.getValue() * 1.5) < .1,
+                "playback applies 150% volume: " + CustomSounds.lastVolume() + " (module volume " + combo.volume.getValue() + " * 1.5)");
             CustomSounds.stopPreview();
             return true;
         });
@@ -393,7 +409,8 @@ public final class SoundsQa {
         // A delete: Combo 2's sound, asked first, gone from the folder and the slot.
         steps.add(() -> reveal("option:Combo 2:choose"));
         steps.add(() -> {
-            clickScreen("option:Combo 2:choose");
+            if (!menu.soundLibrary().isOpen()) clickScreen("option:Combo 2:choose");
+            if (!menu.soundLibrary().isOpen()) return false;
             type("qa-delete");
             wait = 3;
             return true;

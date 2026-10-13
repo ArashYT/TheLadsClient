@@ -55,6 +55,8 @@ public final class SoundLibraryDialog {
     private double total, start, end, viewStart, viewEnd, grab;
     private long previewAt;
     private Rect wave = new Rect(0, 0, 0, 0);
+    private Rect volRect = new Rect(0, 0, 0, 0);
+    private double trimVolume = com.thelads.core.client.sound.TrimData.DEFAULT_VOLUME;
 
     SoundLibraryDialog(ConfirmDialog confirm, Runnable changed) {
         this.confirm = confirm;
@@ -67,11 +69,15 @@ public final class SoundLibraryDialog {
     public boolean trimmerReady() { return isTrimming() && pcm != null; }
     /** QA: the selection, {start, end, total} in seconds. */
     public double[] selection() { return new double[] {start, end, total}; }
+    /** QA: the volume of the trimmer slider (0.0 to 2.0). */
+    public double trimmerVolume() { return trimVolume; }
+    public void setTrimmerVolume(double volume) { this.trimVolume = Math.max(0, Math.min(2.0, volume)); }
     /** QA: the files listed, in their order. */
     public List<String> listed() { return filtered(); }
-    /** QA: where the last frame drew a control ("upload", "row:<file>", "star:<file>", "trim:<file>", "wave", "save"...), or null. */
+    /** QA: where the last frame drew a control ("upload", "row:<file>", "star:<file>", "trim:<file>", "wave", "save", "volume"...), or null. */
     public Rect bounds(String id) {
         if ("wave".equals(id)) return isTrimming() ? wave : null;
+        if ("volume".equals(id)) return isTrimming() ? volRect : null;
         for (Hit hit : hits) if (hit.id().equals(id)) return hit.rect();
         return null;
     }
@@ -86,6 +92,7 @@ public final class SoundLibraryDialog {
         query = notice = "";
         offset = 0;
         trimming = false;
+        trimVolume = com.thelads.core.client.sound.TrimData.DEFAULT_VOLUME;
         open = true;
         refresh();
     }
@@ -97,6 +104,7 @@ public final class SoundLibraryDialog {
         open = trimming = false;
         pcm = null;
         peaks = null;
+        trimVolume = com.thelads.core.client.sound.TrimData.DEFAULT_VOLUME;
     }
 
     private void refresh() { files = CustomSounds.list(); }
@@ -144,6 +152,7 @@ public final class SoundLibraryDialog {
         trimSource = source;
         trimFile = file;
         trimName = file != null ? file : source.getFileName().toString();
+        trimVolume = file != null ? CustomSounds.volume(file) : com.thelads.core.client.sound.TrimData.DEFAULT_VOLUME;
         trimError = notice = "";
         pcm = null;
         peaks = null;
@@ -186,7 +195,7 @@ public final class SoundLibraryDialog {
         int frame = pcm.format().getFrameSize();
         long from = Math.round(start * rate), to = Math.min(pcm.frames(), Math.round(end * rate));
         if (to <= from) return;
-        CustomSounds.preview(new CustomSounds.Pcm(pcm.format(), java.util.Arrays.copyOfRange(pcm.data(), (int) (from * frame), (int) (to * frame))), volume, trimName);
+        CustomSounds.preview(new CustomSounds.Pcm(pcm.format(), java.util.Arrays.copyOfRange(pcm.data(), (int) (from * frame), (int) (to * frame))), volume * trimVolume, trimName);
         previewAt = System.nanoTime();
     }
 
@@ -195,8 +204,9 @@ public final class SoundLibraryDialog {
         CustomSounds.Pcm sound = pcm;
         String name = trimName;
         double from = start, to = end;
+        double vol = trimVolume;
         notice = "Saving...";
-        CustomSounds.async(() -> CustomSounds.saveTrim(name, sound, from, to)).whenComplete((stored, failure) -> finished.add(() -> {
+        CustomSounds.async(() -> CustomSounds.saveTrim(name, sound, from, to, vol)).whenComplete((stored, failure) -> finished.add(() -> {
             if (failure != null) notice = "Can't save it: " + cause(failure).getMessage();
             else pick(stored, "Saved " + stored);
         }));
@@ -218,6 +228,7 @@ public final class SoundLibraryDialog {
         trimToken++;
         pcm = null;
         peaks = null;
+        trimVolume = com.thelads.core.client.sound.TrimData.DEFAULT_VOLUME;
         trimming = false;
         refresh();
     }
@@ -332,7 +343,7 @@ public final class SoundLibraryDialog {
     private void renderTrimmer(LadsGraphics g, int mx, int my) {
         g.drawText(fit(g, "Trim " + trimName, w - 90), x + 12, y + 11, TEXT);
         button(g, "cancel", "Cancel", new Rect(x + w - 58, y + 7, 48, 18), this::cancelTrim, true, false, mx, my);
-        wave = new Rect(x + 10, y + 44, w - 20, Math.max(30, h - 44 - 64));
+        wave = new Rect(x + 10, y + 44, w - 20, Math.max(30, h - 44 - 76));
         round(g, wave.x(), wave.y(), wave.width(), wave.height(), CARD);
         if (pcm == null) {
             String text = trimError.isEmpty() ? "Reading " + trimName + "..." : trimError;
@@ -376,13 +387,25 @@ public final class SoundLibraryDialog {
         int toX = Math.max(fromX + g.textWidth(from) + 4, Math.min(ex - g.textWidth(to) / 2, wave.x() + wave.width() - 30 - g.textWidth(to)));
         g.drawText(from, fromX, labelY + 10, TEXT);
         g.drawText(to, toX, labelY + 10, TEXT);
+        int vy = y + h - 50;
+        int volW = Math.max(100, Math.min(130, (w - 20) / 3));
+        volRect = new Rect(x + 10, vy, volW, 18);
+        boolean volHover = volRect.contains(mx, my);
+        round(g, volRect.x(), volRect.y(), volRect.width(), volRect.height(), volHover ? LadsPalette.HOVER : CARD);
+        int trackW = volRect.width() - 8;
+        int fillW = (int) Math.round(trackW * (trimVolume / 2.0));
+        g.fill(volRect.x() + 4, volRect.y() + volRect.height() - 3, volRect.x() + 4 + trackW, volRect.y() + volRect.height() - 1, LadsPalette.BORDER);
+        g.fill(volRect.x() + 4, volRect.y() + volRect.height() - 3, volRect.x() + 4 + fillW, volRect.y() + volRect.height() - 1, ACCENT);
+        String volLabel = "Volume: " + (int) Math.round(trimVolume * 100) + "%";
+        g.drawCenteredText(fit(g, volLabel, volRect.width() - 6), volRect.x() + volRect.width() / 2, volRect.y() + (volRect.height() - g.fontHeight()) / 2, TEXT);
+        hits.add(new Hit("volume", volRect, () -> {}));
         int by = y + h - 26, gap = 4, bw = (w - 20 - 3 * gap) / 4;
         button(g, "play", "Play selection", new Rect(x + 10, by, bw, 20), this::playSelection, true, false, mx, my);
         button(g, "save", "Save", new Rect(x + 10 + bw + gap, by, bw, 20), this::save, true, true, mx, my);
         button(g, "whole", total > CustomSounds.MAX_SECONDS ? "Use first 12 s" : "Use whole file", new Rect(x + 10 + 2 * (bw + gap), by, bw, 20), this::useWhole, true, false, mx, my);
         button(g, "back", trimFile == null ? "Cancel" : "Back", new Rect(x + 10 + 3 * (bw + gap), by, bw, 20), this::cancelTrim, true, false, mx, my);
         String hint = notice.isEmpty() ? "Drag the handles or the selection. Wheel zooms. Space plays, Enter saves." : notice;
-        g.drawText(fit(g, hint, w - 24), x + 12, by - 12, notice.isEmpty() ? MUTED : ACCENT);
+        g.drawText(fit(g, hint, w - volW - 24), x + 14 + volW, vy + (volRect.height() - g.fontHeight()) / 2, notice.isEmpty() ? MUTED : ACCENT);
     }
 
     // Input -----------------------------------------------------------------------------------------------------------------
@@ -391,9 +414,19 @@ public final class SoundLibraryDialog {
         if (!open) return false;
         if (!trimming && !new Rect(x, y, w, h).contains(mx, my)) { close(); return true; }
         if (button != 0) return true;
+        if (trimming && pcm != null && volRect.contains(mx, my)) {
+            drag = 4;
+            setVolumeAt(mx);
+            return true;
+        }
         if (trimming && pcm != null && wave.contains(mx, my)) { press(mx); return true; }
         for (Hit hit : List.copyOf(hits)) if (hit.rect().contains(mx, my)) { hit.action().run(); return true; }
         return true;
+    }
+
+    private void setVolumeAt(double mx) {
+        double t = Math.max(0.0, Math.min(1.0, (mx - (volRect.x() + 4)) / Math.max(1, volRect.width() - 8)));
+        trimVolume = Math.round(t * 40.0) / 20.0;
     }
 
     /** A press on the waveform: a handle (or the side of the selection it is on) moves; inside the selection the window moves. */
@@ -424,6 +457,10 @@ public final class SoundLibraryDialog {
 
     boolean drag(double mx) {
         if (!open || drag == 0) return false;
+        if (drag == 4) {
+            setVolumeAt(mx);
+            return true;
+        }
         move(mx);
         return true;
     }
