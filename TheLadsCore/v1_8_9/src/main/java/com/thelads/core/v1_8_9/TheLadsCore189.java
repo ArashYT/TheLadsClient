@@ -140,7 +140,7 @@ public class TheLadsCore189 {
     public static final String[] GAMEPLAY_MODULES = {
         "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss", "AppleSkin", BetterResolutionModule.NAME, "BetterScreenshots", "EnhancedToolbars",
         "Fullbright", com.thelads.core.modules.ToggleSprintModule.NAME, "Zoom", "LegacySwing",
-        "VerticalBobbing", "OldDamageTilt", "ClientTools", "SmoothHotbar", "TitleScreen", "Title Scale",
+        "VerticalBobbing", "OldDamageTilt", "ClientTools", "SmoothHotbar", "TitleScreen", "Title Scale", "ResourcePacks",
         "RawInput", "BorderlessFullscreen", com.thelads.core.v1_8_9.feature.UnfocusedFpsCap189.NAME,
         // Raised189: Forge's overlay events and the GuiIngame, GuiIngameForge and GuiNewChat mixins.
         "Raised",

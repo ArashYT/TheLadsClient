@@ -36,6 +36,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.NativeBetterF3.register();
         com.thelads.core.v26_2.feature.NativeCustomFov.register();
         com.thelads.core.v26_2.feature.AddServerProbe.register();
+        com.thelads.core.v26_2.feature.Probe193Packs26.register();
         com.thelads.core.v26_2.feature.Renderer134Probe.register();
         com.thelads.core.v26_2.feature.Version134ReplayProbe.register();
         com.thelads.core.v26_2.feature.flashback.NativeFlashback.initialize();

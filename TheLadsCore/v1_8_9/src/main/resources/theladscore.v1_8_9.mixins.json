@@ -74,6 +74,8 @@
     "RenderPlayerMixin",
     "RenderManagerCullMixin",
     "ResourcePackRepositoryMixin",
+    "ResourcePackRepositoryEntryMixin",
+    "GuiScreenResourcePacksMixin",
     "ScaledResolutionMixin",
     "ScreenShotHelperMixin",
     "ServerNameMixin",

@@ -37,6 +37,7 @@
     "SkinTextureAccessor",
     "LocalSkinMixin",
     "SkinScreenMixin",
-    "ForgeLoadingOverlayMixin"
+    "ForgeLoadingOverlayMixin",
+    "PackSelectionScreenMixin"
   ]
 }

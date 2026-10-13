@@ -168,6 +168,7 @@ bool hypixelOnly = hypixelCaptureVerification && Env("LADS_VERIFY_HYPIXEL_ONLY")
 // 1.9.1: the Action Bar module and kill banners above the action bar (ActionBarCapture, common ActionBarQa): LADS_VERIFY_CAPTURE_ACTIONBAR=1
 // (LADS_VERIFY_ACTIONBAR_ONLY=1: that capture alone once the QA world is up). 1.8.9: LADS_VERIFY_189_ONLY=actionbar; 1.20.1: the script verb "actionbar".
 bool actionBarCaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_ACTIONBAR") == "1";
+bool packsOnly = Env("LADS_VERIFY_PACKS") != null;
 bool actionBarOnly = actionBarCaptureVerification && Env("LADS_VERIFY_ACTIONBAR_ONLY") == "1";
 // 1.9.1: Wavy Capes and TNT Timer photographed in the QA world (WorldCapture). 1.20.1: the script verb "world191"; 1.8.9:
 // LADS_VERIFY_189_ONLY=world191 (Probe191World). LADS_VERIFY_WORLD191_ONLY=1: that capture alone, as LADS_VERIFY_PARTICLES_ONLY.
@@ -538,7 +539,7 @@ if (requestedFeaturesOnly)
     requiredWorldProbes = ["Lads native feature probe END:", "Lads improvements probe END:", "Lads font reload probe END:", "Lads world capture END:", "Lads shared content probe END:"];
     Console.WriteLine("Focused requested-feature verification: legacy crosshair/render-scale suites are not part of this run.");
 }
-if (particlesOnly || soundsOnly || fixesOnly || hypixelOnly || actionBarOnly || world191Only) requiredWorldProbes = ["Lads world capture END:"];
+if (particlesOnly || soundsOnly || fixesOnly || hypixelOnly || actionBarOnly || world191Only || packsOnly) requiredWorldProbes = ["Lads world capture END:"];
 if (cheatsPhase != null) requiredWorldProbes = [.. requiredWorldProbes, "Lads cheats probe END:"];
 // 1.8.5 input lane, Fabric versions: input-latency pacing and synthetic mouse evidence in the QA world (InputProbe26 / InputProbe1201).
 bool inputVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_INPUT") == "1", inputProbeFailed = false;
@@ -562,7 +563,9 @@ if (welcomeVerification) requiredCore.Add("Lads welcome probe END:");
 // Every version: the Add Server screen names known servers (AddServerProbe), screenshots/addserver-*.png.
 bool addServerVerification = titleVerification && !expectCoreDisabled && Env("LADS_VERIFY_ADDSERVER") == "1";
 if (addServerVerification) requiredCore.Add("Lads add-server probe END:");
-if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && !soundsOnly && !hypixelOnly && !actionBarOnly && !world191Only && !fixesOnly && fastQuitPhase == null && biomeCapture == null) requiredCore.Add("Lads shared content probe END:");
+bool packsVerification = titleVerification && !expectCoreDisabled && Env("LADS_VERIFY_PACKS") != null;
+if (packsVerification) requiredCore.Add("Lads packs probe END:");
+if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && !soundsOnly && !hypixelOnly && !actionBarOnly && !world191Only && !fixesOnly && !packsOnly && fastQuitPhase == null && biomeCapture == null) requiredCore.Add("Lads shared content probe END:");
 if (modRequest != null) requiredCore.Add("Lads mod request probe END:");
 string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
     "Lads native reconnect probe FAILED", "Lads dynamic FPS probe FAILED", "Lads background policy probe FAILED", "Lads auto-world QA FAILED",
@@ -575,7 +578,7 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads raised capture FAILED", "Lads raised title probe FAILED", "Lads hud layout FAILED", "Lads mouse tweaks capture FAILED", "Lads resolution capture FAILED",
     "Lads dynamic lights capture FAILED", "Lads Flashback probe FAILED", "Lads async stress probe FAILED",
     "Lads AppleSkin sync capture FAILED", "Lads qa script FAILED", "Lads qa step FAILED", "Lads render 1.8.5 capture FAILED", "Lads input probe FAILED", "Lads fast quit probe FAILED",
-    "Mod resolution encountered an incompatible mod set", "Incompatible mods found", "Lads biome capture FAILED"];
+    "Mod resolution encountered an incompatible mod set", "Incompatible mods found", "Lads biome capture FAILED", "Lads packs probe FAILED"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || capabilities.Minimal || inventorySnapshots.ContainsKey("title")); }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
 bool CatalogWritten() => File.Exists(catalogFile) && File.GetLastWriteTimeUtc(catalogFile) >= runStartUtc;
@@ -739,8 +742,9 @@ try
     }
     var session = AccountIdentity.CreateOfflineSession("LadsQA");
     await AccountExportService.WriteLaunchAsync(directory, session, true, new[] { new AccountSummary(session.Username!, session.UUID!, "offline") });
-    // A fresh options.txt every run, except with LADS_VERIFY_OPTIONS_SYNC: the game keeps its own, as players do (qaForced still applies).
-    if (optionsSync == null) await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:120\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
+    // A fresh options.txt every run, except with LADS_VERIFY_OPTIONS_SYNC or when relaunching/keeping options across restarts.
+    bool keepOptions = optionsSync != null || Env("LADS_VERIFY_KEEP_OPTIONS") == "1" || Env("LADS_VERIFY_PACKS") == "relaunch" || Env("LADS_VERIFY_189_ONLY") == "packs_relaunch";
+    if (!keepOptions || !File.Exists(Path.Combine(directory, "options.txt"))) await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:120\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
     Console.WriteLine("Installing production dependencies...");
     // QA windows are tiles of the primary monitor (QaWindowGuard): the game opens at the tile's client size.
     bool tiled = Env("LADS_VERIFY_FOCUS") != "1" && Env("LADS_VERIFY_PLAYING") != "1" && Env("LADS_VERIFY_NO_RESIZE") != "1";
@@ -799,6 +803,7 @@ try
     foreach (var extra in (Env("LADS_VERIFY_EXTRA_JVM") ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         AddJvm(Regex.IsMatch(extra, @"\A-Dlads\.[a-z0-9.]{1,40}=[A-Za-z0-9._-]{1,40}\z") ? extra : throw new ArgumentException("LADS_VERIFY_EXTRA_JVM takes only -Dlads.<name>=<value> flags, not '" + extra + "'."));
     if (addServerVerification) AddJvm("-Dthelads.verifyAddServer=true");
+    if (packsVerification) AddJvm("-Dthelads.verifyPacks=" + Env("LADS_VERIFY_PACKS"));
     if (ebeVerification)
     {
         AddJvm(capabilities.Forge ? "-Dthelads.verify189Only=ebe" : "-Dlads.ebe.probe=true");
@@ -826,7 +831,7 @@ try
         // =anim: only swing while using items and the damage tilt (Probe172Anim).
         // =keybinds: side mouse buttons and lasting key binds, the phase in <game>\.lads-qa-keybinds (Probe172Keybinds).
         // =ui: only the reset questions and Fullbright's slider (Probe172Ui). =title: only the title layout at every GUI scale and More.
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx" or "cull" or "particles" or "anim" or "keybinds" or "ui" or "render185" or "title" or "players" or "ofdefaults") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx" or "cull" or "particles" or "anim" or "keybinds" or "ui" or "render185" or "title" or "players" or "ofdefaults" or "packs" or "packs_relaunch") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
         if (perf189)
         {
             string perfFolder = Path.Combine(directory, "lads-qa", "perf");
