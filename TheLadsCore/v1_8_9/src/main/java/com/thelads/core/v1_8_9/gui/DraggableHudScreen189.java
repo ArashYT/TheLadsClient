@@ -24,6 +24,8 @@ public class DraggableHudScreen189 extends GuiScreen {
         this.parent = parent;
         // Escape and Done: the editor finishes (and saves) a drag, then its parent returns.
         ui.setOnClose(() -> Minecraft.getMinecraft().displayGuiScreen(parent));
+        ui.setClipboardReader(GuiScreen::getClipboardString);
+        ui.setClipboardWriter(GuiScreen::setClipboardString);
         ui.setOnSettings(name -> {
             LadsSettingsScreen189 settings = new LadsSettingsScreen189(this);
             settings.openModule(name);

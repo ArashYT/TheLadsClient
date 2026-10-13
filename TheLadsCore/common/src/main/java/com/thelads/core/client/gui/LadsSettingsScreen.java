@@ -69,6 +69,7 @@ public final class LadsSettingsScreen {
     private Runnable onOpenHudEditor = () -> {}, onClose = () -> {}, onOpenResourcePacks = () -> {}, onOpenVideoSettings = () -> {};
     private Consumer<String> onNarrate = ignored -> {};
     private Supplier<String> clipboardReader = () -> "";
+    private Consumer<String> clipboardWriter = text -> {};
     private static final String[] CATEGORIES = {"All", "HUD", "Gameplay", "Performance", "Server", "Hypixel"};
     private static final Set<String> PERFORMANCE = Set.of("Performance", "DynamicFPS", "UnfocusedFpsCap", "Exordium", "BetterResolution", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore", "Async", com.thelads.core.client.ParticleCore.MODULE);
     // Installed mods view: its own state, search and "mods:" row ids, so the native catalog above stays native-only.
@@ -113,7 +114,10 @@ public final class LadsSettingsScreen {
         }
     }
     public void refreshCatalog() { filterDirty = true; refreshCapabilities(); }
-    public void setClipboardReader(Supplier<String> reader) { clipboardReader = reader; }
+    public void setClipboardReader(Supplier<String> reader) { clipboardReader = reader != null ? reader : () -> ""; }
+    public Supplier<String> getClipboardReader() { return clipboardReader; }
+    public void setClipboardWriter(Consumer<String> writer) { clipboardWriter = writer != null ? writer : text -> {}; }
+    public Consumer<String> getClipboardWriter() { return clipboardWriter; }
     public void setSearchQuery(String value) { searchQuery = value == null ? "" : value; filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; catalogScrollOffset = 0; catalogDisplayedScroll = 0; catalogRenderScroll = 0; }
     public String getSearchQuery() { return searchQuery; }
     public boolean isEditingText() { return editingSearch || editingOption != null || editingFps || actions.isOpen() || particleRates.isOpen() || colorPicker.isOpen() || fpsDialogOpen || library.isOpen(); }
