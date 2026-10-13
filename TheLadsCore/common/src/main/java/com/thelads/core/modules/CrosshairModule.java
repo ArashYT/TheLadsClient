@@ -12,6 +12,42 @@ import com.thelads.core.config.TextOption;
 import com.thelads.core.client.CrosshairBackground;
 
 public class CrosshairModule extends Module {
+    public static final class ProfilesOption extends Option {
+        private String selected = "";
+
+        public ProfilesOption(String name) {
+            super(name);
+        }
+
+        public String getSelected() {
+            return selected;
+        }
+
+        public void setSelected(String value) {
+            this.selected = value != null ? value : "";
+        }
+
+        @Override
+        public com.google.gson.JsonElement save() {
+            return new com.google.gson.JsonPrimitive(selected);
+        }
+
+        @Override
+        public void load(com.google.gson.JsonElement element) {
+            if (element != null && element.isJsonPrimitive()) {
+                try {
+                    this.selected = element.getAsString();
+                } catch (Exception ignored) {}
+            }
+        }
+
+        @Override
+        public void reset() {
+            this.selected = "";
+        }
+    }
+
+    public final ProfilesOption profiles = new ProfilesOption("Profiles");
     public final ActionOption drawingEditor = new ActionOption("Drawing Editor", "Edit crosshair drawing");
     public final ColorOption color = new ColorOption("Color", false, 0xFFFFFFFF);
     public final DoubleOption scale = new DoubleOption("Scale", 1.0, 0.1, 5.0);
@@ -30,6 +66,7 @@ public class CrosshairModule extends Module {
 
     public CrosshairModule() {
         super("Crosshair Tweaks", "Design your crosshair, visibility, aiming feedback and item indicators.");
+        addOption(profiles);
         addOption(color);
         addOption(scale);
         addOption(thickness);

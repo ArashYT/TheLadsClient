@@ -104,6 +104,35 @@ public class ClientPaths {
         return sharedConfigFile.toFile();
     }
 
+    public static Path getCrosshairDrawingPath() {
+        if (customBaseDir != null) {
+            return customBaseDir.resolve("config").resolve("thelads").resolve("crosshair-drawing.json");
+        }
+        String env = System.getenv("THELADS_DIR");
+        if (env != null && !env.isBlank()) {
+            return Path.of(env).resolve("config").resolve("thelads").resolve("crosshair-drawing.json");
+        }
+        Path localConfig = Path.of("config", "thelads", "crosshair-drawing.json");
+        if (Files.exists(localConfig) || Files.isDirectory(Path.of("config"))) {
+            return localConfig;
+        }
+        return getBaseDir().resolve("config").resolve("thelads").resolve("crosshair-drawing.json");
+    }
+
+    public static File getCrosshairDrawingFile() {
+        return getCrosshairDrawingPath().toFile();
+    }
+
+    public static File getCrosshairProfilesFile() {
+        File configFile = getConfigFile();
+        File parent = configFile.getParentFile();
+        return parent != null ? new File(parent, "thelads_crosshair_profiles.json") : new File("thelads_crosshair_profiles.json");
+    }
+
+    public static Path getCrosshairProfilesPath() {
+        return getCrosshairProfilesFile().toPath();
+    }
+
     public static File getSkinFile() {
         return getBaseDir().resolve("skin.png").toFile();
     }

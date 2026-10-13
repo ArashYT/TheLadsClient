@@ -3,6 +3,7 @@ package com.thelads.core.v26_2.feature.crosshair;
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 import com.thelads.core.client.CrosshairDesign;
 import com.thelads.core.client.CrosshairDrawing;
+import com.thelads.core.client.CrosshairDrawingStore;
 import com.thelads.core.config.ColorOption;
 import com.thelads.core.config.HudSettings;
 import com.thelads.core.modules.CrosshairModule;
@@ -54,6 +55,7 @@ public final class NativeCrosshair {
     public static void register() {
         var module=module(); if(module==null)return;
         drawing=CrosshairDrawingStore.load(defaultDrawing());
+        CrosshairDrawingStore.setDrawingChangedListener(() -> { drawing = CrosshairDrawingStore.load(defaultDrawing()); geometryKey = ""; });
         module.drawingEditor.setAction(()->Minecraft.getInstance().setScreenAndShow(new CrosshairDrawingScreen(Minecraft.getInstance().gui.screen())));
         NativeCrosshairProbe.initialize();
     }
