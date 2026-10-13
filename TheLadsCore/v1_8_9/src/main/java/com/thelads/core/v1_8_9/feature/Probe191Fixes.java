@@ -47,6 +47,10 @@ final class Probe191Fixes {
     private static FixesQa fixes;
     private static FileDialogsQa dialogs;
     private static int clicks, started, phase;
+    private static int totalTicks, swingingTicks;
+    private static int lastProgress = -1;
+    private static boolean lastInProgress;
+    private static boolean prematureRestart;
     private static boolean legacyWas, animationsWas, focusWas;
 
     private Probe191Fixes() {}
@@ -60,6 +64,7 @@ final class Probe191Fixes {
         steps.addAll(clicking("fixed, at the ground", false, false, 90));
         steps.addAll(clicking("fixed with LegacySwing, at the ground", false, true, 90));
         steps.addAll(clicking("fixed, blocking with 1.7 Animations", false, false, 0));
+        steps.addAll(clicking3Cps("fixed at 3 CPS, at the ground", 90));
         steps.add(Probe191Fixes::swingDone);
         steps.add(mc -> {
             if (fixes == null) fixes = new FixesQa();
@@ -118,7 +123,7 @@ final class Probe191Fixes {
         return after(20);
     }
 
-    /** Twenty clicks, one every second tick, each checked the tick after it was read. */
+    /** Twenty clicks, one every second tick (10 CPS for 2 s), each checked the tick after it was read. */
     private static List<CoreProbe.Step> clicking(final String label, final boolean vanilla, final boolean legacy, final float pitch) {
         final boolean blocking = label.contains("blocking");
         return Arrays.<CoreProbe.Step>asList(
@@ -129,10 +134,31 @@ final class Probe191Fixes {
                 look(mc, 0, pitch);
                 if (blocking) Probe151.key(mc.gameSettings.keyBindUseItem, true);
                 clicks = started = phase = 0;
-                return after(blocking ? 10 : 5);
+                totalTicks = swingingTicks = 0;
+                lastProgress = -1;
+                lastInProgress = false;
+                prematureRestart = false;
+                return after(blocking ? 10 : 10);
             },
             mc -> {
                 if (blocking && clicks == 0) check(mc.thePlayer.isUsingItem(), label + ": the sword blocks");
+
+                int cur = mc.thePlayer.swingProgressInt;
+                boolean inProgress = mc.thePlayer.isSwingInProgress;
+                int duration = OldAnimations189.swingDuration(mc.thePlayer);
+
+                totalTicks++;
+                if (inProgress) swingingTicks++;
+
+                if (inProgress && cur == 0) {
+                    started++;
+                    if (lastInProgress && lastProgress >= 0 && lastProgress < duration - 1) {
+                        prematureRestart = true;
+                    }
+                }
+                lastProgress = cur;
+                lastInProgress = inProgress;
+
                 if (phase == 0) { // a click as the mouse sends it: runTick reads it next tick
                     CoreProbe.mouse(0, true, 0, 0);
                     CoreProbe.mouse(0, false, 0, 0);
@@ -140,14 +166,47 @@ final class Probe191Fixes {
                     phase = 1;
                     return retry(0);
                 }
-                if (mc.thePlayer.isSwingInProgress && mc.thePlayer.swingProgressInt == 0) started++;
                 if (clicks == 6) CoreProbe.screenshot(mc, "191-swing-" + label.replaceAll("[^a-z0-9]+", "-"));
                 phase = 0;
                 if (clicks < CLICKS) return retry(0);
-                LOG.info("Lads fixes swing: {}: {} of {} clicks at 10 a second started a swing", label, started, clicks);
+                LOG.info("Lads fixes swing: {}: {} swings from {} clicks at 10 a second (swinging {} of {} ticks, prematureRestart={})",
+                    label, started, clicks, swingingTicks, totalTicks, prematureRestart);
                 if (vanilla) check(true, label + ": " + started + " of " + clicks + " clicks swing (vanilla skips the ones in a swing's first half)");
-                else check(started >= 9 && started <= 11, label + ": smooth swings past half way (" + started + " of " + clicks + ")");
+                else {
+                    check(!prematureRestart, label + ": no swing restarted before reaching its end");
+                    check(swingingTicks >= totalTicks * 0.9, label + ": arm was swinging for >= 90% of ticks (" + swingingTicks + "/" + totalTicks + ")");
+                }
                 if (blocking) Probe151.key(mc.gameSettings.keyBindUseItem, false);
+                return after(10);
+            });
+    }
+
+    /** Six clicks at 3 CPS (one every 7 ticks, with a 6-tick swing duration), asserting every click starts its own full swing. */
+    private static List<CoreProbe.Step> clicking3Cps(final String label, final float pitch) {
+        return Arrays.<CoreProbe.Step>asList(
+            mc -> {
+                OldAnimations189.qaVanillaSwing = false;
+                module("LegacySwing").setEnabled(false);
+                module(OldAnimationsModule.NAME).setEnabled(animationsWas);
+                look(mc, 0, pitch);
+                clicks = started = phase = 0;
+                return after(10);
+            },
+            mc -> {
+                if (phase == 0) {
+                    CoreProbe.mouse(0, true, 0, 0);
+                    CoreProbe.mouse(0, false, 0, 0);
+                    clicks++;
+                    phase = 1;
+                    return retry(0);
+                }
+                if (mc.thePlayer.isSwingInProgress && mc.thePlayer.swingProgressInt == 0) started++;
+                phase++;
+                if (phase < 7) return retry(0);
+                phase = 0;
+                if (clicks < 6) return retry(0);
+                LOG.info("Lads fixes 3 CPS swing: {}: {} of {} clicks started a swing", label, started, clicks);
+                check(started == clicks, label + ": at 3 CPS every click starts its own full swing (" + started + " of " + clicks + ")");
                 return after(10);
             });
     }

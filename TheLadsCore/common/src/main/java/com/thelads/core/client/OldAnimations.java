@@ -192,13 +192,39 @@ public final class OldAnimations {
     }
 
     /**
-     * Whether an attack click should restart the arm swing: 1.7, 1.8 and modern only restart outside a swing's first
-     * half (or when not swinging), so clicking mid-swing does not snap the arm back to the start; the running swing
-     * finishes smoothly (vanilla 1.8 {@code swingProgressInt >= getArmSwingAnimationEnd() / 2 || < 0}).
+     * What action an attack click or tick completion should take on an arm swing:
+     * - START: start a swing immediately from 0
+     * - PEND: queue a pending swing for when the active swing ends, without snapping the arm back mid-swing
+     * - NONE: do nothing (idle, or running swing continuing to its end)
+     */
+    public enum SwingAction {
+        START,
+        PEND,
+        NONE
+    }
+
+    /**
+     * Pure swing state transition: clicks while idle start immediately; clicks mid-swing (first or second half)
+     * set pending; reaching the end of a swing with a pending click restarts smoothly from 0.
      *
-     * @param swingInProgress  whether a swing is currently active
-     * @param swingProgressInt the current swing tick counter (0..duration-1, or -1 when queued)
-     * @param swingDuration    total swing duration in ticks (e.g. 1.8.9 {@code getArmSwingAnimationEnd()})
+     * @param click           whether an attack click was received
+     * @param swingInProgress whether a swing is currently active
+     * @param pending         whether a swing is currently pending
+     * @param progress        current swing progress in ticks (0..duration-1)
+     * @param duration        total swing duration in ticks (e.g. 6)
+     */
+    public static SwingAction swingAction(boolean click, boolean swingInProgress, boolean pending, int progress, int duration) {
+        if (click) {
+            return !swingInProgress ? SwingAction.START : SwingAction.PEND;
+        }
+        if (!swingInProgress || progress >= Math.max(1, duration)) {
+            return pending ? SwingAction.START : SwingAction.NONE;
+        }
+        return SwingAction.NONE;
+    }
+
+    /**
+     * Legacy helper: whether an attack click should restart the arm swing under vanilla 1.8's halfway rule.
      */
     public static boolean shouldRestartSwing(boolean swingInProgress, int swingProgressInt, int swingDuration) {
         return !swingInProgress || swingProgressInt >= Math.max(1, swingDuration) / 2 || swingProgressInt < 0;
