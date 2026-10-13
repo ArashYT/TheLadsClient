@@ -188,7 +188,12 @@ final class Probe172Ui {
             menu.openModule("CPS");
             return after(20);
         });
-        STEPS.add(mc -> { CoreProbe.wheel(300, 200, -30); return after(15); }); // Reset options sits below the last option
+        STEPS.add(mc -> {
+            ui().setReducedMotion(true);
+            ui().mouseScrolled(300, 200, -10);
+            CoreProbe.wheel(300, 200, -30);
+            return after(15);
+        }); // Reset options sits below the last option
         STEPS.add(mc -> {
             check(size() == 150 && ui().controlBounds("reset") != null, "the CPS page shows Size 150 and its Reset options button");
             screenshot(mc, "ui172-module-1-before");
