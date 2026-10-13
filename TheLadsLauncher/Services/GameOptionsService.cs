@@ -341,11 +341,37 @@ public static class GameOptionsService
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or JsonException) { return null; }
     }
 
-    /// <summary>Writes default OptiFine options (Render Regions and Smart Animations) for a new 1.8.9 instance when optionsof.txt does not exist.</summary>
-    public static void EnsureDefaultOptiFine18(string optiFineFile)
+    /// <summary>Writes default OptiFine options for a 1.8.9 instance, applying defaults to existing installs once.</summary>
+    public static void EnsureDefaultOptions18(string gameDirectory)
     {
-        if (!File.Exists(optiFineFile))
-            WriteAtomically(optiFineFile, "ofRenderRegions:true\nofSmartAnimations:true\n");
+        var optionsFile = Path.Combine(gameDirectory, "options.txt");
+        var optiFineFile = Path.Combine(gameDirectory, "optionsof.txt");
+        var optionsMap = File.Exists(optionsFile) ? ParseOptions(File.ReadAllText(optionsFile)) : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        if (!optionsMap.ContainsKey("theladsOfDefaultsMigrated"))
+        {
+            optionsMap["theladsOfDefaultsMigrated"] = "true";
+            optionsMap["useVbo"] = "true";
+            WriteAtomically(optionsFile, SerializeOptions(optionsMap));
+
+            var ofMap = File.Exists(optiFineFile) ? ParseOptions(File.ReadAllText(optiFineFile)) : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            ofMap["ofRenderRegions"] = "true";
+            ofMap["ofSmartAnimations"] = "true";
+            ofMap["ofFastRender"] = "true";
+            ofMap["ofFastMath"] = "true";
+            WriteAtomically(optiFineFile, SerializeOptions(ofMap));
+        }
+        else if (!File.Exists(optiFineFile))
+        {
+            var ofMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["ofRenderRegions"] = "true",
+                ["ofSmartAnimations"] = "true",
+                ["ofFastRender"] = "true",
+                ["ofFastMath"] = "true"
+            };
+            WriteAtomically(optiFineFile, SerializeOptions(ofMap));
+        }
     }
 
     // A crash or a closed launcher mid-write leaves the old file whole, never a cut-off one. An unchanged file is not rewritten.

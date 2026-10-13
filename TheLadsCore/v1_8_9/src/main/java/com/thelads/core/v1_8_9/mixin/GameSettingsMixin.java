@@ -111,7 +111,7 @@ public abstract class GameSettingsMixin {
             for (String line : Files.readAllLines(temp.toPath(), charset)) written.add(line.substring(0, Math.max(0, line.indexOf(':'))));
             List<String> kept = new ArrayList<>();
             for (String line : Files.readAllLines(optionsFile.toPath(), charset))
-                if (line.startsWith("key_") && line.indexOf(':') > 0 && !written.contains(line.substring(0, line.indexOf(':')))) kept.add(line);
+                if ((line.startsWith("key_") || line.startsWith("thelads")) && line.indexOf(':') > 0 && !written.contains(line.substring(0, line.indexOf(':')))) kept.add(line);
             if (!kept.isEmpty()) Files.write(temp.toPath(), kept, charset, StandardOpenOption.APPEND);
         } catch (IOException e) {
             LogManager.getLogger("TheLadsCore-1.8.9").warn("Key binds of mods not loaded now were not kept: " + e);

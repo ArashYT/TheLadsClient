@@ -292,7 +292,7 @@ public class Minecraft189Tests
         Assert.Equal(shared, Options(l.Paths.SharedOptionsFile));
     }
 
-    /// <summary>New 1.8.9 installs default useVbo:true, ofRenderRegions:true, ofSmartAnimations:true; existing player settings are never overwritten.</summary>
+    /// <summary>New 1.8.9 installs default useVbo:true, ofRenderRegions:true, ofSmartAnimations:true, ofFastRender:true, ofFastMath:true; existing unmigrated installs are migrated once, and subsequent player choices are preserved.</summary>
     [Fact]
     public async Task NewInstall189DefaultsVboAndOptiFineOptionsWithoutOverwritingExistingChoice()
     {
@@ -305,22 +305,40 @@ public class Minecraft189Tests
         await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
         var instance = Options(options);
         Assert.Equal("true", instance["useVbo"]);
+        Assert.Equal("true", instance["theladsOfDefaultsMigrated"]);
         Assert.True(File.Exists(optiFine));
         var ofOptions = Options(optiFine);
         Assert.Equal("true", ofOptions["ofRenderRegions"]);
         Assert.Equal("true", ofOptions["ofSmartAnimations"]);
+        Assert.Equal("true", ofOptions["ofFastRender"]);
+        Assert.Equal("true", ofOptions["ofFastMath"]);
 
-        // Existing player's choice: set useVbo:false, ofRenderRegions:false, ofSmartAnimations:false
+        // Existing unmigrated install: options exist without theladsOfDefaultsMigrated
         File.WriteAllText(options, "useVbo:false\n");
-        File.WriteAllText(optiFine, "ofRenderRegions:false\nofSmartAnimations:false\n");
+        File.WriteAllText(optiFine, "ofRenderRegions:false\nofSmartAnimations:false\nofFastRender:false\nofFastMath:false\n");
+        await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
+        instance = Options(options);
+        Assert.Equal("true", instance["useVbo"]);
+        Assert.Equal("true", instance["theladsOfDefaultsMigrated"]);
+        ofOptions = Options(optiFine);
+        Assert.Equal("true", ofOptions["ofRenderRegions"]);
+        Assert.Equal("true", ofOptions["ofSmartAnimations"]);
+        Assert.Equal("true", ofOptions["ofFastRender"]);
+        Assert.Equal("true", ofOptions["ofFastMath"]);
 
-        // Prepare again (subsequent launch)
+        // Migrated player's subsequent choice: set everything to false, keeping theladsOfDefaultsMigrated:true
+        File.WriteAllText(options, "theladsOfDefaultsMigrated:true\nuseVbo:false\n");
+        File.WriteAllText(optiFine, "ofRenderRegions:false\nofSmartAnimations:false\nofFastRender:false\nofFastMath:false\n");
+
+        // Prepare again (subsequent launch): choices are respected
         await l.Profiles.PrepareProfileEnvironmentAsync(profile, null);
         instance = Options(options);
         Assert.Equal("false", instance["useVbo"]);
         ofOptions = Options(optiFine);
         Assert.Equal("false", ofOptions["ofRenderRegions"]);
         Assert.Equal("false", ofOptions["ofSmartAnimations"]);
+        Assert.Equal("false", ofOptions["ofFastRender"]);
+        Assert.Equal("false", ofOptions["ofFastMath"]);
     }
 
     /// <summary>A launch never undoes the game's own key binds: not when the launcher missed the game's exit (closed, killed or

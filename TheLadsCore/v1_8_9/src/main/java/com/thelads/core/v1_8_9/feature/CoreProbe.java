@@ -58,6 +58,7 @@ public final class CoreProbe {
     interface Step { boolean run(Minecraft mc) throws Exception; }
     private static final List<Step> STEPS = new java.util.ArrayList<>(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::ladsTitle,
         CoreProbe::titleMore, CoreProbe::backupPrompt, CoreProbe::backupWarning, CoreProbe::backupDone, CoreProbe::title,
+        CoreProbe::ofDefaults,
         CoreProbe::menuAtTitle, CoreProbe::menuRendered, CoreProbe::searchClicked, CoreProbe::typed, CoreProbe::erased, CoreProbe::editingLeft,
         CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::bridgeInWorld, CoreProbe::menuInWorld, CoreProbe::installedMods, CoreProbe::closedToGame,
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerList, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
@@ -145,7 +146,9 @@ public final class CoreProbe {
         } else if ("xhair".equals(only)) { // the Crosshair Tweaks settings page and drawing editor with their live previews (ProbeCrosshairPreview189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::focusedWorld, CoreProbe::worldReady));
-            STEPS.addAll(ProbeCrosshairPreview189.STEPS);
+        } else if ("ofdefaults".equals(only)) {
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::ofDefaults));
         } else if ("ebe".equals(only)) { // built-in baked block entities: frames and frame times (BakedBlockEntitiesProbe189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady,
@@ -215,7 +218,7 @@ public final class CoreProbe {
             STEPS.addAll(Probe170F3Fov.STEPS);
             STEPS.addAll(Probe145.PACING);
         }
-        if (!"fixes".equals(only)) {
+        if (!"fixes".equals(only) && !"ofdefaults".equals(only)) {
             STEPS.add(CoreProbe::leaveWorld);
             STEPS.add(CoreProbe::leftWorld);
         }
@@ -274,6 +277,11 @@ public final class CoreProbe {
 
     private static boolean titleShown(Minecraft mc) {
         return mc.currentScreen instanceof GuiMainMenu && after(40);
+    }
+
+    private static boolean ofDefaults(Minecraft mc) throws Exception {
+        Probe192OfDefaults.run(mc);
+        return true;
     }
 
     /** GUI scales the title layout is checked at in this window: 1, 2, 3, 4 and Auto (0), the QA run's own scale last. */
