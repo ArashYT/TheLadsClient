@@ -152,6 +152,7 @@ public final class CrosshairProfiles {
         JsonObject optionsObj = new JsonObject();
         if (module != null) {
             for (Option opt : module.getOptions()) {
+                if (opt instanceof CrosshairModule.ProfilesOption) continue;
                 optionsObj.add(opt.getName(), opt.save());
             }
         }
@@ -191,6 +192,7 @@ public final class CrosshairProfiles {
         if (module != null && profileObj.has("options") && profileObj.get("options").isJsonObject()) {
             JsonObject opts = profileObj.getAsJsonObject("options");
             for (Option opt : module.getOptions()) {
+                if (opt instanceof CrosshairModule.ProfilesOption) continue;
                 if (opts.has(opt.getName())) {
                     try {
                         opt.load(opts.get(opt.getName()));
@@ -199,6 +201,9 @@ public final class CrosshairProfiles {
                     }
                 }
             }
+        }
+        if (module != null) {
+            module.profiles.setSelected(existingKey);
         }
 
         // 2. Load drawing

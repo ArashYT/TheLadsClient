@@ -245,4 +245,53 @@ class CrosshairProfilesTest {
         assertTrue(read.get(1, 1));
         assertFalse(read.get(0, 0));
     }
+
+    @Test
+    void saveASaveBApplyAThenCycleToB() throws IOException {
+        module.scale.set(1.5);
+        assertTrue(CrosshairProfiles.save("A"));
+
+        module.scale.set(3.0);
+        assertTrue(CrosshairProfiles.save("B"));
+
+        // Verify ProfilesOption is excluded from the saved json options
+        Path file = ClientPaths.getCrosshairProfilesPath();
+        String json = Files.readString(file);
+        assertFalse(json.contains("\"Profiles\":"), "ProfilesOption should not be included in options snapshot");
+
+        // Apply A
+        assertTrue(CrosshairProfiles.apply("A"));
+        assertEquals("A", module.profiles.getSelected());
+        assertEquals(1.5, module.scale.get());
+
+        // Cycle from current profile
+        List<String> list = CrosshairProfiles.list();
+        String current = module.profiles.getSelected();
+        if ((current.isEmpty() || !CrosshairProfiles.has(current)) && !list.isEmpty()) {
+            current = list.get(0);
+        }
+        int idx = -1;
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).equalsIgnoreCase(current)) {
+                idx = i;
+                break;
+            }
+        }
+        int nextIdx = (idx + 1) % list.size();
+        String nextName = list.get(nextIdx);
+        assertEquals("B", nextName);
+
+        // Apply B
+        assertTrue(CrosshairProfiles.apply(nextName));
+        assertEquals("B", module.profiles.getSelected());
+        assertEquals(3.0, module.scale.get());
+
+        // Cycle back to A
+        int cycleBackIdx = (nextIdx + 1) % list.size();
+        String backToA = list.get(cycleBackIdx);
+        assertEquals("A", backToA);
+        assertTrue(CrosshairProfiles.apply(backToA));
+        assertEquals("A", module.profiles.getSelected());
+        assertEquals(1.5, module.scale.get());
+    }
 }
