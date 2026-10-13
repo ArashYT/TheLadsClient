@@ -40,6 +40,8 @@ public final class LadsSettingsScreen {
     private String fpsBuffer = "";
     private long ownershipRevision = -1;
     private int scrollOffset, maxScroll, width = 640, height = 360;
+    private boolean draggingScrollbar;
+    private int scrollbarDragAnchor;
     private Rect viewport = new Rect(0, 0, 640, 360);
     private final List<Control> controls = new ArrayList<>();
     private final Map<String, Float> hoverStates = new HashMap<>();
@@ -128,6 +130,48 @@ public final class LadsSettingsScreen {
     /** Ids of the controls drawn by the last render (QA scripts click them by id). */
     public List<String> controlIds() { return controls.stream().map(c -> c.id).toList(); }
     public int getScrollOffset() { return scrollOffset; }
+    public int getMaxScroll() { return maxScroll; }
+    public boolean isDraggingScrollbar() { return draggingScrollbar; }
+    public String getFocusId() { return focusId; }
+    /** Screen bounds of the scrollbar thumb drawn by the last render, or null when not scrollable. */
+    public Rect scrollbarThumbBounds() {
+        if (maxScroll == 0) return null;
+        int trackW = 4;
+        int trackX = viewport.x + viewport.width - trackW;
+        int thumb = Math.max(14, (int)((long)viewport.height * viewport.height / (viewport.height + maxScroll)));
+        int trackAvail = viewport.height - thumb;
+        int y = viewport.y + (trackAvail > 0 ? (int)((long)trackAvail * scrollOffset / maxScroll) : 0);
+        return new Rect(trackX, y, trackW, thumb);
+    }
+    /** Screen bounds of the scrollbar track drawn by the last render, or null when not scrollable. */
+    public Rect scrollbarTrackBounds() {
+        if (maxScroll == 0) return null;
+        int trackW = 4;
+        int trackX = viewport.x + viewport.width - trackW;
+        return new Rect(trackX, viewport.y, trackW, viewport.height);
+    }
+    /**
+     * True when the module has a real live or visual preview (HUD elements, animated kill banners,
+     * custom crosshairs, live world Fullbright). Modules with placeholder cards (e.g. Hypixel Mods,
+     * performance tweaks, zoom, animations) return false and lay their settings out in two columns.
+     */
+    public static boolean hasPreview(Module m) {
+        if (m == null) return false;
+        String name = m.getName();
+        if (HudManager.getInstance().getElements().stream()
+            .anyMatch(e -> e.getModuleName() != null && e.getModuleName().equalsIgnoreCase(name))) {
+            return true;
+        }
+        if (m instanceof KillBannerModule || m instanceof CrosshairModule) return true;
+        if ("Fullbright".equalsIgnoreCase(name)) return true;
+        if ("Nametags".equalsIgnoreCase(name) || "ToggleNametags".equalsIgnoreCase(name)) return true;
+        if ("Hitboxes".equalsIgnoreCase(name)) return true;
+        if ("Chat".equalsIgnoreCase(name) || "ChatFilter".equalsIgnoreCase(name)) return true;
+        if ("BetterF3".equalsIgnoreCase(name)) return true;
+        if ("DiscordRPC".equalsIgnoreCase(name) || name.toLowerCase(Locale.ROOT).contains("discord")) return true;
+        return false;
+    }
+    public boolean currentDetailHasPreview() { return hasPreview(detail); }
     /** The slider track of a particle type's row in Particle Core's open rates editor, or null: QA and tests click at it. */
     public Rect particleRatesTrack(String id) {
         int[] t = particleRates.track(id);
@@ -320,53 +364,83 @@ public final class LadsSettingsScreen {
     }
     private void renderDetails(LadsGraphics g, int x, int w, int mx, int my) {
         boolean wide = w >= 360;
+        boolean preview = hasPreview(detail);
         int leftW = wide ? Math.min(270, (w - 14) / 2) : w;
         int previewX = x + leftW + 12;
         int previewW = w - leftW - 12;
+        boolean showPreview = wide && preview && previewW >= 80;
 
+        int headerW = showPreview ? leftW : (w - 8);
         button(g, "back", "< Modules", new Rect(x, 43, 86, 22), this::back, true, mx, my, false);
-        g.drawText(fit(g, detail.getName(), leftW - 102), x + 96, 51, TEXT);
-        int descriptionH = height < 230 ? 0 : MenuGraphics.wrap(g, detail.getDescription(), x, 76, leftW, 2, MUTED);
+        g.drawText(fit(g, detail.getName(), headerW - 102), x + 96, 51, TEXT);
+        int descriptionH = height < 230 ? 0 : MenuGraphics.wrap(g, detail.getDescription(), x, 76, headerW, 2, MUTED);
         int stateY = height < 230 ? 68 : 81 + descriptionH;
         g.drawText("LADS MODULE", x, stateY + 6, ACCENT);
         if (detail.isBlockedByServer()) {
-            button(g, "toggle:detail", "BLOCKED", new Rect(x + leftW - 74, stateY, 74, 22),
+            button(g, "toggle:detail", "BLOCKED", new Rect(x + headerW - 74, stateY, 74, 22),
                 () -> { notice = detail.getName() + " is automatically disabled on Hypixel to comply with server rules."; }, true, mx, my, false);
             g.drawText("Disabled on Hypixel (Server Rules)", x, stateY + 28, ACCENT);
         } else if (!ModuleSupport.isSettingsOnly(detail.getName()))
-            button(g, "toggle:detail", detail.isEnabled() ? "ON" : "OFF", new Rect(x + leftW - 52, stateY, 52, 22),
+            button(g, "toggle:detail", detail.isEnabled() ? "ON" : "OFF", new Rect(x + headerW - 52, stateY, 52, 22),
                 () -> { detail.toggle(); changed(detail); }, true, mx, my, detail.isEnabled());
         int top = detail.isBlockedByServer() ? stateY + 44 : stateY + 30;
         if(detail.getOptions().stream().anyMatch(o -> o instanceof PlayerActionOption)) {
-            button(g,"display-actions","Display actions...",new Rect(x,top,leftW,25),
+            button(g,"display-actions","Display actions...",new Rect(x,top,showPreview ? leftW : Math.min(270, w - 8),25),
                 () -> actions.open(detail.getOptions().stream().filter(o -> o instanceof PlayerActionOption).map(o -> (PlayerActionOption)o).toList(), () -> changed(detail)),true,mx,my,false);
             top += 32;
         }
-        viewport = new Rect(x, top, leftW, Math.max(20, height - top - 28));
-        int rowH = 43;
+
+        int contentW = showPreview ? leftW : w;
+        viewport = new Rect(x, top, contentW, Math.max(20, height - top - 28));
         List<Option> options = activeOptions();
-        g.enableScissor(x, top, x + leftW, top + viewport.height);
-        // The Kill Banner picker scrolls with the options, above them.
-        int picker = detail instanceof KillBannerModule banner ? killBannerPicker(g, banner, x, top - renderScroll, leftW - 8, mx, my) : 0;
+        g.enableScissor(x, top, x + contentW, top + viewport.height);
+
+        int cols = showPreview ? 1 : (wide ? 2 : 1);
+        int gap = 8;
+        int colW = cols == 2 ? (w - gap - 8) / 2 : contentW - 8;
+
+        // The Kill Banner picker scrolls with the options, above them (only when Kill Banner has preview).
+        int picker = (showPreview && detail instanceof KillBannerModule banner)
+            ? killBannerPicker(g, banner, x, top - renderScroll, colW, mx, my) : 0;
+
+        int rowCount = (options.size() + cols - 1) / cols;
         int rows = 0;
-        for (Option option : options) rows += rowHeight(option);
-        maxScroll = Math.max(0, picker + rows + rowH - viewport.height);
+        for (int r = 0; r < rowCount; r++) {
+            int i0 = r * cols;
+            int rh = rowHeight(options.get(i0));
+            if (cols == 2 && i0 + 1 < options.size()) rh = Math.max(rh, rowHeight(options.get(i0 + 1)));
+            rows += rh;
+        }
+
+        maxScroll = Math.max(0, picker + rows + 32 - viewport.height);
         scrollOffset = Math.min(scrollOffset, maxScroll);
         int resetY = top + picker - renderScroll;
-        for (Option option : options) {
-            int height = rowHeight(option);
-            if (resetY + height > top && resetY < top + viewport.height) optionRow(g, option, x, resetY, leftW - 8, mx, my);
-            resetY += height;
+
+        for (int r = 0; r < rowCount; r++) {
+            int i0 = r * cols;
+            Option opt0 = options.get(i0);
+            Option opt1 = cols == 2 && i0 + 1 < options.size() ? options.get(i0 + 1) : null;
+            int rh = rowHeight(opt0);
+            if (opt1 != null) rh = Math.max(rh, rowHeight(opt1));
+
+            if (resetY + rh > top && resetY < top + viewport.height) {
+                optionRow(g, opt0, x, resetY, colW, mx, my);
+                if (opt1 != null) {
+                    optionRow(g, opt1, x + colW + gap, resetY, colW, mx, my);
+                }
+            }
+            resetY += rh;
         }
+
         if (resetY < top + viewport.height && resetY + 24 > top)
-            button(g, "reset", "Reset options", new Rect(x, resetY + 4, Math.min(130, leftW - 8), 24),
+            button(g, "reset", "Reset options", new Rect(x, resetY + 4, Math.min(130, colW), 24),
                 () -> {
                     Module module = detail;
                     confirm.open("Reset every " + module.getName() + " option to its default?", () -> { module.getOptions().forEach(Option::reset); changed(module); notice = "Options reset"; });
                 }, true, mx, my, false);
         g.disableScissor(); scrollbar(g);
 
-        if (wide && previewW >= 80) {
+        if (showPreview) {
             renderModulePreview(g, detail, previewX, 43, previewW, height - 68, mx, my);
         }
     }
@@ -1343,10 +1417,13 @@ public final class LadsSettingsScreen {
     }
     private void scrollbar(LadsGraphics g) {
         if (maxScroll == 0) return;
-        int thumb = Math.max(12, viewport.height * viewport.height / (viewport.height + maxScroll));
-        int y = viewport.y + (viewport.height - thumb) * scrollOffset / maxScroll;
-        g.fill(viewport.x + viewport.width - 3, viewport.y, viewport.x + viewport.width, viewport.y + viewport.height, PANEL);
-        g.fill(viewport.x + viewport.width - 3, y, viewport.x + viewport.width, y + thumb, MUTED);
+        int trackW = 4;
+        int trackX = viewport.x + viewport.width - trackW;
+        int thumb = Math.max(14, (int)((long)viewport.height * viewport.height / (viewport.height + maxScroll)));
+        int trackAvail = viewport.height - thumb;
+        int y = viewport.y + (trackAvail > 0 ? (int)((long)trackAvail * scrollOffset / maxScroll) : 0);
+        g.fill(trackX, viewport.y, trackX + trackW, viewport.y + viewport.height, PANEL);
+        g.fill(trackX, y, trackX + trackW, y + thumb, draggingScrollbar ? ACCENT : MUTED);
     }
     public boolean mouseClicked(double x, double y, int button) {
         tip.dismiss();
@@ -1409,6 +1486,25 @@ public final class LadsSettingsScreen {
         }
         refreshCapabilities();
         if (button != 0 && button != 1) return false;
+        if (button == 0 && maxScroll > 0) {
+            int hitW = 8;
+            int trackX = viewport.x + viewport.width - hitW;
+            if (x >= trackX && x <= viewport.x + viewport.width && y >= viewport.y && y <= viewport.y + viewport.height) {
+                commitEdit();
+                int thumbH = Math.max(14, (int)((long)viewport.height * viewport.height / (viewport.height + maxScroll)));
+                int trackAvail = viewport.height - thumbH;
+                int thumbY = viewport.y + (trackAvail > 0 ? (int)((long)trackAvail * scrollOffset / maxScroll) : 0);
+                if (y >= thumbY && y <= thumbY + thumbH) {
+                    draggingScrollbar = true;
+                    scrollbarDragAnchor = (int)y - thumbY;
+                } else if (y < thumbY) {
+                    scrollOffset = Math.max(0, scrollOffset - viewport.height);
+                } else {
+                    scrollOffset = Math.min(maxScroll, scrollOffset + viewport.height);
+                }
+                return true;
+            }
+        }
         for (Control c : List.copyOf(controls)) {
             if (!c.rect.contains(x, y) || !c.enabled || contentControl(c.id) && !viewport.contains(x, y)) continue;
             if (!commitEdit()) return true;
@@ -1433,6 +1529,16 @@ public final class LadsSettingsScreen {
         if (particleRates.drag(x)) return true;
         if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); return true; }
         if (colorPicker.move(x, y)) return true;
+        if (draggingScrollbar) {
+            int thumbH = Math.max(14, (int)((long)viewport.height * viewport.height / (viewport.height + maxScroll)));
+            int trackAvail = viewport.height - thumbH;
+            if (trackAvail > 0) {
+                int newThumbY = (int)y - scrollbarDragAnchor;
+                double frac = Math.max(0.0, Math.min(1.0, (double)(newThumbY - viewport.y) / trackAvail));
+                scrollOffset = (int)Math.round(frac * maxScroll);
+            }
+            return true;
+        }
         refreshCapabilities();
         if (dragging == null) return false;
         updateDrag(x);
@@ -1444,6 +1550,10 @@ public final class LadsSettingsScreen {
         if (particleRates.release()) return true;
         if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); draggingFpsSlider = false; return true; }
         if (colorPicker.release()) return true;
+        if (draggingScrollbar) {
+            draggingScrollbar = false;
+            return true;
+        }
         refreshCapabilities();
         if (dragging == null) return false;
         updateDrag(x);
@@ -1527,12 +1637,16 @@ public final class LadsSettingsScreen {
         }
         if (key == 258) {
             if (!commitEdit()) return true;
-            List<Control> all = controls.stream().filter(c -> c.enabled && (!contentControl(c.id) || c.rect.y >= viewport.y && c.rect.y + c.rect.height <= viewport.y + viewport.height)).toList();
+            List<Control> all = controls.stream().filter(c -> c.enabled).toList();
             if (all.isEmpty()) return true;
             int current = -1;
             for (int i = 0; i < all.size(); i++) if (all.get(i).id.equals(focusId)) current = i;
             int next = Math.floorMod(current + ((modifiers & 1) != 0 ? -1 : 1), all.size());
-            focusId = all.get(next).id; onNarrate.accept(all.get(next).label); return true;
+            Control target = all.get(next);
+            focusId = target.id;
+            if (contentControl(target.id)) scrollIntoView(target.rect);
+            onNarrate.accept(target.label);
+            return true;
         }
         if ((key == 262 || key == 263) && detail != null && focusId.startsWith("option:")) {
             Option o = activeOption(focusId.substring(7)); int direction = key == 262 ? 1 : -1;
@@ -1544,7 +1658,15 @@ public final class LadsSettingsScreen {
         }
         if (key == 257 || key == 32) for (Control c : List.copyOf(controls))
             if (c.id.equals(focusId) && c.enabled) { c.action.run(); return true; }
+        if (key == 264 || key == 265) {
+            if (maxScroll > 0) {
+                scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset + (key == 264 ? 1 : -1) * 28));
+                return true;
+            }
+        }
         if (key == 266 || key == 267) { scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset + (key == 267 ? 1 : -1) * viewport.height)); return true; }
+        if (key == 268) { scrollOffset = 0; return true; }
+        if (key == 269) { scrollOffset = maxScroll; return true; }
         return false;
     }
     public boolean charTyped(int codePoint) {
@@ -1631,9 +1753,27 @@ public final class LadsSettingsScreen {
     private boolean finish() { if (!commitEdit()) return false; persist(); return true; }
     public void openGlobalColors(){colorPicker.openGlobal();}
     public void openDisplayActions(){if(detail!=null)actions.open(detail.getOptions().stream().filter(o->o instanceof PlayerActionOption).map(o->(PlayerActionOption)o).toList(),()->changed(detail));}
-    public void openModule(String name) { Module m=ModuleManager.getInstance().getModule(name); if(m!=null)openDetails(m); }
-    /** QA: scrolls the open page by this many pixels (kept within the page on the next frame). */
-    public void scrollBy(int pixels) { scrollOffset = Math.max(0, scrollOffset + pixels); }
+    public void openModule(String name) {
+        Module m = ModuleManager.getInstance().getModule(name);
+        if (m == null) {
+            for (Module mod : ModuleManager.getInstance().getModules()) {
+                if (mod.getName().equalsIgnoreCase(name)) {
+                    m = mod;
+                    break;
+                }
+            }
+        }
+        if (m != null) openDetails(m);
+    }
+    public void scrollBy(int pixels) { scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset + pixels)); }
+    public void scrollIntoView(Rect r) {
+        if (viewport == null || r == null) return;
+        if (r.y < viewport.y) {
+            scrollOffset = Math.max(0, scrollOffset - (viewport.y - r.y));
+        } else if (r.y + r.height > viewport.y + viewport.height) {
+            scrollOffset = Math.min(maxScroll, scrollOffset + (r.y + r.height - (viewport.y + viewport.height)));
+        }
+    }
     /** QA (kill banner captures): the Kill Banner picker's skin search, as typed. */
     public void searchKillBanners(String query) { kbSearch = query; }
     private void openDetails(Module m) {
@@ -1649,6 +1789,7 @@ public final class LadsSettingsScreen {
         scrollOffset = 0;
         displayedScroll = 0;
         renderScroll = 0;
+        draggingScrollbar = false;
         focusId = "back";
         notice = "";
     }
@@ -1658,6 +1799,7 @@ public final class LadsSettingsScreen {
         scrollOffset = catalogScrollOffset;
         displayedScroll = catalogDisplayedScroll;
         renderScroll = catalogRenderScroll;
+        draggingScrollbar = false;
         focusId = "";
         if (detailFromMods) { detailFromMods = false; modsView = true; reloadMods(); }
     }
