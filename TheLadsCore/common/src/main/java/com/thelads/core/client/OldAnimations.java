@@ -191,6 +191,45 @@ public final class OldAnimations {
         return target <= current ? target : target - (target - current) * 0.4f;
     }
 
+    /**
+     * What action an attack click or tick completion should take on an arm swing:
+     * - START: start a swing immediately from 0
+     * - PEND: queue a pending swing for when the active swing ends, without snapping the arm back mid-swing
+     * - NONE: do nothing (idle, or running swing continuing to its end)
+     */
+    public enum SwingAction {
+        START,
+        PEND,
+        NONE
+    }
+
+    /**
+     * Pure swing state transition: clicks while idle start immediately; clicks mid-swing (first or second half)
+     * set pending; reaching the end of a swing with a pending click restarts smoothly from 0.
+     *
+     * @param click           whether an attack click was received
+     * @param swingInProgress whether a swing is currently active
+     * @param pending         whether a swing is currently pending
+     * @param progress        current swing progress in ticks (0..duration-1)
+     * @param duration        total swing duration in ticks (e.g. 6)
+     */
+    public static SwingAction swingAction(boolean click, boolean swingInProgress, boolean pending, int progress, int duration) {
+        if (click) {
+            return !swingInProgress ? SwingAction.START : SwingAction.PEND;
+        }
+        if (!swingInProgress || progress >= Math.max(1, duration)) {
+            return pending ? SwingAction.START : SwingAction.NONE;
+        }
+        return SwingAction.NONE;
+    }
+
+    /**
+     * Legacy helper: whether an attack click should restart the arm swing under vanilla 1.8's halfway rule.
+     */
+    public static boolean shouldRestartSwing(boolean swingInProgress, int swingProgressInt, int swingDuration) {
+        return !swingInProgress || swingProgressInt >= Math.max(1, swingDuration) / 2 || swingProgressInt < 0;
+    }
+
     private static void eat(Sink out, int side, float left, int max) {
         float done = 1 - left / max;                                  // 1.7.10: share of the use already done
         out.translate(0, done > 0.2f ? Math.abs(cos(left / 4 * PI) * 0.1f) : 0, 0);  // 1.7.10: 0.1 jiggle per 4 ticks after 20%

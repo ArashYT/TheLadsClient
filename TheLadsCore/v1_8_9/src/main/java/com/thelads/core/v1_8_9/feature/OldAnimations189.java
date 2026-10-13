@@ -13,9 +13,11 @@ import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.resources.model.IBakedModel;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
+import net.minecraft.potion.Potion;
 import net.minecraft.item.ItemBed;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemDoor;
@@ -94,30 +96,86 @@ public final class OldAnimations189 {
         if (player == null || mc.currentScreen != null || !player.isUsingItem() || !MODULE.swingOnAttack(PLATFORM, use(player, player.getItemInUse())))
             return;
         attacked = true;
-        swingAnyway(player);
-        hit(Hook.SWING);
+        if (swingAnyway(player)) hit(Hook.SWING);
     }
 
     /** QA only (Probe191Fixes): clicks swing as vanilla decides, to count the swings it skips. */
     public static volatile boolean qaVanillaSwing;
 
     /**
-     * An attack click (Minecraft.clickMouse, or a press during a use above): the arm swings from the start whether or not vanilla
-     * restarted it (it refuses in a swing's first half, and for 10 ticks after a miss clickMouse does nothing), so fast clicking
-     * never skips a swing. Drawn only: no packet, no attack. LegacySwing and the 1.7 swing poses draw this same swing.
+     * Pending swing: a click received while an arm swing is already running queues the next swing
+     * instead of snapping the arm back mid-motion. Reaching the end of the swing starts the next swing.
      */
-    public static void swingAnyway(EntityPlayerSP player) {
-        if (player == null || qaVanillaSwing) return;
-        player.swingProgressInt = -1;
-        player.isSwingInProgress = true;
+    public static volatile boolean pendingSwing;
+
+    /** The swing duration in ticks: 6 ticks, shortened by Haste or lengthened by Mining Fatigue as in EntityLivingBase. */
+    public static int swingDuration(EntityLivingBase player) {
+        if (player.isPotionActive(Potion.digSpeed))
+            return 6 - (1 + player.getActivePotionEffect(Potion.digSpeed).getAmplifier());
+        if (player.isPotionActive(Potion.digSlowdown))
+            return 6 + (1 + player.getActivePotionEffect(Potion.digSlowdown).getAmplifier()) * 2;
+        return 6;
     }
 
-    /** EntityLivingBase.swingItem without EntityPlayerSP's packet; 3 is its restart at half a swing (6 ticks, without haste). */
+    /**
+     * Intercept EntityPlayerSP.swingItem: if a swing is already running, queue a pending swing instead of
+     * letting vanilla's super.swingItem reset swingProgressInt to -1 mid-swing.
+     * Returns true if super.swingItem was cancelled (pending swing queued).
+     */
+    public static boolean onPlayerSwingItem(EntityPlayerSP player) {
+        if (player == null || qaVanillaSwing) return false;
+        if (player.isSwingInProgress && player.swingProgressInt >= 0) {
+            pendingSwing = true;
+            if (player.sendQueue != null) {
+                player.sendQueue.addToSendQueue(new net.minecraft.network.play.client.C0APacketAnimation());
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * An attack click (Minecraft.clickMouse, or a press during a use above): starts a swing immediately if idle, or queues
+     * a pending swing if one is already running, so clicking mid-swing never snaps the arm back; consecutive clicks
+     * collapse into continuous, smooth swinging. Drawn only: no packet, no attack.
+     */
+    public static boolean swingAnyway(EntityPlayerSP player) {
+        if (player == null || qaVanillaSwing) return false;
+        OldAnimations.SwingAction action = OldAnimations.swingAction(true, player.isSwingInProgress, pendingSwing, player.swingProgressInt, swingDuration(player));
+        if (action == OldAnimations.SwingAction.START) {
+            player.swingProgressInt = -1;
+            player.isSwingInProgress = true;
+            pendingSwing = false;
+            return true;
+        } else if (action == OldAnimations.SwingAction.PEND) {
+            if (player.swingProgressInt >= 0) {
+                pendingSwing = true;
+            }
+            return false;
+        }
+        return false;
+    }
+
+    /**
+     * Checked at the end of EntityPlayerSP.onUpdate and tick(): if a running swing reached its end and a swing
+     * is pending, start the next swing immediately from 0 and clear the flag.
+     */
+    public static void checkPendingSwing(EntityPlayerSP player) {
+        if (player == null || qaVanillaSwing || !pendingSwing) return;
+        OldAnimations.SwingAction action = OldAnimations.swingAction(false, player.isSwingInProgress, pendingSwing, player.swingProgressInt, swingDuration(player));
+        if (action == OldAnimations.SwingAction.START) {
+            player.isSwingInProgress = true;
+            player.swingProgressInt = 0;
+            player.prevSwingProgress = 0.0f;
+            player.swingProgress = 0.0f;
+            pendingSwing = false;
+            hit(Hook.SWING);
+        }
+    }
+
+    /** EntityLivingBase.swingItem without EntityPlayerSP's packet, respecting OldAnimations.swingAction. */
     private static void swing(EntityPlayerSP player) {
-        if (player.isSwingInProgress && player.swingProgressInt < 3 && player.swingProgressInt >= 0) return;
-        player.swingProgressInt = -1;
-        player.isSwingInProgress = true;
-        hit(Hook.SWING);
+        if (swingAnyway(player)) hit(Hook.SWING);
     }
 
     public static boolean active(Feature feature) {
@@ -135,6 +193,7 @@ public final class OldAnimations189 {
     public static void resetHits() {
         Arrays.fill(HITS, 0);
         usedSwing = 0;
+        pendingSwing = false;
     }
 
     /** The flat item kind 1.7 drew differently, or null for block and built-in models, which keep 1.8.9's rendering. */
@@ -197,6 +256,7 @@ public final class OldAnimations189 {
 
         EntityPlayerSP player = mc.thePlayer;
         if (player == null || !player.isUsingItem()) attacked = false; // a new use starts without an attack
+        checkPendingSwing(player);
         if (player == null || mc.currentScreen != null || !player.isUsingItem() || !mc.gameSettings.keyBindAttack.isKeyDown()
             || mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK) return;
         Use use = use(player, player.getItemInUse());

@@ -312,4 +312,90 @@ class OldAnimationsTest {
         }
         assertEquals(1.62f, OldAnimations.sneakEyeHeight(1.62f, 1.62f), 0);
     }
+
+    @Test void clickMidSwingDoesNotCutAnimationOff() {
+        int duration = 6; // vanilla 1.8.9 default swing duration
+        int half = duration / 2; // 3
+
+        // Idle hand or queued restart: click starts swing
+        assertTrue(OldAnimations.shouldRestartSwing(false, 0, duration), "idle hand starts swing");
+        assertTrue(OldAnimations.shouldRestartSwing(true, -1, duration), "queued swing starts");
+
+        // First half (mid-swing): clicks must not restart swing or snap arm back
+        for (int tick = 0; tick < half; tick++) {
+            assertFalse(OldAnimations.shouldRestartSwing(true, tick, duration),
+                "mid-swing at tick " + tick + " of " + duration + " must not snap arm back");
+        }
+
+        // Past halfway: clicks restart swing smoothly into the next strike
+        for (int tick = half; tick < duration; tick++) {
+            assertTrue(OldAnimations.shouldRestartSwing(true, tick, duration),
+                "past halfway at tick " + tick + " of " + duration + " restarts smoothly");
+        }
+
+        // Haste (duration 4, half 2) and fatigue (duration 8, half 4) scaling
+        assertFalse(OldAnimations.shouldRestartSwing(true, 1, 4), "haste: tick 1 of 4 is mid-swing");
+        assertTrue(OldAnimations.shouldRestartSwing(true, 2, 4), "haste: tick 2 of 4 is past half");
+        assertFalse(OldAnimations.shouldRestartSwing(true, 3, 8), "fatigue: tick 3 of 8 is mid-swing");
+        assertTrue(OldAnimations.shouldRestartSwing(true, 4, 8), "fatigue: tick 4 of 8 is past half");
+    }
+
+    @Test void swingActionFollowsPendingSwingDesign() {
+        int duration = 6;
+        int half = duration / 2; // 3
+
+        // 1. Click while idle starts immediately from 0
+        assertEquals(OldAnimations.SwingAction.START,
+            OldAnimations.swingAction(true, false, false, 0, duration), "click while idle starts");
+
+        // 2. Click in first half -> pending, not reset
+        for (int tick = 0; tick < half; tick++) {
+            assertEquals(OldAnimations.SwingAction.PEND,
+                OldAnimations.swingAction(true, true, false, tick, duration),
+                "click in first half at tick " + tick + " -> pending");
+            assertEquals(OldAnimations.SwingAction.PEND,
+                OldAnimations.swingAction(true, true, true, tick, duration),
+                "repeated click in first half at tick " + tick + " -> pending");
+        }
+
+        // 3. Click in second half -> pending too
+        for (int tick = half; tick < duration; tick++) {
+            assertEquals(OldAnimations.SwingAction.PEND,
+                OldAnimations.swingAction(true, true, false, tick, duration),
+                "click in second half at tick " + tick + " -> pending too");
+            assertEquals(OldAnimations.SwingAction.PEND,
+                OldAnimations.swingAction(true, true, true, tick, duration),
+                "repeated click in second half at tick " + tick + " -> pending too");
+        }
+
+        // 4. End reached with pending -> restart
+        assertEquals(OldAnimations.SwingAction.START,
+            OldAnimations.swingAction(false, true, true, duration, duration),
+            "end reached (progress >= duration) with pending -> restart");
+        assertEquals(OldAnimations.SwingAction.START,
+            OldAnimations.swingAction(false, false, true, 0, duration),
+            "idle (swing ended) with pending -> restart");
+
+        // 5. No pending -> idle (none)
+        assertEquals(OldAnimations.SwingAction.NONE,
+            OldAnimations.swingAction(false, true, false, duration, duration),
+            "end reached without pending -> none");
+        assertEquals(OldAnimations.SwingAction.NONE,
+            OldAnimations.swingAction(false, false, false, 0, duration),
+            "idle without pending -> none");
+        for (int tick = 0; tick < duration; tick++) {
+            assertEquals(OldAnimations.SwingAction.NONE,
+                OldAnimations.swingAction(false, true, false, tick, duration),
+                "mid-swing tick " + tick + " without click -> none");
+            assertEquals(OldAnimations.SwingAction.NONE,
+                OldAnimations.swingAction(false, true, true, tick, duration),
+                "mid-swing tick " + tick + " waiting for end -> none");
+        }
+
+        // Duration scaling (Haste: duration 4, Fatigue: duration 8)
+        assertEquals(OldAnimations.SwingAction.PEND, OldAnimations.swingAction(true, true, false, 1, 4), "haste mid-swing -> pending");
+        assertEquals(OldAnimations.SwingAction.START, OldAnimations.swingAction(false, true, true, 4, 4), "haste end -> restart");
+        assertEquals(OldAnimations.SwingAction.PEND, OldAnimations.swingAction(true, true, false, 5, 8), "fatigue mid-swing -> pending");
+        assertEquals(OldAnimations.SwingAction.START, OldAnimations.swingAction(false, true, true, 8, 8), "fatigue end -> restart");
+    }
 }
