@@ -56,7 +56,8 @@ final class NativeShulkerParityProbe {
             check(summary == cached, "summary is cached for identical ItemContainerContents");
             ItemStack direct = new ItemStack(Items.EMERALD, 4);
             ShulkerSummary directSummary = ShulkerSummary.of(List.of(direct));
-            check(directSummary.first() == direct, "of(List) reuses item stack instance without second copy");
+            direct.setCount(1);
+            check(directSummary.first().getCount() == 4, "of(List) is detached from mutable live stacks");
             check(!summary.uniform() && summary.badgeVisible(), "first-item mode includes mixed boxes");
             ((DropdownOption) module.getOption("Display Mode")).setIndex(1);
             check(!summary.badgeVisible(), "uniform mode excludes mixed box badge");

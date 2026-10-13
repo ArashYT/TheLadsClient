@@ -15,18 +15,25 @@ public record ShulkerSummary(List<ItemStack> slots, ItemStack first, int occupie
 
     public static ShulkerSummary of(ItemContainerContents contents) {
         if (contents == null) return EMPTY;
-        return CACHE.computeIfAbsent(contents, c -> of(c.itemCopies().limit(27).toList()));
+        return CACHE.computeIfAbsent(contents, c -> build(c.itemCopies().limit(27).toList(), false));
     }
 
     public static ShulkerSummary of(List<ItemStack> items) {
+        return build(items, true);
+    }
+
+    private static ShulkerSummary build(List<ItemStack> items, boolean copy) {
         var slots = new ArrayList<ItemStack>(27);
         ItemStack first = ItemStack.EMPTY;
         int occupied = 0;
         long count = 0;
         boolean uniform = true;
         for (int index = 0; index < 27; index++) {
-            ItemStack stack = index < items.size() ? items.get(index) : ItemStack.EMPTY;
-            if (stack == null) stack = ItemStack.EMPTY;
+            ItemStack stack = ItemStack.EMPTY;
+            if (index < items.size()) {
+                ItemStack item = items.get(index);
+                if (item != null) stack = copy ? item.copy() : item;
+            }
             slots.add(stack);
             if (stack.isEmpty()) continue;
             occupied++;
