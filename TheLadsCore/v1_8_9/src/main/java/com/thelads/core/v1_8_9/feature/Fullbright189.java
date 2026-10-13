@@ -21,10 +21,19 @@ public final class Fullbright189 {
 
     private Fullbright189() {}
 
+    private static FullbrightModule fullbrightModule;
+    private static FullbrightModule module() {
+        if (fullbrightModule == null) {
+            com.thelads.core.config.Module m = ModuleManager.getInstance().getModule("Fullbright");
+            if (m instanceof FullbrightModule) fullbrightModule = (FullbrightModule) m;
+        }
+        return fullbrightModule;
+    }
+
     public static void tick(Minecraft mc) {
-        com.thelads.core.config.Module module = ModuleManager.getInstance().getModule("Fullbright");
-        if (module instanceof FullbrightModule && module.isEnabled() && mc.thePlayer != null) {
-            float wanted = (float) ((FullbrightModule) module).effectiveGamma();
+        FullbrightModule module = module();
+        if (module != null && module.isEnabled() && mc.thePlayer != null) {
+            float wanted = (float) module.effectiveGamma();
             if (Float.isNaN(original)) original = Math.min(1F, mc.gameSettings.gammaSetting);
             if (mc.gameSettings.gammaSetting != wanted) set(mc, wanted);
         } else if (!Float.isNaN(original)) {

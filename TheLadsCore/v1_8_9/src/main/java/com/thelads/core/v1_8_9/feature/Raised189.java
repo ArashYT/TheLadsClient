@@ -58,7 +58,10 @@ public final class Raised189 {
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void raise(RenderGameOverlayEvent.Pre event) {
         if (!HOTBAR.contains(event.type)) return;
-        push();
+        int lift = hotbar();
+        if (lift == 0) return;
+        GlStateManager.pushMatrix();
+        GlStateManager.translate(0, -lift, 0);
         pushed = true;
     }
 

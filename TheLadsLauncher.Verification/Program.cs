@@ -747,12 +747,27 @@ try
     // LADS_VERIFY_FULLSCREEN=1: started as the launcher does with "Fullscreen on launch" (its default): --fullscreen and fullscreen:true.
     bool qaFullscreen = Env("LADS_VERIFY_FULLSCREEN") == "1";
     var windowSize = tiled ? QaWindowGuard.TileClient(1) : new System.Drawing.Size(titleVerification ? 1280 : 960, titleVerification ? 720 : 600);
+    int maxRam = int.TryParse(Env("LADS_VERIFY_MAX_RAM"), out var uMax) ? uMax : (perf189 ? 4096 : 2048);
+    int minRam = int.TryParse(Env("LADS_VERIFY_MIN_RAM"), out var uMin) ? uMin : (perf189 ? 512 : 256);
     using (await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".mc.lock"), ct))
         process = await launcher.InstallAndBuildProcessAsync(id, new MLaunchOption
         {
-            Session = session, JavaPath = javaPath, MaximumRamMb = 2048, MinimumRamMb = 256,
+            Session = session, JavaPath = javaPath, MaximumRamMb = maxRam, MinimumRamMb = minRam,
             FullScreen = qaFullscreen, ScreenWidth = windowSize.Width, ScreenHeight = windowSize.Height
         }, ct);
+    if (Env("LADS_VERIFY_GC_PAUSE") is { } gcPause && int.TryParse(gcPause, out int pauseVal))
+    {
+        if (process.StartInfo.ArgumentList.Count > 0)
+        {
+            for (int i = 0; i < process.StartInfo.ArgumentList.Count; i++)
+                if (process.StartInfo.ArgumentList[i].StartsWith("-XX:MaxGCPauseMillis=", StringComparison.Ordinal))
+                    process.StartInfo.ArgumentList[i] = "-XX:MaxGCPauseMillis=" + pauseVal;
+        }
+        else if (!string.IsNullOrEmpty(process.StartInfo.Arguments))
+        {
+            process.StartInfo.Arguments = Regex.Replace(process.StartInfo.Arguments, @"-XX:MaxGCPauseMillis=\d+", "-XX:MaxGCPauseMillis=" + pauseVal);
+        }
+    }
     void AddJvm(string argument)
     {
         jvmFlags.Add(argument);
@@ -814,6 +829,7 @@ try
             if (Env("LADS_VERIFY_PERF_SCENES") != null) AddJvm("-Dthelads.perfScenes=" + Env("LADS_VERIFY_PERF_SCENES"));
             if (Env("LADS_VERIFY_SKINLAYERS") != null) AddJvm("-Dthelads.skinlayers=" + Env("LADS_VERIFY_SKINLAYERS"));
             if (Env("LADS_VERIFY_SKINLAYERS_LOD") != null) AddJvm("-Dthelads.skinlayersLod=" + Env("LADS_VERIFY_SKINLAYERS_LOD"));
+            if (Env("LADS_VERIFY_PERF_TERRAIN") == "1") AddJvm("-Dthelads.perfTerrain=true");
             if (Env("LADS_VERIFY_PERF_JFR") == "1") AddJvm("-XX:StartFlightRecording=settings=profile,filename=" + Path.Combine(perfFolder, "perf.jfr"));
         }
     }
@@ -1001,6 +1017,34 @@ try
         ? File.ReadAllLines(qaOptions).Where(l => !qaForced.Any(f => l.StartsWith(f[..(f.IndexOf(':') + 1)], StringComparison.Ordinal))).ToList()
         : new List<string>();
     qaLines.AddRange(qaForced);
+    string qaOptiFine = Path.Combine(directory, "optionsof.txt");
+    if (Env("LADS_VERIFY_OPTIONS") is { } customOptions)
+    {
+        var ofUpdates = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var opt in customOptions.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            int colon = opt.IndexOf(':');
+            if (colon <= 0) continue;
+            string key = opt[..colon].Trim();
+            string val = opt[(colon + 1)..].Trim();
+            if (key.StartsWith("of", StringComparison.OrdinalIgnoreCase))
+            {
+                ofUpdates[key] = val;
+            }
+            else
+            {
+                qaLines.RemoveAll(l => l.StartsWith(key + ":", StringComparison.OrdinalIgnoreCase));
+                qaLines.Add($"{key}:{val}");
+            }
+        }
+        if (ofUpdates.Count > 0)
+        {
+            var ofMap = File.Exists(qaOptiFine) ? GameOptionsService.ParseOptions(File.ReadAllText(qaOptiFine)) : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (k, v) in ofUpdates) ofMap[k] = v;
+            File.WriteAllText(qaOptiFine, GameOptionsService.SerializeOptions(ofMap));
+            summary.Add($"Forced OptiFine options ({customOptions}): -> {qaOptiFine}");
+        }
+    }
     // LADS_VERIFY_RESOURCEPACKS=a.zip,b.zip: those packs copied into the sandbox and enabled (e.g. Fresh Animations for the embedded EMF/ETF).
     // 1.8.9 lists plain file names; the Fabric versions list pack ids.
     if (Env("LADS_VERIFY_RESOURCEPACKS") is { } packs)
@@ -1016,6 +1060,7 @@ try
         qaLines.Add("resourcePacks:[" + string.Join(",", enabled) + "]");
     }
     File.WriteAllLines(qaOptions, qaLines);
+    CopyIfExists(qaOptiFine, Path.Combine(evidence, "optionsof-after-launcher-sync.txt"));
     GameOptionsService.EnsureDataVersion(directory, version); // as GameSession.Configure in the launcher: this options.txt is written after it
     QaDiscord.ForceOff(directory); // QA games never show on the owner's Discord (Essential's activity status, Lads DiscordRPC)
     var stopwatch = Stopwatch.StartNew();

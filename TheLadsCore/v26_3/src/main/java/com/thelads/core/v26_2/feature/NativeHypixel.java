@@ -42,8 +42,7 @@ public final class NativeHypixel {
     private NativeHypixel() {}
 
     public static void initialize() {
-        ModuleSupport.registerBuiltIn(HypixelMods.AUTO_GG, HypixelMods.AUTO_FRIEND, HypixelMods.AUTO_TIP, HypixelMods.PLAY_AGAIN,
-            HypixelMods.AUTO_WHO, HypixelMods.CLEANUP);
+        ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS);
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> overlay || !HypixelMods.chat(message.getString(), System.nanoTime()));
         ClientTickEvents.END_CLIENT_TICK.register(client -> HypixelMods.tick(LadsGameBridge.get(), client.level, client.getConnection(), System.nanoTime()));
         if (FabricLoader.getInstance().isModLoaded("hypixel_mod_api")) return;
