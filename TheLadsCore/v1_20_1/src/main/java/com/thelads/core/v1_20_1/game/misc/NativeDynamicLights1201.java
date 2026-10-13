@@ -4,7 +4,7 @@ import com.thelads.core.client.DynamicLights;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.DynamicLightsModule;
-import com.thelads.core.v1_20_1.game.ModPresence1201;
+import com.thelads.core.v1_20_1.compat.ModPresence1201;
 import java.util.Map;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;

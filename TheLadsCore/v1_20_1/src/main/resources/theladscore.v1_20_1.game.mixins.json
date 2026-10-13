@@ -34,8 +34,6 @@
     "LevelTargetsAccessor",
     "RenderScaleMixin",
     "RenderScaleOutlineMixin",
-    "PrimaryLevelDataAccessor",
-    "LevelSettingsAccessor",
     "CheatsMixin"
   ]
 }

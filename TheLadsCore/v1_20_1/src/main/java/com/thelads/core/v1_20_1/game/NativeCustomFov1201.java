@@ -3,6 +3,7 @@ package com.thelads.core.v1_20_1.game;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.CustomFovModule;
+import com.thelads.core.v1_20_1.compat.ModPresence1201;
 import java.util.UUID;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;

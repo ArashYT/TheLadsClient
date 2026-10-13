@@ -1,17 +1,11 @@
 package com.thelads.core.v1_20_1.game.cheats;
 
 import com.thelads.core.client.WorldCheats;
-import com.thelads.core.v1_20_1.game.mixin.LevelSettingsAccessor;
-import com.thelads.core.v1_20_1.game.mixin.PrimaryLevelDataAccessor;
 import java.nio.file.Path;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.server.IntegratedServer;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.storage.LevelResource;
-import net.minecraft.world.level.storage.PrimaryLevelData;
-import org.slf4j.LoggerFactory;
 
 /**
  * Cheats stay as the host set them (WorldCheats). When a world opens, joined players get the host's last choice and Essential's
@@ -20,10 +14,6 @@ import org.slf4j.LoggerFactory;
  */
 public final class Cheats1201 {
     private static IntegratedServer opened;
-    private static boolean agreed;
-    private static int ticks;
-    /** QA: what the last look found (Essential's switch, the world's own, whether they were brought together). */
-    public static volatile String lastState = "not looked yet";
 
     private Cheats1201() {}
 
@@ -42,24 +32,4 @@ public final class Cheats1201 {
     }
 
     public static Path folder(IntegratedServer server) { return server.getWorldPath(LevelResource.ROOT); }
-
-    /** The world's own switch (level.dat's). */
-    static Boolean own(IntegratedServer server) {
-        return server.getWorldData() instanceof PrimaryLevelData data ? ((LevelSettingsAccessor) (Object) ((PrimaryLevelDataAccessor) data).ladsSettings()).ladsAllowCommands() : null;
-    }
-
-    /** The world's switch becomes {@code allow}, and every player is told what they may do. */
-    static void setWorldAllowCommands(IntegratedServer server, boolean allow) {
-        if (!(server.getWorldData() instanceof PrimaryLevelData data)) return;
-        server.execute(() -> {
-            PrimaryLevelDataAccessor access = (PrimaryLevelDataAccessor) data;
-            LevelSettings s = access.ladsSettings();
-            access.ladsSettings(new LevelSettings(s.levelName(), s.gameType(), s.hardcore(), s.difficulty(), allow, s.gameRules(), s.getDataConfiguration()));
-            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                server.getPlayerList().sendPlayerPermissionLevel(player);
-                server.getCommands().sendCommands(player);
-            }
-            LoggerFactory.getLogger("TheLadsCore").info("Lads cheats: the world's cheats are now {}", allow ? "on" : "off");
-        });
-    }
 }

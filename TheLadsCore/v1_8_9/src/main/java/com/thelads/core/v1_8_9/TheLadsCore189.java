@@ -245,7 +245,6 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.feature.EntityCulling189.tick(mc);
         Zoom189.tick(mc);
         SkinLayers189.tick(mc);
-        com.thelads.core.v1_8_9.feature.Cheats189.tick(mc);
         com.thelads.core.v1_8_9.feature.Toggles189.tick(mc);
         com.thelads.core.v1_8_9.feature.Fullbright189.tick(mc);
 

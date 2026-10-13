@@ -4,6 +4,7 @@ import com.thelads.core.client.DamageTilt;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.OldAnimationsModule;
 import com.thelads.core.modules.ToggleSprintModule;
+import com.thelads.core.v1_20_1.compat.ModPresence1201;
 import com.thelads.core.v1_20_1.game.anim.NativeOldAnimations1201;
 import java.util.Locale;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;

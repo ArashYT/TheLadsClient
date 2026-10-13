@@ -67,6 +67,10 @@ public final class ModPresence1201 {
         return value;
     }
 
+    public static boolean forge() {
+        return onForge();
+    }
+
     /** True when Sinytra Connector is the one running Fabric mods. */
     public static boolean underConnector() {
         return classExists("dev.su5ed.sinytra.connector.loader.ConnectorLoaderMod")

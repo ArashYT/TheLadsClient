@@ -2,7 +2,6 @@ package com.thelads.core.v26_2.gui;
 
 import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.client.title.TitleScreenTheme;
-import com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -47,7 +46,6 @@ public class QuitConfirmScreen26 extends Screen {
         int cardX = (width - cardWidth) / 2;
         int cardY = (height - cardHeight) / 2;
 
-        var adapter = new GuiGraphicsExtractorLadsAdapter(g, font);
         g.fill(cardX, cardY, cardX + cardWidth, cardY + cardHeight, LadsPalette.CARD);
         g.fill(cardX + 4, cardY, cardX + cardWidth - 4, cardY + 2, LadsPalette.ACCENT);
 

@@ -12,6 +12,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import com.thelads.core.client.RenderScalePolicy;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.modules.BetterResolutionModule;
+import com.thelads.core.v1_20_1.compat.ModPresence1201;
 import com.thelads.core.v1_20_1.game.mixin.LevelTargetsAccessor;
 import com.thelads.core.v1_20_1.game.mixin.MinecraftTargetAccessor;
 import java.io.IOException;

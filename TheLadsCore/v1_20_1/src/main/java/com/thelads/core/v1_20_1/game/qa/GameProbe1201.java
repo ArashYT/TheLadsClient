@@ -216,7 +216,6 @@ public final class GameProbe1201 {
             case "hotbar" -> mc.player.getInventory().selected = Integer.parseInt(s[1]) - 1;
             case "shot" -> { pendingShot = s[1]; wait = 3; }
             case "shotnow" -> { shot(mc, s[1]); LOGGER.info("Lads game qa shot: screenshots/{}.png", s[1]); }
-            case "cheats" -> LOGGER.info("Lads game qa cheats: {}", com.thelads.core.v1_20_1.game.cheats.Cheats1201.lastState);
             case "grab" -> ((MouseInvokers) mc.mouseHandler).ladsGrabbed(s[1].equals("on"));
             case "mine" -> {
                 // QA windows never grab the mouse, so holding the attack key would not mine: start (or stop) the break directly.
