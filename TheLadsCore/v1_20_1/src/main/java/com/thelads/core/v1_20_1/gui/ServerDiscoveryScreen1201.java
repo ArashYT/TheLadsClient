@@ -205,7 +205,7 @@ public class ServerDiscoveryScreen1201 extends Screen {
                     HttpURLConnection conn = (HttpURLConnection) new URI(urlStr).toURL().openConnection();
                     conn.setConnectTimeout(3500);
                     conn.setReadTimeout(3500);
-                    conn.setRequestProperty("User-Agent", "TheLadsClient/1.9.2");
+                    conn.setRequestProperty("User-Agent", "TheLadsClient/1.9.3");
                     if (conn.getResponseCode() == 200) {
                         try (InputStream in = conn.getInputStream()) {
                             byte[] bytes = in.readAllBytes();

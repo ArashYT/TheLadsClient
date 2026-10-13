@@ -21,13 +21,13 @@ for m in data26['mods']:
     
     # 1. Fetch project info
     p_url = f"https://api.modrinth.com/v2/project/{target_slug}"
-    req = urllib.request.Request(p_url, headers={'User-Agent': 'TheLadsClient/1.9.2-dev'})
+    req = urllib.request.Request(p_url, headers={'User-Agent': 'TheLadsClient/1.9.3-dev'})
     with urllib.request.urlopen(req) as resp:
         proj = json.load(resp)
     
     # 2. Fetch versions for 1.20.1 fabric
     v_url = f"https://api.modrinth.com/v2/project/{target_slug}/version?game_versions=%5B%221.20.1%22%5D&loaders=%5B%22fabric%22%5D"
-    req = urllib.request.Request(v_url, headers={'User-Agent': 'TheLadsClient/1.9.2-dev'})
+    req = urllib.request.Request(v_url, headers={'User-Agent': 'TheLadsClient/1.9.3-dev'})
     with urllib.request.urlopen(req) as resp:
         vers = json.load(resp)
     
