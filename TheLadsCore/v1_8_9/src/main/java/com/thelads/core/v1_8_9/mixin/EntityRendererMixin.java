@@ -11,9 +11,11 @@ import com.thelads.core.v1_8_9.feature.Zoom189;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.EntityRenderer;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -28,9 +30,28 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * 1.7 Animations, Instant sneak camera: orientCamera's one eye-height read (one in OptiFine M5's orientCamera too) becomes 1.7's.
  * Zoom: getFOVModifier (kept by OptiFine M5) says whether the FOV Forge's FOVModifier event is about to get is the held item's.
  * Damage tilt: hurtCameraEffect's direction and 14° tilt, as 26.x DamageTiltMixin (common DamageTilt).
+ * Fullbright: forces the lightmap colors to full daylight across every block face.
  */
 @Mixin(EntityRenderer.class)
 public abstract class EntityRendererMixin {
+    @Shadow private int[] lightmapColors;
+    @Shadow private DynamicTexture lightmapTexture;
+
+    @Inject(method = "updateLightmap", at = @At("RETURN"), require = 1)
+    private void ladsUpdateLightmap(float partialTicks, CallbackInfo ci) {
+        if (com.thelads.core.v1_8_9.feature.Fullbright189.applyLightmap(this.lightmapColors)) {
+            this.lightmapTexture.updateDynamicTexture();
+        }
+    }
+
+    @Inject(method = "getNightVisionBrightness", at = @At("HEAD"), cancellable = true, require = 1)
+    private void ladsNightVisionBrightness(EntityLivingBase entity, float partialTicks, CallbackInfoReturnable<Float> cir) {
+        if (com.thelads.core.v1_8_9.feature.Fullbright189.isEnabled() && entity == Minecraft.getMinecraft().thePlayer) {
+            float f = com.thelads.core.v1_8_9.feature.Fullbright189.factor();
+            if (f > 0) cir.setReturnValue(f);
+        }
+    }
+
     @Inject(method = "renderWorldDirections", at = @At("HEAD"), cancellable = true, require = 0)
     private void ladsDebugAxes(float partialTicks, CallbackInfo ci) {
         if (Crosshair189.suppressDebugAxes()) ci.cancel();

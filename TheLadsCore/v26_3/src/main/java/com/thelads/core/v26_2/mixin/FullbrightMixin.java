@@ -25,4 +25,10 @@ public class FullbrightMixin {
             target = "Lnet/minecraft/client/Options;gamma()Lnet/minecraft/client/OptionInstance;")),
         at = @At(value = "INVOKE", target = "Ljava/lang/Double;floatValue()F", ordinal = 0), require = 1)
     private float ladsLightmapGamma(Double gamma) { return NativeFeatures.gamma(gamma.floatValue()); }
+
+    @Inject(method = "extract(Lnet/minecraft/client/renderer/state/LightmapRenderState;F)V", at = @At("RETURN"), require = 1)
+    private void ladsApplyFullbright(LightmapRenderState state, float partialTick, CallbackInfo ci) {
+        NativeFeatures.applyFullbright(state);
+    }
 }
+

@@ -19,7 +19,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 abstract class FullbrightShadersMixin {
     @Inject(method = "getNightVisionScale", at = @At("HEAD"), cancellable = true)
     private static void lads$fullbrightShaders(LivingEntity entity, float partialTick, CallbackInfoReturnable<Float> cir) {
-        if (entity != null && entity == Minecraft.getInstance().player && !entity.hasEffect(MobEffects.NIGHT_VISION) && NativeFeatures1201.fullbrightGamma() >= 0)
-            cir.setReturnValue(1F);
+        if (entity != null && entity == Minecraft.getInstance().player && !entity.hasEffect(MobEffects.NIGHT_VISION)) {
+            float f = NativeFeatures1201.fullbrightFactor();
+            if (f > 0) cir.setReturnValue(f);
+        }
     }
 }

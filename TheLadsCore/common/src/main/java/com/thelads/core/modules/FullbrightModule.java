@@ -32,4 +32,20 @@ public class FullbrightModule extends Module {
     public double effectiveGamma() {
         return getGamma() * multiplier.getValue();
     }
+
+    /**
+     * Factor (0.0 to 1.0) for the lightmap floor / override.
+     * When disabled, returns 0.0.
+     * When enabled with Gamma at 0%, returns 0.0 (vanilla maximum brightness).
+     * When enabled with Gamma > 0%, scales smoothly to 1.0. At default (65%), returns >= 0.93.
+     */
+    public float lightmapFactor() {
+        if (!isEnabled()) return 0.0f;
+        double g = gamma.getValue();
+        if (g <= 0) return 0.0f;
+        double mult = multiplier.getValue();
+        double t = Math.min(1.0, (g / 100.0) * mult);
+        return (float) (0.80 + 0.20 * t);
+    }
 }
+
