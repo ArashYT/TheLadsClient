@@ -157,6 +157,7 @@ public class ConfigManager {
             migrateDamageTilt(modulesJson);
             migrateParticleBudget(modulesJson);
             migrateAutohide(modulesJson);
+            migrateHypixelMods(modulesJson);
             java.util.Set<String> known = new java.util.HashSet<>();
             for (Module m : ModuleManager.getInstance().getModules()) {
                 known.add(m.getName());
@@ -362,6 +363,43 @@ public class ConfigManager {
         if (saved instanceof JsonObject old) {
             if (old.has("Particles per tick") && !options.has(com.thelads.core.client.ParticleCore.PER_TICK)) options.add(com.thelads.core.client.ParticleCore.PER_TICK, old.get("Particles per tick"));
             if (old.has("Distance") && !options.has(com.thelads.core.client.ParticleCore.DISTANCE)) options.add(com.thelads.core.client.ParticleCore.DISTANCE, old.get("Distance"));
+        }
+    }
+
+    /** 1.9.2 grouped the 6 Hypixel modules into "HYPIXEL Mods": each old module's on/off becomes its switch, its options "<module>: <option>". */
+    public static void migrateHypixelMods(JsonObject modules) {
+        String[] oldNames = {"Auto GG", "Auto Friend", "Auto Tip", "Auto Play Again", "Auto Who", "Chat Cleanup"};
+        boolean found = false;
+        for (String n : oldNames) if (modules.has(n)) found = true;
+        if (!found) return;
+
+        JsonObject hypixelMods;
+        if (modules.has("HYPIXEL Mods") && modules.get("HYPIXEL Mods") instanceof JsonObject hm) {
+            hypixelMods = hm;
+        } else {
+            hypixelMods = new JsonObject();
+            hypixelMods.addProperty("enabled", true);
+            modules.add("HYPIXEL Mods", hypixelMods);
+        }
+        JsonObject options;
+        if (hypixelMods.has("options") && hypixelMods.get("options") instanceof JsonObject opt) {
+            options = opt;
+        } else {
+            options = new JsonObject();
+            hypixelMods.add("options", options);
+        }
+
+        for (String oldName : oldNames) {
+            JsonElement oldMod = modules.remove(oldName);
+            if (oldMod instanceof JsonObject oldModObj) {
+                if (oldModObj.has("enabled") && !options.has(oldName)) options.add(oldName, oldModObj.get("enabled"));
+                if (oldModObj.has("options") && oldModObj.get("options") instanceof JsonObject oldOpts) {
+                    for (String key : oldOpts.keySet()) {
+                        String optName = oldName + ": " + key;
+                        if (!options.has(optName)) options.add(optName, oldOpts.get(key));
+                    }
+                }
+            }
         }
     }
 

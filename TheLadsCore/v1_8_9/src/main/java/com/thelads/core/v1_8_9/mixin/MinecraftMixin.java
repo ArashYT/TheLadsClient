@@ -28,6 +28,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * QA (Probe173Perf): each frame's work up to Display.update (FrameWork189). */
 @Mixin(Minecraft.class)
 public abstract class MinecraftMixin {
+    private static final long TIMER_RES = org.lwjgl.Sys.getTimerResolution();
+
+    /** Cache the immutable timer resolution to eliminate redundant JNI calls every getSystemTime invocation. */
+    @Redirect(method = "getSystemTime", at = @At(value = "INVOKE",
+        target = "Lorg/lwjgl/Sys;getTimerResolution()J", remap = false), require = 1, allow = 1)
+    private static long ladsCachedTimerResolution() {
+        return TIMER_RES;
+    }
+
     @Shadow private boolean fullscreen;
     @Shadow public EntityPlayerSP thePlayer;
     @Shadow private int rightClickDelayTimer;
