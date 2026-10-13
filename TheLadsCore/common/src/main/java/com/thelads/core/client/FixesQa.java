@@ -63,7 +63,7 @@ public final class FixesQa {
     private boolean fullbrightWas, nametagsWas;
     private int step, wait, passed, patience, frame, mode;
     private double[] home;
-    private double nightOff, nightOn, caveOn, caveOff;
+    private double nightOff, nightOn, caveOn, caveOff, daylightRef;
     private Path pendingShot, guiShot;
     private FileTime savedBefore;
     private Path levelDat;
@@ -123,9 +123,19 @@ public final class FixesQa {
                 if ((caveOff = luma()) < 0) return retry();
                 check(lit(caveOff, caveOn), "Fullbright lights a closed stone room: off " + f(caveOff) + ", on " + f(caveOn));
                 int x = floor(home[0]), y = floor(home[1]), z = floor(home[2]);
-                game.fill(x - 4, y, z - 4, x + 4, y + 5, z + 4, false);
+                game.fill(x - 4, y + 5, z - 4, x + 4, y + 5, z + 4, false);
                 game.command("time set 6000");
                 fullbright.setEnabled(false);
+                wait = 40;
+                step = 80;
+            }
+            case 80 -> { pendingShot = game.screenshot("fb-daylight"); wait = 10; }
+            case 81 -> {
+                if ((daylightRef = luma()) < 0) return retry();
+                check(caveOn >= 0.8 * daylightRef, "Fullbright closed stone room is >= 80% daylight: on " + f(caveOn) + ", daylight " + f(daylightRef) + " (" + f(100.0 * caveOn / daylightRef) + "%)");
+                check(nightOn >= 0.8 * daylightRef, "Fullbright midnight ground is >= 80% daylight: on " + f(nightOn) + ", daylight " + f(daylightRef) + " (" + f(100.0 * nightOn / daylightRef) + "%)");
+                int x = floor(home[0]), y = floor(home[1]), z = floor(home[2]);
+                game.fill(x - 4, y - 1, z - 4, x + 4, y + 5, z + 4, false);
                 game.removeTags();
                 game.summonTag("Near Lads Tag", home[0], home[1], home[2] + 4);
                 game.summonTag("Mid Lads Tag", home[0] + 1, home[1], home[2] + 14);
@@ -133,6 +143,7 @@ public final class FixesQa {
                 nametags.setEnabled(true);
                 ((BoolOption) nametags.getOption("Render Background")).set(false);
                 wait = 60;
+                step = 9;
             }
             case 9 -> { // per mode: fixed, before the fix, no shadow; four frames each while the camera turns a little
                 ((BoolOption) nametags.getOption("Text Shadow")).set(mode != 2);

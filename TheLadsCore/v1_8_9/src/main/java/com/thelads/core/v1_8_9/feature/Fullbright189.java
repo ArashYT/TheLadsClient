@@ -18,11 +18,12 @@ public final class Fullbright189 {
     private static float original = Float.NaN, shown = Float.NaN;
     /** QA only (Probe172Ui's control run): the lightmap is left to the game's own tick again, as before 1.7.2. */
     static volatile boolean qaDefer;
+    private static float lastFactor = -1.0f;
 
     private Fullbright189() {}
 
     private static FullbrightModule fullbrightModule;
-    private static FullbrightModule module() {
+    public static FullbrightModule module() {
         if (fullbrightModule == null) {
             com.thelads.core.config.Module m = ModuleManager.getInstance().getModule("Fullbright");
             if (m instanceof FullbrightModule) fullbrightModule = (FullbrightModule) m;
@@ -30,16 +31,32 @@ public final class Fullbright189 {
         return fullbrightModule;
     }
 
+    public static boolean isEnabled() {
+        FullbrightModule module = module();
+        return module != null && module.isEnabled() && Minecraft.getMinecraft().thePlayer != null;
+    }
+
+    public static float factor() {
+        FullbrightModule module = module();
+        return (module != null && Minecraft.getMinecraft().thePlayer != null) ? module.lightmapFactor() : 0.0f;
+    }
+
     public static void tick(Minecraft mc) {
         FullbrightModule module = module();
+        float currentFactor = factor();
+        boolean factorChanged = Float.compare(currentFactor, lastFactor) != 0;
+        lastFactor = currentFactor;
+
         if (module != null && module.isEnabled() && mc.thePlayer != null) {
             float wanted = (float) module.effectiveGamma();
             if (Float.isNaN(original)) original = Math.min(1F, mc.gameSettings.gammaSetting);
-            if (mc.gameSettings.gammaSetting != wanted) set(mc, wanted);
+            if (mc.gameSettings.gammaSetting != wanted || factorChanged) set(mc, wanted);
         } else if (!Float.isNaN(original)) {
             float saved = original;
             original = Float.NaN;
             set(mc, saved);
+        } else if (factorChanged && mc.entityRenderer != null) {
+            if (!qaDefer) ((EntityRendererAccessor) mc.entityRenderer).ladsLightmapDirty(true);
         }
     }
 
@@ -56,6 +73,29 @@ public final class Fullbright189 {
 
     private static void set(Minecraft mc, float gamma) {
         mc.gameSettings.gammaSetting = gamma;
-        if (!qaDefer) ((EntityRendererAccessor) mc.entityRenderer).ladsLightmapDirty(true);
+        if (!qaDefer && mc.entityRenderer != null) ((EntityRendererAccessor) mc.entityRenderer).ladsLightmapDirty(true);
+    }
+
+    /**
+     * Overrides the lightmap colors with Fullbright's factor.
+     * Returns true if modified (requiring dynamic texture update).
+     */
+    public static boolean applyLightmap(int[] lightmapColors) {
+        float f = factor();
+        if (f <= 0 || lightmapColors == null) return false;
+        for (int i = 0; i < lightmapColors.length; i++) {
+            int color = lightmapColors[i];
+            int a = (color >> 24) & 0xFF;
+            int r = (color >> 16) & 0xFF;
+            int g = (color >> 8) & 0xFF;
+            int b = color & 0xFF;
+
+            r = (int) (r + (255 - r) * f);
+            g = (int) (g + (255 - g) * f);
+            b = (int) (b + (255 - b) * f);
+
+            lightmapColors[i] = (a << 24) | (r << 16) | (g << 8) | b;
+        }
+        return true;
     }
 }

@@ -54,4 +54,28 @@ class FullbrightModuleTest {
         gamma(again).reset();
         assertEquals(65, gamma(again).getValue(), "reset goes back to the default");
     }
+
+    @Test void lightmapFactorScalesCorrectlyAndDisablesWhenModuleIsOff() {
+        var module = new FullbrightModule();
+        module.setEnabled(false);
+        assertEquals(0.0f, module.lightmapFactor(), "disabled module has 0 factor");
+
+        module.setEnabled(true);
+        gamma(module).setValue(0);
+        assertEquals(0.0f, module.lightmapFactor(), "0% gamma is vanilla maximum brightness (0 factor)");
+
+        gamma(module).setValue(30);
+        float factor30 = module.lightmapFactor();
+        assertTrue(factor30 > 0.8f, "30% gamma factor > 0.8");
+
+        gamma(module).setValue(65);
+        float factor65 = module.lightmapFactor();
+        assertTrue(factor65 >= 0.90f, "default 65% gamma factor >= 0.90 (exceeds 80% daylight requirement)");
+        assertTrue(factor65 >= factor30, "65% factor >= 30% factor");
+
+        gamma(module).setValue(100);
+        float factor100 = module.lightmapFactor();
+        assertEquals(1.0f, factor100, 1e-6f, "100% gamma factor is 1.0 (full daylight lightmap)");
+    }
 }
+

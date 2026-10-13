@@ -28,6 +28,7 @@ public final class NativeFeatures1201 {
     public static volatile float lastWorldFov;
     public static volatile long lastWorldNanos;
     private static double lastGamma = Double.NaN;
+    private static float lastFactor = -1.0f;
 
     private NativeFeatures1201() {}
 
@@ -243,15 +244,47 @@ public final class NativeFeatures1201 {
         return fullbright.effectiveGamma();
     }
 
+    public static float fullbrightFactor() {
+        Module fb = module("Fullbright");
+        if (!(fb instanceof FullbrightModule fullbright) || !fullbright.isEnabled()
+            || Minecraft.getInstance().level == null) return 0.0f;
+        return fullbright.lightmapFactor();
+    }
+
     /**
-     * Once per frame (LightTexture.updateLightTexture's caller): whether Fullbright's gamma differs from the last frame's. The
-     * lightmap only rebuilds when the game's tick says so, which does not run while a menu pauses the game, so without this a change
-     * showed only after the menu closed.
+     * Once per frame (LightTexture.updateLightTexture's caller): whether Fullbright's gamma or factor differs from the last frame's.
+     * The lightmap only rebuilds when the game's tick says so, which does not run while a menu pauses the game, so without this
+     * a change showed only after the menu closed.
      */
     public static boolean gammaChanged() {
         double now = fullbrightGamma();
-        boolean changed = Double.compare(now, lastGamma) != 0;
+        float factor = fullbrightFactor();
+        boolean changed = Double.compare(now, lastGamma) != 0 || Float.compare(factor, lastFactor) != 0;
         lastGamma = now;
+        lastFactor = factor;
         return changed;
     }
+
+    /**
+     * Overrides the lightmap NativeImage with Fullbright's factor, lighting pitch-black areas to full daylight.
+     */
+    public static void overrideLightmap(com.mojang.blaze3d.platform.NativeImage pixels) {
+        float factor = fullbrightFactor();
+        if (factor <= 0 || pixels == null) return;
+        for (int sky = 0; sky < 16; sky++) {
+            for (int block = 0; block < 16; block++) {
+                int pixel = pixels.getPixelRGBA(block, sky);
+                int r = pixel & 0xFF;
+                int g = (pixel >> 8) & 0xFF;
+                int b = (pixel >> 16) & 0xFF;
+
+                r = (int) (r + (255 - r) * factor);
+                g = (int) (g + (255 - g) * factor);
+                b = (int) (b + (255 - b) * factor);
+
+                pixels.setPixelRGBA(block, sky, 0xFF000000 | (b << 16) | (g << 8) | r);
+            }
+        }
+    }
 }
+

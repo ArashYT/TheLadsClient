@@ -148,8 +148,15 @@ public final class NativeFeatures {
             ? fullbright.effectiveGamma() : -1;
     }
     private static double lastGamma = Double.NaN;
+    private static float lastFactor = -1.0f;
     /** QA only (UiCapture's control run): the lightmap is left to vanilla's tick again, as before 1.7.2. */
     static volatile boolean qaDeferGamma;
+
+    public static float fullbrightFactor() {
+        return module("Fullbright") instanceof FullbrightModule fullbright && fullbright.isEnabled() && Minecraft.getInstance().level != null
+            ? fullbright.lightmapFactor() : 0.0f;
+    }
+
     /**
      * FullbrightMixin, once per frame: whether Fullbright's gamma (on/off or the slider) differs from the last frame's. The lightmap
      * only rebuilds when vanilla's tick says so, and that tick does not run while a menu pauses the game or when BadOptimizations
@@ -157,8 +164,18 @@ public final class NativeFeatures {
      */
     public static boolean gammaChanged() {
         double now = fullbrightGamma();
-        boolean changed = Double.compare(now, lastGamma) != 0;
+        float factor = fullbrightFactor();
+        boolean changed = Double.compare(now, lastGamma) != 0 || Float.compare(factor, lastFactor) != 0;
         lastGamma = now;
+        lastFactor = factor;
         return changed && !qaDeferGamma;
     }
+
+    public static void applyFullbright(net.minecraft.client.renderer.state.LightmapRenderState state) {
+        float factor = fullbrightFactor();
+        if (factor > 0) {
+            state.nightVisionEffectIntensity = Math.max(state.nightVisionEffectIntensity, factor);
+        }
+    }
 }
+

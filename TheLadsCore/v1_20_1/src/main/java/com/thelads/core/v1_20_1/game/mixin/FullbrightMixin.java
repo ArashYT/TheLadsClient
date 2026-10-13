@@ -1,6 +1,7 @@
 package com.thelads.core.v1_20_1.game.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.thelads.core.v1_20_1.feature.NativeFeatures1201;
 import net.minecraft.client.renderer.LightTexture;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,6 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(LightTexture.class)
 public class FullbrightMixin {
     @Shadow private boolean updateLightTexture;
+    @Shadow private NativeImage lightPixels;
 
     /** A Fullbright change rebuilds the lightmap in this frame, not at the next game tick that runs (none run in a menu). */
     @Inject(method = "updateLightTexture(F)V", at = @At("HEAD"))
@@ -26,4 +28,10 @@ public class FullbrightMixin {
     private float lads$lightmapGamma(float gamma) {
         return NativeFeatures1201.gamma(gamma);
     }
+
+    @Inject(method = "updateLightTexture(F)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/texture/DynamicTexture;upload()V"))
+    private void lads$overrideLightmap(float partialTick, CallbackInfo ci) {
+        NativeFeatures1201.overrideLightmap(this.lightPixels);
+    }
 }
+
