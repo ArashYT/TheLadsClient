@@ -297,7 +297,7 @@ public sealed class ServerListFile
     public NbtCompound Root { get; }
 
     public IReadOnlyList<ServerListEntry> Entries => Root["servers"] is NbtList list
-        ? list.Items.Cast<NbtCompound>().Select(c => new ServerListEntry(Text(c, "ip"), Text(c, "name"),
+        ? list.Items.OfType<NbtCompound>().Select(c => new ServerListEntry(Text(c, "ip"), Text(c, "name"),
             c["hidden"] is NbtNumber { Type: NbtTagType.Byte, RawValue: not 0 }, c)).ToList()
         : Array.Empty<ServerListEntry>();
 
@@ -305,6 +305,7 @@ public sealed class ServerListFile
 
     public static ServerListFile Parse(byte[] data)
     {
+        if (data == null || data.Length == 0) return CreateEmpty();
         var (name, root) = Nbt.Read(data);
         return new ServerListFile(name, root);
     }
@@ -313,6 +314,7 @@ public sealed class ServerListFile
     public static ServerListFile Read(string path)
     {
         var data = ReadBytes(path);
+        if (data.Length == 0) return CreateEmpty();
         try
         {
             return Parse(data);
@@ -336,6 +338,56 @@ public sealed class ServerListFile
         list.Items.Add(entry);
     }
 
+    /// <summary>
+    /// Ensures an entry with the given name and address exists. If an entry with matching address or name already exists,
+    /// its name and address are updated; otherwise a new entry is added. Returns true if modified, false if already matching.
+    /// Preserves all other entries and tags.
+    /// </summary>
+    public bool EnsureEntry(string name, string address)
+    {
+        if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Server name must not be empty.", nameof(name));
+        if (string.IsNullOrWhiteSpace(address)) throw new ArgumentException("Server address must not be empty.", nameof(address));
+
+        string cleanName = name.Trim();
+        string cleanAddress = address.Trim();
+
+        static string Key(string s) => s.Trim().ToLowerInvariant();
+
+        var existing = Entries.FirstOrDefault(e => !e.Hidden && Key(e.Ip) == Key(cleanAddress))
+                       ?? Entries.FirstOrDefault(e => !e.Hidden && Key(e.Name) == Key(cleanName))
+                       ?? Entries.FirstOrDefault(e => Key(e.Ip) == Key(cleanAddress))
+                       ?? Entries.FirstOrDefault(e => Key(e.Name) == Key(cleanName));
+
+        if (existing != null)
+        {
+            bool modified = false;
+            if (existing.Raw["name"] is not NbtString sName || sName.Value != cleanName)
+            {
+                existing.Raw["name"] = new NbtString(cleanName);
+                modified = true;
+            }
+            if (existing.Raw["ip"] is not NbtString sIp || sIp.Value != cleanAddress)
+            {
+                existing.Raw["ip"] = new NbtString(cleanAddress);
+                modified = true;
+            }
+            if (existing.Hidden)
+            {
+                existing.Raw["hidden"] = new NbtNumber(NbtTagType.Byte, 0);
+                modified = true;
+            }
+            return modified;
+        }
+
+        var entry = new NbtCompound
+        {
+            ["name"] = new NbtString(cleanName),
+            ["ip"] = new NbtString(cleanAddress)
+        };
+        Add(entry);
+        return true;
+    }
+
     /// <summary>Removes this exact entry (one of <see cref="Entries"/>' Raw compounds). False when it is not in the list.</summary>
     public bool Remove(NbtCompound entry) => Root["servers"] is NbtList list && list.Items.Remove(entry);
 
@@ -344,6 +396,29 @@ public sealed class ServerListFile
     /// <summary>Atomic write: temp file next to the target, then File.Replace.</summary>
     public Task WriteAsync(string path, CancellationToken cancellationToken = default) =>
         LockFiles.WriteAtomicallyAsync(path, ToBytes(), cancellationToken);
+
+    /// <summary>Synchronous atomic write: temp file next to the target, then File.Replace.</summary>
+    public void Write(string path)
+    {
+        var bytes = ToBytes();
+        var fullPath = Path.GetFullPath(path);
+        var dir = Path.GetDirectoryName(fullPath)!;
+        Directory.CreateDirectory(dir);
+        var temp = Path.Combine(dir, "." + Path.GetFileName(fullPath) + "." + Guid.NewGuid().ToString("N") + ".tmp");
+        try
+        {
+            File.WriteAllBytes(temp, bytes);
+            if (File.Exists(fullPath)) File.Replace(temp, fullPath, destinationBackupFileName: null);
+            else File.Move(temp, fullPath);
+        }
+        finally
+        {
+            if (File.Exists(temp))
+            {
+                try { File.Delete(temp); } catch { }
+            }
+        }
+    }
 
     private static string Text(NbtCompound compound, string key) => compound[key] is NbtString s ? s.Value : "";
 }

@@ -423,4 +423,58 @@ public class ExperiencesServiceTests : IDisposable
         Assert.False(ExperiencesService.GetZeroSmpButtonState(installed: true, canDownload: true, isRunning: true).IsEnabled);
         Assert.False(ExperiencesService.GetZeroSmpButtonState(installed: true, canDownload: true, isBusy: true).IsEnabled);
     }
+
+    [Fact]
+    public void EnsureZeroSmpServer_CreatesAndUpdatesServerList()
+    {
+        var gameDir = Path.Combine(_tempDir, "minecraft");
+        Directory.CreateDirectory(gameDir);
+
+        Assert.True(ExperiencesService.EnsureZeroSmpServer(gameDir));
+        var serversFile = Path.Combine(gameDir, "servers.dat");
+        Assert.True(File.Exists(serversFile));
+
+        var list = ServerListFile.Read(serversFile);
+        Assert.Single(list.Entries);
+        Assert.Equal(ExperiencesService.ZeroSmp.Title, list.Entries[0].Name);
+        Assert.Equal(ExperiencesService.ZeroSmp.ServerAddress, list.Entries[0].Ip);
+
+        // Idempotent
+        Assert.False(ExperiencesService.EnsureZeroSmpServer(gameDir));
+        var repeatList = ServerListFile.Read(serversFile);
+        Assert.Single(repeatList.Entries);
+    }
+
+    [Fact]
+    public async Task InstallZeroSmpAsync_AutoAddsZeroSmpServerAndPreservesExistingServers()
+    {
+        var archive = ExperiencesService.PackArchivePath(_tempDir, "zero-smp-1.20.1");
+        Directory.CreateDirectory(Path.GetDirectoryName(archive)!);
+        File.WriteAllBytes(archive, PackZip(SamplePack));
+
+        // Pre-create user's servers.dat with a custom server
+        var instDir = ExperiencesService.InstanceDirectory(_tempDir, "zero-smp-1.20.1");
+        var gameDir = Path.Combine(instDir, "minecraft");
+        Directory.CreateDirectory(gameDir);
+
+        var userList = ServerListFile.CreateEmpty();
+        userList.Add(new NbtCompound
+        {
+            ["name"] = new NbtString("Custom SMP"),
+            ["ip"] = new NbtString("play.customsmp.net")
+        });
+        await userList.WriteAsync(Path.Combine(gameDir, "servers.dat"));
+
+        var instance = await ExperiencesService.InstallZeroSmpAsync(_tempDir, null, CancellationToken.None);
+
+        var serversFile = Path.Combine(instance.GameDirectory, "servers.dat");
+        Assert.True(File.Exists(serversFile));
+
+        var finalList = ServerListFile.Read(serversFile);
+        Assert.Equal(2, finalList.Entries.Count);
+        Assert.Equal("Custom SMP", finalList.Entries[0].Name);
+        Assert.Equal("play.customsmp.net", finalList.Entries[0].Ip);
+        Assert.Equal(ExperiencesService.ZeroSmp.Title, finalList.Entries[1].Name);
+        Assert.Equal(ExperiencesService.ZeroSmp.ServerAddress, finalList.Entries[1].Ip);
+    }
 }

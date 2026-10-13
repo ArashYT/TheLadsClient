@@ -109,6 +109,20 @@ public static class ExperiencesService
     public static ModpackInstance? GetInstance(string baseDirectory, string experienceId) =>
         Modpacks.List(baseDirectory).FirstOrDefault(i => i.Id == experienceId);
 
+    /// <summary>
+    /// Ensures the Zero SMP server is present in the specified Minecraft game directory's servers.dat,
+    /// creating or updating the entry idempotently and preserving other servers.
+    /// </summary>
+    public static bool EnsureZeroSmpServer(string gameDirectory)
+    {
+        var serversPath = Path.Combine(gameDirectory, "servers.dat");
+        return ServerListService.EnsureServer(serversPath, ZeroSmp.Title, ZeroSmp.ServerAddress);
+    }
+
+    /// <summary>Ensures the Zero SMP server is present in the instance's servers.dat under the given base directory.</summary>
+    public static bool EnsureZeroSmpServerInstance(string baseDirectory) =>
+        EnsureZeroSmpServer(Path.Combine(InstanceDirectory(baseDirectory, ZeroSmp.Id), "minecraft"));
+
     /// <summary>Installs (or reinstalls over) the Zero SMP instance from the pack source. Saves, options and the player's own files stay.</summary>
     public static async Task<ModpackInstance> InstallZeroSmpAsync(string baseDirectory, Action<string>? status, CancellationToken token, HttpClient? http = null)
     {
@@ -136,7 +150,16 @@ public static class ExperiencesService
                 }
 
                 CopyDirectoryContents(overrides, gameDir, skipSubdirs: new[] { "mods", ".mixin.out", "immersive_paintings_cache", "particular_cache" },
-                    skipFilePrefixes: new[] { "hs_err_pid" }, skipFileExtensions: new[] { ".log" });
+                    skipFilePrefixes: new[] { "hs_err_pid" }, skipFileExtensions: new[] { ".log" }, skipFiles: new[] { "servers.dat" });
+
+                var overridesServers = Path.Combine(overrides, "servers.dat");
+                var destServers = Path.Combine(gameDir, "servers.dat");
+                if (!File.Exists(destServers) && File.Exists(overridesServers))
+                {
+                    try { File.Copy(overridesServers, destServers, overwrite: false); } catch { }
+                }
+
+                EnsureZeroSmpServer(gameDir);
 
                 var localMods = Path.Combine(overrides, "mods");
                 if (Directory.Exists(localMods))
@@ -155,6 +178,8 @@ public static class ExperiencesService
                     File.Copy(zip, Path.Combine(rpDir, Path.GetFileName(zip)), overwrite: true);
             }
         }, token);
+
+        EnsureZeroSmpServer(gameDir);
 
         var pack = ReadPackInfo(source);
         var instance = new ModpackInstance
@@ -320,7 +345,7 @@ public static class ExperiencesService
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException) { return new PackInfo(null, Array.Empty<string>()); }
     }
 
-    private static void CopyDirectoryContents(string source, string target, string[] skipSubdirs, string[] skipFilePrefixes, string[] skipFileExtensions)
+    private static void CopyDirectoryContents(string source, string target, string[] skipSubdirs, string[] skipFilePrefixes, string[] skipFileExtensions, string[]? skipFiles = null)
     {
         Directory.CreateDirectory(target);
         foreach (var dir in Directory.EnumerateDirectories(source))
@@ -333,6 +358,7 @@ public static class ExperiencesService
         {
             var name = Path.GetFileName(file);
             if (name.Equals("icon.png", StringComparison.OrdinalIgnoreCase)) continue;
+            if (skipFiles != null && skipFiles.Contains(name, StringComparer.OrdinalIgnoreCase)) continue;
             if (skipFilePrefixes.Any(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase))) continue;
             if (skipFileExtensions.Any(e => name.EndsWith(e, StringComparison.OrdinalIgnoreCase))) continue;
             File.Copy(file, Path.Combine(target, name), overwrite: true);

@@ -183,6 +183,8 @@ public partial class ExperiencesView : UserControl
             // launcher's build by ModpackLauncher before the game starts.
             await ExperiencesService.ApplyPendingPatchesAsync(DataDirectory, instance.Id, Http, Report, token, ExperiencesService.BundledPatchesDirectory);
 
+            ExperiencesService.EnsureZeroSmpServer(instance.GameDirectory);
+
             Report("Signing in...");
             var session = await host.ResolveModpackSessionAsync(token);
 

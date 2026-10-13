@@ -102,4 +102,131 @@ public class ServerListServiceTests
         var offline = ServerStatusService.Parse("""{"online":false,"host":"gone.example","players":null,"motd":null,"icon":null}""");
         Assert.Equal(new ServerStatus(false, 0, 0, "", null), offline);
     }
+
+    [Fact]
+    public async Task EnsureServer_EmptyFile_CreatesServerListWithEntry()
+    {
+        using var dir = new TestDirectory();
+
+        // 1. Zero-byte file on disk
+        var zeroBytePath = Path.Combine(dir.Path, "zero_byte.dat");
+        await File.WriteAllBytesAsync(zeroBytePath, Array.Empty<byte>());
+        Assert.True(ServerListService.EnsureServer(zeroBytePath, "Zero SMP", "nikzerosmp.my.pebble.host"));
+        var zeroList = ServerListFile.Read(zeroBytePath);
+        Assert.Single(zeroList.Entries);
+        Assert.Equal("Zero SMP", zeroList.Entries[0].Name);
+        Assert.Equal("nikzerosmp.my.pebble.host", zeroList.Entries[0].Ip);
+
+        // 2. Missing file on disk
+        var missingPath = Path.Combine(dir.Path, "nested", "servers.dat");
+        Assert.True(ServerListService.EnsureServer(missingPath, "Zero SMP", "nikzerosmp.my.pebble.host"));
+        var missingList = ServerListFile.Read(missingPath);
+        Assert.Single(missingList.Entries);
+        Assert.Equal("Zero SMP", missingList.Entries[0].Name);
+        Assert.Equal("nikzerosmp.my.pebble.host", missingList.Entries[0].Ip);
+
+        // 3. Valid NBT with empty servers list
+        var emptyNbtPath = Path.Combine(dir.Path, "empty_nbt.dat");
+        await File.WriteAllBytesAsync(emptyNbtPath, ServerListFile.CreateEmpty().ToBytes());
+        Assert.True(ServerListService.EnsureServer(emptyNbtPath, "Zero SMP", "nikzerosmp.my.pebble.host"));
+        var emptyList = ServerListFile.Read(emptyNbtPath);
+        Assert.Single(emptyList.Entries);
+        Assert.Equal("Zero SMP", emptyList.Entries[0].Name);
+        Assert.Equal("nikzerosmp.my.pebble.host", emptyList.Entries[0].Ip);
+    }
+
+    [Fact]
+    public async Task EnsureServer_ExistingListPreserved_NeverWipesUserServers()
+    {
+        using var dir = new TestDirectory();
+        var path = Path.Combine(dir.Path, "servers.dat");
+
+        // Existing servers.dat with user servers and extras
+        var initial = ServerListFile.CreateEmpty();
+        initial.Add(new NbtCompound
+        {
+            ["name"] = new NbtString("§6Hypixel ✦"),
+            ["ip"] = new NbtString("mc.hypixel.net"),
+            ["icon"] = new NbtString("iVBORw0KGgo="),
+            ["acceptTextures"] = new NbtNumber(NbtTagType.Byte, 1)
+        });
+        initial.Add(new NbtCompound
+        {
+            ["name"] = new NbtString("Mineplex"),
+            ["ip"] = new NbtString("us.mineplex.com")
+        });
+        initial.Root["lads-extra"] = new NbtNumber(NbtTagType.Long, 42);
+        await File.WriteAllBytesAsync(path, initial.ToBytes());
+
+        // Ensure Zero SMP is added
+        Assert.True(ServerListService.EnsureServer(path, "Zero SMP", "nikzerosmp.my.pebble.host"));
+
+        var result = ServerListFile.Read(path);
+        Assert.Equal(3, result.Entries.Count);
+
+        // Existing servers are preserved in original order with custom tags
+        Assert.Equal("§6Hypixel ✦", result.Entries[0].Name);
+        Assert.Equal("mc.hypixel.net", result.Entries[0].Ip);
+        Assert.Equal("iVBORw0KGgo=", ((NbtString)result.Entries[0].Raw["icon"]!).Value);
+        Assert.Equal(1, ((NbtNumber)result.Entries[0].Raw["acceptTextures"]!).RawValue);
+
+        Assert.Equal("Mineplex", result.Entries[1].Name);
+        Assert.Equal("us.mineplex.com", result.Entries[1].Ip);
+
+        // Zero SMP entry added
+        Assert.Equal("Zero SMP", result.Entries[2].Name);
+        Assert.Equal("nikzerosmp.my.pebble.host", result.Entries[2].Ip);
+
+        // Extra root metadata preserved
+        Assert.Equal(42, ((NbtNumber)result.Root["lads-extra"]!).RawValue);
+
+        // Idempotent: running again makes no changes
+        Assert.False(ServerListService.EnsureServer(path, "Zero SMP", "nikzerosmp.my.pebble.host"));
+        var repeatResult = ServerListFile.Read(path);
+        Assert.Equal(3, repeatResult.Entries.Count);
+    }
+
+    [Fact]
+    public async Task EnsureServer_DuplicateUpdated_UpdatesNameOrIpWithoutDuplication()
+    {
+        using var dir = new TestDirectory();
+        var path = Path.Combine(dir.Path, "servers.dat");
+
+        // Case A: Matching IP with outdated/different display name
+        var listA = ServerListFile.CreateEmpty();
+        listA.Add(new NbtCompound
+        {
+            ["name"] = new NbtString("Old Zero Server"),
+            ["ip"] = new NbtString("nikzerosmp.my.pebble.host"),
+            ["icon"] = new NbtString("custom_icon_data")
+        });
+        await File.WriteAllBytesAsync(path, listA.ToBytes());
+
+        Assert.True(ServerListService.EnsureServer(path, "Zero SMP", "nikzerosmp.my.pebble.host"));
+        var resultA = ServerListFile.Read(path);
+        Assert.Single(resultA.Entries);
+        Assert.Equal("Zero SMP", resultA.Entries[0].Name);
+        Assert.Equal("nikzerosmp.my.pebble.host", resultA.Entries[0].Ip);
+        Assert.Equal("custom_icon_data", ((NbtString)resultA.Entries[0].Raw["icon"]!).Value);
+
+        // Case B: Matching name with outdated/different IP
+        var listB = ServerListFile.CreateEmpty();
+        listB.Add(new NbtCompound
+        {
+            ["name"] = new NbtString("Zero SMP"),
+            ["ip"] = new NbtString("old.server.pebble.host")
+        });
+        await File.WriteAllBytesAsync(path, listB.ToBytes());
+
+        Assert.True(ServerListService.EnsureServer(path, "Zero SMP", "nikzerosmp.my.pebble.host"));
+        var resultB = ServerListFile.Read(path);
+        Assert.Single(resultB.Entries);
+        Assert.Equal("Zero SMP", resultB.Entries[0].Name);
+        Assert.Equal("nikzerosmp.my.pebble.host", resultB.Entries[0].Ip);
+
+        // Case C: Exact match is fully idempotent
+        Assert.False(ServerListService.EnsureServer(path, "Zero SMP", "nikzerosmp.my.pebble.host"));
+        var resultC = ServerListFile.Read(path);
+        Assert.Single(resultC.Entries);
+    }
 }
