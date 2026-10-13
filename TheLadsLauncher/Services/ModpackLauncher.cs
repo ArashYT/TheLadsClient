@@ -156,6 +156,11 @@ public static class ModpackLauncher
     {
         var path = GamePath(dataDirectory, instance);
         Directory.CreateDirectory(instance.GameDirectory);
+        var exp = ExperiencesService.AllExperiences.FirstOrDefault(e => e.Id == instance.Id);
+        if (exp != null && !string.IsNullOrWhiteSpace(exp.ServerAddress))
+        {
+            ServerListService.EnsureServer(Path.Combine(instance.GameDirectory, "servers.dat"), exp.Title, exp.ServerAddress);
+        }
         ModpackCoreSync.Sync(instance, status: status); // before every launch: a modpack always runs the newest bundled Lads Core
         var launcher = new MinecraftLauncher(path);
         launcher.FileProgressChanged += (_, e) =>

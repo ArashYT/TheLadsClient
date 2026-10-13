@@ -41,6 +41,32 @@ public static class ServerListService
         return true;
     });
 
+    /// <summary>
+    /// Ensures a server with <paramref name="name"/> and <paramref name="address"/> is in the server list at <paramref name="file"/>.
+    /// Existing entries with matching address or name are updated; all other servers are preserved.
+    /// Creates the file if missing or empty. Idempotent.
+    /// </summary>
+    public static bool EnsureServer(string file, string name, string address)
+    {
+        var list = ReadList(file);
+        if (!list.EnsureEntry(name, address) && File.Exists(file)) return false;
+        list.Write(file);
+        return true;
+    }
+
+    /// <summary>
+    /// Ensures a server with <paramref name="name"/> and <paramref name="address"/> is in the server list of <paramref name="target"/>.
+    /// Existing entries with matching address or name are updated; all other servers are preserved.
+    /// </summary>
+    public static async Task<bool> EnsureServerAsync(ServerListTarget target, string name, string address)
+    {
+        using var held = target.LockFile == null ? null : await LockFiles.AcquireAsync(target.LockFile, LockTimeout);
+        var list = ReadList(target.File);
+        if (!list.EnsureEntry(name, address) && File.Exists(target.File)) return false;
+        await list.WriteAsync(target.File);
+        return true;
+    }
+
     /// <summary>Removes the listed server with this address. False when there is none.</summary>
     public static Task<bool> RemoveAsync(ServerListTarget target, string address) => EditAsync(target, list =>
         list.Entries.FirstOrDefault(e => !e.Hidden && Key(e.Ip) == Key(address)) is { } entry && list.Remove(entry.Raw));

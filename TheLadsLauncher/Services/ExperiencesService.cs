@@ -58,38 +58,15 @@ public static class ExperiencesService
 
     public static readonly IReadOnlyList<ExperienceDefinition> AllExperiences = new[] { ZeroSmp };
 
-    public static readonly string[] ZeroSmpAllowedNames = { "Arash_YT", "TTVArashLIVE", "Vools" };
-
     public sealed record ExperienceButtonState(string Text, bool IsEnabled, string? Hint = null);
 
-    /// <summary>True only when the currently selected account is an online Microsoft account and its name is on the allowlist.</summary>
-    public static bool CanDownloadZeroSmp(AccountSummary? account)
-    {
-        if (account == null) return false;
-        if (string.IsNullOrWhiteSpace(account.username)) return false;
-        if (!string.Equals(account.type, "microsoft", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(account.type, "msa", StringComparison.OrdinalIgnoreCase))
-            return false;
-        return ZeroSmpAllowedNames.Any(name => string.Equals(name, account.username, StringComparison.OrdinalIgnoreCase));
-    }
-
-    public static bool CanDownloadZeroSmp(string? username, string? accountType)
-    {
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(accountType)) return false;
-        return CanDownloadZeroSmp(new AccountSummary(username, "", accountType));
-    }
-
-    public static ExperienceButtonState GetZeroSmpButtonState(bool installed, bool canDownload, bool isRunning = false, bool isBusy = false)
+    public static ExperienceButtonState GetZeroSmpButtonState(bool installed, bool isRunning = false, bool isBusy = false)
     {
         if (isRunning) return new ExperienceButtonState("Game Running", false);
         if (isBusy) return new ExperienceButtonState("Please wait...", false);
         if (installed) return new ExperienceButtonState("Play Zero SMP", true);
-        if (canDownload) return new ExperienceButtonState("Install & Play Zero SMP", true);
-        return new ExperienceButtonState("Invite only", false, "Zero SMP downloads are limited to invited accounts");
+        return new ExperienceButtonState("Install & Play Zero SMP", true);
     }
-
-    public static ExperienceButtonState GetZeroSmpButtonState(bool installed, AccountSummary? account, bool isRunning = false, bool isBusy = false)
-        => GetZeroSmpButtonState(installed, CanDownloadZeroSmp(account), isRunning, isBusy);
 
     public static string InstanceDirectory(string baseDirectory, string experienceId) =>
         Path.Combine(Modpacks.Root(baseDirectory), experienceId);
@@ -108,6 +85,20 @@ public static class ExperiencesService
 
     public static ModpackInstance? GetInstance(string baseDirectory, string experienceId) =>
         Modpacks.List(baseDirectory).FirstOrDefault(i => i.Id == experienceId);
+
+    /// <summary>
+    /// Ensures the Zero SMP server is present in the specified Minecraft game directory's servers.dat,
+    /// creating or updating the entry idempotently and preserving other servers.
+    /// </summary>
+    public static bool EnsureZeroSmpServer(string gameDirectory)
+    {
+        var serversPath = Path.Combine(gameDirectory, "servers.dat");
+        return ServerListService.EnsureServer(serversPath, ZeroSmp.Title, ZeroSmp.ServerAddress);
+    }
+
+    /// <summary>Ensures the Zero SMP server is present in the instance's servers.dat under the given base directory.</summary>
+    public static bool EnsureZeroSmpServerInstance(string baseDirectory) =>
+        EnsureZeroSmpServer(Path.Combine(InstanceDirectory(baseDirectory, ZeroSmp.Id), "minecraft"));
 
     /// <summary>Installs (or reinstalls over) the Zero SMP instance from the pack source. Saves, options and the player's own files stay.</summary>
     public static async Task<ModpackInstance> InstallZeroSmpAsync(string baseDirectory, Action<string>? status, CancellationToken token, HttpClient? http = null)
@@ -136,7 +127,16 @@ public static class ExperiencesService
                 }
 
                 CopyDirectoryContents(overrides, gameDir, skipSubdirs: new[] { "mods", ".mixin.out", "immersive_paintings_cache", "particular_cache" },
-                    skipFilePrefixes: new[] { "hs_err_pid" }, skipFileExtensions: new[] { ".log" });
+                    skipFilePrefixes: new[] { "hs_err_pid" }, skipFileExtensions: new[] { ".log" }, skipFiles: new[] { "servers.dat" });
+
+                var overridesServers = Path.Combine(overrides, "servers.dat");
+                var destServers = Path.Combine(gameDir, "servers.dat");
+                if (!File.Exists(destServers) && File.Exists(overridesServers))
+                {
+                    try { File.Copy(overridesServers, destServers, overwrite: false); } catch { }
+                }
+
+                EnsureZeroSmpServer(gameDir);
 
                 var localMods = Path.Combine(overrides, "mods");
                 if (Directory.Exists(localMods))
@@ -155,6 +155,8 @@ public static class ExperiencesService
                     File.Copy(zip, Path.Combine(rpDir, Path.GetFileName(zip)), overwrite: true);
             }
         }, token);
+
+        EnsureZeroSmpServer(gameDir);
 
         var pack = ReadPackInfo(source);
         var instance = new ModpackInstance
@@ -320,7 +322,7 @@ public static class ExperiencesService
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException) { return new PackInfo(null, Array.Empty<string>()); }
     }
 
-    private static void CopyDirectoryContents(string source, string target, string[] skipSubdirs, string[] skipFilePrefixes, string[] skipFileExtensions)
+    private static void CopyDirectoryContents(string source, string target, string[] skipSubdirs, string[] skipFilePrefixes, string[] skipFileExtensions, string[]? skipFiles = null)
     {
         Directory.CreateDirectory(target);
         foreach (var dir in Directory.EnumerateDirectories(source))
@@ -333,6 +335,7 @@ public static class ExperiencesService
         {
             var name = Path.GetFileName(file);
             if (name.Equals("icon.png", StringComparison.OrdinalIgnoreCase)) continue;
+            if (skipFiles != null && skipFiles.Contains(name, StringComparer.OrdinalIgnoreCase)) continue;
             if (skipFilePrefixes.Any(p => name.StartsWith(p, StringComparison.OrdinalIgnoreCase))) continue;
             if (skipFileExtensions.Any(e => name.EndsWith(e, StringComparison.OrdinalIgnoreCase))) continue;
             File.Copy(file, Path.Combine(target, name), overwrite: true);

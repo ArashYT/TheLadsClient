@@ -319,108 +319,81 @@ public class ExperiencesServiceTests : IDisposable
     }
 
     [Fact]
-    public void ZeroSmpAllowlist_MatchesAllowedNamesCaseInsensitively_ForOnlineMicrosoftAccountsOnly()
+    public void ZeroSmpButtonState_ReflectsInstalledAndNotInstalledStates()
     {
-        Assert.Equal(new[] { "Arash_YT", "TTVArashLIVE", "Vools" }, ExperiencesService.ZeroSmpAllowedNames);
+        // 1. Installed: Show "Play Zero SMP"
+        var installed = ExperiencesService.GetZeroSmpButtonState(installed: true);
+        Assert.Equal("Play Zero SMP", installed.Text);
+        Assert.True(installed.IsEnabled);
+        Assert.Null(installed.Hint);
 
-        // Online Microsoft accounts with allowed names (case-insensitive)
-        Assert.True(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("Arash_YT", "uuid1", "microsoft")));
-        Assert.True(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("arash_yt", "uuid1", "microsoft")));
-        Assert.True(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("ARASH_YT", "uuid1", "microsoft")));
-        Assert.True(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("TTVArashLIVE", "uuid2", "microsoft")));
-        Assert.True(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("ttvarashlive", "uuid2", "microsoft")));
-        Assert.True(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("Vools", "uuid3", "microsoft")));
-        Assert.True(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("vools", "uuid3", "microsoft")));
-        Assert.True(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("VOOLS", "uuid3", "microsoft")));
+        // 2. Not installed: Show "Install & Play Zero SMP"
+        var notInstalled = ExperiencesService.GetZeroSmpButtonState(installed: false);
+        Assert.Equal("Install & Play Zero SMP", notInstalled.Text);
+        Assert.True(notInstalled.IsEnabled);
+        Assert.Null(notInstalled.Hint);
 
-        // Offline account with an allowed name must return false
-        Assert.False(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("Arash_YT", "uuid1", "offline")));
-        Assert.False(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("arash_yt", "uuid1", "offline")));
-        Assert.False(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("TTVArashLIVE", "uuid2", "offline")));
-        Assert.False(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("Vools", "uuid3", "offline")));
+        // ExperiencesView delegate matches
+        Assert.Equal("Play Zero SMP", TheLadsLauncher.Views.ExperiencesView.GetButtonState(installed: true).Text);
+        Assert.Equal("Install & Play Zero SMP", TheLadsLauncher.Views.ExperiencesView.GetButtonState(installed: false).Text);
 
-        // Unallowed names (online or offline) must return false
-        Assert.False(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("Steve", "uuid", "microsoft")));
-        Assert.False(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("Notch", "uuid", "microsoft")));
-        Assert.False(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("Alex", "uuid", "offline")));
-        Assert.False(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("RandomPlayer", "uuid", "offline")));
-
-        // Null and empty checks
-        Assert.False(ExperiencesService.CanDownloadZeroSmp((AccountSummary?)null));
-        Assert.False(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("", "uuid", "microsoft")));
-        Assert.False(ExperiencesService.CanDownloadZeroSmp(new AccountSummary("   ", "uuid", "microsoft")));
-
-        // String overload
-        Assert.True(ExperiencesService.CanDownloadZeroSmp("Arash_YT", "microsoft"));
-        Assert.True(ExperiencesService.CanDownloadZeroSmp("vools", "microsoft"));
-        Assert.False(ExperiencesService.CanDownloadZeroSmp("Arash_YT", "offline"));
-        Assert.False(ExperiencesService.CanDownloadZeroSmp("Stranger", "microsoft"));
-
-        // AccountItem implicit conversion
-        var itemAllowed = new TheLadsLauncher.Models.AccountItem { Username = "Arash_YT", AccountType = "microsoft" };
-        var itemOffline = new TheLadsLauncher.Models.AccountItem { Username = "Arash_YT", AccountType = "offline" };
-        Assert.True(ExperiencesService.CanDownloadZeroSmp(itemAllowed));
-        Assert.False(ExperiencesService.CanDownloadZeroSmp(itemOffline));
+        // Running & busy states
+        Assert.Equal("Game Running", ExperiencesService.GetZeroSmpButtonState(installed: true, isRunning: true).Text);
+        Assert.False(ExperiencesService.GetZeroSmpButtonState(installed: true, isRunning: true).IsEnabled);
+        Assert.False(ExperiencesService.GetZeroSmpButtonState(installed: true, isBusy: true).IsEnabled);
     }
 
     [Fact]
-    public void ZeroSmpButtonState_ReflectsInstalledAllowedAndNotAllowedStates()
+    public void EnsureZeroSmpServer_CreatesAndUpdatesServerList()
     {
-        // 1. Installed: Keep current behaviour for everyone (Play works)
-        var installedNotAllowed = ExperiencesService.GetZeroSmpButtonState(installed: true, canDownload: false);
-        Assert.Equal("Play Zero SMP", installedNotAllowed.Text);
-        Assert.True(installedNotAllowed.IsEnabled);
-        Assert.Null(installedNotAllowed.Hint);
+        var gameDir = Path.Combine(_tempDir, "minecraft");
+        Directory.CreateDirectory(gameDir);
 
-        var installedAllowed = ExperiencesService.GetZeroSmpButtonState(installed: true, canDownload: true);
-        Assert.Equal("Play Zero SMP", installedAllowed.Text);
-        Assert.True(installedAllowed.IsEnabled);
+        Assert.True(ExperiencesService.EnsureZeroSmpServer(gameDir));
+        var serversFile = Path.Combine(gameDir, "servers.dat");
+        Assert.True(File.Exists(serversFile));
 
-        var installedSummaryAllowed = ExperiencesService.GetZeroSmpButtonState(installed: true, new AccountSummary("Arash_YT", "uuid", "microsoft"));
-        Assert.Equal("Play Zero SMP", installedSummaryAllowed.Text);
-        Assert.True(installedSummaryAllowed.IsEnabled);
+        var list = ServerListFile.Read(serversFile);
+        Assert.Single(list.Entries);
+        Assert.Equal(ExperiencesService.ZeroSmp.Title, list.Entries[0].Name);
+        Assert.Equal(ExperiencesService.ZeroSmp.ServerAddress, list.Entries[0].Ip);
 
-        var installedSummaryOffline = ExperiencesService.GetZeroSmpButtonState(installed: true, new AccountSummary("Random", "uuid", "offline"));
-        Assert.Equal("Play Zero SMP", installedSummaryOffline.Text);
-        Assert.True(installedSummaryOffline.IsEnabled);
+        // Idempotent
+        Assert.False(ExperiencesService.EnsureZeroSmpServer(gameDir));
+        var repeatList = ServerListFile.Read(serversFile);
+        Assert.Single(repeatList.Entries);
+    }
 
-        // 2. Not installed & Allowed: Show "Install & Play Zero SMP"
-        var notInstalledAllowed = ExperiencesService.GetZeroSmpButtonState(installed: false, canDownload: true);
-        Assert.Equal("Install & Play Zero SMP", notInstalledAllowed.Text);
-        Assert.True(notInstalledAllowed.IsEnabled);
-        Assert.Null(notInstalledAllowed.Hint);
+    [Fact]
+    public async Task InstallZeroSmpAsync_AutoAddsZeroSmpServerAndPreservesExistingServers()
+    {
+        var archive = ExperiencesService.PackArchivePath(_tempDir, "zero-smp-1.20.1");
+        Directory.CreateDirectory(Path.GetDirectoryName(archive)!);
+        File.WriteAllBytes(archive, PackZip(SamplePack));
 
-        var summaryAllowed = ExperiencesService.GetZeroSmpButtonState(installed: false, new AccountSummary("TTVArashLIVE", "uuid", "microsoft"));
-        Assert.Equal("Install & Play Zero SMP", summaryAllowed.Text);
-        Assert.True(summaryAllowed.IsEnabled);
+        // Pre-create user's servers.dat with a custom server
+        var instDir = ExperiencesService.InstanceDirectory(_tempDir, "zero-smp-1.20.1");
+        var gameDir = Path.Combine(instDir, "minecraft");
+        Directory.CreateDirectory(gameDir);
 
-        // 3. Not installed & Not allowed: Show disabled button "Invite only" with one-line hint
-        var notInstalledNotAllowed = ExperiencesService.GetZeroSmpButtonState(installed: false, canDownload: false);
-        Assert.Equal("Invite only", notInstalledNotAllowed.Text);
-        Assert.False(notInstalledNotAllowed.IsEnabled);
-        Assert.Equal("Zero SMP downloads are limited to invited accounts", notInstalledNotAllowed.Hint);
+        var userList = ServerListFile.CreateEmpty();
+        userList.Add(new NbtCompound
+        {
+            ["name"] = new NbtString("Custom SMP"),
+            ["ip"] = new NbtString("play.customsmp.net")
+        });
+        await userList.WriteAsync(Path.Combine(gameDir, "servers.dat"));
 
-        var summaryOfflineAllowedName = ExperiencesService.GetZeroSmpButtonState(installed: false, new AccountSummary("Arash_YT", "uuid", "offline"));
-        Assert.Equal("Invite only", summaryOfflineAllowedName.Text);
-        Assert.False(summaryOfflineAllowedName.IsEnabled);
-        Assert.Equal("Zero SMP downloads are limited to invited accounts", summaryOfflineAllowedName.Hint);
+        var instance = await ExperiencesService.InstallZeroSmpAsync(_tempDir, null, CancellationToken.None);
 
-        var summaryOtherName = ExperiencesService.GetZeroSmpButtonState(installed: false, new AccountSummary("Stranger", "uuid", "microsoft"));
-        Assert.Equal("Invite only", summaryOtherName.Text);
-        Assert.False(summaryOtherName.IsEnabled);
+        var serversFile = Path.Combine(instance.GameDirectory, "servers.dat");
+        Assert.True(File.Exists(serversFile));
 
-        var summaryNull = ExperiencesService.GetZeroSmpButtonState(installed: false, (AccountSummary?)null);
-        Assert.Equal("Invite only", summaryNull.Text);
-        Assert.False(summaryNull.IsEnabled);
-
-        // ExperiencesView delegate matches
-        Assert.Equal("Play Zero SMP", TheLadsLauncher.Views.ExperiencesView.GetButtonState(installed: true, canDownload: false).Text);
-        Assert.Equal("Install & Play Zero SMP", TheLadsLauncher.Views.ExperiencesView.GetButtonState(installed: false, canDownload: true).Text);
-        Assert.Equal("Invite only", TheLadsLauncher.Views.ExperiencesView.GetButtonState(installed: false, canDownload: false).Text);
-
-        // Running & busy states
-        Assert.Equal("Game Running", ExperiencesService.GetZeroSmpButtonState(installed: true, canDownload: true, isRunning: true).Text);
-        Assert.False(ExperiencesService.GetZeroSmpButtonState(installed: true, canDownload: true, isRunning: true).IsEnabled);
-        Assert.False(ExperiencesService.GetZeroSmpButtonState(installed: true, canDownload: true, isBusy: true).IsEnabled);
+        var finalList = ServerListFile.Read(serversFile);
+        Assert.Equal(2, finalList.Entries.Count);
+        Assert.Equal("Custom SMP", finalList.Entries[0].Name);
+        Assert.Equal("play.customsmp.net", finalList.Entries[0].Ip);
+        Assert.Equal(ExperiencesService.ZeroSmp.Title, finalList.Entries[1].Name);
+        Assert.Equal(ExperiencesService.ZeroSmp.ServerAddress, finalList.Entries[1].Ip);
     }
 }
