@@ -123,6 +123,8 @@ public final class CustomSounds {
         }
     }
 
+    private static final Map<String, TrimData> TRIM_CACHE = new ConcurrentHashMap<>();
+
     /** Deletes a sound from {@link #folder} (so from every version's library). */
     public static void delete(String file) throws IOException {
         Path folder = folder().normalize(), path = folder.resolve(file).normalize();
@@ -130,6 +132,7 @@ public final class CustomSounds {
         Files.deleteIfExists(path);
         Files.deleteIfExists(trimDataFile(file));
         CACHE.remove(file);
+        TRIM_CACHE.remove(file);
     }
 
     public static Path trimDataFile(String file) {
@@ -138,12 +141,13 @@ public final class CustomSounds {
 
     public static TrimData loadTrimData(String file) {
         if (file == null || file.isEmpty()) return TrimData.DEFAULT;
-        return TrimData.load(trimDataFile(file));
+        return TRIM_CACHE.computeIfAbsent(file, f -> TrimData.load(trimDataFile(f)));
     }
 
     public static void saveTrimData(String file, TrimData data) throws IOException {
         if (file == null || file.isEmpty()) return;
         data.save(trimDataFile(file));
+        TRIM_CACHE.remove(file);
     }
 
     public static double volume(String file) {

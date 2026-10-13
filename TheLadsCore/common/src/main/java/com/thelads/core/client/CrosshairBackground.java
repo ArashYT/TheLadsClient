@@ -61,8 +61,9 @@ public final class CrosshairBackground {
 
     private CrosshairBackground() {}
 
-    /** The biomes' names as the option shows them ("Old Growth Spruce Taiga"). */
-    public static String[] biomeNames() {
+    private static final String[] BIOME_NAMES = computeBiomeNames();
+
+    private static String[] computeBiomeNames() {
         String[] names = new String[BIOMES.length];
         for (int i = 0; i < BIOMES.length; i++) {
             StringBuilder name = new StringBuilder();
@@ -70,6 +71,11 @@ public final class CrosshairBackground {
             names[i] = name.toString();
         }
         return names;
+    }
+
+    /** The biomes' names as the option shows them ("Old Growth Spruce Taiga"). */
+    public static String[] biomeNames() {
+        return BIOME_NAMES.clone();
     }
 
     public static String[] biomeIds() { return BIOMES.clone(); }
@@ -117,7 +123,7 @@ public final class CrosshairBackground {
     /** The settings preview's caption: what the background shows ("" for a plain colour). */
     public static String caption(CrosshairModule m, boolean live) {
         int mode = m.background.getIndex();
-        String biome = biomeNames()[clamp(m.biome.getIndex())] + (timeless(m.biome.getIndex()) ? "" : " · " + m.time.getValue());
+        String biome = BIOME_NAMES[clamp(m.biome.getIndex())] + (timeless(m.biome.getIndex()) ? "" : " · " + m.time.getValue());
         if (mode == LIVE) return live ? "Live game" : "Live game in a world · " + biome;
         if (mode == IMAGE) return ownPicture(m) == null ? "Choose your image · " + biome : "Your image";
         return mode == BIOME ? biome : "";

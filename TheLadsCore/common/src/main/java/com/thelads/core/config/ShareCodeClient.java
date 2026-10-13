@@ -15,7 +15,7 @@ public final class ShareCodeClient {
     public static final String BASE_URL = "https://bot.arashyt.ca";
     public static final int CONNECT_TIMEOUT_MS = 5000;
     public static final int READ_TIMEOUT_MS = 5000;
-    public static final String USER_AGENT = "TheLadsClient/1.9.4";
+    public static final String USER_AGENT = "TheLadsClient/" + com.thelads.core.LadsVersion.VERSION;
     public static final int MAX_RESPONSE_BYTES = 32 * 1024; // 32 KB cap
 
     public static class ShareNotFoundException extends IOException {

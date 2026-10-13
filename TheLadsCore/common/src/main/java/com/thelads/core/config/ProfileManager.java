@@ -5,10 +5,12 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.thelads.core.client.util.ClientPaths;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -184,7 +186,7 @@ public class ProfileManager {
         if (!f.exists()) {
             return;
         }
-        try (FileReader r = new FileReader(f)) {
+        try (BufferedReader r = Files.newBufferedReader(f.toPath(), StandardCharsets.UTF_8)) {
             JsonObject json = GSON.fromJson(r, JsonObject.class);
             if (json == null) {
                 return;
@@ -225,7 +227,7 @@ public class ProfileManager {
         }
         json.add("bindings", b);
         File temp = new File(f.getParentFile(), f.getName() + ".tmp");
-        try (FileWriter w = new FileWriter(temp)) {
+        try (BufferedWriter w = Files.newBufferedWriter(temp.toPath(), StandardCharsets.UTF_8)) {
             GSON.toJson(json, w);
             w.flush();
         } catch (IOException e) {

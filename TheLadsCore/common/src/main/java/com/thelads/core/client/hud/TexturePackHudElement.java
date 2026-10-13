@@ -8,6 +8,8 @@ public class TexturePackHudElement extends HudElement {
     private LadsGraphics preparedGraphics;
     private List<String> names = List.of();
     private List<String> lines = List.of();
+    private List<String> lastPacks = null;
+    private int lastLimit = -1;
     /** Show Icons: each row starts with the pack's icon, a square as tall as the row less its gap (0 when off). */
     private int iconSize, iconGap;
     public TexturePackHudElement() {
@@ -17,16 +19,29 @@ public class TexturePackHudElement extends HudElement {
         this.height = 16;
     }
 
+    private static String formatPackLine(String pack) {
+        String name = pack.startsWith("file/") ? pack.substring(5) : pack;
+        if (name.toLowerCase(java.util.Locale.ROOT).endsWith(".zip")) {
+            name = name.substring(0, name.length() - 4);
+        }
+        return "Pack: " + name;
+    }
+
     @Override
     public void prepareRender(LadsGraphics g, boolean editor) {
         preparedGraphics = g;
         List<String> packs = g.getGame().getActiveResourcePacks();
         if (packs.isEmpty()) packs = List.of("Default");
         int limit = optBool("Show All", false) ? Math.max(1, Math.min(8, optCycle("Max Packs", 2) + 1)) : 1;
-        int count = Math.min(packs.size(), limit);
-        names = List.copyOf(packs.subList(0, count));
-        // The id keeps the icon lookup; the label drops the "file/" source and the archive extension ("file/Faithful.zip" -> "Faithful").
-        lines = names.stream().map(pack -> "Pack: " + pack.replaceFirst("^file/", "").replaceFirst("(?i)\\.zip$", "")).toList();
+        if (!packs.equals(lastPacks) || limit != lastLimit) {
+            lastPacks = List.copyOf(packs);
+            lastLimit = limit;
+            int count = Math.min(packs.size(), limit);
+            names = List.copyOf(packs.subList(0, count));
+            // The id keeps the icon lookup; the label drops the "file/" source and the archive extension ("file/Faithful.zip" -> "Faithful").
+            lines = names.stream().map(TexturePackHudElement::formatPackLine).toList();
+        }
+        int count = names.size();
         int lineHeight = g.fontHeight() + 3;
         boolean icons = optBool("Show Icons", true);
         iconSize = icons ? lineHeight - 1 : 0;

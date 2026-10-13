@@ -31,6 +31,7 @@ public final class KillBannerTimeline {
      * negative: never), and its banner joins the queue ({@link #next}).
      */
     public void kill(long now, long window, boolean head, KillBannerModule.Pick shown) {
+        if (showing && cutAt < 0) cutAt = now;
         streak = continuing(now, window) ? streak + 1 : 1;
         lastKill = now;
         // A flood of kills: the five banners already waiting show it (the streak still counts every kill).
