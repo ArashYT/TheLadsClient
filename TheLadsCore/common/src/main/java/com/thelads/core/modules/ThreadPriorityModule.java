@@ -37,7 +37,17 @@ public final class ThreadPriorityModule extends Module {
     }
     private synchronized void update() {
         if (scheduler == null) return;
-        for (Thread thread : Thread.getAllStackTraces().keySet()) {
+        ThreadGroup root = Thread.currentThread().getThreadGroup();
+        while (root.getParent() != null) root = root.getParent();
+        Thread[] threads = new Thread[Math.max(16, root.activeCount() * 2)];
+        int count = root.enumerate(threads, true);
+        while (count == threads.length) {
+            threads = new Thread[threads.length * 2];
+            count = root.enumerate(threads, true);
+        }
+        for (int i = 0; i < count; i++) {
+            Thread thread = threads[i];
+            if (thread == null) continue;
             String name = thread.getName();
             // 1.8.9 names its render thread "Client thread" and its chunk workers "Chunk Batcher n".
             int priority = name.equals("Render thread") || name.equals("Client thread") ? (int)render.getValue()

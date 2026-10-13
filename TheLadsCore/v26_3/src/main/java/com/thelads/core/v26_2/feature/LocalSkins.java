@@ -84,7 +84,7 @@ public final class LocalSkins {
     public static byte[] fetch(String url)throws Exception{
         URI uri=URI.create(url);
         if(!List.of("https","http").contains(uri.getScheme()))throw new java.io.IOException("Use an HTTP(S) image URL");
-        var response=HTTP.send(HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(20)).header("User-Agent","LadsClient/1.3.3").GET().build(),HttpResponse.BodyHandlers.ofInputStream());
+        var response=HTTP.send(HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(20)).header("User-Agent","TheLadsClient/" + com.thelads.core.LadsVersion.VERSION).GET().build(),HttpResponse.BodyHandlers.ofInputStream());
         try(var body=response.body()){
             if(response.statusCode()!=200)throw new java.io.IOException("Server returned "+response.statusCode());
             byte[] bytes=body.readNBytes(1024*1024+1);if(bytes.length>1024*1024)throw new java.io.IOException("Response exceeds 1 MB");return bytes;

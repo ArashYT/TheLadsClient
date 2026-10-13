@@ -6,7 +6,6 @@ import com.google.gson.JsonParser;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.client.util.ClientPaths;
-import com.thelads.core.client.util.SkinFetcher;
 
 import java.io.File;
 import java.nio.file.Files;

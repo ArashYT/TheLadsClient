@@ -91,6 +91,25 @@ class CustomSoundsTest {
     }
 
     @Test
+    void trimDataIsCachedAndInvalidatedOnSave(@TempDir Path base) throws IOException {
+        ClientPaths.setBaseDir(base);
+        try {
+            CustomSounds.saveTrimData("hit.wav", new TrimData(1.5));
+            assertEquals(1.5, CustomSounds.loadTrimData("hit.wav").volume());
+            // Modify the underlying file directly on disk without saveTrimData:
+            // Since it's cached in memory, loadTrimData returns cached value 1.5
+            Files.writeString(CustomSounds.trimDataFile("hit.wav"), "{\"volume\":0.5}");
+            assertEquals(1.5, CustomSounds.loadTrimData("hit.wav").volume(), "cached value returned without re-reading file");
+
+            // Calling saveTrimData invalidates the cache:
+            CustomSounds.saveTrimData("hit.wav", new TrimData(0.8));
+            assertEquals(0.8, CustomSounds.loadTrimData("hit.wav").volume(), "cache invalidated and updated");
+        } finally {
+            ClientPaths.setBaseDir(null);
+        }
+    }
+
+    @Test
     void comboCountsLandedHitsUntilYouAreHurtOrItTimesOut() {
         ComboSoundsModule combo = new ComboSoundsModule();
         assertFalse(combo.isEnabled(), "off by default");

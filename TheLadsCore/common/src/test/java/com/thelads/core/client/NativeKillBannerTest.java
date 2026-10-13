@@ -36,11 +36,30 @@ class NativeKillBannerTest {
         assertTrue(t.next(S) && t.sequence() == 1);
         assertFalse(t.next(S + 50_000_000L), "nothing queued: banner 1 plays on");
         t.kill(S + 100_000_000L, 45 * S, true, PICK); // two ticks later, while banner 1 is still opening
+        assertEquals(0.1, t.cutAge(), 1e-9, "banner 1 was cut short at 100ms by next kill");
         assertTrue(t.next(S + 100_000_000L) && t.sequence() == 2 && t.headshot(), "banner 2 replaces it at once, as in the game");
         assertEquals(0, t.age(S + 100_000_000L), 1e-9, "playing from its start");
         assertEquals(-1, t.cutAge(), 1e-9, "nothing is cut short");
         t.kill(3 * S, 45 * S, false, PICK);
         assertTrue(t.next(3 * S) && t.sequence() == 3, "a later kill: the new one, straight away");
+    }
+
+    @Test void newKillReplacesStillShowingBannerAndSetsCutAge() {
+        var t = new KillBannerTimeline();
+        t.kill(S, 45 * S, false, PICK);
+        assertTrue(t.next(S));
+        assertEquals(1, t.sequence());
+        assertEquals(-1, t.cutAge(), 1e-9, "not cut initially");
+        // Kill arrives 250ms later while banner is still showing
+        t.kill(S + 250_000_000L, 45 * S, false, PICK);
+        assertEquals(0.25, t.cutAge(), 1e-9, "cutAge set to elapsed time when next kill arrives");
+        // Subsequent kill while still showing does not advance cutAt
+        t.kill(S + 350_000_000L, 45 * S, false, PICK);
+        assertEquals(0.25, t.cutAge(), 1e-9, "first interrupting kill timestamp is retained");
+        // Advancing to next banner clears cutAge for the new banner
+        assertTrue(t.next(S + 350_000_000L));
+        assertEquals(2, t.sequence());
+        assertEquals(-1, t.cutAge(), 1e-9, "new banner starts uncut");
     }
 
     @Test void streakTimesOutUnlessUnlimitedAndEndsOnDeath() {

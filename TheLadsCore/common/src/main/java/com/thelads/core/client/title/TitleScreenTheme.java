@@ -352,12 +352,6 @@ public final class TitleScreenTheme {
                     g.fill(x + size - 2, y + i * 4, x + size - 1, y + i * 4 + 1, LadsPalette.PRIMARY_PRESSED);
                 }
             }
-            case "quit" -> {
-                g.fill(x + 4, y, x + 6, y + 6, c);
-                g.fill(x + 1, y + 3, x + 2, y + 8, c);
-                g.fill(x + 8, y + 3, x + 9, y + 8, c);
-                g.fill(x + 2, y + 8, x + 8, y + 10, c);
-            }
             case "access" -> {
                 g.fill(x + 4, y, x + 6, y + 2, c);
                 g.fill(x, y + 3, x + 10, y + 4, c);

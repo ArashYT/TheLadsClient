@@ -3,7 +3,6 @@ package com.thelads.core;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.thelads.core.client.util.ClientPaths;
-import com.thelads.core.client.util.SkinFetcher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -169,83 +168,6 @@ public class M3ChallengerTest {
             assertEquals(24, optionsBtn.y - ladsSettings.y,
                 "Options button must be positioned 24px below Lads Settings");
         }
-    }
-
-    /**
-     * Test SkinFetcher Tier 1: Local custom skin (%APPDATA%/.theladsclient/skin.png)
-     */
-    @Test
-    @DisplayName("SkinFetcher: Tier 1 Custom Skin local resolution")
-    public void testSkinFetcherTier1CustomSkin(@TempDir Path tempDir) throws Exception {
-        ClientPaths.setBaseDir(tempDir);
-        Path skinFile = ClientPaths.getSkinFile().toPath();
-        Files.write(skinFile, new byte[]{1, 2, 3, 4});
-
-        CompletableFuture<Path> future = SkinFetcher.getOrFetchSkin("any-uuid", "any-user");
-        assertNotNull(future);
-        Path result = future.get(2, TimeUnit.SECONDS);
-        assertEquals(skinFile, result, "Should return local custom skin immediately");
-    }
-
-    /**
-     * Test SkinFetcher Tier 2: Local skin disk cache
-     */
-    @Test
-    @DisplayName("SkinFetcher: Tier 2 Disk Cache resolution")
-    public void testSkinFetcherTier2DiskCache(@TempDir Path tempDir) throws Exception {
-        ClientPaths.setBaseDir(tempDir);
-        String uuid = "e7b8f9a0-1234-5678-9abc-def012345678";
-        String cleanKey = uuid.replace("-", "").toLowerCase();
-        Path cacheDir = ClientPaths.getSkinCacheDir();
-        Path cachedSkin = cacheDir.resolve(cleanKey + ".png");
-        Files.createDirectories(cacheDir);
-        Files.write(cachedSkin, new byte[]{10, 20, 30});
-
-        CompletableFuture<Path> future = SkinFetcher.getOrFetchSkin(uuid, "Steve");
-        assertNotNull(future);
-        Path result = future.get(2, TimeUnit.SECONDS);
-        assertEquals(cachedSkin, result, "Should return cached skin from disk");
-    }
-
-    /**
-     * Test SkinFetcher Tier 2 edge case: 0-byte corrupt cache file must not be returned
-     */
-    @Test
-    @DisplayName("SkinFetcher: Corrupt 0-byte cache file is rejected")
-    public void testSkinFetcherZeroByteCacheRejected(@TempDir Path tempDir) throws Exception {
-        ClientPaths.setBaseDir(tempDir);
-        String uuid = "ffffffff-ffff-ffff-ffff-ffffffffffff";
-        String cleanKey = uuid.replace("-", "").toLowerCase();
-        Path cacheDir = ClientPaths.getSkinCacheDir();
-        Path cachedSkin = cacheDir.resolve(cleanKey + ".png");
-        Files.createDirectories(cacheDir);
-        Files.createFile(cachedSkin);
-
-        CompletableFuture<Path> future = SkinFetcher.getOrFetchSkin(uuid, "NonExistentUserXYZ");
-        assertNotNull(future);
-        Path result = future.get(20, TimeUnit.SECONDS);
-        assertNotEquals(cachedSkin, result, "0-byte cache file must never be accepted as a valid skin");
-    }
-
-    /**
-     * Test SkinFetcher Offline Resilience: Network failure / timeout completes gracefully with null
-     */
-    @Test
-    @DisplayName("SkinFetcher: Offline resilience and null safety on network failure")
-    public void testSkinFetcherOfflineResilience(@TempDir Path tempDir) throws Exception {
-        ClientPaths.setBaseDir(tempDir);
-
-        // Test with null and blank inputs
-        CompletableFuture<Path> nullFuture = SkinFetcher.getOrFetchSkin(null, null);
-        assertNotNull(nullFuture);
-        Path nullResult = nullFuture.get(5, TimeUnit.SECONDS);
-        assertNull(nullResult, "Null uuid/username should safely return null without exception");
-
-        // Test with unreachable/fake UUID in offline mode
-        CompletableFuture<Path> fakeFuture = SkinFetcher.getOrFetchSkin("00000000-0000-0000-0000-000000000000", "OfflineGhostPlayer");
-        assertNotNull(fakeFuture);
-        Path fakeResult = fakeFuture.get(15, TimeUnit.SECONDS);
-        assertNull(fakeResult, "Unresolvable player offline should safely return null");
     }
 
     /**
