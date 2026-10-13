@@ -22,12 +22,16 @@ public final class ShulkerInventory {
         return eligible(stack) && NativeQualityOfLife.bool("ShulkerBoxUtils", "Contents Preview", true);
     }
 
+    public static ShulkerSummary contents(ItemStack item) {
+        return ShulkerSummary.of(item.get(DataComponents.CONTAINER));
+    }
+
     public static void decorate(GuiGraphicsExtractor graphics, ItemStack item, int x, int y) {
         if (DRAWING_BADGE.get() || !eligible(item)) return;
         boolean badge = NativeQualityOfLife.bool("ShulkerBoxUtils", "Inventory Badge", true);
         boolean bar = NativeQualityOfLife.bool("ShulkerBoxUtils", "Free Slot Bar", true);
         if (!badge && !bar) return;
-        ShulkerSummary contents = ShulkerSummary.of(item.get(DataComponents.CONTAINER));
+        ShulkerSummary contents = contents(item);
         if (badge && contents.badgeVisible()) {
             var pose = graphics.pose();
             pose.pushMatrix();

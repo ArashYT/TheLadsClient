@@ -1,14 +1,21 @@
 package com.thelads.core.v26_2.feature;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 
 /** A bounded copy of the component's 27 storage slots. Empty slots retain their original positions. */
 public record ShulkerSummary(List<ItemStack> slots, ItemStack first, int occupied, long count, boolean uniform) {
+    public static final ShulkerSummary EMPTY = of(List.of());
+    private static final Map<ItemContainerContents, ShulkerSummary> CACHE = Collections.synchronizedMap(new WeakHashMap<>());
+
     public static ShulkerSummary of(ItemContainerContents contents) {
-        return of(contents == null ? List.of() : contents.itemCopies().limit(27).toList());
+        if (contents == null) return EMPTY;
+        return CACHE.computeIfAbsent(contents, c -> of(c.itemCopies().limit(27).toList()));
     }
 
     public static ShulkerSummary of(List<ItemStack> items) {
@@ -18,7 +25,8 @@ public record ShulkerSummary(List<ItemStack> slots, ItemStack first, int occupie
         long count = 0;
         boolean uniform = true;
         for (int index = 0; index < 27; index++) {
-            ItemStack stack = index < items.size() ? items.get(index).copy() : ItemStack.EMPTY;
+            ItemStack stack = index < items.size() ? items.get(index) : ItemStack.EMPTY;
+            if (stack == null) stack = ItemStack.EMPTY;
             slots.add(stack);
             if (stack.isEmpty()) continue;
             occupied++;
