@@ -1,5 +1,8 @@
 package com.thelads.core.client.hypixel;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -12,6 +15,34 @@ import java.util.regex.Pattern;
  */
 public final class HypixelChat {
     private static final Pattern FORMAT = Pattern.compile("§.");
+    private static final Pattern PLAYER_CHAT = Pattern.compile("^(?:"
+        + "(?:(?:\\[[^\\]]+\\] )?\\w{1,16}(?: \\[\\w+\\])?: )"
+        + "|(?:(?:Party|Guild|Officer|Shout) > )"
+        + "|(?:(?:From|To) (?:\\[[^\\]]+\\] )?\\w{1,16}: )"
+        + ").*");
+
+    // Party list lines and chat notifications
+    private static final Pattern PARTY_ROLE_LINE = Pattern.compile("Party (?:Leader|Moderators?|Members?):\\s*(.*)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PARTY_SEP = Pattern.compile("^[§r\\s-]*(?:-{20,}|={20,})[§r\\s-]*$");
+    private static final Pattern PARTY_COUNT = Pattern.compile("Party Members \\((\\d+)\\)");
+    private static final Pattern PARTY_DISBAND = Pattern.compile("(?i)(?:\\[Party\\] )?(?:"
+        + "The party was disbanded.*"
+        + "|You (?:are not currently|are not) in a party.*"
+        + "|You (?:have left|left) the party.*"
+        + "|You (?:have been|were) kicked from the party.*"
+        + "|You were removed from the party.*"
+        + ")");
+    private static final Pattern PARTY_JOIN = Pattern.compile("(?i)(?:\\[Party\\] )?(?:\\[[^\\]]+\\] )?(\\w{1,16}) joined the party[.!]*");
+    private static final Pattern PARTY_YOU_JOIN = Pattern.compile("(?i)You (?:have )?joined (?:\\[[^\\]]+\\] )?(\\w{1,16})'s party[.!]*");
+    private static final Pattern PARTY_LEAVE = Pattern.compile("(?i)(?:\\[Party\\] )?(?:\\[[^\\]]+\\] )?(\\w{1,16}) (?:has left|left) the party[.!]*");
+    private static final Pattern PARTY_KICK = Pattern.compile("(?i)(?:\\[Party\\] )?(?:\\[[^\\]]+\\] )?(\\w{1,16}) (?:(?:has been|was) removed from the party|was kicked from the party).*");
+
+    // Elimination and death patterns
+    private static final Pattern FINAL_KILL_LINE = Pattern.compile("(?i)^(?:\\[[^\\]]+\\]\\s*)*(\\w{1,16})\\b.*\\bFINAL KILL!.*");
+    private static final Pattern ELIMINATED_LINE = Pattern.compile("(?i)^(?:\\[[^\\]]+\\]\\s*)*(\\w{1,16})\\b.*\\b(?:has been|was) eliminated!?.*");
+    private static final Pattern DISCONNECT_LINE = Pattern.compile("(?i)^(?:\\[[^\\]]+\\]\\s*)*(\\w{1,16})\\b.*\\b(?:disconnected|has quit|left the game)[.!]*");
+    private static final Pattern GENERAL_KILL_LINE = Pattern.compile("(?i)^(?:\\[[^\\]]+\\]\\s*)*(\\w{1,16})\\b\\s+(?:was (?:killed|slain|shot|knocked into the void|spooked|blown up|thrown into the void|pummeled|fireballed)|fell into the void|died|hit the ground|burned to death|went up in flames|drowned|suffocated|withered away)\\b.*");
+    private static final Pattern SELF_OUT_LINE = Pattern.compile("(?i).*(?:You have been eliminated!|You are now a spectator!?|Click here to play again!).*");
     /** The end-of-game summary every mode prints, centered (leading spaces): its ranking or winner line. */
     private static final Pattern GAME_END = Pattern.compile("\\s+(?:"
         + "1st\\b(?: Killer| Place)?\\s*[-:].*"        // 1st Killer - [MVP+] Name - 7 / 1st Place - Name / 1st - Name
@@ -134,5 +165,134 @@ public final class HypixelChat {
             for (Spam kind : Spam.values()) if (kind.line.matcher(text).matches()) return kind;
         }
         return null;
+    }
+
+    /** True when the line is player or channel chat, which server notices never are. */
+    public static boolean isPlayerChat(String line) {
+        String p = plain(line).trim();
+        return PLAYER_CHAT.matcher(p).matches();
+    }
+
+    /** Does this gametype have supported elimination/kill tracking? */
+    public static boolean isModeKnown(String gametype) {
+        if (gametype == null) return false;
+        String g = gametype.toUpperCase(Locale.ROOT);
+        return g.equals("BEDWARS") || g.equals("SKYWARS") || g.equals("DUELS");
+    }
+
+    /** Parses player names listed in a /party list role line (Party Leader:, Party Members:, etc.). */
+    public static List<String> partyMembers(String message) {
+        List<String> names = new ArrayList<>();
+        for (String line : lines(message)) {
+            if (isPlayerChat(line)) continue;
+            String p = line.trim();
+            Matcher m = PARTY_ROLE_LINE.matcher(p);
+            if (!m.matches()) continue;
+            String rest = m.group(1);
+            rest = rest.replaceAll("\\[[^\\]]+\\]", " ");
+            rest = rest.replaceAll("[●?•,»|:]", " ");
+            Matcher nameMatcher = Pattern.compile("\\b[A-Za-z0-9_]{1,16}\\b").matcher(rest);
+            while (nameMatcher.find()) {
+                String name = nameMatcher.group();
+                if (!name.equalsIgnoreCase("Party") && !name.equalsIgnoreCase("Leader")
+                    && !name.equalsIgnoreCase("Moderator") && !name.equalsIgnoreCase("Moderators")
+                    && !name.equalsIgnoreCase("Member") && !name.equalsIgnoreCase("Members")) {
+                    names.add(name);
+                }
+            }
+        }
+        return names;
+    }
+
+    /** Who joined the party, or "YOU_JOINED:<leader>" if you joined someone's party, or null. */
+    public static String partyJoin(String message) {
+        for (String line : lines(message)) {
+            if (isPlayerChat(line)) continue;
+            String p = line.trim();
+            Matcher y = PARTY_YOU_JOIN.matcher(p);
+            if (y.matches()) return "YOU_JOINED:" + y.group(1);
+            Matcher j = PARTY_JOIN.matcher(p);
+            if (j.matches()) return j.group(1);
+        }
+        return null;
+    }
+
+    /** Who left or was kicked/removed from the party, or null. */
+    public static String partyLeave(String message) {
+        for (String line : lines(message)) {
+            if (isPlayerChat(line)) continue;
+            String p = line.trim();
+            Matcher l = PARTY_LEAVE.matcher(p);
+            if (l.matches()) return l.group(1);
+            Matcher k = PARTY_KICK.matcher(p);
+            if (k.matches()) return k.group(1);
+        }
+        return null;
+    }
+
+    /** True when the party was disbanded, or you left / were kicked / not in a party. */
+    public static boolean partyDisbanded(String message) {
+        for (String line : lines(message)) {
+            if (isPlayerChat(line)) continue;
+            if (PARTY_DISBAND.matcher(line.trim()).matches()) return true;
+        }
+        return false;
+    }
+
+    /** True for lines that are part of /party list output. */
+    public static boolean isPartyListLine(String message) {
+        for (String line : lines(message)) {
+            if (isPlayerChat(line)) return false;
+            String p = line.trim();
+            if (p.isEmpty()) continue;
+            if (PARTY_SEP.matcher(p).matches()) return true;
+            if (PARTY_COUNT.matcher(p).matches()) return true;
+            if (PARTY_ROLE_LINE.matcher(p).matches()) return true;
+            if (PARTY_DISBAND.matcher(p).matches()) return true;
+        }
+        return false;
+    }
+
+    /** Who was eliminated or killed in this line for {@code gametype}, or null. */
+    public static String eliminatedPlayer(String gametype, String message) {
+        for (String line : lines(message)) {
+            if (isPlayerChat(line)) continue;
+            String p = line.trim();
+            Matcher fk = FINAL_KILL_LINE.matcher(p);
+            if (fk.matches()) return fk.group(1);
+            Matcher el = ELIMINATED_LINE.matcher(p);
+            if (el.matches()) return el.group(1);
+            Matcher dc = DISCONNECT_LINE.matcher(p);
+            if (dc.matches()) return dc.group(1);
+            if (gametype != null && (gametype.equalsIgnoreCase("SKYWARS") || gametype.equalsIgnoreCase("DUELS"))) {
+                Matcher gk = GENERAL_KILL_LINE.matcher(p);
+                if (gk.matches()) return gk.group(1);
+            }
+        }
+        return null;
+    }
+
+    /** True if this is a player speaking in party chat (e.g. Party > [MVP+] Player: text). */
+    public static boolean isPartyChat(String message) {
+        for (String line : lines(message)) {
+            String p = line.trim();
+            if (p.startsWith("Party >")) return true;
+        }
+        return false;
+    }
+
+    /** True when this line indicates the local player died or was eliminated (not a temporary respawn death). */
+    public static boolean isSelfOut(String gametype, String message, String myName) {
+        for (String line : lines(message)) {
+            if (isPlayerChat(line)) continue;
+            String p = line.trim();
+            if (p.toLowerCase(Locale.ROOT).contains("respawn")) continue;
+            if (SELF_OUT_LINE.matcher(p).matches()) return true;
+            if (myName != null && !myName.isEmpty()) {
+                String victim = eliminatedPlayer(gametype, line);
+                if (victim != null && victim.equalsIgnoreCase(myName)) return true;
+            }
+        }
+        return false;
     }
 }

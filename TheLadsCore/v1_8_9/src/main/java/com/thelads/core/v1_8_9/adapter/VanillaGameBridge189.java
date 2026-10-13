@@ -57,6 +57,11 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     }
 
     @Override
+    public String getPlayerName() {
+        return mc().thePlayer != null ? mc().thePlayer.getName() : "";
+    }
+
+    @Override
     public int getPlayerX() {
         return mc().thePlayer != null ? MathHelper.floor_double(mc().thePlayer.posX) : 0;
     }

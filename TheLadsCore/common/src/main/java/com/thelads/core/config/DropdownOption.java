@@ -57,6 +57,18 @@ public class DropdownOption extends Option {
     @Override
     public void load(JsonElement element) {
         try {
+            if (element != null && element.isJsonPrimitive()) {
+                JsonPrimitive p = element.getAsJsonPrimitive();
+                if (p.isString()) {
+                    String str = p.getAsString();
+                    for (int i = 0; i < choices.length; i++) {
+                        if (choices[i].equalsIgnoreCase(str)) {
+                            setIndex(i);
+                            return;
+                        }
+                    }
+                }
+            }
             setIndex(element.getAsInt());
         } catch (Exception ignored) {
         }

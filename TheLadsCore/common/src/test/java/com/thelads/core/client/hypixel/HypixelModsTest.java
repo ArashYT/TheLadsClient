@@ -6,6 +6,7 @@ import com.thelads.core.client.HypixelSafetyManager;
 import com.thelads.core.client.bridge.DefaultGameBridge;
 import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.config.BoolOption;
+import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
@@ -22,6 +23,7 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -73,6 +75,12 @@ class HypixelModsTest {
         }
         assertEquals(java.util.Map.of(HypixelMods.AUTO_GG, true, HypixelMods.AUTO_TIP, true, HypixelMods.CLEANUP, true,
             HypixelMods.AUTO_FRIEND, false, HypixelMods.PLAY_AGAIN, false, HypixelMods.AUTO_WHO, false), on, "Auto Friend: anyone could add you, opt in");
+        DropdownOption replayWhen = (DropdownOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.REPLAY_WHEN);
+        assertNotNull(replayWhen);
+        assertEquals("After death", replayWhen.getValue());
+        BoolOption waitParty = (BoolOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.WAIT_PARTY);
+        assertNotNull(waitParty);
+        assertTrue(waitParty.get());
     }
 
     @Test void locrawAnswerAfterAnotherCommandAndPingMissesReset() {
@@ -424,5 +432,363 @@ class HypixelModsTest {
         assertTrue(opts.get("Auto Friend").getAsBoolean());
         assertFalse(opts.get("Auto GG").getAsBoolean());
         assertEquals("custom gg", opts.get("Auto GG: Message").getAsString());
+    }
+
+    @Test void shouldReplayDecisionLogic() {
+        // gameOver is always true regardless of other settings
+        assertTrue(HypixelMods.shouldReplay("After death", true, false, true, 2));
+        assertTrue(HypixelMods.shouldReplay("After death", true, true, true, 2));
+        assertTrue(HypixelMods.shouldReplay("When game ends", true, false, true, 2));
+        assertTrue(HypixelMods.shouldReplay("When game ends", false, true, true, 0));
+
+        // When game ends mode with !gameOver -> always false
+        assertFalse(HypixelMods.shouldReplay("When game ends", false, true, false, 0));
+        assertFalse(HypixelMods.shouldReplay("When game ends", true, true, false, 0));
+        assertFalse(HypixelMods.shouldReplay("When game ends", true, true, false, 0, true, true));
+
+        // After death mode: self alive -> false
+        assertFalse(HypixelMods.shouldReplay("After death", false, false, false, 0));
+        assertFalse(HypixelMods.shouldReplay("After death", true, false, false, 0));
+        assertFalse(HypixelMods.shouldReplay("After death", true, false, false, 2));
+
+        // After death mode: self out, waitParty false -> true
+        assertTrue(HypixelMods.shouldReplay("After death", false, true, false, 0));
+        assertTrue(HypixelMods.shouldReplay("After death", false, true, false, 2));
+
+        // After death mode: self out, waitParty true:
+        // Party alive == 0 -> true
+        assertTrue(HypixelMods.shouldReplay("After death", true, true, false, 0));
+        // Party alive > 0 -> false
+        assertFalse(HypixelMods.shouldReplay("After death", true, true, false, 1));
+        assertFalse(HypixelMods.shouldReplay("After death", true, true, false, 2));
+        // Timed out -> true even with party alive
+        assertTrue(HypixelMods.shouldReplay("After death", true, true, false, 1, true, true));
+        // Unknown mode with party alive > 0 -> false (waits for game end)
+        assertFalse(HypixelMods.shouldReplay("After death", true, true, false, 1, false, false));
+        // Unknown mode with party alive == 0 -> true
+        assertTrue(HypixelMods.shouldReplay("After death", true, true, false, 0, false, false));
+    }
+
+    @Test void partyTrackingFromChatAndPartyList() {
+        HypixelMods.setPlayerNameForTest("Me");
+        HypixelMods.tick(game, world, connection, 0);
+
+        // /party list role lines
+        HypixelMods.chat("-----------------------------------------------------", S);
+        HypixelMods.chat("Party Members (3)", S);
+        HypixelMods.chat("Party Leader: [MVP+] Leader_Player ●", S);
+        HypixelMods.chat("Party Moderators: [VIP] Mod_Player ●", S);
+        HypixelMods.chat("Party Members: [MVP+] Me ● [VIP] Teammate_1 ●", S);
+        HypixelMods.chat("-----------------------------------------------------", S);
+
+        assertTrue(HypixelMods.partyMembers().contains("leader_player"));
+        assertTrue(HypixelMods.partyMembers().contains("mod_player"));
+        assertTrue(HypixelMods.partyMembers().contains("me"));
+        assertTrue(HypixelMods.partyMembers().contains("teammate_1"));
+        // Local player "me" is excluded from alive teammates
+        assertEquals(Set.of("leader_player", "mod_player", "teammate_1"), HypixelMods.partyAlive());
+
+        // Player join
+        HypixelMods.chat("[Party] [VIP] New_Player joined the party.", 2 * S);
+        assertTrue(HypixelMods.partyMembers().contains("new_player"));
+        assertTrue(HypixelMods.partyAlive().contains("new_player"));
+
+        // Player leave
+        HypixelMods.chat("[Party] New_Player has left the party.", 3 * S);
+        assertFalse(HypixelMods.partyMembers().contains("new_player"));
+        assertFalse(HypixelMods.partyAlive().contains("new_player"));
+
+        // Player kick
+        HypixelMods.chat("Mod_Player was removed from the party.", 4 * S);
+        assertFalse(HypixelMods.partyMembers().contains("mod_player"));
+
+        // Player chat negative check: player typing party message does not affect roster
+        HypixelMods.chat("Party > [MVP+] Leader_Player: Teammate_1 has left the party.", 5 * S);
+        assertTrue(HypixelMods.partyMembers().contains("teammate_1"));
+        HypixelMods.chat("From [VIP] Troll: You left the party.", 5 * S);
+        assertFalse(HypixelMods.partyMembers().isEmpty());
+
+        // Party disband
+        HypixelMods.chat("The party was disbanded because all invites expired and the party was empty.", 6 * S);
+        assertTrue(HypixelMods.partyMembers().isEmpty());
+        assertTrue(HypixelMods.partyAlive().isEmpty());
+
+        // You join a party
+        HypixelMods.chat("You joined [MVP+] Solo_Leader's party!", 7 * S);
+        assertEquals(Set.of("solo_leader"), HypixelMods.partyMembers());
+        assertEquals(Set.of("solo_leader"), HypixelMods.partyAlive());
+    }
+
+    @Test void eliminationAndDeathDetectionPerMode() {
+        // Bed Wars: only FINAL KILL, eliminated, or disconnected count
+        assertEquals("victim", HypixelChat.eliminatedPlayer("BEDWARS", "victim was killed by killer. FINAL KILL!"));
+        assertEquals("victim", HypixelChat.eliminatedPlayer("BEDWARS", "[RED] victim was knocked into the void by [BLUE] killer. FINAL KILL!"));
+        assertEquals("victim", HypixelChat.eliminatedPlayer("BEDWARS", "victim has been eliminated!"));
+        assertEquals("victim", HypixelChat.eliminatedPlayer("BEDWARS", "victim disconnected."));
+        // Regular Bed Wars kill does NOT eliminate
+        assertNull(HypixelChat.eliminatedPlayer("BEDWARS", "victim was killed by killer."));
+
+        // Sky Wars: regular kill counts
+        assertEquals("victim", HypixelChat.eliminatedPlayer("SKYWARS", "victim was killed by killer."));
+        assertEquals("victim", HypixelChat.eliminatedPlayer("SKYWARS", "victim fell into the void."));
+        assertEquals("victim", HypixelChat.eliminatedPlayer("SKYWARS", "victim disconnected."));
+
+        // Duels: kill counts
+        assertEquals("victim", HypixelChat.eliminatedPlayer("DUELS", "victim was slain by killer."));
+
+        // Player chat negative: player chat with death line does not match
+        assertNull(HypixelChat.eliminatedPlayer("BEDWARS", "[MVP+] Troll: victim was killed by killer. FINAL KILL!"));
+        assertNull(HypixelChat.eliminatedPlayer("SKYWARS", "Party > Troll: victim died."));
+
+        // Self out checks
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", "You died! Want to play again? Click here to play again!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", "You have been eliminated!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", "You are now a spectator!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", "Me was killed by killer. FINAL KILL!", "Me"));
+        assertFalse(HypixelChat.isSelfOut("BEDWARS", "Teammate was killed by killer. FINAL KILL!", "Me"));
+        assertFalse(HypixelChat.isSelfOut("BEDWARS", "[MVP+] Troll: You died!", "Me"));
+    }
+
+    @Test void autoPlayAgainWaitsForPartyBeforeReplaying() {
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN)).set(true);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_TIP)).set(false);
+        ((DropdownOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.REPLAY_WHEN)).setIndex(0); // "After death"
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.WAIT_PARTY)).set(true);
+        ((SliderOption) m.getOption(HypixelMods.PLAY_AGAIN + ": Delay seconds")).setValue(0);
+
+        HypixelMods.setPlayerNameForTest("Me");
+        HypixelMods.tick(game, world, connection, 0);
+        HypixelMods.tick(game, world, connection, 2 * S);
+        assertEquals(List.of("/locraw"), sent);
+        HypixelMods.chat("{\"server\":\"mini1A\",\"gametype\":\"BEDWARS\",\"mode\":\"BEDWARS_EIGHT_TWO\",\"map\":\"Aquarium\"}", 3 * S);
+
+        // Form party of 2
+        HypixelMods.chat("You joined [MVP+] Bob's party!", 4 * S);
+        assertEquals(Set.of("bob"), HypixelMods.partyAlive());
+
+        // You die
+        HypixelMods.chat("You died! Want to play again? Click here to play again!", 5 * S);
+        assertTrue(HypixelMods.isSelfOut());
+        for (long t = 5 * S; t <= 10 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        // Bob is still alive, no /play sent!
+        assertEquals(List.of("/locraw"), sent);
+
+        // Teammate Bob dies on FINAL KILL
+        HypixelMods.chat("Bob was killed by Enemy. FINAL KILL!", 11 * S);
+        assertEquals(0, HypixelMods.partyAlive().size());
+        for (long t = 11 * S; t <= 15 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        // Now /play is sent!
+        assertEquals(List.of("/locraw", "/play bedwars_eight_two"), sent);
+    }
+
+    @Test void autoPlayAgainWhenGameEndsMode() {
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN)).set(true);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_TIP)).set(false);
+        ((DropdownOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.REPLAY_WHEN)).setIndex(1); // "When game ends"
+        ((SliderOption) m.getOption(HypixelMods.PLAY_AGAIN + ": Delay seconds")).setValue(0);
+        ((SliderOption) m.getOption(HypixelMods.AUTO_GG + ": Delay seconds")).setValue(0);
+
+        HypixelMods.setPlayerNameForTest("Me");
+        HypixelMods.tick(game, world, connection, 0);
+        HypixelMods.tick(game, world, connection, 2 * S);
+        assertEquals(List.of("/locraw"), sent);
+        HypixelMods.chat("{\"server\":\"mini1A\",\"gametype\":\"BEDWARS\",\"mode\":\"BEDWARS_EIGHT_ONE\",\"map\":\"Aquarium\"}", 3 * S);
+
+        // You die
+        HypixelMods.chat("You died! Want to play again? Click here to play again!", 4 * S);
+        for (long t = 4 * S; t <= 10 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        // Mode is "When game ends", death sends nothing!
+        assertEquals(List.of("/locraw"), sent);
+
+        // Game over arrives
+        HypixelMods.chat("                       1st Killer - Enemy - 7", 11 * S);
+        for (long t = 11 * S; t <= 15 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertEquals(List.of("/locraw", "/ac gg", "/play bedwars_eight_one"), sent);
+    }
+
+    @Test void autoPlayAgainWithoutPartyReplaysImmediately() {
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN)).set(true);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_TIP)).set(false);
+        ((DropdownOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.REPLAY_WHEN)).setIndex(0); // "After death"
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.WAIT_PARTY)).set(true);
+        ((SliderOption) m.getOption(HypixelMods.PLAY_AGAIN + ": Delay seconds")).setValue(0);
+
+        HypixelMods.setPlayerNameForTest("Me");
+        HypixelMods.tick(game, world, connection, 0);
+        HypixelMods.tick(game, world, connection, 2 * S);
+        HypixelMods.chat("{\"server\":\"mini1A\",\"gametype\":\"SKYWARS\",\"mode\":\"solo_insane\",\"map\":\"Aquarium\"}", 3 * S);
+
+        // No party: you die in SkyWars -> replays immediately
+        HypixelMods.chat("Me fell into the void.", 5 * S);
+        for (long t = 5 * S; t <= 10 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertEquals(List.of("/locraw", "/play solo_insane"), sent);
+    }
+
+    @Test void autoPlayAgainSafetyTimeout() {
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN)).set(true);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_TIP)).set(false);
+        ((DropdownOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.REPLAY_WHEN)).setIndex(0); // "After death"
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.WAIT_PARTY)).set(true);
+        ((SliderOption) m.getOption(HypixelMods.PLAY_AGAIN + ": Delay seconds")).setValue(0);
+
+        HypixelMods.setPlayerNameForTest("Me");
+        HypixelMods.tick(game, world, connection, 0);
+        HypixelMods.tick(game, world, connection, 2 * S);
+        HypixelMods.chat("{\"server\":\"mini1A\",\"gametype\":\"BEDWARS\",\"mode\":\"BEDWARS_FOUR_FOUR\",\"map\":\"Aquarium\"}", 3 * S);
+        HypixelMods.chat("You joined [MVP+] Bob's party!", 4 * S);
+
+        // You are eliminated
+        HypixelMods.chat("You have been eliminated!", 5 * S);
+        // Tick up to 4 minutes: still blocked because Bob is alive
+        for (long t = 5 * S; t <= 245 * S; t += 30 * S) HypixelMods.tick(game, world, connection, t);
+        assertEquals(List.of("/locraw"), sent);
+
+        // Tick past 5 minutes (306 seconds): timeout fires!
+        HypixelMods.tick(game, world, connection, 306 * S);
+        for (long t = 306 * S; t <= 310 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertEquals(List.of("/locraw", "/play bedwars_four_four"), sent);
+    }
+
+    @Test void autoPlayAgainUnknownModeWaitsForGameEnd() {
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN)).set(true);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_TIP)).set(false);
+        ((DropdownOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.REPLAY_WHEN)).setIndex(0); // "After death"
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.WAIT_PARTY)).set(true);
+        ((SliderOption) m.getOption(HypixelMods.PLAY_AGAIN + ": Delay seconds")).setValue(0);
+        ((SliderOption) m.getOption(HypixelMods.AUTO_GG + ": Delay seconds")).setValue(0);
+
+        HypixelMods.setPlayerNameForTest("Me");
+        HypixelMods.tick(game, world, connection, 0);
+        HypixelMods.tick(game, world, connection, 2 * S);
+        // Unknown mode: PROTOTYPE
+        HypixelMods.chat("{\"server\":\"mini1A\",\"gametype\":\"PROTOTYPE\",\"mode\":\"pixel_party\",\"map\":\"Lobby\"}", 3 * S);
+        HypixelMods.chat("You joined [MVP+] Bob's party!", 4 * S);
+
+        // You die
+        HypixelMods.chat("You have been eliminated!", 5 * S);
+        for (long t = 5 * S; t <= 10 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        // Unknown mode falls back to waiting for game end
+        assertEquals(List.of("/locraw"), sent);
+    }
+
+    @Test void bedWarsRespawningDeathDoesNotCountAsSelfOut() {
+        // Pure chat logic checks
+        assertFalse(HypixelChat.isSelfOut("BEDWARS", "You died!", "Me"));
+        assertFalse(HypixelChat.isSelfOut("BEDWARS", "You will respawn in 5 seconds!", "Me"));
+        assertFalse(HypixelChat.isSelfOut("BEDWARS", "You died!\nYou will respawn in 5 seconds!", "Me"));
+        assertFalse(HypixelChat.isSelfOut("BEDWARS", "Me was knocked into the void by Enemy.", "Me"));
+
+        // Final death lines DO count
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", "You died! Want to play again? Click here to play again!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", "You have been eliminated!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", "You are now a spectator!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", "Me was killed by Enemy. FINAL KILL!", "Me"));
+
+        // Module end-to-end check in solo Bed Wars
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN)).set(true);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_TIP)).set(false);
+        ((DropdownOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.REPLAY_WHEN)).setIndex(0); // "After death"
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.WAIT_PARTY)).set(false);
+        ((SliderOption) m.getOption(HypixelMods.PLAY_AGAIN + ": Delay seconds")).setValue(0);
+
+        HypixelMods.setPlayerNameForTest("Me");
+        HypixelMods.tick(game, world, connection, 0);
+        HypixelMods.tick(game, world, connection, 2 * S);
+        HypixelMods.chat("{\"server\":\"mini1A\",\"gametype\":\"BEDWARS\",\"mode\":\"BEDWARS_EIGHT_ONE\",\"map\":\"Lighthouse\"}", 3 * S);
+        HypixelMods.chat("The game starts in 1 second!", 4 * S);
+
+        // Respawning death occurs
+        HypixelMods.chat("You died!", 5 * S);
+        HypixelMods.chat("You will respawn in 5 seconds!", 5 * S);
+        assertFalse(HypixelMods.isSelfOut());
+        for (long t = 5 * S; t <= 10 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        // Player is respawning, must NOT trigger replay!
+        assertEquals(List.of("/locraw"), sent);
+
+        // Actual final elimination occurs
+        HypixelMods.chat("Me was killed by Enemy. FINAL KILL!", 11 * S);
+        assertTrue(HypixelMods.isSelfOut());
+        for (long t = 11 * S; t <= 15 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertEquals(List.of("/locraw", "/play bedwars_eight_one"), sent);
+    }
+
+    @Test void partyListRateLimitingAndEliminatedTeammatePersistence() {
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN)).set(true);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_TIP)).set(false);
+        ((DropdownOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.REPLAY_WHEN)).setIndex(0); // "After death"
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN + ": " + HypixelMods.WAIT_PARTY)).set(true);
+        ((SliderOption) m.getOption(HypixelMods.PLAY_AGAIN + ": Delay seconds")).setValue(0);
+
+        HypixelMods.setPlayerNameForTest("Me");
+
+        // 1. Solo player: game start should NOT send /party list
+        HypixelMods.tick(game, world, connection, 0);
+        HypixelMods.tick(game, world, connection, 2 * S);
+        HypixelMods.chat("{\"server\":\"mini1A\",\"gametype\":\"BEDWARS\",\"mode\":\"BEDWARS_EIGHT_ONE\",\"map\":\"Lighthouse\"}", 3 * S);
+        HypixelMods.chat("The game starts in 1 second!", 4 * S);
+        for (long t = 4 * S; t <= 8 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertEquals(List.of("/locraw"), sent);
+        assertFalse(HypixelMods.isInParty());
+
+        // 2. Party with already known members: game start should NOT send /party list
+        HypixelMods.chat("You joined [MVP+] Bob's party!", 9 * S);
+        assertTrue(HypixelMods.isInParty());
+        assertEquals(Set.of("bob"), HypixelMods.partyMembers());
+        HypixelMods.chat("The game starts in 1 second!", 10 * S);
+        for (long t = 10 * S; t <= 14 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        // Only /locraw, no /party list
+        assertEquals(List.of("/locraw"), sent);
+
+        // 3. In party (known from party chat), but roster unknown: game start DOES send /party list at most once
+        HypixelMods.resetForTest();
+        sent.clear();
+        HypixelMods.setPlayerNameForTest("Me");
+        HypixelMods.tick(game, world, connection, 0);
+        HypixelMods.tick(game, world, connection, 2 * S);
+        HypixelMods.chat("{\"server\":\"mini1A\",\"gametype\":\"BEDWARS\",\"mode\":\"BEDWARS_FOUR_FOUR\",\"map\":\"Lighthouse\"}", 3 * S);
+        // Party chat observed -> inParty is true, but PARTY_MEMBERS is empty
+        HypixelMods.chat("Party > [MVP+] Leader: lets win this", 4 * S);
+        assertTrue(HypixelMods.isInParty());
+        assertTrue(HypixelMods.partyMembers().isEmpty());
+
+        HypixelMods.chat("The game starts in 1 second!", 5 * S);
+        // Advance past 2s delay for /party list
+        for (long t = 5 * S; t <= 8 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertEquals(List.of("/locraw", "/party list"), sent);
+
+        // Even with another game start, rate limited to at most once per game
+        HypixelMods.chat("The game starts in 1 second!", 9 * S);
+        for (long t = 9 * S; t <= 12 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertEquals(List.of("/locraw", "/party list"), sent);
+
+        // 4. Bob is eliminated BEFORE /party list response arrives
+        HypixelMods.chat("Bob was killed by Enemy. FINAL KILL!", 13 * S);
+        assertTrue(HypixelMods.partyEliminated().contains("bob"));
+
+        // Delayed /party list response arrives listing Bob and Alice
+        HypixelMods.chat("Party Members (3)", 14 * S);
+        HypixelMods.chat("Party Members: [MVP+] Me ● [VIP] Bob ● [MVP] Alice ●", 14 * S);
+        // Alice is added to alive teammates, but Bob was already eliminated so Bob must NOT be revived!
+        assertTrue(HypixelMods.partyAlive().contains("alice"));
+        assertFalse(HypixelMods.partyAlive().contains("bob"));
+
+        // You die
+        HypixelMods.chat("You have been eliminated!", 15 * S);
+        for (long t = 15 * S; t <= 18 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        // Alice is still alive, no /play yet
+        assertEquals(List.of("/locraw", "/party list"), sent);
+
+        // Alice is eliminated
+        HypixelMods.chat("Alice was killed by Enemy. FINAL KILL!", 19 * S);
+        for (long t = 19 * S; t <= 22 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        // All alive party members eliminated -> /play sent!
+        assertEquals(List.of("/locraw", "/party list", "/play bedwars_four_four"), sent);
     }
 }
