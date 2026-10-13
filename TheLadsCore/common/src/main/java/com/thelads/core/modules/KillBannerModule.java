@@ -21,7 +21,7 @@ import java.util.Set;
 
 public class KillBannerModule extends Module {
     public static final int BASE = 0, REAVER = 1, ROGUE = 2, CUSTOM = 3;
-    public static final int RANDOM_OFF = 0, RANDOM_VARIANT = 1, RANDOM_SKIN = 2, RANDOM_CHOSEN = 3;
+    public static final int RANDOM_OFF = 0, RANDOM_VARIANT = 1, RANDOM_SKIN = 2, RANDOM_CHOSEN = 3, RANDOM_PER_LIFE = 4, RANDOM_PER_LIFE_CHOSEN = 5;
 
     private static String[] createStyleChoices() {
         KillBannerStyle[] styles = KillBannerStyle.values();
@@ -59,7 +59,7 @@ public class KillBannerModule extends Module {
     public final BoolOption ownSounds = new BoolOption("Your Sounds", false);
     /** Your sounds, one per kill of a streak (aces: Kill 5); an empty slot plays the plain chime. */
     public final SoundOption[] killSounds = new SoundOption[5];
-    public final DropdownOption randomize = new DropdownOption("Randomize", RANDOM_OFF, "Off", "Variant", "Skin and variant", "Chosen");
+    public final DropdownOption randomize = new DropdownOption("Randomize", RANDOM_OFF, "Off", "Variant", "Skin and variant", "Chosen", "Per life", "Per life (Chosen)");
     /** The Chosen randomizer's pool: "reaver:0,rogue:3,..." (skin id and variant index). */
     public final TextOption randomPool = new TextOption("Random Pool", "reaver:0,reaver:1,reaver:2,reaver:3,rogue:0,rogue:1,rogue:2,rogue:3");
     public final TextOption skinVariants = new TextOption("Skin Variants", "");
@@ -83,6 +83,10 @@ public class KillBannerModule extends Module {
     public final BoolOption unlimitedStreak = new BoolOption("Unlimited Streak", false);
     private final Random random = new Random();
     private Pick last;
+    private Pick lifePick;
+    private KillBannerStyle lastLifeStyle;
+    private Pick lastLifePick;
+    private long lastKillAt = Long.MIN_VALUE;
 
     /**
      * What one kill shows and plays: {@code style} null is the Base banner, {@code soundStyle} null the plain chime;
@@ -224,11 +228,75 @@ public class KillBannerModule extends Module {
         return new Pick(style, variant, soundStyle);
     }
 
+    /** The local player died: ends the current life and its skin pick. */
+    public void death() {
+        resetStreak();
+    }
+
+    /** The kill streak reset (death or timer ran out): next kill will pick a new random skin. */
+    public void resetStreak() {
+        if (lifePick != null) {
+            if (lifePick.style() != null) lastLifeStyle = lifePick.style();
+            lastLifePick = lifePick;
+            lifePick = null;
+        }
+        lastKillAt = Long.MIN_VALUE;
+    }
+
+    public Pick lifePick() {
+        return lifePick;
+    }
+
     /** The banner for the next kill: the chosen one, or a random one (never the same twice in a row when there is a choice). */
     public Pick next() {
+        return next(System.nanoTime());
+    }
+
+    public Pick next(long now) {
+        long window = streakWindow();
+        if (lastKillAt != Long.MIN_VALUE && window >= 0 && now - lastKillAt > window) {
+            resetStreak();
+        }
+        lastKillAt = now;
+        int mode = randomize.getIndex();
+        if (mode == RANDOM_PER_LIFE) {
+            if (lifePick != null) return lifePick;
+            List<Pick> pool = new ArrayList<>();
+            for (KillBannerStyle style : KillBannerStyle.shown()) {
+                for (int v = 0; v < style.variantNames.length; v++) {
+                    pool.add(new Pick(style, v, style));
+                }
+            }
+            lifePick = pickForNewLife(pool);
+            last = lifePick;
+            return lifePick;
+        }
+        if (mode == RANDOM_PER_LIFE_CHOSEN) {
+            if (lifePick != null) {
+                if (pool().contains(lifePick.style().id + ":" + lifePick.variant())) {
+                    return lifePick;
+                }
+                lifePick = null;
+            }
+            List<Pick> pool = new ArrayList<>();
+            for (String entry : pool()) {
+                int colon = entry.indexOf(':');
+                if (colon <= 0) continue;
+                KillBannerStyle style = KillBannerStyle.byId(entry.substring(0, colon));
+                if (style == null) continue;
+                try {
+                    pool.add(pick(style, Integer.parseInt(entry.substring(colon + 1)), style));
+                } catch (NumberFormatException ignored) {}
+            }
+            lifePick = pickForNewLife(pool);
+            last = lifePick;
+            return lifePick;
+        }
+
+        lifePick = null;
         Pick chosen = chosen();
         List<Pick> pool = new ArrayList<>();
-        switch (randomize.getIndex()) {
+        switch (mode) {
             case RANDOM_VARIANT -> {
                 if (chosen.style() != null) for (int v = 0; v < chosen.style().variantNames.length; v++)
                     pool.add(bannerStyle.getIndex() == CUSTOM ? new Pick(chosen.style(), v, chosen.soundStyle(), chosen.ownSounds())
@@ -254,6 +322,28 @@ public class KillBannerModule extends Module {
         if (pool.size() > 1 && last != null) pool.remove(last);
         last = pool.isEmpty() ? chosen : pool.get(random.nextInt(pool.size()));
         return last;
+    }
+
+    private Pick pickForNewLife(List<Pick> pool) {
+        if (pool.isEmpty()) return chosen();
+        List<Pick> candidates = new ArrayList<>(pool);
+        if (lastLifeStyle != null) {
+            List<Pick> different = new ArrayList<>();
+            for (Pick p : candidates) {
+                if (p.style() != lastLifeStyle) different.add(p);
+            }
+            if (!different.isEmpty()) {
+                candidates = different;
+            } else if (lastLifePick != null && candidates.size() > 1) {
+                candidates.remove(lastLifePick);
+            }
+        } else if (lastLifePick != null && candidates.size() > 1) {
+            candidates.remove(lastLifePick);
+        }
+        Pick pick = candidates.get(random.nextInt(candidates.size()));
+        lastLifeStyle = pick.style();
+        lastLifePick = pick;
+        return pick;
     }
 
     /** Your sound for the {@code kills}-th kill (1 to 5; aces use Kill 5): its file, or "" for the plain chime. */

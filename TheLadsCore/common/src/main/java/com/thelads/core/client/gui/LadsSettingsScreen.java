@@ -371,7 +371,8 @@ public final class LadsSettingsScreen {
         }
     }
     private static final String[] RANDOM_HINTS = {"Every kill shows the banner above.", "Each kill: another variant of the skin.",
-        "Each kill: a random skin and variant.", "Each kill: one of the banners ticked below."};
+        "Each kill: a random skin and variant.", "Each kill: one of the banners ticked below.",
+        "A random skin per life or streak.", "A random chosen banner per life or streak."};
     /** Kill Banner settings as pictures: skin tiles with their one-kill art, their variants, Custom, Randomize and triggers. Returns its height. */
     /** The Kill Banner picker's open sections; the skins by default, the customising closed (kept for the session). */
     private static final java.util.Set<String> kbOpen = new java.util.HashSet<>(java.util.List.of("skins"));
@@ -484,17 +485,17 @@ public final class LadsSettingsScreen {
 
         y = kbSection(g, "randomize", "RANDOMIZE", x, y, w, mx, my);
         if (kbOpen.contains("randomize")) {
-            String[] modes = {"Off", "Variant", "Skin + variant", "Chosen"};
-            int rPerRow = w >= 300 ? 4 : 2, cell = (w - (rPerRow - 1) * gap) / rPerRow;
+            String[] modes = {"Off", "Variant", "Skin + variant", "Chosen", "Per life", "Per life (Chosen)"};
+            int rPerRow = w >= 300 ? 3 : 2, cell = (w - (rPerRow - 1) * gap) / rPerRow;
             for (int i = 0; i < modes.length; i++) {
                 int index = i;
                 button(g, "kb:random:" + i, modes[i], new Rect(x + i % rPerRow * (cell + gap), y + i / rPerRow * 24, cell, 20),
                     () -> { banner.randomize.setIndex(index); changed(detail); }, true, mx, my, banner.randomize.getIndex() == i);
             }
-            y += (modes.length / rPerRow) * 24 + 2;
-            g.drawText(fit(g, RANDOM_HINTS[banner.randomize.getIndex()], w), x, y, MUTED);
+            y += ((modes.length + rPerRow - 1) / rPerRow) * 24 + 2;
+            g.drawText(fit(g, RANDOM_HINTS[Math.min(RANDOM_HINTS.length - 1, banner.randomize.getIndex())], w), x, y, MUTED);
             y += 14;
-            if (banner.randomize.getIndex() == KillBannerModule.RANDOM_CHOSEN) {
+            if (banner.randomize.getIndex() == KillBannerModule.RANDOM_CHOSEN || banner.randomize.getIndex() == KillBannerModule.RANDOM_PER_LIFE_CHOSEN) {
                 var pool = banner.pool();
                 for (KillBannerStyle skin : visible) {
                     String skinName = skin.displayName;

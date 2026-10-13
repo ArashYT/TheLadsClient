@@ -65,7 +65,10 @@ public final class NativeKillBanner {
             trackedConnection = minecraft.getConnection();
             trackedLevel = minecraft.level;
         }
-        if (!minecraft.player.isAlive()) BANNER.clear();
+        if (!minecraft.player.isAlive()) {
+            BANNER.clear();
+            if (NativeQualityOfLife.module("KillBanner") instanceof KillBannerModule module) module.death();
+        }
         KillBannerArrows.tick(minecraft);
         if (NativeQualityOfLife.module("KillBanner") instanceof KillBannerModule module) {
             play(module, KillBanners.poll(module, System.nanoTime()));
@@ -130,7 +133,10 @@ public final class NativeKillBanner {
             text = KillDetector.deathLine(death.getKey(), args);
         }
         if (text == null) text = message.getString();
-        if (KillDetector.myDeath(text, me)) BANNER.endStreak();
+        if (KillDetector.myDeath(text, me)) {
+            BANNER.endStreak();
+            if (NativeQualityOfLife.module("KillBanner") instanceof KillBannerModule module) module.death();
+        }
         kill(KillBanners.DETECTOR.chat(text, me, NativeKillBanner::players, System.nanoTime()));
     }
 

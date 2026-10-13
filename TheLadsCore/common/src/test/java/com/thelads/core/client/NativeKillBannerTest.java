@@ -106,6 +106,44 @@ class NativeKillBannerTest {
         KillBanners.reset();
     }
 
+    @Test void perLifeRandomizerStreakAndDeath() {
+        var module = new KillBannerModule();
+        module.mobs.set(true);
+        module.randomize.setIndex(KillBannerModule.RANDOM_PER_LIFE);
+        KillBanners.reset();
+        var kill = new KillDetector.Kill(KillDetector.Kind.MOB, "", false);
+
+        // Kill 1
+        KillBanners.fire(module, kill, S);
+        var pick1 = KillBanners.TIMELINE.pick();
+        assertNotNull(pick1);
+        assertNotNull(pick1.style());
+
+        // Kill 2 (10 s later, within 45 s window)
+        KillBanners.fire(module, kill, 11 * S);
+        var pick2 = KillBanners.TIMELINE.pick();
+        assertEquals(pick1.style(), pick2.style(), "same skin across kills in the same life");
+
+        // Player death ends the streak
+        KillBanners.TIMELINE.endStreak();
+        KillBanners.fire(module, kill, 12 * S);
+        var pick3 = KillBanners.TIMELINE.pick();
+        assertNotEquals(pick2.style(), pick3.style(), "new skin after death");
+
+        // Kill 4 (5 s later, within 45 s window)
+        KillBanners.fire(module, kill, 17 * S);
+        var pick4 = KillBanners.TIMELINE.pick();
+        assertEquals(pick3.style(), pick4.style(), "keeps skin across kills in life 2");
+
+        // Streak timer runs out: 50 s later (> 45 s)
+        KillBanners.fire(module, kill, 68 * S);
+        var pick5 = KillBanners.TIMELINE.pick();
+        assertNotEquals(pick4.style(), pick5.style(), "new skin after streak timer reset");
+        assertEquals(1, KillBanners.TIMELINE.streak(), "streak resets to 1");
+
+        KillBanners.reset();
+    }
+
     @Test void streakSettings() {
         var module = new KillBannerModule();
         assertEquals(45, module.streakReset.get(), "45 s by default (1.7.1 had a fixed 8 s, never saved)");

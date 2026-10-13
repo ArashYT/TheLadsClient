@@ -21,12 +21,17 @@ public final class KillBannerTimeline {
     /** GUI pixels the banner on screen is raised (KillBanners.lift), NaN until its first frame decides. */
     private float lift = Float.NaN;
 
+    /** Does a kill at {@code now} within {@code window} continue an active streak (kills 2..n)? */
+    public boolean continuing(long now, long window) {
+        return streak > 0 && (window < 0 || now - lastKill <= window);
+    }
+
     /**
      * A kill: it counts toward the streak now (a new streak when more than {@code window} ns passed since the last kill;
      * negative: never), and its banner joins the queue ({@link #next}).
      */
     public void kill(long now, long window, boolean head, KillBannerModule.Pick shown) {
-        streak = streak > 0 && (window < 0 || now - lastKill <= window) ? streak + 1 : 1;
+        streak = continuing(now, window) ? streak + 1 : 1;
         lastKill = now;
         // A flood of kills: the five banners already waiting show it (the streak still counts every kill).
         if (queue.size() < 5) queue.addLast(new Queued(Math.min(5, streak), head, shown));
