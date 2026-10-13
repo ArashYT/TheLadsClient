@@ -152,7 +152,7 @@ final class Probe191Fixes {
 
                 if (inProgress && cur == 0) {
                     started++;
-                    if (lastInProgress && lastProgress >= 0 && lastProgress < duration - 1) {
+                    if (lastInProgress && lastProgress >= 0 && lastProgress < duration / 2) {
                         prematureRestart = true;
                     }
                 }
@@ -173,7 +173,8 @@ final class Probe191Fixes {
                     label, started, clicks, swingingTicks, totalTicks, prematureRestart);
                 if (vanilla) check(true, label + ": " + started + " of " + clicks + " clicks swing (vanilla skips the ones in a swing's first half)");
                 else {
-                    check(!prematureRestart, label + ": no swing restarted before reaching its end");
+                    check(!prematureRestart, label + ": no swing restarted before reaching halfway (click at progress 1 of 6 -> no restart)");
+                    check(started >= 9 && started <= 11, label + ": clicks past halfway restart the swing (click at progress 3 of 6 -> swingProgressInt reset to -1; " + started + " of " + clicks + ")");
                     check(swingingTicks >= totalTicks * 0.9, label + ": arm was swinging for >= 90% of ticks (" + swingingTicks + "/" + totalTicks + ")");
                 }
                 if (blocking) Probe151.key(mc.gameSettings.keyBindUseItem, false);
