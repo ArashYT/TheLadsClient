@@ -65,6 +65,7 @@ public partial class MainWindow : Window
                 settings.MainAccount = value;
                 settings.Save();
             }
+            ExperiencesPage?.RefreshState();
         }
     }
     // Alt-account launch override: when non-empty, the next launch uses this account
@@ -1174,6 +1175,7 @@ public partial class MainWindow : Window
             Log(string.IsNullOrEmpty(_launchAccountOverride)
                 ? "[Launcher] Launch account set to main account."
                 : $"[Launcher] Next launch will use alt account: {_launchAccountOverride} (main unchanged).");
+            ExperiencesPage?.RefreshState();
         }
     }
 
@@ -2099,6 +2101,13 @@ public partial class MainWindow : Window
             if (!accounts.Any(a => string.Equals(a.username, name, StringComparison.OrdinalIgnoreCase)))
                 accounts.Add(new AccountSummary(name, AccountIdentity.OfflineUuid(name), "offline"));
         return accounts;
+    }
+
+    internal AccountSummary? GetCurrentAccount()
+    {
+        string user = ResolveLaunchAccountName();
+        if (string.IsNullOrWhiteSpace(user)) return null;
+        return GetAccountSummaries().FirstOrDefault(a => string.Equals(a.username, user, StringComparison.OrdinalIgnoreCase));
     }
 
     private Task WriteLadsProfileAsync(string username)

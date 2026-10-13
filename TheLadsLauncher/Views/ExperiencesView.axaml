@@ -75,9 +75,13 @@
           <!-- Action Buttons -->
           <Grid Grid.Row="3" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto">
             <Button x:Name="ZeroSmpPlayBtn" Classes="launch" Content="Play Zero SMP" Height="46" MinWidth="180" FontSize="16" FontWeight="Bold" Click="ZeroSmpPlay_Click" />
-            <CheckBox x:Name="ZeroSmpAutoJoinCheck" Grid.Column="1" Content="Auto-join server" Margin="16,0,0,0" VerticalAlignment="Center" FontSize="12"
-                      ToolTip.Tip="Join the Zero SMP server automatically as soon as the game has loaded."
-                      IsCheckedChanged="ZeroSmpAutoJoin_Changed" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+              <CheckBox x:Name="ZeroSmpAutoJoinCheck" Content="Auto-join server" VerticalAlignment="Center" FontSize="12"
+                        ToolTip.Tip="Join the Zero SMP server automatically as soon as the game has loaded."
+                        IsCheckedChanged="ZeroSmpAutoJoin_Changed" />
+              <TextBlock x:Name="ZeroSmpInviteHint" Text="Zero SMP downloads are limited to invited accounts"
+                         Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" Margin="4,0,0,0" IsVisible="False" />
+            </StackPanel>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
               <Button x:Name="ZeroSmpFolderBtn" Classes="action" Content="Open folder" Height="36" Click="ZeroSmpFolder_Click" />

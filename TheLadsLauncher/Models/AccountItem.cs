@@ -24,4 +24,7 @@ public class AccountItem
 
     [JsonPropertyName("selected")]
     public bool Selected { get; set; } = false;
+
+    public static implicit operator Services.AccountSummary(AccountItem item) =>
+        new(item.Username, item.Uuid, item.AccountType, item.Selected);
 }

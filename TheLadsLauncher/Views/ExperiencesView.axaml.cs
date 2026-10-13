@@ -18,6 +18,15 @@ public partial class ExperiencesView : UserControl
     private static string DataDirectory => PathService.Instance.BaseDirectory;
     private MainWindow? Host => TopLevel.GetTopLevel(this) as MainWindow;
 
+    public AccountSummary? CurrentAccountOverride { get; set; }
+    public AccountSummary? CurrentAccount => CurrentAccountOverride ?? Host?.GetCurrentAccount();
+
+    public static ExperiencesService.ExperienceButtonState GetButtonState(bool installed, bool canDownload, bool isRunning = false, bool isBusy = false)
+        => ExperiencesService.GetZeroSmpButtonState(installed, canDownload, isRunning, isBusy);
+
+    public static ExperiencesService.ExperienceButtonState GetButtonState(bool installed, AccountSummary? account, bool isRunning = false, bool isBusy = false)
+        => ExperiencesService.GetZeroSmpButtonState(installed, account, isRunning, isBusy);
+
     private Process? _runningProcess;
     private CancellationTokenSource? _actionCts;
     private bool _syncingAutoJoin;
@@ -31,14 +40,29 @@ public partial class ExperiencesView : UserControl
 
     public async Task LoadAsync()
     {
-        await Dispatcher.UIThread.InvokeAsync(RefreshState);
+        await Dispatcher.UIThread.InvokeAsync(() => RefreshState());
     }
 
-    private void RefreshState()
+    public void RefreshState() => RefreshState(null);
+
+    public void RefreshState(AccountSummary? accountOverride)
     {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => RefreshState(accountOverride));
+            return;
+        }
+
+        if (accountOverride != null) CurrentAccountOverride = accountOverride;
+
         bool installed = ExperiencesService.IsInstalled(DataDirectory, ExperiencesService.ZeroSmp.Id);
         bool running = _runningProcess is { HasExited: false };
         bool busy = _actionCts != null;
+        bool canDownload = ExperiencesService.CanDownloadZeroSmp(CurrentAccount);
+
+        var btnState = ExperiencesService.GetZeroSmpButtonState(installed, canDownload, running, busy);
+        ZeroSmpPlayBtn.Content = btnState.Text;
+        ZeroSmpPlayBtn.IsEnabled = btnState.IsEnabled;
 
         if (running)
         {
@@ -47,12 +71,12 @@ public partial class ExperiencesView : UserControl
             ZeroSmpStatusBadgeText.Text = "Running";
             ZeroSmpStatusBadgeText.Foreground = Brush.Parse("#85E89D");
 
-            ZeroSmpPlayBtn.Content = "Game Running";
-            ZeroSmpPlayBtn.IsEnabled = false;
+            if (ZeroSmpInviteHint != null) ZeroSmpInviteHint.IsVisible = false;
+            ZeroSmpAutoJoinCheck.IsVisible = true;
         }
         else if (busy)
         {
-            ZeroSmpPlayBtn.IsEnabled = false;
+            // operation status remains in ZeroSmpStatusText
         }
         else if (installed)
         {
@@ -60,9 +84,10 @@ public partial class ExperiencesView : UserControl
             ZeroSmpStatusBadge.BorderBrush = Brush.Parse("#386B42");
             ZeroSmpStatusBadgeText.Text = "Installed";
             ZeroSmpStatusBadgeText.Foreground = Brush.Parse("#85E89D");
+            ZeroSmpStatusText.Text = "Ready to play";
 
-            ZeroSmpPlayBtn.Content = "Play Zero SMP";
-            ZeroSmpPlayBtn.IsEnabled = true;
+            if (ZeroSmpInviteHint != null) ZeroSmpInviteHint.IsVisible = false;
+            ZeroSmpAutoJoinCheck.IsVisible = true;
 
             var instance = ExperiencesService.GetInstance(DataDirectory, ExperiencesService.ZeroSmp.Id);
             if (instance != null && instance.MaxRamMb > 0)
@@ -70,19 +95,31 @@ public partial class ExperiencesView : UserControl
                 ZeroSmpRamBox.Value = instance.MaxRamMb;
             }
         }
+        else if (canDownload)
+        {
+            ZeroSmpStatusBadge.Background = Brush.Parse("#2A211D");
+            ZeroSmpStatusBadge.BorderBrush = Brush.Parse("#6B3838");
+            ZeroSmpStatusBadgeText.Text = "Not Installed";
+            ZeroSmpStatusBadgeText.Foreground = Brush.Parse("#E88585");
+            ZeroSmpStatusText.Text = "Not installed";
+
+            if (ZeroSmpInviteHint != null) ZeroSmpInviteHint.IsVisible = false;
+            ZeroSmpAutoJoinCheck.IsVisible = true;
+        }
         else
         {
             ZeroSmpStatusBadge.Background = Brush.Parse("#2A211D");
             ZeroSmpStatusBadge.BorderBrush = Brush.Parse("#6B3838");
             ZeroSmpStatusBadgeText.Text = "Not Installed";
             ZeroSmpStatusBadgeText.Foreground = Brush.Parse("#E88585");
+            ZeroSmpStatusText.Text = btnState.Hint ?? "Zero SMP downloads are limited to invited accounts";
 
-            ZeroSmpPlayBtn.Content = "Install & Play Zero SMP";
-            ZeroSmpPlayBtn.IsEnabled = true;
+            if (ZeroSmpInviteHint != null) ZeroSmpInviteHint.IsVisible = true;
+            ZeroSmpAutoJoinCheck.IsVisible = false;
         }
 
         ZeroSmpFolderBtn.IsEnabled = installed && !busy;
-        ZeroSmpReinstallBtn.IsEnabled = !busy && !running;
+        ZeroSmpReinstallBtn.IsEnabled = installed && !busy && !running;
 
         if (Host is { } host)
         {
@@ -107,6 +144,11 @@ public partial class ExperiencesView : UserControl
         _raceRetry = false;
 
         bool installed = ExperiencesService.IsInstalled(DataDirectory, ExperiencesService.ZeroSmp.Id);
+        if (!installed && !ExperiencesService.CanDownloadZeroSmp(CurrentAccount))
+        {
+            ZeroSmpStatusText.Text = "Zero SMP downloads are limited to invited accounts.";
+            return;
+        }
         _actionCts = new CancellationTokenSource();
         var token = _actionCts.Token;
 
