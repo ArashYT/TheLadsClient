@@ -29,7 +29,11 @@ public final class Toggles189 {
     /** QA (Probe170Sprint): every tick's sprint state and the state last sent to the server. */
     static SprintTrace trace;
 
-    static ToggleSprintModule toggles() { return (ToggleSprintModule) ModuleManager.getInstance().getModule(ToggleSprintModule.NAME); }
+    private static ToggleSprintModule module;
+    static ToggleSprintModule toggles() {
+        if (module == null) module = (ToggleSprintModule) ModuleManager.getInstance().getModule(ToggleSprintModule.NAME);
+        return module;
+    }
 
     public static void register() {
         ClientRegistry.registerKeyBinding(TOGGLE_SPRINT);

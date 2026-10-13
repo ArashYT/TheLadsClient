@@ -2,6 +2,7 @@
 package com.thelads.core.v1_8_9.feature;
 
 import com.thelads.core.client.bridge.LadsGameBridge;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.GlStateManager;
 
@@ -27,7 +28,27 @@ public final class TabTweaks189 {
 
     private TabTweaks189() {}
 
+    public static boolean dirty = true;
+    private static int ticks;
+    private static Object lastScreen;
+
+    public static void markDirty() { dirty = true; }
+
     public static void refresh() {
+        refresh(false);
+    }
+
+    public static void refresh(boolean force) {
+        if (!force && !dirty) {
+            Minecraft mc = Minecraft.getMinecraft();
+            if (mc.currentScreen != null || lastScreen != mc.currentScreen || ++ticks >= 10) {
+                dirty = true;
+            }
+            lastScreen = mc.currentScreen;
+            if (!dirty) return;
+        }
+        ticks = 0;
+        dirty = false;
         layout = Options189.enabled("TabList");
         ping = Options189.enabled("PingView");
         maxTabPlayers = layout ? (int) Options189.number("TabList", "Max Players", 80) : 80;

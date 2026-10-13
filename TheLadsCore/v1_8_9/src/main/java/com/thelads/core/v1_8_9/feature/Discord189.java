@@ -10,8 +10,10 @@ import net.minecraft.server.integrated.IntegratedServer;
 
 /** Samples game state on Minecraft's thread for Discord presence, as 26.x NativeDiscordPresence; DiscordRpcModule sends it. */
 public final class Discord189 {
+    private static int ticks;
     private Discord189() {}
     public static void tick(Minecraft mc) {
+        if (++ticks % 10 != 0) return;
         Module module = ModuleManager.getInstance().getModule("DiscordRPC");
         if (!(module instanceof DiscordRpcModule)) return;
         IntegratedServer server = mc.getIntegratedServer();

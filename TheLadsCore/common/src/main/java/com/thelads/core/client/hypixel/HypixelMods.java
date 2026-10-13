@@ -44,44 +44,47 @@ public final class HypixelMods {
 
     private HypixelMods() {}
 
-    /** The modules, for ModuleManager (category Hypixel). */
-    public static List<Module> modules() {
-        List<Module> modules = new ArrayList<>();
-        Module gg = new Module(AUTO_GG, "Hypixel: says gg in all chat when a game ends, in every mode. A second message is optional (empty: none).");
-        gg.addOption(new TextOption("Message", "gg"));
-        gg.addOption(new SliderOption("Delay seconds", 1, 0, 10, 0.5));
-        gg.addOption(new TextOption("Second Message", ""));
-        gg.addOption(new SliderOption("Second Message seconds", 2, 0, 10, 0.5));
-        gg.setEnabled(true);
-        modules.add(gg);
-        modules.add(new Module(AUTO_FRIEND, "Hypixel: accepts every friend request as it arrives. Off by default: anyone could then add you."));
-        Module tip = new Module(AUTO_TIP, "Hypixel: tips every active network booster (/tip all) on a timer while you play. Stops for the session if the server "
-            + "does not know the command.");
-        tip.addOption(new SliderOption("Every minutes", 15, 5, 60, 5));
-        tip.setEnabled(true);
-        modules.add(tip);
-        Module again = new Module(PLAY_AGAIN, "Hypixel: queues the same mode again (/play) when a game ends, after the delay. Asks the server which mode "
-            + "you are in (/locraw) when a world loads.");
-        again.addOption(new SliderOption("Delay seconds", 3, 0, 15, 1));
-        modules.add(again);
-        modules.add(new Module(AUTO_WHO, "Hypixel: lists the players in your game (/who) as it starts."));
-        Module cleanup = new Module(CLEANUP, "Hypixel: hides lobby spam from chat: rank join messages, Mystery Box and Soul Well finds, gifts, tips, "
-            + "boosters, store ads, Watchdog announcements and Karma; optionally reward lines and other players' ads.");
-        for (HypixelChat.Spam kind : HypixelChat.Spam.values()) cleanup.addOption(new BoolOption(kind.option, kind.on));
-        cleanup.setEnabled(true);
-        modules.add(cleanup);
-        return modules;
+    public static final String HYPIXEL_MODS = "HYPIXEL Mods";
+
+    /** The grouped module, for ModuleManager (category Hypixel). */
+    public static Module module() {
+        Module m = new Module(HYPIXEL_MODS, "Hypixel only. Auto GG says gg when a game ends (second message optional); Auto Friend accepts "
+            + "every friend request (off by default: anyone could then add you); Auto Tip tips boosters (/tip all) on a timer; Auto Play Again "
+            + "queues the same mode (/play); Auto Who lists the players (/who) as a game starts; Chat Cleanup hides lobby spam.");
+        m.addOption(new BoolOption(AUTO_GG, true));
+        m.addOption(new TextOption(AUTO_GG + ": Message", "gg"));
+        m.addOption(new SliderOption(AUTO_GG + ": Delay seconds", 1, 0, 10, 0.5));
+        m.addOption(new TextOption(AUTO_GG + ": Second Message", ""));
+        m.addOption(new SliderOption(AUTO_GG + ": Second Message seconds", 2, 0, 10, 0.5));
+        m.addOption(new BoolOption(AUTO_FRIEND, false));
+        m.addOption(new BoolOption(AUTO_TIP, true));
+        m.addOption(new SliderOption(AUTO_TIP + ": Every minutes", 15, 5, 60, 5));
+        m.addOption(new BoolOption(PLAY_AGAIN, false));
+        m.addOption(new SliderOption(PLAY_AGAIN + ": Delay seconds", 3, 0, 15, 1));
+        m.addOption(new BoolOption(AUTO_WHO, false));
+        m.addOption(new BoolOption(CLEANUP, true));
+        for (HypixelChat.Spam kind : HypixelChat.Spam.values()) m.addOption(new BoolOption(CLEANUP + ": " + kind.option, kind.on));
+        m.setEnabled(true);
+        return m;
     }
 
-    private static Module module(String name) { return ModuleManager.getInstance().getModule(name); }
-    private static boolean on(String name) { Module m = module(name); return m != null && m.isEnabled(); }
-    private static Option option(String module, String name) { Module m = module(module); return m == null ? null : m.getOption(name); }
-    private static long seconds(String module, String name, double fallback) {
-        Option o = option(module, name);
+    private static Module registered() { return ModuleManager.getInstance().getModule(HYPIXEL_MODS); }
+    private static boolean on(String feature) {
+        Module m = registered();
+        if (m == null || !m.isEnabled()) return false;
+        Option o = m.getOption(feature);
+        return o instanceof BoolOption b && b.get();
+    }
+    private static Option option(String feature, String name) {
+        Module m = registered();
+        return m == null ? null : m.getOption(feature + ": " + name);
+    }
+    private static long seconds(String feature, String name, double fallback) {
+        Option o = option(feature, name);
         return (long) ((o instanceof SliderOption s ? s.getValue() : fallback) * SECOND);
     }
-    private static String text(String module, String name) {
-        Option o = option(module, name);
+    private static String text(String feature, String name) {
+        Option o = option(feature, name);
         String text = o instanceof TextOption t ? t.getValue().replace('\n', ' ').trim() : "";
         return text.length() > 96 ? text.substring(0, 96) : text;
     }

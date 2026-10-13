@@ -25,8 +25,7 @@ public final class Hypixel189 {
     private Hypixel189() {}
 
     public static void register() {
-        ModuleSupport.registerBuiltIn(HypixelMods.AUTO_GG, HypixelMods.AUTO_FRIEND, HypixelMods.AUTO_TIP, HypixelMods.PLAY_AGAIN,
-            HypixelMods.AUTO_WHO, HypixelMods.CLEANUP);
+        ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS);
         MinecraftForge.EVENT_BUS.register(new Hypixel189());
     }
 
