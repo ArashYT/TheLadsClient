@@ -22,6 +22,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
     public void onInitializeClient() {
         LOGGER.info("Initializing TheLadsCore for Minecraft 1.20.1...");
         LadsGameBridge.set(new VanillaGameBridge1201());
+        com.thelads.core.security.AntiInjectDetector.init();
         ConfigManager.load();
         NativeKeyBindings1201.init();
         NativeFeatures1201.initialize();

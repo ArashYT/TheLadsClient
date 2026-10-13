@@ -448,4 +448,25 @@ public class VanillaGameBridge26 implements LadsGameBridge {
             ? net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.ANVIL_LAND, 1.8f, volume * .5f)
             : net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.PLAYER_LEVELUP, 1f, volume));
     }
+
+    @Override
+    public void disconnectWithReason(String title, String message) {
+        Minecraft mc = Minecraft.getInstance();
+        mc.execute(() -> {
+            boolean local = mc.isLocalServer();
+            if (mc.level != null) {
+                mc.level.disconnect(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
+                if (local) mc.disconnectWithSavingScreen();
+                else mc.disconnectWithProgressScreen();
+            }
+            net.minecraft.client.gui.screens.Screen parent = local
+                ? new net.minecraft.client.gui.screens.TitleScreen()
+                : new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new net.minecraft.client.gui.screens.TitleScreen());
+            mc.gui.setScreen(new net.minecraft.client.gui.screens.DisconnectedScreen(
+                parent,
+                net.minecraft.network.chat.Component.literal(title),
+                net.minecraft.network.chat.Component.literal(message)
+            ));
+        });
+    }
 }

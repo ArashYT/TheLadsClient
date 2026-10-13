@@ -470,4 +470,28 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
             if (badge.getType() == net.fabricmc.loader.api.metadata.CustomValue.CvType.STRING && "library".equals(badge.getAsString())) return true;
         return false;
     }
+
+    @Override
+    public void disconnectWithReason(String title, String message) {
+        Minecraft mc = Minecraft.getInstance();
+        mc.execute(() -> {
+            boolean local = mc.isLocalServer();
+            if (mc.level != null) {
+                mc.level.disconnect();
+                if (local) {
+                    mc.clearLevel(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(net.minecraft.network.chat.Component.translatable("menu.savingLevel")));
+                } else {
+                    mc.clearLevel();
+                }
+            }
+            net.minecraft.client.gui.screens.Screen parent = local
+                ? new net.minecraft.client.gui.screens.TitleScreen()
+                : new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new net.minecraft.client.gui.screens.TitleScreen());
+            mc.setScreen(new net.minecraft.client.gui.screens.DisconnectedScreen(
+                parent,
+                net.minecraft.network.chat.Component.literal(title),
+                net.minecraft.network.chat.Component.literal(message)
+            ));
+        });
+    }
 }

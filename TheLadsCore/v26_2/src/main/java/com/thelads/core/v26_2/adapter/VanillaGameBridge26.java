@@ -396,4 +396,25 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     }
 
     @Override public void previewKillBannerSound(String skin, float volume) { com.thelads.core.v26_2.feature.NativeKillBanner.previewSound(skin, volume); }
+
+    @Override
+    public void disconnectWithReason(String title, String message) {
+        Minecraft mc = Minecraft.getInstance();
+        mc.execute(() -> {
+            boolean local = mc.isLocalServer();
+            if (mc.level != null) {
+                mc.level.disconnect(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
+                if (local) mc.disconnectWithSavingScreen();
+                else mc.disconnectWithProgressScreen();
+            }
+            net.minecraft.client.gui.screens.Screen parent = local
+                ? new net.minecraft.client.gui.screens.TitleScreen()
+                : new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new net.minecraft.client.gui.screens.TitleScreen());
+            mc.gui.setScreen(new net.minecraft.client.gui.screens.DisconnectedScreen(
+                parent,
+                net.minecraft.network.chat.Component.literal(title),
+                net.minecraft.network.chat.Component.literal(message)
+            ));
+        });
+    }
 }
