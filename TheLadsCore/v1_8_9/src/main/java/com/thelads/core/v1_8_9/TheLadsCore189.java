@@ -52,6 +52,7 @@ public class TheLadsCore189 {
         {"Flashback Settings", "Flashback"}};
 
     private static String windowTitle = "The Lads Client";
+    private static int titleTicks;
 
     public TheLadsCore189() {
         // JInput's jar is sealed: LaunchClassLoader defining its classes logs "has a security seal ... not secure" once per
@@ -192,12 +193,18 @@ public class TheLadsCore189 {
     };
 
     private static int glErrorOffs;
+    private static boolean glErrorsDisabled;
 
-    /** Vanilla's per-frame glGetError calls (Minecraft.checkGLError) go once the game has started; asserted every tick in case a mod turns them back on. */
+    /** Vanilla's per-frame glGetError calls (Minecraft.checkGLError) go once the game has started; asserted on startup. */
     private static void glErrorChecks(Minecraft mc) {
+        if (glErrorsDisabled) return;
         com.thelads.core.v1_8_9.mixin.MinecraftGlErrorsAccessor errors = (com.thelads.core.v1_8_9.mixin.MinecraftGlErrorsAccessor) mc;
-        if (!errors.ladsGlErrors()) return;
+        if (!errors.ladsGlErrors()) {
+            glErrorsDisabled = true;
+            return;
+        }
         errors.ladsSetGlErrors(false);
+        glErrorsDisabled = true;
         if (++glErrorOffs <= 3) LOGGER.info("GL error checking switched off (vanilla asks the driver for errors after most render steps), time {}", glErrorOffs);
     }
 
@@ -231,7 +238,7 @@ public class TheLadsCore189 {
             com.thelads.core.v1_8_9.feature.HudCache189.free();
             com.thelads.core.v1_8_9.feature.Autohide189.free();
         }
-        glErrorChecks(mc);
+        if (!glErrorsDisabled) glErrorChecks(mc);
         OldAnimations189.tick(mc);
         com.thelads.core.v1_8_9.feature.PaperDoll189.tick(mc);
         com.thelads.core.v1_8_9.feature.DynamicLights189.tick(mc);
@@ -242,12 +249,14 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.feature.Toggles189.tick(mc);
         com.thelads.core.v1_8_9.feature.Fullbright189.tick(mc);
 
-        try {
-            String title = org.lwjgl.opengl.Display.getTitle();
-            if (title == null || !title.startsWith(windowTitle)) {
-                org.lwjgl.opengl.Display.setTitle(windowTitle);
-            }
-        } catch (Throwable ignored) {}
+        if (titleTicks++ % 40 == 0) {
+            try {
+                String title = org.lwjgl.opengl.Display.getTitle();
+                if (title == null || !title.startsWith(windowTitle)) {
+                    org.lwjgl.opengl.Display.setTitle(windowTitle);
+                }
+            } catch (Throwable ignored) {}
+        }
 
         RawMouse189.install(mc);
         TabTweaks189.refresh();
