@@ -115,10 +115,18 @@ public class ModpackJoinTests
     }
 
     [Fact]
-    public void AutoJoinIsOffByDefaultAndTheServerIsTheExperiencesOwn()
+    public void AutoJoinDefaultsToTrueForNewAndAbsentSettings_AndPreservesSavedFalse()
     {
-        Assert.False(new LauncherSettings().ZeroSmpAutoJoin);
-        Assert.True(System.Text.Json.JsonSerializer.Deserialize<LauncherSettings>("{\"ZeroSmpAutoJoin\":true}")!.ZeroSmpAutoJoin); // what settings.json keeps
+        // Defaults to true for new / absent settings
+        Assert.True(new LauncherSettings().ZeroSmpAutoJoin);
+        Assert.True(System.Text.Json.JsonSerializer.Deserialize<LauncherSettings>("{}")!.ZeroSmpAutoJoin);
+
+        // An existing saved false must stay false
+        Assert.False(System.Text.Json.JsonSerializer.Deserialize<LauncherSettings>("{\"ZeroSmpAutoJoin\":false}")!.ZeroSmpAutoJoin);
+
+        // Saved true stays true
+        Assert.True(System.Text.Json.JsonSerializer.Deserialize<LauncherSettings>("{\"ZeroSmpAutoJoin\":true}")!.ZeroSmpAutoJoin);
+
         Assert.Equal("nikzerosmp.my.pebble.host", ExperiencesService.ZeroSmp.ServerAddress);
     }
 }

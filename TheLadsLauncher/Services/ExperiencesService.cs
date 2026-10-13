@@ -58,38 +58,15 @@ public static class ExperiencesService
 
     public static readonly IReadOnlyList<ExperienceDefinition> AllExperiences = new[] { ZeroSmp };
 
-    public static readonly string[] ZeroSmpAllowedNames = { "Arash_YT", "TTVArashLIVE", "Vools" };
-
     public sealed record ExperienceButtonState(string Text, bool IsEnabled, string? Hint = null);
 
-    /// <summary>True only when the currently selected account is an online Microsoft account and its name is on the allowlist.</summary>
-    public static bool CanDownloadZeroSmp(AccountSummary? account)
-    {
-        if (account == null) return false;
-        if (string.IsNullOrWhiteSpace(account.username)) return false;
-        if (!string.Equals(account.type, "microsoft", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(account.type, "msa", StringComparison.OrdinalIgnoreCase))
-            return false;
-        return ZeroSmpAllowedNames.Any(name => string.Equals(name, account.username, StringComparison.OrdinalIgnoreCase));
-    }
-
-    public static bool CanDownloadZeroSmp(string? username, string? accountType)
-    {
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(accountType)) return false;
-        return CanDownloadZeroSmp(new AccountSummary(username, "", accountType));
-    }
-
-    public static ExperienceButtonState GetZeroSmpButtonState(bool installed, bool canDownload, bool isRunning = false, bool isBusy = false)
+    public static ExperienceButtonState GetZeroSmpButtonState(bool installed, bool isRunning = false, bool isBusy = false)
     {
         if (isRunning) return new ExperienceButtonState("Game Running", false);
         if (isBusy) return new ExperienceButtonState("Please wait...", false);
         if (installed) return new ExperienceButtonState("Play Zero SMP", true);
-        if (canDownload) return new ExperienceButtonState("Install & Play Zero SMP", true);
-        return new ExperienceButtonState("Invite only", false, "Zero SMP downloads are limited to invited accounts");
+        return new ExperienceButtonState("Install & Play Zero SMP", true);
     }
-
-    public static ExperienceButtonState GetZeroSmpButtonState(bool installed, AccountSummary? account, bool isRunning = false, bool isBusy = false)
-        => GetZeroSmpButtonState(installed, CanDownloadZeroSmp(account), isRunning, isBusy);
 
     public static string InstanceDirectory(string baseDirectory, string experienceId) =>
         Path.Combine(Modpacks.Root(baseDirectory), experienceId);

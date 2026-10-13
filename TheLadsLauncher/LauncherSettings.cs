@@ -41,7 +41,7 @@ public class LauncherSettings
     public bool AutoFixCrashes { get; set; } = true;
     public bool AutoRelaunchOnCrash { get; set; } = false;
     public bool AutoRejoinServer { get; set; } = false;
-    public bool ZeroSmpAutoJoin { get; set; } = false;   // Experiences tab: Zero SMP joins its server as soon as the game has loaded
+    public bool ZeroSmpAutoJoin { get; set; } = true;    // Experiences tab: Zero SMP joins its server as soon as the game has loaded
     public string LastServerIp { get; set; } = "";
     public int LastServerPort { get; set; } = 25565;
     public bool MinimizeOnLaunch { get; set; } = true;

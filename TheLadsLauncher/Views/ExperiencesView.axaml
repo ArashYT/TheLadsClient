@@ -79,8 +79,6 @@
               <CheckBox x:Name="ZeroSmpAutoJoinCheck" Content="Auto-join server" VerticalAlignment="Center" FontSize="12"
                         ToolTip.Tip="Join the Zero SMP server automatically as soon as the game has loaded."
                         IsCheckedChanged="ZeroSmpAutoJoin_Changed" />
-              <TextBlock x:Name="ZeroSmpInviteHint" Text="Zero SMP downloads are limited to invited accounts"
-                         Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" Margin="4,0,0,0" IsVisible="False" />
             </StackPanel>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
