@@ -123,7 +123,7 @@ public final class LadsSettingsScreen {
     /** QA: the control was drawn whole inside the page's scrolling area by the last render (a click at its middle reaches it). */
     public boolean revealed(String id) {
         Rect r = controlBounds(id);
-        return r != null && (!contentControl(id) || r.y >= viewport.y && r.y + r.height <= viewport.y + viewport.height);
+        return r != null && Math.abs(displayedScroll - scrollOffset) < 1 && (!contentControl(id) || r.y >= viewport.y && r.y + r.height <= viewport.y + viewport.height);
     }
     /** Ids of the controls drawn by the last render (QA scripts click them by id). */
     public List<String> controlIds() { return controls.stream().map(c -> c.id).toList(); }

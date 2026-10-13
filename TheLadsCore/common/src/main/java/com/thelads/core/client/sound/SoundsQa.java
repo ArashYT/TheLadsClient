@@ -409,7 +409,8 @@ public final class SoundsQa {
         // A delete: Combo 2's sound, asked first, gone from the folder and the slot.
         steps.add(() -> reveal("option:Combo 2:choose"));
         steps.add(() -> {
-            clickScreen("option:Combo 2:choose");
+            if (!menu.soundLibrary().isOpen()) clickScreen("option:Combo 2:choose");
+            if (!menu.soundLibrary().isOpen()) return false;
             type("qa-delete");
             wait = 3;
             return true;
