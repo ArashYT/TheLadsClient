@@ -43,8 +43,7 @@ public final class HypixelQa {
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
-    private static final String[] MODULES = {HypixelMods.AUTO_GG, HypixelMods.AUTO_FRIEND, HypixelMods.AUTO_TIP, HypixelMods.PLAY_AGAIN,
-        HypixelMods.AUTO_WHO, HypixelMods.CLEANUP, "PingHUD", "PingView"};
+    private static final String[] MODULES = {HypixelMods.HYPIXEL_MODS, "PingHUD", "PingView"};
     private final List<String> failures = new ArrayList<>();
     private final Map<Module, Boolean> enabled = new LinkedHashMap<>();
     private final Map<Option, JsonElement> options = new LinkedHashMap<>();
@@ -85,9 +84,14 @@ public final class HypixelQa {
                     m.getOptions().forEach(Option::reset);
                     m.setEnabled(true);
                 }
-                module(HypixelMods.AUTO_GG).getOption("Delay seconds").load(new JsonPrimitive(0.5));
-                module(HypixelMods.AUTO_GG).getOption("Second Message").load(new JsonPrimitive("good game"));
-                module(HypixelMods.PLAY_AGAIN).getOption("Delay seconds").load(new JsonPrimitive(5)); // after both gg lines
+                Module hyp = module(HypixelMods.HYPIXEL_MODS);
+                for (String feature : List.of(HypixelMods.AUTO_GG, HypixelMods.AUTO_FRIEND, HypixelMods.AUTO_TIP, HypixelMods.PLAY_AGAIN, HypixelMods.AUTO_WHO, HypixelMods.CLEANUP)) {
+                    Option o = hyp.getOption(feature);
+                    if (o instanceof com.thelads.core.config.BoolOption b) b.set(true);
+                }
+                hyp.getOption(HypixelMods.AUTO_GG + ": Delay seconds").load(new JsonPrimitive(0.5));
+                hyp.getOption(HypixelMods.AUTO_GG + ": Second Message").load(new JsonPrimitive("good game"));
+                hyp.getOption(HypixelMods.PLAY_AGAIN + ": Delay seconds").load(new JsonPrimitive(5)); // after both gg lines
                 HypixelMods.SENT.clear();
                 hiddenBefore = HypixelMods.hidden;
                 game.command("scoreboard objectives add ladsqa dummy");
@@ -172,15 +176,14 @@ public final class HypixelQa {
                 wait = 10;
             }
             case 15 -> {
-                check(menu.visibleModuleNames().containsAll(List.of(HypixelMods.AUTO_GG, HypixelMods.AUTO_FRIEND, HypixelMods.AUTO_TIP,
-                    HypixelMods.PLAY_AGAIN, HypixelMods.AUTO_WHO, HypixelMods.CLEANUP)), "the Hypixel category lists the six modules " + menu.visibleModuleNames());
+                check(menu.visibleModuleNames().equals(List.of(HypixelMods.HYPIXEL_MODS)), "the Hypixel category lists the one module " + menu.visibleModuleNames());
                 game.screenshot("hypixel-settings");
                 wait = 5;
             }
-            case 16 -> { menu = game.openSettings(HypixelMods.CLEANUP); wait = 10; }
-            case 17 -> { game.screenshot("hypixel-chat-cleanup"); wait = 5; }
-            case 18 -> { menu = game.openSettings(HypixelMods.AUTO_GG); wait = 10; }
-            case 19 -> { game.screenshot("hypixel-auto-gg"); wait = 5; }
+            case 16 -> { menu = game.openSettings(HypixelMods.HYPIXEL_MODS); wait = 10; }
+            case 17 -> { game.screenshot("hypixel-mods"); wait = 5; }
+            case 18 -> { game.screenshot("hypixel-auto-gg"); wait = 5; }
+            case 19 -> { game.screenshot("hypixel-chat-cleanup"); wait = 5; }
             default -> {
                 game.closeScreen();
                 HypixelSafetyManager.qaOverride = false;

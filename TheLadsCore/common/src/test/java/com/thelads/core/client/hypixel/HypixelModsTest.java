@@ -5,8 +5,12 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.thelads.core.client.HypixelSafetyManager;
 import com.thelads.core.client.bridge.DefaultGameBridge;
 import com.thelads.core.client.bridge.LadsGameBridge;
+import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
+import com.thelads.core.config.Option;
+import com.thelads.core.config.SliderOption;
+import com.thelads.core.config.TextOption;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -41,35 +45,40 @@ class HypixelModsTest {
     };
 
     @BeforeEach void setUp() {
-        ModuleManager.getInstance().getModule(HypixelMods.AUTO_FRIEND).setEnabled(true);
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        m.getOptions().forEach(Option::reset);
+        m.setEnabled(true);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_FRIEND)).set(true);
         LadsGameBridge.set(game);
         HypixelMods.resetForTest();
-        for (String name : new String[] {HypixelMods.AUTO_GG, HypixelMods.AUTO_FRIEND, HypixelMods.AUTO_TIP, HypixelMods.PLAY_AGAIN, HypixelMods.AUTO_WHO, HypixelMods.CLEANUP}) {
-            Module m = ModuleManager.getInstance().getModule(name);
-            m.getOptions().forEach(o -> o.reset());
-        }
     }
 
     @AfterEach void tearDown() {
         HypixelMods.tick(game, null, null, 0);
         LadsGameBridge.set(new DefaultGameBridge());
         HypixelSafetyManager.qaOverride = false;
-        ModuleManager.getInstance().getModule(HypixelMods.PLAY_AGAIN).setEnabled(false);
-        ModuleManager.getInstance().getModule(HypixelMods.AUTO_WHO).setEnabled(false);
-        ModuleManager.getInstance().getModule(HypixelMods.AUTO_TIP).setEnabled(true);
-        ModuleManager.getInstance().getModule(HypixelMods.AUTO_FRIEND).setEnabled(false);
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        m.getOptions().forEach(Option::reset);
+        m.setEnabled(true);
     }
 
     @Test void defaults() {
+        Module m = HypixelMods.module();
+        assertEquals(HypixelMods.HYPIXEL_MODS, m.getName());
+        assertTrue(m.getDescription().startsWith("Hypixel only.") && m.getDescription().contains("anyone could then add you"));
+        assertTrue(m.isEnabled());
         java.util.Map<String, Boolean> on = new java.util.HashMap<>();
-        for (Module m : HypixelMods.modules()) on.put(m.getName(), m.isEnabled());
+        for (String name : new String[] {HypixelMods.AUTO_GG, HypixelMods.AUTO_FRIEND, HypixelMods.AUTO_TIP, HypixelMods.PLAY_AGAIN, HypixelMods.AUTO_WHO, HypixelMods.CLEANUP}) {
+            on.put(name, ((BoolOption) m.getOption(name)).get());
+        }
         assertEquals(java.util.Map.of(HypixelMods.AUTO_GG, true, HypixelMods.AUTO_TIP, true, HypixelMods.CLEANUP, true,
             HypixelMods.AUTO_FRIEND, false, HypixelMods.PLAY_AGAIN, false, HypixelMods.AUTO_WHO, false), on, "Auto Friend: anyone could add you, opt in");
     }
 
     @Test void locrawAnswerAfterAnotherCommandAndPingMissesReset() {
-        ModuleManager.getInstance().getModule(HypixelMods.PLAY_AGAIN).setEnabled(true);
-        ModuleManager.getInstance().getModule(HypixelMods.AUTO_FRIEND).setEnabled(true);
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN)).set(true);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_FRIEND)).set(true);
         HypixelMods.tick(game, world, connection, 0);
         HypixelMods.tick(game, world, connection, 2 * S);
         HypixelMods.chat("Friend request from Steve", 2 * S);
@@ -299,10 +308,11 @@ class HypixelModsTest {
     }
 
     @Test void autoGgPlayAgainAndTheRateLimit() {
-        ModuleManager.getInstance().getModule(HypixelMods.PLAY_AGAIN).setEnabled(true);
-        ModuleManager.getInstance().getModule(HypixelMods.AUTO_TIP).setEnabled(false);
-        ((com.thelads.core.config.TextOption) ModuleManager.getInstance().getModule(HypixelMods.AUTO_GG).getOption("Second Message")).setValue("good game");
-        ((com.thelads.core.config.SliderOption) ModuleManager.getInstance().getModule(HypixelMods.AUTO_GG).getOption("Second Message seconds")).setValue(0);
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN)).set(true);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_TIP)).set(false);
+        ((TextOption) m.getOption(HypixelMods.AUTO_GG + ": Second Message")).setValue("good game");
+        ((SliderOption) m.getOption(HypixelMods.AUTO_GG + ": Second Message seconds")).setValue(0);
         HypixelMods.tick(game, world, connection, 0);
         HypixelMods.tick(game, world, connection, 2 * S);
         assertEquals(List.of("/locraw"), sent);
@@ -359,14 +369,15 @@ class HypixelModsTest {
     }
 
     @Test void autoWhoAndCleanupOnlyOnHypixel() {
-        ModuleManager.getInstance().getModule(HypixelMods.AUTO_WHO).setEnabled(true);
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_WHO)).set(true);
         HypixelMods.tick(game, world, connection, 0);
         assertTrue(HypixelMods.chat("[MVP+] Steve joined the lobby!", S));
         assertFalse(HypixelMods.chat("[MVP+] Steve: hello", S));
         HypixelMods.chat("§eThe game starts in §r§c1§r§e second!", S);
         for (long t = S; t <= 5 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
         assertEquals(List.of("/who"), sent);
-        ModuleManager.getInstance().getModule(HypixelMods.CLEANUP).getOption("Lobby joins").load(new com.google.gson.JsonPrimitive(false));
+        m.getOption(HypixelMods.CLEANUP + ": Lobby joins").load(new com.google.gson.JsonPrimitive(false));
         assertFalse(HypixelMods.chat("[MVP+] Steve joined the lobby!", 6 * S), "that kind switched off");
         server = "play.example.net";
         sent.clear();
@@ -377,5 +388,41 @@ class HypixelModsTest {
         assertTrue(sent.isEmpty(), "off Hypixel nothing is sent: " + sent);
         HypixelSafetyManager.qaOverride = true;
         assertTrue(HypixelSafetyManager.isHypixel(), "the QA override makes any server Hypixel");
+    }
+
+    @Test void featureDoesNotRunWhenGroupModuleDisabled() {
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_FRIEND)).set(true);
+        m.setEnabled(false);
+        HypixelMods.tick(game, world, connection, 0);
+        HypixelMods.chat("Friend request from Steve", S);
+        for (long t = S; t <= 5 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertTrue(sent.isEmpty(), "group module is disabled: nothing is sent");
+        assertFalse(HypixelMods.chat("[MVP+] Steve joined the lobby!", S), "cleanup disabled too");
+    }
+
+    @Test void configMigration() {
+        com.google.gson.JsonObject modules = new com.google.gson.JsonObject();
+        com.google.gson.JsonObject oldFriend = new com.google.gson.JsonObject();
+        oldFriend.addProperty("enabled", true);
+        modules.add("Auto Friend", oldFriend);
+        com.google.gson.JsonObject oldGg = new com.google.gson.JsonObject();
+        oldGg.addProperty("enabled", false);
+        com.google.gson.JsonObject oldGgOpts = new com.google.gson.JsonObject();
+        oldGgOpts.addProperty("Message", "custom gg");
+        oldGg.add("options", oldGgOpts);
+        modules.add("Auto GG", oldGg);
+
+        com.thelads.core.config.ConfigManager.migrateHypixelMods(modules);
+
+        assertFalse(modules.has("Auto Friend"));
+        assertFalse(modules.has("Auto GG"));
+        assertTrue(modules.has("HYPIXEL Mods"));
+        com.google.gson.JsonObject group = modules.getAsJsonObject("HYPIXEL Mods");
+        assertTrue(group.get("enabled").getAsBoolean());
+        com.google.gson.JsonObject opts = group.getAsJsonObject("options");
+        assertTrue(opts.get("Auto Friend").getAsBoolean());
+        assertFalse(opts.get("Auto GG").getAsBoolean());
+        assertEquals("custom gg", opts.get("Auto GG: Message").getAsString());
     }
 }
