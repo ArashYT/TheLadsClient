@@ -366,7 +366,7 @@ public class ConfigManager {
         }
     }
 
-    /** 1.9.2: grouped the 6 Hypixel modules into "HYPIXEL Mods". */
+    /** 1.9.2 grouped the 6 Hypixel modules into "HYPIXEL Mods": each old module's on/off becomes its switch, its options "<module>: <option>". */
     public static void migrateHypixelMods(JsonObject modules) {
         String[] oldNames = {"Auto GG", "Auto Friend", "Auto Tip", "Auto Play Again", "Auto Who", "Chat Cleanup"};
         boolean found = false;
@@ -403,6 +403,7 @@ public class ConfigManager {
         }
     }
 
+    /** 1.4.5 moved ClientTools "Chat timestamps" and the HideChatIndicators module into Chat options; keeps whatever the user had. */
     static void migrateChat(JsonObject modules) {
         JsonElement stamps = legacy(modules, "ClientTools", "options", "Chat timestamps");
         JsonElement indicators = legacy(modules, "HideChatIndicators", "enabled");

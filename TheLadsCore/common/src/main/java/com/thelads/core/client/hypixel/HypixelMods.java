@@ -48,27 +48,22 @@ public final class HypixelMods {
 
     /** The grouped module, for ModuleManager (category Hypixel). */
     public static Module module() {
-        Module m = new Module(HYPIXEL_MODS, "active only on Hypixel.");
-        
+        Module m = new Module(HYPIXEL_MODS, "Hypixel only. Auto GG says gg when a game ends (second message optional); Auto Friend accepts "
+            + "every friend request (off by default: anyone could then add you); Auto Tip tips boosters (/tip all) on a timer; Auto Play Again "
+            + "queues the same mode (/play); Auto Who lists the players (/who) as a game starts; Chat Cleanup hides lobby spam.");
         m.addOption(new BoolOption(AUTO_GG, true));
         m.addOption(new TextOption(AUTO_GG + ": Message", "gg"));
         m.addOption(new SliderOption(AUTO_GG + ": Delay seconds", 1, 0, 10, 0.5));
         m.addOption(new TextOption(AUTO_GG + ": Second Message", ""));
         m.addOption(new SliderOption(AUTO_GG + ": Second Message seconds", 2, 0, 10, 0.5));
-        
         m.addOption(new BoolOption(AUTO_FRIEND, false));
-        
         m.addOption(new BoolOption(AUTO_TIP, true));
         m.addOption(new SliderOption(AUTO_TIP + ": Every minutes", 15, 5, 60, 5));
-        
         m.addOption(new BoolOption(PLAY_AGAIN, false));
         m.addOption(new SliderOption(PLAY_AGAIN + ": Delay seconds", 3, 0, 15, 1));
-        
         m.addOption(new BoolOption(AUTO_WHO, false));
-        
         m.addOption(new BoolOption(CLEANUP, true));
         for (HypixelChat.Spam kind : HypixelChat.Spam.values()) m.addOption(new BoolOption(CLEANUP + ": " + kind.option, kind.on));
-        
         m.setEnabled(true);
         return m;
     }

@@ -65,7 +65,7 @@ class HypixelModsTest {
     @Test void defaults() {
         Module m = HypixelMods.module();
         assertEquals(HypixelMods.HYPIXEL_MODS, m.getName());
-        assertEquals("active only on Hypixel.", m.getDescription());
+        assertTrue(m.getDescription().startsWith("Hypixel only.") && m.getDescription().contains("anyone could then add you"));
         assertTrue(m.isEnabled());
         java.util.Map<String, Boolean> on = new java.util.HashMap<>();
         for (String name : new String[] {HypixelMods.AUTO_GG, HypixelMods.AUTO_FRIEND, HypixelMods.AUTO_TIP, HypixelMods.PLAY_AGAIN, HypixelMods.AUTO_WHO, HypixelMods.CLEANUP}) {
