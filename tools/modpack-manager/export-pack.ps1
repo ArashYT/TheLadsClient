@@ -22,11 +22,12 @@ param(
     # Default: the newest patch next to this script, else 1.0.0. Patches the instance does not reflect stay pending (see appliedPatches).
     [string]$PackVersion = "",
     [string]$PatchesDir = "$PSScriptRoot\patches",
+    [string]$CoreJar = "",
     [string[]]$IncludeDirs = @("config", "defaultconfigs", "configureddefaults", "resourcepacks", "shaderpacks"),
     [string[]]$IncludeFiles = @("servers.dat"),
     # Relative to the game folder, '/' separators; a trailing * matches the rest of the path.
     # resourceful-config-web.json holds a per-install web UI password.
-    [string[]]$Exclude = @("config/worldedit/.archive-unpack/*", "config/jei/world/*", "config/resourceful-config-web.json", "*.backup", "*.bak", "*.log")
+    [string[]]$Exclude = @("config/worldedit/.archive-unpack/*", "config/jei/world/*", "config/resourceful-config-web.json", "config/voicechat/username-cache.json", "*username-cache*", "*hs_err_pid*", "*.mixin.out*", "*.backup", "*.bak", "*.log")
 )
 
 Set-StrictMode -Off
@@ -129,8 +130,13 @@ try {
     # Mods: enabled jars only (a .jar.disabled is the player's/dev's off switch and is not part of the pack).
     $mods = @()
     foreach ($jar in (Get-ChildItem (Join-Path $gameDir "mods") -Filter "*.jar" -File | Sort-Object Name)) {
-        Add-File $jar.FullName "overrides/mods/$($jar.Name)" ([System.IO.Compression.CompressionLevel]::NoCompression) # jars are zips already
-        $mods += [ordered]@{ fileName = $jar.Name; size = $jar.Length; sha1 = (Get-FileHash -LiteralPath $jar.FullName -Algorithm SHA1).Hash.ToLowerInvariant() }
+        $sourcePath = $jar.FullName
+        if ($CoreJar -and $jar.Name -eq "theladscore.jar" -and (Test-Path -LiteralPath $CoreJar)) {
+            $sourcePath = (Get-Item -LiteralPath $CoreJar).FullName
+        }
+        $fileObj = Get-Item -LiteralPath $sourcePath
+        Add-File $fileObj.FullName "overrides/mods/$($jar.Name)" ([System.IO.Compression.CompressionLevel]::NoCompression) # jars are zips already
+        $mods += [ordered]@{ fileName = $jar.Name; size = $fileObj.Length; sha1 = (Get-FileHash -LiteralPath $fileObj.FullName -Algorithm SHA1).Hash.ToLowerInvariant() }
     }
 
     foreach ($dir in $IncludeDirs) {
@@ -149,8 +155,9 @@ try {
         }
     }
     foreach ($name in $IncludeFiles) {
+        if ([string]::IsNullOrWhiteSpace($name)) { continue }
         $file = Join-Path $gameDir $name
-        if (Test-Path $file) { Add-File $file "overrides/$name" ([System.IO.Compression.CompressionLevel]::Optimal) }
+        if (Test-Path -LiteralPath $file -PathType Leaf) { Add-File $file "overrides/$name" ([System.IO.Compression.CompressionLevel]::Optimal) }
     }
     $icon = Join-Path $InstanceDir "icon.png"
     if (Test-Path $icon) { Add-File $icon "overrides/icon.png" ([System.IO.Compression.CompressionLevel]::Optimal) }
