@@ -73,8 +73,10 @@ public final class Chat189 {
         ClickEvent open = ((IChatComponent) args[0]).getChatStyle().getChatClickEvent();
         if (open == null || open.getAction() != ClickEvent.Action.OPEN_FILE) return;
         File file = new File(open.getValue());
+        File dir = file.getAbsoluteFile().getParentFile();
+        if (dir == null) return;
         message.appendSibling(button(" [Open File]", EnumChatFormatting.GREEN, file, "Open screenshot file"))
-            .appendSibling(button(" [Open Folder]", EnumChatFormatting.AQUA, file.getParentFile(), "Open screenshots folder"));
+            .appendSibling(button(" [Open Folder]", EnumChatFormatting.AQUA, dir, "Open screenshots folder"));
     }
 
     private static IChatComponent button(String label, EnumChatFormatting color, File target, String hover) {

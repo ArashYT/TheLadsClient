@@ -51,7 +51,8 @@ public class ServerDiscoveryScreen1201 extends Screen {
     private final List<ServerInfo> filteredServers = new ArrayList<>();
     private final Set<String> savedAddresses = new HashSet<>();
     private final Map<String, FaviconTexture> faviconCache = new HashMap<>();
-    private final Set<String> uploadedFavicons = new HashSet<>();
+    private final Set<String> uploadedFavicons = ConcurrentHashMap.newKeySet();
+    private final Set<String> failedIconFetch = ConcurrentHashMap.newKeySet();
     private ServerStatusPinger pinger;
 
     private EditBox searchBox;
@@ -197,9 +198,10 @@ public class ServerDiscoveryScreen1201 extends Screen {
         }
 
         // Fast fallback CDN icon fetch
-        if (!ICON_BYTES_CACHE.containsKey(key) && !PENDING_ICON_FETCH.contains(key)) {
+        if (!ICON_BYTES_CACHE.containsKey(key) && !PENDING_ICON_FETCH.contains(key) && !failedIconFetch.contains(key)) {
             PENDING_ICON_FETCH.add(key);
             Thread iconThread = new Thread(() -> {
+                boolean success = false;
                 try {
                     String urlStr = "https://api.mcsrvstat.us/icon/" + URLEncoder.encode(server.address(), StandardCharsets.UTF_8);
                     HttpURLConnection conn = (HttpURLConnection) new URI(urlStr).toURL().openConnection();
@@ -215,6 +217,7 @@ public class ServerDiscoveryScreen1201 extends Screen {
                                         ICON_BYTES_CACHE.put(key, bytes);
                                         data.setIconBytes(bytes);
                                         uploadedFavicons.remove(key);
+                                        success = true;
                                     }
                                 }
                             }
@@ -223,6 +226,9 @@ public class ServerDiscoveryScreen1201 extends Screen {
                 } catch (Exception ignored) {
                 } finally {
                     PENDING_ICON_FETCH.remove(key);
+                    if (!success) {
+                        failedIconFetch.add(key);
+                    }
                 }
             }, "LadsServerIcon-" + key);
             iconThread.setDaemon(true);
@@ -438,6 +444,7 @@ public class ServerDiscoveryScreen1201 extends Screen {
         }
         faviconCache.clear();
         uploadedFavicons.clear();
+        failedIconFetch.clear();
         if (minecraft != null) minecraft.setScreen(parent);
     }
 }

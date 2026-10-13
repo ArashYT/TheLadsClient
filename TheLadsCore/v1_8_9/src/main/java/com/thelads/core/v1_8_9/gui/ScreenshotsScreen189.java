@@ -15,7 +15,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiButton;
@@ -37,7 +39,19 @@ import org.lwjgl.input.Keyboard;
 public final class ScreenshotsScreen189 extends GuiScreen implements GuiYesNoCallback {
     private static final int OPEN = 0, COPY = 1, DELETE = 2, FOLDER = 3, DONE = 4;
     private static final SimpleDateFormat DATE = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+
+    private static final class FileStats {
+        final long lastModified;
+        final long length;
+
+        FileStats(long lastModified, long length) {
+            this.lastModified = lastModified;
+            this.length = length;
+        }
+    }
+
     private final GuiScreen parent;
+    private final Map<File, FileStats> statsCache = new HashMap<>();
     private List<File> files = Collections.emptyList();
     private int selected = -1, listWidth, request;
     private FileList list;
@@ -60,8 +74,20 @@ public final class ScreenshotsScreen189 extends GuiScreen implements GuiYesNoCal
 
     private void reload(File select) {
         File[] found = Screenshots189.folder().listFiles(Screenshots189::image);
+        statsCache.clear();
+        if (found != null) {
+            for (File f : found) {
+                statsCache.put(f, new FileStats(f.lastModified(), f.length()));
+            }
+        }
         List<File> sorted = new ArrayList<>(found == null ? Collections.<File>emptyList() : Arrays.asList(found));
-        sorted.sort((a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+        sorted.sort((a, b) -> {
+            FileStats sa = statsCache.get(a);
+            FileStats sb = statsCache.get(b);
+            long la = sa != null ? sa.lastModified : a.lastModified();
+            long lb = sb != null ? sb.lastModified : b.lastModified();
+            return Long.compare(lb, la);
+        });
         files = sorted;
         select(select != null && files.contains(select) ? files.indexOf(select) : files.isEmpty() ? -1 : Math.max(0, Math.min(selected, files.size() - 1)));
     }
@@ -122,7 +148,10 @@ public final class ScreenshotsScreen189 extends GuiScreen implements GuiYesNoCal
             mc.getTextureManager().bindTexture(preview);
             Gui.drawModalRectWithCustomSizedTexture(x, top, 0, 0, w, h, w, h);
             drawCenteredString(fontRendererObj, fontRendererObj.trimStringToWidth(file.getName(), right - left), (left + right) / 2, top + h + 4, 0xFFFFFF);
-            drawCenteredString(fontRendererObj, DATE.format(new Date(file.lastModified())) + "  " + (file.length() + 1023) / 1024 + " KB",
+            FileStats stats = statsCache.get(file);
+            long lastModified = stats != null ? stats.lastModified : file.lastModified();
+            long length = stats != null ? stats.length : file.length();
+            drawCenteredString(fontRendererObj, DATE.format(new Date(lastModified)) + "  " + (length + 1023) / 1024 + " KB",
                 (left + right) / 2, top + h + 14, 0xAAAAAA);
         }
         if (!status.isEmpty()) drawCenteredString(fontRendererObj, fontRendererObj.trimStringToWidth(status, width - 16), width / 2, height - 42, 0xFFFF55);
@@ -260,7 +289,9 @@ public final class ScreenshotsScreen189 extends GuiScreen implements GuiYesNoCal
         protected void drawSlot(int index, int x, int y, int slotHeight, int mouseX, int mouseY) {
             File file = files.get(index);
             fontRendererObj.drawString(fontRendererObj.trimStringToWidth(file.getName(), getListWidth() - 8), x + 2, y + 1, 0xFFFFFF);
-            fontRendererObj.drawString(DATE.format(new Date(file.lastModified())), x + 2, y + 11, 0x808080);
+            FileStats stats = statsCache.get(file);
+            long lastModified = stats != null ? stats.lastModified : file.lastModified();
+            fontRendererObj.drawString(DATE.format(new Date(lastModified)), x + 2, y + 11, 0x808080);
         }
     }
 }

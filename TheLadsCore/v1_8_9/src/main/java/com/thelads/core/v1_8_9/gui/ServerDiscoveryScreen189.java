@@ -70,6 +70,7 @@ public class ServerDiscoveryScreen189 extends GuiScreen {
     private final List<ServerInfo> allServers = new ArrayList<>();
     private final List<ServerInfo> filteredServers = new ArrayList<>();
     private final Set<String> savedAddresses = new HashSet<>();
+    private final Set<String> failedIconFetch = ConcurrentHashMap.newKeySet();
     private final OldServerPinger pinger = new OldServerPinger();
 
     private GuiTextField searchBox;
@@ -201,9 +202,10 @@ public class ServerDiscoveryScreen189 extends GuiScreen {
         }
 
         // Fast fallback CDN icon fetch
-        if (!ICON_LOCATIONS.containsKey(key) && !PENDING_IMAGES.containsKey(key) && !PENDING_ICON_FETCH.contains(key)) {
+        if (!ICON_LOCATIONS.containsKey(key) && !PENDING_IMAGES.containsKey(key) && !PENDING_ICON_FETCH.contains(key) && !failedIconFetch.contains(key)) {
             PENDING_ICON_FETCH.add(key);
             Thread iconThread = new Thread(() -> {
+                boolean success = false;
                 try {
                     String urlStr = "https://api.mcsrvstat.us/icon/" + URLEncoder.encode(server.address, "UTF-8");
                     HttpURLConnection conn = (HttpURLConnection) new URI(urlStr).toURL().openConnection();
@@ -215,12 +217,16 @@ public class ServerDiscoveryScreen189 extends GuiScreen {
                             BufferedImage img = ImageIO.read(in);
                             if (img != null && img.getWidth() > 0 && img.getHeight() > 0) {
                                 PENDING_IMAGES.put(key, img);
+                                success = true;
                             }
                         }
                     }
                 } catch (Exception ignored) {
                 } finally {
                     PENDING_ICON_FETCH.remove(key);
+                    if (!success) {
+                        failedIconFetch.add(key);
+                    }
                 }
             }, "LadsServerIcon189-" + key);
             iconThread.setDaemon(true);
@@ -388,6 +394,7 @@ public class ServerDiscoveryScreen189 extends GuiScreen {
         try {
             pinger.clearPendingNetworks();
         } catch (Exception ignored) {}
+        failedIconFetch.clear();
         super.onGuiClosed();
     }
 
