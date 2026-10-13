@@ -790,8 +790,7 @@ try
     {
         AddJvm("-XX:+DisableAttachMechanism");
     }
-    process.StartInfo.Environment.Remove("_JAVA_OPTIONS");
-    process.StartInfo.Environment.Remove("JAVA_TOOL_OPTIONS");
+    // QA keeps JAVA_TOOL_OPTIONS: the JFR perf recipe passes its recording flags there (players never get it, GameSession strips it).
     // Two real frames of the Lads loading screen (startup), saved to the sandbox's screenshots folder.
     if (titleVerification) AddJvm("-Dthelads.verifyLoadingScreen=true");
     if (fastQuitPhase != null) AddJvm("-Dthelads.verifyFastQuit=" + fastQuitPhase);
