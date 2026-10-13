@@ -21,6 +21,7 @@ public static class ModWelcomeSettings
         await UpdateAsync(Path.Combine(config, "fancymenu", "options.txt"), ConfigureFancyMenu, what, warnings, cancellationToken);
         await UpdateAsync(Path.Combine(config, "Modpack Core Essentials", "custom_window.json"), DisableModpackWelcome, what, warnings, cancellationToken);
         await UpdateAsync(Path.Combine(config, "forge.cfg"), DisableForgeVersionCheck, what, warnings, cancellationToken);
+        await PrepareSkinLayersLodAsync(gameDirectory, config, warnings, cancellationToken);
         return warnings;
     }
 
@@ -82,5 +83,63 @@ public static class ModWelcomeSettings
         var modified = Regex.Replace(text, @"(?m)^[\t ]*B:disableVersionCheck[\t ]*=.*$", "    B:disableVersionCheck=true");
         modified = Regex.Replace(modified, @"(?ms)version_checking\s*\{\s*B:Global\s*=\s*true", "version_checking {\n    B:Global=false");
         return modified;
+    }
+
+    private static async Task PrepareSkinLayersLodAsync(string gameDirectory, string configDirectory, List<string> warnings, CancellationToken cancellationToken)
+    {
+        string ladsConfigPath = Path.Combine(gameDirectory, "thelads_config.json");
+        if (File.Exists(ladsConfigPath))
+        {
+            try
+            {
+                var ladsJson = JsonNode.Parse(File.ReadAllText(ladsConfigPath)) as JsonObject;
+                if (ladsJson != null && ladsJson["skinLayersLodOnDefault"]?.GetValue<bool>() == true)
+                {
+                    return; // Already migrated once; custom player settings stay
+                }
+            }
+            catch { }
+        }
+
+        string skinlayersPath = Path.Combine(configDirectory, "skinlayers.json");
+        await UpdateAsync(skinlayersPath, MigrateSkinLayersLod, "3D skin layers config", warnings, cancellationToken);
+
+        if (File.Exists(ladsConfigPath))
+        {
+            try
+            {
+                var ladsJson = JsonNode.Parse(File.ReadAllText(ladsConfigPath)) as JsonObject;
+                if (ladsJson != null && ladsJson["skinLayersLodOnDefault"]?.GetValue<bool>() != true)
+                {
+                    ladsJson["skinLayersLodOnDefault"] = true;
+                    await LockFiles.WriteAtomicallyAsync(ladsConfigPath, Encoding.UTF8.GetBytes(ladsJson.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n"), cancellationToken);
+                }
+            }
+            catch { }
+        }
+    }
+
+    private static string MigrateSkinLayersLod(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            var root = new JsonObject();
+            root["renderDistanceLOD"] = 8;
+            return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n";
+        }
+
+        var json = ParseObject(text);
+        if (json.TryGetPropertyValue("renderDistanceLOD", out var node) && node is JsonValue val && val.TryGetValue<int>(out int lod))
+        {
+            if (lod == 14)
+            {
+                json["renderDistanceLOD"] = 8;
+                return json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n";
+            }
+            return text; // Preserve custom player choice!
+        }
+
+        json["renderDistanceLOD"] = 8;
+        return json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n";
     }
 }

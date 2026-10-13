@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
@@ -25,7 +26,8 @@ import org.slf4j.LoggerFactory;
  */
 final class SkinLayersCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
-    private static final String[] SHOTS = {"skinlayers-on", "skinlayers-off"};
+    private static final String[] SHOTS = {"skinlayers-on", "skinlayers-off", "lod8-dist6", "lod8-dist12"};
+    private static RemotePlayer standIn;
     private static final EquipmentSlot[] SLOTS = {EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND, EquipmentSlot.HEAD, EquipmentSlot.CHEST,
         EquipmentSlot.LEGS, EquipmentSlot.FEET};
     private static final Map<EquipmentSlot, ItemStack> WORN = new EnumMap<>(EquipmentSlot.class);
@@ -71,7 +73,7 @@ final class SkinLayersCapture {
         if (step == 0 && due == 0) {
             if (!skin.isDone()) return;
             if (skin.isCompletedExceptionally()) { LOGGER.error("Lads skin layers capture FAILED: QA skin did not load"); finish(); return; }
-            pose(true);
+            pose(0);
         }
         for (EquipmentSlot slot : SLOTS) // a server slot update would cover the layers again
             if (!mc.player.getItemBySlot(slot).isEmpty()) mc.player.setItemSlot(slot, ItemStack.EMPTY);
@@ -98,22 +100,57 @@ final class SkinLayersCapture {
 
     private static void next() {
         capturing = false;
-        if (++step < SHOTS.length) pose(false);
+        if (++step < SHOTS.length) pose(step);
         else finish();
     }
 
     /** Front view, level, nothing worn; the module as this shot needs it. */
-    private static void pose(boolean on) {
+    private static void pose(int index) {
         Minecraft mc = Minecraft.getInstance();
-        ModuleManager.getInstance().getModule(SkinLayersModule.NAME).setEnabled(on);
         ModuleManager.getInstance().getModule("Fullbright").setEnabled(true); // the QA world may be at night
-        mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
-        mc.player.setXRot(0);
+        if (index == 0) {
+            ModuleManager.getInstance().getModule(SkinLayersModule.NAME).setEnabled(true);
+            mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+            mc.player.setXRot(0);
+        } else if (index == 1) {
+            ModuleManager.getInstance().getModule(SkinLayersModule.NAME).setEnabled(false);
+            mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT);
+            mc.player.setXRot(0);
+        } else if (index == 2) {
+            ModuleManager.getInstance().getModule(SkinLayersModule.NAME).setEnabled(true);
+            mc.options.setCameraType(CameraType.FIRST_PERSON);
+            mc.player.setXRot(0);
+            mc.player.setYRot(0);
+            if (standIn == null && mc.level != null) {
+                standIn = new RemotePlayer(mc.level, mc.player.getGameProfile());
+                standIn.setId(-19998);
+                mc.level.addEntity(standIn);
+            }
+            if (standIn != null) {
+                standIn.setPos(mc.player.getX(), mc.player.getY(), mc.player.getZ() + 6.0);
+                standIn.setYRot(180.0f);
+                standIn.setYHeadRot(180.0f);
+            }
+        } else if (index == 3) {
+            ModuleManager.getInstance().getModule(SkinLayersModule.NAME).setEnabled(true);
+            mc.options.setCameraType(CameraType.FIRST_PERSON);
+            mc.player.setXRot(0);
+            mc.player.setYRot(0);
+            if (standIn != null) {
+                standIn.setPos(mc.player.getX(), mc.player.getY(), mc.player.getZ() + 12.0);
+                standIn.setYRot(180.0f);
+                standIn.setYHeadRot(180.0f);
+            }
+        }
         due = System.nanoTime() + 1_500_000_000L;
     }
 
     private static void finish() {
         Minecraft mc = Minecraft.getInstance();
+        if (standIn != null) {
+            standIn.discard();
+            standIn = null;
+        }
         Module module = ModuleManager.getInstance().getModule(SkinLayersModule.NAME);
         module.setEnabled(enabledBefore);
         module.setLastModified(modifiedBefore);

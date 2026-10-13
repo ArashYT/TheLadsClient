@@ -89,6 +89,54 @@ public sealed class ModWelcomeSettingsTests
         Assert.False(Directory.Exists(Path.Combine(game, "essential")));
     }
 
+    [Fact]
+    public async Task SkinLayersLodDefault8CreatedOnFreshProfile()
+    {
+        using var dir = new TestDirectory();
+        Assert.Empty(await ModWelcomeSettings.PrepareAsync(dir.Path));
+        string skinlayers = Path.Combine(dir.Path, "config", "skinlayers.json");
+        Assert.True(File.Exists(skinlayers));
+        var json = JsonNode.Parse(File.ReadAllText(skinlayers))!;
+        Assert.Equal(8, json["renderDistanceLOD"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task SkinLayersDefault14MigratedTo8()
+    {
+        using var dir = new TestDirectory();
+        string skinlayers = Path.Combine(dir.Path, "config", "skinlayers.json");
+        Write(skinlayers, "{\n  \"enableHat\": true,\n  \"renderDistanceLOD\": 14,\n  \"fastRender\": true\n}");
+        Assert.Empty(await ModWelcomeSettings.PrepareAsync(dir.Path));
+        var json = JsonNode.Parse(File.ReadAllText(skinlayers))!;
+        Assert.Equal(8, json["renderDistanceLOD"]!.GetValue<int>());
+        Assert.True(json["enableHat"]!.GetValue<bool>());
+        Assert.True(json["fastRender"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public async Task SkinLayersCustomLodPreserved()
+    {
+        using var dir = new TestDirectory();
+        string skinlayers = Path.Combine(dir.Path, "config", "skinlayers.json");
+        Write(skinlayers, "{\n  \"renderDistanceLOD\": 12\n}");
+        Assert.Empty(await ModWelcomeSettings.PrepareAsync(dir.Path));
+        var json = JsonNode.Parse(File.ReadAllText(skinlayers))!;
+        Assert.Equal(12, json["renderDistanceLOD"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task SkinLayersMigrationFlagPreventsSecondMigration()
+    {
+        using var dir = new TestDirectory();
+        string skinlayers = Path.Combine(dir.Path, "config", "skinlayers.json");
+        Write(skinlayers, "{\n  \"renderDistanceLOD\": 14\n}");
+        string ladsConfig = Path.Combine(dir.Path, "thelads_config.json");
+        Write(ladsConfig, "{\n  \"skinLayersLodOnDefault\": true\n}");
+        Assert.Empty(await ModWelcomeSettings.PrepareAsync(dir.Path));
+        var json = JsonNode.Parse(File.ReadAllText(skinlayers))!;
+        Assert.Equal(14, json["renderDistanceLOD"]!.GetValue<int>());
+    }
+
     private static void Write(string path, string text)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);

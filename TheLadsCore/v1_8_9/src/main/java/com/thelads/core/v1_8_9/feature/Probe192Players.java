@@ -323,4 +323,101 @@ public final class Probe192Players {
         activeCount = 0;
         LOG.info("Lads 1.8.9 perf: Probe192Players torn down scene {}", sceneName);
     }
+
+    private static int closeupPhase = 0;
+    private static int closeupTimer = 0;
+    private static EntityOtherPlayerMP closeupPlayer = null;
+    private static UUID closeupUuid = null;
+    private static boolean originalHideGui = false;
+
+    public static boolean closeups(Minecraft mc) {
+        if (mc.theWorld == null || mc.thePlayer == null) return false;
+        ensureTextures(mc);
+        double camX = 0.5, camY = 4.0, camZ = 0.5;
+        mc.thePlayer.setPosition(camX, camY, camZ);
+        mc.thePlayer.prevPosX = mc.thePlayer.lastTickPosX = camX;
+        mc.thePlayer.prevPosZ = mc.thePlayer.lastTickPosZ = camZ;
+        mc.thePlayer.motionX = mc.thePlayer.motionY = mc.thePlayer.motionZ = 0;
+        mc.thePlayer.onGround = true;
+        mc.thePlayer.capabilities.isFlying = false;
+        mc.thePlayer.rotationYaw = mc.thePlayer.prevRotationYaw = 0.0f;
+        mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = 0.0f;
+
+        if (closeupPlayer == null) {
+            originalHideGui = mc.gameSettings.hideGUI;
+            mc.gameSettings.hideGUI = true;
+            mc.gameSettings.thirdPersonView = 0;
+            closeupUuid = new UUID(0x192000L, 0x9999L);
+            GameProfile profile = new GameProfile(closeupUuid, "ProbeInspector");
+            closeupPlayer = new EntityOtherPlayerMP(mc.theWorld, profile);
+            NetworkPlayerInfo info = new NetworkPlayerInfo(profile);
+            ((NetworkPlayerInfoAccessor) info).ladsSetSkin(SKINS[0]);
+            ((NetworkPlayerInfoAccessor) info).ladsSetSkinType("default");
+            ((NetworkPlayerInfoAccessor) info).ladsSetTexturesLoaded(true);
+            ((NetworkPlayerInfoCapeAccessor) info).ladsSetCape(CAPES[0]);
+            Map<UUID, NetworkPlayerInfo> tabMap = getPlayerInfoMap(mc);
+            if (tabMap != null) tabMap.put(closeupUuid, info);
+
+            closeupPlayer.setCurrentItemOrArmor(0, new ItemStack(Items.diamond_sword));
+            closeupPlayer.setPositionAndRotation(camX, camY, camZ + 2.0, 180.0f, 0.0f);
+            closeupPlayer.rotationYawHead = closeupPlayer.renderYawOffset = 180.0f;
+            mc.theWorld.addEntityToWorld(-19999, closeupPlayer);
+
+            closeupPhase = 0;
+            closeupTimer = 0;
+            return false;
+        }
+
+        closeupTimer++;
+        if (closeupPhase == 0) {
+            closeupPlayer.setPositionAndRotation(camX, camY, camZ + 2.0, 180.0f, 0.0f);
+            closeupPlayer.rotationYawHead = closeupPlayer.renderYawOffset = 180.0f;
+            if (closeupTimer >= 12) {
+                CoreProbe.screenshot(mc, "closeup-dist2");
+                closeupPhase = 1;
+                closeupTimer = 0;
+            }
+            return false;
+        } else if (closeupPhase == 1) {
+            closeupPlayer.setPositionAndRotation(camX, camY, camZ + 6.0, 180.0f, 0.0f);
+            closeupPlayer.rotationYawHead = closeupPlayer.renderYawOffset = 180.0f;
+            if (closeupTimer >= 12) {
+                CoreProbe.screenshot(mc, "closeup-dist6");
+                CoreProbe.screenshot(mc, "lod8-dist6");
+                closeupPhase = 2;
+                closeupTimer = 0;
+            }
+            return false;
+        } else if (closeupPhase == 2) {
+            closeupPlayer.setPositionAndRotation(camX, camY, camZ + 10.0, 180.0f, 0.0f);
+            closeupPlayer.rotationYawHead = closeupPlayer.renderYawOffset = 180.0f;
+            if (closeupTimer >= 12) {
+                CoreProbe.screenshot(mc, "closeup-dist10");
+                closeupPhase = 3;
+                closeupTimer = 0;
+            }
+            return false;
+        } else if (closeupPhase == 3) {
+            closeupPlayer.setPositionAndRotation(camX, camY, camZ + 12.0, 180.0f, 0.0f);
+            closeupPlayer.rotationYawHead = closeupPlayer.renderYawOffset = 180.0f;
+            if (closeupTimer >= 12) {
+                CoreProbe.screenshot(mc, "closeup-dist12");
+                CoreProbe.screenshot(mc, "lod8-dist12");
+                closeupPhase = 4;
+                closeupTimer = 0;
+            }
+            return false;
+        } else {
+            mc.theWorld.removeEntityFromWorld(-19999);
+            Map<UUID, NetworkPlayerInfo> tabMap = getPlayerInfoMap(mc);
+            if (tabMap != null && closeupUuid != null) tabMap.remove(closeupUuid);
+            closeupPlayer = null;
+            closeupUuid = null;
+            closeupPhase = 0;
+            closeupTimer = 0;
+            mc.gameSettings.hideGUI = originalHideGui;
+            LOG.info("Lads 1.8.9 perf: Probe192Players closeups captured (dist 2, 6, 10, 12)");
+            return true;
+        }
+    }
 }

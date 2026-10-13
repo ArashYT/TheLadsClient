@@ -139,6 +139,7 @@ public class ConfigManager {
         hud.add("excludedExternalMods", excExt);
 
         json.add("hud", hud);
+        json.addProperty(SkinLayersLodMigration.FLAG, true); // marks the 1.9.2 migration of 3D Skin Layers LOD 14 -> 8
         return json;
     }
 
@@ -148,6 +149,9 @@ public class ConfigManager {
             return;
         }
         migrateToggles(json);
+        if (!json.has(SkinLayersLodMigration.FLAG) || !json.get(SkinLayersLodMigration.FLAG).getAsBoolean()) {
+            SkinLayersLodMigration.migrate(null);
+        }
         if (json.has("modules")) {
             JsonObject modulesJson = json.getAsJsonObject("modules");
             migrateChat(modulesJson);
@@ -535,6 +539,7 @@ public class ConfigManager {
     public static void load() {
         File configFile = getConfigFile();
         if (!configFile.exists()) {
+            SkinLayersLodMigration.migrate(null);
             return;
         }
         try (InputStreamReader reader = new InputStreamReader(
