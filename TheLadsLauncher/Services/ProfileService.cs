@@ -320,7 +320,7 @@ public class ProfileService : IProfileService
         var optiFine = Path.Combine(targetDir, "optionsof.txt");
         var lunarOptiFine = Path.Combine(LunarRoot, "profiles", "1.8", "optionsof.txt");
         if (lunar != null && !File.Exists(optiFine) && File.Exists(lunarOptiFine)) File.Copy(lunarOptiFine, optiFine);
-        else if (!File.Exists(optiFine)) GameOptionsService.EnsureDefaultOptiFine18(optiFine);
+        else if (lunar == null) GameOptionsService.EnsureDefaultOptions18(targetDir);
     }
 
     private string SharedRendererOptionsState => Path.Combine(Path.GetDirectoryName(_pathService.SharedOptionsFile)!, GraphicsRenderer.OptionsStateFile);

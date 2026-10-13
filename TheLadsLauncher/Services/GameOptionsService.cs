@@ -341,11 +341,55 @@ public static class GameOptionsService
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or JsonException) { return null; }
     }
 
-    /// <summary>Writes default OptiFine options (Render Regions and Smart Animations) for a new 1.8.9 instance when optionsof.txt does not exist.</summary>
-    public static void EnsureDefaultOptiFine18(string optiFineFile)
+    /// <summary>OptiFine's shaders.txt names a shader pack other than OFF / (internal).</summary>
+    static bool ShaderPackSelected(string gameDirectory)
     {
-        if (!File.Exists(optiFineFile))
-            WriteAtomically(optiFineFile, "ofRenderRegions:true\nofSmartAnimations:true\n");
+        var shaders = Path.Combine(gameDirectory, "optionsshaders.txt");
+        if (!File.Exists(shaders)) return false;
+        // optionsshaders.txt is key=value ("shaderPack=Sildurs.zip"), unlike options.txt
+        var line = File.ReadLines(shaders).FirstOrDefault(l => l.StartsWith("shaderPack=", StringComparison.Ordinal));
+        var pack = line?["shaderPack=".Length..].Trim();
+        return !string.IsNullOrEmpty(pack) && !pack.Equals("OFF", StringComparison.OrdinalIgnoreCase)
+            && !pack.Equals("(internal)", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Writes default OptiFine options for a 1.8.9 instance, applying defaults to existing installs once.</summary>
+    public static void EnsureDefaultOptions18(string gameDirectory)
+    {
+        var optionsFile = Path.Combine(gameDirectory, "options.txt");
+        var optiFineFile = Path.Combine(gameDirectory, "optionsof.txt");
+        var optionsMap = File.Exists(optionsFile) ? ParseOptions(File.ReadAllText(optionsFile)) : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        if (!optionsMap.ContainsKey("theladsOfDefaultsMigrated"))
+        {
+            // Once per install (owner, 1.9.2): VBOs, Fast Render and Fast Math on. Render Regions and Smart Animations stay
+            // new-install defaults only (below), and Fast Render stays off while a shader pack is selected (it breaks shaders).
+            bool newInstall = !File.Exists(optiFineFile);
+            optionsMap["theladsOfDefaultsMigrated"] = "true";
+            optionsMap["useVbo"] = "true";
+            WriteAtomically(optionsFile, SerializeOptions(optionsMap));
+
+            var ofMap = newInstall ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) : ParseOptions(File.ReadAllText(optiFineFile));
+            if (newInstall)
+            {
+                ofMap["ofRenderRegions"] = "true";
+                ofMap["ofSmartAnimations"] = "true";
+            }
+            if (!ShaderPackSelected(gameDirectory)) ofMap["ofFastRender"] = "true";
+            ofMap["ofFastMath"] = "true";
+            WriteAtomically(optiFineFile, SerializeOptions(ofMap));
+        }
+        else if (!File.Exists(optiFineFile))
+        {
+            var ofMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["ofRenderRegions"] = "true",
+                ["ofSmartAnimations"] = "true",
+                ["ofFastRender"] = "true",
+                ["ofFastMath"] = "true"
+            };
+            WriteAtomically(optiFineFile, SerializeOptions(ofMap));
+        }
     }
 
     // A crash or a closed launcher mid-write leaves the old file whole, never a cut-off one. An unchanged file is not rewritten.

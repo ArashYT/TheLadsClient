@@ -57,6 +57,8 @@ public final class RenderScale189 {
         }
         started = false;
         RenderScalePolicy.Settings settings = settings();
+        // A scale other than native needs framebuffers, which OptiFine's Fast Render turns off: hold it off meanwhile.
+        OptiFineShaderLink189.betterResolution(settings.enabled() && (settings.dynamic() || Math.abs(settings.maximumScale() - 1) >= .0001));
         // settings.enabled() first: with Better Resolution off nothing below (OptiFine's isShaders by reflection included) runs.
         boolean rendersWorld = settings.enabled() && mc.theWorld != null && !mc.skipRenderWorld && Display.isVisible() && OpenGlHelper.isFramebufferEnabled()
             && !mc.gameSettings.anaglyph && !shaders() && !(mc.thePlayer != null && mc.thePlayer.isSpectator()

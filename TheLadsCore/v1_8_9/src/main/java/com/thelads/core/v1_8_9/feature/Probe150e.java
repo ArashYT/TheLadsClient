@@ -55,6 +55,7 @@ final class Probe150e {
     private static double scale;
     private static int preset, previewWaits;
     private static File shot;
+    private static boolean wasFastRender;
 
     private Probe150e() {}
 
@@ -302,6 +303,11 @@ final class Probe150e {
     }
 
     private static boolean scaleStart(Minecraft mc) {
+        wasFastRender = OptiFineShaderLink189.isFastRenderOn();
+        if (wasFastRender) {
+            OptiFineShaderLink189.setFastRender(false);
+            mc.gameSettings.fboEnable = true;
+        }
         SliderOption option = (SliderOption) Options189.module(BetterResolutionModule.NAME).getOption("Scale");
         DropdownOption presets = (DropdownOption) Options189.module(BetterResolutionModule.NAME).getOption("Preset");
         scale = option.getValue();
@@ -326,6 +332,9 @@ final class Probe150e {
     }
 
     private static boolean scaleOff(Minecraft mc) {
+        if (wasFastRender) {
+            OptiFineShaderLink189.setFastRender(true);
+        }
         count = RenderScale189.scaledFrames;
         return after(10);
     }

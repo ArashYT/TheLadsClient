@@ -78,6 +78,7 @@
     "ScreenShotHelperMixin",
     "ServerNameMixin",
     "SkinLayersGateMixin189",
+    "OptiFineShadersMixin",
     "SplashProgressMixin",
     "TileEntityMixin",
     "TileEntityRendererDispatcherMixin",

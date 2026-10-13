@@ -59,9 +59,7 @@ public static class GameSession
             GameOptionsService.EnsureDataVersion(gameDirectory, minecraftVersion);
             if (GameOptionsService.IsLegacy18(minecraftVersion))
             {
-                GameOptionsService.EnsureDefaultOptiFine18(Path.Combine(gameDirectory, "optionsof.txt"));
-                var optionsFile = Path.Combine(gameDirectory, "options.txt");
-                if (!File.Exists(optionsFile)) GameOptionsService.WriteAtomically(optionsFile, "useVbo:true\n");
+                GameOptionsService.EnsureDefaultOptions18(gameDirectory);
             }
         }
         PackDefaults.Apply(gameDirectory);
