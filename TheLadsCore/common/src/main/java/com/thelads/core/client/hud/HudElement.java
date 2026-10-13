@@ -116,18 +116,12 @@ public abstract class HudElement {
     }
 
     protected int resolveBackground() {
-        if (!HudSettings.getInstance().isBackgrounds()) return 0;
-        int c = HudSettings.getInstance().getGlobalBackground();
+        // Global plates OFF hides only global-colored plates; a module with its own Background color keeps it.
         if (moduleName != null) {
             Module m = ModuleManager.getInstance().getModule(moduleName);
-            if (m != null) {
-                Option o = m.getOption("Background");
-                if (o instanceof ColorOption co) {
-                    c = co.isUseGlobal() ? HudSettings.getInstance().getGlobalBackground() : co.getColor();
-                }
-            }
+            if (m != null && m.getOption("Background") instanceof ColorOption co && !co.isUseGlobal()) return co.getColor();
         }
-        return c;
+        return HudSettings.getInstance().isBackgrounds() ? HudSettings.getInstance().getGlobalBackground() : 0;
     }
 
     public float getScale() {

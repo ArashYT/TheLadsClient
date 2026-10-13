@@ -166,7 +166,6 @@ public class ScoreboardHudElement extends HudElement {
 
     @Override
     protected int resolveBackground() {
-        if (!com.thelads.core.config.HudSettings.getInstance().isBackgrounds()) return 0;
         return switch (optCycle("Background", 0)) {
             case 1 -> 0xC0000000;
             case 2 -> 0xC0FFFFFF;

@@ -44,7 +44,7 @@ public class KeystrokesHudElement extends HudElement {
         preparedGraphics = null;
 
         int baseBg = resolveBackground();
-        int pressedBg = com.thelads.core.config.HudSettings.getInstance().isBackgrounds() ? 0x80FFFFFF : 0;
+        int pressedBg = 0x80FFFFFF; // press flash stays visible even with no background plate
         int color = resolveColor();
         int middle = x + (width - keyWidth) / 2, lower = y + keyHeight + GAP, leftWidth = (width - GAP) / 2; // width: a docked group may have widened it
 
