@@ -22,11 +22,10 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
 public final class Clumps189 {
     /** Read on the server thread, refreshed on the client tick (26.x: NativeClumps.refresh). */
     private static volatile boolean enabled;
-    private static int tickCount;
 
     @SubscribeEvent
     public void clientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END && tickCount++ % 20 == 0) enabled = Options189.enabled("Clumps");
+        if (event.phase == TickEvent.Phase.END) enabled = Options189.enabled("Clumps");
     }
 
     /** World.spawnEntityInWorld: the orb is not added. Orbs loaded with their chunk are already in it and always load. */
