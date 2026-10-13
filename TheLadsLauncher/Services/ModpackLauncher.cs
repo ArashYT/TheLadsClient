@@ -187,16 +187,14 @@ public static class ModpackLauncher
         };
         if (!string.IsNullOrWhiteSpace(joinServer)) JoinServer(options, joinServer);
         LimitBackgroundThreads(instance, options, Environment.ProcessorCount);
-        var packJvmArgs = options.ExtraJvmArguments ?? Array.Empty<MArgument>();
-        if (!packJvmArgs.Any(a => a.Values.Any(v => v.Contains("DisableExplicitGC", StringComparison.OrdinalIgnoreCase))))
-        {
-            options.ExtraJvmArguments = packJvmArgs.Append(MArgument.FromCommandLine("-XX:+DisableExplicitGC"));
-        }
+        LaunchService.EnsureSecurityJvmArguments(options);
         var process = await launcher.InstallAndBuildProcessAsync(versionId, options, token);
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.CreateNoWindow = true;
         process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = dataDirectory;
         process.StartInfo.Environment["THELADS_DIR"] = instance.GameDirectory;
+        process.StartInfo.Environment.Remove("_JAVA_OPTIONS");
+        process.StartInfo.Environment.Remove("JAVA_TOOL_OPTIONS");
         LaunchToken.Hide(process, instance.GameDirectory, session.AccessToken); // the caller sends it after Start
         if (instance.Loader == "forge" && instance.McVersion == "1.20.1")
             UseEarlyWindow(process, dataDirectory, instance.GameDirectory,

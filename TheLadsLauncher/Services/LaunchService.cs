@@ -199,6 +199,8 @@ public class LaunchService : ILaunchService
             launchOption.ServerIp = settings.QuickLaunchServerIp;
         }
 
+        EnsureSecurityJvmArguments(launchOption);
+
         statusCallback?.Invoke("Starting game process...");
         Process process;
         if (settings.QuickLaunch)
@@ -333,4 +335,81 @@ public class LaunchService : ILaunchService
         }
     }
 
+    /// <summary>
+    /// Validates JVM arguments against unexpected agent injection flags and ensures defensive HotSpot flags
+    /// (-XX:+DisableAttachMechanism and -XX:+DisableExplicitGC) are set without duplicates.
+    /// </summary>
+    public static void EnsureSecurityJvmArguments(MLaunchOption options)
+    {
+        ValidateJvmArguments(options.ExtraJvmArguments);
+
+        var jvmArgs = options.ExtraJvmArguments ?? Array.Empty<MArgument>();
+        var list = new List<MArgument>(jvmArgs);
+
+        if (!list.Any(a => a.Values.Any(v => v.Contains("DisableExplicitGC", StringComparison.OrdinalIgnoreCase))))
+        {
+            list.Add(MArgument.FromCommandLine("-XX:+DisableExplicitGC"));
+        }
+
+        if (!list.Any(a => a.Values.Any(v => v.Contains("DisableAttachMechanism", StringComparison.OrdinalIgnoreCase))))
+        {
+            list.Add(MArgument.FromCommandLine("-XX:+DisableAttachMechanism"));
+        }
+
+        options.ExtraJvmArguments = list.ToArray();
+    }
+
+    /// <summary>
+    /// Checks JVM arguments for unexpected agent options (-javaagent, -agentpath, -agentlib).
+    /// Cheat injectors use dynamic or command-line agents to modify bytecode at runtime.
+    /// </summary>
+    public static void ValidateJvmArguments(IEnumerable<MArgument>? arguments)
+    {
+        if (arguments == null) return;
+        foreach (var arg in arguments)
+        {
+            foreach (var val in arg.Values)
+            {
+                ValidateJvmArgument(val);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Checks a single JVM argument value. Refuses unexpected agent flags (-javaagent, -agentpath, -agentlib).
+    /// </summary>
+    public static void ValidateJvmArgument(string? argument)
+    {
+        if (string.IsNullOrWhiteSpace(argument)) return;
+        var trimmed = argument.Trim();
+        if (IsDisallowedAgentFlag(trimmed))
+        {
+            throw new InvalidOperationException($"External JVM agent '{trimmed}' is not permitted. Java agents (-javaagent, -agentpath, -agentlib) are blocked for client integrity.");
+        }
+    }
+
+    /// <summary>
+    /// Checks a raw JVM argument command-line string. Refuses unexpected agent flags.
+    /// </summary>
+    public static void ValidateJvmArguments(string? commandLine)
+    {
+        if (string.IsNullOrWhiteSpace(commandLine)) return;
+        var tokens = commandLine.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var token in tokens)
+        {
+            ValidateJvmArgument(token);
+        }
+    }
+
+    public static bool IsDisallowedAgentFlag(string arg)
+    {
+        if (string.IsNullOrWhiteSpace(arg)) return false;
+        var lower = arg.Trim().ToLowerInvariant();
+        return lower.StartsWith("-javaagent")
+            || lower.StartsWith("-agentpath")
+            || lower.StartsWith("-agentlib")
+            || lower.StartsWith("-xrunjdwp")
+            || lower.StartsWith("-xdebug");
+    }
 }
+

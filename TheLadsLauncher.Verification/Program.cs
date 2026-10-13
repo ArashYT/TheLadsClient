@@ -784,6 +784,14 @@ try
     {
         AddJvm("-XX:+DisableExplicitGC");
     }
+    if (!jvmFlags.Any(f => f.Contains("DisableAttachMechanism", StringComparison.OrdinalIgnoreCase)) &&
+        !process.StartInfo.Arguments.Contains("DisableAttachMechanism", StringComparison.OrdinalIgnoreCase) &&
+        !process.StartInfo.ArgumentList.Any(a => a.Contains("DisableAttachMechanism", StringComparison.OrdinalIgnoreCase)))
+    {
+        AddJvm("-XX:+DisableAttachMechanism");
+    }
+    process.StartInfo.Environment.Remove("_JAVA_OPTIONS");
+    process.StartInfo.Environment.Remove("JAVA_TOOL_OPTIONS");
     // Two real frames of the Lads loading screen (startup), saved to the sandbox's screenshots folder.
     if (titleVerification) AddJvm("-Dthelads.verifyLoadingScreen=true");
     if (fastQuitPhase != null) AddJvm("-Dthelads.verifyFastQuit=" + fastQuitPhase);

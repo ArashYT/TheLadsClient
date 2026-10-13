@@ -4396,6 +4396,7 @@ public partial class MainWindow : Window
                     message => Dispatcher.UIThread.Post(() => GameLaunchStatusText.Text = message), token);
 
             string installedMarker = Path.Combine(gameDirectory, "versions", launchVersionId, ".lads-verified");
+            LaunchService.EnsureSecurityJvmArguments(launchOpt);
             if (settings.QuickLaunch && File.Exists(installedMarker))
             {
                 GameLaunchStatusText.Text = "Quick launching (skipping verification)...";
