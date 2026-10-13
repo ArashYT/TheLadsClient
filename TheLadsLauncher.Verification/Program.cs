@@ -784,6 +784,13 @@ try
     {
         AddJvm("-XX:+DisableExplicitGC");
     }
+    if (!jvmFlags.Any(f => f.Contains("DisableAttachMechanism", StringComparison.OrdinalIgnoreCase)) &&
+        !process.StartInfo.Arguments.Contains("DisableAttachMechanism", StringComparison.OrdinalIgnoreCase) &&
+        !process.StartInfo.ArgumentList.Any(a => a.Contains("DisableAttachMechanism", StringComparison.OrdinalIgnoreCase)))
+    {
+        AddJvm("-XX:+DisableAttachMechanism");
+    }
+    // QA keeps JAVA_TOOL_OPTIONS: the JFR perf recipe passes its recording flags there (players never get it, GameSession strips it).
     // Two real frames of the Lads loading screen (startup), saved to the sandbox's screenshots folder.
     if (titleVerification) AddJvm("-Dthelads.verifyLoadingScreen=true");
     if (fastQuitPhase != null) AddJvm("-Dthelads.verifyFastQuit=" + fastQuitPhase);

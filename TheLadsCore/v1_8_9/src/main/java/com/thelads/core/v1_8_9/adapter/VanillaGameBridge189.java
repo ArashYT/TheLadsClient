@@ -476,4 +476,20 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         }
         return mods;
     }
+
+    @Override
+    public void disconnectWithReason(String title, String message) {
+        Minecraft mc = mc();
+        mc.addScheduledTask(() -> {
+            boolean integrated = mc.isIntegratedServerRunning();
+            if (mc.theWorld != null) {
+                mc.theWorld.sendQuittingDisconnectingPacket();
+            }
+            mc.loadWorld(null);
+            net.minecraft.client.gui.GuiScreen parent = integrated
+                ? new net.minecraft.client.gui.GuiMainMenu()
+                : new net.minecraft.client.gui.GuiMultiplayer(new net.minecraft.client.gui.GuiMainMenu());
+            mc.displayGuiScreen(new net.minecraft.client.gui.GuiDisconnected(parent, "disconnect.lost", new net.minecraft.util.ChatComponentText(message)));
+        });
+    }
 }

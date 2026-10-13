@@ -52,6 +52,8 @@ public static class GameSession
         startInfo.Environment["THELADS_DIR"] = gameDirectory;
         startInfo.Environment[SharedContentService.RootEnvironmentVariable] = sharedRoot;
         startInfo.Environment[GameOptionsService.LunarEnvironmentVariable] = GameOptionsService.LunarRoot();
+        startInfo.Environment.Remove("_JAVA_OPTIONS");
+        startInfo.Environment.Remove("JAVA_TOOL_OPTIONS");
         if (minecraftVersion != null)
         {
             GameOptionsService.EnsureDataVersion(gameDirectory, minecraftVersion);
@@ -85,6 +87,7 @@ public static class GameSession
             // The game is already running; failing the launch now would only hide it.
             report($"Could not record that the game is running in '{gameDirectory}' ({ex.Message}). Mod changes and shared-content checks may not see it until it closes.");
         }
+
         process.EnableRaisingEvents = true;
         process.Exited += async (_, _) =>
         {

@@ -15,6 +15,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
     public void onInitializeClient() {
         LOGGER.info("Initializing TheLadsCore for Minecraft 26.2...");
         LadsGameBridge.set(new VanillaGameBridge26());
+        com.thelads.core.security.AntiInjectDetector.init();
         com.thelads.core.v26_2.feature.paperdoll.PlayerActions.initialize();
         ConfigManager.load();
         com.thelads.core.v26_2.feature.LocalSkins.initialize();

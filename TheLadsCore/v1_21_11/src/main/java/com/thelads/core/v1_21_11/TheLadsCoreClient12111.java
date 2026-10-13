@@ -15,6 +15,7 @@ public class TheLadsCoreClient12111 implements ClientModInitializer {
     public void onInitializeClient() {
         LOGGER.info("Initializing TheLadsCore for Minecraft 1.21.11...");
         LadsGameBridge.set(new VanillaGameBridge12111());
+        com.thelads.core.security.AntiInjectDetector.init();
         ConfigManager.load();
         com.thelads.core.config.ModuleSupport.registerBuiltIn("Threads");
         // These HUD controls are consumed by HudManager through the required native HUD mixin.

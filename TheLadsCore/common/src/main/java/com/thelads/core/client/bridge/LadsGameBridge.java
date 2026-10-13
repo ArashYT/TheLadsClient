@@ -48,6 +48,11 @@ public interface LadsGameBridge {
     /** Combo Sounds' built-in bow sounds when none is picked: the level-up chime for a long shot, a high anvil clink for a headshot. */
     default void playBowSound(boolean headshot, float volume) {}
     default String getServerAddress() { return "Singleplayer"; }
+    /**
+     * Disconnects from the current world / server with a custom title and reason message,
+     * returning to the title/multiplayer screen and displaying the disconnection reason.
+     */
+    default void disconnectWithReason(String title, String message) {}
     default String getItemCountText(int selection) { return "Items: 0"; }
     default String getRecentReachText() { return "Reach: --"; }
 

@@ -69,6 +69,7 @@ public class TheLadsCore189 {
             org.lwjgl.opengl.Display.setTitle(windowTitle);
         } catch (Throwable ignored) {}
         LadsGameBridge.set(new VanillaGameBridge189());
+        com.thelads.core.security.AntiInjectDetector.init();
         com.thelads.core.v1_8_9.feature.UnfocusedFpsCap189.register();
         ConfigManager.load();
         com.thelads.core.v1_8_9.feature.LocalSkins189.initialize(); // the Skin changer's saved skin
