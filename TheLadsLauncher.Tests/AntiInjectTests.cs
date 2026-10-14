@@ -96,8 +96,8 @@ public class AntiInjectTests
     }
 
     [Theory]
-    [InlineData(25, "-XX:+UseZGC", "-XX:+UseCompactObjectHeaders", "appcds-jdk25.jsa")]
-    [InlineData(21, "-XX:+UseZGC", "-XX:+ZGenerational", "appcds-jdk21.jsa")]
+    [InlineData(25, "-XX:+UseG1GC", "-XX:+UseCompactObjectHeaders", "appcds-jdk25.jsa")]
+    [InlineData(21, "-XX:+UseG1GC", "-XX:MaxGCPauseMillis=35", "appcds-jdk21.jsa")]
     [InlineData(17, "-XX:+UseG1GC", "-XX:MaxGCPauseMillis=35", "appcds-jdk17.jsa")]
     public void EnsureSecurityJvmArguments_AddsVersionAwareGcAndAppCdsAndRespectsMinRam(int javaMajor, string expectedGc, string expectedExtra, string expectedJsa)
     {
@@ -116,6 +116,8 @@ public class AntiInjectTests
         Assert.Contains("-XX:+IgnoreUnrecognizedVMOptions", values);
         Assert.Contains(expectedGc, values);
         Assert.Contains(expectedExtra, values);
+        Assert.Contains("-XX:MaxGCPauseMillis=35", values);
+        Assert.DoesNotContain("-XX:+UseZGC", values);
         Assert.Contains("-XX:+AutoCreateSharedArchive", values);
         Assert.Contains(values, v => v.StartsWith("-XX:SharedArchiveFile=", StringComparison.Ordinal) && v.EndsWith(expectedJsa, StringComparison.Ordinal));
         Assert.DoesNotContain("-XX:+AlwaysPreTouch", values);

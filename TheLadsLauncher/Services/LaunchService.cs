@@ -430,36 +430,24 @@ public class LaunchService : ILaunchService
     /// </summary>
     public static IReadOnlyList<string> BuildOptimizedJvmArguments(int javaMajorVersion, string? gameDirectory = null)
     {
-        var flags = new List<string> { "-XX:+IgnoreUnrecognizedVMOptions" };
+        var flags = new List<string>
+        {
+            "-XX:+IgnoreUnrecognizedVMOptions",
+            "-XX:+UnlockExperimentalVMOptions",
+            "-XX:+UseG1GC",
+            "-XX:+ParallelRefProcEnabled",
+            "-XX:G1NewSizePercent=20",
+            "-XX:G1ReservePercent=20",
+            "-XX:MaxGCPauseMillis=35",
+            "-XX:G1HeapRegionSize=32M"
+        };
 
         if (javaMajorVersion >= 25)
         {
-            flags.Add("-XX:+UseZGC");
             flags.Add("-XX:+UseCompactObjectHeaders");
         }
-        else if (javaMajorVersion >= 21)
+        else if (javaMajorVersion < 17)
         {
-            flags.Add("-XX:+UseZGC");
-            flags.Add("-XX:+ZGenerational");
-        }
-        else if (javaMajorVersion >= 17)
-        {
-            flags.Add("-XX:+UnlockExperimentalVMOptions");
-            flags.Add("-XX:+UseG1GC");
-            flags.Add("-XX:G1NewSizePercent=20");
-            flags.Add("-XX:G1ReservePercent=20");
-            flags.Add("-XX:MaxGCPauseMillis=35");
-            flags.Add("-XX:G1HeapRegionSize=32M");
-        }
-        else
-        {
-            flags.Add("-XX:+UnlockExperimentalVMOptions");
-            flags.Add("-XX:+UseG1GC");
-            flags.Add("-XX:+ParallelRefProcEnabled");
-            flags.Add("-XX:MaxGCPauseMillis=35");
-            flags.Add("-XX:G1NewSizePercent=20");
-            flags.Add("-XX:G1ReservePercent=20");
-            flags.Add("-XX:G1HeapRegionSize=32M");
             flags.Add("-Xshare:auto");
         }
 
