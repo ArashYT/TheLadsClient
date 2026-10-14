@@ -51,6 +51,8 @@ public class TheLadsCore189 {
         {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"},
         {"Flashback Settings", "Flashback"}};
 
+    private static final boolean VERIFY_189_CORE = Boolean.getBoolean("thelads.verify189Core");
+    private static final boolean VERIFY_ADD_SERVER = Boolean.getBoolean("thelads.verifyAddServer");
     private static String windowTitle = "The Lads Client";
     private static int titleTicks;
 
@@ -266,8 +268,8 @@ public class TheLadsCore189 {
         CoreCatalogExporter.exportIfChanged();
         com.thelads.core.v1_8_9.feature.EnumValues189.reportOnce();
         com.thelads.core.shared.LogProbe.tick(true, mc::shutdown);
-        if (Boolean.getBoolean("thelads.verify189Core")) CoreProbe.tick();
-        if (Boolean.getBoolean("thelads.verifyAddServer")) com.thelads.core.v1_8_9.feature.AddServerProbe189.tick();
+        if (VERIFY_189_CORE) CoreProbe.tick();
+        if (VERIFY_ADD_SERVER) com.thelads.core.v1_8_9.feature.AddServerProbe189.tick();
     }
 
     @SubscribeEvent

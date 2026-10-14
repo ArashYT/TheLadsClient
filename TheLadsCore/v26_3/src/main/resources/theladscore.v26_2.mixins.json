@@ -152,6 +152,8 @@
     "PackSelectionModelMixin26",
     "MinecraftReloadMixin26",
     "SoundManagerReloadMixin26",
-    "ShaderManagerReloadMixin26"
+    "ShaderManagerReloadMixin26",
+    "LevelLoadTrackerFastCloseMixin",
+    "NoResourcePackWarningsMixin"
   ]
 }

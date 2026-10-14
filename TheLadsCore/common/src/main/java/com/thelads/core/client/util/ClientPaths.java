@@ -18,9 +18,13 @@ import java.util.Set;
 public class ClientPaths {
     private static Path customBaseDir = null;
     private static Path testWorkerFallbackDir = null;
+    private static volatile Path cachedConfigFile = null;
+    private static volatile Path cachedProfilesFile = null;
 
     public static synchronized void setBaseDir(Path path) {
         customBaseDir = path;
+        cachedConfigFile = null;
+        cachedProfilesFile = null;
     }
 
     private static boolean isGradleTestWorker() {
@@ -236,6 +240,15 @@ public class ClientPaths {
         return result;
     }
 
+    private static boolean hasPresetMarker(Path file) {
+        try {
+            String text = Files.readString(file);
+            return text.contains("\"lads197PresetApplied\"") && text.contains("true");
+        } catch (IOException ignored) {
+            return false;
+        }
+    }
+
     private static File resolveAndSeedSharedFile(String fileName) {
         if (customBaseDir != null) {
             return customBaseDir.resolve(fileName).toFile();
@@ -248,21 +261,23 @@ public class ClientPaths {
             Files.createDirectories(sharedDir);
         } catch (IOException ignored) {}
 
+        boolean checkPresetFlag = "thelads_config.json".equals(fileName);
+        try {
+            if (Files.isRegularFile(sharedFile) && Files.size(sharedFile) > 2) {
+                if (!checkPresetFlag || hasPresetMarker(sharedFile)) {
+                    return sharedFile.toFile();
+                }
+            }
+        } catch (IOException ignored) {}
+
         Path newestPath = null;
         long newestTime = Long.MIN_VALUE;
         boolean newestHas197Preset = false;
-        boolean checkPresetFlag = "thelads_config.json".equals(fileName);
 
         for (Path candidate : getCandidatePathsForSharedFile(fileName)) {
             try {
                 if (Files.isRegularFile(candidate) && Files.size(candidate) > 2) {
-                    boolean has197Preset = false;
-                    if (checkPresetFlag) {
-                        try {
-                            String text = Files.readString(candidate);
-                            has197Preset = text.contains("\"lads197PresetApplied\"") && text.contains("true");
-                        } catch (IOException ignored) {}
-                    }
+                    boolean has197Preset = checkPresetFlag && hasPresetMarker(candidate);
                     long mtime = Files.getLastModifiedTime(candidate).toMillis();
                     if (newestPath == null
                             || (has197Preset && !newestHas197Preset)
@@ -291,11 +306,23 @@ public class ClientPaths {
     }
 
     public static File getConfigFile() {
-        return resolveAndSeedSharedFile("thelads_config.json");
+        Path cached = cachedConfigFile;
+        if (cached != null) {
+            return cached.toFile();
+        }
+        File resolved = resolveAndSeedSharedFile("thelads_config.json");
+        cachedConfigFile = resolved.toPath();
+        return resolved;
     }
 
     public static File getProfilesFile() {
-        return resolveAndSeedSharedFile("thelads_profiles.json");
+        Path cached = cachedProfilesFile;
+        if (cached != null) {
+            return cached.toFile();
+        }
+        File resolved = resolveAndSeedSharedFile("thelads_profiles.json");
+        cachedProfilesFile = resolved.toPath();
+        return resolved;
     }
 
     public static Path getHudProfilesDir() {

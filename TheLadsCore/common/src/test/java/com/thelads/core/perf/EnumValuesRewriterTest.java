@@ -132,4 +132,25 @@ class EnumValuesRewriterTest {
         Files.writeString(config.toPath(), "not json", StandardCharsets.UTF_8);
         assertTrue(ConfigManager.savedEnabled("Jasione", true), "unreadable config: default");
     }
+
+    @Test void packagePrefixSkipFilterMatchesInfrastructureAndAllowsGameAndModClasses() {
+        assertTrue(EnumValuesRewriter.shouldSkipClassName("org.spongepowered.asm.mixin.MixinEnvironment"));
+        assertTrue(EnumValuesRewriter.shouldSkipClassName("org/spongepowered/asm/mixin/MixinEnvironment"));
+        assertTrue(EnumValuesRewriter.shouldSkipClassName("net.fabricmc.loader.impl.launch.knot.Knot"));
+        assertTrue(EnumValuesRewriter.shouldSkipClassName("com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod"));
+        assertTrue(EnumValuesRewriter.shouldSkipClassName("it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap"));
+        assertTrue(EnumValuesRewriter.shouldSkipClassName("com.google.common.collect.ImmutableList"));
+        assertTrue(EnumValuesRewriter.shouldSkipClassName("io.netty.buffer.ByteBuf"));
+        assertTrue(EnumValuesRewriter.shouldSkipClassName("org.apache.logging.log4j.Logger"));
+        assertTrue(EnumValuesRewriter.shouldSkipClassName("org.lwjgl.opengl.GL11"));
+        assertTrue(EnumValuesRewriter.shouldSkipClassName("org.joml.Matrix4f"));
+        assertTrue(EnumValuesRewriter.shouldSkipClassName("com.mojang.datafixers.DSL"));
+        assertTrue(EnumValuesRewriter.shouldSkipClassName("com.thelads.core.config.ConfigManager"));
+
+        assertFalse(EnumValuesRewriter.shouldSkipClassName("net.minecraft.core.Direction"));
+        assertFalse(EnumValuesRewriter.shouldSkipClassName("net/minecraft/core/Direction"));
+        assertFalse(EnumValuesRewriter.shouldSkipClassName("com.simibubi.create.Create"));
+        assertFalse(EnumValuesRewriter.shouldSkipClassName(null));
+        assertFalse(EnumValuesRewriter.shouldSkipClassName(""));
+    }
 }

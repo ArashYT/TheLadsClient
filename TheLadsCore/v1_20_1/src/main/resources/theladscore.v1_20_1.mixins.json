@@ -21,6 +21,14 @@
     "FaceBakerySafetyMixin",
     "MinecraftReloadMixin1201",
     "SoundManagerReloadMixin1201",
-    "GameRendererShaderReloadMixin1201"
+    "GameRendererShaderReloadMixin1201",
+    "DispenserBlockSynchronizedMixin",
+    "RegistrateSynchronizedMixin",
+    "CreateCtorSynchronizedMixin",
+    "CreateDecoInitSynchronizedMixin",
+    "ZetaRemapperSynchronizedMixin",
+    "ZetaEventBusSynchronizedMixin",
+    "ReceivingLevelScreenFastCloseMixin",
+    "NoResourcePackWarningsMixin"
   ]
 }
