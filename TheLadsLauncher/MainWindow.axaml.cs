@@ -4412,19 +4412,32 @@ public partial class MainWindow : Window
                     message => Dispatcher.UIThread.Post(() => GameLaunchStatusText.Text = message), token);
 
             string installedMarker = Path.Combine(gameDirectory, "versions", launchVersionId, ".lads-verified");
-            LaunchService.EnsureSecurityJvmArguments(launchOpt);
+            LaunchService.ConfigureCachedNativesDirectory(path, launchVersionId, launchOpt);
+            LaunchService.EnsureSecurityJvmArguments(launchOpt, requiredJava, gameDirectory);
             if (settings.QuickLaunch && File.Exists(installedMarker))
             {
                 GameLaunchStatusText.Text = "Quick launching (skipping verification)...";
                 Log("[Launcher] QuickLaunch enabled — skipping asset verification.");
-                process = await launcher.BuildProcessAsync(launchVersionId, launchOpt, token);
+                try
+                {
+                    process = await launcher.BuildProcessAsync(launchVersionId, launchOpt, token);
+                }
+                catch (Exception qEx) when (qEx is not OperationCanceledException)
+                {
+                    Log($"[Launcher] QuickLaunch failed ({qEx.Message}); falling back to full asset verification...");
+                    process = await launcher.InstallAndBuildProcessAsync(launchVersionId, launchOpt, token);
+                    Directory.CreateDirectory(Path.GetDirectoryName(installedMarker)!);
+                    await File.WriteAllTextAsync(installedMarker, DateTimeOffset.UtcNow.ToString("O"), token);
+                }
             }
             else
             {
                 process = await launcher.InstallAndBuildProcessAsync(launchVersionId, launchOpt, token);
                 Directory.CreateDirectory(Path.GetDirectoryName(installedMarker)!);
-                await File.WriteAllTextAsync(installedMarker, DateTimeOffset.UtcNow.ToString("O"));
+                await File.WriteAllTextAsync(installedMarker, DateTimeOffset.UtcNow.ToString("O"), token);
             }
+
+            LaunchService.MarkCachedNativesReady(path, launchVersionId);
 
             // The last point a cancel stops the launch (steps without a token, like the Fabric install, end here). Nothing
             // below awaits before process.Start(), so the overlay's Cancel cannot run in between.

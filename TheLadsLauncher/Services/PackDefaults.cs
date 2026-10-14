@@ -30,6 +30,12 @@ public static class PackDefaults
             try
             {
                 if (relative.Equals("options.txt", StringComparison.OrdinalIgnoreCase) && File.Exists(target)) MergeOptions(file, target);
+                else if (target.EndsWith("modernfix-mixins.properties", StringComparison.OrdinalIgnoreCase) && File.Exists(target))
+                {
+                    var text = File.ReadAllText(target);
+                    if (text.Contains("mixin.perf.dynamic_resources=true", StringComparison.Ordinal))
+                        File.WriteAllText(target, text.Replace("mixin.perf.dynamic_resources=true", "mixin.perf.dynamic_resources=false", StringComparison.Ordinal));
+                }
                 else if (!File.Exists(target) && !Directory.Exists(target))
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(target)!);

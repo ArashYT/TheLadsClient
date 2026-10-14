@@ -178,5 +178,27 @@ public sealed class RetirementTests : IDisposable
         Assert.Equal(goodmc, File.ReadAllBytes(Retired("lads-goodmc (2).jar")));
     }
 
+    [Fact]
+    public async Task BuiltIn1201CoreModsAreRetiredWhenRemovedFromManifest()
+    {
+        var fzzy = ModSandbox.Jar("fzzy_config", "0.7.6+1.20.1");
+        var nrpw = ModSandbox.Jar("no-resource-pack-warnings", "1.3.1");
+        box.WriteManifest("1.20.1", new[] { box.Pin("sodium", ModSandbox.Jar("sodium")) },
+            published: new()
+            {
+                ["fzzy_config"] = new() { ModSandbox.Sha(fzzy) },
+                ["no-resource-pack-warnings"] = new() { ModSandbox.Sha(nrpw) }
+            });
+        File.WriteAllBytes(box.Mod("fzzy_config-0.7.6+1.20.1.jar"), fzzy);
+        File.WriteAllBytes(box.Mod("no-resource-pack-warnings-1.3.1.jar"), nrpw);
+
+        await box.Install("1.20.1");
+
+        Assert.False(File.Exists(box.Mod("fzzy_config-0.7.6+1.20.1.jar")));
+        Assert.False(File.Exists(box.Mod("no-resource-pack-warnings-1.3.1.jar")));
+        Assert.Equal(fzzy, File.ReadAllBytes(Path.Combine(box.Cache, "retired", "fzzy_config", "fzzy_config-0.7.6+1.20.1.jar")));
+        Assert.Equal(nrpw, File.ReadAllBytes(Path.Combine(box.Cache, "retired", "no-resource-pack-warnings", "no-resource-pack-warnings-1.3.1.jar")));
+    }
+
     public void Dispose() => box.Dispose();
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -33,10 +34,29 @@ public static class FabricModMetadata
     // Flashback includes native encoders and exceeds 200 MB. Keep downloads bounded.
     public const long MaximumJarSize = 512L * 1024 * 1024;
     private const int MaximumDepth = 8, MaximumNestedJars = 1024, MaximumMetadataSize = 1024 * 1024;
+    private static readonly ConcurrentDictionary<string, (long Length, long LastWriteTicks, FabricModInfo? Info)> _jarCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, (long Length, long LastWriteTicks, FabricModInfo? Info)> _forgeJarCache = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Returns null for a jar without fabric.mod.json; throws InvalidDataException for invalid metadata or zips.</summary>
     public static FabricModInfo? ReadJar(string path, bool includeIcon = false, CancellationToken token = default)
     {
+        if (!includeIcon)
+        {
+            var fullPath = Path.GetFullPath(path);
+            var fi = new FileInfo(fullPath);
+            if (fi.Exists && _jarCache.TryGetValue(fullPath, out var cached)
+                && cached.Length == fi.Length && cached.LastWriteTicks == fi.LastWriteTimeUtc.Ticks)
+            {
+                return cached.Info;
+            }
+            using var cachedStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            var info = ReadJar(cachedStream, false, token);
+            if (fi.Exists)
+            {
+                _jarCache[fullPath] = (fi.Length, fi.LastWriteTimeUtc.Ticks, info);
+            }
+            return info;
+        }
         // FileShare.Delete: a reader (e.g. the Mods page) must never make an installer's rename of this jar fail.
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
         return ReadJar(stream, includeIcon, token);
@@ -53,8 +73,20 @@ public static class FabricModMetadata
     /// one (coremods); InvalidDataException when unreadable.</summary>
     public static FabricModInfo? ReadForgeJar(string path)
     {
-        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-        return ReadForgeJar(stream);
+        var fullPath = Path.GetFullPath(path);
+        var fi = new FileInfo(fullPath);
+        if (fi.Exists && _forgeJarCache.TryGetValue(fullPath, out var cached)
+            && cached.Length == fi.Length && cached.LastWriteTicks == fi.LastWriteTimeUtc.Ticks)
+        {
+            return cached.Info;
+        }
+        using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        var info = ReadForgeJar(stream);
+        if (fi.Exists)
+        {
+            _forgeJarCache[fullPath] = (fi.Length, fi.LastWriteTimeUtc.Ticks, info);
+        }
+        return info;
     }
 
     public static FabricModInfo? ReadForgeJar(Stream stream)

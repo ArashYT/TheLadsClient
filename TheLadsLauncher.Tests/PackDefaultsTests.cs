@@ -84,4 +84,21 @@ public class PackDefaultsTests
         Assert.Equal("mixin.perf.dynamic_resources=true\n", File.ReadAllText(Path.Combine(game.Path, "config", "modernfix-mixins.properties")));
         Assert.Equal("untouched", File.ReadAllText(Path.Combine(game.Path, "config", "existing.txt")));
     }
+
+    [Fact]
+    public void ExistingModernFixDynamicResourcesIsMigratedToFalse()
+    {
+        using var bundle = new TestDirectory();
+        using var game = new TestDirectory();
+        var bundledDefaults = Path.Combine(bundle.Path, "game-mods", "1.20.1", PackDefaults.FolderName);
+        Write(Path.Combine(bundledDefaults, "config", "modernfix-mixins.properties"), "mixin.perf.dynamic_resources=false\n");
+        Write(Path.Combine(game.Path, PackDefaults.FolderName, "config", "modernfix-mixins.properties"), "mixin.perf.dynamic_resources=true\n");
+        Write(Path.Combine(game.Path, "config", "modernfix-mixins.properties"), "# ModernFix\nmixin.perf.dynamic_resources=true\n");
+
+        BundledModInstaller.InstallConfiguredDefaults(bundle.Path, game.Path, "1.20.1");
+        PackDefaults.Apply(game.Path);
+
+        Assert.Equal("mixin.perf.dynamic_resources=false\n", File.ReadAllText(Path.Combine(game.Path, PackDefaults.FolderName, "config", "modernfix-mixins.properties")));
+        Assert.Equal("# ModernFix\nmixin.perf.dynamic_resources=false\n", File.ReadAllText(Path.Combine(game.Path, "config", "modernfix-mixins.properties")));
+    }
 }

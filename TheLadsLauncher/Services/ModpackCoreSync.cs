@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -20,6 +21,9 @@ public static class ModpackCoreSync
     /// <summary>Set to 1 to leave every modpack's Core alone, for a run that tests a Core built from source (the QA harness copies
     /// its own build into the instance and the launcher must not swap it back for the bundled one).</summary>
     public const string SkipEnvironmentVariable = "LADS_SKIP_MODPACK_CORE_SYNC";
+
+    private static readonly ConcurrentDictionary<string, (long Length, long LastWriteTicks, string Sha256)> _sha256Cache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, (long Length, long LastWriteTicks, bool Valid)> _validCoreCache = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The bundled Core for <paramref name="mcVersion"/> (or another bundled jar of that version, <paramref name="fileName"/>):
     /// under <paramref name="bundleRoot"/> when given, else next to the launcher (and, for a development build, in the repository
@@ -125,16 +129,45 @@ public static class ModpackCoreSync
 
     private static void RequireCoreJar(string jar)
     {
-        using var zip = ZipFile.OpenRead(jar); // InvalidDataException when it is not a zip
+        var fullPath = Path.GetFullPath(jar);
+        var fi = new FileInfo(fullPath);
+        if (fi.Exists && _validCoreCache.TryGetValue(fullPath, out var cached)
+            && cached.Length == fi.Length && cached.LastWriteTicks == fi.LastWriteTimeUtc.Ticks && cached.Valid)
+        {
+            return;
+        }
+        using var zip = ZipFile.OpenRead(fullPath); // InvalidDataException when it is not a zip
         if (zip.GetEntry("fabric.mod.json") == null && zip.GetEntry("mcmod.info") == null)
             throw new InvalidDataException($"The bundled Core '{jar}' has no mod metadata.");
+        if (fi.Exists)
+        {
+            _validCoreCache[fullPath] = (fi.Length, fi.LastWriteTimeUtc.Ticks, true);
+        }
+    }
+
+    internal static string GetSha256(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var fi = new FileInfo(fullPath);
+        if (fi.Exists && _sha256Cache.TryGetValue(fullPath, out var cached)
+            && cached.Length == fi.Length && cached.LastWriteTicks == fi.LastWriteTimeUtc.Ticks)
+        {
+            return cached.Sha256;
+        }
+        using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        var hash = Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
+        if (fi.Exists)
+        {
+            _sha256Cache[fullPath] = (fi.Length, fi.LastWriteTimeUtc.Ticks, hash);
+        }
+        return hash;
     }
 
     private static bool SameBytes(string left, string right)
     {
-        if (new FileInfo(left).Length != new FileInfo(right).Length) return false;
-        using var a = File.OpenRead(left);
-        using var b = File.OpenRead(right);
-        return SHA256.HashData(a).AsSpan().SequenceEqual(SHA256.HashData(b));
+        var leftInfo = new FileInfo(left);
+        var rightInfo = new FileInfo(right);
+        if (!leftInfo.Exists || !rightInfo.Exists || leftInfo.Length != rightInfo.Length) return false;
+        return string.Equals(GetSha256(left), GetSha256(right), StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -232,7 +232,7 @@ public class ProfileService : IProfileService
                 warnings.Add($"Game settings (options.txt) were not synced: {e.Message}");
             }
         }
-        SharedContentService.SyncLadsSettingsAcrossAllInstances(_pathService.BaseDirectory, targetDir);
+        SharedContentService.SyncLadsSettingsAcrossAllInstances(_pathService.BaseDirectory, targetDir, backgroundFanOut: true);
         // Authentication snapshots belong to the auth gateway, never timestamp-based sync.
         return report with { Warnings = warnings };
     }

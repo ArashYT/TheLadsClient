@@ -87,7 +87,7 @@ public class LauncherSettings
     // Launch
     public string GraphicsRenderer { get; set; } = Services.GraphicsRenderer.Vulkan;
     public bool FullscreenOnLaunch { get; set; } = true;
-    public bool QuickLaunch { get; set; } = false;   // skip asset verification if already installed
+    public bool QuickLaunch { get; set; } = true;   // skip asset verification if already installed
     public string QuickLaunchServerIp { get; set; } = "";  // server to join on launch ("" = auto from logs)
 
     // Sync

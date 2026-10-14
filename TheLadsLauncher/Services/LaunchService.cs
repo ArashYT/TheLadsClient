@@ -199,18 +199,32 @@ public class LaunchService : ILaunchService
             launchOption.ServerIp = settings.QuickLaunchServerIp;
         }
 
-        EnsureSecurityJvmArguments(launchOption);
+        ConfigureCachedNativesDirectory(path, versionId, launchOption);
+        EnsureSecurityJvmArguments(launchOption, requiredJava, gameDir);
 
         statusCallback?.Invoke("Starting game process...");
         Process process;
-        if (settings.QuickLaunch)
+        string installedMarker = Path.Combine(gameDir, "versions", versionId, ".lads-verified");
+        if (settings.QuickLaunch && File.Exists(installedMarker))
         {
-            process = await launcher.BuildProcessAsync(versionId, launchOption, cancellationToken);
+            try
+            {
+                process = await launcher.BuildProcessAsync(versionId, launchOption, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                report($"Quick launch fallback to full verification: {ex.Message}");
+                process = await launcher.InstallAndBuildProcessAsync(versionId, launchOption, cancellationToken);
+                try { File.WriteAllText(installedMarker, DateTime.UtcNow.ToString("O")); } catch { }
+            }
         }
         else
         {
             process = await launcher.InstallAndBuildProcessAsync(versionId, launchOption, cancellationToken);
+            try { File.WriteAllText(installedMarker, DateTime.UtcNow.ToString("O")); } catch { }
         }
+
+        MarkCachedNativesReady(path, versionId);
 
         GameSession.Configure(process.StartInfo, gameDir, _sharedContent.Root, profile.MinecraftVersion);
         process.EnableRaisingEvents = true;
@@ -336,10 +350,48 @@ public class LaunchService : ILaunchService
     }
 
     /// <summary>
-    /// Validates JVM arguments against unexpected agent injection flags and ensures defensive HotSpot flags
-    /// (-XX:+DisableAttachMechanism and -XX:+DisableExplicitGC) are set without duplicates.
+    /// Reuses an existing extracted natives directory when the .lads-natives-ok marker and at least one .dll are present,
+    /// skipping redundant ZipFile extraction on every warm launch.
     /// </summary>
-    public static void EnsureSecurityJvmArguments(MLaunchOption options)
+    public static void ConfigureCachedNativesDirectory(MinecraftPath minecraftPath, string versionId, MLaunchOption options)
+    {
+        if (minecraftPath == null || string.IsNullOrWhiteSpace(versionId) || options == null) return;
+        var nativesDir = Path.Combine(minecraftPath.Versions, versionId, "natives");
+        var marker = Path.Combine(nativesDir, ".lads-natives-ok");
+        try
+        {
+            if (File.Exists(marker) && Directory.Exists(nativesDir) && Directory.EnumerateFiles(nativesDir, "*.dll").Any())
+            {
+                options.NativesDirectory = nativesDir;
+            }
+        }
+        catch (IOException) { }
+    }
+
+    /// <summary>
+    /// Marks the version's extracted natives directory as verified after a successful process build.
+    /// </summary>
+    public static void MarkCachedNativesReady(MinecraftPath minecraftPath, string versionId)
+    {
+        if (minecraftPath == null || string.IsNullOrWhiteSpace(versionId)) return;
+        var nativesDir = Path.Combine(minecraftPath.Versions, versionId, "natives");
+        var marker = Path.Combine(nativesDir, ".lads-natives-ok");
+        try
+        {
+            if (Directory.Exists(nativesDir) && Directory.EnumerateFiles(nativesDir, "*.dll").Any())
+            {
+                File.WriteAllText(marker, versionId);
+            }
+        }
+        catch (IOException) { }
+    }
+
+    /// <summary>
+    /// Validates JVM arguments against agent injection and ensures security and performance flags
+    /// (-XX:+DisableAttachMechanism, -XX:+DisableExplicitGC, version-aware low-pause GC, and Dynamic AppCDS)
+    /// are set without duplicates.
+    /// </summary>
+    public static void EnsureSecurityJvmArguments(MLaunchOption options, int? javaMajorVersion = null, string? gameDirectory = null)
     {
         ValidateJvmArguments(options.ExtraJvmArguments);
 
@@ -356,7 +408,75 @@ public class LaunchService : ILaunchService
             list.Add(MArgument.FromCommandLine("-XX:+DisableAttachMechanism"));
         }
 
+        if (javaMajorVersion.HasValue && javaMajorVersion.Value > 0)
+        {
+            foreach (var flag in BuildOptimizedJvmArguments(javaMajorVersion.Value, gameDirectory))
+            {
+                bool alreadyPresent = flag.StartsWith("-XX:SharedArchiveFile=", StringComparison.OrdinalIgnoreCase)
+                    ? list.Any(a => a.Values.Any(v => v.StartsWith("-XX:SharedArchiveFile=", StringComparison.OrdinalIgnoreCase)))
+                    : list.Any(a => a.Values.Any(v => string.Equals(v, flag, StringComparison.OrdinalIgnoreCase)));
+                if (!alreadyPresent)
+                {
+                    list.Add(MArgument.FromCommandLine(flag));
+                }
+            }
+        }
+
         options.ExtraJvmArguments = list.ToArray();
+    }
+
+    /// <summary>
+    /// Builds version-aware low-pause GC and Dynamic AppCDS JVM arguments while respecting user MinRamMb.
+    /// </summary>
+    public static IReadOnlyList<string> BuildOptimizedJvmArguments(int javaMajorVersion, string? gameDirectory = null)
+    {
+        var flags = new List<string> { "-XX:+IgnoreUnrecognizedVMOptions" };
+
+        if (javaMajorVersion >= 25)
+        {
+            flags.Add("-XX:+UseZGC");
+            flags.Add("-XX:+UseCompactObjectHeaders");
+        }
+        else if (javaMajorVersion >= 21)
+        {
+            flags.Add("-XX:+UseZGC");
+            flags.Add("-XX:+ZGenerational");
+        }
+        else if (javaMajorVersion >= 17)
+        {
+            flags.Add("-XX:+UnlockExperimentalVMOptions");
+            flags.Add("-XX:+UseG1GC");
+            flags.Add("-XX:G1NewSizePercent=20");
+            flags.Add("-XX:G1ReservePercent=20");
+            flags.Add("-XX:MaxGCPauseMillis=35");
+            flags.Add("-XX:G1HeapRegionSize=32M");
+        }
+        else
+        {
+            flags.Add("-XX:+UnlockExperimentalVMOptions");
+            flags.Add("-XX:+UseG1GC");
+            flags.Add("-XX:+ParallelRefProcEnabled");
+            flags.Add("-XX:MaxGCPauseMillis=35");
+            flags.Add("-XX:G1NewSizePercent=20");
+            flags.Add("-XX:G1ReservePercent=20");
+            flags.Add("-XX:G1HeapRegionSize=32M");
+            flags.Add("-Xshare:auto");
+        }
+
+        if (javaMajorVersion >= 17 && !string.IsNullOrWhiteSpace(gameDirectory))
+        {
+            var cacheDir = Path.Combine(gameDirectory, "cache");
+            try
+            {
+                Directory.CreateDirectory(cacheDir);
+            }
+            catch (IOException) { }
+            var archivePath = Path.Combine(cacheDir, $"appcds-jdk{javaMajorVersion}.jsa");
+            flags.Add("-XX:+AutoCreateSharedArchive");
+            flags.Add($"-XX:SharedArchiveFile={archivePath}");
+        }
+
+        return flags;
     }
 
     /// <summary>

@@ -94,5 +94,97 @@ public class AntiInjectTests
         var process = await ModpackJoinTests.BuildForge1201(configure: o => LaunchService.EnsureSecurityJvmArguments(o));
         Assert.Contains("-XX:+DisableAttachMechanism", process.StartInfo.Arguments);
     }
+
+    [Theory]
+    [InlineData(25, "-XX:+UseZGC", "-XX:+UseCompactObjectHeaders", "appcds-jdk25.jsa")]
+    [InlineData(21, "-XX:+UseZGC", "-XX:+ZGenerational", "appcds-jdk21.jsa")]
+    [InlineData(17, "-XX:+UseG1GC", "-XX:MaxGCPauseMillis=35", "appcds-jdk17.jsa")]
+    public void EnsureSecurityJvmArguments_AddsVersionAwareGcAndAppCdsAndRespectsMinRam(int javaMajor, string expectedGc, string expectedExtra, string expectedJsa)
+    {
+        using var dir = new TestDirectory();
+        var options = new MLaunchOption
+        {
+            MinimumRamMb = 512,
+            MaximumRamMb = 4096
+        };
+
+        LaunchService.EnsureSecurityJvmArguments(options, javaMajor, dir.Path);
+
+        Assert.Equal(512, options.MinimumRamMb);
+        Assert.Equal(4096, options.MaximumRamMb);
+        var values = options.ExtraJvmArguments!.SelectMany(a => a.Values).ToList();
+        Assert.Contains("-XX:+IgnoreUnrecognizedVMOptions", values);
+        Assert.Contains(expectedGc, values);
+        Assert.Contains(expectedExtra, values);
+        Assert.Contains("-XX:+AutoCreateSharedArchive", values);
+        Assert.Contains(values, v => v.StartsWith("-XX:SharedArchiveFile=", StringComparison.Ordinal) && v.EndsWith(expectedJsa, StringComparison.Ordinal));
+        Assert.DoesNotContain("-XX:+AlwaysPreTouch", values);
+        Assert.True(Directory.Exists(Path.Combine(dir.Path, "cache")));
+    }
+
+    [Fact]
+    public void EnsureSecurityJvmArguments_Java8UsesTunedG1GcAndXshareAuto()
+    {
+        using var dir = new TestDirectory();
+        var options = new MLaunchOption { MinimumRamMb = 512, MaximumRamMb = 2048 };
+        LaunchService.EnsureSecurityJvmArguments(options, 8, dir.Path);
+
+        var values = options.ExtraJvmArguments!.SelectMany(a => a.Values).ToList();
+        Assert.Contains("-XX:+UseG1GC", values);
+        Assert.Contains("-XX:+ParallelRefProcEnabled", values);
+        Assert.Contains("-XX:MaxGCPauseMillis=35", values);
+        Assert.Contains("-Xshare:auto", values);
+        Assert.DoesNotContain("-XX:+AutoCreateSharedArchive", values);
+    }
+
+    [Fact]
+    public void CachedNativesDirectory_ReusedWhenMarkerAndDllExist()
+    {
+        using var dir = new TestDirectory();
+        var mcPath = new CmlLib.Core.MinecraftPath(dir.Path);
+        const string versionId = "fabric-loader-0.19.5-1.20.1";
+        var nativesDir = Path.Combine(mcPath.Versions, versionId, "natives");
+        Directory.CreateDirectory(nativesDir);
+
+        var opt1 = new MLaunchOption();
+        LaunchService.ConfigureCachedNativesDirectory(mcPath, versionId, opt1);
+        Assert.True(string.IsNullOrEmpty(opt1.NativesDirectory));
+
+        File.WriteAllBytes(Path.Combine(nativesDir, "lwjgl.dll"), new byte[] { 1, 2, 3 });
+        LaunchService.MarkCachedNativesReady(mcPath, versionId);
+        Assert.True(File.Exists(Path.Combine(nativesDir, ".lads-natives-ok")));
+
+        var opt2 = new MLaunchOption();
+        LaunchService.ConfigureCachedNativesDirectory(mcPath, versionId, opt2);
+        Assert.Equal(nativesDir, opt2.NativesDirectory);
+    }
+
+    [Fact]
+    public void ValidateVersionJsonLibraries_VerifiesManifestAndLibraryJars()
+    {
+        using var dir = new TestDirectory();
+        var mcPath = new CmlLib.Core.MinecraftPath(dir.Path);
+        const string versionId = "fabric-loader-0.19.5-1.20.1";
+        Assert.False(ModpackLauncher.ValidateVersionJsonLibraries(mcPath, versionId));
+
+        var vDir = Path.Combine(mcPath.Versions, versionId);
+        Directory.CreateDirectory(vDir);
+        File.WriteAllText(Path.Combine(vDir, versionId + ".json"),
+            """{"id":"fabric-loader-0.19.5-1.20.1","libraries":[{"name":"net.fabricmc:fabric-loader:0.19.5"}]}""");
+        Assert.False(ModpackLauncher.ValidateVersionJsonLibraries(mcPath, versionId));
+
+        var libJar = Path.Combine(mcPath.Library, "net", "fabricmc", "fabric-loader", "0.19.5", "fabric-loader-0.19.5.jar");
+        Directory.CreateDirectory(Path.GetDirectoryName(libJar)!);
+        File.WriteAllBytes(libJar, new byte[] { 0x50, 0x4B });
+        Assert.True(ModpackLauncher.ValidateVersionJsonLibraries(mcPath, versionId));
+    }
+
+    [Fact]
+    public void QuickLaunch_DefaultsToTrueAndPreservesExplicitFalse()
+    {
+        Assert.True(new LauncherSettings().QuickLaunch);
+        Assert.True(System.Text.Json.JsonSerializer.Deserialize<LauncherSettings>("{}")!.QuickLaunch);
+        Assert.False(System.Text.Json.JsonSerializer.Deserialize<LauncherSettings>("{\"QuickLaunch\":false}")!.QuickLaunch);
+    }
 }
 

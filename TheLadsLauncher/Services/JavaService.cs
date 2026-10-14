@@ -144,6 +144,7 @@ public class JavaService : IJavaService
                 {
                     8 => ("https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u504-b01/OpenJDK8U-jre_x64_windows_hotspot_8u504b01.zip",
                         "82e2cdc6693737c5998445b31f69668fa0da77c7705121053f6508ac84961123"),
+                    17 => ("https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.14%2B7/OpenJDK17U-jre_x64_windows_hotspot_17.0.14_7.zip", null),
                     21 => ("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_windows_hotspot_21.0.12.1_1.zip", null),
                     25 => ("https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jdk_x64_windows_hotspot_25.0.4.1_1.zip", null),
                     _ => throw new InvalidOperationException($"Unsupported Java version {majorVersion} for automatic download.")

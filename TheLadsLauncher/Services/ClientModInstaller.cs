@@ -35,6 +35,11 @@ public static class ClientModInstaller
     private sealed record Move(string From, string To, string Hash);
     private const long MaximumJarSize = FabricModMetadata.MaximumJarSize;
     private const string DisabledSuffix = ".disabled";
+    public static readonly IReadOnlySet<string> BuiltInCoreModIds = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "fzzy_config",
+        "no-resource-pack-warnings"
+    };
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
     private static readonly HttpClient Http = CreateClient();
     private static readonly SemaphoreSlim InstallLock = new(1, 1);
@@ -112,14 +117,19 @@ public static class ClientModInstaller
             // Plan retirements now, but do not move anything until every download and dependency verifies.
             // Only copies with Lads-ownership evidence are retired (bytes Lads published, under any name, or the receipt's copy);
             // anything else is the user's and stays. A stale standalone copy of a mod Core now embeds would switch Core's copy off.
-            var retireIds = receipt.Keys.Where(id => packShipped && !desired.Contains(id)).Concat(retiredHashes.Keys).ToHashSet(StringComparer.Ordinal);
+            var retireIds = receipt.Keys.Where(id => packShipped && !desired.Contains(id))
+                .Concat(retiredHashes.Keys)
+                .Concat(packShipped ? BuiltInCoreModIds.Where(id => !desired.Contains(id)) : Enumerable.Empty<string>())
+                .ToHashSet(StringComparer.Ordinal);
             var keptIds = new HashSet<string>(StringComparer.Ordinal);
             // Disabled copies whose file name was the only record of the choice (v1.2.2, or renamed by hand): id -> project id.
             var keepDisabled = new Dictionary<string, string?>(StringComparer.Ordinal);
             foreach (var jar in inventory.Where(j => j.Id != null && retireIds.Contains(j.Id)))
             {
                 var id = jar.Id!;
-                if (!Published(id, jar.Hash) && !(receipt.TryGetValue(id, out var ownedHash) && SameHash(jar.Hash, ownedHash)))
+                bool isBuiltInCoreOrphan = BuiltInCoreModIds.Contains(id) && !desired.Contains(id)
+                    && (BaseName(jar.Path).StartsWith(id + "-", StringComparison.OrdinalIgnoreCase) || IsLegacyName(Path.GetFileName(jar.Path), id));
+                if (!isBuiltInCoreOrphan && !Published(id, jar.Hash) && !(receipt.TryGetValue(id, out var ownedHash) && SameHash(jar.Hash, ownedHash)))
                 {
                     status?.Invoke($"Kept '{jar.Path}': {id} is no longer part of the Lads pack and this copy was added or modified by you.");
                     keptIds.Add(id);
@@ -329,6 +339,12 @@ public static class ClientModInstaller
                 }
                 staged[temp] = Hash(bytes);
                 changes.Add(new(receiptPath, temp, receiptHash, staged[temp], "previous-receipt", "Saved client mod receipt."));
+            }
+
+            if (changes.Count == 0)
+            {
+                status?.Invoke($"Client mods ready for Minecraft {minecraftVersion}.");
+                return;
             }
 
             status?.Invoke("Preparing client mod changes...");

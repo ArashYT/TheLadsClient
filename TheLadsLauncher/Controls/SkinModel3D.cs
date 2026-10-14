@@ -172,7 +172,7 @@ public sealed class SkinModel3D : Control
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        if (e.Root is Window w) w.Activated -= WindowActivated;
+        if (TopLevel.GetTopLevel(this) is Window w) w.Activated -= WindowActivated;
         base.OnDetachedFromVisualTree(e);
         _bitmap?.Dispose();
         _bitmap = null;

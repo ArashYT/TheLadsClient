@@ -320,7 +320,7 @@ public sealed class SharedContentService
     /// <c>thelads_crosshair_profiles.json</c>) across <c>shared\</c>, the root launcher directory, all profile directories,
     /// and all modpack instance directories so every instance with TheLadsCore shares identical settings.
     /// </summary>
-    public static void SyncLadsSettingsAcrossAllInstances(string dataDirectory, string? extraGameDirectory = null)
+    public static void SyncLadsSettingsAcrossAllInstances(string dataDirectory, string? extraGameDirectory = null, bool backgroundFanOut = false)
     {
         if (string.IsNullOrWhiteSpace(dataDirectory)) return;
         try
@@ -363,6 +363,8 @@ public sealed class SharedContentService
                     }
                 }
             }
+
+            List<(string Source, string Target, string Dir, DateTime NewestTime, long NewestLength)>? deferredCopies = backgroundFanOut ? new() : null;
 
             foreach (var fileName in SharedLadsSettingsFiles)
             {
@@ -419,21 +421,43 @@ public sealed class SharedContentService
                         && !File.Exists(Path.Combine(dir, "options.txt")))
                         continue;
 
-                    try
+                    if (!isPrimaryDir && deferredCopies != null)
                     {
-                        if (File.Exists(target))
-                        {
-                            var targetInfo = new FileInfo(target);
-                            if (targetInfo.Length == newestLength && targetInfo.LastWriteTimeUtc == newestTime)
-                                continue;
-                        }
-                        Directory.CreateDirectory(dir);
-                        File.Copy(newestFile, target, overwrite: true);
-                        File.SetLastWriteTimeUtc(target, newestTime);
+                        deferredCopies.Add((newestFile, target, dir, newestTime, newestLength));
+                        continue;
                     }
-                    catch { }
+
+                    CopySettingFileIfNewer(newestFile, target, dir, newestTime, newestLength);
                 }
             }
+
+            if (deferredCopies is { Count: > 0 })
+            {
+                _ = Task.Run(() =>
+                {
+                    foreach (var item in deferredCopies)
+                    {
+                        CopySettingFileIfNewer(item.Source, item.Target, item.Dir, item.NewestTime, item.NewestLength);
+                    }
+                });
+            }
+        }
+        catch { }
+    }
+
+    private static void CopySettingFileIfNewer(string newestFile, string target, string dir, DateTime newestTime, long newestLength)
+    {
+        try
+        {
+            if (File.Exists(target))
+            {
+                var targetInfo = new FileInfo(target);
+                if (targetInfo.Length == newestLength && targetInfo.LastWriteTimeUtc == newestTime)
+                    return;
+            }
+            Directory.CreateDirectory(dir);
+            File.Copy(newestFile, target, overwrite: true);
+            File.SetLastWriteTimeUtc(target, newestTime);
         }
         catch { }
     }

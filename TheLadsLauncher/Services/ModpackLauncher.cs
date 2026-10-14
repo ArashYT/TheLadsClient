@@ -112,7 +112,7 @@ public static class ModpackLauncher
         try
         {
             Directory.CreateDirectory(gameDirectory);
-            SharedContentService.SyncLadsSettingsAcrossAllInstances(dataDirectory, gameDirectory);
+            SharedContentService.SyncLadsSettingsAcrossAllInstances(dataDirectory, gameDirectory, backgroundFanOut: true);
             var sharedConfig = Path.Combine(dataDirectory, "shared", "thelads_config.json");
             var instanceConfig = Path.Combine(gameDirectory, "thelads_config.json");
             if (File.Exists(sharedConfig))
@@ -172,8 +172,12 @@ public static class ModpackLauncher
         };
 
         status?.Invoke($"Resolving Minecraft {instance.McVersion}...");
-        var vanilla = await launcher.GetVersionAsync(instance.McVersion, token);
-        int? manifestJava = int.TryParse(vanilla.JavaVersion?.MajorVersion, out var major) ? major : null;
+        int? manifestJava = TryReadLocalJavaMajor(launcher.MinecraftPath, instance.McVersion);
+        if (manifestJava == null && !File.Exists(Path.Combine(launcher.MinecraftPath.Versions, instance.McVersion, instance.McVersion + ".json")))
+        {
+            var vanilla = await launcher.GetVersionAsync(instance.McVersion, token);
+            manifestJava = int.TryParse(vanilla.JavaVersion?.MajorVersion, out var major) ? major : null;
+        }
         int requiredJava = GameVersionPolicy.GetRequiredJavaMajor(instance.McVersion, manifestJava);
         // As the Lads launch: the Java set in Settings when it is exactly the version's, otherwise one picked for the version.
         string javaPath = !settings.AutoDetectJava && File.Exists(settings.JavaPath) && java.GetJavaMajorVersion(settings.JavaPath) == requiredJava
@@ -181,7 +185,6 @@ public static class ModpackLauncher
             : await java.EnsureJavaAsync(requiredJava, null, status, token);
 
         var versionId = await InstallLoaderAsync(launcher, dataDirectory, instance, javaPath, http, status, token);
-        await launcher.GetAllVersionsAsync(token); // pick up the loader's manifest
 
         status?.Invoke("Checking game files...");
         int ram = instance.MaxRamMb > 0 ? instance.MaxRamMb : Math.Max(1024, settings.MaxRamMb);
@@ -195,18 +198,29 @@ public static class ModpackLauncher
         };
         if (!string.IsNullOrWhiteSpace(joinServer)) JoinServer(options, joinServer);
         LimitBackgroundThreads(instance, options, Environment.ProcessorCount);
-        LaunchService.EnsureSecurityJvmArguments(options);
+        LaunchService.ConfigureCachedNativesDirectory(launcher.MinecraftPath, versionId, options);
+        LaunchService.EnsureSecurityJvmArguments(options, requiredJava, instance.GameDirectory);
+
+        string verifiedMarker = Path.Combine(launcher.MinecraftPath.Versions, versionId, ".lads-verified");
         Process process;
-        try
+        if (settings.QuickLaunch && File.Exists(verifiedMarker))
         {
-            process = await launcher.InstallAndBuildProcessAsync(versionId, options, token);
+            try
+            {
+                process = await launcher.BuildProcessAsync(versionId, options, token);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                status?.Invoke($"Quick launch fallback to full verification: {ex.Message}");
+                process = await FullInstallAndBuildAsync(launcher, versionId, options, verifiedMarker, token);
+            }
         }
-        catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException)
-            && File.Exists(Path.Combine(launcher.MinecraftPath.Versions, versionId, versionId + ".json")))
+        else
         {
-            // Another running copy of the instance may hold native DLLs or libraries open in modpack-cache; build the process directly.
-            process = await launcher.BuildProcessAsync(versionId, options, token);
+            process = await FullInstallAndBuildAsync(launcher, versionId, options, verifiedMarker, token);
         }
+
+        LaunchService.MarkCachedNativesReady(launcher.MinecraftPath, versionId);
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.CreateNoWindow = true;
         process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = dataDirectory;
@@ -222,6 +236,48 @@ public static class ModpackLauncher
         try { AccountSwitch.Prepare(instance.GameDirectory); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { status?.Invoke($"Could not prepare {AccountSwitch.RequestFile}: {ex.Message}"); }
         return process;
+    }
+
+    private static async Task<Process> FullInstallAndBuildAsync(MinecraftLauncher launcher, string versionId, MLaunchOption options, string verifiedMarker, CancellationToken token)
+    {
+        await launcher.GetAllVersionsAsync(token); // pick up the loader's manifest
+        try
+        {
+            var process = await launcher.InstallAndBuildProcessAsync(versionId, options, token);
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(verifiedMarker)!);
+                await File.WriteAllTextAsync(verifiedMarker, DateTimeOffset.UtcNow.ToString("O"), token);
+            }
+            catch (IOException) { }
+            return process;
+        }
+        catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException)
+            && File.Exists(Path.Combine(launcher.MinecraftPath.Versions, versionId, versionId + ".json")))
+        {
+            // Another running copy of the instance may hold native DLLs or libraries open in modpack-cache; build the process directly.
+            return await launcher.BuildProcessAsync(versionId, options, token);
+        }
+    }
+
+    private static int? TryReadLocalJavaMajor(MinecraftPath minecraftPath, string mcVersion)
+    {
+        var jsonPath = Path.Combine(minecraftPath.Versions, mcVersion, mcVersion + ".json");
+        if (!File.Exists(jsonPath)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(jsonPath));
+            if (doc.RootElement.TryGetProperty("javaVersion", out var jv)
+                && jv.TryGetProperty("majorVersion", out var mv))
+            {
+                if (mv.ValueKind == JsonValueKind.Number && mv.TryGetInt32(out int major))
+                    return major;
+                if (mv.ValueKind == JsonValueKind.String && int.TryParse(mv.GetString(), out int parsed))
+                    return parsed;
+            }
+        }
+        catch { }
+        return null;
     }
 
     /// <summary>The Lads early loading window for Forge 1.20.1 packs (TheLadsCore/forge_earlywindow), bundled in game-mods/1.20.1.</summary>
@@ -258,11 +314,13 @@ public static class ModpackLauncher
     /// install folder open (an update replaces that folder), and a newer launcher's jar never overwrites one a running game uses.</summary>
     private static string StageEarlyWindowJar(string dataDirectory, string bundledJar)
     {
-        byte[] bytes = File.ReadAllBytes(bundledJar);
-        var staged = Path.Combine(CacheRoot(dataDirectory), "lads-earlywindow", Sha256(bytes)[..16], EarlyWindowJar);
-        if (File.Exists(staged)) return staged;
+        string sha = ModpackCoreSync.GetSha256(bundledJar);
+        var staged = Path.Combine(CacheRoot(dataDirectory), "lads-earlywindow", sha[..16], EarlyWindowJar);
+        var bundledInfo = new FileInfo(bundledJar);
+        var stagedInfo = new FileInfo(staged);
+        if (stagedInfo.Exists && stagedInfo.Length == bundledInfo.Length) return staged;
         Directory.CreateDirectory(Path.GetDirectoryName(staged)!);
-        File.WriteAllBytes(staged + ".tmp", bytes);
+        File.Copy(bundledJar, staged + ".tmp", overwrite: true);
         File.Move(staged + ".tmp", staged, overwrite: true);
         return staged;
     }
@@ -342,8 +400,14 @@ public static class ModpackLauncher
             case "vanilla":
                 return mc;
             case "fabric":
+                var fabricVersionId = $"fabric-loader-{loader}-{mc}";
+                if (ValidateVersionJsonLibraries(launcher.MinecraftPath, fabricVersionId))
+                    return fabricVersionId;
                 return await new FabricInstaller(http).Install(mc, loader, launcher.MinecraftPath);
             case "quilt":
+                var quiltVersionId = $"quilt-loader-{loader}-{mc}";
+                if (ValidateVersionJsonLibraries(launcher.MinecraftPath, quiltVersionId))
+                    return quiltVersionId;
                 return await new QuiltInstaller(http).Install(mc, loader, launcher.MinecraftPath);
             case "forge" when mc == GameVersionPolicy.ForgeMinecraftVersion && loader == GameVersionPolicy.ForgeBuild:
                 await LaunchService.InstallForgeAsync(launcher, CacheRoot(dataDirectory), http, status, token); // the Lads 1.8.9 build, pinned
@@ -359,6 +423,52 @@ public static class ModpackLauncher
                     : $"https://maven.neoforged.net/releases/net/neoforged/neoforge/{loader}/neoforge-{loader}-installer.jar");
             default:
                 throw new InvalidOperationException($"Unknown loader '{instance.Loader}'.");
+        }
+    }
+
+    /// <summary>
+    /// Verifies that the local version manifest JSON exists and every library jar it references is present in the library cache.
+    /// </summary>
+    public static bool ValidateVersionJsonLibraries(MinecraftPath minecraftPath, string versionId)
+    {
+        if (minecraftPath == null || string.IsNullOrWhiteSpace(versionId)) return false;
+        var manifestPath = Path.Combine(minecraftPath.Versions, versionId, versionId + ".json");
+        if (!File.Exists(manifestPath)) return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(manifestPath));
+            if (!doc.RootElement.TryGetProperty("libraries", out var libraries) || libraries.ValueKind != JsonValueKind.Array)
+                return false;
+            foreach (var lib in libraries.EnumerateArray())
+            {
+                if (lib.TryGetProperty("downloads", out var downloads)
+                    && downloads.TryGetProperty("artifact", out var artifact)
+                    && artifact.TryGetProperty("path", out var pathProp)
+                    && pathProp.GetString() is { Length: > 0 } relPath)
+                {
+                    var fullLibPath = Path.Combine(minecraftPath.Library, relPath.Replace('/', Path.DirectorySeparatorChar));
+                    if (!File.Exists(fullLibPath)) return false;
+                    continue;
+                }
+                if (lib.TryGetProperty("name", out var nameProp) && nameProp.GetString() is { Length: > 0 } mavenCoord)
+                {
+                    var parts = mavenCoord.Split(':');
+                    if (parts.Length < 3) return false;
+                    string group = parts[0].Replace('.', Path.DirectorySeparatorChar);
+                    string artifactId = parts[1];
+                    string version = parts[2];
+                    string fileName = parts.Length >= 4 && !string.IsNullOrEmpty(parts[3])
+                        ? $"{artifactId}-{version}-{parts[3]}.jar"
+                        : $"{artifactId}-{version}.jar";
+                    var fullLibPath = Path.Combine(minecraftPath.Library, group, artifactId, version, fileName);
+                    if (!File.Exists(fullLibPath)) return false;
+                }
+            }
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -396,7 +506,7 @@ public static class ModpackLauncher
         var installers = Path.Combine(cache, "installers");
         Directory.CreateDirectory(installers);
         var jar = Path.Combine(installers, Path.GetFileName(new Uri(urls[0]).AbsolutePath));
-        if (File.Exists(jar) && PinnedInstallerSha256.TryGetValue(Path.GetFileName(jar), out var pinned) && Sha256(await File.ReadAllBytesAsync(jar, token)) != pinned)
+        if (File.Exists(jar) && PinnedInstallerSha256.TryGetValue(Path.GetFileName(jar), out var pinned) && ModpackCoreSync.GetSha256(jar) != pinned)
             File.Delete(jar); // a cached copy that is not the pinned build is fetched again
         if (!File.Exists(jar))
         {

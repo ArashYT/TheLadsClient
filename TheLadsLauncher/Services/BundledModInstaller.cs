@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -13,6 +14,8 @@ namespace TheLadsLauncher.Services;
 public static class BundledModInstaller
 {
     public const string CoreModId = "theladscore";
+    private static readonly ConcurrentDictionary<string, (long Length, long LastWriteTicks, byte[] Hash)> _sha256Cache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, (long Length, long LastWriteTicks, bool IsFabricCore, bool IsForgeCore)> _isCoreCache = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Installs only the exact version's core jar; returns whether any files changed.</summary>
     public static async Task<bool> InstallAsync(string bundleRoot, string gameDir, string minecraftVersion,
@@ -63,8 +66,7 @@ public static class BundledModInstaller
                 || !depends.TryGetProperty("minecraft", out var mc) || !MatchesExactVersion(mc, minecraftVersion))
                 throw new InvalidDataException($"Bundled core '{source}' must declare the exact Minecraft dependency '{minecraftVersion}'. Rebuild/deploy this version's core.");
         }
-        input.Position = 0;
-        var sourceHash = await SHA256.HashDataAsync(input, cancellationToken);
+        var sourceHash = await GetSha256Async(source, input, cancellationToken);
 
         var legacyCores = new List<string>();
         var destinationIsCore = false;
@@ -93,9 +95,7 @@ public static class BundledModInstaller
         var contentChanged = true;
         if (destinationIsCore)
         {
-            await using var current = new FileStream(destination, FileMode.Open, FileAccess.Read, FileShare.Read,
-                81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
-            var currentHash = await SHA256.HashDataAsync(current, cancellationToken);
+            var currentHash = await GetSha256Async(destination, null, cancellationToken);
             contentChanged = !sourceHash.AsSpan().SequenceEqual(currentHash);
         }
         if (!contentChanged && legacyCores.Count == 0)
@@ -157,6 +157,34 @@ public static class BundledModInstaller
         }
     }
 
+    private static async Task<byte[]> GetSha256Async(string path, FileStream? openStream, CancellationToken cancellationToken)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var fi = new FileInfo(fullPath);
+        if (fi.Exists && _sha256Cache.TryGetValue(fullPath, out var cached)
+            && cached.Length == fi.Length && cached.LastWriteTicks == fi.LastWriteTimeUtc.Ticks)
+        {
+            return cached.Hash;
+        }
+        byte[] hash;
+        if (openStream != null)
+        {
+            openStream.Position = 0;
+            hash = await SHA256.HashDataAsync(openStream, cancellationToken);
+        }
+        else
+        {
+            await using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            hash = await SHA256.HashDataAsync(stream, cancellationToken);
+        }
+        if (fi.Exists)
+        {
+            _sha256Cache[fullPath] = (fi.Length, fi.LastWriteTimeUtc.Ticks, hash);
+        }
+        return hash;
+    }
+
     /// <summary>Explicitly disabled: keep exactly one disabled Core and install nothing. The bundled jar is not needed.</summary>
     private static bool Disable(string game, string mods, string destination, bool forge, CancellationToken cancellationToken)
     {
@@ -201,15 +229,34 @@ public static class BundledModInstaller
     /// jars, and the other loader's Core, are simply not Core.</summary>
     private static bool IsCore(string path, bool forge)
     {
+        var fullPath = Path.GetFullPath(path);
+        var fi = new FileInfo(fullPath);
+        if (fi.Exists && _isCoreCache.TryGetValue(fullPath, out var cached)
+            && cached.Length == fi.Length && cached.LastWriteTicks == fi.LastWriteTimeUtc.Ticks)
+        {
+            return forge ? cached.IsForgeCore : cached.IsFabricCore;
+        }
+        bool isFabric = false, isForge = false;
         try
         {
-            using var stream = File.OpenRead(path);
-            if (forge) return FabricModMetadata.ReadForgeJar(stream)?.Id == CoreModId;
+            using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
             using var metadata = ReadMetadata(stream);
-            return metadata != null && GetModId(metadata.RootElement) == CoreModId;
+            isFabric = metadata != null && GetModId(metadata.RootElement) == CoreModId;
         }
-        catch (InvalidDataException) { return false; }
-        catch (JsonException) { return false; }
+        catch (InvalidDataException) { }
+        catch (JsonException) { }
+        try
+        {
+            using var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            isForge = FabricModMetadata.ReadForgeJar(stream)?.Id == CoreModId;
+        }
+        catch (InvalidDataException) { }
+        catch (JsonException) { }
+        if (fi.Exists)
+        {
+            _isCoreCache[fullPath] = (fi.Length, fi.LastWriteTimeUtc.Ticks, isFabric, isForge);
+        }
+        return forge ? isForge : isFabric;
     }
 
     /// <summary>"'path' is the Fabric Lads Core, but Minecraft 1.8.9 runs on Forge" (or the reverse), else null.</summary>
@@ -278,6 +325,18 @@ public static class BundledModInstaller
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
                 File.Copy(file, dest);
+            }
+            else if (dest.EndsWith("modernfix-mixins.properties", StringComparison.OrdinalIgnoreCase) && File.Exists(dest))
+            {
+                try
+                {
+                    var text = File.ReadAllText(dest);
+                    if (text.Contains("mixin.perf.dynamic_resources=true", StringComparison.Ordinal))
+                    {
+                        File.WriteAllText(dest, text.Replace("mixin.perf.dynamic_resources=true", "mixin.perf.dynamic_resources=false", StringComparison.Ordinal));
+                    }
+                }
+                catch (IOException) { }
             }
         }
     }

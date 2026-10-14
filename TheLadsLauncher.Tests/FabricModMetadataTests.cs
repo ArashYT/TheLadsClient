@@ -89,4 +89,26 @@ public sealed class FabricModMetadataTests
     [InlineData(">=26.2", "26w14a", true)]
     public void VersionPredicates(string predicate, string version, bool expected) =>
         Assert.Equal(expected, FabricVersionPredicate.Matches(predicate, version));
+
+    [Fact]
+    public void ReadJarFromPathCachesMetadataUntilFileChanges()
+    {
+        using var dir = new TestDirectory();
+        var jarPath = Path.Combine(dir.Path, "testmod.jar");
+        File.WriteAllBytes(jarPath, ModSandbox.Jar("cachedmod", "1.0.0"));
+
+        var first = FabricModMetadata.ReadJar(jarPath);
+        var second = FabricModMetadata.ReadJar(jarPath);
+        Assert.NotNull(first);
+        Assert.Same(first, second);
+        Assert.Equal("1.0.0", second!.Version);
+
+        // Overwriting the file with a new version and mtime invalidates the cache entry.
+        File.WriteAllBytes(jarPath, ModSandbox.Jar("cachedmod", "2.0.0-updated"));
+        File.SetLastWriteTimeUtc(jarPath, DateTime.UtcNow.AddMinutes(1));
+        var third = FabricModMetadata.ReadJar(jarPath);
+        Assert.NotNull(third);
+        Assert.NotSame(first, third);
+        Assert.Equal("2.0.0-updated", third!.Version);
+    }
 }
