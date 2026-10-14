@@ -23,6 +23,20 @@ public final class TntTimerModule extends Module {
     public final BoolOption minecarts = addOption(new BoolOption("TNT minecarts", true));
     public final BoolOption throughBlocks = addOption(new BoolOption("Through blocks", false));
 
+    private static final String[] FUSE_TABLE = new String[200];
+    private static final String[] CENTI_TABLE = new String[1000];
+    private static TntTimerModule cachedModule;
+
+    static {
+        for (int c = 0; c < CENTI_TABLE.length; c++) {
+            int part = c % 100;
+            CENTI_TABLE[c] = c / 100 + (part < 10 ? ".0" : ".") + part + "s";
+        }
+        for (int t = 0; t < FUSE_TABLE.length; t++) {
+            FUSE_TABLE[t] = CENTI_TABLE[t * 5];
+        }
+    }
+
     public TntTimerModule() {
         super(NAME, "Shows the seconds left above primed TNT and lit TNT minecarts, turning from green to red as it nears 0.");
         setEnabled(true);
@@ -30,7 +44,11 @@ public final class TntTimerModule extends Module {
 
     /** The module when it is on, else null. */
     public static TntTimerModule active() {
-        TntTimerModule module = ModuleManager.getInstance().getModule(NAME) instanceof TntTimerModule m ? m : null;
+        TntTimerModule module = cachedModule;
+        if (module == null) {
+            module = ModuleManager.getInstance().getModule(NAME) instanceof TntTimerModule m ? m : null;
+            cachedModule = module;
+        }
         return module != null && module.isEnabled() ? module : null;
     }
 
@@ -43,9 +61,16 @@ public final class TntTimerModule extends Module {
     /** Through blocks, except on Hypixel: there a timer seen through walls would count as ESP, so it is depth tested like a name tag. */
     public boolean seeThrough() { return throughBlocks.get() && !com.thelads.core.client.HypixelSafetyManager.isHypixel(); }
 
+    /** Precomputed O(1) lookup for integer fuse ticks [0..199]. */
+    public static String format(int fuseTicks) {
+        if (fuseTicks >= 0 && fuseTicks < FUSE_TABLE.length) return FUSE_TABLE[fuseTicks];
+        return label(fuseTicks);
+    }
+
     /** "3.45s": the ticks left as seconds with two decimals, never below 0. */
     public static String label(float ticksLeft) {
         int centis = Math.round(Math.max(0f, ticksLeft) * 5f); // ticks / 20 s * 100
+        if (centis >= 0 && centis < CENTI_TABLE.length) return CENTI_TABLE[centis];
         int part = centis % 100;
         return centis / 100 + (part < 10 ? ".0" : ".") + part + "s";
     }

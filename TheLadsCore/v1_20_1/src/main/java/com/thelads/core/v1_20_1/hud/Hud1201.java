@@ -49,7 +49,31 @@ public final class Hud1201 {
         HudQa1201.tick(client);
     }
 
-    public static Module module(String name) { return ModuleManager.getInstance().getModule(name); }
+    private static final java.util.concurrent.ConcurrentHashMap<String, Module> MODULE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.ConcurrentHashMap<String, com.thelads.core.config.Option> OPTION_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public static Module module(String name) {
+        Module cached = MODULE_CACHE.get(name);
+        if (cached != null) return cached;
+        Module m = ModuleManager.getInstance().getModule(name);
+        if (m != null) MODULE_CACHE.put(name, m);
+        return m;
+    }
+
+    public static com.thelads.core.config.Option option(String modName, String optName) {
+        String key = modName + "/" + optName;
+        com.thelads.core.config.Option cached = OPTION_CACHE.get(key);
+        if (cached != null) return cached;
+        Module m = module(modName);
+        if (m != null) {
+            com.thelads.core.config.Option opt = m.getOption(optName);
+            if (opt != null) {
+                OPTION_CACHE.put(key, opt);
+                return opt;
+            }
+        }
+        return null;
+    }
 
     public static boolean enabled(String name) {
         Module module = module(name);
@@ -57,22 +81,18 @@ public final class Hud1201 {
     }
 
     public static boolean bool(String module, String option, boolean fallback) {
-        Module value = module(module);
-        return value != null && value.getOption(option) instanceof BoolOption setting ? setting.get() : fallback;
+        return option(module, option) instanceof BoolOption setting ? setting.get() : fallback;
     }
 
     public static int choice(String module, String option, int fallback) {
-        Module value = module(module);
-        return value != null && value.getOption(option) instanceof DropdownOption setting ? setting.getIndex() : fallback;
+        return option(module, option) instanceof DropdownOption setting ? setting.getIndex() : fallback;
     }
 
     public static double number(String module, String option, double fallback) {
-        Module value = module(module);
-        return value != null && value.getOption(option) instanceof SliderOption setting ? setting.getValue() : fallback;
+        return option(module, option) instanceof SliderOption setting ? setting.getValue() : fallback;
     }
 
     public static String string(String module, String option, String fallback) {
-        Module value = module(module);
-        return value != null && value.getOption(option) instanceof com.thelads.core.config.StringOption setting ? setting.get() : fallback;
+        return option(module, option) instanceof com.thelads.core.config.StringOption setting ? setting.get() : fallback;
     }
 }

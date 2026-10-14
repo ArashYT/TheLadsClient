@@ -32,6 +32,7 @@ public abstract class MixinBookViewScreen extends Screen {
     /** The book texture, drawn at y = 2. */
     @ModifyArg(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;blit(Lnet/minecraft/resources/ResourceLocation;IIIIII)V"), index = 2)
     private int fbg$renderBackground(int y) {
+        FixBookGui.ensureWidgetsShifted(this);
         return FixBookGui.getFixedY(this) + y;
     }
 

@@ -2,7 +2,10 @@ package com.thelads.core.v1_20_1.hud.items;
 
 import com.thelads.core.v1_20_1.hud.Hud1201;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.Mth;
@@ -15,13 +18,16 @@ import net.minecraft.world.item.ItemStack;
  */
 public record ShulkerSummary1201(List<ItemStack> slots, ItemStack first, int occupied, long count, boolean uniform) {
     public static final ShulkerSummary1201 EMPTY = of(List.of());
+    private static final Map<CompoundTag, ShulkerSummary1201> CACHE = Collections.synchronizedMap(new WeakHashMap<>());
 
     /** From block entity data ({@code Items}); null data is an empty box. */
     public static ShulkerSummary1201 of(CompoundTag data) {
         if (data == null || !data.contains("Items", 9)) return EMPTY;
-        NonNullList<ItemStack> items = NonNullList.withSize(27, ItemStack.EMPTY);
-        ContainerHelper.loadAllItems(data, items);
-        return of(items);
+        return CACHE.computeIfAbsent(data, tag -> {
+            NonNullList<ItemStack> items = NonNullList.withSize(27, ItemStack.EMPTY);
+            ContainerHelper.loadAllItems(tag, items);
+            return of(items);
+        });
     }
 
     public static ShulkerSummary1201 of(List<ItemStack> items) {

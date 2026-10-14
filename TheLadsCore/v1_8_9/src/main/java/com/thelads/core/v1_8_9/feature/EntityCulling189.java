@@ -321,11 +321,24 @@ public final class EntityCulling189 {
         }
     }
 
+    /** Drops all cached world/chunk references on world switch or disconnect to prevent retaining old WorldClient instances. */
+    public static void clear() {
+        snapshot = null;
+        tableWorld = null;
+        FIRST_SEEN.clear();
+        SECTIONS.clear();
+        BLOCKS.clear();
+        changeVersion++;
+    }
+
     /** Each client tick: the chunks around the camera for the thread, and changed sections forgotten after a second. */
     public static void tick(Minecraft mc) {
         WorldClient world = mc.theWorld;
         Entity view = mc.getRenderViewEntity();
-        if (!enabled || world == null || view == null) { snapshot = null; return; }
+        if (!enabled || world == null || view == null) {
+            if (snapshot != null || tableWorld != null) clear();
+            return;
+        }
         if (world != tableWorld) {
             tableWorld = world;
             opaque = opaqueTable();
@@ -338,8 +351,8 @@ public final class EntityCulling189 {
         int size = RADIUS * 2 + 1, x0 = (int) Math.floor(view.posX / 16) - RADIUS, z0 = (int) Math.floor(view.posZ / 16) - RADIUS;
         Chunk[] chunks = new Chunk[size * size];
         for (int i = 0; i < size; i++) for (int j = 0; j < size; j++) {
-            if (!world.getChunkProvider().chunkExists(x0 + i, z0 + j)) continue;
             Chunk chunk = world.getChunkFromChunkCoords(x0 + i, z0 + j);
+            if (chunk == null || chunk.isEmpty()) continue;
             Long seen = FIRST_SEEN.get(chunk);
             if (seen == null) FIRST_SEEN.put(chunk, now); // just arrived: its blocks may not be drawn yet
             else if (now - seen > CHUNK_SETTLE) chunks[i * size + j] = chunk;

@@ -15,20 +15,28 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  */
 @Mixin(EntityFX.class)
 public abstract class EntityFXLightMixin {
+    @org.spongepowered.asm.mixin.Shadow protected int particleAge;
     @Unique private long ladsLightBlock = Long.MIN_VALUE;
     @Unique private int ladsLight;
+    @Unique private int ladsLightAge = -1;
     @Unique private long ladsLightTick;
 
     @Redirect(method = "renderParticle", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;getBrightnessForRender(F)I"), require = 0)
     private int ladsLight(EntityFX particle, float partialTicks) {
         if (!ParticleCore.optimized()) return particle.getBrightnessForRender(partialTicks);
+        if (this.particleAge == this.ladsLightAge) { ParticleCore.reused++; return this.ladsLight; }
         long block = ((long) MathHelper.floor_double(particle.posX) & 0x3FFFFFFL) << 38 | ((long) MathHelper.floor_double(particle.posY) & 0xFFFL) << 26
             | (long) MathHelper.floor_double(particle.posZ) & 0x3FFFFFFL;
         long now = particle.worldObj.getTotalWorldTime(), since = now - this.ladsLightTick;
-        if (block == this.ladsLightBlock && since >= 0 && since < 4) { ParticleCore.reused++; return this.ladsLight; }
+        if (block == this.ladsLightBlock && since >= 0 && since < 4) {
+            this.ladsLightAge = this.particleAge;
+            ParticleCore.reused++;
+            return this.ladsLight;
+        }
         int light = particle.getBrightnessForRender(partialTicks);
         this.ladsLightBlock = block;
         this.ladsLight = light;
+        this.ladsLightAge = this.particleAge;
         this.ladsLightTick = now;
         return light;
     }

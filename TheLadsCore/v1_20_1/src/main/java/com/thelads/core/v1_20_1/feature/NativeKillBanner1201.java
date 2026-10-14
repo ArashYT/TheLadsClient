@@ -310,6 +310,7 @@ public final class NativeKillBanner1201 {
         if (!eligible() || minecraft.options.hideGui || module == null) return;
         double age = BANNER.age(System.nanoTime());
         if (age < 0) return;
+        com.thelads.core.v1_20_1.hud.HudPipeline1201.layer(graphics);
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         graphics.pose().pushPose();

@@ -16,6 +16,7 @@ import java.util.Map;
 public final class Nicknames {
     private static String lastNicknames, lastDisplay, lastOwn;
     private static Map<String, String> active = Collections.emptyMap();
+    private static ToggleNametagsModule cachedTagsModule;
     private Nicknames() {}
 
     /** "Name=Nick, Name2=Nick2" as lower-case name -> nick; pairs without both sides are skipped. */
@@ -33,7 +34,15 @@ public final class Nicknames {
 
     /** The renames to apply now (empty while the module is off); ownName is the local player's username. */
     public static Map<String, String> active(String ownName) {
-        if (!(ModuleManager.getInstance().getModule("Nametags") instanceof ToggleNametagsModule tags) || !tags.isEnabled())
+        ToggleNametagsModule tags = cachedTagsModule;
+        if (tags == null) {
+            if (ModuleManager.getInstance().getModule("Nametags") instanceof ToggleNametagsModule found) {
+                cachedTagsModule = tags = found;
+            } else {
+                return Collections.emptyMap();
+            }
+        }
+        if (!tags.isEnabled())
             return Collections.emptyMap();
         String nicks = tags.nicknames.getValue(), display = tags.displayName.getValue().trim();
         if (!nicks.equals(lastNicknames) || !display.equals(lastDisplay) || !String.valueOf(ownName).equals(lastOwn)) {

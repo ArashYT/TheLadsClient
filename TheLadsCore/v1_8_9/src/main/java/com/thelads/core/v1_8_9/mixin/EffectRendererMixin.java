@@ -44,12 +44,18 @@ public abstract class EffectRendererMixin {
     /** In-place removal of dead particles avoids allocating intermediate ArrayLists and calling removeAll 8 times per tick. */
     @Inject(method = "updateEffectAlphaLayer", at = @At("HEAD"), cancellable = true, require = 0)
     private void ladsUpdateEffectAlphaLayer(java.util.List<EntityFX> list, CallbackInfo ci) {
-        for (int i = 0; i < list.size(); i++) {
+        int size = list.size();
+        int write = 0;
+        for (int i = 0; i < size; i++) {
             EntityFX particle = list.get(i);
             tickParticle(particle);
-            if (particle.isDead) {
-                list.remove(i--);
+            if (!particle.isDead) {
+                if (write != i) list.set(write, particle);
+                write++;
             }
+        }
+        if (write < size) {
+            list.subList(write, size).clear();
         }
         ci.cancel();
     }

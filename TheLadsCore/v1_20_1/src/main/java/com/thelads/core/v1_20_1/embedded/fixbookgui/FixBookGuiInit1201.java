@@ -36,11 +36,16 @@ public final class FixBookGuiInit1201 {
         BookEditScreen edit = new BookEditScreen(client.player, book, InteractionHand.MAIN_HAND);
         edit.init(client, width, height);
         List<Integer> viewYs = widgetYs(view), editYs = widgetYs(edit);
-        boolean ok = !viewYs.isEmpty() && !editYs.isEmpty() && viewYs.stream().allMatch(y -> y == 159 + shift || y == 196 + shift)
+        boolean vanillaOk = !viewYs.isEmpty() && !editYs.isEmpty() && viewYs.stream().allMatch(y -> y == 159 + shift || y == 196 + shift)
             && editYs.stream().allMatch(y -> y == 159 + shift || y == 196 + shift)
             && viewYs.contains(196 + shift) && editYs.contains(196 + shift) && editYs.contains(159 + shift);
+
+        Screen foreignScreen = new BookViewScreen(BookViewScreen.BookAccess.fromItem(book)) {};
+        boolean foreignOk = FixBookGui.hasForeignWidgets(foreignScreen) && FixBookGui.getFixedY(foreignScreen) == 0;
+
+        boolean ok = vanillaOk && foreignOk;
         SmallModsProbe1201.result("fixbookgui", ok, "gui " + width + "x" + height + " shift=" + shift + " (expected button y " + (159 + shift) + " / " + (196 + shift)
-            + ") viewScreenWidgetY=" + viewYs + " editScreenWidgetY=" + editYs);
+            + ") viewScreenWidgetY=" + viewYs + " editScreenWidgetY=" + editYs + " foreignShift=" + FixBookGui.getFixedY(foreignScreen));
     }
 
     private static List<Integer> widgetYs(Screen screen) {

@@ -23,6 +23,8 @@ public final class WavyCapesModule extends Module {
     public final SliderOption segments = addOption(new SliderOption("Segments", 16, 4, MAX_SEGMENTS, 2));
     public final BoolOption others = addOption(new BoolOption("Other players", true));
 
+    private static WavyCapesModule cachedModule;
+
     public WavyCapesModule() {
         super(NAME, "Capes flow with your movement, jumps and the wind instead of hanging as one stiff plate. Style, wind, weight and "
             + "smoothness are adjustable; elytra and armour are untouched.");
@@ -36,7 +38,11 @@ public final class WavyCapesModule extends Module {
 
     /** The module when it should draw this cape: on, and for another player's cape only with Other players on. Else null. */
     public static WavyCapesModule active(boolean ownCape) {
-        WavyCapesModule module = ModuleManager.getInstance().getModule(NAME) instanceof WavyCapesModule m ? m : null;
+        WavyCapesModule module = cachedModule;
+        if (module == null) {
+            module = ModuleManager.getInstance().getModule(NAME) instanceof WavyCapesModule m ? m : null;
+            cachedModule = module;
+        }
         return module != null && module.isEnabled() && (ownCape || module.others.get()) ? module : null;
     }
 }

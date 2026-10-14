@@ -90,6 +90,7 @@ public final class SignalLoss1201 {
     static void render(GuiGraphics graphics) {
         SignalLossPolicy.Frame frame = frame();
         if (frame.progress() <= 0) return;
+        com.thelads.core.v1_20_1.hud.HudPipeline1201.layer(graphics);
         Minecraft minecraft = Minecraft.getInstance();
         SignalLossModule module = module();
         long tenths = Math.round(frame.seconds() * 10);

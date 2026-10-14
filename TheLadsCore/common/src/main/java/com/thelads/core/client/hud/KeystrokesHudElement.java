@@ -7,7 +7,8 @@ public class KeystrokesHudElement extends HudElement {
     private static final int GAP = 2, SPACE = 6;
     private LadsGraphics preparedGraphics;
     private boolean showCps, showSpace;
-    private String leftLabel, rightLabel;
+    private int lastLeftCps = -1, lastRightCps = -1;
+    private String leftLabel = "0 CPS", rightLabel = "0 CPS";
     private int keyWidth, keyHeight, cpsHeight, cpsY, spaceY;
     public KeystrokesHudElement() {
         this.x = 10;
@@ -26,8 +27,16 @@ public class KeystrokesHudElement extends HudElement {
         preparedGraphics = g;
         showCps = optBool("Show CPS", true);
         showSpace = optBool("Show space bar", true);
-        leftLabel = CpsTracker.get().leftCps() + " CPS";
-        rightLabel = CpsTracker.get().rightCps() + " CPS";
+        int leftCps = CpsTracker.get().leftCps();
+        if (leftCps != lastLeftCps) {
+            lastLeftCps = leftCps;
+            leftLabel = leftCps + " CPS";
+        }
+        int rightCps = CpsTracker.get().rightCps();
+        if (rightCps != lastRightCps) {
+            lastRightCps = rightCps;
+            rightLabel = rightCps + " CPS";
+        }
         int cpsWidth = Math.max(31, (int)Math.ceil(Math.max(g.textWidth(leftLabel), g.textWidth(rightLabel)) * .65) + 4);
         keyWidth = (Math.max(64, showCps ? 2 * cpsWidth + GAP : 0) - 2 * GAP + 11) / 12 * 4;
         width = 3 * keyWidth + 2 * GAP;

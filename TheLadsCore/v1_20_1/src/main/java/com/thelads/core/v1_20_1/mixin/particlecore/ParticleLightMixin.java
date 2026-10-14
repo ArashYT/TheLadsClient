@@ -22,14 +22,15 @@ public abstract class ParticleLightMixin {
     @Shadow protected double z;
     @Shadow protected int age;
     @Unique private long ladsLightBlock = Long.MIN_VALUE;
-    @Unique private int ladsLight, ladsLightAge;
+    @Unique private int ladsLight, ladsLightAge = -1;
 
     @Inject(method = "getLightColor", at = @At("HEAD"), cancellable = true)
     private void ladsLightCached(float partialTick, CallbackInfoReturnable<Integer> cir) {
         if (!ParticleCore.optimized()) return;
+        if (this.age == this.ladsLightAge) { ParticleCore.reused++; cir.setReturnValue(this.ladsLight); return; }
         int since = this.age - this.ladsLightAge;
         if (since >= 0 && since < 4 && BlockPos.asLong(Mth.floor(this.x), Mth.floor(this.y), Mth.floor(this.z)) == this.ladsLightBlock)
-            { ParticleCore.reused++; cir.setReturnValue(this.ladsLight); }
+            { this.ladsLightAge = this.age; ParticleCore.reused++; cir.setReturnValue(this.ladsLight); }
     }
 
     @Inject(method = "getLightColor", at = @At("RETURN"))

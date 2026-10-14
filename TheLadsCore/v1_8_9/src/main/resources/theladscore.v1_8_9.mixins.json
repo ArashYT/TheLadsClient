@@ -94,6 +94,8 @@
     "GuiConnectingMixin189",
     "ScoreboardMixin",
     "ScoreObjectiveMixin",
-    "RenderItemMixin"
+    "RenderItemMixin",
+    "GuiUtilsTooltipMixin",
+    "VisGraphMixin"
   ]
 }

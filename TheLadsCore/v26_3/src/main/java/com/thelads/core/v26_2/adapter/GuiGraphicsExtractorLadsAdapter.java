@@ -102,15 +102,22 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     private static final Identifier[] EMPTY_ARMOR = {Identifier.withDefaultNamespace("container/slot/helmet"),
         Identifier.withDefaultNamespace("container/slot/chestplate"), Identifier.withDefaultNamespace("container/slot/leggings"),
         Identifier.withDefaultNamespace("container/slot/boots")};
+    private static final java.util.concurrent.ConcurrentHashMap<String, Identifier> IDENTIFIER_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.ConcurrentHashMap<String, Identifier> MOB_EFFECT_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.ConcurrentHashMap<String, com.mojang.authlib.GameProfile> HEAD_PROFILE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final com.mojang.authlib.GameProfile FALLBACK_PROFILE = new com.mojang.authlib.GameProfile(new java.util.UUID(0L, 0L), "Player");
 
     @Override public void drawSprite(String sprite, int x, int y, int size) {
-        g.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.parse(sprite), x, y, size, size);
+        if (sprite == null) return;
+        Identifier id = IDENTIFIER_CACHE.computeIfAbsent(sprite, Identifier::parse);
+        g.blitSprite(RenderPipelines.GUI_TEXTURED, id, x, y, size, size);
     }
 
     @Override public void drawPotionIcon(String effectId, int iconIndex, int x, int y, int size) {
         if (effectId != null && !effectId.isEmpty()) {
             try {
-                g.blitSprite(RenderPipelines.GUI_TEXTURED, Identifier.withDefaultNamespace("mob_effect/" + effectId), x, y, size, size);
+                Identifier id = MOB_EFFECT_CACHE.computeIfAbsent(effectId, k -> Identifier.withDefaultNamespace("mob_effect/" + k));
+                g.blitSprite(RenderPipelines.GUI_TEXTURED, id, x, y, size, size);
             } catch (Throwable ignored) {}
         }
     }
@@ -207,7 +214,12 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
 
     @Override
     public void blit(String texture, int x, int y, int u, int v, int width, int height) {
-        Identifier loc = Identifier.tryParse(texture != null ? texture : "minecraft:textures/gui/icons.png");
+        String key = texture != null ? texture : "minecraft:textures/gui/icons.png";
+        Identifier loc = IDENTIFIER_CACHE.get(key);
+        if (loc == null) {
+            loc = Identifier.tryParse(key);
+            if (loc != null) IDENTIFIER_CACHE.put(key, loc);
+        }
         if (loc != null) {
             var gpuTexture = Minecraft.getInstance().getTextureManager().getTexture(loc).getTexture();
             g.blit(RenderPipelines.GUI_TEXTURED, loc, x, y, u, v, width, height,
@@ -215,27 +227,44 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
         }
     }
 
+    private static com.mojang.authlib.GameProfile resolveHeadProfile(String username, String uuid) {
+        String safeName = username != null ? username : "Player";
+        String cacheKey = safeName + "|" + (uuid != null ? uuid : "");
+        com.mojang.authlib.GameProfile cached = HEAD_PROFILE_CACHE.get(cacheKey);
+        if (cached != null) return cached;
+        if (HEAD_PROFILE_CACHE.size() > 512) HEAD_PROFILE_CACHE.clear();
+        java.util.UUID parsedUuid = null;
+        if (uuid != null && !uuid.isBlank()) {
+            String trimmed = uuid.trim();
+            if (trimmed.length() == 36) {
+                try {
+                    parsedUuid = java.util.UUID.fromString(trimmed);
+                } catch (Exception ignored) {}
+            }
+            if (parsedUuid == null) {
+                String clean = trimmed.replace("-", "");
+                if (clean.length() == 32) {
+                    try {
+                        long msb = Long.parseUnsignedLong(clean.substring(0, 16), 16);
+                        long lsb = Long.parseUnsignedLong(clean.substring(16, 32), 16);
+                        parsedUuid = new java.util.UUID(msb, lsb);
+                    } catch (Exception ignored) {}
+                }
+            }
+        }
+        if (parsedUuid == null) {
+            parsedUuid = java.util.UUID.nameUUIDFromBytes(("OfflinePlayer:" + safeName).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        com.mojang.authlib.GameProfile profile = new com.mojang.authlib.GameProfile(parsedUuid, safeName);
+        HEAD_PROFILE_CACHE.put(cacheKey, profile);
+        return profile;
+    }
+
     @Override
     public void drawHead(String username, String uuid, int x, int y, int size) {
         try {
             Minecraft mc = Minecraft.getInstance();
-            java.util.UUID parsedUuid = null;
-            if (uuid != null && !uuid.isBlank()) {
-                String clean = uuid.replace("-", "").trim();
-                if (clean.length() == 32) {
-                    try {
-                        parsedUuid = java.util.UUID.fromString(clean.replaceFirst("(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)", "$1-$2-$3-$4-$5"));
-                    } catch (Exception ignored) {}
-                } else {
-                    try {
-                        parsedUuid = java.util.UUID.fromString(uuid.trim());
-                    } catch (Exception ignored) {}
-                }
-            }
-            if (parsedUuid == null) {
-                parsedUuid = java.util.UUID.nameUUIDFromBytes(("OfflinePlayer:" + (username != null ? username : "Player")).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            }
-            com.mojang.authlib.GameProfile profile = new com.mojang.authlib.GameProfile(parsedUuid, username != null ? username : "Player");
+            com.mojang.authlib.GameProfile profile = resolveHeadProfile(username, uuid);
             java.util.function.Supplier<PlayerSkin> lookup = mc.getSkinManager().createLookup(profile, false);
             PlayerSkin skin = lookup != null ? lookup.get() : null;
             if (skin == null) {
@@ -247,8 +276,7 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
             }
         } catch (Exception ignored) {}
         try {
-            com.mojang.authlib.GameProfile fallback = new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "Player");
-            PlayerSkin skin = net.minecraft.client.resources.DefaultPlayerSkin.get(fallback);
+            PlayerSkin skin = net.minecraft.client.resources.DefaultPlayerSkin.get(FALLBACK_PROFILE);
             if (skin != null) {
                 PlayerFaceExtractor.extractRenderState(g, skin, x, y, size);
                 return;

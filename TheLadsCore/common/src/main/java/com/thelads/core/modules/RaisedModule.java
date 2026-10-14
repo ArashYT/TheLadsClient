@@ -16,24 +16,29 @@ import com.thelads.core.config.SliderOption;
 public class RaisedModule extends Module {
     public static final String NAME = "Raised";
 
+    private final SliderOption optHotbar;
+    private final SliderOption optDistance;
+    private final SliderOption optChat;
+    private static volatile RaisedModule cachedInstance = null;
+
     public RaisedModule() {
         super(NAME, "Lifts the hotbar, the bars on it and the action bar off the bottom of the screen, and above the chat box while "
             + "chat is open (Distance). Chat can be raised too.");
-        addOption(new SliderOption("Hotbar", 2, 0, 50, 1));
+        addOption(optHotbar = new SliderOption("Hotbar", 2, 0, 50, 1));
         // Its 1.6.0 name and value, so saved settings carry over: the extra lift while chat is open.
-        addOption(new SliderOption("Distance", 14, 0, 50, 1));
-        addOption(new SliderOption("Chat", 0, 0, 100, 1));
+        addOption(optDistance = new SliderOption("Distance", 14, 0, 50, 1));
+        addOption(optChat = new SliderOption("Chat", 0, 0, 100, 1));
         setEnabled(true);
     }
 
     /** How far the hotbar group moves up; 0 while the module is off. */
     public int hotbarLift(boolean chatOpen) {
-        return isEnabled() ? pixels("Hotbar") + (chatOpen ? pixels("Distance") : 0) : 0;
+        return isEnabled() ? optHotbar.getIntValue() + (chatOpen ? optDistance.getIntValue() : 0) : 0;
     }
 
     /** How far chat moves up; 0 while the module is off. */
     public int chatLift() {
-        return isEnabled() ? pixels("Chat") : 0;
+        return isEnabled() ? optChat.getIntValue() : 0;
     }
 
     /**
@@ -68,6 +73,12 @@ public class RaisedModule extends Module {
 
     /** The registered module, or null when none is (a version that never registered it). */
     public static RaisedModule get() {
-        return ModuleManager.getInstance().getModule(NAME) instanceof RaisedModule raised ? raised : null;
+        RaisedModule instance = cachedInstance;
+        if (instance == null) {
+            if (ModuleManager.getInstance().getModule(NAME) instanceof RaisedModule raised) {
+                cachedInstance = instance = raised;
+            }
+        }
+        return instance;
     }
 }

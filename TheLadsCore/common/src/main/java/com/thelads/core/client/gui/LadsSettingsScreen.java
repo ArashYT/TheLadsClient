@@ -160,11 +160,19 @@ public final class LadsSettingsScreen {
      * custom crosshairs, live world Fullbright). Modules with placeholder cards (e.g. Hypixel Mods,
      * performance tweaks, zoom, animations) return false and lay their settings out in two columns.
      */
+    private static HudElement findHudElement(String name) {
+        if (name == null) return null;
+        List<HudElement> elements = HudManager.getInstance().getElements();
+        for (int i = 0, n = elements.size(); i < n; i++) {
+            HudElement e = elements.get(i);
+            if (e.getModuleName() != null && e.getModuleName().equalsIgnoreCase(name)) return e;
+        }
+        return null;
+    }
     public static boolean hasPreview(Module m) {
         if (m == null) return false;
         String name = m.getName();
-        if (HudManager.getInstance().getElements().stream()
-            .anyMatch(e -> e.getModuleName() != null && e.getModuleName().equalsIgnoreCase(name))) {
+        if (findHudElement(name) != null) {
             return true;
         }
         if (m instanceof KillBannerModule || m instanceof CrosshairModule) return true;
@@ -683,9 +691,7 @@ public final class LadsSettingsScreen {
         round(g, boxX, boxY, boxW, boxH, CARD);
         round(g, boxX, boxY, boxW, boxH, 0x33000000);
 
-        HudElement hudEl = HudManager.getInstance().getElements().stream()
-            .filter(e -> e.getModuleName() != null && e.getModuleName().equalsIgnoreCase(m.getName()))
-            .findFirst().orElse(null);
+        HudElement hudEl = findHudElement(m.getName());
 
         if (hudEl != null) {
             g.enableScissor(boxX + 2, boxY + 2, boxX + boxW - 2, boxY + boxH - 2);

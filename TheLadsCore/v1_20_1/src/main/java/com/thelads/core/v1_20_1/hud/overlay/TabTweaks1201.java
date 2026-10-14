@@ -28,6 +28,9 @@ import net.minecraft.resources.ResourceLocation;
  */
 public final class TabTweaks1201 {
     private static boolean active;
+    public static boolean dirty = true;
+    private static int ticks;
+    private static Object lastScreen;
     public static boolean layout, ping;
     public static int maxTabPlayers = 80, playersPerColumn = 20;
     public static boolean removeHeader, removeFooter, removeHeads, removeNpcHeads, improvedHeads, removeObjectives, showPlayerCount;
@@ -41,6 +44,8 @@ public final class TabTweaks1201 {
 
     private TabTweaks1201() {}
 
+    public static void markDirty() { dirty = true; }
+
     static void register() {
         if (Mods1201.loaded("tabtweaks")) {
             ModuleSupport.registerExternal("TabList", "Tab Tweaks", "tabtweaks", true);
@@ -50,13 +55,29 @@ public final class TabTweaks1201 {
         importPrevious();
         active = true;
         ModuleSupport.registerBuiltIn("TabList", "PingView");
-        refresh();
+        refresh(true);
     }
 
     /** Once per tab list frame (TabOverlayMixin's render wrapper). */
     public static void refresh() {
-        layout = active && Hud1201.enabled("TabList");
-        ping = active && Hud1201.enabled("PingView");
+        refresh(false);
+    }
+
+    public static void refresh(boolean force) {
+        boolean nextLayout = active && Hud1201.enabled("TabList");
+        boolean nextPing = active && Hud1201.enabled("PingView");
+        if (!force && !dirty && nextLayout == layout && nextPing == ping) {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.screen != null || lastScreen != mc.screen || ++ticks >= 10) {
+                dirty = true;
+            }
+            lastScreen = mc.screen;
+            if (!dirty) return;
+        }
+        ticks = 0;
+        dirty = false;
+        layout = nextLayout;
+        ping = nextPing;
         maxTabPlayers = layout ? (int) number("TabList", "Max Players", 80) : 80;
         playersPerColumn = layout ? (int) number("TabList", "Players Per Column", 20) : 20;
         removeHeader = layout && bool("TabList", "Hide Header", false);
@@ -169,8 +190,7 @@ public final class TabTweaks1201 {
     }
 
     private static int color(String module, String name, int fallback) {
-        var value = Hud1201.module(module);
-        return value != null && value.getOption(name) instanceof ColorOption option
+        return Hud1201.option(module, name) instanceof ColorOption option
             ? option.isUseGlobal() ? HudSettings.getInstance().getGlobalColor() : option.getColor() : fallback;
     }
 

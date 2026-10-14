@@ -155,6 +155,7 @@ public class HudManager {
         }
         boolean all = hidesAll();
         if (all || allCovered) return all != allCovered;
+        if (covered.isEmpty() && HudCover.isEmpty() && !game.isDebugScreenOpen()) return false;
         for (var element : elements) {
             var at = lastPlaced.get(element.getModuleName());
             if (at != null && element.isEnabled() && element.isAvailable() && covered(at) != covered.contains(element.getModuleName())) return true;

@@ -8,8 +8,17 @@ import java.util.ArrayDeque;
 public class CpsTracker {
     private static final CpsTracker INSTANCE = new CpsTracker();
 
-    private final ArrayDeque<Long> left = new ArrayDeque<>();
-    private final ArrayDeque<Long> right = new ArrayDeque<>();
+    private static final int CAPACITY = 256;
+    private static final int MASK = CAPACITY - 1;
+
+    private final long[] left = new long[CAPACITY];
+    private int leftHead = 0;
+    private int leftTail = 0;
+
+    private final long[] right = new long[CAPACITY];
+    private int rightHead = 0;
+    private int rightTail = 0;
+
     private boolean lastLeft = false;
     private boolean lastRight = false;
 
@@ -19,39 +28,63 @@ public class CpsTracker {
 
     public synchronized void tick(boolean attackDown, boolean useDown) {
         long now = System.currentTimeMillis();
-        if (attackDown && !lastLeft) left.addLast(now);
-        if (useDown && !lastRight) right.addLast(now);
+        if (attackDown && !lastLeft) addLeft(now);
+        if (useDown && !lastRight) addRight(now);
         lastLeft = attackDown;
         lastRight = useDown;
-        prune(left, now);
-        prune(right, now);
+        pruneLeft(now);
+        pruneRight(now);
     }
 
     public synchronized void recordLeftClick() {
         long now = System.currentTimeMillis();
-        left.addLast(now);
-        prune(left, now);
+        addLeft(now);
+        pruneLeft(now);
     }
 
     public synchronized void recordRightClick() {
         long now = System.currentTimeMillis();
-        right.addLast(now);
-        prune(right, now);
+        addRight(now);
+        pruneRight(now);
     }
 
-    private void prune(ArrayDeque<Long> q, long now) {
-        while (!q.isEmpty() && now - q.peekFirst() > 1000L) {
-            q.pollFirst();
+    private void addLeft(long now) {
+        if (leftTail - leftHead >= CAPACITY) leftHead++;
+        left[leftTail++ & MASK] = now;
+    }
+
+    private void addRight(long now) {
+        if (rightTail - rightHead >= CAPACITY) rightHead++;
+        right[rightTail++ & MASK] = now;
+    }
+
+    private void pruneLeft(long now) {
+        while (leftHead < leftTail && now - left[leftHead & MASK] > 1000L) {
+            leftHead++;
+        }
+        if (leftHead == leftTail) {
+            leftHead = 0;
+            leftTail = 0;
+        }
+    }
+
+    private void pruneRight(long now) {
+        while (rightHead < rightTail && now - right[rightHead & MASK] > 1000L) {
+            rightHead++;
+        }
+        if (rightHead == rightTail) {
+            rightHead = 0;
+            rightTail = 0;
         }
     }
 
     public synchronized int leftCps() {
-        prune(left, System.currentTimeMillis());
-        return left.size();
+        pruneLeft(System.currentTimeMillis());
+        return leftTail - leftHead;
     }
 
     public synchronized int rightCps() {
-        prune(right, System.currentTimeMillis());
-        return right.size();
+        pruneRight(System.currentTimeMillis());
+        return rightTail - rightHead;
     }
 }
