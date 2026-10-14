@@ -60,6 +60,8 @@ class HudHotPathTest {
         }
         bool("ArmorHUD", "Attach to hotbar", false);
         cycle("ArmorHUD", "Style", 1); // these cover the List style (Hotbar Slots: ArmorSlotsHudTest)
+        cycle("Scoreboard", "Background", 0);
+        bool("Scoreboard", "Hide Sequential Only", false);
     }
 
     @AfterEach void restore() { options.forEach(Option::load); LadsGameBridge.set(oldBridge); }

@@ -9,4 +9,14 @@ public class TitleScreenModule extends Module {
         addOption(new SliderOption("Account Card Scale", 100, 50, 150, 5));
         setEnabled(true);
     }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        super.setEnabled(true);
+    }
 }

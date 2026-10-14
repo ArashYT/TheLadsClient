@@ -36,6 +36,7 @@ class ShareCodeTest {
 
     @AfterEach
     void tearDown() {
+        ConfigManager.setTestConfigFile(null);
         ProfileManager.get().setTestFile(null);
     }
 

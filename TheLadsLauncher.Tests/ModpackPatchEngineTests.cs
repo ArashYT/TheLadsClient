@@ -275,13 +275,13 @@ public class ModpackPatchEngineTests : IDisposable
 
         int applied = await ExperiencesService.ApplyPendingPatchesAsync(_tempDir, "zero-smp-1.20.1", null, status.Add, default, ExperiencesService.BundledPatchesDirectory);
 
-        Assert.Equal(2, applied);
-        Assert.Equal(new[] { "1.0.1", "1.1.0", "1.1.1", "1.1.2" }, ModpackPatchEngine.GetAppliedPatches(instDir));
+        Assert.Equal(3, applied);
+        Assert.Equal(new[] { "1.0.1", "1.1.0", "1.1.1", "1.1.2", "1.1.3" }, ModpackPatchEngine.GetAppliedPatches(instDir));
         Assert.DoesNotContain(status, s => s.Contains("1.0.1") || s.Contains("1.1.0"));
         Assert.Equal(modsBefore, Directory.GetFiles(Path.Combine(gameDir, "mods")).Length);
         var dh = KeyTable(Path.Combine(gameDir, "config", "DistantHorizons.toml"));
         Assert.Equal("\"DEFAULT\"", dh["client.advanced.debugging.rendererMode"].Single());
-        Assert.Contains("mixin.perf.dynamic_resources=true", File.ReadAllLines(Path.Combine(gameDir, "config", "modernfix-mixins.properties")));
+        Assert.Contains("mixin.perf.dynamic_resources=false", File.ReadAllLines(Path.Combine(gameDir, "config", "modernfix-mixins.properties")));
         Assert.Equal(0, await ExperiencesService.ApplyPendingPatchesAsync(_tempDir, "zero-smp-1.20.1", null, null, default, ExperiencesService.BundledPatchesDirectory));
     }
 

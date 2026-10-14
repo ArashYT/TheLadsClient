@@ -54,7 +54,7 @@ public class ProfileManager {
         if (testFile != null) {
             return testFile;
         }
-        return ClientPaths.getBaseDir().resolve("thelads_profiles.json").toFile();
+        return ClientPaths.getProfilesFile();
     }
 
     public List<String> getProfileNames() {
@@ -212,9 +212,6 @@ public class ProfileManager {
 
     private void persist() {
         File f = file();
-        if (f.getParentFile() != null) {
-            f.getParentFile().mkdirs();
-        }
         JsonObject json = new JsonObject();
         JsonObject p = new JsonObject();
         for (Map.Entry<String, JsonObject> e : profiles.entrySet()) {
@@ -226,9 +223,29 @@ public class ProfileManager {
             b.addProperty(e.getKey(), e.getValue());
         }
         json.add("bindings", b);
+        String content = GSON.toJson(json);
+        writeFileAtomically(f, content);
+        if (testFile == null) {
+            try {
+                java.nio.file.Path primaryPath = f.toPath().toAbsolutePath().normalize();
+                for (File target : ClientPaths.getMirrorTargetsForSharedFile("thelads_profiles.json")) {
+                    java.nio.file.Path targetPath = target.toPath().toAbsolutePath().normalize();
+                    if (!targetPath.equals(primaryPath)) {
+                        writeFileAtomically(target, content);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private static void writeFileAtomically(File f, String content) {
+        if (f == null) return;
+        if (f.getParentFile() != null) {
+            f.getParentFile().mkdirs();
+        }
         File temp = new File(f.getParentFile(), f.getName() + ".tmp");
         try (BufferedWriter w = Files.newBufferedWriter(temp.toPath(), StandardCharsets.UTF_8)) {
-            GSON.toJson(json, w);
+            w.write(content);
             w.flush();
         } catch (IOException e) {
             e.printStackTrace();

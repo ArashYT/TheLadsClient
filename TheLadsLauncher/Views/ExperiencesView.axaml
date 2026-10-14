@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:TheLadsLauncher.Models"
              x:Class="TheLadsLauncher.Views.ExperiencesView">
   <ScrollViewer>
     <StackPanel Margin="0,6,0,16" Spacing="16">
@@ -12,7 +13,7 @@
 
       <!-- Zero SMP Card -->
       <Border Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="8" Padding="20">
-        <Grid RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*">
           <!-- Icon -->
           <Border Grid.Row="0" Grid.Column="0" Width="80" Height="80" CornerRadius="8" ClipToBounds="True" Background="#26272C" Margin="0,0,20,16" VerticalAlignment="Top">
             <Image Source="avares://TheLadsLauncher/Assets/zero_smp_icon.png" Width="80" Height="80" Stretch="UniformToFill" />
@@ -35,7 +36,7 @@
                 <TextBlock Text="Forge 47.4.10" Foreground="#B0B2BD" FontSize="11" />
               </Border>
               <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
-                <TextBlock Text="128 Mods" Foreground="#B0B2BD" FontSize="11" />
+                <TextBlock Text="137 Mods" Foreground="#B0B2BD" FontSize="11" />
               </Border>
               <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
                 <TextBlock Text="Fabric Connector" Foreground="#52A5E0" FontSize="11" />
@@ -72,20 +73,51 @@
             <ProgressBar x:Name="ZeroSmpProgressBar" Height="3" Minimum="0" Maximum="100" Value="0" IsVisible="False" />
           </StackPanel>
 
-          <!-- Action Buttons -->
-          <Grid Grid.Row="3" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*,Auto">
-            <Button x:Name="ZeroSmpPlayBtn" Classes="launch" Content="Play Zero SMP" Height="46" MinWidth="180" FontSize="16" FontWeight="Bold" Click="ZeroSmpPlay_Click" />
-            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
-              <CheckBox x:Name="ZeroSmpAutoJoinCheck" Content="Auto-join server" VerticalAlignment="Center" FontSize="12"
+          <!-- Action Buttons & Playing As -->
+          <Grid Grid.Row="3" Grid.ColumnSpan="2" RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="PLAYING AS" Classes="caption" Margin="0,0,0,6" />
+            <ComboBox Grid.Row="1" Grid.Column="0" x:Name="ZeroSmpAccountSelector" Classes="launchPicker" PlaceholderText="Select an account" FontSize="14" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Launch with this account (does not change your main account)" SelectionChanged="ZeroSmpAccountSelector_SelectionChanged" Height="46" MinWidth="220" Margin="0,0,12,0">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="models:AccountChoice">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Border Width="26" Height="26" CornerRadius="4" ClipToBounds="True" Background="#303137">
+                      <Image Source="{Binding Head}" Width="26" Height="26" RenderOptions.BitmapInterpolationMode="None" />
+                    </Border>
+                    <TextBlock Text="{Binding Label}" Classes="notranslate" VerticalAlignment="Center" />
+                  </StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+              <Button x:Name="ZeroSmpPlayBtn" Classes="launch" Content="Play Zero SMP" Height="46" MinWidth="175" FontSize="16" FontWeight="Bold" Click="ZeroSmpPlay_Click" />
+
+              <Button x:Name="ZeroSmpInstancesDropdownBtn" Classes="action" Height="46" Padding="14,0" IsVisible="False" ToolTip.Tip="Manage running Zero SMP instances">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <Ellipse Width="8" Height="8" Fill="#85E89D" VerticalAlignment="Center" />
+                  <TextBlock x:Name="ZeroSmpInstancesDropdownText" Text="Instances Open (1)" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" />
+                  <Path Data="M 1,3 L 5,7 L 9,3" Stroke="#B0B2BD" StrokeThickness="1.6" Width="10" Height="10" Stretch="Uniform" VerticalAlignment="Center" />
+                </StackPanel>
+                <Button.Flyout>
+                  <MenuFlyout Placement="BottomEdgeAlignedLeft" />
+                </Button.Flyout>
+              </Button>
+
+              <CheckBox x:Name="ZeroSmpAutoJoinCheck" Content="Auto-join server" VerticalAlignment="Center" FontSize="12" Margin="6,0,0,0"
                         ToolTip.Tip="Join the Zero SMP server automatically as soon as the game has loaded."
                         IsCheckedChanged="ZeroSmpAutoJoin_Changed" />
             </StackPanel>
 
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
+            <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
               <Button x:Name="ZeroSmpFolderBtn" Classes="action" Content="Open folder" Height="36" Click="ZeroSmpFolder_Click" />
               <Button x:Name="ZeroSmpReinstallBtn" Classes="action" Content="Reinstall" Height="36" Click="ZeroSmpReinstall_Click" />
             </StackPanel>
           </Grid>
+
+          <!-- Quick Close Running Instances Strip -->
+          <Border Grid.Row="4" Grid.ColumnSpan="2" x:Name="ZeroSmpInstancesBar" IsVisible="False" Background="#16171A" BorderBrush="#2C2D33" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,12,0,0">
+            <WrapPanel x:Name="ZeroSmpInstancesQuickButtons" Orientation="Horizontal" VerticalAlignment="Center" />
+          </Border>
         </Grid>
       </Border>
     </StackPanel>

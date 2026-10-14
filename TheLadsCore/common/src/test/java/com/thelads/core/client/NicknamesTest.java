@@ -58,7 +58,7 @@ class NicknamesTest {
         var tags = new ToggleNametagsModule();
         assertTrue(tags.isEnabled());
         assertEquals(true, ((com.thelads.core.config.BoolOption) tags.getOption("Text Shadow")).get());
-        assertEquals(true, ((com.thelads.core.config.BoolOption) tags.getOption("Render Background")).get());
+        assertEquals(false, ((com.thelads.core.config.BoolOption) tags.getOption("Render Background")).get());
         assertEquals(false, ((com.thelads.core.config.BoolOption) tags.getOption("Show Own Nametag in Third Person")).get());
         assertEquals("", tags.displayName.getValue());
         assertEquals("", tags.nicknames.getValue());

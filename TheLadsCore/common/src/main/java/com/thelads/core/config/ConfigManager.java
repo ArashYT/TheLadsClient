@@ -29,17 +29,24 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.AtomicMoveNotSupportedException;
 
 public class ConfigManager {
+    public static final String PRESET_197_FLAG = "lads197PresetApplied";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static File testConfigFile = null;
     private static final java.util.Map<String, JsonObject> unmanagedModules = new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.concurrent.atomic.AtomicLong sequence = new java.util.concurrent.atomic.AtomicLong();
     private static final Object LATER = new Object();
     private static String latestJson;
+    private static File latestTargetFile;
     private static long latestOrder, writtenOrder;
     private static ScheduledExecutorService writer;
 
     public static void setTestConfigFile(File file) {
-        testConfigFile = file;
+        synchronized (LATER) {
+            testConfigFile = file;
+            latestJson = null;
+            latestTargetFile = null;
+        }
+        unmanagedModules.clear();
     }
 
     private static File getConfigFile() {
@@ -140,6 +147,7 @@ public class ConfigManager {
 
         json.add("hud", hud);
         json.addProperty(SkinLayersLodMigration.FLAG, true); // marks the 1.9.2 migration of 3D Skin Layers LOD 14 -> 8
+        json.addProperty(PRESET_197_FLAG, true); // marks the 1.9.7 one-time preset override
         return json;
     }
 
@@ -536,18 +544,58 @@ public class ConfigManager {
         return names;
     }
 
+    public static boolean has197PresetApplied(JsonObject json) {
+        return json != null
+            && json.has(PRESET_197_FLAG)
+            && json.get(PRESET_197_FLAG).isJsonPrimitive()
+            && json.get(PRESET_197_FLAG).getAsBoolean();
+    }
+
+    /** Resets all modules and HUD settings to the shipped 1.9.7 preset and saves immediately. */
+    public static void resetTo197PresetAndSave() {
+        unmanagedModules.clear();
+        ModuleManager.getInstance().resetToDefaults();
+        HudSettings.getInstance().resetToDefaults();
+        SkinLayersLodMigration.migrate(null);
+        save();
+    }
+
     public static void load() {
         File configFile = getConfigFile();
         if (!configFile.exists()) {
-            SkinLayersLodMigration.migrate(null);
+            if (testConfigFile == null) {
+                resetTo197PresetAndSave();
+            } else {
+                SkinLayersLodMigration.migrate(null);
+            }
             return;
         }
+        JsonObject loaded;
         try (InputStreamReader reader = new InputStreamReader(
                 new FileInputStream(configFile), StandardCharsets.UTF_8)) {
-            applyJson(GSON.fromJson(reader, JsonObject.class));
+            loaded = GSON.fromJson(reader, JsonObject.class);
         } catch (Exception e) {
             System.err.println("Failed to load config");
             e.printStackTrace();
+            return;
+        }
+        // 1.9.7 one-time migration: override pre-1.9.7 module & HUD settings into the new 1.9.7 default preset.
+        if (!has197PresetApplied(loaded) && (testConfigFile == null || (loaded != null && loaded.has("enforce197PresetMigration")))) {
+            resetTo197PresetAndSave();
+            return;
+        }
+        applyJson(loaded);
+        if (testConfigFile == null) {
+            try {
+                String content = Files.readString(configFile.toPath(), StandardCharsets.UTF_8);
+                Path sourcePath = configFile.toPath().toAbsolutePath().normalize();
+                for (File target : ClientPaths.getMirrorTargetsForSharedFile("thelads_config.json")) {
+                    Path targetPath = target.toPath().toAbsolutePath().normalize();
+                    if (!targetPath.equals(sourcePath)) {
+                        writeAtomic(target, content);
+                    }
+                }
+            } catch (Exception ignored) {}
         }
     }
 
@@ -556,7 +604,11 @@ public class ConfigManager {
         File configFile = getConfigFile();
         if (!configFile.exists()) return fallback;
         try (InputStreamReader reader = new InputStreamReader(new FileInputStream(configFile), StandardCharsets.UTF_8)) {
-            JsonElement enabled = legacy(GSON.fromJson(reader, JsonObject.class), "modules", module, "enabled");
+            JsonObject root = GSON.fromJson(reader, JsonObject.class);
+            if (testConfigFile == null && !has197PresetApplied(root)) {
+                return fallback;
+            }
+            JsonElement enabled = legacy(root, "modules", module, "enabled");
             return enabled == null ? fallback : enabled.getAsBoolean();
         } catch (Exception e) {
             return fallback;
@@ -566,7 +618,7 @@ public class ConfigManager {
     /** Writes the config now. Anything {@link #saveLater} still holds is older than this snapshot and is dropped. */
     public static void save() {
         String json = GSON.toJson(toJson());
-        write(json, sequence.incrementAndGet());
+        write(json, sequence.incrementAndGet(), testConfigFile);
     }
 
     /**
@@ -580,6 +632,7 @@ public class ConfigManager {
         synchronized (LATER) {
             boolean waiting = latestJson != null;
             latestJson = json;
+            latestTargetFile = testConfigFile;
             latestOrder = order;
             if (waiting) return;
             if (writer == null) {
@@ -597,34 +650,35 @@ public class ConfigManager {
     /** Writes the config {@link #saveLater} is holding, if any. */
     public static void flush() {
         String json;
+        File target;
         long order;
         synchronized (LATER) {
             json = latestJson;
+            target = latestTargetFile;
             order = latestOrder;
             latestJson = null;
+            latestTargetFile = null;
         }
-        if (json != null) write(json, order);
+        if (json != null) write(json, order, target);
     }
 
     /** Atomic replace; a snapshot older than one already written is skipped, so a late background write never undoes a newer save. */
-    private static synchronized void write(String json, long order) {
+    private static synchronized void write(String json, long order, File explicitTestFile) {
         if (order < writtenOrder) return;
         writtenOrder = order;
-        File configFile = getConfigFile();
+        File configFile = explicitTestFile != null ? explicitTestFile : getConfigFile();
         writeAtomic(configFile, json);
 
-        if (testConfigFile != null) return;
+        if (explicitTestFile != null || testConfigFile != null) return;
 
-        // Mirror to global root and local instance directory if applicable
+        // Mirror to shared, global root, local instance, and all other Lads Client instances
         try {
-            Path globalRoot = ClientPaths.getGlobalBaseDir().resolve("thelads_config.json");
-            if (!configFile.toPath().toAbsolutePath().equals(globalRoot.toAbsolutePath())) {
-                writeAtomic(globalRoot.toFile(), json);
-            }
-            Path localBase = ClientPaths.getBaseDir().resolve("thelads_config.json");
-            if (!configFile.toPath().toAbsolutePath().equals(localBase.toAbsolutePath()) &&
-                !globalRoot.toAbsolutePath().equals(localBase.toAbsolutePath())) {
-                writeAtomic(localBase.toFile(), json);
+            Path primaryPath = configFile.toPath().toAbsolutePath().normalize();
+            for (File target : ClientPaths.getMirrorTargetsForSharedFile("thelads_config.json")) {
+                Path targetPath = target.toPath().toAbsolutePath().normalize();
+                if (!targetPath.equals(primaryPath)) {
+                    writeAtomic(target, json);
+                }
             }
         } catch (Exception ignored) {}
     }

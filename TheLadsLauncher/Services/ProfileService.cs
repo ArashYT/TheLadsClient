@@ -232,6 +232,7 @@ public class ProfileService : IProfileService
                 warnings.Add($"Game settings (options.txt) were not synced: {e.Message}");
             }
         }
+        SharedContentService.SyncLadsSettingsAcrossAllInstances(_pathService.BaseDirectory, targetDir);
         // Authentication snapshots belong to the auth gateway, never timestamp-based sync.
         return report with { Warnings = warnings };
     }
@@ -240,6 +241,7 @@ public class ProfileService : IProfileService
     public Task<IReadOnlyDictionary<string, SharedContentReport>> PrepareAllProfilesSharedContentAsync(IProgress<string>? progress = null,
         CancellationToken cancellationToken = default)
     {
+        SharedContentService.SyncLadsSettingsAcrossAllInstances(_pathService.BaseDirectory);
         var targets = GetProfiles().Select(p =>
         {
             var dir = _pathService.GetProfileDirectory(p);
@@ -291,6 +293,7 @@ public class ProfileService : IProfileService
                 if (File.Exists(targetConfig)) SyncFileFromInstance(targetConfig, sharedConfig);
             });
         }
+        SharedContentService.SyncLadsSettingsAcrossAllInstances(_pathService.BaseDirectory, targetDir);
         // Never restore instance account/profile snapshots over newer logins or removals.
         return reconcileServerList ? await _sharedContent.ReconcileFallbackServersAsync(targetDir) : SharedContentReport.Empty;
     }

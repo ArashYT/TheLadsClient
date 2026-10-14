@@ -81,9 +81,14 @@ public final class HypixelMods {
     }
 
     private static Module registered() { return ModuleManager.getInstance().getModule(HYPIXEL_MODS); }
-    private static boolean on(String feature) {
+    /** True when HYPIXEL Mods is enabled by the user AND the client is currently connected to Hypixel. */
+    public static boolean isActiveOnCurrentServer() {
         Module m = registered();
-        if (m == null || !m.isEnabled()) return false;
+        return m != null && m.isEnabled() && HypixelSafetyManager.isHypixel();
+    }
+    private static boolean on(String feature) {
+        if (!isActiveOnCurrentServer()) return false;
+        Module m = registered();
         Option o = m.getOption(feature);
         return o instanceof BoolOption b && b.get();
     }
@@ -153,7 +158,7 @@ public final class HypixelMods {
             world = null;
             tipAt = now + 30 * SECOND; // the first tip half a minute after joining
         }
-        if (current == null || !HypixelSafetyManager.isHypixel()) {
+        if (current == null || !isActiveOnCurrentServer()) {
             QUEUE.clear();
             return;
         }
@@ -207,7 +212,7 @@ public final class HypixelMods {
      * Off Hypixel nothing happens.
      */
     public static boolean chat(String message, long now) {
-        if (message == null || connection == null || !HypixelSafetyManager.isHypixel()) return false;
+        if (message == null || connection == null || !isActiveOnCurrentServer()) return false;
         // Answers to our own commands, by when each was sent (another command may have gone out since).
         if (tipSent != 0 && now - tipSent < 5 * SECOND && HypixelChat.unknownCommand(message)) {
             tipOff = true;

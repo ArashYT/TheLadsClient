@@ -8,6 +8,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ThreadPriorityTest {
     @Test void restoresPriorityAndLeavesUnrelatedThreadsAlone() throws Exception {
+        var globalThreads = com.thelads.core.config.ModuleManager.getInstance().getModule("Threads");
+        boolean wasGlobalEnabled = globalThreads != null && globalThreads.isEnabled();
+        if (globalThreads != null) globalThreads.setEnabled(false);
         var stop = new CountDownLatch(1);
         Runnable wait = () -> { try { stop.await(); } catch (InterruptedException ignored) {} };
         var worker = new Thread(wait, "Worker-LadsPriorityTest"); worker.setPriority(4);
@@ -28,6 +31,9 @@ class ThreadPriorityTest {
             module.setEnabled(false);
             assertEquals(4, worker.getPriority());
             assertEquals(4, batcher.getPriority());
-        } finally { module.setEnabled(false); stop.countDown(); worker.join(); unrelated.join(); batcher.join(); }
+        } finally {
+            module.setEnabled(false); stop.countDown(); worker.join(); unrelated.join(); batcher.join();
+            if (globalThreads != null) globalThreads.setEnabled(wasGlobalEnabled);
+        }
     }
 }

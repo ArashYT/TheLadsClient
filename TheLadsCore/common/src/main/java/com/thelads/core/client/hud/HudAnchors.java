@@ -44,7 +44,9 @@ public final class HudAnchors {
     }
 
     private static Anchor anchorOf(HudElement element) {
-        return element.getModuleName() == null || !element.usesSavedPosition() ? null : HudSettings.getInstance().getAnchor(element.getModuleName());
+        String name = element.getModuleName();
+        return name == null || !element.usesSavedPosition() || HudSettings.getInstance().getPosition(name) == null
+            ? null : HudSettings.getInstance().getAnchor(name);
     }
 
     /** The position of a span whose pin point sits the axis offset from the ref point of [start, start + size). */

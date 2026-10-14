@@ -26,19 +26,19 @@ public class ClientConfig {
     private static final Pattern LAYERS = Pattern.compile("(?ms)^\\s*hotbar_gui_layers\\s*=\\s*\\[(.*?)]");
     private static final Pattern STRING = Pattern.compile("\"([^\"]*)\"|'([^']*)'");
 
-    /** Move the experience level display above the experience bar. Requires a game restart. */
-    public boolean moveExperienceAboveBar = true;
+    /** Move the experience level display above the experience bar. Disabled so XP level never collides with hearts/hunger. */
+    public boolean moveExperienceAboveBar = false;
 
-    private int hotbarOffset = 2;
+    private int hotbarOffset = 0;
     private int configSaveDelay;
     public Set<Identifier> hotbarGuiLayers = ImmutableSet.copyOf(DEFAULT_HOTBAR_GUI_LAYERS);
 
     public int getHotbarOffset() {
-        return this.hotbarOffset;
+        return 0;
     }
 
     public void updateHotbarOffset(int screenHeight, boolean moveUp) {
-        this.hotbarOffset = Math.clamp(this.getHotbarOffset() + (moveUp ? 1 : -1), 0, screenHeight);
+        this.hotbarOffset = Math.clamp(this.hotbarOffset + (moveUp ? 1 : -1), 0, screenHeight);
         this.configSaveDelay = 40;
     }
 
@@ -54,35 +54,8 @@ public class ClientConfig {
 
     /** Reads the three values; anything missing or invalid keeps its default, as the config spec would correct it. */
     public void load() {
-        Path path = path();
-        try {
-            if (!Files.exists(path)) {
-                Files.writeString(path, this.defaultFile());
-                return;
-            }
-            String text = Files.readString(path);
-            Matcher offset = OFFSET.matcher(text);
-            if (offset.find()) {
-                try {
-                    this.hotbarOffset = Math.max(0, Integer.parseInt(offset.group(1)));
-                } catch (NumberFormatException ignored) {
-                }
-            }
-            Matcher moveExperience = MOVE_EXPERIENCE.matcher(text);
-            if (moveExperience.find()) this.moveExperienceAboveBar = Boolean.parseBoolean(moveExperience.group(1));
-            Matcher layers = LAYERS.matcher(text);
-            if (layers.find()) {
-                ImmutableSet.Builder<Identifier> builder = ImmutableSet.builder();
-                Matcher entry = STRING.matcher(layers.group(1));
-                while (entry.find()) {
-                    Identifier identifier = Identifier.tryParse(Objects.requireNonNullElse(entry.group(1), entry.group(2)));
-                    if (identifier != null) builder.add(identifier);
-                }
-                this.hotbarGuiLayers = builder.build();
-            }
-        } catch (IOException exception) {
-            HoveringHotbar.LOGGER.warn("Failed to read {}", path, exception);
-        }
+        this.hotbarOffset = 0;
+        this.moveExperienceAboveBar = false;
     }
 
     private void save() {

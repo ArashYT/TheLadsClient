@@ -295,6 +295,7 @@ class HudEditorVisibilityTest {
     void onlyFpsAt125PercentRendersRealThirtyFpsScaledIntoThePreview() {
         for (Module module : ModuleManager.getInstance().getModules()) module.setEnabled(module.getName().equals("FPS"));
         Module fpsModule = ModuleManager.getInstance().getModule("FPS");
+        ((com.thelads.core.config.DropdownOption) fpsModule.getOption("Update rate")).setIndex(0);
         ((BoolOption) fpsModule.getOption("Smooth")).set(false);
         ((SliderOption) fpsModule.getOption("Size")).setValue(125);
         HudManager.getInstance().getElements().addAll(savedElements);

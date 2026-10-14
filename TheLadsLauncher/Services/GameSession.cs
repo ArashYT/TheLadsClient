@@ -50,6 +50,7 @@ public static class GameSession
     public static void Configure(ProcessStartInfo startInfo, string gameDirectory, string sharedRoot, string? minecraftVersion = null)
     {
         startInfo.Environment["THELADS_DIR"] = gameDirectory;
+        startInfo.Environment["THELADS_GLOBAL_DIR"] = SharedContentService.TryResolveLauncherDataDirectory(gameDirectory) ?? PathService.Instance.BaseDirectory;
         startInfo.Environment[SharedContentService.RootEnvironmentVariable] = sharedRoot;
         startInfo.Environment[GameOptionsService.LunarEnvironmentVariable] = GameOptionsService.LunarRoot();
         startInfo.Environment.Remove("_JAVA_OPTIONS");

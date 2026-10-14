@@ -275,6 +275,169 @@ public sealed class SharedContentService
         return true;
     }
 
+    public static readonly IReadOnlyList<string> SharedLadsSettingsFiles = new[]
+    {
+        "thelads_config.json",
+        "thelads_profiles.json",
+        "thelads_crosshair_profiles.json"
+    };
+
+    /// <summary>
+    /// Infers the launcher data directory (e.g. %APPDATA%\.theladsclient) when <paramref name="gameDirectory"/>
+    /// is inside &lt;dataDir&gt;\profiles\&lt;id&gt; or &lt;dataDir&gt;\instances\&lt;id&gt;\minecraft, or returns null for isolated test directories.
+    /// </summary>
+    public static string? TryResolveLauncherDataDirectory(string gameDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(gameDirectory)) return null;
+        try
+        {
+            var full = Normalize(gameDirectory);
+            var parent = Directory.GetParent(full);
+            if (parent != null)
+            {
+                if (string.Equals(parent.Name, "profiles", StringComparison.OrdinalIgnoreCase) && parent.Parent != null)
+                    return Normalize(parent.Parent.FullName);
+                if (string.Equals(parent.Name, "instances", StringComparison.OrdinalIgnoreCase) && parent.Parent != null)
+                    return Normalize(parent.Parent.FullName);
+                if (string.Equals(Path.GetFileName(full), "minecraft", StringComparison.OrdinalIgnoreCase)
+                    && parent.Parent != null
+                    && string.Equals(parent.Parent.Name, "instances", StringComparison.OrdinalIgnoreCase)
+                    && parent.Parent.Parent != null)
+                    return Normalize(parent.Parent.Parent.FullName);
+            }
+            for (var dir = new DirectoryInfo(full); dir != null; dir = dir.Parent)
+            {
+                if (string.Equals(dir.Name, ".theladsclient", StringComparison.OrdinalIgnoreCase))
+                    return Normalize(dir.FullName);
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    /// <summary>
+    /// Synchronizes Lads Client configuration files (<c>thelads_config.json</c>, <c>thelads_profiles.json</c>,
+    /// <c>thelads_crosshair_profiles.json</c>) across <c>shared\</c>, the root launcher directory, all profile directories,
+    /// and all modpack instance directories so every instance with TheLadsCore shares identical settings.
+    /// </summary>
+    public static void SyncLadsSettingsAcrossAllInstances(string dataDirectory, string? extraGameDirectory = null)
+    {
+        if (string.IsNullOrWhiteSpace(dataDirectory)) return;
+        try
+        {
+            var rootDir = Normalize(dataDirectory);
+            if (!Directory.Exists(rootDir)) return;
+            var sharedDir = Path.Combine(rootDir, "shared");
+            Directory.CreateDirectory(sharedDir);
+
+            var directories = new List<string> { sharedDir, rootDir };
+            if (!string.IsNullOrWhiteSpace(extraGameDirectory))
+            {
+                var extra = Normalize(extraGameDirectory);
+                if (Directory.Exists(extra) && !directories.Any(d => SafeFileOps.PathsEqual(d, extra)))
+                    directories.Add(extra);
+            }
+
+            var profilesRoot = Path.Combine(rootDir, "profiles");
+            if (Directory.Exists(profilesRoot))
+            {
+                foreach (var profileDir in Directory.GetDirectories(profilesRoot))
+                {
+                    var norm = Normalize(profileDir);
+                    if (!directories.Any(d => SafeFileOps.PathsEqual(d, norm)))
+                        directories.Add(norm);
+                }
+            }
+
+            var instancesRoot = Path.Combine(rootDir, "instances");
+            if (Directory.Exists(instancesRoot))
+            {
+                foreach (var instanceDir in Directory.GetDirectories(instancesRoot))
+                {
+                    var mcDir = Path.Combine(instanceDir, "minecraft");
+                    if (Directory.Exists(mcDir))
+                    {
+                        var norm = Normalize(mcDir);
+                        if (!directories.Any(d => SafeFileOps.PathsEqual(d, norm)))
+                            directories.Add(norm);
+                    }
+                }
+            }
+
+            foreach (var fileName in SharedLadsSettingsFiles)
+            {
+                string? newestFile = null;
+                var newestTime = DateTime.MinValue;
+                long newestLength = 0;
+                bool isConfigFile = string.Equals(fileName, "thelads_config.json", StringComparison.OrdinalIgnoreCase);
+
+                foreach (var dir in directories)
+                {
+                    var candidate = Path.Combine(dir, fileName);
+                    if (!File.Exists(candidate)) continue;
+                    try
+                    {
+                        var info = new FileInfo(candidate);
+                        if (info.Length <= 2) continue;
+                        if (isConfigFile)
+                        {
+                            var text = File.ReadAllText(candidate);
+                            if (!text.Contains("\"lads197PresetApplied\"", StringComparison.Ordinal))
+                            {
+                                // Pre-1.9.7 config: delete so 1.9.7 resets to the new default HUD & module preset on first launch
+                                try { File.Delete(candidate); } catch { }
+                                continue;
+                            }
+                        }
+                        var mtime = info.LastWriteTimeUtc;
+                        if (newestFile == null || mtime > newestTime)
+                        {
+                            newestFile = candidate;
+                            newestTime = mtime;
+                            newestLength = info.Length;
+                        }
+                    }
+                    catch { }
+                }
+
+                if (newestFile == null) continue;
+
+                foreach (var dir in directories)
+                {
+                    var target = Path.Combine(dir, fileName);
+                    if (SafeFileOps.PathsEqual(newestFile, target)) continue;
+
+                    bool isPrimaryDir = SafeFileOps.PathsEqual(dir, sharedDir)
+                        || SafeFileOps.PathsEqual(dir, rootDir)
+                        || (!string.IsNullOrWhiteSpace(extraGameDirectory) && SafeFileOps.PathsEqual(dir, Normalize(extraGameDirectory)));
+
+                    if (!isPrimaryDir && fileName != "thelads_config.json" && !File.Exists(target))
+                        continue;
+
+                    if (!isPrimaryDir && !File.Exists(target)
+                        && !Directory.Exists(Path.Combine(dir, "mods"))
+                        && !File.Exists(Path.Combine(dir, "options.txt")))
+                        continue;
+
+                    try
+                    {
+                        if (File.Exists(target))
+                        {
+                            var targetInfo = new FileInfo(target);
+                            if (targetInfo.Length == newestLength && targetInfo.LastWriteTimeUtc == newestTime)
+                                continue;
+                        }
+                        Directory.CreateDirectory(dir);
+                        File.Copy(newestFile, target, overwrite: true);
+                        File.SetLastWriteTimeUtc(target, newestTime);
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch { }
+    }
+
     /// <summary>
     /// A staging folder <c>&lt;sharedDirectory&gt;\.lads-incoming-&lt;guid&gt;</c> (e.g. for a resource-pack download) so the final
     /// rename into the shared folder stays on one volume. Migrations in this process leave it alone until it is disposed;

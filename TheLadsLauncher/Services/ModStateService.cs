@@ -234,6 +234,9 @@ public sealed class ModStateService
         var game = Path.GetFullPath(gameDirectory);
         if (isGameRunning(game)) return new(false, false, false, ModInventoryService.NativeRunningReason + ".");
         var path = Path.Combine(game, "thelads_config.json");
+        var dataDir = SharedContentService.TryResolveLauncherDataDirectory(game);
+        if (!File.Exists(path) && dataDir != null)
+            SharedContentService.SyncLadsSettingsAcrossAllInstances(dataDir, game);
         JsonObject root;
         try
         {
@@ -254,6 +257,8 @@ public sealed class ModStateService
         try
         {
             await LockFiles.WriteAtomicallyAsync(path, Encoding.UTF8.GetBytes(root.ToJsonString(Indented)), cancellationToken);
+            if (dataDir != null)
+                SharedContentService.SyncLadsSettingsAcrossAllInstances(dataDir, game);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {

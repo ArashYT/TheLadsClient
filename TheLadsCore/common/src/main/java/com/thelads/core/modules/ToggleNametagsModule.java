@@ -12,7 +12,7 @@ public class ToggleNametagsModule extends Module {
     public ToggleNametagsModule() {
         super("Nametags", "Nametag shadow, background and own tag. Rename players for you only: Nicknames as Name=Nick, Name2=Nick2.");
         addOption(new BoolOption("Show Own Nametag in Third Person", false));
-        addOption(new BoolOption("Render Background", true));
+        addOption(new BoolOption("Render Background", false));
         addOption(new BoolOption("Text Shadow", true));
         displayName = addOption(new TextOption("Your Display Name", ""));
         nicknames = addOption(new TextOption("Nicknames", ""));

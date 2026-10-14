@@ -9,10 +9,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class ConfigSaveLaterTest {
+    @AfterEach void tearDown() {
+        ConfigManager.setTestConfigFile(null);
+    }
+
     @Test void laterSavesWriteOnceInTheBackgroundAndFlushWritesAtOnce(@TempDir Path dir) throws Exception {
         File config = dir.resolve("thelads_config.json").toFile();
         ConfigManager.setTestConfigFile(config);
@@ -84,6 +89,24 @@ class ConfigSaveLaterTest {
             assertTrue(autohide.isEnabled(), "explicit player change is kept");
         } finally {
             autohide.setEnabled(was);
+        }
+    }
+
+    @Test void mirrorTargetsIncludeSharedRootProfilesAndInstances(@TempDir Path dir) throws Exception {
+        com.thelads.core.client.util.ClientPaths.setBaseDir(dir);
+        try {
+            Path profileA = Files.createDirectories(dir.resolve("profiles").resolve("1.20.1"));
+            Files.createDirectories(profileA.resolve("mods"));
+            Path instanceB = Files.createDirectories(dir.resolve("instances").resolve("zero-smp-1.20.1").resolve("minecraft"));
+            Files.createDirectories(instanceB.resolve("mods"));
+
+            java.util.List<File> targets = com.thelads.core.client.util.ClientPaths.getMirrorTargetsForSharedFile("thelads_config.json");
+            assertTrue(targets.contains(dir.resolve("shared").resolve("thelads_config.json").toFile()));
+            assertTrue(targets.contains(dir.resolve("thelads_config.json").toFile()));
+            assertTrue(targets.contains(profileA.resolve("thelads_config.json").toFile()));
+            assertTrue(targets.contains(instanceB.resolve("thelads_config.json").toFile()));
+        } finally {
+            com.thelads.core.client.util.ClientPaths.setBaseDir(null);
         }
     }
 }

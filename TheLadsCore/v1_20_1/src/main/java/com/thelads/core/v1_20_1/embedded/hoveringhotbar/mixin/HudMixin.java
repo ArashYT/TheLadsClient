@@ -46,7 +46,7 @@ abstract class HudMixin {
                at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;blit(Lnet/minecraft/resources/ResourceLocation;IIIIII)V", ordinal = 1),
                index = 6, require = 0)
     private int hoveringhotbar$selectionHeight(int height) {
-        return height == 22 ? 24 : height;
+        return height == 22 && (com.thelads.core.v1_20_1.hud.Raised1201.hotbar() > 0 || HoveringHotbar.CONFIG.getHotbarOffset() > 0) ? 24 : height;
     }
 
     @Inject(method = "renderExperienceBar", at = @At("HEAD"), require = 0)
@@ -60,10 +60,10 @@ abstract class HudMixin {
         guiGraphics.pose().popPose();
     }
 
-    /** The level number is drawn at screenHeight - 31 - 4, over the top of the bar; the console edition (and 26.3) put it three pixels higher. */
+    /** Keep the level number at its vanilla position so it does not collide with the survival status bars. */
     @ModifyConstant(method = "renderExperienceBar", constant = @Constant(intValue = 31), require = 0)
     private int hoveringhotbar$levelAboveBar(int distanceFromBottom) {
-        return HoveringHotbar.CONFIG.moveExperienceAboveBar ? distanceFromBottom + 3 : distanceFromBottom;
+        return distanceFromBottom;
     }
 
     @Inject(method = "renderJumpMeter", at = @At("HEAD"), require = 0)

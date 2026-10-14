@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Interactivity;
 using CmlLib.Core.Auth;
+using TheLadsLauncher.Models;
 using TheLadsLauncher.Services;
 
 namespace TheLadsLauncher;
@@ -16,6 +18,34 @@ public partial class MainWindow
     internal void ModpackLog(string message) => Log("[Modpacks] " + message);
     internal Task<bool> ConfirmModpackAsync(string title, string message, string confirm) =>
         ShowLadsDialogAsync(title, message, confirm, "Cancel", danger: true);
+
+    internal IReadOnlyList<AccountChoice> GetLaunchAccountChoices() =>
+        LaunchAccountSelector?.Items.OfType<AccountChoice>().ToList() ?? new List<AccountChoice>();
+
+    internal string SelectedLaunchAccountName => ResolveLaunchAccountName();
+
+    internal void SelectLaunchAccount(string accountName)
+    {
+        if (string.IsNullOrWhiteSpace(accountName)) return;
+        _launchAccountOverride = string.Equals(accountName, _selectedAccount, StringComparison.OrdinalIgnoreCase) ? "" : accountName;
+        if (LaunchAccountSelector != null)
+        {
+            _populatingLaunchSelector = true;
+            try
+            {
+                LaunchAccountSelector.SelectedItem = LaunchAccountSelector.Items
+                    .OfType<AccountChoice>()
+                    .FirstOrDefault(c => string.Equals(c.Name, accountName, StringComparison.OrdinalIgnoreCase));
+            }
+            finally
+            {
+                _populatingLaunchSelector = false;
+            }
+        }
+        Log(string.IsNullOrEmpty(_launchAccountOverride)
+            ? "[Launcher] Launch account set to main account."
+            : $"[Launcher] Next launch will use alt account: {_launchAccountOverride} (main unchanged).");
+    }
 
     private async void NavModpacks_Click(object? sender, RoutedEventArgs e) { NavigateTo("Modpacks"); await ModpacksPage.LoadAsync(); }
 

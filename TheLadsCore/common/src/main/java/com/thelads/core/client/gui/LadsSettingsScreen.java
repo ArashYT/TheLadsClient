@@ -248,6 +248,9 @@ public final class LadsSettingsScreen {
             String desc = tipModule.getDescription();
             if (tipModule.isBlockedByServer()) {
                 desc += " [Disabled on Hypixel - Server Rules]";
+            } else if (com.thelads.core.client.hypixel.HypixelMods.HYPIXEL_MODS.equals(tipModule.getName())
+                    && !com.thelads.core.client.HypixelSafetyManager.isHypixel()) {
+                desc += " [Inactive - Only activates on Hypixel]";
             }
             String text = desc;
             g.overlay(() -> tooltip(g, text, pointerX, pointerY));
@@ -380,7 +383,9 @@ public final class LadsSettingsScreen {
         g.drawText(fit(g, detail.getName(), headerW - 102), x + 96, 51, TEXT);
         int descriptionH = height < 230 ? 0 : MenuGraphics.wrap(g, detail.getDescription(), x, 76, headerW, 2, MUTED);
         int stateY = height < 230 ? 68 : 81 + descriptionH;
-        g.drawText("LADS MODULE", x, stateY + 6, ACCENT);
+        boolean hypixelInactive = com.thelads.core.client.hypixel.HypixelMods.HYPIXEL_MODS.equals(detail.getName())
+            && !com.thelads.core.client.HypixelSafetyManager.isHypixel();
+        g.drawText(hypixelInactive ? "LADS MODULE (INACTIVE OFF HYPIXEL)" : "LADS MODULE", x, stateY + 6, ACCENT);
         if (detail.isBlockedByServer()) {
             button(g, "toggle:detail", "BLOCKED", new Rect(x + headerW - 74, stateY, 74, 22),
                 () -> { notice = detail.getName() + " is automatically disabled on Hypixel to comply with server rules."; }, true, mx, my, false);
@@ -1910,6 +1915,7 @@ public final class LadsSettingsScreen {
         if (!filterDirty) return filtered;
         String query = searchQuery.toLowerCase(Locale.ROOT);
         filtered = ModuleManager.getInstance().getModules().stream()
+            .filter(m -> !ModuleManager.getInstance().isHiddenModule(m.getName()))
             .filter(m -> ModuleSupport.isBuiltIn(m.getName()))
             .filter(m -> currentCategory.equals("All") || currentCategory.equals("HUD") && m.getCategory() == Module.Category.HUD
                 || currentCategory.equals("Server") && m.getCategory() == Module.Category.SERVER

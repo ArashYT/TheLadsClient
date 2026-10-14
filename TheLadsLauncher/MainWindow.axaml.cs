@@ -620,6 +620,10 @@ public partial class MainWindow : Window
     {
         DiscordPresence.Page(page);
         HomePage.IsVisible = page == "Home";
+        if (page == "Home" && PlaySubTabs?.SelectedItem == PlayExperiencesTab)
+        {
+            ExperiencesPage?.RefreshState();
+        }
         WorldsPage.IsVisible = page == "Worlds";
         NavWorlds.Classes.Set("active", page == "Worlds");
         ServersPage.IsVisible = page == "Servers";
@@ -1145,6 +1149,7 @@ public partial class MainWindow : Window
         {
             _populatingLaunchSelector = false;
         }
+        ExperiencesPage?.RefreshState();
     }
 
     // Skin heads by account name, so re-filling the picker does not download them again.
@@ -2797,6 +2802,8 @@ public partial class MainWindow : Window
 
         settings.Save();
         if (rendererChanged) ReloadModsInventory(); // Iris's "Requires OpenGL" lock follows the saved renderer
+        ExperiencesPage?.RefreshState();
+        ModpacksPage?.RefreshButtons();
         UpdateMinecraftVersionDisplay();
         ApplyTheme();
 

@@ -50,7 +50,7 @@ public class KillBannerModule extends Module {
 
     public static final int HEADSHOTS_HEAD_HITS = 0, HEADSHOTS_EVERY_KILL = 1;
     public final DropdownOption bannerStyle = new DropdownOption("Style", REAVER, createStyleChoices());
-    public final DropdownOption reaverVariant = new DropdownOption("Reaver Variant", 0, "Base", "Red", "Black", "White");
+    public final DropdownOption reaverVariant = new DropdownOption("Reaver Variant", 1, "Base", "Red", "Black", "White");
     public final DropdownOption rogueVariant = new DropdownOption("Rogue Variant", 0, "Base", "Green", "Red", "Blue");
     /** Custom: the banner of one skin with the sound of another. */
     public final DropdownOption customVisual = new DropdownOption("Custom Banner", REAVER, createCustomChoices());
@@ -121,6 +121,7 @@ public class KillBannerModule extends Module {
         addOption(streakReset);
         addOption(unlimitedStreak);
         for (int i = 0; i < killSounds.length; i++) killSounds[i] = addOption(new SoundOption("Kill " + (i + 1)));
+        setEnabled(true);
     }
 
     /** How long a streak waits for its next kill, in nanoseconds; negative: forever (Unlimited Streak). */

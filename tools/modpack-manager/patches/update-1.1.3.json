@@ -1,0 +1,131 @@
+{
+  "packId": "zero-smp-1.20.1",
+  "version": "1.1.3",
+  "description": "Adds Proper Ping, Miku Plushies, MCEF, Custom Jukebox Discs, WebDisplays, and Crawl (client + server) to Zero SMP 1.20.1; removes legacy Crawl on Demand if present. Configures conflict-free keybinds (Crawl on J with toggleCrawl enabled, Custom Jukebox Discs playback toggle on I, WebDisplays mouse/laser toggle on [ instead of R which conflicts with Iris shader reload and JEI). Tunes client/common configs: Proper Ping numeric ping enabled in Tab player list with permanent top-left HUD text disabled; MCEF capped at 30 FPS with GPU rasterization and HTTP caching enabled; WebDisplays hard_recipes disabled (no minePad drop-breaking required for upgrades), join_message disabled, auto-volume enabled, and MiniServ quota raised to 10 MiB; Custom Jukebox Discs client playback, headphone indicator, and 512 MiB audio cache enabled.",
+  "mods": {
+    "add": [
+      {
+        "fileName": "proper_ping-1.20.1-1.0.0.jar",
+        "sha1": "b47454d04e599b01cd3807b065f3e20644bc6ac9",
+        "url": "https://cdn.modrinth.com/data/1SvzcA6G/versions/j4ny4OP7/proper_ping-1.20.1-1.0.0.jar"
+      },
+      {
+        "fileName": "miku-plushie-2.0.1-1.20.1.jar",
+        "sha1": "938ced2540351cfa3f109e7f68ea2b0e125b975e",
+        "url": "https://cdn.modrinth.com/data/LnqZM7XU/versions/SpMweLhu/miku-plushie-2.0.1-1.20.1.jar"
+      },
+      {
+        "fileName": "mcef-forge-2.1.6-1.20.1.jar",
+        "sha1": "6d9fa1433d509be242d1d74282d02a0fbebde110",
+        "url": "https://cdn.modrinth.com/data/TObQ0HxZ/versions/x91l6OKB/mcef-forge-2.1.6-1.20.1.jar"
+      },
+      {
+        "fileName": "customjukeboxdiscs-1.20.1-0.4.0.jar",
+        "sha1": "abea70180eb8af15f2a565199022a7129e54e2a7",
+        "url": "https://edge.forgecdn.net/files/9036/103/customjukeboxdiscs-1.20.1-0.4.0.jar"
+      },
+      {
+        "fileName": "webdisplays-2.0.2-1.20.1.jar",
+        "sha1": "f05566e3b898de8542fa7fa79aebd2cff69b89e6",
+        "url": "https://cdn.modrinth.com/data/bRa1UAVZ/versions/DHWqG6SF/webdisplays-2.0.2-1.20.1.jar"
+      },
+      {
+        "fileName": "crawl-0.12.0.jar",
+        "sha1": "b8ae38f022751a45900af7cd49737bb11e524fe9",
+        "url": "https://cdn.modrinth.com/data/H1JOVjhn/versions/G7rwJQKo/crawl-0.12.0.jar"
+      }
+    ],
+    "remove": [
+      "crawlondemand-1.20-1.20.1-1.3.0+forge.jar"
+    ]
+  },
+  "keybinds": {
+    "defaults": {
+      "toggleCrawl": "true",
+      "key_key.crawl": "key.keyboard.j",
+      "key_key.customjukeboxdiscs.toggle_playback": "key.keyboard.i",
+      "key_webdisplays.key.toggle_mouse": "key.keyboard.left.bracket"
+    },
+    "force": {}
+  },
+  "configPatches": [
+    {
+      "file": "config/proper_ping-client.toml",
+      "format": "toml",
+      "keyValues": {
+        "\"Ping HUD\".pingHudEnabled": "false",
+        "\"Ping HUD\".showPingQueue": "false",
+        "\"Ping HUD\".leftOrRight": "true",
+        "\"Ping HUD\".horizontalPadding": "4",
+        "\"Ping HUD\".lineFromTop": "1",
+        "\"Ping HUD\".verticalPadding": "4",
+        "\"Ping HUD\".drawTextWithShadow": "true",
+        "\"Ping HUD\".autoColorText": "true",
+        "\"Ping HUD\".textColor": "14737632",
+        "Other.playerListNumbers": "true"
+      }
+    },
+    {
+      "file": "config/mcef/mcef.properties",
+      "format": "properties",
+      "keyValues": {
+        "skip-updates": "false",
+        "warn-updates": "false",
+        "use-cef-command-line-args": "true",
+        "cef-command-line-args": "--autoplay-policy=no-user-gesture-required,--enable-gpu-rasterization",
+        "download-mirror": "https://mcef-download.cinemamod.com",
+        "max-fps": "30"
+      }
+    },
+    {
+      "file": "config/webdisplays-client.toml",
+      "format": "toml",
+      "keyValues": {
+        "load_distance": "30.0",
+        "unload_distance": "32.0",
+        "pad_resolution": "720",
+        "side_pad": "true",
+        "input.keyboard_camera": "true",
+        "input.switch_buttons": "true",
+        "auto_volume_control.enable_auto_volume": "true",
+        "auto_volume_control.yt_volume": "100.0",
+        "auto_volume_control.dist_100": "10.0",
+        "auto_volume_control.dist_0": "30.0"
+      }
+    },
+    {
+      "file": "config/webdisplays-common.toml",
+      "format": "toml",
+      "keyValues": {
+        "hard_recipes": "false",
+        "join_message": "false",
+        "disable_ownership_thief": "false",
+        "browser_options.blacklist": "\"\"",
+        "browser_options.home_page": "\"mod://webdisplays/main.html\"",
+        "mini_server.miniserv_port": "25566",
+        "mini_server.miniserv_quota": "10240",
+        "screen_options.max_resolution_x": "1920",
+        "screen_options.max_resolution_y": "1080",
+        "screen_options.max_width": "16",
+        "screen_options.max_height": "16"
+      }
+    },
+    {
+      "file": "config/customjukeboxdiscs-client.toml",
+      "format": "toml",
+      "keyValues": {
+        "client.playbackEnabled": "true",
+        "client.headphoneIndicator": "true",
+        "client.maxCacheBytes": "536870912",
+        "client.maxUploadScanFiles": "1000"
+      }
+    },
+    {
+      "file": "config/modernfix-mixins.properties",
+      "format": "properties",
+      "keyValues": {
+        "mixin.perf.dynamic_resources": "false"
+      }
+    }
+  ]
+}

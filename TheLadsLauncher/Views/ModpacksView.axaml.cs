@@ -823,12 +823,13 @@ public partial class ModpacksView : UserControl
 
     private bool Idle(ModpackInstance i) => !_running.ContainsKey(i.Id) && !_launching.ContainsKey(i.Id) && !_busy.Contains(i.Id);
 
-    private void RefreshButtons()
+    internal void RefreshButtons()
     {
         if (_selected is not { } i) return;
         bool running = _running.ContainsKey(i.Id), launching = _launching.ContainsKey(i.Id);
-        PlayButton.Content = launching ? "Cancel" : running ? "Running" : "Play";
-        PlayButton.IsEnabled = !running && !_busy.Contains(i.Id);
+        bool allowMulti = Host?.ModpackSettings.AllowMultiInstance == true;
+        PlayButton.Content = launching ? "Cancel" : (running && !allowMulti) ? "Running" : "Play";
+        PlayButton.IsEnabled = (!running || allowMulti) && !_busy.Contains(i.Id);
         DeleteButton.IsEnabled = UpdateButton.IsEnabled = Idle(i);
     }
 
@@ -2718,9 +2719,9 @@ public partial class ModpacksView : UserControl
             _currentDetailVersions = new List<ProjectVersionItem>
             {
                 new(
-                    "1.9.6",
-                    $"The Lads Core 1.9.6 (MC {instance.McVersion})",
-                    "1.9.6",
+                    "1.9.7",
+                    $"The Lads Core 1.9.7 (MC {instance.McVersion})",
+                    "1.9.7",
                     "release",
                     DateTime.UtcNow,
                     new[] { LoaderName(instance.Loader).ToLowerInvariant() },
@@ -3049,7 +3050,8 @@ public partial class ModpacksView : UserControl
     {
         if (Host is not { } host) return;
         if (_launching.TryGetValue(instance.Id, out var pending)) { pending.Cancel(); return; }
-        if (!Idle(instance)) return;
+        if (_busy.Contains(instance.Id)) return;
+        if (_running.ContainsKey(instance.Id) && !host.ModpackSettings.AllowMultiInstance) return;
         using var launch = new CancellationTokenSource();
         _launching[instance.Id] = launch;
         RefreshButtons();
@@ -3065,7 +3067,8 @@ public partial class ModpacksView : UserControl
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) => Dispatcher.UIThread.Post(() =>
             {
-                _running.Remove(instance.Id);
+                if (_running.TryGetValue(instance.Id, out var current) && current == process)
+                    _running.Remove(instance.Id);
                 int code = process.ExitCode;
                 host.ModpackLog($"{instance.Name} closed (exit code {code}).");
                 if (_selected == instance)

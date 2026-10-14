@@ -82,6 +82,8 @@ class ScoreboardHudTest {
             oldOptions.put(option, option.save());
             option.reset();
         }
+        choice("Background", 0);
+        flag("Hide Sequential Only", false);
         oldBridge = LadsGameBridge.get();
         oldBackground = HudSettings.getInstance().getGlobalBackground();
         oldColor = HudSettings.getInstance().getGlobalColor();

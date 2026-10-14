@@ -9,6 +9,7 @@ import com.thelads.core.modules.*;
 public class ModuleManager {
     private static final ModuleManager INSTANCE = new ModuleManager();
     private final Map<String, Module> modules = new LinkedHashMap<>();
+    private final java.util.Set<String> hiddenModuleNames = new java.util.HashSet<>();
 
     public ModuleManager() {
         Module autohide=new Module("Autohide", "Fade the hotbar, status bars and Lads HUD widgets while idle; restore them on gameplay changes.");
@@ -23,7 +24,7 @@ public class ModuleManager {
         autohide.addOption(new BoolOption("Fade Lads HUD", true));
         autohide.setEnabled(false);register(autohide,Module.Category.HUD);
         Module jade=new Module("Jade", "Identify blocks and entities using the source-integrated Jade API and addon providers.");
-        jade.addOption(new ActionOption("Settings and addons", "Open Jade settings"));jade.setEnabled(true);register(jade,Module.Category.HUD);
+        jade.addOption(new ActionOption("Settings and addons", "Open Jade settings"));jade.setEnabled(true);registerHidden(jade,Module.Category.HUD);
 
         hud("Clock", "Your local clock, with 12 or 24 hour display.").addOption(new BoolOption("12-hour clock", false));
         var stopwatch = hud("Stopwatch", "A local timer. Bind start/pause and reset in Controls; it continues across menus and worlds.");
@@ -40,28 +41,32 @@ public class ModuleManager {
         tools.addOption(new BoolOption("Low durability warning", true));
         tools.addOption(new SliderOption("Durability percent", 10, 1, 50, 1));
         tools.addOption(new BoolOption("Inventory full warning", true));
+        tools.setEnabled(true);
         register(tools, Module.Category.MECHANIC);
         // Particle Core replaced ParticleBudget in 1.8.5; ConfigManager.migrateParticleBudget carries the old settings over.
         register(new ParticleCoreModule(), Module.Category.MECHANIC);
         var culling = new Module("EntityCulling", "Skip drawing entities and block entities hidden behind solid blocks. Name tags still show through walls.");
         culling.setEnabled(true);
-        register(culling, Module.Category.MECHANIC);
+        registerHidden(culling, Module.Category.MECHANIC);
 
         // Behaviour modules
         register(new PingViewModule(), Module.Category.SERVER);
         register(new BetterF3Module(), Module.Category.MECHANIC);
         register(new PerformanceManagerModule(), Module.Category.MECHANIC);
-        register(new ThreadPriorityModule(), Module.Category.MECHANIC);
+        var threads = new ThreadPriorityModule();
+        threads.setEnabled(true);
+        register(threads, Module.Category.MECHANIC);
         Module jasione = new Module("Jasione", "Cut garbage from enum lookups: Enum#values() calls that only read the array share one copy. Applies after a restart.");
         jasione.setEnabled(true);
-        register(jasione, Module.Category.MECHANIC);
-        register(new AsyncModule(), Module.Category.MECHANIC);
+        registerHidden(jasione, Module.Category.MECHANIC);
+        registerHidden(new AsyncModule(), Module.Category.MECHANIC);
 
         // HUD overlay modules (rendered by HudManager)
         HudModule fps = hud("FPS", "Show your current FPS on screen.");
         fps.addOption(new DropdownOption("Update rate", 1, "Instant", "Fast", "Normal", "Slow"));
         fps.addOption(new BoolOption("Smooth", true));
         fps.addOption(new DropdownOption("Display", 0, "Game FPS", "HUD FPS", "Both"));
+        fps.setEnabled(true);
 
         Module minimap = new Module("Minimap", "Lads controls for the bundled Xaero engine. Uses your existing maps, waypoints and server rules.");
         minimap.setEnabled(true);
@@ -75,6 +80,7 @@ public class ModuleManager {
         boss.addOption(new BoolOption("Darken sky", true));
         boss.addOption(new BoolOption("Boss fog", true));
         boss.addOption(new BoolOption("Boss music", true));
+        boss.setEnabled(true);
 
         // 1.9.1: the action bar as a HUD (ActionBarHudElement), on by default (owner); off, vanilla draws it unchanged. Its defaults
         // are vanilla's look and place, with a text shadow; Custom Text Color uses Text Color and Color mode instead of the server's colours.
@@ -96,6 +102,7 @@ public class ModuleManager {
         coords.addOption(new ColorOption("X Color", false, 0xFFFF5555));
         coords.addOption(new ColorOption("Y Color", false, 0xFF55FF55));
         coords.addOption(new ColorOption("Z Color", false, 0xFF5599FF));
+        coords.setEnabled(true);
 
         HudModule biome = hud("Biome", "Show the biome you're standing in.");
         biome.addOption(new DropdownOption("Format", 0, "Name", "ID"));
@@ -104,12 +111,14 @@ public class ModuleManager {
         HudModule ping = hud("PingHUD", "Show your latency on screen.");
         ping.addOption(new BoolOption("Show label", true));
         ping.addOption(new BoolOption("Color by ping", true));
+        ping.setEnabled(true);
 
         HudModule armor = hud("ArmorHUD", "Show armor pieces and durability.");
         // 1.7.0: four hotbar slots by default; the 1.6.0 list stays available. New, so every config starts on the default.
         armor.addOption(new DropdownOption("Style", 0, "Hotbar Slots", "List"));
         armor.addOption(new DropdownOption("Durability", 1, "Off", "Number", "Percent"));
         armor.addOption(new BoolOption("Attach to hotbar", true));
+        armor.setEnabled(true);
 
         HudModule mem = hud("Memory", "Show JVM memory usage.");
         mem.addOption(new DropdownOption("Display", 1, "Used / Max", "Used / Max + %", "Percent only"));
@@ -148,8 +157,10 @@ public class ModuleManager {
         cps.addOption(new DropdownOption("Show", 0, "Both", "Left only", "Right only"));
         cps.addOption(new BoolOption("Show label", true));
 
-        register(new TitleScaleModule());
-        register(new ExordiumModule(), Module.Category.MECHANIC);
+        Module titleScale = new TitleScaleModule();
+        titleScale.setEnabled(true);
+        register(titleScale);
+        registerHidden(new ExordiumModule(), Module.Category.MECHANIC);
 
         TexturePacksModule tp = new TexturePacksModule();
         tp.addOption(new SliderOption("Size", 100, 50, 200, 25));
@@ -169,17 +180,27 @@ public class ModuleManager {
         pot.addOption(new BoolOption("Show icon", true));
         pot.addOption(new BoolOption("Show duration", true));
         pot.addOption(new BoolOption("Show when empty", false));
+        pot.setEnabled(true);
 
         // Gameplay toggle modules
         FullbrightModule fb = new FullbrightModule();
         register(fb, Module.Category.MECHANIC);
 
-        register(new ToggleSprintModule(), Module.Category.MECHANIC);
+        ToggleSprintModule toggleSprint = new ToggleSprintModule();
+        toggleSprint.setEnabled(true);
+        ((BoolOption) toggleSprint.getOption("Sprint toggled")).set(true);
+        register(toggleSprint, Module.Category.MECHANIC);
 
-        register(new ZoomModule(), Module.Category.MECHANIC);
-        register(new CustomFovModule(), Module.Category.MECHANIC);
+        Module zoom = new ZoomModule();
+        zoom.setEnabled(true);
+        register(zoom, Module.Category.MECHANIC);
+        Module customFov = new CustomFovModule();
+        customFov.setEnabled(false);
+        register(customFov, Module.Category.MECHANIC);
 
-        register(new SmoothHotbarModule(), Module.Category.MECHANIC);
+        Module smoothHotbar = new SmoothHotbarModule();
+        smoothHotbar.setEnabled(true);
+        register(smoothHotbar, Module.Category.MECHANIC);
         register(new DynamicLightsModule(), Module.Category.MECHANIC);
 
         // DamageTilt: the hurt tilt leans by the hit's direction (Directional) or the old fixed way, scaled by Intensity (26.x: on
@@ -197,23 +218,36 @@ public class ModuleManager {
 
         Module vb = new Module("VerticalBobbing", "Adds vertical view bob (incl. jumping/falling).");
         vb.addOption(new DropdownOption("Intensity", 1, "Low", "Normal", "High"));
+        vb.setEnabled(true);
         register(vb, Module.Category.MECHANIC);
-        register(new OldAnimationsModule(), Module.Category.MECHANIC);
-        register(new ItemPhysicsModule(), Module.Category.MECHANIC);
-        register(new WavyCapesModule(), Module.Category.MECHANIC);
-        register(new TntTimerModule(), Module.Category.MECHANIC);
+        Module oldAnim = new OldAnimationsModule();
+        oldAnim.setEnabled(true);
+        register(oldAnim, Module.Category.MECHANIC);
+        Module itemPhysics = new ItemPhysicsModule();
+        itemPhysics.setEnabled(true);
+        register(itemPhysics, Module.Category.MECHANIC);
+        Module wavyCapes = new WavyCapesModule();
+        wavyCapes.setEnabled(true);
+        register(wavyCapes, Module.Category.MECHANIC);
+        Module tntTimer = new TntTimerModule();
+        tntTimer.setEnabled(true);
+        register(tntTimer, Module.Category.MECHANIC);
 
-        register(new DynamicFPSModule(), Module.Category.MECHANIC);
+        Module dynamicFps = new DynamicFPSModule();
+        dynamicFps.setEnabled(true);
+        register(dynamicFps, Module.Category.MECHANIC);
         register(new ToggleNametagsModule(), Module.Category.MECHANIC);
-        register(new TitleScreenModule());
+        registerHidden(new TitleScreenModule());
         register(new PaperdollModule());
         register(new KillBannerModule(), Module.Category.MECHANIC);
         register(new ComboSoundsModule(), Module.Category.MECHANIC);
-        register(new CrosshairModule(), Module.Category.MECHANIC);
+        Module crosshair = new CrosshairModule();
+        crosshair.setEnabled(true);
+        register(crosshair, Module.Category.MECHANIC);
 
         // Every chat feature lives here; ConfigManager migrates the old ClientTools timestamps and HideChatIndicators.
         Module chatMod = new com.thelads.core.modules.ChatModule("Chat size, background, message animations, timestamps, signing indicators, screenshot links and Chat Heads (the sender's head before messages).");
-        chatMod.addOption(new BoolOption("Chat Background", true));
+        chatMod.addOption(new BoolOption("Chat Background", false));
         chatMod.addOption(new SliderOption("Chat Width", 320, 100, 600, 10));
         chatMod.addOption(new SliderOption("Chat Height", 180, 50, 400, 10));
         chatMod.addOption(new BoolOption("Message Animations", true));
@@ -235,13 +269,15 @@ public class ModuleManager {
         chatMod.setEnabled(true);
         register(chatMod, Module.Category.HUD);
 
-        register(new AutoReconnectModule(), Module.Category.SERVER);
+        Module autoReconnect = new AutoReconnectModule();
+        autoReconnect.setEnabled(true);
+        register(autoReconnect, Module.Category.SERVER);
 
         Module packets = new Module("IgnorePacketErrors", "Stay connected when the server sends a packet the client can't read or handle: it is skipped and logged "
             + "instead of disconnecting with Network Protocol Error. Warning: a skipped packet can leave the world out of sync (missing blocks, "
             + "entities or inventory changes) until you rejoin, and a broken or hostile server can keep you connected; turn it off on servers you "
             + "don't trust. Timeouts, kicks and lost connections still disconnect.");
-        packets.setEnabled(true);
+        packets.setEnabled(false);
         register(packets, Module.Category.SERVER);
 
         register(new DiscordRpcModule(), Module.Category.SERVER);
@@ -252,26 +288,30 @@ public class ModuleManager {
         sb.addOption(new SliderOption("Size", 100, 50, 150, 25));
         sb.addOption(new SliderOption("X Offset", 0, -40, 40, 20));
         sb.addOption(new SliderOption("Y Offset", 0, -40, 40, 20));
-        sb.addOption(new DropdownOption("Background", 0, "Default", "Dark", "Light", "Off"));
+        sb.addOption(new DropdownOption("Background", 3, "Default", "Dark", "Light", "Off"));
         sb.addOption(new BoolOption("Text Shadow", true));
         // 1.7.0: the scoreboard shows its own colours unless this is on (1.6.0 always tinted it with the HUD colour).
         sb.addOption(new BoolOption("Custom Text Color", false));
         sb.addOption(new BoolOption("Hide Red Numbers", false));
-        sb.addOption(new BoolOption("Hide Sequential Only", false));
+        sb.addOption(new BoolOption("Hide Sequential Only", true));
+        sb.setEnabled(true);
         register(sb, Module.Category.HUD);
 
         Module tab = new TabListModule();
+        tab.setEnabled(true);
         register(tab, Module.Category.HUD);
 
 
-        register(new BetterResolutionModule());
+        Module betterRes = new BetterResolutionModule();
+        betterRes.setEnabled(false);
+        register(betterRes);
 
-        register(new XaeroWorldMapModule(), Module.Category.SERVER);
-        register(new JeiModule());
+        registerHidden(new XaeroWorldMapModule(), Module.Category.SERVER);
+        registerHidden(new JeiModule());
 
         Module sl = new Module("ScalableLux", "Highly optimized starlight lighting engine.");
         sl.setEnabled(true);
-        register(sl);
+        registerHidden(sl);
 
         Module farBlock = new Module("FarBlockEntities", "Render block entities further away.");
         farBlock.addOption(new SliderOption("Distance", 128, 64, 256, 16));
@@ -280,13 +320,19 @@ public class ModuleManager {
 
         register(new RaisedModule());
 
-        register(new AppleSkinModule());
-        register(new EnhancedTooltipsModule());
-        register(new EnhancedToolbarsModule());
-        register(new NotEnoughAnimationsModule());
-        register(new BetterStatsModule());
-        register(new Module("ModernAdvancements", "Search advancements, track goals and customize advancement toasts."));
-        register(new Module("Resourcify", "Browse and update resource packs, data packs, shaders and worlds."));
+        Module appleSkin = new AppleSkinModule();
+        appleSkin.setEnabled(true);
+        register(appleSkin);
+        Module enhancedTooltips = new EnhancedTooltipsModule();
+        enhancedTooltips.setEnabled(true);
+        register(enhancedTooltips);
+        Module enhancedToolbars = new EnhancedToolbarsModule();
+        enhancedToolbars.setEnabled(true);
+        register(enhancedToolbars);
+        registerHidden(new NotEnoughAnimationsModule());
+        registerHidden(new BetterStatsModule());
+        registerHidden(new Module("ModernAdvancements", "Search advancements, track goals and customize advancement toasts."));
+        registerHidden(new Module("Resourcify", "Browse and update resource packs, data packs, shaders and worlds."));
 
         Module packs = new Module(com.thelads.core.client.pack.PackMenuSettings.MODULE_NAME,
             "Resource pack menu search, folder navigation and transparent layout.");
@@ -299,17 +345,19 @@ public class ModuleManager {
         register(disableNarrator);
 
         register(new SignalLossModule());
-        register(new FlashbackModule());
+        registerHidden(new FlashbackModule());
 
         Module decentScreenshot = new Module("BetterScreenshots", "Better screenshot saving and GUI.");
         decentScreenshot.setEnabled(true);
         register(decentScreenshot);
 
-        register(new ClumpsModule(), Module.Category.MECHANIC);
+        Module clumps = new ClumpsModule();
+        clumps.setEnabled(true);
+        register(clumps, Module.Category.MECHANIC);
         register(new SkinLayersModule(), Module.Category.MECHANIC);
-        register(new Module("Lithium", "Optimize game logic, physics and world ticking."), Module.Category.MECHANIC);
-        register(new Module("FerriteCore", "Reduce memory used by Minecraft's block and model data."), Module.Category.MECHANIC);
-        register(new Module("XaeroMinimap", "Minimap, waypoints and navigation controls."), Module.Category.HUD);
+        registerHidden(new Module("Lithium", "Optimize game logic, physics and world ticking."), Module.Category.MECHANIC);
+        registerHidden(new Module("FerriteCore", "Reduce memory used by Minecraft's block and model data."), Module.Category.MECHANIC);
+        registerHidden(new Module("XaeroMinimap", "Minimap, waypoints and navigation controls."), Module.Category.HUD);
         register(new ShulkerBoxUtilsModule(), Module.Category.MECHANIC);
         register(new MouseTweaksModule(), Module.Category.MECHANIC);
         Module rawInput = new Module("RawInput", "Raw mouse input directly from hardware bypassing Windows acceleration.");
@@ -334,6 +382,21 @@ public class ModuleManager {
         modules.put(module.getName(), module);
     }
 
+    private void registerHidden(Module module) {
+        modules.put(module.getName(), module);
+        hiddenModuleNames.add(module.getName());
+    }
+
+    private void registerHidden(Module module, Module.Category category) {
+        module.setCategory(category);
+        modules.put(module.getName(), module);
+        hiddenModuleNames.add(module.getName());
+    }
+
+    public boolean isHiddenModule(String name) {
+        return hiddenModuleNames.contains(name);
+    }
+
     private HudModule hud(String name, String description) {
         HudModule m = new HudModule(name, description);
         m.addOption(new SliderOption("Size", 100, 50, 200, 25));
@@ -354,5 +417,35 @@ public class ModuleManager {
 
     public Module getModule(String name) {
         return modules.get(name);
+    }
+
+    /**
+     * Resets all registered modules and their options in-place to the shipped 1.9.7 defaults
+     * while preserving existing {@link Module} object references.
+     */
+    public synchronized void resetToDefaults() {
+        ModuleManager defaults = new ModuleManager();
+        for (Map.Entry<String, Module> entry : defaults.modules.entrySet()) {
+            Module defMod = entry.getValue();
+            Module liveMod = modules.get(entry.getKey());
+            if (liveMod == null) {
+                continue;
+            }
+            liveMod.setEnabled(defMod.isEnabled());
+            liveMod.setFavorite(false);
+            liveMod.setLastModified(0L);
+            if (liveMod instanceof HudModule liveHud && defMod instanceof HudModule defHud) {
+                liveHud.setUseGlobalColor(defHud.isUseGlobalColor());
+                liveHud.setCustomColor(defHud.getCustomColor());
+            }
+            for (Option defOpt : defMod.getOptions()) {
+                Option liveOpt = liveMod.getOption(defOpt.getName());
+                if (liveOpt != null) {
+                    try {
+                        liveOpt.load(defOpt.save());
+                    } catch (Exception ignored) {}
+                }
+            }
+        }
     }
 }

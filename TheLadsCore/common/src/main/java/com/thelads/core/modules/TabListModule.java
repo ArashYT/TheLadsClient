@@ -11,7 +11,7 @@ public final class TabListModule extends Module {
         addOption(new SliderOption("Size", 100, 10, 200, 1));
         addOption(new SliderOption("X Offset", 0, -1000, 1000, 1));
         addOption(new SliderOption("Y Offset", 10, -1000, 1000, 1));
-        addOption(new DropdownOption("Background", 0, "Default", "Dark", "Light", "Off"));
+        addOption(new DropdownOption("Background", 3, "Default", "Dark", "Light", "Off"));
         addOption(new BoolOption("Text Shadow", true));
         addOption(new SliderOption("Max Players", 80, 1, 300, 1));
         addOption(new SliderOption("Players Per Column", 20, 1, 100, 1));
@@ -33,5 +33,6 @@ public final class TabListModule extends Module {
         addOption(new ColorOption("Global Tab Background", false, 0x80000000));
         addOption(new ColorOption("Footer Color", false, 0x80000000));
         addOption(new ColorOption("Player Row Color", false, 0x20ffffff));
+        setEnabled(true);
     }
 }

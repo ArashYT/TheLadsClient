@@ -341,6 +341,14 @@ public class ExperiencesServiceTests : IDisposable
         Assert.Equal("Game Running", ExperiencesService.GetZeroSmpButtonState(installed: true, isRunning: true).Text);
         Assert.False(ExperiencesService.GetZeroSmpButtonState(installed: true, isRunning: true).IsEnabled);
         Assert.False(ExperiencesService.GetZeroSmpButtonState(installed: true, isBusy: true).IsEnabled);
+
+        // Multi-instance allowed: Play button remains enabled while already running (unless busy)
+        var multiRunning = ExperiencesService.GetZeroSmpButtonState(installed: true, isRunning: true, isBusy: false, allowMultiInstance: true);
+        Assert.Equal("Play Zero SMP", multiRunning.Text);
+        Assert.True(multiRunning.IsEnabled);
+        Assert.Equal("Play Zero SMP", TheLadsLauncher.Views.ExperiencesView.GetButtonState(installed: true, isRunning: true, isBusy: false, allowMultiInstance: true).Text);
+        Assert.True(TheLadsLauncher.Views.ExperiencesView.GetButtonState(installed: true, isRunning: true, isBusy: false, allowMultiInstance: true).IsEnabled);
+        Assert.False(ExperiencesService.GetZeroSmpButtonState(installed: true, isRunning: true, isBusy: true, allowMultiInstance: true).IsEnabled);
     }
 
     [Fact]
@@ -395,5 +403,27 @@ public class ExperiencesServiceTests : IDisposable
         Assert.Equal("play.customsmp.net", finalList.Entries[0].Ip);
         Assert.Equal(ExperiencesService.ZeroSmp.Title, finalList.Entries[1].Name);
         Assert.Equal(ExperiencesService.ZeroSmp.ServerAddress, finalList.Entries[1].Ip);
+    }
+
+    [Fact]
+    public async Task DevZeroSmpInstance_SeedsFromRegularInstanceAndKeepsSeparateDirectory()
+    {
+        var archive = ExperiencesService.PackArchivePath(_tempDir, "zero-smp-1.20.1");
+        Directory.CreateDirectory(Path.GetDirectoryName(archive)!);
+        File.WriteAllBytes(archive, PackZip(SamplePack));
+
+        var regular = await ExperiencesService.InstallZeroSmpAsync(_tempDir, null, CancellationToken.None);
+        Assert.Equal("zero-smp-1.20.1", regular.Id);
+        Assert.Equal("zero-smp-1.20.1-dev", ExperiencesService.ActiveZeroSmpInstanceId(isDevLauncher: true));
+        Assert.Equal("zero-smp-1.20.1", ExperiencesService.ActiveZeroSmpInstanceId(isDevLauncher: false));
+        Assert.Equal("zero-smp-1.20.1", ExperiencesService.CanonicalPackId(ExperiencesService.ZeroSmpDevId));
+
+        ExperiencesService.EnsureDevZeroSmpSeeded(_tempDir);
+        Assert.True(ExperiencesService.IsInstalled(_tempDir, ExperiencesService.ZeroSmpDevId));
+
+        var dev = ExperiencesService.GetInstance(_tempDir, ExperiencesService.ZeroSmpDevId);
+        Assert.NotNull(dev);
+        Assert.Equal("Zero SMP (Dev)", dev!.Name);
+        Assert.NotEqual(regular.GameDirectory, dev.GameDirectory);
     }
 }

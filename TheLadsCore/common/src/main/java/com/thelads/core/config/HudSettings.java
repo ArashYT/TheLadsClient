@@ -91,6 +91,70 @@ public class HudSettings {
         if (names != null) for (String n : names) if (validName(n)) excludedExternalMods.add(n);
     }
 
+    public HudSettings() {
+        resetToDefaults();
+    }
+
+    private void defaultHud(String name, int x, int y, String to, int hx, int hp, int ho, int hr, int vy, int vp, int vo, int vr) {
+        positions.put(name, new int[] { x, y });
+        anchors.put(name, new Anchor(x, y, to, new Axis(hx, hp, ho, hr), new Axis(vy, vp, vo, vr)));
+    }
+
+    /** Restores the shipped default HUD positions, anchors, and groups. */
+    public void resetToDefaults() {
+        globalColor = 0xFFFFFFFF;
+        globalBackground = 0x80000000;
+        textShadow = true;
+        softShadow = false;
+        backgrounds = true;
+        hudScale = 0;
+        hudFpsCapEnabled = true;
+        hudFpsLimit = 60;
+        favoriteColors.clear();
+        fadePlaylist.clear();
+        excludedModules.clear();
+        excludedExternalMods.clear();
+        positions.clear();
+        anchors.clear();
+        groups.clear();
+        locked.clear();
+
+        defaultHud("Memory", 4, 310, null, 0, 0, 4, 0, 1, 1, 66, 0);
+        defaultHud("CPS", 100, 0, null, 0, 0, 100, 0, 0, 0, 0, 0);
+        defaultHud("Stopwatch", 100, 16, "CPS", 0, 0, 0, 58, 2, 0, 0, 16);
+        defaultHud("ServerAddress", 122, 484, null, 0, 0, 122, 0, 2, 2, -5, 0);
+        defaultHud("FPS", 4, 84, "Keystrokes", 0, 0, 0, 64, 2, 0, 2, 76);
+        defaultHud("BossBar", 389, 6, null, 1, 1, 0, 0, 0, 0, 6, 0);
+        defaultHud("Paperdoll", 740, 3, null, 2, 2, -150, 0, 0, 0, 3, 0);
+        defaultHud("Time", 907, 19, "Speed", 2, 2, 0, 60, 2, 0, 0, 16);
+        defaultHud("Potion Effects", 4, 225, null, 0, 0, 4, 0, 1, 1, 0, 0);
+        defaultHud("Clock", 252, 0, "PortalCoordinates", 2, 0, 0, 94, 0, 0, 0, 16);
+        defaultHud("Direction", 450, 30, null, 1, 1, 0, 0, 0, 0, 30, 0);
+        defaultHud("Voice Chat Group", 4, 475, null, 0, 0, 4, 0, 2, 2, -2, 0);
+        defaultHud("PortalCoordinates", 158, 0, "CPS", 2, 0, 0, 58, 0, 0, 0, 16);
+        defaultHud("Hunger", 640, 484, HOTBAR, 2, 0, 69, 0, 1, 1, 0, 0);
+        defaultHud("Biome", 823, 3, "Speed", 0, 2, 0, 60, 0, 0, 0, 16);
+        defaultHud("Scoreboard", 803, 232, null, 2, 2, -2, 0, 1, 1, 0, 0);
+        defaultHud("Keystrokes", 4, 6, null, 0, 0, 4, 0, 0, 0, 6, 0);
+        defaultHud("PingHUD", 4, 102, "FPS", 0, 0, 0, 60, 2, 0, 2, 16);
+        defaultHud("ArmorHUD", 270, 478, HOTBAR, 0, 2, -37, 0, 2, 2, -3, 0);
+        defaultHud("Speed", 897, 3, null, 2, 2, -3, 0, 0, 0, 3, 0);
+        defaultHud("Health", 640, 468, HOTBAR, 2, 0, 69, 0, 0, 2, 3, 0);
+        defaultHud("Toggle Sprint & Sneak", 843, 487, null, 2, 2, -2, 0, 2, 2, -2, 0);
+        defaultHud("ItemCounter", 252, 16, "Clock", 0, 0, 0, 70, 2, 0, 0, 16);
+        defaultHud("Coordinates", 4, 120, "PingHUD", 0, 0, 0, 68, 2, 0, 2, 16);
+        defaultHud("Minimap", 819, 60, null, 2, 2, -2, 0, 0, 0, 60, 0);
+        defaultHud("ReachDisplay", 833, 19, "Biome", 2, 2, 10, 74, 2, 0, 0, 16);
+        defaultHud("TexturePacks", 781, 459, null, 2, 2, -3, 0, 2, 2, -30, 0);
+        defaultHud("Action Bar", 452, 435, null, 1, 1, 0, 0, 2, 2, -57, 0);
+        defaultHud("XP", 690, 468, HOTBAR, 2, 0, 119, 0, 0, 2, 3, 0);
+        defaultHud("Day", 192, 16, "PortalCoordinates", 2, 2, 0, 94, 2, 0, 0, 16);
+        defaultHud("Voice Chat", 580, 478, HOTBAR, 2, 0, 9, 0, 2, 2, -3, 0);
+
+        addGroup(Set.of("XP", "Hunger", "Health"));
+        addGroup(Set.of("PingHUD", "Keystrokes", "Coordinates", "FPS"));
+    }
+
     public static HudSettings getInstance() {
         return INSTANCE;
     }

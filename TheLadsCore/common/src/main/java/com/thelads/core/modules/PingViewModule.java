@@ -22,5 +22,6 @@ public class PingViewModule extends Module {
         addOption(new ColorOption("Ping 200-299", false, -13779));
         addOption(new ColorOption("Ping 300-399", false, -6458098));
         addOption(new ColorOption("Ping 400+", false, -4318437));
+        setEnabled(true);
     }
 }

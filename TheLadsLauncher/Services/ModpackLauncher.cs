@@ -111,13 +111,14 @@ public static class ModpackLauncher
     {
         try
         {
+            Directory.CreateDirectory(gameDirectory);
+            SharedContentService.SyncLadsSettingsAcrossAllInstances(dataDirectory, gameDirectory);
             var sharedConfig = Path.Combine(dataDirectory, "shared", "thelads_config.json");
             var instanceConfig = Path.Combine(gameDirectory, "thelads_config.json");
             if (File.Exists(sharedConfig))
             {
                 if (!File.Exists(instanceConfig) || File.GetLastWriteTimeUtc(sharedConfig) > File.GetLastWriteTimeUtc(instanceConfig))
                 {
-                    Directory.CreateDirectory(gameDirectory);
                     File.Copy(sharedConfig, instanceConfig, true);
                 }
             }
@@ -146,6 +147,7 @@ public static class ModpackLauncher
                     File.Copy(instanceConfig, rootConfig, true);
                 }
             }
+            SharedContentService.SyncLadsSettingsAcrossAllInstances(dataDirectory, gameDirectory);
         }
         catch { }
     }
@@ -156,7 +158,8 @@ public static class ModpackLauncher
     {
         var path = GamePath(dataDirectory, instance);
         Directory.CreateDirectory(instance.GameDirectory);
-        var exp = ExperiencesService.AllExperiences.FirstOrDefault(e => e.Id == instance.Id);
+        SyncLadsConfigToInstance(dataDirectory, instance.GameDirectory);
+        var exp = ExperiencesService.AllExperiences.FirstOrDefault(e => e.Id == ExperiencesService.CanonicalPackId(instance.Id));
         if (exp != null && !string.IsNullOrWhiteSpace(exp.ServerAddress))
         {
             ServerListService.EnsureServer(Path.Combine(instance.GameDirectory, "servers.dat"), exp.Title, exp.ServerAddress);
@@ -193,7 +196,17 @@ public static class ModpackLauncher
         if (!string.IsNullOrWhiteSpace(joinServer)) JoinServer(options, joinServer);
         LimitBackgroundThreads(instance, options, Environment.ProcessorCount);
         LaunchService.EnsureSecurityJvmArguments(options);
-        var process = await launcher.InstallAndBuildProcessAsync(versionId, options, token);
+        Process process;
+        try
+        {
+            process = await launcher.InstallAndBuildProcessAsync(versionId, options, token);
+        }
+        catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException)
+            && File.Exists(Path.Combine(launcher.MinecraftPath.Versions, versionId, versionId + ".json")))
+        {
+            // Another running copy of the instance may hold native DLLs or libraries open in modpack-cache; build the process directly.
+            process = await launcher.BuildProcessAsync(versionId, options, token);
+        }
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.CreateNoWindow = true;
         process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = dataDirectory;

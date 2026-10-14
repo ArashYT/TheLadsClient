@@ -16,18 +16,18 @@ public class ClientConfig {
     private static final Pattern OFFSET = Pattern.compile("(?m)^\\s*hotbar_offset\\s*=\\s*(-?\\d+)\\s*$");
     private static final Pattern MOVE_EXPERIENCE = Pattern.compile("(?m)^\\s*move_experience_above_bar\\s*=\\s*(true|false)\\s*$");
 
-    /** Move the experience level display above the experience bar. */
-    public volatile boolean moveExperienceAboveBar = true;
+    /** Move the experience level display above the experience bar. Disabled so XP level never collides with hearts/hunger. */
+    public volatile boolean moveExperienceAboveBar = false;
 
-    private volatile int hotbarOffset = 2;
+    private volatile int hotbarOffset = 0;
     private int configSaveDelay;
 
     public int getHotbarOffset() {
-        return this.hotbarOffset;
+        return 0;
     }
 
     public void updateHotbarOffset(int screenHeight, boolean moveUp) {
-        this.hotbarOffset = Mth.clamp(this.getHotbarOffset() + (moveUp ? 1 : -1), 0, screenHeight);
+        this.hotbarOffset = Mth.clamp(this.hotbarOffset + (moveUp ? 1 : -1), 0, screenHeight);
         this.configSaveDelay = 40;
     }
 
@@ -43,25 +43,8 @@ public class ClientConfig {
 
     /** Reads the two values; anything missing or invalid keeps its default, as the config spec would correct it. */
     public void load() {
-        Path path = path();
-        try {
-            if (!Files.exists(path)) {
-                Files.writeString(path, this.defaultFile());
-                return;
-            }
-            String text = Files.readString(path);
-            Matcher offset = OFFSET.matcher(text);
-            if (offset.find()) {
-                try {
-                    this.hotbarOffset = Math.max(0, Integer.parseInt(offset.group(1)));
-                } catch (NumberFormatException ignored) {
-                }
-            }
-            Matcher moveExperience = MOVE_EXPERIENCE.matcher(text);
-            if (moveExperience.find()) this.moveExperienceAboveBar = Boolean.parseBoolean(moveExperience.group(1));
-        } catch (IOException exception) {
-            HoveringHotbar.LOGGER.warn("Failed to read {}", path, exception);
-        }
+        this.hotbarOffset = 0;
+        this.moveExperienceAboveBar = false;
     }
 
     private void save() {

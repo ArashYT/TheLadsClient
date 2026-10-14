@@ -49,21 +49,44 @@ public static class ExperiencesService
         McVersion: "1.20.1",
         Loader: "forge",
         LoaderVersion: "47.4.10",
-        ModCount: 131,
+        ModCount: 137,
         ServerAddress: "nikzerosmp.my.pebble.host",
         IconAsset: "avares://TheLadsLauncher/Assets/zero_smp_icon.png",
         RecommendedRamMb: 6144,
         PackArchiveUrl: "https://bot.arashyt.ca/packs/zero-smp-1.20.1.zip"
     );
 
+    public const string ZeroSmpDevId = "zero-smp-1.20.1-dev";
+
     public static readonly IReadOnlyList<ExperienceDefinition> AllExperiences = new[] { ZeroSmp };
+
+    public static bool IsDevLauncherEnvironment()
+    {
+        if (Environment.GetEnvironmentVariable("LADS_DEV_LAUNCHER") == "1") return true;
+        if (File.Exists(Path.Combine(AppContext.BaseDirectory, ".lads-dev-launcher"))) return true;
+        if (!string.Equals(System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name, "TheLadsLauncher", StringComparison.OrdinalIgnoreCase))
+            return false;
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is { Exists: true }; dir = dir.Parent)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "TheLadsLauncher.csproj"))
+                || File.Exists(Path.Combine(dir.FullName, "TheLadsLauncher", "TheLadsLauncher.csproj")))
+                return true;
+        }
+        return false;
+    }
+
+    public static string ActiveZeroSmpInstanceId(bool? isDevLauncher = null) =>
+        (isDevLauncher ?? IsDevLauncherEnvironment()) ? ZeroSmpDevId : ZeroSmp.Id;
+
+    public static string CanonicalPackId(string experienceOrInstanceId) =>
+        string.Equals(experienceOrInstanceId, ZeroSmpDevId, StringComparison.OrdinalIgnoreCase) ? ZeroSmp.Id : experienceOrInstanceId;
 
     public sealed record ExperienceButtonState(string Text, bool IsEnabled, string? Hint = null);
 
-    public static ExperienceButtonState GetZeroSmpButtonState(bool installed, bool isRunning = false, bool isBusy = false)
+    public static ExperienceButtonState GetZeroSmpButtonState(bool installed, bool isRunning = false, bool isBusy = false, bool allowMultiInstance = false)
     {
-        if (isRunning) return new ExperienceButtonState("Game Running", false);
         if (isBusy) return new ExperienceButtonState("Please wait...", false);
+        if (isRunning && !allowMultiInstance) return new ExperienceButtonState("Game Running", false);
         if (installed) return new ExperienceButtonState("Play Zero SMP", true);
         return new ExperienceButtonState("Install & Play Zero SMP", true);
     }
@@ -71,7 +94,7 @@ public static class ExperiencesService
     public static string InstanceDirectory(string baseDirectory, string experienceId) =>
         Path.Combine(Modpacks.Root(baseDirectory), experienceId);
 
-    public static string PackRoot(string baseDirectory, string experienceId) => Path.Combine(baseDirectory, "experiences", experienceId);
+    public static string PackRoot(string baseDirectory, string experienceId) => Path.Combine(baseDirectory, "experiences", CanonicalPackId(experienceId));
     public static string PackArchivePath(string baseDirectory, string experienceId) => Path.Combine(PackRoot(baseDirectory, experienceId), "pack.zip");
     public static string PackSourceDirectory(string baseDirectory, string experienceId) => Path.Combine(PackRoot(baseDirectory, experienceId), "source");
 
@@ -85,6 +108,44 @@ public static class ExperiencesService
 
     public static ModpackInstance? GetInstance(string baseDirectory, string experienceId) =>
         Modpacks.List(baseDirectory).FirstOrDefault(i => i.Id == experienceId);
+
+    /// <summary>
+    /// Seeds the dev launcher's Zero SMP instance (zero-smp-1.20.1-dev) from the regular Zero SMP instance (zero-smp-1.20.1)
+    /// once when the dev instance does not exist yet, keeping the two instances completely separate from then on.
+    /// </summary>
+    public static void EnsureDevZeroSmpSeeded(string baseDirectory)
+    {
+        try
+        {
+            if (IsInstalled(baseDirectory, ZeroSmpDevId) || !IsInstalled(baseDirectory, ZeroSmp.Id)) return;
+            var srcDir = InstanceDirectory(baseDirectory, ZeroSmp.Id);
+            var dstDir = InstanceDirectory(baseDirectory, ZeroSmpDevId);
+            Directory.CreateDirectory(dstDir);
+            CopyDirectoryContents(srcDir, dstDir,
+                skipSubdirs: new[] { ".mixin.out", "immersive_paintings_cache", "particular_cache" },
+                skipFilePrefixes: new[] { "hs_err_pid" },
+                skipFileExtensions: new[] { ".log" },
+                skipFiles: new[] { "instance.json", RunningGameMarker.FileName });
+
+            var srcInstance = GetInstance(baseDirectory, ZeroSmp.Id);
+            var devInstance = new ModpackInstance
+            {
+                Id = ZeroSmpDevId,
+                Name = "Zero SMP (Dev)",
+                McVersion = srcInstance?.McVersion ?? ZeroSmp.McVersion,
+                Loader = srcInstance?.Loader ?? ZeroSmp.Loader,
+                LoaderVersion = srcInstance?.LoaderVersion ?? ZeroSmp.LoaderVersion,
+                IconPath = srcInstance?.IconPath ?? "icon.png",
+                CreatedUtc = DateTime.UtcNow,
+                Author = srcInstance?.Author ?? "The Lads",
+                PackVersion = srcInstance?.PackVersion ?? "1.0.0",
+                MaxRamMb = srcInstance is { MaxRamMb: > 0 } ? srcInstance.MaxRamMb : ZeroSmp.RecommendedRamMb,
+                Directory = dstDir
+            };
+            Modpacks.Save(devInstance);
+        }
+        catch { }
+    }
 
     /// <summary>
     /// Ensures the Zero SMP server is present in the specified Minecraft game directory's servers.dat,
@@ -101,15 +162,17 @@ public static class ExperiencesService
         EnsureZeroSmpServer(Path.Combine(InstanceDirectory(baseDirectory, ZeroSmp.Id), "minecraft"));
 
     /// <summary>Installs (or reinstalls over) the Zero SMP instance from the pack source. Saves, options and the player's own files stay.</summary>
-    public static async Task<ModpackInstance> InstallZeroSmpAsync(string baseDirectory, Action<string>? status, CancellationToken token, HttpClient? http = null)
+    public static async Task<ModpackInstance> InstallZeroSmpAsync(string baseDirectory, Action<string>? status, CancellationToken token, HttpClient? http = null, string? instanceIdOverride = null)
     {
         var exp = ZeroSmp;
-        var instDir = InstanceDirectory(baseDirectory, exp.Id);
+        var instanceId = string.IsNullOrWhiteSpace(instanceIdOverride) ? exp.Id : instanceIdOverride;
+        var instanceTitle = string.Equals(instanceId, ZeroSmpDevId, StringComparison.OrdinalIgnoreCase) ? "Zero SMP (Dev)" : exp.Title;
+        var instDir = InstanceDirectory(baseDirectory, instanceId);
         var gameDir = Path.Combine(instDir, "minecraft");
         var modsDir = Path.Combine(gameDir, "mods");
         var rpDir = Path.Combine(gameDir, "resourcepacks");
 
-        status?.Invoke("Setting up Zero SMP instance...");
+        status?.Invoke($"Setting up {instanceTitle} instance...");
         var source = await EnsurePackSourceAsync(baseDirectory, exp, http, status, token);
 
         Directory.CreateDirectory(modsDir);
@@ -161,8 +224,8 @@ public static class ExperiencesService
         var pack = ReadPackInfo(source);
         var instance = new ModpackInstance
         {
-            Id = exp.Id,
-            Name = exp.Title,
+            Id = instanceId,
+            Name = instanceTitle,
             McVersion = exp.McVersion,
             Loader = exp.Loader,
             LoaderVersion = exp.LoaderVersion,
@@ -178,7 +241,7 @@ public static class ExperiencesService
         foreach (var applied in pack.AppliedPatches) ModpackPatchEngine.RecordAppliedPatch(instDir, applied);
         ModpackCoreSync.Sync(instance, status: status);
 
-        status?.Invoke("Zero SMP instance ready.");
+        status?.Invoke($"{instanceTitle} instance ready.");
         return instance;
     }
 
@@ -186,7 +249,8 @@ public static class ExperiencesService
     /// instance has no Core jar). <see cref="ModpackLauncher.PrepareAsync"/> does the same before every launch.</summary>
     public static bool SyncLadsCore(string baseDirectory, string experienceId)
     {
-        var exp = AllExperiences.FirstOrDefault(e => e.Id == experienceId);
+        var packId = CanonicalPackId(experienceId);
+        var exp = AllExperiences.FirstOrDefault(e => e.Id == packId);
         return exp != null && ModpackCoreSync.Sync(Path.Combine(InstanceDirectory(baseDirectory, experienceId), "minecraft"), exp.McVersion);
     }
 
@@ -202,9 +266,10 @@ public static class ExperiencesService
         string? bundledPatchesDirectory = null)
     {
         var instDir = InstanceDirectory(baseDirectory, experienceId);
-        var dirs = new[] { Path.Combine(PackRoot(baseDirectory, experienceId), "patches"), Path.Combine(PackSourceDirectory(baseDirectory, experienceId), "patches"), bundledPatchesDirectory };
+        var packId = CanonicalPackId(experienceId);
+        var dirs = new[] { Path.Combine(PackRoot(baseDirectory, packId), "patches"), Path.Combine(PackSourceDirectory(baseDirectory, packId), "patches"), bundledPatchesDirectory };
         var pending = ModpackPatchEngine.AdoptReflectedPatches(instDir, dirs.OfType<string>()
-            .SelectMany(dir => ModpackPatchEngine.PendingPatches(dir, instDir, experienceId))
+            .SelectMany(dir => ModpackPatchEngine.PendingPatches(dir, instDir, packId))
             .GroupBy(p => p.Version, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
             .OrderBy(p => Version.TryParse(p.Version, out var v) ? v : new Version(0, 0)).ToList());
         foreach (var patch in pending)

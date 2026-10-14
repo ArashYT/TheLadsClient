@@ -17,6 +17,7 @@
     "KillBannerAttackMixin",
     "KillBannerPacketsMixin",
     "SoundOptionsScreenMixin",
-    "FolderRepositorySourceMixin"
+    "FolderRepositorySourceMixin",
+    "FaceBakerySafetyMixin"
   ]
 }
