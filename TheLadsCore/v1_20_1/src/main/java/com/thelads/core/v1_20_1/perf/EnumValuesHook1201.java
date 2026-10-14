@@ -49,8 +49,12 @@ public final class EnumValuesHook1201 {
                     throw e.getCause();
                 }
                 if (result instanceof byte[] bytes && method.getName().equals("transformClassBytes")) {
-                    byte[] rewritten = EnumValuesRewriter.rewrite(bytes, isEnum, true);
-                    if (rewritten != null) return rewritten;
+                    String className = args != null && args.length > 1 && args[1] instanceof String s ? s
+                        : (args != null && args.length > 0 && args[0] instanceof String s0 ? s0 : null);
+                    if (!EnumValuesRewriter.shouldSkipClassName(className)) {
+                        byte[] rewritten = EnumValuesRewriter.rewrite(bytes, isEnum, true);
+                        if (rewritten != null) return rewritten;
+                    }
                 }
                 return result;
             }));

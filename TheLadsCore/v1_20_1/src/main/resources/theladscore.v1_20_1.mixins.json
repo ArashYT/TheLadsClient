@@ -18,6 +18,14 @@
     "KillBannerPacketsMixin",
     "SoundOptionsScreenMixin",
     "FolderRepositorySourceMixin",
-    "FaceBakerySafetyMixin"
+    "FaceBakerySafetyMixin",
+    "DispenserBlockSynchronizedMixin",
+    "RegistrateSynchronizedMixin",
+    "CreateCtorSynchronizedMixin",
+    "CreateDecoInitSynchronizedMixin",
+    "ZetaRemapperSynchronizedMixin",
+    "ZetaEventBusSynchronizedMixin",
+    "ReceivingLevelScreenFastCloseMixin",
+    "NoResourcePackWarningsMixin"
   ]
 }

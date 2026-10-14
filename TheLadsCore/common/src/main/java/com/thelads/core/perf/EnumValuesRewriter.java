@@ -43,7 +43,31 @@ public final class EnumValuesRewriter {
     // A class loaded while this thread rewrites another one (ASM itself, a lookup) is passed through unchanged.
     private static final ThreadLocal<Boolean> BUSY = new ThreadLocal<>();
 
+    private static final String[] SKIP_PREFIXES = {
+        "org.spongepowered.",
+        "net.fabricmc.loader.",
+        "com.llamalad7.",
+        "it.unimi.dsi.",
+        "com.google.",
+        "io.netty.",
+        "org.apache.",
+        "org.lwjgl.",
+        "org.joml.",
+        "com.mojang.datafixers.",
+        "com.thelads.core."
+    };
+
     private EnumValuesRewriter() {}
+
+    /** Fast package prefix filter for infrastructure/library namespaces that do not need Enum#values() rewriting. */
+    public static boolean shouldSkipClassName(String name) {
+        if (name == null || name.isEmpty()) return false;
+        String dotName = name.indexOf('/') >= 0 ? name.replace('/', '.') : name;
+        for (String prefix : SKIP_PREFIXES) {
+            if (dotName.startsWith(prefix)) return true;
+        }
+        return false;
+    }
 
     /**
      * The class with its read-only {@code values()} calls switched to a shared array, or null when nothing changed.
@@ -56,6 +80,10 @@ public final class EnumValuesRewriter {
         try {
             SCANNED.incrementAndGet();
             ClassReader reader = new ClassReader(bytes);
+            if (isEnum instanceof KnownEnums known) {
+                known.record(reader.getClassName(),
+                    (reader.getAccess() & Opcodes.ACC_ENUM) != 0 && "java/lang/Enum".equals(reader.getSuperName()));
+            }
             if (!callsValues(reader)) return null;
             ClassNode node = new ClassNode();
             reader.accept(node, 0);
@@ -80,17 +108,36 @@ public final class EnumValuesRewriter {
 
     /** True when the class is an enum, from its class file (null: unknown, so not optimized). Cached per name. */
     public static Predicate<String> enumCheck(Function<String, byte[]> classBytes) {
-        Map<String, Boolean> known = new ConcurrentHashMap<>();
-        return name -> known.computeIfAbsent(name, n -> {
-            try {
-                byte[] bytes = classBytes.apply(n);
-                if (bytes == null) return false;
-                ClassReader reader = new ClassReader(bytes);
-                return (reader.getAccess() & Opcodes.ACC_ENUM) != 0 && "java/lang/Enum".equals(reader.getSuperName());
-            } catch (RuntimeException e) {
-                return false;
+        return new KnownEnums(classBytes);
+    }
+
+    static final class KnownEnums implements Predicate<String> {
+        private final Map<String, Boolean> known = new ConcurrentHashMap<>();
+        private final Function<String, byte[]> classBytes;
+
+        KnownEnums(Function<String, byte[]> classBytes) {
+            this.classBytes = classBytes;
+        }
+
+        void record(String internalName, boolean isEnum) {
+            if (internalName != null) {
+                known.putIfAbsent(internalName, isEnum);
             }
-        });
+        }
+
+        @Override
+        public boolean test(String name) {
+            return known.computeIfAbsent(name, n -> {
+                try {
+                    byte[] bytes = classBytes.apply(n);
+                    if (bytes == null) return false;
+                    ClassReader reader = new ClassReader(bytes);
+                    return (reader.getAccess() & Opcodes.ACC_ENUM) != 0 && "java/lang/Enum".equals(reader.getSuperName());
+                } catch (RuntimeException e) {
+                    return false;
+                }
+            });
+        }
     }
 
     /** One line for the log: what was optimized and what it cost. */

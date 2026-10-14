@@ -33,6 +33,9 @@ public final class EnumValues189 implements IClassTransformer {
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] bytes) {
+        if (bytes == null || EnumValuesRewriter.shouldSkipClassName(transformedName != null ? transformedName : name)) {
+            return bytes;
+        }
         byte[] rewritten = EnumValuesRewriter.rewrite(bytes, isEnum, false);
         return rewritten != null ? rewritten : bytes;
     }

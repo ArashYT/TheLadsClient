@@ -560,6 +560,28 @@ public class ConfigManager {
         save();
     }
 
+    private static boolean needsMigrationSave(JsonObject json) {
+        if (json == null) return false;
+        if (!json.has(SkinLayersLodMigration.FLAG) || !json.get(SkinLayersLodMigration.FLAG).getAsBoolean()) {
+            return true;
+        }
+        if (json.get("modules") instanceof JsonObject modules) {
+            if (!modules.has(ToggleSprintModule.NAME) && (modules.has("ToggleSprint") || modules.has("ToggleSneak"))) return true;
+            if (legacy(modules, "ClientTools", "options", "Chat timestamps") != null || legacy(modules, "HideChatIndicators", "enabled") != null) return true;
+            if (modules.has("Chat Heads") || modules.has("ParticleBudget") || modules.has("RenderScale")) return true;
+            if (modules.has("ToggleNametags") && !modules.has("Nametags")) return true;
+            if (modules.get("DiscordRPC") instanceof JsonObject discord && discord.get("options") instanceof JsonObject opts && opts.has("Share activity")) return true;
+            if (modules.get("OldDamageTilt") instanceof JsonObject tilt && (!(tilt.get("options") instanceof JsonObject o) || !o.has("Directional"))) return true;
+            for (String oldHypixel : new String[]{"Auto GG", "Auto Friend", "Auto Tip", "Auto Play Again", "Auto Who", "Chat Cleanup"}) {
+                if (modules.has(oldHypixel)) return true;
+            }
+        }
+        if (json.get("hud") instanceof JsonObject hud) {
+            if (!hud.has("shadowOnDefault") || !hud.has("hudFpsCapOnDefault")) return true;
+        }
+        return false;
+    }
+
     public static void load() {
         File configFile = getConfigFile();
         if (!configFile.exists()) {
@@ -584,18 +606,10 @@ public class ConfigManager {
             resetTo197PresetAndSave();
             return;
         }
+        boolean dirty = needsMigrationSave(loaded);
         applyJson(loaded);
-        if (testConfigFile == null) {
-            try {
-                String content = Files.readString(configFile.toPath(), StandardCharsets.UTF_8);
-                Path sourcePath = configFile.toPath().toAbsolutePath().normalize();
-                for (File target : ClientPaths.getMirrorTargetsForSharedFile("thelads_config.json")) {
-                    Path targetPath = target.toPath().toAbsolutePath().normalize();
-                    if (!targetPath.equals(sourcePath)) {
-                        writeAtomic(target, content);
-                    }
-                }
-            } catch (Exception ignored) {}
+        if (dirty && testConfigFile == null) {
+            save();
         }
     }
 

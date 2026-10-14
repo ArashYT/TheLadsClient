@@ -22,6 +22,7 @@ public final class ModPresence1201 {
     private static final Map<String, Boolean> INSTALLED = new ConcurrentHashMap<>();
     private static final Map<String, String> SOURCE = new ConcurrentHashMap<>();
     private static volatile Boolean forge;
+    private static volatile boolean modListReady;
     private static volatile java.util.List<String> jarNames;
 
     private ModPresence1201() {}
@@ -37,10 +38,34 @@ public final class ModPresence1201 {
         Boolean known = INSTALLED.get(id);
         if (known != null) return known;
         String where = where(id);
-        if (where == null) return false;
-        INSTALLED.put(id, true);
+        if (where == null) {
+            if (isModListReady()) {
+                INSTALLED.put(id, Boolean.FALSE);
+            }
+            return false;
+        }
+        INSTALLED.put(id, Boolean.TRUE);
         SOURCE.put(id, where);
         LOGGER.info("Mod '{}' is installed ({})", id, where);
+        return true;
+    }
+
+    private static boolean isModListReady() {
+        if (modListReady) return true;
+        try {
+            if (!FabricLoader.getInstance().isModLoaded("minecraft")) return false;
+        } catch (RuntimeException | LinkageError ignored) {
+            return false;
+        }
+        if (onForge()) {
+            try {
+                Class<?> loader = Class.forName("net.minecraftforge.fml.loading.FMLLoader");
+                if (loader.getMethod("getLoadingModList").invoke(null) == null) return false;
+            } catch (ReflectiveOperationException | RuntimeException | LinkageError ignored) {
+                return false;
+            }
+        }
+        modListReady = true;
         return true;
     }
 

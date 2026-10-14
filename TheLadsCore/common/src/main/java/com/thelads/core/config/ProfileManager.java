@@ -174,8 +174,18 @@ public class ProfileManager {
         String prof = bindings.get(contextKey);
         if (prof != null && profiles.containsKey(prof)) {
             ConfigManager.applyJson(profiles.get(prof));
-            ConfigManager.save();
+            ConfigManager.saveLater();
         }
+    }
+
+    public void save() {
+        persist();
+    }
+
+    public void saveLater() {
+        Thread writer = new Thread(this::persist, "Lads profile writer");
+        writer.setDaemon(true);
+        writer.start();
     }
 
     public void load() {
@@ -210,7 +220,7 @@ public class ProfileManager {
         }
     }
 
-    private void persist() {
+    private synchronized void persist() {
         File f = file();
         JsonObject json = new JsonObject();
         JsonObject p = new JsonObject();

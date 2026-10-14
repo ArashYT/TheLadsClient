@@ -148,6 +148,8 @@
     "SecureChatToastMixin",
     "ServerListRefresh",
     "ServerListBackgroundMixin",
-    "JoinMultiplayerScreenMixin"
+    "JoinMultiplayerScreenMixin",
+    "LevelLoadTrackerFastCloseMixin",
+    "NoResourcePackWarningsMixin"
   ]
 }
