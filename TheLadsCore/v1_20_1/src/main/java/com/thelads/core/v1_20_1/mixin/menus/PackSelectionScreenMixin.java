@@ -40,6 +40,8 @@ public abstract class PackSelectionScreenMixin extends Screen implements FolderN
 
     @Unique private EditBox ladsSearch;
     @Unique private String ladsCurrentFolder = "";
+    @Unique private String ladsCachedSubfoldersDir = null;
+    @Unique private List<Path> ladsCachedSubfolders = java.util.Collections.emptyList();
 
     protected PackSelectionScreenMixin(Component title) {
         super(title);
@@ -47,6 +49,7 @@ public abstract class PackSelectionScreenMixin extends Screen implements FolderN
 
     @Inject(method = "init", at = @At("TAIL"))
     private void ladsInit(CallbackInfo ci) {
+        ladsCachedSubfoldersDir = null;
         if (PackMenuSettings.isTransparent()) {
             if (availablePackList != null) {
                 availablePackList.setRenderBackground(false);
@@ -108,9 +111,12 @@ public abstract class PackSelectionScreenMixin extends Screen implements FolderN
                 if (!ladsCurrentFolder.isEmpty()) {
                     list.children().add(new FolderPackEntry1201(minecraft, list, "..", true, this));
                 }
-                Path currentPath = ladsCurrentFolder.isEmpty() ? packDir : packDir.resolve(ladsCurrentFolder);
-                List<Path> subfolders = PackFolderHelper.findSubfolders(currentPath);
-                for (Path sub : subfolders) {
+                if (!ladsCurrentFolder.equals(ladsCachedSubfoldersDir)) {
+                    Path currentPath = ladsCurrentFolder.isEmpty() ? packDir : packDir.resolve(ladsCurrentFolder);
+                    ladsCachedSubfolders = PackFolderHelper.findSubfolders(currentPath);
+                    ladsCachedSubfoldersDir = ladsCurrentFolder;
+                }
+                for (Path sub : ladsCachedSubfolders) {
                     list.children().add(new FolderPackEntry1201(minecraft, list, sub.getFileName().toString(), false, this));
                 }
                 entries.forEach(entry -> {

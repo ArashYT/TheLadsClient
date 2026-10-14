@@ -38,6 +38,7 @@
     "LocalSkinMixin",
     "SkinScreenMixin",
     "ForgeLoadingOverlayMixin",
-    "PackSelectionScreenMixin"
+    "PackSelectionScreenMixin",
+    "PackSelectionModelMixin1201"
   ]
 }

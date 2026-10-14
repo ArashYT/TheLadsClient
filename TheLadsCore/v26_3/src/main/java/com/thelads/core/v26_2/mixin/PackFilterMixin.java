@@ -37,6 +37,8 @@ public abstract class PackFilterMixin extends Screen implements FolderNav26 {
     @Unique private int ladsFilter;
     @Unique private boolean ladsSort;
     @Unique private String ladsCurrentSubfolder = "";
+    @Unique private String ladsCachedSubfoldersDir = null;
+    @Unique private List<Path> ladsCachedSubfolders = java.util.Collections.emptyList();
 
     protected PackFilterMixin() {
         super(Component.empty());
@@ -44,6 +46,7 @@ public abstract class PackFilterMixin extends Screen implements FolderNav26 {
 
     @Inject(method = "init", at = @At("TAIL"), require = 1)
     private void ladsFilters(CallbackInfo ci) {
+        ladsCachedSubfoldersDir = null;
         addRenderableWidget(Button.builder(Component.literal(ladsFilterLabel()), b -> {
             ladsFilter = (ladsFilter + 1) % 3;
             b.setMessage(Component.literal(ladsFilterLabel()));
@@ -147,9 +150,12 @@ public abstract class PackFilterMixin extends Screen implements FolderNav26 {
                 ((AbstractSelectionListAccessor) list).ladsGetChildren().add(insertIndex++, back);
             }
 
-            Path currentDir = ladsCurrentSubfolder.isEmpty() ? this.packDir : this.packDir.resolve(ladsCurrentSubfolder);
-            List<Path> subfolders = PackFolderHelper.findSubfolders(currentDir);
-            for (Path sub : subfolders) {
+            if (!ladsCurrentSubfolder.equals(ladsCachedSubfoldersDir)) {
+                Path currentDir = ladsCurrentSubfolder.isEmpty() ? this.packDir : this.packDir.resolve(ladsCurrentSubfolder);
+                ladsCachedSubfolders = PackFolderHelper.findSubfolders(currentDir);
+                ladsCachedSubfoldersDir = ladsCurrentSubfolder;
+            }
+            for (Path sub : ladsCachedSubfolders) {
                 String folderName = sub.getFileName().toString();
                 if (!searching || folderName.toLowerCase(java.util.Locale.ROOT).contains(query.toLowerCase(java.util.Locale.ROOT))) {
                     FolderPackEntry26 folderEntry = new FolderPackEntry26(list, this.minecraft, folderName, false, this);

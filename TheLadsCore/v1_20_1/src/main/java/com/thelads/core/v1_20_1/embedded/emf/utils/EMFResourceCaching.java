@@ -36,12 +36,18 @@ public class EMFResourceCaching {
     }
 
     public static boolean resourceExists(ResourceManager resources, ResourceLocation loc) {
+        populateCacheIfNeeded(resources);
+
         String key = loc.toString();
         Boolean cached = RESOURCE_EXISTENCE_CACHE.get(key);
         if (cached != null) return cached;
 
-        // By the time this method is first called after a reload starts we should be ready to populate the cache with the cem folders
-        populateCacheIfNeeded(resources);
+        String path = loc.getPath();
+        if ((path.startsWith("emf/cem/") || path.startsWith("optifine/cem/"))
+                && (path.endsWith(".jem") || path.endsWith(".properties"))) {
+            RESOURCE_EXISTENCE_CACHE.put(key, Boolean.FALSE);
+            return false;
+        }
 
         boolean exists = resources.getResource(loc).isPresent();
         RESOURCE_EXISTENCE_CACHE.put(key, exists);
