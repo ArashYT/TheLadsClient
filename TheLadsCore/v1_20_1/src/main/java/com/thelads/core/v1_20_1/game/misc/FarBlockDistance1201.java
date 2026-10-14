@@ -10,11 +10,24 @@ public final class FarBlockDistance1201 {
     /** QA: the last distance a renderer was allowed (read by the QA probe). */
     public static volatile double lastResolved;
 
+    private static volatile Module cachedModule;
+    private static volatile SliderOption cachedSlider;
+
     private FarBlockDistance1201() {}
 
     public static double resolve(double vanilla) {
-        Module module = ModuleManager.getInstance().getModule(NAME);
-        double requested = module != null && module.getOption("Distance") instanceof SliderOption slider ? slider.getValue() : 128;
+        Module module = cachedModule;
+        if (module == null) {
+            module = ModuleManager.getInstance().getModule(NAME);
+            if (module != null) {
+                cachedModule = module;
+                if (module.getOption("Distance") instanceof SliderOption slider) {
+                    cachedSlider = slider;
+                }
+            }
+        }
+        SliderOption slider = cachedSlider;
+        double requested = slider != null ? slider.getValue() : 128;
         double result = resolve(vanilla, requested, module != null && module.isEnabled());
         lastResolved = result;
         return result;

@@ -12,7 +12,9 @@ import net.minecraft.client.gui.GuiGraphics;
  */
 public final class HudParts1201 {
     /** What a begun part must undo: its pose (the stack and how deep it was before this part pushed) and the Auto Hide scope outside it. */
-    public record Scope(PoseStack pose, int depth, float outerOpacity, boolean faded) {}
+    public record Scope(PoseStack pose, int depth, float outerOpacity, boolean faded) {
+        public static final Scope NOOP = new Scope(null, -1, 1, false);
+    }
 
     private static final java.lang.reflect.Field STACK = stackField();
 
@@ -67,13 +69,14 @@ public final class HudParts1201 {
     public static Scope begin(GuiGraphics graphics, boolean fades) {
         float opacity = fades && Hud1201.bool("Autohide", "Fade vanilla HUD", true) ? NativeAutohide1201.update() : 1;
         if (opacity <= 0) return null;
+        int lift = Raised1201.hotbar();
+        boolean faded = opacity < 1;
+        if (lift == 0 && !faded) return Scope.NOOP;
         PoseStack pose = graphics.pose();
         int depth = depth(pose);
         pose.pushPose();
-        int lift = Raised1201.hotbar();
         if (lift != 0) pose.translate(0, -lift, 0);
         float outer = NativeAutohide1201.scopeOpacity;
-        boolean faded = opacity < 1;
         if (faded) {
             NativeAutohide1201.scopeOpacity = opacity;
             graphics.setColor(1, 1, 1, opacity);
@@ -82,7 +85,7 @@ public final class HudParts1201 {
     }
 
     public static void end(GuiGraphics graphics, Scope scope) {
-        if (scope == null) return;
+        if (scope == null || scope == Scope.NOOP) return;
         if (scope.faded()) {
             graphics.setColor(1, 1, 1, 1);
             NativeAutohide1201.scopeOpacity = scope.outerOpacity();

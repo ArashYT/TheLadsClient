@@ -121,7 +121,9 @@ public final class ForgeOverlays1201 {
                 cancel.invoke(event, true); // fully hidden: Forge skips the overlay, and its Post does not come
                 return;
             }
-            OPEN.push(new Object[] {event, graphics, scope});
+            if (scope != HudParts1201.Scope.NOOP) {
+                OPEN.push(new Object[] {event, graphics, scope});
+            }
         } catch (ReflectiveOperationException | RuntimeException failure) {
             Hud1201.LOG.warn("Lads HUD parts: a Forge overlay could not be wrapped", failure);
         }

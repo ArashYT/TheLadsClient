@@ -71,6 +71,7 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
 
     /** Textures and items fade through the shader colour; {@link #endFade} puts it back. */
     private void fade(float extra) {
+        guiGraphics.flush();
         float alpha = alpha() * extra;
         guiGraphics.setColor(1, 1, 1, alpha);
         RenderSystem.enableBlend();
@@ -109,6 +110,7 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
 
     @Override
     public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
+        guiGraphics.flush();
         com.thelads.core.v1_20_1.hud.overlay.PaperDoll1201.render(guiGraphics, x, y, width, height, editor);
     }
 
@@ -123,6 +125,10 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
 
     /** QA switch (MenusQa1201): draw the Lads artwork call by call, to compare with the batched path. */
     public static volatile boolean noBatch;
+
+    private static final java.util.concurrent.ConcurrentHashMap<String, ResourceLocation> TEXTURE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.ConcurrentHashMap<String, ResourceLocation> SPRITE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.ConcurrentHashMap<String, GameProfile> HEAD_PROFILE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
 
     @Override
     public void drawModIcon(String id, int x, int y, int size) {
@@ -273,9 +279,12 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
     @Override
     public void drawSprite(String sprite, int x, int y, int size) {
         if (sprite == null) return;
-        int colon = sprite.indexOf(':');
-        String namespace = colon < 0 ? "minecraft" : sprite.substring(0, colon), path = colon < 0 ? sprite : sprite.substring(colon + 1);
-        ResourceLocation texture = new ResourceLocation(namespace, "textures/" + path + ".png");
+        ResourceLocation texture = SPRITE_CACHE.computeIfAbsent(sprite, s -> {
+            int colon = s.indexOf(':');
+            String namespace = colon < 0 ? "minecraft" : s.substring(0, colon);
+            String path = colon < 0 ? s : s.substring(colon + 1);
+            return new ResourceLocation(namespace, "textures/" + path + ".png");
+        });
         int[] dimensions = TextureSizes1201.of(texture);
         if (dimensions == null) return;
         fade(1);
@@ -291,7 +300,8 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
     public void drawPotionIcon(String effectId, int iconIndex, int x, int y, int size) {
         if (effectId == null || effectId.isEmpty()) return;
         try {
-            var effect = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.get(new ResourceLocation(effectId));
+            ResourceLocation idLoc = TEXTURE_CACHE.computeIfAbsent(effectId, ResourceLocation::new);
+            var effect = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.get(idLoc);
             if (effect == null) return;
             var sprite = Minecraft.getInstance().getMobEffectTextures().get(effect);
             fade(1);
@@ -383,7 +393,8 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
 
     @Override
     public void blit(String texture, int x, int y, int u, int v, int width, int height) {
-        ResourceLocation loc = new ResourceLocation(texture != null ? texture : "minecraft:textures/gui/icons.png");
+        String key = texture != null ? texture : "minecraft:textures/gui/icons.png";
+        ResourceLocation loc = TEXTURE_CACHE.computeIfAbsent(key, ResourceLocation::new);
         fade(1);
         try {
             guiGraphics.blit(loc, x, y, u, v, width, height);
@@ -402,29 +413,46 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
         }
     }
 
-    private void drawHeadFaded(String username, String uuid, int x, int y, int size) {
-        try {
-            Minecraft mc = Minecraft.getInstance();
-            UUID parsedUuid = null;
-            if (uuid != null && !uuid.isBlank()) {
-                String clean = uuid.replace("-", "").trim();
+    private static GameProfile resolveHeadProfile(String username, String uuid) {
+        String safeName = username != null ? username : "Player";
+        String cacheKey = safeName + "|" + (uuid != null ? uuid : "");
+        GameProfile cached = HEAD_PROFILE_CACHE.get(cacheKey);
+        if (cached != null) return cached;
+        if (HEAD_PROFILE_CACHE.size() > 512) HEAD_PROFILE_CACHE.clear();
+        UUID parsedUuid = null;
+        if (uuid != null && !uuid.isBlank()) {
+            String trimmed = uuid.trim();
+            if (trimmed.length() == 36) {
+                try {
+                    parsedUuid = UUID.fromString(trimmed);
+                } catch (Exception ignored) {}
+            }
+            if (parsedUuid == null) {
+                String clean = trimmed.replace("-", "");
                 if (clean.length() == 32) {
                     try {
-                        parsedUuid = UUID.fromString(clean.replaceFirst("(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}+)", "$1-$2-$3-$4-$5"));
-                    } catch (Exception ignored) {}
-                } else {
-                    try {
-                        parsedUuid = UUID.fromString(uuid.trim());
+                        long msb = Long.parseUnsignedLong(clean.substring(0, 16), 16);
+                        long lsb = Long.parseUnsignedLong(clean.substring(16, 32), 16);
+                        parsedUuid = new UUID(msb, lsb);
                     } catch (Exception ignored) {}
                 }
             }
-            if (parsedUuid == null) {
-                parsedUuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + (username != null ? username : "Player")).getBytes(StandardCharsets.UTF_8));
-            }
-            GameProfile profile = new GameProfile(parsedUuid, username != null ? username : "Player");
+        }
+        if (parsedUuid == null) {
+            parsedUuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + safeName).getBytes(StandardCharsets.UTF_8));
+        }
+        GameProfile profile = new GameProfile(parsedUuid, safeName);
+        HEAD_PROFILE_CACHE.put(cacheKey, profile);
+        return profile;
+    }
+
+    private void drawHeadFaded(String username, String uuid, int x, int y, int size) {
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            GameProfile profile = resolveHeadProfile(username, uuid);
             ResourceLocation skinLocation = mc.getSkinManager().getInsecureSkinLocation(profile);
             if (skinLocation == null) {
-                skinLocation = DefaultPlayerSkin.getDefaultSkin(parsedUuid);
+                skinLocation = DefaultPlayerSkin.getDefaultSkin(profile.getId());
             }
             if (skinLocation != null) {
                 PlayerFaceRenderer.draw(guiGraphics, skinLocation, x, y, size);

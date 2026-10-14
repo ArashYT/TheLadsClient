@@ -66,7 +66,8 @@ public final class NativeItemPhysics1201 {
     /** Server thread: our right-click pickup is touching the item, so the no-auto-pickup rule lets it through. */
     private static boolean picking;
     /** Model bounds {minX, minY, minZ, maxX, maxY, maxZ} in the frame an item is drawn in (ground transform applied), per baked model. */
-    private static final Map<BakedModel, float[]> BOUNDS = new IdentityHashMap<>();
+    private static final Map<BakedModel, float[]> BOUNDS = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+    private static ItemPhysicsModule cachedModule;
     /** QA: dropped items drawn by Item Physics since start, and the last tumble seen (read by the QA probe). */
     public static volatile long drawn;
     public static volatile String lastDrawn = "";
@@ -84,10 +85,17 @@ public final class NativeItemPhysics1201 {
                 LoggerFactory.getLogger("TheLadsCore").info("Lads Item Physics: {}", mc.hasSingleplayerServer()
                     ? "singleplayer rules on (this client's integrated server)" : "look only; the remote server keeps its own item rules");
         });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, mc) -> BOUNDS.clear());
     }
 
     public static ItemPhysicsModule module() {
-        return ModuleManager.getInstance().getModule(ItemPhysicsModule.NAME) instanceof ItemPhysicsModule module ? module : null;
+        ItemPhysicsModule m = cachedModule;
+        if (m == null) {
+            if (ModuleManager.getInstance().getModule(ItemPhysicsModule.NAME) instanceof ItemPhysicsModule found) {
+                cachedModule = m = found;
+            }
+        }
+        return m;
     }
 
     /** Dropped items lie flat and tumble (any server: it only changes how this client draws them). Public for 1.7 Animations' dropped-item icon to stand aside. */

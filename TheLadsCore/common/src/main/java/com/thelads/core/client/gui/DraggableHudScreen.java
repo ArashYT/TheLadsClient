@@ -166,10 +166,11 @@ public class DraggableHudScreen {
                 Rect bar=toScreen(hotbar);border(g,new Rect(bar.x()-1,bar.y()-1,bar.width()+2,bar.height()+2),LadsPalette.ACCENT);
             }
             // Live HUD content, drawn in game coordinates under one translate and scale.
+            var order=paintOrder();
             g.pushPose();
             try{
                 g.translate(p.x(),p.y());g.scale((float)scale,(float)scale);
-                for(var element:paintOrder()){
+                for(var element:order){
                     if(!isVisible(element))continue;
                     Rect bounds=measuredBounds.get(element);if(bounds==null)continue;
                     element.renderAt(hud,bounds.x(),bounds.y(),true);
@@ -177,7 +178,7 @@ public class DraggableHudScreen {
                 }
             }finally{g.popPose();}
             // Outlines in whole screen pixels, so they stay crisp at any preview scale.
-            for(var element:paintOrder()){
+            for(var element:order){
                 Rect bounds=renderedBounds.get(element);if(bounds==null)continue;
                 Rect box=toScreen(bounds);
                 boolean hover=box.contains(mx,my)&&p.contains(mx,my),chosen=selected.contains(element),locked=isLocked(element);
@@ -535,18 +536,46 @@ public class DraggableHudScreen {
     private static boolean canToggle(HudElement element){return ModuleSupport.isToggleable(element.getModuleName());}
     /** Dimmed switched-off previews are not drawn in game, so they only snap or join while Show disabled is on. */
     private boolean attracts(HudElement element){return showAll||element.isEnabled();}
+    private List<HudElement> cachedPaintOrder = List.of();
+    private int lastPaintOrderKey;
+    private List<HudElement> cachedListed = List.of();
+    private int lastListedKey;
+    private boolean lastListedShowAll;
+    private String lastListedSearch = null;
+
     /** Draw and hit-test order: dimmed switched-off previews first, so live HUDs always sit on top of them and win the click. */
     private List<HudElement> paintOrder(){
-        var elements=HudManager.getInstance().getElements();var order=new ArrayList<HudElement>(elements.size());
+        var elements=HudManager.getInstance().getElements();
+        int key = 1;
+        for (int i = 0, n = elements.size(); i < n; i++) {
+            key = 31 * key + (elements.get(i).isEnabled() ? 3 : 1);
+        }
+        if (key == lastPaintOrderKey && cachedPaintOrder.size() == elements.size()) return cachedPaintOrder;
+        var order=new ArrayList<HudElement>(elements.size());
         for(var element:elements)if(!element.isEnabled())order.add(element);
         for(var element:elements)if(element.isEnabled())order.add(element);
-        return order;
+        cachedPaintOrder = List.copyOf(order);
+        lastPaintOrderKey = key;
+        return cachedPaintOrder;
     }
     /** The list: shown HUDs matching the search, by name, so a row never jumps when it is switched on or off. */
     private List<HudElement> listed(){
+        var elements=HudManager.getInstance().getElements();
+        int key = 1;
+        for (int i = 0, n = elements.size(); i < n; i++) {
+            var e = elements.get(i);
+            key = 31 * key + (isVisible(e) ? 3 : 1);
+        }
+        if (key == lastListedKey && showAll == lastListedShowAll && Objects.equals(search, lastListedSearch)) {
+            return cachedListed;
+        }
         String query=search.trim().toLowerCase(Locale.ROOT);
-        return HudManager.getInstance().getElements().stream().filter(e->e.getModuleName()!=null&&isVisible(e)&&(query.isEmpty()||e.getModuleName().toLowerCase(Locale.ROOT).contains(query)))
+        cachedListed = elements.stream().filter(e->e.getModuleName()!=null&&isVisible(e)&&(query.isEmpty()||e.getModuleName().toLowerCase(Locale.ROOT).contains(query)))
             .sorted(Comparator.comparing(e->e.getModuleName().toLowerCase(Locale.ROOT))).toList();
+        lastListedKey = key;
+        lastListedShowAll = showAll;
+        lastListedSearch = search;
+        return cachedListed;
     }
     private boolean isLocked(HudElement element){return HudSettings.getInstance().isLocked(element.getModuleName());}
     private Set<HudElement> groupElements(HudElement element){

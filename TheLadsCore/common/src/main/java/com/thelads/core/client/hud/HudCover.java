@@ -16,34 +16,57 @@ import java.util.function.ToIntFunction;
  */
 public final class HudCover {
     public static final int TAB = 0, DEBUG = 1;
-    /** Each box as {source, x1, y1, x2, y2}: what this frame drew so far, and what the last frame drew. */
-    private static List<int[]> now = new ArrayList<>(), last = new ArrayList<>();
+    /** Each box stored flat as 5 ints: {source, left, top, right, bottom}. */
+    private static int[] nowBuf = new int[256];
+    private static int nowCount = 0;
+    private static int[] lastBuf = new int[256];
+    private static int lastCount = 0;
+
+    private static com.thelads.core.client.bridge.LadsGameBridge.ScoreboardSnapshot lastBoard = null;
+    private static int cachedSidebarWide = 0;
+    private static int cachedSidebarLines = 0;
 
     private HudCover() {}
 
+    public static boolean isEmpty() {
+        return nowCount == 0 && lastCount == 0;
+    }
+
+    private static void ensureCapacity(int minBoxes) {
+        int req = minBoxes * 5;
+        if (req > nowBuf.length) {
+            nowBuf = java.util.Arrays.copyOf(nowBuf, Math.max(req, nowBuf.length * 2));
+        }
+    }
+
     /** A new frame begins: what was drawn so far becomes the last frame's. */
     public static void frame() {
-        List<int[]> previous = last;
-        last = now;
-        now = previous;
-        now.clear();
+        int[] previous = lastBuf;
+        lastBuf = nowBuf;
+        lastCount = nowCount;
+        nowBuf = previous;
+        nowCount = 0;
     }
 
     /** A box drawn this frame over the HUD's place (any corner order). */
     public static void add(int source, double x1, double y1, double x2, double y2) {
-        int[] box = box(source, x1, y1, x2, y2);
-        if (box != null) now.add(box);
-    }
-
-    private static int[] box(int source, double x1, double y1, double x2, double y2) {
         int left = (int) Math.floor(Math.min(x1, x2)), top = (int) Math.floor(Math.min(y1, y2));
         int right = (int) Math.ceil(Math.max(x1, x2)), bottom = (int) Math.ceil(Math.max(y1, y2));
-        return right > left && bottom > top ? new int[] {source, left, top, right, bottom} : null;
+        if (right > left && bottom > top) {
+            ensureCapacity(nowCount + 1);
+            int base = nowCount * 5;
+            nowBuf[base] = source;
+            nowBuf[base + 1] = left;
+            nowBuf[base + 2] = top;
+            nowBuf[base + 3] = right;
+            nowBuf[base + 4] = bottom;
+            nowCount++;
+        }
     }
 
     /** How many boxes this frame has so far: mark it before drawing something under its own scale (see {@link #scaleSince}). */
     public static int mark() {
-        return now.size();
+        return nowCount;
     }
 
     /**
@@ -51,11 +74,27 @@ public final class HudCover {
      * scale): each corner goes to scale * corner + move, in GUI units.
      */
     public static void scaleSince(int mark, double scaleX, double scaleY, double moveX, double moveY) {
-        for (int i = now.size() - 1; i >= mark; i--) {
-            int[] b = now.get(i), scaled = box(b[0], scaleX * b[1] + moveX, scaleY * b[2] + moveY, scaleX * b[3] + moveX, scaleY * b[4] + moveY);
-            if (scaled != null) now.set(i, scaled);
-            else now.remove(i);
+        int write = mark;
+        for (int i = mark; i < nowCount; i++) {
+            int base = i * 5;
+            int source = nowBuf[base];
+            double x1 = scaleX * nowBuf[base + 1] + moveX;
+            double y1 = scaleY * nowBuf[base + 2] + moveY;
+            double x2 = scaleX * nowBuf[base + 3] + moveX;
+            double y2 = scaleY * nowBuf[base + 4] + moveY;
+            int left = (int) Math.floor(Math.min(x1, x2)), top = (int) Math.floor(Math.min(y1, y2));
+            int right = (int) Math.ceil(Math.max(x1, x2)), bottom = (int) Math.ceil(Math.max(y1, y2));
+            if (right > left && bottom > top) {
+                int wBase = write * 5;
+                nowBuf[wBase] = source;
+                nowBuf[wBase + 1] = left;
+                nowBuf[wBase + 2] = top;
+                nowBuf[wBase + 3] = right;
+                nowBuf[wBase + 4] = bottom;
+                write++;
+            }
         }
+        nowCount = write;
     }
 
     /**
@@ -74,15 +113,20 @@ public final class HudCover {
     /** Whether the box x1..x2, y1..y2 (GUI units) is under the tab list, or under the debug text while {@code debugOpen}. */
     public static boolean covered(double x1, double y1, double x2, double y2, boolean debugOpen) {
         boolean debugNow = false;
-        for (int[] box : now) {
-            if (box[0] == DEBUG) {
+        for (int i = 0; i < nowCount; i++) {
+            int base = i * 5;
+            if (nowBuf[base] == DEBUG) {
                 debugNow = true;
                 if (!debugOpen) continue;
             }
-            if (overlaps(box, x1, y1, x2, y2)) return true;
+            if (overlaps(nowBuf, base, x1, y1, x2, y2)) return true;
         }
-        if (debugOpen && !debugNow)
-            for (int[] box : last) if (box[0] == DEBUG && overlaps(box, x1, y1, x2, y2)) return true;
+        if (debugOpen && !debugNow) {
+            for (int i = 0; i < lastCount; i++) {
+                int base = i * 5;
+                if (lastBuf[base] == DEBUG && overlaps(lastBuf, base, x1, y1, x2, y2)) return true;
+            }
+        }
         return false;
     }
 
@@ -92,8 +136,14 @@ public final class HudCover {
      */
     public static boolean coveredBefore(double x1, double y1, double x2, double y2) {
         boolean debugOpen = com.thelads.core.client.bridge.LadsGameBridge.get().isDebugScreenOpen();
-        for (int[] box : now) if ((box[0] != DEBUG || debugOpen) && overlaps(box, x1, y1, x2, y2)) return true;
-        for (int[] box : last) if ((box[0] != DEBUG || debugOpen) && overlaps(box, x1, y1, x2, y2)) return true;
+        for (int i = 0; i < nowCount; i++) {
+            int base = i * 5;
+            if ((nowBuf[base] != DEBUG || debugOpen) && overlaps(nowBuf, base, x1, y1, x2, y2)) return true;
+        }
+        for (int i = 0; i < lastCount; i++) {
+            int base = i * 5;
+            if ((lastBuf[base] != DEBUG || debugOpen) && overlaps(lastBuf, base, x1, y1, x2, y2)) return true;
+        }
         return false;
     }
 
@@ -110,22 +160,32 @@ public final class HudCover {
 
     /** Vanilla's sidebar: right aligned, its lines (9 high, under the title) centred a third of the way below the middle. */
     public static boolean sidebarCovered(int screenWidth, int screenHeight, ToIntFunction<String> width) {
-        if (now.isEmpty() && last.isEmpty()) return false;
+        if (isEmpty()) return false;
         var board = com.thelads.core.client.bridge.LadsGameBridge.get().getScoreboard();
         if (board == null) return false;
-        int wide = width.applyAsInt(board.title()), separator = width.applyAsInt(": "), lines = Math.min(15, board.lines().size());
-        for (var line : board.lines())
-            wide = Math.max(wide, width.applyAsInt(line.name()) + (line.value().isEmpty() ? 0 : separator + width.applyAsInt(line.value())));
-        int bottom = screenHeight / 2 + lines * 9 / 3;
-        return coveredBefore(screenWidth - wide - 5, bottom - lines * 9 - 10, screenWidth - 1, bottom);
+        if (board != lastBoard && !board.equals(lastBoard)) {
+            lastBoard = board;
+            int wide = width.applyAsInt(board.title()), separator = width.applyAsInt(": ");
+            for (var line : board.lines())
+                wide = Math.max(wide, width.applyAsInt(line.name()) + (line.value().isEmpty() ? 0 : separator + width.applyAsInt(line.value())));
+            cachedSidebarWide = wide;
+            cachedSidebarLines = Math.min(15, board.lines().size());
+        }
+        int bottom = screenHeight / 2 + cachedSidebarLines * 9 / 3;
+        return coveredBefore(screenWidth - cachedSidebarWide - 5, bottom - cachedSidebarLines * 9 - 10, screenWidth - 1, bottom);
     }
 
-    static boolean overlaps(int[] box, double x1, double y1, double x2, double y2) {
-        return x1 < box[3] && box[1] < x2 && y1 < box[4] && box[2] < y2;
+    static boolean overlaps(int[] buf, int base, double x1, double y1, double x2, double y2) {
+        return x1 < buf[base + 3] && buf[base + 1] < x2 && y1 < buf[base + 4] && buf[base + 2] < y2;
     }
 
     /** QA: the boxes this frame drew so far, as {source, x1, y1, x2, y2}. */
     public static List<int[]> boxes() {
-        return new ArrayList<>(now);
+        List<int[]> result = new ArrayList<>(nowCount);
+        for (int i = 0; i < nowCount; i++) {
+            int base = i * 5;
+            result.add(new int[] {nowBuf[base], nowBuf[base + 1], nowBuf[base + 2], nowBuf[base + 3], nowBuf[base + 4]});
+        }
+        return result;
     }
 }

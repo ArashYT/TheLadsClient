@@ -13,6 +13,7 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
@@ -36,5 +37,20 @@ public abstract class LayerHeldItemMixin {
         OldAnimations.thirdPersonItem(OldAnimations189.GL, 1, held, blocking); // full size: RenderItem.preTransform undoes its 0.5
         renderer.renderItem(entity, stack, TransformType.NONE);
         OldAnimations189.hit(Hook.TP_ITEM);
+    }
+
+    @Unique
+    private static final ItemStack LADS_FISHING_ROD = new ItemStack(net.minecraft.init.Items.fishing_rod, 0);
+
+    @Redirect(
+        method = "doRenderLayer",
+        at = @At(value = "NEW", target = "net/minecraft/item/ItemStack"),
+        require = 1, allow = 1
+    )
+    private ItemStack ladsHeldFishingRodStack(net.minecraft.item.Item item, int count) {
+        if (item == net.minecraft.init.Items.fishing_rod && count == 0) {
+            return LADS_FISHING_ROD;
+        }
+        return new ItemStack(item, count);
     }
 }

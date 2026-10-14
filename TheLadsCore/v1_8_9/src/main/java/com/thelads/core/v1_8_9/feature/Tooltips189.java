@@ -7,6 +7,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.WorldRenderer;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemFood;
 import net.minecraft.item.ItemStack;
@@ -90,4 +93,58 @@ public final class Tooltips189 {
 
     /** Forge's tooltip text height for this many lines (10 each, 2 more under the title). */
     private static int height(int lines) { return 8 + (lines - 1) * 10 + (lines > 1 ? 2 : 0); }
+
+    /**
+     * Draws the entire Forge tooltip box (background + inner border) in a single GL_QUADS Tessellator draw call
+     * with one GL state setup/teardown instead of GuiUtils.drawHoveringText's separate drawGradientRect calls.
+     */
+    public static void drawBatchedTooltipBox(int zLevel, int tooltipX, int tooltipY, int tooltipTextWidth, int tooltipHeight) {
+        final int backgroundColor = 0xF0100010;
+        final int borderColorStart = 0x505000FF;
+        final int borderColorEnd = (borderColorStart & 0xFEFEFE) >> 1 | borderColorStart & 0xFF000000;
+
+        GlStateManager.disableTexture2D();
+        GlStateManager.enableBlend();
+        GlStateManager.disableAlpha();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GlStateManager.shadeModel(7425);
+
+        Tessellator tessellator = Tessellator.getInstance();
+        WorldRenderer wr = tessellator.getWorldRenderer();
+        wr.begin(7, DefaultVertexFormats.POSITION_COLOR);
+
+        // Background: top + middle + bottom combined into one center rect, plus left and right 1px outer caps
+        addQuad(wr, zLevel, tooltipX - 3, tooltipY - 4, tooltipX + tooltipTextWidth + 3, tooltipY + tooltipHeight + 4, backgroundColor, backgroundColor);
+        addQuad(wr, zLevel, tooltipX - 4, tooltipY - 3, tooltipX - 3, tooltipY + tooltipHeight + 3, backgroundColor, backgroundColor);
+        addQuad(wr, zLevel, tooltipX + tooltipTextWidth + 3, tooltipY - 3, tooltipX + tooltipTextWidth + 4, tooltipY + tooltipHeight + 3, backgroundColor, backgroundColor);
+
+        // Inner gradient border: left, right, top, bottom
+        addQuad(wr, zLevel, tooltipX - 3, tooltipY - 2, tooltipX - 2, tooltipY + tooltipHeight + 2, borderColorStart, borderColorEnd);
+        addQuad(wr, zLevel, tooltipX + tooltipTextWidth + 2, tooltipY - 2, tooltipX + tooltipTextWidth + 3, tooltipY + tooltipHeight + 2, borderColorStart, borderColorEnd);
+        addQuad(wr, zLevel, tooltipX - 3, tooltipY - 3, tooltipX + tooltipTextWidth + 3, tooltipY - 2, borderColorStart, borderColorStart);
+        addQuad(wr, zLevel, tooltipX - 3, tooltipY + tooltipHeight + 2, tooltipX + tooltipTextWidth + 3, tooltipY + tooltipHeight + 3, borderColorEnd, borderColorEnd);
+
+        tessellator.draw();
+
+        GlStateManager.shadeModel(7424);
+        GlStateManager.disableBlend();
+        GlStateManager.enableAlpha();
+        GlStateManager.enableTexture2D();
+    }
+
+    private static void addQuad(WorldRenderer wr, int zLevel, int left, int top, int right, int bottom, int startColor, int endColor) {
+        int sA = (startColor >> 24) & 255;
+        int sR = (startColor >> 16) & 255;
+        int sG = (startColor >> 8) & 255;
+        int sB = startColor & 255;
+        int eA = (endColor >> 24) & 255;
+        int eR = (endColor >> 16) & 255;
+        int eG = (endColor >> 8) & 255;
+        int eB = endColor & 255;
+        double z = (double) zLevel;
+        wr.pos((double) right, (double) top, z).color(sR, sG, sB, sA).endVertex();
+        wr.pos((double) left, (double) top, z).color(sR, sG, sB, sA).endVertex();
+        wr.pos((double) left, (double) bottom, z).color(eR, eG, eB, eA).endVertex();
+        wr.pos((double) right, (double) bottom, z).color(eR, eG, eB, eA).endVertex();
+    }
 }

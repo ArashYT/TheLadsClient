@@ -17,10 +17,10 @@ import org.lwjgl.opengl.GL30;
  * captured pixels over the screen. Without framebuffers (OptiFine Fast Render or antialiasing) begin is false.
  */
 final class HudBuffer189 {
-    private final java.nio.IntBuffer viewport = BufferUtils.createIntBuffer(16);
     private final boolean depth;
     private Framebuffer buffer;
     private int previous;
+    private int vpX, vpY, vpW, vpH;
     /** previous and viewport are read once until newFrame(): every capture in a frame begins on the same framebuffer and viewport. */
     private boolean queried;
 
@@ -34,8 +34,12 @@ final class HudBuffer189 {
         // Before creating or resizing the buffer, which binds framebuffer 0 when done.
         if (!queried) {
             queried = true;
-            previous = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
-            GL11.glGetInteger(GL11.GL_VIEWPORT, viewport);
+            Framebuffer fb = mc.getFramebuffer();
+            previous = fb != null ? fb.framebufferObject : 0;
+            vpX = 0;
+            vpY = 0;
+            vpW = mc.displayWidth;
+            vpH = mc.displayHeight;
         }
         boolean depthTest = GlState189.depth(); // creating the buffer turns depth testing on
         if (buffer == null) {
@@ -58,7 +62,7 @@ final class HudBuffer189 {
     /** Back to the framebuffer and viewport drawn before begin(). */
     void end() {
         OpenGlHelper.glBindFramebuffer(OpenGlHelper.GL_FRAMEBUFFER, previous);
-        GL11.glViewport(viewport.get(0), viewport.get(1), viewport.get(2), viewport.get(3));
+        GL11.glViewport(vpX, vpY, vpW, vpH);
     }
 
     /** The captured pixels blended in at alpha over the scaled GUI area. */

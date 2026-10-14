@@ -11,14 +11,16 @@ public class CoordinatesHudElement extends HudElement {
     private LadsGraphics preparedGraphics;
     private boolean hasPlayer, vertical, showBiome;
     private String px, py, pz, prefix, separator, biomeText, compass, axes, directionText;
-    private int lastX = Integer.MIN_VALUE, lastY = Integer.MIN_VALUE, lastZ = Integer.MIN_VALUE;
-    private int lastFormat = -1;
-    private String pxSep = null, pySep = null;
+    private String pxSep, pySep, biomeVerticalText = "Biome: Plains", biomeHorizText = " (Plains)";
+    private int lastPosX = Integer.MIN_VALUE, lastPosY = Integer.MIN_VALUE, lastPosZ = Integer.MIN_VALUE;
+    private int lastBiomeBx = Integer.MIN_VALUE, lastBiomeBy = Integer.MIN_VALUE, lastBiomeBz = Integer.MIN_VALUE;
+    private String cachedBiomeName = null;
+    private int lastFacing = -2, lastFormat = -1;
+    private boolean lastVertical, lastShowBiome, lastShowDir;
     private String lastBiomeName = null;
-    private String biomeVerticalText = "Biome: Plains";
-    private String biomeHorizText = " (Plains)";
-    private int lastFacing = -1;
-    private String lastSep = null;
+    private Object lastMetricsKey = null;
+    private int wPrefix, wPxSep, wPySep, wPz, wBiome, wDir;
+    private int wCompass, wAxes;
 
     public CoordinatesHudElement() {
         this.x = 5;
@@ -32,55 +34,67 @@ public class CoordinatesHudElement extends HudElement {
         preparedGraphics = g;
         hasPlayer = g.getGame().hasPlayer();
         showBiome = optBool("Show Biome", false);
-        compass = axes = null;
-        int facing = -1;
-        if (hasPlayer && optBool("Show Direction", true)) {
-            facing = facing(g.getGame().getYaw(), g.getGame().getPlayerDirection());
-            if (facing >= 0) {
-                compass = COMPASS[facing];
-                axes = AXES[facing];
-            }
-        }
+        boolean showDirection = optBool("Show Direction", true);
         if (!hasPlayer) {
+            compass = axes = directionText = null;
+            lastPosX = Integer.MIN_VALUE;
+            lastPosY = Integer.MIN_VALUE;
+            lastPosZ = Integer.MIN_VALUE;
+            lastBiomeBx = Integer.MIN_VALUE;
+            lastBiomeBy = Integer.MIN_VALUE;
+            lastBiomeBz = Integer.MIN_VALUE;
+            cachedBiomeName = null;
             width = 110; height = Math.max(16, g.fontHeight() + 6);
             return;
         }
 
+        int facing = showDirection ? facing(g.getGame().getYaw(), g.getGame().getPlayerDirection()) : -1;
         int posX = g.getGame().getPlayerX();
         int posY = g.getGame().getPlayerY();
         int posZ = g.getGame().getPlayerZ();
-
-        int format = optCycle("Format", 2); // 0 = X Y Z, 1 = Coords: X, Y, Z, 2 = Labeled
+        int format = optCycle("Format", 2);
         vertical = optBool("Vertical", true);
+        String bName = cachedBiomeName;
+        if (showBiome && (posX != lastBiomeBx || posY != lastBiomeBy || posZ != lastBiomeBz || bName == null)) {
+            lastBiomeBx = posX;
+            lastBiomeBy = posY;
+            lastBiomeBz = posZ;
+            bName = g.getGame().getBiomeName();
+            cachedBiomeName = bName;
+        }
+        Object metricsKey = g.textMetricsKey();
 
-        if (posX != lastX || format != lastFormat || px == null) {
-            lastX = posX;
-            px = (format == 2 ? "X: " : "") + posX;
-            pxSep = null;
+        if (posX == lastPosX && posY == lastPosY && posZ == lastPosZ && facing == lastFacing
+                && format == lastFormat && vertical == lastVertical && showBiome == lastShowBiome
+                && showDirection == lastShowDir && java.util.Objects.equals(bName, lastBiomeName)
+                && java.util.Objects.equals(metricsKey, lastMetricsKey)) {
+            return;
         }
-        if (posY != lastY || format != lastFormat || py == null) {
-            lastY = posY;
-            py = (format == 2 ? "Y: " : "") + posY;
-            pySep = null;
-        }
-        if (posZ != lastZ || format != lastFormat || pz == null) {
-            lastZ = posZ;
-            pz = (format == 2 ? "Z: " : "") + posZ;
-        }
-        lastFormat = format;
 
-        String bName = g.getGame().getBiomeName();
-        if (!java.util.Objects.equals(bName, lastBiomeName) || biomeText == null) {
-            lastBiomeName = bName;
-            biomeText = (bName != null && !bName.isEmpty()) ? bName : "Plains";
-            biomeVerticalText = "Biome: " + biomeText;
-            biomeHorizText = null;
+        lastPosX = posX; lastPosY = posY; lastPosZ = posZ; lastFacing = facing;
+        lastFormat = format; lastVertical = vertical; lastShowBiome = showBiome;
+        lastShowDir = showDirection; lastBiomeName = bName; lastMetricsKey = metricsKey;
+
+        compass = axes = directionText = null;
+        if (facing >= 0) {
+            compass = COMPASS[facing];
+            axes = AXES[facing];
         }
+
+        px = (format == 2 ? "X: " : "") + posX;
+        py = (format == 2 ? "Y: " : "") + posY;
+        pz = (format == 2 ? "Z: " : "") + posZ;
+        biomeText = (bName != null && !bName.isEmpty()) ? bName : "Plains";
+        biomeVerticalText = "Biome: " + biomeText;
 
         if (vertical) {
             int lineHeight = g.fontHeight() + 2;
             int maxTextW = Math.max(g.textWidth(px), Math.max(g.textWidth(py), g.textWidth(pz)));
-            if (compass != null) maxTextW += DIRECTION_GAP + Math.max(g.textWidth(compass), g.textWidth(axes));
+            if (compass != null) {
+                wCompass = g.textWidth(compass);
+                wAxes = g.textWidth(axes);
+                maxTextW += DIRECTION_GAP + Math.max(wCompass, wAxes);
+            }
             if (showBiome) {
                 maxTextW = Math.max(maxTextW, g.textWidth(biomeVerticalText));
             }
@@ -91,28 +105,22 @@ public class CoordinatesHudElement extends HudElement {
 
         prefix = format == 1 ? "Coords: " : "";
         separator = format == 1 ? ", " : " ";
-        if (pxSep == null || !separator.equals(lastSep)) {
-            pxSep = px + separator;
-        }
-        if (pySep == null || !separator.equals(lastSep)) {
-            pySep = py + separator;
-        }
-        if (biomeHorizText == null || !separator.equals(lastSep)) {
-            biomeHorizText = separator + "(" + biomeText + ")";
-        }
-        if (facing != lastFacing || !separator.equals(lastSep) || directionText == null) {
-            lastFacing = facing;
-            directionText = (facing >= 0) ? separator + compass + " (" + axes + ")" : null;
-        }
-        lastSep = separator;
-
-        int horizW = g.textWidth(prefix) + g.textWidth(pxSep)
-                + g.textWidth(pySep) + g.textWidth(pz);
+        pxSep = px + separator;
+        pySep = py + separator;
+        biomeHorizText = separator + "(" + biomeText + ")";
+        wPrefix = prefix.isEmpty() ? 0 : g.textWidth(prefix);
+        wPxSep = g.textWidth(pxSep);
+        wPySep = g.textWidth(pySep);
+        wPz = g.textWidth(pz);
+        int horizW = wPrefix + wPxSep + wPySep + wPz;
         if (showBiome) {
-            horizW += g.textWidth(biomeHorizText);
+            wBiome = g.textWidth(biomeHorizText);
+            horizW += wBiome;
         }
-        if (compass != null && directionText != null) {
-            horizW += g.textWidth(directionText);
+        if (compass != null) {
+            directionText = separator + compass + " (" + axes + ")";
+            wDir = g.textWidth(directionText);
+            horizW += wDir;
         }
         this.width = Math.max(120, horizW + 8);
         this.height = Math.max(16, g.fontHeight() + 6);
@@ -139,22 +147,29 @@ public class CoordinatesHudElement extends HudElement {
                 g.drawText(biomeVerticalText, x + 4, y + 3 + 3 * lineHeight, base, shadow);
             }
             if (compass != null) { // on the right, level with the first two lines
-                g.drawText(compass, x + width - 4 - g.textWidth(compass), y + 3, base, shadow);
-                g.drawText(axes, x + width - 4 - g.textWidth(axes), y + 3 + lineHeight, base, shadow);
+                g.drawText(compass, x + width - 4 - wCompass, y + 3, base, shadow);
+                g.drawText(axes, x + width - 4 - wAxes, y + 3 + lineHeight, base, shadow);
             }
             return;
         }
         // Force left-aligned
         int tx = x + 4;
         int ty = y + (height - g.fontHeight()) / 2 + 1;
-        if (!prefix.isEmpty()) tx = draw(g, prefix, tx, ty, base, shadow);
-        tx = draw(g, pxSep, tx, ty, cx, shadow);
-        tx = draw(g, pySep, tx, ty, cy, shadow);
-        tx = draw(g, pz, tx, ty, cz, shadow);
-        if (showBiome) {
-            tx = draw(g, biomeHorizText, tx, ty, base, shadow);
+        if (!prefix.isEmpty()) {
+            g.drawText(prefix, tx, ty, base, shadow);
+            tx += wPrefix;
         }
-        if (directionText != null) draw(g, directionText, tx, ty, base, shadow);
+        g.drawText(pxSep, tx, ty, cx, shadow);
+        tx += wPxSep;
+        g.drawText(pySep, tx, ty, cy, shadow);
+        tx += wPySep;
+        g.drawText(pz, tx, ty, cz, shadow);
+        tx += wPz;
+        if (showBiome) {
+            g.drawText(biomeHorizText, tx, ty, base, shadow);
+            tx += wBiome;
+        }
+        if (directionText != null) g.drawText(directionText, tx, ty, base, shadow);
     }
 
     /** Which of the eight directions the player faces (an index into COMPASS), by yaw (0 = south), else by the facing's name; -1 when neither says. */
@@ -162,10 +177,5 @@ public class CoordinatesHudElement extends HudElement {
         if (Float.isFinite(yaw) && yaw != -1f) return (int) (((yaw % 360 + 360) % 360 + 22.5f) / 45) % 8; // -1: the bridge has no yaw
         String facing = name == null ? "" : name.toLowerCase(java.util.Locale.ROOT);
         return facing.startsWith("south") ? 0 : facing.startsWith("west") ? 2 : facing.startsWith("north") ? 4 : facing.startsWith("east") ? 6 : -1;
-    }
-
-    private int draw(LadsGraphics g, String s, int tx, int ty, int color, boolean shadow) {
-        g.drawText(s, tx, ty, color, shadow);
-        return tx + g.textWidth(s);
     }
 }

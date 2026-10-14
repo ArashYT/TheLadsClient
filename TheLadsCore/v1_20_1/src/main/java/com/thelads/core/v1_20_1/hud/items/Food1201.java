@@ -60,7 +60,41 @@ public final class Food1201 {
     private static int foodRight, heartsTop, heartsRowHeight, heartsLeft;
     private static final int[] foodY = new int[10];
     private static int[] heartX = new int[0], heartY = new int[0];
+
+    private static com.thelads.core.config.Module cachedModule;
+    private static com.thelads.core.config.BoolOption optOffhandFood;
+    private static com.thelads.core.config.BoolOption optShowExhaustion;
+    private static com.thelads.core.config.BoolOption optVanillaAnimations;
+    private static com.thelads.core.config.BoolOption optShowSaturation;
+    private static com.thelads.core.config.BoolOption optShowFoodValues;
+    private static com.thelads.core.config.BoolOption optShowSaturationOverlay;
+    private static com.thelads.core.config.BoolOption optShowHealthOverlay;
+    private static com.thelads.core.config.BoolOption optFoodTooltips;
+    private static com.thelads.core.config.BoolOption optTooltipsAlwaysVisible;
+    private static com.thelads.core.config.SliderOption optOverlayOpacity;
+
     private Food1201() {}
+
+    private static com.thelads.core.config.Module ensureModule() {
+        com.thelads.core.config.Module m = cachedModule;
+        if (m == null) {
+            m = Hud1201.module(MODULE);
+            if (m != null) {
+                optOffhandFood = (com.thelads.core.config.BoolOption) m.getOption("Offhand Food");
+                optShowExhaustion = (com.thelads.core.config.BoolOption) m.getOption("Show Exhaustion");
+                optVanillaAnimations = (com.thelads.core.config.BoolOption) m.getOption("Vanilla Animations");
+                optShowSaturation = (com.thelads.core.config.BoolOption) m.getOption("Show Saturation");
+                optShowFoodValues = (com.thelads.core.config.BoolOption) m.getOption("Show Food Values");
+                optShowSaturationOverlay = (com.thelads.core.config.BoolOption) m.getOption("Show Saturation Overlay");
+                optShowHealthOverlay = (com.thelads.core.config.BoolOption) m.getOption("Show Health Overlay");
+                optFoodTooltips = (com.thelads.core.config.BoolOption) m.getOption("Food Tooltips");
+                optTooltipsAlwaysVisible = (com.thelads.core.config.BoolOption) m.getOption("Tooltips Always Visible");
+                optOverlayOpacity = (com.thelads.core.config.SliderOption) m.getOption("Overlay Opacity");
+                cachedModule = m;
+            }
+        }
+        return m;
+    }
 
     /** Built in unless the AppleSkin jar is loaded (then the card shows the installed mod and nothing here runs). */
     static void register() {
@@ -98,8 +132,28 @@ public final class Food1201 {
         syncedRegeneration = null;
     }
 
-    public static boolean on() { return active && Hud1201.enabled(MODULE); }
-    static boolean option(String name) { return Hud1201.bool(MODULE, name, true); }
+    public static boolean on() {
+        if (!active) return false;
+        com.thelads.core.config.Module m = ensureModule();
+        return m != null && m.isEnabled();
+    }
+
+    static boolean option(String name) {
+        ensureModule();
+        com.thelads.core.config.BoolOption opt = switch (name) {
+            case "Offhand Food" -> optOffhandFood;
+            case "Show Exhaustion" -> optShowExhaustion;
+            case "Vanilla Animations" -> optVanillaAnimations;
+            case "Show Saturation" -> optShowSaturation;
+            case "Show Food Values" -> optShowFoodValues;
+            case "Show Saturation Overlay" -> optShowSaturationOverlay;
+            case "Show Health Overlay" -> optShowHealthOverlay;
+            case "Food Tooltips" -> optFoodTooltips;
+            case "Tooltips Always Visible" -> optTooltipsAlwaysVisible;
+            default -> null;
+        };
+        return opt != null ? opt.get() : Hud1201.bool(MODULE, name, true);
+    }
 
     /** The integrated server's copy of the local player (singleplayer, LAN host); null on other servers. */
     public static ServerPlayer serverPlayer(Player player) {
@@ -167,8 +221,10 @@ public final class Food1201 {
 
     /** Preview opacity 0..1: the pulse times "Overlay Opacity". */
     private static float previewAlpha() {
+        ensureModule();
         float pulse = qaPulse != null ? qaPulse : FoodPreview.pulse(System.nanoTime() / 1_000_000L % 1200 / 50f);
-        return pulse * Mth.clamp((float) Hud1201.number(MODULE, "Overlay Opacity", 65) / 100, 0, 1);
+        double opacity = optOverlayOpacity != null ? optOverlayOpacity.getValue() : 65.0;
+        return pulse * Mth.clamp((float) opacity / 100, 0, 1);
     }
 
     /** Hunger row start (before vanilla's first icon): the exhaustion band behind the icons, where exhaustion is known. */

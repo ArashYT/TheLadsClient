@@ -53,6 +53,7 @@ public final class EntityCulling {
 
     private static volatile View view;
     private static volatile Thread worker;
+    private static volatile long frameNow = System.nanoTime();
     // Render thread only.
     private static WeakReference<ClientLevel> anchorLevel = new WeakReference<>(null);
     private static double anchorX, anchorY, anchorZ;
@@ -73,6 +74,7 @@ public final class EntityCulling {
 
     /** Render thread: the camera of the main pass, as handed to the entity visibility check. */
     public static void camera(double x, double y, double z) {
+        frameNow = System.nanoTime();
         if (QA && !hookLogged) {
             hookLogged = true;
             LOGGER.info("Entity culling: entity render hook active");
@@ -115,7 +117,7 @@ public final class EntityCulling {
     }
 
     private static boolean hidden(Cullable target) {
-        long now = System.nanoTime();
+        long now = frameNow;
         target.lads$seen(now);
         if (!target.lads$tracked()) {
             target.lads$tracked(true);
@@ -182,7 +184,7 @@ public final class EntityCulling {
                 }
             }
             for (Cullable added; (added = ADDED.poll()) != null; ) tracked.add(added);
-            if (current.x != lastX || current.y != lastY || current.z != lastZ) {
+            if (Double.isNaN(lastX) || Math.abs(current.x - lastX) + Math.abs(current.y - lastY) + Math.abs(current.z - lastZ) > 0.05) {
                 culling.resetCache();
                 lastX = current.x;
                 lastY = current.y;

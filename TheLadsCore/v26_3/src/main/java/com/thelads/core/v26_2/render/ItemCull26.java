@@ -9,8 +9,9 @@ import com.thelads.core.perf.FaceCull;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.IdentityHashMap;
+import java.util.Collections;
 import java.util.Map;
+import java.util.WeakHashMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
@@ -29,7 +30,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class ItemCull26 {
     private static final float LOD_DISTANCE = 32, LOD_PIXELS = 0.25f;
-    private static final Map<GpuBuffer, Matrix4f> UPLOADED = new IdentityHashMap<>();
+    private static final Map<GpuBuffer, Matrix4f> UPLOADED = Collections.synchronizedMap(new WeakHashMap<>());
     private static final MethodHandle SHADOW_PASS = bindShadowPass();
     private static final Matrix4f SCRATCH = new Matrix4f();
     private static final float[] MATRIX = new float[FaceCull.MATRIX_FLOATS];

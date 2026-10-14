@@ -51,15 +51,21 @@ public final class Raised26 {
         }
     }
 
+    private static RaisedModule cachedRaised;
+    private static RaisedModule getRaised() {
+        if (cachedRaised == null) cachedRaised = RaisedModule.get();
+        return cachedRaised;
+    }
+
     /** GUI pixels the hotbar, the bars on it and the action bar move up now. */
     public static int hotbar() {
-        var raised = RaisedModule.get();
+        var raised = getRaised();
         return MOD || raised == null ? 0 : raised.hotbarLift(Minecraft.getInstance().gui.screen() instanceof ChatScreen);
     }
 
     /** GUI pixels chat moves up. */
     public static int chat() {
-        var raised = RaisedModule.get();
+        var raised = getRaised();
         return MOD || raised == null ? 0 : raised.chatLift();
     }
 

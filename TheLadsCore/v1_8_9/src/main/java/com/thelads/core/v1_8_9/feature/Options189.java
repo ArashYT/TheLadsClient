@@ -12,9 +12,18 @@ import com.thelads.core.config.StringOption;
 
 /** Module and option reads for the 1.8.9 features, as the other versions' NativeQualityOfLife helpers. */
 public final class Options189 {
+    private static final java.util.concurrent.ConcurrentHashMap<String, Module> MODULE_CACHE = new java.util.concurrent.ConcurrentHashMap<String, Module>();
+    private static final java.util.concurrent.ConcurrentHashMap<String, Option> OPTION_CACHE = new java.util.concurrent.ConcurrentHashMap<String, Option>();
+
     private Options189() {}
 
-    public static Module module(String name) { return ModuleManager.getInstance().getModule(name); }
+    public static Module module(String name) {
+        Module cached = MODULE_CACHE.get(name);
+        if (cached != null) return cached;
+        Module m = ModuleManager.getInstance().getModule(name);
+        if (m != null) MODULE_CACHE.put(name, m);
+        return m;
+    }
 
     public static boolean enabled(String name) {
         Module module = module(name);
@@ -22,8 +31,18 @@ public final class Options189 {
     }
 
     private static Option option(String module, String option) {
+        String key = module + "/" + option;
+        Option cached = OPTION_CACHE.get(key);
+        if (cached != null) return cached;
         Module value = module(module);
-        return value != null ? value.getOption(option) : null;
+        if (value != null) {
+            Option opt = value.getOption(option);
+            if (opt != null) {
+                OPTION_CACHE.put(key, opt);
+                return opt;
+            }
+        }
+        return null;
     }
 
     public static boolean bool(String module, String option, boolean fallback) {

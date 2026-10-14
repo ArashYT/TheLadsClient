@@ -34,18 +34,39 @@ public class GuiRenderStateCaptureMixin {
             HudCapture.drew(java.util.Objects.hashCode(item.itemStackRenderState().getModelIdentity()), java.util.Objects.hash(item.pose(), item.x(), item.y()));
     }
 
+    private static final class TextAccumulator implements net.minecraft.util.FormattedCharSink {
+        int what;
+        int how;
+
+        @Override
+        public boolean accept(int index, net.minecraft.network.chat.Style style, int codePoint) {
+            what = 31 * what + codePoint;
+            var color = style.getColor();
+            how = 31 * how + (color != null ? color.hashCode() : 0);
+            return true;
+        }
+    }
+
+    private static final TextAccumulator ACCUMULATOR = new TextAccumulator();
+
     /** Text: its characters; where, how big and turned, and its colours (a subtitle fading to grey, chroma text). */
     @Inject(method = "addText", at = @At("HEAD"), require = 1)
     private void lads$text(GuiTextRenderState text, CallbackInfo ci) {
         if (!HudCapture.record(state -> state.addText(text))) return;
         var fields = (GuiTextRenderStateAccessor) (Object) text;
-        int[] what = {1}, how = {java.util.Objects.hash(text.pose, fields.lads$x(), fields.lads$y(), fields.lads$color(), fields.lads$background(), fields.lads$shadow())};
-        fields.lads$text().accept((index, style, codePoint) -> {
-            what[0] = 31 * what[0] + codePoint;
-            how[0] = 31 * how[0] + java.util.Objects.hashCode(style.getColor());
-            return true;
-        });
-        HudCapture.drew(what[0], how[0]);
+        int how = 1;
+        how = 31 * how + (text.pose != null ? text.pose.hashCode() : 0);
+        how = 31 * how + fields.lads$x();
+        how = 31 * how + fields.lads$y();
+        how = 31 * how + fields.lads$color();
+        how = 31 * how + fields.lads$background();
+        how = 31 * how + (fields.lads$shadow() ? 1231 : 1237);
+
+        TextAccumulator acc = ACCUMULATOR;
+        acc.what = 1;
+        acc.how = how;
+        fields.lads$text().accept(acc);
+        HudCapture.drew(acc.what, acc.how);
     }
 
     /** A picture: its kind, and where and how big (what it shows is the renderer's: Xaero's minimap, the paper doll). */

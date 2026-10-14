@@ -21,6 +21,7 @@ public final class DynamicLights {
     /** What the lookups read: x, y, z, luminance of each source. Replaced, never changed in place. */
     private volatile float[] lit = NONE;
     private volatile float reach = 15;
+    private volatile float minBx, minBy, minBz, maxBx, maxBy, maxBz;
 
     // Client thread only: this tick's sources, and each source as it was when its sections were last rebuilt.
     private int[] ids = new int[8], shownIds = new int[8];
@@ -33,11 +34,15 @@ public final class DynamicLights {
     public int at(int x, int y, int z) {
         float[] sources = lit;
         if (sources.length == 0) return 0;
-        float radius = reach, best = 0, cx = x + 0.5f, cy = y + 0.5f, cz = z + 0.5f;
+        float cx = x + 0.5f, cy = y + 0.5f, cz = z + 0.5f;
+        if (cx < minBx || cx > maxBx || cy < minBy || cy > maxBy || cz < minBz || cz > maxBz) return 0;
+        float radius = reach, radiusSq = radius * radius, best = 0;
         for (int i = 0; i < sources.length; i += 4) {
+            float lum = sources[i + 3];
+            if (lum <= best) continue;
             float dx = sources[i] - cx, dy = sources[i + 1] - cy, dz = sources[i + 2] - cz, distance = dx * dx + dy * dy + dz * dz;
-            if (distance >= radius * radius) continue;
-            float light = sources[i + 3] * (1 - (float) Math.sqrt(distance) / radius);
+            if (distance >= radiusSq) continue;
+            float light = lum * (1 - (float) Math.sqrt(distance) / radius);
             if (light > best) best = light;
         }
         return Math.min(15, (int) (best + 0.5f));
@@ -67,8 +72,39 @@ public final class DynamicLights {
      */
     public void end(float radius, float minMove, int everyTicks, Rebuild rebuild) {
         if (radius != reach || !same()) {
-            reach = radius;
-            lit = count == 0 ? NONE : Arrays.copyOf(now, count * 4);
+            if (count == 0) {
+                lit = NONE;
+                reach = radius;
+                minBx = minBy = minBz = Float.MAX_VALUE;
+                maxBx = maxBy = maxBz = -Float.MAX_VALUE;
+            } else {
+                float nMinX = Float.MAX_VALUE, nMinY = Float.MAX_VALUE, nMinZ = Float.MAX_VALUE;
+                float nMaxX = -Float.MAX_VALUE, nMaxY = -Float.MAX_VALUE, nMaxZ = -Float.MAX_VALUE;
+                for (int i = 0; i < count * 4; i += 4) {
+                    float sx = now[i], sy = now[i + 1], sz = now[i + 2];
+                    if (sx - radius < nMinX) nMinX = sx - radius;
+                    if (sy - radius < nMinY) nMinY = sy - radius;
+                    if (sz - radius < nMinZ) nMinZ = sz - radius;
+                    if (sx + radius > nMaxX) nMaxX = sx + radius;
+                    if (sy + radius > nMaxY) nMaxY = sy + radius;
+                    if (sz + radius > nMaxZ) nMaxZ = sz + radius;
+                }
+                // Widen before publishing lit so concurrent readers never see a narrower box than current sources
+                if (nMinX < minBx) minBx = nMinX;
+                if (nMinY < minBy) minBy = nMinY;
+                if (nMinZ < minBz) minBz = nMinZ;
+                if (nMaxX > maxBx) maxBx = nMaxX;
+                if (nMaxY > maxBy) maxBy = nMaxY;
+                if (nMaxZ > maxBz) maxBz = nMaxZ;
+                reach = radius;
+                lit = Arrays.copyOf(now, count * 4);
+                minBx = nMinX;
+                minBy = nMinY;
+                minBz = nMinZ;
+                maxBx = nMaxX;
+                maxBy = nMaxY;
+                maxBz = nMaxZ;
+            }
         }
         if (++ticks < everyTicks) return;
         ticks = 0;
@@ -107,6 +143,8 @@ public final class DynamicLights {
     public void reset() {
         count = shownCount = ticks = 0;
         lit = NONE;
+        minBx = minBy = minBz = Float.MAX_VALUE;
+        maxBx = maxBy = maxBz = -Float.MAX_VALUE;
     }
 
     private boolean same() {

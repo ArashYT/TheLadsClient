@@ -24,7 +24,7 @@ public final class HudPipeline1201 {
      * items and the text under it show through. Vanilla clears the depth buffer right after the GUI for the screens; the Lads layers do
      * it themselves first. What is batched is drawn before the clear.
      */
-    private static void layer(GuiGraphics graphics) {
+    public static void layer(GuiGraphics graphics) {
         graphics.flush();
         RenderSystem.clear(256, Minecraft.ON_OSX);
     }
@@ -46,9 +46,7 @@ public final class HudPipeline1201 {
         } finally {
             NativeAutohide1201.scopeOpacity = 1;
         }
-        layer(graphics);
         com.thelads.core.v1_20_1.hud.overlay.OverlayFeatures1201.hud(graphics);
-        layer(graphics);
         NativeKillBanner1201.render(graphics);
     }
 }
