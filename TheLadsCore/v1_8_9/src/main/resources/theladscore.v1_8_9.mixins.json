@@ -95,7 +95,6 @@
     "ScoreboardMixin",
     "ScoreObjectiveMixin",
     "RenderItemMixin",
-    "TextureMapReloadMixin189",
     "SoundHandlerReloadMixin189",
     "LanguageManagerReloadMixin189",
     "GuiUtilsTooltipMixin",

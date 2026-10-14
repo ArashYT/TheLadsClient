@@ -58,7 +58,7 @@ final class Probe151 {
     }
     private static final OldAnimationsModule MODULE = OldAnimations189.MODULE;
     private static final boolean[] optionsWere = new boolean[Feature.values().length];
-    private static boolean wasEnabled, legacyWas, focusWas;
+    private static boolean wasEnabled, legacyWas, physicsWas, focusWas;
     private static double[] posWas;
     private static final StringBuilder BOB = new StringBuilder();
     private static long legacyFrames;
@@ -74,6 +74,9 @@ final class Probe151 {
     private static boolean start(Minecraft mc) {
         wasEnabled = MODULE.isEnabled();
         legacyWas = legacy().isEnabled();
+        legacy().setEnabled(false);
+        physicsWas = itemPhysics().isEnabled();
+        itemPhysics().setEnabled(false);
         for (Feature feature : Feature.values()) {
             optionsWere[feature.ordinal()] = MODULE.option(feature).get();
             MODULE.option(feature).set(true);
@@ -381,7 +384,7 @@ final class Probe151 {
                 check(LegacySwing189.frames > legacyFrames, state + "Legacy Swing swings the torch (" + (LegacySwing189.frames - legacyFrames) + " frames)");
                 check(silent(), state + "placing blocks is Legacy Swing's alone: 1.7 Animations leaves the torch to it " + counts());
                 screenshot(mc, "151-legacy-torch" + tag);
-                legacy().setEnabled(legacyWas);
+                legacy().setEnabled(false);
                 return after(5);
             });
     }
@@ -515,6 +518,10 @@ final class Probe151 {
         return ModuleManager.getInstance().getModule("LegacySwing");
     }
 
+    private static Module itemPhysics() {
+        return ModuleManager.getInstance().getModule(com.thelads.core.modules.ItemPhysicsModule.NAME);
+    }
+
     /** Survival and hungry, so the beef can be eaten and the server's hit hurts. */
     private static boolean survival(Minecraft mc) {
         check(!mc.thePlayer.isBurning(), "the fire is out");
@@ -594,6 +601,7 @@ final class Probe151 {
         for (Feature feature : Feature.values()) MODULE.option(feature).set(optionsWere[feature.ordinal()]);
         MODULE.setEnabled(wasEnabled);
         legacy().setEnabled(legacyWas);
+        itemPhysics().setEnabled(physicsWas);
         ItemStack[] main = mainWas, armour = armourWas;
         mainWas = null; // restored once, also when CoreProbe stops after a failure (stop)
         onServer(mc, player -> {

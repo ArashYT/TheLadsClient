@@ -63,8 +63,11 @@ final class NativeOldAnimationsProbe {
         LocalPlayer player = mc.player;
         OldAnimationsModule module = NativeOldAnimations.module();
         Module legacy = NativeQualityOfLife.module("LegacySwing");
-        boolean enabledBefore = module.isEnabled(), legacyBefore = legacy.isEnabled();
-        long modifiedBefore = module.getLastModified(), legacyModified = legacy.getLastModified();
+        Module itemPhysics = NativeQualityOfLife.module(com.thelads.core.modules.ItemPhysicsModule.NAME);
+        boolean enabledBefore = module.isEnabled(), legacyBefore = legacy.isEnabled(),
+            itemPhysicsBefore = itemPhysics != null && itemPhysics.isEnabled();
+        long modifiedBefore = module.getLastModified(), legacyModified = legacy.getLastModified(),
+            itemPhysicsModified = itemPhysics != null ? itemPhysics.getLastModified() : 0L;
         Map<Option, JsonElement> options = new LinkedHashMap<>();
         for (Option option : module.getOptions()) options.put(option, option.save().deepCopy());
         Map<EquipmentSlot, ItemStack> worn = new LinkedHashMap<>();
@@ -85,6 +88,7 @@ final class NativeOldAnimationsProbe {
         try {
             require(ModuleSupport.isBuiltIn(OldAnimationsModule.NAME), "1.7 Animations is built in on this version");
             legacy.setEnabled(false); // the pure 1.7 swing, not Legacy Console's
+            if (itemPhysics != null) itemPhysics.setEnabled(false); // 2D dropped items yield when Item Physics is on
             module.getOptions().forEach(Option::reset); // every option on
             ItemStack sword = new ItemStack(Items.DIAMOND_SWORD), shield = new ItemStack(Items.SHIELD), beef = new ItemStack(Items.COOKED_BEEF);
 
@@ -203,6 +207,10 @@ final class NativeOldAnimationsProbe {
             module.setLastModified(modifiedBefore);
             legacy.setEnabled(legacyBefore);
             legacy.setLastModified(legacyModified);
+            if (itemPhysics != null) {
+                itemPhysics.setEnabled(itemPhysicsBefore);
+                itemPhysics.setLastModified(itemPhysicsModified);
+            }
             NativeOldAnimations.APPLIED.clear();
         }
     }

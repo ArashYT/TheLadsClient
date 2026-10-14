@@ -53,6 +53,7 @@ public final class NativeTabTweaksProbe {
             tab.setEnabled(true); ping.setEnabled(true);
             number("TabList", "Max Players", 7); number("TabList", "Players Per Column", 3);
             bool("TabList", "Below Boss Bars", false); number("TabList", "Y Offset", 0);
+            ((DropdownOption) tab.getOption("Background")).setIndex(0);
             color("TabList", "Header Color", 0x91223344); color("TabList", "Body Color", 0x92556677);
             color("TabList", "Footer Color", 0x938899aa); color("TabList", "Player Row Color", 0x9499aabb);
             overlay.setHeader(Component.literal("Probe header")); overlay.setFooter(Component.literal("Probe footer"));
@@ -145,15 +146,26 @@ public final class NativeTabTweaksProbe {
         check(drawn.blits.size() == 2 && drawn.blits.stream().anyMatch(b -> b.x1() - b.x0() == 9)
                 && drawn.blits.stream().anyMatch(b -> b.v1() < b.v0()) && drawn.restored,
                 "improved player hat expands to nine pixels, supports flipping and restores pose");
-        var boss = new BossHealthOverlay(mc);
-        var eventsField = BossHealthOverlay.class.getDeclaredField("events"); eventsField.setAccessible(true);
-        @SuppressWarnings("unchecked") var events = (Map<UUID, LerpingBossEvent>) eventsField.get(boss);
-        UUID id = new UUID(4, 8);
-        events.put(id, new LerpingBossEvent(id, Component.literal("Local probe boss"), 0.5F, BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.PROGRESS, false, false, false));
-        boss.extractRenderState(new GuiGraphicsExtractor(mc, new GuiRenderState(), 0, 0));
-        check(((Shifter) boss).ladsTab$getShift() == 12, "actual boss overlay exposes the first occupied row");
-        boss.reset(); boss.extractRenderState(new GuiGraphicsExtractor(mc, new GuiRenderState(), 0, 0));
-        check(((Shifter) boss).ladsTab$getShift() == 0, "removed boss bars do not leave a stale displacement");
+        var bossBar = NativeQualityOfLife.module("BossBar");
+        boolean bossBarWas = bossBar != null && bossBar.isEnabled();
+        long bossBarModified = bossBar != null ? bossBar.getLastModified() : 0L;
+        try {
+            if (bossBar != null) bossBar.setEnabled(false);
+            var boss = new BossHealthOverlay(mc);
+            var eventsField = BossHealthOverlay.class.getDeclaredField("events"); eventsField.setAccessible(true);
+            @SuppressWarnings("unchecked") var events = (Map<UUID, LerpingBossEvent>) eventsField.get(boss);
+            UUID id = new UUID(4, 8);
+            events.put(id, new LerpingBossEvent(id, Component.literal("Local probe boss"), 0.5F, BossEvent.BossBarColor.BLUE, BossEvent.BossBarOverlay.PROGRESS, false, false, false));
+            boss.extractRenderState(new GuiGraphicsExtractor(mc, new GuiRenderState(), 0, 0));
+            check(((Shifter) boss).ladsTab$getShift() == 12, "actual boss overlay exposes the first occupied row");
+            boss.reset(); boss.extractRenderState(new GuiGraphicsExtractor(mc, new GuiRenderState(), 0, 0));
+            check(((Shifter) boss).ladsTab$getShift() == 0, "removed boss bars do not leave a stale displacement");
+        } finally {
+            if (bossBar != null) {
+                bossBar.setEnabled(bossBarWas);
+                bossBar.setLastModified(bossBarModified);
+            }
+        }
     }
     private static Rendered render(PlayerTabOverlay overlay, Scoreboard scoreboard, Objective objective) throws Exception {
         var state = new GuiRenderState(); var graphics = new GuiGraphicsExtractor(Minecraft.getInstance(), state, 0, 0);
