@@ -148,6 +148,10 @@
     "SecureChatToastMixin",
     "ServerListRefresh",
     "ServerListBackgroundMixin",
-    "JoinMultiplayerScreenMixin"
+    "JoinMultiplayerScreenMixin",
+    "PackSelectionModelMixin26",
+    "MinecraftReloadMixin26",
+    "SoundManagerReloadMixin26",
+    "ShaderManagerReloadMixin26"
   ]
 }

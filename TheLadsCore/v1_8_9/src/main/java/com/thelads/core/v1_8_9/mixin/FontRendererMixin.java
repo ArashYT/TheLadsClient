@@ -57,8 +57,12 @@ public abstract class FontRendererMixin implements FontCache189.Holder, FontShad
         cir.setReturnValue(width);
     }
 
-    @Inject(method = "onResourceManagerReload", at = @At("HEAD"))
+    @Inject(method = "onResourceManagerReload", at = @At("HEAD"), cancellable = true)
     private void ladsReload(IResourceManager manager, CallbackInfo ci) {
+        if (com.thelads.core.client.pack.PackAssetMask.shouldSkipFonts()) {
+            ci.cancel();
+            return;
+        }
         if (ladsPlain != null) ladsPlain.clear();
         if (ladsUnicode != null) ladsUnicode.clear();
     }

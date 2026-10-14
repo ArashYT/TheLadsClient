@@ -390,13 +390,26 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         lastPotionPlayer = mc().thePlayer;
     }
 
+    private List<ResourcePackRepository.Entry> cachedPackEntries = Collections.emptyList();
+    private List<String> cachedPackNames = Collections.emptyList();
+
     /** The player's packs, highest priority first (the top of the pack screen; the repository lists the lowest first). */
     @Override
     public List<String> getActiveResourcePacks() {
-        List<String> packs = new ArrayList<>();
-        for (ResourcePackRepository.Entry entry : mc().getResourcePackRepository().getRepositoryEntries())
-            packs.add(0, entry.getResourcePackName());
-        return packs;
+        List<ResourcePackRepository.Entry> entries = mc().getResourcePackRepository().getRepositoryEntries();
+        if (entries.isEmpty()) {
+            return Collections.emptyList();
+        }
+        if (entries.equals(cachedPackEntries)) {
+            return cachedPackNames;
+        }
+        List<String> packs = new ArrayList<>(entries.size());
+        for (int i = entries.size() - 1; i >= 0; i--) {
+            packs.add(entries.get(i).getResourcePackName());
+        }
+        cachedPackEntries = new ArrayList<>(entries);
+        cachedPackNames = Collections.unmodifiableList(packs);
+        return cachedPackNames;
     }
 
     @Override

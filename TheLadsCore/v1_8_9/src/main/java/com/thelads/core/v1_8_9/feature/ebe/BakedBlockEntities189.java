@@ -323,6 +323,13 @@ public final class BakedBlockEntities189 {
         return destroyStage < 0 && baking() && !BakedBlockEntities.drawDynamic(sign.getPos().toLong());
     }
 
+    @SubscribeEvent
+    public void worldUnload(net.minecraftforge.event.world.WorldEvent.Unload event) {
+        if (event.world != null && event.world.isRemote) {
+            BakedBlockEntities.clear();
+        }
+    }
+
     private static boolean animating(TileEntity entity) {
         if (entity instanceof TileEntityEnderChest) {
             TileEntityEnderChest ender = (TileEntityEnderChest) entity;
@@ -330,10 +337,13 @@ public final class BakedBlockEntities189 {
         }
         TileEntityChest chest = (TileEntityChest) entity;
         if (moving(chest)) return true;
-        for (EnumFacing side : EnumFacing.Plane.HORIZONTAL) {
-            TileEntity other = chest.getWorld() == null ? null : chest.getWorld().getTileEntity(chest.getPos().offset(side));
-            if (other instanceof TileEntityChest && other.getBlockType() == chest.getBlockType() && moving((TileEntityChest) other)) return true;
+        if (!chest.adjacentChestChecked) {
+            chest.checkForAdjacentChests();
         }
+        if (chest.adjacentChestZNeg != null && moving(chest.adjacentChestZNeg)) return true;
+        if (chest.adjacentChestXPos != null && moving(chest.adjacentChestXPos)) return true;
+        if (chest.adjacentChestXNeg != null && moving(chest.adjacentChestXNeg)) return true;
+        if (chest.adjacentChestZPos != null && moving(chest.adjacentChestZPos)) return true;
         return false;
     }
 

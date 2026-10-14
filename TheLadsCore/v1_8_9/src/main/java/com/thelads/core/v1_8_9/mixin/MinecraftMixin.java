@@ -114,4 +114,14 @@ public abstract class MinecraftMixin {
     private void ladsWorldBackup(String folder, String name, WorldSettings settings, CallbackInfo ci) {
         if (WorldBackup189.intercept((Minecraft) (Object) this, folder, name, settings)) ci.cancel();
     }
+
+    @Inject(method = "refreshResources", at = @At("HEAD"))
+    private void ladsBeforeRefreshResources(CallbackInfo ci) {
+        com.thelads.core.client.pack.PackAssetMask.onReloadStart();
+    }
+
+    @Inject(method = "refreshResources", at = @At("RETURN"))
+    private void ladsAfterRefreshResources(CallbackInfo ci) {
+        com.thelads.core.client.pack.PackAssetMask.endReload();
+    }
 }

@@ -91,8 +91,13 @@ public final class BakedBlockEntities263 {
     public static synchronized void init() {
         if (initialised) return;
         initialised = true;
-        if (BakedBlockEntities.init()) LOG.info("Baked block entities on (chests, shulker boxes, bells, decorated pots)");
-        else LOG.info("Baked block entities standing down: {}", BakedBlockEntities.standDownReason());
+        if (BakedBlockEntities.init()) {
+            LOG.info("Baked block entities on (chests, shulker boxes, bells, decorated pots)");
+            net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> BakedBlockEntities.clear());
+            net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> BakedBlockEntities.clear());
+        } else {
+            LOG.info("Baked block entities standing down: {}", BakedBlockEntities.standDownReason());
+        }
         BakedBlockEntitiesProbe263.register();
     }
 

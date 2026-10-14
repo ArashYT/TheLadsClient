@@ -117,6 +117,7 @@ public final class BakedBlockEntities {
      * Returns true when its chunk section must be rebuilt.
      */
     public static boolean setAnimating(long pos, boolean animating) {
+        if (!animating && ENTRIES.isEmpty()) return false;
         Entry entry = ENTRIES.get(pos);
         if (animating) {
             if (entry != null && entry.dynamic) return false;
@@ -136,6 +137,7 @@ public final class BakedBlockEntities {
 
     /** True while the block at {@code pos} is (or is becoming) drawn by its vanilla renderer. */
     public static boolean animating(long pos) {
+        if (ENTRIES.isEmpty()) return false;
         Entry entry = ENTRIES.get(pos);
         return entry != null && entry.dynamic;
     }
@@ -143,6 +145,7 @@ public final class BakedBlockEntities {
     /** Chunk-meshing thread: true if the section being built should contain the baked model for {@code pos}. */
     public static boolean bake(long pos) {
         if (suspended) return false;
+        if (ENTRIES.isEmpty()) return true;
         Entry entry = ENTRIES.get(pos);
         if (entry == null) return true;
         boolean dynamic = entry.dynamic;
@@ -157,6 +160,7 @@ public final class BakedBlockEntities {
      */
     public static boolean drawDynamic(long pos) {
         if (suspended) return true;
+        if (ENTRIES.isEmpty()) return false;
         Entry entry = ENTRIES.get(pos);
         if (entry == null) return false;
         long built = entry.built;
@@ -171,7 +175,11 @@ public final class BakedBlockEntities {
     }
 
     /** Main thread: the block entity at {@code pos} is gone. */
-    public static void forget(long pos) { ENTRIES.remove(pos); }
+    public static void forget(long pos) {
+        if (!ENTRIES.isEmpty()) {
+            ENTRIES.remove(pos);
+        }
+    }
 
     /** World change or resource reload: everything is rebuilt from scratch anyway. */
     public static void clear() { ENTRIES.clear(); }

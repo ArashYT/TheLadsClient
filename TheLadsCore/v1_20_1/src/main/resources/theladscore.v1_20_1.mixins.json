@@ -18,6 +18,9 @@
     "KillBannerPacketsMixin",
     "SoundOptionsScreenMixin",
     "FolderRepositorySourceMixin",
-    "FaceBakerySafetyMixin"
+    "FaceBakerySafetyMixin",
+    "MinecraftReloadMixin1201",
+    "SoundManagerReloadMixin1201",
+    "GameRendererShaderReloadMixin1201"
   ]
 }

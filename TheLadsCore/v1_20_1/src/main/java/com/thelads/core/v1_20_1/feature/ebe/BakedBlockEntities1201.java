@@ -120,6 +120,8 @@ public final class BakedBlockEntities1201 {
         for (Block block : BuiltInRegistries.BLOCK) {
             if (candidate(block) && !(block instanceof BellBlock)) BlockRenderLayerMap.INSTANCE.putBlock(block, RenderType.cutout());
         }
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> BakedBlockEntities.clear());
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> BakedBlockEntities.clear());
         BakedBlockEntitiesProbe1201.register();
     }
 
@@ -268,6 +270,8 @@ public final class BakedBlockEntities1201 {
             ModelPart shulker = ShulkerModel.createBodyLayer().bakeRoot(), shulkerBase = shulker.getChild("base"), shulkerLid = shulker.getChild("lid");
             ModelPart bedHead = BedRenderer.createHeadLayer().bakeRoot(), bedFoot = BedRenderer.createFootLayer().bakeRoot();
             ModelPart bellBody = BellRenderer.createBodyLayer().bakeRoot().getChild("bell_body");
+            ModelPart hangingSignRoot = signs ? HangingSignRenderer.createHangingSignLayer().bakeRoot() : null;
+            ModelPart signRoot = signs ? SignRenderer.createSignLayer().bakeRoot() : null;
             for (Block block : BuiltInRegistries.BLOCK) {
                 if (!candidate(block)) continue;
                 for (BlockState state : block.getStateDefinition().getPossibleStates()) {
@@ -317,7 +321,7 @@ public final class BakedBlockEntities1201 {
                         float rotation = -sign.getYRotationDegrees(state);
                         if (block instanceof CeilingHangingSignBlock || block instanceof WallHangingSignBlock) {
                             material = Sheets.getHangingSignMaterial(wood);
-                            ModelPart root = HangingSignRenderer.createHangingSignLayer().bakeRoot();
+                            ModelPart root = hangingSignRoot;
                             boolean wall = !(block instanceof CeilingHangingSignBlock); // HangingSignModel.evaluateVisibleParts
                             boolean attached = !wall && state.getValue(BlockStateProperties.ATTACHED);
                             root.getChild("plank").visible = wall;
@@ -330,7 +334,7 @@ public final class BakedBlockEntities1201 {
                             root.render(pose, capture, 0, 0);
                         } else if (block instanceof StandingSignBlock || block instanceof WallSignBlock) {
                             material = Sheets.getSignMaterial(wood);
-                            ModelPart root = SignRenderer.createSignLayer().bakeRoot();
+                            ModelPart root = signRoot;
                             root.getChild("stick").visible = block instanceof StandingSignBlock;
                             float scale = 0.6666667F;
                             pose.translate(0.5F, 0.75F * scale, 0.5F);

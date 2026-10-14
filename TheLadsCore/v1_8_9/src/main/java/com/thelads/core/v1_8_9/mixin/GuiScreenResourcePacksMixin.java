@@ -1,5 +1,6 @@
 package com.thelads.core.v1_8_9.mixin;
 
+import com.thelads.core.client.pack.PackAssetMask;
 import com.thelads.core.client.pack.PackFilterHelper;
 import com.thelads.core.client.pack.PackFolderHelper;
 import com.thelads.core.client.pack.PackMenuSettings;
@@ -12,7 +13,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
@@ -35,17 +39,22 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
     @Shadow @Final private GuiScreen parentScreen;
     @Shadow private List<ResourcePackListEntry> availableResourcePacks;
     @Shadow private List<ResourcePackListEntry> selectedResourcePacks;
+    @Shadow private boolean changed;
 
     @Unique private GuiTextField ladsSearchField;
     @Unique private String ladsCurrentFolder = "";
     @Unique private final List<ResourcePackListEntry> ladsMasterSelected = new ArrayList<>();
     @Unique private final List<ResourcePackListEntry> ladsMasterAllAvailable = new ArrayList<>();
+    @Unique private final List<ResourcePackListEntry> ladsLastSelectedSnapshot = new ArrayList<>();
+    @Unique private String ladsCachedSubfoldersDir = null;
+    @Unique private List<Path> ladsCachedSubfolders = Collections.emptyList();
 
     @Inject(method = "initGui", at = @At("RETURN"))
     private void ladsOnInitGui(CallbackInfo ci) {
         ladsSearchField = new GuiTextField(999, fontRendererObj, width / 2 - 90, 8, 180, 16);
         ladsSearchField.setMaxStringLength(50);
         ladsSearchField.setCanLoseFocus(true);
+        ladsCachedSubfoldersDir = null;
 
         if (ladsMasterSelected.isEmpty() && selectedResourcePacks != null) {
             ladsMasterSelected.addAll(selectedResourcePacks);
@@ -85,8 +94,10 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
         if (ladsSearchField != null) {
             ladsSearchField.mouseClicked(mouseX, mouseY, mouseButton);
         }
-        ladsSyncMasterSelected();
-        ladsApplyFilter();
+        if (selectedResourcePacks != null && !selectedResourcePacks.equals(ladsLastSelectedSnapshot)) {
+            ladsSyncMasterSelected();
+            ladsApplyFilter();
+        }
     }
 
     @Inject(method = "drawScreen", at = @At("HEAD"))
@@ -131,6 +142,34 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
         if (button.id == 1 && selectedResourcePacks != null) {
             selectedResourcePacks.clear();
             selectedResourcePacks.addAll(ladsMasterSelected);
+            if (this.changed && mc != null && mc.getResourcePackRepository() != null) {
+                ResourcePackRepository repo = mc.getResourcePackRepository();
+                File rootDir = repo.getDirResourcepacks();
+                List<ResourcePackRepository.Entry> oldEntries = repo.getRepositoryEntries();
+                List<String> oldIds = new ArrayList<>(oldEntries.size());
+                for (ResourcePackRepository.Entry e : oldEntries) {
+                    oldIds.add(e.getResourcePackName());
+                }
+                List<String> newIds = new ArrayList<>(selectedResourcePacks.size());
+                for (int i = selectedResourcePacks.size() - 1; i >= 0; i--) {
+                    ResourcePackListEntry le = selectedResourcePacks.get(i);
+                    if (le instanceof ResourcePackListEntryFound) {
+                        newIds.add(((ResourcePackListEntryFound) le).func_148318_i().getResourcePackName());
+                    }
+                }
+                int diffMask = PackAssetMask.computeDiffMask(oldIds, newIds, id -> {
+                    if (rootDir == null || id == null || id.isEmpty()) return PackAssetMask.ALL;
+                    return PackAssetMask.getMask(new File(rootDir, id));
+                });
+                PackAssetMask.beginPackSwitchReload(diffMask);
+            }
+        }
+    }
+
+    @Inject(method = "actionPerformed", at = @At("RETURN"))
+    private void ladsAfterActionPerformed(GuiButton button, CallbackInfo ci) {
+        if (button.id == 1) {
+            PackAssetMask.clearPendingIfNotStarted();
         }
     }
 
@@ -201,8 +240,12 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
 
         // 1. Filter selected list while preserving master order
         selectedResourcePacks.clear();
+        Set<String> selectedNames = new HashSet<>(Math.max(16, ladsMasterSelected.size() * 2));
         for (ResourcePackListEntry entry : ladsMasterSelected) {
             String name = getEntryName(entry);
+            if (!name.isEmpty()) {
+                selectedNames.add(name);
+            }
             String desc = getEntryDesc(entry);
             if (PackFilterHelper.matches(query, name, desc)) {
                 selectedResourcePacks.add(entry);
@@ -215,23 +258,26 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
             if (!ladsCurrentFolder.isEmpty()) {
                 availableResourcePacks.add(new ResourcePackBackEntry189((GuiScreenResourcePacks) (Object) this));
             }
-            File rootDir = mc.getResourcePackRepository().getDirResourcepacks();
-            File currentDir = ladsCurrentFolder.isEmpty() ? rootDir : new File(rootDir, ladsCurrentFolder);
-            List<Path> subfolders = PackFolderHelper.findSubfolders(currentDir.toPath());
-            for (Path sub : subfolders) {
+            if (!ladsCurrentFolder.equals(ladsCachedSubfoldersDir)) {
+                File rootDir = mc.getResourcePackRepository().getDirResourcepacks();
+                File currentDir = ladsCurrentFolder.isEmpty() ? rootDir : new File(rootDir, ladsCurrentFolder);
+                ladsCachedSubfolders = PackFolderHelper.findSubfolders(currentDir.toPath());
+                ladsCachedSubfoldersDir = ladsCurrentFolder;
+            }
+            for (Path sub : ladsCachedSubfolders) {
                 availableResourcePacks.add(new ResourcePackFolderEntry189((GuiScreenResourcePacks) (Object) this, sub.getFileName().toString()));
             }
             for (ResourcePackListEntry entry : ladsMasterAllAvailable) {
-                if (isEntrySelected(entry)) continue;
                 String relPath = getEntryRelativePath(entry);
+                if (!relPath.isEmpty() && selectedNames.contains(relPath)) continue;
                 if (PackFolderHelper.isInsideFolder(relPath, ladsCurrentFolder, false)) {
                     availableResourcePacks.add(entry);
                 }
             }
         } else {
             for (ResourcePackListEntry entry : ladsMasterAllAvailable) {
-                if (isEntrySelected(entry)) continue;
                 String relPath = getEntryRelativePath(entry);
+                if (!relPath.isEmpty() && selectedNames.contains(relPath)) continue;
                 if (PackFolderHelper.isInsideFolder(relPath, ladsCurrentFolder, true)) {
                     String name = getEntryName(entry);
                     String desc = getEntryDesc(entry);
@@ -241,23 +287,9 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
                 }
             }
         }
-    }
 
-    @Unique
-    private boolean isEntrySelected(ResourcePackListEntry entry) {
-        if (entry instanceof ResourcePackListEntryFound) {
-            ResourcePackListEntryFound f = (ResourcePackListEntryFound) entry;
-            String name = f.func_148318_i().getResourcePackName();
-            for (ResourcePackListEntry s : ladsMasterSelected) {
-                if (s instanceof ResourcePackListEntryFound) {
-                    ResourcePackListEntryFound sf = (ResourcePackListEntryFound) s;
-                    if (sf.func_148318_i().getResourcePackName().equals(name)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
+        ladsLastSelectedSnapshot.clear();
+        ladsLastSelectedSnapshot.addAll(selectedResourcePacks);
     }
 
     @Unique

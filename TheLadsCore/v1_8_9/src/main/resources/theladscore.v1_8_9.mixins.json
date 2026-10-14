@@ -94,6 +94,9 @@
     "GuiConnectingMixin189",
     "ScoreboardMixin",
     "ScoreObjectiveMixin",
-    "RenderItemMixin"
+    "RenderItemMixin",
+    "TextureMapReloadMixin189",
+    "SoundHandlerReloadMixin189",
+    "LanguageManagerReloadMixin189"
   ]
 }
