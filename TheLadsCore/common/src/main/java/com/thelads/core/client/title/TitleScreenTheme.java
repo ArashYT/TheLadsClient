@@ -137,7 +137,8 @@ public final class TitleScreenTheme {
         int switchWidth = !withSwitch ? 0 : room >= labelled + 66 ? labelled : 16; // the label while the name keeps a few letters
         int right = renderAccount(g, h, username, Math.min(l.wide() ? 170 : 150, room - (withSwitch ? switchWidth + 6 : 0)));
         g.drawText(build, w - 18 - g.textWidth(build), h - 21, MUTED);
-        return withSwitch ? new Rect(right + 6, h - 25, switchWidth, 16) : null;
+        int switchX = Math.max(right, Math.min(right + 6, w - 18 - g.textWidth(build) - switchWidth));
+        return withSwitch ? new Rect(switchX, h - 25, switchWidth, 16) : null;
     }
 
     /** The signed-in account at the bottom left, as on the title screen (the pause menu shows it too); returns its right edge. */
