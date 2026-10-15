@@ -11,6 +11,8 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);.agents\**</DefaultItemExcludes>
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
     <PathMap>$(MSBuildProjectDirectory)=/src</PathMap>
+    <!-- Precompiled code for the published launcher: less JIT work on every cold start. -->
+    <PublishReadyToRun Condition="'$(RuntimeIdentifier)' != ''">true</PublishReadyToRun>
   </PropertyGroup>
 
   <ItemGroup>

@@ -11,8 +11,8 @@
                    Foreground="#A0A1AA" FontSize="12" TextWrapping="Wrap" />
       </StackPanel>
 
-      <!-- The Lads SMP Reborn Card -->
-      <Border Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="8" Padding="20">
+      <!-- The Lads SMP Reborn Card (invite-only: shown once the bot says an account is invited) -->
+      <Border x:Name="LadsSmpRebornCard" IsVisible="False" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="8" Padding="20">
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*">
           <!-- Icon -->
           <Border Grid.Row="0" Grid.Column="0" Width="80" Height="80" CornerRadius="8" ClipToBounds="True" Background="#26272C" Margin="0,0,20,16" VerticalAlignment="Top">

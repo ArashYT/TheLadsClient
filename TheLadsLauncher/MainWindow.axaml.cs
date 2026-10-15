@@ -237,7 +237,7 @@ public partial class MainWindow : Window
             ModsPage.AddHandler(DragDrop.DropEvent, ModsPage_Drop);
         }
 
-        // === Startup/update screen: breathing logo, progress bar with a sweeping shine, mining animation ===
+        // === Startup/update screen: glowing logo, progress bar with a sweeping shine, mining animation ===
         const double startupDurationMs = 2200.0;
         const double startupBarWidth = 560.0;
         var startupSw = System.Diagnostics.Stopwatch.StartNew();
@@ -255,12 +255,12 @@ public partial class MainWindow : Window
             StartupProgressFill.Width = startupBarWidth * shownProgress;
             if (settings.ReducedMotion) return;
 
-            // Subtle breathing pulse on the logo
-            double pulse = 1.0 + 0.04 * Math.Sin(t / 300.0);
-            if (StartupLogoImage?.RenderTransform is Avalonia.Media.ScaleTransform logoScale)
+            // Soft glow breathing around the logo (the logo itself stays still)
+            if (StartupLogoImage?.Effect is Avalonia.Media.DropShadowEffect glow)
             {
-                logoScale.ScaleX = pulse;
-                logoScale.ScaleY = pulse;
+                double g = 0.5 + 0.5 * Math.Sin(t / 450.0);
+                glow.Opacity = 0.3 + 0.55 * g;
+                glow.BlurRadius = 16 + 18 * g;
             }
             if (StartupProgressShine.RenderTransform is Avalonia.Media.TranslateTransform shine)
                 shine.X = -110 + (t % 1600.0) / 1600.0 * (startupBarWidth + 110);
@@ -280,8 +280,13 @@ public partial class MainWindow : Window
         {
             int startupPreview = Array.IndexOf(args, "--preview-startup");
             if (startupPreview >= 0) { await RunStartupPreviewAsync(Path.GetFullPath(args[startupPreview + 1])); return; }
-            await PollForUpdatesAsync();
+            // The update check gets a short head start; a download that has begun keeps this screen up,
+            // a slower check carries on in the background and offers its update through the title-bar button.
+            var startupPoll = PollForUpdatesAsync();
+            await Task.WhenAny(startupPoll, Task.Delay(1500));
+            while (!startupPoll.IsCompleted && _startupDownload != null) await Task.WhenAny(startupPoll, Task.Delay(100));
             if (_windowClosed) return;
+            Log($"[Startup] Launcher ready in {(DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds:0} ms.");
             startupAnimTimer.Stop();
             StartupMining.Stop();
             if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
@@ -2174,7 +2179,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private IReadOnlyList<AccountSummary> GetAccountSummaries()
+    internal IReadOnlyList<AccountSummary> GetAccountSummaries()
     {
         var accounts = loginHandler.AccountManager.GetAccounts()
             .OfType<CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount>()

@@ -38,7 +38,7 @@ public class ExperiencesServiceTests : IDisposable
         Assert.Equal("fabric", exp.Loader);
         Assert.Equal("0.19.5", exp.LoaderVersion);
         Assert.Equal("avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png", exp.IconAsset);
-        Assert.Equal(263, exp.ModCount);
+        Assert.Equal(237, exp.ModCount);
         Assert.Equal(8192, exp.RecommendedRamMb);
         Assert.StartsWith("https://", exp.PackArchiveUrl);
         Assert.Equal(64, exp.PackArchiveSha256.Length);
@@ -517,6 +517,22 @@ public class ExperiencesServiceTests : IDisposable
 
         Assert.False(File.Exists(ExperiencesService.PackArchivePath(_tempDir, exp.Id)));
         Assert.False(File.Exists(ExperiencesService.PackArchivePath(_tempDir, exp.Id) + ".part"));
+    }
+
+    [Fact]
+    public async Task InviteOnly_ShowsOnlyWhenBotSaysInvited_AndKeepsLastAnswerOffline()
+    {
+        var exp = ExperiencesService.LadsSmpReborn;
+        Assert.True(await ExperiencesService.HasAccessAsync(_tempDir, ExperiencesService.ZeroSmp, Array.Empty<string>()));
+        Assert.False(await ExperiencesService.HasAccessAsync(_tempDir, exp, Array.Empty<string>()));
+
+        var routes = new RouteHandler();
+        routes.Add(ExperiencesService.AccessEndpoint + exp.Id + "/access?u=alice&u=bob", Encoding.UTF8.GetBytes("{\"allowed\":true}"));
+        Assert.True(await ExperiencesService.HasAccessAsync(_tempDir, exp, new[] { "Bob", "alice" }, new HttpClient(routes)));
+
+        var offline = new HttpClient(new RouteHandler()); // every request 404s
+        Assert.True(await ExperiencesService.HasAccessAsync(_tempDir, exp, new[] { "alice", "bob" }, offline));
+        Assert.False(await ExperiencesService.HasAccessAsync(_tempDir, exp, new[] { "mallory" }, offline));
     }
 
     private sealed class RouteHandler : HttpMessageHandler

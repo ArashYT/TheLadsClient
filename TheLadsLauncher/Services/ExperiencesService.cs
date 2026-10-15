@@ -26,7 +26,8 @@ public sealed record ExperienceDefinition(
     string IconAsset,
     int RecommendedRamMb,
     string PackArchiveUrl = "",
-    string PackArchiveSha256 = ""
+    string PackArchiveSha256 = "",
+    bool InviteOnly = false
 );
 
 /// <summary>
@@ -49,12 +50,13 @@ public static class ExperiencesService
         McVersion: "26.3",
         Loader: "fabric",
         LoaderVersion: "0.19.5",
-        ModCount: 263,
+        ModCount: 237,
         ServerAddress: "",
         IconAsset: "avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png",
         RecommendedRamMb: 8192,
         PackArchiveUrl: "https://bot.arashyt.ca/packs/lads-smp-reborn-26.3.zip",
-        PackArchiveSha256: "CB3E5BBE2AD254C129AFFFABA68EE14ECDB72E58C83C84B98C5EE40A5898E171"
+        PackArchiveSha256: "2ED12E2A55C89747C5848970E8154E37645B3463E6F9957D5742027344846AE6",
+        InviteOnly: true
     );
 
     public const string LadsSmpRebornDevId = "lads-smp-reborn-26.3-dev";
@@ -227,6 +229,42 @@ public static class ExperiencesService
         "bot.arashyt.ca",
         "cdn.example.invalid"
     };
+
+    public const string AccessEndpoint = "https://bot.arashyt.ca/experiences/";
+
+    /// <summary>
+    /// Whether an Experience may be shown for these Minecraft usernames. Invite-only Experiences ask the bot, whose list staff
+    /// edit live with /smp_invite. The last answer is cached so the card stays right offline; never answered means hidden.
+    /// </summary>
+    public static async Task<bool> HasAccessAsync(string baseDirectory, ExperienceDefinition exp, IEnumerable<string> usernames, HttpClient? http = null, CancellationToken token = default)
+    {
+        if (!exp.InviteOnly) return true;
+        var names = usernames.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim().ToLowerInvariant()).Distinct().OrderBy(n => n, StringComparer.Ordinal).ToList();
+        if (names.Count == 0) return false;
+        var key = string.Join(",", names);
+        var cache = Path.Combine(PackRoot(baseDirectory, exp.Id), "access.json");
+        try
+        {
+            var url = AccessEndpoint + Uri.EscapeDataString(exp.Id) + "/access?" + string.Join("&", names.Select(n => "u=" + Uri.EscapeDataString(n)));
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            using var doc = JsonDocument.Parse(await (http ?? DefaultHttp).GetStringAsync(url, cts.Token));
+            var allowed = doc.RootElement.GetProperty("allowed").GetBoolean();
+            Directory.CreateDirectory(Path.GetDirectoryName(cache)!);
+            File.WriteAllText(cache, JsonSerializer.Serialize(new { names = key, allowed }));
+            return allowed;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
+        catch
+        {
+            try
+            {
+                using var cached = JsonDocument.Parse(File.ReadAllText(cache));
+                return cached.RootElement.GetProperty("names").GetString() == key && cached.RootElement.GetProperty("allowed").GetBoolean();
+            }
+            catch { return false; }
+        }
+    }
 
     private static HttpClient CreateDefaultHttp()
     {

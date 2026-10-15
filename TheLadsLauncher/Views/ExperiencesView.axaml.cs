@@ -43,6 +43,8 @@ public partial class ExperiencesView : UserControl
     private bool _syncingAutoJoin;
     private bool _syncingAccounts;
     private bool _updatingRam;
+    private string? _accessKey; // the account names last sent to the invite check
+    private DateTime _accessCheckedUtc;
     private bool _raceRetry; // the next ZeroSmpPlay_Click is the launcher's own one retry after a known mod-loading race
 
     public static int BinaryMbToRamGb(int mb) =>
@@ -110,6 +112,7 @@ public partial class ExperiencesView : UserControl
         bool allowMultiInstance = Host?.ModpackSettings.AllowMultiInstance == true;
 
         // 1. Refresh The Lads SMP Reborn card
+        RefreshInviteAccess();
         var ladsId = LadsSmpRebornInstanceId;
         if (string.Equals(ladsId, ExperiencesService.LadsSmpRebornDevId, StringComparison.OrdinalIgnoreCase))
         {
@@ -170,6 +173,20 @@ public partial class ExperiencesView : UserControl
             SyncAccountSelector(host, LadsSmpRebornAccountSelector);
             SyncAccountSelector(host, ZeroSmpAccountSelector);
         }
+    }
+
+    /// <summary>Invite-only: the Lads SMP Reborn card shows only when one of the Microsoft accounts is invited (/smp_invite on Discord).</summary>
+    private async void RefreshInviteAccess()
+    {
+        var names = Host?.GetAccountSummaries().Where(a => a.type == "microsoft").Select(a => a.username).ToList() ?? new List<string>();
+        var key = string.Join(",", names.OrderBy(n => n, StringComparer.OrdinalIgnoreCase));
+        if (key == _accessKey && DateTime.UtcNow - _accessCheckedUtc < TimeSpan.FromMinutes(1)) return;
+        _accessKey = key;
+        _accessCheckedUtc = DateTime.UtcNow;
+        bool allowed;
+        try { allowed = await ExperiencesService.HasAccessAsync(DataDirectory, ExperiencesService.LadsSmpReborn, names); }
+        catch { allowed = false; }
+        if (key == _accessKey) LadsSmpRebornCard.IsVisible = allowed;
     }
 
     private void RefreshCardState(
