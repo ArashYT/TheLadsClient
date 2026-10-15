@@ -7,13 +7,13 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Treats all resource pack format versions as compatible so PackRepository startup validation,
+ * With "No pack compat check" on (the default), treats all resource pack format versions as compatible so PackRepository startup validation,
  * Options.loadSelectedResourcePacks, and the resource pack selection screen never drop or warn on older/newer packs.
  */
 @Mixin(PackCompatibility.class)
 public abstract class NoResourcePackWarningsMixin {
     @Inject(method = "isCompatible", at = @At("HEAD"), cancellable = true)
     private void lads$alwaysCompatible(CallbackInfoReturnable<Boolean> cir) {
-        cir.setReturnValue(true);
+        if (com.thelads.core.client.pack.PackMenuSettings.noCompatCheck()) cir.setReturnValue(true);
     }
 }

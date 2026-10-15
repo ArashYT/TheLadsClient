@@ -107,6 +107,9 @@ public abstract class PackSelectionScreenMixin extends Screen implements FolderN
         }
 
         if (list == availablePackList) {
+            if (PackMenuSettings.ignoreIncompatible()) {
+                entries = entries.filter(entry -> entry.getCompatibility() == net.minecraft.server.packs.repository.PackCompatibility.COMPATIBLE);
+            }
             if (query.isEmpty()) {
                 if (!ladsCurrentFolder.isEmpty()) {
                     list.children().add(new FolderPackEntry1201(minecraft, list, "..", true, this));

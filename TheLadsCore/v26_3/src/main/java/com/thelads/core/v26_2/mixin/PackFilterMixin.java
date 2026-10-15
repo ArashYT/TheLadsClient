@@ -111,6 +111,10 @@ public abstract class PackFilterMixin extends Screen implements FolderNav26 {
         boolean searching = query != null && !query.isBlank();
 
         Stream<PackSelectionModel.Entry> filtered = stream.filter(e -> {
+            if (isAvailable && !e.isSelected() && PackMenuSettings.ignoreIncompatible()
+                    && e.getCompatibility() != net.minecraft.server.packs.repository.PackCompatibility.COMPATIBLE) {
+                return false;
+            }
             if (!e.isSelected() && ladsFilter != 0
                     && (e.getCompatibility() == net.minecraft.server.packs.repository.PackCompatibility.COMPATIBLE) != (ladsFilter == 1)) {
                 return false;

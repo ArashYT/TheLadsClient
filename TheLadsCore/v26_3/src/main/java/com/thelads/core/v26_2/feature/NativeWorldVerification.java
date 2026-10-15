@@ -174,6 +174,7 @@ public final class NativeWorldVerification {
             InventoryCapture.tick(gameDirectory, captureReady && (InventoryCapture.busy() || !captureBusy()));
             ItemsCapture.tick(gameDirectory, captureReady && (ItemsCapture.busy() || !captureBusy()));
             CheatsProbe.tick(gameDirectory, captureReady);
+            KeepUiProbe26.tick(captureReady && !captureBusy());
             ServerFeaturesCapture.tick(gameDirectory, captureReady && (ServerFeaturesCapture.busy() || !captureBusy()));
             // After the Chat module's own capture, so its message does not land among the heads, and after the render scale probe,
             // whose world frames its chat screen would interrupt.

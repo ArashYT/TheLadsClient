@@ -60,7 +60,7 @@ public final class CoreProbe {
         CoreProbe::titleMore, CoreProbe::backupPrompt, CoreProbe::backupWarning, CoreProbe::backupDone, CoreProbe::title,
         CoreProbe::ofDefaults,
         CoreProbe::menuAtTitle, CoreProbe::menuRendered, CoreProbe::searchClicked, CoreProbe::typed, CoreProbe::erased, CoreProbe::editingLeft,
-        CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::bridgeInWorld, CoreProbe::menuInWorld, CoreProbe::installedMods, CoreProbe::closedToGame,
+        CoreProbe::closedToTitle, CoreProbe::worldReady, KeepUiProbe189::run, CoreProbe::bridgeInWorld, CoreProbe::menuInWorld, CoreProbe::installedMods, CoreProbe::closedToGame,
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerList, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
     /** -Dthelads.verify189Focus: only the title screen and Probe170Misc's steps of that name (with Essential as players have it). */
