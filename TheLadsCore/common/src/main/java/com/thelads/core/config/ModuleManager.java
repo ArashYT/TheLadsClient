@@ -335,10 +335,14 @@ public class ModuleManager {
         registerHidden(new Module("Resourcify", "Browse and update resource packs, data packs, shaders and worlds."));
 
         Module packs = new Module(com.thelads.core.client.pack.PackMenuSettings.MODULE_NAME,
-            "Resource pack menu search, folder navigation and transparent layout.");
+            "Resource pack menu search, folder navigation and transparent layout. Ignore incompatible packs hides packs made for "
+                + "another Minecraft version from the Available list; No pack compat check loads them with no warning.");
         packs.addOption(new BoolOption(com.thelads.core.client.pack.PackMenuSettings.OPTION_TRANSPARENT, true));
+        packs.addOption(new BoolOption(com.thelads.core.client.pack.PackMenuSettings.OPTION_IGNORE_INCOMPATIBLE, false));
+        packs.addOption(new BoolOption(com.thelads.core.client.pack.PackMenuSettings.OPTION_NO_COMPAT_CHECK, true));
         packs.setEnabled(true);
         register(packs, Module.Category.MECHANIC);
+        register(com.thelads.core.client.KeepUiOpen.module(), Module.Category.MECHANIC);
 
         Module disableNarrator = new Module("DisableNarrator", "Disables narrator.");
         disableNarrator.setEnabled(true);

@@ -29,6 +29,9 @@
     "ZetaRemapperSynchronizedMixin",
     "ZetaEventBusSynchronizedMixin",
     "ReceivingLevelScreenFastCloseMixin",
+    "ChatScreenInputAccessor",
+    "KeepUiOpenCloseMixin",
+    "KeepUiOpenScreenMixin",
     "NoResourcePackWarningsMixin"
   ]
 }

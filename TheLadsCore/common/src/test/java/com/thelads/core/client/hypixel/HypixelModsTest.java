@@ -791,4 +791,75 @@ class HypixelModsTest {
         // All alive party members eliminated -> /play sent!
         assertEquals(List.of("/locraw", "/party list", "/play bedwars_four_four"), sent);
     }
+
+    @Test void cosmeticKillMessagesPartyNoticesAndNewGameDropTheGg() {
+        // Real lines from a 2026-10-15 log: kill-message cosmetics, not "was killed by".
+        assertEquals("Arash_YT", HypixelChat.eliminatedPlayer("SKYWARS", "Arash_YT took the L to m310n_."));
+        assertEquals("UnofficiallyRed", HypixelChat.eliminatedPlayer("SKYWARS", "UnofficiallyRed got rekt by m310n_."));
+        assertEquals("UnofficiallyRed", HypixelChat.eliminatedPlayer("DUELS", "UnofficiallyRed was given the cold shoulder by Arash_YT using Baton."));
+        assertEquals("Bob", HypixelChat.eliminatedPlayer("DUELS", "[RED] Bob lost the draw to [BLUE] Me. FINAL KILL!"));
+        assertNull(HypixelChat.eliminatedPlayer("DUELS", "You summoned [MVP+] UnofficiallyRed to your server."));
+        assertNull(HypixelChat.eliminatedPlayer("DUELS", "[MVP+] Arash_YT invited [MVP+] UnofficiallyRed to the party! They have 60 seconds to accept."));
+        assertNull(HypixelChat.eliminatedPlayer("DUELS", "[MVP+] UnofficiallyRed has invited you to UHC Duels!"));
+        assertNull(HypixelChat.eliminatedPlayer("DUELS", "[MVP+] Steve: Bob got rekt by Me"), "player chat");
+        assertNull(HypixelChat.eliminatedPlayer("BEDWARS", "Bob got rekt by Me."), "Bed Wars: only final kills count");
+        assertTrue(HypixelChat.isPartyChat("Your party was split for balancing purposes."));
+        assertTrue(HypixelChat.isPartyChat("Your stats did not change because you dueled someone in your party!"));
+        assertFalse(HypixelChat.isPartyChat("[MVP+] Steve: in your party"));
+        assertTrue(HypixelChat.newGame("Found a server running Duels: UHC DUEL! Sending you to mini149AM!"));
+        assertTrue(HypixelChat.newGame("Arash_YT has joined (2/2)!"));
+        assertFalse(HypixelChat.newGame("[MVP+] Steve: Sending you to mini1A!"));
+
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN)).set(true);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_TIP)).set(false);
+        ((TextOption) m.getOption(HypixelMods.AUTO_GG + ": Second Message")).setValue("good game");
+        ((SliderOption) m.getOption(HypixelMods.AUTO_GG + ": Second Message seconds")).setValue(5);
+        ((SliderOption) m.getOption(HypixelMods.PLAY_AGAIN + ": Delay seconds")).setValue(0);
+        HypixelMods.setPlayerNameForTest("Me");
+        HypixelMods.tick(game, world, connection, 0);
+        HypixelMods.tick(game, world, connection, 2 * S);
+        HypixelMods.chat("{\"server\":\"mini1A\",\"gametype\":\"DUELS\",\"mode\":\"DUELS_UHC_DUEL\",\"map\":\"Arena\"}", 3 * S);
+        HypixelMods.chat("The game starts in 1 second!", 4 * S);
+        // Party of two in Duels: we die to the party member, the game ends at once.
+        HypixelMods.chat("Your party was split for balancing purposes.", 5 * S);
+        HypixelMods.chat("Me took the L to Red.", 10 * S);
+        assertTrue(HypixelMods.isSelfOut(), "a cosmetic kill message counts as our death");
+        HypixelMods.chat("         [MVP+] Me   [MVP+] Red WINNER!", 10 * S);
+        for (long t = 10 * S; t <= 13 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertEquals(List.of("/locraw", "/ac gg"), sent, "gg goes before /play, even with a 0 s Play Again delay");
+        for (long t = 13 * S; t <= 20 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertEquals(List.of("/locraw", "/ac gg", "/ac good game", "/play duels_uhc_duel"), sent, "then the second gg, then /play");
+        // Next game: moved there before the second gg is due -> neither it nor /play goes out.
+        sent.clear();
+        HypixelMods.chat("The game starts in 1 second!", 30 * S);
+        HypixelMods.chat("Me took the L to Red.", 31 * S);
+        HypixelMods.chat("         [MVP+] Me   [MVP+] Red WINNER!", 31 * S);
+        for (long t = 31 * S; t <= 36 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        HypixelMods.chat("Me has joined (1/2)!", 36 * S);
+        for (long t = 36 * S; t <= 50 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertTrue(sent.contains("/ac gg") && !sent.contains("/ac good game") && !sent.contains("/play duels_uhc_duel"),
+            "no second gg (or /play) in the next game " + sent);
+        assertTrue(HypixelMods.isInParty(), "'Your party was split' says we are in a party");
+    }
+
+    @Test void rateLimitedModApiPingFallsBackToStatusPingsAndSmooths() {
+        address = null; // no real status ping
+        RealPing.tick(game, connection, 0);
+        RealPing.tick(game, connection, 2 * S);
+        assertEquals(1, payloads.size());
+        RealPing.receive(RealPing.CHANNEL, new byte[] {1, 1, 4, 'p', 'o', 'n', 'g'}, 2 * S + 40_000_000L);
+        assertEquals(40, RealPing.own(1));
+        RealPing.tick(game, connection, 7 * S);
+        assertEquals(2, payloads.size());
+        RealPing.receive(RealPing.CHANNEL, new byte[] {1, 1, 4, 'p', 'o', 'n', 'g'}, 7 * S + 80_000_000L);
+        assertEquals(50, RealPing.own(1), "smoothed: (40 * 3 + 80) / 4");
+        RealPing.tick(game, connection, 13 * S);
+        assertEquals(3, payloads.size());
+        RealPing.receive(RealPing.CHANNEL, new byte[] {0, 3}, 13 * S + 10_000_000L); // rate limited
+        for (long t = 14 * S; t < 23 * S; t += S) RealPing.tick(game, connection, t);
+        assertEquals(3, payloads.size(), "no Mod API ping for 10 s after 'rate limited' (status pings stand in)");
+        RealPing.tick(game, connection, 24 * S);
+        assertEquals(4, payloads.size(), "then the Mod API again");
+    }
 }

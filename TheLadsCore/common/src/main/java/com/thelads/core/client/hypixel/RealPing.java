@@ -25,7 +25,8 @@ import org.slf4j.LoggerFactory;
  * Measured every 5 s: on Hypixel with the official Hypixel Mod API ping (plugin channel hypixel:ping, request/response as in
  * github.com/HypixelDev/ModAPI: serverbound VarInt version 1; clientbound boolean success, then VarInt version and a String, or an
  * error VarInt), timed from send to arrival on the network thread; elsewhere, or when the Mod API stays silent or answers with an
- * error, with a server-list status ping to the connected address (what Patcher and Essential do).
+ * error, with a server-list status ping to the connected address (what Patcher and Essential do). While Hypixel answers "rate
+ * limited" the status ping fills in, so the value never goes stale; samples are smoothed like the vanilla tab list (3/4 old).
  */
 public final class RealPing {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
@@ -39,8 +40,10 @@ public final class RealPing {
     private static volatile int measured = -1;
     private static volatile long measuredAt, sentAt, clock;
     private static volatile boolean statusBusy;
-    /** 5 s, doubled (up to a minute) while Hypixel answers "rate limited". */
+    /** Mod API pings: 5 s, doubled (up to a minute) each time Hypixel answers "rate limited", kept once it answers again. */
     private static volatile long interval = INTERVAL;
+    /** Status pings stand in until then (Hypixel said "rate limited"). */
+    private static volatile long modApiAt;
     private static long nextAt, checkedAt;
     // Written by the answer on the network thread, read by the client tick.
     private static volatile int misses;
@@ -84,18 +87,21 @@ public final class RealPing {
             measured((nanos - sent) / 1_000_000L, nanos);
             sentAt = 0;
             misses = 0;
-            interval = INTERVAL;
         } else if (result < 0) {
             sentAt = 0;
-            if (result == -3) interval = Math.min(12 * INTERVAL, interval * 2); // rate limited: slower
-            else modApiOff = true; // any other error: status pings instead
+            if (result == -3) { // rate limited: slower, status pings meanwhile
+                interval = Math.min(12 * INTERVAL, interval * 2);
+                modApiAt = nanos + interval;
+            } else modApiOff = true; // any other error: status pings instead
             LOGGER.info("Lads real ping: Hypixel Mod API ping answered with error {}", -result);
         }
         return true;
     }
 
     private static void measured(long ms, long nanos) {
-        measured = (int) Math.max(0, Math.min(9999, ms));
+        int sample = (int) Math.max(0, Math.min(9999, ms)), last = measured;
+        // Smoothed like the server's own tab-list latency, so one slow packet does not jump the HUD; a stale value starts over.
+        measured = last < 0 || nanos - measuredAt >= STALE ? sample : (last * 3 + sample) / 4;
         measuredAt = nanos;
     }
 
@@ -110,6 +116,7 @@ public final class RealPing {
             misses = 0;
             modApiOff = false;
             interval = INTERVAL;
+            modApiAt = now;
             nextAt = now + 1_000_000_000L; // let the join settle
             checkedAt = now - 1_000_000_000L;
         }
@@ -128,8 +135,9 @@ public final class RealPing {
             sentAt = 0;
             if (++misses >= 3) { modApiOff = true; LOGGER.info("Lads real ping: no Hypixel Mod API answer, using status pings"); }
         }
-        nextAt = now + interval;
-        if (hypixel && !modApiOff) {
+        boolean modApi = hypixel && !modApiOff && now - modApiAt >= 0;
+        nextAt = now + (modApi ? interval : INTERVAL);
+        if (modApi) {
             sentAt = now;
             if (game.sendPluginMessage(CHANNEL, REQUEST)) return;
             sentAt = 0;

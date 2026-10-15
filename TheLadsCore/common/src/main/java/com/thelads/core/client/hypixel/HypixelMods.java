@@ -44,7 +44,7 @@ public final class HypixelMods {
     private static final Set<String> PARTY_ELIMINATED = new LinkedHashSet<>();
     private static Object connection, world;
     private static boolean gameOver, started, tipOff, selfOut, replayed, partyListRequestedThisGame, inParty;
-    private static long lastSent, tipAt, tipSent, locrawSent, selfDiedAt, partyListSent;
+    private static long lastSent, tipAt, tipSent, locrawSent, selfDiedAt, partyListSent, ggDue;
     private static String lastCommand = "";
     private static String[] location;
     private static String qaPlayerName;
@@ -165,7 +165,7 @@ public final class HypixelMods {
         if (currentWorld != world) {
             world = currentWorld;
             gameOver = started = selfOut = replayed = partyListRequestedThisGame = false;
-            selfDiedAt = partyListSent = 0;
+            selfDiedAt = partyListSent = ggDue = 0;
             location = null;
             QUEUE.removeIf(Queued::world);
             PARTY_ALIVE.clear();
@@ -196,10 +196,14 @@ public final class HypixelMods {
         lastCommand = next.text();
         if (lastCommand.equals("/tip all")) tipSent = now;
         if (lastCommand.equals("/locraw")) locrawSent = now;
+        if (lastCommand.startsWith("/play ")) leaving(); // a gg still queued would land in the next game
         if (SENT.size() < 64) SENT.add(next.text());
         LOGGER.info("Lads Hypixel: sending {}", next.text());
         game.sendChatLine(next.text());
     }
+
+    /** Leaving this game: its gg lines and /play no longer belong anywhere. */
+    private static void leaving() { QUEUE.removeIf(q -> q.text().startsWith("/ac ") || q.text().startsWith("/play ")); }
 
     private static void queue(String text, long due, boolean world) {
         if (QUEUE.size() >= MAX_QUEUED) return;
@@ -276,6 +280,7 @@ public final class HypixelMods {
                 }
             }
         }
+        if (HypixelChat.newGame(message)) leaving();
         if (partyListSent != 0 && now - partyListSent < 5 * SECOND && HypixelChat.isPartyListLine(message)) {
             hidden++;
             return true; // our own question's answer
@@ -290,7 +295,7 @@ public final class HypixelMods {
             gameOver = false;
             started = true;
             selfOut = false;
-            selfDiedAt = 0;
+            selfDiedAt = ggDue = 0;
             replayed = false;
             PARTY_ALIVE.clear();
             PARTY_ELIMINATED.clear();
@@ -347,8 +352,13 @@ public final class HypixelMods {
         if (on(AUTO_GG)) {
             long first = now + seconds(AUTO_GG, "Delay seconds", 1);
             String message = text(AUTO_GG, "Message"), second = text(AUTO_GG, "Second Message");
-            if (!message.isEmpty()) queue("/ac " + message, first, true);
-            if (!second.isEmpty()) queue("/ac " + second, first + seconds(AUTO_GG, "Second Message seconds", 2), true);
+            if (!message.isEmpty()) queue("/ac " + message, ggDue = first, true);
+            if (!second.isEmpty()) queue("/ac " + second, ggDue = Math.max(first, ggDue) + seconds(AUTO_GG, "Second Message seconds", 2), true);
+            // A /play already queued (we died first) waits for the gg lines too.
+            for (int i = 0; i < QUEUE.size(); i++) {
+                Queued q = QUEUE.get(i);
+                if (ggDue != 0 && q.text().startsWith("/play ")) QUEUE.set(i, new Queued(Math.max(q.due(), ggDue + GAP), q.text(), q.world()));
+            }
         }
         triggerReplayIfEligible(now);
     }
@@ -363,7 +373,8 @@ public final class HypixelMods {
         if (shouldReplay(mode, wait, selfOut, gameOver, PARTY_ALIVE.size(), modeKnown, timedOut)) {
             String play = location == null ? null : HypixelChat.playCommand(location[0], location[1]);
             if (play != null) {
-                queue(play, now + seconds(PLAY_AGAIN, "Delay seconds", 3), true);
+                // After the gg lines (sending /play drops any still queued), however short the Play Again delay.
+                queue(play, Math.max(now + seconds(PLAY_AGAIN, "Delay seconds", 3), ggDue == 0 ? 0 : ggDue + GAP), true);
                 replayed = true;
             }
         }
@@ -408,7 +419,7 @@ public final class HypixelMods {
     static void resetForTest() {
         QUEUE.clear(); FRIENDS.clear(); SENT.clear(); PARTY_MEMBERS.clear(); PARTY_ALIVE.clear(); PARTY_ELIMINATED.clear();
         connection = world = null; gameOver = started = tipOff = selfOut = replayed = partyListRequestedThisGame = inParty = false;
-        lastSent = tipSent = locrawSent = selfDiedAt = partyListSent = 0; lastCommand = ""; location = null;
+        lastSent = tipSent = locrawSent = selfDiedAt = partyListSent = ggDue = 0; lastCommand = ""; location = null;
         qaPlayerName = null;
     }
 }

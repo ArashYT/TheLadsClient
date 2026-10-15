@@ -32,7 +32,7 @@ class Lads197DefaultsTest {
         "BetterF3", "BetterScreenshots", "BorderlessFullscreen", "BossBar", "Chat",
         "ClientTools", "Clumps", "Coordinates", "Crosshair Tweaks", "DisableNarrator",
         "DiscordRPC", "DynamicFPS", com.thelads.core.modules.DynamicLightsModule.NAME, "EnhancedToolbars", "EnhancedTooltips",
-        "FarBlockEntities", "FPS", "HYPIXEL Mods", com.thelads.core.modules.ItemPhysicsModule.NAME, "KillBanner",
+        "FarBlockEntities", "FPS", "HYPIXEL Mods", com.thelads.core.modules.ItemPhysicsModule.NAME, com.thelads.core.client.KeepUiOpen.MODULE_NAME, "KillBanner",
         "Minimap", "MouseTweaks", "Nametags", "OldDamageTilt", "Particle Core",
         "PingView", "PingHUD", "Potion Effects", "Raised", "RawInput",
         com.thelads.core.client.pack.PackMenuSettings.MODULE_NAME, "Scoreboard", "ShulkerBoxUtils", "SignalLoss", "SkinLayers",

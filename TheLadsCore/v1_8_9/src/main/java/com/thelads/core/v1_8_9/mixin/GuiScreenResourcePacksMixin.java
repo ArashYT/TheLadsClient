@@ -269,7 +269,7 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
             }
             for (ResourcePackListEntry entry : ladsMasterAllAvailable) {
                 String relPath = getEntryRelativePath(entry);
-                if (!relPath.isEmpty() && selectedNames.contains(relPath)) continue;
+                if (!relPath.isEmpty() && selectedNames.contains(relPath) || ladsHidden(entry)) continue;
                 if (PackFolderHelper.isInsideFolder(relPath, ladsCurrentFolder, false)) {
                     availableResourcePacks.add(entry);
                 }
@@ -277,7 +277,7 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
         } else {
             for (ResourcePackListEntry entry : ladsMasterAllAvailable) {
                 String relPath = getEntryRelativePath(entry);
-                if (!relPath.isEmpty() && selectedNames.contains(relPath)) continue;
+                if (!relPath.isEmpty() && selectedNames.contains(relPath) || ladsHidden(entry)) continue;
                 if (PackFolderHelper.isInsideFolder(relPath, ladsCurrentFolder, true)) {
                     String name = getEntryName(entry);
                     String desc = getEntryDesc(entry);
@@ -290,6 +290,13 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
 
         ladsLastSelectedSnapshot.clear();
         ladsLastSelectedSnapshot.addAll(selectedResourcePacks);
+    }
+
+    /** "Ignore incompatible packs": a pack whose own pack format is not 1.8.9's (1) stays out of the Available list. */
+    @Unique
+    private static boolean ladsHidden(ResourcePackListEntry entry) {
+        return PackMenuSettings.ignoreIncompatible() && entry instanceof ResourcePackListEntryFound
+            && ((ResourcePackListEntryFound) entry).func_148318_i().func_183027_f() != 1;
     }
 
     @Unique

@@ -42,6 +42,13 @@ public final class HypixelChat {
     private static final Pattern ELIMINATED_LINE = Pattern.compile("(?i)^(?:\\[[^\\]]+\\]\\s*)*(\\w{1,16})\\b.*\\b(?:has been|was) eliminated!?.*");
     private static final Pattern DISCONNECT_LINE = Pattern.compile("(?i)^(?:\\[[^\\]]+\\]\\s*)*(\\w{1,16})\\b.*\\b(?:disconnected|has quit|left the game)[.!]*");
     private static final Pattern GENERAL_KILL_LINE = Pattern.compile("(?i)^(?:\\[[^\\]]+\\]\\s*)*(\\w{1,16})\\b\\s+(?:was (?:killed|slain|shot|knocked into the void|spooked|blown up|thrown into the void|pummeled|fireballed)|fell into the void|died|hit the ground|burned to death|went up in flames|drowned|suffocated|withered away)\\b.*");
+    /** SkyWars/Duels cosmetic kill messages: victim, any words, "by"/"to" the killer, then only a weapon or FINAL KILL ("Bob took the L to Me."). */
+    private static final Pattern THEMED_KILL_LINE = Pattern.compile("(?i)^(?:\\[[^\\]]+\\]\\s*)*(\\w{1,16}) [^:]{1,60}? (?:by|to) (?:\\[[^\\]]+\\]\\s*)*\\w{1,16}"
+        + "(?:'s [^.!:]{1,32})?(?: using [^:]{1,40})?[.!]*(?: FINAL KILL!)?\\s*");
+    /** A move to another game: Hypixel's transfer notice, or the next lobby's join lines. */
+    private static final Pattern NEW_GAME = Pattern.compile(".*\\bSending you to \\S+!?|\\w{1,16} has joined \\(\\d+/\\d+\\)!");
+    /** Hypixel notices that only a party member gets ("Your party was split...", "...dueled someone in your party!"). */
+    private static final Pattern PARTY_NOTICE = Pattern.compile("(?i)Your party\\b.*|.*\\bin your party\\b.*");
     private static final Pattern SELF_OUT_LINE = Pattern.compile("(?i).*(?:You have been eliminated!|You are now a spectator!?|Click here to play again!).*");
     /** The end-of-game summary every mode prints, centered (leading spaces): its ranking or winner line. */
     private static final Pattern GAME_END = Pattern.compile("\\s+(?:"
@@ -267,17 +274,25 @@ public final class HypixelChat {
             if (gametype != null && (gametype.equalsIgnoreCase("SKYWARS") || gametype.equalsIgnoreCase("DUELS"))) {
                 Matcher gk = GENERAL_KILL_LINE.matcher(p);
                 if (gk.matches()) return gk.group(1);
+                Matcher tk = THEMED_KILL_LINE.matcher(p);
+                if (tk.matches()) return tk.group(1);
             }
         }
         return null;
     }
 
-    /** True if this is a player speaking in party chat (e.g. Party > [MVP+] Player: text). */
+    /** True for party chat (Party > [MVP+] Player: text) or a notice only party members get: you are in a party. */
     public static boolean isPartyChat(String message) {
         for (String line : lines(message)) {
             String p = line.trim();
-            if (p.startsWith("Party >")) return true;
+            if (p.startsWith("Party >") || !isPlayerChat(line) && PARTY_NOTICE.matcher(p).matches()) return true;
         }
+        return false;
+    }
+
+    /** True when this line says you are being moved to another game (a queued gg no longer belongs there). */
+    public static boolean newGame(String message) {
+        for (String line : lines(message)) if (!isPlayerChat(line) && NEW_GAME.matcher(line.trim()).matches()) return true;
         return false;
     }
 
