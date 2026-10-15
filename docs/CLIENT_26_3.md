@@ -19,7 +19,7 @@ Each missing jar is resolved against Modrinth's version API. The installer verif
 Run from the repository root:
 
 ```powershell
-python tools/sync_instance_mods.py 'C:\Users\Arash\curseforge\minecraft\Instances\The Lads Client Dev 26.3' --write
+python tools/sync_instance_mods.py "$env:USERPROFILE\curseforge\minecraft\Instances\The Lads Client Dev 26.3" --write
 .\Build-LadsClient.ps1 -Launcher
 ```
 

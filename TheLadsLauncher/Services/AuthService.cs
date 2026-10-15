@@ -48,8 +48,19 @@ public class AuthService : IAuthService
         }
     }
 
+    public static bool IsDevOfflineAllowed =>
+#if DEBUG
+        true;
+#else
+        Environment.GetEnvironmentVariable("LADS_DEV_OFFLINE") == "1" ||
+        Environment.GetEnvironmentVariable("THELADS_VERIFY_OFFLINE") == "1";
+#endif
+
     public Task<AccountItem> AddOfflineAccountAsync(string username)
     {
+        if (!IsDevOfflineAllowed)
+            throw new InvalidOperationException("Offline accounts are only supported in debug builds.");
+
         username = AccountIdentity.NormalizeOfflineName(username);
 
         lock (_accounts)
@@ -112,6 +123,8 @@ public class AuthService : IAuthService
             {
                 if (!string.Equals(acc.AccountType, "offline", StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException("Microsoft accounts must be refreshed through Microsoft sign-in before launching.");
+                if (!IsDevOfflineAllowed)
+                    throw new InvalidOperationException("Offline accounts are only supported in debug builds. Sign in with a Microsoft account that owns Minecraft: Java Edition.");
                 return Task.FromResult(AccountIdentity.CreateOfflineSession(acc.Username));
             }
 

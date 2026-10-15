@@ -1,7 +1,7 @@
 # The Lads SMP — Minecraft 26.3 Compatibility, Mixin & Log Error Report
 
 > [!IMPORTANT]
-> Every error, exception, and warning recorded in `C:\Users\Arash\curseforge\minecraft\Instances\Test For Lads SMP 26.3\logs\latest.log` and discovered during bytecode/data-pack inspection of the 256 mods is analyzed below with its exact root cause and verified fix.
+> Every error, exception, and warning recorded in `%USERPROFILE%\curseforge\minecraft\Instances\Test For Lads SMP 26.3\logs\latest.log` and discovered during bytecode/data-pack inspection of the 256 mods is analyzed below with its exact root cause and verified fix.
 
 ---
 

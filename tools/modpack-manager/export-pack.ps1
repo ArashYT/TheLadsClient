@@ -39,6 +39,7 @@ $gameDir = Join-Path $InstanceDir "minecraft"
 if (!(Test-Path (Join-Path $gameDir "mods"))) { throw "No mods folder in $gameDir" }
 $instanceJson = Get-Content -Raw (Join-Path $InstanceDir "instance.json") | ConvertFrom-Json
 
+if (-not $PatchesDir) { $PatchesDir = Join-Path $PSScriptRoot "patches" }
 $patches = @()
 if (Test-Path $PatchesDir) {
     $patches = @(Get-ChildItem $PatchesDir -Filter "update-*.json" | ForEach-Object {
@@ -111,80 +112,23 @@ foreach ($p in $inPack) {
 
 if (-not $OutputFile) { $OutputFile = Join-Path $PSScriptRoot "out\$($instanceJson.id)-$PackVersion.zip" }
 New-Item -ItemType Directory -Force -Path (Split-Path $OutputFile -Parent) | Out-Null
-if (Test-Path $OutputFile) { Remove-Item -LiteralPath $OutputFile -Force }
 
-function Excluded([string]$rel) {
-    foreach ($pattern in $Exclude) { if ($rel -like $pattern) { return $true } }
-    return $false
-}
+$python = Get-Command python -ErrorAction SilentlyContinue
+if (-not $python) { $python = Get-Command py -ErrorAction SilentlyContinue }
+if (-not $python) { throw "Python is required to run build-manifest-pack.py" }
 
-$zip = [System.IO.Compression.ZipFile]::Open($OutputFile, [System.IO.Compression.ZipArchiveMode]::Create)
-$count = 0
-$warnings = @()
-try {
-    function Add-File([string]$path, [string]$entry, $level) {
-        [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $path, $entry, $level)
-        $script:count++
-    }
+$resultJson = & $python.Source -I (Join-Path $PSScriptRoot "build-manifest-pack.py") `
+    "--instance-dir=$InstanceDir" `
+    "--output=$OutputFile" `
+    "--pack-version=$PackVersion" `
+    "--patches-dir=$PatchesDir" `
+    "--applied-patches=$($applied -join ',')"
+if ($LASTEXITCODE -ne 0) { throw "build-manifest-pack.py failed with exit code $LASTEXITCODE" }
 
-    # Mods: enabled jars only (a .jar.disabled is the player's/dev's off switch and is not part of the pack).
-    $mods = @()
-    foreach ($jar in (Get-ChildItem (Join-Path $gameDir "mods") -Filter "*.jar" -File | Sort-Object Name)) {
-        $sourcePath = $jar.FullName
-        if ($CoreJar -and $jar.Name -eq "theladscore.jar" -and (Test-Path -LiteralPath $CoreJar)) {
-            $sourcePath = (Get-Item -LiteralPath $CoreJar).FullName
-        }
-        $fileObj = Get-Item -LiteralPath $sourcePath
-        Add-File $fileObj.FullName "overrides/mods/$($jar.Name)" ([System.IO.Compression.CompressionLevel]::NoCompression) # jars are zips already
-        $mods += [ordered]@{ fileName = $jar.Name; size = $fileObj.Length; sha1 = (Get-FileHash -LiteralPath $fileObj.FullName -Algorithm SHA1).Hash.ToLowerInvariant() }
-    }
+$res = $resultJson | ConvertFrom-Json
+Write-Host "[OK] $($res.output_zip)" -ForegroundColor Green
+Write-Host ("  - {0} MB, pack {1}, Modrinth: {2} direct + {3} overlaid, CurseForge: {4}, First-Party/Overrides: {5}" -f `
+    $res.size_mb, $res.pack_version, $res.stats.modrinth_direct, $res.stats.modrinth_patched, $res.stats.curseforge, `
+    ($res.stats.first_party_overrides + $res.stats.other_overrides))
+Write-Host "  - SHA-256: $($res.sha256)"
 
-    foreach ($dir in $IncludeDirs) {
-        $root = Join-Path $gameDir $dir
-        if (!(Test-Path $root)) { continue }
-        foreach ($file in (Get-ChildItem $root -Recurse -File -Force)) {
-            $rel = $file.FullName.Substring($gameDir.Length).TrimStart('\', '/').Replace('\', '/')
-            if (Excluded $rel) { continue }
-            Add-File $file.FullName "overrides/$rel" ([System.IO.Compression.CompressionLevel]::Optimal)
-            # The archive is meant to be hosted: flag anything in a text config that looks like a credential.
-            if ($file.Length -lt 512KB -and $file.Extension -in ".json", ".json5", ".toml", ".cfg", ".properties", ".txt", ".yaml", ".yml") {
-                if (Select-String -LiteralPath $file.FullName -Pattern '(?i)(access.?token|password|api.?key|secret)\s*["'']?\s*[=:]\s*["'']?[A-Za-z0-9_\-\.]{10,}' -Quiet) {
-                    $warnings += $rel
-                }
-            }
-        }
-    }
-    foreach ($name in $IncludeFiles) {
-        if ([string]::IsNullOrWhiteSpace($name)) { continue }
-        $file = Join-Path $gameDir $name
-        if (Test-Path -LiteralPath $file -PathType Leaf) { Add-File $file "overrides/$name" ([System.IO.Compression.CompressionLevel]::Optimal) }
-    }
-    $icon = Join-Path $InstanceDir "icon.png"
-    if (Test-Path $icon) { Add-File $icon "overrides/icon.png" ([System.IO.Compression.CompressionLevel]::Optimal) }
-    foreach ($patch in $patches) { Add-File $patch.File.FullName "patches/$($patch.File.Name)" ([System.IO.Compression.CompressionLevel]::Optimal) }
-
-    $packJson = [ordered]@{
-        packId = $instanceJson.id
-        packVersion = $PackVersion
-        createdUtc = (Get-Date).ToUniversalTime().ToString("o")
-        mcVersion = $instanceJson.mcVersion
-        loader = $instanceJson.loader
-        loaderVersion = $instanceJson.loaderVersion
-        modCount = $mods.Count
-        appliedPatches = $applied
-        mods = $mods
-    } | ConvertTo-Json -Depth 5
-    $entry = $zip.CreateEntry("pack.json", [System.IO.Compression.CompressionLevel]::Optimal)
-    $writer = New-Object System.IO.StreamWriter($entry.Open(), (New-Object System.Text.UTF8Encoding($false)))
-    try { $writer.Write($packJson) } finally { $writer.Dispose() }
-    $count++
-} finally {
-    $zip.Dispose()
-}
-
-$archive = Get-Item -LiteralPath $OutputFile
-$sha256 = (Get-FileHash -LiteralPath $OutputFile -Algorithm SHA256).Hash
-Write-Host "[OK] $($archive.FullName)" -ForegroundColor Green
-Write-Host ("  - {0} files, {1:N0} MB, pack {2}, patches included: {3}" -f $count, ($archive.Length / 1MB), $PackVersion, ($applied -join ", "))
-Write-Host "  - SHA-256: $sha256"
-foreach ($w in $warnings) { Write-Warning "$w looks like it holds a credential; check it before hosting the archive." }

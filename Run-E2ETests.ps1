@@ -124,7 +124,7 @@ if (-not $foundJar) {
 $oldCapesPattern = "capes-*.jar"
 $oldRenderScalePattern = "render scale *.jar"
 $packwizModsPath = "The Lads Client Packwiz/mods"
-$curseforgeModsPaths = "C:\Users\Arash\curseforge\minecraft\Instances\The Lads Client Dev *\mods"
+$curseforgeModsPaths = "$env:USERPROFILE\curseforge\minecraft\Instances\The Lads Client Dev *\mods"
 
 Write-Output "[Validation] Checking for old standalone jar files:"
 $foundOldJars = $false

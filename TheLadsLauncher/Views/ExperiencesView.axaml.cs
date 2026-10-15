@@ -42,7 +42,28 @@ public partial class ExperiencesView : UserControl
     private CancellationTokenSource? _zeroSmpCts;
     private bool _syncingAutoJoin;
     private bool _syncingAccounts;
+    private bool _updatingRam;
     private bool _raceRetry; // the next ZeroSmpPlay_Click is the launcher's own one retry after a known mod-loading race
+
+    public static int BinaryMbToRamGb(int mb) =>
+        Math.Clamp((int)Math.Round(mb / 1024.0), 1, 32);
+
+    public static int RamGbToBinaryMb(decimal? value, int fallbackMb)
+    {
+        if (!value.HasValue) return fallbackMb;
+        double v = (double)value.Value;
+        int gb = v >= 1024.0
+            ? Math.Clamp((int)Math.Round(v / 1024.0), 1, 32)
+            : Math.Clamp((int)Math.Round(v), 1, 32);
+        return gb * 1024;
+    }
+
+    private static void SetStatusText(TextBlock statusText, string? message)
+    {
+        string text = message ?? "";
+        statusText.Text = text;
+        statusText.IsVisible = !string.IsNullOrWhiteSpace(text);
+    }
 
     private static bool HasRunningProcess(List<RunningInstance> list)
     {
@@ -65,6 +86,8 @@ public partial class ExperiencesView : UserControl
     {
         InitializeComponent();
         ZeroSmpServerText.Text = ExperiencesService.ZeroSmp.ServerAddress; // the one place the address is written down
+        ToolTip.SetTip(LadsSmpRebornRamBox, $"{ExperiencesService.LadsSmpReborn.RecommendedRamMb} MB");
+        ToolTip.SetTip(ZeroSmpRamBox, $"{ExperiencesService.ZeroSmp.RecommendedRamMb} MB");
     }
 
     public async Task LoadAsync()
@@ -192,12 +215,15 @@ public partial class ExperiencesView : UserControl
             statusBadge.BorderBrush = Brush.Parse("#386B42");
             statusBadgeText.Text = "Installed";
             statusBadgeText.Foreground = Brush.Parse("#85E89D");
-            statusText.Text = "Ready to play";
 
             var instance = ExperiencesService.GetInstance(DataDirectory, instanceId);
             if (instance != null && instance.MaxRamMb > 0)
             {
-                ramBox.Value = instance.MaxRamMb;
+                _updatingRam = true;
+                int gb = BinaryMbToRamGb(instance.MaxRamMb);
+                ramBox.Value = gb;
+                ToolTip.SetTip(ramBox, $"{gb * 1024} MB");
+                _updatingRam = false;
             }
         }
         else
@@ -206,13 +232,43 @@ public partial class ExperiencesView : UserControl
             statusBadge.BorderBrush = Brush.Parse("#6B3838");
             statusBadgeText.Text = "Not Installed";
             statusBadgeText.Foreground = Brush.Parse("#E88585");
-            statusText.Text = "Not installed";
         }
 
+        statusText.IsVisible = !string.IsNullOrWhiteSpace(statusText.Text);
         folderBtn.IsEnabled = installed && !busy;
         reinstallBtn.IsEnabled = installed && !busy && !running;
 
         UpdateRunningInstancesUi(exp, runningList, busy, statusText, progressBar, instancesDropdownBtn, instancesDropdownText, instancesBar, instancesQuickButtons);
+    }
+
+    private void LadsSmpRebornRamBox_ValueChanged(object? sender, NumericUpDownValueChangedEventArgs e) =>
+        OnRamBoxValueChanged(LadsSmpRebornRamBox, LadsSmpRebornInstanceId, ExperiencesService.LadsSmpReborn.RecommendedRamMb);
+
+    private void ZeroSmpRamBox_ValueChanged(object? sender, NumericUpDownValueChangedEventArgs e) =>
+        OnRamBoxValueChanged(ZeroSmpRamBox, ZeroSmpInstanceId, ExperiencesService.ZeroSmp.RecommendedRamMb);
+
+    private void OnRamBoxValueChanged(NumericUpDown? ramBox, string instanceId, int fallbackMb)
+    {
+        if (_updatingRam || ramBox == null) return;
+        _updatingRam = true;
+        try
+        {
+            int mb = RamGbToBinaryMb(ramBox.Value, fallbackMb);
+            int gb = BinaryMbToRamGb(mb);
+            if (ramBox.Value != gb) ramBox.Value = gb;
+            ToolTip.SetTip(ramBox, $"{mb} MB");
+
+            var instance = ExperiencesService.GetInstance(DataDirectory, instanceId);
+            if (instance != null && instance.MaxRamMb != mb)
+            {
+                instance.MaxRamMb = mb;
+                Modpacks.Save(instance);
+            }
+        }
+        finally
+        {
+            _updatingRam = false;
+        }
     }
 
     private void SyncAccountSelector(MainWindow host, ComboBox? selector)
@@ -349,7 +405,7 @@ public partial class ExperiencesView : UserControl
         runningList.Remove(inst);
         GameSession.Cancel(inst.Process);
         Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
-        statusText.Text = $"Closed Instance {inst.Number} ({inst.Username}).";
+        SetStatusText(statusText, $"Closed Instance {inst.Number} ({inst.Username}).");
         if (!HasRunningProcess(runningList) && !busy) progressBar.IsVisible = false;
         RefreshState();
     }
@@ -363,7 +419,7 @@ public partial class ExperiencesView : UserControl
             GameSession.Cancel(inst.Process);
             Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
         }
-        statusText.Text = toClose.Count > 1 ? $"Closed all {toClose.Count} {exp.Title} instances." : $"Closed {exp.Title} instance.";
+        SetStatusText(statusText, toClose.Count > 1 ? $"Closed all {toClose.Count} {exp.Title} instances." : $"Closed {exp.Title} instance.");
         if (!busy) progressBar.IsVisible = false;
         RefreshState();
     }
@@ -396,7 +452,7 @@ public partial class ExperiencesView : UserControl
         LadsSmpRebornProgressBar.Value = 0;
         RefreshState();
 
-        void Report(string message) => Dispatcher.UIThread.Post(() => LadsSmpRebornStatusText.Text = message);
+        void Report(string message) => Dispatcher.UIThread.Post(() => SetStatusText(LadsSmpRebornStatusText, message));
 
         try
         {
@@ -414,7 +470,7 @@ public partial class ExperiencesView : UserControl
 
             if (LadsSmpRebornRamBox.Value.HasValue)
             {
-                instance.MaxRamMb = (int)LadsSmpRebornRamBox.Value.Value;
+                instance.MaxRamMb = RamGbToBinaryMb(LadsSmpRebornRamBox.Value, exp.RecommendedRamMb);
                 Modpacks.Save(instance);
             }
 
@@ -438,9 +494,9 @@ public partial class ExperiencesView : UserControl
                 host.ModpackLog($"{exp.Title} Instance {instNumber} ({runningInst.Username}) closed (exit code {code}).");
                 if (!wasCancelled)
                 {
-                    LadsSmpRebornStatusText.Text = code == 0
+                    SetStatusText(LadsSmpRebornStatusText, code == 0
                         ? $"Instance {instNumber} ({runningInst.Username}) closed."
-                        : $"Instance {instNumber} ({runningInst.Username}) closed with exit code {code}. See logs in Open Folder.";
+                        : $"Instance {instNumber} ({runningInst.Username}) closed with exit code {code}. See logs in Open Folder.");
                 }
                 if (!HasRunningProcess(_runningLadsSmpReborn) && _ladsSmpRebornCts == null) LadsSmpRebornProgressBar.IsVisible = false;
                 RefreshState();
@@ -487,7 +543,7 @@ public partial class ExperiencesView : UserControl
         LadsSmpRebornProgressBar.IsVisible = true;
         RefreshState();
 
-        void Report(string message) => Dispatcher.UIThread.Post(() => LadsSmpRebornStatusText.Text = message);
+        void Report(string message) => Dispatcher.UIThread.Post(() => SetStatusText(LadsSmpRebornStatusText, message));
 
         try
         {
@@ -530,7 +586,7 @@ public partial class ExperiencesView : UserControl
         ZeroSmpProgressBar.Value = 0;
         RefreshState();
 
-        void Report(string message) => Dispatcher.UIThread.Post(() => ZeroSmpStatusText.Text = message);
+        void Report(string message) => Dispatcher.UIThread.Post(() => SetStatusText(ZeroSmpStatusText, message));
 
         try
         {
@@ -549,7 +605,7 @@ public partial class ExperiencesView : UserControl
             // Save user RAM setting if changed
             if (ZeroSmpRamBox.Value.HasValue)
             {
-                instance.MaxRamMb = (int)ZeroSmpRamBox.Value.Value;
+                instance.MaxRamMb = RamGbToBinaryMb(ZeroSmpRamBox.Value, ExperiencesService.ZeroSmp.RecommendedRamMb);
                 Modpacks.Save(instance);
             }
 
@@ -579,9 +635,9 @@ public partial class ExperiencesView : UserControl
                 host.ModpackLog($"Zero SMP Instance {instNumber} ({runningInst.Username}) closed (exit code {code}).");
                 if (!wasCancelled)
                 {
-                    ZeroSmpStatusText.Text = code == 0
+                    SetStatusText(ZeroSmpStatusText, code == 0
                         ? $"Instance {instNumber} ({runningInst.Username}) closed."
-                        : $"Instance {instNumber} ({runningInst.Username}) closed with exit code {code}. See logs in Open Folder.";
+                        : $"Instance {instNumber} ({runningInst.Username}) closed with exit code {code}. See logs in Open Folder.");
                 }
                 if (!HasRunningProcess(_runningZeroSmp) && _zeroSmpCts == null) ZeroSmpProgressBar.IsVisible = false;
                 RefreshState();
@@ -638,7 +694,7 @@ public partial class ExperiencesView : UserControl
         }
         catch (Exception ex)
         {
-            statusText.Text = "Could not open folder: " + ex.Message;
+            SetStatusText(statusText, "Could not open folder: " + ex.Message);
         }
     }
 
@@ -656,7 +712,7 @@ public partial class ExperiencesView : UserControl
         ZeroSmpProgressBar.IsVisible = true;
         RefreshState();
 
-        void Report(string message) => Dispatcher.UIThread.Post(() => ZeroSmpStatusText.Text = message);
+        void Report(string message) => Dispatcher.UIThread.Post(() => SetStatusText(ZeroSmpStatusText, message));
 
         try
         {

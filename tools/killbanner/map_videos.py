@@ -53,7 +53,7 @@ LINES = {
 def main():
     files = sorted(p.name for p in FOLDER.glob('*.mp4'))
     meta = {}
-    meta_path = Path(r'C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\artifacts\1.7.4\qa\play\previews-meta.json')
+    meta_path = Path(__file__).resolve().parents[2] / 'artifacts/1.7.4/qa/play/previews-meta.json'
     if meta_path.exists():
         for name, fps, w, h, dur in json.loads(meta_path.read_text()):
             meta[name] = (fps, w, h, dur)

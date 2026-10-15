@@ -1,4 +1,4 @@
-$folder = "C:\Users\Arash\curseforge\minecraft\Instances\The Lads Client Dev 1.21.11\crash-reports"
+$folder = "$env:USERPROFILE\curseforge\minecraft\Instances\The Lads Client Dev 1.21.11\crash-reports"
 if (-not (Test-Path $folder)) { New-Item -ItemType Directory -Path $folder | Out-Null }
 $fsw = New-Object IO.FileSystemWatcher $folder, "*.txt"
 $fsw.IncludeSubdirectories = $false

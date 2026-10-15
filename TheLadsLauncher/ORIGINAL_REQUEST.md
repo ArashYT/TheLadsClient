@@ -4,7 +4,7 @@
 
 Add a unified Mod and Resource Pack browser and installer supporting Modrinth and CurseForge APIs, revamp the Mods menu to look premium and fancy, show the Minecraft version on the Launch button and home page, and implement a slow-drifting red nebula/particle mesh network background animation in the launcher.
 
-Working directory: C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher_Clean
+Working directory: <repo-root>\TheLadsLauncher_Clean
 Integrity mode: development
 
 ## Requirements

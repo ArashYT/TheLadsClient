@@ -210,6 +210,12 @@ public partial class MainWindow
     private static string? HttpUrlError(string? text, string what) =>
         Uri.TryCreate(text?.Trim(), UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" ? null : what + " must be a full http(s) address.";
 
+    private static string? ModrinthApiUrlError(string? text) =>
+        ContentCatalog.IsTrustedModrinthApiUrl(text) ? null : "The Modrinth API URL must use https://api.modrinth.com (or https://staging-api.modrinth.com).";
+
+    private static string? CurseForgeApiUrlError(string? text) =>
+        ContentCatalog.IsTrustedCurseForgeApiUrl(text) ? null : "The CurseForge API URL must use https://api.curseforge.com.";
+
     // ═══════════════════════════════════════
     //  INSTALLED MODS: ICONS, TWO COLUMNS
     // ═══════════════════════════════════════

@@ -139,14 +139,16 @@ public class JavaService : IJavaService
 
             if (string.IsNullOrEmpty(downloadUrl))
             {
-                // ponytail: only the Java 8 fallback has a pinned hash; pin 21/25 when their fallback URLs are next updated.
                 (downloadUrl, sha256) = majorVersion switch
                 {
                     8 => ("https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u504-b01/OpenJDK8U-jre_x64_windows_hotspot_8u504b01.zip",
                         "82e2cdc6693737c5998445b31f69668fa0da77c7705121053f6508ac84961123"),
-                    17 => ("https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.14%2B7/OpenJDK17U-jre_x64_windows_hotspot_17.0.14_7.zip", null),
-                    21 => ("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_windows_hotspot_21.0.12.1_1.zip", null),
-                    25 => ("https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jdk_x64_windows_hotspot_25.0.4.1_1.zip", null),
+                    17 => ("https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.14%2B7/OpenJDK17U-jre_x64_windows_hotspot_17.0.14_7.zip",
+                        "d42f84605c8e27c38998b44ac493d1067abbe45be89969c935d71a858393405c"),
+                    21 => ("https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.zip",
+                        "d35f31e712f0fcf6ac5a093edc90204fbff22f720ba3950bd09d331d5e621636"),
+                    25 => ("https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.4.1%2B1/OpenJDK25U-jre_x64_windows_hotspot_25.0.4.1_1.zip",
+                        "4c95451cea98556def2c54f7782933f52a26d4a36bd85e1d59f0364464828b07"),
                     _ => throw new InvalidOperationException($"Unsupported Java version {majorVersion} for automatic download.")
                 };
             }
@@ -181,7 +183,9 @@ public class JavaService : IJavaService
                 }
             }
 
-            if (sha256 != null)
+            if (string.IsNullOrWhiteSpace(sha256))
+                throw new InvalidDataException($"Refusing to extract Java {majorVersion} runtime without a SHA-256 checksum.");
+
             {
                 string actual;
                 await using (var zip = File.OpenRead(tempZip))

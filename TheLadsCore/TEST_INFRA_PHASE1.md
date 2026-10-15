@@ -15,7 +15,7 @@
 
 ## Test Architecture
 - Test runner: Python `unittest` scripts / CLI framework. 
-- Location: `C:\Users\Arash\Desktop\Lads Client\TheLadsCore\e2e_tests_phase1`
+- Location: `<repo-root>\TheLadsCore\e2e_tests_phase1`
 - Test case format: Python functions interacting with the file system (`lads_profile.json`, mods folder) and validating outcomes.
 
 ## Real-World Application Scenarios (Tier 4)

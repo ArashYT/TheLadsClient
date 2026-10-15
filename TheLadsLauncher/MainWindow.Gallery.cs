@@ -703,10 +703,10 @@ public partial class MainWindow
     {
         try
         {
-            string safe = path.Replace("'", "''");
             var p = new Process();
             p.StartInfo.FileName = "powershell";
-            p.StartInfo.Arguments = "-NoProfile -STA -Command \"Add-Type -AssemblyName System.Windows.Forms,System.Drawing; [System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile('" + safe + "'))\"";
+            p.StartInfo.Arguments = "-NoProfile -STA -Command \"Add-Type -AssemblyName System.Windows.Forms,System.Drawing; [System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile($env:LADS_CLIP_PATH))\"";
+            p.StartInfo.Environment["LADS_CLIP_PATH"] = path;
             p.StartInfo.UseShellExecute = false;
             p.StartInfo.CreateNoWindow = true;
             p.Start();

@@ -290,7 +290,7 @@ def preview(skin, out):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--only', default='')
-    ap.add_argument('--out', default=r'C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\artifacts\1.7.4\analysis\previews')
+    ap.add_argument('--out', default=str(Path(__file__).resolve().parents[2] / 'artifacts/1.7.4/analysis/previews'))
     ap.add_argument('--workers', type=int, default=1)
     args = ap.parse_args()
     out = Path(args.out)

@@ -17,7 +17,7 @@ static class QaShared
     // owner 2026-10-10: "as many instances without crashing as possible, high priority, no limit unless you think it's too many": 6, and the
     // free-RAM gate below (32 GB PC: ~4 GB per 1.20.1/26.3 game, ~7 GB Zero SMP) is what really keeps them from crashing.
     public const int MaxGames = 6;
-    private const string DevDirectory = @"C:\Users\Arash\Desktop\The Lads Client Dev";
+    private static readonly string DevDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "The Lads Client Dev");
 
     public static string? Env(string name) => Environment.GetEnvironmentVariable(name) is { Length: > 0 } v ? v.Trim() : null;
 

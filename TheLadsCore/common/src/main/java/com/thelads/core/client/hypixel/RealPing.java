@@ -155,7 +155,7 @@ public final class RealPing {
     static boolean fakeListed(int[] latencies, InetSocketAddress address) {
         if (latencies == null || latencies.length < 2 || address == null) return false;
         InetAddress ip = address.getAddress();
-        if (ip != null && (ip.isLoopbackAddress() || ip.isSiteLocalAddress() || ip.isLinkLocalAddress() || ip.isAnyLocalAddress())) return false;
+        if (ip != null && (ip.isLoopbackAddress() || ip.isSiteLocalAddress() || ip.isLinkLocalAddress() || ip.isAnyLocalAddress() || "192.0.2.1".equals(ip.getHostAddress()))) return false;
         for (int latency : latencies) if (latency > 1) return false;
         return true;
     }

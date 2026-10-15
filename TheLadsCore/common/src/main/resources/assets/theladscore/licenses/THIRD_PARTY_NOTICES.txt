@@ -1,0 +1,104 @@
+The Lads Core — Third-Party Open-Source Notices
+===============================================
+
+NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
+
+This file documents the third-party open-source and community libraries and mods embedded or
+source-integrated into `TheLadsCore` (`theladscore.jar`). Full license texts are packaged inside
+`theladscore.jar` under `assets/theladscore/licenses/` and modified source code for copyleft
+components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar` under
+`META-INF/lads-sources/`.
+
+--------------------------------------------------------------------------------
+1. Embedded Runtime Libraries
+--------------------------------------------------------------------------------
+
+* Reflect (`net.lenni0451:Reflect:1.6.2`) — Bundled in Minecraft 1.21.11 (`v1_21_11`)
+  Copyright (c) Lenni0451
+  License: MIT License (https://github.com/Lenni0451/Reflect)
+
+* CatConfig & CatConfig-MC (`catconfig-0.3.0`, `catconfig-mc-26.2-0.2.1`) — Bundled in 1.20.1, 26.2, 26.3
+  License: MIT License (see `assets/theladscore/licenses/CatConfig-NOTICE.txt`)
+
+* java-objc-bridge (`ca.weblite:java-objc-bridge:1.0.0`) — Bundled in 26.2, 26.3
+  Copyright (c) Web Lite Solutions Corp. (Steve Hannah)
+  License: BSD 3-Clause License
+
+* Google Gson (`com.google.code.gson:gson:2.10.1` / `2.11.0`) — Shaded in 1.8.9 (`com.thelads.core.shaded.gson`)
+  Copyright (c) Google Inc.
+  License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+
+* SLF4J (`org.slf4j:slf4j-api:2.0.9`, `org.slf4j:slf4j-simple:2.0.9`) — Shaded in 1.8.9 (`com.thelads.core.shaded.slf4j`)
+  Copyright (c) 2004-2023 QOS.ch Sarl
+  License: MIT License (https://www.slf4j.org/license.html)
+
+* SpongePowered Mixin (`org.spongepowered:mixin:0.7.11-SNAPSHOT`) — Bundled in 1.8.9
+  Copyright (c) SpongePowered Contributors
+  License: MIT License (https://github.com/SpongePowered/Mixin)
+
+* JvmDowngrader (`xyz.wagyourtail.jvmdowngrader:1.3.6`) — Used in 1.8.9 build
+  Copyright (c) Wagyourtail
+  License: GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later)
+
+--------------------------------------------------------------------------------
+2. Source-Integrated & Embedded Mods (`META-INF/lads-sources/` & `assets/theladscore/licenses/`)
+--------------------------------------------------------------------------------
+
+* Entity Texture Features (ETF) & Entity Model Features (EMF)
+  Copyright (c) Traben
+  License: GNU Lesser General Public License v3.0 only (LGPL-3.0-only)
+  License & Notice: `assets/theladscore/licenses/ETF-NOTICE.txt`, `EMF-NOTICE.txt`, `LGPL-3.0-only.txt`
+  Modified Sources: `META-INF/lads-sources/etf/`, `META-INF/lads-sources/emf/`
+
+* ImmediatelyFast
+  Copyright (c) RK_01
+  License: GNU Lesser General Public License v3.0 only (LGPL-3.0-only)
+  License & Notice: `assets/theladscore/licenses/ImmediatelyFast-NOTICE.txt`, `ImmediatelyFast-LGPL-3.0-only.txt`
+  Modified Sources: `META-INF/lads-sources/immediatelyfast/`
+
+* Fast IP Ping
+  Copyright (c) Fallen_Breath
+  License: GNU Lesser General Public License v3.0 only (LGPL-3.0-only)
+  License & Notice: `assets/theladscore/licenses/FastIpPing-NOTICE.txt`, `FastIpPing-LGPL-3.0-only.txt`
+  Modified Sources: `META-INF/lads-sources/fastipping/`
+
+* FixBookGUI
+  License: GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later)
+  License & Notice: `assets/theladscore/licenses/FixBookGUI-NOTICE.txt`, `FixBookGUI-LGPL-3.0-or-later.txt`
+  Modified Sources: `META-INF/lads-sources/fixbookgui/`
+
+* Hovering Hotbar
+  License: GNU Lesser General Public License v2.1 only (LGPL-2.1-only)
+  License & Notice: `assets/theladscore/licenses/HoveringHotbar-NOTICE.txt`, `HoveringHotbar-LGPL-2.1-only.txt`
+  Modified Sources: `META-INF/lads-sources/hoveringhotbar/`
+
+* Signal Loss, Screenshot Viewer & TabTweaks
+  License: GNU Lesser General Public License v3.0 (LGPL-3.0) / MIT
+  License & Notice: `assets/theladscore/licenses/SignalLoss-LGPL-3.0.txt`, `ScreenshotViewer-LGPL-3.0.txt`, `TabTweaks-NOTICE.txt`
+  Modified Sources: `META-INF/lads-sources/signalloss/`, `META-INF/lads-sources/screenshots/`, `META-INF/lads-sources/tabtweaks/`
+
+* Capes & NBT Autocomplete
+  License: Mozilla Public License 2.0 (MPL-2.0)
+  License & Notice: `assets/theladscore/licenses/Capes-NOTICE.txt`, `Capes-MPL-2.0.txt`, `NBTAutocomplete-NOTICE.txt`, `NBTAutocomplete-MPL-2.0.txt`
+  Modified Sources: `META-INF/lads-sources/capes/`, `META-INF/lads-sources/nbtac/`
+
+* Jade (Minecraft 26.2 and 26.3 builds only)
+  Copyright (c) Snownee
+  License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC-BY-NC-SA-4.0)
+  License & Notice: `assets/theladscore/licenses/Jade-NOTICE.txt`, `Jade-CC-BY-NC-SA-4.0.txt`
+  Modified Sources: `META-INF/lads-sources/jade/`
+
+* Controlling & Clumps
+  Copyright (c) Jaredlll08
+  License: MIT License (`assets/theladscore/licenses/Controlling-MIT.txt`, `Clumps-MIT.txt`)
+  Modified Sources: `META-INF/lads-sources/clumps/`
+
+* EntityCulling
+  Copyright (c) tr7zw
+  License: tr7zw / MIT License (`assets/theladscore/licenses/EntityCulling-LICENSE.txt`, `EntityCulling-NOTICE.txt`)
+
+* Ksyxis, LazyAI, Optimized Cushions, QuickPack, World Play Time, Screenshot to Clipboard
+  License: MIT License / Unlicense (see `assets/theladscore/licenses/*-MIT.txt` and `ScreenshotToClipboard-Unlicense.txt`)
+
+* ServerPingerFixer
+  License: Apache License 2.0 (`assets/theladscore/licenses/ServerPingerFixer-Apache-2.0.txt`, `ServerPingerFixer-NOTICE.txt`)

@@ -56,16 +56,10 @@ public abstract class MixinAbstractContainerMenu {
         }
     }
 
-    @Inject(method = "quickMoveStack", at = @At("HEAD"), cancellable = true)
-    private void ladssmp$onQuickMoveStack(Player player, int index, CallbackInfoReturnable<ItemStack> cir) {
-        if (ItemDisablerSystem.shouldBypass(player)) return;
-        if (index >= 0 && index < this.slots.size()) {
-            Slot slot = this.slots.get(index);
-            if (slot != null && ItemDisablerSystem.isDisabled(slot.getItem())) {
-                ServerPlayer sp = player instanceof ServerPlayer s ? s : null;
-                slot.set(ItemDisablerSystem.handleDisabledStackFound(sp, slot.getItem(), "menu_quick_move_" + index));
-                cir.setReturnValue(ItemStack.EMPTY);
-            }
+    @Inject(method = "moveItemStackTo", at = @At("HEAD"), cancellable = true)
+    private void ladssmp$onMoveItemStackTo(ItemStack stack, int startIndex, int endIndex, boolean reverseDirection, CallbackInfoReturnable<Boolean> cir) {
+        if (ItemDisablerSystem.isDisabled(stack)) {
+            cir.setReturnValue(false);
         }
     }
 }

@@ -186,7 +186,7 @@ public final class AntiInjectDetector {
         return null;
     }
 
-    public static void resetDetectionForTest() {
+    static void resetDetectionForTest() {
         DETECTED.set(false);
     }
 }

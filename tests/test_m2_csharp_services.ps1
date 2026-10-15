@@ -4,7 +4,7 @@
 
 $ErrorActionPreference = "Stop"
 
-$workspaceRoot = "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client"
+$workspaceRoot = Split-Path -Parent $PSScriptRoot
 $launcherBinDir = Join-Path $workspaceRoot "TheLadsLauncher\bin\Debug\net8.0-windows"
 $dllPath = Join-Path $launcherBinDir "TheLadsLauncher.dll"
 
@@ -12,7 +12,7 @@ $dllPath = Join-Path $launcherBinDir "TheLadsLauncher.dll"
 [System.AppDomain]::CurrentDomain.add_AssemblyResolve({
     param($sender, $args)
     $name = (New-Object System.Reflection.AssemblyName($args.Name)).Name
-    $candidate = Join-Path "C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\TheLadsLauncher\bin\Debug\net8.0-windows" "$name.dll"
+    $candidate = Join-Path $launcherBinDir "$name.dll"
     if (Test-Path $candidate) {
         return [System.Reflection.Assembly]::LoadFrom($candidate)
     }

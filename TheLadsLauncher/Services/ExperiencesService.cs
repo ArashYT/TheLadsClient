@@ -45,16 +45,16 @@ public static class ExperiencesService
         Id: "lads-smp-reborn-26.3",
         Title: "The Lads SMP Reborn",
         Subtitle: "Official The Lads Modpack",
-        Description: "The official Lads SMP 26.3 experience — featuring Alex's Caves & Mobs, BetterEnd, Biomes O' Plenty, Dungeons & Taverns, Farmer's Delight, Simple Voice Chat, Sodium & Iris, and our custom Lads SMP mod with 13 consolidated QoL tweaks, item disabler, and loot rebalance.",
+        Description: "The Lads SMP is back! This time with fully custom mods, and more polished than ever!",
         McVersion: "26.3",
         Loader: "fabric",
         LoaderVersion: "0.19.5",
-        ModCount: 225,
+        ModCount: 263,
         ServerAddress: "",
         IconAsset: "avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png",
         RecommendedRamMb: 8192,
         PackArchiveUrl: "https://bot.arashyt.ca/packs/lads-smp-reborn-26.3.zip",
-        PackArchiveSha256: "C84A7349E0798F384B48BDAF186441F91B50AB99D54AE90CD539869A0152825C"
+        PackArchiveSha256: "CB3E5BBE2AD254C129AFFFABA68EE14ECDB72E58C83C84B98C5EE40A5898E171"
     );
 
     public const string LadsSmpRebornDevId = "lads-smp-reborn-26.3-dev";
@@ -63,7 +63,7 @@ public static class ExperiencesService
         Id: "zero-smp-1.20.1",
         Title: "Zero SMP",
         Subtitle: "Official The Lads Modpack",
-        Description: "An expansive adventure featuring Alex's Caves, Create machinery, immersive sound physics, dynamic animations, and proximity voice chat. Pre-configured with the official Zero SMP server.",
+        Description: "A modded SMP Owned by Vools, if you like re zero, this is your place hangout!",
         McVersion: "1.20.1",
         Loader: "forge",
         LoaderVersion: "47.4.10",
@@ -71,7 +71,8 @@ public static class ExperiencesService
         ServerAddress: "nikzerosmp.my.pebble.host",
         IconAsset: "avares://TheLadsLauncher/Assets/zero_smp_icon.png",
         RecommendedRamMb: 6144,
-        PackArchiveUrl: "https://bot.arashyt.ca/packs/zero-smp-1.20.1.zip"
+        PackArchiveUrl: "https://bot.arashyt.ca/packs/zero-smp-1.20.1.zip",
+        PackArchiveSha256: "DD70F98EF39D30B247CC2130119994EE90DB6459BEE5E09A2AB3596C353AD64D"
     );
 
     public const string ZeroSmpDevId = "zero-smp-1.20.1-dev";
@@ -121,7 +122,7 @@ public static class ExperiencesService
     {
         if (isBusy) return new ExperienceButtonState("Please wait...", false);
         if (isRunning && !allowMultiInstance) return new ExperienceButtonState("Game Running", false);
-        if (installed) return new ExperienceButtonState($"Play {exp.Title}", true);
+        if (installed) return new ExperienceButtonState("Play", true);
         return new ExperienceButtonState($"Install & Play {exp.Title}", true);
     }
 
@@ -169,6 +170,7 @@ public static class ExperiencesService
                 skipFiles: new[] { "instance.json", RunningGameMarker.FileName });
 
             var srcInstance = GetInstance(baseDirectory, exp.Id);
+            var defaultVersion = string.Equals(exp.Id, LadsSmpReborn.Id, StringComparison.OrdinalIgnoreCase) ? "0.2.1" : "1.0.0";
             var devInstance = new ModpackInstance
             {
                 Id = devId,
@@ -179,7 +181,7 @@ public static class ExperiencesService
                 IconPath = srcInstance?.IconPath ?? "icon.png",
                 CreatedUtc = DateTime.UtcNow,
                 Author = srcInstance?.Author ?? "The Lads",
-                PackVersion = srcInstance?.PackVersion ?? "1.0.0",
+                PackVersion = srcInstance?.PackVersion ?? defaultVersion,
                 MaxRamMb = srcInstance is { MaxRamMb: > 0 } ? srcInstance.MaxRamMb : exp.RecommendedRamMb,
                 Directory = dstDir
             };
@@ -211,6 +213,39 @@ public static class ExperiencesService
     /// <summary>Ensures the Zero SMP server is present in the instance's servers.dat under the given base directory.</summary>
     public static bool EnsureZeroSmpServerInstance(string baseDirectory) =>
         EnsureZeroSmpServer(Path.Combine(InstanceDirectory(baseDirectory, ZeroSmp.Id), "minecraft"));
+
+    private static readonly HttpClient DefaultHttp = CreateDefaultHttp();
+
+    private static readonly HashSet<string> AllowedDownloadHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "cdn.modrinth.com",
+        "edge.forgecdn.net",
+        "mediafilez.forgecdn.net",
+        "github.com",
+        "objects.githubusercontent.com",
+        "raw.githubusercontent.com",
+        "bot.arashyt.ca",
+        "cdn.example.invalid"
+    };
+
+    private static HttpClient CreateDefaultHttp()
+    {
+        var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("TheLadsLauncher/1.0 (https://bot.arashyt.ca)");
+        return client;
+    }
+
+    /// <summary>Installs an Experience instance from a local pack zip file (copying it to the pack archive path first if needed).</summary>
+    public static Task<ModpackInstance> InstallFromZipAsync(ExperienceDefinition exp, string zipPath, string baseDirectory, Action<string>? status, CancellationToken token, HttpClient? http = null, string? instanceIdOverride = null)
+    {
+        var archive = PackArchivePath(baseDirectory, exp.Id);
+        Directory.CreateDirectory(Path.GetDirectoryName(archive)!);
+        if (!SafeFileOps.PathsEqual(Path.GetFullPath(zipPath), Path.GetFullPath(archive)))
+        {
+            File.Copy(zipPath, archive, overwrite: true);
+        }
+        return InstallExperienceAsync(exp, baseDirectory, status, token, http, instanceIdOverride);
+    }
 
     /// <summary>Installs (or reinstalls over) an Experience instance from its pack source. Saves, options and the player's own files stay.</summary>
     public static async Task<ModpackInstance> InstallExperienceAsync(ExperienceDefinition exp, string baseDirectory, Action<string>? status, CancellationToken token, HttpClient? http = null, string? instanceIdOverride = null)
@@ -270,9 +305,15 @@ public static class ExperiencesService
             }
         }, token);
 
+        if (File.Exists(Path.Combine(source, "modrinth.index.json")))
+        {
+            await InstallManifestFilesAsync(source, gameDir, http ?? DefaultHttp, status, token);
+        }
+
         EnsureExperienceServer(gameDir, exp);
 
         var pack = ReadPackInfo(source);
+        var defaultVersion = string.Equals(exp.Id, LadsSmpReborn.Id, StringComparison.OrdinalIgnoreCase) ? "0.2.1" : "1.0.0";
         var instance = new ModpackInstance
         {
             Id = instanceId,
@@ -283,13 +324,22 @@ public static class ExperiencesService
             IconPath = "icon.png",
             CreatedUtc = DateTime.UtcNow,
             Author = "The Lads",
-            PackVersion = pack.Version ?? "1.0.0",
+            PackVersion = pack.Version ?? defaultVersion,
             MaxRamMb = exp.RecommendedRamMb,
             Directory = instDir
         };
         Modpacks.Save(instance);
         // The archive already contains what its patches change; they must not run again on top of the player's choices.
         foreach (var applied in pack.AppliedPatches) ModpackPatchEngine.RecordAppliedPatch(instDir, applied);
+        if (pack.IncludeLadsCore
+            && Environment.GetEnvironmentVariable(ModpackCoreSync.SkipEnvironmentVariable) != "1"
+            && ModpackCoreSync.CoreJars(modsDir).Count == 0
+            && ModpackCoreSync.FindBundledJar(exp.McVersion) is { } bundledCore
+            && File.Exists(bundledCore))
+        {
+            try { File.Copy(bundledCore, Path.Combine(modsDir, ModpackCoreSync.BundledName), overwrite: true); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        }
         ModpackCoreSync.Sync(instance, status: status);
 
         status?.Invoke($"{instanceTitle} instance ready.");
@@ -365,14 +415,20 @@ public static class ExperiencesService
                 await Task.Run(() => ExtractArchive(archive, source, current), token);
             }
         }
-        if (!HasPackFiles(source)) throw new InvalidDataException($"'{source}' has no overrides/ or all_mods/ folder: this is not a Lads pack archive.");
+        if (!HasPackFiles(source)) throw new InvalidDataException($"'{source}' has no overrides/, all_mods/, or modrinth.index.json: this is not a Lads pack archive.");
         return source;
     }
 
-    private static bool HasPackFiles(string source) => Directory.Exists(Path.Combine(source, "overrides")) || Directory.Exists(Path.Combine(source, "all_mods"));
+    private static bool HasPackFiles(string source) =>
+        Directory.Exists(Path.Combine(source, "overrides"))
+        || Directory.Exists(Path.Combine(source, "all_mods"))
+        || File.Exists(Path.Combine(source, "modrinth.index.json"));
 
     private static async Task DownloadArchiveAsync(HttpClient http, Uri url, string archive, string sha256, Action<string>? status, CancellationToken token)
     {
+        if (string.IsNullOrWhiteSpace(sha256))
+            throw new InvalidDataException("A published SHA-256 checksum is required to download the pack archive.");
+
         var part = archive + ".part";
         using (var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token))
         {
@@ -393,17 +449,213 @@ public static class ExperiencesService
                 }
             }
         }
-        if (!string.IsNullOrWhiteSpace(sha256))
+        string actual;
+        await using (var check = File.OpenRead(part)) actual = Convert.ToHexString(await SHA256.HashDataAsync(check, token));
+        if (!actual.Equals(sha256, StringComparison.OrdinalIgnoreCase))
         {
-            string actual;
-            await using (var check = File.OpenRead(part)) actual = Convert.ToHexString(await SHA256.HashDataAsync(check, token));
-            if (!actual.Equals(sha256, StringComparison.OrdinalIgnoreCase))
-            {
-                File.Delete(part);
-                throw new InvalidDataException($"The downloaded pack does not match its published checksum (expected {sha256}, got {actual}).");
-            }
+            File.Delete(part);
+            throw new InvalidDataException($"The downloaded pack does not match its published checksum (expected {sha256}, got {actual}).");
         }
         File.Move(part, archive, overwrite: true);
+    }
+
+    private sealed record JarOverlayEntry(string Path, string OverlayZipPath, string OverlaySha256, string? PatchedSha1, string? PatchedSha512);
+
+    private static async Task InstallManifestFilesAsync(string source, string gameDir, HttpClient http, Action<string>? status, CancellationToken token)
+    {
+        var indexPath = Path.Combine(source, "modrinth.index.json");
+        if (!File.Exists(indexPath)) return;
+
+        MrpackIndex index;
+        await using (var stream = File.OpenRead(indexPath))
+            index = Mrpack.ParseIndex(stream);
+
+        var files = index.Files.Where(f => !f.ClientUnsupported).Select(f => (File: f, Target: Mrpack.SafePath(gameDir, f.Path))).ToList();
+        if (files.DistinctBy(f => f.Target, StringComparer.OrdinalIgnoreCase).Count() != files.Count)
+            throw new InvalidDataException("The modpack lists the same file twice.");
+
+        var overlays = ReadJarOverlays(source);
+        int done = 0;
+
+        await Parallel.ForEachAsync(files, new ParallelOptions { MaxDegreeOfParallelism = 8, CancellationToken = token }, async (item, ct) =>
+        {
+            var target = !File.Exists(item.Target) && File.Exists(item.Target + ".disabled") ? item.Target + ".disabled" : item.Target;
+            var relKey = item.File.Path.Replace('\\', '/');
+
+            if (overlays.TryGetValue(relKey, out var overlay))
+            {
+                VerifyFileSha256(overlay.OverlayZipPath, overlay.OverlaySha256);
+                bool alreadyPatched = File.Exists(target)
+                    && (Mrpack.HashMatches(target, overlay.PatchedSha1, overlay.PatchedSha512)
+                        || OverlayEntriesMatch(target, overlay.OverlayZipPath));
+
+                if (!alreadyPatched)
+                {
+                    if (!(File.Exists(target) && Mrpack.HashMatches(target, item.File.Sha1, item.File.Sha512)))
+                        await DownloadManifestFileAsync(http, item.File, target, ct);
+                    ApplyJarOverlay(target, overlay.OverlayZipPath, overlay.OverlaySha256);
+                }
+            }
+            else
+            {
+                if (!(File.Exists(target) && Mrpack.HashMatches(target, item.File.Sha1, item.File.Sha512)))
+                    await DownloadManifestFileAsync(http, item.File, target, ct);
+            }
+
+            int current = Interlocked.Increment(ref done);
+            status?.Invoke($"Downloading modpack files ({current}/{files.Count}): {Path.GetFileName(item.File.Path)}");
+        });
+    }
+
+    private static async Task DownloadManifestFileAsync(HttpClient http, MrpackFile file, string target, CancellationToken token)
+    {
+        if (file.Sha1 == null && file.Sha512 == null)
+            throw new InvalidDataException($"'{file.Path}' has no cryptographic hash in the modpack.");
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        var temp = $"{target}.{Guid.NewGuid():N}.download";
+        Exception? last = null;
+        foreach (var url in file.Downloads)
+        {
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps || !AllowedDownloadHosts.Contains(uri.Host))
+            {
+                last = new InvalidDataException($"'{url}' is not an allowed https download URL.");
+                continue;
+            }
+            for (int attempt = 1; attempt <= 3; attempt++)
+            {
+                try
+                {
+                    using (var response = await http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, token))
+                    {
+                        response.EnsureSuccessStatusCode();
+                        await using var input = await response.Content.ReadAsStreamAsync(token);
+                        await using var output = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+                        await ClientModInstaller.CopyWithStallTimeoutAsync(input, output, file.Size ?? (1L << 31), TimeSpan.FromSeconds(60), file.Path, token);
+                    }
+                    if (!Mrpack.HashMatches(temp, file.Sha1, file.Sha512))
+                        throw new InvalidDataException($"'{file.Path}' does not match the modpack's hash.");
+                    File.Move(temp, target, overwrite: true);
+                    return;
+                }
+                catch (InvalidDataException e)
+                {
+                    last = e;
+                    break;
+                }
+                catch (Exception e) when (e is HttpRequestException or IOException or TimeoutException && !token.IsCancellationRequested)
+                {
+                    last = e;
+                    if (attempt < 3) await Task.Delay(250 * attempt, token);
+                }
+                finally
+                {
+                    if (File.Exists(temp))
+                    {
+                        try { File.Delete(temp); } catch { }
+                    }
+                }
+            }
+        }
+        throw new InvalidDataException($"Could not download '{file.Path}': {last?.Message ?? "the modpack gives no download for it."}", last);
+    }
+
+    private static Dictionary<string, JarOverlayEntry> ReadJarOverlays(string source)
+    {
+        var map = new Dictionary<string, JarOverlayEntry>(StringComparer.OrdinalIgnoreCase);
+        var manifestPath = Path.Combine(source, "jar-overlays", "manifest.json");
+        if (!File.Exists(manifestPath)) return map;
+
+        using var doc = JsonDocument.Parse(File.ReadAllText(manifestPath));
+        if (!doc.RootElement.TryGetProperty("overlays", out var list) || list.ValueKind != JsonValueKind.Array)
+            return map;
+
+        foreach (var item in list.EnumerateArray())
+        {
+            var relPath = item.TryGetProperty("path", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
+            var overlayRel = item.TryGetProperty("overlayZip", out var oz) && oz.ValueKind == JsonValueKind.String ? oz.GetString() : null;
+            var overlaySha256 = item.TryGetProperty("overlaySha256", out var os) && os.ValueKind == JsonValueKind.String ? os.GetString() : null;
+            if (string.IsNullOrWhiteSpace(relPath) || string.IsNullOrWhiteSpace(overlayRel) || string.IsNullOrWhiteSpace(overlaySha256))
+                throw new InvalidDataException("Invalid entry in jar-overlays/manifest.json.");
+
+            var overlayFullPath = Mrpack.SafePath(source, overlayRel);
+            var patchedSha1 = item.TryGetProperty("patchedSha1", out var s1) && s1.ValueKind == JsonValueKind.String ? s1.GetString() : null;
+            var patchedSha512 = item.TryGetProperty("patchedSha512", out var s512) && s512.ValueKind == JsonValueKind.String ? s512.GetString() : null;
+            map[relPath.Replace('\\', '/')] = new JarOverlayEntry(relPath.Replace('\\', '/'), overlayFullPath, overlaySha256, patchedSha1, patchedSha512);
+        }
+        return map;
+    }
+
+    private static void VerifyFileSha256(string filePath, string expectedSha256)
+    {
+        if (string.IsNullOrWhiteSpace(expectedSha256) || !File.Exists(filePath))
+            throw new InvalidDataException($"Overlay archive '{filePath}' is missing or has no checksum.");
+        using var stream = File.OpenRead(filePath);
+        var actual = Convert.ToHexString(SHA256.HashData(stream));
+        if (!actual.Equals(expectedSha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException($"Overlay archive '{Path.GetFileName(filePath)}' failed SHA-256 verification.");
+    }
+
+    private static bool OverlayEntriesMatch(string targetJar, string overlayZipPath)
+    {
+        try
+        {
+            using var jarZip = ZipFile.OpenRead(targetJar);
+            using var overlayZip = ZipFile.OpenRead(overlayZipPath);
+            foreach (var entry in overlayZip.Entries)
+            {
+                if (entry.FullName.EndsWith('/')) continue;
+                var jarEntry = jarZip.GetEntry(entry.FullName);
+                if (jarEntry == null || jarEntry.Length != entry.Length) return false;
+                using var s1 = entry.Open();
+                using var s2 = jarEntry.Open();
+                using var ms1 = new MemoryStream();
+                using var ms2 = new MemoryStream();
+                s1.CopyTo(ms1);
+                s2.CopyTo(ms2);
+                if (!ms1.GetBuffer().AsSpan(0, (int)ms1.Length).SequenceEqual(ms2.GetBuffer().AsSpan(0, (int)ms2.Length)))
+                    return false;
+            }
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void ApplyJarOverlay(string targetJar, string overlayZipPath, string expectedOverlaySha256)
+    {
+        VerifyFileSha256(overlayZipPath, expectedOverlaySha256);
+        var staged = $"{targetJar}.{Guid.NewGuid():N}.overlay.tmp";
+        try
+        {
+            File.Copy(targetJar, staged, overwrite: true);
+            using (var jarZip = ZipFile.Open(staged, ZipArchiveMode.Update))
+            using (var overlayZip = ZipFile.OpenRead(overlayZipPath))
+            {
+                foreach (var entry in overlayZip.Entries)
+                {
+                    var name = entry.FullName.Replace('\\', '/');
+                    if (name.EndsWith('/')) continue;
+                    if (name.StartsWith('/') || name.Contains(".."))
+                        throw new InvalidDataException($"Unsafe entry '{name}' in jar overlay.");
+                    jarZip.GetEntry(entry.FullName)?.Delete();
+                    jarZip.GetEntry(name)?.Delete();
+                    var dst = jarZip.CreateEntry(name, CompressionLevel.Optimal);
+                    using var srcStream = entry.Open();
+                    using var dstStream = dst.Open();
+                    srcStream.CopyTo(dstStream);
+                }
+            }
+            File.Move(staged, targetJar, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(staged))
+            {
+                try { File.Delete(staged); } catch { }
+            }
+        }
     }
 
     /// <summary>Extracts next to the target and renames, so an interrupted run never leaves a half source behind.</summary>
@@ -428,7 +680,7 @@ public static class ExperiencesService
         Directory.Move(staging, source);
     }
 
-    private sealed record PackInfo(string? Version, IReadOnlyList<string> AppliedPatches);
+    private sealed record PackInfo(string? Version, IReadOnlyList<string> AppliedPatches, bool IncludeLadsCore = false);
 
     private static PackInfo ReadPackInfo(string source)
     {
@@ -439,7 +691,8 @@ public static class ExperiencesService
             var version = root.TryGetProperty("packVersion", out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
             var applied = root.TryGetProperty("appliedPatches", out var a) && a.ValueKind == JsonValueKind.Array
                 ? a.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.String).Select(e => e.GetString()!).ToList() : new List<string>();
-            return new PackInfo(version, applied);
+            bool includeLadsCore = root.TryGetProperty("includeLadsCore", out var lc) && lc.ValueKind == JsonValueKind.True;
+            return new PackInfo(version, applied, includeLadsCore);
         }
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException) { return new PackInfo(null, Array.Empty<string>()); }
     }

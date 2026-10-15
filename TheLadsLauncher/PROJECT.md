@@ -1,9 +1,9 @@
 # Project: The Lads Launcher & Client Massive Expansion
 
 ## Architecture
-- Target 1 (Launcher): C:\Users\Arash\Desktop\Lads Client\TheLadsLauncher_Clean
+- Target 1 (Launcher): <repo-root>\TheLadsLauncher_Clean
 - Tech Stack 1: .NET 8 (Windows), Avalonia UI v12.0.4
-- Target 2 (Client Mod): C:\Users\Arash\Desktop\Lads Client\TheLadsCore
+- Target 2 (Client Mod): <repo-root>\TheLadsCore
 - Tech Stack 2: Java, Fabric Modding API (Minecraft 1.21.2)
 
 ## Milestones

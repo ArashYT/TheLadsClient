@@ -7,12 +7,14 @@
       {
         "fileName": "c2meF-0.2.0+alpha.12-all.jar",
         "sha1": "ad44f615a4b15afd1d6a4d907ccab1c3855451a1",
-        "url": "https://cdn.modrinth.com/data/yE4MbG65/versions/h9trYS7V/c2meF-0.2.0%2Balpha.12-all.jar"
+        "url": "https://cdn.modrinth.com/data/yE4MbG65/versions/h9trYS7V/c2meF-0.2.0%2Balpha.12-all.jar",
+        "sha512": "71d00b03760bddd6caa5c2a55c6394be77b9cd6085d2199d647d216841e9966937f18d9103349723cc2d2944168803440557bdc32d0eec07dd3f8d49d9939c5c"
       },
       {
         "fileName": "crawlondemand-1.20-1.20.1-1.3.0+forge.jar",
         "sha1": "cdd356d07de6b39ffa4e56a45b784fb2fbaaf968",
-        "url": "https://cdn.modrinth.com/data/wcXLQVhg/versions/vYF9TsDY/crawlondemand-1.20-1.20.1-1.3.0%2Bforge.jar"
+        "url": "https://cdn.modrinth.com/data/wcXLQVhg/versions/vYF9TsDY/crawlondemand-1.20-1.20.1-1.3.0%2Bforge.jar",
+        "sha512": "856ad2b060ebd3d524ff02d740d1eb41ec5e6d53c9df6e90d7495d5d98ceee5e861113d6de688a746570ebf0dcf25ed41e544587a3096669ce522b39bc777883"
       }
     ],
     "remove": [

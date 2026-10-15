@@ -15,9 +15,11 @@ SolidCompression=yes
 OutputDir=.
 OutputBaseFilename=LadsClient_Installer_BETA_{#MyAppVersion}
 PrivilegesRequired=lowest
+AppCopyright=NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
 [Files]
 Source: "TheLadsLauncher\bin\Release\net8.0-windows\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "THIRD_PARTY_NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autodesktop}\The Lads Client"; Filename: "{app}\TheLadsLauncher.exe"

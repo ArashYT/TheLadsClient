@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -29,9 +30,17 @@ public final class LocalSkinSource {
 
     private LocalSkinSource() {}
 
+    /** Upgrades Mojang texture URLs from http:// to https://. */
+    public static String upgradeTextureUrl(String url) {
+        if (url != null && url.startsWith("http://textures.minecraft.net/")) {
+            return "https://" + url.substring("http://".length());
+        }
+        return url;
+    }
+
     /** The skin for what the player typed. {@code slim} stays as asked, except for a profile, which has its own model. */
     public static Skin resolve(String input, boolean slim) throws IOException {
-        String source = input.strip();
+        String source = upgradeTextureUrl(input.strip());
         if (source.startsWith("https://") || source.startsWith("http://")) return new Skin(fetch(source), slim);
         if (source.matches("[A-Za-z0-9_]{1,16}") || source.matches("[a-fA-F0-9-]{32,36}")) return profile(source);
         Path file;
@@ -57,7 +66,7 @@ public final class LocalSkinSource {
             }
         }
         Texture texture = texture(text(fetch("https://sessionserver.mojang.com/session/minecraft/profile/" + uuid)));
-        return new Skin(fetch(texture.url()), texture.slim());
+        return new Skin(fetch(upgradeTextureUrl(texture.url())), texture.slim());
     }
 
     /** The skin in a session server profile's {@code textures} property. */
@@ -76,16 +85,64 @@ public final class LocalSkinSource {
         return new Texture(skin.get("url").getAsString(), metadata != null && metadata.has("model") && metadata.get("model").getAsString().equals("slim"));
     }
 
-    /** A page or image from a web server, at most 1 MB; redirects (also http to https, which Mojang's texture server uses) are followed. */
+    /** Validates that a host resolves only to public unicast addresses (blocking loopback, link-local, site-local, multicast, CGNAT, and IPv6 ULA). */
+    static void validatePublicHost(String host) throws IOException {
+        if (host == null || host.isBlank()) throw new IOException("Use an HTTPS image URL");
+        InetAddress[] addresses = InetAddress.getAllByName(host);
+        if (addresses.length == 0) throw new IOException("Could not resolve host " + host);
+        for (InetAddress addr : addresses) {
+            if (isNonPublicAddress(addr)) {
+                throw new IOException("Refusing connection to private or local address");
+            }
+        }
+    }
+
+    static boolean isNonPublicAddress(InetAddress addr) {
+        if (addr.isAnyLocalAddress()
+                || addr.isLoopbackAddress()
+                || addr.isLinkLocalAddress()
+                || addr.isSiteLocalAddress()
+                || addr.isMulticastAddress()) {
+            return true;
+        }
+        byte[] raw = addr.getAddress();
+        if (raw.length == 4) {
+            int b0 = raw[0] & 0xFF;
+            int b1 = raw[1] & 0xFF;
+            // 100.64.0.0/10 (Carrier-Grade NAT) or 169.254.0.0/16 (Link-local / Cloud Metadata) or 0.0.0.0/8
+            if (b0 == 0 || (b0 == 100 && (b1 & 0xC0) == 64) || (b0 == 169 && b1 == 254)) {
+                return true;
+            }
+        } else if (raw.length == 16) {
+            int b0 = raw[0] & 0xFF;
+            // fc00::/7 (IPv6 Unique Local Addresses)
+            if ((b0 & 0xFE) == 0xFC) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** A page or image from an HTTPS web server, at most 1 MB; redirects are validated on every hop. */
     public static byte[] fetch(String url) throws IOException {
+        return fetch(url, false);
+    }
+
+    static byte[] fetch(String url, boolean allowLoopbackHttpForTest) throws IOException {
         URI uri;
         try {
-            uri = URI.create(url);
+            uri = URI.create(upgradeTextureUrl(url));
         } catch (IllegalArgumentException malformed) {
-            throw new IOException("Use an HTTP(S) image URL");
+            throw new IOException("Use an HTTPS image URL");
         }
         for (int redirects = 0; redirects <= 5; redirects++) {
-            if (!"https".equals(uri.getScheme()) && !"http".equals(uri.getScheme())) throw new IOException("Use an HTTP(S) image URL");
+            String scheme = uri.getScheme();
+            if (allowLoopbackHttpForTest) {
+                if (!"https".equals(scheme) && !"http".equals(scheme)) throw new IOException("Use an HTTPS image URL");
+            } else {
+                if (!"https".equals(scheme)) throw new IOException("Use an HTTPS image URL");
+                validatePublicHost(uri.getHost());
+            }
             HttpURLConnection connection = (HttpURLConnection) uri.toURL().openConnection();
             connection.setInstanceFollowRedirects(false);
             connection.setConnectTimeout(10_000);
@@ -96,7 +153,7 @@ public final class LocalSkinSource {
                 if (status == 301 || status == 302 || status == 303 || status == 307 || status == 308) {
                     String location = connection.getHeaderField("Location");
                     if (location == null) throw new IOException("Server redirected nowhere");
-                    uri = uri.resolve(location);
+                    uri = uri.resolve(upgradeTextureUrl(location));
                     continue;
                 }
                 if (status != 200) throw new IOException("Server returned " + status);

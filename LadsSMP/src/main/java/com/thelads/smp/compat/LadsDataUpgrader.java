@@ -66,19 +66,20 @@ public final class LadsDataUpgrader {
 
         try {
             if (isLootRegistry(registryPath)) {
+                boolean isLootTableRoot = "minecraft:loot_table".equals(registryPath) || "loot_table".equals(registryPath);
                 if (config.compat.upgradeLegacyData) {
-                    boolean changed = upgradeLootTableOrElement(root, true);
+                    boolean changed = upgradeLootTableOrElement(root, isLootTableRoot);
                     if (changed) {
                         UPGRADED_LOOT_TABLES.incrementAndGet();
                     }
                 }
-                if (config.compat.filterDisabledFromData) {
+                if (isLootTableRoot && config.compat.filterDisabledFromData) {
                     int removed = stripDisabledLootEntries(root);
                     if (removed > 0) {
                         FILTERED_LOOT_ENTRIES.addAndGet(removed);
                     }
                 }
-                if (config.compat.rebalanceBrokenLootTables && entryId != null) {
+                if (isLootTableRoot && config.compat.rebalanceBrokenLootTables && entryId != null) {
                     int rebalanced = rebalanceSpecificLootTable(entryId, root);
                     if (rebalanced > 0) {
                         FILTERED_LOOT_ENTRIES.addAndGet(rebalanced);
@@ -96,12 +97,57 @@ public final class LadsDataUpgrader {
                         FILTERED_RECIPES.incrementAndGet();
                     }
                 }
+            } else if ("minecraft:advancement".equals(registryPath) || "advancement".equals(registryPath)) {
+                if (config.compat.upgradeLegacyData) {
+                    upgradeAdvancementJson(root);
+                }
             }
         } catch (Exception e) {
             LOGGER.warn("Failed to upgrade/filter registry JSON {} in {}: {}", entryId, registryPath, e.getMessage());
         }
 
         return root;
+    }
+
+    private static void upgradeAdvancementJson(JsonObject root) {
+        if (!root.has("criteria") || !root.get("criteria").isJsonObject()) {
+            return;
+        }
+        JsonObject criteria = root.getAsJsonObject("criteria");
+        for (Map.Entry<String, JsonElement> entry : criteria.entrySet()) {
+            if (!entry.getValue().isJsonObject()) continue;
+            JsonObject crit = entry.getValue().getAsJsonObject();
+            if (!crit.has("conditions") || !crit.get("conditions").isJsonObject()) continue;
+            JsonObject conds = crit.getAsJsonObject("conditions");
+
+            // MC 26.3 renamed player_generates_container_loot condition 'loot_table' -> 'loot_tables'
+            if (conds.has("loot_table") && !conds.has("loot_tables")) {
+                conds.add("loot_tables", conds.remove("loot_table"));
+            }
+
+            // Upgrade legacy array predicates on player/location/entity fields to single LootItemCondition object
+            for (String key : List.of("player", "location", "entity", "source", "projectile", "villager", "zombie", "parent", "partner", "child")) {
+                if (conds.has(key)) {
+                    JsonElement val = conds.get(key);
+                    if (val.isJsonArray()) {
+                        JsonArray arr = val.getAsJsonArray();
+                        upgradeLootTableOrElement(arr, false);
+                        if (arr.isEmpty()) {
+                            conds.remove(key);
+                        } else if (arr.size() == 1) {
+                            conds.add(key, arr.get(0));
+                        } else {
+                            JsonObject allOf = new JsonObject();
+                            allOf.addProperty("type", "minecraft:all_of");
+                            allOf.add("terms", arr);
+                            conds.add(key, allOf);
+                        }
+                    } else if (val.isJsonObject()) {
+                        upgradeLootTableOrElement(val, false);
+                    }
+                }
+            }
+        }
     }
 
     private static boolean isLootRegistry(String registryPath) {
@@ -111,6 +157,23 @@ public final class LadsDataUpgrader {
                 || "predicate".equals(registryPath)
                 || "minecraft:item_modifier".equals(registryPath)
                 || "item_modifier".equals(registryPath);
+    }
+
+    private static boolean isSequenceFunctionObject(JsonObject obj) {
+        if (obj.has("pools") || obj.has("entries") || obj.has("children") || obj.has("rolls")) {
+            return false;
+        }
+        if (obj.has("type") && obj.get("type").isJsonPrimitive()) {
+            if ("minecraft:sequence".equals(normalizeId(obj.get("type").getAsString()))) {
+                return true;
+            }
+        }
+        if (obj.has("function") && obj.get("function").isJsonPrimitive()) {
+            if ("minecraft:sequence".equals(normalizeId(obj.get("function").getAsString()))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -136,13 +199,20 @@ public final class LadsDataUpgrader {
 
         JsonObject obj = element.getAsJsonObject();
 
-        // 1. Upgrade 'functions' -> 'modifier' on LootTable, LootPool, or LootPoolEntryContainer
+        // 1. Upgrade 'functions' -> 'modifier' ONLY on LootTable, LootPool, or LootPoolEntryContainer
+        //    (NEVER on SequenceFunction {"type": "minecraft:sequence", "functions": [...]})
         if (obj.has("functions")) {
-            JsonElement funcs = obj.remove("functions");
-            if (!obj.has("modifier")) {
-                obj.add("modifier", funcs);
+            if (isLootContainer && !isSequenceFunctionObject(obj)) {
+                JsonElement funcs = obj.remove("functions");
+                if (!obj.has("modifier")) {
+                    obj.add("modifier", funcs);
+                }
+                modified = true;
+            } else {
+                if (upgradeFunctionElement(obj.get("functions"))) {
+                    modified = true;
+                }
             }
-            modified = true;
         }
 
         // 2. Upgrade 'modifier' functions array or single function object
@@ -153,14 +223,10 @@ public final class LadsDataUpgrader {
             }
         }
 
-        // 3. Upgrade 'conditions' inside a function or condition (26.3 uses 'conditions' on pools/entries,
-        //    but verify condition objects themselves have upgraded types)
-        if (obj.has("conditions")) {
-            if (upgradeConditionElement(obj.get("conditions"))) {
-                modified = true;
-            }
-        }
-        if (obj.has("condition") && obj.get("condition").isJsonArray()) {
+        // 3. Upgrade 'conditions' array -> 'condition' single object (MC 26.3 LootItemCondition.CODEC)
+        if (convertConditionsArrayToSingleCondition(obj)) {
+            modified = true;
+        } else if (obj.has("condition") && obj.get("condition").isJsonObject()) {
             if (upgradeConditionElement(obj.get("condition"))) {
                 modified = true;
             }
@@ -172,7 +238,7 @@ public final class LadsDataUpgrader {
         }
 
         // 4. If this object itself is a condition object (has string 'condition')
-        if (obj.has("condition") && obj.get("condition").isJsonPrimitive()) {
+        if (obj.has("condition") && obj.get("condition").isJsonPrimitive() && !isLootContainer) {
             if (upgradeSingleConditionObject(obj)) {
                 modified = true;
             }
@@ -185,7 +251,7 @@ public final class LadsDataUpgrader {
             }
         }
 
-        // 6. Recurse into pools, entries, children
+        // 6. Recurse into pools, entries, children, on_pass, on_fail
         if (obj.has("pools") && obj.get("pools").isJsonArray()) {
             JsonArray pools = obj.getAsJsonArray("pools");
             for (JsonElement pool : pools) {
@@ -211,6 +277,42 @@ public final class LadsDataUpgrader {
             }
         }
 
+        return modified;
+    }
+
+    /**
+     * Converts a legacy 'conditions' JsonArray (or a mistakenly array-typed 'condition' field)
+     * into MC 26.3's single-object 'condition' field:
+     * - 0 elements: removes 'conditions'/'condition'
+     * - 1 element: sets 'condition' = arr.get(0)
+     * - 2+ elements: sets 'condition' = {"type": "minecraft:all_of", "terms": arr}
+     */
+    private static boolean convertConditionsArrayToSingleCondition(JsonObject obj) {
+        boolean modified = false;
+        JsonArray condArray = null;
+        if (obj.has("conditions") && obj.get("conditions").isJsonArray()) {
+            condArray = obj.remove("conditions").getAsJsonArray();
+            modified = true;
+        } else if (obj.has("condition") && obj.get("condition").isJsonArray()) {
+            condArray = obj.remove("condition").getAsJsonArray();
+            modified = true;
+        }
+        if (condArray == null) {
+            return false;
+        }
+
+        upgradeConditionElement(condArray);
+
+        if (!obj.has("condition")) {
+            if (condArray.size() == 1) {
+                obj.add("condition", condArray.get(0));
+            } else if (condArray.size() > 1) {
+                JsonObject allOf = new JsonObject();
+                allOf.addProperty("type", "minecraft:all_of");
+                allOf.add("terms", condArray);
+                obj.add("condition", allOf);
+            }
+        }
         return modified;
     }
 
@@ -244,12 +346,12 @@ public final class LadsDataUpgrader {
             }
             modified = true;
         }
-        if (fnObj.has("conditions") && fnObj.get("conditions").isJsonArray()) {
-            JsonElement conds = fnObj.remove("conditions");
-            if (!fnObj.has("condition")) {
-                fnObj.add("condition", conds);
-            }
+        if (convertConditionsArrayToSingleCondition(fnObj)) {
             modified = true;
+        } else if (fnObj.has("condition") && fnObj.get("condition").isJsonObject()) {
+            if (upgradeConditionElement(fnObj.get("condition"))) {
+                modified = true;
+            }
         }
         if (fnObj.has("type") && fnObj.get("type").isJsonPrimitive()) {
             String type = normalizeId(fnObj.get("type").getAsString());
@@ -258,8 +360,8 @@ public final class LadsDataUpgrader {
                 modified = true;
             }
         }
-        if (fnObj.has("condition")) {
-            if (upgradeConditionElement(fnObj.get("condition"))) {
+        if (fnObj.has("functions") && fnObj.get("functions").isJsonArray()) {
+            if (upgradeFunctionElement(fnObj.get("functions"))) {
                 modified = true;
             }
         }
@@ -298,22 +400,25 @@ public final class LadsDataUpgrader {
      * Upgrades legacy 1.20/1.21 loot condition objects to MC 26.3:
      * - "minecraft:block_state_property" -> "minecraft:match_block" ('block' -> 'blocks', 'properties' -> 'state')
      * - "minecraft:alternative" -> "minecraft:any_of"
+     * - Renames 'condition' -> 'type' on condition objects for MC 26.3 LootItemCondition.DIRECT_CODEC
      */
     private static boolean upgradeSingleConditionObject(JsonObject condObj) {
         boolean modified = false;
         String condType = null;
-        String keyField = null;
         if (condObj.has("condition") && condObj.get("condition").isJsonPrimitive()) {
             condType = normalizeId(condObj.get("condition").getAsString());
-            keyField = "condition";
+            if (!condObj.has("type")) {
+                condObj.add("type", condObj.remove("condition"));
+                modified = true;
+            }
         } else if (condObj.has("type") && condObj.get("type").isJsonPrimitive()) {
             condType = normalizeId(condObj.get("type").getAsString());
-            keyField = "type";
         }
         if (condType == null) return false;
 
         if ("minecraft:block_state_property".equals(condType)) {
-            condObj.addProperty(keyField, "minecraft:match_block");
+            condObj.addProperty("type", "minecraft:match_block");
+            condObj.remove("condition");
             if (condObj.has("block") && !condObj.has("blocks")) {
                 condObj.add("blocks", condObj.remove("block"));
             }
@@ -323,13 +428,14 @@ public final class LadsDataUpgrader {
             UPGRADED_LOOT_CONDITIONS.incrementAndGet();
             modified = true;
         } else if ("minecraft:alternative".equals(condType)) {
-            condObj.addProperty(keyField, "minecraft:any_of");
+            condObj.addProperty("type", "minecraft:any_of");
+            condObj.remove("condition");
             UPGRADED_LOOT_CONDITIONS.incrementAndGet();
             modified = true;
         }
 
         // Also check if 'match_block' still has legacy field names
-        if ("minecraft:match_block".equals(condType)) {
+        if ("minecraft:match_block".equals(condType) || "minecraft:block_state_property".equals(condType)) {
             if (condObj.has("block") && !condObj.has("blocks")) {
                 condObj.add("blocks", condObj.remove("block"));
                 modified = true;
@@ -548,7 +654,7 @@ public final class LadsDataUpgrader {
         if (el.isJsonPrimitive()) {
             String val = el.getAsString().trim();
             if (val.startsWith("#")) {
-                return allowTags ? new JsonPrimitive("#" + normalizeId(val.substring(1))) : null;
+                return allowTags ? new JsonPrimitive("#" + remapItemTag(normalizeId(val.substring(1)))) : null;
             }
             String norm = normalizeId(val);
             return isRegisteredItemOrOffline(norm) ? new JsonPrimitive(norm) : null;
@@ -561,7 +667,7 @@ public final class LadsDataUpgrader {
                 return isRegisteredItemOrOffline(itemId) ? new JsonPrimitive(itemId) : null;
             }
             if (allowTags && obj.has("tag") && obj.get("tag").isJsonPrimitive()) {
-                String tagId = normalizeId(obj.get("tag").getAsString());
+                String tagId = remapItemTag(normalizeId(obj.get("tag").getAsString()));
                 return new JsonPrimitive("#" + tagId);
             }
             return null;
@@ -660,6 +766,15 @@ public final class LadsDataUpgrader {
         result.addProperty("id", "minecraft:barrier");
         result.addProperty("count", 1);
         root.add("result", result);
+    }
+
+    private static String remapItemTag(String tagId) {
+        return switch (tagId) {
+            case "ecologics:penguin_tempt_items" -> "ecologics:penguin_food";
+            case "ecologics:squirrel_tempt_items" -> "ecologics:squirrel_food";
+            case "ecologics:coconut_crab_tempt_items" -> "ecologics:coconut_crab_food";
+            default -> tagId;
+        };
     }
 
     public static String normalizeId(String raw) {

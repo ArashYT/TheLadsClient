@@ -7,7 +7,7 @@
       <!-- Section Header -->
       <StackPanel Spacing="4">
         <TextBlock Text="Experiences" FontSize="20" FontWeight="Bold" />
-        <TextBlock Text="Official curated modpacks and servers. Each experience runs as a dedicated, fully isolated instance with its own mods, configs, and worlds."
+        <TextBlock Text="Official Modpacks from the Lads Client!"
                    Foreground="#A0A1AA" FontSize="12" TextWrapping="Wrap" />
       </StackPanel>
 
@@ -22,9 +22,12 @@
           <!-- Title and badges -->
           <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <TextBlock Text="The Lads SMP Reborn" FontSize="22" FontWeight="Bold" />
+              <TextBlock Text="The Lads SMP Reborn" Foreground="{DynamicResource LadsAccent}" FontSize="22" FontWeight="Bold" VerticalAlignment="Center" />
               <Border Background="#2A2B32" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
                 <TextBlock Text="OFFICIAL" Foreground="{DynamicResource LadsAccent}" FontSize="10" FontWeight="Bold" />
+              </Border>
+              <Border x:Name="LadsSmpRebornStatusBadge" Background="#1D2A1F" BorderBrush="#386B42" BorderThickness="1" CornerRadius="4" Padding="8,2" VerticalAlignment="Center">
+                <TextBlock x:Name="LadsSmpRebornStatusBadgeText" Text="Installed" Foreground="#85E89D" FontSize="10" FontWeight="Bold" />
               </Border>
             </StackPanel>
 
@@ -39,38 +42,28 @@
                 <TextBlock Text="225 Mods" Foreground="#B0B2BD" FontSize="11" />
               </Border>
               <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
-                <TextBlock Text="Lads SMP 1.0.0" Foreground="#52A5E0" FontSize="11" />
+                <TextBlock Text="Lads SMP 0.2.1" Foreground="#52A5E0" FontSize="11" />
               </Border>
             </WrapPanel>
 
-            <TextBlock Text="The official Lads SMP 26.3 experience — featuring Alex's Caves &amp; Mobs, BetterEnd, Biomes O' Plenty, Dungeons &amp; Taverns, Farmer's Delight, Simple Voice Chat, Sodium &amp; Iris, and our custom Lads SMP mod with 13 consolidated QoL tweaks, item disabler, and loot rebalance."
-                       Foreground="#999BA5" FontSize="12" TextWrapping="Wrap" MaxWidth="650" />
+            <TextBlock Text="The Lads SMP is back! This time with fully custom mods, and more polished than ever!"
+                       Foreground="#999BA5" FontSize="12" TextWrapping="Wrap" MaxWidth="650" HorizontalAlignment="Left" />
           </StackPanel>
 
-          <!-- Pack Info & Stats Banner -->
+          <!-- Stats Banner -->
           <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#16171A" BorderBrush="#2C2D33" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="0,0,0,16">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <Ellipse Width="8" Height="8" Fill="#50C878" VerticalAlignment="Center" />
-                <TextBlock Text="Pack Version:" Foreground="#7E808A" FontSize="12" VerticalAlignment="Center" />
-                <TextBlock x:Name="LadsSmpRebornVersionText" Text="1.0.0 (Minecraft 26.3)" Foreground="White" FontSize="12" FontWeight="Medium" VerticalAlignment="Center" />
-              </StackPanel>
-
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0">
+            <Grid ColumnDefinitions="Auto,*">
+              <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <TextBlock Text="Allocated RAM:" Foreground="#7E808A" FontSize="12" VerticalAlignment="Center" />
-                <NumericUpDown x:Name="LadsSmpRebornRamBox" Width="120" Height="30" Minimum="2048" Maximum="32768" Increment="512" Value="8192" FormatString="0 MB" />
+                <NumericUpDown x:Name="LadsSmpRebornRamBox" Width="120" Height="30" Minimum="1" Maximum="32" Increment="1" Value="8" FormatString="0 GB" ValueChanged="LadsSmpRebornRamBox_ValueChanged" />
               </StackPanel>
-
-              <Border Grid.Column="3" x:Name="LadsSmpRebornStatusBadge" Background="#1D2A1F" BorderBrush="#386B42" BorderThickness="1" CornerRadius="4" Padding="10,4" VerticalAlignment="Center">
-                <TextBlock x:Name="LadsSmpRebornStatusBadgeText" Text="Installed" Foreground="#85E89D" FontSize="11" FontWeight="SemiBold" />
-              </Border>
             </Grid>
           </Border>
 
           <!-- Status & Progress -->
-          <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Spacing="6" Margin="0,0,0,14">
-            <TextBlock x:Name="LadsSmpRebornStatusText" Text="Ready to play" Foreground="#9C9EA8" FontSize="12" TextWrapping="Wrap" />
-            <ProgressBar x:Name="LadsSmpRebornProgressBar" Height="3" Minimum="0" Maximum="100" Value="0" IsVisible="False" />
+          <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Spacing="6">
+            <TextBlock x:Name="LadsSmpRebornStatusText" Text="" Foreground="#9C9EA8" FontSize="12" TextWrapping="Wrap" IsVisible="False" Margin="0,0,0,8" />
+            <ProgressBar x:Name="LadsSmpRebornProgressBar" Height="3" Minimum="0" Maximum="100" Value="0" IsVisible="False" Margin="0,0,0,10" />
           </StackPanel>
 
           <!-- Action Buttons & Playing As -->
@@ -90,7 +83,7 @@
             </ComboBox>
 
             <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
-              <Button x:Name="LadsSmpRebornPlayBtn" Classes="launch" Content="Play The Lads SMP Reborn" Height="46" MinWidth="175" FontSize="16" FontWeight="Bold" Click="LadsSmpRebornPlay_Click" />
+              <Button x:Name="LadsSmpRebornPlayBtn" Classes="launch" Content="Play" Height="46" MinWidth="136" Padding="28,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" FontWeight="Bold" Click="LadsSmpRebornPlay_Click" />
 
               <Button x:Name="LadsSmpRebornInstancesDropdownBtn" Classes="action" Height="46" Padding="14,0" IsVisible="False" ToolTip.Tip="Manage running The Lads SMP Reborn instances">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -128,9 +121,21 @@
           <!-- Title and badges -->
           <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal" Spacing="8">
-              <TextBlock Text="Zero SMP" FontSize="22" FontWeight="Bold" />
+              <TextBlock Text="Zero SMP" FontFamily="Georgia, Palatino Linotype, Cambria, Times New Roman, serif" FontSize="23" FontWeight="Bold" LetterSpacing="0.6" VerticalAlignment="Center">
+                <TextBlock.Foreground>
+                  <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Color="#FFFFFF" Offset="0.0" />
+                    <GradientStop Color="#D8B4FE" Offset="0.38" />
+                    <GradientStop Color="#9333EA" Offset="0.75" />
+                    <GradientStop Color="#6B21A8" Offset="1.0" />
+                  </LinearGradientBrush>
+                </TextBlock.Foreground>
+              </TextBlock>
               <Border Background="#2A2B32" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
                 <TextBlock Text="OFFICIAL" Foreground="{DynamicResource LadsAccent}" FontSize="10" FontWeight="Bold" />
+              </Border>
+              <Border x:Name="ZeroSmpStatusBadge" Background="#1D2A1F" BorderBrush="#386B42" BorderThickness="1" CornerRadius="4" Padding="8,2" VerticalAlignment="Center">
+                <TextBlock x:Name="ZeroSmpStatusBadgeText" Text="Installed" Foreground="#85E89D" FontSize="10" FontWeight="Bold" />
               </Border>
             </StackPanel>
 
@@ -149,34 +154,30 @@
               </Border>
             </WrapPanel>
 
-            <TextBlock Text="An expansive survival multiplayer modpack featuring Alex's Caves, Create automation, immersive sound physics, dynamic animations, and proximity voice chat. Pre-configured with the official Zero SMP server."
-                       Foreground="#999BA5" FontSize="12" TextWrapping="Wrap" MaxWidth="650" />
+            <TextBlock Text="A modded SMP Owned by Vools, if you like re zero, this is your place hangout!"
+                       Foreground="#999BA5" FontSize="12" TextWrapping="Wrap" MaxWidth="650" HorizontalAlignment="Left" />
           </StackPanel>
 
           <!-- Server & Stats Banner -->
           <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#16171A" BorderBrush="#2C2D33" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="0,0,0,16">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+            <Grid ColumnDefinitions="Auto,*,Auto">
               <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <Ellipse Width="8" Height="8" Fill="#50C878" VerticalAlignment="Center" />
                 <TextBlock Text="Server:" Foreground="#7E808A" FontSize="12" VerticalAlignment="Center" />
                 <TextBlock x:Name="ZeroSmpServerText" Foreground="White" FontSize="12" FontWeight="Medium" VerticalAlignment="Center" />
               </StackPanel>
 
-              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0">
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <TextBlock Text="Allocated RAM:" Foreground="#7E808A" FontSize="12" VerticalAlignment="Center" />
-                <NumericUpDown x:Name="ZeroSmpRamBox" Width="120" Height="30" Minimum="2048" Maximum="32768" Increment="512" Value="6144" FormatString="0 MB" />
+                <NumericUpDown x:Name="ZeroSmpRamBox" Width="120" Height="30" Minimum="1" Maximum="32" Increment="1" Value="6" FormatString="0 GB" ValueChanged="ZeroSmpRamBox_ValueChanged" />
               </StackPanel>
-
-              <Border Grid.Column="3" x:Name="ZeroSmpStatusBadge" Background="#1D2A1F" BorderBrush="#386B42" BorderThickness="1" CornerRadius="4" Padding="10,4" VerticalAlignment="Center">
-                <TextBlock x:Name="ZeroSmpStatusBadgeText" Text="Installed" Foreground="#85E89D" FontSize="11" FontWeight="SemiBold" />
-              </Border>
             </Grid>
           </Border>
 
           <!-- Status & Progress -->
-          <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Spacing="6" Margin="0,0,0,14">
-            <TextBlock x:Name="ZeroSmpStatusText" Text="Ready to play" Foreground="#9C9EA8" FontSize="12" TextWrapping="Wrap" />
-            <ProgressBar x:Name="ZeroSmpProgressBar" Height="3" Minimum="0" Maximum="100" Value="0" IsVisible="False" />
+          <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Spacing="6">
+            <TextBlock x:Name="ZeroSmpStatusText" Text="" Foreground="#9C9EA8" FontSize="12" TextWrapping="Wrap" IsVisible="False" Margin="0,0,0,8" />
+            <ProgressBar x:Name="ZeroSmpProgressBar" Height="3" Minimum="0" Maximum="100" Value="0" IsVisible="False" Margin="0,0,0,10" />
           </StackPanel>
 
           <!-- Action Buttons & Playing As -->
@@ -196,7 +197,7 @@
             </ComboBox>
 
             <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
-              <Button x:Name="ZeroSmpPlayBtn" Classes="launch" Content="Play Zero SMP" Height="46" MinWidth="175" FontSize="16" FontWeight="Bold" Click="ZeroSmpPlay_Click" />
+              <Button x:Name="ZeroSmpPlayBtn" Classes="launch" Content="Play" Height="46" MinWidth="136" Padding="28,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" FontWeight="Bold" Click="ZeroSmpPlay_Click" />
 
               <Button x:Name="ZeroSmpInstancesDropdownBtn" Classes="action" Height="46" Padding="14,0" IsVisible="False" ToolTip.Tip="Manage running Zero SMP instances">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">

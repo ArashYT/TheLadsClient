@@ -89,10 +89,11 @@ try {
         if ($h2 -ne $expH2) { $failures.Add("VC-4 FAILED: $p2 hash mismatch") }
     }
 
-    $null = & "C:\Users\Arash\go\bin\packwiz.exe" refresh
+    $packwizExe = Join-Path $env:USERPROFILE "go\bin\packwiz.exe"
+    $null = & $packwizExe refresh
     if ($LASTEXITCODE -ne 0) { $failures.Add("VC-4 FAILED: packwiz refresh exit code $($LASTEXITCODE)") }
     
-    $listItems = (& "C:\Users\Arash\go\bin\packwiz.exe" list | Where-Object { $_.Trim() -ne "" }).Count
+    $listItems = (& $packwizExe list | Where-Object { $_.Trim() -ne "" }).Count
     if ($listItems -ne 70) {
         $failures.Add("VC-4 FAILED: packwiz list reported $listItems items, expected 70")
     } else {

@@ -86,12 +86,20 @@ class LocalSkinSourceTest {
         server.start();
         try {
             String base = "http://127.0.0.1:" + server.getAddress().getPort();
-            assertArrayEquals(skin, LocalSkinSource.resolve(base + "/skin.png", false).png());
-            assertArrayEquals(skin, LocalSkinSource.fetch(base + "/moved"));
-            assertEquals("Server returned 404", assertThrows(IOException.class, () -> LocalSkinSource.fetch(base + "/missing")).getMessage());
-            assertEquals("Response exceeds 1 MB", assertThrows(IOException.class, () -> LocalSkinSource.fetch(base + "/huge")).getMessage());
-            assertEquals("Use an HTTP(S) image URL", assertThrows(IOException.class, () -> LocalSkinSource.fetch("file:///c:/skin.png")).getMessage());
-            assertEquals("Use an HTTP(S) image URL", assertThrows(IOException.class, () -> LocalSkinSource.fetch("http://bad host/skin.png")).getMessage());
+            // Production fetch/resolve rejects plaintext HTTP and loopback/private addresses (SSRF protection)
+            assertEquals("Use an HTTPS image URL", assertThrows(IOException.class, () -> LocalSkinSource.resolve(base + "/skin.png", false)).getMessage());
+            assertEquals("Refusing connection to private or local address", assertThrows(IOException.class, () -> LocalSkinSource.fetch("https://127.0.0.1/skin.png")).getMessage());
+            assertEquals("Refusing connection to private or local address", assertThrows(IOException.class, () -> LocalSkinSource.fetch("https://169.254.169.254/latest/meta-data")).getMessage());
+            assertEquals("Refusing connection to private or local address", assertThrows(IOException.class, () -> LocalSkinSource.fetch("https://192.168.1.1/skin.png")).getMessage());
+            assertEquals("https://textures.minecraft.net/texture/abc", LocalSkinSource.upgradeTextureUrl("http://textures.minecraft.net/texture/abc"));
+
+            // HTTP transport, redirect following, status handling, and size limit via package-private test hook
+            assertArrayEquals(skin, LocalSkinSource.fetch(base + "/skin.png", true));
+            assertArrayEquals(skin, LocalSkinSource.fetch(base + "/moved", true));
+            assertEquals("Server returned 404", assertThrows(IOException.class, () -> LocalSkinSource.fetch(base + "/missing", true)).getMessage());
+            assertEquals("Response exceeds 1 MB", assertThrows(IOException.class, () -> LocalSkinSource.fetch(base + "/huge", true)).getMessage());
+            assertEquals("Use an HTTPS image URL", assertThrows(IOException.class, () -> LocalSkinSource.fetch("file:///c:/skin.png")).getMessage());
+            assertEquals("Use an HTTPS image URL", assertThrows(IOException.class, () -> LocalSkinSource.fetch("http://bad host/skin.png")).getMessage());
         } finally {
             server.stop(0);
         }

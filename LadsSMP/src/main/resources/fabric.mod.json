@@ -25,5 +25,10 @@
     "minecraft": "~26.3",
     "java": ">=25",
     "fabric-api": "*"
-  }
+  },
+  "provides": [
+    "w2pets",
+    "w2w2",
+    "portalsgui"
+  ]
 }

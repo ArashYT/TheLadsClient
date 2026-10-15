@@ -44,6 +44,7 @@ public sealed class ProtectedAccountStorage : IJsonStorage
             {
                 var node = JsonNode.Parse(File.ReadAllText(_legacyPath)) ?? new JsonObject();
                 Write(node, null);
+                try { File.Delete(_legacyPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
                 return node;
             }
             catch (JsonException)

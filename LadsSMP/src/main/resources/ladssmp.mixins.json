@@ -26,9 +26,12 @@
     "MixinFenceGateBlock",
     "MixinRangedAttribute",
     "MixinRangedBowAttackGoal",
-    "MixinCarvedPumpkinBlock"
+    "MixinCarvedPumpkinBlock",
+    "MixinBiolithTerraBlenderCompat"
   ],
-  "client": [],
+  "client": [
+    "MixinScreenPortalGui"
+  ],
   "injectors": {
     "defaultRequire": 1
   }

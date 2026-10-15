@@ -156,6 +156,7 @@ public partial class MainWindow : Window
         
         Log($"[Settings] Loaded settings from BaseDirectory: {AppDomain.CurrentDomain.BaseDirectory}");
         Log($"[Settings] ModrinthApiUrl: '{settings.ModrinthApiUrl}', CurseForgeApiUrl: '{settings.CurseForgeApiUrl}', OverrideVersion: '{settings.SelectedMinecraftVersionOverride}', FabricVersion: '{settings.FabricVersion}'");
+        AddOfflineAccountBtn.IsVisible = AddOfflineAccountHint.IsVisible = IsDevOfflineAllowed;
         InitializeAuthentication();
 
         // Removed automation Trigger login
@@ -183,7 +184,7 @@ public partial class MainWindow : Window
                 await AddNewAccount();
             });
         }
-        else if (args.Contains("--auto-launch-offline"))
+        else if (IsDevOfflineAllowed && args.Contains("--auto-launch-offline"))
         {
             Log("[AUTOMATION] --auto-launch-offline detected. Triggering LaunchGame...");
             if (!settings.OfflineAccounts.Contains("TestPlayer"))
@@ -2018,9 +2019,11 @@ public partial class MainWindow : Window
         catch (Exception ex) { StatusText.Text = MicrosoftAccountService.DescribeError(ex); }
     }
 
+    private static bool IsDevOfflineAllowed => AuthService.IsDevOfflineAllowed;
+
     private async void AddOfflineAccount_Click(object? sender, RoutedEventArgs e)
     {
-        if (_addingAccount || _launching || _authCts != null) return;
+        if (!IsDevOfflineAllowed || _addingAccount || _launching || _authCts != null) return;
         try
         {
             var dialog = new TheLadsLauncher.Views.AddOfflineAccountDialog();
@@ -2828,8 +2831,8 @@ public partial class MainWindow : Window
             }
         }
         string? fabricError = string.IsNullOrWhiteSpace(FabricVersionBox.Text) ? "Enter a Fabric loader version." : null;
-        string? modrinthError = HttpUrlError(ModrinthApiUrlBox.Text, "The Modrinth API URL");
-        string? curseForgeError = HttpUrlError(CurseForgeApiUrlBox.Text, "The CurseForge API URL");
+        string? modrinthError = ModrinthApiUrlError(ModrinthApiUrlBox.Text);
+        string? curseForgeError = CurseForgeApiUrlError(CurseForgeApiUrlBox.Text);
         bool valid = ShowFieldError(MicrosoftClientIdTextBox, clientIdError) & ShowFieldError(FabricVersionBox, fabricError)
             & ShowFieldError(ModrinthApiUrlBox, modrinthError) & ShowFieldError(ModrinthApiUrlBox_ModTab, modrinthError)
             & ShowFieldError(CurseForgeApiUrlBox, curseForgeError) & ShowFieldError(CurseForgeApiUrlBox_ModTab, curseForgeError);
@@ -3821,7 +3824,11 @@ public partial class MainWindow : Window
 
     private async Task<(bool Updated, string Message)> UpdateUserModAsync(ModInventory inventory, ModInventoryEntry jar)
     {
-        string url = $"{settings.ModrinthApiUrl}/project/{Uri.EscapeDataString(jar.Id)}/version?loaders=[\"fabric\"]&game_versions=[\"{inventory.MinecraftVersion}\"]";
+        string modrinthBase = ContentCatalog.IsTrustedModrinthApiUrl(settings.ModrinthApiUrl)
+            ? settings.ModrinthApiUrl.Trim().TrimEnd('/')
+            : "https://api.modrinth.com/v2";
+        if (!modrinthBase.EndsWith("/v2") && !modrinthBase.Contains("/v2/")) modrinthBase += "/v2";
+        string url = $"{modrinthBase}/project/{Uri.EscapeDataString(jar.Id)}/version?loaders=[\"fabric\"]&game_versions=[\"{inventory.MinecraftVersion}\"]";
         using var response = await _httpClient.GetAsync(url);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             return (false, $"{jar.DisplayName}: Modrinth has no project '{jar.Id}'.");
@@ -3833,13 +3840,16 @@ public partial class MainWindow : Window
         string latestVersion = latest.TryGetProperty("version_number", out var number) ? number.GetString() ?? "?" : "?";
         var file = PrimaryModrinthFile(latest) ?? throw new InvalidDataException($"Modrinth lists no file for {jar.DisplayName} {latestVersion}.");
         string? sha512 = file.TryGetProperty("hashes", out var hashes) && hashes.TryGetProperty("sha512", out var hash) ? hash.GetString() : null;
+        string? sha1 = file.TryGetProperty("hashes", out var hashes1) && hashes1.TryGetProperty("sha1", out var hash1) ? hash1.GetString() : null;
         string installed = await Task.Run(() => FileSha512(jar.FilePath!));
-        if (sha512 != null ? sha512.Equals(installed, StringComparison.OrdinalIgnoreCase) : latestVersion == jar.Version)
+        if (!string.IsNullOrWhiteSpace(sha512) ? sha512.Equals(installed, StringComparison.OrdinalIgnoreCase) : latestVersion == jar.Version)
             return (false, $"{jar.DisplayName} is up to date ({latestVersion}).");
+        if (string.IsNullOrWhiteSpace(sha512) && string.IsNullOrWhiteSpace(sha1))
+            throw new InvalidDataException($"Modrinth lists no checksum for {jar.DisplayName} {latestVersion}.");
         string downloadUrl = file.TryGetProperty("url", out var link) ? link.GetString() ?? "" : "";
         if (downloadUrl.Length == 0) throw new InvalidDataException($"Modrinth lists no download for {jar.DisplayName} {latestVersion}.");
         string fileName = file.TryGetProperty("filename", out var name) ? name.GetString() ?? "" : "";
-        var temp = await DownloadToModCacheAsync(downloadUrl, inventory.GameDirectory, sha512, null);
+        var temp = await DownloadToModCacheAsync(downloadUrl, inventory.GameDirectory, sha512, null, sha1);
         try
         {
             await Task.Run(() => UserModFiles.Install(inventory, temp, fileName, expectedId: jar.Id));
@@ -3867,8 +3877,10 @@ public partial class MainWindow : Window
 
     /// <summary>Downloads into the profile's .lads-mod-cache (the same drive as Mods, so placing it is a rename). A failed or
     /// mismatching download is deleted; Mods is not touched here.</summary>
-    private async Task<string> DownloadToModCacheAsync(string url, string gameDirectory, string? sha512, IProgress<double>? progress)
+    private async Task<string> DownloadToModCacheAsync(string url, string gameDirectory, string? sha512, IProgress<double>? progress, string? sha1 = null)
     {
+        if (string.IsNullOrWhiteSpace(sha512) && string.IsNullOrWhiteSpace(sha1))
+            throw new InvalidDataException("Refusing to install unverified mod download (missing SHA-512/SHA-1 checksum).");
         var cache = Path.Combine(gameDirectory, ".lads-mod-cache");
         Directory.CreateDirectory(cache);
         var temp = Path.Combine(cache, "download-" + Guid.NewGuid().ToString("N") + ".tmp");
@@ -3890,8 +3902,10 @@ public partial class MainWindow : Window
                     if (total > 0) progress?.Report(done * 100.0 / total.Value);
                 }
             }
-            if (sha512 != null && !(await Task.Run(() => FileSha512(temp))).Equals(sha512, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("The download does not match the checksum Modrinth published. Nothing was changed.");
+            if (!string.IsNullOrWhiteSpace(sha512) && !(await Task.Run(() => FileSha512(temp))).Equals(sha512, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The download does not match the SHA-512 checksum published by the provider. Nothing was changed.");
+            if (!string.IsNullOrWhiteSpace(sha1) && !(await Task.Run(() => ContentCatalog.Sha1(temp))).Equals(sha1, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The download does not match the SHA-1 checksum published by the provider. Nothing was changed.");
             return temp;
         }
         catch
@@ -4132,23 +4146,32 @@ public partial class MainWindow : Window
                 Text = "This launcher has no Microsoft application ID configured. Its owner must register The Lads Client and obtain Minecraft API approval before Microsoft accounts can launch.",
                 TextWrapping = TextWrapping.Wrap, FontSize = 14, Foreground = Brushes.LightGray
             });
-            panel.Children.Add(new TextBlock
+            if (IsDevOfflineAllowed)
             {
-                Text = "To try the new title screen now, add a separate offline account. Offline accounts support local play, but cannot join Realms or servers requiring Microsoft authentication.",
-                TextWrapping = TextWrapping.Wrap, FontSize = 13, Foreground = Brushes.LightGray
-            });
-            var buttons = new Grid { ColumnDefinitions = ColumnDefinitions.Parse("*,*,Auto") };
+                panel.Children.Add(new TextBlock
+                {
+                    Text = "To try the new title screen now, add a separate offline account. Offline accounts support local play, but cannot join Realms or servers requiring Microsoft authentication.",
+                    TextWrapping = TextWrapping.Wrap, FontSize = 13, Foreground = Brushes.LightGray
+                });
+            }
+            var buttons = new Grid { ColumnDefinitions = ColumnDefinitions.Parse(IsDevOfflineAllowed ? "*,*,Auto" : "*,Auto") };
             var setup = new Button { Content = "Set up Microsoft login", Height = 38, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
-            var offline = new Button { Content = "Add offline account", Height = 38, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
             var cancel = new Button { Content = "Cancel", Height = 38, Width = 80, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center };
             setup.Click += (_, _) => dialog.Close("setup");
-            offline.Click += (_, _) => dialog.Close("offline");
             cancel.Click += (_, _) => dialog.Close("cancel");
-            Grid.SetColumn(offline, 1);
-            Grid.SetColumn(cancel, 2);
             buttons.Children.Add(setup);
-            buttons.Children.Add(offline);
-            buttons.Children.Add(cancel);
+            if (IsDevOfflineAllowed)
+            {
+                var offline = new Button { Content = "Add offline account", Height = 38, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+                offline.Click += (_, _) => dialog.Close("offline");
+                Grid.SetColumn(offline, 1);
+                Grid.SetColumn(cancel, 2);
+                buttons.Children.Add(offline);
+            }
+            else
+            {
+                Grid.SetColumn(cancel, 1);
+            }
             panel.Children.Add(buttons);
             dialog.Content = panel;
             string choice = await dialog.ShowDialog<string>(this);
@@ -4157,7 +4180,7 @@ public partial class MainWindow : Window
                 NavigateTo("Settings");
                 MicrosoftClientIdTextBox.Focus();
             }
-            else if (choice == "offline")
+            else if (IsDevOfflineAllowed && choice == "offline")
             {
                 NavigateTo("Accounts");
                 AddOfflineAccount_Click(this, new RoutedEventArgs());
@@ -4199,9 +4222,17 @@ public partial class MainWindow : Window
         string selectedUser = ResolveLaunchAccountName();
         string requestedLaunchOverride = _launchAccountOverride;
         bool isOffline = GetAccountSummaries().Any(a => a.type == "offline" && string.Equals(a.username, selectedUser, StringComparison.OrdinalIgnoreCase));
+        if (isOffline && !IsDevOfflineAllowed)
+        {
+            StatusText.Text = "Offline accounts are only available in debug builds. Sign in with a Microsoft account.";
+            NavigateTo("Accounts");
+            return;
+        }
         if (!isOffline && (!Guid.TryParse(settings.MicrosoftClientId, out var configuredId) || configuredId == Guid.Empty))
         {
-            StatusText.Text = "Microsoft login setup required. Add an offline account to try local play.";
+            StatusText.Text = IsDevOfflineAllowed
+                ? "Microsoft login setup required. Add an offline account to try local play."
+                : "Microsoft login setup required.";
             await ShowMicrosoftSetupDialogAsync();
             return;
         }
@@ -4309,6 +4340,8 @@ public partial class MainWindow : Window
             MSession session;
             if (isOffline)
             {
+                if (!IsDevOfflineAllowed)
+                    throw new AccountVerificationException("Offline accounts are only available in debug builds. Sign in with a Microsoft account that owns Minecraft: Java Edition.");
                 session = AccountIdentity.CreateOfflineSession(selectedUser);
             }
             else
@@ -4681,10 +4714,10 @@ public partial class MainWindow : Window
 
     /// <summary>Browse install/update of a mod: downloaded next to Mods, then placed by UserModFiles, which replaces only
     /// your own copy of the same Fabric id (read from the download), refuses pack/LadsCore mods and never overwrites.</summary>
-    private async Task<string?> InstallBrowsedModAsync(ModSearchItem item, string downloadUrl, string fileName, IProgress<double> progress)
+    private async Task<string?> InstallBrowsedModAsync(ModSearchItem item, string downloadUrl, string fileName, string? sha512, string? sha1, IProgress<double> progress)
     {
         var (gameDirectory, version) = ModsTarget();
-        var temp = await DownloadToModCacheAsync(downloadUrl, gameDirectory, null, progress);
+        var temp = await DownloadToModCacheAsync(downloadUrl, gameDirectory, sha512, progress, sha1);
         try
         {
             // A launch or another Mods change that started during the download is writing to Mods right now.
@@ -5610,7 +5643,7 @@ public partial class MainWindow : Window
                 return $"No file of {item.Name} for Minecraft {mcVersion} was found.";
             }
             if (file.Url.Length == 0) return $"The author of {item.Name} allows downloads only on {item.Provider}'s own site.";
-            if (!isResourcePack) return await InstallBrowsedModAsync(item, file.Url, file.FileName, progress);
+            if (!isResourcePack) return await InstallBrowsedModAsync(item, file.Url, file.FileName, file.Sha512, file.Sha1, progress);
             // Resource packs go to the shared folder every version uses; an existing pack is never replaced (a taken name gets " (2)").
             var shared = SharedContentService.Instance;
             Log($"[Installer] Downloading {item.Name} to {shared.ResourcePacksDirectory} from {file.Url}");

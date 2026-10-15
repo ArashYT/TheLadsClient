@@ -8,18 +8,18 @@ Welcome! You are assisting Arash in developing and maintaining **The Lads Client
 
 You have full permission to read, write, and execute files within these directories:
 
-*   **Main Code Directory:** `C:\Users\Arash\Desktop\Lads Client`
+*   **Main Code Directory:** `<repo-root>`
     Contains the custom Fabric mod, C# launcher, Packwiz modpack setup, and build scripts.
-*   **Assets Directory:** `C:\Users\Arash\Desktop\The Lads Client Assets`
+*   **Assets Directory:** `<assets-root>`
     Contains custom assets, textures, rendering scales, and capes.
-*   **Minecraft Execution Instances:** `C:\Users\Arash\curseforge\minecraft\Instances`
+*   **Minecraft Execution Instances:** `%USERPROFILE%\curseforge\minecraft\Instances`
     CurseForge directories where the modpack is run and tested.
 
 ---
 
 ## 2. Project Component Breakdown
 
-Inside the main folder `C:\Users\Arash\Desktop\Lads Client`, the components are organized as follows:
+Inside the main folder `<repo-root>`, the components are organized as follows:
 
 ### A. `TheLadsCore/` (Fabric Mod)
 *   **Language:** Java

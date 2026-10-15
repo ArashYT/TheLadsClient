@@ -4,7 +4,7 @@
 
 Create a standalone Windows Executable installer for The Lads Client BETA 0.14 and publish the release to GitHub (https://github.com/ArashYT/TheLadsClient). The agent team will analyze the repository to determine what components must be distributed and installed.
 
-Working directory: C:\Users\Arash\Desktop\Lads Client
+Working directory: <repo-root>
 Integrity mode: benchmark
 
 ## Requirements
@@ -28,7 +28,7 @@ Create a GitHub release for version BETA 0.14 on the `ArashYT/TheLadsClient` rep
 
 An automated debugging agent loop that iteratively builds and launches The Lads Client game using its launcher, diagnoses startup crashes or errors, applies necessary fixes, and repeats until a clean launch is achieved.
 
-Working directory: c:/Users/Arash/Desktop/Lads Client
+Working directory: <repo-root>
 Integrity mode: benchmark
 
 ## Requirements
@@ -53,7 +53,7 @@ You must iteratively monitor the launch process for any crashes, exceptions, or 
 
 Iteratively launch The Lads Client game, diagnose any crashes or errors, and apply fixes until the game launches successfully without crashing. The process should utilize the local AI Ollama server and GPU resources as necessary to assist with debugging and code generation.
 
-Working directory: c:/Users/Arash/Desktop/Lads Client
+Working directory: <repo-root>
 Integrity mode: benchmark
 
 ## Requirements
@@ -77,7 +77,7 @@ Integrate with and leverage the local Ollama API (e.g., via http://localhost:114
 
 Purge and clean up The Lads Client repository, modernize TheLadsLauncher with multi-version profile management (1.21.1, 26.2, and latest release) and dynamic Java management, and establish multi-version client parity in TheLadsCore with shared user settings.
 
-Working directory: c:\Users\Arash\Desktop\The Lads Client Dev\Lads Client
+Working directory: <repo-root>
 Integrity mode: development
 
 ## Requirements
@@ -106,7 +106,7 @@ Provide an end-to-end automated verification suite that validates the clean repo
 - [ ] `dotnet build TheLadsLauncher.csproj` succeeds with 0 errors and 0 compiler/Avalonia warnings.
 - [ ] Launcher allows selecting between 1.21.1, 26.2, and latest release profiles.
 - [ ] Game settings, accounts, keybinds, and Lads settings are shared across profiles by default unless an isolated profile is selected.
-- [ ] Zero hardcoded paths to `C:\Users\Arash` or static drive roots exist in the launcher codebase.
+- [ ] Zero hardcoded paths to `%USERPROFILE%` or static drive roots exist in the launcher codebase.
 - [ ] Automatically detects or downloads appropriate Java runtimes (Java 21 for 1.21.1, Java 25 for 26.2).
 
 ### Client Core Multi-Version Parity

@@ -4,7 +4,7 @@
 
 Build an integrated, custom GUI settings menu within the `TheLadsCore` mod, accessible via the Pause Menu and Right Shift keybind. The UI should be highly stylized, resembling Lunar Client. In this iteration, recreate the functionality of three specific mods—BetterF3, Dynamic FPS, and PingView—as toggleable modules directly within the new GUI, allowing their original standalone `.jar` files to be deleted.
 
-Working directory: `C:\Users\Arash\curseforge\minecraft\Instances\TheLadsCore`
+Working directory: `%USERPROFILE%\curseforge\minecraft\Instances\TheLadsCore`
 Integrity mode: development
 
 ## Requirements

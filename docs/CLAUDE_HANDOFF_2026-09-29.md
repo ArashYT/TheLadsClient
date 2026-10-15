@@ -65,9 +65,9 @@ Make launcher and in-game requests agree, including changes made while Minecraft
 
 ## 2. Repository and starting point
 
-- Repository: `C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client`
-- Parent workspace: `C:\Users\Arash\Desktop\The Lads Client Dev`
-- Reference instance: `C:\Users\Arash\curseforge\minecraft\Instances\The Lads Client Dev 26.3`
+- Repository: `$HOME\Desktop\The Lads Client Dev\Lads Client`
+- Parent workspace: `$HOME\Desktop\The Lads Client Dev`
+- Reference instance: `$HOME\curseforge\minecraft\Instances\The Lads Client Dev 26.3`
 - Remote: `https://github.com/ArashYT/TheLadsClient`
 - Current release: `https://github.com/ArashYT/TheLadsClient/releases/tag/v1.2.2`
 - Release source branch: `release/1.2.2`
@@ -157,7 +157,7 @@ Existing 26.3 in-game harness:
 $env:LADS_VERIFY_AUTO_WORLD = '1'
 $env:LADS_VERIFY_CAPTURE_MENU = '1'
 $env:LADS_VERIFY_CAPTURE_HUD = '1'
-dotnet run --project TheLadsLauncher.Verification -- 26.3 'C:\Users\Arash\Desktop\The Lads Client Dev\Lads Client' --title
+dotnet run --project TheLadsLauncher.Verification -- 26.3 "$PWD" --title
 ```
 
 For the focused 26.2 requested-feature run, set `$env:LADS_VERIFY_REQUESTS_ONLY = '1'` and change the version argument to `26.2`. Remove that environment variable before a full run. This mode deliberately excludes some broader checks; label it accurately. Existing probes do not prove the new shared-storage/mod-management features; extend verification for the new behavior.

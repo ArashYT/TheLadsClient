@@ -8,7 +8,7 @@
 ## 1. Automated Build & JUnit 5 Test Suite Execution
 
 - **Command Executed**: `.\gradlew.bat build test --info --no-daemon`
-- **Working Directory**: `c:\Users\Arash\Desktop\The Lads Client Dev\Lads Client\LadsSMP`
+- **Working Directory**: `<repo-root>\LadsSMP`
 - **Toolchain**: Eclipse Adoptium JDK `25.0.4.101-hotspot` | Gradle `9.6.0` | Fabric Loom `1.17.21`
 - **Build Output**: `build/libs/ladssmp-1.0.0.jar` (`BUILD SUCCESSFUL`, 0 warnings, 0 errors)
 
@@ -51,8 +51,8 @@
 
 ## 3. Reference Instance Integrity Verification
 
-- **Reference Path**: `C:\Users\Arash\curseforge\minecraft\Instances\Test For Lads SMP 26.3`
+- **Reference Path**: `%USERPROFILE%\curseforge\minecraft\Instances\Test For Lads SMP 26.3`
 - **Verification**: Confirmed **256 `.jar` files** in `mods/` and **709 files** in `config/` remain completely untouched (read-only reference preserved).
-- **Development Instance Path**: `C:\Users\Arash\AppData\Roaming\.theladsclient\instances\lads-smp-26.3-dev`
+- **Development Instance Path**: `%APPDATA%\.theladsclient\instances\lads-smp-26.3-dev`
   - Active mods in `minecraft/mods/`: **`225` `.jar` files** (including `ladssmp-1.0.0.jar`).
   - Consolidated/removed mods archived in `mods-disabled-by-audit/`: **`32` `.jar` files** + `README_DISABLED_MODS.json`.

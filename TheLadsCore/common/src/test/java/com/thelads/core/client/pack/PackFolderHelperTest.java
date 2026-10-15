@@ -55,11 +55,11 @@ public class PackFolderHelperTest {
     @Test
     public void testRelativePackPath() {
         // Direct child of resourcepacks
-        Path rootPack = Path.of("C:/Users/Arash/AppData/Roaming/.minecraft/resourcepacks/AlphaPack.zip");
+        Path rootPack = Path.of("C:/Users/Player/AppData/Roaming/.minecraft/resourcepacks/AlphaPack.zip");
         assertEquals("AlphaPack.zip", PackFolderHelper.getRelativePackPath(rootPack));
 
         // Subfolder child of resourcepacks
-        Path subPack = Path.of("C:/Users/Arash/AppData/Roaming/.minecraft/resourcepacks/PvP/PvPPackOne.zip");
+        Path subPack = Path.of("C:/Users/Player/AppData/Roaming/.minecraft/resourcepacks/PvP/PvPPackOne.zip");
         assertEquals("PvP/PvPPackOne.zip", PackFolderHelper.getRelativePackPath(subPack));
 
         // Deep subfolder child of resourcepacks

@@ -38,7 +38,7 @@ public class ExperiencesServiceTests : IDisposable
         Assert.Equal("fabric", exp.Loader);
         Assert.Equal("0.19.5", exp.LoaderVersion);
         Assert.Equal("avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png", exp.IconAsset);
-        Assert.Equal(225, exp.ModCount);
+        Assert.Equal(263, exp.ModCount);
         Assert.Equal(8192, exp.RecommendedRamMb);
         Assert.StartsWith("https://", exp.PackArchiveUrl);
         Assert.Equal(64, exp.PackArchiveSha256.Length);
@@ -57,6 +57,8 @@ public class ExperiencesServiceTests : IDisposable
         Assert.Equal("nikzerosmp.my.pebble.host", exp.ServerAddress);
         Assert.True(exp.ModCount > 100);
         Assert.True(exp.RecommendedRamMb >= 4096);
+        Assert.StartsWith("https://", exp.PackArchiveUrl);
+        Assert.Equal(64, exp.PackArchiveSha256.Length);
         Assert.Contains(exp, ExperiencesService.AllExperiences);
     }
 
@@ -338,9 +340,9 @@ public class ExperiencesServiceTests : IDisposable
     [Fact]
     public void ZeroSmpButtonState_ReflectsInstalledAndNotInstalledStates()
     {
-        // 1. Installed: Show "Play Zero SMP"
+        // 1. Installed: Show "Play"
         var installed = ExperiencesService.GetZeroSmpButtonState(installed: true);
-        Assert.Equal("Play Zero SMP", installed.Text);
+        Assert.Equal("Play", installed.Text);
         Assert.True(installed.IsEnabled);
         Assert.Null(installed.Hint);
 
@@ -351,7 +353,7 @@ public class ExperiencesServiceTests : IDisposable
         Assert.Null(notInstalled.Hint);
 
         // ExperiencesView delegate matches
-        Assert.Equal("Play Zero SMP", TheLadsLauncher.Views.ExperiencesView.GetButtonState(installed: true).Text);
+        Assert.Equal("Play", TheLadsLauncher.Views.ExperiencesView.GetButtonState(installed: true).Text);
         Assert.Equal("Install & Play Zero SMP", TheLadsLauncher.Views.ExperiencesView.GetButtonState(installed: false).Text);
 
         // Running & busy states
@@ -361,9 +363,9 @@ public class ExperiencesServiceTests : IDisposable
 
         // Multi-instance allowed: Play button remains enabled while already running (unless busy)
         var multiRunning = ExperiencesService.GetZeroSmpButtonState(installed: true, isRunning: true, isBusy: false, allowMultiInstance: true);
-        Assert.Equal("Play Zero SMP", multiRunning.Text);
+        Assert.Equal("Play", multiRunning.Text);
         Assert.True(multiRunning.IsEnabled);
-        Assert.Equal("Play Zero SMP", TheLadsLauncher.Views.ExperiencesView.GetButtonState(installed: true, isRunning: true, isBusy: false, allowMultiInstance: true).Text);
+        Assert.Equal("Play", TheLadsLauncher.Views.ExperiencesView.GetButtonState(installed: true, isRunning: true, isBusy: false, allowMultiInstance: true).Text);
         Assert.True(TheLadsLauncher.Views.ExperiencesView.GetButtonState(installed: true, isRunning: true, isBusy: false, allowMultiInstance: true).IsEnabled);
         Assert.False(ExperiencesService.GetZeroSmpButtonState(installed: true, isRunning: true, isBusy: true, allowMultiInstance: true).IsEnabled);
     }
@@ -448,17 +450,31 @@ public class ExperiencesServiceTests : IDisposable
     public void LadsSmpRebornButtonState_ReflectsInstalledAndNotInstalledStates()
     {
         var installed = ExperiencesService.GetLadsSmpRebornButtonState(installed: true);
-        Assert.Equal("Play The Lads SMP Reborn", installed.Text);
+        Assert.Equal("Play", installed.Text);
         Assert.True(installed.IsEnabled);
 
         var notInstalled = ExperiencesService.GetLadsSmpRebornButtonState(installed: false);
         Assert.Equal("Install & Play The Lads SMP Reborn", notInstalled.Text);
         Assert.True(notInstalled.IsEnabled);
 
-        Assert.Equal("Play The Lads SMP Reborn", TheLadsLauncher.Views.ExperiencesView.GetLadsSmpRebornButtonState(installed: true).Text);
+        Assert.Equal("Play", TheLadsLauncher.Views.ExperiencesView.GetLadsSmpRebornButtonState(installed: true).Text);
         Assert.Equal("Install & Play The Lads SMP Reborn", TheLadsLauncher.Views.ExperiencesView.GetLadsSmpRebornButtonState(installed: false).Text);
         Assert.Equal("Game Running", ExperiencesService.GetLadsSmpRebornButtonState(installed: true, isRunning: true).Text);
         Assert.False(ExperiencesService.GetLadsSmpRebornButtonState(installed: true, isRunning: true).IsEnabled);
+    }
+
+    [Fact]
+    public void ExperiencesRamConversion_UsesBinaryGigabytes()
+    {
+        Assert.Equal(1024, TheLadsLauncher.Views.ExperiencesView.RamGbToBinaryMb(1m, 4096));
+        Assert.Equal(2048, TheLadsLauncher.Views.ExperiencesView.RamGbToBinaryMb(2m, 4096));
+        Assert.Equal(6144, TheLadsLauncher.Views.ExperiencesView.RamGbToBinaryMb(6m, 4096));
+        Assert.Equal(8192, TheLadsLauncher.Views.ExperiencesView.RamGbToBinaryMb(8m, 4096));
+
+        Assert.Equal(1, TheLadsLauncher.Views.ExperiencesView.BinaryMbToRamGb(1024));
+        Assert.Equal(2, TheLadsLauncher.Views.ExperiencesView.BinaryMbToRamGb(2048));
+        Assert.Equal(6, TheLadsLauncher.Views.ExperiencesView.BinaryMbToRamGb(6144));
+        Assert.Equal(8, TheLadsLauncher.Views.ExperiencesView.BinaryMbToRamGb(8192));
     }
 
     [Fact]
@@ -485,4 +501,135 @@ public class ExperiencesServiceTests : IDisposable
         Assert.Equal("0.19.5", dev.LoaderVersion);
         Assert.NotEqual(regular.GameDirectory, dev.GameDirectory);
     }
+
+    [Fact]
+    public async Task DownloadWithoutPublishedSha256_FailsClosed_WithoutSavingArchive()
+    {
+        var handler = new FakeHandler { Body = PackZip(SamplePack) };
+        using var http = new HttpClient(handler);
+        var exp = ExperiencesService.ZeroSmp with
+        {
+            PackArchiveUrl = "https://packs.example.invalid/zero-smp.zip",
+            PackArchiveSha256 = ""
+        };
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => ExperiencesService.EnsurePackSourceAsync(_tempDir, exp, http, null, CancellationToken.None));
+
+        Assert.False(File.Exists(ExperiencesService.PackArchivePath(_tempDir, exp.Id)));
+        Assert.False(File.Exists(ExperiencesService.PackArchivePath(_tempDir, exp.Id) + ".part"));
+    }
+
+    private sealed class RouteHandler : HttpMessageHandler
+    {
+        private readonly System.Collections.Generic.Dictionary<string, byte[]> _routes = new(StringComparer.OrdinalIgnoreCase);
+        public void Add(string url, byte[] body) => _routes[url] = body;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        {
+            var url = request.RequestUri?.ToString() ?? "";
+            if (_routes.TryGetValue(url, out var body))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(body) });
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        }
+    }
+
+    [Fact]
+    public async Task ManifestPack_DownloadsFilesFromCdn_VerifiesHashes_AndAppliesJarOverlays()
+    {
+        var upstreamJarBytes = PackZip(("fabric.mod.json", "{\"schemaVersion\":1,\"id\":\"mod_a\",\"depends\":{\"minecraft\":\"~26.1\"}}"), ("code.txt", "v1"));
+        var overlayZipBytes = PackZip(("fabric.mod.json", "{\"schemaVersion\":1,\"id\":\"mod_a\",\"depends\":{\"minecraft\":\">=26.1\"}}"));
+        var cfJarBytes = PackZip(("META-INF/mods.toml", "modId=\"mod_b\""));
+
+        string upSha1 = Convert.ToHexString(SHA1.HashData(upstreamJarBytes)).ToLowerInvariant();
+        string upSha512 = Convert.ToHexString(SHA512.HashData(upstreamJarBytes)).ToLowerInvariant();
+        string cfSha1 = Convert.ToHexString(SHA1.HashData(cfJarBytes)).ToLowerInvariant();
+        string cfSha512 = Convert.ToHexString(SHA512.HashData(cfJarBytes)).ToLowerInvariant();
+        string overlaySha256 = Convert.ToHexString(SHA256.HashData(overlayZipBytes)).ToLowerInvariant();
+
+        string modrinthUrl = "https://cdn.modrinth.com/data/AABBCCDD/versions/11223344/modA.jar";
+        string cfUrl = "https://edge.forgecdn.net/files/5000/100/modB.jar";
+
+        string indexJson = $$"""
+        {
+          "formatVersion": 1,
+          "game": "minecraft",
+          "versionId": "0.2.1",
+          "name": "The Lads SMP Reborn",
+          "dependencies": {
+            "minecraft": "26.3",
+            "fabric-loader": "0.19.5"
+          },
+          "files": [
+            {
+              "path": "mods/modA.jar",
+              "hashes": { "sha1": "{{upSha1}}", "sha512": "{{upSha512}}" },
+              "downloads": [ "{{modrinthUrl}}" ],
+              "fileSize": {{upstreamJarBytes.Length}}
+            },
+            {
+              "path": "mods/modB.jar",
+              "hashes": { "sha1": "{{cfSha1}}", "sha512": "{{cfSha512}}" },
+              "downloads": [ "{{cfUrl}}" ],
+              "fileSize": {{cfJarBytes.Length}}
+            }
+          ]
+        }
+        """;
+
+        string overlayManifest = $$"""
+        {
+          "formatVersion": 1,
+          "overlays": [
+            {
+              "path": "mods/modA.jar",
+              "overlayZip": "jar-overlays/modA.jar.overlay.zip",
+              "overlaySha256": "{{overlaySha256}}"
+            }
+          ]
+        }
+        """;
+
+        using var packStream = new MemoryStream();
+        using (var zip = new ZipArchive(packStream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            void AddText(string name, string text)
+            {
+                using var w = new StreamWriter(zip.CreateEntry(name).Open(), new UTF8Encoding(false));
+                w.Write(text);
+            }
+            AddText("pack.json", "{\"packId\":\"lads-smp-reborn-26.3\",\"packVersion\":\"0.2.1\",\"appliedPatches\":[]}");
+            AddText("modrinth.index.json", indexJson);
+            AddText("overrides/config/test.toml", "ok=true");
+            AddText("overrides/mods/ladssmp-0.2.1.jar", "first-party");
+            AddText("jar-overlays/manifest.json", overlayManifest);
+            using (var s = zip.CreateEntry("jar-overlays/modA.jar.overlay.zip").Open())
+                s.Write(overlayZipBytes, 0, overlayZipBytes.Length);
+        }
+
+        var archive = ExperiencesService.PackArchivePath(_tempDir, "lads-smp-reborn-26.3");
+        Directory.CreateDirectory(Path.GetDirectoryName(archive)!);
+        File.WriteAllBytes(archive, packStream.ToArray());
+
+        var router = new RouteHandler();
+        router.Add(modrinthUrl, upstreamJarBytes);
+        router.Add(cfUrl, cfJarBytes);
+        using var http = new HttpClient(router);
+
+        var instance = await ExperiencesService.InstallLadsSmpRebornAsync(_tempDir, null, CancellationToken.None, http);
+        var modsDir = Path.Combine(instance.GameDirectory, "mods");
+
+        Assert.True(File.Exists(Path.Combine(modsDir, "ladssmp-0.2.1.jar")));
+        Assert.True(File.Exists(Path.Combine(modsDir, "modB.jar")));
+        Assert.Equal(cfJarBytes, File.ReadAllBytes(Path.Combine(modsDir, "modB.jar")));
+
+        // Verify modA.jar was downloaded and its fabric.mod.json entry was overlaid in-place while preserving code.txt
+        using var modAZip = ZipFile.OpenRead(Path.Combine(modsDir, "modA.jar"));
+        using var fmjReader = new StreamReader(modAZip.GetEntry("fabric.mod.json")!.Open());
+        Assert.Contains(">=26.1", fmjReader.ReadToEnd());
+        using var codeReader = new StreamReader(modAZip.GetEntry("code.txt")!.Open());
+        Assert.Equal("v1", codeReader.ReadToEnd());
+    }
 }
+
+
+

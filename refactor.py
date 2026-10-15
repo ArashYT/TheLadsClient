@@ -1,6 +1,7 @@
 import os
 
-roots = [r"c:\Users\Arash\Desktop\Lads Client\TheLadsCore\src", r"c:\Users\Arash\Desktop\Lads Client\TheLadsClientMod\src"]
+base_dir = os.path.dirname(os.path.abspath(__file__))
+roots = [os.path.join(base_dir, "TheLadsCore", "src"), os.path.join(base_dir, "TheLadsClientMod", "src")]
 
 for root in roots:
     for dirpath, _, filenames in os.walk(root):

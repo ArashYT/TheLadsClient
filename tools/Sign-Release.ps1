@@ -4,7 +4,7 @@
 #   ./tools/Sign-Release.ps1 -Version 1.9.10 [-Key $HOME\Documents\TheLads-release-signing-key.pem]
 param(
     [Parameter(Mandatory)] [string] $Version,
-    [string] $Key = (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'TheLads-release-signing-key.pem'),
+    [string] $Key = $(if ($env:LADS_SIGNING_KEY_PATH) { $env:LADS_SIGNING_KEY_PATH } else { Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'TheLads-release-signing-key.pem' }),
     [string] $Repo = 'ArashYT/TheLadsClient'
 )
 $ErrorActionPreference = 'Stop'

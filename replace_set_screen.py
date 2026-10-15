@@ -1,6 +1,6 @@
 import os
 
-root_dir = r"C:\Users\Arash\Desktop\Lads Client\TheLadsCore\src\main\java"
+root_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TheLadsCore", "src", "main", "java")
 
 for dirpath, _, filenames in os.walk(root_dir):
     for filename in filenames:

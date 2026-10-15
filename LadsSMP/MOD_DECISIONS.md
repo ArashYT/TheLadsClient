@@ -1,7 +1,7 @@
 # The Lads SMP — Mod Decisions, Consolidation & Server Exclusion Guide
 
 > [!NOTE]
-> All **32 mod removals and consolidations** (`256 -> 225` active mod jars) in `C:\Users\Arash\AppData\Roaming\.theladsclient\instances\lads-smp-26.3-dev` are **100% reversible**—every removed or consolidated `.jar` has been archived in `lads-smp-26.3-dev/mods-disabled-by-audit/` along with `README_DISABLED_MODS.json`, and the reference instance at `C:\Users\Arash\curseforge\minecraft\Instances\Test For Lads SMP 26.3` remains completely untouched.
+> All **32 mod removals and consolidations** (`256 -> 225` active mod jars) in `%APPDATA%\.theladsclient\instances\lads-smp-26.3-dev` are **100% reversible**—every removed or consolidated `.jar` has been archived in `lads-smp-26.3-dev/mods-disabled-by-audit/` along with `README_DISABLED_MODS.json`, and the reference instance at `%USERPROFILE%\curseforge\minecraft\Instances\Test For Lads SMP 26.3` remains completely untouched.
 
 ---
 

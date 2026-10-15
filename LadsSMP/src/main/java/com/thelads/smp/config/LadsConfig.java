@@ -102,6 +102,13 @@ public final class LadsConfig {
         /** Consolidates 'golem_spawn_fix': Allow Iron/Snow Golems to spawn even when grass/flowers/carpets are under their arms, preserving playerCreated=true. */
         public boolean golemSpawnFix = true;
 
+        /** Consolidates 'portalsgui': Prevent Nether Portals from force-closing open GUI screens on the client. */
+        public boolean portalsGui = true;
+
+        /** Consolidates 'waystones_teleport_pets': Automatically teleport nearby non-sitting tamed pets with their owner when using a Waystone. */
+        public boolean waystonesTeleportPets = true;
+        public double waystonesPetSearchRadius = 10.0;
+
         /** Exploit protection: Prevent block-carrying or breaking/moving protected blocks (spawners, vaults, trial spawners, Lootr chests). */
         public boolean carryOnProtection = true;
         public List<String> protectedBlockPatterns = new ArrayList<>(List.of(

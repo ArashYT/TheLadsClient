@@ -1,8 +1,8 @@
 # The Lads SMP — Complete Modpack Inventory & Technical Audit (256 Mods)
 
 > [!IMPORTANT]
-> **Reference Instance**: `C:\Users\Arash\curseforge\minecraft\Instances\Test For Lads SMP 26.3` (Strictly Read-Only, 256 Mod Jars, 709 Config Files)  
-> **Target Development Instance**: `C:\Users\Arash\AppData\Roaming\.theladsclient\instances\lads-smp-26.3-dev` (`225` active mod jars including `ladssmp-1.0.0.jar`, `32` consolidated/removed jars archived in `mods-disabled-by-audit/`)  
+> **Reference Instance**: `%USERPROFILE%\curseforge\minecraft\Instances\Test For Lads SMP 26.3` (Strictly Read-Only, 256 Mod Jars, 709 Config Files)  
+> **Target Development Instance**: `%APPDATA%\.theladsclient\instances\lads-smp-26.3-dev` (`225` active mod jars including `ladssmp-1.0.0.jar`, `32` consolidated/removed jars archived in `mods-disabled-by-audit/`)  
 > **Minecraft & Loader Version**: Minecraft `26.3` (Java 25, Classfile version 69.0) | Fabric Loader `0.19.5` | Fabric API `0.163.0+26.3`
 
 ## 1. Executive Audit Summary

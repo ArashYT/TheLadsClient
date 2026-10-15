@@ -130,6 +130,7 @@ public sealed class ContentCatalogTests : IDisposable
         Assert.Equal("pack (2).zip", Path.GetFileName(path));
         Assert.Equal("mine", File.ReadAllText(Path.Combine(folder, "pack.zip")));
         await Assert.ThrowsAsync<ContentSourceException>(() => Catalog().InstallAsync(file with { Sha1 = Sha1("other"u8.ToArray()) }, folder, new SharedContentService(_root)));
+        await Assert.ThrowsAsync<ContentSourceException>(() => Catalog().InstallAsync(file with { Sha1 = null, Sha512 = null }, folder, new SharedContentService(_root)));
         Assert.Equal(new[] { "pack (2).zip", "pack.zip" }, Directory.GetFileSystemEntries(folder).Select(Path.GetFileName).Order());
     }
 
@@ -155,6 +156,7 @@ public sealed class ContentCatalogTests : IDisposable
 
     private void RouteModrinthUpdate(string installedSha1, string newSha1) =>
         _routes["https://api.modrinth.com/v2/version_files/update"] = _ => Json(Fixture("modrinth-version-files-update.json")
+            .Replace("\"sha512\":\"5ceaff9539f1440434a7255a5ede1118b00491f85db5c414fb4463872bd041a590e84275daa3bfaecd52772967f114d09c53dc97070e6d3959752f31d4a63885\",", "")
             .Replace("ad2020339564f4d5e441a68f757f5293a3160fbd", installedSha1).Replace("cf90d965473549d3d642b835071c6472d60bcf7b", newSha1));
 
     [Fact]
@@ -208,6 +210,7 @@ public sealed class ContentCatalogTests : IDisposable
         target = target with { MinecraftVersion = "1.8.9", FolderVersions = new[] { "1.8.9", "26.2", "26.3" } };
         var before = (File.ReadAllText(modern), File.ReadAllText(legacy));
         string Release(string versions) => Fixture("modrinth-version-files-update.json").Replace("\"game_versions\":[\"1.21\",\"1.21.1\"]", $"\"game_versions\":[{versions}]")
+            .Replace("\"sha512\":\"5ceaff9539f1440434a7255a5ede1118b00491f85db5c414fb4463872bd041a590e84275daa3bfaecd52772967f114d09c53dc97070e6d3959752f31d4a63885\",", "")
             .Replace("ad2020339564f4d5e441a68f757f5293a3160fbd", Sha1(oldBytes)).Replace("cf90d965473549d3d642b835071c6472d60bcf7b", Sha1(newBytes));
         _routes["https://api.modrinth.com/v2/version_files/update"] = _ => Json(Release("\"1.8.9\""));
         _routes["https://api.modrinth.com/v2/version_files"] = _ => Json(Release("\"26.2\",\"26.3\""));

@@ -133,4 +133,4 @@ photographs the connect/failed screen (`qa-join`; needs a script step, e.g. `--s
 
 Environment variables behind the options: `LADS_VERIFY_SCRIPT`, `LADS_VERIFY_SCRIPT_TEXT`, `LADS_VERIFY_REMOVE_MODS`, `LADS_VERIFY_CORE_JAR`,
 `LADS_VERIFY_BUILD`, `LADS_VERIFY_NO_BUILD`, `LADS_VERIFY_FRESH_WORLD`, `LADS_VERIFY_LOADER`, `LADS_VERIFY_TIMEOUT_SEC`, `LADS_VERIFY_SCENARIO`,
-`LADS_VERIFY_NO_RESIZE`, `LADS_QA_SLOT`, `LADS_QA_SHARED_ROOT` (default `C:\Users\Arash\Desktop\The Lads Client Dev`).
+`LADS_VERIFY_NO_RESIZE`, `LADS_QA_SLOT`, `LADS_QA_SHARED_ROOT` (default `$HOME\Desktop\The Lads Client Dev`).

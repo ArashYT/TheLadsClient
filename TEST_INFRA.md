@@ -41,7 +41,7 @@ tests/
 
 ### 3.1 PowerShell Runner (Recommended for Windows)
 
-From the project root (`c:\Users\Arash\Desktop\The Lads Client Dev\Lads Client`):
+From the project root (`<repo-root>`):
 
 ```powershell
 # Run the entire test suite (all 4 tiers)

@@ -58,8 +58,8 @@
 | `test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f08_03_shared_servers_dat_synchronization` | **PASSED** | 0.0005s | F8: Shared synchronization handles servers.dat for multiplayer servers. |
 | `test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f08_04_shared_accounts_and_profile_synchronization` | **PASSED** | 0.0005s | F8: Shared synchronization handles lads_accounts.json and lads_profile.json. |
 | `test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f08_05_isolated_profile_skips_shared_synchronization` | **PASSED** | 0.0005s | F8: Isolated profiles (IsIsolated == true) skip shared directory synchronization. |
-| `test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f09_01_zero_hardcoded_user_arash_in_launcher_cs` | **FAILED** | 0.0042s | F9: Zero occurrences of hardcoded 'C:\Users\Arash' in TheLadsLauncher C# files. |
-| `test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f09_02_zero_hardcoded_user_arash_in_launcher_axaml` | **PASSED** | 0.0043s | F9: Zero occurrences of hardcoded 'C:\Users\Arash' in TheLadsLauncher AXAML files. |
+| `test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f09_01_zero_hardcoded_user_arash_in_launcher_cs` | **FAILED** | 0.0042s | F9: Zero occurrences of hardcoded 'C:\Users\<user>' in TheLadsLauncher C# files. |
+| `test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f09_02_zero_hardcoded_user_arash_in_launcher_axaml` | **PASSED** | 0.0043s | F9: Zero occurrences of hardcoded 'C:\Users\<user>' in TheLadsLauncher AXAML files. |
 | `test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f09_03_zero_hardcoded_static_lads_client_root` | **FAILED** | 0.0079s | F9: Zero occurrences of static root 'C:\The Lads Client' in TheLadsLauncher codebase. |
 | `test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f09_04_dynamic_base_directory_resolution` | **PASSED** | 0.0s | F9: PathService defaults dynamically to %APPDATA%/.theladsclient. |
 | `test_tier1_feature_coverage.TestTier1FeatureCoverage.test_f09_05_custom_base_directory_override_supported` | **PASSED** | 0.0s | F9: PathService supports custom base path override via constructor or config. |

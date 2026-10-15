@@ -166,7 +166,7 @@ public class AuthenticationTests
         File.WriteAllText(legacy, "{\"account\":{\"token\":\"test\"}}");
         var storage = new ProtectedAccountStorage(current, legacy);
         Assert.NotNull(storage.ReadAsJsonNode()!["account"]);
-        Assert.Equal("{\"account\":{\"token\":\"test\"}}", File.ReadAllText(legacy));
+        Assert.False(File.Exists(legacy));
         storage.Write(new JsonObject(), null);
         Assert.Empty(new ProtectedAccountStorage(current, legacy).ReadAsJsonNode()!.AsObject());
     }

@@ -34,6 +34,8 @@ public sealed class PatchModFile
     public string FileName { get; set; } = "";
     public string? Url { get; set; }
     public string? Sha1 { get; set; }
+    public string? Sha256 { get; set; }
+    public string? Sha512 { get; set; }
 }
 
 public sealed class PatchKeybinds
@@ -64,6 +66,18 @@ public sealed class PatchConfig
 public static class ModpackPatchEngine
 {
     private const string AppliedPatchesFile = ".lads-applied-patches.json";
+
+    private static readonly HashSet<string> AllowedModDownloadHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "cdn.modrinth.com",
+        "edge.forgecdn.net",
+        "mediafilez.forgecdn.net",
+        "github.com",
+        "objects.githubusercontent.com",
+        "raw.githubusercontent.com",
+        "bot.arashyt.ca",
+        "cdn.example.invalid"
+    };
 
     public static List<string> GetAppliedPatches(string instanceDirectory)
     {
@@ -163,7 +177,15 @@ public static class ModpackPatchEngine
     public static void ApplyConfigPatch(string gameDir, PatchConfig patch)
     {
         if (string.IsNullOrWhiteSpace(patch.File)) return;
-        var filePath = Path.Combine(gameDir, patch.File);
+        string filePath;
+        try
+        {
+            filePath = Mrpack.SafePath(gameDir, patch.File);
+        }
+        catch (Exception ex) when (ex is InvalidDataException or ArgumentException)
+        {
+            return;
+        }
         var dir = Path.GetDirectoryName(filePath);
         if (dir != null) Directory.CreateDirectory(dir);
 
@@ -247,7 +269,15 @@ public static class ModpackPatchEngine
     {
         foreach (var cfg in patch.ConfigPatches ?? new List<PatchConfig>())
         {
-            var filePath = Path.Combine(gameDir, cfg.File);
+            string filePath;
+            try
+            {
+                filePath = Mrpack.SafePath(gameDir, cfg.File);
+            }
+            catch (Exception ex) when (ex is InvalidDataException or ArgumentException)
+            {
+                return false;
+            }
             if (!File.Exists(filePath)) return false;
             if ((cfg.Format ?? "json").ToLowerInvariant() == "json" && cfg.Set != null)
             {
@@ -354,7 +384,7 @@ public static class ModpackPatchEngine
 
     /// <summary>A bare file name: patches come from outside, so no path segments may reach the mods folder.</summary>
     private static bool IsPlainFileName(string name) =>
-        !string.IsNullOrWhiteSpace(name) && name == Path.GetFileName(name) && name is not ("." or "..") && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+        SafeFileOps.IsPlainFileName(name) && name == Path.GetFileName(name) && name is not ("." or "..") && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
 
     private static async Task ApplyModSyncAsync(string gameDir, PatchMods mods, HttpClient? http, Action<string>? status, CancellationToken token)
     {
@@ -383,6 +413,14 @@ public static class ModpackPatchEngine
                 if (!IsPlainFileName(mod.FileName)) continue;
                 var target = Path.Combine(modsDir, mod.FileName);
                 if (File.Exists(target) || File.Exists(target + ".disabled") || !Uri.TryCreate(mod.Url, UriKind.Absolute, out var url) || url.Scheme != Uri.UriSchemeHttps) continue;
+                if (!AllowedModDownloadHosts.Contains(url.Host))
+                {
+                    throw new InvalidDataException($"Refusing to download mod {mod.FileName} from untrusted URL: {mod.Url}");
+                }
+                if (string.IsNullOrWhiteSpace(mod.Sha1) && string.IsNullOrWhiteSpace(mod.Sha256) && string.IsNullOrWhiteSpace(mod.Sha512))
+                {
+                    throw new InvalidDataException($"Refusing to download mod {mod.FileName} without a cryptographic checksum (sha1/sha256/sha512).");
+                }
                 status?.Invoke($"Downloading new mod {mod.FileName}...");
                 var bytes = await http.GetByteArrayAsync(url, token);
                 if (!string.IsNullOrWhiteSpace(mod.Sha1))
@@ -390,7 +428,23 @@ public static class ModpackPatchEngine
                     var hash = Convert.ToHexString(SHA1.HashData(bytes)).ToLowerInvariant();
                     if (!hash.Equals(mod.Sha1, StringComparison.OrdinalIgnoreCase))
                     {
-                        throw new InvalidDataException($"Hash mismatch downloading {mod.FileName}: expected {mod.Sha1}, got {hash}");
+                        throw new InvalidDataException($"SHA-1 mismatch downloading {mod.FileName}: expected {mod.Sha1}, got {hash}");
+                    }
+                }
+                if (!string.IsNullOrWhiteSpace(mod.Sha256))
+                {
+                    var hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+                    if (!hash.Equals(mod.Sha256, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidDataException($"SHA-256 mismatch downloading {mod.FileName}: expected {mod.Sha256}, got {hash}");
+                    }
+                }
+                if (!string.IsNullOrWhiteSpace(mod.Sha512))
+                {
+                    var hash = Convert.ToHexString(SHA512.HashData(bytes)).ToLowerInvariant();
+                    if (!hash.Equals(mod.Sha512, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidDataException($"SHA-512 mismatch downloading {mod.FileName}: expected {mod.Sha512}, got {hash}");
                     }
                 }
                 // Written beside the target and moved in: a cancelled download never leaves a half jar for Forge to choke on.

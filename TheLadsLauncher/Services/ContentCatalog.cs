@@ -18,7 +18,7 @@ namespace TheLadsLauncher.Services;
 public enum ContentKind { Mod, ResourcePack, Shader, DataPack }
 
 /// <summary>One downloadable file. <see cref="Sha1"/> is null only when the source gives no hash.</summary>
-public sealed record ContentFile(string ProjectId, string FileId, string VersionName, string FileName, string Url, string? Sha1, long Size)
+public sealed record ContentFile(string ProjectId, string FileId, string VersionName, string FileName, string Url, string? Sha1, long Size, string? Sha512 = null)
 {
     /// <summary>The Minecraft versions the release supports, as the source lists them.</summary>
     public IReadOnlyList<string> GameVersions { get; init; } = Array.Empty<string>();
@@ -48,6 +48,25 @@ public sealed class ContentCatalog
     public const string UserAgent = "TheLadsLauncher/1.0.0 (contact@thelads.com)";
     public const string MissingKeyMessage = "CurseForge needs an API key, and none is set. Enter yours in Mods > Mod Manager Settings (get one at console.curseforge.com), or search Modrinth.";
 
+    private static readonly HashSet<string> AllowedModrinthHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "api.modrinth.com",
+        "staging-api.modrinth.com"
+    };
+
+    private static readonly HashSet<string> AllowedCurseForgeHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "api.curseforge.com"
+    };
+
+    public static bool IsTrustedModrinthApiUrl(string? url) => IsTrustedApiUrl(url, AllowedModrinthHosts);
+    public static bool IsTrustedCurseForgeApiUrl(string? url) => IsTrustedApiUrl(url, AllowedCurseForgeHosts);
+
+    private static bool IsTrustedApiUrl(string? url, IReadOnlySet<string> allowedHosts) =>
+        Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var uri)
+        && uri.Scheme == Uri.UriSchemeHttps
+        && allowedHosts.Contains(uri.Host);
+
     /// <summary>The key built into this launcher (MSBuild property / environment variable LADS_CURSEFORGE_API_KEY at build
     /// time, see docs/CURSEFORGE_API_KEY.md), or "".</summary>
     public static string BuiltInCurseForgeKey { get; } = typeof(ContentCatalog).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
@@ -60,16 +79,18 @@ public sealed class ContentCatalog
     public ContentCatalog(HttpClient http, string? modrinthApi, string? curseForgeApi, string? curseForgeKey)
     {
         _http = http;
-        _modrinth = ApiBase(modrinthApi, "https://api.modrinth.com/v2", "/v2");
-        _curseForge = ApiBase(curseForgeApi, "https://api.curseforge.com/v1", "/v1");
+        _modrinth = ApiBase(modrinthApi, "https://api.modrinth.com/v2", "/v2", AllowedModrinthHosts);
+        _curseForge = ApiBase(curseForgeApi, "https://api.curseforge.com/v1", "/v1", AllowedCurseForgeHosts);
         _curseForgeKey = curseForgeKey?.Trim() is { Length: > 0 } own ? own : BuiltInCurseForgeKey;
     }
 
     public bool HasCurseForgeKey => _curseForgeKey.Length > 0;
 
-    private static string ApiBase(string? configured, string fallback, string suffix)
+    private static string ApiBase(string? configured, string fallback, string suffix, IReadOnlySet<string> allowedHosts)
     {
-        var url = string.IsNullOrWhiteSpace(configured) ? fallback : configured.Trim().TrimEnd('/');
+        var url = string.IsNullOrWhiteSpace(configured) || !IsTrustedApiUrl(configured, allowedHosts)
+            ? fallback
+            : configured.Trim().TrimEnd('/');
         return url.EndsWith(suffix) || url.Contains(suffix + "/") ? url : url + suffix;
     }
 
@@ -380,9 +401,12 @@ public sealed class ContentCatalog
         if (!version.TryGetProperty("files", out var files) || files.ValueKind != JsonValueKind.Array || files.GetArrayLength() == 0) return null;
         var file = files.EnumerateArray().FirstOrDefault(f => f.TryGetProperty("primary", out var p) && p.ValueKind == JsonValueKind.True);
         if (file.ValueKind == JsonValueKind.Undefined) file = files[0];
+        string? sha1 = file.TryGetProperty("hashes", out var hashes) && hashes.ValueKind == JsonValueKind.Object && Text(hashes, "sha1") is { Length: > 0 } s1 ? s1 : null;
+        string? sha512 = file.TryGetProperty("hashes", out var hashes512) && hashes512.ValueKind == JsonValueKind.Object && Text(hashes512, "sha512") is { Length: > 0 } s512 ? s512 : null;
         return new ContentFile(Text(version, "project_id"), Text(version, "id"), Text(version, "version_number"), Text(file, "filename"), Text(file, "url"),
-            file.TryGetProperty("hashes", out var hashes) && hashes.ValueKind == JsonValueKind.Object ? Text(hashes, "sha1") is { Length: > 0 } s ? s : null : null,
-            file.TryGetProperty("size", out var size) && size.ValueKind == JsonValueKind.Number ? size.GetInt64() : 0) { GameVersions = Strings(version, "game_versions") };
+            sha1,
+            file.TryGetProperty("size", out var size) && size.ValueKind == JsonValueKind.Number ? size.GetInt64() : 0,
+            sha512) { GameVersions = Strings(version, "game_versions") };
     }
 
     // A null downloadUrl means the author does not allow downloads outside CurseForge's own app; that is respected.
@@ -397,7 +421,7 @@ public sealed class ContentCatalog
     }
 
     /// <summary>
-    /// Downloads <paramref name="file"/> into a staging folder inside <paramref name="directory"/>, checks its SHA-1, then moves it
+    /// Downloads <paramref name="file"/> into a staging folder inside <paramref name="directory"/>, checks its SHA-512/SHA-1, then moves it
     /// in under its own name (or "name (2).ext" when taken). Nothing in the folder is replaced. Returns the final path.
     /// </summary>
     public async Task<string> InstallAsync(ContentFile file, string directory, SharedContentService staging, IProgress<double>? progress = null,
@@ -409,13 +433,15 @@ public sealed class ContentCatalog
         return await Task.Run(() => SafeFileOps.MoveToFreeName(temp, directory, file.FileName), cancellationToken);
     }
 
-    /// <summary>Downloads into <paramref name="folder"/> (a staging folder) and checks the SHA-1; a mismatch deletes the download.</summary>
+    /// <summary>Downloads into <paramref name="folder"/> (a staging folder) and checks the SHA-512/SHA-1; a mismatch or missing hash deletes the download.</summary>
     public async Task<string> DownloadVerifiedAsync(ContentFile file, string folder, IProgress<double>? progress, CancellationToken cancellationToken)
     {
         if (!SafeFileOps.IsPlainFileName(file.FileName))
             throw new ContentSourceException($"The download has no usable file name ('{file.FileName}'). Nothing was downloaded.");
         if (file.Url.Length == 0)
             throw new ContentSourceException($"{file.FileName} has no download link: its author allows downloads only on the project's own site.");
+        if (string.IsNullOrWhiteSpace(file.Sha512) && string.IsNullOrWhiteSpace(file.Sha1))
+            throw new ContentSourceException($"The download of {file.FileName} has no published checksum (SHA-512 or SHA-1); it was refused.");
         var temp = Path.Combine(folder, file.FileName);
         try
         {
@@ -435,7 +461,9 @@ public sealed class ContentCatalog
                     if (total > 0) progress?.Report(done * 100.0 / total.Value);
                 }
             }
-            if (file.Sha1 != null && !Sha1(temp).Equals(file.Sha1, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(file.Sha512) && !Sha512(temp).Equals(file.Sha512, StringComparison.OrdinalIgnoreCase))
+                throw new ContentSourceException($"The download of {file.FileName} does not match its SHA-512; it was deleted and nothing was changed.");
+            if (!string.IsNullOrWhiteSpace(file.Sha1) && !Sha1(temp).Equals(file.Sha1, StringComparison.OrdinalIgnoreCase))
                 throw new ContentSourceException($"The download of {file.FileName} does not match its SHA-1; it was deleted and nothing was changed.");
             return temp;
         }
@@ -452,6 +480,12 @@ public sealed class ContentCatalog
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, 1 << 16, FileOptions.SequentialScan);
         return Convert.ToHexString(SHA1.HashData(stream)).ToLowerInvariant();
+    }
+
+    public static string Sha512(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, 1 << 16, FileOptions.SequentialScan);
+        return Convert.ToHexString(SHA512.HashData(stream)).ToLowerInvariant();
     }
 
     /// <summary>CurseForge's file fingerprint: MurmurHash2 (seed 1) of the file without its whitespace bytes (tab, LF, CR, space).</summary>

@@ -63,6 +63,7 @@ public final class ConsolidatedFeatures {
     public static void init() {
         applyAttributeFixes();
         registerVillagerNaming();
+        registerWaystonesTeleportPets();
     }
 
     /**
@@ -254,5 +255,54 @@ public final class ConsolidatedFeatures {
                 || state.is(Blocks.FERN)
                 || state.is(Blocks.LARGE_FERN)
                 || state.is(Blocks.DEAD_BUSH);
+    }
+
+    /**
+     * Consolidates 'waystones_teleport_pets': Hooks Waystones' WaystoneTeleportEvent.Before.EVENT
+     * so non-sitting tamed TamableAnimal pets within waystonesPetSearchRadius teleport with their owner.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static void registerWaystonesTeleportPets() {
+        try {
+            if (!net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("waystones")) {
+                return;
+            }
+            Class<?> beforeEventClass = Class.forName("net.blay09.mods.waystones.api.event.WaystoneTeleportEvent$Before");
+            Object eventMapper = beforeEventClass.getField("EVENT").get(null);
+            java.lang.reflect.Method registerMethod = eventMapper.getClass().getMethod("register", Object.class);
+            java.lang.reflect.Method getContextMethod = beforeEventClass.getMethod("getContext");
+
+            java.util.function.Consumer consumer = (event) -> {
+                try {
+                    LadsConfig.FeatureSettings cfg = LadsConfig.get().features;
+                    if (!cfg.waystonesTeleportPets) return;
+                    Object context = getContextMethod.invoke(event);
+                    if (context == null) return;
+                    java.lang.reflect.Method getEntityMethod = context.getClass().getMethod("getEntity");
+                    java.lang.reflect.Method addEntityMethod = context.getClass().getMethod("addAdditionalEntity", net.minecraft.world.entity.Entity.class);
+                    Object entityObj = getEntityMethod.invoke(context);
+                    if (!(entityObj instanceof net.minecraft.world.entity.player.Player player)) {
+                        return;
+                    }
+                    AABB searchBox = player.getBoundingBox().inflate(cfg.waystonesPetSearchRadius);
+                    List<net.minecraft.world.entity.TamableAnimal> pets = player.level().getEntitiesOfClass(
+                            net.minecraft.world.entity.TamableAnimal.class, searchBox, p -> true);
+                    for (net.minecraft.world.entity.TamableAnimal pet : pets) {
+                        if (pet.isInSittingPose()) continue;
+                        if (pet.isTame()) {
+                            net.minecraft.world.entity.LivingEntity owner = pet.getOwner();
+                            if (owner != null && owner.getUUID().equals(player.getUUID())) {
+                                addEntityMethod.invoke(context, pet);
+                            }
+                        }
+                    }
+                } catch (Throwable ignored) {
+                }
+            };
+            registerMethod.invoke(eventMapper, consumer);
+            LOGGER.info("Registered WaystonesTeleportPets listener on WaystoneTeleportEvent.Before.EVENT");
+        } catch (Throwable t) {
+            LOGGER.debug("Waystones API not available for pet teleport hook: {}", t.getMessage());
+        }
     }
 }

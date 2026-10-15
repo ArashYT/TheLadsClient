@@ -110,6 +110,15 @@ reconstructed.txt
 scoreboard.txt
 search_results.txt
 THREADS_USED.txt
+xbox_screenshot.png
+screenshot.png
+debug_login.txt
+windows.txt
+yahoo_clip.txt
+get_yahoo_code.py
+TheLadsLauncher/*.py
+*.pdb
+*.pem
 
 # --- AI & Agent Metadata ---
 .agents/

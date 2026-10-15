@@ -7,32 +7,38 @@
       {
         "fileName": "proper_ping-1.20.1-1.0.0.jar",
         "sha1": "b47454d04e599b01cd3807b065f3e20644bc6ac9",
-        "url": "https://cdn.modrinth.com/data/1SvzcA6G/versions/j4ny4OP7/proper_ping-1.20.1-1.0.0.jar"
+        "url": "https://cdn.modrinth.com/data/1SvzcA6G/versions/j4ny4OP7/proper_ping-1.20.1-1.0.0.jar",
+        "sha512": "af5321d9f7b3e7aa3ffd9180fe00e396781ac4f2ae95508bcedcde6b3ae4c2a7e376a98c02b930521956f600de40c8ba3ddda229057ce4831986bb41c1fd544e"
       },
       {
         "fileName": "miku-plushie-2.0.1-1.20.1.jar",
         "sha1": "938ced2540351cfa3f109e7f68ea2b0e125b975e",
-        "url": "https://cdn.modrinth.com/data/LnqZM7XU/versions/SpMweLhu/miku-plushie-2.0.1-1.20.1.jar"
+        "url": "https://cdn.modrinth.com/data/LnqZM7XU/versions/SpMweLhu/miku-plushie-2.0.1-1.20.1.jar",
+        "sha512": "77cfdf6e697c8a2e8d52993122fa829b589d97f39a46beec0e2e33db350a1ab1600482740a9a62769184f9520ea58dab6546b668d1e342c630ade0a9a87a02ea"
       },
       {
         "fileName": "mcef-forge-2.1.6-1.20.1.jar",
         "sha1": "6d9fa1433d509be242d1d74282d02a0fbebde110",
-        "url": "https://cdn.modrinth.com/data/TObQ0HxZ/versions/x91l6OKB/mcef-forge-2.1.6-1.20.1.jar"
+        "url": "https://cdn.modrinth.com/data/TObQ0HxZ/versions/x91l6OKB/mcef-forge-2.1.6-1.20.1.jar",
+        "sha512": "6df8c8e70ab15b3662404a3a398c18689fb7591e84e1a913d8939bee144f030cd2aeaee4e68f1ed159881a59796a37a7f628dd442e6ba7836005e14ad7b9704d"
       },
       {
         "fileName": "customjukeboxdiscs-1.20.1-0.4.0.jar",
         "sha1": "abea70180eb8af15f2a565199022a7129e54e2a7",
-        "url": "https://edge.forgecdn.net/files/9036/103/customjukeboxdiscs-1.20.1-0.4.0.jar"
+        "url": "https://edge.forgecdn.net/files/9036/103/customjukeboxdiscs-1.20.1-0.4.0.jar",
+        "sha512": "6ea563e0f88f18a4ce73defb25495bb7de9c5c714be56675125d1ed582130d9be8cd926a435618d6a128b13223565819876911c7b5c8a5bae13c75e51b391388"
       },
       {
         "fileName": "webdisplays-2.0.2-1.20.1.jar",
         "sha1": "f05566e3b898de8542fa7fa79aebd2cff69b89e6",
-        "url": "https://cdn.modrinth.com/data/bRa1UAVZ/versions/DHWqG6SF/webdisplays-2.0.2-1.20.1.jar"
+        "url": "https://cdn.modrinth.com/data/bRa1UAVZ/versions/DHWqG6SF/webdisplays-2.0.2-1.20.1.jar",
+        "sha512": "a7b1369d52b61647307b9217ddc5faa17b8938561ee2df00c9434cb703a0e18b3cc0acc14afc597195e97ed539d91dbc88f2f50b28661ab0799cfa9585d4b064"
       },
       {
         "fileName": "crawl-0.12.0.jar",
         "sha1": "b8ae38f022751a45900af7cd49737bb11e524fe9",
-        "url": "https://cdn.modrinth.com/data/H1JOVjhn/versions/G7rwJQKo/crawl-0.12.0.jar"
+        "url": "https://cdn.modrinth.com/data/H1JOVjhn/versions/G7rwJQKo/crawl-0.12.0.jar",
+        "sha512": "9d60eaedcbdae930a06baa04422a77f13a90f54764be8003aa1398b79f7d7d71db787c2e5d39cde69a23fcda12ba3e891bfcd16d523b43cb9b381cad16f8ad53"
       }
     ],
     "remove": [
