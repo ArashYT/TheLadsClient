@@ -80,7 +80,7 @@ if ($newNames.Count -gt 0 -and -not $SkipUrlLookup) {
     try {
         $body = @{ hashes = @($newNames | ForEach-Object { $currentMods[$_] }); algorithm = "sha1" } | ConvertTo-Json -Compress
         $found = Invoke-RestMethod -Method Post -Uri "https://api.modrinth.com/v2/version_files" -Body $body `
-            -ContentType "application/json" -UserAgent "TheLadsClient-modpack-manager/1.9.7"
+            -ContentType "application/json" -UserAgent "TheLadsClient-modpack-manager/1.9.8"
         foreach ($prop in $found.PSObject.Properties) {
             $file = @($prop.Value.files | Where-Object { $_.hashes.sha1 -eq $prop.Name })[0]
             if ($file) { $modrinthUrls[$prop.Name] = $file.url }
