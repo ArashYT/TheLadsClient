@@ -21,10 +21,11 @@ public final class ScreenshotMixin {
                 mc.execute(() -> mc.gui.toastManager().addToast(new NativeScreenshotToast(file)));
             }
         } catch (Throwable ignored) {}
-        if (!ScreenshotViewer.active()) return original;
-        var styled = original.withStyle(style -> style.withClickEvent(new ScreenshotClickEvent(file)).withHoverEvent(new HoverEvent.ShowText(
-            ScreenshotViewerUtils.ofSupplied(() -> ScreenshotViewer.active() && ScreenshotViewer.getInstance().getConfig().getOrFallback(
-                ScreenshotViewerOptions.REDIRECT_SCREENSHOT_CHAT_LINKS, false) ? ScreenshotViewerTexts.REDIRECT_TO_SCREENSHOT_MANAGER : null))));
+        var styled = ScreenshotViewer.active()
+            ? original.withStyle(style -> style.withClickEvent(new ScreenshotClickEvent(file)).withHoverEvent(new HoverEvent.ShowText(
+                ScreenshotViewerUtils.ofSupplied(() -> ScreenshotViewer.active() && ScreenshotViewer.getInstance().getConfig().getOrFallback(
+                    ScreenshotViewerOptions.REDIRECT_SCREENSHOT_CHAT_LINKS, false) ? ScreenshotViewerTexts.REDIRECT_TO_SCREENSHOT_MANAGER : null))))
+            : original;
         if (com.thelads.core.v26_2.feature.NativeQualityOfLife.enabled("Chat") && com.thelads.core.v26_2.feature.NativeQualityOfLife.bool("Chat", "Screenshot Link Buttons", true)) {
             return ScreenshotViewerUtils.appendScreenshotButtons(styled, file);
         }

@@ -15,9 +15,9 @@
                     </Border>
                 </Grid>
                 <Grid Grid.Row="1" ColumnDefinitions="*,204" Margin="0,20,0,22">
-                    <StackPanel VerticalAlignment="Center" Spacing="10">
+                    <StackPanel VerticalAlignment="Center" Spacing="10" Margin="0,0,16,0">
                         <TextBlock Text="Starting&#10;Minecraft." Foreground="#F4F6FB" FontSize="34" FontWeight="SemiBold" LineHeight="39" />
-                        <TextBlock Text="Getting your game ready." Foreground="#858DA1" FontSize="11" />
+                        <TextBlock x:Name="SplashDetailText" Text="Launching Java Virtual Machine..." Foreground="#858DA1" FontSize="11" TextTrimming="CharacterEllipsis" MaxLines="2" TextWrapping="Wrap" />
                     </StackPanel>
                     <Border Grid.Column="1" x:Name="ArtworkCard" Height="136" CornerRadius="4" BorderBrush="#303137" BorderThickness="1" ClipToBounds="True" VerticalAlignment="Center" RenderTransformOrigin="50%,50%" Background="#1D1E22">
                         <Border.RenderTransform>
@@ -33,7 +33,7 @@
                 <StackPanel Grid.Row="2" Spacing="12">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <Border x:Name="ActivityDot" Width="6" Height="6" CornerRadius="3" Background="{DynamicResource LadsAccent}" VerticalAlignment="Center" Margin="0,0,9,0" />
-                        <TextBlock Grid.Column="1" x:Name="SplashStatusText" Text="Starting Minecraft" Foreground="#D6DCE8" FontSize="12" FontWeight="Medium" />
+                        <TextBlock Grid.Column="1" x:Name="SplashStatusText" Text="Starting Java Virtual Machine..." Foreground="#D6DCE8" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
                         <TextBlock Grid.Column="2" x:Name="ElapsedText" Text="0:00" Foreground="#737D92" FontSize="11" VerticalAlignment="Center" />
                     </Grid>
                     <Border x:Name="ProgressTrack" Height="4" CornerRadius="2" Background="#252A37" ClipToBounds="True">

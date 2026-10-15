@@ -65,6 +65,9 @@ public final class Chat189 {
         return new ChatComponentText("").appendSibling(prefix).appendSibling(message);
     }
 
+    private static final String ACTION_COPY = "lads-screenshot:copy:";
+    private static final String ACTION_IMGUR = "lads-screenshot:imgur:";
+
     private static void screenshotButtons(IChatComponent message) {
         if (!(message instanceof ChatComponentTranslation)) return;
         ChatComponentTranslation success = (ChatComponentTranslation) message;
@@ -75,13 +78,35 @@ public final class Chat189 {
         File file = new File(open.getValue());
         File dir = file.getAbsoluteFile().getParentFile();
         if (dir == null) return;
-        message.appendSibling(button(" [Open File]", EnumChatFormatting.GREEN, file, "Open screenshot file"))
-            .appendSibling(button(" [Open Folder]", EnumChatFormatting.AQUA, dir, "Open screenshots folder"));
+        message.appendSibling(actionButton(" [Copy]", EnumChatFormatting.GOLD, ACTION_COPY + file.getAbsolutePath(), "Copy image to clipboard"))
+            .appendSibling(button(" [Open File]", EnumChatFormatting.GREEN, file, "Open screenshot file"))
+            .appendSibling(button(" [Open Folder]", EnumChatFormatting.AQUA, dir, "Open screenshots folder"))
+            .appendSibling(actionButton(" [Upload to Imgur]", EnumChatFormatting.LIGHT_PURPLE, ACTION_IMGUR + file.getAbsolutePath(), "Upload to Imgur and copy link"));
+    }
+
+    public static boolean handleClick(IChatComponent component) {
+        if (component == null || component.getChatStyle() == null) return false;
+        ClickEvent click = component.getChatStyle().getChatClickEvent();
+        if (click == null || click.getAction() != ClickEvent.Action.OPEN_FILE || click.getValue() == null) return false;
+        String value = click.getValue();
+        if (value.startsWith(ACTION_COPY)) {
+            Screenshots189.copyToClipboard(new File(value.substring(ACTION_COPY.length())));
+            return true;
+        }
+        if (value.startsWith(ACTION_IMGUR)) {
+            Screenshots189.uploadToImgur(new File(value.substring(ACTION_IMGUR.length())));
+            return true;
+        }
+        return false;
     }
 
     private static IChatComponent button(String label, EnumChatFormatting color, File target, String hover) {
+        return actionButton(label, color, target.getAbsolutePath(), hover);
+    }
+
+    private static IChatComponent actionButton(String label, EnumChatFormatting color, String openFileValue, String hover) {
         IChatComponent button = new ChatComponentText(label);
-        button.getChatStyle().setColor(color).setChatClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, target.getAbsolutePath()))
+        button.getChatStyle().setColor(color).setChatClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, openFileValue))
             .setChatHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ChatComponentText(hover)));
         return button;
     }

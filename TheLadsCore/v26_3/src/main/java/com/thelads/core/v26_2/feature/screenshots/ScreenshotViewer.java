@@ -44,7 +44,7 @@ public final class ScreenshotViewer {
         ModuleSupport.registerBuiltIn("BetterScreenshots");
         var module = NativeQualityOfLife.module("BetterScreenshots");
         ActionOption browse = new ActionOption("Browse Screenshots", "Open gallery");
-        browse.setAction(() -> open(Minecraft.getInstance().gui.screen()));
+        browse.setAction(() -> openFromMenu(Minecraft.getInstance().gui.screen()));
         module.addOption(browse);
         ActionOption settings = new ActionOption("Gallery Settings", "Configure gallery");
         settings.setAction(() -> Minecraft.getInstance().gui.setScreen(new ScreenshotViewerConfigScreen(Minecraft.getInstance().gui.screen())));
@@ -67,20 +67,24 @@ public final class ScreenshotViewer {
         Minecraft.getInstance().gui.setScreen(new ManageScreenshotsScreen(parent));
         return true;
     }
+    public static void openFromMenu(Screen parent) {
+        if (!available()) return;
+        instance.thumbnailManager.configUpdated();
+        Minecraft.getInstance().gui.setScreen(new ManageScreenshotsScreen(parent));
+    }
     /** Also used by the placement editor on its preview screen. */
     public static void addEntry(Screen screen) {
-        if (!active() || !(screen instanceof TitleScreen || screen instanceof PauseScreen)) return;
-        boolean title = screen instanceof TitleScreen;
-        if (!instance.config.getOrFallback(title ? ScreenshotViewerOptions.SHOW_BUTTON_ON_TITLE_SCREEN : ScreenshotViewerOptions.SHOW_BUTTON_IN_GAME_PAUSE_MENU, true)) return;
+        if (!active() || !(screen instanceof TitleScreen)) return;
+        if (!instance.config.getOrFallback(ScreenshotViewerOptions.SHOW_BUTTON_ON_TITLE_SCREEN, true)) return;
         var buttons = Screens.getWidgets(screen);
         if (buttons.stream().anyMatch(IconButtonWidget.class::isInstance)) return;
         AbstractWidget reference = buttons.isEmpty() ? null : buttons.getFirst();
-        var position = instance.config.get(title ? ScreenshotViewerOptions.TITLE_SCREEN_BUTTON_POSITION : ScreenshotViewerOptions.PAUSE_MENU_BUTTON_POSITION);
-        int x = position.map(WidgetPositionOption.WidgetPosition::x).orElse(title ? screen.width - 28 : (reference == null ? screen.width / 2 + 108 : reference.getWidth() + 4));
-        int y = position.map(WidgetPositionOption.WidgetPosition::y).orElse(title ? 8 : 0);
-        if (reference != null && (position.isPresent() || !title)) { x += reference.getX(); y += reference.getY(); }
+        var position = instance.config.get(ScreenshotViewerOptions.TITLE_SCREEN_BUTTON_POSITION);
+        int x = position.map(WidgetPositionOption.WidgetPosition::x).orElse(screen.width - 28);
+        int y = position.map(WidgetPositionOption.WidgetPosition::y).orElse(8);
+        if (reference != null && position.isPresent()) { x += reference.getX(); y += reference.getY(); }
         IconButtonWidget button = new IconButtonWidget(Math.clamp(x, 0, Math.max(0, screen.width - 20)), Math.clamp(y, 0, Math.max(0, screen.height - 20)),
-            20, 20, ScreenshotViewerTexts.MANAGE_SCREENSHOTS, SCREENSHOT_VIEWER_ICON, ignored -> open(screen));
+            20, 20, ScreenshotViewerTexts.MANAGE_SCREENSHOTS, SCREENSHOT_VIEWER_ICON, ignored -> openFromMenu(screen));
         button.setTooltip(Tooltip.create(ScreenshotViewerTexts.MANAGE_SCREENSHOTS));
         buttons.add(button);
     }

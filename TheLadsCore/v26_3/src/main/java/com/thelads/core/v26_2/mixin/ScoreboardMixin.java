@@ -1,6 +1,7 @@
 package com.thelads.core.v26_2.mixin;
 
 import com.thelads.core.client.hud.HudCover;
+import com.thelads.core.client.hud.PotionHudElement;
 import com.thelads.core.client.hud.ScoreboardHudElement;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.Hud;
@@ -19,9 +20,13 @@ public class ScoreboardMixin {
             || HudCover.sidebarCovered(graphics.guiWidth(), graphics.guiHeight(), net.minecraft.client.Minecraft.getInstance().font::width)) ci.cancel();
     }
 
-    /** Vanilla's effect icons step aside under the tab list or the debug text (HudCover). */
+    /** The Lads Potion Effects module replaces vanilla's top-right effect icons; when off, they step aside under the tab list or debug text (HudCover). */
     @Inject(method = "extractEffects", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$effects(GuiGraphicsExtractor graphics, net.minecraft.client.DeltaTracker delta, CallbackInfo ci) {
+        if (PotionHudElement.shouldReplaceVanillaEffects()) {
+            ci.cancel();
+            return;
+        }
         var player = net.minecraft.client.Minecraft.getInstance().player;
         if (player == null) return;
         int beneficial = 0, harmful = 0;

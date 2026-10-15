@@ -36,21 +36,25 @@ public final class ScreenshotMixin {
 
     private static Component decorate(Component message) {
         try {
-            if (!ScreenshotViewer1201.available()
-                || !(message.getContents() instanceof TranslatableContents contents) || !"screenshot.success".equals(contents.getKey())
+            if (!(message.getContents() instanceof TranslatableContents contents) || !"screenshot.success".equals(contents.getKey())
                 || contents.getArgs().length != 1 || !(contents.getArgs()[0] instanceof Component link)
                 || link.getStyle().getClickEvent() == null || link.getStyle().getClickEvent().getAction() != ClickEvent.Action.OPEN_FILE) {
                 return message;
             }
             File file = new File(link.getStyle().getClickEvent().getValue());
-            Minecraft mc = Minecraft.getInstance();
-            mc.execute(() -> mc.getToasts().addToast(new NativeScreenshotToast(file)));
-            if (!ScreenshotViewer1201.active()) return message;
-            MutableComponent styled = link.copy().withStyle(style -> style.withClickEvent(new ScreenshotClickEvent(file)).withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                ScreenshotViewerUtils.ofSupplied(() -> ScreenshotViewer1201.active() && ScreenshotViewer1201.getInstance().getConfig().getOrFallback(
-                    ScreenshotViewerOptions.REDIRECT_SCREENSHOT_CHAT_LINKS, false) ? ScreenshotViewerTexts.REDIRECT_TO_SCREENSHOT_MANAGER : null))));
+            if (ScreenshotViewer1201.available()) {
+                Minecraft mc = Minecraft.getInstance();
+                mc.execute(() -> mc.getToasts().addToast(new NativeScreenshotToast(file)));
+            }
+            MutableComponent styled = ScreenshotViewer1201.active()
+                ? link.copy().withStyle(style -> style.withClickEvent(new ScreenshotClickEvent(file)).withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                    ScreenshotViewerUtils.ofSupplied(() -> ScreenshotViewer1201.active() && ScreenshotViewer1201.getInstance().getConfig().getOrFallback(
+                        ScreenshotViewerOptions.REDIRECT_SCREENSHOT_CHAT_LINKS, false) ? ScreenshotViewerTexts.REDIRECT_TO_SCREENSHOT_MANAGER : null))))
+                : link.copy();
             if (ScreenshotViewer1201.chatLinkButtons()) {
                 styled = ScreenshotViewerUtils.appendScreenshotButtons(styled, file);
+            } else if (!ScreenshotViewer1201.active()) {
+                return message;
             }
             MutableComponent result = Component.translatable("screenshot.success", styled);
             result.setStyle(message.getStyle());

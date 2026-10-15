@@ -96,10 +96,10 @@ public class AntiInjectTests
     }
 
     [Theory]
-    [InlineData(25, "-XX:+UseG1GC", "-XX:+UseCompactObjectHeaders", "appcds-jdk25.jsa")]
-    [InlineData(21, "-XX:+UseG1GC", "-XX:MaxGCPauseMillis=35", "appcds-jdk21.jsa")]
-    [InlineData(17, "-XX:+UseG1GC", "-XX:MaxGCPauseMillis=35", "appcds-jdk17.jsa")]
-    public void EnsureSecurityJvmArguments_AddsVersionAwareGcAndAppCdsAndRespectsMinRam(int javaMajor, string expectedGc, string expectedExtra, string expectedJsa)
+    [InlineData(25, "-XX:+UseG1GC", "-XX:+UseCompactObjectHeaders")]
+    [InlineData(21, "-XX:+UseG1GC", "-XX:MaxGCPauseMillis=35")]
+    [InlineData(17, "-XX:+UseG1GC", "-XX:MaxGCPauseMillis=35")]
+    public void EnsureSecurityJvmArguments_AddsVersionAwareGcAndRespectsMinRam(int javaMajor, string expectedGc, string expectedExtra)
     {
         using var dir = new TestDirectory();
         var options = new MLaunchOption
@@ -118,10 +118,8 @@ public class AntiInjectTests
         Assert.Contains(expectedExtra, values);
         Assert.Contains("-XX:MaxGCPauseMillis=35", values);
         Assert.DoesNotContain("-XX:+UseZGC", values);
-        Assert.Contains("-XX:+AutoCreateSharedArchive", values);
-        Assert.Contains(values, v => v.StartsWith("-XX:SharedArchiveFile=", StringComparison.Ordinal) && v.EndsWith(expectedJsa, StringComparison.Ordinal));
+        Assert.DoesNotContain("-XX:+AutoCreateSharedArchive", values);
         Assert.DoesNotContain("-XX:+AlwaysPreTouch", values);
-        Assert.True(Directory.Exists(Path.Combine(dir.Path, "cache")));
     }
 
     [Fact]
@@ -140,19 +138,20 @@ public class AntiInjectTests
     }
 
     [Fact]
-    public void CachedNativesDirectory_ReusedWhenMarkerAndDllExist()
+    public void CachedNativesDirectory_ReusedWhenMarkerAndDllExistIncludingSubdirectories()
     {
         using var dir = new TestDirectory();
         var mcPath = new CmlLib.Core.MinecraftPath(dir.Path);
-        const string versionId = "fabric-loader-0.19.5-1.20.1";
+        const string versionId = "fabric-loader-0.19.5-26.3";
         var nativesDir = Path.Combine(mcPath.Versions, versionId, "natives");
-        Directory.CreateDirectory(nativesDir);
+        var subDir = Path.Combine(nativesDir, "lwjgl");
+        Directory.CreateDirectory(subDir);
 
         var opt1 = new MLaunchOption();
         LaunchService.ConfigureCachedNativesDirectory(mcPath, versionId, opt1);
         Assert.True(string.IsNullOrEmpty(opt1.NativesDirectory));
 
-        File.WriteAllBytes(Path.Combine(nativesDir, "lwjgl.dll"), new byte[] { 1, 2, 3 });
+        File.WriteAllBytes(Path.Combine(subDir, "lwjgl.dll"), new byte[] { 1, 2, 3 });
         LaunchService.MarkCachedNativesReady(mcPath, versionId);
         Assert.True(File.Exists(Path.Combine(nativesDir, ".lads-natives-ok")));
 

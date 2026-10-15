@@ -358,7 +358,7 @@ final class HudFlickerCapture {
         } else {
             rect(rects, "Action bar", w / 2 - action / 2 - 4, h - 76 - lift, action + 8, 16, s);
             rect(rects, "Subtitles", w - 150, h - 54, 150, 24, s);
-            rect(rects, "Effects", w - 80, 0, 80, 28, s);
+            if (!com.thelads.core.client.hud.PotionHudElement.shouldReplaceVanillaEffects()) rect(rects, "Effects", w - 80, 0, 80, 28, s);
         }
         rect(rects, "Hotbar", w / 2 - 91, h - 22 - lift, 182, 22, s);
         rect(rects, "Health, armour, food, XP", w / 2 - 91, h - 52 - lift, 182, 30, s);

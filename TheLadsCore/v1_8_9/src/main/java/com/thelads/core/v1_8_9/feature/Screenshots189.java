@@ -192,4 +192,66 @@ public final class Screenshots189 {
             }
         }
     }
+
+    public static void copyToClipboard(File file) {
+        IO.execute(() -> {
+            String message;
+            try {
+                BufferedImage image = read(file, 16384);
+                BufferedImage rgb = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+                java.awt.Graphics2D graphics = rgb.createGraphics();
+                try { graphics.drawImage(image, 0, 0, null); } finally { graphics.dispose(); }
+                java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new java.awt.datatransfer.Transferable() {
+                    @Override public java.awt.datatransfer.DataFlavor[] getTransferDataFlavors() { return new java.awt.datatransfer.DataFlavor[] {java.awt.datatransfer.DataFlavor.imageFlavor}; }
+                    @Override public boolean isDataFlavorSupported(java.awt.datatransfer.DataFlavor flavor) { return java.awt.datatransfer.DataFlavor.imageFlavor.equals(flavor); }
+                    @Override public Object getTransferData(java.awt.datatransfer.DataFlavor flavor) throws java.awt.datatransfer.UnsupportedFlavorException {
+                        if (!isDataFlavorSupported(flavor)) throw new java.awt.datatransfer.UnsupportedFlavorException(flavor);
+                        return rgb;
+                    }
+                }, null);
+                message = "Copied screenshot to clipboard!";
+            } catch (Throwable failed) {
+                message = "Failed to copy screenshot: " + failed.getMessage();
+            }
+            String text = message;
+            Minecraft.getMinecraft().addScheduledTask(() -> notifyOverlay(text));
+        });
+    }
+
+    public static void uploadToImgur(File file) {
+        notifyOverlay("Uploading screenshot to Imgur...");
+        IO.execute(() -> {
+            try {
+                byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URI("https://api.imgur.com/3/image").toURL().openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Authorization", "Client-ID 546c25a59c58ad7");
+                conn.setDoOutput(true);
+                conn.getOutputStream().write(bytes);
+                conn.getOutputStream().flush();
+                int code = conn.getResponseCode();
+                if (code == 200) {
+                    try (java.io.InputStreamReader reader = new java.io.InputStreamReader(conn.getInputStream(), java.nio.charset.StandardCharsets.UTF_8)) {
+                        com.google.gson.JsonObject json = new com.google.gson.JsonParser().parse(reader).getAsJsonObject();
+                        String link = json.getAsJsonObject("data").get("link").getAsString();
+                        Minecraft.getMinecraft().addScheduledTask(() -> {
+                            GuiScreen.setClipboardString(link);
+                            notifyOverlay("Imgur link copied: " + link);
+                        });
+                    }
+                } else {
+                    Minecraft.getMinecraft().addScheduledTask(() -> notifyOverlay("Imgur upload failed: HTTP " + code));
+                }
+            } catch (Throwable t) {
+                Minecraft.getMinecraft().addScheduledTask(() -> notifyOverlay("Imgur upload failed: " + t.getMessage()));
+            }
+        });
+    }
+
+    private static void notifyOverlay(String text) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.ingameGUI != null) {
+            mc.ingameGUI.setRecordPlaying(text, false);
+        }
+    }
 }

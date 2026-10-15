@@ -13,4 +13,5 @@ public interface GuiQaInvoker {
     @Invoker("renderHotbarAndDecorations") void ladsQaHotbar(GuiGraphics graphics, DeltaTracker delta);
     @Invoker("renderItemHotbar") void ladsQaItemHotbar(GuiGraphics graphics, DeltaTracker delta);
     @Invoker("displayScoreboardSidebar") void ladsQaSidebar(GuiGraphics graphics, Objective objective);
+    @Invoker("renderEffects") void ladsQaEffects(GuiGraphics graphics, DeltaTracker delta);
 }

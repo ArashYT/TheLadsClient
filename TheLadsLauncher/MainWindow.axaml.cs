@@ -942,29 +942,105 @@ public partial class MainWindow : Window
     //  LOGGING
     // ═══════════════════════════════════════
 
-    private static readonly object _logFileLock = new();
+    private static readonly System.Collections.Concurrent.ConcurrentQueue<string> _pendingFileLogs = new();
+    private static int _fileLogWriterRunning;
+    private static bool _logRotationChecked;
+    private readonly System.Collections.Concurrent.ConcurrentQueue<string> _pendingUiLogs = new();
+    private int _uiLogDrainScheduled;
+
+    private static void EnqueueFileLog(string line)
+    {
+        _pendingFileLogs.Enqueue(line);
+        if (System.Threading.Interlocked.CompareExchange(ref _fileLogWriterRunning, 1, 0) == 0)
+        {
+            _ = Task.Run(DrainFileLogsAsync);
+        }
+    }
+
+    private static async Task DrainFileLogsAsync()
+    {
+        try
+        {
+            var logsDir = TheLadsLauncher.Services.PathService.Instance.LogsDirectory;
+            Directory.CreateDirectory(logsDir);
+            var logFile = Path.Combine(logsDir, "launcher_debug.txt");
+
+            if (!_logRotationChecked)
+            {
+                _logRotationChecked = true;
+                try
+                {
+                    var fi = new FileInfo(logFile);
+                    if (fi.Exists && fi.Length > 4 * 1024 * 1024)
+                    {
+                        var oldFile = Path.Combine(logsDir, "launcher_debug.old.txt");
+                        File.Move(logFile, oldFile, overwrite: true);
+                    }
+                }
+                catch { }
+            }
+
+            while (!_pendingFileLogs.IsEmpty)
+            {
+                try
+                {
+                    await using var stream = new FileStream(logFile, FileMode.Append, FileAccess.Write, FileShare.ReadWrite, 16384, useAsync: true);
+                    await using var writer = new StreamWriter(stream);
+                    while (_pendingFileLogs.TryDequeue(out var line))
+                    {
+                        await writer.WriteLineAsync(line);
+                    }
+                    await writer.FlushAsync();
+                }
+                catch
+                {
+                    while (_pendingFileLogs.TryDequeue(out _)) { }
+                }
+            }
+        }
+        catch { }
+        finally
+        {
+            System.Threading.Interlocked.Exchange(ref _fileLogWriterRunning, 0);
+            if (!_pendingFileLogs.IsEmpty && System.Threading.Interlocked.CompareExchange(ref _fileLogWriterRunning, 1, 0) == 0)
+            {
+                _ = Task.Run(DrainFileLogsAsync);
+            }
+        }
+    }
 
     private void Log(string message)
     {
-        lock (_logFileLock)
+        string timestamped = $"[{DateTime.Now:HH:mm:ss}] {message}";
+        EnqueueFileLog(timestamped);
+
+        _pendingUiLogs.Enqueue(timestamped);
+        if (System.Threading.Interlocked.CompareExchange(ref _uiLogDrainScheduled, 1, 0) == 0)
         {
-            try
-            {
-                var logFile = Path.Combine(TheLadsLauncher.Services.PathService.Instance.LogsDirectory, "launcher_debug.txt");
-                System.IO.File.AppendAllText(logFile, $"[{DateTime.Now:HH:mm:ss}] {message}\n");
-            }
-            catch { }
+            Dispatcher.UIThread.Post(DrainPendingUiLogs);
         }
-        Dispatcher.UIThread.Post(() =>
+    }
+
+    private void DrainPendingUiLogs()
+    {
+        System.Threading.Interlocked.Exchange(ref _uiLogDrainScheduled, 0);
+        int drained = 0;
+        while (drained < 250 && _pendingUiLogs.TryDequeue(out var timestamped))
         {
-            string timestamped = $"[{DateTime.Now:HH:mm:ss}] {message}";
+            drained++;
             allLogLines.Add(timestamped);
-            if (allLogLines.Count > 2000) allLogLines.RemoveRange(0, 500);
             logLines.Enqueue(timestamped);
             if (logLines.Count > 500)
                 logLines.Dequeue();
+        }
+        if (allLogLines.Count > 2000)
+            allLogLines.RemoveRange(0, allLogLines.Count - 1500);
+        if (drained > 0)
             _logDirty = true;
-        });
+        if (!_pendingUiLogs.IsEmpty && System.Threading.Interlocked.CompareExchange(ref _uiLogDrainScheduled, 1, 0) == 0)
+        {
+            Dispatcher.UIThread.Post(DrainPendingUiLogs);
+        }
     }
 
     private void CopyLogs_Click(object? sender, RoutedEventArgs e)
@@ -4449,8 +4525,26 @@ public partial class MainWindow : Window
             GameSession.Configure(process.StartInfo, gameDirectory, SharedContentService.Instance.Root, activeProfile.MinecraftVersion);
             LaunchToken.Hide(process, gameDirectory, launchOpt.Session?.AccessToken);
 
-            process.OutputDataReceived += (s, ev) => { if (GameSession.ReadableOutput(ev.Data) is { } line) Log($"[Game] {line}"); };
-            process.ErrorDataReceived += (s, ev) => { if (GameSession.ReadableOutput(ev.Data) is { } line) Log($"[Game ERROR] {line}"); };
+            // Pop the startup splash as soon as the process starts and feed live output to it.
+            var startupSplash = new Views.GameStartupSplash();
+            startupSplash.SetGameVersion(activeProfile.MinecraftVersion);
+
+            process.OutputDataReceived += (s, ev) =>
+            {
+                if (GameSession.ReadableOutput(ev.Data) is { } line)
+                {
+                    startupSplash.ReportOutputLine(line);
+                    Log($"[Game] {line}");
+                }
+            };
+            process.ErrorDataReceived += (s, ev) =>
+            {
+                if (GameSession.ReadableOutput(ev.Data) is { } line)
+                {
+                    startupSplash.ReportOutputLine(line);
+                    Log($"[Game ERROR] {line}");
+                }
+            };
 
             // Apply fullscreen setting by patching options.txt before launch.
             if (settings.FullscreenOnLaunch)
@@ -4505,10 +4599,6 @@ public partial class MainWindow : Window
                 PopulateLaunchSelector(GetAccountSummaries().Select(account => account.username).ToList());
             }
 
-            // Pop the startup splash immediately so there is never a dead gap
-            // between pressing Launch and the Minecraft window appearing.
-            var startupSplash = new Views.GameStartupSplash();
-            startupSplash.SetGameVersion(activeProfile.MinecraftVersion);
             // Until the game window appears: the exit then says "Launch cancelled" (OnGameExitedAsync), not a crash.
             startupSplash.CancelRequested += () =>
             {
@@ -4516,7 +4606,7 @@ public partial class MainWindow : Window
                 GameSession.Cancel(process);
             };
             startupSplash.Show();
-            _ = WatchForGameWindowAsync(process, startupSplash);
+            _ = WatchForGameWindowAsync(process, startupSplash, gameDirectory);
 
             lock (sessionMessages) StatusText.Text = sessionMessages.Count > 0 ? "Game running. " + string.Join(" ", sessionMessages) : "Game running.";
             GameLaunchOverlay.IsVisible = false;
@@ -4759,17 +4849,23 @@ public partial class MainWindow : Window
 
     // Keeps the startup splash visible until the game window actually exists
     // (the mod's early window makes that fast), then closes it.
-    private async Task WatchForGameWindowAsync(System.Diagnostics.Process process, Views.GameStartupSplash splash)
+    private async Task WatchForGameWindowAsync(System.Diagnostics.Process process, Views.GameStartupSplash splash, string gameDirectory)
     {
         try
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
+            var launchUtc = DateTime.UtcNow.AddSeconds(-2);
+            string latestLogPath = Path.Combine(gameDirectory, "logs", "latest.log");
+            long logOffset = 0;
+            bool logInitialized = false;
+
             while (sw.Elapsed < TimeSpan.FromSeconds(120))
             {
                 if (process.HasExited)
                 {
                     Log("[Launcher] Game exited before its window appeared.");
                     splash.SetStatus("Minecraft stopped before opening");
+                    splash.SetDetail("Check the launcher logs or crash report for details.");
                     break;
                 }
                 try
@@ -4779,10 +4875,40 @@ public partial class MainWindow : Window
                     {
                         Log($"[Launcher] Game window detected after {sw.Elapsed.TotalSeconds:F1}s.");
                         splash.SetStatus("Minecraft is ready to show");
+                        splash.SetDetail("Opening game window...");
                         break;
                     }
                 }
                 catch { break; }
+
+                // Also tail logs/latest.log in case the mod loader writes directly to the log file before stdout flushes.
+                try
+                {
+                    var fi = new FileInfo(latestLogPath);
+                    if (fi.Exists && fi.LastWriteTimeUtc >= launchUtc)
+                    {
+                        if (!logInitialized || fi.Length < logOffset)
+                        {
+                            logOffset = Math.Max(0, fi.Length - 8192);
+                            logInitialized = true;
+                        }
+                        if (fi.Length > logOffset)
+                        {
+                            using var fs = new FileStream(latestLogPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                            fs.Seek(logOffset, SeekOrigin.Begin);
+                            using var sr = new StreamReader(fs);
+                            string? line;
+                            while ((line = await sr.ReadLineAsync()) != null)
+                            {
+                                splash.ReportOutputLine(line);
+                            }
+                            logOffset = fs.Position;
+                        }
+                    }
+                }
+                catch { }
+
+                splash.UpdateElapsedFallback(sw.Elapsed.TotalSeconds);
                 await Task.Delay(150);
             }
         }

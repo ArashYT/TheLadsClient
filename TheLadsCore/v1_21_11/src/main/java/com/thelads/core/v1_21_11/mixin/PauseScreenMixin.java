@@ -34,7 +34,8 @@ public abstract class PauseScreenMixin extends Screen {
         boolean changed=!ladsLayoutReady;
         for(var child:java.util.List.copyOf(children()))if(child instanceof AbstractWidget widget
             &&widget!=ladsFullscreenButton) {
-            if(widget.getClass().getName().startsWith("gg.essential.")) {
+            if(widget.getClass().getName().startsWith("gg.essential.")
+                ||widget.getClass().getName().startsWith("io.github.lgatodu47.screenshot_viewer.")) {
                 widget.visible=false;removeWidget(widget);changed=true;
             } else if(widget instanceof Button&&widget!=ladsExtrasButton&&widget.getWidth()<=30) {
                 if(!ladsExtras.contains(widget))ladsExtras.add(widget);widget.visible=false;removeWidget(widget);changed=true;
@@ -44,7 +45,7 @@ public abstract class PauseScreenMixin extends Screen {
         ladsLayoutReady=true;
         if(!ladsExtras.isEmpty()&&ladsExtrasButton==null)ladsExtrasButton=addRenderableWidget(Button.builder(Component.literal("Extras..."),b->minecraft.setScreen(new com.thelads.core.v1_21_11.gui.TitleExtrasScreen12111(this,ladsExtras))).bounds(0,0,204,20).build());
         var buttons=children().stream().filter(c->c instanceof Button&&c!=ladsFullscreenButton).map(c->(Button)c).toList();
-        // In groups: Back to Game, then Advancements/Statistics, Options/Lads Client, Multiplayer/world options, Replays/Extras, Save and Quit apart.
+        // In groups: Back to Game, then Advancements/Statistics, Options/Lads Client, Multiplayer/world options, Screenshots/Replays/Extras, Save and Quit apart.
         int bottom=height-32;
         int top=Math.max(62,12+Math.min(64,height/6)+18);
         var boxes=com.thelads.core.client.title.PauseMenuLayout.arrange(buttons.stream().map(this::ladsSlot).toList(),width,top,bottom);
@@ -58,6 +59,7 @@ public abstract class PauseScreenMixin extends Screen {
         String text=button.getMessage().getString();
         if(button==ladsExtrasButton)return com.thelads.core.client.title.PauseMenuLayout.Slot.EXTRAS;
         if(text.equals("Lads Client"))return com.thelads.core.client.title.PauseMenuLayout.Slot.LADS;
+        if(text.equals("Screenshots"))return com.thelads.core.client.title.PauseMenuLayout.Slot.SCREENSHOTS;
         if(text.equals("Replays"))return com.thelads.core.client.title.PauseMenuLayout.Slot.REPLAYS;
         String[][] keys={{"menu.returnToGame","BACK"},{"gui.advancements","ADVANCEMENTS"},{"gui.stats","STATS"},{"menu.options","OPTIONS"},
             {"menu.multiplayer","MULTIPLAYER"},{"menu.multiplayerOptions.button","WORLD"},{"options.worldOptions.button","WORLD"},{"menu.worldOptions","WORLD"},{"menu.shareToLan","WORLD"},{"menu.returnToMenu","QUIT"},{"menu.disconnect","QUIT"}};
@@ -115,6 +117,8 @@ public abstract class PauseScreenMixin extends Screen {
             button -> minecraft.setScreen(new LadsSettingsScreen12111(this))).width(204).build(), 2);
         ladsPauseRows.addChild(Button.builder(Component.translatable("menu.multiplayer"),
             button -> com.thelads.core.v1_21_11.gui.PauseMultiplayer.open(this)).width(204).build(), 2);
+        ladsPauseRows.addChild(Button.builder(Component.literal("Screenshots"),
+            button -> com.thelads.core.v1_21_11.gui.Screenshots12111.open(this)).width(204).build(), 2);
         if(com.thelads.core.v1_21_11.gui.FlashbackScreens.available())
             ladsPauseRows.addChild(Button.builder(Component.literal("Replays"),
                 button -> com.thelads.core.v1_21_11.gui.FlashbackScreens.open(this)).width(204).build(),2);

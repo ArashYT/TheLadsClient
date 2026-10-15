@@ -23,11 +23,20 @@ public class PotionHudElement extends HudElement {
     private List<String> lastLegacyEffects = null;
     private boolean lastShowDur = false;
 
+    private static com.thelads.core.config.Module cachedModule;
+
     public PotionHudElement() {
         this.x = 10;
         this.y = 220;
         this.width = 90;
         this.height = 16;
+    }
+
+    /** Vanilla's top-right potion effect icons are hidden while the Lads Potion Effects module is enabled. */
+    public static boolean shouldReplaceVanillaEffects() {
+        var m = cachedModule;
+        if (m == null) cachedModule = m = com.thelads.core.config.ModuleManager.getInstance().getModule("Potion Effects");
+        return m != null && m.isEnabled();
     }
 
     @Override

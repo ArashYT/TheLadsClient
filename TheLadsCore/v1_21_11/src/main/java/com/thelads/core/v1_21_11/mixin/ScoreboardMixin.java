@@ -1,6 +1,8 @@
 package com.thelads.core.v1_21_11.mixin;
 
+import com.thelads.core.client.hud.PotionHudElement;
 import com.thelads.core.client.hud.ScoreboardHudElement;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.world.scores.Objective;
@@ -17,5 +19,11 @@ public class ScoreboardMixin {
         // As on 26.x, Edit HUD also hides vanilla's sidebar so only the movable Lads preview shows.
         if (net.minecraft.client.Minecraft.getInstance().screen instanceof com.thelads.core.v1_21_11.gui.DraggableHudScreen12111
             || ScoreboardHudElement.shouldReplaceVanillaScoreboard()) ci.cancel();
+    }
+
+    @Inject(method = "renderEffects(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/client/DeltaTracker;)V",
+        at = @At("HEAD"), cancellable = true, require = 1)
+    private void lads$effects(GuiGraphics graphics, DeltaTracker delta, CallbackInfo ci) {
+        if (PotionHudElement.shouldReplaceVanillaEffects()) ci.cancel();
     }
 }

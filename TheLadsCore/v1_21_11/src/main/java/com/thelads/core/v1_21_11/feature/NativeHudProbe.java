@@ -215,6 +215,10 @@ final class NativeHudProbe {
             check(count(state) > 0, "vanilla's sidebar returns with Scoreboard off"); state.reset();
 
             mc.player.addEffect(new MobEffectInstance(MobEffects.SPEED, 600));
+            module("Potion Effects").setEnabled(true); ((GuiQaInvoker) mc.gui).ladsQaEffects(graphics, mc.getDeltaTracker());
+            check(count(state) == 0, "Potion Effects replaces vanilla's top-right effect icons");
+            module("Potion Effects").setEnabled(false); ((GuiQaInvoker) mc.gui).ladsQaEffects(graphics, mc.getDeltaTracker());
+            check(count(state) > 0, "vanilla's top-right effect icons return with Potion Effects off"); state.reset();
             var data = new VanillaGameBridge12111();
             var effects = data.getActivePotionEffects();
             check(effects.contains(Component.translatable("effect.minecraft.speed").getString() + " (30s)") && effects.stream().noneMatch(e -> e.startsWith("effect.")),

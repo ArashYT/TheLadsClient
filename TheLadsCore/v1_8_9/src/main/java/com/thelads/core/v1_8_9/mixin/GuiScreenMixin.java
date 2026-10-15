@@ -3,12 +3,14 @@ package com.thelads.core.v1_8_9.mixin;
 import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.v1_8_9.gui.LadsButtonPress;
 import java.io.IOException;
+import com.thelads.core.v1_8_9.feature.Chat189;
 import com.thelads.core.v1_8_9.feature.Tooltips189;
 import java.util.List;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.util.IChatComponent;
 import net.minecraftforge.client.event.GuiScreenEvent.ActionPerformedEvent;
 import net.minecraftforge.common.MinecraftForge;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,6 +18,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** The Lads backdrop instead of the dirt texture behind menus outside a world; LadsButtonPress for the More screens. */
 @Mixin(GuiScreen.class)
@@ -23,6 +26,13 @@ public abstract class GuiScreenMixin extends Gui implements LadsButtonPress {
     @Shadow public int width, height;
     @Shadow protected List<GuiButton> buttonList;
     @Shadow protected abstract void actionPerformed(GuiButton button) throws IOException;
+
+    @Inject(method = "handleComponentClick", at = @At("HEAD"), cancellable = true, require = 1)
+    private void ladsHandleChatClick(IChatComponent component, CallbackInfoReturnable<Boolean> cir) {
+        if (Chat189.handleClick(component)) {
+            cir.setReturnValue(true);
+        }
+    }
 
     /** Tooltips too big for the screen are drawn smaller (Tooltips189.drawFitted). Forge's overload, which every tooltip goes through. */
     @Inject(method = "drawHoveringText(Ljava/util/List;IILnet/minecraft/client/gui/FontRenderer;)V", at = @At("HEAD"), cancellable = true, remap = false, require = 1)

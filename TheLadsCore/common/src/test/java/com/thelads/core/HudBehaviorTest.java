@@ -445,6 +445,20 @@ class HudBehaviorTest {
     }
 
     @Test
+    void potionEffectsModuleReplacesVanillaTopRightOverlayWhenEnabled() {
+        var module = ModuleManager.getInstance().getModule("Potion Effects");
+        boolean wasEnabled = module.isEnabled();
+        try {
+            module.setEnabled(true);
+            assertTrue(PotionHudElement.shouldReplaceVanillaEffects());
+            module.setEnabled(false);
+            assertFalse(PotionHudElement.shouldReplaceVanillaEffects());
+        } finally {
+            module.setEnabled(wasEnabled);
+        }
+    }
+
+    @Test
     void managerBalancesPoseWhenElementFails() {
         HudManager manager = HudManager.getInstance();
         List<HudElement> original = new ArrayList<>(manager.getElements());

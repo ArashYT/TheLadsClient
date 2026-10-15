@@ -159,7 +159,7 @@ final class Probe150 {
         ChatComponentText name = new ChatComponentText("lads-qa.png");
         name.getChatStyle().setChatClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, new File(mc.mcDataDir, "screenshots/lads-qa.png").getAbsolutePath()));
         String text = Chat189.message(new ChatComponentTranslation("screenshot.success", name)).getUnformattedText();
-        check(text.startsWith("[") && text.indexOf("] ") == 6 && text.endsWith("lads-qa.png [Open File] [Open Folder]"),
+        check(text.startsWith("[") && text.indexOf("] ") == 6 && text.endsWith("lads-qa.png [Copy] [Open File] [Open Folder] [Upload to Imgur]"),
             "Chat: a timestamp and the screenshot buttons (" + text + ")");
         screenshot(mc, "150-chat");
         Module chat = module("Chat");

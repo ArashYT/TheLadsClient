@@ -42,4 +42,13 @@ class PauseMenuLayoutTest {
         for (int i = 1; i < boxes.size(); i++) assertTrue(boxes.get(i).y() > boxes.get(i - 1).y());
         assertTrue(boxes.stream().allMatch(b -> b.width() == 268));
     }
+
+    @Test void screenshotsPairsWithReplaysOrSpansWhenAlone() {
+        var withReplays = PauseMenuLayout.arrange(List.of(BACK, OPTIONS, LADS, SCREENSHOTS, REPLAYS, QUIT), 640, 90, 300);
+        assertEquals(withReplays.get(3).y(), withReplays.get(4).y(), "Screenshots and Replays share a row");
+        assertTrue(withReplays.get(3).x() < withReplays.get(4).x());
+
+        var alone = PauseMenuLayout.arrange(List.of(BACK, OPTIONS, LADS, SCREENSHOTS, QUIT), 640, 90, 300);
+        assertEquals(320, alone.get(3).width(), "Screenshots alone spans the row");
+    }
 }

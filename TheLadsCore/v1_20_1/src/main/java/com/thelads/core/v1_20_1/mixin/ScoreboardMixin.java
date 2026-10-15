@@ -1,6 +1,7 @@
 package com.thelads.core.v1_20_1.mixin;
 
 import com.thelads.core.client.hud.HudCover;
+import com.thelads.core.client.hud.PotionHudElement;
 import com.thelads.core.client.hud.ScoreboardHudElement;
 import com.thelads.core.v1_20_1.gui.DraggableHudScreen1201;
 import net.minecraft.client.Minecraft;
@@ -24,9 +25,13 @@ public class ScoreboardMixin {
         }
     }
 
-    /** Vanilla's effect icons step aside under the tab list or the debug text (HudCover); Forge's potion icons overlay calls this too. */
+    /** The Lads Potion Effects module replaces vanilla's top-right effect icons; when off, they step aside under the tab list or debug text (HudCover). Forge's potion icons overlay calls this too. */
     @Inject(method = "renderEffects", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$effects(GuiGraphics graphics, CallbackInfo ci) {
+        if (PotionHudElement.shouldReplaceVanillaEffects()) {
+            ci.cancel();
+            return;
+        }
         var player = Minecraft.getInstance().player;
         if (player == null) return;
         int beneficial = 0, harmful = 0;

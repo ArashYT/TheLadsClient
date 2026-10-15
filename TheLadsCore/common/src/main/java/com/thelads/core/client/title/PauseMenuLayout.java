@@ -10,11 +10,11 @@ import java.util.List;
  * and Save and Quit (or Disconnect) alone at the bottom, set apart. A narrow screen gets one column.
  */
 public final class PauseMenuLayout {
-    public enum Slot { BACK, ADVANCEMENTS, STATS, OPTIONS, LADS, MULTIPLAYER, WORLD, REPLAYS, EXTRAS, OTHER, QUIT }
+    public enum Slot { BACK, ADVANCEMENTS, STATS, OPTIONS, LADS, MULTIPLAYER, WORLD, SCREENSHOTS, REPLAYS, EXTRAS, OTHER, QUIT }
     public record Box(int x, int y, int width, int height) {}
 
-    private static final Slot[][] PAIRS = {{Slot.ADVANCEMENTS, Slot.STATS}, {Slot.OPTIONS, Slot.LADS}, {Slot.MULTIPLAYER, Slot.WORLD},
-        {Slot.REPLAYS, Slot.EXTRAS}};
+    private static final Slot[][] PAIRS = {{Slot.ADVANCEMENTS, Slot.STATS}, {Slot.OPTIONS, Slot.LADS}, {Slot.MULTIPLAYER, Slot.WORLD}};
+    private static final Slot[] SECONDARY = {Slot.SCREENSHOTS, Slot.REPLAYS, Slot.EXTRAS};
     static final int GAP = 4, APART = 10, MAX_WIDTH = 320;
 
     private PauseMenuLayout() {}
@@ -29,6 +29,7 @@ public final class PauseMenuLayout {
             case LADS -> "lads";
             case MULTIPLAYER -> "server";
             case WORLD -> "host";
+            case SCREENSHOTS -> "camera";
             case REPLAYS -> "replay";
             case EXTRAS -> "dots";
             case OTHER -> "mods";
@@ -43,6 +44,14 @@ public final class PauseMenuLayout {
         row(rows, placed, slots, Slot.BACK);
         for (Slot[] pair : PAIRS) row(rows, placed, slots, pair);
         List<Integer> rest = new ArrayList<>();
+        for (Slot sec : SECONDARY) {
+            for (int i = 0; i < slots.size(); i++) {
+                if (!placed[i] && slots.get(i) == sec) {
+                    placed[i] = true;
+                    rest.add(i);
+                }
+            }
+        }
         for (int i = 0; i < slots.size(); i++) if (!placed[i] && slots.get(i) != Slot.QUIT) rest.add(i);
         for (int i = 0; i < rest.size(); i += 2)
             rows.add(i + 1 < rest.size() ? new int[] {rest.get(i), rest.get(i + 1)} : new int[] {rest.get(i)});

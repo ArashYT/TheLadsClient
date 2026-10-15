@@ -360,7 +360,7 @@ public class LaunchService : ILaunchService
         var marker = Path.Combine(nativesDir, ".lads-natives-ok");
         try
         {
-            if (File.Exists(marker) && Directory.Exists(nativesDir) && Directory.EnumerateFiles(nativesDir, "*.dll").Any())
+            if (File.Exists(marker) && Directory.Exists(nativesDir) && Directory.EnumerateFiles(nativesDir, "*.dll", SearchOption.AllDirectories).Any())
             {
                 options.NativesDirectory = nativesDir;
             }
@@ -378,7 +378,7 @@ public class LaunchService : ILaunchService
         var marker = Path.Combine(nativesDir, ".lads-natives-ok");
         try
         {
-            if (Directory.Exists(nativesDir) && Directory.EnumerateFiles(nativesDir, "*.dll").Any())
+            if (Directory.Exists(nativesDir) && Directory.EnumerateFiles(nativesDir, "*.dll", SearchOption.AllDirectories).Any())
             {
                 File.WriteAllText(marker, versionId);
             }
@@ -388,7 +388,7 @@ public class LaunchService : ILaunchService
 
     /// <summary>
     /// Validates JVM arguments against agent injection and ensures security and performance flags
-    /// (-XX:+DisableAttachMechanism, -XX:+DisableExplicitGC, version-aware low-pause GC, and Dynamic AppCDS)
+    /// (-XX:+DisableAttachMechanism, -XX:+DisableExplicitGC, and version-aware low-pause GC)
     /// are set without duplicates.
     /// </summary>
     public static void EnsureSecurityJvmArguments(MLaunchOption options, int? javaMajorVersion = null, string? gameDirectory = null)
@@ -412,9 +412,7 @@ public class LaunchService : ILaunchService
         {
             foreach (var flag in BuildOptimizedJvmArguments(javaMajorVersion.Value, gameDirectory))
             {
-                bool alreadyPresent = flag.StartsWith("-XX:SharedArchiveFile=", StringComparison.OrdinalIgnoreCase)
-                    ? list.Any(a => a.Values.Any(v => v.StartsWith("-XX:SharedArchiveFile=", StringComparison.OrdinalIgnoreCase)))
-                    : list.Any(a => a.Values.Any(v => string.Equals(v, flag, StringComparison.OrdinalIgnoreCase)));
+                bool alreadyPresent = list.Any(a => a.Values.Any(v => string.Equals(v, flag, StringComparison.OrdinalIgnoreCase)));
                 if (!alreadyPresent)
                 {
                     list.Add(MArgument.FromCommandLine(flag));
@@ -426,7 +424,7 @@ public class LaunchService : ILaunchService
     }
 
     /// <summary>
-    /// Builds version-aware low-pause GC and Dynamic AppCDS JVM arguments while respecting user MinRamMb.
+    /// Builds version-aware low-pause GC JVM arguments while respecting user MinRamMb.
     /// </summary>
     public static IReadOnlyList<string> BuildOptimizedJvmArguments(int javaMajorVersion, string? gameDirectory = null)
     {
@@ -451,17 +449,16 @@ public class LaunchService : ILaunchService
             flags.Add("-Xshare:auto");
         }
 
-        if (javaMajorVersion >= 17 && !string.IsNullOrWhiteSpace(gameDirectory))
+        if (!string.IsNullOrWhiteSpace(gameDirectory) && Directory.Exists(gameDirectory))
         {
-            var cacheDir = Path.Combine(gameDirectory, "cache");
             try
             {
-                Directory.CreateDirectory(cacheDir);
+                foreach (var strayJsa in Directory.EnumerateFiles(gameDirectory, "*appcds-jdk*.jsa", SearchOption.TopDirectoryOnly))
+                {
+                    try { File.Delete(strayJsa); } catch { }
+                }
             }
-            catch (IOException) { }
-            var archivePath = Path.Combine(cacheDir, $"appcds-jdk{javaMajorVersion}.jsa");
-            flags.Add("-XX:+AutoCreateSharedArchive");
-            flags.Add($"-XX:SharedArchiveFile={archivePath}");
+            catch { }
         }
 
         return flags;
