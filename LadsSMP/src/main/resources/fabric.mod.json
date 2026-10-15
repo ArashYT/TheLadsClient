@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "ladssmp",
+  "version": "${version}",
+  "name": "Lads SMP",
+  "description": "Core optimization, 26.3 data compatibility upgrader, comprehensive 10-pathway item/content disabler, exploit protection, and consolidated QoL systems for The Lads SMP.",
+  "authors": [
+    "The Lads"
+  ],
+  "contact": {
+    "homepage": "https://thelads.gg"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.thelads.smp.LadsSMPMod"
+    ]
+  },
+  "mixins": [
+    "ladssmp.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.0",
+    "minecraft": "~26.3",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

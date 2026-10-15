@@ -1,0 +1,35 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.smp.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "MixinRegistryLoadTask",
+    "MixinItemEntity",
+    "MixinServerPlayer",
+    "MixinLivingEntity",
+    "MixinSlot",
+    "MixinAbstractContainerMenu",
+    "MixinCraftingMenu",
+    "MixinHopperBlockEntity",
+    "MixinItemInput",
+    "MixinLootTable",
+    "MixinEntityDrops",
+    "MixinBlockDrops",
+    "MixinMerchantOffer",
+    "MixinRecipeMap",
+    "MixinFoodProperties",
+    "MixinTemptGoal",
+    "MixinBaseSpawner",
+    "MixinPortalShape",
+    "MixinDoorBlock",
+    "MixinFenceGateBlock",
+    "MixinRangedAttribute",
+    "MixinRangedBowAttackGoal",
+    "MixinCarvedPumpkinBlock"
+  ],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

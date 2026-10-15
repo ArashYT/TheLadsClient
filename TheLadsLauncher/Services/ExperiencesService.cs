@@ -41,6 +41,24 @@ public sealed record ExperienceDefinition(
 /// </summary>
 public static class ExperiencesService
 {
+    public static readonly ExperienceDefinition LadsSmpReborn = new(
+        Id: "lads-smp-reborn-26.3",
+        Title: "The Lads SMP Reborn",
+        Subtitle: "Official The Lads Modpack",
+        Description: "The official Lads SMP 26.3 experience — featuring Alex's Caves & Mobs, BetterEnd, Biomes O' Plenty, Dungeons & Taverns, Farmer's Delight, Simple Voice Chat, Sodium & Iris, and our custom Lads SMP mod with 13 consolidated QoL tweaks, item disabler, and loot rebalance.",
+        McVersion: "26.3",
+        Loader: "fabric",
+        LoaderVersion: "0.19.5",
+        ModCount: 225,
+        ServerAddress: "",
+        IconAsset: "avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png",
+        RecommendedRamMb: 8192,
+        PackArchiveUrl: "https://bot.arashyt.ca/packs/lads-smp-reborn-26.3.zip",
+        PackArchiveSha256: "C84A7349E0798F384B48BDAF186441F91B50AB99D54AE90CD539869A0152825C"
+    );
+
+    public const string LadsSmpRebornDevId = "lads-smp-reborn-26.3-dev";
+
     public static readonly ExperienceDefinition ZeroSmp = new(
         Id: "zero-smp-1.20.1",
         Title: "Zero SMP",
@@ -58,7 +76,7 @@ public static class ExperiencesService
 
     public const string ZeroSmpDevId = "zero-smp-1.20.1-dev";
 
-    public static readonly IReadOnlyList<ExperienceDefinition> AllExperiences = new[] { ZeroSmp };
+    public static readonly IReadOnlyList<ExperienceDefinition> AllExperiences = new[] { LadsSmpReborn, ZeroSmp };
 
     public static bool IsDevLauncherEnvironment()
     {
@@ -75,21 +93,43 @@ public static class ExperiencesService
         return false;
     }
 
-    public static string ActiveZeroSmpInstanceId(bool? isDevLauncher = null) =>
-        (isDevLauncher ?? IsDevLauncherEnvironment()) ? ZeroSmpDevId : ZeroSmp.Id;
+    public static string DevInstanceId(ExperienceDefinition exp) => $"{exp.Id}-dev";
 
-    public static string CanonicalPackId(string experienceOrInstanceId) =>
-        string.Equals(experienceOrInstanceId, ZeroSmpDevId, StringComparison.OrdinalIgnoreCase) ? ZeroSmp.Id : experienceOrInstanceId;
+    public static string ActiveInstanceId(ExperienceDefinition exp, bool? isDevLauncher = null) =>
+        (isDevLauncher ?? IsDevLauncherEnvironment()) ? DevInstanceId(exp) : exp.Id;
+
+    public static string ActiveLadsSmpRebornInstanceId(bool? isDevLauncher = null) =>
+        ActiveInstanceId(LadsSmpReborn, isDevLauncher);
+
+    public static string ActiveZeroSmpInstanceId(bool? isDevLauncher = null) =>
+        ActiveInstanceId(ZeroSmp, isDevLauncher);
+
+    public static string CanonicalPackId(string experienceOrInstanceId)
+    {
+        if (string.Equals(experienceOrInstanceId, ZeroSmpDevId, StringComparison.OrdinalIgnoreCase))
+            return ZeroSmp.Id;
+        if (string.Equals(experienceOrInstanceId, LadsSmpRebornDevId, StringComparison.OrdinalIgnoreCase))
+            return LadsSmpReborn.Id;
+        if (experienceOrInstanceId.EndsWith("-dev", StringComparison.OrdinalIgnoreCase))
+            return experienceOrInstanceId[..^4];
+        return experienceOrInstanceId;
+    }
 
     public sealed record ExperienceButtonState(string Text, bool IsEnabled, string? Hint = null);
 
-    public static ExperienceButtonState GetZeroSmpButtonState(bool installed, bool isRunning = false, bool isBusy = false, bool allowMultiInstance = false)
+    public static ExperienceButtonState GetExperienceButtonState(ExperienceDefinition exp, bool installed, bool isRunning = false, bool isBusy = false, bool allowMultiInstance = false)
     {
         if (isBusy) return new ExperienceButtonState("Please wait...", false);
         if (isRunning && !allowMultiInstance) return new ExperienceButtonState("Game Running", false);
-        if (installed) return new ExperienceButtonState("Play Zero SMP", true);
-        return new ExperienceButtonState("Install & Play Zero SMP", true);
+        if (installed) return new ExperienceButtonState($"Play {exp.Title}", true);
+        return new ExperienceButtonState($"Install & Play {exp.Title}", true);
     }
+
+    public static ExperienceButtonState GetLadsSmpRebornButtonState(bool installed, bool isRunning = false, bool isBusy = false, bool allowMultiInstance = false) =>
+        GetExperienceButtonState(LadsSmpReborn, installed, isRunning, isBusy, allowMultiInstance);
+
+    public static ExperienceButtonState GetZeroSmpButtonState(bool installed, bool isRunning = false, bool isBusy = false, bool allowMultiInstance = false) =>
+        GetExperienceButtonState(ZeroSmp, installed, isRunning, isBusy, allowMultiInstance);
 
     public static string InstanceDirectory(string baseDirectory, string experienceId) =>
         Path.Combine(Modpacks.Root(baseDirectory), experienceId);
@@ -110,16 +150,17 @@ public static class ExperiencesService
         Modpacks.List(baseDirectory).FirstOrDefault(i => i.Id == experienceId);
 
     /// <summary>
-    /// Seeds the dev launcher's Zero SMP instance (zero-smp-1.20.1-dev) from the regular Zero SMP instance (zero-smp-1.20.1)
+    /// Seeds the dev launcher's Experience instance (&lt;id&gt;-dev) from the regular instance (&lt;id&gt;)
     /// once when the dev instance does not exist yet, keeping the two instances completely separate from then on.
     /// </summary>
-    public static void EnsureDevZeroSmpSeeded(string baseDirectory)
+    public static void EnsureDevExperienceSeeded(string baseDirectory, ExperienceDefinition exp)
     {
         try
         {
-            if (IsInstalled(baseDirectory, ZeroSmpDevId) || !IsInstalled(baseDirectory, ZeroSmp.Id)) return;
-            var srcDir = InstanceDirectory(baseDirectory, ZeroSmp.Id);
-            var dstDir = InstanceDirectory(baseDirectory, ZeroSmpDevId);
+            var devId = DevInstanceId(exp);
+            if (IsInstalled(baseDirectory, devId) || !IsInstalled(baseDirectory, exp.Id)) return;
+            var srcDir = InstanceDirectory(baseDirectory, exp.Id);
+            var dstDir = InstanceDirectory(baseDirectory, devId);
             Directory.CreateDirectory(dstDir);
             CopyDirectoryContents(srcDir, dstDir,
                 skipSubdirs: new[] { ".mixin.out", "immersive_paintings_cache", "particular_cache" },
@@ -127,19 +168,19 @@ public static class ExperiencesService
                 skipFileExtensions: new[] { ".log" },
                 skipFiles: new[] { "instance.json", RunningGameMarker.FileName });
 
-            var srcInstance = GetInstance(baseDirectory, ZeroSmp.Id);
+            var srcInstance = GetInstance(baseDirectory, exp.Id);
             var devInstance = new ModpackInstance
             {
-                Id = ZeroSmpDevId,
-                Name = "Zero SMP (Dev)",
-                McVersion = srcInstance?.McVersion ?? ZeroSmp.McVersion,
-                Loader = srcInstance?.Loader ?? ZeroSmp.Loader,
-                LoaderVersion = srcInstance?.LoaderVersion ?? ZeroSmp.LoaderVersion,
+                Id = devId,
+                Name = $"{exp.Title} (Dev)",
+                McVersion = srcInstance?.McVersion ?? exp.McVersion,
+                Loader = srcInstance?.Loader ?? exp.Loader,
+                LoaderVersion = srcInstance?.LoaderVersion ?? exp.LoaderVersion,
                 IconPath = srcInstance?.IconPath ?? "icon.png",
                 CreatedUtc = DateTime.UtcNow,
                 Author = srcInstance?.Author ?? "The Lads",
                 PackVersion = srcInstance?.PackVersion ?? "1.0.0",
-                MaxRamMb = srcInstance is { MaxRamMb: > 0 } ? srcInstance.MaxRamMb : ZeroSmp.RecommendedRamMb,
+                MaxRamMb = srcInstance is { MaxRamMb: > 0 } ? srcInstance.MaxRamMb : exp.RecommendedRamMb,
                 Directory = dstDir
             };
             Modpacks.Save(devInstance);
@@ -147,26 +188,36 @@ public static class ExperiencesService
         catch { }
     }
 
+    public static void EnsureDevLadsSmpRebornSeeded(string baseDirectory) =>
+        EnsureDevExperienceSeeded(baseDirectory, LadsSmpReborn);
+
+    public static void EnsureDevZeroSmpSeeded(string baseDirectory) =>
+        EnsureDevExperienceSeeded(baseDirectory, ZeroSmp);
+
     /// <summary>
-    /// Ensures the Zero SMP server is present in the specified Minecraft game directory's servers.dat,
+    /// Ensures the Experience's server (when configured) is present in the specified Minecraft game directory's servers.dat,
     /// creating or updating the entry idempotently and preserving other servers.
     /// </summary>
-    public static bool EnsureZeroSmpServer(string gameDirectory)
+    public static bool EnsureExperienceServer(string gameDirectory, ExperienceDefinition exp)
     {
+        if (string.IsNullOrWhiteSpace(exp.ServerAddress)) return false;
         var serversPath = Path.Combine(gameDirectory, "servers.dat");
-        return ServerListService.EnsureServer(serversPath, ZeroSmp.Title, ZeroSmp.ServerAddress);
+        return ServerListService.EnsureServer(serversPath, exp.Title, exp.ServerAddress);
     }
+
+    public static bool EnsureZeroSmpServer(string gameDirectory) =>
+        EnsureExperienceServer(gameDirectory, ZeroSmp);
 
     /// <summary>Ensures the Zero SMP server is present in the instance's servers.dat under the given base directory.</summary>
     public static bool EnsureZeroSmpServerInstance(string baseDirectory) =>
         EnsureZeroSmpServer(Path.Combine(InstanceDirectory(baseDirectory, ZeroSmp.Id), "minecraft"));
 
-    /// <summary>Installs (or reinstalls over) the Zero SMP instance from the pack source. Saves, options and the player's own files stay.</summary>
-    public static async Task<ModpackInstance> InstallZeroSmpAsync(string baseDirectory, Action<string>? status, CancellationToken token, HttpClient? http = null, string? instanceIdOverride = null)
+    /// <summary>Installs (or reinstalls over) an Experience instance from its pack source. Saves, options and the player's own files stay.</summary>
+    public static async Task<ModpackInstance> InstallExperienceAsync(ExperienceDefinition exp, string baseDirectory, Action<string>? status, CancellationToken token, HttpClient? http = null, string? instanceIdOverride = null)
     {
-        var exp = ZeroSmp;
+        var devId = DevInstanceId(exp);
         var instanceId = string.IsNullOrWhiteSpace(instanceIdOverride) ? exp.Id : instanceIdOverride;
-        var instanceTitle = string.Equals(instanceId, ZeroSmpDevId, StringComparison.OrdinalIgnoreCase) ? "Zero SMP (Dev)" : exp.Title;
+        var instanceTitle = string.Equals(instanceId, devId, StringComparison.OrdinalIgnoreCase) ? $"{exp.Title} (Dev)" : exp.Title;
         var instDir = InstanceDirectory(baseDirectory, instanceId);
         var gameDir = Path.Combine(instDir, "minecraft");
         var modsDir = Path.Combine(gameDir, "mods");
@@ -199,7 +250,7 @@ public static class ExperiencesService
                     try { File.Copy(overridesServers, destServers, overwrite: false); } catch { }
                 }
 
-                EnsureZeroSmpServer(gameDir);
+                EnsureExperienceServer(gameDir, exp);
 
                 var localMods = Path.Combine(overrides, "mods");
                 if (Directory.Exists(localMods))
@@ -219,7 +270,7 @@ public static class ExperiencesService
             }
         }, token);
 
-        EnsureZeroSmpServer(gameDir);
+        EnsureExperienceServer(gameDir, exp);
 
         var pack = ReadPackInfo(source);
         var instance = new ModpackInstance
@@ -244,6 +295,12 @@ public static class ExperiencesService
         status?.Invoke($"{instanceTitle} instance ready.");
         return instance;
     }
+
+    public static Task<ModpackInstance> InstallLadsSmpRebornAsync(string baseDirectory, Action<string>? status, CancellationToken token, HttpClient? http = null, string? instanceIdOverride = null) =>
+        InstallExperienceAsync(LadsSmpReborn, baseDirectory, status, token, http, instanceIdOverride);
+
+    public static Task<ModpackInstance> InstallZeroSmpAsync(string baseDirectory, Action<string>? status, CancellationToken token, HttpClient? http = null, string? instanceIdOverride = null) =>
+        InstallExperienceAsync(ZeroSmp, baseDirectory, status, token, http, instanceIdOverride);
 
     /// <summary>Keeps the Lads Core of an installed Experience at the launcher's newest bundled build (nothing happens when the
     /// instance has no Core jar). <see cref="ModpackLauncher.PrepareAsync"/> does the same before every launch.</summary>

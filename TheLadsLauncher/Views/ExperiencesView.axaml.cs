@@ -23,6 +23,7 @@ public partial class ExperiencesView : UserControl
 
     private static readonly HttpClient Http = new();
     private static string DataDirectory => PathService.Instance.BaseDirectory;
+    private static string LadsSmpRebornInstanceId => ExperiencesService.ActiveLadsSmpRebornInstanceId();
     private static string ZeroSmpInstanceId => ExperiencesService.ActiveZeroSmpInstanceId();
     private MainWindow? Host => TopLevel.GetTopLevel(this) as MainWindow;
 
@@ -32,26 +33,31 @@ public partial class ExperiencesView : UserControl
     public static ExperiencesService.ExperienceButtonState GetButtonState(bool installed, bool isRunning = false, bool isBusy = false, bool allowMultiInstance = false)
         => ExperiencesService.GetZeroSmpButtonState(installed, isRunning, isBusy, allowMultiInstance);
 
-    private readonly List<RunningInstance> _runningInstances = new();
-    private CancellationTokenSource? _actionCts;
+    public static ExperiencesService.ExperienceButtonState GetLadsSmpRebornButtonState(bool installed, bool isRunning = false, bool isBusy = false, bool allowMultiInstance = false)
+        => ExperiencesService.GetLadsSmpRebornButtonState(installed, isRunning, isBusy, allowMultiInstance);
+
+    private readonly List<RunningInstance> _runningLadsSmpReborn = new();
+    private readonly List<RunningInstance> _runningZeroSmp = new();
+    private CancellationTokenSource? _ladsSmpRebornCts;
+    private CancellationTokenSource? _zeroSmpCts;
     private bool _syncingAutoJoin;
     private bool _syncingAccounts;
     private bool _raceRetry; // the next ZeroSmpPlay_Click is the launcher's own one retry after a known mod-loading race
 
-    private bool HasRunningProcess()
+    private static bool HasRunningProcess(List<RunningInstance> list)
     {
-        _runningInstances.RemoveAll(i =>
+        list.RemoveAll(i =>
         {
             try { return i.Process.HasExited; }
             catch { return true; }
         });
-        return _runningInstances.Count > 0;
+        return list.Count > 0;
     }
 
-    private int NextInstanceNumber()
+    private static int NextInstanceNumber(List<RunningInstance> list)
     {
         int n = 1;
-        while (_runningInstances.Any(i => i.Number == n)) n++;
+        while (list.Any(i => i.Number == n)) n++;
         return n;
     }
 
@@ -78,59 +84,59 @@ public partial class ExperiencesView : UserControl
 
         if (accountOverride != null) CurrentAccountOverride = accountOverride;
 
-        var instanceId = ZeroSmpInstanceId;
-        if (string.Equals(instanceId, ExperiencesService.ZeroSmpDevId, StringComparison.OrdinalIgnoreCase))
+        bool allowMultiInstance = Host?.ModpackSettings.AllowMultiInstance == true;
+
+        // 1. Refresh The Lads SMP Reborn card
+        var ladsId = LadsSmpRebornInstanceId;
+        if (string.Equals(ladsId, ExperiencesService.LadsSmpRebornDevId, StringComparison.OrdinalIgnoreCase))
+        {
+            ExperiencesService.EnsureDevLadsSmpRebornSeeded(DataDirectory);
+        }
+        RefreshCardState(
+            ExperiencesService.LadsSmpReborn,
+            ladsId,
+            _runningLadsSmpReborn,
+            _ladsSmpRebornCts != null,
+            allowMultiInstance,
+            LadsSmpRebornPlayBtn,
+            LadsSmpRebornStatusBadge,
+            LadsSmpRebornStatusBadgeText,
+            LadsSmpRebornStatusText,
+            LadsSmpRebornRamBox,
+            LadsSmpRebornFolderBtn,
+            LadsSmpRebornReinstallBtn,
+            LadsSmpRebornInstancesDropdownBtn,
+            LadsSmpRebornInstancesDropdownText,
+            LadsSmpRebornInstancesBar,
+            LadsSmpRebornInstancesQuickButtons,
+            LadsSmpRebornProgressBar);
+
+        // 2. Refresh Zero SMP card
+        var zeroId = ZeroSmpInstanceId;
+        if (string.Equals(zeroId, ExperiencesService.ZeroSmpDevId, StringComparison.OrdinalIgnoreCase))
         {
             ExperiencesService.EnsureDevZeroSmpSeeded(DataDirectory);
         }
-
-        bool installed = ExperiencesService.IsInstalled(DataDirectory, instanceId);
-        bool running = HasRunningProcess();
-        bool busy = _actionCts != null;
-        bool allowMultiInstance = Host?.ModpackSettings.AllowMultiInstance == true;
-
-        var btnState = ExperiencesService.GetZeroSmpButtonState(installed, running, busy, allowMultiInstance);
-        ZeroSmpPlayBtn.Content = btnState.Text;
-        ZeroSmpPlayBtn.IsEnabled = btnState.IsEnabled;
-
-        if (running)
-        {
-            ZeroSmpStatusBadge.Background = Brush.Parse("#1D2A1F");
-            ZeroSmpStatusBadge.BorderBrush = Brush.Parse("#386B42");
-            ZeroSmpStatusBadgeText.Text = _runningInstances.Count > 1 ? $"Running ({_runningInstances.Count})" : "Running";
-            ZeroSmpStatusBadgeText.Foreground = Brush.Parse("#85E89D");
-        }
-        else if (busy)
-        {
-            // operation status remains in ZeroSmpStatusText
-        }
-        else if (installed)
-        {
-            ZeroSmpStatusBadge.Background = Brush.Parse("#1D2A1F");
-            ZeroSmpStatusBadge.BorderBrush = Brush.Parse("#386B42");
-            ZeroSmpStatusBadgeText.Text = "Installed";
-            ZeroSmpStatusBadgeText.Foreground = Brush.Parse("#85E89D");
-            ZeroSmpStatusText.Text = "Ready to play";
-
-            var instance = ExperiencesService.GetInstance(DataDirectory, instanceId);
-            if (instance != null && instance.MaxRamMb > 0)
-            {
-                ZeroSmpRamBox.Value = instance.MaxRamMb;
-            }
-        }
-        else
-        {
-            ZeroSmpStatusBadge.Background = Brush.Parse("#2A211D");
-            ZeroSmpStatusBadge.BorderBrush = Brush.Parse("#6B3838");
-            ZeroSmpStatusBadgeText.Text = "Not Installed";
-            ZeroSmpStatusBadgeText.Foreground = Brush.Parse("#E88585");
-            ZeroSmpStatusText.Text = "Not installed";
-        }
+        RefreshCardState(
+            ExperiencesService.ZeroSmp,
+            zeroId,
+            _runningZeroSmp,
+            _zeroSmpCts != null,
+            allowMultiInstance,
+            ZeroSmpPlayBtn,
+            ZeroSmpStatusBadge,
+            ZeroSmpStatusBadgeText,
+            ZeroSmpStatusText,
+            ZeroSmpRamBox,
+            ZeroSmpFolderBtn,
+            ZeroSmpReinstallBtn,
+            ZeroSmpInstancesDropdownBtn,
+            ZeroSmpInstancesDropdownText,
+            ZeroSmpInstancesBar,
+            ZeroSmpInstancesQuickButtons,
+            ZeroSmpProgressBar);
 
         ZeroSmpAutoJoinCheck.IsVisible = true;
-
-        ZeroSmpFolderBtn.IsEnabled = installed && !busy;
-        ZeroSmpReinstallBtn.IsEnabled = installed && !busy && !running;
 
         if (Host is { } host)
         {
@@ -138,34 +144,108 @@ public partial class ExperiencesView : UserControl
             ZeroSmpAutoJoinCheck.IsChecked = host.ModpackSettings.ZeroSmpAutoJoin;
             _syncingAutoJoin = false;
 
-            SyncAccountSelector(host);
+            SyncAccountSelector(host, LadsSmpRebornAccountSelector);
+            SyncAccountSelector(host, ZeroSmpAccountSelector);
         }
-
-        UpdateRunningInstancesUi();
     }
 
-    private void SyncAccountSelector(MainWindow host)
+    private void RefreshCardState(
+        ExperienceDefinition exp,
+        string instanceId,
+        List<RunningInstance> runningList,
+        bool busy,
+        bool allowMultiInstance,
+        Button playBtn,
+        Border statusBadge,
+        TextBlock statusBadgeText,
+        TextBlock statusText,
+        NumericUpDown ramBox,
+        Button folderBtn,
+        Button reinstallBtn,
+        Button instancesDropdownBtn,
+        TextBlock instancesDropdownText,
+        Border instancesBar,
+        WrapPanel instancesQuickButtons,
+        ProgressBar progressBar)
     {
-        if (ZeroSmpAccountSelector == null) return;
+        bool installed = ExperiencesService.IsInstalled(DataDirectory, instanceId);
+        bool running = HasRunningProcess(runningList);
+
+        var btnState = ExperiencesService.GetExperienceButtonState(exp, installed, running, busy, allowMultiInstance);
+        playBtn.Content = btnState.Text;
+        playBtn.IsEnabled = btnState.IsEnabled;
+
+        if (running)
+        {
+            statusBadge.Background = Brush.Parse("#1D2A1F");
+            statusBadge.BorderBrush = Brush.Parse("#386B42");
+            statusBadgeText.Text = runningList.Count > 1 ? $"Running ({runningList.Count})" : "Running";
+            statusBadgeText.Foreground = Brush.Parse("#85E89D");
+        }
+        else if (busy)
+        {
+            // operation status remains in statusText
+        }
+        else if (installed)
+        {
+            statusBadge.Background = Brush.Parse("#1D2A1F");
+            statusBadge.BorderBrush = Brush.Parse("#386B42");
+            statusBadgeText.Text = "Installed";
+            statusBadgeText.Foreground = Brush.Parse("#85E89D");
+            statusText.Text = "Ready to play";
+
+            var instance = ExperiencesService.GetInstance(DataDirectory, instanceId);
+            if (instance != null && instance.MaxRamMb > 0)
+            {
+                ramBox.Value = instance.MaxRamMb;
+            }
+        }
+        else
+        {
+            statusBadge.Background = Brush.Parse("#2A211D");
+            statusBadge.BorderBrush = Brush.Parse("#6B3838");
+            statusBadgeText.Text = "Not Installed";
+            statusBadgeText.Foreground = Brush.Parse("#E88585");
+            statusText.Text = "Not installed";
+        }
+
+        folderBtn.IsEnabled = installed && !busy;
+        reinstallBtn.IsEnabled = installed && !busy && !running;
+
+        UpdateRunningInstancesUi(exp, runningList, busy, statusText, progressBar, instancesDropdownBtn, instancesDropdownText, instancesBar, instancesQuickButtons);
+    }
+
+    private void SyncAccountSelector(MainWindow host, ComboBox? selector)
+    {
+        if (selector == null) return;
         _syncingAccounts = true;
         try
         {
             var choices = host.GetLaunchAccountChoices();
-            var existing = ZeroSmpAccountSelector.Items.OfType<AccountChoice>().ToList();
+            var existing = selector.Items.OfType<AccountChoice>().ToList();
             if (!existing.SequenceEqual(choices))
             {
-                ZeroSmpAccountSelector.Items.Clear();
+                selector.Items.Clear();
                 foreach (var choice in choices)
                 {
-                    ZeroSmpAccountSelector.Items.Add(choice);
+                    selector.Items.Add(choice);
                 }
             }
             string selectedName = host.SelectedLaunchAccountName;
-            ZeroSmpAccountSelector.SelectedItem = choices.FirstOrDefault(c => string.Equals(c.Name, selectedName, StringComparison.OrdinalIgnoreCase));
+            selector.SelectedItem = choices.FirstOrDefault(c => string.Equals(c.Name, selectedName, StringComparison.OrdinalIgnoreCase));
         }
         finally
         {
             _syncingAccounts = false;
+        }
+    }
+
+    private void LadsSmpRebornAccountSelector_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingAccounts || Host is not { } host) return;
+        if (LadsSmpRebornAccountSelector?.SelectedItem is AccountChoice { Name: var name })
+        {
+            host.SelectLaunchAccount(name);
         }
     }
 
@@ -178,22 +258,31 @@ public partial class ExperiencesView : UserControl
         }
     }
 
-    private void UpdateRunningInstancesUi()
+    private void UpdateRunningInstancesUi(
+        ExperienceDefinition exp,
+        List<RunningInstance> runningList,
+        bool busy,
+        TextBlock statusText,
+        ProgressBar progressBar,
+        Button? dropdownBtn,
+        TextBlock? dropdownText,
+        Border? instancesBar,
+        WrapPanel? quickButtons)
     {
-        if (ZeroSmpInstancesDropdownBtn == null || ZeroSmpInstancesDropdownBtn.Flyout is not MenuFlyout menu || ZeroSmpInstancesBar == null || ZeroSmpInstancesQuickButtons == null)
+        if (dropdownBtn == null || dropdownBtn.Flyout is not MenuFlyout menu || instancesBar == null || quickButtons == null || dropdownText == null)
             return;
 
-        var ordered = _runningInstances.OrderBy(i => i.Number).ToList();
+        var ordered = runningList.OrderBy(i => i.Number).ToList();
         bool anyOpen = ordered.Count > 0;
 
-        ZeroSmpInstancesDropdownBtn.IsVisible = anyOpen;
-        ZeroSmpInstancesBar.IsVisible = anyOpen;
+        dropdownBtn.IsVisible = anyOpen;
+        instancesBar.IsVisible = anyOpen;
         menu.Items.Clear();
-        ZeroSmpInstancesQuickButtons.Children.Clear();
+        quickButtons.Children.Clear();
 
         if (!anyOpen) return;
 
-        ZeroSmpInstancesDropdownText.Text = $"Instances Open ({ordered.Count})";
+        dropdownText.Text = $"Instances Open ({ordered.Count})";
 
         var headerLabel = new TextBlock
         {
@@ -204,7 +293,7 @@ public partial class ExperiencesView : UserControl
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 2, 10, 2)
         };
-        ZeroSmpInstancesQuickButtons.Children.Add(headerLabel);
+        quickButtons.Children.Add(headerLabel);
 
         foreach (var inst in ordered)
         {
@@ -213,7 +302,7 @@ public partial class ExperiencesView : UserControl
             {
                 Header = $"Close Instance {captured.Number} ({captured.Username})"
             };
-            menuItem.Click += (_, _) => CloseInstance(captured);
+            menuItem.Click += (_, _) => CloseInstance(exp, runningList, busy, statusText, progressBar, captured);
             menu.Items.Add(menuItem);
 
             var quickBtn = new Button
@@ -225,8 +314,8 @@ public partial class ExperiencesView : UserControl
                 Padding = new Thickness(10, 0),
                 Margin = new Thickness(0, 2, 8, 2)
             };
-            quickBtn.Click += (_, _) => CloseInstance(captured);
-            ZeroSmpInstancesQuickButtons.Children.Add(quickBtn);
+            quickBtn.Click += (_, _) => CloseInstance(exp, runningList, busy, statusText, progressBar, captured);
+            quickButtons.Children.Add(quickBtn);
         }
 
         if (ordered.Count > 1)
@@ -238,7 +327,7 @@ public partial class ExperiencesView : UserControl
         {
             Header = ordered.Count > 1 ? $"Close All ({ordered.Count} Instances)" : "Close All"
         };
-        closeAllItem.Click += (_, _) => CloseAllInstances();
+        closeAllItem.Click += (_, _) => CloseAllInstances(exp, runningList, busy, statusText, progressBar);
         menu.Items.Add(closeAllItem);
 
         var closeAllBtn = new Button
@@ -251,31 +340,31 @@ public partial class ExperiencesView : UserControl
             Padding = new Thickness(10, 0),
             Margin = new Thickness(0, 2, 0, 2)
         };
-        closeAllBtn.Click += (_, _) => CloseAllInstances();
-        ZeroSmpInstancesQuickButtons.Children.Add(closeAllBtn);
+        closeAllBtn.Click += (_, _) => CloseAllInstances(exp, runningList, busy, statusText, progressBar);
+        quickButtons.Children.Add(closeAllBtn);
     }
 
-    private void CloseInstance(RunningInstance inst)
+    private void CloseInstance(ExperienceDefinition exp, List<RunningInstance> runningList, bool busy, TextBlock statusText, ProgressBar progressBar, RunningInstance inst)
     {
-        _runningInstances.Remove(inst);
+        runningList.Remove(inst);
         GameSession.Cancel(inst.Process);
-        Host?.ModpackLog($"Closed Zero SMP Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
-        ZeroSmpStatusText.Text = $"Closed Instance {inst.Number} ({inst.Username}).";
-        if (!HasRunningProcess() && _actionCts == null) ZeroSmpProgressBar.IsVisible = false;
+        Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
+        statusText.Text = $"Closed Instance {inst.Number} ({inst.Username}).";
+        if (!HasRunningProcess(runningList) && !busy) progressBar.IsVisible = false;
         RefreshState();
     }
 
-    private void CloseAllInstances()
+    private void CloseAllInstances(ExperienceDefinition exp, List<RunningInstance> runningList, bool busy, TextBlock statusText, ProgressBar progressBar)
     {
-        var toClose = _runningInstances.ToList();
-        _runningInstances.Clear();
+        var toClose = runningList.ToList();
+        runningList.Clear();
         foreach (var inst in toClose)
         {
             GameSession.Cancel(inst.Process);
-            Host?.ModpackLog($"Closed Zero SMP Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
+            Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
         }
-        ZeroSmpStatusText.Text = toClose.Count > 1 ? $"Closed all {toClose.Count} Zero SMP instances." : "Closed Zero SMP instance.";
-        if (_actionCts == null) ZeroSmpProgressBar.IsVisible = false;
+        statusText.Text = toClose.Count > 1 ? $"Closed all {toClose.Count} {exp.Title} instances." : $"Closed {exp.Title} instance.";
+        if (!busy) progressBar.IsVisible = false;
         RefreshState();
     }
 
@@ -286,11 +375,144 @@ public partial class ExperiencesView : UserControl
         host.ModpackSettings.Save();
     }
 
+    private async void LadsSmpRebornPlay_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Host is not { } host) return;
+        if (_ladsSmpRebornCts != null) return;
+        if (HasRunningProcess(_runningLadsSmpReborn) && !host.ModpackSettings.AllowMultiInstance) return;
+
+        var exp = ExperiencesService.LadsSmpReborn;
+        var instanceId = LadsSmpRebornInstanceId;
+        if (string.Equals(instanceId, ExperiencesService.LadsSmpRebornDevId, StringComparison.OrdinalIgnoreCase))
+        {
+            ExperiencesService.EnsureDevLadsSmpRebornSeeded(DataDirectory);
+        }
+
+        bool installed = ExperiencesService.IsInstalled(DataDirectory, instanceId);
+        _ladsSmpRebornCts = new CancellationTokenSource();
+        var token = _ladsSmpRebornCts.Token;
+
+        LadsSmpRebornProgressBar.IsVisible = true;
+        LadsSmpRebornProgressBar.Value = 0;
+        RefreshState();
+
+        void Report(string message) => Dispatcher.UIThread.Post(() => LadsSmpRebornStatusText.Text = message);
+
+        try
+        {
+            ModpackInstance? instance;
+            if (!installed)
+            {
+                Report($"Installing {exp.Title} isolated instance...");
+                instance = await ExperiencesService.InstallLadsSmpRebornAsync(DataDirectory, Report, token, Http, instanceId);
+            }
+            else
+            {
+                instance = ExperiencesService.GetInstance(DataDirectory, instanceId)
+                           ?? await ExperiencesService.InstallLadsSmpRebornAsync(DataDirectory, Report, token, Http, instanceId);
+            }
+
+            if (LadsSmpRebornRamBox.Value.HasValue)
+            {
+                instance.MaxRamMb = (int)LadsSmpRebornRamBox.Value.Value;
+                Modpacks.Save(instance);
+            }
+
+            await ExperiencesService.ApplyPendingPatchesAsync(DataDirectory, instance.Id, Http, Report, token, ExperiencesService.BundledPatchesDirectory);
+
+            Report("Signing in...");
+            var session = await host.ResolveModpackSessionAsync(token);
+
+            Report($"Preparing Minecraft {exp.McVersion} & Fabric {exp.LoaderVersion}...");
+            var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token, null);
+
+            int instNumber = NextInstanceNumber(_runningLadsSmpReborn);
+            var runningInst = new RunningInstance(instNumber, session.Username ?? "Player", process);
+            _runningLadsSmpReborn.Add(runningInst);
+            process.EnableRaisingEvents = true;
+            process.Exited += (_, _) => Dispatcher.UIThread.Post(() =>
+            {
+                _runningLadsSmpReborn.Remove(runningInst);
+                bool wasCancelled = GameSession.WasCancelled(process);
+                int code = process.ExitCode;
+                host.ModpackLog($"{exp.Title} Instance {instNumber} ({runningInst.Username}) closed (exit code {code}).");
+                if (!wasCancelled)
+                {
+                    LadsSmpRebornStatusText.Text = code == 0
+                        ? $"Instance {instNumber} ({runningInst.Username}) closed."
+                        : $"Instance {instNumber} ({runningInst.Username}) closed with exit code {code}. See logs in Open Folder.";
+                }
+                if (!HasRunningProcess(_runningLadsSmpReborn) && _ladsSmpRebornCts == null) LadsSmpRebornProgressBar.IsVisible = false;
+                RefreshState();
+                host.ApplyNextAccountRequest(instance.GameDirectory);
+                host.ApplyNextVersionRequest(instance.GameDirectory);
+            });
+
+            Report($"{exp.Title} Instance {instNumber} started as {session.Username}!");
+            host.ModpackLog($"Started {exp.Title} Instance {instNumber} (Fabric {exp.LoaderVersion}, Minecraft {exp.McVersion}) PID {process.Id}.");
+            RefreshState();
+        }
+        catch (OperationCanceledException)
+        {
+            Report("Action cancelled.");
+        }
+        catch (Exception error)
+        {
+            Report("Failed: " + error.Message);
+            host.ModpackLog($"{exp.Title} error: {error}");
+        }
+        finally
+        {
+            _ladsSmpRebornCts?.Dispose();
+            _ladsSmpRebornCts = null;
+            if (!HasRunningProcess(_runningLadsSmpReborn)) LadsSmpRebornProgressBar.IsVisible = false;
+            RefreshState();
+        }
+    }
+
+    private void LadsSmpRebornFolder_Click(object? sender, RoutedEventArgs e) =>
+        OpenExperienceFolder(LadsSmpRebornInstanceId, LadsSmpRebornStatusText);
+
+    private async void LadsSmpRebornReinstall_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Host is not { } host) return;
+        bool confirmed = await host.ConfirmModpackAsync(
+            "Reinstall The Lads SMP Reborn",
+            "This will re-copy the modpack mods and default configurations. Your singleplayer worlds in saves/ will NOT be deleted.",
+            "Reinstall");
+
+        if (!confirmed) return;
+
+        _ladsSmpRebornCts = new CancellationTokenSource();
+        LadsSmpRebornProgressBar.IsVisible = true;
+        RefreshState();
+
+        void Report(string message) => Dispatcher.UIThread.Post(() => LadsSmpRebornStatusText.Text = message);
+
+        try
+        {
+            Report("Reinstalling The Lads SMP Reborn...");
+            await ExperiencesService.InstallLadsSmpRebornAsync(DataDirectory, Report, _ladsSmpRebornCts.Token, Http, LadsSmpRebornInstanceId);
+            Report("The Lads SMP Reborn reinstalled successfully.");
+        }
+        catch (Exception ex)
+        {
+            Report("Reinstall failed: " + ex.Message);
+        }
+        finally
+        {
+            _ladsSmpRebornCts?.Dispose();
+            _ladsSmpRebornCts = null;
+            LadsSmpRebornProgressBar.IsVisible = false;
+            RefreshState();
+        }
+    }
+
     private async void ZeroSmpPlay_Click(object? sender, RoutedEventArgs e)
     {
         if (Host is not { } host) return;
-        if (_actionCts != null) return;
-        if (HasRunningProcess() && !host.ModpackSettings.AllowMultiInstance) return;
+        if (_zeroSmpCts != null) return;
+        if (HasRunningProcess(_runningZeroSmp) && !host.ModpackSettings.AllowMultiInstance) return;
         bool retry = _raceRetry;
         _raceRetry = false;
 
@@ -301,8 +523,8 @@ public partial class ExperiencesView : UserControl
         }
 
         bool installed = ExperiencesService.IsInstalled(DataDirectory, instanceId);
-        _actionCts = new CancellationTokenSource();
-        var token = _actionCts.Token;
+        _zeroSmpCts = new CancellationTokenSource();
+        var token = _zeroSmpCts.Token;
 
         ZeroSmpProgressBar.IsVisible = true;
         ZeroSmpProgressBar.Value = 0;
@@ -345,13 +567,13 @@ public partial class ExperiencesView : UserControl
             var launchedUtc = DateTime.UtcNow;
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token, joinServer);
 
-            int instNumber = NextInstanceNumber();
+            int instNumber = NextInstanceNumber(_runningZeroSmp);
             var runningInst = new RunningInstance(instNumber, session.Username ?? "Player", process);
-            _runningInstances.Add(runningInst);
+            _runningZeroSmp.Add(runningInst);
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) => Dispatcher.UIThread.Post(() =>
             {
-                _runningInstances.Remove(runningInst);
+                _runningZeroSmp.Remove(runningInst);
                 bool wasCancelled = GameSession.WasCancelled(process);
                 int code = process.ExitCode;
                 host.ModpackLog($"Zero SMP Instance {instNumber} ({runningInst.Username}) closed (exit code {code}).");
@@ -361,7 +583,7 @@ public partial class ExperiencesView : UserControl
                         ? $"Instance {instNumber} ({runningInst.Username}) closed."
                         : $"Instance {instNumber} ({runningInst.Username}) closed with exit code {code}. See logs in Open Folder.";
                 }
-                if (!HasRunningProcess() && _actionCts == null) ZeroSmpProgressBar.IsVisible = false;
+                if (!HasRunningProcess(_runningZeroSmp) && _zeroSmpCts == null) ZeroSmpProgressBar.IsVisible = false;
                 RefreshState();
                 host.ApplyNextAccountRequest(instance.GameDirectory); // in-game account switcher
                 host.ApplyNextVersionRequest(instance.GameDirectory); // closed from the in-game Switch Versions screen
@@ -390,16 +612,18 @@ public partial class ExperiencesView : UserControl
         }
         finally
         {
-            _actionCts?.Dispose();
-            _actionCts = null;
-            if (!HasRunningProcess()) ZeroSmpProgressBar.IsVisible = false;
+            _zeroSmpCts?.Dispose();
+            _zeroSmpCts = null;
+            if (!HasRunningProcess(_runningZeroSmp)) ZeroSmpProgressBar.IsVisible = false;
             RefreshState();
         }
     }
 
-    private void ZeroSmpFolder_Click(object? sender, RoutedEventArgs e)
+    private void ZeroSmpFolder_Click(object? sender, RoutedEventArgs e) =>
+        OpenExperienceFolder(ZeroSmpInstanceId, ZeroSmpStatusText);
+
+    private static void OpenExperienceFolder(string instanceId, TextBlock statusText)
     {
-        var instanceId = ZeroSmpInstanceId;
         var gameDir = Path.Combine(ExperiencesService.InstanceDirectory(DataDirectory, instanceId), "minecraft");
         if (!Directory.Exists(gameDir)) gameDir = ExperiencesService.InstanceDirectory(DataDirectory, instanceId);
         if (!Directory.Exists(gameDir)) Directory.CreateDirectory(gameDir);
@@ -414,7 +638,7 @@ public partial class ExperiencesView : UserControl
         }
         catch (Exception ex)
         {
-            ZeroSmpStatusText.Text = "Could not open folder: " + ex.Message;
+            statusText.Text = "Could not open folder: " + ex.Message;
         }
     }
 
@@ -428,7 +652,7 @@ public partial class ExperiencesView : UserControl
 
         if (!confirmed) return;
 
-        _actionCts = new CancellationTokenSource();
+        _zeroSmpCts = new CancellationTokenSource();
         ZeroSmpProgressBar.IsVisible = true;
         RefreshState();
 
@@ -437,7 +661,7 @@ public partial class ExperiencesView : UserControl
         try
         {
             Report("Reinstalling Zero SMP...");
-            await ExperiencesService.InstallZeroSmpAsync(DataDirectory, Report, _actionCts.Token, Http, ZeroSmpInstanceId);
+            await ExperiencesService.InstallZeroSmpAsync(DataDirectory, Report, _zeroSmpCts.Token, Http, ZeroSmpInstanceId);
             Report("Zero SMP reinstalled successfully.");
         }
         catch (Exception ex)
@@ -446,8 +670,8 @@ public partial class ExperiencesView : UserControl
         }
         finally
         {
-            _actionCts?.Dispose();
-            _actionCts = null;
+            _zeroSmpCts?.Dispose();
+            _zeroSmpCts = null;
             ZeroSmpProgressBar.IsVisible = false;
             RefreshState();
         }

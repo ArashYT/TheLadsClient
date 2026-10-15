@@ -29,6 +29,23 @@ public class ExperiencesServiceTests : IDisposable
     }
 
     [Fact]
+    public void LadsSmpReborn_Metadata_Is_Valid()
+    {
+        var exp = ExperiencesService.LadsSmpReborn;
+        Assert.Equal("lads-smp-reborn-26.3", exp.Id);
+        Assert.Equal("The Lads SMP Reborn", exp.Title);
+        Assert.Equal("26.3", exp.McVersion);
+        Assert.Equal("fabric", exp.Loader);
+        Assert.Equal("0.19.5", exp.LoaderVersion);
+        Assert.Equal("avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png", exp.IconAsset);
+        Assert.Equal(225, exp.ModCount);
+        Assert.Equal(8192, exp.RecommendedRamMb);
+        Assert.StartsWith("https://", exp.PackArchiveUrl);
+        Assert.Equal(64, exp.PackArchiveSha256.Length);
+        Assert.Contains(exp, ExperiencesService.AllExperiences);
+    }
+
+    [Fact]
     public void ZeroSmp_Metadata_Is_Valid()
     {
         var exp = ExperiencesService.ZeroSmp;
@@ -424,6 +441,48 @@ public class ExperiencesServiceTests : IDisposable
         var dev = ExperiencesService.GetInstance(_tempDir, ExperiencesService.ZeroSmpDevId);
         Assert.NotNull(dev);
         Assert.Equal("Zero SMP (Dev)", dev!.Name);
+        Assert.NotEqual(regular.GameDirectory, dev.GameDirectory);
+    }
+
+    [Fact]
+    public void LadsSmpRebornButtonState_ReflectsInstalledAndNotInstalledStates()
+    {
+        var installed = ExperiencesService.GetLadsSmpRebornButtonState(installed: true);
+        Assert.Equal("Play The Lads SMP Reborn", installed.Text);
+        Assert.True(installed.IsEnabled);
+
+        var notInstalled = ExperiencesService.GetLadsSmpRebornButtonState(installed: false);
+        Assert.Equal("Install & Play The Lads SMP Reborn", notInstalled.Text);
+        Assert.True(notInstalled.IsEnabled);
+
+        Assert.Equal("Play The Lads SMP Reborn", TheLadsLauncher.Views.ExperiencesView.GetLadsSmpRebornButtonState(installed: true).Text);
+        Assert.Equal("Install & Play The Lads SMP Reborn", TheLadsLauncher.Views.ExperiencesView.GetLadsSmpRebornButtonState(installed: false).Text);
+        Assert.Equal("Game Running", ExperiencesService.GetLadsSmpRebornButtonState(installed: true, isRunning: true).Text);
+        Assert.False(ExperiencesService.GetLadsSmpRebornButtonState(installed: true, isRunning: true).IsEnabled);
+    }
+
+    [Fact]
+    public async Task DevLadsSmpRebornInstance_SeedsFromRegularInstanceAndKeepsSeparateDirectory()
+    {
+        var archive = ExperiencesService.PackArchivePath(_tempDir, "lads-smp-reborn-26.3");
+        Directory.CreateDirectory(Path.GetDirectoryName(archive)!);
+        File.WriteAllBytes(archive, PackZip(SamplePack));
+
+        var regular = await ExperiencesService.InstallLadsSmpRebornAsync(_tempDir, null, CancellationToken.None);
+        Assert.Equal("lads-smp-reborn-26.3", regular.Id);
+        Assert.Equal("lads-smp-reborn-26.3-dev", ExperiencesService.ActiveLadsSmpRebornInstanceId(isDevLauncher: true));
+        Assert.Equal("lads-smp-reborn-26.3", ExperiencesService.ActiveLadsSmpRebornInstanceId(isDevLauncher: false));
+        Assert.Equal("lads-smp-reborn-26.3", ExperiencesService.CanonicalPackId(ExperiencesService.LadsSmpRebornDevId));
+
+        ExperiencesService.EnsureDevLadsSmpRebornSeeded(_tempDir);
+        Assert.True(ExperiencesService.IsInstalled(_tempDir, ExperiencesService.LadsSmpRebornDevId));
+
+        var dev = ExperiencesService.GetInstance(_tempDir, ExperiencesService.LadsSmpRebornDevId);
+        Assert.NotNull(dev);
+        Assert.Equal("The Lads SMP Reborn (Dev)", dev!.Name);
+        Assert.Equal("26.3", dev.McVersion);
+        Assert.Equal("fabric", dev.Loader);
+        Assert.Equal("0.19.5", dev.LoaderVersion);
         Assert.NotEqual(regular.GameDirectory, dev.GameDirectory);
     }
 }

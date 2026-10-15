@@ -11,6 +11,112 @@
                    Foreground="#A0A1AA" FontSize="12" TextWrapping="Wrap" />
       </StackPanel>
 
+      <!-- The Lads SMP Reborn Card -->
+      <Border Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="8" Padding="20">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*">
+          <!-- Icon -->
+          <Border Grid.Row="0" Grid.Column="0" Width="80" Height="80" CornerRadius="8" ClipToBounds="True" Background="#26272C" Margin="0,0,20,16" VerticalAlignment="Top">
+            <Image Source="avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png" Width="80" Height="80" Stretch="UniformToFill" />
+          </Border>
+
+          <!-- Title and badges -->
+          <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="The Lads SMP Reborn" FontSize="22" FontWeight="Bold" />
+              <Border Background="#2A2B32" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                <TextBlock Text="OFFICIAL" Foreground="{DynamicResource LadsAccent}" FontSize="10" FontWeight="Bold" />
+              </Border>
+            </StackPanel>
+
+            <WrapPanel Margin="0,2,0,4">
+              <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
+                <TextBlock Text="Minecraft 26.3" Foreground="#B0B2BD" FontSize="11" />
+              </Border>
+              <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
+                <TextBlock Text="Fabric 0.19.5" Foreground="#B0B2BD" FontSize="11" />
+              </Border>
+              <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
+                <TextBlock Text="225 Mods" Foreground="#B0B2BD" FontSize="11" />
+              </Border>
+              <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
+                <TextBlock Text="Lads SMP 1.0.0" Foreground="#52A5E0" FontSize="11" />
+              </Border>
+            </WrapPanel>
+
+            <TextBlock Text="The official Lads SMP 26.3 experience — featuring Alex's Caves &amp; Mobs, BetterEnd, Biomes O' Plenty, Dungeons &amp; Taverns, Farmer's Delight, Simple Voice Chat, Sodium &amp; Iris, and our custom Lads SMP mod with 13 consolidated QoL tweaks, item disabler, and loot rebalance."
+                       Foreground="#999BA5" FontSize="12" TextWrapping="Wrap" MaxWidth="650" />
+          </StackPanel>
+
+          <!-- Pack Info & Stats Banner -->
+          <Border Grid.Row="1" Grid.ColumnSpan="2" Background="#16171A" BorderBrush="#2C2D33" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="0,0,0,16">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Ellipse Width="8" Height="8" Fill="#50C878" VerticalAlignment="Center" />
+                <TextBlock Text="Pack Version:" Foreground="#7E808A" FontSize="12" VerticalAlignment="Center" />
+                <TextBlock x:Name="LadsSmpRebornVersionText" Text="1.0.0 (Minecraft 26.3)" Foreground="White" FontSize="12" FontWeight="Medium" VerticalAlignment="Center" />
+              </StackPanel>
+
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Text="Allocated RAM:" Foreground="#7E808A" FontSize="12" VerticalAlignment="Center" />
+                <NumericUpDown x:Name="LadsSmpRebornRamBox" Width="120" Height="30" Minimum="2048" Maximum="32768" Increment="512" Value="8192" FormatString="0 MB" />
+              </StackPanel>
+
+              <Border Grid.Column="3" x:Name="LadsSmpRebornStatusBadge" Background="#1D2A1F" BorderBrush="#386B42" BorderThickness="1" CornerRadius="4" Padding="10,4" VerticalAlignment="Center">
+                <TextBlock x:Name="LadsSmpRebornStatusBadgeText" Text="Installed" Foreground="#85E89D" FontSize="11" FontWeight="SemiBold" />
+              </Border>
+            </Grid>
+          </Border>
+
+          <!-- Status & Progress -->
+          <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Spacing="6" Margin="0,0,0,14">
+            <TextBlock x:Name="LadsSmpRebornStatusText" Text="Ready to play" Foreground="#9C9EA8" FontSize="12" TextWrapping="Wrap" />
+            <ProgressBar x:Name="LadsSmpRebornProgressBar" Height="3" Minimum="0" Maximum="100" Value="0" IsVisible="False" />
+          </StackPanel>
+
+          <!-- Action Buttons & Playing As -->
+          <Grid Grid.Row="3" Grid.ColumnSpan="2" RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto">
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="PLAYING AS" Classes="caption" Margin="0,0,0,6" />
+            <ComboBox Grid.Row="1" Grid.Column="0" x:Name="LadsSmpRebornAccountSelector" Classes="launchPicker" PlaceholderText="Select an account" FontSize="14" VerticalContentAlignment="Center" HorizontalContentAlignment="Left" ToolTip.Tip="Launch with this account (does not change your main account)" SelectionChanged="LadsSmpRebornAccountSelector_SelectionChanged" Height="46" MinWidth="220" Margin="0,0,12,0">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="models:AccountChoice">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Border Width="26" Height="26" CornerRadius="4" ClipToBounds="True" Background="#303137">
+                      <Image Source="{Binding Head}" Width="26" Height="26" RenderOptions.BitmapInterpolationMode="None" />
+                    </Border>
+                    <TextBlock Text="{Binding Label}" Classes="notranslate" VerticalAlignment="Center" />
+                  </StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+              <Button x:Name="LadsSmpRebornPlayBtn" Classes="launch" Content="Play The Lads SMP Reborn" Height="46" MinWidth="175" FontSize="16" FontWeight="Bold" Click="LadsSmpRebornPlay_Click" />
+
+              <Button x:Name="LadsSmpRebornInstancesDropdownBtn" Classes="action" Height="46" Padding="14,0" IsVisible="False" ToolTip.Tip="Manage running The Lads SMP Reborn instances">
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <Ellipse Width="8" Height="8" Fill="#85E89D" VerticalAlignment="Center" />
+                  <TextBlock x:Name="LadsSmpRebornInstancesDropdownText" Text="Instances Open (1)" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" />
+                  <Path Data="M 1,3 L 5,7 L 9,3" Stroke="#B0B2BD" StrokeThickness="1.6" Width="10" Height="10" Stretch="Uniform" VerticalAlignment="Center" />
+                </StackPanel>
+                <Button.Flyout>
+                  <MenuFlyout Placement="BottomEdgeAlignedLeft" />
+                </Button.Flyout>
+              </Button>
+            </StackPanel>
+
+            <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <Button x:Name="LadsSmpRebornFolderBtn" Classes="action" Content="Open folder" Height="36" Click="LadsSmpRebornFolder_Click" />
+              <Button x:Name="LadsSmpRebornReinstallBtn" Classes="action" Content="Reinstall" Height="36" Click="LadsSmpRebornReinstall_Click" />
+            </StackPanel>
+          </Grid>
+
+          <!-- Quick Close Running Instances Strip -->
+          <Border Grid.Row="4" Grid.ColumnSpan="2" x:Name="LadsSmpRebornInstancesBar" IsVisible="False" Background="#16171A" BorderBrush="#2C2D33" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,12,0,0">
+            <WrapPanel x:Name="LadsSmpRebornInstancesQuickButtons" Orientation="Horizontal" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </Border>
+
       <!-- Zero SMP Card -->
       <Border Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="8" Padding="20">
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*">

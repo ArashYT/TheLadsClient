@@ -1,0 +1,71 @@
+package com.thelads.smp.mixin;
+
+import com.thelads.smp.disabler.ItemDisablerSystem;
+import net.minecraft.core.NonNullList;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ContainerInput;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+/**
+ * Pathway 4: Intercepts container clicks, cursor carries, and shift-click transfers of disabled items.
+ */
+@Mixin(AbstractContainerMenu.class)
+public abstract class MixinAbstractContainerMenu {
+    @Shadow
+    @Final
+    public NonNullList<Slot> slots;
+
+    @Shadow
+    public abstract ItemStack getCarried();
+
+    @Shadow
+    public abstract void setCarried(ItemStack stack);
+
+    @Inject(method = "clicked", at = @At("HEAD"), cancellable = true)
+    private void ladssmp$onMenuClicked(int slotId, int button, ContainerInput input, Player player, CallbackInfo ci) {
+        if (ItemDisablerSystem.shouldBypass(player)) return;
+
+        ItemStack carried = this.getCarried();
+        if (ItemDisablerSystem.isDisabled(carried)) {
+            ServerPlayer sp = player instanceof ServerPlayer s ? s : null;
+            this.setCarried(ItemDisablerSystem.handleDisabledStackFound(sp, carried, "menu_carried_click"));
+            ci.cancel();
+            return;
+        }
+
+        if (slotId >= 0 && slotId < this.slots.size()) {
+            Slot slot = this.slots.get(slotId);
+            if (slot != null) {
+                ItemStack inSlot = slot.getItem();
+                if (ItemDisablerSystem.isDisabled(inSlot)) {
+                    ServerPlayer sp = player instanceof ServerPlayer s ? s : null;
+                    slot.set(ItemDisablerSystem.handleDisabledStackFound(sp, inSlot, "menu_slot_" + slotId));
+                    ci.cancel();
+                }
+            }
+        }
+    }
+
+    @Inject(method = "quickMoveStack", at = @At("HEAD"), cancellable = true)
+    private void ladssmp$onQuickMoveStack(Player player, int index, CallbackInfoReturnable<ItemStack> cir) {
+        if (ItemDisablerSystem.shouldBypass(player)) return;
+        if (index >= 0 && index < this.slots.size()) {
+            Slot slot = this.slots.get(index);
+            if (slot != null && ItemDisablerSystem.isDisabled(slot.getItem())) {
+                ServerPlayer sp = player instanceof ServerPlayer s ? s : null;
+                slot.set(ItemDisablerSystem.handleDisabledStackFound(sp, slot.getItem(), "menu_quick_move_" + index));
+                cir.setReturnValue(ItemStack.EMPTY);
+            }
+        }
+    }
+}
