@@ -2,15 +2,23 @@ package com.thelads.smp.features;
 
 import com.thelads.smp.config.LadsConfig;
 import com.thelads.smp.mixin.MixinRangedAttribute;
+import net.fabricmc.fabric.api.entity.event.v1.EntitySleepEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.item.v1.DefaultItemComponentEvents;
+import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -18,8 +26,10 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.chicken.Chicken;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.npc.villager.AbstractVillager;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseTorchBlock;
 import net.minecraft.world.level.block.Blocks;
@@ -29,6 +39,9 @@ import net.minecraft.world.level.block.LanternBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.DoorHingeSide;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.entries.LootItem;
+import net.minecraft.world.level.storage.loot.predicates.LootItemRandomChanceCondition;
 import net.minecraft.world.phys.AABB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +55,9 @@ import java.util.List;
  * - DespawningEggsHatch (despawning eggs hatch into baby chicks)
  * - DoubleDoors (paired door & fence gate synchronization)
  * - VillagerNames (curated first names for unnamed villagers)
+ * - SleepHeal (Regeneration II while sleeping)
+ * - StackablePotions (stackable potions + splash/lingering cooldown)
+ * - Chest-only Disc Randomization
  */
 public final class ConsolidatedFeatures {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsSMP/Features");
@@ -64,6 +80,13 @@ public final class ConsolidatedFeatures {
         applyAttributeFixes();
         registerVillagerNaming();
         registerWaystonesTeleportPets();
+        registerSleepHeal();
+        registerStackablePotions();
+        registerChestDiscLootRandomization();
+        BetterJoinMessagesManager.init();
+        NetherPortalFixManager.init();
+        RightClickHarvestManager.init();
+        ZombieImprovementsManager.init();
     }
 
     /**
@@ -304,5 +327,78 @@ public final class ConsolidatedFeatures {
         } catch (Throwable t) {
             LOGGER.debug("Waystones API not available for pet teleport hook: {}", t.getMessage());
         }
+    }
+
+    /**
+     * Consolidates 'sleep-heal': Grants Regeneration II while sleeping in a bed and removes it upon waking.
+     */
+    private static void registerSleepHeal() {
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            if (!LadsConfig.get().features.sleepHeal) return;
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                if (player.isSleeping()) {
+                    MobEffectInstance existing = player.getEffect(MobEffects.REGENERATION);
+                    if (existing == null || existing.getDuration() < 40) {
+                        player.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 120, 1, false, true));
+                    }
+                }
+            }
+        });
+
+        EntitySleepEvents.STOP_SLEEPING.register((entity, sleepingPos) -> {
+            if (LadsConfig.get().features.sleepHeal && entity instanceof ServerPlayer player) {
+                player.removeEffect(MobEffects.REGENERATION);
+            }
+        });
+    }
+
+    /**
+     * Consolidates 'stackablepotions': Makes potions stackable up to potionMaxStackSize (default 16)
+     * and applies a 0.75s throw cooldown on splash and lingering potions.
+     */
+    private static void registerStackablePotions() {
+        DefaultItemComponentEvents.MODIFY.register(context -> {
+            LadsConfig.FeatureSettings cfg = LadsConfig.get().features;
+            if (!cfg.stackablePotions) return;
+            int maxStack = Math.clamp(cfg.potionMaxStackSize, 1, 64);
+            context.modify(Items.POTION, builder -> builder.set(DataComponents.MAX_STACK_SIZE, maxStack));
+            context.modify(Items.SPLASH_POTION, builder -> builder
+                    .set(DataComponents.MAX_STACK_SIZE, maxStack)
+                    .set(DataComponents.USE_COOLDOWN, new UseCooldown(0.75f)));
+            context.modify(Items.LINGERING_POTION, builder -> builder
+                    .set(DataComponents.MAX_STACK_SIZE, maxStack)
+                    .set(DataComponents.USE_COOLDOWN, new UseCooldown(0.75f)));
+        });
+    }
+
+    public static boolean isChestLootTablePath(String path) {
+        return path != null && path.startsWith("chests/");
+    }
+
+    /**
+     * Chest-only music disc loot randomization (never touches block loot tables so ItemsDisplayed never crashes).
+     */
+    private static void registerChestDiscLootRandomization() {
+        LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
+            if (!LadsConfig.get().features.randomizeChestDiscLoot) return;
+            String path = key.identifier().getPath();
+            if (!isChestLootTablePath(path)) {
+                return;
+            }
+            Item[] discs = {
+                    Items.MUSIC_DISC_13, Items.MUSIC_DISC_CAT, Items.MUSIC_DISC_BLOCKS,
+                    Items.MUSIC_DISC_CHIRP, Items.MUSIC_DISC_FAR, Items.MUSIC_DISC_MALL,
+                    Items.MUSIC_DISC_MELLOHI, Items.MUSIC_DISC_STAL, Items.MUSIC_DISC_STRAD,
+                    Items.MUSIC_DISC_WARD, Items.MUSIC_DISC_11, Items.MUSIC_DISC_WAIT,
+                    Items.MUSIC_DISC_OTHERSIDE, Items.MUSIC_DISC_PIGSTEP, Items.MUSIC_DISC_RELIC,
+                    Items.MUSIC_DISC_CREATOR, Items.MUSIC_DISC_CREATOR_MUSIC_BOX, Items.MUSIC_DISC_PRECIPICE
+            };
+            LootPool.Builder pool = LootPool.lootPool()
+                    .when(LootItemRandomChanceCondition.randomChance(0.05f));
+            for (Item disc : discs) {
+                pool.add(LootItem.lootTableItem(disc).setWeight(1));
+            }
+            tableBuilder.withPool(pool);
+        });
     }
 }

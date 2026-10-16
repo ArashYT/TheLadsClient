@@ -29,6 +29,7 @@ public final class HypixelSafetyManager {
         DISALLOWED_MODULES.add("ReachDisplay");
         DISALLOWED_MODULES.add("Jade");
         DISALLOWED_MODULES.add("ShulkerBoxUtils");
+        DISALLOWED_MODULES.add("StackRefill");
     }
 
     /** QA only (the Hypixel QA routines set it for their run): the singleplayer QA world counts as Hypixel. */

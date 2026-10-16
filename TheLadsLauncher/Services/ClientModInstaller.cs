@@ -38,7 +38,13 @@ public static class ClientModInstaller
     public static readonly IReadOnlySet<string> BuiltInCoreModIds = new HashSet<string>(StringComparer.Ordinal)
     {
         "fzzy_config",
-        "no-resource-pack-warnings"
+        "no-resource-pack-warnings",
+        "culldisplayentities",
+        "cartcam",
+        "shieldbannerfix",
+        "fadeless",
+        "misctweaks",
+        "stackrefill"
     };
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
     private static readonly HttpClient Http = CreateClient();

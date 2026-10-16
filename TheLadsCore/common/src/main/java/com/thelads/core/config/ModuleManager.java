@@ -371,6 +371,8 @@ public class ModuleManager {
         borderless.addOption(new BoolOption("True borderless", false));
         borderless.setEnabled(true);
         register(borderless, Module.Category.MECHANIC);
+        register(new SurvivalTweaksModule(), Module.Category.MECHANIC);
+        register(new StackRefillModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

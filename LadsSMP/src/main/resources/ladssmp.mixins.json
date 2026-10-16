@@ -27,10 +27,31 @@
     "MixinRangedAttribute",
     "MixinRangedBowAttackGoal",
     "MixinCarvedPumpkinBlock",
-    "MixinBiolithTerraBlenderCompat"
+    "MixinBiolithTerraBlenderCompat",
+    "MixinAnvilMenu",
+    "MixinScaffoldingBlock",
+    "MixinLeavesBlock",
+    "MixinPlayerList",
+    "MixinServerGamePacketListenerImpl",
+    "MixinLivingEntityAccessor",
+    "MixinNetherPortalBlock",
+    "MixinCropBlockAccessor",
+    "MixinEnderman",
+    "MixinMobDespawn",
+    "MixinEquipmentDispenseItemBehavior",
+    "MixinEntityLeaderName",
+    "MixinZombie",
+    "MixinEnchantingTableBlock",
+    "MixinEnchantmentMenu"
   ],
   "client": [
-    "MixinScreenPortalGui"
+    "MixinScreenPortalGui",
+    "MixinAdvancementToast",
+    "MixinLocalPlayerCutThrough",
+    "MixinHumanoidRenderState",
+    "MixinHumanoidMobRenderer",
+    "MixinAbstractZombieRenderer",
+    "MixinLivingEntityRendererLeaderAura"
   ],
   "injectors": {
     "defaultRequire": 1

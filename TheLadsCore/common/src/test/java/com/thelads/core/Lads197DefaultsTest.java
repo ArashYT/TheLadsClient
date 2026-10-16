@@ -36,7 +36,7 @@ class Lads197DefaultsTest {
         "Minimap", "MouseTweaks", "Nametags", "OldDamageTilt", "Particle Core",
         "PingView", "PingHUD", "Potion Effects", "Raised", "RawInput",
         com.thelads.core.client.pack.PackMenuSettings.MODULE_NAME, "Scoreboard", "ShulkerBoxUtils", "SignalLoss", "SkinLayers",
-        "SmoothHotbar", "TabList", "Threads", "Title Scale", "TNT Timer",
+        "SmoothHotbar", com.thelads.core.modules.StackRefillModule.NAME, com.thelads.core.modules.SurvivalTweaksModule.NAME, "TabList", "Threads", "Title Scale", "TNT Timer",
         "Toggle Sprint & Sneak", "VerticalBobbing", "Voice Chat", "Voice Chat Group", com.thelads.core.modules.WavyCapesModule.NAME,
         "Zoom"
     );

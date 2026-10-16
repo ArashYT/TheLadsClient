@@ -62,4 +62,14 @@ public abstract class MixinAbstractContainerMenu {
             cir.setReturnValue(false);
         }
     }
+
+    @Inject(method = "clearContainer(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/Container;)V", at = @At("HEAD"))
+    private void ladssmp$keepStickyLapisInTable(Player player, net.minecraft.world.Container container, CallbackInfo ci) {
+        if (!com.thelads.smp.config.LadsConfig.get().features.stickyEnchantingLapis) return;
+        AbstractContainerMenu self = (AbstractContainerMenu) (Object) this;
+        if (self instanceof net.minecraft.world.inventory.EnchantmentMenu
+                && self instanceof com.thelads.smp.features.EnchantmentMenuSlotsAccessor accessor) {
+            accessor.ladssmp$getEnchantSlots().setItem(1, ItemStack.EMPTY);
+        }
+    }
 }

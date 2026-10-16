@@ -56,6 +56,7 @@ public class HypixelSafetyTest {
         assertTrue(HypixelSafetyManager.isDisallowedModule("ReachDisplay"));
         assertTrue(HypixelSafetyManager.isDisallowedModule("Jade"));
         assertTrue(HypixelSafetyManager.isDisallowedModule("ShulkerBoxUtils"));
+        assertTrue(HypixelSafetyManager.isDisallowedModule("StackRefill"));
 
         // Allowed modules
         assertFalse(HypixelSafetyManager.isDisallowedModule("FPS"));

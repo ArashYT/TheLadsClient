@@ -41,10 +41,14 @@ public final class NativeQualityOfLife {
         NativeReconnect.register();
         ConnectionTweaks.register();
         com.thelads.core.v26_2.feature.crosshair.NativeCrosshair.register();
+        com.thelads.core.v26_2.feature.survivaltweaks.NativeSurvivalTweaks.register();
+        NativeStackRefill.register();
     }
 
     public static void tick() {
         NativeClientTools.tick();
+        NativeStackRefill.tick();
+        com.thelads.core.v26_2.feature.cartcam.MinecartCameraRotation.onEndClientTick(Minecraft.getInstance());
         NativeNarrator.tick();
         MinimapIntegration.tick();
         Raised26.titleProbe();

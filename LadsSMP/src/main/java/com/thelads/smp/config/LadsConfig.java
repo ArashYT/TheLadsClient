@@ -109,6 +109,61 @@ public final class LadsConfig {
         public boolean waystonesTeleportPets = true;
         public double waystonesPetSearchRadius = 10.0;
 
+        /** Consolidates 'one-level-renaming': Cap pure item renaming in an anvil to 1 XP level. */
+        public boolean oneLevelRenaming = true;
+
+        /** Consolidates 'anti-enderdragon-grief': Prevent Ender Dragon from destroying normal overworld/end building blocks. */
+        public boolean antiEnderDragonGrief = true;
+
+        /** Consolidates 'sleep-heal': Apply Regeneration II while sleeping in a bed and clear on wake. */
+        public boolean sleepHeal = true;
+
+        /** Consolidates 'no-killer-requirement': Credit closest player on mob death so player-kill loot/XP drops in farms. */
+        public boolean noKillerRequirement = true;
+
+        /** Consolidates 'stackablepotions': Allow potions, splash potions, and lingering potions to stack up to potionMaxStackSize. */
+        public boolean stackablePotions = true;
+        public int potionMaxStackSize = 16;
+
+        /** Consolidates 'noscaffoldingdown': Require looking down (>70 pitch) while sneaking to descend through scaffolding. */
+        public boolean noScaffoldingDown = true;
+
+        /** Consolidates 'advancementscreenshot': Automatically take a screenshot when an advancement toast appears on the client. */
+        public boolean advancementScreenshot = true;
+
+        /** Consolidates 'betterjoinmessages': Custom join/leave/first-join messages and /bjm command. */
+        public boolean betterJoinMessages = true;
+
+        /** Consolidates 'cutthrough': Swing weapons through grass/plants without collision boxes to hit entities behind them. */
+        public boolean cutThrough = true;
+
+        /** Consolidates 'leavesbegone': Fast leaf decay (5-20 ticks) when logs are removed. */
+        public boolean fastLeafDecay = true;
+
+        /** Consolidates 'netherportalfix': Track return portals per player so exiting a Nether Portal returns to the original portal. */
+        public boolean netherPortalFix = true;
+
+        /** Consolidates 'rightclickharvest': Right-click mature crops, nether wart, cocoa, sugar cane, and cactus to harvest & replant. */
+        public boolean rightClickHarvest = true;
+
+        /** Consolidates 'zombieimprovements': Leader zombie scale/damage/aura/sounds/prefix and reinforcement spawn sounds. */
+        public boolean zombieImprovements = true;
+        public boolean zombieLeaderRedAura = true;
+        public boolean zombieLeaderIncreasedDamage = true;
+        public double zombieLeaderSizeIncrease = 0.125;
+        public boolean zombieLeaderUniqueTexture = true;
+        public boolean zombieLeaderUniqueSounds = true;
+        public boolean zombieLeaderNamePrefix = true;
+        public boolean zombieReinforcementSpawnSounds = true;
+        public float zombieSpawnSoundVolume = 1.0f;
+        public boolean zombieOnlyLeaderSpawnsReinforcements = false;
+        public boolean zombieNoLeaderFromSpawners = false;
+        public boolean zombieNoReinforcementsFromSpawners = false;
+        public float zombieLeaderMaxSpawnChance = 0.05f;
+
+        /** Chest-only music disc loot randomization (adds a small chance for random music discs in structure chests, never block drops). */
+        public boolean randomizeChestDiscLoot = true;
+
         /** Exploit protection: Prevent block-carrying or breaking/moving protected blocks (spawners, vaults, trial spawners, Lootr chests). */
         public boolean carryOnProtection = true;
         public List<String> protectedBlockPatterns = new ArrayList<>(List.of(

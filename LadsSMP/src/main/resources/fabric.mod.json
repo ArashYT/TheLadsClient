@@ -29,6 +29,21 @@
   "provides": [
     "w2pets",
     "w2w2",
-    "portalsgui"
+    "portalsgui",
+    "one-level-renaming",
+    "mr_anti_enderdragongrief",
+    "mr_sleep_heal",
+    "no-killer-requirement",
+    "stackablepotions",
+    "noscaffoldingdown",
+    "advancementscreenshot",
+    "betterjoinmessages",
+    "cutthrough",
+    "leavesbegone",
+    "netherportalfix",
+    "rightclickharvest",
+    "letmedespawn",
+    "zombieimprovements",
+    "stickyenchantinglapis"
   ]
 }

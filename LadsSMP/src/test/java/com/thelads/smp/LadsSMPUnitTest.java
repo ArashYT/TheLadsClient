@@ -508,4 +508,61 @@ public class LadsSMPUnitTest {
         terrablender.api.SurfaceRuleManager.RuleBuilder wrapped = terrablender.api.SurfaceRuleManager.wrapBootstrapper(dummyBootstrapper);
         assertNotNull(wrapped);
     }
+
+    @Test
+    void testConsolidatedModsConfigDefaultsAndHelpers() throws Exception {
+        LadsConfig.FeatureSettings f = LadsConfig.get().features;
+        assertTrue(f.oneLevelRenaming);
+        assertTrue(f.antiEnderDragonGrief);
+        assertTrue(f.sleepHeal);
+        assertTrue(f.noKillerRequirement);
+        assertTrue(f.stackablePotions);
+        assertEquals(16, f.potionMaxStackSize);
+        assertTrue(f.noScaffoldingDown);
+        assertTrue(f.advancementScreenshot);
+        assertTrue(f.betterJoinMessages);
+        assertTrue(f.cutThrough);
+        assertTrue(f.fastLeafDecay);
+        assertTrue(f.netherPortalFix);
+        assertTrue(f.rightClickHarvest);
+        assertTrue(f.letMeDespawn);
+        assertTrue(f.zombieImprovements);
+        assertTrue(f.stickyEnchantingLapis);
+        assertTrue(f.randomizeChestDiscLoot);
+
+        // Verify chest-only disc loot filter never matches block or entity loot tables
+        assertTrue(com.thelads.smp.features.ConsolidatedFeatures.isChestLootTablePath("chests/simple_dungeon"));
+        assertTrue(com.thelads.smp.features.ConsolidatedFeatures.isChestLootTablePath("chests/ancient_city"));
+        assertFalse(com.thelads.smp.features.ConsolidatedFeatures.isChestLootTablePath("blocks/bookshelf"));
+        assertFalse(com.thelads.smp.features.ConsolidatedFeatures.isChestLootTablePath("entities/zombie"));
+        assertFalse(com.thelads.smp.features.ConsolidatedFeatures.isChestLootTablePath(null));
+
+        // Verify BetterJoinMessages formatting
+        net.minecraft.network.chat.Component msg = com.thelads.smp.features.BetterJoinMessagesManager.formatMessage(
+                "&e{player} joined the game!", "Steve");
+        assertEquals("Steve joined the game!", msg.getString());
+
+        // Verify ZombieImprovements leader damage formula (r * 1.5 + 3.0)
+        assertEquals(3.0, com.thelads.smp.features.ZombieImprovementsManager.computeLeaderDamageBonus(0.0), 1e-6);
+        assertEquals(4.5, com.thelads.smp.features.ZombieImprovementsManager.computeLeaderDamageBonus(1.0), 1e-6);
+
+        // Verify dragon_immune.json resource has lowercase entries and no uppercase typos
+        try (var in = LadsSMPUnitTest.class.getResourceAsStream("/data/minecraft/tags/block/dragon_immune.json")) {
+            assertNotNull(in, "dragon_immune.json must be present in resources");
+            JsonObject tagJson = JsonParser.parseReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+            JsonArray values = tagJson.getAsJsonArray("values");
+            java.util.Set<String> entries = new java.util.HashSet<>();
+            for (JsonElement el : values) {
+                String val = el.getAsString();
+                assertEquals(val.toLowerCase(java.util.Locale.ROOT), val, "Tag entry must be lowercase: " + val);
+                entries.add(val);
+            }
+            assertTrue(entries.contains("#minecraft:saplings"));
+            assertTrue(entries.contains("minecraft:glass"));
+            assertTrue(entries.contains("minecraft:sniffer_egg"));
+            assertTrue(entries.contains("minecraft:flower_pot"));
+            assertTrue(entries.contains("minecraft:cake"));
+        }
+    }
 }
+

@@ -138,6 +138,24 @@
     "SecureChatToastMixin",
     "ServerListRefresh",
     "ServerListBackgroundMixin",
-    "JoinMultiplayerScreenMixin"
+    "JoinMultiplayerScreenMixin",
+    "NoResourcePackWarningsMixin",
+    "CartCamGameRendererMixin",
+    "FadelessAccessibilityScreenMixin",
+    "SurvivalLightmapBrightnessMixin"
+  ],
+  "mixins": [
+    "DisplayEntityAccessor",
+    "DisplayEntityCullingMixin",
+    "SurvivalBerryBushMixin",
+    "SurvivalElytraSwimMixin",
+    "SurvivalEnchantmentDurabilityMixin",
+    "SurvivalCreeperDropsMixin",
+    "SurvivalStableBlockDropsMixin",
+    "SurvivalStableItemEntityMixin",
+    "SurvivalFasterObsidianMixin",
+    "SurvivalFireBlockInvoker",
+    "SurvivalAnimalFoodMixin",
+    "SurvivalMobFoodPickupMixin"
   ]
 }

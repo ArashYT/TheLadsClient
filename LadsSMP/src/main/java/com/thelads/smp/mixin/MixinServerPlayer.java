@@ -40,4 +40,10 @@ public abstract class MixinServerPlayer {
             cir.setReturnValue(null);
         }
     }
+
+    @Inject(method = "triggerDimensionChangeTriggers", at = @At("TAIL"))
+    private void ladssmp$onDimensionChanged(net.minecraft.server.level.ServerLevel origin, CallbackInfo ci) {
+        ServerPlayer self = (ServerPlayer) (Object) this;
+        com.thelads.smp.features.NetherPortalFixManager.onPlayerChangedDimension(self, origin, self.level());
+    }
 }

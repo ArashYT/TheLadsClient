@@ -157,6 +157,23 @@
     "SoundManagerReloadMixin26",
     "ShaderManagerReloadMixin26",
     "LevelLoadTrackerFastCloseMixin",
-    "NoResourcePackWarningsMixin"
+    "NoResourcePackWarningsMixin",
+    "CartCamGameRendererMixin",
+    "FadelessAccessibilityScreenMixin",
+    "SurvivalLightmapBrightnessMixin"
+  ],
+  "mixins": [
+    "DisplayEntityAccessor",
+    "DisplayEntityCullingMixin",
+    "SurvivalBerryBushMixin",
+    "SurvivalElytraSwimMixin",
+    "SurvivalEnchantmentDurabilityMixin",
+    "SurvivalCreeperDropsMixin",
+    "SurvivalStableBlockDropsMixin",
+    "SurvivalStableItemEntityMixin",
+    "SurvivalFasterObsidianMixin",
+    "SurvivalFireBlockInvoker",
+    "SurvivalAnimalFoodMixin",
+    "SurvivalMobFoodPickupMixin"
   ]
 }
