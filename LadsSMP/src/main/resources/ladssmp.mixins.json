@@ -42,7 +42,12 @@
     "MixinEntityLeaderName",
     "MixinZombie",
     "MixinEnchantingTableBlock",
-    "MixinEnchantmentMenu"
+    "MixinEnchantmentMenu",
+    "MixinCustomNetherPortalsEvents",
+    "MixinCustomNetherPortalsInvoker",
+    "MixinPoiTypesEarlyGuard",
+    "MixinBitsAndBalanceStepRecipeItems",
+    "MixinSimplyTentsGeoBlock"
   ],
   "client": [
     "MixinScreenPortalGui",

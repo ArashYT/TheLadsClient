@@ -24,8 +24,8 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:0.161.0+26.3"
 
     implementation project(':common')
-    // Retained MIT configuration libraries, extracted unchanged from the pinned 26.2 gallery.
-    implementation files('../v26_2/libs/catconfig-mc-26.2-0.2.1.jar', '../v26_2/libs/catconfig-0.3.0.jar')
+    // Retained MIT configuration libraries from the pinned 26.2 gallery; CatConfig-MC is the 26.3 copy (libs/README.md).
+    implementation files('libs/catconfig-mc-26.2-0.2.1.jar', '../v26_2/libs/catconfig-0.3.0.jar')
     implementation('ca.weblite:java-objc-bridge:1.0.0') { transitive = false }
     include 'ca.weblite:java-objc-bridge:1.0.0'
     // Editor API only; the pinned pack supplies Cloth Config as a retained library.
@@ -35,7 +35,7 @@ dependencies {
 
 processResources {
     // The pinned library already contains Fabric metadata and its CatConfig child jar.
-    from('../v26_2/libs/catconfig-mc-26.2-0.2.1.jar') { into 'META-INF/jars' }
+    from('libs/catconfig-mc-26.2-0.2.1.jar') { into 'META-INF/jars' }
     from('src/main/java') {
         include 'com/thelads/core/v26_2/feature/clumps/**'
         into 'META-INF/lads-sources/clumps/v26_2'
