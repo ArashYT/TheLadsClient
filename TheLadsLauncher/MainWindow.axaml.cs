@@ -4083,9 +4083,10 @@ public partial class MainWindow : Window
 
     private async void LaunchButton_Click(object? sender, RoutedEventArgs e) => await StartLaunchAsync();
 
-    /// <param name="afterVersionSwitch">The game closed to switch versions from its own screen: the player wants to play at once, so
-    /// nothing optional (the update prompt) holds the launch up.</param>
-    private async Task StartLaunchAsync(bool afterVersionSwitch = false)
+    /// <param name="afterVersionSwitch">The game closed to switch versions (or renderer) from its own screen: the player wants to play
+    /// at once, so nothing optional (the update prompt) holds the launch up.</param>
+    /// <param name="relaunch">The game closed to switch renderer: it starts in the world or on the server it was in.</param>
+    private async Task StartLaunchAsync(bool afterVersionSwitch = false, GraphicsRenderer.Relaunch? relaunch = null)
     {
         try {
             LaunchButton.IsEnabled = false;
@@ -4099,7 +4100,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            await LaunchGame(afterVersionSwitch);
+            await LaunchGame(afterVersionSwitch, relaunch);
         } catch (Exception ex) {
             try {
                 var crashFile = Path.Combine(TheLadsLauncher.Services.PathService.Instance.LogsDirectory, "crash_launchbtn.txt");
@@ -4194,11 +4195,11 @@ public partial class MainWindow : Window
         finally { _showingMicrosoftSetup = false; }
     }
 
-    private async Task LaunchGame(bool afterVersionSwitch = false)
+    private async Task LaunchGame(bool afterVersionSwitch = false, GraphicsRenderer.Relaunch? relaunch = null)
     {
         if (_launching || _addingAccount || _authCts != null || _showingMicrosoftSetup)
         {
-            if (afterVersionSwitch) Log("[Launcher] The switched version was not started: a launch or sign-in is already in progress.");
+            if (afterVersionSwitch) Log("[Launcher] The game was not started again: a launch or sign-in is already in progress.");
             return;
         }
         if (GameVersionPolicy.IsPaused(_profileService.GetActiveProfile().MinecraftVersion))
@@ -4453,7 +4454,7 @@ public partial class MainWindow : Window
             if (_javaService.GetJavaMajorVersion(launchOpt.JavaPath) != requiredJava)
                 throw new InvalidOperationException($"Select a Java {requiredJava} installation for Minecraft {activeProfile.MinecraftVersion}.");
             await RunPackwizInstaller(activeProfile, launchOpt.JavaPath, token);
-            await GraphicsRenderer.PrepareAsync(gameDirectory, activeProfile.MinecraftVersion, settings.GraphicsRenderer, message => Dispatcher.UIThread.Post(() => StatusText.Text = message), token);
+            await GraphicsRenderer.PrepareAsync(gameDirectory, activeProfile.MinecraftVersion, GraphicsRenderer.Preference(gameDirectory, settings.GraphicsRenderer), message => Dispatcher.UIThread.Post(() => StatusText.Text = message), token);
             await BundledModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion, token);
             // Without a loader (Fabric, or Forge on 1.8.9) nothing in Mods loads, as in LaunchService: no choices to apply.
             bool forge = GameVersionPolicy.UsesForge(activeProfile.MinecraftVersion);
@@ -4471,7 +4472,10 @@ public partial class MainWindow : Window
             await _modInventoryService.WriteSnapshotAsync(launchInventory, token);
             var loadedMods = ModInventoryView.EnabledJarIds(launchInventory);
 
-            if (settings.AutoRejoinServer)
+            // A renderer relaunch goes back where the player was (a world, a server or the title screen) instead.
+            if (relaunch?.World is { } world) ModpackLauncher.JoinWorld(launchOpt, world);
+            else if (relaunch?.Server is { } server) ModpackLauncher.JoinServer(launchOpt, server);
+            else if (relaunch == null && settings.AutoRejoinServer)
             {
                 // Prefer a manually-picked server; fall back to the last log-detected one
                 string rejoinIp = !string.IsNullOrEmpty(settings.QuickLaunchServerIp)
@@ -4774,13 +4778,15 @@ public partial class MainWindow : Window
             _runningProcesses.Remove(process);
             DiscordPresence.GameRunning(_runningProcesses.Count > 0);
             ApplyNextAccountRequest(gameDirectory);
+            // Cancelled from the startup splash: killed on purpose, so no crash report or auto-relaunch.
+            bool cancelled = GameSession.WasCancelled(process);
             bool relaunchRequested = ApplyNextVersionRequest(gameDirectory);
+            bool rendererRelaunch = !relaunchRequested && !cancelled && ApplyRendererRelaunch(gameDirectory, profile);
+            relaunchRequested |= rendererRelaunch;
             int exitCode = 0;
             try { exitCode = process.ExitCode; }
             catch (InvalidOperationException ex) { Log($"[Launcher] Could not read the game's exit code: {ex.Message}"); }
 
-            // Cancelled from the startup splash: killed on purpose, so no crash report or auto-relaunch.
-            bool cancelled = GameSession.WasCancelled(process);
             // Re-show the launcher when the game closes, unless the user opted out (a cancel always shows it).
             if ((!settings.KeepClosedOnExit || cancelled) && !relaunchRequested)
             {
@@ -4798,8 +4804,8 @@ public partial class MainWindow : Window
             }
             else if (relaunchRequested)
             {
-                // The player closed it from the Switch Versions screen: the launch of the chosen version reports from here.
-                Log("[Launcher] The game closed to switch versions.");
+                // The player closed it from the Switch Versions screen or the shader toggle: the new launch reports from here.
+                Log(rendererRelaunch ? "[Launcher] The game closed to switch renderer." : "[Launcher] The game closed to switch versions.");
             }
             else if (exitCode != 0)
             {
@@ -4883,6 +4889,29 @@ public partial class MainWindow : Window
             Log($"[Launcher] Could not apply version switch: {ex.Message}");
             return false;
         }
+    }
+
+    /// <summary>
+    /// After a profile's game has exited from <paramref name="gameDirectory"/>: when it closed itself to switch renderer (the in-game
+    /// shader toggle), starts that profile again, in the world or on the server it was in. Runs on the UI thread. True: on its way.
+    /// </summary>
+    private bool ApplyRendererRelaunch(string gameDirectory, TheLadsLauncher.Models.LauncherProfile profile)
+    {
+        if (GraphicsRenderer.TakeRelaunch(gameDirectory, message => Log("[Launcher] " + message)) is not { } relaunch) return false;
+        if (!string.Equals(_profileService.GetActiveProfile().Id, profile.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            _profileService.SetActiveProfile(profile.Id); // another profile was picked while it ran: the same one starts again
+            ApplyProfile(_profileService.GetActiveProfile(), true);
+            PopulateLaunchProfileSelector();
+            LoadProfilesUI();
+        }
+        StatusText.Text = relaunch.Reason == "shaders-on" ? "Restarting Minecraft with shaders (OpenGL)..." : "Restarting Minecraft on Vulkan...";
+        _ = Dispatcher.UIThread.InvokeAsync(async () =>
+        {
+            await Task.Delay(500);
+            await StartLaunchAsync(afterVersionSwitch: true, relaunch);
+        });
+        return true;
     }
 
     // Keeps the startup splash visible until the game window actually exists

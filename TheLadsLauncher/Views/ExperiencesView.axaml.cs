@@ -46,6 +46,7 @@ public partial class ExperiencesView : UserControl
     private string? _accessKey; // the account names last sent to the invite check
     private DateTime _accessCheckedUtc;
     private bool _raceRetry; // the next ZeroSmpPlay_Click is the launcher's own one retry after a known mod-loading race
+    private GraphicsRenderer.Relaunch? _ladsSmpRebornRelaunch; // the next LadsSmpRebornPlay_Click restarts it for the shader toggle
 
     public static int BinaryMbToRamGb(int mb) =>
         Math.Clamp((int)Math.Round(mb / 1024.0), 1, 32);
@@ -450,6 +451,8 @@ public partial class ExperiencesView : UserControl
 
     private async void LadsSmpRebornPlay_Click(object? sender, RoutedEventArgs e)
     {
+        var relaunch = _ladsSmpRebornRelaunch;
+        _ladsSmpRebornRelaunch = null;
         if (Host is not { } host) return;
         if (_ladsSmpRebornCts != null) return;
         if (HasRunningProcess(_runningLadsSmpReborn) && !host.ModpackSettings.AllowMultiInstance) return;
@@ -497,7 +500,8 @@ public partial class ExperiencesView : UserControl
             var session = await host.ResolveModpackSessionAsync(token);
 
             Report($"Preparing Minecraft {exp.McVersion} & Fabric {exp.LoaderVersion}...");
-            var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token, null);
+            var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token,
+                relaunch?.Server, relaunch?.World);
 
             int instNumber = NextInstanceNumber(_runningLadsSmpReborn);
             var runningInst = new RunningInstance(instNumber, session.Username ?? "Player", process);
@@ -519,6 +523,12 @@ public partial class ExperiencesView : UserControl
                 RefreshState();
                 host.ApplyNextAccountRequest(instance.GameDirectory);
                 host.ApplyNextVersionRequest(instance.GameDirectory);
+                // Closed from the in-game shader toggle: start again on the other renderer, back in the world or on the server.
+                if (!wasCancelled && GraphicsRenderer.TakeRelaunch(instance.GameDirectory, host.ModpackLog) is { } next)
+                {
+                    _ladsSmpRebornRelaunch = next;
+                    LadsSmpRebornPlay_Click(null, new RoutedEventArgs());
+                }
             });
 
             Report($"{exp.Title} Instance {instNumber} started as {session.Username}!");

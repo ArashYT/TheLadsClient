@@ -91,12 +91,13 @@ public static class ModpackLauncher
     }
 
     /// <summary>Installs what the instance needs and starts it with <paramref name="session"/> and the Java its version needs.
-    /// <paramref name="joinServer"/> ("host" or "host:port"): the game joins it as soon as it has loaded.</summary>
+    /// <paramref name="joinServer"/> ("host" or "host:port"): the game joins it as soon as it has loaded; <paramref name="joinWorld"/>
+    /// (a saves folder name): it opens that world.</summary>
     public static async Task<Process> LaunchAsync(string dataDirectory, ModpackInstance instance, MSession session, LauncherSettings settings,
-        IJavaService java, HttpClient http, Action<string>? status, CancellationToken token, string? joinServer = null)
+        IJavaService java, HttpClient http, Action<string>? status, CancellationToken token, string? joinServer = null, string? joinWorld = null)
     {
         SyncLadsConfigToInstance(dataDirectory, instance.GameDirectory);
-        var process = await PrepareAsync(dataDirectory, instance, session, settings, java, http, status, token, joinServer);
+        var process = await PrepareAsync(dataDirectory, instance, session, settings, java, http, status, token, joinServer, joinWorld);
         token.ThrowIfCancellationRequested();
         process.EnableRaisingEvents = true;
         process.Exited += (_, _) => SyncLadsConfigFromInstance(instance.GameDirectory, dataDirectory);
@@ -154,7 +155,7 @@ public static class ModpackLauncher
 
     /// <summary>Everything <see cref="LaunchAsync"/> does short of starting the game: Java, loader, game files; the process to start.</summary>
     public static async Task<Process> PrepareAsync(string dataDirectory, ModpackInstance instance, MSession session, LauncherSettings settings,
-        IJavaService java, HttpClient http, Action<string>? status, CancellationToken token, string? joinServer = null)
+        IJavaService java, HttpClient http, Action<string>? status, CancellationToken token, string? joinServer = null, string? joinWorld = null)
     {
         var path = GamePath(dataDirectory, instance);
         Directory.CreateDirectory(instance.GameDirectory);
@@ -165,6 +166,10 @@ public static class ModpackLauncher
             ServerListService.EnsureServer(Path.Combine(instance.GameDirectory, "servers.dat"), exp.Title, exp.ServerAddress);
         }
         ModpackCoreSync.Sync(instance, status: status); // before every launch: a modpack always runs the newest bundled Lads Core
+        // As profiles: Vulkan unless the launcher setting or the in-game shader toggle says OpenGL; Iris and its add-ons sit out on Vulkan.
+        if (GraphicsRenderer.SupportsVulkan(instance.McVersion))
+            await GraphicsRenderer.PrepareAsync(instance.GameDirectory, instance.McVersion,
+                GraphicsRenderer.Preference(instance.GameDirectory, settings.GraphicsRenderer), status, token, renameJars: true);
         var launcher = new MinecraftLauncher(path);
         launcher.FileProgressChanged += (_, e) =>
         {
@@ -197,6 +202,7 @@ public static class ModpackLauncher
             FullScreen = settings.FullscreenOnLaunch
         };
         if (!string.IsNullOrWhiteSpace(joinServer)) JoinServer(options, joinServer);
+        if (!string.IsNullOrWhiteSpace(joinWorld)) JoinWorld(options, joinWorld);
         LimitBackgroundThreads(instance, options, Environment.ProcessorCount);
         LaunchService.ConfigureCachedNativesDirectory(launcher.MinecraftPath, versionId, options);
         LaunchService.EnsureSecurityJvmArguments(options, requiredJava, instance.GameDirectory);
@@ -388,6 +394,10 @@ public static class ModpackLauncher
         }
         else options.ServerIp = address;
     }
+
+    /// <summary>Makes the game open the singleplayer world saves/<paramref name="world"/> as soon as it has loaded
+    /// (--quickPlaySingleplayer).</summary>
+    public static void JoinWorld(MLaunchOption options, string world) => options.QuickPlaySingleplayer = world;
 
     /// <summary>The loader's version id, installed into the shared cache if it is not there yet.</summary>
     private static async Task<string> InstallLoaderAsync(MinecraftLauncher launcher, string dataDirectory, ModpackInstance instance, string javaPath,

@@ -7,6 +7,17 @@ using CmlLib.Core;
 using CmlLib.Core.ProcessBuilder;
 using TheLadsLauncher.Services;
 
+// Shader toggle QA: what the launcher does between two runs of a 26.3 modpack in a sandbox game folder (the game's relaunch request,
+// then the renderer step of the next launch with jar renames). Prints the next launch's renderer, suspended mods and rejoin target.
+if (args.Length == 3 && args[0] == "--renderer-step")
+{
+    var relaunch = GraphicsRenderer.TakeRelaunch(args[1], Console.WriteLine);
+    var preference = GraphicsRenderer.Preference(args[1], args[2]);
+    var suspended = await GraphicsRenderer.PrepareAsync(args[1], "26.3", preference, Console.WriteLine, renameJars: true);
+    Console.WriteLine("RESULT " + JsonSerializer.Serialize(new { preference, suspended, reason = relaunch?.Reason, world = relaunch?.World, server = relaunch?.Server }));
+    return 0;
+}
+
 // Modpacks tab QA (ModpackQa.cs): a real Modrinth modpack installed (and updated) in the sandbox, then started to its title screen.
 if (args.Length >= 3 && args[0] == "--modpack") return await ModpackQa.RunAsync(args[1], Path.GetFullPath(args[2]), args[3..]);
 

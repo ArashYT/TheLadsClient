@@ -3046,7 +3046,8 @@ public partial class ModpacksView : UserControl
     }
 
     /// <param name="retry">The launcher's own one retry after a known mod-loading race (ModLoadingRace).</param>
-    private async Task PlayAsync(ModpackInstance instance, bool retry)
+    /// <param name="relaunch">The game closed itself to switch renderer (shader toggle): back to the world or server it was in.</param>
+    private async Task PlayAsync(ModpackInstance instance, bool retry, GraphicsRenderer.Relaunch? relaunch = null)
     {
         if (Host is not { } host) return;
         if (_launching.TryGetValue(instance.Id, out var pending)) { pending.Cancel(); return; }
@@ -3062,7 +3063,8 @@ public partial class ModpacksView : UserControl
             Report("Signing in...");
             var session = await host.ResolveModpackSessionAsync(launch.Token);
             var launchedUtc = DateTime.UtcNow;
-            var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, launch.Token);
+            var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, launch.Token,
+                relaunch?.Server, relaunch?.World);
             _running[instance.Id] = process;
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) => Dispatcher.UIThread.Post(() =>
@@ -3084,6 +3086,8 @@ public partial class ModpacksView : UserControl
                     host.ModpackLog($"{instance.Name} hit a known mod-loading race: {race}. Starting it once more.");
                     _ = PlayAsync(instance, retry: true);
                 }
+                else if (!GameSession.WasCancelled(process) && GraphicsRenderer.TakeRelaunch(instance.GameDirectory, host.ModpackLog) is { } next)
+                    _ = PlayAsync(instance, retry, next); // closed from the in-game shader toggle: start again on the other renderer
             });
             Report($"Minecraft {instance.McVersion} started as {session.Username}.");
             host.ModpackLog($"Started {instance.Name} ({instance.Loader} {instance.LoaderVersion}, Minecraft {instance.McVersion}) PID {process.Id}.");

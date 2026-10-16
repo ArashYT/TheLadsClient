@@ -106,6 +106,15 @@ public class ModpackJoinTests
     }
 
     [Fact]
+    public async Task RendererRelaunchIntoAWorldPutsQuickPlaySingleplayerOnTheCommandLine()
+    {
+        var process = await Build(null, o => ModpackLauncher.JoinWorld(o, "New World"));
+
+        Assert.Contains("--quickPlaySingleplayer \"New World\"", process.StartInfo.Arguments);
+        Assert.Null(ModpackLauncher.QuickPlayServer(process));
+    }
+
+    [Fact]
     public async Task WithoutAutoJoinTheGameStartsAtTheTitleScreen()
     {
         var process = await Build(null);

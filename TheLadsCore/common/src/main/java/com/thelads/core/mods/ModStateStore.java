@@ -173,7 +173,7 @@ public final class ModStateStore {
      * Temp file in the same directory, then an atomic replace. The launcher may hold the target open for a moment
      * (Windows then denies the replace), so access denials are retried for about a second.
      */
-    static void writeAtomically(Path target, String text) throws IOException {
+    public static void writeAtomically(Path target, String text) throws IOException {
         Path directory = target.toAbsolutePath().getParent();
         Files.createDirectories(directory);
         Path temporary = Files.createTempFile(directory, "." + target.getFileName() + "-", ".tmp");

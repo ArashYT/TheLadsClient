@@ -272,7 +272,7 @@ public sealed class ModInventoryService
                 Array.Empty<string>(), false, null, null, Array.Empty<ModInventoryEntry>()));
 
         var rendererBlocked = rendererSelection == null ? GraphicsRenderer.Suspended(game)
-            : GraphicsRenderer.Suspended(game, version, rendererSelection(), files.Select(f => f.Scan.Info));
+            : GraphicsRenderer.Suspended(game, version, GraphicsRenderer.Preference(game, rendererSelection()), files.Select(f => f.Scan.Info));
         entries = entries.Select(e => rendererBlocked.Contains(e.Id)
             ? e with { RequestedEnabled = false, CanToggle = false, ToggleBlockedReason = GraphicsRenderer.OpenGlRequired,
                 Status = e.Status == ModEntryStatus.PendingDownload ? ModEntryStatus.NotDownloaded : e.Status,

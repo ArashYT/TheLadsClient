@@ -78,7 +78,7 @@ public class LaunchService : ILaunchService
 
         var gameDir = _pathService.GetProfileDirectory(profile);
         Directory.CreateDirectory(gameDir);
-        await GraphicsRenderer.PrepareAsync(gameDir, profile.MinecraftVersion, settings.GraphicsRenderer, report, cancellationToken);
+        await GraphicsRenderer.PrepareAsync(gameDir, profile.MinecraftVersion, GraphicsRenderer.Preference(gameDir, settings.GraphicsRenderer), report, cancellationToken);
 
         IReadOnlyList<string> loadedMods = Array.Empty<string>();
         if (usesFabric || usesForge)

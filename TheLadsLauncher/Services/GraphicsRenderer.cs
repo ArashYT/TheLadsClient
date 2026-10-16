@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -19,16 +21,70 @@ public static class GraphicsRenderer
     public const string OptionsStateFile = "lads-renderer-options.json";
     public const string OpenGlRequired = "Requires OpenGL. Choose OpenGL in launcher Settings → Graphics; your mod choice is preserved.";
     public const string VulkanCrashHint = "It was running on Vulkan: if this keeps happening, choose OpenGL in Settings → Graphics.";
-    private const string Key = "preferredGraphicsBackend:";
+    /// <summary>The in-game shader toggle's renderer for this game folder ({"renderer":"OpenGL"|"Vulkan"}), written by the game and
+    /// kept: it wins over the launcher setting at every launch of that folder.</summary>
+    public const string ChoiceFile = "lads-renderer-choice.json";
+    /// <summary>Written by the game right before it quits to switch renderer; taken by <see cref="TakeRelaunch"/> once it has exited.</summary>
+    public const string RelaunchFile = "lads-relaunch.json";
+    private const string Key = "preferredGraphicsBackend:", Disabled = ".disabled";
     public static bool SupportsVulkan(string version) => version is "26.2" or "26.3";
     public static string Normalize(string? value) => value == OpenGl ? OpenGl : Vulkan;
     /// <summary>This profile's last launch: whether it used Vulkan and the mods suspended for it.</summary>
     public sealed record State(bool Vulkan, string[] SuspendedMods);
     /// <summary>One options.txt: the launcher choice last written into it and the last backend value saved in it.</summary>
     public sealed record OptionsState(string? Applied, string? Saved);
+    /// <summary>The game's relaunch request: start it again in saves/<paramref name="World"/>, on <paramref name="Server"/>
+    /// ("host[:port]"), or at the title screen (both null).</summary>
+    public sealed record Relaunch(string Reason, string? World, string? Server);
+    private sealed record Choice([property: JsonPropertyName("renderer")] string? Renderer);
     private sealed record Plan(List<string> Lines, string? Value, bool WriteOptions, bool Vulkan, OptionsState? Old, OptionsState New);
+    private static readonly JsonSerializerOptions Relaxed = new() { PropertyNameCaseInsensitive = true };
 
     public static State? ReadState(string game) => Read<State>(Path.Combine(game, StateFile));
+
+    /// <summary>The renderer a launch of <paramref name="game"/> uses: the in-game choice (<see cref="ChoiceFile"/>) when it is
+    /// valid, else <paramref name="launcherSetting"/>.</summary>
+    public static string Preference(string game, string? launcherSetting) =>
+        Read<Choice>(Path.Combine(game, ChoiceFile))?.Renderer switch
+        {
+            { } r when r.Equals(OpenGl, StringComparison.OrdinalIgnoreCase) => OpenGl,
+            { } r when r.Equals(Vulkan, StringComparison.OrdinalIgnoreCase) => Vulkan,
+            _ => Normalize(launcherSetting)
+        };
+
+    /// <summary>The game's <see cref="RelaunchFile"/>, read and deleted; null when there is none or it is refused (<paramref name="log"/>
+    /// says why). A world must be one save folder name with a level.dat (else the title screen), a server "host[:port]".</summary>
+    public static Relaunch? TakeRelaunch(string game, Action<string> log)
+    {
+        string file = Path.Combine(game, RelaunchFile);
+        if (!File.Exists(file)) return null;
+        Relaunch? request;
+        try { request = JsonSerializer.Deserialize<Relaunch>(File.ReadAllText(file), Relaxed); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
+        {
+            log($"Could not read the game's relaunch request: {e.Message}");
+            request = null;
+        }
+        try { File.Delete(file); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } // read once already; the next launch deletes it
+        if (request == null) return null;
+        string? world = request.World, server = request.Server?.Trim();
+        var port = server == null ? null : Regex.Match(server, @"^[A-Za-z0-9][A-Za-z0-9.-]{0,252}(?::(\d{1,5}))?$");
+        if (request.Reason is not ("shaders-on" or "shaders-off") || world != null && server != null
+            || world != null && (!SafeFileOps.IsPlainFileName(world) || world.Contains(".."))
+            || port != null && (!port.Success || port.Groups[1].Success && int.Parse(port.Groups[1].Value) is < 1 or > 65535))
+        {
+            log($"Relaunch request refused (reason '{request.Reason}', world '{world}', server '{server}').");
+            return null;
+        }
+        if (world != null && !File.Exists(Path.Combine(game, "saves", world, "level.dat")))
+        {
+            log($"The world '{world}' to return to was not found; the game starts at the title screen.");
+            world = null;
+        }
+        log($"Relaunching for {request.Reason}" + (world != null ? $" into the world '{world}'." : server != null ? $" onto {server}." : " to the title screen."));
+        return request with { World = world, Server = server };
+    }
 
     public static IReadOnlySet<string> Suspended(string game) =>
         (ReadState(game)?.SuspendedMods ?? Array.Empty<string>()).ToHashSet(StringComparer.Ordinal);
@@ -40,19 +96,28 @@ public static class GraphicsRenderer
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return Suspended(game); }
     }
 
+    /// <param name="renameJars">Modpacks: the suspended jars are renamed here (<c>.jar</c> to <c>.jar.disabled</c> and back). Profiles
+    /// leave that to ClientModInstaller, which keeps the choices and also holds back pack mods it has not downloaded yet.</param>
     public static async Task<IReadOnlySet<string>> PrepareAsync(string game, string version, string? preference,
-        Action<string>? report = null, CancellationToken token = default)
+        Action<string>? report = null, CancellationToken token = default, bool renameJars = false)
     {
         token.ThrowIfCancellationRequested();
         game = Path.GetFullPath(game);
         Directory.CreateDirectory(game);
+        File.Delete(Path.Combine(game, RelaunchFile)); // one left over from an earlier run must not restart this one at its exit
         var plan = Decide(game, version, preference);
         var mods = Path.Combine(game, "mods");
-        var suspended = !plan.Vulkan ? new HashSet<string>(StringComparer.Ordinal) : Dependents(Directory.Exists(mods)
-            ? Directory.EnumerateFiles(mods).Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase))
-                .Select(p => FabricModMetadata.ReadJar(p, token: token)).ToArray() : Array.Empty<FabricModInfo?>());
+        var jars = Directory.Exists(mods)
+            ? Directory.EnumerateFiles(mods).Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) || p.EndsWith(".jar" + Disabled, StringComparison.OrdinalIgnoreCase))
+                .Select(p => (Path: p, Info: FabricModMetadata.ReadJar(p, token: token))).ToArray() : Array.Empty<(string Path, FabricModInfo? Info)>();
+        var suspended = !plan.Vulkan ? new HashSet<string>(StringComparer.Ordinal) : Dependents(jars.Select(j => j.Info));
         var state = ReadState(game);
-        bool modsChange = !suspended.SetEquals(state?.SuspendedMods ?? Array.Empty<string>());
+        var previous = state?.SuspendedMods ?? Array.Empty<string>();
+        // Renamed here: only mods that are there and load, or that the launcher suspended itself. A jar you disabled stays disabled.
+        if (renameJars)
+            suspended.IntersectWith(jars.Where(j => j.Info != null && (!j.Path.EndsWith(Disabled, StringComparison.OrdinalIgnoreCase) || previous.Contains(j.Info.Id)))
+                .Select(j => j.Info!.Id));
+        bool modsChange = !suspended.SetEquals(previous);
         bool writeState = modsChange || (state != null && state.Vulkan != plan.Vulkan);
         bool writeTracking = plan.New != (plan.Old ?? new OptionsState(null, null));
         // Another copy of this profile may be running (Allow launching multiple copies): only a change to what it uses is refused.
@@ -72,6 +137,8 @@ public static class GraphicsRenderer
         }
         // After options.txt: a failed options write must leave the choice unapplied, so the next launch writes it again.
         if (writeTracking) await LockFiles.WriteAtomicallyAsync(trackingPath, JsonSerializer.SerializeToUtf8Bytes(plan.New), token);
+        // Before the state: after a failed rename the next launch still knows which jars to bring back.
+        if (renameJars) RenameJars(jars, suspended, previous.Except(suspended).ToHashSet(StringComparer.Ordinal));
         if (writeState)
             await LockFiles.WriteAtomicallyAsync(statePath, JsonSerializer.SerializeToUtf8Bytes(new State(plan.Vulkan, suspended.OrderBy(x => x).ToArray())), token);
         report?.Invoke(plan.Vulkan ? "Graphics: Vulkan preferred; OpenGL is the fallback. Iris shader mods are suspended."
@@ -95,6 +162,20 @@ public static class GraphicsRenderer
         var value = !native ? saved : old?.Applied != choice ? launcher : saved ?? old?.Saved ?? launcher;
         return new(lines, value, native && value != saved, native && value == "\"vulkan\"", old,
             new OptionsState(native ? choice : old?.Applied, value ?? old?.Saved));
+    }
+
+    // <mod>.jar -> .jar.disabled for the suspended ids and back for the restored ones. When both names exist (a pack update next
+    // to a suspended copy) the newer file is kept under the new name.
+    private static void RenameJars(IEnumerable<(string Path, FabricModInfo? Info)> jars, IReadOnlySet<string> suspend, IReadOnlySet<string> restore)
+    {
+        foreach (var (path, info) in jars)
+        {
+            bool disabled = path.EndsWith(Disabled, StringComparison.OrdinalIgnoreCase);
+            if (info == null || !(disabled ? restore : suspend).Contains(info.Id) || !File.Exists(path)) continue; // gone: moved over already
+            var target = disabled ? path[..^Disabled.Length] : path + Disabled;
+            if (File.Exists(target) && File.GetLastWriteTimeUtc(target) >= File.GetLastWriteTimeUtc(path)) File.Delete(path);
+            else File.Move(path, target, overwrite: true);
+        }
     }
 
     private static HashSet<string> Dependents(IEnumerable<FabricModInfo?> installed)

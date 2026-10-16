@@ -268,6 +268,120 @@ public sealed class GraphicsRendererTests : IDisposable
         Assert.True(ModPreferences.Load(Game).GetEnabled("iris", "iris-project"));
     }
 
+    [Theory]
+    [InlineData("{\"renderer\":\"OpenGL\"}", "Vulkan", "OpenGL")]
+    [InlineData("{\"renderer\":\"vulkan\"}", "OpenGL", "Vulkan")]
+    [InlineData("{\"renderer\":\"DirectX\"}", "OpenGL", "OpenGL")]
+    [InlineData("{\"renderer\":5}", "Vulkan", "Vulkan")]
+    [InlineData("not json", "OpenGL", "OpenGL")]
+    [InlineData(null, "OpenGL", "OpenGL")]
+    [InlineData(null, null, "Vulkan")]
+    public void InGameShaderChoiceWinsOverTheLauncherSettingWhenValid(string? choice, string? setting, string expected)
+    {
+        string file = Path.Combine(Game, GraphicsRenderer.ChoiceFile);
+        if (choice != null) File.WriteAllText(file, choice);
+        Assert.Equal(expected, GraphicsRenderer.Preference(Game, setting));
+        Assert.Equal(choice != null, File.Exists(file)); // persistent: read, never consumed
+    }
+
+    [Fact] public async Task ModpackJarsAreSuspendedOnVulkanAndRestoredOnOpenGl_PlayerDisabledJarsStayDisabled()
+    {
+        string mods = Path.Combine(Game, "mods"); Directory.CreateDirectory(mods);
+        File.WriteAllBytes(Path.Combine(mods, "iris-1.11.7.jar"), FabricJar("iris", "1"));
+        File.WriteAllBytes(Path.Combine(mods, "addon.jar"), FabricJar("shader_addon", "1", "iris"));
+        File.WriteAllBytes(Path.Combine(mods, "euphoria.jar.disabled"), FabricJar("euphoria_patcher", "1", "iris")); // the player's choice
+        File.WriteAllBytes(Path.Combine(mods, "sodium.jar"), FabricJar("sodium", "1"));
+        File.WriteAllText(Path.Combine(Game, GraphicsRenderer.RelaunchFile), "{\"reason\":\"shaders-on\"}"); // from an earlier run
+
+        Assert.Equal(new[] { "iris", "shader_addon" }, (await GraphicsRenderer.PrepareAsync(Game, "26.3", "Vulkan", renameJars: true)).Order());
+        Assert.False(File.Exists(Path.Combine(Game, GraphicsRenderer.RelaunchFile)));
+        Assert.Equal(new[] { "addon.jar.disabled", "euphoria.jar.disabled", "iris-1.11.7.jar.disabled", "sodium.jar" }, Names(mods));
+        Assert.Equal(new[] { "iris", "shader_addon" }, GraphicsRenderer.ReadState(Game)!.SuspendedMods); // the game's "Iris is suspended"
+        Assert.Equal(2, (await GraphicsRenderer.PrepareAsync(Game, "26.3", "Vulkan", renameJars: true)).Count); // still the launcher's own
+
+        Assert.Empty(await GraphicsRenderer.PrepareAsync(Game, "26.3", "OpenGL", renameJars: true));
+        Assert.Equal(new[] { "addon.jar", "euphoria.jar.disabled", "iris-1.11.7.jar", "sodium.jar" }, Names(mods));
+        Assert.Empty(GraphicsRenderer.ReadState(Game)!.SuspendedMods);
+    }
+
+    [Fact] public async Task ModpackWithoutIrisListsNothingAsSuspended()
+    {
+        string mods = Path.Combine(Game, "mods"); Directory.CreateDirectory(mods);
+        File.WriteAllBytes(Path.Combine(mods, "sodium.jar"), FabricJar("sodium", "1"));
+        Assert.Empty(await GraphicsRenderer.PrepareAsync(Game, "26.3", "Vulkan", renameJars: true)); // no shader button for a missing Iris
+        Assert.Equal(new[] { "sodium.jar" }, Names(mods));
+    }
+
+    [Theory] [InlineData(true)] [InlineData(false)]
+    public async Task WhenBothJarNamesExistTheNewerFileIsKept(bool renamedIsNewer)
+    {
+        string mods = Path.Combine(Game, "mods"); Directory.CreateDirectory(mods);
+        string enabled = Path.Combine(mods, "iris.jar"), disabled = enabled + ".disabled";
+        byte[] older = FabricJar("iris", "1"), newer = FabricJar("iris", "2");
+        void Write(string path, byte[] bytes, int minutesAgo) { File.WriteAllBytes(path, bytes); File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(-minutesAgo)); }
+
+        Write(enabled, renamedIsNewer ? newer : older, renamedIsNewer ? 1 : 10); // a pack update next to a suspended copy
+        Write(disabled, renamedIsNewer ? older : newer, renamedIsNewer ? 10 : 1);
+        await GraphicsRenderer.PrepareAsync(Game, "26.3", "Vulkan", renameJars: true);
+        Assert.Equal(new[] { "iris.jar.disabled" }, Names(mods));
+        Assert.Equal(newer, File.ReadAllBytes(disabled));
+
+        byte[] newest = FabricJar("iris", "3");
+        Write(enabled, renamedIsNewer ? older : newest, renamedIsNewer ? 30 : 0); // the suspended copy's id is in the state: restored
+        await GraphicsRenderer.PrepareAsync(Game, "26.3", "OpenGL", renameJars: true);
+        Assert.Equal(new[] { "iris.jar" }, Names(mods));
+        Assert.Equal(renamedIsNewer ? newer : newest, File.ReadAllBytes(enabled));
+    }
+
+    [Theory]
+    [InlineData("{\"reason\":\"shaders-on\",\"world\":\"New World\",\"server\":null}", "New World", null)]
+    [InlineData("{\"reason\":\"shaders-off\",\"world\":null,\"server\":\" play.example.net:25570 \"}", null, "play.example.net:25570")]
+    [InlineData("{\"reason\":\"shaders-off\",\"server\":\"127.0.0.1\"}", null, "127.0.0.1")]
+    [InlineData("{\"reason\":\"shaders-on\",\"world\":null,\"server\":null}", null, null)]
+    [InlineData("{\"reason\":\"shaders-on\",\"world\":\"Deleted World\",\"server\":null}", null, null)] // no level.dat: the title screen
+    public void RelaunchRequestIsTakenOnce(string json, string? world, string? server)
+    {
+        WriteRelaunch(json);
+        var request = GraphicsRenderer.TakeRelaunch(Game, _ => { });
+        Assert.NotNull(request);
+        Assert.Equal(world, request!.World);
+        Assert.Equal(server, request.Server);
+        Assert.False(File.Exists(Path.Combine(Game, GraphicsRenderer.RelaunchFile)));
+        Assert.Null(GraphicsRenderer.TakeRelaunch(Game, _ => { }));
+    }
+
+    [Theory]
+    [InlineData("{\"reason\":\"shaders-on\",\"world\":\"..\\\\..\\\\Desktop\"}")]
+    [InlineData("{\"reason\":\"shaders-on\",\"world\":\"../saves/New World\"}")]
+    [InlineData("{\"reason\":\"shaders-on\",\"world\":\"..\"}")]
+    [InlineData("{\"reason\":\"shaders-on\",\"world\":\"C:\\\\Windows\"}")]
+    [InlineData("{\"reason\":\"shaders-off\",\"server\":\"-Dlog4j=evil\"}")]
+    [InlineData("{\"reason\":\"shaders-off\",\"server\":\"play.example.net --demo\"}")]
+    [InlineData("{\"reason\":\"shaders-off\",\"server\":\"play.example.net:99999\"}")]
+    [InlineData("{\"reason\":\"shaders-off\",\"server\":\"\"}")]
+    [InlineData("{\"reason\":\"shaders-on\",\"world\":\"New World\",\"server\":\"play.example.net\"}")]
+    [InlineData("{\"reason\":\"reboot\"}")]
+    [InlineData("{\"reason\":\"shaders-on\",\"world\":5}")]
+    [InlineData("[]")]
+    [InlineData("not json")]
+    public void InvalidRelaunchRequestIsLoggedDeletedAndIgnored(string json)
+    {
+        WriteRelaunch(json);
+        var log = new List<string>();
+        Assert.Null(GraphicsRenderer.TakeRelaunch(Game, log.Add));
+        Assert.Single(log);
+        Assert.False(File.Exists(Path.Combine(Game, GraphicsRenderer.RelaunchFile)));
+    }
+
+    private void WriteRelaunch(string json)
+    {
+        Directory.CreateDirectory(Path.Combine(Game, "saves", "New World"));
+        File.WriteAllText(Path.Combine(Game, "saves", "New World", "level.dat"), "");
+        File.WriteAllText(Path.Combine(Game, GraphicsRenderer.RelaunchFile), json);
+    }
+
+    private static string[] Names(string folder) => Directory.EnumerateFiles(folder).Select(Path.GetFileName).Order().ToArray()!;
+
     private void WriteIrisManifest(byte[] jar)
     {
         var bundle = Path.Combine(root, "game-mods", "26.3"); Directory.CreateDirectory(bundle);
