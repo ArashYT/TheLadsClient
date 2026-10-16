@@ -68,3 +68,15 @@ The following optimization mods were audited and verified to work harmoniously o
    -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=100 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=16M -XX:G1ReservePercent=20 -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15 -XX:G1MixedGCLiveThresholdPercent=90 -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1
    ```
    *(Note: `lads-smp-26.3-dev/instance.json` is pre-configured with `"maxRamMb": 8192`.)*
+
+---
+
+## 5. 2026-10-16 Optimization Pass (pack 0.2.3, local build)
+
+Full report + A/B numbers: `artifacts/smp-opt/SMP-OPTIMIZATION-REPORT.md` (gitignored).
+- `MixinSpriteLoaderTextureCap`: plain `item/` sprites above 128 px are downscaled (multiples of 16) before stitching. Smart Backpacks' 1024 px icons had grown the items atlas to 16384x8192; now 2048x2048. `-Dladssmp.itemTextureCap=0` turns it off.
+- Removed `AdvancedWorldgenInfo` / `AdvancedLootInfo` / `AdvancedCoreInfo` (30-40 s of scans per server start/reload; JER + JEI WorldGen cover it), `ViaFabricPlus` (564 mixins, not needed on the SMP), `fastershadowmapper` (built into Iris 1.11.2+).
+- Added `spark` (profiling) and `structure_layout_optimizer` (jigsaw); both also go on the server.
+- ModernFix `remove_biome_temperature_cache=false` (overwrite conflict with Lithium); Sound Physics 16 rays / 256 blocks.
+- Measured (2 runs each): server start -> join 26-27 s -> 12 s; launch WARN lines 755 -> 494.
+- Item disabler caches its verdict per Item; the spawner torch check runs behind vanilla's `isNearPlayer`.

@@ -14,7 +14,7 @@ public class Module {
     private long lastOpenedTime;
     private final List<Option> options = new ArrayList<>();
     /** getOption runs per HUD element, chat line and tile entity every frame: a hash lookup, rebuilt when options were added. */
-    private java.util.Map<String, Option> byName;
+    private volatile java.util.Map<String, Option> byName; // read from render/tick/worker threads; volatile publishes the built map
     private int indexed = -1;
     private Category category = Category.ALL;
 

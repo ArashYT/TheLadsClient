@@ -50,7 +50,6 @@ public final class Hud1201 {
     }
 
     private static final java.util.concurrent.ConcurrentHashMap<String, Module> MODULE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
-    private static final java.util.concurrent.ConcurrentHashMap<String, com.thelads.core.config.Option> OPTION_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
 
     public static Module module(String name) {
         Module cached = MODULE_CACHE.get(name);
@@ -60,19 +59,10 @@ public final class Hud1201 {
         return m;
     }
 
+    /** Module.getOption is already a hash lookup by name, so no "module/option" key is built per call (hot render paths call this every frame). */
     public static com.thelads.core.config.Option option(String modName, String optName) {
-        String key = modName + "/" + optName;
-        com.thelads.core.config.Option cached = OPTION_CACHE.get(key);
-        if (cached != null) return cached;
         Module m = module(modName);
-        if (m != null) {
-            com.thelads.core.config.Option opt = m.getOption(optName);
-            if (opt != null) {
-                OPTION_CACHE.put(key, opt);
-                return opt;
-            }
-        }
-        return null;
+        return m == null ? null : m.getOption(optName);
     }
 
     public static boolean enabled(String name) {

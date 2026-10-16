@@ -2,6 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.thelads.core.v26_2.mixin.particlecore",
+  "plugin": "com.thelads.core.v26_2.feature.ParticleCoreMixinPlugin",
   "compatibilityLevel": "JAVA_25",
   "injectors": {
     "defaultRequire": 1

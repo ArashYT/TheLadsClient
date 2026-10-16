@@ -56,7 +56,9 @@
     "MixinHumanoidRenderState",
     "MixinHumanoidMobRenderer",
     "MixinAbstractZombieRenderer",
-    "MixinLivingEntityRendererLeaderAura"
+    "MixinLivingEntityRendererLeaderAura",
+    "MixinSpriteContentsAccessor",
+    "MixinSpriteLoaderTextureCap"
   ],
   "injectors": {
     "defaultRequire": 1

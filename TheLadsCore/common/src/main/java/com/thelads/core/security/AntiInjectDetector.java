@@ -19,7 +19,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * and ClassLoader caches for known cheat signatures (Vape, Raven, KeystrokesMod, Rise, Slinky, Breeze, etc.),
  * and checks for launcher watchdog alerts.
  *
- * Runs off the render thread every 60 s.
+ * Runs off the render thread every 60 s; the thread stack walk only on the first pass, on each server join and every 10 min
+ * (see {@link #DEEP_SCAN_NANOS}).
  * Does NOT flag CodeSource == null alone (Mixin, Forge ASM, lambdas, and reflection accessors lack CodeSource).
  * On confirmed detection: logs error, closes server connection, and shows a clear reason screen.
  */
@@ -40,9 +41,22 @@ public final class AntiInjectDetector {
         "ghostclient."
     };
 
+    /**
+     * Thread.getAllStackTraces() stops every thread at a safepoint and walks its stack: render, server, chunk and worker
+     * threads all pause for it, a visible hitch in a modpack with 100+ threads. The cheap checks (watchdog alert, packages,
+     * class-loader cache) keep running every 60 s and cover how injected cheats usually show up (their classes get loaded and
+     * defined); the stack walk, which only adds classes caught mid-call, runs on the first pass, whenever the server address
+     * changes (a cheat injected for a server is in place by the time you join it) and otherwise at most every 10 minutes.
+     */
+    private static final long DEEP_SCAN_NANOS = TimeUnit.MINUTES.toNanos(10);
+
     private static final AtomicBoolean INITIALIZED = new AtomicBoolean(false);
     private static final AtomicBoolean DETECTED = new AtomicBoolean(false);
     private static ScheduledExecutorService scheduler;
+    // Watchdog thread only.
+    private static boolean deepScanned;
+    private static long lastDeepScan;
+    private static String lastServer;
 
     private AntiInjectDetector() {}
 
@@ -69,6 +83,11 @@ public final class AntiInjectDetector {
      * Executes a single detection pass. Returns the detection reason if a cheat was found, or null if clean.
      */
     public static String scanOnce() {
+        return scanOnce(true);
+    }
+
+    /** As {@link #scanOnce()}; {@code threads} false skips the thread stack walk (step 3). */
+    private static String scanOnce(boolean threads) {
         // 1. Check for launcher watchdog alert marker file
         String alertFinding = checkWatchdogAlert();
         if (alertFinding != null) return alertFinding;
@@ -88,7 +107,7 @@ public final class AntiInjectDetector {
         } catch (Throwable ignored) {}
 
         // 3. Scan active threads and stack traces
-        try {
+        if (threads) try {
             Map<Thread, StackTraceElement[]> traces = Thread.getAllStackTraces();
             for (Map.Entry<Thread, StackTraceElement[]> entry : traces.entrySet()) {
                 Thread thread = entry.getKey();
@@ -135,12 +154,29 @@ public final class AntiInjectDetector {
 
     private static void runScan() {
         try {
-            String finding = scanOnce();
+            String server = currentServer();
+            long now = System.nanoTime();
+            boolean deep = !deepScanned || !java.util.Objects.equals(server, lastServer) || now - lastDeepScan >= DEEP_SCAN_NANOS;
+            lastServer = server;
+            if (deep) {
+                deepScanned = true;
+                lastDeepScan = now;
+            }
+            String finding = scanOnce(deep);
             if (finding != null) {
                 onCheatDetected(finding);
             }
         } catch (Throwable ex) {
             LOGGER.debug("[AntiInject] Scan error: {}", ex.getMessage());
+        }
+    }
+
+    /** The server being played on ("Singleplayer" in menus and local worlds); null before the game bridge is ready. */
+    private static String currentServer() {
+        try {
+            return LadsGameBridge.get().getServerAddress();
+        } catch (Throwable t) {
+            return null;
         }
     }
 

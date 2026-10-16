@@ -1,24 +1,24 @@
 package com.thelads.smp.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.thelads.smp.features.ConsolidatedFeatures;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.BaseSpawner;
+import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Consolidates 'betterspawnercontrol': Suppresses monster spawner server ticks when surrounded on 5 sides by torches/lanterns.
+ * The torch check rides on vanilla's player-range check, so a spawner with nobody near returns before it, as in vanilla.
  */
 @Mixin(BaseSpawner.class)
 public abstract class MixinBaseSpawner {
 
-    @Inject(method = "serverTick", at = @At("HEAD"), cancellable = true)
-    private void ladssmp$suppressTorchSurroundedSpawner(ServerLevel level, BlockPos pos, CallbackInfo ci) {
-        if (ConsolidatedFeatures.isSpawnerSuppressedByTorches(level, pos)) {
-            ci.cancel();
-        }
+    @WrapOperation(method = "serverTick", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/world/level/BaseSpawner;isNearPlayer(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;)Z"))
+    private boolean ladssmp$suppressTorchSurroundedSpawner(BaseSpawner spawner, Level level, BlockPos pos, Operation<Boolean> original) {
+        return original.call(spawner, level, pos) && !ConsolidatedFeatures.isSpawnerSuppressedByTorches(level, pos);
     }
 }

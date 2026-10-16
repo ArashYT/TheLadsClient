@@ -1,6 +1,7 @@
 package com.thelads.core.v26_2.embedded.entityculling;
 
 import com.thelads.core.v26_2.embedded.entityculling.occlusion.OcclusionCullingInstance;
+import com.thelads.core.v26_2.embedded.entityculling.occlusion.util.MathUtilities;
 import com.thelads.core.v26_2.embedded.entityculling.occlusion.util.Vec3d;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -45,6 +46,12 @@ public final class EntityCulling {
     /** A new camera version starts once the camera is this far from where the current one began. */
     private static final double CAMERA_STEP = 0.5;
     private static final long MAX_AGE = 100_000_000L, FORGET = 1_000_000_000L, PASS = 10_000_000L, IDLE = 50_000_000L;
+    /**
+     * A moving camera keeps the worker's ray cache (cells seen or hidden from the camera) for up to one game tick, the
+     * original Entity Culling's re-cull rate, instead of wiping it on every 0.05-block drift (every 10 ms pass while walking);
+     * the passes in between still re-test every target against it. Changing block always wipes it: it is indexed from the camera's block.
+     */
+    private static final long RETEST = 50_000_000L;
     private static final MethodHandle IRIS_SHADOW = irisShadowPass();
     private static final ConcurrentLinkedQueue<Cullable> ADDED = new ConcurrentLinkedQueue<>();
     private static final AtomicLong DRAWN = new AtomicLong(), CULLED = new AtomicLong(), BE_DRAWN = new AtomicLong(), BE_CULLED = new AtomicLong();
@@ -72,9 +79,13 @@ public final class EntityCulling {
         }
     }
 
+    /** Render thread, once per frame before its entities are extracted (LevelExtractorMixin): the frame's clock. */
+    public static void frame() {
+        frameNow = System.nanoTime();
+    }
+
     /** Render thread: the camera of the main pass, as handed to the entity visibility check. */
     public static void camera(double x, double y, double z) {
-        frameNow = System.nanoTime();
         if (QA && !hookLogged) {
             hookLogged = true;
             LOGGER.info("Entity culling: entity render hook active");
@@ -144,7 +155,9 @@ public final class EntityCulling {
         private final ArrayList<Cullable> tracked = new ArrayList<>();
         private final Vec3d min = new Vec3d(0, 0, 0), max = new Vec3d(0, 0, 0), viewer = new Vec3d(0, 0, 0);
         private ClientLevel level;
+        /** Camera position (and time) of the last cache wipe. */
         private double lastX = Double.NaN, lastY, lastZ;
+        private long resetAt;
         private long nextReport, lastPass;
         private boolean warned, reportStarted;
 
@@ -184,11 +197,15 @@ public final class EntityCulling {
                 }
             }
             for (Cullable added; (added = ADDED.poll()) != null; ) tracked.add(added);
-            if (Double.isNaN(lastX) || Math.abs(current.x - lastX) + Math.abs(current.y - lastY) + Math.abs(current.z - lastZ) > 0.05) {
+            boolean otherBlock = Double.isNaN(lastX) || MathUtilities.floor(current.x) != MathUtilities.floor(lastX)
+                || MathUtilities.floor(current.y) != MathUtilities.floor(lastY) || MathUtilities.floor(current.z) != MathUtilities.floor(lastZ);
+            boolean drifted = Math.abs(current.x - lastX) + Math.abs(current.y - lastY) + Math.abs(current.z - lastZ) > 0.05;
+            if (otherBlock || drifted && now - resetAt >= RETEST) {
                 culling.resetCache();
                 lastX = current.x;
                 lastY = current.y;
                 lastZ = current.z;
+                resetAt = now;
             }
             data.level(level);
             viewer.set(current.x, current.y, current.z);
@@ -211,7 +228,7 @@ public final class EntityCulling {
                     // One block of slack on every side covers double chests, beds, banners and other models wider than their block.
                     visible = visible(current, pos.getX() - 1, pos.getY() - 1, pos.getZ() - 1, pos.getX() + 2, pos.getY() + 2, pos.getZ() + 2);
                 }
-                target.lads$cullResult(visible ? 0 : current.version, System.nanoTime());
+                target.lads$cullResult(visible ? 0 : current.version, now); // the pass's start: never newer than the check
             }
         }
 

@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory;
 public final class EmbeddedModsMain implements ModInitializer {
     @Override
     public void onInitialize() {
-        if (EmbeddedMods.active("ksyxis")) LoggerFactory.getLogger("Ksyxis").info("Ksyxis: Ready to remove unneeded chunks. (embedded in Lads Core)");
+        if (com.thelads.core.v26_2.embedded.ksyxis.KsyxisMixinPlugin.runs()) LoggerFactory.getLogger("Ksyxis").info("Ksyxis: Ready to remove unneeded chunks. (embedded in Lads Core)");
         if (EmbeddedMods.active("quick-pack")) ConfigManager.load(FabricLoader.getInstance().getConfigDir());
         if (EmbeddedMods.active("nbtac")) new com.thelads.core.v26_2.embedded.nbtac.NBTacFabric().onInitialize();
     }

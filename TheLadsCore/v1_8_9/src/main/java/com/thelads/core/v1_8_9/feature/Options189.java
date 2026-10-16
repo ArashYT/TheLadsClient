@@ -13,7 +13,6 @@ import com.thelads.core.config.StringOption;
 /** Module and option reads for the 1.8.9 features, as the other versions' NativeQualityOfLife helpers. */
 public final class Options189 {
     private static final java.util.concurrent.ConcurrentHashMap<String, Module> MODULE_CACHE = new java.util.concurrent.ConcurrentHashMap<String, Module>();
-    private static final java.util.concurrent.ConcurrentHashMap<String, Option> OPTION_CACHE = new java.util.concurrent.ConcurrentHashMap<String, Option>();
 
     private Options189() {}
 
@@ -30,19 +29,10 @@ public final class Options189 {
         return module != null && module.isEnabled();
     }
 
+    /** Module.getOption is already a hash lookup by name, so no "module/option" key is built per call (hot render paths call this every frame). */
     private static Option option(String module, String option) {
-        String key = module + "/" + option;
-        Option cached = OPTION_CACHE.get(key);
-        if (cached != null) return cached;
         Module value = module(module);
-        if (value != null) {
-            Option opt = value.getOption(option);
-            if (opt != null) {
-                OPTION_CACHE.put(key, opt);
-                return opt;
-            }
-        }
-        return null;
+        return value == null ? null : value.getOption(option);
     }
 
     public static boolean bool(String module, String option, boolean fallback) {

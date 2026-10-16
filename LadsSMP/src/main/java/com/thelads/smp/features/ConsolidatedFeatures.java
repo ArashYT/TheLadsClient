@@ -130,6 +130,8 @@ public final class ConsolidatedFeatures {
         });
     }
 
+    private static final Direction[] SPAWNER_FACES = {Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
+
     /**
      * Consolidates 'betterspawnercontrol': Checks if a Spawner at pos has torches or lanterns on at least
      * spawnerRequiredTorchFaces (default 5: North, South, East, West, Up).
@@ -138,10 +140,9 @@ public final class ConsolidatedFeatures {
         LadsConfig.FeatureSettings cfg = LadsConfig.get().features;
         if (!cfg.betterSpawnerControl || level == null || pos == null) return false;
 
-        Direction[] faces = {Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, Direction.DOWN};
         int count = 0;
         for (int i = 0; i < 5; i++) {
-            BlockState neighbor = level.getBlockState(pos.relative(faces[i]));
+            BlockState neighbor = level.getBlockState(pos.relative(SPAWNER_FACES[i]));
             if (isTorchOrLantern(neighbor)) {
                 count++;
             }

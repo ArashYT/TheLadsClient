@@ -168,9 +168,7 @@ public final class ItemDisablerSystem {
 
     public static boolean isDisabled(Item item) {
         if (!CONFIG.enabled || item == null || item == Items.AIR) return false;
-        Identifier key = BuiltInRegistries.ITEM.getKey(item);
-        if (key == null) return false;
-        if (GLOBAL_RULES.matchesId(key.toString())) return true;
+        if (GLOBAL_RULES.matchesItem(item)) return true;
         if (!GLOBAL_RULES.tagKeys.isEmpty()) {
             ItemStack defaultStack = item.getDefaultInstance();
             for (TagKey<Item> tagKey : GLOBAL_RULES.tagKeys) {
@@ -182,8 +180,7 @@ public final class ItemDisablerSystem {
 
     public static boolean isDisabled(ItemStack stack) {
         if (!CONFIG.enabled || stack == null || stack.isEmpty()) return false;
-        Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        if (key != null && GLOBAL_RULES.matchesId(key.toString())) {
+        if (GLOBAL_RULES.matchesItem(stack.getItem())) {
             return true;
         }
         for (TagKey<Item> tagKey : GLOBAL_RULES.tagKeys) {
@@ -195,8 +192,7 @@ public final class ItemDisablerSystem {
     public static boolean isDisabledForLoot(ItemStack stack) {
         if (!CONFIG.enabled || stack == null || stack.isEmpty()) return false;
         if (isDisabled(stack)) return true;
-        Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        if (key != null && LOOT_ONLY_RULES.matchesId(key.toString())) {
+        if (LOOT_ONLY_RULES.matchesItem(stack.getItem())) {
             return true;
         }
         for (TagKey<Item> tagKey : LOOT_ONLY_RULES.tagKeys) {
@@ -208,8 +204,7 @@ public final class ItemDisablerSystem {
     public static boolean isDisabledForRecipeOutput(ItemStack stack) {
         if (!CONFIG.enabled || stack == null || stack.isEmpty()) return false;
         if (isDisabled(stack)) return true;
-        Identifier key = BuiltInRegistries.ITEM.getKey(stack.getItem());
-        if (key != null && RECIPE_ONLY_RULES.matchesId(key.toString())) {
+        if (RECIPE_ONLY_RULES.matchesItem(stack.getItem())) {
             return true;
         }
         for (TagKey<Item> tagKey : RECIPE_ONLY_RULES.tagKeys) {
@@ -484,6 +479,7 @@ public final class ItemDisablerSystem {
 
     /**
      * Immutable compiled rule matcher supporting exact IDs, wildcard/glob patterns (* and ?), and item #tags.
+     * applyConfig compiles a new set on every config change, so the per-Item id verdicts it caches never go stale.
      */
     public static final class CompiledRuleSet {
         public static final CompiledRuleSet EMPTY = new CompiledRuleSet(Set.of(), List.of(), List.of());
@@ -491,6 +487,8 @@ public final class ItemDisablerSystem {
         public final Set<String> exactIds;
         public final List<Pattern> globPatterns;
         public final List<TagKey<Item>> tagKeys;
+        /** matchesId of each item's registry id, decided once: item entities, loot and slots check every tick. */
+        private final Map<Item, Boolean> itemVerdicts = new ConcurrentHashMap<>();
 
         private CompiledRuleSet(Set<String> exactIds, List<Pattern> globPatterns, List<TagKey<Item>> tagKeys) {
             this.exactIds = exactIds;
@@ -525,6 +523,18 @@ public final class ItemDisablerSystem {
                     Collections.unmodifiableList(patterns),
                     Collections.unmodifiableList(tags)
             );
+        }
+
+        /** matchesId(the item's registry id) with no id string, lowercasing or regex after the item's first check (tags are separate). */
+        public boolean matchesItem(Item item) {
+            if (exactIds.isEmpty() && globPatterns.isEmpty()) return false;
+            Boolean verdict = itemVerdicts.get(item);
+            if (verdict == null) {
+                Identifier key = BuiltInRegistries.ITEM.getKey(item);
+                verdict = key != null && matchesId(key.toString());
+                itemVerdicts.put(item, verdict);
+            }
+            return verdict;
         }
 
         public boolean matchesId(String idString) {

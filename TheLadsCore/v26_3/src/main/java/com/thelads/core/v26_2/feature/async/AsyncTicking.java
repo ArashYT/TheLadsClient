@@ -24,7 +24,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.profiling.InactiveProfiler;
 import net.minecraft.util.profiling.Profiler;
@@ -86,11 +85,14 @@ public final class AsyncTicking {
 
     private AsyncTicking() {}
 
-    /** Client init. A loaded external Async mod ticks entities itself, so the Lads one stays out (its mixins never apply). */
+    /**
+     * Client init. A loaded external Async mod ticks entities itself, and C2ME rewrites what the workers rely on, so the Lads one
+     * stays out (its mixins never apply). The mixins also skip a launch with Async saved off, so turning it on needs a restart.
+     */
     public static void initialize() {
-        if (active || FabricLoader.getInstance().isModLoaded("async")) return;
+        if (active || !AsyncMixinPlugin.supported()) return;
         active = true;
-        ModuleSupport.registerBuiltIn(AsyncModule.NAME);
+        ModuleSupport.registerBuiltInRestart(AsyncModule.NAME);
         ServerLifecycleEvents.SERVER_STARTED.register(server -> { fallback = null; CHECKS.clear(); });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> { shutdown(); CHECKS.clear(); });
         AsyncStressProbe.initialize();
