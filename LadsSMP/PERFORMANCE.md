@@ -80,3 +80,4 @@ Full report + A/B numbers: `artifacts/smp-opt/SMP-OPTIMIZATION-REPORT.md` (gitig
 - ModernFix `remove_biome_temperature_cache=false` (overwrite conflict with Lithium); Sound Physics 16 rays / 256 blocks.
 - Measured (2 runs each): server start -> join 26-27 s -> 12 s; launch WARN lines 755 -> 494.
 - Item disabler caches its verdict per Item; the spawner torch check runs behind vanilla's `isNearPlayer`.
+- Iris removed (pack 0.2.3): Core forces OpenGL whenever Iris is installed; without it the pack runs on Vulkan. Arash-PC (RTX 4060 Ti): 462 -> 645 FPS (OpenGL, no Iris) -> 734 FPS (Vulkan); Legion laptop: no measurable change (CPU-bound). Shaders are no longer supported in the SMP.
