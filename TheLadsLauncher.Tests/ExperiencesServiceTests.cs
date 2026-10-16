@@ -238,6 +238,52 @@ public class ExperiencesServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task StaleArchive_IsDownloadedAgain_WhenThePinnedHashChanges()
+    {
+        var oldZip = PackZip(SamplePack);
+        var newZip = PackZip(SamplePack.Append(("overrides/mods/delta.jar", "delta")).ToArray());
+        var handler = new FakeHandler { Body = oldZip };
+        using var http = new HttpClient(handler);
+        var exp = ExperiencesService.ZeroSmp with
+        {
+            PackArchiveUrl = "https://packs.example.invalid/zero-smp.zip",
+            PackArchiveSha256 = Convert.ToHexString(SHA256.HashData(oldZip))
+        };
+        await ExperiencesService.EnsurePackSourceAsync(_tempDir, exp, http, null, CancellationToken.None);
+
+        // A launcher update pins a new pack: the cached archive no longer matches, so it is replaced and re-extracted.
+        handler.Body = newZip;
+        var updated = exp with { PackArchiveSha256 = Convert.ToHexString(SHA256.HashData(newZip)) };
+        var source = await ExperiencesService.EnsurePackSourceAsync(_tempDir, updated, http, null, CancellationToken.None);
+
+        Assert.Equal(2, handler.Requests);
+        Assert.True(File.Exists(Path.Combine(source, "overrides", "mods", "delta.jar")));
+        Assert.Equal(newZip, File.ReadAllBytes(ExperiencesService.PackArchivePath(_tempDir, exp.Id)));
+    }
+
+    private sealed class OfflineHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token) =>
+            throw new HttpRequestException("offline");
+    }
+
+    [Fact]
+    public async Task StaleArchive_IsStillUsed_WhenTheNewPackCannotBeDownloaded()
+    {
+        var oldZip = PackZip(SamplePack);
+        var archive = ExperiencesService.PackArchivePath(_tempDir, ExperiencesService.ZeroSmp.Id);
+        Directory.CreateDirectory(Path.GetDirectoryName(archive)!);
+        File.WriteAllBytes(archive, oldZip);
+        using var http = new HttpClient(new OfflineHandler());
+        var exp = ExperiencesService.ZeroSmp with { PackArchiveUrl = "https://packs.example.invalid/zero-smp.zip", PackArchiveSha256 = new string('A', 64) };
+
+        var source = await ExperiencesService.EnsurePackSourceAsync(_tempDir, exp, http, null, CancellationToken.None);
+
+        Assert.True(File.Exists(Path.Combine(source, "overrides", "mods", "alpha.jar")));
+        Assert.Equal(oldZip, File.ReadAllBytes(archive));
+    }
+
+    [Fact]
     public async Task DownloadWithTheWrongHash_IsRejected_AndNothingIsKept()
     {
         using var http = new HttpClient(new FakeHandler { Body = PackZip(SamplePack) });

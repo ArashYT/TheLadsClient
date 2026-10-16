@@ -441,6 +441,22 @@ public static class ExperiencesService
                     $"The {exp.Title} pack is not available yet. Put its pack archive at '{archive}' (tools/modpack-manager/export-pack.ps1 writes it) and try again.", archive);
             await DownloadArchiveAsync(http, url, archive, exp.PackArchiveSha256, status, token);
         }
+        // A launcher update pinned a newer pack than the cached one: download it. Offline (or the server not updated yet)
+        // the cached pack keeps working.
+        else if (File.Exists(archive) && http != null && !string.IsNullOrWhiteSpace(exp.PackArchiveSha256)
+                 && Uri.TryCreate(exp.PackArchiveUrl, UriKind.Absolute, out var pinned) && pinned.Scheme == Uri.UriSchemeHttps
+                 && !(await FileSha256Async(archive, token)).Equals(exp.PackArchiveSha256, StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                status?.Invoke("Downloading the updated pack...");
+                await DownloadArchiveAsync(http, pinned, archive, exp.PackArchiveSha256, status, token);
+            }
+            catch (Exception e) when (e is HttpRequestException or InvalidDataException or IOException || (e is TaskCanceledException && !token.IsCancellationRequested))
+            {
+                status?.Invoke("Could not download the updated pack; using the one already downloaded.");
+            }
+        }
 
         // An archive newer than what was extracted from it replaces the extracted copy.
         if (File.Exists(archive))
@@ -487,14 +503,19 @@ public static class ExperiencesService
                 }
             }
         }
-        string actual;
-        await using (var check = File.OpenRead(part)) actual = Convert.ToHexString(await SHA256.HashDataAsync(check, token));
+        string actual = await FileSha256Async(part, token);
         if (!actual.Equals(sha256, StringComparison.OrdinalIgnoreCase))
         {
             File.Delete(part);
             throw new InvalidDataException($"The downloaded pack does not match its published checksum (expected {sha256}, got {actual}).");
         }
         File.Move(part, archive, overwrite: true);
+    }
+
+    private static async Task<string> FileSha256Async(string path, CancellationToken token)
+    {
+        await using var stream = File.OpenRead(path);
+        return Convert.ToHexString(await SHA256.HashDataAsync(stream, token));
     }
 
     private sealed record JarOverlayEntry(string Path, string OverlayZipPath, string OverlaySha256, string? PatchedSha1, string? PatchedSha512);
