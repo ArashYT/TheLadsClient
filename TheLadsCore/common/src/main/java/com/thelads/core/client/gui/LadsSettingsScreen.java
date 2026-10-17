@@ -1855,6 +1855,7 @@ public final class LadsSettingsScreen {
             .filter(o -> !(detail instanceof com.thelads.core.modules.DynamicLightsModule lights && lights.hidden(o)))
             .filter(o -> !(detail instanceof ComboSoundsModule combo && combo.hidden(o)))
             .filter(o -> !(detail instanceof CrosshairModule crosshair && crosshair.hidden(o)))
+            .filter(o -> !(detail instanceof com.thelads.core.modules.SurvivalTweaksModule tweaks && tweaks.hidden(o)))
             .sorted((a, b) -> {
                 if ("Ignore HUD FPS Cap".equals(a.getName())) return 1;
                 if ("Ignore HUD FPS Cap".equals(b.getName())) return -1;

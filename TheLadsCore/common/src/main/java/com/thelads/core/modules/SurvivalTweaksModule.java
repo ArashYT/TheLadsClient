@@ -33,7 +33,6 @@ public final class SurvivalTweaksModule extends Module {
         notHere.addAll(java.util.List.of(options));
     }
 
-    @Override
     public boolean hidden(com.thelads.core.config.Option option) {
         return notHere.contains(option.getName());
     }
