@@ -30,6 +30,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         QaProbe1201.register(); // QA only: inert unless the Verification harness sets -Dthelads.verifyAutoWorld / -Dthelads.qaScript
         com.thelads.core.v1_20_1.feature.Probe193Packs1201.register();
         com.thelads.core.v1_20_1.feature.SoundBreakProbe1201.register(); // QA only: LADS_QA_SOUNDBREAK=1
+        com.thelads.core.v1_20_1.feature.ParityProbe1201.register(); // QA only: LADS_QA_PARITY=1 (SurvivalTweaks, StackRefill)
         com.thelads.core.v1_20_1.input.InputLatency1201.init();
         com.thelads.core.v1_20_1.input.InputProbe1201.register();
 

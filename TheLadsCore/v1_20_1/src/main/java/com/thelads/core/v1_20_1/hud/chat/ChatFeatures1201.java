@@ -1,6 +1,7 @@
 package com.thelads.core.v1_20_1.hud.chat;
 
 import com.thelads.core.client.ChatHistory;
+import com.thelads.core.v1_20_1.game.survival.NativeSurvivalTweaks1201;
 import com.thelads.core.v1_20_1.hud.Hud1201;
 import com.thelads.core.v1_20_1.hud.Mods1201;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -12,6 +13,8 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 public final class ChatFeatures1201 {
     /** ponytail: with a chat_heads jar every resize wraps the whole history again, so Infinite History stops here instead of at ChatHistory.CEILING. */
     public static final int WRAPPED_CEILING = 5_000;
+    /** SurvivalTweaks Longer Chat History: the history cap when Infinite History is off. */
+    public static final int LONGER_HISTORY = 65_536;
     private static Boolean signingMod;
 
     private ChatFeatures1201() {}
@@ -37,6 +40,8 @@ public final class ChatFeatures1201 {
     /** The history cap (100 messages and lines): vanilla's, the ceiling with Infinite History, or {@link #WRAPPED_CEILING} when every line is wrapped on a resize. */
     public static int historyLimit(int vanilla) {
         int limit = ChatHistory.limit(vanilla);
+        // SurvivalTweaks' Longer Chat History (26.3 does the same): without Infinite History the 100-message cap becomes 65536.
+        if (limit == vanilla && NativeSurvivalTweaks1201.isLongerChatHistoryEnabled()) return LONGER_HISTORY;
         return limit == vanilla || NativeChatHeads1201.active() ? limit : Math.min(limit, WRAPPED_CEILING);
     }
 
