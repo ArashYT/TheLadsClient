@@ -29,6 +29,22 @@ internal static class NoRealLunar
 
 public class AuthenticationTests
 {
+    /// <summary>Release builds refuse offline accounts unless LADS_DEV_OFFLINE=1 (1.9.10 hardening); these tests need one.</summary>
+    private sealed class DevOffline : IDisposable
+    {
+        private readonly string? before = Environment.GetEnvironmentVariable("LADS_DEV_OFFLINE");
+        public DevOffline() => Environment.SetEnvironmentVariable("LADS_DEV_OFFLINE", "1");
+        public void Dispose() => Environment.SetEnvironmentVariable("LADS_DEV_OFFLINE", before);
+    }
+
+    [Fact]
+    public async Task ReleaseBuildsRefuseOfflineAccounts()
+    {
+        if (AuthService.IsDevOfflineAllowed) return; // a Debug build, or LADS_DEV_OFFLINE set outside the tests
+        using var dir = new TestDirectory();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => new AuthService(new PathService(dir.Path)).AddOfflineAccountAsync("Notch"));
+    }
+
     [Fact]
     public void OfflineUuidMatchesJavaKnownVector()
     {
@@ -53,6 +69,7 @@ public class AuthenticationTests
     [Fact]
     public async Task UnknownAccountNeverFallsBackToOffline()
     {
+        using var offline = new DevOffline();
         using var dir = new TestDirectory();
         var service = new AuthService(new PathService(dir.Path));
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.ResolveSessionAsync("Missing"));
@@ -101,6 +118,7 @@ public class AuthenticationTests
     [Fact]
     public async Task DefaultAccountPersistsAndRemovalSelectsExactlyOneRemainingAccount()
     {
+        using var offline = new DevOffline();
         using var dir = new TestDirectory();
         var paths = new PathService(dir.Path);
         var service = new AuthService(paths);
