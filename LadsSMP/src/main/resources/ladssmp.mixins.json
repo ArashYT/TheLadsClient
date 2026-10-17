@@ -47,7 +47,13 @@
     "MixinCustomNetherPortalsInvoker",
     "MixinPoiTypesEarlyGuard",
     "MixinBitsAndBalanceStepRecipeItems",
-    "MixinSimplyTentsGeoBlock"
+    "MixinSimplyTentsGeoBlock",
+    "MixinCreeper",
+    "MixinFarmlandBlock",
+    "MixinStonecutterBlock",
+    "MixinVelocityNoSpeedLimit",
+    "MixinLoginProtection",
+    "MixinDedicatedServerProperties"
   ],
   "client": [
     "MixinScreenPortalGui",

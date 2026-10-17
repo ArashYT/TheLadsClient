@@ -6,14 +6,17 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityReference;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.OwnableEntity;
+import net.minecraft.world.entity.monster.cubemob.Slime;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -63,6 +66,19 @@ public abstract class MixinLivingEntity {
         if (this.lastHurtByPlayerMemoryTime <= 0) {
             this.lastHurtByPlayerMemoryTime = 100;
         }
+    }
+
+    @Inject(method = "dropAllDeathLoot", at = @At("TAIL"))
+    private void ladssmp$dropNamedEntityNameTag(ServerLevel serverLevel, DamageSource damageSource, CallbackInfo ci) {
+        if (!LadsConfig.get().features.nameTagTweaks) return;
+        LivingEntity self = (LivingEntity) (Object) this;
+        if (!self.hasCustomName()) return;
+        if (self instanceof Slime slime && slime.getSize() != 4) return;
+
+        ItemStack tagStack = new ItemStack(Items.NAME_TAG);
+        tagStack.set(DataComponents.CUSTOM_NAME, self.getCustomName());
+        tagStack.set(DataComponents.REPAIR_COST, 0);
+        self.spawnAtLocation(serverLevel, tagStack);
     }
 
     @Inject(method = "isEquippableInSlot", at = @At("HEAD"), cancellable = true)

@@ -530,6 +530,28 @@ public class LadsSMPUnitTest {
         assertTrue(f.stickyEnchantingLapis);
         assertTrue(f.randomizeChestDiscLoot);
 
+        // Verify newly absorbed 9 features configuration defaults
+        assertTrue(f.nameTagTweaks);
+        assertTrue(f.nameTagCommandReplaceUnderscoresWithSpaces);
+        assertTrue(f.naturallyChargedCreepers);
+        assertEquals(0.1d, f.naturallyChargedCreepersChance, 1e-6);
+        assertTrue(f.noFeatherTrample);
+        assertTrue(f.enchantingCommands);
+        assertTrue(f.stonecutterDamage);
+        assertTrue(f.noSpeedLimit);
+        assertTrue(f.loginProtection);
+        assertEquals(50, f.loginProtectionSeconds);
+        assertTrue(f.defaultServerProperties);
+
+        // Verify newly added recipe & tag resources
+        assertNotNull(LadsSMPUnitTest.class.getResourceAsStream("/data/ladssmp/recipe/name_tag.json"));
+        assertNotNull(LadsSMPUnitTest.class.getResourceAsStream("/data/ladssmp/recipe/name_tag.json"));
+        assertNotNull(LadsSMPUnitTest.class.getResourceAsStream("/data/stonecutter_damage/damage_type/stonecutter.json"));
+        assertNotNull(LadsSMPUnitTest.class.getResourceAsStream("/data/stonecutter_damage/tags/entity_type/blacklist.json"));
+        assertNotNull(LadsSMPUnitTest.class.getResourceAsStream("/data/minecraft/tags/damage_type/no_knockback.json"));
+        assertNotNull(LadsSMPUnitTest.class.getResourceAsStream("/data/minecraft/tags/damage_type/panic_environmental_causes.json"));
+        assertNotNull(LadsSMPUnitTest.class.getResourceAsStream("/assets/stonecutter_damage/lang/en_us.json"));
+
         // Verify chest-only disc loot filter never matches block or entity loot tables
         assertTrue(com.thelads.smp.features.ConsolidatedFeatures.isChestLootTablePath("chests/simple_dungeon"));
         assertTrue(com.thelads.smp.features.ConsolidatedFeatures.isChestLootTablePath("chests/ancient_city"));
