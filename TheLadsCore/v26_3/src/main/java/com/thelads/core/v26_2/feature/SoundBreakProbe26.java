@@ -67,8 +67,8 @@ final class SoundBreakProbe26 {
             if (tick < 200) return;
             done = true;
             for (Watch w : watched.values()) {
-                // Cut: stopped (or silent) after less than half its file, with a tick and a little of slack.
-                boolean cut = w.lengthMs > 0 && (w.activeTicks * 50L + 100 < w.lengthMs / 2 || w.maxGain <= 0);
+                // Cut: OpenAL stopped it (or it went silent) before half its file played, with a little slack.
+                boolean cut = w.lengthMs > 0 && (w.maxOffset * 1000 + 100 < w.lengthMs / 2 || w.maxGain <= 0);
                 if (cut) failed++;
                 LOGGER.info("Lads sound break probe {} {}: file {} ms, active {} ms, played to {} ms, gain {}..{}, last AL state {}",
                     cut ? "CUT" : "OK", w.name, w.lengthMs, w.activeTicks * 50, Math.round(w.maxOffset * 1000), w.minGain, w.maxGain, w.lastState);

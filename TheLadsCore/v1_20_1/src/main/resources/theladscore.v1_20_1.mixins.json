@@ -8,6 +8,8 @@
   },
   "client": [
     "SessionTokenMixin",
+    "SoundEngineQaAccessor",
+    "ChannelQaAccessor",
     "KeyboardHandlerMixin",
     "MouseHandlerMixin",
     "ScoreboardMixin",

@@ -77,6 +77,7 @@
     "GuiChatInputAccessor",
     "KeepUiOpenCloseMixin",
     "KeepUiOpenScreenMixin",
+    "SoundHandlerQaMixin",
     "ResourcePackRepositoryEntryMixin",
     "GuiScreenResourcePacksMixin",
     "ScaledResolutionMixin",
