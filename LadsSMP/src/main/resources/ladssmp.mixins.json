@@ -53,7 +53,9 @@
     "MixinStonecutterBlock",
     "MixinVelocityNoSpeedLimit",
     "MixinLoginProtection",
-    "MixinDedicatedServerProperties"
+    "MixinDedicatedServerProperties",
+    "HangingEntityAccessor",
+    "MixinExposurePhotographFrame"
   ],
   "client": [
     "MixinScreenPortalGui",
