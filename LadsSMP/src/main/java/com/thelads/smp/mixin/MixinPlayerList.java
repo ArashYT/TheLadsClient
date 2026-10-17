@@ -25,9 +25,4 @@ public abstract class MixinPlayerList {
             instance.broadcastSystemMessage(message, bypassHiddenChat);
         }
     }
-
-    @org.spongepowered.asm.mixin.injection.Inject(method = "remove", at = @At("HEAD"))
-    private void ladssmp$onPlayerRemove(net.minecraft.server.level.ServerPlayer player, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-        com.thelads.smp.features.LimitedChunksManager.onPlayerLeave(player);
-    }
 }

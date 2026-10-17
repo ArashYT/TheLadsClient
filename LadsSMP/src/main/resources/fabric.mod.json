@@ -52,7 +52,6 @@
     "mr_stonecutter_damage",
     "imfast",
     "logprot",
-    "dsp",
-    "limitedchunks"
+    "dsp"
   ]
 }

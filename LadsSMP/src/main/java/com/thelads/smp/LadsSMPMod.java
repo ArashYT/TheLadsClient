@@ -7,7 +7,6 @@ import com.thelads.smp.disabler.ItemDisablerSystem;
 import com.thelads.smp.features.ConsolidatedFeatures;
 import com.thelads.smp.features.DeathBackupManager;
 import com.thelads.smp.features.EnchantingCommandsManager;
-import com.thelads.smp.features.LimitedChunksManager;
 import com.thelads.smp.features.LoginProtectionManager;
 import com.thelads.smp.features.NameTagTweaksManager;
 import net.fabricmc.api.ModInitializer;
@@ -34,7 +33,6 @@ public final class LadsSMPMod implements ModInitializer {
         NameTagTweaksManager.init();
         EnchantingCommandsManager.init();
         LoginProtectionManager.init();
-        LimitedChunksManager.init();
 
         // Sanitize player inventory immediately upon joining the server
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {

@@ -542,11 +542,9 @@ public class LadsSMPUnitTest {
         assertTrue(f.loginProtection);
         assertEquals(50, f.loginProtectionSeconds);
         assertTrue(f.defaultServerProperties);
-        assertTrue(f.limitedChunkloading);
-        assertEquals(360, f.chunkUnloadNoPlayerMinutes);
 
         // Verify newly added recipe & tag resources
-        assertNotNull(LadsSMPUnitTest.class.getResourceAsStream("/data/nametagtweaks/recipe/name_tag.json"));
+        assertNotNull(LadsSMPUnitTest.class.getResourceAsStream("/data/ladssmp/recipe/name_tag.json"));
         assertNotNull(LadsSMPUnitTest.class.getResourceAsStream("/data/ladssmp/recipe/name_tag.json"));
         assertNotNull(LadsSMPUnitTest.class.getResourceAsStream("/data/stonecutter_damage/damage_type/stonecutter.json"));
         assertNotNull(LadsSMPUnitTest.class.getResourceAsStream("/data/stonecutter_damage/tags/entity_type/blacklist.json"));

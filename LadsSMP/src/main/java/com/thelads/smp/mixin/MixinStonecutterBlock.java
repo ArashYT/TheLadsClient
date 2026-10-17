@@ -42,6 +42,7 @@ public abstract class MixinStonecutterBlock extends Block {
         super.stepOn(level, pos, state, entity);
         if (!LadsConfig.get().features.stonecutterDamage) return;
         if (!(level instanceof ServerLevel serverLevel)) return;
+        if (serverLevel.getGameTime() % 20 != 0) return; // original datapack: 1 damage every second
         if (!entity.isAlive() || entity.getType().builtInRegistryHolder().is(STONECUTTER_BLACKLIST)) return;
         try {
             Holder<DamageType> damageType = serverLevel.registryAccess()

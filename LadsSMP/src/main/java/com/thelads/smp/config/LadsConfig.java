@@ -201,10 +201,6 @@ public final class LadsConfig {
 
         /** Consolidates 'default-server-properties' (dsp): Seeds default server.properties on fresh dedicated server installations. */
         public boolean defaultServerProperties = true;
-
-        /** Consolidates 'limitedchunks': Unloads forceloaded/chunkloader chunk tickets when the owning player logs off. */
-        public boolean limitedChunkloading = true;
-        public int chunkUnloadNoPlayerMinutes = 360;
     }
 
     public static LadsConfig get() {
