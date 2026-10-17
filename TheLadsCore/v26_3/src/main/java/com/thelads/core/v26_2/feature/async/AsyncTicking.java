@@ -90,7 +90,14 @@ public final class AsyncTicking {
      * stays out (its mixins never apply). The mixins also skip a launch with Async saved off, so turning it on needs a restart.
      */
     public static void initialize() {
-        if (active || !AsyncMixinPlugin.supported()) return;
+        if (active) return;
+        if (!AsyncMixinPlugin.supported()) {
+            // The card says why it stays out instead of looking unfinished (pending).
+            var loader = net.fabricmc.loader.api.FabricLoader.getInstance();
+            if (loader.isModLoaded("async")) ModuleSupport.registerExternal(AsyncModule.NAME, "Async", "async", true);
+            else if (loader.isModLoaded("c2me")) ModuleSupport.registerUnavailable(AsyncModule.NAME, "C2ME is installed and already spreads world work across threads.");
+            return;
+        }
         active = true;
         ModuleSupport.registerBuiltInRestart(AsyncModule.NAME);
         ServerLifecycleEvents.SERVER_STARTED.register(server -> { fallback = null; CHECKS.clear(); });
