@@ -30,7 +30,7 @@ public final class Gameplay1201 {
         qa = Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null;
         // Modules this lane implements natively. The entrypoint's shared list registered a few of them as built in before they worked.
         ModuleSupport.registerBuiltIn(ToggleSprintModule.NAME, "Fullbright", "LegacySwing", DamageTilt.MODULE, NativeVerticalBob1201.MODULE,
-            OldAnimationsModule.NAME, "BetterResolution", "ResourcePacks");
+            OldAnimationsModule.NAME, "BetterResolution", "ResourcePacks", com.thelads.core.client.KeepUiOpen.MODULE_NAME);
         if (zoomOwnedByMod()) ModuleSupport.registerExternal("Zoom", "Just Zoom", "justzoom", true);
         else ModuleSupport.registerBuiltIn("Zoom");
         if (ModPresence1201.loaded("distanthorizons") && !qaFlag("allow-dh"))
