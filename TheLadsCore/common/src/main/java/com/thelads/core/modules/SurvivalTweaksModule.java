@@ -26,6 +26,17 @@ public final class SurvivalTweaksModule extends Module {
     public final BoolOption keepBarsWhileRiding;
 
     private static volatile SurvivalTweaksModule cachedInstance;
+    private final java.util.Set<String> notHere = new java.util.HashSet<>();
+
+    /** An adapter's game version has no such thing (1.8.9: no berry bushes, elytra or boat look limit): the menu leaves it out. */
+    public void hideHere(String... options) {
+        notHere.addAll(java.util.List.of(options));
+    }
+
+    @Override
+    public boolean hidden(com.thelads.core.config.Option option) {
+        return notHere.contains(option.getName());
+    }
 
     public SurvivalTweaksModule() {
         super(NAME, "Survival and world quality-of-life tweaks: berry bush armor & sneak protection, faster obsidian mining, "
