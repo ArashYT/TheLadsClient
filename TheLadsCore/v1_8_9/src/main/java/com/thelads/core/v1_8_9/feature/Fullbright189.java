@@ -7,7 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.GameSettings;
 
 /**
- * Fullbright: while it is on, the game's Brightness (gammaSetting) is the Gamma slider times the Brightness Multiplier, set every
+ * Fullbright: while it is on, the game's Brightness (gammaSetting) is Minecraft's brightest (1.0) and the lightmap is lifted by the Brightness %, set every
  * client tick (the tick runs under a menu too), and put back the moment it goes off. The lightmap is rebuilt only when
  * EntityRenderer is told it is out of date, which the game does from a tick that does not run while a menu pauses a singleplayer
  * world, so a change here marks it out of date itself and shows in the next frame, menu open or not. options.txt keeps the

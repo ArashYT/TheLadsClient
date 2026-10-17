@@ -4,7 +4,7 @@ import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.modules.ToggleSprintModule;
 
-/** Toggle Sprint &amp; Sneak's one HUD line: "[Sprinting (Toggled)] [Sneaking (Key Held)]" and the like (ToggleSprintModule.status). */
+/** Toggle Sprint &amp; Sneak's HUD text: "[Sprinting (Toggled)]", with "[Sneaking (Key Held)]" on a second line, and the like. */
 public class ToggleSprintHudElement extends TextHudElement {
     private static final String SAMPLE = "[Sprinting (Toggled)]";
 

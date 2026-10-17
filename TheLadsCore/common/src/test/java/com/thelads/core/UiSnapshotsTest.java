@@ -140,7 +140,7 @@ class UiSnapshotsTest {
             g.save(folder, "ui-module-4-confirmed");
             assertEquals(100, ((SliderOption) cps.getOption("Size")).getValue());
 
-            var gamma = (SliderOption) fullbright.getOption("Gamma");
+            var gamma = (SliderOption) fullbright.getOption("Brightness");
             var page = new LadsSettingsScreen();
             page.openModule("Fullbright");
             for (int percent : new int[] {30, 65, 100}) {
@@ -149,7 +149,7 @@ class UiSnapshotsTest {
                 page.render(g, -1, -1);
                 g.save(folder, "ui-fb-slider-" + percent);
             }
-            var field = page.controlBounds("option:Gamma:field");
+            var field = page.controlBounds("option:Brightness:field");
             page.mouseClicked(field.x() + 3, field.y() + 3, 0);
             "40".codePoints().forEach(page::charTyped);
             g = new Awt();

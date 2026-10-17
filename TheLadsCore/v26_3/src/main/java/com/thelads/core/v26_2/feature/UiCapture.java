@@ -94,8 +94,10 @@ final class UiCapture {
         locked = Set.copyOf(HudSettings.getInstance().getLocked());
         for (HudElement element : HudManager.getInstance().getElements()) ELEMENTS.put(element, new int[] {element.getX(), element.getY()});
         steps = new ArrayList<>();
-        hudEditor();
-        moduleReset();
+        if (System.getenv("LADS_QA_UI_FULLBRIGHT_ONLY") == null) { // 1.9.10: the Fullbright part alone
+            hudEditor();
+            moduleReset();
+        }
         fullbright(true);
         fullbright(false);
         LOGGER.info("Lads UI capture BEGIN: {} steps; real screens and their mouse and key handlers, called in-process", steps.size());
@@ -277,6 +279,8 @@ final class UiCapture {
                     var commands = server.getCommands().getDispatcher();
                     timeBefore = commands.execute("time query time", source);
                     commands.execute("time set midnight", source);
+                    // The QA world is Normal (other probes need hostile mobs): midnight's zombies killed the QA player mid-capture.
+                    commands.execute("effect give @a minecraft:resistance 600 4 true", source);
                 } catch (Exception failure) { fail("clock: " + failure); }
             });
             pause(90);
@@ -382,7 +386,7 @@ final class UiCapture {
         menu.mouseScrolled(300, 200, 0, -30);
     }
 
-    private static SliderOption gamma() { return (SliderOption) fullbright.getOption("Gamma"); }
+    private static SliderOption gamma() { return (SliderOption) fullbright.getOption("Brightness"); }
     private static LadsSettingsScreen ui() { return menu.ui(); }
     private static int size() { return (int) ((SliderOption) NativeQualityOfLife.module("CPS").getOption("Size")).getValue(); }
     private static String f(double value) { return String.format(Locale.ROOT, "%.2f", value); }
@@ -405,7 +409,7 @@ final class UiCapture {
 
     /** Presses the slider in its middle, drags it to this percentage in steps and releases: a real press, moves and release. */
     private static void drag(int percent) {
-        Rect track = bounds(ui().controlBounds("option:Gamma"));
+        Rect track = bounds(ui().controlBounds("option:Brightness"));
         double y = track.y() + track.height() / 2.0, from = track.x() + track.width() / 2.0;
         double to = track.x() + 4 + (track.width() - 8) * percent / 100.0;
         menu.mouseClicked(mouse(from, y), false);
@@ -415,7 +419,7 @@ final class UiCapture {
 
     /** A drag across the whole track: every value the slider takes on the way. */
     private static void stepsDrag() {
-        Rect track = bounds(ui().controlBounds("option:Gamma"));
+        Rect track = bounds(ui().controlBounds("option:Brightness"));
         double y = track.y() + track.height() / 2.0;
         menu.mouseClicked(mouse(track.x() + 4, y), false);
         boolean ok = true;
@@ -432,7 +436,7 @@ final class UiCapture {
 
     /** Clicks the value field, types the text one character at a time and presses Enter. */
     private static void typed(String text) {
-        click(menu, ui().controlBounds("option:Gamma:field"));
+        click(menu, ui().controlBounds("option:Brightness:field"));
         text.codePoints().forEach(codepoint -> menu.charTyped(new CharacterEvent(codepoint)));
         key(menu, 257);
     }

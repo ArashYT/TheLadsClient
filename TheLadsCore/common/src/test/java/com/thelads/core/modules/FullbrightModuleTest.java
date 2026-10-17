@@ -8,74 +8,40 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class FullbrightModuleTest {
-    private static SliderOption gamma(FullbrightModule module) { return (SliderOption) module.getOption("Gamma"); }
+    private static SliderOption brightness(FullbrightModule module) { return (SliderOption) module.getOption("Brightness"); }
 
-    @Test void theGammaSliderIsAPercentageInStepsOfFiveAndKeepsItsOptionNames() {
+    @Test void oneBrightnessPercentageInStepsOfFive() {
         var module = new FullbrightModule();
-        assertEquals(List.of("Gamma", "Brightness Multiplier"), module.getOptions().stream().map(Option::getName).toList());
-        var slider = gamma(module);
-        assertEquals(65, slider.getValue());
-        assertEquals("65%", slider.display());
-        assertTrue(slider.isEditable());
+        assertEquals(List.of("Brightness"), module.getOptions().stream().map(Option::getName).toList());
+        var slider = brightness(module);
+        assertEquals(100, slider.getValue(), "full bright by default");
+        assertEquals("100%", slider.display());
         assertEquals(5, slider.getStep());
         assertEquals(0, slider.getMin());
         assertEquals(100, slider.getMax());
     }
 
-    @Test void thePercentageMapsOntoGammaOneToFifteen() {
+    @Test void thePercentageIsHowFarTheLightmapIsLifted() {
         var module = new FullbrightModule();
-        gamma(module).setValue(0); assertEquals(1, module.getGamma(), 1e-9, "0% is Minecraft's brightest setting");
-        gamma(module).setValue(100); assertEquals(15, module.getGamma(), 1e-9);
-        gamma(module).setValue(65); assertEquals(10.1, module.getGamma(), 1e-9, "the default is 10, as before");
-        ((SliderOption) module.getOption("Brightness Multiplier")).setValue(2);
-        assertEquals(20.2, module.effectiveGamma(), 1e-9, "the multiplier still multiplies");
-    }
-
-    @Test void gammaSavedBeforeThisVersionCarriesOver() {
-        for (Object[] row : new Object[][] {{"{\"value\":10.0}", 65.0}, {"{\"value\":15.0}", 100.0}, {"{\"value\":1.0}", 0.0},
-                {"{\"value\":3.5}", 20.0}, {"{\"value\":7.0}", 45.0}, {"{\"value\":99}", 100.0}}) {
-            var module = new FullbrightModule();
-            gamma(module).load(JsonParser.parseString((String) row[0]));
-            assertEquals((double) row[1], gamma(module).getValue(), row[0].toString());
+        module.setEnabled(false);
+        assertEquals(0, module.lightmapFactor(), "off: nothing");
+        module.setEnabled(true);
+        for (int percent : new int[] {0, 5, 50, 100}) {
+            brightness(module).setValue(percent);
+            assertEquals(percent / 100f, module.lightmapFactor(), 1e-6f, percent + "% lifts the lightmap " + percent + "%");
         }
-        var module = new FullbrightModule();
-        gamma(module).load(JsonParser.parseString("{\"nothing\":1}")); assertEquals(65, gamma(module).getValue(), "no value: the default");
-        gamma(module).load(JsonParser.parseString("{\"value\":\"x\"}")); assertEquals(65, gamma(module).getValue());
-        gamma(module).load(JsonParser.parseString("42.9")); assertEquals(45, gamma(module).getValue(), "the new format is a bare number, rounded to a step");
+        assertEquals(1, module.effectiveGamma(), "the gamma is Minecraft's brightest setting at any percentage");
     }
 
     @Test void whatIsSavedLoadsBackTheSame() {
         var module = new FullbrightModule();
-        gamma(module).setValue(35);
-        var saved = gamma(module).save();
+        brightness(module).setValue(35);
         var again = new FullbrightModule();
-        gamma(again).load(saved);
-        assertEquals(35, gamma(again).getValue());
-        gamma(again).reset();
-        assertEquals(65, gamma(again).getValue(), "reset goes back to the default");
-    }
-
-    @Test void lightmapFactorScalesCorrectlyAndDisablesWhenModuleIsOff() {
-        var module = new FullbrightModule();
-        module.setEnabled(false);
-        assertEquals(0.0f, module.lightmapFactor(), "disabled module has 0 factor");
-
-        module.setEnabled(true);
-        gamma(module).setValue(0);
-        assertEquals(0.0f, module.lightmapFactor(), "0% gamma is vanilla maximum brightness (0 factor)");
-
-        gamma(module).setValue(30);
-        float factor30 = module.lightmapFactor();
-        assertTrue(factor30 > 0.8f, "30% gamma factor > 0.8");
-
-        gamma(module).setValue(65);
-        float factor65 = module.lightmapFactor();
-        assertTrue(factor65 >= 0.90f, "default 65% gamma factor >= 0.90 (exceeds 80% daylight requirement)");
-        assertTrue(factor65 >= factor30, "65% factor >= 30% factor");
-
-        gamma(module).setValue(100);
-        float factor100 = module.lightmapFactor();
-        assertEquals(1.0f, factor100, 1e-6f, "100% gamma factor is 1.0 (full daylight lightmap)");
+        brightness(again).load(brightness(module).save());
+        assertEquals(35, brightness(again).getValue());
+        brightness(again).load(JsonParser.parseString("42.9"));
+        assertEquals(45, brightness(again).getValue(), "rounded to a step");
+        brightness(again).reset();
+        assertEquals(100, brightness(again).getValue(), "reset goes back to the default");
     }
 }
-

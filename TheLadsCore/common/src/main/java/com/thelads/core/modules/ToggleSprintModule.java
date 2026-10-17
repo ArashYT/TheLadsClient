@@ -107,13 +107,13 @@ public class ToggleSprintModule extends Module {
         this.sprintKeyDown = sprintKeyDown;
     }
 
-    /** The HUD line: what is toggled or held right now, sprint then sneak; empty when neither. */
+    /** The HUD text: what is toggled or held right now, sprint then sneak, each on its own line (owner, 1.9.10); empty when neither. */
     public String status() {
         String sprint = isEnabled() && sprintMode.getIndex() == TOGGLE && sprintToggled.get() ? "Toggled"
             : !sprinting ? null : isEnabled() && sprintMode.getIndex() == ALWAYS ? "Always" : sprintKeyDown ? "Key Held" : "Vanilla";
         String sneak = isEnabled() && sneakMode.getIndex() == TOGGLE && sneakToggled.get() ? "Toggled" : sneaking ? "Key Held" : null;
         String text = sprint == null ? "" : "[Sprinting (" + sprint + ")]";
-        if (sneak != null) text += (text.isEmpty() ? "" : " ") + "[Sneaking (" + sneak + ")]";
+        if (sneak != null) text += (text.isEmpty() ? "" : "\n") + "[Sneaking (" + sneak + ")]";
         return text;
     }
 }

@@ -189,7 +189,7 @@ class ToggleSprintModuleTest {
         assertEquals("[Sprinting (Vanilla)]", module.status());
         module.pressSprint();
         module.observe(false, true, false);
-        assertEquals("[Sprinting (Toggled)] [Sneaking (Key Held)]", module.status());
+        assertEquals("[Sprinting (Toggled)]\n[Sneaking (Key Held)]", module.status(), "both: two lines");
         ((DropdownOption) module.getOption("Sneak")).setIndex(ToggleSprintModule.TOGGLE);
         module.pressSneak();
         module.pressSprint();

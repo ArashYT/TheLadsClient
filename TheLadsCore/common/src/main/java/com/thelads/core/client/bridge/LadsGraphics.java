@@ -118,6 +118,13 @@ public interface LadsGraphics {
      */
     default boolean drawGameView(int x, int y, int width, int height) { return false; }
 
+    /** Menu previews: the game view in the largest 16:9 box centred in this one, never squashed; that box {x, y, w, h}, or null. */
+    default int[] drawGameView16x9(int x, int y, int width, int height) {
+        int w = Math.min(width, height * 16 / 9), h = w * 9 / 16;
+        int[] box = {x + (width - w) / 2, y + (height - h) / 2, w, h};
+        return drawGameView(box[0], box[1], box[2], box[3]) ? box : null;
+    }
+
     /**
      * A picture covering the box (cropped to its shape, centred): {@code source} is a jar resource ("/assets/...") or a file path,
      * read by {@link com.thelads.core.client.CrosshairBackground#read}. Each version keeps only the last picture uploaded. False

@@ -11,7 +11,6 @@ import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.config.SliderOption;
-import com.thelads.core.modules.FullbrightModule;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -146,7 +145,7 @@ class ConfirmResetTest {
 
     @Test void moduleResetOptionsAsksWhichModuleAndWhatItResets() {
         var menu = new LadsSettingsScreen();
-        var gamma = (SliderOption) fullbright.getOption("Gamma");
+        var gamma = (SliderOption) fullbright.getOption("Brightness");
         gamma.setValue(30);
         menu.openModule("Fullbright");
         var g = new Screen();
@@ -173,24 +172,24 @@ class ConfirmResetTest {
         g.frame(menu);
         click(menu, menu.confirmDialog().confirmBounds());
         assertFalse(menu.confirmDialog().isOpen());
-        assertEquals(65, gamma.getValue(), "Confirm resets every option of that module");
+        assertEquals(100, gamma.getValue(), "Confirm resets every option of that module");
 
         gamma.setValue(30);
         g.frame(menu);
         click(menu, menu.controlBounds("reset"));
         assertTrue(menu.keyPressed(257, 0));
-        assertEquals(65, gamma.getValue(), "Enter confirms");
+        assertEquals(100, gamma.getValue(), "Enter confirms");
     }
 
     @Test void aPercentageSliderSnapsWhileDraggedAndTakesATypedWholeNumber() {
         var menu = new LadsSettingsScreen();
-        var gamma = (SliderOption) fullbright.getOption("Gamma");
+        var gamma = (SliderOption) fullbright.getOption("Brightness");
         menu.openModule("Fullbright");
         var g = new Screen();
         g.frame(menu);
-        var track = menu.controlBounds("option:Gamma");
-        assertNotNull(menu.controlBounds("option:Gamma:field"), "the value is a field beside the slider");
-        assertTrue(g.shows("65%"));
+        var track = menu.controlBounds("option:Brightness");
+        assertNotNull(menu.controlBounds("option:Brightness:field"), "the value is a field beside the slider");
+        assertTrue(g.shows("100%"));
         int y = track.y() + track.height() / 2;
         for (int x = track.x() + 4; x < track.x() + track.width() - 4; x += 3) {
             assertTrue(menu.mouseClicked(x, y, 0));
@@ -198,7 +197,7 @@ class ConfirmResetTest {
             menu.mouseReleased(x, y, 0);
         }
 
-        click(menu, menu.controlBounds("option:Gamma:field"));
+        click(menu, menu.controlBounds("option:Brightness:field"));
         assertTrue(menu.isEditingText());
         type(menu, "70");
         type(menu, "x.%");
@@ -208,27 +207,26 @@ class ConfirmResetTest {
         assertEquals(70, gamma.getValue());
         assertFalse(menu.isEditingText());
 
-        click(menu, menu.controlBounds("option:Gamma:field"));
+        click(menu, menu.controlBounds("option:Brightness:field"));
         type(menu, "67");
         menu.keyPressed(257, 0);
         assertEquals(65, gamma.getValue(), "typing allows any whole number; it lands on a step");
 
-        click(menu, menu.controlBounds("option:Gamma:field"));
+        click(menu, menu.controlBounds("option:Brightness:field"));
         type(menu, "250");
         menu.keyPressed(257, 0);
         assertEquals(65, gamma.getValue(), "out of range reverts");
         g.frame(menu);
         assertTrue(g.texts.stream().anyMatch(t -> t.startsWith("Not a whole number from 0 to 100: kept 65%")));
 
-        click(menu, menu.controlBounds("option:Gamma:field"));
+        click(menu, menu.controlBounds("option:Brightness:field"));
         type(menu, "10");
         menu.keyPressed(256, 0);
         assertEquals(65, gamma.getValue(), "Esc leaves the value as it was");
-        assertEquals(1 + 14 * 65 / 100.0, ((FullbrightModule) fullbright).getGamma(), 1e-9);
 
-        click(menu, menu.controlBounds("option:Gamma:field"));
+        click(menu, menu.controlBounds("option:Brightness:field"));
         type(menu, "40");
-        click(menu, menu.controlBounds("option:Brightness Multiplier"));
+        menu.mouseClicked(1, 1, 0); // anywhere else
         assertEquals(40, gamma.getValue(), "clicking away applies a valid number");
     }
 

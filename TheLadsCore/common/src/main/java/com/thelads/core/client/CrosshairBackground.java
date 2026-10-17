@@ -96,7 +96,7 @@ public final class CrosshairBackground {
     public static void draw(LadsGraphics g, CrosshairModule m, int x, int y, int w, int h) {
         adopt(m);
         int mode = m.background.getIndex();
-        if (mode == LIVE && g.drawGameView(x, y, w, h)) return;
+        if (mode == LIVE && g.drawGameView16x9(x, y, w, h) != null) return;
         if (mode == GRADIENT) { gradient(g, x, y, w, h, color(m.gradientStart), color(m.gradientEnd), m.gradientDirection.getIndex() == 1); return; }
         if (mode == SOLID) { g.fill(x, y, x + w, y + h, color(m.solidColor) | 0xFF000000); return; }
         String own = mode == IMAGE ? ownPicture(m) : null;

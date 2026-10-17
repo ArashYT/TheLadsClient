@@ -22,12 +22,13 @@ abstract class TextHudElement extends HudElement {
         preparedText = updateText(graphics);
         Object key = graphics.textMetricsKey();
         if (key == null || key != metricsKey || !preparedText.equals(measuredText)) {
-            preparedTextWidth = graphics.textWidth(preparedText);
+            preparedTextWidth = 0;
+            for (String line : preparedText.split("\n")) preparedTextWidth = Math.max(preparedTextWidth, graphics.textWidth(line));
             measuredText = preparedText;
             metricsKey = key;
         }
         width = Math.max(minimumWidth, preparedTextWidth + 12);
-        height = Math.max(16, graphics.fontHeight() + 6);
+        height = Math.max(16, preparedText.split("\n").length * (graphics.fontHeight() + 2) + 4);
         preparedGraphics = graphics;
     }
 
@@ -36,6 +37,15 @@ abstract class TextHudElement extends HudElement {
         preparedGraphics = null;
         if (preparedText == null || preparedText.isEmpty()) return;
         drawBackground(graphics);
-        drawCenteredText(graphics, preparedText, textColor(), preparedTextWidth);
+        if (preparedText.indexOf('\n') < 0) {
+            drawCenteredText(graphics, preparedText, textColor(), preparedTextWidth);
+            return;
+        }
+        // Several lines (Toggle Sprint & Sneak with both on): each centred, the block centred in the box.
+        String[] lines = preparedText.split("\n");
+        int lineHeight = graphics.fontHeight() + 2, top = y + (height - lines.length * lineHeight + 2) / 2 + 1;
+        for (int i = 0; i < lines.length; i++)
+            graphics.drawText(lines[i], x + (width - graphics.textWidth(lines[i])) / 2, top + i * lineHeight, textColor(),
+                com.thelads.core.config.HudSettings.getInstance().isTextShadow());
     }
 }

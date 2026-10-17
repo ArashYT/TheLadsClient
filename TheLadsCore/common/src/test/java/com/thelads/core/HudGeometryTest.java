@@ -177,6 +177,7 @@ class HudGeometryTest {
         var recording=Class.forName("com.thelads.core.client.hud.RecordingGraphics");
         for(var method:com.thelads.core.client.bridge.LadsGraphics.class.getMethods()){
             if(method.isDefault()&&(method.getName().equals("drawText")||method.getName().equals("drawCenteredText"))&&method.getParameterCount()==4)continue; // shadow default, then the recorded call
+            if(method.isDefault()&&method.getName().equals("drawGameView16x9"))continue; // fits the box, then the recorded drawGameView
             assertDoesNotThrow(()->recording.getDeclaredMethod(method.getName(),method.getParameterTypes()),method.toString());
         }
     }

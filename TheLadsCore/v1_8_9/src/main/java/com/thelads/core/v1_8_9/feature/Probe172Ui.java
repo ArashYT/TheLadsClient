@@ -266,7 +266,7 @@ final class Probe172Ui {
         }
         // A drag across the whole track, one move per tick: every value the slider takes on the way.
         STEPS.add(mc -> {
-            LadsSettingsScreen.Rect track = ui().controlBounds("option:Gamma");
+            LadsSettingsScreen.Rect track = ui().controlBounds("option:Brightness");
             if (dragStep == 0) {
                 dragX = track.x() + 4;
                 mouse(0, true, (int) dragX, track.y() + track.height() / 2);
@@ -354,7 +354,7 @@ final class Probe172Ui {
         }
     }
 
-    private static SliderOption gamma() { return (SliderOption) Options189.module("Fullbright").getOption("Gamma"); }
+    private static SliderOption gamma() { return (SliderOption) Options189.module("Fullbright").getOption("Brightness"); }
     private static LadsSettingsScreen ui() { return menu.ui(); }
     private static DraggableHudScreen hud() { return editor.ui(); }
     private static int size() { return (int) ((SliderOption) Options189.module("CPS").getOption("Size")).getValue(); }
@@ -397,7 +397,7 @@ final class Probe172Ui {
 
     /** Presses the slider in its middle, drags it to this percentage in steps and releases. */
     private static void drag(int percent) throws Exception {
-        LadsSettingsScreen.Rect track = ui().controlBounds("option:Gamma");
+        LadsSettingsScreen.Rect track = ui().controlBounds("option:Brightness");
         int y = track.y() + track.height() / 2, from = track.x() + track.width() / 2;
         int to = (int) Math.round(track.x() + 4 + (track.width() - 8) * percent / 100.0);
         mouse(0, true, from, y);
@@ -407,7 +407,7 @@ final class Probe172Ui {
 
     /** Clicks the value field, types the text key by key and presses Enter. */
     private static void typed(String text) throws Exception {
-        LadsSettingsScreen.Rect field = ui().controlBounds("option:Gamma:field");
+        LadsSettingsScreen.Rect field = ui().controlBounds("option:Brightness:field");
         click(field.x() + field.width() / 2, field.y() + field.height() / 2);
         for (char c : text.toCharArray()) tap(c >= '0' && c <= '9' ? Keyboard.KEY_1 + (c == '0' ? 9 : c - '1') : c == 'a' ? Keyboard.KEY_A : c == 'b' ? Keyboard.KEY_B : Keyboard.KEY_C, c);
         tap(Keyboard.KEY_RETURN, '\r');

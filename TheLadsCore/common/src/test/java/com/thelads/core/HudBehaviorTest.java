@@ -387,6 +387,20 @@ class HudBehaviorTest {
     }
 
     @Test
+    void toggleSprintAndSneakBothOnShowOnTwoLines() {
+        module(com.thelads.core.modules.ToggleSprintModule.NAME).setEnabled(true);
+        choice(com.thelads.core.modules.ToggleSprintModule.NAME, "Sneak", 0);
+        flag(com.thelads.core.modules.ToggleSprintModule.NAME, "Sprint toggled", true);
+        flag(com.thelads.core.modules.ToggleSprintModule.NAME, "Sneak toggled", true);
+        HudElement element = named(new com.thelads.core.client.hud.ToggleSprintHudElement(), com.thelads.core.modules.ToggleSprintModule.NAME);
+        element.render(graphics);
+        assertEquals(List.of("[Sprinting (Toggled)]", "[Sneaking (Toggled)]"), graphics.texts.stream().map(Text::value).toList());
+        assertTrue(graphics.texts.get(1).y() > graphics.texts.get(0).y(), "the sneak line is under the sprint line");
+        assertTrue(element.getHeight() > 16, "the box fits both lines: " + element.getHeight());
+        assertBackgroundFits(element);
+    }
+
+    @Test
     void packIconsCanBeSwitchedOffForThePlainLayout() {
         flag("TexturePacks", "Show Icons", false);
         game.packs = List.of("vanilla");

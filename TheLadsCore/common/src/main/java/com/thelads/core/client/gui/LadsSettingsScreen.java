@@ -768,9 +768,10 @@ public final class LadsSettingsScreen {
                 g.disableScissor();
             } else if ("Fullbright".equalsIgnoreCase(name)) {
                 // The live world, so a change shows while it is made; versions that cannot copy it keep the card.
-                if (g.drawGameView(boxX + 2, boxY + 2, boxW - 4, boxH - 4)) {
-                    gameView = new Rect(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
-                    String live = m.isEnabled() && m.getOption("Gamma") instanceof SliderOption gamma ? "Fullbright " + gamma.display() : "Fullbright off";
+                int[] view = g.drawGameView16x9(boxX + 2, boxY + 2, boxW - 4, boxH - 4);
+                if (view != null) {
+                    gameView = new Rect(view[0], view[1], view[2], view[3]);
+                    String live = m.isEnabled() && m.getOption("Brightness") instanceof SliderOption gamma ? "Fullbright " + gamma.display() : "Fullbright off";
                     int labelW = g.textWidth(live) + 10;
                     round(g, centerX - labelW / 2, boxY + boxH - 18, labelW, 14, 0xC0000000);
                     g.drawCenteredText(live, centerX, boxY + boxH - 14, TEXT, false);
