@@ -142,7 +142,8 @@
     "NoResourcePackWarningsMixin",
     "CartCamGameRendererMixin",
     "FadelessAccessibilityScreenMixin",
-    "SurvivalLightmapBrightnessMixin"
+    "SurvivalLightmapBrightnessMixin",
+    "SurvivalKeepBarsMixin"
   ],
   "mixins": [
     "DisplayEntityAccessor",
@@ -156,6 +157,7 @@
     "SurvivalFasterObsidianMixin",
     "SurvivalFireBlockInvoker",
     "SurvivalAnimalFoodMixin",
-    "SurvivalMobFoodPickupMixin"
+    "SurvivalMobFoodPickupMixin",
+    "SurvivalBoat360Mixin"
   ]
 }

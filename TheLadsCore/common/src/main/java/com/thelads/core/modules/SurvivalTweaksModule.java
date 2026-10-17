@@ -20,13 +20,17 @@ public final class SurvivalTweaksModule extends Module {
     public final BoolOption flammableCobwebs;
     public final BoolOption animalsEatFloorFood;
     public final SliderOption dimensionBrightness;
+    public final BoolOption boat360View;
+    public final BoolOption longerChatHistory;
+    public final BoolOption fastIpPing;
+    public final BoolOption keepBarsWhileRiding;
 
     private static volatile SurvivalTweaksModule cachedInstance;
 
     public SurvivalTweaksModule() {
         super(NAME, "Survival and world quality-of-life tweaks: berry bush armor & sneak protection, faster obsidian mining, "
                 + "100% creeper block drops, no Soul Speed/Thorns durability loss, elytra water swim, stable block drops, "
-                + "flammable cobwebs, and animals eating dropped food.");
+                + "flammable cobwebs, animals eating dropped food, boat 360 view, longer chat history, fast IP ping, and keeping status bars while riding.");
         berryBushProtection = addOption(new BoolOption("Berry bush protection", true));
         elytraWaterSwim = addOption(new BoolOption("Elytra water swim", true));
         noEnchantDurabilityLoss = addOption(new BoolOption("No Thorns/Soul Speed damage", true));
@@ -36,6 +40,10 @@ public final class SurvivalTweaksModule extends Module {
         flammableCobwebs = addOption(new BoolOption("Flammable cobwebs", true));
         animalsEatFloorFood = addOption(new BoolOption("Animals eat floor food", true));
         dimensionBrightness = addOption(new SliderOption("Dimension brightness", 100, 0, 200, 5).percent());
+        boat360View = addOption(new BoolOption("Boat 360 View", true));
+        longerChatHistory = addOption(new BoolOption("Longer Chat History", true));
+        fastIpPing = addOption(new BoolOption("Fast IP Ping", true));
+        keepBarsWhileRiding = addOption(new BoolOption("Keep Bars While Riding", true));
         setEnabled(true);
     }
 
@@ -79,5 +87,21 @@ public final class SurvivalTweaksModule extends Module {
 
     public boolean isAnimalsEatFloorFoodEnabled() {
         return isEnabled() && animalsEatFloorFood.get();
+    }
+
+    public boolean isBoat360ViewEnabled() {
+        return isEnabled() && boat360View.get();
+    }
+
+    public boolean isLongerChatHistoryEnabled() {
+        return isEnabled() && longerChatHistory.get();
+    }
+
+    public boolean isFastIpPingEnabled() {
+        return isEnabled() && fastIpPing.get();
+    }
+
+    public boolean isKeepBarsWhileRidingEnabled() {
+        return isEnabled() && keepBarsWhileRiding.get();
     }
 }

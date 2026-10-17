@@ -125,6 +125,12 @@ class Lads197DefaultsTest {
         Module tabList = mm.getModule("TabList");
         assertTrue(tabList.isEnabled());
         assertEquals("Off", ((DropdownOption) tabList.getOption("Background")).getValue());
+
+        com.thelads.core.modules.SurvivalTweaksModule survivalTweaks = (com.thelads.core.modules.SurvivalTweaksModule) mm.getModule(com.thelads.core.modules.SurvivalTweaksModule.NAME);
+        assertTrue(survivalTweaks.boat360View.get());
+        assertTrue(survivalTweaks.longerChatHistory.get());
+        assertTrue(survivalTweaks.fastIpPing.get());
+        assertTrue(survivalTweaks.keepBarsWhileRiding.get());
     }
 
     @Test

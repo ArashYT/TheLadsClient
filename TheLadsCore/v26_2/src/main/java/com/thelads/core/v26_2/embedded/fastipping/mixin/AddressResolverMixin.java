@@ -44,6 +44,9 @@ public interface AddressResolverMixin
 	)
 	private static InetAddress setHostnameToIpAddressToAvoidReversedDnsLookupOnGetHostname(InetAddress inetAddress, ServerAddress address) throws UnknownHostException
 	{
+		if (!com.thelads.core.v26_2.feature.survivaltweaks.NativeSurvivalTweaks.isFastIpPingEnabled()) {
+			return inetAddress;
+		}
 		return InetAddressPatcher.patch(address.getHost(), inetAddress);
 	}
 }

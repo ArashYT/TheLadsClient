@@ -5,6 +5,7 @@ import com.thelads.core.client.ChatAnimation;
 import com.thelads.core.v26_2.feature.NativeClientTools;
 import com.thelads.core.v26_2.feature.NativeNicknames;
 import com.thelads.core.v26_2.feature.NativeQualityOfLife;
+import com.thelads.core.v26_2.feature.survivaltweaks.NativeSurvivalTweaks;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.network.chat.Component;
@@ -43,10 +44,21 @@ public abstract class ClientToolsChatMixin {
     /** Infinite History: allMessages[0, ladsLaidOut) have their lines in trimmedMessages; -1 while every message has (vanilla). */
     @Unique private int ladsLaidOut = -1;
 
-    /** Infinite History (ChatHistory): the 100-message and 100-line caps become the ceiling. */
+    /** Infinite History (ChatHistory) / Longer Chat History: the 100-message and 100-line caps become the ceiling. */
     @ModifyConstant(method = {"addMessageToDisplayQueue", "addMessageToQueue"}, constant = @Constant(intValue = 100), require = 2)
     private int ladsHistoryCap(int vanilla) {
+        if (NativeSurvivalTweaks.isLongerChatHistoryEnabled()) {
+            return ChatHistory.infinite() ? ChatHistory.limit(vanilla) : 65536;
+        }
         return ChatHistory.limit(vanilla);
+    }
+
+    @ModifyConstant(method = "addRecentChat", constant = @Constant(intValue = 100), require = 1)
+    private int ladsRecentChatCap(int vanilla) {
+        if (NativeSurvivalTweaks.isLongerChatHistoryEnabled()) {
+            return 65536;
+        }
+        return vanilla;
     }
 
     @Inject(method = "addMessageToQueue", at = @At("TAIL"), require = 1)
