@@ -16,6 +16,16 @@ public final class StackRefillModule extends Module {
     public final BoolOption refillOffhand;
 
     private static volatile StackRefillModule cachedInstance;
+    private boolean noOffhand;
+
+    /** 1.8.9 has no offhand: the menu leaves out Refill offhand there. */
+    public void noOffhand() {
+        noOffhand = true;
+    }
+
+    public boolean hidden(com.thelads.core.config.Option option) {
+        return noOffhand && option == refillOffhand;
+    }
 
     public StackRefillModule() {
         super(NAME, "Automatically refills a depleted hand stack or broken tool from matching stacks in your inventory. "

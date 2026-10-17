@@ -79,6 +79,7 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.render.Render189.init();
         registerStatuses();
         com.thelads.core.v1_8_9.feature.SurvivalTweaks189.register();
+        com.thelads.core.modules.StackRefillModule.get().noOffhand(); // 1.8.9 has no offhand
         com.thelads.core.v1_8_9.feature.Nametags189.register();
         OldAnimations189.register();
         ClientRegistry.registerKeyBinding(Zoom189.ZOOM);
@@ -172,7 +173,9 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.feature.EntityCulling189.MODULE,
         // SurvivalTweaks189 (the Survival* mixins and EntityItem, EntityRenderer, GuiNewChat and OldServerPinger mixins; the menu hides
         // its berry bush, elytra and boat options) and StackRefill189 (client tick), as 26.x NativeSurvivalTweaks and NativeStackRefill.
-        com.thelads.core.modules.SurvivalTweaksModule.NAME, com.thelads.core.modules.StackRefillModule.NAME
+        com.thelads.core.modules.SurvivalTweaksModule.NAME, com.thelads.core.modules.StackRefillModule.NAME,
+        // KeepUiOpenScreenMixin and KeepUiOpenCloseMixin (1.9.10).
+        com.thelads.core.client.KeepUiOpen.MODULE_NAME
     };
 
     /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */

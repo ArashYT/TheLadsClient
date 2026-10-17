@@ -21,7 +21,7 @@ public final class NativeQualityOfLife {
         ModuleSupport.registerBuiltIn("RawInput", "Autohide", "Jade", "LegacySwing", "BossBar", "DisableNarrator", "Chat", "BorderlessFullscreen",
             "SmoothHotbar", "Raised", com.thelads.core.client.DamageTilt.MODULE, "EnhancedTooltips",
             "Nametags", "SignalLoss", "DynamicFPS", "VerticalBobbing", "FarBlockEntities", "KillBanner", com.thelads.core.modules.ComboSoundsModule.NAME, "ShulkerBoxUtils", "DiscordRPC", "BetterResolution",
-            com.thelads.core.modules.OldAnimationsModule.NAME, "ResourcePacks");
+            com.thelads.core.modules.OldAnimationsModule.NAME, "ResourcePacks", com.thelads.core.client.KeepUiOpen.MODULE_NAME);
         // A loaded Custom Crosshair Mod or Durability Tooltip jar keeps its module (ExternalModSettings registered it as installed).
         if (!com.thelads.core.v26_2.feature.crosshair.NativeCrosshair.externalPresent()) ModuleSupport.registerBuiltIn("Crosshair Tweaks");
         if (!net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("durabilitytooltip")) ModuleSupport.registerBuiltIn("EnhancedToolbars");
