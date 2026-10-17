@@ -174,6 +174,37 @@ public final class LadsConfig {
                 "waystones:*",
                 "mr_player_deathcorpses:*"
         ));
+
+        /** Consolidates 'nametagtweaks': Name-tag shaped crafting recipe, /nametag command, and named mobs drop their name tag on death. */
+        public boolean nameTagTweaks = true;
+        public boolean nameTagCommandReplaceUnderscoresWithSpaces = true;
+
+        /** Consolidates 'naturallychargedcreepers': Naturally spawned creepers have a chance to spawn charged. */
+        public boolean naturallyChargedCreepers = true;
+        public double naturallyChargedCreepersChance = 0.1d;
+
+        /** Consolidates 'nofeathertrample': Farmland is not trampled by an entity wearing Feather Falling or with Slow Falling. */
+        public boolean noFeatherTrample = true;
+
+        /** Consolidates 'enchantingcommands': /ec command to enchant held item above vanilla max level. */
+        public boolean enchantingCommands = true;
+
+        /** Consolidates 'stonecutter-damage': Stonecutters damage entities standing on them with a custom damage type. */
+        public boolean stonecutterDamage = true;
+
+        /** Consolidates 'imfast': Removes hardcoded server speed/movement limits to prevent rubberbanding. */
+        public boolean noSpeedLimit = true;
+
+        /** Consolidates 'logprot': Invulnerability for N seconds after login/dimension change/respawn until player moves or acts. */
+        public boolean loginProtection = true;
+        public int loginProtectionSeconds = 50;
+
+        /** Consolidates 'default-server-properties' (dsp): Seeds default server.properties on fresh dedicated server installations. */
+        public boolean defaultServerProperties = true;
+
+        /** Consolidates 'limitedchunks': Unloads forceloaded/chunkloader chunk tickets when the owning player logs off. */
+        public boolean limitedChunkloading = true;
+        public int chunkUnloadNoPlayerMinutes = 360;
     }
 
     public static LadsConfig get() {

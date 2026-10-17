@@ -44,7 +44,7 @@ Configured via `config/ladssmp/disabled_items.json`, `ItemDisablerSystem` suppor
 
 ---
 
-## 3. Feature Migration Table (13 Consolidated Mods)
+## 3. Feature Migration Table (22 Consolidated Mods)
 
 | # | Original Mod (`modid`) | Original Jar | License | Clean-Room Implementation in `Lads SMP` | Config Key (`config/ladssmp/config.json`) | Validation Status |
 | :---: | :--- | :--- | :---: | :--- | :--- | :---: |
@@ -61,6 +61,15 @@ Configured via `config/ladssmp/disabled_items.json`, `ItemDisablerSystem` suppor
 | 11 | Flat Bedrock (`flatbedrock`) | `flatbedrock-fabric-26.3.0.1.jar` | MIT | Built-in `data/minecraft/worldgen/material_rule/bedrock_floor.json` and `bedrock_roof.json` overrides | Built-in datapack | Verified |
 | 12 | Skeleton AI Fix (`skeletonaifix`) | `skeletonaifix-v26.3.0-mc26.3.x+fabric.jar` | MPL-2.0 | `MixinRangedBowAttackGoal` prevents skeletons from strafing when outside vertical range (`|dy| > 4`) | `features.skeletonAiFix` | Verified |
 | 13 | Golem Spawn Fix (`golem_spawn_fix`) | `golem_spawn_fix-fabric-26.3-1.0.2.jar` | AFL-3.0 | `MixinCarvedPumpkinBlock` + `ConsolidatedFeatures#isPermittedGolemCornerBlock` allows Iron Golems to form even when grass/flowers/snow/carpets sit under their arms | `features.golemSpawnFix` | Verified |
+| 14 | Name Tag Tweaks (`nametagtweaks`) | `nametagtweaks-26.3.0-4.2.jar` | ARR | `NameTagTweaksManager` + `MixinLivingEntity#dropAllDeathLoot` + shaped recipe `data/nametagtweaks/recipe/name_tag.json` | `features.nameTagTweaks` | Verified |
+| 15 | Naturally Charged Creepers (`naturallychargedcreepers`) | `naturallychargedcreepers-26.3.0-3.7.jar` | ARR | `MixinCreeper#finalizeSpawn` naturally spawns charged creepers with 0.1 (10%) default chance | `features.naturallyChargedCreepers` | Verified |
+| 16 | No Feather Trample (`nofeathertrample`) | `nofeathertrample-26.3.0-1.4.jar` | ARR | `MixinFarmlandBlock#turnToBaseBlock` prevents trampling when wearing Feather Falling boots or with Slow Falling | `features.noFeatherTrample` | Verified |
+| 17 | Enchanting Commands (`enchantingcommands`) | `enchantingcommands-26.3.0-3.8.jar` | ARR | `EnchantingCommandsManager` implements `/ec list` and `/ec enchant <enchantment> <level (0-255)>` | `features.enchantingCommands` | Verified |
+| 18 | Stonecutter Damage (`mr_stonecutter_damage`) | `stonecutter-damage-mcmeta-95-107_26.1-26.2.jar` | MIT | `MixinStonecutterBlock#stepOn` damages entities standing on stonecutters with custom damage type and blacklist tag | `features.stonecutterDamage` | Verified |
+| 19 | I'm Fast (`imfast`) | `imfast-FABRIC-26.3-1.0.6.jar` | MIT | `MixinVelocityNoSpeedLimit` modifies speed thresholds (100.0f, 300.0f, 100.0d, 0.0625d) to remove speed limit kicks | `features.noSpeedLimit` | Verified |
+| 20 | Login Protection (`logprot`) | `logprot-fabric-26.2-3.5.jar` | ARR | `LoginProtectionManager` + `MixinLoginProtection` + `MixinServerGamePacketListenerImpl` protects players for 50s on login/respawn/dimension travel until move/act | `features.loginProtection` | Verified |
+| 21 | Default Server Properties (`dsp`) | `default-server-properties-fabric-26.3.0.1.jar` | MPL-2.0 | `MixinDedicatedServerProperties#fromFile` seeds default server.properties on fresh dedicated server deployments | `features.defaultServerProperties` | Verified |
+| 22 | Limited Chunks (`limitedchunks`) | `limitedchunks-fabric-26.1-4.1.jar` | GPL-3.0 | `LimitedChunksManager` + `MixinPlayerList#remove` unloads forceloaded chunk tickets when owning player is offline past timeout (default 360m / 6h) | `features.limitedChunkloading` | Verified |
 
 ---
 

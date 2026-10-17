@@ -6,6 +6,10 @@ import com.thelads.smp.config.LadsConfig;
 import com.thelads.smp.disabler.ItemDisablerSystem;
 import com.thelads.smp.features.ConsolidatedFeatures;
 import com.thelads.smp.features.DeathBackupManager;
+import com.thelads.smp.features.EnchantingCommandsManager;
+import com.thelads.smp.features.LimitedChunksManager;
+import com.thelads.smp.features.LoginProtectionManager;
+import com.thelads.smp.features.NameTagTweaksManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -27,6 +31,10 @@ public final class LadsSMPMod implements ModInitializer {
         ConsolidatedFeatures.init();
         DeathBackupManager.init();
         LadsCommands.init();
+        NameTagTweaksManager.init();
+        EnchantingCommandsManager.init();
+        LoginProtectionManager.init();
+        LimitedChunksManager.init();
 
         // Sanitize player inventory immediately upon joining the server
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
