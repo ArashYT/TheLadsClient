@@ -10,4 +10,5 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 public interface EntityRendererAccessor {
     @Invoker("getFOVModifier") float ladsFov(float partialTicks, boolean useFOVSetting);
     @Accessor("lightmapUpdateNeeded") void ladsLightmapDirty(boolean dirty);
+    @Accessor("lightmapColors") int[] ladsLightmapColors();
 }

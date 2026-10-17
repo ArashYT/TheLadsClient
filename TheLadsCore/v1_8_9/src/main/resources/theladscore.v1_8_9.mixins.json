@@ -103,6 +103,11 @@
     "SoundHandlerReloadMixin189",
     "LanguageManagerReloadMixin189",
     "GuiUtilsTooltipMixin",
-    "VisGraphMixin"
+    "VisGraphMixin",
+    "SurvivalAnimalMixin",
+    "SurvivalBlockDropsMixin",
+    "SurvivalExplosionMixin",
+    "SurvivalPlayerMixin",
+    "SurvivalThornsMixin"
   ]
 }

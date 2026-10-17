@@ -38,6 +38,13 @@ public abstract class EntityItemMixin extends Entity implements ItemPhysics.Hold
         return ladsTumble;
     }
 
+    /** SurvivalTweaks Stable block drops (26.x SurvivalStableItemEntityMixin): a server drop keeps still or drifts to a sneaking player. */
+    @Inject(method = "<init>(Lnet/minecraft/world/World;DDDLnet/minecraft/item/ItemStack;)V", at = @At("RETURN"), require = 1) // Mixin 0.7: RETURN in constructors
+    private void ladsStableDrop(World world, double x, double y, double z, ItemStack stack, CallbackInfo ci) {
+        if (!world.isRemote && com.thelads.core.v1_8_9.feature.SurvivalTweaks189.stableDrops())
+            com.thelads.core.v1_8_9.feature.SurvivalTweaks189.stableMotion((EntityItem) (Object) this);
+    }
+
     /** At HEAD (Mixin 0.7: onUpdate returns twice): last tick's movement for the tumble, then the rules for this tick. */
     @Inject(method = "onUpdate", at = @At("HEAD"), require = 1)
     private void ladsItemPhysics(CallbackInfo ci) {
