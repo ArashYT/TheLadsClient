@@ -94,7 +94,7 @@ public final class NativeOldAnimations1201 {
         if (block && hand == InteractionHand.OFF_HAND) return null;
         Use use = block ? Use.BLOCK : use(player, hand, item);
         Held held = held(item);
-        if (use == null || !module.iconPlacement(MODERN, use, held) || kept(item)
+        if (use == null || !module.iconPlacement(MODERN, use, held)
             || OldAnimations.legacySwingPlaces(legacySwing(), use, item.getItem() instanceof BlockItem)
             || !ModelShape1201.flat(model(player, item))) {
             if (item.getItem() instanceof ShieldItem && module.active(Feature.LOW_SHIELD, MODERN)) {
@@ -107,13 +107,16 @@ public final class NativeOldAnimations1201 {
         int side = arm == HumanoidArm.RIGHT ? 1 : -1;
         OldAnimations.Sink out = sink(pose);
         // Idle: vanilla's arm and swing stay, LegacySwing's when it is on (a block item stays vanilla's then: legacySwingPlaces).
-        if (use == Use.NONE) OldAnimations.fromModernHand(out, side);
+        // A use without a 1.7 pose (a spyglass, a horn) and a crossbow (vanilla aims a loaded one) are held as 1.7 held any item.
+        boolean using = player.isUsingItem() && player.getUsedItemHand() == hand;
+        if (use == Use.NONE && !using && !(item.getItem() instanceof CrossbowItem)) OldAnimations.fromModernHand(out, side);
         else {
             pose.popPose(); // back to the arm origin (renderArmWithItem's own push), dropping vanilla's use transforms
             pose.pushPose();
             float shown = module.swingShown(MODERN, use, swingNow, attacked);
-            OldAnimations.hand(out, side, equipNow, shown, use, player.getUseItemRemainingTicks(), partialNow, item.getUseDuration());
-            if (shown > 0) APPLIED.add(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING);
+            if (use == Use.NONE && legacySwing()) OldAnimations.legacySwingHand(out, side, equipNow, swingNow);
+            else OldAnimations.hand(out, side, equipNow, shown, use, player.getUseItemRemainingTicks(), partialNow, item.getUseDuration());
+            if (shown > 0 && use != Use.NONE) APPLIED.add(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING);
         }
         OldAnimations.item(out, side, held == Held.ROD);
         APPLIED.add(use == Use.BLOCK ? Feature.BLOCK_POSE : use == Use.EAT_DRINK ? Feature.EAT_DRINK
@@ -134,11 +137,6 @@ public final class NativeOldAnimations1201 {
 
     private static BakedModel model(LivingEntity entity, ItemStack item) {
         return Minecraft.getInstance().getItemRenderer().getModel(item, entity.level(), entity, entity.getId());
-    }
-
-    /** Items with modern-only animations 1.7 never had (the loaded crossbow): always vanilla. */
-    private static boolean kept(ItemStack item) {
-        return item.getItem() instanceof CrossbowItem;
     }
 
     /**
@@ -164,16 +162,18 @@ public final class NativeOldAnimations1201 {
         player.swing(InteractionHand.MAIN_HAND, false);
     }
 
-    /** Every client tick: a new use starts without an attack. */
+    /** Every client tick: a new use starts without an attack; Hold to swing swings while the attack key is held (drawn only). */
     public static void tick(LocalPlayer player) {
         if (player == null || !player.isUsingItem()) attacked = false;
+        Minecraft mc = Minecraft.getInstance();
+        if (player == null || mc.screen != null || player.isSpectator() || !mc.options.keyAttack.isDown() || !active(Feature.HOLD_SWING)) return;
+        if (player.isUsingItem()) attackClicked(player);
+        else player.swing(InteractionHand.MAIN_HAND, false); // halfway rule, no packet
     }
 
-    /** The 1.7 pose an item's use draws, or null for a use 1.7 never had. */
+    /** The 1.7 pose an item's use draws (OldAnimations.use): every modern use has one, NONE when 1.7 just held the item. */
     private static Use action(ItemStack item) {
-        UseAnim animation = item.getUseAnimation();
-        return animation == UseAnim.EAT || animation == UseAnim.DRINK ? Use.EAT_DRINK
-            : animation == UseAnim.BOW ? Use.BOW : animation == UseAnim.BLOCK ? Use.BLOCK : null;
+        return OldAnimations.use(item.getUseAnimation().name());
     }
 
     /** The trigger for the 1.7 sword block: a sword in the main hand while the off hand blocks with a shield. */
@@ -183,15 +183,15 @@ public final class NativeOldAnimations1201 {
             && entity.getMainHandItem().is(ItemTags.SWORDS);
     }
 
-    /** 1.7's EnumAction for this hand: NONE when idle, null for a use 1.7 never had (vanilla draws it). */
+    /** 1.7's EnumAction for this hand: NONE when idle; null for a shield's block (the sword block above draws it, else vanilla). */
     private static Use use(LivingEntity entity, InteractionHand hand, ItemStack item) {
         if (!entity.isUsingItem() || entity.getUseItemRemainingTicks() <= 0 || entity.getUsedItemHand() != hand) return Use.NONE;
-        UseAnim animation = item.getUseAnimation();
-        return animation == UseAnim.EAT || animation == UseAnim.DRINK ? Use.EAT_DRINK : animation == UseAnim.BOW ? Use.BOW : null;
+        Use use = action(item);
+        return use == Use.BLOCK ? null : use;
     }
 
     static Held held(ItemStack item) {
-        if (item.getItem() instanceof BowItem) return Held.BOW;
+        if (item.getItem() instanceof BowItem || item.getItem() instanceof CrossbowItem) return Held.BOW;
         if (item.getItem() instanceof FishingRodItem || item.getItem() instanceof FoodOnAStickItem<?>) return Held.ROD;
         // 1.7.10 isFull3D: swords, tools, sticks, bones and blaze rods.
         if (item.is(ItemTags.SWORDS) || item.is(ItemTags.AXES) || item.is(ItemTags.PICKAXES) || item.is(ItemTags.SHOVELS)
@@ -304,7 +304,7 @@ public final class NativeOldAnimations1201 {
      */
     public static boolean thirdPersonItem(LivingEntity entity, ItemStack stack, HumanoidArm arm, PoseStack pose,
                                           net.minecraft.client.model.ArmedModel model) {
-        if (!(entity instanceof AbstractClientPlayer) || !active(Feature.THIRD_PERSON) || kept(stack)) return false;
+        if (!(entity instanceof AbstractClientPlayer) || !active(Feature.THIRD_PERSON)) return false;
         if (!ModelShape1201.flat(model(entity, stack))) return false;
         pose.popPose(); // renderArmWithItem's push
         pose.pushPose();

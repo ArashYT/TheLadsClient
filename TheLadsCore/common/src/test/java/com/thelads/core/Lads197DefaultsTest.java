@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class Lads197DefaultsTest {
 
     private static final Set<String> HIDDEN_MODULES = Set.of(
-        "Async", "BetterStats", "EntityCulling", "Exordium", "FerriteCore",
+        "Async", "BetterStats", "DisableNarrator", "EntityCulling", "Exordium", "FerriteCore",
         "Flashback Settings", "Jade", "Jasione", "JEI (Just Enough Items)", "Lithium",
         "ModernAdvancements", "NotEnoughAnimations", "Resourcify", "ScalableLux",
         "TitleScreen", "XaeroMinimap", "XaeroWorldmap"
@@ -30,7 +30,7 @@ class Lads197DefaultsTest {
     private static final Set<String> DEFAULT_ENABLED_VISIBLE = Set.of(
         "1.7 Animations", "Action Bar", "AppleSkin", "ArmorHUD", "AutoReconnect",
         "BetterF3", "BetterScreenshots", "BorderlessFullscreen", "BossBar", "Chat",
-        "ClientTools", "Clumps", "Coordinates", "Crosshair Tweaks", "DisableNarrator",
+        "ClientTools", "Clumps", "Coordinates", "Crosshair Tweaks",
         "DiscordRPC", "DynamicFPS", com.thelads.core.modules.DynamicLightsModule.NAME, "EnhancedToolbars", "EnhancedTooltips",
         "FarBlockEntities", "FPS", "HYPIXEL Mods", com.thelads.core.modules.ItemPhysicsModule.NAME, com.thelads.core.client.KeepUiOpen.MODULE_NAME, "KillBanner",
         "Minimap", "MouseTweaks", "Nametags", com.thelads.core.client.DamageTilt.MODULE, "Particle Core",
@@ -53,6 +53,9 @@ class Lads197DefaultsTest {
         assertTrue(titleScreen.isEnabled());
         titleScreen.setEnabled(false);
         assertTrue(titleScreen.isEnabled(), "TitleScreen must always remain enabled");
+        Module narrator = mm.getModule("DisableNarrator");
+        narrator.setEnabled(false);
+        assertTrue(narrator.isEnabled(), "1.9.10: DisableNarrator is always on");
 
         try (var ownership = new ModsMenuTest.OwnershipFixture()) {
             for (Module m : mm.getModules()) {

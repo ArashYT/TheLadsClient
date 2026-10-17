@@ -346,9 +346,12 @@ public class ModuleManager {
         register(packs, Module.Category.MECHANIC);
         register(com.thelads.core.client.KeepUiOpen.module(), Module.Category.MECHANIC);
 
-        Module disableNarrator = new Module("DisableNarrator", "Disables narrator.");
+        // 1.9.10: always on and out of the menu (owner); a saved "off" no longer switches it off.
+        Module disableNarrator = new Module("DisableNarrator", "Disables narrator.") {
+            @Override public void setEnabled(boolean enabled) { super.setEnabled(true); }
+        };
         disableNarrator.setEnabled(true);
-        register(disableNarrator);
+        registerHidden(disableNarrator);
 
         register(new SignalLossModule());
         registerHidden(new FlashbackModule());

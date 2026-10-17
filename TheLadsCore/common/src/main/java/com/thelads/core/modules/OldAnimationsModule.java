@@ -31,6 +31,8 @@ public final class OldAnimationsModule extends Module {
         EAT_DRINK("1.7 eating and drinking", "In first person food and potions move as in 1.7 while you eat or drink.", null),
         SWING_WHILE_USING("Swing while using items", "Attacking while you eat, drink or draw a bow swings your arm over the use, "
             + "as in 1.7. Only drawn: the use goes on and nothing extra is sent to the server.", null),
+        HOLD_SWING("Hold to swing", "Holding attack keeps your arm swinging, at the air or a mob too, as clicking fast does. "
+            + "Only drawn: nothing extra is sent to the server.", null),
         RED_ARMOUR("Red armour on hurt", "Armour turns red with the player when hurt, as in 1.7.", null),
         INSTANT_SNEAK("Instant sneak camera", "The camera reaches sneak height within one tick, as in 1.7, and eases back up.", null),
         NO_HEART_FLASH("No heart flashing", "Health hearts do not flash when you take damage.", null),

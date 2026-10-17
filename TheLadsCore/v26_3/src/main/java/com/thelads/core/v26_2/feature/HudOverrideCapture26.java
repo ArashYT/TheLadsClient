@@ -45,7 +45,12 @@ final class HudOverrideCapture26 {
             case 40 -> shot("armor-with-offhand");
             case 45 -> server.execute(() -> server.getPlayerList().getPlayer(id).setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY));
             case 80 -> shot("armor-no-offhand");
-            case 85 -> { done = true; LOGGER.info("Lads hud 1.9.10 capture END"); }
+            case 85 -> {
+                done = true;
+                // The QA world is saved: leave no Speed behind for the next run's effect checks (NativeImprovementsProbe).
+                server.execute(() -> server.getPlayerList().getPlayer(id).removeEffect(MobEffects.SPEED));
+                LOGGER.info("Lads hud 1.9.10 capture END");
+            }
             default -> {}
         }
     }

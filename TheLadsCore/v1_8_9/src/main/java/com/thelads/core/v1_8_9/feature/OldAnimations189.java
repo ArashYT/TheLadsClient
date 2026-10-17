@@ -191,8 +191,8 @@ public final class OldAnimations189 {
     /**
      * Every client tick (END). Instant sneak camera: 1.7's per-tick eye height for the view entity. Blockhitting and Swing while
      * using items: 1.7 swung the arm while the attack key was held on a block during a use (1.8 dropped that), so the swing shows
-     * on the blocking sword or the bow (on food only after an attack press during the use: swingShown). Drawn only: no packet, no
-     * block damage, so servers see 1.8.9 play.
+     * on the blocking sword or the bow (on food only after an attack press during the use: swingShown). Hold to swing does the same
+     * anywhere the attack key is held. Drawn only: no packet, no block damage, so servers see 1.8.9 play.
      */
     public static void tick(Minecraft mc) {
         Entity view = mc.getRenderViewEntity();
@@ -205,8 +205,14 @@ public final class OldAnimations189 {
 
         EntityPlayerSP player = mc.thePlayer;
         if (player == null || !player.isUsingItem()) attacked = false; // a new use starts without an attack
-        if (player == null || mc.currentScreen != null || !player.isUsingItem() || !mc.gameSettings.keyBindAttack.isKeyDown()
-            || mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK) return;
+        if (player == null || mc.currentScreen != null || !mc.gameSettings.keyBindAttack.isKeyDown()) return;
+        // Hold to swing: the held attack key keeps swinging at the air or a mob too (vanilla swings only while it mines a block).
+        boolean hold = active(Feature.HOLD_SWING);
+        if (!player.isUsingItem()) {
+            if (hold) swing(player);
+            return;
+        }
+        if (!hold && (mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK)) return;
         Use use = use(player, player.getItemInUse());
         if (use == null || MODULE.swingShown(PLATFORM, use, 1, attacked) == 0) return;
         swing(player);

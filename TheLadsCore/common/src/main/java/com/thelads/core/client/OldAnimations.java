@@ -35,6 +35,20 @@ public final class OldAnimations {
     /** What the hand does with its item: 1.7.10's EnumAction while the use count is above 0, else NONE. */
     public enum Use { NONE, EAT_DRINK, BLOCK, BOW }
 
+    /**
+     * The 1.7 pose for a modern use animation (1.20.1 UseAnim, 26.x ItemUseAnimation, by name), so every item uses like a 1.7 one:
+     * a crossbow's charge, a trident's or spear's wind-up draw like a bow; a spyglass, horn, brush or bundle had no 1.7 pose, so
+     * the item is simply held (NONE).
+     */
+    public static Use use(String modernAnimation) {
+        switch (modernAnimation) {
+            case "EAT": case "DRINK": return Use.EAT_DRINK;
+            case "BLOCK": return Use.BLOCK;
+            case "BOW": case "CROSSBOW": case "TRIDENT": case "SPEAR": return Use.BOW;
+            default: return Use.NONE;
+        }
+    }
+
     /** Flat item kinds 1.7.10 renders differently. Blocks and special models keep vanilla rendering. */
     public enum Held {
         /** isFull3D: swords and tools. */

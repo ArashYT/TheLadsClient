@@ -83,8 +83,8 @@ public final class NativeOldAnimations {
         OldAnimationsModule module = module();
         if (module == null || !module.isEnabled()) return vanilla;
         boolean block = swordBlocking(player);
-        if (block && hand == InteractionHand.OFF_HAND) return null;
-        Use use = block ? Use.BLOCK : use(player, hand, item);
+        if (block && hand == InteractionHand.OFF_HAND && player.getUsedItemHand() == InteractionHand.OFF_HAND) return null; // the shield hides
+        Use use = block && hand == InteractionHand.MAIN_HAND ? Use.BLOCK : use(player, hand, item);
         Held held = held(item);
         if (use == null || !module.iconPlacement(MODERN, use, held) || kept(item)
             || OldAnimations.legacySwingPlaces(NativeQualityOfLife.enabled("LegacySwing"), use, item.getItem() instanceof BlockItem)
@@ -99,13 +99,16 @@ public final class NativeOldAnimations {
         int side = arm == HumanoidArm.RIGHT ? 1 : -1;
         OldAnimations.Sink out = sink(pose);
         // Idle: vanilla's arm and swing stay, LegacySwing's when it is on (a block item stays vanilla's then: legacySwingPlaces).
-        if (use == Use.NONE) OldAnimations.fromModernHand(out, side);
+        // A use without a 1.7 pose (a spyglass, a horn) and a crossbow (vanilla aims a loaded one) are held as 1.7 held any item.
+        boolean using = player.isUsingItem() && player.getUsedItemHand() == hand;
+        if (use == Use.NONE && !using && !(item.getItem() instanceof CrossbowItem)) OldAnimations.fromModernHand(out, side);
         else {
             pose.popPose(); // back to the arm origin (submitArmWithItem's own push), dropping vanilla's use transforms
             pose.pushPose();
             float shown = module.swingShown(MODERN, use, swing, attacked);
-            OldAnimations.hand(out, side, equip, shown, use, player.getUseItemRemainingTicks(), partial, item.getUseDuration(player));
-            if (shown > 0) APPLIED.add(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING);
+            if (use == Use.NONE && NativeQualityOfLife.enabled("LegacySwing")) OldAnimations.legacySwingHand(out, side, equip, swing);
+            else OldAnimations.hand(out, side, equip, shown, use, player.getUseItemRemainingTicks(), partial, item.getUseDuration(player));
+            if (shown > 0 && use != Use.NONE) APPLIED.add(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING);
         }
         OldAnimations.item(out, side, held == Held.ROD);
         APPLIED.add(use == Use.BLOCK ? Feature.BLOCK_POSE : use == Use.EAT_DRINK ? Feature.EAT_DRINK
@@ -137,9 +140,9 @@ public final class NativeOldAnimations {
         return !item.isEmpty() && !item.usesBlockLight() && item.getModelBoundingBox().getZsize() < 0.1;
     }
 
-    /** Items with modern-only animations 1.7 never had (spear thrusts, the loaded crossbow): always vanilla. */
+    /** Spears thrust (a modern-only attack 1.7 never had): always vanilla. A crossbow is held and drawn as a 1.7 bow (held, use). */
     private static boolean kept(ItemStack item) {
-        return item.is(ItemTags.SPEARS) || item.getItem() instanceof CrossbowItem;
+        return item.is(ItemTags.SPEARS);
     }
 
     /**
@@ -165,35 +168,41 @@ public final class NativeOldAnimations {
         player.swing(InteractionHand.MAIN_HAND, player.getMainHandItem().getAttackAnimation(), false);
     }
 
-    /** Every client tick: a new use starts without an attack. */
+    /** Every client tick: a new use starts without an attack; Hold to swing swings while the attack key is held (drawn only). */
     public static void tick(LocalPlayer player) {
         if (player == null || !player.isUsingItem()) attacked = false;
+        Minecraft mc = Minecraft.getInstance();
+        if (player == null || mc.gui.screen() != null || player.isSpectator() || !mc.options.keyAttack.isDown() || !active(Feature.HOLD_SWING)) return;
+        if (player.isUsingItem()) attackClicked(player);
+        else player.swing(InteractionHand.MAIN_HAND, player.getMainHandItem().getAttackAnimation(), false); // halfway rule, no packet
     }
 
-    /** The 1.7 pose an item's use draws, or null for a use 1.7 never had. */
+    /** The 1.7 pose an item's use draws (OldAnimations.use): every modern use has one, NONE when 1.7 just held the item. */
     private static Use action(ItemStack item) {
-        ItemUseAnimation animation = item.getUseAnimation();
-        return animation == ItemUseAnimation.EAT || animation == ItemUseAnimation.DRINK ? Use.EAT_DRINK
-            : animation == ItemUseAnimation.BOW ? Use.BOW : animation == ItemUseAnimation.BLOCK ? Use.BLOCK : null;
+        return OldAnimations.use(item.getUseAnimation().name());
     }
 
-    /** The 26.x trigger for the 1.7 sword block: a sword in the main hand while the off hand blocks with a shield. */
+    /**
+     * The 26.x triggers for the 1.7 sword block: a sword in the main hand while the off hand blocks with a shield, or a main-hand
+     * item that blocks itself (vanilla blocking: a server gives swords the blocks_attacks component).
+     */
     static boolean swordBlocking(LivingEntity entity) {
-        return (active(Feature.BLOCK_POSE) || active(Feature.BLOCKHIT)) && entity.isUsingItem()
-            && entity.getUsedItemHand() == InteractionHand.OFF_HAND && entity.getOffhandItem().getUseAnimation() == ItemUseAnimation.BLOCK
-            && entity.getMainHandItem().is(ItemTags.SWORDS);
+        if (!(active(Feature.BLOCK_POSE) || active(Feature.BLOCKHIT)) || !entity.isUsingItem()) return false;
+        ItemStack used = entity.getUseItem();
+        if (used.getUseAnimation() != ItemUseAnimation.BLOCK) return false;
+        return entity.getUsedItemHand() == InteractionHand.MAIN_HAND ? !(used.getItem() instanceof ShieldItem)
+            : entity.getMainHandItem().is(ItemTags.SWORDS);
     }
 
-    /** 1.7's EnumAction for this hand: NONE when idle, null for a use 1.7 never had (vanilla draws it). */
+    /** 1.7's EnumAction for this hand: NONE when idle; null for a shield's block (the sword block above draws it, else vanilla). */
     private static Use use(LivingEntity entity, InteractionHand hand, ItemStack item) {
         if (!entity.isUsingItem() || entity.getUseItemRemainingTicks() <= 0 || entity.getUsedItemHand() != hand) return Use.NONE;
-        ItemUseAnimation animation = item.getUseAnimation();
-        return animation == ItemUseAnimation.EAT || animation == ItemUseAnimation.DRINK ? Use.EAT_DRINK
-            : animation == ItemUseAnimation.BOW ? Use.BOW : null;
+        Use use = action(item);
+        return use == Use.BLOCK && item.getItem() instanceof ShieldItem ? null : use;
     }
 
     static Held held(ItemStack item) {
-        if (item.getItem() instanceof BowItem) return Held.BOW;
+        if (item.getItem() instanceof BowItem || item.getItem() instanceof CrossbowItem) return Held.BOW;
         if (item.getItem() instanceof FishingRodItem || item.getItem() instanceof FoodOnAStickItem) return Held.ROD;
         // 1.7.10 isFull3D: swords, tools, sticks, bones and blaze rods.
         if (item.is(ItemTags.SWORDS) || item.is(ItemTags.AXES) || item.is(ItemTags.PICKAXES) || item.is(ItemTags.SHOVELS)
@@ -289,9 +298,12 @@ public final class NativeOldAnimations {
             HumanoidArm main = state.mainArm, off = main.getOpposite();
             if (swordBlocking(entity)) {
                 flags = SWORD_BLOCK;
-                if (main == HumanoidArm.RIGHT) { state.rightArmPose = HumanoidModel.ArmPose.BLOCK; state.leftArmPose = HumanoidModel.ArmPose.EMPTY; }
-                else { state.leftArmPose = HumanoidModel.ArmPose.BLOCK; state.rightArmPose = HumanoidModel.ArmPose.EMPTY; }
-                itemState(state, off).clear();
+                boolean shield = entity.getUsedItemHand() == InteractionHand.OFF_HAND; // the shield arm goes empty, its shield hidden
+                if (main == HumanoidArm.RIGHT) state.rightArmPose = HumanoidModel.ArmPose.BLOCK; else state.leftArmPose = HumanoidModel.ArmPose.BLOCK;
+                if (shield) {
+                    if (main == HumanoidArm.RIGHT) state.leftArmPose = HumanoidModel.ArmPose.EMPTY; else state.rightArmPose = HumanoidModel.ArmPose.EMPTY;
+                    itemState(state, off).clear();
+                }
             }
             var resolver = Minecraft.getInstance().getItemModelResolver();
             for (HumanoidArm arm : HumanoidArm.values()) {

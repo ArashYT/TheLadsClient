@@ -339,4 +339,13 @@ class OldAnimationsTest {
         assertFalse(OldAnimations.shouldRestartSwing(true, 3, 8), "fatigue: tick 3 of 8 is mid-swing");
         assertTrue(OldAnimations.shouldRestartSwing(true, 4, 8), "fatigue: tick 4 of 8 is past half");
     }
+
+    /** 1.9.10: every modern use maps to a 1.7 pose, so any item (a crossbow, a trident) uses like a 1.7 one. */
+    @Test void everyModernUseHasA17Pose() {
+        assertEquals(Use.EAT_DRINK, OldAnimations.use("EAT"));
+        assertEquals(Use.EAT_DRINK, OldAnimations.use("DRINK"));
+        assertEquals(Use.BLOCK, OldAnimations.use("BLOCK"));
+        for (String draw : new String[]{"BOW", "CROSSBOW", "TRIDENT", "SPEAR"}) assertEquals(Use.BOW, OldAnimations.use(draw), draw);
+        for (String held : new String[]{"NONE", "SPYGLASS", "TOOT_HORN", "BRUSH", "BUNDLE"}) assertEquals(Use.NONE, OldAnimations.use(held), held);
+    }
 }
