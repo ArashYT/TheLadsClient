@@ -806,7 +806,7 @@ public final class LadsSettingsScreen {
                 // Eye line
                 g.fill(centerX - 30, centerY - 12, centerX + 30, centerY - 11, 0xFFFF0000);
                 g.drawCenteredText("Entity Hitbox", centerX, centerY + 10, MUTED);
-            } else if ("DamageTilt".equalsIgnoreCase(name) || "CameraTilt".equalsIgnoreCase(name)) {
+            } else if (com.thelads.core.client.DamageTilt.MODULE.equalsIgnoreCase(name) || "CameraTilt".equalsIgnoreCase(name)) {
                 round(g, centerX - 40, centerY - 20, 80, 40, CARD);
                 g.drawCenteredText("TILT ANGLE", centerX, centerY - 10, ACCENT);
                 g.drawCenteredText("Dynamic Screen Tilt", centerX, centerY + 4, TEXT);

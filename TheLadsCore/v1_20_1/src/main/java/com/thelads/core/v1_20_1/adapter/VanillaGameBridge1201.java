@@ -174,6 +174,12 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
     }
 
     @Override
+    public boolean offhandSlotLeft() {
+        var player = Minecraft.getInstance().player;
+        return player != null && !player.getOffhandItem().isEmpty() && player.getMainArm() == net.minecraft.world.entity.HumanoidArm.RIGHT;
+    }
+
+    @Override
     public List<ArmorPiece> getArmor() {
         var player = Minecraft.getInstance().player;
         if (player == null) {

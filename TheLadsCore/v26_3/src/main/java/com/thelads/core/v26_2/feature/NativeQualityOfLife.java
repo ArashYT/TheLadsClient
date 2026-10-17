@@ -19,7 +19,7 @@ public final class NativeQualityOfLife {
 
     public static void register() {
         ModuleSupport.registerBuiltIn("RawInput", "Autohide", "Jade", "LegacySwing", "BossBar", "DisableNarrator", "Chat", "BorderlessFullscreen",
-            "SmoothHotbar", "Raised", "OldDamageTilt", "EnhancedTooltips",
+            "SmoothHotbar", "Raised", com.thelads.core.client.DamageTilt.MODULE, "EnhancedTooltips",
             "Nametags", "SignalLoss", "DynamicFPS", "VerticalBobbing", "FarBlockEntities", "KillBanner", com.thelads.core.modules.ComboSoundsModule.NAME, "ShulkerBoxUtils", "DiscordRPC", "BetterResolution",
             com.thelads.core.modules.OldAnimationsModule.NAME, "ResourcePacks");
         // A loaded Custom Crosshair Mod or Durability Tooltip jar keeps its module (ExternalModSettings registered it as installed).

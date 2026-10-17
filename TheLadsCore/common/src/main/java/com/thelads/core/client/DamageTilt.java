@@ -5,7 +5,7 @@ import com.thelads.core.config.Module;
 import com.thelads.core.config.SliderOption;
 
 /**
- * Directional damage tilt (the OldDamageTilt module). Minecraft tilts the hurt camera by R_y(-yaw) R_z(-14° x hurt curve x strength)
+ * Directional damage tilt (the Damage Tilt module, OldDamageTilt before 1.9.10). Minecraft tilts the hurt camera by R_y(-yaw) R_z(-14° x hurt curve x strength)
  * R_y(yaw), where yaw is the hit's direction relative to where the player faces (1.8.9 attackedAtYaw, 26.x hurtDir): atan2(dz, dx)
  * towards the source, minus the player's yaw. Yaw 0 is the tilt of a hit from the left, which 1.8.9 always shows (its client never
  * learns the direction) and which both versions show here when the direction is unknown (fall damage, fire, poison).
@@ -15,7 +15,8 @@ import com.thelads.core.config.SliderOption;
  * arrives within {@link #PAIR_MS} of it, in either order; the camera hooks ask {@link #cameraYaw} and {@link #strength}.
  */
 public final class DamageTilt {
-    public static final String MODULE = "OldDamageTilt", DIRECTIONAL = "Directional", INTENSITY = "Intensity";
+    public static final String MODULE = "Damage Tilt", OLD_NAME = "OldDamageTilt", DIRECTIONAL = "Directional", INTENSITY = "Intensity",
+        DISABLE = "Disable Tilt";
     /** The local player's tracker; packets and the camera both run on the client thread. */
     public static final DamageTilt CLIENT = new DamageTilt();
     /** Horizontal knockback slower than this (blocks a tick) is no hit's push: vanilla's is 0.4 away from the attacker. */
@@ -86,8 +87,9 @@ public final class DamageTilt {
         return (float) Math.toDegrees(Math.atan2(-motionZ, -motionX)) - playerYaw;
     }
 
-    /** The module's Intensity (0 to 100%) as a factor on the tilt; 1 when the option is missing. */
+    /** The module's Intensity (0 to 100%) as a factor on the tilt, 0 with Disable Tilt on; 1 when the option is missing. */
     public static float strength(Module module) {
+        if (module.getOption(DISABLE) instanceof BoolOption off && off.get()) return 0;
         return module.getOption(INTENSITY) instanceof SliderOption intensity ? scale(intensity.getValue()) : 1;
     }
 

@@ -15,6 +15,7 @@
     "KeyboardInputMixin",
     "DamageTiltMixin",
     "DamageTiltPacketsMixin",
+    "NoVanillaDamageTiltMixin",
     "LowFireMixin",
     "LegacySwingMixin",
     "OldAnimationsHeldItemMixin",

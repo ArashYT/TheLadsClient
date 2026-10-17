@@ -176,7 +176,8 @@ public class ModuleManager {
         getModule("Voice Chat").setEnabled(true);
         hud("Voice Chat Group", "The players in your Simple Voice Chat group; talking players turn green.").setEnabled(true);
 
-        HudModule pot = hud("Potion Effects", "Show your active potion effects.");
+        // 1.9.10: no plate by default (its own fully transparent Background; ConfigManager.apply1910HudOverride sets it once).
+        HudModule pot = hud("Potion Effects", "Show your active potion effects.", new ColorOption("Background", false, 0));
         pot.addOption(new BoolOption("Show icon", true));
         pot.addOption(new BoolOption("Show duration", true));
         pot.addOption(new BoolOption("Show when empty", false));
@@ -203,11 +204,12 @@ public class ModuleManager {
         register(smoothHotbar, Module.Category.MECHANIC);
         register(new DynamicLightsModule(), Module.Category.MECHANIC);
 
-        // DamageTilt: the hurt tilt leans by the hit's direction (Directional) or the old fixed way, scaled by Intensity (26.x: on
-        // top of Minecraft's own Damage Tilt setting). On by default since 1.7.2 (ConfigManager.migrateDamageTilt upgrades older
-        // configs). Off, each version keeps its vanilla tilt.
+        // Damage Tilt (OldDamageTilt before 1.9.10): the hurt tilt leans by the hit's direction (Directional) or the old fixed way,
+        // scaled by Intensity, or none (Disable Tilt). It replaces Minecraft's own Damage Tilt slider, which 1.9.10 hides. On by
+        // default since 1.7.2 (ConfigManager.migrateDamageTilt upgrades older configs). Off, each version keeps its vanilla tilt.
         Module odt = new Module(com.thelads.core.client.DamageTilt.MODULE, "Hurt camera tilt: towards the hit (Directional) or the old "
-            + "fixed way. Intensity 0 turns it off.");
+            + "fixed way. Disable Tilt turns it off.");
+        odt.addOption(new BoolOption(com.thelads.core.client.DamageTilt.DISABLE, false));
         odt.addOption(new BoolOption(com.thelads.core.client.DamageTilt.DIRECTIONAL, true));
         odt.addOption(new SliderOption(com.thelads.core.client.DamageTilt.INTENSITY, 100, 0, 100, 5));
         odt.setEnabled(true);
@@ -404,9 +406,13 @@ public class ModuleManager {
     }
 
     private HudModule hud(String name, String description) {
+        return hud(name, description, new ColorOption("Background", true, 0x80000000));
+    }
+
+    private HudModule hud(String name, String description, ColorOption background) {
         HudModule m = new HudModule(name, description);
         m.addOption(new SliderOption("Size", 100, 50, 200, 25));
-        m.addOption(new ColorOption("Background", true, 0x80000000));
+        m.addOption(background);
         m.addOption(new DropdownOption("Color mode", 0, "Static", "Chroma", "Chroma Fast", "Fade"));
         m.setCategory(Module.Category.HUD);
         register(m);

@@ -119,12 +119,16 @@ public class ArmorHudElement extends HudElement {
         for (String line : lines) width = Math.max(width, g.textWidth(line) + 28);
     }
 
-    /** Hotbar Slots attached to the hotbar: its row, 6 px left of the offhand slot (on 1.8.9, the same spot). */
+    /**
+     * Hotbar Slots attached to the hotbar: its row, as far left of the offhand slot as that slot is from the hotbar (its 22 px frame
+     * sits 7 px off, 29 px in all), or in the offhand's own place while Minecraft draws no offhand slot there (always on 1.8.9).
+     */
     @Override
     public int getDisplayX(LadsGraphics g) {
         if (!optBool("Attach to hotbar", true)) return super.getDisplayX(g);
         HudGroupLayout.Rect hotbar = HudAnchors.hotbar(g);
-        return slotsStyle() ? hotbar.x() - (int) Math.round(35 * g.hudUnit()) - getRenderWidth() : hotbar.right() + 5;
+        int gap = g.getGame().offhandSlotLeft() ? 29 + 7 : 7;
+        return slotsStyle() ? hotbar.x() - (int) Math.round(gap * g.hudUnit()) - getRenderWidth() : hotbar.right() + 5;
     }
 
     @Override

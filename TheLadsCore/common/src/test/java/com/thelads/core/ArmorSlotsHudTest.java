@@ -19,7 +19,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class ArmorSlotsHudTest {
     private static final class Game extends DefaultGameBridge {
         List<ArmorPiece> armor = List.of(new ArmorPiece("Helmet", 10, 100));
+        boolean offhand;
         @Override public List<ArmorPiece> getArmor() { return armor; }
+        @Override public boolean offhandSlotLeft() { return offhand; }
     }
     private static final class Graphics extends LadsGraphicsTest.MockGraphics {
         Graphics() { width = 640; height = 360; }
@@ -52,13 +54,17 @@ class ArmorSlotsHudTest {
 
     @Test void defaultIsFourHotbarSlotsLeftOfTheOffhandSlot() {
         assertEquals(0, ((DropdownOption) ModuleManager.getInstance().getModule("ArmorHUD").getOption("Style")).getIndex());
+        game.offhand = true;
         var bounds = armor.measureBounds(graphics, false);
-        // Hotbar at 320 - 91; offhand slot 29 px left of it; 6 px gap; 82 px wide; on the hotbar's row.
-        assertEquals(320 - 91 - 29 - 6 - 82, bounds.x()); // 112
+        // Hotbar at 320 - 91; the offhand slot's 22 px frame 7 px left of it; the armor 7 px left of that; 82 px wide; the hotbar's row.
+        assertEquals(320 - 91 - 7 - 22 - 7 - 82, bounds.x()); // 111
         assertEquals(360 - 22, bounds.y());
         assertEquals(82, bounds.width());
+        game.offhand = false;
+        assertEquals(320 - 91 - 7 - 82, armor.measureBounds(graphics, false).x(), "no offhand slot: the armor takes its place");
+        bounds = armor.measureBounds(graphics, false);
         armor.renderAt(graphics, bounds.x(), bounds.y(), false);
-        assertTrue(graphics.drawCalls.contains("translate:112.0,338.0"));
+        assertTrue(graphics.drawCalls.contains("translate:140.0,338.0"));
         int x = armor.getX(), y = armor.getY();
         assertEquals(List.of("slots:4@" + x + "," + y, "armor:0@" + (x + 3) + "," + (y + 3), "armor:1@" + (x + 23) + "," + (y + 3),
             "armor:2@" + (x + 43) + "," + (y + 3), "armor:3@" + (x + 63) + "," + (y + 3)), draws());

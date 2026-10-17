@@ -118,6 +118,11 @@ class HudBehaviorTest {
         ((BoolOption) module(name).getOption(option)).set(value);
     }
 
+    /** The global plate on a HUD that ships without one (Potion Effects since 1.9.10). */
+    private void globalPlate(String name) {
+        ((com.thelads.core.config.ColorOption) module(name).getOption("Background")).setUseGlobal(true);
+    }
+
     private void choice(String name, String option, int value) {
         ((DropdownOption) module(name).getOption(option)).setIndex(value);
     }
@@ -413,6 +418,7 @@ class HudBehaviorTest {
     @Test
     void potionDurationToggleOnlyRemovesNativeDurationSuffix() {
         flag("Potion Effects", "Show duration", false);
+        globalPlate("Potion Effects");
         HudElement element = named(new PotionHudElement(), "Potion Effects");
         element.render(graphics);
         assertEquals(List.of("effect.minecraft.speed", "Custom Effect (special)"),
@@ -429,6 +435,7 @@ class HudBehaviorTest {
 
     @Test
     void emptyPotionStateClearsStaleDimensionsAndCanStayHidden() {
+        globalPlate("Potion Effects");
         HudElement element = named(new PotionHudElement(), "Potion Effects");
         element.render(graphics);
         game.effects = List.of();

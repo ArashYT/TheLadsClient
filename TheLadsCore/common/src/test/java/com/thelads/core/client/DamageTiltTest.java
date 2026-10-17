@@ -83,6 +83,10 @@ class DamageTiltTest {
             assertEquals(0.5f, DamageTilt.strength(module));
             intensity.setValue(0);
             assertEquals(0, DamageTilt.strength(module), "0 is no tilt");
+            intensity.setValue(100);
+            ((BoolOption) module.getOption(DamageTilt.DISABLE)).set(true);
+            assertEquals(0, DamageTilt.strength(module), "Disable Tilt is no tilt");
+            assertEquals(0, late.cameraStrength(module, 20000), "Disable Tilt is no tilt on the camera either");
             assertEquals(1, DamageTilt.scale(250));
             assertEquals(0, DamageTilt.scale(-5));
         } finally {

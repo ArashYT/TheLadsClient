@@ -111,6 +111,9 @@ public interface LadsGameBridge {
     /** Actual equipped armor only, in native slot order. Empty means no equipment data/items. */
     default List<ArmorPiece> getArmor() { return Collections.emptyList(); }
 
+    /** Minecraft draws the offhand slot left of the hotbar: an item in the offhand, the right arm the main one (never on 1.8.9). */
+    default boolean offhandSlotLeft() { return false; }
+
     /** Native sidebar display text, including team decorations / formatted score values; empty strings are valid. */
     record ScoreLine(String name, String value) {
         public ScoreLine {

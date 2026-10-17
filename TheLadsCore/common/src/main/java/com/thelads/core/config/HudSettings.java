@@ -146,7 +146,6 @@ public class HudSettings {
         defaultHud("Minimap", 819, 60, null, 2, 2, -2, 0, 0, 0, 60, 0);
         defaultHud("ReachDisplay", 833, 19, "Biome", 2, 2, 10, 74, 2, 0, 0, 16);
         defaultHud("TexturePacks", 781, 459, null, 2, 2, -3, 0, 2, 2, -30, 0);
-        defaultHud("Action Bar", 452, 435, null, 1, 1, 0, 0, 2, 2, -57, 0);
         defaultHud("XP", 690, 468, HOTBAR, 2, 0, 119, 0, 0, 2, 3, 0);
         defaultHud("Day", 192, 16, "PortalCoordinates", 2, 2, 0, 94, 2, 0, 0, 16);
         defaultHud("Voice Chat", 580, 478, HOTBAR, 2, 0, 9, 0, 2, 2, -3, 0);
@@ -169,6 +168,9 @@ public class HudSettings {
     public void setTextShadow(boolean textShadow) { this.textShadow = textShadow; }
 
     public void clearPositions() { positions.clear(); anchors.clear(); groups.clear(); locked.clear(); }
+
+    /** Back to the HUD's organized default place (HudDefaults). */
+    public void clearPosition(String name) { positions.remove(name); anchors.remove(name); }
 
     public Map<String, int[]> getPositions() { return positions; }
 

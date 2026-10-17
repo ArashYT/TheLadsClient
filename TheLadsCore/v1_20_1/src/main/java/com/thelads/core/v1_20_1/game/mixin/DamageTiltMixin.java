@@ -13,8 +13,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
- * Damage tilt (the OldDamageTilt module, common DamageTilt), as 1.8.9's EntityRendererMixin: vanilla's timing and death roll stay. The
- * tilt turns by the hit's direction (Directional) or the old fixed way, and Intensity scales Minecraft's own Damage Tilt setting.
+ * Damage tilt (the Damage Tilt module, common DamageTilt), as 1.8.9's EntityRendererMixin: vanilla's timing and death roll stay. The
+ * tilt turns by the hit's direction (Directional) or the old fixed way, and Intensity scales it in place of Minecraft's own Damage Tilt slider (hidden by NoVanillaDamageTiltMixin).
  */
 @Mixin(GameRenderer.class)
 public class DamageTiltMixin {
@@ -27,13 +27,15 @@ public class DamageTiltMixin {
         return yaw;
     }
 
+    /** The module replaces Minecraft's Damage Tilt slider (hidden by NoVanillaDamageTiltMixin): its saved value no longer counts. */
     @WrapOperation(method = "bobHurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/OptionInstance;get()Ljava/lang/Object;"))
     private Object lads$intensity(OptionInstance<?> instance, Operation<Object> original) {
         Object base = original.call(instance);
+        if (!(base instanceof Double)) return base;
         Module mod = ModuleManager.getInstance().getModule(DamageTilt.MODULE);
-        if (mod == null || !mod.isEnabled() || !(base instanceof Double value)) return base;
+        if (mod == null || !mod.isEnabled()) return 1.0;
         float strength = DamageTilt.CLIENT.cameraStrength(mod, System.currentTimeMillis());
         Gameplay1201.lastTiltStrength = strength;
-        return value * strength;
+        return (double) strength;
     }
 }

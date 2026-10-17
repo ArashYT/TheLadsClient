@@ -33,7 +33,7 @@ class Lads197DefaultsTest {
         "ClientTools", "Clumps", "Coordinates", "Crosshair Tweaks", "DisableNarrator",
         "DiscordRPC", "DynamicFPS", com.thelads.core.modules.DynamicLightsModule.NAME, "EnhancedToolbars", "EnhancedTooltips",
         "FarBlockEntities", "FPS", "HYPIXEL Mods", com.thelads.core.modules.ItemPhysicsModule.NAME, com.thelads.core.client.KeepUiOpen.MODULE_NAME, "KillBanner",
-        "Minimap", "MouseTweaks", "Nametags", "OldDamageTilt", "Particle Core",
+        "Minimap", "MouseTweaks", "Nametags", com.thelads.core.client.DamageTilt.MODULE, "Particle Core",
         "PingView", "PingHUD", "Potion Effects", "Raised", "RawInput",
         com.thelads.core.client.pack.PackMenuSettings.MODULE_NAME, "Scoreboard", "ShulkerBoxUtils", "SignalLoss", "SkinLayers",
         "SmoothHotbar", com.thelads.core.modules.StackRefillModule.NAME, com.thelads.core.modules.SurvivalTweaksModule.NAME, "TabList", "Threads", "Title Scale", "TNT Timer",
@@ -130,8 +130,9 @@ class Lads197DefaultsTest {
     @Test
     void defaultHudSettingsMatchZeroSmpLayout() {
         HudSettings fresh = new HudSettings();
-        assertEquals(31, fresh.getPositions().size());
-        assertEquals(31, fresh.getAnchors().size());
+        assertEquals(30, fresh.getPositions().size());
+        assertEquals(30, fresh.getAnchors().size());
+        assertNull(fresh.getPosition("Action Bar"), "1.9.10: the Action Bar follows Minecraft's place over the hotbar (HudDefaults)");
         assertEquals(2, fresh.getGroups().size());
         assertArrayEquals(new int[]{4, 84}, fresh.getPosition("FPS"));
         assertArrayEquals(new int[]{4, 120}, fresh.getPosition("Coordinates"));

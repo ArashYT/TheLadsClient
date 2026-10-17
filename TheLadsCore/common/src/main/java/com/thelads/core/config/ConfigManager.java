@@ -30,6 +30,7 @@ import java.nio.file.AtomicMoveNotSupportedException;
 
 public class ConfigManager {
     public static final String PRESET_197_FLAG = "lads197PresetApplied";
+    static final String HUD_1910_FLAG = "hud1910OverrideApplied";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static File testConfigFile = null;
     private static final java.util.Map<String, JsonObject> unmanagedModules = new java.util.concurrent.ConcurrentHashMap<>();
@@ -91,6 +92,7 @@ public class ConfigManager {
         hud.addProperty("softShadow", HudSettings.getInstance().isSoftShadow());
         hud.addProperty("shadowOnDefault", true); // marks the 1.9.1 migration of the old Soft default (applyJson)
         hud.addProperty("hudFpsCapOnDefault", true); // marks the 1.9.2 migration of the old uncapped default (applyJson)
+        hud.addProperty(HUD_1910_FLAG, true); // marks the 1.9.10 one-time HUD override (apply1910HudOverride)
         hud.addProperty("backgrounds", HudSettings.getInstance().isBackgrounds());
         hud.addProperty("hudFpsCapOptIn", HudSettings.getInstance().isHudFpsCapEnabled());
         hud.addProperty("hudFpsCapEnabled", HudSettings.getInstance().isHudFpsCapEnabled()); // read by 1.4.4 and older
@@ -308,6 +310,7 @@ public class ConfigManager {
                     }
                 }
             }
+            if (!hud.has(HUD_1910_FLAG)) apply1910HudOverride();
             if (hud.has("hudScale")) HudSettings.getInstance().setHudScale(hud.get("hudScale").getAsInt());
             if (hud.has("fadePlaylist")) {
                 HudSettings.getInstance().getFadePlaylist().clear();
@@ -343,13 +346,31 @@ public class ConfigManager {
     }
 
     /**
+     * 1.9.10, once per config (owner): the Action Bar goes back to Minecraft's place over the hotbar, above the held item's name and
+     * the armor row (HudDefaults); Potion Effects loses its plate; the Armor HUD shows as hotbar slots attached beside the offhand slot.
+     */
+    static void apply1910HudOverride() {
+        HudSettings.getInstance().clearPosition(com.thelads.core.client.hud.ActionBar.MODULE);
+        Module potion = ModuleManager.getInstance().getModule("Potion Effects"), armor = ModuleManager.getInstance().getModule("ArmorHUD");
+        if (potion != null && potion.getOption("Background") instanceof ColorOption background) {
+            background.setUseGlobal(false);
+            background.setColor(0);
+        }
+        if (armor != null && armor.getOption("Style") instanceof DropdownOption style) style.setIndex(0);
+        if (armor != null && armor.getOption("Attach to hotbar") instanceof BoolOption attach) attach.set(true);
+    }
+
+    /**
      * 1.7.2 turns OldDamageTilt on by default with Directional on; a config from before (no Directional saved) upgrades as the owner
      * chose: Directional off, so the tilt keeps leaning the fixed way; the module on unless the player ever changed it (lastModified 0
      * or missing, as in migrateDynamicLights: an "enabled" saved without a change is only the old default); Intensity, a choice before
-     * (Subtle, Normal, Strong), becomes a percentage: Subtle 50, else 100.
+     * (Subtle, Normal, Strong), becomes a percentage: Subtle 50, else 100. 1.9.10 renamed the module to Damage Tilt: the old entry
+     * moves over unless the new one exists.
      */
     static void migrateDamageTilt(JsonObject modules) {
-        if (!(modules.get("OldDamageTilt") instanceof JsonObject tilt)) return;
+        JsonElement old = modules.remove(com.thelads.core.client.DamageTilt.OLD_NAME);
+        if (old != null && !modules.has(com.thelads.core.client.DamageTilt.MODULE)) modules.add(com.thelads.core.client.DamageTilt.MODULE, old);
+        if (!(modules.get(com.thelads.core.client.DamageTilt.MODULE) instanceof JsonObject tilt)) return;
         if (!(tilt.get("options") instanceof JsonObject)) tilt.add("options", new JsonObject());
         JsonObject options = tilt.getAsJsonObject("options");
         if (options.has("Directional")) return;
@@ -571,13 +592,14 @@ public class ConfigManager {
             if (modules.has("Chat Heads") || modules.has("ParticleBudget") || modules.has("RenderScale")) return true;
             if (modules.has("ToggleNametags") && !modules.has("Nametags")) return true;
             if (modules.get("DiscordRPC") instanceof JsonObject discord && discord.get("options") instanceof JsonObject opts && opts.has("Share activity")) return true;
-            if (modules.get("OldDamageTilt") instanceof JsonObject tilt && (!(tilt.get("options") instanceof JsonObject o) || !o.has("Directional"))) return true;
+            if (modules.has(com.thelads.core.client.DamageTilt.OLD_NAME)) return true;
+            if (modules.get(com.thelads.core.client.DamageTilt.MODULE) instanceof JsonObject tilt && (!(tilt.get("options") instanceof JsonObject o) || !o.has("Directional"))) return true;
             for (String oldHypixel : new String[]{"Auto GG", "Auto Friend", "Auto Tip", "Auto Play Again", "Auto Who", "Chat Cleanup"}) {
                 if (modules.has(oldHypixel)) return true;
             }
         }
         if (json.get("hud") instanceof JsonObject hud) {
-            if (!hud.has("shadowOnDefault") || !hud.has("hudFpsCapOnDefault")) return true;
+            if (!hud.has("shadowOnDefault") || !hud.has("hudFpsCapOnDefault") || !hud.has(HUD_1910_FLAG)) return true;
         }
         return false;
     }

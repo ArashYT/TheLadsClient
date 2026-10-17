@@ -10,9 +10,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
- * Damage tilt (the OldDamageTilt module, common DamageTilt), as 1.8.9's EntityRendererMixin: vanilla's timing and death roll stay. The
+ * Damage tilt (the Damage Tilt module, common DamageTilt), as 1.8.9's EntityRendererMixin: vanilla's timing and death roll stay. The
  * tilt turns by the hit's direction (Directional; DamageTiltPacketsMixin pairs it with the hurt, so fall damage gets the fixed tilt
- * instead of vanilla's stale hurtDir) or the old fixed way, and Intensity scales Minecraft's own Damage Tilt setting.
+ * instead of vanilla's stale hurtDir) or the old fixed way, and Intensity scales it in place of Minecraft's own Damage Tilt slider (hidden by NoVanillaDamageTiltMixin).
  */
 @Mixin(GameRenderer.class)
 public class DamageTiltMixin {
@@ -26,7 +26,7 @@ public class DamageTiltMixin {
     @Redirect(method = "bobHurt", at = @At(value = "FIELD",
         target = "Lnet/minecraft/client/renderer/state/OptionsRenderState;damageTiltStrength:D"), require = 1)
     private double lads$intensity(OptionsRenderState state) {
-        if (!NativeQualityOfLife.enabled(DamageTilt.MODULE)) return state.damageTiltStrength;
-        return state.damageTiltStrength * DamageTilt.CLIENT.cameraStrength(NativeQualityOfLife.module(DamageTilt.MODULE), System.currentTimeMillis());
+        if (!NativeQualityOfLife.enabled(DamageTilt.MODULE)) return 1; // the hidden slider's saved value no longer counts
+        return DamageTilt.CLIENT.cameraStrength(NativeQualityOfLife.module(DamageTilt.MODULE), System.currentTimeMillis());
     }
 }

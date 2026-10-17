@@ -36,6 +36,7 @@
     "ChatIndicatorMixin",
     "DamageTiltMixin",
     "DamageTiltPacketsMixin",
+    "NoVanillaDamageTiltMixin",
     "DynamicLightsBlockMixin",
     "DynamicLightsEntityMixin",
     "ItemTooltipMixin",
