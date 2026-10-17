@@ -27,6 +27,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.thelads.core.v1_20_1.embedded.fastipping.FastIpPingInit1201;
 import com.thelads.core.v1_20_1.embedded.fastipping.InetAddressPatcher;
+import com.thelads.core.v1_20_1.game.survival.NativeSurvivalTweaks1201;
 import java.util.Optional;
 import net.minecraft.client.multiplayer.resolver.ResolvedServerAddress;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
@@ -49,7 +50,7 @@ public abstract class ServerNameResolverMixin
 	private Optional<ResolvedServerAddress> setHostnameToIpAddressToAvoidReversedDnsLookupOnGetHostname(ServerAddressResolver resolver, ServerAddress address, Operation<Optional<ResolvedServerAddress>> original)
 	{
 		Optional<ResolvedServerAddress> resolved = original.call(resolver, address);
-		if (resolved.isEmpty())
+		if (resolved.isEmpty() || !NativeSurvivalTweaks1201.isFastIpPingEnabled()) // SurvivalTweaks' Fast IP Ping switch, as on 26.3
 		{
 			return resolved;
 		}

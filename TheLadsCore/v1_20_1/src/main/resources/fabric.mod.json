@@ -34,6 +34,8 @@
 
 
     "theladscore.v1_20_1.game.mixins.json",
+    "theladscore.v1_20_1.survival.mixins.json",
+    "theladscore.v1_20_1.survival.fabric.mixins.json",
     "theladscore.v1_20_1.skinlayers.mixins.json",
     "theladscore.v1_20_1.nea.mixins.json",
     "theladscore.v1_20_1.misc.mixins.json",
