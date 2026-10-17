@@ -176,6 +176,7 @@ public final class NativeWorldVerification {
             CheatsProbe.tick(gameDirectory, captureReady);
             KeepUiProbe26.tick(captureReady && !captureBusy());
             SoundBreakProbe26.tick(captureReady && !captureBusy());
+            HudOverrideCapture26.tick(captureReady && !captureBusy());
             ServerFeaturesCapture.tick(gameDirectory, captureReady && (ServerFeaturesCapture.busy() || !captureBusy()));
             // After the Chat module's own capture, so its message does not land among the heads, and after the render scale probe,
             // whose world frames its chat screen would interrupt.
@@ -298,6 +299,7 @@ public final class NativeWorldVerification {
         if (SoundsCapture.busy()) SoundsCapture.frame(target, gameDirectory);
         if (HypixelCapture.busy()) HypixelCapture.frame(target, gameDirectory);
         if (ActionBarCapture.busy()) ActionBarCapture.frame(target, gameDirectory);
+        if (HudOverrideCapture26.busy()) HudOverrideCapture26.frame(target, gameDirectory);
         if (FixesCapture.busy()) FixesCapture.frame(target);
         renderMenuCapture(target);
         if(TITLE_CAPTURE&&active()&&!opened&&!titleCaptured&&titleSince>0
