@@ -24,7 +24,7 @@ public abstract class WorldListFastQuitMixin {
 
     @Inject(method = "drawSlot", at = @At("TAIL"))
     private void lads$markSaving(int entry, int x, int y, int slotHeight, int mouseX, int mouseY, CallbackInfo ci) {
-        List<SaveFormatComparator> worlds = ((GuiSelectWorldAccessor) this$0).lads$worlds();
+        List<SaveFormatComparator> worlds = com.thelads.core.v1_8_9.feature.fastquit.WorldListSaves.of(this$0);
         if (worlds == null || entry < 0 || entry >= worlds.size()) return;
         Minecraft mc = Minecraft.getMinecraft();
         File dir = new File(new File(mc.mcDataDir, "saves"), worlds.get(entry).getFileName());
