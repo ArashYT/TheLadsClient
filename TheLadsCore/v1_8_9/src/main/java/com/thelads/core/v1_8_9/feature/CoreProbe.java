@@ -190,6 +190,9 @@ public final class CoreProbe {
         } else if ("soundbreak".equals(only)) { // 1.9.10 block break and hit sounds followed while they play (SoundBreakProbe189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, SoundBreakProbe189::run));
+        } else if ("parity1910".equals(only)) { // 1.9.10 StackRefill and SurvivalTweaks ports in the QA world (ParityProbe189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, ParityProbe189::run));
         } else if ("hypixel".equals(only)) { // 1.9.1 Hypixel modules and real ping in the QA world, counted as Hypixel (Probe191Hypixel)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe191Hypixel::run));

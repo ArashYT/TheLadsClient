@@ -78,6 +78,7 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.feature.LocalSkins189.initialize(); // the Skin changer's saved skin
         com.thelads.core.v1_8_9.render.Render189.init();
         registerStatuses();
+        com.thelads.core.v1_8_9.feature.SurvivalTweaks189.register();
         com.thelads.core.v1_8_9.feature.Nametags189.register();
         OldAnimations189.register();
         ClientRegistry.registerKeyBinding(Zoom189.ZOOM);
@@ -168,7 +169,10 @@ public class TheLadsCore189 {
         // ItemPhysics189 through the EntityItem, RenderEntityItem and Minecraft mixins and Forge's item events.
         com.thelads.core.modules.ItemPhysicsModule.NAME,
         // EntityCulling189 through the RenderManager, TileEntityRendererDispatcher and World mixins. (Particle Core is ParticleCore189.)
-        com.thelads.core.v1_8_9.feature.EntityCulling189.MODULE
+        com.thelads.core.v1_8_9.feature.EntityCulling189.MODULE,
+        // SurvivalTweaks189 (the Survival* mixins and EntityItem, EntityRenderer, GuiNewChat and OldServerPinger mixins; the menu hides
+        // its berry bush, elytra and boat options) and StackRefill189 (client tick), as 26.x NativeSurvivalTweaks and NativeStackRefill.
+        com.thelads.core.modules.SurvivalTweaksModule.NAME, com.thelads.core.modules.StackRefillModule.NAME
     };
 
     /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */
@@ -249,6 +253,7 @@ public class TheLadsCore189 {
         SkinLayers189.tick(mc);
         com.thelads.core.v1_8_9.feature.Toggles189.tick(mc);
         com.thelads.core.v1_8_9.feature.Fullbright189.tick(mc);
+        com.thelads.core.v1_8_9.feature.StackRefill189.tick(mc);
 
         if (titleTicks++ % 40 == 0) {
             try {

@@ -44,6 +44,12 @@ public abstract class EntityRendererMixin {
         }
     }
 
+    /** SurvivalTweaks Dimension brightness: the lightmap's gamma scaled, as 26.x scales its brightness option. OptiFine patches this method: optional. */
+    @Redirect(method = "updateLightmap", at = @At(value = "FIELD", target = "Lnet/minecraft/client/settings/GameSettings;gammaSetting:F", opcode = org.objectweb.asm.Opcodes.GETFIELD), require = 0)
+    private float ladsDimensionBrightness(net.minecraft.client.settings.GameSettings settings) {
+        return com.thelads.core.v1_8_9.feature.SurvivalTweaks189.brightness(settings.gammaSetting);
+    }
+
     @Inject(method = "getNightVisionBrightness", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsNightVisionBrightness(EntityLivingBase entity, float partialTicks, CallbackInfoReturnable<Float> cir) {
         if (com.thelads.core.v1_8_9.feature.Fullbright189.isEnabled() && entity == Minecraft.getMinecraft().thePlayer) {

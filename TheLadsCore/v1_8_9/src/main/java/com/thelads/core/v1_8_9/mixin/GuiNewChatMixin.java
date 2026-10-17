@@ -57,9 +57,10 @@ public abstract class GuiNewChatMixin implements Chat189.History {
     @Override public int ladsDrawnLines() { return drawnChatLines.size(); }
     @Override public int ladsMessages() { return chatLines.size(); }
 
-    /** Infinite History: the 100-message and 100-line caps become the ceiling. */
+    /** Infinite History / SurvivalTweaks Longer Chat History (as 26.x): the 100-message and 100-line caps become the ceiling. 1.8.9 keeps every sent message. */
     @ModifyConstant(method = "setChatLine", constant = @Constant(intValue = 100), require = 2)
     private int ladsHistoryCap(int vanilla) {
+        if (!ChatHistory.infinite() && com.thelads.core.v1_8_9.feature.SurvivalTweaks189.longerChatHistory()) return 65536;
         return ChatHistory.limit(vanilla);
     }
 
