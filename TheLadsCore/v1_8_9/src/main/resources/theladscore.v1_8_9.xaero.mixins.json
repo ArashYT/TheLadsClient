@@ -1,0 +1,11 @@
+{
+  "required": false,
+  "minVersion": "0.7",
+  "package": "com.thelads.core.v1_8_9.mixin.xaero",
+  "refmap": "theladscore.v1_8_9.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "client": [
+    "XaeroOnlineChecksMixin189",
+    "XaeroVersionCheckMixin189"
+  ]
+}

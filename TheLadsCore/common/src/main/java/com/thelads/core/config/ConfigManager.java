@@ -172,6 +172,7 @@ public class ConfigManager {
             migrateParticleBudget(modulesJson);
             migrateAutohide(modulesJson);
             migrateHypixelMods(modulesJson);
+            migrateUnfocusedCap(modulesJson);
             java.util.Set<String> known = new java.util.HashSet<>();
             for (Module m : ModuleManager.getInstance().getModules()) {
                 known.add(m.getName());
@@ -399,6 +400,30 @@ public class ConfigManager {
         }
     }
 
+    /**
+     * 1.9.11 folded 1.8.9's Unfocused FPS cap into Dynamic FPS (built in there now). A cap the player changed carries its on/off and FPS
+     * limit over as Dynamic FPS's on/off and Unfocused FPS, unless Dynamic FPS was changed itself (26.x shares this file).
+     */
+    public static void migrateUnfocusedCap(JsonObject modules) {
+        if (!(modules.remove("UnfocusedFpsCap") instanceof JsonObject cap) || !changed(cap)) return;
+        if (modules.get("DynamicFPS") instanceof JsonObject own && changed(own)) return;
+        JsonObject dynamic = modules.get("DynamicFPS") instanceof JsonObject saved ? saved : new JsonObject();
+        modules.add("DynamicFPS", dynamic);
+        if (cap.has("enabled")) dynamic.add("enabled", cap.get("enabled"));
+        dynamic.add("lastModified", cap.get("lastModified"));
+        JsonElement limit = legacy(cap, "options", "FPS limit");
+        if (limit != null) {
+            if (!(dynamic.get("options") instanceof JsonObject)) dynamic.add("options", new JsonObject());
+            dynamic.getAsJsonObject("options").add("Unfocused FPS", limit);
+        }
+    }
+
+    /** A module entry the player changed (lastModified set); an "enabled" saved without a change is only the default. */
+    private static boolean changed(JsonObject module) {
+        JsonElement time = module.get("lastModified");
+        return time != null && time.isJsonPrimitive() && time.getAsJsonPrimitive().isNumber() && time.getAsLong() != 0;
+    }
+
     /** 1.9.2 grouped the 6 Hypixel modules into "HYPIXEL Mods": each old module's on/off becomes its switch, its options "<module>: <option>". */
     public static void migrateHypixelMods(JsonObject modules) {
         String[] oldNames = {"Auto GG", "Auto Friend", "Auto Tip", "Auto Play Again", "Auto Who", "Chat Cleanup"};
@@ -589,7 +614,7 @@ public class ConfigManager {
         if (json.get("modules") instanceof JsonObject modules) {
             if (!modules.has(ToggleSprintModule.NAME) && (modules.has("ToggleSprint") || modules.has("ToggleSneak"))) return true;
             if (legacy(modules, "ClientTools", "options", "Chat timestamps") != null || legacy(modules, "HideChatIndicators", "enabled") != null) return true;
-            if (modules.has("Chat Heads") || modules.has("ParticleBudget") || modules.has("RenderScale")) return true;
+            if (modules.has("Chat Heads") || modules.has("ParticleBudget") || modules.has("RenderScale") || modules.has("UnfocusedFpsCap")) return true;
             if (modules.has("ToggleNametags") && !modules.has("Nametags")) return true;
             if (modules.get("DiscordRPC") instanceof JsonObject discord && discord.get("options") instanceof JsonObject opts && opts.has("Share activity")) return true;
             if (modules.has(com.thelads.core.client.DamageTilt.OLD_NAME)) return true;

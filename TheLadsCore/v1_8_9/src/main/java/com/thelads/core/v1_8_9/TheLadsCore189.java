@@ -45,10 +45,10 @@ public class TheLadsCore189 {
     /** Built on third-party mods The Lads Client does not ship for 1.8.9: listed as unavailable with that reason. */
     public static final String[][] MOD_BACKED = {
         {"Performance", "Sodium"}, {"Lithium", "Lithium"}, {"FerriteCore", "FerriteCore"},
-        {"ScalableLux", "ScalableLux"}, {"Exordium", "Exordium"}, {"DynamicFPS", "Dynamic FPS"},
+        {"ScalableLux", "ScalableLux"}, {"Exordium", "Exordium"},
         {"NotEnoughAnimations", "Not Enough Animations"}, {"BetterStats", "Better Statistics Screen"},
-        {"JEI (Just Enough Items)", "Just Enough Items"}, {"XaeroMinimap", "Xaero's Minimap"}, {"XaeroWorldmap", "Xaero's World Map"},
-        {"Minimap", "Xaero's Minimap"}, {"Jade", "Jade"}, {"ModernAdvancements", "Modern Advancements"},
+        {"JEI (Just Enough Items)", "Just Enough Items"}, {"XaeroWorldmap", "Xaero's World Map"},
+        {"ModernAdvancements", "Modern Advancements"},
         {"Flashback Settings", "Flashback"}};
 
     private static final boolean VERIFY_189_CORE = Boolean.getBoolean("thelads.verify189Core");
@@ -73,12 +73,14 @@ public class TheLadsCore189 {
         } catch (Throwable ignored) {}
         LadsGameBridge.set(new VanillaGameBridge189());
         com.thelads.core.security.AntiInjectDetector.init();
-        com.thelads.core.v1_8_9.feature.UnfocusedFpsCap189.register();
         ConfigManager.load();
         com.thelads.core.v1_8_9.feature.LocalSkins189.initialize(); // the Skin changer's saved skin
         com.thelads.core.v1_8_9.render.Render189.init();
         registerStatuses();
         com.thelads.core.v1_8_9.feature.SurvivalTweaks189.register();
+        com.thelads.core.v1_8_9.feature.DynamicFPS189.register(); // replaces 1.7.3's Unfocused FPS cap (1.9.11)
+        com.thelads.core.v1_8_9.feature.Minimap189.register(); // Xaero's Minimap from the launcher's 1.8.9 pack (1.9.11)
+        com.thelads.core.v1_8_9.feature.jade.Jade189.register(); // the Lads Jade panel, as 1.20.1's (1.9.11)
         com.thelads.core.modules.StackRefillModule.get().noOffhand(); // 1.8.9 has no offhand
         com.thelads.core.v1_8_9.feature.Nametags189.register();
         OldAnimations189.register();
@@ -146,7 +148,9 @@ public class TheLadsCore189 {
         "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss", "AppleSkin", BetterResolutionModule.NAME, "BetterScreenshots", "EnhancedToolbars",
         "Fullbright", com.thelads.core.modules.ToggleSprintModule.NAME, "Zoom", "LegacySwing",
         "VerticalBobbing", com.thelads.core.client.DamageTilt.MODULE, "ClientTools", "SmoothHotbar", "TitleScreen", "Title Scale", "ResourcePacks",
-        "RawInput", "BorderlessFullscreen", com.thelads.core.v1_8_9.feature.UnfocusedFpsCap189.NAME,
+        "RawInput", "BorderlessFullscreen",
+        // DynamicFPS189 through MinecraftMixin's frame limit and render skip and SoundHandlerAccessor189 (1.9.11; was UnfocusedFpsCap).
+        com.thelads.core.v1_8_9.feature.DynamicFPS189.NAME,
         // Raised189: Forge's overlay events and the GuiIngame, GuiIngameForge and GuiNewChat mixins.
         "Raised",
         // MouseTweaks189 through GuiContainerMouseTweaksMixin and Forge's mouse input event, as 26.x NativeMouseTweaks.
@@ -257,6 +261,8 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.feature.Toggles189.tick(mc);
         com.thelads.core.v1_8_9.feature.Fullbright189.tick(mc);
         com.thelads.core.v1_8_9.feature.StackRefill189.tick(mc);
+        com.thelads.core.v1_8_9.feature.DynamicFPS189.tick(mc);
+        com.thelads.core.v1_8_9.feature.Minimap189.tick();
 
         if (titleTicks++ % 40 == 0) {
             try {

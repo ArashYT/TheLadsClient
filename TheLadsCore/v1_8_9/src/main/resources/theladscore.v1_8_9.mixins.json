@@ -101,6 +101,7 @@
     "ScoreObjectiveMixin",
     "RenderItemMixin",
     "SoundHandlerReloadMixin189",
+    "SoundHandlerAccessor189",
     "LanguageManagerReloadMixin189",
     "GuiUtilsTooltipMixin",
     "VisGraphMixin",

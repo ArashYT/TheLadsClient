@@ -4,7 +4,7 @@ import com.thelads.core.v1_8_9.feature.Borderless189;
 import com.thelads.core.v1_8_9.feature.FrameWork189;
 import com.thelads.core.v1_8_9.feature.ItemPhysics189;
 import com.thelads.core.v1_8_9.feature.OldAnimations189;
-import com.thelads.core.v1_8_9.feature.UnfocusedFpsCap189;
+import com.thelads.core.v1_8_9.feature.DynamicFPS189;
 import com.thelads.core.v1_8_9.feature.WorldBackup189;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
@@ -46,17 +46,17 @@ public abstract class MinecraftMixin {
     @Shadow public net.minecraft.profiler.Profiler mcProfiler;
     @Shadow public boolean skipRenderWorld;
 
-    /** Unfocused FPS cap: vanilla's limit (30 in a menu without a world, else the option), lowered while the window is not focused. */
+    /** Dynamic FPS: vanilla's limit (30 in a menu without a world, else the option), lowered in the background states (DynamicFPS189). */
     @Inject(method = "getLimitFramerate", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsUnfocusedCap(CallbackInfoReturnable<Integer> cir) {
         int vanilla = theWorld == null && currentScreen != null ? 30 : gameSettings.limitFramerate;
-        int limit = UnfocusedFpsCap189.limit(vanilla);
+        int limit = DynamicFPS189.limit(vanilla);
         if (limit != vanilla) cir.setReturnValue(limit);
     }
 
     @Redirect(method = "runGameLoop", at = @At(value = "FIELD", target = "Lnet/minecraft/client/Minecraft;skipRenderWorld:Z"), require = 1)
     private boolean ladsSkipWorldRender(Minecraft mc) {
-        return UnfocusedFpsCap189.shouldSkipWorldRender(mc.skipRenderWorld);
+        return DynamicFPS189.shouldSkipWorldRender(mc.skipRenderWorld);
     }
 
     @Inject(method = "toggleFullscreen", at = @At("HEAD"), cancellable = true, require = 1)

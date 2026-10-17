@@ -193,6 +193,9 @@ public final class CoreProbe {
         } else if ("parity1910".equals(only)) { // 1.9.10 StackRefill and SurvivalTweaks ports in the QA world (ParityProbe189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, ParityProbe189::run));
+        } else if ("parity1911".equals(only)) { // 1.9.11 Jade, Minimap (Xaero) and Dynamic FPS on 1.8.9 (Probe1911Parity189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe1911Parity189::run));
         } else if ("hypixel".equals(only)) { // 1.9.1 Hypixel modules and real ping in the QA world, counted as Hypixel (Probe191Hypixel)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe191Hypixel::run));
@@ -740,6 +743,9 @@ public final class CoreProbe {
         // 1.9.1: World189 (Wavy Capes, TNT Timer) and Hypixel189 (the Hypixel modules) register theirs as built in too.
         expected.addAll(Arrays.asList(com.thelads.core.modules.WavyCapesModule.NAME, com.thelads.core.modules.TntTimerModule.NAME,
             com.thelads.core.client.hypixel.HypixelMods.HYPIXEL_MODS));
+        // 1.9.11: the Lads Jade panel (unless Waila is installed) and the Minimap switch over the pack's Xaero's Minimap.
+        if (!Loader.isModLoaded("Waila")) expected.add(com.thelads.core.v1_8_9.feature.jade.Jade189.MODULE);
+        if (Minimap189.integrated()) expected.add(Minimap189.NAME);
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
             "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
         check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 5 /* DisableNarrator, Async, ShulkerBoxUtils, Voice Chat, Voice Chat Group */

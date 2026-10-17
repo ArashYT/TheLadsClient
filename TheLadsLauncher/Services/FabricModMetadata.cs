@@ -99,7 +99,8 @@ public static class FabricModMetadata
         var root = document.RootElement;
         var mods = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("modList", out var list) ? list : root;
         var mod = mods.ValueKind == JsonValueKind.Array ? mods.EnumerateArray().FirstOrDefault(m => Text(m, "modid") != null) : default;
-        var id = Text(mod, "modid") ?? throw new InvalidDataException("mcmod.info names no mod.");
+        // Forge 1.8.9 ids may be mixed case (Xaero's Minimap is "XaeroMinimap"); the launcher keys mods by lowercase id, as Fabric's.
+        var id = Text(mod, "modid")?.ToLowerInvariant() ?? throw new InvalidDataException("mcmod.info names no mod.");
         var authors = mod.TryGetProperty("authorList", out var names) && names.ValueKind == JsonValueKind.Array
             ? names.EnumerateArray().Where(n => n.ValueKind == JsonValueKind.String).Select(n => n.GetString()!).ToList() : new List<string>();
         return new FabricModInfo(id, Text(mod, "name") ?? id, Text(mod, "version"), Text(mod, "description"), authors, null, null,

@@ -31,6 +31,21 @@
       "license": "LicenseRef-tr7zw-Protective-License",
       "sourceUrl": "https://github.com/tr7zw/3d-skin-layers",
       "projectUrl": "https://modrinth.com/mod/3dskinlayers"
+    },
+    {
+      "projectId": "1bokaNcj",
+      "projectSlug": "xaeros-minimap",
+      "name": "Xaero's Minimap",
+      "modId": "xaerominimap",
+      "versionId": "ajhC0UFK",
+      "version": "21.10.41_Forge_1.8.9",
+      "fileName": "Xaeros_Minimap_21.10.41_Forge_1.8.9.jar",
+      "url": "https://cdn.modrinth.com/data/1bokaNcj/versions/ajhC0UFK/Xaeros_Minimap_21.10.41_Forge_1.8.9.jar",
+      "sha512": "2f578ed72e9bcd9d74bcfbb8b04d9004580e0664ed5d08b7b18f45f43fbb72d7c118e032db290d411bac5275c84bc17fa2b3d5da7ebd9195e380d397bf6f7428",
+      "size": 757275,
+      "license": "LicenseRef-All-Rights-Reserved",
+      "sourceUrl": null,
+      "projectUrl": "https://modrinth.com/mod/xaeros-minimap"
     }
   ],
   "retired": [
