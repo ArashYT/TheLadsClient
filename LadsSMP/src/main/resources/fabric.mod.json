@@ -15,10 +15,17 @@
   "entrypoints": {
     "main": [
       "com.thelads.smp.LadsSMPMod"
+    ],
+    "client": [
+      "com.thelads.smp.features.arise.nb1.client.AriseNB1ClientMod"
+    ],
+    "voicechat": [
+      "com.thelads.smp.features.arise.nb1.SimpleVoiceChatBroadcastPlugin"
     ]
   },
   "mixins": [
-    "ladssmp.mixins.json"
+    "ladssmp.mixins.json",
+    "ladssmp.arise-nb1.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.19.0",
