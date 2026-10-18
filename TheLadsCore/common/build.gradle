@@ -54,3 +54,14 @@ processResources {
     inputs.property 'version', project.version.toString()
     filesMatching('assets/theladscore/version.txt') { expand version: project.version }
 }
+
+tasks.register('exportLadsApiSchema', JavaExec) {
+    group = 'ladsapi'
+    description = 'Exports the LadsClientAPI schema JSON for the server jar'
+    dependsOn 'compileJava', 'processResources'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.thelads.core.client.ladsapi.SchemaExport'
+    args = [rootProject.file('../LadsClientAPI/common/src/main/resources/ladsapi-schema.json').absolutePath]
+    systemProperty 'thelads.version', project.version.toString()
+}
+
