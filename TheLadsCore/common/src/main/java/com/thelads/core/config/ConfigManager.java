@@ -31,6 +31,8 @@ import java.nio.file.AtomicMoveNotSupportedException;
 public class ConfigManager {
     public static final String PRESET_197_FLAG = "lads197PresetApplied";
     static final String HUD_1910_FLAG = "hud1910OverrideApplied";
+    /** Marks the 1.9.11 one-time Better F3 override (apply1911BetterF3Override). */
+    static final String F3_1911_FLAG = "betterF31911Applied";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static File testConfigFile = null;
     private static final java.util.Map<String, JsonObject> unmanagedModules = new java.util.concurrent.ConcurrentHashMap<>();
@@ -93,6 +95,7 @@ public class ConfigManager {
         hud.addProperty("shadowOnDefault", true); // marks the 1.9.1 migration of the old Soft default (applyJson)
         hud.addProperty("hudFpsCapOnDefault", true); // marks the 1.9.2 migration of the old uncapped default (applyJson)
         hud.addProperty(HUD_1910_FLAG, true); // marks the 1.9.10 one-time HUD override (apply1910HudOverride)
+        hud.addProperty(F3_1911_FLAG, true); // marks the 1.9.11 one-time Better F3 override (apply1911BetterF3Override)
         hud.addProperty("backgrounds", HudSettings.getInstance().isBackgrounds());
         hud.addProperty("hudFpsCapOptIn", HudSettings.getInstance().isHudFpsCapEnabled());
         hud.addProperty("hudFpsCapEnabled", HudSettings.getInstance().isHudFpsCapEnabled()); // read by 1.4.4 and older
@@ -312,6 +315,7 @@ public class ConfigManager {
                 }
             }
             if (!hud.has(HUD_1910_FLAG)) apply1910HudOverride();
+            if (!hud.has(F3_1911_FLAG)) apply1911BetterF3Override();
             if (hud.has("hudScale")) HudSettings.getInstance().setHudScale(hud.get("hudScale").getAsInt());
             if (hud.has("fadePlaylist")) {
                 HudSettings.getInstance().getFadePlaylist().clear();
@@ -359,6 +363,15 @@ public class ConfigManager {
         }
         if (armor != null && armor.getOption("Style") instanceof DropdownOption style) style.setIndex(0);
         if (armor != null && armor.getOption("Attach to hotbar") instanceof BoolOption attach) attach.set(true);
+    }
+
+    /**
+     * 1.9.11, once per config (owner): Better F3 takes its new defaults, the BetterF3 look (its own coloured lines, no plates, shadow,
+     * a slide in and out). Whether it is on stays the player's choice.
+     */
+    static void apply1911BetterF3Override() {
+        Module f3 = ModuleManager.getInstance().getModule("BetterF3");
+        if (f3 != null) f3.getOptions().forEach(Option::reset);
     }
 
     /**
@@ -624,7 +637,7 @@ public class ConfigManager {
             }
         }
         if (json.get("hud") instanceof JsonObject hud) {
-            if (!hud.has("shadowOnDefault") || !hud.has("hudFpsCapOnDefault") || !hud.has(HUD_1910_FLAG)) return true;
+            if (!hud.has("shadowOnDefault") || !hud.has("hudFpsCapOnDefault") || !hud.has(HUD_1910_FLAG) || !hud.has(F3_1911_FLAG)) return true;
         }
         return false;
     }

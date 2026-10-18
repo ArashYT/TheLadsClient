@@ -34,6 +34,7 @@ public final class HudPipeline1201 {
         ForgeOverlays1201.closeUnfinished(null); // Forge: a part of the last cancelled overlay would otherwise stay open into the screens
         com.thelads.core.v1_20_1.feature.UiQa1201.logPose("after the GUI", graphics);
         layer(graphics);
+        NativeBetterF3_1201.closed(graphics); // the debug screen just closed: its columns slide out
         try {
             NativeAutohide1201.renderLadsHud(graphics);
         } catch (RuntimeException failure) {
