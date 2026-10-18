@@ -13,12 +13,23 @@ public final class Utils {
     }
 
     /** Upstream extension {@code GameProfile.isValidProfile()}. */
+    /** 1.9.12 perf: textures property value -> its profileName ("" = none); decoded once instead of on every skin read. */
+    private static final java.util.Map<String, String> PROFILE_NAMES = new java.util.concurrent.ConcurrentHashMap<>();
+
     public static boolean isValidProfile(GameProfile profile) {
         String profileName;
         try { // runCatching { ... }.getOrNull()
             String textures = profile.getProperties().get("textures").stream().findFirst().get().getValue();
-            String json = new String(Base64.getDecoder().decode(textures), StandardCharsets.UTF_8);
-            profileName = JsonParser.parseString(json).getAsJsonObject().get("profileName").getAsString();
+            if (PROFILE_NAMES.size() > 4096) PROFILE_NAMES.clear(); // ponytail: wholesale clear; an LRU if servers ever cycle this many skins
+            profileName = PROFILE_NAMES.computeIfAbsent(textures, t -> {
+                try {
+                    String json = new String(Base64.getDecoder().decode(t), StandardCharsets.UTF_8);
+                    return JsonParser.parseString(json).getAsJsonObject().get("profileName").getAsString();
+                } catch (Throwable e) {
+                    return "";
+                }
+            });
+            if (profileName.isEmpty()) profileName = null;
         } catch (Throwable t) {
             profileName = null;
         }

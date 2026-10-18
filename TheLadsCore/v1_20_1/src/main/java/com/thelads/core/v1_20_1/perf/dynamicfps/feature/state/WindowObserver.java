@@ -37,7 +37,15 @@ public final class WindowObserver {
     public boolean isHovered() { return isHovered; }
     public boolean isIconified() { return isIconified; }
 
+    /** 1.9.12 perf: each glfwGetWindowAttrib from the render thread waits for the main thread under Ixeris (3 round trips a frame).
+     *  Read at most every 50 ms, and at once when vanilla's own focus flag (set by the focus event) disagrees with ours, so the
+     *  click that focuses the window still reaches ClickIgnoreHandler. */
+    private long nextPoll;
+
     public void poll() {
+        long now = System.nanoTime();
+        if (now - nextPoll < 0 && qaFocused == null && net.minecraft.client.Minecraft.getInstance().isWindowActive() == isFocused) return;
+        nextPoll = now + 50_000_000L;
         boolean focused = attribute(GLFW.GLFW_FOCUSED);
         boolean hovered = attribute(GLFW.GLFW_HOVERED);
         boolean iconified = attribute(GLFW.GLFW_ICONIFIED);

@@ -33,8 +33,14 @@ public final class ModPresence1201 {
         return false;
     }
 
+    /** QA/benchmark switch (1.9.12 perf lane): -Dthelads.embeddedOff=<original mod id>,... counts those mods as installed, so the
+     *  embedded copies stand down exactly as they do next to the original jar. */
+    private static final java.util.Set<String> EMBEDDED_OFF =
+        java.util.Set.copyOf(java.util.Arrays.asList(System.getProperty("thelads.embeddedOff", "").split(",")));
+
     public static boolean loaded(String id) {
         if (id == null || id.isEmpty()) return false;
+        if (EMBEDDED_OFF.contains(id)) return true;
         Boolean known = INSTALLED.get(id);
         if (known != null) return known;
         String where = where(id);
