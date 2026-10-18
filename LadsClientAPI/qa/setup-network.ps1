@@ -313,6 +313,9 @@ Write-ServerProperties -Path "$Root\forge\server.properties"  -Port 25704 -Motd 
 # 8. Deploy rules-qa.yml
 $rulesSource = Join-Path $PSScriptRoot "rules-qa.yml"
 if (Test-Path $rulesSource) {
+    foreach ($d in "$Root\lobby\plugins\LadsClientAPI", "$Root\fabric\config\ladsclientapi", "$Root\forge\config\ladsclientapi", "$Root\velocity\plugins\ladsclientapi") {
+        New-Item -ItemType Directory -Force $d | Out-Null
+    }
     Copy-Item $rulesSource -Destination "$Root\lobby\plugins\LadsClientAPI\rules.yml" -Force
     Copy-Item $rulesSource -Destination "$Root\fabric\config\ladsclientapi\rules.yml" -Force
     Copy-Item $rulesSource -Destination "$Root\forge\config\ladsclientapi\rules.yml" -Force

@@ -9,7 +9,8 @@ New-Item -ItemType Directory -Force $res | Out-Null
 function Stamp([string] $what) { "== $what $(Get-Date -Format HH:mm:ss)" }
 
 Stamp 'setup'
-& "$qa\setup-network.ps1" -Root $net -Jar "$qa\LadsClientAPI.jar"
+# Every step is wrapped: an error must never kill the job before the runner writes its exit file (it did once: 2026-10-18).
+try { & "$qa\setup-network.ps1" -Root $net -Jar "$qa\LadsClientAPI.jar" } catch { "SETUP ERROR: $_" }
 
 # debug: true so every hello/ack shows in the server log; one notice for CHK-02.
 $config = @"
@@ -32,7 +33,7 @@ foreach ($dir in "$net\lobby\plugins\LadsClientAPI", "$net\fabric\config\ladscli
 }
 
 Stamp 'start'
-& "$qa\start-network.ps1" -Root $net
+try { & "$qa\start-network.ps1" -Root $net } catch { "START ERROR: $_" }
 Start-Sleep -Seconds 20
 
 $runs = @(
@@ -50,8 +51,9 @@ foreach ($run in $runs) {
     $env:LADS_GLOBAL_MINECRAFT_DIR = "$wt\artifacts\verification\mc-home"
     $env:LADS_VERIFY_TIMEOUT_SEC = '900'
     Set-Location $wt
-    & $exe @($run.Args) --join '127.0.0.1:25700' --script "$wt\LadsClientAPI\qa\scripts\ladsapi-$v.txt" --dir "ladsapi-$v"
-    $code = $LASTEXITCODE
+    $code = -1
+    try { & $exe @($run.Args) --join '127.0.0.1:25700' --script "$wt\LadsClientAPI\qa\scripts\ladsapi-$v.txt" --dir "ladsapi-$v"; $code = $LASTEXITCODE }
+    catch { "CLIENT $v ERROR: $_" }
     $summary += "$v exit=$code"
     "client $v exit=$code"
     $evidence = "$res\client-$v"
@@ -63,7 +65,7 @@ foreach ($run in $runs) {
 }
 
 Stamp 'stop'
-& "$qa\stop-network.ps1" -Root $net
+try { & "$qa\stop-network.ps1" -Root $net } catch { "STOP ERROR: $_" }
 foreach ($s in 'velocity', 'lobby', 'plain', 'fabric', 'forge') {
     New-Item -ItemType Directory -Force "$res\server-$s" | Out-Null
     Copy-Item "$net\$s\logs\latest.log" "$res\server-$s\" -ErrorAction SilentlyContinue
