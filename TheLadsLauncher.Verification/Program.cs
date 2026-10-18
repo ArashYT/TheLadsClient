@@ -820,7 +820,7 @@ try
     else if (!keepOptions || !File.Exists(Path.Combine(directory, "options.txt"))) await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), baseOptions, ct);
     // LADS_QA_EMOTE: the fresh options.txt put Xaero/ReplayMod back on B, so the Core's once-per-version "they gave B to Emotes" mark
     // (thelads_config.json emoteKeyClashResolved) goes too, or every emote run after the first fails its key check.
-    if (Env("LADS_QA_EMOTE") == "1" && !keepOptions)
+    if ((Env("LADS_QA_EMOTE") == "1" || Env("LADS_VERIFY_189_ONLY") == "emote") && !keepOptions) // 1.8.9's emote probe too
         foreach (string config in new[] { Path.Combine(directory, "thelads_config.json"), Path.Combine(directory, "shared", "thelads_config.json") })
             if (File.Exists(config) && JsonNode.Parse(await File.ReadAllTextAsync(config, ct)) is JsonObject settings && settings.Remove("emoteKeyClashResolved"))
                 await File.WriteAllTextAsync(config, settings.ToJsonString(new() { WriteIndented = true }), ct);
