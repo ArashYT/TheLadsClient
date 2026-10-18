@@ -1,0 +1,25 @@
+// LadsClientAPI: one jar that is a Paper plugin, Velocity plugin, Fabric 26.3 server mod and Forge 1.20.1 server mod.
+// Every class is Java 17 bytecode: Forge 1.20.1's class scanner crashes on newer class files (C-ONEJAR report).
+// Lane SRV-B owns the `universalJar` task that merges common + all platforms into build/libs/LadsClientAPI-<version>.jar.
+
+allprojects {
+    group = 'com.thelads'
+    version = '1.0.0'
+}
+
+subprojects {
+    apply plugin: 'java'
+    java {
+        toolchain { languageVersion = JavaLanguageVersion.of(21) }
+    }
+    tasks.withType(JavaCompile).configureEach {
+        options.release = 17
+        options.encoding = 'UTF-8'
+    }
+    repositories {
+        mavenCentral()
+        maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+        maven { url = 'https://maven.fabricmc.net/' }
+        maven { url = 'https://maven.minecraftforge.net/' }
+    }
+}

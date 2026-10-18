@@ -73,4 +73,14 @@ public class DropdownOption extends Option {
         } catch (Exception ignored) {
         }
     }
+
+    @Override
+    public com.thelads.core.client.ladsapi.ServerControl serverControl() {
+        return com.thelads.core.client.ladsapi.ServerControl.FULL;
+    }
+
+    /** The player's own choice, never a server rule: the settings screen edits and config saves use this. */
+    public final int getOwnIndex() {
+        return index;
+    }
 }

@@ -29,6 +29,7 @@ public class Module {
 
     /** Adds a customizable option and returns it (for keeping a reference). */
     public <T extends Option> T addOption(T option) {
+        option.moduleName = name;
         options.add(option);
         return option;
     }
