@@ -281,6 +281,7 @@ final class UiCapture {
                     var commands = server.getCommands().getDispatcher();
                     timeBefore = commands.execute("time query time", source);
                     commands.execute("time set midnight", source);
+                    commands.execute("weather clear 24000", source); // rain darkens the world: a run in rain measured +15.2, a clear one +14.2
                     // The QA world is Normal (other probes need hostile mobs): midnight's zombies killed the QA player mid-capture.
                     commands.execute("effect give @a minecraft:resistance 600 4 true", source);
                 } catch (Exception failure) { fail("clock: " + failure); }
@@ -289,6 +290,10 @@ final class UiCapture {
         });
         steps.add(mc -> {
             NativeFeatures.qaDeferGamma = control;
+            // The QA world keeps its player between runs: a probe that left the view on the sky (1.9.10's crossbow capture does) would make
+            // the world under the menu a few dark pixels, too little for the brightness steps below. Level view, the grass in the preview.
+            mc.player.setXRot(0);
+            mc.player.xRotO = 0;
             fullbright.setEnabled(true);
             gamma().setValue(0);
             menu = new LadsSettingsScreen26(null);
@@ -351,7 +356,8 @@ final class UiCapture {
         }
         double eps = usePixels() ? 3 : 0.01;
         // the picture saturates (white) above about 30%: no darker than the step before, give or take pixel noise
-        check(l30 > l0 + eps && l65 >= l30 - eps && l100 >= l65 - eps && l100 > l0 + 5 * eps, "the world under the open menu follows the slider: brighter at each higher setting");
+        // 0% to 100% lifts the pixel mean by a factor of 1.7 on grass (1.69 to 1.77 in six runs: the QA world's moon phase moves the base, not the ratio), 1.2 on the sky
+        check(l30 > l0 + eps && l65 >= l30 - eps && l100 >= l65 - eps && l100 > l0 * 1.4, "the world under the open menu follows the slider: brighter at each higher setting, by about 70% at 100%");
         check(Math.abs(WORLD.get(tag + "p000-again") - l0) < (usePixels() ? 2 : 0.001), "back at 0% the world is as dark as at the start");
     }
 

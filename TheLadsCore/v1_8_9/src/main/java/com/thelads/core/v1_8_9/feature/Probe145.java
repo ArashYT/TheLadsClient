@@ -178,6 +178,12 @@ final class Probe145 {
         // Thousands of FPS: a percentage measures noise there, so pacing may also cost under 0.1 ms a frame. On in the game since
         // 1.8.5 (InputLatency189): a CPU-bound frame finds the GPU idle and does not wait, so it must keep the frame rate.
         boolean kept = best >= unpaced * 0.95f || 1000f / best - 1000f / unpaced < 0.1f;
+        if (!kept && pacingRounds < 3) { // the rounds this method promises: 1.8.5 dropped them with the retry, one noisy window failed the run
+            pacedFps = last;
+            com.thelads.core.v1_8_9.input.InputLatency189.qaPaused = true;
+            startCount();
+            return retry(60);
+        }
         mc.gameSettings.enableVsync = vsync;
         Display.setVSyncEnabled(vsync);
         com.thelads.core.v1_8_9.input.InputLatency189.qaPaused = false;
@@ -185,7 +191,7 @@ final class Probe145 {
         com.thelads.core.perf.FramePacer pacer = com.thelads.core.v1_8_9.input.InputLatency189.pacer();
         LOG.info("Lads 1.8.9 core probe: input-latency pacing: {} of {} frames GPU-bound, {} ms waited, GPU frame {} us, CPU frame {} us, margin {} us",
             pacer.pacedFrames, pacer.frames, pacer.waitedNs / 1_000_000, pacer.gpuFrameNs() / 1000, pacer.cpuFrameNs() / 1000, pacer.marginNs() / 1000);
-        check(kept, "input-latency pacing keeps the frame rate: " + best + " FPS paced against " + unpaced + " unpaced (within 5 % or 0.1 ms)");
+        check(kept, "input-latency pacing keeps the frame rate: " + best + " FPS paced against " + unpaced + " unpaced (within 5 % or 0.1 ms; round " + pacingRounds + " of up to 3)");
         return after(1);
     }
 

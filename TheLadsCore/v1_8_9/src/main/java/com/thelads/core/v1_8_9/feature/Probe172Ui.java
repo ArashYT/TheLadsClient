@@ -238,7 +238,16 @@ final class Probe172Ui {
             // midnight first, with no menu open (a paused world would not send the new time to the client)
             final WorldServer world = mc.getIntegratedServer().worldServerForDimension(0);
             timeWas = world.getWorldTime();
-            mc.getIntegratedServer().addScheduledTask(() -> world.setWorldTime(18000));
+            mc.getIntegratedServer().addScheduledTask(() -> {
+                world.setWorldTime(18000); // an absolute time: the same moon every run
+                world.getWorldInfo().setRaining(false); // rain darkens the world (a run in rain measured a different scene)
+                world.getWorldInfo().setThundering(false);
+                world.getWorldInfo().setRainTime(24000 * 7);
+                world.getWorldInfo().setThunderTime(24000 * 7);
+            });
+            // The QA world keeps its player between runs: a view left on the sky would measure the sky, not the grass.
+            mc.thePlayer.rotationPitch = 0;
+            mc.thePlayer.prevRotationPitch = 0;
             return after(60);
         });
         STEPS.add(mc -> {
@@ -308,8 +317,8 @@ final class Probe172Ui {
                 mc.displayGuiScreen(null);
                 return after(60);
             }
-            // the picture saturates above about 30%: no darker than the step before, give or take pixel noise
-            check(l30 > l0 + 3 && l65 >= l30 - 3 && l100 >= l65 - 3 && l100 > l0 + 15, "the world under the open menu follows the slider: brighter at each higher setting");
+            // Each setting lifts the lightmap once, so every step is brighter (1.9.3 to 1.9.11 lifted it again every frame: 30, 65 and 100% all measured the same white).
+            check(l30 > l0 + 3 && l65 > l30 + 2 && l100 > l65 + 2 && l100 > l0 * 1.4, "the world under the open menu follows the slider: brighter at each higher setting, by a fifth to a half at 100%");
             check(Math.abs(luma.get(tag + "p000-again") - l0) < 2, "back at 0% the world is as dark as at the start");
             return after(1);
         });
@@ -317,7 +326,7 @@ final class Probe172Ui {
             // the menu is closed and the game ran again: the game's own tick marks the lightmap out of date
             worldShot(mc, tag + "menu-closed");
             LOG.info("Lads UI capture CONTROL after the menu closed and the game ran again: the world measures {} (it measured {} under the menu)", f(lastLuma), f(luma.get(tag + "p000")));
-            check(lastLuma > luma.get(tag + "p000") + 15, "CONTROL: only after the menu closed did the world follow the slider (65%)");
+            check(lastLuma > luma.get(tag + "p000") * 1.5, "CONTROL: only after the menu closed did the world follow the slider (65%)");
             Fullbright189.qaDefer = false;
             return after(1);
         });
