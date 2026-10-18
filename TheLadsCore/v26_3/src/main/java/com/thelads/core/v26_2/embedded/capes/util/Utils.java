@@ -20,7 +20,9 @@ public final class Utils {
     public static boolean isValidProfile(GameProfile profile) {
         String profileName;
         try { // runCatching { ... }.getOrNull()
-            String textures = profile.properties().get("textures").stream().findFirst().get().value();
+            var all = profile.properties().get("textures");
+            if (all.isEmpty()) return false; // 1.9.12 perf: offline profiles threw (and filled in a stack trace) on every call
+            String textures = all.iterator().next().value();
             if (PROFILE_NAMES.size() > 4096) PROFILE_NAMES.clear(); // ponytail: wholesale clear; an LRU if servers ever cycle this many skins
             profileName = PROFILE_NAMES.computeIfAbsent(textures, t -> {
                 try {
