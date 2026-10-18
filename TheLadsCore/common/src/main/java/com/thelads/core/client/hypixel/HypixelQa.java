@@ -340,8 +340,8 @@ public final class HypixelQa {
                     }
                 HypixelSafetyManager.qaOverride = true;
                 Module refill = module(StackRefillModule.NAME);
-                check(refill != null && refill.isBlockedByServer() && !refill.isEnabled() && HypixelSafetyManager.getBlockedNotice(refill.getName()).contains("singleplayer"),
-                    "on a server Stack Refill is off and says singleplayer only: " + (refill == null ? "-" : HypixelSafetyManager.getBlockedNotice(refill.getName())));
+                check(refill != null && refill.isBlockedByServer() && !refill.isEnabled() && HypixelSafetyManager.getBlockedNotice(refill.getName()).contains("off on this server"),
+                    "on a server Stack Refill is off and says the server rules turned it off: " + (refill == null ? "-" : HypixelSafetyManager.getBlockedNotice(refill.getName())));
                 check(module(OldAnimationsModule.NAME) instanceof OldAnimationsModule anim && !anim.useWhileMining(OldAnimations.Use.BLOCK) && !anim.useWhileMining(OldAnimations.Use.EAT_DRINK),
                     "on a server a block or eat waits for the mining to stop (1.8)");
                 int maps = 0;
