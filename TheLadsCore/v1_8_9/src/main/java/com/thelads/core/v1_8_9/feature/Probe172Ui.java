@@ -242,6 +242,8 @@ final class Probe172Ui {
             return after(60);
         });
         STEPS.add(mc -> {
+            // The menu's preview is a copy of the game's frame: the QA progress bar stays out of it while the brightness is measured (stop() brings it back).
+            com.thelads.core.client.qa.QaProgress.hide(true);
             Fullbright189.qaDefer = control;
             Options189.module("Fullbright").setEnabled(true);
             gamma().setValue(0);
@@ -330,6 +332,7 @@ final class Probe172Ui {
     static void stop() {
         if (!started) return;
         started = false;
+        com.thelads.core.client.qa.QaProgress.hide(false);
         Minecraft mc = Minecraft.getMinecraft();
         Fullbright189.qaDefer = false;
         if (mc.currentScreen == editor || mc.currentScreen == menu) mc.displayGuiScreen(null);
@@ -429,8 +432,6 @@ final class Probe172Ui {
         screenshot(mc, name);
         BufferedImage image = CoreProbe.readShot(mc, name);
         long sum = 0, count = 0;
-        // The QA progress bar (top centre, about 34 GUI units tall) is in the picture the screenshot reads: the same rows are left out of every measurement.
-        if (com.thelads.core.client.qa.QaProgress.on()) y0 = Math.max(y0, 34 * new net.minecraft.client.gui.ScaledResolution(mc).getScaleFactor());
         for (int y = Math.max(0, y0); y < Math.min(image.getHeight(), y1); y += 2)
             for (int x = Math.max(0, x0); x < Math.min(image.getWidth(), x1); x += 2) {
                 int c = image.getRGB(x, y);
