@@ -64,8 +64,8 @@ public final class HypixelSafetyManager {
         "cubecraft.net", "mccisland.net", "hoplite.gg", "pika-network.net", "jartexnetwork.com", "blocksmc.com", "mineplex.com", "gommehd.net"};
     /** Servers whose published rules allow minimaps (without radar: Xaero obeys their fair-play codes). */
     private static final String[] MINIMAP_ALLOWED_SERVERS = {};
-    /** Our own servers (Zero SMP, the arashyt.ca hosts): everything is allowed there. */
-    private static final String[] TRUSTED_SERVERS = {"nikzerosmp.my.pebble.host", "arashyt.ca"};
+    /** Our own servers (Zero SMP, the arashyt.ca hosts) and 2b2t (anarchy: no rules): everything is allowed there. */
+    private static final String[] TRUSTED_SERVERS = {"nikzerosmp.my.pebble.host", "arashyt.ca", "2b2t.org"};
 
     private static final int HYPIXEL = 1, NO_MINIMAP = 2, NO_AUTOMATION = 4, TRUSTED = 8, MINIMAP_OK = 16;
     private static final int QA_HYPIXEL = HYPIXEL | NO_MINIMAP | NO_AUTOMATION;
