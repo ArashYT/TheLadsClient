@@ -6,6 +6,7 @@
   "compatibilityLevel": "JAVA_8",
   "client": [
     "XaeroOnlineChecksMixin189",
-    "XaeroVersionCheckMixin189"
+    "XaeroVersionCheckMixin189",
+    "XaeroHideUnderF3Mixin189"
   ]
 }
