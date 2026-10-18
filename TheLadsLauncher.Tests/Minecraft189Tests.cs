@@ -718,7 +718,8 @@ public class Minecraft189Tests
         var bundle = AppContext.BaseDirectory;
         var manifest = JsonSerializer.Deserialize<ClientModInstaller.Manifest>(File.ReadAllText(Path.Combine(bundle, "game-mods", "1.8.9", "client-mods.json")),
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
-        Assert.Equal(("1.8.9", 4), (manifest.MinecraftVersion, manifest.Mods.Count)); // Resourcify, 3D Skin Layers, Xaero, Pylon
+        Assert.Equal(("1.8.9", 5), (manifest.MinecraftVersion, manifest.Mods.Count)); // Resourcify, 3D Skin Layers, Xaero, Pylon, Ionium (opt-in)
+        Assert.Equal(new[] { "ionium" }, manifest.Mods.Where(m => !m.DefaultEnabled).Select(m => m.ModId));
         Assert.Contains(manifest.Retired ?? new(), r => r.ModId == "essential");
         Assert.DoesNotContain(Directory.EnumerateFiles(Path.Combine(bundle, "game-mods"), "*", SearchOption.AllDirectories),
             file => Path.GetFileName(file).Contains("optifine", StringComparison.OrdinalIgnoreCase)
@@ -973,6 +974,32 @@ public class Minecraft189Tests
         Assert.Equal(("OptiFine", OptiFineInstaller.Version, ModOwnership.Pack, ModEntryStatus.Installed), (row.DisplayName, row.Version, row.Ownership, row.Status));
         Assert.Contains("optifine.net", row.Note);
         Assert.Contains(OptiFineInstaller.ModId, ModInventoryView.EnabledJarIds(inventory));
+    }
+
+    [Fact]
+    public async Task OptiFineIsSwitchedOffWhileIoniumIsOnAndComesBackAfter()
+    {
+        using var box = new ModSandbox();
+        var jar = OptiFineJar();
+        var site = new OptiFineNet(jar);
+        var launcher = Path.Combine(box.Root, "launcher");
+        var installed = box.Mod(OptiFineInstaller.DefaultPin.FileName);
+        var messages = new List<string>();
+        Task<string?> Install() => OptiFineInstaller.InstallAsync(launcher, box.Game, Pin(jar), messages.Add, default, new HttpClient(site));
+        Assert.Null(await Install());
+        Assert.True(File.Exists(installed));
+
+        // Ionium refuses to start next to OptiFine: switched on, OptiFine is switched off (renamed, never deleted).
+        box.Choose((OptiFineInstaller.IoniumModId, true));
+        Assert.Null(await Install());
+        Assert.False(File.Exists(installed));
+        Assert.Equal(jar, File.ReadAllBytes(installed + ".disabled"));
+        Assert.Contains(messages, m => m.Contains("Ionium"));
+
+        // Ionium off again: OptiFine comes back without a choice of its own (the disk state alone would keep it off).
+        box.Choose((OptiFineInstaller.IoniumModId, false));
+        Assert.Null(await Install());
+        Assert.Equal(jar, File.ReadAllBytes(installed));
     }
 
     [Theory]

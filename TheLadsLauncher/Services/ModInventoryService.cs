@@ -201,7 +201,8 @@ public sealed class ModInventoryService
         foreach (var entry in manifest?.Mods ?? new List<ClientModInstaller.Entry>())
         {
             if (entries.Any(e => e.Id == entry.ModId && e.Ownership == ModOwnership.Pack)) continue;
-            var requested = Requested(entry.ModId, entry.ProjectId);
+            // Without a copy: the choice, else the pack's default (an opt-in entry such as Ionium is off).
+            var requested = preferences.GetEnabled(entry.ModId, entry.ProjectId) ?? entry.DefaultEnabled;
             var cached = Path.Combine(cache, entry.Sha512 + ".jar");
             var scan = File.Exists(cached) ? Scan(cached, token) : null;
             var info = scan?.Hash != null && ClientModInstaller.SameHash(scan.Hash, entry.Sha512) ? scan.Info : null;

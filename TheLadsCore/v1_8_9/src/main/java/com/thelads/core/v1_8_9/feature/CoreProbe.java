@@ -305,6 +305,12 @@ public final class CoreProbe {
     }
 
     private static boolean ofDefaults(Minecraft mc) throws Exception {
+        try {
+            Class.forName("Config");
+        } catch (ClassNotFoundException noOptiFine) { // Ionium (the opt-in renderer) switches OptiFine off
+            LOG.info("Lads 1.8.9 core probe: OptiFine defaults skipped: OptiFine is not loaded");
+            return true;
+        }
         Probe192OfDefaults.run(mc);
         return true;
     }
@@ -741,7 +747,10 @@ public final class CoreProbe {
         check(mismatched.isEmpty(), "every catalog row matches this game's registrations and switchability " + mismatched);
         java.util.Set<String> expected = new java.util.HashSet<>(Arrays.asList(NativeHud.MODULES));
         expected.addAll(Arrays.asList(com.thelads.core.v1_8_9.TheLadsCore189.GAMEPLAY_MODULES));
-        for (String[] module : com.thelads.core.v1_8_9.TheLadsCore189.LIMITED) expected.add(module[0]);
+        // DynamicLights switches OptiFine's: unavailable while OptiFine is off (Ionium, the opt-in renderer).
+        boolean optiFine = com.thelads.core.v1_8_9.feature.DynamicLights189.available();
+        for (String[] module : com.thelads.core.v1_8_9.TheLadsCore189.LIMITED)
+            if (optiFine || !module[0].equals("DynamicLights")) expected.add(module[0]);
         if (SkinLayers189.LOADED) expected.add("SkinLayers");
         expected.add(com.thelads.core.client.ParticleCore.MODULE); // ParticleCore189 (1.8.5)
         // 1.9.1: World189 (Wavy Capes, TNT Timer) and Hypixel189 (the Hypixel modules) register theirs as built in too.
@@ -750,9 +759,13 @@ public final class CoreProbe {
         // 1.9.11: the Lads Jade panel (unless Waila is installed) and the Minimap switch over the pack's Xaero's Minimap.
         if (!Loader.isModLoaded("Waila")) expected.add(com.thelads.core.v1_8_9.feature.jade.Jade189.MODULE);
         if (Minimap189.integrated()) expected.add(Minimap189.NAME);
+        java.util.Set<String> missing = new java.util.TreeSet<>(expected), extra = new java.util.TreeSet<>(builtInNames);
+        missing.removeAll(builtInNames);
+        extra.removeAll(expected);
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
-            "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
-        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 5 /* DisableNarrator, Async, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
+            "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames
+            + (missing.isEmpty() && extra.isEmpty() ? "" : " (missing " + missing + ", not expected " + extra + ")"));
+        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + (optiFine ? 5 : 6) /* + DynamicLights without OptiFine; DisableNarrator, Async, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
             && pending == modules.size() - unavailable - builtIn - external, "catalog statuses: " + builtIn + " built in, " + unavailable + " unavailable, "
             + external + " external, " + pending + " pending");
         mc.displayGuiScreen(null); // Back to Game: the HUD checks run in gameplay

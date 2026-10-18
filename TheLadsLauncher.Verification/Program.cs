@@ -1334,8 +1334,13 @@ try
             // 1.8.9, from logs\latest.log: the title screen, OptiFine and no mixin or coremod error. Nothing stops the game but the harness.
             Require(forgeList.LoadedMods != null, @"FML did not finish loading ('Forge Mod Loader has successfully loaded N mods' is not in logs\latest.log).");
             Require(expectCoreDisabled || CatalogWritten(), "The Core never ticked at the title screen: it did not write lads-core-catalog.json during this run.");
-            Require(forgeList.OptiFineTweaker && forgeList.OptiFine != null,
-                @"OptiFine was not loaded (no OptiFine tweaker and FML detection in logs\latest.log)" + (optiFineWarning != null ? ": " + optiFineWarning : "."));
+            // Ionium on: the launcher switches OptiFine off, so Ionium must be the loaded renderer instead.
+            if (ModPreferences.Load(directory).GetEnabled(OptiFineInstaller.IoniumModId, null) == true)
+                Require(!forgeList.OptiFineTweaker && forgeList.IoniumTweaker,
+                    @"Ionium is on, but its tweaker was not installed with OptiFine switched off (logs\latest.log).");
+            else
+                Require(forgeList.OptiFineTweaker && forgeList.OptiFine != null,
+                    @"OptiFine was not loaded (no OptiFine tweaker and FML detection in logs\latest.log)" + (optiFineWarning != null ? ": " + optiFineWarning : "."));
             Require(forgeList.Errors.Count == 0, @"Mixin or coremod errors in logs\latest.log: " + string.Join(" | ", forgeList.Errors.Take(3)));
             if (!expectCoreDisabled && fastQuitPhase is not ("run" or "crash")) Require(!exitedOnItsOwn, @"The game exited on its own before the harness stopped it (see logs\latest.log).");
             string forgeText = $"Forge (logs\\latest.log): FML loaded {forgeList.LoadedMods?.ToString() ?? "no"} mods, title screen {(forgeTitleAt is { } at ? $"at {at.TotalSeconds:F1}s" : "not reached")}, "
@@ -1564,7 +1569,7 @@ string loadedText = $"{modList.Name} loaded {modList.Top.Count} top-level mods (
     + (expectAbsent.Count > 0 ? $", none of [{string.Join(", ", expectAbsent)}]" : "")
     + (expectPresent.Count > 0 ? $", including [{string.Join(", ", expectPresent)}]" : "");
 string coreText = forgeList != null
-    ? $"core initialized, OptiFine {forgeList.OptiFine ?? "(missing)"} loaded next to it, no mixin or coremod errors in logs\\latest.log"
+    ? $"core initialized, {(forgeList.IoniumTweaker ? "Ionium (OptiFine off)" : "OptiFine " + (forgeList.OptiFine ?? "(missing)"))} loaded next to it, no mixin or coremod errors in logs\\latest.log"
         + (autoWorldVerification ? " and the Core's 1.8.9 self-test ended with 0 failed" : "")
     : capabilities.Minimal ? $"core initialized{(autoWorldVerification ? ", QA world loaded and photographed" : "")}{(scripted ? ", probe script finished with 0 failed" : "")}"
     : $"core initialized, {string.Join(", ", requiredCore.Select(m => m.TrimEnd(':')))} and the title inventory snapshot passed";
@@ -1779,6 +1784,8 @@ sealed class ForgeModList : LoadedModList
     /// <summary>N of "has successfully loaded N mods": FML finished and the title screen follows.</summary>
     public int? LoadedMods { get; private set; }
     public bool OptiFineTweaker { get; private set; }
+    /// <summary>Ionium's tweaker was installed (it is not an FML mod, so it is not in the mod list).</summary>
+    public bool IoniumTweaker { get; private set; }
     /// <summary>The OptiFine FML detected ("OptiFine_1.8.9_HD_U_M5"), or null.</summary>
     public string? OptiFine { get; private set; }
     public List<string> Errors { get; } = new();
@@ -1788,6 +1795,7 @@ sealed class ForgeModList : LoadedModList
         if (Identified.Match(line) is { Success: true } identified) Declared = int.Parse(identified.Groups[1].Value);
         else if (Loaded.Match(line) is { Success: true } loaded) LoadedMods = int.Parse(loaded.Groups[1].Value);
         else if (Tweaker.IsMatch(line)) OptiFineTweaker = true;
+        else if (line.Contains("Installing tweaker org.taumc.ionium.launch.IoniumTweaker", StringComparison.Ordinal)) IoniumTweaker = true;
         else if (Detected.Match(line) is { Success: true } detected) OptiFine = detected.Groups[1].Value;
         // Mixin 0.8 names a config without "minVersion" at ERROR level. Without Essential, Resourcify logs
         // "Mixin apply failed ... OptifineGuiOFMixin" (harmless optional mixin; Resourcify functions normally).

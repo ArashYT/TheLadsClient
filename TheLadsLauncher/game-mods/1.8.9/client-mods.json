@@ -61,6 +61,22 @@
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/notdevcody/pylon",
       "projectUrl": "https://modrinth.com/mod/pylon"
+    },
+    {
+      "projectId": "IONNetworkTeam/Ionium",
+      "projectSlug": "ionium",
+      "name": "Ionium (fast renderer: switches OptiFine and shaders off)",
+      "modId": "ionium",
+      "versionId": "v0.1.0-pre.3",
+      "version": "0.1.0-pre.3",
+      "fileName": "ionium-0.1.0-pre.3-forge-1.8.9.jar",
+      "url": "https://github.com/IONNetworkTeam/Ionium/releases/download/v0.1.0-pre.3/ionium-0.1.0-pre.3-forge-1.8.9.jar",
+      "sha512": "0ff2622e82ebce1135359610e95a2422abc7426e75246d707735e9903bf14cf83a4f1a40ad9edf9aafea445d95f7bf377d99b9bb498d3abd2e2c9bdea3d5bdf4",
+      "size": 25349021,
+      "license": "LGPL-3.0-only",
+      "sourceUrl": "https://github.com/IONNetworkTeam/Ionium",
+      "projectUrl": "https://github.com/IONNetworkTeam/Ionium",
+      "defaultEnabled": false
     }
   ],
   "retired": [
