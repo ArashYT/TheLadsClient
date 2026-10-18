@@ -1,0 +1,8 @@
+{
+  "key.ladssmp.vein_mining": "Vein Mining",
+  "key.ladssmp.cycle_shape": "Cycle Vein Mining Shape",
+  "ladssmp.vein_mining.shape.shapeless": "Shapeless",
+  "ladssmp.vein_mining.shape.small_tunnel": "Small Tunnel (1x2)",
+  "ladssmp.vein_mining.shape.tunnel_3x3": "3x3 Mining Tunnel",
+  "ladssmp.vein_mining.shape_changed": "Vein Mining Shape: %s"
+}

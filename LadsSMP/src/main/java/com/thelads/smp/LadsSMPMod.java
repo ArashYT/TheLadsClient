@@ -33,6 +33,7 @@ public final class LadsSMPMod implements ModInitializer {
         NameTagTweaksManager.init();
         EnchantingCommandsManager.init();
         LoginProtectionManager.init();
+        com.thelads.smp.features.arise.nb8.VeinMiningFeatures.init();
 
         // Sanitize player inventory immediately upon joining the server
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {

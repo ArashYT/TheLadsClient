@@ -15,10 +15,14 @@
   "entrypoints": {
     "main": [
       "com.thelads.smp.LadsSMPMod"
+    ],
+    "client": [
+      "com.thelads.smp.features.arise.nb8.client.AriseNB8Client"
     ]
   },
   "mixins": [
-    "ladssmp.mixins.json"
+    "ladssmp.mixins.json",
+    "ladssmp.arise-nb8.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.19.0",
@@ -27,6 +31,8 @@
     "fabric-api": "*"
   },
   "provides": [
+    "ftbultimine",
+    "oreharvester",
     "w2pets",
     "w2w2",
     "portalsgui",
