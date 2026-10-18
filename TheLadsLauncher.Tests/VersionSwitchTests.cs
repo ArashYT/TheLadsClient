@@ -75,7 +75,7 @@ public class VersionSwitchTests
     }
 
     [Theory]
-    [InlineData("1.8.9", 8, false)]
+    [InlineData("1.8.9", 25, false)]
     [InlineData("1.20.1", 17, true)]
     [InlineData("26.3", 25, true)]
     public void ApplyMakesTheChosenVersionsProfileActive(string version, int java, bool fabric)
@@ -96,7 +96,7 @@ public class VersionSwitchTests
     }
 
     [Theory]
-    [InlineData("1.8.9", 8, false)]
+    [InlineData("1.8.9", 25, false)]
     [InlineData("1.20.1", 17, true)]
     [InlineData("26.3", 25, true)]
     public void ADeletedStandardProfileIsMadeAgainWithCoresLoaderAndJava(string version, int java, bool fabric)

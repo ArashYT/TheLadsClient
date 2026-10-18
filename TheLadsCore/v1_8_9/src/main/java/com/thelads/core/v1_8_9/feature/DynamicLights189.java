@@ -62,5 +62,8 @@ public final class DynamicLights189 {
         }
     }
 
+    /** Whether it registered as built in (OptiFine's dynamic lights setting found). */
+    public static boolean available() { return setting != null; }
+
     static DynamicLightsModule module() { return (DynamicLightsModule) Options189.module(DynamicLightsModule.NAME); }
 }

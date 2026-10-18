@@ -20,6 +20,8 @@ namespace TheLadsLauncher.Services;
 public static class OptiFineInstaller
 {
     public const string ModId = "optifine";
+    /// <summary>The opt-in 1.8.9 renderer in client-mods.json (Ionium: Celeritas for Forge 1.8.9); OptiFine is off while it is on.</summary>
+    public const string IoniumModId = "ionium";
     public const string Version = "1.8.9_HD_U_M6_pre2";
 
     /// <summary>The one jar the launcher accepts. Tests and the sandbox forced-failure run pass another.</summary>
@@ -73,8 +75,31 @@ public static class OptiFineInstaller
                     || p.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase))
                 .Where(p => ModInventoryService.ScanFor(p, GameVersionPolicy.ForgeMinecraftVersion, cancellationToken).Info?.Id == ModId).ToList();
             var enabled = copies.Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)).ToList();
+            // Ionium (the opt-in Celeritas renderer) refuses to start next to OptiFine: while it is on, every OptiFine is switched off,
+            // and the marker brings it back once Ionium is off again (the disk state alone would keep it off).
+            var offForIonium = ClientModInstaller.SafeChild(game, Path.Combine(game, ".lads-mod-cache", "optifine-off-for-ionium"));
+            if (ModPreferences.Load(game).GetEnabled(IoniumModId, null) == true)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(offForIonium)!);
+                File.WriteAllText(offForIonium, "");
+                foreach (var jar in enabled)
+                {
+                    var off = jar + ".disabled";
+                    if (File.Exists(off))
+                    {
+                        var backup = ClientModInstaller.SafeChild(game, Path.Combine(game, ".lads-mod-cache", $"previous-{ModId}-{Guid.NewGuid():N}.jar"));
+                        Directory.CreateDirectory(Path.GetDirectoryName(backup)!);
+                        File.Move(off, backup);
+                    }
+                    File.Move(jar, off);
+                }
+                status?.Invoke("OptiFine is off while Ionium renders this profile.");
+                return null;
+            }
+            var backFromIonium = File.Exists(offForIonium);
+            if (backFromIonium) File.Delete(offForIonium);
             // As for pack mods: the Mods page choice, else the disk state (only switched-off copies: off).
-            if (!(ModPreferences.Load(game).GetEnabled(ModId, null) ?? (copies.Count == 0 || enabled.Count > 0)))
+            if (!(ModPreferences.Load(game).GetEnabled(ModId, null) ?? (backFromIonium || copies.Count == 0 || enabled.Count > 0)))
             {
                 status?.Invoke("OptiFine is switched off for this profile.");
                 return null;

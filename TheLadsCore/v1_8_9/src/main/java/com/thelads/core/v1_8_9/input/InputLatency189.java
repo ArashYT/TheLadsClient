@@ -7,7 +7,6 @@ import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GLContext;
-import org.lwjgl.opengl.GLSync;
 
 /**
  * Built-in input-latency pacing for 1.8.9 (the Reflex AntiLag remake; it replaces the frame pacing that 1.7.3 switched off, which
@@ -25,7 +24,7 @@ public final class InputLatency189 {
     private static final Logger LOGGER = LogManager.getLogger("TheLadsCore-1.8.9");
     static final FramePacer PACER = new FramePacer();
     private static boolean reflex = !"false".equalsIgnoreCase(System.getProperty("lads.reflex")), checked;
-    private static GLSync previous, older;
+    private static Object previous, older; // GlFence189 fences
     /** QA: Probe145 and ProbeInput189 pause the pacing for their with/without comparisons; ProbeInput189's latency meter. */
     public static boolean qaPaused;
     static LatencyMeter qaMeter;
@@ -42,8 +41,7 @@ public final class InputLatency189 {
 
     /** QA: input-to-GPU-done measurement with its own fences (ProbeInput189). */
     public static LatencyMeter meter() {
-        if (qaMeter == null) qaMeter = new LatencyMeter(() -> GL32.glFenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0),
-            fence -> done((GLSync) fence), fence -> GL32.glDeleteSync((GLSync) fence));
+        if (qaMeter == null) qaMeter = new LatencyMeter(InputLatency189::newFence, InputLatency189::done, InputLatency189::deleteFence);
         return qaMeter;
     }
 
@@ -67,7 +65,10 @@ public final class InputLatency189 {
                 LOGGER.info("Lads input: input-latency pacing on.");
             }
             PACER.frameStart(() -> done(previous), () -> done(older));
-            if (Display.isCreated()) Display.processMessages();
+            if (Display.isCreated()) {
+                Display.processMessages();
+                com.thelads.core.v1_8_9.feature.PylonWindow189.afterPump();
+            }
         } catch (Throwable t) {
             stop(t);
         }
@@ -79,9 +80,9 @@ public final class InputLatency189 {
         if (!active() || !checked) return;
         try {
             PACER.frameEnd(done(previous));
-            if (older != null) GL32.glDeleteSync(older);
+            GlFence189.delete(older);
             older = previous;
-            previous = GL32.glFenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+            previous = GlFence189.fence();
         } catch (Throwable t) {
             stop(t);
         }
@@ -92,15 +93,33 @@ public final class InputLatency189 {
         if (qaMeter != null) qaMeter.poll();
     }
 
-    private static boolean done(GLSync fence) {
-        return fence == null || GL32.glClientWaitSync(fence, 0, 0L) != GL32.GL_TIMEOUT_EXPIRED; // signalled, or failed: never wait on it
+    private static Object newFence() {
+        try {
+            return GlFence189.fence();
+        } catch (Throwable t) {
+            throw new IllegalStateException(t);
+        }
+    }
+
+    private static void deleteFence(Object fence) {
+        try {
+            GlFence189.delete(fence);
+        } catch (Throwable ignored) {}
+    }
+
+    private static boolean done(Object fence) {
+        try {
+            return GlFence189.signalled(fence);
+        } catch (Throwable t) {
+            return true; // failed: never wait on it
+        }
     }
 
     private static void stop(Throwable t) {
         reflex = false;
         try {
-            if (older != null) GL32.glDeleteSync(older);
-            if (previous != null) GL32.glDeleteSync(previous);
+            GlFence189.delete(older);
+            GlFence189.delete(previous);
         } catch (Throwable ignored) {}
         older = previous = null;
         LOGGER.warn("Input-latency pacing failed; vanilla frame timing from now: " + t);

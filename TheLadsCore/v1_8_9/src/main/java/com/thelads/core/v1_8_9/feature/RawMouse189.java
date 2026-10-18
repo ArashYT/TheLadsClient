@@ -52,7 +52,10 @@ public final class RawMouse189 extends MouseHelper {
 
     @Override
     public void mouseXYChange() {
-        if (pumpInput) Display.processMessages(); // pumps the window's input and Mouse.poll()s it
+        if (pumpInput) { // pumps the window's input and Mouse.poll()s it
+            Display.processMessages();
+            PylonWindow189.afterPump();
+        }
         int lwjglX = Mouse.getDX(), lwjglY = Mouse.getDY();
         int[] raw = rawInputOn() ? pollRaw() : null;
         boolean rawMoved = raw != null && (raw[0] != 0 || raw[1] != 0);

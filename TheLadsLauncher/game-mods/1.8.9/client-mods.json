@@ -46,6 +46,37 @@
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": null,
       "projectUrl": "https://modrinth.com/mod/xaeros-minimap"
+    },
+    {
+      "projectId": "wx17t6U9",
+      "projectSlug": "pylon",
+      "name": "Pylon",
+      "modId": "pylon",
+      "versionId": "DMvW1Jvx",
+      "version": "0.2.2",
+      "fileName": "pylon-0.2.2.jar",
+      "url": "https://cdn.modrinth.com/data/wx17t6U9/versions/DMvW1Jvx/pylon-0.2.2.jar",
+      "sha512": "aed778b68c861debfe6ed4a7aae320350c119fc40bebeac29f38a7f56d4454ca793455e476c23583eacb1444fee5ddbb7407c9abdfbd178a9c823042dc2d27c1",
+      "size": 13070655,
+      "license": "LGPL-3.0-only",
+      "sourceUrl": "https://github.com/notdevcody/pylon",
+      "projectUrl": "https://modrinth.com/mod/pylon"
+    },
+    {
+      "projectId": "IONNetworkTeam/Ionium",
+      "projectSlug": "ionium",
+      "name": "Ionium (fast renderer: switches OptiFine and shaders off)",
+      "modId": "ionium",
+      "versionId": "v0.1.0-pre.3",
+      "version": "0.1.0-pre.3",
+      "fileName": "ionium-0.1.0-pre.3-forge-1.8.9.jar",
+      "url": "https://github.com/IONNetworkTeam/Ionium/releases/download/v0.1.0-pre.3/ionium-0.1.0-pre.3-forge-1.8.9.jar",
+      "sha512": "0ff2622e82ebce1135359610e95a2422abc7426e75246d707735e9903bf14cf83a4f1a40ad9edf9aafea445d95f7bf377d99b9bb498d3abd2e2c9bdea3d5bdf4",
+      "size": 25349021,
+      "license": "LGPL-3.0-only",
+      "sourceUrl": "https://github.com/IONNetworkTeam/Ionium",
+      "projectUrl": "https://github.com/IONNetworkTeam/Ionium",
+      "defaultEnabled": false
     }
   ],
   "retired": [

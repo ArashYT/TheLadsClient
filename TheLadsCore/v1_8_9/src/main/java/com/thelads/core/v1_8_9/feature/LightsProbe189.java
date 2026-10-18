@@ -44,6 +44,10 @@ final class LightsProbe189 {
     private LightsProbe189() {}
 
     private static boolean start(Minecraft mc) {
+        if (!DynamicLights189.available()) { // OptiFine off (Ionium, the opt-in renderer): the module is listed as unavailable
+            check(!ModuleSupport.isBuiltIn(DynamicLightsModule.NAME), "Dynamic Lights is unavailable while OptiFine is not loaded");
+            return true;
+        }
         DynamicLightsModule module = DynamicLights189.module();
         check(ModuleSupport.isBuiltIn(DynamicLightsModule.NAME) && module.hidden(module.getOption("Light Radius"))
             && !module.hidden(module.getOption("Quality")), "Dynamic Lights is built in with OptiFine and shows only Quality");
@@ -64,6 +68,7 @@ final class LightsProbe189 {
     }
 
     private static boolean off(Minecraft mc) throws Exception {
+        if (!DynamicLights189.available()) return true;
         check(setting(mc) == DynamicLightsModule.OPTIFINE_OFF && lights() == 0, "Dynamic Lights off: OptiFine's Dynamic Lights are Off, no lights");
         offBrightness = shot(mc, "170-lights-off");
         DynamicLightsModule module = DynamicLights189.module();
@@ -73,6 +78,7 @@ final class LightsProbe189 {
     }
 
     private static boolean on(Minecraft mc) throws Exception {
+        if (!DynamicLights189.available()) return true;
         check(setting(mc) == DynamicLightsModule.OPTIFINE_FANCY && lights() > 0,
             "Dynamic Lights on (Fancy): OptiFine's Dynamic Lights are Fancy and light the held torch (" + lights() + " lights)");
         String saved = new String(Files.readAllBytes(new File(mc.mcDataDir, "optionsof.txt").toPath()), StandardCharsets.UTF_8);
@@ -84,11 +90,13 @@ final class LightsProbe189 {
 
     /** As OptiFine's Video Settings set it: Fast. */
     private static boolean fast(Minecraft mc) throws Exception {
+        if (!DynamicLights189.available()) return true;
         field().setInt(mc.gameSettings, DynamicLightsModule.OPTIFINE_FAST);
         return after(3);
     }
 
     private static boolean followed(Minecraft mc) throws Exception {
+        if (!DynamicLights189.available()) return true;
         DynamicLightsModule module = DynamicLights189.module();
         check(module.isEnabled() && !module.fancy(), "OptiFine's Video Settings set to Fast: the module follows (on, Fast)");
         field().setInt(mc.gameSettings, DynamicLightsModule.OPTIFINE_OFF);
@@ -96,6 +104,7 @@ final class LightsProbe189 {
     }
 
     private static boolean restore(Minecraft mc) throws Exception {
+        if (!DynamicLights189.available()) return true;
         check(!DynamicLights189.module().isEnabled(), "OptiFine's Video Settings set to Off: the module follows (off)");
         stop();
         return after(5);

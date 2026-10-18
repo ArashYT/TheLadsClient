@@ -70,7 +70,7 @@ public final class Borderless189 {
     public static boolean toggle(Minecraft mc) {
         try {
             if (active) leave(); else enter();
-        } catch (Exception e) {
+        } catch (Exception | LinkageError e) { // LinkageError: a window API the running LWJGL lacks never crashes F11
             LOGGER.error("Couldn't toggle borderless fullscreen", e);
         }
         mc.gameSettings.fullScreen = active;
@@ -82,15 +82,17 @@ public final class Borderless189 {
     }
 
     private static void enter() throws Exception {
-        windowX = Display.getX();
-        windowY = Display.getY();
+        int[] position = position();
+        windowX = position[0];
+        windowY = position[1];
         windowWidth = Display.getWidth();
         windowHeight = Display.getHeight();
         DisplayMode monitor = Display.getDesktopDisplayMode();
         System.setProperty(UNDECORATED, "true");
         Display.setResizable(false); // a resize frame would be a border
-        Display.setLocation(0, 0);
+        move(0, 0);
         Display.setDisplayMode(new DisplayMode(monitor.getWidth(), monitor.getHeight()));
+        if (PylonWindow189.PRESENT) PylonWindow189.bordered(false); // SDL ignores LWJGL 2's undecorated property
         width = monitor.getWidth();
         height = monitor.getHeight();
         extraRows = 0;
@@ -98,8 +100,9 @@ public final class Borderless189 {
             boolean trueBorderless = trueBorderless();
             int add = trueBorderless ? 0 : BorderlessWindow.EXTRA_HEIGHT;
             try {
-                // SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE
-                User32.INSTANCE.SetWindowPos(hwnd(), null, 0, 0, width, height + add, 0x16);
+                // Pylon's Display learns sizes from SDL only: resize through SDL there
+                if (PylonWindow189.PRESENT) PylonWindow189.size(width, height + add);
+                else User32.INSTANCE.SetWindowPos(hwnd(), null, 0, 0, width, height + add, 0x16); // SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE
                 extraRows = add;
                 height += extraRows;
             } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
@@ -111,14 +114,29 @@ public final class Borderless189 {
 
     private static void leave() throws Exception {
         System.setProperty(UNDECORATED, "false");
+        if (PylonWindow189.PRESENT) PylonWindow189.bordered(true);
         active = false;
-        Display.setLocation(windowX, windowY);
+        move(windowX, windowY);
         Display.setDisplayMode(new DisplayMode(Math.max(1, windowWidth), Math.max(1, windowHeight)));
         resizable();
     }
 
+    /** The window's desktop position: LWJGL 2's, or Pylon's SDL window's. */
+    static int[] position() throws ReflectiveOperationException {
+        return PylonWindow189.PRESENT ? PylonWindow189.position() : new int[] { Display.getX(), Display.getY() };
+    }
+
+    private static void move(int x, int y) throws ReflectiveOperationException {
+        if (PylonWindow189.PRESENT) PylonWindow189.move(x, y); else Display.setLocation(x, y);
+    }
+
+    static boolean resizableNow() throws ReflectiveOperationException {
+        return PylonWindow189.PRESENT ? PylonWindow189.resizable() : Display.isResizable();
+    }
+
     /** LWJGL 2's native window (Windows): WindowsDisplay keeps its handle in a private field. */
     static WinDef.HWND hwnd() throws ReflectiveOperationException {
+        if (PylonWindow189.PRESENT) return new WinDef.HWND(new Pointer(PylonWindow189.hwnd()));
         Field impl = Display.class.getDeclaredField("display_impl");
         impl.setAccessible(true);
         Object display = impl.get(null);

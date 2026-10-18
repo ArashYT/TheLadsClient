@@ -326,6 +326,12 @@ public final class CoreProbe {
     }
 
     private static boolean ofDefaults(Minecraft mc) throws Exception {
+        try {
+            Class.forName("Config");
+        } catch (ClassNotFoundException noOptiFine) { // Ionium (the opt-in renderer) switches OptiFine off
+            LOG.info("Lads 1.8.9 core probe: OptiFine defaults skipped: OptiFine is not loaded");
+            return true;
+        }
         Probe192OfDefaults.run(mc);
         return true;
     }
@@ -762,7 +768,10 @@ public final class CoreProbe {
         check(mismatched.isEmpty(), "every catalog row matches this game's registrations and switchability " + mismatched);
         java.util.Set<String> expected = new java.util.HashSet<>(Arrays.asList(NativeHud.MODULES));
         expected.addAll(Arrays.asList(com.thelads.core.v1_8_9.TheLadsCore189.GAMEPLAY_MODULES));
-        for (String[] module : com.thelads.core.v1_8_9.TheLadsCore189.LIMITED) expected.add(module[0]);
+        // DynamicLights switches OptiFine's: unavailable while OptiFine is off (Ionium, the opt-in renderer).
+        boolean optiFine = com.thelads.core.v1_8_9.feature.DynamicLights189.available();
+        for (String[] module : com.thelads.core.v1_8_9.TheLadsCore189.LIMITED)
+            if (optiFine || !module[0].equals("DynamicLights")) expected.add(module[0]);
         if (SkinLayers189.LOADED) expected.add("SkinLayers");
         expected.add(com.thelads.core.client.ParticleCore.MODULE); // ParticleCore189 (1.8.5)
         // 1.9.1: World189 (Wavy Capes, TNT Timer) and Hypixel189 (the Hypixel modules) register theirs as built in too.
@@ -771,9 +780,13 @@ public final class CoreProbe {
         // 1.9.11: the Lads Jade panel (unless Waila is installed) and the Minimap switch over the pack's Xaero's Minimap.
         if (!Loader.isModLoaded("Waila")) expected.add(com.thelads.core.v1_8_9.feature.jade.Jade189.MODULE);
         if (Minimap189.integrated()) expected.add(Minimap189.NAME);
+        java.util.Set<String> missing = new java.util.TreeSet<>(expected), extra = new java.util.TreeSet<>(builtInNames);
+        missing.removeAll(builtInNames);
+        extra.removeAll(expected);
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
-            "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames);
-        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + 5 /* DisableNarrator, Async, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
+            "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames
+            + (missing.isEmpty() && extra.isEmpty() ? "" : " (missing " + missing + ", not expected " + extra + ")"));
+        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + (optiFine ? 5 : 6) /* + DynamicLights without OptiFine; DisableNarrator, Async, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
             && pending == modules.size() - unavailable - builtIn - external, "catalog statuses: " + builtIn + " built in, " + unavailable + " unavailable, "
             + external + " external, " + pending + " pending");
         mc.displayGuiScreen(null); // Back to Game: the HUD checks run in gameplay
@@ -967,6 +980,10 @@ public final class CoreProbe {
 
     /** One key event (a held key: press now, release later), queued as Keyboard.poll() stores it. */
     static void key(int key, char character, boolean down) throws Exception {
+        if (PYLON) {
+            pylonEvent("KeyboardSdl", "keycode", key, "state", (byte) (down ? 1 : 0), "character", (int) character, "nanos", System.nanoTime(), "repeat", false);
+            return;
+        }
         ByteBuffer events = queue(Keyboard.class);
         events.compact();
         events.putInt(key).put((byte) (down ? 1 : 0)).putInt(character).putLong(System.nanoTime()).put((byte) 0);
@@ -975,6 +992,10 @@ public final class CoreProbe {
 
     /** One mouse-wheel event in gameplay (120 is one notch on Windows), queued as Mouse.poll() stores it. */
     static void wheel(int dwheel) throws Exception {
+        if (PYLON) {
+            pylonEvent("MouseSdl", "button", (byte) -1, "state", false, "x", (double) Mouse.getX(), "y", (double) Mouse.getY(), "wheelDelta", (double) dwheel, "nanos", System.nanoTime());
+            return;
+        }
         ByteBuffer events = queue(Mouse.class);
         events.compact();
         events.put((byte) -1).put((byte) 0).putInt(0).putInt(0).putInt(dwheel).putLong(System.nanoTime());
@@ -1006,10 +1027,30 @@ public final class CoreProbe {
         GuiScreen screen = mc.currentScreen;
         int x = screen == null ? 0 : (guiX * mc.displayWidth + mc.displayWidth / 2) / screen.width;
         int y = screen == null ? 0 : ((screen.height - 1 - guiY) * mc.displayHeight + mc.displayHeight / 2) / screen.height;
+        if (PYLON) {
+            pylonEvent("MouseSdl", "button", (byte) button, "state", down, "x", (double) x, "y", (double) y, "wheelDelta", (double) wheel, "nanos", System.nanoTime());
+            return;
+        }
         ByteBuffer events = queue(Mouse.class);
         events.compact();
         events.put((byte) button).put((byte) (down ? 1 : 0)).putInt(x).putInt(y).putInt(wheel).putLong(System.nanoTime());
         events.flip();
+    }
+
+    /** Pylon (LWJGL 3 + SDL3 in place of LWJGL 2) has no readBuffer: its own input queue takes the same events. */
+    static final boolean PYLON = PylonWindow189.PRESENT;
+
+    private static void pylonEvent(String device, Object... fields) throws Exception {
+        Class<?> type = Class.forName("pl.tomgirl.pylon.window." + device);
+        Field instance = type.getDeclaredField("INSTANCE");
+        instance.setAccessible(true);
+        Field events = type.getDeclaredField("events");
+        events.setAccessible(true);
+        Object queue = events.get(instance.get(null));
+        java.lang.reflect.Method claim = queue.getClass().getDeclaredMethod("claim");
+        claim.setAccessible(true);
+        Object event = claim.invoke(queue);
+        for (int i = 0; i < fields.length; i += 2) event.getClass().getField((String) fields[i]).set(event, fields[i + 1]);
     }
 
     private static ByteBuffer queue(Class<?> device) throws Exception {

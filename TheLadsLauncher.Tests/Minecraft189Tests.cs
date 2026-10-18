@@ -17,7 +17,7 @@ public class Minecraft189Tests
     // ------------------------------------------------------------------ version policy and Java
 
     [Fact]
-    public void ForgeVersionAndExactlyJavaEight()
+    public void ForgeVersionOnJava25Through8to25()
     {
         var profile = new LauncherProfile { MinecraftVersion = "1.8.9", FabricVersion = null };
         Assert.Equal("1.8.9-forge1.8.9-11.15.1.2318-1.8.9", GameVersionPolicy.ResolveVersionId(profile));
@@ -26,18 +26,52 @@ public class Minecraft189Tests
         profile.FabricVersion = "0.19.5";
         Assert.Throws<ArgumentException>(() => GameVersionPolicy.ResolveVersionId(profile));
 
-        Assert.Equal(8, GameVersionPolicy.GetRequiredJavaMajor("1.8.9"));
-        Assert.Equal(8, GameVersionPolicy.GetRequiredJavaMajor("1.8.9", 21)); // a stale profile value never raises it
-        Assert.Equal(8, GameVersionPolicy.GetMaximumJavaMajor("1.8.9"));
-        Assert.Null(GameVersionPolicy.GetMaximumJavaMajor("26.3"));
-        // "actual < required" alone would accept Java 21 and 25, which crash Forge 1.8.9's LaunchWrapper.
-        Assert.True(GameVersionPolicy.AcceptsJava("1.8.9", 8, 8));
-        foreach (int? wrong in new int?[] { 7, 9, 17, 21, 25, null })
-            Assert.False(GameVersionPolicy.AcceptsJava("1.8.9", 8, wrong));
-        Assert.True(GameVersionPolicy.AcceptsJava("1.21.1", 21, 25)); // newer versions keep "or newer"
+        Assert.Equal(25, GameVersionPolicy.GetRequiredJavaMajor("1.8.9"));
+        Assert.Equal(25, GameVersionPolicy.GetRequiredJavaMajor("1.8.9", 8)); // vanilla 1.8.9's manifest says 8
+        Assert.True(GameVersionPolicy.AcceptsJava("1.8.9", 25, 25));
+        Assert.True(GameVersionPolicy.AcceptsJava("1.8.9", 25, 26));
+        foreach (int? wrong in new int?[] { 8, 17, 21, null })
+            Assert.False(GameVersionPolicy.AcceptsJava("1.8.9", 25, wrong));
+        Assert.True(GameVersionPolicy.AcceptsJava("1.21.1", 21, 25));
         Assert.False(GameVersionPolicy.AcceptsJava("26.3", 25, 21));
-        Assert.Equal("Java 8 exactly", GameVersionPolicy.DescribeJava("1.8.9", 8));
+        Assert.Equal("Java 25 or newer", GameVersionPolicy.DescribeJava("1.8.9", 25));
         Assert.Equal("Java 21 or newer", GameVersionPolicy.DescribeJava("1.21.1", 21));
+    }
+
+    [Fact]
+    public async Task ForgeManifestIsRewrittenFor8to25AndLaunchesThroughRetroFuturaBootstrap()
+    {
+        const string vanilla = """
+            {"id":"1.8.9","assets":"1.8","mainClass":"net.minecraft.client.main.Main","type":"release",
+             "minecraftArguments":"--username ${auth_player_name} --version ${version_name}","javaVersion":{"component":"jre-legacy","majorVersion":8},
+             "libraries":[{"name":"org.apache.commons:commons-lang3:3.3.2"},{"name":"com.google.code.gson:gson:2.2.4"},{"name":"com.google.guava:guava:17.0"}]}
+            """;
+        const string forge = """
+            {"id":"1.8.9-forge1.8.9-11.15.1.2318-1.8.9","inheritsFrom":"1.8.9","jar":"1.8.9","mainClass":"net.minecraft.launchwrapper.Launch",
+             "minecraftArguments":"--username ${auth_player_name} --version ${version_name} --tweakClass net.minecraftforge.fml.common.launcher.FMLTweaker",
+             "libraries":[{"name":"net.minecraftforge:forge:1.8.9-11.15.1.2318-1.8.9","url":"https://maven.minecraftforge.net/"},
+              {"name":"net.minecraft:launchwrapper:1.12","serverreq":true},{"name":"org.ow2.asm:asm-all:5.0.3","serverreq":true}]}
+            """;
+        var upgraded = LaunchService.With8to25(forge);
+        Assert.Equal(upgraded, LaunchService.With8to25(upgraded)); // installs once, then leaves it alone
+
+        using var dir = new TestDirectory();
+        var path = new CmlLib.Core.MinecraftPath(dir.Path);
+        foreach (var (id, json) in new[] { ("1.8.9", vanilla), (GameVersionPolicy.ForgeVersionId, upgraded) })
+            Write(Path.Combine(path.Versions, id, id + ".json"), json);
+        var parameters = CmlLib.Core.MinecraftLauncherParameters.CreateDefault(path);
+        parameters.VersionLoader = new CmlLib.Core.VersionLoader.LocalJsonVersionLoader(path);
+        var options = new CmlLib.Core.ProcessBuilder.MLaunchOption { Session = CmlLib.Core.Auth.MSession.CreateOfflineSession("QaPlayer"), JavaPath = "java", NativesDirectory = dir.Path };
+        var args = (await new CmlLib.Core.MinecraftLauncher(parameters).BuildProcessAsync(GameVersionPolicy.ForgeVersionId, options)).StartInfo.Arguments;
+
+        Assert.Contains("-Djava.system.class.loader=com.gtnewhorizons.retrofuturabootstrap.RfbSystemClassLoader", args);
+        Assert.Contains(" com.gtnewhorizons.retrofuturabootstrap.Main ", args);
+        Assert.Contains("--tweakClass net.minecraftforge.fml.common.launcher.FMLTweaker", args); // Forge still loads as before
+        var classpath = Regex.Match(args, @"-cp (\S+)").Groups[1].Value.Split(';').Select(Path.GetFileName).ToList();
+        foreach (var jar in new[] { "8to25-1.2.2.jar", "RetroFuturaBootstrap-1.1.2.jar", "asm-9.10.1.jar", "commons-lang3-3.18.0.jar", "gson-2.13.2.jar", "guava-17.0.jar", "forge-1.8.9-11.15.1.2318-1.8.9.jar" })
+            Assert.Contains(jar, classpath);
+        foreach (var jar in new[] { "launchwrapper-1.12.jar", "asm-all-5.0.3.jar", "commons-lang3-3.3.2.jar", "gson-2.2.4.jar" })
+            Assert.DoesNotContain(jar, classpath);
     }
 
     [Theory]
@@ -125,13 +159,13 @@ public class Minecraft189Tests
     // ------------------------------------------------------------------ profiles
 
     [Fact]
-    public void DefaultProfileIsAddedAndSavedOnesAreRepairedToForgeAndJavaEight()
+    public void DefaultProfileIsAddedAndSavedOnesAreRepairedToForgeAndJava25()
     {
         using var dir = new TestDirectory();
         var global = new SharedContentService(Path.Combine(dir.Path, "global"));
         var fresh = new ProfileService(new PathService(Path.Combine(dir.Path, "fresh")), global);
         var profile = Assert.Single(fresh.GetProfiles(), p => p.MinecraftVersion == "1.8.9");
-        Assert.Equal(("1.8.9", "The Lads Client 1.8.9", (string?)null, 8, false), (profile.Id, profile.Name, profile.FabricVersion, profile.JavaMajorVersion, profile.IsIsolated));
+        Assert.Equal(("1.8.9", "The Lads Client 1.8.9", (string?)null, 25, false), (profile.Id, profile.Name, profile.FabricVersion, profile.JavaMajorVersion, profile.IsIsolated));
         Assert.Equal(GameVersionPolicy.ForgeVersionId, GameVersionPolicy.ResolveVersionId(profile));
         Assert.Equal("26.3", fresh.GetActiveProfile().Id);
 
@@ -139,12 +173,12 @@ public class Minecraft189Tests
         var upgraded = Path.Combine(dir.Path, "upgraded");
         Write(Path.Combine(upgraded, "profiles.json"), JsonSerializer.Serialize(new { ActiveProfileId = "26.3", Profiles = new[] {
             new LauncherProfile { Id = "26.3", Name = "Main", MinecraftVersion = "26.3", FabricVersion = "0.19.5", JavaMajorVersion = 25 } } }));
-        Assert.Contains(new ProfileService(new PathService(upgraded), global).GetProfiles(), p => p.Id == "1.8.9" && p.JavaMajorVersion == 8);
+        Assert.Contains(new ProfileService(new PathService(upgraded), global).GetProfiles(), p => p.Id == "1.8.9" && p.JavaMajorVersion == 25);
         var handMade = Path.Combine(dir.Path, "hand-made");
         Write(Path.Combine(handMade, "profiles.json"), JsonSerializer.Serialize(new { ActiveProfileId = "mine", Profiles = new[] {
-            new LauncherProfile { Id = "mine", Name = "Mine", MinecraftVersion = "1.8.9", FabricVersion = "0.19.5", JavaMajorVersion = 25 } } }));
+            new LauncherProfile { Id = "mine", Name = "Mine", MinecraftVersion = "1.8.9", FabricVersion = "0.19.5", JavaMajorVersion = 8, CustomJavaPath = @"C:\jdk8in\javaw.exe" } } }));
         var repaired = new ProfileService(new PathService(handMade), global);
-        Assert.Equal(("mine", (string?)null, 8), (repaired.GetActiveProfile().Id, repaired.GetActiveProfile().FabricVersion, repaired.GetActiveProfile().JavaMajorVersion));
+        Assert.Equal(("mine", (string?)null, 25, (string?)null), (repaired.GetActiveProfile().Id, repaired.GetActiveProfile().FabricVersion, repaired.GetActiveProfile().JavaMajorVersion, repaired.GetActiveProfile().CustomJavaPath));
 
         // An unusable active profile falls back to a Fabric profile, never to 1.8.9, even when 1.8.9 comes first.
         var broken = Path.Combine(dir.Path, "broken");
@@ -612,6 +646,15 @@ public class Minecraft189Tests
         File.WriteAllBytes(box.Mod("OldTweak.jar.disabled"), ModSandbox.PlainJar());
         File.WriteAllBytes(box.Mod("fabricmod.jar"), ModSandbox.Jar("fabricmod"));
         File.WriteAllBytes(box.Mod("broken.jar"), new byte[] { 1, 2, 3 });
+        // A multi-loader jar (Pylon ships fabric.mod.json and mcmod.info) is the Forge mod its mcmod.info names.
+        using (var both = new MemoryStream())
+        {
+            both.Write(ModSandbox.Jar("pylon"));
+            using (var zip = new ZipArchive(both, ZipArchiveMode.Update, true))
+            using (var writer = new StreamWriter(zip.CreateEntry("mcmod.info").Open(), Encoding.UTF8))
+                writer.Write("[{\"modid\": \"pylon\", \"name\": \"Pylon\", \"mcversion\": \"*\"}]");
+            File.WriteAllBytes(box.Mod("pylon-0.2.2.jar"), both.ToArray());
+        }
 
         var inventory = await new ModInventoryService().BuildAsync(box.Bundle, box.Game, "1.8.9");
         await new ModInventoryService().WriteSnapshotAsync(inventory);
@@ -624,9 +667,10 @@ public class Minecraft189Tests
         Assert.Equal(ModEntryStatus.Installed, Row(inventory, "OptiFine_1.8.9_HD_U_M5").Status);
         Assert.Equal((ModEntryStatus.Disabled, false), (Row(inventory, "OldTweak").Status, Row(inventory, "OldTweak").RequestedEnabled));
         Assert.Equal("Not a loadable Forge mod: it is a Fabric mod. Delete or replace it.", Row(inventory, "fabricmod.jar").Note);
+        Assert.Equal(("Pylon", ModEntryStatus.Installed), (Row(inventory, "pylon").DisplayName, Row(inventory, "pylon").Status));
         Assert.Equal(ModEntryStatus.Invalid, Row(inventory, "broken.jar").Status);
         Assert.Equal(("Forge", "11.15.1.2318"), (Row(inventory, "forge").DisplayName, Row(inventory, "forge").Version));
-        Assert.Equal("8", Row(inventory, "java").Version);
+        Assert.Equal("25+", Row(inventory, "java").Version);
         Assert.DoesNotContain(inventory.Entries, e => e.Id == "fabricloader");
 
         // In a Fabric profile a Forge jar reads exactly as before.
@@ -674,14 +718,15 @@ public class Minecraft189Tests
         var bundle = AppContext.BaseDirectory;
         var manifest = JsonSerializer.Deserialize<ClientModInstaller.Manifest>(File.ReadAllText(Path.Combine(bundle, "game-mods", "1.8.9", "client-mods.json")),
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
-        Assert.Equal(("1.8.9", 3), (manifest.MinecraftVersion, manifest.Mods.Count));
+        Assert.Equal(("1.8.9", 5), (manifest.MinecraftVersion, manifest.Mods.Count)); // Resourcify, 3D Skin Layers, Xaero, Pylon, Ionium (opt-in)
+        Assert.Equal(new[] { "ionium" }, manifest.Mods.Where(m => !m.DefaultEnabled).Select(m => m.ModId));
         Assert.Contains(manifest.Retired ?? new(), r => r.ModId == "essential");
         Assert.DoesNotContain(Directory.EnumerateFiles(Path.Combine(bundle, "game-mods"), "*", SearchOption.AllDirectories),
             file => Path.GetFileName(file).Contains("optifine", StringComparison.OrdinalIgnoreCase)
                 || (file.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) && FabricModMetadata.ReadForgeJar(file)?.Id == OptiFineInstaller.ModId));
 
         using var box = new ModSandbox();
-        box.Choose(("resourcify", false), ("skinlayers3d", false), ("xaerominimap", false));
+        box.Choose(("resourcify", false), ("skinlayers3d", false), ("xaerominimap", false), ("pylon", false));
         await ClientModInstaller.InstallAsync(bundle, box.Game, "1.8.9", httpClient: box.Client());
         Assert.Empty(box.Requests);
         var inventory = await new ModInventoryService().BuildAsync(bundle, box.Game, "1.8.9");
@@ -929,6 +974,32 @@ public class Minecraft189Tests
         Assert.Equal(("OptiFine", OptiFineInstaller.Version, ModOwnership.Pack, ModEntryStatus.Installed), (row.DisplayName, row.Version, row.Ownership, row.Status));
         Assert.Contains("optifine.net", row.Note);
         Assert.Contains(OptiFineInstaller.ModId, ModInventoryView.EnabledJarIds(inventory));
+    }
+
+    [Fact]
+    public async Task OptiFineIsSwitchedOffWhileIoniumIsOnAndComesBackAfter()
+    {
+        using var box = new ModSandbox();
+        var jar = OptiFineJar();
+        var site = new OptiFineNet(jar);
+        var launcher = Path.Combine(box.Root, "launcher");
+        var installed = box.Mod(OptiFineInstaller.DefaultPin.FileName);
+        var messages = new List<string>();
+        Task<string?> Install() => OptiFineInstaller.InstallAsync(launcher, box.Game, Pin(jar), messages.Add, default, new HttpClient(site));
+        Assert.Null(await Install());
+        Assert.True(File.Exists(installed));
+
+        // Ionium refuses to start next to OptiFine: switched on, OptiFine is switched off (renamed, never deleted).
+        box.Choose((OptiFineInstaller.IoniumModId, true));
+        Assert.Null(await Install());
+        Assert.False(File.Exists(installed));
+        Assert.Equal(jar, File.ReadAllBytes(installed + ".disabled"));
+        Assert.Contains(messages, m => m.Contains("Ionium"));
+
+        // Ionium off again: OptiFine comes back without a choice of its own (the disk state alone would keep it off).
+        box.Choose((OptiFineInstaller.IoniumModId, false));
+        Assert.Null(await Install());
+        Assert.Equal(jar, File.ReadAllBytes(installed));
     }
 
     [Theory]

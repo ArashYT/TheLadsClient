@@ -129,32 +129,19 @@ public static class GameVersionPolicy
             "26.2" or "26.3" => 25,
             "1.21.11" or "1.21.1" => 21,
             "1.20.1" => 17,
-            ForgeMinecraftVersion => 8,
+            ForgeMinecraftVersion => 25, // Forge on RetroFuturaBootstrap via 8to25 (LaunchService.With8to25)
             _ => 0
         };
         if (minimum == 0 && manifestJavaMajor == null)
             throw new InvalidOperationException($"Java requirement for Minecraft {minecraftVersion} must come from its version manifest.");
-        var required = Math.Max(minimum, manifestJavaMajor ?? 0);
-        // A stale profile value (e.g. 21 on a 1.8.9 profile) must never pick a runtime the game cannot start on.
-        return GetMaximumJavaMajor(minecraftVersion) is int maximum ? Math.Min(required, maximum) : required;
+        return Math.Max(minimum, manifestJavaMajor ?? 0);
     }
 
-    /// <summary>The newest Java the version starts on, or null for no limit. Forge 1.8.9's LaunchWrapper casts the system class
-    /// loader to URLClassLoader, which it is not since Java 9: Java 9 and newer crash before the game starts.</summary>
-    public static int? GetMaximumJavaMajor(string minecraftVersion) => UsesForge(minecraftVersion) ? 8 : null;
+    /// <summary>Whether a runtime reporting <paramref name="actualJava"/> (null: unknown) can run the version.</summary>
+    public static bool AcceptsJava(string minecraftVersion, int requiredJava, int? actualJava) => actualJava >= requiredJava;
 
-    /// <summary>Whether a runtime reporting <paramref name="actualJava"/> (null: unknown) can run the version: at least the
-    /// required Java and, for 1.8.9, not newer than its maximum.</summary>
-    public static bool AcceptsJava(string minecraftVersion, int requiredJava, int? actualJava) =>
-        actualJava >= requiredJava && !(actualJava > GetMaximumJavaMajor(minecraftVersion));
-
-    /// <summary>"Java 21 or newer", or "Java 8 exactly" for a version with a maximum.</summary>
-    public static string DescribeJava(string minecraftVersion, int requiredJava) => GetMaximumJavaMajor(minecraftVersion) switch
-    {
-        null => $"Java {requiredJava} or newer",
-        int maximum when maximum == requiredJava => $"Java {requiredJava} exactly",
-        int maximum => $"Java {requiredJava} to {maximum}"
-    };
+    /// <summary>"Java 21 or newer".</summary>
+    public static string DescribeJava(string minecraftVersion, int requiredJava) => $"Java {requiredJava} or newer";
 
     internal static void ValidateMinecraftVersion(string minecraftVersion)
     {

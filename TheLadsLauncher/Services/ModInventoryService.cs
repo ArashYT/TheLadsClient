@@ -201,7 +201,8 @@ public sealed class ModInventoryService
         foreach (var entry in manifest?.Mods ?? new List<ClientModInstaller.Entry>())
         {
             if (entries.Any(e => e.Id == entry.ModId && e.Ownership == ModOwnership.Pack)) continue;
-            var requested = Requested(entry.ModId, entry.ProjectId);
+            // Without a copy: the choice, else the pack's default (an opt-in entry such as Ionium is off).
+            var requested = preferences.GetEnabled(entry.ModId, entry.ProjectId) ?? entry.DefaultEnabled;
             var cached = Path.Combine(cache, entry.Sha512 + ".jar");
             var scan = File.Exists(cached) ? Scan(cached, token) : null;
             var info = scan?.Hash != null && ClientModInstaller.SameHash(scan.Hash, entry.Sha512) ? scan.Info : null;
@@ -263,8 +264,7 @@ public sealed class ModInventoryService
         }
 
         const string platformReason = "Platform component; it is not a mod toggle";
-        var java = forge ? GameVersionPolicy.GetRequiredJavaMajor(version).ToString(CultureInfo.InvariantCulture) // exactly
-            : GameVersionPolicy.RequiresBundledCore(version) ? GameVersionPolicy.GetRequiredJavaMajor(version) + "+" : null;
+        var java = GameVersionPolicy.RequiresBundledCore(version) ? GameVersionPolicy.GetRequiredJavaMajor(version) + "+" : null;
         var loader = forge ? ("forge", "Forge", (string?)GameVersionPolicy.ForgeBuild) : ("fabricloader", "Fabric Loader", (string?)null);
         foreach (var (id, name, platformVersion) in new[] { ("minecraft", "Minecraft", (string?)version), loader, ("java", "Java", java) })
             entries.Add(new(id, name, null, platformVersion, null, null, ModOwnership.Platform, ModEntryStatus.Installed, true, true,
@@ -409,7 +409,14 @@ public sealed class ModInventoryService
     private static ScannedJar ForLoader(ScannedJar scan, string path, bool forge)
     {
         if (scan.Info is { } info && info.Forge != forge)
-            return scan with { Info = null, Error = forge ? "it is a Fabric mod" : null };
+        {
+            // A multi-loader jar (Pylon: fabric.mod.json and mcmod.info) is the Forge mod its mcmod.info names on Forge.
+            FabricModInfo? forgeInfo = null;
+            if (forge)
+                try { forgeInfo = FabricModMetadata.ReadForgeJar(path); } catch (Exception e) when (e is InvalidDataException or IOException) { }
+            return forgeInfo != null ? scan with { Info = forgeInfo, Error = null }
+                : scan with { Info = null, Error = forge ? "it is a Fabric mod" : null };
+        }
         if (scan.Info != null || scan.Error != null || !forge) return scan;
         var id = Path.GetFileName(path);
         if (id.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)) id = id[..^".disabled".Length];

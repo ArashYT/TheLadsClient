@@ -543,11 +543,14 @@ public class ProfileService : IProfileService
             }
         }
 
-        // 1.8.9 runs on Forge and exactly Java 8.
+        // 1.8.9 runs on Forge, on Java 25 through 8to25.
         if (GameVersionPolicy.UsesForge(profile.MinecraftVersion)
             && (profile.FabricVersion != null || profile.JavaMajorVersion != GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion)))
         {
             profile.FabricVersion = null;
+            // A custom Java chosen before 1.9.11 had to be Java 8, which 8to25 cannot start: back to the launcher's own Java 25.
+            if (profile.JavaMajorVersion < GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion))
+                profile.CustomJavaPath = null;
             profile.JavaMajorVersion = GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion);
             changed = true;
         }
@@ -613,11 +616,11 @@ public class ProfileService : IProfileService
                 PackwizUrl = null,
                 IconKey = "nextgen"
             },
-            // Forge and Java 8.
+            // Forge, on Java 25 through 8to25.
             new()
             {
                 Id = "1.8.9", Name = "The Lads Client 1.8.9", MinecraftVersion = "1.8.9",
-                FabricVersion = null, JavaMajorVersion = 8, IsIsolated = false, PackwizUrl = null
+                FabricVersion = null, JavaMajorVersion = 25, IsIsolated = false, PackwizUrl = null
             }
         };
     }

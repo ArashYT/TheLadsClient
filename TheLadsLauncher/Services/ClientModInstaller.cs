@@ -19,7 +19,7 @@ public static class ClientModInstaller
 {
     public sealed record Entry(string ProjectId, string ProjectSlug, string Name, string ModId,
         string VersionId, string Version, string FileName, string Url, string Sha512, long Size,
-        string License, string? SourceUrl, string ProjectUrl);
+        string License, string? SourceUrl, string ProjectUrl, bool DefaultEnabled = true);
     /// <summary>A mod removed from the pack; its published hashes identify managed copies to retire.</summary>
     public sealed record RetiredEntry(string ModId, string? ProjectId, string? Name, List<string>? Sha512, string? Reason);
     /// <param name="Published">Earlier pins of mods still in the pack (mod id → SHA-512s). With the current pins and the retired
@@ -165,8 +165,9 @@ public static class ClientModInstaller
                 bool Managed(LocalJar jar) => Published(entry.ModId, jar.Hash) || (receiptPin != null && SameHash(jar.Hash, receiptPin));
                 int NameRank(LocalJar jar) => BaseName(jar.Path).Equals(entry.FileName, StringComparison.OrdinalIgnoreCase) ? 0
                     : IsLegacyName(Path.GetFileName(jar.Path), entry.ModId) ? 1 : 2;
+                // No choice yet: the disk state, else the pack's default (an opt-in entry is off and not downloaded).
                 var wantEnabled = preferences.GetEnabled(entry.ModId, entry.ProjectId)
-                    ?? !(copies.Any(j => j.Disabled) && copies.All(j => j.Disabled));
+                    ?? (copies.Count == 0 ? entry.DefaultEnabled : !copies.All(j => j.Disabled));
                 if (rendererBlocked.Contains(entry.ModId))
                 {
                     if (preferences.GetEnabled(entry.ModId, entry.ProjectId) == null)
@@ -657,7 +658,7 @@ public static class ClientModInstaller
         if (!ValidId(entry.ModId) || !ValidHash(entry.Sha512)
             || entry.Size <= 0 || entry.Size > MaximumJarSize
             || !Uri.TryCreate(entry.Url, UriKind.Absolute, out var url) || url.Scheme != "https"
-            || url.Host != "cdn.modrinth.com" || !string.IsNullOrEmpty(url.UserInfo))
+            || url.Host is not ("cdn.modrinth.com" or "github.com") || !string.IsNullOrEmpty(url.UserInfo))
             throw new InvalidDataException("Invalid client mod download metadata.");
         if (!ValidFileName(entry.FileName))
             throw new InvalidDataException($"Invalid client mod file name '{entry.FileName}' for {entry.ModId}.");
