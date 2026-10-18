@@ -45,6 +45,17 @@ public final class NativeAutohide1201 {
         }
     }
 
+    /** QA only: the QA progress bar over the screens that show without a world (with one, the HUD draws it). */
+    public static void registerQaBarScreens() {
+        if (!com.thelads.core.client.qa.QaProgress.on()) return;
+        net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.AFTER_INIT.register((client, screen, width, height) ->
+            net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.afterRender(screen).register((s, graphics, mouseX, mouseY, delta) -> {
+                if (client.level != null) return;
+                GuiGraphicsLadsAdapter1201 adapter = new GuiGraphicsLadsAdapter1201(graphics, client.font);
+                adapter.managed(() -> com.thelads.core.client.qa.QaProgress.draw(adapter));
+            }));
+    }
+
     /** QA: idle for a minute, at this opacity now. */
     public static void idle(float now) {
         activity = System.nanoTime() - 60_000_000_000L;

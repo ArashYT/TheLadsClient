@@ -108,6 +108,18 @@ public final class NativeHud {
         }
     }
 
+    /** QA only: the QA progress bar over the screens that show without a world (with one, the HUD draws it). */
+    @SubscribeEvent
+    public void qaBarOnScreens(net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent.Post event) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (!com.thelads.core.client.qa.QaProgress.on() || mc.theWorld != null) return;
+        net.minecraft.client.gui.ScaledResolution resolution = new net.minecraft.client.gui.ScaledResolution(mc);
+        graphics.reset(mc.fontRendererObj, resolution.getScaledWidth(), resolution.getScaledHeight());
+        com.thelads.core.client.qa.QaProgress.draw(graphics);
+        GlStateManager.resetColor();
+        GlStateManager.enableBlend();
+    }
+
     /** CPS counts gameplay press events, several between two frames included (1.21.x: MouseHandlerMixin). */
     @SubscribeEvent
     public void mouse(InputEvent.MouseInputEvent event) {

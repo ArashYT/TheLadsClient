@@ -25,8 +25,16 @@ public final class NativeAutohide {
             scopeOpacity=NativeQualityOfLife.bool("Autohide","Fade Lads HUD",true)?shown:1;
             if(scopeOpacity>0)com.thelads.core.client.hud.HudManager.getInstance().render(new com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter(graphics,mc.font));
             scopeOpacity=1;
-            com.thelads.core.client.qa.QaProgress.draw(new com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter(graphics,mc.font)); // QA only (no-op for players)
+            if(com.thelads.core.client.qa.QaProgress.on())com.thelads.core.client.qa.QaProgress.draw(new com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter(graphics,mc.font)); // QA only (nothing for players)
         }finally{scopeOpacity=previous;}
+    }
+    /** QA only: the QA progress bar over the screens that show without a world (with one, the HUD draws it). */
+    public static void registerQaBarScreens(){
+        if(!com.thelads.core.client.qa.QaProgress.on())return;
+        net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.AFTER_INIT.register((client,screen,width,height)->
+            net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.afterExtract(screen).register((s,graphics,mouseX,mouseY,delta)->{
+                if(client.level==null)com.thelads.core.client.qa.QaProgress.draw(new com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter(graphics,client.font));
+            }));
     }
     /** QA (Hud170Capture): idle for a minute, at this opacity now. */
     static void idle(float now){activity=System.nanoTime()-60_000_000_000L;frame=System.nanoTime();opacity=now;}
