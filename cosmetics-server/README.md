@@ -10,12 +10,10 @@ The client side connects via `TheLadsCore/common/.../client/cosmetics/net/Cosmet
 | `GET` | `/cosmetics/health` | None | Service health status, active player count, active room count. |
 | `GET` | `/cosmetics/ws` | Mojang `hasJoined` | Authenticated background WebSocket connection for emote/equip sync and in-game link codes. |
 | `GET` | `/cosmetics/profile/{uuid}` | None | Returns owned cosmetics and currently equipped items (`{"owned":[...],"equipped":{...}}`). |
-| `POST` | `/cosmetics/equip` | `Bearer <token>` | HTTP equip endpoint: `{"uuid":"...","slot":"...","item":"..."}` (requires auth; players equip via authenticated WS). |
+| `POST` | `/cosmetics/equip` | `Bearer <token>` | HTTP equip endpoint: `{"uuid":"...","slot":"...","item":"..."}` (requires auth; normal players equip via authenticated WS). |
 | `POST` | `/cosmetics/tebex` | `X-Tebex-Signature` | Tebex webhook endpoint (fail-closed, signature-verified, idempotent by transaction ID, handles payments and refunds). |
-| `POST` | `/cosmetics/webhook/tebex` | `X-Tebex-Signature` | Alias for `/cosmetics/tebex`. |
 | `GET` | `/cosmetics/link/start?uuid={uuid}` | `Bearer <token>` | Generates a 6-character link code valid for 10 minutes (requires auth; in-game players generate via WS). |
-| `GET` | `/cosmetics/link/{code}` | None | Validates and resolves a 6-character link code to its bound UUID. |
-| `GET` | `/cosmetics/link/verify?code={code}` | None | Query-param alias for link code verification. |
+| `GET` | `/cosmetics/link/verify?code={code}` | `Bearer <token>` | Verifies and resolves a link code to its bound UUID (requires auth; webhooks resolve directly). |
 
 ## WebSocket Protocol (Frames <= 1 KB)
 
@@ -30,22 +28,23 @@ The client side connects via `TheLadsCore/common/.../client/cosmetics/net/Cosmet
    - Client: `{"t":"emote","id":"lads:groove" | null}`
    - Room receives `{"t":"state","uuid":"...","emote":"...","age":0}`.
 4. **Equip Cosmetics:**
-   - Client: `{"t":"equip","slot":"cloak","item":"lads:cloak_aurora"}` (or `{"item": null}` to unequip).
+   - Client: `{"t":"equip","slot":"cape","item":"lads:cape_aurora"}` (or `{"item": null}` to unequip). Allowed slots: `emote`, `cape`, `hat`, `glasses`.
    - Server validates ownership against SQLite entitlements.
-   - Room receives `{"t":"equip","uuid":"...","slot":"cloak","item":"..."}`.
-   - Sender receives confirmation `{"t":"equip","uuid":"...","slot":"cloak","item":"...","status":"ok"}`.
+   - Room receives `{"t":"equip","uuid":"...","slot":"cape","item":"..."}`.
+   - Sender receives confirmation `{"t":"equip","uuid":"...","slot":"cape","item":"...","status":"ok"}`.
 5. **In-Game Link Code:**
    - Client sends: `{"t":"link"}` (or `{"t":"link_start"}`)
    - Server responds: `{"t":"link_code","code":"ABC123","uuid":"...","expires_in":600}`.
+   - Max one active link code per UUID (new code replaces previous code).
 
 ## SQLite Store
 
 Storage uses SQLite with WAL mode (`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;`) and asynchronous thread delegation (`asyncio.to_thread`):
 
 - `entitlements(uuid, item_id, source, granted_at, revoked_at)`: tracks permanent grants, transaction IDs, and revocations.
-- `equipped(uuid, slot, item_id)`: tracks active cosmetic per slot (e.g. `cloak`, `hat`, `glasses`, `emote_1`).
+- `equipped(uuid, slot, item_id)`: tracks active cosmetic per allowed slot (`emote`, `cape`, `hat`, `glasses`).
 - `transactions(transaction_id, event_type, uuid, items_json, created_at, updated_at)`: guarantees webhook idempotency.
-- `link_codes(code, uuid, created_at, expires_at)`: ephemeral 6-char link codes with 10-minute TTL (consumed upon checkout redemption).
+- `link_codes(code, uuid, created_at, expires_at)`: ephemeral 6-char link codes with 10-minute TTL (consumed atomically upon checkout redemption).
 
 Default database file is `cosmetics.db` (configurable via `--db` or `COSMETICS_DB` environment variable).
 

@@ -42,10 +42,20 @@ MAX_FRAME = 1024
 UUID_RE = re.compile(r"[0-9a-f]{32}")
 NAME_RE = re.compile(r"[A-Za-z0-9_]{1,16}")
 ROOM_RE = re.compile(r"[0-9a-f]{64}")
-SLOT_RE = re.compile(r"^[a-z0-9_]{1,32}$")
-ITEM_RE = re.compile(r"^[a-z0-9_:\-]{1,64}$")
+ALLOWED_SLOTS: frozenset[str] = frozenset({"emote", "cape", "hat", "glasses"})
+ITEM_ID_RE = re.compile(r"^[a-z0-9_]{1,32}:[a-z0-9_]{1,32}$")
 LINK_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
 LINK_CODE_TTL = 600  # 10 minutes
+
+DEFAULT_CATALOG: dict[int | str, str] = {
+    1: "lads:cape_aurora",
+    2: "lads:cape_dragon",
+    3: "lads:hat_sombrero",
+    4: "lads:glasses_dealwithit",
+    5: "lads:groove",
+    55: "lads:hat_wizard",
+    56: "lads:cape_founder",
+}
 
 log = logging.getLogger("cosmetics")
 
@@ -98,74 +108,73 @@ def verify_tebex_signature(raw_body: bytes, signature: str | None, secret: str |
     return False
 
 
-def extract_tebex_items(subject: dict) -> list[str]:
-    """Extract item IDs from Tebex webhook subject payload (packages, products, or custom fields)."""
-    items = []
-    # 1. Packages array
-    for pkg in subject.get("packages", []):
-        if isinstance(pkg, dict):
-            custom = pkg.get("custom")
-            if isinstance(custom, dict) and custom.get("item_id"):
-                items.append(str(custom["item_id"]))
-            elif pkg.get("item_id"):
-                items.append(str(pkg["item_id"]))
-            elif pkg.get("name"):
-                name = str(pkg["name"]).strip()
-                if ":" in name:
-                    items.append(name)
-                else:
-                    items.append("lads:" + name.lower().replace(" ", "_"))
-            elif pkg.get("id"):
-                items.append(f"tebex:pkg_{pkg['id']}")
-    # 2. Products array
-    for prod in subject.get("products", []):
-        if isinstance(prod, dict):
-            if prod.get("item_id"):
-                items.append(str(prod["item_id"]))
-            elif prod.get("name"):
-                name = str(prod["name"]).strip()
-                if ":" in name:
-                    items.append(name)
-                else:
-                    items.append("lads:" + name.lower().replace(" ", "_"))
-    # 3. Direct item_id or items list
-    if subject.get("item_id"):
-        items.append(str(subject["item_id"]))
-    if isinstance(subject.get("items"), list):
-        for it in subject["items"]:
-            if isinstance(it, str):
-                items.append(it)
-            elif isinstance(it, dict) and it.get("item_id"):
-                items.append(str(it["item_id"]))
-    # Preserve order and deduplicate
-    return list(dict.fromkeys(items))
-
-
-def extract_buyer_uuid(subject: dict, store: CosmeticsStore | None = None) -> str | None:
-    """Extract buyer Minecraft UUID from Tebex payload or resolve via link code.
-    If resolved via link code, atomically consumes the single-use link code.
+def extract_buyer_raw_uuid(subject: dict) -> str | None:
+    """Extract raw buyer Minecraft UUID from Tebex payload subject.
+    Checks customer.username.id (official Tebex Minecraft checkout payload format),
+    player.uuid / player.id, and customer.uuid.
     """
-    for path in [
-        subject.get("player"),
-        subject.get("customer"),
-        subject.get("custom"),
-        subject.get("variables"),
-        subject,
-    ]:
-        if isinstance(path, dict):
-            raw = path.get("uuid") or path.get("minecraft_uuid") or path.get("game_id")
-            u = plain_uuid(raw)
+    # 1. Real Tebex Minecraft payload: customer.username.id
+    cust = subject.get("customer")
+    if isinstance(cust, dict):
+        uname = cust.get("username")
+        if isinstance(uname, dict):
+            u = plain_uuid(uname.get("id"))
             if u:
                 return u
-    # Resolve via link code if present in customer/custom/variables (atomically consumes code)
-    if store:
-        for path in [subject.get("customer"), subject.get("player"), subject.get("custom"), subject]:
-            if isinstance(path, dict):
-                code = path.get("link_code") or path.get("code")
-                if code:
-                    u = store.consume_link_code_sync(str(code))
-                    if u:
-                        return u
+        u = plain_uuid(cust.get("uuid"))
+        if u:
+            return u
+
+    # 2. Player object (player.uuid or player.id)
+    player = subject.get("player")
+    if isinstance(player, dict):
+        for key in ("uuid", "id"):
+            u = plain_uuid(player.get(key))
+            if u:
+                return u
+
+    # 3. Direct subject keys
+    for key in ("uuid", "player_uuid"):
+        u = plain_uuid(subject.get(key))
+        if u:
+            return u
+
+    return None
+
+
+def extract_link_code(subject: dict) -> str | None:
+    """Extract in-game 6-character link code from Tebex payload subject."""
+    for container in (subject.get("customer"), subject.get("custom"), subject):
+        if isinstance(container, dict):
+            code = container.get("link_code") or container.get("code")
+            if code and isinstance(code, str) and len(code.strip()) == 6:
+                return code.strip().upper()
+    return None
+
+
+def resolve_package_item_id(pkg: dict, catalog: dict[int | str, str]) -> str | None:
+    """Resolve Tebex package to an explicit, safe cosmetic item ID (<= 64 chars, [a-z0-9_:])."""
+    # 1. Look up by package ID in catalog
+    raw_id = pkg.get("id")
+    if raw_id is not None:
+        try:
+            pkg_int = int(raw_id)
+            if pkg_int in catalog:
+                return catalog[pkg_int]
+        except (ValueError, TypeError):
+            pass
+        if str(raw_id) in catalog:
+            return catalog[str(raw_id)]
+
+    # 2. If name is already a valid namespaced identifier (e.g. lads:cape_x)
+    name = pkg.get("name")
+    if isinstance(name, str) and len(name) <= 64 and ITEM_ID_RE.fullmatch(name):
+        return name
+
+    # 3. Look up by exact name in catalog if defined
+    if isinstance(name, str) and name in catalog:
+        return catalog[name]
+
     return None
 
 
@@ -295,6 +304,8 @@ class CosmeticsStore:
             return {"owned": owned, "equipped": equipped}
 
     def set_equipped_sync(self, uuid: str, slot: str, item_id: str) -> None:
+        if slot not in ALLOWED_SLOTS:
+            raise ValueError(f"Invalid slot '{slot}', must be one of {sorted(ALLOWED_SLOTS)}")
         with self._get_connection() as conn:
             conn.execute("""
                 INSERT INTO equipped (uuid, slot, item_id)
@@ -304,9 +315,154 @@ class CosmeticsStore:
             conn.commit()
 
     def remove_equipped_sync(self, uuid: str, slot: str) -> None:
+        if slot not in ALLOWED_SLOTS:
+            raise ValueError(f"Invalid slot '{slot}', must be one of {sorted(ALLOWED_SLOTS)}")
         with self._get_connection() as conn:
             conn.execute("DELETE FROM equipped WHERE uuid = ? AND slot = ?;", (uuid, slot))
             conn.commit()
+
+    def process_tebex_payment_sync(
+        self,
+        transaction_id: str,
+        payload_str: str,
+        raw_uuid: str | None,
+        link_code: str | None,
+        items: list[str]
+    ) -> dict:
+        now = int(time.time())
+        with self._get_connection() as conn:
+            conn.isolation_level = None
+            conn.execute("BEGIN IMMEDIATE;")
+            try:
+                cur = conn.cursor()
+
+                # 1. Deduplication check: check if transaction already exists
+                cur.execute("SELECT uuid, items_json FROM transactions WHERE transaction_id = ?;", (transaction_id,))
+                row = cur.fetchone()
+                if row:
+                    conn.execute("COMMIT;")
+                    return {
+                        "status": "already_processed",
+                        "transaction_id": transaction_id,
+                        "uuid": row[0],
+                        "items": json.loads(row[1]) if row[1] else []
+                    }
+
+                # 2. Resolve buyer UUID
+                buyer_uuid = None
+                if raw_uuid:
+                    buyer_uuid = plain_uuid(raw_uuid)
+                elif link_code:
+                    normalized = link_code.strip().upper()
+                    cur.execute(
+                        "DELETE FROM link_codes WHERE code = ? AND expires_at > ? RETURNING uuid;",
+                        (normalized, now)
+                    )
+                    code_row = cur.fetchone()
+                    if code_row:
+                        buyer_uuid = code_row[0]
+
+                if not buyer_uuid:
+                    conn.execute("ROLLBACK;")
+                    return {"status": "error", "error": "missing or unresolvable buyer uuid"}
+
+                # 3. Record transaction
+                cur.execute("""
+                    INSERT INTO transactions (transaction_id, event_type, uuid, items_json, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?);
+                """, (transaction_id, "payment.completed", buyer_uuid, json.dumps(items), now, now))
+
+                # 4. Grant entitlements
+                granted = []
+                for item_id in items:
+                    cur.execute("""
+                        INSERT INTO entitlements (uuid, item_id, source, granted_at, revoked_at)
+                        VALUES (?, ?, ?, ?, NULL)
+                        ON CONFLICT(uuid, item_id) DO UPDATE SET
+                            revoked_at = NULL,
+                            granted_at = excluded.granted_at,
+                            source = excluded.source;
+                    """, (buyer_uuid, item_id, f"tebex:{transaction_id}", now))
+                    granted.append(item_id)
+
+                conn.execute("COMMIT;")
+                return {
+                    "status": "granted",
+                    "transaction_id": transaction_id,
+                    "uuid": buyer_uuid,
+                    "items": granted
+                }
+            except Exception:
+                conn.execute("ROLLBACK;")
+                raise
+
+    def process_tebex_refund_sync(
+        self,
+        transaction_id: str,
+        event_type: str,
+        payload_str: str,
+        raw_uuid: str | None = None,
+        items: list[str] | None = None
+    ) -> dict | None:
+        now = int(time.time())
+        with self._get_connection() as conn:
+            conn.isolation_level = None
+            conn.execute("BEGIN IMMEDIATE;")
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT uuid, items_json, event_type FROM transactions WHERE transaction_id = ?;", (transaction_id,))
+                row = cur.fetchone()
+                if not row:
+                    # Check if entitlements exist with source = tebex:<transaction_id>
+                    cur.execute("SELECT uuid, item_id FROM entitlements WHERE source = ?;", (f"tebex:{transaction_id}",))
+                    ent_rows = cur.fetchall()
+                    if not ent_rows:
+                        if not raw_uuid and not items:
+                            conn.execute("COMMIT;")
+                            return None
+                        uuid = plain_uuid(raw_uuid)
+                        items_to_revoke = items or []
+                    else:
+                        uuid = ent_rows[0][0]
+                        items_to_revoke = [r[1] for r in ent_rows]
+                    prev_event = "payment.completed"
+                else:
+                    uuid = row[0]
+                    items_to_revoke = items if items else json.loads(row[1])
+                    prev_event = row[2]
+
+                if prev_event in ("payment.refunded", "payment.dispute.opened", "payment.disputed", "payment.chargeback", "payment.dispute.lost"):
+                    conn.execute("COMMIT;")
+                    return {"already_refunded": True, "uuid": uuid, "items": items_to_revoke}
+
+                revoked = []
+                if uuid:
+                    for item_id in items_to_revoke:
+                        cur.execute("""
+                            UPDATE entitlements
+                            SET revoked_at = ?
+                            WHERE uuid = ? AND item_id = ? AND revoked_at IS NULL;
+                        """, (now, uuid, item_id))
+                        cur.execute("DELETE FROM equipped WHERE uuid = ? AND item_id = ?;", (uuid, item_id))
+                        revoked.append(item_id)
+
+                if row:
+                    cur.execute("""
+                        UPDATE transactions
+                        SET event_type = ?, updated_at = ?
+                        WHERE transaction_id = ?;
+                    """, (event_type, now, transaction_id))
+                else:
+                    cur.execute("""
+                        INSERT INTO transactions (transaction_id, event_type, uuid, items_json, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?);
+                    """, (transaction_id, event_type, uuid or "", json.dumps(revoked), now, now))
+
+                conn.execute("COMMIT;")
+                return {"already_refunded": False, "uuid": uuid, "items": revoked}
+            except Exception:
+                conn.execute("ROLLBACK;")
+                raise
 
     def record_transaction_sync(self, transaction_id: str, event_type: str, uuid: str, items: list[str]) -> dict:
         now = int(time.time())
@@ -324,55 +480,14 @@ class CosmeticsStore:
             return {"already_processed": False, "event_type": event_type}
 
     def refund_transaction_sync(self, transaction_id: str, event_type: str) -> dict | None:
-        now = int(time.time())
-        with self._get_connection() as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT uuid, items_json, event_type FROM transactions WHERE transaction_id = ?;", (transaction_id,))
-            row = cur.fetchone()
-            if not row:
-                # Check if entitlements exist with source = tebex:<transaction_id>
-                cur.execute("SELECT uuid, item_id FROM entitlements WHERE source = ?;", (f"tebex:{transaction_id}",))
-                ent_rows = cur.fetchall()
-                if not ent_rows:
-                    return None
-                uuid = ent_rows[0][0]
-                items = [r[1] for r in ent_rows]
-                prev_event = "payment.completed"
-            else:
-                uuid = row[0]
-                items = json.loads(row[1])
-                prev_event = row[2]
-
-            if prev_event in ("payment.refunded", "payment.dispute.opened", "payment.disputed", "payment.chargeback"):
-                return {"already_refunded": True, "uuid": uuid, "items": items}
-
-            for item_id in items:
-                conn.execute("""
-                    UPDATE entitlements
-                    SET revoked_at = ?
-                    WHERE uuid = ? AND item_id = ? AND revoked_at IS NULL;
-                """, (now, uuid, item_id))
-                conn.execute("DELETE FROM equipped WHERE uuid = ? AND item_id = ?;", (uuid, item_id))
-
-            if row:
-                conn.execute("""
-                    UPDATE transactions
-                    SET event_type = ?, updated_at = ?
-                    WHERE transaction_id = ?;
-                """, (event_type, now, transaction_id))
-            else:
-                conn.execute("""
-                    INSERT INTO transactions (transaction_id, event_type, uuid, items_json, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?);
-                """, (transaction_id, event_type, uuid, json.dumps(items), now, now))
-            conn.commit()
-            return {"already_refunded": False, "uuid": uuid, "items": items}
+        return self.process_tebex_refund_sync(transaction_id, event_type, "")
 
     def create_link_code_sync(self, uuid: str, ttl: int = LINK_CODE_TTL) -> str:
         now = int(time.time())
         with self._get_connection() as conn:
-            # Clean expired codes
-            conn.execute("DELETE FROM link_codes WHERE expires_at < ?;", (now,))
+            # Clean expired codes and enforce max one live link code per uuid (new replaces old)
+            conn.execute("DELETE FROM link_codes WHERE expires_at < ? OR uuid = ?;", (now, uuid))
+            conn.commit()
             for _ in range(20):
                 code = "".join(secrets.choice(LINK_ALPHABET) for _ in range(6))
                 try:
@@ -398,19 +513,18 @@ class CosmeticsStore:
             return None
 
     def consume_link_code_sync(self, code: str) -> str | None:
-        """Atomically resolve and delete a single-use link code to prevent replay attacks."""
+        """Atomically resolve and delete a single-use link code using DELETE ... RETURNING."""
         now = int(time.time())
         normalized = code.strip().upper()
         with self._get_connection() as conn:
             cur = conn.cursor()
-            cur.execute("SELECT uuid, expires_at FROM link_codes WHERE code = ?;", (normalized,))
+            cur.execute(
+                "DELETE FROM link_codes WHERE code = ? AND expires_at > ? RETURNING uuid;",
+                (normalized, now)
+            )
             row = cur.fetchone()
-            if row and row[1] > now:
-                uuid = row[0]
-                conn.execute("DELETE FROM link_codes WHERE code = ?;", (normalized,))
-                conn.commit()
-                return uuid
-            return None
+            conn.commit()
+            return row[0] if row else None
 
     def list_sync(self, uuid: str) -> dict:
         with self._get_connection() as conn:
@@ -454,6 +568,40 @@ class CosmeticsStore:
 
     async def remove_equipped(self, uuid: str, slot: str) -> None:
         await asyncio.to_thread(self.remove_equipped_sync, uuid, slot)
+
+    async def process_tebex_payment(
+        self,
+        transaction_id: str,
+        payload_str: str,
+        raw_uuid: str | None,
+        link_code: str | None,
+        items: list[str]
+    ) -> dict:
+        return await asyncio.to_thread(
+            self.process_tebex_payment_sync,
+            transaction_id,
+            payload_str,
+            raw_uuid,
+            link_code,
+            items
+        )
+
+    async def process_tebex_refund(
+        self,
+        transaction_id: str,
+        event_type: str,
+        payload_str: str,
+        raw_uuid: str | None = None,
+        items: list[str] | None = None
+    ) -> dict | None:
+        return await asyncio.to_thread(
+            self.process_tebex_refund_sync,
+            transaction_id,
+            event_type,
+            payload_str,
+            raw_uuid,
+            items
+        )
 
     async def record_transaction(self, transaction_id: str, event_type: str, uuid: str, items: list[str]) -> dict:
         return await asyncio.to_thread(self.record_transaction_sync, transaction_id, event_type, uuid, items)
@@ -542,12 +690,12 @@ class Hub:
 
     async def equip(self, peer: Peer, slot: str, item: str | None) -> bool:
         """Validate ownership, update store, and broadcast to the room (WebSocket-authenticated)."""
-        if not (isinstance(slot, str) and SLOT_RE.fullmatch(slot)):
-            await send(peer, {"t": "error", "error": "invalid slot"})
+        if not (isinstance(slot, str) and slot in ALLOWED_SLOTS):
+            await send(peer, {"t": "error", "error": f"invalid slot '{slot}', must be one of {sorted(ALLOWED_SLOTS)}"})
             return False
 
         if item is not None:
-            if not (isinstance(item, str) and ITEM_RE.fullmatch(item)):
+            if not (isinstance(item, str) and len(item) <= 64 and ITEM_ID_RE.fullmatch(item)):
                 await send(peer, {"t": "error", "error": "invalid item"})
                 return False
             # Check ownership: FREE or in entitlements
@@ -740,14 +888,14 @@ async def handle_equip_http(request: web.Request) -> web.Response:
         return web.json_response({"error": "bad uuid"}, status=400)
 
     slot = body.get("slot")
-    if not (isinstance(slot, str) and SLOT_RE.fullmatch(slot)):
-        return web.json_response({"error": "invalid slot"}, status=400)
+    if not (isinstance(slot, str) and slot in ALLOWED_SLOTS):
+        return web.json_response({"error": "invalid slot", "allowed": sorted(ALLOWED_SLOTS)}, status=400)
 
     item = body.get("item") if "item" in body else body.get("item_id")
     store: CosmeticsStore = request.app[STORE]
 
     if item is not None:
-        if not (isinstance(item, str) and ITEM_RE.fullmatch(item)):
+        if not (isinstance(item, str) and len(item) <= 64 and ITEM_ID_RE.fullmatch(item)):
             return web.json_response({"error": "invalid item"}, status=400)
         owned = (item in FREE) or (await store.has_entitlement(uuid, item))
         if not owned:
@@ -767,9 +915,9 @@ async def handle_equip_http(request: web.Request) -> web.Response:
 
 
 async def handle_tebex_webhook(request: web.Request) -> web.Response:
-    """Tebex Webhook endpoint: POST /cosmetics/tebex (and /cosmetics/webhook/tebex).
+    """Tebex Webhook endpoint: POST /cosmetics/tebex.
     Validates Tebex HMAC signature fail-closed, handles endpoint validation, payment.completed (idempotent),
-    and refund/chargeback/dispute revoking.
+    and refund/chargeback/dispute revoking in atomic SQLite transactions.
     """
     secret = request.app.get(TEBEX_SECRET) or os.getenv("TEBEX_WEBHOOK_SECRET")
     if not secret:
@@ -800,47 +948,65 @@ async def handle_tebex_webhook(request: web.Request) -> web.Response:
     if not tx_id:
         return web.json_response({"error": "missing transaction id"}, status=400)
 
-    # 2. Payment Completed: Grants items idempotently
+    catalog = request.app.get(CATALOG) or DEFAULT_CATALOG
+
+    # 2. Payment Completed: Grants items idempotently in an atomic transaction
     if event_type == "payment.completed":
-        buyer_uuid = extract_buyer_uuid(subject, store)
-        if not buyer_uuid:
-            return web.json_response({"error": "missing or unresolvable buyer uuid"}, status=400)
-        items = extract_tebex_items(subject)
-        if not items:
-            items = [f"tebex:pkg_{subject.get('id', 'item')}"]
+        raw_uuid = extract_buyer_raw_uuid(subject)
+        link_code = extract_link_code(subject)
 
-        tx_res = await store.record_transaction(tx_id, event_type, buyer_uuid, items)
-        if tx_res.get("already_processed"):
-            return web.json_response({"status": "already_processed", "transaction_id": tx_id})
+        packages = subject.get("products") or subject.get("packages") or []
+        items = []
+        for pkg in packages:
+            if isinstance(pkg, dict):
+                resolved = resolve_package_item_id(pkg, catalog)
+                if resolved:
+                    items.append(resolved)
+                else:
+                    log.warning("Unknown Tebex package in payment %s: %r", tx_id, pkg)
 
-        for it in items:
-            await store.grant(buyer_uuid, it, source=f"tebex:{tx_id}")
+        # Process payment atomically (handles duplicate tx_id, single-use link code consume, and grant)
+        res = await store.process_tebex_payment(
+            transaction_id=tx_id,
+            payload_str=raw_body.decode("utf-8", errors="replace"),
+            raw_uuid=raw_uuid,
+            link_code=link_code,
+            items=items
+        )
+        if res.get("status") == "error":
+            return web.json_response({"error": res["error"]}, status=400)
+        return web.json_response(res, status=200)
 
-        return web.json_response({
-            "status": "granted",
-            "transaction_id": tx_id,
-            "uuid": buyer_uuid,
-            "items": items
-        })
-
-    # 3. Refund / Chargeback / Dispute: Revokes items
+    # 3. Refund / Chargeback / Dispute: Revokes items idempotently
     elif event_type in ("payment.refunded", "payment.dispute.opened", "payment.disputed", "payment.chargeback", "payment.dispute.lost"):
-        res = await store.refund_transaction(tx_id, event_type)
+        raw_uuid = extract_buyer_raw_uuid(subject)
+        packages = subject.get("products") or subject.get("packages") or []
+        items = [resolve_package_item_id(p, catalog) for p in packages if isinstance(p, dict)]
+        items = [i for i in items if i]
+
+        res = await store.process_tebex_refund(
+            transaction_id=tx_id,
+            event_type=event_type,
+            payload_str=raw_body.decode("utf-8", errors="replace"),
+            raw_uuid=raw_uuid,
+            items=items if items else None
+        )
         if res and res.get("already_refunded"):
             return web.json_response({"status": "already_refunded", "transaction_id": tx_id})
         if res:
-            buyer_uuid = res["uuid"]
-            hub: Hub = request.app[HUB]
-            peer = hub.peers.get(buyer_uuid)
-            if peer and peer.room:
-                for item_id in res["items"]:
-                    others = [p for p in hub.rooms[peer.room] if p is not peer]
-                    await broadcast(others, {"t": "revoke", "uuid": buyer_uuid, "item": item_id})
+            buyer_uuid = res.get("uuid")
+            if buyer_uuid:
+                hub: Hub = request.app[HUB]
+                peer = hub.peers.get(buyer_uuid)
+                if peer and peer.room:
+                    for item_id in res.get("items", []):
+                        others = [p for p in hub.rooms[peer.room] if p is not peer]
+                        await broadcast(others, {"t": "revoke", "uuid": buyer_uuid, "item": item_id})
             return web.json_response({
                 "status": "revoked",
                 "transaction_id": tx_id,
                 "uuid": buyer_uuid,
-                "items": res["items"]
+                "items": res.get("items", [])
             })
         return web.json_response({"status": "not_found", "transaction_id": tx_id}, status=404)
 
@@ -863,8 +1029,10 @@ async def handle_link_start_http(request: web.Request) -> web.Response:
 
 
 async def handle_link_verify_http(request: web.Request) -> web.Response:
-    """GET /cosmetics/link/{code} or /cosmetics/link/verify?code=...: look up UUID by link code."""
-    code = request.match_info.get("code") or request.query.get("code")
+    """GET /cosmetics/link/verify?code=...: look up UUID by link code (requires Bearer auth)."""
+    if not _check_http_auth(request):
+        return web.json_response({"error": "unauthorized"}, status=401)
+    code = request.query.get("code") or request.match_info.get("code")
     if not code:
         return web.json_response({"error": "missing code"}, status=400)
     store: CosmeticsStore = request.app[STORE]
@@ -882,6 +1050,7 @@ HUB = web.AppKey("cosmetics_hub", Hub)
 STORE = web.AppKey("cosmetics_store", CosmeticsStore)
 TEBEX_SECRET = web.AppKey("tebex_secret", str)
 AUTH_SECRET = web.AppKey("auth_secret", str)
+CATALOG = web.AppKey("cosmetics_catalog", dict)
 
 
 def setup(
@@ -889,12 +1058,15 @@ def setup(
     insecure: bool = False,
     db_path: Path | str | None = None,
     tebex_secret: str | None = None,
-    auth_secret: str | None = None
+    auth_secret: str | None = None,
+    catalog: dict[int | str, str] | None = None
 ) -> None:
     store = CosmeticsStore(db_path)
     app[STORE] = store
     app[TEBEX_SECRET] = tebex_secret or os.getenv("TEBEX_WEBHOOK_SECRET", "")
-    app[AUTH_SECRET] = auth_secret or os.getenv("COSMETICS_AUTH_TOKEN", "") or app[TEBEX_SECRET]
+    # M1: admin bearer requires explicit auth token; no fallback to tebex_secret
+    app[AUTH_SECRET] = auth_secret or os.getenv("COSMETICS_AUTH_TOKEN", "")
+    app[CATALOG] = catalog or DEFAULT_CATALOG
     hub = Hub(insecure, store=store)
     app[HUB] = hub
 
@@ -902,10 +1074,9 @@ def setup(
     app.router.add_get("/cosmetics/ws", handle_ws)
     app.router.add_get("/cosmetics/profile/{uuid}", handle_profile)
     app.router.add_post("/cosmetics/equip", handle_equip_http)
+    # Exactly ONE webhook route
     app.router.add_post("/cosmetics/tebex", handle_tebex_webhook)
-    app.router.add_post("/cosmetics/webhook/tebex", handle_tebex_webhook)
     app.router.add_get("/cosmetics/link/start", handle_link_start_http)
-    app.router.add_get("/cosmetics/link/{code}", handle_link_verify_http)
     app.router.add_get("/cosmetics/link/verify", handle_link_verify_http)
     app.on_shutdown.append(close_all)
 
