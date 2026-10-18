@@ -80,7 +80,8 @@ public final class QaProbe1201 {
     private static Phase phase = Phase.TITLE;
     private static Path gameDir;
     private static long phaseSince, nextStopCheck;
-    private static int titleTicks, setupTicks, waitTicks, index, passed, failedSteps, confirmTicks;
+    private static int titleTicks, setupTicks, waitTicks, index, passed, failedSteps, confirmTicks, barWaits;
+    private static boolean barShotDone;
     private static String pendingShot;
     private static List<String[]> steps = new ArrayList<>();
     private static final List<InputConstants.Key> releaseNext = new ArrayList<>();
@@ -161,7 +162,7 @@ public final class QaProbe1201 {
         }
         mc.options.pauseOnLostFocus = false;
         String barShot = com.thelads.core.client.qa.QaProgress.finalShot(); // QA progress bar: its final state, photographed a moment after the run is done
-        if (barShot != null) try { shot(mc, barShot); LOGGER.info("Lads QA bar final state: screenshots/{}.png", barShot); } catch (Exception ignored) { }
+        if (barShot != null) try { shot(mc, barShot); barShotDone = true; LOGGER.info("Lads QA bar final state: screenshots/{}.png", barShot); } catch (Exception ignored) { }
         try {
             for (InputConstants.Key key : releaseNext) KeyMapping.set(key, false);
             releaseNext.clear();
@@ -304,6 +305,9 @@ public final class QaProbe1201 {
             }
         }
         if (!scriptDone && waitTicks == 0 && pendingShot == null && routine == null && index >= steps.size()) {
+            // QA progress bar: the run is done a moment before the END marker, so its final state is photographed before the harness stops the game.
+            if (com.thelads.core.client.qa.QaProgress.on() && com.thelads.core.client.qa.QaProgress.running()) { com.thelads.core.client.qa.QaProgress.done(); barWaits = 0; return; }
+            if (com.thelads.core.client.qa.QaProgress.on() && !barShotDone && ++barWaits < 100) return;
             scriptDone = true;
             phase = Phase.DONE;
             com.thelads.core.client.qa.QaProgress.done();

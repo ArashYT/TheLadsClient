@@ -250,7 +250,8 @@ public final class CoreProbe {
         }
         }
     }
-    private static int step, passed, delay, waited, barStep = -1;
+    private static int step, passed, delay, waited, barStep = -1, barWaits;
+    private static boolean barHolding, barShotDone;
     private static boolean finished, pauseOnLostFocus;
     private static GuiScreen title, pause;
     private static LadsSettingsScreen189 menu;
@@ -259,7 +260,11 @@ public final class CoreProbe {
     /** Every client tick (END); one step at a time, each after the previous one's screens had frames to render. */
     public static void tick() {
         String barShot = QaProgress.finalShot(); // QA progress bar: its final state, photographed a moment after the run is done
-        if (barShot != null) { screenshot(Minecraft.getMinecraft(), barShot); LOG.info("Lads QA bar final state: lads-qa/screenshots/{}.png", barShot); }
+        if (barShot != null) { screenshot(Minecraft.getMinecraft(), barShot); barShotDone = true; LOG.info("Lads QA bar final state: lads-qa/screenshots/{}.png", barShot); }
+        if (barHolding) { // the run is done; its END marker waits for the bar's final-state photo (the harness stops the game at the marker)
+            if (barShotDone || ++barWaits > 100) { barHolding = false; end(); }
+            return;
+        }
         if (finished) return;
         if (delay > 0) { delay--; return; }
         try {
@@ -274,17 +279,22 @@ public final class CoreProbe {
             }
             waited = 0;
             if (++step < STEPS.size()) return;
-            finish();
-            QaProgress.done();
-            LOG.info("Lads 1.8.9 core probe END: {} passed, 0 failed; {}", passed, FOCUS != null ? "focused on " + FOCUS
-                : "menu key through GuiScreen.handleInput and runTick, pause-menu button, 1.8.9 bridge in a QA world, launcher catalog, "
-                + "HUD through RenderGameOverlayEvent and the HUD editor");
+            if (QaProgress.on() && QaProgress.running()) { QaProgress.done(); barHolding = true; return; }
+            end();
         } catch (Throwable failure) {
             finish();
             QaProgress.result(QaProgress.Result.FAIL);
             QaProgress.done();
             LOG.error("Lads 1.8.9 core probe FAILED after {} checks", passed, failure);
         }
+    }
+
+    private static void end() {
+        finish();
+        QaProgress.done();
+        LOG.info("Lads 1.8.9 core probe END: {} passed, 0 failed; {}", passed, FOCUS != null ? "focused on " + FOCUS
+            : "menu key through GuiScreen.handleInput and runTick, pause-menu button, 1.8.9 bridge in a QA world, launcher catalog, "
+            + "HUD through RenderGameOverlayEvent and the HUD editor");
     }
 
     private static void finish() {
