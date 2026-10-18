@@ -11,6 +11,7 @@
     "EmoteAvatarStateMixin26",
     "EmoteHandHeightMixin26",
     "EmoteHandsMixin26",
-    "EmotePlayerModelMixin26"
+    "EmotePlayerModelMixin26",
+    "ShowcaseHandsMixin26"
   ]
 }
