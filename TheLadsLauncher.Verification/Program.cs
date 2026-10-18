@@ -751,7 +751,10 @@ try
         id = await fabric.Install(version, loaderVersion, path);
         if (id != $"fabric-loader-{loaderVersion}-{version}") throw new InvalidOperationException("Fabric selected a different version.");
     }
-    var session = AccountIdentity.CreateOfflineSession("LadsQA");
+    // LADS_VERIFY_QA_NAME: another offline QA player (its own offline UUID), e.g. a second game for the cosmetics relay QA.
+    string qaName = Env("LADS_VERIFY_QA_NAME") ?? "LadsQA";
+    if (!Regex.IsMatch(qaName, @"\A[A-Za-z0-9_]{3,16}\z")) throw new ArgumentException("LADS_VERIFY_QA_NAME must be 3-16 letters, digits or '_'.");
+    var session = AccountIdentity.CreateOfflineSession(qaName);
     await AccountExportService.WriteLaunchAsync(directory, session, true, new[] { new AccountSummary(session.Username!, session.UUID!, "offline") });
     // A fresh options.txt every run, except with LADS_VERIFY_OPTIONS_SYNC or when relaunching/keeping options across restarts.
     bool keepOptions = optionsSync != null || Env("LADS_VERIFY_KEEP_OPTIONS") == "1" || Env("LADS_VERIFY_PACKS") == "relaunch" || Env("LADS_VERIFY_189_ONLY") == "packs_relaunch";
