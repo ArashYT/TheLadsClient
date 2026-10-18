@@ -752,7 +752,7 @@ try
         javaPath = await java.EnsureJavaAsync(requiredJava, cancellationToken: ct);
     int? javaMajor = java.GetJavaMajorVersion(javaPath);
     Console.WriteLine($"Java: {javaMajor}; Minecraft: {version}");
-    // As LaunchService: 1.8.9 needs Java 8 exactly (Forge's LaunchWrapper crashes on Java 9 and newer).
+    // As LaunchService: the version's Java or newer (1.8.9: 25, for 8to25).
     if (!GameVersionPolicy.AcceptsJava(version, requiredJava, javaMajor))
         throw new InvalidOperationException($"'{javaPath}' reports Java {javaMajor}; Minecraft {version} needs {GameVersionPolicy.DescribeJava(version, requiredJava)}.");
     using var http = new HttpClient();
@@ -806,6 +806,8 @@ try
     // A renderer relaunch goes back where the player was, as MainWindow.LaunchGame does it.
     if (relaunchWorld != null) ModpackLauncher.JoinWorld(launchOptions, relaunchWorld);
     else if (relaunchServer != null) ModpackLauncher.JoinServer(launchOptions, relaunchServer);
+    // The benchmark measures what players get: the launcher's own GC/heap flags for this Java (MainWindow and LaunchService add them).
+    if (perf189) LaunchService.EnsureSecurityJvmArguments(launchOptions, javaMajor, directory);
     using (await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".mc.lock"), ct))
         process = await launcher.InstallAndBuildProcessAsync(id, launchOptions, ct);
     if (Env("LADS_VERIFY_GC_PAUSE") is { } gcPause && int.TryParse(gcPause, out int pauseVal))

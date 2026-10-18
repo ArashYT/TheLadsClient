@@ -289,6 +289,77 @@ public class LaunchService : ILaunchService
             }
         }
         await CheckManifestAsync(manifest, versionId, GameVersionPolicy.ForgeMinecraftVersion, "Forge", cancellationToken);
+        var text = await File.ReadAllTextAsync(manifest, cancellationToken);
+        var upgraded = With8to25(text);
+        if (upgraded == text)
+            return;
+        var temp = $"{manifest}.{Environment.ProcessId}.tmp"; // QA games share it: never leave a half-written manifest
+        await File.WriteAllTextAsync(temp, upgraded, cancellationToken);
+        File.Move(temp, manifest, overwrite: true);
+        File.Delete(Path.Combine(Path.GetDirectoryName(manifest)!, ".lads-verified")); // quick launch would skip the new libraries
+        await launcher.GetAllVersionsAsync(cancellationToken); // forget the parsed LaunchWrapper manifest
+    }
+
+    /// <summary>The 8to25 1.2.2 jar and the libraries its launcher JSONs (launcher-json/ in its repository) use instead of
+    /// LaunchWrapper's, ASM 5's and vanilla 1.8.9's older ones. Pinned like the Forge installer.</summary>
+    private static readonly (string Name, string Url, string Sha1, long Size)[] EightTo25Libraries =
+    {
+        ("me.oondanomala.eightto25:8to25:1.2.2", "https://github.com/Oondanomala/8to25/releases/download/1.2.2/8to25-1.2.2.jar", "3e902233662cb45f0c2669b7f603dc410fabc043", 2326559),
+        ("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.1.2", "https://nexus.gtnewhorizons.com/repository/public/", "de0931c86a3979f246d731f349a70c0bc8ea0b8a", 186584),
+        ("net.lenni0451:Reflect:1.6.4", "https://maven.minecraftforge.net/", "4e167252fee0377fe8e22b862cfa174519c82649", 237639),
+        ("net.lenni0451.commons:unchecked:1.9.2", "https://maven.minecraftforge.net/", "21bc260b57ffdb90348f2e2b8c193308a2778861", 9108),
+        ("org.ow2.asm:asm:9.10.1", "https://maven.minecraftforge.net/", "ada2141c0cc52ee8f5c48cd5fa4ce0e794f22236", 126151),
+        ("org.ow2.asm:asm-commons:9.10.1", "https://maven.minecraftforge.net/", "4229e4c55fd8e01c23f9fe9884075cc628aacc50", 74840),
+        ("org.ow2.asm:asm-tree:9.10.1", "https://maven.minecraftforge.net/", "e244332a17564c1d1572449399a842de35881be2", 51958),
+        ("org.ow2.asm:asm-analysis:9.10.1", "https://maven.minecraftforge.net/", "8d49f14d51f632cb1d87c88d1ceaf50db0d8af1b", 35140),
+        ("org.ow2.asm:asm-util:9.10.1", "https://maven.minecraftforge.net/", "7bb9d450e8d4cbf9f9e04096c44bbfe7fba80b15", 95628),
+        ("org.apache.commons:commons-lang3:3.18.0", "https://maven.minecraftforge.net/", "fb14946f0e39748a6571de0635acbe44e7885491", 702952),
+        ("commons-io:commons-io:2.20.0", "https://libraries.minecraft.net/", "36f3474daec2849c149e877614e7f979b2082cd2", 563971),
+        ("commons-codec:commons-codec:1.19.0", "https://libraries.minecraft.net/", "8c0dbe3ae883fceda9b50a6c76e745e548073388", 374716),
+        ("com.google.code.gson:gson:2.13.2", "https://libraries.minecraft.net/", "48b8230771e573b54ce6e867a9001e75977fe78e", 289901),
+        ("org.apache.commons:commons-compress:1.28.0", "https://libraries.minecraft.net/", "e482f2c7a88dac3c497e96aa420b6a769f59c8d7", 1117221),
+    };
+
+    /// <summary>
+    /// Forge 1.8.9's manifest as 8to25 (LGPL-3.0, github.com/Oondanomala/8to25) needs it to run on Java 25: RetroFuturaBootstrap
+    /// instead of LaunchWrapper (which casts the system class loader to URLClassLoader, gone since Java 9), 8to25's libraries
+    /// instead of LaunchWrapper, ASM 5 and vanilla's commons/gson (a child manifest's library replaces the parent's with the same
+    /// group:artifact). RFB finds 8to25's plugins on the classpath; its Mixin still loads the 0.7.11-era mixins and OptiFine.
+    /// Idempotent: an upgraded manifest comes back unchanged.
+    /// </summary>
+    public static string With8to25(string forgeManifest)
+    {
+        static string Key(string? name) => name is null ? "" : string.Join(':', name.Split(':').Take(2));
+        var replaced = EightTo25Libraries.Select(l => Key(l.Name)).Append("net.minecraft:launchwrapper").Append("org.ow2.asm:asm-all").ToHashSet();
+        var root = System.Text.Json.Nodes.JsonNode.Parse(forgeManifest)!.AsObject();
+        var libraries = new System.Text.Json.Nodes.JsonArray();
+        foreach (var library in root["libraries"]!.AsArray())
+            if (!replaced.Contains(Key(library?["name"]?.GetValue<string>())))
+                libraries.Add(library!.DeepClone());
+        foreach (var (name, url, sha1, size) in EightTo25Libraries)
+        {
+            var parts = name.Split(':');
+            var path = $"{parts[0].Replace('.', '/')}/{parts[1]}/{parts[2]}/{parts[1]}-{parts[2]}.jar";
+            libraries.Add(new System.Text.Json.Nodes.JsonObject
+            {
+                ["name"] = name,
+                ["downloads"] = new System.Text.Json.Nodes.JsonObject
+                {
+                    ["artifact"] = new System.Text.Json.Nodes.JsonObject
+                    {
+                        ["path"] = path, ["url"] = url.EndsWith('/') ? url + path : url, ["sha1"] = sha1, ["size"] = size
+                    }
+                }
+            });
+        }
+        root["libraries"] = libraries;
+        root["mainClass"] = "com.gtnewhorizons.retrofuturabootstrap.Main";
+        root["arguments"] = new System.Text.Json.Nodes.JsonObject
+        {
+            ["jvm"] = new System.Text.Json.Nodes.JsonArray("-Djava.system.class.loader=com.gtnewhorizons.retrofuturabootstrap.RfbSystemClassLoader",
+                "--enable-native-access=ALL-UNNAMED", "-Dfile.encoding=UTF-8")
+        };
+        return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 
     private const string ForgeInstallerUrl = "https://maven.minecraftforge.net/net/minecraftforge/forge/1.8.9-11.15.1.2318-1.8.9/forge-1.8.9-11.15.1.2318-1.8.9-installer.jar";

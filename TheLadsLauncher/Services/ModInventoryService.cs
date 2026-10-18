@@ -263,8 +263,7 @@ public sealed class ModInventoryService
         }
 
         const string platformReason = "Platform component; it is not a mod toggle";
-        var java = forge ? GameVersionPolicy.GetRequiredJavaMajor(version).ToString(CultureInfo.InvariantCulture) // exactly
-            : GameVersionPolicy.RequiresBundledCore(version) ? GameVersionPolicy.GetRequiredJavaMajor(version) + "+" : null;
+        var java = GameVersionPolicy.RequiresBundledCore(version) ? GameVersionPolicy.GetRequiredJavaMajor(version) + "+" : null;
         var loader = forge ? ("forge", "Forge", (string?)GameVersionPolicy.ForgeBuild) : ("fabricloader", "Fabric Loader", (string?)null);
         foreach (var (id, name, platformVersion) in new[] { ("minecraft", "Minecraft", (string?)version), loader, ("java", "Java", java) })
             entries.Add(new(id, name, null, platformVersion, null, null, ModOwnership.Platform, ModEntryStatus.Installed, true, true,
