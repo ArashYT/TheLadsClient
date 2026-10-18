@@ -8,6 +8,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 /**
  * BlockEntity for Botany Pots:
@@ -25,6 +27,24 @@ public class BotanyPotBlockEntity extends BlockEntity {
     public BotanyPotBlockEntity(BlockPos pos, BlockState state, boolean isHopper) {
         super(isHopper ? AriseNb3Mod.HOPPER_BOTANY_POT_BE_TYPE : AriseNb3Mod.BOTANY_POT_BE_TYPE, pos, state);
         this.isHopper = isHopper;
+    }
+
+    @Override
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        output.store("soil", ItemStack.CODEC, this.soil);
+        output.store("crop", ItemStack.CODEC, this.crop);
+        output.store("output", ItemStack.CODEC, this.output);
+        output.putInt("growth_ticks", this.growthTicks);
+    }
+
+    @Override
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        this.soil = input.read("soil", ItemStack.CODEC).orElse(ItemStack.EMPTY);
+        this.crop = input.read("crop", ItemStack.CODEC).orElse(ItemStack.EMPTY);
+        this.output = input.read("output", ItemStack.CODEC).orElse(ItemStack.EMPTY);
+        this.growthTicks = input.getIntOr("growth_ticks", 0);
     }
 
     public void setSoil(ItemStack s) {

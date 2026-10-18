@@ -19,8 +19,6 @@ import net.minecraft.world.item.ItemStack;
  * Render layer that displays the player's sheathed primary weapon/tool across their back.
  */
 public class BackWeaponRenderLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
-    private final ItemStackRenderState itemRenderState = new ItemStackRenderState();
-
     public BackWeaponRenderLayer(RenderLayerParent<AvatarRenderState, PlayerModel> parent) {
         super(parent);
     }
@@ -54,6 +52,7 @@ public class BackWeaponRenderLayer extends RenderLayer<AvatarRenderState, Player
         poseStack.rotateDegrees(Axis.ZP, 45.0f);
         poseStack.scale(0.65f, 0.65f, 0.65f);
 
+        ItemStackRenderState itemRenderState = new ItemStackRenderState();
         mc.getItemModelResolver().updateForLiving(itemRenderState, backStack, ItemDisplayContext.FIXED, player);
         itemRenderState.submit(poseStack, submitNodeCollector, packedLight, OverlayTexture.NO_OVERLAY, 0);
 

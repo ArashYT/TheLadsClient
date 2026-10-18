@@ -10,7 +10,8 @@
     "MixinAvatarRenderer",
     "MixinHud",
     "MixinAbstractContainerScreen",
-    "MixinFirstPersonHandsAndItemsRenderer"
+    "MixinFirstPersonHandsAndItemsRenderer",
+    "MixinCamera"
   ],
   "injectors": {
     "defaultRequire": 1

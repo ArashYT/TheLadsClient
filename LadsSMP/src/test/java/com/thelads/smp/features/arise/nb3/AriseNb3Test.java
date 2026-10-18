@@ -10,7 +10,6 @@ import com.thelads.smp.features.arise.nb3.holdmyitems.HoldMyItemsFeature;
 import com.thelads.smp.features.arise.nb3.immersiveui.ImmersiveUIState;
 import com.thelads.smp.features.arise.nb3.obscuretooltips.ObscureTooltipsFeature;
 import com.thelads.smp.features.arise.nb3.snailmail.SnailMailFeature;
-import com.thelads.smp.features.arise.nb3.voiceless.VoicelessSurvivalFeature;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,9 +34,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * 4. Immersive UI
  * 5. MmmMmmMmmMmm Target Dummy
  * 6. Obscure Tooltips
- * 7. Voiceless Survival
- * 8. Snail Mail
- * 9. Botany Pots
+ * 7. Snail Mail
+ * 8. Botany Pots
  * + Configuration defaults & JSON serialization roundtrip
  */
 public class AriseNb3Test {
@@ -109,17 +107,8 @@ public class AriseNb3Test {
         assertTrue(cfg.obscureTooltips.enabled);
         assertTrue(cfg.obscureTooltips.displayArmorModels);
         assertTrue(cfg.obscureTooltips.displayToolsModels);
-        assertEquals(1.5f, cfg.obscureTooltips.rotationSpeed, 0.001f);
 
-        // Feature 7: Voiceless Survival
-        assertTrue(cfg.voicelessSurvival.enabled);
-        assertEquals(20.0, cfg.voicelessSurvival.detectionRange, 0.001);
-        assertEquals(-40.0, cfg.voicelessSurvival.voiceThreshold, 0.001);
-        assertEquals(1.3, cfg.voicelessSurvival.movementSpeedMultiplier, 0.001);
-        assertEquals(0.5, cfg.voicelessSurvival.whisperRangeMultiplier, 0.001);
-        assertEquals(0.5, cfg.voicelessSurvival.sneakingRangeMultiplier, 0.001);
-
-        // Feature 8: Snail Mail
+        // Feature 7: Snail Mail
         assertTrue(cfg.snailMail.enabled);
         assertTrue(cfg.snailMail.lockBoxes);
         assertTrue(cfg.snailMail.protectBoxDestroy);
@@ -127,7 +116,7 @@ public class AriseNb3Test {
         assertEquals(3, cfg.snailMail.bypassLockOpLevel);
         assertEquals(5, cfg.snailMail.deliveryDelayMinutes);
 
-        // Feature 9: Botany Pots
+        // Feature 8: Botany Pots
         assertTrue(cfg.botanyPots.enabled);
         assertEquals(200, cfg.botanyPots.growthIntervalTicks);
         assertEquals(40, cfg.botanyPots.hopperExportIntervalTicks);
@@ -143,8 +132,6 @@ public class AriseNb3Test {
         initial.holdMyItems.animationSpeed = 1.5f;
         initial.immersiveUI.shakeAmplitude = 2.0f;
         initial.targetDummy.scarecrowRadius = 18;
-        initial.obscureTooltips.rotationSpeed = 2.5f;
-        initial.voicelessSurvival.detectionRange = 25.0;
         initial.snailMail.deliveryDelayMinutes = 8;
         initial.botanyPots.growthIntervalTicks = 350;
 
@@ -165,10 +152,16 @@ public class AriseNb3Test {
         assertEquals(1.5f, loaded.holdMyItems.animationSpeed, 0.001f);
         assertEquals(2.0f, loaded.immersiveUI.shakeAmplitude, 0.001f);
         assertEquals(18, loaded.targetDummy.scarecrowRadius);
-        assertEquals(2.5f, loaded.obscureTooltips.rotationSpeed, 0.001f);
-        assertEquals(25.0, loaded.voicelessSurvival.detectionRange, 0.001);
         assertEquals(8, loaded.snailMail.deliveryDelayMinutes);
         assertEquals(350, loaded.botanyPots.growthIntervalTicks);
+    }
+
+    @Test
+    void testTargetDummyDamageRecords() {
+        com.thelads.smp.features.arise.nb3.targetdummy.TargetDummyEntity.DamageRecord record =
+                new com.thelads.smp.features.arise.nb3.targetdummy.TargetDummyEntity.DamageRecord(5000L, 14.5f);
+        assertEquals(5000L, record.timestampMs());
+        assertEquals(14.5f, record.amount(), 0.001f);
     }
 
     @Test
@@ -234,31 +227,6 @@ public class AriseNb3Test {
         float bob2 = ImmersiveUIState.getFloatingItemBob(500);
         assertNotEquals(Float.NaN, bob1);
         assertNotEquals(Float.NaN, bob2);
-    }
-
-    @Test
-    void testVoicelessSurvivalDetectionLogic() {
-        double base = 20.0;
-
-        // Normal standing speech
-        double normalRange = VoicelessSurvivalFeature.computeEffectiveRange(base, false, false);
-        assertEquals(20.0, normalRange, 0.001);
-
-        // Whispering speech
-        double whisperRange = VoicelessSurvivalFeature.computeEffectiveRange(base, true, false);
-        assertEquals(20.0 * 0.5, whisperRange, 0.001);
-
-        // Sneaking speech
-        double sneakRange = VoicelessSurvivalFeature.computeEffectiveRange(base, false, true);
-        assertEquals(20.0 * 0.5, sneakRange, 0.001);
-
-        // Whispering and sneaking
-        double sneakWhisperRange = VoicelessSurvivalFeature.computeEffectiveRange(base, true, true);
-        assertEquals(20.0 * 0.5 * 0.5, sneakWhisperRange, 0.001);
-
-        // Null player voice handler returns 0
-        int alerted = VoicelessSurvivalFeature.onPlayerVoice(null, 0.5, false);
-        assertEquals(0, alerted);
     }
 
     @Test

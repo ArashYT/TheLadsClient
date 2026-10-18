@@ -17,6 +17,13 @@ import net.minecraft.world.item.MaceItem;
 public final class HoldMyItemsFeature {
     private HoldMyItemsFeature() {}
 
+    private static final java.util.Set<String> NON_BULKY_KEYWORDS = java.util.Set.of(
+            "torch", "button", "lever", "flower", "sapling", "redstone", "rail",
+            "pressure_plate", "tripwire", "carpet", "lantern", "candle", "mushroom",
+            "fern", "grass", "tulip", "orchid", "allium", "poppy", "dandelion",
+            "daisy", "cornflower", "lily", "vine", "hanging_roots", "spore_blossom"
+    );
+
     public static boolean isBulkyItem(ItemStack stack) {
         if (!AriseNb3Config.get().holdMyItems.enabled) return false;
         if (stack == null || stack.isEmpty()) return false;
@@ -26,8 +33,16 @@ public final class HoldMyItemsFeature {
             return false;
         }
 
-        // BlockItems (bulky full blocks, chests, anvils, etc.) or heavy weapons like mace
+        // Exclude lightweight non-bulky blocks (torches, buttons, levers, flowers, etc.)
         if (stack.getItem() instanceof BlockItem) {
+            if (id != null) {
+                String path = id.getPath();
+                for (String keyword : NON_BULKY_KEYWORDS) {
+                    if (path.contains(keyword)) {
+                        return false;
+                    }
+                }
+            }
             return true;
         }
         return stack.getItem() instanceof MaceItem;
@@ -36,6 +51,7 @@ public final class HoldMyItemsFeature {
     /**
      * Applies two-handed carrying transformation to the first-person hand model.
      */
+    @net.fabricmc.api.Environment(net.fabricmc.api.EnvType.CLIENT)
     public static void applyTwoHandedTransform(PoseStack poseStack, HumanoidArm arm, float equipProgress) {
         if (!AriseNb3Config.get().holdMyItems.enabled) return;
 

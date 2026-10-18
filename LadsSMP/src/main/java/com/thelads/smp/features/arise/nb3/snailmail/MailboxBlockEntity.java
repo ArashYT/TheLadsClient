@@ -9,6 +9,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +26,31 @@ public class MailboxBlockEntity extends BlockEntity {
 
     public MailboxBlockEntity(BlockPos pos, BlockState state) {
         super(AriseNb3Mod.MAILBOX_BE_TYPE, pos, state);
+    }
+
+    @Override
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        if (ownerUuid != null) {
+            output.putString("owner_uuid", ownerUuid.toString());
+        }
+        if (ownerName != null) {
+            output.putString("owner_name", ownerName);
+        }
+        output.store("inbox", ItemStack.CODEC.listOf(), inbox);
+    }
+
+    @Override
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        input.getString("owner_uuid").ifPresent(s -> {
+            try {
+                this.ownerUuid = UUID.fromString(s);
+            } catch (Exception ignored) {}
+        });
+        input.getString("owner_name").ifPresent(name -> this.ownerName = name);
+        this.inbox.clear();
+        input.read("inbox", ItemStack.CODEC.listOf()).ifPresent(this.inbox::addAll);
     }
 
     public void setOwner(UUID uuid, String name) {

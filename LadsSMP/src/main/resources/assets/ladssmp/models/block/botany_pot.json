@@ -1,0 +1,22 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "minecraft:block/terracotta",
+    "clay": "minecraft:block/terracotta",
+    "dirt": "minecraft:block/dirt"
+  },
+  "elements": [
+    {
+      "from": [3, 0, 3],
+      "to": [13, 10, 13],
+      "faces": {
+        "down":  { "texture": "#clay", "cullface": "down" },
+        "up":    { "texture": "#dirt" },
+        "north": { "texture": "#clay" },
+        "south": { "texture": "#clay" },
+        "west":  { "texture": "#clay" },
+        "east":  { "texture": "#clay" }
+      }
+    }
+  ]
+}

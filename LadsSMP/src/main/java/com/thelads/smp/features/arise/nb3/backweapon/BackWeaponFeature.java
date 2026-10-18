@@ -16,6 +16,9 @@ public final class BackWeaponFeature {
 
     public static boolean isWeaponOrTool(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
+        if (AriseNb3Config.get().backWeapon.disallowCurioItems && stack.has(DataComponents.EQUIPPABLE)) {
+            return false;
+        }
         // In 26.3, weapons and tools are defined by their DataComponents
         if (stack.has(DataComponents.WEAPON)
                 || stack.has(DataComponents.TOOL)

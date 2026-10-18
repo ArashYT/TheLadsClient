@@ -422,5 +422,12 @@
   "advancements.ladssmp.mods.chef_mastery.description": "Don the prestigious white chef hat.",
   "advancements.ladssmp.mods.naturalist_trophy.title": "Forest Monarch",
   "advancements.ladssmp.mods.naturalist_trophy.description": "Claim trophy antlers from wildlife of the woods.",
-  "key.ladssmp.throw_carried": "Throw Carried Object"
+  "key.ladssmp.throw_carried": "Throw Carried Object",
+  "block.ladssmp.mailbox": "Mailbox",
+  "block.ladssmp.botany_pot": "Botany Pot",
+  "block.ladssmp.hopper_botany_pot": "Hopper Botany Pot",
+  "item.ladssmp.target_dummy": "Target Dummy",
+  "entity.ladssmp.target_dummy": "Target Dummy",
+  "key.ladssmp.swap_back_weapon": "Swap Back Weapon",
+  "key.ladssmp.cosmetics": "Open Cosmetic Armor"
 }
