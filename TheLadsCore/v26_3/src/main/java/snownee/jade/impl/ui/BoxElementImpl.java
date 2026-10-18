@@ -394,6 +394,18 @@ public class BoxElementImpl extends BoxElement implements ContainerEventHandler 
 				expectedRect.setY(bossBarRect.getY() + bossBarRect.getHeight());
 			}
 		}
+
+		// QA only, never for players: offset Jade's top anchor while QA progress bar is visible so it does not cover it
+		if (com.thelads.core.client.qa.QaProgress.on() && !com.thelads.core.client.qa.QaProgress.isHidden()) {
+			int qaBottom = com.thelads.core.client.qa.QaProgress.barBottom(Minecraft.getInstance().font.lineHeight);
+			int barWidth = 220;
+			int barLeft = (window.getGuiScaledWidth() - barWidth) / 2;
+			int barRight = (window.getGuiScaledWidth() + barWidth) / 2;
+			if (expectedRect.getX() < barRight && expectedRect.getX() + expectedRect.getWidth() > barLeft
+					&& expectedRect.getY() < qaBottom + 2) {
+				expectedRect.setY(qaBottom + 2);
+			}
+		}
 	}
 
 	public void updateRect(TooltipAnimation animation) {

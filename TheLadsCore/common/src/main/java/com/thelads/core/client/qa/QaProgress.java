@@ -186,6 +186,15 @@ public final class QaProgress {
     /** Leaves the bar out until {@code hide(false)} (a run whose frames are all compared). */
     public static synchronized void hide(boolean hide) { if (on) hidden = hide; }
 
+    /** True if the QA bar is currently suppressed (frames hidden or permanently hidden) or inactive. */
+    public static synchronized boolean isHidden() { return !on || hidden || hideFrames > 0; }
+
+    /** Estimated bottom edge of the QA progress bar in GUI pixels (for overlays to clear). */
+    public static synchronized int barBottom(int fontHeight) {
+        int y = 2, fh = fontHeight + 1;
+        return y + (cLine2 == null ? 1 : 2) * fh + 8;
+    }
+
     private static void finish(Run r, Result result) {
         if (!r.open) return;
         long took = clock.getAsLong() - r.stepStart;
