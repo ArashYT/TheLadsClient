@@ -136,7 +136,7 @@ public final class DimensionAccessFeature {
                 .then(Commands.literal("access")
                         .then(Commands.argument("player", EntityArgument.player())
                                 .then(Commands.literal("allow")
-                                        .then(Commands.argument("dimension", StringArgumentType.string())
+                                        .then(Commands.argument("dimension", StringArgumentType.greedyString())
                                                 .executes(ctx -> {
                                                     ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
                                                     String dim = StringArgumentType.getString(ctx, "dimension");
@@ -146,7 +146,7 @@ public final class DimensionAccessFeature {
                                                     return 1;
                                                 })))
                                 .then(Commands.literal("deny")
-                                        .then(Commands.argument("dimension", StringArgumentType.string())
+                                        .then(Commands.argument("dimension", StringArgumentType.greedyString())
                                                 .executes(ctx -> {
                                                     ServerPlayer target = EntityArgument.getPlayer(ctx, "player");
                                                     String dim = StringArgumentType.getString(ctx, "dimension");
