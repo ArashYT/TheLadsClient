@@ -2,10 +2,13 @@ package com.thelads.smp.features.arise.nb1;
 
 import com.mojang.brigadier.CommandDispatcher;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -29,6 +32,15 @@ public final class CarryOnExtendFeature {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsSMP-CarryOnExtend");
 
     public static void init() {
+        // Register network payload for keybind throw
+        PayloadTypeRegistry.serverboundPlay().register(ThrowCarriedPayload.TYPE, ThrowCarriedPayload.STREAM_CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(ThrowCarriedPayload.TYPE, (payload, context) -> {
+            ServerPlayer player = context.player();
+            context.server().execute(() -> {
+                throwCarried(player);
+            });
+        });
+
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             registerCommands(dispatcher);
         });
@@ -64,6 +76,10 @@ public final class CarryOnExtendFeature {
                 if (state != null && !state.isAir()) {
                     BlockPos eyePos = BlockPos.containing(player.getEyePosition());
                     FallingBlockEntity falling = FallingBlockEntity.fall(player.level(), eyePos, state);
+                    CompoundTag contentNbt = carryData.getContentNbt();
+                    if (contentNbt != null && !contentNbt.isEmpty()) {
+                        falling.blockData = contentNbt;
+                    }
                     falling.setDeltaMovement(velocity);
                 }
             }
@@ -84,6 +100,19 @@ public final class CarryOnExtendFeature {
     }
 
     private static void registerCommands(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(Commands.literal("throw")
+                .executes(ctx -> {
+                    ServerPlayer player = ctx.getSource().getPlayerOrException();
+                    if (throwCarried(player)) {
+                        ctx.getSource().sendSuccess(() -> Component.literal("Threw carried object!").withStyle(ChatFormatting.GREEN), false);
+                        return 1;
+                    } else {
+                        ctx.getSource().sendFailure(Component.literal("You are not carrying anything with Carry On.").withStyle(ChatFormatting.RED));
+                        return 0;
+                    }
+                })
+        );
+
         dispatcher.register(Commands.literal("carryon")
                 .then(Commands.literal("throw")
                         .executes(ctx -> {

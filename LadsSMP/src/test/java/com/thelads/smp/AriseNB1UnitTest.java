@@ -3,7 +3,9 @@ package com.thelads.smp;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.thelads.smp.features.arise.nb1.*;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -59,7 +61,7 @@ public class AriseNB1UnitTest {
         String dim = "minecraft:overworld";
         int cx = 10;
         int cz = -5;
-        String key = dim + ":" + cx + "," + cz;
+        String key = AdminClaimsFeature.formatKey(dim, cx, cz);
         assertEquals("minecraft:overworld:10,-5", key);
 
         // Verify config options
@@ -67,13 +69,25 @@ public class AriseNB1UnitTest {
         assertTrue(cfg.adminClaims.enabled);
         assertTrue(cfg.adminClaims.protectExplosions);
         assertEquals(2, cfg.adminClaims.requiredPermissionLevel);
+
+        // Verify claim and unclaim logic via memory cache
+        ChunkPos chunkPos = new ChunkPos(10, -5);
+        BlockPos insidePos = new BlockPos(10 * 16 + 8, 64, -5 * 16 + 8);
+
+        // Claim manually via memory
+        AdminClaimsFeature.claimChunk(null, chunkPos);
+        assertTrue(AdminClaimsFeature.getClaimedChunks().contains(key));
+
+        // Unclaim
+        AdminClaimsFeature.unclaimChunk(null, chunkPos);
+        assertFalse(AdminClaimsFeature.getClaimedChunks().contains(key));
     }
 
     // ==========================================
     // 2. Carry On Extend
     // ==========================================
     @Test
-    @DisplayName("Carry On Extend: velocity calculation and impulse scaling")
+    @DisplayName("Carry On Extend: velocity calculation and payload verification")
     void testCarryOnExtend() {
         assertTrue(CarryOnExtendFeature.isEnabled());
         AriseNB1Config.CarryOnExtendConfig cfg = AriseNB1Config.get().carryOnExtend;
@@ -88,6 +102,11 @@ public class AriseNB1UnitTest {
         assertNotNull(velocity);
         assertTrue(velocity.y > 0, "Upward velocity should be positive due to upward pitch angle");
         assertEquals(cfg.throwPower * dir.length(), velocity.length(), 0.001);
+
+        // Verify throw carried payload
+        ThrowCarriedPayload payload = ThrowCarriedPayload.INSTANCE;
+        assertNotNull(payload);
+        assertEquals("ladssmp:throw_carried", payload.type().id().toString());
     }
 
     // ==========================================
@@ -122,6 +141,10 @@ public class AriseNB1UnitTest {
 
         assertEquals(600, cfg.despawnDurations.get("minecraft:diamond"));
         assertEquals(1200, cfg.despawnDurations.get("minecraft:netherite_ingot"));
+
+        // Verify conversion: 600s -> 12000 ticks, 1200s -> 24000 ticks
+        assertEquals(12000, cfg.despawnDurations.get("minecraft:diamond") * 20);
+        assertEquals(24000, cfg.despawnDurations.get("minecraft:netherite_ingot") * 20);
     }
 
     // ==========================================
@@ -156,7 +179,7 @@ public class AriseNB1UnitTest {
     // 7. Extra Dungeons
     // ==========================================
     @Test
-    @DisplayName("Extra Dungeons: 6 themed variants and palette definitions")
+    @DisplayName("Extra Dungeons: 6 themed variants and palette suppliers")
     void testExtraDungeons() {
         assertTrue(ExtraDungeonsFeature.isEnabled());
 
@@ -167,6 +190,13 @@ public class AriseNB1UnitTest {
         assertEquals(ExtraDungeonsFeature.DungeonTheme.SPIDER, ExtraDungeonsFeature.DungeonTheme.valueOf("SPIDER"));
         assertEquals(ExtraDungeonsFeature.DungeonTheme.STRAY, ExtraDungeonsFeature.DungeonTheme.valueOf("STRAY"));
         assertEquals(ExtraDungeonsFeature.DungeonTheme.ZOMBIE, ExtraDungeonsFeature.DungeonTheme.valueOf("ZOMBIE"));
+
+        // Verify all 6 themes exist and have distinct names
+        Set<String> themeNames = new java.util.HashSet<>();
+        for (ExtraDungeonsFeature.DungeonTheme theme : ExtraDungeonsFeature.DungeonTheme.values()) {
+            assertTrue(themeNames.add(theme.name()), "Theme name must be unique: " + theme.name());
+        }
+        assertEquals(6, themeNames.size());
     }
 
     // ==========================================

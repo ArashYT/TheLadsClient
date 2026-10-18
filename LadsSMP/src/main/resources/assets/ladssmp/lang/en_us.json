@@ -421,5 +421,6 @@
   "advancements.ladssmp.mods.chef_mastery.title": "Toque Blanche",
   "advancements.ladssmp.mods.chef_mastery.description": "Don the prestigious white chef hat.",
   "advancements.ladssmp.mods.naturalist_trophy.title": "Forest Monarch",
-  "advancements.ladssmp.mods.naturalist_trophy.description": "Claim trophy antlers from wildlife of the woods."
+  "advancements.ladssmp.mods.naturalist_trophy.description": "Claim trophy antlers from wildlife of the woods.",
+  "key.ladssmp.throw_carried": "Throw Carried Object"
 }

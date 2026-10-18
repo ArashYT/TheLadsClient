@@ -36,8 +36,8 @@ public class QuicksandBlock extends Block {
         entity.makeStuckInBlock(state, new Vec3(0.5D, sinkSpeed, 0.5D));
 
         if (!level.isClientSide() && entity instanceof LivingEntity living && level instanceof ServerLevel serverLevel) {
-            // Suffocation check: if entity head/eyes are inside quicksand block
-            if (pos.getY() == Math.floor(living.getEyeY())) {
+            // Suffocation check: if entity head/eyes are inside quicksand block, rate-limited to once per second
+            if (pos.getY() == Math.floor(living.getEyeY()) && living.tickCount % 20 == 0) {
                 living.hurtServer(serverLevel, level.damageSources().inWall(), 1.0F);
             }
         }

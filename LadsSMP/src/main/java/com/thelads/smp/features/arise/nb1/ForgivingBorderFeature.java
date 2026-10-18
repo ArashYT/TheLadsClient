@@ -1,6 +1,7 @@
 package com.thelads.smp.features.arise.nb1;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -47,11 +48,21 @@ public final class ForgivingBorderFeature {
         if (targetZ >= border.getMaxZ() - 0.5) targetZ -= buffer;
         else if (targetZ <= border.getMinZ() + 0.5) targetZ += buffer;
 
-        player.teleportTo(targetX, player.getY(), targetZ);
+        // Obstruction safety check: ensure the target landing spot is not obstructed by solid blocks
+        double targetY = player.getY();
+        BlockPos targetPos = BlockPos.containing(targetX, targetY, targetZ);
+        int maxScan = 16;
+        while (!player.level().isEmptyBlock(targetPos) && maxScan-- > 0 && targetY < player.level().getMaxY()) {
+            targetY += 1.0;
+            targetPos = BlockPos.containing(targetX, targetY, targetZ);
+        }
+
+        player.teleportTo(targetX, targetY, targetZ);
         player.setDeltaMovement(0, 0, 0);
 
         player.sendSystemMessage(
-                Component.literal("Teleported safely inside the world border.").withStyle(ChatFormatting.GOLD)
+                Component.literal("Teleported safely inside the world border.").withStyle(ChatFormatting.GOLD),
+                true
         );
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.CHORUS_FRUIT_TELEPORT, SoundSource.PLAYERS, 0.8F, 1.0F);
     }

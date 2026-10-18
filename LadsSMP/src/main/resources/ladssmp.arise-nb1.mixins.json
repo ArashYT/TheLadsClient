@@ -6,8 +6,9 @@
     "MixinExplosionClaims",
     "MixinFasterPortals",
     "MixinItemEntityDespawn",
-    "MixinLivingEntityBorder",
+    "MixinMobSpawn",
     "MixinMonsterRoomDungeons",
+    "MixinServerPlayerBorder",
     "MixinServerPlayerDimension",
     "MixinZombieDaylight"
   ],
