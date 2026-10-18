@@ -14,7 +14,8 @@ import org.lwjgl.opengl.GLContext;
  * the top of the game loop, then the window's input is pumped again, so the ticks see clicks and keys made during the frame
  * limiter's sleep (vanilla pumps it in Display.update, before that sleep). RawMouse189 already reads the camera's motion later
  * still, right before the camera turns. Always on, no setting; kill switch -Dlads.reflex=false; no OpenGL 3.2 or any failure
- * turns it off for the session.
+ * turns it off for the session. Above ~2,000 FPS it steps aside (1.9.12): the queue it trims is under a millisecond there, while its
+ * fence and wait per frame cost ~7% of the frame rate (2,690 -> 2,884 FPS in the 1.9.12 bench); below ~1,400 FPS it paces again.
  *
  * <p>Buffered raw input (the Ixeris remake) does not apply to 1.8.9: LWJGL 2 registers no raw input; it takes mouse motion from
  * WM_MOUSEMOVE, which Windows coalesces into at most one message per pump however fast the mouse polls, and RawMouse189's JInput
@@ -25,6 +26,10 @@ public final class InputLatency189 {
     static final FramePacer PACER = new FramePacer();
     private static boolean reflex = !"false".equalsIgnoreCase(System.getProperty("lads.reflex")), checked;
     private static Object previous, older; // GlFence189 fences
+    /** Frame-to-frame time (average of the last ~16) under which pacing steps aside, and over which it comes back. */
+    static final long FAST_NS = 500_000L, SLOW_NS = 700_000L;
+    private static long lastFrame, interval;
+    private static boolean fast;
     /** QA: Probe145 and ProbeInput189 pause the pacing for their with/without comparisons; ProbeInput189's latency meter. */
     public static boolean qaPaused;
     static LatencyMeter qaMeter;
@@ -48,12 +53,25 @@ public final class InputLatency189 {
     /** Head of Minecraft.runGameLoop. */
     public static void frameStart() {
         if (qaMeter != null) qaMeter.poll();
+        track();
         pace();
         if (qaMeter != null) qaMeter.input();
     }
 
+    private static void track() {
+        long now = System.nanoTime();
+        if (lastFrame != 0) {
+            long frame = now - lastFrame;
+            interval = interval == 0 ? frame : interval + (frame - interval) / 16;
+            boolean was = fast;
+            fast = fast ? interval < SLOW_NS : interval < FAST_NS;
+            if (fast && !was) dropFences(); // the first paced frame after it finds no fence and does not wait
+        }
+        lastFrame = now;
+    }
+
     private static void pace() {
-        if (!active()) return;
+        if (!active() || fast) return;
         try {
             if (!checked) {
                 checked = true;
@@ -77,7 +95,7 @@ public final class InputLatency189 {
     /** Head of Minecraft.updateDisplay, right before the swap: the feedback, then this frame's fence. */
     public static void beforeSwap() {
         if (qaMeter != null) qaMeter.fence();
-        if (!active() || !checked) return;
+        if (!active() || !checked || fast) return;
         try {
             PACER.frameEnd(done(previous));
             GlFence189.delete(older);
@@ -115,13 +133,17 @@ public final class InputLatency189 {
         }
     }
 
-    private static void stop(Throwable t) {
-        reflex = false;
+    private static void dropFences() {
         try {
             GlFence189.delete(older);
             GlFence189.delete(previous);
         } catch (Throwable ignored) {}
         older = previous = null;
+    }
+
+    private static void stop(Throwable t) {
+        reflex = false;
+        dropFences();
         LOGGER.warn("Input-latency pacing failed; vanilla frame timing from now: " + t);
     }
 }
