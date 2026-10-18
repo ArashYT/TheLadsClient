@@ -283,6 +283,12 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
     }
 
     @Override
+    public Session session() {
+        var user = Minecraft.getInstance().getUser();
+        return user == null ? null : new Session(user.getProfileId(), user.getName(), user.getAccessToken());
+    }
+
+    @Override
     public String getServerAddress() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.isSingleplayer()) return "Singleplayer";

@@ -58,6 +58,14 @@ public interface LadsGameBridge {
     /** The logged-in local player's username; empty when not playing or unavailable. */
     default String getPlayerName() { return ""; }
 
+    /** The signed-in account, also outside a world. The token only ever goes to Mojang (CosmeticsLink's join), never logged. */
+    record Session(java.util.UUID uuid, String name, String accessToken) {
+        @Override public String toString() { return "Session[" + name + "]"; }
+    }
+
+    /** The game's session (User / Session object); null when unavailable. Any thread: it only reads the account fields. */
+    default Session session() { return null; }
+
     boolean isIngame();
 
     int getFps();
