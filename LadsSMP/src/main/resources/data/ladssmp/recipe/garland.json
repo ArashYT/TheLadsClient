@@ -2,12 +2,8 @@
   "type": "minecraft:crafting_shaped",
   "category": "building",
   "key": {
-    "S": {
-      "item": "minecraft:string"
-    },
-    "L": {
-      "item": "minecraft:oak_leaves"
-    }
+    "S": "minecraft:string",
+    "L": "minecraft:oak_leaves"
   },
   "pattern": [
     " S ",

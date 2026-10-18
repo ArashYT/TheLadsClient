@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "building",
   "key": {
-    "S": {
-      "item": "minecraft:string"
-    },
-    "N": {
-      "item": "minecraft:iron_nugget"
-    },
-    "P": {
-      "item": "minecraft:paper"
-    }
+    "S": "minecraft:string",
+    "N": "minecraft:iron_nugget",
+    "P": "minecraft:paper"
   },
   "pattern": [
     " S ",

@@ -2,12 +2,8 @@
   "type": "minecraft:crafting_shapeless",
   "category": "building",
   "ingredients": [
-    {
-      "item": "ladssmp:hanging_lights"
-    },
-    {
-      "item": "minecraft:lime_dye"
-    }
+    "ladssmp:hanging_lights",
+    "minecraft:lime_dye"
   ],
   "result": {
     "count": 1,

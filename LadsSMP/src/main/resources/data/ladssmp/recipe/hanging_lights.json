@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "building",
   "key": {
-    "N": {
-      "item": "minecraft:iron_nugget"
-    },
-    "S": {
-      "item": "minecraft:string"
-    },
-    "G": {
-      "item": "minecraft:glowstone_dust"
-    }
+    "N": "minecraft:iron_nugget",
+    "S": "minecraft:string",
+    "G": "minecraft:glowstone_dust"
   },
   "pattern": [
     " S ",

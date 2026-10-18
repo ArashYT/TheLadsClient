@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "building",
   "key": {
-    "S": {
-      "item": "minecraft:string"
-    },
-    "P": {
-      "item": "minecraft:paper"
-    },
-    "D": {
-      "item": "minecraft:red_dye"
-    }
+    "S": "minecraft:string",
+    "P": "minecraft:paper",
+    "D": "minecraft:red_dye"
   },
   "pattern": [
     " S ",
