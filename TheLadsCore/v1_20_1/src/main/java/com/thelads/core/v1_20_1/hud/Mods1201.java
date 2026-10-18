@@ -26,6 +26,7 @@ public final class Mods1201 {
     private static volatile boolean forgeChecked;
 
     public static boolean loaded(String id) {
+        if (id == null || id.isEmpty()) return false;
         Boolean known = CACHE.get(id);
         if (known != null) return known;
         if (FabricLoader.getInstance().isModLoaded(id)) {

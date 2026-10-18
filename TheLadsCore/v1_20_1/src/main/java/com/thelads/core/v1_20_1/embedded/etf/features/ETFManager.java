@@ -139,9 +139,10 @@ public class ETFManager {
                     if ("vanilla".equals(pack.packId())) continue;
                     for (String namespace : pack.getNamespaces(net.minecraft.server.packs.PackType.CLIENT_RESOURCES)) {
                         String[] found = {null};
-                        pack.listResources(net.minecraft.server.packs.PackType.CLIENT_RESOURCES, namespace, "textures/entity", (id, stream) -> {
-                            if (found[0] == null && NUMBERED.matcher(id.getPath()).matches()) found[0] = id.toString();
-                        });
+                        for (String root : new String[]{"textures/entity", "textures/models/armor", "textures/trims", "textures/painting"})
+                            pack.listResources(net.minecraft.server.packs.PackType.CLIENT_RESOURCES, namespace, root, (id, stream) -> {
+                                if (found[0] == null && NUMBERED.matcher(id.getPath()).matches()) found[0] = id.toString();
+                            });
                         if (found[0] != null && why == null) why = pack.packId() + " " + found[0];
                     }
                 }

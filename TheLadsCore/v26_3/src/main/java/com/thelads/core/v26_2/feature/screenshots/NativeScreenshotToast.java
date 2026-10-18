@@ -25,6 +25,10 @@ public class NativeScreenshotToast implements Toast {
     private long firstRender = 0;
     private Visibility visibility = Visibility.SHOW;
     private boolean finished;
+    /** Last frame this toast was drawn (System.nanoTime); and the newest toast with a thumbnail. A toast the manager dropped without
+     *  onFinishedRendering (ToastManager.clear on disconnect) has its thumbnail released when the next one loads. */
+    private volatile long lastDrawn = System.nanoTime();
+    private static NativeScreenshotToast newest;
 
     public NativeScreenshotToast(File file) {
         this.file = file;
@@ -39,6 +43,9 @@ public class NativeScreenshotToast implements Toast {
                 NativeImage image = NativeImage.read(in);
                 Minecraft.getInstance().execute(() -> {
                     if (finished) { image.close(); return; } // the toast is already gone: nothing would release it
+                    NativeScreenshotToast previous = newest;
+                    if (previous != null && previous != this && System.nanoTime() - previous.lastDrawn > 2_000_000_000L) previous.onFinishedRendering();
+                    newest = this;
                     try {
                         this.dynamicTexture = new DynamicTexture(() -> "Lads screenshot preview", image);
                         String path = "screenshot_preview_" + Math.abs(file.getName().hashCode());
@@ -89,6 +96,7 @@ public class NativeScreenshotToast implements Toast {
         if (firstRender == 0) {
             firstRender = currentTime;
         }
+        lastDrawn = System.nanoTime();
 
         int w = width();
         int h = height();
