@@ -33,7 +33,7 @@ public abstract class EmoteModelBipedMixin189 {
     private void ladsEmote(float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch,
                            float scaleFactor, Entity entity, CallbackInfo ci) {
         if (EmoteAnim189.inHand || !(entity instanceof EntityPlayer)) return;
-        EmotePose pose = EmoteAnim189.pose(entity);
+        EmotePose pose = EmoteAnim189.posed(entity);
         if (pose == null) return;
         if (ladsEmoteRest == null) ladsEmoteRest = new float[13];
         EmoteAnim189.save((ModelBiped) (Object) this, ladsEmoteRest);

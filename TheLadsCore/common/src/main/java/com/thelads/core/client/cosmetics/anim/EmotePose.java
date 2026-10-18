@@ -9,6 +9,8 @@ import static com.thelads.core.client.cosmetics.anim.Emote.*;
 public final class EmotePose {
     /** First person: the arms sit a little out, down and forward of the shoulders, so the view shows forearms and hands, not a slab. */
     private static final float[] FIRST_PERSON_SHIFT = {1, 0.5f, -6};
+    /** First person: arms pitched 12 degrees higher than third person, so a hand pumped up reaches near the crosshair. */
+    private static final float FIRST_PERSON_RAISE = -0.21f;
     public final float[] v = new float[CHANNELS];
     public float weight;
     public Emote emote;
@@ -25,10 +27,10 @@ public final class EmotePose {
     /** The whole body's offset in pixels (axis 0..2). */
     public float root(int axis) { return v[ROOT + axis] * weight; }
 
-    /** First person: the arm's rotation blended from hanging at the side (out of view) into the emote. */
+    /** First person: the arm's rotation blended from hanging at the side (out of view) into the emote, raised a little more (FIRST_PERSON_RAISE). */
     public float armRot(int part, int axis) {
-        float rest = axis == RZ ? (part == RIGHT_ARM ? 0.06f : -0.06f) : 0;
-        return rest + (v[ch(part, axis)] - rest) * weight;
+        float rest = axis == RZ ? (part == RIGHT_ARM ? 0.06f : -0.06f) : 0, raise = axis == RX ? FIRST_PERSON_RAISE : 0;
+        return rest + (v[ch(part, axis)] + raise - rest) * weight;
     }
 
     /** First person: the arm's pivot (pixels): rest pivot plus the emote's offset and the first-person shift, both with the weight. */

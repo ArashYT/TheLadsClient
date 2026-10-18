@@ -42,6 +42,8 @@ public final class EmoteAnim1201 {
     /** PlayerRenderer.renderHand (the vanilla first-person arm) runs setupAnim too: no emote there. */
     public static boolean inHand;
     private static PlayerModel<AbstractClientPlayer> wideArms, slimArms;
+    private static Entity lastEntity;
+    private static EmotePose lastPose;
 
     private EmoteAnim1201() {}
 
@@ -82,10 +84,15 @@ public final class EmoteAnim1201 {
         pose(self); // the blend-out finishes even while the player is not drawn
     }
 
-    /** A rendered player's emote pose this frame, or null. */
+    /** A rendered player's emote pose this frame, or null (PlayerRenderer.scale, once per drawn player: one lookup when nobody emotes). */
     public static EmotePose pose(Entity entity) {
-        return EmoteAnimator.pose(entity.getUUID(), entity != Minecraft.getInstance().player, entity.getX(), entity.getY(), entity.getZ());
+        lastPose = EmoteAnimator.pose(entity.getUUID(), entity != Minecraft.getInstance().player, entity.getX(), entity.getY(), entity.getZ());
+        lastEntity = entity;
+        return lastPose;
     }
+
+    /** The same player's pose again within its draw (the model's setupAnim), without a second lookup. */
+    public static EmotePose posed(Entity entity) { return entity == lastEntity ? lastPose : pose(entity); }
 
     /** Third person: the pose over the model vanilla (and the other mods) posed; the outer layer copies its parts again. */
     public static void apply(PlayerModel<?> model, EmotePose pose) {

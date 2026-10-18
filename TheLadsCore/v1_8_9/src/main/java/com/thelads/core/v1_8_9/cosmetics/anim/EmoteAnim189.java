@@ -38,6 +38,8 @@ public final class EmoteAnim189 {
     /** RenderPlayer.renderRightArm/renderLeftArm (the vanilla first-person arm) run setRotationAngles too: no emote there. */
     public static boolean inHand;
     private static ModelPlayer wideArms, slimArms;
+    private static Entity lastEntity;
+    private static EmotePose lastPose;
 
     public static void register() {
         ClientRegistry.registerKeyBinding(KEY);
@@ -78,10 +80,15 @@ public final class EmoteAnim189 {
         pose(self); // the blend-out finishes even while the player is not drawn
     }
 
-    /** A rendered player's emote pose this frame, or null. */
+    /** A rendered player's emote pose this frame, or null (preRenderCallback, once per drawn player: one lookup when nobody emotes). */
     public static EmotePose pose(Entity entity) {
-        return EmoteAnimator.pose(entity.getUniqueID(), entity != Minecraft.getMinecraft().thePlayer, entity.posX, entity.posY, entity.posZ);
+        lastPose = EmoteAnimator.pose(entity.getUniqueID(), entity != Minecraft.getMinecraft().thePlayer, entity.posX, entity.posY, entity.posZ);
+        lastEntity = entity;
+        return lastPose;
     }
+
+    /** The same player's pose again within its draw (its model and armour models), without another lookup. */
+    public static EmotePose posed(Entity entity) { return entity == lastEntity ? lastPose : pose(entity); }
 
     /** Third person: the pose over the model vanilla (and 1.7 Animations) posed; ModelPlayer copies it to the outer layer afterwards. */
     public static void apply(ModelBiped model, EmotePose pose) {

@@ -57,13 +57,13 @@ public final class EmoteCapture26 {
         out = game.getParent().resolve("emote1911").resolve("26.3");
         startedAt = System.currentTimeMillis();
         LOGGER.info("Lads emote capture BEGIN: {}", out);
-        plan(mc);
+        plan(mc, game);
     }
 
     private static void at(long ms, Runnable step) { STEPS.computeIfAbsent(ms, k -> new ArrayList<>()).add(step); }
     private static void shot(long ms, String name) { at(ms, () -> shots.add(name)); }
 
-    private static void plan(Minecraft mc) {
+    private static void plan(Minecraft mc, Path game) {
         UUID self = mc.player.getUUID();
         Emote groove = EmoteLibrary.get(EmoteLibrary.GROOVE);
         at(0, () -> {
@@ -72,6 +72,24 @@ public final class EmoteCapture26 {
             keyConflicts(mc);
             mc.gui.hud.getChat().clearMessages(false);
             hudWas = mc.gui.hud.isHidden();
+            // The checkerboard QA skin (3D Skin Layers draws its outer layer as cubes, they must follow the dance) and a test cape.
+            try {
+                Path png = game.resolve(".lads-qa-emote-skin.png");
+                Files.write(png, com.thelads.core.client.QaSkin.png());
+                com.thelads.core.v26_2.feature.LocalSkins.load(png.toString(), false, false);
+            } catch (Exception failure) { LOGGER.warn("Lads emote capture: no QA skin", failure); }
+        });
+        at(1200, () -> {
+            try {
+                var image = new com.mojang.blaze3d.platform.NativeImage(64, 32, true);
+                for (int x = 0; x < 64; x++) for (int y = 0; y < 32; y++) image.setPixel(x, y, com.thelads.core.client.WavyCape.qaPixel(x, y));
+                var cape = net.minecraft.resources.Identifier.fromNamespaceAndPath("theladscore", "qa_emote_cape");
+                mc.getTextureManager().register(cape, new net.minecraft.client.renderer.texture.DynamicTexture(() -> "Lads QA cape", image));
+                var selected = com.thelads.core.v26_2.feature.LocalSkins.class.getDeclaredField("selected");
+                selected.setAccessible(true);
+                var skin = mc.player.getSkin();
+                selected.set(null, new net.minecraft.world.entity.player.PlayerSkin(skin.body(), new net.minecraft.core.ClientAsset.ResourceTexture(cape, cape), null, skin.model(), false));
+            } catch (Exception failure) { LOGGER.warn("Lads emote capture: no test cape", failure); }
         });
         at(1500, () -> {
             mc.player.setYRot(180); mc.player.setYHeadRot(180); mc.player.setYBodyRot(180); mc.player.setXRot(0);
@@ -97,7 +115,11 @@ public final class EmoteCapture26 {
             EmotePose pose = EmoteAnimator.pose(self, false, 0, 0, 0);
             check(pose != null && pose.weight == 1, "blended fully in after 200 ms (weight " + (pose == null ? "none" : pose.weight) + ")");
         });
-        long inv = loop + (long) groove.periodMs + 300;
+        long back = loop + (long) groove.periodMs + 100;
+        at(back, () -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+        shot(back + 300, "3p-back-a");
+        shot(back + 300 + Math.round(groove.periodMs / 4), "3p-back-b");
+        long inv = back + 1000;
         at(inv, () -> { hud(mc, false); mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.InventoryScreen(mc.player)); });
         shot(inv + 400, "inventory");
         at(inv + 600, () -> mc.setScreenAndShow(null));
@@ -152,6 +174,7 @@ public final class EmoteCapture26 {
         at(other + 3200, () -> {
             mc.options.setCameraType(CameraType.FIRST_PERSON);
             hud(mc, hudWas);
+            com.thelads.core.v26_2.feature.LocalSkins.reset();
             done = true;
             LOGGER.info("Lads emote capture END: {} passed, {} failed; frames in {}", passed, failed, out);
         });

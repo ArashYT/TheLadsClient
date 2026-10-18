@@ -115,10 +115,15 @@ public final class EmoteProbe189 {
             EmotePose pose = EmoteAnimator.pose(self, false, 0, 0, 0);
             check(pose != null && pose.weight == 1, "blended fully in after 200 ms (weight " + (pose == null ? "none" : String.valueOf(pose.weight)) + ")");
         });
-        long inv = loop + (long) groove.periodMs + 300;
+        long back = loop + (long) groove.periodMs + 100;
+        at(back, () -> mc.gameSettings.thirdPersonView = 1);
+        shot(back + 300, "3p-back-a");
+        shot(back + 300 + Math.round(groove.periodMs / 4), "3p-back-b");
+        long inv = back + 1000;
+        at(inv - 300, () -> command("gamemode 0")); // the creative inventory has no player preview
         at(inv, () -> { mc.gameSettings.hideGUI = false; mc.displayGuiScreen(new GuiInventory(mc.thePlayer)); });
         shot(inv + 400, "inventory");
-        at(inv + 600, () -> mc.displayGuiScreen(null));
+        at(inv + 600, () -> { mc.displayGuiScreen(null); command("gamemode 1"); });
         long fp = inv + 900;
         at(fp, () -> mc.gameSettings.thirdPersonView = 0);
         for (int i = 0; i < 16; i++) shot(fp + 400 + Math.round(i * groove.periodMs / 16), String.format(Locale.ROOT, "fp-%02d", i));

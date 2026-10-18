@@ -29,7 +29,7 @@ public class EmotePlayerModelMixin1201 {
     @Inject(method = "setupAnim(Lnet/minecraft/world/entity/LivingEntity;FFFFF)V", at = @At("RETURN"))
     private void lads$emote(LivingEntity entity, float a, float b, float c, float d, float e, CallbackInfo callback) {
         if (EmoteAnim1201.inHand) return;
-        EmotePose pose = EmoteAnim1201.pose(entity);
+        EmotePose pose = EmoteAnim1201.posed(entity);
         if (pose == null) return;
         EmoteAnim1201.apply((PlayerModel<?>) (Object) this, pose);
         ladsEmoteDirty = true;

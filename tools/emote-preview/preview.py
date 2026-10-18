@@ -20,13 +20,14 @@ def rot(rx, ry, rz):
     Rz = np.array([[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]])
     return Rz @ Ry @ Rx
 
-FP_SHIFT = [1.0, 0.5, -6.0]  # first person: arm pivots moved by this (pixels, model axes) at full weight
+FP_SHIFT = [1.0, 0.5, -6.0]
+FP_RAISE = -0.21  # EmotePose.FIRST_PERSON_RAISE  # first person: arm pivots moved by this (pixels, model axes) at full weight
 
 def faces(v, parts=range(6), root=True, fp=False):
     out = []
     for p in parts:
         b = p * 6
-        R = rot(v[b], v[b + 1], v[b + 2])
+        R = rot(v[b] + (FP_RAISE if fp else 0), v[b + 1], v[b + 2])
         piv = np.array(REST[p]) + np.array(v[b + 3:b + 6]) + (np.array(v[36:39]) if root else 0) + (np.array(FP_SHIFT) * np.array([1 if p == 3 else -1, 1, 1]) if fp else 0)
         (x0, y0, z0), (x1, y1, z1) = BOXES[p]
         c = np.array([[x, y, z] for x in (x0, x1) for y in (y0, y1) for z in (z0, z1)], float)

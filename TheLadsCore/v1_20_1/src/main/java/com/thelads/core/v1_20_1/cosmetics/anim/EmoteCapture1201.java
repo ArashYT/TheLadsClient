@@ -93,6 +93,7 @@ public final class EmoteCapture1201 {
             command("time set noon"); command("weather clear"); command("clear @p"); command("effect clear @p");
             command("tp @p ~40 ~ ~");
             keyConflicts(mc);
+            mc.gui.getChat().clearMessages(false);
         });
         at(1500, () -> {
             mc.player.setYRot(180); mc.player.setYHeadRot(180); mc.player.setYBodyRot(180); mc.player.setXRot(0);
@@ -106,6 +107,7 @@ public final class EmoteCapture1201 {
         at(3100, () -> {
             if (mc.screen instanceof EmoteWheelScreen1201 wheel) wheel.keyReleased(EmoteAnim1201.KEY.getDefaultKey().getValue(), 0, 0);
             EmoteWheelScreen1201.qaPointer = null;
+            mc.options.hideGui = true;
             Emotes.Playing playing = Emotes.get(self);
             check(playing != null && EmoteLibrary.GROOVE.equals(playing.id()) && mc.screen == null, "releasing the key over Groove closes the wheel and plays it");
         });
@@ -115,8 +117,12 @@ public final class EmoteCapture1201 {
             EmotePose pose = EmoteAnimator.pose(self, false, 0, 0, 0);
             check(pose != null && pose.weight == 1, "blended fully in after 200 ms (weight " + (pose == null ? "none" : pose.weight) + ")");
         });
-        long inv = loop + (long) groove.periodMs + 300;
-        at(inv, () -> mc.setScreen(new InventoryScreen(mc.player)));
+        long back = loop + (long) groove.periodMs + 100;
+        at(back, () -> mc.options.setCameraType(CameraType.THIRD_PERSON_BACK));
+        shot(back + 300, "3p-back-a");
+        shot(back + 300 + Math.round(groove.periodMs / 4), "3p-back-b");
+        long inv = back + 1000;
+        at(inv, () -> { mc.options.hideGui = false; mc.setScreen(new InventoryScreen(mc.player)); });
         shot(inv + 400, "inventory");
         at(inv + 600, () -> mc.setScreen(null));
         long fp = inv + 900;
@@ -126,13 +132,13 @@ public final class EmoteCapture1201 {
         at(fpDown, () -> mc.player.setXRot(25));
         for (int i = 0; i < 8; i++) shot(fpDown + 200 + Math.round(i * groove.periodMs / 8), String.format(Locale.ROOT, "fpdown-%02d", i));
         long stop3p = fpDown + 200 + (long) groove.periodMs + 300;
-        at(stop3p - 400, () -> { mc.player.setXRot(0); mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT); });
+        at(stop3p - 400, () -> { mc.player.setXRot(0); mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT); mc.options.hideGui = true; });
         walk(mc, self, stop3p, "stop3p");
         long stopFp = stop3p + 2500;
-        at(stopFp - 1500, () -> { mc.options.setCameraType(CameraType.FIRST_PERSON); Emotes.playLocal(self, EmoteLibrary.GROOVE); });
+        at(stopFp - 1500, () -> { mc.options.setCameraType(CameraType.FIRST_PERSON); mc.options.hideGui = false; Emotes.playLocal(self, EmoteLibrary.GROOVE); });
         walk(mc, self, stopFp, "stopfp");
         long sword = stopFp + 2500;
-        at(sword, () -> { command("give @p minecraft:iron_sword"); mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT); });
+        at(sword, () -> { command("give @p minecraft:iron_sword"); mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT); mc.options.hideGui = true; });
         at(sword + 300, () -> Emotes.playLocal(self, EmoteLibrary.GROOVE));
         shot(sword + 300 + 1100, "3p-sword-a");
         shot(sword + 300 + 1100 + Math.round(groove.periodMs / 4), "3p-sword-b");
@@ -163,6 +169,7 @@ public final class EmoteCapture1201 {
         });
         at(other + 3200, () -> {
             mc.options.setCameraType(CameraType.FIRST_PERSON);
+            mc.options.hideGui = false;
             done = true;
             LOGGER.info("Lads emote capture END: {} passed, {} failed; frames in {}", passed, failed, out);
         });
