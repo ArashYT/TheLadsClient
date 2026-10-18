@@ -339,6 +339,18 @@ public class GuiLadsAdapter implements LadsGraphics {
     }
 
     @Override
+    public int[] bossBarsBounds(int x, int y, int max, boolean names, boolean preview) {
+        boolean hasBoss = net.minecraft.entity.boss.BossStatus.bossName != null && net.minecraft.entity.boss.BossStatus.statusBarTime > 0;
+        if (!hasBoss && !preview) return new int[0];
+        int nameX = x, nameW = 0;
+        if (names) {
+            nameW = font.getStringWidth(hasBoss ? net.minecraft.entity.boss.BossStatus.bossName : "Ender Dragon") + 1; // + the shadow
+            nameX = x + (182 - nameW + 1) / 2;
+        }
+        return new int[]{Math.min(x, nameX), y, Math.max(x + 183, nameX + nameW), y + 15};
+    }
+
+    @Override
     public void drawBossBars(int x, int y, int max, boolean names, boolean preview) {
         Minecraft mc = Minecraft.getMinecraft();
         boolean hasBoss = net.minecraft.entity.boss.BossStatus.bossName != null && net.minecraft.entity.boss.BossStatus.statusBarTime > 0;
