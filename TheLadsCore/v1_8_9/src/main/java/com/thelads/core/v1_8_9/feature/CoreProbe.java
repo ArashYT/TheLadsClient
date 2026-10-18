@@ -193,6 +193,10 @@ public final class CoreProbe {
         } else if ("parity1910".equals(only)) { // 1.9.10 StackRefill and SurvivalTweaks ports in the QA world (ParityProbe189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, ParityProbe189::run));
+        } else if ("emote".equals(only)) { // 1.9.11 emotes: wheel, third and first person, stop by walking, another player (EmoteProbe189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady,
+                com.thelads.core.v1_8_9.cosmetics.anim.EmoteProbe189::run));
         } else if ("parity1911".equals(only)) { // 1.9.11 Jade, Minimap (Xaero) and Dynamic FPS on 1.8.9 (Probe1911Parity189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe1911Parity189::run));

@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.cosmetics.anim.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "EmoteAvatarRendererMixin26",
+    "EmoteAvatarStateMixin26",
+    "EmoteHandHeightMixin26",
+    "EmoteHandsMixin26",
+    "EmotePlayerModelMixin26"
+  ]
+}

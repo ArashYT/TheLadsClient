@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.7",
+  "package": "com.thelads.core.v1_8_9.cosmetics.anim.mixin",
+  "refmap": "theladscore.v1_8_9.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "EmoteItemRendererMixin189",
+    "EmoteModelBipedMixin189",
+    "EmoteRenderPlayerMixin189"
+  ]
+}

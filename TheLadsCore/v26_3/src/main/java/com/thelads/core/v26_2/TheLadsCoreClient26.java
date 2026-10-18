@@ -56,6 +56,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.async.AsyncTicking.initialize();
         com.thelads.core.v26_2.feature.GoodMcAttackSpeedReset.register();
         com.thelads.core.v26_2.feature.NativeCheats.register();
+        com.thelads.core.v26_2.cosmetics.anim.EmoteAnim26.register(); // emotes: key, wheel, stop rules (poses: emotes mixins)
         com.thelads.core.v26_2.embedded.EmbeddedMods.clientInit();
 
 
