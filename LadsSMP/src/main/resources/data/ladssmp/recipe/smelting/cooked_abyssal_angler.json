@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "food",
+  "ingredient": "ladssmp:abyssal_angler",
+  "result": {
+    "id": "ladssmp:cooked_abyssal_angler"
+  },
+  "experience": 0.35,
+  "cookingtime": 200
+}

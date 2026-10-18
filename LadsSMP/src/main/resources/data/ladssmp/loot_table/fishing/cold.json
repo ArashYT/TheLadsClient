@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:fishing",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "ladssmp:glacier_cod",
+          "weight": 45
+        },
+        {
+          "type": "minecraft:item",
+          "name": "ladssmp:frostbite_flounder",
+          "weight": 35
+        },
+        {
+          "type": "minecraft:item",
+          "name": "ladssmp:trout",
+          "weight": 20
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:fishing",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "ladssmp:void_tetra",
+          "weight": 50
+        },
+        {
+          "type": "minecraft:item",
+          "name": "ladssmp:chorus_driftfish",
+          "weight": 50
+        }
+      ]
+    }
+  ]
+}

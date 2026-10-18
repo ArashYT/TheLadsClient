@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:campfire_cooking",
+  "category": "food",
+  "ingredient": "ladssmp:tuna",
+  "result": {
+    "id": "ladssmp:cooked_tuna"
+  },
+  "experience": 0.35,
+  "cookingtime": 600
+}

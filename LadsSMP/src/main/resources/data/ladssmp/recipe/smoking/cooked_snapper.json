@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smoking",
+  "category": "food",
+  "ingredient": "ladssmp:snapper",
+  "result": {
+    "id": "ladssmp:cooked_snapper"
+  },
+  "experience": 0.35,
+  "cookingtime": 100
+}

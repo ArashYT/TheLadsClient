@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:campfire_cooking",
+  "category": "food",
+  "ingredient": "ladssmp:sailfish",
+  "result": {
+    "id": "ladssmp:cooked_sailfish"
+  },
+  "experience": 0.35,
+  "cookingtime": 600
+}
