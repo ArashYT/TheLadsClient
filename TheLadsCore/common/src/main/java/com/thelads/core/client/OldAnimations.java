@@ -6,7 +6,9 @@ package com.thelads.core.client;
  * observable ItemRenderer, RenderPlayer, RenderItem and EntityPlayerSP behaviour; no mod source.
  *
  * <p>Each op post-multiplies the current matrix, as a GL call does. Recipes are authored for the right hand;
- * {@code side} -1 mirrors them for the left hand the way vanilla 1.9+ does (x translation and Y/Z turns negated).
+ * {@code side} -1 mirrors them for the left hand the way vanilla 1.9+ does (x translation and Y/Z turns negated), and the
+ * icon ends turned round for it, so the left hand draws the right hand's picture in a mirror: grip in the hand, blade and
+ * bow pointing away (conjugating alone would also mirror the sprite and put the opposite corner in the hand).
  * Frames: <b>arm origin</b> is the matrix at the push in 1.8.9's {@code renderItemInFirstPerson} and in modern
  * {@code renderArmWithItem}; <b>legacy hand</b> is the arm origin after the 45° turn and 0.4 scale; <b>item mesh</b>
  * is the centred item model, drawn with no display transform (1.8.9 {@code TransformType.NONE}, modern
@@ -36,16 +38,31 @@ public final class OldAnimations {
     public enum Use { NONE, EAT_DRINK, BLOCK, BOW }
 
     /**
-     * The 1.7 pose for a modern use animation (1.20.1 UseAnim, 26.x ItemUseAnimation, by name), so every item uses like a 1.7 one:
-     * a crossbow's charge, a trident's or spear's wind-up draw like a bow; a spyglass, horn, brush or bundle had no 1.7 pose, so
-     * the item is simply held (NONE).
+     * The 1.7 pose of an item in use, by what the item does, never by its id, so modded items follow the same rules. By the modern
+     * use animation's name (1.20.1 UseAnim, 26.x ItemUseAnimation, Forge's CUSTOM):
+     * <pre>
+     * use animation                                      1.7 pose
+     * EAT, DRINK                                         EAT_DRINK: 1.7 eating
+     * BLOCK                                              BLOCK: 1.7 sword block (adapters leave a shield's block to vanilla)
+     * BOW, CROSSBOW (charging), any BowItem              BOW: 1.7 bow draw
+     * NONE (some modded items are used every tick)       NONE: held as 1.7 holds it, over vanilla's and the item's own transform
+     * TRIDENT, SPEAR, SPYGLASS, TOOT_HORN, BRUSH,        null: no 1.7 pose; vanilla's and the item's own transform
+     * BUNDLE, CUSTOM, anything else
+     * </pre>
+     * The adapters also keep vanilla's placement for: items that are not flat icons (special or entity models such as tridents,
+     * shields, banners and skulls, GeckoLib and other 3D models: the 1.7 icon recipe is for flat sprites only), a loaded crossbow
+     * (vanilla aims it), spears (they thrust) and the riptide spin.
+     *
+     * @param bowItem the item is a BowItem (a modded bow with its own use animation still draws like one)
      */
-    public static Use use(String modernAnimation) {
+    public static Use use(String modernAnimation, boolean bowItem) {
+        if (bowItem) return Use.BOW;
         switch (modernAnimation) {
             case "EAT": case "DRINK": return Use.EAT_DRINK;
             case "BLOCK": return Use.BLOCK;
-            case "BOW": case "CROSSBOW": case "TRIDENT": case "SPEAR": return Use.BOW;
-            default: return Use.NONE;
+            case "BOW": case "CROSSBOW": return Use.BOW;
+            case "NONE": return Use.NONE;
+            default: return null;
         }
     }
 
@@ -259,7 +276,10 @@ public final class OldAnimations {
         translate(out, side, -0.9375f, -0.0625f, 0);
         // 1.7.10 draws the icon over [0,1]² at z -1/16..0, mirrored in x; the centred 1.8+ item mesh lands there.
         translate(out, side, 0.5f, 0.5f, -0.03125f);
-        rotate(out, side, 180, 0, 1, 0);
+        // Left: the conjugated turn (-180°) and one more half turn about Y. That mirrors the mesh through its own mid-plane
+        // instead of across x, so each texel lands at the mirror image of its right-hand place (the flat mesh looks the same
+        // from both sides) and the transform stays proper.
+        if (side > 0) out.rotate(180, 0, 1, 0);
     }
 
     private static void translate(Sink out, int side, float x, float y, float z) {
