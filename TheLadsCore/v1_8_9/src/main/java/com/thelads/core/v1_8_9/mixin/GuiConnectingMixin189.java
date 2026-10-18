@@ -16,6 +16,7 @@ public abstract class GuiConnectingMixin189 {
         target = "Lnet/minecraft/client/Minecraft;loadWorld(Lnet/minecraft/client/multiplayer/WorldClient;)V"), require = 2)
     private void ladsLeaveWorldFirst(Minecraft mc, WorldClient world) {
         PauseMultiplayer189.leaveWorld(mc);
+        com.thelads.core.v1_8_9.feature.ConnectionTweaks189.connecting((GuiConnecting) (Object) this); // before connect() starts its thread
         mc.loadWorld(world);
     }
 }

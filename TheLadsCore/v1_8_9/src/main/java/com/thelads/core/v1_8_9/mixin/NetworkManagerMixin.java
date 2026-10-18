@@ -40,6 +40,15 @@ public abstract class NetworkManagerMixin implements SignalLoss189.PacketActivit
         if (packet instanceof S3FPacketCustomPayload) com.thelads.core.v1_8_9.feature.Hypixel189.payload((S3FPacketCustomPayload) packet);
     }
 
+    /** Cancel pressed while the socket was still opening (ConnectionTweaks189.cancelledConnect): close it before it logs in. */
+    @Inject(method = "setNetHandler", at = @At("HEAD"), cancellable = true, require = 1)
+    private void ladsCancelledConnect(INetHandler handler, CallbackInfo ci) {
+        if (handler instanceof net.minecraft.client.network.NetHandlerLoginClient && ConnectionTweaks189.cancelledConnect((NetworkManager) (Object) this)) {
+            ((NetworkManager) (Object) this).closeChannel(new net.minecraft.util.ChatComponentTranslation("connect.aborted"));
+            ci.cancel();
+        }
+    }
+
     @Redirect(method = "channelRead0(Lio/netty/channel/ChannelHandlerContext;Lnet/minecraft/network/Packet;)V", require = 1,
         at = @At(value = "INVOKE", target = "Lnet/minecraft/network/Packet;processPacket(Lnet/minecraft/network/INetHandler;)V"))
     private void ladsHandle(Packet<INetHandler> packet, INetHandler handler) {
