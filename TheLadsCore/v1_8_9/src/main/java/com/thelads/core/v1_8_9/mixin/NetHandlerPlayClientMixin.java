@@ -16,8 +16,10 @@ import net.minecraft.network.play.server.S2BPacketChangeGameState;
 import net.minecraft.network.play.server.S38PacketPlayerListItem;
 import net.minecraft.network.play.server.S3EPacketTeams;
 import net.minecraft.util.IChatComponent;
+import com.thelads.core.v1_8_9.feature.DynamicLights189;
 import com.thelads.core.v1_8_9.feature.ScoreboardCache189;
 import com.thelads.core.v1_8_9.feature.TabListCache189;
+import net.minecraft.network.play.server.S27PacketExplosion;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -72,9 +74,15 @@ public abstract class NetHandlerPlayClientMixin {
         TabListCache189.invalidate();
     }
 
+    @Inject(method = "handleExplosion", at = @At("TAIL"), require = 1)
+    private void ladsExplosion(S27PacketExplosion packet, CallbackInfo ci) {
+        DynamicLights189.onExplosion(packet.getX(), packet.getY(), packet.getZ(), packet.getStrength());
+    }
+
     @Inject(method = {"cleanup", "onDisconnect"}, at = @At("HEAD"), require = 1)
     private void ladsResetTabList(CallbackInfo ci) {
         TabListCache189.reset();
         ScoreboardCache189.reset();
+        DynamicLights189.reset();
     }
 }

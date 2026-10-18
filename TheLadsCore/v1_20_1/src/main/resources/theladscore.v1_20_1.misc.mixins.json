@@ -13,6 +13,7 @@
     "ItemPhysicsThrowMixin",
     "DynamicLightsBlockMixin",
     "DynamicLightsEntityMixin",
+    "DynamicLightsExplosionMixin",
     "SodiumDynamicLightsMixin",
     "EuphoriaClipboardMixin",
     "MahouClipShaderCloseMixin",

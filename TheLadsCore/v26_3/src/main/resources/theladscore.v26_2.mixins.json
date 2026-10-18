@@ -40,6 +40,7 @@
     "NoVanillaDamageTiltMixin",
     "DynamicLightsBlockMixin",
     "DynamicLightsEntityMixin",
+    "DynamicLightsExplosionMixin",
     "ItemTooltipMixin",
     "OwnNametagMixin",
     "NametagBackgroundMixin",
