@@ -5,6 +5,7 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.FishingRodItem;
 import net.minecraft.world.item.Items;
 
 /**
@@ -38,7 +39,7 @@ public final class FishingMinigameHud {
         if (player == null || !player.isUsingItem()) {
             return;
         }
-        if (!player.getUseItem().is(Items.FISHING_ROD) || !AriseNB6Config.get().holdToCast) {
+        if (!(player.getUseItem().getItem() instanceof FishingRodItem) || !AriseNB6Config.get().holdToCast) {
             return;
         }
 

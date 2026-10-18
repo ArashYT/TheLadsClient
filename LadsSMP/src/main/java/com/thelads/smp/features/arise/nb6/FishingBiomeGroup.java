@@ -3,6 +3,7 @@ package com.thelads.smp.features.arise.nb6;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 
@@ -25,9 +26,9 @@ public enum FishingBiomeGroup {
             return FRESHWATER;
         }
 
-        // 1. Dimension checks
+        // 1. Dimension and lava fluid checks
         ResourceKey<Level> dim = level.dimension();
-        if (dim == Level.NETHER) {
+        if (dim == Level.NETHER || level.getFluidState(pos).is(FluidTags.LAVA)) {
             return NETHER;
         }
         if (dim == Level.END) {

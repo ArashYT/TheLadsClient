@@ -165,7 +165,7 @@ public final class FishingMinigameServer {
         }
     }
 
-    private static void awardLootDirect(ServerPlayer player, FishingHook hook, ItemStack loot, ItemStack rod) {
+    public static void awardLootDirect(ServerPlayer player, FishingHook hook, ItemStack loot, ItemStack rod) {
         if (player == null || loot == null || loot.isEmpty()) {
             return;
         }

@@ -207,7 +207,7 @@ public final class AriseNB6Items {
         // Special Items
         FISHING_JOURNAL = registerCustom("fishing_journal", new Item.Properties().stacksTo(1), FishingJournalItem::new);
         SUPPLY_CRATE = registerCustom("supply_crate", new Item.Properties().stacksTo(16), SupplyCrateItem::new);
-        FIREPROOF_LINE = register("fireproof_line", new Item.Properties().stacksTo(64));
+        FIREPROOF_LINE = registerCustom("fireproof_line", new Item.Properties().stacksTo(64), FireproofLineItem::new);
     }
 
     public static Map<String, Item> getAllItems() {
