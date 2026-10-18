@@ -792,6 +792,12 @@ try
             .Where(line => !have.Any(h => h.StartsWith(line[..(line.IndexOf(':') + 1)], StringComparison.Ordinal)))), ct);
     }
     else if (!keepOptions || !File.Exists(Path.Combine(directory, "options.txt"))) await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), baseOptions, ct);
+    // LADS_QA_EMOTE: the fresh options.txt put Xaero/ReplayMod back on B, so the Core's once-per-version "they gave B to Emotes" mark
+    // (thelads_config.json emoteKeyClashResolved) goes too, or every emote run after the first fails its key check.
+    if (Env("LADS_QA_EMOTE") == "1" && !keepOptions)
+        foreach (string config in new[] { Path.Combine(directory, "thelads_config.json"), Path.Combine(directory, "shared", "thelads_config.json") })
+            if (File.Exists(config) && JsonNode.Parse(await File.ReadAllTextAsync(config, ct)) is JsonObject settings && settings.Remove("emoteKeyClashResolved"))
+                await File.WriteAllTextAsync(config, settings.ToJsonString(new() { WriteIndented = true }), ct);
     Console.WriteLine("Installing production dependencies...");
     // QA windows are tiles of the primary monitor (QaWindowGuard): the game opens at the tile's client size.
     bool tiled = Env("LADS_VERIFY_FOCUS") != "1" && Env("LADS_VERIFY_PLAYING") != "1" && Env("LADS_VERIFY_NO_RESIZE") != "1";
