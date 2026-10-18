@@ -33,6 +33,12 @@ final class HudLayoutProbe189 implements HudLayoutQa.Driver {
     private HudLayoutProbe189() {}
 
     static boolean run(Minecraft mc) {
+        // LADS_QA_BGSHADOW=1: the 1.9.11 Backgrounds / Text Shadow buttons instead (BgShadowQa).
+        if (com.thelads.core.client.hud.BgShadowQa.wanted()) {
+            if (!com.thelads.core.client.hud.BgShadowQa.tick(DRIVER)) return false;
+            CoreProbe.check(com.thelads.core.client.hud.BgShadowQa.failed() == 0, "every Backgrounds/Text Shadow check passed (Lads hud layout END)");
+            return true;
+        }
         // LADS_QA_F3_1911=1: the 1.9.11 Better F3 sequence instead (BetterF3Qa).
         if (com.thelads.core.client.hud.BetterF3Qa.wanted()) {
             if (!com.thelads.core.client.hud.BetterF3Qa.tick(DRIVER)) return false;
@@ -138,6 +144,12 @@ final class HudLayoutProbe189 implements HudLayoutQa.Driver {
     }
 
     @Override public void closeScreen() { Minecraft.getMinecraft().displayGuiScreen(null); }
+
+    @Override public void openSettings() { Minecraft.getMinecraft().displayGuiScreen(new com.thelads.core.v1_8_9.gui.LadsSettingsScreen189(null)); }
+
+    @Override public com.thelads.core.client.gui.LadsSettingsScreen settings() {
+        return Minecraft.getMinecraft().currentScreen instanceof com.thelads.core.v1_8_9.gui.LadsSettingsScreen189 ? ((com.thelads.core.v1_8_9.gui.LadsSettingsScreen189) Minecraft.getMinecraft().currentScreen).ui() : null;
+    }
 
     @Override public void tab(boolean down) { KeyBinding.setKeyBindState(Minecraft.getMinecraft().gameSettings.keyBindPlayerList.getKeyCode(), down); }
 

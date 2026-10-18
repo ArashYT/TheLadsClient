@@ -51,6 +51,10 @@ public final class HudLayoutQa {
         void debug(boolean open);
         /** Opens (true) or closes the chat screen (only the 1.9.1 HUD text sequence uses it). */
         default void chat(boolean open) {}
+        /** Opens the Lads settings screen (only the 1.9.11 Backgrounds/Text Shadow sequence uses it). */
+        default void openSettings() { throw new UnsupportedOperationException("openSettings"); }
+        /** The open Lads settings screen's controller, or null. */
+        default com.thelads.core.client.gui.LadsSettingsScreen settings() { return null; }
     }
 
     private static int step = -1, wait, passed;

@@ -47,7 +47,9 @@ final class HudLayoutCapture implements HudLayoutQa.Driver {
         // LADS_QA_HUDCOVER=1: the 1.9.0 HUD cover sequence instead, with the same markers.
         // LADS_QA_HUDTEXT=1: the 1.9.1 HUD text sequence (HudTextQa).
         // LADS_QA_F3_1911=1: the 1.9.11 Better F3 sequence (BetterF3Qa).
-        done = com.thelads.core.client.hud.BetterF3Qa.wanted() ? com.thelads.core.client.hud.BetterF3Qa.tick(DRIVER)
+        // LADS_QA_BGSHADOW=1: the 1.9.11 Backgrounds / Text Shadow buttons (BgShadowQa).
+        done = com.thelads.core.client.hud.BgShadowQa.wanted() ? com.thelads.core.client.hud.BgShadowQa.tick(DRIVER)
+            : com.thelads.core.client.hud.BetterF3Qa.wanted() ? com.thelads.core.client.hud.BetterF3Qa.tick(DRIVER)
             : HudTextQa.wanted() ? HudTextQa.tick(DRIVER) : HudCoverQa.wanted() ? HudCoverQa.tick(DRIVER) : HudLayoutQa.tick(DRIVER);
     }
 
@@ -108,6 +110,12 @@ final class HudLayoutCapture implements HudLayoutQa.Driver {
     @Override public DraggableHudScreen editor() { return Minecraft.getInstance().gui.screen() instanceof DraggableHudScreen26 ? editor : null; }
 
     @Override public void closeScreen() { if (Minecraft.getInstance().gui.screen() != null) Minecraft.getInstance().setScreenAndShow(null); }
+
+    @Override public void openSettings() { Minecraft.getInstance().setScreenAndShow(new com.thelads.core.v26_2.gui.LadsSettingsScreen26(null)); }
+
+    @Override public com.thelads.core.client.gui.LadsSettingsScreen settings() {
+        return Minecraft.getInstance().gui.screen() instanceof com.thelads.core.v26_2.gui.LadsSettingsScreen26 screen ? screen.ui() : null;
+    }
 
     @Override public void tab(boolean down) { Minecraft.getInstance().options.keyPlayerList.setDown(down); }
 

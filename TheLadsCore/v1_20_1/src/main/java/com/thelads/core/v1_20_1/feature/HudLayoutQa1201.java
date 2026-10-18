@@ -36,6 +36,13 @@ final class HudLayoutQa1201 implements HudLayoutQa.Driver {
                 if (com.thelads.core.client.hud.BetterF3Qa.failed() > 0) throw new IllegalStateException(com.thelads.core.client.hud.BetterF3Qa.failed() + " Better F3 checks failed (Lads hud layout FAILED)");
                 return true;
             });
+        // "bgshadow": the 1.9.11 Backgrounds / Text Shadow buttons (BgShadowQa).
+        if (Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null)
+            QaProbe1201.registerStep("bgshadow", args -> {
+                if (!com.thelads.core.client.hud.BgShadowQa.tick(DRIVER)) return false;
+                if (com.thelads.core.client.hud.BgShadowQa.failed() > 0) throw new IllegalStateException(com.thelads.core.client.hud.BgShadowQa.failed() + " Backgrounds/Text Shadow checks failed (Lads hud layout FAILED)");
+                return true;
+            });
         // "hudcover": the 1.9.0 HUD cover sequence (HudCoverQa).
         if (Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null)
             QaProbe1201.registerStep("hudcover", args -> {
@@ -89,6 +96,12 @@ final class HudLayoutQa1201 implements HudLayoutQa.Driver {
     @Override public DraggableHudScreen editor() { return Minecraft.getInstance().screen instanceof DraggableHudScreen1201 screen ? screen.ui() : null; }
 
     @Override public void closeScreen() { Minecraft.getInstance().setScreen(null); }
+
+    @Override public void openSettings() { Minecraft.getInstance().setScreen(new com.thelads.core.v1_20_1.gui.LadsSettingsScreen1201(null)); }
+
+    @Override public com.thelads.core.client.gui.LadsSettingsScreen settings() {
+        return Minecraft.getInstance().screen instanceof com.thelads.core.v1_20_1.gui.LadsSettingsScreen1201 screen ? screen.ui() : null;
+    }
 
     @Override public void tab(boolean down) { Minecraft.getInstance().options.keyPlayerList.setDown(down); }
 
