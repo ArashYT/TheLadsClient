@@ -119,16 +119,18 @@ public final class ItemsProbe1201 {
             require(Food1201.regenerationEffect(new ItemStack(Items.GOLDEN_APPLE)) == 4, "golden apple: Regeneration II heals 4");
             require(Food1201.harmful(new ItemStack(Items.SPIDER_EYE)) && !Food1201.harmful(new ItemStack(Items.BREAD)), "harmful food detected");
 
-            // An AppleSkin server's payloads (the bytes the channels carry), read as on a remote server.
+            com.thelads.core.v1_20_1.feature.QuietChannelsQa1201.sample("items probe (AppleSkin built in)", false);
+            // An AppleSkin server's payloads (the bytes the channels carry), read as on a remote server: handed to the client's own
+            // packet handler (ClientboundCustomPayloadPacket, AppleSkinPayloadMixin): no receiver is registered for these channels.
             Food1201.qaRemote = true;
             Food1201.resetSync();
             require(Food1201.serverPlayer(mc.player) == null && !Food1201.exhaustionKnown(null), "remote: no exhaustion before AppleSkin sends one");
-            Food1201.receive(com.thelads.core.client.AppleSkinSync.SATURATION, com.thelads.core.client.AppleSkinSync.encodeFloat(3.5f));
-            Food1201.receive(com.thelads.core.client.AppleSkinSync.EXHAUSTION, com.thelads.core.client.AppleSkinSync.encodeFloat(2f));
-            Food1201.receive(com.thelads.core.client.AppleSkinSync.NATURAL_REGENERATION, new byte[] {0});
+            payload(mc, com.thelads.core.client.AppleSkinSync.SATURATION, com.thelads.core.client.AppleSkinSync.encodeFloat(3.5f));
+            payload(mc, com.thelads.core.client.AppleSkinSync.EXHAUSTION, com.thelads.core.client.AppleSkinSync.encodeFloat(2f));
+            payload(mc, com.thelads.core.client.AppleSkinSync.NATURAL_REGENERATION, new byte[] {0});
             require(Food1201.saturation(mc.player, null) == 3.5f && Food1201.exhaustion(null) == 2f && !Food1201.naturalRegeneration(null), "AppleSkin payload values used");
-            Food1201.receive(com.thelads.core.client.AppleSkinSync.EXHAUSTION, new byte[] {0x40});
-            Food1201.receive(com.thelads.core.client.AppleSkinSync.SATURATION, com.thelads.core.client.AppleSkinSync.encodeFloat(25f));
+            payload(mc, com.thelads.core.client.AppleSkinSync.EXHAUSTION, new byte[] {0x40});
+            payload(mc, com.thelads.core.client.AppleSkinSync.SATURATION, com.thelads.core.client.AppleSkinSync.encodeFloat(25f));
             require(Food1201.exhaustion(null) == 2f && Food1201.saturation(mc.player, null) == 3.5f, "a short or impossible payload is ignored");
             Food1201.resetSync();
             require(!Food1201.exhaustionKnown(null) && Food1201.naturalRegeneration(null), "a new join forgets the AppleSkin values");
@@ -139,6 +141,13 @@ public final class ItemsProbe1201 {
             mc.player.setItemInHand(InteractionHand.MAIN_HAND, main);
             mc.player.setItemInHand(InteractionHand.OFF_HAND, off);
         }
+    }
+
+    /** An AppleSkin server payload as the network delivers it: the client's own custom payload handler, no Fabric receiver. */
+    private static void payload(Minecraft mc, String channel, byte[] bytes) {
+        mc.getConnection().handleCustomPayload(new net.minecraft.network.protocol.game.ClientboundCustomPayloadPacket(
+            new net.minecraft.resources.ResourceLocation(com.thelads.core.client.AppleSkinSync.NAMESPACE, channel),
+            new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.wrappedBuffer(bytes))));
     }
 
     private static void durability() {

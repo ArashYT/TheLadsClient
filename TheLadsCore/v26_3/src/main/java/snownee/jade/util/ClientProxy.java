@@ -24,6 +24,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.networking.v1.ServerboundPlayChannelEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.CommonLifecycleEvents;
@@ -290,6 +291,27 @@ public final class ClientProxy implements ClientModInitializer {
 		ClientPlayNetworking.send(payload);
 	}
 
+	/** Lads: once per connection, after the login (player set), on a server that can receive Jade's handshake. */
+	private static void handshake(Minecraft client) {
+		if (client.player == null || !ClientPlayNetworking.canSend(ClientHandshakePacket.TYPE)
+				|| ClientPlayNetworking.getReceived().contains(ServerHandshakePacket.TYPE.id())) {
+			return;
+		}
+		ClientPlayNetworking.registerReceiver(
+				ReceiveDataPacket.TYPE, (payload, context) -> {
+					ReceiveDataPacket.handle(payload, ClientPayloadContext.of(context.client()));
+				});
+		ClientPlayNetworking.registerReceiver(
+				ServerHandshakePacket.TYPE, (payload, context) -> {
+					ServerHandshakePacket.handle(payload, ClientPayloadContext.of(context.client()));
+				});
+		ClientPlayNetworking.registerReceiver(
+				ShowOverlayPacket.TYPE, (payload, context) -> {
+					ShowOverlayPacket.handle(payload, ClientPayloadContext.of(context.client()));
+				});
+		ClientPlayNetworking.send(new ClientHandshakePacket(Jade.PROTOCOL_VERSION));
+	}
+
 	public static boolean shouldFetchFromServer(@Nullable UUID uuid) {
 		String name = lookupPlayerName(uuid);
 		return name == null || name.equals(PlayerNameLookup.DUMMY_NAME);
@@ -347,22 +369,14 @@ public final class ClientProxy implements ClientModInitializer {
 				});
 			}
 		});
-		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-			ClientPlayNetworking.send(new ClientHandshakePacket(Jade.PROTOCOL_VERSION));
+		// Lads: no global receivers and no blind handshake. Jade's channels are announced, and its handshake sent, only to a server
+		// that registered jade:client_handshake (it runs Jade): at join, or when the server registers it later.
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> handshake(client));
+		ServerboundPlayChannelEvents.REGISTER.register((handler, sender, client, channels) -> {
+			if (channels.contains(ClientHandshakePacket.TYPE.id())) {
+				handshake(client);
+			}
 		});
-
-		ClientPlayNetworking.registerGlobalReceiver(
-				ReceiveDataPacket.TYPE, (payload, context) -> {
-					ReceiveDataPacket.handle(payload, ClientPayloadContext.of(context.client()));
-				});
-		ClientPlayNetworking.registerGlobalReceiver(
-				ServerHandshakePacket.TYPE, (payload, context) -> {
-					ServerHandshakePacket.handle(payload, ClientPayloadContext.of(context.client()));
-				});
-		ClientPlayNetworking.registerGlobalReceiver(
-				ShowOverlayPacket.TYPE, (payload, context) -> {
-					ShowOverlayPacket.handle(payload, ClientPayloadContext.of(context.client()));
-				});
 
 		JadeClient.init();
 		ResourceLoader.get(PackType.SERVER_DATA).registerReloadListener(

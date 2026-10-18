@@ -11,11 +11,14 @@ import com.thelads.core.client.cosmetics.anim.EmotePose;
 import com.thelads.core.client.cosmetics.anim.EmoteKeys;
 import com.thelads.core.client.cosmetics.anim.EmoteRules;
 import com.thelads.core.config.ConfigManager;
-import com.thelads.core.v26_2.feature.NativeKeyBindings;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.resources.Identifier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.client.gui.screens.DeathScreen;
@@ -44,7 +47,9 @@ import static com.thelads.core.client.cosmetics.anim.Emote.*;
  * inventory preview, armour) and the dancing arms in first person. The network side fills Emotes for other players.
  */
 public final class EmoteAnim26 {
-    public static final KeyMapping KEY = new KeyMapping("key.theladscore.emotes", InputConstants.Type.KEYBOARD, InputConstants.KEY_B, NativeKeyBindings.CATEGORY);
+    public static final KeyMapping.Category CATEGORY = KeyMapping.Category.register(Identifier.fromNamespaceAndPath("theladscore", "emotes"));
+    public static final KeyMapping KEY = new KeyMapping("key.theladscore.emotes", InputConstants.Type.KEYBOARD, InputConstants.KEY_B, com.thelads.core.v26_2.feature.NativeKeyBindings.CATEGORY);
+    private static final Map<String, KeyMapping> EMOTE_KEYS = new LinkedHashMap<>();
     private static final float MODEL_SCALE = 0.9375f;
     private static final String VERSION = "26.3";
     private static PlayerModel wideArms, slimArms;
@@ -54,8 +59,16 @@ public final class EmoteAnim26 {
 
     public static void register() {
         KeyMappingHelper.registerKeyMapping(KEY);
+        for (String id : EmoteLibrary.ids()) {
+            KeyMapping mapping = new KeyMapping(EmoteKeys.keyName(id), InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY);
+            EMOTE_KEYS.put(id, mapping);
+            KeyMappingHelper.registerKeyMapping(mapping);
+        }
         ClientTickEvents.END_CLIENT_TICK.register(EmoteAnim26::tick);
     }
+
+    public static KeyMapping key(String id) { return EMOTE_KEYS.get(id); }
+    public static Map<String, KeyMapping> keys() { return Collections.unmodifiableMap(EMOTE_KEYS); }
 
     /** Plays an emote for the local player (the wheel). */
     public static void play(String id) {
@@ -72,6 +85,13 @@ public final class EmoteAnim26 {
             Emotes.Playing playing = Emotes.get(id);
             if (playing != null && !playing.stopping()) Emotes.stopLocal(id); // tap again: stop
             else if (mc.gui.screen() == null) mc.setScreenAndShow(new EmoteWheelScreen26());
+        }
+        if (mc.gui.screen() == null) {
+            for (Map.Entry<String, KeyMapping> e : EMOTE_KEYS.entrySet()) {
+                while (e.getValue().consumeClick()) {
+                    EmoteKeys.pressed(id, e.getKey());
+                }
+            }
         }
         if (Emotes.get(id) == null) return;
         Options o = mc.options;

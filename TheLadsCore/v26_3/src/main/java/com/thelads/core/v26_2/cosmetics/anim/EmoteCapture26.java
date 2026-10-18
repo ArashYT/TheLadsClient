@@ -184,7 +184,32 @@ public final class EmoteCapture26 {
             remote.discard();
             Emotes.stopLocal(self);
         });
-        at(other + 4200, () -> {
+        // Cosmetics host screen (a) and pause menu (b), Groove key simulate (c), close screens (d)
+        long cos = other + 4200;
+        at(cos, () -> {
+            hud(mc, false);
+            mc.setScreenAndShow(new CosmeticsScreen26(null));
+        });
+        shot(cos + 300, "cosmetics-screen");
+        at(cos + 600, () -> mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(true) {})); // a subclass: the QA world closes a plain PauseScreen
+        shot(cos + 900, "pause-menu");
+        at(cos + 1200, () -> mc.setScreenAndShow(null));
+        at(cos + 1400, () -> {
+            KeyMapping grooveKey = EmoteAnim26.key(EmoteLibrary.GROOVE);
+            if (grooveKey != null) grooveKey.clickCount++;
+        });
+        at(cos + 1700, () -> {
+            Emotes.Playing p = Emotes.get(self);
+            check(p != null && EmoteLibrary.GROOVE.equals(p.id()) && !p.stopping(), "groove key starts groove");
+            KeyMapping grooveKey = EmoteAnim26.key(EmoteLibrary.GROOVE);
+            if (grooveKey != null) grooveKey.clickCount++;
+        });
+        at(cos + 1800, () -> { // before the 280 ms blend-out removes it
+            Emotes.Playing p = Emotes.get(self);
+            check(p != null && p.stopping(), "groove key again stops groove");
+            mc.setScreenAndShow(null);
+        });
+        at(cos + 2500, () -> {
             mc.options.setCameraType(CameraType.FIRST_PERSON);
             hud(mc, hudWas);
             com.thelads.core.v26_2.feature.LocalSkins.reset();

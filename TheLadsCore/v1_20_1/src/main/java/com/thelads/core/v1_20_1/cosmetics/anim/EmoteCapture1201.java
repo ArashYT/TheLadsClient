@@ -1,6 +1,7 @@
 package com.thelads.core.v1_20_1.cosmetics.anim;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.thelads.core.client.cosmetics.Emotes;
 import com.thelads.core.client.cosmetics.anim.Emote;
@@ -21,9 +22,11 @@ import net.minecraft.client.CameraType;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.player.RemotePlayer;
 import net.minecraft.world.entity.Entity;
+import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,8 +47,20 @@ public final class EmoteCapture1201 {
     private static RemotePlayer remote;
     private static final List<Float> stopWeights = new ArrayList<>();
     private static long walkAt;
+    private static InputConstants.Key qaKey;
 
     private EmoteCapture1201() {}
+
+    /** A key no binding uses (F13..F25), so the Groove key's simulated press reaches only Groove (a shared key goes to one of them). */
+    private static InputConstants.Key freeKey(Minecraft mc) {
+        for (int code = GLFW.GLFW_KEY_F13; code <= GLFW.GLFW_KEY_F25; code++) {
+            InputConstants.Key key = InputConstants.Type.KEYSYM.getOrCreate(code);
+            boolean used = false;
+            for (KeyMapping mapping : mc.options.keyMappings) used |= mapping.saveString().equals(key.getName());
+            if (!used) return key;
+        }
+        return InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_F25);
+    }
 
     static void register() {
         if (System.getenv("LADS_QA_EMOTE") != null) ClientTickEvents.END_CLIENT_TICK.register(EmoteCapture1201::tick);
@@ -179,9 +194,43 @@ public final class EmoteCapture1201 {
             mc.level.removeEntity(remote.getId(), Entity.RemovalReason.DISCARDED);
             Emotes.stopLocal(self);
         });
-        at(other + 4200, () -> {
+        long qaMore = other + 4200;
+        at(qaMore, () -> {
             mc.options.setCameraType(CameraType.FIRST_PERSON);
             mc.options.hideGui = false;
+            mc.setScreen(new CosmeticsScreen1201(null));
+        });
+        shot(qaMore + 400, "cosmetics-screen");
+        at(qaMore + 800, () -> mc.setScreen(new PauseScreen(true)));
+        shot(qaMore + 1200, "pause-menu");
+        at(qaMore + 1600, () -> {
+            mc.setScreen(null);
+            KeyMapping grooveKey = EmoteAnim1201.EMOTE_KEYS.get(EmoteLibrary.GROOVE);
+            if (grooveKey != null) {
+                InputConstants.Key tempKey = qaKey = freeKey(mc);
+                mc.options.setKey(grooveKey, tempKey);
+                KeyMapping.resetMapping();
+                KeyMapping.click(tempKey);
+            }
+        });
+        at(qaMore + 1800, () -> {
+            Emotes.Playing playing = Emotes.get(self);
+            check(playing != null && EmoteLibrary.GROOVE.equals(playing.id()) && !playing.stopping(), "Groove emote key press starts groove");
+            KeyMapping.click(qaKey);
+        });
+        at(qaMore + 2000, () -> {
+            Emotes.Playing stopping = Emotes.get(self);
+            check(stopping != null && EmoteLibrary.GROOVE.equals(stopping.id()) && stopping.stopping(), "Groove emote key press again stops groove");
+            KeyMapping grooveKey = EmoteAnim1201.EMOTE_KEYS.get(EmoteLibrary.GROOVE);
+            if (grooveKey != null) {
+                mc.options.setKey(grooveKey, InputConstants.UNKNOWN);
+                KeyMapping.resetMapping();
+            }
+            Emotes.stopLocal(self);
+            mc.setScreen(null);
+        });
+        at(qaMore + 2400, () -> {
+            mc.setScreen(null);
             done = true;
             LOGGER.info("Lads emote capture END: {} passed, {} failed; frames in {}", passed, failed, out);
         });

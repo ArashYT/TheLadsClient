@@ -77,6 +77,7 @@ final class HypixelCapture {
             return menu.ui();
         }
         @Override public void closeScreen() { Minecraft.getInstance().setScreenAndShow(null); }
+        @Override public void channels(String when) { QuietChannelsQa26.sample(when, when.contains("after the ping")); }
         @Override public void screenshot(String name) { pendingShot = name; }
         @Override public boolean stockRefill() {
             command("gamemode survival @s");

@@ -25,9 +25,9 @@ import org.slf4j.LoggerFactory;
  * QA only (auto-world, ".lads-qa-appleskin-sync" from the harness's LADS_VERIFY_APPLESKIN_SYNC): an AppleSkin server in the QA
  * world. The module reads as on a remote server (not the integrated one), then saturation 3.5, exhaustion 2 and natural
  * regeneration off arrive as AppleSkin payloads: their bytes through the registered codec into a custom payload packet that the
- * client's own connection handles (Fabric's receiver). The values the module shows are checked and appleskin-sync-1 (survival
- * HUD: half the exhaustion band, saturation outlines over 3.5) is saved; then a payload of the wrong size must change nothing and
- * a new join must forget the values. For the frame the AppleSkin module is on with its default options and Autohide is off, so
+ * client's own connection handles (vanilla's unknown-payload path, AppleSkinPayloadMixin). The values the module shows are
+ * checked and appleskin-sync-1 (survival HUD: half the exhaustion band, saturation outlines over 3.5) is saved; then a payload of
+ * the wrong size must change nothing and a new join must forget the values. For the frame the AppleSkin module is on with its default options and Autohide is off, so
  * the HUD shows whatever the QA profile has set. Game mode, the remote flag and both modules are put back.
  */
 public final class AppleSkinSyncCapture {
@@ -135,6 +135,7 @@ public final class AppleSkinSyncCapture {
         MODIFIED.forEach(Module::setLastModified);
         if (gameModeWas != null) command("gamemode " + gameModeWas + " @a");
         command("effect clear @a minecraft:resistance");
+        com.thelads.core.v26_2.feature.QuietChannelsQa26.sample("after the AppleSkin payloads", false); // none was ever announced
         step = 2;
         if (FAILURES.isEmpty()) LOGGER.info("Lads AppleSkin sync capture END: 1 frame saved, 0 failed");
         else LOGGER.error("Lads AppleSkin sync capture FAILED: {}", String.join(" | ", FAILURES));

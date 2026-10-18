@@ -149,9 +149,9 @@ public class ModuleManager {
         HudModule xp = hud("XP", "Show your experience level.");
         xp.addOption(new DropdownOption("Format", 0, "Level", "Progress %", "Both"));
 
-        HudModule keys = hud("Keystrokes", "Animated WASD + mouse key display with CPS.");
-        keys.addOption(new BoolOption("Show CPS", true));
-        keys.addOption(new BoolOption("Show space bar", true));
+        KeystrokesModule keys = new KeystrokesModule();
+        keys.setCategory(Module.Category.HUD);
+        register(keys);
 
         HudModule cps = hud("CPS", "Show left/right clicks per second.");
         cps.addOption(new DropdownOption("Show", 0, "Both", "Left only", "Right only"));
@@ -283,7 +283,7 @@ public class ModuleManager {
         register(packets, Module.Category.SERVER);
 
         register(new DiscordRpcModule(), Module.Category.SERVER);
-        register(new com.thelads.core.modules.CosmeticsModule(), Module.Category.MECHANIC);
+        registerHidden(new com.thelads.core.modules.CosmeticsModule(), Module.Category.MECHANIC); // always on: the Cosmetics screen
         // 1.9.2: the Hypixel mods grouped into one.
         register(com.thelads.core.client.hypixel.HypixelMods.module(), Module.Category.HYPIXEL);
 

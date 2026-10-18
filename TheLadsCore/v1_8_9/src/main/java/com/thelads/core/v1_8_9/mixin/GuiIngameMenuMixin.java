@@ -4,6 +4,7 @@ import com.thelads.core.client.title.ButtonLift;
 import com.thelads.core.client.title.PauseMenuLayout;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
+import com.thelads.core.v1_8_9.cosmetics.anim.CosmeticsScreen189;
 import com.thelads.core.v1_8_9.gui.CompactButton189;
 import com.thelads.core.v1_8_9.gui.LadsPauseButton;
 import com.thelads.core.v1_8_9.gui.LadsSettingsScreen189;
@@ -31,7 +32,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseButton {
     @Unique private static final int LADS_BUTTON_ID = 0x4C414453; // "LADS"; vanilla and Forge use 0-12
     @Unique private static boolean ladsLogged;
-    @Unique private GuiButton ladsButton, ladsMultiplayerButton, ladsScreenshotsButton, ladsExtrasButton;
+    @Unique private GuiButton ladsButton, ladsMultiplayerButton, ladsScreenshotsButton, ladsCosmeticsButton, ladsExtrasButton;
     @Unique private List<GuiButton> ladsExtras;
     @Unique private int ladsLaidOut;
     @Unique private GuiButton ladsFullscreenButton;
@@ -42,6 +43,8 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
         buttonList.add(ladsButton);
         ladsMultiplayerButton = new GuiButton(LADS_BUTTON_ID + 4, width / 2 - 100, height / 4 + 168 - 16, I18n.format("menu.multiplayer"));
         buttonList.add(ladsMultiplayerButton);
+        ladsCosmeticsButton = new GuiButton(LADS_BUTTON_ID + 8, width / 2 - 100, height / 4 + 168 - 16, "Cosmetics");
+        buttonList.add(ladsCosmeticsButton);
         ladsScreenshotsButton = new GuiButton(LADS_BUTTON_ID + 7, width / 2 - 100, height / 4 + 168 - 16, "Screenshots");
         buttonList.add(ladsScreenshotsButton);
         ladsExtras = new ArrayList<>();
@@ -99,6 +102,7 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
     private PauseMenuLayout.Slot ladsSlot(GuiButton button) {
         if (button == ladsButton) return PauseMenuLayout.Slot.LADS;
         if (button == ladsMultiplayerButton) return PauseMenuLayout.Slot.MULTIPLAYER;
+        if (button == ladsCosmeticsButton) return PauseMenuLayout.Slot.COSMETICS;
         if (button == ladsScreenshotsButton) return PauseMenuLayout.Slot.SCREENSHOTS;
         if (button == ladsExtrasButton) return PauseMenuLayout.Slot.EXTRAS;
         if (button.getClass() == GuiButton.class)
@@ -132,6 +136,7 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
     private void ladsPauseAction(GuiButton button, CallbackInfo ci) {
         if (button == ladsButton) mc.displayGuiScreen(new LadsSettingsScreen189(this));
         else if (button == ladsMultiplayerButton) PauseMultiplayer189.open(this);
+        else if (button == ladsCosmeticsButton) mc.displayGuiScreen(new CosmeticsScreen189(this));
         else if (button == ladsScreenshotsButton) mc.displayGuiScreen(new ScreenshotsScreen189(this));
         else if (button == ladsExtrasButton) mc.displayGuiScreen(new TitleExtrasScreen189(this, TitleExtrasScreen189.of(this, ladsExtras)));
         else if (button instanceof CompactButton189) ((CompactButton189) button).press();

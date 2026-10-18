@@ -9,12 +9,13 @@ import com.thelads.core.v1_20_1.hud.Mods1201;
 import java.util.Arrays;
 import java.util.List;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.game.ClientboundCustomPayloadPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -105,16 +106,25 @@ public final class Food1201 {
         }
         active = true;
         ModuleSupport.registerBuiltIn(MODULE);
-        for (String channel : new String[] {AppleSkinSync.SATURATION, AppleSkinSync.EXHAUSTION, AppleSkinSync.NATURAL_REGENERATION}) {
-            // Netty thread: copy the bytes now, apply on the client thread in packet order (after the join reset).
-            ClientPlayNetworking.registerGlobalReceiver(new ResourceLocation(AppleSkinSync.NAMESPACE, channel), (client, handler, buf, sender) -> {
-                byte[] data = new byte[buf.readableBytes()];
-                buf.readBytes(data);
-                client.execute(() -> receive(channel, data));
-            });
-        }
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> resetSync());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> resetSync());
+    }
+
+    /**
+     * AppleSkinPayloadMixin, on the network thread: an AppleSkin server payload is read here instead of through a registered
+     * receiver, so its channels are never announced (AppleSkinSync). The bytes are copied now and applied on the client thread in
+     * packet order (after the join reset). False: not one of the three channels, or the module is not built in.
+     */
+    public static boolean payload(ClientboundCustomPayloadPacket packet) {
+        ResourceLocation id = packet.getIdentifier();
+        String channel = active ? AppleSkinSync.channel(id.getNamespace(), id.getPath()) : null;
+        if (channel == null) return false;
+        FriendlyByteBuf buf = packet.getData(); // a copy
+        byte[] data = new byte[buf.readableBytes()];
+        buf.readBytes(data);
+        buf.release();
+        Minecraft.getInstance().execute(() -> receive(channel, data));
+        return true;
     }
 
     /** An AppleSkin server payload's bytes; a value that cannot be the player's is ignored. */

@@ -16,6 +16,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
+import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.gui.inventory.GuiInventory;
 import net.minecraft.client.settings.KeyBinding;
@@ -32,6 +33,7 @@ import org.lwjgl.input.Keyboard;
  * (client-side) player dancing and stopping when it moves. Logs which key bindings share the Emotes key.
  */
 public final class EmoteProbe189 {
+    private static int qaKey;
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     private static final TreeMap<Long, List<Runnable>> STEPS = new TreeMap<Long, List<Runnable>>();
     private static long startedAt = -1, walkAt;
@@ -43,6 +45,17 @@ public final class EmoteProbe189 {
     private static final List<Float> stopWeights = new ArrayList<Float>();
 
     private EmoteProbe189() {}
+
+    /** A key no binding uses (F13..F19), so the Groove key's simulated press reaches only Groove (a shared key goes to one of them). */
+    private static int freeKey(Minecraft mc) {
+        int[] keys = {Keyboard.KEY_F13, Keyboard.KEY_F14, Keyboard.KEY_F15, Keyboard.KEY_F16, Keyboard.KEY_F17, Keyboard.KEY_F18, Keyboard.KEY_F19};
+        for (int key : keys) {
+            boolean used = false;
+            for (KeyBinding binding : mc.gameSettings.keyBindings) used |= binding.getKeyCode() == key;
+            if (!used) return key;
+        }
+        return Keyboard.KEY_F19;
+    }
 
     /** One CoreProbe step, every client tick until it returns true. */
     public static boolean run(final Minecraft mc) {
@@ -178,7 +191,42 @@ public final class EmoteProbe189 {
             mc.theWorld.removeEntityFromWorld(-1911);
             Emotes.stopLocal(self);
         });
-        at(other + 4200, () -> {
+        long cos = other + 4000;
+        at(cos, () -> mc.displayGuiScreen(new CosmeticsScreen189(null)));
+        shot(cos + 400, "cosmetics-screen");
+        long pause = cos + 700;
+        at(pause, () -> mc.displayGuiScreen(new GuiIngameMenu()));
+        shot(pause + 400, "pause-menu");
+        long closeScreens = pause + 700;
+        at(closeScreens, () -> mc.displayGuiScreen(null));
+        long grooveKeyTest = closeScreens + 300;
+        at(grooveKeyTest, () -> {
+            KeyBinding grooveBinding = EmoteAnim189.key(EmoteLibrary.GROOVE);
+            if (grooveBinding != null) {
+                qaKey = freeKey(mc);
+                grooveBinding.setKeyCode(qaKey);
+                KeyBinding.resetKeyBindingArrayAndHash();
+                KeyBinding.onTick(qaKey);
+            }
+        });
+        at(grooveKeyTest + 100, () -> {
+            Emotes.Playing playing = Emotes.get(self);
+            check(playing != null && EmoteLibrary.GROOVE.equals(playing.id()) && !playing.stopping(),
+                "Groove emote key press plays groove and is not stopping");
+            KeyBinding.onTick(qaKey);
+        });
+        at(grooveKeyTest + 200, () -> {
+            Emotes.Playing playing = Emotes.get(self);
+            check(playing != null && EmoteLibrary.GROOVE.equals(playing.id()) && playing.stopping(),
+                "Groove emote key press again stops groove");
+            KeyBinding grooveBinding = EmoteAnim189.key(EmoteLibrary.GROOVE);
+            if (grooveBinding != null) {
+                grooveBinding.setKeyCode(Keyboard.KEY_NONE);
+                KeyBinding.resetKeyBindingArrayAndHash();
+            }
+            Emotes.stopLocal(self);
+        });
+        at(grooveKeyTest + 500, () -> {
             mc.gameSettings.thirdPersonView = 0;
             mc.gameSettings.hideGUI = hudWas;
             done = true;

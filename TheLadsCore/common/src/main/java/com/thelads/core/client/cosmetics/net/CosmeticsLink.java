@@ -5,8 +5,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.cosmetics.Emotes;
-import com.thelads.core.config.Module;
-import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ShareCodeClient;
 import com.thelads.core.modules.CosmeticsModule;
 import java.io.IOException;
@@ -71,9 +69,8 @@ public final class CosmeticsLink {
 
     private void sample() {
         if (++ticks % 20 != 0 || endpoint == null) return;
-        Module module = ModuleManager.getInstance().getModule("Cosmetics");
-        CosmeticsModule cosmetics = module instanceof CosmeticsModule && module.isEnabled() ? (CosmeticsModule) module : null;
-        boolean show = cosmetics != null && cosmetics.showOthers.get(), share = cosmetics != null && cosmetics.shareMine.get();
+        CosmeticsModule cosmetics = CosmeticsModule.get();
+        boolean show = cosmetics.showOthers.get(), share = cosmetics.shareMine.get();
         LadsGameBridge game = LadsGameBridge.get();
         String address = qaServer != null ? qaServer : game.getServerAddress();
         if (!Objects.equals(address, lastAddress)) {

@@ -7,12 +7,16 @@ using TheLadsLauncher;
 using TheLadsLauncher.Services;
 
 /// <summary>
-/// --modpack modrinth:&lt;project&gt;[@&lt;version&gt;] &lt;repository root&gt; [--loader &lt;loader&gt;] [--update-to &lt;version&gt;] [--no-launch]
+/// --modpack modrinth:&lt;project&gt;[@&lt;version&gt;] | mrpack:&lt;file&gt; &lt;repository root&gt; [--loader &lt;loader&gt;] [--update-to &lt;version&gt;] [--no-launch]
+///   [--lads-core on|off]
 /// Installs a Modrinth modpack with the Modpacks tab's own code into the sandbox launcher folder
 /// (artifacts\verification\modpacks-data), optionally updates it to a newer pack version (checking that a world, a changed
 /// setting and a switched-off mod survive), then starts it offline as LadsQA, muted, and captures its window at the title
 /// screen. --no-launch still installs Java, the loader and the game files; only the game is not started. --loader picks
-/// among versions published per loader. Evidence goes to artifacts\1.6.0\modpacks. Never LadsCore, never a Lads profile, never %APPDATA%.
+/// among versions published per loader. mrpack:&lt;file&gt; installs a local .mrpack (Modrinth's import code) instead. --lads-core sets the
+/// instance's "Add Lads Core" setting before the launch (the launcher's own sync then adds or switches off mods\theladscore.jar);
+/// without it the default applies (on where the Core is supported). The run checks the jar and the game log against the setting; with the
+/// Core in the game the QA bar shows. Evidence goes to artifacts\1.6.0\modpacks. Never a Lads profile, never %APPDATA%.
 /// Hold the machine-wide .qa-game-lock while it runs a game.
 /// </summary>
 internal static class ModpackQa
@@ -24,8 +28,14 @@ internal static class ModpackQa
         Environment.SetEnvironmentVariable("THELADS_DIR", data);
         Environment.SetEnvironmentVariable(SharedContentService.RootEnvironmentVariable, Path.Combine(verification, "global-sandbox"));
         Environment.SetEnvironmentVariable("LADS_SKIP_UPDATE", "1");
-        if (!source.StartsWith("modrinth:", StringComparison.Ordinal)) throw new ArgumentException("Source must be modrinth:<project>[@<version>].");
-        var (project, wanted) = Split(source["modrinth:".Length..]);
+        bool local = source.StartsWith("mrpack:", StringComparison.Ordinal);
+        if (!local && !source.StartsWith("modrinth:", StringComparison.Ordinal)) throw new ArgumentException("Source must be modrinth:<project>[@<version>] or mrpack:<file>.");
+        var (project, wanted) = local ? (Path.GetFileNameWithoutExtension(source["mrpack:".Length..]), null) : Split(source["modrinth:".Length..]);
+        int coreAt = Array.IndexOf(options, "--lads-core");
+        bool? ladsCore = coreAt < 0 ? null : options.ElementAtOrDefault(coreAt + 1) switch
+        {
+            "on" => true, "off" => false, _ => throw new ArgumentException("--lads-core takes on or off.")
+        };
         int updateAt = Array.IndexOf(options, "--update-to");
         string? updateTo = updateAt >= 0 ? options[updateAt + 1] : null;
         bool launch = !options.Contains("--no-launch");
@@ -44,12 +54,24 @@ internal static class ModpackQa
         QaShared.Slot? slot = null;
         try
         {
-            var versions = (await ModrinthModpacks.VersionsAsync(http, project, ct)).Where(v => loader == null || v.Loaders.Contains(loader)).ToList();
-            var first = Pick(versions, wanted);
-            var (projectTitle, author, icon) = await ModrinthModpacks.ProjectAsync(http, first.ProjectId, ct);
-            Say($"Installing {projectTitle} {first.VersionNumber} by {author} (Minecraft {string.Join(",", first.GameVersions)}, {string.Join(",", first.Loaders)})");
-            var instance = await WithPack(http, data, first, file => ModpackLauncher.InstallAsync(data, file,
-                new ModpackSource { ProjectId = first.ProjectId, VersionId = first.Id }, projectTitle, author, icon, http, Progress(Say), ct));
+            List<ModpackVersion> versions = new();
+            ModpackInstance instance;
+            if (local)
+            {
+                if (updateTo != null) throw new ArgumentException("--update-to needs a modrinth: source.");
+                string file = Path.GetFullPath(source["mrpack:".Length..]);
+                Say("Installing " + file);
+                instance = await ModpackLauncher.InstallAsync(data, file, null, null, null, null, http, Progress(Say), ct);
+            }
+            else
+            {
+                versions = (await ModrinthModpacks.VersionsAsync(http, project, ct)).Where(v => loader == null || v.Loaders.Contains(loader)).ToList();
+                var first = Pick(versions, wanted);
+                var (projectTitle, author, icon) = await ModrinthModpacks.ProjectAsync(http, first.ProjectId, ct);
+                Say($"Installing {projectTitle} {first.VersionNumber} by {author} (Minecraft {string.Join(",", first.GameVersions)}, {string.Join(",", first.Loaders)})");
+                instance = await WithPack(http, data, first, file => ModpackLauncher.InstallAsync(data, file,
+                    new ModpackSource { ProjectId = first.ProjectId, VersionId = first.Id }, projectTitle, author, icon, http, Progress(Say), ct));
+            }
             Require(SafeFileOps.IsSameOrInside(instance.GameDirectory, verification), "instance outside the sandbox");
             Say($"Instance {instance.Id}: {instance.Loader} {instance.LoaderVersion}, Minecraft {instance.McVersion}, {Modpacks.Mods(instance).Count} mods, game dir {instance.GameDirectory}");
 
@@ -78,6 +100,12 @@ internal static class ModpackQa
                 if (after != null) Modpacks.SetModEnabled(after, true);
                 Say($"Now {instance.Loader} {instance.LoaderVersion}, Minecraft {instance.McVersion}, {Modpacks.Mods(instance).Count} mods");
             }
+            if (ladsCore != null)
+            {
+                instance.LadsCore = ladsCore;
+                Modpacks.Save(instance);
+            }
+            Say($"Add Lads Core: {(instance.LadsCore == true ? "on" : "off")} (supported: {ModpackCoreSync.IsSupported(instance, out var unsupported)}{(unsupported == null ? "" : ", " + unsupported)})");
             File.Copy(Path.Combine(instance.Directory, "instance.json"), Path.Combine(evidence, "instance.json"), true);
             File.WriteAllLines(Path.Combine(evidence, "mods.txt"), Modpacks.Mods(instance).Select(m => (m.Enabled ? "on   " : "off  ") + m.FileName));
 
@@ -90,7 +118,7 @@ internal static class ModpackQa
                 string arguments = prepared.StartInfo.ArgumentList.Count > 0 ? string.Join(' ', prepared.StartInfo.ArgumentList) : prepared.StartInfo.Arguments;
                 Say($"Prepared, not started: {prepared.StartInfo.FileName}");
                 Check(failures, Say, arguments.Contains(instance.GameDirectory), "the game folder is the instance's own");
-                Check(failures, Say, !arguments.Contains("theladscore", StringComparison.OrdinalIgnoreCase), "no Lads Core on the command line");
+                Check(failures, Say, !arguments.Contains("theladscore", StringComparison.OrdinalIgnoreCase), "no Lads Core on the command line (a Fabric Core sits in mods)");
                 File.WriteAllText(Path.Combine(evidence, "command-line.txt"), prepared.StartInfo.FileName + " " + arguments);
             }
             else
@@ -108,8 +136,17 @@ internal static class ModpackQa
                 // ModpackLauncher.LaunchAsync, plus: a loader crash at startup exits with its log instead of opening Fabric Loader's
                 // error window on the user's screen (the property is Fabric's; other loaders ignore it).
                 game = await ModpackLauncher.PrepareAsync(data, instance, session, settings, java, http, Progress(Say), ct);
-                if (game.StartInfo.ArgumentList.Count > 0) game.StartInfo.ArgumentList.Insert(0, "-Dfabric.noGui=true");
-                else game.StartInfo.Arguments = "-Dfabric.noGui=true " + game.StartInfo.Arguments;
+                // The launcher's sync ran in PrepareAsync: what is in mods now is what the game loads.
+                string mods = Path.Combine(instance.GameDirectory, "mods");
+                bool expectCore = instance.LadsCore == true && ModpackCoreSync.IsSupported(instance);
+                File.WriteAllLines(Path.Combine(evidence, "mods-at-launch.txt"), Directory.Exists(mods) ? Directory.EnumerateFiles(mods).Select(f => Path.GetFileName(f)).Order() : Enumerable.Empty<string>());
+                if (expectCore) Check(failures, Say, File.Exists(Path.Combine(mods, ModpackCoreSync.BundledName)), "the launcher added mods\\" + ModpackCoreSync.BundledName);
+                else Check(failures, Say, ModpackCoreSync.CoreJars(mods).Count == 0, "no enabled Lads Core jar in mods");
+                // Permanent QA rule: the QA bar shows whenever a Core is in the game (without one nothing can draw it).
+                var jvm = new List<string> { "-Dfabric.noGui=true" };
+                if (expectCore) jvm.AddRange(new[] { "-Dthelads.qaBar=1", "-Dthelads.qaRun=modpack " + project });
+                if (game.StartInfo.ArgumentList.Count > 0) for (int i = jvm.Count - 1; i >= 0; i--) game.StartInfo.ArgumentList.Insert(0, jvm[i]);
+                else game.StartInfo.Arguments = string.Join(' ', jvm.Select(a => a.Contains(' ') ? "\"" + a + "\"" : a)) + " " + game.StartInfo.Arguments;
                 slot = await QaShared.AcquireAsync(4, "modpack " + project, ct); // at most 3 QA games machine-wide (QaShared)
                 game.Start();
             LaunchToken.Send(game);
@@ -144,7 +181,8 @@ internal static class ModpackQa
                 var gameLog = ReadShared(log).Split('\n');
                 foreach (var line in gameLog.Where(l => l.Contains("Loading Minecraft") || l.Contains("Loading ") && l.Contains(" mods:") || l.Contains("Sound engine started") || l.Contains("Backend library")))
                     Say("log: " + line.TrimEnd());
-                Check(failures, Say, !gameLog.Any(l => l.Contains("theladscore", StringComparison.OrdinalIgnoreCase)), "no Lads Core in the game");
+                if (expectCore) Check(failures, Say, gameLog.Any(l => l.Contains("TheLadsCore") && l.Contains("initialized successfully")), "Lads Core loaded in the game (initialized successfully)");
+                else Check(failures, Say, !gameLog.Any(l => l.Contains("theladscore", StringComparison.OrdinalIgnoreCase)), "no Lads Core in the game");
             }
         }
         catch (Exception error)

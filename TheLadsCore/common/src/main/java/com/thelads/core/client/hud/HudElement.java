@@ -207,13 +207,13 @@ public abstract class HudElement {
     }
     public String getModuleName() { return moduleName; }
 
-    private Module module() {
+    protected Module module() {
         if (cachedModule != null) return cachedModule;
         if (moduleName != null) return cachedModule = ModuleManager.getInstance().getModule(moduleName);
         return null;
     }
 
-    private Option option(String name) {
+    protected Option option(String name) {
         Module m = module();
         if (m == null) return null;
         Option o = cachedOptions.get(name);

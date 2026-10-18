@@ -84,6 +84,12 @@ class HudShadowTest {
                     for (String draw : drawn(element, editor)) {
                         checked++;
                         // The Scoreboard and the Action Bar have their own Text Shadow option, on by default whatever the global one.
+                        // Keystrokes in Clean mode has its own per-key shadow options (default off).
+                        if ("Keystrokes".equals(element.getModuleName())) {
+                            boolean expected = ((com.thelads.core.modules.KeystrokesModule) ModuleManager.getInstance().getModule("Keystrokes")).keyTextShadow.get();
+                            assertEquals(expected, draw.startsWith("true:"), element.getModuleName() + " drew '" + draw + "' with per-key shadow");
+                            continue;
+                        }
                         boolean expected = ModuleManager.getInstance().getModule(element.getModuleName()).getOption("Text Shadow") != null || shadow;
                         assertEquals(expected, draw.startsWith("true:"), element.getModuleName() + " drew '" + draw + "' with global shadow " + shadow);
                     }

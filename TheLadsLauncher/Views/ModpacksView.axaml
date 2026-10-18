@@ -19,7 +19,7 @@
     <Grid x:Name="LibraryPanel" RowDefinitions="Auto,Auto,Auto,*" Margin="28,24,28,12">
       <StackPanel Spacing="4">
         <TextBlock Text="Modpacks" FontSize="22" FontWeight="Bold" />
-        <TextBlock Text="Modrinth modpacks as separate instances: their own mods, worlds and settings. They never use the Lads profiles' mods or Lads Core." Foreground="#A0A1AA" TextWrapping="Wrap" />
+        <TextBlock Text="Modrinth modpacks as separate instances: their own mods, worlds and settings. They never use the Lads profiles' mods; Lads Core is added where it is supported (Lads Core in each modpack's settings)." Foreground="#A0A1AA" TextWrapping="Wrap" />
       </StackPanel>
       <TabControl x:Name="Tabs" Classes="pills" Padding="0" Grid.Row="1" Margin="0,12,0,0" SelectionChanged="Tabs_Changed">
         <TabItem x:Name="MineTab" Header="My Modpacks" />

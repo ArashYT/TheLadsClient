@@ -26,12 +26,19 @@ import org.slf4j.LoggerFactory;
  * The Hypixel modules and the real ping (common HypixelMods, RealPing) on 1.20.1, plain Fabric and Zero SMP: server chat through
  * Fabric's game-message event (Chat Cleanup cancels it), a client tick, and the Mod API ping on the hypixel:ping channel (its
  * receiver runs on the network thread, so the arrival time is the reply's). With the official Hypixel Mod API mod installed the
- * channel is its own: the ping then uses status pings.
+ * channel is its own: the ping then uses status pings. The channel is announced (minecraft:register) only on the connection about
+ * to send the first ping, and RealPing pings Hypixel hosts only: no other server sees it.
  */
 public final class Hypixel1201 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static final ResourceLocation CHANNEL = new ResourceLocation(RealPing.CHANNEL);
     private static boolean channel;
+    private static final ClientPlayNetworking.PlayChannelHandler RECEIVER = (client, handler, buf, sender) -> {
+        long arrived = System.nanoTime();
+        byte[] data = new byte[buf.readableBytes()];
+        buf.readBytes(data);
+        RealPing.receive(RealPing.CHANNEL, data, arrived);
+    };
 
     private Hypixel1201() {}
 
@@ -40,12 +47,7 @@ public final class Hypixel1201 {
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> overlay || !HypixelMods.chat(message.getString(), System.nanoTime()));
         ClientTickEvents.END_CLIENT_TICK.register(client -> HypixelMods.tick(LadsGameBridge.get(), client.level, client.getConnection(), System.nanoTime()));
         if (Mods1201.loaded("hypixel_mod_api")) return;
-        channel = ClientPlayNetworking.registerGlobalReceiver(CHANNEL, (client, handler, buf, sender) -> {
-            long arrived = System.nanoTime();
-            byte[] data = new byte[buf.readableBytes()];
-            buf.readBytes(data);
-            RealPing.receive(RealPing.CHANNEL, data, arrived);
-        });
+        channel = !ClientPlayNetworking.getGlobalReceivers().contains(CHANNEL);
         if (!channel) LOGGER.info("Lads real ping: {} is registered by another mod, using status pings", RealPing.CHANNEL);
         if (!Boolean.getBoolean("thelads.verifyAutoWorld") && System.getProperty("thelads.qaScript") == null) return;
         // QA only: the integrated server answers like Hypixel ("pong"), so the QA world exercises the whole round trip; and the script
@@ -54,6 +56,7 @@ public final class Hypixel1201 {
         if (channel) ServerPlayNetworking.registerGlobalReceiver(CHANNEL, (server, player, handler, buf, sender) ->
             CompletableFuture.delayedExecutor(37, TimeUnit.MILLISECONDS).execute(() ->
                 sender.sendPacket(CHANNEL, new FriendlyByteBuf(Unpooled.wrappedBuffer(new byte[] {1, 1, 4, 'p', 'o', 'n', 'g'})))));
+        QaProbe1201.registerStep("channels", args -> { String when = args.length > 1 ? args[1] : "script"; QuietChannelsQa1201.sample(when, when.contains("after")); return true; });
         QaProbe1201.registerStep("hypixel", args -> {
             if (qa == null) qa = new HypixelQa();
             try {
@@ -80,6 +83,7 @@ public final class Hypixel1201 {
             return menu.ui();
         }
         @Override public void closeScreen() { Minecraft.getInstance().setScreen(null); }
+        @Override public void channels(String when) { QuietChannelsQa1201.sample(when, when.contains("after the ping")); }
         @Override public void screenshot(String name) throws Exception { QaProbe1201.shot(Minecraft.getInstance(), name); }
     };
 
@@ -87,6 +91,9 @@ public final class Hypixel1201 {
     public static boolean send(String name, byte[] data) {
         if (!channel || !RealPing.CHANNEL.equals(name) || Minecraft.getInstance().getConnection() == null) return false;
         try {
+            if (ClientPlayNetworking.getGlobalReceivers().contains(CHANNEL)) return false; // another mod's since startup: status pings
+            // This connection's receiver, registered (and announced) just before its first ping; gone with the connection.
+            if (!ClientPlayNetworking.getReceived().contains(CHANNEL)) ClientPlayNetworking.registerReceiver(CHANNEL, RECEIVER);
             ClientPlayNetworking.send(CHANNEL, new FriendlyByteBuf(Unpooled.wrappedBuffer(data)));
             return true;
         } catch (RuntimeException failure) {
