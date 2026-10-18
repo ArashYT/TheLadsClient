@@ -29,7 +29,6 @@ public final class HypixelSafetyManager {
         DISALLOWED_MODULES.add("ReachDisplay");
         DISALLOWED_MODULES.add("Jade");
         DISALLOWED_MODULES.add("ShulkerBoxUtils");
-        DISALLOWED_MODULES.add("StackRefill");
     }
 
     /** QA only (the Hypixel QA routines set it for their run): the singleplayer QA world counts as Hypixel. */
@@ -100,10 +99,24 @@ public final class HypixelSafetyManager {
     }
 
     /**
+     * Off on every server, not just Hypixel: Stack Refill clicks the inventory with no inventory open, which anticheats ban as an
+     * AutoRefill cheat (a Minemen.club ban). OldAnimationsModule.useWhileMining asks isMultiplayer the same way.
+     * Asked per module every frame: no allocation.
+     */
+    public static boolean isSingleplayerOnlyModule(String moduleName) {
+        return "StackRefill".equalsIgnoreCase(moduleName);
+    }
+
+    /**
      * Checks if a module is currently blocked because the player is connected to Hypixel.
      */
     public static boolean isDisallowed(String moduleName) {
-        return isHypixel() && isDisallowedModule(moduleName);
+        return isHypixel() && isDisallowedModule(moduleName) || isSingleplayerOnlyModule(moduleName) && isMultiplayer();
+    }
+
+    /** Any server, LAN or Realms (anything but a local world); "Unknown" counts as a server, so a missed case stays off. */
+    public static boolean isMultiplayer() {
+        return qaOverride || !"Singleplayer".equalsIgnoreCase(LadsGameBridge.get().getServerAddress());
     }
 
     /**
@@ -114,6 +127,7 @@ public final class HypixelSafetyManager {
     }
 
     public static String getBlockedNotice(String moduleName) {
+        if (isSingleplayerOnlyModule(moduleName)) return moduleName + " only works in singleplayer: servers' anticheats ban it.";
         return moduleName + " is automatically disabled on Hypixel to comply with server rules.";
     }
 }

@@ -270,7 +270,8 @@ public final class LadsSettingsScreen {
         if (tip.update(modal || tipModule == null ? null : tipModule.getName(), now)) {
             String desc = tipModule.getDescription();
             if (tipModule.isBlockedByServer()) {
-                desc += " [Disabled on Hypixel - Server Rules]";
+                desc += com.thelads.core.client.HypixelSafetyManager.isSingleplayerOnlyModule(tipModule.getName())
+                    ? " [Singleplayer only - server anticheats ban it]" : " [Disabled on Hypixel - Server Rules]";
             } else if (com.thelads.core.client.hypixel.HypixelMods.HYPIXEL_MODS.equals(tipModule.getName())
                     && !com.thelads.core.client.HypixelSafetyManager.isHypixel()) {
                 desc += " [Inactive - Only activates on Hypixel]";
@@ -368,7 +369,8 @@ public final class LadsSettingsScreen {
             round(g, cx, cy, cardW, cardH, mix(base, glow, .35f + .65f * hover));
             round(g, cx + 1, cy + 1, cardW - 2, cardH - 2, fill);
             boolean settingsOnly = ModuleSupport.isSettingsOnly(m.getName());
-            String soon = blocked ? "Hypixel Block" : (toggleable || settingsOnly ? "" : "Soon");
+            boolean spOnly = com.thelads.core.client.HypixelSafetyManager.isSingleplayerOnlyModule(m.getName());
+            String soon = blocked ? (spOnly ? "SP Only" : "Hypixel Block") : (toggleable || settingsOnly ? "" : "Soon");
             if (toggleable) { // state pip, filled when on, so the state is not colour alone
                 round(g, cx + 8, cy + pad + 6, 7, 7, TEXT);
                 if (!on) round(g, cx + 9, cy + pad + 7, 5, 5, fill);
@@ -378,9 +380,9 @@ public final class LadsSettingsScreen {
                 () -> { m.setFavorite(!m.isFavorite()); changed(m); }, mx, my, m.isFavorite() ? TEXT : MUTED, false);
             chip(g, "detail:" + m.getName(), "Settings", new Rect(cx + pad, cy + cardH - pad - 23, cardW - 2 * pad, 23), () -> openDetails(m), mx, my, TEXT, true);
             // Added after the star and Settings so those win the click.
-            controls.add(new Control(id, m.getName() + (blocked ? ", Blocked on Hypixel" : (on ? ", On" : toggleable ? ", Off" : settingsOnly ? ", Settings" : ", Soon")), new Rect(cx, cy, cardW, cardH), () -> {
+            controls.add(new Control(id, m.getName() + (blocked ? (spOnly ? ", Singleplayer only" : ", Blocked on Hypixel") : (on ? ", On" : toggleable ? ", Off" : settingsOnly ? ", Settings" : ", Soon")), new Rect(cx, cy, cardW, cardH), () -> {
                 if (m.isBlockedByServer()) {
-                    notice = m.getName() + " is automatically disabled on Hypixel to comply with server rules.";
+                    notice = com.thelads.core.client.HypixelSafetyManager.getBlockedNotice(m.getName());
                     onNarrate.accept(notice);
                 }
                 else if (ModuleSupport.isToggleable(m.getName())) { m.toggle(); changed(m); onNarrate.accept(m.getName() + (m.isEnabled() ? ", On" : ", Off")); }
@@ -411,8 +413,9 @@ public final class LadsSettingsScreen {
         g.drawText(hypixelInactive ? "LADS MODULE (INACTIVE OFF HYPIXEL)" : "LADS MODULE", x, stateY + 6, ACCENT);
         if (detail.isBlockedByServer()) {
             button(g, "toggle:detail", "BLOCKED", new Rect(x + headerW - 74, stateY, 74, 22),
-                () -> { notice = detail.getName() + " is automatically disabled on Hypixel to comply with server rules."; }, true, mx, my, false);
-            g.drawText("Disabled on Hypixel (Server Rules)", x, stateY + 28, ACCENT);
+                () -> { notice = com.thelads.core.client.HypixelSafetyManager.getBlockedNotice(detail.getName()); }, true, mx, my, false);
+            g.drawText(com.thelads.core.client.HypixelSafetyManager.isSingleplayerOnlyModule(detail.getName())
+                ? "Singleplayer only (server anticheats ban it)" : "Disabled on Hypixel (Server Rules)", x, stateY + 28, ACCENT);
         } else if (!ModuleSupport.isSettingsOnly(detail.getName()))
             button(g, "toggle:detail", detail.isEnabled() ? "ON" : "OFF", new Rect(x + headerW - 52, stateY, 52, 22),
                 () -> { detail.toggle(); changed(detail); }, true, mx, my, detail.isEnabled());

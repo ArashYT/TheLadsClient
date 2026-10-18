@@ -6,7 +6,7 @@ import com.thelads.core.config.ModuleManager;
 
 /**
  * StackRefill: automatically refills a depleted hand stack or broken tool from matching stacks in inventory.
- * Automatically disabled on Hypixel via HypixelSafetyManager.
+ * Singleplayer only, via HypixelSafetyManager (servers' anticheats ban its hidden inventory clicks).
  */
 public final class StackRefillModule extends Module {
     public static final String NAME = "StackRefill";
@@ -29,7 +29,7 @@ public final class StackRefillModule extends Module {
 
     public StackRefillModule() {
         super(NAME, "Automatically refills a depleted hand stack or broken tool from matching stacks in your inventory. "
-                + "Automatically disabled on Hypixel.");
+                + "Singleplayer only: servers' anticheats ban the hidden inventory clicks.");
         refillConsumables = addOption(new BoolOption("Refill consumables & blocks", true));
         replaceBrokenTools = addOption(new BoolOption("Replace broken tools", true));
         refillOffhand = addOption(new BoolOption("Refill offhand", true));

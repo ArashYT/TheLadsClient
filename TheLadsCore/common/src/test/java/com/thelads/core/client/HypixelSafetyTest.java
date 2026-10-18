@@ -3,6 +3,8 @@ package com.thelads.core.client;
 import com.thelads.core.client.bridge.DefaultGameBridge;
 import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.config.Module;
+import com.thelads.core.config.ModuleManager;
+import com.thelads.core.modules.OldAnimationsModule;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -56,7 +58,7 @@ public class HypixelSafetyTest {
         assertTrue(HypixelSafetyManager.isDisallowedModule("ReachDisplay"));
         assertTrue(HypixelSafetyManager.isDisallowedModule("Jade"));
         assertTrue(HypixelSafetyManager.isDisallowedModule("ShulkerBoxUtils"));
-        assertTrue(HypixelSafetyManager.isDisallowedModule("StackRefill"));
+        assertTrue(HypixelSafetyManager.isSingleplayerOnlyModule("StackRefill"), "Stack Refill is off on every server, Hypixel too");
 
         // Allowed modules
         assertFalse(HypixelSafetyManager.isDisallowedModule("FPS"));
@@ -98,6 +100,32 @@ public class HypixelSafetyTest {
         bridge.setServer("Singleplayer");
         assertFalse(minimap.isBlockedByServer());
         assertTrue(minimap.isEnabled());
+    }
+
+    /** Minemen.club banned a player for Stack Refill's hidden inventory clicks: it and use-while-mining stay in singleplayer. */
+    @Test
+    public void testSingleplayerOnlyOnEveryServer() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        Module refill = new Module("StackRefill", "Stack Refill");
+        refill.setEnabled(true);
+        OldAnimationsModule anims = (OldAnimationsModule) ModuleManager.getInstance().getModule(OldAnimationsModule.NAME);
+        boolean animsWas = anims.isEnabled();
+        anims.setEnabled(true);
+        try {
+            assertTrue(refill.isEnabled());
+            assertTrue(anims.useWhileMining(OldAnimations.Use.BLOCK));
+            for (String server : new String[]{"minemen.club", "mc.hypixel.net", "Unknown"}) {
+                bridge.setServer(server);
+                assertTrue(refill.isBlockedByServer(), server);
+                assertFalse(refill.isEnabled(), server);
+                assertFalse(anims.useWhileMining(OldAnimations.Use.BLOCK), server);
+            }
+            bridge.setServer("Singleplayer");
+            assertTrue(refill.isEnabled(), "back in singleplayer the saved state returns");
+        } finally {
+            anims.setEnabled(animsWas);
+        }
     }
 
     @Test

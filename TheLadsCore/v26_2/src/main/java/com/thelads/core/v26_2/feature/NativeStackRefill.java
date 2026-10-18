@@ -14,7 +14,7 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * Consolidates StackRefill as a Lads module: automatically refills a depleted hand stack or broken tool
- * from matching stacks in the main inventory (slots 9..35). Automatically disabled on Hypixel.
+ * from matching stacks in the main inventory (slots 9..35). Singleplayer only (HypixelSafetyManager).
  */
 public final class NativeStackRefill {
     private static final boolean EXTERNAL_LOADED = FabricLoader.getInstance().isModLoaded("stackrefill");
