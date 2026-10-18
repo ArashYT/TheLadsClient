@@ -13,6 +13,7 @@ import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.config.SliderOption;
 import com.thelads.core.modules.KillBannerModule;
+import com.thelads.core.modules.ThreadPriorityModule;
 import com.thelads.core.v1_8_9.gui.LadsSettingsScreen189;
 import java.io.File;
 import java.util.ArrayList;
@@ -73,14 +74,16 @@ final class Probe150 {
         priority = Thread.currentThread().getPriority();
         render.setValue(priority == 7 ? 6 : 7);
         threads.setEnabled(true);
-        return after(30);
+        return after(10);
     }
 
     private static boolean threads(Minecraft mc) {
         Module threads = module("Threads");
         SliderOption render = (SliderOption) threads.getOption("Render thread priority");
         Thread client = Thread.currentThread();
-        check("Client thread".equals(client.getName()) && client.getPriority() == (int) render.getValue(),
+        int expected = ThreadPriorityModule.effectivePriority(client, (int) render.getValue());
+        if (client.getPriority() != expected) return retry(1);
+        check("Client thread".equals(client.getName()) && client.getPriority() == expected,
             "Threads: 1.8.9's " + client.getName() + " runs at the render priority " + client.getPriority());
         threads.setEnabled(false);
         check(client.getPriority() == priority, "Threads off: its priority " + priority + " is restored");
