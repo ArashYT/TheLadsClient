@@ -232,6 +232,7 @@ final class Probe151 {
             },
             mc -> {
                 check(mc.thePlayer.fishEntity != null, state + "the rod is cast (the integrated server's hook reached the client)");
+                if (on) rodDiagnostics(mc); // QA: where the hook is when the line check runs
                 hooks(on, "cast rod (line from 1.7's rod tip)", Hook.LINE, Hook.FP_ICON);
                 screenshot(mc, "151-rod" + tag);
                 key(mc.gameSettings.keyBindUseItem, true); // reel in
@@ -630,6 +631,18 @@ final class Probe151 {
             + mc.playerController.isInCreativeMode() + ", health " + mc.thePlayer.getHealth() + ", using " + mc.thePlayer.isUsingItem()
             + ", hook " + (mc.thePlayer.fishEntity != null) + ", module " + MODULE.isEnabled() + "/" + wasEnabled + ")");
         return after(1);
+    }
+
+    /** QA diagnostics when the cast rod drew no line: where the hook is and whether the client world still holds and renders it. */
+    private static void rodDiagnostics(Minecraft mc) {
+        net.minecraft.entity.projectile.EntityFishHook hook = mc.thePlayer.fishEntity;
+        String state = hook == null ? "no hook" : String.format(java.util.Locale.ROOT,
+            "hook id %d at %.2f,%.2f,%.2f dead=%b inWorld=%b inLoadedList=%b addedToChunk=%b chunk %d,%d angler==player=%b ticks=%d inRange3d=%b",
+            hook.getEntityId(), hook.posX, hook.posY, hook.posZ, hook.isDead, mc.theWorld.getEntityByID(hook.getEntityId()) == hook,
+            mc.theWorld.loadedEntityList.contains(hook), hook.addedToChunk, hook.chunkCoordX, hook.chunkCoordZ, hook.angler == mc.thePlayer,
+            hook.ticksExisted, hook.isInRangeToRender3d(mc.getRenderViewEntity().posX, mc.getRenderViewEntity().posY, mc.getRenderViewEntity().posZ));
+        org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").warn("Lads 1.8.9 rod diagnostics (LINE " + OldAnimations189.hits(Hook.LINE) + "): {}; player {},{},{} yaw {} pitch {}; render view entity is player={}",
+            state, mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ, mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, mc.getRenderViewEntity() == mc.thePlayer);
     }
 
     /** With the module on each named hook changed 1.8.9's result since the last reset; off, none did. */
