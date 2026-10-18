@@ -27,10 +27,13 @@ public final class EarlyPlugin189 implements IMixinConfigPlugin {
             LOGGER.info("Ionium present; its own version of " + mixinClassName + " applies instead of Lads'");
             return false;
         }
-        // OptiFine patches LongHashMap itself (patch/nq.class.xdelta): a hash of ours could disagree with its lookups.
-        if (mixinClassName.endsWith(".LongHashMapHashMixin")
+        // OptiFine patches LongHashMap itself (patch/nq.class.xdelta): a hash of ours could disagree with its lookups. Its shaders also
+        // set lightmap parameters and lighting on their own paths, so vanilla's re-sending them stays (LightmapParamsMixin189,
+        // TesrBatchMixin189, EntityPassLightingMixin189).
+        if ((mixinClassName.endsWith(".LongHashMapHashMixin") || mixinClassName.endsWith(".LightmapParamsMixin189")
+            || mixinClassName.endsWith(".TesrBatchMixin189") || mixinClassName.endsWith(".EntityPassLightingMixin189"))
             && EarlyPlugin189.class.getClassLoader().getResource("optifine/OptiFineForgeTweaker.class") != null) {
-            LOGGER.info("OptiFine present; its own LongHashMap stays");
+            LOGGER.info("OptiFine present; " + mixinClassName + " not applied");
             return false;
         }
         if (mixinClassName.endsWith(".IntegratedServerLogoutMixin189")) {
