@@ -22,12 +22,15 @@ import org.slf4j.LoggerFactory;
  * The Hypixel modules and the real ping (common HypixelMods, RealPing) on 26.3: server chat through Fabric's game-message event
  * (Chat Cleanup cancels it), a client tick, and the Mod API ping on the hypixel:ping channel as a payload that keeps its bytes and
  * the time it was decoded on the network thread. With the official Hypixel Mod API mod installed the channel is its own: the ping
- * then uses status pings.
+ * then uses status pings. The channel is announced (minecraft:register) only on the connection about to send the first ping, and
+ * RealPing pings Hypixel hosts only: no other server sees it.
  */
 public final class NativeHypixel {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     static final CustomPacketPayload.Type<PingPayload> TYPE = new CustomPacketPayload.Type<>(Identifier.parse(RealPing.CHANNEL));
     private static boolean channel, answersQa;
+    private static final ClientPlayNetworking.PlayPayloadHandler<PingPayload> RECEIVER = (payload, context) ->
+        RealPing.receive(RealPing.CHANNEL, payload.data(), payload.nanos() != 0 ? payload.nanos() : System.nanoTime());
 
     /** A hypixel:ping payload's bytes, and when they were decoded (0: not decoded, e.g. the integrated server's own object). */
     record PingPayload(byte[] data, long nanos) implements CustomPacketPayload {
@@ -49,8 +52,6 @@ public final class NativeHypixel {
         try {
             PayloadTypeRegistry.clientboundPlay().register(TYPE, PingPayload.CODEC);
             PayloadTypeRegistry.serverboundPlay().register(TYPE, PingPayload.CODEC);
-            ClientPlayNetworking.registerGlobalReceiver(TYPE, (payload, context) ->
-                RealPing.receive(RealPing.CHANNEL, payload.data(), payload.nanos() != 0 ? payload.nanos() : System.nanoTime()));
             channel = true;
         } catch (RuntimeException taken) {
             LOGGER.info("Lads real ping: {} is registered by another mod, using status pings", RealPing.CHANNEL);
@@ -69,6 +70,8 @@ public final class NativeHypixel {
     public static boolean send(String name, byte[] data) {
         if (!channel || !RealPing.CHANNEL.equals(name) || Minecraft.getInstance().getConnection() == null) return false;
         try {
+            // This connection's receiver, registered (and announced) just before its first ping; gone with the connection.
+            if (!ClientPlayNetworking.getReceived().contains(TYPE.id())) ClientPlayNetworking.registerReceiver(TYPE, RECEIVER);
             ClientPlayNetworking.send(new PingPayload(data, 0));
             return true;
         } catch (RuntimeException failure) {

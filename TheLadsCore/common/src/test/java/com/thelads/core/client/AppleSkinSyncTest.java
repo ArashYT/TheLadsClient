@@ -27,6 +27,16 @@ class AppleSkinSyncTest {
         assertEquals(5f, AppleSkinSync.decodeFloat(new byte[] {0x40, (byte) 0xA0, 0, 0, 7}, AppleSkinSync.MAX_SATURATION));
     }
 
+    @Test void onlyAppleSkinsThreeChannelsAreRead() {
+        assertEquals(AppleSkinSync.SATURATION, AppleSkinSync.channel("appleskin", "saturation"));
+        assertEquals(AppleSkinSync.EXHAUSTION, AppleSkinSync.channel("appleskin", "exhaustion"));
+        assertEquals(AppleSkinSync.NATURAL_REGENERATION, AppleSkinSync.channel("appleskin", "natural_regeneration"));
+        assertNull(AppleSkinSync.channel("appleskin", "sync"), "appleskin-forge's SimpleChannel");
+        assertNull(AppleSkinSync.channel("hypixel", "saturation"));
+        assertNull(AppleSkinSync.channel("minecraft", "brand"));
+        assertNull(AppleSkinSync.channel(null, null));
+    }
+
     @Test void naturalRegenerationIsOneBooleanByte() {
         assertEquals(Boolean.TRUE, AppleSkinSync.decodeBoolean(new byte[] {1}));
         assertEquals(Boolean.FALSE, AppleSkinSync.decodeBoolean(new byte[] {0}));
