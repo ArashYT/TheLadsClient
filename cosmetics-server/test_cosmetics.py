@@ -23,6 +23,23 @@ PLAYERS = {"Alice": A, "Bob": B, "Cara": C}
 ROOM, OTHER = "1" * 64, "2" * 64
 TEST_SECRET = "test_tebex_and_auth_secret_xyz_123"
 
+TEST_CATALOG: dict[int | str, str] = {
+    1: "lads:cape_aurora",
+    2: "lads:cape_dragon",
+    3: "lads:hat_sombrero",
+    4: "lads:glasses_dealwithit",
+    5: "lads:groove",
+    55: "lads:hat_wizard",
+    56: "lads:cape_founder",
+    "1": "lads:cape_aurora",
+    "2": "lads:cape_dragon",
+    "3": "lads:hat_sombrero",
+    "4": "lads:glasses_dealwithit",
+    "5": "lads:groove",
+    "55": "lads:hat_wizard",
+    "56": "lads:cape_founder",
+}
+
 
 @pytest.fixture
 def fake_mojang(monkeypatch):
@@ -40,7 +57,7 @@ def fake_mojang(monkeypatch):
 async def client(aiohttp_client, fake_mojang, tmp_path):
     app = web.Application()
     db_file = tmp_path / "cosmetics.db"
-    cosmetics.setup(app, db_path=db_file, tebex_secret=TEST_SECRET, auth_secret=TEST_SECRET)
+    cosmetics.setup(app, db_path=db_file, tebex_secret=TEST_SECRET, auth_secret=TEST_SECRET, catalog=TEST_CATALOG)
     return await aiohttp_client(app)
 
 
@@ -851,7 +868,7 @@ async def test_fix2_m2_tebex_duplicate_webhook_retry_and_atomic_grant(client):
         "subject": {
             "transaction_id": "tx-dup-retry-99",
             "customer": {"link_code": code},
-            "products": [{"name": "lads:cape_founder"}]
+            "products": [{"id": 56, "name": "lads:cape_founder"}]
         }
     }).encode("utf-8")
     sig = make_tebex_sig(body, TEST_SECRET)
@@ -946,7 +963,7 @@ async def test_fix2_l5_real_tebex_customer_username_id_and_catalog_mapping(clien
     assert data["items"] == ["lads:cape_aurora"]
     assert len(data["items"][0]) <= 64
 
-    # 2. Unknown package ID is logged and returns 200 with no grant
+    # 2. Unknown package ID is rejected with 422 so Tebex retries (record nothing)
     unknown_body = json.dumps({
         "id": "evt-unknown-pkg",
         "type": "payment.completed",
@@ -958,7 +975,131 @@ async def test_fix2_l5_real_tebex_customer_username_id_and_catalog_mapping(clien
     }).encode("utf-8")
     sig_unknown = make_tebex_sig(unknown_body, TEST_SECRET)
     res_unk = await client.post("/cosmetics/tebex", data=unknown_body, headers={"X-Signature": sig_unknown, "Content-Type": "application/json"})
-    assert res_unk.status == 200
+    assert res_unk.status == 422
     unk_data = await res_unk.json()
-    assert unk_data["status"] == "granted"
-    assert unk_data["items"] == []
+    assert "unresolved package" in unk_data["error"]
+
+
+# ---------------------------------------------------------------------------
+# Fix Round 3 Tests (HIGH: Catalog requirement, Unknown package refusal; LOW: No name bypass)
+# ---------------------------------------------------------------------------
+
+async def test_fix3_high_no_catalog_configured_refuses_payments_503(aiohttp_client, tmp_path, monkeypatch):
+    """HIGH: Setup with no catalog configured refuses all payments with 503 (fail closed),
+    so Tebex retries rather than recording a purchase with 0 items.
+    """
+    monkeypatch.delenv("COSMETICS_CATALOG", raising=False)
+    app = web.Application()
+    cosmetics.setup(app, db_path=tmp_path / "nocat.db", tebex_secret=TEST_SECRET, catalog=None)
+    cl = await aiohttp_client(app)
+
+    payload = json.dumps({
+        "id": "evt-no-catalog",
+        "type": "payment.completed",
+        "subject": {
+            "transaction_id": "tx-no-cat-1",
+            "player": {"uuid": A},
+            "packages": [{"id": 1, "name": "lads:cape_aurora"}]
+        }
+    }).encode("utf-8")
+    sig = make_tebex_sig(payload, TEST_SECRET)
+
+    res = await cl.post("/cosmetics/tebex", data=payload, headers={"X-Signature": sig, "Content-Type": "application/json"})
+    assert res.status == 503
+    assert (await res.json())["error"] == "catalog not configured"
+
+    # Verify nothing was recorded in DB
+    store: cosmetics.CosmeticsStore = cl.app[cosmetics.STORE]
+    assert not await store.has_entitlement(A, "lads:cape_aurora")
+
+
+async def test_fix3_high_unknown_package_refuses_payment_and_rolls_back_for_retry(client):
+    """HIGH: An unknown package in a payment causes the whole transaction to roll back
+    (record nothing in transactions or entitlements) and return non-2xx (422) so Tebex retries.
+    """
+    store: cosmetics.CosmeticsStore = client.app[cosmetics.STORE]
+    code = await store.create_link_code(A)
+
+    payload = json.dumps({
+        "id": "evt-unk-pkg-fail",
+        "type": "payment.completed",
+        "subject": {
+            "transaction_id": "tx-unk-roll-back",
+            "customer": {"link_code": code},
+            "products": [
+                {"id": 1, "name": "Known Cape"},
+                {"id": 888888, "name": "Unregistered Mystery Item"}
+            ]
+        }
+    }).encode("utf-8")
+    sig = make_tebex_sig(payload, TEST_SECRET)
+
+    res = await client.post("/cosmetics/tebex", data=payload, headers={"X-Signature": sig, "Content-Type": "application/json"})
+    # Must be non-2xx (e.g. 422)
+    assert res.status == 422
+    assert "unresolved package" in (await res.json())["error"]
+
+    # Rolled back: known item 1 was NOT granted, and link code was NOT consumed!
+    assert not await store.has_entitlement(A, "lads:cape_aurora")
+    assert await store.get_uuid_for_link_code(code) == A
+
+
+async def test_fix3_low_named_item_cannot_bypass_catalog(client):
+    """LOW: A package named like 'x:y' cannot bypass catalog lookup.
+    Items must come ONLY from explicit catalog lookup.
+    """
+    store: cosmetics.CosmeticsStore = client.app[cosmetics.STORE]
+
+    payload = json.dumps({
+        "id": "evt-bypass-attempt",
+        "type": "payment.completed",
+        "subject": {
+            "transaction_id": "tx-bypass-1",
+            "player": {"uuid": A},
+            "products": [
+                {"id": 999999, "name": "lads:cape_founder"}
+            ]
+        }
+    }).encode("utf-8")
+    sig = make_tebex_sig(payload, TEST_SECRET)
+
+    res = await client.post("/cosmetics/tebex", data=payload, headers={"X-Signature": sig, "Content-Type": "application/json"})
+    # Bypassing catalog via name format is blocked -> unmapped package rejected with 422
+    assert res.status == 422
+    assert not await store.has_entitlement(A, "lads:cape_founder")
+
+
+async def test_fix3_high_cosmetics_catalog_env_json_file(aiohttp_client, tmp_path, monkeypatch):
+    """HIGH: Real catalog loaded from JSON file path given by COSMETICS_CATALOG env."""
+    cat_file = tmp_path / "catalog.json"
+    cat_file.write_text(json.dumps({
+        "7654321": "lads:cape_dragon",
+        "1234567": "lads:hat_sombrero"
+    }), encoding="utf-8")
+
+    monkeypatch.setenv("COSMETICS_CATALOG", str(cat_file))
+    app = web.Application()
+    cosmetics.setup(app, db_path=tmp_path / "envcat.db", tebex_secret=TEST_SECRET)
+    cl = await aiohttp_client(app)
+
+    payload = json.dumps({
+        "id": "evt-env-cat",
+        "type": "payment.completed",
+        "subject": {
+            "transaction_id": "tx-env-cat-1",
+            "player": {"uuid": A},
+            "products": [{"id": 7654321, "name": "Dragon Cape Special"}]
+        }
+    }).encode("utf-8")
+    sig = make_tebex_sig(payload, TEST_SECRET)
+
+    res = await cl.post("/cosmetics/tebex", data=payload, headers={"X-Signature": sig, "Content-Type": "application/json"})
+    assert res.status == 200
+    data = await res.json()
+    assert data["status"] == "granted"
+    assert data["items"] == ["lads:cape_dragon"]
+
+    store: cosmetics.CosmeticsStore = cl.app[cosmetics.STORE]
+    assert await store.has_entitlement(A, "lads:cape_dragon")
+
+

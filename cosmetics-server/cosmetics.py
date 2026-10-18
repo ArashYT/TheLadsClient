@@ -47,15 +47,35 @@ ITEM_ID_RE = re.compile(r"^[a-z0-9_]{1,32}:[a-z0-9_]{1,32}$")
 LINK_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
 LINK_CODE_TTL = 600  # 10 minutes
 
-DEFAULT_CATALOG: dict[int | str, str] = {
-    1: "lads:cape_aurora",
-    2: "lads:cape_dragon",
-    3: "lads:hat_sombrero",
-    4: "lads:glasses_dealwithit",
-    5: "lads:groove",
-    55: "lads:hat_wizard",
-    56: "lads:cape_founder",
-}
+def load_catalog_from_file(path: str | Path | None) -> dict[int | str, str] | None:
+    """Load Tebex package -> cosmetic item catalog from a JSON file.
+    Keys can be integer or string package IDs.
+    """
+    if not path:
+        return None
+    p = Path(path)
+    if not p.is_file():
+        log.warning("COSMETICS_CATALOG file not found: %s", path)
+        return None
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, dict):
+                catalog: dict[int | str, str] = {}
+                for k, v in data.items():
+                    if isinstance(v, str):
+                        catalog[k] = v
+                        try:
+                            catalog[int(k)] = v
+                        except (ValueError, TypeError):
+                            pass
+                return catalog
+            log.warning("COSMETICS_CATALOG JSON root must be a dictionary, got %s", type(data))
+            return None
+    except Exception as e:
+        log.warning("Failed to parse COSMETICS_CATALOG JSON file %s: %s", path, e)
+        return None
+
 
 log = logging.getLogger("cosmetics")
 
@@ -152,28 +172,34 @@ def extract_link_code(subject: dict) -> str | None:
     return None
 
 
-def resolve_package_item_id(pkg: dict, catalog: dict[int | str, str]) -> str | None:
-    """Resolve Tebex package to an explicit, safe cosmetic item ID (<= 64 chars, [a-z0-9_:])."""
-    # 1. Look up by package ID in catalog
+def resolve_package_item_id(pkg: dict, catalog: dict[int | str, str] | None) -> str | None:
+    """Resolve Tebex package to an explicit, safe cosmetic item ID (<= 64 chars, [a-z0-9_:]).
+    Items come ONLY from explicit catalog lookup by package ID.
+    No bypass for product names or unmapped IDs.
+    """
+    if not catalog or not isinstance(pkg, dict):
+        return None
+
+    # Look up by package ID in catalog
     raw_id = pkg.get("id")
     if raw_id is not None:
+        if raw_id in catalog:
+            item_id = catalog[raw_id]
+            if isinstance(item_id, str) and len(item_id) <= 64 and ITEM_ID_RE.fullmatch(item_id):
+                return item_id
         try:
             pkg_int = int(raw_id)
             if pkg_int in catalog:
-                return catalog[pkg_int]
+                item_id = catalog[pkg_int]
+                if isinstance(item_id, str) and len(item_id) <= 64 and ITEM_ID_RE.fullmatch(item_id):
+                    return item_id
         except (ValueError, TypeError):
             pass
-        if str(raw_id) in catalog:
-            return catalog[str(raw_id)]
-
-    # 2. If name is already a valid namespaced identifier (e.g. lads:cape_x)
-    name = pkg.get("name")
-    if isinstance(name, str) and len(name) <= 64 and ITEM_ID_RE.fullmatch(name):
-        return name
-
-    # 3. Look up by exact name in catalog if defined
-    if isinstance(name, str) and name in catalog:
-        return catalog[name]
+        pkg_str = str(raw_id)
+        if pkg_str in catalog:
+            item_id = catalog[pkg_str]
+            if isinstance(item_id, str) and len(item_id) <= 64 and ITEM_ID_RE.fullmatch(item_id):
+                return item_id
 
     return None
 
@@ -948,22 +974,42 @@ async def handle_tebex_webhook(request: web.Request) -> web.Response:
     if not tx_id:
         return web.json_response({"error": "missing transaction id"}, status=400)
 
-    catalog = request.app.get(CATALOG) or DEFAULT_CATALOG
+    catalog = request.app.get(CATALOG)
+    if catalog is None:
+        env_cat = os.getenv("COSMETICS_CATALOG")
+        if env_cat:
+            catalog = load_catalog_from_file(env_cat)
 
     # 2. Payment Completed: Grants items idempotently in an atomic transaction
     if event_type == "payment.completed":
+        if not catalog:
+            log.error("Rejecting Tebex payment %s: no cosmetics catalog configured (COSMETICS_CATALOG unset or empty)", tx_id)
+            return web.json_response({"error": "catalog not configured"}, status=503)
+
         raw_uuid = extract_buyer_raw_uuid(subject)
         link_code = extract_link_code(subject)
 
         packages = subject.get("products") or subject.get("packages") or []
+        if not packages:
+            log.warning("Tebex payment %s contains no products or packages", tx_id)
+            return web.json_response({"error": "no packages in payment"}, status=422)
+
         items = []
         for pkg in packages:
-            if isinstance(pkg, dict):
-                resolved = resolve_package_item_id(pkg, catalog)
-                if resolved:
-                    items.append(resolved)
-                else:
-                    log.warning("Unknown Tebex package in payment %s: %r", tx_id, pkg)
+            if not isinstance(pkg, dict):
+                log.warning("Invalid package object in payment %s: %r", tx_id, pkg)
+                return web.json_response({"error": f"invalid package: {pkg!r}"}, status=422)
+            resolved = resolve_package_item_id(pkg, catalog)
+            if not resolved:
+                log.warning(
+                    "Unknown or unmapped Tebex package in payment %s: %r. Rejecting transaction so Tebex retries.",
+                    tx_id, pkg
+                )
+                return web.json_response(
+                    {"error": f"unresolved package: {pkg.get('id') or pkg.get('name')}"},
+                    status=422
+                )
+            items.append(resolved)
 
         # Process payment atomically (handles duplicate tx_id, single-use link code consume, and grant)
         res = await store.process_tebex_payment(
@@ -981,7 +1027,7 @@ async def handle_tebex_webhook(request: web.Request) -> web.Response:
     elif event_type in ("payment.refunded", "payment.dispute.opened", "payment.disputed", "payment.chargeback", "payment.dispute.lost"):
         raw_uuid = extract_buyer_raw_uuid(subject)
         packages = subject.get("products") or subject.get("packages") or []
-        items = [resolve_package_item_id(p, catalog) for p in packages if isinstance(p, dict)]
+        items = [resolve_package_item_id(p, catalog) for p in packages if isinstance(p, dict)] if catalog else []
         items = [i for i in items if i]
 
         res = await store.process_tebex_refund(
@@ -1050,7 +1096,7 @@ HUB = web.AppKey("cosmetics_hub", Hub)
 STORE = web.AppKey("cosmetics_store", CosmeticsStore)
 TEBEX_SECRET = web.AppKey("tebex_secret", str)
 AUTH_SECRET = web.AppKey("auth_secret", str)
-CATALOG = web.AppKey("cosmetics_catalog", dict)
+CATALOG = web.AppKey("cosmetics_catalog", Any)
 
 
 def setup(
@@ -1066,7 +1112,14 @@ def setup(
     app[TEBEX_SECRET] = tebex_secret or os.getenv("TEBEX_WEBHOOK_SECRET", "")
     # M1: admin bearer requires explicit auth token; no fallback to tebex_secret
     app[AUTH_SECRET] = auth_secret or os.getenv("COSMETICS_AUTH_TOKEN", "")
-    app[CATALOG] = catalog or DEFAULT_CATALOG
+
+    # Catalog: explicit parameter > COSMETICS_CATALOG file > None (fail-closed)
+    if catalog is not None:
+        app[CATALOG] = catalog
+    else:
+        env_cat = os.getenv("COSMETICS_CATALOG")
+        app[CATALOG] = load_catalog_from_file(env_cat) if env_cat else None
+
     hub = Hub(insecure, store=store)
     app[HUB] = hub
 
