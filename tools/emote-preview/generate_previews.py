@@ -168,25 +168,37 @@ def groove():
 
 def wave():
     b = Emote("lads:wave", "Wave", 120, 4, True)
-    # Right arm: raised overhead and tilted forward for clear first-person visibility, waving side-to-side
-    b.track(ch(RIGHT_ARM, RX), 0, -135, 1, -129, 2, -135, 3, -129)
-    b.track(ch(RIGHT_ARM, RZ), 0, -36, 1, 0, 2, -36, 3, 0)
-    b.track(ch(RIGHT_ARM, RY), 0, -20, 1, 8, 2, -20, 3, 8)
+    # Right arm: raised high beside the head (close to vertical RX ~ -170°), hand sweeping side-to-side across 50°
+    # 2 waves per beat cycle (16 half-swings across 4 beats, alternating every 0.25 beats between outward -48° and inward +2°).
+    for k in range(16):
+        beat = k * 0.25
+        out = (k % 2 == 0)
+        rz = -48.0 if out else 2.0
+        ry = -14.0 if out else 8.0
+        rx = -172.0 if out else -168.0
+        b.key(ch(RIGHT_ARM, RX), beat, rx)
+        b.key(ch(RIGHT_ARM, RZ), beat, rz)
+        b.key(ch(RIGHT_ARM, RY), beat, ry)
+
     # Left arm: relaxed at side with subtle natural motion
     b.track(ch(LEFT_ARM, RZ), 0, -8, 2, -6)
     b.track(ch(LEFT_ARM, RX), 0, 2, 2, 6)
-    # Torso: friendly rhythmic sway in sync with the wave
-    b.track(ch(BODY, RZ), 0, -3.0, 1, 1.0, 2, -3.0, 3, 1.0)
-    b.track(ch(BODY, RY), 0, -4.0, 1, 2.0, 2, -4.0, 3, 2.0)
-    b.track(ROOT, 0, -0.5, 1, 0.2, 2, -0.5, 3, 0.2)
-    b.track(ROOT + 1, 0, 0.2, 0.5, -0.1, 1, 0.2, 1.5, -0.1, 2, 0.2, 2.5, -0.1, 3, 0.2, 3.5, -0.1)
-    # Head: friendly tilt toward the waving side
-    b.track(ch(HEAD, RZ), 0, 4, 1, -2, 2, 4, 3, -2)
-    b.track(ch(HEAD, RY), 0, -5, 1, 2, 2, -5, 3, 2)
-    b.track(ch(HEAD, RX), 0, -3, 1, 2, 2, -3, 3, 2)
-    # Legs: subtle weight shift grounding feet
-    b.track(ch(RIGHT_LEG, RZ), 0, 2, 1, -1, 2, 2, 3, -1)
-    b.track(ch(LEFT_LEG, RZ), 0, 1, 1, -2, 2, 1, 3, -2)
+
+    # Torso: gentle rhythmic lean toward the waving side (lean right = positive RZ)
+    b.track(ch(BODY, RZ), 0, 3.5, 2, 1.5)
+    b.track(ch(BODY, RY), 0, -3.5, 2, -1.5)
+    b.track(ROOT, 0, -0.6, 2, -0.2)
+    b.track(ROOT + 1, 0, 0.1, 1, -0.1, 2, 0.1, 3, -0.1)
+
+    # Head: friendly tilt toward waving side
+    b.track(ch(HEAD, RZ), 0, -4.5, 2, -2.5)
+    b.track(ch(HEAD, RY), 0, -4.0, 2, -2.0)
+    b.track(ch(HEAD, RX), 0, -2.0, 2, 1.0)
+
+    # Legs: grounded stance supporting the lean
+    b.track(ch(RIGHT_LEG, RZ), 0, 2.5, 2, 1.0)
+    b.track(ch(LEFT_LEG, RZ),  0, 1.0, 2, -1.0)
+
     return b.compile()
 
 def clap():
@@ -241,6 +253,42 @@ def floss():
 
     return b.compile()
 
+def render_wave_overlay(w, out_path):
+    from PIL import Image, ImageDraw
+    import preview as pv
+    v0 = w.sample(0) # beat 0 (outward extreme: RZ = -48 deg)
+    v1 = w.sample(w.beat_ms * 0.25) # beat 0.25 (inward extreme: RZ = +2 deg)
+
+    fs_body = pv.faces(v0, parts=(0, 1, 3, 4, 5))
+    fs_arm0 = pv.faces(v0, parts=(2,))
+    fs_arm1 = []
+    for pts, n, col in pv.faces(v1, parts=(2,)):
+        tinted = (min(255, col[0] + 35), max(0, col[1] - 30), max(0, col[2] - 30))
+        fs_arm1.append((pts, n, tinted))
+
+    fs_all = fs_body + fs_arm0 + fs_arm1
+    fp_arm0 = pv.faces(v0, parts=(2, 3), root=False, fp=True)
+    fp_arm1 = []
+    for pts, n, col in pv.faces(v1, parts=(2,), root=False, fp=True):
+        tinted = (min(255, col[0] + 35), max(0, col[1] - 30), max(0, col[2] - 30))
+        fp_arm1.append((pts, n, tinted))
+    fp_all = fp_arm0 + fp_arm1
+
+    cw, ch, fw = 150, 190, 240
+    strip = Image.new("RGB", (cw * 3 + fw * 2, ch), (255, 255, 255))
+    for col, yaw in enumerate((0, math.radians(35), math.radians(90))):
+        strip.paste(pv.ortho(fs_all, cw, ch, 5.0, yaw, 24), (col * cw, 0))
+    strip.paste(pv.fp(fp_all, fw, ch, 0), (3 * cw, 0))
+    strip.paste(pv.fp(fp_all, fw, ch, math.radians(25)), (3 * cw + fw, 0))
+
+    d = ImageDraw.Draw(strip)
+    d.rectangle([0, 0, strip.width - 1, strip.height - 1], outline=(0, 0, 0), width=2)
+    d.text((4, 4), "Overlay: beat 0.00 (brown) vs beat 0.25 (reddish) | ~50 deg swing", fill=(0, 0, 0))
+    d.text((3 * cw + 4, 4), "FP pitch 0", fill=(0, 0, 0))
+    d.text((3 * cw + fw + 4, 4), "FP 25 down", fill=(0, 0, 0))
+    strip.save(out_path)
+    print(f"Rendered overlay strip: {out_path}")
+
 def verify_and_save(emotes, json_dir, out_dir):
     json_dir.mkdir(parents=True, exist_ok=True)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -277,8 +325,13 @@ def verify_and_save(emotes, json_dir, out_dir):
         # 3. Call preview.py to generate PNG sheet
         png_path = out_dir / f"{name}-preview.png"
         cmd = [sys.executable, "tools/emote-preview/preview.py", str(json_path), str(png_path)]
+        if name == "wave":
+            cmd += ["8", "0", "1.75"]
         subprocess.check_call(cmd)
         print(f"Rendered preview: {png_path}")
+
+        if name == "wave":
+            render_wave_overlay(emote, out_dir / "wave-overlay.png")
 
 if __name__ == '__main__':
     emotes = [groove(), wave(), clap(), floss()]

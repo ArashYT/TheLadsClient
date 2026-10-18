@@ -64,31 +64,40 @@ public final class EmoteLibrary {
     }
 
     /**
-     * Wave: a friendly wave overhead with the right arm (2 s loop, 4 beats at 120 BPM).
-     * The right arm is raised high overhead and tilted slightly forward (clearly visible in first-person view) and waves side-to-side;
-     * the torso gently sways to balance the arm with a pleasant head tilt. Feet stay planted on the ground.
+     * Wave: a friendly wave with the right arm raised high beside the head (2 s loop, 4 beats at 120 BPM).
+     * The right arm is raised close to vertical (RX ~ -170°) with a clear ~50° side-to-side sweeping amplitude
+     * (2 waves per beat cycle, alternating every 0.25 beats between outward -48° and inward +2°).
+     * The torso and head gently lean toward the waving side with feet planted on the ground.
      */
     static Emote wave() {
         Emote.Builder b = new Emote.Builder(WAVE, "Wave", 120, 4).groundLock();
-        // Right arm: raised overhead and tilted forward for clear first-person visibility, waving side-to-side.
-        b.track(ch(RIGHT_ARM, RX), 0, -135, 1, -129, 2, -135, 3, -129);
-        b.track(ch(RIGHT_ARM, RZ), 0, -36, 1, 0, 2, -36, 3, 0);
-        b.track(ch(RIGHT_ARM, RY), 0, -20, 1, 8, 2, -20, 3, 8);
+        // Right arm: raised high beside the head (close to vertical RX ~ -170°), hand sweeping side-to-side across ~50°
+        // 2 waves per beat cycle (16 half-swings across 4 beats, alternating every 0.25 beats between outward -48° and inward +2°).
+        for (int k = 0; k < 16; k++) {
+            float beat = k * 0.25f;
+            boolean out = (k % 2 == 0);
+            float rz = out ? -48.0f : 2.0f;
+            float ry = out ? -14.0f : 8.0f;
+            float rx = out ? -172.0f : -168.0f;
+            b.key(ch(RIGHT_ARM, RX), beat, rx);
+            b.key(ch(RIGHT_ARM, RZ), beat, rz);
+            b.key(ch(RIGHT_ARM, RY), beat, ry);
+        }
         // Left arm: relaxed at side with subtle natural motion.
         b.track(ch(LEFT_ARM, RZ), 0, -8, 2, -6);
         b.track(ch(LEFT_ARM, RX), 0, 2, 2, 6);
-        // Torso: friendly rhythmic sway in sync with the wave.
-        b.track(ch(BODY, RZ), 0, -3.0f, 1, 1.0f, 2, -3.0f, 3, 1.0f);
-        b.track(ch(BODY, RY), 0, -4.0f, 1, 2.0f, 2, -4.0f, 3, 2.0f);
-        b.track(ROOT, 0, -0.5f, 1, 0.2f, 2, -0.5f, 3, 0.2f);
-        b.track(ROOT + 1, 0, 0.2f, 0.5f, -0.1f, 1, 0.2f, 1.5f, -0.1f, 2, 0.2f, 2.5f, -0.1f, 3, 0.2f, 3.5f, -0.1f);
+        // Torso: gentle rhythmic lean toward the waving side (lean right = positive RZ).
+        b.track(ch(BODY, RZ), 0, 3.5f, 2, 1.5f);
+        b.track(ch(BODY, RY), 0, -3.5f, 2, -1.5f);
+        b.track(ROOT, 0, -0.6f, 2, -0.2f);
+        b.track(ROOT + 1, 0, 0.1f, 1, -0.1f, 2, 0.1f, 3, -0.1f);
         // Head: friendly tilt toward the waving side.
-        b.track(ch(HEAD, RZ), 0, 4, 1, -2, 2, 4, 3, -2);
-        b.track(ch(HEAD, RY), 0, -5, 1, 2, 2, -5, 3, 2);
-        b.track(ch(HEAD, RX), 0, -3, 1, 2, 2, -3, 3, 2);
-        // Legs: subtle weight shift grounding feet.
-        b.track(ch(RIGHT_LEG, RZ), 0, 2, 1, -1, 2, 2, 3, -1);
-        b.track(ch(LEFT_LEG, RZ), 0, 1, 1, -2, 2, 1, 3, -2);
+        b.track(ch(HEAD, RZ), 0, -4.5f, 2, -2.5f);
+        b.track(ch(HEAD, RY), 0, -4.0f, 2, -2.0f);
+        b.track(ch(HEAD, RX), 0, -2.0f, 2, 1.0f);
+        // Legs: grounded stance supporting the lean.
+        b.track(ch(RIGHT_LEG, RZ), 0, 2.5f, 2, 1.0f);
+        b.track(ch(LEFT_LEG, RZ),  0, 1.0f, 2, -1.0f);
         return b.build();
     }
 
