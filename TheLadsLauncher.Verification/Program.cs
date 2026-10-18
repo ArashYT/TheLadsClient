@@ -1339,8 +1339,9 @@ try
             // 1.8.9, from logs\latest.log: the title screen, OptiFine and no mixin or coremod error. Nothing stops the game but the harness.
             Require(forgeList.LoadedMods != null, @"FML did not finish loading ('Forge Mod Loader has successfully loaded N mods' is not in logs\latest.log).");
             Require(expectCoreDisabled || CatalogWritten(), "The Core never ticked at the title screen: it did not write lads-core-catalog.json during this run.");
-            // Ionium on: the launcher switches OptiFine off, so Ionium must be the loaded renderer instead.
-            if (ModPreferences.Load(directory).GetEnabled(OptiFineInstaller.IoniumModId, null) == true)
+            // Ionium in Mods (on by default since 1.9.12): the launcher switches OptiFine off, so Ionium must be the loaded renderer.
+            if (Directory.EnumerateFiles(Path.Combine(directory, "mods"), "*.jar")
+                .Any(p => FabricModMetadata.ReadForgeJar(p)?.Id == OptiFineInstaller.IoniumModId))
                 Require(!forgeList.OptiFineTweaker && forgeList.IoniumTweaker,
                     @"Ionium is on, but its tweaker was not installed with OptiFine switched off (logs\latest.log).");
             else

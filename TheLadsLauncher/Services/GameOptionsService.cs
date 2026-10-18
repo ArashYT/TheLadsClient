@@ -342,7 +342,7 @@ public static class GameOptionsService
     }
 
     /// <summary>OptiFine's shaders.txt names a shader pack other than OFF / (internal).</summary>
-    static bool ShaderPackSelected(string gameDirectory)
+    public static bool ShaderPackSelected(string gameDirectory)
     {
         var shaders = Path.Combine(gameDirectory, "optionsshaders.txt");
         if (!File.Exists(shaders)) return false;

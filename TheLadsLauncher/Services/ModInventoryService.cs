@@ -201,12 +201,16 @@ public sealed class ModInventoryService
         foreach (var entry in manifest?.Mods ?? new List<ClientModInstaller.Entry>())
         {
             if (entries.Any(e => e.Id == entry.ModId && e.Ownership == ModOwnership.Pack)) continue;
-            // Without a copy: the choice, else the pack's default (an opt-in entry such as Ionium is off).
-            var requested = preferences.GetEnabled(entry.ModId, entry.ProjectId) ?? entry.DefaultEnabled;
+            // Without a copy: the choice, else the pack's default (Ionium: off for a profile with an OptiFine shader pack).
+            var requested = preferences.GetEnabled(entry.ModId, entry.ProjectId) ?? ClientModInstaller.DefaultFor(entry, game);
+            // As the install: Ionium never runs without Pylon's LWJGL 3.
+            var needsPylon = entry.ModId == OptiFineInstaller.IoniumModId && preferences.GetEnabled(OptiFineInstaller.PylonModId,
+                manifest!.Mods.FirstOrDefault(m => m.ModId == OptiFineInstaller.PylonModId)?.ProjectId) == false;
+            if (needsPylon) requested = false;
             var cached = Path.Combine(cache, entry.Sha512 + ".jar");
             var scan = File.Exists(cached) ? Scan(cached, token) : null;
             var info = scan?.Hash != null && ClientModInstaller.SameHash(scan.Hash, entry.Sha512) ? scan.Info : null;
-            var notes = new List<string> { requested ? "Downloaded at the next launch" : "Disabled — not downloaded" };
+            var notes = new List<string> { needsPylon ? "Off while Pylon is off (Ionium needs it)" : requested ? "Downloaded at the next launch" : "Disabled — not downloaded" };
             if (info == null) notes.Add("Its dependencies are checked when it is downloaded");
             notes.AddRange(integrations[entry.ModId].Select(module => "Lads integration: " + module));
             entries.Add(new(entry.ModId, entry.Name, entry.Name, entry.Version, entry.FileName, null, ModOwnership.Pack,

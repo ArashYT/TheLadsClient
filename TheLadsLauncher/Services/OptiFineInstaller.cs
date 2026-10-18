@@ -22,6 +22,8 @@ public static class OptiFineInstaller
     public const string ModId = "optifine";
     /// <summary>The opt-in 1.8.9 renderer in client-mods.json (Ionium: Celeritas for Forge 1.8.9); OptiFine is off while it is on.</summary>
     public const string IoniumModId = "ionium";
+    /// <summary>Pylon (LWJGL 3 + SDL3): Ionium renders through it and never runs without it.</summary>
+    public const string PylonModId = "pylon";
     public const string Version = "1.8.9_HD_U_M6_pre2";
 
     /// <summary>The one jar the launcher accepts. Tests and the sandbox forced-failure run pass another.</summary>
@@ -70,15 +72,17 @@ public static class OptiFineInstaller
             Directory.CreateDirectory(mods);
             // Forge also loads mods/1.8.9/, so an OptiFine kept there counts as your own.
             var versionMods = ClientModInstaller.SafeChild(game, Path.Combine(mods, GameVersionPolicy.ForgeMinecraftVersion));
-            var copies = new[] { mods, versionMods }.Where(Directory.Exists).SelectMany(Directory.EnumerateFiles)
+            var scanned = new[] { mods, versionMods }.Where(Directory.Exists).SelectMany(Directory.EnumerateFiles)
                 .Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)
                     || p.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase))
-                .Where(p => ModInventoryService.ScanFor(p, GameVersionPolicy.ForgeMinecraftVersion, cancellationToken).Info?.Id == ModId).ToList();
+                .Select(p => (Path: p, Id: ModInventoryService.ScanFor(p, GameVersionPolicy.ForgeMinecraftVersion, cancellationToken).Info?.Id)).ToList();
+            var copies = scanned.Where(s => s.Id == ModId).Select(s => s.Path).ToList();
             var enabled = copies.Where(p => p.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)).ToList();
-            // Ionium (the opt-in Celeritas renderer) refuses to start next to OptiFine: while it is on, every OptiFine is switched off,
-            // and the marker brings it back once Ionium is off again (the disk state alone would keep it off).
+            // Ionium (the Celeritas renderer, on by default since 1.9.12) refuses to start next to OptiFine: while an enabled Ionium is in
+            // Mods (the pack install before this one applied the Mods choice, the default and the Pylon rule), every OptiFine is switched
+            // off, and the marker brings it back once Ionium is off again (the disk state alone would keep it off).
             var offForIonium = ClientModInstaller.SafeChild(game, Path.Combine(game, ".lads-mod-cache", "optifine-off-for-ionium"));
-            if (ModPreferences.Load(game).GetEnabled(IoniumModId, null) == true)
+            if (scanned.Any(s => s.Id == IoniumModId && s.Path.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(offForIonium)!);
                 File.WriteAllText(offForIonium, "");
