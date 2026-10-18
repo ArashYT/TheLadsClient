@@ -295,7 +295,15 @@ public class LaunchService : ILaunchService
             return;
         var temp = $"{manifest}.{Environment.ProcessId}.tmp"; // QA games share it: never leave a half-written manifest
         await File.WriteAllTextAsync(temp, upgraded, cancellationToken);
-        File.Move(temp, manifest, overwrite: true);
+        try
+        {
+            File.Move(temp, manifest, overwrite: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && File.ReadAllText(manifest) == upgraded)
+        {
+            File.Delete(temp); // another launcher upgraded it first and still has it open
+            return;
+        }
         File.Delete(Path.Combine(Path.GetDirectoryName(manifest)!, ".lads-verified")); // quick launch would skip the new libraries
         await launcher.GetAllVersionsAsync(cancellationToken); // forget the parsed LaunchWrapper manifest
     }

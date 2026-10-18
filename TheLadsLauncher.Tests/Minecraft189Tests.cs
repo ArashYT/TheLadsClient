@@ -176,9 +176,9 @@ public class Minecraft189Tests
         Assert.Contains(new ProfileService(new PathService(upgraded), global).GetProfiles(), p => p.Id == "1.8.9" && p.JavaMajorVersion == 25);
         var handMade = Path.Combine(dir.Path, "hand-made");
         Write(Path.Combine(handMade, "profiles.json"), JsonSerializer.Serialize(new { ActiveProfileId = "mine", Profiles = new[] {
-            new LauncherProfile { Id = "mine", Name = "Mine", MinecraftVersion = "1.8.9", FabricVersion = "0.19.5", JavaMajorVersion = 8 } } }));
+            new LauncherProfile { Id = "mine", Name = "Mine", MinecraftVersion = "1.8.9", FabricVersion = "0.19.5", JavaMajorVersion = 8, CustomJavaPath = @"C:\jdk8in\javaw.exe" } } }));
         var repaired = new ProfileService(new PathService(handMade), global);
-        Assert.Equal(("mine", (string?)null, 25), (repaired.GetActiveProfile().Id, repaired.GetActiveProfile().FabricVersion, repaired.GetActiveProfile().JavaMajorVersion));
+        Assert.Equal(("mine", (string?)null, 25, (string?)null), (repaired.GetActiveProfile().Id, repaired.GetActiveProfile().FabricVersion, repaired.GetActiveProfile().JavaMajorVersion, repaired.GetActiveProfile().CustomJavaPath));
 
         // An unusable active profile falls back to a Fabric profile, never to 1.8.9, even when 1.8.9 comes first.
         var broken = Path.Combine(dir.Path, "broken");

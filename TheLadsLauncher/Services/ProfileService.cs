@@ -548,6 +548,9 @@ public class ProfileService : IProfileService
             && (profile.FabricVersion != null || profile.JavaMajorVersion != GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion)))
         {
             profile.FabricVersion = null;
+            // A custom Java chosen before 1.9.11 had to be Java 8, which 8to25 cannot start: back to the launcher's own Java 25.
+            if (profile.JavaMajorVersion < GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion))
+                profile.CustomJavaPath = null;
             profile.JavaMajorVersion = GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion);
             changed = true;
         }
