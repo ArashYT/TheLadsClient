@@ -155,9 +155,12 @@ public final class HudCapture {
             try {
                 if (texture) {
                     build(HUD, () -> HudTexture.build(build));
-                    HudTexture.built(!HUD.isEmpty());
+                    HudTexture.built();
                     if (!HudTexture.show(state)) replay(HUD, state);
-                } else build(HUD, () -> build.accept(graphics));
+                } else {
+                    HudTexture.invalidate(); // its image is older than this build
+                    build(HUD, () -> build.accept(graphics));
+                }
             } finally {
                 HudFrameCap.wholeHud = catchingUp = false;
             }

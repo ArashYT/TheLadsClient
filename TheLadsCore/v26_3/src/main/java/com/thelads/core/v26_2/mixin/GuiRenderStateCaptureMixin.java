@@ -30,6 +30,7 @@ public class GuiRenderStateCaptureMixin {
     /** An item: its model (what it looks like now); where, how big and turned. */
     @Inject(method = "addItem", at = @At("HEAD"), require = 1)
     private void lads$item(GuiItemRenderState item, CallbackInfo ci) {
+        com.thelads.core.v26_2.feature.HudTexture.added((GuiRenderState) (Object) this);
         if (HudCapture.record(state -> state.addItem(item)))
             HudCapture.drew(java.util.Objects.hashCode(item.itemStackRenderState().getModelIdentity()), java.util.Objects.hash(item.pose(), item.x(), item.y()));
     }
@@ -52,6 +53,7 @@ public class GuiRenderStateCaptureMixin {
     /** Text: its characters; where, how big and turned, and its colours (a subtitle fading to grey, chroma text). */
     @Inject(method = "addText", at = @At("HEAD"), require = 1)
     private void lads$text(GuiTextRenderState text, CallbackInfo ci) {
+        com.thelads.core.v26_2.feature.HudTexture.added((GuiRenderState) (Object) this);
         if (!HudCapture.record(state -> state.addText(text))) return;
         var fields = (GuiTextRenderStateAccessor) (Object) text;
         int how = 1;
@@ -72,6 +74,7 @@ public class GuiRenderStateCaptureMixin {
     /** A picture: its kind, and where and how big (what it shows is the renderer's: Xaero's minimap, the paper doll). */
     @Inject(method = "addPicturesInPictureState", at = @At("HEAD"), require = 1)
     private void lads$picture(PictureInPictureRenderState picture, CallbackInfo ci) {
+        com.thelads.core.v26_2.feature.HudTexture.added((GuiRenderState) (Object) this);
         if (HudCapture.record(state -> HudCapture.replayPicture(state, picture)))
             HudCapture.drew(picture.getClass().hashCode(), java.util.Objects.hashCode(picture.bounds()));
     }
@@ -88,5 +91,6 @@ public class GuiRenderStateCaptureMixin {
             HudCapture.drew(plain.getClass().hashCode(), plain instanceof Record ? plain.hashCode() : java.util.Objects.hashCode(plain.bounds()));
         // HUD texture (HudTexture): blending that reads what is under it is drawn live every frame, not baked into the image
         if (com.thelads.core.v26_2.feature.HudTexture.keepLive((GuiRenderState) (Object) this, element)) ci.cancel();
+        else com.thelads.core.v26_2.feature.HudTexture.added((GuiRenderState) (Object) this);
     }
 }

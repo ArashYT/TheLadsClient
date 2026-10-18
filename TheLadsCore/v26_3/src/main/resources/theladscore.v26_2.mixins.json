@@ -15,6 +15,7 @@
     "XaeroWorldMapPaceMixin",
     "GuiRendererHudTextureMixin",
     "XaeroMinimapHudPassMixin",
+    "SodiumCuboidStackMixin",
     "GuiRenderStateCaptureMixin",
     "TitleScreenMixin",
     "TitleWidgetMixin",

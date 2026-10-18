@@ -54,6 +54,7 @@ public final class HudTexture {
     private static boolean dirty, building, empty;
     /** The HUD renderer is drawing: Xaero's in-world pass skips it (XaeroMinimapHudPassMixin). */
     public static boolean inHudPass;
+    private static int adds;
     /** QA: frames shown from the texture, builds drawn into it. */
     public static int qaShown, qaDrawn;
 
@@ -89,6 +90,7 @@ public final class HudTexture {
             new Matrix3x2f().scaling(w / scale, h / scale), 0, 0, 1, 1, 0, 1, 1, 0, -1, null);
         STATE.reset();
         LIVE.clear();
+        adds = 0;
         dirty = false;
         building = true;
         try {
@@ -111,9 +113,20 @@ public final class HudTexture {
         return true;
     }
 
-    /** HudCapture, after a build: whether it recorded anything to draw. */
-    public static void built(boolean drew) {
-        empty = !drew && LIVE.isEmpty();
+    /** A build that did not go into the texture (minimized window): the image is stale until the next texture build. */
+    public static void invalidate() {
+        blit = null;
+        dirty = false;
+    }
+
+    /** GuiRenderStateCaptureMixin: something drawable (element, text, item, picture) was added to a GUI state. */
+    public static void added(GuiRenderState state) {
+        if (building && state == STATE) adds++;
+    }
+
+    /** HudCapture, after a build: an image only when the build drew something (F1 records layer steps, nothing to draw). */
+    public static void built() {
+        empty = adds == 0 && LIVE.isEmpty();
     }
 
     /** Every frame: the live elements, then the HUD image above them (false: no image yet, replay instead). */
@@ -138,6 +151,7 @@ public final class HudTexture {
         }
         if (!dirty || target == null) return;
         dirty = false;
+        if (empty) return; // nothing to draw: the image is not shown either
         RenderSystem.getDevice().createCommandEncoder().clearColorAndDepthTextures(target.getColorTexture(), CLEAR, target.getDepthTexture(), 0.0);
         inHudPass = true;
         try {
