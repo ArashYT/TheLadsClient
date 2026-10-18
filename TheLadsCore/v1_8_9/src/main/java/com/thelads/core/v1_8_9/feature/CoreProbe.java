@@ -596,7 +596,7 @@ public final class CoreProbe {
         check(inVerificationSandbox(game) && inVerificationSandbox(saves) && com.thelads.core.shared.SharedContentPaths.redirectEnabled()
             && saves.equals(com.thelads.core.shared.SharedContentPaths.savesDir().toRealPath()), "the QA world goes into the sandbox's shared saves (" + saves + ")");
         LOG.info("Lads 1.8.9 core probe: opening the QA world '{}' in {}", WORLD, saves);
-        mc.launchIntegratedServer(WORLD, WORLD, new WorldSettings(0L, WorldSettings.GameType.CREATIVE, false, false, WorldType.FLAT));
+        joinOrLaunch(mc);
         return true;
     }
 
@@ -607,8 +607,17 @@ public final class CoreProbe {
         mc.gameSettings.pauseOnLostFocus = false;
         Path game = mc.mcDataDir.toPath().toRealPath(), saves = Files.createDirectories(game.resolve("saves")).toRealPath();
         check(inVerificationSandbox(game) && inVerificationSandbox(saves), "the QA world goes into the sandbox (" + saves + ")");
-        mc.launchIntegratedServer(WORLD, WORLD, new WorldSettings(0L, WorldSettings.GameType.CREATIVE, false, false, WorldType.FLAT));
+        joinOrLaunch(mc);
         return true;
+    }
+
+    /** The QA world, or with -Dthelads.qaServer=host:port the shared LadsQA server (the harness moves the player to its lane world). */
+    private static void joinOrLaunch(Minecraft mc) {
+        String server = System.getProperty("thelads.qaServer");
+        if (server == null) { mc.launchIntegratedServer(WORLD, WORLD, new WorldSettings(0L, WorldSettings.GameType.CREATIVE, false, false, WorldType.FLAT)); return; }
+        LOG.info("Lads 1.8.9 core probe: joining the shared QA server {}", server);
+        int colon = server.lastIndexOf(':');
+        mc.displayGuiScreen(new net.minecraft.client.multiplayer.GuiConnecting(new net.minecraft.client.gui.GuiMainMenu(), mc, server.substring(0, colon), Integer.parseInt(server.substring(colon + 1))));
     }
 
     private static boolean worldReady(Minecraft mc) {
@@ -621,6 +630,7 @@ public final class CoreProbe {
         if (mc.theWorld == null || mc.thePlayer == null || mc.currentScreen != null) return false;
         // The QA world starts every run the same: no armour left over from an interrupted run.
         final java.util.UUID id = mc.thePlayer.getUniqueID();
+        if (mc.getIntegratedServer() == null) return after(40); // the shared QA server: its lane world is the harness's
         mc.getIntegratedServer().addScheduledTask(() -> {
             net.minecraft.entity.player.EntityPlayerMP player = mc.getIntegratedServer().getConfigurationManager().getPlayerByUUID(id);
             if (player != null) java.util.Arrays.fill(player.inventory.armorInventory, null);
@@ -836,6 +846,12 @@ public final class CoreProbe {
      * the 1.8.5 QA runs failed that way under load). One server tick 300 ms late before the race makes every run a catch-up.
      */
     private static boolean leaveWorld(Minecraft mc) throws Exception {
+        if (mc.getIntegratedServer() == null) { // the shared QA server: no integrated-server race to force, just disconnect
+            mc.theWorld.sendQuittingDisconnectingPacket();
+            mc.loadWorld(null);
+            mc.displayGuiScreen(new GuiMainMenu());
+            return true;
+        }
         final IntegratedServer server = leaving = mc.getIntegratedServer();
         final Thread client = Thread.currentThread();
         final java.util.Queue<java.util.concurrent.FutureTask<?>> tasks = ReflectionHelper.getPrivateValue(net.minecraft.server.MinecraftServer.class,
@@ -882,6 +898,7 @@ public final class CoreProbe {
     }
 
     private static boolean leftWorld(Minecraft mc) {
+        if (leaving == null) { check(mc.theWorld == null && mc.currentScreen instanceof GuiMainMenu, "left the shared QA server back to the title screen"); return true; }
         boolean unrun = !notRun.isEmpty();
         for (java.util.concurrent.Future<?> task : notRun) unrun &= !task.isDone();
         LOG.info("Lads 1.8.9 core probe: leave race: client blocked queuing its logout {}, {} task(s) queued after the stop and never run {}, "

@@ -41,7 +41,8 @@ final class NativeQualityProbe {
 
     private static boolean active() {
         var mc = Minecraft.getInstance();
-        return !done && (Boolean.getBoolean("thelads.verifyNativeFeatures") || Boolean.getBoolean("thelads.verifyIntegrations"))
+        // Singleplayer-shaped (integrated server, local connection label, tab heads): off on the shared QA server.
+        return !done && System.getProperty("thelads.qaServer") == null && (Boolean.getBoolean("thelads.verifyNativeFeatures") || Boolean.getBoolean("thelads.verifyIntegrations"))
             && mc.level != null && mc.player != null && mc.getEntityRenderDispatcher().camera != null
             && !(Boolean.getBoolean("thelads.verifyInput") && !NativeFeatures.interactive());
     }

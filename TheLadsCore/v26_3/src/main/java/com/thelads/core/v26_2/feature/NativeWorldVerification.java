@@ -110,6 +110,14 @@ public final class NativeWorldVerification {
                 if(!SkinLoadProbe.tick())return;
                 if (titleSince == 0) titleSince = now;
                 if (now - titleSince < 5_000_000_000L) return;
+                String server = System.getProperty("thelads.qaServer"); // the shared LadsQA server; the harness moves the player to its lane world
+                if (server != null) {
+                    opened = true; openedAt = now;
+                    LOGGER.info("Lads auto-world QA JOIN: shared QA server {}", server);
+                    net.minecraft.client.gui.screens.ConnectScreen.startConnecting(new TitleScreen(), mc, net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(server),
+                        new net.minecraft.client.multiplayer.ServerData("LadsQA", server, net.minecraft.client.multiplayer.ServerData.Type.OTHER), false, null);
+                    return;
+                }
                 Files.createDirectories(gameDirectory.resolve("saves"));
                 Path saves = gameDirectory.resolve("saves").toRealPath();
                 if (!Files.isRegularFile(saves.resolve(SAVE).resolve("level.dat"), LinkOption.NOFOLLOW_LINKS)) {

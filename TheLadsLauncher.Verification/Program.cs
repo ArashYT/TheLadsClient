@@ -996,6 +996,8 @@ try
             if (chatHeadsCaptureVerification) AddJvm("-Dthelads.verifyChatHeads=true");
         }
     }
+    // LADS_VERIFY_SERVER_WORLD=qa_hud etc.: the probes run on the shared LadsQA server (QaServer.cs) instead of a singleplayer world.
+    if (autoWorldVerification && QaServer.World != null) AddJvm("-Dthelads.qaServer=" + QaServer.Address);
     process.StartInfo.UseShellExecute = false;
     process.StartInfo.CreateNoWindow = true;
     process.StartInfo.RedirectStandardOutput = true;
@@ -1183,6 +1185,7 @@ try
     // At most 3 QA games machine-wide, each with >= 4 GB free RAM (QaShared). Runs that need the game in front (LADS_VERIFY_FOCUS=1) are the exclusive .qa-game-lock ones.
     if (Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") != "1")
         qaSlot = await QaShared.AcquireAsync(4, $"{version} {dirName}", ct);
+    if (autoWorldVerification && QaServer.World != null) await QaServer.PrepareAsync(qaName, ct);
     stopwatch.Restart();
     process.Start();
     LaunchToken.Send(process);
@@ -1516,6 +1519,7 @@ finally
     // After Kill too: the parameterless wait drains the redirected output before the log closes (bounded first, in case Kill failed).
     if (process != null && HasStarted(process) && process.WaitForExit(60_000)) process.WaitForExit();
     qaSlot?.Dispose(); // the game is gone: its slot is free for the next one
+    if (autoWorldVerification && QaServer.World != null && process != null && HasStarted(process)) await QaServer.ReleaseAsync();
 }
 
 // This independent addon belongs only to the opt-in compatibility probe.

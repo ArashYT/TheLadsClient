@@ -31,7 +31,7 @@ public final class NativeTabTweaksProbe {
     private static int ticks, passed;
     public static void tick() {
         var mc = Minecraft.getInstance();
-        if (done || !Boolean.getBoolean("thelads.verifyIntegrations") || !NativeTabTweaks.active()
+        if (done || !Boolean.getBoolean("thelads.verifyIntegrations") || System.getProperty("thelads.qaServer") != null /* singleplayer-shaped */ || !NativeTabTweaks.active()
                 || mc.player == null || mc.level == null || ++ticks < 90) return;
         done = true;
         var tab = NativeQualityOfLife.module("TabList"); var ping = NativeQualityOfLife.module("PingView");

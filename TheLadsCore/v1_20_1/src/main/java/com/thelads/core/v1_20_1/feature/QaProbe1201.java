@@ -219,6 +219,14 @@ public final class QaProbe1201 {
 
     private static void openOrCreate(Minecraft mc) {
         worldOpened = true;
+        // -Dthelads.qaServer=host:port (harness LADS_VERIFY_SERVER_WORLD): the shared LadsQA server; the harness moves the player to its lane world.
+        String server = System.getProperty("thelads.qaServer");
+        if (server != null) {
+            LOGGER.info("Lads auto-world QA JOIN: shared QA server {}", server);
+            net.minecraft.client.gui.screens.ConnectScreen.startConnecting(new TitleScreen(), mc, net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(server),
+                new net.minecraft.client.multiplayer.ServerData("LadsQA", server, false), false);
+            return;
+        }
         Path world = gameDir.resolve("saves").resolve(save);
         if (!Files.exists(world.resolve("level.dat"))) {
             LOGGER.info("Lads auto-world QA CREATE: {} (new superflat, peaceful, survival, cheats on)", save);
