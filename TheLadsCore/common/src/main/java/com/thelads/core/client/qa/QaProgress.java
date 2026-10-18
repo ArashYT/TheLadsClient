@@ -24,7 +24,7 @@ public final class QaProgress {
         int total, index, ok, slow, fail, crash;
         String label = "";
         boolean open, ended;
-        long stepStart, finishedMs, finishedCount, slowMs = 60_000;
+        long stepStart, finishedMs, finishedCount, slowMs = 120_000;
         Run(String name, int total) { this.name = name; this.total = Math.max(0, total); }
     }
 
@@ -101,11 +101,11 @@ public final class QaProgress {
     }
 
     /**
-     * A moment after the outermost run is done, once: the name of the screenshot ("qa-bar-final-&lt;run&gt;") that shows the bar's final
+     * A quarter of a second after the outermost run is done (the game then has drawn the final state), once: the name of the screenshot ("qa-bar-final-&lt;run&gt;") that shows the bar's final
      * state, which the version's QA driver then saves; null otherwise.
      */
     public static synchronized String finalShot() {
-        if (!on || !finalShotDue || run == null || !run.ended || clock.getAsLong() - endedAt < 1200) return null;
+        if (!on || !finalShotDue || run == null || !run.ended || clock.getAsLong() - endedAt < 250) return null;
         finalShotDue = false;
         return "qa-bar-final-" + run.name.replaceAll("[^A-Za-z0-9._-]+", "-");
     }
@@ -116,7 +116,7 @@ public final class QaProgress {
     /** The name of the run now showing, or null. */
     public static synchronized String run() { return run == null ? null : run.name; }
 
-    /** After {@link #begin}: steps that take longer than this many ms count as SLOW (default 60 s). */
+    /** After {@link #begin}: steps that take longer than this many ms count as SLOW (default 2 min). */
     public static synchronized void slowAfter(long ms) { if (run != null) run.slowMs = ms; }
 
     /** Counts of the finished steps {OK, SLOW, FAIL, CRASH}. */

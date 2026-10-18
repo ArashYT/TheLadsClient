@@ -114,7 +114,7 @@ class QaProgressTest {
         assertNull(QaProgress.finalShot());
         QaProgress.done();
         assertNull(QaProgress.finalShot(), "too soon");
-        now.addAndGet(1500);
+        now.addAndGet(300);
         assertEquals("qa-bar-final-anim-1.9.11", QaProgress.finalShot());
         assertNull(QaProgress.finalShot(), "only once");
     }

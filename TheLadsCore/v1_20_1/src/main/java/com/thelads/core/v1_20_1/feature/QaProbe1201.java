@@ -275,7 +275,7 @@ public final class QaProbe1201 {
         if (!scriptStarted) {
             scriptStarted = true;
             LOGGER.info("Lads qa script BEGIN: {} steps", steps.size());
-            com.thelads.core.client.qa.QaProgress.begin("1.20.1 script", steps.size()); // QA progress bar: one bar step per script step (routine steps are one each)
+            com.thelads.core.client.qa.QaProgress.begin("1.20.1 script", steps.size()); com.thelads.core.client.qa.QaProgress.slowAfter(600_000); // routines (HUD sequences) take minutes by design // QA progress bar: one bar step per script step (routine steps are one each)
         }
         if (waitTicks > 0) { waitTicks--; return; }
         if (routine != null) {
