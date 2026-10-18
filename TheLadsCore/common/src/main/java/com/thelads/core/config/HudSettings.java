@@ -127,7 +127,7 @@ public class HudSettings {
         defaultHud("BossBar", 389, 6, null, 1, 1, 0, 0, 0, 0, 6, 0);
         defaultHud("Paperdoll", 740, 3, null, 2, 2, -150, 0, 0, 0, 3, 0);
         defaultHud("Time", 907, 19, "Speed", 2, 2, 0, 60, 2, 0, 0, 16);
-        defaultHud("Potion Effects", 4, 225, null, 0, 0, 4, 0, 1, 1, 0, 0);
+        defaultHud("Potion Effects", 4, 160, "Coordinates", 0, 0, 0, 68, 2, 0, 2, 38);
         defaultHud("Clock", 252, 0, "PortalCoordinates", 2, 0, 0, 94, 0, 0, 0, 16);
         defaultHud("Direction", 450, 30, null, 1, 1, 0, 0, 0, 0, 30, 0);
         defaultHud("Voice Chat Group", 4, 475, null, 0, 0, 4, 0, 2, 2, -2, 0);
