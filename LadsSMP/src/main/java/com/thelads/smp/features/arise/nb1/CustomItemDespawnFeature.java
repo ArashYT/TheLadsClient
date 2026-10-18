@@ -24,25 +24,27 @@ public final class CustomItemDespawnFeature {
         return AriseNB1Config.get().customItemDespawn.enabled;
     }
 
-    public static boolean shouldDespawn(ItemEntity itemEntity) {
-        if (!isEnabled()) return false;
-
-        ItemStack stack = itemEntity.getItem();
-        if (stack.isEmpty()) return false;
+    public static int getDespawnTicks(ItemStack stack) {
+        if (stack.isEmpty()) return 6000;
 
         String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
         AriseNB1Config.CustomItemDespawnConfig cfg = AriseNB1Config.get().customItemDespawn;
 
         if (cfg.despawnDurations.containsKey(itemId)) {
-            int targetTicks = cfg.despawnDurations.get(itemId) * 20;
-            return itemEntity.getAge() >= targetTicks;
+            return cfg.despawnDurations.get(itemId) * 20;
         }
 
         if (cfg.modifyDefaultItemDuration) {
-            int targetTicks = cfg.defaultItemDuration * 20;
-            return itemEntity.getAge() >= targetTicks;
+            return cfg.defaultItemDuration * 20;
         }
 
-        return false;
+        return 6000;
+    }
+
+    public static boolean shouldDespawn(ItemEntity itemEntity) {
+        if (!isEnabled()) {
+            return itemEntity.getAge() >= 6000;
+        }
+        return itemEntity.getAge() >= getDespawnTicks(itemEntity.getItem());
     }
 }

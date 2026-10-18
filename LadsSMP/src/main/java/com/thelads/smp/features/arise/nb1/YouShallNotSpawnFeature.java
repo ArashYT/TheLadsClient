@@ -17,15 +17,6 @@ public final class YouShallNotSpawnFeature {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsSMP-YouShallNotSpawn");
 
     public static void init() {
-        ServerEntityEvents.ENTITY_LOAD.register((entity, level) -> {
-            if (!isEnabled() || level.isClientSide()) return;
-            if (entity instanceof Mob mob) {
-                String dim = level.dimension().identifier().toString();
-                if (shouldBlockSpawn(mob, dim, level.getRandom())) {
-                    mob.discard();
-                }
-            }
-        });
         LOGGER.info("[Lads SMP] You Shall Not Spawn! initialized ({} dimension rules)",
                 AriseNB1Config.get().youShallNotSpawn.dimensions.size());
     }

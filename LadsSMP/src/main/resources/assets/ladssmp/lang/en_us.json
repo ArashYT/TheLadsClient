@@ -3,5 +3,6 @@
   "item.ladssmp.turtle_leggings": "Turtle Leggings",
   "item.ladssmp.turtle_boots": "Turtle Boots",
   "item.ladssmp.clipboard": "Clipboard",
-  "block.ladssmp.quicksand": "Quicksand"
+  "block.ladssmp.quicksand": "Quicksand",
+  "key.ladssmp.throw_carried": "Throw Carried Object"
 }
