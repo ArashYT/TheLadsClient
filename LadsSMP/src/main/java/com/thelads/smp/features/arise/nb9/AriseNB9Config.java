@@ -38,26 +38,19 @@ public final class AriseNB9Config {
     public int potionRecipesPerLayer = 2;
     public String potionsMixing = "ON"; // OFF, ONLY_BOILING, ON
     public int potionMixingLimit = 8;
-    public boolean connectToFences = true;
-    public boolean handCrafting = true;
-    public boolean inWorldCrafting = true;
 
     // Lantern
     public boolean wallLanterns = true;
-    public boolean highPriority = true;
-    public String fallingLanterns = "ON"; // ON, OFF, NO_FIRE
 
     // Hanging Signs
     public boolean itemsOnSigns = true;
 
     // Lectern
-    public boolean improvedScreen = true;
     public boolean lecternBookTitle = true;
 
     // Mob Head / Skulls
     public boolean skullPiles = true;
     public boolean skullCandles = true;
-    public boolean multipleCandles = true;
 
     // Carpets
     public boolean carpetedStairs = true;
@@ -65,12 +58,10 @@ public final class AriseNB9Config {
 
     // Cake
     public boolean doubleCake = true;
-    public boolean directionalCake = true;
 
     // Bell
     public boolean chainRinging = true;
     public int chainLength = 16;
-    public boolean bellRedstoneRinging = true;
 
     // Tripwire Hook
     public boolean toolHook = true;

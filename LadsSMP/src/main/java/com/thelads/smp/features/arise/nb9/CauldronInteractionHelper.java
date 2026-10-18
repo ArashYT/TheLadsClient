@@ -50,8 +50,8 @@ public final class CauldronInteractionHelper {
             return InteractionResult.PASS;
         }
 
-        // 1. Water Cauldron + Dye -> Dyed Cauldron
-        if (config.dyeWater && held.getItem() instanceof DyeItem) {
+        // 1. Water Cauldron + Dye -> Dyed Cauldron (only valid on water cauldrons)
+        if (config.dyeWater && held.getItem() instanceof DyeItem && state.is(Blocks.WATER_CAULDRON)) {
             DyeColor dyeColor = held.get(DataComponents.DYE);
             if (dyeColor != null) {
                 if (!level.isClientSide()) {
@@ -76,8 +76,8 @@ public final class CauldronInteractionHelper {
             }
         }
 
-        // 2. Water/Empty Cauldron + Potion -> Potion Cauldron
-        if (held.is(Items.POTION) || held.is(Items.SPLASH_POTION) || held.is(Items.LINGERING_POTION)) {
+        // 2. Empty Cauldron + Potion -> Potion Cauldron (only valid on empty cauldrons to preserve fluid)
+        if ((held.is(Items.POTION) || held.is(Items.SPLASH_POTION) || held.is(Items.LINGERING_POTION)) && state.is(Blocks.CAULDRON)) {
             PotionContents contents = held.get(DataComponents.POTION_CONTENTS);
             if (contents != null && contents.hasEffects()) {
                 if (!level.isClientSide()) {

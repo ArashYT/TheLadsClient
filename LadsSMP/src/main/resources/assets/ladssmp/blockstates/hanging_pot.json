@@ -1,5 +1,5 @@
 {
   "variants": {
-    "": { "model": "minecraft:block/flower_pot" }
+    "": { "model": "ladssmp:block/hanging_pot" }
   }
 }

@@ -1,5 +1,5 @@
 {
   "variants": {
-    "": { "model": "minecraft:block/skeleton_skull" }
+    "": { "model": "ladssmp:block/skull_pile" }
   }
 }

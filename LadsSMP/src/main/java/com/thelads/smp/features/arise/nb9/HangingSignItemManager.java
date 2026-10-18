@@ -1,7 +1,6 @@
 package com.thelads.smp.features.arise.nb9;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
@@ -15,6 +14,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.CeilingHangingSignBlock;
 import net.minecraft.world.level.block.WallHangingSignBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.Map;
@@ -22,31 +22,61 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Manager for displaying items on hanging signs.
- * Provides thread-safe tracking, safe item retrieval, and zero-void drop safety.
+ * Connects directly to SignBlockEntity (via HangingSignItemHolder) for disk/chunk NBT persistence,
+ * with thread-safe tracking, safe item retrieval, and zero-void drop safety.
  */
 public final class HangingSignItemManager {
-    private static final Map<BlockPos, ItemStack> DISPLAYED_ITEMS = new ConcurrentHashMap<>();
+    // Fallback cache used for unit tests or environments without a running world
+    private static final Map<BlockPos, ItemStack> TEST_FALLBACK = new ConcurrentHashMap<>();
 
     public static boolean isHangingSign(BlockState state) {
         return state.getBlock() instanceof CeilingHangingSignBlock || state.getBlock() instanceof WallHangingSignBlock;
     }
 
+    public static ItemStack getDisplayedItem(Level level, BlockPos pos) {
+        if (level != null) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof HangingSignItemHolder holder) {
+                return holder.ladssmp$getDisplayedItem();
+            }
+        }
+        return TEST_FALLBACK.getOrDefault(pos, ItemStack.EMPTY);
+    }
+
     public static ItemStack getDisplayedItem(BlockPos pos) {
-        return DISPLAYED_ITEMS.getOrDefault(pos, ItemStack.EMPTY);
+        return TEST_FALLBACK.getOrDefault(pos, ItemStack.EMPTY);
+    }
+
+    public static void setDisplayedItem(Level level, BlockPos pos, ItemStack item) {
+        if (level != null) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof HangingSignItemHolder holder) {
+                holder.ladssmp$setDisplayedItem(item);
+                return;
+            }
+        }
+        setDisplayedItem(pos, item);
     }
 
     public static void setDisplayedItem(BlockPos pos, ItemStack item) {
         if (item == null || item.isEmpty()) {
-            DISPLAYED_ITEMS.remove(pos);
+            TEST_FALLBACK.remove(pos);
         } else {
-            DISPLAYED_ITEMS.put(pos, item.copy());
+            TEST_FALLBACK.put(pos, item.copy());
         }
     }
 
-    public static void onSignRemoved(ServerLevel level, BlockPos pos) {
-        ItemStack item = DISPLAYED_ITEMS.remove(pos);
-        if (item != null && !item.isEmpty()) {
-            net.minecraft.world.level.block.Block.popResource(level, pos, item);
+    public static void onSignRemoved(Level level, BlockPos pos, BlockEntity be) {
+        if (be instanceof HangingSignItemHolder holder) {
+            ItemStack item = holder.ladssmp$getDisplayedItem();
+            if (!item.isEmpty()) {
+                Block.popResource(level, pos, item);
+                holder.ladssmp$setDisplayedItem(ItemStack.EMPTY);
+            }
+        }
+        ItemStack fallback = TEST_FALLBACK.remove(pos);
+        if (fallback != null && !fallback.isEmpty()) {
+            Block.popResource(level, pos, fallback);
         }
     }
 
@@ -68,12 +98,12 @@ public final class HangingSignItemManager {
             return InteractionResult.PASS;
         }
 
-        ItemStack existing = getDisplayedItem(pos);
+        ItemStack existing = getDisplayedItem(level, pos);
 
         // Retrieve existing item with empty sneak hand
         if (!existing.isEmpty() && held.isEmpty() && player.isShiftKeyDown()) {
             if (!level.isClientSide()) {
-                setDisplayedItem(pos, ItemStack.EMPTY);
+                setDisplayedItem(level, pos, ItemStack.EMPTY);
                 if (!player.addItem(existing)) {
                     Block.popResource(level, pos, existing);
                 }
@@ -86,7 +116,7 @@ public final class HangingSignItemManager {
         if (existing.isEmpty() && !held.isEmpty()) {
             if (!level.isClientSide()) {
                 ItemStack toAttach = held.copyWithCount(1);
-                setDisplayedItem(pos, toAttach);
+                setDisplayedItem(level, pos, toAttach);
                 if (!player.getAbilities().instabuild) {
                     held.shrink(1);
                 }

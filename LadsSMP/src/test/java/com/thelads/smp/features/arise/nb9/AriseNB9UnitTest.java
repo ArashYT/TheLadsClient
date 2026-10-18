@@ -33,12 +33,10 @@ public class AriseNB9UnitTest {
         assertEquals(8, config.potionMixingLimit, "potionMixingLimit should default to 8");
 
         assertTrue(config.wallLanterns, "wallLanterns should default to true");
-        assertEquals("ON", config.fallingLanterns, "fallingLanterns should default to ON");
         assertTrue(config.itemsOnSigns, "itemsOnSigns should default to true");
         assertTrue(config.lecternBookTitle, "lecternBookTitle should default to true");
         assertTrue(config.skullPiles, "skullPiles should default to true");
         assertTrue(config.skullCandles, "skullCandles should default to true");
-        assertTrue(config.multipleCandles, "multipleCandles should default to true");
         assertTrue(config.carpetedStairs, "carpetedStairs should default to true");
         assertTrue(config.carpetedSlabs, "carpetedSlabs should default to true");
         assertTrue(config.doubleCake, "doubleCake should default to true");

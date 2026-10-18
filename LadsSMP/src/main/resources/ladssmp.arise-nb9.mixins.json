@@ -6,7 +6,8 @@
   "mixins": [
     "MixinAbstractCauldronBlock",
     "MixinLecternBlock",
-    "MixinLilyPadBlock"
+    "MixinLilyPadBlock",
+    "MixinSignBlockEntity"
   ],
   "injectors": {
     "defaultRequire": 1

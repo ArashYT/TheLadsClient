@@ -1,5 +1,5 @@
 {
   "variants": {
-    "": { "model": "minecraft:block/candle_one_candle" }
+    "": { "model": "ladssmp:block/skull_candle" }
   }
 }

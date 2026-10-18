@@ -4,9 +4,16 @@ import com.thelads.smp.features.arise.nb9.entity.CarpetedStairsBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.ScheduledTickAccess;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
@@ -89,11 +96,24 @@ public class CarpetedStairsBlock extends Block implements SimpleWaterloggedBlock
     }
 
     @Override
-    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
-        if (level.getBlockEntity(pos) instanceof CarpetedStairsBlockEntity be) {
-            popResource(level, pos, be.createStairDrop());
-            popResource(level, pos, be.createCarpetDrop());
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        if (!level.isClientSide() && player.preventsBlockDrops()) {
+            if (level.getBlockEntity(pos) instanceof CarpetedStairsBlockEntity be) {
+                popResource(level, pos, be.createStairDrop());
+                popResource(level, pos, be.createCarpetDrop());
+            }
         }
-        super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
+        return super.playerWillDestroy(level, pos, state, player);
+    }
+
+    @Override
+    protected List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
+        List<ItemStack> drops = new ArrayList<>(super.getDrops(state, builder));
+        BlockEntity be = builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
+        if (be instanceof CarpetedStairsBlockEntity stairsBe) {
+            drops.add(stairsBe.createStairDrop());
+            drops.add(stairsBe.createCarpetDrop());
+        }
+        return drops;
     }
 }

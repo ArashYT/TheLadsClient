@@ -14,6 +14,10 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
@@ -104,14 +108,30 @@ public class ToolHookBlock extends Block implements EntityBlock {
     }
 
     @Override
-    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
-        if (level.getBlockEntity(pos) instanceof ToolHookBlockEntity be) {
-            ItemStack tool = be.getToolStack();
-            if (!tool.isEmpty()) {
-                popResource(level, pos, tool);
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        if (!level.isClientSide() && player.preventsBlockDrops()) {
+            if (level.getBlockEntity(pos) instanceof ToolHookBlockEntity be) {
+                ItemStack tool = be.getToolStack();
+                if (!tool.isEmpty()) {
+                    popResource(level, pos, tool);
+                }
+                popResource(level, pos, new ItemStack(Items.TRIPWIRE_HOOK));
             }
-            popResource(level, pos, new ItemStack(Items.TRIPWIRE_HOOK));
         }
-        super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
+        return super.playerWillDestroy(level, pos, state, player);
+    }
+
+    @Override
+    protected List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
+        List<ItemStack> drops = new ArrayList<>(super.getDrops(state, builder));
+        drops.add(new ItemStack(Items.TRIPWIRE_HOOK));
+        BlockEntity be = builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
+        if (be instanceof ToolHookBlockEntity hookBe) {
+            ItemStack tool = hookBe.getToolStack();
+            if (!tool.isEmpty()) {
+                drops.add(tool);
+            }
+        }
+        return drops;
     }
 }

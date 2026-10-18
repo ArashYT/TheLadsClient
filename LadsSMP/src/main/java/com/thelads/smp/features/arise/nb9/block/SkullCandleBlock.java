@@ -21,6 +21,10 @@ import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.SkullBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
@@ -124,11 +128,24 @@ public class SkullCandleBlock extends Block implements EntityBlock {
     }
 
     @Override
-    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
-        if (level.getBlockEntity(pos) instanceof SkullCandleBlockEntity be) {
-            popResource(level, pos, be.createSkullDrop());
-            popResource(level, pos, be.createCandleDrop(state.getValue(CANDLES)));
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        if (!level.isClientSide() && player.preventsBlockDrops()) {
+            if (level.getBlockEntity(pos) instanceof SkullCandleBlockEntity be) {
+                popResource(level, pos, be.createSkullDrop());
+                popResource(level, pos, be.createCandleDrop(state.getValue(CANDLES)));
+            }
         }
-        super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
+        return super.playerWillDestroy(level, pos, state, player);
+    }
+
+    @Override
+    protected List<ItemStack> getDrops(BlockState state, LootParams.Builder builder) {
+        List<ItemStack> drops = new ArrayList<>(super.getDrops(state, builder));
+        BlockEntity be = builder.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
+        if (be instanceof SkullCandleBlockEntity candleBe) {
+            drops.add(candleBe.createSkullDrop());
+            drops.add(candleBe.createCandleDrop(state.getValue(CANDLES)));
+        }
+        return drops;
     }
 }

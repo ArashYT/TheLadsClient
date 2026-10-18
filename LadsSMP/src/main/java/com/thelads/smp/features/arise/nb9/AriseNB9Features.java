@@ -3,6 +3,7 @@ package com.thelads.smp.features.arise.nb9;
 import com.thelads.smp.features.arise.nb9.block.*;
 import com.thelads.smp.features.arise.nb9.entity.*;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
+import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.minecraft.core.Registry;
@@ -119,6 +120,12 @@ public final class AriseNB9Features {
     private static void registerEventCallbacks() {
         UseBlockCallback.EVENT.register(AmendmentsBlockInteractions::handleUseBlock);
         AttackEntityCallback.EVENT.register(TorchFireHandler::handleAttack);
+        PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, be) -> {
+            if (HangingSignItemManager.isHangingSign(state)) {
+                HangingSignItemManager.onSignRemoved(level, pos, be);
+            }
+            return true;
+        });
     }
 
     private static <T extends Block> T registerBlock(
