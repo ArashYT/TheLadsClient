@@ -335,6 +335,10 @@ public final class QaProbe1201 {
                 if (s.length > 1) repository.setSelected(java.util.Arrays.asList(arg(s, 1).split(",")));
                 LOGGER.info("Lads qa packs: {}", repository.getSelectedIds());
             }
+            case "hudcache" -> { // the 1.9.12 HUD cache on/off, to compare shots in one run
+                com.thelads.core.v1_20_1.hud.HudCache1201.off = "off".equalsIgnoreCase(arg(s, 1));
+                LOGGER.info("Lads qa hudcache: {}", com.thelads.core.v1_20_1.hud.HudCache1201.off ? "off" : "on");
+            }
             case "log" -> LOGGER.info("Lads qa log: {}", rest(s, 1));
             case "quit" -> {
                 LOGGER.info("Lads qa quit requested");
