@@ -840,10 +840,14 @@ public final class LadsSettingsScreen {
                 g.drawText("[Chat] <Player> Hello!", centerX - 60, centerY - 14, TEXT);
                 g.drawText("[Lads] Welcome!", centerX - 60, centerY + 2, ACCENT);
             } else if ("BetterF3".equalsIgnoreCase(name)) {
-                round(g, centerX - 55, centerY - 25, 110, 50, 0x90000000);
-                g.drawText("Minecraft 1.8.9 / 26.x", centerX - 50, centerY - 18, 0xFF55FF55);
-                g.drawText("FPS: 240 / 144", centerX - 50, centerY - 6, 0xFF55FFFF);
-                g.drawText("Biome: Plains", centerX - 50, centerY + 6, 0xFFFFAA00);
+                round(g, centerX - 62, centerY - 30, 124, 60, 0x90000000);
+                g.drawText("240 fps / Unlimited fps", centerX - 56, centerY - 24, 0xFF55FF55);
+                g.drawText("XYZ: ", centerX - 56, centerY - 12, 0xFFFF5555);
+                g.drawText("12.5 64.0 -8.2", centerX - 56 + g.textWidth("XYZ: "), centerY - 12, 0xFF55FFFF);
+                g.drawText("Biome: ", centerX - 56, centerY, 0xFF4FE3B5);
+                g.drawText("minecraft:plains", centerX - 56 + g.textWidth("Biome: "), centerY, 0xFF55FF55);
+                g.drawText("CPU: ", centerX - 56, centerY + 12, 0xFF55FFFF);
+                g.drawText("8x Ryzen 7", centerX - 56 + g.textWidth("CPU: "), centerY + 12, 0xFFFFFF55);
             } else {
                 round(g, centerX - 50, centerY - 32, 100, 64, CARD);
                 round(g, centerX - 50, centerY - 32, 100, 64, m.isEnabled() ? ACCENT : LadsPalette.BORDER);
@@ -1866,6 +1870,7 @@ public final class LadsSettingsScreen {
             .filter(o -> !(detail instanceof CrosshairModule crosshair && crosshair.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.SurvivalTweaksModule tweaks && tweaks.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.StackRefillModule refill && refill.hidden(o)))
+            .filter(o -> !(detail instanceof com.thelads.core.modules.BetterF3Module f3 && f3.hidden(o)))
             .sorted((a, b) -> {
                 if ("Ignore HUD FPS Cap".equals(a.getName())) return 1;
                 if ("Ignore HUD FPS Cap".equals(b.getName())) return -1;
