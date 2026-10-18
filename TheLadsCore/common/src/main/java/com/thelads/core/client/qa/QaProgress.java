@@ -69,6 +69,7 @@ public final class QaProgress {
     private static float cFill;
     private static boolean cStripes;
     private static Object cMetrics;
+    private static int lastLeft = -1, lastRight = -1, lastBottom = -1;
 
     private QaProgress() {}
 
@@ -189,10 +190,43 @@ public final class QaProgress {
     /** True if the QA bar is currently suppressed (frames hidden or permanently hidden) or inactive. */
     public static synchronized boolean isHidden() { return !on || hidden || hideFrames > 0; }
 
-    /** Estimated bottom edge of the QA progress bar in GUI pixels (for overlays to clear). */
+    /** Real bottom edge of the drawn QA progress bar backdrop in GUI pixels (for overlays to clear). */
+    public static synchronized int barBottom() {
+        return lastBottom >= 0 ? lastBottom : 20;
+    }
+
+    /** Real bottom edge of the QA progress bar in GUI pixels (for overlays to clear). */
     public static synchronized int barBottom(int fontHeight) {
+        if (lastBottom >= 0) return lastBottom;
         int y = 2, fh = fontHeight + 1;
         return y + (cLine2 == null ? 1 : 2) * fh + 8;
+    }
+
+    /** Half-width of the drawn QA progress bar backdrop in GUI pixels. */
+    public static synchronized int barHalfWidth() {
+        return cHalf > 0 ? cHalf : 95;
+    }
+
+    /** Real left edge of the drawn QA progress bar backdrop in GUI pixels. */
+    public static synchronized int barLeft() {
+        return lastLeft >= 0 ? lastLeft : (cWidth > 0 ? cWidth / 2 - barHalfWidth() : 0);
+    }
+
+    /** Real left edge of the drawn QA progress bar backdrop for a given screen width. */
+    public static synchronized int barLeft(int screenWidth) {
+        if (lastLeft >= 0 && (cWidth <= 0 || cWidth == screenWidth)) return lastLeft;
+        return screenWidth / 2 - barHalfWidth();
+    }
+
+    /** Real right edge of the drawn QA progress bar backdrop in GUI pixels. */
+    public static synchronized int barRight() {
+        return lastRight >= 0 ? lastRight : (cWidth > 0 ? cWidth / 2 + barHalfWidth() : 0);
+    }
+
+    /** Real right edge of the drawn QA progress bar backdrop for a given screen width. */
+    public static synchronized int barRight(int screenWidth) {
+        if (lastRight >= 0 && (cWidth <= 0 || cWidth == screenWidth)) return lastRight;
+        return screenWidth / 2 + barHalfWidth();
     }
 
     private static void finish(Run r, Result result) {
@@ -321,10 +355,14 @@ public final class QaProgress {
             if (loading) { cLine1 = null; cLine2 = null; cStripes = true; cHalf = 95; }
         }
         int y = 2, fh = g.fontHeight() + 1, bar = 182, x = (w - bar) / 2;
+        lastLeft = w / 2 - cHalf;
+        lastRight = w / 2 + cHalf;
         if (cLine1 == null) { // loading screen: just the bar
-            g.fill(w / 2 - cHalf, 0, w / 2 + cHalf, y + 12, 0x90000000);
+            lastBottom = y + 12;
+            g.fill(w / 2 - cHalf, 0, w / 2 + cHalf, lastBottom, 0x90000000);
         } else {
-            g.fill(w / 2 - cHalf, 0, w / 2 + cHalf, y + (cLine2 == null ? 1 : 2) * fh + 8, 0x90000000);
+            lastBottom = y + (cLine2 == null ? 1 : 2) * fh + 8;
+            g.fill(w / 2 - cHalf, 0, w / 2 + cHalf, lastBottom, 0x90000000);
             g.drawCenteredText(cLine1, w / 2, y, 0xFFFFFFFF, true);
             y += fh;
             if (cLine2 != null) {
@@ -398,5 +436,6 @@ public final class QaProgress {
         sessionRuns = sessionFail = sessionSlow = 0;
         finishing = false;
         endedAt = 0;
+        lastLeft = lastRight = lastBottom = -1;
     }
 }

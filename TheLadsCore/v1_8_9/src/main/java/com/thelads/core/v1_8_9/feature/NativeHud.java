@@ -97,13 +97,6 @@ public final class NativeHud {
             frames++;
         } finally {
             if (faded) Autohide189.end(shown, event.resolution.getScaledWidth_double(), event.resolution.getScaledHeight_double());
-            if (com.thelads.core.client.qa.QaProgress.on()) { // QA only (no-op for players): the QA progress bar over everything
-                if (GpuPhases189.ON) GpuPhases189.begin(GpuPhases189.QA_BAR);
-                qaBar.begin(mc.fontRendererObj, event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
-                com.thelads.core.client.qa.QaProgress.draw(qaBar);
-                qaBar.flush();
-                if (GpuPhases189.ON) GpuPhases189.end(GpuPhases189.QA_BAR);
-            }
             GlStateManager.resetColor();
             GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
             GlStateManager.disableLighting();
@@ -116,17 +109,55 @@ public final class NativeHud {
         }
     }
 
-    /** QA only: the QA progress bar over the screens that show without a world (with one, the HUD draws it). */
-    @SubscribeEvent(priority = net.minecraftforge.fml.common.eventhandler.EventPriority.LOWEST) // after the screens' own draws (the Lads title paints in a Post handler too)
-    public void qaBarOnScreens(net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent.Post event) {
+    /** QA only: the QA progress bar over everything (including toasts and screens), drawn once per frame at RETURN of GuiAchievement.updateAchievementWindow. */
+    public static void drawQaBar() {
+        if (!com.thelads.core.client.qa.QaProgress.on()) return;
         Minecraft mc = Minecraft.getMinecraft();
-        if (!com.thelads.core.client.qa.QaProgress.on() || mc.theWorld != null) return;
-        net.minecraft.client.gui.ScaledResolution resolution = new net.minecraft.client.gui.ScaledResolution(mc);
-        qaBar.begin(mc.fontRendererObj, resolution.getScaledWidth(), resolution.getScaledHeight());
+        if (mc == null || mc.fontRendererObj == null) return;
+        net.minecraft.client.gui.ScaledResolution res = ResolutionCache189.get(mc);
+        if (res == null) return;
+        int width = res.getScaledWidth();
+        int height = res.getScaledHeight();
+        if (width <= 0 || height <= 0) return;
+
+        GlStateManager.matrixMode(GL11.GL_PROJECTION);
+        GlStateManager.pushMatrix();
+        GlStateManager.loadIdentity();
+        GlStateManager.ortho(0.0D, width, height, 0.0D, 1000.0D, 3000.0D);
+        GlStateManager.matrixMode(GL11.GL_MODELVIEW);
+        GlStateManager.pushMatrix();
+        GlStateManager.loadIdentity();
+        GlStateManager.translate(0.0F, 0.0F, -2000.0F);
+
+        boolean blend = GlState189.blend();
+        boolean depth = GlState189.depth();
+        boolean alpha = GlState189.alpha();
+        boolean lighting = GlState189.lighting();
+        GlStateManager.disableDepth();
+        GlStateManager.enableBlend();
+        GlStateManager.enableAlpha();
+        GlStateManager.disableLighting();
+        GlStateManager.enableTexture2D();
+        GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+        GlStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
+
+        if (GpuPhases189.ON) GpuPhases189.begin(GpuPhases189.QA_BAR);
+        qaBar.begin(mc.fontRendererObj, width, height);
         com.thelads.core.client.qa.QaProgress.draw(qaBar);
         qaBar.flush();
+        if (GpuPhases189.ON) GpuPhases189.end(GpuPhases189.QA_BAR);
+
         GlStateManager.resetColor();
-        GlStateManager.enableBlend();
+        GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+        if (lighting) GlStateManager.enableLighting(); else GlStateManager.disableLighting();
+        if (depth) GlStateManager.enableDepth(); else GlStateManager.disableDepth();
+        if (blend) GlStateManager.enableBlend(); else GlStateManager.disableBlend();
+        if (alpha) GlStateManager.enableAlpha(); else GlStateManager.disableAlpha();
+
+        GlStateManager.matrixMode(GL11.GL_PROJECTION);
+        GlStateManager.popMatrix();
+        GlStateManager.matrixMode(GL11.GL_MODELVIEW);
+        GlStateManager.popMatrix();
     }
 
     /** CPS counts gameplay press events, several between two frames included (1.21.x: MouseHandlerMixin). */

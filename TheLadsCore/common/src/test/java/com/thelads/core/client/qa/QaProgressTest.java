@@ -216,6 +216,24 @@ class QaProgressTest {
         assertTrue(g.texts.get(1).startsWith("OK 0 · SLOW 0"), g.texts.get(1));
     }
 
+    @Test void barBoundsMatchDrawnBackdrop() {
+        Recorder g = new Recorder();
+        g.width = 400;
+        QaProgress.begin("run", 2);
+        QaProgress.step("step 1");
+        QaProgress.draw(g);
+        int left = QaProgress.barLeft(400);
+        int right = QaProgress.barRight(400);
+        int bottom = QaProgress.barBottom(9);
+        assertFalse(g.fills.isEmpty(), "should have drawn fills");
+        int[] backdrop = g.fills.get(0);
+        assertEquals(backdrop[0], left, "barLeft should match backdrop minX");
+        assertEquals(backdrop[2], right, "barRight should match backdrop maxX");
+        assertEquals(backdrop[3], bottom, "barBottom should match backdrop maxY");
+        assertTrue(right > left);
+        assertTrue(right - left >= 182);
+    }
+
     @Test void offForPlayers() {
         QaProgress.reset(false, now::get);
         QaProgress.begin("off", 3);
