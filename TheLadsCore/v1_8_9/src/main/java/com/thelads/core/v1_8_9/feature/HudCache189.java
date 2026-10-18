@@ -17,8 +17,9 @@ import org.lwjgl.opengl.GL11;
  * The HUD FPS cap on 1.8.9 (1.7.3): the Lads HUD is drawn into an offscreen buffer at the cap rate (and at once after a resize),
  * and that buffer is blended over the screen as one quad on every frame. What animates by itself, the paper doll and armour items
  * (their enchantment glint), is not cached: it is drawn live every frame, in the poses and scissors it had, after the cached part.
- * The kill banner, crosshair, chat and the rest of the vanilla HUD were never capped. Without framebuffers (OptiFine Fast Render
- * or antialiasing) HudManager's capped path draws its recorded HUD every frame, as before 1.7.3.
+ * The kill banner, crosshair, chat and the rest of the vanilla HUD were never capped. The buffer is Lads' own (HudBuffer189), so
+ * OptiFine Fast Render and antialiasing keep the cache (1.9.12); only without driver framebuffer support does HudManager's capped
+ * path draw its recorded HUD every frame, as before 1.7.3.
  * The buffer is cleared to transparent black and the HUD's straight-alpha blending is made to accumulate premultiplied alpha
  * (GlStateManagerMixin, OpenGlHelperMixin), so the one composite gives the colours drawing on the screen would have.
  */
@@ -38,7 +39,7 @@ public final class HudCache189 {
     static boolean render(GuiLadsAdapter g) {
         Minecraft mc = Minecraft.getMinecraft();
         // Before HudFrameCap.due: without framebuffers HudManager's replay needs this frame's build.
-        if (!HudFrameCap.enabled() || g.getGame() == null || !g.getGame().isIngame() || qaOff || !OpenGlHelper.isFramebufferEnabled()) {
+        if (!HudFrameCap.enabled() || g.getGame() == null || !g.getGame().isIngame() || qaOff || !OpenGlHelper.framebufferSupported) {
             free();
             return false;
         }
