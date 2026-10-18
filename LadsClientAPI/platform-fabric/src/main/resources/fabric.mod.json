@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "ladsclientapi",
+  "version": "1.0.0",
+  "name": "LadsClientAPI",
+  "description": "Server-side companion for The Lads Client.",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "com.thelads.ladsapi.fabric.LadsFabricMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "fabric-api": ">=0.161.0"
+  }
+}

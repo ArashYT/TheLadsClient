@@ -2,15 +2,25 @@
 // Every class is Java 17 bytecode: Forge 1.20.1's class scanner crashes on newer class files (C-ONEJAR report).
 // Lane SRV-B owns the `universalJar` task that merges common + all platforms into build/libs/LadsClientAPI-<version>.jar.
 
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.17.21' apply false
+    id 'net.fabricmc.fabric-loom-remap' version '1.17.21' apply false
+    id 'com.gradleup.shadow' version '9.6.0'
+}
+
 allprojects {
     group = 'com.thelads'
     version = '1.0.0'
 }
 
+repositories {
+    mavenCentral()
+}
+
 subprojects {
     apply plugin: 'java'
     java {
-        toolchain { languageVersion = JavaLanguageVersion.of(21) }
+        toolchain { languageVersion = JavaLanguageVersion.of(25) }
     }
     tasks.withType(JavaCompile).configureEach {
         options.release = 17
@@ -21,5 +31,55 @@ subprojects {
         maven { url = 'https://repo.papermc.io/repository/maven-public/' }
         maven { url = 'https://maven.fabricmc.net/' }
         maven { url = 'https://maven.minecraftforge.net/' }
+    }
+}
+
+configurations {
+    shade
+}
+
+dependencies {
+    shade 'org.yaml:snakeyaml:2.2'
+}
+
+tasks.register('universalJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    archiveBaseName = 'LadsClientAPI'
+    archiveClassifier = ''
+    archiveVersion = project.version.toString()
+    destinationDirectory = file("${buildDir}/libs")
+
+    dependsOn ':common:jar', ':platform-fabric:jar', ':platform-forge:jar'
+
+    configurations = [project.configurations.shade]
+
+    from project(':common').sourceSets.main.output
+    from project(':platform-fabric').sourceSets.main.output
+    from project(':platform-forge').sourceSets.main.output
+
+    if (project(':platform-paper').file('src/main').exists()) {
+        dependsOn ':platform-paper:jar'
+        from project(':platform-paper').sourceSets.main.output
+    }
+    if (project(':platform-velocity').file('src/main').exists()) {
+        dependsOn ':platform-velocity:jar'
+        from project(':platform-velocity').sourceSets.main.output
+    }
+
+    // Root fallback metadata so every loader finds its descriptor
+    from(file('src/main/resources')) {
+        include 'plugin.yml', 'velocity-plugin.json', 'pack.mcmeta'
+    }
+
+    relocate 'org.yaml.snakeyaml', 'com.thelads.ladsapi.lib.snakeyaml'
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    manifest {
+        attributes(
+            'Specification-Title': 'LadsClientAPI',
+            'Specification-Version': project.version,
+            'Implementation-Title': 'LadsClientAPI',
+            'Implementation-Version': project.version
+        )
     }
 }
