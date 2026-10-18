@@ -271,6 +271,7 @@ final class UiCapture {
 
     // ---- 2b. Server rules: a risky module on an unknown server, its Bypass button and the red warning ----
     private static boolean refillWas;
+    private static long rulesArmedAt;
     private static void serverRules() {
         steps.add(mc -> {
             Module refill = NativeQualityOfLife.module("StackRefill");
@@ -290,7 +291,11 @@ final class UiCapture {
                 "an unknown server turns Stack Refill off and its page shows the Bypass button");
             shot("ui-rules-1-blocked");
         });
-        steps.add(mc -> { click(menu, ui().controlBounds("toggle:detail")); pause(4); });
+        steps.add(mc -> {
+            click(menu, ui().controlBounds("toggle:detail"));
+            rulesArmedAt = System.currentTimeMillis() + com.thelads.core.client.gui.ConfirmDialog.DANGER_ARM_MS + 300;
+            pause(4);
+        });
         steps.add(mc -> {
             check(ui().confirmDialog().isDanger(), "Bypass opens the red at-your-own-risk warning");
             shot("ui-rules-2-warning");
@@ -301,8 +306,8 @@ final class UiCapture {
         steps.add(mc -> {
             check(ui().confirmDialog().isDanger() && !com.thelads.core.client.HypixelSafetyManager.isBypassed("StackRefill"),
                 "neither an early click nor Enter confirms the warning");
-            pause(240); // past the 3 s arming
         });
+        steps.add(mc -> { if (System.currentTimeMillis() < rulesArmedAt) step--; }); // one tick at a time until the 3 s arming is past
         steps.add(mc -> { shot("ui-rules-3-armed"); click(menu, ui().confirmDialog().confirmBounds()); pause(6); });
         steps.add(mc -> {
             Module refill = NativeQualityOfLife.module("StackRefill");
