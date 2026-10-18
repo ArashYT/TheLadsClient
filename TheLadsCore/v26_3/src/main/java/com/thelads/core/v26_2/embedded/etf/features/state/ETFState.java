@@ -71,6 +71,11 @@ public abstract class ETFState {
         mount(null);
     }
 
+    /** The Lads 1.9.12 perf: nothing mounted (not even a mountNone), so a model submit with nothing for ETF needs no mountNone of its own. */
+    public static boolean stackEmpty() {
+        return stateStack.isEmpty();
+    }
+
 
     public static @Nullable ETFEntityRenderState state() {
         return stateStack.peek();

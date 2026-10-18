@@ -11,6 +11,8 @@
     "GuiMixin",
     "EuphoriaClipboardMixin",
     "GuiHudCapMixin",
+    "WindowMinimizedPollMixin",
+    "XaeroWorldMapPaceMixin",
     "GuiRenderStateCaptureMixin",
     "TitleScreenMixin",
     "TitleWidgetMixin",

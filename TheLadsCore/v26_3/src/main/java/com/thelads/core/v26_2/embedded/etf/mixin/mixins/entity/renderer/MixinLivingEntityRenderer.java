@@ -34,13 +34,15 @@ public abstract class MixinLivingEntityRenderer<T extends LivingEntity, S extend
     private static final String RENDER = "submit(Lnet/minecraft/client/renderer/entity/state/LivingEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/level/CameraRenderState;)V";
 
     @Inject(method = RENDER, at = @At(value = "INVOKE", target = "Ljava/util/List;iterator()Ljava/util/Iterator;"))
-    private void etf$markFeatures(CallbackInfo ci) {
+    private void etf$markFeatures(CallbackInfo ci, @Local(argsOnly = true) LivingEntityRenderState state) {
+        if (com.thelads.core.v26_2.embedded.etf.features.ETFManager.idle(state)) return; // The Lads 1.9.12 perf (see MixinEntityRenderer)
         ETFState.pushRenderLayerModifyState(true);
         ETFState.isRenderingFeatures = true;
     }
 
     @Inject(method = RENDER, at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;popPose()V"))
-    private void etf$markFeaturesEnd(CallbackInfo ci) {
+    private void etf$markFeaturesEnd(CallbackInfo ci, @Local(argsOnly = true) LivingEntityRenderState state) {
+        if (com.thelads.core.v26_2.embedded.etf.features.ETFManager.idle(state)) return;
         ETFState.isRenderingFeatures = false;
         ETFState.popRenderLayerModifyState();
     }
