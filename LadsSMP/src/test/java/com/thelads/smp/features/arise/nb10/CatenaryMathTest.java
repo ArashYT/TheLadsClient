@@ -89,4 +89,27 @@ public class CatenaryMathTest {
         // Midpoint should be lower than endpoints
         assertTrue(y[segs / 2] < 10.0F, "Midpoint must have catenary sag downwards");
     }
+
+    @Test
+    void testZeroDistanceHandling() {
+        Vec3 p0 = new Vec3(10.0, 64.0, 10.0);
+        Vec3 p1 = new Vec3(10.0, 64.0, 10.0);
+        float slack = 1.0F;
+
+        Vec3 pt = CatenaryMath.getPoint(p0, p1, slack, 0.5F);
+        assertNotNull(pt);
+        assertFalse(Double.isNaN(pt.x));
+        assertFalse(Double.isNaN(pt.y));
+        assertFalse(Double.isNaN(pt.z));
+        assertEquals(10.0, pt.x, 0.001);
+        assertEquals(10.0, pt.z, 0.001);
+
+        float sag = CatenaryMath.getSagDepth(0.0F, slack);
+        assertTrue(sag >= 0.0F && !Float.isNaN(sag));
+
+        Vec3 windPt = CatenaryMath.getPointWithWind(p0, p1, slack, 0.5F, 10.0F, 0.0F);
+        assertNotNull(windPt);
+        assertEquals(10.0, windPt.x, 0.001);
+        assertEquals(10.0, windPt.z, 0.001);
+    }
 }

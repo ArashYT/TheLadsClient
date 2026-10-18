@@ -30,7 +30,9 @@ public final class AriseNB10Config {
     public int bulbLightEmission = 14;
     public boolean dropOnBreak = true;
     public boolean christmasJingles = true;
-    public int jinglesAmplitude = 40;
+    public float jinglesAmplitude = 1.0F;
+    public float windSwayAmplitude = 0.08F;
+    public float windSwaySpeed = 0.06F;
 
     public static File getConfigFile() {
         try {
@@ -94,6 +96,11 @@ public final class AriseNB10Config {
         if (renderDistance > 256) renderDistance = 256;
         if (bulbLightEmission < 0) bulbLightEmission = 0;
         if (bulbLightEmission > 15) bulbLightEmission = 15;
-        if (jinglesAmplitude < 1) jinglesAmplitude = 1;
+        if (jinglesAmplitude < 0.0F) jinglesAmplitude = 0.0F;
+        if (jinglesAmplitude > 5.0F) jinglesAmplitude = 5.0F;
+        if (windSwayAmplitude < 0.0F) windSwayAmplitude = 0.0F;
+        if (windSwayAmplitude > 0.5F) windSwayAmplitude = 0.5F;
+        if (windSwaySpeed < 0.0F) windSwaySpeed = 0.0F;
+        if (windSwaySpeed > 0.5F) windSwaySpeed = 0.5F;
     }
 }

@@ -61,6 +61,10 @@ public class HangingDecorationItem extends Item {
         Direction clickedFace = ctx.getClickedFace();
         ItemStack stack = ctx.getItemInHand();
 
+        if (!AriseNB10Config.get().enabled) {
+            return InteractionResult.PASS;
+        }
+
         if (level.isClientSide()) {
             return InteractionResult.SUCCESS;
         }
@@ -104,8 +108,7 @@ public class HangingDecorationItem extends Item {
         ConnectionTracker.PendingConnection pending = ConnectionTracker.getPending(player);
 
         if (pending == null) {
-            // First click: anchor start point
-            ensureFastener(level, anchorPos, anchorFace);
+            // First click: anchor start point without placing a fastener block yet
             ConnectionTracker.setPending(player, anchorPos, anchorFace, stack);
             level.playSound(null, anchorPos, SoundEvents.TRIPWIRE_ATTACH, SoundSource.BLOCKS, 1.0F, 1.2F);
             sendFeedback(player, Component.literal("§eAttached start to [" + anchorPos.getX() + ", " + anchorPos.getY() + ", " + anchorPos.getZ() + "]. Right-click second block to connect."));
@@ -137,7 +140,8 @@ public class HangingDecorationItem extends Item {
             ensureFastener(level, anchorPos, anchorFace);
 
             BlockEntity startBe = level.getBlockEntity(startPos);
-            if (startBe instanceof FastenerBlockEntity fastenerBe) {
+            BlockEntity endBe = level.getBlockEntity(anchorPos);
+            if (startBe instanceof FastenerBlockEntity startFastener && endBe instanceof FastenerBlockEntity endFastener) {
                 HangingConnection connection = new HangingConnection(
                         UUID.randomUUID(),
                         anchorPos,
@@ -147,7 +151,8 @@ public class HangingDecorationItem extends Item {
                         AriseNB10Config.get().sagMultiplier,
                         stack.copyWithCount(1)
                 );
-                fastenerBe.addConnection(connection);
+                startFastener.addConnection(connection);
+                endFastener.addIncomingConnection(connection.getId(), startPos);
 
                 if (!player.hasInfiniteMaterials()) {
                     stack.shrink(1);
@@ -158,7 +163,7 @@ public class HangingDecorationItem extends Item {
                 sendFeedback(player, Component.literal("§aHanging connection established!"));
                 return InteractionResult.SUCCESS;
             } else {
-                sendFeedback(player, Component.literal("§cFailed to locate start fastener block entity."));
+                sendFeedback(player, Component.literal("§cFailed to locate fastener block entities."));
                 ConnectionTracker.clearPending(player);
                 return InteractionResult.FAIL;
             }

@@ -17,7 +17,9 @@ public class AriseNB10ConfigTest {
         assertEquals(14, config.bulbLightEmission);
         assertTrue(config.dropOnBreak);
         assertTrue(config.christmasJingles);
-        assertEquals(40, config.jinglesAmplitude);
+        assertEquals(1.0F, config.jinglesAmplitude, 0.001F);
+        assertEquals(0.08F, config.windSwayAmplitude, 0.001F);
+        assertEquals(0.06F, config.windSwaySpeed, 0.001F);
     }
 
     @Test
@@ -28,7 +30,9 @@ public class AriseNB10ConfigTest {
         config.sagMultiplier = 0.01F;
         config.renderDistance = 5;
         config.bulbLightEmission = 20;
-        config.jinglesAmplitude = 0;
+        config.jinglesAmplitude = -1.0F;
+        config.windSwayAmplitude = 0.9F;
+        config.windSwaySpeed = -0.1F;
 
         config.validate();
 
@@ -36,6 +40,8 @@ public class AriseNB10ConfigTest {
         assertEquals(0.1F, config.sagMultiplier, 0.001F, "Sag multiplier clamped to min 0.1");
         assertEquals(16, config.renderDistance, "Render distance clamped to min 16");
         assertEquals(15, config.bulbLightEmission, "Bulb light clamped to max 15");
-        assertEquals(1, config.jinglesAmplitude, "Jingle amplitude clamped to min 1");
+        assertEquals(0.0F, config.jinglesAmplitude, 0.001F, "Jingle amplitude clamped to min 0");
+        assertEquals(0.5F, config.windSwayAmplitude, 0.001F, "Sway amplitude clamped to max 0.5");
+        assertEquals(0.0F, config.windSwaySpeed, 0.001F, "Sway speed clamped to min 0.0");
     }
 }

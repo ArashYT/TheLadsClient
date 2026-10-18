@@ -6,8 +6,11 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -28,8 +31,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
 
 /**
  * Directional fastener bracket block that can be placed against fences, walls, ceilings, and solid blocks.
@@ -116,6 +117,17 @@ public class FastenerBlock extends DirectionalBlock implements EntityBlock {
     }
 
     @Override
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        if (player.isCreative()) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof FastenerBlockEntity fastenerBe) {
+                fastenerBe.setBrokenByCreative(true);
+            }
+        }
+        return super.playerWillDestroy(level, pos, state, player);
+    }
+
+    @Override
     protected InteractionResult useWithoutItem(
             BlockState state,
             Level level,
@@ -123,21 +135,41 @@ public class FastenerBlock extends DirectionalBlock implements EntityBlock {
             Player player,
             BlockHitResult hit
     ) {
-        if (player.isShiftKeyDown() || player.getMainHandItem().is(net.minecraft.world.item.Items.SHEARS)) {
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof FastenerBlockEntity fastenerBe) {
+            if (fastenerBe.detachOne(player)) {
+                if (!level.isClientSide()) {
+                    level.playSound(null, pos, SoundEvents.SHEARS_SNIP, SoundSource.BLOCKS, 1.0F, 1.0F);
+                }
+                return InteractionResult.SUCCESS;
+            }
+        }
+        return super.useWithoutItem(state, level, pos, player, hit);
+    }
+
+    @Override
+    protected InteractionResult useItemOn(
+            ItemStack stack,
+            BlockState state,
+            Level level,
+            BlockPos pos,
+            Player player,
+            InteractionHand hand,
+            BlockHitResult hit
+    ) {
+        if (stack.is(Items.SHEARS)) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof FastenerBlockEntity fastenerBe) {
-                List<HangingConnection> conns = fastenerBe.getConnections();
-                if (!conns.isEmpty()) {
+                if (fastenerBe.detachOne(player)) {
                     if (!level.isClientSide()) {
-                        HangingConnection last = conns.get(conns.size() - 1);
-                        fastenerBe.removeConnection(last.getId());
+                        stack.hurtAndBreak(1, player, player.getEquipmentSlotForItem(stack));
                         level.playSound(null, pos, SoundEvents.SHEARS_SNIP, SoundSource.BLOCKS, 1.0F, 1.0F);
                     }
                     return InteractionResult.SUCCESS;
                 }
             }
         }
-        return super.useWithoutItem(state, level, pos, player, hit);
+        return super.useItemOn(stack, state, level, pos, player, hand, hit);
     }
 
     @Override
@@ -157,9 +189,11 @@ public class FastenerBlock extends DirectionalBlock implements EntityBlock {
 
         if (hasSignal != wasPowered) {
             level.setBlock(pos, state.setValue(POWERED, hasSignal), Block.UPDATE_ALL);
-            if (hasSignal && AriseNB10Config.get().christmasJingles) {
-                // Play festive chime when powered
-                level.playSound(null, pos, SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 1.5F, 1.4F);
+            if (hasSignal && AriseNB10Config.get().enabled && AriseNB10Config.get().christmasJingles) {
+                float volume = 1.2F * AriseNB10Config.get().jinglesAmplitude;
+                if (volume > 0.001F) {
+                    level.playSound(null, pos, SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, volume, 1.4F);
+                }
             }
         }
     }
