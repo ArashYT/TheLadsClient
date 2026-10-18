@@ -9,8 +9,7 @@
     "JoinMultiplayerInvoker",
     "PacketDecodeGuardMixin",
     "SkyColorMixin",
-    "XaeroWorldMapPaceMixin",
-    "XaeroConfigMemoMixin"
+    "XaeroWorldMapPaceMixin"
   ],
   "injectors": {
     "defaultRequire": 1
