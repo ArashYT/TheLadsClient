@@ -4,6 +4,7 @@ package com.thelads.core.v1_8_9.mixin;
 
 import com.google.common.collect.Ordering;
 import com.thelads.core.client.hud.HudCover;
+import com.thelads.core.client.ladsapi.LadsBadge;
 import com.thelads.core.v1_8_9.feature.TabListCache189;
 import com.thelads.core.v1_8_9.feature.TabTweaks189;
 import java.util.Collection;
@@ -21,6 +22,7 @@ import net.minecraft.scoreboard.Scoreboard;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.IChatComponent;
 import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -45,11 +47,14 @@ public abstract class GuiPlayerTabOverlayMixin {
     @Unique private static final String RECT = "Lnet/minecraft/client/gui/GuiPlayerTabOverlay;drawRect(IIIII)V";
     @Unique private static final String TEXT = "Lnet/minecraft/client/gui/FontRenderer;drawStringWithShadow(Ljava/lang/String;FFI)I";
     @Unique private static final String FACE = "Lnet/minecraft/client/gui/Gui;drawScaledCustomSizeModalRect(IIFFIIIIFF)V";
+    @Unique private static final ResourceLocation LADS_BADGE = new ResourceLocation(LadsBadge.TEXTURE_NAMESPACE, LadsBadge.TEXTURE_PATH);
     @Shadow @Final private Minecraft mc;
     @Shadow private IChatComponent header, footer;
     @Unique private boolean ladsHeads, ladsNpc;
     /** The list's move and scale this frame: a point p of the list is drawn at scale * (p + move). */
     @Unique private float ladsScale = 1, ladsMoveX, ladsMoveY;
+    @Unique private NetworkPlayerInfo ladsWidthInfo;
+    @Unique private NetworkPlayerInfo ladsRowInfo;
     @Redirect(method = RENDER, at = @At(value = "INVOKE", target = "Lcom/google/common/collect/Ordering;sortedCopy(Ljava/lang/Iterable;)Ljava/util/List;", remap = false), require = 1)
     private List<NetworkPlayerInfo> ladsSortedCopy(Ordering<NetworkPlayerInfo> ordering, Iterable<NetworkPlayerInfo> elements) {
         int currentVersion = TabListCache189.getVersion();
@@ -84,6 +89,8 @@ public abstract class GuiPlayerTabOverlayMixin {
 
     @Inject(method = RENDER, at = @At("RETURN"), require = 1)
     private void ladsMoveTabDone(int width, Scoreboard scoreboard, ScoreObjective objective, CallbackInfo ci) {
+        ladsWidthInfo = null;
+        ladsRowInfo = null;
         GlStateManager.popMatrix();
     }
 
@@ -177,6 +184,32 @@ public abstract class GuiPlayerTabOverlayMixin {
         return font.drawString(text, x, y, color, !TabTweaks189.removeHeaderShadow);
     }
 
+    @Redirect(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiPlayerTabOverlay;getPlayerName(Lnet/minecraft/client/network/NetworkPlayerInfo;)Ljava/lang/String;", ordinal = 0), require = 1)
+    private String ladsCaptureWidthInfo(GuiPlayerTabOverlay overlay, NetworkPlayerInfo info) {
+        ladsWidthInfo = info;
+        return overlay.getPlayerName(info);
+    }
+
+    @Redirect(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/FontRenderer;getStringWidth(Ljava/lang/String;)I", ordinal = 0), require = 1)
+    private int ladsRowWidth(FontRenderer font, String text) {
+        int w = font.getStringWidth(text);
+        if (ladsWidthInfo != null) {
+            if (ladsWidthInfo.getGameProfile() != null && ladsWidthInfo.getGameProfile().getId() != null) {
+                if (LadsBadge.showInTab(ladsWidthInfo.getGameProfile().getId())) {
+                    w += LadsBadge.TAB_SIZE + LadsBadge.GAP;
+                }
+            }
+            ladsWidthInfo = null;
+        }
+        return w;
+    }
+
+    @Redirect(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiPlayerTabOverlay;getPlayerName(Lnet/minecraft/client/network/NetworkPlayerInfo;)Ljava/lang/String;", ordinal = 1), require = 1)
+    private String ladsCaptureRowInfo(GuiPlayerTabOverlay overlay, NetworkPlayerInfo info) {
+        ladsRowInfo = info;
+        return overlay.getPlayerName(info);
+    }
+
     @Redirect(method = RENDER, at = @At(value = "INVOKE", target = TEXT, ordinal = 1), require = 1)
     private int ladsSpectatorName(FontRenderer font, String text, float x, float y, int color) {
         return ladsName(font, text, x, y, color);
@@ -189,7 +222,28 @@ public abstract class GuiPlayerTabOverlayMixin {
 
     @Unique
     private int ladsName(FontRenderer font, String text, float x, float y, int color) {
-        return font.drawString(text, x + (ladsHeads && TabTweaks189.improvedHeads ? 1 : 0), y, color, !TabTweaks189.removeBodyShadow);
+        float drawX = x + (ladsHeads && TabTweaks189.improvedHeads ? 1 : 0);
+        NetworkPlayerInfo info = ladsRowInfo;
+        ladsRowInfo = null;
+        if (info != null && info.getGameProfile() != null && info.getGameProfile().getId() != null) {
+            UUID id = info.getGameProfile().getId();
+            if (LadsBadge.showInTab(id)) {
+                mc.getTextureManager().bindTexture(LADS_BADGE);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+                float alpha = ((color >> 24) & 0xFF) / 255.0F;
+                if (alpha <= 0.0F) alpha = 1.0F;
+                GlStateManager.color(1.0F, 1.0F, 1.0F, alpha);
+                GlStateManager.enableBlend();
+                GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+                Gui.drawScaledCustomSizeModalRect((int) drawX, (int) y, 0.0F, 0.0F,
+                        LadsBadge.TEXTURE_SIZE, LadsBadge.TEXTURE_SIZE,
+                        LadsBadge.TAB_SIZE, LadsBadge.TAB_SIZE,
+                        (float) LadsBadge.TEXTURE_SIZE, (float) LadsBadge.TEXTURE_SIZE);
+                drawX += LadsBadge.TAB_SIZE + LadsBadge.GAP;
+            }
+        }
+        return font.drawString(text, drawX, y, color, !TabTweaks189.removeBodyShadow);
     }
 
     @Redirect(method = RENDER, at = @At(value = "INVOKE", target = TEXT, ordinal = 3), require = 1)
