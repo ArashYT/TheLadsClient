@@ -83,6 +83,7 @@ final class Anim1911Capture26 {
     private static int tick = -1, step, at = 100, passed, failed;
     private static String pendingShot;
     private static boolean done, enabledBefore, legacyBefore;
+    private static int fovBefore;
 
     private Anim1911Capture26() {}
 
@@ -97,6 +98,7 @@ final class Anim1911Capture26 {
             enabledBefore = NativeOldAnimations.module().isEnabled();
             legacyBefore = NativeQualityOfLife.module("LegacySwing").isEnabled();
             NativeQualityOfLife.module("LegacySwing").setEnabled(false); // the pure 1.7 swing
+            fovBefore = mc.options.fov().get();
             command(server, "gamemode creative @p"); // no ammo, hunger or durability in the way of a use
             command(server, "time set noon");
             command(server, "weather clear");
@@ -112,20 +114,24 @@ final class Anim1911Capture26 {
         Shot shot = SHOTS.get(step / 2);
         boolean on = step % 2 == 0;
         int t = tick - at;
-        int shotAt = shot.riptide ? 14 + shot.use + 4 : 14 + Math.max(shot.use, 6);
+        // The use starts once rain has set in (riptide) or the horn's 7 s cooldown from the last shot is over.
+        int start = shot.riptide ? 40 : (shot.main + shot.off).contains("goat_horn") ? 150 : 14;
+        int shotAt = shot.riptide ? start + shot.use + 4 : start + Math.max(shot.use, 6);
         if (t == 0) {
             mc.options.keyUse.setDown(false);
             NativeOldAnimations.module().setEnabled(on);
             mc.options.setCameraType(shot.third ? CameraType.THIRD_PERSON_FRONT : CameraType.FIRST_PERSON);
             mc.options.mainHand().set(shot.leftArm ? HumanoidArm.LEFT : HumanoidArm.RIGHT);
+            mc.options.broadcastOptions(); // the main arm the server echoes back
+            mc.options.fov().set(shot.third ? 30 : fovBefore); // third person: zoomed in on the player
             mc.player.setYRot(0);
             mc.player.setXRot(shot.pitch);
             command(server, "weather " + (shot.riptide ? "rain" : "clear"));
             command(server, "item replace entity @p weapon.mainhand with " + shot.main);
             command(server, "item replace entity @p weapon.offhand with " + shot.off);
         } else if (t == 10) NativeOldAnimations.APPLIED.clear();
-        else if (t == 14 && shot.use > 0) mc.options.keyUse.setDown(true);
-        else if (shot.riptide && t == 14 + shot.use) mc.options.keyUse.setDown(false); // released: the riptide launch
+        else if (t == start && shot.use > 0) mc.options.keyUse.setDown(true);
+        else if (shot.riptide && t == start + shot.use) mc.options.keyUse.setDown(false); // released: the riptide launch
         if (t == shotAt) {
             String name = shot.name + (on ? "-on" : "-off");
             pendingShot = name;
@@ -149,6 +155,8 @@ final class Anim1911Capture26 {
         mc.options.keyUse.setDown(false);
         mc.options.setCameraType(CameraType.FIRST_PERSON);
         mc.options.mainHand().set(HumanoidArm.RIGHT);
+        mc.options.broadcastOptions();
+        mc.options.fov().set(fovBefore);
         NativeOldAnimations.module().setEnabled(enabledBefore);
         NativeQualityOfLife.module("LegacySwing").setEnabled(legacyBefore);
         command(server, "weather clear");
@@ -164,7 +172,7 @@ final class Anim1911Capture26 {
     }
 
     private static void command(net.minecraft.server.MinecraftServer server, String command) {
-        server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack(), command));
+        server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), command));
     }
 
     /** Each completed frame (NativeWorldVerification.renderedFrame): a requested screenshot. */
