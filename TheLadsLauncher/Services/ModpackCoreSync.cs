@@ -11,8 +11,8 @@ namespace TheLadsLauncher.Services;
 /// <summary>
 /// Keeps the Lads Core inside a modpack instance at the newest build this launcher bundles (game-mods/&lt;mc&gt;/theladscore.jar):
 /// on install, on update and before every launch. An instance without an enabled Core jar is never touched, and only instances
-/// of this launcher's own list (Modpacks.List) reach it: CurseForge, Modrinth App, Prism and MultiMC instances are started by
-/// their own launchers (ExternalInstances) and never pass through here.
+/// of this launcher's own list (Modpacks.List) reach it: CurseForge, Modrinth App, Prism and MultiMC instances (ExternalInstances),
+/// started directly or by their own launchers, never pass through here (ModpackLauncher skips it for them).
 /// </summary>
 public static class ModpackCoreSync
 {

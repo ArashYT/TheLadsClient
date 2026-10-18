@@ -222,6 +222,121 @@ public sealed class ExternalInstancesTests : IDisposable
         Assert.Equal(new[] { @"D:\MultiMC", @"E:\CF" }, ExternalInstances.LoadCustomFolders(_root));
     }
 
+    // ── Settings Play respects, and the direct launch plan ──────────────────
+
+    [Fact]
+    public void CurseForgeMemoryAndJavaArguments()
+    {
+        var own = ExternalInstances.ParseCurseForge("""{"name":"A","gameVersion":"1.20.1","isMemoryOverride":true,"allocatedMemory":6144,"javaArgsOverride":"-Xss2m \"-Dx=a b\"","manifest":{"minecraft":{"recommendedRam":10240,"additionalJavaArgs":"-Dpack=1"}}}""", "d", "r")!;
+        Assert.Equal(6144, own.MaxRamMb);
+        Assert.Equal(new[] { "-Xss2m", "-Dx=a b" }, own.JvmArguments);
+        var pack = ExternalInstances.ParseCurseForge("""{"name":"A","gameVersion":"1.20.1","isMemoryOverride":false,"allocatedMemory":0,"javaArgsOverride":null,"manifest":{"minecraft":{"recommendedRam":10240,"additionalJavaArgs":"-Dpack=1"}}}""", "d", "r")!;
+        Assert.Equal(10240, pack.MaxRamMb);
+        Assert.Equal(new[] { "-Dpack=1" }, pack.JvmArguments);
+        var plain = ExternalInstances.ParseCurseForge("""{"name":"A","gameVersion":"1.20.1","manifest":null}""", "d", "r")!;
+        Assert.Null(plain.MaxRamMb);
+        Assert.Empty(plain.JvmArguments);
+    }
+
+    [Fact]
+    public void PrismSettingsFromTheInstanceOrElseTheLauncher()
+    {
+        var launcher = ExternalInstances.ParseIni("MaxMemAlloc=8192\nMinMemAlloc=1024\nJvmArgs=\"-XX:+UseG1GC -Dglobal=1\"\nJavaPath=C:/P/java/java-runtime-epsilon/bin/javaw.exe\n");
+        var inherits = ExternalInstances.ParsePrism("name=A\n", null, Path.Combine(_root, "A"), _root, null, ExternalLauncher.Prism, launcher)!;
+        Assert.Equal((8192, 1024), (inherits.MaxRamMb, inherits.MinRamMb));
+        Assert.Equal(new[] { "-XX:+UseG1GC", "-Dglobal=1" }, inherits.JvmArguments);
+        Assert.Equal("C:/P/java/java-runtime-epsilon/bin/javaw.exe", inherits.JavaPath);
+
+        const string cfg = "name=B\nOverrideMemory=true\nMaxMemAlloc=3072\nMinMemAlloc=512\nOverrideJavaArgs=true\nJvmArgs=-Dmine=1\nOverrideJavaLocation=true\nJavaPath=D:/jdk-21/bin/javaw.exe\n";
+        var own = ExternalInstances.ParsePrism(cfg, null, Path.Combine(_root, "B"), _root, null, ExternalLauncher.Prism, launcher)!;
+        Assert.Equal((3072, 512), (own.MaxRamMb, own.MinRamMb));
+        Assert.Equal(new[] { "-Dmine=1" }, own.JvmArguments);
+        Assert.Equal("D:/jdk-21/bin/javaw.exe", own.JavaPath);
+
+        var prism9 = ExternalInstances.ParsePrism("name=C\nOverrideJava=true\nJvmArgs=-Dnine=1\nJavaPath=\n", null, Path.Combine(_root, "C"), _root, null, ExternalLauncher.Prism, launcher)!;
+        Assert.Equal(new[] { "-Dnine=1" }, prism9.JvmArguments);
+        Assert.Null(prism9.JavaPath);
+        Assert.Equal(8192, prism9.MaxRamMb); // memory not overridden
+    }
+
+    [Fact]
+    public void PrismInstancesThePipelineCannotRebuildAreFlagged()
+    {
+        const string fabric = """{"components":[{"uid":"org.lwjgl3","version":"3.3.1"},{"uid":"net.minecraft","version":"1.20.1"},{"uid":"net.fabricmc.intermediary","version":"1.20.1"},{"uid":"net.fabricmc.fabric-loader","version":"0.16.9"}]}""";
+        var dir = Path.Combine(_root, "P");
+        Directory.CreateDirectory(dir);
+        Assert.Null(ExternalInstances.PrismProblem(fabric, dir));
+        Assert.Equal("it uses the OptiFine component", ExternalInstances.PrismProblem("""{"components":[{"uid":"net.minecraft","version":"1.20.1"},{"uid":"optifine.OptiFine","cachedName":"OptiFine"}]}""", dir));
+        Directory.CreateDirectory(Path.Combine(dir, "patches"));
+        Assert.Null(ExternalInstances.PrismProblem(fabric, dir)); // an empty folder is nothing
+        File.WriteAllText(Path.Combine(dir, "patches", "net.minecraft.json"), "{}");
+        Assert.Equal("it has customized components", ExternalInstances.PrismProblem(fabric, dir));
+        Directory.CreateDirectory(Path.Combine(dir, "jarmods"));
+        File.WriteAllText(Path.Combine(dir, "jarmods", "x.jar"), "");
+        Assert.Equal("it has jar mods", ExternalInstances.ParsePrism("name=P\n", fabric, dir, _root, null)!.Unsupported);
+    }
+
+    [Fact]
+    public void ModrinthMemoryAndArgumentsFromTheProfileOrElseTheApp()
+    {
+        var app = Path.Combine(_root, "ModrinthSettings");
+        Directory.CreateDirectory(app);
+        Exec(Path.Combine(app, "app.db"), """
+            CREATE TABLE settings (id INTEGER, extra_launch_args TEXT, mc_memory_max INTEGER, custom_dir TEXT);
+            INSERT INTO settings VALUES (0, '["-Dapp=1"]', 2048, NULL);
+            CREATE TABLE profiles (path TEXT, name TEXT, icon_path TEXT, game_version TEXT, mod_loader TEXT, mod_loader_version TEXT, last_played INTEGER,
+                override_java_path TEXT, override_extra_launch_args TEXT, override_mc_memory_max INTEGER);
+            INSERT INTO profiles VALUES ('own', 'Own', NULL, '1.20.1', 'fabric', '0.16.9', NULL, 'C:/jdk/bin/javaw.exe', '["-Dmine=1"]', 5120);
+            INSERT INTO profiles VALUES ('app', 'App', NULL, '1.20.1', 'fabric', '0.16.9', NULL, NULL, '[]', NULL);
+            """);
+        var list = ExternalInstances.ReadModrinthDatabase(Path.Combine(app, "app.db"), app).ToDictionary(i => i.Id);
+        Assert.Equal(5120, list["own"].MaxRamMb);
+        Assert.Equal(new[] { "-Dmine=1" }, list["own"].JvmArguments);
+        Assert.Equal("C:/jdk/bin/javaw.exe", list["own"].JavaPath);
+        Assert.Equal(2048, list["app"].MaxRamMb);
+        Assert.Equal(new[] { "-Dapp=1" }, list["app"].JvmArguments);
+        Assert.Null(list["app"].JavaPath);
+
+        var old = ExternalInstances.ParseModrinthProfileJson("""{"metadata":{"name":"O","game_version":"1.20.1","loader":"vanilla"},"memory":{"maximum":3000},"java":{"extra_arguments":["-Dold=1"]}}""", Path.Combine(_root, "o"), _root)!;
+        Assert.Equal(3000, old.MaxRamMb);
+        Assert.Equal(new[] { "-Dold=1" }, old.JvmArguments);
+    }
+
+    [Fact]
+    public void LaunchPlanPerLauncher()
+    {
+        string jdk = Path.Combine(_root, "jdk-17", "bin", "javaw.exe"), prismJava = Path.Combine(_root, "Prism", "java", "bin", "javaw.exe");
+        foreach (var file in new[] { jdk, prismJava }) { Directory.CreateDirectory(Path.GetDirectoryName(file)!); File.WriteAllText(file, ""); }
+
+        var cf = ExternalInstances.ParseCurseForge("""{"name":"CF","gameVersion":"1.20.1","baseModLoader":{"name":"fabric-0.16.9-1.20.1"},"isMemoryOverride":true,"allocatedMemory":5000}""", Path.Combine(_root, "CF"), _root)!;
+        Assert.Null(ExternalInstances.DirectLaunchProblem(cf));
+        var cfPlan = ExternalInstances.ToModpack(cf);
+        Assert.True(cfPlan.IsExternal);
+        Assert.Equal(Path.Combine(_root, "CF"), cfPlan.GameDirectory); // CurseForge plays in the instance folder itself
+        Assert.Equal(("1.20.1", "fabric", "0.16.9", 5000), (cfPlan.McVersion, cfPlan.Loader, cfPlan.LoaderVersion, cfPlan.MaxRamMb));
+        Assert.StartsWith("external-", cfPlan.Id);
+        Assert.Equal(cfPlan.Id, ExternalInstances.ToModpack(cf).Id); // stable: the card finds its running game again
+
+        var prism = new ExternalInstance { Launcher = ExternalLauncher.Prism, Name = "P", Directory = Path.Combine(_root, "Prism", "instances", "P"), GameDirectory = Path.Combine(_root, "Prism", "instances", "P", "minecraft"),
+            DataRoot = Path.Combine(_root, "Prism"), McVersion = "1.20.1", Loader = "vanilla", JavaPath = prismJava };
+        var prismPlan = ExternalInstances.ToModpack(prism);
+        Assert.Equal(prism.GameDirectory, prismPlan.GameDirectory);
+        Assert.Null(prismPlan.JavaPath); // Prism's own downloaded Java is not run
+        Assert.Equal(jdk, ExternalInstances.ToModpack(prism with { JavaPath = jdk }).JavaPath); // a plain JDK is
+        Assert.Null(ExternalInstances.ToModpack(prism with { JavaPath = Path.Combine(_root, "missing", "javaw.exe") }).JavaPath);
+
+        var modrinth = new ExternalInstance { Launcher = ExternalLauncher.Modrinth, Name = "M", Directory = Path.Combine(_root, "M"), GameDirectory = Path.Combine(_root, "M"), McVersion = "26.3", Loader = "fabric", LoaderVersion = "0.19.5" };
+        Assert.Null(ExternalInstances.DirectLaunchProblem(modrinth));
+        Assert.Equal(Path.Combine(_root, "M"), ExternalInstances.ToModpack(modrinth).GameDirectory);
+
+        Assert.Equal("its fabric version is unknown", ExternalInstances.DirectLaunchProblem(modrinth with { LoaderVersion = null }));
+        Assert.Equal("LiteLoader is not supported", ExternalInstances.DirectLaunchProblem(modrinth with { Loader = "liteloader" }));
+        Assert.Equal("its Minecraft version is unknown", ExternalInstances.DirectLaunchProblem(modrinth with { McVersion = null }));
+        Assert.Equal("the unknown loader is not supported", ExternalInstances.DirectLaunchProblem(modrinth with { Loader = null }));
+        Assert.Equal("it has jar mods", ExternalInstances.DirectLaunchProblem(modrinth with { Unsupported = "it has jar mods" }));
+        Assert.Equal("its Java arguments load an agent (-javaagent:x.jar)", ExternalInstances.DirectLaunchProblem(modrinth with { JvmArguments = new[] { "-javaagent:x.jar" } }));
+    }
+
     private static void Exec(string db, string sql)
     {
         using (var c = new SqliteConnection($"Data Source={db};Pooling=False"))

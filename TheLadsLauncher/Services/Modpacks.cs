@@ -36,7 +36,15 @@ public sealed class ModpackInstance
     public DateTime? LastPlayedUtc { get; set; }
 
     [JsonIgnore] public string Directory { get; set; } = "";
-    [JsonIgnore] public string GameDirectory => Path.Combine(Directory, "minecraft");
+    /// <summary>Set for another launcher's instance (<see cref="ExternalInstances.ToModpack"/>): its own game folder, to which nothing but
+    /// the game writes. ModpackLauncher then skips every Lads step that writes there and <see cref="Modpacks.Save"/> refuses it.</summary>
+    [JsonIgnore] public string? ExternalGameDirectory { get; init; }
+    [JsonIgnore] public bool IsExternal => ExternalGameDirectory != null;
+    [JsonIgnore] public string GameDirectory => ExternalGameDirectory ?? Path.Combine(Directory, "minecraft");
+    /// <summary>External instances: their launcher's minimum memory, extra JVM arguments and a usable pinned Java.</summary>
+    [JsonIgnore] public int MinRamMb { get; init; }
+    [JsonIgnore] public IReadOnlyList<string> JvmArguments { get; init; } = Array.Empty<string>();
+    [JsonIgnore] public string? JavaPath { get; init; }
     [JsonIgnore] public string? IconFile => IconPath is { Length: > 0 } icon ? Mrpack.SafePath(Directory, icon) : null;
 }
 
@@ -97,6 +105,7 @@ public static class Modpacks
 
     public static void Save(ModpackInstance instance)
     {
+        if (instance.IsExternal) throw new InvalidOperationException($"{instance.Name} belongs to another launcher; the Lads launcher never writes to it.");
         if (!Loaders.Contains(instance.Loader)) throw new InvalidDataException($"Unknown loader '{instance.Loader}'.");
         var file = Path.Combine(instance.Directory, "instance.json");
         var temp = file + ".tmp";
