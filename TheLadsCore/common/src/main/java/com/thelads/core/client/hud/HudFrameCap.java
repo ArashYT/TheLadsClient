@@ -101,6 +101,11 @@ public final class HudFrameCap {
     public static int builds, changes;
     /** True while a version rebuilds the whole HUD under this cap. */
     public static boolean wholeHud;
+    /**
+     * Which HUDs a {@link #wholeHud} pass draws: all (null), only those under the cap (false: a version's cached build), or only those
+     * that ignore it (true: drawn live every frame next to that cache).
+     */
+    public static Boolean exempt;
 
     private HudFrameCap() {}
 
