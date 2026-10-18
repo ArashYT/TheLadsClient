@@ -1327,6 +1327,17 @@ public partial class ModpacksView : UserControl
         toggle.IsCheckedChanged += (_, _) =>
         {
             bool nowEnabled = toggle.IsChecked == true;
+            bool isCore = string.Equals(item.BaseName, "theladscore", StringComparison.OrdinalIgnoreCase)
+                || item.DisplayName.IndexOf("The Lads Core", StringComparison.OrdinalIgnoreCase) >= 0
+                || item.DisplayName.IndexOf("LadsCore", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            if (isCore && !nowEnabled && _selected != null && ExperiencesService.AllExperiences.Any(exp => string.Equals(exp.Id, ExperiencesService.CanonicalPackId(_selected.Id), StringComparison.OrdinalIgnoreCase)))
+            {
+                ManageStatus.Text = "Required for this official Experience.";
+                toggle.IsChecked = true;
+                return;
+            }
+
             try
             {
                 string oldPath = item.FilePath;
@@ -1335,12 +1346,18 @@ public partial class ModpacksView : UserControl
                 if (File.Exists(oldPath) && oldPath != newPath)
                 {
                     File.Move(oldPath, newPath);
+                    var oldIcon = oldPath + ".icon.png";
+                    var newIcon = newPath + ".icon.png";
+                    if (File.Exists(oldIcon))
+                    {
+                        try { File.Move(oldIcon, newIcon, overwrite: true); } catch { }
+                    }
                     item.FilePath = newPath;
                     item.FileName = Path.GetFileName(newPath);
                     item.Enabled = nowEnabled;
-                    if (string.Equals(item.BaseName, "theladscore", StringComparison.OrdinalIgnoreCase)
-                        || item.DisplayName.IndexOf("LadsCore", StringComparison.OrdinalIgnoreCase) >= 0)
+                    if (isCore)
                     {
+                        LadsCoreToggle.IsChecked = nowEnabled;
                         if (_selected is { } selectedInst && !selectedInst.IsExternal)
                         {
                             selectedInst.LadsCore = nowEnabled;
@@ -3211,9 +3228,9 @@ public partial class ModpacksView : UserControl
         i.Name = name;
         i.MaxRamMb = (int)(RamBox.Value ?? 0);
         bool isExperience = ExperiencesService.AllExperiences.Any(exp => string.Equals(exp.Id, ExperiencesService.CanonicalPackId(i.Id), StringComparison.OrdinalIgnoreCase));
-        if (!isExperience && LadsCoreToggle.IsEnabled)
+        if (!isExperience)
         {
-            i.LadsCore = LadsCoreToggle.IsChecked ?? false;
+            i.LadsCore = LadsCoreToggle.IsEnabled ? (LadsCoreToggle.IsChecked ?? false) : false;
         }
         try
         {

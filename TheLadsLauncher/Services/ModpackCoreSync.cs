@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text.Json;
 
 namespace TheLadsLauncher.Services;
 
@@ -43,6 +44,8 @@ public static class ModpackCoreSync
                 candidates.Add(Path.Combine(dir.FullName, "artifacts", "client", "game-mods", mcVersion, fileName));
                 candidates.Add(Path.Combine(dir.FullName, "Lads Client", "TheLadsLauncher", "game-mods", mcVersion, fileName));
                 candidates.Add(Path.Combine(dir.FullName, "Lads Client", "artifacts", "client", "game-mods", mcVersion, fileName));
+                candidates.Add(Path.Combine(dir.FullName, "publish", "game-mods", mcVersion, fileName));
+                candidates.Add(Path.Combine(dir.FullName, "Lads Client", "publish", "game-mods", mcVersion, fileName));
             }
         }
         return candidates.Where(File.Exists).Select(Path.GetFullPath).FirstOrDefault();
@@ -102,11 +105,110 @@ public static class ModpackCoreSync
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
     }
 
+    /// <summary>Checks whether a list of mod files contains an enabled Fabric API jar (fabric-api, fabric_api, fabricapi; forgified-fabric-api counts).</summary>
+    public static bool HasFabricApi(IEnumerable<string>? modFiles)
+    {
+        if (modFiles == null) return false;
+        foreach (var file in modFiles)
+        {
+            var name = Path.GetFileName(file);
+            if (name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!name.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)) continue;
+            if (name.StartsWith("theladscore", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("TheLadsCore", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (name.Contains("fabric-api", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("fabric_api", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("fabricapi", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>Checks whether a mods directory contains an enabled Fabric API jar.</summary>
+    public static bool HasFabricApi(string? modsDirectory)
+    {
+        if (string.IsNullOrEmpty(modsDirectory) || !Directory.Exists(modsDirectory)) return false;
+        try { return HasFabricApi(Directory.EnumerateFiles(modsDirectory)); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
+    }
+
+    private static readonly ConcurrentDictionary<string, (long LastWriteTicks, Version? MinVersion, string? MinStr)> _fabricLoaderConstraintCache = new(StringComparer.OrdinalIgnoreCase);
+
+    public static bool TryParseVersion(string? str, out Version? version)
+    {
+        version = null;
+        if (string.IsNullOrWhiteSpace(str)) return false;
+        var s = str.Trim().TrimStart('v', 'V', '>', '=', ' ', '^', '~');
+        int dash = s.IndexOf('-');
+        if (dash >= 0) s = s[..dash];
+        int plus = s.IndexOf('+');
+        if (plus >= 0) s = s[..plus];
+        if (string.IsNullOrEmpty(s)) return false;
+        if (!s.Contains('.')) s += ".0";
+        return Version.TryParse(s, out version);
+    }
+
+    public static (Version? MinVersion, string? MinStr) GetBundledFabricLoaderConstraint(string jarPath)
+    {
+        var fullPath = Path.GetFullPath(jarPath);
+        var fi = new FileInfo(fullPath);
+        if (!fi.Exists) return (null, null);
+
+        long ticks = fi.LastWriteTimeUtc.Ticks;
+        if (_fabricLoaderConstraintCache.TryGetValue(fullPath, out var cached) && cached.LastWriteTicks == ticks)
+        {
+            return (cached.MinVersion, cached.MinStr);
+        }
+
+        try
+        {
+            using var zip = ZipFile.OpenRead(fullPath);
+            var entry = zip.GetEntry("fabric.mod.json");
+            if (entry != null)
+            {
+                using var s = entry.Open();
+                using var doc = JsonDocument.Parse(s);
+                if (doc.RootElement.TryGetProperty("depends", out var depends) &&
+                    depends.TryGetProperty("fabricloader", out var flProp))
+                {
+                    string? raw = null;
+                    if (flProp.ValueKind == JsonValueKind.String)
+                        raw = flProp.GetString();
+                    else if (flProp.ValueKind == JsonValueKind.Array && flProp.GetArrayLength() > 0)
+                        raw = flProp[0].GetString();
+
+                    if (!string.IsNullOrWhiteSpace(raw))
+                    {
+                        string minStr = raw.Trim().TrimStart('>', '=', ' ', '^', '~');
+                        if (TryParseVersion(minStr, out var ver))
+                        {
+                            _fabricLoaderConstraintCache[fullPath] = (ticks, ver, minStr);
+                            return (ver, minStr);
+                        }
+                    }
+                }
+            }
+        }
+        catch { }
+
+        _fabricLoaderConstraintCache[fullPath] = (ticks, null, null);
+        return (null, null);
+    }
+
     /// <summary>
-    /// Checks whether The Lads Core is supported for a given Minecraft version and loader.
+    /// Checks whether The Lads Core is supported for a given Minecraft version, loader, and installed mods.
     /// "Supports" means this launcher bundles a Core for the pack's version AND the pack's loader can load it.
     /// </summary>
-    public static bool IsSupported(string? mcVersion, string? loader, IEnumerable<string>? modFiles, out string? reason)
+    public static bool IsSupported(
+        string? mcVersion,
+        string? loader,
+        IEnumerable<string>? modFiles,
+        string? loaderVersion,
+        string? bundleRoot,
+        out string? reason)
     {
         if (string.IsNullOrWhiteSpace(mcVersion))
         {
@@ -139,39 +241,79 @@ public static class ModpackCoreSync
         }
 
         // For all other bundled versions (1.20.1, 1.21.11, 26.2, 26.3), the Core is a Fabric mod
-        if (normalizedLoader is "fabric" or "quilt")
+        if (mcVersion == "1.20.1" && normalizedLoader == "forge")
         {
+            if (!HasSinytraConnector(modFiles))
+            {
+                reason = "Minecraft 1.20.1 Forge requires Sinytra Connector to run The Lads Core.";
+                return false;
+            }
+            if (!HasFabricApi(modFiles))
+            {
+                reason = "This modpack has no Fabric API, which The Lads Core needs.";
+                return false;
+            }
             reason = null;
             return true;
         }
 
-        if (mcVersion == "1.20.1" && normalizedLoader == "forge")
+        if (normalizedLoader is "fabric" or "quilt")
         {
-            if (HasSinytraConnector(modFiles))
+            if (!HasFabricApi(modFiles))
             {
-                reason = null;
-                return true;
+                reason = "This modpack has no Fabric API, which The Lads Core needs.";
+                return false;
             }
-            reason = "Minecraft 1.20.1 Forge requires Sinytra Connector to run The Lads Core.";
-            return false;
+
+            if (normalizedLoader == "fabric")
+            {
+                var bundled = FindBundledJar(mcVersion, bundleRoot);
+                if (bundled != null)
+                {
+                    var (minVer, minStr) = GetBundledFabricLoaderConstraint(bundled);
+                    if (minVer != null && TryParseVersion(loaderVersion, out var lv) && lv != null && lv < minVer)
+                    {
+                        reason = $"Fabric Loader {loaderVersion} is older than The Lads Core needs ({minStr}).";
+                        return false;
+                    }
+                }
+            }
+
+            reason = null;
+            return true;
         }
 
         reason = $"Minecraft {mcVersion} Lads Core requires Fabric.";
         return false;
     }
 
-    public static bool IsSupported(string? mcVersion, string? loader, string? modsDirectory, out string? reason)
+    public static bool IsSupported(string? mcVersion, string? loader, IEnumerable<string>? modFiles, out string? reason) =>
+        IsSupported(mcVersion, loader, modFiles, null, null, out reason);
+
+    public static bool IsSupported(
+        string? mcVersion,
+        string? loader,
+        string? modsDirectory,
+        string? loaderVersion,
+        string? bundleRoot,
+        out string? reason)
     {
         IEnumerable<string>? files = null;
         if (!string.IsNullOrEmpty(modsDirectory) && Directory.Exists(modsDirectory))
         {
             try { files = Directory.EnumerateFiles(modsDirectory); } catch { }
         }
-        return IsSupported(mcVersion, loader, files, out reason);
+        return IsSupported(mcVersion, loader, files, loaderVersion, bundleRoot, out reason);
     }
 
+    public static bool IsSupported(string? mcVersion, string? loader, string? modsDirectory, out string? reason) =>
+        IsSupported(mcVersion, loader, modsDirectory, null, null, out reason);
+
+    public static bool IsSupported(ModpackInstance instance, string? bundleRoot, out string? reason) =>
+        IsSupported(instance.McVersion, instance.Loader, Path.Combine(instance.GameDirectory, "mods"), instance.LoaderVersion, bundleRoot, out reason);
+
     public static bool IsSupported(ModpackInstance instance, out string? reason) =>
-        IsSupported(instance.McVersion, instance.Loader, Path.Combine(instance.GameDirectory, "mods"), out reason);
+        IsSupported(instance, (string?)null, out reason);
 
     public static bool IsSupported(ModpackInstance instance) =>
         IsSupported(instance, out _);
@@ -180,13 +322,13 @@ public static class ModpackCoreSync
         IsSupported(mcVersion, loader, (IEnumerable<string>?)null, out _);
 
     /// <summary>
-    /// Resolves the default setting for Lads Core on an instance (true when supported or when a Core jar is already installed).
+    /// Resolves the default setting for Lads Core on an instance (true when supported).
     /// </summary>
-    public static bool ResolveDefaultLadsCore(ModpackInstance instance)
-    {
-        var modsDir = Path.Combine(instance.GameDirectory, "mods");
-        return CoreJars(modsDir).Count > 0 || IsSupported(instance);
-    }
+    public static bool ResolveDefaultLadsCore(ModpackInstance instance, string? bundleRoot = null) =>
+        IsSupported(instance, bundleRoot, out _);
+
+    public static bool ResolveDefaultLadsCore(ModpackInstance instance) =>
+        ResolveDefaultLadsCore(instance, null);
 
     /// <summary>Brings the Core of an instance up to date according to its <see cref="ModpackInstance.LadsCore"/> setting:
     /// - ON: adds the bundled jar (mods\theladscore.jar) when missing, restores disabled jars, and syncs to bundled build.
@@ -211,7 +353,7 @@ public static class ModpackCoreSync
         // Packs installed before this update get the default (ON when supported)
         if (!instance.LadsCore.HasValue)
         {
-            instance.LadsCore = ResolveDefaultLadsCore(instance);
+            instance.LadsCore = ResolveDefaultLadsCore(instance, bundleRoot);
             try { Modpacks.Save(instance); } catch { }
         }
 
@@ -227,6 +369,11 @@ public static class ModpackCoreSync
                 try
                 {
                     File.Move(jar, jar + ".disabled", overwrite: true);
+                    var icon = jar + ".icon.png";
+                    if (File.Exists(icon))
+                    {
+                        try { File.Move(icon, jar + ".disabled.icon.png", overwrite: true); } catch { }
+                    }
                 }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                 {
@@ -236,6 +383,13 @@ public static class ModpackCoreSync
             }
             status?.Invoke("Disabled The Lads Core for this modpack.");
             return true;
+        }
+
+        // Enabled branch: check IsSupported FIRST before touching anything!
+        if (!IsSupported(instance, bundleRoot, out var reason))
+        {
+            status?.Invoke($"The Lads Core is not supported: {reason}");
+            return false;
         }
 
         var bundled = FindBundledJar(instance.McVersion, bundleRoot);
@@ -249,6 +403,11 @@ public static class ModpackCoreSync
             {
                 var restored = disabled[..^".disabled".Length];
                 File.Move(disabled, restored, overwrite: true);
+                var disabledIcon = disabled + ".icon.png";
+                if (File.Exists(disabledIcon))
+                {
+                    try { File.Move(disabledIcon, restored + ".icon.png", overwrite: true); } catch { }
+                }
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         }
@@ -257,12 +416,6 @@ public static class ModpackCoreSync
         var cores = CoreJars(modsDirectory);
         if (cores.Count == 0)
         {
-            if (!IsSupported(instance, out var reason))
-            {
-                status?.Invoke($"The Lads Core is not supported: {reason}");
-                return false;
-            }
-
             try
             {
                 Directory.CreateDirectory(modsDirectory);
@@ -339,6 +492,11 @@ public static class ModpackCoreSync
         foreach (var extra in cores.Skip(1))
         {
             File.Move(extra, extra + ".disabled", overwrite: true); // the launcher's own off switch, reversible
+            var extraIcon = extra + ".icon.png";
+            if (File.Exists(extraIcon))
+            {
+                try { File.Move(extraIcon, extra + ".disabled.icon.png", overwrite: true); } catch { }
+            }
             changed = true;
         }
         EnsureIcon(primary, bundledJar);
