@@ -16,6 +16,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
+import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.gui.inventory.GuiInventory;
 import net.minecraft.client.settings.KeyBinding;
@@ -178,7 +179,41 @@ public final class EmoteProbe189 {
             mc.theWorld.removeEntityFromWorld(-1911);
             Emotes.stopLocal(self);
         });
-        at(other + 4200, () -> {
+        long cos = other + 4000;
+        at(cos, () -> mc.displayGuiScreen(new CosmeticsScreen189(null)));
+        shot(cos + 400, "cosmetics-screen");
+        long pause = cos + 700;
+        at(pause, () -> mc.displayGuiScreen(new GuiIngameMenu()));
+        shot(pause + 400, "pause-menu");
+        long closeScreens = pause + 700;
+        at(closeScreens, () -> mc.displayGuiScreen(null));
+        long grooveKeyTest = closeScreens + 300;
+        at(grooveKeyTest, () -> {
+            KeyBinding grooveBinding = EmoteAnim189.key(EmoteLibrary.GROOVE);
+            if (grooveBinding != null) {
+                grooveBinding.setKeyCode(Keyboard.KEY_K);
+                KeyBinding.resetKeyBindingArrayAndHash();
+                KeyBinding.onTick(Keyboard.KEY_K);
+            }
+        });
+        at(grooveKeyTest + 100, () -> {
+            Emotes.Playing playing = Emotes.get(self);
+            check(playing != null && EmoteLibrary.GROOVE.equals(playing.id()) && !playing.stopping(),
+                "Groove emote key press plays groove and is not stopping");
+            KeyBinding.onTick(Keyboard.KEY_K);
+        });
+        at(grooveKeyTest + 200, () -> {
+            Emotes.Playing playing = Emotes.get(self);
+            check(playing != null && EmoteLibrary.GROOVE.equals(playing.id()) && playing.stopping(),
+                "Groove emote key press again stops groove");
+            KeyBinding grooveBinding = EmoteAnim189.key(EmoteLibrary.GROOVE);
+            if (grooveBinding != null) {
+                grooveBinding.setKeyCode(Keyboard.KEY_NONE);
+                KeyBinding.resetKeyBindingArrayAndHash();
+            }
+            Emotes.stopLocal(self);
+        });
+        at(grooveKeyTest + 500, () -> {
             mc.gameSettings.thirdPersonView = 0;
             mc.gameSettings.hideGUI = hudWas;
             done = true;

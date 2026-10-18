@@ -8,6 +8,8 @@ import com.thelads.core.client.cosmetics.anim.EmotePose;
 import com.thelads.core.client.cosmetics.anim.EmoteKeys;
 import com.thelads.core.client.cosmetics.anim.EmoteRules;
 import com.thelads.core.config.ConfigManager;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -42,6 +44,7 @@ import static com.thelads.core.client.cosmetics.anim.Emote.*;
  */
 public final class EmoteAnim189 {
     public static final KeyBinding KEY = new KeyBinding("key.theladscore.emotes", Keyboard.KEY_B, "key.category.theladscore.controls");
+    private static final Map<String, KeyBinding> EMOTE_KEYS = new LinkedHashMap<String, KeyBinding>();
     private static final float MODEL_SCALE = 0.9375F;
     /** RenderPlayer.renderRightArm/renderLeftArm (the vanilla first-person arm) run setRotationAngles too: no emote there. */
     public static boolean inHand;
@@ -53,8 +56,15 @@ public final class EmoteAnim189 {
 
     public static void register() {
         ClientRegistry.registerKeyBinding(KEY);
+        for (String id : EmoteLibrary.ids()) {
+            KeyBinding binding = new KeyBinding(EmoteKeys.keyName(id), Keyboard.KEY_NONE, EmoteKeys.CATEGORY);
+            EMOTE_KEYS.put(id, binding);
+            ClientRegistry.registerKeyBinding(binding);
+        }
         MinecraftForge.EVENT_BUS.register(new EmoteAnim189());
     }
+
+    public static KeyBinding key(String id) { return EMOTE_KEYS.get(id); }
 
     public static void play(String id) {
         EntityPlayerSP self = Minecraft.getMinecraft().thePlayer;
@@ -73,6 +83,13 @@ public final class EmoteAnim189 {
             Emotes.Playing playing = Emotes.get(id);
             if (playing != null && !playing.stopping()) Emotes.stopLocal(id); // tap again: stop
             else if (mc.currentScreen == null) mc.displayGuiScreen(new EmoteWheelScreen189());
+        }
+        if (mc.currentScreen == null) {
+            for (Map.Entry<String, KeyBinding> entry : EMOTE_KEYS.entrySet()) {
+                while (entry.getValue().isPressed()) {
+                    EmoteKeys.pressed(id, entry.getKey());
+                }
+            }
         }
         if (Emotes.get(id) == null) return;
         GameSettings o = mc.gameSettings;
