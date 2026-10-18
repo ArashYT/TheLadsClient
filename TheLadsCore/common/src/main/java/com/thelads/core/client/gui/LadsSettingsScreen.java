@@ -224,9 +224,18 @@ public final class LadsSettingsScreen {
         g.drawText("THE LADS", pad, 15, ACCENT);
         String fpsBtnLabel = "HUD FPS: " + (HudSettings.getInstance().isHudFpsCapEnabled() ? HudSettings.formatFpsLimit(HudSettings.getInstance().getHudFpsLimit()) : "Off");
         int fpsBtnW = Math.max(78, g.textWidth(fpsBtnLabel) + 14);
+        // Backgrounds and Text Shadow sit left of Colors; short labels only when the window is too narrow for the full ones.
+        String bgLabel = ColorPicker.backgroundsLabel(), shLabel = ColorPicker.textShadowLabel();
+        int bgW = g.textWidth(bgLabel) + 14, shW = g.textWidth(shLabel) + 14;
+        if (width - pad - 116 - shW - 6 - bgW - 6 - fpsBtnW < pad + 60) {
+            bgLabel = "BG"; shLabel = "Shadow"; bgW = g.textWidth(bgLabel) + 14; shW = g.textWidth(shLabel) + 14;
+        }
+        int shX = width - pad - 116 - shW, bgX = shX - 6 - bgW, fpsX = bgX - 6 - fpsBtnW;
         // The title line stops where the HUD FPS button begins ("60 (Recommended)" makes that button wide).
-        if (width >= 400) g.drawText(fit(g, modsView ? "INSTALLED MODS" : detail == null ? "MODS / MAKE IT YOURS" : "MODULE SETTINGS", width - pad - 116 - fpsBtnW - 6 - (pad + 68)), pad + 68, 15, MUTED);
-        button(g, "global-hud-fps", fpsBtnLabel, new Rect(width - pad - 116 - fpsBtnW, 8, fpsBtnW, 23), this::openHudFpsDialog, true, mouseX, mouseY, fpsDialogOpen);
+        if (width >= 400) g.drawText(fit(g, modsView ? "INSTALLED MODS" : detail == null ? "MODS / MAKE IT YOURS" : "MODULE SETTINGS", fpsX - 6 - (pad + 68)), pad + 68, 15, MUTED);
+        button(g, "global-hud-fps", fpsBtnLabel, new Rect(fpsX, 8, fpsBtnW, 23), this::openHudFpsDialog, true, mouseX, mouseY, fpsDialogOpen);
+        button(g, "global-backgrounds", bgLabel, new Rect(bgX, 8, bgW, 23), ColorPicker::toggleBackgrounds, true, mouseX, mouseY, HudSettings.getInstance().isBackgrounds());
+        button(g, "global-text-shadow", shLabel, new Rect(shX, 8, shW, 23), ColorPicker::cycleTextShadow, true, mouseX, mouseY, HudSettings.getInstance().isTextShadow());
         button(g, "global-colors", "Colors", new Rect(width - pad - 110, 8, 52, 23), colorPicker::openGlobal, true, mouseX, mouseY, false);
         button(g, "close", "Done", new Rect(width - pad - 52, 8, 52, 23), this::close, true, mouseX, mouseY, false);
         int x = side == 0 ? pad : side + 16, w = width - x - pad;

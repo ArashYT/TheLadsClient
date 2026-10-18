@@ -237,7 +237,7 @@ public class DraggableHudScreen {
         drawControl(g,new Control("previews","Show disabled",new Rect(x,y,w,16),true),mx,my,controls,showAll,false);
         y+=21;
         int footer=panel.bottom()-21;
-        list=new Rect(x,y,w,Math.max(ROW,footer-24-y));
+        list=new Rect(x,y,w,Math.max(ROW,footer-64-y));
         maxListScroll=Math.max(0,listed.size()*ROW-list.height());
         if(reveal!=null){int index=listed.indexOf(reveal);reveal=null;
             if(index>=0){int top=index*ROW;if(top<listScroll)listScroll=top;else if(top+ROW>listScroll+list.height())listScroll=top+ROW-list.height();}}
@@ -260,7 +260,10 @@ public class DraggableHudScreen {
         int half=(w-4)/2,chosen=HudSettings.getInstance().getHudScale();
         // The Lads HUD's own GUI scale: Auto follows vanilla's (shown in brackets), or a fixed one (HudScale).
         String scaleLabel="HUD scale: "+(chosen==0?"Auto"+(vanillaScale>0?" ("+HudScale.of(g)+")":""):String.valueOf(HudScale.of(g)));
-        drawControl(g,new Control("hudscale",scaleLabel,new Rect(x,footer-20,w,16),vanillaScale>0),mx,my,controls,chosen!=0,false);
+        drawControl(g,new Control("hudscale",scaleLabel,new Rect(x,footer-60,w,16),vanillaScale>0),mx,my,controls,chosen!=0,false);
+        // Same global switches as next to the settings screen's Colors button.
+        drawControl(g,new Control("backgrounds",ColorPicker.backgroundsLabel(),new Rect(x,footer-40,w,16),true),mx,my,controls,HudSettings.getInstance().isBackgrounds(),false);
+        drawControl(g,new Control("textshadow",ColorPicker.textShadowLabel(),new Rect(x,footer-20,w,16),true),mx,my,controls,HudSettings.getInstance().isTextShadow(),false);
         drawControl(g,new Control("colors","Colors",new Rect(x,footer,half,16),true),mx,my,controls,false,false);
         drawControl(g,new Control("reset","Reset",new Rect(x+half+4,footer,w-half-4,16),true),mx,my,controls,false,false);
     }
@@ -507,6 +510,8 @@ public class DraggableHudScreen {
             case "previews"->{showAll=!showAll;listScroll=0;finishHiddenDrag();selected.removeIf(element->!isVisible(element)&&HudSettings.getInstance().getGroupIndex(element.getModuleName())<0);renderedBounds.clear();rows.clear();}
             case "search"->editingSearch=true;
             case "colors"->colorPicker.openGlobal();
+            case "backgrounds"->ColorPicker.toggleBackgrounds();
+            case "textshadow"->ColorPicker.cycleTextShadow();
             case "settings"->{if(!selected.isEmpty())onSettings.accept(selected.iterator().next().getModuleName());}
             case "centerX"->center(true,false);
             case "centerY"->center(false,true);

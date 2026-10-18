@@ -14,6 +14,21 @@ public final class ColorPicker {
     private int x, y, w, h, planeW, planeH, drag = -1;
     private boolean global, background, hexFocused, replaceHex;
     public boolean isOpen() { return apply != null; }
+    /** Global HUD text backgrounds (config key hud.backgrounds), shown next to every Colors button. */
+    public static String backgroundsLabel() { return "Backgrounds: " + (HudSettings.getInstance().isBackgrounds() ? "ON" : "OFF"); }
+    public static void toggleBackgrounds() { HudSettings.getInstance().setBackgrounds(!HudSettings.getInstance().isBackgrounds()); ConfigManager.save(); }
+    /** Global text shadow (hud.textShadow + hud.softShadow): OFF -> Soft -> ON -> OFF. */
+    public static String textShadowLabel() {
+        var s = HudSettings.getInstance();
+        return "Text Shadow: " + (!s.isTextShadow() ? "OFF" : s.isSoftShadow() ? "Soft" : "ON");
+    }
+    public static void cycleTextShadow() {
+        var s = HudSettings.getInstance();
+        if (!s.isTextShadow()) { s.setTextShadow(true); s.setSoftShadow(true); }
+        else if (s.isSoftShadow()) s.setSoftShadow(false);
+        else s.setTextShadow(false);
+        ConfigManager.save();
+    }
     public void open(String title, int color, IntConsumer apply) {
         this.title = title; this.apply = apply; global = false; hexFocused = false; drag = -1;
         set(color);
@@ -43,13 +58,11 @@ public final class ColorPicker {
         g.fill(x, y, x + w, y + 2, LadsPalette.ACCENT);
         g.drawText(title, x + 12, y + 10, LadsPalette.TEXT);
         if (global) {
-            int cell=(w-36)/4;
-            button(g,x+12,y+28,cell,background?"Background":"Text color");
-            button(g,x+16+cell,y+28,cell,"Plates: "+(HudSettings.getInstance().isBackgrounds()?"ON":"OFF"));
-            String shadowLabel = !HudSettings.getInstance().isTextShadow() ? "Shadow: OFF" : (HudSettings.getInstance().isSoftShadow() ? "Shadow: Soft" : "Shadow: ON");
-            button(g,x+20+cell*2,y+28,cell,shadowLabel);
+            // Backgrounds and Text Shadow moved next to the Colors buttons (1.9.11).
+            int cell=(w-28)/2;
+            button(g,x+12,y+28,cell,background?"Editing: Background color":"Editing: Text color");
             String fpsLabel = "FPS: " + (HudSettings.getInstance().isHudFpsCapEnabled() ? HudSettings.formatFpsLimit(HudSettings.getInstance().getHudFpsLimit()) : "Off");
-            button(g,x+24+cell*3,y+28,cell,fpsLabel);
+            button(g,x+16+cell,y+28,cell,fpsLabel);
         }
         int py = y + 56;
         for (int px = 0; px < planeW; px += 4) for (int yy = 0; yy < planeH; yy += 4)
@@ -94,15 +107,9 @@ public final class ColorPicker {
             apply = null; return true;
         }
         if (global && my >= y + 28 && my < y + 48) {
-            int cell=(w-36)/4;
+            int cell=(w-28)/2;
             if (mx < x + 12 + cell) { background = !background; set(background ? HudSettings.getInstance().getGlobalBackground() : HudSettings.getInstance().getGlobalColor()); }
-            else if (mx < x + 16 + 2*cell) HudSettings.getInstance().setBackgrounds(!HudSettings.getInstance().isBackgrounds());
-            else if (mx < x + 20 + 3*cell) {
-                var s = HudSettings.getInstance();
-                if (!s.isTextShadow()) { s.setTextShadow(true); s.setSoftShadow(true); }
-                else if (s.isSoftShadow()) { s.setSoftShadow(false); }
-                else { s.setTextShadow(false); }
-            } else {
+            else {
                 var s = HudSettings.getInstance();
                 if (!s.isHudFpsCapEnabled()) { s.setHudFpsCapEnabled(true); s.setHudFpsLimit(60); }
                 else {
