@@ -41,6 +41,17 @@ public final class LadsApiClient {
     private static long rateWindowStart = 0;
     private static int rateCount = 0;
     private static Long lastHashedSeed = null;
+    private static volatile int sentBeforeHelloCount = 0;
+
+    private static void sendPayload(byte[] bytes) {
+        Transport t = transport;
+        if (t != null) {
+            if (!sessionOk) {
+                sentBeforeHelloCount++;
+            }
+            t.send(bytes);
+        }
+    }
 
     private LadsApiClient() {}
 
@@ -110,15 +121,12 @@ public final class LadsApiClient {
 
         if (helloReplies < 2) {
             helloReplies++;
-            Transport t = transport;
-            if (t != null) {
-                JsonObject reply = new JsonObject();
-                reply.addProperty("t", "hello");
-                reply.addProperty("v", 1);
-                reply.addProperty("lads", LadsVersion.VERSION);
-                reply.addProperty("mc", minecraftVersion != null ? minecraftVersion : "");
-                t.send(reply.toString().getBytes(StandardCharsets.UTF_8));
-            }
+            JsonObject reply = new JsonObject();
+            reply.addProperty("t", "hello");
+            reply.addProperty("v", 1);
+            reply.addProperty("lads", LadsVersion.VERSION);
+            reply.addProperty("mc", minecraftVersion != null ? minecraftVersion : "");
+            sendPayload(reply.toString().getBytes(StandardCharsets.UTF_8));
         }
     }
 
@@ -140,19 +148,16 @@ public final class LadsApiClient {
         PolicyValidationResult result = validatePolicy(json, serverName, notice);
         ServerPolicy.set(result.policy);
 
-        Transport t = transport;
-        if (t != null) {
-            JsonObject ack = new JsonObject();
-            ack.addProperty("t", "ack");
-            ack.addProperty("rev", rev);
-            JsonArray ignArr = new JsonArray();
-            for (String s : result.ignored) ignArr.add(new JsonPrimitive(s));
-            ack.add("ignored", ignArr);
-            JsonArray refArr = new JsonArray();
-            for (String s : result.refused) refArr.add(new JsonPrimitive(s));
-            ack.add("refused", refArr);
-            t.send(ack.toString().getBytes(StandardCharsets.UTF_8));
-        }
+        JsonObject ack = new JsonObject();
+        ack.addProperty("t", "ack");
+        ack.addProperty("rev", rev);
+        JsonArray ignArr = new JsonArray();
+        for (String s : result.ignored) ignArr.add(new JsonPrimitive(s));
+        ack.add("ignored", ignArr);
+        JsonArray refArr = new JsonArray();
+        for (String s : result.refused) refArr.add(new JsonPrimitive(s));
+        ack.add("refused", refArr);
+        sendPayload(ack.toString().getBytes(StandardCharsets.UTF_8));
 
         LadsApiUi.policyApplied(serverName, result.changedCount, notice);
     }
@@ -189,6 +194,7 @@ public final class LadsApiClient {
         rateWindowStart = 0;
         rateCount = 0;
         lastHashedSeed = null;
+        sentBeforeHelloCount = 0;
     }
 
     /** JoinGame/Login packet with the world's hashed seed: reset, then remember the seed for {@link #respawn}. */
@@ -211,7 +217,12 @@ public final class LadsApiClient {
 
     static boolean isSessionOk() { return sessionOk; }
 
-    static String serverName() { return serverName; }
+    public static String serverName() { return serverName; }
+
+    /** QA check: whether any lads:api packet was ever sent before a valid server hello. */
+    public static int sentBeforeHello() { return sentBeforeHelloCount; }
+
+    public static void resetSentBeforeHello() { sentBeforeHelloCount = 0; }
 
     // ---- Validation & UUID helpers ----
 
@@ -615,9 +626,8 @@ public final class LadsApiClient {
             }
             Integer forcedColor = null;
 
-            if (ruleObj.has("value")) {
-                JsonElement v = ruleObj.get("value");
-                if (v.isJsonPrimitive() && v.getAsJsonPrimitive().isString()) {
+            JsonElement v = ruleObj.has("value") ? ruleObj.get("value") : ruleObj.get("color");
+            if (v != null && v.isJsonPrimitive() && v.getAsJsonPrimitive().isString()) {
                     String hex = v.getAsString().trim();
                     if (hex.startsWith("#")) hex = hex.substring(1);
                     if (hex.length() == 6) {
@@ -653,7 +663,6 @@ public final class LadsApiClient {
                     addLimited(ignored, fullKey);
                     return null;
                 }
-            }
 
             if (forcedColor != null && playerRefuses) {
                 addLimited(refused, fullKey);
