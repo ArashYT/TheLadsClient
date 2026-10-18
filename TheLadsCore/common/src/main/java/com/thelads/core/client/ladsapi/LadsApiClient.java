@@ -194,7 +194,6 @@ public final class LadsApiClient {
         rateWindowStart = 0;
         rateCount = 0;
         lastHashedSeed = null;
-        sentBeforeHelloCount = 0;
     }
 
     /** JoinGame/Login packet with the world's hashed seed: reset, then remember the seed for {@link #respawn}. */
