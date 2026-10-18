@@ -138,24 +138,30 @@ public final class CosmeticsLink {
             else mojangJoin(session.accessToken(), w.self(), serverId);
             ws.sendText(json("t", "auth", "name", session.name(), "uuid", plain(w.self()), "serverId", serverId));
             ws.sendText(json("t", "room", "room", w.room()));
-            ws.setReadTimeout(90_000); // the server pings every 30 s
+            ws.setReadTimeout(90_000); // our ping below gets a pong at least every 30 s
             Thread reader = new Thread(() -> read(ws, w.self()), "Lads Cosmetics Reader");
             reader.setDaemon(true);
             reader.setPriority(Thread.MIN_PRIORITY);
             reader.start();
             emoteDirty = localEmote != null; // still emoting from before a reconnect: tell the new room
-            long nextQa = 0;
+            long nextQa = 0, nextPing = System.currentTimeMillis() + 30_000;
             while (ws.isOpen() && w.equals(want)) {
-                if (qaEmote != null && System.currentTimeMillis() >= nextQa) { // QA: replay every 15 s so a later client sees a live state
-                    nextQa = System.currentTimeMillis() + 15_000;
+                long now = System.currentTimeMillis();
+                if (qaEmote != null && now >= nextQa) { // QA: replay every 15 s so a later client sees a live state
+                    nextQa = now + 15_000;
                     Emotes.playLocal(w.self(), qaEmote);
+                }
+                if (now >= nextPing) { // keepalive both ways (Cloudflare drops idle sockets; the server only pings when we are silent)
+                    nextPing = now + 30_000;
+                    ws.send(WebSocket.PING, new byte[0]);
                 }
                 if (emoteDirty) {
                     emoteDirty = false;
                     if (shareMine) ws.sendText(json("t", "emote", "id", localEmote));
                 }
+                long wake = qaEmote != null ? Math.min(nextPing, nextQa) : nextPing;
                 synchronized (lock) {
-                    if (!emoteDirty && ws.isOpen() && w.equals(want)) lock.wait(qaEmote != null ? 15_000 : 60_000);
+                    if (!emoteDirty && ws.isOpen() && w.equals(want)) lock.wait(Math.max(1, wake - System.currentTimeMillis()));
                 }
             }
         } catch (InterruptedException e) {
