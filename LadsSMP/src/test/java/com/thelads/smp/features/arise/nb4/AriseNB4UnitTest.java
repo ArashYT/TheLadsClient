@@ -173,6 +173,8 @@ public class AriseNB4UnitTest {
 
             try (var stream = Files.list(recipePath)) {
                 for (Path recFile : stream.filter(p -> p.toString().endsWith(".json")).toList()) {
+                    // other batches put plain vanilla recipes here too (nb6 fireproof_line); only FD ones need the condition
+                    if (!Files.readString(recFile, StandardCharsets.UTF_8).contains("farmersdelight:")) continue;
                     totalRecipes++;
                     try (Reader r = Files.newBufferedReader(recFile, StandardCharsets.UTF_8)) {
                         JsonObject obj = JsonParser.parseReader(r).getAsJsonObject();
