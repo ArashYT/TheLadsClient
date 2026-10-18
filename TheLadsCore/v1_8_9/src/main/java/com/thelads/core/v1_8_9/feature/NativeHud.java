@@ -93,6 +93,10 @@ public final class NativeHud {
             frames++;
         } finally {
             if (faded) Autohide189.end(shown, event.resolution.getScaledWidth_double(), event.resolution.getScaledHeight_double());
+            if (com.thelads.core.client.qa.QaProgress.on()) { // QA only (no-op for players): the QA progress bar over everything
+                graphics.reset(mc.fontRendererObj, event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
+                com.thelads.core.client.qa.QaProgress.draw(graphics);
+            }
             GlStateManager.resetColor();
             GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
             GlStateManager.disableLighting();
@@ -102,6 +106,18 @@ public final class NativeHud {
             if (blend) GlStateManager.enableBlend(); else GlStateManager.disableBlend();
             if (depth) GlStateManager.enableDepth(); else GlStateManager.disableDepth();
         }
+    }
+
+    /** QA only: the QA progress bar over the screens that show without a world (with one, the HUD draws it). */
+    @SubscribeEvent(priority = net.minecraftforge.fml.common.eventhandler.EventPriority.LOWEST) // after the screens' own draws (the Lads title paints in a Post handler too)
+    public void qaBarOnScreens(net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent.Post event) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (!com.thelads.core.client.qa.QaProgress.on() || mc.theWorld != null) return;
+        net.minecraft.client.gui.ScaledResolution resolution = new net.minecraft.client.gui.ScaledResolution(mc);
+        graphics.reset(mc.fontRendererObj, resolution.getScaledWidth(), resolution.getScaledHeight());
+        com.thelads.core.client.qa.QaProgress.draw(graphics);
+        GlStateManager.resetColor();
+        GlStateManager.enableBlend();
     }
 
     /** CPS counts gameplay press events, several between two frames included (1.21.x: MouseHandlerMixin). */

@@ -80,9 +80,10 @@ public final class HudLayoutQa {
     /** Each client tick of the probe: starts the sequence, then steps it; true once it has ended. */
     public static boolean tick(Driver d) {
         try {
-            if (step == -1) { begin(d); step = -2; wait = 40; return false; }
+            if (step == -1) { begin(d); com.thelads.core.client.qa.QaProgress.begin("HUD layout", 24); step = -2; wait = 40; return false; }
             if (wait > 0) { wait--; return false; }
             if (step == -2) { d.guiScale(3); step = 0; wait = 40; return false; } // once the window has its new size
+            if (step < 24) com.thelads.core.client.qa.QaProgress.step("HUD layout " + (step + 1));
             switch (step++) {
                 case 0 -> { afterFrame("loading the layout", HudLayoutQa::load); wait = 20; }
                 case 1 -> check("GUI scale 3, as saved before 1.9.0", 5);
@@ -124,7 +125,7 @@ public final class HudLayoutQa {
                 default -> { end(d); return true; }
             }
         } catch (RuntimeException failure) {
-            FAILURES.add("step " + step + ": " + failure);
+            FAILURES.add("step " + step + ": " + failure); com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL);
             LOGGER.error("Lads hud layout FAILED at step {}", step, failure);
             end(d);
             return true;
@@ -134,6 +135,7 @@ public final class HudLayoutQa {
 
     private static void shot(Driver d, String name) {
         d.shot(name);
+        com.thelads.core.client.qa.QaProgress.label(name);
         LOGGER.info("Lads hud layout frame {}", name);
         wait = 10;
     }
@@ -206,7 +208,7 @@ public final class HudLayoutQa {
     private static void afterFrame(String label, java.util.function.Consumer<LadsGraphics> action) {
         HudManager.afterRender = g -> {
             try { action.accept(g); }
-            catch (RuntimeException failure) { FAILURES.add(label + ": " + failure); LOGGER.error("Lads hud layout check FAIL: {}", label, failure); }
+            catch (RuntimeException failure) { FAILURES.add(label + ": " + failure); com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL); LOGGER.error("Lads hud layout check FAIL: {}", label, failure); }
         };
     }
 
@@ -228,7 +230,7 @@ public final class HudLayoutQa {
 
     private static void expect(String label, String what, boolean ok, String detail) {
         if (ok) { passed++; LOGGER.info("Lads hud layout check PASS: {}: {}", label, what); }
-        else { FAILURES.add(label + ": " + what + " (" + detail + ")"); LOGGER.error("Lads hud layout check FAIL: {}: {} ({})", label, what, detail); }
+        else { FAILURES.add(label + ": " + what + " (" + detail + ")"); com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL); LOGGER.error("Lads hud layout check FAIL: {}: {} ({})", label, what, detail); }
     }
 
     /**
@@ -266,6 +268,7 @@ public final class HudLayoutQa {
             FAILURES.add("restoring: " + failure);
         }
         if (!FAILURES.isEmpty()) LOGGER.error("Lads hud layout FAILED: {}", String.join(" | ", FAILURES));
+        com.thelads.core.client.qa.QaProgress.done();
         LOGGER.info("Lads hud layout END: {} passed, {} failed", passed, FAILURES.size());
     }
 

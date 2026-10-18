@@ -44,7 +44,7 @@ final class ItemPhysicsCapture {
     private static final List<Integer> SPAWNED = new java.util.concurrent.CopyOnWriteArrayList<>();
     private static final Map<Option, JsonElement> OPTIONS = new LinkedHashMap<>();
     private static final List<ItemStack> INVENTORY = new ArrayList<>();
-    private static int step = -1, wait, checks, failures, frames, sample;
+    private static int step = -1, wait, checks, failures, frames, sample, barStep;
     private static String pendingFrame;
     private static boolean frameBusy, enabledBefore, hideGuiBefore, flyingBefore;
     private static long modifiedBefore;
@@ -68,6 +68,8 @@ final class ItemPhysicsCapture {
         STEPS.clear();
         STEPS.addAll(steps());
         LOGGER.info("Lads item physics capture BEGIN: {} steps; arena, items, player and settings restored afterwards", STEPS.size());
+        com.thelads.core.client.qa.QaProgress.begin("item physics", STEPS.size());
+        barStep = -1;
         step = 0;
     }
 
@@ -75,13 +77,16 @@ final class ItemPhysicsCapture {
         if (pendingFrame != null || frameBusy) return;
         if (wait > 0) { wait--; return; }
         try {
+            if (barStep != step) { barStep = step; com.thelads.core.client.qa.QaProgress.step("step " + (step + 1)); }
             int next = STEPS.get(step).run(mc);
             if (next < 0) return;
             wait = next;
-            if (++step == STEPS.size()) LOGGER.info("Lads item physics capture END: {} passed, {} failed; {} frames", checks, failures, frames);
+            if (++step == STEPS.size()) com.thelads.core.client.qa.QaProgress.done();
+            if (step == STEPS.size()) LOGGER.info("Lads item physics capture END: {} passed, {} failed; {} frames", checks, failures, frames);
         } catch (Throwable failure) {
             LOGGER.error("Lads item physics capture FAILED: step {}", step, failure);
             failures++;
+            com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL);
             step = STEPS.size() - 1; // the last step puts everything back
         }
     }
@@ -123,8 +128,9 @@ final class ItemPhysicsCapture {
     }
 
     private static void check(boolean ok, String what) {
+        com.thelads.core.client.qa.QaProgress.label(what);
         if (ok) { checks++; LOGGER.info("Lads item physics check PASS: {}", what); }
-        else { failures++; LOGGER.error("Lads item physics check FAILED: {}", what); }
+        else { failures++; com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL); LOGGER.error("Lads item physics check FAILED: {}", what); }
     }
 
     private static ItemPhysicsModule module() { return NativeItemPhysics.module(); }
@@ -266,11 +272,11 @@ final class ItemPhysicsCapture {
             return 15;
         });
         steps.add(mc -> { module().setEnabled(false); return 5; });
-        steps.add(mc -> { pendingFrame = "rest-off-a"; return 2; });
+        steps.add(mc -> { com.thelads.core.client.qa.QaProgress.hideFrames(6); pendingFrame = "rest-off-a"; return 2; }); // the three frames compared pixel for pixel: no QA bar in them
         steps.add(mc -> { module().setEnabled(true); return 5; });
-        steps.add(mc -> { pendingFrame = "rest-on-frozen"; return 2; });
+        steps.add(mc -> { com.thelads.core.client.qa.QaProgress.hideFrames(6); pendingFrame = "rest-on-frozen"; return 2; });
         steps.add(mc -> { module().setEnabled(false); return 5; });
-        steps.add(mc -> { pendingFrame = "rest-off-b"; return 2; });
+        steps.add(mc -> { com.thelads.core.client.qa.QaProgress.hideFrames(6); pendingFrame = "rest-off-b"; return 2; });
         steps.add(mc -> { module().setEnabled(true); hud(mc, hideGuiBefore); mc.options.cloudStatus().set(cloudsBefore); frozen(false); return 5; });
         // Mid-air tumble: items tossed up, frozen in flight.
         steps.add(mc -> {

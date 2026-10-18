@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.thelads.core.client.bridge.LadsGameBridge;
+import com.thelads.core.client.qa.QaProgress;
 import com.thelads.core.client.gui.LadsSettingsScreen;
 import com.thelads.core.client.util.ClientPaths;
 import com.thelads.core.config.ModuleManager;
@@ -249,7 +250,8 @@ public final class CoreProbe {
         }
         }
     }
-    private static int step, passed, delay, waited;
+    private static int step, passed, delay, waited, barStep = -1, barWaits;
+    private static boolean barHolding, barShotDone;
     private static boolean finished, pauseOnLostFocus;
     private static GuiScreen title, pause;
     private static LadsSettingsScreen189 menu;
@@ -257,23 +259,42 @@ public final class CoreProbe {
 
     /** Every client tick (END); one step at a time, each after the previous one's screens had frames to render. */
     public static void tick() {
+        String barShot = QaProgress.finalShot(); // QA progress bar: its final state, photographed a moment after the run is done
+        if (barShot != null) { screenshot(Minecraft.getMinecraft(), barShot); barShotDone = true; LOG.info("Lads QA bar final state: lads-qa/screenshots/{}.png", barShot); }
+        if (barHolding) { // the run is done; its END marker waits for the bar's final-state photo (the harness stops the game at the marker)
+            if (barShotDone || ++barWaits > 100) { barHolding = false; end(); }
+            return;
+        }
         if (finished) return;
         if (delay > 0) { delay--; return; }
         try {
+            // QA progress bar: one bar step per probe step (its label follows the last check it passed).
+            if (barStep < 0) QaProgress.begin("1.8.9 " + (FOCUS != null ? "focus " + FOCUS : System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY")) != null
+                ? System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY")) : "core probe"), STEPS.size());
+            if (barStep != step) QaProgress.step("step " + (step + 1));
+            barStep = step;
             if (!STEPS.get(step).run(Minecraft.getMinecraft())) {
                 if (++waited > 2400) throw new IllegalStateException("step " + (step + 1) + " did not complete within 120 s");
                 return;
             }
             waited = 0;
             if (++step < STEPS.size()) return;
-            finish();
-            LOG.info("Lads 1.8.9 core probe END: {} passed, 0 failed; {}", passed, FOCUS != null ? "focused on " + FOCUS
-                : "menu key through GuiScreen.handleInput and runTick, pause-menu button, 1.8.9 bridge in a QA world, launcher catalog, "
-                + "HUD through RenderGameOverlayEvent and the HUD editor");
+            if (QaProgress.on() && QaProgress.running()) { QaProgress.done(); barHolding = true; return; }
+            end();
         } catch (Throwable failure) {
             finish();
+            QaProgress.result(QaProgress.Result.FAIL);
+            QaProgress.done();
             LOG.error("Lads 1.8.9 core probe FAILED after {} checks", passed, failure);
         }
+    }
+
+    private static void end() {
+        finish();
+        QaProgress.done();
+        LOG.info("Lads 1.8.9 core probe END: {} passed, 0 failed; {}", passed, FOCUS != null ? "focused on " + FOCUS
+            : "menu key through GuiScreen.handleInput and runTick, pause-menu button, 1.8.9 bridge in a QA world, launcher catalog, "
+            + "HUD through RenderGameOverlayEvent and the HUD editor");
     }
 
     private static void finish() {
@@ -1010,6 +1031,7 @@ public final class CoreProbe {
     }
 
     static void check(boolean result, String description) {
+        QaProgress.label(description);
         if (!result) throw new IllegalStateException("1.8.9 core QA: " + description);
         passed++;
         LOG.info("Lads 1.8.9 core probe PASS {}: {}", passed, description);

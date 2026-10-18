@@ -58,6 +58,7 @@ public final class EmoteCapture26 {
         startedAt = System.currentTimeMillis();
         LOGGER.info("Lads emote capture BEGIN: {}", out);
         plan(mc, game);
+        com.thelads.core.client.qa.QaProgress.begin("emotes", STEPS.values().stream().mapToInt(List::size).sum()); // one bar step per scheduled action
     }
 
     private static void at(long ms, Runnable step) { STEPS.computeIfAbsent(ms, k -> new ArrayList<>()).add(step); }
@@ -188,6 +189,7 @@ public final class EmoteCapture26 {
             hud(mc, hudWas);
             com.thelads.core.v26_2.feature.LocalSkins.reset();
             done = true;
+            com.thelads.core.client.qa.QaProgress.done();
             LOGGER.info("Lads emote capture END: {} passed, {} failed; frames in {}", passed, failed, out);
         });
     }
@@ -241,6 +243,8 @@ public final class EmoteCapture26 {
     }
 
     private static void check(boolean ok, String what) {
+        com.thelads.core.client.qa.QaProgress.label(what);
+        if (!ok) com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL);
         if (ok) passed++; else failed++;
         LOGGER.info("Lads emote capture {}: {}", ok ? "PASS" : "FAIL", what);
     }
@@ -249,7 +253,13 @@ public final class EmoteCapture26 {
     public static void frame(RenderTarget target, Path game) {
         if (!busy()) return;
         long now = System.currentTimeMillis() - startedAt;
-        while (!STEPS.isEmpty() && STEPS.firstKey() <= now) for (Runnable step : STEPS.pollFirstEntry().getValue()) step.run();
+        while (!STEPS.isEmpty() && STEPS.firstKey() <= now) {
+            long due = STEPS.firstKey();
+            for (Runnable step : STEPS.pollFirstEntry().getValue()) {
+                com.thelads.core.client.qa.QaProgress.step(String.format(Locale.ROOT, "t+%.1fs", due / 1000.0));
+                step.run();
+            }
+        }
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
         Emotes.Playing playing = Emotes.get(mc.player.getUUID());

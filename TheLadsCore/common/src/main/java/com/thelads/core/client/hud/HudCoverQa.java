@@ -48,10 +48,11 @@ public final class HudCoverQa {
     /** Each client tick of the probe; true once the sequence has ended. */
     public static boolean tick(HudLayoutQa.Driver d) {
         try {
-            if (step == -1) { begin(d); step = -2; wait = 40; return false; }
+            if (step == -1) { begin(d); com.thelads.core.client.qa.QaProgress.begin("HUD cover (tab list, F3)", 34); step = -2; wait = 40; return false; }
             if (wait > 0) { wait--; return false; }
             if (step == -2) { d.guiScale(2); step = 0; wait = 40; return false; }
             String cap = pass == 0 ? "capoff" : "capon";
+            if (step < 17) com.thelads.core.client.qa.QaProgress.step(cap + " " + (step + 1) + "/17");
             switch (step++) {
                 case 0 -> {
                     HudSettings.getInstance().setHudFpsCapEnabled(pass == 1);
@@ -94,7 +95,7 @@ public final class HudCoverQa {
                 default -> { end(d); return true; }
             }
         } catch (RuntimeException failure) {
-            FAILURES.add("step " + step + ": " + failure);
+            FAILURES.add("step " + step + ": " + failure); com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL);
             LOGGER.error("Lads hud layout FAILED at cover step {}", step, failure);
             end(d);
             return true;
@@ -104,6 +105,7 @@ public final class HudCoverQa {
 
     private static void shot(HudLayoutQa.Driver d, String name) {
         d.shot(name);
+        com.thelads.core.client.qa.QaProgress.label(name);
         LOGGER.info("Lads hud layout frame {}", name);
         wait = 10;
     }
@@ -201,13 +203,13 @@ public final class HudCoverQa {
     private static void afterFrame(String label, java.util.function.Consumer<LadsGraphics> action) {
         HudManager.afterRender = g -> {
             try { action.accept(g); }
-            catch (RuntimeException failure) { FAILURES.add(label + ": " + failure); LOGGER.error("Lads hud layout check FAIL: cover: {}", label, failure); }
+            catch (RuntimeException failure) { FAILURES.add(label + ": " + failure); com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL); LOGGER.error("Lads hud layout check FAIL: cover: {}", label, failure); }
         };
     }
 
     private static void expect(String label, String what, boolean ok, String detail) {
         if (ok) { passed++; LOGGER.info("Lads hud layout check PASS: cover: {}: {}", label, what); }
-        else { FAILURES.add(label + ": " + what + " (" + detail + ")"); LOGGER.error("Lads hud layout check FAIL: cover: {}: {} ({})", label, what, detail); }
+        else { FAILURES.add(label + ": " + what + " (" + detail + ")"); com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL); LOGGER.error("Lads hud layout check FAIL: cover: {}: {} ({})", label, what, detail); }
     }
 
     private static void end(HudLayoutQa.Driver d) {
@@ -235,6 +237,7 @@ public final class HudCoverQa {
             FAILURES.add("restoring: " + failure);
         }
         if (!FAILURES.isEmpty()) LOGGER.error("Lads hud layout FAILED: {}", String.join(" | ", FAILURES));
+        com.thelads.core.client.qa.QaProgress.done();
         LOGGER.info("Lads hud layout END: {} passed, {} failed", passed, FAILURES.size());
     }
 }

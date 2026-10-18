@@ -197,6 +197,7 @@ public final class NativeWorldVerification {
             WorldCapture.tick(gameDirectory, captureReady && (WorldCapture.busy() || !captureBusy()));
             FixesCapture.tick(gameDirectory, captureReady && !captureBusy());
             com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.tick(gameDirectory, captureReady && (com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() || !captureBusy()));
+            barRuns();
             if (opened && !readyLogged && now - openedAt > 90_000_000_000L)
                 throw new IllegalStateException("QA world did not become ready within 90 seconds; screen=" + (mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getName()));
             Path menuRequest = gameDirectory.resolve(".lads-qa-capture-menu");
@@ -298,6 +299,17 @@ public final class NativeWorldVerification {
     public static boolean menuCaptureActive() { return menuScreen != null; }
     /** Capture a completed game frame, including GUI, through Minecraft's own GPU readback. */
     public static void renderedFrame(com.mojang.blaze3d.pipeline.RenderTarget target) {
+        String barShot = com.thelads.core.client.qa.QaProgress.finalShot(); // QA progress bar: its final state, photographed a moment after the run is done
+        if (barShot != null && active()) {
+            Path output = gameDirectory.resolve("screenshots").resolve(barShot + ".png");
+            try {
+                Files.createDirectories(output.getParent());
+                net.minecraft.client.Screenshot.takeScreenshot(target, image -> {
+                    try (image) { image.writeToFile(output); LOGGER.info("Lads QA bar final state: {}", output); }
+                    catch (Exception failure) { LOGGER.error("Lads QA bar final state not saved", failure); }
+                });
+            } catch (IOException failure) { LOGGER.error("Lads QA bar final state not saved", failure); }
+        }
         if (hudProbe != null && active() && !failed) hudProbe.frame(target, gameDirectory);
         if (SoundsCapture.busy()) SoundsCapture.frame(target, gameDirectory);
         if (HypixelCapture.busy()) HypixelCapture.frame(target, gameDirectory);
@@ -495,6 +507,32 @@ public final class NativeWorldVerification {
         }
     }
     /** True while any in-world QA capture is running. */
+    /** The captures that do not report their own steps to the QA progress bar: it shows them as a run, name only, while they are busy. */
+    private static final java.util.Map<String, java.util.function.BooleanSupplier> BAR_RUNS = new java.util.LinkedHashMap<>();
+    static {
+        BAR_RUNS.put("HUD info", HudInfoCapture::busy); BAR_RUNS.put("kill banner", KillBannerCapture::busy); BAR_RUNS.put("kill streak", KillStreakCapture::busy);
+        BAR_RUNS.put("kill banner 1.9.1", KillBanner191Capture::busy); BAR_RUNS.put("old animations", OldAnimationsCapture::busy); BAR_RUNS.put("anim 1.7.2", Anim172Capture::busy);
+        BAR_RUNS.put("zoom", ZoomCapture::busy); BAR_RUNS.put("server features", ServerFeaturesCapture::busy); BAR_RUNS.put("chat heads", ChatHeadsCapture::busy);
+        BAR_RUNS.put("F3 and FOV", F3FovCapture::busy); BAR_RUNS.put("raised and paper doll", RaisedDollCapture::busy); BAR_RUNS.put("HUD layout", HudLayoutCapture::busy);
+        BAR_RUNS.put("mouse tweaks", MouseTweaksCapture::busy); BAR_RUNS.put("resolution", ResolutionCapture::busy); BAR_RUNS.put("dynamic lights", DynamicLightsCapture::busy);
+        BAR_RUNS.put("AppleSkin sync", com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture::busy); BAR_RUNS.put("skin layers", SkinLayersCapture::busy);
+        BAR_RUNS.put("sprint", SprintCapture::busy); BAR_RUNS.put("HUD 1.7.0", Hud170Capture::busy); BAR_RUNS.put("HUD flicker", HudFlickerCapture::busy);
+        BAR_RUNS.put("inventory", InventoryCapture::busy); BAR_RUNS.put("particle core", ParticleCoreCapture::busy); BAR_RUNS.put("sounds", SoundsCapture::busy);
+        BAR_RUNS.put("Hypixel", HypixelCapture::busy); BAR_RUNS.put("action bar", ActionBarCapture::busy); BAR_RUNS.put("world", WorldCapture::busy);
+        BAR_RUNS.put("items", ItemsCapture::busy); BAR_RUNS.put("fixes", FixesCapture::busy);
+    }
+    private static String barPrev;
+    /** Once per tick: a capture that became busy and reported no run of its own gets a bar run until it is not busy any more. */
+    private static void barRuns() {
+        if (!com.thelads.core.client.qa.QaProgress.on()) return;
+        String busy = null;
+        for (var run : BAR_RUNS.entrySet()) if (run.getValue().getAsBoolean()) { busy = run.getKey(); break; }
+        if (busy != null && !busy.equals(barPrev) && !com.thelads.core.client.qa.QaProgress.running()) {
+            com.thelads.core.client.qa.QaProgress.begin(busy, 0);
+            com.thelads.core.client.qa.QaProgress.step("running");
+        } else if (busy == null && barPrev != null && barPrev.equals(com.thelads.core.client.qa.QaProgress.run())) com.thelads.core.client.qa.QaProgress.done();
+        barPrev = busy;
+    }
     static boolean captureBusy() {
         return HudInfoCapture.busy() || KillBannerCapture.busy() || KillStreakCapture.busy() || KillBanner191Capture.busy() || OldAnimationsCapture.busy() || Anim172Capture.busy() || ZoomCapture.busy() || ServerFeaturesCapture.busy() ||
             ChatHeadsCapture.busy() || F3FovCapture.busy() || RaisedDollCapture.busy() || HudLayoutCapture.busy() || MouseTweaksCapture.busy() ||

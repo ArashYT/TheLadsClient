@@ -31,6 +31,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.gui.ExternalModSettings.register();
         com.thelads.core.v26_2.gui.ShaderToggleScreen26.register();
         com.thelads.core.v26_2.feature.ShaderToggleQa26.register(); // QA only: inert without LADS_QA_SHADERTOGGLE
+        com.thelads.core.v26_2.feature.NativeAutohide.registerQaBarScreens(); // QA only: the QA progress bar on the screens outside a world
         com.thelads.core.v26_2.feature.NativeQualityOfLife.register();
         com.thelads.core.v26_2.feature.NativeParticleCore.register();
         com.thelads.core.v26_2.feature.NativeFeatures.initialize();

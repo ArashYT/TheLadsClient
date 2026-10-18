@@ -33,7 +33,7 @@ final class HudOverrideCapture26 {
         if (mc.player == null || server == null) return;
         var id = mc.player.getUUID();
         switch (++tick) {
-            case 0 -> server.execute(() -> {
+            case 0 -> { com.thelads.core.client.qa.QaProgress.begin("HUD armor and offhand", 2); server.execute(() -> {
                 var p = server.getPlayerList().getPlayer(id);
                 p.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
                 p.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.IRON_CHESTPLATE));
@@ -41,12 +41,13 @@ final class HudOverrideCapture26 {
                 p.setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.IRON_BOOTS));
                 p.setItemSlot(EquipmentSlot.OFFHAND, new ItemStack(Items.SHIELD));
                 p.addEffect(new MobEffectInstance(MobEffects.SPEED, 2400, 1));
-            });
+            }); }
             case 40 -> shot("armor-with-offhand");
             case 45 -> server.execute(() -> server.getPlayerList().getPlayer(id).setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY));
             case 80 -> shot("armor-no-offhand");
             case 85 -> {
                 done = true;
+                com.thelads.core.client.qa.QaProgress.done();
                 // The QA world is saved: leave no Speed behind for the next run's effect checks (NativeImprovementsProbe).
                 server.execute(() -> server.getPlayerList().getPlayer(id).removeEffect(MobEffects.SPEED));
                 LOGGER.info("Lads hud 1.9.10 capture END");
@@ -58,6 +59,7 @@ final class HudOverrideCapture26 {
     private static void shot(String name) {
         LOGGER.info("Lads hud 1.9.10 capture {}: offhand slot left {}, armor {}", name, LadsGameBridge.get().offhandSlotLeft(), LadsGameBridge.get().getArmor().size());
         pendingShot = name;
+        com.thelads.core.client.qa.QaProgress.step(name);
     }
 
     /** Each completed frame (NativeWorldVerification.renderedFrame): a requested screenshot. */

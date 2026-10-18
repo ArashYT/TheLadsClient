@@ -141,3 +141,14 @@ joins that world through quick play, `-Dthelads.qaRejoin=true` starts the script
 (default Vulkan = shaders off) picks the renderer, and `GraphicsRenderer.PrepareAsync` + the installer suspend or restore Iris. Run the harness again after the game
 quit to switch. 1.20.1 is driven by the script (`press "Shader packs..."`, `press "Turn shaders off (restart)"`); 26.3 by `LADS_QA_SHADERTOGGLE="world,video,page,restart"`
 (`ready`, `iris`, `packscreen`, `warn`, `quit` too; `LADS_QA_SHADERTOGGLE_TAG` names the `screenshots\shaders-<tag>-*.png`), see `ShaderToggleQa26`.
+
+## QA progress bar (every client QA run, all versions)
+
+Owner rule: every QA run shows a live boss-bar-style bar at the top centre: `Lads QA · <run> · step i/N · <current> · OK n · SLOW n · FAIL n · CRASH n · ETA m:ss`
+(green while clean, yellow after a SLOW step, red on a FAIL/CRASH; long text wraps to two lines). The harness passes `-Dthelads.qaBar=1` to the game
+(not to `perf`/`players` benchmarks; `LADS_VERIFY_QABAR=0` turns it off for a run). Core: `com.thelads.core.client.qa.QaProgress` (common; `begin(run, total)`,
+`step(label)`, `result(OK|SLOW|FAIL|CRASH)`, `check(what, ok)`, `done()`; nested runs hand their worst result to the run around them). It is drawn with the Lads HUD
+(in a world, after the Lads HUD modules, even under F3 and Auto Hide; F1 hides it). A new QA flow reports its steps to it; a check that compares HUD pixels calls
+`QaProgress.hideFrames(n)` before the frame it reads. 1.8.9: `CoreProbe` steps; 1.20.1: script steps (`QaProbe1201`); 26.3: each capture/probe (the ones that report
+no steps of their own show as a run named after them while busy, `NativeWorldVerification.BAR_RUNS`); the shared HUD sequences (`HudLayoutQa`, `HudCoverQa`, `BetterF3Qa`,
+`BgShadowQa`, `HudTextQa`) report on every version.

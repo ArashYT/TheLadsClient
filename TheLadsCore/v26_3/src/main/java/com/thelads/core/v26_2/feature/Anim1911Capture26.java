@@ -104,6 +104,7 @@ final class Anim1911Capture26 {
             command(server, "weather clear");
             command(server, "clear @p");
             LOGGER.info("Lads anim 1.9.11 capture BEGIN: {} setups, 1.7 Animations on and off", SHOTS.size());
+            com.thelads.core.client.qa.QaProgress.begin("anim 1.9.11", SHOTS.size() * 2);
             return;
         }
         if (tick < 100) return; // the QA world's own probes settle first
@@ -118,6 +119,7 @@ final class Anim1911Capture26 {
         int start = shot.riptide ? 40 : (shot.main + shot.off).contains("goat_horn") ? 150 : 14;
         int shotAt = shot.riptide ? start + shot.use + 4 : start + Math.max(shot.use, 6);
         if (t == 0) {
+            com.thelads.core.client.qa.QaProgress.step(shot.name + (on ? "-on" : "-off"));
             mc.options.keyUse.setDown(false);
             NativeOldAnimations.module().setEnabled(on);
             mc.options.setCameraType(shot.third ? CameraType.THIRD_PERSON_FRONT : CameraType.FIRST_PERSON);
@@ -138,7 +140,7 @@ final class Anim1911Capture26 {
             var player = mc.player;
             boolean held = holds(player.getMainHandItem(), shot.main) && holds(player.getOffhandItem(), shot.off)
                 && (shot.use == 0 || shot.riptide || player.isUsingItem()) && (!shot.riptide || player.isAutoSpinAttack());
-            if (held) passed++; else failed++;
+            if (held) passed++; else { failed++; com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL); }
             LOGGER.info("Lads anim 1.9.11 capture shot {} {}: main={} off={} using={} hand={} spin={} applied={}", name, held ? "PASS" : "FAIL",
                 player.getMainHandItem(), player.getOffhandItem(), player.isUsingItem(),
                 player.isUsingItem() ? player.getUsedItemHand() : "-", player.isAutoSpinAttack(), NativeOldAnimations.APPLIED);
@@ -162,6 +164,7 @@ final class Anim1911Capture26 {
         command(server, "weather clear");
         command(server, "clear @p");
         command(server, "gamemode survival @p");
+        com.thelads.core.client.qa.QaProgress.done();
         LOGGER.info("Lads anim 1.9.11 capture END: {} passed, {} failed (each shot holds the asked items, in use when asked)", passed, failed);
     }
 

@@ -843,6 +843,9 @@ try
     {
         AddJvm("-XX:+DisableAttachMechanism");
     }
+    // Permanent QA rule: every client QA run shows the Lads QA progress bar (Core QaProgress; step i/N, OK/SLOW/FAIL/CRASH, ETA). Benchmarks run
+    // without it, and LADS_VERIFY_QABAR=0 turns it off for a run whose frames must be bare.
+    if (Env("LADS_VERIFY_QABAR") != "0" && !perf189) AddJvm("-Dthelads.qaBar=1");
     // QA keeps JAVA_TOOL_OPTIONS: the JFR perf recipe passes its recording flags there (players never get it, GameSession strips it).
     // Two real frames of the Lads loading screen (startup), saved to the sandbox's screenshots folder.
     if (titleVerification) AddJvm("-Dthelads.verifyLoadingScreen=true");

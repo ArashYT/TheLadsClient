@@ -242,6 +242,8 @@ final class Probe172Ui {
             return after(60);
         });
         STEPS.add(mc -> {
+            // The menu's preview is a copy of the game's frame: the QA progress bar stays out of it while the brightness is measured (stop() brings it back).
+            com.thelads.core.client.qa.QaProgress.hide(true);
             Fullbright189.qaDefer = control;
             Options189.module("Fullbright").setEnabled(true);
             gamma().setValue(0);
@@ -330,6 +332,7 @@ final class Probe172Ui {
     static void stop() {
         if (!started) return;
         started = false;
+        com.thelads.core.client.qa.QaProgress.hide(false);
         Minecraft mc = Minecraft.getMinecraft();
         Fullbright189.qaDefer = false;
         if (mc.currentScreen == editor || mc.currentScreen == menu) mc.displayGuiScreen(null);
