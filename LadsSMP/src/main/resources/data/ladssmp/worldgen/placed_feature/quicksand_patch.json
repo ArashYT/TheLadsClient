@@ -2,14 +2,8 @@
   "feature": "ladssmp:quicksand_patch",
   "placement": [
     {
-      "type": "minecraft:count",
-      "count": {
-        "type": "minecraft:uniform",
-        "value": {
-          "min_inclusive": 15,
-          "max_inclusive": 20
-        }
-      }
+      "type": "minecraft:rarity_filter",
+      "chance": 3
     },
     {
       "type": "minecraft:in_square"
@@ -19,10 +13,10 @@
       "height": {
         "type": "minecraft:uniform",
         "min_inclusive": {
-          "absolute": 50
+          "absolute": 55
         },
         "max_inclusive": {
-          "absolute": 100
+          "absolute": 80
         }
       }
     },
