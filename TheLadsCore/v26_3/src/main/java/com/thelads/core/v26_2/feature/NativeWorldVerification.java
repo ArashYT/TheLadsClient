@@ -145,6 +145,9 @@ public final class NativeWorldVerification {
                     NativeImprovementsProbe.prepareCapture();
                     captureAfter = now + 15_000_000_000L;
                     chatCaptureAt = now + 7_000_000_000L;
+                    // Day held, as 1.20.1's QA world: a reused QA world reached night and a zombie killed the QA player mid-run, which
+                    // left every capture waiting on the death screen. The captures that need night set it themselves.
+                    if (mc.getConnection() != null) { mc.getConnection().sendCommand("gamerule advance_time false"); mc.getConnection().sendCommand("time set day"); }
                     LOGGER.info("Lads auto-world QA READY: existing local world loaded, alive, unpaused and screen-free; focus not asserted");
                 }
             }
