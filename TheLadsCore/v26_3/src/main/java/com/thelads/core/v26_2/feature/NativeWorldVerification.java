@@ -140,7 +140,7 @@ public final class NativeWorldVerification {
                 }
                 // Remove only Minecraft's ordinary pause screen. Never accept confirmation, error or upgrade dialogs.
                 if (mc.gui.screen() != null && mc.gui.screen().getClass() == PauseScreen.class && menuScreen == null && !FixesCapture.busy()) mc.setScreenAndShow(null);
-                if (worldReady() && !readyLogged) {
+                if (worldReady() && !readyLogged && !NativeQualityProbe.pending()) {
                     readyLogged = true;
                     NativeImprovementsProbe.prepareCapture();
                     captureAfter = now + 15_000_000_000L;
