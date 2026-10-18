@@ -283,7 +283,7 @@ public class ModuleManager {
         register(packets, Module.Category.SERVER);
 
         register(new DiscordRpcModule(), Module.Category.SERVER);
-        register(new com.thelads.core.modules.CosmeticsModule(), Module.Category.MECHANIC);
+        registerHidden(new com.thelads.core.modules.CosmeticsModule(), Module.Category.MECHANIC); // always on: the Cosmetics screen
         // 1.9.2: the Hypixel mods grouped into one.
         register(com.thelads.core.client.hypixel.HypixelMods.module(), Module.Category.HYPIXEL);
 

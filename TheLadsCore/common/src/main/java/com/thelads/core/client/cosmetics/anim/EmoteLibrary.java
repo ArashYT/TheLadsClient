@@ -1,17 +1,19 @@
 package com.thelads.core.client.cosmetics.anim;
 
 import com.thelads.core.client.cosmetics.anim.Emote.Ease;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static com.thelads.core.client.cosmetics.anim.Emote.*;
 
-/** The built-in emotes and the emote wheel's slots. */
+/** The built-in emotes, in wheel order (the default wheel is the first SLOTS of them). */
 public final class EmoteLibrary {
     public static final String GROOVE = "lads:groove";
-    /** The wheel's eight slots, clockwise from the top; null = empty. */
-    public static final String[] WHEEL = {GROOVE, null, null, null, null, null, null, null};
-    private static final Map<String, Emote> BY_ID = new HashMap<>();
+    /** The emote wheel's slot count (the player fills them in the Cosmetics screen: CosmeticsModule.slots). */
+    public static final int SLOTS = 8;
+    private static final Map<String, Emote> BY_ID = new LinkedHashMap<>();
 
     static { add(groove()); }
 
@@ -20,6 +22,9 @@ public final class EmoteLibrary {
     private static void add(Emote emote) { BY_ID.put(emote.id, emote); }
 
     public static Emote get(String id) { return id == null ? null : BY_ID.get(id); }
+
+    /** Every emote id, in library order. */
+    public static List<String> ids() { return new ArrayList<>(BY_ID.keySet()); }
 
     /**
      * Groove: a 4-beat step-touch at 115 BPM. Step right on 1, touch on 2, step left on 3, touch on 4; the knees dip on every beat

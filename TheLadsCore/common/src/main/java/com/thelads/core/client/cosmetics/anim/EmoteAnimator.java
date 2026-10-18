@@ -1,7 +1,6 @@
 package com.thelads.core.client.cosmetics.anim;
 
 import com.thelads.core.client.cosmetics.Emotes;
-import com.thelads.core.config.ModuleManager;
 import com.thelads.core.modules.CosmeticsModule;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,7 +20,6 @@ public final class EmoteAnimator {
     static final double REMOTE_MOVE = 0.25;
     private static final long BASE_MS = System.currentTimeMillis(), BASE_NANOS = System.nanoTime();
     private static final Map<UUID, Playback> PLAYBACK = new HashMap<>();
-    private static final String COSMETICS = "Cosmetics";
     private static CosmeticsModule cosmetics;
 
     private static final class Playback {
@@ -85,14 +83,11 @@ public final class EmoteAnimator {
         return pose;
     }
 
-    /** The Cosmetics module is on with "Show other players' emotes" (true when there is no such module, as in tests). */
+    /** Cosmetics "Show other players' emotes". */
     static boolean showOthers() {
         CosmeticsModule module = cosmetics;
-        if (module == null) {
-            if (!(ModuleManager.getInstance().getModule(COSMETICS) instanceof CosmeticsModule found)) return true;
-            cosmetics = module = found;
-        }
-        return module.isEnabled() && module.showOthers.get();
+        if (module == null) cosmetics = module = CosmeticsModule.get();
+        return module.showOthers.get();
     }
 
     private static float clamp(float v) { return v < 0 ? 0 : v > 1 ? 1 : v; }

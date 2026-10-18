@@ -157,14 +157,9 @@ class EmoteAnimTest {
             assertNull(EmoteAnimator.pose(other, true, 0, 0, 0, t), "\"Show other players' emotes\" off: other players are not posed");
             assertNotNull(EmoteAnimator.pose(self, false, 0, 0, 0, t), "the local player still dances");
             cosmetics.showOthers.set(true);
-            cosmetics.setEnabled(false);
-            assertNull(EmoteAnimator.pose(other, true, 0, 0, 0, t), "Cosmetics off: other players are not posed");
-            assertNotNull(EmoteAnimator.pose(self, false, 0, 0, 0, t));
-            cosmetics.setEnabled(true);
-            assertNotNull(EmoteAnimator.pose(other, true, 0, 0, 0, t), "both on: other players dance");
+            assertNotNull(EmoteAnimator.pose(other, true, 0, 0, 0, t), "on again: other players dance");
         } finally {
             cosmetics.showOthers.set(true);
-            cosmetics.setEnabled(true);
         }
     }
 
