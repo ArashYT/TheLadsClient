@@ -37,18 +37,21 @@ import org.slf4j.LoggerFactory;
 
 /**
  * QA only (auto-world, ".lads-qa-capture-lights" from the harness's LADS_VERIFY_CAPTURE_LIGHTS): Dynamic Lights at midnight on a dry stone
- * stand above the QA world, each scene with the module off and on: a held torch, a dropped glowstone and a burning zombie (both client-only), saved as
+ * stand above the QA world, each scene with the module off and on: a held torch, a dropped glowstone, a burning zombie, primed TNT (all
+ * client-only) and an explosion's flash (NativeDynamicLights.onExplosion, as the explosion packet calls it), saved as
  * lights-*.png with the frame's mean brightness. Then a torch circles the player for 8 s with the module on and 8 s off to measure
  * the frame rate. Held items are this client's only; the time of day, the player's position, the stand, module settings
  * and Fullbright are put back afterwards.
  */
 final class DynamicLightsCapture {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
-    private enum Scene { HELD, DROPPED, BURNING }
+    private enum Scene { HELD, DROPPED, BURNING, TNT, EXPLOSION }
     private record Shot(String name, boolean on, Scene scene) {}
     private static final Shot[] SHOTS = {new Shot("torch-off", false, Scene.HELD), new Shot("torch-on", true, Scene.HELD),
         new Shot("glowstone-off", false, Scene.DROPPED), new Shot("glowstone-on", true, Scene.DROPPED),
-        new Shot("burning-off", false, Scene.BURNING), new Shot("burning-on", true, Scene.BURNING)};
+        new Shot("burning-off", false, Scene.BURNING), new Shot("burning-on", true, Scene.BURNING),
+        new Shot("tnt-off", false, Scene.TNT), new Shot("tnt-on", true, Scene.TNT),
+        new Shot("explosion-off", false, Scene.EXPLOSION), new Shot("explosion-on", true, Scene.EXPLOSION)};
     private static final long SETTLE = 1_500_000_000L, MEASURE = 8_000_000_000L;
     private static final int FIRST_ID = Integer.MAX_VALUE - 512;
     private static ItemStack torch; // made once a world is up: an ItemStack needs the item components bound
@@ -67,6 +70,8 @@ final class DynamicLightsCapture {
     private static ItemStack mainBefore, offBefore;
     private static ItemEntity dropped, orbit;
     private static Zombie burning;
+    private static net.minecraft.world.entity.item.PrimedTnt tnt;
+    private static Vec3 blast; // the explosion scene's centre: a fresh flash there every tick
     private static final List<String> RESULTS = new ArrayList<>();
     private DynamicLightsCapture() {}
 
@@ -230,6 +235,14 @@ final class DynamicLightsCapture {
                 burning.setId(FIRST_ID + 2);
                 mc.level.addEntity(burning);
             }
+            case TNT -> {
+                tnt = new net.minecraft.world.entity.item.PrimedTnt(mc.level, ahead.x, ahead.y, ahead.z, null);
+                tnt.setNoGravity(true);
+                tnt.setFuse(80_000);
+                tnt.setId(FIRST_ID + 4);
+                mc.level.addEntity(tnt);
+            }
+            case EXPLOSION -> blast = ahead.add(0, 0.5, 0);
         }
         hold();
     }
@@ -246,6 +259,8 @@ final class DynamicLightsCapture {
             burning.setRemainingFireTicks(100);
             burning.setSharedFlagOnFire(true);
         }
+        if (tnt != null) tnt.setFuse(80_000); // never reaches 0 (a client-only TNT just vanishes then)
+        if (blast != null) NativeDynamicLights.onExplosion(blast.x, blast.y, blast.z, 4f); // a TNT-sized explosion, again every tick
         if (orbit != null) { // 5 blocks a second on a 4-block circle
             double angle = System.nanoTime() / 1e9 * 1.25;
             orbit.setPos(player.getX() + Math.cos(angle) * 4, player.getY() + 0.5, player.getZ() + Math.sin(angle) * 4);
@@ -255,11 +270,11 @@ final class DynamicLightsCapture {
     /** The light lookups themselves: the world's (LightCoordsUtil, as chunk meshing) and the entity renderer's (as the held item). */
     private static void checkLight(Shot shot) {
         Minecraft mc = Minecraft.getInstance();
-        Entity source = shot.scene() == Scene.HELD ? mc.player : shot.scene() == Scene.DROPPED ? dropped : burning;
-        if (source == null) { fail(shot.name() + ": no light source in the scene"); return; }
-        BlockPos at = BlockPos.containing(source.getX(), source.getEyeY(), source.getZ());
+        Entity source = switch (shot.scene()) { case HELD -> mc.player; case DROPPED -> dropped; case BURNING -> burning; case TNT -> tnt; case EXPLOSION -> null; };
+        if (source == null && blast == null) { fail(shot.name() + ": no light source in the scene"); return; }
+        BlockPos at = source != null ? BlockPos.containing(source.getX(), source.getEyeY(), source.getZ()) : BlockPos.containing(blast);
         int world = mc.level.getBrightness(LightLayer.BLOCK, at), lit = LightCoordsUtil.block(LightCoordsUtil.getLightCoords(mc.level, at));
-        int expected = shot.scene() == Scene.HELD ? 14 : 15; // a torch; glowstone, and anything burning
+        int expected = shot.scene() == Scene.HELD ? 14 : shot.scene() == Scene.EXPLOSION ? 13 : 15; // a torch; a flash a tick old; glowstone, fire, TNT
         if (shot.on()) check(lit >= expected - 1 && DynamicLights.WORLD.at(at.getX(), at.getY(), at.getZ()) >= expected - 1,
             shot.name() + ": the light at the source is " + lit + " (world " + world + ")");
         else check(lit == Math.max(world, mc.level.getBlockState(at).getLightEmission()), shot.name() + ": only the world's own light (" + lit + ")");
@@ -294,9 +309,11 @@ final class DynamicLightsCapture {
 
     private static void clearScene() {
         var level = Minecraft.getInstance().level;
-        for (int i = 1; i <= 3; i++) level.removeEntity(FIRST_ID + i, Entity.RemovalReason.DISCARDED);
+        for (int i = 1; i <= 4; i++) level.removeEntity(FIRST_ID + i, Entity.RemovalReason.DISCARDED);
         dropped = null;
         burning = null;
+        tnt = null;
+        blast = null;
         orbit = null;
     }
 
