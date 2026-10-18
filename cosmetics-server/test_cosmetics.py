@@ -172,7 +172,7 @@ async def test_max_sockets_per_ip(client, monkeypatch):
 
 async def test_profile(client):
     body = await (await client.get("/cosmetics/profile/" + A)).json()
-    assert body == {"owned": ["lads:groove"], "equipped": {}}
+    assert body == {"owned": cosmetics.FREE, "equipped": {}} and "lads:wave" in body["owned"]
     assert (await client.get("/cosmetics/profile/nope")).status == 400
 
 
