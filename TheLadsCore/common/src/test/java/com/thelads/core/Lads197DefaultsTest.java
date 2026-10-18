@@ -35,7 +35,7 @@ class Lads197DefaultsTest {
         "FarBlockEntities", "FPS", "HYPIXEL Mods", com.thelads.core.modules.ItemPhysicsModule.NAME, com.thelads.core.client.KeepUiOpen.MODULE_NAME, "KillBanner",
         com.thelads.core.modules.LadsBadgeModule.NAME,
         "Minimap", "MouseTweaks", "Nametags", com.thelads.core.client.DamageTilt.MODULE, "Particle Core",
-        "PingView", "PingHUD", "Potion Effects", "Raised", "RawInput",
+        "PingView", "PingHUD", "Potion Effects", "Raised", "RawInput", "Server Control",
         com.thelads.core.client.pack.PackMenuSettings.MODULE_NAME, "Scoreboard", "ShulkerBoxUtils", "SignalLoss", "SkinLayers",
         "SmoothHotbar", com.thelads.core.modules.StackRefillModule.NAME, com.thelads.core.modules.SurvivalTweaksModule.NAME, "TabList", "Threads", "Title Scale", "TNT Timer",
         "Toggle Sprint & Sneak", "VerticalBobbing", "Voice Chat", "Voice Chat Group", com.thelads.core.modules.WavyCapesModule.NAME,
