@@ -203,9 +203,11 @@ public final class EmoteCapture1201 {
         shot(qaMore + 400, "cosmetics-screen");
         at(qaMore + 800, () -> mc.setScreen(new PauseScreen(true)));
         shot(qaMore + 1200, "pause-menu");
+        // The emote-key test plays Floss (its own key), photographed from the front over one loop.
         at(qaMore + 1600, () -> {
             mc.setScreen(null);
-            KeyMapping grooveKey = EmoteAnim1201.EMOTE_KEYS.get(EmoteLibrary.GROOVE);
+            mc.player.setXRot(0); mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT); mc.options.hideGui = true;
+            KeyMapping grooveKey = EmoteAnim1201.EMOTE_KEYS.get(EmoteLibrary.FLOSS);
             if (grooveKey != null) {
                 InputConstants.Key tempKey = qaKey = freeKey(mc);
                 mc.options.setKey(grooveKey, tempKey);
@@ -215,13 +217,17 @@ public final class EmoteCapture1201 {
         });
         at(qaMore + 1800, () -> {
             Emotes.Playing playing = Emotes.get(self);
-            check(playing != null && EmoteLibrary.GROOVE.equals(playing.id()) && !playing.stopping(), "Groove emote key press starts groove");
-            KeyMapping.click(qaKey);
+            check(playing != null && EmoteLibrary.FLOSS.equals(playing.id()) && !playing.stopping(), "Floss emote key press starts floss");
         });
-        at(qaMore + 2000, () -> {
+        shot(qaMore + 1900, "floss-a");
+        shot(qaMore + 2400, "floss-b");
+        shot(qaMore + 2900, "floss-c");
+        at(qaMore + 3000, () -> KeyMapping.click(qaKey));
+        at(qaMore + 3150, () -> {
             Emotes.Playing stopping = Emotes.get(self);
-            check(stopping != null && EmoteLibrary.GROOVE.equals(stopping.id()) && stopping.stopping(), "Groove emote key press again stops groove");
-            KeyMapping grooveKey = EmoteAnim1201.EMOTE_KEYS.get(EmoteLibrary.GROOVE);
+            check(stopping != null && EmoteLibrary.FLOSS.equals(stopping.id()) && stopping.stopping(), "Floss emote key press again stops floss");
+            mc.options.setCameraType(CameraType.FIRST_PERSON); mc.options.hideGui = false;
+            KeyMapping grooveKey = EmoteAnim1201.EMOTE_KEYS.get(EmoteLibrary.FLOSS);
             if (grooveKey != null) {
                 mc.options.setKey(grooveKey, InputConstants.UNKNOWN);
                 KeyMapping.resetMapping();
@@ -229,7 +235,7 @@ public final class EmoteCapture1201 {
             Emotes.stopLocal(self);
             mc.setScreen(null);
         });
-        at(qaMore + 2400, () -> {
+        at(qaMore + 3500, () -> {
             mc.setScreen(null);
             done = true;
             LOGGER.info("Lads emote capture END: {} passed, {} failed; frames in {}", passed, failed, out);

@@ -132,9 +132,9 @@ public final class EmoteLibrary {
         b.track(ch(RIGHT_ARM, RZ), 0, -50.0f, 1, 36.0f, 2, -50.0f, 3, 36.0f);
         b.track(ch(LEFT_ARM, RZ),  0, -36.0f, 1, 50.0f, 2, -36.0f, 3, 50.0f);
 
-        // Front vs Behind (RX):
-        b.track(ch(RIGHT_ARM, RX), 0, -50.0f, 1, -50.0f, 2, 22.0f, 3, 22.0f);
-        b.track(ch(LEFT_ARM, RX),  0, 22.0f,  1, -50.0f, 2, -50.0f, 3, 22.0f);
+        // Front vs behind (RX), swapping every beat: the arm that crosses the body passes in front, the other swings out behind.
+        b.track(ch(RIGHT_ARM, RX), 0, -45.0f, 1, 25.0f, 2, -45.0f, 3, 25.0f);
+        b.track(ch(LEFT_ARM, RX),  0, 25.0f, 1, -45.0f, 2, 25.0f, 3, -45.0f);
 
         // Arm yaw (RY):
         b.track(ch(RIGHT_ARM, RY), 0, 18.0f, 1, -18.0f, 2, 18.0f, 3, -18.0f);

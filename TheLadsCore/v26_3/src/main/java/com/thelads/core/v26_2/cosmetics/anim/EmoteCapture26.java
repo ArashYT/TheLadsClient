@@ -194,22 +194,29 @@ public final class EmoteCapture26 {
         at(cos + 600, () -> mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(true) {})); // a subclass: the QA world closes a plain PauseScreen
         shot(cos + 900, "pause-menu");
         at(cos + 1200, () -> mc.setScreenAndShow(null));
+        // The emote-key test plays Floss (its own key), photographed from the front over one loop.
         at(cos + 1400, () -> {
-            KeyMapping grooveKey = EmoteAnim26.key(EmoteLibrary.GROOVE);
-            if (grooveKey != null) grooveKey.clickCount++;
+            mc.player.setXRot(0); mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT); hud(mc, false);
+            KeyMapping flossKey = EmoteAnim26.key(EmoteLibrary.FLOSS);
+            if (flossKey != null) flossKey.clickCount++;
         });
-        at(cos + 1700, () -> {
+        at(cos + 1600, () -> {
             Emotes.Playing p = Emotes.get(self);
-            check(p != null && EmoteLibrary.GROOVE.equals(p.id()) && !p.stopping(), "groove key starts groove");
-            KeyMapping grooveKey = EmoteAnim26.key(EmoteLibrary.GROOVE);
-            if (grooveKey != null) grooveKey.clickCount++;
+            check(p != null && EmoteLibrary.FLOSS.equals(p.id()) && !p.stopping(), "floss key starts floss");
         });
-        at(cos + 1800, () -> { // before the 280 ms blend-out removes it
+        shot(cos + 1700, "floss-a");
+        shot(cos + 2200, "floss-b");
+        shot(cos + 2700, "floss-c");
+        at(cos + 2800, () -> {
+            KeyMapping flossKey = EmoteAnim26.key(EmoteLibrary.FLOSS);
+            if (flossKey != null) flossKey.clickCount++;
+        });
+        at(cos + 2900, () -> { // before the 280 ms blend-out removes it
             Emotes.Playing p = Emotes.get(self);
-            check(p != null && p.stopping(), "groove key again stops groove");
+            check(p != null && EmoteLibrary.FLOSS.equals(p.id()) && p.stopping(), "floss key again stops floss");
             mc.setScreenAndShow(null);
         });
-        at(cos + 2500, () -> {
+        at(cos + 3400, () -> {
             mc.options.setCameraType(CameraType.FIRST_PERSON);
             hud(mc, hudWas);
             com.thelads.core.v26_2.feature.LocalSkins.reset();
