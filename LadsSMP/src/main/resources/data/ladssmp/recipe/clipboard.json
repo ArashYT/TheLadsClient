@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " I ",
+    "PPP",
+    " W "
+  ],
+  "key": {
+    "I": "minecraft:iron_nugget",
+    "P": "minecraft:paper",
+    "W": "#minecraft:planks"
+  },
+  "result": {
+    "id": "ladssmp:clipboard"
+  }
+}
