@@ -34,6 +34,7 @@ public final class LadsSMPMod implements ModInitializer {
         EnchantingCommandsManager.init();
         LoginProtectionManager.init();
         com.thelads.smp.features.arise.nb1.AriseNB1Features.init();
+        com.thelads.smp.features.arise.nb2.NB2Features.init();
 
         // Sanitize player inventory immediately upon joining the server
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
