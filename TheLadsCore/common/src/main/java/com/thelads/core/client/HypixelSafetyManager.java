@@ -52,9 +52,10 @@ public final class HypixelSafetyManager {
      * Determines whether a given server IP/hostname belongs to Hypixel.
      */
     public static boolean isHypixelAddress(String addr) {
-        if (addr == null || addr.isEmpty() || addr.equalsIgnoreCase("Singleplayer")) {
+        if (addr == null || addr.isEmpty()) {
             return false;
         }
+        // Asked per module every frame: the last address first, before any string work.
         String last = lastAddress;
         if (addr.equals(last)) {
             return lastAddressIsHypixel;
@@ -65,7 +66,7 @@ public final class HypixelSafetyManager {
             lastAddressIsHypixel = cached;
             return cached;
         }
-        boolean isHypixel = computeIsHypixelAddress(addr);
+        boolean isHypixel = !addr.equalsIgnoreCase("Singleplayer") && computeIsHypixelAddress(addr);
         CACHED_ADDRESSES.put(addr, isHypixel);
         lastAddress = addr;
         lastAddressIsHypixel = isHypixel;

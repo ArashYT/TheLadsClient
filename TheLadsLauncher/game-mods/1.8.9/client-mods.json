@@ -46,6 +46,21 @@
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": null,
       "projectUrl": "https://modrinth.com/mod/xaeros-minimap"
+    },
+    {
+      "projectId": "wx17t6U9",
+      "projectSlug": "pylon",
+      "name": "Pylon",
+      "modId": "pylon",
+      "versionId": "DMvW1Jvx",
+      "version": "0.2.2",
+      "fileName": "pylon-0.2.2.jar",
+      "url": "https://cdn.modrinth.com/data/wx17t6U9/versions/DMvW1Jvx/pylon-0.2.2.jar",
+      "sha512": "aed778b68c861debfe6ed4a7aae320350c119fc40bebeac29f38a7f56d4454ca793455e476c23583eacb1444fee5ddbb7407c9abdfbd178a9c823042dc2d27c1",
+      "size": 13070655,
+      "license": "LGPL-3.0-only",
+      "sourceUrl": "https://github.com/notdevcody/pylon",
+      "projectUrl": "https://modrinth.com/mod/pylon"
     }
   ],
   "retired": [
