@@ -97,6 +97,7 @@ final class UiCapture {
         if (System.getenv("LADS_QA_UI_FULLBRIGHT_ONLY") == null) { // 1.9.10: the Fullbright part alone
             hudEditor();
             moduleReset();
+            serverRules();
         }
         fullbright(true);
         fullbright(false);
@@ -263,6 +264,60 @@ final class UiCapture {
         steps.add(mc -> { key(menu, 257); pause(3); });
         steps.add(mc -> {
             check(size() == 100, "Enter confirms: Size back to 100");
+            mc.setScreenAndShow(null);
+            pause(5);
+        });
+    }
+
+    // ---- 2b. Server rules: a risky module on an unknown server, its Bypass button and the red warning ----
+    private static boolean refillWas;
+    private static void serverRules() {
+        steps.add(mc -> {
+            Module refill = NativeQualityOfLife.module("StackRefill");
+            refillWas = refill.isEnabledSetting();
+            refill.setEnabled(true);
+            com.thelads.core.client.HypixelSafetyManager.removeBypass("StackRefill");
+            com.thelads.core.client.HypixelSafetyManager.qaAddress = "play.lads-qa-unknown.net";
+            menu = new LadsSettingsScreen26(null);
+            mc.setScreenAndShow(menu);
+            menu.openModule("StackRefill");
+            pause(20);
+        });
+        steps.add(mc -> {
+            Module refill = NativeQualityOfLife.module("StackRefill");
+            check(refill.isBlockedByServer() && !refill.isEnabled() && com.thelads.core.client.HypixelSafetyManager.blockOf("StackRefill")
+                == com.thelads.core.client.HypixelSafetyManager.Block.UNKNOWN && ui().controlBounds("toggle:detail") != null,
+                "an unknown server turns Stack Refill off and its page shows the Bypass button");
+            shot("ui-rules-1-blocked");
+        });
+        steps.add(mc -> { click(menu, ui().controlBounds("toggle:detail")); pause(4); });
+        steps.add(mc -> {
+            check(ui().confirmDialog().isDanger(), "Bypass opens the red at-your-own-risk warning");
+            shot("ui-rules-2-warning");
+            click(menu, ui().confirmDialog().confirmBounds()); // not armed yet
+            pause(2);
+        });
+        steps.add(mc -> { key(menu, 257); pause(2); });
+        steps.add(mc -> {
+            check(ui().confirmDialog().isDanger() && !com.thelads.core.client.HypixelSafetyManager.isBypassed("StackRefill"),
+                "neither an early click nor Enter confirms the warning");
+            pause(240); // past the 3 s arming
+        });
+        steps.add(mc -> { shot("ui-rules-3-armed"); click(menu, ui().confirmDialog().confirmBounds()); pause(6); });
+        steps.add(mc -> {
+            Module refill = NativeQualityOfLife.module("StackRefill");
+            check(!ui().confirmDialog().isOpen() && com.thelads.core.client.HypixelSafetyManager.isBypassed("StackRefill") && refill.isEnabled(),
+                "the armed confirm bypasses this server: Stack Refill is on");
+            shot("ui-rules-4-bypassed");
+        });
+        steps.add(mc -> { click(menu, ui().controlBounds("bypass:undo")); pause(6); });
+        steps.add(mc -> {
+            Module refill = NativeQualityOfLife.module("StackRefill");
+            check(!com.thelads.core.client.HypixelSafetyManager.isBypassed("StackRefill") && refill.isBlockedByServer() && refill.isEnabledSetting(),
+                "Undo bypass: the server rules apply again, the player's own On is kept");
+            shot("ui-rules-5-undone");
+            com.thelads.core.client.HypixelSafetyManager.qaAddress = null;
+            refill.setEnabled(refillWas);
             mc.setScreenAndShow(null);
             pause(5);
         });

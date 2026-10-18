@@ -18,16 +18,26 @@ public class HypixelSafetyTest {
 
     private static class TestGameBridge extends DefaultGameBridge {
         private String server = "Singleplayer";
+        private boolean ingame = true;
 
         public void setServer(String s) { this.server = s; }
 
         @Override public String getServerAddress() { return server; }
-        @Override public boolean isIngame() { return true; }
+        @Override public boolean isIngame() { return ingame; }
+    }
+
+    @org.junit.jupiter.api.io.TempDir
+    java.nio.file.Path tmp;
+
+    @org.junit.jupiter.api.BeforeEach
+    public void isolateBypasses() {
+        HypixelSafetyManager.setBypassFile(tmp.resolve("server_bypasses.json").toFile());
     }
 
     @AfterEach
     public void resetBridge() {
         LadsGameBridge.set(new DefaultGameBridge());
+        HypixelSafetyManager.setBypassFile(null);
     }
 
     @Test
@@ -150,10 +160,119 @@ public class HypixelSafetyTest {
         assertFalse(worldMap.isEnabled());
         assertTrue(jade.isEnabled(), "only the maps: Jade is a Hypixel-only block");
         assertFalse(HypixelSafetyManager.getBlockedNotice("Minimap").contains("Hypixel"), "the notice names no wrong server");
-        bridge.setServer("play.wynncraft.com");
+        bridge.setServer("192.168.1.20:25565"); // a LAN world: no network anticheat
         assertFalse(HypixelSafetyManager.isMinimapBanned());
         assertTrue(minimap.isEnabled());
         assertTrue(worldMap.isEnabled());
+    }
+
+    /** Owner rule: on a server whose rules we don't know, the risky modules start off (bypassable), the rest stay on. */
+    @Test
+    public void testUnknownServerBlocksRiskyModules() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        Module minimap = new Module("XaeroMinimap", "Minimap"), refill = new Module("StackRefill", "Stack Refill"), jade = new Module("Jade", "Jade");
+        minimap.setEnabled(true);
+        refill.setEnabled(true);
+        jade.setEnabled(true);
+        for (String server : new String[]{"play.somesmp.net", "Unknown", "45.12.3.4:25565"}) {
+            bridge.setServer(server);
+            assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("XaeroMinimap"), server);
+            assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("StackRefill"), server);
+            assertFalse(minimap.isEnabled(), server);
+            assertFalse(refill.isEnabled(), server);
+            assertTrue(jade.isEnabled(), "Jade is only a Hypixel block: " + server);
+            assertTrue(HypixelSafetyManager.getBlockedNotice("StackRefill").contains("don't know"), server);
+        }
+        bridge.setServer("as.minemen.club");
+        assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("StackRefill"));
+        assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("XaeroWorldMap"));
+        for (String trusted : new String[]{"Singleplayer", "localhost:25565", "127.0.0.1", "10.0.0.7", "172.20.1.1", "[::1]:25565",
+                "nikzerosmp.my.pebble.host", "smp.arashyt.ca"}) {
+            bridge.setServer(trusted);
+            assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("StackRefill"), trusted);
+            assertTrue(minimap.isEnabled(), trusted);
+            assertTrue(refill.isEnabled(), trusted);
+            assertTrue(HypixelSafetyManager.isTrustedServer(), trusted);
+        }
+        bridge.setServer("172.32.0.1"); // outside 172.16/12: a public address
+        assertFalse(refill.isEnabled());
+        bridge.setServer("notarashyt.ca");
+        assertFalse(refill.isEnabled(), "only arashyt.ca and its subdomains are ours");
+        bridge.setServer("Unknown");
+        bridge.ingame = false; // 1.20.1's main menu reports "Unknown": nothing to ban outside a world
+        assertTrue(refill.isEnabled());
+        assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("XaeroMinimap"));
+    }
+
+    /** The red warning's bypass: per server, minimap + world map together, saved to its own file, undoable, never in the Hypixel QA. */
+    @Test
+    public void testBypassPerServer() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        Module minimap = new Module("XaeroMinimap", "Minimap"), worldMap = new Module("XaeroWorldMap", "World map"), refill = new Module("StackRefill", "Stack Refill");
+        minimap.setEnabled(true);
+        worldMap.setEnabled(true);
+        refill.setEnabled(true);
+        bridge.setServer("Play.SomeSMP.net:25565");
+        assertFalse(minimap.isEnabled());
+        HypixelSafetyManager.bypass("Minimap");
+        assertTrue(minimap.isEnabled(), "bypassed here");
+        assertTrue(worldMap.isEnabled(), "one bypass for both maps");
+        assertFalse(refill.isEnabled(), "other modules keep the rules");
+        assertTrue(HypixelSafetyManager.isBypassed("XaeroMinimap"));
+        assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("XaeroMinimap"), "the block reason stays visible");
+
+        bridge.setServer("play.somesmp.net"); // same host, other spelling
+        assertTrue(minimap.isEnabled());
+        bridge.setServer("other.server.net");
+        assertFalse(minimap.isEnabled(), "a bypass is for one server only");
+
+        bridge.setServer("play.somesmp.net");
+        HypixelSafetyManager.setBypassFile(tmp.resolve("server_bypasses.json").toFile()); // forget, then reload from disk
+        assertTrue(minimap.isEnabled(), "kept across restarts");
+
+        HypixelSafetyManager.qaOverride = true;
+        try {
+            assertFalse(minimap.isEnabled(), "the Hypixel QA ignores bypasses");
+        } finally {
+            HypixelSafetyManager.qaOverride = false;
+        }
+
+        HypixelSafetyManager.removeBypass("XaeroWorldMap");
+        assertFalse(minimap.isEnabled(), "undo: the rules apply again");
+        assertFalse(HypixelSafetyManager.isBypassed("Minimap"));
+
+        bridge.setServer("Singleplayer");
+        HypixelSafetyManager.bypass("StackRefill"); // nothing to bypass in a local world
+        bridge.setServer("play.somesmp.net");
+        assertFalse(refill.isEnabled());
+    }
+
+    /** A server block is not the player's choice: saving the config on a blocking server keeps the module's own on/off. */
+    @Test
+    public void testConfigSaveKeepsBlockedModulesOn() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        Module refill = ModuleManager.getInstance().getModule("StackRefill");
+        assertNotNull(refill);
+        boolean was = refill.isEnabledSetting();
+        refill.setEnabled(true);
+        try {
+            bridge.setServer("play.somesmp.net");
+            assertFalse(refill.isEnabled());
+            assertTrue(com.thelads.core.config.ConfigManager.toJson().getAsJsonObject("modules").getAsJsonObject("StackRefill").get("enabled").getAsBoolean());
+        } finally {
+            refill.setEnabled(was);
+        }
+    }
+
+    @Test
+    public void testHostParsing() {
+        assertEquals("play.example.net", HypixelSafetyManager.host(" Play.Example.NET.:25565 "));
+        assertEquals("::1", HypixelSafetyManager.host("[::1]:25565"));
+        assertEquals("2001:db8::1", HypixelSafetyManager.host("2001:db8::1"));
+        assertEquals("1.2.3.4", HypixelSafetyManager.host("1.2.3.4"));
     }
 
     @Test

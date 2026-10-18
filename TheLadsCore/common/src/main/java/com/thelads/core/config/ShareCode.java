@@ -138,7 +138,7 @@ public final class ShareCode {
                 : null;
 
             JsonObject mOut = new JsonObject();
-            boolean enabled = m.isEnabled();
+            boolean enabled = m.isEnabledSetting();
             if (srcObj != null && srcObj.has("enabled") && srcObj.get("enabled").isJsonPrimitive()) {
                 JsonPrimitive p = srcObj.getAsJsonPrimitive("enabled");
                 if (p.isBoolean()) {

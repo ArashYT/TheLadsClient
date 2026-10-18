@@ -110,6 +110,7 @@ public class HudManager {
                 g.popPose();
             }
         }
+        if (HudFrameCap.exempt != Boolean.TRUE) ServerRulesNotice.render(g); // once per frame, outside the HUD caches
         var qa = afterRender;
         if (qa != null) { afterRender = null; qa.accept(hud); }
     }

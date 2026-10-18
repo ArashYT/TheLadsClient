@@ -71,7 +71,7 @@ public class ConfigManager {
         }
         for (Module module : ModuleManager.getInstance().getModules()) {
             JsonObject moduleJson = new JsonObject();
-            moduleJson.addProperty("enabled", module.isEnabled());
+            moduleJson.addProperty("enabled", module.isEnabledSetting()); // not isEnabled: a server block must not be saved as off
             if (module instanceof HudModule) {
                 HudModule hm = (HudModule) module;
                 moduleJson.addProperty("useGlobalColor", hm.isUseGlobalColor());

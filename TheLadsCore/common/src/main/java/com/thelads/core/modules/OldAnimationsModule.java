@@ -117,12 +117,13 @@ public final class OldAnimationsModule extends Module {
     /**
      * 1.7 started an item's use while the attack key was mining a block; 1.8 and later ignore the use key until the mining stops.
      * With the module on, blocking, drawing a bow and eating start at once on a block too, as they do when looking at air.
-     * Singleplayer only: a use packet mid-dig is impossible for 1.8.9, so server anticheats flag it as autoblock.
+     * Server rules (HypixelSafetyManager): only in singleplayer, LAN and trusted servers - a use packet mid-dig is impossible for 1.8.9,
+     * so server anticheats flag it as autoblock.
      *
      * @param use the use the held item would start (its 1.7 pose), or null for an item without one
      */
     public boolean useWhileMining(Use use) {
-        return isEnabled() && use != null && use != Use.NONE && !com.thelads.core.client.HypixelSafetyManager.isMultiplayer();
+        return isEnabled() && use != null && use != Use.NONE && !com.thelads.core.client.HypixelSafetyManager.isDisallowed(com.thelads.core.client.HypixelSafetyManager.USE_WHILE_MINING);
     }
 
     /** First person: draw this flat item with OldAnimations.item (and no display transform) instead of vanilla's placement. */

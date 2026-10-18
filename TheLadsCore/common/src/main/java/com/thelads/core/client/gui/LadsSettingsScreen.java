@@ -270,8 +270,11 @@ public final class LadsSettingsScreen {
         if (tip.update(modal || tipModule == null ? null : tipModule.getName(), now)) {
             String desc = tipModule.getDescription();
             if (tipModule.isBlockedByServer()) {
-                desc += com.thelads.core.client.HypixelSafetyManager.isSingleplayerOnlyModule(tipModule.getName())
-                    ? " [Singleplayer only - server anticheats ban it]" : " [Disabled on this server - Server Rules]";
+                desc += com.thelads.core.client.HypixelSafetyManager.blockOf(tipModule.getName()) == com.thelads.core.client.HypixelSafetyManager.Block.UNKNOWN
+                    ? " [Off: this server's rules are unknown - open Settings to bypass at your own risk]" : " [Off: this server's rules ban it - Server Rules]";
+            } else if (com.thelads.core.client.HypixelSafetyManager.isBypassed(tipModule.getName())
+                    && com.thelads.core.client.HypixelSafetyManager.blockOf(tipModule.getName()) != com.thelads.core.client.HypixelSafetyManager.Block.NONE) {
+                desc += " [Bypassed on this server - at your own risk]";
             } else if (com.thelads.core.client.hypixel.HypixelMods.HYPIXEL_MODS.equals(tipModule.getName())
                     && !com.thelads.core.client.HypixelSafetyManager.isHypixel()) {
                 desc += " [Inactive - Only activates on Hypixel]";
@@ -369,8 +372,8 @@ public final class LadsSettingsScreen {
             round(g, cx, cy, cardW, cardH, mix(base, glow, .35f + .65f * hover));
             round(g, cx + 1, cy + 1, cardW - 2, cardH - 2, fill);
             boolean settingsOnly = ModuleSupport.isSettingsOnly(m.getName());
-            boolean spOnly = com.thelads.core.client.HypixelSafetyManager.isSingleplayerOnlyModule(m.getName());
-            String soon = blocked ? (spOnly ? "SP Only" : "Server Block") : (toggleable || settingsOnly ? "" : "Soon");
+            boolean unknownRules = blocked && com.thelads.core.client.HypixelSafetyManager.blockOf(m.getName()) == com.thelads.core.client.HypixelSafetyManager.Block.UNKNOWN;
+            String soon = blocked ? (unknownRules ? "Unknown Rules" : "Server Block") : (toggleable || settingsOnly ? "" : "Soon");
             if (toggleable) { // state pip, filled when on, so the state is not colour alone
                 round(g, cx + 8, cy + pad + 6, 7, 7, TEXT);
                 if (!on) round(g, cx + 9, cy + pad + 7, 5, 5, fill);
@@ -380,10 +383,11 @@ public final class LadsSettingsScreen {
                 () -> { m.setFavorite(!m.isFavorite()); changed(m); }, mx, my, m.isFavorite() ? TEXT : MUTED, false);
             chip(g, "detail:" + m.getName(), "Settings", new Rect(cx + pad, cy + cardH - pad - 23, cardW - 2 * pad, 23), () -> openDetails(m), mx, my, TEXT, true);
             // Added after the star and Settings so those win the click.
-            controls.add(new Control(id, m.getName() + (blocked ? (spOnly ? ", Singleplayer only" : ", Blocked on this server") : (on ? ", On" : toggleable ? ", Off" : settingsOnly ? ", Settings" : ", Soon")), new Rect(cx, cy, cardW, cardH), () -> {
-                if (m.isBlockedByServer()) {
+            controls.add(new Control(id, m.getName() + (blocked ? (unknownRules ? ", Off, unknown server rules" : ", Blocked on this server") : (on ? ", On" : toggleable ? ", Off" : settingsOnly ? ", Settings" : ", Soon")), new Rect(cx, cy, cardW, cardH), () -> {
+                if (m.isBlockedByServer()) { // its details hold the notice and the Bypass button
                     notice = com.thelads.core.client.HypixelSafetyManager.getBlockedNotice(m.getName());
                     onNarrate.accept(notice);
+                    openDetails(m);
                 }
                 else if (ModuleSupport.isToggleable(m.getName())) { m.toggle(); changed(m); onNarrate.accept(m.getName() + (m.isEnabled() ? ", On" : ", Off")); }
                 else if (ModuleSupport.isSettingsOnly(m.getName())) openDetails(m);
@@ -395,6 +399,25 @@ public final class LadsSettingsScreen {
         }
         g.disableScissor(); scrollbar(g);
     }
+    /** The big red at-your-own-risk warning; confirming keeps the module on for this server only. */
+    private void openBypassWarning(Module m) {
+        String host = com.thelads.core.client.HypixelSafetyManager.currentHost();
+        boolean unknown = com.thelads.core.client.HypixelSafetyManager.blockOf(m.getName()) == com.thelads.core.client.HypixelSafetyManager.Block.UNKNOWN;
+        String why = unknown
+            ? "We don't know the rules of " + host + ", so " + m.getName() + " is off here to keep you safe."
+            : host + " bans " + m.getName() + " in its rules.";
+        confirm.openDanger("USE AT YOUR OWN RISK", why + " Turning it on can get your account BANNED by the server's anticheat or staff,"
+            + " and The Lads Client cannot undo a ban. It stays on for " + host + " only, until you undo the bypass.",
+            "Enable anyway", () -> {
+                com.thelads.core.client.HypixelSafetyManager.bypass(m.getName());
+                if (!m.isEnabled()) m.setEnabled(true);
+                changed(m);
+                notice = m.getName() + " bypassed on " + host + " (at your own risk)";
+                onNarrate.accept(notice);
+            });
+        onNarrate.accept("Warning: use at your own risk. " + why);
+    }
+
     private void renderDetails(LadsGraphics g, int x, int w, int mx, int my) {
         boolean wide = w >= 360;
         boolean preview = hasPreview(detail);
@@ -411,15 +434,26 @@ public final class LadsSettingsScreen {
         boolean hypixelInactive = com.thelads.core.client.hypixel.HypixelMods.HYPIXEL_MODS.equals(detail.getName())
             && !com.thelads.core.client.HypixelSafetyManager.isHypixel();
         g.drawText(hypixelInactive ? "LADS MODULE (INACTIVE OFF HYPIXEL)" : "LADS MODULE", x, stateY + 6, ACCENT);
+        boolean bypassed = !detail.isBlockedByServer() && com.thelads.core.client.HypixelSafetyManager.isBypassed(detail.getName())
+            && com.thelads.core.client.HypixelSafetyManager.blockOf(detail.getName()) != com.thelads.core.client.HypixelSafetyManager.Block.NONE;
         if (detail.isBlockedByServer()) {
-            button(g, "toggle:detail", "BLOCKED", new Rect(x + headerW - 74, stateY, 74, 22),
-                () -> { notice = com.thelads.core.client.HypixelSafetyManager.getBlockedNotice(detail.getName()); }, true, mx, my, false);
-            g.drawText(com.thelads.core.client.HypixelSafetyManager.isSingleplayerOnlyModule(detail.getName())
-                ? "Singleplayer only (server anticheats ban it)" : "Disabled on this server (Server Rules)", x, stateY + 28, ACCENT);
+            Module blockedModule = detail;
+            button(g, "toggle:detail", "Bypass...", new Rect(x + headerW - 80, stateY, 80, 22), () -> openBypassWarning(blockedModule), true, mx, my, false);
+            g.drawText(fit(g, com.thelads.core.client.HypixelSafetyManager.blockOf(detail.getName()) == com.thelads.core.client.HypixelSafetyManager.Block.UNKNOWN
+                ? "Off: unknown server rules (anticheat ban risk)" : "Off: this server's rules ban it", headerW), x, stateY + 28, ACCENT);
         } else if (!ModuleSupport.isSettingsOnly(detail.getName()))
             button(g, "toggle:detail", detail.isEnabled() ? "ON" : "OFF", new Rect(x + headerW - 52, stateY, 52, 22),
                 () -> { detail.toggle(); changed(detail); }, true, mx, my, detail.isEnabled());
-        int top = detail.isBlockedByServer() ? stateY + 44 : stateY + 30;
+        if (bypassed) {
+            Module bypassedModule = detail;
+            g.drawText(fit(g, "BYPASSED on this server - at your own risk", headerW - 90), x, stateY + 28, 0xFFFF3B3B);
+            button(g, "bypass:undo", "Undo bypass", new Rect(x + headerW - 84, stateY + 24, 84, 18), () -> {
+                com.thelads.core.client.HypixelSafetyManager.removeBypass(bypassedModule.getName());
+                notice = bypassedModule.getName() + " follows this server's rules again";
+                onNarrate.accept(notice);
+            }, true, mx, my, false);
+        }
+        int top = detail.isBlockedByServer() || bypassed ? stateY + 46 : stateY + 30;
         if(detail.getOptions().stream().anyMatch(o -> o instanceof PlayerActionOption)) {
             button(g,"display-actions","Display actions...",new Rect(x,top,showPreview ? leftW : Math.min(270, w - 8),25),
                 () -> actions.open(detail.getOptions().stream().filter(o -> o instanceof PlayerActionOption).map(o -> (PlayerActionOption)o).toList(), () -> changed(detail)),true,mx,my,false);
