@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "lads": "1.9.13",
+  "modules": [
+    {
+      "name": "Fullbright",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Brightness",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "XaeroMinimap",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Radar",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Entity Radar",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Crosshair Tweaks",
+      "category": "RENDER",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Style",
+          "type": "dropdown",
+          "default": "Cross",
+          "choices": ["Cross", "Dot", "Circle"],
+          "control": "FULL"
+        },
+        {
+          "name": "Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Thickness",
+          "type": "slider",
+          "default": 1,
+          "min": 1,
+          "max": 10,
+          "step": 1,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "1.7 Animations",
+      "category": "RENDER",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "1.7 sword block pose",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Punch while digging",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    }
+  ]
+}
