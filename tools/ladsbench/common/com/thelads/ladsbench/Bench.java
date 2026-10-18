@@ -268,6 +268,8 @@ public final class Bench {
 
     private static void timeout(int ticks, String what) {
         if (++waitTicks % 600 == 0) log("ladsbench still waiting for " + what + ", screen " + game.screenName());
+        // a confirmation screen (e.g. Fabric's "Missing content detected!" after a mod was removed) never goes away by itself
+        if (waitTicks == 200 && game.screenName().contains("Confirm")) { fail("blocked by " + game.screenName()); return; }
         if (waitTicks > ticks) fail("timeout waiting for " + what + " (screen " + game.screenName() + ")");
     }
 
