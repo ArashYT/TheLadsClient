@@ -37,7 +37,9 @@ final class NativeQualityProbe {
     static void tick() {
         if (done || !(Boolean.getBoolean("thelads.verifyNativeFeatures") || Boolean.getBoolean("thelads.verifyIntegrations"))
             || Minecraft.getInstance().level == null || Minecraft.getInstance().player == null
-            || Minecraft.getInstance().getEntityRenderDispatcher().camera == null) return;
+            || Minecraft.getInstance().getEntityRenderDispatcher().camera == null
+            // The player's own chunk has arrived (void air = not loaded yet): the client-only fixtures (shulker) go next to the player.
+            || Minecraft.getInstance().level.getBlockState(Minecraft.getInstance().player.blockPosition()).is(net.minecraft.world.level.block.Blocks.VOID_AIR)) return;
         if (Boolean.getBoolean("thelads.verifyInput") && !NativeFeatures.interactive()) return;
         done = true;
         Map<Module, Boolean> states = new LinkedHashMap<>();

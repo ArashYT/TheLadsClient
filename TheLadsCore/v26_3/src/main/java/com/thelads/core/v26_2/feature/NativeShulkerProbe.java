@@ -52,7 +52,7 @@ final class NativeShulkerProbe {
                 for (int z = -2; z <= 2 && position == null; z++) {
                     BlockPos candidate = minecraft.player.blockPosition().offset(x, y, z);
                     // Air or water (a QA world may spawn underwater): the state is restored after the fixture.
-                    if (level.hasChunkAt(candidate) && level.getBlockState(candidate).canBeReplaced()
+                    if (level.hasChunkAt(candidate) && !level.getBlockState(candidate).is(Blocks.VOID_AIR) && level.getBlockState(candidate).canBeReplaced()
                         && level.getBlockEntity(candidate) == null) position = candidate;
                 }
             }
