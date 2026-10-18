@@ -30,6 +30,8 @@ public final class Game26 implements Bench.Game {
 
     @Override public boolean loading() { return mc().gui.overlay() != null; }
     @Override public boolean screenOpen() { return mc().gui.screen() != null; }
+    @Override public String screenName() { var s = mc().gui.screen(); return s == null ? "none" : s.getClass().getName() + " '" + s.getTitle().getString() + "'"; }
+    @Override public boolean focused() { return mc().isWindowActive(); }
     @Override public boolean inWorld() { return mc().level != null && mc().player != null; }
     @Override public boolean worldExists(String name) { return mc().getLevelSource().levelExists(name); }
     @Override public void openWorld(String name) { mc().createWorldOpenFlows().openWorld(name, () -> { }); }
@@ -79,6 +81,10 @@ public final class Game26 implements Bench.Game {
     @Override public Path gameDir() { return FabricLoader.getInstance().getGameDir(); }
 
     @Override public String info() {
-        return "mc " + SharedConstants.getCurrentVersion().name() + ", java " + Runtime.version() + ", mods " + FabricLoader.getInstance().getAllMods().size();
+        String backend;
+        try { backend = String.valueOf(com.mojang.blaze3d.systems.RenderSystem.getDevice().getDeviceInfo().backendName()); }
+        catch (RuntimeException e) { backend = "?"; }
+        return "mc " + SharedConstants.getCurrentVersion().name() + ", java " + Runtime.version() + ", mods " + FabricLoader.getInstance().getAllMods().size()
+            + ", backend " + backend;
     }
 }

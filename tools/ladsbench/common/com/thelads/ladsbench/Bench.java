@@ -24,6 +24,9 @@ public final class Bench {
     public interface Game {
         boolean loading();
         boolean screenOpen();
+        String screenName();
+        /** The game window has the OS focus (an unfocused window can be throttled by Windows or capped by mods). */
+        boolean focused();
         boolean inWorld();
         boolean worldExists(String name);
         void openWorld(String name);
@@ -64,6 +67,7 @@ public final class Bench {
     private static long[] frames = new long[1 << 16];
     private static int frameCount;
     private static long sceneStartEpoch, gcCount0, gcMs0;
+    private static int focusTicks, recTicks;
 
     private Bench() { }
 
@@ -182,6 +186,7 @@ public final class Bench {
         else g.pose(sx, sy, sz, yaw, pitch);
         if (t == s.warmTicks - 10 && s.measureTicks > 0 && shots) { log("ladsbench screenshot " + s.name); g.screenshot(label + "-" + s.name); }
         if (t == s.warmTicks && s.measureTicks > 0) startRecording();
+        if (recording) { recTicks++; if (g.focused()) focusTicks++; }
         bar(s.name, (float) sceneIndex / scenes.size(), sceneIndex, scenes.size());
         if (t >= s.warmTicks + s.measureTicks) {
             if (s.measureTicks > 0) results.add(stopRecording(s.name));
@@ -202,7 +207,7 @@ public final class Bench {
     }
 
     private static void startRecording() {
-        frameCount = 0; lastFrame = 0;
+        frameCount = 0; lastFrame = 0; focusTicks = 0; recTicks = 0;
         sceneStartEpoch = System.currentTimeMillis();
         long[] gc = gc(); gcCount0 = gc[0]; gcMs0 = gc[1];
         recording = true;
@@ -219,10 +224,10 @@ public final class Bench {
         String json = String.format(Locale.ROOT,
             "{\"scene\":\"%s\",\"frames\":%d,\"seconds\":%.2f,\"avgFps\":%.1f,\"low1Fps\":%.1f,\"low01Fps\":%.1f,"
                 + "\"p50Ms\":%.3f,\"p90Ms\":%.3f,\"p95Ms\":%.3f,\"p99Ms\":%.3f,\"p999Ms\":%.3f,\"maxMs\":%.2f,\"gcCount\":%d,\"gcMs\":%d,"
-                + "\"startEpochMs\":%d,\"endEpochMs\":%d}",
+                + "\"focused\":%.2f,\"startEpochMs\":%d,\"endEpochMs\":%d}",
             name, n, totalMs / 1000, n == 0 ? 0 : n / (totalMs / 1000), lowFps(f, 0.01), lowFps(f, 0.001),
             pct(f, 0.50), pct(f, 0.90), pct(f, 0.95), pct(f, 0.99), pct(f, 0.999), n == 0 ? 0 : f[n - 1] / 1e6,
-            gc[0] - gcCount0, gc[1] - gcMs0, sceneStartEpoch, end);
+            gc[0] - gcCount0, gc[1] - gcMs0, recTicks == 0 ? 0.0 : (double) focusTicks / recTicks, sceneStartEpoch, end);
         log("ladsbench result " + json);
         return json;
     }
@@ -262,7 +267,8 @@ public final class Bench {
     }
 
     private static void timeout(int ticks, String what) {
-        if (++waitTicks > ticks) fail("timeout waiting for " + what);
+        if (++waitTicks % 600 == 0) log("ladsbench still waiting for " + what + ", screen " + game.screenName());
+        if (waitTicks > ticks) fail("timeout waiting for " + what + " (screen " + game.screenName() + ")");
     }
 
     private static void fail(String why) {

@@ -31,6 +31,8 @@ public final class Game1201 implements Bench.Game {
 
     @Override public boolean loading() { return mc().getOverlay() != null; }
     @Override public boolean screenOpen() { return mc().screen != null; }
+    @Override public String screenName() { var s = mc().screen; return s == null ? "none" : s.getClass().getName() + " '" + s.getTitle().getString() + "'"; }
+    @Override public boolean focused() { return mc().isWindowActive(); }
     @Override public boolean inWorld() { return mc().level != null && mc().player != null; }
     @Override public boolean worldExists(String name) { return mc().getLevelSource().levelExists(name); }
     @Override public void openWorld(String name) { mc().createWorldOpenFlows().loadLevel(new TitleScreen(), name); }

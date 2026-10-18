@@ -35,21 +35,48 @@ public class JfrAttr {
         // scene -> group -> counters
         Map<String, Map<String, Map<String, Integer>>> self = new LinkedHashMap<>(), incl = new LinkedHashMap<>(), methods = new LinkedHashMap<>();
         Map<String, Map<String, Integer>> totals = new LinkedHashMap<>();
+        Map<String, Map<String, Long>> allocOwner = new LinkedHashMap<>(), allocSite = new LinkedHashMap<>();
+        Map<String, long[]> gcPause = new LinkedHashMap<>(); // scene -> {count, total ns, max ns}
+        // optional 4th argument: method name fragments; prints the call chains that reach them (CPU samples and allocation bytes)
+        List<String> probes = a.length > 3 ? List.of(a[3].split(",")) : List.of();
+        Map<String, Map<String, Long>> chains = new TreeMap<>();
         try (RecordingFile rf = new RecordingFile(Path.of(a[0]))) {
             while (rf.hasMoreEvents()) {
                 RecordedEvent e = rf.readEvent();
                 String type = e.getEventType().getName();
-                if (!type.equals("jdk.ExecutionSample") && !type.equals("jdk.NativeMethodSample")) continue;
                 long t = e.getStartTime().toEpochMilli();
                 String scene = null;
                 for (Object[] s : scenes) if (t >= (long) s[1] && t <= (long) s[2]) scene = (String) s[0];
-                if (scene == null || e.getStackTrace() == null) continue;
+                if (scene == null) continue;
+                if (type.equals("jdk.GCPhasePause")) {
+                    long d = e.getDuration().toNanos();
+                    long[] g = gcPause.computeIfAbsent(scene, k -> new long[3]);
+                    g[0]++; g[1] += d; g[2] = Math.max(g[2], d);
+                    continue;
+                }
+                if (type.equals("jdk.ObjectAllocationSample") && e.getStackTrace() != null) {
+                    long w = e.getLong("weight");
+                    List<RecordedFrame> fr = e.getStackTrace().getFrames();
+                    String own = "jdk", site = "?";
+                    for (RecordedFrame f : fr) {
+                        String o = owner(f);
+                        if (o.equals("jdk")) continue;
+                        own = o; site = f.getMethod().getType().getName() + "." + f.getMethod().getName(); break;
+                    }
+                    probe(probes, chains, "alloc", fr, w);
+                    allocOwner.computeIfAbsent(scene, k -> new HashMap<>()).merge(own, w, Long::sum);
+                    allocSite.computeIfAbsent(scene, k -> new HashMap<>()).merge(site, w, Long::sum);
+                    continue;
+                }
+                if (!type.equals("jdk.ExecutionSample") && !type.equals("jdk.NativeMethodSample")) continue;
+                if (e.getStackTrace() == null) continue;
                 var th = e.getThread("sampledThread");
                 String name = th == null ? "?" : th.getJavaName();
                 String group = name == null ? "other" : name.equals("Render thread") ? "render" : name.equals("Server thread") ? "server" : "other";
                 List<RecordedFrame> frames = e.getStackTrace().getFrames();
                 if (frames.isEmpty()) continue;
                 totals.computeIfAbsent(scene, k -> new TreeMap<>()).merge(group, 1, Integer::sum);
+                if (group.equals("render")) probe(probes, chains, "cpu", frames, 1);
                 String top = owner(frames.get(0));
                 self.computeIfAbsent(scene, k -> new TreeMap<>()).computeIfAbsent(group, k -> new HashMap<>()).merge(top, 1, Integer::sum);
                 Set<String> seen = new HashSet<>();
@@ -60,6 +87,12 @@ public class JfrAttr {
                     .merge(f0.getType().getName() + "." + f0.getName(), 1, Integer::sum);
             }
         }
+        for (var c : chains.entrySet()) {
+            long tot = c.getValue().values().stream().mapToLong(Long::longValue).sum();
+            System.out.println("## " + c.getKey() + " total " + tot);
+            c.getValue().entrySet().stream().sorted((x, y) -> Long.compare(y.getValue(), x.getValue())).limit(10)
+                .forEach(x -> System.out.printf(Locale.ROOT, "   %5.1f%%  %s%n", 100.0 * x.getValue() / tot, x.getKey()));
+        }
         for (String scene : totals.keySet()) {
             System.out.println("== " + scene + " samples " + totals.get(scene));
             for (String g : List.of("render", "server", "other")) {
@@ -69,6 +102,12 @@ public class JfrAttr {
                 System.out.println("  [" + g + "] incl: " + top(incl.get(scene).get(g), total, 12));
                 if (!g.equals("other")) System.out.println("  [" + g + "] hot:  " + top(methods.get(scene).get(g), total, 8));
             }
+            long[] gc = gcPause.getOrDefault(scene, new long[3]);
+            System.out.printf(Locale.ROOT, "  [gc] pauses %d, total %.1f ms, max %.1f ms%n", gc[0], gc[1] / 1e6, gc[2] / 1e6);
+            Map<String, Long> ao = allocOwner.getOrDefault(scene, Map.of());
+            long at = ao.values().stream().mapToLong(Long::longValue).sum();
+            System.out.println("  [alloc] " + at / (1 << 20) + " MB sampled; by owner: " + topL(ao, at, 10));
+            System.out.println("  [alloc] sites: " + topL(allocSite.getOrDefault(scene, Map.of()), at, 12));
         }
     }
 
@@ -76,6 +115,31 @@ public class JfrAttr {
         StringBuilder sb = new StringBuilder();
         m.entrySet().stream().sorted((x, y) -> y.getValue() - x.getValue()).limit(n)
             .forEach(x -> sb.append(String.format(Locale.ROOT, "%s %.1f%%, ", x.getKey(), 100.0 * x.getValue() / total)));
+        return sb.toString();
+    }
+
+    /** For each probe fragment found in a frame's method: the 6 frames below it (its callers) as one chain. */
+    static void probe(List<String> probes, Map<String, Map<String, Long>> chains, String kind, List<RecordedFrame> frames, long w) {
+        for (String p : probes) {
+            for (int i = 0; i < frames.size(); i++) {
+                var m = frames.get(i).getMethod();
+                if (!(m.getType().getName() + "." + m.getName()).contains(p)) continue;
+                StringBuilder sb = new StringBuilder();
+                for (int j = i + 1; j < Math.min(frames.size(), i + 7); j++) {
+                    var c = frames.get(j).getMethod();
+                    String cls = c.getType().getName();
+                    sb.append(cls.substring(cls.lastIndexOf('.') + 1)).append('.').append(c.getName()).append(" < ");
+                }
+                chains.computeIfAbsent(kind + " " + p, k -> new HashMap<>()).merge(sb.toString(), w, Long::sum);
+                break;
+            }
+        }
+    }
+
+    static String topL(Map<String, Long> m, long total, int n) {
+        StringBuilder sb = new StringBuilder();
+        m.entrySet().stream().sorted((x, y) -> Long.compare(y.getValue(), x.getValue())).limit(n)
+            .forEach(x -> sb.append(String.format(Locale.ROOT, "%s %.1f%%, ", x.getKey(), 100.0 * x.getValue() / Math.max(1, total))));
         return sb.toString();
     }
 
