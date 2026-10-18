@@ -15,10 +15,14 @@
   "entrypoints": {
     "main": [
       "com.thelads.smp.LadsSMPMod"
+    ],
+    "client": [
+      "com.thelads.smp.features.arise.nb7.client.AriseNB7Client"
     ]
   },
   "mixins": [
-    "ladssmp.mixins.json"
+    "ladssmp.mixins.json",
+    "ladssmp.arise-nb7.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.19.0",
@@ -27,6 +31,7 @@
     "fabric-api": "*"
   },
   "provides": [
+    "creeperoverhaul",
     "w2pets",
     "w2w2",
     "portalsgui",

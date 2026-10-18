@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "ladssmp:item/dark_oak_creeper_spawn_egg"
+  }
+}
