@@ -280,10 +280,10 @@ public partial class MainWindow : Window
         {
             int startupPreview = Array.IndexOf(args, "--preview-startup");
             if (startupPreview >= 0) { await RunStartupPreviewAsync(Path.GetFullPath(args[startupPreview + 1])); return; }
-            // The update check gets a short head start; a download that has begun keeps this screen up,
-            // a slower check carries on in the background and offers its update through the title-bar button.
+            // Updates install before the launcher opens: this screen waits for the check (up to 10 s, a slow or offline network
+            // then carries on in the background and offers its update through the title-bar button) and for a started download.
             var startupPoll = PollForUpdatesAsync();
-            await Task.WhenAny(startupPoll, Task.Delay(1500));
+            await Task.WhenAny(startupPoll, Task.Delay(10_000));
             while (!startupPoll.IsCompleted && _startupDownload != null) await Task.WhenAny(startupPoll, Task.Delay(100));
             if (_windowClosed) return;
             Log($"[Startup] Launcher ready in {(DateTime.Now - System.Diagnostics.Process.GetCurrentProcess().StartTime).TotalMilliseconds:0} ms.");

@@ -6,15 +6,16 @@ import java.util.List;
 
 /**
  * The pause menu on every version, in groups instead of one grid: Back to Game alone at the top; Advancements | Statistics;
- * Options | Lads Client; Multiplayer | the world's options (Open to LAN); Replays | Extras, then other mods' buttons in pairs;
+ * Options | Lads Client; Multiplayer | the world's options (Open to LAN); Cosmetics | Screenshots, Replays | Extras, then other mods'
+ * buttons in pairs;
  * and Save and Quit (or Disconnect) alone at the bottom, set apart. A narrow screen gets one column.
  */
 public final class PauseMenuLayout {
-    public enum Slot { BACK, ADVANCEMENTS, STATS, OPTIONS, LADS, MULTIPLAYER, WORLD, SCREENSHOTS, REPLAYS, EXTRAS, OTHER, QUIT }
+    public enum Slot { BACK, ADVANCEMENTS, STATS, OPTIONS, LADS, MULTIPLAYER, WORLD, COSMETICS, SCREENSHOTS, REPLAYS, EXTRAS, OTHER, QUIT }
     public record Box(int x, int y, int width, int height) {}
 
     private static final Slot[][] PAIRS = {{Slot.ADVANCEMENTS, Slot.STATS}, {Slot.OPTIONS, Slot.LADS}, {Slot.MULTIPLAYER, Slot.WORLD}};
-    private static final Slot[] SECONDARY = {Slot.SCREENSHOTS, Slot.REPLAYS, Slot.EXTRAS};
+    private static final Slot[] SECONDARY = {Slot.COSMETICS, Slot.SCREENSHOTS, Slot.REPLAYS, Slot.EXTRAS};
     static final int GAP = 4, APART = 10, MAX_WIDTH = 320;
 
     private PauseMenuLayout() {}
@@ -29,6 +30,7 @@ public final class PauseMenuLayout {
             case LADS -> "lads";
             case MULTIPLAYER -> "server";
             case WORLD -> "host";
+            case COSMETICS -> "wardrobe";
             case SCREENSHOTS -> "camera";
             case REPLAYS -> "replay";
             case EXTRAS -> "dots";

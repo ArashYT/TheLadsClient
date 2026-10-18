@@ -87,6 +87,10 @@ public interface LadsGraphics {
 
     default void drawBossBars(int x,int y,int max,boolean names,boolean preview) {}
 
+    /** Where drawBossBars with these arguments draws now: {minX, minY, maxX, maxY}, an empty array for nothing, null when unknown
+     *  (a HUD cache then composites the whole screen). */
+    default int[] bossBarsBounds(int x, int y, int max, boolean names, boolean preview) { return null; }
+
     /** The action bar's text width (ActionBar's message: a version's chat component, or a string with formatting codes). */
     default int actionBarWidth(Object text) { return textWidth(String.valueOf(text)); }
 

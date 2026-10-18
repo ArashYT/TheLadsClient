@@ -4,6 +4,7 @@ import com.thelads.core.client.title.ButtonLift;
 import com.thelads.core.client.title.PauseMenuLayout;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201;
+import com.thelads.core.v1_20_1.cosmetics.anim.CosmeticsScreen1201;
 import com.thelads.core.v1_20_1.gui.CompactButton1201;
 import com.thelads.core.v1_20_1.gui.LadsSettingsScreen1201;
 import com.thelads.core.v1_20_1.gui.PauseMultiplayer1201;
@@ -93,6 +94,7 @@ public abstract class PauseScreenMixin extends Screen {
         String text = button.getMessage().getString();
         if (button == ladsExtrasButton) return PauseMenuLayout.Slot.EXTRAS;
         if (text.equals("Lads Client")) return PauseMenuLayout.Slot.LADS;
+        if (text.equals("Cosmetics")) return PauseMenuLayout.Slot.COSMETICS;
         if (text.equals("Screenshots")) return PauseMenuLayout.Slot.SCREENSHOTS;
         if (text.equals("Replays")) return PauseMenuLayout.Slot.REPLAYS;
         if (text.contains("Host") || text.contains("Invite")) return PauseMenuLayout.Slot.WORLD;
@@ -155,6 +157,8 @@ public abstract class PauseScreenMixin extends Screen {
             button -> PauseMultiplayer1201.open(this)).width(204).build(), 2);
         ladsPauseRows.addChild(Button.builder(Component.literal("Screenshots"),
             button -> com.thelads.core.v1_20_1.feature.screenshots.ScreenshotViewer1201.openFromMenu(this)).width(204).build(), 2);
+        ladsPauseRows.addChild(Button.builder(Component.literal("Cosmetics"),
+            button -> minecraft.setScreen(new CosmeticsScreen1201(this))).width(204).build(), 2);
         if (ReplayScreens1201.available()) {
             ladsPauseRows.addChild(Button.builder(Component.literal("Replays"),
                 button -> ReplayScreens1201.open(this)).width(204).build(), 2);

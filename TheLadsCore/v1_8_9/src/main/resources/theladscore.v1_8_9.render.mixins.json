@@ -10,6 +10,11 @@
   },
   "client": [
     "EntityRendererProbeMixin",
+    "GpuPhasesBlitProbeMixin189",
+    "GpuPhasesForgeHudProbeMixin189",
+    "GpuPhasesHudProbeMixin189",
+    "GpuPhasesProbeMixin189",
+    "GpuPhasesWorldProbeMixin189",
     "TextureAtlasSpriteAnimationMixin",
     "TextureMapAnimationMixin"
   ]

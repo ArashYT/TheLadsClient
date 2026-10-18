@@ -184,7 +184,39 @@ public final class EmoteCapture26 {
             remote.discard();
             Emotes.stopLocal(self);
         });
-        at(other + 4200, () -> {
+        // Cosmetics host screen (a) and pause menu (b), Groove key simulate (c), close screens (d)
+        long cos = other + 4200;
+        at(cos, () -> {
+            hud(mc, false);
+            mc.setScreenAndShow(new CosmeticsScreen26(null));
+        });
+        shot(cos + 300, "cosmetics-screen");
+        at(cos + 600, () -> mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(true) {})); // a subclass: the QA world closes a plain PauseScreen
+        shot(cos + 900, "pause-menu");
+        at(cos + 1200, () -> mc.setScreenAndShow(null));
+        // The emote-key test plays Floss (its own key), photographed from the front over one loop.
+        at(cos + 1400, () -> {
+            mc.player.setXRot(0); mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT); hud(mc, false);
+            KeyMapping flossKey = EmoteAnim26.key(EmoteLibrary.FLOSS);
+            if (flossKey != null) flossKey.clickCount++;
+        });
+        at(cos + 1600, () -> {
+            Emotes.Playing p = Emotes.get(self);
+            check(p != null && EmoteLibrary.FLOSS.equals(p.id()) && !p.stopping(), "floss key starts floss");
+        });
+        shot(cos + 1950, "floss-a"); // whole beats after the start: the swing's ends, not its middle
+        shot(cos + 2450, "floss-b");
+        shot(cos + 2950, "floss-c");
+        at(cos + 3050, () -> {
+            KeyMapping flossKey = EmoteAnim26.key(EmoteLibrary.FLOSS);
+            if (flossKey != null) flossKey.clickCount++;
+        });
+        at(cos + 3150, () -> { // before the 280 ms blend-out removes it
+            Emotes.Playing p = Emotes.get(self);
+            check(p != null && EmoteLibrary.FLOSS.equals(p.id()) && p.stopping(), "floss key again stops floss");
+            mc.setScreenAndShow(null);
+        });
+        at(cos + 3600, () -> {
             mc.options.setCameraType(CameraType.FIRST_PERSON);
             hud(mc, hudWas);
             com.thelads.core.v26_2.feature.LocalSkins.reset();

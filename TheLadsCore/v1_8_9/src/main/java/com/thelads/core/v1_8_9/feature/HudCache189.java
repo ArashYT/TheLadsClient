@@ -4,6 +4,7 @@ import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.hud.HudFrameCap;
 import com.thelads.core.client.hud.HudManager;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
+import com.thelads.core.v1_8_9.render.GpuPhases189;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -59,6 +60,7 @@ public final class HudCache189 {
             try {
                 // Recorded and replayed into the cache: what it draws tells HudFrameCap whether the HUD animates (60 builds a second).
                 HudManager.getInstance().renderMarked(new Split(mc.fontRendererObj, width, height), now);
+                crop(HudManager.getInstance().markedBounds(), width, height);
                 built = true;
             } finally {
                 HudFrameCap.wholeHud = false;
@@ -68,9 +70,38 @@ public final class HudCache189 {
             }
             if (!liveDraws) LIVE.clear(); // poses alone draw nothing
         }
-        BUFFER.draw(1, width, height);
+        if (GpuPhases189.ON) GpuPhases189.begin(GpuPhases189.LADS_HUD);
+        BUFFER.draw(1, width, height, crop, crops);
+        if (GpuPhases189.ON) GpuPhases189.end(GpuPhases189.LADS_HUD);
         for (Consumer<LadsGraphics> op : LIVE) op.accept(g);
         return true;
+    }
+
+    /** The parts of the screen the cached HUD covers (x0, y0, x1, y1 each, GUI units): the composite blends only those (1.9.13; the
+     *  whole window before). */
+    private static double[] crop = new double[4 * 13];
+    private static int crops;
+
+    /** The build's boxes, a GUI unit wider all round and whole (still apart: RecordingGraphics keeps them over 4 apart), or the whole
+     *  screen when the build had a draw of unknown size. */
+    private static void crop(List<float[]> boxes, int width, int height) {
+        if (boxes == null) {
+            crop[0] = crop[1] = 0;
+            crop[2] = width;
+            crop[3] = height;
+            crops = 1;
+            return;
+        }
+        if (crop.length < boxes.size() * 4) crop = new double[boxes.size() * 4];
+        crops = 0;
+        for (float[] box : boxes) {
+            int i = crops * 4;
+            crop[i] = Math.max(0, Math.floor(box[0]) - 1);
+            crop[i + 1] = Math.max(0, Math.floor(box[1]) - 1);
+            crop[i + 2] = Math.min(width, Math.ceil(box[2]) + 1);
+            crop[i + 3] = Math.min(height, Math.ceil(box[3]) + 1);
+            if (crop[i + 2] > crop[i] && crop[i + 3] > crop[i + 1]) crops++;
+        }
     }
 
     /** Whether the blend function src/dst gets premultiplied alpha factors (ONE, ONE_MINUS_SRC_ALPHA): only while the cache is drawn. */

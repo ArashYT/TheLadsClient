@@ -3,15 +3,15 @@ package com.thelads.core.v1_8_9.feature;
 import org.lwjgl.opengl.GL11;
 
 /**
- * The blend, depth and alpha switches as GlStateManager tracks them, without a glIsEnabled round trip to the driver (1.7.3). Every
- * Lads GL change goes through GlStateManager, so its cache is what the GL context holds. BooleanStateMixin hands over the three
- * switches as the game creates them; a switch it did not see is asked of the driver as before.
+ * The blend, depth, alpha and lighting switches as GlStateManager tracks them, without a glIsEnabled round trip to the driver
+ * (1.7.3; lighting 1.9.13). Every Lads GL change goes through GlStateManager, so its cache is what the GL context holds.
+ * BooleanStateMixin hands over the switches as the game creates them; a switch it did not see is asked of the driver as before.
  */
 public final class GlState189 {
     /** Mixed into GlStateManager.BooleanState. */
     public interface Switch { boolean on(); }
 
-    private static Switch blend, depth, alpha;
+    private static Switch blend, depth, alpha, lighting;
 
     private GlState189() {}
 
@@ -20,6 +20,7 @@ public final class GlState189 {
         if (capability == GL11.GL_BLEND && blend == null) blend = state;
         else if (capability == GL11.GL_DEPTH_TEST && depth == null) depth = state;
         else if (capability == GL11.GL_ALPHA_TEST && alpha == null) alpha = state;
+        else if (capability == GL11.GL_LIGHTING && lighting == null) lighting = state;
     }
 
     /** QA (Probe173Cap): all three switches were handed over, and agree with the driver right now. */
@@ -33,4 +34,6 @@ public final class GlState189 {
     public static boolean depth() { return depth != null ? depth.on() : GL11.glIsEnabled(GL11.GL_DEPTH_TEST); }
 
     public static boolean alpha() { return alpha != null ? alpha.on() : GL11.glIsEnabled(GL11.GL_ALPHA_TEST); }
+
+    public static boolean lighting() { return lighting != null ? lighting.on() : GL11.glIsEnabled(GL11.GL_LIGHTING); }
 }

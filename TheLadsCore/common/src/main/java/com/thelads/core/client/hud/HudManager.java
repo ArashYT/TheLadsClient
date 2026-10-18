@@ -207,9 +207,19 @@ public class HudManager {
      */
     public void renderMarked(LadsGraphics g, long now) {
         List<java.util.function.Consumer<LadsGraphics>> ops = new ArrayList<>();
-        render(new RecordingGraphics(g, ops));
+        RecordingGraphics recording = new RecordingGraphics(g, ops);
+        render(recording);
+        markedBounds = recording.bounds();
         for (var op : ops) op.accept(g);
         HudFrameCap.built(now);
+    }
+
+    private List<float[]> markedBounds;
+
+    /** Disjoint boxes {minX, minY, maxX, maxY} (g's units) around what the last renderMarked drew, null when unknown: the parts of
+     *  the screen a cache must composite. */
+    public List<float[]> markedBounds() {
+        return markedBounds;
     }
 
     private void renderElements(LadsGraphics g, Boolean exemptFilter) {

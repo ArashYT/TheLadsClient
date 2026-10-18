@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** GlStateManager's on/off switch for one GL capability: GlState189 reads blend, depth and alpha from it instead of asking the driver. */
+/** GlStateManager's on/off switch for one GL capability: GlState189 reads blend, depth, alpha and lighting from it instead of asking the driver. */
 @Mixin(targets = "net.minecraft.client.renderer.GlStateManager$BooleanState")
 @Implements(@Interface(iface = GlState189.Switch.class, prefix = "lads$"))
 public abstract class BooleanStateMixin {

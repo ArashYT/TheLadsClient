@@ -10,6 +10,7 @@ import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import com.thelads.core.v1_8_9.gui.DraggableHudScreen189;
+import com.thelads.core.v1_8_9.render.GpuPhases189;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.boss.BossStatus;
@@ -34,6 +35,8 @@ public final class NativeHud {
     /** QA only (CoreProbe): frames in which HudManager drew the Lads HUD. */
     public static long frames;
     private static final GuiLadsAdapter graphics = new GuiLadsAdapter(null, 0, 0);
+    /** QA only: the QA progress bar's fills in one draw. */
+    private static final QaBarGraphics189 qaBar = new QaBarGraphics189();
     /** QA only (Probe172HudFlicker): the time those frames spent in HudManager. */
     static long hudNanos;
     /** QA only: SmoothHotbar's last offset of the selected-slot frame from its slot, in GUI pixels. */
@@ -73,6 +76,7 @@ public final class NativeHud {
     public void overlayEnd(RenderGameOverlayEvent.Post event) {
         Minecraft mc = Minecraft.getMinecraft();
         if (event.type != RenderGameOverlayEvent.ElementType.ALL || mc.currentScreen instanceof DraggableHudScreen189) return;
+        if (GpuPhases189.ON) GpuPhases189.begin(GpuPhases189.LADS_ALL);
         com.thelads.core.v1_8_9.adapter.VanillaGameBridge189.partialTicks = event.partialTicks;
         // 2D over everything, as on the other versions. Blending and depth go back as found, the rest to the state Forge ends its overlay with.
         boolean blend = GlState189.blend(), depth = GlState189.depth();
@@ -94,8 +98,11 @@ public final class NativeHud {
         } finally {
             if (faded) Autohide189.end(shown, event.resolution.getScaledWidth_double(), event.resolution.getScaledHeight_double());
             if (com.thelads.core.client.qa.QaProgress.on()) { // QA only (no-op for players): the QA progress bar over everything
-                graphics.reset(mc.fontRendererObj, event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
-                com.thelads.core.client.qa.QaProgress.draw(graphics);
+                if (GpuPhases189.ON) GpuPhases189.begin(GpuPhases189.QA_BAR);
+                qaBar.begin(mc.fontRendererObj, event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
+                com.thelads.core.client.qa.QaProgress.draw(qaBar);
+                qaBar.flush();
+                if (GpuPhases189.ON) GpuPhases189.end(GpuPhases189.QA_BAR);
             }
             GlStateManager.resetColor();
             GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
@@ -105,6 +112,7 @@ public final class NativeHud {
             GlStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, 1, 0);
             if (blend) GlStateManager.enableBlend(); else GlStateManager.disableBlend();
             if (depth) GlStateManager.enableDepth(); else GlStateManager.disableDepth();
+            if (GpuPhases189.ON) GpuPhases189.end(GpuPhases189.LADS_ALL);
         }
     }
 
@@ -114,8 +122,9 @@ public final class NativeHud {
         Minecraft mc = Minecraft.getMinecraft();
         if (!com.thelads.core.client.qa.QaProgress.on() || mc.theWorld != null) return;
         net.minecraft.client.gui.ScaledResolution resolution = new net.minecraft.client.gui.ScaledResolution(mc);
-        graphics.reset(mc.fontRendererObj, resolution.getScaledWidth(), resolution.getScaledHeight());
-        com.thelads.core.client.qa.QaProgress.draw(graphics);
+        qaBar.begin(mc.fontRendererObj, resolution.getScaledWidth(), resolution.getScaledHeight());
+        com.thelads.core.client.qa.QaProgress.draw(qaBar);
+        qaBar.flush();
         GlStateManager.resetColor();
         GlStateManager.enableBlend();
     }

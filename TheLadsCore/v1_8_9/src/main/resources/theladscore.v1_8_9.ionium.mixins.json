@@ -1,0 +1,14 @@
+{
+  "required": false,
+  "minVersion": "0.7",
+  "package": "com.thelads.core.v1_8_9.mixin.ionium",
+  "plugin": "com.thelads.core.v1_8_9.mixin.ionium.IoniumMixinPlugin189",
+  "refmap": "theladscore.v1_8_9.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "client": [
+    "IoniumCloudsMixin189",
+    "IoniumFastRenderMixin189",
+    "IoniumFastRenderOutlinesMixin189",
+    "IoniumFastRenderShadersMixin189"
+  ]
+}

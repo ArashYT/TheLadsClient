@@ -97,6 +97,12 @@ final class HudBuffer189 {
 
     /** The captured pixels blended in at alpha over the scaled GUI area. */
     void draw(float alpha, double width, double height) {
+        draw(alpha, width, height, new double[]{0, 0, width, height}, 1);
+    }
+
+    /** The captured pixels of the first count boxes (x0, y0, x1, y1 each, GUI units, disjoint) only, where the drawing is (HudCache189). */
+    void draw(float alpha, double width, double height, double[] boxes, int count) {
+        if (count <= 0) return;
         boolean depthTest = GlState189.depth();
         GlStateManager.disableDepth();
         GlStateManager.disableAlpha();
@@ -106,7 +112,7 @@ final class HudBuffer189 {
         GlStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
         GlStateManager.color(alpha, alpha, alpha, alpha);
         GlStateManager.bindTexture(texture);
-        float u = 1, v = 1;
+
         Tessellator tessellator = Tessellator.getInstance();
         WorldRenderer quad = tessellator.getWorldRenderer();
         // The overlay's own matrix (EntityRenderer.setupOverlayRendering): an element can end with its matrix still pushed (Raised189
@@ -115,10 +121,14 @@ final class HudBuffer189 {
         GlStateManager.loadIdentity();
         GlStateManager.translate(0.0F, 0.0F, -2000.0F);
         quad.begin(GL11.GL_QUADS, DefaultVertexFormats.POSITION_TEX);
-        quad.pos(0, height, 0).tex(0, 0).endVertex();
-        quad.pos(width, height, 0).tex(u, 0).endVertex();
-        quad.pos(width, 0, 0).tex(u, v).endVertex();
-        quad.pos(0, 0, 0).tex(0, v).endVertex();
+        for (int i = 0; i < count * 4; i += 4) {
+            double x0 = boxes[i], y0 = boxes[i + 1], x1 = boxes[i + 2], y1 = boxes[i + 3];
+            double u0 = x0 / width, u1 = x1 / width, v0 = 1 - y1 / height, v1 = 1 - y0 / height;
+            quad.pos(x0, y1, 0).tex(u0, v0).endVertex();
+            quad.pos(x1, y1, 0).tex(u1, v0).endVertex();
+            quad.pos(x1, y0, 0).tex(u1, v1).endVertex();
+            quad.pos(x0, y0, 0).tex(u0, v1).endVertex();
+        }
         tessellator.draw();
         GlStateManager.popMatrix();
         GlStateManager.bindTexture(0);

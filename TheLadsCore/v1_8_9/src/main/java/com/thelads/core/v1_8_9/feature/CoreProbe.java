@@ -61,7 +61,7 @@ public final class CoreProbe {
         CoreProbe::titleMore, CoreProbe::backupPrompt, CoreProbe::backupWarning, CoreProbe::backupDone, CoreProbe::title,
         CoreProbe::ofDefaults,
         CoreProbe::menuAtTitle, CoreProbe::menuRendered, CoreProbe::searchClicked, CoreProbe::typed, CoreProbe::erased, CoreProbe::editingLeft,
-        CoreProbe::closedToTitle, CoreProbe::worldReady, KeepUiProbe189::run, CoreProbe::bridgeInWorld, CoreProbe::menuInWorld, CoreProbe::installedMods, CoreProbe::closedToGame,
+        CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::fastClouds, KeepUiProbe189::run, CoreProbe::bridgeInWorld, CoreProbe::menuInWorld, CoreProbe::installedMods, CoreProbe::closedToGame,
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerList, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
     /** -Dthelads.verify189Focus: only the title screen and Probe170Misc's steps of that name (with Essential as players have it). */
@@ -408,7 +408,7 @@ public final class CoreProbe {
         List<String> labels = new java.util.ArrayList<>();
         for (GuiButton button : lads.mainButtons()) labels.add(button.displayString);
         List<String> expected = new java.util.ArrayList<>(Arrays.asList(I18n.format("menu.singleplayer"), I18n.format("menu.multiplayer"),
-            "Lads Mods", I18n.format("fml.menu.mods"), I18n.format("menu.options")));
+            "Lads Mods", I18n.format("fml.menu.mods"), "Cosmetics", I18n.format("menu.options")));
         if (com.thelads.core.v1_8_9.feature.Screenshots189.active()) expected.add("Screenshots");
         if (Loader.isModLoaded("replaymod")) expected.add("Replays");
         expected.addAll(Arrays.asList("More...", I18n.format("menu.quit"), "Switch Versions"));
@@ -622,6 +622,20 @@ public final class CoreProbe {
             if (player != null) java.util.Arrays.fill(player.inventory.armorInventory, null);
         });
         return after(40);
+    }
+
+    /** Fast fancy clouds (1.9.13): with Ionium, LadsClouds189 draws the fancy clouds of the frames so far and never fell back. */
+    private static boolean fastClouds(Minecraft mc) {
+        boolean ionium = CoreProbe.class.getClassLoader().getResource("org/taumc/ionium/launch/IoniumTweaker.class") != null;
+        if (!ionium || mc.gameSettings.shouldRenderClouds() != 2) {
+            LOG.info("Lads 1.8.9 core probe: fast clouds skipped (Ionium {}, clouds {})", ionium, mc.gameSettings.shouldRenderClouds());
+            return true;
+        }
+        check(com.thelads.core.v1_8_9.render.LadsClouds189.frames > 0 && !com.thelads.core.v1_8_9.render.LadsClouds189.failed()
+            && com.thelads.core.v1_8_9.render.LadsClouds189.cloudPercent > 0 && com.thelads.core.v1_8_9.render.LadsClouds189.cloudPercent < 100,
+            "fast clouds draw Ionium's fancy clouds (" + com.thelads.core.v1_8_9.render.LadsClouds189.frames + " frames, "
+                + com.thelads.core.v1_8_9.render.LadsClouds189.cloudPercent + "% of the texture is cloud)");
+        return true;
     }
 
     private static boolean bridgeInWorld(Minecraft mc) throws Exception {
