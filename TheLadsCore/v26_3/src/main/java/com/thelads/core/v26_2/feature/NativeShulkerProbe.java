@@ -76,8 +76,11 @@ final class NativeShulkerProbe {
 
             module.setEnabled(true); animate.set(false); remember.set(true); distance.setValue(24);
             worldIcon.set(true); persist.set(false); mode.setIndex(0);
-            level.setBlock(position, Blocks.SHULKER_BOX.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
-            require(level.getBlockEntity(position) instanceof ShulkerBoxBlockEntity, "vanilla client block creates a real shulker block entity"); passed++;
+            boolean set = level.setBlock(position, Blocks.SHULKER_BOX.defaultBlockState(), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+            var created = level.getBlockEntity(position);
+            require(created instanceof ShulkerBoxBlockEntity, "vanilla client block creates a real shulker block entity (set " + set
+                + ", now " + level.getBlockState(position) + ", block entity " + (created == null ? "none" : created.getClass().getName())
+                + ", at " + position.toShortString() + ", was " + stateBefore + ", player " + minecraft.player.blockPosition().toShortString() + ")"); passed++;
             var box = (ShulkerBoxBlockEntity) level.getBlockEntity(position);
             var renderer = (ShulkerBoxRenderer) (Object) minecraft.getBlockEntityRenderDispatcher().getRenderer(box);
             var state = renderer.createRenderState();
