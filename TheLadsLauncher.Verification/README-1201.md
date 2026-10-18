@@ -134,3 +134,10 @@ photographs the connect/failed screen (`qa-join`; needs a script step, e.g. `--s
 Environment variables behind the options: `LADS_VERIFY_SCRIPT`, `LADS_VERIFY_SCRIPT_TEXT`, `LADS_VERIFY_REMOVE_MODS`, `LADS_VERIFY_CORE_JAR`,
 `LADS_VERIFY_BUILD`, `LADS_VERIFY_NO_BUILD`, `LADS_VERIFY_FRESH_WORLD`, `LADS_VERIFY_LOADER`, `LADS_VERIFY_TIMEOUT_SEC`, `LADS_VERIFY_SCENARIO`,
 `LADS_VERIFY_NO_RESIZE`, `LADS_QA_SLOT`, `LADS_QA_SHARED_ROOT` (default `$HOME\Desktop\The Lads Client Dev`).
+
+Shader toggle (1.9.11, `tools\shader-toggle-e2e.ps1 -Version 1.20.1|26.3`): `LADS_VERIFY_SHADERS=1` (1.20.1 and 26.x, any `--dir`) runs the launcher's own
+renderer step before the pack install, as `MainWindow`/`LaunchService` do before every start: the game's `lads-relaunch.json` is taken (the game then
+joins that world through quick play, `-Dthelads.qaRejoin=true` starts the script back in it), `lads-renderer-choice.json` or `LADS_VERIFY_RENDERER`
+(default Vulkan = shaders off) picks the renderer, and `GraphicsRenderer.PrepareAsync` + the installer suspend or restore Iris. Run the harness again after the game
+quit to switch. 1.20.1 is driven by the script (`press "Shader packs..."`, `press "Turn shaders off (restart)"`); 26.3 by `LADS_QA_SHADERTOGGLE="world,video,page,restart"`
+(`ready`, `iris`, `packscreen`, `warn`, `quit` too; `LADS_QA_SHADERTOGGLE_TAG` names the `screenshots\shaders-<tag>-*.png`), see `ShaderToggleQa26`.

@@ -14,6 +14,9 @@ import java.nio.file.Path;
  * it, recording that in {@link #STATE_FILE} ({"Vulkan":true,"SuspendedMods":["iris"]}). The game writes the renderer the next launch
  * uses ({@link #CHOICE_FILE}) and, before it quits to switch, where to come back to ({@link #RELAUNCH_FILE}); the launcher reads
  * both. All files live in the game directory.
+ * <p>
+ * 1.20.1 has no Vulkan and stays on OpenGL, but Iris is suspended the same way until shaders are on: choice "OpenGL" = shaders on,
+ * "Vulkan" = shaders off (Iris suspended), and the screens say "Iris" instead of the renderer ({@code vulkan} false below).
  */
 public final class ShaderToggle {
     public static final String STATE_FILE = "lads-renderer.json";
@@ -63,6 +66,49 @@ public final class ShaderToggle {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /** What a toggle screen is for. TURN_ON: the confirm behind "Shader packs..." (shaders need Iris loaded). TURN_OFF: the player
+     *  asked for shaders off. WARN_OFF: Iris is loaded but no pack is in use, so it only costs FPS. */
+    public enum Mode {
+        TURN_ON, TURN_OFF, WARN_OFF;
+
+        /** The restart brings Iris up (true) or leaves it suspended (false). */
+        public boolean on() { return this == TURN_ON; }
+    }
+
+    public static String title(Mode mode) {
+        return switch (mode) {
+            case TURN_ON -> "Turn on shaders?";
+            case TURN_OFF -> "Turn off shaders?";
+            case WARN_OFF -> "Shaders are off";
+        };
+    }
+
+    /** {@code vulkan}: 26.x, where shaders mean OpenGL instead of Vulkan; false on 1.20.1. {@code destination}: where the game comes back to. */
+    public static String body(Mode mode, boolean vulkan, boolean launcher, String destination) {
+        String back = launcher ? "Minecraft will restart and bring you back to " + destination + "." : "Minecraft will close; start it again from the launcher";
+        if (!launcher) back += mode == Mode.TURN_ON ? " to use shaders." : ".";
+        return switch (mode) {
+            case TURN_ON -> (vulkan ? "Shaders need OpenGL, which is slower than Vulkan. " : "Shaders need Iris, which Minecraft only loads at startup. ") + back;
+            case TURN_OFF -> (vulkan ? "Minecraft will switch back to Vulkan, which is faster. " : "Iris will be unloaded so the game runs faster. ") + back;
+            case WARN_OFF -> (vulkan ? "Minecraft is still running on OpenGL for Iris, which costs a lot of FPS. " : "Iris is still loaded, which costs some FPS. ")
+                + (launcher ? "Restart now to " + (vulkan ? "switch back to Vulkan" : "unload it") + ", or keep " + (vulkan ? "OpenGL" : "it") + " until you next start the game."
+                    : "Quit now and start it again from the launcher to " + (vulkan ? "switch back to Vulkan" : "unload it") + ", or keep " + (vulkan ? "OpenGL" : "it") + " until you next start the game.");
+        };
+    }
+
+    public static String restartLabel(Mode mode, boolean vulkan, boolean launcher) {
+        if (!launcher) return "Quit now";
+        return switch (mode) {
+            case TURN_ON -> "Restart with shaders";
+            case TURN_OFF -> vulkan ? "Restart on Vulkan" : "Restart without shaders";
+            case WARN_OFF -> vulkan ? "Restart now (Vulkan)" : "Restart now (shaders off)";
+        };
+    }
+
+    public static String cancelLabel(Mode mode, boolean vulkan) {
+        return mode == Mode.WARN_OFF ? (vulkan ? "Keep OpenGL until next launch" : "Keep Iris until next launch") : "Cancel";
     }
 
     public enum Event { NONE, OFF, ON }

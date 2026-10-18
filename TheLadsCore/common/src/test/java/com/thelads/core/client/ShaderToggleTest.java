@@ -56,6 +56,35 @@ class ShaderToggleTest {
     }
 
     @Test
+    void screenTextKeeps26WordingAndSaysIrisOn1201() {
+        ShaderToggle.Mode on = ShaderToggle.Mode.TURN_ON, off = ShaderToggle.Mode.TURN_OFF, warn = ShaderToggle.Mode.WARN_OFF;
+        assertEquals("Shaders need OpenGL, which is slower than Vulkan. Minecraft will restart and bring you back to the title screen.",
+            ShaderToggle.body(on, true, true, "the title screen"));
+        assertEquals("Shaders need OpenGL, which is slower than Vulkan. Minecraft will close; start it again from the launcher to use shaders.",
+            ShaderToggle.body(on, true, false, "x"));
+        assertEquals("Minecraft is still running on OpenGL for Iris, which costs a lot of FPS. Restart now to switch back to Vulkan, or keep OpenGL until you next start the game.",
+            ShaderToggle.body(warn, true, true, "x"));
+        assertEquals("Minecraft is still running on OpenGL for Iris, which costs a lot of FPS. Quit now and start it again from the launcher to switch back to Vulkan, or keep OpenGL until you next start the game.",
+            ShaderToggle.body(warn, true, false, "x"));
+        assertEquals("Restart with shaders", ShaderToggle.restartLabel(on, true, true));
+        assertEquals("Restart now (Vulkan)", ShaderToggle.restartLabel(warn, true, true));
+        assertEquals("Keep OpenGL until next launch", ShaderToggle.cancelLabel(warn, true));
+        assertEquals("Cancel", ShaderToggle.cancelLabel(on, true));
+
+        // 1.20.1: no Vulkan, nothing is called a renderer switch.
+        assertEquals("Shaders need Iris, which Minecraft only loads at startup. Minecraft will restart and bring you back to \"New World\".",
+            ShaderToggle.body(on, false, true, "\"New World\""));
+        assertEquals("Iris will be unloaded so the game runs faster. Minecraft will close; start it again from the launcher.", ShaderToggle.body(off, false, false, "x"));
+        assertEquals("Iris is still loaded, which costs some FPS. Restart now to unload it, or keep it until you next start the game.", ShaderToggle.body(warn, false, true, "x"));
+        assertEquals("Restart without shaders", ShaderToggle.restartLabel(off, false, true));
+        assertEquals("Restart now (shaders off)", ShaderToggle.restartLabel(warn, false, true));
+        assertEquals("Quit now", ShaderToggle.restartLabel(off, false, false));
+        assertEquals("Keep Iris until next launch", ShaderToggle.cancelLabel(warn, false));
+        assertEquals("Turn off shaders?", ShaderToggle.title(off));
+        assertTrue(on.on() && !off.on() && !warn.on());
+    }
+
+    @Test
     void warnsOncePerToggleOff() {
         ShaderToggle.Watcher w = new ShaderToggle.Watcher();
         assertEquals(NONE, w.update(false, false), "launched without a pack: nothing yet");

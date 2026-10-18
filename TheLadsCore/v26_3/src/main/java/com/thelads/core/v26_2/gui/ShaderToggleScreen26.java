@@ -36,6 +36,7 @@ public class ShaderToggleScreen26 extends Screen {
     private static Method irisInstance, irisPackInUse;
 
     private final Screen parent;
+    private final ShaderToggle.Mode mode;
     private final boolean on;
     private final boolean launcher = ShaderToggle.launcherStarted(DIR);
     private final String world, server, destination;
@@ -43,9 +44,14 @@ public class ShaderToggleScreen26 extends Screen {
     private int cardX, cardY, cardWidth;
 
     public ShaderToggleScreen26(Screen parent, boolean on) {
-        super(Component.literal(on ? "Turn on shaders?" : "Shaders are off"));
+        this(parent, on ? ShaderToggle.Mode.TURN_ON : ShaderToggle.Mode.WARN_OFF);
+    }
+
+    public ShaderToggleScreen26(Screen parent, ShaderToggle.Mode mode) {
+        super(Component.literal(ShaderToggle.title(mode)));
         this.parent = parent;
-        this.on = on;
+        this.mode = mode;
+        this.on = mode.on();
         Minecraft mc = Minecraft.getInstance();
         IntegratedServer local = mc.getSingleplayerServer();
         ServerData remote = mc.getCurrentServer();
@@ -74,10 +80,9 @@ public class ShaderToggleScreen26 extends Screen {
         cardWidth = Math.min(380, width - 20);
         cardX = (width - cardWidth) / 2;
         cardY = (height - CARD_HEIGHT) / 2;
-        String restart = !launcher ? "Quit now" : on ? "Restart with shaders" : "Restart now (Vulkan)";
-        addRenderableWidget(Button.builder(Component.literal(restart), b -> restart())
+        addRenderableWidget(Button.builder(Component.literal(ShaderToggle.restartLabel(mode, true, launcher)), b -> restart())
             .bounds(cardX + 16, cardY + CARD_HEIGHT - 62, cardWidth - 32, 22).build());
-        addRenderableWidget(Button.builder(Component.literal(on ? "Cancel" : "Keep OpenGL until next launch"), b -> onClose())
+        addRenderableWidget(Button.builder(Component.literal(ShaderToggle.cancelLabel(mode, true)), b -> onClose())
             .bounds(cardX + 16, cardY + CARD_HEIGHT - 34, cardWidth - 32, 22).build());
     }
 
@@ -95,12 +100,7 @@ public class ShaderToggleScreen26 extends Screen {
     }
 
     private String body() {
-        if (on) return "Shaders need OpenGL, which is slower than Vulkan. " + (launcher
-            ? "Minecraft will restart and bring you back to " + destination + "."
-            : "Minecraft will close; start it again from the launcher to use shaders.");
-        return "Minecraft is still running on OpenGL for Iris, which costs a lot of FPS. " + (launcher
-            ? "Restart now to switch back to Vulkan, or keep OpenGL until you next start the game."
-            : "Quit now and start it again from the launcher to switch back to Vulkan, or keep OpenGL until you next start the game.");
+        return ShaderToggle.body(mode, true, launcher, destination);
     }
 
     @Override
@@ -120,7 +120,7 @@ public class ShaderToggleScreen26 extends Screen {
     @Override
     public void onClose() {
         // Keeping OpenGL (Esc too) is for this session only: the next launch is Vulkan again.
-        if (!on) ShaderToggle.choose(DIR, true);
+        if (mode == ShaderToggle.Mode.WARN_OFF) ShaderToggle.choose(DIR, true);
         if (minecraft != null) minecraft.setScreenAndShow(parent);
     }
 

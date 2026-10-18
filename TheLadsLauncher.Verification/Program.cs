@@ -594,6 +594,8 @@ bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.Con
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
 bool CatalogWritten() => File.Exists(catalogFile) && File.GetLastWriteTimeUtc(catalogFile) >= runStartUtc;
 var jvmFlags = new List<string>();
+bool shaderStep = Env("LADS_VERIFY_SHADERS") == "1" && GraphicsRenderer.SupportsShaderToggle(version) && !capabilities.Forge;
+string? relaunchWorld = null, relaunchServer = null;
 
 try
 {
@@ -687,6 +689,20 @@ try
         await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "preferredGraphicsBackend:\"" + (renderer == GraphicsRenderer.Vulkan ? "vulkan" : "opengl") + "\"\n", ct);
         await GraphicsRenderer.PrepareAsync(directory, version, renderer, Console.WriteLine, ct);
     }
+    // LADS_VERIFY_SHADERS=1 (1.20.1 and 26.x): the launcher's own renderer step before the pack install, as MainWindow/LaunchService take it before
+    // every start: the relaunch request the game's shader toggle left (ApplyRendererRelaunch) names the world or server to come back to, the in-game
+    // choice (lads-renderer-choice.json) or the launcher setting (LADS_VERIFY_RENDERER, default Vulkan = shaders off) picks the renderer, and
+    // Iris and its dependents are suspended or brought back by the installer below. Run it again after the game quit to switch.
+    if (shaderStep)
+    {
+        var relaunch = GraphicsRenderer.TakeRelaunch(directory, Console.WriteLine);
+        (relaunchWorld, relaunchServer) = (relaunch?.World, relaunch?.Server);
+        string shaderPreference = GraphicsRenderer.Preference(directory, Env("LADS_VERIFY_RENDERER"));
+        var shaderSuspended = await GraphicsRenderer.PrepareAsync(directory, version, shaderPreference, Console.WriteLine, ct);
+        string shaderLine = $"Shader step: relaunch {(relaunch == null ? "none" : $"{relaunch.Reason} world={relaunch.World ?? "-"} server={relaunch.Server ?? "-"}")}; preference {shaderPreference}; suspended [{string.Join(", ", shaderSuspended.Order())}]";
+        Console.WriteLine(shaderLine);
+        summary.Add(shaderLine);
+    }
     if (capabilities.Minimal) QaShared.RestoreModJars(version, Path.Combine(directory, "mods"));
     await ClientModInstaller.InstallAsync(packSource, directory, version, Console.WriteLine, ct);
     if (capabilities.Minimal)
@@ -755,7 +771,15 @@ try
     await AccountExportService.WriteLaunchAsync(directory, session, true, new[] { new AccountSummary(session.Username!, session.UUID!, "offline") });
     // A fresh options.txt every run, except with LADS_VERIFY_OPTIONS_SYNC or when relaunching/keeping options across restarts.
     bool keepOptions = optionsSync != null || Env("LADS_VERIFY_KEEP_OPTIONS") == "1" || Env("LADS_VERIFY_PACKS") == "relaunch" || Env("LADS_VERIFY_189_ONLY") == "packs_relaunch";
-    if (!keepOptions || !File.Exists(Path.Combine(directory, "options.txt"))) await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), "fullscreen:false\nmaxFps:120\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : ""), ct);
+    string baseOptions = "fullscreen:false\nmaxFps:120\nrenderDistance:4\nsimulationDistance:4\nguiScale:2\ntutorialStep:none\n" + (Env("LADS_VERIFY_V134") == "1" ? "preferredGraphicsBackend:\"" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan") + "\"\n" : "");
+    if (shaderStep && File.Exists(Path.Combine(directory, "options.txt")))
+    {
+        // The shader step wrote the launcher's backend choice into options.txt: keep it, add the QA base options around it.
+        var have = File.ReadAllLines(Path.Combine(directory, "options.txt"));
+        await File.WriteAllLinesAsync(Path.Combine(directory, "options.txt"), have.Concat(baseOptions.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Where(line => !have.Any(h => h.StartsWith(line[..(line.IndexOf(':') + 1)], StringComparison.Ordinal)))), ct);
+    }
+    else if (!keepOptions || !File.Exists(Path.Combine(directory, "options.txt"))) await File.WriteAllTextAsync(Path.Combine(directory, "options.txt"), baseOptions, ct);
     Console.WriteLine("Installing production dependencies...");
     // QA windows are tiles of the primary monitor (QaWindowGuard): the game opens at the tile's client size.
     bool tiled = Env("LADS_VERIFY_FOCUS") != "1" && Env("LADS_VERIFY_PLAYING") != "1" && Env("LADS_VERIFY_NO_RESIZE") != "1";
@@ -764,12 +788,16 @@ try
     var windowSize = tiled ? QaWindowGuard.TileClient(1) : new System.Drawing.Size(titleVerification ? 1280 : 960, titleVerification ? 720 : 600);
     int maxRam = int.TryParse(Env("LADS_VERIFY_MAX_RAM"), out var uMax) ? uMax : (perf189 ? 4096 : 2048);
     int minRam = int.TryParse(Env("LADS_VERIFY_MIN_RAM"), out var uMin) ? uMin : (perf189 ? 512 : 256);
+    var launchOptions = new MLaunchOption
+    {
+        Session = session, JavaPath = javaPath, MaximumRamMb = maxRam, MinimumRamMb = minRam,
+        FullScreen = qaFullscreen, ScreenWidth = windowSize.Width, ScreenHeight = windowSize.Height
+    };
+    // A renderer relaunch goes back where the player was, as MainWindow.LaunchGame does it.
+    if (relaunchWorld != null) ModpackLauncher.JoinWorld(launchOptions, relaunchWorld);
+    else if (relaunchServer != null) ModpackLauncher.JoinServer(launchOptions, relaunchServer);
     using (await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".mc.lock"), ct))
-        process = await launcher.InstallAndBuildProcessAsync(id, new MLaunchOption
-        {
-            Session = session, JavaPath = javaPath, MaximumRamMb = maxRam, MinimumRamMb = minRam,
-            FullScreen = qaFullscreen, ScreenWidth = windowSize.Width, ScreenHeight = windowSize.Height
-        }, ct);
+        process = await launcher.InstallAndBuildProcessAsync(id, launchOptions, ct);
     if (Env("LADS_VERIFY_GC_PAUSE") is { } gcPause && int.TryParse(gcPause, out int pauseVal))
     {
         if (process.StartInfo.ArgumentList.Count > 0)
@@ -860,6 +888,7 @@ try
     {
         // 1.20.1: the one QA probe (QaProbe1201) and nothing of the 26.x suites.
         AddJvm("-Dfabric.noGui=true");
+        if (relaunchWorld != null) AddJvm("-Dthelads.qaRejoin=true"); // the shader step's relaunch: the script starts back in that world
         if (autoWorldVerification) { AddJvm("-Dthelads.verifyAutoWorld=true"); AddJvm("-Dthelads.qaWorld=LadsQA-" + dirName.Replace('.', '_')); }
         if (scripted)
         {
@@ -873,38 +902,43 @@ try
     {
         // A crash at startup exits with its log (the run fails) instead of opening Fabric Loader's error window on the user's screen.
         AddJvm("-Dfabric.noGui=true");
-        // Probe public settings APIs only in this isolated QA process, when its Lads menu opens.
-        if (welcomeVerification) AddJvm("-Dthelads.verifyWelcome=true");
-        else if (fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyIntegrations=true"); // the FastQuit probe opens its own worlds
-        if (!autoWorldVerification) { if (fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyInput=true"); }
-        else
+        // LADS_VERIFY_SHADERS: the game's own screens belong to the shader QA driver (ShaderToggleQa26): none of the harness's title probes, which would open
+        // the world list and the like over it.
+        if (!shaderStep)
         {
-            AddJvm("-Dthelads.verifyAutoWorld=true");
-            AddJvm("-Dthelads.verifyDurabilityTooltip=true");
-            AddJvm(requestedFeaturesOnly ? "-Dthelads.verifyRequestedFeaturesOnly=true" : "-Dthelads.verifyCrosshair=true");
+            // Probe public settings APIs only in this isolated QA process, when its Lads menu opens.
+            if (welcomeVerification) AddJvm("-Dthelads.verifyWelcome=true");
+            else if (fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyIntegrations=true"); // the FastQuit probe opens its own worlds
+            if (!autoWorldVerification) { if (fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyInput=true"); }
+            else
+            {
+                AddJvm("-Dthelads.verifyAutoWorld=true");
+                AddJvm("-Dthelads.verifyDurabilityTooltip=true");
+                AddJvm(requestedFeaturesOnly ? "-Dthelads.verifyRequestedFeaturesOnly=true" : "-Dthelads.verifyCrosshair=true");
+            }
+            if (titleVerification && !autoWorldVerification && fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyKillBannerPreview=true");
+            if (settingsVerification)
+            {
+                AddJvm("-Dthelads.verifyAllIntegrationWrites=true");
+                AddJvm("-Dthelads.verifyIntegrationWrites=true");
+            }
+            if (renderScaleVerification) AddJvm("-Dthelads.verifyRenderScale=true");
+            if (Env("LADS_VERIFY_V133") == "1") AddJvm("-Dthelads.verify133=true");
+            if (titleCaptureVerification) AddJvm("-Dthelads.verifyTitleCapture=true");
+            // 26.x: with LADS_VERIFY_CAPTURE_TITLE=1, the title's Switch Versions button pressed and the screen photographed (NativeWorldVerification), then the game stops.
+            if (titleCaptureVerification && Env("LADS_VERIFY_VERSION_SWITCH") == "1") AddJvm("-Dthelads.verifyVersionSwitch=true");
+            if (Env("LADS_VERIFY_V134") == "1") { AddJvm("-Dthelads.verify134=true"); AddJvm("-Dthelads.verifyRenderer=" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan")); }
+            if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
+            if (flashbackVerification) AddJvm("-Dthelads.verifyFlashback=true");
+            if (nativePortsVerification) AddJvm("-Dthelads.verifyBackgroundPolicies=true");
+            if (fastQuitPhase == null && biomeCapture == null && !fixesOnly) AddJvm("-Dthelads.verifySharedContent=true"); // it opens the world list at the title screen, as the FastQuit probe does
+            if (sharedRole != null) AddJvm("-Dthelads.sharedContentRole=" + sharedRole);
+            if (runId != null) AddJvm("-Dthelads.sharedContentRunId=" + runId);
+            AddJvm("-Dthelads.verifyModInventory=true");
+            if (modRequest != null) AddJvm("-Dthelads.verifyModRequest=" + modRequest);
+            if (biomeCapture != null) AddJvm("-Dthelads.verifyBiomeCapture=" + biomeCapture);
+            if (chatHeadsCaptureVerification) AddJvm("-Dthelads.verifyChatHeads=true");
         }
-        if (titleVerification && !autoWorldVerification && fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyKillBannerPreview=true");
-        if (settingsVerification)
-        {
-            AddJvm("-Dthelads.verifyAllIntegrationWrites=true");
-            AddJvm("-Dthelads.verifyIntegrationWrites=true");
-        }
-        if (renderScaleVerification) AddJvm("-Dthelads.verifyRenderScale=true");
-        if (Env("LADS_VERIFY_V133") == "1") AddJvm("-Dthelads.verify133=true");
-        if (titleCaptureVerification) AddJvm("-Dthelads.verifyTitleCapture=true");
-        // 26.x: with LADS_VERIFY_CAPTURE_TITLE=1, the title's Switch Versions button pressed and the screen photographed (NativeWorldVerification), then the game stops.
-        if (titleCaptureVerification && Env("LADS_VERIFY_VERSION_SWITCH") == "1") AddJvm("-Dthelads.verifyVersionSwitch=true");
-        if (Env("LADS_VERIFY_V134") == "1") { AddJvm("-Dthelads.verify134=true"); AddJvm("-Dthelads.verifyRenderer=" + (Env("LADS_VERIFY_RENDERER") == "OpenGL" ? "opengl" : "vulkan")); }
-        if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
-        if (flashbackVerification) AddJvm("-Dthelads.verifyFlashback=true");
-        if (nativePortsVerification) AddJvm("-Dthelads.verifyBackgroundPolicies=true");
-        if (fastQuitPhase == null && biomeCapture == null && !fixesOnly) AddJvm("-Dthelads.verifySharedContent=true"); // it opens the world list at the title screen, as the FastQuit probe does
-        if (sharedRole != null) AddJvm("-Dthelads.sharedContentRole=" + sharedRole);
-        if (runId != null) AddJvm("-Dthelads.sharedContentRunId=" + runId);
-        AddJvm("-Dthelads.verifyModInventory=true");
-        if (modRequest != null) AddJvm("-Dthelads.verifyModRequest=" + modRequest);
-        if (biomeCapture != null) AddJvm("-Dthelads.verifyBiomeCapture=" + biomeCapture);
-        if (chatHeadsCaptureVerification) AddJvm("-Dthelads.verifyChatHeads=true");
     }
     process.StartInfo.UseShellExecute = false;
     process.StartInfo.CreateNoWindow = true;
@@ -1104,7 +1138,7 @@ try
     TimeSpan windowAt = TimeSpan.Zero;
     // Title runs without the 26.x auto-world end once every check the harness asserts has passed (they never did before, so
     // 1.21.x waited the full 540 s); the stop is a Kill, as for every non-auto-world run.
-    bool earlyTitleExit = titleVerification && !autoWorldVerification;
+    bool earlyTitleExit = titleVerification && !autoWorldVerification && !shaderStep; // the shader QA game quits itself (restart / quit)
     int loopSeconds = int.TryParse(Env("LADS_VERIFY_TIMEOUT_SEC"), out int overrideSeconds) ? overrideSeconds
         : perf189 ? 1140 : titleVerification ? (asyncStressVerification || particlesCaptureVerification || fastQuitPhase != null ? 900 : capabilities.Minimal && scripted ? 900 : 540) : 180;
     while (stopwatch.Elapsed < TimeSpan.FromSeconds(loopSeconds) && !process.HasExited)
