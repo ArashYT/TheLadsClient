@@ -21,7 +21,8 @@
       "com.thelads.smp.features.arise.nb2.NB2Client",
       "com.thelads.smp.features.arise.nb3.AriseNb3Client",
       "com.thelads.smp.features.arise.nb5.client.AriseNB5Client",
-      "com.thelads.smp.features.arise.nb6.client.AriseNB6Client"
+      "com.thelads.smp.features.arise.nb6.client.AriseNB6Client",
+      "com.thelads.smp.features.arise.nb7.client.AriseNB7Client"
     ],
     "voicechat": [
       "com.thelads.smp.features.arise.nb1.SimpleVoiceChatBroadcastPlugin"
@@ -34,7 +35,8 @@
     "ladssmp.arise-nb3.mixins.json",
     "ladssmp.arise-nb4.mixins.json",
     "ladssmp.arise-nb5.mixins.json",
-    "ladssmp.arise-nb6.mixins.json"
+    "ladssmp.arise-nb6.mixins.json",
+    "ladssmp.arise-nb7.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.19.0",
