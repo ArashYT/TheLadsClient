@@ -119,6 +119,44 @@ class QaProgressTest {
         assertNull(QaProgress.finalShot(), "only once");
     }
 
+    @Test void withNoRunTheSessionShowsPhaseAndElapsedTimeAndTheLastRunsFinalStateStaysAMoment() {
+        Recorder g = new Recorder();
+        g.width = 700;
+        QaProgress.draw(g);
+        assertEquals("Lads QA · QA · loading · runs 0 · elapsed 0:00", g.texts.get(0));
+        now.addAndGet(125_000);
+        g.clear();
+        QaProgress.draw(g);
+        assertEquals("Lads QA · QA · loading · runs 0 · elapsed 2:05", g.texts.get(0));
+        QaProgress.begin("capture", 1);
+        QaProgress.check("a check", false);
+        QaProgress.done();
+        g.clear();
+        QaProgress.draw(g);
+        assertTrue(g.texts.get(0).startsWith("Lads QA · capture · step 1/1 · done"), g.texts.get(0)); // the final state first
+        now.addAndGet(3_500);
+        g.clear();
+        QaProgress.draw(g);
+        assertTrue(g.texts.get(0).startsWith("Lads QA · QA · loading · runs 1 · elapsed 2:08"), g.texts.get(0));
+        assertTrue(g.fills.stream().anyMatch(f -> f[4] == 0xFFD83A3A), "the session is red after a failed run");
+    }
+
+    @Test void theDrawnTextIsBuiltOnlyWhenSomethingChanged() {
+        QaProgress.begin("cache", 3);
+        QaProgress.step("a");
+        Recorder g = new Recorder();
+        g.width = 900;
+        QaProgress.draw(g);
+        String first = g.texts.get(0);
+        g.clear();
+        QaProgress.draw(g);
+        assertSame(first, g.texts.get(0), "the same String object on the next frame");
+        QaProgress.step("b");
+        g.clear();
+        QaProgress.draw(g);
+        assertNotSame(first, g.texts.get(0));
+    }
+
     @Test void aResultWithNoStepOpenIsCountedAnyway() {
         QaProgress.begin("r", 2);
         QaProgress.result(Result.FAIL);
