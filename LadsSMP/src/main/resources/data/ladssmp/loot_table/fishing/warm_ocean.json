@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:fishing",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "ladssmp:tuna",
+          "weight": 40
+        },
+        {
+          "type": "minecraft:item",
+          "name": "ladssmp:snapper",
+          "weight": 35
+        },
+        {
+          "type": "minecraft:item",
+          "name": "ladssmp:sailfish",
+          "weight": 25
+        }
+      ]
+    }
+  ]
+}

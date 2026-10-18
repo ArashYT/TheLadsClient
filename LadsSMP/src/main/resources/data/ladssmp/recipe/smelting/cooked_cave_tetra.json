@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "food",
+  "ingredient": "ladssmp:cave_tetra",
+  "result": {
+    "id": "ladssmp:cooked_cave_tetra"
+  },
+  "experience": 0.35,
+  "cookingtime": 200
+}

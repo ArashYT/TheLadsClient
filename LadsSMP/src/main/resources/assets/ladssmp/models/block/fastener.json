@@ -1,0 +1,31 @@
+{
+  "textures": {
+    "particle": "ladssmp:block/fastener",
+    "fastener": "ladssmp:block/fastener"
+  },
+  "elements": [
+    {
+      "from": [5, 0, 5],
+      "to": [11, 2, 11],
+      "faces": {
+        "down":  { "uv": [5, 5, 11, 11], "texture": "#fastener", "cullface": "down" },
+        "up":    { "uv": [5, 5, 11, 11], "texture": "#fastener" },
+        "north": { "uv": [5, 14, 11, 16], "texture": "#fastener" },
+        "south": { "uv": [5, 14, 11, 16], "texture": "#fastener" },
+        "west":  { "uv": [5, 14, 11, 16], "texture": "#fastener" },
+        "east":  { "uv": [5, 14, 11, 16], "texture": "#fastener" }
+      }
+    },
+    {
+      "from": [7, 2, 7],
+      "to": [9, 4, 9],
+      "faces": {
+        "up":    { "uv": [7, 7, 9, 9], "texture": "#fastener" },
+        "north": { "uv": [7, 12, 9, 14], "texture": "#fastener" },
+        "south": { "uv": [7, 12, 9, 14], "texture": "#fastener" },
+        "west":  { "uv": [7, 12, 9, 14], "texture": "#fastener" },
+        "east":  { "uv": [7, 12, 9, 14], "texture": "#fastener" }
+      }
+    }
+  ]
+}

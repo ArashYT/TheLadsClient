@@ -44,8 +44,9 @@ public final class BetterF3Qa {
     /** Each client tick of the probe; true once the sequence has ended. */
     public static boolean tick(HudLayoutQa.Driver d) {
         try {
-            if (step == -1) { begin(d); step = 0; wait = 40; return false; }
+            if (step == -1) { begin(d); com.thelads.core.client.qa.QaProgress.begin("Better F3", 24); step = 0; wait = 40; return false; }
             if (wait > 0) { wait--; return false; }
+            if (step < 24) com.thelads.core.client.qa.QaProgress.step("Better F3 " + (step + 1));
             switch (step++) {
                 // F3 closed: the Lads HUD (and on 1.8.9 Xaero's map) is shown.
                 case 0 -> shot(d, "f3-1911-f3-closed");
@@ -110,7 +111,7 @@ public final class BetterF3Qa {
                 default -> { end(d); return true; }
             }
         } catch (RuntimeException failure) {
-            FAILURES.add("step " + step + ": " + failure);
+            FAILURES.add("step " + step + ": " + failure); com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL);
             LOGGER.error("Lads hud layout FAILED at Better F3 step {}", step, failure);
             end(d);
             return true;
@@ -152,6 +153,7 @@ public final class BetterF3Qa {
 
     private static void shot(HudLayoutQa.Driver d, String name) {
         d.shot(name);
+        com.thelads.core.client.qa.QaProgress.label(name);
         LOGGER.info("Lads hud layout frame {}", name);
         wait = 10;
     }
@@ -161,7 +163,7 @@ public final class BetterF3Qa {
 
     private static void expect(String what, boolean ok, String detail) {
         if (ok) { passed++; LOGGER.info("Lads hud layout check PASS: Better F3: {}", what); }
-        else { FAILURES.add(what + " (" + detail + ")"); LOGGER.error("Lads hud layout check FAIL: Better F3: {} ({})", what, detail); }
+        else { FAILURES.add(what + " (" + detail + ")"); com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL); LOGGER.error("Lads hud layout check FAIL: Better F3: {} ({})", what, detail); }
     }
 
     private static void begin(HudLayoutQa.Driver d) {
@@ -191,6 +193,7 @@ public final class BetterF3Qa {
             FAILURES.add("restoring: " + failure);
         }
         if (!FAILURES.isEmpty()) LOGGER.error("Lads hud layout FAILED: {}", String.join(" | ", FAILURES));
+        com.thelads.core.client.qa.QaProgress.done();
         LOGGER.info("Lads hud layout END: {} passed, {} failed", passed, FAILURES.size());
     }
 }

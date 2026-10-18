@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:nether/crimson_forest_trek",
+  "display": {
+    "icon": {
+      "id": "minecraft:weeping_vines"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.nether.weeping_vines_climb.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.nether.weeping_vines_climb.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:weeping_vines"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  },
+  "sends_telemetry_event": true
+}

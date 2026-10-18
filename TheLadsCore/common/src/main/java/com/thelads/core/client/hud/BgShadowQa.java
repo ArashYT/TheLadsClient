@@ -47,10 +47,11 @@ public final class BgShadowQa {
 
     /** Each client tick of the probe; true once the sequence has ended. */
     public static boolean tick(HudLayoutQa.Driver d) {
-        if (step == -1) { begin(d); step = 0; wait = 60; return false; }
+        if (step == -1) { begin(d); com.thelads.core.client.qa.QaProgress.begin("Backgrounds and Text Shadow", STEPS.size()); step = 0; wait = 60; return false; }
         if (wait > 0) { wait--; return false; }
         if (step >= STEPS.size()) { end(d); return true; }
         Object[] s = STEPS.get(step++);
+        com.thelads.core.client.qa.QaProgress.step("step " + step);
         try { ((Runnable) s[0]).run(); }
         catch (RuntimeException failure) { fail("step " + step + ": " + failure); LOGGER.error("Lads hud layout check FAIL: bgshadow step {}", step, failure); }
         wait = (Integer) s[1];
@@ -249,11 +250,13 @@ public final class BgShadowQa {
 
     private static void fail(String what) {
         FAILURES.add(what);
+        com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL);
         LOGGER.error("Lads hud layout check FAIL: {}", what);
     }
 
     private static void shot(HudLayoutQa.Driver d, String name) {
         d.shot(name);
+        com.thelads.core.client.qa.QaProgress.label(name);
         LOGGER.info("Lads hud layout frame {}", name);
     }
 
@@ -269,6 +272,7 @@ public final class BgShadowQa {
             FAILURES.add("restoring: " + failure);
         }
         if (!FAILURES.isEmpty()) LOGGER.error("Lads hud layout FAILED: {}", String.join(" | ", FAILURES));
+        com.thelads.core.client.qa.QaProgress.done();
         LOGGER.info("Lads hud layout END: {} passed, {} failed", passed, FAILURES.size());
     }
 }

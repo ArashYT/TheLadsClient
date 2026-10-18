@@ -16,7 +16,11 @@ Status 2026-10-17: phase 1 (one free emote, synced to every Lads player) is bein
 1. **Phase 1 (1.9.11): emote engine + sync.** One looping dance ("Groove", free for everyone), emote wheel on B, smooth blend in/out (moving stops the dance and the walk animation takes over without a snap), first-person arms, visible to all Lads players on the same server.
 2. **Phase 2: ownership + equip.** `GET /cosmetics/profile/{uuid}` returns owned/equipped items; a Cosmetics screen in the client to equip what you own. Ownership lives in a small database on the service (SQLite to start, the same pattern as share codes).
 3. **Phase 3: wearables.** Capes/cloaks (our own cape layer, wavy physics already exist), hats, glasses, back items: low-poly models (made in Blockbench, exported to our own simple JSON format), one texture atlas per item, drawn as an extra model layer attached to the head/body. Animated textures by frame strips.
-4. **Phase 4: the shop.** Store pages on the site; checkout through a payment provider (Stripe or Tebex; Tebex handles game-store tax/chargebacks and is common for Minecraft). The buyer signs in with Microsoft on the site (Xbox -> Minecraft profile gives the UUID) so the item lands on the right account; no codes to type. Webhook -> service grants the item. Refunds/chargebacks revoke it.
+4. **Phase 4: the shop** (researched 2026-10-18, artifacts/cosmetics/SHOP-RESEARCH.md + SHOP-RESEARCH-REVIEW.md):
+   - **Provider: Tebex** (headless API + Tebex.js) as merchant of record: built for Minecraft, handles Canada GST/HST, EU VAT and US tax, and chargebacks. Stripe, Paddle and Lemon Squeezy forbid selling items for a game you don't publish.
+   - **Which account gets the item:** the buyer types their Minecraft username (public Mojang lookup -> UUID) at checkout; the in-game "link" button (one-time token from the cosmetics service) confirms it. Microsoft sign-in on the website is not an option: new apps are blocked from the Minecraft profile API without Mojang's approval.
+   - Tebex webhook -> service grants the item; refunds/chargebacks revoke it automatically.
+   - **Rules:** Mojang's usage guidelines don't explicitly allow selling client cosmetics; Lunar/Badlion/Essential do it and it is tolerated. Show the "Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft." disclaimer on the store, checkout, receipts and the in-game wardrobe; don't copy Mojang's cape textures or call our items official capes.
 
 ## Performance rules (all phases)
 

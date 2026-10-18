@@ -1,0 +1,34 @@
+{
+  "textures": {
+    "particle": "minecraft:block/flower_pot",
+    "flowerpot": "minecraft:block/flower_pot",
+    "dirt": "minecraft:block/dirt",
+    "chain": "minecraft:block/iron_chain"
+  },
+  "elements": [
+    {
+      "comment": "Flower pot bottom",
+      "from": [ 5, 0, 5 ],
+      "to": [ 11, 6, 11 ],
+      "faces": {
+        "down":  { "uv": [ 5, 5, 11, 11 ], "texture": "#flowerpot", "cullface": "down" },
+        "up":    { "uv": [ 5, 5, 11, 11 ], "texture": "#dirt" },
+        "north": { "uv": [ 5, 10, 11, 16 ], "texture": "#flowerpot" },
+        "south": { "uv": [ 5, 10, 11, 16 ], "texture": "#flowerpot" },
+        "west":  { "uv": [ 5, 10, 11, 16 ], "texture": "#flowerpot" },
+        "east":  { "uv": [ 5, 10, 11, 16 ], "texture": "#flowerpot" }
+      }
+    },
+    {
+      "comment": "Suspension chain connector",
+      "from": [ 7, 6, 7 ],
+      "to": [ 9, 16, 9 ],
+      "faces": {
+        "north": { "uv": [ 7, 0, 9, 16 ], "texture": "#chain" },
+        "south": { "uv": [ 7, 0, 9, 16 ], "texture": "#chain" },
+        "west":  { "uv": [ 7, 0, 9, 16 ], "texture": "#chain" },
+        "east":  { "uv": [ 7, 0, 9, 16 ], "texture": "#chain" }
+      }
+    }
+  ]
+}

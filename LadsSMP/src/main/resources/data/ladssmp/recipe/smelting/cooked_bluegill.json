@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "food",
+  "ingredient": "ladssmp:bluegill",
+  "result": {
+    "id": "ladssmp:cooked_bluegill"
+  },
+  "experience": 0.35,
+  "cookingtime": 200
+}

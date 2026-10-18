@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mining/diamond_strike",
+  "display": {
+    "icon": {
+      "id": "minecraft:heavy_core"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mining.heavy_core_salvage.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mining.heavy_core_salvage.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:heavy_core"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 1500
+  },
+  "sends_telemetry_event": true
+}

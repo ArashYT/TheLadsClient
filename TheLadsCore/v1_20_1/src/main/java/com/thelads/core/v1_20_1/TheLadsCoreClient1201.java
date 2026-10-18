@@ -28,6 +28,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         NativeFeatures1201.initialize();
         com.thelads.core.v1_20_1.render.Render1201.init();
         QaProbe1201.register(); // QA only: inert unless the Verification harness sets -Dthelads.verifyAutoWorld / -Dthelads.qaScript
+        com.thelads.core.v1_20_1.feature.NativeAutohide1201.registerQaBarScreens(); // QA only: the QA progress bar on the screens outside a world
         com.thelads.core.v1_20_1.feature.Probe193Packs1201.register();
         com.thelads.core.v1_20_1.feature.SoundBreakProbe1201.register(); // QA only: LADS_QA_SOUNDBREAK=1
         com.thelads.core.v1_20_1.cosmetics.anim.EmoteAnim1201.register(); // emotes: key, wheel, stop rules (poses: emotes mixins); QA LADS_QA_EMOTE=1

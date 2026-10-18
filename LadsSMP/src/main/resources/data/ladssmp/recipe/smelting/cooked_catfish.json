@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "food",
+  "ingredient": "ladssmp:catfish",
+  "result": {
+    "id": "ladssmp:cooked_catfish"
+  },
+  "experience": 0.35,
+  "cookingtime": 200
+}

@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:exploration/sniffer_revival",
+  "display": {
+    "icon": {
+      "id": "minecraft:pitcher_plant"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.exploration.pitcher_plant_blooms.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.exploration.pitcher_plant_blooms.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:pitcher_plant"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 250
+  },
+  "sends_telemetry_event": true
+}

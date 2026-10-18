@@ -1,0 +1,19 @@
+{
+  "layers": {
+    "humanoid": [
+      {
+        "texture": "ladssmp:turtle_scute"
+      }
+    ],
+    "humanoid_baby": [
+      {
+        "texture": "ladssmp:turtle_scute"
+      }
+    ],
+    "humanoid_leggings": [
+      {
+        "texture": "ladssmp:turtle_scute"
+      }
+    ]
+  }
+}

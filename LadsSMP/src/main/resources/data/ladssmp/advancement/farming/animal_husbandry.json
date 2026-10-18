@@ -1,0 +1,33 @@
+{
+  "parent": "ladssmp:farming/wheat_farmer",
+  "display": {
+    "icon": {
+      "id": "minecraft:hay_block"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.farming.animal_husbandry.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.farming.animal_husbandry.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:bred_animals",
+      "conditions": {}
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 50
+  },
+  "sends_telemetry_event": true
+}

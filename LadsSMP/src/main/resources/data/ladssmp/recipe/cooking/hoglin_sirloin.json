@@ -1,0 +1,21 @@
+{
+  "type": "farmersdelight:cooking",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "experience": 0.9,
+  "cookingtime": 200,
+  "ingredients": [
+    "ladssmp:hoglin_loin",
+    "minecraft:crimson_fungus"
+  ],
+  "recipe_book_tab": "meals",
+  "result": {
+    "id": "ladssmp:hoglin_sirloin"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "variants": {
+    "facing=down,has_lights=false,powered=false": { "model": "ladssmp:block/fastener", "x": 180 },
+    "facing=down,has_lights=false,powered=true": { "model": "ladssmp:block/fastener", "x": 180 },
+    "facing=down,has_lights=true,powered=false": { "model": "ladssmp:block/fastener", "x": 180 },
+    "facing=down,has_lights=true,powered=true": { "model": "ladssmp:block/fastener", "x": 180 },
+
+    "facing=up,has_lights=false,powered=false": { "model": "ladssmp:block/fastener" },
+    "facing=up,has_lights=false,powered=true": { "model": "ladssmp:block/fastener" },
+    "facing=up,has_lights=true,powered=false": { "model": "ladssmp:block/fastener" },
+    "facing=up,has_lights=true,powered=true": { "model": "ladssmp:block/fastener" },
+
+    "facing=north,has_lights=false,powered=false": { "model": "ladssmp:block/fastener", "x": 90 },
+    "facing=north,has_lights=false,powered=true": { "model": "ladssmp:block/fastener", "x": 90 },
+    "facing=north,has_lights=true,powered=false": { "model": "ladssmp:block/fastener", "x": 90 },
+    "facing=north,has_lights=true,powered=true": { "model": "ladssmp:block/fastener", "x": 90 },
+
+    "facing=south,has_lights=false,powered=false": { "model": "ladssmp:block/fastener", "x": 90, "y": 180 },
+    "facing=south,has_lights=false,powered=true": { "model": "ladssmp:block/fastener", "x": 90, "y": 180 },
+    "facing=south,has_lights=true,powered=false": { "model": "ladssmp:block/fastener", "x": 90, "y": 180 },
+    "facing=south,has_lights=true,powered=true": { "model": "ladssmp:block/fastener", "x": 90, "y": 180 },
+
+    "facing=west,has_lights=false,powered=false": { "model": "ladssmp:block/fastener", "x": 90, "y": 270 },
+    "facing=west,has_lights=false,powered=true": { "model": "ladssmp:block/fastener", "x": 90, "y": 270 },
+    "facing=west,has_lights=true,powered=false": { "model": "ladssmp:block/fastener", "x": 90, "y": 270 },
+    "facing=west,has_lights=true,powered=true": { "model": "ladssmp:block/fastener", "x": 90, "y": 270 },
+
+    "facing=east,has_lights=false,powered=false": { "model": "ladssmp:block/fastener", "x": 90, "y": 90 },
+    "facing=east,has_lights=false,powered=true": { "model": "ladssmp:block/fastener", "x": 90, "y": 90 },
+    "facing=east,has_lights=true,powered=false": { "model": "ladssmp:block/fastener", "x": 90, "y": 90 },
+    "facing=east,has_lights=true,powered=true": { "model": "ladssmp:block/fastener", "x": 90, "y": 90 }
+  }
+}

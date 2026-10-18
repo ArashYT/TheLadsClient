@@ -80,7 +80,8 @@ public final class QaProbe1201 {
     private static Phase phase = Phase.TITLE;
     private static Path gameDir;
     private static long phaseSince, nextStopCheck;
-    private static int titleTicks, setupTicks, waitTicks, index, passed, failedSteps, confirmTicks;
+    private static int titleTicks, setupTicks, waitTicks, index, passed, failedSteps, confirmTicks, barWaits;
+    private static boolean barShotDone;
     private static String pendingShot;
     private static List<String[]> steps = new ArrayList<>();
     private static final List<InputConstants.Key> releaseNext = new ArrayList<>();
@@ -160,6 +161,8 @@ public final class QaProbe1201 {
             }
         }
         mc.options.pauseOnLostFocus = false;
+        String barShot = com.thelads.core.client.qa.QaProgress.finalShot(); // QA progress bar: its final state, photographed a moment after the run is done
+        if (barShot != null) try { shot(mc, barShot); barShotDone = true; LOGGER.info("Lads QA bar final state: screenshots/{}.png", barShot); } catch (Exception ignored) { }
         try {
             for (InputConstants.Key key : releaseNext) KeyMapping.set(key, false);
             releaseNext.clear();
@@ -267,12 +270,13 @@ public final class QaProbe1201 {
 
     private static void script(Minecraft mc) {
         if (steps.isEmpty()) {
-            if (!scriptDone) { scriptDone = true; phase = Phase.DONE; }
+            if (!scriptDone) { scriptDone = true; phase = Phase.DONE; com.thelads.core.client.qa.QaProgress.begin("1.20.1 QA world", 1); com.thelads.core.client.qa.QaProgress.step("world ready"); com.thelads.core.client.qa.QaProgress.done(); }
             return;
         }
         if (!scriptStarted) {
             scriptStarted = true;
             LOGGER.info("Lads qa script BEGIN: {} steps", steps.size());
+            com.thelads.core.client.qa.QaProgress.begin("1.20.1 script", steps.size()); com.thelads.core.client.qa.QaProgress.slowAfter(600_000); // routines (HUD sequences) take minutes by design // QA progress bar: one bar step per script step (routine steps are one each)
         }
         if (waitTicks > 0) { waitTicks--; return; }
         if (routine != null) {
@@ -289,6 +293,7 @@ public final class QaProbe1201 {
         while (waitTicks == 0 && pendingShot == null && routine == null && index < steps.size()) {
             String[] step = steps.get(index++);
             LOGGER.info("Lads qa step {}/{}: {}", index, steps.size(), String.join(" ", step));
+            com.thelads.core.client.qa.QaProgress.step(String.join(" ", step));
             try {
                 run(mc, step);
                 if (!step[0].equals("wait")) { if (waitTicks == 0) waitTicks = 1; }
@@ -300,8 +305,12 @@ public final class QaProbe1201 {
             }
         }
         if (!scriptDone && waitTicks == 0 && pendingShot == null && routine == null && index >= steps.size()) {
+            // QA progress bar: the run is done a moment before the END marker, so its final state is photographed before the harness stops the game.
+            if (com.thelads.core.client.qa.QaProgress.on() && com.thelads.core.client.qa.QaProgress.running()) { com.thelads.core.client.qa.QaProgress.done(); barWaits = 0; return; }
+            if (com.thelads.core.client.qa.QaProgress.on() && !barShotDone && ++barWaits < 100) return;
             scriptDone = true;
             phase = Phase.DONE;
+            com.thelads.core.client.qa.QaProgress.done();
             LOGGER.info("Lads qa script END: {} passed, {} failed", passed, failedSteps);
             if (failedSteps > 0) LOGGER.error("Lads qa script FAILED: {} step(s) failed", failedSteps);
         }
@@ -309,6 +318,7 @@ public final class QaProbe1201 {
 
     private static void stepFailed(String what, Exception e) {
         failedSteps++;
+        com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL);
         LOGGER.error("Lads qa step FAILED: {}: {}", what, e.toString());
     }
 
@@ -340,6 +350,7 @@ public final class QaProbe1201 {
                 LOGGER.info("Lads qa quit requested");
                 scriptDone = true;
                 phase = Phase.DONE;
+                com.thelads.core.client.qa.QaProgress.done();
                 LOGGER.info("Lads qa script END: {} passed, {} failed", passed + 1, failedSteps);
                 mc.stop();
             }
@@ -576,6 +587,8 @@ public final class QaProbe1201 {
 
     private static void fail(String where, Exception e) {
         failed = true;
+        com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL);
+        com.thelads.core.client.qa.QaProgress.done();
         LOGGER.error("Lads auto-world QA FAILED: {}: {}", where, e.toString(), e);
     }
 }

@@ -15,10 +15,34 @@
   "entrypoints": {
     "main": [
       "com.thelads.smp.LadsSMPMod"
+    ],
+    "client": [
+      "com.thelads.smp.features.arise.nb1.client.AriseNB1ClientMod",
+      "com.thelads.smp.features.arise.nb2.NB2Client",
+      "com.thelads.smp.features.arise.nb3.AriseNb3Client",
+      "com.thelads.smp.features.arise.nb5.client.AriseNB5Client",
+      "com.thelads.smp.features.arise.nb6.client.AriseNB6Client",
+      "com.thelads.smp.features.arise.nb7.client.AriseNB7Client",
+      "com.thelads.smp.features.arise.nb8.client.AriseNB8Client",
+      "com.thelads.smp.features.arise.nb9.client.AriseNB9Client",
+      "com.thelads.smp.features.arise.nb10.client.AriseNB10Client"
+    ],
+    "voicechat": [
+      "com.thelads.smp.features.arise.nb1.SimpleVoiceChatBroadcastPlugin"
     ]
   },
   "mixins": [
-    "ladssmp.mixins.json"
+    "ladssmp.mixins.json",
+    "ladssmp.arise-nb1.mixins.json",
+    "ladssmp.arise-nb2.mixins.json",
+    "ladssmp.arise-nb3.mixins.json",
+    "ladssmp.arise-nb4.mixins.json",
+    "ladssmp.arise-nb5.mixins.json",
+    "ladssmp.arise-nb6.mixins.json",
+    "ladssmp.arise-nb7.mixins.json",
+    "ladssmp.arise-nb8.mixins.json",
+    "ladssmp.arise-nb9.mixins.json",
+    "ladssmp.arise-nb10.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.19.0",

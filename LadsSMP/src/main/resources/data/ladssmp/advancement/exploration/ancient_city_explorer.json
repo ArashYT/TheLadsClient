@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:exploration/wanderlust",
+  "display": {
+    "icon": {
+      "id": "minecraft:sculk"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.exploration.ancient_city_explorer.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.exploration.ancient_city_explorer.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:sculk"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 800
+  },
+  "sends_telemetry_event": true
+}

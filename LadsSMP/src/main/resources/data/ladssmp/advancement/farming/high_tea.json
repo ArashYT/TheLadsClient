@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:farming/culinary_artist",
+  "display": {
+    "icon": {
+      "id": "ladssmp:green_tea"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.farming.high_tea.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.farming.high_tea.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "ladssmp:green_tea"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  },
+  "sends_telemetry_event": true
+}

@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:exploration/archaeologist",
+  "display": {
+    "icon": {
+      "id": "minecraft:decorated_pot"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.exploration.pottery_collector.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.exploration.pottery_collector.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:decorated_pot"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 250
+  },
+  "sends_telemetry_event": true
+}

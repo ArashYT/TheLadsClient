@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mining/heavy_core_salvage",
+  "display": {
+    "icon": {
+      "id": "minecraft:mace"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mining.mace_forge.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mining.mace_forge.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:mace"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 2500
+  },
+  "sends_telemetry_event": true
+}

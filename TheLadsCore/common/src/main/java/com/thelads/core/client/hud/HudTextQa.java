@@ -47,10 +47,11 @@ public final class HudTextQa {
     /** Each client tick of the probe; true once the sequence has ended. */
     public static boolean tick(HudLayoutQa.Driver d) {
         try {
-            if (step == -1) { begin(d); step = -2; wait = 40; return false; }
+            if (step == -1) { begin(d); com.thelads.core.client.qa.QaProgress.begin("HUD text", 28); step = -2; wait = 40; return false; }
             if (wait > 0) { wait--; return false; }
             if (step == -2) { d.guiScale(2); step = 0; wait = 40; return false; }
             HudSettings settings = HudSettings.getInstance();
+            if (step < 28) com.thelads.core.client.qa.QaProgress.step("HUD text " + (step + 1));
             switch (step++) {
                 case 0 -> { settings.setTextShadow(true); settings.setSoftShadow(false); wait = 20; }
                 case 1 -> shot(d, "text-1-shadow-on");
@@ -84,7 +85,7 @@ public final class HudTextQa {
                 default -> { end(d); return true; }
             }
         } catch (RuntimeException failure) {
-            FAILURES.add("step " + step + ": " + failure);
+            FAILURES.add("step " + step + ": " + failure); com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL);
             LOGGER.error("Lads hud layout FAILED at text step {}", step, failure);
             end(d);
             return true;
@@ -94,6 +95,7 @@ public final class HudTextQa {
 
     private static void shot(HudLayoutQa.Driver d, String name) {
         d.shot(name);
+        com.thelads.core.client.qa.QaProgress.label(name);
         LOGGER.info("Lads hud layout frame {}", name);
         passed++;
         wait = 10;
@@ -196,7 +198,7 @@ public final class HudTextQa {
     private static void afterFrame(String label, java.util.function.Consumer<LadsGraphics> action) {
         HudManager.afterRender = g -> {
             try { action.accept(g); }
-            catch (RuntimeException failure) { FAILURES.add(label + ": " + failure); LOGGER.error("Lads hud layout check FAIL: text: {}", label, failure); }
+            catch (RuntimeException failure) { FAILURES.add(label + ": " + failure); com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL); LOGGER.error("Lads hud layout check FAIL: text: {}", label, failure); }
         };
     }
 
@@ -229,6 +231,7 @@ public final class HudTextQa {
             FAILURES.add("restoring: " + failure);
         }
         if (!FAILURES.isEmpty()) LOGGER.error("Lads hud layout FAILED: {}", String.join(" | ", FAILURES));
+        com.thelads.core.client.qa.QaProgress.done();
         LOGGER.info("Lads hud layout END: {} passed, {} failed", passed, FAILURES.size());
     }
 }

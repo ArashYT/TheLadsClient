@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:exploration/sniffer_revival",
+  "display": {
+    "icon": {
+      "id": "minecraft:torchflower"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.exploration.torchflower_gatherer.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.exploration.torchflower_gatherer.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:torchflower"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 250
+  },
+  "sends_telemetry_event": true
+}

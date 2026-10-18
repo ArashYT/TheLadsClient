@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "food",
+  "ingredient": "ladssmp:warped_guppy",
+  "result": {
+    "id": "ladssmp:cooked_warped_guppy"
+  },
+  "experience": 0.35,
+  "cookingtime": 200
+}

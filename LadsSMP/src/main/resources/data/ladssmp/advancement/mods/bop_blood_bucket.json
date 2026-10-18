@@ -1,0 +1,47 @@
+{
+  "parent": "ladssmp:mods/bop_flesh_anomaly",
+  "display": {
+    "icon": {
+      "id": "biomesoplenty:blood_bucket"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mods.bop_blood_bucket.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mods.bop_blood_bucket.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "biomesoplenty:blood_bucket"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 250
+  },
+  "sends_telemetry_event": true,
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "biomesoplenty"
+      ]
+    }
+  ]
+}

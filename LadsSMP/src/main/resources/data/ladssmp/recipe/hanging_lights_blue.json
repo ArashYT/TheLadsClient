@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "ingredients": [
+    "ladssmp:hanging_lights",
+    "minecraft:blue_dye"
+  ],
+  "result": {
+    "count": 1,
+    "id": "ladssmp:hanging_lights_blue"
+  }
+}

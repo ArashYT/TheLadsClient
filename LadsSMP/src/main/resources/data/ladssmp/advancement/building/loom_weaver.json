@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:building/first_shelter",
+  "display": {
+    "icon": {
+      "id": "minecraft:loom"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.building.loom_weaver.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.building.loom_weaver.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:loom"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 40
+  },
+  "sends_telemetry_event": true
+}

@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:farming/culinary_artist",
+  "display": {
+    "icon": {
+      "id": "ladssmp:kangaroo_pasta"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.farming.kangaroo_banquet.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.farming.kangaroo_banquet.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "ladssmp:kangaroo_pasta"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 500
+  },
+  "sends_telemetry_event": true
+}

@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:exploration/wanderlust",
+  "display": {
+    "icon": {
+      "id": "minecraft:filled_map"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.exploration.cartographer_chart.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.exploration.cartographer_chart.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:filled_map"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  },
+  "sends_telemetry_event": true
+}

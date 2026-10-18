@@ -1,0 +1,41 @@
+{
+  "parent": "ladssmp:nether/bastion_raider",
+  "display": {
+    "icon": {
+      "id": "minecraft:golden_axe"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.nether.piglin_brute_slayer.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.nether.piglin_brute_slayer.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": {
+        "entity": {
+          "type": "minecraft:entity_properties",
+          "entity": "this",
+          "predicate": {
+            "minecraft:entity_type": "minecraft:piglin_brute"
+          }
+        }
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 400
+  },
+  "sends_telemetry_event": true
+}

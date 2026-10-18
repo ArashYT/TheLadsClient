@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smoking",
+  "category": "food",
+  "ingredient": "ladssmp:magma_mackerel",
+  "result": {
+    "id": "ladssmp:cooked_magma_mackerel"
+  },
+  "experience": 0.35,
+  "cookingtime": 100
+}

@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:farming/culinary_artist",
+  "display": {
+    "icon": {
+      "id": "ladssmp:venison_stew"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.farming.master_pot_chef.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.farming.master_pot_chef.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "ladssmp:venison_stew"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 150
+  },
+  "sends_telemetry_event": true
+}

@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:combat/knight_in_diamonds",
+  "display": {
+    "icon": {
+      "id": "minecraft:netherite_chestplate"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.combat.netherite_juggernaut.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.combat.netherite_juggernaut.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:netherite_chestplate"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 2500
+  },
+  "sends_telemetry_event": true
+}
