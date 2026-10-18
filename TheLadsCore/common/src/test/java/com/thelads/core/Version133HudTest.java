@@ -53,6 +53,8 @@ class Version133HudTest {
         picker.open("Test",0xFF123456,result::set);picker.key(257);assertEquals(0xFF123456,result.get());assertFalse(picker.isOpen());
     }
     @Test void cpsUsesSixtyFivePercentTextScale(){
+        var module = (KeystrokesModule) ModuleManager.getInstance().getModule("Keystrokes");
+        if (module != null) module.style.setIndex(KeystrokesModule.STYLE_CLASSIC);
         var keys=new KeystrokesHudElement();keys.setModuleName("Keystrokes");keys.prepareRender(g,true);keys.renderEditor(g);assertEquals(2,g.drawCalls.stream().filter(s->s.equals("scale:0.65,0.65")).count());
     }
     @Test void searchableActionDropdownFiltersAndTogglesOnlyMatchingState()throws Exception{

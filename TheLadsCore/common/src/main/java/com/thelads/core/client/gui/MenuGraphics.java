@@ -4,19 +4,19 @@ import com.thelads.core.client.bridge.LadsGraphics;
 import java.util.ArrayList;
 import java.util.List;
 
-final class MenuGraphics {
+public final class MenuGraphics {
     static final int BG = LadsPalette.BACKGROUND, PANEL = LadsPalette.PANEL, CARD = LadsPalette.CARD;
     static final int TEXT = LadsPalette.TEXT, MUTED = LadsPalette.MUTED, ACCENT = LadsPalette.ACCENT;
     private MenuGraphics() {}
-    static int mix(int from, int to, float progress) {
+    public static int mix(int from, int to, float progress) {
         float t = Math.max(0, Math.min(1, progress));
         int result = 0;
         for (int shift = 0; shift <= 24; shift += 8)
             result |= Math.round(((from >>> shift) & 255) * (1 - t) + ((to >>> shift) & 255) * t) << shift;
         return result;
     }
-    static void round(LadsGraphics g, int x, int y, int w, int h, int color) {
-        if (w <= 0 || h <= 0) return;
+    public static void round(LadsGraphics g, int x, int y, int w, int h, int color) {
+        if (w <= 0 || h <= 0 || (color >>> 24) == 0) return;
         int r = Math.min(4, Math.min(w, h) / 2);
         g.fill(x + r, y, x + w - r, y + h, color);
         g.fill(x, y + r, x + r, y + h - r, color);
@@ -26,6 +26,28 @@ final class MenuGraphics {
             g.fill(x + inset, y + i, x + r, y + i + 1, color);
             g.fill(x + w - r, y + i, x + w - inset, y + i + 1, color);
             g.fill(x + inset, y + h - i - 1, x + r, y + h - i, color);
+            g.fill(x + w - r, y + h - i - 1, x + w - inset, y + h - i, color);
+        }
+    }
+    public static void roundLeft(LadsGraphics g, int x, int y, int w, int h, int color) {
+        if (w <= 0 || h <= 0 || (color >>> 24) == 0) return;
+        int r = Math.min(4, Math.min(w, h) / 2);
+        g.fill(x + r, y, x + w, y + h, color);
+        g.fill(x, y + r, x + r, y + h - r, color);
+        for (int i = 0; i < r; i++) {
+            int inset = i == 0 ? 2 : i == 1 ? 1 : 0;
+            g.fill(x + inset, y + i, x + r, y + i + 1, color);
+            g.fill(x + inset, y + h - i - 1, x + r, y + h - i, color);
+        }
+    }
+    public static void roundRight(LadsGraphics g, int x, int y, int w, int h, int color) {
+        if (w <= 0 || h <= 0 || (color >>> 24) == 0) return;
+        int r = Math.min(4, Math.min(w, h) / 2);
+        g.fill(x, y, x + w - r, y + h, color);
+        g.fill(x + w - r, y + r, x + w, y + h - r, color);
+        for (int i = 0; i < r; i++) {
+            int inset = i == 0 ? 2 : i == 1 ? 1 : 0;
+            g.fill(x + w - r, y + i, x + w - inset, y + i + 1, color);
             g.fill(x + w - r, y + h - i - 1, x + w - inset, y + h - i, color);
         }
     }

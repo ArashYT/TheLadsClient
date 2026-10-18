@@ -135,7 +135,7 @@ public final class HudProbe {
             {"Coordinates", "Z: " + game.getPlayerZ()}, {"PingHUD", "Ping: \\d+ms"}, {"Memory", "\\d+/\\d+MB \\(\\d+%\\)"},
             {"Speed", "\\d+\\.\\d b/s"}, {"Day", "Day: " + game.getDayCount()}, {"Time", "\\d\\d:\\d\\d"}, {"XP", "Lvl " + game.getXpLevel()},
             {"Potion Effects", java.util.regex.Pattern.quote(I18n.format(Potion.moveSpeed.getName())) + " \\(\\d+s\\)"},
-            {"CPS", "CPS: \\d+ \\| \\d+"}, {"Keystrokes", "LMB"}, {"Keystrokes", "RMB"}, {"Keystrokes", "\\d+ CPS"},
+            {"CPS", "CPS: \\d+ \\| \\d+"}, {"Keystrokes", "(LMB|W)"}, {"Keystrokes", "(RMB|S)"}, {"Keystrokes", "(\\d+ CPS|\\d+)"},
             {"Biome", "(?i)" + java.util.regex.Pattern.quote(game.getBiomeName())},
             {"Direction", game.getPlayerDirection().substring(0, 1).toUpperCase()},
             {"Health", (int) Math.ceil(game.getHealth()) + "/" + (int) Math.ceil(game.getMaxHealth())},

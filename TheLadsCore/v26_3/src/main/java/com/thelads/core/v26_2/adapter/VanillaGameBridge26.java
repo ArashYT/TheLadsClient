@@ -101,6 +101,20 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     }
 
     @Override
+    public float getPitch() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) return 0;
+        return player.getXRot();
+    }
+
+    @Override
+    public int getClientTicks() {
+        var player = Minecraft.getInstance().player;
+        if (player != null) return player.tickCount;
+        return (int) (System.currentTimeMillis() / 50);
+    }
+
+    @Override
     public float getAbsorption() {
         var player = Minecraft.getInstance().player;
         return player == null ? -1 : player.getAbsorptionAmount();
@@ -322,6 +336,11 @@ public class VanillaGameBridge26 implements LadsGameBridge {
             case "SPACE": return mc.options.keyJump.isDown();
             case "LMB": return mc.options.keyAttack.isDown();
             case "RMB": return mc.options.keyUse.isDown();
+            case "SNK":
+            case "SNEAK":
+            case "SHIFT": return mc.options.keyShift.isDown();
+            case "SPR":
+            case "SPRINT": return mc.options.keySprint.isDown();
             default: return false;
         }
     }

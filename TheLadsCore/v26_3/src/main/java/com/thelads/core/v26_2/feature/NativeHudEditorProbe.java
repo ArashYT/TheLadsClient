@@ -75,8 +75,12 @@ final class NativeHudEditorProbe implements AutoCloseable {
             var menu = new LadsSettingsScreen();
             var names = menu.visibleModuleNames();
             var expected = ModuleManager.getInstance().getModules().stream()
-                .map(Module::getName).filter(ModuleSupport::isBuiltIn).collect(java.util.stream.Collectors.toSet());
-            check(Set.copyOf(names).equals(expected), "native menu contains exactly registered Lads implementations");
+                .map(Module::getName).filter(ModuleSupport::isBuiltIn)
+                .filter(name -> !ModuleManager.getInstance().isHiddenModule(name)) // hidden ones (registerHidden) never show, by design
+                .collect(java.util.stream.Collectors.toSet());
+            var missing = new java.util.TreeSet<>(expected); missing.removeAll(names);
+            var extra = new java.util.TreeSet<>(names); extra.removeAll(expected);
+            check(missing.isEmpty() && extra.isEmpty(), "native menu contains exactly registered Lads implementations (missing " + missing + ", extra " + extra + ")");
             check(names.size() >= 40, "native menu retains the implemented 26.2 catalog");
             for (Module module : ModuleManager.getInstance().getModules()) {
                 if (!ModuleSupport.isBuiltIn(module.getName())) {
