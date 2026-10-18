@@ -303,6 +303,7 @@ public class ModuleManager {
         Module tab = new TabListModule();
         tab.setEnabled(true);
         register(tab, Module.Category.HUD);
+        register(new LadsBadgeModule(), Module.Category.HUD);
 
 
         Module betterRes = new BetterResolutionModule();

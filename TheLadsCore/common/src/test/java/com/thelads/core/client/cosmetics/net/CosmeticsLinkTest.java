@@ -2,12 +2,14 @@ package com.thelads.core.client.cosmetics.net;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.thelads.core.client.cosmetics.Emotes;
+import com.thelads.core.client.ladsapi.LadsPresence;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -164,5 +166,47 @@ class CosmeticsLinkTest {
 
         link.handle("not json", self); // ignored, never thrown
         link.handle("{\"t\":\"state\",\"uuid\":42}", self);
+    }
+
+    @Test
+    void messagesUpdateRelayPresence() {
+        UUID self = UUID.randomUUID(), p1 = UUID.randomUUID(), p2 = UUID.randomUUID(), p3 = UUID.randomUUID();
+        LadsPresence.relayClear();
+        assertFalse(LadsPresence.isLads(p1));
+        assertFalse(LadsPresence.isLads(p2));
+
+        CosmeticsLink link = new CosmeticsLink("ws://127.0.0.1:1/cosmetics/ws");
+
+        // 1. Snapshot adds all players in the room
+        link.handle("{\"t\":\"snapshot\",\"players\":["
+            + "{\"uuid\":\"" + CosmeticsLink.plain(p1) + "\",\"emote\":null,\"age\":0},"
+            + "{\"uuid\":\"" + CosmeticsLink.plain(p2) + "\",\"emote\":\"lads:wave\",\"age\":1000}"
+            + "]}", self);
+
+        assertTrue(LadsPresence.isLads(p1));
+        assertTrue(LadsPresence.isLads(p2));
+        assertFalse(LadsPresence.isLads(p3));
+
+        // 2. Join adds a newly joined player
+        link.handle("{\"t\":\"join\",\"uuid\":\"" + CosmeticsLink.plain(p3) + "\"}", self);
+        assertTrue(LadsPresence.isLads(p3));
+
+        // 3. Leave removes the player
+        link.handle("{\"t\":\"leave\",\"uuid\":\"" + CosmeticsLink.plain(p1) + "\"}", self);
+        assertFalse(LadsPresence.isLads(p1));
+        assertTrue(LadsPresence.isLads(p2));
+        assertTrue(LadsPresence.isLads(p3));
+
+        // 4. Another snapshot replaces/clears previous relay presence
+        UUID p4 = UUID.randomUUID();
+        link.handle("{\"t\":\"snapshot\",\"players\":["
+            + "{\"uuid\":\"" + CosmeticsLink.plain(p4) + "\",\"emote\":null,\"age\":0}"
+            + "]}", self);
+        assertFalse(LadsPresence.isLads(p2));
+        assertFalse(LadsPresence.isLads(p3));
+        assertTrue(LadsPresence.isLads(p4));
+
+        LadsPresence.relayClear();
+        assertFalse(LadsPresence.isLads(p4));
     }
 }

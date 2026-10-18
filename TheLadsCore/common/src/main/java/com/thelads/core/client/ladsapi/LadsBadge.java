@@ -1,5 +1,9 @@
 package com.thelads.core.client.ladsapi;
 
+import com.thelads.core.client.bridge.LadsGameBridge;
+import com.thelads.core.config.Module;
+import com.thelads.core.config.ModuleManager;
+import com.thelads.core.modules.LadsBadgeModule;
 import java.util.UUID;
 
 /**
@@ -16,15 +20,66 @@ public final class LadsBadge {
     /** Gap between the badge and the name, GUI pixels. */
     public static final int GAP = 1;
 
+    private static volatile LadsBadgeModule cachedModule;
+    private static volatile UUID cachedSelfUuid;
+    private static volatile LadsGameBridge lastBridge;
+    private static volatile int lastTick = Integer.MIN_VALUE;
+
     private LadsBadge() {}
+
+    private static LadsBadgeModule module() {
+        LadsBadgeModule m = cachedModule;
+        if (m == null) {
+            Module mod = ModuleManager.getInstance().getModule(LadsBadgeModule.NAME);
+            if (mod instanceof LadsBadgeModule badgeMod) {
+                m = badgeMod;
+                cachedModule = m;
+            }
+        }
+        return m;
+    }
+
+    private static UUID selfUuid() {
+        LadsGameBridge bridge = LadsGameBridge.get();
+        int tick = bridge.getClientTicks();
+        if (tick != lastTick || bridge != lastBridge) {
+            lastTick = tick;
+            lastBridge = bridge;
+            LadsGameBridge.Session s = bridge.session();
+            cachedSelfUuid = s != null ? s.uuid() : null;
+        }
+        return cachedSelfUuid;
+    }
+
+    /** Reset cached references (for unit tests). */
+    static void clearCacheForTest() {
+        cachedModule = null;
+        cachedSelfUuid = null;
+        lastBridge = null;
+        lastTick = Integer.MIN_VALUE;
+    }
 
     /** Draw the badge in front of this player's tab-list name. */
     public static boolean showInTab(UUID player) {
-        return false; // lane BADGE-A: module on, Tab option on, LadsPresence.isLads(player), own-badge rule
+        if (player == null) return false;
+        LadsBadgeModule m = module();
+        if (m == null || !m.isEnabled() || !m.tab.get()) return false;
+        UUID me = selfUuid();
+        if (me != null && me.equals(player)) {
+            return m.showMine.get();
+        }
+        return LadsPresence.isLads(player);
     }
 
     /** Draw the badge in front of this player's nametag. */
     public static boolean showOnNametag(UUID player) {
-        return false; // lane BADGE-A
+        if (player == null) return false;
+        LadsBadgeModule m = module();
+        if (m == null || !m.isEnabled() || !m.nametag.get()) return false;
+        UUID me = selfUuid();
+        if (me != null && me.equals(player)) {
+            return m.showMine.get();
+        }
+        return LadsPresence.isLads(player);
     }
 }
