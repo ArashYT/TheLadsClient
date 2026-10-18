@@ -168,20 +168,25 @@ def groove():
 
 def wave():
     b = Emote("lads:wave", "Wave", 120, 4, True)
-    b.track(ch(RIGHT_ARM, RX), 0, -152, 1, -156, 2, -152, 3, -156)
-    b.track(ch(RIGHT_ARM, RZ), 0, -16, 1, -44, 2, -16, 3, -44)
-    b.track(ch(RIGHT_ARM, RY), 0, -14, 1, -28, 2, -14, 3, -28)
+    # Right arm: raised overhead and tilted forward for clear first-person visibility, waving side-to-side
+    b.track(ch(RIGHT_ARM, RX), 0, -135, 1, -129, 2, -135, 3, -129)
+    b.track(ch(RIGHT_ARM, RZ), 0, -36, 1, 0, 2, -36, 3, 0)
+    b.track(ch(RIGHT_ARM, RY), 0, -20, 1, 8, 2, -20, 3, 8)
+    # Left arm: relaxed at side with subtle natural motion
     b.track(ch(LEFT_ARM, RZ), 0, -8, 2, -6)
     b.track(ch(LEFT_ARM, RX), 0, 2, 2, 6)
-    b.track(ch(BODY, RZ), 0, -2.5, 2, 2.5)
-    b.track(ch(BODY, RY), 0, -3.0, 2, 3.0)
-    b.track(ROOT, 0, -0.4, 2, 0.4)
-    b.track(ROOT + 1, 0, 0.2, 1, -0.1, 2, 0.2, 3, -0.1)
-    b.track(ch(HEAD, RZ), 0, 3, 2, -3)
-    b.track(ch(HEAD, RY), 0, -4, 2, 4)
-    b.track(ch(HEAD, RX), 0, -2, 2, 3)
-    b.track(ch(RIGHT_LEG, RZ), 0, 2, 2, -1)
-    b.track(ch(LEFT_LEG, RZ), 0, 1, 2, -2)
+    # Torso: friendly rhythmic sway in sync with the wave
+    b.track(ch(BODY, RZ), 0, -3.0, 1, 1.0, 2, -3.0, 3, 1.0)
+    b.track(ch(BODY, RY), 0, -4.0, 1, 2.0, 2, -4.0, 3, 2.0)
+    b.track(ROOT, 0, -0.5, 1, 0.2, 2, -0.5, 3, 0.2)
+    b.track(ROOT + 1, 0, 0.2, 0.5, -0.1, 1, 0.2, 1.5, -0.1, 2, 0.2, 2.5, -0.1, 3, 0.2, 3.5, -0.1)
+    # Head: friendly tilt toward the waving side
+    b.track(ch(HEAD, RZ), 0, 4, 1, -2, 2, 4, 3, -2)
+    b.track(ch(HEAD, RY), 0, -5, 1, 2, 2, -5, 3, 2)
+    b.track(ch(HEAD, RX), 0, -3, 1, 2, 2, -3, 3, 2)
+    # Legs: subtle weight shift grounding feet
+    b.track(ch(RIGHT_LEG, RZ), 0, 2, 1, -1, 2, 2, 3, -1)
+    b.track(ch(LEFT_LEG, RZ), 0, 1, 1, -2, 2, 1, 3, -2)
     return b.compile()
 
 def clap():
@@ -203,27 +208,36 @@ def clap():
 
 def floss():
     b = Emote("lads:floss", "Floss", 120, 4, True)
-    b.track(ch(BODY, RZ), 0, -7, .5, 0, 1, 7, 1.5, 0, 2, -7, 2.5, 0, 3, 7, 3.5, 0)
-    b.track(ch(BODY, RY), 0, 8, .5, 0, 1, -8, 1.5, 0, 2, 8, 2.5, 0, 3, -8, 3.5, 0)
-    b.track(ROOT, 0, -1.6, .5, 0, 1, 1.6, 1.5, 0, 2, -1.6, 2.5, 0, 3, 1.6, 3.5, 0)
-    b.track(ROOT + 1, 0, -0.2, .5, 0.4, 1, -0.2, 1.5, 0.4, 2, -0.2, 2.5, 0.4, 3, -0.2, 3.5, 0.4)
+    # Hips / Torso: decisive, energetic hip swing opposite to arms.
+    b.track(ch(BODY, RZ), 0, 11.0, 1, -11.0, 2, 11.0, 3, -11.0)
+    b.track(ch(BODY, RY), 0, -8.0, 1, 8.0, 2, -8.0, 3, 8.0)
+    b.track(ch(BODY, RX), 0, 4.0, 1, 4.0, 2, 4.0, 3, 4.0)
+    b.track(ROOT, 0, -2.4, 1, 2.4, 2, -2.4, 3, 2.4)
+    # Subtle vertical dip at center of swing
+    b.track(ROOT + 1, 0, -0.3, 0.5, 0.4, 1, -0.3, 1.5, 0.4, 2, -0.3, 2.5, 0.4, 3, -0.3, 3.5, 0.4)
 
-    b.track(ch(HEAD, RZ), 0, 5, .5, 0, 1, -5, 1.5, 0, 2, 5, 2.5, 0, 3, -5, 3.5, 0)
-    b.track(ch(HEAD, RY), 0, -6, .5, 0, 1, 6, 1.5, 0, 2, -6, 2.5, 0, 3, 6, 3.5, 0)
-    b.track(ch(HEAD, RX), 0, 4, .5, 0, 1, 4, 1.5, 0, 2, 4, 2.5, 0, 3, 4, 3.5, 0)
+    # Head: stays upright, looking straight ahead at the viewer
+    b.track(ch(HEAD, RZ), 0, -8.0, 1, 8.0, 2, -8.0, 3, 8.0)
+    b.track(ch(HEAD, RY), 0, 7.0, 1, -7.0, 2, 7.0, 3, -7.0)
+    b.track(ch(HEAD, RX), 0, 2.0, 1, 2.0, 2, 2.0, 3, 2.0)
 
-    b.track(ch(RIGHT_ARM, RX), 0, -32, .5, 0, 1, 22, 1.5, 0, 2, 22, 2.5, 0, 3, -32, 3.5, 0)
-    b.track(ch(RIGHT_ARM, RY), 0, 28, .5, 0, 1, -24, 1.5, 0, 2, 24, 2.5, 0, 3, -28, 3.5, 0)
-    b.track(ch(RIGHT_ARM, RZ), 0, -44, .5, 4, 1, 34, 1.5, 4, 2, -34, 2.5, 4, 3, 44, 3.5, 4)
+    # Arm side-to-side swing (RZ):
+    b.track(ch(RIGHT_ARM, RZ), 0, -50.0, 1, 36.0, 2, -50.0, 3, 36.0)
+    b.track(ch(LEFT_ARM, RZ),  0, -36.0, 1, 50.0, 2, -36.0, 3, 50.0)
 
-    b.track(ch(LEFT_ARM, RX), 0, 22, .5, 0, 1, -32, 1.5, 0, 2, -32, 2.5, 0, 3, 22, 3.5, 0)
-    b.track(ch(LEFT_ARM, RY), 0, 24, .5, 0, 1, -28, 1.5, 0, 2, 28, 2.5, 0, 3, -24, 3.5, 0)
-    b.track(ch(LEFT_ARM, RZ), 0, -34, .5, -4, 1, 44, 1.5, -4, 2, -44, 2.5, -4, 3, 34, 3.5, -4)
+    # Front vs Behind (RX):
+    b.track(ch(RIGHT_ARM, RX), 0, -50.0, 1, -50.0, 2, 22.0, 3, 22.0)
+    b.track(ch(LEFT_ARM, RX),  0, 22.0,  1, -50.0, 2, -50.0, 3, 22.0)
 
-    b.track(ch(RIGHT_LEG, RX), 0, -8, .5, -4, 1, -2, 1.5, -4, 2, -8, 2.5, -4, 3, -2, 3.5, -4)
-    b.track(ch(RIGHT_LEG, RZ), 0, 4, .5, 0, 1, -2, 1.5, 0, 2, 4, 2.5, 0, 3, -2, 3.5, 0)
-    b.track(ch(LEFT_LEG, RX), 0, -2, .5, -4, 1, -8, 1.5, -4, 2, -2, 2.5, -4, 3, -8, 3.5, -4)
-    b.track(ch(LEFT_LEG, RZ), 0, 2, .5, 0, 1, -4, 1.5, 0, 2, 2, 2.5, 0, 3, -4, 3.5, 0)
+    # Arm yaw (RY):
+    b.track(ch(RIGHT_ARM, RY), 0, 18.0, 1, -18.0, 2, 18.0, 3, -18.0)
+    b.track(ch(LEFT_ARM, RY),  0, 18.0, 1, -18.0, 2, 18.0, 3, -18.0)
+
+    # Legs: wide stance, weight shifting with hip sway
+    b.track(ch(RIGHT_LEG, RZ), 0, 7.0, 1, -3.0, 2, 7.0, 3, -3.0)
+    b.track(ch(LEFT_LEG, RZ),  0, 3.0, 1, -7.0, 2, 3.0, 3, -7.0)
+    b.track(ch(RIGHT_LEG, RX), 0, -8.0, 1, -2.0, 2, -8.0, 3, -2.0)
+    b.track(ch(LEFT_LEG, RX),  0, -2.0, 1, -8.0, 2, -2.0, 3, -8.0)
 
     return b.compile()
 
