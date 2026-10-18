@@ -11,7 +11,8 @@
     "SkyColorMixin",
     "SodiumCuboidStackMixin",
     "XaeroWorldMapPaceMixin",
-    "XaeroConfigMemoMixin"
+    "XaeroConfigMemoMixin",
+    "AnimateTickBiomeMixin"
   ],
   "injectors": {
     "defaultRequire": 1
