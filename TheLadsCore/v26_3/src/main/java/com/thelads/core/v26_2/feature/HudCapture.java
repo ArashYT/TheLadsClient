@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import net.minecraft.client.renderer.state.gui.pip.PictureInPictureRenderState;
 
@@ -106,8 +107,8 @@ public final class HudCapture {
         return frameSteps[frame];
     }
 
-    /** Gui: Hud.extractRenderState. */
-    public static void extract(GuiRenderState state, Runnable build) {
+    /** Gui: Hud.extractRenderState (build: the HUD's extraction into the GUI graphics it is given). */
+    public static void extract(GuiRenderState state, GuiGraphicsExtractor graphics, Consumer<GuiGraphicsExtractor> build) {
         long start = System.nanoTime();
         REPLAYED.clear();
         built = replaying = catchingUp = false;
@@ -120,7 +121,7 @@ public final class HudCapture {
                 frames = 0;
                 HudFrameCap.reset();
                 qaBuilds++;
-                build.run();
+                build.accept(graphics);
                 return;
             }
             if (frames == 0) gameSum = realSum = 0; // the first frame since the last build
@@ -132,13 +133,16 @@ public final class HudCapture {
             // The tab list is part of the captured HUD: it opens and closes on the frame its key does, not one capped build later.
             boolean tab = mc.options.keyPlayerList.isDown();
             if (tab != tabDown) { tabDown = tab; HudFrameCap.reset(); }
+            // 1.9.12 perf: between builds the HUD is one texture (HudTexture); a window size it was not drawn for builds at once.
+            boolean texture = HudTexture.usable();
+            if (texture && HudTexture.sizeChanged()) HudFrameCap.reset();
             // Due sees what covered the HUD on the last frame (HudManager.coverChanged); this frame's tab list adds its box again.
             boolean due = HudFrameCap.due(System.nanoTime(), window.getGuiScaledWidth(), window.getGuiScaledHeight());
             HudCover.frame();
             if (!due) {
                 qaReplays++;
                 replaying = true;
-                replay(HUD, state);
+                if (!(texture && HudTexture.show(state))) replay(HUD, state);
                 return;
             }
             qaBuilds++;
@@ -149,7 +153,14 @@ public final class HudCapture {
             buildStart = System.nanoTime();
             HudFrameCap.wholeHud = catchingUp = true;
             try {
-                build(HUD, build);
+                if (texture) {
+                    build(HUD, () -> HudTexture.build(build));
+                    HudTexture.built();
+                    if (!HudTexture.show(state)) replay(HUD, state);
+                } else {
+                    HudTexture.invalidate(); // its image is older than this build
+                    build(HUD, () -> build.accept(graphics));
+                }
             } finally {
                 HudFrameCap.wholeHud = catchingUp = false;
             }

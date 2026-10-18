@@ -40,13 +40,16 @@ public abstract class MixinEntityRenderer<T extends Entity
 
     private static final String RENDER = "submit";
 
+    // The Lads 1.9.12 perf: no push/pop for an entity ETF has nothing for (ETFManager.idle, from the render state: same at both ends)
     @Inject(method = RENDER, at = @At(value = "HEAD"))
-    private void etf$protectPostRenderersLikeNametag(final CallbackInfo ci) {
+    private void etf$protectPostRenderersLikeNametag(final CallbackInfo ci, @Local(argsOnly = true) EntityRenderState state) {
+        if (com.thelads.core.v26_2.embedded.etf.features.ETFManager.idle(state)) return;
         ETFState.pushRenderLayerModifyState(false);
     }
 
     @Inject(method = RENDER, at = @At(value = "TAIL"))
-    private void etf$revertForRenderersThatCallSuperFirst(final CallbackInfo ci) {
+    private void etf$revertForRenderersThatCallSuperFirst(final CallbackInfo ci, @Local(argsOnly = true) EntityRenderState state) {
+        if (com.thelads.core.v26_2.embedded.etf.features.ETFManager.idle(state)) return;
         ETFState.popRenderLayerModifyState(); // see minecart rendering
     }
 

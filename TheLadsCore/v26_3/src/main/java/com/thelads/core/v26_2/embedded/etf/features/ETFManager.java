@@ -108,6 +108,17 @@ public class ETFManager {
      */
     public static volatile boolean packData = true;
 
+    /**
+     * The Lads 1.9.12 perf round 2: an entity's render without pack data and without an ETF state of its own (every non-player then)
+     * has nothing for ETF/EMF to act on, so their per-submit state stack pushes and pops are skipped too (5-8 % of the render thread
+     * with 200 mobs). Decided from the render state alone, so a skipped push is always a skipped pop. -Dlads.etfIdle=false = old path.
+     */
+    private static final boolean IDLE = Boolean.parseBoolean(System.getProperty("lads.etfIdle", "true"));
+
+    public static boolean idle(Object renderState) {
+        return IDLE && !packData && !(renderState instanceof com.thelads.core.v26_2.embedded.etf.features.state.HoldsETFRenderState holds && holds.etf$getState() != null);
+    }
+
     /** OptiFine "true random" variants (cow2.png): an entity texture whose name ends in digits, from a pack other than vanilla. */
     private static final java.util.regex.Pattern NUMBERED = java.util.regex.Pattern.compile(".*[^/]\\d+\\.png");
 

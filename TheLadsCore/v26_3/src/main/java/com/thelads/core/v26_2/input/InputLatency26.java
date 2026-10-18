@@ -15,7 +15,9 @@ import org.slf4j.LoggerFactory;
  * OpenGL and the Vulkan backend implement (a GL sync object, a Vulkan timeline semaphore value), so it paces either backend.
  * The wait runs right before Minecraft polls input for the frame; the fence is made right before the frame's submit, so it
  * belongs to that frame. Always on, no setting; kill switch -Dlads.reflex=false; stands down while the original mod is
- * installed; any failure turns it off for the session with vanilla frame timing.
+ * installed; any failure turns it off for the session with vanilla frame timing. Above ~1,250 FPS it steps aside (1.9.12 perf round 2,
+ * as on 1.8.9): the queue it trims is under a frame of 0.8 ms there, while its fence and wait cost 4-6 % of the frame rate in the
+ * Legion bench; below 1,000 FPS it paces again. -Dlads.reflexFast=false = pace at any frame rate.
  *
  * <p>Buffered raw mouse input (the Ixeris remake) has nothing to do here: 26.x reads the mouse through SDL3, whose Windows
  * backend already reads raw input in batches (GetRawInputBuffer) on its own thread, and 26.x's frame limiter already sleeps
@@ -27,6 +29,11 @@ public final class InputLatency26 {
     static final FramePacer PACER = new FramePacer();
     static boolean reflex;
     private static GpuFence previous, older;
+    /** Frame-to-frame time (average of the last ~16) under which pacing steps aside, and over which it comes back. */
+    static final long FAST_NS = 800_000L, SLOW_NS = 1_000_000L;
+    private static final boolean STEP_ASIDE = !"false".equalsIgnoreCase(System.getProperty("lads.reflexFast"));
+    private static long lastFrame, interval;
+    private static boolean fast;
     /** The thread that submits frames; with a threaded renderer (Ixeris in the 26.3 pack) the event poll may run elsewhere. */
     private static volatile Thread renderThread;
     /** QA (InputProbe26): pacing paused for the with/without comparison, the latency meter, GPU load (4096x4096 texture copies). */
@@ -65,7 +72,7 @@ public final class InputLatency26 {
     }
 
     private static void pace() {
-        if (!reflex || qaPaused || Thread.currentThread() != renderThread) return; // fences belong to the submitting thread
+        if (!reflex || qaPaused || fast || Thread.currentThread() != renderThread) return; // fences belong to the submitting thread
         try {
             PACER.frameStart(() -> done(previous), () -> done(older));
         } catch (Throwable t) {
@@ -81,6 +88,8 @@ public final class InputLatency26 {
         }
         if (qaMeter != null) qaMeter.fence();
         if (!reflex || qaPaused) return;
+        track();
+        if (fast) return;
         try {
             PACER.frameEnd(done(previous));
             if (older != null) older.close();
@@ -105,6 +114,24 @@ public final class InputLatency26 {
         }
         var encoder = device.createCommandEncoder();
         for (int i = 0; i < qaCopies; i++) encoder.copyTextureToTexture(i % 2 == 0 ? loadA : loadB, i % 2 == 0 ? loadB : loadA, 0, 0, 0, 0, 0, size, size);
+    }
+
+    private static void track() {
+        long now = System.nanoTime();
+        if (STEP_ASIDE && lastFrame != 0) {
+            long frame = now - lastFrame;
+            interval = interval == 0 ? frame : interval + (frame - interval) / 16;
+            boolean was = fast;
+            fast = fast ? interval < SLOW_NS : interval < FAST_NS;
+            if (fast && !was) dropFences(); // the first paced frame after it finds no fence and does not wait
+        }
+        lastFrame = now;
+    }
+
+    private static void dropFences() {
+        if (older != null) older.close();
+        if (previous != null) previous.close();
+        older = previous = null;
     }
 
     private static boolean done(GpuFence fence) {

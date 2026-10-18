@@ -22,7 +22,7 @@ public class GuiHudCapMixin {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Hud;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/client/DeltaTracker;)V"),
         require = 1)
     private void lads$capHud(Hud hud, GuiGraphicsExtractor graphics, DeltaTracker delta, Operation<Void> original) {
-        HudCapture.extract(guiRenderState, () -> original.call(hud, graphics, delta));
+        HudCapture.extract(guiRenderState, graphics, g -> original.call(hud, g, delta));
     }
 
     /** The HUD's deferred end (subtitles and Fabric's last HUD layer: Jade, Item Physics' throw bar) goes with the HUD it belongs to. */

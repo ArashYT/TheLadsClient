@@ -59,13 +59,22 @@ public class Mixin_ModelRenderer {
         ETFState.unMount();
     }
 
+    /** The Lads 1.9.12 perf: nothing for ETF in this submit and nothing mounted around it: no mountNone + unMount (an empty stack
+     *  at the tail means the head skipped too, as a head mount stays on the stack until the tail). */
+    @Unique
+    private static boolean lads$idle(net.minecraft.client.renderer.feature.ModelFeatureRenderer.Submit<?> modelSubmit) {
+        return com.thelads.core.v26_2.embedded.etf.features.ETFManager.idle(modelSubmit.state()) && ETFSubmitData.from(modelSubmit) == null && ETFState.stackEmpty();
+    }
+
     @Inject(method = "prepareModel", at = @At(value = "HEAD"))
     private <S> void emf$initRender(final CallbackInfo ci, @Local(argsOnly = true) net.minecraft.client.renderer.feature.ModelFeatureRenderer.Submit<S> modelSubmit) {
+        if (lads$idle(modelSubmit)) return;
         headLogic(modelSubmit);
     }
     
     @Inject(method = "prepareModel", at = @At(value = "TAIL"))
     private <S> void emf$endRender(final CallbackInfo ci, @Local(argsOnly = true) net.minecraft.client.renderer.feature.ModelFeatureRenderer.Submit<S> modelSubmit) {
+        if (lads$idle(modelSubmit)) return;
         tailLogic(modelSubmit);
     }
 
