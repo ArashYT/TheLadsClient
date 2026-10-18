@@ -2,7 +2,7 @@
   "parent": "ladssmp:mods/waystone_discoverer",
   "display": {
     "icon": {
-      "id": "waystones:sharestone"
+      "id": "waystones:amethyst_sharestone"
     },
     "title": {
       "translate": "advancements.ladssmp.mods.sharestone_network.title"
@@ -21,7 +21,7 @@
       "conditions": {
         "items": [
           {
-            "items": "waystones:sharestone"
+            "items": "#waystones:sharestones"
           }
         ]
       }
@@ -35,5 +35,13 @@
   "rewards": {
     "experience": 300
   },
-  "sends_telemetry_event": true
+  "sends_telemetry_event": true,
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "waystones"
+      ]
+    }
+  ]
 }

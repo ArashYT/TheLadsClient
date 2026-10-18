@@ -2,7 +2,7 @@
   "parent": "ladssmp:mods/root",
   "display": {
     "icon": {
-      "id": "smartbackpacks:backpack"
+      "id": "smartbackpacks:leather_backpack"
     },
     "title": {
       "translate": "advancements.ladssmp.mods.smart_backpack.title"
@@ -21,7 +21,7 @@
       "conditions": {
         "items": [
           {
-            "items": "smartbackpacks:backpack"
+            "items": "smartbackpacks:leather_backpack"
           }
         ]
       }
@@ -35,5 +35,13 @@
   "rewards": {
     "experience": 250
   },
-  "sends_telemetry_event": true
+  "sends_telemetry_event": true,
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "smartbackpacks"
+      ]
+    }
+  ]
 }

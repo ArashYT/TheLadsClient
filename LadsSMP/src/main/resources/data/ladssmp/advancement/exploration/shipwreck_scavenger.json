@@ -2,7 +2,7 @@
   "parent": "ladssmp:exploration/ocean_voyager",
   "display": {
     "icon": {
-      "id": "minecraft:sunken_boat"
+      "id": "minecraft:heart_of_the_sea"
     },
     "title": {
       "translate": "advancements.ladssmp.exploration.shipwreck_scavenger.title"

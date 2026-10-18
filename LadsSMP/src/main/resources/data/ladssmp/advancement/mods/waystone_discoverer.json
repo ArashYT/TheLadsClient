@@ -2,7 +2,7 @@
   "parent": "ladssmp:mods/root",
   "display": {
     "icon": {
-      "id": "waystones:waystone"
+      "id": "waystones:andesite_waystone"
     },
     "title": {
       "translate": "advancements.ladssmp.mods.waystone_discoverer.title"
@@ -21,7 +21,7 @@
       "conditions": {
         "items": [
           {
-            "items": "waystones:waystone"
+            "items": "#waystones:waystones"
           }
         ]
       }
@@ -35,5 +35,13 @@
   "rewards": {
     "experience": 200
   },
-  "sends_telemetry_event": true
+  "sends_telemetry_event": true,
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "waystones"
+      ]
+    }
+  ]
 }

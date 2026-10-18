@@ -1,7 +1,7 @@
 {
   "display": {
     "icon": {
-      "id": "waystones:waystone"
+      "id": "minecraft:lodestone"
     },
     "title": {
       "translate": "advancements.ladssmp.mods.root.title"
