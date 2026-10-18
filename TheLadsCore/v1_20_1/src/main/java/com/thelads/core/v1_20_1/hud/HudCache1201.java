@@ -12,6 +12,8 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.hud.HudFrameCap;
 import com.thelads.core.client.hud.HudManager;
+import com.thelads.core.config.HudSettings;
+import com.thelads.core.v1_20_1.game.mixin.MinecraftTargetAccessor;
 import com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +47,7 @@ public final class HudCache1201 {
 
     /** Draws the Lads HUD through the cache; false when it is not used (cap off, out of a world) and HudManager draws it. */
     public static boolean render(GuiGraphics graphics, GuiGraphicsLadsAdapter1201 g) {
+        if (mapMain != null) restoreMap(); // Xaero's draw did not return: never leave its cache as the main target
         Minecraft mc = Minecraft.getInstance();
         RenderTarget main = mc.getMainRenderTarget();
         if (off || !HudFrameCap.enabled() || g.getGame() == null || !g.getGame().isIngame() || main.width <= 0 || main.height <= 0) {
@@ -55,7 +58,7 @@ public final class HudCache1201 {
         long now = System.nanoTime();
         if (HudFrameCap.due(now, g.getScaledWidth(), g.getScaledHeight()) || !built) build(graphics, main, now);
         if (!built) return true; // a failed build: nothing this frame, the next one builds again
-        composite(graphics, main);
+        composite(graphics, main, target);
         for (Consumer<LadsGraphics> op : LIVE) op.accept(g);
         HudFrameCap.wholeHud = true;
         HudFrameCap.exempt = Boolean.TRUE;
@@ -70,14 +73,7 @@ public final class HudCache1201 {
 
     private static void build(GuiGraphics graphics, RenderTarget main, long now) {
         graphics.flush(); // what is batched so far belongs on the screen
-        if (target == null) {
-            target = new TextureTarget(main.width, main.height, true, Minecraft.ON_OSX);
-            target.setClearColor(0, 0, 0, 0); // transparent black: the composite is premultiplied
-        } else if (target.width != main.width || target.height != main.height) {
-            target.resize(main.width, main.height, Minecraft.ON_OSX);
-        }
-        target.clear(Minecraft.ON_OSX);
-        target.bindWrite(true);
+        target = ready(target, main);
         built = liveDraws = false;
         LIVE.clear();
         premultiply = true;
@@ -101,7 +97,7 @@ public final class HudCache1201 {
     }
 
     /** The cache over the GUI area as one quad (premultiplied: ONE, ONE_MINUS_SRC_ALPHA). */
-    private static void composite(GuiGraphics graphics, RenderTarget main) {
+    private static void composite(GuiGraphics graphics, RenderTarget main, TextureTarget target) {
         double scale = Minecraft.getInstance().getWindow().getGuiScale();
         float w = (float) (main.width / scale), h = (float) (main.height / scale);
         RenderSystem.setShaderTexture(0, target.getColorTextureId());
@@ -121,6 +117,82 @@ public final class HudCache1201 {
         BufferUploader.drawWithShader(quad.end());
         RenderSystem.depthMask(true);
         RenderSystem.defaultBlendFunc();
+    }
+
+    /** A window-size target, cleared to transparent black (the composite is premultiplied) and bound for drawing. */
+    private static TextureTarget ready(TextureTarget t, RenderTarget main) {
+        if (t == null) {
+            t = new TextureTarget(main.width, main.height, true, Minecraft.ON_OSX);
+            t.setClearColor(0, 0, 0, 0);
+        } else if (t.width != main.width || t.height != main.height) {
+            t.resize(main.width, main.height, Minecraft.ON_OSX);
+        }
+        t.clear(Minecraft.ON_OSX);
+        t.bindWrite(true);
+        return t;
+    }
+
+    private static TextureTarget map;
+    private static RenderTarget mapMain;
+    private static boolean mapBuilt;
+    private static long mapLast;
+
+    /**
+     * Xaero's minimap HUD (XaeroHudMixin) under the same cap: it re-rendered its map into its own buffer and drew it on every frame
+     * (spawn view 703 FPS with it, 1162 without, Legion). It is now drawn into a second cache at the HUD cap rate and that is
+     * composited where it drew, as 26.3's whole-HUD capture already does. True when the cached image was drawn instead (cancel).
+     */
+    public static boolean mapBegin(GuiGraphics graphics) {
+        Minecraft mc = Minecraft.getInstance();
+        RenderTarget main = mc.getMainRenderTarget();
+        if (off || mapMain != null || !HudFrameCap.enabled() || mc.level == null || main.width <= 0 || main.height <= 0) {
+            if (mapMain == null) freeMap();
+            return false;
+        }
+        long now = System.nanoTime(), interval = 1_000_000_000L / Math.max(1, HudSettings.getInstance().getHudFpsLimit());
+        if (mapBuilt && map.width == main.width && map.height == main.height && now - mapLast < interval) {
+            composite(graphics, main, map);
+            return true;
+        }
+        mapLast = mapBuilt && now - mapLast < 2 * interval ? mapLast + interval : now; // on schedule, as HudFrameCap
+        graphics.flush();
+        map = ready(map, main);
+        mapBuilt = false;
+        mapMain = main;
+        ((MinecraftTargetAccessor) mc).ladsSetMainTarget(map); // Xaero binds "the main target" again after its own map buffer
+        premultiply = true;
+        blend();
+        return false;
+    }
+
+    /** After Xaero drew into the cache: back to the screen, and the new image composited. */
+    public static void mapEnd(GuiGraphics graphics) {
+        RenderTarget main = mapMain;
+        if (main == null) return;
+        graphics.flush();
+        restoreMap();
+        mapBuilt = true;
+        composite(graphics, main, map);
+    }
+
+    /** The minimap is hidden (tab list, F3): built again when it shows. */
+    public static void mapHidden() {
+        mapBuilt = false;
+    }
+
+    private static void restoreMap() {
+        premultiply = false;
+        blend();
+        ((MinecraftTargetAccessor) Minecraft.getInstance()).ladsSetMainTarget(mapMain);
+        mapMain.bindWrite(true);
+        mapMain = null;
+    }
+
+    private static void freeMap() {
+        mapBuilt = false;
+        if (map == null) return;
+        map.destroyBuffers();
+        map = null;
     }
 
     /** Whether the blend function src/dst gets premultiplied alpha factors (ONE, ONE_MINUS_SRC_ALPHA): only while the cache is drawn. */
