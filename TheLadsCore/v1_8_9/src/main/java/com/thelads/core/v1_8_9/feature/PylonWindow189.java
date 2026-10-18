@@ -1,0 +1,64 @@
+package com.thelads.core.v1_8_9.feature;
+
+/**
+ * Pylon (bundled since 1.9.12) runs 1.8.9 on LWJGL 3 + SDL3 behind LWJGL 2's API, without LWJGL 2's internals: no
+ * org.lwjgl.opengl.Window.undecorated property, no WindowsDisplay handle. Its SDL window, by reflection (Core compiles
+ * against LWJGL 2).
+ */
+public final class PylonWindow189 {
+    public static final boolean PRESENT = present();
+
+    private PylonWindow189() {}
+
+    private static boolean present() {
+        try {
+            Class.forName("pl.tomgirl.pylon.window.DisplaySdl");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+    }
+
+    private static long window() throws ReflectiveOperationException {
+        Class<?> display = Class.forName("pl.tomgirl.pylon.window.DisplaySdl");
+        return (Long) display.getMethod("getHandle").invoke(display.getMethod("instance").invoke(null));
+    }
+
+    /** SDL's window frame and title bar, what LWJGL 2's undecorated property controls there. */
+    static void bordered(boolean bordered) throws ReflectiveOperationException {
+        Class.forName("org.lwjgl.sdl.SDLVideo").getMethod("SDL_SetWindowBordered", long.class, boolean.class).invoke(null, window(), bordered);
+    }
+
+    /** The window's top-left corner on the desktop (LWJGL 2's Display.getX/getY, which Pylon lacks). */
+    static int[] position() throws ReflectiveOperationException {
+        java.nio.IntBuffer x = org.lwjgl.BufferUtils.createIntBuffer(1), y = org.lwjgl.BufferUtils.createIntBuffer(1);
+        Class.forName("org.lwjgl.sdl.SDLVideo").getMethod("SDL_GetWindowPosition", long.class, java.nio.IntBuffer.class, java.nio.IntBuffer.class)
+            .invoke(null, window(), x, y);
+        return new int[] { x.get(0), y.get(0) };
+    }
+
+    /** Display.setLocation, which Pylon lacks. */
+    static void move(int x, int y) throws ReflectiveOperationException {
+        Class.forName("org.lwjgl.sdl.SDLVideo").getMethod("SDL_SetWindowPosition", long.class, int.class, int.class).invoke(null, window(), x, y);
+    }
+
+    /** The window's size, waiting until SDL has applied it (Display reports SDL's size). */
+    static void size(int width, int height) throws ReflectiveOperationException {
+        Class<?> video = Class.forName("org.lwjgl.sdl.SDLVideo");
+        long window = window();
+        video.getMethod("SDL_SetWindowSize", long.class, int.class, int.class).invoke(null, window, width, height);
+        video.getMethod("SDL_SyncWindow", long.class).invoke(null, window);
+    }
+
+    /** Display.isResizable, which Pylon lacks (SDL_WINDOW_RESIZABLE). */
+    static boolean resizable() throws ReflectiveOperationException {
+        return ((Long) Class.forName("org.lwjgl.sdl.SDLVideo").getMethod("SDL_GetWindowFlags", long.class).invoke(null, window()) & 32L) != 0;
+    }
+
+    /** The native Windows handle of the SDL window. */
+    static long hwnd() throws ReflectiveOperationException {
+        int properties = (Integer) Class.forName("org.lwjgl.sdl.SDLVideo").getMethod("SDL_GetWindowProperties", long.class).invoke(null, window());
+        return (Long) Class.forName("org.lwjgl.sdl.SDLProperties").getMethod("SDL_GetPointerProperty", int.class, CharSequence.class, long.class)
+            .invoke(null, properties, "SDL.window.win32.hwnd", 0L);
+    }
+}

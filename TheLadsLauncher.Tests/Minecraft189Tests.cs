@@ -646,6 +646,15 @@ public class Minecraft189Tests
         File.WriteAllBytes(box.Mod("OldTweak.jar.disabled"), ModSandbox.PlainJar());
         File.WriteAllBytes(box.Mod("fabricmod.jar"), ModSandbox.Jar("fabricmod"));
         File.WriteAllBytes(box.Mod("broken.jar"), new byte[] { 1, 2, 3 });
+        // A multi-loader jar (Pylon ships fabric.mod.json and mcmod.info) is the Forge mod its mcmod.info names.
+        using (var both = new MemoryStream())
+        {
+            both.Write(ModSandbox.Jar("pylon"));
+            using (var zip = new ZipArchive(both, ZipArchiveMode.Update, true))
+            using (var writer = new StreamWriter(zip.CreateEntry("mcmod.info").Open(), Encoding.UTF8))
+                writer.Write("[{\"modid\": \"pylon\", \"name\": \"Pylon\", \"mcversion\": \"*\"}]");
+            File.WriteAllBytes(box.Mod("pylon-0.2.2.jar"), both.ToArray());
+        }
 
         var inventory = await new ModInventoryService().BuildAsync(box.Bundle, box.Game, "1.8.9");
         await new ModInventoryService().WriteSnapshotAsync(inventory);
@@ -658,6 +667,7 @@ public class Minecraft189Tests
         Assert.Equal(ModEntryStatus.Installed, Row(inventory, "OptiFine_1.8.9_HD_U_M5").Status);
         Assert.Equal((ModEntryStatus.Disabled, false), (Row(inventory, "OldTweak").Status, Row(inventory, "OldTweak").RequestedEnabled));
         Assert.Equal("Not a loadable Forge mod: it is a Fabric mod. Delete or replace it.", Row(inventory, "fabricmod.jar").Note);
+        Assert.Equal(("Pylon", ModEntryStatus.Installed), (Row(inventory, "pylon").DisplayName, Row(inventory, "pylon").Status));
         Assert.Equal(ModEntryStatus.Invalid, Row(inventory, "broken.jar").Status);
         Assert.Equal(("Forge", "11.15.1.2318"), (Row(inventory, "forge").DisplayName, Row(inventory, "forge").Version));
         Assert.Equal("25+", Row(inventory, "java").Version);

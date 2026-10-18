@@ -97,13 +97,21 @@ final class Probe145 {
     private static boolean mouse(Minecraft mc) throws Exception {
         check(mc.mouseHelper instanceof RawMouse189, "the Lads mouse helper reads the camera's mouse input (" + mc.mouseHelper.getClass().getName() + ")");
         RawMouse189 helper = (RawMouse189) mc.mouseHelper;
-        Field dx = Mouse.class.getDeclaredField("dx"), dy = Mouse.class.getDeclaredField("dy");
-        dx.setAccessible(true);
-        dy.setAccessible(true);
         Mouse.getDX(); // drop what real input left
         Mouse.getDY();
-        dx.setInt(null, 37);
-        dy.setInt(null, -11);
+        if (CoreProbe.PYLON) { // Pylon's LWJGL 2 Mouse keeps its deltas in pollState
+            Field state = Mouse.class.getDeclaredField("pollState");
+            state.setAccessible(true);
+            Object poll = state.get(null);
+            poll.getClass().getField("dx").setDouble(poll, 37);
+            poll.getClass().getField("dy").setDouble(poll, -11);
+        } else {
+            Field dx = Mouse.class.getDeclaredField("dx"), dy = Mouse.class.getDeclaredField("dy");
+            dx.setAccessible(true);
+            dy.setAccessible(true);
+            dx.setInt(null, 37);
+            dy.setInt(null, -11);
+        }
         // The helper pumps the window's input (Display.processMessages -> Mouse.poll) first, and an ungrabbed mouse (the QA window
         // has no focus) makes poll() replace the injected deltas with the cursor's own: this read skips the pump.
         helper.pumpInput = false;
@@ -261,14 +269,20 @@ final class Probe145 {
         User32.INSTANCE.GetWindowRect(hwnd(), rect);
         check(!Display.isFullscreen() && mc.isFullScreen() && mc.gameSettings.fullScreen, "borderless: Minecraft is fullscreen, LWJGL's window is not exclusive (display "
             + Display.isFullscreen() + ", mc " + mc.isFullScreen() + ", option " + mc.gameSettings.fullScreen + ", borderless " + Borderless189.active() + ")");
-        check(Display.getX() == 0 && Display.getY() == 0 && Display.getWidth() == monitor.getWidth() && Display.getHeight() == height
+        int[] at = Borderless189.position();
+        check(at[0] == 0 && at[1] == 0 && Display.getWidth() == monitor.getWidth() && Display.getHeight() == height
             && mc.displayWidth == monitor.getWidth() && mc.displayHeight == height, "borderless: the window covers the " + monitor.getWidth() + "x"
             + monitor.getHeight() + " monitor at 0,0 plus " + BorderlessWindow.EXTRA_HEIGHT + " off-screen row, so Windows keeps it a desktop window that "
-            + "OBS and Discord can capture (" + Display.getX() + "," + Display.getY() + " " + Display.getWidth() + "x" + Display.getHeight() + ", game "
+            + "OBS and Discord can capture (" + at[0] + "," + at[1] + " " + Display.getWidth() + "x" + Display.getHeight() + ", game "
             + mc.displayWidth + "x" + mc.displayHeight + ")");
         check(rect.left == 0 && rect.top == 0 && rect.right == monitor.getWidth() && rect.bottom == height, "borderless: the native window rect is "
             + rect.left + "," + rect.top + " to " + rect.right + "," + rect.bottom);
-        check((style & (WS_CAPTION | WS_THICKFRAME)) == 0, "borderless: no title bar or resize frame (style 0x" + Integer.toHexString(style) + ")");
+        if (CoreProbe.PYLON) { // SDL3 keeps the caption bits and removes the frame in WM_NCCALCSIZE: no non-client area is what shows
+            check(Display.getWidth() == rect.right - rect.left && Display.getHeight() == rect.bottom - rect.top, // Pylon: SDL's client size
+                "borderless: no title bar or resize frame (client area " + Display.getWidth() + "x" + Display.getHeight() + " fills the window)");
+        } else {
+            check((style & (WS_CAPTION | WS_THICKFRAME)) == 0, "borderless: no title bar or resize frame (style 0x" + Integer.toHexString(style) + ")");
+        }
         ScaledResolution gui = new ScaledResolution(mc);
         check(gui.getScaledHeight() * gui.getScaleFactor() <= monitor.getHeight(), "borderless: the GUI is laid out in the visible " + monitor.getHeight()
             + " rows, so the hotbar is not under the extra row (" + gui.getScaledHeight() + " GUI px x " + gui.getScaleFactor() + ")");
@@ -307,10 +321,12 @@ final class Probe145 {
         int style = User32.INSTANCE.GetWindowLong(hwnd(), GWL_STYLE);
         check(!mc.isFullScreen() && !mc.gameSettings.fullScreen && Display.getWidth() == windowWidth && Display.getHeight() == windowHeight,
             "F11 again: back to the " + windowWidth + "x" + windowHeight + " window (" + Display.getWidth() + "x" + Display.getHeight() + ")");
-        check((style & WS_CAPTION) == WS_CAPTION && (style & WS_THICKFRAME) != 0 && Display.isResizable(),
+        check((style & WS_CAPTION) == WS_CAPTION && (style & WS_THICKFRAME) != 0 && Borderless189.resizableNow(),
             "the window has its title bar and resize frame again (style 0x" + Integer.toHexString(style) + ")");
         // A resize as the user drags the frame: Windows sizes the window, Minecraft follows.
-        User32.INSTANCE.SetWindowPos(hwnd(), null, 0, 0, 701, 397, 0x16); // SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE
+        // Pylon: SDL's own resize (what a frame drag ends in there); a foreign SetWindowPos is not reported back by SDL
+        if (CoreProbe.PYLON) PylonWindow189.size(685, 358);
+        else User32.INSTANCE.SetWindowPos(hwnd(), null, 0, 0, 701, 397, 0x16); // SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE
         return after(5);
     }
 
@@ -324,7 +340,8 @@ final class Probe145 {
     /** The screenshot reads Minecraft's framebuffer, which the resize recreated: a few frames later it holds a whole frame. */
     private static boolean resizedShot(Minecraft mc) throws Exception {
         screenshot(mc, "145-window-701x397");
-        User32.INSTANCE.SetWindowPos(hwnd(), null, outer.left, outer.top, outer.right - outer.left, outer.bottom - outer.top, 0x14);
+        if (CoreProbe.PYLON) PylonWindow189.size(windowWidth, windowHeight);
+        else User32.INSTANCE.SetWindowPos(hwnd(), null, outer.left, outer.top, outer.right - outer.left, outer.bottom - outer.top, 0x14);
         return after(5);
     }
 
