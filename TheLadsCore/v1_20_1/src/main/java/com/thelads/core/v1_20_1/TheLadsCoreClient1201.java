@@ -77,6 +77,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         com.thelads.core.v1_20_1.feature.Hypixel1201.register();
                 com.thelads.core.v1_20_1.feature.ParticleCore1201.register();
         com.thelads.core.v1_20_1.world.World1201.register(); // Wavy Capes, TNT Timer
+        com.thelads.core.v1_20_1.net.LadsApiTransport1201.init();
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             NativeFeatures1201.tick();
