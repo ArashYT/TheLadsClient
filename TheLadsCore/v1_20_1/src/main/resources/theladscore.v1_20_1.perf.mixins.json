@@ -9,7 +9,6 @@
     "JoinMultiplayerInvoker",
     "PacketDecodeGuardMixin",
     "SkyColorMixin",
-    "SodiumCuboidStackMixin",
     "XaeroWorldMapPaceMixin",
     "XaeroConfigMemoMixin",
     "AnimateTickBiomeMixin"
