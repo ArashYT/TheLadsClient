@@ -168,7 +168,7 @@ class EmoteAnimTest {
 
     @Test
     void wheelPicksBySlotDirection() {
-        EmoteWheel wheel = new EmoteWheel(1000);
+        EmoteWheel wheel = new EmoteWheel(1000, new String[] {EmoteLibrary.GROOVE, null, null, null, null, null, null, null});
         assertEquals(0, wheel.hovered(0, -50), "straight up is the first slot (Groove)");
         assertEquals(0, wheel.hovered(15, -200), "pointing past the ring still picks by direction");
         assertEquals(2, wheel.hovered(60, 0));
