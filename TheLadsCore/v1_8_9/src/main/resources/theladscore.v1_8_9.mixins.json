@@ -11,6 +11,7 @@
   "client": [
     "SessionTokenMixin",
     "ForgeSkyBlendCacheMixin",
+    "LongHashMapHashMixin",
     "SplashProgressIoniumMixin",
     "AbstractClientPlayerMixin",
     "EntityRendererAccessor",
