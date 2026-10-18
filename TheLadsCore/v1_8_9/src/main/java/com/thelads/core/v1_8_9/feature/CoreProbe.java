@@ -61,7 +61,7 @@ public final class CoreProbe {
         CoreProbe::titleMore, CoreProbe::backupPrompt, CoreProbe::backupWarning, CoreProbe::backupDone, CoreProbe::title,
         CoreProbe::ofDefaults,
         CoreProbe::menuAtTitle, CoreProbe::menuRendered, CoreProbe::searchClicked, CoreProbe::typed, CoreProbe::erased, CoreProbe::editingLeft,
-        CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::fastClouds, KeepUiProbe189::run, CoreProbe::bridgeInWorld, CoreProbe::menuInWorld, CoreProbe::installedMods, CoreProbe::closedToGame,
+        CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::fastClouds, KeepUiProbe189::run, CoreProbe::bridgeInWorld, CoreProbe::toastInWorld, CoreProbe::menuInWorld, CoreProbe::installedMods, CoreProbe::closedToGame,
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerList, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
     /** -Dthelads.verify189Focus: only the title screen and Probe170Misc's steps of that name (with Essential as players have it). */
@@ -657,6 +657,12 @@ public final class CoreProbe {
             bridge.getPlayerZ(), bridge.getBiomeName(), bridge.getDimensionId(), bridge.getPlayerDirection(), bridge.getYaw(), bridge.getGameTime(),
             bridge.getDayCount(), bridge.getHealth(), bridge.getMaxHealth(), bridge.getFoodLevel(), bridge.getSaturation(), bridge.getFps(),
             bridge.getPing(), bridge.getSpeed(), bridge.getActivePotionEffects(), bridge.getActiveResourcePacks(), bridge.getScoreboard());
+        mc.guiAchievement.displayAchievement(net.minecraft.stats.AchievementList.openInventory);
+        return after(10);
+    }
+
+    private static boolean toastInWorld(Minecraft mc) throws Exception {
+        screenshot(mc, "qa-1.8.9-toast-bar");
         tap(Keyboard.KEY_RSHIFT, '\0');
         return after(2);
     }

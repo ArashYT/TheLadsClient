@@ -146,9 +146,14 @@ public final class NativeWorldVerification {
                     NativeImprovementsProbe.prepareCapture();
                     captureAfter = now + 15_000_000_000L;
                     chatCaptureAt = now + 7_000_000_000L;
-                    // Day held, as 1.20.1's QA world: a reused QA world reached night and a zombie killed the QA player mid-run, which
-                    // left every capture waiting on the death screen. The captures that need night set it themselves.
-                    if (mc.getConnection() != null) { mc.getConnection().sendCommand("gamerule advance_time false"); mc.getConnection().sendCommand("time set day"); }
+                    if (mc.getConnection() != null) {
+                        mc.getConnection().sendCommand("gamerule advance_time false");
+                        mc.getConnection().sendCommand("time set day");
+                        mc.getConnection().sendCommand("effect give @s speed 300 0 true");
+                    }
+                    if (mc.player != null) {
+                        mc.player.setXRot(28.0f);
+                    }
                     // Normal again: the menu/HUD capture switches the world to Peaceful (below) and that is saved, so the next run in this
                     // sandbox could not create hostile mobs (EntityType.create returns null in Peaceful: the crosshair and kill banner fixtures).
                     if (mc.getConnection() != null) mc.getConnection().sendCommand("difficulty normal");
@@ -403,6 +408,8 @@ public final class NativeWorldVerification {
             net.minecraft.client.Screenshot.takeScreenshot(target, image -> {
                 try {
                     image.writeToFile(output);
+                    image.writeToFile(folder.resolve("qa-26.3-jade-tooltip.png"));
+                    image.writeToFile(folder.resolve("qa-26.3-default-hud.png"));
                     LOGGER.info("Lads world capture END: 1 passed, 0 failed; actual completed game frame at {}", output);
                 } catch (Exception failure) { fail("world screenshot", failure); }
                 finally { image.close(); Minecraft.getInstance().execute(NativeImprovementsProbe::restoreCapture); }
