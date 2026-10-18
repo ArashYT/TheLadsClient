@@ -162,3 +162,4 @@ accessible method net/minecraft/world/level/pathfinder/WalkNodeEvaluator getPath
 accessible field net/minecraft/client/renderer/item/ItemStackRenderState activeLayerCount I
 accessible field net/minecraft/client/renderer/item/ItemStackRenderState layers [Lnet/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState;
 accessible field net/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState specialRenderer Lnet/minecraft/client/renderer/special/SpecialModelRenderer;
+accessible field net/minecraft/client/renderer/item/ItemStackRenderState displayContext Lnet/minecraft/world/item/ItemDisplayContext;

@@ -133,9 +133,10 @@ public final class NativeOldAnimations {
         return icon;
     }
 
-    /** Drops every layer's display transform: the item's own centred mesh, as 1.7 placed it. */
+    /** Drops every layer's display transform: the item's own centred mesh, drawn as an item resolved for NONE, as 1.7 placed it. */
     private static void bare(ItemStackRenderState item) {
         for (int i = 0; i < item.activeLayerCount; i++) item.layers[i].setItemTransform(ItemTransform.NO_TRANSFORM);
+        item.displayContext = ItemDisplayContext.NONE;
     }
 
     /**
