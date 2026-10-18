@@ -50,7 +50,7 @@ public final class CosmeticsScreen {
         g.fill(0, 0, width, height, 0xC0070709);
         g.drawCenteredText("Cosmetics", width / 2, 8, LadsPalette.TEXT, true);
         String wheelKey = keyLabel.apply(EmoteKeys.WHEEL);
-        g.drawCenteredText((wheelKey.isEmpty() ? "Bind Emotes in Controls" : "Hold " + wheelKey) + " for the emote wheel. Every emote also has its own key.",
+        g.drawCenteredText((wheelKey.isEmpty() ? "Bind Emotes" : "Hold " + wheelKey) + " for the wheel, or give each emote a key (Key Binds)",
             width / 2, 20, LadsPalette.MUTED, false);
         wheel.renderAt(g, wheelX, wheelY, mx, my, selected);
 

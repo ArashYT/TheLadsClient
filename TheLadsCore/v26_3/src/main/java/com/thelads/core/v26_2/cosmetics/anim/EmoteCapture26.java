@@ -191,7 +191,7 @@ public final class EmoteCapture26 {
             mc.setScreenAndShow(new CosmeticsScreen26(null));
         });
         shot(cos + 300, "cosmetics-screen");
-        at(cos + 600, () -> mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(true)));
+        at(cos + 600, () -> mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(true) {})); // a subclass: the QA world closes a plain PauseScreen
         shot(cos + 900, "pause-menu");
         at(cos + 1200, () -> mc.setScreenAndShow(null));
         at(cos + 1400, () -> {

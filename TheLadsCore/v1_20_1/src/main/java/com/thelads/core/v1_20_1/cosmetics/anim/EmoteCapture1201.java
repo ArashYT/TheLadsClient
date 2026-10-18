@@ -47,8 +47,20 @@ public final class EmoteCapture1201 {
     private static RemotePlayer remote;
     private static final List<Float> stopWeights = new ArrayList<>();
     private static long walkAt;
+    private static InputConstants.Key qaKey;
 
     private EmoteCapture1201() {}
+
+    /** A key no binding uses (F13..F25), so the Groove key's simulated press reaches only Groove (a shared key goes to one of them). */
+    private static InputConstants.Key freeKey(Minecraft mc) {
+        for (int code = GLFW.GLFW_KEY_F13; code <= GLFW.GLFW_KEY_F25; code++) {
+            InputConstants.Key key = InputConstants.Type.KEYSYM.getOrCreate(code);
+            boolean used = false;
+            for (KeyMapping mapping : mc.options.keyMappings) used |= mapping.saveString().equals(key.getName());
+            if (!used) return key;
+        }
+        return InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_F25);
+    }
 
     static void register() {
         if (System.getenv("LADS_QA_EMOTE") != null) ClientTickEvents.END_CLIENT_TICK.register(EmoteCapture1201::tick);
@@ -195,7 +207,7 @@ public final class EmoteCapture1201 {
             mc.setScreen(null);
             KeyMapping grooveKey = EmoteAnim1201.EMOTE_KEYS.get(EmoteLibrary.GROOVE);
             if (grooveKey != null) {
-                InputConstants.Key tempKey = InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_H);
+                InputConstants.Key tempKey = qaKey = freeKey(mc);
                 mc.options.setKey(grooveKey, tempKey);
                 KeyMapping.resetMapping();
                 KeyMapping.click(tempKey);
@@ -204,8 +216,7 @@ public final class EmoteCapture1201 {
         at(qaMore + 1800, () -> {
             Emotes.Playing playing = Emotes.get(self);
             check(playing != null && EmoteLibrary.GROOVE.equals(playing.id()) && !playing.stopping(), "Groove emote key press starts groove");
-            InputConstants.Key tempKey = InputConstants.Type.KEYSYM.getOrCreate(GLFW.GLFW_KEY_H);
-            KeyMapping.click(tempKey);
+            KeyMapping.click(qaKey);
         });
         at(qaMore + 2000, () -> {
             Emotes.Playing stopping = Emotes.get(self);
