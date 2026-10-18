@@ -83,7 +83,7 @@ final class NativeOldAnimationsProbe {
         Object blinkTime = get(hud, "healthBlinkTime"), lastHealth = get(hud, "lastHealth"), displayHealth = get(hud, "displayHealth"),
             healthTime = get(hud, "lastHealthTime");
         Pose poseBefore = player.getPose();
-        Object strength = get(player, "attackStrengthTicker");
+        Object strength = get(player, "attackStrengthTicker"), swap = get(player, "itemSwapTicker");
         passed = 0;
         try {
             require(ModuleSupport.isBuiltIn(OldAnimationsModule.NAME), "1.7 Animations is built in on this version");
@@ -202,6 +202,7 @@ final class NativeOldAnimationsProbe {
             set(hud, "lastHealthTime", healthTime);
             player.setPose(poseBefore);
             set(player, "attackStrengthTicker", strength);
+            set(player, "itemSwapTicker", swap);
             options.forEach(Option::load);
             module.setEnabled(enabledBefore);
             module.setLastModified(modifiedBefore);
@@ -263,7 +264,10 @@ final class NativeOldAnimationsProbe {
         FirstPersonHandsAndItems hands = player.firstPersonHandsAndItems();
         set(hands, "mainHandItem", sword);
         set(hands, "mainHandHeight", 1f);
-        set(player, "attackStrengthTicker", 0); // the attack cooldown restarts
+        // The attack cooldown restarts as an attack restarts it: 26.3's equip dip reads itemSwapTicker (getItemSwapScale), not
+        // attackStrengthTicker, so setting only the latter left the dip to however long ago the QA world last swapped items.
+        set(player, "attackStrengthTicker", 0);
+        set(player, "itemSwapTicker", 0);
         hands.tick(player);
         return (float) get(hands, "mainHandHeight");
     }
