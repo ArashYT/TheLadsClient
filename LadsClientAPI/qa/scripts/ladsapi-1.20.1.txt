@@ -2,8 +2,8 @@
 # Walking CHECKLIST.md checks CHK-01..CHK-06 + CHK-08/09
 # Initial connection via --join 127.0.0.1:25700 (Velocity -> Paper lobby :25701)
 
-# Initial wait for handshake, policy rev 1, and world render
-wait 2s
+# Initial wait for handshake, policy rev 1, and world render (fresh servers through Velocity + Via)
+wait 8s
 
 # CHK-01: Protocol Handshake (hello -> hello -> policy -> ack)
 ladsapi chk01-handshake
@@ -46,19 +46,17 @@ ladsapi chk06-leave-revert
 
 # CHK-08: Proxy Switch Lobby -> Plain (Velocity reset packet)
 connect 127.0.0.1:25700
-wait 3s
+wait 10s
 cmd /server plain
-wait 3s
+wait 10s
 shot artifacts/verification/ladsapi/shots/chk08_plain_restored
 ladsapi chk08-proxy-switch
 
-# CHK-09: Direct Join to Plain Server (Anti-Ban Rule: ZERO lads:api packets)
-disconnect
-wait 2s
-connect 127.0.0.1:25702
-wait 3s
-shot artifacts/verification/ladsapi/shots/chk09_plain_direct
+# CHK-09: Plugin-less server (Anti-Ban Rule: ZERO lads:api packets). Still on 'plain' after the proxy switch:
+# Velocity sent reset, plain never says hello, so the client must stay silent (plain's packet-logger + probe counter).
+wait 10s
+shot artifacts/verification/ladsapi/shots/chk09_plain_silent
 ladsapi chk09-antiban-zero-leak
-wait 1s
 disconnect
+wait 3s
 quit
