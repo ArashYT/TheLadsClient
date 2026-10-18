@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:exploration/shipwreck_scavenger",
+  "display": {
+    "icon": {
+      "id": "minecraft:heart_of_the_sea"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.exploration.buried_treasure.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.exploration.buried_treasure.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:heart_of_the_sea"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 400
+  },
+  "sends_telemetry_event": true
+}

@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:exploration/wanderlust",
+  "display": {
+    "icon": {
+      "id": "minecraft:mangrove_propagule"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.exploration.mangrove_swamp_muck.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.exploration.mangrove_swamp_muck.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:mangrove_propagule"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 150
+  },
+  "sends_telemetry_event": true
+}

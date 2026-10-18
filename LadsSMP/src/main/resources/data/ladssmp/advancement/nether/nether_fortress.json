@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:nether/into_the_inferno",
+  "display": {
+    "icon": {
+      "id": "minecraft:nether_bricks"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.nether.nether_fortress.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.nether.nether_fortress.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:nether_bricks"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 200
+  },
+  "sends_telemetry_event": true
+}

@@ -33,6 +33,17 @@ public final class LadsSMPMod implements ModInitializer {
         NameTagTweaksManager.init();
         EnchantingCommandsManager.init();
         LoginProtectionManager.init();
+        com.thelads.smp.compat.EntityDataInit.init();
+        com.thelads.smp.features.arise.nb1.AriseNB1Features.init();
+        com.thelads.smp.features.arise.nb2.NB2Features.init();
+        com.thelads.smp.features.arise.nb3.AriseNb3Mod.init();
+        com.thelads.smp.features.arise.nb4.AriseNB4FeatureManager.init();
+        com.thelads.smp.features.arise.nb5.AriseNB5Mod.init();
+        com.thelads.smp.features.arise.nb6.AriseNB6FeatureManager.init();
+        com.thelads.smp.features.arise.nb7.AriseNB7Features.init();
+        com.thelads.smp.features.arise.nb8.VeinMiningFeatures.init();
+        com.thelads.smp.features.arise.nb9.AriseNB9Features.init();
+        com.thelads.smp.features.arise.nb10.AriseNB10Features.init();
 
         // Sanitize player inventory immediately upon joining the server
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {

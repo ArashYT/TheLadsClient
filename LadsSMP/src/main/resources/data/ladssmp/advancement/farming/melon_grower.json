@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:farming/green_thumb",
+  "display": {
+    "icon": {
+      "id": "minecraft:melon_slice"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.farming.melon_grower.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.farming.melon_grower.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:melon_slice"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 40
+  },
+  "sends_telemetry_event": true
+}

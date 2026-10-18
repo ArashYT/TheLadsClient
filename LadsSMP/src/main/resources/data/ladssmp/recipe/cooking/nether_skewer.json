@@ -1,0 +1,22 @@
+{
+  "type": "farmersdelight:cooking",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "experience": 0.9,
+  "cookingtime": 160,
+  "ingredients": [
+    "ladssmp:hoglin_loin",
+    "minecraft:warped_fungus",
+    "minecraft:stick"
+  ],
+  "recipe_book_tab": "meals",
+  "result": {
+    "id": "ladssmp:nether_skewer"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:exploration/ocean_voyager",
+  "display": {
+    "icon": {
+      "id": "minecraft:sponge"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.exploration.ocean_monument.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.exploration.ocean_monument.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:sponge"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 800
+  },
+  "sends_telemetry_event": true
+}

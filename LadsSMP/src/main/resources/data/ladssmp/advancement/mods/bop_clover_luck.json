@@ -1,0 +1,47 @@
+{
+  "parent": "ladssmp:mods/bop_wildflower",
+  "display": {
+    "icon": {
+      "id": "biomesoplenty:clover"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mods.bop_clover_luck.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mods.bop_clover_luck.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "biomesoplenty:clover"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 50
+  },
+  "sends_telemetry_event": true,
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "biomesoplenty"
+      ]
+    }
+  ]
+}

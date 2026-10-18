@@ -1,0 +1,47 @@
+{
+  "parent": "ladssmp:mods/root",
+  "display": {
+    "icon": {
+      "id": "naturalist:antler"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mods.naturalist_trophy.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mods.naturalist_trophy.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "naturalist:antler"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 250
+  },
+  "sends_telemetry_event": true,
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "naturalist"
+      ]
+    }
+  ]
+}

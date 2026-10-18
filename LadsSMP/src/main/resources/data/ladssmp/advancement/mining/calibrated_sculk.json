@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mining/sculk_sensor_triggered",
+  "display": {
+    "icon": {
+      "id": "minecraft:calibrated_sculk_sensor"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mining.calibrated_sculk.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mining.calibrated_sculk.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:calibrated_sculk_sensor"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 250
+  },
+  "sends_telemetry_event": true
+}

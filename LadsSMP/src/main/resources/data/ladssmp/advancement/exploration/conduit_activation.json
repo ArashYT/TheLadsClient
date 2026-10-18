@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:exploration/buried_treasure",
+  "display": {
+    "icon": {
+      "id": "minecraft:conduit"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.exploration.conduit_activation.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.exploration.conduit_activation.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:conduit"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 1000
+  },
+  "sends_telemetry_event": true
+}

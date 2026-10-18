@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:exploration/wanderlust",
+  "display": {
+    "icon": {
+      "id": "minecraft:cherry_sapling"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.exploration.cherry_grove_wanderer.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.exploration.cherry_grove_wanderer.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:cherry_sapling"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  },
+  "sends_telemetry_event": true
+}

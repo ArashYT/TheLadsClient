@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mining/diamond_strike",
+  "display": {
+    "icon": {
+      "id": "minecraft:diamond_block"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mining.diamond_cache.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mining.diamond_cache.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:diamond_block"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 500
+  },
+  "sends_telemetry_event": true
+}

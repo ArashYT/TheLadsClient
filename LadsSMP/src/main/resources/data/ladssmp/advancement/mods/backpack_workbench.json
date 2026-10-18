@@ -1,0 +1,47 @@
+{
+  "parent": "ladssmp:mods/smart_backpack",
+  "display": {
+    "icon": {
+      "id": "smartbackpacks:backpack_workbench"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mods.backpack_workbench.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mods.backpack_workbench.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "smartbackpacks:backpack_workbench"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 350
+  },
+  "sends_telemetry_event": true,
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "smartbackpacks"
+      ]
+    }
+  ]
+}

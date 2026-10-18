@@ -164,6 +164,9 @@ public final class LadsConfig {
         /** Chest-only music disc loot randomization (adds a small chance for random music discs in structure chests, never block drops). */
         public boolean randomizeChestDiscLoot = true;
 
+        /** Consolidates FTB Ultimine: Native Vein Mining (Batch NB8). */
+        public boolean veinMining = true;
+
         /** Exploit protection: Prevent block-carrying or breaking/moving protected blocks (spawners, vaults, trial spawners, Lootr chests). */
         public boolean carryOnProtection = true;
         public List<String> protectedBlockPatterns = new ArrayList<>(List.of(

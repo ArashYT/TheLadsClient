@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:farming/green_thumb",
+  "display": {
+    "icon": {
+      "id": "minecraft:potato"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.farming.potato_patch.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.farming.potato_patch.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:potato"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 30
+  },
+  "sends_telemetry_event": true
+}

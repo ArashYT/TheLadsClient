@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:campfire_cooking",
+  "category": "food",
+  "ingredient": "ladssmp:glacier_cod",
+  "result": {
+    "id": "ladssmp:cooked_glacier_cod"
+  },
+  "experience": 0.35,
+  "cookingtime": 600
+}

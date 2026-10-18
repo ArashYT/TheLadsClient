@@ -1,0 +1,22 @@
+{
+  "type": "farmersdelight:cooking",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "experience": 1.0,
+  "cookingtime": 180,
+  "ingredients": [
+    "minecraft:wheat",
+    "minecraft:cooked_beef",
+    "minecraft:baked_potato"
+  ],
+  "recipe_book_tab": "meals",
+  "result": {
+    "id": "ladssmp:beef_burrito"
+  }
+}

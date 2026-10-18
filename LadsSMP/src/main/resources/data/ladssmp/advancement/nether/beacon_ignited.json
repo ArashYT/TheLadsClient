@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:nether/skull_trio",
+  "display": {
+    "icon": {
+      "id": "minecraft:beacon"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.nether.beacon_ignited.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.nether.beacon_ignited.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:beacon"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 2000
+  },
+  "sends_telemetry_event": true
+}

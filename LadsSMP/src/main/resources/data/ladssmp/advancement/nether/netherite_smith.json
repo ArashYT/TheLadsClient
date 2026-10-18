@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:nether/bastion_raider",
+  "display": {
+    "icon": {
+      "id": "minecraft:netherite_upgrade_smithing_template"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.nether.netherite_smith.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.nether.netherite_smith.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:netherite_upgrade_smithing_template"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 1000
+  },
+  "sends_telemetry_event": true
+}

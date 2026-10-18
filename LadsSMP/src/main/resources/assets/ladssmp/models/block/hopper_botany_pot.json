@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "minecraft:block/hopper_outside",
+    "hopper": "minecraft:block/hopper_outside",
+    "clay": "minecraft:block/terracotta",
+    "dirt": "minecraft:block/dirt"
+  },
+  "elements": [
+    {
+      "from": [3, 4, 3],
+      "to": [13, 12, 13],
+      "faces": {
+        "down":  { "texture": "#clay" },
+        "up":    { "texture": "#dirt" },
+        "north": { "texture": "#clay" },
+        "south": { "texture": "#clay" },
+        "west":  { "texture": "#clay" },
+        "east":  { "texture": "#clay" }
+      }
+    },
+    {
+      "from": [5, 0, 5],
+      "to": [11, 4, 11],
+      "faces": {
+        "down":  { "texture": "#hopper", "cullface": "down" },
+        "up":    { "texture": "#hopper" },
+        "north": { "texture": "#hopper" },
+        "south": { "texture": "#hopper" },
+        "west":  { "texture": "#hopper" },
+        "east":  { "texture": "#hopper" }
+      }
+    }
+  ]
+}

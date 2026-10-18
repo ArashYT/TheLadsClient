@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "ladssmp:item/tomato_and_lettuce_sandwich"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:building/first_shelter",
+  "display": {
+    "icon": {
+      "id": "minecraft:cartography_table"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.building.cartography_table.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.building.cartography_table.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:cartography_table"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 40
+  },
+  "sends_telemetry_event": true
+}

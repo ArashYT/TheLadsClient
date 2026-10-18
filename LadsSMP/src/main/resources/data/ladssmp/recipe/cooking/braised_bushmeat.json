@@ -1,0 +1,22 @@
+{
+  "type": "farmersdelight:cooking",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "experience": 0.8,
+  "cookingtime": 180,
+  "ingredients": [
+    "minecraft:cooked_beef",
+    "minecraft:potato",
+    "minecraft:brown_mushroom"
+  ],
+  "recipe_book_tab": "meals",
+  "result": {
+    "id": "ladssmp:braised_bushmeat"
+  }
+}

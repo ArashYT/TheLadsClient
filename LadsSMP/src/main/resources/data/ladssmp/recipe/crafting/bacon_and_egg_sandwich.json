@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "ingredients": [
+    "minecraft:bread",
+    "minecraft:cooked_porkchop",
+    "minecraft:egg"
+  ],
+  "result": {
+    "id": "ladssmp:bacon_and_egg_sandwich"
+  }
+}

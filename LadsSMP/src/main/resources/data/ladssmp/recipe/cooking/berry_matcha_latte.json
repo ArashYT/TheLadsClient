@@ -1,0 +1,25 @@
+{
+  "type": "farmersdelight:cooking",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "experience": 0.6,
+  "cookingtime": 120,
+  "ingredients": [
+    "minecraft:sweet_berries",
+    "minecraft:milk_bucket",
+    "minecraft:dried_kelp"
+  ],
+  "recipe_book_tab": "drinks",
+  "result": {
+    "id": "ladssmp:berry_matcha_latte"
+  },
+  "container": {
+    "id": "minecraft:glass_bottle"
+  }
+}

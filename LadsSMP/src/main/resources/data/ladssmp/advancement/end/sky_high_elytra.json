@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:end/end_city_explorer",
+  "display": {
+    "icon": {
+      "id": "minecraft:elytra"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.end.sky_high_elytra.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.end.sky_high_elytra.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:elytra"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 2000
+  },
+  "sends_telemetry_event": true
+}

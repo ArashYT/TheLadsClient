@@ -1,0 +1,33 @@
+{
+  "parent": "ladssmp:combat/pillager_captain",
+  "display": {
+    "icon": {
+      "id": "minecraft:bell"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.combat.raid_hero.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.combat.raid_hero.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:hero_of_the_village",
+      "conditions": {}
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 1000
+  },
+  "sends_telemetry_event": true
+}

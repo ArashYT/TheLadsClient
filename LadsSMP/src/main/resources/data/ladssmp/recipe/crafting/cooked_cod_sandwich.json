@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "ingredients": [
+    "minecraft:bread",
+    "minecraft:cooked_cod"
+  ],
+  "result": {
+    "id": "ladssmp:cooked_cod_sandwich"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "N": "minecraft:iron_nugget",
+    "I": "minecraft:iron_ingot"
+  },
+  "pattern": [
+    " N ",
+    " I ",
+    " N "
+  ],
+  "result": {
+    "count": 4,
+    "id": "ladssmp:fastener"
+  }
+}

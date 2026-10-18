@@ -1,0 +1,25 @@
+{
+  "type": "farmersdelight:cooking",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "experience": 0.7,
+  "cookingtime": 140,
+  "ingredients": [
+    "minecraft:apple",
+    "minecraft:carrot",
+    "minecraft:beetroot"
+  ],
+  "recipe_book_tab": "meals",
+  "result": {
+    "id": "ladssmp:hearty_salad"
+  },
+  "container": {
+    "id": "minecraft:bowl"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "parent": "ladssmp:mods/waystone_discoverer",
+  "display": {
+    "icon": {
+      "id": "waystones:amethyst_sharestone"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mods.sharestone_network.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mods.sharestone_network.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "#waystones:sharestones"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 300
+  },
+  "sends_telemetry_event": true,
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "waystones"
+      ]
+    }
+  ]
+}

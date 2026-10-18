@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:campfire_cooking",
+  "category": "food",
+  "ingredient": "ladssmp:bass",
+  "result": {
+    "id": "ladssmp:cooked_bass"
+  },
+  "experience": 0.35,
+  "cookingtime": 600
+}

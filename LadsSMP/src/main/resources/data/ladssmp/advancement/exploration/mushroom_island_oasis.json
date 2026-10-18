@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:exploration/ocean_voyager",
+  "display": {
+    "icon": {
+      "id": "minecraft:mycelium"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.exploration.mushroom_island_oasis.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.exploration.mushroom_island_oasis.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:mycelium"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 500
+  },
+  "sends_telemetry_event": true
+}
