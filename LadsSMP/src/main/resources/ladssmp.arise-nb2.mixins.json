@@ -1,0 +1,28 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.smp.features.arise.nb2.mixin",
+  "plugin": "com.thelads.smp.features.arise.nb2.mixin.NB2MixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "MixinPackRepository",
+    "MixinChatTypeDecoration"
+  ],
+  "client": [
+    "MixinAvatarRenderer",
+    "MixinHud",
+    "MixinMultiPlayerGameMode",
+    "MixinAbstractRecipeBookScreen",
+    "MixinWorldSelectionList",
+    "MixinPauseScreen",
+    "MixinStonecutterScreen",
+    "MixinEntityRenderDispatcher",
+    "MixinMerchantScreen",
+    "MixinCycleButton",
+    "MixinAbstractSliderButton",
+    "MixinJeiIngredientListOverlay"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
