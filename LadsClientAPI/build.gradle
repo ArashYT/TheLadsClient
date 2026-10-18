@@ -65,9 +65,10 @@ tasks.register('universalJar', com.github.jengelman.gradle.plugins.shadow.tasks.
         from project(':platform-velocity').sourceSets.main.output
     }
 
-    // Root fallback metadata so every loader finds its descriptor
+    // plugin.yml comes from platform-paper, velocity-plugin.json from platform-velocity's annotation processor,
+    // fabric.mod.json / mods.toml from their platforms. Only pack.mcmeta lives at the root.
     from(file('src/main/resources')) {
-        include 'plugin.yml', 'velocity-plugin.json', 'pack.mcmeta'
+        include 'pack.mcmeta'
     }
 
     relocate 'org.yaml.snakeyaml', 'com.thelads.ladsapi.lib.snakeyaml'

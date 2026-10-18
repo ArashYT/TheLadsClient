@@ -1,8 +1,0 @@
-{
-  "id": "ladsclientapi",
-  "name": "LadsClientAPI",
-  "version": "1.0.0",
-  "description": "Server companion for The Lads Client",
-  "main": "com.thelads.ladsapi.velocity.LadsVelocityPlugin",
-  "dependencies": []
-}
