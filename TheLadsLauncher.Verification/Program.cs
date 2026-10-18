@@ -727,7 +727,9 @@ try
     }
     // As LaunchService: OptiFine from optifine.net, checked against the pinned SHA-256 and cached in the sandbox launcher folder.
     // It fails open (the game starts without it); the verdict then says why OptiFine is missing.
-    if (capabilities.Forge && (optiFineWarning = await OptiFineInstaller.InstallAsync(launcherData, directory, OptiFineInstaller.M5, Console.WriteLine, ct)) != null)
+    // LADS_VERIFY_OPTIFINE=m6: the M6_pre2 players get (OptiFineInstaller.DefaultPin) instead of the QA default M5.
+    var optiFinePin = Env("LADS_VERIFY_OPTIFINE") == "m6" ? OptiFineInstaller.M6Pre2 : OptiFineInstaller.M5;
+    if (capabilities.Forge && (optiFineWarning = await OptiFineInstaller.InstallAsync(launcherData, directory, optiFinePin, Console.WriteLine, ct)) != null)
     {
         Console.WriteLine("OptiFine: " + optiFineWarning);
         summary.Add("OptiFine: " + optiFineWarning);

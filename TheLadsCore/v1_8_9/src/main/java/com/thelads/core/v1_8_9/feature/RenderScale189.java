@@ -207,7 +207,7 @@ public final class RenderScale189 {
     }
 
     /** OptiFine's Config.isShaders(): a shader pack renders the world through its own framebuffers. */
-    private static boolean shaders() {
+    public static boolean shaders() {
         if (!optifineChecked) {
             optifineChecked = true;
             try { optifineShaders = Class.forName("Config").getMethod("isShaders"); } catch (Throwable notOptiFine) { optifineShaders = null; }

@@ -86,6 +86,10 @@ public final class BakedBlockEntities189 {
     @SubscribeEvent
     public void stitchPre(TextureStitchEvent.Pre event) {
         if (event.map != Minecraft.getMinecraft().getTextureMapBlocks()) return; // Essential and OptiFine stitch atlases of their own
+        // OptiFine's shader texture loader (ShadersTex.genMipmapsSimple) mips only square sprites: the 128x64 double chests and the
+        // 64x32 sign threw on the first stitch with a shader pack on, and Forge then dropped every resource pack (1.9.12). With
+        // shaders on, chests and signs stay vanilla block entities.
+        if (com.thelads.core.v1_8_9.feature.RenderScale189.shaders()) return;
         for (String name : TEXTURES) event.map.setTextureEntry("minecraft:entity/chest/" + name, new EntitySprite("minecraft:entity/chest/" + name));
         event.map.setTextureEntry("minecraft:entity/sign", new EntitySprite("minecraft:entity/sign"));
     }
@@ -94,6 +98,11 @@ public final class BakedBlockEntities189 {
     public void stitchPost(TextureStitchEvent.Post event) {
         if (event.map != Minecraft.getMinecraft().getTextureMapBlocks()) return;
         BakedBlockEntities.clear();
+        if (com.thelads.core.v1_8_9.feature.RenderScale189.shaders()) { // nothing was stitched for them (stitchPre)
+            chests = new IBakedModel[0][];
+            standingSigns = wallSigns = new IBakedModel[0];
+            return;
+        }
         try {
             bake(event.map);
         } catch (Throwable t) {
