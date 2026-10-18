@@ -57,11 +57,14 @@ public final class CoreProbe {
     private static final Logger LOG = LogManager.getLogger("TheLadsCore");
     private static final String WORLD = "Client QA 1_8_9";
     interface Step { boolean run(Minecraft mc) throws Exception; }
+    /** LADS_QA_HUDFIX=1 (opt-in, 1.9.13 HUDFIX proof): an achievement toast in the QA world, photographed under the QA bar. */
+    private static final boolean HUDFIX = "1".equals(System.getenv("LADS_QA_HUDFIX"));
+    private static final Step BRIDGE = CoreProbe::bridgeInWorld;
     private static final List<Step> STEPS = new java.util.ArrayList<>(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::ladsTitle,
         CoreProbe::titleMore, CoreProbe::backupPrompt, CoreProbe::backupWarning, CoreProbe::backupDone, CoreProbe::title,
         CoreProbe::ofDefaults,
         CoreProbe::menuAtTitle, CoreProbe::menuRendered, CoreProbe::searchClicked, CoreProbe::typed, CoreProbe::erased, CoreProbe::editingLeft,
-        CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::fastClouds, KeepUiProbe189::run, CoreProbe::bridgeInWorld, CoreProbe::toastInWorld, CoreProbe::menuInWorld, CoreProbe::installedMods, CoreProbe::closedToGame,
+        CoreProbe::closedToTitle, CoreProbe::worldReady, CoreProbe::fastClouds, KeepUiProbe189::run, BRIDGE, CoreProbe::menuInWorld, CoreProbe::installedMods, CoreProbe::closedToGame,
         CoreProbe::pauseMenu, CoreProbe::pauseMultiplayer, CoreProbe::multiplayerList, CoreProbe::pauseClicked, CoreProbe::menuFromPause, CoreProbe::closedToPause, CoreProbe::menuKeyAtPause,
         CoreProbe::catalog));
     /** -Dthelads.verify189Focus: only the title screen and Probe170Misc's steps of that name (with Essential as players have it). */
@@ -249,6 +252,7 @@ public final class CoreProbe {
             STEPS.add(CoreProbe::leftWorld);
         }
         }
+        if (HUDFIX && STEPS.indexOf(BRIDGE) >= 0) STEPS.add(STEPS.indexOf(BRIDGE) + 1, CoreProbe::toastInWorld);
     }
     private static int step, passed, delay, waited, barStep = -1, barWaits;
     private static boolean barHolding, barShotDone;
@@ -657,8 +661,9 @@ public final class CoreProbe {
             bridge.getPlayerZ(), bridge.getBiomeName(), bridge.getDimensionId(), bridge.getPlayerDirection(), bridge.getYaw(), bridge.getGameTime(),
             bridge.getDayCount(), bridge.getHealth(), bridge.getMaxHealth(), bridge.getFoodLevel(), bridge.getSaturation(), bridge.getFps(),
             bridge.getPing(), bridge.getSpeed(), bridge.getActivePotionEffects(), bridge.getActiveResourcePacks(), bridge.getScoreboard());
-        mc.guiAchievement.displayAchievement(net.minecraft.stats.AchievementList.openInventory);
-        return after(10);
+        if (HUDFIX) { mc.guiAchievement.displayAchievement(net.minecraft.stats.AchievementList.openInventory); return after(10); } // toastInWorld photographs it
+        tap(Keyboard.KEY_RSHIFT, '\0');
+        return after(2);
     }
 
     private static boolean toastInWorld(Minecraft mc) throws Exception {
