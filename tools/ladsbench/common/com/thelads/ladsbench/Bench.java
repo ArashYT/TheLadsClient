@@ -68,6 +68,7 @@ public final class Bench {
     private static int frameCount;
     private static long sceneStartEpoch, gcCount0, gcMs0;
     private static int focusTicks, recTicks;
+    private static int run = 1, runs = 1; // this game's round of the job (bench.ps1 writes run= and runs=): "run k/3" on the bar
 
     private Bench() { }
 
@@ -101,6 +102,8 @@ public final class Bench {
         prep = "prep".equals(p.getProperty("mode"));
         shots = "true".equals(p.getProperty("shots")); // evidence screenshots: never in measured runs (the save + toast cost frames)
         label = p.getProperty("label", label);
+        run = Integer.parseInt(p.getProperty("run", "1"));
+        runs = Math.max(run, Integer.parseInt(p.getProperty("runs", "1")));
         world = p.getProperty("world", world);
         seed = Long.parseLong(p.getProperty("seed", String.valueOf(seed)));
         int measure = 20 * Integer.parseInt(p.getProperty("seconds", "20"));
@@ -185,6 +188,7 @@ public final class Bench {
         if (s.name.equals("fly")) { flyX += FLY_SPEED; g.pose(flyX, sy, sz, yaw, pitch); }
         else g.pose(sx, sy, sz, yaw, pitch);
         if (t == s.warmTicks - 10 && s.measureTicks > 0 && shots) { log("ladsbench screenshot " + s.name); g.screenshot(label + "-" + s.name); }
+        if (t == s.warmTicks + s.measureTicks / 2 && s.measureTicks > 0 && shots) { log("ladsbench screenshot " + s.name + " mid-scene"); g.screenshot(label + "-" + s.name + "-mid"); } // the bar with frames counted
         if (t == s.warmTicks && s.measureTicks > 0) startRecording();
         if (recording) { recTicks++; if (g.focused()) focusTicks++; }
         bar(s.name, (float) sceneIndex / scenes.size(), sceneIndex, scenes.size());
@@ -257,13 +261,22 @@ public final class Bench {
 
     private static int barTick;
 
+    /**
+     * The Lads QA bar (owner rule: every QA and benchmark, the whole time; the same on every config of an A/B pair): "Lads QA - label -
+     * run k/3 - scene i/N name - frames n - OK n - SLOW 0 - FAIL 0 - CRASH 0 - ETA m:ss", once a second (one string and one server call,
+     * no per-frame work). ETA: what is left of this run plus the runs after it at this run's length.
+     */
     private static void bar(String scene, float progress, int done, int total) {
         if (barTick++ % 20 != 0) return;
-        int remaining = 0;
-        if (phase == 2) for (int i = sceneIndex; i < scenes.size(); i++) remaining += scenes.get(i).warmTicks + scenes.get(i).measureTicks;
-        remaining = Math.max(0, remaining - (phase == 2 ? sceneTick : 0)) / 20;
-        game.bar(String.format(Locale.ROOT, "Lads QA · %s · step %d/%d · %s · OK %d · SLOW 0 · FAIL 0 · CRASH 0 · ETA %d:%02d",
-            label, Math.min(done + 1, total), total, scene, done, remaining / 60, remaining % 60), Math.max(0f, Math.min(1f, progress)), false);
+        long runTicks = 0, left = 0;
+        for (Scene s : scenes) runTicks += s.warmTicks + s.measureTicks;
+        if (phase == 2) for (int i = sceneIndex; i < scenes.size(); i++) left += scenes.get(i).warmTicks + scenes.get(i).measureTicks;
+        else left = runTicks;
+        if (phase == 2) left = Math.max(0, left - sceneTick);
+        int remaining = (int) (left / 20 + (long) (runs - run) * (runTicks / 20 + 90)); // 90 s: start, title, join, exit
+        game.bar(String.format(Locale.ROOT, "Lads QA · %s · run %d/%d · scene %d/%d %s · %d frames · OK %d · SLOW 0 · FAIL 0 · CRASH 0 · ETA %d:%02d",
+            label, run, runs, Math.min(done + 1, total), total, scene, recording ? frameCount : 0, done, remaining / 60, remaining % 60),
+            Math.max(0f, Math.min(1f, (progress + (run - 1)) / runs)), false);
     }
 
     private static void timeout(int ticks, String what) {

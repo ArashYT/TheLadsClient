@@ -48,6 +48,7 @@ public final class LoadingLogo1201 {
                     graphics.setColor(1f, 1f, 1f, 1f);
                 }
             }));
+        if (com.thelads.core.client.qa.QaProgress.on()) adapter.managed(() -> com.thelads.core.client.qa.QaProgress.drawLoading(adapter)); // QA only: the bar over the loading screen
         if (alpha >= 1f) LoadingQa1201.frame();
     }
 }

@@ -7,6 +7,13 @@ using CmlLib.Core;
 using CmlLib.Core.ProcessBuilder;
 using TheLadsLauncher.Services;
 
+// Permanent QA rule (every QA, the whole time): the Core's QA progress bar. Every game this harness starts inherits these two (the main
+// path below adds the run's probes and progress file); LADS_VERIFY_QABAR=0 is an explicit opt-out the harness itself never sets.
+if (Environment.GetEnvironmentVariable("LADS_VERIFY_QABAR") != "0")
+{
+    Environment.SetEnvironmentVariable("LADS_QA_BAR", "1");
+    Environment.SetEnvironmentVariable("LADS_QA_RUN", args.Length > 0 ? args[0].TrimStart('-') : "QA");
+}
 // Shader toggle QA: what the launcher does between two runs of a 26.3 modpack in a sandbox game folder (the game's relaunch request,
 // then the renderer step of the next launch with jar renames). Prints the next launch's renderer, suspended mods and rejoin target.
 if (args.Length == 3 && args[0] == "--renderer-step")
@@ -598,6 +605,25 @@ string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature
     "Lads AppleSkin sync capture FAILED", "Lads qa script FAILED", "Lads qa step FAILED", "Lads render 1.8.5 capture FAILED", "Lads input probe FAILED", "Lads fast quit probe FAILED",
     "Mod resolution encountered an incompatible mod set", "Incompatible mods found", "Lads biome capture FAILED", "Lads packs probe FAILED"];
 bool CoreChecksDone() { lock (logGate) return requiredCore.All(passedMarkers.ContainsKey) && (capabilities.Forge || capabilities.Minimal || inventorySnapshots.ContainsKey("title")); }
+
+// ---- QA progress bar (Core QaProgress): the run's required probes go to the game as -Dthelads.qaProbes, what has passed and the end
+// into <game folder>\.lads-qa-progress (the game reads it twice a second). A QA aid: never fails the run.
+string QaLabel(string marker) => Regex.Replace(marker.Trim().TrimEnd(':'), @"\ALads |\s+END\z", "").Trim();
+var qaProbes = requiredTitleProbes.Concat(requiredCore).Concat(requiredWorldProbes).Select(QaLabel).Distinct().ToList();
+string qaProgressFile = Path.Combine(directory, ".lads-qa-progress");
+string qaRunName = scenario != "adhoc" ? scenario : dirName;
+void QaProgressWrite(bool finishing = false)
+{
+    try
+    {
+        var passed = qaProbes.Where(label => passedMarkers.Keys.Any(marker => QaLabel(marker) == label));
+        string text = "passed=" + string.Join('|', passed) + "\nfailed=" + failedCaptures.Count + "\nfinishing=" + (finishing ? 1 : 0) + "\n";
+        File.WriteAllText(qaProgressFile + ".tmp", text);
+        File.Move(qaProgressFile + ".tmp", qaProgressFile, true);
+    }
+    catch (Exception) { }
+}
+if (Environment.GetEnvironmentVariable("LADS_VERIFY_QABAR") != "0") { try { File.Delete(qaProgressFile); } catch (Exception) { } }
 // The Core writes its catalog on its first client tick, which 1.8.9 reaches with the title screen shown.
 bool CatalogWritten() => File.Exists(catalogFile) && File.GetLastWriteTimeUtc(catalogFile) >= runStartUtc;
 var jvmFlags = new List<string>();
@@ -853,9 +879,16 @@ try
     {
         AddJvm("-XX:+DisableAttachMechanism");
     }
-    // Permanent QA rule: every client QA run shows the Lads QA progress bar (Core QaProgress; step i/N, OK/SLOW/FAIL/CRASH, ETA). Benchmarks run
-    // without it, and LADS_VERIFY_QABAR=0 turns it off for a run whose frames must be bare.
-    if (Env("LADS_VERIFY_QABAR") != "0" && !perf189) AddJvm("-Dthelads.qaBar=1");
+    // Permanent QA rule: every client QA run shows the Lads QA progress bar (Core QaProgress; step i/N, OK/SLOW/FAIL/CRASH, ETA). LADS_VERIFY_QABAR=0 turns it off
+    // for a run whose frames must be bare (an explicit opt-out; the harness never sets it, benchmarks included).
+    if (Env("LADS_VERIFY_QABAR") != "0")
+    {
+        AddJvm("-Dthelads.qaBar=1"); // benchmarks too (A/B pairs both have it); the bar's cost is a cached string and a few fills per frame
+        AddJvm("-Dthelads.qaRun=" + qaRunName);
+        AddJvm("-Dthelads.qaProgress=" + qaProgressFile);
+        if (qaProbes.Count > 0) AddJvm("-Dthelads.qaProbes=" + string.Join('|', qaProbes));
+        QaProgressWrite();
+    }
     // QA keeps JAVA_TOOL_OPTIONS: the JFR perf recipe passes its recording flags there (players never get it, GameSession strips it).
     // Two real frames of the Lads loading screen (startup), saved to the sandbox's screenshots folder.
     if (titleVerification) AddJvm("-Dthelads.verifyLoadingScreen=true");
@@ -1040,6 +1073,7 @@ try
             // Every capture's END marker (captureEnds), so a capture added there can never be left waiting for the timeout.
             foreach (string marker in captureEnds.Append("Lads title capture END:").Append("Lads title More capture END:"))
                 if (line.Contains(marker) && Passed(line)) passedMarkers.TryAdd(marker, 0);
+            QaProgressWrite();
             if (line.Contains("Lads render scale probe END:") && Passed(line)) renderScaleProbePassed = true;
             const string snapshotMarker = "Lads mods inventory snapshot: ";
             int snapshotAt = line.IndexOf(snapshotMarker, StringComparison.Ordinal);
@@ -1465,6 +1499,7 @@ finally
     {
         if ((autoWorldVerification || welcomeVerification) && !capabilities.Forge)
         {
+            QaProgressWrite(true);
             await LockFiles.WriteAtomicallyAsync(stopRequest, Encoding.UTF8.GetBytes("Gracefully stop this isolated QA game."));
             using var exitTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
             try { await process.WaitForExitAsync(exitTimeout.Token); }

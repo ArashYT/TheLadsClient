@@ -67,7 +67,7 @@ for ($i = 1; $i -le ($(if ($Prep) { 1 } else { $Rounds })); $i++) { foreach ($c 
     Set-Content "$G\options.txt" $opts
     New-Item -ItemType Directory -Force "$G\ladsbench", "$S\shared-mc", "$S\no-lunar" | Out-Null
     Remove-Item "$G\ladsbench\result.json" -ErrorAction SilentlyContinue
-    Set-Content "$G\ladsbench\bench.properties" "mode=$(if ($Prep) { 'prep' } else { 'run' })`nlabel=$label`nseconds=$Seconds`nscenes=$Scenes`nworld=ladsbench`nseed=1912`nshots=$(if ($Shots) { 'true' } else { 'false' })"
+    Set-Content "$G\ladsbench\bench.properties" "mode=$(if ($Prep) { 'prep' } else { 'run' })`nlabel=$label`nrun=$i`nruns=$(if ($Prep) { 1 } else { $Rounds })`nseconds=$Seconds`nscenes=$Scenes`nworld=ladsbench`nseed=1912`nshots=$(if ($Shots) { 'true' } else { 'false' })"
     if (Test-Path "$G\saves\ladsbench") { Remove-Item "$G\saves\ladsbench" -Recurse -Force }
     $tpl = if (Test-Path "$R\templates\$sb\ladsbench") { "$R\templates\$sb\ladsbench" } else { "$R\templates\$mc\ladsbench" }
     if (-not $Prep) { New-Item -ItemType Directory -Force "$G\saves" | Out-Null; Copy-Item $tpl "$G\saves\ladsbench" -Recurse }

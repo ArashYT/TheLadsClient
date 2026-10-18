@@ -143,13 +143,18 @@ joins that world through quick play, `-Dthelads.qaRejoin=true` starts the script
 quit to switch. 1.20.1 is driven by the script (`press "Shader packs..."`, `press "Turn shaders off (restart)"`); 26.3 by `LADS_QA_SHADERTOGGLE="world,video,page,restart"`
 (`ready`, `iris`, `packscreen`, `warn`, `quit` too; `LADS_QA_SHADERTOGGLE_TAG` names the `screenshots\shaders-<tag>-*.png`), see `ShaderToggleQa26`.
 
-## QA progress bar (every client QA run, all versions)
+## QA progress bar (every client QA game, the whole time, all versions)
 
-Owner rule: every QA run shows a live boss-bar-style bar at the top centre: `Lads QA · <run> · step i/N · <current> · OK n · SLOW n · FAIL n · CRASH n · ETA m:ss`
-(green while clean, yellow after a SLOW step, red on a FAIL/CRASH; long text wraps to two lines). The harness passes `-Dthelads.qaBar=1` to the game
-(not to `perf`/`players` benchmarks; `LADS_VERIFY_QABAR=0` turns it off for a run). Core: `com.thelads.core.client.qa.QaProgress` (common; `begin(run, total)`,
-`step(label)`, `result(OK|SLOW|FAIL|CRASH)`, `check(what, ok)`, `done()`; nested runs hand their worst result to the run around them). It is drawn with the Lads HUD
-(in a world, after the Lads HUD modules, even under F3 and Auto Hide; F1 hides it). A new QA flow reports its steps to it; a check that compares HUD pixels calls
-`QaProgress.hideFrames(n)` before the frame it reads. 1.8.9: `CoreProbe` steps; 1.20.1: script steps (`QaProbe1201`); 26.3: each capture/probe (the ones that report
-no steps of their own show as a run named after them while busy, `NativeWorldVerification.BAR_RUNS`); the shared HUD sequences (`HudLayoutQa`, `HudCoverQa`, `BetterF3Qa`,
-`BgShadowQa`, `HudTextQa`) report on every version.
+Owner rule: every QA game shows a live boss-bar-style bar at the top centre from game start to exit, on whatever is up (loading screen, title, menus, the world).
+Between captures it is the **session** view: `Lads QA · <run> · <loading | world ready | waiting for <next probe> | finishing> · probes k/N · elapsed m:ss`
+(N from the harness's required-probe list, passed as `-Dthelads.qaProbes`; the harness reports the passed ones and the end in `<game folder>\.lads-qa-progress`).
+While a capture/probe/script runs it is that **run's** view: `Lads QA · <run> · step i/N · <current> · OK n · SLOW n · FAIL n · CRASH n · ETA m:ss`
+(green while clean, yellow after a SLOW step, red on a FAIL/CRASH; long text wraps to two lines; a finished run keeps its final state up for 3 s, and a
+`qa-bar-final-<run>.png` is saved). Every game the harness starts gets it (`LADS_QA_BAR`/`LADS_QA_RUN` in the harness environment; the main path adds
+`-Dthelads.qaBar/qaRun/qaProbes/qaProgress`) - **benchmarks included**, so both halves of an A/B pair carry it; `LADS_VERIFY_QABAR=0` is an explicit opt-out
+the harness never sets. Cost: the text is rebuilt only when a step or a second changes (a cached string and a few fills per frame, nothing allocated).
+Core: `com.thelads.core.client.qa.QaProgress` (common; `begin(run, total)`, `step(label)`, `result(OK|SLOW|FAIL|CRASH)`, `check(what, ok)`, `done()`; nested runs
+hand their worst result to the run around them). A new QA flow reports its steps to it; a check that compares HUD pixels calls `QaProgress.hideFrames(n)`
+or `hide(true)` before the frame it reads. 1.8.9: `CoreProbe` steps; 1.20.1: script steps (`QaProbe1201`); 26.3: each capture/probe (the ones that report no
+steps of their own show as a run named after them while busy, `NativeWorldVerification.BAR_RUNS`); the shared HUD sequences (`HudLayoutQa`, `HudCoverQa`,
+`BetterF3Qa`, `BgShadowQa`, `HudTextQa`) report on every version. `tools/ladsbench` shows its own bar (scene i/N, run k/3, frames, ETA): see its README.
