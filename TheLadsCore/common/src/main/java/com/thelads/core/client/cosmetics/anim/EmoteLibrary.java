@@ -79,9 +79,9 @@ public final class EmoteLibrary {
             float rz = out ? -48.0f : 2.0f;
             float ry = out ? -14.0f : 8.0f;
             float rx = out ? -172.0f : -168.0f;
-            b.key(ch(RIGHT_ARM, RX), beat, rx);
-            b.key(ch(RIGHT_ARM, RZ), beat, rz);
-            b.key(ch(RIGHT_ARM, RY), beat, ry);
+            b.key(ch(RIGHT_ARM, RX), beat, rx, Ease.SMOOTH);
+            b.key(ch(RIGHT_ARM, RZ), beat, rz, Ease.SMOOTH);
+            b.key(ch(RIGHT_ARM, RY), beat, ry, Ease.SMOOTH);
         }
         // Left arm: relaxed at side with subtle natural motion.
         b.track(ch(LEFT_ARM, RZ), 0, -8, 2, -6);
