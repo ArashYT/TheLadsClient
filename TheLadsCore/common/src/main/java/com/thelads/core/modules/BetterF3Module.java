@@ -120,6 +120,8 @@ public class BetterF3Module extends Module {
     private static final Pattern DIMENSION_LINE = Pattern.compile("^[a-z0-9_.-]+:[a-z0-9_./-]+ FC: ");
     private static final Pattern PROPERTY = Pattern.compile("^[a-z0-9_]+: ");
     private static final Pattern ENTITY_COUNT = Pattern.compile("(\\d+)/(\\d+)");
+    /** The game's particle count: its last number (26.x lists each kind, then "T" and the total). */
+    private static final Pattern LAST_NUMBER = Pattern.compile("(\\d+)\\s*$");
     private static final Pattern SUB_KEY = Pattern.compile("[A-Za-z]+: ");
     private static final Pattern FORMAT = Pattern.compile("§.");
     /** The vanilla labels of each section (1.8.9 and 26.x), matched at the start of a line. */
@@ -139,7 +141,7 @@ public class BetterF3Module extends Module {
         "SH ", "Biome: ", "Local Difficulty", "Day #", "Targeted Block", "Looking at", "Java: ", "Mem: ", "Allocated: ", "Allocation rate",
         "CPU: ", "Display: ", "GPU: "};
     /** Seconds a full slide takes at 100% speed; each line moves for 1 - SPREAD of it, the last one SPREAD after the first. */
-    static final double SLIDE_SECONDS = 0.35, SPREAD = 0.45;
+    public static final double SLIDE_SECONDS = 0.35, SPREAD = 0.45;
     /** The longest step one frame takes (a hitch never eats the slide), and how long a slide may go undrawn before it counts as ended. */
     static final long MAX_STEP_NANOS = 50_000_000L, STALE_NANOS = 250_000_000L;
 
@@ -180,6 +182,11 @@ public class BetterF3Module extends Module {
 
     /** Lines this version cannot know (1.8.9: server light, heightmaps, GPU utilization): their toggles are not shown. */
     public void unsupported(Row... rows) { unsupported.addAll(List.of(rows)); }
+
+    /** Whether the BetterF3 style shows this line (if the game knows it). */
+    public boolean shows(Row row) {
+        return style() == BETTERF3 && !unsupported.contains(row) && bool(row.section.option) && bool(row.option);
+    }
 
     /** Settings the screen leaves out: the other style's, a hidden section's lines, lines this version lacks. */
     public boolean hidden(Option option) {
@@ -268,7 +275,7 @@ public class BetterF3Module extends Module {
         List<Line> out = new ArrayList<>();
         int group = -1;
         for (Row row : Row.values()) {
-            if (row.left != left || unsupported.contains(row) || !bool(row.section.option) || !bool(row.option)) continue;
+            if (row.left != left || !shows(row)) continue;
             int key = rainbow ? ChromaUtil.chroma(row.ordinal() * 150L, 4000L) : color(row.section.keyColor(), row.section.key);
             List<Seg> value = value(row, info, key, color(row.section.valueColor(), row.section.value));
             if (value == null) continue;
@@ -309,7 +316,10 @@ public class BetterF3Module extends Module {
             case FPS -> in.fps < 0 ? null : List.of(new Seg(in.fps + " fps / " + (in.fpsLimit <= 0 || in.fpsLimit >= 260 ? "Unlimited" : String.valueOf(in.fpsLimit)) + " fps", fpsColor(in.fps)));
             case XYZ -> Double.isNaN(in.x) ? null : axes(axis, value, format("%.3f", in.x), format("%.5f", in.y), format("%.3f", in.z));
             case BLOCK -> Double.isNaN(in.x) ? null : axes(axis, value, String.valueOf(floor(in.x)), String.valueOf(floor(in.y)), String.valueOf(floor(in.z)));
-            case PARTICLES -> in.particles == null ? null : List.of(new Seg(in.particles, value));
+            case PARTICLES -> {
+                Matcher total = in.particles == null ? null : LAST_NUMBER.matcher(in.particles);
+                yield total == null || !total.find() ? null : List.of(new Seg(total.group(1), value));
+            }
             case ENTITIES -> {
                 Matcher count = in.entities == null ? null : ENTITY_COUNT.matcher(in.entities);
                 yield count == null || !count.find() ? null : List.of(new Seg(count.group(1) + "/" + count.group(2), value));
@@ -519,8 +529,17 @@ public class BetterF3Module extends Module {
         }
     }
 
-    /** Whether a column is still sliding out (the debug screen closed). */
-    public boolean closing() { return !leftSide.lines.isEmpty() || !rightSide.lines.isEmpty(); }
+    /** Whether a column is still sliding out (the debug screen closed); one left undrawn for a second has ended. */
+    public boolean closing() {
+        long now = System.nanoTime();
+        return !leftSide.lines.isEmpty() && now - leftSide.slide.last < 1_000_000_000L || !rightSide.lines.isEmpty() && now - rightSide.slide.last < 1_000_000_000L;
+    }
+
+    /** Whether the Lads HUD steps aside now (Hide Lads HUD): while the debug screen is open and while its columns slide out. */
+    public static boolean hidesLadsHud(boolean debugOpen) {
+        return com.thelads.core.config.ModuleManager.getInstance().getModule("BetterF3") instanceof BetterF3Module f3 && f3.isEnabled()
+            && f3.bool("Hide Lads HUD") && (debugOpen || f3.closing());
+    }
 
     /** QA (BetterF3Qa): a column's slide progress now, 0 to 1. */
     public double progress(boolean left) { return (left ? leftSide : rightSide).slide.progress; }
@@ -550,5 +569,17 @@ public class BetterF3Module extends Module {
                 x += g.textWidth(seg.text());
             }
         }
+        if (trace != null && (side == leftSide || side == rightSide) && !side.lines.isEmpty()) {
+            Line first = side.lines.get(0), last = side.lines.get(side.lines.size() - 1);
+            trace.frame(left, cover, progress, side.drawn.getOrDefault(first.key(), OFF), side.drawn.getOrDefault(last.key(), OFF));
+        }
     }
+
+    /** QA (BetterF3Qa): told of every column frame drawn (left, the screen open, its progress, the x of its first and last line). */
+    public interface Trace { void frame(boolean left, boolean open, double progress, int firstX, int lastX); }
+
+    /** QA: the tracer while BetterF3Qa runs; null otherwise. */
+    public static volatile Trace trace;
+    /** A line not drawn this frame (off screen), in a trace. */
+    public static final int OFF = -9999;
 }

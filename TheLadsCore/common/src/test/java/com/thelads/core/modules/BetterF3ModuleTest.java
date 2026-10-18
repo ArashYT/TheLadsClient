@@ -162,6 +162,9 @@ class BetterF3ModuleTest {
         assertFalse(left.stream().anyMatch(t -> t.startsWith("Light (Server)") || t.startsWith("Highest Block (Server)") || t.startsWith("Slime")),
             "multiplayer: no server values, no seed");
         assertTrue(right.get(0).startsWith("Current Time"), "nothing targeted: no Target lines and no gap above the system lines");
+        Info kinds = screenshot();
+        kinds.particles = "S 12 IP 3 T 15";
+        assertTrue(texts(f3.betterF3(LEFT_189, true, kinds)).contains("Particles: 15"), "26.x lists each kind, then the total");
         set(f3, "Show Particles", false);
         set(f3, "Show World", false);
         assertEquals(List.of("394 fps / Unlimited fps", "XYZ: 1016.342 77.00399 766.420", "Block: 1016 77 766", "Entities rendered/total: 0/174"),
@@ -352,14 +355,15 @@ class BetterF3ModuleTest {
     void closingSlidesTheLastLinesOutThenForgetsThem() {
         BetterF3Module f3 = f3();
         Screen screen = new Screen();
-        f3.draw(screen.g, LEFT_189, true, 640, true, screenshot(), 0);
+        long base = System.nanoTime();
+        f3.draw(screen.g, LEFT_189, true, 640, true, screenshot(), base);
         assertFalse(f3.drawn(true).containsKey("SLIME"), "the first frame: the last line has not started");
-        for (long t = 8; t <= 600; t += 8) f3.draw(screen.g, LEFT_189, true, 640, true, screenshot(), t * MS);
+        for (long t = 8; t <= 600; t += 8) f3.draw(screen.g, LEFT_189, true, 640, true, screenshot(), base + t * MS);
         Map<String, Integer> open = Map.copyOf(f3.drawn(true));
         assertEquals(2, (int) open.get("FPS"), "in place at x 2");
         assertEquals(2, (int) open.get("SLIME"));
         assertTrue(f3.closing());
-        long now = 608 * MS;
+        long now = base + 608 * MS;
         for (int i = 0; i < 4; i++) f3.drawClosed(screen.g, now + 40 * MS * i);
         assertTrue(f3.drawn(true).get("SLIME") < 2, "sliding out to the left, the last line in first");
         assertEquals(2, (int) f3.drawn(true).get("FPS"), "the first line in goes last");

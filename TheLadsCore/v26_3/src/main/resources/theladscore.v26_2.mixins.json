@@ -25,6 +25,7 @@
     "FullbrightShadersMixin",
     "ZoomMixin",
     "BetterF3Mixin",
+    "BetterF3GpuMixin",
     "CustomFovPlayerMixin",
     "CustomFovCameraMixin",
     "ScoreboardMixin",

@@ -135,7 +135,7 @@ public class HudManager {
     }
 
     private boolean hidesAll() {
-        return game != null && game.isDebugScreenOpen() && com.thelads.core.modules.BetterF3Module.hidesLadsHud();
+        return game != null && com.thelads.core.modules.BetterF3Module.hidesLadsHud(game.isDebugScreenOpen());
     }
 
     /** Whether a HUD drawn at this box (Lads HUD units) is under the tab list or the debug text now (HudCover). */

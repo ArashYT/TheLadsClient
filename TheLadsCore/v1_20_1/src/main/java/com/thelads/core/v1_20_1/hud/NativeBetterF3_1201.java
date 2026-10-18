@@ -118,7 +118,7 @@ public final class NativeBetterF3_1201 {
     private static String heights(LevelChunk chunk, BlockPos pos, boolean client) {
         StringBuilder out = new StringBuilder();
         for (Heightmap.Types type : Heightmap.Types.values()) {
-            if (client ? !type.sendToClient() : !type.keepAfterWorldgen()) continue;
+            if (client ? type != Heightmap.Types.WORLD_SURFACE && type != Heightmap.Types.MOTION_BLOCKING : !type.keepAfterWorldgen()) continue;
             if (out.length() > 0) out.append("  ");
             out.append(BetterF3Module.heightName(type.name())).append(": ").append(chunk.getHeight(type, pos.getX(), pos.getZ()));
         }

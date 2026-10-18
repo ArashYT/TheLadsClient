@@ -45,6 +45,12 @@ public final class NativeBetterF3 {
         return active && ModuleManager.getInstance().getModule("BetterF3") instanceof BetterF3Module f3 && f3.isEnabled() ? f3 : null;
     }
 
+    /** Whether the game should measure its GPU load: Better F3 shows its GPU Utilization line now. */
+    public static boolean measuresGpu() {
+        BetterF3Module f3 = module();
+        return f3 != null && f3.shows(BetterF3Module.Row.GPU_UTIL) && Minecraft.getInstance().debugEntries.isOverlayVisible();
+    }
+
     /** Whether Better F3 draws the debug screen (else the game does). */
     public static boolean enabled() { return module() != null; }
 
@@ -136,7 +142,7 @@ public final class NativeBetterF3 {
     private static String heights(LevelChunk chunk, BlockPos pos, boolean client) {
         StringBuilder out = new StringBuilder();
         for (Heightmap.Types type : Heightmap.Types.values()) {
-            if (client ? !type.sendToClient() : !type.keepAfterWorldgen()) continue;
+            if (client ? type != Heightmap.Types.WORLD_SURFACE && type != Heightmap.Types.MOTION_BLOCKING : !type.keepAfterWorldgen()) continue;
             if (out.length() > 0) out.append("  ");
             out.append(BetterF3Module.heightName(type.name())).append(": ").append(chunk.getHeight(type, pos.getX(), pos.getZ()));
         }
