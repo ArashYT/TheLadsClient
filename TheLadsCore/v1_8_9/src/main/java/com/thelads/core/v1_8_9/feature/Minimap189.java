@@ -78,10 +78,10 @@ public final class Minimap189 {
         if (settings == null) return;
         try {
             Module module = module();
-            boolean hypixel = HypixelSafetyManager.isHypixel(), xaero = shown.getBoolean(settings);
+            boolean banned = HypixelSafetyManager.isMinimapBanned(), xaero = shown.getBoolean(settings);
             // Changed in Xaero's settings or with its key since the last write: the switch follows.
-            if (written != null && xaero != written && !hypixel) module.setEnabled(xaero);
-            boolean want = module.isEnabled() && !hypixel;
+            if (written != null && xaero != written && !banned) module.setEnabled(xaero);
+            boolean want = module.isEnabled() && !banned;
             if (written == null || want != xaero) shown.setBoolean(settings, want);
             written = want;
         } catch (IllegalAccessException | RuntimeException e) {

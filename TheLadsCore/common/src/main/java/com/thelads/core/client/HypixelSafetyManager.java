@@ -8,7 +8,8 @@ import java.util.Set;
 
 /**
  * Enforces server-side fair-play and tournament rules.
- * Automatically disables blacklisted modules when connected to Hypixel (hypixel.net / hypixel.io).
+ * Automatically disables blacklisted modules when connected to Hypixel (hypixel.net / hypixel.io), minimaps on the networks that
+ * ban them, and singleplayer-only modules on every server.
  */
 public final class HypixelSafetyManager {
     private static final Set<String> DISALLOWED_MODULES = new HashSet<>();
@@ -34,9 +35,17 @@ public final class HypixelSafetyManager {
     /** QA only (the Hypixel QA routines set it for their run): the singleplayer QA world counts as Hypixel. */
     public static volatile boolean qaOverride;
 
-    private static final java.util.Map<String, Boolean> CACHED_ADDRESSES = new java.util.concurrent.ConcurrentHashMap<>();
+    /**
+     * Big PvP and minigame networks whose rules ban minimaps or their player/mob radar (Pika's rules say so outright), each with its
+     * subdomains: Xaero's minimap and world map stay off there. Xaero itself still obeys any server's own fair-play codes.
+     */
+    private static final String[] MINIMAP_BANNED_SERVERS = {"hypixel.net", "hypixel.io", "minemen.club", "pvp.land", "lunar.gg", "stray.gg",
+        "cubecraft.net", "mccisland.net", "hoplite.gg", "pika-network.net", "jartexnetwork.com", "blocksmc.com", "mineplex.com", "gommehd.net"};
+    private static final int HYPIXEL = 1, NO_MINIMAP = 2;
+
+    private static final java.util.Map<String, Integer> CACHED_ADDRESSES = new java.util.concurrent.ConcurrentHashMap<>();
     private static volatile String lastAddress;
-    private static volatile boolean lastAddressIsHypixel;
+    private static volatile int lastFlags;
 
     private HypixelSafetyManager() {}
 
@@ -51,38 +60,51 @@ public final class HypixelSafetyManager {
      * Determines whether a given server IP/hostname belongs to Hypixel.
      */
     public static boolean isHypixelAddress(String addr) {
-        if (addr == null || addr.isEmpty()) {
-            return false;
-        }
-        // Asked per module every frame: the last address first, before any string work.
-        String last = lastAddress;
-        if (addr.equals(last)) {
-            return lastAddressIsHypixel;
-        }
-        Boolean cached = CACHED_ADDRESSES.get(addr);
-        if (cached != null) {
-            lastAddress = addr;
-            lastAddressIsHypixel = cached;
-            return cached;
-        }
-        boolean isHypixel = !addr.equalsIgnoreCase("Singleplayer") && computeIsHypixelAddress(addr);
-        CACHED_ADDRESSES.put(addr, isHypixel);
-        lastAddress = addr;
-        lastAddressIsHypixel = isHypixel;
-        return isHypixel;
+        return (flags(addr) & HYPIXEL) != 0;
     }
 
-    private static boolean computeIsHypixelAddress(String addr) {
-        String clean = addr.trim().toLowerCase(Locale.ROOT);
-        int colon = clean.indexOf(':');
+    /** The current server bans minimaps (MINIMAP_BANNED_SERVERS; the Hypixel QA counts too). */
+    public static boolean isMinimapBanned() {
+        return qaOverride || isMinimapBannedAddress(LadsGameBridge.get().getServerAddress());
+    }
+
+    public static boolean isMinimapBannedAddress(String addr) {
+        return (flags(addr) & NO_MINIMAP) != 0;
+    }
+
+    /** Asked per module every frame: the last address first, before any string work. */
+    private static int flags(String addr) {
+        if (addr == null || addr.isEmpty()) return 0;
+        if (addr.equals(lastAddress)) return lastFlags;
+        int flags = CACHED_ADDRESSES.computeIfAbsent(addr, HypixelSafetyManager::computeFlags);
+        lastFlags = flags;
+        lastAddress = addr;
+        return flags;
+    }
+
+    private static int computeFlags(String addr) {
+        if (addr.equalsIgnoreCase("Singleplayer")) return 0;
+        String host = addr.trim().toLowerCase(Locale.ROOT);
+        int colon = host.indexOf(':');
         if (colon != -1) {
-            clean = clean.substring(0, colon);
+            host = host.substring(0, colon);
         }
-        while (clean.endsWith(".")) {
-            clean = clean.substring(0, clean.length() - 1);
+        while (host.endsWith(".")) {
+            host = host.substring(0, host.length() - 1);
         }
-        return clean.equals("hypixel.net") || clean.endsWith(".hypixel.net")
-            || clean.equals("hypixel.io") || clean.endsWith(".hypixel.io");
+        int flags = isHost(host, "hypixel.net") || isHost(host, "hypixel.io") ? HYPIXEL : 0;
+        for (String banned : MINIMAP_BANNED_SERVERS) if (isHost(host, banned)) return flags | NO_MINIMAP;
+        return flags;
+    }
+
+    /** {@code host} is {@code domain} or one of its subdomains (not merely ending in the same letters). */
+    private static boolean isHost(String host, String domain) {
+        return host.equals(domain) || host.endsWith(domain) && host.charAt(host.length() - domain.length() - 1) == '.';
+    }
+
+    /** Xaero's minimap and world map, as the Lads modules name them. */
+    public static boolean isMinimapModule(String moduleName) {
+        return "Minimap".equalsIgnoreCase(moduleName) || "XaeroMinimap".equalsIgnoreCase(moduleName) || "XaeroWorldMap".equalsIgnoreCase(moduleName);
     }
 
     /**
@@ -111,7 +133,8 @@ public final class HypixelSafetyManager {
      * Checks if a module is currently blocked because the player is connected to Hypixel.
      */
     public static boolean isDisallowed(String moduleName) {
-        return isHypixel() && isDisallowedModule(moduleName) || isSingleplayerOnlyModule(moduleName) && isMultiplayer();
+        return isHypixel() && isDisallowedModule(moduleName) || isSingleplayerOnlyModule(moduleName) && isMultiplayer()
+            || isMinimapModule(moduleName) && isMinimapBanned();
     }
 
     /** Any server, LAN or Realms (anything but a local world); "Unknown" counts as a server, so a missed case stays off. */
@@ -128,6 +151,7 @@ public final class HypixelSafetyManager {
 
     public static String getBlockedNotice(String moduleName) {
         if (isSingleplayerOnlyModule(moduleName)) return moduleName + " only works in singleplayer: servers' anticheats ban it.";
+        if (isMinimapModule(moduleName)) return moduleName + " is automatically disabled on this server: its rules ban minimaps.";
         return moduleName + " is automatically disabled on Hypixel to comply with server rules.";
     }
 }

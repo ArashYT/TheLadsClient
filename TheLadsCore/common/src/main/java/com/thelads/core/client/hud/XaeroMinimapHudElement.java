@@ -4,7 +4,7 @@ import com.thelads.core.client.bridge.*;
 public class XaeroMinimapHudElement extends HudElement {
     /** One vanilla GUI unit in the Lads HUD's units (HudScale), as last measured. */
     private double unit = 1;
-    @Override public boolean isAvailable(){return LadsGameBridge.get().hasMinimap() && !com.thelads.core.client.HypixelSafetyManager.isHypixel();}
+    @Override public boolean isAvailable(){return LadsGameBridge.get().hasMinimap() && !com.thelads.core.client.HypixelSafetyManager.isMinimapBanned();}
     @Override public float getScale(){return 1;}
     /** Xaero's map is a fixed number of pixels: in GUI units it shrinks at a larger GUI scale, and what is docked under it follows. */
     @Override public boolean keepsRoom(){return false;}

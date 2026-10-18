@@ -128,6 +128,34 @@ public class HypixelSafetyTest {
         }
     }
 
+    /** Big PvP/minigame networks ban minimaps (or their radar): Xaero's minimap and world map stay off there, nowhere else. */
+    @Test
+    public void testMinimapOffOnNetworksThatBanIt() {
+        for (String server : new String[]{"as.minemen.club", "na.minemen.club:25565", "mc.hypixel.net", "play.cubecraft.net", "play.mccisland.net",
+                "hoplite.gg", "pvp.land", "play.pika-network.net", "blocksmc.com", "MINEMEN.CLUB."}) {
+            assertTrue(HypixelSafetyManager.isMinimapBannedAddress(server), server);
+        }
+        for (String server : new String[]{"Singleplayer", "localhost", "play.wynncraft.com", "minemen.club.example.com", "notminemen.club", ""}) {
+            assertFalse(HypixelSafetyManager.isMinimapBannedAddress(server), server);
+        }
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        Module minimap = new Module("Minimap", "Minimap"), worldMap = new Module("XaeroWorldMap", "World map"), jade = new Module("Jade", "Jade");
+        minimap.setEnabled(true);
+        worldMap.setEnabled(true);
+        jade.setEnabled(true);
+        bridge.setServer("as.minemen.club");
+        assertTrue(HypixelSafetyManager.isMinimapBanned());
+        assertFalse(minimap.isEnabled());
+        assertFalse(worldMap.isEnabled());
+        assertTrue(jade.isEnabled(), "only the maps: Jade is a Hypixel-only block");
+        assertFalse(HypixelSafetyManager.getBlockedNotice("Minimap").contains("Hypixel"), "the notice names no wrong server");
+        bridge.setServer("play.wynncraft.com");
+        assertFalse(HypixelSafetyManager.isMinimapBanned());
+        assertTrue(minimap.isEnabled());
+        assertTrue(worldMap.isEnabled());
+    }
+
     @Test
     public void testAutoReconnectSuppressedOnHypixel() {
         ReconnectSession session = new ReconnectSession();
