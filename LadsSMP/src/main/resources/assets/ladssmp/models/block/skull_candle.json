@@ -1,7 +1,7 @@
 {
   "textures": {
-    "particle": "minecraft:block/skeleton_skull",
-    "skull": "minecraft:block/skeleton_skull",
+    "particle": "minecraft:block/bone_block_side",
+    "skull": "minecraft:block/bone_block_side",
     "candle": "minecraft:block/candle"
   },
   "elements": [
