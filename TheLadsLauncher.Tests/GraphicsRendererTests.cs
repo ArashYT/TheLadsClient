@@ -170,6 +170,102 @@ public sealed class GraphicsRendererTests : IDisposable
         }
     }
 
+    // 1.20.1: no Vulkan, but Iris is still only loaded while shaders are on (the same choice file, launcher setting and state file).
+    [Theory] [InlineData("Vulkan", true)] [InlineData("OpenGL", false)]
+    public async Task Mc1201ShadersAreOffByDefaultAndTheRendererSettingIsLeftAlone(string preference, bool irisSuspended)
+    {
+        File.WriteAllText(Options, "fov:0.4\n");
+        var suspended = await GraphicsRenderer.PrepareAsync(Game, "1.20.1", preference);
+        Assert.Equal(irisSuspended, suspended.Contains("iris"));
+        Assert.Equal(irisSuspended, suspended.Contains("euphoria_patcher"));
+        Assert.Equal("fov:0.4\n", File.ReadAllText(Options)); // never a Vulkan key on 1.20.1
+        Assert.False(File.Exists(Path.Combine(Game, GraphicsRenderer.OptionsStateFile)));
+        var state = GraphicsRenderer.ReadState(Game)!; // written either way: the game takes it for "the launcher started me"
+        Assert.False(state.Vulkan);
+        Assert.Equal(irisSuspended, state.SuspendedMods.Contains("iris"));
+    }
+
+    [Fact] public async Task Mc1201InGameChoiceTurnsShadersOnAndOffAgain()
+    {
+        string choice = Path.Combine(Game, GraphicsRenderer.ChoiceFile);
+        Assert.Contains("iris", await GraphicsRenderer.PrepareAsync(Game, "1.20.1", GraphicsRenderer.Preference(Game, "Vulkan")));
+        File.WriteAllText(choice, "{\"renderer\":\"OpenGL\"}"); // the game's "Restart with shaders"
+        Assert.Empty(await GraphicsRenderer.PrepareAsync(Game, "1.20.1", GraphicsRenderer.Preference(Game, "Vulkan")));
+        Assert.Empty(GraphicsRenderer.ReadState(Game)!.SuspendedMods);
+        File.WriteAllText(choice, "{\"renderer\":\"Vulkan\"}"); // "Turn shaders off"
+        Assert.Contains("iris", await GraphicsRenderer.PrepareAsync(Game, "1.20.1", GraphicsRenderer.Preference(Game, "OpenGL")));
+    }
+
+    [Fact] public async Task FirstLaunchOfAFreshOpenGlProfileStillWritesTheStateTheGameLooksFor()
+    {
+        Assert.Empty(await GraphicsRenderer.PrepareAsync(Game, "26.3", "OpenGL"));
+        var state = GraphicsRenderer.ReadState(Game);
+        Assert.NotNull(state); Assert.False(state!.Vulkan); Assert.Empty(state.SuspendedMods);
+        var other = Path.Combine(root, "game-1.21.11"); // other versions stay untouched
+        await GraphicsRenderer.PrepareAsync(other, "1.21.11", "OpenGL");
+        Assert.False(File.Exists(Path.Combine(other, GraphicsRenderer.StateFile)));
+    }
+
+    [Theory]
+    [InlineData("shaderPack=ComplementaryUnbound_r5.3.zip\nenableShaders=true\n", true)]
+    [InlineData("#comment\nshaderPack=Complementary Reimagined.zip\n", true)] // enableShaders missing = on, as Iris reads it
+    [InlineData("shaderPack:BSL_v8.zip\r\nenableShaders:true\r\n", true)]
+    [InlineData("shaderPack=BSL_v8.zip\nenableShaders=false\n", false)]
+    [InlineData("shaderPack=\nenableShaders=true\n", false)]
+    [InlineData("shaderPack=(internal)\nenableShaders=true\n", false)]
+    [InlineData("enableShaders=true\n", false)]
+    [InlineData("", false)]
+    public async Task Mc1201ExistingShaderPackKeepsShadersOnOnceOthersStartOff(string iris, bool keptOn)
+    {
+        Directory.CreateDirectory(Path.Combine(Game, "config"));
+        File.WriteAllText(Path.Combine(Game, "config", "iris.properties"), iris);
+        var suspended = await GraphicsRenderer.PrepareAsync(Game, "1.20.1", GraphicsRenderer.Preference(Game, "Vulkan"));
+        Assert.Equal(!keptOn, suspended.Contains("iris"));
+        Assert.Equal(keptOn, File.Exists(Path.Combine(Game, GraphicsRenderer.ChoiceFile)));
+        if (keptOn) Assert.Equal("OpenGL", GraphicsRenderer.Preference(Game, "Vulkan"));
+        // Once: the later launches follow the choice, whatever the config says.
+        File.WriteAllText(Path.Combine(Game, GraphicsRenderer.ChoiceFile), "{\"renderer\":\"Vulkan\"}");
+        Assert.Contains("iris", await GraphicsRenderer.PrepareAsync(Game, "1.20.1", GraphicsRenderer.Preference(Game, "Vulkan")));
+    }
+
+    [Fact] public async Task Mc1201ShaderPackIsOnlyMigratedOnTheFirstLaunch()
+    {
+        await GraphicsRenderer.PrepareAsync(Game, "1.20.1", "Vulkan"); // already launched under the switch: shaders off
+        Directory.CreateDirectory(Path.Combine(Game, "config"));
+        File.WriteAllText(Path.Combine(Game, "config", "iris.properties"), "shaderPack=BSL_v8.zip\nenableShaders=true\n"); // set while Iris was suspended
+        Assert.Contains("iris", await GraphicsRenderer.PrepareAsync(Game, "1.20.1", "Vulkan"));
+        Assert.False(File.Exists(Path.Combine(Game, GraphicsRenderer.ChoiceFile)));
+    }
+
+    [Theory] [InlineData("26.3")] [InlineData("1.21.11")] [InlineData("1.8.9")]
+    public async Task ShaderPackMigrationIsFor1201Only(string version)
+    {
+        Directory.CreateDirectory(Path.Combine(Game, "config"));
+        File.WriteAllText(Path.Combine(Game, "config", "iris.properties"), "shaderPack=BSL_v8.zip\nenableShaders=true\n");
+        await GraphicsRenderer.PrepareAsync(Game, version, "Vulkan");
+        Assert.False(File.Exists(Path.Combine(Game, GraphicsRenderer.ChoiceFile)));
+    }
+
+    [Fact] public async Task Mc1201IrisIsSuspendedWhileShadersAreOffAndComesBackWithThem()
+    {
+        byte[] iris = FabricJar("iris", "1"); WriteIrisManifest(iris, "1.20.1");
+        using var http = new HttpClient(new JarHandler(iris));
+        string choice = Path.Combine(Game, GraphicsRenderer.ChoiceFile), jar = Path.Combine(Game, "mods", "iris.jar");
+        await GraphicsRenderer.PrepareAsync(Game, "1.20.1", "Vulkan");
+        await ClientModInstaller.InstallAsync(root, Game, "1.20.1", httpClient: http);
+        Assert.False(File.Exists(jar)); // not even downloaded
+        var off = Assert.Single((await new ModInventoryService().BuildAsync(root, Game, "1.20.1")).Entries.Where(e => e.Id == "iris"));
+        Assert.False(off.CanToggle); Assert.Equal(GraphicsRenderer.ShadersOff, off.Note);
+        File.WriteAllText(choice, "{\"renderer\":\"OpenGL\"}");
+        await GraphicsRenderer.PrepareAsync(Game, "1.20.1", GraphicsRenderer.Preference(Game, "Vulkan"));
+        await ClientModInstaller.InstallAsync(root, Game, "1.20.1", httpClient: http);
+        Assert.True(File.Exists(jar));
+        File.WriteAllText(choice, "{\"renderer\":\"Vulkan\"}");
+        await GraphicsRenderer.PrepareAsync(Game, "1.20.1", GraphicsRenderer.Preference(Game, "Vulkan"));
+        await ClientModInstaller.InstallAsync(root, Game, "1.20.1", httpClient: http);
+        Assert.True(File.Exists(jar + ".disabled")); Assert.False(File.Exists(jar));
+    }
+
     [Fact] public async Task CancellationDoesNotWriteRendererSettings()
     {
         using var cts = new CancellationTokenSource(); cts.Cancel();
@@ -382,13 +478,13 @@ public sealed class GraphicsRendererTests : IDisposable
 
     private static string[] Names(string folder) => Directory.EnumerateFiles(folder).Select(Path.GetFileName).Order().ToArray()!;
 
-    private void WriteIrisManifest(byte[] jar)
+    private void WriteIrisManifest(byte[] jar, string version = "26.3")
     {
-        var bundle = Path.Combine(root, "game-mods", "26.3"); Directory.CreateDirectory(bundle);
+        var bundle = Path.Combine(root, "game-mods", version); Directory.CreateDirectory(bundle);
         var entry = new ClientModInstaller.Entry("iris-project", "iris", "Iris", "iris", "test", "1", "iris.jar",
             "https://cdn.modrinth.com/data/test/versions/test/iris.jar", Convert.ToHexString(SHA512.HashData(jar)), jar.Length,
             "LGPL-3.0", null, "https://modrinth.com/mod/iris");
-        File.WriteAllText(Path.Combine(bundle, "client-mods.json"), JsonSerializer.Serialize(new ClientModInstaller.Manifest("26.3", new() { entry })));
+        File.WriteAllText(Path.Combine(bundle, "client-mods.json"), JsonSerializer.Serialize(new ClientModInstaller.Manifest(version, new() { entry })));
     }
 
     private static byte[] FabricJar(string id, string version, string? dependency = null)

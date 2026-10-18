@@ -172,7 +172,7 @@ public static class ClientModInstaller
                     if (preferences.GetEnabled(entry.ModId, entry.ProjectId) == null)
                         rendererChoices[entry.ModId] = (wantEnabled, entry.ProjectId);
                     wantEnabled = false;
-                    status?.Invoke(entry.Name + ": suspended for Vulkan; available with OpenGL.");
+                    status?.Invoke(entry.Name + (GraphicsRenderer.SupportsVulkan(minecraftVersion) ? ": suspended for Vulkan; available with OpenGL." : ": suspended while shaders are off; turn them on in Video settings."));
                 }
                 // Keep one copy: enabling prefers an enabled copy, then Lads-managed bytes; disabling prefers the managed copy (it is
                 // renamed; your own extra disabled copy may stay), then a disabled one. Then the original, legacy and other names.

@@ -70,6 +70,8 @@ public final class QaProbe1201 {
     public static String save = "LadsQA-1_20_1";
     private static final long TITLE_TIMEOUT = 300_000_000_000L, WORLD_TIMEOUT = 150_000_000_000L;
     private static final boolean JOIN = Boolean.getBoolean("thelads.qaJoin");
+    /** -Dthelads.qaRejoin (shader toggle QA): the launcher's relaunch put the game straight back into its world (quick play); the script starts there. */
+    private static final boolean REJOIN = Boolean.getBoolean("thelads.qaRejoin");
     private static int joinTicks;
 
     private enum Phase { TITLE, LOADING, SETUP, SCRIPT, DONE }
@@ -174,6 +176,13 @@ public final class QaProbe1201 {
     }
 
     private static void title(Minecraft mc, long now) throws Exception {
+        if (REJOIN) {
+            if (now - phaseSince > TITLE_TIMEOUT) throw new IllegalStateException("not back in the world within 300 s; screen=" + describeScreen(mc));
+            if (mc.level == null || mc.player == null || mc.screen != null || mc.getOverlay() != null || mc.player.tickCount < 60 || !mc.levelRenderer.hasRenderedAllChunks()) return;
+            LOGGER.info("Lads auto-world QA READY: rejoined the world through the launcher's quick play");
+            phase = Phase.SCRIPT;
+            return;
+        }
         // -Dthelads.qaJoin (Zero SMP "Auto-join server" QA, aimed at a closed local port): the game leaves the title for the connect screen at once.
         if (JOIN && (mc.screen instanceof net.minecraft.client.gui.screens.ConnectScreen || mc.screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen)) {
             if (++joinTicks == 40) {
@@ -399,6 +408,7 @@ public final class QaProbe1201 {
                     if (partial == null && button.active && text.contains(wanted)) partial = button;
                 }
             if (partial != null) { partial.onPress(); return; }
+            if (com.thelads.core.v1_20_1.gui.ShaderToggleScreen1201.pressForQa(mc.screen, label)) return; // drawn by a screen event, not a child
         }
         throw new IllegalStateException("no button '" + label + "' on " + describeScreen(mc));
     }
