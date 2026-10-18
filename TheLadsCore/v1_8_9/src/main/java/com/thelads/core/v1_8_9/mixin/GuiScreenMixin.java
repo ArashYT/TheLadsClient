@@ -26,6 +26,25 @@ public abstract class GuiScreenMixin extends Gui implements LadsButtonPress {
     @Shadow public int width, height;
     @Shadow protected List<GuiButton> buttonList;
     @Shadow protected abstract void actionPerformed(GuiButton button) throws IOException;
+    @Shadow public net.minecraft.client.Minecraft mc;
+
+    /**
+     * Two servers clicked fast joined both: a tick's queued clicks all went to the screen open when it started, so a click behind the
+     * one that opened GuiConnecting still reached the server list and started a second connection. Once another screen replaced this
+     * one, the rest of the queue waits for that screen (1.20.1+ hand every event to the current screen). Closing to the game keeps
+     * vanilla's behaviour (the old screen takes the rest), so no queued menu click becomes an attack.
+     */
+    @org.spongepowered.asm.mixin.injection.Redirect(method = "handleInput", at = @At(value = "INVOKE", target = "Lorg/lwjgl/input/Mouse;next()Z", remap = false), require = 1)
+    private boolean ladsMouseNext() { return ladsStillCurrent() && org.lwjgl.input.Mouse.next(); }
+
+    @org.spongepowered.asm.mixin.injection.Redirect(method = "handleInput", at = @At(value = "INVOKE", target = "Lorg/lwjgl/input/Keyboard;next()Z", remap = false), require = 1)
+    private boolean ladsKeyboardNext() { return ladsStillCurrent() && org.lwjgl.input.Keyboard.next(); }
+
+    @org.spongepowered.asm.mixin.Unique
+    private boolean ladsStillCurrent() {
+        GuiScreen now = mc == null ? null : mc.currentScreen;
+        return now == null || now == (Object) this;
+    }
 
     @Inject(method = "handleComponentClick", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsHandleChatClick(IChatComponent component, CallbackInfoReturnable<Boolean> cir) {
