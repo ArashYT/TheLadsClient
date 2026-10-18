@@ -49,7 +49,7 @@ public final class AriseNb3Client implements ClientModInitializer {
 
     public static final KeyMapping COSMETICS_KEY = new KeyMapping(
             "key.ladssmp.cosmetics",
-            InputConstants.KEY_C,
+            InputConstants.UNKNOWN.getValue(), // unbound like Arise; C is the Lads zoom
             KeyMapping.Category.INVENTORY
     );
 

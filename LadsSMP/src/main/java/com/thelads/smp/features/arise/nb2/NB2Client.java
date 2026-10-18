@@ -40,7 +40,7 @@ public final class NB2Client implements ClientModInitializer {
 
         keyPanoramica = KeyMappingHelper.registerKeyMapping(new KeyMapping(
                 "key.ladssmp.panoramica",
-                InputConstants.KEY_F4,
+                InputConstants.KEY_BACKSLASH, // Arise binding; F4 is the pack's perspective key
                 CATEGORY_LADS
         ));
 
