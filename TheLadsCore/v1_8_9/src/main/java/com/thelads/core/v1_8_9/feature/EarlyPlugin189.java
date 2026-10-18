@@ -21,6 +21,12 @@ public final class EarlyPlugin189 implements IMixinConfigPlugin {
     }
     @Override public String getRefMapperConfig() { return null; }
     @Override public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        // Ionium (Celeritas for Forge 1.8.9) has the same sky-blend cache fix and sign text caches as required redirects: leave it those calls.
+        if ((mixinClassName.endsWith(".ForgeSkyBlendCacheMixin") || mixinClassName.endsWith(".TileEntitySignRendererMixin"))
+            && EarlyPlugin189.class.getClassLoader().getResource("org/taumc/ionium/launch/IoniumTweaker.class") != null) {
+            LOGGER.info("Ionium present; its own version of " + mixinClassName + " applies instead of Lads'");
+            return false;
+        }
         if (mixinClassName.endsWith(".IntegratedServerLogoutMixin189")) {
             boolean essential = hasEssentialMixins();
             if (essential) {
