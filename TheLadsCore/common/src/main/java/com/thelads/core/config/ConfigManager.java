@@ -33,6 +33,9 @@ public class ConfigManager {
     static final String HUD_1910_FLAG = "hud1910OverrideApplied";
     /** Marks the 1.9.11 one-time Better F3 override (apply1911BetterF3Override). */
     static final String F3_1911_FLAG = "betterF31911Applied";
+    /** 1.9.11: the game versions whose Emotes key clash (another mod's default on B) was resolved once (EmoteKeys, each version). */
+    static final String EMOTE_KEYS_FLAG = "emoteKeyClashResolved";
+    private static final java.util.Set<String> emoteKeysResolved = new java.util.concurrent.CopyOnWriteArraySet<>();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static File testConfigFile = null;
     private static final java.util.Map<String, JsonObject> unmanagedModules = new java.util.concurrent.ConcurrentHashMap<>();
@@ -153,6 +156,9 @@ public class ConfigManager {
         json.add("hud", hud);
         json.addProperty(SkinLayersLodMigration.FLAG, true); // marks the 1.9.2 migration of 3D Skin Layers LOD 14 -> 8
         json.addProperty(PRESET_197_FLAG, true); // marks the 1.9.7 one-time preset override
+        JsonArray emoteKeys = new JsonArray();
+        emoteKeysResolved.forEach(emoteKeys::add);
+        json.add(EMOTE_KEYS_FLAG, emoteKeys);
         return json;
     }
 
@@ -162,6 +168,7 @@ public class ConfigManager {
             return;
         }
         migrateToggles(json);
+        if (json.get(EMOTE_KEYS_FLAG) instanceof JsonArray emoteKeys) emoteKeys.forEach(version -> emoteKeysResolved.add(version.getAsString()));
         if (!json.has(SkinLayersLodMigration.FLAG) || !json.get(SkinLayersLodMigration.FLAG).getAsBoolean()) {
             SkinLayersLodMigration.migrate(null);
         }
@@ -690,6 +697,12 @@ public class ConfigManager {
     }
 
     /** Writes the config now. Anything {@link #saveLater} still holds is older than this snapshot and is dropped. */
+    /** Whether this game version already had its one-time Emotes key clash fix (EmoteKeys). */
+    public static boolean emoteKeyClashResolved(String version) { return emoteKeysResolved.contains(version); }
+
+    /** Marks this game version's Emotes key clash fix done, once; saves. */
+    public static void markEmoteKeyClashResolved(String version) { if (emoteKeysResolved.add(version)) save(); }
+
     public static void save() {
         String json = GSON.toJson(toJson());
         write(json, sequence.incrementAndGet(), testConfigFile);

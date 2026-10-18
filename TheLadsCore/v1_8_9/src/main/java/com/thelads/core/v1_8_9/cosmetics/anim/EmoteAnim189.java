@@ -5,8 +5,11 @@ import com.thelads.core.client.cosmetics.anim.Emote;
 import com.thelads.core.client.cosmetics.anim.EmoteAnimator;
 import com.thelads.core.client.cosmetics.anim.EmoteLibrary;
 import com.thelads.core.client.cosmetics.anim.EmotePose;
+import com.thelads.core.client.cosmetics.anim.EmoteKeys;
 import com.thelads.core.client.cosmetics.anim.EmoteRules;
+import com.thelads.core.config.ConfigManager;
 import java.util.UUID;
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.GuiGameOver;
@@ -16,14 +19,19 @@ import net.minecraft.client.model.ModelPlayer;
 import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderHelper;
+import net.minecraft.client.renderer.block.model.ItemCameraTransforms;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EnumPlayerModelParts;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemBlock;
+import net.minecraft.item.ItemStack;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
+import org.apache.logging.log4j.LogManager;
 import org.lwjgl.input.Keyboard;
 
 import static com.thelads.core.client.cosmetics.anim.Emote.*;
@@ -37,7 +45,9 @@ public final class EmoteAnim189 {
     private static final float MODEL_SCALE = 0.9375F;
     /** RenderPlayer.renderRightArm/renderLeftArm (the vanilla first-person arm) run setRotationAngles too: no emote there. */
     public static boolean inHand;
+    private static final String VERSION = "1.8.9";
     private static ModelPlayer wideArms, slimArms;
+    private static boolean keysChecked;
     private static Entity lastEntity;
     private static EmotePose lastPose;
 
@@ -55,6 +65,7 @@ public final class EmoteAnim189 {
     public void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
+        if (!keysChecked) giveWay(mc);
         EntityPlayerSP self = mc.thePlayer;
         if (self == null) return;
         UUID id = self.getUniqueID();
@@ -78,6 +89,25 @@ public final class EmoteAnim189 {
         in.x = self.posX; in.y = self.posY; in.z = self.posZ;
         EmoteRules.tick(id);
         pose(self); // the blend-out finishes even while the player is not drawn
+    }
+
+    /** Once per install (first tick, all mods' keys loaded): Xaero's New Waypoint gives B to Emotes when both are on it (EmoteKeys). */
+    private static void giveWay(Minecraft mc) {
+        keysChecked = true;
+        if (ConfigManager.emoteKeyClashResolved(VERSION)) return;
+        StringBuilder freed = new StringBuilder();
+        if (KEY.getKeyCode() == KEY.getKeyCodeDefault())
+            for (KeyBinding binding : mc.gameSettings.keyBindings)
+                if (binding != KEY && EmoteKeys.GIVE_WAY.contains(binding.getKeyDescription()) && binding.getKeyCode() == KEY.getKeyCode()) {
+                    mc.gameSettings.setOptionKeyBinding(binding, Keyboard.KEY_NONE);
+                    freed.append(freed.length() == 0 ? "" : ", ").append(binding.getKeyDescription());
+                }
+        if (freed.length() > 0) {
+            KeyBinding.resetKeyBindingArrayAndHash();
+            mc.gameSettings.saveOptions();
+            LogManager.getLogger("TheLadsCore").info("Lads Emotes: B is the Emotes key; unbound {} (it was on B too), once", freed);
+        }
+        ConfigManager.markEmoteKeyClashResolved(VERSION);
     }
 
     /** A rendered player's emote pose this frame, or null (preRenderCallback, once per drawn player: one lookup when nobody emotes). */
@@ -161,16 +191,37 @@ public final class EmoteAnim189 {
         GlStateManager.rotate(pitch, 1, 0, 0);
         GlStateManager.scale(-MODEL_SCALE, -MODEL_SCALE, MODEL_SCALE);
         GlStateManager.translate(0, self.getEyeHeight() / MODEL_SCALE - 1.5078125F, 0);
-        mc.getTextureManager().bindTexture(self.getLocationSkin());
-        GlStateManager.color(1, 1, 1, 1);
-        if (emote.emote.rightArm) arm(model.bipedRightArm, model.bipedRightArmwear, self.isWearing(EnumPlayerModelParts.RIGHT_SLEEVE), RIGHT_ARM, emote);
-        if (emote.emote.leftArm) arm(model.bipedLeftArm, model.bipedLeftArmwear, self.isWearing(EnumPlayerModelParts.LEFT_SLEEVE), LEFT_ARM, emote);
+        if (emote.emote.rightArm) {
+            arm(mc, self, model.bipedRightArm, model.bipedRightArmwear, self.isWearing(EnumPlayerModelParts.RIGHT_SLEEVE), RIGHT_ARM, emote);
+            heldItem(mc, self, model);
+        }
+        if (emote.emote.leftArm) arm(mc, self, model.bipedLeftArm, model.bipedLeftArmwear, self.isWearing(EnumPlayerModelParts.LEFT_SLEEVE), LEFT_ARM, emote);
         GlStateManager.popMatrix();
         GlStateManager.disableRescaleNormal();
         RenderHelper.disableStandardItemLighting();
     }
 
-    private static void arm(ModelRenderer arm, ModelRenderer sleeve, boolean sleeveShown, int part, EmotePose emote) {
+    /** The held item in the right hand, as LayerHeldItem places it in third person. */
+    private static void heldItem(Minecraft mc, EntityPlayerSP self, ModelPlayer model) {
+        ItemStack stack = self.getHeldItem();
+        if (stack == null) return;
+        GlStateManager.pushMatrix();
+        model.postRenderArm(0.0625F);
+        GlStateManager.translate(-0.0625F, 0.4375F, 0.0625F);
+        Item item = stack.getItem();
+        if (item instanceof ItemBlock && Block.getBlockFromItem(item).getRenderType() == 2) {
+            GlStateManager.translate(0.0F, 0.1875F, -0.3125F);
+            GlStateManager.rotate(20.0F, 1.0F, 0.0F, 0.0F);
+            GlStateManager.rotate(45.0F, 0.0F, 1.0F, 0.0F);
+            GlStateManager.scale(-0.375F, -0.375F, 0.375F);
+        }
+        mc.getItemRenderer().renderItem(self, stack, ItemCameraTransforms.TransformType.THIRD_PERSON);
+        GlStateManager.popMatrix();
+    }
+
+    private static void arm(Minecraft mc, EntityPlayerSP self, ModelRenderer arm, ModelRenderer sleeve, boolean sleeveShown, int part, EmotePose emote) {
+        mc.getTextureManager().bindTexture(self.getLocationSkin()); // again after a held item
+        GlStateManager.color(1, 1, 1, 1);
         arm.setRotationPoint(emote.armPos(part, 0), emote.armPos(part, 1), emote.armPos(part, 2));
         arm.rotateAngleX = emote.armRot(part, RX);
         arm.rotateAngleY = emote.armRot(part, RY);

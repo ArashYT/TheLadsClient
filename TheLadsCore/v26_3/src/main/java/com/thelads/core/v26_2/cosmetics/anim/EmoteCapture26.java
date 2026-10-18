@@ -144,9 +144,12 @@ public final class EmoteCapture26 {
         at(sword + 300, () -> Emotes.playLocal(self, EmoteLibrary.GROOVE));
         shot(sword + 300 + 1100, "3p-sword-a");
         shot(sword + 300 + 1100 + Math.round(groove.periodMs / 4), "3p-sword-b");
-        at(sword + 2200, () -> Emotes.stopLocal(self));
+        // First person with the held items: each moves with its dancing hand, as in third person.
+        at(sword + 2000, () -> { command("item replace entity @p weapon.offhand with minecraft:shield"); mc.options.setCameraType(CameraType.FIRST_PERSON); hud(mc, false); });
+        for (int i = 0; i < 4; i++) shot(sword + 2400 + Math.round(i * groove.periodMs / 4), "fp-items-" + i);
+        at(sword + 2400 + (long) groove.periodMs, () -> Emotes.stopLocal(self));
         // Another player (client-side) dancing next to us, then moving: it stops here without a network message.
-        long other = sword + 2800;
+        long other = sword + 2400 + (long) groove.periodMs + 600;
         at(other, () -> {
             command("clear @p");
             remote = new RemotePlayer(mc.level, new GameProfile(UUID.randomUUID(), "LadsDancer"));
@@ -157,21 +160,30 @@ public final class EmoteCapture26 {
             mc.level.addEntity(remote);
             Emotes.onRemote(remote.getUUID(), EmoteLibrary.GROOVE, 700);
             Emotes.playLocal(self, EmoteLibrary.GROOVE);
+            mc.options.setCameraType(CameraType.THIRD_PERSON_FRONT); hud(mc, true);
         });
         shot(other + 1200, "remote-a");
         shot(other + 1200 + Math.round(groove.periodMs / 4), "remote-b");
-        at(other + 1800, () -> remote.snapTo(remote.getX() + 1, remote.getY(), remote.getZ(), remote.getYRot(), 0));
-        at(other + 1900, () -> {
+        // Cosmetics "Show other players' emotes" off: the other player stands at once, we keep dancing.
+        at(other + 2000, () -> cosmetics().showOthers.set(false));
+        shot(other + 2300, "remote-hidden");
+        at(other + 2400, () -> {
+            check(EmoteAnimator.pose(remote.getUUID(), true, remote.getX(), remote.getY(), remote.getZ()) == null
+                && EmoteAnimator.pose(self, false, 0, 0, 0) != null, "\"Show other players' emotes\" off: the other player is not posed, we still dance");
+            cosmetics().showOthers.set(true);
+        });
+        at(other + 2800, () -> remote.snapTo(remote.getX() + 1, remote.getY(), remote.getZ(), remote.getYRot(), 0));
+        at(other + 2900, () -> {
             Emotes.Playing p = Emotes.get(remote.getUUID());
             check(p == null || p.stopping(), "another player who moves blends its emote out here before any network stop");
         });
-        shot(other + 2000, "remote-moved");
-        at(other + 2600, () -> {
+        shot(other + 3000, "remote-moved");
+        at(other + 3600, () -> {
             check(Emotes.get(remote.getUUID()) == null, "its blend-out finished and it left Emotes");
             remote.discard();
             Emotes.stopLocal(self);
         });
-        at(other + 3200, () -> {
+        at(other + 4200, () -> {
             mc.options.setCameraType(CameraType.FIRST_PERSON);
             hud(mc, hudWas);
             com.thelads.core.v26_2.feature.LocalSkins.reset();
@@ -200,6 +212,10 @@ public final class EmoteCapture26 {
         });
     }
 
+    private static com.thelads.core.modules.CosmeticsModule cosmetics() {
+        return (com.thelads.core.modules.CosmeticsModule) com.thelads.core.config.ModuleManager.getInstance().getModule("Cosmetics");
+    }
+
     /** The HUD hidden (F1) for clean third-person frames. */
     private static void hud(Minecraft mc, boolean hidden) { if (mc.gui.hud.isHidden() != hidden) mc.gui.hud.toggle(); }
 
@@ -211,12 +227,15 @@ public final class EmoteCapture26 {
     private static void keyConflicts(Minecraft mc) {
         String key = EmoteAnim26.KEY.saveString();
         StringBuilder same = new StringBuilder();
+        boolean clash = false;
         java.util.Set<String> used = new java.util.TreeSet<>();
         for (KeyMapping mapping : mc.options.keyMappings) {
             used.add(mapping.saveString());
             if (mapping != EmoteAnim26.KEY && mapping.saveString().equals(key)) same.append(mapping.getName()).append(' ');
+            if (com.thelads.core.client.cosmetics.anim.EmoteKeys.GIVE_WAY.contains(mapping.getName()) && mapping.same(EmoteAnim26.KEY)) clash = true;
         }
         StringBuilder free = new StringBuilder();
+        check(!clash, "no other mod's key shares B with Emotes any more (Xaero's New Waypoint gave way once)");
         for (char c = 'a'; c <= 'z'; c++) if (!used.contains("key.keyboard." + c)) free.append(c);
         LOGGER.info("Lads emote capture keys: Emotes = {}; also bound there: [{}]; free letters: {}", key, same.toString().trim(), free);
     }
