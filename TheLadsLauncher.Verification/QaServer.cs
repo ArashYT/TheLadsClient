@@ -32,6 +32,24 @@ static class QaServer
     // Only validated names/worlds reach this, so the quoting stays simple.
     static Task<string> Rcon(string command, CancellationToken ct) => Hp($"& '{Dir}\\rcon.ps1' '{command}'", ct);
 
+    /// <summary>
+    /// The lane world's QA setup, server-side (idempotent, every run): the 32x32 grass platform at y=64 (as set up on LadsQA) with the spawn on it, because the
+    /// superflat ground is at y=-61 and 1.8.9 (ViaRewind) renders nothing below y=0; day and clear weather held, no mobs, with the
+    /// 26.3 gamerule names (the probes' old doDaylightCycle etc. are rejected by this server).
+    /// </summary>
+    static Task<string> SetUpWorld(string world, CancellationToken ct)
+    {
+        string inWorld = "execute in minecraft:" + world + " run ";
+        string[] commands =
+        {
+            inWorld + "forceload add -16 -16 15 15", inWorld + "fill -16 64 -16 15 64 15 minecraft:grass_block", inWorld + "forceload remove -16 -16 15 15",
+            $"mv setspawn {world}:0.5,65,0.5 --unsafe", inWorld + "setworldspawn 0 65 0",
+            inWorld + "gamerule advance_time false", inWorld + "gamerule advance_weather false", inWorld + "gamerule spawn_mobs false",
+            inWorld + "time set day", inWorld + "weather clear",
+        };
+        return Hp(string.Join("; ", commands.Select(c => $"& '{Dir}\\rcon.ps1' '{c}'")), ct);
+    }
+
     /// <summary>Starts the server if it is down, whitelists and ops the QA player, then moves it to the lane world as soon as it joins.</summary>
     public static async Task PrepareAsync(string player, CancellationToken ct)
     {
@@ -39,6 +57,7 @@ static class QaServer
         await Rcon("whitelist add " + player, ct);
         await Rcon("op " + player, ct);
         string world = World!;
+        Console.WriteLine("QA server world setup: " + (await SetUpWorld(world, ct)).ReplaceLineEndings(" | "));
         _ = Task.Run(async () =>
         {
             // ponytail: polls `list` every second for up to 5 min; a join event hook on the server would be exact.

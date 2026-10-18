@@ -263,7 +263,9 @@ public final class QaProbe1201 {
     /** Deterministic scene: day, clear weather, no day or weather cycle, then a baseline photograph. */
     private static void setup(Minecraft mc) throws Exception {
         setupTicks++;
-        String[] commands = { "gamerule doDaylightCycle false", "gamerule doWeatherCycle false", "gamerule doMobSpawning false", "time set day", "weather clear" };
+        // On the shared QA server the harness sets these server-side with that server's gamerule names (QaServer.SetUpWorld).
+        String[] commands = System.getProperty("thelads.qaServer") != null ? new String[0]
+            : new String[] { "gamerule doDaylightCycle false", "gamerule doWeatherCycle false", "gamerule doMobSpawning false", "time set day", "weather clear" };
         if (setupTicks <= commands.length) {
             mc.player.connection.sendCommand(commands[setupTicks - 1]);
             return;
