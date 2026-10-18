@@ -47,49 +47,66 @@ public final class BetterF3Qa {
             if (step == -1) { begin(d); step = 0; wait = 40; return false; }
             if (wait > 0) { wait--; return false; }
             switch (step++) {
-                case 0 -> { d.debug(open = true); wait = 40; }
-                case 1 -> shot(d, "f3-1911-default-gui2");
-                case 2 -> { d.guiScale(1); wait = 20; }
-                case 3 -> shot(d, "f3-1911-default-gui1");
-                case 4 -> { bool("Show Other Lines", true); wait = 10; }
-                case 5 -> { shot(d, "f3-1911-other-lines-gui1"); bool("Show Other Lines", false); }
-                case 6 -> { style(BetterF3Module.LADS); wait = 10; }
-                case 7 -> { shot(d, "f3-1911-old-style-gui1"); style(BetterF3Module.BETTERF3); d.guiScale(2); wait = 20; }
-                case 8 -> { d.debug(open = false); wait = 20; }
-                case 9 -> {
-                    expect("closed: both columns slid out and were forgotten", !f3().closing(), "progress L " + f3().progress(true) + ", R " + f3().progress(false));
+                // F3 closed: the Lads HUD (and on 1.8.9 Xaero's map) is shown.
+                case 0 -> shot(d, "f3-1911-f3-closed");
+                case 1 -> { d.debug(open = true); wait = 40; }
+                case 2 -> shot(d, "f3-1911-default-gui2");
+                case 3 -> { d.guiScale(1); wait = 20; }
+                case 4 -> shot(d, "f3-1911-default-gui1");
+                case 5 -> { bool("Show Other Lines", true); wait = 10; }
+                case 6 -> { shot(d, "f3-1911-other-lines-gui1"); bool("Show Other Lines", false); }
+                case 7 -> { style(BetterF3Module.LADS); wait = 10; }
+                case 8 -> { shot(d, "f3-1911-old-style-gui1"); style(BetterF3Module.BETTERF3); d.guiScale(2); wait = 20; }
+                case 9 -> { d.debug(open = false); wait = 2; }
+                // 100 ms into the slide out: the lines half out, the Lads HUD still aside.
+                case 10 -> {
+                    expect("sliding out: the Lads HUD stays aside", f3().closing() && BetterF3Module.hidesLadsHud(false), "closing " + f3().closing());
+                    d.quickShot("f3-1911-sliding-out");
+                    wait = 20;
+                }
+                case 11 -> {
+                    expect("closed: both columns slid out and were forgotten, the Lads HUD back", !f3().closing() && !BetterF3Module.hidesLadsHud(false),
+                        "progress L " + f3().progress(true) + ", R " + f3().progress(false));
                     TRACE.clear();
                     started = System.nanoTime();
                     BetterF3Module.trace = BetterF3Qa::trace;
                     spam = 0;
                 }
                 // F3 every 100 ms (two ticks) for 2.2 s, a frame each tick: 11 toggles, so it ends open.
-                case 10 -> {
+                case 12 -> {
                     if (spam % 2 == 0 && spam < 22) { d.debug(open = !open); toggles++; }
                     d.quickShot(String.format(Locale.ROOT, "f3-1911-spam-%02d", spam));
-                    if (++spam < 26) step = 10;
+                    if (++spam < 26) step = 12;
                 }
-                case 11 -> { wait = 20; }
-                case 12 -> {
+                case 13 -> { wait = 20; }
+                case 14 -> {
                     expect("left open after spamming: in place", open && f3().progress(true) == 1 && f3().progress(false) == 1,
                         "open " + open + ", progress L " + f3().progress(true) + ", R " + f3().progress(false));
                     shot(d, "f3-1911-after-spam-open");
                 }
-                case 13 -> { d.debug(open = false); wait = 20; }
-                case 14 -> {
+                case 15 -> { d.debug(open = false); wait = 20; }
+                case 16 -> {
                     expect("closed after spamming: slid out", !f3().closing(), "progress L " + f3().progress(true) + ", R " + f3().progress(false));
                     shot(d, "f3-1911-after-spam-closed");
                     spam = 0;
                 }
                 // F3 every 50 ms (each tick), 8 times: ends closed.
-                case 15 -> { d.debug(open = !open); toggles++; if (++spam < 8) step = 15; }
-                case 16 -> { wait = 20; }
-                case 17 -> {
+                case 17 -> { d.debug(open = !open); toggles++; if (++spam < 8) step = 17; }
+                case 18 -> { wait = 20; }
+                case 19 -> {
                     expect("closed after spamming every 50 ms: slid out, never stuck", !open && !f3().closing(),
                         "open " + open + ", progress L " + f3().progress(true) + ", R " + f3().progress(false));
                     BetterF3Module.trace = null;
                     analyse();
                 }
+                // Better F3 off: the game's own debug text, and nothing of the Lads HUD (or Xaero's map) steps aside.
+                case 20 -> { f3().setEnabled(false); d.debug(open = true); wait = 20; }
+                case 21 -> {
+                    expect("Better F3 off: nothing hides the Lads HUD under F3", !BetterF3Module.hidesLadsHud(true), "hides");
+                    shot(d, "f3-1911-betterf3-off-f3-open");
+                }
+                case 22 -> { d.debug(open = false); wait = 10; }
+                case 23 -> { shot(d, "f3-1911-betterf3-off-f3-closed"); f3().setEnabled(true); }
                 default -> { end(d); return true; }
             }
         } catch (RuntimeException failure) {
