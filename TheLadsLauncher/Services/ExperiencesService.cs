@@ -50,12 +50,12 @@ public static class ExperiencesService
         McVersion: "26.3",
         Loader: "fabric",
         LoaderVersion: "0.19.5",
-        ModCount: 237,
+        ModCount: 335,
         ServerAddress: "",
         IconAsset: "avares://TheLadsLauncher/Assets/lads_smp_reborn_icon.png",
         RecommendedRamMb: 8192,
         PackArchiveUrl: "https://bot.arashyt.ca/packs/lads-smp-reborn-26.3.zip",
-        PackArchiveSha256: "872CB3E0B09BA27C05DE5EFE50D4F72EE5C53E7DDA3085B142CF1E72F81F1174",
+        PackArchiveSha256: "E92C7DB5C12BC78AA130BF7D793ED9062A82E5D9FC39FDAC7F0A73CF21A05E88",
         InviteOnly: true
     );
 
