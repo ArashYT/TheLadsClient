@@ -1,0 +1,33 @@
+{
+  "parent": "ladssmp:combat/raid_hero",
+  "display": {
+    "icon": {
+      "id": "minecraft:totem_of_undying"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.combat.totem_of_undying.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.combat.totem_of_undying.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:used_totem",
+      "conditions": {}
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 1000
+  },
+  "sends_telemetry_event": true
+}

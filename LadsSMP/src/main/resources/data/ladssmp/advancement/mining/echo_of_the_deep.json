@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mining/deepslate_depths",
+  "display": {
+    "icon": {
+      "id": "minecraft:echo_shard"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mining.echo_of_the_deep.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mining.echo_of_the_deep.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:echo_shard"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 600
+  },
+  "sends_telemetry_event": true
+}

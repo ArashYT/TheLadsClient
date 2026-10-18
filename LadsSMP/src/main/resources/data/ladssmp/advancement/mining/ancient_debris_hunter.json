@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mining/diamond_strike",
+  "display": {
+    "icon": {
+      "id": "minecraft:ancient_debris"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mining.ancient_debris_hunter.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mining.ancient_debris_hunter.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:ancient_debris"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 500
+  },
+  "sends_telemetry_event": true
+}

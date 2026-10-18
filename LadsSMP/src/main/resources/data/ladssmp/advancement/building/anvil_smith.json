@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:building/furnace_roaster",
+  "display": {
+    "icon": {
+      "id": "minecraft:anvil"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.building.anvil_smith.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.building.anvil_smith.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:anvil"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  },
+  "sends_telemetry_event": true
+}

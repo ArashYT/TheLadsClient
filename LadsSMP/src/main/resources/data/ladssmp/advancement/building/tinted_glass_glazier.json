@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:building/first_shelter",
+  "display": {
+    "icon": {
+      "id": "minecraft:tinted_glass"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.building.tinted_glass_glazier.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.building.tinted_glass_glazier.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:tinted_glass"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  },
+  "sends_telemetry_event": true
+}

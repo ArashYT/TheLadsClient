@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:building/furnace_roaster",
+  "display": {
+    "icon": {
+      "id": "minecraft:weathered_cut_copper"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.building.copper_architect.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.building.copper_architect.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:weathered_cut_copper"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 150
+  },
+  "sends_telemetry_event": true
+}

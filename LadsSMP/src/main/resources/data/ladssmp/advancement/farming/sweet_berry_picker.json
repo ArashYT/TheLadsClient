@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:farming/green_thumb",
+  "display": {
+    "icon": {
+      "id": "minecraft:sweet_berries"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.farming.sweet_berry_picker.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.farming.sweet_berry_picker.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:sweet_berries"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 30
+  },
+  "sends_telemetry_event": true
+}

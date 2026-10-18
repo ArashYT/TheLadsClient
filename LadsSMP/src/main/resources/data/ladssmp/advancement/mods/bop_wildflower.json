@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mods/root",
+  "display": {
+    "icon": {
+      "id": "biomesoplenty:blue_hydrangea"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mods.bop_wildflower.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mods.bop_wildflower.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "biomesoplenty:blue_hydrangea"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  },
+  "sends_telemetry_event": true
+}

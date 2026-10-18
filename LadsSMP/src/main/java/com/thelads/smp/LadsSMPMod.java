@@ -36,6 +36,7 @@ public final class LadsSMPMod implements ModInitializer {
         com.thelads.smp.features.arise.nb1.AriseNB1Features.init();
         com.thelads.smp.features.arise.nb2.NB2Features.init();
         com.thelads.smp.features.arise.nb3.AriseNb3Mod.init();
+        com.thelads.smp.features.arise.nb4.AriseNB4FeatureManager.init();
 
         // Sanitize player inventory immediately upon joining the server
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {

@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:nether/warped_forest_calm",
+  "display": {
+    "icon": {
+      "id": "minecraft:twisting_vines"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.nether.twisting_vines_ascend.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.nether.twisting_vines_ascend.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:twisting_vines"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  },
+  "sends_telemetry_event": true
+}

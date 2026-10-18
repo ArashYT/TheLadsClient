@@ -1,0 +1,22 @@
+{
+  "type": "farmersdelight:cooking",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "experience": 0.6,
+  "cookingtime": 150,
+  "ingredients": [
+    "minecraft:bowl",
+    "minecraft:sea_pickle",
+    "minecraft:dried_kelp"
+  ],
+  "recipe_book_tab": "meals",
+  "result": {
+    "id": "ladssmp:braised_sea_pickle"
+  }
+}

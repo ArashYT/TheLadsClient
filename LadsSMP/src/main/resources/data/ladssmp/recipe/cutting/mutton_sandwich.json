@@ -1,0 +1,23 @@
+{
+  "type": "farmersdelight:cutting",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "ingredients": [
+    "minecraft:cooked_mutton"
+  ],
+  "tool": "#c:tools/knife",
+  "result": [
+    {
+      "item": {
+        "count": 2,
+        "id": "ladssmp:mutton_sandwich"
+      }
+    }
+  ]
+}

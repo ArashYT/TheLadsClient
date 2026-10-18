@@ -1,0 +1,41 @@
+{
+  "parent": "ladssmp:combat/netherite_juggernaut",
+  "display": {
+    "icon": {
+      "id": "minecraft:nether_star"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.combat.wither_slayer.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.combat.wither_slayer.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": {
+        "entity": {
+          "type": "minecraft:entity_properties",
+          "entity": "this",
+          "predicate": {
+            "minecraft:entity_type": "minecraft:wither"
+          }
+        }
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 2500
+  },
+  "sends_telemetry_event": true
+}

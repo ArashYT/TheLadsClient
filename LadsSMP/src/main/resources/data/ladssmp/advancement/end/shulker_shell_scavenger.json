@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:end/end_city_explorer",
+  "display": {
+    "icon": {
+      "id": "minecraft:shulker_shell"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.end.shulker_shell_scavenger.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.end.shulker_shell_scavenger.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:shulker_shell"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 300
+  },
+  "sends_telemetry_event": true
+}

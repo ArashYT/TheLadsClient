@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:nether/into_the_inferno",
+  "display": {
+    "icon": {
+      "id": "minecraft:gilded_blackstone"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.nether.bastion_raider.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.nether.bastion_raider.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:gilded_blackstone"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 300
+  },
+  "sends_telemetry_event": true
+}

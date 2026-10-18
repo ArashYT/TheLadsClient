@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mining/root",
+  "display": {
+    "icon": {
+      "id": "minecraft:wooden_pickaxe"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mining.first_pickaxe.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mining.first_pickaxe.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:wooden_pickaxe"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 20
+  },
+  "sends_telemetry_event": true
+}

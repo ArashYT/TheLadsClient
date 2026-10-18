@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mining/deepslate_depths",
+  "display": {
+    "icon": {
+      "id": "minecraft:chiseled_tuff"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mining.tuff_mason.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mining.tuff_mason.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:chiseled_tuff"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 50
+  },
+  "sends_telemetry_event": true
+}

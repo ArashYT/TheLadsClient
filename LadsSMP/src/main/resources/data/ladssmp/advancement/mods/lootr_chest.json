@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mods/root",
+  "display": {
+    "icon": {
+      "id": "lootr:chest"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mods.lootr_chest.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mods.lootr_chest.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "lootr:chest"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  },
+  "sends_telemetry_event": true
+}

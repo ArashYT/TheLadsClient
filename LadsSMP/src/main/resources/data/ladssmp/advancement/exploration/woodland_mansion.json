@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:exploration/wanderlust",
+  "display": {
+    "icon": {
+      "id": "minecraft:totem_of_undying"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.exploration.woodland_mansion.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.exploration.woodland_mansion.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:emerald_block"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 1000
+  },
+  "sends_telemetry_event": true
+}

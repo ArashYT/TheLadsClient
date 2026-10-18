@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mods/root",
+  "display": {
+    "icon": {
+      "id": "smartbackpacks:backpack"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mods.smart_backpack.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mods.smart_backpack.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "smartbackpacks:backpack"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 250
+  },
+  "sends_telemetry_event": true
+}

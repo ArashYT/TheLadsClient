@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mining/first_pickaxe",
+  "display": {
+    "icon": {
+      "id": "minecraft:cobblestone"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mining.stone_quarry.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mining.stone_quarry.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:cobblestone"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 30
+  },
+  "sends_telemetry_event": true
+}

@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mods/root",
+  "display": {
+    "icon": {
+      "id": "cookingforblockheads:counter"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mods.cooking_counter.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mods.cooking_counter.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "cookingforblockheads:counter"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 150
+  },
+  "sends_telemetry_event": true
+}

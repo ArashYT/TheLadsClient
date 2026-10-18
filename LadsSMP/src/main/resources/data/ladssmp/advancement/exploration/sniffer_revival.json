@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:exploration/archaeologist",
+  "display": {
+    "icon": {
+      "id": "minecraft:sniffer_egg"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.exploration.sniffer_revival.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.exploration.sniffer_revival.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:sniffer_egg"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 500
+  },
+  "sends_telemetry_event": true
+}

@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:combat/blade_master",
+  "display": {
+    "icon": {
+      "id": "minecraft:sculk_shrieker"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.combat.warden_evader.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.combat.warden_evader.description"
+    },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:sculk_shrieker"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 1500
+  },
+  "sends_telemetry_event": true
+}

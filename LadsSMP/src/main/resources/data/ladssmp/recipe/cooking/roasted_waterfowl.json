@@ -1,0 +1,22 @@
+{
+  "type": "farmersdelight:cooking",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "experience": 0.8,
+  "cookingtime": 150,
+  "ingredients": [
+    "minecraft:cooked_chicken",
+    "minecraft:sweet_berries",
+    "minecraft:carrot"
+  ],
+  "recipe_book_tab": "meals",
+  "result": {
+    "id": "ladssmp:roasted_waterfowl"
+  }
+}

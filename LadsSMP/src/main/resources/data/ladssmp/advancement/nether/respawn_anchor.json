@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:nether/into_the_inferno",
+  "display": {
+    "icon": {
+      "id": "minecraft:respawn_anchor"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.nether.respawn_anchor.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.nether.respawn_anchor.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:respawn_anchor"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 300
+  },
+  "sends_telemetry_event": true
+}

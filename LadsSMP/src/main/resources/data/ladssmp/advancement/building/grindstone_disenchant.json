@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:building/anvil_smith",
+  "display": {
+    "icon": {
+      "id": "minecraft:grindstone"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.building.grindstone_disenchant.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.building.grindstone_disenchant.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:grindstone"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 40
+  },
+  "sends_telemetry_event": true
+}

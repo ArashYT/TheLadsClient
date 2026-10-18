@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:farming/green_thumb",
+  "display": {
+    "icon": {
+      "id": "minecraft:glow_berries"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.farming.glow_berry_gatherer.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.farming.glow_berry_gatherer.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:glow_berries"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 50
+  },
+  "sends_telemetry_event": true
+}

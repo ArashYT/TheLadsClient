@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:combat/first_blood",
+  "display": {
+    "icon": {
+      "id": "minecraft:diamond_sword"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.combat.blade_master.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.combat.blade_master.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:diamond_sword"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 150
+  },
+  "sends_telemetry_event": true
+}

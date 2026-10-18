@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:combat/first_blood",
+  "display": {
+    "icon": {
+      "id": "minecraft:phantom_membrane"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.combat.phantom_hunter.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.combat.phantom_hunter.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:phantom_membrane"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 100
+  },
+  "sends_telemetry_event": true
+}

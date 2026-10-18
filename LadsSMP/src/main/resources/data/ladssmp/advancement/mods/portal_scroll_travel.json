@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mods/waystone_discoverer",
+  "display": {
+    "icon": {
+      "id": "waystones:warp_scroll"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mods.portal_scroll_travel.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mods.portal_scroll_travel.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "waystones:warp_scroll"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 150
+  },
+  "sends_telemetry_event": true
+}

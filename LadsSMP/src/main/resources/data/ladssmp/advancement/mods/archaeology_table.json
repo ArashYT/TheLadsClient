@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mods/root",
+  "display": {
+    "icon": {
+      "id": "betterarcheology:archeology_table"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mods.archaeology_table.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mods.archaeology_table.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "betterarcheology:archeology_table"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 200
+  },
+  "sends_telemetry_event": true
+}
