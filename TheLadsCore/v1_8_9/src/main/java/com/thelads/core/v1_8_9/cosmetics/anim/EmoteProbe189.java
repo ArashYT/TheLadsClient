@@ -120,10 +120,10 @@ public final class EmoteProbe189 {
         shot(back + 300, "3p-back-a");
         shot(back + 300 + Math.round(groove.periodMs / 4), "3p-back-b");
         long inv = back + 1000;
-        at(inv - 300, () -> command("gamemode 0")); // the creative inventory has no player preview
+        at(inv - 300, () -> command("gamemode 0 @p")); // the creative inventory has no player preview
         at(inv, () -> { mc.gameSettings.hideGUI = false; mc.displayGuiScreen(new GuiInventory(mc.thePlayer)); });
         shot(inv + 400, "inventory");
-        at(inv + 600, () -> { mc.displayGuiScreen(null); command("gamemode 1"); });
+        at(inv + 600, () -> { mc.displayGuiScreen(null); command("gamemode 1 @p"); });
         long fp = inv + 900;
         at(fp, () -> mc.gameSettings.thirdPersonView = 0);
         for (int i = 0; i < 16; i++) shot(fp + 400 + Math.round(i * groove.periodMs / 16), String.format(Locale.ROOT, "fp-%02d", i));
