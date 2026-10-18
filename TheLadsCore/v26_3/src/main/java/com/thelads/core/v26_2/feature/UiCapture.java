@@ -121,6 +121,7 @@ final class UiCapture {
             LOGGER.info("Lads UI frame {} skipped: no frame was drawn (the QA window is minimized)", pendingShot);
             skippedShots++;
             pendingShot = null;
+            com.thelads.core.client.qa.QaProgress.hide(false);
         }
         if (pendingShot != null || shotRunning || (frames < resumeFrames && ticks < resumeTicks)) return;
         try {
@@ -469,7 +470,9 @@ final class UiCapture {
     private static void shot(String name) {
         if (!rendering) { LOGGER.info("Lads UI frame {} skipped: no frame is drawn (the QA window is minimized)", name); skippedShots++; return; }
         pendingShot = name;
-        com.thelads.core.client.qa.QaProgress.hideFrames(6); // the shot's brightness reads the menu's pixels: the QA bar stays out of those frames
+        // The shot's brightness reads the menu's pixels: the QA bar stays out of every frame until the screenshot is taken (the frames between
+        // this step and the shot are 20 and more after pause(), more than a few hideFrames cover).
+        com.thelads.core.client.qa.QaProgress.hide(true);
         shotDeadline = ticks + 20;
     }
 
@@ -494,12 +497,13 @@ final class UiCapture {
                     takenShots++;
                     LOGGER.info("Lads UI frame {}{}", output, Double.isNaN(world) ? "" : " (world brightness in the preview " + f(world) + ")");
                 } catch (Exception failure) { fail(name + ": " + failure); }
-                finally { image.close(); pendingShot = null; shotRunning = false; }
+                finally { image.close(); pendingShot = null; shotRunning = false; com.thelads.core.client.qa.QaProgress.hide(false); }
             });
         } catch (Exception failure) {
             fail(name + ": " + failure);
             pendingShot = null;
             shotRunning = false;
+            com.thelads.core.client.qa.QaProgress.hide(false);
         }
     }
 
@@ -520,6 +524,7 @@ final class UiCapture {
     private static void finish(Minecraft mc) {
         if (!restored) restore(mc);
         step = 999;
+        com.thelads.core.client.qa.QaProgress.hide(false);
         com.thelads.core.client.qa.QaProgress.done();
         String how = "reset questions answered by click, Esc and Enter; Fullbright followed through the open menu (control and live); " + takenShots + " frames saved, "
             + skippedShots + " skipped (none are skipped unless the window draws no frames)";
