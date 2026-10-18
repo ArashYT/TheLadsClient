@@ -1,6 +1,12 @@
-"""pytest -q (pytest-aiohttp; pytest.ini sets asyncio_mode=auto). Mojang is faked: has_joined answers from PLAYERS."""
+"""pytest -q (pytest-aiohttp; pytest.ini sets asyncio_mode=auto).
+Tests both Phase 1 emote relay and Phase 2 backend (SQLite store, equip relay, Tebex webhooks, link codes, admin CLI).
+"""
 import asyncio
+import hashlib
+import hmac
+import json
 import re
+import sqlite3
 
 import aiohttp
 import pytest
@@ -26,9 +32,10 @@ def fake_mojang(monkeypatch):
 
 
 @pytest.fixture
-async def client(aiohttp_client, fake_mojang):
+async def client(aiohttp_client, fake_mojang, tmp_path):
     app = web.Application()
-    cosmetics.setup(app)
+    db_file = tmp_path / "cosmetics.db"
+    cosmetics.setup(app, db_path=db_file)
     return await aiohttp_client(app)
 
 
@@ -54,6 +61,10 @@ async def closed(ws):
     assert msg.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING)
     return ws.close_code
 
+
+# ---------------------------------------------------------------------------
+# Phase 1 Relay & Auth Tests
+# ---------------------------------------------------------------------------
 
 def test_server_id_matches_java_vectors():
     # Same vectors as CosmeticsLinkTest: Minecraft-style signed hex, so negative digests start with '-'.
@@ -176,13 +187,13 @@ async def test_profile(client):
     assert (await client.get("/cosmetics/profile/nope")).status == 400
 
 
-async def test_dev_insecure_auth_skips_mojang(aiohttp_client, monkeypatch):
+async def test_dev_insecure_auth_skips_mojang(aiohttp_client, monkeypatch, tmp_path):
     async def boom(name, sid):
         raise AssertionError("Mojang must not be asked in dev mode")
 
     monkeypatch.setattr(cosmetics, "has_joined", boom)
     app = web.Application()
-    cosmetics.setup(app, insecure=True)
+    cosmetics.setup(app, insecure=True, db_path=tmp_path / "dev.db")
     ws, players = await login(await aiohttp_client(app), "LadsQA", "d" * 32)
     assert players == []
 
@@ -190,3 +201,480 @@ async def test_dev_insecure_auth_skips_mojang(aiohttp_client, monkeypatch):
 def test_dev_insecure_auth_refuses_public_bind():
     with pytest.raises(SystemExit):
         cosmetics.main(["--dev-insecure-auth", "--host", "0.0.0.0"])
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: SQLite Store Unit Tests
+# ---------------------------------------------------------------------------
+
+def test_sqlite_schema_initialization(tmp_path):
+    db_file = tmp_path / "schema_test.db"
+    store = cosmetics.CosmeticsStore(db_file)
+
+    with store._get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = {row[0] for row in cur.fetchall()}
+        assert {"entitlements", "equipped", "transactions", "link_codes"}.issubset(tables)
+
+        cur.execute("SELECT name FROM sqlite_master WHERE type='index';")
+        indices = {row[0] for row in cur.fetchall()}
+        assert "idx_entitlements_uuid" in indices
+        assert "idx_entitlements_item" in indices
+        assert "idx_equipped_uuid" in indices
+        assert "idx_transactions_uuid" in indices
+        assert "idx_link_codes_uuid" in indices
+
+
+def test_sqlite_grant_and_revoke(tmp_path):
+    store = cosmetics.CosmeticsStore(tmp_path / "grant_test.db")
+    assert not store.has_entitlement_sync(A, "lads:cloak_aurora")
+
+    store.grant_sync(A, "lads:cloak_aurora", source="tebex")
+    assert store.has_entitlement_sync(A, "lads:cloak_aurora")
+
+    profile = store.get_profile_sync(A)
+    assert "lads:cloak_aurora" in profile["owned"]
+    assert "lads:groove" in profile["owned"]
+
+    # Revoke item
+    store.revoke_sync(A, "lads:cloak_aurora")
+    assert not store.has_entitlement_sync(A, "lads:cloak_aurora")
+    profile = store.get_profile_sync(A)
+    assert "lads:cloak_aurora" not in profile["owned"]
+
+    # Re-grant item (un-revokes)
+    store.grant_sync(A, "lads:cloak_aurora", source="admin")
+    assert store.has_entitlement_sync(A, "lads:cloak_aurora")
+
+
+def test_sqlite_equipped_and_auto_unequip(tmp_path):
+    store = cosmetics.CosmeticsStore(tmp_path / "equip_test.db")
+    store.grant_sync(A, "lads:cloak_aurora", source="tebex")
+    store.set_equipped_sync(A, "cloak", "lads:cloak_aurora")
+
+    profile = store.get_profile_sync(A)
+    assert profile["equipped"] == {"cloak": "lads:cloak_aurora"}
+
+    # Overwrite slot
+    store.grant_sync(A, "lads:cloak_founder", source="tebex")
+    store.set_equipped_sync(A, "cloak", "lads:cloak_founder")
+    assert store.get_profile_sync(A)["equipped"]["cloak"] == "lads:cloak_founder"
+
+    # Revoke active item -> auto-unequips from equipped table
+    store.revoke_sync(A, "lads:cloak_founder")
+    assert store.get_profile_sync(A)["equipped"] == {}
+
+    # Manual unequip
+    store.set_equipped_sync(A, "cloak", "lads:cloak_aurora")
+    store.remove_equipped_sync(A, "cloak")
+    assert store.get_profile_sync(A)["equipped"] == {}
+
+
+def test_sqlite_transaction_idempotency(tmp_path):
+    store = cosmetics.CosmeticsStore(tmp_path / "tx_test.db")
+    tx1 = store.record_transaction_sync("tbx-101", "payment.completed", A, ["lads:cloak_aurora"])
+    assert tx1["already_processed"] is False
+
+    # Second delivery with same transaction ID returns already_processed = True
+    tx2 = store.record_transaction_sync("tbx-101", "payment.completed", A, ["lads:cloak_aurora"])
+    assert tx2["already_processed"] is True
+
+    # Refund transaction
+    store.grant_sync(A, "lads:cloak_aurora", source="tebex:tbx-101")
+    store.set_equipped_sync(A, "cloak", "lads:cloak_aurora")
+    refund = store.refund_transaction_sync("tbx-101", "payment.refunded")
+    assert refund["already_refunded"] is False
+    assert refund["uuid"] == A
+    assert not store.has_entitlement_sync(A, "lads:cloak_aurora")
+    assert store.get_profile_sync(A)["equipped"] == {}
+
+    # Duplicate refund attempt
+    refund2 = store.refund_transaction_sync("tbx-101", "payment.refunded")
+    assert refund2["already_refunded"] is True
+
+
+def test_sqlite_link_codes(tmp_path):
+    store = cosmetics.CosmeticsStore(tmp_path / "link_test.db")
+    code = store.create_link_code_sync(A, ttl=600)
+    assert len(code) == 6
+    assert all(c in cosmetics.LINK_ALPHABET for c in code)
+
+    # Lookup succeeds
+    assert store.get_uuid_for_link_code_sync(code) == A
+    assert store.get_uuid_for_link_code_sync(code.lower()) == A
+
+    # Expired code returns None
+    code_exp = store.create_link_code_sync(B, ttl=-1)
+    assert store.get_uuid_for_link_code_sync(code_exp) is None
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Profile & Equip Relay Tests (WebSocket & HTTP)
+# ---------------------------------------------------------------------------
+
+async def test_profile_endpoint_with_entitlements(client):
+    app = client.app
+    store: cosmetics.CosmeticsStore = app[cosmetics.STORE]
+    await store.grant(A, "lads:cloak_aurora", source="tebex")
+    await store.set_equipped(A, "cloak", "lads:cloak_aurora")
+
+    res = await client.get(f"/cosmetics/profile/{A}")
+    assert res.status == 200
+    data = await res.json()
+    assert "lads:groove" in data["owned"]
+    assert "lads:cloak_aurora" in data["owned"]
+    assert data["equipped"] == {"cloak": "lads:cloak_aurora"}
+
+
+async def test_ws_equip_owned_item_broadcasts_to_room(client):
+    app = client.app
+    store: cosmetics.CosmeticsStore = app[cosmetics.STORE]
+    await store.grant(A, "lads:cloak_aurora", source="tebex")
+
+    a, _ = await login(client, "Alice", A)
+    b, _ = await login(client, "Bob", B)
+    c, _ = await login(client, "Cara", C, room=OTHER)
+    await a.receive_json(timeout=2)  # Alice gets Bob's join
+
+    # Alice equips her owned cloak
+    await a.send_json({"t": "equip", "slot": "cloak", "item": "lads:cloak_aurora"})
+
+    # Sender gets confirmation
+    conf = await a.receive_json(timeout=2)
+    assert conf["t"] == "equip" and conf["slot"] == "cloak" and conf["item"] == "lads:cloak_aurora" and conf.get("status") == "ok"
+
+    # Bob in same room receives the broadcast
+    broadcast_msg = await b.receive_json(timeout=2)
+    assert broadcast_msg == {"t": "equip", "uuid": A, "slot": "cloak", "item": "lads:cloak_aurora"}
+
+    # Cara in OTHER room gets nothing
+    await silent(c)
+
+    # Verify persisted in SQLite
+    profile = await store.get_profile(A)
+    assert profile["equipped"]["cloak"] == "lads:cloak_aurora"
+
+
+async def test_ws_equip_unowned_item_rejected(client):
+    a, _ = await login(client, "Alice", A)
+    b, _ = await login(client, "Bob", B)
+    await a.receive_json(timeout=2)  # join
+
+    # Alice attempts to equip an unowned item
+    await a.send_json({"t": "equip", "slot": "cloak", "item": "lads:cloak_dragon"})
+    err = await a.receive_json(timeout=2)
+    assert err == {"t": "error", "error": "item not owned"}
+
+    # Bob receives no broadcast
+    await silent(b)
+
+    # SQLite store was not updated
+    store: cosmetics.CosmeticsStore = client.app[cosmetics.STORE]
+    profile = await store.get_profile(A)
+    assert "cloak" not in profile["equipped"]
+
+
+async def test_ws_unequip_item(client):
+    app = client.app
+    store: cosmetics.CosmeticsStore = app[cosmetics.STORE]
+    await store.grant(A, "lads:cloak_aurora", source="tebex")
+    await store.set_equipped(A, "cloak", "lads:cloak_aurora")
+
+    a, _ = await login(client, "Alice", A)
+    b, _ = await login(client, "Bob", B)
+    await a.receive_json(timeout=2)
+
+    # Alice un-equips cloak
+    await a.send_json({"t": "equip", "slot": "cloak", "item": None})
+
+    conf = await a.receive_json(timeout=2)
+    assert conf["t"] == "equip" and conf["slot"] == "cloak" and conf["item"] is None
+
+    b_msg = await b.receive_json(timeout=2)
+    assert b_msg == {"t": "equip", "uuid": A, "slot": "cloak", "item": None}
+
+    profile = await store.get_profile(A)
+    assert "cloak" not in profile["equipped"]
+
+
+async def test_http_post_equip(client):
+    app = client.app
+    store: cosmetics.CosmeticsStore = app[cosmetics.STORE]
+    await store.grant(A, "lads:cloak_aurora", source="admin")
+
+    # Equipping owned item succeeds
+    res = await client.post("/cosmetics/equip", json={"uuid": A, "slot": "cloak", "item": "lads:cloak_aurora"})
+    assert res.status == 200
+    data = await res.json()
+    assert data["status"] == "ok" and data["item"] == "lads:cloak_aurora"
+
+    # Equipping unowned item returns 403
+    res_bad = await client.post("/cosmetics/equip", json={"uuid": A, "slot": "hat", "item": "lads:hat_sombrero"})
+    assert res_bad.status == 403
+
+    # Invalid UUID returns 400
+    res_inv = await client.post("/cosmetics/equip", json={"uuid": "bad-uuid", "slot": "cloak", "item": None})
+    assert res_inv.status == 400
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: In-Game Link Code Flow Tests
+# ---------------------------------------------------------------------------
+
+async def test_ws_link_code_generation(client):
+    a, _ = await login(client, "Alice", A)
+    await a.send_json({"t": "link"})
+    res = await a.receive_json(timeout=2)
+    assert res["t"] == "link_code"
+    code = res["code"]
+    assert len(code) == 6
+    assert res["uuid"] == A
+    assert res["expires_in"] == 600
+
+    # Resolve via HTTP GET /cosmetics/link/{code}
+    verify_res = await client.get(f"/cosmetics/link/{code}")
+    assert verify_res.status == 200
+    v_data = await verify_res.json()
+    assert v_data["code"] == code and v_data["uuid"] == A and v_data["valid"] is True
+
+
+async def test_http_link_start_and_verify(client):
+    start_res = await client.get(f"/cosmetics/link/start?uuid={B}")
+    assert start_res.status == 200
+    s_data = await start_res.json()
+    code = s_data["code"]
+    assert len(code) == 6
+    assert s_data["uuid"] == B
+
+    # Query param verify
+    check_res = await client.get(f"/cosmetics/link/verify?code={code}")
+    assert check_res.status == 200
+    assert (await check_res.json())["uuid"] == B
+
+    # Non-existent code returns 404
+    missing_res = await client.get("/cosmetics/link/ZZZZZZ")
+    assert missing_res.status == 404
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Tebex Webhook Tests
+# ---------------------------------------------------------------------------
+
+def make_tebex_sig(payload_bytes: bytes, secret: str, two_step: bool = True) -> str:
+    if two_step:
+        bhash = hashlib.sha256(payload_bytes).hexdigest()
+        return hmac.new(secret.encode("utf-8"), bhash.encode("utf-8"), hashlib.sha256).hexdigest()
+    else:
+        return hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
+
+
+async def test_tebex_webhook_handshake(client):
+    # Tebex validation.webhook event
+    payload = {
+        "id": "val-987654",
+        "type": "validation.webhook",
+        "date": "2026-10-18T16:00:00Z"
+    }
+    res = await client.post("/cosmetics/tebex", json=payload)
+    assert res.status == 200
+    assert (await res.json()) == {"id": "val-987654"}
+
+
+async def test_tebex_webhook_signatures(aiohttp_client, tmp_path):
+    secret = "test_tebex_secret_xyz"
+    app = web.Application()
+    cosmetics.setup(app, db_path=tmp_path / "sig.db", tebex_secret=secret)
+    cl = await aiohttp_client(app)
+
+    payload = json.dumps({
+        "id": "val-1",
+        "type": "validation.webhook"
+    }).encode("utf-8")
+
+    # 1. Valid two-step signature
+    sig_two_step = make_tebex_sig(payload, secret, two_step=True)
+    res1 = await cl.post("/cosmetics/tebex", data=payload, headers={"X-Tebex-Signature": sig_two_step, "Content-Type": "application/json"})
+    assert res1.status == 200
+
+    # 2. Valid single-step signature via X-Signature header
+    sig_single = make_tebex_sig(payload, secret, two_step=False)
+    res2 = await cl.post("/cosmetics/tebex", data=payload, headers={"X-Signature": sig_single, "Content-Type": "application/json"})
+    assert res2.status == 200
+
+    # 3. Invalid signature
+    res_bad = await cl.post("/cosmetics/tebex", data=payload, headers={"X-Tebex-Signature": "wrongsig", "Content-Type": "application/json"})
+    assert res_bad.status == 401
+
+    # 4. Missing signature
+    res_missing = await cl.post("/cosmetics/tebex", data=payload, headers={"Content-Type": "application/json"})
+    assert res_missing.status == 401
+
+
+async def test_tebex_payment_completed_and_idempotency(client):
+    payload = {
+        "id": "evt-1001",
+        "type": "payment.completed",
+        "subject": {
+            "transaction_id": "tbx-pay-999",
+            "player": {
+                "uuid": A,
+                "name": "Alice"
+            },
+            "packages": [
+                {"id": 42, "name": "lads:cloak_aurora"}
+            ]
+        }
+    }
+
+    # First delivery: grants cosmetic
+    res1 = await client.post("/cosmetics/tebex", json=payload)
+    assert res1.status == 200
+    data1 = await res1.json()
+    assert data1["status"] == "granted"
+    assert data1["transaction_id"] == "tbx-pay-999"
+    assert "lads:cloak_aurora" in data1["items"]
+
+    # Verify profile now reflects ownership
+    p_res = await client.get(f"/cosmetics/profile/{A}")
+    assert "lads:cloak_aurora" in (await p_res.json())["owned"]
+
+    # Second delivery with same transaction ID: idempotent already_processed
+    res2 = await client.post("/cosmetics/tebex", json=payload)
+    assert res2.status == 200
+    assert (await res2.json())["status"] == "already_processed"
+
+
+async def test_tebex_payment_completed_resolves_link_code(client):
+    # Alice generates a link code
+    store: cosmetics.CosmeticsStore = client.app[cosmetics.STORE]
+    code = await store.create_link_code(A)
+
+    # Tebex sends webhook where customer provided the link code
+    payload = {
+        "id": "evt-link-1",
+        "type": "payment.completed",
+        "subject": {
+            "transaction_id": "tbx-link-pay-1",
+            "customer": {
+                "link_code": code
+            },
+            "packages": [
+                {"id": 99, "name": "lads:hat_wizard"}
+            ]
+        }
+    }
+
+    res = await client.post("/cosmetics/tebex", json=payload)
+    assert res.status == 200
+    data = await res.json()
+    assert data["status"] == "granted"
+    assert data["uuid"] == A
+    assert "lads:hat_wizard" in data["items"]
+
+    # Alice owns the hat
+    profile = await store.get_profile(A)
+    assert "lads:hat_wizard" in profile["owned"]
+
+
+async def test_tebex_refund_revokes_and_unequips(client):
+    store: cosmetics.CosmeticsStore = client.app[cosmetics.STORE]
+
+    # 1. Purchase item
+    buy_payload = {
+        "id": "evt-buy-1",
+        "type": "payment.completed",
+        "subject": {
+            "transaction_id": "tbx-refund-1",
+            "player": {"uuid": A},
+            "packages": [{"id": 1, "name": "lads:cloak_aurora"}]
+        }
+    }
+    await client.post("/cosmetics/tebex", json=buy_payload)
+    assert "lads:cloak_aurora" in (await store.get_profile(A))["owned"]
+
+    # 2. Player equips the item
+    await store.set_equipped(A, "cloak", "lads:cloak_aurora")
+    assert (await store.get_profile(A))["equipped"]["cloak"] == "lads:cloak_aurora"
+
+    # 3. Webhook sends payment.refunded
+    refund_payload = {
+        "id": "evt-ref-1",
+        "type": "payment.refunded",
+        "subject": {
+            "transaction_id": "tbx-refund-1"
+        }
+    }
+    res = await client.post("/cosmetics/tebex", json=refund_payload)
+    assert res.status == 200
+    data = await res.json()
+    assert data["status"] == "revoked"
+
+    # Entitlement is revoked and slot unequipped
+    profile = await store.get_profile(A)
+    assert "lads:cloak_aurora" not in profile["owned"]
+    assert "cloak" not in profile["equipped"]
+
+    # Duplicate refund returns already_refunded
+    res_dup = await client.post("/cosmetics/tebex", json=refund_payload)
+    assert res_dup.status == 200
+    assert (await res_dup.json())["status"] == "already_refunded"
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Staff Admin CLI Tests
+# ---------------------------------------------------------------------------
+
+def test_admin_cli_functions(tmp_path, capsys):
+    db_file = tmp_path / "admin_cli.db"
+
+    # 1. Grant
+    rc_grant = cosmetics.cli_grant(A, "lads:cloak_aurora", source="staff_grant", db_path=db_file)
+    assert rc_grant == 0
+    out = capsys.readouterr().out
+    assert "Granted 'lads:cloak_aurora'" in out
+
+    # 2. List
+    rc_list = cosmetics.cli_list(A, db_path=db_file)
+    assert rc_list == 0
+    out_list = capsys.readouterr().out
+    assert "lads:cloak_aurora" in out_list
+    assert "staff_grant" in out_list
+
+    # 3. Revoke
+    rc_revoke = cosmetics.cli_revoke(A, "lads:cloak_aurora", db_path=db_file)
+    assert rc_revoke == 0
+    out_rev = capsys.readouterr().out
+    assert "Revoked 'lads:cloak_aurora'" in out_rev
+
+    # 4. List again shows revoked
+    cosmetics.cli_list(A, db_path=db_file)
+    out_after = capsys.readouterr().out
+    assert "Revoked Entitlements:" in out_after
+    assert "lads:cloak_aurora" in out_after
+
+    # 5. Invalid UUID exits with 1
+    assert cosmetics.cli_grant("bad-uuid", "lads:cloak_aurora", db_path=db_file) == 1
+
+
+def test_main_cli_admin_subcommands(tmp_path, capsys):
+    db_file = str(tmp_path / "main_admin.db")
+
+    # 1. cosmetics.main(["grant", ...])
+    with pytest.raises(SystemExit) as exc1:
+        cosmetics.main(["grant", A, "lads:cloak_aurora", "--source", "test_source", "--db", db_file])
+    assert exc1.value.code == 0
+    assert "Granted 'lads:cloak_aurora'" in capsys.readouterr().out
+
+    # 2. cosmetics.main(["list", ...])
+    with pytest.raises(SystemExit) as exc2:
+        cosmetics.main(["list", A, "--db", db_file])
+    assert exc2.value.code == 0
+    assert "lads:cloak_aurora" in capsys.readouterr().out
+
+    # 3. cosmetics.main(["revoke", ...])
+    with pytest.raises(SystemExit) as exc3:
+        cosmetics.main(["revoke", A, "lads:cloak_aurora", "--db", db_file])
+    assert exc3.value.code == 0
+    assert "Revoked 'lads:cloak_aurora'" in capsys.readouterr().out
+
