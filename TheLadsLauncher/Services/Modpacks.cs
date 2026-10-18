@@ -34,6 +34,7 @@ public sealed class ModpackInstance
     public string? PackVersion { get; set; }
     public int MaxRamMb { get; set; }
     public DateTime? LastPlayedUtc { get; set; }
+    public bool? LadsCore { get; set; }
 
     [JsonIgnore] public string Directory { get; set; } = "";
     /// <summary>Set for another launcher's instance (<see cref="ExternalInstances.ToModpack"/>): its own game folder, to which nothing but

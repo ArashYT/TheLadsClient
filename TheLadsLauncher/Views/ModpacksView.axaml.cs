@@ -613,6 +613,7 @@ public partial class ModpacksView : UserControl
     // --preview-modpacks hooks.
     internal void ShowBrowse() => Tabs.SelectedItem = BrowseTab;
     internal void ShowExternal() => Tabs.SelectedItem = ExternalTab;
+    internal void ShowManageOverview() => InstanceTabs.SelectedIndex = 0;
     internal void PressPlay() => Play_Click(null, new RoutedEventArgs());
     internal string ManageStatusText => ManageStatus.Text ?? "";
     internal Process? RunningGame(string id) => _running.GetValueOrDefault(id);
@@ -771,6 +772,45 @@ public partial class ModpacksView : UserControl
         RamSlider.Value = Math.Clamp(instance.MaxRamMb / 1024.0, 0, 32);
         UpdateRamDisplay(instance.MaxRamMb);
         _updatingRam = false;
+
+        bool isExperience = ExperiencesService.AllExperiences.Any(e => string.Equals(e.Id, ExperiencesService.CanonicalPackId(instance.Id), StringComparison.OrdinalIgnoreCase));
+        if (isExperience)
+        {
+            instance.LadsCore = true;
+            LadsCoreToggle.IsEnabled = false;
+            LadsCoreToggle.IsChecked = true;
+            LadsCoreUnsupportedReason.Text = "Required for this official Experience.";
+            LadsCoreUnsupportedReason.Foreground = new SolidColorBrush(Color.Parse("#52A5E0"));
+            LadsCoreUnsupportedReason.IsVisible = true;
+        }
+        else
+        {
+            if (!instance.LadsCore.HasValue)
+            {
+                instance.LadsCore = ModpackCoreSync.ResolveDefaultLadsCore(instance);
+                if (!instance.IsExternal)
+                {
+                    try { Modpacks.Save(instance); } catch { }
+                }
+            }
+
+            bool supported = ModpackCoreSync.IsSupported(instance, out var reason);
+            if (!supported)
+            {
+                LadsCoreToggle.IsEnabled = false;
+                LadsCoreToggle.IsChecked = false;
+                LadsCoreUnsupportedReason.Text = reason ?? "Not supported for this version or loader.";
+                LadsCoreUnsupportedReason.Foreground = new SolidColorBrush(Color.Parse("#E06C75"));
+                LadsCoreUnsupportedReason.IsVisible = true;
+            }
+            else
+            {
+                LadsCoreToggle.IsEnabled = true;
+                LadsCoreToggle.IsChecked = instance.LadsCore.Value;
+                LadsCoreUnsupportedReason.IsVisible = false;
+            }
+        }
+
         ManageStatus.Text = "";
         UpdateCard.IsVisible = instance.Source != null;
         VersionBox.ItemsSource = null;
@@ -1288,6 +1328,17 @@ public partial class ModpacksView : UserControl
         toggle.IsCheckedChanged += (_, _) =>
         {
             bool nowEnabled = toggle.IsChecked == true;
+            bool isCore = string.Equals(item.BaseName, "theladscore", StringComparison.OrdinalIgnoreCase)
+                || item.DisplayName.IndexOf("The Lads Core", StringComparison.OrdinalIgnoreCase) >= 0
+                || item.DisplayName.IndexOf("LadsCore", StringComparison.OrdinalIgnoreCase) >= 0;
+
+            if (isCore && !nowEnabled && _selected != null && ExperiencesService.AllExperiences.Any(exp => string.Equals(exp.Id, ExperiencesService.CanonicalPackId(_selected.Id), StringComparison.OrdinalIgnoreCase)))
+            {
+                ManageStatus.Text = "Required for this official Experience.";
+                toggle.IsChecked = true;
+                return;
+            }
+
             try
             {
                 string oldPath = item.FilePath;
@@ -1296,9 +1347,24 @@ public partial class ModpacksView : UserControl
                 if (File.Exists(oldPath) && oldPath != newPath)
                 {
                     File.Move(oldPath, newPath);
+                    var oldIcon = oldPath + ".icon.png";
+                    var newIcon = newPath + ".icon.png";
+                    if (File.Exists(oldIcon))
+                    {
+                        try { File.Move(oldIcon, newIcon, overwrite: true); } catch { }
+                    }
                     item.FilePath = newPath;
                     item.FileName = Path.GetFileName(newPath);
                     item.Enabled = nowEnabled;
+                    if (isCore)
+                    {
+                        LadsCoreToggle.IsChecked = nowEnabled;
+                        if (_selected is { } selectedInst && !selectedInst.IsExternal)
+                        {
+                            selectedInst.LadsCore = nowEnabled;
+                            try { Modpacks.Save(selectedInst); } catch { }
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -3162,7 +3228,18 @@ public partial class ModpacksView : UserControl
         if (name.Length == 0) { ManageStatus.Text = "The name cannot be empty."; return; }
         i.Name = name;
         i.MaxRamMb = (int)(RamBox.Value ?? 0);
-        try { Modpacks.Save(i); OpenManage(i); ManageStatus.Text = "Saved."; }
+        bool isExperience = ExperiencesService.AllExperiences.Any(exp => string.Equals(exp.Id, ExperiencesService.CanonicalPackId(i.Id), StringComparison.OrdinalIgnoreCase));
+        if (!isExperience)
+        {
+            i.LadsCore = LadsCoreToggle.IsEnabled ? (LadsCoreToggle.IsChecked ?? false) : false;
+        }
+        try
+        {
+            Modpacks.Save(i);
+            ModpackCoreSync.Sync(i, status: msg => ManageStatus.Text = msg);
+            OpenManage(i);
+            ManageStatus.Text = "Saved.";
+        }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException) { ManageStatus.Text = error.Message; }
     }
 
