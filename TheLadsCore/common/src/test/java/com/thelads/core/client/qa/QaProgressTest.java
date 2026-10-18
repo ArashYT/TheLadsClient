@@ -164,9 +164,11 @@ class QaProgressTest {
         Counting g = new Counting();
         for (int i = 0; i < 2_000; i++) QaProgress.draw(g); // warm up: the first frame builds the text, the JIT compiles
         var threads = (com.sun.management.ThreadMXBean) java.lang.management.ManagementFactory.getThreadMXBean();
-        long before = threads.getThreadAllocatedBytes(Thread.currentThread().getId());
+        long before = threads.getThreadAllocatedBytes(Thread.currentThread().getId()), t0 = System.nanoTime();
         for (int i = 0; i < 50_000; i++) QaProgress.draw(g);
+        long took = System.nanoTime() - t0;
         long bytes = threads.getThreadAllocatedBytes(Thread.currentThread().getId()) - before;
+        System.out.println("QaProgress.draw: " + took / 50_000 + " ns per frame (the game's calls excluded), " + bytes + " bytes allocated over 50000 frames");
         assertTrue(bytes < 4_096, "allocated " + bytes + " bytes over 50000 frames");
         assertTrue(g.calls > 100_000);
     }
