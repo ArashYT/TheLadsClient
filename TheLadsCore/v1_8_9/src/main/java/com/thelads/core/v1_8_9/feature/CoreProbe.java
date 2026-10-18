@@ -408,7 +408,7 @@ public final class CoreProbe {
         List<String> labels = new java.util.ArrayList<>();
         for (GuiButton button : lads.mainButtons()) labels.add(button.displayString);
         List<String> expected = new java.util.ArrayList<>(Arrays.asList(I18n.format("menu.singleplayer"), I18n.format("menu.multiplayer"),
-            "Lads Mods", I18n.format("fml.menu.mods"), I18n.format("menu.options")));
+            "Lads Mods", I18n.format("fml.menu.mods"), "Cosmetics", I18n.format("menu.options")));
         if (com.thelads.core.v1_8_9.feature.Screenshots189.active()) expected.add("Screenshots");
         if (Loader.isModLoaded("replaymod")) expected.add("Replays");
         expected.addAll(Arrays.asList("More...", I18n.format("menu.quit"), "Switch Versions"));
