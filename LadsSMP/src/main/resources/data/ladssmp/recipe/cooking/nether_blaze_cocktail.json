@@ -11,12 +11,14 @@
   "experience": 0.8,
   "cookingtime": 150,
   "ingredients": [
-    "minecraft:glass_bottle",
     "minecraft:blaze_powder",
     "minecraft:nether_wart"
   ],
   "recipe_book_tab": "drinks",
   "result": {
     "id": "ladssmp:nether_blaze_cocktail"
+  },
+  "container": {
+    "id": "minecraft:glass_bottle"
   }
 }

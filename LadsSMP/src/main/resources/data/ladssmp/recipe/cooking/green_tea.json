@@ -11,11 +11,13 @@
   "experience": 0.4,
   "cookingtime": 80,
   "ingredients": [
-    "minecraft:glass_bottle",
     "minecraft:dried_kelp"
   ],
   "recipe_book_tab": "drinks",
   "result": {
     "id": "ladssmp:green_tea"
+  },
+  "container": {
+    "id": "minecraft:glass_bottle"
   }
 }

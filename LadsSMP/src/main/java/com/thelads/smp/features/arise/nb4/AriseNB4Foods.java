@@ -144,4 +144,10 @@ public final class AriseNB4Foods {
                 .onConsume(new ApplyStatusEffectsConsumeEffect(new MobEffectInstance(MobEffects.JUMP_BOOST, 1200, 1)))
                 .build();
     }
+
+    // --- Refreshing Beverages ---
+    public static final FoodProperties MELON_JUICE = propAlways(3, 0.6f);
+    public static Consumable melonJuiceConsumable() {
+        return Consumables.defaultDrink().build();
+    }
 }

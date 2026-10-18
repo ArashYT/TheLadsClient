@@ -2,10 +2,12 @@ package com.thelads.smp.features.arise.nb4;
 
 import net.fabricmc.fabric.api.entity.event.v1.ServerEntityCombatEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.monster.hoglin.Hoglin;
@@ -18,9 +20,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Entrypoint and event dispatcher for Native Batch NB4 features:
  * - Config loading and persistence (config/ladssmp/arise-nb4.json)
- * - Culinary items and recipes registration
+ * - Culinary items and recipes registration (unconditional registration for registry safety)
  * - Animal tallow drop butchery integration (Delightful Slaughter)
- * - Melon juicing in-world interaction (Delightful)
+ * - Melon juicing in-world and hand interaction (Delightful)
  */
 public final class AriseNB4FeatureManager {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsSMP/AriseNB4");
@@ -37,23 +39,28 @@ public final class AriseNB4FeatureManager {
         long start = System.currentTimeMillis();
         AriseNB4Config config = AriseNB4Config.load();
 
+        // Always register items to maintain registry integrity across world loads
+        AriseNB4Items.registerAll();
+
         if (config.foodsEnabled) {
-            AriseNB4Items.registerAll();
-            registerMelonJuicing();
-            registerButcheryTallow();
+            if (config.melonJuicing) {
+                registerMelonJuicing();
+            }
+            if (config.butcheryTallowDrops) {
+                registerButcheryTallow();
+            }
         }
 
-        LOGGER.info("[Arise NB4] Initialized in {} ms (Advancements={}, Foods={}, MelonJuicing={}, SlicedDirectly={}, SkipTicksAdv={}, TallowDrops={})",
+        LOGGER.info("[Arise NB4] Initialized in {} ms (Advancements={}, Foods={}, MelonJuicing={}, TallowDrops={})",
                 System.currentTimeMillis() - start,
                 config.advancementsEnabled,
                 config.foodsEnabled,
                 config.melonJuicing,
-                config.giveSlicedDirectly,
-                config.skipTicksAdvancements,
                 config.butcheryTallowDrops);
     }
 
     private static void registerMelonJuicing() {
+        // In-world block interaction: right-clicking a melon block with a glass bottle
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
             if (!AriseNB4Config.get().melonJuicing) {
                 return InteractionResult.PASS;
@@ -72,11 +79,45 @@ public final class AriseNB4FeatureManager {
                 if (!player.getAbilities().instabuild) {
                     held.shrink(1);
                 }
-                ItemStack juice = new ItemStack(AriseNB4Items.CITRUS_MOJITO);
+                // Destroy/carve the melon block so it cannot be infinitely juiced
+                world.destroyBlock(hitResult.getBlockPos(), false);
+                ItemStack juice = new ItemStack(AriseNB4Items.MELON_JUICE);
                 if (!player.getInventory().add(juice)) {
                     player.spawnAtLocation((ServerLevel) world, juice);
                 }
                 world.playSound(null, hitResult.getBlockPos(), SoundEvents.BOTTLE_FILL, SoundSource.PLAYERS, 1.0f, 1.0f);
+            }
+
+            return InteractionResult.SUCCESS;
+        });
+
+        // Item-based interaction: right-clicking bottle with melon slice in offhand
+        UseItemCallback.EVENT.register((player, world, hand) -> {
+            if (!AriseNB4Config.get().melonJuicing) {
+                return InteractionResult.PASS;
+            }
+
+            ItemStack held = player.getItemInHand(hand);
+            if (!held.is(Items.GLASS_BOTTLE)) {
+                return InteractionResult.PASS;
+            }
+
+            InteractionHand otherHand = (hand == InteractionHand.MAIN_HAND) ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
+            ItemStack other = player.getItemInHand(otherHand);
+            if (!other.is(Items.MELON_SLICE)) {
+                return InteractionResult.PASS;
+            }
+
+            if (!world.isClientSide()) {
+                if (!player.getAbilities().instabuild) {
+                    held.shrink(1);
+                    other.shrink(1);
+                }
+                ItemStack juice = new ItemStack(AriseNB4Items.MELON_JUICE);
+                if (!player.getInventory().add(juice)) {
+                    player.spawnAtLocation((ServerLevel) world, juice);
+                }
+                world.playSound(null, player.blockPosition(), SoundEvents.BOTTLE_FILL, SoundSource.PLAYERS, 1.0f, 1.0f);
             }
 
             return InteractionResult.SUCCESS;

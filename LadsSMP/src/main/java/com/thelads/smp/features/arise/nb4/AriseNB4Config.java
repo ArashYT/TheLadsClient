@@ -28,17 +28,11 @@ public final class AriseNB4Config {
     /** Multiplier applied to advancement experience reward payouts (default: 1.0). */
     public double advancementXpMultiplier = 1.0;
 
-    /** Ticks to skip between heavy advancement checks (Arise default: 40). */
-    public int skipTicksAdvancements = 40;
-
     /** Whether native Farmer's Delight addon culinary food & beverage items are enabled. */
     public boolean foodsEnabled = true;
 
     /** Whether melon juicing interaction with empty bottles is enabled (Arise default: true). */
     public boolean melonJuicing = true;
-
-    /** Whether slicing foods drops directly to player inventory instead of in-world (Arise default: false). */
-    public boolean giveSlicedDirectly = false;
 
     /** Whether butchery animal tallow drops from livestock are enabled. */
     public boolean butcheryTallowDrops = true;

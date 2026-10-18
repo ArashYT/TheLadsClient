@@ -11,7 +11,6 @@
   "experience": 0.7,
   "cookingtime": 140,
   "ingredients": [
-    "minecraft:bowl",
     "minecraft:apple",
     "minecraft:carrot",
     "minecraft:beetroot"
@@ -19,5 +18,8 @@
   "recipe_book_tab": "meals",
   "result": {
     "id": "ladssmp:hearty_salad"
+  },
+  "container": {
+    "id": "minecraft:bowl"
   }
 }

@@ -11,12 +11,14 @@
   "experience": 1.0,
   "cookingtime": 200,
   "ingredients": [
-    "minecraft:bowl",
     "minecraft:wheat",
     "minecraft:cooked_mutton"
   ],
   "recipe_book_tab": "meals",
   "result": {
     "id": "ladssmp:kangaroo_pasta"
+  },
+  "container": {
+    "id": "minecraft:bowl"
   }
 }

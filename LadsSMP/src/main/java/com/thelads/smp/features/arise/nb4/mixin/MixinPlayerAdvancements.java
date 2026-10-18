@@ -33,20 +33,18 @@ public abstract class MixinPlayerAdvancements {
         }
     }
 
-    @Inject(method = "award(Lnet/minecraft/advancements/AdvancementHolder;Ljava/lang/String;)Z", at = @At("RETURN"))
-    private void ladssmp$onAwardReturn(AdvancementHolder advancement, String criterionKey, CallbackInfoReturnable<Boolean> cir) {
-        if (cir.getReturnValue() && player != null) {
-            AdvancementProgress prog = this.getOrStartProgress(advancement);
-            if (prog.isDone()) {
-                double multiplier = AriseNB4Config.get().advancementXpMultiplier;
-                if (multiplier > 1.0) {
-                    int baseExp = advancement.value().rewards().experience();
-                    if (baseExp > 0) {
-                        int bonus = (int) Math.round(baseExp * (multiplier - 1.0));
-                        if (bonus > 0) {
-                            player.giveExperiencePoints(bonus);
-                        }
-                    }
+    @Inject(method = "award(Lnet/minecraft/advancements/AdvancementHolder;Ljava/lang/String;)Z", at = @At(value = "INVOKE", target = "Lnet/minecraft/advancements/AdvancementRewards;grant(Lnet/minecraft/server/level/ServerPlayer;)V"))
+    private void ladssmp$onGrantRewards(AdvancementHolder advancement, String criterionKey, CallbackInfoReturnable<Boolean> cir) {
+        if (!"ladssmp".equals(advancement.id().getNamespace())) {
+            return;
+        }
+        double multiplier = AriseNB4Config.get().advancementXpMultiplier;
+        if (multiplier > 1.0 && player != null) {
+            int baseExp = advancement.value().rewards().experience();
+            if (baseExp > 0) {
+                int bonus = (int) Math.round(baseExp * (multiplier - 1.0));
+                if (bonus > 0) {
+                    player.giveExperiencePoints(bonus);
                 }
             }
         }

@@ -41,10 +41,8 @@ public class AriseNB4UnitTest {
         AriseNB4Config cfg = new AriseNB4Config();
         assertTrue(cfg.advancementsEnabled, "Advancements should default to enabled");
         assertEquals(1.0, cfg.advancementXpMultiplier, 1e-6);
-        assertEquals(40, cfg.skipTicksAdvancements, "Arise default for skipTicksAdvancements is 40");
         assertTrue(cfg.foodsEnabled, "Foods should default to enabled");
         assertTrue(cfg.melonJuicing, "Arise default for melonJuicing is true");
-        assertFalse(cfg.giveSlicedDirectly, "Arise default for giveSlicedDirectly is false");
         assertTrue(cfg.butcheryTallowDrops);
         assertEquals(0.25, cfg.tallowDropChance, 1e-6);
 
@@ -59,9 +57,7 @@ public class AriseNB4UnitTest {
             AriseNB4Config loaded = gson.fromJson(r, AriseNB4Config.class);
             assertNotNull(loaded);
             assertTrue(loaded.advancementsEnabled);
-            assertEquals(40, loaded.skipTicksAdvancements);
             assertTrue(loaded.melonJuicing);
-            assertFalse(loaded.giveSlicedDirectly);
             assertEquals(0.25, loaded.tallowDropChance, 1e-6);
         }
     }
@@ -82,6 +78,10 @@ public class AriseNB4UnitTest {
 
         assertEquals(11, AriseNB4Foods.BISON_BURGER.nutrition());
         assertEquals(20.9f, AriseNB4Foods.BISON_BURGER.saturation(), 1e-4);
+
+        assertEquals(3, AriseNB4Foods.MELON_JUICE.nutrition());
+        assertEquals(3.6f, AriseNB4Foods.MELON_JUICE.saturation(), 1e-4);
+        assertTrue(AriseNB4Foods.MELON_JUICE.canAlwaysEat(), "Juice should be always consumable");
     }
 
     @Test
@@ -201,10 +201,11 @@ public class AriseNB4UnitTest {
                 "hoglin_sirloin", "strider_slice", "grilled_strider", "nether_skewer", "strider_moss_stew",
                 "citrus_mojito", "berry_margarita", "glow_berry_fizz", "nether_blaze_cocktail", "green_tea",
                 "azalea_tea", "berry_matcha_latte", "beef_burrito", "chicken_taco", "fish_taco",
-                "hearty_salad", "animal_tallow", "bison_patty", "bison_burger", "kangaroo_pasta"
+                "hearty_salad", "animal_tallow", "bison_patty", "bison_burger", "kangaroo_pasta",
+                "melon_juice"
         };
 
-        assertEquals(38, items.length);
+        assertEquals(39, items.length);
 
         Path baseAssets = Path.of("src/main/resources/assets/ladssmp");
         if (!Files.isDirectory(baseAssets)) {
