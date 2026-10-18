@@ -81,6 +81,7 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.feature.DynamicFPS189.register(); // replaces 1.7.3's Unfocused FPS cap (1.9.11)
         com.thelads.core.v1_8_9.feature.Minimap189.register(); // Xaero's Minimap from the launcher's 1.8.9 pack (1.9.11)
         com.thelads.core.v1_8_9.feature.jade.Jade189.register(); // the Lads Jade panel, as 1.20.1's (1.9.11)
+        com.thelads.core.v1_8_9.cosmetics.anim.EmoteAnim189.register(); // emotes: key, wheel, stop rules (poses: emotes mixins) (1.9.11)
         com.thelads.core.modules.StackRefillModule.get().noOffhand(); // 1.8.9 has no offhand
         com.thelads.core.v1_8_9.feature.Nametags189.register();
         OldAnimations189.register();

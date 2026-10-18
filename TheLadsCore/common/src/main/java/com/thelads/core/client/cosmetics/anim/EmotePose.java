@@ -7,6 +7,8 @@ import static com.thelads.core.client.cosmetics.anim.Emote.*;
  * emote. Each version reads its parts through these helpers after vanilla (and every other mod) posed the model.
  */
 public final class EmotePose {
+    /** First person: the arms sit a little out, down and forward of the shoulders, so the view shows forearms and hands, not a slab. */
+    private static final float[] FIRST_PERSON_SHIFT = {1, 0.5f, -6};
     public final float[] v = new float[CHANNELS];
     public float weight;
     public Emote emote;
@@ -29,8 +31,11 @@ public final class EmotePose {
         return rest + (v[ch(part, axis)] - rest) * weight;
     }
 
-    /** First person: the arm's pivot (pixels), rest pivot plus the emote's offset. */
-    public float armPos(int part, int axis) { return rest(part, axis) + v[ch(part, axis + X)] * weight; }
+    /** First person: the arm's pivot (pixels): rest pivot plus the emote's offset and the first-person shift, both with the weight. */
+    public float armPos(int part, int axis) {
+        float shift = FIRST_PERSON_SHIFT[axis] * (axis == 0 && part == RIGHT_ARM ? -1 : 1);
+        return rest(part, axis) + (v[ch(part, axis + X)] + shift) * weight;
+    }
 
     /** First person shows emote arms: the emote moves an arm and still shows. */
     public boolean firstPersonArms() { return weight > 0 && emote != null && (emote.rightArm || emote.leftArm); }

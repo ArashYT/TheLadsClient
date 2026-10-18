@@ -178,6 +178,7 @@ public final class NativeWorldVerification {
             SoundBreakProbe26.tick(captureReady && !captureBusy());
             HudOverrideCapture26.tick(captureReady && !captureBusy());
             Anim1910Capture26.tick(captureReady && !captureBusy());
+            com.thelads.core.v26_2.cosmetics.anim.EmoteCapture26.tick(gameDirectory, captureReady && !captureBusy()); // LADS_QA_EMOTE=1
             ServerFeaturesCapture.tick(gameDirectory, captureReady && (ServerFeaturesCapture.busy() || !captureBusy()));
             // After the Chat module's own capture, so its message does not land among the heads, and after the render scale probe,
             // whose world frames its chat screen would interrupt.
@@ -302,6 +303,7 @@ public final class NativeWorldVerification {
         if (ActionBarCapture.busy()) ActionBarCapture.frame(target, gameDirectory);
         if (HudOverrideCapture26.busy()) HudOverrideCapture26.frame(target, gameDirectory);
         if (Anim1910Capture26.busy()) Anim1910Capture26.frame(target, gameDirectory);
+        if (com.thelads.core.v26_2.cosmetics.anim.EmoteCapture26.busy()) com.thelads.core.v26_2.cosmetics.anim.EmoteCapture26.frame(target, gameDirectory);
         if (FixesCapture.busy()) FixesCapture.frame(target);
         renderMenuCapture(target);
         if(TITLE_CAPTURE&&active()&&!opened&&!titleCaptured&&titleSince>0
@@ -499,7 +501,8 @@ public final class NativeWorldVerification {
             || ActionBarCapture.busy()
             || WorldCapture.busy()
             || ItemsCapture.busy()
-            || FixesCapture.busy();
+            || FixesCapture.busy()
+            || com.thelads.core.v26_2.cosmetics.anim.EmoteCapture26.busy();
     }
     public static boolean worldReady() {
         Minecraft mc = Minecraft.getInstance();

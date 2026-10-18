@@ -552,6 +552,8 @@ if (requestedFeaturesOnly)
 }
 if (particlesOnly || soundsOnly || fixesOnly || hypixelOnly || actionBarOnly || world191Only || packsOnly) requiredWorldProbes = ["Lads world capture END:"];
 if (cheatsPhase != null) requiredWorldProbes = [.. requiredWorldProbes, "Lads cheats probe END:"];
+// 1.9.11 emotes (EmoteCapture26), Fabric versions: LADS_QA_EMOTE=1 photographs the emote in the QA world; the run waits for it.
+if (Env("LADS_QA_EMOTE") == "1" && !capabilities.Forge) requiredWorldProbes = [.. requiredWorldProbes, "Lads emote capture END:"];
 // 1.8.5 input lane, Fabric versions: input-latency pacing and synthetic mouse evidence in the QA world (InputProbe26 / InputProbe1201).
 bool inputVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_INPUT") == "1", inputProbeFailed = false;
 if (inputVerification) requiredWorldProbes = [.. requiredWorldProbes, "Lads input probe END:"];

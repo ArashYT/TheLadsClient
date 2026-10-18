@@ -33,6 +33,7 @@ public final class EmoteLibrary {
         b.track(ch(BODY, RY), 0, 8, 1, 5, 2, -8, 3, -5);
         b.track(ch(BODY, RX), 0, 6, .5f, 1.5f, 1, 6, 1.5f, 1.5f, 2, 6, 2.5f, 1.5f, 3, 6, 3.5f, 1.5f);
         b.track(ROOT, 0, -1.1f, 1, -1.3f, 2, 1.1f, 3, 1.3f);
+        b.track(ROOT + 1, 0, .9f, .5f, -.3f, 1, .9f, 1.5f, -.3f, 2, .9f, 2.5f, -.3f, 3, .9f, 3.5f, -.3f); // the bounce: down on the beat
         // Head: nods down on the beat, stays level against the hip tilt and twist.
         b.track(ch(HEAD, RX), 0, 9, .5f, -4, 1, 9, 1.5f, -4, 2, 9, 2.5f, -4, 3, 9, 3.5f, -4);
         b.track(ch(HEAD, RZ), 0, -4, 1, -3, 2, 4, 3, 3);
@@ -52,9 +53,9 @@ public final class EmoteLibrary {
     private static void pump(Emote.Builder b, int arm, float upBeat, int side) {
         for (int k = 0; k < 2; k++) {
             float up = upBeat + 2 * k, down = up + 1;
-            b.key(ch(arm, RX), up, -122, Ease.EASE).key(ch(arm, RX), down, -72, Ease.OUT);
-            b.key(ch(arm, RY), up, 28 * side, Ease.EASE).key(ch(arm, RY), down, 16 * side, Ease.OUT);
-            b.key(ch(arm, RZ), up, 3 * side, Ease.EASE).key(ch(arm, RZ), down, -4 * side, Ease.OUT);
+            b.key(ch(arm, RX), up, -110, Ease.EASE).key(ch(arm, RX), down, -42, Ease.OUT);
+            b.key(ch(arm, RY), up, 16 * side, Ease.EASE).key(ch(arm, RY), down, 8 * side, Ease.OUT);
+            b.key(ch(arm, RZ), up, 2 * side, Ease.EASE).key(ch(arm, RZ), down, -8 * side, Ease.OUT);
         }
     }
 }
