@@ -7,14 +7,17 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.thelads.core.client.hud.HudCover;
+import com.thelads.core.client.ladsapi.LadsBadge;
 import com.thelads.core.v1_20_1.hud.overlay.Nametags1201;
 import com.thelads.core.v1_20_1.hud.overlay.TabTweaks1201;
+import java.util.UUID;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.PlayerTabOverlay;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.scores.Objective;
@@ -42,12 +45,16 @@ public class TabOverlayMixin {
     private static final String LINE = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/util/FormattedCharSequence;III)I";
     private static final String NAME = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)I";
     private static final String FACE = "Lnet/minecraft/client/gui/components/PlayerFaceRenderer;draw(Lnet/minecraft/client/gui/GuiGraphics;Lnet/minecraft/resources/ResourceLocation;IIIZZ)V";
+    @Unique private static final ResourceLocation LADS_BADGE = new ResourceLocation(LadsBadge.TEXTURE_NAMESPACE, LadsBadge.TEXTURE_PATH);
+    @Unique private static int lads$lastBadgeTexId = -1;
 
     @Shadow @Final private Minecraft minecraft;
     /** The row whose face is being drawn (its skin was just asked for). */
     @Unique private PlayerInfo lads$row;
     /** Where the list is drawn this frame (its move and scale on the GUI's pose); null outside its render. */
     @Unique private Matrix4f lads$pose;
+    @Unique private PlayerInfo lads$widthInfo;
+    @Unique private PlayerInfo lads$renderInfo;
 
     @WrapMethod(method = RENDER)
     private void lads$moveTab(GuiGraphics graphics, int screenWidth, Scoreboard scoreboard, Objective objective, Operation<Void> original) {
@@ -61,6 +68,8 @@ public class TabOverlayMixin {
             original.call(graphics, (int) (screenWidth / scale), scoreboard, TabTweaks1201.removeObjectives ? null : objective);
         } finally {
             lads$pose = null;
+            lads$widthInfo = null;
+            lads$renderInfo = null;
             graphics.pose().popPose();
         }
     }
@@ -136,10 +145,57 @@ public class TabOverlayMixin {
         return TabTweaks1201.removeFooterShadow ? graphics.drawString(font, text, x, y, color, false) : original.call(graphics, font, text, x, y, color);
     }
 
+    @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/PlayerTabOverlay;getNameForDisplay(Lnet/minecraft/client/multiplayer/PlayerInfo;)Lnet/minecraft/network/chat/Component;", ordinal = 0))
+    private Component lads$captureWidthInfo(PlayerTabOverlay instance, PlayerInfo info, Operation<Component> original) {
+        lads$widthInfo = info;
+        return original.call(instance, info);
+    }
+
+    @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Font;width(Lnet/minecraft/network/chat/FormattedText;)I", ordinal = 0))
+    private int lads$rowWidth(Font font, FormattedText text, Operation<Integer> original) {
+        int w = original.call(font, text);
+        if (lads$widthInfo != null) {
+            if (lads$widthInfo.getProfile() != null && lads$widthInfo.getProfile().getId() != null) {
+                if (LadsBadge.showInTab(lads$widthInfo.getProfile().getId())) {
+                    w += LadsBadge.TAB_SIZE + LadsBadge.GAP;
+                }
+            }
+            lads$widthInfo = null;
+        }
+        return w;
+    }
+
+    @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/PlayerTabOverlay;getNameForDisplay(Lnet/minecraft/client/multiplayer/PlayerInfo;)Lnet/minecraft/network/chat/Component;", ordinal = 1))
+    private Component lads$captureRenderInfo(PlayerTabOverlay instance, PlayerInfo info, Operation<Component> original) {
+        lads$renderInfo = info;
+        return original.call(instance, info);
+    }
+
     /** The name: moved over the hidden face (or one pixel right of the larger hat) and drawn without shadow when asked. */
     @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = NAME, ordinal = 0))
     private int lads$name(GuiGraphics graphics, Font font, Component text, int x, int y, int color, Operation<Integer> original) {
         int moved = TabTweaks1201.removeHeads ? x - 8 : TabTweaks1201.improvedHeads ? x + 1 : x;
+        PlayerInfo info = lads$renderInfo;
+        lads$renderInfo = null;
+        if (info != null && info.getProfile() != null && info.getProfile().getId() != null) {
+            if (LadsBadge.showInTab(info.getProfile().getId())) {
+                var tex = minecraft.getTextureManager().getTexture(LADS_BADGE);
+                if (tex != null) {
+                    int id = tex.getId();
+                    if (id != lads$lastBadgeTexId && id != -1) {
+                        lads$lastBadgeTexId = id;
+                        tex.setFilter(true, false);
+                    }
+                }
+                float alpha = ((color >> 24) & 0xFF) / 255.0F;
+                if (alpha <= 0.0F) alpha = 1.0F;
+                graphics.setColor(1.0F, 1.0F, 1.0F, alpha);
+                graphics.blit(LADS_BADGE, moved, y, LadsBadge.TAB_SIZE, LadsBadge.TAB_SIZE, 0.0F, 0.0F,
+                        LadsBadge.TEXTURE_SIZE, LadsBadge.TEXTURE_SIZE, LadsBadge.TEXTURE_SIZE, LadsBadge.TEXTURE_SIZE);
+                graphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
+                moved += LadsBadge.TAB_SIZE + LadsBadge.GAP;
+            }
+        }
         return TabTweaks1201.removeBodyShadow ? graphics.drawString(font, text, moved, y, color, false) : original.call(graphics, font, text, moved, y, color);
     }
 
