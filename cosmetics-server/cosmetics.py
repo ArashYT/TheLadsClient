@@ -974,33 +974,35 @@ def main(argv=None) -> None:
     if raw_args:
         first = raw_args[0].lower()
         if first in ("grant", "revoke", "list", "admin") or first.startswith("--grant") or first.startswith("--revoke") or first.startswith("--list"):
-            admin_parser = argparse.ArgumentParser(description="Lads Cosmetics Staff Admin CLI")
-            admin_parser.add_argument("--db", default=None, help="Path to cosmetics.db")
+            db_parent = argparse.ArgumentParser(add_help=False)
+            db_parent.add_argument("--db", default=None, help="Path to cosmetics.db")
+
+            admin_parser = argparse.ArgumentParser(description="Lads Cosmetics Staff Admin CLI", parents=[db_parent])
 
             # Handle 'admin grant ...' or 'grant ...'
             sub = admin_parser.add_subparsers(dest="action")
-            grant_p = sub.add_parser("grant", help="Grant cosmetic entitlement")
+            grant_p = sub.add_parser("grant", help="Grant cosmetic entitlement", parents=[db_parent])
             grant_p.add_argument("uuid", help="Minecraft player UUID (plain hex or hyphenated)")
             grant_p.add_argument("item_id", help="Cosmetic item ID (e.g. lads:cloak_aurora)")
             grant_p.add_argument("--source", default="admin", help="Grant source (default: admin)")
 
-            revoke_p = sub.add_parser("revoke", help="Revoke cosmetic entitlement")
+            revoke_p = sub.add_parser("revoke", help="Revoke cosmetic entitlement", parents=[db_parent])
             revoke_p.add_argument("uuid", help="Minecraft player UUID")
             revoke_p.add_argument("item_id", help="Cosmetic item ID")
 
-            list_p = sub.add_parser("list", help="List cosmetic entitlements and equipped items")
+            list_p = sub.add_parser("list", help="List cosmetic entitlements and equipped items", parents=[db_parent])
             list_p.add_argument("uuid", help="Minecraft player UUID")
 
-            admin_sub = sub.add_parser("admin", help="Admin subcommands")
+            admin_sub = sub.add_parser("admin", help="Admin subcommands", parents=[db_parent])
             admin_sub_action = admin_sub.add_subparsers(dest="admin_action")
-            agrant_p = admin_sub_action.add_parser("grant")
+            agrant_p = admin_sub_action.add_parser("grant", parents=[db_parent])
             agrant_p.add_argument("uuid")
             agrant_p.add_argument("item_id")
             agrant_p.add_argument("--source", default="admin")
-            arevoke_p = admin_sub_action.add_parser("revoke")
+            arevoke_p = admin_sub_action.add_parser("revoke", parents=[db_parent])
             arevoke_p.add_argument("uuid")
             arevoke_p.add_argument("item_id")
-            alist_p = admin_sub_action.add_parser("list")
+            alist_p = admin_sub_action.add_parser("list", parents=[db_parent])
             alist_p.add_argument("uuid")
 
             parsed, _ = admin_parser.parse_known_args(raw_args)
