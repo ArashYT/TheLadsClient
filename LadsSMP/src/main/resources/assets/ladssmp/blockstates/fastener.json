@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "facing=down": { "model": "ladssmp:block/fastener", "x": 180 },
+    "facing=up": { "model": "ladssmp:block/fastener" },
+    "facing=north": { "model": "ladssmp:block/fastener", "x": 90 },
+    "facing=south": { "model": "ladssmp:block/fastener", "x": 90, "y": 180 },
+    "facing=west": { "model": "ladssmp:block/fastener", "x": 90, "y": 270 },
+    "facing=east": { "model": "ladssmp:block/fastener", "x": 90, "y": 90 }
+  }
+}
