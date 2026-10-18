@@ -252,6 +252,7 @@ class HudBehaviorTest {
     @ParameterizedTest
     @CsvSource({"false,false", "false,true", "true,false", "true,true"})
     void keystrokesBoundsAreExactlyTheKeysOuterEdges(boolean cps, boolean space) {
+        choice("Keystrokes", "Style", 1);
         flag("Keystrokes", "Show CPS", cps);
         flag("Keystrokes", "Show space bar", space);
         HudElement element = named(new KeystrokesHudElement(), "Keystrokes");
@@ -280,6 +281,7 @@ class HudBehaviorTest {
 
     @Test
     void keystrokesRowsLineUpOnBothEdges() {
+        choice("Keystrokes", "Style", 1);
         HudElement element = named(new KeystrokesHudElement(), "Keystrokes");
         element.render(graphics);
         int x = element.getX(), right = x + element.getWidth();

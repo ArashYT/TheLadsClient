@@ -33,6 +33,8 @@ public class ConfigManager {
     static final String HUD_1910_FLAG = "hud1910OverrideApplied";
     /** Marks the 1.9.11 one-time Better F3 override (apply1911BetterF3Override). */
     static final String F3_1911_FLAG = "betterF31911Applied";
+    /** Marks the 1.9.12 one-time Keystrokes Clean look override (apply1912KeystrokesOverride). */
+    public static final String KEYSTROKES_1912_FLAG = "keystrokesStyleMigrated";
     /** 1.9.11: the game versions whose Emotes key clash (another mod's default on B) was resolved once (EmoteKeys, each version). */
     static final String EMOTE_KEYS_FLAG = "emoteKeyClashResolved";
     private static final java.util.Set<String> emoteKeysResolved = new java.util.concurrent.CopyOnWriteArraySet<>();
@@ -99,6 +101,7 @@ public class ConfigManager {
         hud.addProperty("hudFpsCapOnDefault", true); // marks the 1.9.2 migration of the old uncapped default (applyJson)
         hud.addProperty(HUD_1910_FLAG, true); // marks the 1.9.10 one-time HUD override (apply1910HudOverride)
         hud.addProperty(F3_1911_FLAG, true); // marks the 1.9.11 one-time Better F3 override (apply1911BetterF3Override)
+        hud.addProperty(KEYSTROKES_1912_FLAG, true); // marks the 1.9.12 one-time Keystrokes Clean look override (apply1912KeystrokesOverride)
         hud.addProperty("backgrounds", HudSettings.getInstance().isBackgrounds());
         hud.addProperty("hudFpsCapOptIn", HudSettings.getInstance().isHudFpsCapEnabled());
         hud.addProperty("hudFpsCapEnabled", HudSettings.getInstance().isHudFpsCapEnabled()); // read by 1.4.4 and older
@@ -323,6 +326,7 @@ public class ConfigManager {
             }
             if (!hud.has(HUD_1910_FLAG)) apply1910HudOverride();
             if (!hud.has(F3_1911_FLAG)) apply1911BetterF3Override();
+            if (!hud.has(KEYSTROKES_1912_FLAG)) apply1912KeystrokesOverride();
             if (hud.has("hudScale")) HudSettings.getInstance().setHudScale(hud.get("hudScale").getAsInt());
             if (hud.has("fadePlaylist")) {
                 HudSettings.getInstance().getFadePlaylist().clear();
@@ -379,6 +383,17 @@ public class ConfigManager {
     static void apply1911BetterF3Override() {
         Module f3 = ModuleManager.getInstance().getModule("BetterF3");
         if (f3 != null) f3.getOptions().forEach(Option::reset);
+    }
+
+    /**
+     * 1.9.12, once per config (owner): Keystrokes adopts the new "Clean" look as its default.
+     * If the player picks Classic afterwards, that choice stays.
+     */
+    static void apply1912KeystrokesOverride() {
+        Module keys = ModuleManager.getInstance().getModule("Keystrokes");
+        if (keys != null && keys.getOption("Style") instanceof DropdownOption style) {
+            style.setIndex(0);
+        }
     }
 
     /**
@@ -626,7 +641,7 @@ public class ConfigManager {
         save();
     }
 
-    private static boolean needsMigrationSave(JsonObject json) {
+    public static boolean needsMigrationSave(JsonObject json) {
         if (json == null) return false;
         if (!json.has(SkinLayersLodMigration.FLAG) || !json.get(SkinLayersLodMigration.FLAG).getAsBoolean()) {
             return true;
@@ -644,7 +659,7 @@ public class ConfigManager {
             }
         }
         if (json.get("hud") instanceof JsonObject hud) {
-            if (!hud.has("shadowOnDefault") || !hud.has("hudFpsCapOnDefault") || !hud.has(HUD_1910_FLAG) || !hud.has(F3_1911_FLAG)) return true;
+            if (!hud.has("shadowOnDefault") || !hud.has("hudFpsCapOnDefault") || !hud.has(HUD_1910_FLAG) || !hud.has(F3_1911_FLAG) || !hud.has(KEYSTROKES_1912_FLAG)) return true;
         }
         return false;
     }

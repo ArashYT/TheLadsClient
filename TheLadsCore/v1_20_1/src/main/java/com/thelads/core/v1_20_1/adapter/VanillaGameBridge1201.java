@@ -95,6 +95,13 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
     }
 
     @Override
+    public float getPitch() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) return 0;
+        return player.getXRot();
+    }
+
+    @Override
     public long getDayCount() {
         Minecraft mc = Minecraft.getInstance();
         return mc.level != null ? mc.level.getDayTime() / 24000L : 0;
@@ -307,6 +314,11 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
             case "SPACE": return mc.options.keyJump.isDown();
             case "LMB": return mc.options.keyAttack.isDown();
             case "RMB": return mc.options.keyUse.isDown();
+            case "SNK":
+            case "SNEAK":
+            case "SHIFT": return mc.options.keyShift.isDown();
+            case "SPR":
+            case "SPRINT": return mc.options.keySprint.isDown();
             default: return false;
         }
     }

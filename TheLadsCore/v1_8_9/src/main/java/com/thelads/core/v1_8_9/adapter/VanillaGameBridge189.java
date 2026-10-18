@@ -196,6 +196,12 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     }
 
     @Override
+    public float getPitch() {
+        if (mc().thePlayer == null) return 0;
+        return mc().thePlayer.rotationPitch;
+    }
+
+    @Override
     public long getDayCount() {
         return mc().theWorld != null ? mc().theWorld.getWorldTime() / 24000L : 0;
     }
@@ -305,6 +311,8 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         if (keyName.equalsIgnoreCase("SPACE")) return mc.gameSettings.keyBindJump.isKeyDown();
         if (keyName.equalsIgnoreCase("LMB")) return mc.gameSettings.keyBindAttack.isKeyDown();
         if (keyName.equalsIgnoreCase("RMB")) return mc.gameSettings.keyBindUseItem.isKeyDown();
+        if (keyName.equalsIgnoreCase("SNK") || keyName.equalsIgnoreCase("SNEAK") || keyName.equalsIgnoreCase("SHIFT")) return mc.gameSettings.keyBindSneak.isKeyDown();
+        if (keyName.equalsIgnoreCase("SPR") || keyName.equalsIgnoreCase("SPRINT")) return mc.gameSettings.keyBindSprint.isKeyDown();
         return false;
     }
 

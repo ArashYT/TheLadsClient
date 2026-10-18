@@ -91,6 +91,9 @@ public interface LadsGameBridge {
     /** Minecraft yaw normalized to [0, 360), with 0 = south; -1 when unavailable. */
     default float getYaw() { return -1.0f; }
 
+    /** Minecraft pitch in degrees (typically [-90, 90]); 0 when unavailable. */
+    default float getPitch() { return 0.0f; }
+
     long getDayCount();
 
     String getGameTime();

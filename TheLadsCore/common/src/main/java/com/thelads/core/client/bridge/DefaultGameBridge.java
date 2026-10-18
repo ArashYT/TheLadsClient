@@ -48,6 +48,11 @@ public class DefaultGameBridge implements LadsGameBridge {
     }
 
     @Override
+    public float getPitch() {
+        return 0.0f;
+    }
+
+    @Override
     public long getDayCount() {
         return 42;
     }
