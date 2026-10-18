@@ -19,7 +19,7 @@ public class BoolOption extends Option {
     }
 
     public boolean get() {
-        return value;
+        return com.thelads.core.client.ladsapi.ServerPolicy.applyBool(getModuleName(), getName(), value);
     }
 
     public void set(boolean value) {

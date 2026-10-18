@@ -47,6 +47,11 @@ public final class Fullbright189 {
         boolean factorChanged = Float.compare(currentFactor, lastFactor) != 0;
         lastFactor = currentFactor;
 
+        if (FullbrightModule.serverLimited() && mc.gameSettings != null && mc.gameSettings.gammaSetting > 1F) {
+            if (Float.isNaN(original)) original = mc.gameSettings.gammaSetting;
+            set(mc, 1F);
+        }
+
         if (module != null && module.isEnabled() && mc.thePlayer != null) {
             float wanted = (float) module.effectiveGamma();
             if (Float.isNaN(original)) original = Math.min(1F, mc.gameSettings.gammaSetting);

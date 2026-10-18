@@ -355,6 +355,14 @@ public class ModuleManager {
         disableNarrator.setEnabled(true);
         registerHidden(disableNarrator);
 
+        Module serverControl = new Module("Server Control", "Server control permissions and notifications.") {
+            @Override public void setEnabled(boolean enabled) { super.setEnabled(true); }
+        };
+        serverControl.addOption(new BoolOption("Let servers change my Lads settings", true));
+        serverControl.addOption(new BoolOption("Show server notice", true));
+        serverControl.setEnabled(true);
+        registerHidden(serverControl, Module.Category.SERVER);
+
         register(new SignalLossModule());
         registerHidden(new FlashbackModule());
 

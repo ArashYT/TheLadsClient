@@ -26,7 +26,7 @@ public class DropdownOption extends Option {
     }
 
     public int getIndex() {
-        return index;
+        return com.thelads.core.client.ladsapi.ServerPolicy.applyDropdown(getModuleName(), getName(), index, choices);
     }
 
     public void setIndex(int i) {
@@ -42,7 +42,8 @@ public class DropdownOption extends Option {
     }
 
     public String getValue() {
-        return choices.length == 0 ? "" : choices[index];
+        int i = getIndex();
+        return choices.length == 0 ? "" : choices[i];
     }
 
     public String[] getChoices() {
