@@ -1,0 +1,9 @@
+plugins { id 'net.fabricmc.fabric-loom' }
+base { archivesName = 'ladsbench-mc26.3' }
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
+sourceSets.main.java.srcDir '../common'
+tasks.withType(JavaCompile).configureEach { options.release = 25; options.encoding = 'UTF-8' }
+dependencies {
+    minecraft "com.mojang:minecraft:26.3"
+    implementation "net.fabricmc:fabric-loader:0.19.5"
+}

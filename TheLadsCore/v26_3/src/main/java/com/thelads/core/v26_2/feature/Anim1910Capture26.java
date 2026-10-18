@@ -77,6 +77,8 @@ final class Anim1910Capture26 {
             }
             case 155 -> { mc.options.keyAttack.setDown(false); mc.options.keyUse.setDown(false); }
             case 160 -> {
+                mc.player.setXRot(0); // the QA world keeps its player: later captures (UiCapture's Fullbright preview) must not start on the sky
+                mc.player.xRotO = 0;
                 done = true;
                 com.thelads.core.client.qa.QaProgress.done();
                 LOGGER.info("Lads 1.7 animations 1.9.10 capture END: {} passed, {} failed", passed, failed);

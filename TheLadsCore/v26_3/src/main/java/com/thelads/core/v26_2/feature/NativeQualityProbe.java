@@ -32,14 +32,49 @@ import org.slf4j.LoggerFactory;
 /** Opt-in isolated QA: exercise transformed Minecraft methods and restore every edited preference. */
 final class NativeQualityProbe {
     private static boolean done;
+    private static long chunkWaitSince;
+    private static final long SIMULATED_LATE_NS = Long.parseLong(System.getenv().getOrDefault("LADS_QA_NATIVE_PROBE_CHUNK_LATE_MS", "0")) * 1_000_000L;
     private static int passed;
     private NativeQualityProbe() {}
 
+    private static final long CHUNK_WAIT_NS = 20_000_000_000L;
+
+    private static boolean active() {
+        var mc = Minecraft.getInstance();
+        return !done && (Boolean.getBoolean("thelads.verifyNativeFeatures") || Boolean.getBoolean("thelads.verifyIntegrations"))
+            && mc.level != null && mc.player != null && mc.getEntityRenderDispatcher().camera != null
+            && !(Boolean.getBoolean("thelads.verifyInput") && !NativeFeatures.interactive());
+    }
+
+    /**
+     * The shulker fixture is a client-only block next to the player: it needs the player's own chunk (void air = not loaded yet; a slow
+     * start delivers it a few seconds after the player). LADS_QA_NATIVE_PROBE_CHUNK_LATE_MS=n: QA pretends the chunk arrives n ms late,
+     * to run the wait on a fast machine.
+     */
+    private static boolean chunkMissing(long now) {
+        var mc = Minecraft.getInstance();
+        return mc.level.getBlockState(mc.player.blockPosition()).is(net.minecraft.world.level.block.Blocks.VOID_AIR)
+            || now - (chunkWaitSince == 0 ? now : chunkWaitSince) < SIMULATED_LATE_NS;
+    }
+
+    /**
+     * True from the first tick the probe could run until it has run, which takes at most the 20 s wait for the player's chunk.
+     * NativeWorldVerification does not log READY before then: READY prepares the capture scene (NativeImprovementsProbe.prepareCapture),
+     * and a probe that ran after it, or in the middle of a capture (the first version of this wait), left its own items and view in
+     * that scene and kept the world capture from ever being taken.
+     */
+    static boolean pending() { return active(); }
+
     static void tick() {
-        if (done || !(Boolean.getBoolean("thelads.verifyNativeFeatures") || Boolean.getBoolean("thelads.verifyIntegrations"))
-            || Minecraft.getInstance().level == null || Minecraft.getInstance().player == null
-            || Minecraft.getInstance().getEntityRenderDispatcher().camera == null) return;
-        if (Boolean.getBoolean("thelads.verifyInput") && !NativeFeatures.interactive()) return;
+        if (!active()) return;
+        // Waits for the chunk, but at most 20 s: then the probe starts anyway and the fixture says what it found, so a world that never
+        // loads that chunk cannot hold the run.
+        long now = System.nanoTime();
+        if (chunkWaitSince == 0) chunkWaitSince = now;
+        boolean chunk = !chunkMissing(now);
+        if (!chunk && now - chunkWaitSince < CHUNK_WAIT_NS) return;
+        if (chunk) LoggerFactory.getLogger("TheLadsCore").info("Lads native feature probe: the player's chunk was there after {} ms", (now - chunkWaitSince) / 1_000_000L);
+        else LoggerFactory.getLogger("TheLadsCore").warn("Lads native feature probe: the player's chunk did not load within 20 s; starting anyway");
         done = true;
         Map<Module, Boolean> states = new LinkedHashMap<>();
         Map<Module, Long> modified = new LinkedHashMap<>();

@@ -1,0 +1,9 @@
+// QA-only FPS benchmark mod (1.9.12 perf lane). Build: ..\..\TheLadsCore\gradlew -p . build --offline
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.17.21' apply false
+    id 'net.fabricmc.fabric-loom-remap' version '1.17.21' apply false
+}
+subprojects {
+    repositories { mavenCentral(); maven { url = 'https://maven.fabricmc.net/' } }
+    version = '1.0.0'
+}

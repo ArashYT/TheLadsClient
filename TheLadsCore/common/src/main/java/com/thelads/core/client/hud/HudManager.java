@@ -115,6 +115,10 @@ public class HudManager {
     }
 
     private void renderScaled(LadsGraphics g) {
+        if (HudFrameCap.exempt == Boolean.TRUE) { // a version's HUD cache (HudCache1201): the HUDs that ignore the cap, every frame
+            renderElements(g, Boolean.TRUE);
+            return;
+        }
         if (!HudFrameCap.wholeHud && g.getGame() != null && g.getGame().isIngame() && HudFrameCap.enabled()) {
             // Capped: rebuild at the cap rate and draw the last build on every frame, so the HUD never blinks out.
             long now = System.nanoTime();
@@ -131,7 +135,7 @@ public class HudManager {
         if (!HudFrameCap.wholeHud) HudFrameCap.reset();
         cachedHud.clear();
         recordHudFrame();
-        renderElements(g, null);
+        renderElements(g, HudFrameCap.exempt);
     }
 
     private boolean hidesAll() {

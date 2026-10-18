@@ -235,6 +235,7 @@ public abstract class ETFState {
     }
 
     public static void insertETFDataIntoVertexConsumer(URenderTypeToVertexConsumer provider, RenderType renderLayer, VertexConsumer vertexConsumer) {
+        if (!com.thelads.core.v26_2.embedded.etf.features.ETFManager.packData && state() == null) return; // The Lads 1.9.12 perf
         if (vertexConsumer instanceof ETFVertexConsumer etfVertexConsumer) {
             // need to store etf texture of consumer and original render layer
             // store provider as well for future actions

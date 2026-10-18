@@ -9,6 +9,7 @@
   },
   "client": [
     "GameRendererHudMixin",
+    "GlStateManagerHudMixin",
     "GuiHotbarMixin",
     "BetterF3Mixin",
     "BossBarSettingsMixin",

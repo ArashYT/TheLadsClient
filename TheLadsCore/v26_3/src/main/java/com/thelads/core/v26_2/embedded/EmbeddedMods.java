@@ -11,9 +11,12 @@ import org.slf4j.LoggerFactory;
 public final class EmbeddedMods {
     private EmbeddedMods() {}
 
+    /** QA/benchmark switch (1.9.12 perf lane): -Dthelads.embeddedOff=<original mod id>,... stands those embedded copies down. */
+    private static final java.util.Set<String> OFF = java.util.Set.copyOf(java.util.Arrays.asList(System.getProperty("thelads.embeddedOff", "").split(",")));
+
     /** False while the original mod is installed; that copy runs instead. */
     public static boolean active(String originalModId) {
-        return !FabricLoader.getInstance().isModLoaded(originalModId);
+        return !FabricLoader.getInstance().isModLoaded(originalModId) && !OFF.contains(originalModId);
     }
 
     /** Called once from the Core client initializer. */

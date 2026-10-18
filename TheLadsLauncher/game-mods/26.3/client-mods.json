@@ -138,21 +138,6 @@
       "projectUrl": "https://modrinth.com/mod/continuity"
     },
     {
-      "projectId": "v3CYg2V9",
-      "projectSlug": "drippy-loading-screen",
-      "name": "Drippy Loading Screen",
-      "modId": "drippyloadingscreen",
-      "versionId": "RQRAhm30",
-      "version": "3.1.6-26.3-fabric",
-      "fileName": "drippyloadingscreen_fabric_3.1.6_MC_26.3.jar",
-      "url": "https://cdn.modrinth.com/data/v3CYg2V9/versions/RQRAhm30/drippyloadingscreen_fabric_3.1.6_MC_26.3.jar",
-      "sha512": "4175405244c67656708490779018992022cd38a9027d9d1e03a720c5928c195311414b7639e11a2d960f8b55f756bd9023a358830544033c2346a2d6b8fa54a3",
-      "size": 745364,
-      "license": "LicenseRef-DSMSLv3",
-      "sourceUrl": "https://github.com/Keksuccino/Drippy-Loading-Screen",
-      "projectUrl": "https://modrinth.com/mod/drippy-loading-screen"
-    },
-    {
       "projectId": "OoF97Pto",
       "projectSlug": "effectual",
       "name": "Effectual",
@@ -211,21 +196,6 @@
       "license": "Apache-2.0",
       "sourceUrl": "https://github.com/FabricMC/fabric-language-kotlin/",
       "projectUrl": "https://modrinth.com/mod/fabric-language-kotlin"
-    },
-    {
-      "projectId": "Wq5SjeWM",
-      "projectSlug": "fancymenu",
-      "name": "FancyMenu",
-      "modId": "fancymenu",
-      "versionId": "CBLbyHzH",
-      "version": "3.9.14-26.3-fabric",
-      "fileName": "fancymenu_fabric_3.9.14_MC_26.3.jar",
-      "url": "https://cdn.modrinth.com/data/Wq5SjeWM/versions/CBLbyHzH/fancymenu_fabric_3.9.14_MC_26.3.jar",
-      "sha512": "98d1cfb0e39d25a7e0e80b5f0d6511de192c79b917c728236a2723ed6f488d0d66a2310bcb7a4216003a9b818fb986b5c2f1f4824e279074b49e802ef8f18fc6",
-      "size": 26787759,
-      "license": "LicenseRef-DSMSLv3.1",
-      "sourceUrl": "https://github.com/Keksuccino/FancyMenu",
-      "projectUrl": "https://modrinth.com/mod/fancymenu"
     },
     {
       "projectId": "nSRLvOHG",
@@ -348,21 +318,6 @@
       "projectUrl": "https://modrinth.com/mod/jei"
     },
     {
-      "projectId": "J81TRJWm",
-      "projectSlug": "konkrete",
-      "name": "Konkrete",
-      "modId": "konkrete",
-      "versionId": "pQLA2B54",
-      "version": "1.11.1-26.3-fabric",
-      "fileName": "konkrete_fabric_1.11.1_MC_26.3.jar",
-      "url": "https://cdn.modrinth.com/data/J81TRJWm/versions/pQLA2B54/konkrete_fabric_1.11.1_MC_26.3.jar",
-      "sha512": "ef6b12dbf3f616ba4089e706f27d76c543987f4a20509bf3def711ddb9279b94170c67228b9e44a2e2c189a80a7c9a5cd4c7e079281b7ac1cb0ec7d9c46b9aa8",
-      "size": 1214374,
-      "license": "Apache-2.0",
-      "sourceUrl": "https://github.com/Keksuccino/Konkrete",
-      "projectUrl": "https://modrinth.com/mod/konkrete"
-    },
-    {
       "projectId": "gvQqBUqZ",
       "projectSlug": "lithium",
       "name": "Lithium",
@@ -376,21 +331,6 @@
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/caffeinemc/lithium-fabric",
       "projectUrl": "https://modrinth.com/mod/lithium"
-    },
-    {
-      "projectId": "CVT4pFB2",
-      "projectSlug": "melody",
-      "name": "Melody",
-      "modId": "melody",
-      "versionId": "gjl2Yw81",
-      "version": "1.0.17-26.3-fabric",
-      "fileName": "melody_fabric_1.0.17_MC_26.3.jar",
-      "url": "https://cdn.modrinth.com/data/CVT4pFB2/versions/gjl2Yw81/melody_fabric_1.0.17_MC_26.3.jar",
-      "sha512": "f0ac30c3a0eb0908d05824a9a43e44c614a95dc99b4cba9abeea750406430fde21d6e26bae5a1e5c63b63359e49d4bc96ced32400717fc72064c50826e11b9ca",
-      "size": 681316,
-      "license": "MIT",
-      "sourceUrl": "https://github.com/Keksuccino/Melody",
-      "projectUrl": "https://modrinth.com/mod/melody"
     },
     {
       "projectId": "7tEfOcA7",
@@ -1115,6 +1055,42 @@
         "fff815d5be04f46db6cdda702cff914ce3d9de7f42e52c1907d7658a55d59130b84630a157bb4ff06dae9a345dd27bcbf7413f58df99a70ce4c86d5bca98e912"
       ],
       "reason": "Removed from The Lads Client pack in 1.9.2."
+    },
+    {
+      "modId": "drippyloadingscreen",
+      "projectId": "v3CYg2V9",
+      "name": "Drippy Loading Screen",
+      "sha512": [
+        "4175405244c67656708490779018992022cd38a9027d9d1e03a720c5928c195311414b7639e11a2d960f8b55f756bd9023a358830544033c2346a2d6b8fa54a3"
+      ],
+      "reason": "Retired in 1.9.12 (performance) with FancyMenu, which it needs; the Lads loading screen is drawn by Lads Core."
+    },
+    {
+      "modId": "fancymenu",
+      "projectId": "Wq5SjeWM",
+      "name": "FancyMenu",
+      "sha512": [
+        "98d1cfb0e39d25a7e0e80b5f0d6511de192c79b917c728236a2723ed6f488d0d66a2310bcb7a4216003a9b818fb986b5c2f1f4824e279074b49e802ef8f18fc6"
+      ],
+      "reason": "Retired in 1.9.12 (performance): ran with no layouts in modpack mode, so nothing used it, but its pose-stack hooks cost 12 % FPS with many entities, 14 % with the HUD hidden and 3 s of startup on 26.3 (Legion bench)."
+    },
+    {
+      "modId": "konkrete",
+      "projectId": "J81TRJWm",
+      "name": "Konkrete",
+      "sha512": [
+        "ef6b12dbf3f616ba4089e706f27d76c543987f4a20509bf3def711ddb9279b94170c67228b9e44a2e2c189a80a7c9a5cd4c7e079281b7ac1cb0ec7d9c46b9aa8"
+      ],
+      "reason": "Retired in 1.9.12 (performance) with FancyMenu, which it needs (FancyMenu library)."
+    },
+    {
+      "modId": "melody",
+      "projectId": "CVT4pFB2",
+      "name": "Melody",
+      "sha512": [
+        "f0ac30c3a0eb0908d05824a9a43e44c614a95dc99b4cba9abeea750406430fde21d6e26bae5a1e5c63b63359e49d4bc96ced32400717fc72064c50826e11b9ca"
+      ],
+      "reason": "Retired in 1.9.12 (performance) with FancyMenu, which it needs (FancyMenu library)."
     }
   ]
 }

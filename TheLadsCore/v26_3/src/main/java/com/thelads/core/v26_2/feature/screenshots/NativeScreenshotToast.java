@@ -24,6 +24,11 @@ public class NativeScreenshotToast implements Toast {
     private DynamicTexture dynamicTexture;
     private long firstRender = 0;
     private Visibility visibility = Visibility.SHOW;
+    private boolean finished;
+    /** Last frame this toast was drawn (System.nanoTime); and the newest toast with a thumbnail. A toast the manager dropped without
+     *  onFinishedRendering (ToastManager.clear on disconnect) has its thumbnail released when the next one loads. */
+    private volatile long lastDrawn = System.nanoTime();
+    private static NativeScreenshotToast newest;
 
     public NativeScreenshotToast(File file) {
         this.file = file;
@@ -37,6 +42,10 @@ public class NativeScreenshotToast implements Toast {
             try (InputStream in = new FileInputStream(file)) {
                 NativeImage image = NativeImage.read(in);
                 Minecraft.getInstance().execute(() -> {
+                    if (finished) { image.close(); return; } // the toast is already gone: nothing would release it
+                    NativeScreenshotToast previous = newest;
+                    if (previous != null && previous != this && System.nanoTime() - previous.lastDrawn > 2_000_000_000L) previous.onFinishedRendering();
+                    newest = this;
                     try {
                         this.dynamicTexture = new DynamicTexture(() -> "Lads screenshot preview", image);
                         String path = "screenshot_preview_" + Math.abs(file.getName().hashCode());
@@ -67,12 +76,19 @@ public class NativeScreenshotToast implements Toast {
     public void update(ToastManager toastManager, long currentTime) {
         if (firstRender == 0) return;
         if (currentTime - firstRender >= 5000L * toastManager.getNotificationDisplayTimeMultiplier()) {
+            // The texture stays: the toast still draws while it slides out (closing it here crashed the next frame, "Texture view
+            // does not exist", 1.9.12 bench). It is released in onFinishedRendering, once the toast is gone.
             visibility = Visibility.HIDE;
-            if (dynamicTexture != null) {
-                dynamicTexture.close();
-                dynamicTexture = null;
-            }
         }
+    }
+
+    /** Called by the toast manager when the toast has finished (slid out): the thumbnail is released here. */
+    @Override
+    public void onFinishedRendering() {
+        finished = true;
+        if (textureId != null) Minecraft.getInstance().getTextureManager().release(textureId); // closes dynamicTexture
+        textureId = null;
+        dynamicTexture = null;
     }
 
     @Override
@@ -80,6 +96,7 @@ public class NativeScreenshotToast implements Toast {
         if (firstRender == 0) {
             firstRender = currentTime;
         }
+        lastDrawn = System.nanoTime();
 
         int w = width();
         int h = height();

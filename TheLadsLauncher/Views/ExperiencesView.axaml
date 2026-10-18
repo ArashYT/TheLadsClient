@@ -39,10 +39,10 @@
                 <TextBlock Text="Fabric 0.19.5" Foreground="#B0B2BD" FontSize="11" />
               </Border>
               <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
-                <TextBlock Text="225 Mods" Foreground="#B0B2BD" FontSize="11" />
+                <TextBlock x:Name="LadsSmpRebornModsText" Foreground="#B0B2BD" FontSize="11" />
               </Border>
               <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
-                <TextBlock Text="Lads SMP 0.2.1" Foreground="#52A5E0" FontSize="11" />
+                <TextBlock Text="Lads SMP 0.4.0" Foreground="#52A5E0" FontSize="11" />
               </Border>
             </WrapPanel>
 
@@ -147,7 +147,7 @@
                 <TextBlock Text="Forge 47.4.10" Foreground="#B0B2BD" FontSize="11" />
               </Border>
               <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
-                <TextBlock Text="137 Mods" Foreground="#B0B2BD" FontSize="11" />
+                <TextBlock x:Name="ZeroSmpModsText" Foreground="#B0B2BD" FontSize="11" />
               </Border>
               <Border Background="#25262B" BorderBrush="#383941" BorderThickness="1" CornerRadius="3" Padding="8,2" Margin="0,0,6,4">
                 <TextBlock Text="Fabric Connector" Foreground="#52A5E0" FontSize="11" />

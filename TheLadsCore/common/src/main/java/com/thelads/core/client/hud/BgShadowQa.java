@@ -78,24 +78,24 @@ public final class BgShadowQa {
 
         // The QA window at GUI scale 2: the HUD photographed after each header click.
         add(40, () -> { d.window(0, 0); d.guiScale(2); }); // window(0, 0): the window as it is (1.8.9 also clears its tutorial toast)
-        add(10, () -> { logBounds(); shot(d, "bgs-hud-1-bg-off-shadow-off"); });
+        hudShot(d, "bgs-hud-1-bg-off-shadow-off");
         add(30, d::openSettings);
         add(10, () -> header(d, "qa"));
         add(10, () -> shot(d, "bgs-qa-1-settings-bg-off-shadow-off"));
         add(10, () -> click(d, "global-backgrounds", true, false, false));
         add(10, () -> shot(d, "bgs-qa-2-settings-bg-on"));
         add(30, d::closeScreen);
-        add(10, () -> shot(d, "bgs-hud-2-bg-on-shadow-off"));
+        hudShot(d, "bgs-hud-2-bg-on-shadow-off");
         add(30, d::openSettings);
         add(10, () -> click(d, "global-backgrounds", false, false, false));
         add(10, () -> click(d, "global-text-shadow", false, true, false));
         add(10, () -> shot(d, "bgs-qa-4-settings-shadow-on"));
         add(30, d::closeScreen);
-        add(10, () -> shot(d, "bgs-hud-4-bg-off-shadow-on"));
+        hudShot(d, "bgs-hud-4-bg-off-shadow-on");
         add(30, d::openSettings);
         add(10, () -> click(d, "global-backgrounds", true, true, false));
         add(30, d::closeScreen);
-        add(10, () -> shot(d, "bgs-hud-5-bg-on-shadow-on"));
+        hudShot(d, "bgs-hud-5-bg-on-shadow-on");
         add(30, d::openSettings);
         add(10, () -> click(d, "global-text-shadow", true, false, false));
         add(10, () -> click(d, "global-backgrounds", false, false, false));
@@ -252,6 +252,20 @@ public final class BgShadowQa {
         FAILURES.add(what);
         com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL);
         LOGGER.error("Lads hud layout check FAIL: {}", what);
+    }
+
+    /**
+     * A HUD shot (compared pixel by pixel, bounds logged) without the QA bar over the top-centre widgets: hidden a step before, as 1.8.9
+     * and 1.20.1 photograph the frame already drawn, and for the next frames, which 26.3 photographs.
+     */
+    private static void hudShot(HudLayoutQa.Driver d, String name) {
+        add(2, () -> com.thelads.core.client.qa.QaProgress.hide(true));
+        add(10, () -> {
+            logBounds();
+            shot(d, name);
+            com.thelads.core.client.qa.QaProgress.hideFrames(6);
+            com.thelads.core.client.qa.QaProgress.hide(false);
+        });
     }
 
     private static void shot(HudLayoutQa.Driver d, String name) {

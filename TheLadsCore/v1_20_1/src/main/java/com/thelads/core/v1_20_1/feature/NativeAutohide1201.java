@@ -33,7 +33,9 @@ public final class NativeAutohide1201 {
             scopeOpacity = Hud1201.bool("Autohide", "Fade Lads HUD", true) ? opacity : 1;
             if (scopeOpacity > 0) {
                 GuiGraphicsLadsAdapter1201 adapter = new GuiGraphicsLadsAdapter1201(graphics, mc.font);
-                adapter.managed(() -> HudManager.getInstance().render(adapter));
+                adapter.managed(() -> {
+                    if (!com.thelads.core.v1_20_1.hud.HudCache1201.render(graphics, adapter)) HudManager.getInstance().render(adapter);
+                });
             }
             scopeOpacity = 1;
             if (com.thelads.core.client.qa.QaProgress.on()) {
