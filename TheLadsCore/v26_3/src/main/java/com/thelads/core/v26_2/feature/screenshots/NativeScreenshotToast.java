@@ -24,6 +24,7 @@ public class NativeScreenshotToast implements Toast {
     private DynamicTexture dynamicTexture;
     private long firstRender = 0;
     private Visibility visibility = Visibility.SHOW;
+    private boolean finished;
 
     public NativeScreenshotToast(File file) {
         this.file = file;
@@ -37,6 +38,7 @@ public class NativeScreenshotToast implements Toast {
             try (InputStream in = new FileInputStream(file)) {
                 NativeImage image = NativeImage.read(in);
                 Minecraft.getInstance().execute(() -> {
+                    if (finished) { image.close(); return; } // the toast is already gone: nothing would release it
                     try {
                         this.dynamicTexture = new DynamicTexture(() -> "Lads screenshot preview", image);
                         String path = "screenshot_preview_" + Math.abs(file.getName().hashCode());
@@ -67,18 +69,19 @@ public class NativeScreenshotToast implements Toast {
     public void update(ToastManager toastManager, long currentTime) {
         if (firstRender == 0) return;
         if (currentTime - firstRender >= 5000L * toastManager.getNotificationDisplayTimeMultiplier()) {
+            // The texture stays: the toast still draws while it slides out (closing it here crashed the next frame, "Texture view
+            // does not exist", 1.9.12 bench). It is released in onFinishedRendering, once the toast is gone.
             visibility = Visibility.HIDE;
-            if (dynamicTexture != null) {
-                // The toast still draws while it slides out: closing the texture here crashed the next frame ("Texture view does not
-                // exist", 1.9.12 bench on Vulkan). Released through the texture manager once the slide-out is over (as on 1.20.1).
-                Identifier id = textureId;
-                dynamicTexture = null;
-                java.util.concurrent.CompletableFuture.runAsync(() -> {
-                    if (textureId == id) textureId = null;
-                    Minecraft.getInstance().getTextureManager().release(id);
-                }, java.util.concurrent.CompletableFuture.delayedExecutor(1500, java.util.concurrent.TimeUnit.MILLISECONDS, Minecraft.getInstance()));
-            }
         }
+    }
+
+    /** Called by the toast manager when the toast has finished (slid out): the thumbnail is released here. */
+    @Override
+    public void onFinishedRendering() {
+        finished = true;
+        if (textureId != null) Minecraft.getInstance().getTextureManager().release(textureId); // closes dynamicTexture
+        textureId = null;
+        dynamicTexture = null;
     }
 
     @Override
