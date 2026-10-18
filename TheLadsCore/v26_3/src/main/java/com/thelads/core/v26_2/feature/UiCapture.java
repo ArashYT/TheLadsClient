@@ -380,10 +380,10 @@ final class UiCapture {
         return state.brightness;
     }
 
-    /** The mouse wheel over the page, to its end. */
+    /** The mouse wheel over the options list (x 300 is the live preview at GUI width 472), to its end. */
     private static void scrollDown() {
         ui().setReducedMotion(true);
-        menu.mouseScrolled(300, 200, 0, -30);
+        menu.mouseScrolled(100, 200, 0, -30);
     }
 
     private static SliderOption gamma() { return (SliderOption) fullbright.getOption("Brightness"); }
