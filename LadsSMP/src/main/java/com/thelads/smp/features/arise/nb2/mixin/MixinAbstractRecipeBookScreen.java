@@ -18,6 +18,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MixinAbstractRecipeBookScreen {
 
     @Inject(
+            method = "initButton()V",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    private void onInitButton(CallbackInfo ci) {
+        if (NotEnoughRecipeBookManager.isDisabledMode()) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(
             method = "onRecipeBookButtonClick()V",
             at = @At("HEAD"),
             cancellable = true

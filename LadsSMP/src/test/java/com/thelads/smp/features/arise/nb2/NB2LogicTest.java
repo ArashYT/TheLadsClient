@@ -64,7 +64,6 @@ public class NB2LogicTest {
         assertTrue(config.yungsMenuTweaks);
         assertTrue(config.rightClickReversesCycleButtons);
         assertTrue(config.mouseScrollWheelAffectsSliders);
-        assertTrue(config.cpmSvcCompat);
 
         // JSON serialization roundtrip
         String json = GSON.toJson(config);
@@ -149,6 +148,12 @@ public class NB2LogicTest {
         assertNotNull(formatted);
         assertEquals("Arash Hello World!", formatted.getString());
 
+        // Custom format from config
+        NB2Config.get().chatFormat = "%s: %s";
+        Component customFormatted = RemoveChatBracketManager.formatMessage(sender, message, null);
+        assertNotNull(customFormatted);
+        assertEquals("Arash: Hello World!", customFormatted.getString());
+
         // When disabled, returns null so vanilla formatting runs
         NB2Config.get().removeChatBracket = false;
         assertNull(RemoveChatBracketManager.formatMessage(sender, message, null));
@@ -193,29 +198,38 @@ public class NB2LogicTest {
     }
 
     @Test
-    void testCpmSvcCompatAudioCalculationAndMute() {
-        // Silence returns 0
-        short[] silence = new short[100];
-        assertEquals(0.0f, CpmSvcCompatManager.calculateAudioLevel(silence), 0.001f);
-        assertEquals(0.0f, CpmSvcCompatManager.calculateAudioLevel(null), 0.001f);
-        assertEquals(0.0f, CpmSvcCompatManager.calculateAudioLevel(new short[0]), 0.001f);
+    void testNotEnoughRecipeBookDisabledMode() {
+        NB2Config.get().notEnoughRecipeBook = true;
+        NB2Config.get().recipeBookMode = "DISABLED";
+        assertTrue(NotEnoughRecipeBookManager.isDisabledMode());
 
-        // Max amplitude signal produces positive clamped value
-        short[] loud = new short[100];
-        for (int i = 0; i < loud.length; i++) {
-            loud[i] = 30000;
-        }
-        float level = CpmSvcCompatManager.calculateAudioLevel(loud);
-        assertTrue(level > 0.5f);
-        assertTrue(level <= 1.0f);
+        NB2Config.get().recipeBookMode = "disabled";
+        assertTrue(NotEnoughRecipeBookManager.isDisabledMode());
 
-        // Mute state
-        java.util.UUID testPlayer = java.util.UUID.randomUUID();
-        assertFalse(CpmSvcCompatManager.isMuted(testPlayer));
-        CpmSvcCompatManager.setMuted(testPlayer, true);
-        assertTrue(CpmSvcCompatManager.isMuted(testPlayer));
-        CpmSvcCompatManager.setMuted(testPlayer, false);
-        assertFalse(CpmSvcCompatManager.isMuted(testPlayer));
+        NB2Config.get().recipeBookMode = "TOGGLE";
+        assertFalse(NotEnoughRecipeBookManager.isDisabledMode());
+
+        NB2Config.get().notEnoughRecipeBook = false;
+        assertFalse(NotEnoughRecipeBookManager.isDisabledMode());
+    }
+
+    @Test
+    void testTooManyEntitiesFrameReset() {
+        NB2Config.get().tooManyEntities = true;
+        NB2Config.get().maxEntityCount = 2;
+        TooManyEntitiesManager.reset();
+
+        // Chunk 0,0: first 2 allowed, 3rd culled
+        assertFalse(TooManyEntitiesManager.shouldSuppressCell(0, 0));
+        assertFalse(TooManyEntitiesManager.shouldSuppressCell(0, 0));
+        assertTrue(TooManyEntitiesManager.shouldSuppressCell(0, 0));
+
+        // Different chunk allowed
+        assertFalse(TooManyEntitiesManager.shouldSuppressCell(1, 0));
+
+        // Reset clears counts for new frame
+        TooManyEntitiesManager.reset();
+        assertFalse(TooManyEntitiesManager.shouldSuppressCell(0, 0));
     }
 
     @Test

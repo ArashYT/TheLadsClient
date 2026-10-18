@@ -85,5 +85,13 @@ public final class NB2Client implements ClientModInitializer {
                                 return 1;
                             })));
         });
+
+        // Hitmarker attack callback (registered on client only)
+        net.fabricmc.fabric.api.event.player.AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
+            if (world.isClientSide() && entity instanceof net.minecraft.world.entity.LivingEntity) {
+                HitmarkerManager.onHit();
+            }
+            return net.minecraft.world.InteractionResult.PASS;
+        });
     }
 }
