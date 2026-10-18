@@ -33,7 +33,8 @@ public final class QaProgress {
     private static Run run;
     private static final ArrayDeque<Run> OUTER = new ArrayDeque<>();
     private static int hideFrames;
-    private static boolean hidden;
+    private static boolean hidden, finalShotDue;
+    private static long endedAt;
 
     private QaProgress() {}
 
@@ -49,6 +50,7 @@ public final class QaProgress {
         if (!on) return;
         if (run != null && !run.ended) OUTER.push(run);
         else OUTER.clear();
+        finalShotDue = false;
         run = new Run(runName, totalSteps);
     }
 
@@ -87,11 +89,25 @@ public final class QaProgress {
         finish(run, null);
         run.ended = true;
         run.label = "done";
-        if (OUTER.isEmpty()) return;
+        if (OUTER.isEmpty()) {
+            finalShotDue = true;
+            endedAt = clock.getAsLong();
+            return;
+        }
         Run inner = run;
         run = OUTER.pop();
         Result worst = inner.crash > 0 ? Result.CRASH : inner.fail > 0 ? Result.FAIL : inner.slow > 0 ? Result.SLOW : null;
         if (worst != null) result(worst);
+    }
+
+    /**
+     * A moment after the outermost run is done, once: the name of the screenshot ("qa-bar-final-&lt;run&gt;") that shows the bar's final
+     * state, which the version's QA driver then saves; null otherwise.
+     */
+    public static synchronized String finalShot() {
+        if (!on || !finalShotDue || run == null || !run.ended || clock.getAsLong() - endedAt < 1200) return null;
+        finalShotDue = false;
+        return "qa-bar-final-" + run.name.replaceAll("[^A-Za-z0-9._-]+", "-");
     }
 
     /** True from {@link #begin} until {@link #done} of the outermost run. */
@@ -215,6 +231,6 @@ public final class QaProgress {
         run = null;
         OUTER.clear();
         hideFrames = 0;
-        hidden = false;
+        hidden = finalShotDue = false;
     }
 }

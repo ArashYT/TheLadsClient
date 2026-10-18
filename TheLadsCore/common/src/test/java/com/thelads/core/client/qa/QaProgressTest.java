@@ -105,6 +105,20 @@ class QaProgressTest {
         assertFalse(QaProgress.running());
     }
 
+    @Test void theFinalStateIsPhotographedOnceAMomentAfterTheOutermostRunIsDone() {
+        QaProgress.begin("anim 1.9.11", 1);
+        QaProgress.begin("inner", 1);
+        QaProgress.step("a");
+        QaProgress.done(); // nested: not the end
+        now.addAndGet(5000);
+        assertNull(QaProgress.finalShot());
+        QaProgress.done();
+        assertNull(QaProgress.finalShot(), "too soon");
+        now.addAndGet(1500);
+        assertEquals("qa-bar-final-anim-1.9.11", QaProgress.finalShot());
+        assertNull(QaProgress.finalShot(), "only once");
+    }
+
     @Test void aResultWithNoStepOpenIsCountedAnyway() {
         QaProgress.begin("r", 2);
         QaProgress.result(Result.FAIL);

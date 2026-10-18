@@ -258,6 +258,8 @@ public final class CoreProbe {
 
     /** Every client tick (END); one step at a time, each after the previous one's screens had frames to render. */
     public static void tick() {
+        String barShot = QaProgress.finalShot(); // QA progress bar: its final state, photographed a moment after the run is done
+        if (barShot != null) { screenshot(Minecraft.getMinecraft(), barShot); LOG.info("Lads QA bar final state: lads-qa/screenshots/{}.png", barShot); }
         if (finished) return;
         if (delay > 0) { delay--; return; }
         try {

@@ -160,6 +160,8 @@ public final class QaProbe1201 {
             }
         }
         mc.options.pauseOnLostFocus = false;
+        String barShot = com.thelads.core.client.qa.QaProgress.finalShot(); // QA progress bar: its final state, photographed a moment after the run is done
+        if (barShot != null) try { shot(mc, barShot); LOGGER.info("Lads QA bar final state: screenshots/{}.png", barShot); } catch (Exception ignored) { }
         try {
             for (InputConstants.Key key : releaseNext) KeyMapping.set(key, false);
             releaseNext.clear();

@@ -299,6 +299,17 @@ public final class NativeWorldVerification {
     public static boolean menuCaptureActive() { return menuScreen != null; }
     /** Capture a completed game frame, including GUI, through Minecraft's own GPU readback. */
     public static void renderedFrame(com.mojang.blaze3d.pipeline.RenderTarget target) {
+        String barShot = com.thelads.core.client.qa.QaProgress.finalShot(); // QA progress bar: its final state, photographed a moment after the run is done
+        if (barShot != null && active()) {
+            Path output = gameDirectory.resolve("screenshots").resolve(barShot + ".png");
+            try {
+                Files.createDirectories(output.getParent());
+                net.minecraft.client.Screenshot.takeScreenshot(target, image -> {
+                    try (image) { image.writeToFile(output); LOGGER.info("Lads QA bar final state: {}", output); }
+                    catch (Exception failure) { LOGGER.error("Lads QA bar final state not saved", failure); }
+                });
+            } catch (IOException failure) { LOGGER.error("Lads QA bar final state not saved", failure); }
+        }
         if (hudProbe != null && active() && !failed) hudProbe.frame(target, gameDirectory);
         if (SoundsCapture.busy()) SoundsCapture.frame(target, gameDirectory);
         if (HypixelCapture.busy()) HypixelCapture.frame(target, gameDirectory);
