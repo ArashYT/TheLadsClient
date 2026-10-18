@@ -278,6 +278,7 @@ public class TheLadsCore189 {
 
         Borderless189.tick(mc);
         com.thelads.core.v1_8_9.feature.Discord189.tick(mc);
+        com.thelads.core.client.cosmetics.net.CosmeticsLink.tick();
 
         CoreCatalogExporter.exportIfChanged();
         com.thelads.core.v1_8_9.feature.EnumValues189.reportOnce();

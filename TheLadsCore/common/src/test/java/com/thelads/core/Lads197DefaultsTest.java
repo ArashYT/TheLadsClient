@@ -30,7 +30,7 @@ class Lads197DefaultsTest {
     private static final Set<String> DEFAULT_ENABLED_VISIBLE = Set.of(
         "1.7 Animations", "Action Bar", "AppleSkin", "ArmorHUD", "AutoReconnect",
         "BetterF3", "BetterScreenshots", "BorderlessFullscreen", "BossBar", "Chat",
-        "ClientTools", "Clumps", "Coordinates", "Crosshair Tweaks",
+        "ClientTools", "Clumps", "Coordinates", "Cosmetics", "Crosshair Tweaks",
         "DiscordRPC", "DynamicFPS", com.thelads.core.modules.DynamicLightsModule.NAME, "EnhancedToolbars", "EnhancedTooltips",
         "FarBlockEntities", "FPS", "HYPIXEL Mods", com.thelads.core.modules.ItemPhysicsModule.NAME, com.thelads.core.client.KeepUiOpen.MODULE_NAME, "KillBanner",
         "Minimap", "MouseTweaks", "Nametags", com.thelads.core.client.DamageTilt.MODULE, "Particle Core",

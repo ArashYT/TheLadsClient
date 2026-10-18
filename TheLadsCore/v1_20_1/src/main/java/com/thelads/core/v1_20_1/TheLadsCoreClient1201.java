@@ -78,6 +78,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             NativeFeatures1201.tick();
             NativeDiscordPresence1201.tick();
+            com.thelads.core.client.cosmetics.net.CosmeticsLink.tick();
             NativeKillBanner1201.tick();
             com.thelads.core.mods.CoreCatalogExporter.exportIfChanged();
         });
