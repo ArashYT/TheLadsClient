@@ -18,7 +18,9 @@ public class MixinEntityRenderDispatcher {
     @Inject(method = "render",
         at = @At(value = "HEAD"))
     private <E extends net.minecraft.world.entity.Entity> void etf$grabContext(CallbackInfo ci, @Local(argsOnly = true) E entity, @Share("state_etf") LocalRef<ETFEntityRenderState> stateRef) {
-        var etf = ETFEntityRenderState.forEntity((ETFEntity) entity);
+        // The Lads 1.9.12 perf: nothing to vary without pack data (ETFManager.packData); players keep their skin features
+        var etf = !com.thelads.core.v1_20_1.embedded.etf.features.ETFManager.packData && !(entity instanceof net.minecraft.world.entity.player.Player)
+            ? null : ETFEntityRenderState.forEntity((ETFEntity) entity);
         if (etf != null) {
             ETFState.mount(etf);
         }

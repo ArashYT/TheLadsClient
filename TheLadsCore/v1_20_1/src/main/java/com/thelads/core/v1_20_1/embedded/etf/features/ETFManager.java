@@ -100,9 +100,38 @@ public class ETFManager {
         return instance;
     }
 
+    /**
+     * The Lads 1.9.12 perf: false while no loaded resource pack has anything ETF/EMF act on (OptiFine random/mob/cem, etf/emf
+     * folders, emissive.properties, or entity textures with an emissive/blink/enchant suffix). Then non-player entities skip
+     * ETF/EMF's per-entity state, which is all pass-through work on vanilla textures. Players keep it (skin features).
+     * -Dthelads.etfPackGate=false keeps the full path always.
+     */
+    public static volatile boolean packData = true;
+
+    private static boolean scanPackData() {
+        if (!Boolean.parseBoolean(System.getProperty("thelads.etfPackGate", "true"))) return true;
+        try {
+            var manager = Minecraft.getInstance().getResourceManager();
+            // OptiFine-format folders ETF/EMF read (not optifine/ctm or cit: Continuity's built-in packs ship those)
+            for (String root : new String[]{"optifine/random", "optifine/mob", "optifine/cem", "etf", "emf"})
+                if (!manager.listResources(root, id -> true).isEmpty()) return true;
+            if (!manager.listResources("optifine", id -> id.getPath().equals("optifine/emissive.properties")).isEmpty()) return true;
+            String[] suffixes = {"_e.png", "_blink.png", "_blink2.png", "_enchant.png"};
+            return !manager.listResources("textures/entity", id -> {
+                String path = id.getPath();
+                for (String suffix : suffixes) if (path.endsWith(suffix)) return true;
+                return false;
+            }).isEmpty();
+        } catch (RuntimeException e) {
+            return true; // unknown: keep the full path
+        }
+    }
+
     public static void resetInstance() {
         ETFState.clear();
         ETF.config().loadFromFile();
+        packData = scanPackData();
+        ETFUtils2.logMessage("pack data for ETF/EMF: " + packData);
 
         // instance based format solves the issue of hashmaps and arrays being clearing while also being accessed
         // as now those rare transitional (reading during clearing) occurrences will simply read from the previous instance of manager
