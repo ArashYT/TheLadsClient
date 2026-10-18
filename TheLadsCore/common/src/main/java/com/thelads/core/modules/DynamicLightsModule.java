@@ -19,15 +19,18 @@ public class DynamicLightsModule extends Module {
     private final SliderOption radius;
     private final DropdownOption quality;
     private final BoolOption entities, droppedItems, underwater;
+    private final BoolOption explosionsAndTnt, glowingMobs;
     private boolean optiFine;
 
     public DynamicLightsModule() {
-        super(NAME, "Held torches and lanterns, burning mobs and dropped glowing items light up the world around them as they move.");
+        super(NAME, "Held torches and lanterns, burning mobs, glowing items, primed TNT and explosions light up the world around them as they move.");
         radius = addOption(new SliderOption("Light Radius", 15.0, 5.0, 30.0, 1.0));
         quality = addOption(new DropdownOption("Quality", 1, "Fast", "Fancy"));
         entities = addOption(new BoolOption("Entities", true));
         droppedItems = addOption(new BoolOption("Dropped Items", true));
         underwater = addOption(new BoolOption("Underwater", false));
+        explosionsAndTnt = addOption(new BoolOption("Explosions & TNT", true));
+        glowingMobs = addOption(new BoolOption("Glowing Mobs & Projectiles", true));
         setEnabled(true);
         INSTANCE = this;
     }
@@ -45,6 +48,10 @@ public class DynamicLightsModule extends Module {
     public boolean droppedItems() { return droppedItems.get(); }
     /** Torches and campfires keep their light underwater. */
     public boolean underwater() { return underwater.get(); }
+    /** Primed TNT, TNT minecarts, creepers about to explode, and explosion flashes. */
+    public boolean explosionsAndTnt() { return explosionsAndTnt.get(); }
+    /** Mobs and projectiles that emit light naturally (blazes, magma cubes, fireballs, spectral arrows...). */
+    public boolean glowingMobsAndProjectiles() { return glowingMobs.get(); }
 
     /** 1.8.9: the module switches OptiFine's Dynamic Lights instead, which has no radius, entity, item or water settings. */
     public void drivesOptiFine() { optiFine = true; }

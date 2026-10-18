@@ -15,6 +15,8 @@ class DynamicLightsModuleTest {
         assertTrue(module.fancy());
         assertTrue(module.entities());
         assertTrue(module.droppedItems());
+        assertTrue(module.explosionsAndTnt());
+        assertTrue(module.glowingMobsAndProjectiles());
         assertFalse(module.underwater(), "torches go out underwater");
         assertEquals(15f, module.radius());
         for (Option option : module.getOptions()) assertFalse(module.hidden(option), "26.x shows every option");
