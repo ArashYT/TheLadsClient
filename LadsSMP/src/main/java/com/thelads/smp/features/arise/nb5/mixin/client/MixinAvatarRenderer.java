@@ -20,6 +20,7 @@ public abstract class MixinAvatarRenderer {
             at = @At("TAIL")
     )
     private void ladssmp$applyThirdPersonParkourRotations(AvatarRenderState state, PoseStack poseStack, float f, float g, CallbackInfo ci) {
-        ParkourAnimationManager.applyThirdPersonRotation(state, poseStack);
+        float partialTick = net.minecraft.client.Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        ParkourAnimationManager.applyThirdPersonRotation(state, poseStack, partialTick);
     }
 }

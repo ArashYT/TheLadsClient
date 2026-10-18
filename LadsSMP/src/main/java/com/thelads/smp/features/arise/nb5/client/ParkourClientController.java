@@ -60,10 +60,8 @@ public final class ParkourClientController {
     public static void onSync(ParkourSyncPayload payload) {
         stamina = payload.stamina();
         exhausted = payload.exhausted();
-        if (payload.getActionType() != ParkourActionType.NONE) {
-            activeAction = payload.getActionType();
-            actionTicks = payload.actionTicks();
-        }
+        activeAction = payload.getActionType();
+        actionTicks = payload.actionTicks();
     }
 
     public static void onLocalPlayerAiStep(LocalPlayer player) {

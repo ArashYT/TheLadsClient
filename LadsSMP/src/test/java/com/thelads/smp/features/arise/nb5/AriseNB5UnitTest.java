@@ -221,4 +221,58 @@ public class AriseNB5UnitTest {
         }
         assertEquals(ParkourActionType.NONE, ParkourActionType.byId(999), "Unknown ID should map to NONE");
     }
+
+    @Test
+    @DisplayName("Verify infinite ledge hang prevention: zero stamina cancels ledge hang and drops player")
+    void testLedgeHangDropOnZeroStamina() {
+        data.setActiveAction(ParkourActionType.LEDGE_HANG, 200);
+        data.setCurrentStamina(2); // Exactly 1 tick remaining
+
+        data.tick(false);
+        assertEquals(0, data.getCurrentStamina(), "Stamina should be fully consumed");
+        assertTrue(data.isExhausted(), "Player should be exhausted at 0 stamina");
+        assertEquals(ParkourActionType.NONE, data.getActiveAction(), "Ledge hang must be cancelled when stamina reaches 0");
+        assertEquals(0, data.getActionTicks(), "Action ticks must be cleared to 0");
+    }
+
+    @Test
+    @DisplayName("Verify slide spam prevention and cooldown enforcement")
+    void testSlideCooldownAndSpamPrevention() {
+        assertTrue(data.canPerform(ParkourActionType.SLIDE, false), "Initial slide should be permitted");
+
+        data.consumeForAction(ParkourActionType.SLIDE, false);
+        assertEquals(ParkourActionType.SLIDE, data.getActiveAction());
+        assertFalse(data.canPerform(ParkourActionType.SLIDE, false), "Cannot perform slide while already sliding");
+
+        // Tick through slide duration (15 ticks)
+        for (int i = 0; i < config.slidingContinuableTick; i++) {
+            assertFalse(data.canPerform(ParkourActionType.SLIDE, false), "Cannot slide during active slide");
+            data.tick(false);
+        }
+
+        // Active action has expired, but slide cooldown (15 ticks) should still block spam
+        assertEquals(ParkourActionType.NONE, data.getActiveAction());
+        assertTrue(data.getSlideCooldownTicks() > 0, "Slide cooldown should remain active after slide ends");
+        assertFalse(data.canPerform(ParkourActionType.SLIDE, false), "Cannot slide while slide cooldown is active");
+
+        // Tick through remaining cooldown (15 ticks)
+        while (data.getSlideCooldownTicks() > 0) {
+            data.tick(false);
+        }
+
+        assertEquals(0, data.getSlideCooldownTicks());
+        assertTrue(data.canPerform(ParkourActionType.SLIDE, false), "Can slide again once cooldown has fully elapsed");
+    }
+
+    @Test
+    @DisplayName("Verify ParkourAnimationPayload construction and action type resolution")
+    void testParkourAnimationPayload() {
+        com.thelads.smp.features.arise.nb5.network.ParkourAnimationPayload payload =
+                new com.thelads.smp.features.arise.nb5.network.ParkourAnimationPayload(42, ParkourActionType.ROLL.getId(), 14);
+        assertEquals(42, payload.entityId());
+        assertEquals(ParkourActionType.ROLL.getId(), payload.actionTypeId());
+        assertEquals(14, payload.actionTicks());
+        assertEquals(ParkourActionType.ROLL, payload.getActionType());
+        assertEquals("ladssmp:parkour_anim", payload.type().id().toString());
+    }
 }

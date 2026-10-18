@@ -4,9 +4,11 @@ import com.thelads.smp.features.arise.nb5.AriseNB5Config;
 import com.thelads.smp.features.arise.nb5.ParkourActionType;
 import com.thelads.smp.features.arise.nb5.PlayerStaminaData;
 import com.thelads.smp.features.arise.nb5.network.ParkourActionPayload;
+import com.thelads.smp.features.arise.nb5.network.ParkourAnimationPayload;
 import com.thelads.smp.features.arise.nb5.network.ParkourSyncPayload;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.BlockPos;
@@ -41,6 +43,7 @@ public final class ParkourServerManager {
         // Register custom networking payloads
         PayloadTypeRegistry.serverboundPlay().register(ParkourActionPayload.TYPE, ParkourActionPayload.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(ParkourSyncPayload.TYPE, ParkourSyncPayload.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(ParkourAnimationPayload.TYPE, ParkourAnimationPayload.STREAM_CODEC);
 
         // Register incoming action receiver
         ServerPlayNetworking.registerGlobalReceiver(ParkourActionPayload.TYPE, (payload, context) -> {
@@ -64,6 +67,9 @@ public final class ParkourServerManager {
                 // Sync if stamina changed or action state altered
                 if (data.getCurrentStamina() != prevStamina || data.isExhausted() != prevExhausted || data.getActiveAction() != prevAction || (player.tickCount % 20 == 0)) {
                     syncToPlayer(player, data);
+                }
+                if (data.getActiveAction() != prevAction) {
+                    broadcastAnimation(player, data.getActiveAction(), data.getActionTicks());
                 }
             }
         });
@@ -100,6 +106,15 @@ public final class ParkourServerManager {
                 data.getActionTicks()
         );
         ServerPlayNetworking.send(player, payload);
+    }
+
+    public static void broadcastAnimation(ServerPlayer player, ParkourActionType action, int ticks) {
+        ParkourAnimationPayload animPayload = new ParkourAnimationPayload(player.getId(), action.getId(), ticks);
+        for (ServerPlayer tracker : PlayerLookup.tracking(player)) {
+            if (ServerPlayNetworking.canSend(tracker, ParkourAnimationPayload.TYPE)) {
+                ServerPlayNetworking.send(tracker, animPayload);
+            }
+        }
     }
 
     private static void handleActionPayload(ServerPlayer player, ParkourActionPayload payload) {
@@ -152,6 +167,7 @@ public final class ParkourServerManager {
                         SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.5f, 1.4f);
             }
             syncToPlayer(player, data);
+            broadcastAnimation(player, data.getActiveAction(), data.getActionTicks());
         }
     }
 
@@ -187,6 +203,7 @@ public final class ParkourServerManager {
             sl.sendParticles(ParticleTypes.POOF, player.getX(), player.getY(), player.getZ(), 5, 0.2, 0.1, 0.2, 0.05);
         }
         syncToPlayer(player, data);
+        broadcastAnimation(player, data.getActiveAction(), data.getActionTicks());
     }
 
     private static void validateAndExecuteLedgeHang(ServerPlayer player, ParkourActionPayload payload, PlayerStaminaData data, AriseNB5Config config, boolean isCreative) {
@@ -207,16 +224,22 @@ public final class ParkourServerManager {
             player.setDeltaMovement(Vec3.ZERO);
             player.resetFallDistance();
             syncToPlayer(player, data);
+            broadcastAnimation(player, data.getActiveAction(), data.getActionTicks());
         }
     }
 
     private static void validateAndExecuteLedgeClimb(ServerPlayer player, ParkourActionPayload payload, PlayerStaminaData data, AriseNB5Config config, boolean isCreative) {
         if (!config.ledgeGrabEnabled || !data.canPerform(ParkourActionType.LEDGE_CLIMB, isCreative)) return;
+        if (data.getActiveAction() != ParkourActionType.LEDGE_HANG) return; // Must be actively hanging to climb
 
         Vec3 dir = new Vec3(payload.dirX(), 0, payload.dirZ()).normalize();
         if (dir.lengthSqr() < 1e-4) {
             dir = Vec3.directionFromRotation(0, player.getYRot()).normalize();
         }
+
+        // Validate physical ledge still exists directly in front of player
+        BlockPos chestPos = BlockPos.containing(player.getX() + dir.x * 0.7, player.getY() + 1.2, player.getZ() + dir.z * 0.7);
+        if (!player.level().getBlockState(chestPos).isSolid()) return;
 
         data.consumeForAction(ParkourActionType.LEDGE_CLIMB, isCreative);
 
@@ -230,10 +253,11 @@ public final class ParkourServerManager {
                     SoundEvents.ARMOR_EQUIP_GENERIC.value(), SoundSource.PLAYERS, 0.5f, 1.2f);
         }
         syncToPlayer(player, data);
+        broadcastAnimation(player, data.getActiveAction(), data.getActionTicks());
     }
 
     private static void validateAndExecuteSlide(ServerPlayer player, ParkourActionPayload payload, PlayerStaminaData data, AriseNB5Config config, boolean isCreative) {
-        if (!config.slideEnabled || !player.isSprinting() || !player.onGround()) return;
+        if (!config.slideEnabled || !player.isSprinting() || !player.onGround() || data.getActiveAction() == ParkourActionType.SLIDE || data.getSlideCooldownTicks() > 0) return;
 
         Vec3 forward = new Vec3(payload.dirX(), 0, payload.dirZ()).normalize();
         if (forward.lengthSqr() < 1e-4) {
@@ -252,9 +276,11 @@ public final class ParkourServerManager {
                     SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.4f, 1.5f);
         }
         syncToPlayer(player, data);
+        broadcastAnimation(player, data.getActiveAction(), data.getActionTicks());
     }
 
     private static void validateAndExecuteDodgeRoll(ServerPlayer player, ParkourActionPayload payload, PlayerStaminaData data, AriseNB5Config config, boolean isCreative) {
+        if (!player.onGround()) return; // Must be on ground to dodge or roll
         ParkourActionType action = payload.getActionType();
         if (!config.dodgeRollEnabled || !data.canPerform(action, isCreative)) return;
 
@@ -275,21 +301,22 @@ public final class ParkourServerManager {
                     SoundEvents.PLAYER_ATTACK_SWEEP, SoundSource.PLAYERS, 0.5f, 1.3f);
         }
         syncToPlayer(player, data);
+        broadcastAnimation(player, data.getActiveAction(), data.getActionTicks());
     }
 
     private static void validateAndExecuteBreakfall(ServerPlayer player, ParkourActionPayload payload, PlayerStaminaData data, AriseNB5Config config, boolean isCreative) {
         if (!config.breakfallEnabled || !data.canPerform(ParkourActionType.BREAKFALL, isCreative)) return;
 
-        // Player must have fallen at least the configured minimum fall distance
-        float fallDist = (float) Math.max((double) player.fallDistance, (double) payload.param());
-        if (fallDist < config.lowestFallDistanceForBreakfall) return;
+        // Authoritatively rely strictly on server player.fallDistance, never client-sent payload
+        if (player.fallDistance < config.lowestFallDistanceForBreakfall) return;
+        double fallDist = player.fallDistance;
 
         data.consumeForAction(ParkourActionType.BREAKFALL, isCreative);
         data.setBreakfallPrimed(true);
         data.setLastFallDistance(fallDist);
 
         // Authoritatively soften fall distance
-        player.fallDistance = (float) Math.max(0.0, player.fallDistance - config.breakfallFallReduction);
+        player.fallDistance = Math.max(0.0, player.fallDistance - config.breakfallFallReduction);
 
         if (player.level() instanceof ServerLevel sl) {
             sl.playSound(null, player.getX(), player.getY(), player.getZ(),
@@ -297,6 +324,7 @@ public final class ParkourServerManager {
             sl.sendParticles(ParticleTypes.POOF, player.getX(), player.getY(), player.getZ(), 8, 0.3, 0.1, 0.3, 0.04);
         }
         syncToPlayer(player, data);
+        broadcastAnimation(player, data.getActiveAction(), data.getActionTicks());
     }
 
     public static double applyBreakfallDamageReduction(Player player, double originalFallDistance) {

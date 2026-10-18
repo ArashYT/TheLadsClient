@@ -20,6 +20,7 @@ public abstract class MixinPlayerModel {
     )
     private void ladssmp$applyParkourLimbPoses(AvatarRenderState state, CallbackInfo ci) {
         PlayerModel self = (PlayerModel) (Object) this;
-        ParkourAnimationManager.applyPlayerModelAnim(self, state);
+        float partialTick = net.minecraft.client.Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        ParkourAnimationManager.applyPlayerModelAnim(self, state, partialTick);
     }
 }

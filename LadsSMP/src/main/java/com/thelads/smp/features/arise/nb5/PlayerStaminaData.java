@@ -19,6 +19,7 @@ public final class PlayerStaminaData {
     private int successiveDodgeCounter = 0;
     private int successiveDodgeTimer = 0;
     private int wallJumpCooldownTicks = 0;
+    private int slideCooldownTicks = 0;
     private boolean breakfallPrimed = false;
     private double lastFallDistance = 0.0;
 
@@ -70,6 +71,10 @@ public final class PlayerStaminaData {
         return wallJumpCooldownTicks;
     }
 
+    public synchronized int getSlideCooldownTicks() {
+        return slideCooldownTicks;
+    }
+
     public synchronized boolean isBreakfallPrimed() {
         return breakfallPrimed;
     }
@@ -110,6 +115,10 @@ public final class PlayerStaminaData {
             wallJumpCooldownTicks--;
         }
 
+        if (slideCooldownTicks > 0) {
+            slideCooldownTicks--;
+        }
+
         if (actionTicks > 0) {
             actionTicks--;
             if (actionTicks == 0 && activeAction != ParkourActionType.NONE && activeAction != ParkourActionType.CRAWL) {
@@ -121,6 +130,10 @@ public final class PlayerStaminaData {
         if (activeAction == ParkourActionType.LEDGE_HANG) {
             if (!(isCreative && config.infiniteStaminaCreative)) {
                 consumeRaw(config.ledgeHangStaminaCostPerTick);
+                if (this.currentStamina == 0) {
+                    this.activeAction = ParkourActionType.NONE;
+                    this.actionTicks = 0;
+                }
             }
         } else if (currentStamina < config.maxStamina) {
             int rate = config.staminaRecoveryRate;
@@ -145,7 +158,7 @@ public final class PlayerStaminaData {
             case WALL_JUMP -> config.wallJumpEnabled && wallJumpCooldownTicks == 0 && currentStamina >= config.wallJumpStaminaCost;
             case LEDGE_HANG -> config.ledgeGrabEnabled;
             case LEDGE_CLIMB -> config.ledgeGrabEnabled && currentStamina >= config.ledgeClimbStaminaCost;
-            case SLIDE -> config.slideEnabled;
+            case SLIDE -> config.slideEnabled && activeAction != ParkourActionType.SLIDE && slideCooldownTicks == 0;
             case CRAWL -> true;
             case DODGE -> config.dodgeRollEnabled && dodgeCooldownTicks == 0 && currentStamina >= config.dodgeStaminaCost;
             case ROLL -> config.dodgeRollEnabled && dodgeCooldownTicks == 0 && currentStamina >= config.rollStaminaCost;
@@ -189,7 +202,10 @@ public final class PlayerStaminaData {
             }
             case LEDGE_HANG -> setActiveAction(ParkourActionType.LEDGE_HANG, 200);
             case LEDGE_CLIMB -> setActiveAction(ParkourActionType.LEDGE_CLIMB, 12);
-            case SLIDE -> setActiveAction(ParkourActionType.SLIDE, config.slidingContinuableTick);
+            case SLIDE -> {
+                setActiveAction(ParkourActionType.SLIDE, config.slidingContinuableTick);
+                this.slideCooldownTicks = config.slidingContinuableTick + 15;
+            }
             case CRAWL -> setActiveAction(ParkourActionType.CRAWL, 20);
             case DODGE -> {
                 setActiveAction(ParkourActionType.DODGE, 10);
