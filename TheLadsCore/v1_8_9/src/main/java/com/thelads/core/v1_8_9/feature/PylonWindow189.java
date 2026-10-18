@@ -7,6 +7,7 @@ package com.thelads.core.v1_8_9.feature;
  */
 public final class PylonWindow189 {
     public static final boolean PRESENT = present();
+    private static boolean resizedLatched;
 
     private PylonWindow189() {}
 
@@ -17,6 +18,21 @@ public final class PylonWindow189 {
         } catch (ClassNotFoundException e) {
             return false;
         }
+    }
+
+    /**
+     * After one of Lads' own window pumps: Pylon clears Display.wasResized on every processMessages (LWJGL 2 kept it until read),
+     * so a resize pumped there would be gone by Minecraft.checkWindowResize. Keep it for that check.
+     */
+    public static void afterPump() {
+        if (PRESENT && org.lwjgl.opengl.Display.wasResized()) resizedLatched = true;
+    }
+
+    /** Minecraft.checkWindowResize's Display.wasResized, with a latched resize. */
+    public static boolean wasResized() {
+        boolean resized = org.lwjgl.opengl.Display.wasResized() || resizedLatched;
+        resizedLatched = false;
+        return resized;
     }
 
     private static long window() throws ReflectiveOperationException {
@@ -48,6 +64,7 @@ public final class PylonWindow189 {
         long window = window();
         video.getMethod("SDL_SetWindowSize", long.class, int.class, int.class).invoke(null, window, width, height);
         video.getMethod("SDL_SyncWindow", long.class).invoke(null, window);
+        afterPump(); // SyncWindow may deliver the resize outside a pump
     }
 
     /** Display.isResizable, which Pylon lacks (SDL_WINDOW_RESIZABLE). */

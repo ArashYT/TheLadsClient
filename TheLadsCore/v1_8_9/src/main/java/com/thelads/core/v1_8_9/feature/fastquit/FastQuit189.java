@@ -90,7 +90,10 @@ public final class FastQuit189 {
     /** Minecraft.shutdownMinecraftApplet: the game loop has ended (nothing can be drawn); the window keeps answering. */
     public static void awaitSavesAtExit() {
         while (!FastQuit.awaitAll(50)) {
-            if (Display.isCreated()) Display.processMessages();
+            if (Display.isCreated()) {
+                Display.processMessages();
+                com.thelads.core.v1_8_9.feature.PylonWindow189.afterPump();
+            }
         }
     }
 

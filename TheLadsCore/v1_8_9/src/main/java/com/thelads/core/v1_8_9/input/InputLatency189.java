@@ -65,7 +65,10 @@ public final class InputLatency189 {
                 LOGGER.info("Lads input: input-latency pacing on.");
             }
             PACER.frameStart(() -> done(previous), () -> done(older));
-            if (Display.isCreated()) Display.processMessages();
+            if (Display.isCreated()) {
+                Display.processMessages();
+                com.thelads.core.v1_8_9.feature.PylonWindow189.afterPump();
+            }
         } catch (Throwable t) {
             stop(t);
         }

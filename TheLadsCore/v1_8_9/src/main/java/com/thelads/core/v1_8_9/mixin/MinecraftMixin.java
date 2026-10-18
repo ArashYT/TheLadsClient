@@ -28,6 +28,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * QA (Probe173Perf): each frame's work up to Display.update (FrameWork189). */
 @Mixin(Minecraft.class)
 public abstract class MinecraftMixin {
+    /** Pylon: a resize Lads' own input pumps saw (PylonWindow189.afterPump) still resizes the game. */
+    @Redirect(method = "checkWindowResize", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;wasResized()Z", remap = false))
+    private boolean lads$wasResized() {
+        return com.thelads.core.v1_8_9.feature.PylonWindow189.wasResized();
+    }
+
     private static final long TIMER_RES = org.lwjgl.Sys.getTimerResolution();
 
     /** Cache the immutable timer resolution to eliminate redundant JNI calls every getSystemTime invocation. */
