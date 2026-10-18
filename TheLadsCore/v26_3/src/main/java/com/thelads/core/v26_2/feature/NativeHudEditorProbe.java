@@ -45,6 +45,7 @@ final class NativeHudEditorProbe implements AutoCloseable {
     private int stage, passed, saves;
     private long nextStep, readyAt;
     private boolean restored, inGame;
+    private boolean originalFps, originalKeystrokes;
     private Rect beforeCps, beforeDay;
     private String shot;
     private int shotFrames;
@@ -60,10 +61,12 @@ final class NativeHudEditorProbe implements AutoCloseable {
         settings.getPositions().forEach((name, value) -> positions.put(name, value.clone()));
         settings.getGroups().forEach(group -> groups.add(Set.copyOf(group)));
         locked = Set.copyOf(settings.getLocked());
+        originalFps = ModuleManager.getInstance().getModule("FPS") != null && ModuleManager.getInstance().getModule("FPS").isEnabled();
+        originalKeystrokes = ModuleManager.getInstance().getModule("Keystrokes") != null && ModuleManager.getInstance().getModule("Keystrokes").isEnabled();
         for (HudElement element : HudManager.getInstance().getElements()) {
             elementPositions.put(element, new int[] {element.getX(), element.getY()});
-            Module module = ModuleManager.getInstance().getModule(element.getModuleName());
-            if (module == null) continue;
+        }
+        for (Module module : ModuleManager.getInstance().getModules()) {
             var options = new LinkedHashMap<Option, JsonElement>();
             for (Option option : module.getOptions()) {
                 JsonElement value = option.save();
@@ -375,13 +378,19 @@ final class NativeHudEditorProbe implements AutoCloseable {
     @Override public void close() {
         if (restored) return;
         restored = true;
-        if (controller != null) controller.close();
-        modules.forEach((module, state) -> {
-            state.options().forEach(Option::load);
-            module.setEnabled(state.enabled()); module.setLastModified(state.modified());
-        });
-        settings.getPositions().clear(); positions.forEach((name, value) -> settings.setPosition(name, value[0], value[1]));
-        settings.replaceGroups(groups); settings.replaceLocked(locked);
-        elementPositions.forEach((element, value) -> { element.endPositionEdit(); element.setPosition(value[0], value[1]); element.restoreSavedPosition(); });
+        try {
+            if (controller != null) controller.close();
+            modules.forEach((module, state) -> {
+                state.options().forEach(Option::load);
+                module.setEnabled(state.enabled()); module.setLastModified(state.modified());
+            });
+            settings.getPositions().clear(); positions.forEach((name, value) -> settings.setPosition(name, value[0], value[1]));
+            settings.replaceGroups(groups); settings.replaceLocked(locked);
+            elementPositions.forEach((element, value) -> { element.endPositionEdit(); element.setPosition(value[0], value[1]); element.restoreSavedPosition(); });
+            com.thelads.core.config.ConfigManager.save();
+        } finally {
+            check(ModuleManager.getInstance().getModule("FPS") != null && ModuleManager.getInstance().getModule("FPS").isEnabled() == originalFps, "FPS enabled state restored");
+            check(ModuleManager.getInstance().getModule("Keystrokes") != null && ModuleManager.getInstance().getModule("Keystrokes").isEnabled() == originalKeystrokes, "Keystrokes enabled state restored");
+        }
     }
 }
