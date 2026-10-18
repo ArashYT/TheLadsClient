@@ -430,5 +430,9 @@
   "item.ladssmp.target_dummy": "Target Dummy",
   "entity.ladssmp.target_dummy": "Target Dummy",
   "key.ladssmp.swap_back_weapon": "Swap Back Weapon",
-  "key.ladssmp.cosmetics": "Open Cosmetic Armor"
+  "key.ladssmp.cosmetics": "Open Cosmetic Armor",
+  "key.ladssmp.dodge_roll": "Dodge / Roll",
+  "key.ladssmp.ledge_grab": "Ledge Grab",
+  "key.ladssmp.slide": "Slide",
+  "key.categories.ladssmp": "The Lads SMP - Parkour"
 }

@@ -560,6 +560,9 @@ if (Env("LADS_QA_EMOTE") == "1" && !capabilities.Forge) requiredWorldProbes = [.
 bool inputVerification = autoWorldVerification && !capabilities.Forge && Env("LADS_VERIFY_INPUT") == "1", inputProbeFailed = false;
 if (inputVerification) requiredWorldProbes = [.. requiredWorldProbes, "Lads input probe END:"];
 if (scripted) requiredWorldProbes = [.. requiredWorldProbes, "Lads qa script END:"];
+// 1.9.11: 1.7 Animations held and used items, both hands, module on and off (26.x Anim1911Capture26, LADS_QA_ANIM1911=1).
+bool anim1911Verification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_QA_ANIM1911") == "1";
+if (anim1911Verification) requiredWorldProbes = [.. requiredWorldProbes, "Lads anim 1.9.11 capture END:"];
 if (ebeVerification && capabilities.Minimal) requiredWorldProbes = [.. requiredWorldProbes, "Lads EBE probe END:"];
 if (capabilities.Minimal && !autoWorldVerification) requiredWorldProbes = scripted ? ["Lads qa script END:"] : []; // --no-world: the title screen and the script are the whole run (its END marker ends the run)
 // Every run with LadsCore reports shared content and the mod inventory at the title screen (plus the in-game request when asked).
@@ -1288,7 +1291,9 @@ try
             // The input probe's measurements run on after an unrelated probe failed (they need the world for a few minutes).
             && (!inputVerification || inputProbeFailed || passedMarkers.ContainsKey("Lads input probe END:"))
             // A world191-only run still gets its own capture after an unrelated probe failed (26.3's World Play Time check is flaky).
-            && (!world191Only || worldCapturesRequested || stopwatch.Elapsed > TimeSpan.FromSeconds(300))) break;
+            && (!world191Only || worldCapturesRequested || stopwatch.Elapsed > TimeSpan.FromSeconds(300))
+            // The 1.9.11 animation capture also gets its shots after an unrelated probe failed.
+            && (!anim1911Verification || passedMarkers.ContainsKey("Lads anim 1.9.11 capture END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(900))) break;
         if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed && (!scripted || passedMarkers.ContainsKey("Lads qa script END:"))
             && (!nativePortsVerification || requiredTitleProbes.All(passedMarkers.ContainsKey))
             && (forgeList == null || stopwatch.Elapsed - forgeTitleAt >= TimeSpan.FromSeconds(10))) break;
