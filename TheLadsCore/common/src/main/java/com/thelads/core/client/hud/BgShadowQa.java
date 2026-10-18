@@ -87,11 +87,6 @@ public final class BgShadowQa {
         add(10, () -> shot(d, "bgs-hud-2-bg-on-shadow-off"));
         add(30, d::openSettings);
         add(10, () -> click(d, "global-backgrounds", false, false, false));
-        add(10, () -> click(d, "global-text-shadow", false, true, true));
-        add(10, () -> shot(d, "bgs-qa-3-settings-shadow-soft"));
-        add(30, d::closeScreen);
-        add(10, () -> shot(d, "bgs-hud-3-bg-off-shadow-soft"));
-        add(30, d::openSettings);
         add(10, () -> click(d, "global-text-shadow", false, true, false));
         add(10, () -> shot(d, "bgs-qa-4-settings-shadow-on"));
         add(30, d::closeScreen);
@@ -122,9 +117,8 @@ public final class BgShadowQa {
         add(10, () -> header(d, name));
         add(10, () -> shot(d, "bgs-" + name + "-1-settings"));
         add(10, () -> click(d, "global-backgrounds", true, false, false));
-        add(10, () -> click(d, "global-text-shadow", true, true, true));
-        add(10, () -> shot(d, "bgs-" + name + "-2-settings-bg-on-shadow-soft"));
         add(10, () -> click(d, "global-text-shadow", true, true, false));
+        add(10, () -> shot(d, "bgs-" + name + "-2-settings-bg-on-shadow-on"));
         add(10, () -> click(d, "global-text-shadow", true, false, false));
         add(10, () -> click(d, "global-backgrounds", false, false, false));
         add(10, () -> click(d, "global-colors"));
@@ -139,8 +133,6 @@ public final class BgShadowQa {
         add(10, () -> editorLayout(d, name));
         add(10, () -> shot(d, "bgs-" + name + "-6-editor"));
         add(10, () -> editorClick(d, "backgrounds", true, false, false));
-        add(10, () -> editorClick(d, "textshadow", true, true, true));
-        add(10, () -> shot(d, "bgs-" + name + "-7-editor-bg-on-shadow-soft"));
         add(10, () -> editorClick(d, "textshadow", true, true, false));
         add(10, () -> shot(d, "bgs-" + name + "-8-editor-shadow-on"));
         add(10, () -> editorClick(d, "textshadow", true, false, false));

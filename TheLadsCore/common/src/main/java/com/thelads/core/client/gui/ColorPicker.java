@@ -17,16 +17,12 @@ public final class ColorPicker {
     /** Global HUD text backgrounds (config key hud.backgrounds), shown next to every Colors button. */
     public static String backgroundsLabel() { return "Backgrounds: " + (HudSettings.getInstance().isBackgrounds() ? "ON" : "OFF"); }
     public static void toggleBackgrounds() { HudSettings.getInstance().setBackgrounds(!HudSettings.getInstance().isBackgrounds()); ConfigManager.save(); }
-    /** Global text shadow (hud.textShadow + hud.softShadow): OFF -> Soft -> ON -> OFF. */
-    public static String textShadowLabel() {
-        var s = HudSettings.getInstance();
-        return "Text Shadow: " + (!s.isTextShadow() ? "OFF" : s.isSoftShadow() ? "Soft" : "ON");
-    }
+    /** Global text shadow (hud.textShadow), ON/OFF; no renderer draws a "soft" shadow since 1.9.1, so it is always cleared. */
+    public static String textShadowLabel() { return "Text Shadow: " + (HudSettings.getInstance().isTextShadow() ? "ON" : "OFF"); }
     public static void cycleTextShadow() {
         var s = HudSettings.getInstance();
-        if (!s.isTextShadow()) { s.setTextShadow(true); s.setSoftShadow(true); }
-        else if (s.isSoftShadow()) s.setSoftShadow(false);
-        else s.setTextShadow(false);
+        s.setTextShadow(!s.isTextShadow());
+        s.setSoftShadow(false);
         ConfigManager.save();
     }
     public void open(String title, int color, IntConsumer apply) {
