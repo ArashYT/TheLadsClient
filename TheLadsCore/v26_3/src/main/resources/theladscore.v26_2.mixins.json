@@ -45,6 +45,8 @@
     "OwnNametagMixin",
     "NametagBackgroundMixin",
     "NametagShadowDepthMixin",
+    "AvatarRenderStateMixin",
+    "AvatarRendererMixin",
     "NicknameTabMixin",
     "ConnectionActivityMixin",
     "SignalLossHudMixin",
