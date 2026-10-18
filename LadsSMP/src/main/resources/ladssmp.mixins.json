@@ -53,7 +53,8 @@
     "MixinStonecutterBlock",
     "MixinVelocityNoSpeedLimit",
     "MixinLoginProtection",
-    "MixinDedicatedServerProperties"
+    "MixinDedicatedServerProperties",
+    "MixinWorldGenRegionBiome"
   ],
   "client": [
     "MixinScreenPortalGui",
