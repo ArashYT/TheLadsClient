@@ -20,6 +20,22 @@ public static class ClientModInstaller
     public sealed record Entry(string ProjectId, string ProjectSlug, string Name, string ModId,
         string VersionId, string Version, string FileName, string Url, string Sha512, long Size,
         string License, string? SourceUrl, string ProjectUrl, bool DefaultEnabled = true);
+
+    /// <summary>
+    /// The pack's default for an entry without a choice or a copy on disk. Ionium (on by default since 1.9.12) has no shaders: a profile
+    /// that renders through an OptiFine shader pack keeps OptiFine until Ionium is switched on in Mods.
+    /// </summary>
+    public static bool DefaultFor(Entry entry, string game) =>
+        entry.DefaultEnabled && !(entry.ModId == OptiFineInstaller.IoniumModId && GameOptionsService.ShaderPackSelected(game));
+
+    /// <summary>Pylon switched off: by choice, or (no choice) every copy on disk is disabled.</summary>
+    static bool PylonOff(Manifest manifest, ModPreferences preferences, IEnumerable<LocalJar> jars)
+    {
+        var project = manifest.Mods.FirstOrDefault(m => m.ModId == OptiFineInstaller.PylonModId)?.ProjectId;
+        var copies = jars.Where(j => j.Id == OptiFineInstaller.PylonModId).ToList();
+        bool on = preferences.GetEnabled(OptiFineInstaller.PylonModId, project) ?? !(copies.Count > 0 && copies.All(j => j.Disabled));
+        return !on;
+    }
     /// <summary>A mod removed from the pack; its published hashes identify managed copies to retire.</summary>
     public sealed record RetiredEntry(string ModId, string? ProjectId, string? Name, List<string>? Sha512, string? Reason);
     /// <param name="Published">Earlier pins of mods still in the pack (mod id → SHA-512s). With the current pins and the retired
@@ -167,7 +183,13 @@ public static class ClientModInstaller
                     : IsLegacyName(Path.GetFileName(jar.Path), entry.ModId) ? 1 : 2;
                 // No choice yet: the disk state, else the pack's default (an opt-in entry is off and not downloaded).
                 var wantEnabled = preferences.GetEnabled(entry.ModId, entry.ProjectId)
-                    ?? (copies.Count == 0 ? entry.DefaultEnabled : !copies.All(j => j.Disabled));
+                    ?? (copies.Count == 0 ? DefaultFor(entry, game) : !copies.All(j => j.Disabled));
+                // Ionium needs Pylon's LWJGL 3: with Pylon off it stays off (OptiFine renders instead).
+                if (entry.ModId == OptiFineInstaller.IoniumModId && wantEnabled && PylonOff(manifest, preferences, final.Values))
+                {
+                    wantEnabled = false;
+                    status?.Invoke(entry.Name + ": off while Pylon is off (Ionium needs it).");
+                }
                 if (rendererBlocked.Contains(entry.ModId))
                 {
                     if (preferences.GetEnabled(entry.ModId, entry.ProjectId) == null)

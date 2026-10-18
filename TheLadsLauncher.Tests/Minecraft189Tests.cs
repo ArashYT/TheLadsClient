@@ -718,8 +718,8 @@ public class Minecraft189Tests
         var bundle = AppContext.BaseDirectory;
         var manifest = JsonSerializer.Deserialize<ClientModInstaller.Manifest>(File.ReadAllText(Path.Combine(bundle, "game-mods", "1.8.9", "client-mods.json")),
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
-        Assert.Equal(("1.8.9", 5), (manifest.MinecraftVersion, manifest.Mods.Count)); // Resourcify, 3D Skin Layers, Xaero, Pylon, Ionium (opt-in)
-        Assert.Equal(new[] { "ionium" }, manifest.Mods.Where(m => !m.DefaultEnabled).Select(m => m.ModId));
+        Assert.Equal(("1.8.9", 5), (manifest.MinecraftVersion, manifest.Mods.Count)); // Resourcify, 3D Skin Layers, Xaero, Pylon, Ionium
+        Assert.Empty(manifest.Mods.Where(m => !m.DefaultEnabled)); // Ionium is on by default since 1.9.12 (owner)
         Assert.Contains(manifest.Retired ?? new(), r => r.ModId == "essential");
         Assert.DoesNotContain(Directory.EnumerateFiles(Path.Combine(bundle, "game-mods"), "*", SearchOption.AllDirectories),
             file => Path.GetFileName(file).Contains("optifine", StringComparison.OrdinalIgnoreCase)
@@ -989,17 +989,72 @@ public class Minecraft189Tests
         Assert.Null(await Install());
         Assert.True(File.Exists(installed));
 
-        // Ionium refuses to start next to OptiFine: switched on, OptiFine is switched off (renamed, never deleted).
-        box.Choose((OptiFineInstaller.IoniumModId, true));
+        // Ionium refuses to start next to OptiFine: an enabled Ionium in Mods (the pack install applied the choice) switches it off
+        // (renamed, never deleted).
+        var ionium = box.Mod("ionium-0.1.0-pre.3-forge-1.8.9.jar");
+        File.WriteAllBytes(ionium, ForgeJar("[{\"modid\": \"ionium\", \"name\": \"Ionium\"}]"));
         Assert.Null(await Install());
         Assert.False(File.Exists(installed));
         Assert.Equal(jar, File.ReadAllBytes(installed + ".disabled"));
         Assert.Contains(messages, m => m.Contains("Ionium"));
 
-        // Ionium off again: OptiFine comes back without a choice of its own (the disk state alone would keep it off).
-        box.Choose((OptiFineInstaller.IoniumModId, false));
+        // Ionium off again (the Mods page renames it): OptiFine comes back without a choice of its own (the disk state alone would keep it off).
+        File.Move(ionium, ionium + ".disabled");
         Assert.Null(await Install());
         Assert.Equal(jar, File.ReadAllBytes(installed));
+    }
+
+    [Fact]
+    public async Task IoniumIsOnByDefaultExceptForAShaderPackOrWithoutPylonAndTheModsPageTurnsItOff()
+    {
+        var pylonJar = ForgeJar("[{\"modid\": \"pylon\", \"name\": \"Pylon\"}]");
+        var ioniumJar = ForgeJar("[{\"modid\": \"ionium\", \"name\": \"Ionium\"}]");
+        async Task<ModSandbox> Profile(Action<ModSandbox>? before = null)
+        {
+            var box = new ModSandbox();
+            box.WriteManifest("1.8.9", new[] { box.Pin(OptiFineInstaller.PylonModId, pylonJar), box.Pin(OptiFineInstaller.IoniumModId, ioniumJar) });
+            before?.Invoke(box);
+            await box.Install("1.8.9");
+            return box;
+        }
+        string Jar(ModSandbox box, string id) => box.Mod(id + "-1.0.0.jar");
+
+        // A new or updated profile without a choice: Ionium is downloaded and on.
+        using (var fresh = await Profile())
+        {
+            Assert.Equal(ioniumJar, File.ReadAllBytes(Jar(fresh, OptiFineInstaller.IoniumModId)));
+            var row = (await new ModInventoryService().BuildAsync(fresh.Bundle, fresh.Game, "1.8.9")).Entries.Single(e => e.Id == OptiFineInstaller.IoniumModId);
+            Assert.Equal((ModEntryStatus.Installed, true), (row.Status, row.RequestedEnabled));
+
+            // Switched off in Mods: renamed, not deleted (OptiFine then comes back: OptiFineIsSwitchedOffWhileIoniumIsOnAndComesBackAfter).
+            fresh.Choose((OptiFineInstaller.IoniumModId, false));
+            await fresh.Install("1.8.9");
+            Assert.False(File.Exists(Jar(fresh, OptiFineInstaller.IoniumModId)));
+            Assert.True(File.Exists(Jar(fresh, OptiFineInstaller.IoniumModId) + ".disabled"));
+        }
+
+        // A profile rendering through an OptiFine shader pack keeps OptiFine: Ionium has no shaders (not even downloaded).
+        using (var shaders = await Profile(box => File.WriteAllText(Path.Combine(box.Game, "optionsshaders.txt"), "shaderPack=Sildurs.zip\n")))
+        {
+            Assert.False(File.Exists(Jar(shaders, OptiFineInstaller.IoniumModId)));
+            var row = (await new ModInventoryService().BuildAsync(shaders.Bundle, shaders.Game, "1.8.9")).Entries.Single(e => e.Id == OptiFineInstaller.IoniumModId);
+            Assert.False(row.RequestedEnabled);
+            // Its own choice still wins.
+            shaders.Choose((OptiFineInstaller.IoniumModId, true));
+            await shaders.Install("1.8.9");
+            Assert.True(File.Exists(Jar(shaders, OptiFineInstaller.IoniumModId)));
+        }
+
+        // The internal shaders or OFF are no shader pack.
+        using (var off = await Profile(box => File.WriteAllText(Path.Combine(box.Game, "optionsshaders.txt"), "shaderPack=OFF\n")))
+            Assert.True(File.Exists(Jar(off, OptiFineInstaller.IoniumModId)));
+
+        // Ionium needs Pylon's LWJGL 3: with Pylon switched off it stays off, even when chosen.
+        using (var noPylon = await Profile(box => box.Choose((OptiFineInstaller.PylonModId, false), (OptiFineInstaller.IoniumModId, true))))
+        {
+            Assert.False(File.Exists(Jar(noPylon, OptiFineInstaller.IoniumModId)));
+            Assert.Contains(noPylon.Messages, m => m.Contains("Pylon"));
+        }
     }
 
     [Theory]
