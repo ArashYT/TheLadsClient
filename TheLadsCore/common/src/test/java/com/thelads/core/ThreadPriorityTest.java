@@ -3,6 +3,7 @@ package com.thelads.core;
 import com.thelads.core.modules.ThreadPriorityModule;
 import com.thelads.core.config.SliderOption;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,13 +21,14 @@ class ThreadPriorityTest {
         worker.start(); unrelated.start(); batcher.start();
         try {
             assertFalse(module.isEnabled());
+            var applied = new CountDownLatch(1);
+            module.addApplyListener(m -> applied.countDown());
             ((SliderOption)module.getOption("Worker thread priority")).setValue(6);
             module.setEnabled(true);
-            long deadline = System.nanoTime() + 3_000_000_000L;
-            while (worker.getPriority() != 6 && System.nanoTime() < deadline) Thread.sleep(10);
-            while (batcher.getPriority() != 6 && System.nanoTime() < deadline) Thread.sleep(10);
-            assertEquals(6, worker.getPriority());
-            assertEquals(6, batcher.getPriority());
+            assertTrue(applied.await(5, TimeUnit.SECONDS), "ThreadPriorityModule apply event should fire");
+            int expected = ThreadPriorityModule.effectivePriority(worker, 6);
+            assertEquals(expected, worker.getPriority());
+            assertEquals(expected, batcher.getPriority());
             assertEquals(3, unrelated.getPriority());
             module.setEnabled(false);
             assertEquals(4, worker.getPriority());
