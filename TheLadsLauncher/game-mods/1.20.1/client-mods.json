@@ -138,21 +138,6 @@
       "projectUrl": "https://modrinth.com/mod/continuity"
     },
     {
-      "projectId": "v3CYg2V9",
-      "projectSlug": "drippy-loading-screen",
-      "name": "Drippy Loading Screen",
-      "modId": "drippyloadingscreen",
-      "versionId": "ewn2Ljq2",
-      "version": "3.1.5-1.20.1-fabric",
-      "fileName": "drippyloadingscreen_fabric_3.1.5_MC_1.20.1.jar",
-      "url": "https://cdn.modrinth.com/data/v3CYg2V9/versions/ewn2Ljq2/drippyloadingscreen_fabric_3.1.5_MC_1.20.1.jar",
-      "sha512": "671ffaba463d605d1f14f44f6188f1b0de17910fd1543393bf0996a1af236762979bb92da9ea77646dc31c5cb85d934f5183cab5be5cd1bcd3c1e1ffe8e160c3",
-      "size": 277393,
-      "license": "LicenseRef-DSMSLv3",
-      "sourceUrl": "https://github.com/Keksuccino/Drippy-Loading-Screen",
-      "projectUrl": "https://modrinth.com/mod/drippy-loading-screen"
-    },
-    {
       "projectId": "OoF97Pto",
       "projectSlug": "effectual",
       "name": "Effectual",
@@ -213,21 +198,6 @@
       "projectUrl": "https://modrinth.com/mod/fabric-language-kotlin"
     },
     {
-      "projectId": "Wq5SjeWM",
-      "projectSlug": "fancymenu",
-      "name": "FancyMenu",
-      "modId": "fancymenu",
-      "versionId": "ywyEnvpm",
-      "version": "3.9.14-1.20.1-fabric",
-      "fileName": "fancymenu_fabric_3.9.14_MC_1.20.1.jar",
-      "url": "https://cdn.modrinth.com/data/Wq5SjeWM/versions/ywyEnvpm/fancymenu_fabric_3.9.14_MC_1.20.1.jar",
-      "sha512": "202a628c2647c317b2572b862bac7519d87030fdf5d002211ba658cfb01f87b38c0d905befcb198514ee4d0cbe2a7b210f20233d1d18ae86909c726ad36a2a37",
-      "size": 26225066,
-      "license": "LicenseRef-DSMSLv3.1",
-      "sourceUrl": "https://github.com/Keksuccino/FancyMenu",
-      "projectUrl": "https://modrinth.com/mod/fancymenu"
-    },
-    {
       "projectId": "nSRLvOHG",
       "projectSlug": "fism",
       "name": "Faster Iris Shadow Mapper [FISM]",
@@ -271,6 +241,21 @@
       "license": "MIT",
       "sourceUrl": null,
       "projectUrl": "https://modrinth.com/mod/framepacer"
+    },
+    {
+      "projectId": "Orvt0mRa",
+      "projectSlug": "indium",
+      "name": "Indium",
+      "modId": "indium",
+      "versionId": "nQHYSjxO",
+      "version": "1.0.36+mc1.20.1",
+      "fileName": "indium-1.0.36+mc1.20.1.jar",
+      "url": "https://cdn.modrinth.com/data/Orvt0mRa/versions/nQHYSjxO/indium-1.0.36%2Bmc1.20.1.jar",
+      "sha512": "7c5a1851f1fc08ae69318e151d07151fabba6cda2a24616c9251e1a4e5b969453e88b97d60f926271d60e3511bfc6fa05a64a108466efb7f29bec4519547e0c9",
+      "size": 105382,
+      "license": "Apache-2.0",
+      "sourceUrl": "https://github.com/comp500/Indium",
+      "projectUrl": "https://modrinth.com/mod/indium"
     },
     {
       "projectId": "YL57xq9U",
@@ -318,21 +303,6 @@
       "projectUrl": "https://modrinth.com/mod/jei"
     },
     {
-      "projectId": "J81TRJWm",
-      "projectSlug": "konkrete",
-      "name": "Konkrete",
-      "modId": "konkrete",
-      "versionId": "RlBGFlWp",
-      "version": "1.8.1-1.20.1-fabric",
-      "fileName": "konkrete_fabric_1.8.1_MC_1.20.1.jar",
-      "url": "https://cdn.modrinth.com/data/J81TRJWm/versions/RlBGFlWp/konkrete_fabric_1.8.1_MC_1.20.1.jar",
-      "sha512": "ca65343bd3b063f3e0f68cc1d40da1969cf07ca038670f22a2bac91c2f34162f2c455ceb309680d57da13267ffc99fc7f8d40bb9451e93ff56ab2a688c0e3a45",
-      "size": 892067,
-      "license": "Apache-2.0",
-      "sourceUrl": "https://github.com/Keksuccino/Konkrete",
-      "projectUrl": "https://modrinth.com/mod/konkrete"
-    },
-    {
       "projectId": "gvQqBUqZ",
       "projectSlug": "lithium",
       "name": "Lithium",
@@ -346,21 +316,6 @@
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/caffeinemc/lithium-fabric",
       "projectUrl": "https://modrinth.com/mod/lithium"
-    },
-    {
-      "projectId": "CVT4pFB2",
-      "projectSlug": "melody",
-      "name": "Melody",
-      "modId": "melody",
-      "versionId": "2o0oW8Yv",
-      "version": "1.0.4-1.20.1-1.20.4-fabric",
-      "fileName": "melody_fabric_1.0.4_MC_1.20.1-1.20.4.jar",
-      "url": "https://cdn.modrinth.com/data/CVT4pFB2/versions/2o0oW8Yv/melody_fabric_1.0.4_MC_1.20.1-1.20.4.jar",
-      "sha512": "3d3379e07eae001860aa71379abe310cda6642965cd55a8d274dacef1b63d8c85fd0663abeec2d247ac1a631bd08b12dace8758f4a035d344e27db5edfe581c5",
-      "size": 39696,
-      "license": "MIT",
-      "sourceUrl": "https://github.com/Keksuccino/Melody",
-      "projectUrl": "https://modrinth.com/mod/melody"
     },
     {
       "projectId": "7tEfOcA7",
@@ -693,6 +648,42 @@
         "4da133bec4ebd75a56c14fe2844de3e482530f6b8578e1f1d9bb4981469206b17d88d620e0e64648f97dac44728ebf38e7ba9dd15703c3fd3911546b9867fc94"
       ],
       "reason": "Removed from The Lads Client pack in 1.9.2."
+    },
+    {
+      "modId": "drippyloadingscreen",
+      "projectId": "v3CYg2V9",
+      "name": "Drippy Loading Screen",
+      "sha512": [
+        "671ffaba463d605d1f14f44f6188f1b0de17910fd1543393bf0996a1af236762979bb92da9ea77646dc31c5cb85d934f5183cab5be5cd1bcd3c1e1ffe8e160c3"
+      ],
+      "reason": "Retired in 1.9.12 (performance) with FancyMenu, which it needs; the Lads loading screen is drawn by Lads Core."
+    },
+    {
+      "modId": "fancymenu",
+      "projectId": "Wq5SjeWM",
+      "name": "FancyMenu",
+      "sha512": [
+        "202a628c2647c317b2572b862bac7519d87030fdf5d002211ba658cfb01f87b38c0d905befcb198514ee4d0cbe2a7b210f20233d1d18ae86909c726ad36a2a37"
+      ],
+      "reason": "Retired in 1.9.12 (performance): ran with no layouts in modpack mode, so nothing used it, but its pose-stack hooks cost 12 % FPS with many entities, 14 % with the HUD hidden and 3 s of startup on 26.3 (Legion bench)."
+    },
+    {
+      "modId": "konkrete",
+      "projectId": "J81TRJWm",
+      "name": "Konkrete",
+      "sha512": [
+        "ca65343bd3b063f3e0f68cc1d40da1969cf07ca038670f22a2bac91c2f34162f2c455ceb309680d57da13267ffc99fc7f8d40bb9451e93ff56ab2a688c0e3a45"
+      ],
+      "reason": "Retired in 1.9.12 (performance) with FancyMenu, which it needs (FancyMenu library)."
+    },
+    {
+      "modId": "melody",
+      "projectId": "CVT4pFB2",
+      "name": "Melody",
+      "sha512": [
+        "3d3379e07eae001860aa71379abe310cda6642965cd55a8d274dacef1b63d8c85fd0663abeec2d247ac1a631bd08b12dace8758f4a035d344e27db5edfe581c5"
+      ],
+      "reason": "Retired in 1.9.12 (performance) with FancyMenu, which it needs (FancyMenu library)."
     }
   ],
   "published": {

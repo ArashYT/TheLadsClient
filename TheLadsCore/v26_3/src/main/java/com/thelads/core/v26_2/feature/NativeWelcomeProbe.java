@@ -23,10 +23,13 @@ public final class NativeWelcomeProbe {
             if (!game.getFileName().toString().equals("26.3-title")
                 || !game.getParent().getFileName().toString().equals("verification"))
                 throw new IllegalStateException("Not an isolated QA folder");
-            Object options = Class.forName("de.keksuccino.fancymenu.FancyMenu").getMethod("getOptions").invoke(null);
-            Object welcome = options.getClass().getField("showWelcomeScreen").get(options);
-            if (!Boolean.FALSE.equals(welcome.getClass().getMethod("getValue").invoke(welcome)))
-                throw new IllegalStateException("FancyMenu welcome option was not loaded as false");
+            // FancyMenu left the pack in 1.9.12; its welcome option is only checked where a player still has it installed
+            if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("fancymenu")) {
+                Object options = Class.forName("de.keksuccino.fancymenu.FancyMenu").getMethod("getOptions").invoke(null);
+                Object welcome = options.getClass().getField("showWelcomeScreen").get(options);
+                if (!Boolean.FALSE.equals(welcome.getClass().getMethod("getValue").invoke(welcome)))
+                    throw new IllegalStateException("FancyMenu welcome option was not loaded as false");
+            }
             var configField = Class.forName("com.moonplay.mcessentials.client.ModpackCoreEssentialsClient").getDeclaredField("config");
             configField.setAccessible(true);
             Object config = configField.get(null);
