@@ -133,14 +133,16 @@ final class Hud170Capture {
                     HudSettings.getInstance().setHudFpsCapEnabled(true);
                     HudSettings.getInstance().setHudFpsLimit(30);
                     HudCapture.replayBlits = 0;
+                    HudTexture.qaShown = 0;
                     at(1500, "hud170-cap-1");
                 }
                 case 2 -> at(0, "hud170-cap-2");
                 case 3 -> at(0, "hud170-cap-3");
                 case 4 -> {
                     boolean minimap = MinimapIntegration.available();
-                    check(!minimap || HudCapture.replayBlits > 20, "HUD cap: the minimap is blitted on replayed frames ("
-                        + HudCapture.replayBlits + " replayed picture blits, minimap " + (minimap ? "loaded" : "absent") + ")");
+                    // 1.9.12: with the HUD texture (HudTexture) a replayed frame shows the whole HUD image, the minimap in it
+                    check(!minimap || HudCapture.replayBlits > 20 || HudTexture.qaShown > 20, "HUD cap: the minimap is blitted on replayed frames ("
+                        + HudCapture.replayBlits + " replayed picture blits, " + HudTexture.qaShown + " HUD texture frames, minimap " + (minimap ? "loaded" : "absent") + ")");
                     Module autohide = NativeQualityOfLife.module("Autohide");
                     autohide.setEnabled(true);
                     ((BoolOption) autohide.getOption("Show when hurt or hungry")).set(false);

@@ -13,6 +13,8 @@
     "GuiHudCapMixin",
     "WindowMinimizedPollMixin",
     "XaeroWorldMapPaceMixin",
+    "GuiRendererHudTextureMixin",
+    "XaeroMinimapHudPassMixin",
     "GuiRenderStateCaptureMixin",
     "TitleScreenMixin",
     "TitleWidgetMixin",

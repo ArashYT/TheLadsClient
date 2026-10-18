@@ -81,10 +81,12 @@ public class GuiRenderStateCaptureMixin {
      * Elements count by kind: vanilla's are records (texture, pose, corners, UVs, colour), so any change to one of them is a step;
      * HudFrameCap only takes it for an animation when it goes on. Any other kind counts by where it is and how big.
      */
-    @Inject(method = "addGuiElement", at = @At("HEAD"), require = 1)
+    @Inject(method = "addGuiElement", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$element(GuiElementRenderState element, CallbackInfo ci) {
         GuiElementRenderState plain = element instanceof com.thelads.core.v26_2.feature.FadedElement faded ? faded.element() : element;
         if (HudCapture.record(state -> state.addGuiElement(plain)))
             HudCapture.drew(plain.getClass().hashCode(), plain instanceof Record ? plain.hashCode() : java.util.Objects.hashCode(plain.bounds()));
+        // HUD texture (HudTexture): blending that reads what is under it is drawn live every frame, not baked into the image
+        if (com.thelads.core.v26_2.feature.HudTexture.keepLive((GuiRenderState) (Object) this, element)) ci.cancel();
     }
 }

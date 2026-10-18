@@ -71,7 +71,7 @@ final class HudFlickerCapture {
     private static JsonObject report;
     private static boolean capWas, subtitlesWas, vignetteWas;
     private static String difficultyWas;
-    private static int limitWas, measureFrames, builds0, replays0;
+    private static int limitWas, measureFrames, builds0, replays0, shown0, drawn0;
     private static long nanos0, measureStart;
     private static ItemStack handWas = ItemStack.EMPTY, headWas = ItemStack.EMPTY, feetWas = ItemStack.EMPTY;
     private static BlockPos below;
@@ -177,7 +177,7 @@ final class HudFlickerCapture {
         long now = System.nanoTime();
         if (pace >= 0) { pace(now); return; }
         if (measureFrom > 0 && now >= measureFrom) {
-            if (measureStart == 0) { measureStart = now; measureFrames = 0; builds0 = HudCapture.qaBuilds; replays0 = HudCapture.qaReplays; nanos0 = HudCapture.qaNanos; }
+            if (measureStart == 0) { measureStart = now; measureFrames = 0; builds0 = HudCapture.qaBuilds; replays0 = HudCapture.qaReplays; nanos0 = HudCapture.qaNanos; shown0 = HudTexture.qaShown; drawn0 = HudTexture.qaDrawn; }
             else measureFrames++;
             if (now >= measureTo) { measured(now); measureFrom = 0; }
             return;
@@ -313,8 +313,14 @@ final class HudFlickerCapture {
         double seconds = (now - measureStart) / 1e9;
         int builds = HudCapture.qaBuilds - builds0, replays = HudCapture.qaReplays - replays0;
         double hudMicros = measureFrames == 0 ? 0 : (HudCapture.qaNanos - nanos0) / 1e3 / Math.max(1, builds + replays);
-        String line = String.format(java.util.Locale.ROOT, "%.1f FPS, frame %.2f ms, HUD %.1f us per frame (%d builds, %d replays)",
-            measureFrames / seconds, seconds * 1000 / Math.max(1, measureFrames), hudMicros, builds, replays);
+        int shown = HudTexture.qaShown - shown0, drawn = HudTexture.qaDrawn - drawn0;
+        String line = String.format(java.util.Locale.ROOT, "%.1f FPS, frame %.2f ms, HUD %.1f us per frame (%d builds, %d replays; HUD texture %d frames, %d draws)",
+            measureFrames / seconds, seconds * 1000 / Math.max(1, measureFrames), hudMicros, builds, replays, shown, drawn);
+        // 1.9.12: with the cap on, the frames come from the HUD texture (HudTexture), drawn once per build
+        if (replays > 0 && HudTexture.active() && (shown < builds + replays - 2 || drawn < builds - 2)) {
+            failed++;
+            LOGGER.warn("Lads HUD flicker capture {}: HUD texture not used on every capped frame ({})", name, line);
+        }
         LOGGER.info("Lads HUD flicker capture {} cost: {}", name, line);
         cost().addProperty(name, line);
     }
