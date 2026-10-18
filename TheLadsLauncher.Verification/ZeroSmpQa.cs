@@ -357,7 +357,7 @@ internal static class ZeroSmpQa
     }
 
     /// <summary>A directory junction link -> target (the launcher's modpack-cache lands in the shared QA cache).</summary>
-    private static void Junction(string link, string target)
+    internal static void Junction(string link, string target)
     {
         if (Directory.Exists(link))
         {

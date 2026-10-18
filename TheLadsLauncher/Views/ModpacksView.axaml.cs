@@ -612,6 +612,7 @@ public partial class ModpacksView : UserControl
 
     // --preview-modpacks hooks.
     internal void ShowBrowse() => Tabs.SelectedItem = BrowseTab;
+    internal void ShowExternal() => Tabs.SelectedItem = ExternalTab;
     internal void PressPlay() => Play_Click(null, new RoutedEventArgs());
     internal string ManageStatusText => ManageStatus.Text ?? "";
     internal Process? RunningGame(string id) => _running.GetValueOrDefault(id);

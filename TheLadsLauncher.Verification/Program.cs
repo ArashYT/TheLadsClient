@@ -20,6 +20,8 @@ if (args.Length == 3 && args[0] == "--renderer-step")
 
 // Modpacks tab QA (ModpackQa.cs): a real Modrinth modpack installed (and updated) in the sandbox, then started to its title screen.
 if (args.Length >= 3 && args[0] == "--modpack") return await ModpackQa.RunAsync(args[1], Path.GetFullPath(args[2]), args[3..]);
+// 1.9.11: the External tab's Play on fake CurseForge and Prism instances, started directly to the title screen (ExternalQa.cs).
+if (args.Length >= 2 && args[0] == "--external") return await ExternalQa.RunAsync(Path.GetFullPath(args[1]), args[2..]);
 
 // 1.8.5: --zero-smp <sandbox dir> [options]: a sandbox copy of the user's Zero SMP instance (Forge + Sinytra Connector) with the freshly built
 // 1.20.1 Core, started through the launcher's own ModpackLauncher (ZeroSmpQa.cs). --mc1201 <repo root> [options]: the plain Fabric
