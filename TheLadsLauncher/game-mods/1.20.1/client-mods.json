@@ -228,21 +228,6 @@
       "projectUrl": "https://modrinth.com/mod/ferrite-core"
     },
     {
-      "projectId": "eNKAxsVp",
-      "projectSlug": "framepacer",
-      "name": "FramePacer",
-      "modId": "framepacer",
-      "versionId": "SSOdxW33",
-      "version": "1.2",
-      "fileName": "framepacer-1.2-1.15-1.21.11-multiloader.jar",
-      "url": "https://cdn.modrinth.com/data/eNKAxsVp/versions/SSOdxW33/framepacer-1.2-1.15-1.21.11-multiloader.jar",
-      "sha512": "fc9a525ec4711d9b37b2a8a6739957770e34e87b8a2650c9e241f72e670a582d0c074735fd19775fa4c95fe1efa017aa3f604909c1315abff4c074c201dea763",
-      "size": 4812,
-      "license": "MIT",
-      "sourceUrl": null,
-      "projectUrl": "https://modrinth.com/mod/framepacer"
-    },
-    {
       "projectId": "Orvt0mRa",
       "projectSlug": "indium",
       "name": "Indium",
@@ -684,6 +669,15 @@
         "3d3379e07eae001860aa71379abe310cda6642965cd55a8d274dacef1b63d8c85fd0663abeec2d247ac1a631bd08b12dace8758f4a035d344e27db5edfe581c5"
       ],
       "reason": "Retired in 1.9.12 (performance) with FancyMenu, which it needs (FancyMenu library)."
+    },
+    {
+      "modId": "framepacer",
+      "projectId": "eNKAxsVp",
+      "name": "FramePacer",
+      "sha512": [
+        "fc9a525ec4711d9b37b2a8a6739957770e34e87b8a2650c9e241f72e670a582d0c074735fd19775fa4c95fe1efa017aa3f604909c1315abff4c074c201dea763"
+      ],
+      "reason": "Retired in 1.9.12 (performance): its frame limiter ran next to the Lads input-latency pacer (Reflex) and cost 6-8 % FPS and 11-31 % of the 1 % lows on the Legion bench."
     }
   ],
   "published": {
