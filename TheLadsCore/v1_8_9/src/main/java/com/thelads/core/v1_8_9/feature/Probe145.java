@@ -43,7 +43,7 @@ final class Probe145 {
         Probe145::hotbarStart, Probe145::hotbarGlide, Probe145::hotbarMoving,
         Probe145::hotbarSettled, Probe145::swingStart,
         Probe145::swingLegacy, Probe145::swingSwitch, Probe145::swingVanilla, Probe145::borderless, Probe145::borderlessCaptured, Probe145::borderlessExact, Probe145::borderlessExactCaptured, Probe145::windowed, Probe145::resized, Probe145::resizedShot,
-        Probe145::restored);
+        Probe145::win32Resize, Probe145::win32Resized, Probe145::restored);
     /** Frame pacing's cost, a timing check: CoreProbe runs it last, so a busy GPU (another game open) cannot hide the checks after it. */
     static final List<CoreProbe.Step> PACING = Arrays.<CoreProbe.Step>asList(Probe145::pacedStart, Probe145::pacedCount, Probe145::paced,
         Probe145::unpaced, Probe145::pacedAgain);
@@ -330,7 +330,7 @@ final class Probe145 {
         check((style & WS_CAPTION) == WS_CAPTION && (style & WS_THICKFRAME) != 0 && Borderless189.resizableNow(),
             "the window has its title bar and resize frame again (style 0x" + Integer.toHexString(style) + ")");
         // A resize as the user drags the frame: Windows sizes the window, Minecraft follows.
-        // Pylon: SDL's own resize (what a frame drag ends in there); a foreign SetWindowPos is not reported back by SDL
+        // Pylon: SDL's own resize first; win32Resize then sizes it the way Windows does for a frame drag.
         if (CoreProbe.PYLON) PylonWindow189.size(685, 358);
         else User32.INSTANCE.SetWindowPos(hwnd(), null, 0, 0, 701, 397, 0x16); // SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE
         return after(5);
@@ -346,6 +346,20 @@ final class Probe145 {
     /** The screenshot reads Minecraft's framebuffer, which the resize recreated: a few frames later it holds a whole frame. */
     private static boolean resizedShot(Minecraft mc) throws Exception {
         screenshot(mc, "145-window-701x397");
+        return after(1);
+    }
+
+    /** What a drag of the window frame ends in on Windows: the window is sized by Windows (WM_WINDOWPOSCHANGED), not by SDL. */
+    private static boolean win32Resize(Minecraft mc) throws Exception {
+        User32.INSTANCE.SetWindowPos(hwnd(), null, 0, 0, 761, 433, 0x16); // SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE
+        return after(5);
+    }
+
+    private static boolean win32Resized(Minecraft mc) throws Exception {
+        // The client area is the outside minus the frame and title bar: wider than the 685x358 before, smaller than 761x433.
+        check(mc.displayWidth == Display.getWidth() && mc.displayHeight == Display.getHeight()
+            && mc.displayWidth > 685 && mc.displayWidth < 761 && mc.displayHeight > 358 && mc.displayHeight < 433,
+            "a Windows-side resize (761x433 outside, what a frame drag sends): the game follows at " + mc.displayWidth + "x" + mc.displayHeight);
         if (CoreProbe.PYLON) PylonWindow189.size(windowWidth, windowHeight);
         else User32.INSTANCE.SetWindowPos(hwnd(), null, outer.left, outer.top, outer.right - outer.left, outer.bottom - outer.top, 0x14);
         return after(5);
