@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "minecraft:block/tripwire_hook", "y": 0 },
+    "facing=south": { "model": "minecraft:block/tripwire_hook", "y": 180 },
+    "facing=west": { "model": "minecraft:block/tripwire_hook", "y": 270 },
+    "facing=east": { "model": "minecraft:block/tripwire_hook", "y": 90 }
+  }
+}
