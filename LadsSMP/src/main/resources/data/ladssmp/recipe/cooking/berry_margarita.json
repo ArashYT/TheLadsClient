@@ -11,12 +11,14 @@
   "experience": 0.5,
   "cookingtime": 100,
   "ingredients": [
-    "minecraft:glass_bottle",
     "minecraft:sweet_berries",
     "minecraft:sugar"
   ],
   "recipe_book_tab": "drinks",
   "result": {
     "id": "ladssmp:berry_margarita"
+  },
+  "container": {
+    "id": "minecraft:glass_bottle"
   }
 }

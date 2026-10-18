@@ -11,7 +11,6 @@
   "experience": 1.0,
   "cookingtime": 200,
   "ingredients": [
-    "minecraft:bowl",
     "minecraft:cooked_chicken",
     "minecraft:wheat",
     "minecraft:egg"
@@ -19,5 +18,8 @@
   "recipe_book_tab": "meals",
   "result": {
     "id": "ladssmp:duck_noodle_soup"
+  },
+  "container": {
+    "id": "minecraft:bowl"
   }
 }

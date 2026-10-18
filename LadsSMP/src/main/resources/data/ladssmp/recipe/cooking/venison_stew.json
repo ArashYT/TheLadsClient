@@ -11,7 +11,6 @@
   "experience": 1.0,
   "cookingtime": 200,
   "ingredients": [
-    "minecraft:bowl",
     "minecraft:cooked_mutton",
     "minecraft:carrot",
     "minecraft:potato"
@@ -19,5 +18,8 @@
   "recipe_book_tab": "meals",
   "result": {
     "id": "ladssmp:venison_stew"
+  },
+  "container": {
+    "id": "minecraft:bowl"
   }
 }

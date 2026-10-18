@@ -11,7 +11,6 @@
   "experience": 1.0,
   "cookingtime": 200,
   "ingredients": [
-    "minecraft:bowl",
     "minecraft:milk_bucket",
     "minecraft:potato",
     "minecraft:dried_kelp"
@@ -19,5 +18,8 @@
   "recipe_book_tab": "meals",
   "result": {
     "id": "ladssmp:clam_chowder"
+  },
+  "container": {
+    "id": "minecraft:bowl"
   }
 }

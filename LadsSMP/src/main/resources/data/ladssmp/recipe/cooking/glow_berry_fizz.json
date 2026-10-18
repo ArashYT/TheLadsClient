@@ -11,12 +11,14 @@
   "experience": 0.6,
   "cookingtime": 120,
   "ingredients": [
-    "minecraft:glass_bottle",
     "minecraft:glow_berries",
     "minecraft:honey_bottle"
   ],
   "recipe_book_tab": "drinks",
   "result": {
     "id": "ladssmp:glow_berry_fizz"
+  },
+  "container": {
+    "id": "minecraft:glass_bottle"
   }
 }

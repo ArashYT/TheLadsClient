@@ -11,12 +11,14 @@
   "experience": 1.2,
   "cookingtime": 220,
   "ingredients": [
-    "minecraft:bowl",
     "minecraft:prismarine_shard",
     "minecraft:cooked_cod"
   ],
   "recipe_book_tab": "meals",
   "result": {
     "id": "ladssmp:guardian_soup"
+  },
+  "container": {
+    "id": "minecraft:bowl"
   }
 }

@@ -73,6 +73,7 @@ public final class AriseNB4Items {
     public static Item BISON_PATTY;
     public static Item BISON_BURGER;
     public static Item KANGAROO_PASTA;
+    public static Item MELON_JUICE;
 
     private AriseNB4Items() {}
 
@@ -143,6 +144,7 @@ public final class AriseNB4Items {
         BISON_PATTY = register("bison_patty", new Item.Properties().food(AriseNB4Foods.BISON_PATTY));
         BISON_BURGER = register("bison_burger", new Item.Properties().food(AriseNB4Foods.BISON_BURGER));
         KANGAROO_PASTA = register("kangaroo_pasta", new Item.Properties().food(AriseNB4Foods.KANGAROO_PASTA, AriseNB4Foods.kangarooPastaConsumable()).usingConvertsTo(Items.BOWL).stacksTo(16));
+        MELON_JUICE = register("melon_juice", new Item.Properties().food(AriseNB4Foods.MELON_JUICE, AriseNB4Foods.melonJuiceConsumable()).usingConvertsTo(Items.GLASS_BOTTLE).stacksTo(16));
 
         LOGGER.info("[Arise NB4] Successfully registered {} culinary items into ladssmp.", ITEMS.size());
     }
