@@ -228,15 +228,15 @@ public final class ShowcaseEmote26 {
         });
         if (shot.startsWith("solo:")) { // each emote alone from the front, every one against another side of the view
             float yaw = 190 + 25 * Math.max(0, EmoteLibrary.ids().indexOf(shot.substring(5))); // the open side of the spot
-            at(0, () -> { tp(mc, name, 0, 0, yaw, 0); camera(mc, CameraType.THIRD_PERSON_FRONT, true); });
+            at(0, () -> { tp(mc, name, 0, 0, yaw, -12); camera(mc, CameraType.THIRD_PERSON_FRONT, true); });
         } else switch (shot) {
-            case "stop3p" -> at(0, () -> { tp(mc, name, 0, 0, 0, 0); camera(mc, CameraType.THIRD_PERSON_FRONT, true); });
-            case "back" -> at(0, () -> { tp(mc, name, 0, 0, 0, 0); camera(mc, CameraType.THIRD_PERSON_BACK, true); });
-            case "fp" -> at(0, () -> { tp(mc, name, 0, 0, 0, 12); camera(mc, CameraType.FIRST_PERSON, true); });
-            case "wheel" -> at(0, () -> { tp(mc, name, 0, 0, 240, 0); camera(mc, CameraType.THIRD_PERSON_FRONT, false); mc.gui.hud.getChat().clearMessages(false); });
+            case "stop3p" -> at(0, () -> { tp(mc, name, 0, 0, 0, -12); camera(mc, CameraType.THIRD_PERSON_FRONT, true); });
+            case "back" -> at(0, () -> { tp(mc, name, 0, 0, 0, 12); camera(mc, CameraType.THIRD_PERSON_BACK, true); });
+            case "fp" -> at(0, () -> { tp(mc, name, 0, 0, 180, 12); camera(mc, CameraType.FIRST_PERSON, true); }); // walks north: stays in the spot's chunk (no chunk loading mid-take)
+            case "wheel" -> at(0, () -> { tp(mc, name, 0, 0, 240, -12); camera(mc, CameraType.THIRD_PERSON_FRONT, false); mc.gui.hud.getChat().clearMessages(false); });
             // Two players: the host places both. herobrine looks at arash_yt from 4 blocks; then side by side, 1.7 apart.
             case "duo-view" -> at(0, () -> {
-                if (host) { tp(mc, name, 0, 0, 180, 0); tp(mc, "@a[name=!" + name + "]", 0, -4.2, 0, 8); }
+                if (host) { tp(mc, name, 0, 0, 0, 0); tp(mc, "@a[name=!" + name + "]", 0, 4.2, 180, 8); }
                 camera(mc, host ? CameraType.THIRD_PERSON_BACK : CameraType.FIRST_PERSON, true);
             });
             // arash_yt looks at herobrine from 4 blocks.
@@ -245,7 +245,7 @@ public final class ShowcaseEmote26 {
                 camera(mc, host ? CameraType.FIRST_PERSON : CameraType.THIRD_PERSON_BACK, true);
             });
             case "duo-dance", "duo-host" -> at(0, () -> {
-                if (host) { tp(mc, name, 1.7, 0, 0, 0); tp(mc, "@a[name=!" + name + "]", 0, 0, 0, 0); }
+                if (host) { tp(mc, name, 1.7, 0, 0, -12); tp(mc, "@a[name=!" + name + "]", 0, 0, 0, -12); }
                 camera(mc, CameraType.THIRD_PERSON_FRONT, true);
             });
             default -> LOGGER.warn("Lads showcase: unknown shot {}", shot);
@@ -289,7 +289,7 @@ public final class ShowcaseEmote26 {
             case "duo-view" -> {
                 if (host) {
                     play(self, 900, EmoteLibrary.GROOVE);
-                    at(900 + 3 * groove, () -> mc.player.setYRot(0));
+                    at(900 + 3 * groove, () -> mc.player.setYRot(180)); // turns away, walks north inside the spot's chunk
                     walk(mc, 900 + 3 * groove + 150, 1600);
                 }
                 end(900 + 3 * groove + 3000);
@@ -316,7 +316,12 @@ public final class ShowcaseEmote26 {
         at(ms + forMs, () -> mc.options.keyUp.setDown(false));
     }
 
-    private static void camera(Minecraft mc, CameraType type, boolean hudHidden) { mc.options.setCameraType(type); hud(mc, hudHidden); }
+    /** Third person a little zoomed (FOV 50, the player about half the frame height), first person as players see it (70). */
+    private static void camera(Minecraft mc, CameraType type, boolean hudHidden) {
+        mc.options.setCameraType(type);
+        mc.options.fov().set(type == CameraType.FIRST_PERSON ? 70 : 50);
+        hud(mc, hudHidden);
+    }
 
     private static void hud(Minecraft mc, boolean hidden) { if (mc.gui.hud.isHidden() != hidden) mc.gui.hud.toggle(); }
 
