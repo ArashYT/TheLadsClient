@@ -1,4 +1,4 @@
-# LADS_VERIFY_PERF_BENCH1912 (marker: the Legion runner runs jobs containing LADS_VERIFY_PERF_ alone)
+﻿# LADS_VERIFY_PERF_BENCH1912 (marker: the Legion runner runs jobs containing LADS_VERIFY_PERF_ alone)
 # 1.9.12 perf lane FPS bench on ARASH-LEGION. Runs C:\LadsQA\perf1912\sbx\<config> sandboxes one game at a time, configs interleaved per
 # round (drift/thermals hit all equally). Each run: fresh copy of the bench world, forced bench options, the ladsbench mod drives the
 # scenes and writes result.json; the game exits by itself (killed after 15 min).
@@ -24,7 +24,7 @@ $list = @($Configs -split '[,\s]+' | Where-Object { $_ })   # ',' joined by the 
 # Shared bench lock (coordinator 2026-10-18): wait while another lane holds C:\LadsQA\BENCH-LOCK, hold it ("perf1912 until HH:MM") for the
 # whole job, delete it at the end. Nobody starts a game or a build on this machine while it exists.
 $lock = Join-Path (Split-Path $R) 'BENCH-LOCK'
-while ((Test-Path $lock) -and -not ((Get-Content $lock -Raw) -like 'perf1912 *')) { Log "waiting for bench lock: $(Get-Content $lock -Raw)"; Start-Sleep 30 }
+while ((Test-Path $lock) -and -not ((Get-Content $lock -Raw) -like 'perf1912 *') -and ((Get-Content $lock -Raw).Trim() -ne 'none')) { Log "waiting for bench lock: $(Get-Content $lock -Raw)"; Start-Sleep 30 }
 $runs = $list.Count * $(if ($Prep) { 1 } else { $Rounds })
 Set-Content $lock "perf1912 until $((Get-Date).AddMinutes(5 * $runs + 5).ToString('HH:mm'))"
 Log "start $env:COMPUTERNAME configs=$Configs rounds=$Rounds seconds=$Seconds prep=$Prep jfr=$Jfr extra='$JvmExtra' lock='$(Get-Content $lock -Raw)'"
