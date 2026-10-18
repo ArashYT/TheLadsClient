@@ -1,5 +1,7 @@
 package com.thelads.smp.features.arise.nb1;
 
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -35,11 +37,11 @@ public final class CompleteTurtleArmorFeature {
     public static void init() {
         if (TURTLE_CHESTPLATE == null) {
             TURTLE_CHESTPLATE = register("turtle_chestplate",
-                    new Item(new Item.Properties().humanoidArmor(ArmorMaterials.TURTLE_SCUTE, ArmorType.CHESTPLATE)));
+                    new Item(new Item.Properties().setId(ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("ladssmp", "turtle_chestplate"))).humanoidArmor(ArmorMaterials.TURTLE_SCUTE, ArmorType.CHESTPLATE)));
             TURTLE_LEGGINGS = register("turtle_leggings",
-                    new Item(new Item.Properties().humanoidArmor(ArmorMaterials.TURTLE_SCUTE, ArmorType.LEGGINGS)));
+                    new Item(new Item.Properties().setId(ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("ladssmp", "turtle_leggings"))).humanoidArmor(ArmorMaterials.TURTLE_SCUTE, ArmorType.LEGGINGS)));
             TURTLE_BOOTS = register("turtle_boots",
-                    new Item(new Item.Properties().humanoidArmor(ArmorMaterials.TURTLE_SCUTE, ArmorType.BOOTS)));
+                    new Item(new Item.Properties().setId(ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("ladssmp", "turtle_boots"))).humanoidArmor(ArmorMaterials.TURTLE_SCUTE, ArmorType.BOOTS)));
         }
 
         ServerTickEvents.END_SERVER_TICK.register(server -> {

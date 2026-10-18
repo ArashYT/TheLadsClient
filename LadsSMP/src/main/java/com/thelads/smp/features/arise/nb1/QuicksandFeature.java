@@ -40,13 +40,13 @@ public final class QuicksandFeature {
     public static void init() {
         if (QUICKSAND_BLOCK == null) {
             QUICKSAND_BLOCK = registerBlock("quicksand",
-                    new QuicksandBlock(BlockBehaviour.Properties.of()
+                    new QuicksandBlock(BlockBehaviour.Properties.of().setId(ResourceKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("ladssmp", "quicksand")))
                             .mapColor(MapColor.SAND)
                             .strength(0.5F)
                             .sound(SoundType.SAND)
                             .noOcclusion()));
             QUICKSAND_ITEM = registerItem("quicksand",
-                    new BlockItem(QUICKSAND_BLOCK, new Item.Properties()));
+                    new BlockItem(QUICKSAND_BLOCK, new Item.Properties().setId(ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("ladssmp", "quicksand"))).useBlockDescriptionPrefix()));
             QUICKSAND_PLACED_KEY = ResourceKey.create(Registries.PLACED_FEATURE, Identifier.fromNamespaceAndPath("ladssmp", "quicksand_patch"));
         }
 

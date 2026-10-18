@@ -115,6 +115,9 @@ public final class AriseNb3Mod {
 
         // Register Entity Types
         Registry.register(BuiltInRegistries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(MOD_ID, "target_dummy"), TARGET_DUMMY_ENTITY_TYPE);
+        // A LivingEntity type without default attributes NPEs when spawned (AttributeMap of a null supplier)
+        net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry.register(TARGET_DUMMY_ENTITY_TYPE,
+                net.minecraft.world.entity.decoration.ArmorStand.createAttributes());
 
         // Register Custom Network Payloads
         PayloadTypeRegistry.serverboundPlay().register(UpdateCosmeticArmorPayload.TYPE, UpdateCosmeticArmorPayload.STREAM_CODEC);

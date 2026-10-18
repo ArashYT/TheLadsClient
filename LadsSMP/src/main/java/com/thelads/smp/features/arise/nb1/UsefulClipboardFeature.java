@@ -1,5 +1,7 @@
 package com.thelads.smp.features.arise.nb1;
 
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.Registry;
@@ -34,7 +36,7 @@ public final class UsefulClipboardFeature {
 
     public static void init() {
         if (CLIPBOARD == null) {
-            CLIPBOARD = register("clipboard", new ClipboardItem(new Item.Properties().stacksTo(1)));
+            CLIPBOARD = register("clipboard", new ClipboardItem(new Item.Properties().setId(ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("ladssmp", "clipboard"))).stacksTo(1)));
         }
 
         // Register networking payload and receiver
