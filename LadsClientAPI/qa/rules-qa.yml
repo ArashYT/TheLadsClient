@@ -1,0 +1,30 @@
+# LadsClientAPI QA test network rules (rules-qa.yml)
+# Applied to Paper 26.3 lobby (:25701), Fabric 26.3 (:25703), and Forge 1.20.1 (:25704)
+# Requirement: Fullbright allow + Brightness max 10; XaeroMinimap block;
+#              Crosshair Tweaks forced value on one option; 1.7 Animations one bool forced;
+#              unlisted inherit; notice text.
+
+notice: "Lads QA Lobby: Fullbright capped at 10%"
+unlisted: inherit
+
+modules:
+  Fullbright: allow
+  XaeroMinimap: block
+  Minimap: block
+
+options:
+  Fullbright:
+    Brightness:
+      max: 10
+  Crosshair Tweaks:
+    Dot:
+      value: true
+      lock: true
+  Crosshair:
+    Dot:
+      value: true
+      lock: true
+  1.7 Animations:
+    1.7 sword block pose:
+      value: false
+      lock: true
