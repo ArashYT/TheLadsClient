@@ -13,12 +13,24 @@ public final class Utils {
     }
 
     /** Upstream extension {@code GameProfile.isValidProfile()}. */
+    /** 1.9.12 perf: textures property value -> its profileName ("" = none). PlayerInfo.getSkin calls this every frame for every
+     *  drawn player; decoding Base64 and parsing the JSON each time was 6.7 % of all allocations in the Legion bench. */
+    private static final java.util.Map<String, String> PROFILE_NAMES = new java.util.concurrent.ConcurrentHashMap<>();
+
     public static boolean isValidProfile(GameProfile profile) {
         String profileName;
         try { // runCatching { ... }.getOrNull()
             String textures = profile.properties().get("textures").stream().findFirst().get().value();
-            String json = new String(Base64.getDecoder().decode(textures), StandardCharsets.UTF_8);
-            profileName = JsonParser.parseString(json).getAsJsonObject().get("profileName").getAsString();
+            if (PROFILE_NAMES.size() > 4096) PROFILE_NAMES.clear(); // ponytail: wholesale clear; an LRU if servers ever cycle this many skins
+            profileName = PROFILE_NAMES.computeIfAbsent(textures, t -> {
+                try {
+                    String json = new String(Base64.getDecoder().decode(t), StandardCharsets.UTF_8);
+                    return JsonParser.parseString(json).getAsJsonObject().get("profileName").getAsString();
+                } catch (Throwable e) {
+                    return "";
+                }
+            });
+            if (profileName.isEmpty()) profileName = null;
         } catch (Throwable t) {
             profileName = null;
         }

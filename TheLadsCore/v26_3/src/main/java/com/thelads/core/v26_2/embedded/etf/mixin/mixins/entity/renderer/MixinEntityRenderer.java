@@ -23,6 +23,8 @@ public abstract class MixinEntityRenderer<T extends Entity
     @Inject(method = "extractRenderState",
     at = @At(value = "TAIL"))
     private void etf$createRenderState(final CallbackInfo ci, @Local(argsOnly = true) Entity entity, @Local(argsOnly = true) S state) {
+        // The Lads 1.9.12 perf: nothing to vary without pack data (ETFManager.packData); players keep their skin features
+        if (!com.thelads.core.v26_2.embedded.etf.features.ETFManager.packData && !(entity instanceof net.minecraft.world.entity.player.Player)) return;
         ((HoldsETFRenderState) state).etf$initState((ETFEntity) entity);
     }
 

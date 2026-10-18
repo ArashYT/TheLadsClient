@@ -100,9 +100,64 @@ public class ETFManager {
         return instance;
     }
 
+    /**
+     * The Lads 1.9.12 perf: false while no loaded resource pack has anything ETF/EMF act on (OptiFine/ETF/EMF folders, or entity
+     * textures with an emissive/blink/enchant suffix). Then non-player entities skip ETF/EMF's per-entity state, which is all
+     * pass-through work on vanilla textures (+16 % FPS with 200 mobs in the Legion bench). Players keep it (skin features).
+     * -Dthelads.etfPackGate=false keeps the full path always.
+     */
+    public static volatile boolean packData = true;
+
+    /** OptiFine "true random" variants (cow2.png): an entity texture whose name ends in digits, from a pack other than vanilla. */
+    private static final java.util.regex.Pattern NUMBERED = java.util.regex.Pattern.compile(".*[^/]\\d+\\.png");
+
+    private static boolean scanPackData() {
+        if (!Boolean.parseBoolean(System.getProperty("thelads.etfPackGate", "true"))) return true;
+        String why = null;
+        try {
+            if (!ETF.config().getConfig().entityRenderLayerOverrides.isEmpty()) why = "render layer overrides in the ETF config";
+            var manager = Minecraft.getInstance().getResourceManager();
+            // OptiFine-format folders ETF/EMF read (not optifine/ctm or cit: Continuity's built-in packs ship those)
+            for (String root : new String[]{"optifine/random", "optifine/mob", "optifine/cem", "etf", "emf"})
+                if (why == null && !manager.listResources(root, id -> true).isEmpty()) why = root;
+            if (why == null && !manager.listResources("optifine", id -> id.getPath().equals("optifine/emissive.properties")).isEmpty()) why = "optifine/emissive.properties";
+            if (why == null && !manager.listResources("textures", id -> id.getPath().equals("textures/emissive.properties")).isEmpty())
+                why = "textures/emissive.properties";
+            // emissive/blink/enchant textures where ETF looks for them (entities incl. armor, trims, paintings; not e.g. vanilla's
+            // particle/sga_e.png), and random .properties next to entity textures
+            for (String root : new String[]{"textures/entity", "textures/models/armor", "textures/trims", "textures/painting"}) {
+                if (why != null) break;
+                var hit = manager.listResources(root, id -> {
+                    String path = id.getPath();
+                    return path.endsWith("_e.png") || path.endsWith("_blink.png") || path.endsWith("_blink2.png") || path.endsWith("_enchant.png")
+                        || path.endsWith(".properties");
+                });
+                if (!hit.isEmpty()) why = hit.keySet().iterator().next().toString();
+            }
+            if (why == null) {
+                for (var pack : manager.listPacks().toList()) {
+                    if ("vanilla".equals(pack.packId())) continue;
+                    for (String namespace : pack.getNamespaces(net.minecraft.server.packs.PackType.CLIENT_RESOURCES)) {
+                        String[] found = {null};
+                        for (String root : new String[]{"textures/entity", "textures/models/armor", "textures/trims", "textures/painting"})
+                            pack.listResources(net.minecraft.server.packs.PackType.CLIENT_RESOURCES, namespace, root, (id, stream) -> {
+                                if (found[0] == null && NUMBERED.matcher(id.getPath()).matches()) found[0] = id.toString();
+                            });
+                        if (found[0] != null && why == null) why = pack.packId() + " " + found[0];
+                    }
+                }
+            }
+        } catch (RuntimeException e) {
+            why = "scan failed: " + e; // unknown: keep the full path
+        }
+        ETFUtils2.logMessage("pack data for ETF/EMF: " + (why != null) + (why != null ? " (" + why + ")" : ""));
+        return why != null;
+    }
+
     public static void resetInstance() {
         ETFState.clear();
         ETF.config().loadFromFile();
+        packData = scanPackData();
 
         // instance based format solves the issue of hashmaps and arrays being clearing while also being accessed
         // as now those rare transitional (reading during clearing) occurrences will simply read from the previous instance of manager
