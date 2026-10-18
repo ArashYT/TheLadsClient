@@ -134,24 +134,23 @@ Per the binding owner rule (`CLAUDE-1911-LANE-RULES.md`, `QaBar.java`):
 
 ### CHK-05: Forced Option & GUI Lock (Greyed out with lock tooltip)
 - **Boss-Bar Task**: `task 5/12 · chk05-forced-option`
-- **Setup**: Server policy forces `Crosshair Tweaks.Dot = true` (lock=true) and `1.7 Animations.1.7 sword block pose = false` (lock=true).
+- **Setup**: rules-qa.yml forces `Crosshair Tweaks.Shape = Cross`, `Crosshair Tweaks.Outline Color = #FFFF0000`, limits
+  `Crosshair Tweaks.Gap` to 1-4, and forces `1.7 Animations.1.7 sword block pose = false`. Before joining, set your own Shape to
+  `Dot`, Gap to 6 and sword block pose on.
 - **Steps**:
-  1. Join server.
-  2. Inspect crosshair in game.
-  3. Open Settings -> Crosshair Tweaks.
-  4. Inspect the `Dot` boolean toggle.
-  5. Attempt to click or change it.
+  1. Join the lobby.
+  2. Look at the crosshair in game.
+  3. Open Settings -> Crosshair Tweaks; hover Shape, Outline Color and Gap.
+  4. Try to change Shape; drag Gap.
 - **Expected Result**:
-  - Crosshair renders a center dot on screen.
-  - In GUI, the `Dot` checkbox/toggle is rendered in disabled/locked state (dimmed/greyed).
-  - Padlock icon appears next to the label.
-  - Mouse hover shows tooltip: `"Locked by server"`.
-  - Clicking does not toggle the value.
+  - Crosshair is a red-outlined cross with gap 4 (6 clamped to the max).
+  - Shape and Outline Color are greyed with a lock icon; tooltip "Set by <server>"; clicking does nothing.
+  - Gap shows a lock icon with "Limited by <server>: min 1, max 4" and stays editable inside that range.
+  - 1.7 Animations: sword block pose greyed, off.
 - **Proof**:
-  - Screenshot of Crosshair menu: `artifacts/verification/ladsapi/shots/chk05_crosshair_locked.png`.
-  - Harness assertion: `BoolOption[Crosshair Tweaks.Dot].get()` returns `true`, `BoolOption[Crosshair Tweaks.Dot].getOwn()` returns player's original choice.
-
----
+  - Screenshot: `artifacts/verification/ladsapi/shots/chk05_crosshair_locked.png`.
+  - Harness assertion: `DropdownOption[Crosshair Tweaks.Shape].getValue() == "Cross"` while `getOwnIndex()` still points at `Dot`;
+    `SliderOption[Crosshair Tweaks.Gap].getValue() == 4`, `getOwnValue() == 6`.
 
 ### CHK-06: Clean Disconnect Reversion (Byte-for-byte config integrity)
 - **Boss-Bar Task**: `task 6/12 · chk06-leave-revert`
