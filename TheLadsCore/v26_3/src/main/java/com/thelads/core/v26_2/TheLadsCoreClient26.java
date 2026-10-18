@@ -50,6 +50,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.paperdoll.PaperDoll26.register();
         com.thelads.core.v26_2.feature.tabtweaks.NativeTabTweaks.initialize();
         com.thelads.core.v26_2.feature.NativeHypixel.initialize();
+        com.thelads.core.v26_2.feature.NativeLadsApi.initialize();
         com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.register();
         com.thelads.core.v26_2.feature.clumps.NativeClumps.initialize();
         com.thelads.core.v26_2.feature.NativeItemPhysics.initialize();

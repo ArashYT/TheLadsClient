@@ -166,7 +166,9 @@
     "CartCamGameRendererMixin",
     "FadelessAccessibilityScreenMixin",
     "SurvivalLightmapBrightnessMixin",
-    "SurvivalKeepBarsMixin"
+    "SurvivalKeepBarsMixin",
+    "LadsApiPacketListenerMixin",
+    "LadsApiDisconnectMixin"
   ],
   "mixins": [
     "DisplayEntityAccessor",
