@@ -107,6 +107,9 @@ public partial class MainWindow
             ModpacksPage.OpenManage(first);
             await Task.Delay(4000); // Modrinth's version list
             SaveWindowScreenshot(Path.Combine(output, "modpacks-manage.png"));
+            ModpacksPage.ShowManageOverview(); // the instance settings card (Lads Core toggle)
+            await Task.Delay(800);
+            SaveWindowScreenshot(Path.Combine(output, "modpacks-overview.png"));
         }
         // LADS_PREVIEW_MODPACK_PLAY=<instance id>: Play pressed on that instance (the selected account, a real game; QA holds the
         // machine-wide game lock), captured while it runs, then closed as a player closes it.
