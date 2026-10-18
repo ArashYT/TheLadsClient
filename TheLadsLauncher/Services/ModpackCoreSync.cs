@@ -44,8 +44,6 @@ public static class ModpackCoreSync
                 candidates.Add(Path.Combine(dir.FullName, "artifacts", "client", "game-mods", mcVersion, fileName));
                 candidates.Add(Path.Combine(dir.FullName, "Lads Client", "TheLadsLauncher", "game-mods", mcVersion, fileName));
                 candidates.Add(Path.Combine(dir.FullName, "Lads Client", "artifacts", "client", "game-mods", mcVersion, fileName));
-                candidates.Add(Path.Combine(dir.FullName, "publish", "game-mods", mcVersion, fileName));
-                candidates.Add(Path.Combine(dir.FullName, "Lads Client", "publish", "game-mods", mcVersion, fileName));
             }
         }
         return candidates.Where(File.Exists).Select(Path.GetFullPath).FirstOrDefault();
