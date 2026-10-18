@@ -406,7 +406,7 @@
                                                     <ComboBoxItem Content="Vulkan — primary (26.2+)" />
                                                     <ComboBoxItem Content="OpenGL — compatibility and Iris shaders" />
                                                 </ComboBox>
-                                                <TextBlock Text="Applies on next launch. Vulkan uses OpenGL if unavailable; Iris shader mods stay off in Vulkan mode. Older Minecraft versions use OpenGL." TextWrapping="Wrap" Foreground="#A0A1AA" FontSize="12" />
+                                                <TextBlock Text="Applies on next launch. Vulkan uses OpenGL if unavailable; Iris shader mods stay off in Vulkan mode. Minecraft 1.20.1 has no Vulkan: with Vulkan chosen it starts with shaders off and Iris suspended; turn shaders on in the game's Video settings. Other older versions use OpenGL." TextWrapping="Wrap" Foreground="#A0A1AA" FontSize="12" />
                                                 <CheckBox x:Name="FullscreenOnLaunchCheckbox" Content="Launch game in fullscreen" IsChecked="True" />
                                                 <CheckBox x:Name="QuickLaunchCheckbox" Content="Quick Launch &#8212; skip file verification (faster, disable if game is broken)" IsChecked="False" />
                                                 <CheckBox x:Name="SyncScreenshotsCheckbox" Content="Sync screenshots to global .minecraft folder on game close" IsChecked="True" />

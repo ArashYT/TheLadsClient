@@ -273,10 +273,11 @@ public sealed class ModInventoryService
 
         var rendererBlocked = rendererSelection == null ? GraphicsRenderer.Suspended(game)
             : GraphicsRenderer.Suspended(game, version, GraphicsRenderer.Preference(game, rendererSelection()), files.Select(f => f.Scan.Info));
+        string blockedReason = GraphicsRenderer.BlockedReason(version);
         entries = entries.Select(e => rendererBlocked.Contains(e.Id)
-            ? e with { RequestedEnabled = false, CanToggle = false, ToggleBlockedReason = GraphicsRenderer.OpenGlRequired,
+            ? e with { RequestedEnabled = false, CanToggle = false, ToggleBlockedReason = blockedReason,
                 Status = e.Status == ModEntryStatus.PendingDownload ? ModEntryStatus.NotDownloaded : e.Status,
-                Note = GraphicsRenderer.OpenGlRequired, RestartRequired = running && e.LoadedNow == true } : e).ToList();
+                Note = blockedReason, RestartRequired = running && e.LoadedNow == true } : e).ToList();
         var ordered = entries.OrderBy(Group).ThenBy(e => e.DisplayName, StringComparer.OrdinalIgnoreCase).ToList();
         var counts = new ModInventoryCounts(files.Count(f => !f.Disabled), files.Count(f => f.Disabled),
             ordered.Count(e => e.Status == ModEntryStatus.PendingDownload),

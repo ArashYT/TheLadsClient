@@ -4905,7 +4905,9 @@ public partial class MainWindow : Window
             PopulateLaunchProfileSelector();
             LoadProfilesUI();
         }
-        StatusText.Text = relaunch.Reason == "shaders-on" ? "Restarting Minecraft with shaders (OpenGL)..." : "Restarting Minecraft on Vulkan...";
+        bool vulkan = GraphicsRenderer.SupportsVulkan(profile.MinecraftVersion);
+        StatusText.Text = relaunch.Reason == "shaders-on" ? "Restarting Minecraft with shaders" + (vulkan ? " (OpenGL)..." : "...")
+            : vulkan ? "Restarting Minecraft on Vulkan..." : "Restarting Minecraft with shaders off...";
         _ = Dispatcher.UIThread.InvokeAsync(async () =>
         {
             await Task.Delay(500);
