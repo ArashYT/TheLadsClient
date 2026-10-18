@@ -188,7 +188,7 @@ public class HypixelSafetyTest {
         assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("StackRefill"));
         assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("XaeroWorldMap"));
         for (String trusted : new String[]{"Singleplayer", "localhost:25565", "127.0.0.1", "10.0.0.7", "172.20.1.1", "[::1]:25565",
-                "nikzerosmp.my.pebble.host", "smp.arashyt.ca"}) {
+                "nikzerosmp.my.pebble.host", "smp.arashyt.ca", "arisesmp.arashyt.ca", "dev.arashyt.ca:25565", "2b2t.org"}) { // Lads SMP Reborn's servers.dat entries
             bridge.setServer(trusted);
             assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("StackRefill"), trusted);
             assertTrue(minimap.isEnabled(), trusted);

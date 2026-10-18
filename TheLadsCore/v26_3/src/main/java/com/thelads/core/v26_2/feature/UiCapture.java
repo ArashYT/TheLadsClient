@@ -321,6 +321,9 @@ final class UiCapture {
             check(!com.thelads.core.client.HypixelSafetyManager.isBypassed("StackRefill") && refill.isBlockedByServer() && refill.isEnabledSetting(),
                 "Undo bypass: the server rules apply again, the player's own On is kept");
             shot("ui-rules-5-undone");
+            com.thelads.core.client.HypixelSafetyManager.qaAddress = "arisesmp.arashyt.ca"; // Lads SMP Reborn: ours, never blocked
+            check(!refill.isBlockedByServer() && refill.isEnabled() && !com.thelads.core.client.HypixelSafetyManager.isMinimapBanned(),
+                "on the Lads SMP Reborn server Stack Refill and the minimap stay on");
             com.thelads.core.client.HypixelSafetyManager.qaAddress = null;
             refill.setEnabled(refillWas);
             mc.setScreenAndShow(null);
