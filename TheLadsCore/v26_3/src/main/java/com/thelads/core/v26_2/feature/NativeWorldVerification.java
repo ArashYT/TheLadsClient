@@ -148,6 +148,9 @@ public final class NativeWorldVerification {
                     // Day held, as 1.20.1's QA world: a reused QA world reached night and a zombie killed the QA player mid-run, which
                     // left every capture waiting on the death screen. The captures that need night set it themselves.
                     if (mc.getConnection() != null) { mc.getConnection().sendCommand("gamerule advance_time false"); mc.getConnection().sendCommand("time set day"); }
+                    // Normal again: the menu/HUD capture switches the world to Peaceful (below) and that is saved, so the next run in this
+                    // sandbox could not create hostile mobs (EntityType.create returns null in Peaceful: the crosshair and kill banner fixtures).
+                    if (mc.getConnection() != null) mc.getConnection().sendCommand("difficulty normal");
                     LOGGER.info("Lads auto-world QA READY: existing local world loaded, alive, unpaused and screen-free; focus not asserted");
                 }
             }
@@ -546,6 +549,15 @@ public final class NativeWorldVerification {
             || ItemsCapture.busy()
             || FixesCapture.busy()
             || com.thelads.core.v26_2.cosmetics.anim.EmoteCapture26.busy();
+    }
+    /** A client-only QA fixture of this type, even while the level is Peaceful (a reused QA world may still be; hostile types return null). */
+    public static <T extends net.minecraft.world.entity.Entity> T fixture(net.minecraft.world.entity.EntityType<T> type) {
+        var level = Minecraft.getInstance().level;
+        var data = level.getLevelData();
+        var was = data.getDifficulty();
+        if (was == net.minecraft.world.Difficulty.PEACEFUL) data.setDifficulty(net.minecraft.world.Difficulty.NORMAL);
+        try { return type.create(level, net.minecraft.world.entity.EntitySpawnReason.LOAD); }
+        finally { data.setDifficulty(was); }
     }
     public static boolean worldReady() {
         Minecraft mc = Minecraft.getInstance();

@@ -13,7 +13,6 @@ import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityEvent;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntityTypes;
 import org.slf4j.LoggerFactory;
@@ -159,7 +158,7 @@ final class NativeKillBannerProbe {
 
     private static Entity spawn(EntityType<?> type, int id) {
         Minecraft minecraft = Minecraft.getInstance();
-        Entity entity = type.create(minecraft.level, EntitySpawnReason.LOAD);
+        Entity entity = NativeWorldVerification.fixture(type);
         entity.setId(id);
         entity.setPos(minecraft.player.getX() + 2, minecraft.player.getY(), minecraft.player.getZ());
         minecraft.level.addEntity(entity);
