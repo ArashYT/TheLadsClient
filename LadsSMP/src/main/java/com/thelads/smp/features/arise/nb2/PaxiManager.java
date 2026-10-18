@@ -32,6 +32,19 @@ public final class PaxiManager {
     }
 
     public static Path getDatapacksDir() {
+        String configured = NB2Config.get().datapacksPath;
+        if (configured != null && !configured.isBlank()) {
+            Path p = Path.of(configured);
+            if (p.isAbsolute()) {
+                return p;
+            }
+            try {
+                if (FabricLoader.getInstance() != null && FabricLoader.getInstance().getGameDir() != null) {
+                    return FabricLoader.getInstance().getGameDir().resolve(configured);
+                }
+            } catch (Throwable ignored) {}
+            return Path.of(configured);
+        }
         try {
             if (FabricLoader.getInstance() != null && FabricLoader.getInstance().getConfigDir() != null) {
                 return FabricLoader.getInstance().getConfigDir().resolve("paxi").resolve("datapacks");
@@ -41,6 +54,19 @@ public final class PaxiManager {
     }
 
     public static Path getResourcepacksDir() {
+        String configured = NB2Config.get().resourcepacksPath;
+        if (configured != null && !configured.isBlank()) {
+            Path p = Path.of(configured);
+            if (p.isAbsolute()) {
+                return p;
+            }
+            try {
+                if (FabricLoader.getInstance() != null && FabricLoader.getInstance().getGameDir() != null) {
+                    return FabricLoader.getInstance().getGameDir().resolve(configured);
+                }
+            } catch (Throwable ignored) {}
+            return Path.of(configured);
+        }
         try {
             if (FabricLoader.getInstance() != null && FabricLoader.getInstance().getConfigDir() != null) {
                 return FabricLoader.getInstance().getConfigDir().resolve("paxi").resolve("resourcepacks");

@@ -18,8 +18,9 @@
     "MixinStonecutterScreen",
     "MixinEntityRenderDispatcher",
     "MixinMerchantScreen",
-    "MixinCycleButton",
-    "MixinAbstractSliderButton",
+    "MixinAbstractWidget",
+    "AbstractSliderButtonAccessor",
+    "MixinGameRenderer",
     "MixinJeiIngredientListOverlay"
   ],
   "injectors": {

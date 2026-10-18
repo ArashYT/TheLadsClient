@@ -80,9 +80,6 @@ public final class NB2Config {
     public boolean rightClickReversesCycleButtons = true;
     public boolean mouseScrollWheelAffectsSliders = true;
 
-    // 18. CPM x Simple Voice Chat Compat
-    public boolean cpmSvcCompat = true;
-
     public static NB2Config get() {
         return INSTANCE;
     }

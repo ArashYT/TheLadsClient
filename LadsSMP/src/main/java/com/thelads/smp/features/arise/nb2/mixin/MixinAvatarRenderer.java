@@ -37,7 +37,7 @@ public abstract class MixinAvatarRenderer {
         if (camera != null && camera.pos != null) {
             double tagY = state.y + (state.nameTagAttachment != null ? state.nameTagAttachment.y : state.boundingBoxHeight + 0.5);
             Vec3 tagPos = new Vec3(state.x, tagY, state.z);
-            if (RealisticNametagManager.isObstructed(camera.pos, tagPos, state.isSpectator)) {
+            if (RealisticNametagManager.isObstructed(state.id, camera.pos, tagPos, state.isSpectator)) {
                 ci.cancel();
             }
         }

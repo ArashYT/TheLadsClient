@@ -20,7 +20,8 @@ public abstract class MixinPauseScreen {
             method = "createPauseMenu()V",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/components/Button;builder(Lnet/minecraft/network/chat/Component;Lnet/minecraft/client/gui/components/Button$OnPress;)Lnet/minecraft/client/gui/components/Button$Builder;"
+                    target = "Lnet/minecraft/client/gui/components/Button;builder(Lnet/minecraft/network/chat/Component;Lnet/minecraft/client/gui/components/Button$OnPress;)Lnet/minecraft/client/gui/components/Button$Builder;",
+                    ordinal = 1
             ),
             index = 1
     )
