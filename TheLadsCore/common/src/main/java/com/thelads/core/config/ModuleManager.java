@@ -361,7 +361,7 @@ public class ModuleManager {
         serverControl.addOption(new BoolOption("Let servers change my Lads settings", true));
         serverControl.addOption(new BoolOption("Show server notice", true));
         serverControl.setEnabled(true);
-        registerHidden(serverControl, Module.Category.SERVER);
+        register(serverControl, Module.Category.SERVER); // visible: the player must be able to turn "Let servers change" off
 
         register(new SignalLossModule());
         registerHidden(new FlashbackModule());

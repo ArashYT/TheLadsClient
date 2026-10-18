@@ -56,7 +56,7 @@ public final class Fullbright189 {
             float wanted = (float) module.effectiveGamma();
             if (Float.isNaN(original)) original = Math.min(1F, mc.gameSettings.gammaSetting);
             if (mc.gameSettings.gammaSetting != wanted || factorChanged) set(mc, wanted);
-        } else if (!Float.isNaN(original)) {
+        } else if (!Float.isNaN(original) && !FullbrightModule.serverLimited()) { // capped by the server: keep 1 until its rules go
             float saved = original;
             original = Float.NaN;
             set(mc, saved);
