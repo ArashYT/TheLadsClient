@@ -16,6 +16,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -90,7 +91,7 @@ public final class AriseNB8Client implements ClientModInitializer {
         }
 
         // Send network packet on state change
-        if (isDown != wasActive || hitFace != lastHitFace) {
+        if (isDown != wasActive || (isDown && hitFace != lastHitFace)) {
             wasActive = isDown;
             lastHitFace = hitFace;
             sendStatePacket(isDown, hitFace);
@@ -149,8 +150,10 @@ public final class AriseNB8Client implements ClientModInitializer {
             if (candidate.isAir()) return false;
             if (candidate.getDestroySpeed(level, pos) < 0) return false;
 
-            if (!config.mineContainers && candidate.getBlock() instanceof BaseEntityBlock) {
-                return false;
+            if (!config.mineContainers) {
+                if (candidate.getBlock() instanceof BaseEntityBlock || level.getBlockEntity(pos) instanceof Container) {
+                    return false;
+                }
             }
 
             if (candidate.requiresCorrectToolForDrops() && !player.hasCorrectToolForDrops(candidate)) {

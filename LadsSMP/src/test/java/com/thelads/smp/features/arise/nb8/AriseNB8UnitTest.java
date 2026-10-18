@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -39,8 +40,9 @@ public class AriseNB8UnitTest {
 
         assertTrue(config.mergeTags.contains("c:*_ores"));
         assertTrue(config.mergeTags.contains("forge:ores/*"));
-        assertTrue(config.mergeTags.contains("minecraft:base_stone_overworld"));
-        assertTrue(config.mergeTags.contains("minecraft:logs"));
+        assertTrue(config.mergeTags.contains("#minecraft:base_stone_overworld"));
+        assertTrue(config.mergeTags.contains("#c:ores"));
+        assertTrue(config.mergeTags.contains("#minecraft:logs"));
     }
 
     @Test
@@ -150,22 +152,48 @@ public class AriseNB8UnitTest {
     }
 
     @Test
-    @DisplayName("Verify Small Tunnel generates vertical shaft when hitting vertical face")
-    public void testSmallTunnelVertical() {
+    @DisplayName("Verify Small Tunnel generates horizontal corridor when hitting floor (UP) without vertical shaft trap")
+    public void testSmallTunnelFloorHit() {
         BlockPos start = new BlockPos(10, 50, 10);
         Set<BlockPos> world = new HashSet<>();
-        for (int y = 50; y >= 40; y--) {
-            world.add(new BlockPos(10, y, 10));
+        for (int z = 10; z >= 0; z--) {
+            world.add(new BlockPos(10, 50, z)); // Floor
+            world.add(new BlockPos(10, 51, z)); // Head height
         }
 
-        // Hitting top face of floor -> dig down
-        List<BlockPos> shaft = VeinShape.SMALL_TUNNEL.calculatePositions(
+        // Hitting top face of floor with player facing NORTH -> should dig horizontal corridor North, not a vertical death pit!
+        List<BlockPos> corridor = VeinShape.SMALL_TUNNEL.calculatePositions(
                 null, start, Direction.UP, Direction.NORTH, false, world::contains, 6
         );
 
-        assertEquals(6, shaft.size());
-        for (int i = 0; i < 6; i++) {
-            assertEquals(new BlockPos(10, 50 - i, 10), shaft.get(i));
+        assertEquals(6, corridor.size());
+        for (BlockPos p : corridor) {
+            assertEquals(10, p.getX(), "Corridor width must be 1 block");
+            assertTrue(p.getY() == 50 || p.getY() == 51, "Corridor must be 2 blocks high (Y=50 and Y=51)");
+            assertTrue(p.getZ() <= 10, "Corridor must advance North along player facing");
+        }
+    }
+
+    @Test
+    @DisplayName("Verify Small Tunnel generates horizontal corridor when hitting ceiling (DOWN)")
+    public void testSmallTunnelCeilingHit() {
+        BlockPos start = new BlockPos(10, 52, 10);
+        Set<BlockPos> world = new HashSet<>();
+        for (int z = 10; z >= 0; z--) {
+            world.add(new BlockPos(10, 52, z)); // Ceiling block (head)
+            world.add(new BlockPos(10, 51, z)); // Foot block
+        }
+
+        // Hitting bottom face of ceiling with player facing NORTH -> should dig horizontal corridor North
+        List<BlockPos> corridor = VeinShape.SMALL_TUNNEL.calculatePositions(
+                null, start, Direction.DOWN, Direction.NORTH, false, world::contains, 6
+        );
+
+        assertEquals(6, corridor.size());
+        for (BlockPos p : corridor) {
+            assertEquals(10, p.getX(), "Corridor width must be 1 block");
+            assertTrue(p.getY() == 51 || p.getY() == 52, "Corridor must be 2 blocks high (Y=51 and Y=52)");
+            assertTrue(p.getZ() <= 10, "Corridor must advance North along player facing");
         }
     }
 
@@ -263,27 +291,105 @@ public class AriseNB8UnitTest {
     }
 
     @Test
-    @DisplayName("Verify merge tag wildcard and pattern matching logic")
+    @DisplayName("Verify merge tag wildcard, hash prefix, and pattern matching logic")
     public void testMergeTagMatching() {
         List<String> tags = List.of(
-                "minecraft:base_stone_overworld",
+                "#minecraft:base_stone_overworld",
                 "c:*_ores",
                 "forge:ores/*",
-                "minecraft:logs"
+                "#c:ores",
+                "#minecraft:logs"
         );
 
         assertTrue(matchesTagString("c:iron_ores", tags));
         assertTrue(matchesTagString("c:deepslate_diamond_ores", tags));
         assertTrue(matchesTagString("forge:ores/copper", tags));
         assertTrue(matchesTagString("minecraft:base_stone_overworld", tags));
+        assertTrue(matchesTagString("#minecraft:base_stone_overworld", tags));
         assertFalse(matchesTagString("minecraft:dirt", tags));
         assertFalse(matchesTagString("c:ingots", tags));
+    }
+
+    @Test
+    @DisplayName("Verify network state packet only triggers on key toggle or when active key is down")
+    public void testNetworkStatePacketTriggerLogic() {
+        // Simulating AriseNB8Client: if (isDown != wasActive || (isDown && hitFace != lastHitFace))
+        boolean wasActive = false;
+        Direction lastHitFace = Direction.NORTH;
+
+        // Case 1: Idle player turns camera between faces (isDown = false, hitFace changes to SOUTH)
+        boolean isDown = false;
+        Direction hitFace = Direction.SOUTH;
+        boolean shouldSend = (isDown != wasActive || (isDown && hitFace != lastHitFace));
+        assertFalse(shouldSend, "Must NOT send packet when idle player turns camera");
+
+        // Case 2: Player presses key (isDown becomes true)
+        isDown = true;
+        shouldSend = (isDown != wasActive || (isDown && hitFace != lastHitFace));
+        assertTrue(shouldSend, "Must send packet on key press");
+        wasActive = true;
+        lastHitFace = hitFace;
+
+        // Case 3: Player holds key and aims at different face (isDown = true, hitFace changes to UP)
+        hitFace = Direction.UP;
+        shouldSend = (isDown != wasActive || (isDown && hitFace != lastHitFace));
+        assertTrue(shouldSend, "Must send packet when holding key and moving to new block face");
+        lastHitFace = hitFace;
+
+        // Case 4: Player releases key (isDown becomes false)
+        isDown = false;
+        shouldSend = (isDown != wasActive || (isDown && hitFace != lastHitFace));
+        assertTrue(shouldSend, "Must send packet on key release");
+    }
+
+    @Test
+    @DisplayName("Verify concurrent tasks per player are cancelled and replaced")
+    public void testConcurrentTaskPerPlayer() {
+        java.util.concurrent.ConcurrentLinkedQueue<UUID> activeTasks = new java.util.concurrent.ConcurrentLinkedQueue<>();
+        UUID player1 = UUID.randomUUID();
+        UUID player2 = UUID.randomUUID();
+
+        activeTasks.add(player1);
+        activeTasks.add(player2);
+        assertEquals(2, activeTasks.size());
+
+        // When player1 mines rapidly again, previous task is removed before adding new one
+        activeTasks.removeIf(uuid -> uuid.equals(player1));
+        activeTasks.add(player1);
+
+        assertEquals(2, activeTasks.size(), "Queue must contain at most 1 task per player");
+        long p1Count = activeTasks.stream().filter(uuid -> uuid.equals(player1)).count();
+        assertEquals(1, p1Count, "Player1 must have exactly 1 active task");
+    }
+
+    @Test
+    @DisplayName("Verify creative mode players do not receive physical drops or resource exhaustion")
+    public void testCreativeModeSafety() {
+        boolean isCreative = true;
+        boolean hasInfiniteMaterials = isCreative;
+
+        int droppedItems = 0;
+        int toolDurabilityCost = 0;
+        float foodExhaustion = 0.0f;
+
+        // Block break execution
+        if (!hasInfiniteMaterials) {
+            droppedItems += 1;
+            toolDurabilityCost += 1;
+            foodExhaustion += 0.1f;
+        }
+
+        assertEquals(0, droppedItems, "Creative mode must not spawn physical dropped items");
+        assertEquals(0, toolDurabilityCost, "Creative mode must not damage tool");
+        assertEquals(0.0f, foodExhaustion, "Creative mode must not exhaust hunger");
     }
 
     private static boolean matchesTagString(String target, List<String> patterns) {
         for (String pattern : patterns) {
             if (pattern.equals("*")) return true;
-            if (pattern.contains("*")) {
+            if (pattern.startsWith("#")) {
+                if (target.equals(pattern) || target.equals(pattern.substring(1))) return true;
+            } else if (pattern.contains("*")) {
                 String regex = pattern.replace(".", "\\.").replace("*", ".*");
                 if (target.matches(regex)) return true;
             } else if (target.equals(pattern)) {

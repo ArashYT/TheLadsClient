@@ -202,7 +202,8 @@ public final class VeinMiningManager {
             return;
         }
 
-        // Queue task for server tick processing
+        // Queue task for server tick processing (canceling any previous task for this player)
+        ACTIVE_TASKS.removeIf(t -> t.playerId.equals(player.getUUID()));
         ACTIVE_TASKS.add(new VeinTask(player.getUUID(), level, originPos, originState, toBreak));
     }
 
@@ -286,8 +287,10 @@ public final class VeinMiningManager {
                         Containers.dropContents(task.level, task.originPos, container);
                     }
 
-                    // Drop block loot and experience at the first block (originPos)
-                    Block.dropResources(state, task.level, task.originPos, blockEntity, player, tool);
+                    // Drop block loot and experience at the first block (originPos) only in non-creative mode
+                    if (!player.hasInfiniteMaterials()) {
+                        Block.dropResources(state, task.level, task.originPos, blockEntity, player, tool);
+                    }
 
                     // Remove block from world
                     task.level.removeBlock(targetPos, false);
@@ -295,11 +298,13 @@ public final class VeinMiningManager {
                     // Visual particles and block break sound
                     task.level.levelEvent(2001, targetPos, Block.getId(state));
 
-                    // Tool durability cost
-                    tool.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
+                    if (!player.hasInfiniteMaterials()) {
+                        // Tool durability cost
+                        tool.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
 
-                    // Hunger exhaustion cost
-                    player.causeFoodExhaustion((float) (config.exhaustionMultiplier * 0.005F));
+                        // Hunger exhaustion cost
+                        player.causeFoodExhaustion((float) (config.exhaustionMultiplier * 0.005F));
+                    }
 
                     // Stats
                     player.awardStat(Stats.BLOCK_MINED.get(state.getBlock()));
@@ -339,21 +344,36 @@ public final class VeinMiningManager {
         return path.endsWith("_log") || path.endsWith("_stem") || path.endsWith("_wood");
     }
 
-    public static boolean matchesMergeTags(BlockState state, List<String> mergeTags) {
-        if (mergeTags == null || mergeTags.isEmpty()) return false;
+    public static boolean matchesPattern(BlockState state, String pattern) {
+        if (pattern == null || pattern.isEmpty()) return false;
+        if (pattern.equals("*")) return true;
+
         Identifier blockId = BuiltInRegistries.BLOCK.getKey(state.getBlock());
         if (blockId == null) return false;
-
         String idStr = blockId.toString();
+
+        if (pattern.startsWith("#")) {
+            TagKey<Block> tag = TagKey.create(Registries.BLOCK, Identifier.parse(pattern.substring(1)));
+            if (state.is(tag)) return true;
+        } else if (pattern.contains("*")) {
+            String regex = pattern.replace(".", "\\.").replace("*", ".*");
+            if (idStr.matches(regex)) return true;
+        } else {
+            if (idStr.equals(pattern)) return true;
+            // Fallback: tag without '#' prefix
+            try {
+                TagKey<Block> fallbackTag = TagKey.create(Registries.BLOCK, Identifier.parse(pattern));
+                if (state.is(fallbackTag)) return true;
+            } catch (Exception ignored) {
+            }
+        }
+        return false;
+    }
+
+    public static boolean matchesMergeTags(BlockState state, List<String> mergeTags) {
+        if (mergeTags == null || mergeTags.isEmpty()) return false;
         for (String pattern : mergeTags) {
-            if (pattern.equals("*")) return true;
-            if (pattern.startsWith("#")) {
-                TagKey<Block> tag = TagKey.create(Registries.BLOCK, Identifier.parse(pattern.substring(1)));
-                if (state.is(tag)) return true;
-            } else if (pattern.contains("*")) {
-                String regex = pattern.replace(".", "\\.").replace("*", ".*");
-                if (idStr.matches(regex)) return true;
-            } else if (idStr.equals(pattern)) {
+            if (matchesPattern(state, pattern)) {
                 return true;
             }
         }
@@ -365,15 +385,21 @@ public final class VeinMiningManager {
             return true;
         }
 
+        // Check if both blocks match the same configured merge tag
+        if (mergeTags != null) {
+            for (String pattern : mergeTags) {
+                if (matchesPattern(origin, pattern) && matchesPattern(candidate, pattern)) {
+                    return true;
+                }
+            }
+        }
+
         // If both are ores, allow merging if configured in mergeTags or standard ore variants
         if (isOre && isOreBlock(candidate)) {
             // E.g. deepslate_iron_ore and iron_ore
             String originName = BuiltInRegistries.BLOCK.getKey(origin.getBlock()).getPath().replace("deepslate_", "");
             String candName = BuiltInRegistries.BLOCK.getKey(candidate.getBlock()).getPath().replace("deepslate_", "");
             if (originName.equals(candName)) {
-                return true;
-            }
-            if (matchesMergeTags(origin, mergeTags) && matchesMergeTags(candidate, mergeTags)) {
                 return true;
             }
         }

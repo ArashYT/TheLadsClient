@@ -135,7 +135,7 @@ public enum VeinShape {
     }
 
     /**
-     * Small Tunnel: 1 block wide x 2 blocks high walking corridor.
+     * Small Tunnel: 1 block wide x 2 blocks high horizontal walking corridor.
      */
     private static List<BlockPos> calculateSmallTunnel(
             BlockPos startPos,
@@ -146,32 +146,19 @@ public enum VeinShape {
             int maxBlocks) {
 
         List<BlockPos> result = new ArrayList<>();
-        Direction digDir = hitFace != null && hitFace.getAxis().isHorizontal()
-                ? hitFace.getOpposite()
-                : (playerFacing != null ? playerFacing : Direction.NORTH);
+        Direction digDir;
+        int secondBlockYOffset;
 
-        if (hitFace == Direction.UP) {
-            digDir = Direction.DOWN;
-        } else if (hitFace == Direction.DOWN) {
-            digDir = Direction.UP;
+        if (hitFace != null && hitFace.getAxis().isHorizontal()) {
+            digDir = hitFace.getOpposite();
+            secondBlockYOffset = isPlayerEyeLevel ? -1 : 1;
+        } else {
+            // Hitting floor (UP) or ceiling (DOWN): maintain horizontal 1x2 corridor along player facing
+            digDir = (playerFacing != null && playerFacing.getAxis().isHorizontal()) ? playerFacing : Direction.NORTH;
+            secondBlockYOffset = (hitFace == Direction.DOWN) ? -1 : 1;
         }
 
         int maxDepth = Math.max(1, maxBlocks / 2);
-
-        if (digDir.getAxis() == Direction.Axis.Y) {
-            // Vertical shaft
-            for (int d = 0; d < maxBlocks; d++) {
-                BlockPos p = startPos.relative(digDir, d);
-                if (canMineFilter.test(p)) {
-                    result.add(p);
-                    if (result.size() >= maxBlocks) break;
-                }
-            }
-            return result;
-        }
-
-        // Horizontal 1x2 tunnel
-        int secondBlockYOffset = isPlayerEyeLevel ? -1 : 1;
 
         for (int d = 0; d < maxDepth; d++) {
             BlockPos p1 = startPos.relative(digDir, d);

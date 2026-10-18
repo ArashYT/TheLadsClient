@@ -58,11 +58,11 @@ public final class AriseNB8Config {
 
     /** Tag patterns considered identical blocks in shapeless mode (Arise default tags). */
     public List<String> mergeTags = new ArrayList<>(List.of(
-            "minecraft:base_stone_overworld",
+            "#minecraft:base_stone_overworld",
             "c:*_ores",
             "forge:ores/*",
-            "c:ores",
-            "minecraft:logs"
+            "#c:ores",
+            "#minecraft:logs"
     ));
 
     public static AriseNB8Config get() {
