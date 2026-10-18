@@ -173,11 +173,23 @@
 
               <!-- Instance Identity Card -->
               <Border Classes="card">
-                <StackPanel Spacing="12">
+                <StackPanel Spacing="14">
                   <TextBlock Classes="sectionTitle" Text="INSTANCE SETTINGS" />
                   <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
                     <TextBox x:Name="NameBox" PlaceholderText="Instance Name" Height="34" VerticalContentAlignment="Center" />
                     <Button Grid.Column="1" Classes="action" Content="Change icon" Height="34" Margin="8,0,0,0" Click="Icon_Click" />
+                  </Grid>
+
+                  <Border Height="1" Background="#2A2B31" Margin="0,2" />
+
+                  <!-- Lads Core Setting -->
+                  <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="Lads Core" FontWeight="SemiBold" FontSize="13" Foreground="White" />
+                      <TextBlock Classes="muted" Text="Adds The Lads Client mod (HUD, modules, performance) to this modpack" TextWrapping="Wrap" />
+                      <TextBlock x:Name="LadsCoreUnsupportedReason" Classes="muted" Foreground="#E06C75" FontSize="11" IsVisible="False" TextWrapping="Wrap" Margin="0,2,0,0" />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="LadsCoreToggle" Grid.Column="1" Classes="cfSwitch" VerticalAlignment="Center" Margin="14,0,0,0" />
                   </Grid>
                 </StackPanel>
               </Border>

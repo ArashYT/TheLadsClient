@@ -61,10 +61,239 @@ public static class ModpackCoreSync
             .ThenBy(f => f, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
-    /// <summary>Brings the Core of an instance up to date; false when nothing changed (no Core in it, no bundled build, same bytes,
-    /// or the jar could not be replaced; <paramref name="status"/> says which of the last).</summary>
-    public static bool Sync(ModpackInstance instance, string? bundleRoot = null, Action<string>? status = null) =>
-        Sync(instance.GameDirectory, instance.McVersion, bundleRoot, status);
+    /// <summary>The disabled Core jars of a mods folder (theladscore*.jar.disabled, *TheLadsCore*.jar.disabled).</summary>
+    public static List<string> DisabledCoreJars(string modsDirectory)
+    {
+        if (!Directory.Exists(modsDirectory)) return new List<string>();
+        return Directory.EnumerateFiles(modsDirectory)
+            .Where(f => f.EndsWith(".jar.disabled", StringComparison.OrdinalIgnoreCase)
+                        && Path.GetFileName(f) is var name
+                        && (name.StartsWith("theladscore", StringComparison.OrdinalIgnoreCase) || name.Contains("TheLadsCore", StringComparison.OrdinalIgnoreCase)))
+            .OrderBy(f => !Path.GetFileName(f).Equals(BundledName + ".disabled", StringComparison.OrdinalIgnoreCase))
+            .ThenBy(f => f, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>Checks whether a list of mod files contains Sinytra Connector.</summary>
+    public static bool HasSinytraConnector(IEnumerable<string>? modFiles)
+    {
+        if (modFiles == null) return false;
+        foreach (var file in modFiles)
+        {
+            var name = Path.GetFileName(file);
+            if (name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)) continue;
+            if (!name.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)) continue;
+            if (name.StartsWith("theladscore", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("TheLadsCore", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (name.Contains("connector", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("sinytra", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>Checks whether a mods directory contains an enabled Sinytra Connector jar.</summary>
+    public static bool HasSinytraConnector(string? modsDirectory)
+    {
+        if (string.IsNullOrEmpty(modsDirectory) || !Directory.Exists(modsDirectory)) return false;
+        try { return HasSinytraConnector(Directory.EnumerateFiles(modsDirectory)); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
+    }
+
+    /// <summary>
+    /// Checks whether The Lads Core is supported for a given Minecraft version and loader.
+    /// "Supports" means this launcher bundles a Core for the pack's version AND the pack's loader can load it.
+    /// </summary>
+    public static bool IsSupported(string? mcVersion, string? loader, IEnumerable<string>? modFiles, out string? reason)
+    {
+        if (string.IsNullOrWhiteSpace(mcVersion))
+        {
+            reason = "Unknown Minecraft version.";
+            return false;
+        }
+
+        var normalizedLoader = (loader ?? "vanilla").Trim().ToLowerInvariant();
+        if (normalizedLoader == "vanilla")
+        {
+            reason = "Vanilla Minecraft does not support mods.";
+            return false;
+        }
+
+        if (!GameVersionPolicy.RequiresBundledCore(mcVersion))
+        {
+            reason = $"No Lads Core is bundled for Minecraft {mcVersion}.";
+            return false;
+        }
+
+        if (mcVersion == GameVersionPolicy.ForgeMinecraftVersion) // 1.8.9
+        {
+            if (normalizedLoader == "forge")
+            {
+                reason = null;
+                return true;
+            }
+            reason = "Minecraft 1.8.9 Lads Core requires Forge.";
+            return false;
+        }
+
+        // For all other bundled versions (1.20.1, 1.21.11, 26.2, 26.3), the Core is a Fabric mod
+        if (normalizedLoader is "fabric" or "quilt")
+        {
+            reason = null;
+            return true;
+        }
+
+        if (mcVersion == "1.20.1" && normalizedLoader == "forge")
+        {
+            if (HasSinytraConnector(modFiles))
+            {
+                reason = null;
+                return true;
+            }
+            reason = "Minecraft 1.20.1 Forge requires Sinytra Connector to run The Lads Core.";
+            return false;
+        }
+
+        reason = $"Minecraft {mcVersion} Lads Core requires Fabric.";
+        return false;
+    }
+
+    public static bool IsSupported(string? mcVersion, string? loader, string? modsDirectory, out string? reason)
+    {
+        IEnumerable<string>? files = null;
+        if (!string.IsNullOrEmpty(modsDirectory) && Directory.Exists(modsDirectory))
+        {
+            try { files = Directory.EnumerateFiles(modsDirectory); } catch { }
+        }
+        return IsSupported(mcVersion, loader, files, out reason);
+    }
+
+    public static bool IsSupported(ModpackInstance instance, out string? reason) =>
+        IsSupported(instance.McVersion, instance.Loader, Path.Combine(instance.GameDirectory, "mods"), out reason);
+
+    public static bool IsSupported(ModpackInstance instance) =>
+        IsSupported(instance, out _);
+
+    public static bool IsSupported(string? mcVersion, string? loader) =>
+        IsSupported(mcVersion, loader, (IEnumerable<string>?)null, out _);
+
+    /// <summary>
+    /// Resolves the default setting for Lads Core on an instance (true when supported or when a Core jar is already installed).
+    /// </summary>
+    public static bool ResolveDefaultLadsCore(ModpackInstance instance)
+    {
+        var modsDir = Path.Combine(instance.GameDirectory, "mods");
+        return CoreJars(modsDir).Count > 0 || IsSupported(instance);
+    }
+
+    /// <summary>Brings the Core of an instance up to date according to its <see cref="ModpackInstance.LadsCore"/> setting:
+    /// - ON: adds the bundled jar (mods\theladscore.jar) when missing, restores disabled jars, and syncs to bundled build.
+    /// - OFF: renames any enabled Core jars to .disabled (never deletes any jar, even pack-shipped jars).
+    /// - Packs installed before this update get the default (ON when supported) the first time opened/launched.
+    /// - External instances and runs with LADS_SKIP_MODPACK_CORE_SYNC=1 are left untouched.
+    /// - Official Experiences keep their Core always enabled.
+    /// Returns false when nothing changed.</summary>
+    public static bool Sync(ModpackInstance instance, string? bundleRoot = null, Action<string>? status = null)
+    {
+        if (instance.IsExternal) return false;
+        if (Environment.GetEnvironmentVariable(SkipEnvironmentVariable) == "1") return false;
+
+        // Experiences keep Core unconditionally enabled
+        bool isExperience = ExperiencesService.AllExperiences.Any(e =>
+            string.Equals(e.Id, ExperiencesService.CanonicalPackId(instance.Id), StringComparison.OrdinalIgnoreCase));
+        if (isExperience)
+        {
+            instance.LadsCore = true;
+        }
+
+        // Packs installed before this update get the default (ON when supported)
+        if (!instance.LadsCore.HasValue)
+        {
+            instance.LadsCore = ResolveDefaultLadsCore(instance);
+            try { Modpacks.Save(instance); } catch { }
+        }
+
+        var modsDirectory = Path.Combine(instance.GameDirectory, "mods");
+        bool enabled = instance.LadsCore.Value;
+
+        if (!enabled)
+        {
+            var enabledCores = CoreJars(modsDirectory);
+            if (enabledCores.Count == 0) return false;
+            foreach (var jar in enabledCores)
+            {
+                try
+                {
+                    File.Move(jar, jar + ".disabled", overwrite: true);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    status?.Invoke($"Could not disable The Lads Core ({e.Message}).");
+                    return false;
+                }
+            }
+            status?.Invoke("Disabled The Lads Core for this modpack.");
+            return true;
+        }
+
+        var bundled = FindBundledJar(instance.McVersion, bundleRoot);
+        if (bundled == null) return false;
+
+        // Restore any disabled Core jars first (OFF -> ON restores)
+        var disabledCores = DisabledCoreJars(modsDirectory);
+        foreach (var disabled in disabledCores)
+        {
+            try
+            {
+                var restored = disabled[..^".disabled".Length];
+                File.Move(disabled, restored, overwrite: true);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        }
+
+        bool newlyAdded = false;
+        var cores = CoreJars(modsDirectory);
+        if (cores.Count == 0)
+        {
+            if (!IsSupported(instance, out var reason))
+            {
+                status?.Invoke($"The Lads Core is not supported: {reason}");
+                return false;
+            }
+
+            try
+            {
+                Directory.CreateDirectory(modsDirectory);
+                var dest = Path.Combine(modsDirectory, BundledName);
+                File.Copy(bundled, dest, overwrite: true);
+                EnsureIcon(dest, bundled);
+                newlyAdded = true;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                status?.Invoke($"Could not copy The Lads Core ({e.Message}).");
+                return false;
+            }
+        }
+
+        try
+        {
+            var updated = SyncJar(modsDirectory, bundled);
+            if (newlyAdded || updated)
+            {
+                status?.Invoke(newlyAdded ? "Added The Lads Core to this modpack." : "Updated The Lads Core to this launcher's build.");
+                return true;
+            }
+            return false;
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            status?.Invoke($"Could not update The Lads Core ({e.Message}); the installed one is kept.");
+            return false;
+        }
+    }
 
     public static bool Sync(string gameDirectory, string mcVersion, string? bundleRoot = null, Action<string>? status = null)
     {

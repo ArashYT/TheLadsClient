@@ -204,4 +204,212 @@ public class ModpackCoreSyncTests : IDisposable
 
         Assert.True(ModpackCoreSync.Sync(instance, bundle));
     }
+
+    [Theory]
+    [InlineData("26.3", "fabric", true, null)]
+    [InlineData("26.3", "quilt", true, null)]
+    [InlineData("26.3", "forge", false, "Minecraft 26.3 Lads Core requires Fabric.")]
+    [InlineData("26.3", "neoforge", false, "Minecraft 26.3 Lads Core requires Fabric.")]
+    [InlineData("26.3", "vanilla", false, "Vanilla Minecraft does not support mods.")]
+    [InlineData("1.20.1", "fabric", true, null)]
+    [InlineData("1.20.1", "quilt", true, null)]
+    [InlineData("1.20.1", "forge", false, "Minecraft 1.20.1 Forge requires Sinytra Connector to run The Lads Core.")]
+    [InlineData("1.20.1", "neoforge", false, "Minecraft 1.20.1 Lads Core requires Fabric.")]
+    [InlineData("1.20.1", "vanilla", false, "Vanilla Minecraft does not support mods.")]
+    [InlineData("1.8.9", "forge", true, null)]
+    [InlineData("1.8.9", "fabric", false, "Minecraft 1.8.9 Lads Core requires Forge.")]
+    [InlineData("1.8.9", "vanilla", false, "Vanilla Minecraft does not support mods.")]
+    [InlineData("1.16.5", "forge", false, "No Lads Core is bundled for Minecraft 1.16.5.")]
+    [InlineData("1.19.2", "fabric", false, "No Lads Core is bundled for Minecraft 1.19.2.")]
+    [InlineData("", "fabric", false, "Unknown Minecraft version.")]
+    [InlineData(null, "fabric", false, "Unknown Minecraft version.")]
+    public void SupportRule_VerifiesMinecraftVersionAndLoader(string? mc, string? loader, bool expectedSupported, string? expectedReason)
+    {
+        bool supported = ModpackCoreSync.IsSupported(mc, loader, (IEnumerable<string>?)null, out var reason);
+        Assert.Equal(expectedSupported, supported);
+        Assert.Equal(expectedReason, reason);
+    }
+
+    [Fact]
+    public void SupportRule_Forge1201_IsSupportedWithSinytraConnector()
+    {
+        var modsWithoutConnector = new[] { "sodium.jar", "iris.jar" };
+        Assert.False(ModpackCoreSync.IsSupported("1.20.1", "forge", modsWithoutConnector, out var reasonNo));
+        Assert.Equal("Minecraft 1.20.1 Forge requires Sinytra Connector to run The Lads Core.", reasonNo);
+
+        var modsWithConnector = new[] { "sodium.jar", "Connector-1.0.0-beta.49+1.20.1.jar" };
+        Assert.True(ModpackCoreSync.IsSupported("1.20.1", "forge", modsWithConnector, out var reasonYes));
+        Assert.Null(reasonYes);
+
+        // Disabled connector should not count
+        var modsWithDisabledConnector = new[] { "Connector-1.0.0-beta.49+1.20.1.jar.disabled" };
+        Assert.False(ModpackCoreSync.IsSupported("1.20.1", "forge", modsWithDisabledConnector, out _));
+    }
+
+    [Fact]
+    public void DefaultSetting_IsOnWhenSupported_AndOffWhenUnsupported()
+    {
+        var supportedInstance = new ModpackInstance { Id = "sup", Name = "Supported", McVersion = "1.20.1", Loader = "fabric", Directory = _root };
+        Assert.Null(supportedInstance.LadsCore);
+        Assert.True(ModpackCoreSync.ResolveDefaultLadsCore(supportedInstance));
+
+        var unsupportedInstance = new ModpackInstance { Id = "unsup", Name = "Unsupported", McVersion = "1.16.5", Loader = "forge", Directory = _root };
+        Assert.Null(unsupportedInstance.LadsCore);
+        Assert.False(ModpackCoreSync.ResolveDefaultLadsCore(unsupportedInstance));
+    }
+
+    [Fact]
+    public void On_AddsBundledJarAndIcon_WhenMissing()
+    {
+        byte[] icon = new byte[] { 10, 20, 30, 40 };
+        var bundle = Bundle("1.20.1", "new", icon);
+        var instance = new ModpackInstance { Id = "inst", Name = "Instance", McVersion = "1.20.1", Loader = "fabric", Directory = _root, LadsCore = true };
+        Directory.Move(Game, instance.GameDirectory);
+
+        var messages = new List<string>();
+        Assert.True(ModpackCoreSync.Sync(instance, bundle, messages.Add));
+
+        var corePath = Path.Combine(instance.GameDirectory, "mods", ModpackCoreSync.BundledName);
+        Assert.True(File.Exists(corePath));
+        Assert.Equal(File.ReadAllBytes(Path.Combine(bundle, "game-mods", "1.20.1", ModpackCoreSync.BundledName)), File.ReadAllBytes(corePath));
+        Assert.True(File.Exists(corePath + ".icon.png"));
+        Assert.Equal(icon, File.ReadAllBytes(corePath + ".icon.png"));
+        Assert.Contains(messages, m => m.Contains("Added The Lads Core to this modpack"));
+
+        // Running sync again when already up to date does not re-add or report changes
+        Assert.False(ModpackCoreSync.Sync(instance, bundle));
+    }
+
+    [Fact]
+    public void Off_DisablesEnabledCoreJar_WithoutDeleting()
+    {
+        var bundle = Bundle("1.20.1", "new");
+        var instance = new ModpackInstance { Id = "inst", Name = "Instance", McVersion = "1.20.1", Loader = "fabric", Directory = _root, LadsCore = false };
+        Directory.Move(Game, instance.GameDirectory);
+        var modsDir = Path.Combine(instance.GameDirectory, "mods");
+        Directory.CreateDirectory(modsDir);
+        var corePath = Path.Combine(modsDir, ModpackCoreSync.BundledName);
+        MakeCore(corePath, "old");
+
+        var messages = new List<string>();
+        Assert.True(ModpackCoreSync.Sync(instance, bundle, messages.Add));
+
+        Assert.False(File.Exists(corePath));
+        var disabledPath = corePath + ".disabled";
+        Assert.True(File.Exists(disabledPath));
+        Assert.Empty(ModpackCoreSync.CoreJars(modsDir));
+        Assert.Single(ModpackCoreSync.DisabledCoreJars(modsDir));
+        Assert.Contains(messages, m => m.Contains("Disabled The Lads Core for this modpack"));
+
+        // Repeating sync when already disabled does nothing
+        Assert.False(ModpackCoreSync.Sync(instance, bundle));
+    }
+
+    [Fact]
+    public void OffToOn_RestoresAndUpdatesCore()
+    {
+        var bundle = Bundle("1.20.1", "new");
+        var instance = new ModpackInstance { Id = "inst", Name = "Instance", McVersion = "1.20.1", Loader = "fabric", Directory = _root, LadsCore = true };
+        Directory.Move(Game, instance.GameDirectory);
+        var modsDir = Path.Combine(instance.GameDirectory, "mods");
+        Directory.CreateDirectory(modsDir);
+        var corePath = Path.Combine(modsDir, ModpackCoreSync.BundledName);
+        MakeCore(corePath + ".disabled", "old");
+
+        Assert.True(ModpackCoreSync.Sync(instance, bundle));
+
+        Assert.False(File.Exists(corePath + ".disabled"));
+        Assert.True(File.Exists(corePath));
+        Assert.Equal(File.ReadAllBytes(Path.Combine(bundle, "game-mods", "1.20.1", ModpackCoreSync.BundledName)), File.ReadAllBytes(corePath));
+    }
+
+    [Fact]
+    public void PackShippedCore_IsNeverDeleted_WhenDisabledAndRestored()
+    {
+        var bundle = Bundle("1.20.1", "new");
+        var instance = new ModpackInstance { Id = "inst", Name = "Instance", McVersion = "1.20.1", Loader = "fabric", Directory = _root, LadsCore = false };
+        Directory.Move(Game, instance.GameDirectory);
+        var modsDir = Path.Combine(instance.GameDirectory, "mods");
+        Directory.CreateDirectory(modsDir);
+        var customCore = Path.Combine(modsDir, "TheLadsCore-1.20.1-1.2.0.jar");
+        MakeCore(customCore, "pack-shipped");
+        var originalBytes = File.ReadAllBytes(customCore);
+
+        // Turn OFF: must rename to .disabled, never delete
+        Assert.True(ModpackCoreSync.Sync(instance, bundle));
+        Assert.False(File.Exists(customCore));
+        Assert.True(File.Exists(customCore + ".disabled"));
+        Assert.Equal(originalBytes, File.ReadAllBytes(customCore + ".disabled"));
+
+        // Turn back ON: restores and updates to bundled build
+        instance.LadsCore = true;
+        Assert.True(ModpackCoreSync.Sync(instance, bundle));
+        Assert.False(File.Exists(customCore + ".disabled"));
+        Assert.True(File.Exists(customCore));
+        Assert.Equal(File.ReadAllBytes(Path.Combine(bundle, "game-mods", "1.20.1", ModpackCoreSync.BundledName)), File.ReadAllBytes(customCore));
+    }
+
+    [Fact]
+    public void SkipEnvironmentVariable_PreventsAddingOrDisabling()
+    {
+        var bundle = Bundle("1.20.1", "new");
+        var instanceOn = new ModpackInstance { Id = "inst-on", Name = "Instance On", McVersion = "1.20.1", Loader = "fabric", Directory = _root, LadsCore = true };
+        Directory.Move(Game, instanceOn.GameDirectory);
+        var modsDir = Path.Combine(instanceOn.GameDirectory, "mods");
+        Directory.CreateDirectory(modsDir);
+
+        Environment.SetEnvironmentVariable(ModpackCoreSync.SkipEnvironmentVariable, "1");
+        try
+        {
+            // With skip env var set, ON never adds missing Core
+            Assert.False(ModpackCoreSync.Sync(instanceOn, bundle));
+            Assert.Empty(Directory.GetFiles(modsDir));
+
+            // With skip env var set, OFF never disables existing Core
+            MakeCore(Path.Combine(modsDir, ModpackCoreSync.BundledName), "current");
+            var instanceOff = new ModpackInstance { Id = "inst-off", Name = "Instance Off", McVersion = "1.20.1", Loader = "fabric", Directory = _root, LadsCore = false };
+            Assert.False(ModpackCoreSync.Sync(instanceOff, bundle));
+            Assert.True(File.Exists(Path.Combine(modsDir, ModpackCoreSync.BundledName)));
+            Assert.False(File.Exists(Path.Combine(modsDir, ModpackCoreSync.BundledName + ".disabled")));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(ModpackCoreSync.SkipEnvironmentVariable, null);
+        }
+    }
+
+    [Fact]
+    public void ExternalInstance_IsNeverTouchedBySync()
+    {
+        var bundle = Bundle("1.20.1", "new");
+        var externalMods = Path.Combine(_root, "external_game", "mods");
+        Directory.CreateDirectory(externalMods);
+        var instance = new ModpackInstance
+        {
+            Id = "ext",
+            Name = "External Pack",
+            McVersion = "1.20.1",
+            Loader = "fabric",
+            Directory = _root,
+            ExternalGameDirectory = Path.Combine(_root, "external_game"),
+            LadsCore = true
+        };
+
+        Assert.True(instance.IsExternal);
+        Assert.False(ModpackCoreSync.Sync(instance, bundle));
+        Assert.Empty(Directory.GetFiles(externalMods));
+    }
+
+    [Fact]
+    public void PacksInstalledBeforeUpdate_GetDefaultOnWhenSupported_OnFirstSync()
+    {
+        var bundle = Bundle("1.20.1", "new");
+        var instance = new ModpackInstance { Id = "old-pack", Name = "Old Pack", McVersion = "1.20.1", Loader = "fabric", Directory = _root };
+        Directory.Move(Game, instance.GameDirectory);
+        Assert.Null(instance.LadsCore);
+
+        Assert.True(ModpackCoreSync.Sync(instance, bundle));
+        Assert.True(instance.LadsCore);
+        Assert.True(File.Exists(Path.Combine(instance.GameDirectory, "mods", ModpackCoreSync.BundledName)));
+    }
 }
