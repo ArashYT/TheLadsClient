@@ -39,6 +39,8 @@ public final class HudLayoutQa {
         void effect(String name, int id);
         /** Writes the last finished frame to screenshots/name.png. */
         void shot(String name);
+        /** As {@link #shot}, but the file is written off the game thread (a moment later), so a run of frames keeps its frame rate. */
+        default void quickShot(String name) { shot(name); }
         void openEditor();
         /** The open HUD editor's controller, or null. */
         DraggableHudScreen editor();

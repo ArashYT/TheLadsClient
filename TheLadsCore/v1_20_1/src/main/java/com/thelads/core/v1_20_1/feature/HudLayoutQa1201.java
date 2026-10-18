@@ -29,6 +29,13 @@ final class HudLayoutQa1201 implements HudLayoutQa.Driver {
                 if (HudTextQa.failed() > 0) throw new IllegalStateException(HudTextQa.failed() + " HUD text steps failed (Lads hud layout FAILED)");
                 return true;
             });
+        // "f3qa": the 1.9.11 Better F3 sequence (BetterF3Qa).
+        if (Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null)
+            QaProbe1201.registerStep("f3qa", args -> {
+                if (!com.thelads.core.client.hud.BetterF3Qa.tick(DRIVER)) return false;
+                if (com.thelads.core.client.hud.BetterF3Qa.failed() > 0) throw new IllegalStateException(com.thelads.core.client.hud.BetterF3Qa.failed() + " Better F3 checks failed (Lads hud layout FAILED)");
+                return true;
+            });
         // "hudcover": the 1.9.0 HUD cover sequence (HudCoverQa).
         if (Boolean.getBoolean("thelads.verifyAutoWorld") || System.getProperty("thelads.qaScript") != null)
             QaProbe1201.registerStep("hudcover", args -> {
@@ -61,6 +68,20 @@ final class HudLayoutQa1201 implements HudLayoutQa.Driver {
     @Override public void shot(String name) {
         try { QaProbe1201.shot(Minecraft.getInstance(), name); }
         catch (java.io.IOException failure) { throw new IllegalStateException("shot " + name, failure); }
+    }
+
+    @Override public void quickShot(String name) {
+        Minecraft mc = Minecraft.getInstance();
+        java.nio.file.Path dir = mc.gameDirectory.toPath().resolve("screenshots");
+        com.mojang.blaze3d.platform.NativeImage image = net.minecraft.client.Screenshot.takeScreenshot(mc.getMainRenderTarget());
+        java.util.concurrent.CompletableFuture.runAsync(() -> {
+            try (image) {
+                java.nio.file.Files.createDirectories(dir);
+                image.writeToFile(dir.resolve(name + ".png"));
+            } catch (java.io.IOException failure) {
+                throw new java.io.UncheckedIOException("shot " + name, failure);
+            }
+        });
     }
 
     @Override public void openEditor() { Minecraft.getInstance().setScreen(new DraggableHudScreen1201(null)); }

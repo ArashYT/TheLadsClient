@@ -33,6 +33,12 @@ final class HudLayoutProbe189 implements HudLayoutQa.Driver {
     private HudLayoutProbe189() {}
 
     static boolean run(Minecraft mc) {
+        // LADS_QA_F3_1911=1: the 1.9.11 Better F3 sequence instead (BetterF3Qa).
+        if (com.thelads.core.client.hud.BetterF3Qa.wanted()) {
+            if (!com.thelads.core.client.hud.BetterF3Qa.tick(DRIVER)) return false;
+            CoreProbe.check(com.thelads.core.client.hud.BetterF3Qa.failed() == 0, "every Better F3 check passed (Lads hud layout END)");
+            return true;
+        }
         // LADS_QA_HUDTEXT=1: the 1.9.1 HUD text sequence instead (HudTextQa).
         if (HudTextQa.wanted()) {
             if (!HudTextQa.tick(DRIVER)) return false;
@@ -74,10 +80,15 @@ final class HudLayoutProbe189 implements HudLayoutQa.Driver {
     @Override public void effect(String name, int id) { command(name == null ? "effect @a clear" : "effect @a " + id + " 300 0 true"); }
 
     /** The framebuffer as ScreenShotHelper reads it, without the helper. */
-    @Override public void shot(String name) {
+    @Override public void shot(String name) { write(grab(), name, false); }
+
+    @Override public void quickShot(String name) { write(grab(), name, true); }
+
+    private static BufferedImage grab() {
         Minecraft mc = Minecraft.getMinecraft();
         Framebuffer buffer = mc.getFramebuffer();
         int w = buffer.framebufferTextureWidth, h = buffer.framebufferTextureHeight;
+        if (w * h == 0) return screen(mc); // OptiFine's Fast Render draws without the framebuffer
         IntBuffer pixels = BufferUtils.createIntBuffer(w * h);
         int[] values = new int[w * h];
         GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1);
@@ -89,10 +100,35 @@ final class HudLayoutProbe189 implements HudLayoutQa.Driver {
         BufferedImage image = new BufferedImage(buffer.framebufferWidth, buffer.framebufferHeight, BufferedImage.TYPE_INT_RGB);
         int skip = h - buffer.framebufferHeight;
         for (int y = skip; y < h; y++) for (int x = 0; x < buffer.framebufferWidth; x++) image.setRGB(x, y - skip, values[y * w + x]);
-        File folder = new File(mc.mcDataDir, "lads-qa/screenshots");
+        return image;
+    }
+
+    /** The last frame shown (the window's front buffer), for a game drawing without the framebuffer. */
+    private static BufferedImage screen(Minecraft mc) {
+        int w = mc.displayWidth, h = mc.displayHeight;
+        IntBuffer pixels = BufferUtils.createIntBuffer(w * h);
+        int[] values = new int[w * h];
+        GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1);
+        GL11.glReadBuffer(GL11.GL_FRONT);
+        GL11.glReadPixels(0, 0, w, h, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
+        GL11.glReadBuffer(GL11.GL_BACK);
+        pixels.get(values);
+        BufferedImage image = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) image.setRGB(x, h - 1 - y, values[y * w + x]);
+        return image;
+    }
+
+    /** Into lads-qa/screenshots; later: off the game thread. */
+    private static void write(final BufferedImage image, final String name, boolean later) {
+        final File folder = new File(Minecraft.getMinecraft().mcDataDir, "lads-qa/screenshots");
         folder.mkdirs();
-        try { javax.imageio.ImageIO.write(image, "png", new File(folder, name + ".png")); }
-        catch (java.io.IOException failure) { throw new IllegalStateException("shot " + name, failure); }
+        Runnable save = new Runnable() {
+            @Override public void run() {
+                try { javax.imageio.ImageIO.write(image, "png", new File(folder, name + ".png")); }
+                catch (java.io.IOException failure) { throw new IllegalStateException("shot " + name, failure); }
+            }
+        };
+        if (later) java.util.concurrent.CompletableFuture.runAsync(save); else save.run();
     }
 
     @Override public void openEditor() { Minecraft.getMinecraft().displayGuiScreen(new DraggableHudScreen189(null)); }

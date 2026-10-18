@@ -23,6 +23,8 @@ final class HudLayoutCapture implements HudLayoutQa.Driver {
     private static final HudLayoutCapture DRIVER = new HudLayoutCapture();
     private static boolean started, done;
     private static String pending;
+    /** The pending shot is written off the game thread. */
+    private static boolean quick;
     private static Path game;
     private DraggableHudScreen editor;
     private int windowWidth, windowHeight;
@@ -44,7 +46,9 @@ final class HudLayoutCapture implements HudLayoutQa.Driver {
         }
         // LADS_QA_HUDCOVER=1: the 1.9.0 HUD cover sequence instead, with the same markers.
         // LADS_QA_HUDTEXT=1: the 1.9.1 HUD text sequence (HudTextQa).
-        done = HudTextQa.wanted() ? HudTextQa.tick(DRIVER) : HudCoverQa.wanted() ? HudCoverQa.tick(DRIVER) : HudLayoutQa.tick(DRIVER);
+        // LADS_QA_F3_1911=1: the 1.9.11 Better F3 sequence (BetterF3Qa).
+        done = com.thelads.core.client.hud.BetterF3Qa.wanted() ? com.thelads.core.client.hud.BetterF3Qa.tick(DRIVER)
+            : HudTextQa.wanted() ? HudTextQa.tick(DRIVER) : HudCoverQa.wanted() ? HudCoverQa.tick(DRIVER) : HudLayoutQa.tick(DRIVER);
     }
 
     /** Each completed game frame (NativeWorldVerification.renderedFrame): writes a requested shot. */
@@ -57,10 +61,15 @@ final class HudLayoutCapture implements HudLayoutQa.Driver {
             Files.createDirectories(folder);
             if (!folder.toRealPath().startsWith(gameDirectory)) throw new java.io.IOException("QA screenshot folder is outside the isolated game directory");
             Path output = folder.resolve(name + ".png");
+            boolean later = quick;
+            quick = false;
             net.minecraft.client.Screenshot.takeScreenshot(target, image -> {
-                try { image.writeToFile(output); LOGGER.info("Lads hud layout saved {}", output); }
-                catch (Exception failure) { LOGGER.error("Lads hud layout frame {} not saved", name, failure); }
-                finally { image.close(); }
+                Runnable write = () -> {
+                    try { image.writeToFile(output); LOGGER.info("Lads hud layout saved {}", output); }
+                    catch (Exception failure) { LOGGER.error("Lads hud layout frame {} not saved", name, failure); }
+                    finally { image.close(); }
+                };
+                if (later) java.util.concurrent.CompletableFuture.runAsync(write); else write.run();
             });
         } catch (Exception failure) {
             LOGGER.error("Lads hud layout frame {} not saved", name, failure);
@@ -88,6 +97,8 @@ final class HudLayoutCapture implements HudLayoutQa.Driver {
     @Override public void effect(String name, int id) { command(name == null ? "effect clear @a" : "effect give @a minecraft:" + name + " 300 0 true"); }
 
     @Override public void shot(String name) { pending = name; }
+
+    @Override public void quickShot(String name) { pending = name; quick = true; }
 
     @Override public void openEditor() {
         editor = new DraggableHudScreen();
