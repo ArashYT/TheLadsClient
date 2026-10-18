@@ -101,6 +101,7 @@ final class UiCapture {
         fullbright(true);
         fullbright(false);
         LOGGER.info("Lads UI capture BEGIN: {} steps; real screens and their mouse and key handlers, called in-process", steps.size());
+        com.thelads.core.client.qa.QaProgress.begin("UI (reset questions, Fullbright)", steps.size());
         step = 0;
     }
 
@@ -124,6 +125,7 @@ final class UiCapture {
         if (pendingShot != null || shotRunning || (frames < resumeFrames && ticks < resumeTicks)) return;
         try {
             if (step >= steps.size()) { finish(mc); return; }
+            com.thelads.core.client.qa.QaProgress.step("step " + (step + 1));
             steps.get(step++).run(mc);
             if (!rendering) layout(mc);
         } catch (Throwable failure) {
@@ -461,6 +463,7 @@ final class UiCapture {
     private static void shot(String name) {
         if (!rendering) { LOGGER.info("Lads UI frame {} skipped: no frame is drawn (the QA window is minimized)", name); skippedShots++; return; }
         pendingShot = name;
+        com.thelads.core.client.qa.QaProgress.hideFrames(6); // the shot's brightness reads the menu's pixels: the QA bar stays out of those frames
         shotDeadline = ticks + 20;
     }
 
@@ -511,6 +514,7 @@ final class UiCapture {
     private static void finish(Minecraft mc) {
         if (!restored) restore(mc);
         step = 999;
+        com.thelads.core.client.qa.QaProgress.done();
         String how = "reset questions answered by click, Esc and Enter; Fullbright followed through the open menu (control and live); " + takenShots + " frames saved, "
             + skippedShots + " skipped (none are skipped unless the window draws no frames)";
         if (FAILURES.isEmpty()) LOGGER.info("Lads UI capture END: {} passed, 0 failed; {}", passed, how);
@@ -541,11 +545,13 @@ final class UiCapture {
     }
 
     private static void check(boolean result, String description) {
+        com.thelads.core.client.qa.QaProgress.label(description);
         if (result) { passed++; LOGGER.info("Lads UI capture PASS: {}", description); }
         else fail(description);
     }
     private static void fail(String failure) {
         FAILURES.add(failure);
+        com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL);
         LOGGER.error("Lads UI capture check failed: {}", failure);
     }
 }

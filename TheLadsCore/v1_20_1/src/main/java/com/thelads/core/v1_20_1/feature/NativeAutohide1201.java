@@ -35,6 +35,11 @@ public final class NativeAutohide1201 {
                 GuiGraphicsLadsAdapter1201 adapter = new GuiGraphicsLadsAdapter1201(graphics, mc.font);
                 adapter.managed(() -> HudManager.getInstance().render(adapter));
             }
+            scopeOpacity = 1;
+            if (com.thelads.core.client.qa.QaProgress.on()) {
+                GuiGraphicsLadsAdapter1201 adapter = new GuiGraphicsLadsAdapter1201(graphics, mc.font);
+                adapter.managed(() -> com.thelads.core.client.qa.QaProgress.draw(adapter)); // QA only (no-op for players)
+            }
         } finally {
             scopeOpacity = previous;
         }

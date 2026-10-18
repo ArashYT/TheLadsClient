@@ -35,13 +35,13 @@ final class Anim1910Capture26 {
         if (mc.player == null || server == null) return;
         var id = mc.player.getUUID();
         switch (++tick) {
-            case 0 -> server.execute(() -> {
+            case 0 -> { com.thelads.core.client.qa.QaProgress.begin("anim 1.9.10", 4); server.execute(() -> {
                 var p = server.getPlayerList().getPlayer(id);
                 p.getInventory().clearContent(); // the QA world's earlier probes fill it: no room for arrows
                 p.removeEffect(net.minecraft.world.effect.MobEffects.SPEED); // left by HudOverrideCapture26 runs before its cleanup
                 p.setItemSlot(EquipmentSlot.MAINHAND, new ItemStack(Items.CROSSBOW));
                 p.getInventory().add(new ItemStack(Items.ARROW, 16));
-            });
+            }); }
             case 20 -> { NativeOldAnimations.APPLIED.clear(); mc.options.keyUse.setDown(true); } // vanilla releases a use once the key is up
             case 35 -> {
                 chargedBow = mc.player.isUsingItem() && NativeOldAnimations.APPLIED.contains(Feature.BOW);
@@ -78,6 +78,7 @@ final class Anim1910Capture26 {
             case 155 -> { mc.options.keyAttack.setDown(false); mc.options.keyUse.setDown(false); }
             case 160 -> {
                 done = true;
+                com.thelads.core.client.qa.QaProgress.done();
                 LOGGER.info("Lads 1.7 animations 1.9.10 capture END: {} passed, {} failed", passed, failed);
             }
             default -> {}
@@ -91,6 +92,7 @@ final class Anim1910Capture26 {
     }
 
     private static void check(boolean ok, String what) {
+        com.thelads.core.client.qa.QaProgress.check(what, ok);
         if (ok) passed++; else failed++;
         LOGGER.info("Lads 1.7 animations 1.9.10 capture {}: {}", ok ? "PASS" : "FAIL", what);
     }

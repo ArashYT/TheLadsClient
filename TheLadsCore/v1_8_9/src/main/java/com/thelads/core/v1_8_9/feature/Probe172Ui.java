@@ -429,6 +429,8 @@ final class Probe172Ui {
         screenshot(mc, name);
         BufferedImage image = CoreProbe.readShot(mc, name);
         long sum = 0, count = 0;
+        // The QA progress bar (top centre, about 34 GUI units tall) is in the picture the screenshot reads: the same rows are left out of every measurement.
+        if (com.thelads.core.client.qa.QaProgress.on()) y0 = Math.max(y0, 34 * new net.minecraft.client.gui.ScaledResolution(mc).getScaleFactor());
         for (int y = Math.max(0, y0); y < Math.min(image.getHeight(), y1); y += 2)
             for (int x = Math.max(0, x0); x < Math.min(image.getWidth(), x1); x += 2) {
                 int c = image.getRGB(x, y);

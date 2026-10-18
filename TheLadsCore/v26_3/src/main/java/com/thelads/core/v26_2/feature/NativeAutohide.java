@@ -24,6 +24,8 @@ public final class NativeAutohide {
             float shown=update();
             scopeOpacity=NativeQualityOfLife.bool("Autohide","Fade Lads HUD",true)?shown:1;
             if(scopeOpacity>0)com.thelads.core.client.hud.HudManager.getInstance().render(new com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter(graphics,mc.font));
+            scopeOpacity=1;
+            com.thelads.core.client.qa.QaProgress.draw(new com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter(graphics,mc.font)); // QA only (no-op for players)
         }finally{scopeOpacity=previous;}
     }
     /** QA (Hud170Capture): idle for a minute, at this opacity now. */

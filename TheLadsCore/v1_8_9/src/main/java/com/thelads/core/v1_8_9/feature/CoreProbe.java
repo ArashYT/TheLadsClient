@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.thelads.core.client.bridge.LadsGameBridge;
+import com.thelads.core.client.qa.QaProgress;
 import com.thelads.core.client.gui.LadsSettingsScreen;
 import com.thelads.core.client.util.ClientPaths;
 import com.thelads.core.config.ModuleManager;
@@ -249,7 +250,7 @@ public final class CoreProbe {
         }
         }
     }
-    private static int step, passed, delay, waited;
+    private static int step, passed, delay, waited, barStep = -1;
     private static boolean finished, pauseOnLostFocus;
     private static GuiScreen title, pause;
     private static LadsSettingsScreen189 menu;
@@ -260,6 +261,11 @@ public final class CoreProbe {
         if (finished) return;
         if (delay > 0) { delay--; return; }
         try {
+            // QA progress bar: one bar step per probe step (its label follows the last check it passed).
+            if (barStep < 0) QaProgress.begin("1.8.9 " + (FOCUS != null ? "focus " + FOCUS : System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY")) != null
+                ? System.getProperty("thelads.verify189Only", System.getenv("LADS_VERIFY_189_ONLY")) : "core probe"), STEPS.size());
+            if (barStep != step) QaProgress.step("step " + (step + 1));
+            barStep = step;
             if (!STEPS.get(step).run(Minecraft.getMinecraft())) {
                 if (++waited > 2400) throw new IllegalStateException("step " + (step + 1) + " did not complete within 120 s");
                 return;
@@ -267,11 +273,14 @@ public final class CoreProbe {
             waited = 0;
             if (++step < STEPS.size()) return;
             finish();
+            QaProgress.done();
             LOG.info("Lads 1.8.9 core probe END: {} passed, 0 failed; {}", passed, FOCUS != null ? "focused on " + FOCUS
                 : "menu key through GuiScreen.handleInput and runTick, pause-menu button, 1.8.9 bridge in a QA world, launcher catalog, "
                 + "HUD through RenderGameOverlayEvent and the HUD editor");
         } catch (Throwable failure) {
             finish();
+            QaProgress.result(QaProgress.Result.FAIL);
+            QaProgress.done();
             LOG.error("Lads 1.8.9 core probe FAILED after {} checks", passed, failure);
         }
     }
@@ -1010,6 +1019,7 @@ public final class CoreProbe {
     }
 
     static void check(boolean result, String description) {
+        QaProgress.label(description);
         if (!result) throw new IllegalStateException("1.8.9 core QA: " + description);
         passed++;
         LOG.info("Lads 1.8.9 core probe PASS {}: {}", passed, description);

@@ -93,6 +93,10 @@ public final class NativeHud {
             frames++;
         } finally {
             if (faded) Autohide189.end(shown, event.resolution.getScaledWidth_double(), event.resolution.getScaledHeight_double());
+            if (com.thelads.core.client.qa.QaProgress.on()) { // QA only (no-op for players): the QA progress bar over everything
+                graphics.reset(mc.fontRendererObj, event.resolution.getScaledWidth(), event.resolution.getScaledHeight());
+                com.thelads.core.client.qa.QaProgress.draw(graphics);
+            }
             GlStateManager.resetColor();
             GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
             GlStateManager.disableLighting();

@@ -26,6 +26,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.component.TooltipDisplay;
+import com.thelads.core.client.qa.QaProgress;
 import org.slf4j.LoggerFactory;
 
 /** Opt-in isolated QA: exercise transformed Minecraft methods and restore every edited preference. */
@@ -55,8 +56,10 @@ final class NativeQualityProbe {
                 LoggerFactory.getLogger("TheLadsCore").info("Lads native feature probe END: {} passed, 0 failed; requested features only",passed);
                 return;
             }
+            QaProgress.begin("native feature probe", Boolean.getBoolean("thelads.verifyInput") ? 11 : 10);
             // Menu close persists configuration. Exercise it before changing any QA preferences.
-            if (Boolean.getBoolean("thelads.verifyInput")) inputPipeline();
+            if (Boolean.getBoolean("thelads.verifyInput")) { QaProgress.step("input pipeline"); inputPipeline(); }
+            QaProgress.step("tooltips, durability and chat indicators");
             Module bars = NativeQualityOfLife.module("EnhancedToolbars");
             Module tips = NativeQualityOfLife.module("EnhancedTooltips");
             bars.setEnabled(false);
@@ -109,17 +112,20 @@ final class NativeQualityProbe {
             require(message.tag() == tag && message.signature() == signature, "chat parent tag and signature retained");
             hideIndicators.set(false);
             require(line.tag() == tag, "existing chat indicator restored immediately");
-            passed += NativeNametagConnectionProbe.run();
-            passed += NativeBackgroundFrameProbe.run();
-            passed += NativeViewDistanceProbe.run();
-            passed += NativeKillBannerProbe.run();
-            passed += NativeOldAnimationsProbe.run();
-            passed += NativeShulkerProbe.run();
-            passed += com.thelads.core.v26_2.feature.food.FoodProbe.run();
-            passed += NativeShulkerParityProbe.run();
-            passed += NativeRequestProbe.run();
+            QaProgress.step("nametag connection"); passed += NativeNametagConnectionProbe.run();
+            QaProgress.step("background frame"); passed += NativeBackgroundFrameProbe.run();
+            QaProgress.step("view distance"); passed += NativeViewDistanceProbe.run();
+            QaProgress.step("kill banner"); passed += NativeKillBannerProbe.run();
+            QaProgress.step("old animations"); passed += NativeOldAnimationsProbe.run();
+            QaProgress.step("shulker"); passed += NativeShulkerProbe.run();
+            QaProgress.step("food"); passed += com.thelads.core.v26_2.feature.food.FoodProbe.run();
+            QaProgress.step("shulker parity"); passed += NativeShulkerParityProbe.run();
+            QaProgress.step("requested features"); passed += NativeRequestProbe.run();
+            QaProgress.done();
             LoggerFactory.getLogger("TheLadsCore").info("Lads native feature probe END: {} passed, 0 failed", passed);
         } catch (Throwable failure) {
+            QaProgress.result(QaProgress.Result.FAIL);
+            QaProgress.done();
             LoggerFactory.getLogger("TheLadsCore").error("Lads native feature probe FAILED after {} checks", passed, failure);
         } finally {
             preferences.forEach(Option::load);
