@@ -19,6 +19,11 @@ public final class LadsPresence {
         return player != null && (SERVER.contains(player) || RELAY.contains(player));
     }
 
+    /** The number of players currently marked as Lads clients on this server. */
+    public static int size() {
+        return SERVER.size();
+    }
+
     /** presence {full:true}: replaces the server's set. */
     public static void serverReplace(Collection<UUID> players) {
         SERVER.clear();
