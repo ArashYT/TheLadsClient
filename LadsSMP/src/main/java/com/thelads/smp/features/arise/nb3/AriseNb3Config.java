@@ -30,7 +30,6 @@ public final class AriseNb3Config {
     public ImmersiveUISettings immersiveUI = new ImmersiveUISettings();
     public TargetDummySettings targetDummy = new TargetDummySettings();
     public ObscureTooltipsSettings obscureTooltips = new ObscureTooltipsSettings();
-    public VoicelessSurvivalSettings voicelessSurvival = new VoicelessSurvivalSettings();
     public SnailMailSettings snailMail = new SnailMailSettings();
     public BotanyPotsSettings botanyPots = new BotanyPotsSettings();
 
@@ -102,16 +101,6 @@ public final class AriseNb3Config {
         public boolean enabled = true;
         public boolean displayArmorModels = true;
         public boolean displayToolsModels = true;
-        public float rotationSpeed = 1.5f;
-    }
-
-    public static final class VoicelessSurvivalSettings {
-        public boolean enabled = true;
-        public double detectionRange = 20.0;
-        public double voiceThreshold = -40.0;
-        public double movementSpeedMultiplier = 1.3;
-        public double whisperRangeMultiplier = 0.5;
-        public double sneakingRangeMultiplier = 0.5;
     }
 
     public static final class SnailMailSettings {
@@ -162,7 +151,6 @@ public final class AriseNb3Config {
                         if (loaded.immersiveUI == null) loaded.immersiveUI = new ImmersiveUISettings();
                         if (loaded.targetDummy == null) loaded.targetDummy = new TargetDummySettings();
                         if (loaded.obscureTooltips == null) loaded.obscureTooltips = new ObscureTooltipsSettings();
-                        if (loaded.voicelessSurvival == null) loaded.voicelessSurvival = new VoicelessSurvivalSettings();
                         if (loaded.snailMail == null) loaded.snailMail = new SnailMailSettings();
                         if (loaded.botanyPots == null) loaded.botanyPots = new BotanyPotsSettings();
                         INSTANCE = loaded;

@@ -51,6 +51,10 @@ public final class CosmeticArmorData {
         }
     }
 
+    public void setVisibility(EquipmentSlot slot, boolean isVisible) {
+        setVisible(slot, isVisible);
+    }
+
     public boolean toggleVisibility(EquipmentSlot slot) {
         int idx = slotToIndex(slot);
         if (idx >= 0 && idx < 4) {

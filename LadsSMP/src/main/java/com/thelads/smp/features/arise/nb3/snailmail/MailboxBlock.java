@@ -38,10 +38,41 @@ public class MailboxBlock extends Block implements EntityBlock {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof MailboxBlockEntity mailbox) {
                 mailbox.setOwner(player.getUUID(), player.getName().getString());
+                SnailMailFeature.registerMailbox(player.getUUID(), level, pos);
                 player.sendSystemMessage(Component.literal("Mailbox registered to " + player.getName().getString())
                         .withStyle(ChatFormatting.GREEN));
             }
         }
+    }
+
+    @Override
+    public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        if (!level.isClientSide()) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof MailboxBlockEntity mailbox) {
+                for (ItemStack item : mailbox.getInbox()) {
+                    if (!item.isEmpty()) {
+                        net.minecraft.world.Containers.dropItemStack(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, item);
+                    }
+                }
+                mailbox.getInbox().clear();
+                SnailMailFeature.unregisterMailbox(mailbox.getOwnerUuid());
+            }
+        }
+        return super.playerWillDestroy(level, pos, state, player);
+    }
+
+    @Override
+    protected float getDestroyProgress(BlockState state, Player player, net.minecraft.world.level.BlockGetter level, BlockPos pos) {
+        if (AriseNb3Config.get().snailMail.protectBoxDestroy && level.getBlockEntity(pos) instanceof MailboxBlockEntity mailbox) {
+            boolean isAdmin = player.permissions().hasPermission(Permissions.COMMANDS_ADMIN)
+                    || player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
+            int opLevel = isAdmin ? 4 : 0;
+            if (!SnailMailFeature.canAccessMailbox(player, mailbox.getOwnerUuid(), opLevel)) {
+                return 0.0f; // Indestructible for non-owners when break protection is enabled
+            }
+        }
+        return super.getDestroyProgress(state, player, level, pos);
     }
 
     @Override

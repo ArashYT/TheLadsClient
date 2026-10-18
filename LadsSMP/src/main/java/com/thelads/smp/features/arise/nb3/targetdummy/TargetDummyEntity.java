@@ -1,8 +1,12 @@
 package com.thelads.smp.features.arise.nb3.targetdummy;
 
 import com.thelads.smp.features.arise.nb3.AriseNb3Config;
+import com.thelads.smp.features.arise.nb3.AriseNb3Mod;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
@@ -42,7 +46,7 @@ public class TargetDummyEntity extends ArmorStand {
                 .sized(0.5f, 1.975f)
                 .eyeHeight(1.6f)
                 .clientTrackingRange(10)
-                .build(null);
+                .build(ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(AriseNb3Mod.MOD_ID, "target_dummy")));
     }
 
     @Override
@@ -54,7 +58,7 @@ public class TargetDummyEntity extends ArmorStand {
         // Shift + empty hand to dismantle and pick up dummy
         if (damageSource.getEntity() instanceof ServerPlayer player && player.isShiftKeyDown() && player.getMainHandItem().isEmpty()) {
             this.kill(serverLevel, player);
-            this.spawnAtLocation(serverLevel, new ItemStack(Items.ARMOR_STAND));
+            this.spawnAtLocation(serverLevel, new ItemStack(AriseNb3Mod.TARGET_DUMMY_ITEM));
             return true;
         }
 

@@ -1,0 +1,9 @@
+{
+  "block.ladssmp.mailbox": "Mailbox",
+  "block.ladssmp.botany_pot": "Botany Pot",
+  "block.ladssmp.hopper_botany_pot": "Hopper Botany Pot",
+  "item.ladssmp.target_dummy": "Target Dummy",
+  "entity.ladssmp.target_dummy": "Target Dummy",
+  "key.ladssmp.swap_back_weapon": "Swap Back Weapon",
+  "key.ladssmp.cosmetics": "Open Cosmetic Armor"
+}
