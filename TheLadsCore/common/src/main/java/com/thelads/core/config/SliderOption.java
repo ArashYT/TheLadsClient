@@ -62,11 +62,11 @@ public class SliderOption extends Option {
     }
 
     public double getValue() {
-        return value;
+        return com.thelads.core.client.ladsapi.ServerPolicy.applySlider(getModuleName(), getName(), value, min, max, step);
     }
     
     public int getIntValue() {
-        return (int) Math.round(value);
+        return (int) Math.round(getValue());
     }
 
     public void setValue(double v) {

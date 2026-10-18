@@ -65,6 +65,13 @@ public class Module {
         if (isBlockedByServer()) {
             return false;
         }
+        com.thelads.core.client.ladsapi.ServerPolicy policy = com.thelads.core.client.ladsapi.ServerPolicy.active();
+        if (policy != null) {
+            com.thelads.core.client.ladsapi.ModuleState state = policy.module(this.name);
+            if (state == com.thelads.core.client.ladsapi.ModuleState.ON && !policy.refusesChanges()) {
+                return true;
+            }
+        }
         return enabled;
     }
 
