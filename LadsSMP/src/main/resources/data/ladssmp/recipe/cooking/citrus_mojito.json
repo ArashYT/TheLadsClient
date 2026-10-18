@@ -1,0 +1,22 @@
+{
+  "type": "farmersdelight:cooking",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "experience": 0.5,
+  "cookingtime": 100,
+  "ingredients": [
+    "minecraft:glass_bottle",
+    "minecraft:melon_slice",
+    "minecraft:sugar"
+  ],
+  "recipe_book_tab": "drinks",
+  "result": {
+    "id": "ladssmp:citrus_mojito"
+  }
+}

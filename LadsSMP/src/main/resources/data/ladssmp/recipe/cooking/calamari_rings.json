@@ -1,0 +1,22 @@
+{
+  "type": "farmersdelight:cooking",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "experience": 0.6,
+  "cookingtime": 140,
+  "ingredients": [
+    "minecraft:cooked_cod",
+    "minecraft:egg",
+    "minecraft:wheat"
+  ],
+  "recipe_book_tab": "meals",
+  "result": {
+    "id": "ladssmp:calamari_rings"
+  }
+}

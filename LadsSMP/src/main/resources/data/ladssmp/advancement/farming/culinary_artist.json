@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:farming/root",
+  "display": {
+    "icon": {
+      "id": "ladssmp:ham_sandwich"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.farming.culinary_artist.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.farming.culinary_artist.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "ladssmp:ham_sandwich"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 75
+  },
+  "sends_telemetry_event": true
+}

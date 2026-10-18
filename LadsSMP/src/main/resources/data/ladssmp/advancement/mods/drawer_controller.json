@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mods/storage_drawer",
+  "display": {
+    "icon": {
+      "id": "storagedrawers:framed_controller"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mods.drawer_controller.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mods.drawer_controller.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "storagedrawers:framed_controller"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 500
+  },
+  "sends_telemetry_event": true
+}

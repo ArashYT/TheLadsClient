@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:mods/storage_drawer",
+  "display": {
+    "icon": {
+      "id": "storagedrawers:diamond_storage_upgrade"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.mods.storage_drawer_upgrade.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.mods.storage_drawer_upgrade.description"
+    },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "storagedrawers:diamond_storage_upgrade"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 400
+  },
+  "sends_telemetry_event": true
+}

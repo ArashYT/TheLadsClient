@@ -1,0 +1,22 @@
+{
+  "type": "farmersdelight:cooking",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "experience": 0.6,
+  "cookingtime": 120,
+  "ingredients": [
+    "minecraft:glass_bottle",
+    "minecraft:glow_berries",
+    "minecraft:honey_bottle"
+  ],
+  "recipe_book_tab": "drinks",
+  "result": {
+    "id": "ladssmp:glow_berry_fizz"
+  }
+}

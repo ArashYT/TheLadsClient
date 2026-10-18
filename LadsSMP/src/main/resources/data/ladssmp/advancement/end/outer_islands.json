@@ -1,0 +1,39 @@
+{
+  "parent": "ladssmp:end/gateway_leap",
+  "display": {
+    "icon": {
+      "id": "minecraft:chorus_plant"
+    },
+    "title": {
+      "translate": "advancements.ladssmp.end.outer_islands.title"
+    },
+    "description": {
+      "translate": "advancements.ladssmp.end.outer_islands.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "requirement": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:chorus_fruit"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "requirement"
+    ]
+  ],
+  "rewards": {
+    "experience": 200
+  },
+  "sends_telemetry_event": true
+}

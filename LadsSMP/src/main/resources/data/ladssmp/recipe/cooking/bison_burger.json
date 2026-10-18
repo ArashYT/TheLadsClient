@@ -1,0 +1,22 @@
+{
+  "type": "farmersdelight:cooking",
+  "fabric:load_conditions": [
+    {
+      "condition": "fabric:all_mods_loaded",
+      "values": [
+        "farmersdelight"
+      ]
+    }
+  ],
+  "experience": 1.2,
+  "cookingtime": 200,
+  "ingredients": [
+    "minecraft:bread",
+    "ladssmp:bison_patty",
+    "minecraft:carrot"
+  ],
+  "recipe_book_tab": "meals",
+  "result": {
+    "id": "ladssmp:bison_burger"
+  }
+}
