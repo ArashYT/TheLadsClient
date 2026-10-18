@@ -99,6 +99,9 @@ public partial class MainWindow
         for (int i = 0; i < 40 && !ModpacksPage.BrowseLoaded; i++) await Task.Delay(500);
         await Task.Delay(2500); // icons
         SaveWindowScreenshot(Path.Combine(output, "modpacks-browse.png"));
+        ModpacksPage.ShowExternal(); // LADS_EXTERNAL_ROOTS points the scan at sandbox instances
+        await Task.Delay(3000);
+        SaveWindowScreenshot(Path.Combine(output, "modpacks-external.png"));
         if (Modpacks.List(_pathService.BaseDirectory).FirstOrDefault() is { } first)
         {
             ModpacksPage.OpenManage(first);

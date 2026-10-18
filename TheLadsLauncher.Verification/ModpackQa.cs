@@ -216,7 +216,7 @@ internal static class ModpackQa
     [DllImport("user32.dll")] private static extern bool PrintWindow(IntPtr window, IntPtr dc, uint flags);
 
     /// <summary>The game window's client area, drawn by the window itself (PW_CLIENTONLY | PW_RENDERFULLCONTENT): no desktop input.</summary>
-    private static void Capture(IntPtr window, string file)
+    internal static void Capture(IntPtr window, string file)
     {
         GetClientRect(window, out var rect);
         using var bitmap = new Bitmap(Math.Max(1, rect.Right - rect.Left), Math.Max(1, rect.Bottom - rect.Top));

@@ -503,43 +503,61 @@ public partial class ModpacksView : UserControl
         }
         root.Children.Add(detailsPanel);
 
-        var actions = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 4, 0, 0) };
+        var actions = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), Margin = new Thickness(0, 4, 0, 0) };
         string? exe = ExternalInstances.FindExecutable(instance.Launcher, instance.DataRoot);
-        bool canLaunch = ExternalInstances.CanLaunch(instance, exe);
+        bool canOpen = ExternalInstances.CanLaunch(instance, exe) || (instance.Launcher == ExternalLauncher.Modrinth && exe != null);
+        string openLabel = instance.Launcher == ExternalLauncher.Modrinth ? "Open App" : $"Open in {launcherName}";
+        void OpenInLauncher()
+        {
+            if (exe == null) return;
+            try
+            {
+                Process.Start(ExternalInstances.LaunchCommand(instance, exe));
+                Status.Text = instance.Launcher == ExternalLauncher.Modrinth ? $"Opened {launcherName}." : $"Launched {instance.Name} via {launcherName}.";
+            }
+            catch (Exception ex) { Status.Text = $"Failed to start {instance.Name}: {ex.Message}"; }
+        }
 
+        // Play starts the game here (Lads account, Lads modpack cache); what the pipeline cannot rebuild opens its own launcher instead.
+        string? problem = ExternalInstances.DirectLaunchProblem(instance);
+        var direct = problem == null ? ExternalInstances.ToModpack(instance) : null;
+        bool launching = direct != null && _launching.ContainsKey(direct.Id), running = direct != null && _running.ContainsKey(direct.Id);
         var playBtn = new Button
         {
             Classes = { "launch" },
-            Content = instance.Launcher == ExternalLauncher.Modrinth ? "Open App" : "Play",
+            Content = launching ? "Cancel" : running ? "Running" : direct != null ? "Play" : openLabel,
             Height = 32,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Center,
-            IsEnabled = canLaunch || (instance.Launcher == ExternalLauncher.Modrinth && exe != null)
+            IsEnabled = direct != null ? !running || Host?.ModpackSettings.AllowMultiInstance == true : canOpen
         };
-
-        if (!playBtn.IsEnabled)
+        ToolTip.SetShowOnDisabled(playBtn, true);
+        if (direct != null)
         {
-            ToolTip.SetTip(playBtn, $"{launcherName} was not found on your system. Please install it or start {instance.Name} directly.");
-            ToolTip.SetShowOnDisabled(playBtn, true);
+            ToolTip.SetTip(playBtn, $"Starts {instance.Name} here with your Lads account. Nothing in its {launcherName} folder is changed.");
+            playBtn.Click += async (_, _) => await PlayAsync(direct, retry: false);
         }
         else
         {
+            ToolTip.SetTip(playBtn, canOpen ? $"Opens {launcherName}: the Lads launcher cannot start this one itself ({problem})."
+                : $"The Lads launcher cannot start this one itself ({problem}), and {launcherName} was not found on your system.");
             playBtn.Click += (_, _) =>
             {
-                if (exe == null) return;
-                try
-                {
-                    var startInfo = ExternalInstances.LaunchCommand(instance, exe);
-                    Process.Start(startInfo);
-                    Status.Text = $"Launched {instance.Name} via {launcherName}.";
-                }
-                catch (Exception ex)
-                {
-                    Status.Text = $"Failed to start {instance.Name}: {ex.Message}";
-                }
+                Status.Text = $"{instance.Name}: {problem}, so {launcherName} starts it.";
+                OpenInLauncher();
             };
         }
         actions.Children.Add(playBtn);
+
+        if (direct != null && canOpen)
+        {
+            var openBtn = new Button { Classes = { "icon" }, Content = "↗", Margin = new Thickness(8, 0, 0, 0), Height = 32, Width = 32 };
+            ToolTip.SetTip(openBtn, openLabel);
+            AutomationProperties.SetName(openBtn, openLabel);
+            Grid.SetColumn(openBtn, 1);
+            openBtn.Click += (_, _) => OpenInLauncher();
+            actions.Children.Add(openBtn);
+        }
 
         var folderBtn = new Button
         {
@@ -550,7 +568,7 @@ public partial class ModpacksView : UserControl
             Width = 32
         };
         ToolTip.SetTip(folderBtn, "Open instance directory in File Explorer");
-        Grid.SetColumn(folderBtn, 1);
+        Grid.SetColumn(folderBtn, 2);
         folderBtn.Click += (_, _) =>
         {
             string target = Directory.Exists(instance.GameDirectory) ? instance.GameDirectory : instance.Directory;
@@ -594,6 +612,7 @@ public partial class ModpacksView : UserControl
 
     // --preview-modpacks hooks.
     internal void ShowBrowse() => Tabs.SelectedItem = BrowseTab;
+    internal void ShowExternal() => Tabs.SelectedItem = ExternalTab;
     internal void PressPlay() => Play_Click(null, new RoutedEventArgs());
     internal string ManageStatusText => ManageStatus.Text ?? "";
     internal Process? RunningGame(string id) => _running.GetValueOrDefault(id);
@@ -3055,9 +3074,14 @@ public partial class ModpacksView : UserControl
         if (_running.ContainsKey(instance.Id) && !host.ModpackSettings.AllowMultiInstance) return;
         using var launch = new CancellationTokenSource();
         _launching[instance.Id] = launch;
-        RefreshButtons();
-        RenderMods();
-        void Report(string message) => Dispatcher.UIThread.Post(() => { if (_selected == instance) ManageStatus.Text = message; });
+        Refresh();
+        // Another launcher's instance has no Manage page: its card and the tab's status line show the launch.
+        void Refresh() { RefreshButtons(); RenderMods(); if (instance.IsExternal) RenderExternalCards(); }
+        void Report(string message) => Dispatcher.UIThread.Post(() =>
+        {
+            if (_selected == instance) ManageStatus.Text = message;
+            else if (instance.IsExternal) Status.Text = $"{instance.Name}: {message}";
+        });
         try
         {
             Report("Signing in...");
@@ -3075,18 +3099,23 @@ public partial class ModpacksView : UserControl
                 host.ModpackLog($"{instance.Name} closed (exit code {code}).");
                 if (_selected == instance)
                     ManageStatus.Text = code == 0 ? "Game closed." : $"Minecraft closed with exit code {code}. See minecraft\\logs\\latest.log (and crash-reports) in Open folder.";
-                RefreshButtons();
-                RenderMods();
+                else if (instance.IsExternal)
+                    Status.Text = code == 0 ? $"{instance.Name} closed." : $"{instance.Name} closed with exit code {code}. See logs\\latest.log (and crash-reports) in its folder.";
+                Refresh();
                 RenderCards();
-                host.ApplyNextAccountRequest(instance.GameDirectory); // in-game account switcher
-                host.ApplyNextVersionRequest(instance.GameDirectory); // closed from the in-game Switch Versions screen
+                // The in-game account / version / renderer switches are Lads files, never prepared in another launcher's instance.
+                if (!instance.IsExternal)
+                {
+                    host.ApplyNextAccountRequest(instance.GameDirectory); // in-game account switcher
+                    host.ApplyNextVersionRequest(instance.GameDirectory); // closed from the in-game Switch Versions screen
+                }
                 // Forge's parallel mod loading lost a known race (ModLoadingRace): start once more rather than leave the player at a crash.
                 if (!retry && ModLoadingRace.FindSince(instance.GameDirectory, launchedUtc) is { } race)
                 {
                     host.ModpackLog($"{instance.Name} hit a known mod-loading race: {race}. Starting it once more.");
                     _ = PlayAsync(instance, retry: true);
                 }
-                else if (!GameSession.WasCancelled(process) && GraphicsRenderer.TakeRelaunch(instance.GameDirectory, host.ModpackLog) is { } next)
+                else if (!instance.IsExternal && !GameSession.WasCancelled(process) && GraphicsRenderer.TakeRelaunch(instance.GameDirectory, host.ModpackLog) is { } next)
                     _ = PlayAsync(instance, retry, next); // closed from the in-game shader toggle: start again on the other renderer
             });
             Report($"Minecraft {instance.McVersion} started as {session.Username}.");
@@ -3097,8 +3126,7 @@ public partial class ModpacksView : UserControl
         finally
         {
             _launching.Remove(instance.Id);
-            RefreshButtons();
-            RenderMods();
+            Refresh();
         }
     }
 

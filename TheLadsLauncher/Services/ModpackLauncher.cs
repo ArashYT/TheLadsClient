@@ -96,15 +96,14 @@ public static class ModpackLauncher
     public static async Task<Process> LaunchAsync(string dataDirectory, ModpackInstance instance, MSession session, LauncherSettings settings,
         IJavaService java, HttpClient http, Action<string>? status, CancellationToken token, string? joinServer = null, string? joinWorld = null)
     {
-        SyncLadsConfigToInstance(dataDirectory, instance.GameDirectory);
         var process = await PrepareAsync(dataDirectory, instance, session, settings, java, http, status, token, joinServer, joinWorld);
         token.ThrowIfCancellationRequested();
         process.EnableRaisingEvents = true;
-        process.Exited += (_, _) => SyncLadsConfigFromInstance(instance.GameDirectory, dataDirectory);
+        if (!instance.IsExternal) process.Exited += (_, _) => SyncLadsConfigFromInstance(instance.GameDirectory, dataDirectory);
         process.Start();
         LaunchToken.Send(process);
         instance.LastPlayedUtc = DateTime.UtcNow;
-        Modpacks.Save(instance);
+        if (!instance.IsExternal) Modpacks.Save(instance);
         return process;
     }
 
@@ -158,18 +157,24 @@ public static class ModpackLauncher
         IJavaService java, HttpClient http, Action<string>? status, CancellationToken token, string? joinServer = null, string? joinWorld = null)
     {
         var path = GamePath(dataDirectory, instance);
-        Directory.CreateDirectory(instance.GameDirectory);
-        SyncLadsConfigToInstance(dataDirectory, instance.GameDirectory);
-        var exp = ExperiencesService.AllExperiences.FirstOrDefault(e => e.Id == ExperiencesService.CanonicalPackId(instance.Id));
-        if (exp != null && !string.IsNullOrWhiteSpace(exp.ServerAddress))
+        // Another launcher's instance (CurseForge, Prism, Modrinth): only the game writes to its folder, so it stays as that launcher
+        // left it. None of the Lads steps below that write there run (config sync, servers.dat, Lads Core, renderer, fml.toml, switches).
+        bool own = !instance.IsExternal;
+        if (own)
         {
-            ServerListService.EnsureServer(Path.Combine(instance.GameDirectory, "servers.dat"), exp.Title, exp.ServerAddress);
+            Directory.CreateDirectory(instance.GameDirectory);
+            SyncLadsConfigToInstance(dataDirectory, instance.GameDirectory);
+            var exp = ExperiencesService.AllExperiences.FirstOrDefault(e => e.Id == ExperiencesService.CanonicalPackId(instance.Id));
+            if (exp != null && !string.IsNullOrWhiteSpace(exp.ServerAddress))
+            {
+                ServerListService.EnsureServer(Path.Combine(instance.GameDirectory, "servers.dat"), exp.Title, exp.ServerAddress);
+            }
+            ModpackCoreSync.Sync(instance, status: status); // before every launch: a modpack always runs the newest bundled Lads Core
+            // As profiles: Vulkan unless the launcher setting or the in-game shader toggle says OpenGL; Iris and its add-ons sit out on Vulkan.
+            if (GraphicsRenderer.SupportsVulkan(instance.McVersion))
+                await GraphicsRenderer.PrepareAsync(instance.GameDirectory, instance.McVersion,
+                    GraphicsRenderer.Preference(instance.GameDirectory, settings.GraphicsRenderer), status, token, renameJars: true);
         }
-        ModpackCoreSync.Sync(instance, status: status); // before every launch: a modpack always runs the newest bundled Lads Core
-        // As profiles: Vulkan unless the launcher setting or the in-game shader toggle says OpenGL; Iris and its add-ons sit out on Vulkan.
-        if (GraphicsRenderer.SupportsVulkan(instance.McVersion))
-            await GraphicsRenderer.PrepareAsync(instance.GameDirectory, instance.McVersion,
-                GraphicsRenderer.Preference(instance.GameDirectory, settings.GraphicsRenderer), status, token, renameJars: true);
         var launcher = new MinecraftLauncher(path);
         launcher.FileProgressChanged += (_, e) =>
         {
@@ -184,8 +189,10 @@ public static class ModpackLauncher
             manifestJava = int.TryParse(vanilla.JavaVersion?.MajorVersion, out var major) ? major : null;
         }
         int requiredJava = GameVersionPolicy.GetRequiredJavaMajor(instance.McVersion, manifestJava);
-        // As the Lads launch: the Java set in Settings when it is exactly the version's, otherwise one picked for the version.
-        string javaPath = !settings.AutoDetectJava && File.Exists(settings.JavaPath) && java.GetJavaMajorVersion(settings.JavaPath) == requiredJava
+        // As the Lads launch: an external instance's own Java when it is exactly the version's (ExternalInstances.ToModpack keeps only
+        // plain installs), the Java set in Settings when it is, otherwise one picked for the version.
+        string javaPath = instance.JavaPath is { } pinned && java.GetJavaMajorVersion(pinned) == requiredJava ? pinned
+            : !settings.AutoDetectJava && File.Exists(settings.JavaPath) && java.GetJavaMajorVersion(settings.JavaPath) == requiredJava
             ? settings.JavaPath
             : await java.EnsureJavaAsync(requiredJava, null, status, token);
 
@@ -198,14 +205,17 @@ public static class ModpackLauncher
             Session = session,
             JavaPath = javaPath,
             MaximumRamMb = ram,
-            MinimumRamMb = Math.Clamp(settings.MinRamMb, 256, ram),
+            MinimumRamMb = Math.Clamp(instance.MinRamMb > 0 ? instance.MinRamMb : settings.MinRamMb, 256, ram),
             FullScreen = settings.FullscreenOnLaunch
         };
+        if (instance.JvmArguments.Count > 0) options.ExtraJvmArguments = new[] { new MArgument(instance.JvmArguments.ToList()) };
         if (!string.IsNullOrWhiteSpace(joinServer)) JoinServer(options, joinServer);
         if (!string.IsNullOrWhiteSpace(joinWorld)) JoinWorld(options, joinWorld);
         LimitBackgroundThreads(instance, options, Environment.ProcessorCount);
         LaunchService.ConfigureCachedNativesDirectory(launcher.MinecraftPath, versionId, options);
-        LaunchService.EnsureSecurityJvmArguments(options, requiredJava, instance.GameDirectory);
+        // Agent check and the security flags always; the Lads GC tuning only when the instance brings no JVM arguments of its own (two
+        // collectors on one command line stop the JVM), and no clean-up of stray files in a folder that is not ours.
+        LaunchService.EnsureSecurityJvmArguments(options, instance.JvmArguments.Count > 0 ? null : requiredJava, own ? instance.GameDirectory : null);
 
         string verifiedMarker = Path.Combine(launcher.MinecraftPath.Versions, versionId, ".lads-verified");
         Process process;
@@ -234,6 +244,7 @@ public static class ModpackLauncher
         process.StartInfo.Environment.Remove("_JAVA_OPTIONS");
         process.StartInfo.Environment.Remove("JAVA_TOOL_OPTIONS");
         LaunchToken.Hide(process, instance.GameDirectory, session.AccessToken); // the caller sends it after Start
+        if (!own) return process;
         if (instance.Loader == "forge" && instance.McVersion == "1.20.1")
             UseEarlyWindow(process, dataDirectory, instance.GameDirectory,
                 Environment.GetEnvironmentVariable(SkipEarlyWindowVariable) == "1" ? null : ModpackCoreSync.FindBundledJar("1.20.1", fileName: EarlyWindowJar), status);

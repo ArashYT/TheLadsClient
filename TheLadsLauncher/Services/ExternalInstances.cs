@@ -14,7 +14,8 @@ namespace TheLadsLauncher.Services;
 
 public enum ExternalLauncher { CurseForge, Modrinth, Prism, MultiMC }
 
-/// <summary>An instance found in another launcher's data. Read-only: it is started by that launcher, never by this one.</summary>
+/// <summary>An instance found in another launcher's data. Read-only: Play starts it with the Lads account and the shared modpack
+/// cache (<see cref="ExternalInstances.ToModpack"/>), and only the game itself writes to its folder; or it opens its own launcher.</summary>
 public sealed record ExternalInstance
 {
     public ExternalLauncher Launcher { get; init; }
@@ -34,6 +35,16 @@ public sealed record ExternalInstance
     /// <summary>The launcher's data folder (Prism's --dir, the Modrinth App folder, CurseForge's Instances folder).</summary>
     public string DataRoot { get; init; } = "";
     public int ModCount { get; init; }
+    /// <summary>Its launcher's memory for it in MB (CurseForge allocatedMemory or the pack's recommendedRam, Prism Max/MinMemAlloc,
+    /// Modrinth's memory); null: the Lads settings.</summary>
+    public int? MaxRamMb { get; init; }
+    public int? MinRamMb { get; init; }
+    /// <summary>Its extra JVM arguments (CurseForge javaArgsOverride, Prism JvmArgs, Modrinth's Java arguments).</summary>
+    public IReadOnlyList<string> JvmArguments { get; init; } = Array.Empty<string>();
+    /// <summary>The Java its launcher pins for it; Play only uses a plain install outside that launcher's folder.</summary>
+    public string? JavaPath { get; init; }
+    /// <summary>Why Play cannot start it itself (Prism jar mods or extra components); null when nothing in the files says so.</summary>
+    public string? Unsupported { get; init; }
 }
 
 /// <summary>A folder holding one launcher's instances; Custom when the player added it.</summary>
@@ -42,8 +53,9 @@ public sealed record ExternalSource(ExternalLauncher Launcher, string Root, bool
 public sealed record ExternalScan(List<ExternalSource> Sources, List<ExternalInstance> Instances, List<string> Problems);
 
 /// <summary>
-/// Finds CurseForge, Modrinth App, Prism Launcher and MultiMC instances and starts them through their own launcher (no Lads
-/// account, settings sync or mods). Only ever reads those launchers' files; the Modrinth database is read from a temp copy.
+/// Finds CurseForge, Modrinth App, Prism Launcher and MultiMC instances. Play starts them directly (Lads account, versions, loaders and
+/// Java in the Lads modpack cache, no Lads settings sync or mods) or, when that is not possible, through their own launcher. Only ever
+/// reads those launchers' files; the Modrinth database is read from a temp copy.
 /// </summary>
 public static class ExternalInstances
 {
@@ -225,11 +237,16 @@ public static class ExternalInstances
         }
         string? icon = Str(r, "profileImagePath") is { Length: > 0 } image && File.Exists(image) ? image : null;
         string? iconUrl = r.TryGetProperty("installedModpack", out var pack) && pack.ValueKind == JsonValueKind.Object ? Str(pack, "thumbnailUrl") : null;
+        // The instance's memory override, else the pack's recommended RAM (CurseForge's default "use recommended"), else ours.
+        var manifest = r.TryGetProperty("manifest", out var m) && m.ValueKind == JsonValueKind.Object && m.TryGetProperty("minecraft", out var mm) ? mm : default;
+        int? ram = r.TryGetProperty("isMemoryOverride", out var over) && over.ValueKind == JsonValueKind.True && Int(r, "allocatedMemory") is > 0 and var own ? own
+            : Int(manifest, "recommendedRam") is > 0 and var recommended ? recommended : null;
         return new ExternalInstance
         {
             Launcher = ExternalLauncher.CurseForge, Id = Str(r, "guid") ?? "", Name = name.Trim(), Directory = folder, GameDirectory = folder,
             McVersion = mc, Loader = loader, LoaderVersion = loaderVersion, LastPlayedUtc = Date(Str(r, "lastPlayed")),
-            IconFile = icon, IconUrl = iconUrl, DataRoot = root
+            IconFile = icon, IconUrl = iconUrl, DataRoot = root, MaxRamMb = ram,
+            JvmArguments = CommandLine(Str(r, "javaArgsOverride") ?? Str(manifest, "additionalJavaArgs"))
         };
     }
 
@@ -258,7 +275,7 @@ public static class ExternalInstances
             try
             {
                 var pack = Path.Combine(dir, "mmc-pack.json");
-                if (ParsePrism(File.ReadAllText(Path.Combine(dir, "instance.cfg")), File.Exists(pack) ? File.ReadAllText(pack) : null, dir, dataRoot, iconsDir, launcher) is { } instance)
+                if (ParsePrism(File.ReadAllText(Path.Combine(dir, "instance.cfg")), File.Exists(pack) ? File.ReadAllText(pack) : null, dir, dataRoot, iconsDir, launcher, cfg) is { } instance)
                     list.Add(instance with { ModCount = CountMods(instance.GameDirectory) });
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { }
@@ -268,8 +285,10 @@ public static class ExternalInstances
 
     private static string Resolve(string root, string path) => Path.IsPathRooted(path) ? path : Path.GetFullPath(Path.Combine(root, path));
 
-    /// <summary>instance.cfg (name, iconKey, lastLaunchTime in ms) + mmc-pack.json (net.minecraft and loader components).</summary>
-    public static ExternalInstance? ParsePrism(string instanceCfg, string? mmcPackJson, string folder, string dataRoot, string? iconsDir, ExternalLauncher launcher = ExternalLauncher.Prism)
+    /// <summary>instance.cfg (name, iconKey, lastLaunchTime in ms; memory, JVM arguments and Java when overridden, else
+    /// <paramref name="launcherCfg"/>'s) + mmc-pack.json (net.minecraft and loader components).</summary>
+    public static ExternalInstance? ParsePrism(string instanceCfg, string? mmcPackJson, string folder, string dataRoot, string? iconsDir,
+        ExternalLauncher launcher = ExternalLauncher.Prism, IReadOnlyDictionary<string, string>? launcherCfg = null)
     {
         var cfg = ParseIni(instanceCfg);
         string id = Path.GetFileName(folder.TrimEnd('\\', '/'));
@@ -277,11 +296,39 @@ public static class ExternalInstances
         var (mc, loader, loaderVersion) = mmcPackJson != null ? ParseMmcPack(mmcPackJson) : (cfg.GetValueOrDefault("IntendedVersion"), null, null);
         DateTime? played = long.TryParse(cfg.GetValueOrDefault("lastLaunchTime"), out long ms) && ms > 0 ? DateTimeOffset.FromUnixTimeMilliseconds(ms).UtcDateTime : null;
         string game = new[] { "minecraft", ".minecraft" }.Select(s => Path.Combine(folder, s)).FirstOrDefault(System.IO.Directory.Exists) ?? Path.Combine(folder, ".minecraft");
+        // Prism 8: OverrideMemory / OverrideJavaArgs / OverrideJavaLocation; Prism 9 folds the Java two into OverrideJava.
+        string? Setting(string over, string key) =>
+            cfg.GetValueOrDefault(over) == "true" || over != "OverrideMemory" && cfg.GetValueOrDefault("OverrideJava") == "true" ? cfg.GetValueOrDefault(key) : launcherCfg?.GetValueOrDefault(key);
+        int? Mb(string key) => int.TryParse(Setting("OverrideMemory", key), out int mb) && mb > 0 ? mb : null;
         return new ExternalInstance
         {
             Launcher = launcher, Id = id, Name = name, Directory = folder, GameDirectory = game, McVersion = mc, Loader = loader, LoaderVersion = loaderVersion,
-            LastPlayedUtc = played, IconFile = PrismIcon(cfg.GetValueOrDefault("iconKey"), folder, iconsDir), DataRoot = dataRoot
+            LastPlayedUtc = played, IconFile = PrismIcon(cfg.GetValueOrDefault("iconKey"), folder, iconsDir), DataRoot = dataRoot,
+            MaxRamMb = Mb("MaxMemAlloc"), MinRamMb = Mb("MinMemAlloc"), JvmArguments = CommandLine(Setting("OverrideJavaArgs", "JvmArgs")),
+            JavaPath = Setting("OverrideJavaLocation", "JavaPath") is { Length: > 0 } java ? java : null, Unsupported = PrismProblem(mmcPackJson, folder)
         };
+    }
+
+    // The components Prism adds for plain Minecraft and its loaders; anything else (OptiFine, a custom jar) needs Prism itself.
+    private static readonly HashSet<string> PrismComponents = new(StringComparer.Ordinal)
+    {
+        "net.minecraft", "org.lwjgl", "org.lwjgl3", "net.fabricmc.intermediary", "net.fabricmc.fabric-loader", "org.quiltmc.quilt-loader",
+        "org.quiltmc.hashed", "net.minecraftforge", "net.neoforged"
+    };
+
+    /// <summary>Why the modpack pipeline cannot rebuild this Prism/MultiMC instance: jar mods, edited components (patches/) or a
+    /// component other than Minecraft and its loader; null when it can.</summary>
+    public static string? PrismProblem(string? mmcPackJson, string folder)
+    {
+        static bool Any(string dir) => System.IO.Directory.Exists(dir) && System.IO.Directory.EnumerateFileSystemEntries(dir).Any();
+        if (Any(Path.Combine(folder, "jarmods"))) return "it has jar mods";
+        if (Any(Path.Combine(folder, "patches"))) return "it has customized components";
+        if (mmcPackJson == null) return null;
+        using var doc = JsonDocument.Parse(mmcPackJson);
+        if (!doc.RootElement.TryGetProperty("components", out var components) || components.ValueKind != JsonValueKind.Array) return null;
+        foreach (var c in components.EnumerateArray())
+            if (Str(c, "uid") is { } uid && !PrismComponents.Contains(uid)) return $"it uses the {Str(c, "cachedName") ?? uid} component";
+        return null;
     }
 
     private static string? PrismIcon(string? key, string folder, string? iconsDir)
@@ -370,11 +417,15 @@ public static class ExternalInstances
         string? name = Str(meta, "name");
         if (string.IsNullOrWhiteSpace(name)) return null;
         string? icon = Str(meta, "icon") ?? Str(meta, "icon_path");
+        var memory = r.TryGetProperty("memory", out var mem) ? mem : default;
+        var java = r.TryGetProperty("java", out var j) ? j : default;
         return new ExternalInstance
         {
             Launcher = ExternalLauncher.Modrinth, Id = Path.GetFileName(folder.TrimEnd('\\', '/')), Name = name, Directory = folder, GameDirectory = folder,
             McVersion = Str(meta, "game_version"), Loader = NormalizeLoader(Str(meta, "loader")), LoaderVersion = LoaderVersionOf(meta),
-            LastPlayedUtc = Date(Str(meta, "last_played")), IconFile = icon != null && File.Exists(icon) ? icon : null, DataRoot = root
+            LastPlayedUtc = Date(Str(meta, "last_played")), IconFile = icon != null && File.Exists(icon) ? icon : null, DataRoot = root,
+            MaxRamMb = Int(memory, "maximum") is > 0 and var ram ? ram : null,
+            JvmArguments = java.ValueKind == JsonValueKind.Object && java.TryGetProperty("extra_arguments", out var args) ? JsonArguments(args.GetRawText()) : Array.Empty<string>()
         };
     }
 
@@ -402,13 +453,20 @@ public static class ExternalInstances
             connection.Open();
             var tables = Strings(connection, "SELECT name FROM sqlite_master WHERE type = 'table'");
             string profilesDir = Path.Combine(ModrinthAppDirectory(connection, tables) ?? root, "profiles");
-            string sql = tables.Contains("instances") && tables.Contains("instance_content_sets")
-                ? "SELECT i.path, i.name, i.icon_path, i.last_played, cs.game_version, cs.loader, cs.loader_version FROM instances i LEFT JOIN instance_content_sets cs ON cs.id = i.applied_content_set_id"
-                : tables.Contains("profiles")
-                    ? "SELECT path, name, icon_path, last_played, game_version, mod_loader, mod_loader_version FROM profiles"
-                    : "";
+            bool content = tables.Contains("instances") && tables.Contains("instance_content_sets");
             var list = new List<ExternalInstance>();
-            if (sql.Length == 0) return list;
+            if (!content && !tables.Contains("profiles")) return list;
+            // Per-instance overrides where this app version has them, else the app's own settings.
+            var columns = Strings(connection, $"SELECT name FROM pragma_table_info('{(content ? "instances" : "profiles")}')");
+            string Optional(string column) => columns.Contains(column) ? (content ? "i." : "") + column : "NULL";
+            var settings = tables.Contains("settings") ? Strings(connection, "SELECT name FROM pragma_table_info('settings')") : new HashSet<string>();
+            object? Global(string column) => settings.Contains(column) ? Scalar(connection, $"SELECT {column} FROM settings LIMIT 1") : null;
+            int? defaultRam = Global("mc_memory_max") is long mb && mb > 0 ? (int)mb : null;
+            var defaultArgs = JsonArguments(Global("extra_launch_args") as string);
+            string extra = $", {Optional("override_mc_memory_max")}, {Optional("override_extra_launch_args")}, {Optional("override_java_path")}";
+            string sql = content
+                ? $"SELECT i.path, i.name, i.icon_path, i.last_played, cs.game_version, cs.loader, cs.loader_version{extra} FROM instances i LEFT JOIN instance_content_sets cs ON cs.id = i.applied_content_set_id"
+                : $"SELECT path, name, icon_path, last_played, game_version, mod_loader, mod_loader_version{extra} FROM profiles";
             using var command = connection.CreateCommand();
             command.CommandText = sql;
             using var reader = command.ExecuteReader();
@@ -424,7 +482,10 @@ public static class ExternalInstances
                     LastPlayedUtc = reader.IsDBNull(3) ? null : UnixTime(reader.GetInt64(3)),
                     McVersion = reader.IsDBNull(4) ? null : reader.GetString(4), Loader = reader.IsDBNull(5) ? null : NormalizeLoader(reader.GetString(5)),
                     LoaderVersion = reader.IsDBNull(6) ? null : reader.GetString(6),
-                    IconFile = icon != null && File.Exists(icon) ? icon : null, DataRoot = root, ModCount = CountMods(dir)
+                    IconFile = icon != null && File.Exists(icon) ? icon : null, DataRoot = root, ModCount = CountMods(dir),
+                    MaxRamMb = reader.GetValue(7) is long ram && ram > 0 ? (int)ram : defaultRam,
+                    JvmArguments = reader.GetValue(8) is string args && JsonArguments(args) is { Count: > 0 } own ? own : defaultArgs,
+                    JavaPath = reader.GetValue(9) as string is { Length: > 0 } java ? java : null
                 });
             }
             return list;
@@ -441,6 +502,13 @@ public static class ExternalInstances
         using var source = new FileStream(from, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var target = File.Create(to);
         source.CopyTo(target);
+    }
+
+    private static object? Scalar(SqliteConnection connection, string sql)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return command.ExecuteScalar();
     }
 
     private static HashSet<string> Strings(SqliteConnection connection, string sql)
@@ -464,6 +532,35 @@ public static class ExternalInstances
         }
         catch (SqliteException) { return null; } // no such column in this version
     }
+
+    // ── Starting an instance directly (Lads account, Lads modpack cache) ────
+
+    /// <summary>Why Play cannot start <paramref name="instance"/> itself, so it opens the instance's launcher instead; null when it can.</summary>
+    public static string? DirectLaunchProblem(ExternalInstance instance)
+    {
+        if (instance.Unsupported != null) return instance.Unsupported;
+        if (string.IsNullOrWhiteSpace(instance.McVersion)) return "its Minecraft version is unknown";
+        if (instance.Loader == "liteloader") return "LiteLoader is not supported";
+        if (instance.Loader == null || !Modpacks.Loaders.Contains(instance.Loader)) return $"the {instance.Loader ?? "unknown"} loader is not supported";
+        if (instance.Loader != "vanilla" && string.IsNullOrWhiteSpace(instance.LoaderVersion)) return $"its {instance.Loader} version is unknown";
+        if (instance.JvmArguments.FirstOrDefault(LaunchService.IsDisallowedAgentFlag) is { } agent) return $"its Java arguments load an agent ({agent})";
+        return null;
+    }
+
+    /// <summary>
+    /// The instance as <see cref="ModpackLauncher"/> starts it (only when <see cref="DirectLaunchProblem"/> is null): its own game
+    /// folder, Minecraft version, loader, memory and JVM arguments, and its Java only when that is a plain install outside the other
+    /// launcher's folder. <see cref="ModpackInstance.ExternalGameDirectory"/> is set, so nothing but the game writes to the folder.
+    /// </summary>
+    public static ModpackInstance ToModpack(ExternalInstance instance) => new()
+    {
+        Id = "external-" + Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(instance.Directory).ToLowerInvariant())))[..12].ToLowerInvariant(),
+        Name = instance.Name, McVersion = instance.McVersion ?? "", Loader = instance.Loader ?? "", LoaderVersion = instance.LoaderVersion ?? "",
+        Directory = instance.Directory, ExternalGameDirectory = instance.GameDirectory, LastPlayedUtc = instance.LastPlayedUtc,
+        MaxRamMb = instance.MaxRamMb ?? 0, MinRamMb = instance.MinRamMb ?? 0, JvmArguments = instance.JvmArguments,
+        JavaPath = instance.JavaPath is { } java && File.Exists(java) && !SafeFileOps.IsSameOrInside(java, instance.DataRoot)
+                   && !SafeFileOps.IsSameOrInside(java, instance.Directory) ? java : null
+    };
 
     // ── Starting an instance through its own launcher ───────────────────────
 
@@ -588,6 +685,26 @@ public static class ExternalInstances
     };
 
     private static string? Str(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+
+    private static int? Int(JsonElement e, string name) => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out int i) ? i : null;
+
+    /// <summary>A JVM argument line ("-Xss2m \"-Dx=a b\"") as arguments.</summary>
+    public static IReadOnlyList<string> CommandLine(string? line) =>
+        string.IsNullOrWhiteSpace(line) ? Array.Empty<string>() : CmlLib.Core.ProcessBuilder.MArgument.FromCommandLine(line.Trim()).Values.Where(v => v.Length > 0).ToList();
+
+    /// <summary>A JSON array of arguments (Modrinth); anything else is none.</summary>
+    private static IReadOnlyList<string> JsonArguments(string? json)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(json)) return Array.Empty<string>();
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.ValueKind == JsonValueKind.Array
+                ? doc.RootElement.EnumerateArray().Where(a => a.ValueKind == JsonValueKind.String).Select(a => a.GetString()!).Where(a => a.Length > 0).ToList()
+                : Array.Empty<string>();
+        }
+        catch (JsonException) { return Array.Empty<string>(); }
+    }
 
     private static DateTime? Date(string? text) =>
         DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var d) && d.Year > 2000 ? d : null;
