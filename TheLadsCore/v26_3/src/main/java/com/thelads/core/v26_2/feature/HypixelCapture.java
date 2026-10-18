@@ -78,5 +78,17 @@ final class HypixelCapture {
         }
         @Override public void closeScreen() { Minecraft.getInstance().setScreenAndShow(null); }
         @Override public void screenshot(String name) { pendingShot = name; }
+        @Override public boolean stockRefill() {
+            command("gamemode survival @s");
+            command("item replace entity @s hotbar.0 with minecraft:cobblestone 1");
+            command("item replace entity @s inventory.0 with minecraft:cobblestone 16");
+            Minecraft.getInstance().player.getInventory().setSelectedSlot(0);
+            return true;
+        }
+        @Override public void emptyHand() { command("item replace entity @s hotbar.0 with minecraft:air"); }
+        @Override public String held() {
+            var stack = Minecraft.getInstance().player.getMainHandItem();
+            return stack.isEmpty() ? "" : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()) + " x" + stack.getCount();
+        }
     };
 }

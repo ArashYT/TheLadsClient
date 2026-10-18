@@ -4,6 +4,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.thelads.core.client.HypixelSafetyManager;
+import com.thelads.core.client.OldAnimations;
+import com.thelads.core.modules.OldAnimationsModule;
+import com.thelads.core.modules.StackRefillModule;
 import com.thelads.core.client.gui.LadsSettingsScreen;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
@@ -40,6 +43,16 @@ public final class HypixelQa {
         LadsSettingsScreen openSettings(String module);
         void closeScreen();
         void screenshot(String name) throws Exception;
+        /** Survival, hotbar slot 0 selected with 1 cobblestone and 16 more in the first inventory slot (Stack Refill); false where not wired. */
+        default boolean stockRefill() { return false; }
+        /** Empties the selected hotbar slot on the integrated server, as placing its last block does. */
+        default void emptyHand() {}
+        /** The selected hand as "item xN", "" when empty. */
+        default String held() { return ""; }
+        /** Xaero's own minimap switch, or null where Lads does not drive it (26.3 skips the draw instead). */
+        default Boolean xaeroShown() { return null; }
+        /** Flips Xaero's own minimap switch as its key does; false where not wired. */
+        default boolean flipXaero() { return false; }
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
@@ -49,6 +62,10 @@ public final class HypixelQa {
     private final Map<Option, JsonElement> options = new LinkedHashMap<>();
     private LadsSettingsScreen menu;
     private int step, wait, passed, patience, hiddenBefore;
+    private boolean stocked;
+    /** The steps before the closing one (case 0 to 41), for the QA bar; barStep is the one it shows. */
+    private static final int STEPS = 42;
+    private int barStep = -1;
 
     public List<String> failures() { return failures; }
 
@@ -74,6 +91,8 @@ public final class HypixelQa {
     /** One client tick in the world; true once finished. */
     public boolean tick(Game game) throws Exception {
         if (wait > 0) { wait--; return false; }
+        if (step == 0) com.thelads.core.client.qa.QaProgress.begin("Hypixel", STEPS);
+        if (step != barStep && step < STEPS) com.thelads.core.client.qa.QaProgress.step("step " + ((barStep = step) + 1));
         switch (step++) {
             case 0 -> {
                 LOGGER.info("Lads hypixel capture BEGIN: the QA world counts as Hypixel");
@@ -309,12 +328,80 @@ public final class HypixelQa {
                 game.screenshot("scrollbar-scrolled");
                 wait = 5;
             }
+            // 1.9.12: on a server (the QA world counts as one here) Stack Refill and 1.7 use-while-mining are singleplayer only and the
+            // minimaps are off where networks ban them; then back in singleplayer with each switch as it was.
+            case 33 -> {
+                game.closeScreen();
+                HypixelSafetyManager.qaOverride = false; // the switches' own state, read while nothing blocks them
+                for (Module m : ModuleManager.getInstance().getModules())
+                    if (HypixelSafetyManager.isMinimapModule(m.getName()) || m.getName().equals(StackRefillModule.NAME) || m.getName().equals(OldAnimationsModule.NAME)) {
+                        enabled.putIfAbsent(m, m.isEnabled());
+                        m.setEnabled(true);
+                    }
+                HypixelSafetyManager.qaOverride = true;
+                Module refill = module(StackRefillModule.NAME);
+                check(refill != null && refill.isBlockedByServer() && !refill.isEnabled() && HypixelSafetyManager.getBlockedNotice(refill.getName()).contains("singleplayer"),
+                    "on a server Stack Refill is off and says singleplayer only: " + (refill == null ? "-" : HypixelSafetyManager.getBlockedNotice(refill.getName())));
+                check(module(OldAnimationsModule.NAME) instanceof OldAnimationsModule anim && !anim.useWhileMining(OldAnimations.Use.BLOCK) && !anim.useWhileMining(OldAnimations.Use.EAT_DRINK),
+                    "on a server a block or eat waits for the mining to stop (1.8)");
+                int maps = 0;
+                for (Module m : ModuleManager.getInstance().getModules())
+                    if (HypixelSafetyManager.isMinimapModule(m.getName())) { maps++; check(m.isBlockedByServer() && !m.isEnabled(), "on a minimap-banned server " + m.getName() + " is off"); }
+                check(maps > 0, "a minimap module exists: " + maps);
+                stocked = game.stockRefill();
+                menu = game.openSettings(null);
+                menu.setSearchQuery("Stack");
+                wait = 10;
+            }
+            case 34 -> { game.screenshot("hypixel-sp-only-stackrefill"); wait = 5; }
+            case 35 -> {
+                game.closeScreen();
+                wait = 5; // Stack Refill sees the full hand first
+            }
+            case 36 -> {
+                if (stocked) game.emptyHand();
+                if (game.flipXaero()) LOGGER.info("Lads hypixel QA: Xaero's own minimap switch flipped (its key) on the banned server");
+                wait = 20;
+            }
+            case 37 -> {
+                if (stocked) check(game.held().isEmpty(), "on a server Stack Refill moved nothing: the emptied hand stays empty '" + game.held() + "'");
+                Boolean xaero = game.xaeroShown();
+                if (xaero != null) check(!xaero, "on a minimap-banned server Xaero's own minimap stays off, its key included");
+                game.screenshot("hypixel-minimap-hidden"); // 26.3 writes the next frame: the override stays on for it
+                wait = 5;
+            }
+            case 38 -> {
+                HypixelSafetyManager.qaOverride = false; // singleplayer again
+                wait = 20;
+            }
+            case 39 -> {
+                Module refill = module(StackRefillModule.NAME);
+                check(refill != null && refill.isEnabled(), "in singleplayer Stack Refill is on again");
+                check(module(OldAnimationsModule.NAME) instanceof OldAnimationsModule anim && anim.useWhileMining(OldAnimations.Use.BLOCK),
+                    "in singleplayer a block can start while mining again (1.7)");
+                for (Module m : ModuleManager.getInstance().getModules())
+                    if (HypixelSafetyManager.isMinimapModule(m.getName())) check(m.isEnabled(), "in singleplayer " + m.getName() + " is back on (its switch was not flipped)");
+                Boolean xaero = game.xaeroShown();
+                if (xaero != null) check(xaero, "in singleplayer Xaero's own minimap is shown again");
+                if (stocked) game.stockRefill();
+                wait = 10;
+            }
+            case 40 -> {
+                if (stocked) game.emptyHand();
+                wait = 20;
+            }
+            case 41 -> {
+                if (stocked) check(game.held().endsWith("x16"), "in singleplayer Stack Refill refilled the emptied hand from the inventory: '" + game.held() + "'");
+                game.screenshot("hypixel-minimap-back");
+                wait = 5;
+            }
             default -> {
                 game.closeScreen();
                 HypixelSafetyManager.qaOverride = false;
                 game.command("scoreboard objectives remove ladsqa");
                 for (Map.Entry<Option, JsonElement> o : options.entrySet()) o.getKey().load(o.getValue());
                 for (Map.Entry<Module, Boolean> m : enabled.entrySet()) m.getKey().setEnabled(m.getValue());
+                com.thelads.core.client.qa.QaProgress.done();
                 if (failures.isEmpty()) LOGGER.info("Lads hypixel capture END: {} passed, 0 failed", passed);
                 else LOGGER.error("Lads hypixel capture FAILED: {} passed, {} failed: {}", passed, failures.size(), failures);
                 return true;
@@ -325,6 +412,6 @@ public final class HypixelQa {
 
     private void check(boolean ok, String what) {
         if (ok) { passed++; LOGGER.info("Lads hypixel QA ok: {}", what); }
-        else { failures.add(what); LOGGER.error("Lads hypixel QA FAILED: {}", what); }
+        else { failures.add(what); LOGGER.error("Lads hypixel QA FAILED: {}", what); com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL); }
     }
 }

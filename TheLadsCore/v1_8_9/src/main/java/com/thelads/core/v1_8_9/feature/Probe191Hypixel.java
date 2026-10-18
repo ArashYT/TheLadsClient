@@ -61,5 +61,24 @@ final class Probe191Hypixel {
         @Override public void closeScreen() { Minecraft.getMinecraft().displayGuiScreen(null); }
 
         @Override public void screenshot(String name) { CoreProbe.screenshot(Minecraft.getMinecraft(), name); }
+
+        @Override public boolean stockRefill() {
+            command("gamemode 0 @p");
+            command("replaceitem entity @p slot.hotbar.0 minecraft:cobblestone 1");
+            command("replaceitem entity @p slot.inventory.0 minecraft:cobblestone 16");
+            Minecraft.getMinecraft().thePlayer.inventory.currentItem = 0;
+            return true;
+        }
+
+        @Override public void emptyHand() { command("replaceitem entity @p slot.hotbar.0 minecraft:air"); }
+
+        @Override public String held() {
+            net.minecraft.item.ItemStack stack = Minecraft.getMinecraft().thePlayer.getHeldItem();
+            return stack == null ? "" : net.minecraft.item.Item.itemRegistry.getNameForObject(stack.getItem()) + " x" + stack.stackSize;
+        }
+
+        @Override public Boolean xaeroShown() { return Minimap189.xaeroShown(); }
+
+        @Override public boolean flipXaero() { return Minimap189.flipXaero(); }
     };
 }

@@ -73,6 +73,17 @@ public final class Minimap189 {
         }
     }
 
+    /** QA: flips Xaero's own minimap setting as its key does; false without the integration. */
+    static boolean flipXaero() {
+        try {
+            if (settings == null) return false;
+            shown.setBoolean(settings, !shown.getBoolean(settings));
+            return true;
+        } catch (IllegalAccessException e) {
+            return false;
+        }
+    }
+
     public static void tick() {
         if (!attempted) connect();
         if (settings == null) return;
