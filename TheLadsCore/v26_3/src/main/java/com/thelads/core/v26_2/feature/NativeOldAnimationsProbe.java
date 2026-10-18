@@ -177,7 +177,7 @@ final class NativeOldAnimationsProbe {
             // 1.7's blocking arm, read from the model after the whole setupAnim (other mods' arm animations included): pitched
             // 3π/10 down without the head's pitch (the standing player's walk and idle bob add a few hundredths) and no inward turn.
             require(Math.abs(armOn[0] + 0.9424779f) < 0.15f && Math.abs(armOn[1] - com.thelads.core.client.OldAnimations.BLOCKING_ARM_YAW) < 1e-3f,
-                "1.7 third-person items: the 1.7 blocking arm (pitch " + armOn[0] + ", yaw " + armOn[1] + ")");
+                "1.7 third-person items: the 1.7 blocking arm (pitch " + armOn[0] + ", yaw " + armOn[1] + ", swinging " + mc.player.isSwinging() + ")");
             require(redOn[0] > redOff[0] && NativeOldAnimations.APPLIED.contains(Feature.RED_ARMOUR), "Red armour on hurt tints the armour");
 
             // 2D dropped items: flat items become the 1.7 icon; blocks stay 3D.
@@ -316,6 +316,8 @@ final class NativeOldAnimationsProbe {
             throws ReflectiveOperationException {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = prepare(enabled, sword, shield, InteractionHand.OFF_HAND, 5);
+        // Standing still for the arm reading: a QA world that is still settling (slow start) left the walk swing in the arm pitch.
+        player.walkAnimation.stop();
         List<Call> calls = new ArrayList<>();
         try {
             var dispatcher = mc.getEntityRenderDispatcher();
