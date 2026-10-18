@@ -4,9 +4,10 @@ per Minecraft server ("room"), so every Lads player on the same server sees it.
 Phase 2 additions:
 - SQLite store for entitlements(uuid, item_id, source, granted_at, revoked_at) and equipped(uuid, slot, item_id).
 - Profile GET /cosmetics/profile/{uuid} (everyone owns "lads:groove").
-- WebSocket equip message {"t":"equip","slot","item"} and HTTP POST /cosmetics/equip.
-- Tebex webhook endpoint POST /cosmetics/tebex (idempotent, signature-verified, payment.completed / refund).
-- Link-code flow GET /cosmetics/link/start (and WS {"t":"link"}).
+- WebSocket equip message {"t":"equip","slot","item"} and authenticated HTTP POST /cosmetics/equip.
+- Tebex webhook endpoint POST /cosmetics/tebex (fail-closed, idempotent, signature-verified, payment.completed / refund).
+- Link-code flow over authenticated WebSocket {"t":"link"} (and authenticated GET /cosmetics/link/start).
+- Single-use link token redemption to prevent replay attacks.
 - Admin CLI: grant / revoke / list for staff.
 """
 from __future__ import annotations
@@ -76,16 +77,13 @@ def client_ip(request: web.Request) -> str:
 
 
 def verify_tebex_signature(raw_body: bytes, signature: str | None, secret: str | None) -> bool:
-    """Validate Tebex webhook signature.
+    """Validate Tebex webhook signature. Fail closed: secret and signature are strictly required.
     Per Tebex docs:
     1. SHA-256 hash the raw body to hex string.
     2. HMAC-SHA256 the hex string using the webhook secret key.
-    Also accepts standard single-step HMAC-SHA256 for maximum compatibility across Tebex webhook versions.
+    Also accepts standard single-step HMAC-SHA256 for cross-version compatibility.
     """
-    if not secret:
-        # Dev / unconfigured mode without secret
-        return True
-    if not signature:
+    if not secret or not signature:
         return False
     sig = signature.strip()
     # Tebex two-step HMAC
@@ -144,7 +142,9 @@ def extract_tebex_items(subject: dict) -> list[str]:
 
 
 def extract_buyer_uuid(subject: dict, store: CosmeticsStore | None = None) -> str | None:
-    """Extract buyer Minecraft UUID from Tebex payload or resolve via link code."""
+    """Extract buyer Minecraft UUID from Tebex payload or resolve via link code.
+    If resolved via link code, atomically consumes the single-use link code.
+    """
     for path in [
         subject.get("player"),
         subject.get("customer"),
@@ -157,13 +157,13 @@ def extract_buyer_uuid(subject: dict, store: CosmeticsStore | None = None) -> st
             u = plain_uuid(raw)
             if u:
                 return u
-    # Resolve via link code if present in customer/custom/variables
+    # Resolve via link code if present in customer/custom/variables (atomically consumes code)
     if store:
         for path in [subject.get("customer"), subject.get("player"), subject.get("custom"), subject]:
             if isinstance(path, dict):
                 code = path.get("link_code") or path.get("code")
                 if code:
-                    u = store.get_uuid_for_link_code_sync(str(code))
+                    u = store.consume_link_code_sync(str(code))
                     if u:
                         return u
     return None
@@ -397,6 +397,21 @@ class CosmeticsStore:
                 return row[0]
             return None
 
+    def consume_link_code_sync(self, code: str) -> str | None:
+        """Atomically resolve and delete a single-use link code to prevent replay attacks."""
+        now = int(time.time())
+        normalized = code.strip().upper()
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT uuid, expires_at FROM link_codes WHERE code = ?;", (normalized,))
+            row = cur.fetchone()
+            if row and row[1] > now:
+                uuid = row[0]
+                conn.execute("DELETE FROM link_codes WHERE code = ?;", (normalized,))
+                conn.commit()
+                return uuid
+            return None
+
     def list_sync(self, uuid: str) -> dict:
         with self._get_connection() as conn:
             cur = conn.cursor()
@@ -451,6 +466,9 @@ class CosmeticsStore:
 
     async def get_uuid_for_link_code(self, code: str) -> str | None:
         return await asyncio.to_thread(self.get_uuid_for_link_code_sync, code)
+
+    async def consume_link_code(self, code: str) -> str | None:
+        return await asyncio.to_thread(self.consume_link_code_sync, code)
 
     async def list_cosmetics(self, uuid: str) -> dict:
         return await asyncio.to_thread(self.list_sync, uuid)
@@ -523,7 +541,7 @@ class Hub:
             log.debug("emote %s %s -> %d", peer.uuid, emote, len(others))
 
     async def equip(self, peer: Peer, slot: str, item: str | None) -> bool:
-        """Validate ownership, update store, and broadcast to the room."""
+        """Validate ownership, update store, and broadcast to the room (WebSocket-authenticated)."""
         if not (isinstance(slot, str) and SLOT_RE.fullmatch(slot)):
             await send(peer, {"t": "error", "error": "invalid slot"})
             return False
@@ -695,8 +713,23 @@ async def handle_profile(request: web.Request) -> web.Response:
     return web.json_response(data)
 
 
+def _check_http_auth(request: web.Request) -> bool:
+    """Verify Authorization: Bearer <secret> for sensitive HTTP management endpoints."""
+    auth_header = request.headers.get("Authorization", "")
+    secret = request.app.get(AUTH_SECRET) or os.getenv("COSMETICS_AUTH_TOKEN")
+    if not secret or not auth_header.startswith("Bearer "):
+        return False
+    token = auth_header[len("Bearer "):].strip()
+    return hmac.compare_digest(token, secret)
+
+
 async def handle_equip_http(request: web.Request) -> web.Response:
-    """HTTP POST /cosmetics/equip: equip or unequip an item for a UUID."""
+    """HTTP POST /cosmetics/equip: requires authorization header to prevent unauthorized IDOR equip.
+    Normal player equip is performed over the authenticated WebSocket session.
+    """
+    if not _check_http_auth(request):
+        return web.json_response({"error": "unauthorized"}, status=401)
+
     try:
         body = await request.json()
     except Exception:
@@ -735,12 +768,16 @@ async def handle_equip_http(request: web.Request) -> web.Response:
 
 async def handle_tebex_webhook(request: web.Request) -> web.Response:
     """Tebex Webhook endpoint: POST /cosmetics/tebex (and /cosmetics/webhook/tebex).
-    Validates Tebex HMAC signature, handles endpoint validation, payment.completed (idempotent),
+    Validates Tebex HMAC signature fail-closed, handles endpoint validation, payment.completed (idempotent),
     and refund/chargeback/dispute revoking.
     """
+    secret = request.app.get(TEBEX_SECRET) or os.getenv("TEBEX_WEBHOOK_SECRET")
+    if not secret:
+        log.warning("Tebex webhook received but TEBEX_WEBHOOK_SECRET is not configured")
+        return web.json_response({"error": "webhook secret not configured"}, status=401)
+
     raw_body = await request.read()
     sig = request.headers.get("X-Tebex-Signature") or request.headers.get("X-Signature") or request.headers.get("X-BC-Sig")
-    secret = request.app.get(TEBEX_SECRET) or os.getenv("TEBEX_WEBHOOK_SECRET")
 
     if not verify_tebex_signature(raw_body, sig, secret):
         return web.json_response({"error": "invalid signature"}, status=401)
@@ -811,7 +848,12 @@ async def handle_tebex_webhook(request: web.Request) -> web.Response:
 
 
 async def handle_link_start_http(request: web.Request) -> web.Response:
-    """GET /cosmetics/link/start: issue 6-character code bound to UUID for 10 minutes."""
+    """GET /cosmetics/link/start: requires authorization header to prevent unauthenticated link code hijacking.
+    Normal in-game link code flow is issued over the authenticated WebSocket session.
+    """
+    if not _check_http_auth(request):
+        return web.json_response({"error": "unauthorized"}, status=401)
+
     uuid = plain_uuid(request.query.get("uuid"))
     if not uuid:
         return web.json_response({"error": "missing or invalid uuid parameter"}, status=400)
@@ -839,17 +881,20 @@ async def close_all(app: web.Application) -> None:
 HUB = web.AppKey("cosmetics_hub", Hub)
 STORE = web.AppKey("cosmetics_store", CosmeticsStore)
 TEBEX_SECRET = web.AppKey("tebex_secret", str)
+AUTH_SECRET = web.AppKey("auth_secret", str)
 
 
 def setup(
     app: web.Application,
     insecure: bool = False,
     db_path: Path | str | None = None,
-    tebex_secret: str | None = None
+    tebex_secret: str | None = None,
+    auth_secret: str | None = None
 ) -> None:
     store = CosmeticsStore(db_path)
     app[STORE] = store
     app[TEBEX_SECRET] = tebex_secret or os.getenv("TEBEX_WEBHOOK_SECRET", "")
+    app[AUTH_SECRET] = auth_secret or os.getenv("COSMETICS_AUTH_TOKEN", "") or app[TEBEX_SECRET]
     hub = Hub(insecure, store=store)
     app[HUB] = hub
 
@@ -976,6 +1021,7 @@ def main(argv=None) -> None:
     parser.add_argument("--port", type=int, default=8095)
     parser.add_argument("--db", default=None, help="Path to cosmetics.db SQLite file")
     parser.add_argument("--tebex-secret", default=None, help="Tebex webhook secret")
+    parser.add_argument("--auth-secret", default=None, help="Cosmetics HTTP management auth token")
     parser.add_argument("--dev-insecure-auth", action="store_true",
                         help="QA only: trust the client's name and uuid without asking Mojang (offline QA accounts); 127.0.0.1 only")
     args = parser.parse_args(raw_args)
@@ -983,7 +1029,7 @@ def main(argv=None) -> None:
         parser.error("--dev-insecure-auth refuses to start unless bound to 127.0.0.1")
     logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     app = web.Application()
-    setup(app, insecure=args.dev_insecure_auth, db_path=args.db, tebex_secret=args.tebex_secret)
+    setup(app, insecure=args.dev_insecure_auth, db_path=args.db, tebex_secret=args.tebex_secret, auth_secret=args.auth_secret)
     if args.dev_insecure_auth:
         log.warning("dev mode: Mojang verification is OFF (127.0.0.1 only)")
     web.run_app(app, host=args.host, port=args.port)

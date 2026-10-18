@@ -1,5 +1,9 @@
 """pytest -q (pytest-aiohttp; pytest.ini sets asyncio_mode=auto).
-Tests both Phase 1 emote relay and Phase 2 backend (SQLite store, equip relay, Tebex webhooks, link codes, admin CLI).
+Tests both Phase 1 emote relay, Phase 2 backend, and security review hardening:
+- Tebex fail-closed webhook signature verification
+- HTTP equip authorization (preventing unauthenticated IDOR)
+- HTTP link-code generation authorization (preventing unauthenticated link hijacking)
+- Single-use link token redemption (preventing token replay)
 """
 import asyncio
 import hashlib
@@ -17,6 +21,7 @@ import cosmetics
 A, B, C = "a" * 32, "b" * 32, "c" * 32
 PLAYERS = {"Alice": A, "Bob": B, "Cara": C}
 ROOM, OTHER = "1" * 64, "2" * 64
+TEST_SECRET = "test_tebex_and_auth_secret_xyz_123"
 
 
 @pytest.fixture
@@ -35,7 +40,7 @@ def fake_mojang(monkeypatch):
 async def client(aiohttp_client, fake_mojang, tmp_path):
     app = web.Application()
     db_file = tmp_path / "cosmetics.db"
-    cosmetics.setup(app, db_path=db_file)
+    cosmetics.setup(app, db_path=db_file, tebex_secret=TEST_SECRET, auth_secret=TEST_SECRET)
     return await aiohttp_client(app)
 
 
@@ -60,6 +65,14 @@ async def closed(ws):
         pass
     assert msg.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING)
     return ws.close_code
+
+
+def make_tebex_sig(payload_bytes: bytes, secret: str, two_step: bool = True) -> str:
+    if two_step:
+        bhash = hashlib.sha256(payload_bytes).hexdigest()
+        return hmac.new(secret.encode("utf-8"), bhash.encode("utf-8"), hashlib.sha256).hexdigest()
+    else:
+        return hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -337,7 +350,7 @@ async def test_ws_equip_owned_item_broadcasts_to_room(client):
     c, _ = await login(client, "Cara", C, room=OTHER)
     await a.receive_json(timeout=2)  # Alice gets Bob's join
 
-    # Alice equips her owned cloak
+    # Alice equips her owned cloak over the authenticated WebSocket
     await a.send_json({"t": "equip", "slot": "cloak", "item": "lads:cloak_aurora"})
 
     # Sender gets confirmation
@@ -385,7 +398,7 @@ async def test_ws_unequip_item(client):
     b, _ = await login(client, "Bob", B)
     await a.receive_json(timeout=2)
 
-    # Alice un-equips cloak
+    # Alice un-equips cloak over WS
     await a.send_json({"t": "equip", "slot": "cloak", "item": None})
 
     conf = await a.receive_json(timeout=2)
@@ -402,19 +415,20 @@ async def test_http_post_equip(client):
     app = client.app
     store: cosmetics.CosmeticsStore = app[cosmetics.STORE]
     await store.grant(A, "lads:cloak_aurora", source="admin")
+    auth_headers = {"Authorization": f"Bearer {TEST_SECRET}"}
 
-    # Equipping owned item succeeds
-    res = await client.post("/cosmetics/equip", json={"uuid": A, "slot": "cloak", "item": "lads:cloak_aurora"})
+    # Equipping owned item with auth succeeds
+    res = await client.post("/cosmetics/equip", json={"uuid": A, "slot": "cloak", "item": "lads:cloak_aurora"}, headers=auth_headers)
     assert res.status == 200
     data = await res.json()
     assert data["status"] == "ok" and data["item"] == "lads:cloak_aurora"
 
     # Equipping unowned item returns 403
-    res_bad = await client.post("/cosmetics/equip", json={"uuid": A, "slot": "hat", "item": "lads:hat_sombrero"})
+    res_bad = await client.post("/cosmetics/equip", json={"uuid": A, "slot": "hat", "item": "lads:hat_sombrero"}, headers=auth_headers)
     assert res_bad.status == 403
 
     # Invalid UUID returns 400
-    res_inv = await client.post("/cosmetics/equip", json={"uuid": "bad-uuid", "slot": "cloak", "item": None})
+    res_inv = await client.post("/cosmetics/equip", json={"uuid": "bad-uuid", "slot": "cloak", "item": None}, headers=auth_headers)
     assert res_inv.status == 400
 
 
@@ -440,7 +454,8 @@ async def test_ws_link_code_generation(client):
 
 
 async def test_http_link_start_and_verify(client):
-    start_res = await client.get(f"/cosmetics/link/start?uuid={B}")
+    auth_headers = {"Authorization": f"Bearer {TEST_SECRET}"}
+    start_res = await client.get(f"/cosmetics/link/start?uuid={B}", headers=auth_headers)
     assert start_res.status == 200
     s_data = await start_res.json()
     code = s_data["code"]
@@ -461,22 +476,16 @@ async def test_http_link_start_and_verify(client):
 # Phase 2: Tebex Webhook Tests
 # ---------------------------------------------------------------------------
 
-def make_tebex_sig(payload_bytes: bytes, secret: str, two_step: bool = True) -> str:
-    if two_step:
-        bhash = hashlib.sha256(payload_bytes).hexdigest()
-        return hmac.new(secret.encode("utf-8"), bhash.encode("utf-8"), hashlib.sha256).hexdigest()
-    else:
-        return hmac.new(secret.encode("utf-8"), payload_bytes, hashlib.sha256).hexdigest()
-
-
 async def test_tebex_webhook_handshake(client):
-    # Tebex validation.webhook event
     payload = {
         "id": "val-987654",
         "type": "validation.webhook",
         "date": "2026-10-18T16:00:00Z"
     }
-    res = await client.post("/cosmetics/tebex", json=payload)
+    payload_bytes = json.dumps(payload).encode("utf-8")
+    sig = make_tebex_sig(payload_bytes, TEST_SECRET)
+
+    res = await client.post("/cosmetics/tebex", data=payload_bytes, headers={"X-Tebex-Signature": sig, "Content-Type": "application/json"})
     assert res.status == 200
     assert (await res.json()) == {"id": "val-987654"}
 
@@ -526,9 +535,12 @@ async def test_tebex_payment_completed_and_idempotency(client):
             ]
         }
     }
+    payload_bytes = json.dumps(payload).encode("utf-8")
+    sig = make_tebex_sig(payload_bytes, TEST_SECRET)
+    headers = {"X-Tebex-Signature": sig, "Content-Type": "application/json"}
 
     # First delivery: grants cosmetic
-    res1 = await client.post("/cosmetics/tebex", json=payload)
+    res1 = await client.post("/cosmetics/tebex", data=payload_bytes, headers=headers)
     assert res1.status == 200
     data1 = await res1.json()
     assert data1["status"] == "granted"
@@ -540,13 +552,13 @@ async def test_tebex_payment_completed_and_idempotency(client):
     assert "lads:cloak_aurora" in (await p_res.json())["owned"]
 
     # Second delivery with same transaction ID: idempotent already_processed
-    res2 = await client.post("/cosmetics/tebex", json=payload)
+    res2 = await client.post("/cosmetics/tebex", data=payload_bytes, headers=headers)
     assert res2.status == 200
     assert (await res2.json())["status"] == "already_processed"
 
 
 async def test_tebex_payment_completed_resolves_link_code(client):
-    # Alice generates a link code
+    # Alice generates a link code over WebSocket / store
     store: cosmetics.CosmeticsStore = client.app[cosmetics.STORE]
     code = await store.create_link_code(A)
 
@@ -564,8 +576,11 @@ async def test_tebex_payment_completed_resolves_link_code(client):
             ]
         }
     }
+    payload_bytes = json.dumps(payload).encode("utf-8")
+    sig = make_tebex_sig(payload_bytes, TEST_SECRET)
+    headers = {"X-Tebex-Signature": sig, "Content-Type": "application/json"}
 
-    res = await client.post("/cosmetics/tebex", json=payload)
+    res = await client.post("/cosmetics/tebex", data=payload_bytes, headers=headers)
     assert res.status == 200
     data = await res.json()
     assert data["status"] == "granted"
@@ -590,7 +605,9 @@ async def test_tebex_refund_revokes_and_unequips(client):
             "packages": [{"id": 1, "name": "lads:cloak_aurora"}]
         }
     }
-    await client.post("/cosmetics/tebex", json=buy_payload)
+    buy_bytes = json.dumps(buy_payload).encode("utf-8")
+    buy_sig = make_tebex_sig(buy_bytes, TEST_SECRET)
+    await client.post("/cosmetics/tebex", data=buy_bytes, headers={"X-Tebex-Signature": buy_sig, "Content-Type": "application/json"})
     assert "lads:cloak_aurora" in (await store.get_profile(A))["owned"]
 
     # 2. Player equips the item
@@ -605,7 +622,9 @@ async def test_tebex_refund_revokes_and_unequips(client):
             "transaction_id": "tbx-refund-1"
         }
     }
-    res = await client.post("/cosmetics/tebex", json=refund_payload)
+    ref_bytes = json.dumps(refund_payload).encode("utf-8")
+    ref_sig = make_tebex_sig(ref_bytes, TEST_SECRET)
+    res = await client.post("/cosmetics/tebex", data=ref_bytes, headers={"X-Tebex-Signature": ref_sig, "Content-Type": "application/json"})
     assert res.status == 200
     data = await res.json()
     assert data["status"] == "revoked"
@@ -616,7 +635,7 @@ async def test_tebex_refund_revokes_and_unequips(client):
     assert "cloak" not in profile["equipped"]
 
     # Duplicate refund returns already_refunded
-    res_dup = await client.post("/cosmetics/tebex", json=refund_payload)
+    res_dup = await client.post("/cosmetics/tebex", data=ref_bytes, headers={"X-Tebex-Signature": ref_sig, "Content-Type": "application/json"})
     assert res_dup.status == 200
     assert (await res_dup.json())["status"] == "already_refunded"
 
@@ -678,3 +697,120 @@ def test_main_cli_admin_subcommands(tmp_path, capsys):
     assert exc3.value.code == 0
     assert "Revoked 'lads:cloak_aurora'" in capsys.readouterr().out
 
+
+# ---------------------------------------------------------------------------
+# Post-Review Security Hardening Tests (3 Vulnerabilities Fixed)
+# ---------------------------------------------------------------------------
+
+async def test_security_tebex_fails_closed_when_secret_unset(aiohttp_client, tmp_path):
+    """Security Hole 1: When TEBEX_WEBHOOK_SECRET is not configured or signature is missing,
+    the endpoint must fail closed (401) and never accept unsigned/bogus requests.
+    """
+    app = web.Application()
+    # Explicitly no tebex_secret configured
+    cosmetics.setup(app, db_path=tmp_path / "nosecret.db", tebex_secret=None)
+    cl = await aiohttp_client(app)
+
+    payload = json.dumps({
+        "id": "exploit-1",
+        "type": "payment.completed",
+        "subject": {
+            "transaction_id": "fake-1",
+            "player": {"uuid": A},
+            "packages": [{"name": "lads:cloak_aurora"}]
+        }
+    }).encode("utf-8")
+
+    # Request without secret / without signature must be rejected with 401
+    res_nosig = await cl.post("/cosmetics/tebex", data=payload, headers={"Content-Type": "application/json"})
+    assert res_nosig.status == 401
+    assert (await res_nosig.json())["error"] == "webhook secret not configured"
+
+    # Request with arbitrary signature must also be rejected with 401
+    res_fakesig = await cl.post("/cosmetics/tebex", data=payload, headers={"X-Tebex-Signature": "fakesig123", "Content-Type": "application/json"})
+    assert res_fakesig.status == 401
+
+
+async def test_security_http_equip_unauthorized_idor_rejected(client):
+    """Security Hole 2: Unauthenticated HTTP callers cannot call POST /cosmetics/equip
+    to forcibly equip or unequip cosmetics for arbitrary player UUIDs (IDOR).
+    Normal players equip exclusively over the authenticated WebSocket session.
+    """
+    # 1. Unauthenticated request without Authorization header returns 401
+    res_noauth = await client.post("/cosmetics/equip", json={
+        "uuid": A,
+        "slot": "cloak",
+        "item": None
+    })
+    assert res_noauth.status == 401
+    assert (await res_noauth.json())["error"] == "unauthorized"
+
+    # 2. Request with invalid Bearer token returns 401
+    res_badtoken = await client.post("/cosmetics/equip", json={
+        "uuid": A,
+        "slot": "cloak",
+        "item": None
+    }, headers={"Authorization": "Bearer invalid_secret_token"})
+    assert res_badtoken.status == 401
+    assert (await res_badtoken.json())["error"] == "unauthorized"
+
+
+async def test_security_http_link_start_unauthorized_rejected(client):
+    """Security Hole 3: Unauthenticated HTTP callers cannot call GET /cosmetics/link/start?uuid=...
+    to hijack account linking by generating link codes for arbitrary victim UUIDs.
+    In-game players generate link codes over the authenticated WebSocket session.
+    """
+    # 1. Unauthenticated request without Authorization header returns 401
+    res_noauth = await client.get(f"/cosmetics/link/start?uuid={A}")
+    assert res_noauth.status == 401
+    assert (await res_noauth.json())["error"] == "unauthorized"
+
+    # 2. Request with invalid Bearer token returns 401
+    res_badtoken = await client.get(f"/cosmetics/link/start?uuid={A}", headers={"Authorization": "Bearer badtoken"})
+    assert res_badtoken.status == 401
+    assert (await res_badtoken.json())["error"] == "unauthorized"
+
+
+async def test_security_link_code_single_use_consumed_on_purchase(client):
+    """Security Hardening 4: Link codes are single-use tokens that are atomically consumed
+    upon checkout fulfillment, preventing token replay attacks.
+    """
+    store: cosmetics.CosmeticsStore = client.app[cosmetics.STORE]
+    code = await store.create_link_code(A)
+
+    # First purchase with link code succeeds
+    payload = {
+        "id": "evt-sec-link",
+        "type": "payment.completed",
+        "subject": {
+            "transaction_id": "tbx-sec-link-1",
+            "customer": {"link_code": code},
+            "packages": [{"id": 55, "name": "lads:hat_wizard"}]
+        }
+    }
+    payload_bytes = json.dumps(payload).encode("utf-8")
+    sig = make_tebex_sig(payload_bytes, TEST_SECRET)
+    headers = {"X-Tebex-Signature": sig, "Content-Type": "application/json"}
+
+    res1 = await client.post("/cosmetics/tebex", data=payload_bytes, headers=headers)
+    assert res1.status == 200
+    assert (await res1.json())["status"] == "granted"
+
+    # Code is now consumed: second attempt to resolve or purchase with same code fails
+    assert (await store.get_uuid_for_link_code(code)) is None
+
+    # An attacker attempting to replay the code in a new transaction gets 400 (unresolvable UUID)
+    replay_payload = {
+        "id": "evt-sec-replay",
+        "type": "payment.completed",
+        "subject": {
+            "transaction_id": "tbx-sec-replay-2",
+            "customer": {"link_code": code},
+            "packages": [{"id": 56, "name": "lads:cloak_founder"}]
+        }
+    }
+    replay_bytes = json.dumps(replay_payload).encode("utf-8")
+    replay_sig = make_tebex_sig(replay_bytes, TEST_SECRET)
+    res2 = await client.post("/cosmetics/tebex", data=replay_bytes, headers={"X-Tebex-Signature": replay_sig, "Content-Type": "application/json"})
+    assert res2.status == 400
+    assert (await res2.json())["error"] == "missing or unresolvable buyer uuid"

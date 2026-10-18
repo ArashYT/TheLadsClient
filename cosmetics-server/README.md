@@ -5,17 +5,17 @@ The client side connects via `TheLadsCore/common/.../client/cosmetics/net/Cosmet
 
 ## Routes
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/cosmetics/health` | Service health status, active player count, active room count. |
-| `GET` | `/cosmetics/ws` | Authenticated background WebSocket connection for emote/equip sync. |
-| `GET` | `/cosmetics/profile/{uuid}` | Returns owned cosmetics and currently equipped items (`{"owned":[...],"equipped":{...}}`). |
-| `POST` | `/cosmetics/equip` | HTTP equip endpoint: `{"uuid":"...","slot":"...","item":"..."}` (validates ownership, updates DB, broadcasts). |
-| `POST` | `/cosmetics/tebex` | Tebex webhook endpoint (signature-verified, idempotent by transaction ID, handles payments and refunds). |
-| `POST` | `/cosmetics/webhook/tebex` | Alias for `/cosmetics/tebex`. |
-| `GET` | `/cosmetics/link/start?uuid={uuid}` | Generates a 6-character link code valid for 10 minutes bound to the given UUID. |
-| `GET` | `/cosmetics/link/{code}` | Validates and resolves a 6-character link code to its bound UUID. |
-| `GET` | `/cosmetics/link/verify?code={code}` | Query-param alias for link code verification. |
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/cosmetics/health` | None | Service health status, active player count, active room count. |
+| `GET` | `/cosmetics/ws` | Mojang `hasJoined` | Authenticated background WebSocket connection for emote/equip sync and in-game link codes. |
+| `GET` | `/cosmetics/profile/{uuid}` | None | Returns owned cosmetics and currently equipped items (`{"owned":[...],"equipped":{...}}`). |
+| `POST` | `/cosmetics/equip` | `Bearer <token>` | HTTP equip endpoint: `{"uuid":"...","slot":"...","item":"..."}` (requires auth; players equip via authenticated WS). |
+| `POST` | `/cosmetics/tebex` | `X-Tebex-Signature` | Tebex webhook endpoint (fail-closed, signature-verified, idempotent by transaction ID, handles payments and refunds). |
+| `POST` | `/cosmetics/webhook/tebex` | `X-Tebex-Signature` | Alias for `/cosmetics/tebex`. |
+| `GET` | `/cosmetics/link/start?uuid={uuid}` | `Bearer <token>` | Generates a 6-character link code valid for 10 minutes (requires auth; in-game players generate via WS). |
+| `GET` | `/cosmetics/link/{code}` | None | Validates and resolves a 6-character link code to its bound UUID. |
+| `GET` | `/cosmetics/link/verify?code={code}` | None | Query-param alias for link code verification. |
 
 ## WebSocket Protocol (Frames <= 1 KB)
 
@@ -45,16 +45,17 @@ Storage uses SQLite with WAL mode (`PRAGMA journal_mode=WAL; PRAGMA busy_timeout
 - `entitlements(uuid, item_id, source, granted_at, revoked_at)`: tracks permanent grants, transaction IDs, and revocations.
 - `equipped(uuid, slot, item_id)`: tracks active cosmetic per slot (e.g. `cloak`, `hat`, `glasses`, `emote_1`).
 - `transactions(transaction_id, event_type, uuid, items_json, created_at, updated_at)`: guarantees webhook idempotency.
-- `link_codes(code, uuid, created_at, expires_at)`: ephemeral 6-char link codes with 10-minute TTL.
+- `link_codes(code, uuid, created_at, expires_at)`: ephemeral 6-char link codes with 10-minute TTL (consumed upon checkout redemption).
 
 Default database file is `cosmetics.db` (configurable via `--db` or `COSMETICS_DB` environment variable).
 
 ## Tebex Webhooks
 
 Configured with `TEBEX_WEBHOOK_SECRET` environment variable or `--tebex-secret`.
+- **Fail-Closed Security:** Fails closed (401 Unauthorized) if `TEBEX_WEBHOOK_SECRET` is unset or if the incoming signature header is missing or invalid.
 - Validates the `X-Tebex-Signature` / `X-Signature` header using the two-step SHA-256 + HMAC-SHA256 algorithm per Tebex documentation.
 - `validation.webhook`: echoes `{ "id": ... }` to pass endpoint validation tests.
-- `payment.completed`: extracts buyer UUID and items, grants entitlements idempotently (re-deliveries return `already_processed`).
+- `payment.completed`: extracts buyer UUID and items, atomically consumes single-use link codes, grants entitlements idempotently (re-deliveries return `already_processed`).
 - `payment.refunded` / `payment.dispute.opened` / `payment.chargeback`: revokes entitlements, clears `equipped`, and broadcasts unequip to connected peers in room.
 
 ## Staff Admin CLI
@@ -76,6 +77,6 @@ python cosmetics.py list <uuid> [--db <db_path>]
 
 ```bash
 pip install aiohttp pytest pytest-aiohttp
-python -m pytest -v                                   # full test suite (37 tests)
+python -m pytest -v                                   # full test suite (41 tests)
 python cosmetics.py --port 8095 --dev-insecure-auth   # offline QA server
 ```
