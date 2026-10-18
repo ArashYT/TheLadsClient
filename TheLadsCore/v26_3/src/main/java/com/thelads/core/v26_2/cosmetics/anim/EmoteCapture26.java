@@ -204,7 +204,7 @@ public final class EmoteCapture26 {
             KeyMapping grooveKey = EmoteAnim26.key(EmoteLibrary.GROOVE);
             if (grooveKey != null) grooveKey.clickCount++;
         });
-        at(cos + 2000, () -> {
+        at(cos + 1800, () -> { // before the 280 ms blend-out removes it
             Emotes.Playing p = Emotes.get(self);
             check(p != null && p.stopping(), "groove key again stops groove");
             mc.setScreenAndShow(null);
