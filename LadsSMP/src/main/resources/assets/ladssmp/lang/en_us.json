@@ -1,12 +1,9 @@
 {
-<<<<<<< HEAD
   "item.ladssmp.turtle_chestplate": "Turtle Chestplate",
   "item.ladssmp.turtle_leggings": "Turtle Leggings",
   "item.ladssmp.turtle_boots": "Turtle Boots",
   "item.ladssmp.clipboard": "Clipboard",
-  "block.ladssmp.quicksand": "Quicksand"
-}
-=======
+  "block.ladssmp.quicksand": "Quicksand",
   "item.ladssmp.ham_sandwich": "Ham Sandwich",
   "item.ladssmp.mutton_sandwich": "Mutton Sandwich",
   "item.ladssmp.cooked_cod_sandwich": "Cod Sandwich",
@@ -426,4 +423,3 @@
   "advancements.ladssmp.mods.naturalist_trophy.title": "Forest Monarch",
   "advancements.ladssmp.mods.naturalist_trophy.description": "Claim trophy antlers from wildlife of the woods."
 }
->>>>>>> agy/1911-nb4
