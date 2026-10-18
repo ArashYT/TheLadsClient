@@ -157,6 +157,20 @@ class QaProgressTest {
         assertNotSame(first, g.texts.get(0));
     }
 
+    /** The owner's benchmark rule: the bar costs nothing worth measuring: after the first frame, drawing it allocates no memory. */
+    @Test void drawingAllocatesNothingOnceTheTextIsBuilt() {
+        QaProgress.begin("alloc", 10);
+        QaProgress.step("a step");
+        Counting g = new Counting();
+        for (int i = 0; i < 2_000; i++) QaProgress.draw(g); // warm up: the first frame builds the text, the JIT compiles
+        var threads = (com.sun.management.ThreadMXBean) java.lang.management.ManagementFactory.getThreadMXBean();
+        long before = threads.getThreadAllocatedBytes(Thread.currentThread().getId());
+        for (int i = 0; i < 50_000; i++) QaProgress.draw(g);
+        long bytes = threads.getThreadAllocatedBytes(Thread.currentThread().getId()) - before;
+        assertTrue(bytes < 4_096, "allocated " + bytes + " bytes over 50000 frames");
+        assertTrue(g.calls > 100_000);
+    }
+
     @Test void aResultWithNoStepOpenIsCountedAnyway() {
         QaProgress.begin("r", 2);
         QaProgress.result(Result.FAIL);
@@ -210,6 +224,27 @@ class QaProgressTest {
         Recorder g = new Recorder();
         QaProgress.draw(g);
         assertTrue(g.texts.isEmpty() && g.fills.isEmpty());
+    }
+
+    /** Counts calls only (allocates nothing itself). */
+    private static final class Counting implements LadsGraphics {
+        int calls;
+        @Override public void fill(int minX, int minY, int maxX, int maxY, int color) { calls++; }
+        @Override public void drawText(String text, int x, int y, int color, boolean shadow) { calls++; }
+        @Override public void drawCenteredText(String text, int centerX, int y, int color, boolean shadow) { calls++; }
+        @Override public int textWidth(String text) { return text.length() * 6; }
+        @Override public int fontHeight() { return 9; }
+        @Override public void pushPose() {}
+        @Override public void popPose() {}
+        @Override public void translate(float x, float y) {}
+        @Override public void scale(float sx, float sy) {}
+        @Override public void enableScissor(int a, int b, int c, int d) {}
+        @Override public void disableScissor() {}
+        @Override public void blit(String texture, int x, int y, int u, int v, int w, int h) {}
+        @Override public void drawHead(String username, String uuid, int x, int y, int size) {}
+        @Override public int getScaledWidth() { return 960; }
+        @Override public int getScaledHeight() { return 540; }
+        @Override public com.thelads.core.client.bridge.LadsGameBridge getGame() { return null; }
     }
 
     private static final class Recorder implements LadsGraphics {

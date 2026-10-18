@@ -63,7 +63,7 @@ public final class QaProgress {
     // What the last draw built (rebuilt only when one of these changed).
     private static final String LOADING = "loading", READY = "world ready", FINISHING = "finishing";
     private static String cLine1 = "", cLine2, cPhase;
-    private static boolean cRun;
+    private static boolean cRun, cLoading;
     private static int cRev = -1, cWidth = -1, cHalf, cState;
     private static long cSecond = -1;
     private static float cFill;
@@ -285,7 +285,15 @@ public final class QaProgress {
      * Draws the bar at the top centre in the game's GUI units, after everything else; nothing when it is hidden. Long text goes on two
      * lines (name and step above, counts and ETA below), the step label cut to fit.
      */
-    public static synchronized void draw(LadsGraphics g) {
+    public static void draw(LadsGraphics g) { draw(g, false); }
+
+    /**
+     * The same over the loading screen (startup, resource reloads): no text (the game's font is still being loaded then and draws
+     * boxes) and a striped bar, which says "loading" until the world is up and the text is readable.
+     */
+    public static void drawLoading(LadsGraphics g) { draw(g, true); }
+
+    private static synchronized void draw(LadsGraphics g, boolean loading) {
         if (!on || g == null || g.getScaledWidth() <= 0) return;
         LadsGameBridge game = g.getGame();
         if (game != null && game.isHudHidden()) return;
@@ -293,22 +301,27 @@ public final class QaProgress {
         if (hidden) return;
         long now = clock.getAsLong();
         refresh(now);
-        boolean showRun = run != null && (!run.ended || now - endedAt < LINGER_MS);
+        boolean showRun = !loading && run != null && (!run.ended || now - endedAt < LINGER_MS);
         int w = g.getScaledWidth();
         String phase = showRun ? null : phase(game != null && game.isIngame());
         long second = showRun ? 0 : (now - started) / 1000;
         Object metrics = g.textMetricsKey();
-        if (cRev != rev || cRun != showRun || cWidth != w || cSecond != second || cPhase != phase || cMetrics != metrics) {
-            cRev = rev; cRun = showRun; cWidth = w; cSecond = second; cPhase = phase; cMetrics = metrics;
+        if (cRev != rev || cRun != showRun || cWidth != w || cSecond != second || cPhase != phase || cMetrics != metrics || cLoading != loading) {
+            cRev = rev; cRun = showRun; cWidth = w; cSecond = second; cPhase = phase; cMetrics = metrics; cLoading = loading;
             build(g, w, showRun, phase, second);
+            if (loading) { cLine1 = null; cLine2 = null; cStripes = true; cHalf = 95; }
         }
         int y = 2, fh = g.fontHeight() + 1, bar = 182, x = (w - bar) / 2;
-        g.fill(w / 2 - cHalf, 0, w / 2 + cHalf, y + (cLine2 == null ? 1 : 2) * fh + 8, 0x90000000);
-        g.drawCenteredText(cLine1, w / 2, y, 0xFFFFFFFF, true);
-        y += fh;
-        if (cLine2 != null) {
-            g.drawCenteredText(cLine2, w / 2, y, 0xFFFFFFFF, true);
+        if (cLine1 == null) { // loading screen: just the bar
+            g.fill(w / 2 - cHalf, 0, w / 2 + cHalf, y + 12, 0x90000000);
+        } else {
+            g.fill(w / 2 - cHalf, 0, w / 2 + cHalf, y + (cLine2 == null ? 1 : 2) * fh + 8, 0x90000000);
+            g.drawCenteredText(cLine1, w / 2, y, 0xFFFFFFFF, true);
             y += fh;
+            if (cLine2 != null) {
+                g.drawCenteredText(cLine2, w / 2, y, 0xFFFFFFFF, true);
+                y += fh;
+            }
         }
         int fill = cState == 2 ? 0xFFD83A3A : cState == 1 ? 0xFFE8C422 : 0xFF3FB83F; // red, yellow, green
         int shine = cState == 2 ? 0xFFFF7A7A : cState == 1 ? 0xFFFFE566 : 0xFF7BE07B;

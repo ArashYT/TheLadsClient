@@ -60,6 +60,6 @@ public abstract class LoadingOverlayMixin {
                 if (LoadingLogo.ready()) graphics.blit(RenderPipelines.GUI_TEXTURED, LoadingLogo.ID, x, y, 0, 0, width, height,
                     LoadingScreenTheme.LOGO_WIDTH, LoadingScreenTheme.LOGO_HEIGHT, LoadingScreenTheme.LOGO_WIDTH, LoadingScreenTheme.LOGO_HEIGHT, ARGB.white(a));
             });
-        if (com.thelads.core.client.qa.QaProgress.on()) com.thelads.core.client.qa.QaProgress.draw(new GuiGraphicsExtractorLadsAdapter(graphics, Minecraft.getInstance().font)); // QA only: the bar over the loading screen
+        if (com.thelads.core.client.qa.QaProgress.on()) com.thelads.core.client.qa.QaProgress.drawLoading(new GuiGraphicsExtractorLadsAdapter(graphics, Minecraft.getInstance().font)); // QA only: the bar over the loading screen
     }
 }

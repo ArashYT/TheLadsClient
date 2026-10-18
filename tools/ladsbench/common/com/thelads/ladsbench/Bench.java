@@ -188,6 +188,7 @@ public final class Bench {
         if (s.name.equals("fly")) { flyX += FLY_SPEED; g.pose(flyX, sy, sz, yaw, pitch); }
         else g.pose(sx, sy, sz, yaw, pitch);
         if (t == s.warmTicks - 10 && s.measureTicks > 0 && shots) { log("ladsbench screenshot " + s.name); g.screenshot(label + "-" + s.name); }
+        if (t == s.warmTicks + s.measureTicks / 2 && s.measureTicks > 0 && shots) { log("ladsbench screenshot " + s.name + " mid-scene"); g.screenshot(label + "-" + s.name + "-mid"); } // the bar with frames counted
         if (t == s.warmTicks && s.measureTicks > 0) startRecording();
         if (recording) { recTicks++; if (g.focused()) focusTicks++; }
         bar(s.name, (float) sceneIndex / scenes.size(), sceneIndex, scenes.size());
