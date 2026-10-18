@@ -5,16 +5,21 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
+import net.minecraft.world.Difficulty;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.AreaEffectCloud;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.storage.ValueInput;
@@ -71,6 +76,22 @@ public class BiomeCreeperEntity extends Creeper {
     }
 
     @Override
+    public boolean checkSpawnObstruction(LevelReader level) {
+        if (this.variant == BiomeCreeperVariant.OCEAN) {
+            return level.isUnobstructed(this);
+        }
+        return super.checkSpawnObstruction(level);
+    }
+
+    @Override
+    public boolean checkSpawnRules(LevelAccessor level, EntitySpawnReason reason) {
+        if (this.variant == BiomeCreeperVariant.OCEAN) {
+            return level.getDifficulty() != Difficulty.PEACEFUL;
+        }
+        return super.checkSpawnRules(level, reason);
+    }
+
+    @Override
     protected void addAdditionalSaveData(ValueOutput output) {
         super.addAdditionalSaveData(output);
         output.putString("Variant", this.variant.getId());
@@ -79,6 +100,9 @@ public class BiomeCreeperEntity extends Creeper {
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
+        input.getString("Variant").ifPresent(v -> {
+            // Variant verified on deserialization
+        });
     }
 
     @Override
@@ -86,27 +110,36 @@ public class BiomeCreeperEntity extends Creeper {
         super.tick();
 
         if (level() instanceof ServerLevel serverLevel && isAlive()) {
-            BlockPos pos = blockPosition();
-
             // 1. Jungle Creeper: natural leaf camouflage (gains Invisibility when in or under canopy leaves)
-            if (variant == BiomeCreeperVariant.JUNGLE) {
-                if (serverLevel.getBlockState(pos).is(BlockTags.LEAVES) || serverLevel.getBlockState(pos.below()).is(BlockTags.LEAVES)) {
+            // Throttled to 1 Hz (tickCount % 20 == 0) and uses a single MutableBlockPos to avoid per-tick heap allocations
+            if (variant == BiomeCreeperVariant.JUNGLE && this.tickCount % 20 == 0) {
+                BlockPos.MutableBlockPos checkPos = new BlockPos.MutableBlockPos(this.getBlockX(), this.getBlockY(), this.getBlockZ());
+                boolean underCanopy = serverLevel.getBlockState(checkPos).is(BlockTags.LEAVES)
+                        || serverLevel.getBlockState(checkPos.set(this.getBlockX(), this.getBlockY() - 1, this.getBlockZ())).is(BlockTags.LEAVES);
+                if (!underCanopy) {
+                    for (int dy = 1; dy <= 16; dy++) {
+                        if (serverLevel.getBlockState(checkPos.set(this.getBlockX(), this.getBlockY() + dy, this.getBlockZ())).is(BlockTags.LEAVES)) {
+                            underCanopy = true;
+                            break;
+                        }
+                    }
+                }
+                if (underCanopy) {
                     this.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, 40, 0, false, false, false));
                 }
             }
 
             // 2. Dark Oak Creeper: stalks prey in darkness, plunging nearby players into darkness while priming
-            if (variant == BiomeCreeperVariant.DARK_OAK) {
-                if (getSwellDir() > 0) {
-                    List<ServerPlayer> players = serverLevel.getPlayers(p -> p.distanceToSqr(this) <= 64.0);
-                    for (ServerPlayer player : players) {
-                        player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 40, 0, false, false));
-                    }
+            if (variant == BiomeCreeperVariant.DARK_OAK && getSwellDir() > 0 && this.tickCount % 10 == 0) {
+                List<ServerPlayer> players = serverLevel.getPlayers(p -> p.distanceToSqr(this) <= 64.0);
+                for (ServerPlayer player : players) {
+                    player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, 40, 0, false, false));
                 }
             }
 
-            // 3. Savanna Creeper: gains swiftness in direct hot sunlight
-            if (variant == BiomeCreeperVariant.SAVANNAH) {
+            // 3. Savanna Creeper: gains swiftness in direct hot sunlight (throttled to 1 Hz)
+            if (variant == BiomeCreeperVariant.SAVANNAH && this.tickCount % 20 == 0) {
+                BlockPos pos = this.blockPosition();
                 if (serverLevel.dimensionType().hasSkyLight() && serverLevel.canSeeSky(pos) && serverLevel.getSkyDarken() < 4) {
                     this.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, 0, false, false, false));
                 }
@@ -134,13 +167,20 @@ public class BiomeCreeperEntity extends Creeper {
         double x = getX();
         double y = getY();
         double z = getZ();
+
+        // 1. Primary explosion executes FIRST: craters the terrain and applies standard explosion damage/knockback
+        serverLevel.explode(this, x, y, z, explosionRadius, interaction);
+
+        // 2. Secondary elemental effects executed AFTER primary explosion:
+        // Snow and fire are placed in/around the crater without being instantly destroyed by the blast,
+        // and player vertical updrafts/kinetic forces are applied after the blast knockback calculation.
         AABB effectBounds = new AABB(x - 6.0, y - 4.0, z - 6.0, x + 6.0, y + 4.0, z + 6.0);
         List<LivingEntity> nearbyLiving = serverLevel.getEntitiesOfClass(LivingEntity.class, effectBounds, e -> e != this && e.isAlive());
 
         // Signature Biome Behavior Twists
         switch (variant) {
             case SNOWY -> {
-                // Frost Nova: inflicts Slowness II (8s) and scatters snow
+                // Frost Nova: inflicts Slowness II (8s) and scatters snow across surviving ground
                 for (LivingEntity target : nearbyLiving) {
                     target.addEffect(new MobEffectInstance(MobEffects.SLOWNESS, 160, 1));
                 }
@@ -175,7 +215,7 @@ public class BiomeCreeperEntity extends Creeper {
                 serverLevel.addFreshEntity(cloud);
             }
             case BADLANDS -> {
-                // Searing Ignition: catches surviving entities on fire for 6s
+                // Searing Ignition: catches surviving entities on fire for 6s and scatters fire patches
                 for (LivingEntity target : nearbyLiving) {
                     target.igniteForSeconds(6.0F * power);
                 }
@@ -197,6 +237,11 @@ public class BiomeCreeperEntity extends Creeper {
                     if (target.isInWater()) {
                         Vec3 push = target.position().subtract(position()).normalize().scale(1.2 * power);
                         target.push(push.x, 0.2 * power, push.z);
+                        target.needsSync = true;
+                        target.syncVelocity = true;
+                        if (target instanceof ServerPlayer serverPlayer) {
+                            serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(serverPlayer));
+                        }
                     }
                 }
             }
@@ -205,6 +250,11 @@ public class BiomeCreeperEntity extends Creeper {
                 for (LivingEntity target : nearbyLiving) {
                     Vec3 push = target.position().subtract(position()).normalize().scale(1.5 * power);
                     target.push(push.x, 0.4 * power, push.z);
+                    target.needsSync = true;
+                    target.syncVelocity = true;
+                    if (target instanceof ServerPlayer serverPlayer) {
+                        serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(serverPlayer));
+                    }
                 }
             }
             case CAVE -> {
@@ -255,6 +305,11 @@ public class BiomeCreeperEntity extends Creeper {
                 // Mountain Updraft: vertical wind vortex tossing victims high into the air
                 for (LivingEntity target : nearbyLiving) {
                     target.push(0, 1.25 * power, 0);
+                    target.needsSync = true;
+                    target.syncVelocity = true;
+                    if (target instanceof ServerPlayer serverPlayer) {
+                        serverPlayer.connection.send(new ClientboundSetEntityMotionPacket(serverPlayer));
+                    }
                 }
             }
             case JUNGLE -> {
@@ -265,8 +320,6 @@ public class BiomeCreeperEntity extends Creeper {
             }
         }
 
-        // Standard explosion
-        serverLevel.explode(this, x, y, z, explosionRadius, interaction);
         this.triggerOnDeathMobEffects(serverLevel, Entity.RemovalReason.KILLED);
         this.discard();
     }

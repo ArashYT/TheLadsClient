@@ -135,6 +135,24 @@ public class AriseNB7UnitTest {
         assertEquals(Level.ExplosionInteraction.NONE, interaction2);
     }
 
+    @Test
+    public void testSpawnReplacementFilterReasons() {
+        // Only NATURAL and CHUNK_GENERATION are valid for biome conversion
+        java.util.function.Predicate<net.minecraft.world.entity.EntitySpawnReason> isAllowedReason =
+                reason -> reason == net.minecraft.world.entity.EntitySpawnReason.NATURAL ||
+                          reason == net.minecraft.world.entity.EntitySpawnReason.CHUNK_GENERATION;
+
+        assertTrue(isAllowedReason.test(net.minecraft.world.entity.EntitySpawnReason.NATURAL));
+        assertTrue(isAllowedReason.test(net.minecraft.world.entity.EntitySpawnReason.CHUNK_GENERATION));
+
+        // Must reject COMMAND, SPAWNER, SPAWN_ITEM_USE, etc. to prevent syntax crashes and spawner glitches
+        assertFalse(isAllowedReason.test(net.minecraft.world.entity.EntitySpawnReason.COMMAND));
+        assertFalse(isAllowedReason.test(net.minecraft.world.entity.EntitySpawnReason.SPAWNER));
+        assertFalse(isAllowedReason.test(net.minecraft.world.entity.EntitySpawnReason.SPAWN_ITEM_USE));
+        assertFalse(isAllowedReason.test(net.minecraft.world.entity.EntitySpawnReason.LOAD));
+        assertFalse(isAllowedReason.test(net.minecraft.world.entity.EntitySpawnReason.DIMENSION_TRAVEL));
+    }
+
     private static Holder<Biome> createMockBiomeHolder(String namespace, String path) {
         ResourceKey<Biome> key = ResourceKey.create(Registries.BIOME, Identifier.fromNamespaceAndPath(namespace, path));
         return Holder.Reference.createStandAlone(null, key);

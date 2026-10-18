@@ -1,13 +1,18 @@
 package com.thelads.smp.features.arise.nb7;
 
+import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
+import net.fabricmc.fabric.api.biome.v1.BiomeSelectors;
+import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.SpawnEggItem;
 import org.slf4j.Logger;
@@ -57,6 +62,25 @@ public final class AriseNB7Features {
             Registry.register(BuiltInRegistries.ITEM, itemKey, eggItem);
             variant.setSpawnEggItem(eggItem);
         }
+
+        // Register spawn eggs into creative inventory SPAWN_EGGS tab
+        CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.SPAWN_EGGS).register(output -> {
+            for (BiomeCreeperVariant variant : BiomeCreeperVariant.values()) {
+                if (variant.getSpawnEggItem() != null) {
+                    output.accept(variant.getSpawnEggItem());
+                }
+            }
+        });
+
+        // Register natural ocean creeper spawning in aquatic/ocean biomes (vanilla creepers cannot spawn in water)
+        BiomeModifications.addSpawn(
+                BiomeSelectors.tag(BiomeTags.IS_OCEAN),
+                MobCategory.MONSTER,
+                BiomeCreeperVariant.OCEAN.getEntityType(),
+                10,
+                1,
+                2
+        );
 
         LOGGER.info("[LadsSMP-NB7] Successfully registered 15 biome creeper variants, attributes, and spawn eggs.");
     }

@@ -39,8 +39,9 @@ public abstract class MixinMobSpawn {
             return;
         }
 
-        // Avoid replacing on chunk load, dimension travel, or conversion
-        if (reason == EntitySpawnReason.LOAD || reason == EntitySpawnReason.CONVERSION || reason == EntitySpawnReason.DIMENSION_TRAVEL) {
+        // Restrict replacement strictly to natural world spawns and chunk generation.
+        // Exclude COMMAND, SPAWNER, SPAWN_ITEM_USE, and all other artificial or event-driven spawns.
+        if (reason != EntitySpawnReason.NATURAL && reason != EntitySpawnReason.CHUNK_GENERATION) {
             return;
         }
 
@@ -75,7 +76,11 @@ public abstract class MixinMobSpawn {
                 variantEntity.setPowered(true);
             }
             world.addFreshEntity(variantEntity);
-            creeper.discard();
+            if (world instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                serverLevel.getServer().execute(creeper::discard);
+            } else {
+                creeper.discard();
+            }
         }
     }
 }
