@@ -37,6 +37,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private int ladsLayoutWidth;
     @Unique private int ladsLayoutHeight;
     @Unique private Button ladsSettingsButton;
+    @Unique private Button ladsCosmeticsButton;
     @Unique private Button ladsSwitchButton;
     @Unique private Button ladsFullscreenButton;
     @Unique private Button ladsLanguageButton;
@@ -65,6 +66,8 @@ public abstract class TitleScreenMixin extends Screen {
 
         ladsSettingsButton = addRenderableWidget(Button.builder(Component.literal("Lads Mods"),
             button -> minecraft.setScreenAndShow(new LadsSettingsScreen26(this))).bounds(0, 0, 1, 1).build());
+        ladsCosmeticsButton = addRenderableWidget(Button.builder(Component.literal("Cosmetics"),
+            button -> minecraft.setScreenAndShow(new com.thelads.core.v26_2.cosmetics.anim.CosmeticsScreen26(this))).bounds(0, 0, 1, 1).build());
         ladsMoreButton = addRenderableWidget(Button.builder(Component.literal("More..."),
             button -> minecraft.setScreenAndShow(new TitleExtrasScreen26(this, ladsExtraWidgets))).bounds(0, 0, 1, 1).build());
         ladsReplaysButton = addRenderableWidget(Button.builder(Component.literal("Replays"),
@@ -143,7 +146,7 @@ public abstract class TitleScreenMixin extends Screen {
         for (AbstractWidget widget : List.copyOf(ladsTitleWidgets)) {
             String key = ladsMessageKey(widget);
             boolean main = widget == ladsSettingsButton || widget == ladsMoreButton
-                || widget == ladsReplaysButton
+                || widget == ladsReplaysButton || widget == ladsCosmeticsButton
                 || widget == ladsQuitButton || widget == ladsSwitchVersionButton
                 || ladsIsModMenuWidget(widget)
                 || key.equals("menu.singleplayer") || key.equals("menu.playdemo") || key.equals("menu.multiplayer")
@@ -201,15 +204,16 @@ public abstract class TitleScreenMixin extends Screen {
     private int ladsButtonOrder(AbstractWidget widget) {
         if (widget == ladsSettingsButton) return 2;
         if (ladsIsModMenuWidget(widget)) return 3;
-        if (widget == ladsReplaysButton) return 6;
+        if (widget == ladsCosmeticsButton) return 4;
+        if (widget == ladsReplaysButton) return 7;
         if (widget == ladsMoreButton) return 8;
         if (widget == ladsQuitButton || "menu.quit".equals(ladsMessageKey(widget))) return 9;
         if (widget == ladsSwitchVersionButton) return 10;
         return switch (ladsMessageKey(widget)) {
             case "menu.singleplayer", "menu.playdemo" -> 0;
             case "menu.multiplayer" -> 1;
-            case "menu.options" -> 4;
-            case "screen.lads_screenshots.manage_screenshots" -> 5;
+            case "menu.options" -> 5;
+            case "screen.lads_screenshots.manage_screenshots" -> 6;
             default -> 11;
         };
     }
@@ -217,6 +221,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique
     private String ladsButtonIcon(AbstractWidget widget) {
         if (widget == ladsSettingsButton) return "lads";
+        if (widget == ladsCosmeticsButton) return "wardrobe";
         if (widget == ladsMoreButton) return "dots";
         if (widget == ladsReplaysButton) return "replay";
         if (widget == ladsQuitButton) return "quit";
