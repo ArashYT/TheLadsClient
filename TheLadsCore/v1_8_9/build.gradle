@@ -73,6 +73,10 @@ dependencies {
     // Mod code compiles against the downgraded common, whose records extend JvmDowngrader's stubs.
     compileOnly files(tasks.named('downgradeCommon').flatMap { it.archiveFile })
     compileOnly files({ jvmdg.getDowngradedApi(JavaVersion.VERSION_1_8) })
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation files(tasks.named('downgradeCommon').flatMap { it.archiveFile })
+    testImplementation files({ jvmdg.getDowngradedApi(JavaVersion.VERSION_1_8) })
 }
 
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
