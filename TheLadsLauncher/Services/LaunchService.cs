@@ -160,7 +160,6 @@ public class LaunchService : ILaunchService
         // The profile's own value counts like the manifest's, then the policy applies its minimum and (1.8.9) maximum.
         var declaredJava = Math.Max(profile.JavaMajorVersion, manifestJava ?? 0);
         var requiredJava = GameVersionPolicy.GetRequiredJavaMajor(profile.MinecraftVersion, declaredJava > 0 ? declaredJava : null);
-        if (usesFabric) requiredJava = GameVersionPolicy.GetFabricJavaMajor(profile.MinecraftVersion, requiredJava);
         var javaRule = GameVersionPolicy.DescribeJava(profile.MinecraftVersion, requiredJava);
 
         statusCallback?.Invoke($"Verifying Java {requiredJava} runtime...");

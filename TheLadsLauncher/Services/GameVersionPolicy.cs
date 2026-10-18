@@ -137,13 +137,6 @@ public static class GameVersionPolicy
         return Math.Max(minimum, manifestJavaMajor ?? 0);
     }
 
-    /// <summary>
-    /// The Java the launcher runs a plain Fabric profile on: 1.9.12 perf, the Lads 1.20.1 profile on Java 21 (Legion, full pack:
-    /// +9-12 % FPS against Java 17). Forge 1.20.1 packs keep <see cref="GetRequiredJavaMajor"/>'s Java 17.
-    /// </summary>
-    public static int GetFabricJavaMajor(string minecraftVersion, int requiredJava) =>
-        minecraftVersion == "1.20.1" ? Math.Max(requiredJava, 21) : requiredJava;
-
     /// <summary>Whether a runtime reporting <paramref name="actualJava"/> (null: unknown) can run the version.</summary>
     public static bool AcceptsJava(string minecraftVersion, int requiredJava, int? actualJava) => actualJava >= requiredJava;
 

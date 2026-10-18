@@ -775,7 +775,6 @@ try
 
     var java = new JavaService(new PathService(QaShared.RuntimeData));
     int requiredJava = GameVersionPolicy.GetRequiredJavaMajor(version);
-    if (!capabilities.Forge) requiredJava = GameVersionPolicy.GetFabricJavaMajor(version, requiredJava); // as LaunchService (1.20.1: Java 21)
     string javaPath;
     using (await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".java.lock"), ct))
         javaPath = await java.EnsureJavaAsync(requiredJava, cancellationToken: ct);

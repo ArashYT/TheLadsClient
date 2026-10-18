@@ -23,13 +23,6 @@ public class VersionAndInstallationTests
     }
 
     [Theory]
-    [InlineData("1.20.1", 17, 21)] // 1.9.12 perf: the Fabric 1.20.1 profile on Java 21 (Forge 1.20.1 packs keep 17)
-    [InlineData("1.20.1", 25, 25)]
-    [InlineData("26.3", 25, 25)]
-    public void FabricProfilesRunOnTheirPerformanceJava(string version, int required, int expected) =>
-        Assert.Equal(expected, GameVersionPolicy.GetFabricJavaMajor(version, required));
-
-    [Theory]
     [InlineData("../26.2")]
     [InlineData("26.2/other")]
     [InlineData("latest.release")]
