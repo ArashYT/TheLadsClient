@@ -92,6 +92,32 @@ class HudFpsPopupTest {
         }
     }
 
+    /** 1.9.11: HUD FPS, Backgrounds, Text Shadow, Colors and Done stay on screen, apart, and clear of "THE LADS" down to 320 GUI px. */
+    @Test void headerButtonsStayOnScreenAndClearOfTheTitleAtEveryWindowSize() {
+        HudSettings.getInstance().setHudFpsCapEnabled(true);
+        HudSettings.getInstance().setHudFpsLimit(60); // "60 (Recommended)": the widest label
+        String[] ids = {"global-hud-fps", "global-backgrounds", "global-text-shadow", "global-colors", "close"};
+        for (int[] size : new int[][] {{320, 240}, {360, 240}, {427, 240}, {472, 250}, {640, 360}, {960, 540}}) {
+            var ui = new LadsSettingsScreen();
+            var g = new Screen();
+            g.w = size[0]; g.h = size[1];
+            g.frame(ui, -1, -1);
+            String at = " at " + size[0] + "x" + size[1];
+            var rects = new ArrayList<LadsSettingsScreen.Rect>();
+            for (String id : ids) { var r = ui.controlBounds(id); assertNotNull(r, id + at); rects.add(r); }
+            for (int i = 0; i < rects.size(); i++) {
+                var r = rects.get(i);
+                assertTrue(r.x() >= 0 && r.x() + r.width() <= size[0], ids[i] + " " + r + " is on screen" + at);
+                for (int j = i + 1; j < rects.size(); j++) {
+                    var o = rects.get(j);
+                    assertTrue(r.x() + r.width() <= o.x() || o.x() + o.width() <= r.x(), ids[i] + " and " + ids[j] + " overlap" + at);
+                }
+                for (var t : g.texts) if (t.text().equals("THE LADS"))
+                    assertTrue(t.x() + g.textWidth(t.text()) <= r.x(), "THE LADS runs into " + ids[i] + " " + r + at);
+            }
+        }
+    }
+
     @Test void presetsAndTheToggleActWhereTheyAreDrawn() {
         var ui = new LadsSettingsScreen();
         var g = new Screen();

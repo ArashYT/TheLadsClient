@@ -221,7 +221,6 @@ public final class LadsSettingsScreen {
         // The side bar needs room for six categories and Installed mods above Edit HUD (1.9.1 added Hypixel): 356 GUI px.
         int pad = width < 450 ? 10 : 20, side = width >= 530 && height >= 356 ? 118 : 0;
         g.fill(0, 0, width, 2, ACCENT);
-        g.drawText("THE LADS", pad, 15, ACCENT);
         String fpsBtnLabel = "HUD FPS: " + (HudSettings.getInstance().isHudFpsCapEnabled() ? HudSettings.formatFpsLimit(HudSettings.getInstance().getHudFpsLimit()) : "Off");
         int fpsBtnW = Math.max(78, g.textWidth(fpsBtnLabel) + 14);
         // Backgrounds and Text Shadow sit left of Colors; short labels only when the window is too narrow for the full ones.
@@ -230,7 +229,14 @@ public final class LadsSettingsScreen {
         if (width - pad - 116 - shW - 6 - bgW - 6 - fpsBtnW < pad + 60) {
             bgLabel = "BG"; shLabel = "Shadow"; bgW = g.textWidth(bgLabel) + 14; shW = g.textWidth(shLabel) + 14;
         }
+        // Still too narrow (down to 320 GUI px): HUD FPS drops "(Recommended)", so no button leaves the screen.
+        if (width - pad - 116 - shW - 6 - bgW - 6 - fpsBtnW < pad + 60) {
+            fpsBtnLabel = fpsBtnLabel.replace(" (Recommended)", "");
+            fpsBtnW = g.textWidth(fpsBtnLabel) + 14;
+        }
         int shX = width - pad - 116 - shW, bgX = shX - 6 - bgW, fpsX = bgX - 6 - fpsBtnW;
+        // "THE LADS" gives way to the buttons when they reach it.
+        if (fpsX >= pad + g.textWidth("THE LADS") + 6) g.drawText("THE LADS", pad, 15, ACCENT);
         // The title line stops where the HUD FPS button begins ("60 (Recommended)" makes that button wide).
         if (width >= 400) g.drawText(fit(g, modsView ? "INSTALLED MODS" : detail == null ? "MODS / MAKE IT YOURS" : "MODULE SETTINGS", fpsX - 6 - (pad + 68)), pad + 68, 15, MUTED);
         button(g, "global-hud-fps", fpsBtnLabel, new Rect(fpsX, 8, fpsBtnW, 23), this::openHudFpsDialog, true, mouseX, mouseY, fpsDialogOpen);
