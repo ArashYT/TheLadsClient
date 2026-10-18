@@ -8,7 +8,9 @@ import com.thelads.core.client.cosmetics.anim.Emote;
 import com.thelads.core.client.cosmetics.anim.EmoteAnimator;
 import com.thelads.core.client.cosmetics.anim.EmoteLibrary;
 import com.thelads.core.client.cosmetics.anim.EmotePose;
+import com.thelads.core.client.cosmetics.anim.EmoteKeys;
 import com.thelads.core.client.cosmetics.anim.EmoteRules;
+import com.thelads.core.config.ConfigManager;
 import com.thelads.core.v1_20_1.feature.NativeKeyBindings1201;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -22,13 +24,18 @@ import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.player.PlayerModelPart;
 import org.lwjgl.glfw.GLFW;
+import org.slf4j.LoggerFactory;
 
 import static com.thelads.core.client.cosmetics.anim.Emote.*;
 
@@ -41,7 +48,9 @@ public final class EmoteAnim1201 {
     private static final float MODEL_SCALE = 0.9375f;
     /** PlayerRenderer.renderHand (the vanilla first-person arm) runs setupAnim too: no emote there. */
     public static boolean inHand;
+    private static final String VERSION = "1.20.1";
     private static PlayerModel<AbstractClientPlayer> wideArms, slimArms;
+    private static boolean keysChecked;
     private static Entity lastEntity;
     private static EmotePose lastPose;
 
@@ -59,6 +68,7 @@ public final class EmoteAnim1201 {
     }
 
     private static void tick(Minecraft mc) {
+        if (!keysChecked) giveWay(mc);
         LocalPlayer self = mc.player;
         if (self == null) return;
         UUID id = self.getUUID();
@@ -82,6 +92,25 @@ public final class EmoteAnim1201 {
         in.x = self.getX(); in.y = self.getY(); in.z = self.getZ();
         EmoteRules.tick(id);
         pose(self); // the blend-out finishes even while the player is not drawn
+    }
+
+    /** Once per install (first tick, all mods' keys loaded): Xaero's New Waypoint and ReplayMod's Player Overview give B to Emotes. */
+    private static void giveWay(Minecraft mc) {
+        keysChecked = true;
+        if (ConfigManager.emoteKeyClashResolved(VERSION)) return;
+        StringBuilder freed = new StringBuilder();
+        if (KEY.isDefault())
+            for (KeyMapping mapping : mc.options.keyMappings)
+                if (mapping != KEY && EmoteKeys.GIVE_WAY.contains(mapping.getName()) && mapping.same(KEY)) {
+                    mc.options.setKey(mapping, InputConstants.UNKNOWN);
+                    freed.append(freed.length() == 0 ? "" : ", ").append(mapping.getName());
+                }
+        if (freed.length() > 0) {
+            KeyMapping.resetMapping();
+            mc.options.save();
+            LoggerFactory.getLogger("TheLadsCore").info("Lads Emotes: B is the Emotes key; unbound {} (it was on B too), once", freed);
+        }
+        ConfigManager.markEmoteKeyClashResolved(VERSION);
     }
 
     /** A rendered player's emote pose this frame, or null (PlayerRenderer.scale, once per drawn player: one lookup when nobody emotes). */
@@ -139,7 +168,7 @@ public final class EmoteAnim1201 {
      * body's frame, then the model's axes and scale with the eyes at the origin, so ModelPart's own pivot and rotation put the arm where
      * third person has it. Drawn with an arm model of our own (the renderer's belongs to the vanilla hand).
      */
-    public static void firstPersonArms(PoseStack pose, MultiBufferSource buffers, LocalPlayer self, int light, float partialTicks) {
+    public static void firstPersonArms(ItemInHandRenderer items, PoseStack pose, MultiBufferSource buffers, LocalPlayer self, int light, float partialTicks) {
         if (self == null || self.isInvisible()) return;
         EmotePose emote = pose(self);
         if (emote == null || !emote.firstPersonArms()) return;
@@ -151,8 +180,15 @@ public final class EmoteAnim1201 {
         pose.scale(-MODEL_SCALE, -MODEL_SCALE, MODEL_SCALE);
         pose.translate(0, self.getEyeHeight() / MODEL_SCALE - 1.501f, 0);
         ResourceLocation skin = self.getSkinTextureLocation();
-        if (emote.emote.rightArm) arm(model.rightArm, model.rightSleeve, self.isModelPartShown(PlayerModelPart.RIGHT_SLEEVE), RIGHT_ARM, emote, pose, buffers, skin, light);
-        if (emote.emote.leftArm) arm(model.leftArm, model.leftSleeve, self.isModelPartShown(PlayerModelPart.LEFT_SLEEVE), LEFT_ARM, emote, pose, buffers, skin, light);
+        boolean rightMain = self.getMainArm() == HumanoidArm.RIGHT;
+        if (emote.emote.rightArm) {
+            arm(model.rightArm, model.rightSleeve, self.isModelPartShown(PlayerModelPart.RIGHT_SLEEVE), RIGHT_ARM, emote, pose, buffers, skin, light);
+            heldItem(items, model, self, HumanoidArm.RIGHT, rightMain ? self.getMainHandItem() : self.getOffhandItem(), pose, buffers, light);
+        }
+        if (emote.emote.leftArm) {
+            arm(model.leftArm, model.leftSleeve, self.isModelPartShown(PlayerModelPart.LEFT_SLEEVE), LEFT_ARM, emote, pose, buffers, skin, light);
+            heldItem(items, model, self, HumanoidArm.LEFT, rightMain ? self.getOffhandItem() : self.getMainHandItem(), pose, buffers, light);
+        }
         pose.popPose();
     }
 
@@ -166,6 +202,20 @@ public final class EmoteAnim1201 {
         sleeve.copyFrom(arm);
         sleeve.visible = true;
         sleeve.render(pose, buffers.getBuffer(RenderType.entityTranslucent(skin)), light, OverlayTexture.NO_OVERLAY);
+    }
+
+    /** The item in that hand, held as third person holds it (ItemInHandLayer's placement on the hand). */
+    private static void heldItem(ItemInHandRenderer items, PlayerModel<?> model, LocalPlayer self, HumanoidArm arm, ItemStack stack, PoseStack pose,
+                                 MultiBufferSource buffers, int light) {
+        if (stack.isEmpty()) return;
+        boolean left = arm == HumanoidArm.LEFT;
+        pose.pushPose();
+        model.translateToHand(arm, pose);
+        pose.mulPose(Axis.XP.rotationDegrees(-90));
+        pose.mulPose(Axis.YP.rotationDegrees(180));
+        pose.translate((left ? -1 : 1) / 16f, 0.125f, -0.625f);
+        items.renderItem(self, stack, left ? ItemDisplayContext.THIRD_PERSON_LEFT_HAND : ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, left, pose, buffers, light);
+        pose.popPose();
     }
 
     private static PlayerModel<AbstractClientPlayer> arms(boolean slim) {

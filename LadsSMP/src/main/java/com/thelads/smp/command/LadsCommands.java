@@ -105,6 +105,7 @@ public final class LadsCommands {
 
     private static int executeReload(CommandContext<CommandSourceStack> ctx) {
         LadsConfig.load();
+        com.thelads.smp.features.arise.nb8.AriseNB8Config.load();
         ItemDisablerSystem.reload();
         ConsolidatedFeatures.applyAttributeFixes();
 

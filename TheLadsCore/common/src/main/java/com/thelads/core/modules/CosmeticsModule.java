@@ -10,7 +10,8 @@ public class CosmeticsModule extends Module {
 
     public CosmeticsModule() {
         super("Cosmetics", "Emotes other Lads Client players on your server can see. While on (in multiplayer only), your Minecraft name, "
-            + "UUID and a hash of the server address go to the Lads cosmetics server; nothing is stored on disk.");
+            + "UUID and a hash of the server address go to the Lads cosmetics server; nothing is stored on disk. Hold B (Controls: Emotes) "
+            + "for the emote wheel.");
         setEnabled(true);
     }
 }

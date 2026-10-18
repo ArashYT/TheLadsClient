@@ -1,6 +1,8 @@
 package com.thelads.core.client.cosmetics.anim;
 
 import com.thelads.core.client.cosmetics.Emotes;
+import com.thelads.core.config.ModuleManager;
+import com.thelads.core.modules.CosmeticsModule;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -19,6 +21,8 @@ public final class EmoteAnimator {
     static final double REMOTE_MOVE = 0.25;
     private static final long BASE_MS = System.currentTimeMillis(), BASE_NANOS = System.nanoTime();
     private static final Map<UUID, Playback> PLAYBACK = new HashMap<>();
+    private static final String COSMETICS = "Cosmetics";
+    private static CosmeticsModule cosmetics;
 
     private static final class Playback {
         final EmotePose pose = new EmotePose();
@@ -44,6 +48,7 @@ public final class EmoteAnimator {
             if (!PLAYBACK.isEmpty()) PLAYBACK.remove(player);
             return null;
         }
+        if (remote && !showOthers()) return null; // Cosmetics off, or "Show other players' emotes" off: others stay vanilla
         Emote emote = EmoteLibrary.get(playing.id());
         if (emote == null) return null; // an emote this client does not have
         Playback p = PLAYBACK.get(player);
@@ -78,6 +83,16 @@ public final class EmoteAnimator {
         }
         emote.sample(now - p.phaseStart, pose.v);
         return pose;
+    }
+
+    /** The Cosmetics module is on with "Show other players' emotes" (true when there is no such module, as in tests). */
+    static boolean showOthers() {
+        CosmeticsModule module = cosmetics;
+        if (module == null) {
+            if (!(ModuleManager.getInstance().getModule(COSMETICS) instanceof CosmeticsModule found)) return true;
+            cosmetics = module = found;
+        }
+        return module.isEnabled() && module.showOthers.get();
     }
 
     private static float clamp(float v) { return v < 0 ? 0 : v > 1 ? 1 : v; }

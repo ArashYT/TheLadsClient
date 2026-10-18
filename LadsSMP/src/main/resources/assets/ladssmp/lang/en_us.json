@@ -508,5 +508,11 @@
   "entity.ladssmp.hills_creeper": "Hills Creeper",
   "item.ladssmp.hills_creeper_spawn_egg": "Hills Creeper Spawn Egg",
   "entity.ladssmp.spruce_creeper": "Spruce Creeper",
-  "item.ladssmp.spruce_creeper_spawn_egg": "Spruce Creeper Spawn Egg"
+  "item.ladssmp.spruce_creeper_spawn_egg": "Spruce Creeper Spawn Egg",
+  "key.ladssmp.vein_mining": "Vein Mining",
+  "key.ladssmp.cycle_shape": "Cycle Vein Mining Shape",
+  "ladssmp.vein_mining.shape.shapeless": "Shapeless",
+  "ladssmp.vein_mining.shape.small_tunnel": "Small Tunnel (1x2)",
+  "ladssmp.vein_mining.shape.tunnel_3x3": "3x3 Mining Tunnel",
+  "ladssmp.vein_mining.shape_changed": "Vein Mining Shape: %s"
 }

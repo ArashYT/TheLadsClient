@@ -8,7 +8,9 @@ import com.thelads.core.client.cosmetics.anim.Emote;
 import com.thelads.core.client.cosmetics.anim.EmoteAnimator;
 import com.thelads.core.client.cosmetics.anim.EmoteLibrary;
 import com.thelads.core.client.cosmetics.anim.EmotePose;
+import com.thelads.core.client.cosmetics.anim.EmoteKeys;
 import com.thelads.core.client.cosmetics.anim.EmoteRules;
+import com.thelads.core.config.ConfigManager;
 import com.thelads.core.v26_2.feature.NativeKeyBindings;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -28,8 +30,12 @@ import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState;
 import net.minecraft.client.renderer.state.level.PlayerRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.world.entity.Avatar;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.PlayerModelType;
+
+import org.slf4j.LoggerFactory;
 
 import static com.thelads.core.client.cosmetics.anim.Emote.*;
 
@@ -40,7 +46,9 @@ import static com.thelads.core.client.cosmetics.anim.Emote.*;
 public final class EmoteAnim26 {
     public static final KeyMapping KEY = new KeyMapping("key.theladscore.emotes", InputConstants.Type.KEYBOARD, InputConstants.KEY_B, NativeKeyBindings.CATEGORY);
     private static final float MODEL_SCALE = 0.9375f;
+    private static final String VERSION = "26.3";
     private static PlayerModel wideArms, slimArms;
+    private static boolean keysChecked;
 
     private EmoteAnim26() {}
 
@@ -56,6 +64,7 @@ public final class EmoteAnim26 {
     }
 
     private static void tick(Minecraft mc) {
+        if (!keysChecked) giveWay(mc);
         LocalPlayer self = mc.player;
         if (self == null) return;
         UUID id = self.getUUID();
@@ -79,6 +88,25 @@ public final class EmoteAnim26 {
         in.x = self.getX(); in.y = self.getY(); in.z = self.getZ();
         EmoteRules.tick(id);
         pose(self); // the blend-out finishes even while the player is not drawn
+    }
+
+    /** Once per install (first tick, all mods' keys loaded): Xaero's New Waypoint gives B to Emotes when both are on it (EmoteKeys). */
+    private static void giveWay(Minecraft mc) {
+        keysChecked = true;
+        if (ConfigManager.emoteKeyClashResolved(VERSION)) return;
+        StringBuilder freed = new StringBuilder();
+        if (KEY.isDefault())
+            for (KeyMapping mapping : mc.options.keyMappings)
+                if (mapping != KEY && EmoteKeys.GIVE_WAY.contains(mapping.getName()) && mapping.same(KEY)) {
+                    mapping.setKey(InputConstants.UNKNOWN);
+                    freed.append(freed.length() == 0 ? "" : ", ").append(mapping.getName());
+                }
+        if (freed.length() > 0) {
+            KeyMapping.resetMapping();
+            mc.options.save();
+            LoggerFactory.getLogger("TheLadsCore").info("Lads Emotes: B is the Emotes key; unbound {} (it was on B too), once", freed);
+        }
+        ConfigManager.markEmoteKeyClashResolved(VERSION);
     }
 
     /** A rendered player's emote pose this frame, or null. */
@@ -132,8 +160,14 @@ public final class EmoteAnim26 {
         pose.scale(-MODEL_SCALE, -MODEL_SCALE, MODEL_SCALE);
         pose.translate(0, self.getEyeHeight() / MODEL_SCALE - 1.501f, 0);
         RenderType type = RenderTypes.entityTranslucent(avatar.skin.body().texturePath());
-        if (emote.emote.rightArm) arm(model.rightArm, model.rightSleeve, avatar.showRightSleeve, RIGHT_ARM, emote, pose, collector, type, avatar.lightCoords);
-        if (emote.emote.leftArm) arm(model.leftArm, model.leftSleeve, avatar.showLeftSleeve, LEFT_ARM, emote, pose, collector, type, avatar.lightCoords);
+        if (emote.emote.rightArm) {
+            arm(model.rightArm, model.rightSleeve, avatar.showRightSleeve, RIGHT_ARM, emote, pose, collector, type, avatar.lightCoords);
+            heldItem(model, avatar, HumanoidArm.RIGHT, avatar.rightHandItemState, pose, collector);
+        }
+        if (emote.emote.leftArm) {
+            arm(model.leftArm, model.leftSleeve, avatar.showLeftSleeve, LEFT_ARM, emote, pose, collector, type, avatar.lightCoords);
+            heldItem(model, avatar, HumanoidArm.LEFT, avatar.leftHandItemState, pose, collector);
+        }
         pose.popPose();
     }
 
@@ -145,6 +179,19 @@ public final class EmoteAnim26 {
         arm.visible = true;
         sleeve.visible = sleeveShown;
         collector.submitModelPart(arm, pose, type, light, OverlayTexture.NO_OVERLAY, null);
+    }
+
+    /** The item in that hand, held as third person holds it (ItemInHandLayer's placement on the hand). */
+    private static void heldItem(PlayerModel model, AvatarRenderState avatar, HumanoidArm arm, ItemStackRenderState item, PoseStack pose,
+                                 SubmitNodeCollector collector) {
+        if (item.isEmpty()) return;
+        pose.pushPose();
+        model.translateToHand(avatar, arm, pose);
+        pose.rotateDegrees(Axis.XP, -90);
+        pose.rotateDegrees(Axis.YP, 180);
+        pose.translate((arm == HumanoidArm.LEFT ? -1 : 1) / 16f, 2 / 16f, -10 / 16f);
+        item.submit(pose, collector, avatar.lightCoords, OverlayTexture.NO_OVERLAY, 0);
+        pose.popPose();
     }
 
     private static PlayerModel arms(boolean slim) {

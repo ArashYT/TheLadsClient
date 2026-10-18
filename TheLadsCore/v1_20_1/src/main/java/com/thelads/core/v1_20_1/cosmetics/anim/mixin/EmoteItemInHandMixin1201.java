@@ -30,6 +30,6 @@ public class EmoteItemInHandMixin1201 {
     @Inject(method = "renderHandsWithItems", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/MultiBufferSource$BufferSource;endBatch()V"))
     private void lads$emoteArms(float partialTicks, PoseStack pose, MultiBufferSource.BufferSource buffers, LocalPlayer player, int light,
                                 CallbackInfo callback) {
-        EmoteAnim1201.firstPersonArms(pose, buffers, player, light, partialTicks);
+        EmoteAnim1201.firstPersonArms((ItemInHandRenderer) (Object) this, pose, buffers, player, light, partialTicks);
     }
 }
