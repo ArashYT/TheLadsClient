@@ -80,9 +80,12 @@ public final class ExplosionFlashes {
         while (i < count) {
             ages[i]++;
             if (ages[i] >= durations[i]) {
-                // Expired: swap with the last active entry and reuse the slot ID
+                // Expired: move the last active entry into slot i, preserving its ID
                 count--;
                 if (i < count) {
+                    int expiredId = ids[i];
+                    ids[i] = ids[count];
+                    ids[count] = expiredId;
                     xs[i] = xs[count];
                     ys[i] = ys[count];
                     zs[i] = zs[count];
@@ -98,6 +101,9 @@ public final class ExplosionFlashes {
     /** Clears all active flashes (e.g. on world change, reset, or disconnect). */
     public void reset() {
         count = 0;
+        for (int i = 0; i < MAX_FLASHES; i++) {
+            ids[i] = FIRST_ID - i;
+        }
     }
 
     public int count() { return count; }

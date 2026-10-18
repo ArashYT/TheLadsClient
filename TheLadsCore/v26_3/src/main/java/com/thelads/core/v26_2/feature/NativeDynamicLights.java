@@ -10,9 +10,12 @@ import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.DynamicLightsModule;
 import java.io.Reader;
-import java.lang.reflect.Method;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,11 +60,12 @@ import org.slf4j.LoggerFactory;
 /**
  * Dynamic Lights on 26.x; common DynamicLights does the light and decides what to rebuild. Each client tick this lists the light
  * sources near the player: held and dropped items, worn armor, glowing items in frames, primed TNT, swelling creepers, explosion flashes,
- * burning entities and naturally glowing mobs/projectiles (vanilla + modded SMP items/entities).
+ * burning entities and naturally glowing mobs/projectiles (vanilla + modded SMP items/entities with wet/dry luminance).
  * Chunk meshing and entity rendering take the brighter light through DynamicLightsBlockMixin and DynamicLightsEntityMixin.
  */
 public final class NativeDynamicLights {
     private static final double RANGE = 64;
+    // Values stored packed: (dry << 16) | (wet & 0xFFFF)
     private static final Map<EntityType<?>, Integer> ENTITY_LUMINANCE = new IdentityHashMap<>();
     private static final Map<Item, Integer> ITEM_LUMINANCE = new IdentityHashMap<>();
 
@@ -75,9 +79,15 @@ public final class NativeDynamicLights {
     private static DynamicLightsModule module;
     private static ClientLevel level;
 
-    // dynamiclantern waist equipment reflection cache
-    private static Method waistItemsMethod;
-    private static Method stackMethod;
+    // dynamiclantern waist equipment cache (MethodHandles resolved once, cached by entity ID for up to 10 ticks, zero allocation)
+    private static final int WAIST_CAP = 128;
+    private static final int WAIST_MASK = 127;
+    private static final int[] WAIST_ENTITY_IDS = new int[WAIST_CAP];
+    private static final int[] WAIST_LIGHT_DRY = new int[WAIST_CAP];
+    private static final int[] WAIST_LIGHT_WET = new int[WAIST_CAP];
+    private static final long[] WAIST_UPDATE_TICK = new long[WAIST_CAP];
+    private static MethodHandle waistItemsHandle;
+    private static MethodHandle stackHandle;
     private static boolean checkedWaist;
 
     private NativeDynamicLights() {}
@@ -114,6 +124,7 @@ public final class NativeDynamicLights {
         if (mc.level != level) {
             lights.reset();
             ExplosionFlashes.WORLD.reset();
+            Arrays.fill(WAIST_ENTITY_IDS, 0);
             level = mc.level;
         }
         if (level == null || mc.player == null) return;
@@ -123,9 +134,10 @@ public final class NativeDynamicLights {
             if (module.explosionsAndTnt()) {
                 ExplosionFlashes.WORLD.collect(lights);
             }
+            long curTick = ticks;
             for (Entity entity : level.entitiesForRendering()) {
                 if (entity.distanceToSqr(mc.player) > RANGE * RANGE) continue;
-                int light = luminance(entity, entity == mc.player);
+                int light = luminance(entity, entity == mc.player, curTick);
                 if (light > 0) lights.add(entity.getId(), entity.getX(), entity.getEyeY(), entity.getZ(), light);
             }
         }
@@ -137,6 +149,10 @@ public final class NativeDynamicLights {
 
     /** The local player always counts; other entities with Entities on, dropped items with Dropped Items on. */
     static int luminance(Entity entity, boolean self) {
+        return luminance(entity, self, ticks);
+    }
+
+    static int luminance(Entity entity, boolean self, long curTick) {
         boolean wet = entity.isUnderWater();
         if (entity instanceof ItemEntity item) return module.droppedItems() ? luminance(item.getItem(), wet) : 0;
         if (!self && !module.entities()) return 0;
@@ -165,7 +181,7 @@ public final class NativeDynamicLights {
             return frameLight;
         }
 
-        // Glowing mobs & projectiles
+        // Glowing mobs & projectiles (with wet/dry luminance awareness)
         int light = 0;
         if (entity.isOnFire()) {
             light = 15;
@@ -173,7 +189,8 @@ public final class NativeDynamicLights {
             if (entity instanceof WitherSkull skull) {
                 light = skull.isDangerous() ? 14 : 10;
             } else {
-                light = ENTITY_LUMINANCE.getOrDefault(entity.getType(), 0);
+                int packed = ENTITY_LUMINANCE.getOrDefault(entity.getType(), 0);
+                light = wet ? (packed & 0xFFFF) : (packed >>> 16);
             }
         }
 
@@ -185,7 +202,7 @@ public final class NativeDynamicLights {
             light = Math.max(light, Math.max(luminance(living.getItemBySlot(EquipmentSlot.LEGS), wet),
                     luminance(living.getItemBySlot(EquipmentSlot.FEET), wet)));
             if (entity instanceof Player player) {
-                light = Math.max(light, waistLuminance(player, wet));
+                light = Math.max(light, waistLuminance(player, wet, curTick));
             }
         }
         return light;
@@ -202,51 +219,78 @@ public final class NativeDynamicLights {
             if (wet && !module.underwater() && (block instanceof BaseTorchBlock || block instanceof CampfireBlock)) return 0;
             return block.defaultBlockState().getLightEmission();
         }
-        return ITEM_LUMINANCE.getOrDefault(item, 0);
+        int packed = ITEM_LUMINANCE.getOrDefault(item, 0);
+        return wet ? (packed & 0xFFFF) : (packed >>> 16);
     }
 
-    private static int waistLuminance(Player player, boolean wet) {
-        if (!checkedWaist) {
-            checkedWaist = true;
-            try {
-                Class<?> cacheClass = Class.forName("org.com.dynamiclantern.WaistItemCache");
-                waistItemsMethod = cacheClass.getMethod("getVisibleWaistItemsOrRefresh", Player.class);
-                Class<?> itemClass = Class.forName("org.com.dynamiclantern.WaistItemCache$CachedItem");
-                stackMethod = itemClass.getMethod("stack");
-            } catch (Throwable ignored) {}
-        }
-        if (waistItemsMethod == null) return 0;
+    private static void initWaistHandles() {
+        if (checkedWaist) return;
+        checkedWaist = true;
         try {
-            @SuppressWarnings("unchecked")
-            List<?> items = (List<?>) waistItemsMethod.invoke(null, player);
-            if (items == null || items.isEmpty()) return 0;
-            int best = 0;
-            for (Object item : items) {
-                ItemStack stack = (ItemStack) stackMethod.invoke(item);
-                if (stack != null && !stack.isEmpty()) {
-                    best = Math.max(best, luminance(stack, wet));
+            Class<?> cacheClass = Class.forName("org.com.dynamiclantern.WaistItemCache");
+            MethodType mtWaist = MethodType.methodType(List.class, Player.class);
+            waistItemsHandle = MethodHandles.publicLookup().findStatic(cacheClass, "getVisibleWaistItemsOrRefresh", mtWaist);
+            Class<?> itemClass = Class.forName("org.com.dynamiclantern.WaistItemCache$CachedItem");
+            MethodType mtStack = MethodType.methodType(ItemStack.class);
+            stackHandle = MethodHandles.publicLookup().findVirtual(itemClass, "stack", mtStack);
+        } catch (Throwable ignored) {
+            waistItemsHandle = null;
+            stackHandle = null;
+        }
+    }
+
+    private static int waistLuminance(Player player, boolean wet, long curTick) {
+        initWaistHandles();
+        if (waistItemsHandle == null || stackHandle == null) return 0;
+        int entityId = player.getId();
+        int slot = entityId & WAIST_MASK;
+        if (WAIST_ENTITY_IDS[slot] == entityId && (curTick - WAIST_UPDATE_TICK[slot] < 10)) {
+            return wet ? WAIST_LIGHT_WET[slot] : WAIST_LIGHT_DRY[slot];
+        }
+        int bestDry = 0, bestWet = 0;
+        try {
+            List<?> items = (List<?>) waistItemsHandle.invokeExact(player);
+            if (items != null) {
+                int size = items.size();
+                for (int i = 0; i < size; i++) {
+                    Object item = items.get(i);
+                    ItemStack stack = (ItemStack) stackHandle.invoke(item);
+                    if (stack != null && !stack.isEmpty()) {
+                        bestDry = Math.max(bestDry, luminance(stack, false));
+                        bestWet = Math.max(bestWet, luminance(stack, true));
+                    }
                 }
             }
-            return best;
-        } catch (Throwable ignored) {
-            return 0;
-        }
+        } catch (Throwable ignored) {}
+        WAIST_ENTITY_IDS[slot] = entityId;
+        WAIST_LIGHT_DRY[slot] = bestDry;
+        WAIST_LIGHT_WET[slot] = bestWet;
+        WAIST_UPDATE_TICK[slot] = curTick;
+        return wet ? bestWet : bestDry;
+    }
+
+    private static void putEntity(EntityType<?> type, int dry, int wet) {
+        ENTITY_LUMINANCE.put(type, (dry << 16) | (wet & 0xFFFF));
+    }
+
+    private static void putEntity(EntityType<?> type, int lum) {
+        putEntity(type, lum, lum);
     }
 
     private static void initLuminanceTables() {
         // Built-in vanilla glowing mobs & projectiles
-        ENTITY_LUMINANCE.put(EntityTypes.BLAZE, 12);
-        ENTITY_LUMINANCE.put(EntityTypes.MAGMA_CUBE, 10);
-        ENTITY_LUMINANCE.put(EntityTypes.GLOW_SQUID, 9);
-        ENTITY_LUMINANCE.put(EntityTypes.ALLAY, 8);
-        ENTITY_LUMINANCE.put(EntityTypes.VEX, 8);
-        ENTITY_LUMINANCE.put(EntityTypes.FIREBALL, 14);
-        ENTITY_LUMINANCE.put(EntityTypes.SMALL_FIREBALL, 12);
-        ENTITY_LUMINANCE.put(EntityTypes.DRAGON_FIREBALL, 14);
-        ENTITY_LUMINANCE.put(EntityTypes.SPECTRAL_ARROW, 8);
-        ENTITY_LUMINANCE.put(EntityTypes.END_CRYSTAL, 15);
-        ENTITY_LUMINANCE.put(EntityTypes.LIGHTNING_BOLT, 15);
-        ENTITY_LUMINANCE.put(EntityTypes.EXPERIENCE_ORB, 6);
+        putEntity(EntityTypes.BLAZE, 12);
+        putEntity(EntityTypes.MAGMA_CUBE, 10);
+        putEntity(EntityTypes.GLOW_SQUID, 9);
+        putEntity(EntityTypes.ALLAY, 8);
+        putEntity(EntityTypes.VEX, 8);
+        putEntity(EntityTypes.FIREBALL, 14);
+        putEntity(EntityTypes.SMALL_FIREBALL, 12);
+        putEntity(EntityTypes.DRAGON_FIREBALL, 14);
+        putEntity(EntityTypes.SPECTRAL_ARROW, 8);
+        putEntity(EntityTypes.END_CRYSTAL, 15);
+        putEntity(EntityTypes.LIGHTNING_BOLT, 15);
+        putEntity(EntityTypes.EXPERIENCE_ORB, 6);
 
         // Built-in Lads SMP modded items & entities
         registerItem("friendsandfoes:wildfire_crown", 14);
@@ -257,15 +301,15 @@ public final class NativeDynamicLights {
         registerItem("relics_artifacts:echo_dust", 6);
         registerItem("usefulhats:mining_hat", 14);
         registerItem("usefulhats:halo", 12);
-        registerItem("naturalist:firefly", 8);
+        registerItem("naturalist:firefly", 8, 0); // goes out underwater
         registerItem("naturalist:glow_goop", 9);
         registerItem("naturalist:anglerfish", 7);
         registerItem("naturalist:anglerfish_bucket", 7);
         registerItem("naturalist:jellyfish_bucket", 6);
         registerItem("bitsandbalance:bundle_candle", 14);
 
-        registerEntity("friendsandfoes:wildfire", 10);
-        registerEntity("naturalist:firefly", 8);
+        registerEntity("friendsandfoes:wildfire", 10, 4); // 10 dry, 4 wet per LambDynamicLights data
+        registerEntity("naturalist:firefly", 8, 0);
 
         // Data-driven LambDynamicLights / dynamiclights tags and definitions shipped in mod jars
         try {
@@ -321,15 +365,18 @@ public final class NativeDynamicLights {
                     JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
                     if (json.has("match") && json.getAsJsonObject("match").has("type")) {
                         String typeId = json.getAsJsonObject("match").get("type").getAsString();
-                        int lum = 0;
                         if (json.has("luminance")) {
                             JsonElement lElem = json.get("luminance");
-                            if (lElem.isJsonPrimitive()) lum = lElem.getAsInt();
-                            else if (lElem.isJsonObject() && lElem.getAsJsonObject().has("dry")) {
-                                lum = lElem.getAsJsonObject().get("dry").getAsInt();
+                            if (lElem.isJsonPrimitive()) {
+                                int lum = lElem.getAsInt();
+                                if (lum > 0) registerEntity(typeId, lum);
+                            } else if (lElem.isJsonObject()) {
+                                JsonObject obj = lElem.getAsJsonObject();
+                                int dry = obj.has("dry") ? obj.get("dry").getAsInt() : 0;
+                                int wet = obj.has("wet") ? obj.get("wet").getAsInt() : dry;
+                                if (dry > 0 || wet > 0) registerEntity(typeId, dry, wet);
                             }
                         }
-                        if (lum > 0) registerEntity(typeId, lum);
                     }
                 } catch (Throwable ignored) {}
             });
@@ -345,38 +392,49 @@ public final class NativeDynamicLights {
                     JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
                     if (json.has("match") && json.getAsJsonObject("match").has("item")) {
                         String itemId = json.getAsJsonObject("match").get("item").getAsString();
-                        int lum = 0;
                         if (json.has("luminance")) {
                             JsonElement lElem = json.get("luminance");
-                            if (lElem.isJsonPrimitive()) lum = lElem.getAsInt();
-                            else if (lElem.isJsonObject() && lElem.getAsJsonObject().has("dry")) {
-                                lum = lElem.getAsJsonObject().get("dry").getAsInt();
+                            if (lElem.isJsonPrimitive()) {
+                                int lum = lElem.getAsInt();
+                                if (lum > 0) registerItem(itemId, lum);
+                            } else if (lElem.isJsonObject()) {
+                                JsonObject obj = lElem.getAsJsonObject();
+                                int dry = obj.has("dry") ? obj.get("dry").getAsInt() : 0;
+                                int wet = obj.has("wet") ? obj.get("wet").getAsInt() : dry;
+                                if (dry > 0 || wet > 0) registerItem(itemId, dry, wet);
                             }
                         }
-                        if (lum > 0) registerItem(itemId, lum);
                     }
                 } catch (Throwable ignored) {}
             });
         } catch (Throwable ignored) {}
     }
 
-    private static void registerItem(String idStr, int lum) {
+    private static void registerItem(String idStr, int dry, int wet) {
         Identifier id = Identifier.tryParse(idStr);
         if (id == null) return;
         if (BuiltInRegistries.ITEM.containsKey(id)) {
             Item item = BuiltInRegistries.ITEM.getValue(id);
             if (item != Items.AIR) {
-                ITEM_LUMINANCE.put(item, lum);
+                ITEM_LUMINANCE.put(item, (dry << 16) | (wet & 0xFFFF));
             }
         }
     }
 
-    private static void registerEntity(String idStr, int lum) {
+    private static void registerItem(String idStr, int lum) {
+        registerItem(idStr, lum, lum);
+    }
+
+    private static void registerEntity(String idStr, int dry, int wet) {
         Identifier id = Identifier.tryParse(idStr);
         if (id == null) return;
         if (BuiltInRegistries.ENTITY_TYPE.containsKey(id)) {
             EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getValue(id);
-            ENTITY_LUMINANCE.put(type, lum);
+            ENTITY_LUMINANCE.put(type, (dry << 16) | (wet & 0xFFFF));
         }
+    }
+
+    private static void registerEntity(String idStr, int lum) {
+        registerEntity(idStr, lum, lum);
     }
 }

@@ -102,4 +102,50 @@ class ExplosionFlashesTest {
         lights.end(15, 0.25f, 1, (a, b, c, d, e, f) -> {});
         assertEquals(15, lights.at(5, 64, 5), "dynamic light is present at flash location");
     }
+
+    @Test
+    void threeFlashesWithStaggeredExpiryKeepStableIdsAndPositionsEveryTick() {
+        // Flash 1 at (10, 60, 10), power 1.5 -> duration = max(4, round(1.5*2.5)) = 4 ticks
+        // Flash 2 at (20, 70, 20), power 3.2 -> duration = round(3.2*2.5) = 8 ticks
+        // Flash 3 at (30, 80, 30), power 4.8 -> duration = round(4.8*2.5) = 12 ticks
+        flashes.add(10.0, 60.0, 10.0, 1.5f);
+        flashes.add(20.0, 70.0, 20.0, 3.2f);
+        flashes.add(30.0, 80.0, 30.0, 4.8f);
+
+        int id1 = flashes.id(0);
+        int id2 = flashes.id(1);
+        int id3 = flashes.id(2);
+        assertNotEquals(id1, id2);
+        assertNotEquals(id2, id3);
+        assertNotEquals(id1, id3);
+
+        for (int t = 1; t <= 15; t++) {
+            flashes.tick();
+            for (int i = 0; i < flashes.count(); i++) {
+                int id = flashes.id(i);
+                double x = flashes.x(i);
+                double y = flashes.y(i);
+                double z = flashes.z(i);
+                if (id == id1) {
+                    assertEquals(10.0, x, 0.001);
+                    assertEquals(60.0, y, 0.001);
+                    assertEquals(10.0, z, 0.001);
+                    assertTrue(t < 4, "Flash 1 should expire at tick 4");
+                } else if (id == id2) {
+                    assertEquals(20.0, x, 0.001);
+                    assertEquals(70.0, y, 0.001);
+                    assertEquals(20.0, z, 0.001);
+                    assertTrue(t < 8, "Flash 2 should expire at tick 8");
+                } else if (id == id3) {
+                    assertEquals(30.0, x, 0.001);
+                    assertEquals(80.0, y, 0.001);
+                    assertEquals(30.0, z, 0.001);
+                    assertTrue(t < 12, "Flash 3 should expire at tick 12");
+                } else {
+                    fail("Unexpected flash id: " + id);
+                }
+            }
+        }
+        assertEquals(0, flashes.count(), "All flashes should be expired after 15 ticks");
+    }
 }

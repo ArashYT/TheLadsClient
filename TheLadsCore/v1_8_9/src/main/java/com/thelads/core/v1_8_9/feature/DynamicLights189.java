@@ -16,6 +16,7 @@ import net.minecraft.entity.item.EntityEnderCrystal;
 import net.minecraft.entity.item.EntityMinecartTNT;
 import net.minecraft.entity.item.EntityTNTPrimed;
 import net.minecraft.entity.item.EntityXPOrb;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 import org.apache.logging.log4j.LogManager;
@@ -131,42 +132,62 @@ public final class DynamicLights189 {
         ExplosionFlashes.WORLD.tick();
         if (mc.theWorld != null && module.isEnabled() && module.explosionsAndTnt() && entityLightLevels != null) {
             int count = ExplosionFlashes.WORLD.count();
+            int activeMask = 0;
             for (int i = 0; i < count; i++) {
-                int id = ExplosionFlashes.FIRST_ID - i;
-                double x = ExplosionFlashes.WORLD.x(i);
-                double y = ExplosionFlashes.WORLD.y(i);
-                double z = ExplosionFlashes.WORLD.z(i);
-                int lum = ExplosionFlashes.WORLD.luminance(i);
-                Entity existing = mc.theWorld.getEntityByID(id);
-                if (existing == null) {
-                    FlashEntity flash = createFlash(i, mc.theWorld, x, y, z);
-                    mc.theWorld.addEntityToWorld(id, flash);
-                } else {
-                    existing.setPosition(x, y, z);
+                int id = ExplosionFlashes.WORLD.id(i);
+                int slot = ExplosionFlashes.FIRST_ID - id;
+                if (slot >= 0 && slot < ExplosionFlashes.MAX_FLASHES) {
+                    activeMask |= (1 << slot);
+                    double x = ExplosionFlashes.WORLD.x(i);
+                    double y = ExplosionFlashes.WORLD.y(i);
+                    double z = ExplosionFlashes.WORLD.z(i);
+                    int lum = ExplosionFlashes.WORLD.luminance(i);
+                    Entity existing = mc.theWorld.getEntityByID(id);
+                    if (existing == null) {
+                        FlashEntity flash = createFlash(slot, mc.theWorld, x, y, z);
+                        mc.theWorld.addEntityToWorld(id, flash);
+                    } else {
+                        existing.setPosition(x, y, z);
+                    }
+                    entityLightLevels.put(FLASH_CLASSES[slot], lum);
                 }
-                entityLightLevels.put(FLASH_CLASSES[i], lum);
             }
             // Remove any inactive slots
-            for (int i = count; i < ExplosionFlashes.MAX_FLASHES; i++) {
-                int id = ExplosionFlashes.FIRST_ID - i;
-                if (mc.theWorld.getEntityByID(id) != null) {
-                    mc.theWorld.removeEntityFromWorld(id);
+            for (int slot = 0; slot < ExplosionFlashes.MAX_FLASHES; slot++) {
+                if ((activeMask & (1 << slot)) == 0) {
+                    int id = ExplosionFlashes.FIRST_ID - slot;
+                    if (mc.theWorld.getEntityByID(id) != null) {
+                        mc.theWorld.removeEntityFromWorld(id);
+                    }
+                    entityLightLevels.remove(FLASH_CLASSES[slot]);
                 }
-                entityLightLevels.remove(FLASH_CLASSES[i]);
             }
         } else if (mc.theWorld != null && entityLightLevels != null) {
-            for (int i = 0; i < ExplosionFlashes.MAX_FLASHES; i++) {
-                int id = ExplosionFlashes.FIRST_ID - i;
+            for (int slot = 0; slot < ExplosionFlashes.MAX_FLASHES; slot++) {
+                int id = ExplosionFlashes.FIRST_ID - slot;
                 if (mc.theWorld.getEntityByID(id) != null) {
                     mc.theWorld.removeEntityFromWorld(id);
                 }
-                entityLightLevels.remove(FLASH_CLASSES[i]);
+                entityLightLevels.remove(FLASH_CLASSES[slot]);
             }
         }
     }
 
     /** Whether it registered as built in (OptiFine's dynamic lights setting found). */
     public static boolean available() { return setting != null; }
+
+    /** Evaluates the dynamic light emission of an item stack in 1.8.9. */
+    public static int itemLuminance(ItemStack stack) {
+        if (stack == null || stack.getItem() == null) return 0;
+        net.minecraft.item.Item item = stack.getItem();
+        if (item == net.minecraft.init.Items.lava_bucket) return 15;
+        if (item == net.minecraft.init.Items.blaze_rod) return 10;
+        if (item == net.minecraft.init.Items.glowstone_dust) return 8;
+        if (item == net.minecraft.init.Items.prismarine_crystals) return 8;
+        if (item == net.minecraft.init.Items.magma_cream) return 8;
+        net.minecraft.block.Block block = net.minecraft.block.Block.getBlockFromItem(item);
+        return block != null ? block.getLightValue() : 0;
+    }
 
     static DynamicLightsModule module() { return (DynamicLightsModule) Options189.module(DynamicLightsModule.NAME); }
 
