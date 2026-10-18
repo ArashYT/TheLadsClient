@@ -14,8 +14,9 @@ import org.lwjgl.opengl.GLContext;
  * the top of the game loop, then the window's input is pumped again, so the ticks see clicks and keys made during the frame
  * limiter's sleep (vanilla pumps it in Display.update, before that sleep). RawMouse189 already reads the camera's motion later
  * still, right before the camera turns. Always on, no setting; kill switch -Dlads.reflex=false; no OpenGL 3.2 or any failure
- * turns it off for the session. Above ~2,000 FPS it steps aside (1.9.12): the queue it trims is under a millisecond there, while its
- * fence and wait per frame cost ~7% of the frame rate (2,690 -> 2,884 FPS in the 1.9.12 bench); below ~1,400 FPS it paces again.
+ * turns it off for the session. Above ~1,000 FPS it steps aside (1.9.13; ~2,000 in 1.9.12): the queue it trims is under ~2 ms
+ * there, while its fence, wait and second input pump per frame cost ~4% of the frame rate on a GTX 1660 Ti laptop (1,600 -> 1,674
+ * FPS, 1.9.13 bench) and ~7% at 2,700 FPS on Arash-PC (1.9.12); below ~700 FPS it paces again.
  *
  * <p>Buffered raw input (the Ixeris remake) does not apply to 1.8.9: LWJGL 2 registers no raw input; it takes mouse motion from
  * WM_MOUSEMOVE, which Windows coalesces into at most one message per pump however fast the mouse polls, and RawMouse189's JInput
@@ -27,7 +28,7 @@ public final class InputLatency189 {
     private static boolean reflex = !"false".equalsIgnoreCase(System.getProperty("lads.reflex")), checked;
     private static Object previous, older; // GlFence189 fences
     /** Frame-to-frame time (average of the last ~16) under which pacing steps aside, and over which it comes back. */
-    static final long FAST_NS = 500_000L, SLOW_NS = 700_000L;
+    static final long FAST_NS = 1_000_000L, SLOW_NS = 1_400_000L;
     private static long lastFrame, interval;
     private static boolean fast;
     /** QA: Probe145 and ProbeInput189 pause the pacing for their with/without comparisons; ProbeInput189's latency meter. */
