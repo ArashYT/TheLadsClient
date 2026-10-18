@@ -180,8 +180,6 @@ public final class SkinLayers1201 {
         return new ModelPart[] {model.hat, model.jacket, model.rightSleeve, model.leftSleeve, model.rightPants, model.leftPants};
     }
 
-    private static final boolean SODIUM = FabricLoader.getInstance().isModLoaded("sodium");
-
     /** One part's quads in that part's pose, written as vanilla's ModelPart.Cube writes its own. */
     private static void draw(float[] quads, ModelPart part, PoseStack pose, VertexConsumer out, int light, int overlay) {
         if (quads.length == 0) return;
@@ -189,10 +187,6 @@ public final class SkinLayers1201 {
         part.translateAndRotate(pose);
         Matrix4f matrix = pose.last().pose();
         Matrix3f normals = pose.last().normal();
-        if (SODIUM && SkinLayersSodium1201.draw(quads, matrix, normals, out, light, overlay)) { // 1.9.12 perf: Sodium's vertex writer
-            pose.popPose();
-            return;
-        }
         for (int q = 0; q < quads.length; q += VoxelMesh.FLOATS) {
             normals.transform(quads[q + 14], quads[q + 15], quads[q + 16], NORMAL);
             float u = quads[q + 12], v = quads[q + 13];
