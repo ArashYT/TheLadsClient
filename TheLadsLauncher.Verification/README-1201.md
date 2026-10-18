@@ -100,6 +100,7 @@ and the run ends when it finishes (log: `Lads qa script END: N passed, M failed`
 | `ui pose` | the next frame of a Lads settings screen logs `Lads qa pose ...` lines: the translation of the GuiGraphics pose before the vanilla HUD, after it, and at the screen (all 0 unless an overlay leaked a pose push) |
 | `ui silence <ms>` | SignalLoss sees the server silent for that long (0 = the real connection); the toast shows 5 s after the module became eligible |
 | `kbcap [skin id,...]` | holds the Kill Banner at the frames the 26.3 capture uses and writes the banner crops to `screenshots\kb172\kb-<skin>-v<variant>-k<kills>-f<frame>.png`, to compare with the 26.3 frames of the same name (`LADS_VERIFY_CAPTURE_KILLBANNER=1`) |
+| `channels [name]` | quiet-channels check (1.9.12, `QuietChannelsQa1201`): logs what the client announces (receivers) and what the integrated server heard, and fails if a hypixel:* or appleskin:* channel is in either before the first ping (a name containing "after" means the ping went out): `Lads quiet channels <name>: PASS|FAIL`, `Lads quiet channels END: N checks, M failed`. The `hypixel` step and the `# items-qa` probe take their own samples |
 | `quit` | stops the game |
 
 Example (`artifacts\1.8.5\<lane>\test.txt`):
@@ -118,6 +119,8 @@ cmd /time set night
 wait 10
 shot night
 ```
+
+26.3 quiet channels (1.9.12, `QuietChannelsQa26`): the auto-world run samples the client's announced channels at READY and in the Hypixel and AppleSkin sync captures (log lines `Lads quiet channels ...`); `LADS_QA_NOJADE=1` makes the integrated server a server without Jade until 1.5 s after the first sample, then installs it, to prove the join announces no jade:* channel and the late registration completes the handshake.
 
 Where things land: screenshots `artifacts\verification\<dir>\screenshots\` (Zero SMP: `<sandbox>\instances\zero-smp-1.20.1\minecraft\screenshots`) and copied into the
 evidence folder `artifacts\verification-1.2.3\<scenario>\<time>-game-<dir>\screenshots\` together with `summary.txt` (command, JVM flags,

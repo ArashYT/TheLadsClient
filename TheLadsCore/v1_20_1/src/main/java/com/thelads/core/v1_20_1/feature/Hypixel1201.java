@@ -56,6 +56,7 @@ public final class Hypixel1201 {
         if (channel) ServerPlayNetworking.registerGlobalReceiver(CHANNEL, (server, player, handler, buf, sender) ->
             CompletableFuture.delayedExecutor(37, TimeUnit.MILLISECONDS).execute(() ->
                 sender.sendPacket(CHANNEL, new FriendlyByteBuf(Unpooled.wrappedBuffer(new byte[] {1, 1, 4, 'p', 'o', 'n', 'g'})))));
+        QaProbe1201.registerStep("channels", args -> { String when = args.length > 1 ? args[1] : "script"; QuietChannelsQa1201.sample(when, when.contains("after")); return true; });
         QaProbe1201.registerStep("hypixel", args -> {
             if (qa == null) qa = new HypixelQa();
             try {
@@ -82,6 +83,7 @@ public final class Hypixel1201 {
             return menu.ui();
         }
         @Override public void closeScreen() { Minecraft.getInstance().setScreen(null); }
+        @Override public void channels(String when) { QuietChannelsQa1201.sample(when, when.contains("after the ping")); }
         @Override public void screenshot(String name) throws Exception { QaProbe1201.shot(Minecraft.getInstance(), name); }
     };
 

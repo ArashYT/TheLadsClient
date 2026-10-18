@@ -135,6 +135,7 @@ public final class AppleSkinSyncCapture {
         MODIFIED.forEach(Module::setLastModified);
         if (gameModeWas != null) command("gamemode " + gameModeWas + " @a");
         command("effect clear @a minecraft:resistance");
+        com.thelads.core.v26_2.feature.QuietChannelsQa26.sample("after the AppleSkin payloads", false); // none was ever announced
         step = 2;
         if (FAILURES.isEmpty()) LOGGER.info("Lads AppleSkin sync capture END: 1 frame saved, 0 failed");
         else LOGGER.error("Lads AppleSkin sync capture FAILED: {}", String.join(" | ", FAILURES));

@@ -97,6 +97,7 @@ public final class NativeWorldVerification {
         if (failed) return;
         mc.options.pauseOnLostFocus = false;
         try {
+            QuietChannelsQa26.tick(readyLogged && worldReady()); // QA: what this client announces to the server (before the world opens too)
             if (!opened && titleCaptured && titleTrip < 2 && now >= titleTripAt) titleRoundTrip(mc, now);
             if (VERSION_SWITCH && !opened && titleTrip == 3 && versionTrip < 5 && now >= versionTripAt) versionSwitchTrip(mc, now);
             if (!opened) {

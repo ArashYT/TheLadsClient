@@ -49,6 +49,8 @@ public final class HypixelQa {
         default void emptyHand() {}
         /** The selected hand as "item xN", "" when empty. */
         default String held() { return ""; }
+        /** QA: the client's announced channels at this moment (QuietChannelsQa). */
+        default void channels(String when) {}
         /** Xaero's own minimap switch, or null where Lads does not drive it (26.3 skips the draw instead). */
         default Boolean xaeroShown() { return null; }
         /** Flips Xaero's own minimap switch as its key does; false where not wired. */
@@ -115,6 +117,7 @@ public final class HypixelQa {
                 hiddenBefore = HypixelMods.hidden;
                 game.command("scoreboard objectives add ladsqa dummy");
                 game.command("scoreboard objectives setdisplay list ladsqa"); // a lone player's tab list shows only with one
+                game.channels("hypixel start (before the first ping)");
                 HypixelSafetyManager.qaOverride = true;
             }
             case 1 -> { // a new "Hypixel" world: Auto Play Again asks where it is
@@ -142,6 +145,7 @@ public final class HypixelQa {
                     + (RealPing.row(1, false) == RealPing.NONE ? "-" : String.valueOf(RealPing.row(1, false))) + " (no number)")) break;
                 check(RealPing.row(1, false) == RealPing.NONE, "another player's listed 1 ms shows no number");
                 check(own >= 30, "the round trip includes the answer's 37 ms wait (1.8.9: one tick): " + own + " ms");
+                game.channels("hypixel after the ping");
                 game.holdTab(true);
                 wait = 10;
             }
