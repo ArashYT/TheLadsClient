@@ -10,8 +10,7 @@
     "PacketDecodeGuardMixin",
     "SkyColorMixin",
     "XaeroWorldMapPaceMixin",
-    "XaeroConfigMemoMixin",
-    "AnimateTickBiomeMixin"
+    "XaeroConfigMemoMixin"
   ],
   "injectors": {
     "defaultRequire": 1
