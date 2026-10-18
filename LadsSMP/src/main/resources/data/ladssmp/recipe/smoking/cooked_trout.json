@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smoking",
+  "category": "food",
+  "ingredient": "ladssmp:trout",
+  "result": {
+    "id": "ladssmp:cooked_trout"
+  },
+  "experience": 0.35,
+  "cookingtime": 100
+}

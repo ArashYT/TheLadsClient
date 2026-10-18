@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smoking",
+  "category": "food",
+  "ingredient": "ladssmp:tuna",
+  "result": {
+    "id": "ladssmp:cooked_tuna"
+  },
+  "experience": 0.35,
+  "cookingtime": 100
+}

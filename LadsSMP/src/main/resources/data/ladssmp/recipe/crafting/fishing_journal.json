@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "minecraft:book",
+    "S": "minecraft:string",
+    "C": "minecraft:cod"
+  },
+  "pattern": [
+    " S ",
+    "SBC",
+    " S "
+  ],
+  "result": {
+    "id": "ladssmp:fishing_journal"
+  }
+}

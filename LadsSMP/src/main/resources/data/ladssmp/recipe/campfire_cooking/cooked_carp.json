@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:campfire_cooking",
+  "category": "food",
+  "ingredient": "ladssmp:carp",
+  "result": {
+    "id": "ladssmp:cooked_carp"
+  },
+  "experience": 0.35,
+  "cookingtime": 600
+}

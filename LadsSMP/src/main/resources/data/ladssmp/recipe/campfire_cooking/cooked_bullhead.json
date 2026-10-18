@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:campfire_cooking",
+  "category": "food",
+  "ingredient": "ladssmp:bullhead",
+  "result": {
+    "id": "ladssmp:cooked_bullhead"
+  },
+  "experience": 0.35,
+  "cookingtime": 600
+}

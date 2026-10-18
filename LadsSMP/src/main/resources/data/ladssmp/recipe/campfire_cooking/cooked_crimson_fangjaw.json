@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:campfire_cooking",
+  "category": "food",
+  "ingredient": "ladssmp:crimson_fangjaw",
+  "result": {
+    "id": "ladssmp:cooked_crimson_fangjaw"
+  },
+  "experience": 0.35,
+  "cookingtime": 600
+}

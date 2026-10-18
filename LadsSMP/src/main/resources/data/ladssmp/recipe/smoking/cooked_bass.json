@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smoking",
+  "category": "food",
+  "ingredient": "ladssmp:bass",
+  "result": {
+    "id": "ladssmp:cooked_bass"
+  },
+  "experience": 0.35,
+  "cookingtime": 100
+}

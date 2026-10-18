@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "food",
+  "ingredient": "ladssmp:void_tetra",
+  "result": {
+    "id": "ladssmp:cooked_void_tetra"
+  },
+  "experience": 0.35,
+  "cookingtime": 200
+}

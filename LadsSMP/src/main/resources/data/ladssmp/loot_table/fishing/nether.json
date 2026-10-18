@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:fishing",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "ladssmp:magma_mackerel",
+          "weight": 40
+        },
+        {
+          "type": "minecraft:item",
+          "name": "ladssmp:crimson_fangjaw",
+          "weight": 35
+        },
+        {
+          "type": "minecraft:item",
+          "name": "ladssmp:warped_guppy",
+          "weight": 25
+        }
+      ]
+    }
+  ]
+}

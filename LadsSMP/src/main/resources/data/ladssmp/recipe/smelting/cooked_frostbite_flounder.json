@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "food",
+  "ingredient": "ladssmp:frostbite_flounder",
+  "result": {
+    "id": "ladssmp:cooked_frostbite_flounder"
+  },
+  "experience": 0.35,
+  "cookingtime": 200
+}
