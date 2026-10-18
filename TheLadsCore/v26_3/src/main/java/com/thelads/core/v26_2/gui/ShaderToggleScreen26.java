@@ -3,6 +3,8 @@ package com.thelads.core.v26_2.gui;
 import com.thelads.core.client.ShaderToggle;
 import com.thelads.core.client.gui.LadsPalette;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -72,7 +74,27 @@ public class ShaderToggleScreen26 extends Screen {
 
     public static void register() {
         if (FabricLoader.getInstance().isModLoaded("iris")) watchIris();
-        else if (ShaderToggle.irisSuspended(DIR)) addSodiumPage();
+        else if (ShaderToggle.irisSuspended(DIR)) {
+            addSodiumPage();
+            addReesesButton();
+        }
+    }
+
+    /**
+     * Reese's Sodium Options lists a mod with a single page only as a header ("Shaders / Off") far down its tab list, which is easy to
+     * miss: it also gets a "Shader packs..." button bottom left, clear of everything else, drawn and clicked through Fabric's screen
+     * events (the same as on 1.20.1) so it never touches Reese's widgets.
+     */
+    private static void addReesesButton() {
+        if (!FabricLoader.getInstance().isModLoaded("reeses-sodium-options")) return;
+        ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
+            if (!screen.getClass().getName().equals("me.flashyreese.mods.reeses_sodium_options.client.gui.SodiumVideoOptionsScreen")) return;
+            String label = "Shader packs...";
+            Button b = Button.builder(Component.literal(label), press -> client.setScreenAndShow(new ShaderToggleScreen26(screen, true)))
+                .bounds(6, screen.height - 26, client.font.width(label) + 20, 20).build();
+            ScreenEvents.afterExtract(screen).register((s, graphics, mouseX, mouseY, delta) -> b.extractRenderState(graphics, mouseX, mouseY, delta));
+            ScreenMouseEvents.allowMouseClick(screen).register((s, click) -> !b.mouseClicked(click, false));
+        });
     }
 
     @Override

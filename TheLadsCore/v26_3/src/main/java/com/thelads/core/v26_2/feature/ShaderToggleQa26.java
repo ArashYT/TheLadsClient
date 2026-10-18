@@ -62,6 +62,21 @@ public final class ShaderToggleQa26 {
     /** True when the step is finished; false keeps it running on the next tick. */
     private static boolean run(Minecraft mc, String step) throws Exception {
         Screen screen = mc.gui.screen();
+        String[] parts = step.split(" ");
+        switch (parts[0]) {
+            case "dump" -> { dump(screen, 0); return true; }
+            case "shot" -> { return shot(mc, parts[1]); }
+            case "scroll" -> { // "scroll <x> <y> <ticks>": the wheel turned down over GUI position x, y
+                screen.mouseScrolled(Double.parseDouble(parts[1]), Double.parseDouble(parts[2]), 0.0, -8.0);
+                return ++held >= Integer.parseInt(parts[3]);
+            }
+            case "click" -> { // "click <x> <y>": a left click at GUI position x, y
+                screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(Double.parseDouble(parts[1]), Double.parseDouble(parts[2]),
+                    new net.minecraft.client.input.MouseButtonInfo(InputConstants.MOUSE_BUTTON_LEFT, 0)), false);
+                return true;
+            }
+            default -> { }
+        }
         switch (step) {
             case "world" -> {
                 if (!started) {
@@ -95,8 +110,13 @@ public final class ShaderToggleQa26 {
             }
             case "page" -> {
                 if (++held < 30) return false;
-                AbstractWidget entry = find(screen, "Shader packs...");
-                if (entry != null) {
+                // Reese's screen: the overlay button bottom left, clicked through the screen's mouse event as Fabric dispatches it.
+                boolean taken = !net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).invoker().allowMouseClick(screen,
+                    new net.minecraft.client.input.MouseButtonEvent(16, screen.height - 16, new net.minecraft.client.input.MouseButtonInfo(InputConstants.MOUSE_BUTTON_LEFT, 0)));
+                AbstractWidget entry = taken ? null : find(screen, "Shader packs...");
+                if (taken) {
+                    LOGGER.info("Lads qa shaders: the 'Shader packs...' button bottom left of {} took the click", screen.getClass().getName());
+                } else if (entry != null) {
                     LOGGER.info("Lads qa shaders: clicking '{}' at {},{} on {}", entry.getMessage().getString(), entry.getX(), entry.getY(), screen.getClass().getName());
                     screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(entry.getX() + entry.getWidth() / 2.0, entry.getY() + entry.getHeight() / 2.0,
                         new net.minecraft.client.input.MouseButtonInfo(InputConstants.MOUSE_BUTTON_LEFT, 0)), false);
@@ -145,6 +165,12 @@ public final class ShaderToggleQa26 {
             }
             default -> throw new IllegalArgumentException("unknown step " + step);
         }
+    }
+
+    private static void dump(GuiEventListener root, int depth) {
+        if (depth > 7 || root == null) return;
+        LOGGER.info("Lads qa shaders: widget {}{} {}", " ".repeat(depth), root.getClass().getName(), root instanceof AbstractWidget w ? "'" + w.getMessage().getString() + "'" : "");
+        if (root instanceof ContainerEventHandler container) for (GuiEventListener child : container.children()) dump(child, depth + 1);
     }
 
     private static boolean worldReady(Minecraft mc) {
