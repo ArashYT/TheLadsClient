@@ -102,6 +102,13 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
     }
 
     @Override
+    public int getClientTicks() {
+        var player = Minecraft.getInstance().player;
+        if (player != null) return player.tickCount;
+        return (int) (System.currentTimeMillis() / 50);
+    }
+
+    @Override
     public long getDayCount() {
         Minecraft mc = Minecraft.getInstance();
         return mc.level != null ? mc.level.getDayTime() / 24000L : 0;

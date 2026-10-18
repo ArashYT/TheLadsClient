@@ -3,9 +3,8 @@ package com.thelads.core.client.hud;
 import com.thelads.core.client.CpsTracker;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.gui.MenuGraphics;
-import com.thelads.core.config.ColorOption;
-import com.thelads.core.config.DoubleOption;
-import com.thelads.core.config.Option;
+import com.thelads.core.config.Module;
+import com.thelads.core.config.ModuleManager;
 import com.thelads.core.modules.KeystrokesModule;
 
 public class KeystrokesHudElement extends HudElement {
@@ -23,7 +22,10 @@ public class KeystrokesHudElement extends HudElement {
         return "99+";
     }
 
-    // Classic state
+    private KeystrokesModule cachedModule;
+    private long lastModuleModified = -1;
+
+    // Classic state (byte-for-byte unscaled original geometry)
     private LadsGraphics preparedGraphics;
     private boolean showCps, showSpace;
     private int lastLeftCps = -1, lastRightCps = -1;
@@ -33,6 +35,7 @@ public class KeystrokesHudElement extends HudElement {
     // Clean state
     private boolean cleanShowSneakSprint;
     private boolean cleanPressAnim;
+    private boolean cleanTickSync;
     private int cleanKeyColor, cleanKeyPressedColor, cleanKeyBg, cleanKeyPressedBg;
     private boolean cleanKeyShadow, cleanKeyPressedShadow, cleanCustomShadow;
     private int cleanShadowColor, cleanPressedShadowColor;
@@ -41,6 +44,8 @@ public class KeystrokesHudElement extends HudElement {
     private double cleanRainbowSpeed = 1.0;
 
     private final float[] animFactor = new float[9];
+    private final boolean[] tickKeyDown = new boolean[9];
+    private int lastSampledTick = Integer.MIN_VALUE;
     private long lastFrameTime = 0;
 
     // Mouse movement tracker
@@ -62,21 +67,25 @@ public class KeystrokesHudElement extends HudElement {
         this.height = 95;
     }
 
-    private boolean isClean() {
-        return optCycle("Style", KeystrokesModule.STYLE_CLEAN) == KeystrokesModule.STYLE_CLEAN;
+    private KeystrokesModule keystrokesModule() {
+        if (cachedModule == null && moduleName != null) {
+            Module m = ModuleManager.getInstance().getModule(moduleName);
+            if (m instanceof KeystrokesModule km) cachedModule = km;
+        }
+        return cachedModule;
     }
 
-    private int getColor(String name, int def) {
-        Option o = option(name);
-        if (o instanceof ColorOption co) {
-            return co.getColor();
-        }
-        return def;
+    private boolean isClean() {
+        KeystrokesModule km = keystrokesModule();
+        if (km != null) return km.isClean();
+        return optCycle("Style", KeystrokesModule.STYLE_CLEAN) == KeystrokesModule.STYLE_CLEAN;
     }
 
     @Override
     public void prepareRender(LadsGraphics g, boolean editor) {
         preparedGraphics = g;
+        KeystrokesModule km = keystrokesModule();
+        lastModuleModified = (km != null) ? km.getLastModified() : 0;
         if (isClean()) {
             prepareRenderClean(g, editor);
         } else {
@@ -109,31 +118,58 @@ public class KeystrokesHudElement extends HudElement {
     }
 
     private void prepareRenderClean(LadsGraphics g, boolean editor) {
-        showCps = optBool("Show CPS", true);
-        showSpace = optBool("Show space bar", true);
-        cleanShowSneakSprint = optBool("Show Sneak/Sprint Row", true);
-        cleanPressAnim = optBool("Press Animation", true);
+        KeystrokesModule km = keystrokesModule();
+        if (km != null) {
+            showCps = km.showCps.get();
+            showSpace = km.showSpace.get();
+            cleanShowSneakSprint = km.showSneakSprintRow.get();
+            cleanPressAnim = km.pressAnimation.get();
+            cleanTickSync = km.tickSyncedKeyPresses.get();
 
-        cleanKeyColor = getColor("Key Text Color", 0xFFFFFFFF);
-        cleanKeyPressedColor = getColor("Pressed Key Text Color", 0xFF000000);
-        cleanKeyBg = getColor("Key Background Color", 0xAA000000);
-        cleanKeyPressedBg = getColor("Pressed Key Background Color", 0xAAFFFFFF);
+            cleanKeyColor = km.keyColor.getColor();
+            cleanKeyPressedColor = km.keyPressedColor.getColor();
+            cleanKeyBg = km.keyBackgroundColor.getColor();
+            cleanKeyPressedBg = km.keyPressedBackgroundColor.getColor();
 
-        cleanKeyShadow = optBool("Key Text Shadow", false);
-        cleanKeyPressedShadow = optBool("Pressed Key Text Shadow", false);
-        cleanCustomShadow = optBool("Custom Shadow Colors", false);
-        cleanShadowColor = getColor("Key Text Shadow Color", 0xFF000000);
-        cleanPressedShadowColor = getColor("Pressed Key Text Shadow Color", 0xFF000000);
+            cleanKeyShadow = km.keyTextShadow.get();
+            cleanKeyPressedShadow = km.keyPressedTextShadow.get();
+            cleanCustomShadow = km.useCustomTextShadowColor.get();
+            cleanShadowColor = km.keyTextShadowColor.getColor();
+            cleanPressedShadowColor = km.keyPressedTextShadowColor.getColor();
 
-        cleanRainbowKey = optBool("Rainbow Key Text", false);
-        cleanRainbowKeyPressed = optBool("Rainbow Pressed Key Text", false);
-        cleanRainbowBg = optBool("Rainbow Background", false);
-        cleanRainbowBgPressed = optBool("Rainbow Pressed Background", false);
-        cleanRainbowShadow = optBool("Rainbow Key Text Shadow", false);
-        cleanRainbowPressedShadow = optBool("Rainbow Pressed Key Text Shadow", false);
+            cleanRainbowKey = km.rainbowKeyNormal.get();
+            cleanRainbowKeyPressed = km.rainbowKeyPressed.get();
+            cleanRainbowBg = km.rainbowBackgroundNormal.get();
+            cleanRainbowBgPressed = km.rainbowBackgroundPressed.get();
+            cleanRainbowShadow = km.rainbowKeyTextShadow.get();
+            cleanRainbowPressedShadow = km.rainbowKeyPressedTextShadow.get();
+            cleanRainbowSpeed = km.rainbowSpeed.get();
+        } else {
+            showCps = optBool("Show CPS", true);
+            showSpace = optBool("Show space bar", true);
+            cleanShowSneakSprint = optBool("Show Sneak/Sprint Row", true);
+            cleanPressAnim = optBool("Press Animation", true);
+            cleanTickSync = optBool("Tick Synced Key Presses", false);
 
-        Option sp = option("Rainbow Speed");
-        cleanRainbowSpeed = (sp instanceof DoubleOption dop) ? dop.get() : 1.0;
+            cleanKeyColor = 0xFFFFFFFF;
+            cleanKeyPressedColor = 0xFF000000;
+            cleanKeyBg = 0xAA000000;
+            cleanKeyPressedBg = 0xAAFFFFFF;
+
+            cleanKeyShadow = false;
+            cleanKeyPressedShadow = false;
+            cleanCustomShadow = false;
+            cleanShadowColor = 0xFF000000;
+            cleanPressedShadowColor = 0xFF000000;
+
+            cleanRainbowKey = false;
+            cleanRainbowKeyPressed = false;
+            cleanRainbowBg = false;
+            cleanRainbowBgPressed = false;
+            cleanRainbowShadow = false;
+            cleanRainbowPressedShadow = false;
+            cleanRainbowSpeed = 1.0;
+        }
 
         width = 67;
         int nextY = 46;
@@ -145,8 +181,11 @@ public class KeystrokesHudElement extends HudElement {
 
     @Override
     public void render(LadsGraphics g) {
-        if (preparedGraphics != g) prepareRender(g, false);
-        preparedGraphics = null;
+        KeystrokesModule km = keystrokesModule();
+        long mod = (km != null) ? km.getLastModified() : 0;
+        if (preparedGraphics != g || mod != lastModuleModified) {
+            prepareRender(g, false);
+        }
 
         if (isClean()) {
             renderClean(g);
@@ -203,11 +242,24 @@ public class KeystrokesHudElement extends HudElement {
         float delta = (lastFrameTime == 0) ? 1.0f : Math.min(3.0f, (now - lastFrameTime) / 50.0f);
         lastFrameTime = now;
 
+        boolean tickSync = cleanTickSync;
+        if (tickSync) {
+            int currentTick = g.getGame().getClientTicks();
+            if (currentTick != lastSampledTick) {
+                lastSampledTick = currentTick;
+                for (int i = 0; i < 9; i++) {
+                    tickKeyDown[i] = g.getGame().isKeyDown(KEY_NAMES[i]);
+                }
+            }
+        }
+
+        // Hoist Math.pow computations out of the 9-key loop
+        float pressFactor = cleanPressAnim ? 1.0f - (float) Math.pow(0.3, delta) : 1.0f;
+        float releaseFactor = cleanPressAnim ? 1.0f - (float) Math.pow(0.4, delta) : 1.0f;
+
         for (int i = 0; i < 9; i++) {
-            boolean down = g.getGame().isKeyDown(KEY_NAMES[i]);
+            boolean down = tickSync ? tickKeyDown[i] : g.getGame().isKeyDown(KEY_NAMES[i]);
             if (cleanPressAnim) {
-                float pressFactor = 1.0f - (float) Math.pow(1.0f - 0.7f, delta);
-                float releaseFactor = 1.0f - (float) Math.pow(1.0f - 0.6f, delta);
                 float target = down ? 1.0f : 0.0f;
                 float current = animFactor[i];
                 float next = current + (target - current) * (down ? pressFactor : releaseFactor);
@@ -236,9 +288,9 @@ public class KeystrokesHudElement extends HudElement {
         drawCleanKey(g, "D", x + 46, row1Y, 21, 21, 3, idleBg, pressedBg, idleText, pressedText, idleShadow, pressedShadow);
 
         int curY = y + 46;
-        // Row 2: Space (67 x 15)
+        // Row 2: Space (67 x 15) - Centered bar (11x2 px) instead of text glyph
         if (showSpace) {
-            drawCleanKey(g, "-", x, curY, 67, 15, 4, idleBg, pressedBg, idleText, pressedText, idleShadow, pressedShadow);
+            drawCleanSpaceBar(g, x, curY, 67, 15, idleBg, pressedBg, idleText, pressedText, idleShadow, pressedShadow);
             curY += 17;
         }
 
@@ -272,7 +324,7 @@ public class KeystrokesHudElement extends HudElement {
 
         MenuGraphics.round(g, kx, ky, kw, kh, bg);
 
-        boolean shadowOn = ((t > 0.5f) ? cleanKeyPressedShadow : cleanKeyShadow) || com.thelads.core.config.HudSettings.getInstance().isTextShadow();
+        boolean shadowOn = (t > 0.5f) ? cleanKeyPressedShadow : cleanKeyShadow;
         int tw = g.textWidth(label);
         int tx = kx + (kw - tw) / 2;
         int ty = ky + (kh - g.fontHeight()) / 2 + 1;
@@ -289,6 +341,27 @@ public class KeystrokesHudElement extends HudElement {
         }
     }
 
+    private void drawCleanSpaceBar(LadsGraphics g, int kx, int ky, int kw, int kh,
+                                   int idleBg, int pressedBg, int idleText, int pressedText, int idleShadow, int pressedShadow) {
+        float t = animFactor[4];
+        int bg = (t == 0.0f) ? idleBg : (t == 1.0f) ? pressedBg : MenuGraphics.mix(idleBg, pressedBg, t);
+        int text = (t == 0.0f) ? idleText : (t == 1.0f) ? pressedText : MenuGraphics.mix(idleText, pressedText, t);
+        int shadow = (t == 0.0f) ? idleShadow : (t == 1.0f) ? pressedShadow : MenuGraphics.mix(idleShadow, pressedShadow, t);
+
+        MenuGraphics.round(g, kx, ky, kw, kh, bg);
+
+        boolean shadowOn = (t > 0.5f) ? cleanKeyPressedShadow : cleanKeyShadow;
+        int bw = 11, bh = 2;
+        int bx = kx + (kw - bw) / 2;
+        int by = ky + (kh - bh) / 2;
+
+        if (shadowOn) {
+            int sCol = cleanCustomShadow ? shadow : (shadow & 0x00FFFFFF) | 0x3F000000;
+            g.fill(bx + 1, by + 1, bx + bw + 1, by + bh + 1, sCol);
+        }
+        g.fill(bx, by, bx + bw, by + bh, text);
+    }
+
     private void drawCleanMousePill(LadsGraphics g, String label, int kx, int ky, int kw, int kh, int keyIdx, boolean leftPill,
                                    int idleBg, int pressedBg, int idleText, int pressedText, int idleShadow, int pressedShadow) {
         float t = animFactor[keyIdx];
@@ -302,7 +375,7 @@ public class KeystrokesHudElement extends HudElement {
             MenuGraphics.roundRight(g, kx, ky, kw, kh, bg);
         }
 
-        boolean shadowOn = ((t > 0.5f) ? cleanKeyPressedShadow : cleanKeyShadow) || com.thelads.core.config.HudSettings.getInstance().isTextShadow();
+        boolean shadowOn = (t > 0.5f) ? cleanKeyPressedShadow : cleanKeyShadow;
         int tw = g.textWidth(label);
         int tx = kx + (kw - tw) / 2;
         int ty = ky + (kh - g.fontHeight()) / 2 + 1;

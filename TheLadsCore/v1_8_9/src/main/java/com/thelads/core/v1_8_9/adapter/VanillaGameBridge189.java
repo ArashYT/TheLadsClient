@@ -202,6 +202,13 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     }
 
     @Override
+    public int getClientTicks() {
+        Minecraft mc = mc();
+        if (mc.thePlayer != null) return mc.thePlayer.ticksExisted;
+        return (int) (System.currentTimeMillis() / 50);
+    }
+
+    @Override
     public long getDayCount() {
         return mc().theWorld != null ? mc().theWorld.getWorldTime() / 24000L : 0;
     }

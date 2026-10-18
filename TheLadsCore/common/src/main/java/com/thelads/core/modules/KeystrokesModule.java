@@ -1,5 +1,6 @@
 package com.thelads.core.modules;
 
+import com.google.gson.JsonElement;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.ColorOption;
 import com.thelads.core.config.DoubleOption;
@@ -19,7 +20,18 @@ public class KeystrokesModule extends HudModule {
     public final BoolOption pressAnimation = addOption(new BoolOption("Press Animation", true));
     public final BoolOption tickSyncedKeyPresses = addOption(new BoolOption("Tick Synced Key Presses", false));
     public final DropdownOption colorPreset = addOption(new DropdownOption("Color Preset", 0,
-            "Classic", "Inverted", "Clean", "Beehive", "Mint & Cream", "Cyber Grape", "Vibrant Mango", "Dirt", "Retro", "Custom"));
+            "Classic", "Inverted", "Clean", "Beehive", "Mint & Cream", "Cyber Grape", "Vibrant Mango", "Dirt", "Retro", "Custom") {
+        @Override
+        public void load(JsonElement element) {
+            super.load(element);
+            lastPresetIndex = getIndex();
+        }
+        @Override
+        public void reset() {
+            super.reset();
+            lastPresetIndex = getIndex();
+        }
+    });
     public final ColorOption keyColor = addOption(new ColorOption("Key Text Color", false, 0xFFFFFFFF));
     public final ColorOption keyPressedColor = addOption(new ColorOption("Pressed Key Text Color", false, 0xFF000000));
     public final ColorOption keyBackgroundColor = addOption(new ColorOption("Key Background Color", false, 0xAA000000));
@@ -229,28 +241,60 @@ public class KeystrokesModule extends HudModule {
         }
     }
 
+    private boolean rainbowOff() {
+        return !rainbowKeyNormal.get()
+                && !rainbowKeyPressed.get()
+                && !rainbowBackgroundNormal.get()
+                && !rainbowBackgroundPressed.get()
+                && !rainbowKeyTextShadow.get()
+                && !rainbowKeyPressedTextShadow.get();
+    }
+
+    private boolean standardShadowsOff() {
+        return !keyTextShadow.get()
+                && !keyPressedTextShadow.get()
+                && !useCustomTextShadowColor.get()
+                && keyTextShadowColor.getColor() == 0xFF000000
+                && keyPressedTextShadowColor.getColor() == 0xFF000000;
+    }
+
+    private boolean cleanShadowsMatch() {
+        return keyTextShadow.get()
+                && keyPressedTextShadow.get()
+                && useCustomTextShadowColor.get()
+                && keyTextShadowColor.getColor() == 0xFF000000
+                && keyPressedTextShadowColor.getColor() == 0xFFFFFFFF;
+    }
+
     private boolean matchesPreset(int preset) {
+        if (!rainbowOff()) return false;
         return switch (preset) {
-            case 0 -> keyColor.getColor() == 0xFFFFFFFF && keyBackgroundColor.getColor() == 0xAA000000
-                    && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0xAAFFFFFF
-                    && !keyTextShadow.get() && !keyPressedTextShadow.get();
-            case 1 -> keyColor.getColor() == 0xFF000000 && keyBackgroundColor.getColor() == 0xAAFFFFFF
-                    && keyPressedColor.getColor() == 0xFFFFFFFF && keyPressedBackgroundColor.getColor() == 0xAA000000
-                    && !keyTextShadow.get() && !keyPressedTextShadow.get();
-            case 2 -> keyColor.getColor() == 0xFFFFFFFF && keyBackgroundColor.getColor() == 0x00FFFFFF
-                    && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0x00FFFFFF
-                    && keyTextShadow.get() && keyPressedTextShadow.get();
-            case 3 -> keyColor.getColor() == 0xFFFFD000 && keyBackgroundColor.getColor() == 0xFF000000
+            case 0 -> standardShadowsOff()
+                    && keyColor.getColor() == 0xFFFFFFFF && keyBackgroundColor.getColor() == 0xAA000000
+                    && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0xAAFFFFFF;
+            case 1 -> standardShadowsOff()
+                    && keyColor.getColor() == 0xFF000000 && keyBackgroundColor.getColor() == 0xAAFFFFFF
+                    && keyPressedColor.getColor() == 0xFFFFFFFF && keyPressedBackgroundColor.getColor() == 0xAA000000;
+            case 2 -> cleanShadowsMatch()
+                    && keyColor.getColor() == 0xFFFFFFFF && keyBackgroundColor.getColor() == 0x00FFFFFF
+                    && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0x00FFFFFF;
+            case 3 -> standardShadowsOff()
+                    && keyColor.getColor() == 0xFFFFD000 && keyBackgroundColor.getColor() == 0xFF000000
                     && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0xFFFFD000;
-            case 4 -> keyColor.getColor() == 0xFF00A896 && keyBackgroundColor.getColor() == 0xFFF0F3BD
+            case 4 -> standardShadowsOff()
+                    && keyColor.getColor() == 0xFF00A896 && keyBackgroundColor.getColor() == 0xFFF0F3BD
                     && keyPressedColor.getColor() == 0xFF05668D && keyPressedBackgroundColor.getColor() == 0xFF02C39A;
-            case 5 -> keyColor.getColor() == 0xFFC7EDE4 && keyBackgroundColor.getColor() == 0xFF820B8A
+            case 5 -> standardShadowsOff()
+                    && keyColor.getColor() == 0xFFC7EDE4 && keyBackgroundColor.getColor() == 0xFF820B8A
                     && keyPressedColor.getColor() == 0xFF672A4E && keyPressedBackgroundColor.getColor() == 0xFFAF9AB2;
-            case 6 -> keyColor.getColor() == 0xFF4200FF && keyBackgroundColor.getColor() == 0xFFFFBC42
+            case 6 -> standardShadowsOff()
+                    && keyColor.getColor() == 0xFF4200FF && keyBackgroundColor.getColor() == 0xFFFFBC42
                     && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0xFFD81159;
-            case 7 -> keyColor.getColor() == 0xFF753A38 && keyBackgroundColor.getColor() == 0xFFA1BA5A
+            case 7 -> standardShadowsOff()
+                    && keyColor.getColor() == 0xFF753A38 && keyBackgroundColor.getColor() == 0xFFA1BA5A
                     && keyPressedColor.getColor() == 0xFFC4DF96 && keyPressedBackgroundColor.getColor() == 0xFF633332;
-            case 8 -> keyColor.getColor() == 0xFFA71D31 && keyBackgroundColor.getColor() == 0xFFF1F0CC
+            case 8 -> standardShadowsOff()
+                    && keyColor.getColor() == 0xFFA71D31 && keyBackgroundColor.getColor() == 0xFFF1F0CC
                     && keyPressedColor.getColor() == 0xFF3F0D12 && keyPressedBackgroundColor.getColor() == 0xFFD5BF86;
             default -> false;
         };

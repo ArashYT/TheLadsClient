@@ -24,7 +24,7 @@ class KeystrokesCleanTest {
     @TempDir Path temp;
     private JsonObject before;
 
-    private record Fill(int left, int top, int right, int bottom) {}
+    private record Fill(int left, int top, int right, int bottom, int color) {}
     private record Text(String value, int x, int y, int color, boolean shadow) {}
 
     private static class RecordingGraphics extends LadsGraphicsTest.MockGraphics {
@@ -34,7 +34,7 @@ class KeystrokesCleanTest {
         @Override
         public void fill(int left, int top, int right, int bottom, int color) {
             super.fill(left, top, right, bottom, color);
-            fills.add(new Fill(left, top, right, bottom));
+            fills.add(new Fill(left, top, right, bottom, color));
         }
 
         @Override
@@ -44,13 +44,31 @@ class KeystrokesCleanTest {
         }
     }
 
+    private static class ControllableGame extends DefaultGameBridge {
+        boolean spaceDown = false;
+        int ticks = 1;
+
+        @Override
+        public boolean isKeyDown(String keyName) {
+            if ("SPACE".equalsIgnoreCase(keyName)) return spaceDown;
+            return false;
+        }
+
+        @Override
+        public int getClientTicks() {
+            return ticks;
+        }
+    }
+
     private final RecordingGraphics graphics = new RecordingGraphics();
+    private ControllableGame game;
 
     @BeforeEach
     void setup() {
         before = ConfigManager.toJson();
         ConfigManager.setTestConfigFile(temp.resolve("settings.json").toFile());
-        LadsGameBridge.set(new DefaultGameBridge());
+        game = new ControllableGame();
+        LadsGameBridge.set(game);
         graphics.width = 640;
         graphics.height = 360;
     }
@@ -106,6 +124,27 @@ class KeystrokesCleanTest {
         assertEquals(61, keys.getHeight());
     }
 
+    @Test
+    void classicWidthHeightAtSize50And100And200EqualOldElementValues() {
+        KeystrokesHudElement keys = new KeystrokesHudElement();
+        keys.setModuleName("Keystrokes");
+        KeystrokesModule module = (KeystrokesModule) ModuleManager.getInstance().getModule("Keystrokes");
+        module.style.setIndex(KeystrokesModule.STYLE_CLASSIC);
+        module.showCps.set(true);
+        module.showSpace.set(true);
+
+        // Classic unscaled bounds are 64x76 regardless of Size slider
+        for (int pct : new int[]{50, 100, 200}) {
+            module.size.setValue(pct);
+            keys.prepareRender(graphics, false);
+            assertEquals(64, keys.getWidth(), "Classic width at Size " + pct);
+            assertEquals(76, keys.getHeight(), "Classic height at Size " + pct);
+            float scale = pct / 100.0f;
+            assertEquals((int) Math.ceil(64 * scale), keys.getRenderWidth(), "Classic render width at Size " + pct);
+            assertEquals((int) Math.ceil(76 * scale), keys.getRenderHeight(), "Classic render height at Size " + pct);
+        }
+    }
+
     @ParameterizedTest
     @CsvSource({"true,true", "true,false", "false,true", "false,false"})
     void cleanLayoutFillsAndTextStayWithinBounds(boolean space, boolean sneakSprint) {
@@ -130,6 +169,27 @@ class KeystrokesCleanTest {
         for (Text text : graphics.texts) {
             assertTrue(text.y() + graphics.fontHeight() <= keys.getY() + keys.getHeight(), "text bottom <= element.getY + height");
         }
+    }
+
+    @Test
+    void cleanSpaceBarRendersFilledBarInsteadOfHyphenGlyph() {
+        KeystrokesHudElement keys = new KeystrokesHudElement();
+        keys.setModuleName("Keystrokes");
+        KeystrokesModule module = (KeystrokesModule) ModuleManager.getInstance().getModule("Keystrokes");
+        module.style.setIndex(KeystrokesModule.STYLE_CLEAN);
+        module.showSpace.set(true);
+
+        graphics.fills.clear();
+        graphics.texts.clear();
+        keys.prepareRender(graphics, false);
+        keys.render(graphics);
+
+        // No "-" text glyph drawn for Space bar in Clean mode
+        assertTrue(graphics.texts.stream().noneMatch(t -> t.value().equals("-")), "No '-' text glyph drawn");
+
+        // Centered bar (11 px wide x 2 px high) drawn in the space bar row (y + 46)
+        boolean foundBar = graphics.fills.stream().anyMatch(f -> (f.right() - f.left() == 11) && (f.bottom() - f.top() == 2));
+        assertTrue(foundBar, "Found 11x2 centered spacebar fill");
     }
 
     @Test
@@ -189,6 +249,80 @@ class KeystrokesCleanTest {
         module.touch();
         assertEquals(9, module.colorPreset.getIndex());
         assertEquals("Custom", module.colorPreset.getValue());
+    }
+
+    @Test
+    void anyShadowOrRainbowTweakSwitchesPresetToCustom() {
+        KeystrokesModule module = (KeystrokesModule) ModuleManager.getInstance().getModule("Keystrokes");
+        module.style.setIndex(KeystrokesModule.STYLE_CLEAN);
+
+        // Preset 3: Beehive
+        module.colorPreset.setIndex(3);
+        module.touch();
+        assertEquals(3, module.colorPreset.getIndex());
+
+        // Toggling key shadow switches to Custom (9)
+        module.keyTextShadow.set(true);
+        module.touch();
+        assertEquals(9, module.colorPreset.getIndex());
+
+        // Preset 4: Mint & Cream
+        module.colorPreset.setIndex(4);
+        module.touch();
+        assertEquals(4, module.colorPreset.getIndex());
+
+        // Toggling rainbow switches to Custom (9)
+        module.rainbowKeyNormal.set(true);
+        module.touch();
+        assertEquals(9, module.colorPreset.getIndex());
+    }
+
+    @Test
+    void loadedPresetDoesNotForciblyReapplyOnFirstTouch() {
+        KeystrokesModule module = (KeystrokesModule) ModuleManager.getInstance().getModule("Keystrokes");
+
+        // Simulate config load with Preset 4 ("Mint & Cream")
+        module.colorPreset.load(new com.google.gson.JsonPrimitive(4));
+        // User had customized shadow color on that preset
+        module.keyTextShadow.set(true);
+        module.touch();
+
+        // Must NOT have reset keyTextShadow to false via forced re-apply of preset 4
+        assertTrue(module.keyTextShadow.get());
+        assertEquals(9, module.colorPreset.getIndex(), "Tweak recognized as Custom");
+    }
+
+    @Test
+    void tickSyncedKeyPressesHoldsKeyBetweenFramesUntilTickAdvances() {
+        KeystrokesHudElement keys = new KeystrokesHudElement();
+        keys.setModuleName("Keystrokes");
+        KeystrokesModule module = (KeystrokesModule) ModuleManager.getInstance().getModule("Keystrokes");
+        module.style.setIndex(KeystrokesModule.STYLE_CLEAN);
+        module.pressAnimation.set(false); // test raw key registration
+        module.tickSyncedKeyPresses.set(true);
+
+        game.ticks = 100;
+        game.spaceDown = true;
+
+        // Frame 1: tick 100, space down -> space bar rendered pressed
+        keys.prepareRender(graphics, false);
+        keys.render(graphics);
+
+        // Game releases key during frame, but tick has not advanced
+        game.spaceDown = false;
+
+        // Frame 2: still tick 100 -> key must still be held!
+        graphics.fills.clear();
+        keys.render(graphics);
+        boolean stillPressed = graphics.fills.stream().anyMatch(f -> (f.bottom() - f.top() == 15) && (f.color() == module.keyPressedBackgroundColor.getColor()));
+        assertTrue(stillPressed, "Space bar still held pressed within tick 100");
+
+        // Frame 3: tick advances to 101 -> key state sampled as released
+        game.ticks = 101;
+        graphics.fills.clear();
+        keys.render(graphics);
+        boolean released = graphics.fills.stream().anyMatch(f -> (f.bottom() - f.top() == 15) && (f.color() == module.keyBackgroundColor.getColor()));
+        assertTrue(released, "Space bar released at tick 101");
     }
 
     @Test

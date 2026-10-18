@@ -94,6 +94,9 @@ public interface LadsGameBridge {
     /** Minecraft pitch in degrees (typically [-90, 90]); 0 when unavailable. */
     default float getPitch() { return 0.0f; }
 
+    /** Increments every game tick (20 TPS). Used for tick-synced animations and sampling. */
+    default int getClientTicks() { return (int) (System.currentTimeMillis() / 50); }
+
     long getDayCount();
 
     String getGameTime();

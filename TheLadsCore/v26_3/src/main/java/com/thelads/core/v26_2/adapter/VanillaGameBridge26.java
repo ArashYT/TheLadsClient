@@ -108,6 +108,13 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     }
 
     @Override
+    public int getClientTicks() {
+        var player = Minecraft.getInstance().player;
+        if (player != null) return player.tickCount;
+        return (int) (System.currentTimeMillis() / 50);
+    }
+
+    @Override
     public float getAbsorption() {
         var player = Minecraft.getInstance().player;
         return player == null ? -1 : player.getAbsorptionAmount();
