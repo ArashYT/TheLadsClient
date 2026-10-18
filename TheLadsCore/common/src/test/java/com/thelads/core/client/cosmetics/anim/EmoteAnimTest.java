@@ -147,6 +147,28 @@ class EmoteAnimTest {
     }
 
     @Test
+    void otherPlayersStayVanillaWhenCosmeticsHidesThem() {
+        var cosmetics = (com.thelads.core.modules.CosmeticsModule) com.thelads.core.config.ModuleManager.getInstance().getModule("Cosmetics");
+        Emotes.onRemote(other, EmoteLibrary.GROOVE, 1000);
+        Emotes.playLocal(self, EmoteLibrary.GROOVE);
+        long t = System.currentTimeMillis() + 1000;
+        try {
+            cosmetics.showOthers.set(false);
+            assertNull(EmoteAnimator.pose(other, true, 0, 0, 0, t), "\"Show other players' emotes\" off: other players are not posed");
+            assertNotNull(EmoteAnimator.pose(self, false, 0, 0, 0, t), "the local player still dances");
+            cosmetics.showOthers.set(true);
+            cosmetics.setEnabled(false);
+            assertNull(EmoteAnimator.pose(other, true, 0, 0, 0, t), "Cosmetics off: other players are not posed");
+            assertNotNull(EmoteAnimator.pose(self, false, 0, 0, 0, t));
+            cosmetics.setEnabled(true);
+            assertNotNull(EmoteAnimator.pose(other, true, 0, 0, 0, t), "both on: other players dance");
+        } finally {
+            cosmetics.showOthers.set(true);
+            cosmetics.setEnabled(true);
+        }
+    }
+
+    @Test
     void wheelPicksBySlotDirection() {
         EmoteWheel wheel = new EmoteWheel(1000);
         assertEquals(0, wheel.hovered(0, -50), "straight up is the first slot (Groove)");
