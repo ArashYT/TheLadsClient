@@ -100,6 +100,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new ConnectionTweaks189());
         MinecraftForge.EVENT_BUS.register(new KillBanner189());
         com.thelads.core.v1_8_9.feature.Hypixel189.register();
+        com.thelads.core.v1_8_9.feature.LadsApi189.register();
         MinecraftForge.EVENT_BUS.register(LadsTitleScreen189.INSTANCE);
         MinecraftForge.EVENT_BUS.register(new Tooltips189());
         MinecraftForge.EVENT_BUS.register(new Clumps189());

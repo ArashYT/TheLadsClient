@@ -37,7 +37,12 @@ public abstract class NetworkManagerMixin implements SignalLoss189.PacketActivit
         if (direction != EnumPacketDirection.CLIENTBOUND) return;
         ladsLastPacketNanos = System.nanoTime();
         // 1.9.1 real ping: the Hypixel Mod API's answer as it arrives (Hypixel189).
-        if (packet instanceof S3FPacketCustomPayload) com.thelads.core.v1_8_9.feature.Hypixel189.payload((S3FPacketCustomPayload) packet);
+        // lads:api transport: payload delivered to LadsApiClient (LadsApi189).
+        if (packet instanceof S3FPacketCustomPayload) {
+            S3FPacketCustomPayload customPayload = (S3FPacketCustomPayload) packet;
+            com.thelads.core.v1_8_9.feature.Hypixel189.payload(customPayload);
+            com.thelads.core.v1_8_9.feature.LadsApi189.receive(customPayload);
+        }
     }
 
     /** Cancel pressed while the socket was still opening (ConnectionTweaks189.cancelledConnect): close it before it logs in. */
