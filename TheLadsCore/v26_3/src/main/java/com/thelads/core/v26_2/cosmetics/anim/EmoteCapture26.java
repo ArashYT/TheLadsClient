@@ -204,19 +204,19 @@ public final class EmoteCapture26 {
             Emotes.Playing p = Emotes.get(self);
             check(p != null && EmoteLibrary.FLOSS.equals(p.id()) && !p.stopping(), "floss key starts floss");
         });
-        shot(cos + 1700, "floss-a");
-        shot(cos + 2200, "floss-b");
-        shot(cos + 2700, "floss-c");
-        at(cos + 2800, () -> {
+        shot(cos + 1950, "floss-a"); // whole beats after the start: the swing's ends, not its middle
+        shot(cos + 2450, "floss-b");
+        shot(cos + 2950, "floss-c");
+        at(cos + 3050, () -> {
             KeyMapping flossKey = EmoteAnim26.key(EmoteLibrary.FLOSS);
             if (flossKey != null) flossKey.clickCount++;
         });
-        at(cos + 2900, () -> { // before the 280 ms blend-out removes it
+        at(cos + 3150, () -> { // before the 280 ms blend-out removes it
             Emotes.Playing p = Emotes.get(self);
             check(p != null && EmoteLibrary.FLOSS.equals(p.id()) && p.stopping(), "floss key again stops floss");
             mc.setScreenAndShow(null);
         });
-        at(cos + 3400, () -> {
+        at(cos + 3600, () -> {
             mc.options.setCameraType(CameraType.FIRST_PERSON);
             hud(mc, hudWas);
             com.thelads.core.v26_2.feature.LocalSkins.reset();
