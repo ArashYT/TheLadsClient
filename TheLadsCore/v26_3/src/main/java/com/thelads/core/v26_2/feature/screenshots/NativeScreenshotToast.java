@@ -69,8 +69,14 @@ public class NativeScreenshotToast implements Toast {
         if (currentTime - firstRender >= 5000L * toastManager.getNotificationDisplayTimeMultiplier()) {
             visibility = Visibility.HIDE;
             if (dynamicTexture != null) {
-                dynamicTexture.close();
+                // The toast still draws while it slides out: closing the texture here crashed the next frame ("Texture view does not
+                // exist", 1.9.12 bench on Vulkan). Released through the texture manager once the slide-out is over (as on 1.20.1).
+                Identifier id = textureId;
                 dynamicTexture = null;
+                java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    if (textureId == id) textureId = null;
+                    Minecraft.getInstance().getTextureManager().release(id);
+                }, java.util.concurrent.CompletableFuture.delayedExecutor(1500, java.util.concurrent.TimeUnit.MILLISECONDS, Minecraft.getInstance()));
             }
         }
     }
