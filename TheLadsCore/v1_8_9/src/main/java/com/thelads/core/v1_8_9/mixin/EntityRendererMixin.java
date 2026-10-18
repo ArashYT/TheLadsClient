@@ -37,9 +37,22 @@ public abstract class EntityRendererMixin {
     @Shadow private int[] lightmapColors;
     @Shadow private DynamicTexture lightmapTexture;
 
+    @Shadow private boolean lightmapUpdateNeeded;
+    private boolean ladsLightmapRecomputed;
+
+    @Inject(method = "updateLightmap", at = @At("HEAD"), require = 1)
+    private void ladsLightmapStart(float partialTicks, CallbackInfo ci) {
+        ladsLightmapRecomputed = this.lightmapUpdateNeeded;
+    }
+
+    /**
+     * The lift is applied to the colors the game has just computed, once per computation. The method returns after every call, also
+     * when the game left the colors as they were (nothing marked them out of date): lifting them again then compounded, every frame,
+     * until any Brightness above 0 was white (1.9.3 on) and a paused menu kept brightening the world behind it.
+     */
     @Inject(method = "updateLightmap", at = @At("RETURN"), require = 1)
     private void ladsUpdateLightmap(float partialTicks, CallbackInfo ci) {
-        if (com.thelads.core.v1_8_9.feature.Fullbright189.applyLightmap(this.lightmapColors)) {
+        if (ladsLightmapRecomputed && com.thelads.core.v1_8_9.feature.Fullbright189.applyLightmap(this.lightmapColors)) {
             this.lightmapTexture.updateDynamicTexture();
         }
     }
