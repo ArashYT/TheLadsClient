@@ -89,6 +89,8 @@ public partial class ExperiencesView : UserControl
     {
         InitializeComponent();
         ZeroSmpServerText.Text = ExperiencesService.ZeroSmp.ServerAddress; // the one place the address is written down
+        LadsSmpRebornModsText.Text = $"{ExperiencesService.LadsSmpReborn.ModCount} Mods"; // as the pin (the card said 225 since 1.9.10)
+        ZeroSmpModsText.Text = $"{ExperiencesService.ZeroSmp.ModCount} Mods";
         ToolTip.SetTip(LadsSmpRebornRamBox, $"{ExperiencesService.LadsSmpReborn.RecommendedRamMb} MB");
         ToolTip.SetTip(ZeroSmpRamBox, $"{ExperiencesService.ZeroSmp.RecommendedRamMb} MB");
     }
