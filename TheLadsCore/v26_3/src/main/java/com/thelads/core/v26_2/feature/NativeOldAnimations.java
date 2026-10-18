@@ -20,6 +20,7 @@ import net.minecraft.client.renderer.entity.state.ItemEntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.resources.model.cuboid.ItemTransform;
 import net.minecraft.client.resources.model.EquipmentClientInfo;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.ARGB;
@@ -86,29 +87,27 @@ public final class NativeOldAnimations {
         if (block && hand == InteractionHand.OFF_HAND && player.getUsedItemHand() == InteractionHand.OFF_HAND) return null; // the shield hides
         Use use = block && hand == InteractionHand.MAIN_HAND ? Use.BLOCK : use(player, hand, item);
         Held held = held(item);
-        if (use == null || !module.iconPlacement(MODERN, use, held) || kept(item)
+        HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
+        if (use == null || !module.iconPlacement(MODERN, use, held) || kept(player, item)
             || OldAnimations.legacySwingPlaces(NativeQualityOfLife.enabled("LegacySwing"), use, item.getItem() instanceof BlockItem)
-            || !flat(icon(player, hand, item))) {
+            || !flat(icon(player, hand, arm, item))) {
             if (item.getItem() instanceof ShieldItem && module.active(Feature.LOW_SHIELD, MODERN)) {
                 pose.translate(0, -0.25f, 0);
                 APPLIED.add(Feature.LOW_SHIELD);
             }
             return vanilla;
         }
-        HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
         int side = arm == HumanoidArm.RIGHT ? 1 : -1;
         OldAnimations.Sink out = sink(pose);
-        // Idle: vanilla's arm and swing stay, LegacySwing's when it is on (a block item stays vanilla's then: legacySwingPlaces).
-        // A use without a 1.7 pose (a spyglass, a horn) and a crossbow (vanilla aims a loaded one) are held as 1.7 held any item.
-        boolean using = player.isUsingItem() && player.getUsedItemHand() == hand;
-        if (use == Use.NONE && !using && !(item.getItem() instanceof CrossbowItem)) OldAnimations.fromModernHand(out, side);
+        // Held (idle, or a use 1.7 just held the item through): over vanilla's arm and swing, LegacySwing's when it is on (a block
+        // item stays vanilla's then: legacySwingPlaces), and whatever the item or another mod placed there.
+        if (use == Use.NONE) OldAnimations.fromModernHand(out, side);
         else {
-            pose.popPose(); // back to the arm origin (submitArmWithItem's own push), dropping vanilla's use transforms
+            pose.popPose(); // eating, blocking, drawing: back to the arm origin (submitArmWithItem's own push), dropping vanilla's use pose
             pose.pushPose();
             float shown = module.swingShown(MODERN, use, swing, attacked);
-            if (use == Use.NONE && NativeQualityOfLife.enabled("LegacySwing")) OldAnimations.legacySwingHand(out, side, equip, swing);
-            else OldAnimations.hand(out, side, equip, shown, use, player.getUseItemRemainingTicks(), partial, item.getUseDuration(player));
-            if (shown > 0 && use != Use.NONE) APPLIED.add(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING);
+            OldAnimations.hand(out, side, equip, shown, use, player.getUseItemRemainingTicks(), partial, item.getUseDuration(player));
+            if (shown > 0) APPLIED.add(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING);
         }
         OldAnimations.item(out, side, held == Held.ROD);
         APPLIED.add(use == Use.BLOCK ? Feature.BLOCK_POSE : use == Use.EAT_DRINK ? Feature.EAT_DRINK
@@ -116,33 +115,46 @@ public final class NativeOldAnimations {
         return ItemDisplayContext.NONE;
     }
 
-    /** 26.3 resolves first-person items at extraction for their hand context: the item as firstPerson resolved it for NONE. */
+    /** 26.3 resolves first-person items at extraction for their hand context: the item as firstPerson resolved it for the 1.7 placement. */
     public static ItemStackRenderState firstPersonIcon(InteractionHand hand) {
         return ICONS[hand.ordinal()];
     }
 
     /**
-     * The item resolved with no display transform, as the 1.7 placement draws it (one state per hand: a submitted item still
-     * reads its state until the frame is drawn).
+     * The item as vanilla holds it in this hand (a model picked by display context, as a modded gun's 3D hand model, is the hand's),
+     * with no display transform: what the 1.7 placement draws. One state per hand: a submitted item reads its state until the frame
+     * is drawn.
      */
-    private static ItemStackRenderState icon(LivingEntity player, InteractionHand hand, ItemStack item) {
+    private static ItemStackRenderState icon(LivingEntity player, InteractionHand hand, HumanoidArm arm, ItemStack item) {
         ItemStackRenderState icon = ICONS[hand.ordinal()];
-        Minecraft.getInstance().getItemModelResolver().updateForTopItem(icon, item, ItemDisplayContext.NONE, player.level(), player,
-            player.getId() + ItemDisplayContext.NONE.ordinal());
+        Minecraft.getInstance().getItemModelResolver().updateForLiving(icon, item,
+            arm == HumanoidArm.RIGHT ? ItemDisplayContext.FIRST_PERSON_RIGHT_HAND : ItemDisplayContext.FIRST_PERSON_LEFT_HAND, player);
+        bare(icon);
         return icon;
     }
 
-    /**
-     * A flat icon (generated item model): 1.7's recipes place flat items only. Blocks, special models (shields, banners,
-     * tridents) and 3D in-hand models keep vanilla's placement. The state must be resolved with ItemDisplayContext.NONE.
-     */
-    static boolean flat(ItemStackRenderState item) {
-        return !item.isEmpty() && !item.usesBlockLight() && item.getModelBoundingBox().getZsize() < 0.1;
+    /** Drops every layer's display transform: the item's own centred mesh, drawn as an item resolved for NONE, as 1.7 placed it. */
+    private static void bare(ItemStackRenderState item) {
+        for (int i = 0; i < item.activeLayerCount; i++) item.layers[i].setItemTransform(ItemTransform.NO_TRANSFORM);
+        item.displayContext = ItemDisplayContext.NONE;
     }
 
-    /** Spears thrust (a modern-only attack 1.7 never had): always vanilla. A crossbow is held and drawn as a 1.7 bow (held, use). */
-    private static boolean kept(ItemStack item) {
-        return item.is(ItemTags.SPEARS);
+    /**
+     * A flat icon (a generated sprite one pixel thick, as drawn with no display transform): 1.7's recipes place flat items only.
+     * Blocks, special and entity models (shields, banners, skulls, tridents: their 1 px cubes look thin) and 3D models keep vanilla's.
+     */
+    static boolean flat(ItemStackRenderState item) {
+        if (item.isEmpty() || item.usesBlockLight()) return false;
+        for (int i = 0; i < item.activeLayerCount; i++) if (item.layers[i].specialRenderer != null) return false;
+        return item.getModelBoundingBox().getZsize() < 0.1;
+    }
+
+    /**
+     * Always vanilla's placement: spears thrust (a modern-only attack 1.7 never had), vanilla aims a loaded crossbow, and the riptide
+     * spin is vanilla's. A crossbow is otherwise held and drawn as a 1.7 bow.
+     */
+    private static boolean kept(LivingEntity entity, ItemStack item) {
+        return item.is(ItemTags.SPEARS) || item.getItem() instanceof CrossbowItem && CrossbowItem.isCharged(item) || entity.isAutoSpinAttack();
     }
 
     /**
@@ -177,9 +189,9 @@ public final class NativeOldAnimations {
         else player.swing(InteractionHand.MAIN_HAND, player.getMainHandItem().getAttackAnimation(), false); // halfway rule, no packet
     }
 
-    /** The 1.7 pose an item's use draws (OldAnimations.use): every modern use has one, NONE when 1.7 just held the item. */
+    /** The 1.7 pose an item's use draws (OldAnimations.use, by behaviour): null when it keeps vanilla's. */
     private static Use action(ItemStack item) {
-        return OldAnimations.use(item.getUseAnimation().name());
+        return OldAnimations.use(item.getUseAnimation().name(), item.getItem() instanceof BowItem);
     }
 
     /**
@@ -309,8 +321,8 @@ public final class NativeOldAnimations {
             for (HumanoidArm arm : HumanoidArm.values()) {
                 ItemStackRenderState item = itemState(state, arm);
                 ItemStack stack = entity.getItemHeldByArm(arm);
-                if (item.isEmpty() || item.usesBlockLight() || kept(stack)) continue; // blocks keep vanilla
-                resolver.updateForLiving(item, stack, ItemDisplayContext.NONE, entity);
+                if (item.isEmpty() || item.usesBlockLight() || kept(entity, stack)) continue; // blocks keep vanilla
+                bare(item); // vanilla's own in-hand model (picked for this context) without its display transform
                 if (!flat(item)) resolver.updateForLiving(item, stack,
                     arm == HumanoidArm.RIGHT ? ItemDisplayContext.THIRD_PERSON_RIGHT_HAND : ItemDisplayContext.THIRD_PERSON_LEFT_HAND, entity);
                 else flags |= arm == HumanoidArm.RIGHT ? RIGHT_ICON : LEFT_ICON;

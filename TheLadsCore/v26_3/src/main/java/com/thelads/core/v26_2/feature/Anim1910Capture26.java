@@ -52,7 +52,8 @@ final class Anim1910Capture26 {
             case 60 -> mc.options.keyUse.setDown(false);
             case 70 -> { NativeOldAnimations.APPLIED.clear(); }
             case 75 -> {
-                check(NativeOldAnimations.APPLIED.contains(Feature.BOW), "a loaded crossbow is held as a 1.7 bow (" + NativeOldAnimations.APPLIED + ")");
+                check(!NativeOldAnimations.APPLIED.contains(Feature.BOW), "a loaded crossbow keeps vanilla's aimed hold (1.9.11; "
+                    + NativeOldAnimations.APPLIED + ")");
                 pendingShot = "crossbow-loaded";
                 mc.player.setXRot(-60); // at the sky: nothing to mine or hit
                 mc.options.keyAttack.setDown(true);

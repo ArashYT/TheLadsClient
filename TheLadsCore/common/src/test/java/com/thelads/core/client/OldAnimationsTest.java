@@ -258,16 +258,46 @@ class OldAnimationsTest {
             assertArrayEquals(flipped.point(p[0], p[1], -p[2]), ours.point(p[0], p[1], p[2]), EPS);
     }
 
-    @Test void leftHandMirrorsTheRightHand() {
+    @Test void leftHandFramesMirrorTheRightHand() {
         for (Use use : Use.values())
             for (float swing : SWINGS)
                 assertPose(hand(1, 0.3f, swing, use, BOW - 25, 0.4f, BOW).mirrored(), hand(-1, 0.3f, swing, use, BOW - 25, 0.4f, BOW).m,
                     "left " + use + " swing " + swing);
-        assertPose(of(m -> OldAnimations.item(m, 1, true)).mirrored(), of(m -> OldAnimations.item(m, -1, true)).m, "left rod");
         assertPose(of(m -> OldAnimations.fromModernHand(m, 1)).mirrored(), of(m -> OldAnimations.fromModernHand(m, -1)).m, "left bridge");
+    }
+
+    /**
+     * The off hand (and a left main arm) is the right hand's picture in a mirror: every corner of the sprite, the grip and the tip
+     * included, lands at the mirror image (x negated) of where the right hand puts it, in every pose. The flat mesh is the same seen
+     * from either side, so a corner may come from the other face (z negated). Conjugating the recipe alone put the sprite's other
+     * corner in the hand: blades and bows pointed along the view, a bow was drawn huge in the camera.
+     */
+    @Test void leftHandIsTheRightHandsMirrorImage() {
+        double[][] corners = {{-0.5, -0.5, 0.03125}, {0.5, -0.5, -0.03125}, {0.5, 0.5, 0.03125}, {-0.5, 0.5, -0.03125}, {0.4375, -0.4375, -0.03125}};
+        for (Use use : Use.values())
+            for (boolean rod : new boolean[]{false, true})
+                for (float swing : SWINGS)
+                    assertMirrored(side -> {
+                        Mat m = hand(side, 0.3f, swing, use, BOW - 25, 0.4f, BOW);
+                        OldAnimations.item(m, side, rod);
+                        return m;
+                    }, corners, use + " rod " + rod + " swing " + swing);
+        assertMirrored(side -> of(m -> { OldAnimations.fromModernHand(m, side); OldAnimations.item(m, side, false); }), corners, "modern bridge");
+        assertMirrored(side -> of(m -> { OldAnimations.legacySwingHand(m, side, 0.2f, 0.5f); OldAnimations.item(m, side, false); }), corners,
+            "Legacy Swing");
         for (Held held : Held.values())
-            assertPose(of(m -> { OldAnimations.thirdPersonHand(m, 1); OldAnimations.thirdPersonItem(m, 1, held, true); }).mirrored(),
-                of(m -> { OldAnimations.thirdPersonHand(m, -1); OldAnimations.thirdPersonItem(m, -1, held, true); }).m, "left arm " + held);
+            for (boolean blocking : new boolean[]{false, true})
+                assertMirrored(side -> of(m -> { OldAnimations.thirdPersonHand(m, side); OldAnimations.thirdPersonItem(m, side, held, blocking); }),
+                    corners, "third person " + held + " blocking " + blocking);
+    }
+
+    private static void assertMirrored(java.util.function.IntFunction<Mat> recipe, double[][] corners, String what) {
+        Mat right = recipe.apply(1), left = recipe.apply(-1);
+        assertTrue(left.det() > 0, what + ": proper");
+        for (double[] p : corners) {
+            double[] r = right.point(p[0], p[1], -p[2]);
+            assertArrayEquals(new double[]{-r[0], r[1], r[2]}, left.point(p[0], p[1], p[2]), EPS, what + " corner " + p[0] + "," + p[1]);
+        }
     }
 
     @Test void everyRecipeIsAProperTransform() {
@@ -340,12 +370,19 @@ class OldAnimationsTest {
         assertTrue(OldAnimations.shouldRestartSwing(true, 4, 8), "fatigue: tick 4 of 8 is past half");
     }
 
-    /** 1.9.10: every modern use maps to a 1.7 pose, so any item (a crossbow, a trident) uses like a 1.7 one. */
-    @Test void everyModernUseHasA17Pose() {
-        assertEquals(Use.EAT_DRINK, OldAnimations.use("EAT"));
-        assertEquals(Use.EAT_DRINK, OldAnimations.use("DRINK"));
-        assertEquals(Use.BLOCK, OldAnimations.use("BLOCK"));
-        for (String draw : new String[]{"BOW", "CROSSBOW", "TRIDENT", "SPEAR"}) assertEquals(Use.BOW, OldAnimations.use(draw), draw);
-        for (String held : new String[]{"NONE", "SPYGLASS", "TOOT_HORN", "BRUSH", "BUNDLE"}) assertEquals(Use.NONE, OldAnimations.use(held), held);
+    /** 1.9.11: uses are classified by what the item does (OldAnimations.use's table), so modded items follow the same rules. */
+    @Test void usesAreClassifiedByBehaviour() {
+        for (boolean bow : new boolean[]{false, true}) {
+            String what = bow ? " (a BowItem)" : "";
+            assertEquals(bow ? Use.BOW : Use.EAT_DRINK, OldAnimations.use("EAT", bow), "EAT" + what);
+            assertEquals(bow ? Use.BOW : Use.EAT_DRINK, OldAnimations.use("DRINK", bow), "DRINK" + what);
+            assertEquals(bow ? Use.BOW : Use.BLOCK, OldAnimations.use("BLOCK", bow), "BLOCK" + what);
+            for (String draw : new String[]{"BOW", "CROSSBOW"}) assertEquals(Use.BOW, OldAnimations.use(draw, bow), draw + what);
+            // NONE while in use (modded guns, staffs, wands used every tick): held as 1.7 holds it, over the item's own transform.
+            assertEquals(bow ? Use.BOW : Use.NONE, OldAnimations.use("NONE", bow), "NONE" + what);
+            // No 1.7 pose: vanilla's and the item's own transform (riptide, spear thrust, spyglass, horn, brush, bundle, Forge CUSTOM, modded).
+            for (String kept : new String[]{"TRIDENT", "SPEAR", "SPYGLASS", "TOOT_HORN", "BRUSH", "BUNDLE", "CUSTOM", "SOME_MODDED_USE"})
+                assertEquals(bow ? Use.BOW : null, OldAnimations.use(kept, bow), kept + what);
+        }
     }
 }
