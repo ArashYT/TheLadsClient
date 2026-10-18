@@ -45,6 +45,8 @@ class EmoteAnimTest {
         }
         assertTrue(GROOVE.rightArm && GROOVE.leftArm, "the groove pumps both arms: first person shows both");
         assertEquals(4 * 60_000f / 115, GROOVE.periodMs, 0.01f, "4 beats at 115 BPM");
+        Emote floss = EmoteLibrary.get(EmoteLibrary.FLOSS);
+        assertTrue(floss != null && floss.rightArm && floss.leftArm, "floss swings both arms");
     }
 
     @Test

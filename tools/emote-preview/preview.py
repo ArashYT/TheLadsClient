@@ -104,5 +104,5 @@ def main():
     ImageDraw.Draw(sheet).text((3 * cw + 4, 4), "FP pitch 0", fill=(0, 0, 0))
     ImageDraw.Draw(sheet).text((3 * cw + fw + 4, 4), "FP 25 down", fill=(0, 0, 0))
     sheet.save(sys.argv[2])
-
-main()
+if __name__ == '__main__':
+    main()

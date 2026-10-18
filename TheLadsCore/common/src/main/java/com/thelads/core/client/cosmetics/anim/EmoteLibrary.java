@@ -13,6 +13,7 @@ public final class EmoteLibrary {
     public static final String GROOVE = "lads:groove";
     public static final String WAVE = "lads:wave";
     public static final String CLAP = "lads:clap";
+    public static final String FLOSS = "lads:floss";
     public static final String CHEER = "lads:cheer";
     public static final String BOW = "lads:bow";
     public static final String FACEPALM = "lads:facepalm";
@@ -26,6 +27,7 @@ public final class EmoteLibrary {
         add(groove());
         add(wave());
         add(clap());
+        add(floss());
         add(cheer());
         add(bow());
         add(facepalm());
@@ -103,6 +105,47 @@ public final class EmoteLibrary {
             b.key(ch(HEAD, RX), beat, 7, Ease.OUT).key(ch(HEAD, RX), open, -2, Ease.EASE);
             b.key(ROOT + 1, beat, 0.2f, Ease.OUT).key(ROOT + 1, open, -0.1f, Ease.EASE);
         }
+        return b.build();
+    }
+
+    /**
+     * Floss: classic arm swing side to side with hip counter-motion at 120 BPM (4 beats).
+     * On each beat, both arms swing to one side while hips thrust to the opposite side, alternating
+     * which arm passes in front and behind the body with continuous momentum. Feet stay planted on the ground.
+     */
+    static Emote floss() {
+        Emote.Builder b = new Emote.Builder(FLOSS, "Floss", 120, 4).groundLock();
+        // Hips / Torso: decisive, energetic hip swing opposite to arms.
+        b.track(ch(BODY, RZ), 0, 11.0f, 1, -11.0f, 2, 11.0f, 3, -11.0f);
+        b.track(ch(BODY, RY), 0, -8.0f, 1, 8.0f, 2, -8.0f, 3, 8.0f);
+        b.track(ch(BODY, RX), 0, 4.0f, 1, 4.0f, 2, 4.0f, 3, 4.0f);
+        b.track(ROOT, 0, -2.4f, 1, 2.4f, 2, -2.4f, 3, 2.4f);
+        // Subtle vertical dip at center of swing
+        b.track(ROOT + 1, 0, -0.3f, 0.5f, 0.4f, 1, -0.3f, 1.5f, 0.4f, 2, -0.3f, 2.5f, 0.4f, 3, -0.3f, 3.5f, 0.4f);
+
+        // Head: stays upright, looking straight ahead at the viewer.
+        b.track(ch(HEAD, RZ), 0, -8.0f, 1, 8.0f, 2, -8.0f, 3, 8.0f);
+        b.track(ch(HEAD, RY), 0, 7.0f, 1, -7.0f, 2, 7.0f, 3, -7.0f);
+        b.track(ch(HEAD, RX), 0, 2.0f, 1, 2.0f, 2, 2.0f, 3, 2.0f);
+
+        // Arm side-to-side swing (RZ):
+        b.track(ch(RIGHT_ARM, RZ), 0, -50.0f, 1, 36.0f, 2, -50.0f, 3, 36.0f);
+        b.track(ch(LEFT_ARM, RZ),  0, -36.0f, 1, 50.0f, 2, -36.0f, 3, 50.0f);
+
+        // Front vs behind (RX), swapping every beat: the arm that crosses the body passes in front, the other swings out behind.
+        b.track(ch(RIGHT_ARM, RX), 0, -45.0f, 1, 25.0f, 2, -45.0f, 3, 25.0f);
+        b.track(ch(LEFT_ARM, RX),  0, 25.0f, 1, -45.0f, 2, 25.0f, 3, -45.0f);
+
+        // Arm yaw (RY):
+        b.track(ch(RIGHT_ARM, RY), 0, 18.0f, 1, -18.0f, 2, 18.0f, 3, -18.0f);
+        b.track(ch(LEFT_ARM, RY),  0, 18.0f, 1, -18.0f, 2, 18.0f, 3, -18.0f);
+
+        // Legs: wide stance, weight shifting with hip sway.
+        b.track(ch(RIGHT_LEG, RZ), 0, 7.0f, 1, -3.0f, 2, 7.0f, 3, -3.0f);
+        b.track(ch(LEFT_LEG, RZ),  0, 3.0f, 1, -7.0f, 2, 3.0f, 3, -7.0f);
+        b.track(ch(RIGHT_LEG, RX), 0, -8.0f, 1, -2.0f, 2, -8.0f, 3, -2.0f);
+        b.track(ch(LEFT_LEG, RX),  0, -2.0f, 1, -8.0f, 2, -2.0f, 3, -8.0f);
+
         return b.build();
     }
 

@@ -200,33 +200,38 @@ public final class EmoteProbe189 {
         long closeScreens = pause + 700;
         at(closeScreens, () -> mc.displayGuiScreen(null));
         long grooveKeyTest = closeScreens + 300;
+        // The emote-key test plays Floss (its own key), photographed from the front over one loop.
         at(grooveKeyTest, () -> {
-            KeyBinding grooveBinding = EmoteAnim189.key(EmoteLibrary.GROOVE);
-            if (grooveBinding != null) {
+            mc.thePlayer.rotationPitch = 0; mc.gameSettings.thirdPersonView = 2; mc.gameSettings.hideGUI = true;
+            KeyBinding flossBinding = EmoteAnim189.key(EmoteLibrary.FLOSS);
+            if (flossBinding != null) {
                 qaKey = freeKey(mc);
-                grooveBinding.setKeyCode(qaKey);
+                flossBinding.setKeyCode(qaKey);
                 KeyBinding.resetKeyBindingArrayAndHash();
                 KeyBinding.onTick(qaKey);
             }
         });
         at(grooveKeyTest + 100, () -> {
             Emotes.Playing playing = Emotes.get(self);
-            check(playing != null && EmoteLibrary.GROOVE.equals(playing.id()) && !playing.stopping(),
-                "Groove emote key press plays groove and is not stopping");
-            KeyBinding.onTick(qaKey);
+            check(playing != null && EmoteLibrary.FLOSS.equals(playing.id()) && !playing.stopping(),
+                "Floss emote key press plays floss and is not stopping");
         });
-        at(grooveKeyTest + 200, () -> {
+        shot(grooveKeyTest + 200, "floss-a");
+        shot(grooveKeyTest + 700, "floss-b");
+        shot(grooveKeyTest + 1200, "floss-c");
+        at(grooveKeyTest + 1300, () -> KeyBinding.onTick(qaKey));
+        at(grooveKeyTest + 1400, () -> {
             Emotes.Playing playing = Emotes.get(self);
-            check(playing != null && EmoteLibrary.GROOVE.equals(playing.id()) && playing.stopping(),
-                "Groove emote key press again stops groove");
-            KeyBinding grooveBinding = EmoteAnim189.key(EmoteLibrary.GROOVE);
-            if (grooveBinding != null) {
-                grooveBinding.setKeyCode(Keyboard.KEY_NONE);
+            check(playing != null && EmoteLibrary.FLOSS.equals(playing.id()) && playing.stopping(),
+                "Floss emote key press again stops floss");
+            KeyBinding flossBinding = EmoteAnim189.key(EmoteLibrary.FLOSS);
+            if (flossBinding != null) {
+                flossBinding.setKeyCode(Keyboard.KEY_NONE);
                 KeyBinding.resetKeyBindingArrayAndHash();
             }
             Emotes.stopLocal(self);
         });
-        at(grooveKeyTest + 500, () -> {
+        at(grooveKeyTest + 1800, () -> {
             mc.gameSettings.thirdPersonView = 0;
             mc.gameSettings.hideGUI = hudWas;
             done = true;
