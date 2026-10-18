@@ -7,7 +7,6 @@ import com.thelads.core.v26_2.feature.NativeQualityOfLife;
 import com.thelads.core.v26_2.feature.food.mixin.FoodDataAccess;
 import java.util.Arrays;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
@@ -20,6 +19,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.contents.objects.AtlasSprite;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -40,7 +40,7 @@ import net.minecraft.world.level.gamerules.GameRules;
  * server side sends exact saturation and exhaustion (and the natural regeneration rule) on AppleSkin's channels (AppleSkinSync),
  * which are used there. Other servers send hunger, and saturation only with a health or hunger change, never exhaustion: there
  * saturation is the last value received, exhaustion is not drawn and health estimates assume none. It never changes food, health
- * or packets. A loaded AppleSkin jar keeps the job (and the channels).
+ * or packets, and never announces AppleSkin's channels (AppleSkinSync). A loaded AppleSkin jar keeps the job (and the channels).
  */
 public final class NativeFood {
     static final String MODULE = "AppleSkin";
@@ -73,13 +73,21 @@ public final class NativeFood {
             ServerPlayer own = serverPlayer(player);
             lines.addLine(FoodPreview.debugLine(foodData(player, own).getFoodLevel(), saturation(player, own), exhaustion(own), exhaustionKnown(own)));
         });
+        // Types only, no receivers: the payloads decode as AppleSkinPayload and reach vanilla's unknown-payload path, where
+        // AppleSkinPayloadMixin reads them. Unregistered channels are never announced (AppleSkinSync).
         for (String channel : new String[] {AppleSkinSync.SATURATION, AppleSkinSync.EXHAUSTION, AppleSkinSync.NATURAL_REGENERATION}) {
             var type = AppleSkinPayload.type(channel);
             PayloadTypeRegistry.clientboundPlay().register(type, AppleSkinPayload.codec(type));
-            ClientPlayNetworking.registerGlobalReceiver(type, (payload, context) -> receive(channel, payload.data()));
         }
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> resetSync());
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> resetSync());
+    }
+
+    /** AppleSkinPayloadMixin, on the client thread: true when {@code payload} was an AppleSkin server payload (now read). */
+    public static boolean payload(CustomPacketPayload payload) {
+        if (!(payload instanceof AppleSkinPayload apple)) return false;
+        receive(apple.type().id().getPath(), apple.data());
+        return true;
     }
 
     /** An AppleSkin server payload's bytes; a value that cannot be the player's is ignored. */

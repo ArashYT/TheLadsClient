@@ -6,6 +6,7 @@
     "FoodDataAccess"
   ],
   "client": [
+    "AppleSkinPayloadMixin",
     "FoodHudMixin"
   ],
   "injectors": {
