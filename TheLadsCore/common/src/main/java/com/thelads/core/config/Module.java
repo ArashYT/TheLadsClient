@@ -67,6 +67,11 @@ public class Module {
         return enabled;
     }
 
+    /** The player's own on/off, whatever the server rules say right now: what configs save. */
+    public boolean isEnabledSetting() {
+        return enabled;
+    }
+
     public void setEnabled(boolean enabled) {
         if (this.enabled != enabled) {
             this.enabled = enabled;

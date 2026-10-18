@@ -101,7 +101,7 @@ public final class CoreCatalogExporter {
             o.addProperty("label", status.label());
             o.addProperty("detail", status.description());
             o.addProperty("externalModId", ModuleSupport.externalModId(name));
-            o.addProperty("enabled", module.isEnabled());
+            o.addProperty("enabled", module.isEnabledSetting());
             o.addProperty("toggleable", ModuleSupport.isToggleable(name));
             array.add(o);
         }
