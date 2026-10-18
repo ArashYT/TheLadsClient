@@ -109,7 +109,7 @@ public final class NativeHud {
     }
 
     /** QA only: the QA progress bar over the screens that show without a world (with one, the HUD draws it). */
-    @SubscribeEvent
+    @SubscribeEvent(priority = net.minecraftforge.fml.common.eventhandler.EventPriority.LOWEST) // after the screens' own draws (the Lads title paints in a Post handler too)
     public void qaBarOnScreens(net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent.Post event) {
         Minecraft mc = Minecraft.getMinecraft();
         if (!com.thelads.core.client.qa.QaProgress.on() || mc.theWorld != null) return;

@@ -198,13 +198,16 @@ public final class QaProgress {
                 line = head + shown;
             }
         }
+        int bar = 182, x = (w - bar) / 2;
+        // A dark backdrop behind the text and the bar, so they read over whatever the Lads HUD or the game has drawn there.
+        int half = Math.max(bar, Math.max(g.textWidth(line), second == null ? 0 : g.textWidth(second))) / 2 + 4;
+        g.fill(w / 2 - half, 0, w / 2 + half, y + (second == null ? 1 : 2) * (g.fontHeight() + 1) + 8, 0x90000000);
         g.drawCenteredText(line, w / 2, y, 0xFFFFFFFF, true);
         y += g.fontHeight() + 1;
         if (second != null) {
             g.drawCenteredText(second, w / 2, y, 0xFFFFFFFF, true);
             y += g.fontHeight() + 1;
         }
-        int bar = 182, x = (w - bar) / 2;
         int[] fills = {0xFF3FB83F, 0xFFE8C422, 0xFFD83A3A}; // green, yellow, red
         int[] shine = {0xFF7BE07B, 0xFFFFE566, 0xFFFF7A7A};
         int s = state();
