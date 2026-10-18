@@ -42,7 +42,11 @@ public final class EmoteWheel {
         return slot(hovered(mx, my));
     }
 
-    private static String slot(int i) { return i < 0 ? null : EmoteLibrary.WHEEL[i]; }
+    private static String slot(int i) {
+        if (i < 0 || i >= EmoteLibrary.WHEEL.length) return null;
+        String id = EmoteLibrary.WHEEL[i];
+        return EmoteLibrary.owns(id) ? id : null;
+    }
 
     public void render(LadsGraphics g, int mx, int my, long nowMs) {
         int width = g.getScaledWidth(), height = g.getScaledHeight();
@@ -56,7 +60,7 @@ public final class EmoteWheel {
         g.scale(scale * 0.5f, scale * 0.5f);
         for (int i = 0; i < spanCount; i += 4) {
             int kind = spans[i + 3], color;
-            if (kind < SEP) color = kind == hover ? LadsPalette.PRIMARY : EmoteLibrary.WHEEL[kind] != null ? 0xF21B1015 : 0xE6130B10;
+            if (kind < SEP) color = kind == hover ? LadsPalette.PRIMARY : (EmoteLibrary.WHEEL[kind] != null && EmoteLibrary.owns(EmoteLibrary.WHEEL[kind])) ? 0xF21B1015 : 0xE6130B10;
             else if (kind == SEP) color = LadsPalette.BORDER;
             else if (kind == CENTER) color = 0xF2070709;
             else color = kind - RIM == hover ? LadsPalette.ACCENT : LadsPalette.BORDER;
@@ -68,12 +72,14 @@ public final class EmoteWheel {
         for (int k = 0; k < wheel.length; k++) {
             double a = 2 * Math.PI * k / wheel.length;
             int x = (int) Math.round(Math.sin(a) * mid), y = (int) Math.round(-Math.cos(a) * mid);
-            Emote emote = EmoteLibrary.get(wheel[k]);
+            String id = wheel[k];
+            Emote emote = EmoteLibrary.owns(id) ? EmoteLibrary.get(id) : null;
             if (emote == null) { g.drawCenteredText("Empty", x, y - g.fontHeight() / 2, LadsPalette.DISABLED, false); continue; }
             note(g, x - 3, y - 13, k == hover ? LadsPalette.TEXT : LadsPalette.ACCENT);
             g.drawCenteredText(emote.name, x, y + 1, LadsPalette.TEXT, true);
         }
-        Emote picked = hover < 0 ? null : EmoteLibrary.get(wheel[hover]);
+        String hoveredId = hover < 0 || hover >= wheel.length ? null : wheel[hover];
+        Emote picked = EmoteLibrary.owns(hoveredId) ? EmoteLibrary.get(hoveredId) : null;
         g.drawCenteredText(picked == null ? "Emotes" : picked.name, 0, -g.fontHeight() / 2, picked == null ? LadsPalette.MUTED : LadsPalette.ACCENT, true);
         g.popPose();
         g.drawCenteredText("Release over an emote to play it, Esc closes", cx, cy + OUTER + 10, LadsPalette.MUTED, true);

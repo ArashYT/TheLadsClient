@@ -29,19 +29,35 @@ class EmoteAnimTest {
 
     @Test
     void loopIsSeamless() {
-        float[] a = new float[CHANNELS], b = new float[CHANNELS];
-        GROOVE.sample(0, a);
-        GROOVE.sample(GROOVE.periodMs, b);
-        assertArrayEquals(a, b, 1e-4f, "t = 0 and t = period are the same pose");
-        // No jumps anywhere in the loop, the wrap included: at most 0.02 rad (or px) per millisecond on any channel.
-        GROOVE.sample(-0.5, a);
-        for (double t = 0; t <= GROOVE.periodMs + 1; t += 0.5) {
-            GROOVE.sample(t, b);
-            for (int c = 0; c < CHANNELS; c++) assertTrue(Math.abs(a[c] - b[c]) < 0.01f, "channel " + c + " jumps at " + t + " ms");
-            System.arraycopy(b, 0, a, 0, CHANNELS);
+        for (Emote emote : EmoteLibrary.all()) {
+            float[] a = new float[CHANNELS], b = new float[CHANNELS];
+            emote.sample(0, a);
+            emote.sample(emote.periodMs, b);
+            assertArrayEquals(a, b, 1e-4f, emote.id + ": t = 0 and t = period are the same pose");
+            // No jumps anywhere in the loop, the wrap included: at most 0.02 rad (or px) per millisecond on any channel.
+            emote.sample(-0.5, a);
+            for (double t = 0; t <= emote.periodMs + 1; t += 0.5) {
+                emote.sample(t, b);
+                for (int c = 0; c < CHANNELS; c++) assertTrue(Math.abs(a[c] - b[c]) < 0.01f, emote.id + " channel " + c + " jumps at " + t + " ms");
+                System.arraycopy(b, 0, a, 0, CHANNELS);
+            }
         }
         assertTrue(GROOVE.rightArm && GROOVE.leftArm, "the groove pumps both arms: first person shows both");
         assertEquals(4 * 60_000f / 115, GROOVE.periodMs, 0.01f, "4 beats at 115 BPM");
+
+        Emote wave = EmoteLibrary.get(EmoteLibrary.WAVE);
+        assertNotNull(wave);
+        assertTrue(wave.rightArm, "wave moves right arm");
+        assertEquals(2000.0f, wave.periodMs, 0.01f, "wave is a 2 s loop");
+
+        Emote clap = EmoteLibrary.get(EmoteLibrary.CLAP);
+        assertNotNull(clap);
+        assertTrue(clap.rightArm && clap.leftArm, "clap uses both arms");
+        assertEquals(4 * 60_000f / 120, clap.periodMs, 0.01f, "clap is ~120 BPM");
+
+        Emote floss = EmoteLibrary.get(EmoteLibrary.FLOSS);
+        assertNotNull(floss);
+        assertTrue(floss.rightArm && floss.leftArm, "floss uses both arms");
     }
 
     @Test
@@ -173,13 +189,15 @@ class EmoteAnimTest {
         EmoteWheel wheel = new EmoteWheel(1000);
         assertEquals(0, wheel.hovered(0, -50), "straight up is the first slot (Groove)");
         assertEquals(0, wheel.hovered(15, -200), "pointing past the ring still picks by direction");
-        assertEquals(2, wheel.hovered(60, 0));
+        assertEquals(2, wheel.hovered(60, 0), "pointing right is slot index 2 (Clap)");
         assertEquals(-1, wheel.hovered(3, 3), "the middle picks nothing");
         assertEquals(EmoteLibrary.GROOVE, wheel.release(1100, 0, -50), "release over Groove plays it");
         assertNull(wheel.release(1100, 0, 0), "a quick tap leaves the wheel open");
         assertEquals("", wheel.release(1400, 0, 0), "a held key released in the middle closes it");
-        assertEquals("", wheel.release(1400, 60, 0), "an empty slot plays nothing");
-        assertNull(wheel.click(60, 0), "clicking an empty slot keeps the wheel open");
+        assertEquals(EmoteLibrary.CLAP, wheel.release(1400, 60, 0), "slot index 2 (Clap) plays Clap");
+        assertEquals(EmoteLibrary.CLAP, wheel.click(60, 0), "clicking slot index 2 (Clap) plays Clap");
+        assertEquals("", wheel.release(1400, -60, 0), "an empty slot (slot index 6) plays nothing");
+        assertNull(wheel.click(-60, 0), "clicking an empty slot keeps the wheel open");
         assertEquals("", wheel.click(300, 300), "a click outside closes it");
         assertEquals(EmoteLibrary.GROOVE, wheel.click(0, -60));
     }
@@ -187,16 +205,19 @@ class EmoteAnimTest {
     /** Frames for tools/emote-preview (front, side and first-person drawings of the dance while it is tuned). */
     @Test
     void writesPreviewFrames() throws Exception {
-        float[] v = new float[CHANNELS];
-        StringBuilder json = new StringBuilder("{\"periodMs\":" + GROOVE.periodMs + ",\"frames\":[");
-        for (int f = 0; f <= 120; f++) {
-            GROOVE.sample(f * GROOVE.periodMs / 60, v);
-            json.append(f == 0 ? "[" : ",[");
-            for (int c = 0; c < CHANNELS; c++) json.append(c == 0 ? "" : ",").append(String.format(Locale.ROOT, "%.4f", v[c]));
-            json.append(']');
+        for (Emote emote : EmoteLibrary.all()) {
+            float[] v = new float[CHANNELS];
+            StringBuilder json = new StringBuilder("{\"periodMs\":" + emote.periodMs + ",\"frames\":[");
+            for (int f = 0; f <= 120; f++) {
+                emote.sample(f * emote.periodMs / 60, v);
+                json.append(f == 0 ? "[" : ",[");
+                for (int c = 0; c < CHANNELS; c++) json.append(c == 0 ? "" : ",").append(String.format(Locale.ROOT, "%.4f", v[c]));
+                json.append(']');
+            }
+            String name = emote.id.substring(emote.id.indexOf(':') + 1);
+            Path out = Path.of("build", "emote-preview", name + ".json");
+            Files.createDirectories(out.getParent());
+            Files.writeString(out, json.append("]}").toString());
         }
-        Path out = Path.of("build", "emote-preview", "groove.json");
-        Files.createDirectories(out.getParent());
-        Files.writeString(out, json.append("]}").toString());
     }
 }
