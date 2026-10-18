@@ -12,6 +12,8 @@ import com.thelads.core.client.cosmetics.anim.EmoteKeys;
 import com.thelads.core.client.cosmetics.anim.EmoteRules;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.v1_20_1.feature.NativeKeyBindings1201;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
@@ -45,6 +47,7 @@ import static com.thelads.core.client.cosmetics.anim.Emote.*;
  */
 public final class EmoteAnim1201 {
     public static final KeyMapping KEY = new KeyMapping("key.theladscore.emotes", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B, NativeKeyBindings1201.CATEGORY);
+    public static final Map<String, KeyMapping> EMOTE_KEYS = new LinkedHashMap<>();
     private static final float MODEL_SCALE = 0.9375f;
     /** PlayerRenderer.renderHand (the vanilla first-person arm) runs setupAnim too: no emote there. */
     public static boolean inHand;
@@ -58,6 +61,15 @@ public final class EmoteAnim1201 {
 
     public static void register() {
         KeyBindingHelper.registerKeyBinding(KEY);
+        for (String id : EmoteLibrary.ids()) {
+            KeyMapping binding = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                EmoteKeys.keyName(id),
+                InputConstants.Type.KEYSYM,
+                GLFW.GLFW_KEY_UNKNOWN,
+                EmoteKeys.CATEGORY
+            ));
+            EMOTE_KEYS.put(id, binding);
+        }
         ClientTickEvents.END_CLIENT_TICK.register(EmoteAnim1201::tick);
         EmoteCapture1201.register();
     }
@@ -76,6 +88,11 @@ public final class EmoteAnim1201 {
             Emotes.Playing playing = Emotes.get(id);
             if (playing != null && !playing.stopping()) Emotes.stopLocal(id); // tap again: stop
             else if (mc.screen == null) mc.setScreen(new EmoteWheelScreen1201());
+        }
+        for (Map.Entry<String, KeyMapping> e : EMOTE_KEYS.entrySet()) {
+            while (e.getValue().consumeClick()) {
+                if (mc.screen == null) EmoteKeys.pressed(id, e.getKey());
+            }
         }
         if (Emotes.get(id) == null) return;
         Options o = mc.options;

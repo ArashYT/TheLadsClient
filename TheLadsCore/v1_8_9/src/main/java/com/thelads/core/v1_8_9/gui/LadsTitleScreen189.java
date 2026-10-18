@@ -5,6 +5,7 @@ import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
+import com.thelads.core.v1_8_9.cosmetics.anim.CosmeticsScreen189;
 import com.thelads.core.v1_8_9.feature.Screenshots189;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -32,7 +33,7 @@ public final class LadsTitleScreen189 {
     private static final int LADS_ID = 0x4C414453 + 1; // the pause menu's Lads button is 0x4C414453; vanilla and Forge use 0-14
     private GuiMainMenu screen;
     private List<GuiButton> buttons;
-    private GuiButton ladsButton, moreButton, screenshotsButton, switchVersionButton, replaysButton;
+    private GuiButton ladsButton, cosmeticsButton, moreButton, screenshotsButton, switchVersionButton, replaysButton;
     private CompactButton189 switchButton, fullscreenButton, languageButton;
     private final List<GuiButton> seen = new ArrayList<>(), main = new ArrayList<>(), extras = new ArrayList<>();
     private long initNanos;
@@ -47,6 +48,7 @@ public final class LadsTitleScreen189 {
     /** QA: the title screen the Lads layout is on (null: vanilla), and its main buttons as laid out. */
     public GuiMainMenu screen() { return screen; }
     public List<GuiButton> mainButtons() { return main; }
+    public GuiButton cosmeticsButton() { return cosmeticsButton; }
     public GuiButton moreButton() { return moreButton; }
     public GuiButton switchVersionButton() { return switchVersionButton; }
     public GuiButton switchButton() { return switchButton; }
@@ -102,6 +104,7 @@ public final class LadsTitleScreen189 {
         initNanos = System.nanoTime();
 
         buttons.add(ladsButton = new GuiButton(LADS_ID, 0, 0, 1, 1, "Lads Mods"));
+        buttons.add(cosmeticsButton = new GuiButton(LADS_ID + 10, 0, 0, 1, 1, "Cosmetics"));
         buttons.add(moreButton = new GuiButton(LADS_ID + 2, 0, 0, 1, 1, "More..."));
         screenshotsButton = Screenshots189.active() ? new GuiButton(LADS_ID + 4, 0, 0, 1, 1, "Screenshots") : null;
         if (screenshotsButton != null) buttons.add(screenshotsButton);
@@ -131,7 +134,7 @@ public final class LadsTitleScreen189 {
         main.clear();
         for (GuiButton button : new ArrayList<>(buttons)) {
             if (button == switchButton || button == fullscreenButton || button == languageButton) continue;
-            if (button == ladsButton || button == moreButton || button == screenshotsButton
+            if (button == ladsButton || button == cosmeticsButton || button == moreButton || button == screenshotsButton
                 || button == switchVersionButton || button == replaysButton
                 || vanilla(button, 1, 11, 2, 0, 4, 6)) main.add(button);
             else {
@@ -169,7 +172,8 @@ public final class LadsTitleScreen189 {
 
     private int order(GuiButton button) {
         if (button == ladsButton) return 2;
-        if (button == replaysButton) return 6;
+        if (button == cosmeticsButton) return 4;
+        if (button == replaysButton) return 7;
         if (button == moreButton) return 8;
         if (button.id == 4) return 9; // Quit Game
         if (button == switchVersionButton) return 10;
@@ -177,8 +181,8 @@ public final class LadsTitleScreen189 {
             case 1: case 11: return 0;
             case 2: return 1;
             case 6: return 3; // Forge's Mods
-            case 0: return 4;
-            default: return button == screenshotsButton ? 5 : 11;
+            case 0: return 5;
+            default: return button == screenshotsButton ? 6 : 11;
         }
     }
 
@@ -194,6 +198,7 @@ public final class LadsTitleScreen189 {
         if (button.id == LADS_ID + 4) return "camera";
         if (button.id == LADS_ID + 6) return "switch";
         if (button.id == LADS_ID + 8) return "replay";
+        if (button.id == LADS_ID + 10) return "wardrobe";
         switch (button.id) {
             case 1: case 11: return "play";
             case 2: return "server";
@@ -279,6 +284,7 @@ public final class LadsTitleScreen189 {
         Minecraft mc = Minecraft.getMinecraft();
         boolean clicked = mc.currentScreen == screen;
         if (event.button == ladsButton) mc.displayGuiScreen(new LadsSettingsScreen189(screen));
+        else if (event.button == cosmeticsButton) mc.displayGuiScreen(new CosmeticsScreen189(screen));
         else if (event.button == screenshotsButton) Screenshots189.open(screen);
         else if (event.button == moreButton) mc.displayGuiScreen(new TitleExtrasScreen189(screen, TitleExtrasScreen189.of(screen, extras, LadsTitleScreen189::label)));
         else if (event.button == switchVersionButton) mc.displayGuiScreen(new VersionSwitchScreen189(screen));

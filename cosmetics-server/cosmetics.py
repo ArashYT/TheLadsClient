@@ -17,8 +17,8 @@ import time
 import aiohttp
 from aiohttp import web
 
-EMOTES = frozenset({"lads:groove"})  # allow-list: any other id is rejected
-FREE = ["lads:groove"]  # everyone owns these
+FREE = ["lads:groove", "lads:wave", "lads:clap", "lads:cheer", "lads:bow", "lads:facepalm", "lads:salute", "lads:shrug"]  # everyone owns these
+EMOTES = frozenset(FREE)  # allow-list (the client's EmoteLibrary): any other id is rejected
 EQUIPPED: dict[str, dict] = {}  # uuid -> {slot: id}; empty until capes/hats exist
 HAS_JOINED = "https://sessionserver.mojang.com/session/minecraft/hasJoined"
 AUTH_TIMEOUT = 15

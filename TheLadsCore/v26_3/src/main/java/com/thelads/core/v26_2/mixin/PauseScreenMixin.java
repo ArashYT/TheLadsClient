@@ -55,6 +55,7 @@ public abstract class PauseScreenMixin extends Screen {
         if(button==ladsExtrasButton)return com.thelads.core.client.title.PauseMenuLayout.Slot.EXTRAS;
         if(text.equals("Lads Client"))return com.thelads.core.client.title.PauseMenuLayout.Slot.LADS;
         if(text.equals("Screenshots"))return com.thelads.core.client.title.PauseMenuLayout.Slot.SCREENSHOTS;
+        if(text.equals("Cosmetics"))return com.thelads.core.client.title.PauseMenuLayout.Slot.COSMETICS;
         if(text.equals("Replays"))return com.thelads.core.client.title.PauseMenuLayout.Slot.REPLAYS;
         if(text.contains("Host")||text.contains("Invite"))return com.thelads.core.client.title.PauseMenuLayout.Slot.WORLD;
         String[][] keys={{"menu.returnToGame","BACK"},{"gui.advancements","ADVANCEMENTS"},{"gui.stats","STATS"},{"menu.options","OPTIONS"},
@@ -116,6 +117,8 @@ public abstract class PauseScreenMixin extends Screen {
             button -> com.thelads.core.v26_2.gui.PauseMultiplayer.open(this)).width(204).build(), 2);
         ladsPauseRows.addChild(Button.builder(Component.literal("Screenshots"),
             button -> com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.openFromMenu(this)).width(204).build(), 2);
+        ladsPauseRows.addChild(Button.builder(Component.literal("Cosmetics"),
+            button -> minecraft.setScreenAndShow(new com.thelads.core.v26_2.cosmetics.anim.CosmeticsScreen26(this))).width(204).build(), 2);
         if(com.thelads.core.v26_2.gui.FlashbackScreens.available())
             ladsPauseRows.addChild(Button.builder(Component.literal("Replays"),
                 button -> com.thelads.core.v26_2.gui.FlashbackScreens.open(this)).width(204).build(),2);
