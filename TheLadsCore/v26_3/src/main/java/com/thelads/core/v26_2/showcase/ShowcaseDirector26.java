@@ -1540,6 +1540,11 @@ public final class ShowcaseDirector26 {
             case "sprint" -> mc.options.keySprint;
             case "attack" -> mc.options.keyAttack;
             case "use" -> mc.options.keyUse;
+            case "tab", "playerlist" -> mc.options.keyPlayerList;
+            case "chat" -> mc.options.keyChat;
+            case "inventory" -> mc.options.keyInventory;
+            case "drop" -> mc.options.keyDrop;
+            case "perspective", "f5" -> mc.options.keyTogglePerspective;
             default -> {
                 KeyMapping km = KeyMapping.get(name);
                 if (km == null) {
