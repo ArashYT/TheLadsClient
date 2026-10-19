@@ -363,7 +363,11 @@ public final class ShowcaseDirector26 {
                     "gamerule advance_time false", "gamerule advance_weather false",
                     "time set noon", "weather clear",
                     "gamerule spawn_phantoms false", "gamerule show_death_messages false", "gamerule announce_advancements false",
-                    "advancement grant @a everything", "recipe give @a *"
+                    "advancement grant @a everything", "recipe give @a *",
+                    // Easy, not Peaceful: scripts summon mobs (kill banners, combat) and Peaceful deletes them; no natural spawns.
+                    // Both rule spellings: 26.3 renamed game rules and a rule it doesn't know just fails silently.
+                    "gamerule spawn_monsters false", "gamerule spawnMonsters false", "gamerule doMobSpawning false",
+                    "gamerule announceAdvancements false", "difficulty easy"
                 }) command(server, c);
 
                 ServerLevel level = server.overworld();
