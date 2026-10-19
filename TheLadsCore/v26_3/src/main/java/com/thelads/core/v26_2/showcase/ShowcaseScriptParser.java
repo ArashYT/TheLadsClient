@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class ShowcaseScriptParser {
     public record Command(int lineNo, String verb, String[] args, String rawLine) {
@@ -37,6 +39,9 @@ public final class ShowcaseScriptParser {
         }
     }
 
+    // A token is a bare word, or prefix"quoted words" ("Wavy Capes", @"Video Settings"): the quotes keep the spaces.
+    private static final Pattern TOKEN = Pattern.compile("([^\\s\"]*)\"([^\"]*)\"|(\\S+)");
+
     private ShowcaseScriptParser() {}
 
     public static Command parseLine(String line, int lineNo) {
@@ -50,7 +55,10 @@ public final class ShowcaseScriptParser {
             trimmed = trimmed.substring(0, hashIdx).trim();
         }
 
-        String[] parts = trimmed.split("\\s+");
+        List<String> tokens = new ArrayList<>();
+        Matcher m = TOKEN.matcher(trimmed);
+        while (m.find()) tokens.add(m.group(3) != null ? m.group(3) : m.group(1) + m.group(2));
+        String[] parts = tokens.toArray(new String[0]);
         if (parts.length == 0 || parts[0].isEmpty()) return null;
 
         String verb = parts[0].toLowerCase(Locale.ROOT);

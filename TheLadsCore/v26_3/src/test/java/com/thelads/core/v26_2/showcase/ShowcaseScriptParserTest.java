@@ -30,6 +30,7 @@ public final class ShowcaseScriptParserTest {
         new ShowcaseScriptParserTest().testSpatialAndMotionVerbs();
         new ShowcaseScriptParserTest().testInteractionVerbs();
         new ShowcaseScriptParserTest().testBatchLines();
+        new ShowcaseScriptParserTest().testQuotedArgs();
         System.out.println("ShowcaseScriptParserTest PASSED (" + checks + " checks verified)");
     }
 
@@ -149,5 +150,14 @@ public final class ShowcaseScriptParserTest {
         assertEquals("mark", cmds.get(1).verb(), "batch verb 1");
         assertEquals("test-start", cmds.get(1).arg(0, ""), "batch arg 1");
         assertEquals("look", cmds.get(2).verb(), "batch verb 2");
+    }
+
+    public void testQuotedArgs() {
+        var set = ShowcaseScriptParser.parseLine("set \"Wavy Capes\" Style Smooth", 1);
+        assertEquals("Wavy Capes", set.arg(0, ""), "quoted module name");
+        assertEquals("Smooth", set.arg(2, ""), "arg after quoted name");
+        var cur = ShowcaseScriptParser.parseLine("cursor @\"Video Settings\" 1200", 2);
+        assertEquals("@Video Settings", cur.arg(0, ""), "prefixed quoted widget");
+        assertEquals(1200L, cur.longArg(1, 0), "duration after quoted widget");
     }
 }

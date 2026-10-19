@@ -93,6 +93,7 @@ public final class ShowcaseDirector26 {
     private static int lastCmd = -1;
     private static double spotX, groundY, spotZ;
     private static final AtomicBoolean scriptRunning = new AtomicBoolean(false);
+    private static volatile int checkStep = -1; // "<n> check <file>": a dry run that screenshots every mark, nothing captured in real takes
 
     // Baseline snapshot for reset verb
     private static final Map<String, Boolean> baselineModuleState = new HashMap<>();
@@ -511,7 +512,8 @@ public final class ShowcaseDirector26 {
             return;
         }
 
-        if ("run".equals(action) && parts.length > 2) {
+        if (("run".equals(action) || "check".equals(action)) && parts.length > 2) {
+            checkStep = "check".equals(action) ? n : -1;
             String scriptFileName = parts[2];
             Path scriptFile = dir.resolve(scriptFileName);
             if (!Files.isRegularFile(scriptFile)) scriptFile = Path.of(scriptFileName);
@@ -530,41 +532,6 @@ public final class ShowcaseDirector26 {
         write("started-" + stepNumber + ".txt", "start " + scriptStart);
         Path errorFile = dir.resolve("error-" + stepNumber + ".txt");
         try { Files.deleteIfExists(errorFile); } catch (Exception ignored) {}
-
-        // Start periodic screenshot capture (~1s) while script runs
-        AtomicBoolean runningCapture = new AtomicBoolean(true);
-        Thread captureThread = new Thread(() -> {
-            Path screenDir = dir.resolve("screenshots");
-            try { Files.createDirectories(screenDir); } catch (Exception ignored) {}
-            int counter = 0;
-            while (runningCapture.get()) {
-                try {
-                    Thread.sleep(1000);
-                    if (!runningCapture.get()) break;
-                    final int shotNum = ++counter;
-                    mc.execute(() -> {
-                        try {
-                            Path shotFile = screenDir.resolve(String.format(Locale.ROOT, "shot-%03d.png", shotNum));
-                            Screenshot.takeScreenshot(mc.gameRenderer.mainRenderTarget(), image -> {
-                                try {
-                                    image.writeToFile(shotFile);
-                                } catch (Exception e) {
-                                    LOGGER.error("Failed to write periodic screenshot", e);
-                                } finally {
-                                    image.close();
-                                }
-                            });
-                        } catch (Exception e) {
-                            LOGGER.debug("Periodic screenshot capture error", e);
-                        }
-                    });
-                } catch (InterruptedException e) {
-                    break;
-                }
-            }
-        }, "ShowcaseDirector-PeriodicCapture");
-        captureThread.setDaemon(true);
-        captureThread.start();
 
         try {
             List<String> rawLines = Files.readAllLines(scriptPath, StandardCharsets.UTF_8);
@@ -599,8 +566,6 @@ public final class ShowcaseDirector26 {
             } catch (Exception ignored) {}
             write("done.txt", String.valueOf(stepNumber));
         } finally {
-            runningCapture.set(false);
-            captureThread.interrupt();
             scriptRunning.set(false);
         }
     }
@@ -662,6 +627,7 @@ public final class ShowcaseDirector26 {
             case "mark" -> {
                 long elapsed = System.currentTimeMillis() - scriptStart;
                 marks.add(elapsed + " " + cmd.tail(0));
+                if (checkStep >= 0) shot(mc, dir.resolve("shots-" + checkStep).resolve(elapsed + "-" + cmd.tail(0).replaceAll("[^A-Za-z0-9]+", "_") + ".png"));
             }
             case "cmd" -> {
                 String cmdText = cmd.tail(0);
@@ -1122,11 +1088,26 @@ public final class ShowcaseDirector26 {
         };
     }
 
+    /** Check runs only: the frame at a mark, to review a script without OBS. */
+    private static void shot(Minecraft mc, Path file) {
+        mc.execute(() -> {
+            try {
+                Files.createDirectories(file.getParent());
+                Screenshot.takeScreenshot(mc.gameRenderer.mainRenderTarget(), image -> {
+                    try { image.writeToFile(file); } catch (Exception e) { LOGGER.error("Showcase check screenshot failed", e); } finally { image.close(); }
+                });
+            } catch (Exception e) { LOGGER.error("Showcase check screenshot failed", e); }
+        });
+    }
+
+    /** Module and option names match ignoring case and spaces ("Wavy Capes" = WavyCapes). */
+    private static String key(String name) { return name.replace(" ", "").toLowerCase(Locale.ROOT); }
+
     private static Module findModule(String name) {
         Module m = ModuleManager.getInstance().getModule(name);
         if (m != null) return m;
         for (Module candidate : ModuleManager.getInstance().getModules()) {
-            if (candidate.getName().equalsIgnoreCase(name)) return candidate;
+            if (key(candidate.getName()).equals(key(name))) return candidate;
         }
         return null;
     }
@@ -1135,7 +1116,7 @@ public final class ShowcaseDirector26 {
         Option opt = m.getOption(name);
         if (opt != null) return opt;
         for (Option o : m.getOptions()) {
-            if (o.getName().equalsIgnoreCase(name)) return o;
+            if (key(o.getName()).equals(key(name))) return o;
         }
         return null;
     }
