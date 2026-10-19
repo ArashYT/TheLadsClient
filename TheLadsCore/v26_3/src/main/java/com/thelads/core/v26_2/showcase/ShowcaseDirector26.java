@@ -245,6 +245,7 @@ public final class ShowcaseDirector26 {
     private static int lastCmd = -1;
     private static double spotX, groundY, spotZ;
     private static final AtomicBoolean scriptRunning = new AtomicBoolean(false);
+    private static volatile int currentStep = -1;
     private static volatile int checkStep = -1; // "<n> check <file>": a dry run that screenshots every mark, nothing captured in real takes
 
     // Baseline snapshot for reset verb
@@ -781,6 +782,7 @@ public final class ShowcaseDirector26 {
     private static void executeScript(Minecraft mc, int stepNumber, Path scriptPath) {
         List<String> marks = Collections.synchronizedList(new ArrayList<>());
         long scriptStart = System.currentTimeMillis();
+        currentStep = stepNumber;
         write("started-" + stepNumber + ".txt", "start " + scriptStart);
         Path errorFile = dir.resolve("error-" + stepNumber + ".txt");
         try { Files.deleteIfExists(errorFile); } catch (Exception ignored) {}
@@ -825,6 +827,14 @@ public final class ShowcaseDirector26 {
     private static void dispatchCommand(Minecraft mc, ShowcaseScriptParser.Command cmd, long scriptStart, List<String> marks) throws Exception {
         String verb = cmd.verb();
         switch (verb) {
+            case "widgets" -> {
+                long elapsed = System.currentTimeMillis() - scriptStart;
+                CountDownLatch done = new CountDownLatch(1);
+                String[] text = new String[1];
+                mc.execute(() -> { try { text[0] = describeWidgets(mc); } finally { done.countDown(); } });
+                done.await(5, TimeUnit.SECONDS);
+                write("widgets-" + currentStep + "-" + elapsed + ".txt", text[0] == null ? "timeout" : text[0]);
+            }
             case "baseline" -> {
                 CountDownLatch done = new CountDownLatch(1);
                 mc.execute(() -> { try { takeBaseline(mc); } finally { done.countDown(); } });
@@ -1286,12 +1296,6 @@ public final class ShowcaseDirector26 {
                     if (cr != null) return new double[] { cr.x() + cr.width() / 2.0, cr.y() + cr.height() / 2.0 };
                 }
             }
-            for (String cid : lads.ui().controlIds()) {
-                if (cid.startsWith("card:")) {
-                    Rect cr = lads.ui().controlBounds(cid);
-                    if (cr != null) return new double[] { cr.x() + cr.width() / 2.0, cr.y() + cr.height() / 2.0 };
-                }
-            }
         }
 
         // 2. Generic widget search in screen children
@@ -1300,6 +1304,31 @@ public final class ShowcaseDirector26 {
             return new double[] { w.getX() + w.getWidth() / 2.0, w.getY() + w.getHeight() / 2.0 };
         }
         return null;
+    }
+
+    /** `widgets`: every clickable thing on the current screen with its GUI-scaled bounds, for writing `cursor @<text>` lines. */
+    private static String describeWidgets(Minecraft mc) {
+        Screen s = mc.gui.screen();
+        StringBuilder sb = new StringBuilder();
+        sb.append("screen ").append(s == null ? "none" : s.getClass().getName())
+          .append(" gui ").append(mc.getWindow().getGuiScaledWidth()).append("x").append(mc.getWindow().getGuiScaledHeight()).append(System.lineSeparator());
+        if (s instanceof LadsSettingsScreen26 lads) {
+            for (String cid : lads.ui().controlIds()) {
+                Rect r = lads.ui().controlBounds(cid);
+                if (r != null) sb.append(String.format(Locale.ROOT, "lads %s @ %d,%d %dx%d%n", cid, r.x(), r.y(), r.width(), r.height()));
+            }
+        }
+        if (s != null) listWidgets(s.children(), sb);
+        return sb.toString();
+    }
+
+    private static void listWidgets(List<?> elements, StringBuilder sb) {
+        for (Object elem : elements) {
+            if (elem instanceof AbstractWidget w && w.visible)
+                sb.append(String.format(Locale.ROOT, "widget %s \"%s\" @ %d,%d %dx%d%n", w.getClass().getSimpleName(),
+                    w.getMessage() == null ? "" : w.getMessage().getString(), w.getX(), w.getY(), w.getWidth(), w.getHeight()));
+            if (elem instanceof ContainerEventHandler c) listWidgets(c.children(), sb);
+        }
     }
 
     private static AbstractWidget searchWidgets(List<?> elements, String q) {
