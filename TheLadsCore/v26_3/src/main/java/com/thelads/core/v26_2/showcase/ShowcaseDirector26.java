@@ -1222,6 +1222,7 @@ public final class ShowcaseDirector26 {
                     SCHEDULER.schedule(() -> mc.execute(() -> {
                         KeyMapping.click(InputConstants.getKey(mc.options.keyAttack.saveString()));
                         if (mc.player != null) mc.player.swing(InteractionHand.MAIN_HAND, net.minecraft.world.item.component.SwingAnimation.DEFAULT, false);
+                        if (mc.crosshairPickEntity != null) ShowcaseNpcs26.hit(mc, mc.crosshairPickEntity); // NPCs are client-only: flash + sounds here
                     }), i * interval, TimeUnit.MILLISECONDS);
                 }
             }

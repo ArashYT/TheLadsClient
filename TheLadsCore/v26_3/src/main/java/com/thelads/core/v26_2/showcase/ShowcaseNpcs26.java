@@ -136,6 +136,19 @@ final class ShowcaseNpcs26 {
         NativeKillBanner.died(e);
     }
 
+    /** The player's swing landed on an NPC (attack verb): the server never hears of it, so the red flash and the hit sounds come from here. */
+    static void hit(Minecraft mc, Entity target) {
+        for (Npc npc : NPCS.values()) {
+            if (npc.entity == target && npc.dying < 0) {
+                RemotePlayer e = npc.entity;
+                e.animateHurt(mc.player == null ? 0f : mc.player.getYRot());
+                mc.level.playLocalSound(e.getX(), e.getY(), e.getZ(), SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 1f, 1f, false);
+                mc.level.playLocalSound(e.getX(), e.getY(), e.getZ(), SoundEvents.PLAYER_HURT, SoundSource.PLAYERS, 1f, 1f, false);
+                return;
+            }
+        }
+    }
+
     static void clear(Minecraft mc) {
         for (Npc npc : NPCS.values()) {
             Emotes.stopLocal(npc.entity.getUUID());
