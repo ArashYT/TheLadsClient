@@ -174,20 +174,21 @@ public class PlayerTabOverlayMixin {
         else return original;
     }
 
-    @WrapOperation(method = "extractRenderState", at = @At(value = "FIELD", target = "Lnet/minecraft/client/gui/components/PlayerTabOverlay;header:Lnet/minecraft/network/chat/Component;", ordinal = 0, opcode = Opcodes.GETFIELD))
+    @WrapOperation(method = "extractRenderState", at = @At(value = "FIELD", target = "Lnet/minecraft/client/gui/components/PlayerTabOverlay;header:Lnet/minecraft/network/chat/Component;", opcode = Opcodes.GETFIELD))
     private Component removeHeader(PlayerTabOverlay instance, Operation<Component> original) {
         if (TabTweaksConfig.current().removeHeader) return null;
         else return original.call(instance);
     }
 
-    @WrapOperation(method = "extractRenderState", at = @At(value = "FIELD", target = "Lnet/minecraft/client/gui/components/PlayerTabOverlay;footer:Lnet/minecraft/network/chat/Component;", ordinal = 0, opcode = Opcodes.GETFIELD))
+    /** Both reads (the null check and the line split) see the same footer, with the player count line when asked. */
+    @WrapOperation(method = "extractRenderState", at = @At(value = "FIELD", target = "Lnet/minecraft/client/gui/components/PlayerTabOverlay;footer:Lnet/minecraft/network/chat/Component;", opcode = Opcodes.GETFIELD))
     private Component removeFooter(PlayerTabOverlay instance, Operation<Component> original) {
         Component orig = TabTweaksConfig.current().removeFooter ? null : original.call(instance);
         if (TabTweaksConfig.current().showPlayerCount && minecraft.getConnection() != null) {
             int count = minecraft.getConnection().getListedOnlinePlayers().size();
-            String fmt = TabTweaksConfig.current().playerCountFormat.replace("{count}", String.valueOf(count));
+            String fmt = TabTweaksConfig.current().formatPlayerCount(count);
             Component countComp = Component.literal(fmt);
-            if (orig == null) return countComp;
+            if (orig == null || orig.getString().isEmpty()) return countComp;
             return Component.empty().append(orig).append("\n").append(countComp);
         }
         return orig;

@@ -43,6 +43,9 @@ public final class TabTweaks1201 {
     private static int pingColorOne, pingColorTwo, pingColorThree, pingColorFour, pingColorFive, pingColorSix;
 
     private TabTweaks1201() {}
+    public static String formatPlayerCount(int count) {
+        return com.thelads.core.modules.TabListModule.formatPlayerCount(playerCountFormat, count);
+    }
 
     public static void markDirty() { dirty = true; }
 

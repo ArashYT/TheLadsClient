@@ -20,6 +20,9 @@ public final class TabTweaksConfig {
     public int tabHeaderColor, tabBodyColor, tabFooterColor, tabPlayerListColor;
     public int pingColorOne, pingColorTwo, pingColorThree, pingColorFour, pingColorFive, pingColorSix;
     public static TabTweaksConfig current() { return CURRENT; }
+    public String formatPlayerCount(int count) {
+        return com.thelads.core.modules.TabListModule.formatPlayerCount(playerCountFormat, count);
+    }
     public static void refresh() {
         var c = CURRENT;
         c.layout = NativeTabTweaks.active() && NativeQualityOfLife.enabled("TabList");

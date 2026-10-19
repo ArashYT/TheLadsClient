@@ -20,6 +20,9 @@ public final class TabTweaks189 {
     public static float tabScale = 1, moveTabDown, moveTabHorizontal;
     public static boolean moveTabBelowBossBars;
     public static int tabHeaderColor, tabBodyColor, tabFooterColor, tabPlayerListColor;
+    public static String formatPlayerCount(int count) {
+        return com.thelads.core.modules.TabListModule.formatPlayerCount(playerCountFormat, count);
+    }
     /** QA only (Probe150): ping numbers drawn. */
     public static long pings;
     private static final int[] PING_COLORS = new int[6];

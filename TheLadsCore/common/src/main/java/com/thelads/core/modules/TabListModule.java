@@ -35,4 +35,24 @@ public final class TabListModule extends Module {
         addOption(new ColorOption("Player Row Color", false, 0x20ffffff));
         setEnabled(true);
     }
+
+    /** Formats player count into the format string (e.g. "Players: {count}"); defaults to "Players: {count}". */
+    public static String formatPlayerCount(String format, int count) {
+        String template = (format == null || format.isEmpty()) ? "Players: {count}" : format;
+        return template.replace("{count}", String.valueOf(count));
+    }
+
+    /**
+     * Composes the rendered footer text given the server footer and the TabList module options.
+     * When there is no server footer (or it is empty/hidden), the player count is used directly without leading newlines or nulls.
+     */
+    public static String composeFooterText(String serverFooter, boolean removeFooter, boolean showPlayerCount, String format, int count) {
+        String base = removeFooter ? null : serverFooter;
+        if (showPlayerCount) {
+            String countLine = formatPlayerCount(format, count);
+            if (base == null || base.trim().isEmpty()) return countLine;
+            return base + "\n" + countLine;
+        }
+        return base;
+    }
 }

@@ -38,4 +38,36 @@ class TabTweaksModuleTest {
             }
         }
     }
+    @Test void noServerHeaderOrFooterWithShowPlayerCountProducesCleanCountLine() {
+        // When server sends no footer (null) and Show Player Count is true, never yield null or empty
+        String footer = TabListModule.composeFooterText(null, false, true, "Players: {count}", 42);
+        assertNotNull(footer);
+        assertEquals("Players: 42", footer);
+
+        // When server footer is empty string or whitespace
+        assertEquals("Players: 42", TabListModule.composeFooterText("", false, true, "Players: {count}", 42));
+        assertEquals("Players: 42", TabListModule.composeFooterText("   ", false, true, "Players: {count}", 42));
+    }
+    @Test void formatStringReplacesCountTokenAndDefaultsWhenNullOrEmpty() {
+        assertEquals("Players: 7", TabListModule.formatPlayerCount("Players: {count}", 7));
+        assertEquals("Online: 7 players", TabListModule.formatPlayerCount("Online: {count} players", 7));
+        assertEquals("7 / 100", TabListModule.formatPlayerCount("{count} / 100", 7));
+        assertEquals("Double: 7 & 7", TabListModule.formatPlayerCount("Double: {count} & {count}", 7));
+        // Null or empty format falls back to default safely without NPE
+        assertEquals("Players: 7", TabListModule.formatPlayerCount(null, 7));
+        assertEquals("Players: 7", TabListModule.formatPlayerCount("", 7));
+    }
+    @Test void serverFooterWithShowPlayerCountAppendsCountLine() {
+        String footer = TabListModule.composeFooterText("mc.thelads.net", false, true, "Players: {count}", 15);
+        assertEquals("mc.thelads.net\nPlayers: 15", footer);
+    }
+    @Test void hideFooterWithShowPlayerCountSuppressesServerFooterButKeepsCount() {
+        String footer = TabListModule.composeFooterText("mc.thelads.net", true, true, "Players: {count}", 15);
+        assertEquals("Players: 15", footer);
+    }
+    @Test void noFooterWithoutShowPlayerCountReturnsNull() {
+        assertNull(TabListModule.composeFooterText(null, false, false, "Players: {count}", 15));
+        assertEquals("mc.thelads.net", TabListModule.composeFooterText("mc.thelads.net", false, false, "Players: {count}", 15));
+        assertNull(TabListModule.composeFooterText("mc.thelads.net", true, false, "Players: {count}", 15));
+    }
 }

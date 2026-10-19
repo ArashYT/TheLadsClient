@@ -207,8 +207,8 @@ public abstract class GuiPlayerTabOverlayMixin {
     private IChatComponent ladsFooter(GuiPlayerTabOverlay overlay) {
         IChatComponent shown = TabTweaks189.removeFooter ? null : footer;
         if (!TabTweaks189.showPlayerCount || mc.getNetHandler() == null) return shown;
-        IChatComponent count = new ChatComponentText(TabTweaks189.playerCountFormat.replace("{count}", String.valueOf(mc.getNetHandler().getPlayerInfoMap().size())));
-        return shown == null ? count : new ChatComponentText("").appendSibling(shown.createCopy()).appendText("\n").appendSibling(count);
+        IChatComponent count = new ChatComponentText(TabTweaks189.formatPlayerCount(mc.getNetHandler().getPlayerInfoMap().size()));
+        return (shown == null || shown.getUnformattedText().isEmpty()) ? count : new ChatComponentText("").appendSibling(shown.createCopy()).appendText("\n").appendSibling(count);
     }
 
     /** PingView: the number instead of the bars, or nothing (Hide Ping). */

@@ -122,8 +122,8 @@ public class TabOverlayMixin {
         Component footer = TabTweaks1201.removeFooter ? null : original.call(instance);
         if (!TabTweaks1201.showPlayerCount || minecraft.getConnection() == null) return footer;
         int count = minecraft.getConnection().getListedOnlinePlayers().size();
-        Component line = Component.literal(TabTweaks1201.playerCountFormat.replace("{count}", String.valueOf(count)));
-        return footer == null ? line : Component.empty().append(footer).append("\n").append(line);
+        Component line = Component.literal(TabTweaks1201.formatPlayerCount(count));
+        return (footer == null || footer.getString().isEmpty()) ? line : Component.empty().append(footer).append("\n").append(line);
     }
 
     @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = LINE, ordinal = 0))
