@@ -40,6 +40,8 @@ public class LauncherSettings
     public bool AutoLaunch { get; set; } = false;
     public bool AutoFixCrashes { get; set; } = true;
     public bool AutoRelaunchOnCrash { get; set; } = false;
+    /// <summary>Send a client profile's crash (report, hs_err, log tail) to the Lads team. Never modpacks or Experiences.</summary>
+    public bool SendCrashReports { get; set; } = true;
     public bool AutoRejoinServer { get; set; } = false;
     public bool ZeroSmpAutoJoin { get; set; } = true;    // Experiences tab: Zero SMP joins its server as soon as the game has loaded
     public string LastServerIp { get; set; } = "";
