@@ -84,7 +84,17 @@ public final class ShowcaseEmote26 {
     public static boolean handsWithHudHidden() { return active; }
 
     /** This player's showcase skin by name, or null. */
-    public static PlayerSkin skin(AbstractClientPlayer player) { return active ? SKINS.get(player.getPlainTextName().toLowerCase(Locale.ROOT)) : null; }
+    public static PlayerSkin skin(AbstractClientPlayer player) { return active || borrowed ? SKINS.get(player.getPlainTextName().toLowerCase(Locale.ROOT)) : null; }
+
+    private static boolean borrowed;
+
+    /** The feature showcase director (ShowcaseDirector26) uses the same skins by name from its own folder (DIR/skins/name.png). */
+    public static void loadSkinsFor(Minecraft mc, Path controlDir) throws Exception {
+        if (active || borrowed || !Files.isDirectory(controlDir.resolve("skins"))) return;
+        dir = controlDir;
+        borrowed = true;
+        loadSkins(mc);
+    }
 
     private static void tick(Minecraft mc) {
         try {

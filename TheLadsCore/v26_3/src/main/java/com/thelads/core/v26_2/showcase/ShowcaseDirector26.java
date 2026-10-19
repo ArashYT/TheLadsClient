@@ -200,13 +200,29 @@ public final class ShowcaseDirector26 {
 
     public static List<String> buildResetCommands(boolean isServerMode, double spotX, double groundY, double spotZ) {
         List<String> list = new ArrayList<>();
+        String who = isServerMode ? "@s" : "@a";
         list.add("kill @e[type=!player]");
-        list.add(isServerMode ? "clear @s" : "clear @a");
+        if (!isServerMode) list.add(snapshotCommand(false, spotX, groundY, spotZ));
+        list.add("clear " + who);
+        list.add("gamemode creative " + who);
+        list.add("effect clear " + who);
         list.add("time set noon");
         list.add("weather clear");
         list.add(formatTpCommand(isServerMode ? "@s" : "@a", spotX, groundY, spotZ, 0f, 0f));
         return list;
     }
+
+    /**
+     * Scripts change the world (fills, builds, drops); `reset` puts the blocks around the home lawn back. The box x/z +-32, y-6..y+30 is
+     * cloned once into the deepslate right under it (y -60..-24) and cloned back on every reset.
+     */
+    public static String snapshotCommand(boolean save, double spotX, double groundY, double spotZ) {
+        int x = (int) Math.floor(spotX), y = (int) Math.floor(groundY), z = (int) Math.floor(spotZ);
+        return save ? String.format(Locale.ROOT, "clone %d %d %d %d %d %d %d -60 %d", x - 32, y - 6, z - 32, x + 32, y + 30, z + 32, x - 32, z - 32)
+                    : String.format(Locale.ROOT, "clone %d -60 %d %d -24 %d %d %d %d", x - 32, z - 32, x + 32, z + 32, x - 32, y - 6, z - 32);
+    }
+
+    private static double homeX, homeY, homeZ;
 
     public static volatile boolean active;
     private static Path dir;
@@ -520,6 +536,7 @@ public final class ShowcaseDirector26 {
         if (dynamicFps != null && dynamicFps.isEnabled()) dynamicFps.setEnabled(false);
 
         takeBaseline(mc);
+        try { com.thelads.core.v26_2.cosmetics.anim.ShowcaseEmote26.loadSkinsFor(mc, dir); } catch (Exception e) { LOGGER.error("Showcase skins", e); }
 
         if (isServerMode()) {
             double[] spot = parseSpotFromEnv();
@@ -574,6 +591,15 @@ public final class ShowcaseDirector26 {
 
                     ServerLevel level = server.overworld();
                     establishLawn(server, level, null);
+                    homeX = spotX; homeY = groundY; homeZ = spotZ;
+                    // One snapshot per world (a reopened world keeps its first, clean one).
+                    Path marker = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("lads-showcase-snapshot");
+                    if (!Files.exists(marker)) {
+                        for (String c : new String[] {"gamerule commandModificationBlockLimit 4000000", "gamerule command_modification_block_limit 4000000",
+                            String.format(Locale.ROOT, "forceload add %d %d %d %d", (int) spotX - 40, (int) spotZ - 40, (int) spotX + 40, (int) spotZ + 40),
+                            snapshotCommand(true, spotX, groundY, spotZ)}) command(server, c);
+                        try { Files.writeString(marker, "snapshot of " + spotX + " " + groundY + " " + spotZ); } catch (IOException e) { LOGGER.error("Showcase snapshot marker", e); }
+                    }
                     command(server, "setworldspawn " + (int) Math.floor(spotX) + " " + (int) Math.floor(groundY) + " " + (int) Math.floor(spotZ));
                     tpNow(server, "@a", 0, 0, 0, 0, 0);
                 });
@@ -792,6 +818,7 @@ public final class ShowcaseDirector26 {
                 done.await(5, TimeUnit.SECONDS);
             }
             case "reset" -> {
+                if (!isServerMode() && homeY != 0) { spotX = homeX; groundY = homeY; spotZ = homeZ; } // a `spot` take moved it
                 for (Module m : ModuleManager.getInstance().getRegisteredModules()) {
                     Boolean en = baselineModuleState.get(m.getName());
                     if (en != null && m.isEnabled() != en) {
