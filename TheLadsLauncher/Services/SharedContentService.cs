@@ -106,7 +106,8 @@ public sealed class SharedContentService
     }
 
     /// <summary>Why worlds/packs/servers are NOT shared through the normal .minecraft folder, or null when they are.</summary>
-    public string? RedirectedRootNotice => SafeFileOps.PathsEqual(Root, OsDefaultRoot()) ? null
+    public string? RedirectedRootNotice =>
+        Environment.GetEnvironmentVariable("LADS_SHOWCASE") == "1" || SafeFileOps.PathsEqual(Root, OsDefaultRoot()) ? null
         : Environment.GetEnvironmentVariable(RootEnvironmentVariable) is { Length: > 0 }
             ? $"Worlds, packs and servers are shared from '{Root}' because {RootEnvironmentVariable} is set, not from '{OsDefaultRoot()}'."
             : $"Worlds, packs and servers are shared from '{Root}' because THELADS_DIR is set (an isolated launcher folder), not from '{OsDefaultRoot()}'. Set {RootEnvironmentVariable} to choose the shared folder explicitly.";
