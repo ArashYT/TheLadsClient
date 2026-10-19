@@ -30,6 +30,7 @@ public abstract class GameRendererProbeMixin {
             ((GuiRendererProbeAccess) guiRenderer).lads$invalidateItemAtlas();
         }
         RenderProbe26.phaseStart();
+        com.thelads.core.v26_2.showcase.ShowcaseDirector26.onRenderFrame();
     }
 
     @Inject(method = "render", at = @At("RETURN"))

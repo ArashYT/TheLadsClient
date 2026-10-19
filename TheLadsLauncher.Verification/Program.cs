@@ -827,8 +827,8 @@ try
     Console.WriteLine("Installing production dependencies...");
     // QA windows are tiles of the primary monitor (QaWindowGuard): the game opens at the tile's client size.
     bool tiled = Env("LADS_VERIFY_FOCUS") != "1" && Env("LADS_VERIFY_PLAYING") != "1" && Env("LADS_VERIFY_NO_RESIZE") != "1";
-    // LADS_SHOWCASE_EMOTE=host|join: the recorded emote showcase (ShowcaseEmote26) owns the game: a 1080p window, none of the title probes, no early exit.
-    bool showcase = Env("LADS_SHOWCASE_EMOTE") is "host" or "join";
+    // LADS_SHOWCASE_EMOTE=host|join or LADS_SHOWCASE_DIRECTOR=1: the recorded showcase owns the game: a 1080p window, none of the title probes, no early exit.
+    bool showcase = Env("LADS_SHOWCASE_EMOTE") is "host" or "join" || Env("LADS_SHOWCASE_DIRECTOR") == "1";
     // LADS_VERIFY_FULLSCREEN=1: started as the launcher does with "Fullscreen on launch" (its default): --fullscreen and fullscreen:true.
     bool qaFullscreen = Env("LADS_VERIFY_FULLSCREEN") == "1";
     var windowSize = showcase ? new System.Drawing.Size(1920, 1080) : tiled ? QaWindowGuard.TileClient(1) : new System.Drawing.Size(titleVerification ? 1280 : 960, titleVerification ? 720 : 600);
@@ -1013,6 +1013,16 @@ try
     Directory.CreateDirectory(Path.Combine(directory, "shared"));
     File.Delete(Path.Combine(directory, "shared", "thelads_config.json"));
     process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = directory;
+    if (Env("LADS_SHOWCASE_DIRECTOR") == "1")
+    {
+        process.StartInfo.Environment["LADS_SHOWCASE_DIRECTOR"] = "1";
+        AddJvm("-Dlads.showcase.director=1");
+        if (Env("LADS_SHOWCASE_DIR") is { } sdir)
+        {
+            process.StartInfo.Environment["LADS_SHOWCASE_DIR"] = sdir;
+            AddJvm("-Dlads.showcase.dir=" + sdir);
+        }
+    }
     summary.Add("Core global config dir (THELADS_GLOBAL_DIR): " + directory);
     summary.Add($"Child environment: THELADS_DIR={directory}; {SharedContentService.RootEnvironmentVariable}={shared.Root}; {GameOptionsService.LunarEnvironmentVariable}={lunarRoot}");
     summary.Add("JVM QA flags: " + string.Join(' ', jvmFlags));

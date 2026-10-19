@@ -60,6 +60,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.NativeCheats.register();
         com.thelads.core.v26_2.cosmetics.anim.EmoteAnim26.register(); // emotes: key, wheel, stop rules (poses: emotes mixins)
         com.thelads.core.v26_2.cosmetics.anim.ShowcaseEmote26.register(); // LADS_SHOWCASE_EMOTE only: the recorded emote showcase
+        com.thelads.core.v26_2.showcase.ShowcaseDirector26.register(); // LADS_SHOWCASE_DIRECTOR only: scripted showcase director
         com.thelads.core.v26_2.embedded.EmbeddedMods.clientInit();
 
 
