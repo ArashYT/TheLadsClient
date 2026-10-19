@@ -1332,7 +1332,7 @@ public final class ShowcaseDirector26 {
             }
             case "click" -> {
                 String btnStr = cmd.arg(0, "left").toLowerCase(Locale.ROOT);
-                int btn = "right".equals(btnStr) ? 1 : 0;
+                int btn = "right".equals(btnStr) ? InputConstants.MOUSE_BUTTON_RIGHT : InputConstants.MOUSE_BUTTON_LEFT; // 26.x (SDL): left 1, right 3
                 var win = mc.getWindow(); // the editor zooms on each click (AGY-SHOW-V2 "Click zoom")
                 marks.add((System.currentTimeMillis() - scriptStart) + String.format(Locale.ROOT, " click %.4f %.4f",
                     mc.mouseHandler.xpos() / win.getWidth(), mc.mouseHandler.ypos() / win.getHeight()));
@@ -1422,7 +1422,7 @@ public final class ShowcaseDirector26 {
                 });
             }
             case "mousedown", "mouseup" -> {
-                int btn = "right".equalsIgnoreCase(cmd.arg(0, "left")) ? 1 : 0;
+                int btn = "right".equalsIgnoreCase(cmd.arg(0, "left")) ? InputConstants.MOUSE_BUTTON_RIGHT : InputConstants.MOUSE_BUTTON_LEFT;
                 int action = verb.equals("mousedown") ? 1 : 0;
                 mc.execute(() -> mc.mouseHandler.onButton(mc.getWindow().handle(), new MouseButtonInfo(btn, 0), action));
             }
@@ -1440,12 +1440,12 @@ public final class ShowcaseDirector26 {
                 long ms = cmd.longArg(i + 2, 800);
                 long handle = mc.getWindow().handle();
                 glide(mc, x1, y1, 450);
-                mc.execute(() -> mc.mouseHandler.onButton(handle, new MouseButtonInfo(0, 0), 1));
+                mc.execute(() -> mc.mouseHandler.onButton(handle, new MouseButtonInfo(InputConstants.MOUSE_BUTTON_LEFT, 0), 1));
                 clickPulseAt = System.currentTimeMillis();
                 Thread.sleep(120);
                 glide(mc, x2, y2, ms);
                 Thread.sleep(80);
-                mc.execute(() -> mc.mouseHandler.onButton(handle, new MouseButtonInfo(0, 0), 0));
+                mc.execute(() -> mc.mouseHandler.onButton(handle, new MouseButtonInfo(InputConstants.MOUSE_BUTTON_LEFT, 0), 0));
             }
             case "hudpos" -> { // hudpos <Module> <x> <y> [center]: place a HUD module (GUI units, top-left; "center" = x/y is its center)
                 Module m = findModule(cmd.arg(0, ""));
