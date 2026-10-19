@@ -324,6 +324,15 @@ public final class ShowcaseDirector26 {
         return value.equalsIgnoreCase("on") || value.equalsIgnoreCase("true") || value.equals("1");
     }
 
+    /** The drawn cursor glides to (x, y) in GUI units and the step waits for it; a never-moved mouse starts at the center. */
+    private static void glide(Minecraft mc, double x, double y, long ms) throws InterruptedException {
+        double sx = mc.mouseHandler.getScaledXPos(mc.getWindow()), sy = mc.mouseHandler.getScaledYPos(mc.getWindow());
+        int w = mc.getWindow().getGuiScaledWidth(), h = mc.getWindow().getGuiScaledHeight();
+        if (!(sx >= 0 && sx <= w && sy >= 0 && sy <= h)) { sx = w / 2.0; sy = h / 2.0; }
+        cursorInterp = new CursorInterpolation(sx, sy, x, y, ms);
+        Thread.sleep(ms + 20);
+    }
+
     public static boolean isActive() { return active; }
 
     /**
@@ -1359,6 +1368,32 @@ public final class ShowcaseDirector26 {
                 mc.execute(() -> {
                     if (mc.player != null) Emotes.playLocal(mc.player.getUUID(), id);
                 });
+            }
+            case "mousedown", "mouseup" -> {
+                int btn = "right".equalsIgnoreCase(cmd.arg(0, "left")) ? 1 : 0;
+                int action = verb.equals("mousedown") ? 1 : 0;
+                mc.execute(() -> mc.mouseHandler.onButton(mc.getWindow().handle(), new MouseButtonInfo(btn, 0), action));
+            }
+            case "drag" -> { // drag <x1> <y1> <x2> <y2> [ms] | drag @label <x2> <y2> [ms]: glide to the start, press, glide to the end, release
+                double x1, y1;
+                int i;
+                if (cmd.arg(0, "").startsWith("@")) {
+                    double[] c = findWidgetCoords(mc, cmd.arg(0, "").substring(1));
+                    if (c == null) throw new IllegalArgumentException("Widget not found for query " + cmd.arg(0, ""));
+                    x1 = c[0]; y1 = c[1]; i = 1;
+                } else {
+                    x1 = cmd.doubleArg(0, 0); y1 = cmd.doubleArg(1, 0); i = 2;
+                }
+                double x2 = cmd.doubleArg(i, 0), y2 = cmd.doubleArg(i + 1, 0);
+                long ms = cmd.longArg(i + 2, 800);
+                long handle = mc.getWindow().handle();
+                glide(mc, x1, y1, 450);
+                mc.execute(() -> mc.mouseHandler.onButton(handle, new MouseButtonInfo(0, 0), 1));
+                clickPulseAt = System.currentTimeMillis();
+                Thread.sleep(120);
+                glide(mc, x2, y2, ms);
+                Thread.sleep(80);
+                mc.execute(() -> mc.mouseHandler.onButton(handle, new MouseButtonInfo(0, 0), 0));
             }
             case "gui" -> { int n = cmd.intArg(0, 0); mc.execute(() -> mc.options.guiScale().set(n)); }
             case "hotbar" -> hideHotbar = !isOn(cmd.arg(0, "on"));
