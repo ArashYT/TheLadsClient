@@ -35,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -320,6 +321,24 @@ public final class ShowcaseDirector26 {
         }
     }
 
+    /** What `reset` returns to: every module's on/off and options, FOV and GUI scale. Taken at startup and by the `baseline` verb. */
+    private static void takeBaseline(Minecraft mc) {
+        baselineModuleState.clear();
+        baselineOptions.clear();
+        for (Module m : ModuleManager.getInstance().getRegisteredModules()) {
+            baselineModuleState.put(m.getName(), m.isEnabled());
+            Map<String, JsonElement> opts = new HashMap<>();
+            for (Option opt : m.getOptions()) {
+                try {
+                    opts.put(opt.getName(), opt.save());
+                } catch (Exception ignored) {}
+            }
+            baselineOptions.put(m.getName(), opts);
+        }
+        baselineFov = mc.options.fov().get();
+        baselineGuiScale = mc.options.guiScale().get();
+    }
+
     private static void setUp(Minecraft mc) {
         setUp = true;
         t0 = System.currentTimeMillis();
@@ -335,21 +354,7 @@ public final class ShowcaseDirector26 {
         var dynamicFps = ModuleManager.getInstance().getModule("DynamicFPS");
         if (dynamicFps != null && dynamicFps.isEnabled()) dynamicFps.setEnabled(false);
 
-        // Baseline capture for reset verb
-        baselineModuleState.clear();
-        baselineOptions.clear();
-        for (Module m : ModuleManager.getInstance().getRegisteredModules()) {
-            baselineModuleState.put(m.getName(), m.isEnabled());
-            Map<String, JsonElement> opts = new HashMap<>();
-            for (Option opt : m.getOptions()) {
-                try {
-                    opts.put(opt.getName(), opt.save());
-                } catch (Exception ignored) {}
-            }
-            baselineOptions.put(m.getName(), opts);
-        }
-        baselineFov = mc.options.fov().get();
-        baselineGuiScale = mc.options.guiScale().get();
+        takeBaseline(mc);
 
         MinecraftServer server = mc.getSingleplayerServer();
         if (server != null) {
@@ -357,7 +362,8 @@ public final class ShowcaseDirector26 {
                 for (String c : new String[] {
                     "gamerule advance_time false", "gamerule advance_weather false",
                     "time set noon", "weather clear",
-                    "gamerule spawn_phantoms false", "gamerule show_death_messages false", "gamerule announce_advancements false"
+                    "gamerule spawn_phantoms false", "gamerule show_death_messages false", "gamerule announce_advancements false",
+                    "advancement grant @a everything", "recipe give @a *"
                 }) command(server, c);
 
                 ServerLevel level = server.overworld();
@@ -573,6 +579,11 @@ public final class ShowcaseDirector26 {
     private static void dispatchCommand(Minecraft mc, ShowcaseScriptParser.Command cmd, long scriptStart, List<String> marks) throws Exception {
         String verb = cmd.verb();
         switch (verb) {
+            case "baseline" -> {
+                CountDownLatch done = new CountDownLatch(1);
+                mc.execute(() -> { try { takeBaseline(mc); } finally { done.countDown(); } });
+                done.await(5, TimeUnit.SECONDS);
+            }
             case "reset" -> {
                 for (Module m : ModuleManager.getInstance().getRegisteredModules()) {
                     Boolean en = baselineModuleState.get(m.getName());
@@ -598,6 +609,7 @@ public final class ShowcaseDirector26 {
                     mc.options.guiScale().set(baselineGuiScale);
                     if (mc.gui.hud.isHidden()) mc.gui.hud.toggle();
                     mc.gui.hud.getChat().clearMessages(false);
+                    mc.gui.toastManager().clear();
                     if (mc.player != null) {
                         mc.player.getInventory().clearContent();
                         mc.player.setPos(spotX, groundY, spotZ);
@@ -756,7 +768,10 @@ public final class ShowcaseDirector26 {
                 long ms = cmd.longArg(1, 0);
                 KeyMapping mapping = resolveKeyMapping(mc, keyName);
                 if (mapping != null) {
-                    mc.execute(() -> mapping.setDown(true));
+                    mc.execute(() -> {
+                        mapping.setDown(true);
+                        KeyMapping.click(mapping.getDefaultKey());
+                    });
                     if (ms > 0) {
                         SCHEDULER.schedule(() -> mc.execute(() -> mapping.setDown(false)), ms, TimeUnit.MILLISECONDS);
                     }
