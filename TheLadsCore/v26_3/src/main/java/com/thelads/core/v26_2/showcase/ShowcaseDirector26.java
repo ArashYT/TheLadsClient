@@ -219,6 +219,15 @@ public final class ShowcaseDirector26 {
     public static List<String> snapshotCommands(boolean save, double spotX, double groundY, double spotZ) {
         int x = (int) Math.floor(spotX), y = (int) Math.floor(groundY), z = (int) Math.floor(spotZ);
         List<String> out = new ArrayList<>();
+        if (save) { // a barrier shell around the store: cave water and lava would flow into its air and come back up on reset
+            int a = x - 33, b = x + 33, c = z - 33, d = z + 33;
+            out.add(String.format(Locale.ROOT, "fill %d -61 %d %d -61 %d barrier", a, c, b, d));
+            out.add(String.format(Locale.ROOT, "fill %d -23 %d %d -23 %d barrier", a, c, b, d));
+            out.add(String.format(Locale.ROOT, "fill %d -61 %d %d -23 %d barrier", a, c, a, d));
+            out.add(String.format(Locale.ROOT, "fill %d -61 %d %d -23 %d barrier", b, c, b, d));
+            out.add(String.format(Locale.ROOT, "fill %d -61 %d %d -23 %d barrier", a, c, b, c));
+            out.add(String.format(Locale.ROOT, "fill %d -61 %d %d -23 %d barrier", a, d, b, d));
+        }
         for (int z0 = z - 32; z0 <= z + 32; z0 += 13) { // 65 x 37 x 13 = 31,265 blocks per clone: under the default 32,768 limit
             int z1 = Math.min(z0 + 12, z + 32);
             out.add(save ? String.format(Locale.ROOT, "clone %d %d %d %d %d %d %d -60 %d", x - 32, y - 6, z0, x + 32, y + 30, z1, x - 32, z0)
