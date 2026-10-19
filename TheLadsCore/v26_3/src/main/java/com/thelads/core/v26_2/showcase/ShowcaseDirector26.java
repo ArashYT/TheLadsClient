@@ -881,6 +881,7 @@ public final class ShowcaseDirector26 {
         write("started-" + stepNumber + ".txt", "start " + scriptStart);
         Path errorFile = dir.resolve("error-" + stepNumber + ".txt");
         try { Files.deleteIfExists(errorFile); } catch (Exception ignored) {}
+        CMD_ERRORS.clear();
 
         try {
             List<String> rawLines = Files.readAllLines(scriptPath, StandardCharsets.UTF_8);
@@ -898,6 +899,11 @@ public final class ShowcaseDirector26 {
                         LOGGER.error("Cannot write to error file", io);
                     }
                 }
+            }
+
+            Thread.sleep(250); // the server thread runs the last `cmd` lines a tick later
+            for (String bad; (bad = CMD_ERRORS.poll()) != null; ) {
+                Files.writeString(errorFile, bad + "\n", StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
             }
 
             // Write marks
@@ -988,6 +994,10 @@ public final class ShowcaseDirector26 {
                     MinecraftServer server = mc.getSingleplayerServer();
                     if (server != null) {
                         server.execute(() -> {
+                            for (var ev : new ArrayList<>(server.getCustomBossEvents().getEvents())) { // v1: hud-13's Wither bar stayed in every later take
+                                ev.removeAllPlayers();
+                                server.getCustomBossEvents().remove(ev);
+                            }
                             for (String c : buildResetCommands(false, spotX, groundY, spotZ)) {
                                 command(server, c);
                             }
@@ -1011,7 +1021,12 @@ public final class ShowcaseDirector26 {
                 } else {
                     MinecraftServer server = mc.getSingleplayerServer();
                     if (server != null) {
-                        server.execute(() -> commandAsPlayer(mc, server, cmdText));
+                        int line = cmd.lineNo();
+                        server.execute(() -> {
+                            String bad = syntaxError(server, cmdText);
+                            if (bad != null) CMD_ERRORS.add(String.format(Locale.ROOT, "ERROR %d command does not parse: /%s (%s)", line, cmdText, bad));
+                            commandAsPlayer(mc, server, cmdText);
+                        });
                     }
                 }
             }
@@ -1645,6 +1660,16 @@ public final class ShowcaseDirector26 {
 
     private static void command(MinecraftServer server, String command) {
         server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), command);
+    }
+
+    private static final java.util.concurrent.ConcurrentLinkedQueue<String> CMD_ERRORS = new java.util.concurrent.ConcurrentLinkedQueue<>();
+
+    /** Why a command does not parse (unknown command, old item/NBT syntax...), or null when it parses. Server thread. */
+    private static String syntaxError(MinecraftServer server, String command) {
+        String c = command.startsWith("/") ? command.substring(1) : command;
+        var parse = server.getCommands().getDispatcher().parse(c, server.createCommandSourceStack());
+        if (!parse.getExceptions().isEmpty()) return parse.getExceptions().values().iterator().next().getMessage();
+        return parse.getReader().canRead() ? "stops at: " + parse.getReader().getRemaining() : null;
     }
 
     private static void commandAsPlayer(Minecraft mc, MinecraftServer server, String command) {
