@@ -96,7 +96,7 @@ public final class ShowcaseDirector26 {
         || "1".equals(System.getProperty("lads.showcase.secondary"))
         || "true".equalsIgnoreCase(System.getenv("LADS_SHOWCASE_SECONDARY"))
         || "true".equalsIgnoreCase(System.getProperty("lads.showcase.secondary"));
-    private static final String SAVE = "LadsShowcase";
+    private static final String SAVE = System.getenv().getOrDefault("LADS_SHOWCASE_SAVE", "LadsShowcase"); // a second game needs its own world: saves is a shared junction
     private static final int FLOOR = 12;
     private static long connectAt;
     private static final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor(r -> {
