@@ -149,7 +149,37 @@ final class ShowcaseNpcs26 {
         }
     }
 
+    /** NPCs in the tab list (ping bars, survival) or out of it; Chat Heads then finds them by name. */
+    static void tab(Minecraft mc, boolean on) {
+        if (mc.getConnection() == null) return;
+        var access = (com.thelads.core.v26_2.mixin.ShowcasePlayerListAccess) mc.getConnection();
+        java.util.Random random = new java.util.Random(7);
+        for (Npc npc : NPCS.values()) {
+            UUID id = npc.entity.getUUID();
+            net.minecraft.client.multiplayer.PlayerInfo old = access.lads$playerInfoMap().remove(id);
+            if (old != null) access.lads$listedPlayers().remove(old);
+            if (!on) continue;
+            var info = new net.minecraft.client.multiplayer.PlayerInfo(npc.entity.getGameProfile(), false);
+            try {
+                var latency = net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethod("setLatency", int.class);
+                latency.setAccessible(true);
+                latency.invoke(info, 15 + random.nextInt(140));
+                var mode = net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethod("setGameMode", net.minecraft.world.level.GameType.class);
+                mode.setAccessible(true);
+                mode.invoke(info, net.minecraft.world.level.GameType.SURVIVAL);
+            } catch (ReflectiveOperationException ignored) {}
+            access.lads$playerInfoMap().put(id, info);
+            access.lads$listedPlayers().add(info);
+        }
+    }
+
+    /** A chat line from an NPC, as servers send player chat ("<Name> text"). */
+    static void chat(Minecraft mc, String name, String text) {
+        mc.gui.chatListener().handleSystemMessage(net.minecraft.network.chat.Component.literal("<" + npc(name).entity.getPlainTextName() + "> " + text), false); // the path plugin chat takes
+    }
+
     static void clear(Minecraft mc) {
+        tab(mc, false);
         for (Npc npc : NPCS.values()) {
             Emotes.stopLocal(npc.entity.getUUID());
             if (mc.level != null && !npc.entity.isRemoved()) mc.level.removeEntity(npc.entity.getId(), Entity.RemovalReason.DISCARDED);

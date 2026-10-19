@@ -172,7 +172,8 @@
     "SurvivalKeepBarsMixin",
     "ShowcaseOverlayMixin",
     "ShowcaseHotbarMixin",
-    "ShowcaseMouseMixin"
+    "ShowcaseMouseMixin",
+    "ShowcasePlayerListAccess"
   ],
   "mixins": [
     "DisplayEntityAccessor",

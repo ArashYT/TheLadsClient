@@ -1503,6 +1503,8 @@ public final class ShowcaseDirector26 {
             }
             case "npckill" -> onClient(mc, () -> { ShowcaseNpcs26.kill(mc, cmd.arg(0, "")); return null; });
             case "npcclear" -> onClient(mc, () -> { ShowcaseNpcs26.clear(mc); return null; });
+            case "npctab" -> { boolean on = isOn(cmd.arg(0, "on")); onClient(mc, () -> { ShowcaseNpcs26.tab(mc, on); return null; }); }
+            case "npcchat" -> { String w = cmd.arg(0, ""), text = cmd.tail(1); onClient(mc, () -> { ShowcaseNpcs26.chat(mc, w, text); return null; }); }
             default -> throw new IllegalArgumentException("Unknown showcase director verb: " + verb);
         }
     }
