@@ -94,6 +94,12 @@ public final class NativeKillBanner {
         if (victim != null && !victim.isDeadOrDying()) KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), head, System.nanoTime());
     }
 
+    /** Showcase director: a hit on {@code target} that is a head hit or not exactly as the take says (the crosshair would decide otherwise). */
+    public static void showcaseHit(Entity target, boolean head) {
+        LivingEntity victim = victim(target);
+        if (eligible() && victim != null && !victim.isDeadOrDying()) KillBanners.DETECTOR.hitByMe(victim.getId(), names(victim), kind(victim), head, System.nanoTime());
+    }
+
     /** One of the local player's arrows, coming from {@code from}, crossed {@code target}'s box at {@code at} (KillBannerArrows): a hit, in the head or not. */
     static void arrowHit(Entity target, Vec3 from, Vec3 at) {
         if (!eligible()) return;

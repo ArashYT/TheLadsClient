@@ -1501,7 +1501,7 @@ public final class ShowcaseDirector26 {
                 boolean on = isOn(cmd.arg(1, "on"));
                 onClient(mc, () -> { ShowcaseNpcs26.names(cmd.arg(0, "*")).forEach(w -> ShowcaseNpcs26.sneak(w, on)); return null; });
             }
-            case "npckill" -> onClient(mc, () -> { ShowcaseNpcs26.kill(mc, cmd.arg(0, "")); return null; });
+            case "npckill" -> { String w = cmd.arg(0, ""), how = cmd.arg(1, ""); onClient(mc, () -> { ShowcaseNpcs26.kill(mc, w, how); return null; }); } // npckill <name> [head|body]
             case "npcclear" -> onClient(mc, () -> { ShowcaseNpcs26.clear(mc); return null; });
             case "npctab" -> { boolean on = isOn(cmd.arg(0, "on")); onClient(mc, () -> { ShowcaseNpcs26.tab(mc, on); return null; }); }
             case "npcchat" -> { String w = cmd.arg(0, ""), text = cmd.tail(1); onClient(mc, () -> { ShowcaseNpcs26.chat(mc, w, text); return null; }); }

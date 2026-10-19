@@ -122,11 +122,12 @@ final class ShowcaseNpcs26 {
     static void sneak(String name, boolean on) { npc(name).entity.setShiftKeyDown(on); }
 
     /** The local player kills it: hurt flash and sound, then the death fall; Kill Banner counts it as the player's kill. */
-    static void kill(Minecraft mc, String name) {
+    static void kill(Minecraft mc, String name, String how) {
         Npc npc = npc(name);
         RemotePlayer e = npc.entity;
         if (npc.dying >= 0) return;
-        NativeKillBanner.attacked(e); // the crosshair says whether it was a head hit
+        if ("head".equalsIgnoreCase(how) || "body".equalsIgnoreCase(how)) NativeKillBanner.showcaseHit(e, "head".equalsIgnoreCase(how));
+        else NativeKillBanner.attacked(e); // no word: the crosshair says whether it was a head hit
         e.animateHurt(mc.player == null ? 0f : mc.player.getYRot());
         e.setHealth(0f);
         npc.dying = 0;
