@@ -202,7 +202,7 @@ public final class ShowcaseDirector26 {
         List<String> list = new ArrayList<>();
         String who = isServerMode ? "@s" : "@a";
         list.add("kill @e[type=!player]");
-        if (!isServerMode) list.add(snapshotCommand(false, spotX, groundY, spotZ));
+        if (!isServerMode) list.addAll(snapshotCommands(false, spotX, groundY, spotZ));
         list.add("clear " + who);
         list.add("gamemode creative " + who);
         list.add("effect clear " + who);
@@ -216,10 +216,15 @@ public final class ShowcaseDirector26 {
      * Scripts change the world (fills, builds, drops); `reset` puts the blocks around the home lawn back. The box x/z +-32, y-6..y+30 is
      * cloned once into the deepslate right under it (y -60..-24) and cloned back on every reset.
      */
-    public static String snapshotCommand(boolean save, double spotX, double groundY, double spotZ) {
+    public static List<String> snapshotCommands(boolean save, double spotX, double groundY, double spotZ) {
         int x = (int) Math.floor(spotX), y = (int) Math.floor(groundY), z = (int) Math.floor(spotZ);
-        return save ? String.format(Locale.ROOT, "clone %d %d %d %d %d %d %d -60 %d", x - 32, y - 6, z - 32, x + 32, y + 30, z + 32, x - 32, z - 32)
-                    : String.format(Locale.ROOT, "clone %d -60 %d %d -24 %d %d %d %d", x - 32, z - 32, x + 32, z + 32, x - 32, y - 6, z - 32);
+        List<String> out = new ArrayList<>();
+        for (int z0 = z - 32; z0 <= z + 32; z0 += 13) { // 65 x 37 x 13 = 31,265 blocks per clone: under the default 32,768 limit
+            int z1 = Math.min(z0 + 12, z + 32);
+            out.add(save ? String.format(Locale.ROOT, "clone %d %d %d %d %d %d %d -60 %d", x - 32, y - 6, z0, x + 32, y + 30, z1, x - 32, z0)
+                         : String.format(Locale.ROOT, "clone %d -60 %d %d -24 %d %d %d %d", x - 32, z0, x + 32, z1, x - 32, y - 6, z0));
+        }
+        return out;
     }
 
     private static double homeX, homeY, homeZ;
@@ -595,9 +600,8 @@ public final class ShowcaseDirector26 {
                     // One snapshot per world (a reopened world keeps its first, clean one).
                     Path marker = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("lads-showcase-snapshot");
                     if (!Files.exists(marker)) {
-                        for (String c : new String[] {"gamerule commandModificationBlockLimit 4000000", "gamerule command_modification_block_limit 4000000",
-                            String.format(Locale.ROOT, "forceload add %d %d %d %d", (int) spotX - 40, (int) spotZ - 40, (int) spotX + 40, (int) spotZ + 40),
-                            snapshotCommand(true, spotX, groundY, spotZ)}) command(server, c);
+                        command(server, String.format(Locale.ROOT, "forceload add %d %d %d %d", (int) spotX - 40, (int) spotZ - 40, (int) spotX + 40, (int) spotZ + 40));
+                        for (String c : snapshotCommands(true, spotX, groundY, spotZ)) command(server, c);
                         try { Files.writeString(marker, "snapshot of " + spotX + " " + groundY + " " + spotZ); } catch (IOException e) { LOGGER.error("Showcase snapshot marker", e); }
                     }
                     command(server, "setworldspawn " + (int) Math.floor(spotX) + " " + (int) Math.floor(groundY) + " " + (int) Math.floor(spotZ));
