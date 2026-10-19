@@ -854,18 +854,22 @@ public final class ShowcaseDirector26 {
         if (!Files.isRegularFile(file)) return;
         List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
         if (lines.isEmpty()) return;
-        String lastLine = lines.get(lines.size() - 1).trim();
-        if (lastLine.startsWith("\uFEFF")) {
-            lastLine = lastLine.substring(1).trim();
+        // The oldest step not run yet, not the last line: several lanes queue steps while one runs (the last-line rule skipped theirs).
+        String lastLine = null;
+        int n = Integer.MAX_VALUE;
+        for (String raw : lines) {
+            String l = raw.trim();
+            if (l.startsWith("﻿")) l = l.substring(1).trim();
+            if (l.isEmpty()) continue;
+            String num = l.split("\\s+")[0].replaceAll("[^0-9-]", "");
+            if (num.isEmpty()) continue;
+            int k = Integer.parseInt(num);
+            if (k > lastCmd && k < n) { n = k; lastLine = l; }
         }
-        if (lastLine.isEmpty()) return;
-
+        if (lastLine == null) return;
         String[] parts = lastLine.split("\\s+");
-        String numStr = parts[0].replaceAll("[^0-9-]", "");
-        if (numStr.isEmpty()) return;
-        int n = Integer.parseInt(numStr);
-        if (n <= lastCmd) return;
         lastCmd = n;
+        if (parts.length < 2) return;
 
         String action = parts[1].toLowerCase(Locale.ROOT);
         LOGGER.info("Showcase director command step {}: {}", n, lastLine);
@@ -892,7 +896,8 @@ public final class ShowcaseDirector26 {
             final Path targetScript = scriptFile;
 
             if (scriptRunning.compareAndSet(false, true)) {
-                Thread worker = new Thread(() -> executeScript(mc, n, targetScript), "ShowcaseDirector-Worker-" + n);
+                final int step = n;
+                Thread worker = new Thread(() -> executeScript(mc, step, targetScript), "ShowcaseDirector-Worker-" + step);
                 worker.start();
             }
         }
@@ -1222,7 +1227,9 @@ public final class ShowcaseDirector26 {
                 if (mapping != null) {
                     mc.execute(() -> {
                         mapping.setDown(true);
-                        KeyMapping.click(mapping.getDefaultKey());
+                        if (mapping.getDefaultKey() != InputConstants.UNKNOWN) {
+                            KeyMapping.click(mapping.getDefaultKey());
+                        }
                     });
                     SCHEDULER.schedule(() -> mc.execute(() -> mapping.setDown(false)), 50, TimeUnit.MILLISECONDS);
                 } else {
