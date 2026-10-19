@@ -17,6 +17,7 @@ public class CrashReporterTests
         Assert.DoesNotContain("eyJhbGciOiJIUzI1", text);
         Assert.DoesNotContain("0123456789abcdef0123", text);
         Assert.Contains("%USERPROFILE%\\AppData", text);
+        Assert.Equal("USERNAME=<hidden>\r\nOS=Windows_NT", CrashReporter.Scrub("USERNAME=steph\r\nOS=Windows_NT"));
     }
 
     [Fact]

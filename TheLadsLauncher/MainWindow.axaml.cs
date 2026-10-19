@@ -4815,7 +4815,7 @@ public partial class MainWindow : Window
                 Log($"[Launcher] Game exited with code {exitCode}");
                 HandleCrashDetection(gameDirectory);
                 if (settings.SendCrashReports && string.IsNullOrEmpty(profile.PackwizUrl))
-                    _ = SendCrashReportAsync(gameDirectory, profile.MinecraftVersion, exitCode);
+                    _ = SendCrashReportAsync(gameDirectory, process.StartInfo.WorkingDirectory, profile.MinecraftVersion, exitCode);
             }
             else
             {
@@ -5036,9 +5036,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task SendCrashReportAsync(string gameDirectory, string minecraftVersion, int exitCode)
+    private async Task SendCrashReportAsync(string gameDirectory, string? workingDirectory, string minecraftVersion, int exitCode)
     {
-        string? error = await Task.Run(() => CrashReporter.SendAsync(gameDirectory, minecraftVersion, exitCode));
+        string? error = await Task.Run(() => CrashReporter.SendAsync(gameDirectory, workingDirectory, minecraftVersion, exitCode));
         await Dispatcher.UIThread.InvokeAsync(() => Log(error == null ? "[Crash] Crash report sent to the Lads team." : $"[Crash] Crash report not sent: {error}"));
     }
 
