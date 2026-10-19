@@ -264,6 +264,7 @@ public final class ShowcaseDirector26 {
 
     /** `hotbar off`: ShowcaseHotbarMixin skips only the vanilla hotbar. */
     public static volatile boolean hideHotbar;
+    private static final Map<String, int[]> baselineHudPositions = new HashMap<>();
     private static volatile long clickPulseAt;
     private static boolean windowApplied;
 
@@ -608,6 +609,8 @@ public final class ShowcaseDirector26 {
     private static void takeBaseline(Minecraft mc) {
         HudSettings.getInstance().setBackgrounds(true); // owner: HUD showcases always with backgrounds and text shadow
         HudSettings.getInstance().setTextShadow(true);
+        baselineHudPositions.clear();
+        HudSettings.getInstance().getPositions().forEach((k, v) -> baselineHudPositions.put(k, v.clone()));
         baselineModuleState.clear();
         baselineOptions.clear();
         for (Module m : ModuleManager.getInstance().getRegisteredModules()) {
@@ -962,6 +965,11 @@ public final class ShowcaseDirector26 {
                     }
                 }
                 hideHotbar = false;
+                mc.execute(() -> { // `hudpos` moves are per take
+                    var hs = HudSettings.getInstance();
+                    for (String k : new ArrayList<>(hs.getPositions().keySet())) if (!baselineHudPositions.containsKey(k)) hs.clearPosition(k);
+                    baselineHudPositions.forEach((k, v) -> hs.setPosition(k, v[0], v[1]));
+                });
                 HudSettings.getInstance().setBackgrounds(true);
                 HudSettings.getInstance().setTextShadow(true);
                 mc.execute(() -> {
@@ -1409,6 +1417,24 @@ public final class ShowcaseDirector26 {
                 glide(mc, x2, y2, ms);
                 Thread.sleep(80);
                 mc.execute(() -> mc.mouseHandler.onButton(handle, new MouseButtonInfo(0, 0), 0));
+            }
+            case "hudpos" -> { // hudpos <Module> <x> <y> [center]: place a HUD module (GUI units, top-left; "center" = x/y is its center)
+                Module m = findModule(cmd.arg(0, ""));
+                if (m == null) throw new IllegalArgumentException("Module not found: " + cmd.arg(0, ""));
+                int x = (int) cmd.doubleArg(1, 0), y = (int) cmd.doubleArg(2, 0);
+                boolean center = "center".equalsIgnoreCase(cmd.arg(3, ""));
+                onClient(mc, () -> {
+                    if (center) {
+                        for (var el : com.thelads.core.client.hud.HudManager.getInstance().getElements()) {
+                            if (m.getName().equals(el.getModuleName())) {
+                                HudSettings.getInstance().setPosition(m.getName(), x - el.getRenderWidth() / 2, y - el.getRenderHeight() / 2);
+                                return null;
+                            }
+                        }
+                    }
+                    HudSettings.getInstance().setPosition(m.getName(), x, y);
+                    return null;
+                });
             }
             case "gui" -> { int n = cmd.intArg(0, 0); mc.execute(() -> mc.options.guiScale().set(n)); }
             case "hotbar" -> hideHotbar = !isOn(cmd.arg(0, "on"));
