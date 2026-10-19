@@ -37,8 +37,8 @@ static class QaWindowGuard
 
     public static void Watch(Process game, int slot = 1)
     {
-        bool focus = Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") == "1";
-        bool playing = Environment.GetEnvironmentVariable("LADS_VERIFY_PLAYING") == "1";
+        bool focus = Environment.GetEnvironmentVariable("LADS_VERIFY_FOCUS") == "1" || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("LADS_SHOWCASE_WINDOW"));
+        bool playing = Environment.GetEnvironmentVariable("LADS_VERIFY_PLAYING") == "1" && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("LADS_SHOWCASE_WINDOW"));
         new Thread(() => Loop(game, focus, playing, slot)) { IsBackground = true, Name = "QA window guard" }.Start();
     }
 

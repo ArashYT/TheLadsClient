@@ -51,7 +51,14 @@ import net.minecraft.world.WorldType;
 import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
+import com.sun.jna.platform.win32.User32;
+import com.sun.jna.platform.win32.WinDef;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.HudSettings;
+import com.thelads.core.config.SliderOption;
 
 /**
  * QA only (LADS_VERIFY_189_ONLY=perf): the 1.7.3 benchmark. A fresh superflat world (fixed seed, no structures, noon, no
@@ -172,6 +179,7 @@ public final class Probe173Perf {
             originalSkinLayersLod = getSkinLayersLod();
         }
         applyBenchmarkSkinLayers();
+        applyShowcaseWindow(mc);
         report.addProperty("seconds", SECONDS);
         report.addProperty("renderDistance", mc.gameSettings.renderDistanceChunks);
         report.addProperty("maxFps", mc.gameSettings.limitFramerate);
@@ -243,11 +251,29 @@ public final class Probe173Perf {
             return;
         }
         if (isShowcase(name)) {
+            applyShowcaseWindow(mc);
+
+            // FPS is always UNLIMITED in the showcase
+            mc.gameSettings.limitFramerate = 260;
+            mc.gameSettings.enableVsync = false;
+            Display.setVSyncEnabled(false);
+            DynamicFPS189.bypass = true;
+            Module dfpsMod = Options189.module(DynamicFPS189.NAME);
+            if (dfpsMod != null) dfpsMod.setEnabled(false);
+
+            // HUD rules: Background ON, Text Shadow ON, HUD FPS cap disabled, hudScale following GUI scale
+            HudSettings hudSettings = HudSettings.getInstance();
+            hudSettings.setBackgrounds(true);
+            hudSettings.setTextShadow(true);
+            hudSettings.setHudFpsCapEnabled(false);
+            hudSettings.setHudScale(0);
+
+            // A clean frame for the FPS video: every HUD module off except the FPS counter (turned on below).
             for (HudElement element : HudManager.getInstance().getElements()) {
                 Module module = Options189.module(element.getModuleName());
                 if (!element.isAvailable() || module == null) continue;
                 remember(mc, element.getModuleName());
-                module.setEnabled(true);
+                module.setEnabled(false);
             }
             remember(mc, "Autohide");
             if (Options189.module("Autohide") != null) Options189.module("Autohide").setEnabled(false);
@@ -256,6 +282,12 @@ public final class Probe173Perf {
                 fpsMod.setEnabled(true);
                 Option opt = fpsMod.getOption("Show Game FPS");
                 if (opt instanceof BoolOption) ((BoolOption) opt).set(true);
+                Option sizeOpt = fpsMod.getOption("Size");
+                if (sizeOpt instanceof SliderOption) ((SliderOption) sizeOpt).setValue(175);
+                Option displayOpt = fpsMod.getOption("Display");
+                if (displayOpt instanceof DropdownOption) ((DropdownOption) displayOpt).setIndex(0);
+                Option updateOpt = fpsMod.getOption("Update rate");
+                if (updateOpt instanceof DropdownOption) ((DropdownOption) updateOpt).setIndex(0);
             }
             if (name.contains("crowd")) {
                 command(mc, "fill -12 " + (int)Y + " 8 12 " + (int)(Y + 8) + " 8 stone");
@@ -288,7 +320,7 @@ public final class Probe173Perf {
                 }
             }
             mc.ingameGUI.getChatGUI().clearChatMessages();
-            writeShowcaseStatus(mc, "ready 1920x1080", Minecraft.getDebugFPS());
+            writeShowcaseStatus(mc, "ready " + mc.displayWidth + "x" + mc.displayHeight, Minecraft.getDebugFPS());
             RANDOM.setSeed(173);
             return;
         }
@@ -378,7 +410,7 @@ public final class Probe173Perf {
                 LOG.info("Showcase 1.8.9: captured screenshot showcase-{}-shot{}.png at tick {} (Debug FPS: {})", name, shotIndex, tick, Minecraft.getDebugFPS());
             }
             if (tick % 10 == 0) {
-                writeShowcaseStatus(mc, "running 1920x1080", Minecraft.getDebugFPS());
+                writeShowcaseStatus(mc, "running " + mc.displayWidth + "x" + mc.displayHeight, Minecraft.getDebugFPS());
             }
             return;
         }
@@ -524,6 +556,87 @@ public final class Probe173Perf {
                 }
             }
         } catch (Throwable ignored) {}
+    }
+
+    private static void applyShowcaseWindow(Minecraft mc) {
+        String winEnv = System.getProperty("thelads.showcaseWindow", System.getenv("LADS_SHOWCASE_WINDOW"));
+        if (winEnv == null || winEnv.trim().isEmpty()) {
+            return;
+        }
+        try {
+            winEnv = winEnv.trim();
+            int atIdx = winEnv.indexOf('@');
+            String sizePart = atIdx >= 0 ? winEnv.substring(0, atIdx).trim() : winEnv;
+            String posPart = atIdx >= 0 ? winEnv.substring(atIdx + 1).trim() : null;
+
+            String[] dims = sizePart.split("x");
+            if (dims.length != 2) return;
+            int w = Integer.parseInt(dims[0].trim());
+            int h = Integer.parseInt(dims[1].trim());
+
+            Integer posX = null, posY = null;
+            if (posPart != null && posPart.contains(",")) {
+                String[] pos = posPart.split(",");
+                if (pos.length == 2) {
+                    posX = Integer.parseInt(pos[0].trim());
+                    posY = Integer.parseInt(pos[1].trim());
+                }
+            }
+
+            LOG.info("Showcase 1.8.9: applying window {}x{} (position: {},{})", w, h, posX, posY);
+
+            if (PylonWindow189.PRESENT) {
+                try {
+                    PylonWindow189.fullscreen(false);
+                    PylonWindow189.bordered(false);
+                    PylonWindow189.setResizable(false);
+                    PylonWindow189.size(w, h);
+                    if (posX != null && posY != null) {
+                        PylonWindow189.move(posX, posY);
+                    }
+                } catch (Throwable t) {
+                    LOG.warn("Showcase 1.8.9: Failed to apply window via Pylon", t);
+                }
+            } else {
+                System.setProperty("org.lwjgl.opengl.Window.undecorated", "true");
+                Display.setResizable(false);
+                if (posX != null && posY != null) {
+                    Display.setLocation(posX, posY);
+                }
+                try {
+                    if (System.getProperty("os.name", "").startsWith("Windows")) {
+                        WinDef.HWND hwnd = Borderless189.hwnd();
+                        if (hwnd != null) {
+                            int flags = 0x14; // SWP_NOZORDER | SWP_NOACTIVATE
+                            int x = posX != null ? posX : Display.getX();
+                            int y = posY != null ? posY : Display.getY();
+                            User32.INSTANCE.SetWindowPos(hwnd, null, x, y, w, h, flags);
+                        }
+                    }
+                } catch (Throwable t) {
+                    LOG.warn("Showcase 1.8.9: Failed to apply window via User32", t);
+                }
+            }
+
+            try {
+                Display.setDisplayMode(new DisplayMode(w, h));
+            } catch (Throwable ignored) {}
+
+            String gsProp = System.getProperty("thelads.guiScale", System.getenv("LADS_GUI_SCALE"));
+            if (gsProp != null && !gsProp.trim().isEmpty()) {
+                try {
+                    mc.gameSettings.guiScale = Integer.parseInt(gsProp.trim());
+                } catch (NumberFormatException ignored) {}
+            } else {
+                mc.gameSettings.guiScale = (w >= h ? 6 : 5);
+            }
+
+            mc.resize(w, h);
+            Display.setVSyncEnabled(false);
+            LOG.info("Showcase 1.8.9: window applied, display is {}x{}, guiScale={}", mc.displayWidth, mc.displayHeight, mc.gameSettings.guiScale);
+        } catch (Throwable t) {
+            LOG.error("Showcase 1.8.9: Failed to parse/apply LADS_SHOWCASE_WINDOW=" + winEnv, t);
+        }
     }
 
     private static void begin(Minecraft mc, String name) {
