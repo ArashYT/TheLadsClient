@@ -98,6 +98,8 @@ public final class Probe173Perf {
                     steps.add(Probe173Perf::swaps);
                 } else if ("empty".equalsIgnoreCase(name)) {
                     steps.add(scene("empty", 20));
+                } else if (isShowcase(name)) {
+                    steps.add(scene(name, 3));
                 } else {
                     steps.add(scene(name, WARM));
                 }
@@ -240,6 +242,56 @@ public final class Probe173Perf {
             Probe192Players.build(mc, name);
             return;
         }
+        if (isShowcase(name)) {
+            for (HudElement element : HudManager.getInstance().getElements()) {
+                Module module = Options189.module(element.getModuleName());
+                if (!element.isAvailable() || module == null) continue;
+                remember(mc, element.getModuleName());
+                module.setEnabled(true);
+            }
+            remember(mc, "Autohide");
+            if (Options189.module("Autohide") != null) Options189.module("Autohide").setEnabled(false);
+            Module fpsMod = Options189.module("FPS");
+            if (fpsMod != null) {
+                fpsMod.setEnabled(true);
+                Option opt = fpsMod.getOption("Show Game FPS");
+                if (opt instanceof BoolOption) ((BoolOption) opt).set(true);
+            }
+            if (name.contains("crowd")) {
+                command(mc, "fill -12 " + (int)Y + " 8 12 " + (int)(Y + 8) + " 8 stone");
+                for (int i = 0; i < 100; i++) {
+                    boolean behind = i < 70;
+                    double ex = behind ? -9 + (i % 10) * 2 : -13.5 + (i % 10) * 3, ez = behind ? 12 + (i / 10) * 2 : 3.5 + ((i - 70) / 10) * 1.5;
+                    EntityLivingBase entity;
+                    if (i % 2 == 0) {
+                        EntityArmorStand stand = new EntityArmorStand(mc.theWorld);
+                        stand.setCustomNameTag("Stand " + i);
+                        stand.setAlwaysRenderNameTag(true);
+                        entity = stand;
+                    } else {
+                        entity = new EntityOtherPlayerMP(mc.theWorld, new GameProfile(UUID.nameUUIDFromBytes(("perf" + i).getBytes(StandardCharsets.UTF_8)), "PerfBot" + i));
+                    }
+                    entity.setCurrentItemOrArmor(0, new ItemStack(Items.diamond_sword));
+                    entity.setCurrentItemOrArmor(1, new ItemStack(Items.iron_boots));
+                    entity.setCurrentItemOrArmor(2, new ItemStack(Items.iron_leggings));
+                    entity.setCurrentItemOrArmor(3, new ItemStack(Items.iron_chestplate));
+                    entity.setCurrentItemOrArmor(4, new ItemStack(Items.iron_helmet));
+                    entity.setPositionAndRotation(ex, Y, ez, 180, 0);
+                    entity.rotationYawHead = entity.renderYawOffset = 180;
+                    mc.theWorld.addEntityToWorld(-17300 - i, entity);
+                }
+            }
+            if (name.contains("farblock")) {
+                for (int d = 10; d <= 120; d += 15) {
+                    command(mc, "setblock " + (int)(X + d) + " " + (int)Y + " " + (int)Z + " chest");
+                    command(mc, "setblock " + (int)(X + d) + " " + (int)Y + " " + (int)(Z + 2) + " standing_sign 0 replace {Text1:\"FarSign " + d + "\"}");
+                }
+            }
+            mc.ingameGUI.getChatGUI().clearChatMessages();
+            writeShowcaseStatus(mc, "ready 1920x1080", Minecraft.getDebugFPS());
+            RANDOM.setSeed(173);
+            return;
+        }
         switch (name) {
             case "crowd": {
                 // A stone wall 8 blocks ahead; 70 entities behind it, 30 in front (armour stands and players, all with nametags).
@@ -319,6 +371,17 @@ public final class Probe173Perf {
 
     /** Every client tick of a scene: what keeps it busy. */
     private static void tick(Minecraft mc, String name, int tick) {
+        if (isShowcase(name)) {
+            if (tick > 0 && tick % 60 == 0) {
+                int shotIndex = tick / 60;
+                screenshot(mc, "showcase-" + name + "-shot" + shotIndex);
+                LOG.info("Showcase 1.8.9: captured screenshot showcase-{}-shot{}.png at tick {} (Debug FPS: {})", name, shotIndex, tick, Minecraft.getDebugFPS());
+            }
+            if (tick % 10 == 0) {
+                writeShowcaseStatus(mc, "running 1920x1080", Minecraft.getDebugFPS());
+            }
+            return;
+        }
         if (Probe192Players.isPlayerScene(name)) {
             Probe192Players.tick(mc, name, tick);
             return;
@@ -346,6 +409,13 @@ public final class Probe173Perf {
     private static void teardown(Minecraft mc, String name) {
         if (Probe192Players.isPlayerScene(name)) {
             Probe192Players.teardown(mc, name);
+        }
+        if (isShowcase(name)) {
+            if (name.contains("crowd")) {
+                for (int i = 0; i < 100; i++) mc.theWorld.removeEntityFromWorld(-17300 - i);
+                command(mc, "fill -12 " + (int)Y + " 8 12 " + (int)(Y + 8) + " 8 air");
+            }
+            writeShowcaseStatus(mc, "done", Minecraft.getDebugFPS());
         }
         switch (name) {
             case "crowd":
@@ -383,6 +453,11 @@ public final class Probe173Perf {
 
     /** The player stands still at the scene's pose. */
     private static void pin(Minecraft mc) {
+        if (mc.thePlayer == null) return;
+        if (isShowcase(running)) {
+            flyShowcase(mc, ticks);
+            return;
+        }
         mc.thePlayer.setPosition(X, Y, Z);
         mc.thePlayer.prevPosX = mc.thePlayer.lastTickPosX = X;
         mc.thePlayer.prevPosY = mc.thePlayer.lastTickPosY = Y;
@@ -392,6 +467,63 @@ public final class Probe173Perf {
         mc.thePlayer.capabilities.isFlying = false;
         mc.thePlayer.rotationYaw = mc.thePlayer.prevRotationYaw = 0;
         mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = pitch;
+    }
+
+    private static boolean isShowcase(String name) {
+        return name != null && (name.startsWith("showcase") || name.equalsIgnoreCase("fly"));
+    }
+
+    private static void flyShowcase(Minecraft mc, int tick) {
+        if (mc.thePlayer == null) return;
+        double t = tick * 0.05; // 20 ticks = 1.0 second
+        double px, py, pz;
+        float yaw, pitch;
+        if (running != null && running.contains("crowd")) {
+            px = X + Math.sin(t * 0.7) * 8.0;
+            py = Y + 1.2 + Math.sin(t * 0.5) * 0.5;
+            pz = Z + Math.min(6.0, t * 1.2);
+            yaw = (float) (Math.sin(t * 0.8) * 20.0);
+            pitch = (float) (5.0 + Math.cos(t * 0.5) * 3.0);
+        } else if (running != null && running.contains("farblock")) {
+            px = X + t * 6.0;
+            py = Y + 1.5;
+            pz = Z + 1.0;
+            yaw = -90.0f;
+            pitch = 10.0f;
+        } else {
+            px = X + (t * 8.0);
+            py = Y + (Boolean.getBoolean("thelads.perfTerrain") ? 6.0 : 3.0) + Math.sin(t * 0.6) * 1.5;
+            pz = Z + Math.sin(t * 0.4) * 4.0;
+            yaw = (float) (-90.0 + Math.sin(t * 0.5) * 15.0);
+            pitch = (float) (6.0 + Math.cos(t * 0.4) * 4.0);
+        }
+
+        mc.thePlayer.capabilities.isFlying = true;
+        mc.thePlayer.setPosition(px, py, pz);
+        mc.thePlayer.prevPosX = mc.thePlayer.lastTickPosX = px;
+        mc.thePlayer.prevPosY = mc.thePlayer.lastTickPosY = py;
+        mc.thePlayer.prevPosZ = mc.thePlayer.lastTickPosZ = pz;
+        mc.thePlayer.motionX = mc.thePlayer.motionY = mc.thePlayer.motionZ = 0;
+        mc.thePlayer.fallDistance = 0;
+        mc.thePlayer.rotationYaw = mc.thePlayer.prevRotationYaw = yaw;
+        mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = pitch;
+    }
+
+    private static void writeShowcaseStatus(Minecraft mc, String status, int fps) {
+        try {
+            File folder = new File(mc.mcDataDir, "lads-qa/showcase");
+            folder.mkdirs();
+            Files.write(new File(folder, "status.txt").toPath(), status.getBytes(StandardCharsets.UTF_8));
+            Files.write(new File(folder, "fps.txt").toPath(), ("FPS: " + fps + "\n").getBytes(StandardCharsets.UTF_8));
+            String extDir = System.getProperty("thelads.showcaseDir", System.getenv("LADS_SHOWCASE_DIR"));
+            if (extDir != null && !extDir.trim().isEmpty()) {
+                File dir = new File(extDir.trim());
+                if (dir.isDirectory() || dir.mkdirs()) {
+                    Files.write(new File(dir, "status.txt").toPath(), status.getBytes(StandardCharsets.UTF_8));
+                    Files.write(new File(dir, "fps.txt").toPath(), ("FPS: " + fps + "\n").getBytes(StandardCharsets.UTF_8));
+                }
+            }
+        } catch (Throwable ignored) {}
     }
 
     private static void begin(Minecraft mc, String name) {
@@ -666,6 +798,7 @@ public final class Probe173Perf {
         File folder = new File(mc.mcDataDir, "lads-qa/perf");
         check(folder.isDirectory() || folder.mkdirs(), "perf folder " + folder);
         Files.write(new File(folder, "perf.json").toPath(), new GsonBuilder().setPrettyPrinting().create().toJson(report).getBytes(StandardCharsets.UTF_8));
+        writeShowcaseStatus(mc, "done", Minecraft.getDebugFPS());
         LOG.info("Lads 1.8.9 perf END: {} scenes in lads-qa/perf/perf.json", scenes.entrySet().size());
         return after(5);
     }
