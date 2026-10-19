@@ -266,6 +266,7 @@ public final class ShowcaseDirector26 {
     public static volatile boolean hideHotbar;
     private static final Map<String, int[]> baselineHudPositions = new HashMap<>();
     private static volatile long clickPulseAt;
+    private static volatile double lastCursorX = -1, lastCursorY = -1;
     private static boolean windowApplied;
 
     private static class CameraInterpolation {
@@ -320,6 +321,9 @@ public final class ShowcaseDirector26 {
             throw e.getCause() instanceof Exception cause ? cause : e;
         }
     }
+
+    /** "floss" means "lads:floss": a bare emote name silently did nothing. */
+    private static String emoteId(String id) { return id.isEmpty() || id.contains(":") ? id : "lads:" + id; }
 
     private static boolean isOn(String value) {
         return value.equalsIgnoreCase("on") || value.equalsIgnoreCase("true") || value.equals("1");
@@ -431,6 +435,14 @@ public final class ShowcaseDirector26 {
         if (mc == null) return;
         long now = System.currentTimeMillis();
         if (!windowApplied) applyWindow(mc);
+        if (mc.gui.screen() != null && mc.getWindow() != null) { // a new screen put the mouse at the real (off-window) spot: keep the drawn cursor in view
+            double mx = mc.mouseHandler.xpos(), my = mc.mouseHandler.ypos();
+            int w = mc.getWindow().getWidth(), h = mc.getWindow().getHeight();
+            if (!(mx >= 0 && mx <= w && my >= 0 && my <= h)) {
+                double tx = lastCursorX >= 0 ? lastCursorX : w / 2.0, ty = lastCursorY >= 0 ? lastCursorY : h / 2.0;
+                mc.mouseHandler.onMove(mc.getWindow().handle(), tx, ty, 0, 0);
+            }
+        }
 
         // 1. Camera interpolation (look / turn)
         CameraInterpolation cam = cameraInterp;
@@ -470,6 +482,8 @@ public final class ShowcaseDirector26 {
             double winY = curGuiY * scale;
 
             mc.mouseHandler.onMove(mc.getWindow().handle(), winX, winY, 0, 0);
+            lastCursorX = winX;
+            lastCursorY = winY;
 
             if (t >= 1.0) {
                 cur.active = false;
@@ -1395,7 +1409,7 @@ public final class ShowcaseDirector26 {
                 }
             }
             case "emote" -> {
-                String id = cmd.arg(0, "");
+                String id = emoteId(cmd.arg(0, ""));
                 mc.execute(() -> {
                     if (mc.player != null) Emotes.playLocal(mc.player.getUUID(), id);
                 });
@@ -1458,7 +1472,7 @@ public final class ShowcaseDirector26 {
                 onClient(mc, () -> { ShowcaseNpcs26.ring(mc, n, r, cx, y, cz); return null; });
             }
             case "npcemote" -> {
-                String id = cmd.arg(1, "");
+                String id = emoteId(cmd.arg(1, ""));
                 long stagger = cmd.longArg(2, 0);
                 List<String> who = onClient(mc, () -> ShowcaseNpcs26.names(cmd.arg(0, "*")));
                 for (int i = 0; i < who.size(); i++) {
