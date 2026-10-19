@@ -225,7 +225,7 @@ public final class NativeKillBanner {
         trackedLevel = Minecraft.getInstance().level;
     }
 
-    static void reset() {
+    public static void reset() {
         trackedConnection = null;
         trackedLevel = null;
         KillBanners.reset();

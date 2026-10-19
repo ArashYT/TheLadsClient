@@ -76,6 +76,9 @@ import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.Heightmap;
 import org.lwjgl.sdl.SDLMouse;
+import org.lwjgl.sdl.SDLVideo;
+import com.thelads.core.config.HudSettings;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -259,6 +262,11 @@ public final class ShowcaseDirector26 {
     private static volatile CursorInterpolation cursorInterp;
     private static volatile FovInterpolation fovInterp;
 
+    /** `hotbar off`: ShowcaseHotbarMixin skips only the vanilla hotbar. */
+    public static volatile boolean hideHotbar;
+    private static volatile long clickPulseAt;
+    private static boolean windowApplied;
+
     private static class CameraInterpolation {
         final float startYaw, dyaw, startPitch, dpitch;
         final long startTime, durationMs;
@@ -303,6 +311,81 @@ public final class ShowcaseDirector26 {
         }
     }
 
+    /** Run on the client thread and wait: a bad NPC name fails the step instead of vanishing in a log. */
+    private static <T> T onClient(Minecraft mc, java.util.function.Supplier<T> work) throws Exception {
+        try {
+            return mc.submit(work).get(5, TimeUnit.SECONDS);
+        } catch (java.util.concurrent.ExecutionException e) {
+            throw e.getCause() instanceof Exception cause ? cause : e;
+        }
+    }
+
+    private static boolean isOn(String value) {
+        return value.equalsIgnoreCase("on") || value.equalsIgnoreCase("true") || value.equals("1");
+    }
+
+    public static boolean isActive() { return active; }
+
+    /**
+     * LADS_SHOWCASE_WINDOW = WxH[@X,Y]: the 4K recording window (wide 3840x2160 or tall 2160x3840), borderless and placed off
+     * the screens (the launch script picks X,Y past every monitor), so OBS game capture gets 4K on a 1080p desk.
+     */
+    private static void applyWindow(Minecraft mc) {
+        windowApplied = true;
+        String spec = System.getenv("LADS_SHOWCASE_WINDOW");
+        if (spec == null || spec.isBlank() || mc.getWindow() == null) return;
+        var m = java.util.regex.Pattern.compile("(\\d+)x(\\d+)(?:@(-?\\d+),(-?\\d+))?").matcher(spec.trim());
+        if (!m.matches()) { LOGGER.error("Lads showcase director: bad LADS_SHOWCASE_WINDOW {}", spec); return; }
+        long handle = mc.getWindow().handle();
+        int w = Integer.parseInt(m.group(1)), h = Integer.parseInt(m.group(2));
+        SDLVideo.SDL_SetWindowFullscreen(handle, false);
+        SDLVideo.SDL_SetWindowBordered(handle, false);
+        SDLVideo.SDL_SetWindowResizable(handle, false); // SDL then lets Windows size it past the desktop (min = max = this size)
+        SDLVideo.SDL_SetWindowSize(handle, w, h);
+        if (m.group(3) != null) SDLVideo.SDL_SetWindowPosition(handle, Integer.parseInt(m.group(3)), Integer.parseInt(m.group(4)));
+        LOGGER.info("Lads showcase director: window {}x{} at {},{}", w, h, m.group(3), m.group(4));
+    }
+
+    /** Classic arrow, one char per cursor pixel: B outline, W fill, . clear. */
+    private static final String[] ARROW = {
+        "B...........", "BB..........", "BWB.........", "BWWB........", "BWWWB.......", "BWWWWB......", "BWWWWWB.....",
+        "BWWWWWWB....", "BWWWWWWWB...", "BWWWWWWWWB..", "BWWWWWWWWWB.", "BWWWWWWBBBBB", "BWWWBWWB....", "BWWBBWWB....",
+        "BWB..BWWB...", "BB...BWWB...", "B.....BWWB..", "......BWWB..", ".......BB..."};
+
+    /** ShowcaseOverlayMixin, after a screen and its tooltip: the director's mouse (the real one never moves), with a pulse on each click. */
+    public static void drawCursor(GuiGraphicsExtractor g) {
+        if (!active) return;
+        Minecraft mc = Minecraft.getInstance();
+        var win = mc.getWindow();
+        double scale = win.getGuiScale();
+        float px = (float) Math.max(3, Math.round(Math.min(win.getWidth(), win.getHeight()) / 400.0)); // screen pixels per cursor pixel: ~95 px tall at 4K, big enough to follow in a video
+        g.nextStratum();
+        var pose = g.pose();
+        pose.pushMatrix();
+        pose.translate((float) (mc.mouseHandler.xpos() / scale), (float) (mc.mouseHandler.ypos() / scale));
+        pose.scale((float) (px / scale));
+        long since = System.currentTimeMillis() - clickPulseAt;
+        if (since < 350) {
+            float k = since / 350f;
+            int r = Math.round(4 + 10 * k), color = Math.round(120 * (1 - k)) << 24 | 0xFFFFFF;
+            for (int dy = -r; dy <= r; dy++) {
+                int dx = (int) Math.round(Math.sqrt(r * r - dy * dy));
+                g.fill(-dx, dy, dx + 1, dy + 1, color);
+            }
+        }
+        for (int row = 0; row < ARROW.length; row++) {
+            String line = ARROW[row];
+            for (int col = 0; col < line.length(); ) {
+                char c = line.charAt(col);
+                int end = col;
+                while (end < line.length() && line.charAt(end) == c) end++;
+                if (c != '.') g.fill(col, row, end, row + 1, c == 'B' ? 0xFF000000 : 0xFFFFFFFF);
+                col = end;
+            }
+        }
+        pose.popMatrix();
+    }
+
     private ShowcaseDirector26() {}
 
     public static void register() {
@@ -337,6 +420,7 @@ public final class ShowcaseDirector26 {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null) return;
         long now = System.currentTimeMillis();
+        if (!windowApplied) applyWindow(mc);
 
         // 1. Camera interpolation (look / turn)
         CameraInterpolation cam = cameraInterp;
@@ -375,7 +459,6 @@ public final class ShowcaseDirector26 {
             double winX = curGuiX * scale;
             double winY = curGuiY * scale;
 
-            SDLMouse.SDL_WarpMouseInWindow(mc.getWindow().handle(), (float) winX, (float) winY);
             mc.mouseHandler.onMove(mc.getWindow().handle(), winX, winY, 0, 0);
 
             if (t >= 1.0) {
@@ -412,6 +495,7 @@ public final class ShowcaseDirector26 {
             }
             if (mc.player == null || (!setUp && mc.gui.screen() != null)) return;
             if (!setUp) setUp(mc);
+            ShowcaseNpcs26.tick(mc);
 
             long now = System.currentTimeMillis();
             if (!ready && now - t0 > 3_000) {
@@ -513,6 +597,8 @@ public final class ShowcaseDirector26 {
 
     /** What `reset` returns to: every module's on/off and options, FOV and GUI scale. Taken at startup and by the `baseline` verb. */
     private static void takeBaseline(Minecraft mc) {
+        HudSettings.getInstance().setBackgrounds(true); // owner: HUD showcases always with backgrounds and text shadow
+        HudSettings.getInstance().setTextShadow(true);
         baselineModuleState.clear();
         baselineOptions.clear();
         for (Module m : ModuleManager.getInstance().getRegisteredModules()) {
@@ -860,7 +946,13 @@ public final class ShowcaseDirector26 {
                         }
                     }
                 }
+                hideHotbar = false;
+                HudSettings.getInstance().setBackgrounds(true);
+                HudSettings.getInstance().setTextShadow(true);
                 mc.execute(() -> {
+                    ShowcaseNpcs26.clear(mc);
+                    com.thelads.core.v26_2.feature.NativeKillBanner.reset(); // v1's 5-kill take started at kill 3: the last take's streak lived on
+                    if (mc.player != null) com.thelads.core.client.cosmetics.Emotes.stopLocal(mc.player.getUUID());
                     mc.setScreenAndShow(null);
                     mc.options.setCameraType(CameraType.FIRST_PERSON);
                     mc.options.fov().set(baselineFov);
@@ -1144,7 +1236,7 @@ public final class ShowcaseDirector26 {
 
                 if (arg0.startsWith("@")) {
                     String query = arg0.substring(1);
-                    ms = cmd.longArg(1, 0);
+                    ms = cmd.longArg(1, 500); // glide so viewers see the mouse travel
                     double[] coords = findWidgetCoords(mc, query);
                     if (coords != null) {
                         targetX = coords[0];
@@ -1155,7 +1247,7 @@ public final class ShowcaseDirector26 {
                 } else {
                     targetX = cmd.doubleArg(0, 0);
                     targetY = cmd.doubleArg(1, 0);
-                    ms = cmd.longArg(2, 0);
+                    ms = cmd.longArg(2, 500);
                 }
 
                 double curGuiX = mc.mouseHandler.getScaledXPos(mc.getWindow());
@@ -1168,7 +1260,6 @@ public final class ShowcaseDirector26 {
                     final double fx = targetX, fy = targetY;
                     mc.execute(() -> {
                         double scale = mc.getWindow().getGuiScale();
-                        SDLMouse.SDL_WarpMouseInWindow(mc.getWindow().handle(), (float) (fx * scale), (float) (fy * scale));
                         mc.mouseHandler.onMove(mc.getWindow().handle(), fx * scale, fy * scale, 0, 0);
                     });
                 }
@@ -1176,6 +1267,10 @@ public final class ShowcaseDirector26 {
             case "click" -> {
                 String btnStr = cmd.arg(0, "left").toLowerCase(Locale.ROOT);
                 int btn = "right".equals(btnStr) ? 1 : 0;
+                var win = mc.getWindow(); // the editor zooms on each click (AGY-SHOW-V2 "Click zoom")
+                marks.add((System.currentTimeMillis() - scriptStart) + String.format(Locale.ROOT, " click %.4f %.4f",
+                    mc.mouseHandler.xpos() / win.getWidth(), mc.mouseHandler.ypos() / win.getHeight()));
+                clickPulseAt = System.currentTimeMillis();
                 mc.execute(() -> {
                     long handle = mc.getWindow().handle();
                     MouseButtonInfo info = new MouseButtonInfo(btn, 0);
@@ -1260,6 +1355,51 @@ public final class ShowcaseDirector26 {
                     if (mc.player != null) Emotes.playLocal(mc.player.getUUID(), id);
                 });
             }
+            case "gui" -> { int n = cmd.intArg(0, 0); mc.execute(() -> mc.options.guiScale().set(n)); }
+            case "hotbar" -> hideHotbar = !isOn(cmd.arg(0, "on"));
+            case "npc" -> {
+                String name = cmd.arg(0, ""), skin = cmd.arg(1, "steve");
+                double x = spotX + cmd.doubleArg(2, 0), y = groundY + cmd.doubleArg(3, 0), z = spotZ + cmd.doubleArg(4, 0);
+                float yaw = (float) cmd.doubleArg(5, 0);
+                onClient(mc, () -> { ShowcaseNpcs26.put(mc, name, skin, x, y, z, yaw); return null; });
+            }
+            case "npcring" -> {
+                int n = cmd.intArg(0, 10);
+                double r = cmd.doubleArg(1, 4), cx = spotX + cmd.doubleArg(2, 0), cz = spotZ + cmd.doubleArg(3, 0), y = groundY;
+                onClient(mc, () -> { ShowcaseNpcs26.ring(mc, n, r, cx, y, cz); return null; });
+            }
+            case "npcemote" -> {
+                String id = cmd.arg(1, "");
+                long stagger = cmd.longArg(2, 0);
+                List<String> who = onClient(mc, () -> ShowcaseNpcs26.names(cmd.arg(0, "*")));
+                for (int i = 0; i < who.size(); i++) {
+                    String w = who.get(i);
+                    SCHEDULER.schedule(() -> mc.execute(() -> ShowcaseNpcs26.emote(w, id)), i * stagger, TimeUnit.MILLISECONDS);
+                }
+            }
+            case "npcstop" -> onClient(mc, () -> { ShowcaseNpcs26.names(cmd.arg(0, "*")).forEach(ShowcaseNpcs26::stop); return null; });
+            case "npclook" -> {
+                float yaw = (float) cmd.doubleArg(1, 0), pitch = (float) cmd.doubleArg(2, 0);
+                onClient(mc, () -> { ShowcaseNpcs26.names(cmd.arg(0, "*")).forEach(w -> ShowcaseNpcs26.look(w, yaw, pitch)); return null; });
+            }
+            case "npcface" -> onClient(mc, () -> { ShowcaseNpcs26.names(cmd.arg(0, "*")).forEach(w -> ShowcaseNpcs26.face(mc, w)); return null; });
+            case "npcwalk" -> {
+                String w = cmd.arg(0, "");
+                double x = spotX + cmd.doubleArg(1, 0), z = spotZ + cmd.doubleArg(2, 0);
+                long ms = cmd.longArg(3, 1000);
+                onClient(mc, () -> { ShowcaseNpcs26.walk(w, x, z, ms); return null; });
+            }
+            case "npcitem" -> {
+                String item = cmd.arg(1, "minecraft:air");
+                onClient(mc, () -> { ShowcaseNpcs26.names(cmd.arg(0, "*")).forEach(w -> ShowcaseNpcs26.item(w, item)); return null; });
+            }
+            case "npcswing" -> onClient(mc, () -> { ShowcaseNpcs26.names(cmd.arg(0, "*")).forEach(ShowcaseNpcs26::swing); return null; });
+            case "npcsneak" -> {
+                boolean on = isOn(cmd.arg(1, "on"));
+                onClient(mc, () -> { ShowcaseNpcs26.names(cmd.arg(0, "*")).forEach(w -> ShowcaseNpcs26.sneak(w, on)); return null; });
+            }
+            case "npckill" -> onClient(mc, () -> { ShowcaseNpcs26.kill(mc, cmd.arg(0, "")); return null; });
+            case "npcclear" -> onClient(mc, () -> { ShowcaseNpcs26.clear(mc); return null; });
             default -> throw new IllegalArgumentException("Unknown showcase director verb: " + verb);
         }
     }
