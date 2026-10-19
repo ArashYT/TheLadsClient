@@ -246,6 +246,11 @@ public final class ShowcaseDirector26 {
     private static boolean worldAsked, setUp, ready;
     private static long t0, titleSince, nextPoll, nextFps;
     private static int lastCmd = -1;
+    /** Watchdog: one step may not hold the director longer than this (a hung script blocked every lane's queue). */
+    private static final long STEP_LIMIT_MS = 240_000;
+    private static volatile boolean abortStep;
+    private static volatile long stepStartedAt;
+    private static volatile Thread currentWorker;
     private static double spotX, groundY, spotZ;
     private static final AtomicBoolean scriptRunning = new AtomicBoolean(false);
     private static volatile int currentStep = -1;
@@ -522,6 +527,12 @@ public final class ShowcaseDirector26 {
             ShowcaseNpcs26.tick(mc);
 
             long now = System.currentTimeMillis();
+            Thread worker = currentWorker;
+            if (scriptRunning.get() && worker != null && !abortStep && now - stepStartedAt > STEP_LIMIT_MS) {
+                LOGGER.error("Lads showcase director: step running {} s, aborting it", (now - stepStartedAt) / 1000);
+                abortStep = true;
+                worker.interrupt();
+            }
             if (!ready && now - t0 > 3_000) {
                 ready = true;
                 status("ready " + mc.getWindow().getWidth() + "x" + mc.getWindow().getHeight());
@@ -898,6 +909,9 @@ public final class ShowcaseDirector26 {
             if (scriptRunning.compareAndSet(false, true)) {
                 final int step = n;
                 Thread worker = new Thread(() -> executeScript(mc, step, targetScript), "ShowcaseDirector-Worker-" + step);
+                abortStep = false;
+                stepStartedAt = System.currentTimeMillis();
+                currentWorker = worker;
                 worker.start();
             }
         }
@@ -917,6 +931,11 @@ public final class ShowcaseDirector26 {
             List<ShowcaseScriptParser.Command> commands = ShowcaseScriptParser.parseLines(rawLines);
 
             for (ShowcaseScriptParser.Command cmd : commands) {
+                if (abortStep) {
+                    Files.writeString(errorFile, String.format(Locale.ROOT, "ERROR %d step aborted: it ran longer than %d s (a verb never returned)%n",
+                        cmd.lineNo(), STEP_LIMIT_MS / 1000), StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                    break;
+                }
                 try {
                     dispatchCommand(mc, cmd, scriptStart, marks);
                 } catch (Exception ex) {
