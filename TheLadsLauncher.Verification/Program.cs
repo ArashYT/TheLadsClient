@@ -827,9 +827,11 @@ try
     Console.WriteLine("Installing production dependencies...");
     // QA windows are tiles of the primary monitor (QaWindowGuard): the game opens at the tile's client size.
     bool tiled = Env("LADS_VERIFY_FOCUS") != "1" && Env("LADS_VERIFY_PLAYING") != "1" && Env("LADS_VERIFY_NO_RESIZE") != "1";
+    // LADS_SHOWCASE_EMOTE=host|join: the recorded emote showcase (ShowcaseEmote26) owns the game: a 1080p window, none of the title probes, no early exit.
+    bool showcase = Env("LADS_SHOWCASE_EMOTE") is "host" or "join";
     // LADS_VERIFY_FULLSCREEN=1: started as the launcher does with "Fullscreen on launch" (its default): --fullscreen and fullscreen:true.
     bool qaFullscreen = Env("LADS_VERIFY_FULLSCREEN") == "1";
-    var windowSize = tiled ? QaWindowGuard.TileClient(1) : new System.Drawing.Size(titleVerification ? 1280 : 960, titleVerification ? 720 : 600);
+    var windowSize = showcase ? new System.Drawing.Size(1920, 1080) : tiled ? QaWindowGuard.TileClient(1) : new System.Drawing.Size(titleVerification ? 1280 : 960, titleVerification ? 720 : 600);
     int maxRam = int.TryParse(Env("LADS_VERIFY_MAX_RAM"), out var uMax) ? uMax : (perf189 ? 4096 : 2048);
     int minRam = int.TryParse(Env("LADS_VERIFY_MIN_RAM"), out var uMin) ? uMin : (perf189 ? 512 : 256);
     var launchOptions = new MLaunchOption
@@ -960,7 +962,7 @@ try
         AddJvm("-Dfabric.noGui=true");
         // LADS_VERIFY_SHADERS: the game's own screens belong to the shader QA driver (ShaderToggleQa26): none of the harness's title probes, which would open
         // the world list and the like over it.
-        if (!shaderStep)
+        if (!shaderStep && !showcase)
         {
             // Probe public settings APIs only in this isolated QA process, when its Lads menu opens.
             if (welcomeVerification) AddJvm("-Dthelads.verifyWelcome=true");
@@ -1198,7 +1200,7 @@ try
     TimeSpan windowAt = TimeSpan.Zero;
     // Title runs without the 26.x auto-world end once every check the harness asserts has passed (they never did before, so
     // 1.21.x waited the full 540 s); the stop is a Kill, as for every non-auto-world run.
-    bool earlyTitleExit = titleVerification && !autoWorldVerification && !shaderStep; // the shader QA game quits itself (restart / quit)
+    bool earlyTitleExit = titleVerification && !autoWorldVerification && !shaderStep && !showcase; // the shader QA game quits itself (restart / quit)
     int loopSeconds = int.TryParse(Env("LADS_VERIFY_TIMEOUT_SEC"), out int overrideSeconds) ? overrideSeconds
         : perf189 ? 1140 : titleVerification ? (asyncStressVerification || particlesCaptureVerification || fastQuitPhase != null ? 900 : capabilities.Minimal && scripted ? 900 : 540) : 180;
     while (stopwatch.Elapsed < TimeSpan.FromSeconds(loopSeconds) && !process.HasExited)
