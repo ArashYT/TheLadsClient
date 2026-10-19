@@ -835,6 +835,7 @@ public final class ShowcaseDirector26 {
                 done.await(5, TimeUnit.SECONDS);
                 write("widgets-" + currentStep + "-" + elapsed + ".txt", text[0] == null ? "timeout" : text[0]);
             }
+            case "clearchat" -> mc.execute(() -> mc.gui.hud.getChat().clearMessages(false)); // server replies (e.g. reset's "no entity found") land after reset's own clear
             case "baseline" -> {
                 CountDownLatch done = new CountDownLatch(1);
                 mc.execute(() -> { try { takeBaseline(mc); } finally { done.countDown(); } });
