@@ -609,6 +609,13 @@ public final class ShowcaseDirector26 {
     private static void takeBaseline(Minecraft mc) {
         HudSettings.getInstance().setBackgrounds(true); // owner: HUD showcases always with backgrounds and text shadow
         HudSettings.getInstance().setTextShadow(true);
+        for (Module m : ModuleManager.getInstance().getRegisteredModules()) { // modules with their own background switch (Action Bar, Scoreboard, Tab List)
+            if (!"HUD".equals(String.valueOf(m.getCategory()))) continue;
+            for (Option o : m.getOptions()) {
+                if (o instanceof BoolOption bo && o.getName().matches("(?i)(show|render) background|text shadow")) bo.set(true);
+                if (o instanceof DropdownOption dd && o.getName().equalsIgnoreCase("Background") && "Off".equalsIgnoreCase(dd.getValue())) dd.setIndex(0);
+            }
+        }
         baselineHudPositions.clear();
         HudSettings.getInstance().getPositions().forEach((k, v) -> baselineHudPositions.put(k, v.clone()));
         baselineModuleState.clear();
