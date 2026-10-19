@@ -2245,6 +2245,7 @@ public partial class MainWindow : Window
         AutoLaunchCheckbox.IsChecked = settings.AutoLaunch;
         AutoFixCrashesCheckbox.IsChecked = settings.AutoFixCrashes;
         AutoRelaunchOnCrashCheckbox.IsChecked = settings.AutoRelaunchOnCrash;
+        SendCrashReportsCheckbox.IsChecked = settings.SendCrashReports;
         AutoRejoinServerCheckbox.IsChecked = settings.AutoRejoinServer;
         MultiInstanceCheckbox.IsChecked = settings.AllowMultiInstance;
         ParticleCheckbox.IsChecked = settings.ShowParticles;
@@ -2853,6 +2854,7 @@ public partial class MainWindow : Window
         settings.AutoLaunch = AutoLaunchCheckbox.IsChecked ?? false;
         settings.AutoFixCrashes = AutoFixCrashesCheckbox.IsChecked ?? true;
         settings.AutoRelaunchOnCrash = AutoRelaunchOnCrashCheckbox.IsChecked ?? false;
+        settings.SendCrashReports = SendCrashReportsCheckbox.IsChecked ?? true;
         settings.AutoRejoinServer = AutoRejoinServerCheckbox.IsChecked ?? false;
         if (QuickLaunchServerComboBox.SelectedItem is ServerListItem sli && sli.Ip != null)
             settings.QuickLaunchServerIp = sli.Ip;
@@ -4812,6 +4814,8 @@ public partial class MainWindow : Window
                 StatusText.Text = $"Game crashed! (exit code: {exitCode}){suffix}";
                 Log($"[Launcher] Game exited with code {exitCode}");
                 HandleCrashDetection(gameDirectory);
+                if (settings.SendCrashReports && string.IsNullOrEmpty(profile.PackwizUrl))
+                    _ = SendCrashReportAsync(gameDirectory, profile.MinecraftVersion, exitCode);
             }
             else
             {
@@ -5030,6 +5034,12 @@ public partial class MainWindow : Window
             Log($"[Sync] Screenshots copy failed: {ex.Message}");
             return $"Screenshots were not copied to the shared screenshots folder: {ex.Message}";
         }
+    }
+
+    private async Task SendCrashReportAsync(string gameDirectory, string minecraftVersion, int exitCode)
+    {
+        string? error = await Task.Run(() => CrashReporter.SendAsync(gameDirectory, minecraftVersion, exitCode));
+        await Dispatcher.UIThread.InvokeAsync(() => Log(error == null ? "[Crash] Crash report sent to the Lads team." : $"[Crash] Crash report not sent: {error}"));
     }
 
     private void HandleCrashDetection(string gameDirectory)

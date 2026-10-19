@@ -101,10 +101,14 @@ class CosmeticsLinkTest {
 
     @Test
     void roomIsTheHashOfLowercasedHostAndPort() {
-        String hypixel = "73e11bb8b9e5e76c8dfe3801e05168eb3975a3e008dade48b658218433c05b0e";
+        String hypixel = CosmeticsLink.room("hypixel.net:25565"); // sha256("hypixel.net:25565"), the room 1.9.12 clients typing hypixel.net use
+        assertEquals("64169e8d", hypixel.substring(0, 8));
         assertEquals(hypixel, CosmeticsLink.room("mc.hypixel.net"));
         assertEquals(hypixel, CosmeticsLink.room(" MC.Hypixel.NET:25565 "));
+        assertEquals(hypixel, CosmeticsLink.room("mc.hypixel.net."));
+        assertEquals(hypixel, CosmeticsLink.room("play.hypixel.net"));
         assertTrue(!hypixel.equals(CosmeticsLink.room("mc.hypixel.net:25566")));
+        assertTrue(!CosmeticsLink.room("1.2.3.4").equals(CosmeticsLink.room("5.6.3.4")));
         assertNull(CosmeticsLink.room("Singleplayer"));
         assertNull(CosmeticsLink.room("Unknown"));
         assertNull(CosmeticsLink.room(""));

@@ -276,13 +276,25 @@ public final class CosmeticsLink {
         return null;
     }
 
-    /** SHA-256 hex of the lowercased "host:port" (port 25565 when none is given); null outside a multiplayer server. */
+    /**
+     * SHA-256 hex of the lowercased "host:port" (port 25565 when none is given); null outside a multiplayer server. A domain is
+     * cut to its last two labels, so the aliases of one network share a room (mc.hypixel.net, hypixel.net, hypixel.net.).
+     */
     static String room(String address) {
         if (address == null) return null;
         String a = address.trim().toLowerCase(Locale.ROOT);
         if (a.isEmpty() || a.equals("singleplayer") || a.equals("unknown")) return null;
         boolean port = a.startsWith("[") ? a.contains("]:") : a.indexOf(':') > 0 && a.indexOf(':') == a.lastIndexOf(':');
-        return hex(digest("SHA-256", port ? a : a + ":25565"));
+        if (!port) a += ":25565";
+        int colon = a.lastIndexOf(':');
+        String host = a.substring(0, colon);
+        while (host.endsWith(".")) host = host.substring(0, host.length() - 1);
+        // ponytail: last two labels; a public suffix like co.uk would merge its servers into one room (harmless, emotes only apply to players in the world)
+        if (!host.startsWith("[") && !host.matches("[0-9.]+")) {
+            String[] labels = host.split("\\.");
+            if (labels.length > 2) host = labels[labels.length - 2] + "." + labels[labels.length - 1];
+        }
+        return hex(digest("SHA-256", host + a.substring(colon)));
     }
 
     /** Minecraft-style signed hex SHA-1 of the server's nonce (cosmetics.py server_id). */
