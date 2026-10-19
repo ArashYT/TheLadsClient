@@ -1252,6 +1252,11 @@ public final class ShowcaseDirector26 {
 
                 double curGuiX = mc.mouseHandler.getScaledXPos(mc.getWindow());
                 double curGuiY = mc.mouseHandler.getScaledYPos(mc.getWindow());
+                int guiW = mc.getWindow().getGuiScaledWidth(), guiH = mc.getWindow().getGuiScaledHeight();
+                if (!(curGuiX >= 0 && curGuiX <= guiW && curGuiY >= 0 && curGuiY <= guiH)) { // never moved yet: the real mouse is outside the off-screen window
+                    curGuiX = guiW / 2.0;
+                    curGuiY = guiH / 2.0;
+                }
 
                 if (ms > 0) {
                     cursorInterp = new CursorInterpolation(curGuiX, curGuiY, targetX, targetY, ms);
