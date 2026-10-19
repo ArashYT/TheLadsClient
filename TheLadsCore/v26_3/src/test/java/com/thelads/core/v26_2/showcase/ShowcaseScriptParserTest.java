@@ -31,6 +31,10 @@ public final class ShowcaseScriptParserTest {
         new ShowcaseScriptParserTest().testInteractionVerbs();
         new ShowcaseScriptParserTest().testBatchLines();
         new ShowcaseScriptParserTest().testQuotedArgs();
+        new ShowcaseScriptParserTest().testServerModeAndCommandRouting();
+        new ShowcaseScriptParserTest().testSpotParsing();
+        new ShowcaseScriptParserTest().testWindowTitleResolution();
+        new ShowcaseScriptParserTest().testResetCommandBuilding();
         System.out.println("ShowcaseScriptParserTest PASSED (" + checks + " checks verified)");
     }
 
@@ -159,5 +163,66 @@ public final class ShowcaseScriptParserTest {
         var cur = ShowcaseScriptParser.parseLine("cursor @\"Video Settings\" 1200", 2);
         assertEquals("@Video Settings", cur.arg(0, ""), "prefixed quoted widget");
         assertEquals(1200L, cur.longArg(1, 0), "duration after quoted widget");
+    }
+
+    public void testServerModeAndCommandRouting() {
+        check(!ShowcaseDirector26.isServerMode(null), "null server mode");
+        check(!ShowcaseDirector26.isServerMode(""), "empty server mode");
+        check(ShowcaseDirector26.isServerMode("192.168.2.69:25590"), "valid server mode");
+        assertEquals(ShowcaseDirector26.CommandRoute.INTEGRATED_SERVER, ShowcaseDirector26.routeCommand(false), "sp route");
+        assertEquals(ShowcaseDirector26.CommandRoute.SERVER_CHAT, ShowcaseDirector26.routeCommand(true), "server route");
+
+        assertEquals("gamemode creative", ShowcaseDirector26.formatPlayerCommand("/gamemode creative"), "formatPlayerCommand slash");
+        assertEquals("mv tp showcase", ShowcaseDirector26.formatPlayerCommand("mv tp showcase"), "formatPlayerCommand no slash");
+        assertEquals("time set noon", ShowcaseDirector26.formatPlayerCommand("   /time set noon  "), "formatPlayerCommand whitespace");
+
+        assertEquals("tp @s 10.50 64.00 -20.25 90.0 -5.0", ShowcaseDirector26.formatTpCommand("@s", 10.5, 64.0, -20.25, 90.0f, -5.0f), "tp @s format");
+        assertEquals("tp @a 0.00 80.00 0.00 0.0 0.0", ShowcaseDirector26.formatTpCommand("@a", 0.0, 80.0, 0.0, 0f, 0f), "tp @a format");
+    }
+
+    public void testSpotParsing() {
+        double[] spot1 = ShowcaseDirector26.parseSpot("114.5 82.0 -467.5");
+        assertEquals(114.5, spot1[0], "spot1 x");
+        assertEquals(82.0, spot1[1], "spot1 y");
+        assertEquals(-467.5, spot1[2], "spot1 z");
+
+        double[] spot2 = ShowcaseDirector26.parseSpot("100, 64, 200");
+        assertEquals(100.0, spot2[0], "spot2 x");
+        assertEquals(64.0, spot2[1], "spot2 y");
+        assertEquals(200.0, spot2[2], "spot2 z");
+
+        double[] spotDefault = ShowcaseDirector26.parseSpot(null);
+        assertEquals(0.0, spotDefault[0], "default spot x");
+        assertEquals(80.0, spotDefault[1], "default spot y");
+        assertEquals(0.0, spotDefault[2], "default spot z");
+
+        double[] spotEmpty = ShowcaseDirector26.parseSpot("   ");
+        assertEquals(0.0, spotEmpty[0], "empty spot x");
+        assertEquals(80.0, spotEmpty[1], "empty spot y");
+        assertEquals(0.0, spotEmpty[2], "empty spot z");
+    }
+
+    public void testWindowTitleResolution() {
+        assertEquals("Lads Feature Showcase", ShowcaseDirector26.resolveWindowTitle(false, "QA_Player"), "primary title");
+        assertEquals("Lads Feature Showcase", ShowcaseDirector26.resolveWindowTitle(false, null), "primary title null");
+        assertEquals("Lads Feature Showcase (QA_Player2)", ShowcaseDirector26.resolveWindowTitle(true, "QA_Player2"), "secondary title");
+        assertEquals("Lads Feature Showcase (Player)", ShowcaseDirector26.resolveWindowTitle(true, null), "secondary fallback null");
+        assertEquals("Lads Feature Showcase (Player)", ShowcaseDirector26.resolveWindowTitle(true, "  "), "secondary fallback empty");
+    }
+
+    public void testResetCommandBuilding() {
+        var serverReset = ShowcaseDirector26.buildResetCommands(true, 100.0, 64.0, 200.0);
+        check(serverReset.contains("kill @e[type=!player]"), "server reset kill");
+        check(serverReset.contains("clear @s"), "server reset clear");
+        check(serverReset.contains("time set noon"), "server reset time");
+        check(serverReset.contains("weather clear"), "server reset weather");
+        check(serverReset.contains("tp @s 100.00 64.00 200.00 0.0 0.0"), "server reset tp");
+
+        var spReset = ShowcaseDirector26.buildResetCommands(false, 100.0, 64.0, 200.0);
+        check(spReset.contains("kill @e[type=!player]"), "sp reset kill");
+        check(spReset.contains("clear @a"), "sp reset clear");
+        check(spReset.contains("time set noon"), "sp reset time");
+        check(spReset.contains("weather clear"), "sp reset weather");
+        check(spReset.contains("tp @a 100.00 64.00 200.00 0.0 0.0"), "sp reset tp");
     }
 }

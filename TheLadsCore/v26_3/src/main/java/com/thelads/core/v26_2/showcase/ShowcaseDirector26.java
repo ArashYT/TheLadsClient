@@ -50,11 +50,15 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -79,13 +83,130 @@ public final class ShowcaseDirector26 {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static final String DIRECTOR_ENV = System.getenv("LADS_SHOWCASE_DIRECTOR") != null
         ? System.getenv("LADS_SHOWCASE_DIRECTOR") : System.getProperty("lads.showcase.director");
+    private static final String SERVER_TARGET = System.getenv("LADS_SHOWCASE_SERVER") != null
+        ? System.getenv("LADS_SHOWCASE_SERVER") : System.getProperty("lads.showcase.server");
+    private static final String SPOT_ENV = System.getenv("LADS_SHOWCASE_SPOT") != null
+        ? System.getenv("LADS_SHOWCASE_SPOT") : System.getProperty("lads.showcase.spot");
+    private static final String JOIN_CMD = System.getenv("LADS_SHOWCASE_JOIN_CMD") != null
+        ? System.getenv("LADS_SHOWCASE_JOIN_CMD") : System.getProperty("lads.showcase.join_cmd");
+    private static final boolean SECONDARY = "1".equals(System.getenv("LADS_SHOWCASE_SECONDARY"))
+        || "1".equals(System.getProperty("lads.showcase.secondary"))
+        || "true".equalsIgnoreCase(System.getenv("LADS_SHOWCASE_SECONDARY"))
+        || "true".equalsIgnoreCase(System.getProperty("lads.showcase.secondary"));
     private static final String SAVE = "LadsShowcase";
     private static final int FLOOR = 12;
+    private static long connectAt;
     private static final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "ShowcaseDirector-Scheduler");
         t.setDaemon(true);
         return t;
     });
+
+    private static final String[] SETUP_COMMANDS = new String[] {
+        "gamerule advance_time false", "gamerule advance_weather false",
+        "time set noon", "weather clear",
+        "gamerule spawn_phantoms false", "gamerule show_death_messages false", "gamerule announce_advancements false",
+        "advancement grant @s everything", "recipe give @s *",
+        "gamerule spawn_monsters false", "gamerule spawnMonsters false", "gamerule doMobSpawning false",
+        "gamerule announceAdvancements false", "difficulty easy"
+    };
+
+    public enum CommandRoute {
+        SERVER_CHAT,
+        INTEGRATED_SERVER
+    }
+
+    public static boolean isServerMode() {
+        return SERVER_TARGET != null && !SERVER_TARGET.isBlank();
+    }
+
+    public static boolean isServerMode(String serverTarget) {
+        return serverTarget != null && !serverTarget.isBlank();
+    }
+
+    public static boolean isSecondary() {
+        return SECONDARY;
+    }
+
+    public static String getServerTarget() {
+        return SERVER_TARGET;
+    }
+
+    public static String getJoinCmd() {
+        return JOIN_CMD;
+    }
+
+    public static CommandRoute routeCommand(boolean isServerMode) {
+        return isServerMode ? CommandRoute.SERVER_CHAT : CommandRoute.INTEGRATED_SERVER;
+    }
+
+    public static String resolveWindowTitle(boolean secondary, String playerName) {
+        if (secondary) {
+            return "Lads Feature Showcase (" + (playerName != null && !playerName.isBlank() ? playerName : "Player") + ")";
+        }
+        return "Lads Feature Showcase";
+    }
+
+    public static double[] parseSpot(String spotEnv) {
+        if (spotEnv == null || spotEnv.isBlank()) {
+            return new double[] { 0.0, 80.0, 0.0 };
+        }
+        String[] parts = spotEnv.trim().split("[,\\s]+");
+        if (parts.length >= 3) {
+            try {
+                return new double[] {
+                    Double.parseDouble(parts[0]),
+                    Double.parseDouble(parts[1]),
+                    Double.parseDouble(parts[2])
+                };
+            } catch (NumberFormatException ignored) {}
+        }
+        return new double[] { 0.0, 80.0, 0.0 };
+    }
+
+    public static double[] parseSpotFromEnv() {
+        String env = System.getenv("LADS_SHOWCASE_SPOT");
+        if (env == null || env.isBlank()) {
+            env = System.getProperty("lads.showcase.spot");
+        }
+        if (env == null || env.isBlank()) {
+            env = SPOT_ENV;
+        }
+        return parseSpot(env);
+    }
+
+    public static String formatTpCommand(String target, double x, double y, double z, float yaw, float pitch) {
+        return String.format(Locale.ROOT, "tp %s %.2f %.2f %.2f %.1f %.1f", target, x, y, z, yaw, pitch);
+    }
+
+    public static String formatPlayerCommand(String command) {
+        if (command == null) return "";
+        command = command.trim();
+        if (command.startsWith("/")) {
+            return command.substring(1);
+        }
+        return command;
+    }
+
+    public static void sendPlayerCommand(Minecraft mc, String command) {
+        String cmd = formatPlayerCommand(command);
+        if (cmd.isEmpty()) return;
+        mc.execute(() -> {
+            if (mc.player != null && mc.player.connection != null) {
+                mc.player.connection.sendCommand(cmd);
+            }
+        });
+    }
+
+    public static List<String> buildResetCommands(boolean isServerMode, double spotX, double groundY, double spotZ) {
+        List<String> list = new ArrayList<>();
+        list.add("kill @e[type=!player]");
+        list.add(isServerMode ? "clear @s" : "clear @a");
+        list.add("time set noon");
+        list.add("weather clear");
+        list.add(formatTpCommand(isServerMode ? "@s" : "@a", spotX, groundY, spotZ, 0f, 0f));
+        return list;
+    }
 
     public static volatile boolean active;
     private static Path dir;
@@ -282,9 +403,47 @@ public final class ShowcaseDirector26 {
     }
 
     private static void lobby(Minecraft mc) {
+        if (setUp) {
+            setUp = false;
+            ready = false;
+            titleSince = 0;
+        }
         var screen = mc.gui.screen();
-        boolean title = screen instanceof TitleScreen || (screen != null && screen.getClass().getSimpleName().equals("LadsTitleScreen26"));
         long now = System.currentTimeMillis();
+
+        if (isServerMode()) {
+            if (screen instanceof ConnectScreen) {
+                return;
+            }
+            if (screen instanceof DisconnectedScreen) {
+                if (now < connectAt) return;
+                connectAt = now + 10_000;
+                LOGGER.info("Lads showcase director: retrying connection to {}...", SERVER_TARGET);
+                ServerAddress addr = ServerAddress.parseString(SERVER_TARGET);
+                ServerData data = new ServerData("Lads Showcase Server", SERVER_TARGET, ServerData.Type.OTHER);
+                ConnectScreen.startConnecting(screen, mc, addr, data, false, null);
+                return;
+            }
+            boolean title = screen instanceof TitleScreen || (screen != null && screen.getClass().getSimpleName().equals("LadsTitleScreen26"));
+            if (!title || mc.gui.overlay() != null || !mc.isGameLoadFinished()) {
+                titleSince = 0;
+                return;
+            }
+            if (titleSince == 0) {
+                titleSince = now;
+                status("title");
+            }
+            if (now - titleSince < 3000) return;
+            if (now < connectAt) return;
+            connectAt = now + 10_000;
+            LOGGER.info("Lads showcase director: connecting to {}...", SERVER_TARGET);
+            ServerAddress addr = ServerAddress.parseString(SERVER_TARGET);
+            ServerData data = new ServerData("Lads Showcase Server", SERVER_TARGET, ServerData.Type.OTHER);
+            ConnectScreen.startConnecting(screen, mc, addr, data, false, null);
+            return;
+        }
+
+        boolean title = screen instanceof TitleScreen || (screen != null && screen.getClass().getSimpleName().equals("LadsTitleScreen26"));
         if (!title || mc.gui.overlay() != null || !mc.isGameLoadFinished()) {
             titleSince = 0;
             return;
@@ -344,7 +503,13 @@ public final class ShowcaseDirector26 {
         t0 = System.currentTimeMillis();
 
         // Addendum 3: set window title
-        mc.getWindow().setTitle("Lads Feature Showcase");
+        String playerName = "Player";
+        if (mc.getUser() != null && mc.getUser().getName() != null && !mc.getUser().getName().isBlank()) {
+            playerName = mc.getUser().getName();
+        } else if (mc.player != null && mc.player.getScoreboardName() != null && !mc.player.getScoreboardName().isBlank()) {
+            playerName = mc.player.getScoreboardName();
+        }
+        mc.getWindow().setTitle(resolveWindowTitle(SECONDARY, playerName));
 
         // Keep Lads HUD VISIBLE
         if (mc.gui.hud.isHidden()) mc.gui.hud.toggle();
@@ -356,25 +521,63 @@ public final class ShowcaseDirector26 {
 
         takeBaseline(mc);
 
-        MinecraftServer server = mc.getSingleplayerServer();
-        if (server != null) {
-            server.execute(() -> {
-                for (String c : new String[] {
-                    "gamerule advance_time false", "gamerule advance_weather false",
-                    "time set noon", "weather clear",
-                    "gamerule spawn_phantoms false", "gamerule show_death_messages false", "gamerule announce_advancements false",
-                    "advancement grant @a everything", "recipe give @a *",
-                    // Easy, not Peaceful: scripts summon mobs (kill banners, combat) and Peaceful deletes them; no natural spawns.
-                    // Both rule spellings: 26.3 renamed game rules and a rule it doesn't know just fails silently.
-                    "gamerule spawn_monsters false", "gamerule spawnMonsters false", "gamerule doMobSpawning false",
-                    "gamerule announceAdvancements false", "difficulty easy"
-                }) command(server, c);
+        if (isServerMode()) {
+            double[] spot = parseSpotFromEnv();
+            spotX = spot[0];
+            groundY = spot[1];
+            spotZ = spot[2];
+            LOGGER.info("Showcase director server mode spot: {} {} {}", spotX, groundY, spotZ);
 
-                ServerLevel level = server.overworld();
-                establishLawn(server, level, null);
-                command(server, "setworldspawn " + (int) Math.floor(spotX) + " " + (int) Math.floor(groundY) + " " + (int) Math.floor(spotZ));
-                tpNow(server, "@a", 0, 0, 0, 0, 0);
-            });
+            if (JOIN_CMD != null && !JOIN_CMD.isBlank()) {
+                sendPlayerCommand(mc, JOIN_CMD);
+                SCHEDULER.schedule(() -> {
+                    for (String c : SETUP_COMMANDS) {
+                        sendPlayerCommand(mc, c);
+                    }
+                    sendPlayerCommand(mc, formatTpCommand("@s", spotX, groundY, spotZ, 0f, 0f));
+                    mc.execute(() -> {
+                        if (mc.player != null) {
+                            mc.player.setPos(spotX, groundY, spotZ);
+                            mc.player.setYRot(0f);
+                            mc.player.yRotO = 0f;
+                            mc.player.setYHeadRot(0f);
+                            mc.player.yHeadRotO = 0f;
+                            mc.player.setXRot(0f);
+                            mc.player.xRotO = 0f;
+                        }
+                    });
+                }, 800, TimeUnit.MILLISECONDS);
+            } else {
+                for (String c : SETUP_COMMANDS) {
+                    sendPlayerCommand(mc, c);
+                }
+                sendPlayerCommand(mc, formatTpCommand("@s", spotX, groundY, spotZ, 0f, 0f));
+                mc.execute(() -> {
+                    if (mc.player != null) {
+                        mc.player.setPos(spotX, groundY, spotZ);
+                        mc.player.setYRot(0f);
+                        mc.player.yRotO = 0f;
+                        mc.player.setYHeadRot(0f);
+                        mc.player.yHeadRotO = 0f;
+                        mc.player.setXRot(0f);
+                        mc.player.xRotO = 0f;
+                    }
+                });
+            }
+        } else {
+            MinecraftServer server = mc.getSingleplayerServer();
+            if (server != null) {
+                server.execute(() -> {
+                    for (String c : SETUP_COMMANDS) {
+                        command(server, c.replace("@s", "@a"));
+                    }
+
+                    ServerLevel level = server.overworld();
+                    establishLawn(server, level, null);
+                    command(server, "setworldspawn " + (int) Math.floor(spotX) + " " + (int) Math.floor(groundY) + " " + (int) Math.floor(spotZ));
+                    tpNow(server, "@a", 0, 0, 0, 0, 0);
+                });
+            }
         }
 
         exportModulesAndScreens();
@@ -625,15 +828,19 @@ public final class ShowcaseDirector26 {
                         mc.player.xRotO = 0f;
                     }
                 });
-                MinecraftServer server = mc.getSingleplayerServer();
-                if (server != null) {
-                    server.execute(() -> {
-                        command(server, "kill @e[type=!player]");
-                        command(server, "clear @a");
-                        command(server, "time set noon");
-                        command(server, "weather clear");
-                        tpNow(server, "@a", 0, 0, 0, 0, 0);
-                    });
+                if (isServerMode()) {
+                    for (String c : buildResetCommands(true, spotX, groundY, spotZ)) {
+                        sendPlayerCommand(mc, c);
+                    }
+                } else {
+                    MinecraftServer server = mc.getSingleplayerServer();
+                    if (server != null) {
+                        server.execute(() -> {
+                            for (String c : buildResetCommands(false, spotX, groundY, spotZ)) {
+                                command(server, c);
+                            }
+                        });
+                    }
                 }
             }
             case "wait" -> {
@@ -647,9 +854,13 @@ public final class ShowcaseDirector26 {
             }
             case "cmd" -> {
                 String cmdText = cmd.tail(0);
-                MinecraftServer server = mc.getSingleplayerServer();
-                if (server != null) {
-                    server.execute(() -> commandAsPlayer(mc, server, cmdText));
+                if (isServerMode()) {
+                    sendPlayerCommand(mc, cmdText);
+                } else {
+                    MinecraftServer server = mc.getSingleplayerServer();
+                    if (server != null) {
+                        server.execute(() -> commandAsPlayer(mc, server, cmdText));
+                    }
                 }
             }
             case "chat" -> {
@@ -670,13 +881,20 @@ public final class ShowcaseDirector26 {
                 double dz = cmd.doubleArg(2, 0);
                 float yaw = (float) cmd.doubleArg(3, 0);
                 float pitch = (float) cmd.doubleArg(4, 0);
-                MinecraftServer server = mc.getSingleplayerServer();
-                if (server != null) {
-                    server.execute(() -> tpNow(server, "@a", dx, dy, dz, yaw, pitch));
+                double targetX = spotX + dx;
+                double targetY = groundY + dy;
+                double targetZ = spotZ + dz;
+                if (isServerMode()) {
+                    sendPlayerCommand(mc, formatTpCommand("@s", targetX, targetY, targetZ, yaw, pitch));
+                } else {
+                    MinecraftServer server = mc.getSingleplayerServer();
+                    if (server != null) {
+                        server.execute(() -> tpNow(server, "@a", dx, dy, dz, yaw, pitch));
+                    }
                 }
                 mc.execute(() -> {
                     if (mc.player != null) {
-                        mc.player.setPos(spotX + dx, groundY + dy, spotZ + dz);
+                        mc.player.setPos(targetX, targetY, targetZ);
                         mc.player.setYRot(yaw);
                         mc.player.yRotO = yaw;
                         mc.player.setYHeadRot(yaw);
@@ -686,14 +904,33 @@ public final class ShowcaseDirector26 {
                     }
                 });
             }
-            case "spot" -> {
-                String biomeId = cmd.arg(0, "lawn");
-                MinecraftServer server = mc.getSingleplayerServer();
-                if (server != null) {
-                    server.execute(() -> {
-                        establishLawn(server, server.overworld(), biomeId);
-                        tpNow(server, "@a", 0, 0, 0, 0, 0);
+            case "spot", "lawn" -> {
+                if (isServerMode()) {
+                    double[] spot = parseSpotFromEnv();
+                    spotX = spot[0];
+                    groundY = spot[1];
+                    spotZ = spot[2];
+                    sendPlayerCommand(mc, formatTpCommand("@s", spotX, groundY, spotZ, 0f, 0f));
+                    mc.execute(() -> {
+                        if (mc.player != null) {
+                            mc.player.setPos(spotX, groundY, spotZ);
+                            mc.player.setYRot(0f);
+                            mc.player.yRotO = 0f;
+                            mc.player.setYHeadRot(0f);
+                            mc.player.yHeadRotO = 0f;
+                            mc.player.setXRot(0f);
+                            mc.player.xRotO = 0f;
+                        }
                     });
+                } else {
+                    String biomeId = cmd.arg(0, "lawn");
+                    MinecraftServer server = mc.getSingleplayerServer();
+                    if (server != null) {
+                        server.execute(() -> {
+                            establishLawn(server, server.overworld(), biomeId);
+                            tpNow(server, "@a", 0, 0, 0, 0, 0);
+                        });
+                    }
                 }
             }
             case "look" -> {

@@ -1022,6 +1022,26 @@ try
             process.StartInfo.Environment["LADS_SHOWCASE_DIR"] = sdir;
             AddJvm("-Dlads.showcase.dir=" + sdir);
         }
+        if (Env("LADS_SHOWCASE_SERVER") is { } srv)
+        {
+            process.StartInfo.Environment["LADS_SHOWCASE_SERVER"] = srv;
+            AddJvm("-Dlads.showcase.server=" + srv);
+        }
+        if (Env("LADS_SHOWCASE_SPOT") is { } spot)
+        {
+            process.StartInfo.Environment["LADS_SHOWCASE_SPOT"] = spot;
+            AddJvm("-Dlads.showcase.spot=" + spot);
+        }
+        if (Env("LADS_SHOWCASE_JOIN_CMD") is { } joinCmd)
+        {
+            process.StartInfo.Environment["LADS_SHOWCASE_JOIN_CMD"] = joinCmd;
+            AddJvm("-Dlads.showcase.join_cmd=" + joinCmd);
+        }
+        if (Env("LADS_SHOWCASE_SECONDARY") is { } sec)
+        {
+            process.StartInfo.Environment["LADS_SHOWCASE_SECONDARY"] = sec;
+            AddJvm("-Dlads.showcase.secondary=" + sec);
+        }
     }
     summary.Add("Core global config dir (THELADS_GLOBAL_DIR): " + directory);
     summary.Add($"Child environment: THELADS_DIR={directory}; {SharedContentService.RootEnvironmentVariable}={shared.Root}; {GameOptionsService.LunarEnvironmentVariable}={lunarRoot}");
