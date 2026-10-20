@@ -205,6 +205,8 @@ public final class ShowcaseDirector26 {
         List<String> list = new ArrayList<>();
         String who = isServerMode ? "@s" : "@a";
         list.add("kill @e[type=!player]");
+        list.add("scoreboard objectives setdisplay sidebar"); // a sidebar from one take (hud-12) leaked into later ones
+        list.add("title @a clear");
         if (!isServerMode) list.addAll(snapshotCommands(false, spotX, groundY, spotZ));
         list.add("clear " + who);
         list.add("gamemode creative " + who);
