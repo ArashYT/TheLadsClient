@@ -224,5 +224,6 @@ public final class ShowcaseScriptParserTest {
         check(spReset.contains("time set noon"), "sp reset time");
         check(spReset.contains("weather clear"), "sp reset weather");
         check(spReset.contains("tp @a 100.00 64.00 200.00 0.0 0.0"), "sp reset tp");
+        check(spReset.contains("effect give @a minecraft:instant_health 1 100 true"), "sp reset heals");
     }
 }
