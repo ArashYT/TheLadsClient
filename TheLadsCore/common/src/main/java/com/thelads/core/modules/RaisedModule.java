@@ -24,7 +24,7 @@ public class RaisedModule extends Module {
     public RaisedModule() {
         super(NAME, "Lifts the hotbar, the bars on it and the action bar off the bottom of the screen, and above the chat box while "
             + "chat is open (Distance). Chat can be raised too.");
-        addOption(optHotbar = new SliderOption("Hotbar", 2, 0, 120, 1));
+        addOption(optHotbar = new SliderOption("Hotbar", 2, 0, 300, 1));
         // Its 1.6.0 name and value, so saved settings carry over: the extra lift while chat is open.
         addOption(optDistance = new SliderOption("Distance", 14, 0, 50, 1));
         addOption(optChat = new SliderOption("Chat", 0, 0, 100, 1));
