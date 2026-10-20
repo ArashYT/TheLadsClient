@@ -1032,7 +1032,7 @@ public final class ShowcaseDirector26 {
                     mc.gui.hud.getChat().clearMessages(false);
                     mc.gui.toastManager().clear();
                     if (mc.player != null) {
-                        mc.player.getInventory().clearContent();
+                        // inventory: the server-side `clear` syncs it; a client-side clear here wiped items a take gave right after reset
                         mc.player.setPos(spotX, groundY, spotZ);
                         mc.player.setYRot(0f);
                         mc.player.yRotO = 0f;
