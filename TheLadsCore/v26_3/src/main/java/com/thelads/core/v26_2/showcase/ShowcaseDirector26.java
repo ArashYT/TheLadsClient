@@ -1383,9 +1383,10 @@ public final class ShowcaseDirector26 {
                 String keyName = cmd.arg(0, "").toLowerCase(Locale.ROOT);
                 int keyCode = resolveKeyCode(keyName);
                 if (keyCode >= 0) {
+                    int shortcutKey = resolveShortcutKey(keyName, keyCode);
                     mc.execute(() -> {
                         long handle = mc.getWindow().handle();
-                        KeyEvent press = new KeyEvent(keyCode, 0, 0);
+                        KeyEvent press = new KeyEvent(keyCode, shortcutKey, 0);
                         mc.keyboardHandler.keyPress(handle, 1, press);
                         mc.keyboardHandler.keyPress(handle, 0, press);
                         if (keyName.length() == 1) {
@@ -1650,6 +1651,30 @@ public final class ShowcaseDirector26 {
                     }
                 }
                 yield km;
+            }
+        };
+    }
+
+    private static int resolveShortcutKey(String name, int fallback) {
+        String n = name.toLowerCase(Locale.ROOT);
+        return switch (n) {
+            case "backspace" -> 8;
+            case "tab" -> 9;
+            case "enter", "return" -> 13;
+            case "escape", "esc" -> 27;
+            case "space" -> 32;
+            case "delete" -> 127;
+            case "home" -> 1073741898;
+            case "end" -> 1073741901;
+            case "right" -> 1073741903;
+            case "left" -> 1073741904;
+            case "down" -> 1073741905;
+            case "up" -> 1073741906;
+            default -> {
+                if (n.length() == 1) {
+                    yield (int) n.charAt(0);
+                }
+                yield fallback;
             }
         };
     }

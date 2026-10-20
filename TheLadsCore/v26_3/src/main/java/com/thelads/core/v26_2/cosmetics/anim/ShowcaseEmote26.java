@@ -90,6 +90,7 @@ public final class ShowcaseEmote26 {
 
     /** A showcase NPC (ShowcaseNpcs26) wears the skin loaded under another name (DIR/skins/<skin>.png); unknown = Mojang's default for its id. */
     public static void alias(String who, String skin) {
+        if (SKINS.containsKey(who.toLowerCase(Locale.ROOT))) return; // a skin made for this NPC (DIR/skins/<name>.png) wins
         PlayerSkin loaded = SKINS.get(skin.toLowerCase(Locale.ROOT));
         if (loaded != null) SKINS.put(who.toLowerCase(Locale.ROOT), loaded);
         else LOGGER.warn("Lads showcase: no skin {} for {}", skin, who);
