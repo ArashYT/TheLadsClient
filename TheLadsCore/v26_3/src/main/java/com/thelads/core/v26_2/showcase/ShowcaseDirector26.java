@@ -442,6 +442,7 @@ public final class ShowcaseDirector26 {
         if (mc == null) return;
         long now = System.currentTimeMillis();
         if (!windowApplied) applyWindow(mc);
+        if (mc.options != null && mc.options.pauseOnLostFocus) mc.options.pauseOnLostFocus = false;
         if (mc.gui.screen() != null && mc.getWindow() != null) { // a new screen put the mouse at the real (off-window) spot: keep the drawn cursor in view
             double mx = mc.mouseHandler.xpos(), my = mc.mouseHandler.ypos();
             int w = mc.getWindow().getWidth(), h = mc.getWindow().getHeight();
@@ -524,8 +525,14 @@ public final class ShowcaseDirector26 {
                 lobby(mc);
                 return;
             }
-            if (mc.player == null || (!setUp && mc.gui.screen() != null)) return;
-            if (!setUp) setUp(mc);
+            if (mc.player == null) return;
+            if (!setUp) {
+                if (mc.gui.screen() != null) {
+                    LOGGER.info("Lads showcase director: clearing startup screen {} to proceed with setup", mc.gui.screen().getClass().getName());
+                    mc.setScreenAndShow(null);
+                }
+                setUp(mc);
+            }
             ShowcaseNpcs26.tick(mc);
 
             long now = System.currentTimeMillis();
@@ -555,6 +562,7 @@ public final class ShowcaseDirector26 {
     }
 
     private static void lobby(Minecraft mc) {
+        if (mc.options != null && mc.options.pauseOnLostFocus) mc.options.pauseOnLostFocus = false;
         if (setUp) {
             setUp = false;
             ready = false;
@@ -664,6 +672,7 @@ public final class ShowcaseDirector26 {
     private static void setUp(Minecraft mc) {
         setUp = true;
         t0 = System.currentTimeMillis();
+        if (mc.options != null) mc.options.pauseOnLostFocus = false;
 
         // Addendum 3: set window title
         String playerName = "Player";
