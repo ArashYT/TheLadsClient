@@ -134,15 +134,31 @@ public abstract class ClientToolsChatMixin {
         return NativeQualityOfLife.enabled("Chat") && !NativeQualityOfLife.bool("Chat", "Chat Background", true) ? (Object) 0.0D : opacity;
     }
 
+    @Unique private float ladsChatShiftX = 0f;
+
     @Inject(method = RENDER, at = @At("HEAD"), require = 1)
     private void ladsBeginChat(ChatComponent.ChatGraphicsAccess graphics, int screenHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
         com.thelads.core.v26_2.feature.NativeQualityOfLife.chatWithoutShadow = !ChatHistory.shadow();
         boolean animate = NativeQualityOfLife.enabled("Chat") && NativeQualityOfLife.bool("Chat", "Message Animations", true);
         ladsGraphics = animate && ladsAnimation.running() ? graphics : null;
+        int[] pos = com.thelads.core.config.HudSettings.getInstance().getPosition("Chat");
+        if (pos != null && pos.length >= 2 && pos[0] > 0) {
+            ladsChatShiftX = pos[0];
+            graphics.updatePose(pose -> pose.translate(ladsChatShiftX, 0f));
+        } else {
+            ladsChatShiftX = 0f;
+        }
     }
 
     @Inject(method = RENDER, at = @At("RETURN"), require = 1)
-    private void ladsEndChat(CallbackInfo ci) { ladsGraphics = null; com.thelads.core.v26_2.feature.NativeQualityOfLife.chatWithoutShadow = false; }
+    private void ladsEndChat(ChatComponent.ChatGraphicsAccess graphics, int screenHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
+        if (ladsChatShiftX != 0f) {
+            graphics.updatePose(pose -> pose.translate(-ladsChatShiftX, 0f));
+            ladsChatShiftX = 0f;
+        }
+        ladsGraphics = null;
+        com.thelads.core.v26_2.feature.NativeQualityOfLife.chatWithoutShadow = false;
+    }
 
     /** Raised, and Above Armor Bar: chat lays out above a shorter screen, so it is drawn, hovered and clicked that much higher. */
     @ModifyVariable(method = RENDER, at = @At("HEAD"), argsOnly = true, ordinal = 0, require = 1)
