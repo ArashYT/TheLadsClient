@@ -74,13 +74,7 @@ public final class Raised26 {
         var minecraft = Minecraft.getInstance();
         var player = minecraft.player;
         int rows = player == null ? 1 : com.thelads.core.client.ChatLift.healthRows((float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH), player.getHealth(), player.getAbsorptionAmount());
-        int custom = 0;
-        int[] pos = com.thelads.core.config.HudSettings.getInstance().getPosition("Chat");
-        if (pos != null && pos.length >= 2 && pos[1] > 0) {
-            int screenHeight = minecraft.getWindow().getGuiScaledHeight();
-            custom = Math.max(0, screenHeight - 40 - pos[1]);
-        }
-        return Math.max(custom, com.thelads.core.client.ChatLift.lift(chat(), minecraft.gameMode != null && minecraft.gameMode.canHurtPlayer(), hotbar(), 40, rows));
+        return com.thelads.core.client.ChatLift.lift(chat(), minecraft.gameMode != null && minecraft.gameMode.canHurtPlayer(), hotbar(), 40, rows);
     }
 
     /**
