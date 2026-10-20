@@ -211,6 +211,8 @@ public final class ShowcaseDirector26 {
         list.add("clear " + who);
         list.add("gamemode creative " + who);
         list.add("effect clear " + who);
+        list.add("effect give " + who + " minecraft:instant_health 1 100 true"); // full health and food: a survival take's damage carried over
+        list.add("effect give " + who + " minecraft:saturation 1 100 true");
         list.add("time set noon");
         list.add("weather clear");
         list.add(formatTpCommand(isServerMode ? "@s" : "@a", spotX, groundY, spotZ, 0f, 0f));
@@ -1002,6 +1004,10 @@ public final class ShowcaseDirector26 {
                 done.await(5, TimeUnit.SECONDS);
             }
             case "reset" -> {
+                if (mc.player != null && mc.player.isDeadOrDying()) { // qol-20 dies on purpose: closing the death screen alone left a dead, red camera in every later take
+                    mc.execute(() -> { if (mc.player != null) mc.player.respawn(); });
+                    for (int i = 0; i < 50 && (mc.player == null || mc.player.isDeadOrDying()); i++) Thread.sleep(100);
+                }
                 if (!isServerMode() && homeY != 0) { spotX = homeX; groundY = homeY; spotZ = homeZ; } // a `spot` take moved it
                 for (Module m : ModuleManager.getInstance().getRegisteredModules()) {
                     Boolean en = baselineModuleState.get(m.getName());
