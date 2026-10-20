@@ -1024,6 +1024,7 @@ public final class ShowcaseDirector26 {
                     com.thelads.core.v26_2.feature.NativeKillBanner.reset(); // v1's 5-kill take started at kill 3: the last take's streak lived on
                     if (mc.player != null) com.thelads.core.client.cosmetics.Emotes.stopLocal(mc.player.getUUID());
                     mc.setScreenAndShow(null);
+                    if (mc.debugEntries.isOverlayVisible()) mc.debugEntries.setOverlayVisible(false); // a take left F3 open (Better F3) and it showed in every later take
                     mc.options.setCameraType(CameraType.FIRST_PERSON);
                     mc.options.fov().set(baselineFov);
                     mc.options.guiScale().set(baselineGuiScale);
