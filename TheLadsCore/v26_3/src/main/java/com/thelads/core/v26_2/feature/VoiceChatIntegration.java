@@ -32,6 +32,9 @@ public final class VoiceChatIntegration {
 
     public static boolean loaded() { return LOADED && !failed; }
 
+    /** Showcase director (`voice` verb): a recording-only state shown instead of Simple Voice Chat's; null = SVC's own again. */
+    public static void showcase(VoiceChatState state) { qa = state; }
+
     /** At most once a frame's worth of time apart: both elements read it every HUD frame. */
     public static VoiceChatState state() {
         if (!loaded()) return null;

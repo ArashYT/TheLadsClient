@@ -1037,6 +1037,7 @@ public final class ShowcaseDirector26 {
                 mc.execute(() -> {
                     ShowcaseNpcs26.clear(mc);
                     com.thelads.core.v26_2.feature.NativeKillBanner.reset(); // v1's 5-kill take started at kill 3: the last take's streak lived on
+                    com.thelads.core.v26_2.feature.VoiceChatIntegration.showcase(null); // a `voice` take's fake state
                     if (mc.player != null) com.thelads.core.client.cosmetics.Emotes.stopLocal(mc.player.getUUID());
                     mc.setScreenAndShow(null);
                     if (mc.debugEntries.isOverlayVisible()) mc.debugEntries.setOverlayVisible(false); // a take left F3 open (Better F3) and it showed in every later take
@@ -1524,6 +1525,26 @@ public final class ShowcaseDirector26 {
                     String w = who.get(i);
                     SCHEDULER.schedule(() -> mc.execute(() -> ShowcaseNpcs26.emote(w, id)), i * stagger, TimeUnit.MILLISECONDS);
                 }
+            }
+            case "voice" -> { // voice off | voice <talk|whisper|mute|deaf|idle> [Name=talk|quiet|deaf ...]: what the Voice Chat HUDs show (no SVC server needed)
+                String me = cmd.arg(0, "off");
+                String icon = switch (me) {
+                    case "talk" -> "voicechat:icons/microphone";
+                    case "whisper" -> "voicechat:icons/microphone_whisper";
+                    case "mute" -> "voicechat:icons/microphone_off";
+                    case "deaf" -> "voicechat:icons/speaker_off";
+                    default -> null;
+                };
+                List<com.thelads.core.client.bridge.LadsGameBridge.VoiceMember> group = new ArrayList<>();
+                for (int i = 1; i < cmd.args().length; i++) {
+                    String[] kv = cmd.args()[i].split("=", 2);
+                    String state = kv.length > 1 ? kv[1] : "quiet";
+                    String uuid = mc.player != null && kv[0].equalsIgnoreCase(mc.player.getPlainTextName()) ? mc.player.getUUID().toString()
+                        : java.util.UUID.nameUUIDFromBytes(("OfflinePlayer:" + kv[0]).getBytes(StandardCharsets.UTF_8)).toString(); // = the NPC's id, so its head is its skin
+                    group.add(new com.thelads.core.client.bridge.LadsGameBridge.VoiceMember(kv[0], uuid, state.equals("talk"), state.equals("deaf")));
+                }
+                com.thelads.core.v26_2.feature.VoiceChatIntegration.showcase(me.equals("off") ? null
+                    : new com.thelads.core.client.bridge.LadsGameBridge.VoiceChatState(icon, group));
             }
             case "npcstop" -> onClient(mc, () -> { ShowcaseNpcs26.names(cmd.arg(0, "*")).forEach(ShowcaseNpcs26::stop); return null; });
             case "npclook" -> {
