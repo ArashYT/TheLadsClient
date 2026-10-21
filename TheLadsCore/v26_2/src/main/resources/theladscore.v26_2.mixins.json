@@ -143,8 +143,7 @@
     "CartCamGameRendererMixin",
     "FadelessAccessibilityScreenMixin",
     "SurvivalLightmapBrightnessMixin",
-    "SurvivalKeepBarsMixin",
-    "CloudRendererMixin"
+    "SurvivalKeepBarsMixin"
   ],
   "mixins": [
     "DisplayEntityAccessor",
