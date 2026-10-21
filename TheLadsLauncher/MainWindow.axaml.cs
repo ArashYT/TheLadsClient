@@ -4533,7 +4533,7 @@ public partial class MainWindow : Window
 
             string installedMarker = Path.Combine(gameDirectory, "versions", launchVersionId, ".lads-verified");
             LaunchService.ConfigureCachedNativesDirectory(path, launchVersionId, launchOpt);
-            LaunchService.EnsureSecurityJvmArguments(launchOpt, requiredJava, gameDirectory);
+            LaunchService.EnsureSecurityJvmArguments(launchOpt, requiredJava, gameDirectory, activeProfile.MinecraftVersion);
             if (settings.QuickLaunch && File.Exists(installedMarker))
             {
                 GameLaunchStatusText.Text = "Quick launching (skipping verification)...";

@@ -39,6 +39,30 @@ public class Minecraft189Tests
     }
 
     [Fact]
+    public void Forge189OnJava25_DoesNotReceiveCompactObjectHeaders()
+    {
+        var options = new CmlLib.Core.ProcessBuilder.MLaunchOption();
+        LaunchService.EnsureSecurityJvmArguments(options, javaMajorVersion: 25, minecraftVersion: "1.8.9");
+
+        var values = options.ExtraJvmArguments!.SelectMany(a => a.Values).ToList();
+        Assert.Contains("-XX:+UseG1GC", values);
+        Assert.Contains("-XX:+DisableAttachMechanism", values);
+        Assert.Contains("-XX:+DisableExplicitGC", values);
+        // Forge 1.8.9 / RetroFuturaBootstrap / 8to25 / LaunchWrapper crash (0xC0000005) if compact headers are enabled
+        Assert.DoesNotContain("-XX:+UseCompactObjectHeaders", values);
+
+        var flags189 = LaunchService.BuildOptimizedJvmArguments(25, minecraftVersion: "1.8.9");
+        Assert.DoesNotContain("-XX:+UseCompactObjectHeaders", flags189);
+
+        // Modern versions (26.3 or unspec) on Java 25 still get compact object headers
+        var flags263 = LaunchService.BuildOptimizedJvmArguments(25, minecraftVersion: "26.3");
+        Assert.Contains("-XX:+UseCompactObjectHeaders", flags263);
+
+        var flagsDefault = LaunchService.BuildOptimizedJvmArguments(25);
+        Assert.Contains("-XX:+UseCompactObjectHeaders", flagsDefault);
+    }
+
+    [Fact]
     public async Task ForgeManifestIsRewrittenFor8to25AndLaunchesThroughRetroFuturaBootstrap()
     {
         const string vanilla = """

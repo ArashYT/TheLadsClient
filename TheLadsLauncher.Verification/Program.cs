@@ -849,7 +849,7 @@ try
     if (relaunchWorld != null) ModpackLauncher.JoinWorld(launchOptions, relaunchWorld);
     else if (relaunchServer != null) ModpackLauncher.JoinServer(launchOptions, relaunchServer);
     // The benchmark measures what players get: the launcher's own GC/heap flags for this Java (MainWindow and LaunchService add them).
-    if (perf189) LaunchService.EnsureSecurityJvmArguments(launchOptions, javaMajor, directory);
+    if (perf189) LaunchService.EnsureSecurityJvmArguments(launchOptions, javaMajor, directory, version);
     using (await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".mc.lock"), ct))
         process = await launcher.InstallAndBuildProcessAsync(id, launchOptions, ct);
     if (Env("LADS_VERIFY_GC_PAUSE") is { } gcPause && int.TryParse(gcPause, out int pauseVal))
