@@ -42,6 +42,12 @@ public class LauncherSettings
     public bool AutoRelaunchOnCrash { get; set; } = false;
     /// <summary>Send a client profile's crash (report, hs_err, log tail) to the Lads team. Never modpacks or Experiences.</summary>
     public bool SendCrashReports { get; set; } = true;
+    /// <summary>Send anonymous client version and heartbeat stats to the Lads team to see active player counts. Default true.</summary>
+    public bool SendAnonymousUsageStats { get; set; } = true;
+    /// <summary>Unique anonymous installation identifier generated on first run. Never tied to player names or Minecraft accounts.</summary>
+    public string InstallId { get; set; } = "";
+    /// <summary>Distinct client Minecraft versions used or played by this installation.</summary>
+    public List<string> ClientVersionsUsed { get; set; } = new();
     public bool AutoRejoinServer { get; set; } = false;
     public bool ZeroSmpAutoJoin { get; set; } = true;    // Experiences tab: Zero SMP joins its server as soon as the game has loaded
     public string LastServerIp { get; set; } = "";
@@ -166,6 +172,16 @@ public class LauncherSettings
             "Halloween" => ("#3B1458", "#6B2FA0", "#1E0A2E", "#FF8A1F"), // purple nebulae, pumpkin-orange particles
             _ => ("#8B0000", "#B00000", "#600000", "#FF4444") // DarkRed default
         };
+    }
+
+    public string GetOrCreateInstallId()
+    {
+        if (string.IsNullOrWhiteSpace(InstallId) || !Guid.TryParse(InstallId, out _))
+        {
+            InstallId = Guid.NewGuid().ToString("D");
+            Save();
+        }
+        return InstallId;
     }
 
     public string[] DetectJavaInstallations()

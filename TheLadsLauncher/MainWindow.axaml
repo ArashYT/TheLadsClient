@@ -394,6 +394,7 @@
                                                         <CheckBox x:Name="AutoFixCrashesCheckbox" Content="Auto-Fix issues on crash (Disables broken mods)" IsChecked="True" />
                                                         <CheckBox x:Name="AutoRelaunchOnCrashCheckbox" Content="Auto-relaunch game on crash" IsChecked="False" />
                                                         <CheckBox x:Name="SendCrashReportsCheckbox" Content="Send crash reports to the Lads team (client only)" IsChecked="True" ToolTip.Tip="When the Lads Client crashes, its crash report and game log go to the Lads team so we can fix it. Your Windows user name and login tokens are removed first. Modpacks and Experiences are never sent." />
+                                                        <CheckBox x:Name="SendUsageStatsCheckbox" Content="Send anonymous usage stats" IsChecked="True" ToolTip.Tip="Shares anonymous client version and heartbeat stats with the Lads team to help us prioritize updates and see active player counts. No names, UUIDs, or IP addresses are stored." />
                                                         <CheckBox x:Name="AutoRejoinServerCheckbox" Content="Auto-rejoin server on launch" IsChecked="False" />
                                                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="28,0,0,0">
                                                             <TextBlock Text="Server:" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" />
