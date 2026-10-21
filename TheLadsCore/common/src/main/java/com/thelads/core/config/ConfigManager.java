@@ -35,6 +35,8 @@ public class ConfigManager {
     static final String F3_1911_FLAG = "betterF31911Applied";
     /** Marks the 1.9.12 one-time Keystrokes Clean look override (apply1912KeystrokesOverride). */
     public static final String KEYSTROKES_1912_FLAG = "keystrokesStyleMigrated";
+    /** Marks the 1.9.14 one-time Keystrokes Clean follow global override (apply1914KeystrokesOverride). */
+    public static final String KEYSTROKES_1914_FLAG = "keystrokesCleanGlobalMigrated";
     /** 1.9.11: the game versions whose Emotes key clash (another mod's default on B) was resolved once (EmoteKeys, each version). */
     static final String EMOTE_KEYS_FLAG = "emoteKeyClashResolved";
     private static final java.util.Set<String> emoteKeysResolved = new java.util.concurrent.CopyOnWriteArraySet<>();
@@ -102,6 +104,7 @@ public class ConfigManager {
         hud.addProperty(HUD_1910_FLAG, true); // marks the 1.9.10 one-time HUD override (apply1910HudOverride)
         hud.addProperty(F3_1911_FLAG, true); // marks the 1.9.11 one-time Better F3 override (apply1911BetterF3Override)
         hud.addProperty(KEYSTROKES_1912_FLAG, true); // marks the 1.9.12 one-time Keystrokes Clean look override (apply1912KeystrokesOverride)
+        hud.addProperty(KEYSTROKES_1914_FLAG, true); // marks the 1.9.14 one-time Keystrokes Clean follow global override (apply1914KeystrokesOverride)
         hud.addProperty("backgrounds", HudSettings.getInstance().isBackgrounds());
         hud.addProperty("hudFpsCapOptIn", HudSettings.getInstance().isHudFpsCapEnabled());
         hud.addProperty("hudFpsCapEnabled", HudSettings.getInstance().isHudFpsCapEnabled()); // read by 1.4.4 and older
@@ -327,6 +330,7 @@ public class ConfigManager {
             if (!hud.has(HUD_1910_FLAG)) apply1910HudOverride();
             if (!hud.has(F3_1911_FLAG)) apply1911BetterF3Override();
             if (!hud.has(KEYSTROKES_1912_FLAG)) apply1912KeystrokesOverride();
+            if (!hud.has(KEYSTROKES_1914_FLAG)) apply1914KeystrokesOverride();
             if (hud.has("hudScale")) HudSettings.getInstance().setHudScale(hud.get("hudScale").getAsInt());
             if (hud.has("fadePlaylist")) {
                 HudSettings.getInstance().getFadePlaylist().clear();
@@ -393,6 +397,21 @@ public class ConfigManager {
         Module keys = ModuleManager.getInstance().getModule("Keystrokes");
         if (keys != null && keys.getOption("Style") instanceof DropdownOption style) {
             style.setIndex(0);
+        }
+    }
+
+    /**
+     * 1.9.14: Keystrokes Clean mode follows the global colour by default (Key Text Color, Pressed Key Text Color,
+     * Key Background Color, Pressed Key Background Color have useGlobal = true). Existing configs without the
+     * 1.9.14 marker are upgraded once to follow global; player customizations saved with the marker are kept.
+     */
+    static void apply1914KeystrokesOverride() {
+        Module keys = ModuleManager.getInstance().getModule("Keystrokes");
+        if (keys instanceof com.thelads.core.modules.KeystrokesModule km) {
+            km.keyColor.setUseGlobal(true);
+            km.keyPressedColor.setUseGlobal(true);
+            km.keyBackgroundColor.setUseGlobal(true);
+            km.keyPressedBackgroundColor.setUseGlobal(true);
         }
     }
 
@@ -659,7 +678,7 @@ public class ConfigManager {
             }
         }
         if (json.get("hud") instanceof JsonObject hud) {
-            if (!hud.has("shadowOnDefault") || !hud.has("hudFpsCapOnDefault") || !hud.has(HUD_1910_FLAG) || !hud.has(F3_1911_FLAG) || !hud.has(KEYSTROKES_1912_FLAG)) return true;
+            if (!hud.has("shadowOnDefault") || !hud.has("hudFpsCapOnDefault") || !hud.has(HUD_1910_FLAG) || !hud.has(F3_1911_FLAG) || !hud.has(KEYSTROKES_1912_FLAG) || !hud.has(KEYSTROKES_1914_FLAG)) return true;
         }
         return false;
     }

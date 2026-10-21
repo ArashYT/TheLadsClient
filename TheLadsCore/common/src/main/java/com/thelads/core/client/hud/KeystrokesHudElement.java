@@ -82,6 +82,11 @@ public class KeystrokesHudElement extends HudElement {
     }
 
     @Override
+    public void matchLayoutWidth(int pixels) {
+        // Keystrokes button sizes do not change when grouped (no stretching to group width, no shrink)
+    }
+
+    @Override
     public void prepareRender(LadsGraphics g, boolean editor) {
         preparedGraphics = g;
         KeystrokesModule km = keystrokesModule();
@@ -126,10 +131,12 @@ public class KeystrokesHudElement extends HudElement {
             cleanPressAnim = km.pressAnimation.get();
             cleanTickSync = km.tickSyncedKeyPresses.get();
 
-            cleanKeyColor = km.keyColor.getColor();
-            cleanKeyPressedColor = km.keyPressedColor.getColor();
-            cleanKeyBg = km.keyBackgroundColor.getColor();
-            cleanKeyPressedBg = km.keyPressedBackgroundColor.getColor();
+            cleanKeyColor = km.keyColor.isUseGlobal() ? resolveColor() : km.keyColor.getColor();
+            cleanKeyBg = km.keyBackgroundColor.isUseGlobal() ? resolveBackground() : km.keyBackgroundColor.getColor();
+            cleanKeyPressedBg = km.keyPressedBackgroundColor.isUseGlobal() ? 0xAAFFFFFF : km.keyPressedBackgroundColor.getColor();
+            cleanKeyPressedColor = km.keyPressedColor.isUseGlobal()
+                    ? ((cleanKeyPressedBg >>> 24) != 0 ? 0xFF000000 : resolveColor())
+                    : km.keyPressedColor.getColor();
 
             cleanKeyShadow = km.keyTextShadow.get();
             cleanKeyPressedShadow = km.keyPressedTextShadow.get();
@@ -151,10 +158,10 @@ public class KeystrokesHudElement extends HudElement {
             cleanPressAnim = optBool("Press Animation", true);
             cleanTickSync = optBool("Tick Synced Key Presses", false);
 
-            cleanKeyColor = 0xFFFFFFFF;
-            cleanKeyPressedColor = 0xFF000000;
-            cleanKeyBg = 0xAA000000;
+            cleanKeyColor = resolveColor();
+            cleanKeyBg = resolveBackground();
             cleanKeyPressedBg = 0xAAFFFFFF;
+            cleanKeyPressedColor = (cleanKeyPressedBg >>> 24) != 0 ? 0xFF000000 : resolveColor();
 
             cleanKeyShadow = false;
             cleanKeyPressedShadow = false;
