@@ -1,6 +1,7 @@
 package com.thelads.core.v1_8_9.adapter;
 
 import com.thelads.core.client.bridge.LadsGraphics;
+import com.thelads.core.client.hud.BossBarColor;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
@@ -356,6 +357,20 @@ public class GuiLadsAdapter implements LadsGraphics {
         return new int[]{Math.min(x, nameX), y, Math.max(x + 183, nameX + nameW), y + 15};
     }
 
+    private static final ResourceLocation LADS_BARS = new ResourceLocation("theladscore", "textures/gui/bars.png");
+    private static Boolean hasLadsBars = null;
+
+    private static boolean hasBarsTexture(Minecraft mc) {
+        if (hasLadsBars == null) {
+            try {
+                hasLadsBars = mc.getResourceManager().getResource(LADS_BARS) != null;
+            } catch (Exception e) {
+                hasLadsBars = false;
+            }
+        }
+        return hasLadsBars;
+    }
+
     @Override
     public void drawBossBars(int x, int y, int max, boolean names, boolean preview) {
         Minecraft mc = Minecraft.getMinecraft();
@@ -365,22 +380,45 @@ public class GuiLadsAdapter implements LadsGraphics {
         String name = hasBoss ? net.minecraft.entity.boss.BossStatus.bossName : "Ender Dragon";
         float health = hasBoss ? net.minecraft.entity.boss.BossStatus.healthScale : 0.85f;
 
-        mc.getTextureManager().bindTexture(Gui.icons);
-        GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+        boolean colored = com.thelads.core.v1_8_9.feature.Options189.bool("BossBar", "Colored boss bar", true);
+        BossBarColor barColor = colored ? BossBarColor.fromFormattedName(name) : null;
+
         int barW = 182;
         int barH = 5;
 
-        Gui.drawModalRectWithCustomSizedTexture(x, y + 10, 0, 74, barW, barH, 256.0f, 256.0f);
-        int filled = (int)(health * (barW + 1));
-        if (filled > 0) {
-            Gui.drawModalRectWithCustomSizedTexture(x, y + 10, 0, 79, filled, barH, 256.0f, 256.0f);
+        if (barColor != null && hasBarsTexture(mc)) {
+            mc.getTextureManager().bindTexture(LADS_BARS);
+            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+            int vEmpty = barColor.ordinal() * 10;
+            int vFill = vEmpty + 5;
+            Gui.drawModalRectWithCustomSizedTexture(x, y + 10, 0, vEmpty, barW, barH, 256.0f, 256.0f);
+            int filled = (int)(health * (barW + 1));
+            if (filled > 0) {
+                Gui.drawModalRectWithCustomSizedTexture(x, y + 10, 0, vFill, filled, barH, 256.0f, 256.0f);
+            }
+        } else if (barColor != null) {
+            mc.getTextureManager().bindTexture(Gui.icons);
+            GlStateManager.color(barColor.r(), barColor.g(), barColor.b(), 1.0f);
+            Gui.drawModalRectWithCustomSizedTexture(x, y + 10, 0, 74, barW, barH, 256.0f, 256.0f);
+            int filled = (int)(health * (barW + 1));
+            if (filled > 0) {
+                Gui.drawModalRectWithCustomSizedTexture(x, y + 10, 0, 79, filled, barH, 256.0f, 256.0f);
+            }
+            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+        } else {
+            mc.getTextureManager().bindTexture(Gui.icons);
+            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+            Gui.drawModalRectWithCustomSizedTexture(x, y + 10, 0, 74, barW, barH, 256.0f, 256.0f);
+            int filled = (int)(health * (barW + 1));
+            if (filled > 0) {
+                Gui.drawModalRectWithCustomSizedTexture(x, y + 10, 0, 79, filled, barH, 256.0f, 256.0f);
+            }
         }
         if (names && name != null) {
             int textX = x + (barW - font.getStringWidth(name)) / 2;
             font.drawString(name, textX, y, 0xFFFFFFFF, com.thelads.core.config.HudSettings.getInstance().isTextShadow());
         }
     }
-
     @Override
     public int getScaledWidth() {
         return width;
