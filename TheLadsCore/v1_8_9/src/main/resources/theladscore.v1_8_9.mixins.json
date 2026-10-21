@@ -111,6 +111,7 @@
     "RenderItemMixin",
     "SoundHandlerReloadMixin189",
     "SoundHandlerAccessor189",
+    "SoundManagerResumeMixin189",
     "LanguageManagerReloadMixin189",
     "GuiUtilsTooltipMixin",
     "VisGraphMixin",

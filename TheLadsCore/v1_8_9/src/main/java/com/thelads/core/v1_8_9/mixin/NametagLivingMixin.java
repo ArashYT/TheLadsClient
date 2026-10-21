@@ -39,6 +39,16 @@ public abstract class NametagLivingMixin {
         return Nametags189.rename(name);
     }
 
+    /**
+     * Fixes MC-5404 for sneaking nametags drawn directly in RendererLivingEntity.renderName.
+     */
+    @ModifyArg(method = "renderName(Lnet/minecraft/entity/EntityLivingBase;DDD)V", at = @At(value = "INVOKE",
+        target = "Lnet/minecraft/client/renderer/GlStateManager;rotate(FFFF)V", ordinal = 1), index = 0, require = 0)
+    private float ladsSneakingFrontViewPitch(float angle) {
+        Minecraft mc = Minecraft.getMinecraft();
+        return (mc.gameSettings.thirdPersonView == 2 ? -1 : 1) * angle;
+    }
+
     @ModifyArg(method = "renderName(Lnet/minecraft/entity/EntityLivingBase;DDD)V", at = @At(value = "INVOKE",
         target = "Lnet/minecraft/client/renderer/WorldRenderer;color(FFFF)Lnet/minecraft/client/renderer/WorldRenderer;"), index = 3, require = 0)
     private float ladsSneakingBackground(float alpha) {

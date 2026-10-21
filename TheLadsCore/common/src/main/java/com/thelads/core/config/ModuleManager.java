@@ -77,6 +77,7 @@ public class ModuleManager {
         boss.addOption(new BoolOption("Show bars", true));
         boss.addOption(new BoolOption("Show names", true));
         boss.addOption(new SliderOption("Maximum bars", 5, 1, 10, 1));
+        boss.addOption(new BoolOption("Colored boss bar", true));
         boss.addOption(new BoolOption("Darken sky", true));
         boss.addOption(new BoolOption("Boss fog", true));
         boss.addOption(new BoolOption("Boss music", true));

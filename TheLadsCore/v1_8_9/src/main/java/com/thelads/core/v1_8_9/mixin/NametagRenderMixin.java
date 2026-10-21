@@ -3,6 +3,7 @@ package com.thelads.core.v1_8_9.mixin;
 import com.thelads.core.client.NametagDepth;
 import com.thelads.core.v1_8_9.feature.FontShadow189;
 import com.thelads.core.v1_8_9.feature.Nametags189;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.entity.Render;
@@ -22,6 +23,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Render.class)
 public abstract class NametagRenderMixin {
     @Shadow public abstract FontRenderer getFontRendererFromRenderManager();
+
+    /**
+     * Fixes MC-5404: In vanilla 1.8.9, Render.renderLivingLabel rotates playerViewY by +180 in third-person
+     * front view, but leaves playerViewX untouched. Because the Y rotation inverts the local X axis,
+     * nametags tilt away from the camera instead of facing it. Inverting pitch when thirdPersonView == 2
+     * keeps nametags facing the camera squarely.
+     */
+    @ModifyArg(method = "renderLivingLabel", at = @At(value = "INVOKE",
+        target = "Lnet/minecraft/client/renderer/GlStateManager;rotate(FFFF)V", ordinal = 1), index = 0, require = 0)
+    private float ladsFrontViewPitch(float angle) {
+        Minecraft mc = Minecraft.getMinecraft();
+        return (mc.gameSettings.thirdPersonView == 2 ? -1 : 1) * angle;
+    }
 
     @ModifyArg(method = "renderLivingLabel", at = @At(value = "INVOKE",
         target = "Lnet/minecraft/client/renderer/WorldRenderer;color(FFFF)Lnet/minecraft/client/renderer/WorldRenderer;"), index = 3, require = 0)

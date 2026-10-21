@@ -74,7 +74,7 @@ public final class World189 {
         GlStateManager.translate((float) x, (float) y + entity.height + 0.5F, (float) z);
         GL11.glNormal3f(0, 1, 0);
         GlStateManager.rotate(-manager.playerViewY, 0, 1, 0);
-        GlStateManager.rotate(manager.playerViewX, 1, 0, 0);
+        GlStateManager.rotate((manager.options.thirdPersonView == 2 ? -1 : 1) * manager.playerViewX, 1, 0, 0);
         GlStateManager.scale(-scale, -scale, scale);
         GlStateManager.disableLighting();
         OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240, 240); // full bright, like a lit name tag
