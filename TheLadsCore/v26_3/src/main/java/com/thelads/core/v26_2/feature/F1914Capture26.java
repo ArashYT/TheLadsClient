@@ -2,6 +2,7 @@ package com.thelads.core.v26_2.feature;
 
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.thelads.core.client.hud.HudElement;
+import com.thelads.core.client.hud.HudGroupLayout;
 import com.thelads.core.client.hud.HudManager;
 import com.thelads.core.client.qa.F1914Qa;
 import com.thelads.core.v26_2.gui.DraggableHudScreen26;
@@ -112,10 +113,19 @@ public final class F1914Capture26 {
                 double scale = mc.getWindow().getGuiScale();
                 int pad = (int) (4 * scale);
 
-                int px = Math.max(0, (int) (armor.getX() * scale) - pad);
-                int py = Math.max(0, (int) (armor.getY() * scale) - pad);
-                int pw = Math.min(full.getWidth() - px, (int) (armor.getWidth() * scale) + 2 * pad);
-                int ph = Math.min(full.getHeight() - py, (int) (armor.getHeight() * scale) + 2 * pad);
+                int guiX = armor.getX(), guiY = armor.getY(), guiW = armor.getWidth(), guiH = armor.getHeight();
+                HudGroupLayout.Rect bounds = HudManager.getInstance().lastBounds("ArmorHUD");
+                if (bounds != null) {
+                    guiX = bounds.x();
+                    guiY = bounds.y();
+                    guiW = bounds.width();
+                    guiH = bounds.height();
+                }
+
+                int px = Math.max(0, (int) (guiX * scale) - pad);
+                int py = Math.max(0, (int) (guiY * scale) - pad);
+                int pw = Math.min(full.getWidth() - px, (int) (guiW * scale) + 2 * pad);
+                int ph = Math.min(full.getHeight() - py, (int) (guiH * scale) + 2 * pad);
 
                 if (pw > 0 && ph > 0) {
                     BufferedImage cropped = full.getSubimage(px, py, pw, ph);
@@ -163,6 +173,7 @@ public final class F1914Capture26 {
             pitchBefore = mc.player.getXRot();
             mc.options.setCameraType(view == 2 ? CameraType.THIRD_PERSON_FRONT : view == 1 ? CameraType.THIRD_PERSON_BACK : CameraType.FIRST_PERSON);
             mc.player.setXRot(pitch);
+            mc.player.xRotO = pitch;
         }
 
         @Override
@@ -170,12 +181,13 @@ public final class F1914Capture26 {
             Minecraft mc = Minecraft.getInstance();
             if (mc.level == null || mc.player == null) return;
             armorStand = new ArmorStand(mc.level, 0, 0, 0);
+            armorStand.setId(-1914);
             armorStand.setCustomName(Component.literal(name));
             armorStand.setCustomNameVisible(true);
             double yaw = Math.toRadians(mc.player.getYRot());
             armorStand.setPos(
                 mc.player.getX() - distance * Math.sin(yaw),
-                mc.player.getY(),
+                mc.player.getY() + mc.player.getEyeHeight() - 1.0,
                 mc.player.getZ() + distance * Math.cos(yaw)
             );
             mc.level.addEntity(armorStand);
@@ -189,7 +201,10 @@ public final class F1914Capture26 {
             }
             Minecraft mc = Minecraft.getInstance();
             if (cameraBefore != null) mc.options.setCameraType(cameraBefore);
-            if (mc.player != null) mc.player.setXRot(pitchBefore);
+            if (mc.player != null) {
+                mc.player.setXRot(pitchBefore);
+                mc.player.xRotO = pitchBefore;
+            }
         }
 
         @Override
@@ -223,6 +238,7 @@ public final class F1914Capture26 {
             if (mc.player != null) {
                 mc.player.setPos(mc.player.getX(), y, mc.player.getZ());
                 mc.player.setXRot(pitch);
+                mc.player.xRotO = pitch;
             }
         }
 

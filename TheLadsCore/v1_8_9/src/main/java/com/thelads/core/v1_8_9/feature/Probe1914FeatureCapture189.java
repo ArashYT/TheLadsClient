@@ -1,8 +1,11 @@
 package com.thelads.core.v1_8_9.feature;
 
+import com.thelads.core.client.hud.ArmorHudElement;
 import com.thelads.core.client.hud.HudElement;
+import com.thelads.core.client.hud.HudGroupLayout;
 import com.thelads.core.client.hud.HudManager;
 import com.thelads.core.client.qa.F1914Qa;
+import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import com.thelads.core.v1_8_9.gui.DraggableHudScreen189;
 import com.thelads.core.v1_8_9.gui.GuiOptiFineSettings189;
 import com.thelads.core.v1_8_9.gui.QuickplayScreen189;
@@ -32,10 +35,18 @@ final class Probe1914FeatureCapture189 {
     private static ItemStack[] armorBefore;
     private static int cameraBefore;
     private static float pitchBefore;
+    private static String activeBossName;
+    private static IBossDisplayData activeBoss;
 
     private Probe1914FeatureCapture189() {}
 
     static boolean run(Minecraft mc) {
+        if (activeBoss != null) {
+            BossStatus.setBossStatus(activeBoss, false);
+            BossStatus.bossName = activeBossName;
+            BossStatus.healthScale = 0.8f;
+            BossStatus.statusBarTime = 100_000;
+        }
         return QA.tick(DRIVER);
     }
 
@@ -65,10 +76,23 @@ final class Probe1914FeatureCapture189 {
                 int scale = sr.getScaleFactor();
                 int pad = 4 * scale;
 
-                int px = Math.max(0, armor.getX() * scale - pad);
-                int py = Math.max(0, armor.getY() * scale - pad);
-                int pw = Math.min(full.getWidth() - px, armor.getWidth() * scale + 2 * pad);
-                int ph = Math.min(full.getHeight() - py, armor.getHeight() * scale + 2 * pad);
+                int guiX = armor.getX(), guiY = armor.getY(), guiW = armor.getWidth(), guiH = armor.getHeight();
+                HudGroupLayout.Rect bounds = HudManager.getInstance().lastBounds("ArmorHUD");
+                if (bounds != null) {
+                    guiX = bounds.x();
+                    guiY = bounds.y();
+                    guiW = bounds.width();
+                    guiH = bounds.height();
+                } else if (armor instanceof ArmorHudElement) {
+                    GuiLadsAdapter g = new GuiLadsAdapter(mc.fontRendererObj, sr.getScaledWidth(), sr.getScaledHeight());
+                    guiX = armor.getDisplayX(g);
+                    guiY = armor.getDisplayY(g);
+                }
+
+                int px = Math.max(0, guiX * scale - pad);
+                int py = Math.max(0, guiY * scale - pad);
+                int pw = Math.min(full.getWidth() - px, guiW * scale + 2 * pad);
+                int ph = Math.min(full.getHeight() - py, guiH * scale + 2 * pad);
 
                 if (pw > 0 && ph > 0) {
                     BufferedImage cropped = full.getSubimage(px, py, pw, ph);
@@ -114,32 +138,35 @@ final class Probe1914FeatureCapture189 {
             pitchBefore = mc.thePlayer.rotationPitch;
             mc.gameSettings.thirdPersonView = view;
             mc.thePlayer.rotationPitch = pitch;
+            mc.thePlayer.prevRotationPitch = pitch;
         }
 
         @Override
         public void summonArmorStand(String name, double distance) {
             Minecraft mc = Minecraft.getMinecraft();
+            if (mc.theWorld == null || mc.thePlayer == null) return;
             EntityArmorStand stand = new EntityArmorStand(mc.theWorld);
             stand.setCustomNameTag(name);
             stand.setAlwaysRenderNameTag(true);
             double yaw = Math.toRadians(mc.thePlayer.rotationYaw);
             stand.setPosition(
                 mc.thePlayer.posX - distance * Math.sin(yaw),
-                mc.thePlayer.posY,
+                mc.thePlayer.posY + mc.thePlayer.getEyeHeight() - 1.0,
                 mc.thePlayer.posZ + distance * Math.cos(yaw)
             );
-            mc.theWorld.addEntityToWorld(191499, stand);
+            mc.theWorld.addEntityToWorld(-1914, stand);
         }
 
         @Override
         public void removeArmorStand() {
             Minecraft mc = Minecraft.getMinecraft();
             if (mc.theWorld != null) {
-                mc.theWorld.removeEntityFromWorld(191499);
+                mc.theWorld.removeEntityFromWorld(-1914);
             }
             mc.gameSettings.thirdPersonView = cameraBefore;
             if (mc.thePlayer != null) {
                 mc.thePlayer.rotationPitch = pitchBefore;
+                mc.thePlayer.prevRotationPitch = pitchBefore;
             }
         }
 
@@ -175,6 +202,7 @@ final class Probe1914FeatureCapture189 {
             if (mc.thePlayer != null) {
                 mc.thePlayer.setPosition(mc.thePlayer.posX, y, mc.thePlayer.posZ);
                 mc.thePlayer.rotationPitch = pitch;
+                mc.thePlayer.prevRotationPitch = pitch;
             }
         }
 
@@ -185,11 +213,18 @@ final class Probe1914FeatureCapture189 {
                 @Override public float getHealth() { return 80.0f; }
                 @Override public IChatComponent getDisplayName() { return new ChatComponentText(name); }
             };
+            activeBoss = fakeBoss;
+            activeBossName = name;
             BossStatus.setBossStatus(fakeBoss, false);
+            BossStatus.bossName = name;
+            BossStatus.healthScale = 0.8f;
+            BossStatus.statusBarTime = 100_000;
         }
 
         @Override
         public void clearBossBar() {
+            activeBoss = null;
+            activeBossName = null;
             BossStatus.statusBarTime = 0;
             BossStatus.bossName = null;
         }
