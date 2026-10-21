@@ -3616,7 +3616,7 @@ class CosmeticsSelectView(LadsView):
         source_label = f"staff:{self.admin_user.name}"
 
         if is_grant:
-            target_ids = cosmetics.get_all_cosmetic_ids()
+            target_ids = [item["id"] for item in self.items]
         else:
             target_ids = [item["id"] for item in self.items]
 
@@ -3673,6 +3673,14 @@ async def slash_cosmetics_grant(interaction: discord.Interaction, target: str):
         return
 
     all_cosmetics_list = cosmetics.get_all_cosmetics()
+    grantable_items = [item for item in all_cosmetics_list if item["id"] not in cosmetics.FREE]
+    if not grantable_items:
+        await interaction.followup.send(
+            "Every cosmetic is free right now; use `/cosmetics allaccess` to pre-unlock future paid ones.",
+            ephemeral=True
+        )
+        return
+
     store = cosmetics.get_store()
     view = CosmeticsSelectView(
         mode="grant",
@@ -3680,7 +3688,7 @@ async def slash_cosmetics_grant(interaction: discord.Interaction, target: str):
         target_ign=ign,
         target_discord_id=disc_id,
         admin_user=interaction.user,
-        items=all_cosmetics_list,
+        items=grantable_items,
         store=store
     )
     embed = view.build_embed()
@@ -3793,7 +3801,8 @@ async def slash_cosmetics_list(interaction: discord.Interaction, target: str):
     else:
         embed.add_field(name="👗 Currently Equipped", value="*(None equipped)*", inline=False)
 
-    embed.add_field(name="💃 Free Emotes (Everyone)", value="Groove, Wave, Clap, Floss, Cheer, Bow, Facepalm, Salute, Shrug", inline=False)
+    free_names = [f"{cosmetics.format_item_name(e)} (free)" for e in cosmetics.FREE]
+    embed.add_field(name="💃 Free Emotes (Everyone)", value=", ".join(free_names), inline=False)
 
     revoked_ents = [e for e in res.get("entitlements", []) if not e.get("active")]
     if revoked_ents:

@@ -220,26 +220,27 @@ async def test_resolve_target_uuid_and_ign_mocked():
 
 
 def test_cosmetics_catalog_source_of_truth():
-    """Verify that cosmetics.get_all_cosmetics() contains all 9 emotes and 3 capes."""
+    """Verify that cosmetics.get_all_cosmetics() contains only the 9 free emotes and no hardcoded capes."""
     items = cosmetics.get_all_cosmetics()
     item_ids = [i["id"] for i in items]
 
+    # Exactly 9 default items (all free emotes)
+    assert len(items) == len(cosmetics.FREE)
+
     # 9 Emotes
-    expected_emotes = [
-        "lads:groove", "lads:wave", "lads:clap", "lads:floss",
-        "lads:cheer", "lads:bow", "lads:facepalm", "lads:salute", "lads:shrug"
-    ]
-    for eid in expected_emotes:
+    for eid in cosmetics.FREE:
         assert eid in item_ids
         item = next(i for i in items if i["id"] == eid)
         assert item["category"] == "Emotes"
+        assert item["free"] is True
 
-    # 3 Capes
-    expected_capes = ["lads:cape_aurora", "lads:cape_dragon", "lads:cape_founder"]
-    for cid in expected_capes:
-        assert cid in item_ids
-        item = next(i for i in items if i["id"] == cid)
-        assert item["category"] == "Capes"
+    # No hardcoded capes
+    for cid in ["lads:cape_aurora", "lads:cape_dragon", "lads:cape_founder"]:
+        assert cid not in item_ids
+
+    # Dynamic catalog items merge properly
+    merged = cosmetics.get_all_cosmetics({1: "lads:cape_dragon"})
+    assert "lads:cape_dragon" in [i["id"] for i in merged]
 
 
 @pytest.mark.asyncio
@@ -289,11 +290,18 @@ async def test_bot_store_all_access_and_grants(tmp_path):
     assert details is not None
     assert details["granted_by"] == "staff:testadmin"
 
-    # Profile shows all_access=True and includes known items
+    # Profile shows all_access=True and includes free items
     prof = await store.get_profile(UUID_A)
     assert prof.get("all_access") is True
-    assert "lads:cape_aurora" in prof["owned"]
     assert "lads:groove" in prof["owned"]
+
+    # When catalog items exist, all-access profile also contains them
+    cosmetics._DEFAULT_CATALOG = {1: "lads:cape_aurora"}
+    try:
+        prof_cat = await store.get_profile(UUID_A)
+        assert "lads:cape_aurora" in prof_cat["owned"]
+    finally:
+        cosmetics._DEFAULT_CATALOG = None
 
     # 5. Disable All-Access pass
     changed = await store.set_all_access(UUID_A, False, granted_by="staff:testadmin")
@@ -358,3 +366,120 @@ def test_cosmetics_select_view_components(tmp_path):
     embed = view.build_embed()
     assert "Arash_YT" in embed.title
     assert "Grant" in embed.title
+
+
+class MockResponse:
+    def __init__(self):
+        self.deferred = False
+        self.ephemeral = False
+        self.messages = []
+
+    async def defer(self, ephemeral=False):
+        self.deferred = True
+        self.ephemeral = ephemeral
+
+    async def send_message(self, content=None, embed=None, view=None, ephemeral=False):
+        self.messages.append({"content": content, "embed": embed, "view": view, "ephemeral": ephemeral})
+
+
+class MockFollowup:
+    def __init__(self):
+        self.sent = []
+
+    async def send(self, content=None, embed=None, view=None, ephemeral=False):
+        self.sent.append({"content": content, "embed": embed, "view": view, "ephemeral": ephemeral})
+        return self
+
+
+class MockUser:
+    def __init__(self, user_id=12345, name="AdminUser"):
+        self.id = user_id
+        self.name = name
+        self.mention = f"<@{user_id}>"
+
+
+class MockInteraction:
+    def __init__(self, user=None):
+        self.response = MockResponse()
+        self.followup = MockFollowup()
+        self.user = user or MockUser()
+        self.guild = None
+
+
+@pytest.mark.asyncio
+async def test_slash_cosmetics_grant_all_free_fallback(monkeypatch, tmp_path):
+    """When only free emotes exist, /cosmetics grant responds with the required fallback notice."""
+    state_file = tmp_path / "state.json"
+    state_file.write_text(json.dumps({
+        "linked_accounts": {
+            "123456789012345678": {"uuid": UUID_A, "ign": "Arash_YT"}
+        }
+    }), encoding="utf-8")
+    monkeypatch.setattr(B, "load_state", lambda: json.loads(state_file.read_text(encoding="utf-8")))
+
+    monkeypatch.setattr(cosmetics, "_DEFAULT_CATALOG", None)
+    monkeypatch.delenv("COSMETICS_CATALOG", raising=False)
+
+    interaction = MockInteraction()
+    await B.slash_cosmetics_grant.callback(interaction, "Arash_YT")
+
+    assert len(interaction.followup.sent) == 1
+    sent = interaction.followup.sent[0]
+    assert sent["content"] == "Every cosmetic is free right now; use `/cosmetics allaccess` to pre-unlock future paid ones."
+    assert sent["ephemeral"] is True
+
+
+@pytest.mark.asyncio
+async def test_slash_cosmetics_grant_with_paid_items(monkeypatch, tmp_path):
+    """When catalog items exist, /cosmetics grant only includes non-free items in the selection view."""
+    state_file = tmp_path / "state.json"
+    state_file.write_text(json.dumps({
+        "linked_accounts": {
+            "123456789012345678": {"uuid": UUID_A, "ign": "Arash_YT"}
+        }
+    }), encoding="utf-8")
+    monkeypatch.setattr(B, "load_state", lambda: json.loads(state_file.read_text(encoding="utf-8")))
+
+    db_file = tmp_path / "cosmetics.db"
+    store = cosmetics.CosmeticsStore(db_file)
+    monkeypatch.setattr(cosmetics, "get_store", lambda: store)
+
+    custom_catalog = {1: "lads:cape_phoenix"}
+    monkeypatch.setattr(cosmetics, "_DEFAULT_CATALOG", custom_catalog)
+
+    interaction = MockInteraction()
+    await B.slash_cosmetics_grant.callback(interaction, "Arash_YT")
+
+    assert len(interaction.followup.sent) == 1
+    sent = interaction.followup.sent[0]
+    assert sent["view"] is not None
+    assert [item["id"] for item in sent["view"].items] == ["lads:cape_phoenix"]
+
+
+@pytest.mark.asyncio
+async def test_slash_cosmetics_list_free_emotes_format(monkeypatch, tmp_path):
+    """Verify that /cosmetics list marks all free emotes as (free)."""
+    state_file = tmp_path / "state.json"
+    state_file.write_text(json.dumps({
+        "linked_accounts": {
+            "123456789012345678": {"uuid": UUID_A, "ign": "Arash_YT"}
+        }
+    }), encoding="utf-8")
+    monkeypatch.setattr(B, "load_state", lambda: json.loads(state_file.read_text(encoding="utf-8")))
+
+    db_file = tmp_path / "cosmetics.db"
+    store = cosmetics.CosmeticsStore(db_file)
+    monkeypatch.setattr(cosmetics, "get_store", lambda: store)
+
+    interaction = MockInteraction()
+    await B.slash_cosmetics_list.callback(interaction, "Arash_YT")
+
+    assert len(interaction.followup.sent) == 1
+    sent = interaction.followup.sent[0]
+    embed = sent["embed"]
+    assert embed is not None
+    free_field = next(f for f in embed.fields if "Free Emotes" in f.name)
+    for emote in cosmetics.FREE:
+        name = cosmetics.format_item_name(emote)
+        assert f"{name} (free)" in free_field.value
+

@@ -1132,8 +1132,17 @@ async def test_all_access_grants_all_and_future_items(tmp_path):
     # Profile returns all known cosmetics in 'owned' and 'all_access: True'
     prof = await store.get_profile(A)
     assert prof.get("all_access") is True
-    for item in ("lads:groove", "lads:floss", "lads:cape_aurora", "lads:cape_dragon", "lads:cape_founder"):
+    for item in cosmetics.FREE:
         assert item in prof["owned"]
+
+    # When catalog items are configured, they are also returned in owned
+    cosmetics._DEFAULT_CATALOG = {1: "lads:cape_aurora", 2: "lads:cape_dragon"}
+    try:
+        prof_with_cat = await store.get_profile(A)
+        assert "lads:cape_aurora" in prof_with_cat["owned"]
+        assert "lads:cape_dragon" in prof_with_cat["owned"]
+    finally:
+        cosmetics._DEFAULT_CATALOG = None
 
     # List returns all_access flag and details
     res = await store.list_cosmetics(A)
@@ -1228,25 +1237,21 @@ def test_cli_allaccess(tmp_path, capsys):
 
 
 def test_get_all_cosmetics_source_of_truth():
-    """All 9 emotes and 3 capes are present in catalog, and catalog dict merges properly."""
+    """Default get_all_cosmetics returns only FREE emotes; catalog dict merges dynamic items."""
     items = cosmetics.get_all_cosmetics()
     item_ids = [i["id"] for i in items]
 
-    # Verify all 9 emotes
-    expected_emotes = [
-        "lads:groove", "lads:wave", "lads:clap", "lads:floss",
-        "lads:cheer", "lads:bow", "lads:facepalm", "lads:salute", "lads:shrug"
-    ]
-    for emote_id in expected_emotes:
+    # Verify all 9 emotes and only free emotes by default
+    assert len(items) == len(cosmetics.FREE)
+    for emote_id in cosmetics.FREE:
         assert emote_id in item_ids
         item = next(i for i in items if i["id"] == emote_id)
         assert item["category"] == "Emotes"
+        assert item["free"] is True
 
-    # Verify capes
+    # No built-in capes exist without catalog
     for cape_id in ("lads:cape_aurora", "lads:cape_dragon", "lads:cape_founder"):
-        assert cape_id in item_ids
-        item = next(i for i in items if i["id"] == cape_id)
-        assert item["category"] == "Capes"
+        assert cape_id not in item_ids
 
     # Merge with custom catalog
     custom_catalog = {100: "lads:hat_wizard", 101: "lads:cape_phoenix"}
@@ -1257,7 +1262,9 @@ def test_get_all_cosmetics_source_of_truth():
     hat_item = next(i for i in merged if i["id"] == "lads:hat_wizard")
     assert hat_item["category"] == "Others"
     assert hat_item["name"] == "Hat Wizard"
+    assert hat_item["free"] is False
     cape_item = next(i for i in merged if i["id"] == "lads:cape_phoenix")
     assert cape_item["category"] == "Capes"
+    assert cape_item["free"] is False
 
 

@@ -77,23 +77,17 @@ def load_catalog_from_file(path: str | Path | None) -> dict[int | str, str] | No
         return None
 
 
-BUILTIN_EMOTES: list[dict[str, str]] = [
-    {"id": "lads:groove", "name": "Groove", "category": "Emotes"},
-    {"id": "lads:wave", "name": "Wave", "category": "Emotes"},
-    {"id": "lads:clap", "name": "Clap", "category": "Emotes"},
-    {"id": "lads:floss", "name": "Floss", "category": "Emotes"},
-    {"id": "lads:cheer", "name": "Cheer", "category": "Emotes"},
-    {"id": "lads:bow", "name": "Bow", "category": "Emotes"},
-    {"id": "lads:facepalm", "name": "Facepalm", "category": "Emotes"},
-    {"id": "lads:salute", "name": "Salute", "category": "Emotes"},
-    {"id": "lads:shrug", "name": "Shrug", "category": "Emotes"},
-]
-
-BUILTIN_CAPES: list[dict[str, str]] = [
-    {"id": "lads:cape_aurora", "name": "Aurora Cape", "category": "Capes"},
-    {"id": "lads:cape_dragon", "name": "Dragon Cape", "category": "Capes"},
-    {"id": "lads:cape_founder", "name": "Founder Cape", "category": "Capes"},
-]
+EMOTE_NAMES: dict[str, str] = {
+    "lads:groove": "Groove",
+    "lads:wave": "Wave",
+    "lads:clap": "Clap",
+    "lads:floss": "Floss",
+    "lads:cheer": "Cheer",
+    "lads:bow": "Bow",
+    "lads:facepalm": "Facepalm",
+    "lads:salute": "Salute",
+    "lads:shrug": "Shrug",
+}
 
 
 def categorize_item(item_id: str) -> str:
@@ -107,41 +101,51 @@ def categorize_item(item_id: str) -> str:
 
 
 def format_item_name(item_id: str) -> str:
-    """Derive a friendly display name from an item ID if not built-in."""
-    for item in BUILTIN_EMOTES + BUILTIN_CAPES:
-        if item["id"] == item_id:
-            return item["name"]
+    """Derive a friendly display name from an item ID."""
+    if item_id in EMOTE_NAMES:
+        return EMOTE_NAMES[item_id]
     part = item_id.split(":", 1)[-1]
     words = part.replace("_", " ").split()
     return " ".join(w.capitalize() for w in words)
 
 
+_DEFAULT_CATALOG: dict[int | str, str] | None = None
+
+
 def get_all_cosmetics(catalog_dict: dict[int | str, str] | None = None) -> list[dict[str, str]]:
-    """Return all known cosmetic items, combining built-in emotes, capes, and any catalog items."""
+    """Return all known cosmetic items from the real sources: the FREE emotes allow-list and COSMETICS_CATALOG."""
     seen: set[str] = set()
     result: list[dict[str, str]] = []
 
-    # 1. Built-in emotes (in EmoteLibrary order)
-    for emote in BUILTIN_EMOTES:
-        if emote["id"] not in seen:
-            seen.add(emote["id"])
-            result.append(dict(emote))
+    # 1. Built-in emotes from FREE allow-list (in order)
+    for emote_id in FREE:
+        if emote_id not in seen:
+            seen.add(emote_id)
+            result.append({
+                "id": emote_id,
+                "name": format_item_name(emote_id),
+                "category": "Emotes",
+                "free": True,
+            })
 
-    # 2. Built-in capes
-    for cape in BUILTIN_CAPES:
-        if cape["id"] not in seen:
-            seen.add(cape["id"])
-            result.append(dict(cape))
+    # 2. Dynamic items from catalog (parameter > module default > env COSMETICS_CATALOG)
+    active_cat = catalog_dict
+    if active_cat is None:
+        active_cat = _DEFAULT_CATALOG
+    if active_cat is None:
+        env_cat = os.getenv("COSMETICS_CATALOG")
+        if env_cat:
+            active_cat = load_catalog_from_file(env_cat)
 
-    # 3. Dynamic items from catalog
-    if catalog_dict:
-        for val in catalog_dict.values():
+    if active_cat:
+        for val in active_cat.values():
             if isinstance(val, str) and val not in seen and ITEM_ID_RE.fullmatch(val):
                 seen.add(val)
                 result.append({
                     "id": val,
                     "name": format_item_name(val),
                     "category": categorize_item(val),
+                    "free": val in FREE,
                 })
     return result
 
@@ -1344,6 +1348,9 @@ def setup(
     else:
         env_cat = os.getenv("COSMETICS_CATALOG")
         app[CATALOG] = load_catalog_from_file(env_cat) if env_cat else None
+
+    global _DEFAULT_CATALOG
+    _DEFAULT_CATALOG = app[CATALOG]
 
     hub = Hub(insecure, store=store)
     app[HUB] = hub
