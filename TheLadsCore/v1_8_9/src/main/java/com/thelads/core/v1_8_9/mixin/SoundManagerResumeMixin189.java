@@ -1,8 +1,6 @@
 package com.thelads.core.v1_8_9.mixin;
 
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import net.minecraft.client.audio.ISound;
@@ -14,65 +12,50 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import paulscode.sound.SoundSystem;
 
 /**
- * Fixes MC-35714 / MC-35856: In vanilla 1.8.9, closing any GUI screen (Minecraft.displayGuiScreen(null))
- * calls SoundHandler.resumeSounds() unconditionally, which calls SoundManager.resumeAllSounds().
- *
- * <p>Vanilla 1.8.9's resumeAllSounds() iterated over all keys in playingSounds and invoked
- * sndSystem.play(channel), restarting sounds that had already finished playing (paulscode's
- * Library.play() on a stopped source replays it from the beginning).
- *
- * <p>This mixin mirrors the 1.9+ fix: tracking which channels were actually playing and paused
- * by pauseAllSounds() in {@code lads$pausedChannels}, resuming only those channels, and clearing
- * the list so subsequent GUI closures never replay stale sounds.
+ * Fixes MC-35714 / MC-35856: closing any GUI (Minecraft.displayGuiScreen(null)) calls SoundHandler.resumeSounds() ->
+ * SoundManager.resumeAllSounds(), which calls play() on every channel still listed in playingSounds. A sound that already
+ * finished but was not yet removed by updateAllSounds() restarts from the beginning (paulscode play() on a stopped source).
+ * Like 1.9+, only the channels pauseAllSounds() really paused are resumed. Both loops iterate playingSounds.keySet(), so the
+ * keySet() calls are redirected: the play()/pause() calls go to SoundManager$SoundSystemStarterThread (package-private),
+ * which a redirect could not name.
  */
 @Mixin(SoundManager.class)
 public abstract class SoundManagerResumeMixin189 {
+    @Shadow @Final private Map<String, ISound> playingSounds;
     @Shadow @Final private Map<ISound, String> invPlayingSounds;
+    @Shadow public abstract boolean isSoundPlaying(ISound sound);
 
-    private final List<String> lads$pausedChannels = new ArrayList<String>();
+    private final Set<String> lads$pausedChannels = new HashSet<String>();
 
-    @Inject(method = "pauseAllSounds", at = @At("HEAD"))
-    private void lads$onPauseStart(CallbackInfo ci) {
-        this.lads$pausedChannels.clear();
-    }
-
-    /** Only pause and track channels that are currently playing (skip finished/stopped ones). */
-    @Redirect(method = "pauseAllSounds", at = @At(value = "INVOKE",
-        target = "Lpaulscode/sound/SoundSystem;pause(Ljava/lang/String;)V", remap = false))
-    private void lads$pauseIfPlaying(SoundSystem sndSystem, String channel) {
-        if (sndSystem != null && sndSystem.playing(channel)) {
-            sndSystem.pause(channel);
-            this.lads$pausedChannels.add(channel);
+    /** pauseAllSounds pauses (and remembers) only the channels that are still playing. */
+    @Redirect(method = "pauseAllSounds", at = @At(value = "INVOKE", target = "Ljava/util/Map;keySet()Ljava/util/Set;"))
+    private Set<String> lads$playingChannels(Map<String, ISound> map) {
+        lads$pausedChannels.clear();
+        for (Map.Entry<String, ISound> entry : playingSounds.entrySet()) {
+            if (isSoundPlaying(entry.getValue())) lads$pausedChannels.add(entry.getKey());
         }
+        return new HashSet<String>(lads$pausedChannels);
     }
 
-    /** In resumeAllSounds, iterate ONLY over channels that were actually paused by pauseAllSounds. */
-    @Redirect(method = "resumeAllSounds", at = @At(value = "INVOKE",
-        target = "Ljava/util/Map;keySet()Ljava/util/Set;"))
-    private Set<String> lads$onlyPausedChannels(Map<String, ISound> map) {
-        Set<String> set = new HashSet<String>(this.lads$pausedChannels);
-        this.lads$pausedChannels.clear();
-        return set;
+    /** resumeAllSounds resumes only what pauseAllSounds paused and is still listed; a second close resumes nothing. */
+    @Redirect(method = "resumeAllSounds", at = @At(value = "INVOKE", target = "Ljava/util/Map;keySet()Ljava/util/Set;"))
+    private Set<String> lads$pausedChannels(Map<String, ISound> map) {
+        Set<String> resume = new HashSet<String>(lads$pausedChannels);
+        resume.retainAll(playingSounds.keySet());
+        lads$pausedChannels.clear();
+        return resume;
     }
 
     @Inject(method = "stopSound", at = @At("HEAD"))
     private void lads$onStopSound(ISound sound, CallbackInfo ci) {
-        String channel = this.invPlayingSounds.get(sound);
-        if (channel != null) {
-            this.lads$pausedChannels.remove(channel);
-        }
+        String channel = invPlayingSounds.get(sound);
+        if (channel != null) lads$pausedChannels.remove(channel);
     }
 
     @Inject(method = "stopAllSounds", at = @At("HEAD"))
     private void lads$onStopAllSounds(CallbackInfo ci) {
-        this.lads$pausedChannels.clear();
-    }
-
-    @Inject(method = "unloadSoundSystem", at = @At("HEAD"))
-    private void lads$onUnloadSoundSystem(CallbackInfo ci) {
-        this.lads$pausedChannels.clear();
+        lads$pausedChannels.clear();
     }
 }
