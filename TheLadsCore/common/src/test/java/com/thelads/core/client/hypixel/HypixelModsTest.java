@@ -12,7 +12,9 @@ import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
 import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.TextOption;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.InputStream;
@@ -853,7 +855,7 @@ class HypixelModsTest {
         RealPing.tick(game, connection, 7 * S);
         assertEquals(2, payloads.size());
         RealPing.receive(RealPing.CHANNEL, new byte[] {1, 1, 4, 'p', 'o', 'n', 'g'}, 7 * S + 80_000_000L);
-        assertEquals(50, RealPing.own(1), "smoothed: (40 * 3 + 80) / 4");
+        assertEquals(60, RealPing.own(1), "rolling median of [40, 80]: (40 + 80) / 2");
         RealPing.tick(game, connection, 13 * S);
         assertEquals(3, payloads.size());
         RealPing.receive(RealPing.CHANNEL, new byte[] {0, 3}, 13 * S + 10_000_000L); // rate limited
@@ -861,5 +863,121 @@ class HypixelModsTest {
         assertEquals(3, payloads.size(), "no Mod API ping for 10 s after 'rate limited' (status pings stand in)");
         RealPing.tick(game, connection, 24 * S);
         assertEquals(4, payloads.size(), "then the Mod API again");
+    }
+
+    @Test void rollingMedianFiltersSpikesAndSettlesFast() {
+        RealPing.PingTracker tracker = new RealPing.PingTracker(3);
+        tracker.add(15, 1 * S);
+        assertEquals(15, tracker.get(1 * S), "first sample available at once");
+        tracker.add(17, 2 * S);
+        assertEquals(16, tracker.get(2 * S), "median of [15, 17] is 16");
+        // Outlier spike: 200 ms packet delay into [15, 17, 200]
+        tracker.add(200, 3 * S);
+        assertEquals(17, tracker.get(3 * S), "median of [15, 17, 200] is 17: spike filtered");
+        tracker.add(16, 4 * S);
+        assertEquals(17, tracker.get(4 * S), "median of [17, 200, 16] is 17");
+        // Route step change from ~16 to 80 ms: settles in exactly 2 samples
+        tracker.add(80, 5 * S); // buffer has [200, 16, 80] -> median 80
+        assertEquals(80, tracker.get(5 * S), "settles to 80 within 2 samples of step change");
+        tracker.add(80, 6 * S); // buffer has [16, 80, 80] -> median 80
+        assertEquals(80, tracker.get(6 * S));
+        // Stale expiration
+        assertEquals(-1, tracker.get(6 * S + 31 * S), "stale after 30 s");
+        // Fresh sample after stale resets buffer
+        tracker.add(25, 6 * S + 32 * S);
+        assertEquals(25, tracker.get(6 * S + 32 * S));
+    }
+
+    @Test void statusPingAndModApiMinimumSelection() {
+        // Status ping measures pure socket RTT (15 ms); Mod API includes 0-50 ms server tick delay (42 ms)
+        assertEquals(15, RealPing.aggregate(15, 42), "minimum selected when both exist");
+        assertEquals(42, RealPing.aggregate(-1, 42), "falls back to Mod API when status ping fails");
+        assertEquals(15, RealPing.aggregate(15, -1), "falls back to status ping when Mod API unavailable");
+        assertEquals(RealPing.NONE, RealPing.aggregate(-1, -1), "NONE when neither available");
+    }
+
+    @Test void statusPingPacketFramingWithFakeStreams() throws Exception {
+        ByteArrayOutputStream serverToClient = new ByteArrayOutputStream();
+        // Server writes status response: packet id 0, JSON string
+        byte[] json = "{\"version\":{\"name\":\"1.8.9\",\"protocol\":47}}".getBytes(StandardCharsets.UTF_8);
+        ByteArrayOutputStream statusBody = new ByteArrayOutputStream();
+        RealPing.writeVarInt(statusBody, 0); // packet id 0
+        RealPing.writeVarInt(statusBody, json.length);
+        statusBody.write(json);
+        RealPing.writeVarInt(serverToClient, statusBody.size());
+        serverToClient.write(statusBody.toByteArray());
+
+        // Server writes pong response: packet id 1, 8-byte payload
+        ByteArrayOutputStream pongBody = new ByteArrayOutputStream();
+        RealPing.writeVarInt(pongBody, 1); // packet id 1
+        pongBody.write(new byte[] {0, 0, 0, 0, 0, 0, 0, 42});
+        RealPing.writeVarInt(serverToClient, pongBody.size());
+        serverToClient.write(pongBody.toByteArray());
+
+        ByteArrayInputStream in = new ByteArrayInputStream(serverToClient.toByteArray());
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        int ms = RealPing.statusPing(in, out, "mc.hypixel.net", 25565);
+        assertTrue(ms >= 0 && ms < 5000, "measured status ping " + ms + " ms");
+
+        // Verify packets sent from client to server
+        ByteArrayInputStream clientToServer = new ByteArrayInputStream(out.toByteArray());
+        byte[] handshakePacket = read(clientToServer);
+        DataInputStream hIn = new DataInputStream(new ByteArrayInputStream(handshakePacket));
+        assertEquals(0, hIn.read()); // packet id 0
+        assertEquals(47, hIn.read()); // protocol version 47
+        int hostLen = hIn.read();
+        byte[] hostBytes = new byte[hostLen];
+        hIn.readFully(hostBytes);
+        assertEquals("mc.hypixel.net", new String(hostBytes, StandardCharsets.UTF_8));
+        int port = hIn.readUnsignedShort();
+        assertEquals(25565, port);
+        assertEquals(1, hIn.read()); // state 1: status
+
+        byte[] statusReq = read(clientToServer);
+        assertEquals(1, statusReq.length);
+        assertEquals(0, statusReq[0]); // packet id 0
+
+        byte[] pingPacket = read(clientToServer);
+        assertEquals(9, pingPacket.length);
+        assertEquals(1, pingPacket[0]); // packet id 1
+        assertEquals(42, pingPacket[8]);
+    }
+
+    @Test void statusPingFailsOnInvalidStatusPacketId() throws Exception {
+        ByteArrayOutputStream serverToClient = new ByteArrayOutputStream();
+        // Server writes packet with id 2 (invalid for status state)
+        ByteArrayOutputStream badBody = new ByteArrayOutputStream();
+        RealPing.writeVarInt(badBody, 2);
+        RealPing.writeVarInt(serverToClient, badBody.size());
+        serverToClient.write(badBody.toByteArray());
+
+        ByteArrayInputStream in = new ByteArrayInputStream(serverToClient.toByteArray());
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        assertThrows(IOException.class, () -> RealPing.statusPing(in, out, "mc.hypixel.net", 25565));
+    }
+
+    @Test void statusPingFailsOnInvalidPongPacketId() throws Exception {
+        ByteArrayOutputStream serverToClient = new ByteArrayOutputStream();
+        // Server writes valid status response
+        byte[] json = "{}".getBytes(StandardCharsets.UTF_8);
+        ByteArrayOutputStream statusBody = new ByteArrayOutputStream();
+        RealPing.writeVarInt(statusBody, 0);
+        RealPing.writeVarInt(statusBody, json.length);
+        statusBody.write(json);
+        RealPing.writeVarInt(serverToClient, statusBody.size());
+        serverToClient.write(statusBody.toByteArray());
+
+        // But writes packet with id 3 instead of pong (id 1)
+        ByteArrayOutputStream badPong = new ByteArrayOutputStream();
+        RealPing.writeVarInt(badPong, 3);
+        RealPing.writeVarInt(serverToClient, badPong.size());
+        serverToClient.write(badPong.toByteArray());
+
+        ByteArrayInputStream in = new ByteArrayInputStream(serverToClient.toByteArray());
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        assertThrows(IOException.class, () -> RealPing.statusPing(in, out, "mc.hypixel.net", 25565));
     }
 }
