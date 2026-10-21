@@ -42,6 +42,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(GameSettings.class)
 public abstract class GameSettingsMixin {
     @Shadow private File optionsFile;
+    public boolean ofFastRender = true;
 
     /** options.txt gets the player's own Brightness, not Fullbright's (Fullbright189.saving). */
     @Inject(method = "saveOptions", at = @At("HEAD"), require = 1)
