@@ -9,18 +9,20 @@ public class CoordinatesHudElement extends HudElement {
     private static final String[] AXES = {"+Z", "-X +Z", "-X", "-X -Z", "-Z", "+X -Z", "+X", "+X +Z"};
     private static final int DIRECTION_GAP = 8;
     private LadsGraphics preparedGraphics;
-    private boolean hasPlayer, vertical, showBiome;
+    private boolean hasPlayer, vertical, showBiome, showC;
     private String px, py, pz, prefix, separator, biomeText, compass, axes, directionText;
     private String pxSep, pySep, biomeVerticalText = "Biome: Plains", biomeHorizText = " (Plains)";
+    private String cachedCText = null, cText, cTextHoriz;
     private int lastPosX = Integer.MIN_VALUE, lastPosY = Integer.MIN_VALUE, lastPosZ = Integer.MIN_VALUE;
     private int lastBiomeBx = Integer.MIN_VALUE, lastBiomeBy = Integer.MIN_VALUE, lastBiomeBz = Integer.MIN_VALUE;
     private String cachedBiomeName = null;
+    private int lastRenderedChunks = -1, lastMeasuredChunks = -1;
     private int lastFacing = -2, lastFormat = -1;
-    private boolean lastVertical, lastShowBiome, lastShowDir;
+    private boolean lastVertical, lastShowBiome, lastShowDir, lastShowC;
     private String lastBiomeName = null;
     private Object lastMetricsKey = null;
     private int wPrefix, wPxSep, wPySep, wPz, wBiome, wDir;
-    private int wCompass, wAxes;
+    private int wCompass, wAxes, wC, wCHoriz;
 
     public CoordinatesHudElement() {
         this.x = 5;
@@ -35,8 +37,11 @@ public class CoordinatesHudElement extends HudElement {
         hasPlayer = g.getGame().hasPlayer();
         showBiome = optBool("Show Biome", false);
         boolean showDirection = optBool("Show Direction", true);
+        showC = optBool("Show C", false);
         if (!hasPlayer) {
-            compass = axes = directionText = null;
+            compass = axes = directionText = cText = cTextHoriz = null;
+            lastRenderedChunks = lastMeasuredChunks = -1;
+            cachedCText = null;
             lastPosX = Integer.MIN_VALUE;
             lastPosY = Integer.MIN_VALUE;
             lastPosZ = Integer.MIN_VALUE;
@@ -54,6 +59,17 @@ public class CoordinatesHudElement extends HudElement {
         int posZ = g.getGame().getPlayerZ();
         int format = optCycle("Format", 2);
         vertical = optBool("Vertical", true);
+        int chunks = showC ? g.getGame().getRenderedChunks() : -1;
+        if (showC) {
+            if (chunks != lastRenderedChunks || cachedCText == null) {
+                lastRenderedChunks = chunks;
+                cachedCText = "C: " + chunks;
+            }
+            cText = cachedCText;
+        } else {
+            cText = null;
+            cTextHoriz = null;
+        }
         String bName = cachedBiomeName;
         if (showBiome && (posX != lastBiomeBx || posY != lastBiomeBy || posZ != lastBiomeBz || bName == null)) {
             lastBiomeBx = posX;
@@ -66,14 +82,14 @@ public class CoordinatesHudElement extends HudElement {
 
         if (posX == lastPosX && posY == lastPosY && posZ == lastPosZ && facing == lastFacing
                 && format == lastFormat && vertical == lastVertical && showBiome == lastShowBiome
-                && showDirection == lastShowDir && java.util.Objects.equals(bName, lastBiomeName)
+                && showDirection == lastShowDir && showC == lastShowC && (!showC || chunks == lastMeasuredChunks) && java.util.Objects.equals(bName, lastBiomeName)
                 && java.util.Objects.equals(metricsKey, lastMetricsKey)) {
             return;
         }
 
         lastPosX = posX; lastPosY = posY; lastPosZ = posZ; lastFacing = facing;
         lastFormat = format; lastVertical = vertical; lastShowBiome = showBiome;
-        lastShowDir = showDirection; lastBiomeName = bName; lastMetricsKey = metricsKey;
+        lastShowDir = showDirection; lastShowC = showC; lastMeasuredChunks = chunks; lastBiomeName = bName; lastMetricsKey = metricsKey;
 
         compass = axes = directionText = null;
         if (facing >= 0) {
@@ -90,10 +106,18 @@ public class CoordinatesHudElement extends HudElement {
         if (vertical) {
             int lineHeight = g.fontHeight() + 2;
             int maxTextW = Math.max(g.textWidth(px), Math.max(g.textWidth(py), g.textWidth(pz)));
+            int rightColW = 0;
             if (compass != null) {
                 wCompass = g.textWidth(compass);
                 wAxes = g.textWidth(axes);
-                maxTextW += DIRECTION_GAP + Math.max(wCompass, wAxes);
+                rightColW = Math.max(wCompass, wAxes);
+            }
+            if (cText != null) {
+                wC = g.textWidth(cText);
+                rightColW = Math.max(rightColW, wC);
+            }
+            if (rightColW > 0) {
+                maxTextW += DIRECTION_GAP + rightColW;
             }
             if (showBiome) {
                 maxTextW = Math.max(maxTextW, g.textWidth(biomeVerticalText));
@@ -121,6 +145,13 @@ public class CoordinatesHudElement extends HudElement {
             directionText = separator + compass + " (" + axes + ")";
             wDir = g.textWidth(directionText);
             horizW += wDir;
+        }
+        if (cText != null) {
+            cTextHoriz = separator + cText;
+            wCHoriz = g.textWidth(cTextHoriz);
+            horizW += wCHoriz;
+        } else {
+            cTextHoriz = null;
         }
         this.width = Math.max(120, horizW + 8);
         this.height = Math.max(16, g.fontHeight() + 6);
@@ -150,6 +181,9 @@ public class CoordinatesHudElement extends HudElement {
                 g.drawText(compass, x + width - 4 - wCompass, y + 3, base, shadow);
                 g.drawText(axes, x + width - 4 - wAxes, y + 3 + lineHeight, base, shadow);
             }
+            if (cText != null) {
+                g.drawText(cText, x + width - 4 - wC, y + 3 + 2 * lineHeight, base, shadow);
+            }
             return;
         }
         // Force left-aligned
@@ -169,7 +203,11 @@ public class CoordinatesHudElement extends HudElement {
             g.drawText(biomeHorizText, tx, ty, base, shadow);
             tx += wBiome;
         }
-        if (directionText != null) g.drawText(directionText, tx, ty, base, shadow);
+        if (directionText != null) {
+            g.drawText(directionText, tx, ty, base, shadow);
+            tx += wDir;
+        }
+        if (cTextHoriz != null) g.drawText(cTextHoriz, tx, ty, base, shadow);
     }
 
     /** Which of the eight directions the player faces (an index into COMPASS), by yaw (0 = south), else by the facing's name; -1 when neither says. */
@@ -178,4 +216,7 @@ public class CoordinatesHudElement extends HudElement {
         String facing = name == null ? "" : name.toLowerCase(java.util.Locale.ROOT);
         return facing.startsWith("south") ? 0 : facing.startsWith("west") ? 2 : facing.startsWith("north") ? 4 : facing.startsWith("east") ? 6 : -1;
     }
+
+    public String getCText() { return cText; }
+    public String getCachedCText() { return cachedCText; }
 }

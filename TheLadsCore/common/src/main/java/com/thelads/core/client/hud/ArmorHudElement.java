@@ -13,6 +13,36 @@ public class ArmorHudElement extends HudElement {
             new ArmorPiece("Chestplate", 200, 240));
     /** Hotbar Slots: four 20 px slots plus the frame's 1 px edges. */
     private static final int SLOTS_WIDTH = 82;
+
+    public record StripPiece(int xOffset, int u, int width) {}
+
+    /**
+     * Pure function calculating the hotbar texture pieces for an armor strip.
+     * Takes left slots (helmet, chestplate) from the left end of the hotbar (including left outer border)
+     * and right slots (leggings, boots) from the right end of the hotbar (including right outer border),
+     * joining them seamlessly without a duplicate inner divider.
+     */
+    public static List<StripPiece> calculateStripPieces() {
+        return calculateStripPieces(4);
+    }
+
+    public static List<StripPiece> calculateStripPieces(int slots) {
+        if (slots != 4) {
+            return List.of(
+                    new StripPiece(0, 0, 1 + slots * 20),
+                    new StripPiece(1 + slots * 20, 181, 1)
+            );
+        }
+        int leftSlots = slots / 2;
+        int rightSlots = slots - leftSlots;
+        int leftWidth = 1 + leftSlots * 20;
+        int rightWidth = rightSlots * 20 + 1;
+        int rightU = 182 - rightWidth;
+        return List.of(
+                new StripPiece(0, 0, leftWidth),
+                new StripPiece(leftWidth, rightU, rightWidth)
+        );
+    }
     private List<ArmorPiece> cachedArmor;
     private List<String> cachedLines = List.of();
     private int cachedMode = -1;

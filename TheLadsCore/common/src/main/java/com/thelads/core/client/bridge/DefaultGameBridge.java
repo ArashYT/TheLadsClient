@@ -18,6 +18,11 @@ public class DefaultGameBridge implements LadsGameBridge {
     }
 
     @Override
+    public int getRenderedChunks() {
+        return 150;
+    }
+
+    @Override
     public boolean hasPlayer() {
         return true;
     }

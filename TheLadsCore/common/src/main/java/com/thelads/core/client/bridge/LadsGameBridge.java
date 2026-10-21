@@ -70,6 +70,12 @@ public interface LadsGameBridge {
 
     int getFps();
 
+    /**
+     * Number of rendered chunks/sections currently in view, matching F3's "C: <rendered>" count.
+     * 0 when unavailable or outside a world.
+     */
+    default int getRenderedChunks() { return 0; }
+
     boolean hasPlayer();
 
     /** True only for a connected native HUD player renderer. */

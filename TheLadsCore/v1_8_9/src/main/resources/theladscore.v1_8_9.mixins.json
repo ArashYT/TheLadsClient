@@ -15,6 +15,7 @@
     "SplashProgressIoniumMixin",
     "AbstractClientPlayerMixin",
     "EntityRendererAccessor",
+    "RenderGlobalAccessor",
     "EntityPlayerSPAccessor",
     "EntityPlayerSPMixin",
     "EntityItemMixin",
