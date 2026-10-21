@@ -33,6 +33,12 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
     }
 
     @Override
+    public int getRenderedChunks() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.levelRenderer != null ? mc.levelRenderer.countRenderedChunks() : 0;
+    }
+
+    @Override
     public boolean hasPlayer() {
         return Minecraft.getInstance().player != null;
     }

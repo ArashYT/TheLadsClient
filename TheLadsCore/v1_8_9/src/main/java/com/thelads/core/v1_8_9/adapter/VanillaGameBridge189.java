@@ -2,6 +2,7 @@ package com.thelads.core.v1_8_9.adapter;
 
 import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.mods.LoadedMod;
+import com.thelads.core.v1_8_9.mixin.RenderGlobalAccessor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -49,6 +50,18 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     @Override
     public int getFps() {
         return Minecraft.getDebugFPS();
+    }
+
+    @Override
+    public int getRenderedChunks() {
+        Minecraft mc = mc();
+        if (mc.renderGlobal == null) return 0;
+        try {
+            List<?> infos = ((RenderGlobalAccessor) mc.renderGlobal).ladsRenderInfos();
+            return infos != null ? infos.size() : 0;
+        } catch (Throwable ignored) {
+            return 0;
+        }
     }
 
     @Override

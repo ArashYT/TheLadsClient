@@ -93,6 +93,12 @@ public class GuiLadsAdapter implements LadsGraphics {
 
     @Override
     public void drawHotbarSlots(int x, int y, int slots) {
+        if (slots == 4) {
+            GlStateManager.enableBlend();
+            blit("minecraft:textures/gui/widgets.png", x, y, 0, 0, 41, 22);
+            blit("minecraft:textures/gui/widgets.png", x + 41, y, 141, 0, 41, 22);
+            return;
+        }
         int width = 1 + slots * 20;
         GlStateManager.enableBlend();
         blit("minecraft:textures/gui/widgets.png", x, y, 0, 0, width, 22);

@@ -231,6 +231,16 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
     /** The left part of vanilla's hotbar frame with this many slots and its right edge. */
     @Override
     public void drawHotbarSlots(int x, int y, int slots) {
+        if (slots == 4) {
+            fade(1);
+            try {
+                guiGraphics.blit(WIDGETS, x, y, 0, 0, 41, 22);
+                guiGraphics.blit(WIDGETS, x + 41, y, 141, 0, 41, 22);
+            } finally {
+                endFade();
+            }
+            return;
+        }
         int width = 1 + slots * 20;
         fade(1);
         try {
