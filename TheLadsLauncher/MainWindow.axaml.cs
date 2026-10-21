@@ -76,6 +76,7 @@ public partial class MainWindow : Window
     // Games this launcher started, with their game folder. Touched only on the UI thread.
     private readonly Dictionary<Process, string> _runningProcesses = new();
     private DispatcherTimer? _updateCheckTimer;
+    private DispatcherTimer? _usageHeartbeatTimer;
     // --preview-shared <outputDir>: sandbox-only screenshot/JSON capture of the shared-content surfaces, then exit.
     private string? _previewSharedOutput;
     // --preview-mods <outputDir>: sandbox-only capture of the Mods page for every filter, then exit.
@@ -363,6 +364,12 @@ public partial class MainWindow : Window
             _updateCheckTimer.Start();
             if (settings.LastSeenReleaseNotesVersion != Program.Version)
                 await ShowReleaseNotesAsync();
+
+            // Anonymous usage heartbeat (on start and every 6 h while open)
+            _ = UsageStatsReporter.SendHeartbeatAsync(settings);
+            _usageHeartbeatTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(6) };
+            _usageHeartbeatTimer.Tick += (_, _) => _ = UsageStatsReporter.SendHeartbeatAsync(settings);
+            _usageHeartbeatTimer.Start();
         };
         var logTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
         logTimer.Tick += (_, _) =>
@@ -375,7 +382,7 @@ public partial class MainWindow : Window
             }
         };
         logTimer.Start();
-        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); _updateNowPulse?.Stop(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
+        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); _usageHeartbeatTimer?.Stop(); _updateNowPulse?.Stop(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
         // Stats timer (1 second)
         _statsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statsTimer.Tick += UpdateSystemStats;
@@ -2246,6 +2253,7 @@ public partial class MainWindow : Window
         AutoFixCrashesCheckbox.IsChecked = settings.AutoFixCrashes;
         AutoRelaunchOnCrashCheckbox.IsChecked = settings.AutoRelaunchOnCrash;
         SendCrashReportsCheckbox.IsChecked = settings.SendCrashReports;
+        SendUsageStatsCheckbox.IsChecked = settings.SendAnonymousUsageStats;
         AutoRejoinServerCheckbox.IsChecked = settings.AutoRejoinServer;
         MultiInstanceCheckbox.IsChecked = settings.AllowMultiInstance;
         ParticleCheckbox.IsChecked = settings.ShowParticles;
@@ -2855,6 +2863,7 @@ public partial class MainWindow : Window
         settings.AutoFixCrashes = AutoFixCrashesCheckbox.IsChecked ?? true;
         settings.AutoRelaunchOnCrash = AutoRelaunchOnCrashCheckbox.IsChecked ?? false;
         settings.SendCrashReports = SendCrashReportsCheckbox.IsChecked ?? true;
+        settings.SendAnonymousUsageStats = SendUsageStatsCheckbox.IsChecked ?? true;
         settings.AutoRejoinServer = AutoRejoinServerCheckbox.IsChecked ?? false;
         if (QuickLaunchServerComboBox.SelectedItem is ServerListItem sli && sli.Ip != null)
             settings.QuickLaunchServerIp = sli.Ip;
@@ -4281,6 +4290,7 @@ public partial class MainWindow : Window
 
             var activeProfile = _profileService.GetActiveProfile();
             string gameDirectory = _pathService.GetProfileDirectory(activeProfile);
+            UsageStatsReporter.RecordClientVersionUsed(settings, activeProfile.MinecraftVersion);
             string launchVersionId = GameVersionPolicy.ResolveVersionId(activeProfile);
             if (GameVersionPolicy.RequiresFabric(activeProfile.MinecraftVersion) && string.IsNullOrWhiteSpace(activeProfile.FabricVersion))
                 throw new InvalidOperationException("The Lads Client profile requires a Fabric loader.");
