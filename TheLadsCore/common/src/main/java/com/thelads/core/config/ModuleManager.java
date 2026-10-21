@@ -60,6 +60,7 @@ public class ModuleManager {
         jasione.setEnabled(true);
         registerHidden(jasione, Module.Category.MECHANIC);
         registerHidden(new AsyncModule(), Module.Category.MECHANIC);
+        registerHidden(new OptiFine189Module(), Module.Category.MECHANIC);
 
         // HUD overlay modules (rendered by HudManager)
         HudModule fps = hud("FPS", "Show your current FPS on screen.");

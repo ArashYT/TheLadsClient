@@ -353,6 +353,9 @@ public class ConfigManager {
                 HudSettings.getInstance().replaceExcludedExternalMods(readHudNames(hud.get("excludedExternalMods")));
             }
         }
+        if (com.thelads.core.modules.OptiFine189Module.getInstance() != null) {
+            com.thelads.core.modules.OptiFine189Module.getInstance().sync();
+        }
     }
 
     /** Before 1.7.1 Discord presence was "Coming soon", so nothing saved for it was the player's choice: it starts from the new defaults. */

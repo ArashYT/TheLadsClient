@@ -1,0 +1,24 @@
+{
+  "required": true,
+  "minVersion": "0.7",
+  "package": "com.thelads.core.v1_8_9.mixin.optifine",
+  "refmap": "theladscore.v1_8_9.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "BiomeColorHelperOfMixin189",
+    "BlockLeavesMixin189",
+    "EffectRendererOfMixin189",
+    "EntityRendererFogOfMixin189",
+    "GuiIngameVignetteMixin189",
+    "GuiVideoSettingsMixin189",
+    "MathHelperOfMixin189",
+    "MinecraftSmoothFpsOfMixin189",
+    "RenderEntityItemOfMixin189",
+    "RenderGlobalSkyOfMixin189",
+    "TextureAtlasSpriteOfMixin189",
+    "WorldProviderCloudHeightMixin189"
+  ]
+}
