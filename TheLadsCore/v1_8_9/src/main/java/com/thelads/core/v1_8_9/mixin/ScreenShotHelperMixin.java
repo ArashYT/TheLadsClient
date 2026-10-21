@@ -19,7 +19,8 @@ public abstract class ScreenShotHelperMixin {
     @Inject(method = "saveScreenshot(Ljava/io/File;Ljava/lang/String;IILnet/minecraft/client/shader/Framebuffer;)Lnet/minecraft/util/IChatComponent;",
         at = @At("HEAD"), cancellable = true, require = 1)
     private static void ladsAsyncScreenshot(File gameDirectory, String screenshotName, int width, int height, Framebuffer buffer, CallbackInfoReturnable<IChatComponent> cir) {
-        Screenshots189.saveScreenshotAsync(gameDirectory, screenshotName, width, height, buffer);
+        if (screenshotName != null) return; // named saves (QA captures) stay synchronous: their callers read the file right away
+        Screenshots189.saveScreenshotAsync(gameDirectory, null, width, height, buffer);
         cir.setReturnValue(null);
     }
 }

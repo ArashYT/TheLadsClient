@@ -350,7 +350,7 @@ final class Probe150e {
 
     private static boolean shotPreview(Minecraft mc) throws Exception {
         shot = Screenshots189.lastSaved;
-        if (shot != null && !Screenshots189.previewShown() && ++previewWaits < 40) return retry(5); // decoded off the render thread; 40 x 5 ticks is 10 s
+        if ((shot == null || !Screenshots189.previewShown()) && ++previewWaits < 40) return retry(5); // 1.9.14: saved and decoded off the render thread; 40 x 5 ticks is 10 s
         check(shot != null && Screenshots189.previewShown(), "BetterScreenshots: the preview is shown " + previewWaits + " polls after the key saved " + shot);
         check(shot != null && shot.isFile() && shot.getParentFile().equals(Screenshots189.folder()), "BetterScreenshots: the screenshot key saved " + shot);
         check(Screenshots189.previewShown(), "BetterScreenshots: its preview is shown");

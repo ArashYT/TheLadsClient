@@ -28,12 +28,12 @@ public class ScreenshotConversionTest {
         ScreenshotConversion.convertPixels(raw, out, 2, 2, 2);
 
         // Output row 0 (top row) comes from GL row 1
-        assertEquals(0xFF665544, out[0]);
-        assertEquals(0xFF998877, out[1]);
+        assertEquals(0xFF445566, out[0]);
+        assertEquals(0xFF778899, out[1]);
 
         // Output row 1 (bottom row) comes from GL row 0
-        assertEquals(0xFF332211, out[2]);
-        assertEquals(0xFFCCBBAA, out[3]);
+        assertEquals(0xFF112233, out[2]);
+        assertEquals(0xFFAABBCC, out[3]);
     }
 
     @Test
@@ -50,12 +50,12 @@ public class ScreenshotConversionTest {
         ScreenshotConversion.convertPixels(raw, out, 2, 2, 4);
 
         // Output row 0 from GL row 1
-        assertEquals(0xFF090807, out[0]);
-        assertEquals(0xFF0C0B0A, out[1]);
+        assertEquals(0xFF070809, out[0]);
+        assertEquals(0xFF0A0B0C, out[1]);
 
         // Output row 1 from GL row 0
-        assertEquals(0xFF030201, out[2]);
-        assertEquals(0xFF060504, out[3]);
+        assertEquals(0xFF010203, out[2]);
+        assertEquals(0xFF040506, out[3]);
     }
 
     @Test

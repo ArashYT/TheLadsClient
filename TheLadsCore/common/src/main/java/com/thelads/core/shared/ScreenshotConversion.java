@@ -4,7 +4,8 @@ public final class ScreenshotConversion {
     private ScreenshotConversion() {}
 
     /**
-     * Converts raw OpenGL BGRA pixels to ARGB format and flips the image vertically in a single pass.
+     * Flips raw OpenGL pixels vertically (and drops the texture's row padding). They are read as GL_BGRA +
+     * GL_UNSIGNED_INT_8_8_8_8_REV, which already gives ARGB ints, so like vanilla's TextureUtil.processPixelValues no channel is swapped.
      *
      * @param raw      The raw pixel data read from OpenGL (size at least texWidth * height).
      * @param out      The output array (size at least width * height) to receive converted ARGB pixels.
@@ -18,8 +19,7 @@ public final class ScreenshotConversion {
             int rawRow = (height - 1 - y) * texWidth;
             int outRow = y * width;
             for (int x = 0; x < width; x++) {
-                int p = raw[rawRow + x];
-                out[outRow + x] = 0xFF000000 | (p & 0x0000FF00) | ((p & 0x000000FF) << 16) | ((p >> 16) & 0x000000FF);
+                out[outRow + x] = 0xFF000000 | raw[rawRow + x];
             }
         }
     }
