@@ -119,6 +119,7 @@
     "FontMetricsMixin",
     "FontWidthCacheMixin",
     "SmoothScrollMixin",
+    "SelectionListSmoothScrollMixin",
     "GlobalButtonMixin",
     "GlobalSliderMixin",
     "LowFireMixin",
