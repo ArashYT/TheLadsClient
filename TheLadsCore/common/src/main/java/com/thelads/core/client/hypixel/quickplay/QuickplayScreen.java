@@ -13,6 +13,7 @@ import java.util.Locale;
  * Rendered through LadsGraphics / MenuGraphics across 1.8.9, 1.20.1, and 26.3.
  */
 public final class QuickplayScreen {
+    private static final String WARNING_LONG = "§cQuickplay only works on Hypixel (mc.hypixel.net)", WARNING_SHORT = "§cHypixel only";
     private Runnable onClose;
     private QuickplayCategory selectedCategory = QuickplayCategory.BEDWARS;
     private String searchQuery = "";
@@ -171,7 +172,9 @@ public final class QuickplayScreen {
         // Not on Hypixel warning banner if outside Hypixel
         if (!onHypixel) {
             MenuGraphics.round(g, mainX + 4, currentY + 4, mainW - 8, 20, 0x66992222);
-            g.drawCenteredText("§cQuickplay commands only work on the Hypixel Network (mc.hypixel.net)", mainX + mainW / 2, currentY + 10, -1);
+            // Short enough for the narrowest panel (it overflowed at small GUI widths); the longest that fits wins.
+            String warning = g.textWidth(WARNING_LONG) <= mainW - 16 ? WARNING_LONG : WARNING_SHORT;
+            g.drawCenteredText(warning, mainX + mainW / 2, currentY + 10, -1);
         }
 
         int modesStartY = currentY + (onHypixel ? 4 : 26);
