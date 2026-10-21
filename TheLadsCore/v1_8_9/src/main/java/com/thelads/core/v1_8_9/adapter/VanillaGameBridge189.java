@@ -2,7 +2,6 @@ package com.thelads.core.v1_8_9.adapter;
 
 import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.mods.LoadedMod;
-import com.thelads.core.v1_8_9.mixin.RenderGlobalAccessor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -56,12 +55,26 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     public int getRenderedChunks() {
         Minecraft mc = mc();
         if (mc.renderGlobal == null) return 0;
-        try {
-            List<?> infos = ((RenderGlobalAccessor) mc.renderGlobal).ladsRenderInfos();
-            return infos != null ? infos.size() : 0;
-        } catch (Throwable ignored) {
-            return 0;
+        // F3's own "C: rendered/total" line: vanilla's RenderGlobal and Ionium (which replaces the chunk lists) both answer it.
+        // It builds a String, so it is read at most twice a second.
+        long now = System.nanoTime();
+        if (now - renderedChunksAt > 500_000_000L) {
+            renderedChunksAt = now;
+            renderedChunks = parseRenderedChunks(mc.renderGlobal.getDebugInfoRenders());
         }
+        return renderedChunks;
+    }
+
+    private int renderedChunks;
+    private long renderedChunksAt;
+
+    /** The first number after "C: " in F3's chunk line ("C: 123/456 ..."), 0 when there is none. */
+    static int parseRenderedChunks(String line) {
+        int at = line == null ? -1 : line.indexOf("C: ");
+        if (at < 0) return 0;
+        int n = 0;
+        for (int i = at + 3; i < line.length() && Character.isDigit(line.charAt(i)); i++) n = n * 10 + (line.charAt(i) - '0');
+        return n;
     }
 
     @Override
