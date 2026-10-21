@@ -25,8 +25,12 @@ public abstract class SmoothScrollMixin implements SmoothScrollTarget1201 {
     @WrapOperation(method = "mouseScrolled(DDD)Z",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/AbstractSelectionList;setScrollAmount(D)V"), require = 1)
     private void ladsWheel(AbstractSelectionList<?> list, double amount, Operation<Void> original) {
+        if (net.minecraft.client.Minecraft.getInstance().options.screenEffectScale().get() <= 0) {
+            original.call(list, amount);
+            return;
+        }
         if (!ladsAnimating) ladsTarget = getScrollAmount();
-        ladsTarget = Math.max(0, Math.min(getMaxScroll(), ladsTarget + amount - getScrollAmount()));
+        ladsTarget = Math.max(0, Math.min(getMaxScroll(), ladsTarget + (amount - getScrollAmount()) * com.thelads.core.client.gui.SmoothScroll.FACTOR));
         ladsAnimating = true;
         if (ladsFrame == 0) ladsFrame = System.nanoTime();
     }

@@ -30,7 +30,7 @@ class Lads197DefaultsTest {
     private static final Set<String> DEFAULT_ENABLED_VISIBLE = Set.of(
         "1.7 Animations", "Action Bar", "AppleSkin", "ArmorHUD", "AutoReconnect",
         "BetterF3", "BetterScreenshots", "BorderlessFullscreen", "BossBar", "Chat",
-        "ClientTools", "Clumps", "Coordinates", "Crosshair Tweaks",
+        "ClientTools", com.thelads.core.modules.CloudHeightModule.NAME, "Clumps", "Coordinates", "Crosshair Tweaks",
         "DiscordRPC", "DynamicFPS", com.thelads.core.modules.DynamicLightsModule.NAME, "EnhancedToolbars", "EnhancedTooltips",
         "FarBlockEntities", "FPS", "HYPIXEL Mods", com.thelads.core.modules.ItemPhysicsModule.NAME, com.thelads.core.client.KeepUiOpen.MODULE_NAME, "KillBanner",
         "Minimap", "MouseTweaks", "Nametags", com.thelads.core.client.DamageTilt.MODULE, "Particle Core",
@@ -113,6 +113,13 @@ class Lads197DefaultsTest {
         KillBannerModule killBanner = (KillBannerModule) mm.getModule("KillBanner");
         assertEquals("Reaver", killBanner.bannerStyle.getValue());
         assertEquals("Red", killBanner.reaverVariant.getValue());
+        assertTrue(killBanner.mobs.get(), "KillBanner mobs must be true by default in 1.9.14");
+
+        com.thelads.core.modules.CloudHeightModule cloudHeight = (com.thelads.core.modules.CloudHeightModule) mm.getModule(com.thelads.core.modules.CloudHeightModule.NAME);
+        assertNotNull(cloudHeight);
+        assertTrue(cloudHeight.isEnabled());
+        assertEquals(com.thelads.core.modules.CloudHeightModule.MAX_VALUE, cloudHeight.height.getValue());
+        assertEquals("MAX", cloudHeight.height.display());
 
         Module chat = mm.getModule("Chat");
         assertFalse(((BoolOption) chat.getOption("Chat Background")).get());

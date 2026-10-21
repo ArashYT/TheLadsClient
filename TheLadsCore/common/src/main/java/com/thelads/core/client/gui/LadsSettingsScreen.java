@@ -1329,7 +1329,7 @@ public final class LadsSettingsScreen {
                 g.fill(track.x + 4, track.y + 10, track.x + 4 + fillW, track.y + 13, ACCENT);
                 button(g, id + ":field", editingOption == option ? inputWindow(g, field.width - 10) : s.display(), field, () -> startEdit(s), free, mx, my, editingOption == option);
             } else {
-                button(g, id, SliderOption.format(value), r, () -> {}, free, mx, my, false);
+                button(g, id, (option instanceof SliderOption s ? s.display() : SliderOption.format(value)), r, () -> {}, free, mx, my, false);
                 int fillW = (int)((controlW - 8) * (value - min) / Math.max(.001, max - min));
                 g.fill(r.x + 4, r.y + 20, r.x + 4 + fillW, r.y + 22, ACCENT);
             }
@@ -1742,7 +1742,7 @@ public final class LadsSettingsScreen {
         if (particleRates.wheel(amount)) return true;
         if (colorPicker.isOpen() || fpsDialogOpen) return true;
         if (!viewport.contains(x, y)) return false;
-        tip.dismiss(); scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - (int)(amount * 28))); return true;
+        tip.dismiss(); scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - (int)(amount * 28 * (reducedMotion ? 1.0 : SmoothScroll.FACTOR)))); return true;
     }
     public boolean keyPressed(int key, int modifiers) {
         if (confirm.isOpen()) return confirm.key(key);

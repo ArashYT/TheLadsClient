@@ -203,6 +203,7 @@ public class ModuleManager {
         smoothHotbar.setEnabled(true);
         register(smoothHotbar, Module.Category.MECHANIC);
         register(new DynamicLightsModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.CloudHeightModule(), Module.Category.MECHANIC);
 
         // Damage Tilt (OldDamageTilt before 1.9.10): the hurt tilt leans by the hit's direction (Directional) or the old fixed way,
         // scaled by Intensity, or none (Disable Tilt). It replaces Minecraft's own Damage Tilt slider, which 1.9.10 hides. On by
