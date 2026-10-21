@@ -31,9 +31,18 @@ public final class HudGroupLayout {
             }
             if(column.size()<2||column.stream().anyMatch(a->column.stream().anyMatch(b->!overlapX(bounds.get(a),bounds.get(b))&&overlapY(bounds.get(a),bounds.get(b)))))continue;
             Rect widest=column.stream().map(bounds::get).max(java.util.Comparator.comparingInt(Rect::width)).orElseThrow();
-            for(var member:column){Rect r=bounds.get(member);member.matchLayoutWidth(widest.width);bounds.put(member,new Rect(widest.x,r.y,member.getRenderWidth(),r.height));}
+            for(var member:column){
+                Rect r=bounds.get(member);
+                if(isKeystrokes(member)){
+                    bounds.put(member,new Rect(widest.x,r.y,r.width,r.height));
+                }else{
+                    member.matchLayoutWidth(widest.width);
+                    bounds.put(member,new Rect(widest.x,r.y,member.getRenderWidth(),r.height));
+                }
+            }
         }
     }
+    private static boolean isKeystrokes(HudElement member){return member instanceof KeystrokesHudElement||(member!=null&&"Keystrokes".equals(member.getModuleName()));}
     private static boolean overlapX(Rect a,Rect b){return a.x<b.right()&&b.x<a.right();}
     private static boolean overlapY(Rect a,Rect b){return a.y<b.bottom()&&b.y<a.bottom();}
     public static boolean docked(Rect a,Rect b){
@@ -50,7 +59,11 @@ public final class HudGroupLayout {
         var order=new java.util.ArrayList<>(bounds.entrySet());
         order.sort(java.util.Comparator.<java.util.Map.Entry<HudElement,Rect>>comparingInt(e->e.getValue().y).thenComparingInt(e->e.getValue().x));
         for(var entry:order){
-            var element=entry.getKey();element.matchLayoutWidth(width);int actualWidth=element.getRenderWidth();
+            var element=entry.getKey();
+            if(!isKeystrokes(element)){
+                element.matchLayoutWidth(width);
+            }
+            int actualWidth=element.getRenderWidth();
             result.put(element,new Rect(center-width/2,y,actualWidth,entry.getValue().height));y+=entry.getValue().height+2;
         }
         Delta delta=clampDelta(union(result.values()),0,0,viewportWidth,viewportHeight);

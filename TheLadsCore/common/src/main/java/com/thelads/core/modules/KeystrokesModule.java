@@ -32,10 +32,10 @@ public class KeystrokesModule extends HudModule {
             lastPresetIndex = getIndex();
         }
     });
-    public final ColorOption keyColor = addOption(new ColorOption("Key Text Color", false, 0xFFFFFFFF));
-    public final ColorOption keyPressedColor = addOption(new ColorOption("Pressed Key Text Color", false, 0xFF000000));
-    public final ColorOption keyBackgroundColor = addOption(new ColorOption("Key Background Color", false, 0xAA000000));
-    public final ColorOption keyPressedBackgroundColor = addOption(new ColorOption("Pressed Key Background Color", false, 0xAAFFFFFF));
+    public final ColorOption keyColor = addOption(new ColorOption("Key Text Color", true, 0xFFFFFFFF));
+    public final ColorOption keyPressedColor = addOption(new ColorOption("Pressed Key Text Color", true, 0xFF000000));
+    public final ColorOption keyBackgroundColor = addOption(new ColorOption("Key Background Color", true, 0xAA000000));
+    public final ColorOption keyPressedBackgroundColor = addOption(new ColorOption("Pressed Key Background Color", true, 0xAAFFFFFF));
     public final BoolOption keyTextShadow = addOption(new BoolOption("Key Text Shadow", false));
     public final BoolOption keyPressedTextShadow = addOption(new BoolOption("Pressed Key Text Shadow", false));
     public final BoolOption useCustomTextShadowColor = addOption(new BoolOption("Custom Shadow Colors", false));
@@ -62,6 +62,34 @@ public class KeystrokesModule extends HudModule {
 
     public boolean isClean() {
         return style.getIndex() == STYLE_CLEAN;
+    }
+
+    @Override
+    public boolean isUseGlobalColor() {
+        return isClean() ? keyColor.isUseGlobal() : super.isUseGlobalColor();
+    }
+
+    @Override
+    public void setUseGlobalColor(boolean useGlobalColor) {
+        if (isClean()) {
+            keyColor.setUseGlobal(useGlobalColor);
+        } else {
+            super.setUseGlobalColor(useGlobalColor);
+        }
+    }
+
+    @Override
+    public int getCustomColor() {
+        return isClean() ? keyColor.getColor() : super.getCustomColor();
+    }
+
+    @Override
+    public void setCustomColor(int customColor) {
+        if (isClean()) {
+            keyColor.setColor(customColor);
+        } else {
+            super.setCustomColor(customColor);
+        }
     }
 
     public boolean hidden(Option option) {
@@ -132,9 +160,13 @@ public class KeystrokesModule extends HudModule {
     public void applyPreset(int preset) {
         switch (preset) {
             case 0 -> { // Classic
+                keyColor.setUseGlobal(true);
                 keyColor.setColor(0xFFFFFFFF);
+                keyBackgroundColor.setUseGlobal(true);
                 keyBackgroundColor.setColor(0xAA000000);
+                keyPressedColor.setUseGlobal(true);
                 keyPressedColor.setColor(0xFF000000);
+                keyPressedBackgroundColor.setUseGlobal(true);
                 keyPressedBackgroundColor.setColor(0xAAFFFFFF);
                 keyTextShadow.set(false);
                 keyPressedTextShadow.set(false);
@@ -143,9 +175,13 @@ public class KeystrokesModule extends HudModule {
                 keyPressedTextShadowColor.setColor(0xFF000000);
             }
             case 1 -> { // Inverted
+                keyColor.setUseGlobal(false);
                 keyColor.setColor(0xFF000000);
+                keyBackgroundColor.setUseGlobal(false);
                 keyBackgroundColor.setColor(0xAAFFFFFF);
+                keyPressedColor.setUseGlobal(false);
                 keyPressedColor.setColor(0xFFFFFFFF);
+                keyPressedBackgroundColor.setUseGlobal(false);
                 keyPressedBackgroundColor.setColor(0xAA000000);
                 keyTextShadow.set(false);
                 keyPressedTextShadow.set(false);
@@ -154,9 +190,13 @@ public class KeystrokesModule extends HudModule {
                 keyPressedTextShadowColor.setColor(0xFF000000);
             }
             case 2 -> { // Clean
+                keyColor.setUseGlobal(false);
                 keyColor.setColor(0xFFFFFFFF);
+                keyBackgroundColor.setUseGlobal(false);
                 keyBackgroundColor.setColor(0x00FFFFFF);
+                keyPressedColor.setUseGlobal(false);
                 keyPressedColor.setColor(0xFF000000);
+                keyPressedBackgroundColor.setUseGlobal(false);
                 keyPressedBackgroundColor.setColor(0x00FFFFFF);
                 keyTextShadow.set(true);
                 keyPressedTextShadow.set(true);
@@ -165,9 +205,13 @@ public class KeystrokesModule extends HudModule {
                 keyPressedTextShadowColor.setColor(0xFFFFFFFF);
             }
             case 3 -> { // Beehive
+                keyColor.setUseGlobal(false);
                 keyColor.setColor(0xFFFFD000);
+                keyBackgroundColor.setUseGlobal(false);
                 keyBackgroundColor.setColor(0xFF000000);
+                keyPressedColor.setUseGlobal(false);
                 keyPressedColor.setColor(0xFF000000);
+                keyPressedBackgroundColor.setUseGlobal(false);
                 keyPressedBackgroundColor.setColor(0xFFFFD000);
                 keyTextShadow.set(false);
                 keyPressedTextShadow.set(false);
@@ -176,9 +220,13 @@ public class KeystrokesModule extends HudModule {
                 keyPressedTextShadowColor.setColor(0xFF000000);
             }
             case 4 -> { // Mint & Cream
+                keyColor.setUseGlobal(false);
                 keyColor.setColor(0xFF00A896);
+                keyBackgroundColor.setUseGlobal(false);
                 keyBackgroundColor.setColor(0xFFF0F3BD);
+                keyPressedColor.setUseGlobal(false);
                 keyPressedColor.setColor(0xFF05668D);
+                keyPressedBackgroundColor.setUseGlobal(false);
                 keyPressedBackgroundColor.setColor(0xFF02C39A);
                 keyTextShadow.set(false);
                 keyPressedTextShadow.set(false);
@@ -187,9 +235,13 @@ public class KeystrokesModule extends HudModule {
                 keyPressedTextShadowColor.setColor(0xFF000000);
             }
             case 5 -> { // Cyber Grape
+                keyColor.setUseGlobal(false);
                 keyColor.setColor(0xFFC7EDE4);
+                keyBackgroundColor.setUseGlobal(false);
                 keyBackgroundColor.setColor(0xFF820B8A);
+                keyPressedColor.setUseGlobal(false);
                 keyPressedColor.setColor(0xFF672A4E);
+                keyPressedBackgroundColor.setUseGlobal(false);
                 keyPressedBackgroundColor.setColor(0xFFAF9AB2);
                 keyTextShadow.set(false);
                 keyPressedTextShadow.set(false);
@@ -198,9 +250,13 @@ public class KeystrokesModule extends HudModule {
                 keyPressedTextShadowColor.setColor(0xFF000000);
             }
             case 6 -> { // Vibrant Mango
+                keyColor.setUseGlobal(false);
                 keyColor.setColor(0xFF4200FF);
+                keyBackgroundColor.setUseGlobal(false);
                 keyBackgroundColor.setColor(0xFFFFBC42);
+                keyPressedColor.setUseGlobal(false);
                 keyPressedColor.setColor(0xFF000000);
+                keyPressedBackgroundColor.setUseGlobal(false);
                 keyPressedBackgroundColor.setColor(0xFFD81159);
                 keyTextShadow.set(false);
                 keyPressedTextShadow.set(false);
@@ -209,9 +265,13 @@ public class KeystrokesModule extends HudModule {
                 keyPressedTextShadowColor.setColor(0xFF000000);
             }
             case 7 -> { // Dirt
+                keyColor.setUseGlobal(false);
                 keyColor.setColor(0xFF753A38);
+                keyBackgroundColor.setUseGlobal(false);
                 keyBackgroundColor.setColor(0xFFA1BA5A);
+                keyPressedColor.setUseGlobal(false);
                 keyPressedColor.setColor(0xFFC4DF96);
+                keyPressedBackgroundColor.setUseGlobal(false);
                 keyPressedBackgroundColor.setColor(0xFF633332);
                 keyTextShadow.set(false);
                 keyPressedTextShadow.set(false);
@@ -220,9 +280,13 @@ public class KeystrokesModule extends HudModule {
                 keyPressedTextShadowColor.setColor(0xFF000000);
             }
             case 8 -> { // Retro
+                keyColor.setUseGlobal(false);
                 keyColor.setColor(0xFFA71D31);
+                keyBackgroundColor.setUseGlobal(false);
                 keyBackgroundColor.setColor(0xFFF1F0CC);
+                keyPressedColor.setUseGlobal(false);
                 keyPressedColor.setColor(0xFF3F0D12);
+                keyPressedBackgroundColor.setUseGlobal(false);
                 keyPressedBackgroundColor.setColor(0xFFD5BF86);
                 keyTextShadow.set(false);
                 keyPressedTextShadow.set(false);
@@ -271,31 +335,49 @@ public class KeystrokesModule extends HudModule {
         return switch (preset) {
             case 0 -> standardShadowsOff()
                     && keyColor.getColor() == 0xFFFFFFFF && keyBackgroundColor.getColor() == 0xAA000000
-                    && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0xAAFFFFFF;
+                    && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0xAAFFFFFF
+                    && keyColor.isUseGlobal() && keyBackgroundColor.isUseGlobal()
+                    && keyPressedColor.isUseGlobal() && keyPressedBackgroundColor.isUseGlobal();
             case 1 -> standardShadowsOff()
                     && keyColor.getColor() == 0xFF000000 && keyBackgroundColor.getColor() == 0xAAFFFFFF
-                    && keyPressedColor.getColor() == 0xFFFFFFFF && keyPressedBackgroundColor.getColor() == 0xAA000000;
+                    && keyPressedColor.getColor() == 0xFFFFFFFF && keyPressedBackgroundColor.getColor() == 0xAA000000
+                    && !keyColor.isUseGlobal() && !keyBackgroundColor.isUseGlobal()
+                    && !keyPressedColor.isUseGlobal() && !keyPressedBackgroundColor.isUseGlobal();
             case 2 -> cleanShadowsMatch()
                     && keyColor.getColor() == 0xFFFFFFFF && keyBackgroundColor.getColor() == 0x00FFFFFF
-                    && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0x00FFFFFF;
+                    && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0x00FFFFFF
+                    && !keyColor.isUseGlobal() && !keyBackgroundColor.isUseGlobal()
+                    && !keyPressedColor.isUseGlobal() && !keyPressedBackgroundColor.isUseGlobal();
             case 3 -> standardShadowsOff()
                     && keyColor.getColor() == 0xFFFFD000 && keyBackgroundColor.getColor() == 0xFF000000
-                    && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0xFFFFD000;
+                    && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0xFFFFD000
+                    && !keyColor.isUseGlobal() && !keyBackgroundColor.isUseGlobal()
+                    && !keyPressedColor.isUseGlobal() && !keyPressedBackgroundColor.isUseGlobal();
             case 4 -> standardShadowsOff()
                     && keyColor.getColor() == 0xFF00A896 && keyBackgroundColor.getColor() == 0xFFF0F3BD
-                    && keyPressedColor.getColor() == 0xFF05668D && keyPressedBackgroundColor.getColor() == 0xFF02C39A;
+                    && keyPressedColor.getColor() == 0xFF05668D && keyPressedBackgroundColor.getColor() == 0xFF02C39A
+                    && !keyColor.isUseGlobal() && !keyBackgroundColor.isUseGlobal()
+                    && !keyPressedColor.isUseGlobal() && !keyPressedBackgroundColor.isUseGlobal();
             case 5 -> standardShadowsOff()
                     && keyColor.getColor() == 0xFFC7EDE4 && keyBackgroundColor.getColor() == 0xFF820B8A
-                    && keyPressedColor.getColor() == 0xFF672A4E && keyPressedBackgroundColor.getColor() == 0xFFAF9AB2;
+                    && keyPressedColor.getColor() == 0xFF672A4E && keyPressedBackgroundColor.getColor() == 0xFFAF9AB2
+                    && !keyColor.isUseGlobal() && !keyBackgroundColor.isUseGlobal()
+                    && !keyPressedColor.isUseGlobal() && !keyPressedBackgroundColor.isUseGlobal();
             case 6 -> standardShadowsOff()
                     && keyColor.getColor() == 0xFF4200FF && keyBackgroundColor.getColor() == 0xFFFFBC42
-                    && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0xFFD81159;
+                    && keyPressedColor.getColor() == 0xFF000000 && keyPressedBackgroundColor.getColor() == 0xFFD81159
+                    && !keyColor.isUseGlobal() && !keyBackgroundColor.isUseGlobal()
+                    && !keyPressedColor.isUseGlobal() && !keyPressedBackgroundColor.isUseGlobal();
             case 7 -> standardShadowsOff()
                     && keyColor.getColor() == 0xFF753A38 && keyBackgroundColor.getColor() == 0xFFA1BA5A
-                    && keyPressedColor.getColor() == 0xFFC4DF96 && keyPressedBackgroundColor.getColor() == 0xFF633332;
+                    && keyPressedColor.getColor() == 0xFFC4DF96 && keyPressedBackgroundColor.getColor() == 0xFF633332
+                    && !keyColor.isUseGlobal() && !keyBackgroundColor.isUseGlobal()
+                    && !keyPressedColor.isUseGlobal() && !keyPressedBackgroundColor.isUseGlobal();
             case 8 -> standardShadowsOff()
                     && keyColor.getColor() == 0xFFA71D31 && keyBackgroundColor.getColor() == 0xFFF1F0CC
-                    && keyPressedColor.getColor() == 0xFF3F0D12 && keyPressedBackgroundColor.getColor() == 0xFFD5BF86;
+                    && keyPressedColor.getColor() == 0xFF3F0D12 && keyPressedBackgroundColor.getColor() == 0xFFD5BF86
+                    && !keyColor.isUseGlobal() && !keyBackgroundColor.isUseGlobal()
+                    && !keyPressedColor.isUseGlobal() && !keyPressedBackgroundColor.isUseGlobal();
             default -> false;
         };
     }

@@ -4,13 +4,20 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.thelads.core.client.bridge.DefaultGameBridge;
 import com.thelads.core.client.bridge.LadsGameBridge;
+import com.thelads.core.client.bridge.LadsGraphics;
+import com.thelads.core.client.hud.HudElement;
+import com.thelads.core.client.hud.HudGroupLayout;
 import com.thelads.core.client.hud.KeystrokesHudElement;
 import com.thelads.core.config.ConfigManager;
+import com.thelads.core.config.HudSettings;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.modules.KeystrokesModule;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -321,7 +328,8 @@ class KeystrokesCleanTest {
         game.ticks = 101;
         graphics.fills.clear();
         keys.render(graphics);
-        boolean released = graphics.fills.stream().anyMatch(f -> (f.bottom() - f.top() == 15) && (f.color() == module.keyBackgroundColor.getColor()));
+        int idleBg = module.keyBackgroundColor.isUseGlobal() ? HudSettings.getInstance().getGlobalBackground() : module.keyBackgroundColor.getColor();
+        boolean released = graphics.fills.stream().anyMatch(f -> (f.bottom() - f.top() == 15) && (f.color() == idleBg));
         assertTrue(released, "Space bar released at tick 101");
     }
 
@@ -369,5 +377,209 @@ class KeystrokesCleanTest {
         ConfigManager.applyJson(playerSaved);
         assertEquals(KeystrokesModule.STYLE_CLASSIC, module.style.getIndex());
         assertFalse(ConfigManager.needsMigrationSave(playerSaved));
+    }
+
+    @Test
+    void cleanColourDefaultsFollowGlobal() {
+        KeystrokesHudElement keys = new KeystrokesHudElement();
+        keys.setModuleName("Keystrokes");
+        KeystrokesModule module = (KeystrokesModule) ModuleManager.getInstance().getModule("Keystrokes");
+        module.style.setIndex(KeystrokesModule.STYLE_CLEAN);
+
+        // Check defaults are useGlobal = true
+        assertTrue(module.keyColor.isUseGlobal(), "keyColor should follow global by default");
+        assertTrue(module.keyPressedColor.isUseGlobal(), "keyPressedColor should follow global by default");
+        assertTrue(module.keyBackgroundColor.isUseGlobal(), "keyBackgroundColor should follow global by default");
+        assertTrue(module.keyPressedBackgroundColor.isUseGlobal(), "keyPressedBackgroundColor should follow global by default");
+        assertTrue(module.isUseGlobalColor(), "module.isUseGlobalColor() should match keyColor.isUseGlobal()");
+
+        // 1. Changing global color updates clean text color when following global
+        int previousGlobal = HudSettings.getInstance().getGlobalColor();
+        try {
+            HudSettings.getInstance().setGlobalColor(0xFFFF5555);
+            graphics.texts.clear();
+            keys.prepareRender(graphics, false);
+            keys.render(graphics);
+
+            assertTrue(graphics.texts.stream().anyMatch(t -> t.color() == 0xFFFF5555), "Text should be drawn in global color");
+
+            // 2. Setting keyColor useGlobal = false uses custom color
+            module.keyColor.setUseGlobal(false);
+            module.keyColor.setColor(0xFF00FF00);
+            graphics.texts.clear();
+            keys.prepareRender(graphics, false);
+            keys.render(graphics);
+
+            assertTrue(graphics.texts.stream().anyMatch(t -> t.color() == 0xFF00FF00), "Text should be drawn in custom color");
+            assertFalse(module.isUseGlobalColor());
+            assertEquals(0xFF00FF00, module.getCustomColor());
+
+            // 3. Background: turning off backgrounds globally hides global plates
+            boolean prevBg = HudSettings.getInstance().isBackgrounds();
+            try {
+                module.keyBackgroundColor.setUseGlobal(true);
+                HudSettings.getInstance().setBackgrounds(false);
+                graphics.fills.clear();
+                keys.prepareRender(graphics, false);
+                keys.render(graphics);
+
+                // Idle background should be 0 (no large key background fill with alpha)
+                int globalBg = HudSettings.getInstance().getGlobalBackground();
+                boolean hasGlobalBgFill = graphics.fills.stream().anyMatch(f -> f.color() == globalBg);
+                assertFalse(hasGlobalBgFill, "No key background fill drawn when backgrounds are off globally");
+
+                // Custom background keeps its color even when global backgrounds are off
+                module.keyBackgroundColor.setUseGlobal(false);
+                module.keyBackgroundColor.setColor(0xAA112233);
+                graphics.fills.clear();
+                keys.prepareRender(graphics, false);
+                keys.render(graphics);
+                boolean hasCustomBgFill = graphics.fills.stream().anyMatch(f -> f.color() == 0xAA112233);
+                assertTrue(hasCustomBgFill, "Custom background fill drawn even when global backgrounds are off");
+            } finally {
+                HudSettings.getInstance().setBackgrounds(prevBg);
+            }
+        } finally {
+            HudSettings.getInstance().setGlobalColor(previousGlobal);
+        }
+    }
+
+    @Test
+    void oneTimeMigrationUpgradesExistingCleanToFollowGlobalAndPreservesOwnAfterwards() {
+        KeystrokesModule module = (KeystrokesModule) ModuleManager.getInstance().getModule("Keystrokes");
+
+        // Old config saved before 1.9.14 (has 1.9.12 keystrokesStyleMigrated flag, but no keystrokesCleanGlobalMigrated)
+        // Keystrokes options had useGlobal: false
+        String oldJson = """
+            {
+              "modules": {
+                "Keystrokes": {
+                  "enabled": true,
+                  "options": {
+                    "Key Text Color": { "useGlobal": false, "color": -1 },
+                    "Pressed Key Text Color": { "useGlobal": false, "color": -16777216 },
+                    "Key Background Color": { "useGlobal": false, "color": -1442840576 },
+                    "Pressed Key Background Color": { "useGlobal": false, "color": -1426063361 }
+                  }
+                }
+              },
+              "hud": {
+                "shadowOnDefault": true,
+                "hudFpsCapOnDefault": true,
+                "hud1910OverrideApplied": true,
+                "betterF31911Applied": true,
+                "keystrokesStyleMigrated": true
+              }
+            }
+            """;
+        JsonObject parsed = JsonParser.parseString(oldJson).getAsJsonObject();
+        assertTrue(ConfigManager.needsMigrationSave(parsed), "Old config should need migration save");
+
+        // Applying old config triggers 1.9.14 migration
+        ConfigManager.applyJson(parsed);
+        assertTrue(module.keyColor.isUseGlobal(), "keyColor should be migrated to follow global");
+        assertTrue(module.keyPressedColor.isUseGlobal(), "keyPressedColor should be migrated to follow global");
+        assertTrue(module.keyBackgroundColor.isUseGlobal(), "keyBackgroundColor should be migrated to follow global");
+        assertTrue(module.keyPressedBackgroundColor.isUseGlobal(), "keyPressedBackgroundColor should be migrated to follow global");
+
+        // Saved config now includes the 1.9.14 flag
+        JsonObject saved = ConfigManager.toJson();
+        assertTrue(saved.getAsJsonObject("hud").has(ConfigManager.KEYSTROKES_1914_FLAG));
+        assertTrue(saved.getAsJsonObject("hud").get(ConfigManager.KEYSTROKES_1914_FLAG).getAsBoolean());
+
+        // Player explicitly changes keyColor to Own
+        module.keyColor.setUseGlobal(false);
+        module.keyColor.setColor(0xFF445566);
+        JsonObject playerSaved = ConfigManager.toJson();
+
+        // Reloading does not overwrite player's explicit choice because the migration already ran
+        ConfigManager.applyJson(playerSaved);
+        assertFalse(module.keyColor.isUseGlobal(), "Player's choice of Own should be preserved");
+        assertEquals(0xFF445566, module.keyColor.getColor());
+        assertFalse(ConfigManager.needsMigrationSave(playerSaved));
+    }
+
+    @Test
+    void matchDockedWidthsLeavesKeystrokesRectWidthUnchangedWhileMatchingOthers() {
+        class MockElement extends HudElement {
+            MockElement(String name, int px, int py, int w, int h) {
+                setPosition(px, py);
+                this.width = w;
+                this.height = h;
+                setModuleName(name);
+            }
+            @Override public boolean isEnabled() { return true; }
+            @Override public void render(LadsGraphics graphics) {}
+        }
+
+        KeystrokesModule km = (KeystrokesModule) ModuleManager.getInstance().getModule("Keystrokes");
+        boolean prevKmEnabled = km.isEnabled();
+        int prevKmStyle = km.style.getIndex();
+        km.setEnabled(true);
+        km.style.setIndex(KeystrokesModule.STYLE_CLEAN);
+
+        HudSettings settings = HudSettings.getInstance();
+        Set<String> previousGroup = settings.getGroupMembers("Keystrokes");
+        try {
+            settings.addGroup(Set.of("Keystrokes", "WideBox"));
+
+            KeystrokesHudElement keys = new KeystrokesHudElement();
+            keys.setModuleName("Keystrokes");
+            MockElement wide = new MockElement("WideBox", 10, 120, 140, 20);
+
+            // Keystrokes natural width in Clean mode is 67
+            keys.prepareRender(graphics, false);
+            assertEquals(67, keys.getWidth());
+
+            Map<HudElement, HudGroupLayout.Rect> bounds = new LinkedHashMap<>();
+            bounds.put(keys, new HudGroupLayout.Rect(10, 20, 67, 95));
+            bounds.put(wide, new HudGroupLayout.Rect(10, 120, 140, 20));
+
+            HudGroupLayout.matchDockedWidths(bounds);
+
+            // Keystrokes' bounds rect width must remain 67 (NOT widened to 140)
+            assertEquals(67, bounds.get(keys).width(), "Keystrokes rect width must remain 67");
+            assertEquals(10, bounds.get(keys).x(), "Keystrokes placed at group left edge");
+            assertEquals(67, keys.getWidth(), "keys.getWidth() must remain 67");
+
+            // WideBox rect width must be 140
+            assertEquals(140, bounds.get(wide).width(), "WideBox width remains widest");
+
+            // Reverse test: Keystrokes grouped with a narrower element (width 40)
+            MockElement narrow = new MockElement("WideBox", 10, 120, 40, 20);
+            bounds.clear();
+            bounds.put(keys, new HudGroupLayout.Rect(10, 20, 67, 95));
+            bounds.put(narrow, new HudGroupLayout.Rect(10, 120, 40, 20));
+
+            HudGroupLayout.matchDockedWidths(bounds);
+
+            assertEquals(67, bounds.get(keys).width(), "Keystrokes rect width remains 67");
+            assertEquals(67, bounds.get(narrow).width(), "Narrow element matches widest width (67)");
+            assertEquals(67, keys.getWidth(), "keys.getWidth() remains 67");
+
+            // Classic style test: Classic unscaled width 64 grouped with wider element
+            km.style.setIndex(KeystrokesModule.STYLE_CLASSIC);
+            keys.prepareRender(graphics, false);
+            assertEquals(64, keys.getWidth());
+
+            bounds.clear();
+            bounds.put(keys, new HudGroupLayout.Rect(15, 20, 64, 76));
+            bounds.put(wide, new HudGroupLayout.Rect(15, 110, 150, 20));
+
+            HudGroupLayout.matchDockedWidths(bounds);
+
+            assertEquals(64, bounds.get(keys).width(), "Classic Keystrokes rect width remains 64");
+            assertEquals(15, bounds.get(keys).x(), "Classic Keystrokes placed at group left edge");
+            assertEquals(64, keys.getWidth(), "Classic keys.getWidth() remains 64");
+            assertEquals(150, bounds.get(wide).width(), "WideBox width matches widest");
+        } finally {
+            km.setEnabled(prevKmEnabled);
+            km.style.setIndex(prevKmStyle);
+            if (previousGroup != null) {
+                settings.addGroup(previousGroup);
+            } else {
+                settings.getGroups().removeIf(g -> g.contains("Keystrokes"));
+            }
+        }
     }
 }
