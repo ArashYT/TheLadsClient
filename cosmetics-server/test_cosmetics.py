@@ -1103,3 +1103,168 @@ async def test_fix3_high_cosmetics_catalog_env_json_file(aiohttp_client, tmp_pat
     assert await store.has_entitlement(A, "lads:cape_dragon")
 
 
+async def test_all_access_grants_all_and_future_items(tmp_path):
+    """All-access users own EVERY current and future item."""
+    store = cosmetics.CosmeticsStore(tmp_path / "aa1.db")
+    # Initially user does not own future or non-free items
+    assert not await store.has_all_access(A)
+    assert not await store.has_entitlement(A, "lads:future_wings_2028")
+    assert not await store.has_entitlement(A, "lads:cape_aurora")
+    # Free items are always owned
+    assert await store.has_entitlement(A, "lads:groove")
+    assert await store.has_entitlement(A, "lads:floss")
+
+    # Enable all-access
+    changed = await store.set_all_access(A, True, granted_by="staff_test")
+    assert changed is True
+    assert await store.has_all_access(A)
+
+    details = await store.get_all_access_details(A)
+    assert details is not None
+    assert details["granted_by"] == "staff_test"
+
+    # Now has_entitlement is True for catalog capes AND future unknown cosmetics
+    assert await store.has_entitlement(A, "lads:cape_aurora")
+    assert await store.has_entitlement(A, "lads:cape_dragon")
+    assert await store.has_entitlement(A, "lads:future_wings_2028")
+    assert await store.has_entitlement(A, "lads:cosmetic_9999")
+
+    # Profile returns all known cosmetics in 'owned' and 'all_access: True'
+    prof = await store.get_profile(A)
+    assert prof.get("all_access") is True
+    for item in cosmetics.FREE:
+        assert item in prof["owned"]
+
+    # When catalog items are configured, they are also returned in owned
+    cosmetics._DEFAULT_CATALOG = {1: "lads:cape_aurora", 2: "lads:cape_dragon"}
+    try:
+        prof_with_cat = await store.get_profile(A)
+        assert "lads:cape_aurora" in prof_with_cat["owned"]
+        assert "lads:cape_dragon" in prof_with_cat["owned"]
+    finally:
+        cosmetics._DEFAULT_CATALOG = None
+
+    # List returns all_access flag and details
+    res = await store.list_cosmetics(A)
+    assert res["all_access"] is True
+    assert res["all_access_details"]["granted_by"] == "staff_test"
+
+
+async def test_all_access_toggle_and_audit_logging(tmp_path):
+    """Toggling all-access records audit logs in the transactions table."""
+    store = cosmetics.CosmeticsStore(tmp_path / "aa2.db")
+    # Enable all access
+    await store.set_all_access(A, True, granted_by="admin_alice")
+    assert await store.has_entitlement(A, "lads:future_glow")
+
+    # Check transactions table
+    with store._get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT transaction_id, event_type, uuid, items_json FROM transactions WHERE uuid = ? ORDER BY rowid DESC;", (A,))
+        rows = cur.fetchall()
+        assert len(rows) >= 1
+        assert rows[0][1] == "admin.all_access.grant"
+        d = json.loads(rows[0][3])
+        assert d["enabled"] is True
+        assert d["granted_by"] == "admin_alice"
+
+    # Disable all access
+    await store.set_all_access(A, False, granted_by="admin_bob")
+    assert not await store.has_all_access(A)
+    assert not await store.has_entitlement(A, "lads:future_glow")
+
+    # Check transactions table has revoke audit
+    with store._get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT transaction_id, event_type, uuid, items_json FROM transactions WHERE uuid = ? ORDER BY rowid DESC;", (A,))
+        rows = cur.fetchall()
+        assert rows[0][1] == "admin.all_access.revoke"
+        d = json.loads(rows[0][3])
+        assert d["enabled"] is False
+        assert d["granted_by"] == "admin_bob"
+
+
+async def test_grant_revoke_audit_logging(tmp_path):
+    """Granting and revoking entitlements records audit log rows in transactions."""
+    store = cosmetics.CosmeticsStore(tmp_path / "aa3.db")
+    await store.grant(A, "lads:cape_aurora", source="staff:charlie")
+    assert await store.has_entitlement(A, "lads:cape_aurora")
+
+    with store._get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT event_type, items_json FROM transactions WHERE uuid = ? ORDER BY rowid DESC;", (A,))
+        row = cur.fetchone()
+        assert row[0] == "admin.grant"
+        data = json.loads(row[1])
+        assert data["item_id"] == "lads:cape_aurora"
+        assert data["source"] == "staff:charlie"
+
+    await store.revoke(A, "lads:cape_aurora")
+    assert not await store.has_entitlement(A, "lads:cape_aurora")
+
+    with store._get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT event_type, items_json FROM transactions WHERE uuid = ? ORDER BY rowid DESC;", (A,))
+        row = cur.fetchone()
+        assert row[0] == "admin.revoke"
+        data = json.loads(row[1])
+        assert data["item_id"] == "lads:cape_aurora"
+
+
+def test_cli_allaccess(tmp_path, capsys):
+    """CLI allaccess command enables and disables all-access for a player."""
+    db_file = tmp_path / "cli_aa.db"
+    # Enable
+    rc = cosmetics.cli_allaccess(A, "on", granted_by="cli_tester", db_path=db_file)
+    assert rc == 0
+    assert "All-Access ENABLED" in capsys.readouterr().out
+
+    store = cosmetics.CosmeticsStore(db_file)
+    assert store.has_all_access_sync(A)
+
+    # Disable
+    rc = cosmetics.cli_allaccess(A, "off", granted_by="cli_tester", db_path=db_file)
+    assert rc == 0
+    assert "All-Access DISABLED" in capsys.readouterr().out
+    assert not store.has_all_access_sync(A)
+
+    # Main with arguments
+    with pytest.raises(SystemExit) as exc:
+        cosmetics.main(["allaccess", A, "on", "--granted-by", "admin_main", "--db", str(db_file)])
+    assert exc.value.code == 0
+    assert "All-Access ENABLED" in capsys.readouterr().out
+    assert store.has_all_access_sync(A)
+
+
+def test_get_all_cosmetics_source_of_truth():
+    """Default get_all_cosmetics returns only FREE emotes; catalog dict merges dynamic items."""
+    items = cosmetics.get_all_cosmetics()
+    item_ids = [i["id"] for i in items]
+
+    # Verify all 9 emotes and only free emotes by default
+    assert len(items) == len(cosmetics.FREE)
+    for emote_id in cosmetics.FREE:
+        assert emote_id in item_ids
+        item = next(i for i in items if i["id"] == emote_id)
+        assert item["category"] == "Emotes"
+        assert item["free"] is True
+
+    # No built-in capes exist without catalog
+    for cape_id in ("lads:cape_aurora", "lads:cape_dragon", "lads:cape_founder"):
+        assert cape_id not in item_ids
+
+    # Merge with custom catalog
+    custom_catalog = {100: "lads:hat_wizard", 101: "lads:cape_phoenix"}
+    merged = cosmetics.get_all_cosmetics(custom_catalog)
+    merged_ids = [i["id"] for i in merged]
+    assert "lads:hat_wizard" in merged_ids
+    assert "lads:cape_phoenix" in merged_ids
+    hat_item = next(i for i in merged if i["id"] == "lads:hat_wizard")
+    assert hat_item["category"] == "Others"
+    assert hat_item["name"] == "Hat Wizard"
+    assert hat_item["free"] is False
+    cape_item = next(i for i in merged if i["id"] == "lads:cape_phoenix")
+    assert cape_item["category"] == "Capes"
+    assert cape_item["free"] is False
+
+

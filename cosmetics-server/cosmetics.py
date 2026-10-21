@@ -77,6 +77,84 @@ def load_catalog_from_file(path: str | Path | None) -> dict[int | str, str] | No
         return None
 
 
+EMOTE_NAMES: dict[str, str] = {
+    "lads:groove": "Groove",
+    "lads:wave": "Wave",
+    "lads:clap": "Clap",
+    "lads:floss": "Floss",
+    "lads:cheer": "Cheer",
+    "lads:bow": "Bow",
+    "lads:facepalm": "Facepalm",
+    "lads:salute": "Salute",
+    "lads:shrug": "Shrug",
+}
+
+
+def categorize_item(item_id: str) -> str:
+    """Categorize a cosmetic item into Capes, Emotes, or Others."""
+    lower = item_id.lower()
+    if ":cape" in lower or "cape_" in lower:
+        return "Capes"
+    if item_id in EMOTES or ":emote" in lower or "emote_" in lower:
+        return "Emotes"
+    return "Others"
+
+
+def format_item_name(item_id: str) -> str:
+    """Derive a friendly display name from an item ID."""
+    if item_id in EMOTE_NAMES:
+        return EMOTE_NAMES[item_id]
+    part = item_id.split(":", 1)[-1]
+    words = part.replace("_", " ").split()
+    return " ".join(w.capitalize() for w in words)
+
+
+_DEFAULT_CATALOG: dict[int | str, str] | None = None
+
+
+def get_all_cosmetics(catalog_dict: dict[int | str, str] | None = None) -> list[dict[str, str]]:
+    """Return all known cosmetic items from the real sources: the FREE emotes allow-list and COSMETICS_CATALOG."""
+    seen: set[str] = set()
+    result: list[dict[str, str]] = []
+
+    # 1. Built-in emotes from FREE allow-list (in order)
+    for emote_id in FREE:
+        if emote_id not in seen:
+            seen.add(emote_id)
+            result.append({
+                "id": emote_id,
+                "name": format_item_name(emote_id),
+                "category": "Emotes",
+                "free": True,
+            })
+
+    # 2. Dynamic items from catalog (parameter > module default > env COSMETICS_CATALOG)
+    active_cat = catalog_dict
+    if active_cat is None:
+        active_cat = _DEFAULT_CATALOG
+    if active_cat is None:
+        env_cat = os.getenv("COSMETICS_CATALOG")
+        if env_cat:
+            active_cat = load_catalog_from_file(env_cat)
+
+    if active_cat:
+        for val in active_cat.values():
+            if isinstance(val, str) and val not in seen and ITEM_ID_RE.fullmatch(val):
+                seen.add(val)
+                result.append({
+                    "id": val,
+                    "name": format_item_name(val),
+                    "category": categorize_item(val),
+                    "free": val in FREE,
+                })
+    return result
+
+
+def get_all_cosmetic_ids(catalog_dict: dict[int | str, str] | None = None) -> list[str]:
+    """Return list of all known cosmetic item IDs."""
+    return [c["id"] for c in get_all_cosmetics(catalog_dict)]
+
+
 log = logging.getLogger("cosmetics")
 
 
@@ -277,57 +355,178 @@ class CosmeticsStore:
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_link_codes_uuid ON link_codes(uuid);")
 
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS all_access (
+                    uuid TEXT PRIMARY KEY,
+                    granted_by TEXT NOT NULL,
+                    granted_at INTEGER NOT NULL
+                );
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_all_access_uuid ON all_access(uuid);")
+
     # --- Synchronous Worker Methods ---
 
+    def has_all_access_sync(self, uuid: str) -> bool:
+        clean = plain_uuid(uuid)
+        if not clean:
+            return False
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT 1 FROM all_access WHERE uuid = ?;", (clean,))
+            return cur.fetchone() is not None
+
+    def get_all_access_details_sync(self, uuid: str) -> dict | None:
+        clean = plain_uuid(uuid)
+        if not clean:
+            return None
+        with self._get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT granted_by, granted_at FROM all_access WHERE uuid = ?;", (clean,))
+            row = cur.fetchone()
+            if row:
+                return {"granted_by": row[0], "granted_at": row[1]}
+            return None
+
+    def set_all_access_sync(
+        self,
+        uuid_raw: str,
+        enabled: bool,
+        granted_by: str = "admin",
+        timestamp: int | None = None
+    ) -> bool:
+        uuid = plain_uuid(uuid_raw)
+        if not uuid:
+            raise ValueError(f"Invalid UUID: {uuid_raw}")
+        if timestamp is None:
+            timestamp = int(time.time())
+        with self._get_connection() as conn:
+            conn.isolation_level = None
+            conn.execute("BEGIN IMMEDIATE;")
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT 1 FROM all_access WHERE uuid = ?;", (uuid,))
+                had_it = cur.fetchone() is not None
+                if enabled:
+                    conn.execute("""
+                        INSERT INTO all_access (uuid, granted_by, granted_at)
+                        VALUES (?, ?, ?)
+                        ON CONFLICT(uuid) DO UPDATE SET
+                            granted_by = excluded.granted_by,
+                            granted_at = excluded.granted_at;
+                    """, (uuid, granted_by, timestamp))
+                    event = "admin.all_access.grant"
+                else:
+                    conn.execute("DELETE FROM all_access WHERE uuid = ?;", (uuid,))
+                    event = "admin.all_access.revoke"
+
+                # Audit log in transactions
+                tx_id = f"allaccess_{uuid}_{timestamp}_{secrets.token_hex(4)}"
+                details = json.dumps({"enabled": enabled, "granted_by": granted_by, "action": "all_access"})
+                conn.execute("""
+                    INSERT INTO transactions (transaction_id, event_type, uuid, items_json, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?);
+                """, (tx_id, event, uuid, details, timestamp, timestamp))
+                conn.execute("COMMIT;")
+                return had_it != enabled
+            except Exception:
+                conn.execute("ROLLBACK;")
+                raise
+
     def grant_sync(self, uuid: str, item_id: str, source: str = "admin", granted_at: int | None = None) -> None:
+        clean = plain_uuid(uuid) or uuid
         if granted_at is None:
             granted_at = int(time.time())
         with self._get_connection() as conn:
-            conn.execute("""
-                INSERT INTO entitlements (uuid, item_id, source, granted_at, revoked_at)
-                VALUES (?, ?, ?, ?, NULL)
-                ON CONFLICT(uuid, item_id) DO UPDATE SET
-                    source = excluded.source,
-                    granted_at = excluded.granted_at,
-                    revoked_at = NULL;
-            """, (uuid, item_id, source, granted_at))
-            conn.commit()
+            conn.isolation_level = None
+            conn.execute("BEGIN IMMEDIATE;")
+            try:
+                conn.execute("""
+                    INSERT INTO entitlements (uuid, item_id, source, granted_at, revoked_at)
+                    VALUES (?, ?, ?, ?, NULL)
+                    ON CONFLICT(uuid, item_id) DO UPDATE SET
+                        source = excluded.source,
+                        granted_at = excluded.granted_at,
+                        revoked_at = NULL;
+                """, (clean, item_id, source, granted_at))
+                # Audit log in transactions
+                tx_id = f"grant_{clean}_{item_id}_{granted_at}_{secrets.token_hex(4)}"
+                details = json.dumps({"item_id": item_id, "source": source, "action": "grant"})
+                conn.execute("""
+                    INSERT INTO transactions (transaction_id, event_type, uuid, items_json, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?);
+                """, (tx_id, "admin.grant", clean, details, granted_at, granted_at))
+                conn.execute("COMMIT;")
+            except Exception:
+                conn.execute("ROLLBACK;")
+                raise
 
-    def revoke_sync(self, uuid: str, item_id: str, revoked_at: int | None = None) -> None:
+    def revoke_sync(self, uuid: str, item_id: str, revoked_at: int | None = None, actor: str = "admin") -> None:
+        clean = plain_uuid(uuid) or uuid
         if revoked_at is None:
             revoked_at = int(time.time())
         with self._get_connection() as conn:
-            conn.execute("""
-                UPDATE entitlements
-                SET revoked_at = ?
-                WHERE uuid = ? AND item_id = ? AND revoked_at IS NULL;
-            """, (revoked_at, uuid, item_id))
-            conn.execute("DELETE FROM equipped WHERE uuid = ? AND item_id = ?;", (uuid, item_id))
-            conn.commit()
+            conn.isolation_level = None
+            conn.execute("BEGIN IMMEDIATE;")
+            try:
+                conn.execute("""
+                    UPDATE entitlements
+                    SET revoked_at = ?
+                    WHERE uuid = ? AND item_id = ? AND revoked_at IS NULL;
+                """, (revoked_at, clean, item_id))
+                conn.execute("DELETE FROM equipped WHERE uuid = ? AND item_id = ?;", (clean, item_id))
+                # Audit log in transactions
+                tx_id = f"revoke_{clean}_{item_id}_{revoked_at}_{secrets.token_hex(4)}"
+                details = json.dumps({"item_id": item_id, "actor": actor, "action": "revoke"})
+                conn.execute("""
+                    INSERT INTO transactions (transaction_id, event_type, uuid, items_json, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?);
+                """, (tx_id, "admin.revoke", clean, details, revoked_at, revoked_at))
+                conn.execute("COMMIT;")
+            except Exception:
+                conn.execute("ROLLBACK;")
+                raise
 
     def has_entitlement_sync(self, uuid: str, item_id: str) -> bool:
+        clean = plain_uuid(uuid)
+        if not clean:
+            return False
+        # Free items are free for everyone
+        if item_id in FREE:
+            return True
+        # Single ownership check: all-access users own EVERY current and future item!
+        if self.has_all_access_sync(clean):
+            return True
         with self._get_connection() as conn:
             cur = conn.cursor()
             cur.execute("""
                 SELECT 1 FROM entitlements
                 WHERE uuid = ? AND item_id = ? AND revoked_at IS NULL;
-            """, (uuid, item_id))
+            """, (clean, item_id))
             return cur.fetchone() is not None
 
     def get_profile_sync(self, uuid: str) -> dict:
+        clean = plain_uuid(uuid) or uuid
+        is_all_access = self.has_all_access_sync(clean)
         with self._get_connection() as conn:
             cur = conn.cursor()
             cur.execute("""
                 SELECT item_id FROM entitlements
                 WHERE uuid = ? AND revoked_at IS NULL;
-            """, (uuid,))
+            """, (clean,))
             owned = [row[0] for row in cur.fetchall()]
             for f in FREE:
                 if f not in owned:
                     owned.insert(0, f)
-            cur.execute("SELECT slot, item_id FROM equipped WHERE uuid = ?;", (uuid,))
+            if is_all_access:
+                for item in get_all_cosmetic_ids():
+                    if item not in owned:
+                        owned.append(item)
+            cur.execute("SELECT slot, item_id FROM equipped WHERE uuid = ?;", (clean,))
             equipped = {row[0]: row[1] for row in cur.fetchall()}
-            return {"owned": owned, "equipped": equipped}
+            profile = {"owned": owned, "equipped": equipped}
+            if is_all_access:
+                profile["all_access"] = True
+            return profile
 
     def set_equipped_sync(self, uuid: str, slot: str, item_id: str) -> None:
         if slot not in ALLOWED_SLOTS:
@@ -553,6 +752,8 @@ class CosmeticsStore:
             return row[0] if row else None
 
     def list_sync(self, uuid: str) -> dict:
+        clean = plain_uuid(uuid) or uuid
+        all_access_details = self.get_all_access_details_sync(clean)
         with self._get_connection() as conn:
             cur = conn.cursor()
             cur.execute("""
@@ -560,7 +761,7 @@ class CosmeticsStore:
                 FROM entitlements
                 WHERE uuid = ?
                 ORDER BY granted_at ASC;
-            """, (uuid,))
+            """, (clean,))
             entitlements = [
                 {
                     "item_id": r[0],
@@ -571,17 +772,32 @@ class CosmeticsStore:
                 }
                 for r in cur.fetchall()
             ]
-            cur.execute("SELECT slot, item_id FROM equipped WHERE uuid = ?;", (uuid,))
+            cur.execute("SELECT slot, item_id FROM equipped WHERE uuid = ?;", (clean,))
             equipped = {r[0]: r[1] for r in cur.fetchall()}
-            return {"uuid": uuid, "entitlements": entitlements, "equipped": equipped}
+            return {
+                "uuid": clean,
+                "entitlements": entitlements,
+                "equipped": equipped,
+                "all_access": all_access_details is not None,
+                "all_access_details": all_access_details,
+            }
 
     # --- Asynchronous Wrappers (asyncio.to_thread) ---
+
+    async def has_all_access(self, uuid: str) -> bool:
+        return await asyncio.to_thread(self.has_all_access_sync, uuid)
+
+    async def get_all_access_details(self, uuid: str) -> dict | None:
+        return await asyncio.to_thread(self.get_all_access_details_sync, uuid)
+
+    async def set_all_access(self, uuid: str, enabled: bool, granted_by: str = "admin") -> bool:
+        return await asyncio.to_thread(self.set_all_access_sync, uuid, enabled, granted_by)
 
     async def grant(self, uuid: str, item_id: str, source: str = "admin") -> None:
         await asyncio.to_thread(self.grant_sync, uuid, item_id, source)
 
-    async def revoke(self, uuid: str, item_id: str) -> None:
-        await asyncio.to_thread(self.revoke_sync, uuid, item_id)
+    async def revoke(self, uuid: str, item_id: str, actor: str = "admin") -> None:
+        await asyncio.to_thread(self.revoke_sync, uuid, item_id, actor=actor)
 
     async def has_entitlement(self, uuid: str, item_id: str) -> bool:
         return await asyncio.to_thread(self.has_entitlement_sync, uuid, item_id)
@@ -1098,6 +1314,17 @@ TEBEX_SECRET = web.AppKey("tebex_secret", str)
 AUTH_SECRET = web.AppKey("auth_secret", str)
 CATALOG = web.AppKey("cosmetics_catalog", Any)
 
+_DEFAULT_STORE: CosmeticsStore | None = None
+
+
+def get_store(db_path: Path | str | None = None) -> CosmeticsStore:
+    global _DEFAULT_STORE
+    if db_path is not None:
+        return CosmeticsStore(db_path)
+    if _DEFAULT_STORE is None:
+        _DEFAULT_STORE = CosmeticsStore()
+    return _DEFAULT_STORE
+
 
 def setup(
     app: web.Application,
@@ -1108,6 +1335,8 @@ def setup(
     catalog: dict[int | str, str] | None = None
 ) -> None:
     store = CosmeticsStore(db_path)
+    global _DEFAULT_STORE
+    _DEFAULT_STORE = store
     app[STORE] = store
     app[TEBEX_SECRET] = tebex_secret or os.getenv("TEBEX_WEBHOOK_SECRET", "")
     # M1: admin bearer requires explicit auth token; no fallback to tebex_secret
@@ -1119,6 +1348,9 @@ def setup(
     else:
         env_cat = os.getenv("COSMETICS_CATALOG")
         app[CATALOG] = load_catalog_from_file(env_cat) if env_cat else None
+
+    global _DEFAULT_CATALOG
+    _DEFAULT_CATALOG = app[CATALOG]
 
     hub = Hub(insecure, store=store)
     app[HUB] = hub
@@ -1160,6 +1392,18 @@ def cli_revoke(uuid_raw: str, item_id: str, db_path: Path | str | None = None) -
     return 0
 
 
+def cli_allaccess(uuid_raw: str, state_str: str, granted_by: str = "admin", db_path: Path | str | None = None) -> int:
+    uuid = plain_uuid(uuid_raw)
+    if not uuid:
+        print(f"Error: invalid UUID '{uuid_raw}'", file=sys.stderr)
+        return 1
+    enabled = state_str.lower() in ("on", "true", "1", "enable", "enabled")
+    store = CosmeticsStore(db_path)
+    store.set_all_access_sync(uuid, enabled, granted_by=granted_by)
+    print(f"All-Access {'ENABLED' if enabled else 'DISABLED'} for {uuid} (granted_by: {granted_by})")
+    return 0
+
+
 def cli_list(uuid_raw: str, db_path: Path | str | None = None) -> int:
     uuid = plain_uuid(uuid_raw)
     if not uuid:
@@ -1168,6 +1412,10 @@ def cli_list(uuid_raw: str, db_path: Path | str | None = None) -> int:
     store = CosmeticsStore(db_path)
     res = store.list_sync(uuid)
     print(f"Cosmetics profile for {uuid}:")
+    print(f"  All-Access: {'YES' if res.get('all_access') else 'NO'}")
+    if res.get("all_access_details"):
+        d = res["all_access_details"]
+        print(f"    Granted by: {d['granted_by']}, at: {d['granted_at']}")
     print("  Active Entitlements:")
     active = [e for e in res["entitlements"] if e["active"]]
     if active:
@@ -1197,7 +1445,7 @@ def main(argv=None) -> None:
     # Check for direct Admin subcommands or flags
     if raw_args:
         first = raw_args[0].lower()
-        if first in ("grant", "revoke", "list", "admin") or first.startswith("--grant") or first.startswith("--revoke") or first.startswith("--list"):
+        if first in ("grant", "revoke", "list", "allaccess", "admin") or first.startswith("--grant") or first.startswith("--revoke") or first.startswith("--list") or first.startswith("--allaccess"):
             db_parent = argparse.ArgumentParser(add_help=False)
             db_parent.add_argument("--db", default=None, help="Path to cosmetics.db")
 
@@ -1217,6 +1465,11 @@ def main(argv=None) -> None:
             list_p = sub.add_parser("list", help="List cosmetic entitlements and equipped items", parents=[db_parent])
             list_p.add_argument("uuid", help="Minecraft player UUID")
 
+            allaccess_p = sub.add_parser("allaccess", help="Toggle all-access for player", parents=[db_parent])
+            allaccess_p.add_argument("uuid", help="Minecraft player UUID")
+            allaccess_p.add_argument("state", choices=["on", "off"], help="on or off")
+            allaccess_p.add_argument("--granted-by", default="admin", help="Admin username")
+
             admin_sub = sub.add_parser("admin", help="Admin subcommands", parents=[db_parent])
             admin_sub_action = admin_sub.add_subparsers(dest="admin_action")
             agrant_p = admin_sub_action.add_parser("grant", parents=[db_parent])
@@ -1228,6 +1481,10 @@ def main(argv=None) -> None:
             arevoke_p.add_argument("item_id")
             alist_p = admin_sub_action.add_parser("list", parents=[db_parent])
             alist_p.add_argument("uuid")
+            aallaccess_p = admin_sub_action.add_parser("allaccess", parents=[db_parent])
+            aallaccess_p.add_argument("uuid")
+            aallaccess_p.add_argument("state", choices=["on", "off"])
+            aallaccess_p.add_argument("--granted-by", default="admin")
 
             parsed, _ = admin_parser.parse_known_args(raw_args)
             action = parsed.action
@@ -1240,6 +1497,8 @@ def main(argv=None) -> None:
                 sys.exit(cli_revoke(parsed.uuid, parsed.item_id, parsed.db))
             elif action == "list":
                 sys.exit(cli_list(parsed.uuid, parsed.db))
+            elif action == "allaccess":
+                sys.exit(cli_allaccess(parsed.uuid, parsed.state, getattr(parsed, "granted_by", "admin"), parsed.db))
 
     # Standard Standalone Server Parser
     parser = argparse.ArgumentParser(description="Lads cosmetics relay & backend, standalone (the bot mounts it with setup(app)).")
