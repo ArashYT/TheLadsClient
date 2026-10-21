@@ -216,6 +216,7 @@ public final class NativeWorldVerification {
             HypixelCapture.tick(gameDirectory, captureReady && (HypixelCapture.busy() || !captureBusy()));
             ActionBarCapture.tick(gameDirectory, captureReady && (ActionBarCapture.busy() || !captureBusy()));
             WorldCapture.tick(gameDirectory, captureReady && (WorldCapture.busy() || !captureBusy()));
+            F1914Capture26.tick(gameDirectory, captureReady && (F1914Capture26.busy() || !captureBusy()));
             FixesCapture.tick(gameDirectory, captureReady && !captureBusy());
             com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.tick(gameDirectory, captureReady && (com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() || !captureBusy()));
             barRuns();
@@ -340,6 +341,7 @@ public final class NativeWorldVerification {
         if (com.thelads.core.v26_2.cosmetics.anim.EmoteCapture26.busy()) com.thelads.core.v26_2.cosmetics.anim.EmoteCapture26.frame(target, gameDirectory);
         if (Anim1911Capture26.busy()) Anim1911Capture26.frame(target, gameDirectory);
         if (FixesCapture.busy()) FixesCapture.frame(target);
+        if (F1914Capture26.busy()) F1914Capture26.frame(target, gameDirectory);
         renderMenuCapture(target);
         if(TITLE_CAPTURE&&active()&&!opened&&!titleCaptured&&titleSince>0
             &&System.nanoTime()-titleSince>2_000_000_000L&&Minecraft.getInstance().gui.screen() instanceof TitleScreen&&Minecraft.getInstance().gui.overlay()==null) {
@@ -541,7 +543,7 @@ public final class NativeWorldVerification {
         BAR_RUNS.put("sprint", SprintCapture::busy); BAR_RUNS.put("HUD 1.7.0", Hud170Capture::busy); BAR_RUNS.put("HUD flicker", HudFlickerCapture::busy);
         BAR_RUNS.put("inventory", InventoryCapture::busy); BAR_RUNS.put("particle core", ParticleCoreCapture::busy); BAR_RUNS.put("sounds", SoundsCapture::busy);
         BAR_RUNS.put("Hypixel", HypixelCapture::busy); BAR_RUNS.put("action bar", ActionBarCapture::busy); BAR_RUNS.put("world", WorldCapture::busy);
-        BAR_RUNS.put("items", ItemsCapture::busy); BAR_RUNS.put("fixes", FixesCapture::busy);
+        BAR_RUNS.put("items", ItemsCapture::busy); BAR_RUNS.put("fixes", FixesCapture::busy); BAR_RUNS.put("f1914", F1914Capture26::busy);
     }
     private static String barPrev;
     /** Once per tick: a capture that became busy and reported no run of its own gets a bar run until it is not busy any more. */
@@ -564,6 +566,7 @@ public final class NativeWorldVerification {
             || WorldCapture.busy()
             || ItemsCapture.busy()
             || FixesCapture.busy()
+            || F1914Capture26.busy()
             || com.thelads.core.v26_2.cosmetics.anim.EmoteCapture26.busy();
     }
     /** A client-only QA fixture of this type, even while the level is Peaceful (a reused QA world may still be; hostile types return null). */

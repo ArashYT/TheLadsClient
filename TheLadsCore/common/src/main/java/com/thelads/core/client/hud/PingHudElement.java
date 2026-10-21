@@ -17,6 +17,10 @@ public class PingHudElement extends TextHudElement {
     private boolean lastLabel;
     private String cachedText = "";
 
+    public String getCachedText() {
+        return cachedText;
+    }
+
     @Override
     protected String updateText(LadsGraphics g) {
         // 1.9.1: where the tab list's ping is fake (Hypixel's 1 ms) this is the measured one, "-" until there is one.
