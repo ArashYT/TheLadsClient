@@ -51,7 +51,14 @@ import net.minecraft.world.WorldType;
 import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
+import com.sun.jna.platform.win32.User32;
+import com.sun.jna.platform.win32.WinDef;
+import com.thelads.core.config.DropdownOption;
+import com.thelads.core.config.HudSettings;
+import com.thelads.core.config.SliderOption;
 
 /**
  * QA only (LADS_VERIFY_189_ONLY=perf): the 1.7.3 benchmark. A fresh superflat world (fixed seed, no structures, noon, no
@@ -98,6 +105,8 @@ public final class Probe173Perf {
                     steps.add(Probe173Perf::swaps);
                 } else if ("empty".equalsIgnoreCase(name)) {
                     steps.add(scene("empty", 20));
+                } else if (isShowcase(name)) {
+                    steps.add(scene(name, 3));
                 } else {
                     steps.add(scene(name, WARM));
                 }
@@ -170,6 +179,7 @@ public final class Probe173Perf {
             originalSkinLayersLod = getSkinLayersLod();
         }
         applyBenchmarkSkinLayers();
+        applyShowcaseWindow(mc);
         report.addProperty("seconds", SECONDS);
         report.addProperty("renderDistance", mc.gameSettings.renderDistanceChunks);
         report.addProperty("maxFps", mc.gameSettings.limitFramerate);
@@ -238,6 +248,80 @@ public final class Probe173Perf {
         }
         if (Probe192Players.isPlayerScene(name)) {
             Probe192Players.build(mc, name);
+            return;
+        }
+        if (isShowcase(name)) {
+            applyShowcaseWindow(mc);
+
+            // FPS is always UNLIMITED in the showcase
+            mc.gameSettings.limitFramerate = 260;
+            mc.gameSettings.enableVsync = false;
+            Display.setVSyncEnabled(false);
+            DynamicFPS189.bypass = true;
+            Module dfpsMod = Options189.module(DynamicFPS189.NAME);
+            if (dfpsMod != null) dfpsMod.setEnabled(false);
+
+            // HUD rules: Background ON, Text Shadow ON, HUD FPS cap disabled, hudScale following GUI scale
+            HudSettings hudSettings = HudSettings.getInstance();
+            hudSettings.setBackgrounds(true);
+            hudSettings.setTextShadow(true);
+            hudSettings.setHudFpsCapEnabled(false);
+            hudSettings.setHudScale(0);
+
+            // A clean frame for the FPS video: every HUD module off except the FPS counter (turned on below).
+            for (HudElement element : HudManager.getInstance().getElements()) {
+                Module module = Options189.module(element.getModuleName());
+                if (!element.isAvailable() || module == null) continue;
+                remember(mc, element.getModuleName());
+                module.setEnabled(false);
+            }
+            remember(mc, "Autohide");
+            if (Options189.module("Autohide") != null) Options189.module("Autohide").setEnabled(false);
+            Module fpsMod = Options189.module("FPS");
+            if (fpsMod != null) {
+                fpsMod.setEnabled(true);
+                Option opt = fpsMod.getOption("Show Game FPS");
+                if (opt instanceof BoolOption) ((BoolOption) opt).set(true);
+                Option sizeOpt = fpsMod.getOption("Size");
+                if (sizeOpt instanceof SliderOption) ((SliderOption) sizeOpt).setValue(175);
+                Option displayOpt = fpsMod.getOption("Display");
+                if (displayOpt instanceof DropdownOption) ((DropdownOption) displayOpt).setIndex(0);
+                Option updateOpt = fpsMod.getOption("Update rate");
+                if (updateOpt instanceof DropdownOption) ((DropdownOption) updateOpt).setIndex(0);
+            }
+            if (name.contains("crowd")) {
+                command(mc, "fill -12 " + (int)Y + " 8 12 " + (int)(Y + 8) + " 8 stone");
+                for (int i = 0; i < 100; i++) {
+                    boolean behind = i < 70;
+                    double ex = behind ? -9 + (i % 10) * 2 : -13.5 + (i % 10) * 3, ez = behind ? 12 + (i / 10) * 2 : 3.5 + ((i - 70) / 10) * 1.5;
+                    EntityLivingBase entity;
+                    if (i % 2 == 0) {
+                        EntityArmorStand stand = new EntityArmorStand(mc.theWorld);
+                        stand.setCustomNameTag("Stand " + i);
+                        stand.setAlwaysRenderNameTag(true);
+                        entity = stand;
+                    } else {
+                        entity = new EntityOtherPlayerMP(mc.theWorld, new GameProfile(UUID.nameUUIDFromBytes(("perf" + i).getBytes(StandardCharsets.UTF_8)), "PerfBot" + i));
+                    }
+                    entity.setCurrentItemOrArmor(0, new ItemStack(Items.diamond_sword));
+                    entity.setCurrentItemOrArmor(1, new ItemStack(Items.iron_boots));
+                    entity.setCurrentItemOrArmor(2, new ItemStack(Items.iron_leggings));
+                    entity.setCurrentItemOrArmor(3, new ItemStack(Items.iron_chestplate));
+                    entity.setCurrentItemOrArmor(4, new ItemStack(Items.iron_helmet));
+                    entity.setPositionAndRotation(ex, Y, ez, 180, 0);
+                    entity.rotationYawHead = entity.renderYawOffset = 180;
+                    mc.theWorld.addEntityToWorld(-17300 - i, entity);
+                }
+            }
+            if (name.contains("farblock")) {
+                for (int d = 10; d <= 120; d += 15) {
+                    command(mc, "setblock " + (int)(X + d) + " " + (int)Y + " " + (int)Z + " chest");
+                    command(mc, "setblock " + (int)(X + d) + " " + (int)Y + " " + (int)(Z + 2) + " standing_sign 0 replace {Text1:\"FarSign " + d + "\"}");
+                }
+            }
+            mc.ingameGUI.getChatGUI().clearChatMessages();
+            writeShowcaseStatus(mc, "ready " + mc.displayWidth + "x" + mc.displayHeight, Minecraft.getDebugFPS());
+            RANDOM.setSeed(173);
             return;
         }
         switch (name) {
@@ -319,6 +403,17 @@ public final class Probe173Perf {
 
     /** Every client tick of a scene: what keeps it busy. */
     private static void tick(Minecraft mc, String name, int tick) {
+        if (isShowcase(name)) {
+            if (tick > 0 && tick % 60 == 0) {
+                int shotIndex = tick / 60;
+                screenshot(mc, "showcase-" + name + "-shot" + shotIndex);
+                LOG.info("Showcase 1.8.9: captured screenshot showcase-{}-shot{}.png at tick {} (Debug FPS: {})", name, shotIndex, tick, Minecraft.getDebugFPS());
+            }
+            if (tick % 10 == 0) {
+                writeShowcaseStatus(mc, "running " + mc.displayWidth + "x" + mc.displayHeight, Minecraft.getDebugFPS());
+            }
+            return;
+        }
         if (Probe192Players.isPlayerScene(name)) {
             Probe192Players.tick(mc, name, tick);
             return;
@@ -346,6 +441,13 @@ public final class Probe173Perf {
     private static void teardown(Minecraft mc, String name) {
         if (Probe192Players.isPlayerScene(name)) {
             Probe192Players.teardown(mc, name);
+        }
+        if (isShowcase(name)) {
+            if (name.contains("crowd")) {
+                for (int i = 0; i < 100; i++) mc.theWorld.removeEntityFromWorld(-17300 - i);
+                command(mc, "fill -12 " + (int)Y + " 8 12 " + (int)(Y + 8) + " 8 air");
+            }
+            writeShowcaseStatus(mc, "done", Minecraft.getDebugFPS());
         }
         switch (name) {
             case "crowd":
@@ -383,6 +485,11 @@ public final class Probe173Perf {
 
     /** The player stands still at the scene's pose. */
     private static void pin(Minecraft mc) {
+        if (mc.thePlayer == null) return;
+        if (isShowcase(running)) {
+            flyShowcase(mc, ticks);
+            return;
+        }
         mc.thePlayer.setPosition(X, Y, Z);
         mc.thePlayer.prevPosX = mc.thePlayer.lastTickPosX = X;
         mc.thePlayer.prevPosY = mc.thePlayer.lastTickPosY = Y;
@@ -392,6 +499,144 @@ public final class Probe173Perf {
         mc.thePlayer.capabilities.isFlying = false;
         mc.thePlayer.rotationYaw = mc.thePlayer.prevRotationYaw = 0;
         mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = pitch;
+    }
+
+    private static boolean isShowcase(String name) {
+        return name != null && (name.startsWith("showcase") || name.equalsIgnoreCase("fly"));
+    }
+
+    private static void flyShowcase(Minecraft mc, int tick) {
+        if (mc.thePlayer == null) return;
+        double t = tick * 0.05; // 20 ticks = 1.0 second
+        double px, py, pz;
+        float yaw, pitch;
+        if (running != null && running.contains("crowd")) {
+            px = X + Math.sin(t * 0.7) * 8.0;
+            py = Y + 1.2 + Math.sin(t * 0.5) * 0.5;
+            pz = Z + Math.min(6.0, t * 1.2);
+            yaw = (float) (Math.sin(t * 0.8) * 20.0);
+            pitch = (float) (5.0 + Math.cos(t * 0.5) * 3.0);
+        } else if (running != null && running.contains("farblock")) {
+            px = X + t * 6.0;
+            py = Y + 1.5;
+            pz = Z + 1.0;
+            yaw = -90.0f;
+            pitch = 10.0f;
+        } else {
+            px = X + (t * 8.0);
+            py = Y + (Boolean.getBoolean("thelads.perfTerrain") ? 6.0 : 3.0) + Math.sin(t * 0.6) * 1.5;
+            pz = Z + Math.sin(t * 0.4) * 4.0;
+            yaw = (float) (-90.0 + Math.sin(t * 0.5) * 15.0);
+            pitch = (float) (6.0 + Math.cos(t * 0.4) * 4.0);
+        }
+
+        mc.thePlayer.capabilities.isFlying = true;
+        mc.thePlayer.setPosition(px, py, pz);
+        mc.thePlayer.prevPosX = mc.thePlayer.lastTickPosX = px;
+        mc.thePlayer.prevPosY = mc.thePlayer.lastTickPosY = py;
+        mc.thePlayer.prevPosZ = mc.thePlayer.lastTickPosZ = pz;
+        mc.thePlayer.motionX = mc.thePlayer.motionY = mc.thePlayer.motionZ = 0;
+        mc.thePlayer.fallDistance = 0;
+        mc.thePlayer.rotationYaw = mc.thePlayer.prevRotationYaw = yaw;
+        mc.thePlayer.rotationPitch = mc.thePlayer.prevRotationPitch = pitch;
+    }
+
+    private static void writeShowcaseStatus(Minecraft mc, String status, int fps) {
+        try {
+            File folder = new File(mc.mcDataDir, "lads-qa/showcase");
+            folder.mkdirs();
+            Files.write(new File(folder, "status.txt").toPath(), status.getBytes(StandardCharsets.UTF_8));
+            Files.write(new File(folder, "fps.txt").toPath(), ("FPS: " + fps + "\n").getBytes(StandardCharsets.UTF_8));
+            String extDir = System.getProperty("thelads.showcaseDir", System.getenv("LADS_SHOWCASE_DIR"));
+            if (extDir != null && !extDir.trim().isEmpty()) {
+                File dir = new File(extDir.trim());
+                if (dir.isDirectory() || dir.mkdirs()) {
+                    Files.write(new File(dir, "status.txt").toPath(), status.getBytes(StandardCharsets.UTF_8));
+                    Files.write(new File(dir, "fps.txt").toPath(), ("FPS: " + fps + "\n").getBytes(StandardCharsets.UTF_8));
+                }
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private static void applyShowcaseWindow(Minecraft mc) {
+        String winEnv = System.getProperty("thelads.showcaseWindow", System.getenv("LADS_SHOWCASE_WINDOW"));
+        if (winEnv == null || winEnv.trim().isEmpty()) {
+            return;
+        }
+        try {
+            winEnv = winEnv.trim();
+            int atIdx = winEnv.indexOf('@');
+            String sizePart = atIdx >= 0 ? winEnv.substring(0, atIdx).trim() : winEnv;
+            String posPart = atIdx >= 0 ? winEnv.substring(atIdx + 1).trim() : null;
+
+            String[] dims = sizePart.split("x");
+            if (dims.length != 2) return;
+            int w = Integer.parseInt(dims[0].trim());
+            int h = Integer.parseInt(dims[1].trim());
+
+            Integer posX = null, posY = null;
+            if (posPart != null && posPart.contains(",")) {
+                String[] pos = posPart.split(",");
+                if (pos.length == 2) {
+                    posX = Integer.parseInt(pos[0].trim());
+                    posY = Integer.parseInt(pos[1].trim());
+                }
+            }
+
+            LOG.info("Showcase 1.8.9: applying window {}x{} (position: {},{})", w, h, posX, posY);
+
+            if (PylonWindow189.PRESENT) {
+                try {
+                    PylonWindow189.fullscreen(false);
+                    PylonWindow189.bordered(false);
+                    PylonWindow189.setResizable(false);
+                    PylonWindow189.size(w, h);
+                    if (posX != null && posY != null) {
+                        PylonWindow189.move(posX, posY);
+                    }
+                } catch (Throwable t) {
+                    LOG.warn("Showcase 1.8.9: Failed to apply window via Pylon", t);
+                }
+            } else {
+                System.setProperty("org.lwjgl.opengl.Window.undecorated", "true");
+                Display.setResizable(false);
+                if (posX != null && posY != null) {
+                    Display.setLocation(posX, posY);
+                }
+                try {
+                    if (System.getProperty("os.name", "").startsWith("Windows")) {
+                        WinDef.HWND hwnd = Borderless189.hwnd();
+                        if (hwnd != null) {
+                            int flags = 0x14; // SWP_NOZORDER | SWP_NOACTIVATE
+                            int x = posX != null ? posX : Display.getX();
+                            int y = posY != null ? posY : Display.getY();
+                            User32.INSTANCE.SetWindowPos(hwnd, null, x, y, w, h, flags);
+                        }
+                    }
+                } catch (Throwable t) {
+                    LOG.warn("Showcase 1.8.9: Failed to apply window via User32", t);
+                }
+            }
+
+            try {
+                Display.setDisplayMode(new DisplayMode(w, h));
+            } catch (Throwable ignored) {}
+
+            String gsProp = System.getProperty("thelads.guiScale", System.getenv("LADS_GUI_SCALE"));
+            if (gsProp != null && !gsProp.trim().isEmpty()) {
+                try {
+                    mc.gameSettings.guiScale = Integer.parseInt(gsProp.trim());
+                } catch (NumberFormatException ignored) {}
+            } else {
+                mc.gameSettings.guiScale = (w >= h ? 6 : 5);
+            }
+
+            mc.resize(w, h);
+            Display.setVSyncEnabled(false);
+            LOG.info("Showcase 1.8.9: window applied, display is {}x{}, guiScale={}", mc.displayWidth, mc.displayHeight, mc.gameSettings.guiScale);
+        } catch (Throwable t) {
+            LOG.error("Showcase 1.8.9: Failed to parse/apply LADS_SHOWCASE_WINDOW=" + winEnv, t);
+        }
     }
 
     private static void begin(Minecraft mc, String name) {
@@ -666,6 +911,7 @@ public final class Probe173Perf {
         File folder = new File(mc.mcDataDir, "lads-qa/perf");
         check(folder.isDirectory() || folder.mkdirs(), "perf folder " + folder);
         Files.write(new File(folder, "perf.json").toPath(), new GsonBuilder().setPrettyPrinting().create().toJson(report).getBytes(StandardCharsets.UTF_8));
+        writeShowcaseStatus(mc, "done", Minecraft.getDebugFPS());
         LOG.info("Lads 1.8.9 perf END: {} scenes in lads-qa/perf/perf.json", scenes.entrySet().size());
         return after(5);
     }

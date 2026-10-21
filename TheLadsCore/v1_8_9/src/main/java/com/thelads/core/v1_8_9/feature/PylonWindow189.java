@@ -72,6 +72,16 @@ public final class PylonWindow189 {
         return ((Long) Class.forName("org.lwjgl.sdl.SDLVideo").getMethod("SDL_GetWindowFlags", long.class).invoke(null, window()) & 32L) != 0;
     }
 
+    /** Set whether the SDL window is resizable. */
+    static void setResizable(boolean resizable) throws ReflectiveOperationException {
+        Class.forName("org.lwjgl.sdl.SDLVideo").getMethod("SDL_SetWindowResizable", long.class, boolean.class).invoke(null, window(), resizable);
+    }
+
+    /** Set fullscreen mode on the SDL window. */
+    static void fullscreen(boolean fullscreen) throws ReflectiveOperationException {
+        Class.forName("org.lwjgl.sdl.SDLVideo").getMethod("SDL_SetWindowFullscreen", long.class, boolean.class).invoke(null, window(), fullscreen);
+    }
+
     /** The native Windows handle of the SDL window. */
     static long hwnd() throws ReflectiveOperationException {
         int properties = (Integer) Class.forName("org.lwjgl.sdl.SDLVideo").getMethod("SDL_GetWindowProperties", long.class).invoke(null, window());

@@ -832,6 +832,12 @@ try
     // LADS_VERIFY_FULLSCREEN=1: started as the launcher does with "Fullscreen on launch" (its default): --fullscreen and fullscreen:true.
     bool qaFullscreen = Env("LADS_VERIFY_FULLSCREEN") == "1";
     var windowSize = showcase ? new System.Drawing.Size(1920, 1080) : tiled ? QaWindowGuard.TileClient(1) : new System.Drawing.Size(titleVerification ? 1280 : 960, titleVerification ? 720 : 600);
+    if (Env("LADS_SHOWCASE_WINDOW") is { } sw && sw.Length > 0)
+    {
+        var dims = sw.Split('@')[0].Split('x');
+        if (dims.Length == 2 && int.TryParse(dims[0], out int swW) && int.TryParse(dims[1], out int swH))
+            windowSize = new System.Drawing.Size(swW, swH);
+    }
     int maxRam = int.TryParse(Env("LADS_VERIFY_MAX_RAM"), out var uMax) ? uMax : (perf189 ? 4096 : 2048);
     int minRam = int.TryParse(Env("LADS_VERIFY_MIN_RAM"), out var uMin) ? uMin : (perf189 ? 512 : 256);
     var launchOptions = new MLaunchOption
@@ -1042,6 +1048,16 @@ try
             process.StartInfo.Environment["LADS_SHOWCASE_SECONDARY"] = sec;
             AddJvm("-Dlads.showcase.secondary=" + sec);
         }
+    }
+    if (Env("LADS_SHOWCASE_WINDOW") is { } swin)
+    {
+        process.StartInfo.Environment["LADS_SHOWCASE_WINDOW"] = swin;
+        AddJvm("-Dthelads.showcaseWindow=" + swin);
+    }
+    if (Env("LADS_SHOWCASE_DIR") is { } scDir && !jvmFlags.Any(f => f.Contains("lads.showcase.dir=")))
+    {
+        process.StartInfo.Environment["LADS_SHOWCASE_DIR"] = scDir;
+        AddJvm("-Dthelads.showcaseDir=" + scDir);
     }
     summary.Add("Core global config dir (THELADS_GLOBAL_DIR): " + directory);
     summary.Add($"Child environment: THELADS_DIR={directory}; {SharedContentService.RootEnvironmentVariable}={shared.Root}; {GameOptionsService.LunarEnvironmentVariable}={lunarRoot}");
