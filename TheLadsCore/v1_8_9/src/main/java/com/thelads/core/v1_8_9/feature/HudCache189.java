@@ -56,6 +56,7 @@ public final class HudCache189 {
             LIVE.clear();
             premultiply = true;
             HudFrameCap.wholeHud = true; // HudManager draws, the cap is here
+            HudFrameCap.exempt = Boolean.FALSE;
             blend();
             try {
                 // Recorded and replayed into the cache: what it draws tells HudFrameCap whether the HUD animates (60 builds a second).
@@ -64,6 +65,7 @@ public final class HudCache189 {
                 built = true;
             } finally {
                 HudFrameCap.wholeHud = false;
+                HudFrameCap.exempt = null;
                 premultiply = false;
                 blend();
                 BUFFER.end();
@@ -74,6 +76,14 @@ public final class HudCache189 {
         BUFFER.draw(1, width, height, crop, crops);
         if (GpuPhases189.ON) GpuPhases189.end(GpuPhases189.LADS_HUD);
         for (Consumer<LadsGraphics> op : LIVE) op.accept(g);
+        HudFrameCap.wholeHud = true;
+        HudFrameCap.exempt = Boolean.TRUE;
+        try {
+            HudManager.getInstance().render(g);
+        } finally {
+            HudFrameCap.wholeHud = false;
+            HudFrameCap.exempt = null;
+        }
         return true;
     }
 

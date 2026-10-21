@@ -101,6 +101,11 @@ public abstract class GuiNewChatMixin implements Chat189.History {
         ladsLaidOut = Chat189.layOut(chatLines, ladsLaidOut, drawnChatLines, lines, MathHelper.floor_float(getChatWidth() / getChatScale()));
     }
 
+    @Inject(method = "printChatMessageWithOptionalDeletion", at = @At("HEAD"), cancellable = true, require = 1)
+    private void ladsIgnoreNullChat(IChatComponent message, int chatLineId, CallbackInfo ci) {
+        if (message == null) ci.cancel();
+    }
+
     @ModifyVariable(method = "printChatMessageWithOptionalDeletion", at = @At("HEAD"), argsOnly = true, require = 1)
     private IChatComponent ladsMessage(IChatComponent message) {
         return Chat189.message(message);

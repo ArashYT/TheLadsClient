@@ -55,8 +55,9 @@ public final class Chat189 {
 
     /** A new chat message (printChatMessageWithOptionalDeletion); refreshChat re-wraps stored messages without coming here. */
     public static IChatComponent message(IChatComponent message) {
+        if (message == null) return null;
         messages++;
-        if (message == null || !Options189.enabled("Chat")) return message;
+        if (!Options189.enabled("Chat")) return message;
         if (Options189.bool("Chat", "Screenshot Link Buttons", true)) screenshotButtons(message);
         if (!Options189.bool("Chat", "Timestamps", false)) return message;
         IChatComponent prefix = new ChatComponentText("[" + LocalTime.now().format(CLOCK) + "] ");

@@ -69,12 +69,13 @@ final class RecordingGraphics implements LadsGraphics {
     }
 
     private static void mark0(String kind) { HudFrameCap.draw(31 * kind.hashCode(), 1); }
+    private static void mark(String kind, int what, int a) { HudFrameCap.draw(31 * kind.hashCode() + what, a); }
     private static void mark(String kind, int what, int a, int b) { HudFrameCap.draw(31 * kind.hashCode() + what, hash(a, b)); }
     private static void mark(String kind, int what, int a, int b, int c) { HudFrameCap.draw(31 * kind.hashCode() + what, hash(a, b, c)); }
     private static void mark(String kind, int what, int a, int b, int c, int d) { HudFrameCap.draw(31 * kind.hashCode() + what, hash(a, b, c, d)); }
     private static void mark(String kind, int what, int a, int b, int c, int d, int e) { HudFrameCap.draw(31 * kind.hashCode() + what, hash(a, b, c, d, e)); }
 
-    @Override public void fill(int minX, int minY, int maxX, int maxY, int color) { box(minX, minY, maxX, maxY); mark("fill", 0, minX, minY, maxX, maxY, color); ops.add(g -> g.fill(minX, minY, maxX, maxY, color)); }
+    @Override public void fill(int minX, int minY, int maxX, int maxY, int color) { box(minX, minY, maxX, maxY); mark("fill", hash(minX, minY, maxX, maxY), color); ops.add(g -> g.fill(minX, minY, maxX, maxY, color)); }
     @Override public void drawText(String text, int x, int y, int color, boolean shadow) { text(text, x, y); mark("text", Objects.hashCode(text), x, y, color, shadow ? 1231 : 1237); ops.add(g -> g.drawText(text, x, y, color, shadow)); }
     @Override public void drawCenteredText(String text, int centerX, int y, int color, boolean shadow) { if (text != null) text(text, centerX - target.textWidth(text) / 2 - 1, y); mark("centered", Objects.hashCode(text), centerX, y, color, shadow ? 1231 : 1237); ops.add(g -> g.drawCenteredText(text, centerX, y, color, shadow)); }
     @Override public void pushPose() { poses.push(new float[]{sx, sy, tx, ty}); mark0("push"); ops.add(LadsGraphics::pushPose); }
