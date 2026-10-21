@@ -77,7 +77,18 @@ public final class HypixelChat {
     private static final Pattern UNKNOWN_COMMAND = Pattern.compile("Unknown (?:or incomplete )?command\\b.*");
     /** /locraw's answer: {"server":"mini123A","gametype":"BEDWARS","mode":"BEDWARS_EIGHT_ONE","map":"Lighthouse"}. */
     private static final Pattern LOCRAW = Pattern.compile("\\{\"server\":\"[^\"]*\".*\\}");
-    private static final Pattern LOCRAW_FIELD = Pattern.compile("\"(gametype|mode)\":\"([A-Za-z0-9_]+)\"");
+    private static final Pattern LOCRAW_FIELD = Pattern.compile("\"(server|gametype|mode|map)\":\"([^\"]+)\"");
+
+    public record Locraw(String server, String gametype, String mode, String map) {}
+    public record KillEvent(String victim, String killer, boolean finalKill) {}
+
+    private static final Pattern BED_BROKEN = Pattern.compile("(?i)^BED DESTRUCTION > .*Bed was destroyed by (?:(?:\\[[^\\]]+\\]\\s*)*(\\w{1,16}))[!.]*");
+    private static final Pattern KILLER_EXTRACT = Pattern.compile("(?i)\\b(?:by|to)\\s+(?:\\[[^\\]]+\\]\\s*)*(\\w{1,16})\\b");
+    private static final Pattern VICTORY = Pattern.compile("(?i)^\\s*VICTORY!?\\s*$");
+    private static final Pattern YOU_WON = Pattern.compile("(?i)^\\s*(?:\\[[^\\]]+\\]\\s*)*(\\w{1,16}) won the game!\\s*$");
+    private static final Pattern DUEL_WINNER = Pattern.compile("(?i)^\\s*.*\\bWINNER!.*");
+    private static final Pattern STREAMER_LINE = Pattern.compile("^(?:\\d{1,2}/\\d{1,2}/\\d{2,4}(?:\\s+[A-Za-z0-9_#-]+)?|(?:mini|mega|m)\\d+[A-Za-z0-9]*|[A-Z]\\d{1,4}[A-Z0-9]?|(?i)lobby\\s*#?\\d+)$");
+    private static final Pattern STREAMER_SENDING = Pattern.compile("(?i)(Sending you to (?:§.)*)[A-Za-z0-9_-]+([.!]*)");
 
     /** Chat Cleanup's kinds of line, in its option order. */
     public enum Spam {
@@ -139,14 +150,26 @@ public final class HypixelChat {
     /** The server does not know the command just sent. */
     public static boolean unknownCommand(String message) { return anyLine(message, UNKNOWN_COMMAND); }
 
-    /** /locraw's JSON answer as {gametype, mode} (mode null in a lobby), or null when the line is not one. */
-    public static String[] location(String message) {
+    /** Full parsed /locraw JSON answer as record. */
+    public static Locraw parseLocraw(String message) {
         String line = plain(message).trim();
         if (!LOCRAW.matcher(line).matches()) return null;
-        String[] found = new String[2];
+        String server = null, gametype = null, mode = null, map = null;
         Matcher m = LOCRAW_FIELD.matcher(line);
-        while (m.find()) found["gametype".equals(m.group(1)) ? 0 : 1] = m.group(2);
-        return found;
+        while (m.find()) {
+            String k = m.group(1), v = m.group(2);
+            if ("server".equals(k)) server = v;
+            else if ("gametype".equals(k)) gametype = v;
+            else if ("mode".equals(k)) mode = v;
+            else if ("map".equals(k)) map = v;
+        }
+        return new Locraw(server, gametype, mode, map);
+    }
+
+    /** /locraw's JSON answer as {gametype, mode} (mode null in a lobby), or null when the line is not one. */
+    public static String[] location(String message) {
+        Locraw loc = parseLocraw(message);
+        return loc == null ? null : new String[] { loc.gametype(), loc.mode() };
     }
 
     /** The /play name of a /locraw game mode, or null for places without games (lobbies, SkyBlock, Housing, Pit, Limbo). */
@@ -309,5 +332,99 @@ public final class HypixelChat {
             }
         }
         return false;
+    }
+
+    /** True when this line is a Bed Wars bed broken notice for {@code myName}. */
+    public static boolean isBedBroken(String message, String myName) {
+        if (message == null || myName == null || myName.isEmpty()) return false;
+        for (String line : lines(message)) {
+            if (isPlayerChat(line)) continue;
+            Matcher m = BED_BROKEN.matcher(line.trim());
+            if (m.matches() && myName.equalsIgnoreCase(m.group(1))) return true;
+        }
+        return false;
+    }
+
+    /** Parses a kill message into a KillEvent containing victim, killer, and whether it was a final kill. */
+    public static KillEvent parseKill(String message) {
+        for (String line : lines(message)) {
+            if (isPlayerChat(line)) continue;
+            String p = line.trim();
+            Matcher fk = FINAL_KILL_LINE.matcher(p);
+            if (fk.matches()) {
+                String victim = fk.group(1);
+                Matcher km = KILLER_EXTRACT.matcher(p);
+                String killer = km.find() ? km.group(1) : null;
+                return new KillEvent(victim, killer, true);
+            }
+            Matcher gk = GENERAL_KILL_LINE.matcher(p);
+            if (gk.matches()) {
+                String victim = gk.group(1);
+                Matcher km = KILLER_EXTRACT.matcher(p);
+                String killer = km.find() ? km.group(1) : null;
+                return new KillEvent(victim, killer, false);
+            }
+            Matcher tk = THEMED_KILL_LINE.matcher(p);
+            if (tk.matches()) {
+                String victim = tk.group(1);
+                Matcher km = KILLER_EXTRACT.matcher(p);
+                String killer = km.find() ? km.group(1) : null;
+                boolean isFinal = p.toUpperCase(Locale.ROOT).contains("FINAL KILL");
+                return new KillEvent(victim, killer, isFinal);
+            }
+        }
+        return null;
+    }
+
+    /** True when this line indicates the local player died in any fashion (combat or environmental). */
+    public static boolean isSelfDeath(String message, String myName) {
+        if (message == null || myName == null || myName.isEmpty()) return false;
+        for (String line : lines(message)) {
+            if (isPlayerChat(line)) continue;
+            String p = line.trim();
+            if (SELF_OUT_LINE.matcher(p).matches()) return true;
+            KillEvent k = parseKill(line);
+            if (k != null && myName.equalsIgnoreCase(k.victim())) return true;
+        }
+        return false;
+    }
+
+    /** True when this message indicates a game victory for {@code myName} or their team. */
+    public static boolean isVictory(String message, String myName) {
+        for (String line : lines(message)) {
+            if (isPlayerChat(line)) continue;
+            String p = line.trim();
+            if (VICTORY.matcher(p).matches()) return true;
+            if (myName != null && !myName.isEmpty()) {
+                Matcher yw = YOU_WON.matcher(p);
+                if (yw.matches() && myName.equalsIgnoreCase(yw.group(1))) return true;
+                if (DUEL_WINNER.matcher(p).matches() && p.toLowerCase(Locale.ROOT).contains(myName.toLowerCase(Locale.ROOT))) {
+                    int winnerIdx = p.toUpperCase(Locale.ROOT).lastIndexOf("WINNER!");
+                    int myIdx = p.toLowerCase(Locale.ROOT).lastIndexOf(myName.toLowerCase(Locale.ROOT));
+                    if (myIdx >= 0 && myIdx < winnerIdx) {
+                        String afterMe = p.substring(myIdx + myName.length(), winnerIdx);
+                        Matcher otherName = Pattern.compile("\\b\\w{1,16}\\b").matcher(afterMe);
+                        if (!otherName.find()) return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Pure string function: true if the scoreboard line contains date and/or server/lobby id for Streamer Mode. */
+    public static boolean isStreamerScoreboardLine(String line) {
+        if (line == null) return false;
+        String p = plain(line).trim();
+        if (p.isEmpty()) return false;
+        return STREAMER_LINE.matcher(p).matches();
+    }
+
+    /** Pure string function: masks the server/lobby name in chat "Sending you to <server>" lines. */
+    public static String maskStreamerChat(String message) {
+        if (message == null || !message.contains("Sending you to")) return message;
+        Matcher m = STREAMER_SENDING.matcher(message);
+        if (!m.find()) return message;
+        return m.replaceAll("$1[HIDDEN]$2");
     }
 }

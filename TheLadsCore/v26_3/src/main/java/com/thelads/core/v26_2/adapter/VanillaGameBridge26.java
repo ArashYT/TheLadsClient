@@ -316,6 +316,10 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         else connection.sendChat(text);
     }
 
+    @Override public void displayChatMessage(String text) {
+        var mc = Minecraft.getInstance(); if (mc.gui != null && mc.gui.hud != null && mc.gui.hud.getChat() != null) mc.gui.hud.getChat().addClientSystemMessage(net.minecraft.network.chat.Component.literal(text));
+    }
+
     @Override public boolean sendPluginMessage(String channel, byte[] data) {
         return com.thelads.core.v26_2.feature.NativeHypixel.send(channel, data);
     }

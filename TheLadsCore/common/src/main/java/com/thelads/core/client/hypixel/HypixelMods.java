@@ -31,6 +31,7 @@ public final class HypixelMods {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     public static final String AUTO_GG = "Auto GG", AUTO_FRIEND = "Auto Friend", AUTO_TIP = "Auto Tip", PLAY_AGAIN = "Auto Play Again",
         AUTO_WHO = "Auto Who", CLEANUP = "Chat Cleanup";
+    public static final String CHAT_EMOTES = "Chat emotes", STREAMER_MODE = "Streamer Mode";
     public static final String REPLAY_WHEN = "Replay when", WAIT_PARTY = "Wait for party";
     static final long GAP = 1_500_000_000L, SECOND = 1_000_000_000L;
     private static final int MAX_QUEUED = 8;
@@ -47,6 +48,8 @@ public final class HypixelMods {
     private static long lastSent, tipAt, tipSent, locrawSent, selfDiedAt, partyListSent, ggDue;
     private static String lastCommand = "";
     private static String[] location;
+    private static String mapName, serverName;
+    private static boolean mvpPlusPlus;
     private static String qaPlayerName;
     /** QA only: the lines sent (the first 64), in order, and how many server messages were hidden. */
     public static final List<String> SENT = new ArrayList<>();
@@ -60,7 +63,7 @@ public final class HypixelMods {
     public static Module module() {
         Module m = new Module(HYPIXEL_MODS, "Hypixel only. Auto GG says gg when a game ends (second message optional); Auto Friend accepts "
             + "every friend request (off by default: anyone could then add you); Auto Tip tips boosters (/tip all) on a timer; Auto Play Again "
-            + "queues the same mode (/play) after death or when the game ends, waiting for party by default; Auto Who lists the players (/who) as a game starts; Chat Cleanup hides lobby spam.");
+            + "queues the same mode (/play) after death or when the game ends, waiting for party by default; Auto Who lists the players (/who) as a game starts; Chat Cleanup hides lobby spam; Chat emotes replaces MVP++ emote shortcodes for non-MVP++; Streamer Mode masks server ID and lobby info.");
         m.addOption(new BoolOption(AUTO_GG, true));
         m.addOption(new TextOption(AUTO_GG + ": Message", "gg"));
         m.addOption(new SliderOption(AUTO_GG + ": Delay seconds", 1, 0, 10, 0.5));
@@ -76,6 +79,8 @@ public final class HypixelMods {
         m.addOption(new BoolOption(AUTO_WHO, false));
         m.addOption(new BoolOption(CLEANUP, true));
         for (HypixelChat.Spam kind : HypixelChat.Spam.values()) m.addOption(new BoolOption(CLEANUP + ": " + kind.option, kind.on));
+        m.addOption(new BoolOption(CHAT_EMOTES, true));
+        m.addOption(new BoolOption(STREAMER_MODE, false));
         m.setEnabled(true);
         return m;
     }
@@ -114,6 +119,66 @@ public final class HypixelMods {
     public static boolean waitParty() {
         Option o = option(PLAY_AGAIN, WAIT_PARTY);
         return o instanceof BoolOption b ? b.get() : true;
+    }
+
+    public static boolean isStreamerMode() { return on(STREAMER_MODE); }
+    public static boolean isChatEmotes() { return on(CHAT_EMOTES); }
+    public static boolean isMvpPlusPlus() { return mvpPlusPlus; }
+    public static void setMvpPlusPlusForTest(boolean mvp) { mvpPlusPlus = mvp; }
+    public static String mapName() { return mapName; }
+    public static String serverName() { return serverName; }
+    public static void setMapNameForTest(String map) { mapName = map; }
+    public static void setServerNameForTest(String server) { serverName = server; }
+
+    public static boolean isBedWarsHeightEnabled() {
+        Module m = ModuleManager.getInstance().getModule("Bed Wars Height Limit");
+        return m != null && m.isEnabled() && HypixelSafetyManager.isHypixel();
+    }
+
+    public static boolean isSessionStatsEnabled() {
+        Module m = ModuleManager.getInstance().getModule("Session Stats");
+        return m != null && m.isEnabled() && HypixelSafetyManager.isHypixel();
+    }
+
+    /**
+     * Intercepts outgoing chat commands. Returns true if the command was a client command (like /session)
+     * and should NOT be sent to the server.
+     */
+    public static boolean handleOutgoingCommand(String command) {
+        if (command == null) return false;
+        String cmd = command.strip();
+        if (cmd.startsWith("/")) cmd = cmd.substring(1).strip();
+        if (cmd.equalsIgnoreCase("session") || cmd.toLowerCase(Locale.ROOT).startsWith("session ")) {
+            String[] parts = cmd.split("\\s+");
+            if (parts.length > 1 && parts[1].equalsIgnoreCase("reset")) {
+                SessionTracker.reset();
+                LadsGameBridge bridge = LadsGameBridge.get();
+                if (bridge != null) bridge.displayChatMessage("§aSession stats have been reset.");
+            } else {
+                SessionTracker.printChatSummary();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Replaces MVP++ shortcodes with their Unicode/text equivalents in outgoing chat for non-MVP++ players.
+     */
+    public static String handleOutgoingChat(String text) {
+        if (text == null || text.isEmpty()) return text;
+        if (on(CHAT_EMOTES) && !mvpPlusPlus) {
+            return ChatEmotes.replaceEmotes(text);
+        }
+        return text;
+    }
+
+    /**
+     * Masks streamer-sensitive chat lines (e.g. "Sending you to mini123A") when Streamer Mode is active.
+     */
+    public static String filterIncomingChat(String message) {
+        if (message == null || !isStreamerMode()) return message;
+        return HypixelChat.maskStreamerChat(message);
     }
 
     public static String getLocalPlayerName() {
@@ -156,6 +221,7 @@ public final class HypixelMods {
             selfDiedAt = partyListSent = 0;
             tipOff = false;
             world = null;
+            mapName = serverName = null;
             tipAt = now + 30 * SECOND; // the first tip half a minute after joining
         }
         if (current == null || !isActiveOnCurrentServer()) {
@@ -167,6 +233,7 @@ public final class HypixelMods {
             gameOver = started = selfOut = replayed = partyListRequestedThisGame = false;
             selfDiedAt = partyListSent = ggDue = 0;
             location = null;
+            mapName = serverName = null;
             QUEUE.removeIf(Queued::world);
             PARTY_ALIVE.clear();
             PARTY_ELIMINATED.clear();
@@ -222,13 +289,29 @@ public final class HypixelMods {
             tipOff = true;
             LOGGER.info("Lads Hypixel: the server does not know /tip, Auto Tip is off until you reconnect");
         }
-        String[] where = HypixelChat.location(message);
-        if (where != null && locrawSent != 0 && now - locrawSent < 5 * SECOND) {
-            locrawSent = 0;
-            location = where;
-            hidden++;
-            triggerReplayIfEligible(now);
-            return true; // our own question's answer
+        HypixelChat.Locraw loc = HypixelChat.parseLocraw(message);
+        if (loc != null) {
+            location = new String[] { loc.gametype(), loc.mode() };
+            mapName = loc.map();
+            serverName = loc.server();
+            if (locrawSent != 0 && now - locrawSent < 5 * SECOND) {
+                locrawSent = 0;
+                hidden++;
+                triggerReplayIfEligible(now);
+                return true; // our own question's answer
+            }
+        }
+
+        String me = getLocalPlayerName();
+        if (message.contains("[MVP++]")) {
+            if (me != null && !me.isEmpty() && message.toLowerCase(Locale.ROOT).contains(me.toLowerCase(Locale.ROOT))) {
+                mvpPlusPlus = true;
+            }
+        }
+        SessionTracker.onServerChat(message, me);
+        if (BedWarsHeight.isLimitReachedMessage(message)) {
+            int playerY = LadsGameBridge.get() != null ? LadsGameBridge.get().getPlayerY() : 0;
+            BedWarsHeight.learnLimit(mapName, playerY);
         }
 
         // Party updates from chat or /party list
@@ -254,7 +337,6 @@ public final class HypixelMods {
             } else {
                 String member = pJoin.toLowerCase(Locale.ROOT);
                 PARTY_MEMBERS.add(member);
-                String me = getLocalPlayerName();
                 if ((me == null || !me.equalsIgnoreCase(member)) && !PARTY_ELIMINATED.contains(member)) {
                     PARTY_ALIVE.add(member);
                 }
@@ -271,7 +353,6 @@ public final class HypixelMods {
         List<String> listMembers = HypixelChat.partyMembers(message);
         if (!listMembers.isEmpty()) {
             inParty = true;
-            String me = getLocalPlayerName();
             for (String m : listMembers) {
                 String mLower = m.toLowerCase(Locale.ROOT);
                 PARTY_MEMBERS.add(mLower);
@@ -300,7 +381,6 @@ public final class HypixelMods {
             PARTY_ALIVE.clear();
             PARTY_ELIMINATED.clear();
             PARTY_ALIVE.addAll(PARTY_MEMBERS);
-            String me = getLocalPlayerName();
             if (me != null && !me.isEmpty()) PARTY_ALIVE.remove(me.toLowerCase(Locale.ROOT));
             if (on(AUTO_WHO)) queue("/who", now + 2 * SECOND, true);
             if (on(PLAY_AGAIN) && waitParty() && inParty && PARTY_MEMBERS.isEmpty() && !partyListRequestedThisGame) {
@@ -318,7 +398,6 @@ public final class HypixelMods {
         // Elimination / death checks for Auto Play Again
         if (!gameOver && !replayed && on(PLAY_AGAIN)) {
             String gametype = location != null ? location[0] : null;
-            String me = getLocalPlayerName();
             if (!selfOut && HypixelChat.isSelfOut(gametype, message, me)) {
                 selfOut = true;
                 selfDiedAt = now;
@@ -420,6 +499,9 @@ public final class HypixelMods {
         QUEUE.clear(); FRIENDS.clear(); SENT.clear(); PARTY_MEMBERS.clear(); PARTY_ALIVE.clear(); PARTY_ELIMINATED.clear();
         connection = world = null; gameOver = started = tipOff = selfOut = replayed = partyListRequestedThisGame = inParty = false;
         lastSent = tipSent = locrawSent = selfDiedAt = partyListSent = ggDue = 0; lastCommand = ""; location = null;
+        mapName = serverName = null; mvpPlusPlus = false;
         qaPlayerName = null;
+        SessionTracker.reset();
+        BedWarsHeight.resetForTest();
     }
 }

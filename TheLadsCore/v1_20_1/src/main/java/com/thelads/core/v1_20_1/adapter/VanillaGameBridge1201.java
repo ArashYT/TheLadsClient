@@ -155,6 +155,11 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
         else connection.sendChat(text);
     }
 
+    @Override public void displayChatMessage(String text) {
+        var player = Minecraft.getInstance().player;
+        if (player != null) player.displayClientMessage(net.minecraft.network.chat.Component.literal(text), false);
+    }
+
     @Override public boolean sendPluginMessage(String channel, byte[] data) {
         return com.thelads.core.v1_20_1.feature.Hypixel1201.send(channel, data);
     }
