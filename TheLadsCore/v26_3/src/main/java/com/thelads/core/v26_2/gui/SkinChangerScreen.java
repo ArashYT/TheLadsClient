@@ -5,7 +5,7 @@ import net.minecraft.client.gui.components.*;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 public final class SkinChangerScreen extends Screen {
-    private final Screen parent;private EditBox source;private boolean slim,busy;private String status="Skins are applied locally to your client.";
+    private final Screen parent;private EditBox source;private Button modelButton;private boolean slim,busy;private String status="Skins are applied locally to your client.";
     public SkinChangerScreen(Screen parent){super(Component.literal("Skin changer"));this.parent=parent;slim=LocalSkins.current()!=null&&LocalSkins.current().model()==net.minecraft.world.entity.player.PlayerModelType.SLIM;}
     @Override protected void init(){
         var original=minecraft.getSkinManager().createLookup(minecraft.getGameProfile(),false);
@@ -15,11 +15,11 @@ public final class SkinChangerScreen extends Screen {
         source=new EditBox(font,x,57,w,20,Component.literal("Username, UUID or skin URL"));source.setMaxLength(2048);source.setHint(Component.literal("Username, UUID or URL"));addRenderableWidget(source);
         addRenderableWidget(new LadsButton(x,85,w,20,Component.literal("Load skin"),b->load(source.getValue())));
         addRenderableWidget(new LadsButton(x,113,w,20,Component.literal("Add File"),b->{if(busy)return;busy=true;status="Choose a skin PNG in the file dialog";com.thelads.core.client.util.FileDialogs.openFile("Add skin PNG","Skins (PNG)","png").whenComplete((file,error)->minecraft.execute(()->{busy=false;if(error!=null)status="File dialog failed";else if(file!=null)load(file.toString());else status="Selection canceled";}));}));
-        addRenderableWidget(new LadsButton(x,141,w,20,Component.literal("Model: "+(slim?"Slim":"Classic")),b->{if(busy)return;slim=!slim;LocalSkins.setModel(slim);b.setMessage(Component.literal("Model: "+(slim?"Slim":"Classic")));}));
+        modelButton=addRenderableWidget(new LadsButton(x,141,w,20,Component.literal("Model: "+(slim?"Slim":"Classic")),b->{if(busy)return;slim=!slim;LocalSkins.setModel(slim);b.setMessage(Component.literal("Model: "+(slim?"Slim":"Classic")));}));
         addRenderableWidget(new LadsButton(x,169,w,20,Component.literal("Use account skin"),b->{LocalSkins.reset();status="Using account skin";}));
         addRenderableWidget(new LadsButton(width/2-60,height-28,120,20,Component.literal("Done"),b->onClose()));
     }
-    private void load(String input){if(busy||input.isBlank())return;busy=true;status="Loading skin...";LocalSkins.load(input,slim,true).whenComplete((message,error)->minecraft.execute(()->{busy=false;status=error==null?message:"Could not load skin: "+error.getMessage();}));}
+    private void load(String input){if(busy||input.isBlank())return;busy=true;status="Loading skin...";LocalSkins.load(input,slim,true).whenComplete((message,error)->minecraft.execute(()->{busy=false;if(error==null&&LocalSkins.current()!=null){slim=LocalSkins.current().model()==net.minecraft.world.entity.player.PlayerModelType.SLIM;if(modelButton!=null)modelButton.setMessage(Component.literal("Model: "+(slim?"Slim":"Classic")));}status=error==null?message:"Could not load skin: "+error.getMessage();}));}
     @Override public void extractBackground(GuiGraphicsExtractor g,int mx,int my,float dt){g.fill(0,0,width,height,0xFF100B10);}
     @Override public void extractRenderState(GuiGraphicsExtractor g,int mx,int my,float dt){super.extractRenderState(g,mx,my,dt);g.centeredText(font,title,width/2,18,-1);g.centeredText(font,Component.literal(status),width/2,height-46,0xFFCFB5BF);}
     @Override public void onClose(){minecraft.setScreenAndShow(parent);}

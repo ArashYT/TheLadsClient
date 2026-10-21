@@ -96,6 +96,11 @@ public final class SkinChangerScreen189 extends GuiScreen {
         status = "Loading skin...";
         LocalSkins189.load(input, slim, true).whenComplete((message, error) -> mc.addScheduledTask(() -> {
             busy = false;
+            if (error == null && LocalSkins189.current() != null) {
+                slim = LocalSkins189.current().slim;
+                GuiButton button = button("Model: ");
+                if (button != null) button.displayString = modelLabel();
+            }
             status = error == null ? message : "Could not load skin: " + (error.getMessage() != null ? error.getMessage() : error.toString());
         }));
     }

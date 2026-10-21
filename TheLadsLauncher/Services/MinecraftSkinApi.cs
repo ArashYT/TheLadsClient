@@ -31,11 +31,12 @@ public static class MinecraftSkinApi
 
     public static HttpRequestMessage GetProfile(string token) => Authorized(HttpMethod.Get, ProfileUrl, token);
 
-    public static HttpRequestMessage UploadSkin(string token, byte[] png, string model)
+    public static HttpRequestMessage UploadSkin(string token, byte[] png, string? model = null)
     {
         var request = Authorized(HttpMethod.Post, ProfileUrl + "/skins", token);
         // Quoted names, as browsers send them.
-        var variant = new StringContent(SkinLibrary.NormalizeModel(model));
+        string variantModel = string.IsNullOrWhiteSpace(model) ? SkinDetector.DetectModel(png) : SkinLibrary.NormalizeModel(model);
+        var variant = new StringContent(variantModel);
         variant.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data") { Name = "\"variant\"" };
         var file = new ByteArrayContent(png);
         file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
@@ -98,7 +99,9 @@ public static class MinecraftSkinApi
         if (!profile.IsSuccessStatusCode) throw new MinecraftSkinApiException($"The skin lookup failed (HTTP {(int)profile.StatusCode}). Try again later.");
         var (url, model) = ReadTextures(await profile.Content.ReadAsStringAsync(cancellationToken));
         if (url == null) throw new MinecraftSkinApiException($"{name} uses a default skin; there is no skin file to import.");
-        return (await DownloadPngAsync(http, url, cancellationToken), model);
+        byte[] downloadedPng = await DownloadPngAsync(http, url, cancellationToken);
+        if (model != "slim") model = SkinDetector.DetectModel(downloadedPng, model);
+        return (downloadedPng, model);
     }
 
     /// <summary>The SKIN url and model from a session-server profile (base64 "textures" property).</summary>
