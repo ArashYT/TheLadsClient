@@ -125,7 +125,7 @@ class F1914QaTest {
         };
 
         F1914Qa qa = new F1914Qa();
-        for (int i = 0; i < 200 && !completed; i++) {
+        for (int i = 0; i < 300 && !completed; i++) {
             qa.tick(driver);
         }
 

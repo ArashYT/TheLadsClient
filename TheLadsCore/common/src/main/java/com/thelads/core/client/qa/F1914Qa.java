@@ -2,10 +2,8 @@ package com.thelads.core.client.qa;
 
 import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.gui.SmoothScroll;
-import com.thelads.core.client.hud.CoordinatesHudElement;
 import com.thelads.core.client.hud.HudElement;
 import com.thelads.core.client.hud.HudManager;
-import com.thelads.core.client.hud.KeystrokesHudElement;
 import com.thelads.core.client.hud.PingHudElement;
 import com.thelads.core.client.hypixel.HypixelTabFill;
 import com.thelads.core.client.hypixel.RealPing;
@@ -75,13 +73,18 @@ public final class F1914Qa {
     private int keystrokesStyleWas;
     private boolean keystrokesUseGlobalWas;
     private int keystrokesColorWas;
+    private int keysWasX, keysWasY;
     private boolean coordsWasEnabled;
     private boolean coordsShowCWas;
+    private int coordsWasX, coordsWasY;
     private boolean cloudHeightWasEnabled;
     private double cloudHeightValueWas;
     private boolean armorHudWasEnabled;
+    private int armorHudStyleWas;
     private boolean sessionStatsWasEnabled;
     private boolean bedWarsHeightWasEnabled;
+    private boolean bossBarWasEnabled;
+    private boolean bossBarShowBarsWas;
 
     public boolean tick(Driver driver) {
         if (wait > 0) {
@@ -108,12 +111,25 @@ public final class F1914Qa {
                         keystrokesColorWas = keys.keyColor.getColor();
                     }
 
+                    HudElement keysElem = HudManager.getInstance().get("Keystrokes");
+                    if (keysElem != null) {
+                        keysWasX = keysElem.getX();
+                        keysWasY = keysElem.getY();
+                        keysElem.setPosition(20, 50);
+                    }
+
                     Module cm = ModuleManager.getInstance().getModule("Coordinates");
                     if (cm != null) {
                         coordsWasEnabled = cm.isEnabled();
                         if (cm.getOption("Show C") instanceof BoolOption sc) {
                             coordsShowCWas = sc.get();
                         }
+                    }
+
+                    HudElement coordsElem = HudManager.getInstance().get("Coordinates");
+                    if (coordsElem != null) {
+                        coordsWasX = coordsElem.getX();
+                        coordsWasY = coordsElem.getY();
                     }
 
                     Module chm = ModuleManager.getInstance().getModule(CloudHeightModule.NAME);
@@ -123,7 +139,12 @@ public final class F1914Qa {
                     }
 
                     Module arm = ModuleManager.getInstance().getModule("ArmorHUD");
-                    if (arm != null) armorHudWasEnabled = arm.isEnabled();
+                    if (arm != null) {
+                        armorHudWasEnabled = arm.isEnabled();
+                        if (arm.getOption("Style") instanceof DropdownOption st) {
+                            armorHudStyleWas = st.getIndex();
+                        }
+                    }
 
                     Module ss = ModuleManager.getInstance().getModule("Session Stats");
                     if (ss != null) sessionStatsWasEnabled = ss.isEnabled();
@@ -131,35 +152,46 @@ public final class F1914Qa {
                     Module bwh = ModuleManager.getInstance().getModule("Bed Wars Height Limit");
                     if (bwh != null) bedWarsHeightWasEnabled = bwh.isEnabled();
 
-                    wait = 5;
-                }
+                    Module bb = ModuleManager.getInstance().getModule("BossBar");
+                    if (bb != null) {
+                        bossBarWasEnabled = bb.isEnabled();
+                        if (bb.getOption("Show bars") instanceof BoolOption sb) {
+                            bossBarShowBarsWas = sb.get();
+                        }
+                    }
 
-                // ---- 1. Keystrokes Clean Global ----
-                case 1 -> {
-                    Module km = ModuleManager.getInstance().getModule("Keystrokes");
+                    // Setup 1. Keystrokes Clean Global
                     if (km instanceof KeystrokesModule keys) {
                         keys.setEnabled(true);
                         ((DropdownOption) keys.getOption("Style")).setIndex(KeystrokesModule.STYLE_CLEAN);
                         keys.keyColor.setUseGlobal(true);
                         HudSettings.getInstance().setGlobalColor(0xFF55FFFF);
+                        keys.touch();
                     }
-                    driver.screenshot("keystrokes-clean-global");
+
+                    // Wait 6 frames for Keystrokes clean global to render
                     wait = 6;
                 }
 
-                // ---- 1. Keystrokes Clean Custom ----
-                case 2 -> {
+                // ---- 1. Keystrokes Clean Global Shot ----
+                case 1 -> {
+                    driver.screenshot("keystrokes-clean-global");
+
+                    // Setup 1. Keystrokes Clean Custom
                     Module km = ModuleManager.getInstance().getModule("Keystrokes");
                     if (km instanceof KeystrokesModule keys) {
                         keys.keyColor.setUseGlobal(false);
                         keys.keyColor.setColor(0xFFFF5555);
+                        keys.touch();
                     }
-                    driver.screenshot("keystrokes-clean-custom");
                     wait = 6;
                 }
 
-                // ---- 1. Keystrokes Grouped Parity ----
-                case 3 -> {
+                // ---- 1. Keystrokes Clean Custom Shot ----
+                case 2 -> {
+                    driver.screenshot("keystrokes-clean-custom");
+
+                    // Setup 1. Keystrokes Grouped Parity
                     HudElement keysElem = HudManager.getInstance().get("Keystrokes");
                     int ungroupedWidth = keysElem != null ? keysElem.getRenderWidth() : 0;
 
@@ -175,34 +207,43 @@ public final class F1914Qa {
                     int groupedWidth = keysElem != null ? keysElem.getRenderWidth() : 0;
                     check(groupedWidth == ungroupedWidth, "Keystrokes rendered width identical grouped (" + groupedWidth + ") vs ungrouped (" + ungroupedWidth + ")");
 
-                    driver.screenshot("keystrokes-grouped");
                     wait = 6;
                 }
 
-                // ---- 2. Armor HUD Full Diamond Armor ----
-                case 4 -> {
-                    if (ModuleManager.getInstance().getModule("ArmorHUD") != null)
-                        ModuleManager.getInstance().getModule("ArmorHUD").setEnabled(true);
+                // ---- 1. Keystrokes Grouped Shot ----
+                case 3 -> {
+                    driver.screenshot("keystrokes-grouped");
+
+                    // Restore keystrokes position
+                    HudElement keysElem = HudManager.getInstance().get("Keystrokes");
+                    if (keysElem != null) keysElem.setPosition(keysWasX, keysWasY);
+
+                    // Setup 2. Armor HUD Full Diamond Armor in Hotbar Slots mode
+                    Module arm = ModuleManager.getInstance().getModule("ArmorHUD");
+                    if (arm != null) {
+                        arm.setEnabled(true);
+                        if (arm.getOption("Style") instanceof DropdownOption st) {
+                            st.setIndex(0); // 0 = Hotbar Slots mode
+                        }
+                    }
                     driver.setPlayerDiamondArmor();
+                    wait = 6;
+                }
+
+                // ---- 2. Armor HUD Full Diamond Armor Shot & Crop ----
+                case 4 -> {
+                    check(!LadsGameBridge.get().getArmor().isEmpty(), "Armor HUD has player armor equipped: " + LadsGameBridge.get().getArmor().size() + " pieces");
+                    driver.screenshot("armor-hud");
                     wait = 4;
                 }
 
                 case 5 -> {
-                    check(!LadsGameBridge.get().getArmor().isEmpty(), "Armor HUD has player armor equipped: " + LadsGameBridge.get().getArmor().size() + " pieces");
-                    driver.screenshot("armor-hud");
-                    wait = 6;
-                }
-
-                case 6 -> {
                     driver.cropArmorHud("armor-hud", "armor-hud-crop");
                     driver.cropArmorHud("armor-hud", "armor-hud-zoom");
                     check(true, "Armor HUD crop and zoom saved");
                     driver.restorePlayerArmor();
-                    wait = 4;
-                }
 
-                // ---- 3. Coordinates Show C ----
-                case 7 -> {
+                    // Setup 3. Coordinates Show C (move to screen center for clean shot)
                     Module cm = ModuleManager.getInstance().getModule("Coordinates");
                     if (cm != null) {
                         cm.setEnabled(true);
@@ -210,14 +251,23 @@ public final class F1914Qa {
                             sc.set(true);
                         }
                     }
+                    HudElement coordsElem = HudManager.getInstance().get("Coordinates");
+                    if (coordsElem != null) coordsElem.setPosition(150, 100);
+
                     int chunks = LadsGameBridge.get().getRenderedChunks();
                     check(chunks >= 0, "Coordinates rendered chunk count valid: " + chunks);
-                    driver.screenshot("coords-c");
                     wait = 6;
                 }
 
-                // ---- 4. Cloud Height MAX ----
-                case 8 -> {
+                // ---- 3. Coordinates Show C Shot ----
+                case 6 -> {
+                    driver.screenshot("coords-c");
+
+                    // Restore Coordinates position
+                    HudElement coordsElem = HudManager.getInstance().get("Coordinates");
+                    if (coordsElem != null) coordsElem.setPosition(coordsWasX, coordsWasY);
+
+                    // Setup 4. Cloud Height MAX
                     Module chm = ModuleManager.getInstance().getModule(CloudHeightModule.NAME);
                     check(chm != null && chm.isEnabled(), "Cloud Height module is enabled by default");
                     if (chm instanceof CloudHeightModule ch) {
@@ -228,129 +278,163 @@ public final class F1914Qa {
                     }
                     driver.setClouds(true);
                     driver.setPlayerYAndPitch(200.0, 0.0f);
-                    driver.screenshot("clouds-max");
                     wait = 6;
                 }
 
-                // ---- 4. Cloud Height 140 ----
-                case 9 -> {
+                // ---- 4. Cloud Height MAX Shot ----
+                case 7 -> {
+                    driver.screenshot("clouds-max");
+
+                    // Setup 4. Cloud Height 140
                     Module chm = ModuleManager.getInstance().getModule(CloudHeightModule.NAME);
                     if (chm instanceof CloudHeightModule ch) {
                         ch.height.setValue(140.0);
                         float resolved140 = CloudHeightModule.resolveHeight(ch.height.getValue(), driver.getWorldMaxHeight());
                         check(resolved140 == 140.0f, "Cloud Height resolved to 140 (" + resolved140 + ")");
                     }
-                    driver.screenshot("clouds-140");
                     wait = 6;
                 }
 
-                // ---- 5. Boss Bar Colors (1.8.9 only) ----
-                case 10 -> {
+                // ---- 4. Cloud Height 140 Shot ----
+                case 8 -> {
+                    driver.screenshot("clouds-140");
+
+                    // Setup 5. Boss Bar Colors (1.8.9 only: Red)
                     if (driver.is189()) {
+                        Module bb = ModuleManager.getInstance().getModule("BossBar");
+                        if (bb != null) {
+                            bb.setEnabled(true);
+                            if (bb.getOption("Show bars") instanceof BoolOption sb) sb.set(true);
+                        }
                         driver.showBossBar("§cRed Boss");
                         check(true, "Boss bar displayed with §c (red)");
-                        driver.screenshot("bossbar-red");
                     }
                     wait = 6;
                 }
 
-                case 11 -> {
+                // ---- 5. Boss Bar Red Shot ----
+                case 9 -> {
                     if (driver.is189()) {
+                        driver.screenshot("bossbar-red");
                         driver.showBossBar("§aGreen Boss");
                         check(true, "Boss bar displayed with §a (green)");
-                        driver.screenshot("bossbar-green");
                     }
                     wait = 6;
                 }
 
-                case 12 -> {
+                // ---- 5. Boss Bar Green Shot ----
+                case 10 -> {
                     if (driver.is189()) {
+                        driver.screenshot("bossbar-green");
                         driver.showBossBar("Vanilla Boss");
                         check(true, "Boss bar displayed with vanilla color");
+                    }
+                    wait = 6;
+                }
+
+                // ---- 5. Boss Bar Vanilla Shot ----
+                case 11 -> {
+                    if (driver.is189()) {
                         driver.screenshot("bossbar-vanilla");
                         driver.clearBossBar();
                     }
-                    wait = 6;
-                }
 
-                // ---- 6. Nametags Front Third-Person ----
-                case 13 -> {
+                    // Setup 6. Nametags Front Third-Person (spawn armor stand at eye level 3 blocks ahead)
                     driver.summonArmorStand("§eQA Nametag", 3.0);
                     driver.setCamera(2, -30.0f);
                     check(true, "Spawned client armor stand 3 blocks in front, camera view 2 pitch -30");
-                    driver.screenshot("nametag-front");
                     wait = 6;
                 }
 
-                // ---- 6. Nametags Back Third-Person ----
-                case 14 -> {
+                // ---- 6. Nametags Front Shot ----
+                case 12 -> {
+                    driver.screenshot("nametag-front");
+
+                    // Setup 6. Nametags Back Third-Person
                     driver.setCamera(1, -30.0f);
                     check(true, "Camera view 1 pitch -30");
+                    wait = 6;
+                }
+
+                // ---- 6. Nametags Back Shot ----
+                case 13 -> {
                     driver.screenshot("nametag-back");
                     driver.removeArmorStand();
                     driver.setCamera(0, 0.0f);
+
+                    // Setup 7. Quickplay Screen (open and allow >= 3 frames before capture)
+                    driver.openQuickplay();
                     wait = 6;
                 }
 
-                // ---- 7. Quickplay Screen & Tab Fill ----
-                case 15 -> {
-                    driver.openQuickplay();
+                // ---- 7. Quickplay Screen Shot ----
+                case 14 -> {
                     driver.screenshot("quickplay");
                     List<String> fill = HypixelTabFill.complete("/play bedwars_e", Collections.emptyList());
                     check(fill.contains("bedwars_eight_one"), "HypixelTabFill completes bedwars_eight_one: " + fill);
                     driver.closeScreen();
-                    wait = 6;
-                }
 
-                // ---- 7. Hypixel HUDs in HUD Editor Preview ----
-                case 16 -> {
+                    // Setup 7. Hypixel HUDs in HUD Editor Preview
                     if (ModuleManager.getInstance().getModule("Session Stats") != null)
                         ModuleManager.getInstance().getModule("Session Stats").setEnabled(true);
                     if (ModuleManager.getInstance().getModule("Bed Wars Height Limit") != null)
                         ModuleManager.getInstance().getModule("Bed Wars Height Limit").setEnabled(true);
                     driver.openHudEditor();
                     check(true, "Session Stats and Bed Wars Height Limit open in HUD editor preview");
+                    wait = 6;
+                }
+
+                // ---- 7. Hypixel HUDs Shot ----
+                case 15 -> {
                     driver.screenshot("hypixel-huds");
                     driver.closeScreen();
-                    wait = 6;
-                }
 
-                // ---- 8. OptiFine Settings Pages (1.8.9 only) ----
-                case 17 -> {
+                    // Setup 8. OptiFine Details page (1.8.9 only)
                     if (driver.is189()) {
                         driver.openOptifine("Details");
-                        driver.screenshot("of-details");
                     }
                     wait = 6;
                 }
 
+                // ---- 8. OptiFine Details Shot ----
+                case 16 -> {
+                    if (driver.is189()) {
+                        driver.screenshot("of-details");
+                        driver.openOptifine("Animations");
+                    }
+                    wait = 6;
+                }
+
+                // ---- 8. OptiFine Animations Shot ----
+                case 17 -> {
+                    if (driver.is189()) {
+                        driver.screenshot("of-animations");
+                        driver.openOptifine("Quality");
+                    }
+                    wait = 6;
+                }
+
+                // ---- 8. OptiFine Quality Shot ----
                 case 18 -> {
                     if (driver.is189()) {
-                        driver.openOptifine("Animations");
-                        driver.screenshot("of-animations");
+                        driver.screenshot("of-quality");
+                        driver.openOptifine("Performance");
                     }
                     wait = 6;
                 }
 
+                // ---- 8. OptiFine Performance Shot ----
                 case 19 -> {
                     if (driver.is189()) {
-                        driver.openOptifine("Quality");
-                        driver.screenshot("of-quality");
+                        driver.screenshot("of-performance");
+                        driver.openOptifine("Other");
                     }
                     wait = 6;
                 }
 
+                // ---- 8. OptiFine Other Shot & Mod Assertions ----
                 case 20 -> {
                     if (driver.is189()) {
-                        driver.openOptifine("Performance");
-                        driver.screenshot("of-performance");
-                    }
-                    wait = 6;
-                }
-
-                case 21 -> {
-                    if (driver.is189()) {
-                        driver.openOptifine("Other");
                         driver.screenshot("of-other");
                         driver.closeScreen();
                     }
@@ -359,11 +443,11 @@ public final class F1914Qa {
                     check(kb != null && ((BoolOption) kb.getOption("Mobs")).get(), "mob kill banner option is ON after fresh config");
                     // Smooth scroll factor assertion
                     check(SmoothScroll.FACTOR == 1.5, "smooth scroll factor is 1.5: " + SmoothScroll.FACTOR);
-                    wait = 6;
+                    wait = 4;
                 }
 
                 // ---- 9. Ping RealPing & PingHUD ----
-                case 22 -> {
+                case 21 -> {
                     int agg = RealPing.aggregate(15, 40);
                     check(agg == 15, "RealPing.aggregate(15, 40) == 15 (" + agg + ")");
 
@@ -380,7 +464,7 @@ public final class F1914Qa {
                 }
 
                 // ---- Final Cleanup & Summary ----
-                case 23 -> {
+                case 22 -> {
                     // Restore HudSettings
                     HudSettings hs = HudSettings.getInstance();
                     hs.setGlobalColor(globalColorWas);
@@ -394,13 +478,18 @@ public final class F1914Qa {
                         ((DropdownOption) keys.getOption("Style")).setIndex(keystrokesStyleWas);
                         keys.keyColor.setUseGlobal(keystrokesUseGlobalWas);
                         keys.keyColor.setColor(keystrokesColorWas);
+                        keys.touch();
                     }
+                    HudElement keysElem = HudManager.getInstance().get("Keystrokes");
+                    if (keysElem != null) keysElem.setPosition(keysWasX, keysWasY);
 
                     Module cm = ModuleManager.getInstance().getModule("Coordinates");
                     if (cm != null) {
                         cm.setEnabled(coordsWasEnabled);
                         if (cm.getOption("Show C") instanceof BoolOption sc) sc.set(coordsShowCWas);
                     }
+                    HudElement coordsElem = HudManager.getInstance().get("Coordinates");
+                    if (coordsElem != null) coordsElem.setPosition(coordsWasX, coordsWasY);
 
                     Module chm = ModuleManager.getInstance().getModule(CloudHeightModule.NAME);
                     if (chm instanceof CloudHeightModule ch) {
@@ -408,12 +497,24 @@ public final class F1914Qa {
                         ch.height.setValue(cloudHeightValueWas);
                     }
 
-                    if (ModuleManager.getInstance().getModule("ArmorHUD") != null)
-                        ModuleManager.getInstance().getModule("ArmorHUD").setEnabled(armorHudWasEnabled);
+                    Module arm = ModuleManager.getInstance().getModule("ArmorHUD");
+                    if (arm != null) {
+                        arm.setEnabled(armorHudWasEnabled);
+                        if (arm.getOption("Style") instanceof DropdownOption st) {
+                            st.setIndex(armorHudStyleWas);
+                        }
+                    }
+
                     if (ModuleManager.getInstance().getModule("Session Stats") != null)
                         ModuleManager.getInstance().getModule("Session Stats").setEnabled(sessionStatsWasEnabled);
                     if (ModuleManager.getInstance().getModule("Bed Wars Height Limit") != null)
                         ModuleManager.getInstance().getModule("Bed Wars Height Limit").setEnabled(bedWarsHeightWasEnabled);
+
+                    Module bb = ModuleManager.getInstance().getModule("BossBar");
+                    if (bb != null) {
+                        bb.setEnabled(bossBarWasEnabled);
+                        if (bb.getOption("Show bars") instanceof BoolOption sb) sb.set(bossBarShowBarsWas);
+                    }
 
                     LOGGER.info("Lads f1914 capture END: {} passed, {} failed", passed, failures.size());
                     driver.done(passed, failures.size());
