@@ -812,6 +812,8 @@ public final class CoreProbe {
         // 1.9.1: World189 (Wavy Capes, TNT Timer) and Hypixel189 (the Hypixel modules) register theirs as built in too.
         expected.addAll(Arrays.asList(com.thelads.core.modules.WavyCapesModule.NAME, com.thelads.core.modules.TntTimerModule.NAME,
             com.thelads.core.client.hypixel.HypixelMods.HYPIXEL_MODS));
+        // 1.9.14: Quickplay, Session Stats and the Bed Wars height limit (Hypixel189) are built in as well.
+        expected.addAll(Arrays.asList(com.thelads.core.client.hypixel.quickplay.QuickplayModule.NAME, "Session Stats", "Bed Wars Height Limit"));
         // 1.9.11: the Lads Jade panel (unless Waila is installed) and the Minimap switch over the pack's Xaero's Minimap.
         if (!Loader.isModLoaded("Waila")) expected.add(com.thelads.core.v1_8_9.feature.jade.Jade189.MODULE);
         if (Minimap189.integrated()) expected.add(Minimap189.NAME);
