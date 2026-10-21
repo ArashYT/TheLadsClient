@@ -16,6 +16,10 @@ public final class SmoothScroll189 {
 
     private static final Set<Target> GLIDING = Collections.newSetFromMap(new IdentityHashMap<Target, Boolean>());
     private static long lastFrame;
+    private static volatile boolean enabled = true;
+
+    public static boolean isEnabled() { return enabled; }
+    public static void setEnabled(boolean value) { enabled = value; }
 
     private SmoothScroll189() {}
 

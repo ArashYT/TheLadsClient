@@ -64,7 +64,7 @@ public class KillBannerModule extends Module {
     public final TextOption randomPool = new TextOption("Random Pool", "reaver:0,reaver:1,reaver:2,reaver:3,rogue:0,rogue:1,rogue:2,rogue:3");
     public final TextOption skinVariants = new TextOption("Skin Variants", "");
     public final BoolOption players = new BoolOption("Players", true);
-    public final BoolOption mobs = new BoolOption("Mobs", false);
+    public final BoolOption mobs = new BoolOption("Mobs", true);
     public final BoolOption bosses = new BoolOption("Bosses", true);
     /** Headshots: "Head hits" (an arrow in the head that kills, or the crosshair on the head at the last hit) or every kill. */
     public final DropdownOption headshots = new DropdownOption("Headshots", HEADSHOTS_HEAD_HITS, "Head hits", "Every kill");

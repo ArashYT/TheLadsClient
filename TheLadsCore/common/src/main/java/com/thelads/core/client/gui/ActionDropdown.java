@@ -44,7 +44,7 @@ final class ActionDropdown {
         if(my>=y+80&&my<y+h-18){int index=(int)Math.floor((my-(y+80)+Math.round(scroll))/25);if(index>=0&&index<filtered.size()){selected=index;filtered.get(index).toggle();changed.run();}}
         return true;
     }
-    boolean wheel(double amount){if(!open)return false;offset-=(int)(amount*30);return true;}
+    boolean wheel(double amount){if(!open)return false;offset-=(int)(amount*30*SmoothScroll.FACTOR);return true;}
     boolean key(int key,int modifiers){
         if(!open)return false;
         if(key==256){open=false;return true;}

@@ -173,7 +173,8 @@
     "ShowcaseOverlayMixin",
     "ShowcaseHotbarMixin",
     "ShowcaseMouseMixin",
-    "ShowcasePlayerListAccess"
+    "ShowcasePlayerListAccess",
+    "CloudRendererMixin"
   ],
   "mixins": [
     "DisplayEntityAccessor",

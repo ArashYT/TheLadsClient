@@ -134,7 +134,7 @@ final class ParticleRatesDialog {
         return true;
     }
 
-    boolean wheel(double amount) { if (!open) return false; offset -= (int) (amount * 30); return true; }
+    boolean wheel(double amount) { if (!open) return false; offset -= (int) (amount * 30 * SmoothScroll.FACTOR); return true; }
 
     boolean key(int key, int modifiers) {
         if (!open) return false;

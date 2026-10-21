@@ -30,13 +30,17 @@ import java.nio.file.AtomicMoveNotSupportedException;
 
 public class ConfigManager {
     public static final String PRESET_197_FLAG = "lads197PresetApplied";
-    static final String HUD_1910_FLAG = "hud1910OverrideApplied";
+    public static final String HUD_1910_FLAG = "hud1910OverrideApplied";
     /** Marks the 1.9.11 one-time Better F3 override (apply1911BetterF3Override). */
-    static final String F3_1911_FLAG = "betterF31911Applied";
+    public static final String F3_1911_FLAG = "betterF31911Applied";
     /** Marks the 1.9.12 one-time Keystrokes Clean look override (apply1912KeystrokesOverride). */
     public static final String KEYSTROKES_1912_FLAG = "keystrokesStyleMigrated";
     /** Marks the 1.9.14 one-time Keystrokes Clean follow global override (apply1914KeystrokesOverride). */
     public static final String KEYSTROKES_1914_FLAG = "keystrokesCleanGlobalMigrated";
+    /** Marks the 1.9.14 one-time Cloud Height override (apply1914CloudHeightOverride). */
+    public static final String CLOUD_HEIGHT_1914_FLAG = "cloudHeight1914Applied";
+    /** Marks the 1.9.14 one-time mob kill banner default (apply1914MobKillBannerOverride). */
+    public static final String MOB_KILL_BANNER_1914_FLAG = "mobKillBanner1914Applied";
     /** 1.9.11: the game versions whose Emotes key clash (another mod's default on B) was resolved once (EmoteKeys, each version). */
     static final String EMOTE_KEYS_FLAG = "emoteKeyClashResolved";
     private static final java.util.Set<String> emoteKeysResolved = new java.util.concurrent.CopyOnWriteArraySet<>();
@@ -105,6 +109,8 @@ public class ConfigManager {
         hud.addProperty(F3_1911_FLAG, true); // marks the 1.9.11 one-time Better F3 override (apply1911BetterF3Override)
         hud.addProperty(KEYSTROKES_1912_FLAG, true); // marks the 1.9.12 one-time Keystrokes Clean look override (apply1912KeystrokesOverride)
         hud.addProperty(KEYSTROKES_1914_FLAG, true); // marks the 1.9.14 one-time Keystrokes Clean follow global override (apply1914KeystrokesOverride)
+        hud.addProperty(CLOUD_HEIGHT_1914_FLAG, true); // marks the 1.9.14 one-time Cloud Height override (apply1914CloudHeightOverride)
+        hud.addProperty(MOB_KILL_BANNER_1914_FLAG, true); // marks the 1.9.14 one-time mob kill banner default (apply1914MobKillBannerOverride)
         hud.addProperty("backgrounds", HudSettings.getInstance().isBackgrounds());
         hud.addProperty("hudFpsCapOptIn", HudSettings.getInstance().isHudFpsCapEnabled());
         hud.addProperty("hudFpsCapEnabled", HudSettings.getInstance().isHudFpsCapEnabled()); // read by 1.4.4 and older
@@ -331,6 +337,8 @@ public class ConfigManager {
             if (!hud.has(F3_1911_FLAG)) apply1911BetterF3Override();
             if (!hud.has(KEYSTROKES_1912_FLAG)) apply1912KeystrokesOverride();
             if (!hud.has(KEYSTROKES_1914_FLAG)) apply1914KeystrokesOverride();
+            if (!hud.has(CLOUD_HEIGHT_1914_FLAG)) apply1914CloudHeightOverride();
+            if (!hud.has(MOB_KILL_BANNER_1914_FLAG)) apply1914MobKillBannerOverride();
             if (hud.has("hudScale")) HudSettings.getInstance().setHudScale(hud.get("hudScale").getAsInt());
             if (hud.has("fadePlaylist")) {
                 HudSettings.getInstance().getFadePlaylist().clear();
@@ -412,6 +420,28 @@ public class ConfigManager {
             km.keyPressedColor.setUseGlobal(true);
             km.keyBackgroundColor.setUseGlobal(true);
             km.keyPressedBackgroundColor.setUseGlobal(true);
+        }
+    }
+
+    /**
+     * 1.9.14, once per config (owner): Cloud Height default ON and set to MAX (slider at max value).
+     */
+    static void apply1914CloudHeightOverride() {
+        Module ch = ModuleManager.getInstance().getModule(com.thelads.core.modules.CloudHeightModule.NAME);
+        if (ch instanceof com.thelads.core.modules.CloudHeightModule cloudHeight) {
+            cloudHeight.setEnabled(true);
+            cloudHeight.height.setValue(com.thelads.core.modules.CloudHeightModule.MAX_VALUE);
+        }
+    }
+
+    /**
+     * 1.9.14, once per config (owner): Mob kill banners default ON. If the module is off for a user,
+     * do not force the whole module on; keep user's module state and set mobs = true.
+     */
+    static void apply1914MobKillBannerOverride() {
+        Module kb = ModuleManager.getInstance().getModule("KillBanner");
+        if (kb != null && kb.getOption("Mobs") instanceof BoolOption mobs) {
+            mobs.set(true);
         }
     }
 
@@ -678,7 +708,7 @@ public class ConfigManager {
             }
         }
         if (json.get("hud") instanceof JsonObject hud) {
-            if (!hud.has("shadowOnDefault") || !hud.has("hudFpsCapOnDefault") || !hud.has(HUD_1910_FLAG) || !hud.has(F3_1911_FLAG) || !hud.has(KEYSTROKES_1912_FLAG) || !hud.has(KEYSTROKES_1914_FLAG)) return true;
+            if (!hud.has("shadowOnDefault") || !hud.has("hudFpsCapOnDefault") || !hud.has(HUD_1910_FLAG) || !hud.has(F3_1911_FLAG) || !hud.has(KEYSTROKES_1912_FLAG) || !hud.has(KEYSTROKES_1914_FLAG) || !hud.has(CLOUD_HEIGHT_1914_FLAG) || !hud.has(MOB_KILL_BANNER_1914_FLAG)) return true;
         }
         return false;
     }

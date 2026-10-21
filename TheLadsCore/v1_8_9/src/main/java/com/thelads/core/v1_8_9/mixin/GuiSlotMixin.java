@@ -86,10 +86,11 @@ public abstract class GuiSlotMixin implements SmoothScroll189.Target {
     private void ladsWheel(CallbackInfo ci) {
         int wheel = Mouse.getEventDWheel();
         if (wheel == 0 || !isMouseYWithinSlotBounds(mouseY)) return;
+        if (!SmoothScroll189.isEnabled()) return;
         float step = (wheel > 0 ? -1 : 1) * slotHeight / 2;
         amountScrolled -= step;
         if (!SmoothScroll189.gliding(this) || amountScrolled != ladsSet) ladsTarget = amountScrolled;
-        ladsTarget = Math.max(0, Math.min(func_148135_f(), ladsTarget + step));
+        ladsTarget = Math.max(0, Math.min(func_148135_f(), ladsTarget + step * (float) com.thelads.core.client.gui.SmoothScroll.FACTOR));
         ladsSet = amountScrolled;
         SmoothScroll189.start(this);
     }

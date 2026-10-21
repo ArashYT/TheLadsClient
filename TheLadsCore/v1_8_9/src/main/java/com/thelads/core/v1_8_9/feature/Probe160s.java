@@ -239,7 +239,7 @@ final class Probe160s {
     /** The frames since the notches: rising one frame at a time through several in-between scrolls, ending at the notches' half rows. */
     private static void glided(Minecraft mc, String what, int notches, String shot) throws Exception {
         GuiSlot list = frames.list;
-        float target = notches * (list.getSlotHeight() / 2);
+        float target = notches * (list.getSlotHeight() / 2) * (float) com.thelads.core.client.gui.SmoothScroll.FACTOR;
         List<Float> scroll = frames.scroll;
         int between = 0;
         boolean rising = true;

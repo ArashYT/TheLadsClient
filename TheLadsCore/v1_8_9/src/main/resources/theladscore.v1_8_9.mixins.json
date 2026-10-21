@@ -120,6 +120,7 @@
     "SurvivalBlockDropsMixin",
     "SurvivalExplosionMixin",
     "SurvivalPlayerMixin",
-    "SurvivalThornsMixin"
+    "SurvivalThornsMixin",
+    "WorldProviderMixin"
   ]
 }
