@@ -240,7 +240,7 @@ public final class RealPing {
     public static final int NONE = Integer.MIN_VALUE;
 
     /** Combine status ping and Mod API ping: status ping measures pure socket RTT, Mod API includes server tick wait. */
-    static int aggregate(int status, int mod) {
+    public static int aggregate(int status, int mod) {
         if (status >= 0 && mod >= 0) return Math.min(status, mod);
         if (status >= 0) return status;
         if (mod >= 0) return mod;

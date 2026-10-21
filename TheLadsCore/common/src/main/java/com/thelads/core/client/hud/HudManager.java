@@ -306,6 +306,14 @@ public class HudManager {
         return lastPlaced.get(name);
     }
 
+    public HudElement get(String name) {
+        if (name == null) return null;
+        for (HudElement el : elements) {
+            if (name.equalsIgnoreCase(el.getModuleName())) return el;
+        }
+        return null;
+    }
+
     public List<HudElement> getElements() {
         return elements;
     }

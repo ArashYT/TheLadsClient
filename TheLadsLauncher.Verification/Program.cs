@@ -194,6 +194,10 @@ bool actionBarOnly = actionBarCaptureVerification && Env("LADS_VERIFY_ACTIONBAR_
 // LADS_VERIFY_189_ONLY=world191 (Probe191World). LADS_VERIFY_WORLD191_ONLY=1: that capture alone, as LADS_VERIFY_PARTICLES_ONLY.
 bool world191CaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_WORLD191") == "1";
 bool world191Only = world191CaptureVerification && Env("LADS_VERIFY_WORLD191_ONLY") == "1";
+// 1.9.14: feature capture probe (F1914Capture, common F1914Qa): LADS_VERIFY_CAPTURE_F1914=1 (LADS_VERIFY_F1914_ONLY=1: that capture alone once the QA world is up).
+// 1.8.9: LADS_VERIFY_189_ONLY=f1914.
+bool f1914CaptureVerification = autoWorldVerification && !capabilities.Forge && !capabilities.Minimal && Env("LADS_VERIFY_CAPTURE_F1914") == "1";
+bool f1914Only = f1914CaptureVerification && Env("LADS_VERIFY_F1914_ONLY") == "1";
 // 1.9.1 fixes lane (FixesCapture, common FixesQa): Fullbright at midnight and in a stone room, name tags with Text Shadow, the pause
 // menu's Multiplayer (it leaves the QA world at its end, so it runs alone once the world is up). 1.8.9: LADS_VERIFY_189_ONLY=fixes;
 // 1.20.1 (plain and Zero SMP): the script verb "fixes".
@@ -428,6 +432,8 @@ string actionBarCaptureRequest = Path.Combine(directory, ".lads-qa-capture-actio
 if (autoWorldVerification && File.Exists(actionBarCaptureRequest)) File.Delete(actionBarCaptureRequest);
 string world191CaptureRequest = Path.Combine(directory, ".lads-qa-capture-world191");
 if (autoWorldVerification && File.Exists(world191CaptureRequest)) File.Delete(world191CaptureRequest);
+string f1914CaptureRequest = Path.Combine(directory, ".lads-qa-capture-f1914");
+if (autoWorldVerification && File.Exists(f1914CaptureRequest)) File.Delete(f1914CaptureRequest);
 string fixesCaptureRequest = Path.Combine(directory, ".lads-qa-capture-fixes"), dialogsCaptureRequest = Path.Combine(directory, ".lads-qa-capture-dialogs");
 foreach (var request in new[] { fixesCaptureRequest, dialogsCaptureRequest }) if (autoWorldVerification && File.Exists(request)) File.Delete(request);
 if (autoWorldVerification && File.Exists(particlesCaptureRequest)) File.Delete(particlesCaptureRequest);
@@ -503,7 +509,7 @@ string[] captureEnds = ["Lads menu capture END:", "Lads mods view capture END:",
     "Lads kill banner capture END:", "Lads kill streak capture END:", "Lads 1.7 animations capture END:", "Lads anim 1.7.2 capture END:", "Lads zoom capture END:", "Lads skin layers capture END:",
     "Lads sprint capture END:", "Lads HUD 1.7.0 capture END:", "Lads HUD flicker capture END:", "Lads UI capture END:", "Lads item physics capture END:", "Lads inventory capture END:", "Lads items END:", "Lads server features capture END:",
     "Lads F3/FOV capture END:", "Lads HUD info capture END:", "Lads raised capture END:", "Lads hud layout END:", "Lads mouse tweaks capture END:",
-    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads particle core capture END:", "Lads render 1.8.5 capture END:", "Lads EBE probe END:", "Lads sounds capture END:", "Lads hypixel capture END:", "Lads action bar capture END:", "Lads world191 capture END:",
+    "Lads resolution capture END:", "Lads dynamic lights capture END:", "Lads async stress probe END:", "Lads AppleSkin sync capture END:", "Lads Flashback probe END:", "Lads particle core capture END:", "Lads render 1.8.5 capture END:", "Lads EBE probe END:", "Lads sounds capture END:", "Lads hypixel capture END:", "Lads action bar capture END:", "Lads world191 capture END:", "Lads f1914 capture END:",
     "Lads fixes capture END:", "Lads dialogs capture END:"];
 // A requested capture is settled once all its END markers passed or one of them failed; one not requested always is.
 bool Settled(bool requested, params string[] ends) => !requested || ends.All(passedMarkers.ContainsKey) || ends.Any(failedCaptures.ContainsKey);
@@ -539,6 +545,7 @@ bool CapturesSettled(bool resolutionRequested) =>
     && Settled(hypixelCaptureVerification, "Lads hypixel capture END:")
     && Settled(actionBarCaptureVerification, "Lads action bar capture END:")
     && Settled(world191CaptureVerification, "Lads world191 capture END:")
+    && Settled(f1914CaptureVerification, "Lads f1914 capture END:")
     && Settled(fixesCaptureVerification, "Lads fixes capture END:")
     && Settled(dialogsCaptureVerification, "Lads dialogs capture END:")
     && Settled(render185Requested, "Lads render 1.8.5 capture END:");
@@ -559,7 +566,7 @@ if (requestedFeaturesOnly)
     requiredWorldProbes = ["Lads native feature probe END:", "Lads improvements probe END:", "Lads font reload probe END:", "Lads world capture END:", "Lads shared content probe END:"];
     Console.WriteLine("Focused requested-feature verification: legacy crosshair/render-scale suites are not part of this run.");
 }
-if (particlesOnly || soundsOnly || fixesOnly || hypixelOnly || actionBarOnly || world191Only || packsOnly) requiredWorldProbes = ["Lads world capture END:"];
+if (particlesOnly || soundsOnly || fixesOnly || hypixelOnly || actionBarOnly || world191Only || f1914Only || packsOnly) requiredWorldProbes = ["Lads world capture END:"];
 if (cheatsPhase != null) requiredWorldProbes = [.. requiredWorldProbes, "Lads cheats probe END:"];
 // 1.9.11 emotes (EmoteCapture26), Fabric versions: LADS_QA_EMOTE=1 photographs the emote in the QA world; the run waits for it.
 if (Env("LADS_QA_EMOTE") == "1" && !capabilities.Forge) requiredWorldProbes = [.. requiredWorldProbes, "Lads emote capture END:"];
@@ -590,7 +597,7 @@ bool addServerVerification = titleVerification && !expectCoreDisabled && Env("LA
 if (addServerVerification) requiredCore.Add("Lads add-server probe END:");
 bool packsVerification = titleVerification && !expectCoreDisabled && Env("LADS_VERIFY_PACKS") != null;
 if (packsVerification) requiredCore.Add("Lads packs probe END:");
-if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && !soundsOnly && !hypixelOnly && !actionBarOnly && !world191Only && !fixesOnly && !packsOnly && fastQuitPhase == null && biomeCapture == null) requiredCore.Add("Lads shared content probe END:");
+if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && !soundsOnly && !hypixelOnly && !actionBarOnly && !world191Only && !f1914Only && !fixesOnly && !packsOnly && fastQuitPhase == null && biomeCapture == null) requiredCore.Add("Lads shared content probe END:");
 if (modRequest != null) requiredCore.Add("Lads mod request probe END:");
 string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
     "Lads native reconnect probe FAILED", "Lads dynamic FPS probe FAILED", "Lads background policy probe FAILED", "Lads auto-world QA FAILED",
@@ -934,7 +941,7 @@ try
         // =anim: only swing while using items and the damage tilt (Probe172Anim).
         // =keybinds: side mouse buttons and lasting key binds, the phase in <game>\.lads-qa-keybinds (Probe172Keybinds).
         // =ui: only the reset questions and Fullbright's slider (Probe172Ui). =title: only the title layout at every GUI scale and More.
-        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx" or "cull" or "particles" or "anim" or "keybinds" or "ui" or "render185" or "title" or "players" or "ofdefaults" or "packs" or "packs_relaunch") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
+        if (autoWorldVerification && Env("LADS_VERIFY_189_ONLY") is "170" or "170hud" or "itemphysics" or "raised" or "leave" or "hudflicker" or "perf" or "quick" or "unfocusedcap" or "rx" or "cull" or "particles" or "anim" or "keybinds" or "ui" or "render185" or "title" or "players" or "ofdefaults" or "packs" or "packs_relaunch" or "f1914") AddJvm("-Dthelads.verify189Only=" + Env("LADS_VERIFY_189_ONLY"));
         if (perf189)
         {
             string perfFolder = Path.Combine(directory, "lads-qa", "perf");
@@ -1325,6 +1332,7 @@ try
                     (hypixelCaptureVerification, hypixelCaptureRequest, "Run the Hypixel modules and the real ping in the QA world (counted as Hypixel)."),
                     (actionBarCaptureVerification, actionBarCaptureRequest, "Show action bars with the Action Bar module off and on, and fire kill banners over them."),
                     (world191CaptureVerification, world191CaptureRequest, "Photograph Wavy Capes and TNT Timer in the QA world."),
+                    (f1914CaptureVerification, f1914CaptureRequest, "Photograph and check 1.9.14 features in the QA world."),
                     (fixesCaptureVerification, fixesCaptureRequest, "Photograph Fullbright, name tags and the pause menu's Multiplayer, then leave the world through it."),
                     (dialogsCaptureVerification, dialogsCaptureRequest, "Open, check, photograph and close every file picker."),
                     (skinLayersCaptureVerification, skinLayersCaptureRequest, "Photograph the player's 3D skin layers with SkinLayers on and off."),
@@ -1389,7 +1397,7 @@ try
             // The input probe's measurements run on after an unrelated probe failed (they need the world for a few minutes).
             && (!inputVerification || inputProbeFailed || passedMarkers.ContainsKey("Lads input probe END:"))
             // A world191-only run still gets its own capture after an unrelated probe failed (26.3's World Play Time check is flaky).
-            && (!world191Only || worldCapturesRequested || stopwatch.Elapsed > TimeSpan.FromSeconds(300))
+            && (!world191Only && !f1914Only || worldCapturesRequested || stopwatch.Elapsed > TimeSpan.FromSeconds(300))
             // The 1.9.11 animation capture also gets its shots after an unrelated probe failed.
             && (!anim1911Verification || passedMarkers.ContainsKey("Lads anim 1.9.11 capture END:") || stopwatch.Elapsed > TimeSpan.FromSeconds(900))) break;
         if (earlyTitleExit && windowFound && initialized && CoreChecksDone() && modList.Parsed && (!scripted || passedMarkers.ContainsKey("Lads qa script END:"))
@@ -1492,6 +1500,10 @@ try
             "The requested action bar capture did not pass. Inspect production-smoke.log.");
         Require(!world191CaptureVerification || passedMarkers.ContainsKey("Lads world191 capture END:"),
             "The requested Wavy Capes and TNT Timer capture did not pass. Inspect production-smoke.log.");
+        Require(!f1914CaptureVerification || passedMarkers.ContainsKey("Lads f1914 capture END:"),
+            "The requested 1.9.14 features capture did not pass. Inspect production-smoke.log.");
+        Require(Env("LADS_VERIFY_189_ONLY") != "f1914" || passedMarkers.ContainsKey("Lads f1914 capture END:"),
+            "The requested 1.9.14 features capture did not pass on 1.8.9. Inspect logs\\latest.log.");
         Require(!fixesCaptureVerification || passedMarkers.ContainsKey("Lads fixes capture END:"),
             "The requested 1.9.1 fixes capture did not pass. Inspect production-smoke.log.");
         Require(!dialogsCaptureVerification || passedMarkers.ContainsKey("Lads dialogs capture END:"),
