@@ -24,6 +24,9 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.event.ClickEvent;
+import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.shader.Framebuffer;
+import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.IChatComponent;
 import net.minecraft.util.ResourceLocation;
@@ -76,6 +79,87 @@ public final class Screenshots189 {
     }
 
     public static File folder() { return new File(Minecraft.getMinecraft().mcDataDir, "screenshots"); }
+
+    private static java.nio.IntBuffer cachedPixelBuffer;
+    private static int cachedPixelCapacity;
+
+    /**
+     * Reads pixels on the render thread into a cached IntBuffer, and dispatches conversion, encoding, and file write to IO.
+     */
+    public static void saveScreenshotAsync(File gameDirectory, String screenshotName, int targetWidth, int targetHeight, Framebuffer buffer) {
+        Minecraft mc = Minecraft.getMinecraft();
+        boolean framebuffer = OpenGlHelper.isFramebufferEnabled() && buffer != null;
+        int width = framebuffer ? buffer.framebufferTextureWidth : targetWidth;
+        int height = framebuffer ? buffer.framebufferTextureHeight : targetHeight;
+        int visibleWidth = framebuffer ? buffer.framebufferWidth : targetWidth;
+        int visibleHeight = framebuffer ? buffer.framebufferHeight : targetHeight;
+        int totalPixels = width * height;
+
+        if (cachedPixelBuffer == null || cachedPixelCapacity < totalPixels) {
+            cachedPixelBuffer = org.lwjgl.BufferUtils.createIntBuffer(totalPixels);
+            cachedPixelCapacity = totalPixels;
+        }
+
+        GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, 1);
+        GL11.glPixelStorei(GL11.GL_UNPACK_ALIGNMENT, 1);
+        cachedPixelBuffer.clear();
+
+        if (framebuffer) {
+            GlStateManager.bindTexture(buffer.framebufferTexture);
+            GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, org.lwjgl.opengl.GL12.GL_BGRA, org.lwjgl.opengl.GL12.GL_UNSIGNED_INT_8_8_8_8_REV, cachedPixelBuffer);
+        } else {
+            GL11.glReadPixels(0, 0, width, height, org.lwjgl.opengl.GL12.GL_BGRA, org.lwjgl.opengl.GL12.GL_UNSIGNED_INT_8_8_8_8_REV, cachedPixelBuffer);
+        }
+
+        int[] rawPixels = new int[totalPixels];
+        cachedPixelBuffer.get(rawPixels);
+
+        File dir = new File(gameDirectory, "screenshots");
+        dir.mkdir();
+        File file = screenshotName == null ? getTimestampedPNGFile(dir) : new File(dir, screenshotName);
+
+        IO.execute(() -> {
+            try {
+                int[] converted = new int[visibleWidth * visibleHeight];
+                com.thelads.core.shared.ScreenshotConversion.convertPixels(rawPixels, converted, visibleWidth, visibleHeight, width);
+
+                BufferedImage image = new BufferedImage(visibleWidth, visibleHeight, BufferedImage.TYPE_INT_RGB);
+                image.setRGB(0, 0, visibleWidth, visibleHeight, converted, 0, visibleWidth);
+
+                ImageIO.write(image, "png", file);
+
+                if (screenshotName == null) {
+                    IChatComponent fileLink = new ChatComponentText(file.getName());
+                    fileLink.getChatStyle().setChatClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, file.getAbsolutePath()));
+                    fileLink.getChatStyle().setUnderlined(Boolean.TRUE);
+                    IChatComponent message = new ChatComponentTranslation("screenshot.success", fileLink);
+
+                    mc.addScheduledTask(() -> {
+                        mc.ingameGUI.getChatGUI().printChatMessage(message);
+                        saved(message);
+                    });
+                } else {
+                    lastSaved = file;
+                }
+            } catch (Exception ex) {
+                org.apache.logging.log4j.LogManager.getLogger("TheLadsCore-1.8.9").warn("Failed to save screenshot {}: {}", file, ex.toString());
+                IChatComponent failMessage = new ChatComponentTranslation("screenshot.failure", ex.getMessage());
+                mc.addScheduledTask(() -> mc.ingameGUI.getChatGUI().printChatMessage(failMessage));
+            }
+        });
+    }
+
+    private static File getTimestampedPNGFile(File dir) {
+        String s = new java.text.SimpleDateFormat("yyyy-MM-dd_HH.mm.ss").format(new java.util.Date());
+        int i = 1;
+        while (true) {
+            File file = new File(dir, s + (i == 1 ? "" : "_" + i) + ".png");
+            if (!file.exists()) {
+                return file;
+            }
+            i++;
+        }
+    }
 
     /** ScreenShotHelperMixin, on the client thread: the screenshot key's result, "screenshot.success" with the file's link. */
     public static void saved(IChatComponent result) {

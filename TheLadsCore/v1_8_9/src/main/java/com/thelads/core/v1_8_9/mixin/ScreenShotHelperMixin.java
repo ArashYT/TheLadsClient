@@ -11,14 +11,16 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * BetterScreenshots (Screenshots189): 1.8.9 has no screenshot event. The overload without a file name is the screenshot key's
- * (Minecraft.dispatchKeypresses); named ones (QA captures) show no preview.
+ * BetterScreenshots (Screenshots189): In 1.8.9, saveScreenshot reads the framebuffer and converts/encodes/writes PNG
+ * on the render thread. Keep glReadPixels on render thread; offload conversion, PNG encoding, and file write to daemon IO.
  */
 @Mixin(ScreenShotHelper.class)
 public abstract class ScreenShotHelperMixin {
-    @Inject(method = "saveScreenshot(Ljava/io/File;IILnet/minecraft/client/shader/Framebuffer;)Lnet/minecraft/util/IChatComponent;",
-        at = @At("RETURN"), require = 1)
-    private static void ladsSaved(File gameDirectory, int width, int height, Framebuffer buffer, CallbackInfoReturnable<IChatComponent> cir) {
-        Screenshots189.saved(cir.getReturnValue());
+    @Inject(method = "saveScreenshot(Ljava/io/File;Ljava/lang/String;IILnet/minecraft/client/shader/Framebuffer;)Lnet/minecraft/util/IChatComponent;",
+        at = @At("HEAD"), cancellable = true, require = 1)
+    private static void ladsAsyncScreenshot(File gameDirectory, String screenshotName, int width, int height, Framebuffer buffer, CallbackInfoReturnable<IChatComponent> cir) {
+        if (screenshotName != null) return; // named saves (QA captures) stay synchronous: their callers read the file right away
+        Screenshots189.saveScreenshotAsync(gameDirectory, null, width, height, buffer);
+        cir.setReturnValue(null);
     }
 }

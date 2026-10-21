@@ -10,6 +10,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.world.WorldSettings;
+import org.lwjgl.opengl.Display;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -51,6 +52,7 @@ public abstract class MinecraftMixin {
     @Shadow public net.minecraft.client.settings.GameSettings gameSettings;
     @Shadow public net.minecraft.profiler.Profiler mcProfiler;
     @Shadow public boolean skipRenderWorld;
+    @Shadow public abstract void resize(int width, int height);
 
     /** Dynamic FPS: vanilla's limit (30 in a menu without a world, else the option), lowered in the background states (DynamicFPS189). */
     @Inject(method = "getLimitFramerate", at = @At("HEAD"), cancellable = true, require = 1)
@@ -74,7 +76,10 @@ public abstract class MinecraftMixin {
 
     @Inject(method = "toggleFullscreen", at = @At("TAIL"), require = 1)
     private void ladsResizable(CallbackInfo ci) {
-        if (!fullscreen) Borderless189.resizable();
+        if (!fullscreen) {
+            Borderless189.resizable();
+            resize(Display.getWidth(), Display.getHeight());
+        }
     }
 
     @Redirect(method = "rightClickMouse", at = @At(value = "INVOKE",
