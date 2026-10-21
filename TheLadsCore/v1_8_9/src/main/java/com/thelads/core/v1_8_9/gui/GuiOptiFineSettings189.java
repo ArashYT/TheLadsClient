@@ -128,23 +128,18 @@ public class GuiOptiFineSettings189 extends GuiScreen {
         int startY = 38;
         int rowH = 24;
 
-        // Row 0: Clouds & Cloud Height
+        // Row 0: Clouds & Show Capes
         addOptionButton(501, leftX, startY, 150, 20, getCloudsLabel(), () -> {
             mc.gameSettings.setOptionValue(GameSettings.Options.RENDER_CLOUDS, 1);
             mc.gameSettings.saveOptions();
         }, "Clouds", "Fast - lower quality, faster", "Fancy - higher quality, slower", "OFF - no clouds, fastest");
 
-        addOptionButton(502, rightX, startY, 150, 20, getCloudHeightLabel(), () -> {
-            float cur = OptiFine189Module.sOfCloudHeight;
-            if (cur >= 256.0f) cur = 64.0f;
-            else cur += 32.0f;
-            if (cur > 256.0f) cur = 256.0f;
-            module.ofCloudHeight.setValue(cur);
-            module.sync();
-            ConfigManager.saveLater();
-        }, "Cloud Height", "Height at which clouds are rendered", "Default: 128", "Max: 256 (world ceiling)");
+        addOptionButton(502, rightX, startY, 150, 20, getCapesLabel(), () -> {
+            mc.gameSettings.switchModelPartEnabled(EnumPlayerModelParts.CAPE);
+            mc.gameSettings.saveOptions();
+        }, "Show Capes", "Toggles visibility of your player cape");
 
-        // Row 1: Trees & Sky
+        // Row 1: Trees & Rain / Snow
         addOptionButton(503, leftX, startY + rowH, 150, 20, "Trees: " + module.ofTrees.getValue(), () -> {
             module.ofTrees.setIndex((module.ofTrees.getIndex() + 1) % 4);
             module.sync();
@@ -152,18 +147,18 @@ public class GuiOptiFineSettings189 extends GuiScreen {
             mc.renderGlobal.loadRenderers();
         }, "Trees", "Fast - opaque leaf blocks (faster)", "Fancy - transparent leaf blocks (looks better)", "Smart - fancy nearby, fast far away");
 
-        addOptionButton(504, rightX, startY + rowH, 150, 20, "Sky: " + boolText(module.ofSky.get()), () -> {
+        addOptionButton(504, rightX, startY + rowH, 150, 20, "Rain & Snow: " + module.ofRain.getValue(), () -> {
+            module.ofRain.setIndex((module.ofRain.getIndex() + 1) % 4);
+            module.sync();
+            ConfigManager.saveLater();
+        }, "Rain & Snow", "Fast - minimal precipitation particles", "Fancy - full precipitation rendering", "OFF - disables rain and snow display");
+
+        // Row 2: Sky & Stars
+        addOptionButton(505, leftX, startY + 2 * rowH, 150, 20, "Sky: " + boolText(module.ofSky.get()), () -> {
             module.ofSky.set(!module.ofSky.get());
             module.sync();
             ConfigManager.saveLater();
         }, "Sky", "ON - sky dome is visible", "OFF - sky dome is hidden (boosts FPS)");
-
-        // Row 2: Sun & Moon, Stars
-        addOptionButton(505, leftX, startY + 2 * rowH, 150, 20, "Sun & Moon: " + boolText(module.ofSunMoon.get()), () -> {
-            module.ofSunMoon.set(!module.ofSunMoon.get());
-            module.sync();
-            ConfigManager.saveLater();
-        }, "Sun & Moon", "ON - sun and moon are visible", "OFF - sun and moon are hidden");
 
         addOptionButton(506, rightX, startY + 2 * rowH, 150, 20, "Stars: " + boolText(module.ofStars.get()), () -> {
             module.ofStars.set(!module.ofStars.get());
@@ -171,14 +166,26 @@ public class GuiOptiFineSettings189 extends GuiScreen {
             ConfigManager.saveLater();
         }, "Stars", "ON - night sky stars are visible", "OFF - stars are hidden");
 
-        // Row 3: Fog & Fog Start
-        addOptionButton(507, leftX, startY + 3 * rowH, 150, 20, "Fog: " + module.ofFogType.getValue(), () -> {
+        // Row 3: Sun & Moon, Held Item Tooltips
+        addOptionButton(507, leftX, startY + 3 * rowH, 150, 20, "Sun & Moon: " + boolText(module.ofSunMoon.get()), () -> {
+            module.ofSunMoon.set(!module.ofSunMoon.get());
+            module.sync();
+            ConfigManager.saveLater();
+        }, "Sun & Moon", "ON - sun and moon are visible", "OFF - sun and moon are hidden");
+
+        addOptionButton(508, rightX, startY + 3 * rowH, 150, 20, "Held Tooltips: " + boolText(mc.gameSettings.heldItemTooltips), () -> {
+            mc.gameSettings.heldItemTooltips = !mc.gameSettings.heldItemTooltips;
+            mc.gameSettings.saveOptions();
+        }, "Held Item Tooltips", "Shows held item name above hotbar when switching slots");
+
+        // Row 4: Fog & Fog Start
+        addOptionButton(509, leftX, startY + 4 * rowH, 150, 20, "Fog: " + module.ofFogType.getValue(), () -> {
             module.ofFogType.setIndex((module.ofFogType.getIndex() + 1) % 3);
             module.sync();
             ConfigManager.saveLater();
         }, "Fog", "Fast - faster exponential fog", "Fancy - realistic linear fog", "OFF - no fog, maximum visibility and FPS");
 
-        addOptionButton(508, rightX, startY + 3 * rowH, 150, 20, "Fog Start: " + String.format("%.1f", module.ofFogStart.getValue()), () -> {
+        addOptionButton(510, rightX, startY + 4 * rowH, 150, 20, "Fog Start: " + String.format("%.1f", module.ofFogStart.getValue()), () -> {
             double cur = module.ofFogStart.getValue();
             cur += 0.2;
             if (cur > 0.85) cur = 0.2;
@@ -186,19 +193,6 @@ public class GuiOptiFineSettings189 extends GuiScreen {
             module.sync();
             ConfigManager.saveLater();
         }, "Fog Start", "Distance multiplier where fog begins", "0.2 - near player", "0.8 - far from player");
-
-        // Row 4: Translucent Blocks & Held Item Tooltips
-        addOptionButton(509, leftX, startY + 4 * rowH, 150, 20, "Translucent: " + module.ofTranslucentBlocks.getValue(), () -> {
-            module.ofTranslucentBlocks.setIndex((module.ofTranslucentBlocks.getIndex() + 1) % 3);
-            module.sync();
-            ConfigManager.saveLater();
-            mc.renderGlobal.loadRenderers();
-        }, "Translucent Blocks", "Fast - faster cutout blending", "Fancy - full alpha blending for stained glass/ice");
-
-        addOptionButton(510, rightX, startY + 4 * rowH, 150, 20, "Held Tooltips: " + boolText(mc.gameSettings.heldItemTooltips), () -> {
-            mc.gameSettings.heldItemTooltips = !mc.gameSettings.heldItemTooltips;
-            mc.gameSettings.saveOptions();
-        }, "Held Item Tooltips", "Shows held item name above hotbar when switching slots");
 
         // Row 5: Dropped Items & Vignette
         addOptionButton(511, leftX, startY + 5 * rowH, 150, 20, "Dropped Items: " + module.ofDroppedItems.getValue(), () -> {
@@ -213,17 +207,11 @@ public class GuiOptiFineSettings189 extends GuiScreen {
             ConfigManager.saveLater();
         }, "Vignette", "Fast - disabled screen edge darkening", "Fancy - smooth dark edge overlay");
 
-        // Row 6: Entity Shadows & Rain / Snow
+        // Row 6: Entity Shadows
         addOptionButton(513, leftX, startY + 6 * rowH, 150, 20, "Entity Shadows: " + boolText(mc.gameSettings.entityShadows), () -> {
             mc.gameSettings.entityShadows = !mc.gameSettings.entityShadows;
             mc.gameSettings.saveOptions();
         }, "Entity Shadows", "Toggles round shadows underneath players and mobs");
-
-        addOptionButton(514, rightX, startY + 6 * rowH, 150, 20, "Rain & Snow: " + module.ofRain.getValue(), () -> {
-            module.ofRain.setIndex((module.ofRain.getIndex() + 1) % 4);
-            module.sync();
-            ConfigManager.saveLater();
-        }, "Rain & Snow", "Fast - minimal precipitation particles", "Fancy - full precipitation rendering", "OFF - disables rain and snow display");
     }
 
     // ==========================================
@@ -291,81 +279,26 @@ public class GuiOptiFineSettings189 extends GuiScreen {
         int startY = 38;
         int rowH = 24;
 
-        // Row 0: Mipmap Levels & Mipmap Type
+        // Row 0: Mipmap Levels & Clear Water
         addOptionButton(701, leftX, startY, 150, 20, "Mipmap Levels: " + mc.gameSettings.mipmapLevels, () -> {
             mc.gameSettings.setOptionValue(GameSettings.Options.MIPMAP_LEVELS, 1);
             mc.gameSettings.saveOptions();
             mc.renderGlobal.loadRenderers();
         }, "Mipmap Levels", "Visual smoothing for distant textures (0 to 4)");
 
-        addOptionButton(702, rightX, startY, 150, 20, "Mipmap Type: " + module.ofMipmapType.getValue(), () -> {
-            module.ofMipmapType.setIndex((module.ofMipmapType.getIndex() + 1) % 4);
-            module.sync();
-            ConfigManager.saveLater();
-        }, "Mipmap Type", "Nearest - rough, fastest", "Bilinear - smooth", "Linear - sharper", "Trilinear - smoothest");
-
-        // Row 1: Anisotropic Filtering & Clear Water
-        addOptionButton(703, leftX, startY + rowH, 150, 20, "Anisotropic: " + module.ofAfLevel.getValue(), () -> {
-            module.ofAfLevel.setIndex((module.ofAfLevel.getIndex() + 1) % 5);
-            module.sync();
-            ConfigManager.saveLater();
-        }, "Anisotropic Filtering", "Restores texture detail viewed at sharp angles", "OFF, 2x, 4x, 8x, 16x");
-
-        addOptionButton(704, rightX, startY + rowH, 150, 20, "Clear Water: " + boolText(module.ofClearWater.get()), () -> {
+        addOptionButton(702, rightX, startY, 150, 20, "Clear Water: " + boolText(module.ofClearWater.get()), () -> {
             module.ofClearWater.set(!module.ofClearWater.get());
             module.sync();
             ConfigManager.saveLater();
         }, "Clear Water", "Disables murky underwater fog for crystal clear underwater vision");
 
-        // Row 2: Better Grass & Better Snow
-        addOptionButton(705, leftX, startY + 2 * rowH, 150, 20, "Better Grass: " + module.ofBetterGrass.getValue(), () -> {
-            module.ofBetterGrass.setIndex((module.ofBetterGrass.getIndex() + 1) % 3);
-            module.sync();
-            ConfigManager.saveLater();
-            mc.renderGlobal.loadRenderers();
-        }, "Better Grass", "Connects top grass texture down dirt sides", "OFF, Fast, Fancy");
-
-        addOptionButton(706, rightX, startY + 2 * rowH, 150, 20, "Better Snow: " + boolText(module.ofBetterSnow.get()), () -> {
-            module.ofBetterSnow.set(!module.ofBetterSnow.get());
-            module.sync();
-            ConfigManager.saveLater();
-            mc.renderGlobal.loadRenderers();
-        }, "Better Snow", "Places snow under transparent blocks (fences, glass, tall grass)");
-
-        // Row 3: Custom Fonts & Swamp Colors
-        addOptionButton(707, leftX, startY + 3 * rowH, 150, 20, "Custom Fonts: " + boolText(module.ofCustomFonts.get()), () -> {
-            module.ofCustomFonts.set(!module.ofCustomFonts.get());
-            module.sync();
-            ConfigManager.saveLater();
-        }, "Custom Fonts", "Uses high-definition fonts provided by resource packs");
-
-        addOptionButton(708, rightX, startY + 3 * rowH, 150, 20, "Swamp Colors: " + boolText(module.ofSwampColors.get()), () -> {
-            module.ofSwampColors.set(!module.ofSwampColors.get());
-            module.sync();
-            ConfigManager.saveLater();
-            mc.renderGlobal.loadRenderers();
-        }, "Swamp Colors", "Toggles swamp murky water and grass tinting");
-
-        // Row 4: Smooth Biomes & Random Entities
-        addOptionButton(709, leftX, startY + 4 * rowH, 150, 20, "Smooth Biomes: " + boolText(module.ofSmoothBiomes.get()), () -> {
+        // Row 1: Smooth Biomes
+        addOptionButton(703, leftX, startY + rowH, 150, 20, "Smooth Biomes: " + boolText(module.ofSmoothBiomes.get()), () -> {
             module.ofSmoothBiomes.set(!module.ofSmoothBiomes.get());
             module.sync();
             ConfigManager.saveLater();
             mc.renderGlobal.loadRenderers();
         }, "Smooth Biomes", "ON - blends color transitions smoothly across biomes", "OFF - single-sample color, faster world meshing");
-
-        addOptionButton(710, rightX, startY + 4 * rowH, 150, 20, "Random Entities: " + boolText(module.ofRandomEntities.get()), () -> {
-            module.ofRandomEntities.set(!module.ofRandomEntities.get());
-            module.sync();
-            ConfigManager.saveLater();
-        }, "Random Entities", "Uses random mob textures when supported by active resource packs");
-
-        // Row 5: Connected Textures & Custom Sky (Informative / Skip)
-        addOptionButton(711, leftX, startY + 5 * rowH, 150, 20, "Connected Textures: OFF", () -> {},
-            "Connected Textures (CTM)", "Requires OptiFine's proprietary CTM model engine (skipped)");
-
-        addOptionButton(712, rightX, startY + 5 * rowH, 150, 20, "Custom Sky: OFF", () -> {},
-            "Custom Sky", "Requires OptiFine's custom skybox multi-pass renderer (skipped)");
     }
 
     // ==========================================
@@ -377,34 +310,21 @@ public class GuiOptiFineSettings189 extends GuiScreen {
         int startY = 38;
         int rowH = 24;
 
-        // Row 0: Smooth FPS & Smooth World
+        // Row 0: Smooth FPS & Fast Render
         addOptionButton(801, leftX, startY, 150, 20, "Smooth FPS: " + boolText(module.ofSmoothFps.get()), () -> {
             module.ofSmoothFps.set(!module.ofSmoothFps.get());
             module.sync();
             ConfigManager.saveLater();
         }, "Smooth FPS", "Flushes the GPU buffer queue to remove frame pacing stutter");
 
-        addOptionButton(802, rightX, startY, 150, 20, "Smooth World: " + boolText(module.ofSmoothWorld.get()), () -> {
-            module.ofSmoothWorld.set(!module.ofSmoothWorld.get());
-            module.sync();
-            ConfigManager.saveLater();
-        }, "Smooth World", "Distributes integrated server load evenly to eliminate lag spikes");
-
-        // Row 1: Fast Render & Fast Math
-        addOptionButton(803, leftX, startY + rowH, 150, 20, "Fast Render: " + boolText(OptiFineShaderLink189.isFastRenderOn()), () -> {
+        addOptionButton(802, rightX, startY, 150, 20, "Fast Render: " + boolText(OptiFineShaderLink189.isFastRenderOn()), () -> {
             boolean on = !OptiFineShaderLink189.isFastRenderOn();
             OptiFineShaderLink189.setFastRender(on);
             mc.renderGlobal.loadRenderers();
         }, "Fast Render", "Hardware accelerated chunk rendering path (powered by Ionium / VBOs)");
 
-        addOptionButton(804, rightX, startY + rowH, 150, 20, "Fast Math: " + boolText(module.ofFastMath.get()), () -> {
-            module.ofFastMath.set(!module.ofFastMath.get());
-            module.sync();
-            ConfigManager.saveLater();
-        }, "Fast Math", "Uses cache-optimized sine and cosine lookup tables for maximum FPS");
-
-        // Row 2: Chunk Updates & Dynamic Updates
-        addOptionButton(805, leftX, startY + 2 * rowH, 150, 20, "Chunk Updates: " + (int) module.ofChunkUpdates.getValue(), () -> {
+        // Row 1: Chunk Updates & Dynamic Updates
+        addOptionButton(803, leftX, startY + rowH, 150, 20, "Chunk Updates: " + (int) module.ofChunkUpdates.getValue(), () -> {
             double cur = module.ofChunkUpdates.getValue() + 1.0;
             if (cur > 5.0) cur = 1.0;
             module.ofChunkUpdates.setValue(cur);
@@ -412,21 +332,11 @@ public class GuiOptiFineSettings189 extends GuiScreen {
             ConfigManager.saveLater();
         }, "Chunk Updates", "Chunk updates uploaded per frame", "1 - smoother FPS", "3..5 - faster loading when flying");
 
-        addOptionButton(806, rightX, startY + 2 * rowH, 150, 20, "Dynamic Updates: " + boolText(module.ofDynamicUpdates.get()), () -> {
+        addOptionButton(804, rightX, startY + rowH, 150, 20, "Dynamic Updates: " + boolText(module.ofDynamicUpdates.get()), () -> {
             module.ofDynamicUpdates.set(!module.ofDynamicUpdates.get());
             module.sync();
             ConfigManager.saveLater();
         }, "Dynamic Updates", "Loads more chunks per frame when the player stands still");
-
-        // Row 3: Lazy Chunk Loading & Render Regions
-        addOptionButton(807, leftX, startY + 3 * rowH, 150, 20, "Lazy Chunk Loading: " + boolText(module.ofLazyChunkLoading.get()), () -> {
-            module.ofLazyChunkLoading.set(!module.ofLazyChunkLoading.get());
-            module.sync();
-            ConfigManager.saveLater();
-        }, "Lazy Chunk Loading", "Reduces tick latency by pacing singleplayer chunk unloads");
-
-        addOptionButton(808, rightX, startY + 3 * rowH, 150, 20, "Render Regions: ON", () -> {},
-            "Render Regions", "Batch render regions are handled natively by the Lads Ionium GPU pipeline");
     }
 
     // ==========================================
@@ -485,7 +395,7 @@ public class GuiOptiFineSettings189 extends GuiScreen {
             mc.renderGlobal.loadRenderers();
         }, "3D Anaglyph", "Stereoscopic 3D rendering for red-cyan glasses");
 
-        // Row 3: Show FPS & Screenshot Size
+        // Row 3: Show FPS & Show GL Errors
         addOptionButton(907, leftX, startY + 3 * rowH, 150, 20, "Show FPS: " + boolText(isFpsHudEnabled()), () -> {
             Module fps = ModuleManager.getInstance().getModule("FPS");
             if (fps != null) {
@@ -494,27 +404,14 @@ public class GuiOptiFineSettings189 extends GuiScreen {
             }
         }, "Show FPS", "Shows your current framerate counter directly on screen");
 
-        addOptionButton(908, rightX, startY + 3 * rowH, 150, 20, "Screenshot Size: " + module.ofScreenshotSize.getValue(), () -> {
-            module.ofScreenshotSize.setIndex((module.ofScreenshotSize.getIndex() + 1) % 4);
-            module.sync();
-            ConfigManager.saveLater();
-        }, "Screenshot Size", "Default (1x), 2x, 3x, or 4x supersampled resolution");
-
-        // Row 4: Autosave & Show GL Errors
-        addOptionButton(909, leftX, startY + 4 * rowH, 150, 20, "Autosave: " + module.ofAutosaveTicks.getValue(), () -> {
-            module.ofAutosaveTicks.setIndex((module.ofAutosaveTicks.getIndex() + 1) % 6);
-            module.sync();
-            ConfigManager.saveLater();
-        }, "Autosave Interval", "Singleplayer integrated server autosave frequency");
-
-        addOptionButton(910, rightX, startY + 4 * rowH, 150, 20, "GL Errors: " + boolText(module.ofShowGlErrors.get()), () -> {
+        addOptionButton(908, rightX, startY + 3 * rowH, 150, 20, "GL Errors: " + boolText(module.ofShowGlErrors.get()), () -> {
             module.ofShowGlErrors.set(!module.ofShowGlErrors.get());
             module.sync();
             ConfigManager.saveLater();
         }, "Show GL Errors", "Shows OpenGL error codes in game chat when detected");
 
-        // Row 5: Reset Video Settings
-        addOptionButton(ID_RESET_DEFAULTS, this.width / 2 - 100, startY + 5 * rowH, 200, 20, "Reset Video Settings...", () -> {
+        // Row 4: Reset Video Settings
+        addOptionButton(ID_RESET_DEFAULTS, this.width / 2 - 100, startY + 4 * rowH + 6, 200, 20, "Reset Video Settings...", () -> {
             module.resetDefaults();
             ConfigManager.saveLater();
             initGui();
@@ -626,9 +523,9 @@ public class GuiOptiFineSettings189 extends GuiScreen {
         return "Clouds: " + val;
     }
 
-    private String getCloudHeightLabel() {
-        float h = OptiFine189Module.sOfCloudHeight;
-        return h >= 256.0f ? "Cloud Height: MAX" : "Cloud Height: " + (int) h;
+    private String getCapesLabel() {
+        boolean on = mc.gameSettings.getModelParts().contains(EnumPlayerModelParts.CAPE);
+        return "Show Capes: " + boolText(on);
     }
 
     private String getParticlesLabel() {

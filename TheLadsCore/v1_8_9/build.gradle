@@ -65,6 +65,10 @@ dependencies {
     shadowImpl('org.spongepowered:mixin:0.7.11-SNAPSHOT') { transitive = false }
     annotationProcessor 'org.spongepowered:mixin:0.8.5-SNAPSHOT'
 
+    compileOnly 'io.github.llamalad7:mixinextras-common:0.5.5'
+    annotationProcessor 'io.github.llamalad7:mixinextras-common:0.5.5'
+    shadowImpl 'io.github.llamalad7:mixinextras-forge:0.5.5'
+
     // Minecraft 1.8.9 ships Gson 2.2.4 and no SLF4J: bundle both, relocated (Log4jServiceProvider routes SLF4J to Minecraft's log4j).
     commonLibs('com.google.code.gson:gson:2.11.0') { transitive = false }
     commonLibs 'org.slf4j:slf4j-api:2.0.16'

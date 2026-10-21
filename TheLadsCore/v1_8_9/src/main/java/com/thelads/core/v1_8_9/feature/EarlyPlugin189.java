@@ -16,6 +16,7 @@ public final class EarlyPlugin189 implements IMixinConfigPlugin {
     private static final Logger LOGGER = LogManager.getLogger("TheLadsCore-1.8.9");
 
     @Override public void onLoad(String mixinPackage) {
+        com.llamalad7.mixinextras.MixinExtrasBootstrap.init();
         AsyncLogging189.install();
         EnumValues189.install();
     }
