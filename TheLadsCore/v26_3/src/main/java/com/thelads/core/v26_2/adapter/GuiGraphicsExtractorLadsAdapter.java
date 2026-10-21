@@ -98,6 +98,69 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
         if(!stack.isEmpty()){g.item(stack,x,y);g.itemDecorations(font,stack,x,y);}
     }
 
+    @Override public void drawItemIcon(String itemKey, int x, int y) {
+        var stack = resolveItem(itemKey);
+        if (!stack.isEmpty()) {
+            g.item(stack, x, y);
+        }
+    }
+
+    private static net.minecraft.world.item.ItemStack resolveItem(String key) {
+        if (key == null) return net.minecraft.world.item.ItemStack.EMPTY;
+        return switch (key) {
+            case "bed" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BED.red());
+            case "feather" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FEATHER);
+            case "diamond_sword" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD);
+            case "iron_sword" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_SWORD);
+            case "stone_sword" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.STONE_SWORD);
+            case "golden_sword" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.GOLDEN_SWORD);
+            case "bow" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BOW);
+            case "tnt" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TNT);
+            case "slime_ball" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SLIME_BALL);
+            case "painting" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.PAINTING);
+            case "golden_apple" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.GOLDEN_APPLE);
+            case "gold_block" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.GOLD_BLOCK);
+            case "obsidian" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.OBSIDIAN);
+            case "ender_pearl" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ENDER_PEARL);
+            case "magma_cream" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.MAGMA_CREAM);
+            case "potion" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.POTION);
+            case "raw_fish" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COD);
+            case "diamond_chestplate" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_CHESTPLATE);
+            case "leather_chestplate" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.LEATHER_CHESTPLATE);
+            case "leather_boots" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.LEATHER_BOOTS);
+            case "clay_ball" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.CLAY_BALL);
+            case "banner" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BANNER.white());
+            case "water_bucket" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WATER_BUCKET);
+            case "skull" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SKELETON_SKULL);
+            case "rotten_flesh" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ROTTEN_FLESH);
+            case "clock" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.CLOCK);
+            case "brick" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BRICKS);
+            case "wheat" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WHEAT);
+            case "cake" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.CAKE);
+            case "glass" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.GLASS);
+            case "paper" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.PAPER);
+            case "wool" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WOOL.white());
+            case "dragon_egg" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DRAGON_EGG);
+            case "iron_door" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_DOOR);
+            case "hay_block" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.HAY_BLOCK);
+            case "coal" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COAL);
+            case "note_block" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.NOTE_BLOCK);
+            case "diamond_shovel" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SHOVEL);
+            case "blaze_rod" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BLAZE_ROD);
+            case "blaze_powder" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BLAZE_POWDER);
+            case "iron_ingot" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_INGOT);
+            case "snowball" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SNOWBALL);
+            case "wither_skeleton_skull" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WITHER_SKELETON_SKULL);
+            case "firework_charge" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FIREWORK_STAR);
+            case "grass" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.GRASS_BLOCK);
+            case "door" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.OAK_DOOR);
+            case "compass" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COMPASS);
+            case "barrier" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BARRIER);
+            case "nether_star" -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.NETHER_STAR);
+            default -> new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COMPASS);
+        };
+    }
+
     private static final Identifier HOTBAR = Identifier.withDefaultNamespace("hud/hotbar");
     private static final Identifier[] EMPTY_ARMOR = {Identifier.withDefaultNamespace("container/slot/helmet"),
         Identifier.withDefaultNamespace("container/slot/chestplate"), Identifier.withDefaultNamespace("container/slot/leggings"),

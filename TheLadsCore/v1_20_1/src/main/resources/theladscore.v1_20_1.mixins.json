@@ -32,6 +32,7 @@
     "ZetaEventBusSynchronizedMixin",
     "ReceivingLevelScreenFastCloseMixin",
     "ChatScreenInputAccessor",
+    "CommandSuggestionsMixin",
     "KeepUiOpenCloseMixin",
     "KeepUiOpenScreenMixin",
     "NoResourcePackWarningsMixin",

@@ -93,6 +93,76 @@ public class GuiLadsAdapter implements LadsGraphics {
     }
 
     @Override
+    public void drawItemIcon(String itemKey, int x, int y) {
+        ItemStack stack = resolveItem(itemKey);
+        if (stack == null) return;
+        RenderItem items = Minecraft.getMinecraft().getRenderItem();
+        GlStateManager.enableDepth();
+        RenderHelper.enableGUIStandardItemLighting();
+        items.renderItemAndEffectIntoGUI(stack, x, y);
+        RenderHelper.disableStandardItemLighting();
+        GlStateManager.disableDepth();
+        GlStateManager.enableAlpha();
+        GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+    }
+
+    private static ItemStack resolveItem(String key) {
+        if (key == null) return null;
+        switch (key) {
+            case "bed": return new ItemStack(Items.bed);
+            case "feather": return new ItemStack(Items.feather);
+            case "diamond_sword": return new ItemStack(Items.diamond_sword);
+            case "iron_sword": return new ItemStack(Items.iron_sword);
+            case "stone_sword": return new ItemStack(Items.stone_sword);
+            case "golden_sword": return new ItemStack(Items.golden_sword);
+            case "bow": return new ItemStack(Items.bow);
+            case "tnt": return new ItemStack(net.minecraft.init.Blocks.tnt);
+            case "slime_ball": return new ItemStack(Items.slime_ball);
+            case "painting": return new ItemStack(Items.painting);
+            case "golden_apple": return new ItemStack(Items.golden_apple);
+            case "gold_block": return new ItemStack(net.minecraft.init.Blocks.gold_block);
+            case "obsidian": return new ItemStack(net.minecraft.init.Blocks.obsidian);
+            case "ender_pearl": return new ItemStack(Items.ender_pearl);
+            case "magma_cream": return new ItemStack(Items.magma_cream);
+            case "potion": return new ItemStack(Items.potionitem);
+            case "raw_fish": return new ItemStack(Items.fish);
+            case "diamond_chestplate": return new ItemStack(Items.diamond_chestplate);
+            case "leather_chestplate": return new ItemStack(Items.leather_chestplate);
+            case "leather_boots": return new ItemStack(Items.leather_boots);
+            case "clay_ball": return new ItemStack(Items.clay_ball);
+            case "banner": return new ItemStack(Items.banner);
+            case "water_bucket": return new ItemStack(Items.water_bucket);
+            case "skull": return new ItemStack(Items.skull);
+            case "rotten_flesh": return new ItemStack(Items.rotten_flesh);
+            case "clock": return new ItemStack(Items.clock);
+            case "brick": return new ItemStack(net.minecraft.init.Blocks.brick_block);
+            case "wheat": return new ItemStack(Items.wheat);
+            case "cake": return new ItemStack(Items.cake);
+            case "glass": return new ItemStack(net.minecraft.init.Blocks.glass);
+            case "paper": return new ItemStack(Items.paper);
+            case "wool": return new ItemStack(net.minecraft.init.Blocks.wool);
+            case "dragon_egg": return new ItemStack(net.minecraft.init.Blocks.dragon_egg);
+            case "iron_door": return new ItemStack(Items.iron_door);
+            case "hay_block": return new ItemStack(net.minecraft.init.Blocks.hay_block);
+            case "coal": return new ItemStack(Items.coal);
+            case "note_block": return new ItemStack(net.minecraft.init.Blocks.noteblock);
+            case "diamond_shovel": return new ItemStack(Items.diamond_shovel);
+            case "blaze_rod": return new ItemStack(Items.blaze_rod);
+            case "blaze_powder": return new ItemStack(Items.blaze_powder);
+            case "iron_ingot": return new ItemStack(Items.iron_ingot);
+            case "snowball": return new ItemStack(Items.snowball);
+            case "wither_skeleton_skull": return new ItemStack(Items.skull, 1, 1);
+            case "firework_charge": return new ItemStack(Items.firework_charge);
+            case "grass": return new ItemStack(net.minecraft.init.Blocks.grass);
+            case "door": return new ItemStack(Items.oak_door);
+            case "compass": return new ItemStack(Items.compass);
+            case "barrier": return new ItemStack(net.minecraft.init.Blocks.barrier);
+            case "nether_star": return new ItemStack(Items.nether_star);
+            default: return new ItemStack(Items.compass);
+        }
+    }
+
+    @Override
     public void drawHotbarSlots(int x, int y, int slots) {
         if (slots == 4) {
             GlStateManager.enableBlend();

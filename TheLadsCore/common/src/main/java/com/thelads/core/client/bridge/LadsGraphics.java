@@ -79,6 +79,12 @@ public interface LadsGraphics {
 
     default void drawArmorItem(int index, int x, int y, boolean preview) {}
 
+    /**
+     * Draws a vanilla item icon at (x, y) representing a standard item key (e.g. "bed", "diamond_sword", "bow", etc.).
+     * 16x16 pixels. Clean-room vanilla rendering across versions with no copied textures.
+     */
+    default void drawItemIcon(String itemKey, int x, int y) {}
+
     /** The left part of vanilla's hotbar frame with this many slots (each 20 px) and its right edge: 2 + 20 * slots by 22 px. */
     default void drawHotbarSlots(int x, int y, int slots) {}
 

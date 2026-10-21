@@ -183,6 +183,10 @@ public interface LadsGameBridge {
     /** Sends a line as the player would type it: a command when it starts with "/" (Hypixel mods). */
     default void sendChatLine(String text) {}
     default void displayChatMessage(String text) {}
+    /** Tab list / online player names on the current server; empty when not connected or unavailable. */
+    default List<String> getOnlinePlayerNames() { return Collections.emptyList(); }
+    /** Displays a brief client-side system toast / notification. */
+    default void showToast(String title, String message) {}
     /** Sends a plugin message (custom payload) to the server; false when this version or connection cannot (RealPing). */
     default boolean sendPluginMessage(String channel, byte[] data) { return false; }
 

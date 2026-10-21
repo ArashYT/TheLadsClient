@@ -313,6 +313,26 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         if (mc().thePlayer != null) mc().thePlayer.addChatMessage(new net.minecraft.util.ChatComponentText(text));
     }
 
+    public List<String> getOnlinePlayerNames() {
+        if (mc().getNetHandler() == null) return Collections.emptyList();
+        Collection<net.minecraft.client.network.NetworkPlayerInfo> playerInfoMap = mc().getNetHandler().getPlayerInfoMap();
+        if (playerInfoMap == null || playerInfoMap.isEmpty()) return Collections.emptyList();
+        List<String> names = new ArrayList<>(playerInfoMap.size());
+        for (net.minecraft.client.network.NetworkPlayerInfo info : playerInfoMap) {
+            if (info != null && info.getGameProfile() != null && info.getGameProfile().getName() != null) {
+                names.add(info.getGameProfile().getName());
+            }
+        }
+        return names;
+    }
+
+    @Override
+    public void showToast(String title, String message) {
+        if (mc().thePlayer != null) {
+            mc().thePlayer.addChatMessage(new net.minecraft.util.ChatComponentText("§c[" + title + "] §f" + message));
+        }
+    }
+
     @Override
     public boolean sendPluginMessage(String channel, byte[] data) {
         return com.thelads.core.v1_8_9.feature.Hypixel189.send(channel, data);

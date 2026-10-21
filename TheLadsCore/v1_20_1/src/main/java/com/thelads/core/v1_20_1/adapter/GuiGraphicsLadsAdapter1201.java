@@ -211,6 +211,75 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
         }
     }
 
+    @Override
+    public void drawItemIcon(String itemKey, int x, int y) {
+        var stack = resolveItem(itemKey);
+        if (!stack.isEmpty()) {
+            fade(1);
+            try {
+                guiGraphics.renderItem(stack, x, y);
+            } finally {
+                endFade();
+            }
+        }
+    }
+
+    private static ItemStack resolveItem(String key) {
+        if (key == null) return ItemStack.EMPTY;
+        return switch (key) {
+            case "bed" -> new ItemStack(Items.RED_BED);
+            case "feather" -> new ItemStack(Items.FEATHER);
+            case "diamond_sword" -> new ItemStack(Items.DIAMOND_SWORD);
+            case "iron_sword" -> new ItemStack(Items.IRON_SWORD);
+            case "stone_sword" -> new ItemStack(Items.STONE_SWORD);
+            case "golden_sword" -> new ItemStack(Items.GOLDEN_SWORD);
+            case "bow" -> new ItemStack(Items.BOW);
+            case "tnt" -> new ItemStack(Items.TNT);
+            case "slime_ball" -> new ItemStack(Items.SLIME_BALL);
+            case "painting" -> new ItemStack(Items.PAINTING);
+            case "golden_apple" -> new ItemStack(Items.GOLDEN_APPLE);
+            case "gold_block" -> new ItemStack(Items.GOLD_BLOCK);
+            case "obsidian" -> new ItemStack(Items.OBSIDIAN);
+            case "ender_pearl" -> new ItemStack(Items.ENDER_PEARL);
+            case "magma_cream" -> new ItemStack(Items.MAGMA_CREAM);
+            case "potion" -> new ItemStack(Items.POTION);
+            case "raw_fish" -> new ItemStack(Items.COD);
+            case "diamond_chestplate" -> new ItemStack(Items.DIAMOND_CHESTPLATE);
+            case "leather_chestplate" -> new ItemStack(Items.LEATHER_CHESTPLATE);
+            case "leather_boots" -> new ItemStack(Items.LEATHER_BOOTS);
+            case "clay_ball" -> new ItemStack(Items.CLAY_BALL);
+            case "banner" -> new ItemStack(Items.WHITE_BANNER);
+            case "water_bucket" -> new ItemStack(Items.WATER_BUCKET);
+            case "skull" -> new ItemStack(Items.SKELETON_SKULL);
+            case "rotten_flesh" -> new ItemStack(Items.ROTTEN_FLESH);
+            case "clock" -> new ItemStack(Items.CLOCK);
+            case "brick" -> new ItemStack(Items.BRICKS);
+            case "wheat" -> new ItemStack(Items.WHEAT);
+            case "cake" -> new ItemStack(Items.CAKE);
+            case "glass" -> new ItemStack(Items.GLASS);
+            case "paper" -> new ItemStack(Items.PAPER);
+            case "wool" -> new ItemStack(Items.WHITE_WOOL);
+            case "dragon_egg" -> new ItemStack(Items.DRAGON_EGG);
+            case "iron_door" -> new ItemStack(Items.IRON_DOOR);
+            case "hay_block" -> new ItemStack(Items.HAY_BLOCK);
+            case "coal" -> new ItemStack(Items.COAL);
+            case "note_block" -> new ItemStack(Items.NOTE_BLOCK);
+            case "diamond_shovel" -> new ItemStack(Items.DIAMOND_SHOVEL);
+            case "blaze_rod" -> new ItemStack(Items.BLAZE_ROD);
+            case "blaze_powder" -> new ItemStack(Items.BLAZE_POWDER);
+            case "iron_ingot" -> new ItemStack(Items.IRON_INGOT);
+            case "snowball" -> new ItemStack(Items.SNOWBALL);
+            case "wither_skeleton_skull" -> new ItemStack(Items.WITHER_SKELETON_SKULL);
+            case "firework_charge" -> new ItemStack(Items.FIREWORK_STAR);
+            case "grass" -> new ItemStack(Items.GRASS_BLOCK);
+            case "door" -> new ItemStack(Items.OAK_DOOR);
+            case "compass" -> new ItemStack(Items.COMPASS);
+            case "barrier" -> new ItemStack(Items.BARRIER);
+            case "nether_star" -> new ItemStack(Items.NETHER_STAR);
+            default -> new ItemStack(Items.COMPASS);
+        };
+    }
+
     static ItemStack armorStack(int index, boolean preview) {
         if (preview) {
             var stack = new ItemStack(index == 0 ? Items.DIAMOND_HELMET : Items.DIAMOND_CHESTPLATE);

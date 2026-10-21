@@ -22,6 +22,7 @@
     "PauseScreenMixin",
     "ClientTickMixin",
     "OptionsMixin",
+    "CommandSuggestionsMixin",
     "KeyboardHandlerMixin",
     "KeyboardInputMixin",
     "MouseHandlerMixin",

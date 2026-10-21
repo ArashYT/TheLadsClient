@@ -160,6 +160,29 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
         if (player != null) player.displayClientMessage(net.minecraft.network.chat.Component.literal(text), false);
     }
 
+    @Override public List<String> getOnlinePlayerNames() {
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection == null) return List.of();
+        var players = connection.getOnlinePlayers();
+        if (players == null || players.isEmpty()) return List.of();
+        List<String> names = new ArrayList<>(players.size());
+        for (var p : players) {
+            if (p != null && p.getProfile() != null && p.getProfile().getName() != null) {
+                names.add(p.getProfile().getName());
+            }
+        }
+        return names;
+    }
+
+    @Override public void showToast(String title, String message) {
+        net.minecraft.client.gui.components.toasts.SystemToast.add(
+            Minecraft.getInstance().getToasts(),
+            net.minecraft.client.gui.components.toasts.SystemToast.SystemToastIds.PERIODIC_NOTIFICATION,
+            net.minecraft.network.chat.Component.literal(title),
+            net.minecraft.network.chat.Component.literal(message)
+        );
+    }
+
     @Override public boolean sendPluginMessage(String channel, byte[] data) {
         return com.thelads.core.v1_20_1.feature.Hypixel1201.send(channel, data);
     }
