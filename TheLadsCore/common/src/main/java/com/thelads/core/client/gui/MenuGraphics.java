@@ -51,7 +51,7 @@ public final class MenuGraphics {
             g.fill(x + w - r, y + h - i - 1, x + w - inset, y + h - i, color);
         }
     }
-    static String fit(LadsGraphics g, String text, int width) {
+    public static String fit(LadsGraphics g, String text, int width) {
         if (width <= 0) return "";
         if (g.textWidth(text) <= width) return text;
         int low = 1, high = text.length(), best = 0;

@@ -21,11 +21,20 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
  * hypixel:ping channel: sent as a C17 custom payload, its answer read as the S3F arrives on the network thread
  * (NetworkManagerMixin), so the arrival time is the reply's. FML passes channels it has no handler for through to that point.
  */
+import com.thelads.core.client.hypixel.quickplay.QuickplayModule;
+import net.minecraft.client.settings.KeyBinding;
+import org.lwjgl.input.Keyboard;
+
 public final class Hypixel189 {
+    public static final KeyBinding QUICKPLAY = new KeyBinding("key.theladscore.quickplay", Keyboard.KEY_NONE, "key.category.theladscore.controls");
+    public static final KeyBinding PLAY_AGAIN = new KeyBinding("key.theladscore.play_again", Keyboard.KEY_NONE, "key.category.theladscore.controls");
     private Hypixel189() {}
 
     public static void register() {
         ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS);
+        ModuleSupport.registerBuiltIn(QuickplayModule.NAME);
+        net.minecraftforge.fml.client.registry.ClientRegistry.registerKeyBinding(QUICKPLAY);
+        net.minecraftforge.fml.client.registry.ClientRegistry.registerKeyBinding(PLAY_AGAIN);
         MinecraftForge.EVENT_BUS.register(new Hypixel189());
     }
 
@@ -39,6 +48,14 @@ public final class Hypixel189 {
         if (event.phase != TickEvent.Phase.END) return;
         Minecraft mc = Minecraft.getMinecraft();
         HypixelMods.tick(LadsGameBridge.get(), mc.theWorld, mc.getNetHandler(), System.nanoTime());
+        while (QUICKPLAY.isPressed()) {
+            if (mc.currentScreen == null) {
+                mc.displayGuiScreen(new com.thelads.core.v1_8_9.gui.QuickplayScreen189(null));
+            }
+        }
+        while (PLAY_AGAIN.isPressed()) {
+            QuickplayModule.triggerPlayAgain();
+        }
     }
 
     /** NetworkManagerMixin, on the network thread: a server plugin message (only hypixel:ping is read, without consuming it). */

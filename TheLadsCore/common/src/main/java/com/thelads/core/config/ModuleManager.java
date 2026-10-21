@@ -286,6 +286,7 @@ public class ModuleManager {
         registerHidden(new com.thelads.core.modules.CosmeticsModule(), Module.Category.MECHANIC); // always on: the Cosmetics screen
         // 1.9.2: the Hypixel mods grouped into one.
         register(com.thelads.core.client.hypixel.HypixelMods.module(), Module.Category.HYPIXEL);
+        register(com.thelads.core.client.hypixel.quickplay.QuickplayModule.module(), Module.Category.HYPIXEL);
 
         Module sb = new Module("Scoreboard", "Resize, reposition and restyle the scoreboard sidebar.");
         sb.addOption(new SliderOption("Size", 100, 50, 150, 25));

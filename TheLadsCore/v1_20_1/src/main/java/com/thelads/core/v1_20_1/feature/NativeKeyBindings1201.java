@@ -22,6 +22,20 @@ public final class NativeKeyBindings1201 {
         CATEGORY
     ));
 
+    public static final KeyMapping QUICKPLAY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        "key.theladscore.quickplay",
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_UNKNOWN,
+        CATEGORY
+    ));
+
+    public static final KeyMapping PLAY_AGAIN = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        "key.theladscore.play_again",
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_UNKNOWN,
+        CATEGORY
+    ));
+
     public static final KeyMapping TOGGLE_SPRINT = KeyBindingHelper.registerKeyBinding(new KeyMapping(
         "key.theladscore.toggle_sprint",
         InputConstants.Type.KEYSYM,

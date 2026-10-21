@@ -3,6 +3,7 @@ package com.thelads.core.client.hypixel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,6 +16,12 @@ import java.util.regex.Pattern;
  */
 public final class HypixelChat {
     private static final Pattern FORMAT = Pattern.compile("§.");
+    private static final java.util.Set<String> RECENT_SENDERS = new java.util.LinkedHashSet<>();
+    private static final Pattern SENDER_EXTRACT = Pattern.compile("^(?:"
+        + "(?:\\[[^\\]]+\\] )?(\\w{1,16})(?: \\[\\w+\\])?: "
+        + "|(?:Party|Guild|Officer|Shout) > (?:\\[[^\\]]+\\] )?(\\w{1,16}): "
+        + "|(?:From|To) (?:\\[[^\\]]+\\] )?(\\w{1,16}): "
+        + ").*");
     private static final Pattern PLAYER_CHAT = Pattern.compile("^(?:"
         + "(?:(?:\\[[^\\]]+\\] )?\\w{1,16}(?: \\[\\w+\\])?: )"
         + "|(?:(?:Party|Guild|Officer|Shout) > )"
@@ -309,5 +316,32 @@ public final class HypixelChat {
             }
         }
         return false;
+    }
+
+    /** Records a player name if the chat line is from another player. */
+    public static synchronized void recordSender(String message) {
+        if (message == null) return;
+        for (String line : lines(message)) {
+            String p = line.trim();
+            Matcher m = SENDER_EXTRACT.matcher(p);
+            if (m.matches()) {
+                String name = m.group(1) != null ? m.group(1) : (m.group(2) != null ? m.group(2) : m.group(3));
+                if (name != null && !name.isEmpty()) {
+                    RECENT_SENDERS.add(name);
+                    if (RECENT_SENDERS.size() > 50) {
+                        java.util.Iterator<String> it = RECENT_SENDERS.iterator();
+                        if (it.hasNext()) {
+                            it.next();
+                            it.remove();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** Returns recent chat senders seen this session. */
+    public static synchronized Set<String> getRecentSenders() {
+        return new java.util.LinkedHashSet<>(RECENT_SENDERS);
     }
 }

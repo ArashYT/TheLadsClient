@@ -50,7 +50,8 @@ public class OptionsMixin {
         // Register before native options parsing, so saved bindings load on the first launch.
         // Reloads and upgrades add only missing entries, retaining every other mod's binding.
         for (KeyMapping ours : new KeyMapping[] {NativeKeyBindings.ZOOM, NativeKeyBindings.MODULES,
-                NativeKeyBindings.TOGGLE_SPRINT, NativeKeyBindings.TOGGLE_SNEAK}) {
+                NativeKeyBindings.TOGGLE_SPRINT, NativeKeyBindings.TOGGLE_SNEAK,
+                NativeKeyBindings.QUICKPLAY, NativeKeyBindings.PLAY_AGAIN}) {
             if (Arrays.asList(keyMappings).contains(ours)) continue;
             keyMappings = Arrays.copyOf(keyMappings, keyMappings.length + 1);
             keyMappings[keyMappings.length - 1] = ours;

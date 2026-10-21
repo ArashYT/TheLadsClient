@@ -310,6 +310,32 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         else connection.sendChat(text);
     }
 
+    @Override public List<String> getOnlinePlayerNames() {
+        var connection = Minecraft.getInstance().getConnection();
+        if (connection == null) return List.of();
+        var players = connection.getOnlinePlayers();
+        if (players == null || players.isEmpty()) return List.of();
+        List<String> names = new ArrayList<>(players.size());
+        for (var p : players) {
+            if (p != null && p.getProfile() != null && p.getProfile().name() != null) {
+                names.add(p.getProfile().name());
+            }
+        }
+        return names;
+    }
+
+    @Override public void showToast(String title, String message) {
+        var mc = Minecraft.getInstance();
+        if (mc != null && mc.gui != null && mc.gui.toastManager() != null) {
+            net.minecraft.client.gui.components.toasts.SystemToast.add(
+                mc.gui.toastManager(),
+                net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+                net.minecraft.network.chat.Component.literal(title),
+                net.minecraft.network.chat.Component.literal(message)
+            );
+        }
+    }
+
     @Override public boolean sendPluginMessage(String channel, byte[] data) {
         return com.thelads.core.v26_2.feature.NativeHypixel.send(channel, data);
     }

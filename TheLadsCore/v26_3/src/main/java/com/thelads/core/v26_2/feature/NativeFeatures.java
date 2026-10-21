@@ -83,6 +83,13 @@ public final class NativeFeatures {
         if (NativeKeyBindings.ZOOM.matches(event)) zoom().key(down);
         if (sprintToggleKey().matches(event)) sprintKey(down);
         if (sneakToggleKey().matches(event)) sneakKey(down);
+        if (down && NativeKeyBindings.QUICKPLAY.matches(event)) {
+            var mc = Minecraft.getInstance();
+            if (mc.gui.screen() == null) mc.gui.setScreen(new com.thelads.core.v26_2.gui.QuickplayScreen26(null));
+        }
+        if (down && NativeKeyBindings.PLAY_AGAIN.matches(event)) {
+            com.thelads.core.client.hypixel.quickplay.QuickplayModule.triggerPlayAgain();
+        }
     }
     public static void mouse(MouseButtonEvent event, int action) {
         if (!interactive()) { reset(); return; }
@@ -90,6 +97,13 @@ public final class NativeFeatures {
         if (NativeKeyBindings.ZOOM.matchesMouse(event)) zoom().key(down);
         if (sprintToggleKey().matchesMouse(event)) sprintKey(down);
         if (sneakToggleKey().matchesMouse(event)) sneakKey(down);
+        if (down && NativeKeyBindings.QUICKPLAY.matchesMouse(event)) {
+            var mc = Minecraft.getInstance();
+            if (mc.gui.screen() == null) mc.gui.setScreen(new com.thelads.core.v26_2.gui.QuickplayScreen26(null));
+        }
+        if (down && NativeKeyBindings.PLAY_AGAIN.matchesMouse(event)) {
+            com.thelads.core.client.hypixel.quickplay.QuickplayModule.triggerPlayAgain();
+        }
     }
     private static void sprintKey(boolean down) {
         if (down && !sprintHeld && toggles().pressSprint()) ConfigManager.saveLater();

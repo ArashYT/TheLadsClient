@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 public final class HypixelMods {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     public static final String AUTO_GG = "Auto GG", AUTO_FRIEND = "Auto Friend", AUTO_TIP = "Auto Tip", PLAY_AGAIN = "Auto Play Again",
+        TAB_FILL = "Hypixel tab fill",
         AUTO_WHO = "Auto Who", CLEANUP = "Chat Cleanup";
     public static final String REPLAY_WHEN = "Replay when", WAIT_PARTY = "Wait for party";
     static final long GAP = 1_500_000_000L, SECOND = 1_000_000_000L;
@@ -76,6 +77,7 @@ public final class HypixelMods {
         m.addOption(new BoolOption(AUTO_WHO, false));
         m.addOption(new BoolOption(CLEANUP, true));
         for (HypixelChat.Spam kind : HypixelChat.Spam.values()) m.addOption(new BoolOption(CLEANUP + ": " + kind.option, kind.on));
+        m.addOption(new BoolOption(TAB_FILL, true));
         m.setEnabled(true);
         return m;
     }
@@ -111,6 +113,8 @@ public final class HypixelMods {
         return o instanceof DropdownOption d ? d.getValue() : "After death";
     }
 
+    public static boolean isTabFillEnabled() { return on(TAB_FILL); }
+    public static Set<String> knownFriends() { return Collections.unmodifiableSet(FRIENDS.keySet()); }
     public static boolean waitParty() {
         Option o = option(PLAY_AGAIN, WAIT_PARTY);
         return o instanceof BoolOption b ? b.get() : true;
@@ -217,6 +221,7 @@ public final class HypixelMods {
      */
     public static boolean chat(String message, long now) {
         if (message == null || connection == null || !isActiveOnCurrentServer()) return false;
+        HypixelChat.recordSender(message);
         // Answers to our own commands, by when each was sent (another command may have gone out since).
         if (tipSent != 0 && now - tipSent < 5 * SECOND && HypixelChat.unknownCommand(message)) {
             tipOff = true;
