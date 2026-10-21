@@ -28,7 +28,7 @@ class Lads197DefaultsTest {
     );
 
     private static final Set<String> DEFAULT_ENABLED_VISIBLE = Set.of(
-        "1.7 Animations", "Action Bar", "AppleSkin", "ArmorHUD", "AutoReconnect",
+        "1.7 Animations", "Action Bar", "AppleSkin", "ArmorHUD", "AutoReconnect", "Bed Wars Height Limit",
         "BetterF3", "BetterScreenshots", "BorderlessFullscreen", "BossBar", "Chat",
         "ClientTools", "Clumps", "Coordinates", "Crosshair Tweaks",
         "DiscordRPC", "DynamicFPS", com.thelads.core.modules.DynamicLightsModule.NAME, "EnhancedToolbars", "EnhancedTooltips",

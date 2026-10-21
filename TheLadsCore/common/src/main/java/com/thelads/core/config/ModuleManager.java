@@ -287,6 +287,16 @@ public class ModuleManager {
         // 1.9.2: the Hypixel mods grouped into one.
         register(com.thelads.core.client.hypixel.HypixelMods.module(), Module.Category.HYPIXEL);
 
+        HudModule sessionStats = hud("Session Stats", "Hypixel only. Track games, wins, losses, kills, deaths, win streaks, and beds broken during this session.");
+        sessionStats.setEnabled(false);
+        ActionOption resetSession = new ActionOption("Reset session", "Reset session");
+        resetSession.confirm("Are you sure you want to reset session stats?");
+        resetSession.setAction(com.thelads.core.client.hypixel.SessionTracker::reset);
+        sessionStats.addOption(resetSession);
+
+        HudModule heightLimit = hud("Bed Wars Height Limit", "Hypixel Bed Wars only. Show remaining height to the map build limit.");
+        heightLimit.setEnabled(true);
+
         Module sb = new Module("Scoreboard", "Resize, reposition and restyle the scoreboard sidebar.");
         sb.addOption(new SliderOption("Size", 100, 50, 150, 25));
         sb.addOption(new SliderOption("X Offset", 0, -40, 40, 20));

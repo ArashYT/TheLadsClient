@@ -40,9 +40,29 @@ public class ScoreboardHudElement extends HudElement {
     }
 
     /** Native sidebar hooks must use this guard, never the enabled flag by itself. */
+    public static ScoreboardSnapshot filterStreamer(ScoreboardSnapshot snapshot) {
+        if (snapshot == null || !com.thelads.core.client.hypixel.HypixelMods.isStreamerMode()) return snapshot;
+        List<ScoreLine> lines = snapshot.lines();
+        List<ScoreLine> filtered = null;
+        for (int i = 0; i < lines.size(); i++) {
+            ScoreLine line = lines.get(i);
+            if (com.thelads.core.client.hypixel.HypixelChat.isStreamerScoreboardLine(line.name())) {
+                if (filtered == null) {
+                    filtered = new java.util.ArrayList<>(lines.size());
+                    for (int j = 0; j < i; j++) filtered.add(lines.get(j));
+                }
+            } else if (filtered != null) {
+                filtered.add(line);
+            }
+        }
+        return filtered == null ? snapshot : new ScoreboardSnapshot(snapshot.title(), filtered);
+    }
+
+    /** Native sidebar hooks must use this guard, never the enabled flag by itself. */
     public static boolean shouldReplaceVanillaScoreboard() {
         var module = ModuleManager.getInstance().getModule("Scoreboard");
-        if (module == null || !module.isEnabled()) return false;
+        boolean enabled = (module != null && module.isEnabled()) || com.thelads.core.client.hypixel.HypixelMods.isStreamerMode();
+        if (!enabled) return false;
         LadsGameBridge bridge = LadsGameBridge.get();
         return bridge != null && !bridge.isHudHidden() && hasObjective(bridge.getScoreboard());
     }
@@ -52,7 +72,8 @@ public class ScoreboardHudElement extends HudElement {
     }
 
     private static ScoreboardSnapshot liveSnapshot(LadsGraphics g) {
-        return g.getGame() == null || g.getGame().isHudHidden() ? null : g.getGame().getScoreboard();
+        ScoreboardSnapshot raw = g.getGame() == null || g.getGame().isHudHidden() ? null : g.getGame().getScoreboard();
+        return filterStreamer(raw);
     }
 
     @Override

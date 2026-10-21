@@ -13,6 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.client.Minecraft;
@@ -43,8 +44,19 @@ public final class Hypixel1201 {
     private Hypixel1201() {}
 
     public static void register() {
-        ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS);
+        ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS, "Session Stats", "Bed Wars Height Limit");
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> overlay || !HypixelMods.chat(message.getString(), System.nanoTime()));
+        ClientReceiveMessageEvents.MODIFY_GAME.register((message, overlay) -> {
+            if (!overlay && HypixelMods.isStreamerMode()) {
+                String raw = message.getString();
+                String masked = HypixelMods.filterIncomingChat(raw);
+                if (!masked.equals(raw)) return net.minecraft.network.chat.Component.literal(masked);
+            }
+            return message;
+        });
+        ClientSendMessageEvents.ALLOW_COMMAND.register(command -> !HypixelMods.handleOutgoingCommand(command));
+        ClientSendMessageEvents.MODIFY_CHAT.register(HypixelMods::handleOutgoingChat);
+        ClientSendMessageEvents.MODIFY_COMMAND.register(HypixelMods::handleOutgoingChat);
         ClientTickEvents.END_CLIENT_TICK.register(client -> HypixelMods.tick(LadsGameBridge.get(), client.level, client.getConnection(), System.nanoTime()));
         if (Mods1201.loaded("hypixel_mod_api")) return;
         channel = !ClientPlayNetworking.getGlobalReceivers().contains(CHANNEL);

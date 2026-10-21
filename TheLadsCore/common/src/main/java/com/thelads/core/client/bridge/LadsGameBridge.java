@@ -176,6 +176,7 @@ public interface LadsGameBridge {
     default java.net.InetSocketAddress getServerSocketAddress() { return null; }
     /** Sends a line as the player would type it: a command when it starts with "/" (Hypixel mods). */
     default void sendChatLine(String text) {}
+    default void displayChatMessage(String text) {}
     /** Sends a plugin message (custom payload) to the server; false when this version or connection cannot (RealPing). */
     default boolean sendPluginMessage(String channel, byte[] data) { return false; }
 

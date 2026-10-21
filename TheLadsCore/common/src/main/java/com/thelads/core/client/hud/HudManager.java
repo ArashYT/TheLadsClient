@@ -73,6 +73,8 @@ public class HudManager {
         add(scoreboardElement, "Scoreboard");
         add(new ToggleSprintHudElement(), com.thelads.core.modules.ToggleSprintModule.NAME);
         add(new ActionBarHudElement(), ActionBar.MODULE);
+        add(new SessionStatsHudElement(), "Session Stats");
+        add(new BedWarsHeightHudElement(), "Bed Wars Height Limit");
     }
 
     private void add(HudElement element, String moduleName) {

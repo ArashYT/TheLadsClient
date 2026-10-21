@@ -25,13 +25,22 @@ public final class Hypixel189 {
     private Hypixel189() {}
 
     public static void register() {
-        ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS);
+        ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS, "Session Stats", "Bed Wars Height Limit");
         MinecraftForge.EVENT_BUS.register(new Hypixel189());
     }
 
     @SubscribeEvent
     public void chat(ClientChatReceivedEvent event) {
-        if (event.type != 2 && event.message != null && HypixelMods.chat(event.message.getUnformattedText(), System.nanoTime())) event.setCanceled(true);
+        if (event.type != 2 && event.message != null) {
+            String unformatted = event.message.getUnformattedText();
+            if (HypixelMods.chat(unformatted, System.nanoTime())) {
+                event.setCanceled(true);
+                return;
+            }
+            if (HypixelMods.isStreamerMode() && unformatted.contains("Sending you to")) {
+                event.message = new net.minecraft.util.ChatComponentText(HypixelMods.filterIncomingChat(event.message.getFormattedText()));
+            }
+        }
     }
 
     @SubscribeEvent

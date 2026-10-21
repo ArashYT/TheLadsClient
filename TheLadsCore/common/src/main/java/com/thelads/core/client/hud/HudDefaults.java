@@ -44,6 +44,8 @@ public final class HudDefaults {
             case "Voice Chat" -> {x=hotbar.right()+6;y=hotbar.bottom()-eh;}
             case "Voice Chat Group" -> {x=4;y=4;}
             case com.thelads.core.modules.ToggleSprintModule.NAME -> {x=5;y=h-eh-64;}
+            case "Session Stats" -> {x=5;y=h/3;}
+            case "Bed Wars Height Limit" -> {x=(w-ew)/2;y=52;}
             default -> {return null;}
         }
         return new int[]{Math.max(0,Math.min(x,w-ew)),Math.max(0,Math.min(y,h-eh))};

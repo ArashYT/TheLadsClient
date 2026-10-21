@@ -296,6 +296,11 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     }
 
     @Override
+    public void displayChatMessage(String text) {
+        if (mc().thePlayer != null) mc().thePlayer.addChatMessage(new net.minecraft.util.ChatComponentText(text));
+    }
+
+    @Override
     public boolean sendPluginMessage(String channel, byte[] data) {
         return com.thelads.core.v1_8_9.feature.Hypixel189.send(channel, data);
     }
