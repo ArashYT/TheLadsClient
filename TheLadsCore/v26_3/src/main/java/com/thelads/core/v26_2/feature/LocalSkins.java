@@ -31,27 +31,9 @@ public final class LocalSkins {
         var result=new CompletableFuture<String>();final int request; synchronized(STATE){request=++revision;}
         CompletableFuture.runAsync(()->{
             try{
-                byte[] data;boolean model=slim;String source=input.strip();
-                if(source.startsWith("https://")||source.startsWith("http://"))data=fetch(source);
-                else if(source.matches("[A-Za-z0-9_]{1,16}")||source.matches("[a-fA-F0-9-]{32,36}")){
-                    String uuid=source.replace("-","");
-                    if(!uuid.matches("[a-fA-F0-9]{32}")){
-                        var profile=JsonParser.parseString(new String(fetch("https://api.mojang.com/users/profiles/minecraft/"+source),java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
-                        uuid=profile.get("id").getAsString();
-                    }
-                    var profile=JsonParser.parseString(new String(fetch("https://sessionserver.mojang.com/session/minecraft/profile/"+uuid),java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
-                    com.google.gson.JsonObject skin=null;
-                    for(var entry:profile.getAsJsonArray("properties")){
-                        var property=entry.getAsJsonObject();if(!property.get("name").getAsString().equals("textures"))continue;
-                        var textures=JsonParser.parseString(new String(Base64.getDecoder().decode(property.get("value").getAsString()),java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonObject("textures");
-                        if(textures.has("SKIN"))skin=textures.getAsJsonObject("SKIN");
-                    }
-                    if(skin==null)throw new java.io.IOException("This profile has no custom skin");
-                    model=skin.has("metadata")&&skin.getAsJsonObject("metadata").has("model")&&skin.getAsJsonObject("metadata").get("model").getAsString().equals("slim");
-                    data=fetch(skin.get("url").getAsString());
-                }else{
-                    Path file=Path.of(source);if(Files.size(file)>1024*1024)throw new java.io.IOException("Skin file exceeds 1 MB");data=Files.readAllBytes(file);
-                }
+                var resolved=com.thelads.core.client.util.LocalSkinSource.resolve(input,slim);
+                byte[] data=resolved.png();
+                boolean model=resolved.slim();
                 validate(data);
                 NativeImage image=com.thelads.core.v26_2.mixin.SkinTextureAccessor.ladsNormalizeSkin(NativeImage.read(data),"Lads local skin");
                 boolean finalModel=model;

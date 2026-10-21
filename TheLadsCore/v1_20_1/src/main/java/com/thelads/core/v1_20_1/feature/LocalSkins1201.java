@@ -1,7 +1,7 @@
 package com.thelads.core.v1_20_1.feature;
 
-import com.google.gson.JsonParser;
 import com.mojang.blaze3d.platform.NativeImage;
+import com.thelads.core.client.util.LocalSkinSource;
 import com.thelads.core.v1_20_1.mixin.menus.SkinTextureAccessor;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -11,7 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.Minecraft;
@@ -63,37 +62,9 @@ public final class LocalSkins1201 {
         }
         CompletableFuture.runAsync(() -> {
             try {
-                byte[] data;
-                boolean model = slim;
-                String source = input.strip();
-                if (source.startsWith("https://") || source.startsWith("http://")) {
-                    data = fetch(source);
-                } else if (source.matches("[A-Za-z0-9_]{1,16}") || source.matches("[a-fA-F0-9-]{32,36}")) {
-                    String uuid = source.replace("-", "");
-                    if (!uuid.matches("[a-fA-F0-9]{32}")) {
-                        var profile = JsonParser.parseString(new String(fetch("https://api.mojang.com/users/profiles/minecraft/" + source),
-                            java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
-                        uuid = profile.get("id").getAsString();
-                    }
-                    var profile = JsonParser.parseString(new String(fetch("https://sessionserver.mojang.com/session/minecraft/profile/" + uuid),
-                        java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
-                    com.google.gson.JsonObject skin = null;
-                    for (var entry : profile.getAsJsonArray("properties")) {
-                        var property = entry.getAsJsonObject();
-                        if (!property.get("name").getAsString().equals("textures")) continue;
-                        var textures = JsonParser.parseString(new String(Base64.getDecoder().decode(property.get("value").getAsString()),
-                            java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject().getAsJsonObject("textures");
-                        if (textures.has("SKIN")) skin = textures.getAsJsonObject("SKIN");
-                    }
-                    if (skin == null) throw new java.io.IOException("This profile has no custom skin");
-                    model = skin.has("metadata") && skin.getAsJsonObject("metadata").has("model")
-                        && skin.getAsJsonObject("metadata").get("model").getAsString().equals("slim");
-                    data = fetch(skin.get("url").getAsString());
-                } else {
-                    Path file = Path.of(source);
-                    if (Files.size(file) > 1024 * 1024) throw new java.io.IOException("Skin file exceeds 1 MB");
-                    data = Files.readAllBytes(file);
-                }
+                LocalSkinSource.Skin source = LocalSkinSource.resolve(input, slim);
+                byte[] data = source.png();
+                boolean model = source.slim();
                 validate(data);
                 NativeImage image = normalize(NativeImage.read(new java.io.ByteArrayInputStream(data)));
                 if (image == null) throw new java.io.IOException("Skin must be 64 x 64 or 64 x 32 pixels");
@@ -114,7 +85,7 @@ public final class LocalSkins1201 {
                             } finally {
                                 Files.deleteIfExists(temporary);
                             }
-                            Files.writeString(folder().resolve("model.txt"), model ? "slim" : "wide");
+                            Files.writeString(folder().resolve("model.txt"), finalModel ? "slim" : "wide");
                         }
                     }
                 } catch (Throwable failure) {

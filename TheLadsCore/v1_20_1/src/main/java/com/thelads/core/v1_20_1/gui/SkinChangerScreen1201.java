@@ -11,6 +11,7 @@ import net.minecraft.resources.ResourceLocation;
 public final class SkinChangerScreen1201 extends Screen {
     private final Screen parent;
     private EditBox source;
+    private LadsButton1201 modelButton;
     private boolean slim, busy;
     private String status = "Skins are applied locally to your client.";
 
@@ -60,12 +61,13 @@ public final class SkinChangerScreen1201 extends Screen {
                 else status = "Selection canceled";
             }));
         }));
-        addRenderableWidget(new LadsButton1201(x, 141, w, 20, Component.literal("Model: " + (slim ? "Slim" : "Classic")), b -> {
+        modelButton = new LadsButton1201(x, 141, w, 20, Component.literal("Model: " + (slim ? "Slim" : "Classic")), b -> {
             if (busy) return;
             slim = !slim;
             LocalSkins1201.setModel(slim);
             b.setMessage(Component.literal("Model: " + (slim ? "Slim" : "Classic")));
-        }));
+        });
+        addRenderableWidget(modelButton);
         addRenderableWidget(new LadsButton1201(x, 169, w, 20, Component.literal("Use account skin"), b -> {
             LocalSkins1201.reset();
             status = "Using account skin";
@@ -84,6 +86,10 @@ public final class SkinChangerScreen1201 extends Screen {
         status = "Loading skin...";
         LocalSkins1201.load(input, slim, true).whenComplete((message, error) -> minecraft.execute(() -> {
             busy = false;
+            if (error == null && LocalSkins1201.current() != null) {
+                slim = LocalSkins1201.current().slim();
+                if (modelButton != null) modelButton.setMessage(Component.literal("Model: " + (slim ? "Slim" : "Classic")));
+            }
             status = error == null ? message : "Could not load skin: " + error.getMessage();
         }));
     }

@@ -3,6 +3,9 @@ package com.thelads.core.client.util;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.sun.net.httpserver.HttpServer;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import javax.imageio.ImageIO;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -102,6 +105,93 @@ class LocalSkinSourceTest {
             assertEquals("Use an HTTPS image URL", assertThrows(IOException.class, () -> LocalSkinSource.fetch("http://bad host/skin.png")).getMessage());
         } finally {
             server.stop(0);
+        }
+    }
+
+    @Test void legacySkinIsAlwaysClassic() {
+        assertFalse(LocalSkinSource.isSlim((x, y) -> 0, 64, 32));
+        assertFalse(LocalSkinSource.isSlim(new int[64 * 32], 64, 32));
+        BufferedImage img = new BufferedImage(64, 32, BufferedImage.TYPE_INT_ARGB);
+        assertFalse(LocalSkinSource.isSlim(img));
+    }
+
+    @Test void classicSkinDetectedWhenArm4thColumnIsOpaque() {
+        BufferedImage img = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+        img.setRGB(0, 0, 0xFF112233);
+        img.setRGB(55, 20, 0xFF445566);
+        assertFalse(LocalSkinSource.isSlim(img));
+
+        int[] pixels = new int[64 * 64];
+        pixels[20 * 64 + 55] = 0xFF445566;
+        assertFalse(LocalSkinSource.isSlim(pixels, 64, 64));
+        assertFalse(LocalSkinSource.isSlim((x, y) -> (x == 55 && y == 20) ? 0xFF445566 : 0, 64, 64));
+    }
+
+    @Test void slimSkinDetectedWhenAllArmCheckRegionsTransparent() {
+        BufferedImage img = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+        for (int x = 0; x < 32; x++) {
+            for (int y = 0; y < 32; y++) {
+                img.setRGB(x, y, 0xFF888888);
+            }
+        }
+        img.setRGB(53, 20, 0xFF123456);
+        assertTrue(LocalSkinSource.isSlim(img));
+
+        int[] pixels = new int[64 * 64];
+        pixels[20 * 64 + 53] = 0xFF123456;
+        assertTrue(LocalSkinSource.isSlim(pixels, 64, 64));
+    }
+
+    @Test void classicSkinWithFewTransparentArmPixelsIsStillClassic() {
+        BufferedImage img = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+        img.setRGB(55, 36, 0xFFFFFFFF);
+        assertFalse(LocalSkinSource.isSlim(img));
+    }
+
+    @Test void hdSkinScale2Detection() {
+        BufferedImage classicHd = new BufferedImage(128, 128, BufferedImage.TYPE_INT_ARGB);
+        classicHd.setRGB(55 * 2, 20 * 2, 0xFFFFFFFF);
+        assertFalse(LocalSkinSource.isSlim(classicHd));
+
+        BufferedImage slimHd = new BufferedImage(128, 128, BufferedImage.TYPE_INT_ARGB);
+        slimHd.setRGB(53 * 2, 20 * 2, 0xFFFFFFFF);
+        assertTrue(LocalSkinSource.isSlim(slimHd));
+    }
+
+    @Test void detectModelFromPngBytes() throws IOException {
+        BufferedImage img = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+        img.setRGB(55, 20, 0xFFFFFFFF);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(img, "png", baos);
+        byte[] classicBytes = baos.toByteArray();
+        assertFalse(LocalSkinSource.detectModel(classicBytes, true));
+
+        BufferedImage slimImg = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+        slimImg.setRGB(53, 20, 0xFFFFFFFF);
+        baos.reset();
+        ImageIO.write(slimImg, "png", baos);
+        byte[] slimBytes = baos.toByteArray();
+        assertTrue(LocalSkinSource.detectModel(slimBytes, false));
+
+        assertTrue(LocalSkinSource.detectModel(new byte[10], true));
+        assertFalse(LocalSkinSource.detectModel(new byte[10], false));
+    }
+
+    @Test void eachOfEightArmRegionsFlagsClassic() {
+        int[][] samples = {
+            {50, 16},
+            {54, 20},
+            {50, 32},
+            {54, 36},
+            {42, 48},
+            {46, 52},
+            {58, 48},
+            {62, 52}
+        };
+        for (int[] pt : samples) {
+            int x = pt[0], y = pt[1];
+            assertFalse(LocalSkinSource.isSlim((px, py) -> (px == x && py == y) ? 0xFFFFFFFF : 0, 64, 64),
+                "Expected point (" + x + ',' + y + ") to flag classic model");
         }
     }
 }

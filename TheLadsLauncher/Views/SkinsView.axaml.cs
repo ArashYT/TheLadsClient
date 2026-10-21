@@ -35,7 +35,7 @@ public partial class SkinsView : UserControl
     public SkinsView()
     {
         InitializeComponent();
-        Editor.SkinSaved += async (_, png) => await AddAsync(() => Task.FromResult((png, "Edited " + DateTime.Now.ToString("yyyy-MM-dd HH.mm"), Model())));
+        Editor.SkinSaved += async (_, png) => await AddAsync(() => Task.FromResult((png, "Edited " + DateTime.Now.ToString("yyyy-MM-dd HH.mm"), SkinDetector.DetectModel(png))));
         Editor.LogMessage += (_, text) => Status.Text = text;
         Layers3DCheck.IsCheckedChanged += (_, _) => Player3D.Layers3D = Layers3DCheck.IsChecked == true;
         CapeList.SelectionChanged += async (_, _) =>
@@ -184,7 +184,7 @@ public partial class SkinsView : UserControl
                 return (png, text, model);
             }
             byte[] file = await MinecraftSkinApi.DownloadPngAsync(_http, text, CancellationToken.None);
-            return (file, Path.GetFileNameWithoutExtension(new Uri(text).AbsolutePath), "classic");
+            return (file, Path.GetFileNameWithoutExtension(new Uri(text).AbsolutePath), SkinDetector.DetectModel(file));
         }, () => ImportText.Text = "");
     }
 
@@ -203,7 +203,8 @@ public partial class SkinsView : UserControl
             await AddAsync(async () =>
             {
                 if (new FileInfo(path).Length > 1 << 20) throw new InvalidDataException("That file is too large to be a skin.");
-                return (await File.ReadAllBytesAsync(path), Path.GetFileNameWithoutExtension(path), "classic");
+                byte[] bytes = await File.ReadAllBytesAsync(path);
+                return (bytes, Path.GetFileNameWithoutExtension(path), SkinDetector.DetectModel(bytes));
             });
         }
     }

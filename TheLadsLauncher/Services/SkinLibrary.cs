@@ -137,7 +137,11 @@ public sealed class SkinLibrary
         if (!Directory.Exists(presets)) return;
         foreach (string file in Directory.GetFiles(presets, "*.png", SearchOption.AllDirectories).Order())
         {
-            try { Add(File.ReadAllBytes(file), Path.GetFileNameWithoutExtension(file), "classic"); }
+            try
+            {
+                byte[] bytes = File.ReadAllBytes(file);
+                Add(bytes, Path.GetFileNameWithoutExtension(file), SkinDetector.DetectModel(bytes));
+            }
             catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) { }
         }
     }
