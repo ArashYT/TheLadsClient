@@ -44,7 +44,11 @@ public final class EnumValues189 implements IClassTransformer {
     static void install() {
         if (!ConfigManager.savedEnabled("Jasione", true)) return;
         try {
-            Class.forName("sun.misc.SharedSecrets"); // Java 8 only; a newer runtime keeps every call as it is
+            try {
+                Class.forName("sun.misc.SharedSecrets"); // Java 8 only; a newer runtime keeps every call as it is
+            } catch (ClassNotFoundException ignored) {
+                return;
+            }
             // This runs inside a transformer call, which iterates the current list: a new list (old one plus this transformer
             // at the end, after Mixin's) replaces it instead of an edit to the one being iterated.
             Field field = LaunchClassLoader.class.getDeclaredField("transformers");

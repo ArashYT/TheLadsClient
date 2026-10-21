@@ -200,7 +200,7 @@ public class LaunchService : ILaunchService
         }
 
         ConfigureCachedNativesDirectory(path, versionId, launchOption);
-        EnsureSecurityJvmArguments(launchOption, requiredJava, gameDir);
+        EnsureSecurityJvmArguments(launchOption, requiredJava, gameDir, profile.MinecraftVersion);
 
         statusCallback?.Invoke("Starting game process...");
         Process process;
@@ -470,7 +470,7 @@ public class LaunchService : ILaunchService
     /// (-XX:+DisableAttachMechanism, -XX:+DisableExplicitGC, and version-aware low-pause GC)
     /// are set without duplicates.
     /// </summary>
-    public static void EnsureSecurityJvmArguments(MLaunchOption options, int? javaMajorVersion = null, string? gameDirectory = null)
+    public static void EnsureSecurityJvmArguments(MLaunchOption options, int? javaMajorVersion = null, string? gameDirectory = null, string? minecraftVersion = null)
     {
         ValidateJvmArguments(options.ExtraJvmArguments);
 
@@ -489,7 +489,8 @@ public class LaunchService : ILaunchService
 
         if (javaMajorVersion.HasValue && javaMajorVersion.Value > 0)
         {
-            foreach (var flag in BuildOptimizedJvmArguments(javaMajorVersion.Value, gameDirectory))
+            var resolvedVersion = minecraftVersion ?? options.StartVersion?.InheritsFrom ?? options.StartVersion?.Id;
+            foreach (var flag in BuildOptimizedJvmArguments(javaMajorVersion.Value, gameDirectory, resolvedVersion))
             {
                 bool alreadyPresent = list.Any(a => a.Values.Any(v => string.Equals(v, flag, StringComparison.OrdinalIgnoreCase)));
                 if (!alreadyPresent)
@@ -505,7 +506,7 @@ public class LaunchService : ILaunchService
     /// <summary>
     /// Builds version-aware low-pause GC JVM arguments while respecting user MinRamMb.
     /// </summary>
-    public static IReadOnlyList<string> BuildOptimizedJvmArguments(int javaMajorVersion, string? gameDirectory = null)
+    public static IReadOnlyList<string> BuildOptimizedJvmArguments(int javaMajorVersion, string? gameDirectory = null, string? minecraftVersion = null)
     {
         var flags = new List<string>
         {
@@ -519,7 +520,14 @@ public class LaunchService : ILaunchService
             "-XX:G1HeapRegionSize=32M"
         };
 
-        if (javaMajorVersion >= 25)
+        bool isForge189 = minecraftVersion != null &&
+            (minecraftVersion == GameVersionPolicy.ForgeMinecraftVersion
+             || minecraftVersion.Contains("1.8.9", StringComparison.OrdinalIgnoreCase)
+             || GameVersionPolicy.UsesForge(minecraftVersion));
+
+        // Compact object headers (JEP 450) alter 64-bit object memory layout, causing native
+        // Access Violations (0xC0000005) in Forge 1.8.9 / RFB / 8to25 / LaunchWrapper bytecode transformers.
+        if (javaMajorVersion >= 25 && !isForge189)
         {
             flags.Add("-XX:+UseCompactObjectHeaders");
         }

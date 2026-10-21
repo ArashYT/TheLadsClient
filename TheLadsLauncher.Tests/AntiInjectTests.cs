@@ -123,6 +123,23 @@ public class AntiInjectTests
     }
 
     [Fact]
+    public void EnsureSecurityJvmArguments_ForForge189_OmitsCompactObjectHeaders()
+    {
+        using var dir = new TestDirectory();
+        var options = new MLaunchOption
+        {
+            MinimumRamMb = 512,
+            MaximumRamMb = 4096
+        };
+
+        LaunchService.EnsureSecurityJvmArguments(options, 25, dir.Path, "1.8.9");
+
+        var values = options.ExtraJvmArguments!.SelectMany(a => a.Values).ToList();
+        Assert.Contains("-XX:+UseG1GC", values);
+        Assert.DoesNotContain("-XX:+UseCompactObjectHeaders", values);
+    }
+
+    [Fact]
     public void EnsureSecurityJvmArguments_Java8UsesTunedG1GcAndXshareAuto()
     {
         using var dir = new TestDirectory();
