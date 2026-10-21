@@ -66,6 +66,12 @@ public abstract class RenderGlobalSkyOfMixin189 {
     @Redirect(method = "updateChunks", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/chunk/ChunkRenderDispatcher;updateChunkLater(Lnet/minecraft/client/renderer/chunk/RenderChunk;)Z"), require = 0)
     private boolean lads$limitChunkUpdates(ChunkRenderDispatcher dispatcher, RenderChunk chunk) {
         int max = OptiFine189Module.sOfChunkUpdates;
+        if (OptiFine189Module.sOfDynamicUpdates) {
+            net.minecraft.client.entity.EntityPlayerSP player = net.minecraft.client.Minecraft.getMinecraft().thePlayer;
+            if (player != null && (player.motionX * player.motionX + player.motionZ * player.motionZ) < 0.0001) {
+                max = Math.max(max, 3);
+            }
+        }
         if (lads$chunkUpdatesCount >= max) {
             return false;
         }
