@@ -32,7 +32,9 @@ public static class UsageStatsReporter
         string? launcherVersion = null,
         string? os = null)
     {
-        if (settings == null || !settings.SendAnonymousUsageStats)
+        // QA/sandbox runs (THELADS_DIR set) are not real installs.
+        if (settings == null || !settings.SendAnonymousUsageStats
+            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THELADS_DIR")))
         {
             return null;
         }
