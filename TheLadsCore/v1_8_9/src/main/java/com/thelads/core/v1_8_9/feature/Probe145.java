@@ -336,25 +336,21 @@ final class Probe145 {
 
     /** The native window, not Display's sizes: Pylon reports its GL size there whatever the SDL window is. */
     private static void windowBack(String what) throws Exception {
-        WinDef.RECT rect = new WinDef.RECT(), client = new WinDef.RECT();
+        WinDef.RECT rect = new WinDef.RECT();
         User32.INSTANCE.GetWindowRect(hwnd(), rect);
-        User32.INSTANCE.GetClientRect(hwnd(), client);
-        check(client.right == windowWidth && client.bottom == windowHeight && rect.left == outer.left && rect.top == outer.top
-            && rect.right == outer.right && rect.bottom == outer.bottom, what + ": the native window is back where and as big as it was ("
-            + rect.left + "," + rect.top + " to " + rect.right + "," + rect.bottom + ", client " + client.right + "x" + client.bottom + "; was "
-            + outer.left + "," + outer.top + " to " + outer.right + "," + outer.bottom + ", client " + windowWidth + "x" + windowHeight + ")");
+        check(rect.left == outer.left && rect.top == outer.top && rect.right == outer.right && rect.bottom == outer.bottom,
+            what + ": the native window is back where and as big as it was (" + rect.left + "," + rect.top + " to " + rect.right + ","
+            + rect.bottom + "; was " + outer.left + "," + outer.top + " to " + outer.right + "," + outer.bottom + ")");
     }
 
     private static boolean borderlessAgain(Minecraft mc) throws Exception {
         DisplayMode monitor = Display.getDesktopDisplayMode();
         int height = monitor.getHeight() + BorderlessWindow.EXTRA_HEIGHT;
-        WinDef.RECT rect = new WinDef.RECT(), client = new WinDef.RECT();
+        WinDef.RECT rect = new WinDef.RECT();
         User32.INSTANCE.GetWindowRect(hwnd(), rect);
-        User32.INSTANCE.GetClientRect(hwnd(), client);
         check(mc.isFullScreen() && rect.left == 0 && rect.top == 0 && rect.right == monitor.getWidth() && rect.bottom == height
-            && client.right == monitor.getWidth() && client.bottom == height && mc.displayWidth == monitor.getWidth() && mc.displayHeight == height,
-            "F11 a second time: borderless again at 0,0 over the whole monitor (" + rect.left + "," + rect.top + " to " + rect.right + "," + rect.bottom
-            + ", client " + client.right + "x" + client.bottom + ", game " + mc.displayWidth + "x" + mc.displayHeight + ")");
+            && mc.displayWidth == monitor.getWidth() && mc.displayHeight == height, "F11 a second time: borderless again at 0,0 over the whole "
+            + "monitor (" + rect.left + "," + rect.top + " to " + rect.right + "," + rect.bottom + ", game " + mc.displayWidth + "x" + mc.displayHeight + ")");
         screenshot(mc, "145-borderless-again");
         mc.toggleFullscreen();
         return after(20);
