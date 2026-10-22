@@ -1,9 +1,11 @@
 package com.thelads.core.client.pack;
 
 import com.thelads.core.config.BoolOption;
+import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
+import com.thelads.core.modules.OldAnimationsModule;
 
 /** Settings access for Resource pack menu customizations. */
 public final class PackMenuSettings {
@@ -41,5 +43,35 @@ public final class PackMenuSettings {
                 b.set(transparent);
             }
         }
+    }
+    /**
+     * The pack screen's Low Fire / Low Shield buttons: the 1.7 Animations options, there because a pack that already lowers the fire
+     * overlay or shields stacks with them and pushes both off the screen.
+     */
+    public static String overlayLabel(OldAnimationsModule.Feature feature) {
+        return feature.option + ": " + (overlayOn(feature) ? "ON" : "OFF");
+    }
+
+    /** Lads lowers it now: 1.7 Animations is on and so is the option. */
+    public static boolean overlayOn(OldAnimationsModule.Feature feature) {
+        return overlayAvailable() && oldAnimations().option(feature).get();
+    }
+
+    /** With 1.7 Animations off nothing is lowered and the buttons are inactive. */
+    public static boolean overlayAvailable() {
+        OldAnimationsModule m = oldAnimations();
+        return m != null && m.isEnabled();
+    }
+
+    /** Flips the option and saves (off the render thread). */
+    public static void toggleOverlay(OldAnimationsModule.Feature feature) {
+        if (!overlayAvailable()) return;
+        oldAnimations().option(feature).toggle();
+        ConfigManager.saveLater();
+    }
+
+    private static OldAnimationsModule oldAnimations() {
+        Module m = ModuleManager.getInstance().getModule(OldAnimationsModule.NAME);
+        return m instanceof OldAnimationsModule o ? o : null;
     }
 }
