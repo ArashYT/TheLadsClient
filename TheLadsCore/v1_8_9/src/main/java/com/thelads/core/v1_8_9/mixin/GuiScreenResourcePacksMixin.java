@@ -5,6 +5,7 @@ import com.thelads.core.client.pack.PackFilterHelper;
 import com.thelads.core.client.pack.PackFolderHelper;
 import com.thelads.core.client.pack.PackMenuSettings;
 import com.thelads.core.client.title.TitleScreenTheme;
+import com.thelads.core.modules.OldAnimationsModule;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import com.thelads.core.v1_8_9.gui.FolderNav189;
 import com.thelads.core.v1_8_9.gui.ResourcePackBackEntry189;
@@ -41,6 +42,9 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
     @Shadow private List<ResourcePackListEntry> selectedResourcePacks;
     @Shadow private boolean changed;
 
+    /** Above every id vanilla (1 Done, 2 Open folder) and Forge use here. */
+    @Unique private static final int LADS_FIRE_BUTTON_ID = 0x4C414453 + 20;
+
     @Unique private GuiTextField ladsSearchField;
     @Unique private String ladsCurrentFolder = "";
     @Unique private final List<ResourcePackListEntry> ladsMasterSelected = new ArrayList<>();
@@ -55,6 +59,12 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
         ladsSearchField.setMaxStringLength(50);
         ladsSearchField.setCanLoseFocus(true);
         ladsCachedSubfoldersDir = null;
+
+        // Low Fire under vanilla's two bottom buttons (y = height - 48, 20 high): a pack that lowers the fire texture stacks with it.
+        GuiButton fire = new GuiButton(LADS_FIRE_BUTTON_ID, width / 2 - 75, height - 25, 150, 20,
+            PackMenuSettings.overlayLabel(OldAnimationsModule.Feature.LOW_FIRE));
+        fire.enabled = PackMenuSettings.overlayAvailable();
+        buttonList.add(fire);
 
         if (ladsMasterSelected.isEmpty() && selectedResourcePacks != null) {
             ladsMasterSelected.addAll(selectedResourcePacks);
@@ -135,6 +145,15 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
             return sub;
         }
         return root;
+    }
+
+    /** Our own button: vanilla's switch on button.id has nothing for it, but it never sees the click. */
+    @Inject(method = "actionPerformed", at = @At("HEAD"), cancellable = true)
+    private void ladsFireClicked(GuiButton button, CallbackInfo ci) {
+        if (button.id != LADS_FIRE_BUTTON_ID) return;
+        PackMenuSettings.toggleOverlay(OldAnimationsModule.Feature.LOW_FIRE);
+        button.displayString = PackMenuSettings.overlayLabel(OldAnimationsModule.Feature.LOW_FIRE);
+        ci.cancel();
     }
 
     @Inject(method = "actionPerformed", at = @At("HEAD"))
