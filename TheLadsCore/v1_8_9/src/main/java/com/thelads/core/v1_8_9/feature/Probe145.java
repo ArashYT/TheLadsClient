@@ -42,7 +42,7 @@ final class Probe145 {
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe145::rateStart, Probe145::rate, Probe145::mouse,
         Probe145::hotbarStart, Probe145::hotbarGlide, Probe145::hotbarMoving,
         Probe145::hotbarSettled, Probe145::swingStart,
-        Probe145::swingLegacy, Probe145::swingSwitch, Probe145::swingVanilla, Probe145::borderless, Probe145::borderlessCaptured, Probe145::borderlessExact, Probe145::borderlessExactCaptured, Probe145::windowed, Probe145::resized, Probe145::resizedShot,
+        Probe145::swingLegacy, Probe145::swingSwitch, Probe145::swingVanilla, Probe145::borderless, Probe145::borderlessCaptured, Probe145::borderlessExact, Probe145::borderlessExactCaptured, Probe145::windowed, Probe145::borderlessAgain, Probe145::windowedAgain, Probe145::resized, Probe145::resizedShot,
         Probe145::win32Resize, Probe145::win32Resized, Probe145::restored);
     /** Frame pacing's cost, a timing check: CoreProbe runs it last, so a busy GPU (another game open) cannot hide the checks after it. */
     static final List<CoreProbe.Step> PACING = Arrays.<CoreProbe.Step>asList(Probe145::pacedStart, Probe145::pacedCount, Probe145::paced,
@@ -329,6 +329,42 @@ final class Probe145 {
             "F11 again: back to the " + windowWidth + "x" + windowHeight + " window (" + Display.getWidth() + "x" + Display.getHeight() + ")");
         check((style & WS_CAPTION) == WS_CAPTION && (style & WS_THICKFRAME) != 0 && Borderless189.resizableNow(),
             "the window has its title bar and resize frame again (style 0x" + Integer.toHexString(style) + ")");
+        windowBack("F11 again");
+        mc.toggleFullscreen(); // and in again: 1.9.14 on Pylon re-entered from a monitor-sized framed window, 23 rows down
+        return after(20);
+    }
+
+    /** The native window, not Display's sizes: Pylon reports its GL size there whatever the SDL window is. */
+    private static void windowBack(String what) throws Exception {
+        WinDef.RECT rect = new WinDef.RECT(), client = new WinDef.RECT();
+        User32.INSTANCE.GetWindowRect(hwnd(), rect);
+        User32.INSTANCE.GetClientRect(hwnd(), client);
+        check(client.right == windowWidth && client.bottom == windowHeight && rect.left == outer.left && rect.top == outer.top
+            && rect.right == outer.right && rect.bottom == outer.bottom, what + ": the native window is back where and as big as it was ("
+            + rect.left + "," + rect.top + " to " + rect.right + "," + rect.bottom + ", client " + client.right + "x" + client.bottom + "; was "
+            + outer.left + "," + outer.top + " to " + outer.right + "," + outer.bottom + ", client " + windowWidth + "x" + windowHeight + ")");
+    }
+
+    private static boolean borderlessAgain(Minecraft mc) throws Exception {
+        DisplayMode monitor = Display.getDesktopDisplayMode();
+        int height = monitor.getHeight() + BorderlessWindow.EXTRA_HEIGHT;
+        WinDef.RECT rect = new WinDef.RECT(), client = new WinDef.RECT();
+        User32.INSTANCE.GetWindowRect(hwnd(), rect);
+        User32.INSTANCE.GetClientRect(hwnd(), client);
+        check(mc.isFullScreen() && rect.left == 0 && rect.top == 0 && rect.right == monitor.getWidth() && rect.bottom == height
+            && client.right == monitor.getWidth() && client.bottom == height && mc.displayWidth == monitor.getWidth() && mc.displayHeight == height,
+            "F11 a second time: borderless again at 0,0 over the whole monitor (" + rect.left + "," + rect.top + " to " + rect.right + "," + rect.bottom
+            + ", client " + client.right + "x" + client.bottom + ", game " + mc.displayWidth + "x" + mc.displayHeight + ")");
+        screenshot(mc, "145-borderless-again");
+        mc.toggleFullscreen();
+        return after(20);
+    }
+
+    private static boolean windowedAgain(Minecraft mc) throws Exception {
+        check(!mc.isFullScreen() && mc.displayWidth == windowWidth && mc.displayHeight == windowHeight,
+            "F11 a fourth time: the game is " + mc.displayWidth + "x" + mc.displayHeight + " again");
+        windowBack("F11 a fourth time");
+        screenshot(mc, "145-windowed-again");
         // A resize as the user drags the frame: Windows sizes the window, Minecraft follows.
         // Pylon: SDL's own resize first; win32Resize then sizes it the way Windows does for a frame drag.
         if (CoreProbe.PYLON) PylonWindow189.size(685, 358);

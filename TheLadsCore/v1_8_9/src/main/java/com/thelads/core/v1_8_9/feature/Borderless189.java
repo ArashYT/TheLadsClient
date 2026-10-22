@@ -90,9 +90,10 @@ public final class Borderless189 {
         DisplayMode monitor = Display.getDesktopDisplayMode();
         System.setProperty(UNDECORATED, "true");
         Display.setResizable(false); // a resize frame would be a border
+        // SDL ignores LWJGL 2's undecorated property; frameless before the move, so no title bar is placed above the monitor
+        if (PylonWindow189.PRESENT) PylonWindow189.bordered(false);
         move(0, 0);
         Display.setDisplayMode(new DisplayMode(monitor.getWidth(), monitor.getHeight()));
-        if (PylonWindow189.PRESENT) PylonWindow189.bordered(false); // SDL ignores LWJGL 2's undecorated property
         width = monitor.getWidth();
         height = monitor.getHeight();
         extraRows = 0;
@@ -114,8 +115,11 @@ public final class Borderless189 {
 
     private static void leave() throws Exception {
         System.setProperty(UNDECORATED, "false");
-        if (PylonWindow189.PRESENT) PylonWindow189.bordered(true);
         active = false;
+        if (PylonWindow189.PRESENT) { // Pylon's setDisplayMode sizes only the GL framebuffer, never the SDL window
+            PylonWindow189.size(Math.max(1, windowWidth), Math.max(1, windowHeight));
+            PylonWindow189.bordered(true);
+        }
         move(windowX, windowY);
         Display.setDisplayMode(new DisplayMode(Math.max(1, windowWidth), Math.max(1, windowHeight)));
         resizable();
