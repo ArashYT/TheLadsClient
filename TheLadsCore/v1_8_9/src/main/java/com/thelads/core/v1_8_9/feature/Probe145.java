@@ -42,7 +42,7 @@ final class Probe145 {
     static final List<CoreProbe.Step> STEPS = Arrays.<CoreProbe.Step>asList(Probe145::rateStart, Probe145::rate, Probe145::mouse,
         Probe145::hotbarStart, Probe145::hotbarGlide, Probe145::hotbarMoving,
         Probe145::hotbarSettled, Probe145::swingStart,
-        Probe145::swingLegacy, Probe145::swingSwitch, Probe145::swingVanilla, Probe145::borderless, Probe145::borderlessCaptured, Probe145::borderlessExact, Probe145::borderlessExactCaptured, Probe145::windowed, Probe145::borderlessAgain, Probe145::windowedAgain, Probe145::resized, Probe145::resizedShot,
+        Probe145::swingLegacy, Probe145::swingSwitch, Probe145::swingVanilla, Probe145::borderlessStart, Probe145::borderless, Probe145::borderlessCaptured, Probe145::borderlessExact, Probe145::borderlessExactCaptured, Probe145::windowed, Probe145::borderlessAgain, Probe145::windowedAgain, Probe145::resized, Probe145::resizedShot,
         Probe145::win32Resize, Probe145::win32Resized, Probe145::restored);
     /** Frame pacing's cost, a timing check: CoreProbe runs it last, so a busy GPU (another game open) cannot hide the checks after it. */
     static final List<CoreProbe.Step> PACING = Arrays.<CoreProbe.Step>asList(Probe145::pacedStart, Probe145::pacedCount, Probe145::paced,
@@ -257,12 +257,19 @@ final class Probe145 {
         check(LegacySwing189.frames == swingFrames, "LegacySwing off: the vanilla 1.8.9 swing");
         screenshot(mc, "145-legacy-swing-off");
         System.arraycopy(hotbar, 0, mc.thePlayer.inventory.mainInventory, 0, hotbar.length);
-        // Borderless: F11's path (Minecraft.toggleFullscreen) with the module on.
+        // Borderless: F11's path (Minecraft.toggleFullscreen) with the module on, from a window away from 0,0 (it must come back there).
         module("BorderlessFullscreen").setEnabled(true);
+        if (CoreProbe.PYLON) PylonWindow189.move(100, 80);
+        else Display.setLocation(100, 80);
+        return after(5);
+    }
+
+    private static boolean borderlessStart(Minecraft mc) throws Exception {
         windowWidth = Display.getWidth();
         windowHeight = Display.getHeight();
         outer = new WinDef.RECT();
         User32.INSTANCE.GetWindowRect(hwnd(), outer);
+        check(outer.left > 0 && outer.top > 0, "the window starts away from 0,0 (" + outer.left + "," + outer.top + ")");
         mc.toggleFullscreen();
         return after(20);
     }
