@@ -96,7 +96,6 @@
     "OptiFineDynamicLightsMixin",
     "SplashProgressMixin",
     "TileEntityMixin",
-    "TileEntityRendererDispatcherMixin",
     "TileEntitySignRendererMixin",
     "TileEntityCullMixin",
     "WorldCullMixin",
