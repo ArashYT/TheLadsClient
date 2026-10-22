@@ -4,6 +4,7 @@ import com.thelads.core.client.pack.PackFilterHelper;
 import com.thelads.core.client.pack.PackFolderHelper;
 import com.thelads.core.client.pack.PackMenuSettings;
 import com.thelads.core.client.title.TitleScreenTheme;
+import com.thelads.core.modules.OldAnimationsModule;
 import com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201;
 import com.thelads.core.v1_20_1.gui.FolderNav1201;
 import com.thelads.core.v1_20_1.gui.FolderPackEntry1201;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.stream.Stream;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.packs.PackSelectionModel;
@@ -65,6 +67,21 @@ public abstract class PackSelectionScreenMixin extends Screen implements FolderN
         ladsSearch.setHint(Component.literal("Search packs..."));
         ladsSearch.setResponder(query -> populateLists());
         addRenderableWidget(ladsSearch);
+
+        // Under vanilla's Open Pack Folder / Done row (height - 48; the lists end at height - 51).
+        ladsOverlayButton(OldAnimationsModule.Feature.LOW_FIRE, width / 2 - 154);
+        ladsOverlayButton(OldAnimationsModule.Feature.LOW_SHIELD, width / 2 + 4);
+    }
+
+    /** A pack that already lowers the fire overlay or shields stacks with Lads' own lowering, so the 1.7 Animations options are here too. */
+    @Unique
+    private void ladsOverlayButton(OldAnimationsModule.Feature feature, int x) {
+        Button button = Button.builder(Component.literal(PackMenuSettings.overlayLabel(feature)), b -> {
+            PackMenuSettings.toggleOverlay(feature);
+            b.setMessage(Component.literal(PackMenuSettings.overlayLabel(feature)));
+        }).bounds(x, height - 25, 150, 20).build();
+        button.active = PackMenuSettings.overlayAvailable();
+        addRenderableWidget(button);
     }
 
     @Redirect(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/packs/PackSelectionScreen;renderDirtBackground(Lnet/minecraft/client/gui/GuiGraphics;)V"))

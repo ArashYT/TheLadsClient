@@ -3,6 +3,7 @@ package com.thelads.core.v26_2.mixin;
 import com.thelads.core.client.pack.PackFilterHelper;
 import com.thelads.core.client.pack.PackFolderHelper;
 import com.thelads.core.client.pack.PackMenuSettings;
+import com.thelads.core.modules.OldAnimationsModule;
 import com.thelads.core.v26_2.gui.FolderNav26;
 import com.thelads.core.v26_2.gui.FolderPackEntry26;
 import java.nio.file.Path;
@@ -11,6 +12,9 @@ import java.util.stream.Stream;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.layouts.HeaderAndFooterLayout;
+import net.minecraft.client.gui.layouts.LayoutElement;
+import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.packs.PackSelectionModel;
 import net.minecraft.client.gui.screens.packs.PackSelectionScreen;
@@ -58,6 +62,34 @@ public abstract class PackFilterMixin extends Screen implements FolderNav26 {
             b.setMessage(Component.literal(ladsSort ? "Sort: name" : "Sort: default"));
             updateFilteredEntries(search.getValue());
         }).bounds(width - 118, 5, 112, 20).build());
+    }
+
+    /**
+     * Vanilla's footer is one 33 px row, [Open Pack Folder][Done], centred. A pack that already lowers the fire overlay or shields stacks
+     * with Lads' own lowering, so the Low Fire / Low Shield toggles go in a second row under it: the row is stacked in the same footer
+     * and the footer grows by that row (20 + 4 spacing), so the layout shrinks the lists and resize keeps working through repositionElements.
+     */
+    @Redirect(method = "init", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/layouts/HeaderAndFooterLayout;addToFooter(Lnet/minecraft/client/gui/layouts/LayoutElement;)Lnet/minecraft/client/gui/layouts/LayoutElement;"), require = 1)
+    private LayoutElement ladsFooterRows(HeaderAndFooterLayout footer, LayoutElement buttonRow) {
+        LinearLayout rows = LinearLayout.vertical().spacing(4);
+        rows.defaultCellSetting().alignHorizontallyCenter();
+        rows.addChild(buttonRow);
+        LinearLayout overlays = rows.addChild(LinearLayout.horizontal().spacing(8));
+        overlays.addChild(ladsOverlayButton(OldAnimationsModule.Feature.LOW_FIRE));
+        overlays.addChild(ladsOverlayButton(OldAnimationsModule.Feature.LOW_SHIELD));
+        footer.addToFooter(rows);
+        footer.setFooterHeight(HeaderAndFooterLayout.DEFAULT_HEADER_AND_FOOTER_HEIGHT + 24);
+        return buttonRow;
+    }
+
+    @Unique
+    private Button ladsOverlayButton(OldAnimationsModule.Feature feature) {
+        Button button = Button.builder(Component.literal(PackMenuSettings.overlayLabel(feature)), b -> {
+            PackMenuSettings.toggleOverlay(feature);
+            b.setMessage(Component.literal(PackMenuSettings.overlayLabel(feature)));
+        }).build();
+        button.active = PackMenuSettings.overlayAvailable();
+        return button;
     }
 
     @Unique
