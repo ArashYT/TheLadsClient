@@ -120,7 +120,7 @@ final class ServerFeaturesCapture {
             ServerFeaturesCapture::countdownShot, ServerFeaturesCapture::rejoined, ServerFeaturesCapture::rejoinedShot,
             ServerFeaturesCapture::closedPort, ServerFeaturesCapture::firstRetry, ServerFeaturesCapture::secondRetry,
             ServerFeaturesCapture::retryLimit, ServerFeaturesCapture::serverList, ServerFeaturesCapture::reloaded,
-            ServerFeaturesCapture::reopenWorld, ServerFeaturesCapture::finish);
+            ServerFeaturesCapture::discoverClear, ServerFeaturesCapture::reopenWorld, ServerFeaturesCapture::finish);
         step = 0;
         deadline = System.nanoTime() + 90 * SECOND;
         LOGGER.info("Lads server features capture BEGIN: world {}", world);
@@ -269,6 +269,20 @@ final class ServerFeaturesCapture {
         press(new KeyEvent(InputConstants.KEY_R, 'r', 0));
         check(mc.gui.screen() == refreshed, "R without Ctrl leaves the list alone");
         shot = "server-6-server-list-refreshed";
+        return true;
+    }
+
+    /** Once the list was drawn (its screenshot saved): Discover Servers covers no other button (ViaFabricPlus' sits top right). */
+    private static boolean discoverClear() {
+        if (shot != null) return false;
+        List<net.minecraft.client.gui.components.Button> buttons = Minecraft.getInstance().gui.screen().children().stream()
+            .filter(c -> c instanceof net.minecraft.client.gui.components.Button b && b.visible).map(net.minecraft.client.gui.components.Button.class::cast).toList();
+        var discover = buttons.stream().filter(b -> b.getMessage().getString().equals("Discover Servers")).findFirst().orElse(null);
+        String all = buttons.stream().map(b -> b.getMessage().getString() + "@" + b.getX() + "," + b.getY() + " " + b.getWidth() + "x" + b.getHeight()).toList().toString();
+        check(discover != null && buttons.stream().noneMatch(b -> b != discover
+            && b.getX() < discover.getX() + discover.getWidth() && discover.getX() < b.getX() + b.getWidth()
+            && b.getY() < discover.getY() + discover.getHeight() && discover.getY() < b.getY() + b.getHeight()),
+            "server list: Discover Servers overlaps no other button " + all);
         return true;
     }
 

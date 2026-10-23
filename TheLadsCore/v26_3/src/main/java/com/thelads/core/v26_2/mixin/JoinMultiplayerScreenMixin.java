@@ -36,6 +36,28 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
     @Inject(method = "extractRenderState", at = @At("HEAD"))
     private void ladsSuppressEssential(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         ladsPurgeEssential();
+        ladsPlaceDiscover();
+    }
+
+    /** Top right, unless another button (ViaFabricPlus' default spot) is there: then top left. */
+    @Unique
+    private void ladsPlaceDiscover() {
+        if (ladsDiscoverButton == null) return;
+        ladsDiscoverButton.setPosition(width - 124, 8);
+        if (ladsDiscoverCovered()) ladsDiscoverButton.setPosition(8, 8);
+    }
+
+    @Unique
+    private boolean ladsDiscoverCovered() {
+        Button d = ladsDiscoverButton;
+        for (var child : children()) {
+            if (child instanceof Button b && b != d && b.visible
+                && b.getX() < d.getX() + d.getWidth() && d.getX() < b.getX() + b.getWidth()
+                && b.getY() < d.getY() + d.getHeight() && d.getY() < b.getY() + b.getHeight()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Unique

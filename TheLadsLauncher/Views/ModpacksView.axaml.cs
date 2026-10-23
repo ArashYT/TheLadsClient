@@ -2804,9 +2804,9 @@ public partial class ModpacksView : UserControl
             _currentDetailVersions = new List<ProjectVersionItem>
             {
                 new(
-                    "1.9.15",
-                    $"The Lads Core 1.9.15 (MC {instance.McVersion})",
-                    "1.9.15",
+                    "1.9.16",
+                    $"The Lads Core 1.9.16 (MC {instance.McVersion})",
+                    "1.9.16",
                     "release",
                     DateTime.UtcNow,
                     new[] { LoaderName(instance.Loader).ToLowerInvariant() },
