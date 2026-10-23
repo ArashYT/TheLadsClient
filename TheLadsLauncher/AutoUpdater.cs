@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
@@ -14,7 +15,7 @@ public interface ILauncherUpdateBackend
     bool IsInstalled { get; }
     string? PendingVersion { get; }
     Task<bool> DownloadLatestAsync(Action<string> report);
-    void ApplyAndRestart();
+    void ApplyAndRestart(string[] restartArgs);
 }
 
 public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
@@ -85,8 +86,13 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
         return version;
     }
 
-    public void ApplyAndRestart() => _manager.ApplyUpdatesAndRestart(PendingVersion != null ? _manager.UpdatePendingRestart!
-        : throw new InvalidOperationException("No verified update is ready."));
+    /// <summary>Starts the silent installer, which waits for this process to exit, applies the update and relaunches with <paramref name="restartArgs"/>.</summary>
+    public void ApplyAndRestart(string[] restartArgs)
+    {
+        _manager.WaitExitThenApplyUpdates(PendingVersion != null ? _manager.UpdatePendingRestart!
+            : throw new InvalidOperationException("No verified update is ready."), silent: true, restart: true, restartArgs);
+        Environment.Exit(0);
+    }
 }
 
 // Startup and the timer share this coordinator. Only verified packages are applied.
@@ -102,6 +108,10 @@ public sealed class AutoUpdater
     public bool AskBeforeInstall { get; set; }
     /// <summary>Raised with the version whenever a verified update waits for the user's click.</summary>
     public event Action<string>? Ready;
+    /// <summary>Called with the pending version right before every restart; returns the command-line args the new launcher starts with.</summary>
+    public Func<string, string[]>? PrepareRestart { get; set; }
+
+    private void Apply(string version) => _backend.ApplyAndRestart(PrepareRestart?.Invoke(version) ?? Array.Empty<string>());
 
     /// <summary>The user asked to update: installs and restarts unless Minecraft or a sign-in is still running.</summary>
     public bool InstallNow(Func<bool> isBusy, Action<string> report)
@@ -111,7 +121,7 @@ public sealed class AutoUpdater
         try
         {
             report($"Installing v{version} and restarting…");
-            _backend.ApplyAndRestart();
+            Apply(version);
             return true;
         }
         catch (Exception ex)
@@ -132,7 +142,9 @@ public sealed class AutoUpdater
                 if (DateTimeOffset.UtcNow < _nextCheck) return;
                 _nextCheck = DateTimeOffset.UtcNow.AddMinutes(10);
                 report("Checking for launcher updates…");
-                if (!await _backend.DownloadLatestAsync(report)) { report(""); return; }
+                // High only while the startup screen is waiting for the update; an open launcher may have a game running next to it.
+                using (ProcessPriority.Scope(AskBeforeInstall ? ProcessPriorityClass.BelowNormal : ProcessPriorityClass.High))
+                    if (!await _backend.DownloadLatestAsync(report)) { report(""); return; }
             }
             if (AskBeforeInstall)
             {
@@ -146,7 +158,7 @@ public sealed class AutoUpdater
                 return;
             }
             report($"Installing v{_backend.PendingVersion} and restarting…");
-            _backend.ApplyAndRestart();
+            Apply(_backend.PendingVersion!);
         }
         catch (Exception ex)
         {

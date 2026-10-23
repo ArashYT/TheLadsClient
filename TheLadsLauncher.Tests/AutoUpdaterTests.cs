@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using TheLadsLauncher;
 using Xunit;
 
@@ -10,17 +11,23 @@ public class AutoUpdaterTests
         public int Downloads, Applies;
         public bool FailDownload, FailApply;
         public TaskCompletionSource? Wait;
+        public ProcessPriorityClass PriorityDuringDownload;
+        public string[]? AppliedArgs;
+        public Action? OnApply;
         public async Task<bool> DownloadLatestAsync(Action<string> report)
         {
             Downloads++;
+            PriorityDuringDownload = Process.GetCurrentProcess().PriorityClass;
             if (Wait != null) await Wait.Task;
             if (FailDownload) throw new IOException("Corrupt package");
             PendingVersion = "1.2.2";
             return true;
         }
-        public void ApplyAndRestart()
+        public void ApplyAndRestart(string[] restartArgs)
         {
             Applies++;
+            AppliedArgs = restartArgs;
+            OnApply?.Invoke();
             if (FailApply) throw new IOException("Install locked");
         }
     }
@@ -121,6 +128,68 @@ public class AutoUpdaterTests
         await new AutoUpdater(backend).PollAsync(() => false, _ => { }, disabled);
         Assert.Equal(0, backend.Downloads);
         Assert.Equal(0, backend.Applies);
+    }
+
+    // The priority tests share the process priority; xUnit runs the tests of one class one after another.
+    private static async Task WithNormalPriority(Func<Task> test)
+    {
+        var process = Process.GetCurrentProcess();
+        var original = process.PriorityClass;
+        process.PriorityClass = ProcessPriorityClass.Normal;
+        try { await test(); }
+        finally { process.PriorityClass = original; }
+    }
+
+    [Fact]
+    public Task StartupDownloadRunsHighAndOpenLauncherDownloadRunsBelowNormal() => WithNormalPriority(async () =>
+    {
+        var startup = new Backend();
+        await new AutoUpdater(startup).PollAsync(() => true, _ => { });
+        Assert.Equal(ProcessPriorityClass.High, startup.PriorityDuringDownload);
+        Assert.Equal(ProcessPriorityClass.Normal, Process.GetCurrentProcess().PriorityClass);   // restored before the apply step
+        var open = new Backend();
+        await new AutoUpdater(open) { AskBeforeInstall = true }.PollAsync(() => true, _ => { });
+        Assert.Equal(ProcessPriorityClass.BelowNormal, open.PriorityDuringDownload);
+        Assert.Equal(ProcessPriorityClass.Normal, Process.GetCurrentProcess().PriorityClass);
+    });
+
+    [Fact]
+    public Task PriorityIsRestoredWhenTheDownloadFails() => WithNormalPriority(async () =>
+    {
+        var backend = new Backend { FailDownload = true };
+        await new AutoUpdater(backend).PollAsync(() => false, _ => { });
+        Assert.Equal(ProcessPriorityClass.High, backend.PriorityDuringDownload);
+        Assert.Equal(ProcessPriorityClass.Normal, Process.GetCurrentProcess().PriorityClass);
+    });
+
+    [Fact]
+    public async Task PrepareRestartRunsBeforeApplyAndItsArgsReachTheBackend()
+    {
+        var backend = new Backend { PendingVersion = "1.2.2" };
+        bool prepared = false, preparedFirst = false;
+        string? versionSeen = null;
+        backend.OnApply = () => preparedFirst = prepared;
+        var updater = new AutoUpdater(backend)
+        {
+            PrepareRestart = version => { prepared = true; versionSeen = version; return new[] { "--restore-window", "1,2,3,4,Normal" }; }
+        };
+        await updater.PollAsync(() => false, _ => { });
+        Assert.Equal(new[] { "--restore-window", "1,2,3,4,Normal" }, backend.AppliedArgs);
+        Assert.True(preparedFirst);
+        Assert.Equal("1.2.2", versionSeen);
+    }
+
+    [Fact]
+    public void InstallNowAlsoPreparesTheRestartAndNoHookMeansNoArgs()
+    {
+        var hooked = new Backend { PendingVersion = "1.2.2" };
+        string? versionSeen = null;
+        Assert.True(new AutoUpdater(hooked) { PrepareRestart = v => { versionSeen = v; return new[] { "--x" }; } }.InstallNow(() => false, _ => { }));
+        Assert.Equal(new[] { "--x" }, hooked.AppliedArgs);
+        Assert.Equal("1.2.2", versionSeen);
+        var plain = new Backend { PendingVersion = "1.2.2" };
+        Assert.True(new AutoUpdater(plain).InstallNow(() => false, _ => { }));
+        Assert.Empty(plain.AppliedArgs!);
     }
 
     [Fact]
