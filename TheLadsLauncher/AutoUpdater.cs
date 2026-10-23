@@ -105,13 +105,38 @@ public sealed class AutoUpdater
     public AutoUpdater(ILauncherUpdateBackend backend) => _backend = backend;
 
     /// <summary>Once the launcher is open, a verified update is offered through <see cref="Ready"/> instead of restarting on its own.</summary>
-    public bool AskBeforeInstall { get; set; }
+    public bool AskBeforeInstall
+    {
+        get => _askBeforeInstall;
+        set
+        {
+            lock (_priorityLock)
+            {
+                _askBeforeInstall = value;
+                // The startup screen may stop waiting for a slow check; a download that then continues next to an open launcher must not stay High.
+                if (value) _downloadScope?.Lower(ProcessPriorityClass.BelowNormal);
+            }
+        }
+    }
+    private bool _askBeforeInstall;
+    private ProcessPriority.ScopeHandle? _downloadScope;
+    private readonly object _priorityLock = new();
     /// <summary>Raised with the version whenever a verified update waits for the user's click.</summary>
     public event Action<string>? Ready;
     /// <summary>Called with the pending version right before every restart; returns the command-line args the new launcher starts with.</summary>
     public Func<string, string[]>? PrepareRestart { get; set; }
 
-    private void Apply(string version) => _backend.ApplyAndRestart(PrepareRestart?.Invoke(version) ?? Array.Empty<string>());
+    private void Apply(string version, Action<string> report)
+    {
+        string[] args;
+        try { args = PrepareRestart?.Invoke(version) ?? Array.Empty<string>(); }
+        catch (Exception ex)   // only window placement is lost; the update itself must still apply
+        {
+            report($"Could not prepare the restart ({ex.Message}); updating without it.");
+            args = Array.Empty<string>();
+        }
+        _backend.ApplyAndRestart(args);
+    }
 
     /// <summary>The user asked to update: installs and restarts unless Minecraft or a sign-in is still running.</summary>
     public bool InstallNow(Func<bool> isBusy, Action<string> report)
@@ -121,7 +146,7 @@ public sealed class AutoUpdater
         try
         {
             report($"Installing v{version} and restarting…");
-            Apply(version);
+            Apply(version, report);
             return true;
         }
         catch (Exception ex)
@@ -143,8 +168,10 @@ public sealed class AutoUpdater
                 _nextCheck = DateTimeOffset.UtcNow.AddMinutes(10);
                 report("Checking for launcher updates…");
                 // High only while the startup screen is waiting for the update; an open launcher may have a game running next to it.
-                using (ProcessPriority.Scope(AskBeforeInstall ? ProcessPriorityClass.BelowNormal : ProcessPriorityClass.High))
-                    if (!await _backend.DownloadLatestAsync(report)) { report(""); return; }
+                lock (_priorityLock)
+                    _downloadScope = ProcessPriority.Scope(_askBeforeInstall ? ProcessPriorityClass.BelowNormal : ProcessPriorityClass.High);
+                try { if (!await _backend.DownloadLatestAsync(report)) { report(""); return; } }
+                finally { lock (_priorityLock) { _downloadScope?.Dispose(); _downloadScope = null; } }
             }
             if (AskBeforeInstall)
             {
@@ -158,7 +185,7 @@ public sealed class AutoUpdater
                 return;
             }
             report($"Installing v{_backend.PendingVersion} and restarting…");
-            Apply(_backend.PendingVersion!);
+            Apply(_backend.PendingVersion!, report);
         }
         catch (Exception ex)
         {

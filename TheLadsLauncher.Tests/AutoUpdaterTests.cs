@@ -2,6 +2,7 @@ using System.Diagnostics;
 using TheLadsLauncher;
 using Xunit;
 
+[Collection(TimingSensitive.Name)]   // the priority tests change the whole process's priority, so no other test may run beside them
 public class AutoUpdaterTests
 {
     private sealed class Backend : ILauncherUpdateBackend
@@ -11,7 +12,7 @@ public class AutoUpdaterTests
         public int Downloads, Applies;
         public bool FailDownload, FailApply;
         public TaskCompletionSource? Wait;
-        public ProcessPriorityClass PriorityDuringDownload;
+        public ProcessPriorityClass PriorityDuringDownload, PriorityAtApply;
         public string[]? AppliedArgs;
         public Action? OnApply;
         public async Task<bool> DownloadLatestAsync(Action<string> report)
@@ -27,6 +28,7 @@ public class AutoUpdaterTests
         {
             Applies++;
             AppliedArgs = restartArgs;
+            PriorityAtApply = Process.GetCurrentProcess().PriorityClass;
             OnApply?.Invoke();
             if (FailApply) throw new IOException("Install locked");
         }
@@ -163,9 +165,27 @@ public class AutoUpdaterTests
     });
 
     [Fact]
-    public async Task PrepareRestartRunsBeforeApplyAndItsArgsReachTheBackend()
+    public Task AnOpenLauncherLowersAHighDownloadTheMomentItBecomesInteractive() => WithNormalPriority(async () =>
     {
-        var backend = new Backend { PendingVersion = "1.2.2" };
+        // The startup screen stops waiting after 10 s; a slow check then finishes next to the open launcher.
+        var backend = new Backend { Wait = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var updater = new AutoUpdater(backend);
+        var poll = updater.PollAsync(() => true, _ => { });
+        Assert.Equal(1, backend.Downloads);
+        Assert.Equal(ProcessPriorityClass.High, Process.GetCurrentProcess().PriorityClass);
+        updater.AskBeforeInstall = true;
+        Assert.Equal(ProcessPriorityClass.BelowNormal, Process.GetCurrentProcess().PriorityClass);
+        backend.Wait.SetResult();
+        await poll;
+        Assert.Equal(ProcessPriorityClass.Normal, Process.GetCurrentProcess().PriorityClass);
+        updater.AskBeforeInstall = true;   // no download running: nothing to lower
+        Assert.Equal(ProcessPriorityClass.Normal, Process.GetCurrentProcess().PriorityClass);
+    });
+
+    [Fact]
+    public Task PrepareRestartRunsBeforeApplyAndItsArgsReachTheBackend() => WithNormalPriority(async () =>
+    {
+        var backend = new Backend();   // downloads first (High), so the restored priority at apply time means something
         bool prepared = false, preparedFirst = false;
         string? versionSeen = null;
         backend.OnApply = () => preparedFirst = prepared;
@@ -177,6 +197,23 @@ public class AutoUpdaterTests
         Assert.Equal(new[] { "--restore-window", "1,2,3,4,Normal" }, backend.AppliedArgs);
         Assert.True(preparedFirst);
         Assert.Equal("1.2.2", versionSeen);
+        Assert.Equal(ProcessPriorityClass.High, backend.PriorityDuringDownload);
+        Assert.Equal(ProcessPriorityClass.Normal, backend.PriorityAtApply);   // restored before the restart hook and the apply
+    });
+
+    [Fact]
+    public async Task AThrowingRestartHookStillAppliesTheUpdateWithoutArgs()
+    {
+        var messages = new List<string>();
+        var polled = new Backend { PendingVersion = "1.2.2" };
+        await new AutoUpdater(polled) { PrepareRestart = _ => throw new InvalidOperationException("no window") }.PollAsync(() => false, messages.Add);
+        Assert.Equal(1, polled.Applies);
+        Assert.Empty(polled.AppliedArgs!);
+        Assert.Single(messages, message => message.Contains("no window"));
+        var clicked = new Backend { PendingVersion = "1.2.2" };
+        Assert.True(new AutoUpdater(clicked) { PrepareRestart = _ => throw new InvalidOperationException("no window") }.InstallNow(() => false, _ => { }));
+        Assert.Equal(1, clicked.Applies);
+        Assert.Empty(clicked.AppliedArgs!);
     }
 
     [Fact]
