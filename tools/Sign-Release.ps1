@@ -24,6 +24,7 @@ try {
     $deltaName = "TheLadsClient-$Version-delta.nupkg"
     $assets = gh release view $tag --repo $Repo --json assets --jq '.assets[].name'
     if ($LASTEXITCODE -ne 0) { throw "Could not list the assets of the $tag release." }
+    if ($assets -notcontains $package) { throw "Asset list of $tag lacks $package; cannot decide whether a delta exists." }
     if ($assets -contains $deltaName) {
         # Launchers rebuild the full package from the previous version plus this delta: it must come out as the package signed here.
         $refuse = "The v$Version delta does not rebuild the signed package; not signed."
