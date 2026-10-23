@@ -103,7 +103,22 @@ public final class ForgeOverlays1201 {
         }
     }
 
+    /** QA (probe step posetrace): frames left in which every overlay logs its pose translation and stack depth (Pre first and last, Post). */
+    public static volatile int traceFrames;
+
+    private static void trace(String where, Object event) {
+        if (traceFrames <= 0) return;
+        try {
+            String name = path(event);
+            if ("vignette".equals(name) && "pre".equals(where) && --traceFrames <= 0) return; // vignette is each frame's first overlay
+            var pose = ((GuiGraphics) guiGraphics.invoke(event)).pose();
+            Hud1201.LOG.info("Lads qa posetrace {} {} y={} depth={} cancelled={}", where, name, pose.last().pose().m31(), HudParts1201.depth(pose), cancelled.invoke(event));
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+        }
+    }
+
     private static void pre(Object event) {
+        trace("pre", event);
         try {
             closeUnfinished(event);
             if (Boolean.TRUE.equals(cancelled.invoke(event))) return; // someone else already skipped it: no Post will come
@@ -131,6 +146,7 @@ public final class ForgeOverlays1201 {
 
     /** Another listener cancelled the overlay after we began its part: its Post never comes, so end the part now. */
     private static void preLast(Object event) {
+        trace("preLast", event);
         try {
             Object[] top = OPEN.peek();
             if (top != null && top[0] == event && Boolean.TRUE.equals(cancelled.invoke(event))) {
@@ -143,6 +159,7 @@ public final class ForgeOverlays1201 {
     }
 
     private static void post(Object event) {
+        trace("post", event);
         try {
             Object[] top = OPEN.peek();
             if (top == null) return;

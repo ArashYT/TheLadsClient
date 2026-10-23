@@ -360,6 +360,27 @@ public final class QaProbe1201 {
                 LOGGER.info("Lads qa hudcache: {}", com.thelads.core.v1_20_1.hud.HudCache1201.off ? "off" : "on");
             }
             case "log" -> LOGGER.info("Lads qa log: {}", rest(s, 1));
+            case "static" -> { // a public static field of another mod (Quark's Hotbar Changer only opens in a focused window; QA windows never are)
+                var field = Class.forName(arg(s, 1), true, Thread.currentThread().getContextClassLoader()).getField(arg(s, 2));
+                Class<?> type = field.getType();
+                field.set(null, type == boolean.class ? (Object) Boolean.valueOf(arg(s, 3)) : type == int.class ? (Object) Integer.valueOf(arg(s, 3)) : Float.valueOf(arg(s, 3)));
+                LOGGER.info("Lads qa static: {}.{} = {}", arg(s, 1), arg(s, 2), field.get(null));
+            }
+            case "posetrace" -> com.thelads.core.v1_20_1.hud.ForgeOverlays1201.traceFrames = s.length > 1 ? Integer.parseInt(s[1]) : 2; // Zero SMP: log each overlay's pose
+            case "keymods" -> { // the key binds screen's helper: Forge's key modifiers on Zero SMP (Shift + key)
+                var platform = com.thelads.core.v1_20_1.embedded.controlling.platform.Services.PLATFORM;
+                LOGGER.info("Lads qa keymods: {} shiftIsModifier={} kIsModifier={} shiftDown={}", platform.getClass().getSimpleName(),
+                    platform.isKeyCodeModifier(InputConstants.getKey("key.keyboard.left.shift")), platform.isKeyCodeModifier(InputConstants.getKey("key.keyboard.k")),
+                    net.minecraft.client.gui.screens.Screen.hasShiftDown());
+            }
+            case "keyselect" -> { // the open Lads key binds screen waits for a new key for this binding, as after a click on its button
+                if (!(mc.screen instanceof com.thelads.core.v1_20_1.embedded.controlling.client.NewKeyBindsScreen screen)) throw new IllegalStateException("keyselect: the key binds screen is not open (" + mc.screen + ")");
+                screen.selectedKey = java.util.Arrays.stream(mc.options.keyMappings).filter(m -> m.getName().equals(arg(s, 1))).findFirst().orElseThrow();
+            }
+            case "keylog" -> { // a binding as the game shows it (Forge: "Shift + K")
+                KeyMapping mapping = java.util.Arrays.stream(mc.options.keyMappings).filter(m -> m.getName().equals(arg(s, 1))).findFirst().orElseThrow();
+                LOGGER.info("Lads qa keylog: {} = {}", mapping.getName(), mapping.getTranslatedKeyMessage().getString());
+            }
             case "quit" -> {
                 LOGGER.info("Lads qa quit requested");
                 scriptDone = true;
