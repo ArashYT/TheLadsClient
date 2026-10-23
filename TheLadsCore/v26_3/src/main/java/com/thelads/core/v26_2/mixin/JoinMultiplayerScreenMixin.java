@@ -1,7 +1,6 @@
 package com.thelads.core.v26_2.mixin;
 
 import com.thelads.core.v26_2.gui.ServerDiscoveryScreen;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -15,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
 
-@Mixin(JoinMultiplayerScreen.class)
+@Mixin(value = JoinMultiplayerScreen.class, priority = 1100)
 public abstract class JoinMultiplayerScreenMixin extends Screen {
     @Unique private Button ladsDiscoverButton;
 
@@ -31,10 +30,12 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
                 minecraft.setScreenAndShow(new ServerDiscoveryScreen(this));
             }
         }).bounds(width - 124, 8, 116, 20).build());
+        ladsPlaceDiscover();
     }
 
-    @Inject(method = "extractRenderState", at = @At("HEAD"))
-    private void ladsSuppressEssential(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+    /** 26.x has no extractRenderState here: every relayout (resize) ends in repositionElements, after ViaFabricPlus' hook (priority). */
+    @Inject(method = "repositionElements", at = @At("RETURN"), require = 1)
+    private void ladsAfterLayout(CallbackInfo ci) {
         ladsPurgeEssential();
         ladsPlaceDiscover();
     }
