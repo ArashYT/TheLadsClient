@@ -22,17 +22,23 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
     public const string RepositoryUrl = "https://github.com/ArashYT/TheLadsClient";
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };
     private readonly UpdateManager _manager;
+    private readonly UpdateManager _fullOnly;
     private readonly Func<string, string, Task<byte[]>> _fetchSigned;
     private readonly string _publicKey;
     private string? _verified; // the downloaded version whose signature this process checked
 
-    public VelopackUpdateBackend() : this(new UpdateManager(new GithubSource(RepositoryUrl, null, false)),
+    public VelopackUpdateBackend() : this(new GithubSource(RepositoryUrl, null, false)) { }
+
+    private VelopackUpdateBackend(GithubSource source) : this(new UpdateManager(source),
+        new UpdateManager(source, new UpdateOptions { MaximumDeltasBeforeFallback = -1 }),
         (version, name) => Http.GetByteArrayAsync($"{RepositoryUrl}/releases/download/v{version}/{name}"), UpdateSignature.ReleasePublicKey) { }
 
+    /// <param name="fullOnly">Same feed as <paramref name="manager"/> but never uses deltas (a negative <c>MaximumDeltasBeforeFallback</c>).</param>
     /// <param name="fetchSigned">(version, file name) -> that release's signature file (see <see cref="UpdateSignature"/>).</param>
-    public VelopackUpdateBackend(UpdateManager manager, Func<string, string, Task<byte[]>> fetchSigned, string publicKey)
+    public VelopackUpdateBackend(UpdateManager manager, UpdateManager fullOnly, Func<string, string, Task<byte[]>> fetchSigned, string publicKey)
     {
         _manager = manager;
+        _fullOnly = fullOnly;
         _fetchSigned = fetchSigned;
         _publicKey = publicKey;
     }
@@ -40,14 +46,31 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
     public bool IsInstalled => _manager.IsInstalled;
     /// <summary>A downloaded update counts only once its signature checked out.</summary>
     public string? PendingVersion => _manager.UpdatePendingRestart?.Version.ToString() is { } v && v == _verified ? v : null;
+    /// <summary>Whether the verified package of the last <see cref="DownloadLatestAsync"/> was rebuilt from deltas (false after a fallback to the full package).</summary>
+    public bool LastDownloadWasDelta { get; private set; }
 
     public async Task<bool> DownloadLatestAsync(Action<string> report)
     {
         var update = await _manager.CheckForUpdatesAsync();
         if (update == null) return false;
+        LastDownloadWasDelta = update.DeltasToTarget.Length > 0;
+        try { _verified = await DownloadAndVerifyAsync(_manager, update, report); }
+        catch (InvalidDataException) when (LastDownloadWasDelta) // the rebuilt package is already deleted; a full one may still verify
+        {
+            report("Delta update did not verify; downloading the full package…");
+            LastDownloadWasDelta = false;
+            var full = await _fullOnly.CheckForUpdatesAsync() ?? throw new InvalidOperationException("The full update package is no longer available.");
+            _verified = await DownloadAndVerifyAsync(_fullOnly, full, report);
+        }
+        return true;
+    }
+
+    /// <returns>The version of the downloaded package, which has been verified; a package that fails is deleted.</returns>
+    private async Task<string> DownloadAndVerifyAsync(UpdateManager manager, UpdateInfo update, Action<string> report)
+    {
         var asset = update.TargetFullRelease;
         string version = asset.Version.ToString();
-        await _manager.DownloadUpdatesAsync(update, percent => report($"Downloading v{version}: {percent}%"));
+        await manager.DownloadUpdatesAsync(update, percent => report($"Downloading v{version}: {percent}%"));
         string package = Path.Combine(VelopackLocator.Current.PackagesDir!, asset.FileName);
         try
         {
@@ -59,8 +82,7 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
             try { File.Delete(package); } catch (IOException) { } // never leave an unsigned package to be applied later
             throw;
         }
-        _verified = version;
-        return true;
+        return version;
     }
 
     public void ApplyAndRestart() => _manager.ApplyUpdatesAndRestart(PendingVersion != null ? _manager.UpdatePendingRestart!
