@@ -31,8 +31,9 @@ public abstract class SingleQuadParticleStyleMixin extends Particle implements P
         ladsStyled = size != 1 || color != 0 || fade > 0;
     }
 
+    // require = 0: a modpack mod that wraps this same call (Zero SMP, the SMP pack) leaves the hook out instead of crashing the game.
     @WrapOperation(method = "extractRotatedQuad(Lnet/minecraft/client/renderer/state/level/QuadParticleRenderState;Lorg/joml/Quaternionf;FFFF)V",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/state/level/QuadParticleRenderState;add(Lnet/minecraft/client/particle/SingleQuadParticle$Layer;FFFFFFFFFFFFII)V"))
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/state/level/QuadParticleRenderState;add(Lnet/minecraft/client/particle/SingleQuadParticle$Layer;FFFFFFFFFFFFII)V"), require = 0)
     private void ladsStyle(QuadParticleRenderState state, SingleQuadParticle.Layer layer, float x, float y, float z, float qx, float qy, float qz, float qw,
                            float size, float u0, float u1, float v0, float v1, int color, int light, Operation<Void> original,
                            @Local(argsOnly = true, ordinal = 3) float partialTick) {

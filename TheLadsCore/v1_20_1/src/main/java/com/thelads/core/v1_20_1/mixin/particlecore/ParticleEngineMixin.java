@@ -33,7 +33,8 @@ public abstract class ParticleEngineMixin {
     }
 
     /** A fading particle of the opaque sheet goes to the translucent one (same atlas), so its alpha shows instead of cutting off. */
-    @WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/Particle;getRenderType()Lnet/minecraft/client/particle/ParticleRenderType;"))
+    // require = 0: a modpack mod that wraps this same call (Zero SMP, the SMP pack) leaves the hook out instead of crashing the game.
+    @WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/Particle;getRenderType()Lnet/minecraft/client/particle/ParticleRenderType;"), require = 0)
     private ParticleRenderType ladsFadeSheet(Particle particle, Operation<ParticleRenderType> original) {
         ParticleRenderType type = original.call(particle);
         return type == ParticleRenderType.PARTICLE_SHEET_OPAQUE && particle instanceof ParticleCore1201.Look look && look.lads$fades() ? ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT : type;
