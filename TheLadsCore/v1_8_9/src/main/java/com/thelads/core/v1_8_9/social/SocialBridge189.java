@@ -524,14 +524,19 @@ public final class SocialBridge189 implements SocialBridge {
             saved.complete(null);
             return saved;
         }
-        server.addScheduledTask(() -> { // runs while the game is paused too; chunk writes flushed to disk (saveChunkData)
+        // Vanilla /save-all once, on the server thread (runs while the game is paused too), then wait for the queued chunk writes.
+        // Never saveChunkData: 1.8.9's AnvilChunkLoader.saveExtraData loops forever once the queue is empty ("All chunks are saved").
+        server.addScheduledTask(() -> {
             try {
                 server.getConfigurationManager().saveAllPlayerData();
                 for (WorldServer ws : server.worldServers) {
                     if (ws == null) continue;
+                    boolean off = ws.disableLevelSaving;
+                    ws.disableLevelSaving = false;
                     ws.saveAllChunks(true, null);
-                    ws.saveChunkData();
+                    ws.disableLevelSaving = off;
                 }
+                net.minecraft.world.storage.ThreadedFileIOBase.getThreadedIOInstance().waitForFinish();
                 saved.complete(null);
             } catch (Throwable t) {
                 saved.completeExceptionally(t);

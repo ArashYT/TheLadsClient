@@ -701,4 +701,43 @@ public class SocialStateTest {
         assertEquals(1, connects.size(), "nothing connects after Cancel");
         assertNull(com.thelads.core.client.HypixelSafetyManager.getP2PSession());
     }
+
+    /** QA blocker: the host's signal arriving while the guest's game is still leaving its world reaches the session once it starts. */
+    @Test
+    public void signalDuringLeaveWorldReachesTheGuestSession() {
+        List<Runnable> leaving = new ArrayList<>();
+        boolean[] inWorld = {true};
+        SocialBridge b = new SocialBridge() {
+            @Override public boolean inWorldOrServer() { return inWorld[0]; }
+            @Override public void leaveWorld(Runnable then) { inWorld[0] = false; leaving.add(then); }
+        };
+        SocialState guest = new SocialState(() -> b, () -> null, null);
+        guest.setClientSender(m -> {});
+        FakeP2PSession p2p = new FakeP2PSession();
+        GuestSession.setP2PStarter((sid, host, cfg, send) -> CompletableFuture.completedFuture(p2p));
+        UUID host = UUID.randomUUID();
+
+        guest.requestJoin(host);
+        guest.handleP2PStart("sid-gap", host, "Arash", "w1", "guest", new JsonObject());
+        assertEquals(1, leaving.size(), "the game is still leaving its world");
+        JsonObject signal = message(SocialProtocol.SIGNAL, "sid", "sid-gap");
+        JsonObject data = new JsonObject();
+        data.addProperty("ufrag", "abcd");
+        signal.add("data", data);
+        guest.onMessage(signal);
+        leaving.get(0).run();
+        assertTrue(guest.isGuestSessionActive());
+        assertEquals(1, p2p.receivedSignals.size(), "the signal from the gap is delivered, not dropped");
+        assertEquals("abcd", p2p.receivedSignals.get(0).get("ufrag").getAsString());
+        guest.closeGuestSession("done");
+
+        // Cancel while leaving: nothing starts afterwards
+        inWorld[0] = true;
+        guest.requestJoin(host);
+        guest.handleP2PStart("sid-gap2", host, "Arash", "w1", "guest", new JsonObject());
+        guest.cancelConnecting();
+        leaving.get(1).run();
+        assertFalse(guest.isGuestSessionActive(), "cancelled while leaving: no session");
+        assertFalse(guest.guestSession().ownsSid("sid-gap2"));
+    }
 }

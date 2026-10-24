@@ -84,6 +84,30 @@ public class IceAgentTest {
         }
     }
 
+    /** QA blocker: the peer was not listening when our signal went out; it goes again until a check proves the peer has it. */
+    @Test
+    public void lostFirstSignalIsResentAndStillConnects() throws Exception {
+        AtomicReference<IceAgent> bRef = new AtomicReference<>();
+        AtomicInteger sentByA = new AtomicInteger();
+        IceAgent a = new IceAgent("lost-sid", true, null, sig -> {
+            if (sentByA.incrementAndGet() > 1) bRef.get().onSignal(sig); // the first one is lost
+        });
+        IceAgent b = new IceAgent("lost-sid", false, null, a::onSignal);
+        bRef.set(b);
+        try {
+            CompletableFuture.allOf(a.gatherAndSendSignal(), b.gatherAndSendSignal()).join();
+            a.getConnectedFuture().get(8, TimeUnit.SECONDS);
+            b.getConnectedFuture().get(8, TimeUnit.SECONDS);
+            int sent = sentByA.get();
+            assertTrue(sent >= 2, "re-sent after the loss");
+            Thread.sleep(IceAgent.SIGNAL_RESEND_MS + 500);
+            assertEquals(sent, sentByA.get(), "no more re-sends once connected");
+        } finally {
+            a.close();
+            b.close();
+        }
+    }
+
     @Test
     public void relayOnlyUsesRelayCandidate() throws Exception {
         // Start fake strict TURN server (rejects unbound ChannelData and unpermitted indications)

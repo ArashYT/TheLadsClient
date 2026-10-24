@@ -47,7 +47,9 @@ public final class GuestSession {
     private volatile String proxyAddress;
     private volatile Socket activeSocket;
     private volatile P2PSession p2pSession;
+    private volatile String expectedSid; // p2p_start came while the game was still in a world: start(sid) follows once it left
 
+    private static final int MAX_PENDING_SIGNALS = 64;
     private final Queue<JsonObject> pendingSignals = new ConcurrentLinkedQueue<>();
     private final Object signalLock = new Object();
     private final AtomicBoolean ended = new AtomicBoolean(false);
@@ -83,12 +85,24 @@ public final class GuestSession {
     }
 
     public boolean ownsSid(String sid) {
-        return active && Objects.equals(this.sid, sid);
+        return sid != null && (active && Objects.equals(this.sid, sid) || Objects.equals(expectedSid, sid));
+    }
+
+    /** Ends the current session and holds sid's signals until start(sid): the host's candidates may arrive while the game leaves its world. */
+    public synchronized void expect(String sid) {
+        close("Switching world");
+        expectedSid = sid;
+    }
+
+    /** Still waiting for start(sid): not cancelled or replaced while the game left its world. */
+    public boolean isExpected(String sid) {
+        return sid != null && Objects.equals(expectedSid, sid);
     }
 
     public synchronized void start(String sid, UUID hostUuid, String hostDisplayName, String worldId,
                                    P2PSession.IceConfig iceConfig, Consumer<JsonObject> sendSignal) {
-        close("Starting new session");
+        boolean expected = isExpected(sid);
+        if (!expected) close("Starting new session"); // expect(sid) already ended the old one; sid's early signals stay queued
 
         this.sid = sid;
         this.hostUuid = hostUuid;
@@ -96,9 +110,10 @@ public final class GuestSession {
         this.active = true;
         this.linkUp = false;
         this.ended.set(false);
+        expectedSid = null; // after sid/active: ownsSid has no gap for the host's signals
 
         synchronized (signalLock) {
-            pendingSignals.clear();
+            if (!expected) pendingSignals.clear();
             p2pSession = null;
         }
 
@@ -188,6 +203,7 @@ public final class GuestSession {
     }
 
     public synchronized void close(String reason) {
+        expectedSid = null;
         if (!active && proxyServer == null && p2pSession == null && sid == null) return;
         active = false;
         HypixelSafetyManager.setP2PSession(null, null);
@@ -236,7 +252,7 @@ public final class GuestSession {
             P2PSession s = p2pSession;
             if (s != null) {
                 s.onSignal(data);
-            } else {
+            } else if (pendingSignals.size() < MAX_PENDING_SIGNALS) {
                 pendingSignals.offer(data);
             }
         }

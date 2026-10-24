@@ -91,6 +91,12 @@ public final class HypixelSafetyManager {
         p2pServer = keyOrNull != null ? new Server(0, keyOrNull) : null;
     }
 
+    /** address is the P2P guest's loopback proxy (a friend's world through the tunnel, never a server to reconnect to). */
+    public static boolean isP2PProxy(String address) {
+        String proxy = p2pProxyAddress;
+        return proxy != null && proxy.equals(address);
+    }
+
     public static String getP2PSession() {
         return p2pSessionKey;
     }
