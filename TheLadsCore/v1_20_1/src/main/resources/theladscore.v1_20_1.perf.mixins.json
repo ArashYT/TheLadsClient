@@ -6,6 +6,8 @@
   "client": [
     "CameraEyeAccessor",
     "FogColorMixin",
+    "FontReloadMixin",
+    "FontWidthCacheMixin",
     "JoinMultiplayerInvoker",
     "PacketDecodeGuardMixin",
     "SkyColorMixin",

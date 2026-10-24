@@ -108,6 +108,7 @@
     "ChatHeadsListenerMixin",
     "ClientToolsAttackMixin",
     "FontMetricsMixin",
+    "FontWidthCacheMixin",
     "SmoothScrollMixin",
     "GlobalButtonMixin",
     "GlobalSliderMixin",
