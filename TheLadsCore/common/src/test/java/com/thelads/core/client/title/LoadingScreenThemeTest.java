@@ -34,4 +34,19 @@ class LoadingScreenThemeTest {
         assertEquals(720, travelled, 1, "two full laps per cycle");
         assertTrue(fastest > 3 * slowest, "eases: fast through the bottom, slow over the top");
     }
+
+    @Test void customColorsAreReadFromSystemProperties() {
+        System.setProperty("thelads.loadingBg", "#123456");
+        System.setProperty("thelads.loadingGlow", "0x223344");
+        System.setProperty("thelads.loadingBar", "#AABBCC");
+        try {
+            assertEquals(0xFF123456, LoadingScreenTheme.getBackgroundColor());
+            assertEquals(0xFF223344, LoadingScreenTheme.getGlowColor());
+            assertEquals(0xFFAABBCC, LoadingScreenTheme.getBarColor());
+        } finally {
+            System.clearProperty("thelads.loadingBg");
+            System.clearProperty("thelads.loadingGlow");
+            System.clearProperty("thelads.loadingBar");
+        }
+    }
 }
