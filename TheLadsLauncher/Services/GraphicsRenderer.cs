@@ -208,7 +208,7 @@ public static class GraphicsRenderer
         var value = !native ? saved : old?.Applied != choice ? launcher : saved ?? old?.Saved ?? launcher;
         bool vulkan = native && value == "\"vulkan\"";
         return new(lines, value, native && value != saved, vulkan, native ? vulkan : SupportsShaderToggle(version) && choice == Vulkan, old,
-            new OptionsState(native ? (vulkan ? Vulkan : choice) : old?.Applied, value ?? old?.Saved));
+            new OptionsState(native ? choice : old?.Applied, value ?? old?.Saved));
     }
 
     // <mod>.jar -> .jar.disabled for the suspended ids and back for the restored ones. When both names exist (a pack update next

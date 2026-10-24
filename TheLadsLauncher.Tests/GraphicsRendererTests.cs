@@ -504,10 +504,10 @@ public sealed class GraphicsRendererTests : IDisposable
         Assert.DoesNotContain("OpenGL", choice, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Vulkan", choice, StringComparison.OrdinalIgnoreCase);
 
-        var optionsState = JsonSerializer.Deserialize<GraphicsRenderer.OptionsState>(
-            File.ReadAllText(Path.Combine(Game, GraphicsRenderer.OptionsStateFile)));
-        Assert.Equal(GraphicsRenderer.Vulkan, optionsState!.Applied);
-        Assert.Equal("\"vulkan\"", optionsState.Saved);
+        // The next launch settles on Vulkan without touching options.txt again.
+        await GraphicsRenderer.PrepareAsync(Game, "26.3", GraphicsRenderer.Preference(Game, "Vulkan"));
+        Assert.True(GraphicsRenderer.ReadState(Game)!.Vulkan);
+        Assert.Equal("preferredGraphicsBackend:\"vulkan\"", File.ReadAllLines(Options).Single(l => l.StartsWith("preferredGraphicsBackend:")));
     }
 
     private static string[] Names(string folder) => Directory.EnumerateFiles(folder).Select(Path.GetFileName).Order().ToArray()!;
