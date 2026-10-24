@@ -128,10 +128,11 @@ public final class ForgeOverlays1201 {
                 cancel.invoke(event, true);
                 return;
             }
-            boolean group = GROUP.contains(name), record = name.contains("record");
-            if (!group && !record) return;
+            boolean group = GROUP.contains(name), record = name.contains("record"), title = "title_text".equals(name);
+            if (!group && !record && !title) return;
             GuiGraphics graphics = (GuiGraphics) guiGraphics.invoke(event);
-            HudParts1201.Scope scope = HudParts1201.begin(graphics, group);
+            HudParts1201.Scope scope = title ? com.thelads.core.v1_20_1.hudextras.HudExtras1201.titleScope(graphics)
+                : HudParts1201.begin(graphics, group, piece(name));
             if (scope == null) {
                 cancel.invoke(event, true); // fully hidden: Forge skips the overlay, and its Post does not come
                 return;
@@ -142,6 +143,19 @@ public final class ForgeOverlays1201 {
         } catch (ReflectiveOperationException | RuntimeException failure) {
             Hud1201.LOG.warn("Lads HUD parts: a Forge overlay could not be wrapped", failure);
         }
+    }
+
+    /** Raised's own move and scale of a part (RaisedModule.HOTBAR to MOUNT) by Forge's overlay name; -1 for the others. */
+    private static int piece(String name) {
+        return switch (name) {
+            case "hotbar" -> com.thelads.core.modules.RaisedModule.HOTBAR;
+            case "player_health" -> com.thelads.core.modules.RaisedModule.HEALTH;
+            case "food_level" -> com.thelads.core.modules.RaisedModule.FOOD;
+            case "armor_level" -> com.thelads.core.modules.RaisedModule.ARMOR;
+            case "air_level" -> com.thelads.core.modules.RaisedModule.AIR;
+            case "mount_health" -> com.thelads.core.modules.RaisedModule.MOUNT;
+            default -> -1;
+        };
     }
 
     /** Another listener cancelled the overlay after we began its part: its Post never comes, so end the part now. */

@@ -247,7 +247,7 @@ public final class NativeFood {
         int after = Mth.ceil(Math.min(maxHealth, player.getHealth() + gain)), hearts = Math.min(Mth.ceil(maxHealth / 2), heartX.length);
         int color = previewColor();
         if (color >>> 24 == 0) return;
-        boolean hardcore = player.level().getLevelData().isHardcore();
+        boolean hardcore = player.level().getLevelData().isHardcore() || com.thelads.core.client.hud.HudExtras.VANILLA.hardcoreHearts;
         for (int i = Math.max(0, health / 2); i < Math.min((after + 1) / 2, hearts); i++)
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, Hud.HeartType.NORMAL.getSprite(hardcore, i * 2 + 1 == after, false), heartX[i], heartY[i], 9, 9, color);
     }

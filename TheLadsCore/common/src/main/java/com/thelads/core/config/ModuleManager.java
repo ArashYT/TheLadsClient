@@ -5,6 +5,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.thelads.core.modules.*;
+import com.thelads.core.client.hud.CustomImageHudElement;
+import com.thelads.core.client.hud.CustomTextHudElement;
+import com.thelads.core.client.hud.HudExtras;
 
 public class ModuleManager {
     private static final ModuleManager INSTANCE = new ModuleManager();
@@ -546,6 +549,58 @@ public class ModuleManager {
         hitIndicator.addOption(new SliderOption("Radius", 40, 20, 80, 5));
         hitIndicator.addOption(new SliderOption("Duration (ms)", 800, 200, 2000, 100));
         hitIndicator.addOption(new SliderOption("Size", 20, 10, 40, 2));
+        // HUD widgets and vanilla HUD tweaks (parity 1.9.19, common HudExtras; each version's HudExtras tick feeds them). All off by
+        // default; Damage Indicator, Horse Stats, Player Counter and Totem Pop Counter show what vanilla does not and are gated.
+        HudModule damage = hud(HudExtras.DAMAGE_INDICATOR, "The health of the mob or player you look at, and floating damage numbers.");
+        damage.addOption(new DropdownOption("Display", 0, "Both", "Target HUD", "Damage Numbers"));
+        damage.addOption(new DropdownOption("Health Format", 0, "Hearts", "Points", "Percent"));
+        damage.addOption(new BoolOption("Health Bar", true));
+        damage.addOption(new SliderOption("Number Duration", 1000, 400, 3000, 100).suffix(" ms"));
+        HudModule jump = hud(HudExtras.JUMP_RESET, "Rates your jump against each hit's knockback: Perfect on the hit's tick, Early, Late or Missed.");
+        jump.addOption(new BoolOption("Show Timing", true));
+        jump.addOption(new BoolOption("Show Streak", true));
+        HudModule media = hud(HudExtras.MEDIA, "What Windows plays now (Spotify, browsers, any app with media controls): title, artist and progress.");
+        media.addOption(new BoolOption("Show Artist", true));
+        media.addOption(new DropdownOption("Progress", 3, "Off", "Bar", "Time", "Both"));
+        media.addOption(new BoolOption("Hide When Paused", false));
+        HudModule horse = hud(HudExtras.HORSE, "Jump height, speed and health of the horse you ride or look at.");
+        horse.addOption(new BoolOption("Show Jump", true));
+        horse.addOption(new BoolOption("Show Speed", true));
+        horse.addOption(new BoolOption("Show Health", true));
+        horse.addOption(new DropdownOption("Speed Unit", 0, "Blocks/s", "km/h"));
+        HudModule counter = hud(HudExtras.PLAYERS, "Players on the server and other players near you.");
+        counter.addOption(new DropdownOption("Display", 0, "Both", "Nearby", "Server"));
+        counter.addOption(new StringOption("Prefix", "Players: "));
+        HudModule totems = hud(HudExtras.TOTEMS, "How many totems of undying each player near you has used.");
+        totems.addOption(new SliderOption("Duration", 30, 5, 300, 5).suffix(" s"));
+        totems.addOption(new BoolOption("Reset On Death", true));
+        totems.addOption(new BoolOption("Chat Message", false));
+        HudModule block = hud(HudExtras.BLOCK_INFO, "The block you look at: the tool it needs, whether you can harvest it, your mining progress and its light.");
+        block.addOption(new BoolOption("Show Tool", true));
+        block.addOption(new BoolOption("Show Harvestability", true));
+        block.addOption(new BoolOption("Show Mining Progress", true));
+        block.addOption(new BoolOption("Show Light Level", true));
+        hud(HudExtras.CUSTOM_TEXT, "Your own text; {player} {fps} {ping} {x} {y} {z} {biome} {direction} {server} {time} {day} {speed} {memory} "
+            + "are filled in, \\n starts a line.").addOption(new StringOption("Text", CustomTextHudElement.DEFAULT));
+        HudModule shape = hud(HudExtras.CUSTOM_SHAPE, "A rectangle of your size and colours, to frame or back other HUDs.");
+        shape.addOption(new SliderOption("Width", 100, 2, 500, 1));
+        shape.addOption(new SliderOption("Height", 40, 2, 300, 1));
+        shape.addOption(new SliderOption("Border Thickness", 1, 0, 10, 1));
+        shape.addOption(new ColorOption("Fill Color", false, 0x80000000));
+        shape.addOption(new ColorOption("Border Color", false, 0xFFFFFFFF));
+        HudModule image = hud(HudExtras.CUSTOM_IMAGE, "A PNG or JPG picture you choose, at your width.");
+        image.addOption(new TextOption("Image", ""));
+        image.addOption(new ActionOption("Choose Image", "Choose image...")).setAction(CustomImageHudElement::choose);
+        image.addOption(new SliderOption("Width", 64, 8, 400, 1));
+        hud(HudExtras.HEAD, "Your skin's face.");
+        hud(HudExtras.ABOVE, "The first block over your head and how many blocks of air are between.").addOption(new BoolOption("Show Distance", true));
+        hud(HudExtras.ENTITIES, "How many entities are loaded around you (F3's count).");
+        hud(HudExtras.SHADER, "The shader pack in use, or Off.");
+        hud(HudExtras.LORE, "The enchantments and lore of the item in your hand.");
+        register(new SubtitlesModule(), Module.Category.HUD);
+        register(new TitleTweakerModule(), Module.Category.HUD);
+        register(new ToastControlModule(), Module.Category.HUD);
+        register(new VanillaHudModule(), Module.Category.HUD);
     }
 
     public static ModuleManager getInstance() {

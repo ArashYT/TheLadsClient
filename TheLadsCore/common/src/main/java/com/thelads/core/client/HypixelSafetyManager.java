@@ -240,7 +240,16 @@ public final class HypixelSafetyManager {
             || com.thelads.core.modules.HitboxesModule.THROUGH_WALLS.equalsIgnoreCase(moduleName) // FreelookModule, FogCustomizerModule.CLEAR_VIEW
             || PvpVisuals.NAMETAG_HEALTH.equalsIgnoreCase(moduleName)
             || "Light Overlay".equalsIgnoreCase(moduleName) || "Loot Beams".equalsIgnoreCase(moduleName) // pvp rows 32-36: info vanilla does not show
-            || "Mob Overlay".equalsIgnoreCase(moduleName) || "Mob Size".equalsIgnoreCase(moduleName);
+            || "Mob Overlay".equalsIgnoreCase(moduleName) || "Mob Size".equalsIgnoreCase(moduleName)
+            || isGatedHud(moduleName);
+    }
+
+    /** HUD widgets that show what vanilla does not: other players' exact health, a horse's hidden stats, a nearby-player radar, totem pops. */
+    private static boolean isGatedHud(String moduleName) {
+        return com.thelads.core.client.hud.HudExtras.DAMAGE_INDICATOR.equalsIgnoreCase(moduleName)
+            || com.thelads.core.client.hud.HudExtras.HORSE.equalsIgnoreCase(moduleName)
+            || com.thelads.core.client.hud.HudExtras.PLAYERS.equalsIgnoreCase(moduleName)
+            || com.thelads.core.client.hud.HudExtras.TOTEMS.equalsIgnoreCase(moduleName);
     }
 
     public static boolean isGatedHypixelModule(String moduleName) {
