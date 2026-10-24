@@ -211,6 +211,7 @@ public partial class MainWindow : Window
         LoadSettingsUI();
         InitializeLanguageSetting();
         InitializeSettingsAutoSave();
+        SkinsPage.SkinApplied += ShowAppliedSkin;
         DiscordPresence.Log = Log;
         DiscordPresence.Enable(settings.DiscordRichPresence);
         // Every other launcher window (a dialog) shows on Discord by its title while it is open; the game splash runs with the game.
@@ -321,6 +322,11 @@ public partial class MainWindow : Window
                 SaveWindowScreenshot(Path.Combine(output, "accounts.png"));
                 NavigateTo("Skins");
                 await SkinsPage.RunPreviewAsync(output, SaveWindowScreenshot);
+                // Every head of an account that just applied a skin shows it (mc-heads.net would still serve the old one).
+                NavigateTo("Accounts");
+                await Task.Delay(600);
+                SaveWindowScreenshot(Path.Combine(output, "accounts-after-apply.png"));
+                Console.WriteLine($"[Preview] applied heads: PreviewLad={AppliedHead("PreviewLad") != null}, LocalLad={AppliedHead("LocalLad") != null}");
                 Close();
                 return;
             }
@@ -1247,6 +1253,7 @@ public partial class MainWindow : Window
     private async Task LoadAccountHeadAsync(TheLadsLauncher.Models.AccountChoice choice)
     {
         if (_accountHeads.TryGetValue(choice.Name, out var cached)) { choice.Head = cached; return; }
+        if (AppliedHead(choice.Name) is { } applied) { choice.Head = _accountHeads[choice.Name] = applied; return; }
         try
         {
             var bytes = await _httpClient.GetByteArrayAsync($"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(choice.Name))}/64");
@@ -1330,7 +1337,8 @@ public partial class MainWindow : Window
             Grid.SetColumn(skinHead, 0);
             grid.Children.Add(skinHead);
 
-            _ = Task.Run(async () =>
+            if (AppliedHead(username) is { } applied) skinHead.Fill = new ImageBrush(applied);
+            else _ = Task.Run(async () =>
             {
                 try
                 {
@@ -2163,11 +2171,40 @@ public partial class MainWindow : Window
         return username;
     }
 
+    private string AppliedHeadFile(string account) => Path.Combine(_pathService.BaseDirectory, "cache", "applied-heads",
+        string.Concat(account.ToLowerInvariant().Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c)) + ".png");
+
+    /// <summary>
+    /// The head of the skin last applied in the Skins tab. mc-heads.net keeps serving the old skin for a while after an
+    /// upload, so for a day every player head of that account is drawn from the applied texture instead.
+    /// </summary>
+    private Bitmap? AppliedHead(string account)
+    {
+        var file = new FileInfo(AppliedHeadFile(account));
+        if (!file.Exists || file.LastWriteTimeUtc < DateTime.UtcNow.AddDays(-1)) return null;
+        try { return new Bitmap(file.FullName); } catch (Exception) { return null; }
+    }
+
+    private void ShowAppliedSkin(string account, byte[] png)
+    {
+        try
+        {
+            using var head = Views.SkinsView.Head(png, 64);
+            Directory.CreateDirectory(Path.GetDirectoryName(AppliedHeadFile(account))!);
+            head.Save(AppliedHeadFile(account));
+        }
+        catch (Exception) { return; } // the skin itself was applied: only the heads stay old until mc-heads catches up
+        foreach (var key in _accountHeads.Keys.Where(k => string.Equals(k, account, StringComparison.OrdinalIgnoreCase)).ToList())
+            _accountHeads.Remove(key);
+        LoadAccounts(); // sidebar, account pickers (Play, Experiences) and the Accounts list
+    }
+
     private async Task LoadPlayerSkin(string username)
     {
         try
         {
             MiniAccountName.Text = username;
+            if (AppliedHead(username) is { } applied) { MiniSkinHead.Fill = new ImageBrush(applied); return; }
 
             string skinId = ResolveSkinId(username);
 

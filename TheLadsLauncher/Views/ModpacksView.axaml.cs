@@ -131,7 +131,8 @@ public partial class ModpacksView : UserControl
         if (!_ready) return;
         string query = MineSearch.Text ?? "";
         string? loader = MineLoader.SelectedIndex > 0 ? Modpacks.Loaders[MineLoader.SelectedIndex - 1] : null;
-        var list = _instances.Where(i => (loader == null || i.Loader == loader) && i.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
+        var mine = _instances.Where(i => !ExperiencesService.IsExperienceInstance(i.Id)).ToList();
+        var list = mine.Where(i => (loader == null || i.Loader == loader) && i.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
         list = MineSort.SelectedIndex switch
         {
             0 => list.OrderByDescending(i => i.LastPlayedUtc ?? DateTime.MinValue).ThenByDescending(i => i.CreatedUtc),
@@ -142,7 +143,7 @@ public partial class ModpacksView : UserControl
         Cards.Children.Clear();
         foreach (var instance in list) Cards.Children.Add(Card(instance));
         if (MineTab.IsSelected)
-            Status.Text = _instances.Count == 0 ? "No modpacks yet. Find one in Browse, import a .mrpack file, or create your own."
+            Status.Text = mine.Count == 0 ? "No modpacks yet. Find one in Browse, import a .mrpack file, or create your own."
                 : Cards.Children.Count == 0 ? "No modpacks match the search and filter." : "";
     }
 

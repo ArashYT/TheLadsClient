@@ -114,28 +114,53 @@ public class LauncherSettings
                 legacyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "The Lads Client", "settings.json");
             if (!File.Exists(SettingsPath) && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THELADS_DIR"))
                 && File.Exists(legacyPath)) File.Copy(legacyPath, SettingsPath);
-            if (File.Exists(SettingsPath))
-            {
-                string json = File.ReadAllText(SettingsPath);
-                var loaded = JsonSerializer.Deserialize<LauncherSettings>(json) ?? new LauncherSettings();
-                // Before 1.4.5 everyone was saved with a flat 4 GB; keep only an amount the user picked.
-                if (!loaded.RamChosenByUser) loaded.MaxRamMb = RecommendedRamMb(TotalMemoryBytes());
-                return loaded;
-            }
         }
         catch { }
+        return LoadFrom(SettingsPath);
+    }
+
+    /// <summary>
+    /// A settings.json that exists but cannot be read must never turn into defaults: the start-up auto-save writes them over
+    /// every setting (1.9.18: "Allow launching multiple copies" and the rest reset after a restart). A locked file (another
+    /// process mid-write) is read again; an unreadable one falls back to the copy <see cref="SaveTo"/> keeps.
+    /// </summary>
+    public static LauncherSettings LoadFrom(string settingsPath)
+    {
+        foreach (string path in new[] { settingsPath, settingsPath + ".bak" })
+        {
+            for (int attempt = 0; attempt < 5 && File.Exists(path); attempt++)
+            {
+                try
+                {
+                    var loaded = JsonSerializer.Deserialize<LauncherSettings>(File.ReadAllText(path)) ?? throw new JsonException("empty");
+                    // Before 1.4.5 everyone was saved with a flat 4 GB; keep only an amount the user picked.
+                    if (!loaded.RamChosenByUser) loaded.MaxRamMb = RecommendedRamMb(TotalMemoryBytes());
+                    return loaded;
+                }
+                catch (IOException) { System.Threading.Thread.Sleep(100); }
+                catch (Exception) { break; }
+            }
+        }
         return new LauncherSettings();
     }
 
-    public void Save()
+    public void Save() => SaveTo(SettingsPath);
+
+    public void SaveTo(string settingsPath)
     {
         try
         {
             var options = new JsonSerializerOptions { WriteIndented = true };
             string json = JsonSerializer.Serialize(this, options);
-            Directory.CreateDirectory(Path.GetDirectoryName(SettingsPath)!);
-            string temp = SettingsPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            try { File.WriteAllText(temp, json); File.Move(temp, SettingsPath, true); }
+            Directory.CreateDirectory(Path.GetDirectoryName(settingsPath)!);
+            string temp = settingsPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                File.WriteAllText(temp, json);
+                try { if (File.Exists(settingsPath)) File.Copy(settingsPath, settingsPath + ".bak", true); }
+                catch (IOException) { } // only the fallback copy goes stale
+                File.Move(temp, settingsPath, true);
+            }
             finally { if (File.Exists(temp)) File.Delete(temp); }
         }
         catch { }

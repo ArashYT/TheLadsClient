@@ -118,6 +118,10 @@ public static class ExperiencesService
         return experienceOrInstanceId;
     }
 
+    /// <summary>An official Experience's instance (its dev copy too): shown under Play > Experiences, not in My Modpacks.</summary>
+    public static bool IsExperienceInstance(string instanceId) =>
+        AllExperiences.Any(e => string.Equals(e.Id, CanonicalPackId(instanceId), StringComparison.OrdinalIgnoreCase));
+
     public sealed record ExperienceButtonState(string Text, bool IsEnabled, string? Hint = null);
 
     public static ExperienceButtonState GetExperienceButtonState(ExperienceDefinition exp, bool installed, bool isRunning = false, bool isBusy = false, bool allowMultiInstance = false)

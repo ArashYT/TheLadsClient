@@ -229,4 +229,31 @@ public class ServerListServiceTests
         var resultC = ServerListFile.Read(path);
         Assert.Single(resultC.Entries);
     }
+
+    [Fact]
+    public async Task TheLadsNetworkIsPinnedFirstAndPutBackAfterAMove()
+    {
+        using var dir = new TestDirectory();
+        var target = new ServerListTarget("Test", Path.Combine(dir.Path, "servers.dat"), Path.Combine(dir.Path, ".lads-servers.lock"));
+        await File.WriteAllBytesAsync(target.File, Original());
+
+        Assert.True(await ServerListService.PinLadsNetworkAsync(target));
+        Assert.Equal(new[] { "mc.arashyt.ca", "mc.hypixel.net", "10.0.0.5:25566" }, ServerListFile.Read(target.File).Entries.Select(e => e.Ip));
+        Assert.Equal("The Lads Network", ServerListFile.Read(target.File).Entries[0].Name);
+        Assert.False(await ServerListService.PinLadsNetworkAsync(target)); // already first: the file is not rewritten
+
+        Assert.True(await ServerListService.MoveAsync(target, "mc.arashyt.ca", 1));
+        Assert.True(await ServerListService.PinLadsNetworkAsync(target));
+        Assert.Equal(new[] { "mc.arashyt.ca", "mc.hypixel.net", "10.0.0.5:25566" }, ServerListFile.Read(target.File).Entries.Select(e => e.Ip));
+        Assert.Equal("iVBORw0KGgo=", ((NbtString)ServerListFile.Read(target.File).Entries[1].Raw["icon"]!).Value); // others untouched
+    }
+
+    [Fact]
+    public async Task PinningCreatesAMissingSharedList()
+    {
+        using var dir = new TestDirectory();
+        var target = new ServerListTarget("Test", Path.Combine(dir.Path, "servers.dat"), null);
+        Assert.True(await ServerListService.PinLadsNetworkAsync(target));
+        Assert.Equal("mc.arashyt.ca", Assert.Single(ServerListFile.Read(target.File).Entries).Ip);
+    }
 }

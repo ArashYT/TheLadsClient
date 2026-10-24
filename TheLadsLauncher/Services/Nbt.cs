@@ -388,6 +388,18 @@ public sealed class ServerListFile
         return true;
     }
 
+    /// <summary>As <see cref="EnsureEntry"/>, then that entry moved to the top of the list. True when anything changed.</summary>
+    public bool PinFirst(string name, string address)
+    {
+        bool modified = EnsureEntry(name, address);
+        var list = (NbtList)Root["servers"]!;
+        var pinned = list.Items.OfType<NbtCompound>().First(c => Text(c, "ip").Trim().Equals(address.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (list.Items.IndexOf(pinned) == 0) return modified;
+        list.Items.Remove(pinned);
+        list.Items.Insert(0, pinned);
+        return true;
+    }
+
     /// <summary>Removes this exact entry (one of <see cref="Entries"/>' Raw compounds). False when it is not in the list.</summary>
     public bool Remove(NbtCompound entry) => Root["servers"] is NbtList list && list.Items.Remove(entry);
 
