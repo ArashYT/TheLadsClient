@@ -22,7 +22,6 @@ import net.minecraft.util.MathHelper;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.ModContainer;
 import net.minecraftforge.fml.common.versioning.ArtifactVersion;
-import com.thelads.core.v1_8_9.mixin.PlayerControllerMPAccessor;
 
 /** Game state for the HUD modules, read from 1.8.9's client; values 1.8.9 cannot provide keep the interface defaults. */
 public class VanillaGameBridge189 implements LadsGameBridge {
@@ -775,96 +774,5 @@ public class VanillaGameBridge189 implements LadsGameBridge {
                 : new net.minecraft.client.gui.GuiMultiplayer(new net.minecraft.client.gui.GuiMainMenu());
             mc.displayGuiScreen(new net.minecraft.client.gui.GuiDisconnected(parent, "disconnect.lost", new net.minecraft.util.ChatComponentText(message)));
         });
-    }
-
-    @Override
-    public EntityTargetInfo getTargetEntityInfo() {
-        Minecraft mc = mc();
-        if (mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == net.minecraft.util.MovingObjectPosition.MovingObjectType.ENTITY) {
-            net.minecraft.entity.Entity e = mc.objectMouseOver.entityHit;
-            if (e instanceof net.minecraft.entity.EntityLivingBase) {
-                net.minecraft.entity.EntityLivingBase living = (net.minecraft.entity.EntityLivingBase) e;
-                return new EntityTargetInfo(living.getName(), living.getHealth(), living.getMaxHealth(), living instanceof net.minecraft.entity.player.EntityPlayer);
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public HorseStatsInfo getRidingHorseStats() {
-        Minecraft mc = mc();
-        if (mc.thePlayer != null && mc.thePlayer.ridingEntity instanceof net.minecraft.entity.passive.EntityHorse) {
-            net.minecraft.entity.passive.EntityHorse horse = (net.minecraft.entity.passive.EntityHorse) mc.thePlayer.ridingEntity;
-            double str = horse.getHorseJumpStrength();
-            float jumpHeight = (float) (-0.1817584952 * str * str * str + 3.689713992 * str * str + 2.128599134 * str - 0.343930367);
-            float speed = (float) (horse.getEntityAttribute(net.minecraft.entity.SharedMonsterAttributes.movementSpeed).getAttributeValue() * 43.17);
-            return new HorseStatsInfo(jumpHeight, speed, horse.getHealth(), horse.getMaxHealth());
-        }
-        return null;
-    }
-
-    @Override
-    public BlockTargetInfo getTargetedBlockInfo() {
-        Minecraft mc = mc();
-        if (mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == net.minecraft.util.MovingObjectPosition.MovingObjectType.BLOCK && mc.theWorld != null) {
-            BlockPos pos = mc.objectMouseOver.getBlockPos();
-            net.minecraft.block.Block block = mc.theWorld.getBlockState(pos).getBlock();
-            String name = block.getLocalizedName();
-            int blockLight = mc.theWorld.getLightFor(net.minecraft.world.EnumSkyBlock.BLOCK, pos);
-            int skyLight = mc.theWorld.getLightFor(net.minecraft.world.EnumSkyBlock.SKY, pos);
-            float progress = mc.playerController instanceof PlayerControllerMPAccessor ? ((PlayerControllerMPAccessor) mc.playerController).ladsCurBlockDamageMP() : 0f;
-            boolean harvestable = mc.thePlayer != null && block.canHarvestBlock(mc.theWorld, pos, mc.thePlayer);
-            String tool = block.getHarvestTool(mc.theWorld.getBlockState(pos));
-            if (tool == null) tool = "None";
-            return new BlockTargetInfo(name, tool, harvestable, blockLight, skyLight, progress);
-        }
-        return null;
-    }
-
-    @Override
-    public String getBlockAboveName() {
-        Minecraft mc = mc();
-        if (mc.thePlayer != null && mc.theWorld != null) {
-            BlockPos above = new BlockPos(mc.thePlayer.posX, mc.thePlayer.posY + 2, mc.thePlayer.posZ);
-            return mc.theWorld.getBlockState(above).getBlock().getLocalizedName();
-        }
-        return "Air";
-    }
-
-    @Override
-    public int getLoadedEntityCount() {
-        Minecraft mc = mc();
-        return (mc.theWorld != null && mc.theWorld.loadedEntityList != null) ? mc.theWorld.loadedEntityList.size() : 0;
-    }
-
-    @Override
-    public int getPlayerHurtTime() {
-        Minecraft mc = mc();
-        return mc.thePlayer != null ? mc.thePlayer.hurtTime : 0;
-    }
-
-    @Override
-    public int getConnectedPlayerCount() {
-        Minecraft mc = mc();
-        return (mc.getNetHandler() != null && mc.getNetHandler().getPlayerInfoMap() != null)
-            ? mc.getNetHandler().getPlayerInfoMap().size() : 1;
-    }
-
-    @Override
-    public int getNearbyPlayerCount() {
-        Minecraft mc = mc();
-        return (mc.theWorld != null && mc.theWorld.playerEntities != null) ? mc.theWorld.playerEntities.size() : 1;
-    }
-
-    @Override
-    public List<String> getHeldItemLore() {
-        Minecraft mc = mc();
-        if (mc.thePlayer != null && mc.thePlayer.getHeldItem() != null) {
-            ItemStack held = mc.thePlayer.getHeldItem();
-            List<String> lore = new ArrayList<>();
-            lore.add(held.getDisplayName());
-            return lore;
-        }
-        return Collections.emptyList();
     }
 }

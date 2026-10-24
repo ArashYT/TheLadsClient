@@ -29,12 +29,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
             "Day", "Time", "XP", "Potion Effects", "Zoom", com.thelads.core.modules.ToggleSprintModule.NAME,
             "Fullbright", "TitleScreen", "Title Scale", "CPS", "Keystrokes",
             "Biome", "ArmorHUD", "Direction", "Health", "Hunger", "Scoreboard", "TexturePacks",
-            "ConfirmDisconnect", "NumericalEnchantments", "LogPruner", "DropConfirmation", "ScrollTweaks", "AutoPerspective", "AutoBackup",
-            "DamageIndicator", "JumpReset", "MediaPlayer", "HorseStats",
-            "PlayerCounter", "TotemPopCounter", "BlockInfo", "TierTagger",
-            "CustomText", "CustomShape", "PlayerHead", "BlockAbove",
-            "EntityCounter", "ShaderPack", "HeldItemLore",
-            "Subtitles", "TitleTweaker", "ToastControl", "VanillaHUD");
+            "ConfirmDisconnect", "NumericalEnchantments", "LogPruner", "DropConfirmation", "ScrollTweaks", "AutoPerspective", "AutoBackup");
         com.thelads.core.v26_2.gui.ExternalModSettings.register();
         com.thelads.core.v26_2.gui.ShaderToggleScreen26.register();
         com.thelads.core.v26_2.feature.ShaderToggleQa26.register(); // QA only: inert without LADS_QA_SHADERTOGGLE

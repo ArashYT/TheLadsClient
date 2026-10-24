@@ -2,63 +2,35 @@ package com.thelads.core.client.hud;
 
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.config.ColorOption;
-import com.thelads.core.config.ModuleManager;
-import com.thelads.core.config.Option;
 import com.thelads.core.config.SliderOption;
 
-/**
- * OneClient EvergreenHUD parity Custom Shape HUD element.
- * Renders configurable rectangle, border, or geometric overlay.
- * Visual-only.
- */
+/** Custom Shape (OneClient's EvergreenHUD): a rectangle of your size and colour with an optional border, to frame or back other HUDs. */
 public class CustomShapeHudElement extends HudElement {
-    public static final String MODULE_NAME = "CustomShape";
-
     public CustomShapeHudElement() {
-        useOrganizedDefaults();
+        width = 100;
+        height = 40;
     }
 
     @Override
-    public void prepareRender(LadsGraphics graphics, boolean editor) {
-        var mod = ModuleManager.getInstance().getModule(MODULE_NAME);
-        int w = 100, h = 40;
-        if (mod != null) {
-            Option ow = mod.getOption("Width");
-            if (ow instanceof SliderOption so) w = so.getIntValue();
-            Option oh = mod.getOption("Height");
-            if (oh instanceof SliderOption so) h = so.getIntValue();
-        }
-        width = Math.max(10, w);
-        height = Math.max(10, h);
+    public void prepareRender(LadsGraphics g, boolean editor) {
+        width = option("Width") instanceof SliderOption w ? w.getIntValue() : 100;
+        height = option("Height") instanceof SliderOption h ? h.getIntValue() : 40;
     }
 
     @Override
-    public void render(LadsGraphics graphics) {
-        if (graphics == null) return;
-        var mod = ModuleManager.getInstance().getModule(MODULE_NAME);
+    public void render(LadsGraphics g) {
+        int fill = option("Fill Color") instanceof ColorOption f ? color(f) : 0x80000000;
+        int border = option("Border Color") instanceof ColorOption b ? color(b) : 0xFFFFFFFF;
+        int t = option("Border Thickness") instanceof SliderOption s ? Math.min(s.getIntValue(), Math.min(width, height) / 2) : 1;
+        g.fill(x + t, y + t, x + width - t, y + height - t, fill);
+        if (t <= 0) return;
+        g.fill(x, y, x + width, y + t, border);
+        g.fill(x, y + height - t, x + width, y + height, border);
+        g.fill(x, y + t, x + t, y + height - t, border);
+        g.fill(x + width - t, y + t, x + width, y + height - t, border);
+    }
 
-        int fillColor = 0x80000000;
-        int borderColor = 0xFFFFFFFF;
-        int borderThick = 1;
-
-        if (mod != null) {
-            Option fc = mod.getOption("Fill color");
-            if (fc instanceof ColorOption co) fillColor = co.getColor();
-            Option bc = mod.getOption("Border color");
-            if (bc instanceof ColorOption co) borderColor = co.getColor();
-            Option bt = mod.getOption("Border thickness");
-            if (bt instanceof SliderOption so) borderThick = so.getIntValue();
-        }
-
-        // Fill background
-        graphics.fill(x, y, x + width, y + height, fillColor);
-
-        // Border
-        if (borderThick > 0) {
-            graphics.fill(x, y, x + width, y + borderThick, borderColor); // top
-            graphics.fill(x, y + height - borderThick, x + width, y + height, borderColor); // bottom
-            graphics.fill(x, y, x + borderThick, y + height, borderColor); // left
-            graphics.fill(x + width - borderThick, y, x + width, y + height, borderColor); // right
-        }
+    private static int color(ColorOption option) {
+        return com.thelads.core.client.PvpVisuals.argb(option);
     }
 }

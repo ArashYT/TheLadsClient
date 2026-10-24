@@ -3,82 +3,87 @@ package com.thelads.core.client.hud;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.config.HudSettings;
 
-/**
- * Lunar & Badlion parity Media Player overlay.
- * Displays title, artist, playback status, and progress overlay.
- * Visual-only.
- */
+/** Media Player: what Windows plays now (MediaSession): title, artist and the track's progress. Nothing playing shows nothing. */
 public class MediaPlayerHudElement extends HudElement {
-    public static final String MODULE_NAME = "MediaPlayer";
-
-    public static class MediaTrack {
-        public String title = "Never Gonna Give You Up";
-        public String artist = "Rick Astley";
-        public boolean isPlaying = true;
-        public int positionSeconds = 83;
-        public int durationSeconds = 212;
-    }
-
-    private static MediaTrack currentTrack = new MediaTrack();
-
-    public static void updateTrack(String title, String artist, boolean playing, int positionSec, int durationSec) {
-        currentTrack.title = title != null ? title : "Unknown Title";
-        currentTrack.artist = artist != null ? artist : "Unknown Artist";
-        currentTrack.isPlaying = playing;
-        currentTrack.positionSeconds = positionSec;
-        currentTrack.durationSeconds = durationSec;
-    }
+    private static final int MAX_WIDTH = 180;
+    private boolean editor, shown, artist, bar, time;
+    private String title = "", by = "", clock = "";
+    private String sourceTitle, sourceArtist;
+    private long clockSecond = -1, clockLength = -1;
+    private float progress;
 
     public MediaPlayerHudElement() {
-        useOrganizedDefaults();
+        width = 150;
+        height = 34;
     }
 
     @Override
-    public void prepareRender(LadsGraphics graphics, boolean editor) {
-        width = 130;
-        height = 26;
+    public boolean isAvailable() {
+        return MediaSession.SUPPORTED;
     }
 
     @Override
-    public void render(LadsGraphics graphics) {
-        if (graphics == null) return;
-        drawBackground(graphics);
+    public void prepareRender(LadsGraphics g, boolean editor) {
+        this.editor = editor;
+        String name = MediaSession.title, who = MediaSession.artist;
+        shown = !name.isEmpty() && (MediaSession.playing || !optBool("Hide When Paused", false));
+        int progressMode = optCycle("Progress", 3); // Off, Bar, Time, Both
+        artist = optBool("Show Artist", true);
+        bar = progressMode == 1 || progressMode == 3;
+        time = progressMode >= 2;
+        long length = shown ? MediaSession.durationMs : 212_000, at = shown ? MediaSession.position(System.currentTimeMillis()) : 83_000;
+        if (!shown) {
+            name = "Song title";
+            who = "Artist";
+        }
+        if (!name.equals(sourceTitle) || !who.equals(sourceArtist)) { // trimmed once per track, not per frame
+            sourceTitle = name;
+            sourceArtist = who;
+            title = fit(g, name);
+            by = fit(g, who);
+        }
+        if (at / 1000 != clockSecond || length != clockLength) {
+            clockSecond = at / 1000;
+            clockLength = length;
+            clock = length > 0 ? clock(at) + " / " + clock(length) : clock(at);
+        }
+        progress = length > 0 ? Math.min(1, at / (float) length) : 0;
+        width = Math.max(100, Math.max(g.textWidth(title), artist ? g.textWidth(by) : 0) + 10);
+        height = 4 + 10 + (artist ? 10 : 0) + (time ? 10 : 0) + (bar ? 5 : 0) + 2;
+    }
 
+    private static String fit(LadsGraphics g, String text) {
+        if (g.textWidth(text) <= MAX_WIDTH) return text;
+        int end = text.length();
+        while (end > 1 && g.textWidth(text.substring(0, end) + "...") > MAX_WIDTH) end--;
+        return text.substring(0, end) + "...";
+    }
+
+    /** m:ss */
+    static String clock(long millis) {
+        long seconds = millis / 1000;
+        return seconds / 60 + ":" + (seconds % 60 < 10 ? "0" : "") + seconds % 60;
+    }
+
+    @Override
+    public void render(LadsGraphics g) {
+        if (!shown && !editor) return;
+        drawBackground(g);
         boolean shadow = HudSettings.getInstance().isTextShadow();
-        int textCol = resolveColor();
-        String title = currentTrack.title;
-        if (graphics.textWidth(title) > width - 20) {
-            title = title.substring(0, Math.min(title.length(), 14)) + "..";
+        int line = y + 4;
+        g.drawText(title, x + 5, line, resolveColor(), shadow);
+        line += 10;
+        if (artist) {
+            g.drawText(by, x + 5, line, 0xFFAAAAAA, shadow);
+            line += 10;
         }
-
-        String playIcon = currentTrack.isPlaying ? "▶ " : "❚❚ ";
-        graphics.drawText(playIcon, x + 4, y + 4, 0xFF55FF55, shadow);
-        int iconW = graphics.textWidth(playIcon);
-
-        graphics.drawText(title, x + 4 + iconW, y + 4, textCol, shadow);
-
-        // Progress bar and time
-        int barX = x + 4, barY = y + 17, barW = width - 8, barH = 3;
-        graphics.fill(barX, barY, barX + barW, barY + barH, 0xFF444444);
-
-        float progress = currentTrack.durationSeconds > 0
-            ? Math.min(1.0f, (float) currentTrack.positionSeconds / currentTrack.durationSeconds)
-            : 0f;
-        int fillW = (int) (barW * progress);
-        if (fillW > 0) {
-            graphics.fill(barX, barY, barX + fillW, barY + barH, 0xFF1DB954); // Spotify green accent
+        if (time) {
+            g.drawText(clock, x + 5, line, 0xFFAAAAAA, shadow);
+            line += 10;
         }
-
-        String timeStr = formatTime(currentTrack.positionSeconds) + "/" + formatTime(currentTrack.durationSeconds);
-        int tw = graphics.textWidth(timeStr);
-        if (tw < width - 10) {
-            graphics.drawText(timeStr, x + width - tw - 4, y + 4, 0xFFAAAAAA, shadow);
+        if (bar) {
+            g.fill(x + 5, line, x + width - 5, line + 3, 0xFF404040);
+            g.fill(x + 5, line, x + 5 + (int) ((width - 10) * progress), line + 3, resolveColor());
         }
-    }
-
-    private static String formatTime(int totalSec) {
-        int m = totalSec / 60;
-        int s = totalSec % 60;
-        return String.format(java.util.Locale.ROOT, "%02d:%02d", m, s);
     }
 }

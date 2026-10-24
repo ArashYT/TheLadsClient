@@ -1,90 +1,62 @@
 package com.thelads.core.client.hud;
 
-import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.config.HudSettings;
-
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.Locale;
 
 /**
- * Feather-parity Damage Indicator HUD element.
- * Displays target entity name, health bar / hearts, numeric health counter,
- * and maintains active floating damage numbers.
- * GATED: Shows enemy health.
+ * Damage Indicator (Feather): the health of the mob or player you look at, or last looked at for 3 seconds (HudExtras.target*, written
+ * by each version's tick). Its floating damage numbers are DamageNumbers. Gated: other players' exact health is not shown by vanilla.
  */
 public class DamageIndicatorHudElement extends HudElement {
-    public static final String MODULE_NAME = "DamageIndicator";
-
-    public record FloatingDamage(float amount, long spawnTime, double worldX, double worldY, double worldZ) {}
-
-    private static final List<FloatingDamage> activeNumbers = new ArrayList<>();
-
-    public static synchronized void addDamageNumber(float amount, double x, double y, double z) {
-        activeNumbers.add(new FloatingDamage(amount, System.currentTimeMillis(), x, y, z));
-    }
-
-    public static synchronized List<FloatingDamage> getActiveNumbers(long maxDurationMs) {
-        long now = System.currentTimeMillis();
-        Iterator<FloatingDamage> it = activeNumbers.iterator();
-        while (it.hasNext()) {
-            if (now - it.next().spawnTime() > maxDurationMs) it.remove();
-        }
-        return new ArrayList<>(activeNumbers);
-    }
+    private boolean editor, shown;
+    private String name = "", health = "";
+    private float ratio;
+    private int cachedHealth = -1, cachedMax = -1, cachedFormat = -1;
 
     public DamageIndicatorHudElement() {
-        useOrganizedDefaults();
-    }
-
-    @Override
-    public void prepareRender(LadsGraphics graphics, boolean editor) {
-        width = 110;
+        width = 120;
         height = 24;
     }
 
     @Override
-    public void render(LadsGraphics graphics) {
-        if (graphics == null) return;
-        LadsGameBridge bridge = LadsGameBridge.get();
-        LadsGameBridge.EntityTargetInfo target = bridge != null ? bridge.getTargetEntityInfo() : null;
-
-        String name;
-        float hp, maxHp;
-        if (target != null && target.maxHealth() > 0) {
-            name = target.name();
-            hp = Math.max(0, target.health());
-            maxHp = target.maxHealth();
-        } else {
-            // In editor or when no target is present
-            name = "Player";
-            hp = 16.0f;
-            maxHp = 20.0f;
+    public void prepareRender(LadsGraphics g, boolean editor) {
+        this.editor = editor;
+        shown = HudExtras.targetId != -1 && System.currentTimeMillis() < HudExtras.targetUntil;
+        float hp = shown ? HudExtras.targetHealth : 16, max = shown ? HudExtras.targetMax : 20;
+        name = shown ? HudExtras.targetName : "Player";
+        int format = optCycle("Health Format", 0), hpBits = Float.floatToIntBits(hp), maxBits = Float.floatToIntBits(max);
+        if (hpBits != cachedHealth || maxBits != cachedMax || format != cachedFormat) {
+            health = format(hp, max, format);
+            cachedHealth = hpBits;
+            cachedMax = maxBits;
+            cachedFormat = format;
         }
+        ratio = max > 0 ? Math.max(0, Math.min(1, hp / max)) : 0;
+        width = Math.max(90, g.textWidth(name) + g.textWidth(health) + 16);
+        height = optBool("Health Bar", true) ? 24 : 15;
+    }
 
-        drawBackground(graphics);
+    /** "8.5 ❤" (hearts), "17/20" (points) or "85%". */
+    static String format(float hp, float max, int format) {
+        return switch (format) {
+            case 1 -> (int) Math.ceil(hp) + "/" + (int) Math.ceil(max);
+            case 2 -> (max > 0 ? Math.round(hp * 100 / max) : 0) + "%";
+            default -> String.format(Locale.ROOT, "%.1f ", hp / 2) + DamageNumbers.HEART;
+        };
+    }
 
+    @Override
+    public void render(LadsGraphics g) {
+        if (!shown && !editor) return;
+        drawBackground(g);
         boolean shadow = HudSettings.getInstance().isTextShadow();
-        int textCol = resolveColor();
-        String title = name;
-        if (graphics.textWidth(title) > width - 8) {
-            title = title.substring(0, Math.min(title.length(), 10)) + "..";
-        }
-        graphics.drawText(title, x + 4, y + 3, textCol, shadow);
-
-        String hpStr = String.format(java.util.Locale.ROOT, "%.1f/%.0f", hp, maxHp);
-        int hpWidth = graphics.textWidth(hpStr);
-        graphics.drawText(hpStr, x + width - hpWidth - 4, y + 3, 0xFFFF5555, shadow);
-
-        // Health bar
-        int barX = x + 4, barY = y + 14, barW = width - 8, barH = 5;
-        graphics.fill(barX, barY, barX + barW, barY + barH, 0xFF400000); // bar background
-        float ratio = maxHp > 0 ? Math.min(1.0f, Math.max(0.0f, hp / maxHp)) : 0;
-        int fillW = (int) (barW * ratio);
-        if (fillW > 0) {
-            int barColor = ratio > 0.5f ? 0xFF55FF55 : (ratio > 0.25f ? 0xFFFFAA00 : 0xFFFF3333);
-            graphics.fill(barX, barY, barX + fillW, barY + barH, barColor);
-        }
+        g.drawText(name, x + 4, y + 4, resolveColor(), shadow);
+        g.drawText(health, x + width - g.textWidth(health) - 4, y + 4, 0xFFFF5555, shadow);
+        if (height < 24) return;
+        int barX = x + 4, barY = y + 15, barW = width - 8;
+        g.fill(barX, barY, barX + barW, barY + 4, 0xFF400000);
+        int fill = (int) (barW * ratio);
+        if (fill > 0) g.fill(barX, barY, barX + fill, barY + 4, ratio > 0.5f ? 0xFF55FF55 : ratio > 0.25f ? 0xFFFFAA00 : 0xFFFF3333);
     }
 }

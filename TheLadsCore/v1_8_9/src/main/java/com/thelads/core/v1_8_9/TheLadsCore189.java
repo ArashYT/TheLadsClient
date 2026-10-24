@@ -191,8 +191,7 @@ public class TheLadsCore189 {
         com.thelads.core.modules.DropConfirmationModule.NAME,
         com.thelads.core.modules.ScrollTweaksModule.NAME,
         com.thelads.core.modules.AutoPerspectiveModule.NAME,
-        com.thelads.core.modules.AutoBackupModule.NAME,
-        "TitleTweaker", "ToastControl", "VanillaHUD"
+        com.thelads.core.modules.AutoBackupModule.NAME
     };
 
     /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */
@@ -244,8 +243,6 @@ public class TheLadsCore189 {
         ModuleSupport.registerUnavailable("Async", "Parallel entity ticking is built for the Minecraft 26.x server; 1.8.9 ticks entities on one thread.");
         ModuleSupport.registerUnavailable("ShulkerBoxUtils", "Minecraft 1.8.9 has no shulker boxes; they were added in Minecraft 1.11.");
         ModuleSupport.registerUnavailable("Cooldowns", "Minecraft 1.8.9 has no item cooldowns.");
-        ModuleSupport.registerUnavailable("Subtitles", "Minecraft 1.8.9 has no closed captions or subtitles.");
-        ModuleSupport.registerUnavailable("TotemPopCounter", "Minecraft 1.8.9 has no totems of undying; they were added in Minecraft 1.11.");
         for (String voice : new String[] {"Voice Chat", "Voice Chat Group"})
             ModuleSupport.registerUnavailable(voice, "Simple Voice Chat does not exist for Minecraft 1.8.9.");
         for (String[] module : LIMITED) ModuleSupport.registerBuiltInLimited(module[0], module[1]);

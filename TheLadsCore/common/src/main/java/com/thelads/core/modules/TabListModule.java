@@ -33,49 +33,61 @@ public final class TabListModule extends Module {
         addOption(new ColorOption("Global Tab Background", false, 0x80000000));
         addOption(new ColorOption("Footer Color", false, 0x80000000));
         addOption(new ColorOption("Player Row Color", false, 0x20ffffff));
-        addOption(new BoolOption("Self First", false));
-        addOption(new BoolOption("Animated Open/Close", false));
-        addOption(new DropdownOption("Key Mode", 0, "Hold", "Toggle"));
+        selfFirstOption = addOption(new BoolOption("Self First", false));
+        animatedOption = addOption(new BoolOption("Animated Open/Close", false));
+        keyModeOption = addOption(new DropdownOption("Key Mode", 0, "Hold", "Toggle"));
         setEnabled(true);
     }
 
-    /** Formats player count into the format string (e.g. "Players: {count}"); defaults to "Players: {count}". */
-    public static boolean isSelfFirst() {
-        Module m = ModuleManager.getInstance().getModule("TabList");
-        if (m == null || !m.isEnabled()) return false;
-        Option o = m.getOption("Self First");
-        return (o instanceof BoolOption bo) ? bo.get() : false;
+    // OneClient VanillaHUD's tab list extras, read by each version's tab list hooks.
+    private final BoolOption selfFirstOption, animatedOption;
+    private final DropdownOption keyModeOption;
+    /** Cached each tick: your own row first, the list opens and closes animated, the key toggles it. */
+    public boolean selfFirst, animated, toggle;
+    private boolean keyWasDown, toggled;
+    private float openness;
+    private long lastFrame;
+
+    public void refresh() {
+        boolean on = isEnabled();
+        selfFirst = on && selfFirstOption.get();
+        animated = on && animatedOption.get();
+        toggle = on && keyModeOption.getIndex() == 1;
+        if (!toggle) toggled = false;
     }
 
-    public static boolean isAnimatedOpenClose() {
-        Module m = ModuleManager.getInstance().getModule("TabList");
-        if (m == null || !m.isEnabled()) return false;
-        Option o = m.getOption("Animated Open/Close");
-        return (o instanceof BoolOption bo) ? bo.get() : false;
+    /** Whether the list is wanted open this frame: while the key is held, or (Key Mode Toggle) from one press of the key to the next. */
+    public boolean wanted(boolean keyDown) {
+        if (keyDown && !keyWasDown) toggled = !toggled;
+        keyWasDown = keyDown;
+        return toggle ? toggled : keyDown;
     }
 
-    public static boolean isToggleMode() {
-        Module m = ModuleManager.getInstance().getModule("TabList");
-        if (m == null || !m.isEnabled()) return false;
-        Option o = m.getOption("Key Mode");
-        return (o instanceof DropdownOption dop) && dop.getIndex() == 1;
+    /** How open the list was drawn last (0 to 1): the scale its render uses. */
+    public float openness() {
+        return openness;
     }
 
-    public static java.util.List<String> sortSelfFirst(java.util.List<String> playerList, String selfName) {
-        if (!isSelfFirst() || selfName == null || playerList == null || playerList.isEmpty()) return playerList;
-        java.util.List<String> sorted = new java.util.ArrayList<>(playerList);
-        for (int i = 0; i < sorted.size(); i++) {
-            if (selfName.equalsIgnoreCase(sorted.get(i))) {
-                if (i > 0) {
-                    String self = sorted.remove(i);
-                    sorted.add(0, self);
-                }
-                break;
-            }
+    /**
+     * The tab key's state as everything sees it (each version's KeyMapping.isDown hook, only with Toggle or Animated Open/Close on):
+     * wanted open, or still closing.
+     */
+    public boolean tabKey(boolean physicallyDown, long nanos) {
+        return openness(wanted(physicallyDown), nanos) > 0;
+    }
+
+    /** How open the list is drawn this frame (0 to 1, 150 ms each way with Animated Open/Close); it is drawn while above 0. */
+    public float openness(boolean wanted, long nanos) {
+        if (!animated) {
+            lastFrame = 0;
+            return openness = wanted ? 1 : 0;
         }
-        return sorted;
+        float step = lastFrame == 0 ? 0 : Math.min(nanos - lastFrame, 50_000_000L) / 150e6f;
+        lastFrame = nanos;
+        return openness = wanted ? Math.min(1, openness + step) : Math.max(0, openness - step);
     }
 
+    /** Formats player count into the format string (e.g. "Players: {count}"); defaults to "Players: {count}". */
     public static String formatPlayerCount(String format, int count) {
         String template = (format == null || format.isEmpty()) ? "Players: {count}" : format;
         return template.replace("{count}", String.valueOf(count));

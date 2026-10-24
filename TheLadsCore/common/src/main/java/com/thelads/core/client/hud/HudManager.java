@@ -99,9 +99,9 @@ public class HudManager {
         add(new PlayerCounterHudElement(), "PlayerCounter");
         add(new TotemPopHudElement(), "TotemPopCounter");
         add(new BlockInfoHudElement(), "BlockInfo");
-        add(new TierTaggerHudElement(), "TierTagger");
         add(new CustomTextHudElement(), "CustomText");
         add(new CustomShapeHudElement(), "CustomShape");
+        add(new CustomImageHudElement(), HudExtras.CUSTOM_IMAGE);
         add(new PlayerHeadHudElement(), "PlayerHead");
         add(new BlockAboveHudElement(), "BlockAbove");
         add(new EntityCounterHudElement(), "EntityCounter");

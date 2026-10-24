@@ -1,57 +1,50 @@
 package com.thelads.core.client.hud;
 
-import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.bridge.LadsGraphics;
-import com.thelads.core.config.HudSettings;
+import java.util.Locale;
 
-/**
- * Lunar & Feather parity Horse Stats HUD element.
- * Displays jump height, speed, and health of horses.
- * GATED: Attribute info advantage.
- */
-public class HorseStatsHudElement extends HudElement {
-    public static final String MODULE_NAME = "HorseStats";
+/** Horse Stats: jump height, speed and health of the horse you ride or look at (HudExtras.horse*, written by each version's tick). */
+public class HorseStatsHudElement extends TextHudElement {
+    private String text = "";
+    private float jump = -1, speed = -1, health = -1, max = -1;
+    private int options = -1;
 
     public HorseStatsHudElement() {
-        useOrganizedDefaults();
+        super(70);
     }
 
     @Override
-    public void prepareRender(LadsGraphics graphics, boolean editor) {
-        width = 110;
-        height = 34;
-    }
-
-    @Override
-    public void render(LadsGraphics graphics) {
-        if (graphics == null) return;
-        LadsGameBridge bridge = LadsGameBridge.get();
-        LadsGameBridge.HorseStatsInfo stats = bridge != null ? bridge.getRidingHorseStats() : null;
-
-        float jump, speed, hp, maxHp;
-        if (stats != null) {
-            jump = stats.jumpHeightBlocks();
-            speed = stats.speedMps();
-            hp = stats.health();
-            maxHp = stats.maxHealth();
-        } else {
-            // Editor / preview default
-            jump = 3.6f;
-            speed = 11.4f;
-            hp = 26.0f;
-            maxHp = 26.0f;
+    protected String updateText(LadsGraphics g) {
+        boolean shown = HudExtras.horseShown;
+        if (!shown && !editor) return "";
+        float j = shown ? HudExtras.horseJump : 3.6f, s = shown ? HudExtras.horseSpeed : 11.4f;
+        float h = shown ? HudExtras.horseHealth : 26, m = shown ? HudExtras.horseMax : 26;
+        int o = (optBool("Show Jump", true) ? 1 : 0) | (optBool("Show Speed", true) ? 2 : 0) | (optBool("Show Health", true) ? 4 : 0)
+            | optCycle("Speed Unit", 0) << 3;
+        if (j != jump || s != speed || h != health || m != max || o != options) {
+            text = text(j, s, h, m, o);
+            jump = j;
+            speed = s;
+            health = h;
+            max = m;
+            options = o;
         }
+        return text;
+    }
 
-        drawBackground(graphics);
-
-        boolean shadow = HudSettings.getInstance().isTextShadow();
-        int textCol = resolveColor();
-        graphics.drawText("Horse Stats", x + 4, y + 3, textCol, shadow);
-
-        String hpText = String.format(java.util.Locale.ROOT, "HP: %.0f/%.0f", hp, maxHp);
-        graphics.drawText(hpText, x + 4, y + 13, 0xFFFF5555, shadow);
-
-        String statsLine = String.format(java.util.Locale.ROOT, "J: %.1fb  S: %.1fm/s", jump, speed);
-        graphics.drawText(statsLine, x + 4, y + 23, 0xFFFFAA00, shadow);
+    /** One line per shown stat; options: bit 0 jump, 1 speed, 2 health, bits 3+ the speed unit (0 blocks/s, 1 km/h). */
+    static String text(float jump, float speed, float health, float max, int options) {
+        StringBuilder out = new StringBuilder();
+        if ((options & 1) != 0) out.append(String.format(Locale.ROOT, "Jump: %.2f blocks", jump));
+        if ((options & 2) != 0) {
+            if (out.length() > 0) out.append('\n');
+            out.append(options >> 3 == 1 ? String.format(Locale.ROOT, "Speed: %.1f km/h", speed * 3.6f)
+                : String.format(Locale.ROOT, "Speed: %.2f blocks/s", speed));
+        }
+        if ((options & 4) != 0) {
+            if (out.length() > 0) out.append('\n');
+            out.append(String.format(Locale.ROOT, "Health: %.1f/%.0f", health / 2, max / 2)).append(DamageNumbers.HEART);
+        }
+        return out.toString();
     }
 }

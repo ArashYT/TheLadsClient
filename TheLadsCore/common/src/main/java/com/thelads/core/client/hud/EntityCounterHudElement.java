@@ -1,25 +1,23 @@
 package com.thelads.core.client.hud;
 
-import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.bridge.LadsGraphics;
 
-/**
- * Small HUD widget: displays count of loaded/visible entities.
- * Visual-only.
- */
+/** Entity Counter (OneClient's EvergreenHUD): the entities loaded around you, the count F3 shows (HudExtras.entityCount). */
 public class EntityCounterHudElement extends TextHudElement {
-    public static final String MODULE_NAME = "EntityCounter";
+    private String text = "";
+    private int count = -1;
 
     public EntityCounterHudElement() {
-        super(70);
-        useOrganizedDefaults();
+        super(60);
     }
 
     @Override
-    protected String updateText(LadsGraphics graphics) {
-        LadsGameBridge bridge = LadsGameBridge.get();
-        int count = bridge != null ? bridge.getLoadedEntityCount() : 0;
-        if (count == 0 && editor) count = 28;
-        return "Entities: " + count;
+    protected String updateText(LadsGraphics g) {
+        int c = editor && HudExtras.entityCount == 0 ? 28 : HudExtras.entityCount;
+        if (c != count) {
+            text = "Entities: " + c;
+            count = c;
+        }
+        return text;
     }
 }

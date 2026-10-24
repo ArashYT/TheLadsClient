@@ -1,6 +1,7 @@
 package com.thelads.core.v1_20_1.hud;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.thelads.core.modules.RaisedModule;
 import com.thelads.core.v1_20_1.feature.NativeAutohide1201;
 import net.minecraft.client.gui.GuiGraphics;
 
@@ -47,7 +48,12 @@ public final class HudParts1201 {
 
     /** Draws a part of the hotbar group (lifted by Raised, faded by Auto Hide); skipped while Auto Hide has it fully hidden. */
     public static void group(GuiGraphics graphics, Runnable part) {
-        Scope scope = begin(graphics, true);
+        group(graphics, -1, part);
+    }
+
+    /** {@link #group}, with Raised's own move and scale of the part {@code piece} (RaisedModule.HOTBAR to MOUNT, -1 none). */
+    public static void group(GuiGraphics graphics, int piece, Runnable part) {
+        Scope scope = begin(graphics, true, piece);
         if (scope == null) return;
         try {
             part.run();
@@ -68,15 +74,20 @@ public final class HudParts1201 {
 
     /** Starts a part; null (nothing was changed) when it is fully hidden and must not be drawn. */
     public static Scope begin(GuiGraphics graphics, boolean fades) {
+        return begin(graphics, fades, -1);
+    }
+
+    public static Scope begin(GuiGraphics graphics, boolean fades, int piece) {
         float opacity = fades && Hud1201.bool("Autohide", "Fade vanilla HUD", true) ? NativeAutohide1201.update() : 1;
         if (opacity <= 0) return null;
         int lift = Raised1201.hotbar();
-        boolean faded = opacity < 1;
-        if (lift == 0 && !faded) return Scope.NOOP;
+        boolean faded = opacity < 1, moved = piece >= 0 && RaisedModule.get() != null && RaisedModule.get().moved[piece];
+        if (lift == 0 && !faded && !moved) return Scope.NOOP;
         PoseStack pose = graphics.pose();
         int depth = depth(pose);
         pose.pushPose();
         if (lift != 0) pose.translate(0, -lift, 0);
+        if (moved) move(pose, piece, graphics.guiWidth(), graphics.guiHeight());
         float outer = NativeAutohide1201.scopeOpacity;
         if (faded) {
             NativeAutohide1201.scopeOpacity = opacity;
@@ -84,6 +95,31 @@ public final class HudParts1201 {
         }
         var lifted = pose.last().pose();
         return new Scope(pose, depth, outer, faded, lifted.m30(), lifted.m31(), lifted.m32());
+    }
+
+    /** Raised's own move and scale of one vanilla part (OneClient's VanillaHUD), around the part's pivot on a w x h GUI. */
+    public static void move(PoseStack pose, int piece, int w, int h) {
+        RaisedModule raised = RaisedModule.get();
+        float px = RaisedModule.pivotX(piece, w), py = RaisedModule.pivotY(piece, h), scale = raised.scale[piece];
+        pose.translate(px + raised.dx[piece], py + raised.dy[piece], 0);
+        pose.scale(scale, scale, 1);
+        pose.translate(-px, -py, 0);
+    }
+
+    /**
+     * Starts a scope that only moves and scales (Title Tweaker's title under Forge, whose title overlay ForgeOverlays1201 brackets):
+     * (px, py) moves by (dx, dy) and everything scales around it. NOOP when nothing changes.
+     */
+    public static Scope moved(GuiGraphics graphics, float px, float py, float dx, float dy, float scale) {
+        if (dx == 0 && dy == 0 && scale == 1) return Scope.NOOP;
+        PoseStack pose = graphics.pose();
+        int depth = depth(pose);
+        pose.pushPose();
+        pose.translate(px + dx, py + dy, 0);
+        pose.scale(scale, scale, 1);
+        pose.translate(-px, -py, 0);
+        var moved = pose.last().pose();
+        return new Scope(pose, depth, NativeAutohide1201.scopeOpacity, false, moved.m30(), moved.m31(), moved.m32());
     }
 
     public static void end(GuiGraphics graphics, Scope scope) {

@@ -1,62 +1,41 @@
 package com.thelads.core.modules;
 
-import com.thelads.core.config.*;
+import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.Module;
+import com.thelads.core.config.SliderOption;
 
 /**
- * Feather-parity Toast Control module.
- * Suppresses or repositions recipe unlocks, tutorial, and advancement toast alerts.
- * Visual-only.
+ * Toast Control (Feather): recipe, tutorial and advancement pop-ups (on 1.8.9 the achievement pop-ups and the "Open your inventory"
+ * hint) hidden or moved. Visual only. The adapters read what {@link #refresh} cached.
  */
-public class ToastControlModule extends Module {
+public final class ToastControlModule extends Module {
     public static final String NAME = "ToastControl";
+    public static final int RECIPE = 0, TUTORIAL = 1, ADVANCEMENT = 2, OTHER = 3;
+
+    public final BoolOption recipes = addOption(new BoolOption("Hide Recipe Toasts", true));
+    public final BoolOption tutorials = addOption(new BoolOption("Hide Tutorial Toasts", true));
+    public final BoolOption advancements = addOption(new BoolOption("Hide Advancement Toasts", false));
+    public final BoolOption others = addOption(new BoolOption("Hide Other Toasts", false));
+    public final SliderOption x = addOption(new SliderOption("X Offset", 0, -500, 500, 1));
+    public final SliderOption y = addOption(new SliderOption("Y Offset", 0, -500, 500, 1));
+
+    /** Cached each tick: which kinds are hidden (bit per kind; 0 while off) and the offset in GUI pixels. */
+    public int hiddenKinds;
+    public int dx, dy;
 
     public ToastControlModule() {
-        super(NAME, "Disable or reposition recipe, tutorial and advancement pop-up toast notifications.");
-        addOption(new BoolOption("Hide Recipe Toasts", true));
-        addOption(new BoolOption("Hide Tutorial Toasts", true));
-        addOption(new BoolOption("Hide Advancement Toasts", false));
-        addOption(new BoolOption("Hide All Toasts", false));
-        addOption(new DropdownOption("Position", 0, "Top Right", "Top Left", "Bottom Right", "Bottom Left"));
-        addOption(new SliderOption("X Offset", 0, -300, 300, 1));
-        addOption(new SliderOption("Y Offset", 0, -300, 300, 1));
-        setEnabled(false);
+        super(NAME, "Hide or move the recipe, tutorial and advancement pop-ups.");
     }
 
-    public static boolean shouldHide(String toastType) {
-        Module m = ModuleManager.getInstance().getModule(NAME);
-        if (m == null || !m.isEnabled()) return false;
-        Option all = m.getOption("Hide All Toasts");
-        if (all instanceof BoolOption bo && bo.get()) return true;
-
-        if (toastType == null) return false;
-        String lower = toastType.toLowerCase(java.util.Locale.ROOT);
-        if (lower.contains("recipe")) {
-            Option o = m.getOption("Hide Recipe Toasts");
-            return (o instanceof BoolOption bo) && bo.get();
-        }
-        if (lower.contains("tutorial")) {
-            Option o = m.getOption("Hide Tutorial Toasts");
-            return (o instanceof BoolOption bo) && bo.get();
-        }
-        if (lower.contains("advancement") || lower.contains("achievement")) {
-            Option o = m.getOption("Hide Advancement Toasts");
-            return (o instanceof BoolOption bo) && bo.get();
-        }
-        return false;
+    public void refresh() {
+        boolean on = isEnabled();
+        hiddenKinds = !on ? 0 : (recipes.get() ? 1 << RECIPE : 0) | (tutorials.get() ? 1 << TUTORIAL : 0)
+            | (advancements.get() ? 1 << ADVANCEMENT : 0) | (others.get() ? 1 << OTHER : 0);
+        dx = on ? x.getIntValue() : 0;
+        dy = on ? y.getIntValue() : 0;
     }
 
-    public static int getXOffset() {
-        Module m = ModuleManager.getInstance().getModule(NAME);
-        if (m == null || !m.isEnabled()) return 0;
-        Option o = m.getOption("X Offset");
-        return (o instanceof SliderOption so) ? so.getIntValue() : 0;
-    }
-
-    public static int getYOffset() {
-        Module m = ModuleManager.getInstance().getModule(NAME);
-        if (m == null || !m.isEnabled()) return 0;
-        Option o = m.getOption("Y Offset");
-        return (o instanceof SliderOption so) ? so.getIntValue() : 0;
+    public boolean hides(int kind) {
+        return (hiddenKinds & 1 << kind) != 0;
     }
 }

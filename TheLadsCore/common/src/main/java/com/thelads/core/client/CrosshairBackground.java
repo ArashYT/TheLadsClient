@@ -254,21 +254,27 @@ public final class CrosshairBackground {
     /** A picked file (the dialog's, or QA's): its scaled copy, taken by the option on the next preview frame. */
     public static void use(java.nio.file.Path path) {
         try {
-            Picture picture = read(path.toString());
-            if (picture == null) throw new IOException("not a PNG or JPG picture");
-            BufferedImage copy = new BufferedImage(picture.width, picture.height, BufferedImage.TYPE_INT_ARGB);
-            copy.setRGB(0, 0, picture.width, picture.height, picture.argb, 0, picture.width);
-            String name = "crosshair-" + System.currentTimeMillis() + ".png";
-            File file = imageFile(name);
-            Files.createDirectories(file.getParentFile().toPath());
-            if (!ImageIO.write(copy, "png", file)) throw new IOException("could not write " + file);
+            String name = store(path, "crosshair");
             picked = name;
             status = "";
-            LOG.info("Crosshair background: {} ({}x{}) from {}", name, picture.width, picture.height, path.getFileName());
+            LOG.info("Crosshair background: {} from {}", name, path.getFileName());
         } catch (Throwable failure) {
             status = "Can't use that file";
             LOG.warn("Crosshair background: {} unusable", path, failure);
         }
+    }
+
+    /** A scaled PNG copy of a picked picture in the shared folder (imageFile), named prefix-time.png; returns that name. */
+    public static String store(java.nio.file.Path path, String prefix) throws IOException {
+        Picture picture = read(path.toString());
+        if (picture == null) throw new IOException("not a PNG or JPG picture");
+        BufferedImage copy = new BufferedImage(picture.width, picture.height, BufferedImage.TYPE_INT_ARGB);
+        copy.setRGB(0, 0, picture.width, picture.height, picture.argb, 0, picture.width);
+        String name = prefix + "-" + System.currentTimeMillis() + ".png";
+        File file = imageFile(name);
+        Files.createDirectories(file.getParentFile().toPath());
+        if (!ImageIO.write(copy, "png", file)) throw new IOException("could not write " + file);
+        return name;
     }
 
     /** On the game thread: a finished pick becomes the option (saved), and the copy it replaces is deleted. */

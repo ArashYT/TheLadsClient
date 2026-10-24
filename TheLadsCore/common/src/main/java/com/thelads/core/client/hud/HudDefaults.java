@@ -69,9 +69,9 @@ public final class HudDefaults {
             case "PlayerCounter" -> {x=5;y=190;}
             case "TotemPopCounter" -> {x=w-ew-5;y=h/4;}
             case "BlockInfo" -> {x=(w-ew)/2;y=68;}
-            case "TierTagger" -> {x=(w-ew)/2;y=h/2-40;}
             case "CustomText" -> {x=5;y=208;}
             case "CustomShape" -> {x=5;y=226;}
+            case "CustomImage" -> {x=w-ew-5;y=h/2;}
             case "PlayerHead" -> {x=5;y=244;}
             case "BlockAbove" -> {x=(w-ew)/2;y=84;}
             case "EntityCounter" -> {x=5;y=262;}

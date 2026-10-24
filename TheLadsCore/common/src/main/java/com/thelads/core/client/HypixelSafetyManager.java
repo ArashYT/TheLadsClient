@@ -202,19 +202,6 @@ public final class HypixelSafetyManager {
      * which anticheats ban as an AutoRefill cheat (a Minemen.club ban); use-while-mining sends a use packet mid-dig; Hide Foliage's
      * Tall Plants show a player crouching in tall grass. Asked per module every frame: no allocation.
      */
-    public static boolean isGatedHudModule(String moduleName) {
-        if (moduleName == null) return false;
-        return switch (moduleName.toLowerCase(java.util.Locale.ROOT)) {
-            case "damageindicator", "damage indicator",
-                 "horsestats", "horse stats",
-                 "playercounter", "player counter",
-                 "totempopcounter", "totem pop counter", "totem counter",
-                 "blockinfo", "block info", "toolstats", "tool stats",
-                 "tiertagger", "tier tagger" -> true;
-            default -> false;
-        };
-    }
-
     public static boolean isSingleplayerOnlyModule(String moduleName) {
         return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName) || HideFoliage.TALL_GATE.equalsIgnoreCase(moduleName);
     }
@@ -253,7 +240,16 @@ public final class HypixelSafetyManager {
             || com.thelads.core.modules.HitboxesModule.THROUGH_WALLS.equalsIgnoreCase(moduleName) // FreelookModule, FogCustomizerModule.CLEAR_VIEW
             || PvpVisuals.NAMETAG_HEALTH.equalsIgnoreCase(moduleName)
             || "Light Overlay".equalsIgnoreCase(moduleName) || "Loot Beams".equalsIgnoreCase(moduleName) // pvp rows 32-36: info vanilla does not show
-            || "Mob Overlay".equalsIgnoreCase(moduleName) || "Mob Size".equalsIgnoreCase(moduleName);
+            || "Mob Overlay".equalsIgnoreCase(moduleName) || "Mob Size".equalsIgnoreCase(moduleName)
+            || isGatedHud(moduleName);
+    }
+
+    /** HUD widgets that show what vanilla does not: other players' exact health, a horse's hidden stats, a nearby-player radar, totem pops. */
+    private static boolean isGatedHud(String moduleName) {
+        return com.thelads.core.client.hud.HudExtras.DAMAGE_INDICATOR.equalsIgnoreCase(moduleName)
+            || com.thelads.core.client.hud.HudExtras.HORSE.equalsIgnoreCase(moduleName)
+            || com.thelads.core.client.hud.HudExtras.PLAYERS.equalsIgnoreCase(moduleName)
+            || com.thelads.core.client.hud.HudExtras.TOTEMS.equalsIgnoreCase(moduleName);
     }
 
     public static boolean isGatedHypixelModule(String moduleName) {

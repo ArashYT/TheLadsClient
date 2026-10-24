@@ -1,68 +1,31 @@
 package com.thelads.core.client.hud;
 
 import com.thelads.core.client.bridge.LadsGraphics;
-import com.thelads.core.config.HudSettings;
 
-import java.util.HashMap;
-import java.util.Map;
-
-/**
- * Lunar & Feather parity Totem Pop Counter HUD element.
- * Tracks and displays opponent totem of undying pop counts.
- * GATED: Combat advantage.
- */
-public class TotemPopHudElement extends HudElement {
-    public static final String MODULE_NAME = "TotemPopCounter";
-
-    private static final Map<String, Integer> popCounts = new HashMap<>();
-    private static String lastPopPlayer = "";
-    private static long lastPopTime = 0;
-
-    public static synchronized void recordPop(String playerName) {
-        if (playerName == null || playerName.isEmpty()) return;
-        int next = popCounts.getOrDefault(playerName, 0) + 1;
-        popCounts.put(playerName, next);
-        lastPopPlayer = playerName;
-        lastPopTime = System.currentTimeMillis();
-    }
-
-    public static synchronized void resetPlayer(String playerName) {
-        if (playerName != null) popCounts.remove(playerName);
-    }
-
-    public static synchronized void resetAll() {
-        popCounts.clear();
-        lastPopPlayer = "";
-        lastPopTime = 0;
-    }
+/** Totem Pop Counter: each player who used a totem lately and how many (TotemPops), one per line, newest kept for Duration. */
+public class TotemPopHudElement extends TextHudElement {
+    private final StringBuilder out = new StringBuilder();
+    private String text = "";
+    private int stamp = -1;
 
     public TotemPopHudElement() {
-        useOrganizedDefaults();
+        super(70);
     }
 
     @Override
-    public void prepareRender(LadsGraphics graphics, boolean editor) {
-        width = 110;
-        height = 18;
-    }
-
-    @Override
-    public void render(LadsGraphics graphics) {
-        if (graphics == null) return;
-        drawBackground(graphics);
-
-        String display;
-        if (!lastPopPlayer.isEmpty() && (System.currentTimeMillis() - lastPopTime < 6000)) {
-            display = lastPopPlayer + ": " + popCounts.getOrDefault(lastPopPlayer, 1) + " pops";
-        } else {
-            // Preview / idle
-            display = "Totems: Ready";
+    protected String updateText(LadsGraphics g) {
+        int size = TotemPops.size();
+        if (size == 0) return editor ? "Notch: 2 pops\njeb_: 1 pop" : "";
+        if (TotemPops.changes != stamp) { // rebuilt only when a pop changed the list
+            out.setLength(0);
+            for (int i = 0; i < size; i++) {
+                if (i > 0) out.append('\n');
+                int count = TotemPops.count(i);
+                out.append(TotemPops.name(i)).append(": ").append(count).append(count == 1 ? " pop" : " pops");
+            }
+            text = out.toString();
+            stamp = TotemPops.changes;
         }
-
-        boolean shadow = HudSettings.getInstance().isTextShadow();
-        int textCol = resolveColor();
-        int tw = graphics.textWidth(display);
-        if (tw + 8 > width) width = tw + 8;
-        graphics.drawCenteredText(display, x + width / 2, y + 5, textCol, shadow);
+        return text;
     }
 }

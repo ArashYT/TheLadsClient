@@ -1,27 +1,22 @@
 package com.thelads.core.client.hud;
 
-import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.bridge.LadsGraphics;
 
-/**
- * Small HUD widget: displays currently loaded Iris/OptiFine shaderpack.
- * Visual-only.
- */
+/** Shader Pack (OneClient's Shaders Indicator): the shader pack in use (Iris on 1.20.1 and 26.3, OptiFine on 1.8.9), or Off. */
 public class ShaderPackHudElement extends TextHudElement {
-    public static final String MODULE_NAME = "ShaderPack";
+    private String text = "", name;
 
     public ShaderPackHudElement() {
-        super(75);
-        useOrganizedDefaults();
+        super(60);
     }
 
     @Override
-    protected String updateText(LadsGraphics graphics) {
-        LadsGameBridge bridge = LadsGameBridge.get();
-        String pack = bridge != null ? bridge.getActiveShaderPackName() : null;
-        if (pack == null || pack.isEmpty() || pack.equalsIgnoreCase("None")) {
-            pack = editor ? "Complementary" : "Off";
+    protected String updateText(LadsGraphics g) {
+        String n = HudExtras.shaderName;
+        if (!n.equals(name)) {
+            text = "Shaders: " + (n.isEmpty() ? "Off" : n);
+            name = n;
         }
-        return "Shader: " + pack;
+        return text;
     }
 }
