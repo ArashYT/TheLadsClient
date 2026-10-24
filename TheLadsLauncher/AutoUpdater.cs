@@ -165,7 +165,7 @@ public sealed class AutoUpdater
                 if (value)
                 {
                     _downloadScope?.Lower(ProcessPriorityClass.BelowNormal);
-                    _keepUpdateExeHigh?.Cancel();
+                    StopKeepingUpdateExeHigh();
                 }
             }
         }
@@ -173,6 +173,12 @@ public sealed class AutoUpdater
     private bool _askBeforeInstall;
     private ProcessPriority.ScopeHandle? _downloadScope;
     private CancellationTokenSource? _keepUpdateExeHigh; // set while the High startup download runs
+    private void StopKeepingUpdateExeHigh() // under _priorityLock
+    {
+        _keepUpdateExeHigh?.Cancel();
+        _keepUpdateExeHigh?.Dispose();
+        _keepUpdateExeHigh = null;
+    }
     private readonly object _priorityLock = new();
     /// <summary>Raised with the version whenever a verified update waits for the user's click.</summary>
     public event Action<string>? Ready;
@@ -228,7 +234,7 @@ public sealed class AutoUpdater
                     if (!_askBeforeInstall) _ = _backend.KeepUpdateExeHighAsync((_keepUpdateExeHigh = new()).Token);
                 }
                 try { if (!await _backend.DownloadLatestAsync(report)) { report(""); return; } }
-                finally { lock (_priorityLock) { _downloadScope?.Dispose(); _downloadScope = null; _keepUpdateExeHigh?.Cancel(); _keepUpdateExeHigh = null; } }
+                finally { lock (_priorityLock) { _downloadScope?.Dispose(); _downloadScope = null; StopKeepingUpdateExeHigh(); } }
             }
             if (AskBeforeInstall)
             {

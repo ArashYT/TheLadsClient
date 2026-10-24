@@ -107,3 +107,32 @@ public static class UpdateBridge
         catch (Exception) { } // logging never stops an update
     }
 }
+
+/// <summary>When the new launcher tells the bridge it is on screen: never before its first frame is out, which the bridge's fade relies on.</summary>
+public sealed class LauncherShownSignal(Action signal)
+{
+    private bool _framePresented;
+
+    /// <summary>The first frame is on screen (the second animation frame after Opened).</summary>
+    public void FramePresented()
+    {
+        _framePresented = true;
+        signal();
+    }
+
+    /// <summary>Some time after Opened: signals anyway when no frame came (a stalled renderer), so the bridge doesn't sit out its grace.</summary>
+    /// <returns>Whether it had to.</returns>
+    public bool Fallback()
+    {
+        if (_framePresented) return false;
+        FramePresented();
+        return true;
+    }
+
+    /// <summary>The startup screen closed. Still running after a startup install means the install failed, so this dismisses
+    /// the bridge that install started; before the first frame it waits for <see cref="FramePresented"/>, which signals anyway.</summary>
+    public void StartupFinished()
+    {
+        if (_framePresented) signal();
+    }
+}

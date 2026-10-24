@@ -104,7 +104,11 @@ namespace TheLadsLauncher.UpdateBridge
             double now = _clock.Elapsed.TotalMilliseconds;
             if (_fadeStartMs >= 0)
             {
-                if (now < _fadeStartMs) return;   // still holding: fully opaque
+                if (now < _fadeStartMs)   // still holding fully opaque; the shine keeps moving
+                {
+                    if (!_reducedMotion) Invalidate(_bar);
+                    return;
+                }
                 double opacity = 1 - (now - _fadeStartMs) / FadeMs;
                 if (opacity <= 0) Close();
                 else Opacity = opacity;
