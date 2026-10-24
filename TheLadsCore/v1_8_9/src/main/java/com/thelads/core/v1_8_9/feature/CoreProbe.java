@@ -830,6 +830,13 @@ public final class CoreProbe {
         expected.add(com.thelads.core.modules.CustomSkyModule.NAME);
         boolean chunkAnimator = com.thelads.core.v1_8_9.pvp.ChunkAnimator189.builtIn();
         if (chunkAnimator) expected.add(com.thelads.core.modules.ChunkAnimatorModule.NAME);
+        // The hud2 lane (HudExtras189: widgets, Title Tweaker, Vanilla HUD and Toast Control; Media Player only on Windows) and the chat2
+        // lane (ChatTweaks189's long commands and Auto Text, and the inventory tweaks).
+        expected.addAll(Arrays.asList(com.thelads.core.v1_8_9.hudextras.HudExtras189.MODULES));
+        if (!com.thelads.core.client.hud.MediaSession.SUPPORTED) expected.remove(com.thelads.core.client.hud.HudExtras.MEDIA);
+        for (String[] module : com.thelads.core.v1_8_9.hudextras.HudExtras189.LIMITED) expected.add(module[0]);
+        expected.addAll(Arrays.asList(ChatTweaks189.BUILT_IN));
+        expected.addAll(Arrays.asList(com.thelads.core.client.InventoryTweaks.MODULES));
         java.util.Set<String> missing = new java.util.TreeSet<>(expected), extra = new java.util.TreeSet<>(builtInNames);
         missing.removeAll(builtInNames);
         extra.removeAll(expected);
@@ -844,6 +851,8 @@ public final class CoreProbe {
         for (String[] module : com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED) expectedUnavailable.add(module[0]);
         if (!optiFine) expectedUnavailable.add(com.thelads.core.modules.DynamicLightsModule.NAME);
         if (!chunkAnimator) expectedUnavailable.add(com.thelads.core.modules.ChunkAnimatorModule.NAME);
+        for (String[] module : com.thelads.core.v1_8_9.hudextras.HudExtras189.UNAVAILABLE) expectedUnavailable.add(module[0]);
+        if (!com.thelads.core.client.hud.MediaSession.SUPPORTED) expectedUnavailable.add(com.thelads.core.client.hud.HudExtras.MEDIA);
         // No status on 1.8.9 (the launcher shows "not connected to this game version yet"): OptiFine189 is a hidden module (its settings
         // live in OptiFine's own screens); Cosmetics and Cloud Height had none before 1.9.19 either. Any other module must register one.
         java.util.Set<String> expectedPending = new java.util.TreeSet<>(Arrays.asList(com.thelads.core.modules.OptiFine189Module.NAME,

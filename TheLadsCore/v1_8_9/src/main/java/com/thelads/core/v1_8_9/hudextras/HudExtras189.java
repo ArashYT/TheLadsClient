@@ -45,9 +45,20 @@ import org.lwjgl.opengl.GL11;
  * no subtitles, and draws no effect icons on the HUD.
  */
 public final class HudExtras189 {
-    static final String[] MODULES = {HudExtras.DAMAGE_INDICATOR, HudExtras.JUMP_RESET, HudExtras.MEDIA, HudExtras.HORSE, HudExtras.PLAYERS,
+    /** Built in (Media Player unavailable off Windows); LIMITED and UNAVAILABLE as named. CoreProbe's catalog check reads all three. */
+    public static final String[] MODULES = {HudExtras.DAMAGE_INDICATOR, HudExtras.JUMP_RESET, HudExtras.MEDIA, HudExtras.HORSE, HudExtras.PLAYERS,
         HudExtras.BLOCK_INFO, HudExtras.CUSTOM_TEXT, HudExtras.CUSTOM_SHAPE, HudExtras.CUSTOM_IMAGE, HudExtras.HEAD, HudExtras.ABOVE,
         HudExtras.ENTITIES, HudExtras.SHADER, HudExtras.LORE, TitleTweakerModule.NAME};
+    /** Built in, with what Minecraft 1.8.9 lacks for some of their options. */
+    public static final String[][] LIMITED = {
+        {com.thelads.core.modules.VanillaHudModule.NAME,
+            "Minecraft 1.8.9 draws no effect icons on the HUD, so Hide Effect Icons and their offsets have nothing to act on."},
+        {com.thelads.core.modules.ToastControlModule.NAME,
+            "Minecraft 1.8.9's pop-ups are achievements (Advancement) and the \"Open your inventory\" hint (Tutorial); it has no recipe toasts."}};
+    /** Unavailable: Minecraft 1.8.9 has nothing for them. */
+    public static final String[][] UNAVAILABLE = {
+        {HudExtras.TOTEMS, "Minecraft 1.8.9 has no totems of undying; they were added in Minecraft 1.11."},
+        {com.thelads.core.modules.SubtitlesModule.NAME, "Minecraft 1.8.9 has no subtitles; they were added in Minecraft 1.9."}};
     private final BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
     private int lastHurt, targetEntity = -1, shaderTicks;
     private IBlockState blockState, aboveState;
@@ -60,12 +71,8 @@ public final class HudExtras189 {
 
     public static void register() {
         ModuleSupport.registerBuiltIn(MODULES);
-        ModuleSupport.registerBuiltInLimited(com.thelads.core.modules.VanillaHudModule.NAME,
-            "Minecraft 1.8.9 draws no effect icons on the HUD, so Hide Effect Icons and their offsets have nothing to act on.");
-        ModuleSupport.registerBuiltInLimited(com.thelads.core.modules.ToastControlModule.NAME,
-            "Minecraft 1.8.9's pop-ups are achievements (Advancement) and the \"Open your inventory\" hint (Tutorial); it has no recipe toasts.");
-        ModuleSupport.registerUnavailable(HudExtras.TOTEMS, "Minecraft 1.8.9 has no totems of undying; they were added in Minecraft 1.11.");
-        ModuleSupport.registerUnavailable(com.thelads.core.modules.SubtitlesModule.NAME, "Minecraft 1.8.9 has no subtitles; they were added in Minecraft 1.9.");
+        for (String[] module : LIMITED) ModuleSupport.registerBuiltInLimited(module[0], module[1]);
+        for (String[] module : UNAVAILABLE) ModuleSupport.registerUnavailable(module[0], module[1]);
         if (!MediaSession.SUPPORTED) ModuleSupport.registerUnavailable(HudExtras.MEDIA, "Reads Windows' media controls; this computer is not on Windows.");
         MinecraftForge.EVENT_BUS.register(new HudExtras189());
     }

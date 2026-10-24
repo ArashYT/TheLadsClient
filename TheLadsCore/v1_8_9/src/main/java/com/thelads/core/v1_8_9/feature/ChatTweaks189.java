@@ -78,6 +78,9 @@ public final class ChatTweaks189 {
         boolean lads$overSearch(int x, int y);
     }
 
+    /** The modules this class makes built in, with InventoryTweaks.MODULES (CoreProbe's catalog check reads them too). */
+    public static final String[] BUILT_IN = {ChatTweaks.LONG_COMMANDS, AutoTextModule.NAME};
+
     private ChatTweaks189() {}
 
     public static void register() {
@@ -85,7 +88,7 @@ public final class ChatTweaks189 {
         ClientRegistry.registerKeyBinding(TOGGLE);
         ClientRegistry.registerKeyBinding(LOCK);
         for (KeyBinding key : AUTO_TEXT) ClientRegistry.registerKeyBinding(key);
-        ModuleSupport.registerBuiltIn(ChatTweaks.LONG_COMMANDS, AutoTextModule.NAME);
+        ModuleSupport.registerBuiltIn(BUILT_IN);
         ModuleSupport.registerBuiltIn(InventoryTweaks.MODULES);
         Module chat = ModuleManager.getInstance().getModule("Chat");
         bind(chat, ChatTweaks.PEEK_KEY, PEEK);
