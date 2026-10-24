@@ -23,13 +23,17 @@ public final class HudScale {
     public static int of(LadsGraphics g) {
         int vanilla = g.guiScale(), chosen = HudSettings.getInstance().getHudScale();
         if (vanilla <= 0 || chosen <= 0) return vanilla;
-        return Math.min(chosen, max(g.getScaledWidth() * vanilla, g.getScaledHeight() * vanilla));
+        double exact = g.exactGuiScale(); // GUI Scale may be fractional: the window in pixels as it really is
+        return Math.min(chosen, max((int) Math.round(g.getScaledWidth() * exact), (int) Math.round(g.getScaledHeight() * exact)));
     }
 
     /** The graphics in Lads HUD units, or itself when the two scales are the same. Drawing passes straight through. */
     public static LadsGraphics units(LadsGraphics g) {
         int vanilla = g.guiScale(), lads = of(g);
-        return vanilla <= 0 || lads <= 0 || lads == vanilla ? g : new Units(g, vanilla / (double) lads, lads);
+        // Auto draws at vanilla's scale, fractional (GUI Scale) or not; a fixed one is relative to the exact scale.
+        if (vanilla <= 0 || lads <= 0 || HudSettings.getInstance().getHudScale() <= 0) return g;
+        double exact = g.exactGuiScale();
+        return lads == exact ? g : new Units(g, exact / lads, lads);
     }
 
     private static final class Units implements LadsGraphics {

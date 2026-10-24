@@ -68,9 +68,9 @@ public abstract class GuiSlotMixin implements SmoothScroll189.Target {
     private void ladsScissorStart(int p_148120_1_, int p_148120_2_, int mouseX, int mouseY, CallbackInfo ci) {
         if ((Object) this instanceof net.minecraft.client.gui.GuiResourcePackList && com.thelads.core.client.pack.PackMenuSettings.isTransparent()) {
             net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
-            int scale = new net.minecraft.client.gui.ScaledResolution(mc).getScaleFactor();
+            double scale = com.thelads.core.v1_8_9.qol.Qol189.scale(new net.minecraft.client.gui.ScaledResolution(mc)); // GUI Scale may be fractional
             org.lwjgl.opengl.GL11.glEnable(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST);
-            org.lwjgl.opengl.GL11.glScissor(left * scale, (mc.displayHeight - bottom * scale), (right - left) * scale, (bottom - top) * scale);
+            org.lwjgl.opengl.GL11.glScissor((int) (left * scale), (mc.displayHeight - (int) (bottom * scale)), (int) ((right - left) * scale), (int) ((bottom - top) * scale));
         }
     }
 

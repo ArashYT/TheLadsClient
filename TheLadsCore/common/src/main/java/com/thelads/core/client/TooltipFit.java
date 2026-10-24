@@ -17,9 +17,9 @@ public final class TooltipFit {
     private TooltipFit() {}
 
     /** The scale (1: as is) for a tooltip whose text box is {@code width} x {@code height} on a screen of that GUI size. */
-    public static float scale(int width, int height, int screenWidth, int screenHeight, int guiScale) {
+    public static float scale(int width, int height, int screenWidth, int screenHeight, double guiScale) {
         float fit = Math.min(1F, Math.min(screenWidth / (float) (width + PAD), screenHeight / (float) (height + PAD)));
-        last = fit >= 1F ? 1F : Math.max(fit, Math.max(MIN, 1F / Math.max(1, guiScale)));
+        last = fit >= 1F ? 1F : Math.max(fit, Math.max(MIN, (float) (1 / Math.max(1, guiScale))));
         return last;
     }
 }

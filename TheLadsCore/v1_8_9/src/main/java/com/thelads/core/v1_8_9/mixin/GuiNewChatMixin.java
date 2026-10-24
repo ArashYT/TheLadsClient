@@ -194,7 +194,9 @@ public abstract class GuiNewChatMixin implements Chat189.History, ChatTweaks189.
     /** Raised moves chat up (Raised189, Forge's chat event); the line under the pointer is that much lower in screen pixels. */
     @ModifyVariable(method = "getChatComponent", at = @At("HEAD"), argsOnly = true, ordinal = 1, require = 1)
     private int ladsRaisedChat(int mouseY) {
-        return mouseY - com.thelads.core.v1_8_9.feature.Raised189.chatLift() * com.thelads.core.v1_8_9.feature.ResolutionCache189.get(net.minecraft.client.Minecraft.getMinecraft()).getScaleFactor();
+        net.minecraft.client.gui.ScaledResolution resolution = com.thelads.core.v1_8_9.feature.ResolutionCache189.get(net.minecraft.client.Minecraft.getMinecraft());
+        // GUI Scale may be fractional: the lift in exact pixels, then the y as the whole-scale division below expects it (Qol189.pixels).
+        return com.thelads.core.v1_8_9.qol.Qol189.pixels(mouseY - (int) Math.round(com.thelads.core.v1_8_9.feature.Raised189.chatLift() * com.thelads.core.v1_8_9.qol.Qol189.scale(resolution)), resolution);
     }
 
     @Inject(method = "setChatLine", at = @At("HEAD"), require = 1)

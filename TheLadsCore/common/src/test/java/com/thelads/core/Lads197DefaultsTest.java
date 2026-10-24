@@ -39,7 +39,9 @@ class Lads197DefaultsTest {
         com.thelads.core.client.pack.PackMenuSettings.MODULE_NAME, "Scoreboard", "ShulkerBoxUtils", "SignalLoss", "SkinLayers",
         "SmoothHotbar", com.thelads.core.modules.StackRefillModule.NAME, com.thelads.core.modules.SurvivalTweaksModule.NAME, "TabList", "Threads", "Title Scale", "TNT Timer",
         "Toggle Sprint & Sneak", "VerticalBobbing", "Render Tweaks", "Overlays", "Totem Animation", "Voice Chat", "Voice Chat Group", com.thelads.core.modules.WavyCapesModule.NAME,
-        "Zoom", com.thelads.core.client.ServerListDrag.NAME
+        "Zoom", com.thelads.core.client.ServerListDrag.NAME,
+        com.thelads.core.client.TooltipScroll.NAME, com.thelads.core.client.CrashCatcher.NAME, com.thelads.core.client.QuickReconnect.NAME,
+        com.thelads.core.client.KeepCursor.NAME, com.thelads.core.client.SoundVolumes.NAME
     );
 
     @Test

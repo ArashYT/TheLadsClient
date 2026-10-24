@@ -118,6 +118,7 @@ final class RecordingGraphics implements LadsGraphics {
     @Override public int getScaledHeight() { return target.getScaledHeight(); }
     @Override public int hotbarLift() { return target.hotbarLift(); }
     @Override public int guiScale() { return target.guiScale(); }
+    @Override public double exactGuiScale() { return target.exactGuiScale(); }
     @Override public double hudUnit() { return target.hudUnit(); }
     @Override public LadsGameBridge getGame() { return target.getGame(); }
 }

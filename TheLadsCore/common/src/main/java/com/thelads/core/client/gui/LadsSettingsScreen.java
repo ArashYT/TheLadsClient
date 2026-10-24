@@ -2026,10 +2026,18 @@ public final class LadsSettingsScreen {
     private void changed(Module m) {
         if (m != null) m.touch(); dirty = true; filterDirty = true; persist();
     }
+    /** Sound Volumes has a slider per kind of sound: searching "rain" finds it. */
+    private static boolean soundMatch(Module m, String query) {
+        return !query.isEmpty() && com.thelads.core.client.SoundVolumes.NAME.equals(m.getName())
+            && m.getOptions().stream().anyMatch(o -> o.getName().toLowerCase(Locale.ROOT).contains(query));
+    }
     private void persist() { if (dirty) { ConfigManager.save(); dirty = false; } }
     private List<Option> activeOptions() {
         if (detail == null) return List.of();
+        String query = searchQuery.toLowerCase(Locale.ROOT); // Sound Volumes found through a sound's name: only the matching sliders
+        boolean sounds = soundMatch(detail, query) && !detail.getName().toLowerCase(Locale.ROOT).contains(query);
         return detail.getOptions().stream().filter(o -> !(o instanceof PlayerActionOption))
+            .filter(o -> !sounds || o.getName().toLowerCase(Locale.ROOT).contains(query))
             .filter(o -> !(detail instanceof KillBannerModule banner && banner.pickerOption(o)))
             .filter(o -> !(detail instanceof OldAnimationsModule animations && animations.hidden(o)))
             .filter(o -> !(detail instanceof ToggleSprintModule toggles && toggles.hidden(o)))
@@ -2119,7 +2127,7 @@ public final class LadsSettingsScreen {
                     && m.getCategory() != Module.Category.HYPIXEL && !PERFORMANCE.contains(m.getName()))
             .filter(m -> !enabledOnly || m.isEnabled())
             .filter(m -> !favoritesOnly || m.isFavorite())
-            .filter(m -> (m.getName() + " " + m.getDescription()).toLowerCase(Locale.ROOT).contains(query))
+            .filter(m -> (m.getName() + " " + m.getDescription()).toLowerCase(Locale.ROOT).contains(query) || soundMatch(m, query))
             .sorted(Comparator.comparing(Module::getName, String.CASE_INSENSITIVE_ORDER)).toList();
         ownershipRevision = ModuleSupport.revision(); filterDirty = false; return filtered;
     }

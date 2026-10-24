@@ -37,7 +37,7 @@ abstract class TooltipFitMixin {
             width = Math.max(width, line.getWidth(font));
             height += line.getHeight();
         }
-        float scale = TooltipFit.scale(width, height, guiWidth(), guiHeight(), (int) Minecraft.getInstance().getWindow().getGuiScale());
+        float scale = TooltipFit.scale(width, height, guiWidth(), guiHeight(), Minecraft.getInstance().getWindow().getGuiScale());
         if (scale >= 1F) return;
         ci.cancel();
         pose.pushPose();
