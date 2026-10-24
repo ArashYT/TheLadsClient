@@ -89,13 +89,13 @@ public final class ContainerSorting {
         public boolean equals(Object o) {
             if (this == o) return true;
             if (!(o instanceof SlotItem that)) return false;
-            return slotNumber == that.slotNumber && count == that.count && damage == that.damage
+            return count == that.count && damage == that.damage
                 && locked == that.locked && Objects.equals(itemId, that.itemId);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(slotNumber, itemId, count, damage, locked);
+            return Objects.hash(itemId, count, damage, locked);
         }
     }
 
@@ -147,7 +147,7 @@ public final class ContainerSorting {
             }
 
             if (foundIdx > i) {
-                swaps.add(new int[]{working.get(i).slotNumber, working.get(foundIdx).slotNumber});
+                swaps.add(new int[]{input.get(i).slotNumber, input.get(foundIdx).slotNumber});
                 SlotItem tmp = working.get(i);
                 working.set(i, working.get(foundIdx));
                 working.set(foundIdx, tmp);

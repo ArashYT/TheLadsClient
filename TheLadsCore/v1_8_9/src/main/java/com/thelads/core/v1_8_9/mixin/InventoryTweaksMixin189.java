@@ -2,8 +2,10 @@ package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.client.ContainerSorting;
 import com.thelads.core.client.InventoryTweaks;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import com.thelads.core.v1_8_9.feature.ChatTweaks189;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiScreen;
@@ -43,6 +45,8 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
     @Unique private GuiTextField ladsSearch;
     /** Container slots Inventory Search dims (worked out each tick while a search is typed). */
     @Unique private boolean[] ladsDim = new boolean[0];
+    /** Rate-limited swap queue: processes at most 1 swap per client tick to prevent anticheat packet bursts. */
+    @Unique private final Queue<int[]> lads$sortQueue = new ArrayDeque<>();
 
     @Override public boolean lads$typing() { return ladsSearch != null && ladsSearch.isFocused(); }
 
@@ -58,6 +62,7 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
 
     @Inject(method = "initGui", at = @At("TAIL"), require = 1)
     private void ladsInit(CallbackInfo ci) {
+        lads$sortQueue.clear();
         ladsSearch = null;
         if (!InventoryTweaks.searchOn || !ladsTweaked()) return;
         ladsSearch = new GuiTextField(0, fontRendererObj, guiLeft + xSize - InventoryTweaks.SEARCH_WIDTH, guiTop - InventoryTweaks.SEARCH_HEIGHT - 2,
@@ -66,8 +71,27 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
         ladsSearch.setText(InventoryTweaks.query());
     }
 
+    @Inject(method = "onGuiClosed", at = @At("HEAD"))
+    private void ladsOnClosed(CallbackInfo ci) {
+        lads$sortQueue.clear();
+    }
+
     @Inject(method = "updateScreen", at = @At("HEAD"), require = 1)
     private void ladsSearchTick(CallbackInfo ci) {
+        if (!lads$sortQueue.isEmpty()) {
+            if (mc.thePlayer == null || mc.thePlayer.inventory == null || mc.thePlayer.inventory.getItemStack() != null) {
+                lads$sortQueue.clear();
+            } else {
+                int[] swap = lads$sortQueue.poll();
+                if (swap != null) {
+                    Slot from = inventorySlots.getSlot(swap[0]);
+                    Slot to = inventorySlots.getSlot(swap[1]);
+                    if (from != null && to != null) {
+                        lads$swapSlots(from, to);
+                    }
+                }
+            }
+        }
         if (ladsSearch != null) ladsSearch.updateCursorCounter();
         int size = inventorySlots.inventorySlots.size();
         if (ladsDim.length != size) ladsDim = new boolean[size];
@@ -153,6 +177,7 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
                 return;
             }
         }
+        if (!lads$sortQueue.isEmpty()) lads$sortQueue.clear();
         if (button == 2 && ladsArmorSwap(getSlotAtPosition(mouseX, mouseY))) ci.cancel();
     }
 
@@ -177,7 +202,7 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
 
     @Unique
     private void lads$sortContainer() {
-        if (!ContainerSorting.isAllowed() || mc.thePlayer == null || mc.thePlayer.inventory.getItemStack() != null) return;
+        if (!ContainerSorting.isAllowed() || !lads$sortQueue.isEmpty() || mc.thePlayer == null || mc.thePlayer.inventory.getItemStack() != null) return;
 
         List<Slot> containerSlots = new ArrayList<Slot>();
         List<Slot> playerStorageSlots = new ArrayList<Slot>();
@@ -216,13 +241,7 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
         }
 
         List<int[]> swaps = ContainerSorting.planSwaps(items);
-        for (int[] swap : swaps) {
-            Slot from = inventorySlots.getSlot(swap[0]);
-            Slot to = inventorySlots.getSlot(swap[1]);
-            if (from != null && to != null) {
-                lads$swapSlots(from, to);
-            }
-        }
+        lads$sortQueue.addAll(swaps);
     }
 
     @Unique

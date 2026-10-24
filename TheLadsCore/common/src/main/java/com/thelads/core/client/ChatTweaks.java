@@ -25,6 +25,10 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import javax.imageio.ImageIO;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The Chat module's chat tweaks (parity-1023), shared by every version: Compact Chat, Chat Tabs (All plus the Custom Tabs), Chat
@@ -126,67 +130,131 @@ public final class ChatTweaks {
         return index < 3 ? index : -1;
     }
 
-    /** Exports a chat message to a PNG screenshot image with dark chat background and drop-shadowed text. */
-    public static Path exportChatImage(String text, Path outputDir) {
-        if (text == null || text.trim().isEmpty() || outputDir == null) return null;
+    private static final ExecutorService EXPORT_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "Lads-ChatImageExport");
+        t.setDaemon(true);
+        return t;
+    });
+
+    private record StyledSegment(String text, Color color) {}
+
+    private static List<StyledSegment> parseStyledSegments(String rawLine) {
+        List<StyledSegment> segments = new ArrayList<>();
+        Color currentColor = new Color(0xF0, 0xF0, 0xF0);
+        StringBuilder buffer = new StringBuilder();
+
+        for (int i = 0; i < rawLine.length(); i++) {
+            char c = rawLine.charAt(i);
+            if (c == '§' && i + 1 < rawLine.length()) {
+                char code = Character.toLowerCase(rawLine.charAt(i + 1));
+                if ("0123456789abcdef".indexOf(code) >= 0) {
+                    if (buffer.length() > 0) {
+                        segments.add(new StyledSegment(buffer.toString(), currentColor));
+                        buffer.setLength(0);
+                    }
+                    currentColor = new Color(LegacyText.color(code));
+                } else if (code == 'r') {
+                    if (buffer.length() > 0) {
+                        segments.add(new StyledSegment(buffer.toString(), currentColor));
+                        buffer.setLength(0);
+                    }
+                    currentColor = new Color(0xF0, 0xF0, 0xF0);
+                }
+                i++;
+            } else {
+                buffer.append(c);
+            }
+        }
+        if (buffer.length() > 0) {
+            segments.add(new StyledSegment(buffer.toString(), currentColor));
+        }
+        return segments;
+    }
+
+    /**
+     * Exports a chat message to a PNG screenshot image with dark chat background, styled text colors,
+     * and drop shadow. Encodes and writes asynchronously on a background daemon worker to avoid hitching the render thread.
+     */
+    public static CompletableFuture<Path> exportChatImage(String text, Path outputDir) {
+        if (text == null || text.trim().isEmpty() || outputDir == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                Files.createDirectories(outputDir);
+                String timestamp = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss").format(LocalDateTime.now());
+                String fileName = "chat_" + timestamp + "_" + (System.currentTimeMillis() % 1000) + ".png";
+                Path file = outputDir.resolve(fileName);
+
+                String[] rawLines = text.split("\n", -1);
+                List<List<StyledSegment>> parsedLines = new ArrayList<>(rawLines.length);
+                String[] cleanLines = new String[rawLines.length];
+                for (int i = 0; i < rawLines.length; i++) {
+                    cleanLines[i] = rawLines[i].replaceAll("§[0-9a-fk-orA-FK-OR]", "").trim();
+                    if (cleanLines[i].isEmpty()) cleanLines[i] = " ";
+                    parsedLines.add(parseStyledSegments(rawLines[i].trim()));
+                }
+
+                Font font = new Font(Font.MONOSPACED, Font.BOLD, 14);
+                BufferedImage dummy = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g0 = dummy.createGraphics();
+                g0.setFont(font);
+                java.awt.FontMetrics fm = g0.getFontMetrics();
+
+                int maxWidth = 100;
+                for (String line : cleanLines) {
+                    int w = fm.stringWidth(line);
+                    if (w > maxWidth) maxWidth = w;
+                }
+                g0.dispose();
+
+                int padX = 14, padY = 12;
+                int imgWidth = maxWidth + padX * 2;
+                int lineHeight = fm.getHeight();
+                int imgHeight = cleanLines.length * lineHeight + padY * 2;
+
+                BufferedImage image = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g = image.createGraphics();
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+                g.setColor(new Color(15, 15, 20, 220));
+                g.fillRoundRect(0, 0, imgWidth, imgHeight, 8, 8);
+                g.setColor(new Color(60, 60, 75, 200));
+                g.drawRoundRect(0, 0, imgWidth - 1, imgHeight - 1, 8, 8);
+
+                g.setFont(font);
+                int y = padY + fm.getAscent();
+                for (List<StyledSegment> lineSegments : parsedLines) {
+                    int x = padX;
+                    for (StyledSegment seg : lineSegments) {
+                        g.setColor(new Color(0, 0, 0, 180));
+                        g.drawString(seg.text(), x + 1, y + 1);
+                        g.setColor(seg.color());
+                        g.drawString(seg.text(), x, y);
+                        x += fm.stringWidth(seg.text());
+                    }
+                    y += lineHeight;
+                }
+                g.dispose();
+
+                ImageIO.write(image, "png", file.toFile());
+                LadsGameBridge.get().displayChatMessage("§a[Chat] Exported chat image to screenshots/" + fileName);
+                LadsGameBridge.get().showToast("Chat Image Export", "Saved to " + fileName);
+                return file;
+            } catch (Exception e) {
+                LadsGameBridge.get().displayChatMessage("§c[Chat] Failed to export chat image: " + e.getMessage());
+                return null;
+            }
+        }, EXPORT_EXECUTOR);
+    }
+
+    /** Synchronous wrapper for tests and non-render contexts. */
+    public static Path exportChatImageSync(String text, Path outputDir) {
         try {
-            Files.createDirectories(outputDir);
-            String timestamp = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss").format(LocalDateTime.now());
-            String fileName = "chat_" + timestamp + "_" + (System.currentTimeMillis() % 1000) + ".png";
-            Path file = outputDir.resolve(fileName);
-
-            String[] rawLines = text.split("\n", -1);
-            String[] cleanLines = new String[rawLines.length];
-            for (int i = 0; i < rawLines.length; i++) {
-                cleanLines[i] = rawLines[i].replaceAll("§[0-9a-fk-orA-FK-OR]", "").trim();
-                if (cleanLines[i].isEmpty()) cleanLines[i] = " ";
-            }
-
-            Font font = new Font(Font.MONOSPACED, Font.BOLD, 14);
-            BufferedImage dummy = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g0 = dummy.createGraphics();
-            g0.setFont(font);
-            java.awt.FontMetrics fm = g0.getFontMetrics();
-
-            int maxWidth = 100;
-            for (String line : cleanLines) {
-                int w = fm.stringWidth(line);
-                if (w > maxWidth) maxWidth = w;
-            }
-            g0.dispose();
-
-            int padX = 14, padY = 12;
-            int imgWidth = maxWidth + padX * 2;
-            int lineHeight = fm.getHeight();
-            int imgHeight = cleanLines.length * lineHeight + padY * 2;
-
-            BufferedImage image = new BufferedImage(imgWidth, imgHeight, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D g = image.createGraphics();
-            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-            g.setColor(new Color(15, 15, 20, 220));
-            g.fillRoundRect(0, 0, imgWidth, imgHeight, 8, 8);
-            g.setColor(new Color(60, 60, 75, 200));
-            g.drawRoundRect(0, 0, imgWidth - 1, imgHeight - 1, 8, 8);
-
-            g.setFont(font);
-            int y = padY + fm.getAscent();
-            for (String line : cleanLines) {
-                g.setColor(new Color(0, 0, 0, 180));
-                g.drawString(line, padX + 1, y + 1);
-                g.setColor(new Color(240, 240, 240, 255));
-                g.drawString(line, padX, y);
-                y += lineHeight;
-            }
-            g.dispose();
-
-            ImageIO.write(image, "png", file.toFile());
-            LadsGameBridge.get().displayChatMessage("§a[Chat] Exported chat image to screenshots/" + fileName);
-            LadsGameBridge.get().showToast("Chat Image Export", "Saved to " + fileName);
-            return file;
+            CompletableFuture<Path> future = exportChatImage(text, outputDir);
+            return future != null ? future.get(5, TimeUnit.SECONDS) : null;
         } catch (Exception e) {
-            LadsGameBridge.get().displayChatMessage("§c[Chat] Failed to export chat image: " + e.getMessage());
             return null;
         }
     }

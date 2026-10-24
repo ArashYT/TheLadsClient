@@ -161,7 +161,7 @@ class ChatTweaksTest {
 
     @Test void exportChatImageTest() throws Exception {
         java.nio.file.Path tempDir = java.nio.file.Files.createTempDirectory("lads-chat-export-test");
-        java.nio.file.Path file = ChatTweaks.exportChatImage("§a[Server] §fWelcome to §bThe Lads§f!", tempDir);
+        java.nio.file.Path file = ChatTweaks.exportChatImage("§a[Server] §fWelcome to §bThe Lads§f!", tempDir).get(5, java.util.concurrent.TimeUnit.SECONDS);
         assertNotNull(file);
         assertTrue(java.nio.file.Files.exists(file));
         assertTrue(java.nio.file.Files.size(file) > 0);

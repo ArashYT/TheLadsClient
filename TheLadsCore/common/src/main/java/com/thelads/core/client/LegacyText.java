@@ -17,4 +17,10 @@ public final class LegacyText {
         }
         return "0123456789abcdef".charAt(best);
     }
+
+    /** The RGB color for the given chat color code (0-9, a-f), or white (0xFFFFFF) if not a color code. */
+    public static int color(char code) {
+        int idx = "0123456789abcdef".indexOf(Character.toLowerCase(code));
+        return (idx >= 0 && idx < COLORS.length) ? COLORS[idx] : 0xFFFFFF;
+    }
 }

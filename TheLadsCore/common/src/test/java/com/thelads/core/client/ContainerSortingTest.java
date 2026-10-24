@@ -31,6 +31,36 @@ class ContainerSortingTest {
     }
 
     @Test
+    void planSwapsThreeItemsPermutation() {
+        List<ContainerSorting.SlotItem> slots = new ArrayList<>();
+        slots.add(new ContainerSorting.SlotItem(0, "minecraft:dirt", 64, 64, 0, false));
+        slots.add(new ContainerSorting.SlotItem(1, "minecraft:stone", 64, 64, 0, false));
+        slots.add(new ContainerSorting.SlotItem(2, "minecraft:cobblestone", 64, 64, 0, false));
+
+        List<int[]> swaps = ContainerSorting.planSwaps(slots);
+        // Desired order alphabetically: cobblestone (slot 0), dirt (slot 1), stone (slot 2)
+        String[] state = new String[]{"minecraft:dirt", "minecraft:stone", "minecraft:cobblestone"};
+        for (int[] swap : swaps) {
+            String temp = state[swap[0]];
+            state[swap[0]] = state[swap[1]];
+            state[swap[1]] = temp;
+        }
+        assertArrayEquals(new String[]{"minecraft:cobblestone", "minecraft:dirt", "minecraft:stone"}, state);
+    }
+
+    @Test
+    void planSwapsIdenticalStacksNoUnnecessarySwaps() {
+        List<ContainerSorting.SlotItem> slots = new ArrayList<>();
+        slots.add(new ContainerSorting.SlotItem(0, "minecraft:cobblestone", 64, 64, 0, false));
+        slots.add(new ContainerSorting.SlotItem(1, "minecraft:cobblestone", 64, 64, 0, false));
+        slots.add(new ContainerSorting.SlotItem(2, "minecraft:stone", 64, 64, 0, false));
+
+        List<int[]> swaps = ContainerSorting.planSwaps(slots);
+        // Already in order: cobble, cobble, stone. Identical cobble stacks should not swap.
+        assertTrue(swaps.isEmpty(), "Already sorted identical stacks should require 0 swaps");
+    }
+
+    @Test
     void planSwapsPreservesLockedSlots() {
         List<ContainerSorting.SlotItem> slots = new ArrayList<>();
         // Slot 0 is locked with dirt

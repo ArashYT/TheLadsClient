@@ -2,8 +2,10 @@ package com.thelads.core.v1_20_1.game.misc.mixin;
 
 import com.thelads.core.client.ContainerSorting;
 import com.thelads.core.client.InventoryTweaks;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import com.thelads.core.v1_20_1.hud.chat.ChatTweaks1201;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
@@ -49,6 +51,8 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
     @Unique private EditBox ladsSearch;
     /** Menu slots Inventory Search dims (worked out each tick while a search is typed). */
     @Unique private boolean[] ladsDim = new boolean[0];
+    /** Rate-limited swap queue: processes at most 1 swap per client tick to prevent anticheat packet bursts. */
+    @Unique private final Queue<int[]> lads$sortQueue = new ArrayDeque<>();
 
     private InventoryTweaksMixin1201(Component title) { super(title); }
 
@@ -59,6 +63,7 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
 
     @Inject(method = "init", at = @At("TAIL"), require = 1)
     private void lads$init(CallbackInfo ci) {
+        lads$sortQueue.clear();
         ladsSearch = null;
         if (!InventoryTweaks.searchOn || !lads$tweaked()) return;
         Component hint = Component.literal("Search");
@@ -68,6 +73,11 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
         ladsSearch.setResponder(InventoryTweaks::setQuery);
         lads$place();
         addRenderableWidget(ladsSearch);
+    }
+
+    @Inject(method = "removed", at = @At("HEAD"))
+    private void lads$onRemoved(CallbackInfo ci) {
+        lads$sortQueue.clear();
     }
 
     /** The box sits on the container's top right corner, following it when the recipe book moves the screen. */
@@ -95,6 +105,20 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
 
     @Inject(method = "tick", at = @At("HEAD"), require = 1)
     private void lads$search(CallbackInfo ci) {
+        if (!lads$sortQueue.isEmpty()) {
+            if (minecraft == null || minecraft.player == null || (menu != null && !menu.getCarried().isEmpty())) {
+                lads$sortQueue.clear();
+            } else {
+                int[] swap = lads$sortQueue.poll();
+                if (swap != null) {
+                    Slot from = menu.getSlot(swap[0]);
+                    Slot to = menu.getSlot(swap[1]);
+                    if (from != null && to != null) {
+                        lads$swapSlots(from, to);
+                    }
+                }
+            }
+        }
         int size = menu.slots.size();
         if (ladsDim.length != size) ladsDim = new boolean[size];
         boolean searching = ladsSearch != null && !InventoryTweaks.query().isEmpty();
@@ -153,6 +177,7 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
                 return;
             }
         }
+        if (!lads$sortQueue.isEmpty()) lads$sortQueue.clear();
         if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE && lads$armorSwap(findSlot(mouseX, mouseY))) cir.setReturnValue(true);
     }
 
@@ -179,7 +204,7 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
 
     @Unique
     private void lads$sortContainer() {
-        if (!ContainerSorting.isAllowed() || minecraft == null || minecraft.player == null || !menu.getCarried().isEmpty()) return;
+        if (!ContainerSorting.isAllowed() || !lads$sortQueue.isEmpty() || minecraft == null || minecraft.player == null || !menu.getCarried().isEmpty()) return;
 
         List<Slot> containerSlots = new ArrayList<>();
         List<Slot> playerStorageSlots = new ArrayList<>();
@@ -216,13 +241,7 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
         }
 
         List<int[]> swaps = ContainerSorting.planSwaps(items);
-        for (int[] swap : swaps) {
-            Slot from = menu.getSlot(swap[0]);
-            Slot to = menu.getSlot(swap[1]);
-            if (from != null && to != null) {
-                lads$swapSlots(from, to);
-            }
-        }
+        lads$sortQueue.addAll(swaps);
     }
 
     @Unique

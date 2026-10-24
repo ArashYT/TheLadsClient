@@ -92,6 +92,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();
+            com.thelads.core.client.Nicknames.tick();
             NativeFeatures1201.tick();
             NativeDiscordPresence1201.tick();
             com.thelads.core.client.cosmetics.net.CosmeticsLink.tick();

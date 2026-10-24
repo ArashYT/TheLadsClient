@@ -275,7 +275,9 @@ public interface LadsGameBridge {
         return 0;
     }
 
-    default void tickClient() {}
+    default void tickClient() {
+        com.thelads.core.client.Nicknames.tick();
+    }
 
     /** The world is hardcore (its hearts are drawn the hardcore way). */
     default boolean isHardcore() { return false; }
