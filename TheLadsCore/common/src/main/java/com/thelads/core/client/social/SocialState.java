@@ -88,6 +88,10 @@ public class SocialState {
     private volatile UUID dmTarget;
     private volatile SwitchConfirm pendingSwitch;
     private volatile boolean backingUp;
+    private volatile long lastBadMessageLog;
+    /** host -> until when its p2p_start is expected: we asked to join it or accepted its invite (F9; the backend's 5 min expiry). */
+    private final Map<UUID, Long> joinIntents = new ConcurrentHashMap<>();
+    private static final long INTENT_MS = 5 * 60_000;
     private int ticks; // game thread only
 
     /** The game's own state: SocialBridge.get(), the logged-in session, the -Dlads.social.url / LADS_SOCIAL_URL endpoint. */
@@ -453,6 +457,7 @@ public class SocialState {
             return;
         }
 
+        if (invite != null && invite.from() != null) joinIntents.put(invite.from(), System.currentTimeMillis() + INTENT_MS);
         send(SocialProtocol.INVITE_ACCEPT, "inviteId", inviteId);
     }
 
@@ -464,6 +469,7 @@ public class SocialState {
 
     public void requestJoin(UUID host) {
         if (host == null) return;
+        joinIntents.put(host, System.currentTimeMillis() + INTENT_MS);
         send(SocialProtocol.JOIN_REQUEST, "host", host.toString());
     }
 
@@ -690,7 +696,19 @@ public class SocialState {
         if (settings.get("appearOffline") instanceof JsonPrimitive p && p.isBoolean()) appearOffline = p.getAsBoolean();
     }
 
+    /** A backend message (or a friend's signal it relays): a malformed one is logged (at most every 10 s) and ignored, the link stays up (F8). */
     public void onMessage(JsonObject msg) {
+        try {
+            dispatch(msg);
+        } catch (RuntimeException bad) {
+            long now = System.currentTimeMillis();
+            if (now - lastBadMessageLog < 10_000) return;
+            lastBadMessageLog = now;
+            LOGGER.warn("SocialState: ignored a malformed {} message ({})", str(msg, "t"), bad.toString());
+        }
+    }
+
+    private void dispatch(JsonObject msg) {
         String t = str(msg, "t");
         if (t == null) return;
 
@@ -855,12 +873,19 @@ public class SocialState {
     }
 
     public void handleP2PStart(String sid, UUID peer, String peerName, String worldId, String role, JsonObject iceJson) {
+        if (sid == null || peer == null) return;
         P2PSession.IceConfig iceConfig = parseIceConfig(iceJson);
         Consumer<JsonObject> signalSender = data -> send(SocialProtocol.SIGNAL, "sid", sid, "data", data);
 
         if ("host".equalsIgnoreCase(role)) {
-            hostSession.handleP2PStart(sid, peer, iceConfig, signalSender);
+            hostSession.handleP2PStart(sid, peer, iceConfig, signalSender); // only for a guest we accepted (HostSession)
         } else {
+            // F9: only for a host we asked to join or whose invite we accepted; never "leave your world now" on the backend's word alone
+            Long until = joinIntents.remove(peer);
+            if (until == null || until < System.currentTimeMillis()) {
+                LOGGER.warn("SocialState: ignored p2p_start from {}: no join request or accepted invite", peer);
+                return;
+            }
             SocialBridge bridge = bridge();
             if (bridge.inWorldOrServer() || guestSession.isActive()) {
                 guestSession.close("Switching world");

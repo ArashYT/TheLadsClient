@@ -559,4 +559,77 @@ public class IceAgentTest {
         copy.add("candidates", cands);
         return copy;
     }
+
+    private static JsonObject signal(String ufrag, String pwd, int count, String ip, int basePort) {
+        JsonObject sig = new JsonObject();
+        sig.addProperty("ufrag", ufrag);
+        sig.addProperty("pwd", pwd);
+        JsonArray c = new JsonArray();
+        for (int i = 0; i < count; i++) {
+            JsonObject o = new JsonObject();
+            o.addProperty("type", "host");
+            o.addProperty("ip", ip);
+            o.addProperty("port", basePort + i);
+            o.addProperty("prio", 1000 - i);
+            c.add(o);
+        }
+        sig.add("candidates", c);
+        return sig;
+    }
+
+    private static int remoteCount(IceAgent agent) throws Exception {
+        java.lang.reflect.Field f = IceAgent.class.getDeclaredField("remoteCandidates");
+        f.setAccessible(true);
+        return ((List<?>) f.get(agent)).size();
+    }
+
+    /** F5 (PocIce 2): thousands of candidates per signal used to flood checks and fill pendingChecks; now signals are bounded. */
+    @Test
+    public void remoteCandidatesAndChecksAreBounded() throws Exception {
+        IceAgent host = new IceAgent("test-flood", true, null, j -> {});
+        try {
+            host.gatherAndSendSignal().join();
+            String ufrag = "ATTUFRAG", pwd = "ATTACKERPWD1234567890ab";
+            for (int s = 0; s < 4; s++) host.onSignal(signal(ufrag, pwd, 6000, "127.0.0.1", 1024 + s * 6000));
+            assertEquals(0, remoteCount(host), "a signal with more than 16 candidates is dropped whole");
+            for (int s = 0; s < 4; s++) host.onSignal(signal(ufrag, pwd, IceAgent.MAX_SIGNAL_CANDIDATES, "127.0.0.1", 2000 + s * 100));
+            assertEquals(IceAgent.MAX_REMOTE_CANDIDATES, remoteCount(host), "32 remote candidates in all");
+            Thread.sleep(1000);
+            java.lang.reflect.Field f = IceAgent.class.getDeclaredField("pendingChecks");
+            f.setAccessible(true);
+            int pending = ((java.util.Map<?, ?>) f.get(host)).size();
+            assertTrue(pending <= 1000 / IceAgent.CHECK_PACE_MS + 2, "paced checks: " + pending + " in 1 s");
+        } finally {
+            host.close();
+        }
+    }
+
+    /** F5/F8 (PocIce 3): hostnames, bad addresses, ports and credentials are refused without throwing; the agent keeps working. */
+    @Test
+    public void invalidSignalsAreIgnoredWithoutThrowing() throws Exception {
+        IceAgent v = new IceAgent("test-bad", true, null, j -> {});
+        try {
+            String ok = "GOODPASSWORD1234567890";
+            for (String bad : new String[] {
+                    "{\"ufrag\":\"a\",\"pwd\":\"b\",\"candidates\":[{}]}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"1.2.3.4\",\"port\":\"x\"}]}",
+                    "{\"ufrag\":\"abc\",\"pwd\":\"" + ok + "\"}",
+                    "{\"ufrag\":\"abcd\",\"pwd\":\"short\"}",
+                    "{\"ufrag\":\"ab cd\",\"pwd\":\"" + ok + "\"}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"example.com\",\"port\":5000}]}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"0.0.0.0\",\"port\":5000}]}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"224.0.0.1\",\"port\":5000}]}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"255.255.255.255\",\"port\":5000}]}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"1.2.3.4\",\"port\":0}]}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"1.2.3.4\",\"port\":70000}]}",
+                    "{\"candidates\":[{\"type\":\"prflx\",\"ip\":\"1.2.3.4\",\"port\":5000}]}"}) {
+                assertDoesNotThrow(() -> v.onSignal(com.google.gson.JsonParser.parseString(bad).getAsJsonObject()), bad);
+            }
+            assertEquals(0, remoteCount(v), "nothing from a bad signal is kept");
+            v.onSignal(signal("GOODUFRG", ok, 1, "192.0.2.1", 5000));
+            assertEquals(1, remoteCount(v), "a valid signal still works afterwards");
+        } finally {
+            v.close();
+        }
+    }
 }

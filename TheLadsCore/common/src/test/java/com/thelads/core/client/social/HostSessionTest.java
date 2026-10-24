@@ -154,6 +154,7 @@ public class HostSessionTest {
         String sid = "test-sid-1";
         P2PSession.IceConfig ice = new P2PSession.IceConfig(Collections.emptyList(), Collections.emptyList(), false);
 
+        session.accept(guest);
         session.handleP2PStart(sid, guest, ice, sig -> {});
         assertTrue(session.ownsSid(sid));
 

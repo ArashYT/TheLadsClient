@@ -317,7 +317,7 @@ public class SocialClient {
         try {
             for (String text; (text = ws.readText()) != null; ) {
                 JsonObject json = parse(text);
-                if (json != null) state.onMessage(json);
+                if (json != null) state.onMessage(json); // never throws: a bad message is ignored, the socket stays (F8)
             }
         } catch (Exception e) {
             if (ws.isOpen()) LOGGER.info("SocialClient: read error ({})", e.toString());

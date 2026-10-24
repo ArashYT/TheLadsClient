@@ -258,6 +258,17 @@ public final class HostSession {
             LOGGER.warn("HostSession: cannot handle P2P start for sid {}, not hosting", sid);
             return;
         }
+        // F9: a tunnel only for a guest we accepted (join request, invite, auto-accepted friend), one per guest, a few beyond the slots
+        if (peer == null || !acceptedUuids.contains(peer)) {
+            LOGGER.warn("HostSession: ignored P2P start for {}: not accepted", peer);
+            return;
+        }
+        String old = guestToSid.get(peer);
+        if (old != null) closeGuest(old, "Replaced");
+        if (activeP2PSessions.size() + startingSids.size() >= options.maxPlayers + 2) {
+            LOGGER.warn("HostSession: ignored P2P start for {}: too many sessions", peer);
+            return;
+        }
 
         guestToSid.put(peer, sid);
         sidToGuest.put(sid, peer);
