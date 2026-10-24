@@ -71,4 +71,11 @@ public abstract class LadsApiPacketListenerMixin {
     private void lads$onDisconnect(Component reason, CallbackInfo ci) {
         LadsApiClient.reset();
     }
+
+    // Leaving through the pause menu (level.disconnect + Minecraft.clearLevel) never reaches onDisconnect on 1.20.1: the closed
+    // connection is no longer ticked. clearLevel always calls close(), so the server's rules go here (1.9.19 QA, CHK-06).
+    @Inject(method = "close", at = @At("HEAD"), require = 1)
+    private void lads$onClose(CallbackInfo ci) {
+        LadsApiClient.reset();
+    }
 }

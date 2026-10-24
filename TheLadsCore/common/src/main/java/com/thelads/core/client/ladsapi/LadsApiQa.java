@@ -48,6 +48,14 @@ public final class LadsApiQa {
         xmObj.addProperty("enabled", xmMod != null && xmMod.isEnabled());
         modules.add("XaeroMinimap", xmObj);
 
+        // The minimap players see is the "Minimap" module (XaeroMinimap is its hidden legacy name).
+        Module mapMod = mm != null ? mm.getModule("Minimap") : null;
+        JsonObject mapObj = new JsonObject();
+        mapObj.addProperty("policyState", policy != null ? policy.module("Minimap").name() : "NONE");
+        mapObj.addProperty("enabled", mapMod != null && mapMod.isEnabled());
+        mapObj.addProperty("own", mapMod != null && mapMod.isEnabledSetting());
+        modules.add("Minimap", mapObj);
+
         root.add("modules", modules);
 
         // Options:
@@ -99,6 +107,8 @@ public final class LadsApiQa {
 
         root.add("options", options);
 
+        root.addProperty("toastTitle", LadsApiUi.activeToastTitle()); // the QA bar draws over the toast, so its text goes here
+        root.addProperty("toastNotice", LadsApiUi.activeToastNotice());
         root.addProperty("presenceSize", LadsPresence.size());
         root.addProperty("sentBeforeHello", LadsApiClient.sentBeforeHello());
 

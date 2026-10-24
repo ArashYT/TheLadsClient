@@ -615,7 +615,7 @@ bool addServerVerification = titleVerification && !expectCoreDisabled && Env("LA
 if (addServerVerification) requiredCore.Add("Lads add-server probe END:");
 bool packsVerification = titleVerification && !expectCoreDisabled && Env("LADS_VERIFY_PACKS") != null;
 if (packsVerification) requiredCore.Add("Lads packs probe END:");
-if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && !soundsOnly && !hypixelOnly && !actionBarOnly && !world191Only && !f1914Only && !fixesOnly && !packsOnly && fastQuitPhase == null && biomeCapture == null) requiredCore.Add("Lads shared content probe END:");
+if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && !soundsOnly && !hypixelOnly && !actionBarOnly && !world191Only && !f1914Only && !fixesOnly && !packsOnly && fastQuitPhase == null && biomeCapture == null && joinServer == null) requiredCore.Add("Lads shared content probe END:");
 if (modRequest != null) requiredCore.Add("Lads mod request probe END:");
 string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
     "Lads native reconnect probe FAILED", "Lads dynamic FPS probe FAILED", "Lads background policy probe FAILED", "Lads auto-world QA FAILED",
@@ -999,15 +999,16 @@ try
         {
             // Probe public settings APIs only in this isolated QA process, when its Lads menu opens.
             if (welcomeVerification) AddJvm("-Dthelads.verifyWelcome=true");
-            else if (fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyIntegrations=true"); // the FastQuit probe opens its own worlds
-            if (!autoWorldVerification) { if (fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyInput=true"); }
+            // --join: the server's world is not a QA world; the in-world feature probes toggle modules and fail on server policies (LadsClientAPI QA)
+            else if (fastQuitPhase == null && biomeCapture == null && joinServer == null) AddJvm("-Dthelads.verifyIntegrations=true"); // the FastQuit probe opens its own worlds
+            if (!autoWorldVerification) { if (fastQuitPhase == null && biomeCapture == null && joinServer == null) AddJvm("-Dthelads.verifyInput=true"); }
             else
             {
                 AddJvm("-Dthelads.verifyAutoWorld=true");
                 AddJvm("-Dthelads.verifyDurabilityTooltip=true");
                 AddJvm(requestedFeaturesOnly ? "-Dthelads.verifyRequestedFeaturesOnly=true" : "-Dthelads.verifyCrosshair=true");
             }
-            if (titleVerification && !autoWorldVerification && fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyKillBannerPreview=true");
+            if (titleVerification && !autoWorldVerification && fastQuitPhase == null && biomeCapture == null && joinServer == null) AddJvm("-Dthelads.verifyKillBannerPreview=true");
             if (settingsVerification)
             {
                 AddJvm("-Dthelads.verifyAllIntegrationWrites=true");
@@ -1022,7 +1023,8 @@ try
             if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
             if (flashbackVerification) AddJvm("-Dthelads.verifyFlashback=true");
             if (nativePortsVerification) AddJvm("-Dthelads.verifyBackgroundPolicies=true");
-            if (fastQuitPhase == null && biomeCapture == null && !fixesOnly) AddJvm("-Dthelads.verifySharedContent=true"); // it opens the world list at the title screen, as the FastQuit probe does
+            // it opens the world list at the title screen, as the FastQuit probe does; never on a --join run (that screen change aborts the connection)
+            if (fastQuitPhase == null && biomeCapture == null && !fixesOnly && joinServer == null) AddJvm("-Dthelads.verifySharedContent=true");
             if (sharedRole != null) AddJvm("-Dthelads.sharedContentRole=" + sharedRole);
             if (runId != null) AddJvm("-Dthelads.sharedContentRunId=" + runId);
             AddJvm("-Dthelads.verifyModInventory=true");

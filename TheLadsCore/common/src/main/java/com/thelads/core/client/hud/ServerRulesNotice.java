@@ -86,8 +86,11 @@ public final class ServerRulesNotice {
 
     static String blockedText() {
         List<String> names = new ArrayList<>();
+        // A LadsClientAPI block (Block.SERVER) is in the policy toast already and cannot be bypassed: not listed here.
         for (Module m : ModuleManager.getInstance().getModules())
-            if (m.isEnabledSetting() && m.isBlockedByServer()) names.add(m.getName());
+            if (m.isEnabledSetting() && m.isBlockedByServer()
+                    && com.thelads.core.client.HypixelSafetyManager.blockOf(m.getName()) != com.thelads.core.client.HypixelSafetyManager.Block.SERVER)
+                names.add(m.getName());
         return names.isEmpty() ? null : String.join(", ", names) + " off on this server (server rules). Lads Settings > Bypass, at your own risk.";
     }
 }

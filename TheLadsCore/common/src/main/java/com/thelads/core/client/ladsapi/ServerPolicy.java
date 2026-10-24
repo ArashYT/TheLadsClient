@@ -69,6 +69,10 @@ public final class ServerPolicy {
             return ModuleState.INHERIT;
         }
         ModuleState state = modules.get(moduleName);
+        // One mod, two names: "Minimap" is the module players see, "XaeroMinimap" its hidden legacy name (PROTOCOL.md's example).
+        // A rule on either covers both, or blocking "XaeroMinimap" left the real minimap on screen (1.9.19 QA, 26.3).
+        if (state == null && "Minimap".equals(moduleName)) state = modules.get("XaeroMinimap");
+        else if (state == null && "XaeroMinimap".equals(moduleName)) state = modules.get("Minimap");
         if (state != null) {
             return state;
         }

@@ -28,7 +28,7 @@ public final class RulesGenerator {
 
         if (schema != null && schema.getModules() != null) {
             for (LadsSchema.SchemaModule mod : schema.getModules()) {
-                sb.append("  ").append(mod.getName()).append(":\n");
+                sb.append("  ").append(yamlKey(mod.getName())).append(":\n");
                 sb.append("    state:                     # allow | block | on   (blank = inherit)\n");
                 if (mod.getOptions() != null) {
                     for (LadsSchema.SchemaOption opt : mod.getOptions()) {
@@ -102,7 +102,7 @@ public final class RulesGenerator {
             if (modLineIdx == -1) {
                 // Entire module is missing: insert before modulesEndIdx
                 List<String> modBlock = new ArrayList<>();
-                modBlock.add("  " + modName + ":");
+                modBlock.add("  " + yamlKey(modName) + ":");
                 modBlock.add("    state:                     # allow | block | on   (blank = inherit)");
                 if (mod.getOptions() != null) {
                     for (LadsSchema.SchemaOption opt : mod.getOptions()) {
@@ -148,10 +148,18 @@ public final class RulesGenerator {
         return result;
     }
 
+    /** Schema names like "SP: Wood floats" or "Auto GG: Message" break a plain YAML key, so those get double quotes. */
+    static String yamlKey(String name) {
+        boolean plain = !name.isEmpty() && !name.contains(": ") && !name.contains(" #") && !name.endsWith(":")
+                && name.equals(name.trim()) && "-?:,[]{}#&*!|>'\"%@`".indexOf(name.charAt(0)) < 0;
+        return plain ? name : "\"" + name.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+    }
+
     private static String formatOptionLine(String optName, String comment) {
         StringBuilder sb = new StringBuilder();
-        sb.append("    ").append(optName).append(":");
-        int pad = Math.max(1, 31 - (4 + optName.length() + 1));
+        String key = yamlKey(optName);
+        sb.append("    ").append(key).append(":");
+        int pad = Math.max(1, 31 - (4 + key.length() + 1));
         sb.append(" ".repeat(pad));
         sb.append(comment);
         return sb.toString();
@@ -193,15 +201,15 @@ public final class RulesGenerator {
             String line = lines.get(i);
             String trimmed = line.trim();
             if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
+            if (trimmed.startsWith("\"") || trimmed.startsWith("'")) {
+                // quoted key: may itself contain ':' ("SP: Wood floats")
+                int close = trimmed.indexOf(trimmed.charAt(0), 1);
+                if (close > 1) set.add(trimmed.substring(1, close).toLowerCase());
+                continue;
+            }
             int colon = trimmed.indexOf(':');
             if (colon > 0) {
-                String key = trimmed.substring(0, colon).trim();
-                if (key.startsWith("\"") && key.endsWith("\"") && key.length() >= 2) {
-                    key = key.substring(1, key.length() - 1);
-                } else if (key.startsWith("'") && key.endsWith("'") && key.length() >= 2) {
-                    key = key.substring(1, key.length() - 1);
-                }
-                set.add(key.toLowerCase());
+                set.add(trimmed.substring(0, colon).trim().toLowerCase());
             }
         }
         return set;
