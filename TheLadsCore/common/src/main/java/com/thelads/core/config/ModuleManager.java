@@ -577,7 +577,7 @@ public class ModuleManager {
         var hitIndicator = hud("HitIndicator", "Visual directional arc around your crosshair indicating incoming damage direction.");
         hitIndicator.addOption(new SliderOption("Radius", 40, 20, 80, 5));
         hitIndicator.addOption(new SliderOption("Duration (ms)", 800, 200, 2000, 100));
-        hitIndicator.addOption(new SliderOption("Size", 20, 10, 40, 2));
+        hitIndicator.addOption(new SliderOption("Arc Size", 20, 10, 40, 2)); // not "Size": hud() adds the HUD Size under that name
         // HUD widgets and vanilla HUD tweaks (parity 1.9.19, common HudExtras; each version's HudExtras tick feeds them). All off by
         // default; Damage Indicator, Horse Stats, Player Counter and Totem Pop Counter show what vanilla does not and are gated.
         HudModule damage = hud(HudExtras.DAMAGE_INDICATOR, "The health of the mob or player you look at, and floating damage numbers.");

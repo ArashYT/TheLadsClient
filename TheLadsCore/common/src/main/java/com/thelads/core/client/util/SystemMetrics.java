@@ -1,40 +1,23 @@
 package com.thelads.core.client.util;
 
 import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
-import java.lang.reflect.Method;
 
 public final class SystemMetrics {
-    private static Method cpuMethod;
-    private static boolean methodLookedUp;
-
     private SystemMetrics() {}
 
+    /**
+     * The whole system's CPU use in percent, or -1 when this JVM cannot tell. Through the com.sun.management interface, not
+     * reflection on the bean's class: that class is not public (and its package not exported since Java 9), so invoking its methods
+     * always failed. getSystemCpuLoad is the name both Java 8 (1.8.9) and 25 have; a JVM without the interface gets -1.
+     */
+    @SuppressWarnings("deprecation")
     public static double getCpuLoad() {
         try {
-            OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
-            if (!methodLookedUp) {
-                methodLookedUp = true;
-                try {
-                    cpuMethod = osBean.getClass().getMethod("getCpuLoad");
-                } catch (Exception ignored) {
-                    try {
-                        cpuMethod = osBean.getClass().getMethod("getProcessCpuLoad");
-                    } catch (Exception ignored2) {
-                        try {
-                            cpuMethod = osBean.getClass().getMethod("getSystemCpuLoad");
-                        } catch (Exception ignored3) {}
-                    }
-                }
+            if (ManagementFactory.getOperatingSystemMXBean() instanceof com.sun.management.OperatingSystemMXBean os) {
+                double d = os.getSystemCpuLoad();
+                if (d >= 0) return d * 100.0;
             }
-            if (cpuMethod != null) {
-                Object val = cpuMethod.invoke(osBean);
-                if (val instanceof Number n) {
-                    double d = n.doubleValue();
-                    if (d >= 0) return d * 100.0;
-                }
-            }
-        } catch (Exception ignored) {}
+        } catch (Throwable ignored) {} // LinkageError where com.sun.management is missing
         return -1.0;
     }
 }

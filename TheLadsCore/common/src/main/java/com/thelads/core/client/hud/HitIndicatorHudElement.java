@@ -39,7 +39,7 @@ public class HitIndicatorHudElement extends HudElement {
     private void renderArc(LadsGraphics g, boolean editor) {
         int radius = (int) optSlider("Radius", 40);
         long duration = (long) optSlider("Duration (ms)", 800);
-        int size = (int) optSlider("Size", 20);
+        int arcSize = (int) optSlider("Arc Size", 20);
         int baseColor = resolveColor();
 
         int cx = x + width / 2;
@@ -72,34 +72,33 @@ public class HitIndicatorHudElement extends HudElement {
 
         int color = (alpha << 24) | (baseColor & 0x00FFFFFF);
 
-        // Angle in radians (0 is straight up / 12 o'clock, rotating clockwise)
-        double rad = Math.toRadians(angle);
-        double cos = Math.cos(rad);
-        double sin = Math.sin(rad);
+        // Arc Size: the arc spans twice that many degrees and is a fifth of it thick.
+        drawArc(g, cx, cy, radius, Math.max(2, arcSize / 5), Math.toRadians(angle), Math.toRadians(arcSize), color);
+    }
 
-        // Tip of the indicator arc/chevron
-        int tipX = (int) Math.round(cx + sin * radius);
-        int tipY = (int) Math.round(cy - cos * radius);
-
-        // Wings of chevron
-        double spreadRad = Math.toRadians(25.0);
-        double wingDist = radius + (size * 0.5);
-        int wing1X = (int) Math.round(cx + Math.sin(rad - spreadRad) * wingDist);
-        int wing1Y = (int) Math.round(cy - Math.cos(rad - spreadRad) * wingDist);
-        int wing2X = (int) Math.round(cx + Math.sin(rad + spreadRad) * wingDist);
-        int wing2Y = (int) Math.round(cy - Math.cos(rad + spreadRad) * wingDist);
-
-        // Draw chevron
-        g.fill(tipX - 2, tipY - 2, tipX + 2, tipY + 2, color);
-        g.fill(wing1X - 1, wing1Y - 1, wing1X + 1, wing1Y + 1, color);
-        g.fill(wing2X - 1, wing2Y - 1, wing2X + 1, wing2Y + 1, color);
-
-        // Fill connecting dots
-        int mid1X = (tipX + wing1X) / 2;
-        int mid1Y = (tipY + wing1Y) / 2;
-        int mid2X = (tipX + wing2X) / 2;
-        int mid2Y = (tipY + wing2Y) / 2;
-        g.fill(mid1X - 1, mid1Y - 1, mid1X + 1, mid1Y + 1, color);
-        g.fill(mid2X - 1, mid2Y - 1, mid2X + 1, mid2Y + 1, color);
+    /**
+     * A ring segment around (cx, cy): {@code thickness} deep outside {@code radius}, centred on the clock angle {@code angle} (radians, 0
+     * straight up, clockwise) and {@code halfSpan} (under 90 degrees) either side. Each pixel row inside it is one fill per run, so the
+     * arc is solid and no pixel blends twice; only the box around the segment is scanned.
+     */
+    static void drawArc(LadsGraphics g, int cx, int cy, int radius, int thickness, double angle, double halfSpan, int color) {
+        double dirX = Math.sin(angle), dirY = -Math.cos(angle), cosHalf = Math.cos(halfSpan);
+        int outer = radius + thickness;
+        double inner2 = (double) radius * radius, outer2 = (double) outer * outer, cos2 = cosHalf * cosHalf;
+        double mid = (radius * cosHalf + outer) / 2, half = Math.hypot(outer * Math.sin(halfSpan), (outer - radius * cosHalf) / 2) + 1;
+        int minX = (int) Math.floor(dirX * mid - half), minY = (int) Math.floor(dirY * mid - half), maxX = minX + (int) Math.ceil(2 * half) + 1;
+        int maxY = minY + (int) Math.ceil(2 * half) + 1;
+        for (int y = minY; y < maxY; y++) {
+            int run = Integer.MIN_VALUE;
+            for (int x = minX; x <= maxX; x++) {
+                double px = x + 0.5, py = y + 0.5, d2 = px * px + py * py, dot = px * dirX + py * dirY;
+                boolean inside = x < maxX && d2 >= inner2 && d2 < outer2 && dot > 0 && dot * dot >= d2 * cos2;
+                if (inside && run == Integer.MIN_VALUE) run = x;
+                else if (!inside && run != Integer.MIN_VALUE) {
+                    g.fill(cx + run, cy + y, cx + x, cy + y + 1, color);
+                    run = Integer.MIN_VALUE;
+                }
+            }
+        }
     }
 }
