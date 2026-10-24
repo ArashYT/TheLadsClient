@@ -61,4 +61,21 @@ class SkyBlockTimersTest {
         String comp = SkyBlockTimers.getComposterString(false);
         assertTrue(comp.contains("Composter: 9m") || comp.contains("Composter: 10m"));
     }
+
+    @Test
+    void testCachedStrings() {
+        String c1 = SkyBlockTimers.getContestString(false);
+        String c2 = SkyBlockTimers.getContestString(false);
+        assertSame(c1, c2, "Repeated calls within same second should return identical cached string reference");
+
+        SkyBlockTimers.setComposterRemainingSeconds(100);
+        String comp1 = SkyBlockTimers.getComposterString(false);
+        String comp2 = SkyBlockTimers.getComposterString(false);
+        assertSame(comp1, comp2, "Repeated calls within same second should return identical cached string reference");
+
+        SkyBlockTimers.resetPestTimer();
+        String pest1 = SkyBlockTimers.getPestString(false);
+        String pest2 = SkyBlockTimers.getPestString(false);
+        assertSame(pest1, pest2, "Repeated calls within same second should return identical cached string reference");
+    }
 }

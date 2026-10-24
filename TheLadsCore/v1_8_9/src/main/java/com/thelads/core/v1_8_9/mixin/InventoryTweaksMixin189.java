@@ -40,6 +40,7 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
     @Shadow private Slot getSlotAtPosition(int x, int y) { throw new AssertionError(); }
     @Shadow protected abstract void handleMouseClick(Slot slot, int slotId, int button, int mode);
     @Unique private GuiTextField ladsSearch;
+    @Unique private int ladsClickOrderTarget = -1;
     /** Container slots Inventory Search dims (worked out each tick while a search is typed). */
     @Unique private boolean[] ladsDim = new boolean[0];
 
@@ -92,7 +93,7 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
                 title = slot.inventory.getDisplayName().getUnformattedText();
             }
             if (title != null) {
-                highlight = TerminalSolver.getSlotHighlight(title, slot.slotNumber, stack.stackSize, stack.getDisplayName(), inventorySlots.inventorySlots.size());
+                highlight = TerminalSolver.getSlotHighlight(title, slot.slotNumber, stack.stackSize, stack.getDisplayName(), inventorySlots.inventorySlots.size(), ladsClickOrderTarget);
             }
         }
         if (!dim && !locked && highlight == 0) return;
@@ -109,6 +110,27 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
         }
         GlStateManager.enableDepth();
         GlStateManager.enableLighting();
+    }
+
+    @Inject(method = "drawScreen", at = @At("HEAD"))
+    private void ladsBeforeDraw(int mouseX, int mouseY, float partialTicks, CallbackInfo ci) {
+        ladsClickOrderTarget = -1;
+        if (TerminalSolver.isActive()) {
+            String title = null;
+            if (inventorySlots instanceof ContainerChest) {
+                title = ((ContainerChest) inventorySlots).getLowerChestInventory().getDisplayName().getUnformattedText();
+            }
+            if (title != null && TerminalSolver.detectType(title) == TerminalSolver.TerminalType.CLICK_IN_ORDER) {
+                ladsClickOrderTarget = TerminalSolver.findClickInOrderTarget(inventorySlots.inventorySlots.size(), i -> {
+                    Slot s = inventorySlots.inventorySlots.get(i);
+                    if (s != null && s.getHasStack()) {
+                        ItemStack st = s.getStack();
+                        return new TerminalSolver.SlotInfo(s.slotNumber, st.stackSize, st.getDisplayName());
+                    }
+                    return null;
+                });
+            }
+        }
     }
 
     @Inject(method = "drawScreen", at = @At("TAIL"), require = 1)

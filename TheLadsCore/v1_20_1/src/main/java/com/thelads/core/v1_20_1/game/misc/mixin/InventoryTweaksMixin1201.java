@@ -44,6 +44,7 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
     @Shadow private Slot findSlot(double x, double y) { throw new AssertionError(); }
     @Shadow protected abstract void slotClicked(Slot slot, int slotId, int button, ClickType type);
     @Unique private EditBox ladsSearch;
+    @Unique private int ladsClickOrderTarget = -1;
     /** Menu slots Inventory Search dims (worked out each tick while a search is typed). */
     @Unique private boolean[] ladsDim = new boolean[0];
 
@@ -77,6 +78,20 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
     @Inject(method = "render", at = @At("HEAD"), require = 1)
     private void lads$follow(GuiGraphics graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (ladsSearch != null) lads$place();
+        ladsClickOrderTarget = -1;
+        if (com.thelads.core.client.hypixel.TerminalSolver.isActive()) {
+            String title = getTitle() != null ? getTitle().getString() : "";
+            if (com.thelads.core.client.hypixel.TerminalSolver.detectType(title) == com.thelads.core.client.hypixel.TerminalSolver.TerminalType.CLICK_IN_ORDER) {
+                ladsClickOrderTarget = com.thelads.core.client.hypixel.TerminalSolver.findClickInOrderTarget(menu.slots.size(), i -> {
+                    Slot s = menu.slots.get(i);
+                    if (s != null && s.hasItem()) {
+                        ItemStack st = s.getItem();
+                        return new com.thelads.core.client.hypixel.TerminalSolver.SlotInfo(s.index, st.getCount(), st.getHoverName().getString());
+                    }
+                    return null;
+                });
+            }
+        }
     }
 
     @Inject(method = "tick", at = @At("HEAD"), require = 1)
@@ -103,7 +118,7 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
             ItemStack s = slot.getItem();
             String title = getTitle() != null ? getTitle().getString() : "";
             int highlight = com.thelads.core.client.hypixel.TerminalSolver.getSlotHighlight(
-                title, slot.index, s.getCount(), s.getHoverName().getString(), menu.slots.size()
+                title, slot.index, s.getCount(), s.getHoverName().getString(), menu.slots.size(), ladsClickOrderTarget
             );
             if (highlight != 0) {
                 graphics.fill(RenderType.guiOverlay(), x, y, x + 16, y + 16, highlight);

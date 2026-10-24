@@ -54,6 +54,7 @@ class TerminalSolverTest {
         assertEquals("blue", TerminalSolver.extractTargetColor("Select all the Blue items!"));
         assertEquals("yellow", TerminalSolver.extractTargetColor("Select all the Yellow items!"));
         assertEquals("green", TerminalSolver.extractTargetColor("Select all the Green items!"));
+        assertEquals("light blue", TerminalSolver.extractTargetColor("Select all the Light Blue items!"));
     }
 
     @Test
@@ -73,6 +74,11 @@ class TerminalSolverTest {
         assertTrue(TerminalSolver.isSlotCompleted("Green Stained Glass Pane", 1));
         assertFalse(TerminalSolver.isSlotCompleted("Red Stained Glass Pane", 1));
         assertFalse(TerminalSolver.isSlotCompleted("Bow", 1));
+        assertFalse(TerminalSolver.isSlotCompleted("Lime Wool", 1));
+        assertFalse(TerminalSolver.isSlotCompleted("Lime Dye", 1));
+        assertFalse(TerminalSolver.isSlotCompleted("Lime Carpet", 1));
+        assertFalse(TerminalSolver.isSlotCompleted("Lime Stained Glass Pane", 1, true));
+        assertFalse(TerminalSolver.isSlotCompleted("Green Stained Glass Pane", 1, true));
     }
 
     @Test
@@ -80,20 +86,35 @@ class TerminalSolverTest {
         String title = "Click in order!";
         int totalSlots = 54; // 18 chest slots + 36 player slots
 
+        java.util.List<TerminalSolver.SlotInfo> slots = java.util.List.of(
+            new TerminalSolver.SlotInfo(0, 1, "Red Stained Glass Pane"),
+            new TerminalSolver.SlotInfo(1, 2, "Red Stained Glass Pane"),
+            new TerminalSolver.SlotInfo(2, 3, "Red Stained Glass Pane"),
+            new TerminalSolver.SlotInfo(3, 4, "Red Stained Glass Pane"),
+            new TerminalSolver.SlotInfo(4, 5, "Red Stained Glass Pane")
+        );
+
+        int target = TerminalSolver.findClickInOrderTarget(slots, totalSlots);
+        assertEquals(1, target, "Initial target should be 1");
+
         // Target number 1 is highlighted
-        int color1 = TerminalSolver.getSlotHighlight(title, 5, 1, "Red Stained Glass Pane", totalSlots);
+        int color1 = TerminalSolver.getSlotHighlight(title, 0, 1, "Red Stained Glass Pane", totalSlots, target);
         assertEquals(TerminalSolver.COLOR_TARGET, color1);
 
-        // Target number 5 is highlighted if present
-        int color5 = TerminalSolver.getSlotHighlight(title, 7, 5, "Red Stained Glass Pane", totalSlots);
-        assertEquals(TerminalSolver.COLOR_TARGET, color5);
+        // Target number 5 is NOT highlighted when currentTarget == 1
+        int color5 = TerminalSolver.getSlotHighlight(title, 4, 5, "Red Stained Glass Pane", totalSlots, target);
+        assertEquals(0, color5);
+
+        // When target is 5 (numbers 1-4 are completed), slot with stack 5 is highlighted
+        int color5Active = TerminalSolver.getSlotHighlight(title, 4, 5, "Red Stained Glass Pane", totalSlots, 5);
+        assertEquals(TerminalSolver.COLOR_TARGET, color5Active);
 
         // Completed slot is NOT highlighted
-        int colorCompleted = TerminalSolver.getSlotHighlight(title, 2, 1, "Lime Stained Glass Pane", totalSlots);
+        int colorCompleted = TerminalSolver.getSlotHighlight(title, 2, 1, "Lime Stained Glass Pane", totalSlots, target);
         assertEquals(0, colorCompleted);
 
         // Player inventory slots are NOT highlighted
-        int playerSlot = TerminalSolver.getSlotHighlight(title, 40, 1, "Red Stained Glass Pane", totalSlots);
+        int playerSlot = TerminalSolver.getSlotHighlight(title, 40, 1, "Red Stained Glass Pane", totalSlots, target);
         assertEquals(0, playerSlot);
     }
 
@@ -116,6 +137,32 @@ class TerminalSolverTest {
         // Lime/green completed items NOT highlighted
         int lime = TerminalSolver.getSlotHighlight(title, 5, 1, "Lime Stained Glass Pane", totalSlots);
         assertEquals(0, lime);
+    }
+
+    @Test
+    void testSolveSelectLimeItems() {
+        String title = "Select all the Lime items!";
+        int totalSlots = 54;
+
+        // Lime Wool and Lime Dye MUST be highlighted
+        int limeWool = TerminalSolver.getSlotHighlight(title, 2, 1, "Lime Wool", totalSlots);
+        assertEquals(TerminalSolver.COLOR_TARGET, limeWool);
+
+        int limeDye = TerminalSolver.getSlotHighlight(title, 3, 1, "§aLime Dye", totalSlots);
+        assertEquals(TerminalSolver.COLOR_TARGET, limeDye);
+
+        // Red Wool should not be highlighted
+        int red = TerminalSolver.getSlotHighlight(title, 4, 1, "Red Wool", totalSlots);
+        assertEquals(0, red);
+    }
+
+    @Test
+    void testSolveStartsWithLetterL() {
+        String title = "What starts with: 'L'!";
+        int totalSlots = 54;
+
+        int limeDye = TerminalSolver.getSlotHighlight(title, 0, 1, "Lime Dye", totalSlots);
+        assertEquals(TerminalSolver.COLOR_TARGET, limeDye);
     }
 
     @Test

@@ -31,9 +31,26 @@ public final class TerminalSolver {
     public static final int COLOR_PANES = 0x7000FF00;
 
     private static final String[] COLOR_NAMES = {
-        "red", "green", "blue", "yellow", "orange", "purple", "pink", "cyan",
-        "lime", "gray", "white", "black", "magenta", "brown", "light blue", "silver"
+        "light blue", "magenta", "yellow", "orange", "purple", "silver",
+        "green", "white", "black", "brown", "pink", "cyan",
+        "lime", "gray", "blue", "red"
     };
+
+    static {
+        // Ensure COLOR_NAMES is sorted by length descending so multi-word colors (e.g. "light blue") are checked before shorter substrings ("blue")
+        java.util.Arrays.sort(COLOR_NAMES, (a, b) -> Integer.compare(b.length(), a.length()));
+    }
+
+    /**
+     * Information about a slot in a container screen.
+     */
+    public record SlotInfo(int slotIndex, int stackSize, String itemName) {
+        public SlotInfo(int slotIndex, int stackSize, String itemName) {
+            this.slotIndex = slotIndex;
+            this.stackSize = stackSize;
+            this.itemName = itemName != null ? itemName : "";
+        }
+    }
 
     private TerminalSolver() {}
 
@@ -116,9 +133,63 @@ public final class TerminalSolver {
      * In Hypixel, completed terminal slots turn into green/lime panes or lime dye, or empty.
      */
     public static boolean isSlotCompleted(String itemName, int stackSize) {
+        return isSlotCompleted(itemName, stackSize, false);
+    }
+
+    /**
+     * Determines whether an item slot in the terminal container is already completed.
+     * Only treats items as completed if they are green/lime glass panes or completed indicators,
+     * and NOT when lime/green is part of the active selection goal.
+     */
+    public static boolean isSlotCompleted(String itemName, int stackSize, boolean greenOrLimeGoal) {
         if (itemName == null || itemName.isEmpty() || stackSize <= 0) return true;
-        String lower = itemName.toLowerCase(Locale.ROOT);
-        return lower.contains("lime") || lower.contains("green stained glass");
+        if (greenOrLimeGoal) return false;
+        String clean = stripFormatting(itemName).toLowerCase(Locale.ROOT);
+        if (clean.contains("already activated") || clean.contains("completed")) return true;
+        boolean isGreenOrLime = clean.contains("lime") || clean.contains("green");
+        boolean isPane = clean.contains("pane") || clean.contains("glass");
+        return isGreenOrLime && isPane;
+    }
+
+    /**
+     * Finds the current target number (the lowest uncompleted number from 1 to 14)
+     * by inspecting container slots.
+     */
+    public static int findClickInOrderTarget(java.util.Collection<SlotInfo> slots, int totalSlots) {
+        if (slots == null || slots.isEmpty()) return -1;
+        int chestSlotLimit = totalSlots > 36 ? totalSlots - 36 : totalSlots;
+        int min = 15;
+        for (SlotInfo info : slots) {
+            if (info == null || info.stackSize() <= 0) continue;
+            if (info.slotIndex() >= 0 && (chestSlotLimit <= 0 || info.slotIndex() < chestSlotLimit)) {
+                if (info.stackSize() >= 1 && info.stackSize() <= 14 && !isSlotCompleted(info.itemName(), info.stackSize(), false)) {
+                    if (info.stackSize() < min) {
+                        min = info.stackSize();
+                    }
+                }
+            }
+        }
+        return min <= 14 ? min : -1;
+    }
+
+    /**
+     * Finds the current target number (the lowest uncompleted number from 1 to 14)
+     * by querying a slot supplier across container slots.
+     */
+    public static int findClickInOrderTarget(int totalSlots, java.util.function.IntFunction<SlotInfo> slotSupplier) {
+        if (slotSupplier == null || totalSlots <= 0) return -1;
+        int chestSlotLimit = totalSlots > 36 ? totalSlots - 36 : totalSlots;
+        int min = 15;
+        for (int i = 0; i < chestSlotLimit; i++) {
+            SlotInfo info = slotSupplier.apply(i);
+            if (info == null || info.stackSize() <= 0) continue;
+            if (info.stackSize() >= 1 && info.stackSize() <= 14 && !isSlotCompleted(info.itemName(), info.stackSize(), false)) {
+                if (info.stackSize() < min) {
+                    min = info.stackSize();
+                }
+            }
+        }
+        return min <= 14 ? min : -1;
     }
 
     /**
@@ -126,6 +197,14 @@ public final class TerminalSolver {
      * Returns the ARGB color to overlay, or 0 for none.
      */
     public static int getSlotHighlight(String containerTitle, int slotIndex, int stackSize, String itemName, int totalSlots) {
+        return getSlotHighlight(containerTitle, slotIndex, stackSize, itemName, totalSlots, -1);
+    }
+
+    /**
+     * Evaluates whether a given container slot should be visually highlighted with an explicit click order target.
+     * Returns the ARGB color to overlay, or 0 for none.
+     */
+    public static int getSlotHighlight(String containerTitle, int slotIndex, int stackSize, String itemName, int totalSlots, int clickInOrderTarget) {
         if (!isActive() || containerTitle == null) return 0;
         // Terminals are contained in upper chest slots; player inventory is always the bottom 36 slots
         int chestSlotLimit = totalSlots > 36 ? totalSlots - 36 : totalSlots;
@@ -137,15 +216,16 @@ public final class TerminalSolver {
             case CLICK_IN_ORDER -> {
                 // In click order, numbers 1-14 must be clicked in ascending sequence.
                 // Target slot has stackSize matching lowest active number.
-                if (isSlotCompleted(itemName, stackSize)) return 0;
-                // Minimum valid terminal number is 1
-                if (stackSize >= 1 && stackSize <= 14) {
+                if (isSlotCompleted(itemName, stackSize, false)) return 0;
+                int target = clickInOrderTarget > 0 ? clickInOrderTarget : 1;
+                if (stackSize == target) {
                     return COLOR_TARGET;
                 }
             }
             case SELECT_COLOR -> {
-                if (isSlotCompleted(itemName, stackSize)) return 0;
                 String targetColor = extractTargetColor(containerTitle);
+                boolean greenGoal = targetColor != null && (targetColor.contains("lime") || targetColor.contains("green"));
+                if (isSlotCompleted(itemName, stackSize, greenGoal)) return 0;
                 if (targetColor != null) {
                     String clean = stripFormatting(itemName).toLowerCase(Locale.ROOT);
                     if (clean.contains(targetColor)) {
@@ -154,8 +234,9 @@ public final class TerminalSolver {
                 }
             }
             case STARTS_WITH_LETTER -> {
-                if (isSlotCompleted(itemName, stackSize)) return 0;
                 char target = extractTargetLetter(containerTitle);
+                boolean greenGoal = target == 'L' || target == 'G';
+                if (isSlotCompleted(itemName, stackSize, greenGoal)) return 0;
                 if (target != '\0') {
                     String clean = stripFormatting(itemName).trim();
                     if (!clean.isEmpty() && Character.toUpperCase(clean.charAt(0)) == target) {

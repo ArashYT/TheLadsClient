@@ -12,9 +12,20 @@ public final class SkyBlockTimers {
     private static long composterEndNanos = 0;
     private static long pestEndNanos = 0;
 
+    private static long cachedJacobEpochSec = -1;
+    private static String cachedJacobString = "Jacob: Ready";
+
+    private static long cachedComposterSec = -1;
+    private static String cachedComposterString = "Composter: Ready";
+
+    private static long cachedPestSec = -1;
+    private static String cachedPestString = "Pest: Ready";
+
     private SkyBlockTimers() {}
 
     public static void setComposterRemainingSeconds(int seconds) {
+        cachedComposterSec = -1;
+        cachedComposterString = null;
         if (seconds <= 0) {
             composterEndNanos = 0;
         } else {
@@ -24,12 +35,20 @@ public final class SkyBlockTimers {
 
     public static void resetPestTimer() {
         // Standard 10 minute pest spawn cooldown in the Garden
+        cachedPestSec = -1;
+        cachedPestString = null;
         pestEndNanos = System.nanoTime() + 600_000_000_000L;
     }
 
     public static void clearTimers() {
         composterEndNanos = 0;
         pestEndNanos = 0;
+        cachedComposterSec = -1;
+        cachedComposterString = null;
+        cachedPestSec = -1;
+        cachedPestString = null;
+        cachedJacobEpochSec = -1;
+        cachedJacobString = null;
     }
 
     /** Formats the active or upcoming Jacob's Farming Contest timer. */
@@ -38,19 +57,27 @@ public final class SkyBlockTimers {
             return "Jacob: 18m 20s";
         }
         long now = System.currentTimeMillis();
-        long minute = (now / 60000) % 60;
-        long second = (now / 1000) % 60;
+        long epochSec = now / 1000L;
+        if (epochSec == cachedJacobEpochSec && cachedJacobString != null) {
+            return cachedJacobString;
+        }
+        long minute = (epochSec / 60) % 60;
+        long second = epochSec % 60;
+        String res;
         if (minute >= 15 && minute < 35) {
             long remMin = 34 - minute;
             long remSec = 59 - second;
-            return String.format(Locale.ROOT, "Jacob: ACTIVE (%dm %02ds)", remMin, remSec);
+            res = "Jacob: ACTIVE (" + remMin + "m " + (remSec < 10 ? "0" : "") + remSec + "s)";
         } else {
             long waitMin = (15 - minute + 60) % 60;
             if (waitMin == 0) waitMin = 60;
             waitMin--;
             long remSec = 59 - second;
-            return String.format(Locale.ROOT, "Jacob: %dm %02ds", waitMin, remSec);
+            res = "Jacob: " + waitMin + "m " + (remSec < 10 ? "0" : "") + remSec + "s";
         }
+        cachedJacobEpochSec = epochSec;
+        cachedJacobString = res;
+        return res;
     }
 
     /** Formats remaining composter time or ready status. */
@@ -66,9 +93,15 @@ public final class SkyBlockTimers {
             return "Composter: Done!";
         }
         long totalSeconds = remainingNanos / 1_000_000_000L;
+        if (totalSeconds == cachedComposterSec && cachedComposterString != null) {
+            return cachedComposterString;
+        }
         long min = totalSeconds / 60;
         long sec = totalSeconds % 60;
-        return String.format(Locale.ROOT, "Composter: %dm %02ds", min, sec);
+        String res = "Composter: " + min + "m " + (sec < 10 ? "0" : "") + sec + "s";
+        cachedComposterSec = totalSeconds;
+        cachedComposterString = res;
+        return res;
     }
 
     /** Formats remaining pest spawn timer or ready status. */
@@ -84,9 +117,15 @@ public final class SkyBlockTimers {
             return "Pest: Due!";
         }
         long totalSeconds = remainingNanos / 1_000_000_000L;
+        if (totalSeconds == cachedPestSec && cachedPestString != null) {
+            return cachedPestString;
+        }
         long min = totalSeconds / 60;
         long sec = totalSeconds % 60;
-        return String.format(Locale.ROOT, "Pest: %dm %02ds", min, sec);
+        String res = "Pest: " + min + "m " + (sec < 10 ? "0" : "") + sec + "s";
+        cachedPestSec = totalSeconds;
+        cachedPestString = res;
+        return res;
     }
 
     public static void handleChatMessage(String cleanMessage) {
