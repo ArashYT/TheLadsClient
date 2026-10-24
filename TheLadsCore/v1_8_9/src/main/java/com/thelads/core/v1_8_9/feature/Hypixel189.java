@@ -67,6 +67,29 @@ public final class Hypixel189 {
         }
     }
 
+    @SubscribeEvent
+    public void sound(net.minecraftforge.client.event.sound.PlaySoundEvent event) {
+        if (event != null && event.name != null && com.thelads.core.client.hypixel.SilentLobby.shouldMuteSound(event.name)) {
+            event.result = null;
+        }
+    }
+
+    @SubscribeEvent
+    public void interact(net.minecraftforge.event.entity.player.PlayerInteractEvent event) {
+        if (event != null && event.action == net.minecraftforge.event.entity.player.PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK && event.pos != null) {
+            com.thelads.core.client.hypixel.OpenedChestHighlight.onChestOpened(event.pos.getX(), event.pos.getY(), event.pos.getZ());
+        }
+    }
+
+    public static void blockAction(net.minecraft.network.play.server.S24PacketBlockAction packet) {
+        if (packet != null && packet.getData2() > 0 && com.thelads.core.client.hypixel.OpenedChestHighlight.isEnabled()) {
+            net.minecraft.util.BlockPos pos = packet.getBlockPosition();
+            if (pos != null) {
+                com.thelads.core.client.hypixel.OpenedChestHighlight.onChestOpened(pos.getX(), pos.getY(), pos.getZ());
+            }
+        }
+    }
+
     /** NetworkManagerMixin, on the network thread: a server plugin message (only hypixel:ping is read, without consuming it). */
     public static void payload(S3FPacketCustomPayload packet) {
         if (!RealPing.CHANNEL.equals(packet.getChannelName())) return;

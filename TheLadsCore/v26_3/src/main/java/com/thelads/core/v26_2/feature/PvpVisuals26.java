@@ -18,14 +18,14 @@ import net.minecraft.world.phys.Vec3;
 
 /** PvP visuals on 26.x (common PvpVisuals): module statuses and the name tag's ping and health. The hooks are the mixins in mixin.pvp. */
 public final class PvpVisuals26 {
-    private static final FormattedCharSequence MS = FormattedCharSequence.forward("ms", Style.EMPTY), HEART = FormattedCharSequence.forward("❤", Style.EMPTY);
+    private static final FormattedCharSequence MS = FormattedCharSequence.forward("ms", Style.EMPTY), HEART = FormattedCharSequence.forward("\u2764", Style.EMPTY);
     /** "0".."999" as text to submit, built once each (PvpVisuals.number). */
     private static final FormattedCharSequence[] NUMBERS = new FormattedCharSequence[1000];
 
     private PvpVisuals26() {}
 
     public static void register() {
-        ModuleSupport.registerBuiltIn(PvpVisuals.RENDER_TWEAKS, PvpVisuals.OVERLAYS, PvpVisuals.CLEAR_WATER, PvpVisuals.TOTEM, PvpVisuals.DARK_MODE,
+        ModuleSupport.registerBuiltIn(PvpVisuals.RENDER_TWEAKS, PvpVisuals.OVERLAYS, PvpVisuals.TOTEM, PvpVisuals.DARK_MODE,
             PvpVisuals.NAMETAG_HEALTH);
     }
 

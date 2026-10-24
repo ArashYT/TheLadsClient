@@ -33,13 +33,14 @@ public final class Gameplay1201 {
         ModuleSupport.registerBuiltIn(ToggleSprintModule.NAME, "Fullbright", "LegacySwing", DamageTilt.MODULE, NativeVerticalBob1201.MODULE,
             OldAnimationsModule.NAME, "BetterResolution", "ResourcePacks", com.thelads.core.client.KeepUiOpen.MODULE_NAME);
         // PvP visuals: the mixin.pvp hooks read PvpVisuals, refreshed in tick.
-        ModuleSupport.registerBuiltIn(PvpVisuals.RENDER_TWEAKS, PvpVisuals.OVERLAYS, PvpVisuals.CLEAR_WATER, PvpVisuals.TOTEM, PvpVisuals.DARK_MODE,
+        ModuleSupport.registerBuiltIn(PvpVisuals.RENDER_TWEAKS, PvpVisuals.OVERLAYS, PvpVisuals.TOTEM, PvpVisuals.DARK_MODE,
             PvpVisuals.NAMETAG_HEALTH);
         if (zoomOwnedByMod()) ModuleSupport.registerExternal("Zoom", "Just Zoom", "justzoom", true);
         else ModuleSupport.registerBuiltIn("Zoom");
         if (ModPresence1201.loaded("distanthorizons") && !qaFlag("allow-dh"))
             ModuleSupport.registerBuiltInLimited("BetterResolution", "It stays off while Distant Horizons is installed (both draw the world into its own target).");
         NativeCustomFov1201.register();
+        PvpView1201.register(); // Freelook, ViewModel, Time/Weather Changer, Fog Customizer
         GoodMcAttackSpeedReset1201.register();
         com.thelads.core.v1_20_1.game.cheats.Cheats1201.register();
         ClientTickEvents.END_CLIENT_TICK.register(Gameplay1201::tick);

@@ -394,6 +394,19 @@ public class ModuleManager {
         register(borderless, Module.Category.MECHANIC);
         register(new SurvivalTweaksModule(), Module.Category.MECHANIC);
         register(new StackRefillModule(), Module.Category.MECHANIC);
+        // PvP camera and world visuals (parity-1023, all off by default; Freelook and Fog Customizer's see-through options are gated).
+        register(new FreelookModule(), Module.Category.MECHANIC);
+        register(new ViewModelModule(), Module.Category.MECHANIC);
+        register(new TimeChangerModule(), Module.Category.MECHANIC);
+        register(new WeatherChangerModule(), Module.Category.MECHANIC);
+        register(new FogCustomizerModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.LogPrunerModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.NumericalEnchantmentsModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ConfirmDisconnectModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.DropConfirmationModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ScrollTweaksModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.AutoPerspectiveModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.AutoBackupModule(), Module.Category.MECHANIC);
 
         // PvP visuals (PvpVisuals reads these once a tick). On with vanilla's look, so each option works as soon as it is set.
         Module renderTweaks = new Module(com.thelads.core.client.PvpVisuals.RENDER_TWEAKS, "Entity shadows, lightning bolts, fishing lines and "
@@ -415,11 +428,6 @@ public class ModuleManager {
         overlays.setEnabled(true);
         register(overlays, Module.Category.MECHANIC);
 
-        // Shows more than vanilla does: HypixelSafetyManager keeps it off on servers that ban it or whose rules we don't know.
-        Module clearWater = new Module(com.thelads.core.client.PvpVisuals.CLEAR_WATER, "Thins the fog under water (Water Fog 0% removes it). "
-            + "Off on servers that don't allow it.");
-        clearWater.addOption(new SliderOption(com.thelads.core.client.PvpVisuals.WATER_FOG, 30, 0, 100, 5).percent());
-        register(clearWater, Module.Category.MECHANIC);
 
         Module totem = new Module(com.thelads.core.client.PvpVisuals.TOTEM, "The Totem of Undying pop animation: hide it or change its size.");
         totem.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.HIDE_TOTEM, false));
@@ -432,7 +440,7 @@ public class ModuleManager {
         darkMode.addOption(new SliderOption(com.thelads.core.client.PvpVisuals.DARKNESS, 60, 30, 90, 5).percent());
         register(darkMode, Module.Category.MECHANIC);
 
-        // Other players' health is not on vanilla's name tags: gated like Clear Water.
+        // Other players' health is not on vanilla's name tags: HypixelSafetyManager gates it (risky set).
         register(new Module(com.thelads.core.client.PvpVisuals.NAMETAG_HEALTH, "Shows each player's health after their name tag. "
             + "Off on servers that don't allow it."), Module.Category.MECHANIC);
     }

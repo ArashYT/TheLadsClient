@@ -9,4 +9,7 @@ public interface LocalPlayerAccessor {
     /** The sprint state the client last told the server (a change is one START_SPRINTING or STOP_SPRINTING packet). */
     @Accessor("wasSprinting")
     boolean ladsSentSprint();
+
+    @Accessor("sprintTriggerTime")
+    void ladsSetSprintTriggerTime(int time);
 }

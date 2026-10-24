@@ -7,17 +7,16 @@ import com.thelads.core.config.SliderOption;
 import com.thelads.core.modules.OldAnimationsModule;
 
 /**
- * PvP visuals: the Render Tweaks, Overlays, Clear Water, Totem Animation and Dark Mode modules and the Nametags extras. Each adapter's
- * client tick calls {@link #refresh}, which reads the modules into the plain fields the render hooks read (no lookups per frame).
- * Clear Water and Nametag Health show more than vanilla does (water fog, other players' health), so HypixelSafetyManager gates them:
- * their module reads as off on servers that ban them or whose rules are unknown.
+ * PvP visuals: the Render Tweaks, Overlays, Totem Animation and Dark Mode modules and the Nametags extras. Each adapter's client
+ * tick calls {@link #refresh}, which reads the modules into the plain fields the render hooks read (no lookups per frame). Nametag
+ * Health shows more than vanilla does (other players' health), so HypixelSafetyManager gates it: the module reads as off on servers
+ * that ban it or whose rules are unknown. Water fog is Fog Customizer's Clear Water.
  */
 public final class PvpVisuals {
     public static final String RENDER_TWEAKS = "Render Tweaks", SHADOWS = "Entity Shadows", HIDE_LIGHTNING = "Hide Lightning",
         HIDE_FISHING_LINE = "Hide Fishing Line", HIDE_ELDER_GUARDIAN = "Hide Elder Guardian Curse", BOBBING_DISCONNECT = "Bobbing Disconnect";
     public static final String OVERLAYS = "Overlays", FIRE_OPACITY = "Fire Opacity", FIRE_RESISTANCE = "Hide Fire with Fire Resistance",
         PUMPKIN_OPACITY = "Pumpkin Opacity", PORTAL_OPACITY = "Portal Opacity";
-    public static final String CLEAR_WATER = "Clear Water", WATER_FOG = "Water Fog";
     public static final String TOTEM = "Totem Animation", HIDE_TOTEM = "Hide Animation", TOTEM_SCALE = "Totem Scale";
     public static final String DARK_MODE = "Dark Mode", DARKNESS = "Darkness";
     public static final String NAMETAG_HEALTH = "Nametag Health";
@@ -26,8 +25,8 @@ public final class PvpVisuals {
 
     // Render Tweaks
     public static boolean hideShadows, hideLightning, hideFishingLine, hideElderGuardian, bobbingDisconnect;
-    // Overlays: alpha factors (1 = vanilla); Clear Water: the factor on the water fog's density (1 = vanilla, 0 = none)
-    public static float fireOpacity = 1, pumpkinOpacity = 1, portalOpacity = 1, waterFog = 1;
+    // Overlays: alpha factors (1 = vanilla)
+    public static float fireOpacity = 1, pumpkinOpacity = 1, portalOpacity = 1;
     public static boolean hideFireWithResistance;
     // Totem Animation
     public static boolean hideTotem;
@@ -62,7 +61,6 @@ public final class PvpVisuals {
         pumpkinOpacity = percent(overlays, PUMPKIN_OPACITY);
         portalOpacity = percent(overlays, PORTAL_OPACITY);
         hideFireWithResistance = overlays != null && bool(overlays, FIRE_RESISTANCE);
-        waterFog = percent(on(modules.getModule(CLEAR_WATER)), WATER_FOG);
 
         Module totem = on(modules.getModule(TOTEM));
         hideTotem = totem != null && bool(totem, HIDE_TOTEM);

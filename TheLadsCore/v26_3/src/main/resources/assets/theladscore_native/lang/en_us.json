@@ -17,5 +17,7 @@
   "key.theladscore.toggle_sneak": "Sneak (Toggle)",
   "key.category.theladscore.controls": "The Lads Client",
   "key.theladscore.quickplay": "Quickplay",
-  "key.theladscore.play_again": "Play Again / Requeue"
+  "key.theladscore.play_again": "Play Again / Requeue",
+  "key.theladscore.freelook": "Freelook",
+  "key.theladscore.snaplook": "Snaplook (Look Behind)"
 }

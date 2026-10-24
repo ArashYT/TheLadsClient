@@ -236,7 +236,13 @@ public final class HypixelSafetyManager {
             || "ReachDisplay".equalsIgnoreCase(moduleName)
             || "Jade".equalsIgnoreCase(moduleName)
             || "ShulkerBoxUtils".equalsIgnoreCase(moduleName)
-            || PvpVisuals.CLEAR_WATER.equalsIgnoreCase(moduleName) || PvpVisuals.NAMETAG_HEALTH.equalsIgnoreCase(moduleName);
+            || "Freelook".equalsIgnoreCase(moduleName) || "FogClearView".equalsIgnoreCase(moduleName) // FreelookModule, FogCustomizerModule.CLEAR_VIEW
+            || PvpVisuals.NAMETAG_HEALTH.equalsIgnoreCase(moduleName);
+    }
+
+    public static boolean isGatedHypixelModule(String moduleName) {
+        return "Auto GL".equalsIgnoreCase(moduleName) || "AutoGL".equalsIgnoreCase(moduleName)
+            || "Opened Chest Highlight".equalsIgnoreCase(moduleName);
     }
 
     /** Why this module is off on the current server, bypass or not. Allocation-free: asked per module every frame. */
@@ -253,7 +259,7 @@ public final class HypixelSafetyManager {
             return Block.UNKNOWN;
         }
         boolean minimap = isMinimapModule(moduleName);
-        boolean risky = isRiskyModule(moduleName);
+        boolean risky = isRiskyModule(moduleName) || ((flags & HYPIXEL) == 0 && isGatedHypixelModule(moduleName));
         if (!risky) return Block.NONE;
         if (minimap) return (flags & NO_MINIMAP) != 0 ? Block.BANNED : (flags & MINIMAP_OK) != 0 ? Block.NONE : Block.UNKNOWN;
         return (flags & NO_AUTOMATION) != 0 ? Block.BANNED : Block.UNKNOWN;

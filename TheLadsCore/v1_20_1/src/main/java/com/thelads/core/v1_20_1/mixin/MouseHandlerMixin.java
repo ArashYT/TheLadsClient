@@ -39,6 +39,7 @@ public class MouseHandlerMixin {
     @Redirect(method = "turnPlayer()V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;turn(DD)V"), require = 1)
     private void ladsZoomTurn(LocalPlayer player, double yaw, double pitch) {
         double scale = NativeFeatures1201.zoomSensitivity();
+        if (com.thelads.core.v1_20_1.game.PvpView1201.turn(yaw * scale, pitch * scale)) return; // Freelook turns its camera, not the player
         player.turn(yaw * scale, pitch * scale);
     }
 }

@@ -19,7 +19,6 @@
     "LivingEntityRendererF1Mixin26",
     "LivingEntitySwingMixin26",
     "ScreenEffectPvpMixin26",
-    "SubmitNodeCollectionTagMixin26",
-    "WaterFogMixin26"
+    "SubmitNodeCollectionTagMixin26"
   ]
 }

@@ -14,10 +14,9 @@ class PvpVisualsTest {
     private static Module module(String name) { return ModuleManager.getInstance().getModule(name); }
 
     @AfterEach void restore() {
-        for (String name : new String[] {PvpVisuals.RENDER_TWEAKS, PvpVisuals.OVERLAYS, PvpVisuals.CLEAR_WATER, PvpVisuals.TOTEM,
-            PvpVisuals.DARK_MODE, PvpVisuals.NAMETAG_HEALTH, "Nametags"})
+        for (String name : new String[] {PvpVisuals.RENDER_TWEAKS, PvpVisuals.OVERLAYS, PvpVisuals.TOTEM, PvpVisuals.DARK_MODE,
+            PvpVisuals.NAMETAG_HEALTH, "Nametags"})
             for (Option option : module(name).getOptions()) option.reset();
-        module(PvpVisuals.CLEAR_WATER).setEnabled(false);
         module(PvpVisuals.DARK_MODE).setEnabled(false);
         module(PvpVisuals.NAMETAG_HEALTH).setEnabled(false);
         module(PvpVisuals.OVERLAYS).setEnabled(true);
@@ -32,7 +31,6 @@ class PvpVisualsTest {
         assertEquals(1, PvpVisuals.fireOpacity);
         assertEquals(1, PvpVisuals.pumpkinOpacity);
         assertEquals(1, PvpVisuals.portalOpacity);
-        assertEquals(1, PvpVisuals.waterFog, "Clear Water starts off");
         assertEquals(1, PvpVisuals.totemScale);
         assertEquals(0, PvpVisuals.darkFill, "Dark Mode starts off");
         assertEquals(1, PvpVisuals.nametagScale);
@@ -44,13 +42,11 @@ class PvpVisualsTest {
         ((BoolOption) module(PvpVisuals.RENDER_TWEAKS).getOption(PvpVisuals.SHADOWS)).set(false);
         ((BoolOption) module(PvpVisuals.RENDER_TWEAKS).getOption(PvpVisuals.BOBBING_DISCONNECT)).set(true);
         ((SliderOption) module(PvpVisuals.OVERLAYS).getOption(PvpVisuals.FIRE_OPACITY)).setValue(40);
-        module(PvpVisuals.CLEAR_WATER).setEnabled(true);
         module(PvpVisuals.DARK_MODE).setEnabled(true);
         PvpVisuals.refresh();
         assertTrue(PvpVisuals.hideShadows);
         assertTrue(PvpVisuals.bobbingDisconnect);
         assertEquals(0.4f, PvpVisuals.fireOpacity, 1e-6);
-        assertEquals(0.3f, PvpVisuals.waterFog, 1e-6, "Clear Water's default Water Fog is 30%");
         assertEquals(0x99000000, PvpVisuals.darkFill, "60% black");
 
         module(PvpVisuals.OVERLAYS).setEnabled(false);
@@ -96,12 +92,10 @@ class PvpVisualsTest {
         assertEquals(0xFFFF5555, PvpVisuals.pingColor(900));
     }
 
-    @Test void onlyTheModulesThatShowMoreThanVanillaAreGated() {
-        assertTrue(HypixelSafetyManager.isRiskyModule(PvpVisuals.CLEAR_WATER));
+    @Test void onlyTheModuleThatShowsMoreThanVanillaIsGated() {
         assertTrue(HypixelSafetyManager.isRiskyModule(PvpVisuals.NAMETAG_HEALTH));
         for (String visual : new String[] {PvpVisuals.RENDER_TWEAKS, PvpVisuals.OVERLAYS, PvpVisuals.TOTEM, PvpVisuals.DARK_MODE})
             assertFalse(HypixelSafetyManager.isRiskyModule(visual), visual);
-        assertFalse(module(PvpVisuals.CLEAR_WATER).isEnabledSetting(), "gated modules start off");
-        assertFalse(module(PvpVisuals.NAMETAG_HEALTH).isEnabledSetting());
+        assertFalse(module(PvpVisuals.NAMETAG_HEALTH).isEnabledSetting(), "the gated module starts off");
     }
 }

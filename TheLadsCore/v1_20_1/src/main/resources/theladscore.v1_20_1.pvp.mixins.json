@@ -10,7 +10,6 @@
     "AbstractContainerScreenDarkMixin1201",
     "EntityRenderDispatcherShadowMixin1201",
     "FishingHookLineMixin1201",
-    "FogRendererWaterMixin1201",
     "GameRendererPvpMixin1201",
     "GuiGraphicsLabelMixin1201",
     "GuiOverlayMixin1201",
