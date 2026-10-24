@@ -430,9 +430,8 @@ public final class Cit189 {
      */
     public static boolean glint(RenderItem renderer, ItemStack stack, IBakedModel model) {
         Match match = match(stack, true);
-        if (match == null) return false;
-        CustomItems.Effect[] effects = match.effects;
-        if (effects.length == 0) return !rules.useGlint;
+        CustomItems.Effect[] effects = match == null ? CustomItems.Rules.NO_EFFECTS : match.effects;
+        if (effects.length == 0) return hidesGlint();
         long now = Minecraft.getSystemTime();
         if (rules.method == CustomItems.CYCLE) rules.intensities(effects, now);
         TextureManager textures = Minecraft.getMinecraft().getTextureManager();
@@ -467,9 +466,8 @@ public final class Cit189 {
     public static boolean armorGlint(ItemStack stack, EntityLivingBase entity, ModelBase model, float limbSwing, float limbSwingAmount,
                                      float ageInTicks, float netHeadYaw, float headPitch, float scale) {
         Match match = match(stack, true);
-        if (match == null) return false;
-        CustomItems.Effect[] effects = match.effects;
-        if (effects.length == 0) return !rules.useGlint;
+        CustomItems.Effect[] effects = match == null ? CustomItems.Rules.NO_EFFECTS : match.effects;
+        if (effects.length == 0) return hidesGlint();
         long now = Minecraft.getSystemTime();
         if (rules.method == CustomItems.CYCLE) rules.intensities(effects, now);
         TextureManager textures = Minecraft.getMinecraft().getTextureManager();
@@ -503,6 +501,11 @@ public final class Cit189 {
         GlStateManager.depthFunc(GL11.GL_LEQUAL);
         GlStateManager.disableBlend();
         return true;
+    }
+
+    /** cit.properties' useGlint=false: no vanilla glint where no effect matches (packs use it to remove the glint). */
+    private static boolean hidesGlint() {
+        return !rules.useGlint && module != null && module.isEnabled();
     }
 
     /** How far a texture scrolling at {@code speed} has moved (0-1, wrapping): speed 1 crosses it every 3 seconds, as vanilla's glint. */
