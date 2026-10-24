@@ -24,6 +24,9 @@ public record DiscordPresence(String details, String state, long startTimestamp)
             state = version;
         } else {
             String host = full && privacy.serverAddress() ? host(game.serverAddress()) : null;
+            // Our network names itself in its LadsClientAPI hello; another server's name never reaches the player's status.
+            String serverName = com.thelads.core.client.ladsapi.LadsApiClient.serverName();
+            if (com.thelads.core.client.LadsNetwork.isHost(host) && !blank(serverName)) host = serverName;
             details = game.place() == Place.SINGLEPLAYER
                 ? full && privacy.worldName() && !blank(game.worldName()) ? "Playing in " + game.worldName() : "Playing singleplayer"
                 : host != null ? "Playing on " + host : "Playing multiplayer";

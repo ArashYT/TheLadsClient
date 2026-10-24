@@ -1,0 +1,17 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    // Every platform ships Gson at runtime (Paper, Velocity, Minecraft itself for Fabric/Forge).
+    compileOnly 'com.google.code.gson:gson:2.10.1'
+    implementation 'org.yaml:snakeyaml:2.2'
+    testImplementation 'org.yaml:snakeyaml:2.2'
+    testImplementation 'com.google.code.gson:gson:2.10.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}

@@ -7,6 +7,7 @@ import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.cosmetics.Emotes;
 import com.thelads.core.client.cosmetics.wearables.CosmeticSlot;
 import com.thelads.core.client.cosmetics.wearables.CosmeticsManager;
+import com.thelads.core.client.ladsapi.LadsPresence;
 import com.thelads.core.config.ShareCodeClient;
 import com.thelads.core.modules.CosmeticsModule;
 import java.io.IOException;
@@ -98,17 +99,20 @@ public final class CosmeticsLink {
         if (!Objects.equals(address, lastAddress)) {
             lastAddress = address;
             lastRoom = room(address);
+            LadsPresence.relayClear();
         }
         LadsGameBridge.Session session = (show || share) && lastRoom != null && game.isIngame() ? game.session() : null;
         Want next = session == null || session.uuid() == null ? null : new Want(session.uuid(), lastRoom);
         Want current = want;
         if (showOthers && !show && current != null) {
             Emotes.clearRemote(current.self());
+            LadsPresence.relayClear();
         }
         showOthers = show;
         shareMine = share;
         if (Objects.equals(next, current)) return;
         want = next;
+        LadsPresence.relayClear();
         if (next != null) start();
         wake();
     }
@@ -140,6 +144,7 @@ public final class CosmeticsLink {
                 LOGGER.info("Lads cosmetics: link down ({})", e.toString());
             } finally {
                 Emotes.clearRemote(w.self());
+                LadsPresence.relayClear();
             }
             if (System.currentTimeMillis() - started > 60_000) failures = 0; // a link that lived a minute resets the backoff
             if (failed || w.equals(want)) pause(backoffMs(++failures, ThreadLocalRandom.current().nextDouble()));
@@ -229,17 +234,31 @@ public final class CosmeticsLink {
             if (ws.isOpen()) LOGGER.info("Lads cosmetics: read failed ({})", e.toString());
         } finally {
             ws.close();
+            LadsPresence.relayClear();
             wake();
         }
     }
 
-    /** One server message: snapshot (a room's players on join), state (someone's emote changed), equip or leave. */
+    /** One server message: snapshot (a room's players on join), state (someone's emote changed), join, equip or leave. */
     void handle(String text, UUID self) {
         JsonObject message = parse(text);
         String type = message == null ? null : str(message, "t");
-        if ("snapshot".equals(type) && message.get("players") != null && message.get("players").isJsonArray()) {
-            LOGGER.info("Lads cosmetics: in room {} with {} other Lads players", lastRoomShort(), message.getAsJsonArray("players").size());
-            for (JsonElement player : message.getAsJsonArray("players")) if (player.isJsonObject()) apply(player.getAsJsonObject(), self);
+        if ("snapshot".equals(type)) {
+            LadsPresence.relayClear();
+            if (message.get("players") != null && message.get("players").isJsonArray()) {
+                LOGGER.info("Lads cosmetics: in room {} with {} other Lads players", lastRoomShort(), message.getAsJsonArray("players").size());
+                for (JsonElement player : message.getAsJsonArray("players")) {
+                    if (player.isJsonObject()) {
+                        JsonObject obj = player.getAsJsonObject();
+                        UUID u = uuid(str(obj, "uuid"));
+                        if (u != null) LadsPresence.relayAdd(u);
+                        apply(obj, self);
+                    }
+                }
+            }
+        } else if ("join".equals(type)) {
+            UUID player = uuid(str(message, "uuid"));
+            if (player != null) LadsPresence.relayAdd(player);
         } else if ("state".equals(type)) {
             apply(message, self);
         } else if ("equip".equals(type)) {
@@ -256,9 +275,12 @@ public final class CosmeticsLink {
             CosmeticsManager.get().setLinkCode(code, ttl);
         } else if ("leave".equals(type)) {
             UUID player = uuid(str(message, "uuid"));
-            if (player != null && !player.equals(self)) {
-                Emotes.remove(player);
-                CosmeticsManager.get().removeRemote(player);
+            if (player != null) {
+                LadsPresence.relayRemove(player);
+                if (!player.equals(self)) {
+                    Emotes.remove(player);
+                    CosmeticsManager.get().removeRemote(player);
+                }
             }
         }
     }

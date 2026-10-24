@@ -237,6 +237,8 @@ public static class ModpackLauncher
         if (!string.IsNullOrWhiteSpace(joinServer)) JoinServer(options, joinServer);
         if (!string.IsNullOrWhiteSpace(joinWorld)) JoinWorld(options, joinWorld);
         LimitBackgroundThreads(instance, options, Environment.ProcessorCount);
+        // Lads Core leaves the client-only extras out of a modpack (the title screen's "The Lads Network" button).
+        options.ExtraJvmArguments = (options.ExtraJvmArguments ?? Array.Empty<MArgument>()).Append(MArgument.FromCommandLine("-Dlads.modpack=true"));
         LaunchService.ConfigureCachedNativesDirectory(launcher.MinecraftPath, versionId, options);
         // Agent check and the security flags always; the Lads GC tuning only when the instance brings no JVM arguments of its own (two
         // collectors on one command line stop the JVM), and no clean-up of stray files in a folder that is not ours.

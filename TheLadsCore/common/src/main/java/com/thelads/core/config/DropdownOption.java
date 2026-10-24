@@ -26,7 +26,7 @@ public class DropdownOption extends Option {
     }
 
     public int getIndex() {
-        return index;
+        return com.thelads.core.client.ladsapi.ServerPolicy.applyDropdown(getModuleName(), getName(), index, choices);
     }
 
     public void setIndex(int i) {
@@ -42,7 +42,8 @@ public class DropdownOption extends Option {
     }
 
     public String getValue() {
-        return choices.length == 0 ? "" : choices[index];
+        int i = getIndex();
+        return choices.length == 0 ? "" : choices[i];
     }
 
     public String[] getChoices() {
@@ -72,5 +73,15 @@ public class DropdownOption extends Option {
             setIndex(element.getAsInt());
         } catch (Exception ignored) {
         }
+    }
+
+    @Override
+    public com.thelads.core.client.ladsapi.ServerControl serverControl() {
+        return com.thelads.core.client.ladsapi.ServerControl.FULL;
+    }
+
+    /** The player's own choice, never a server rule: the settings screen edits and config saves use this. */
+    public final int getOwnIndex() {
+        return index;
     }
 }

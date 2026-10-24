@@ -73,10 +73,10 @@ if (args.Length == 1 && args[0] == "--api")
 }
 
 string[] supportedVersions = QaCapabilities.Supported;
-string Usage = $"Usage: dotnet run --project TheLadsLauncher.Verification -- <{string.Join('|', supportedVersions)}> <repository root> [--title|--settings|--pack-smoke] [--dir <qaDirName>] [--expect-core-disabled]\n"
+string Usage = $"Usage: dotnet run --project TheLadsLauncher.Verification -- <{string.Join('|', supportedVersions)}> <repository root> [--title|--settings|--pack-smoke] [--dir <qaDirName>] [--join <host:port>] [--script <file>] [--expect-core-disabled]\n"
     + "   or: ... -- --show-mods <version> <repository root> [--dir <qaDirName>]\n"
     + "   or: ... -- --set-mods <version> <repository root> <enable|disable> <id,id,...> [--dir <qaDirName>]\n"
-    + "   or: ... -- --mc1201 [<repository root>] [--script <file>] [--remove-mods a,b] [--dir <name>] [--no-world] [--fresh-world] [--no-build|--build] [--core-jar <jar>] [--timeout-sec N]\n"
+    + "   or: ... -- --mc1201 [<repository root>] [--script <file>] [--remove-mods a,b] [--dir <name>] [--no-world] [--fresh-world] [--no-build|--build] [--core-jar <jar>] [--timeout-sec N] [--join <host:port>]\n"
     + "   or: ... -- --zero-smp <sandbox dir> [--script <file>] [--remove-mods a,b] [--no-world] [--fresh-world] [--no-build|--build] [--core-jar <jar>] [--timeout-sec N]";
 var rest = args.ToList();
 string? dirOption = null;
@@ -86,6 +86,22 @@ if (dirIndex >= 0)
     if (dirIndex + 1 >= rest.Count) throw new ArgumentException(Usage);
     dirOption = rest[dirIndex + 1];
     rest.RemoveRange(dirIndex, 2);
+}
+string? joinOption = null;
+int joinIndex = rest.IndexOf("--join");
+if (joinIndex >= 0)
+{
+    if (joinIndex + 1 >= rest.Count) throw new ArgumentException(Usage);
+    joinOption = rest[joinIndex + 1];
+    rest.RemoveRange(joinIndex, 2);
+}
+string? scriptOption = null;
+int scriptIndex = rest.IndexOf("--script");
+if (scriptIndex >= 0)
+{
+    if (scriptIndex + 1 >= rest.Count) throw new ArgumentException(Usage);
+    scriptOption = rest[scriptIndex + 1];
+    rest.RemoveRange(scriptIndex, 2);
 }
 bool expectCoreDisabled = rest.Remove("--expect-core-disabled");
 bool setMods = rest.FirstOrDefault() == "--set-mods", showMods = rest.FirstOrDefault() == "--show-mods";
@@ -136,16 +152,18 @@ foreach (var (flag, available, feature) in new[] {
     ("LADS_VERIFY_WELCOME", capabilities.Welcome, "the welcome-screen probe") })
     if (!(setMods || showMods) && Env(flag) == "1" && !available)
         throw new ArgumentException($"{flag}=1 needs {feature}, which LadsCore does not have on {version}. Unset it for {version} runs.");
+string? joinServer = joinOption ?? Env("LADS_VERIFY_JOIN");
+if (joinServer != null && !Regex.IsMatch(joinServer, @"\A[A-Za-z0-9_.-]+(:[0-9]{1,5})?\z"))
+    throw new ArgumentException($"--join must be <host> or <host:port>, not '{joinServer}'.");
+
 // The FastQuit probe opens its own worlds from the title screen: never beside the auto-world QA (two drivers opening worlds at once).
-bool autoWorldRequested = titleVerification && Env("LADS_VERIFY_AUTO_WORLD") == "1" && Env("LADS_VERIFY_FASTQUIT") == null;
+bool autoWorldRequested = titleVerification && Env("LADS_VERIFY_AUTO_WORLD") == "1" && Env("LADS_VERIFY_FASTQUIT") == null && joinServer == null;
 bool autoWorldVerification = autoWorldRequested && !expectCoreDisabled;
 bool requestedFeaturesOnly = autoWorldVerification && Env("LADS_VERIFY_REQUESTS_ONLY") == "1";
-// 1.20.1 (QaProbe1201): LADS_VERIFY_SCRIPT=<file> or LADS_VERIFY_SCRIPT_TEXT="wait 40;cmd /time set day;shot a" runs a probe script (README-1201.md).
-string? scriptSource = capabilities.Minimal ? Env("LADS_VERIFY_SCRIPT") : null, scriptText = capabilities.Minimal ? Env("LADS_VERIFY_SCRIPT_TEXT") : null;
+// Probe script: LADS_VERIFY_SCRIPT=<file>, --script <file>, or LADS_VERIFY_SCRIPT_TEXT="wait 40;cmd /time set day;shot a".
+string? scriptSource = scriptOption != null ? Path.GetFullPath(scriptOption) : Env("LADS_VERIFY_SCRIPT"), scriptText = Env("LADS_VERIFY_SCRIPT_TEXT");
 bool scripted = scriptSource != null || scriptText != null;
 if (scriptSource != null && !File.Exists(scriptSource)) throw new FileNotFoundException("LADS_VERIFY_SCRIPT does not exist: " + scriptSource);
-if (!capabilities.Minimal && (Env("LADS_VERIFY_SCRIPT") ?? Env("LADS_VERIFY_SCRIPT_TEXT")) != null)
-    throw new ArgumentException($"LADS_VERIFY_SCRIPT needs the 1.20.1 QA probe (QaProbe1201), which {version} does not have.");
 bool renderScaleVerification = capabilities.RenderScale && !expectCoreDisabled && !requestedFeaturesOnly && titleVerification && (autoWorldVerification || Env("LADS_VERIFY_RENDER_SCALE") == "1");
 // QA only: upstream mods left out of the staged pack, to get past a pack defect under diagnosis. Never the production manifest.
 // (1.20.1's Faster Iris Shadow Mapper needed this until the manifest id was fixed from "fastershadowmapper" to its jar's "fism".)
@@ -597,7 +615,7 @@ bool addServerVerification = titleVerification && !expectCoreDisabled && Env("LA
 if (addServerVerification) requiredCore.Add("Lads add-server probe END:");
 bool packsVerification = titleVerification && !expectCoreDisabled && Env("LADS_VERIFY_PACKS") != null;
 if (packsVerification) requiredCore.Add("Lads packs probe END:");
-if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && !soundsOnly && !hypixelOnly && !actionBarOnly && !world191Only && !f1914Only && !fixesOnly && !packsOnly && fastQuitPhase == null && biomeCapture == null) requiredCore.Add("Lads shared content probe END:");
+if (!expectCoreDisabled && !capabilities.Forge && !capabilities.Minimal && !particlesOnly && !soundsOnly && !hypixelOnly && !actionBarOnly && !world191Only && !f1914Only && !fixesOnly && !packsOnly && fastQuitPhase == null && biomeCapture == null && joinServer == null) requiredCore.Add("Lads shared content probe END:");
 if (modRequest != null) requiredCore.Add("Lads mod request probe END:");
 string[] failureMarkers = ["Lads font reload probe FAILED", "Lads native feature probe FAILED", "Lads render scale probe FAILED", "Lads paper doll probe FAILED",
     "Lads native reconnect probe FAILED", "Lads dynamic FPS probe FAILED", "Lads background policy probe FAILED", "Lads auto-world QA FAILED",
@@ -855,6 +873,7 @@ try
     // A renderer relaunch goes back where the player was, as MainWindow.LaunchGame does it.
     if (relaunchWorld != null) ModpackLauncher.JoinWorld(launchOptions, relaunchWorld);
     else if (relaunchServer != null) ModpackLauncher.JoinServer(launchOptions, relaunchServer);
+    else if (joinServer != null) ModpackLauncher.JoinServer(launchOptions, joinServer);
     // The benchmark measures what players get: the launcher's own GC/heap flags for this Java (MainWindow and LaunchService add them).
     if (perf189) LaunchService.EnsureSecurityJvmArguments(launchOptions, javaMajor, directory, version);
     using (await QaShared.LockAsync(Path.Combine(QaShared.CacheRoot, ".mc.lock"), ct))
@@ -903,6 +922,14 @@ try
         AddJvm("-Dthelads.qaProgress=" + qaProgressFile);
         if (qaProbes.Count > 0) AddJvm("-Dthelads.qaProbes=" + string.Join('|', qaProbes));
         QaProgressWrite();
+    }
+    if (joinServer != null) AddJvm("-Dthelads.qaJoinServer=" + joinServer);
+    if (scripted)
+    {
+        string scriptFile = Path.Combine(directory, ".lads-qa-script.txt");
+        await File.WriteAllTextAsync(scriptFile, scriptSource != null ? await File.ReadAllTextAsync(scriptSource, ct) : string.Join('\n', scriptText!.Split(';', StringSplitOptions.TrimEntries)), ct);
+        AddJvm("-Dthelads.qaScript=" + scriptFile);
+        CopyIfExists(scriptFile, Path.Combine(evidence, "qa-script.txt"));
     }
     // QA keeps JAVA_TOOL_OPTIONS: the JFR perf recipe passes its recording flags there (players never get it, GameSession strips it).
     // Two real frames of the Lads loading screen (startup), saved to the sandbox's screenshots folder.
@@ -961,13 +988,6 @@ try
         AddJvm("-Dfabric.noGui=true");
         if (relaunchWorld != null) AddJvm("-Dthelads.qaRejoin=true"); // the shader step's relaunch: the script starts back in that world
         if (autoWorldVerification) { AddJvm("-Dthelads.verifyAutoWorld=true"); AddJvm("-Dthelads.qaWorld=LadsQA-" + dirName.Replace('.', '_')); }
-        if (scripted)
-        {
-            string scriptFile = Path.Combine(directory, ".lads-qa-script.txt");
-            await File.WriteAllTextAsync(scriptFile, scriptSource != null ? await File.ReadAllTextAsync(scriptSource, ct) : string.Join('\n', scriptText!.Split(';', StringSplitOptions.TrimEntries)), ct);
-            AddJvm("-Dthelads.qaScript=" + scriptFile);
-            CopyIfExists(scriptFile, Path.Combine(evidence, "qa-script.txt"));
-        }
     }
     else
     {
@@ -979,15 +999,16 @@ try
         {
             // Probe public settings APIs only in this isolated QA process, when its Lads menu opens.
             if (welcomeVerification) AddJvm("-Dthelads.verifyWelcome=true");
-            else if (fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyIntegrations=true"); // the FastQuit probe opens its own worlds
-            if (!autoWorldVerification) { if (fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyInput=true"); }
+            // --join: the server's world is not a QA world; the in-world feature probes toggle modules and fail on server policies (LadsClientAPI QA)
+            else if (fastQuitPhase == null && biomeCapture == null && joinServer == null) AddJvm("-Dthelads.verifyIntegrations=true"); // the FastQuit probe opens its own worlds
+            if (!autoWorldVerification) { if (fastQuitPhase == null && biomeCapture == null && joinServer == null) AddJvm("-Dthelads.verifyInput=true"); }
             else
             {
                 AddJvm("-Dthelads.verifyAutoWorld=true");
                 AddJvm("-Dthelads.verifyDurabilityTooltip=true");
                 AddJvm(requestedFeaturesOnly ? "-Dthelads.verifyRequestedFeaturesOnly=true" : "-Dthelads.verifyCrosshair=true");
             }
-            if (titleVerification && !autoWorldVerification && fastQuitPhase == null && biomeCapture == null) AddJvm("-Dthelads.verifyKillBannerPreview=true");
+            if (titleVerification && !autoWorldVerification && fastQuitPhase == null && biomeCapture == null && joinServer == null) AddJvm("-Dthelads.verifyKillBannerPreview=true");
             if (settingsVerification)
             {
                 AddJvm("-Dthelads.verifyAllIntegrationWrites=true");
@@ -1002,7 +1023,8 @@ try
             if (Env("LADS_VERIFY_SKIN_NETWORK") == "1") AddJvm("-Dthelads.verifySkinNetwork=true");
             if (flashbackVerification) AddJvm("-Dthelads.verifyFlashback=true");
             if (nativePortsVerification) AddJvm("-Dthelads.verifyBackgroundPolicies=true");
-            if (fastQuitPhase == null && biomeCapture == null && !fixesOnly) AddJvm("-Dthelads.verifySharedContent=true"); // it opens the world list at the title screen, as the FastQuit probe does
+            // it opens the world list at the title screen, as the FastQuit probe does; never on a --join run (that screen change aborts the connection)
+            if (fastQuitPhase == null && biomeCapture == null && !fixesOnly && joinServer == null) AddJvm("-Dthelads.verifySharedContent=true");
             if (sharedRole != null) AddJvm("-Dthelads.sharedContentRole=" + sharedRole);
             if (runId != null) AddJvm("-Dthelads.sharedContentRunId=" + runId);
             AddJvm("-Dthelads.verifyModInventory=true");

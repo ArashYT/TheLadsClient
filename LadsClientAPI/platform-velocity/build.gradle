@@ -1,0 +1,16 @@
+// platform-velocity: owned by lane SRV-A (see AGY-LADSAPI-B-SRV-A.md).
+
+dependencies {
+    compileOnly project(':common')
+    annotationProcessor 'com.velocitypowered:velocity-api:3.3.0-SNAPSHOT'
+    compileOnly 'com.velocitypowered:velocity-api:3.3.0-SNAPSHOT'
+
+    testImplementation project(':common')
+    testImplementation 'com.velocitypowered:velocity-api:3.3.0-SNAPSHOT'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}

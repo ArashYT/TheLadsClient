@@ -33,5 +33,5 @@ public class IntTextOption extends TextOption {
     }
 
     @Override
-    public JsonElement save() { return new JsonPrimitive(get()); }
+    public JsonElement save() { return new JsonPrimitive(Integer.parseInt(super.getValue())); }
 }

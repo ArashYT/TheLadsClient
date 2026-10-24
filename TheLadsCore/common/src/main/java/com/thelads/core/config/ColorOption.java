@@ -25,6 +25,11 @@ public class ColorOption extends Option {
     }
 
     public boolean isUseGlobal() {
+        com.thelads.core.client.ladsapi.ServerPolicy p = com.thelads.core.client.ladsapi.ServerPolicy.active();
+        if (p != null && !p.refusesChanges()) {
+            com.thelads.core.client.ladsapi.OptionRule rule = p.option(getModuleName(), getName());
+            if (rule != null && rule.color != null) return false;
+        }
         return useGlobal;
     }
 
@@ -33,7 +38,7 @@ public class ColorOption extends Option {
     }
 
     public int getColor() {
-        return color;
+        return com.thelads.core.client.ladsapi.ServerPolicy.applyColor(getModuleName(), getName(), color);
     }
 
     public void setColor(int color) {
@@ -60,5 +65,15 @@ public class ColorOption extends Option {
             }
         } catch (Exception ignored) {
         }
+    }
+
+    @Override
+    public com.thelads.core.client.ladsapi.ServerControl serverControl() {
+        return com.thelads.core.client.ladsapi.ServerControl.FULL;
+    }
+
+    /** The player's own color, never a server rule: the settings screen edits and config saves use this. */
+    public final int getOwnColor() {
+        return color;
     }
 }

@@ -1,0 +1,6186 @@
+{
+  "schema": 1,
+  "lads": "1.9.12",
+  "modules": [
+    {
+      "name": "Autohide",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Hide after seconds",
+          "type": "slider",
+          "default": 4,
+          "min": 1,
+          "max": 30,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Fade milliseconds",
+          "type": "slider",
+          "default": 350,
+          "min": 0,
+          "max": 1500,
+          "step": 50,
+          "control": "FULL"
+        },
+        {
+          "name": "Show while moving",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Show when hurt or hungry",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Faded opacity",
+          "type": "slider",
+          "default": 0,
+          "min": 0,
+          "max": 80,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Show when swinging or placing",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Fade vanilla HUD",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Fade Lads HUD",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Jade",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Settings and addons",
+          "type": "other",
+          "control": "NEVER"
+        }
+      ]
+    },
+    {
+      "name": "Clock",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "12-hour clock",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Stopwatch",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Start or pause",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Reset",
+          "type": "other",
+          "control": "NEVER"
+        }
+      ]
+    },
+    {
+      "name": "ItemCounter",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Item",
+          "type": "dropdown",
+          "default": "Held item",
+          "choices": [
+            "Held item",
+            "Arrows",
+            "Totems",
+            "Rockets"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "ReachDisplay",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "ServerAddress",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Hide address",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "PortalCoordinates",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "ClientTools",
+      "category": "MECHANIC",
+      "neverForced": true,
+      "automation": false,
+      "options": [
+        {
+          "name": "Copy coordinates",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Low durability warning",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Durability percent",
+          "type": "slider",
+          "default": 10,
+          "min": 1,
+          "max": 50,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Inventory full warning",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Particle Core",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Culling",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Optimized rendering",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide own potion particles",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide others' potion particles",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Spawn rates",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Limit decorative particles",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Decorative particles per tick",
+          "type": "slider",
+          "default": 64,
+          "min": 8,
+          "max": 512,
+          "step": 8,
+          "control": "FULL"
+        },
+        {
+          "name": "Decorative particle distance",
+          "type": "slider",
+          "default": 48,
+          "min": 16,
+          "max": 128,
+          "step": 8,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "EntityCulling",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "PingView",
+      "category": "SERVER",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Show Numbers",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Color Mode",
+          "type": "dropdown",
+          "default": "Latency",
+          "choices": [
+            "Latency",
+            "Static"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Hide Ping",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Text Shadow",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Small Numbers",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide False Ping",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Static Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ping 0-74",
+          "type": "color",
+          "default": "#FF13FF55",
+          "control": "FULL"
+        },
+        {
+          "name": "Ping 75-144",
+          "type": "color",
+          "default": "#FF1E941E",
+          "control": "FULL"
+        },
+        {
+          "name": "Ping 145-199",
+          "type": "color",
+          "default": "#FFB7C52B",
+          "control": "FULL"
+        },
+        {
+          "name": "Ping 200-299",
+          "type": "color",
+          "default": "#FFFFCA2D",
+          "control": "FULL"
+        },
+        {
+          "name": "Ping 300-399",
+          "type": "color",
+          "default": "#FF9D750E",
+          "control": "FULL"
+        },
+        {
+          "name": "Ping 400+",
+          "type": "color",
+          "default": "#FFBE1B1B",
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "BetterF3",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Style",
+          "type": "dropdown",
+          "default": "BetterF3",
+          "choices": [
+            "BetterF3",
+            "Lads (old)"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Text Shadow",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Background Color",
+          "type": "color",
+          "default": "#90505050",
+          "control": "FULL"
+        },
+        {
+          "name": "Slide In",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Animation Speed",
+          "type": "slider",
+          "default": 100,
+          "min": 25,
+          "max": 400,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide Lads HUD",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Rainbow Colors",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Other Lines",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide Inessential",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Axis Colors",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Performance",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Performance Key Color",
+          "type": "color",
+          "default": "#FFFF7043",
+          "control": "FULL"
+        },
+        {
+          "name": "Performance Value Color",
+          "type": "color",
+          "default": "#FFFFFF55",
+          "control": "FULL"
+        },
+        {
+          "name": "Show FPS",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Particles",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Entities rendered/total",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Position",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Position Key Color",
+          "type": "color",
+          "default": "#FFFF5555",
+          "control": "FULL"
+        },
+        {
+          "name": "Position Value Color",
+          "type": "color",
+          "default": "#FFF2F2F2",
+          "control": "FULL"
+        },
+        {
+          "name": "Show XYZ",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Block",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show World",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "World Key Color",
+          "type": "color",
+          "default": "#FF4FE3B5",
+          "control": "FULL"
+        },
+        {
+          "name": "World Value Color",
+          "type": "color",
+          "default": "#FF55FF55",
+          "control": "FULL"
+        },
+        {
+          "name": "Show Dimension",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Facing",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Rotation",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Light",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Light (Server)",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Highest Block",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Highest Block (Server)",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Biome",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Local Difficulty",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Current Day Ticks",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Days Played",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Slime Chunk",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Target",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Target Key Color",
+          "type": "color",
+          "default": "#FFFFAA00",
+          "control": "FULL"
+        },
+        {
+          "name": "Target Value Color",
+          "type": "color",
+          "default": "#FFFFFF55",
+          "control": "FULL"
+        },
+        {
+          "name": "Show Targeted Block",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Block ID",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show System",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "System Key Color",
+          "type": "color",
+          "default": "#FF55FFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "System Value Color",
+          "type": "color",
+          "default": "#FFFFFF55",
+          "control": "FULL"
+        },
+        {
+          "name": "Show Current Time",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Java Version",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Memory Usage",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Allocation Rate",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Allocated Memory",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show CPU",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Display",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show GPU",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show GPU Utilization",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show OpenGL Version",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show GPU Driver",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Performance",
+      "category": "MECHANIC",
+      "neverForced": true,
+      "automation": false,
+      "options": [
+        {
+          "name": "Aggressive Memory Cleaner",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Reduce Background FPS",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Threads",
+      "category": "MECHANIC",
+      "neverForced": true,
+      "automation": false,
+      "options": [
+        {
+          "name": "Render thread priority",
+          "type": "slider",
+          "default": 5,
+          "min": 1,
+          "max": 8,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Server thread priority",
+          "type": "slider",
+          "default": 5,
+          "min": 1,
+          "max": 8,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Worker thread priority",
+          "type": "slider",
+          "default": 5,
+          "min": 1,
+          "max": 8,
+          "step": 1,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Jasione",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "Async",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Min entities",
+          "type": "slider",
+          "default": 300,
+          "min": 100,
+          "max": 3000,
+          "step": 100,
+          "control": "FULL"
+        },
+        {
+          "name": "Threads",
+          "type": "dropdown",
+          "default": "Auto",
+          "choices": [
+            "Auto",
+            "2",
+            "3",
+            "4",
+            "6",
+            "8",
+            "12",
+            "16"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "FPS",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Update rate",
+          "type": "dropdown",
+          "default": "Fast",
+          "choices": [
+            "Instant",
+            "Fast",
+            "Normal",
+            "Slow"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Smooth",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Display",
+          "type": "dropdown",
+          "default": "Game FPS",
+          "choices": [
+            "Game FPS",
+            "HUD FPS",
+            "Both"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Minimap",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Map and waypoint settings",
+          "type": "other",
+          "control": "NEVER"
+        }
+      ]
+    },
+    {
+      "name": "BossBar",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Show bars",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show names",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Maximum bars",
+          "type": "slider",
+          "default": 5,
+          "min": 1,
+          "max": 10,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Darken sky",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Boss fog",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Boss music",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Action Bar",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Text Shadow",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Background",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Custom Text Color",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Duration",
+          "type": "slider",
+          "default": 3,
+          "min": 1,
+          "max": 10,
+          "step": 0.5,
+          "control": "FULL"
+        },
+        {
+          "name": "Fade Out",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide Action Bar",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Coordinates",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Format",
+          "type": "dropdown",
+          "default": "Labeled X/Y/Z",
+          "choices": [
+            "X Y Z",
+            "Coords: X, Y, Z",
+            "Labeled X/Y/Z"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Vertical",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Biome",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Direction",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Per-axis colors",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "X Color",
+          "type": "color",
+          "default": "#FFFF5555",
+          "control": "FULL"
+        },
+        {
+          "name": "Y Color",
+          "type": "color",
+          "default": "#FF55FF55",
+          "control": "FULL"
+        },
+        {
+          "name": "Z Color",
+          "type": "color",
+          "default": "#FF5599FF",
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Biome",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Format",
+          "type": "dropdown",
+          "default": "Name",
+          "choices": [
+            "Name",
+            "ID"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Show label",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "PingHUD",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Show label",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Color by ping",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "ArmorHUD",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Style",
+          "type": "dropdown",
+          "default": "Hotbar Slots",
+          "choices": [
+            "Hotbar Slots",
+            "List"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Durability",
+          "type": "dropdown",
+          "default": "Number",
+          "choices": [
+            "Off",
+            "Number",
+            "Percent"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Attach to hotbar",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Memory",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Display",
+          "type": "dropdown",
+          "default": "Used / Max + %",
+          "choices": [
+            "Used / Max",
+            "Used / Max + %",
+            "Percent only"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Direction",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Format",
+          "type": "dropdown",
+          "default": "Cardinal",
+          "choices": [
+            "Cardinal",
+            "Degrees",
+            "Both"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Long names",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Speed",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Unit",
+          "type": "dropdown",
+          "default": "b/s",
+          "choices": [
+            "b/s",
+            "km/h"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Precision",
+          "type": "dropdown",
+          "default": "1 dec",
+          "choices": [
+            "0 dec",
+            "1 dec",
+            "2 dec"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Day",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Show label",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Time",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "12-hour",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Show label",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Format",
+          "type": "dropdown",
+          "default": "x/max",
+          "choices": [
+            "x/max",
+            "HP x/max",
+            "x",
+            "Percent"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Show absorption",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Hunger",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Show label",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show saturation",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "XP",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Format",
+          "type": "dropdown",
+          "default": "Level",
+          "choices": [
+            "Level",
+            "Progress %",
+            "Both"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Keystrokes",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Style",
+          "type": "dropdown",
+          "default": "Clean",
+          "choices": [
+            "Clean",
+            "Classic"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Show CPS",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show space bar",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Sneak/Sprint Row",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Press Animation",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Tick Synced Key Presses",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Color Preset",
+          "type": "dropdown",
+          "default": "Classic",
+          "choices": [
+            "Classic",
+            "Inverted",
+            "Clean",
+            "Beehive",
+            "Mint & Cream",
+            "Cyber Grape",
+            "Vibrant Mango",
+            "Dirt",
+            "Retro",
+            "Custom"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Key Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Pressed Key Text Color",
+          "type": "color",
+          "default": "#FF000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Key Background Color",
+          "type": "color",
+          "default": "#AA000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Pressed Key Background Color",
+          "type": "color",
+          "default": "#AAFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Key Text Shadow",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Pressed Key Text Shadow",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Custom Shadow Colors",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Key Text Shadow Color",
+          "type": "color",
+          "default": "#FF000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Pressed Key Text Shadow Color",
+          "type": "color",
+          "default": "#FF000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Rainbow Key Text",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Rainbow Pressed Key Text",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Rainbow Background",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Rainbow Pressed Background",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Rainbow Key Text Shadow",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Rainbow Pressed Key Text Shadow",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Rainbow Speed",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "CPS",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Show",
+          "type": "dropdown",
+          "default": "Both",
+          "choices": [
+            "Both",
+            "Left only",
+            "Right only"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Show label",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Title Scale",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Scale",
+          "type": "other",
+          "control": "NEVER"
+        }
+      ]
+    },
+    {
+      "name": "Exordium",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "TexturePacks",
+      "category": "HUD",
+      "neverForced": true,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Show Icons",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show All",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Max Packs",
+          "type": "dropdown",
+          "default": "3",
+          "choices": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Voice Chat",
+      "category": "HUD",
+      "neverForced": true,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Show label",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Voice Chat Group",
+      "category": "HUD",
+      "neverForced": true,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Potion Effects",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore HUD FPS Cap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "color",
+          "default": "#00000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Color mode",
+          "type": "dropdown",
+          "default": "Static",
+          "choices": [
+            "Static",
+            "Chroma",
+            "Chroma Fast",
+            "Fade"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Show icon",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show duration",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show when empty",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Fullbright",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Brightness",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Toggle Sprint & Sneak",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Sprint",
+          "type": "dropdown",
+          "default": "Toggle",
+          "choices": [
+            "Toggle",
+            "Always",
+            "Vanilla"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Pause sprint while sneaking",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Sneak",
+          "type": "dropdown",
+          "default": "Vanilla",
+          "choices": [
+            "Toggle",
+            "Vanilla"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Toggle Sprint key",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Toggle Sneak key",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Sprint toggled",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Sneak toggled",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Zoom",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Mode",
+          "type": "dropdown",
+          "default": "Hold",
+          "choices": [
+            "Hold",
+            "Toggle"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Smooth Zoom",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Scroll to Zoom",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Hand Zoom",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Custom FOV",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Static FOV",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Sprinting",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Speed Effects",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Flying",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Bow Aiming",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Spyglass",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Underwater",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "SmoothHotbar",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Speed",
+          "type": "dropdown",
+          "default": "Normal",
+          "choices": [
+            "Slow",
+            "Normal",
+            "Fast"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "DynamicLights",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Light Radius",
+          "type": "slider",
+          "default": 15,
+          "min": 5,
+          "max": 30,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Quality",
+          "type": "dropdown",
+          "default": "Fancy",
+          "choices": [
+            "Fast",
+            "Fancy"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Entities",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Dropped Items",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Underwater",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Explosions & TNT",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Glowing Mobs & Projectiles",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Damage Tilt",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Disable Tilt",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Directional",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Intensity",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "LegacySwing",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "VerticalBobbing",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Intensity",
+          "type": "dropdown",
+          "default": "Normal",
+          "choices": [
+            "Low",
+            "Normal",
+            "High"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "1.7 Animations",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Blockhitting",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "1.7 sword block pose",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "1.7 bow position",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "1.7 fishing rod position",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "1.7 held item positions",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "1.7 eating and drinking",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Swing while using items",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Hold to swing",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Red armour on hurt",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Instant sneak camera",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "No heart flashing",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "1.7 third-person items",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "2D dropped items",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "No attack-cooldown dip",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Low Fire",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Low Shield",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Item Physics",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Item animation",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "SP: Wood floats",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "SP: Fireproofing",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "SP: Items ignite",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "SP: Cactus-safe",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "SP: Despawn mins",
+          "type": "slider",
+          "default": 5,
+          "min": 1,
+          "max": 30,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "SP: Click pickup",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "SP: Charged throw",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Wavy Capes",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Style",
+          "type": "dropdown",
+          "default": "Smooth",
+          "choices": [
+            "Smooth",
+            "Blocky"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Wind",
+          "type": "slider",
+          "default": 30,
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Gravity",
+          "type": "slider",
+          "default": 50,
+          "min": 10,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Segments",
+          "type": "slider",
+          "default": 16,
+          "min": 4,
+          "max": 32,
+          "step": 2,
+          "control": "FULL"
+        },
+        {
+          "name": "Other players",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "TNT Timer",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 10,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Text Shadow",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "TNT minecarts",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Through blocks",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "DynamicFPS",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Unfocused FPS",
+          "type": "slider",
+          "default": 60,
+          "min": 0,
+          "max": 260,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Hidden FPS",
+          "type": "slider",
+          "default": 30,
+          "min": 0,
+          "max": 260,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Mode",
+          "type": "dropdown",
+          "default": "Balanced",
+          "choices": [
+            "Aggressive",
+            "Balanced",
+            "Off"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Background Profiles",
+          "type": "other",
+          "control": "NEVER"
+        }
+      ]
+    },
+    {
+      "name": "Nametags",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Show Own Nametag in Third Person",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Render Background",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Text Shadow",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Your Display Name",
+          "type": "text",
+          "control": "NEVER"
+        },
+        {
+          "name": "Nicknames",
+          "type": "text",
+          "control": "NEVER"
+        }
+      ]
+    },
+    {
+      "name": "TitleScreen",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Account Card Scale",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 150,
+          "step": 5,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Paperdoll",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Show in First Person",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show in Third Person",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Always Display",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Display Time (ticks)",
+          "type": "slider",
+          "default": 40,
+          "min": 0,
+          "max": 200,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Head Movement",
+          "type": "dropdown",
+          "default": "Yaw Only",
+          "choices": [
+            "Yaw and Pitch",
+            "Yaw Only",
+            "None",
+            "Pitch Only"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Model Scale",
+          "type": "slider",
+          "default": 4,
+          "min": 1,
+          "max": 24,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Anchor",
+          "type": "dropdown",
+          "default": "HUD Position",
+          "choices": [
+            "HUD Position",
+            "Top Left",
+            "Top Center",
+            "Top Right",
+            "Center Left",
+            "Center",
+            "Center Right",
+            "Bottom Left",
+            "Bottom Center",
+            "Bottom Right"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "X Offset",
+          "type": "slider",
+          "default": 0,
+          "min": -500,
+          "max": 500,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Y Offset",
+          "type": "slider",
+          "default": 0,
+          "min": -500,
+          "max": 500,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Default Rotation",
+          "type": "slider",
+          "default": 15,
+          "min": 0,
+          "max": 45,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Maximum Yaw",
+          "type": "slider",
+          "default": 30,
+          "min": 0,
+          "max": 90,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Maximum Pitch",
+          "type": "slider",
+          "default": 30,
+          "min": 0,
+          "max": 90,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Model Opacity",
+          "type": "slider",
+          "default": 100,
+          "min": 5,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Sprinting",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Swimming",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Crawling",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Crouching",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Creative Flying",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Elytra Gliding",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Riding",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Spin Attacking",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Using Items",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Walking",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Standing",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Jumping",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Falling",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Sleeping",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Climbing",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "In Water",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "On Fire",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Attacking",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Blocking",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Hurt",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Dead",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Spectating",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "KillBanner",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Style",
+          "type": "dropdown",
+          "default": "Reaver",
+          "choices": [
+            "Base",
+            "Reaver",
+            "Rogue",
+            "Custom",
+            "AEMONDIR",
+            "AERIS",
+            "ARAXYS",
+            "ARAXYS, EP 9",
+            "ARCANE COLLECTOR'S SET",
+            "AYAKASHI",
+            "BLACKSPYRE",
+            "BLACKTHORN",
+            "BLASTX",
+            "BOLT",
+            "BUBBLEGUM DEATHWISH",
+            "BUBBLEGUM DEATHWISH 2",
+            "BUBBLEGUM DEATHWISH 3",
+            "BUBBLEGUM DEATHWISH 4",
+            "CHAMPIONS",
+            "CHAMPIONS 2022",
+            "CHAMPIONS 2023",
+            "CHAMPIONS 2024",
+            "CHAMPIONS 2025",
+            "CHRONOVOID",
+            "CRYOSTASIS",
+            "CYRAX",
+            "DIVERGENCE",
+            "DOLMIR'S REVENGE",
+            "DOOMBRINGER",
+            "ELDERFLAME",
+            "EVORI DREAMWINGS",
+            "EX.O",
+            "FORSAKEN",
+            "GAIA'S VENGEANCE",
+            "GAIA'S VENGEANCE, EP 7",
+            "GLITCHPOP",
+            "GLITCHPOP 2.0",
+            "HELIX",
+            "HOLO MERIDIAN",
+            "IMPERIUM",
+            "ION",
+            "ION, EP 5",
+            "KURONAMI",
+            "MAGEPUNK",
+            "MAGEPUNK, EP 3",
+            "MAGEPUNK, EP 6",
+            "MYSTBLOOM",
+            "MYSTBLOOM, V25",
+            "NEO FRONTIER",
+            "NEPTUNE",
+            "NEPTUNE, V25",
+            "NOCTURNUM",
+            "ONI",
+            "ONI, EP 6",
+            "ORA BY ONETAP",
+            "ORA BY ONETAP - LAWYER",
+            "ORA BY ONETAP - RAJA",
+            "ORA BY ONETAP - RENEGADE",
+            "ORA BY ONETAP - WATCH",
+            "ORIGIN",
+            "OVERDRIVE",
+            "PHASEGUARD",
+            "PRELUDE TO CHAOS",
+            "PRELUDE TO CHAOS, V25",
+            "PRIME",
+            "PRIME//2.0",
+            "PRIMORDIUM",
+            "PROTOCOL 781-A",
+            "RADIANT CRISIS 001",
+            "REAVER, EP 5",
+            "REAVER, V26",
+            "RECON",
+            "R.E.S",
+            "R.E.S - DANCE FEVER",
+            "R.E.S - K.NOCK O.UT!!",
+            "RGX 11Z PRO",
+            "RGX 11Z PRO, EP 4",
+            "RGX 11Z PRO, EP 9",
+            "RUINATION",
+            "SENTINELS OF LIGHT",
+            "SENTINELS OF LIGHT, EP 7",
+            "SINGULARITY",
+            "SINGULARITY, EP 9",
+            "SOLARSTRIDE",
+            "SOVEREIGN",
+            "SOVEREIGN, EP 8",
+            "SPECTRUM",
+            "SPLASHX",
+            "VALIANT HERO",
+            "VCT",
+            "VCT 2025",
+            "XERØFANG"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Reaver Variant",
+          "type": "dropdown",
+          "default": "Red",
+          "choices": [
+            "Base",
+            "Red",
+            "Black",
+            "White"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Rogue Variant",
+          "type": "dropdown",
+          "default": "Base",
+          "choices": [
+            "Base",
+            "Green",
+            "Red",
+            "Blue"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Custom Banner",
+          "type": "dropdown",
+          "default": "Reaver",
+          "choices": [
+            "Base",
+            "Reaver",
+            "Rogue",
+            "AEMONDIR",
+            "AERIS",
+            "ARAXYS",
+            "ARAXYS, EP 9",
+            "ARCANE COLLECTOR'S SET",
+            "AYAKASHI",
+            "BLACKSPYRE",
+            "BLACKTHORN",
+            "BLASTX",
+            "BOLT",
+            "BUBBLEGUM DEATHWISH",
+            "BUBBLEGUM DEATHWISH 2",
+            "BUBBLEGUM DEATHWISH 3",
+            "BUBBLEGUM DEATHWISH 4",
+            "CHAMPIONS",
+            "CHAMPIONS 2022",
+            "CHAMPIONS 2023",
+            "CHAMPIONS 2024",
+            "CHAMPIONS 2025",
+            "CHRONOVOID",
+            "CRYOSTASIS",
+            "CYRAX",
+            "DIVERGENCE",
+            "DOLMIR'S REVENGE",
+            "DOOMBRINGER",
+            "ELDERFLAME",
+            "EVORI DREAMWINGS",
+            "EX.O",
+            "FORSAKEN",
+            "GAIA'S VENGEANCE",
+            "GAIA'S VENGEANCE, EP 7",
+            "GLITCHPOP",
+            "GLITCHPOP 2.0",
+            "HELIX",
+            "HOLO MERIDIAN",
+            "IMPERIUM",
+            "ION",
+            "ION, EP 5",
+            "KURONAMI",
+            "MAGEPUNK",
+            "MAGEPUNK, EP 3",
+            "MAGEPUNK, EP 6",
+            "MYSTBLOOM",
+            "MYSTBLOOM, V25",
+            "NEO FRONTIER",
+            "NEPTUNE",
+            "NEPTUNE, V25",
+            "NOCTURNUM",
+            "ONI",
+            "ONI, EP 6",
+            "ORA BY ONETAP",
+            "ORA BY ONETAP - LAWYER",
+            "ORA BY ONETAP - RAJA",
+            "ORA BY ONETAP - RENEGADE",
+            "ORA BY ONETAP - WATCH",
+            "ORIGIN",
+            "OVERDRIVE",
+            "PHASEGUARD",
+            "PRELUDE TO CHAOS",
+            "PRELUDE TO CHAOS, V25",
+            "PRIME",
+            "PRIME//2.0",
+            "PRIMORDIUM",
+            "PROTOCOL 781-A",
+            "RADIANT CRISIS 001",
+            "REAVER, EP 5",
+            "REAVER, V26",
+            "RECON",
+            "R.E.S",
+            "R.E.S - DANCE FEVER",
+            "R.E.S - K.NOCK O.UT!!",
+            "RGX 11Z PRO",
+            "RGX 11Z PRO, EP 4",
+            "RGX 11Z PRO, EP 9",
+            "RUINATION",
+            "SENTINELS OF LIGHT",
+            "SENTINELS OF LIGHT, EP 7",
+            "SINGULARITY",
+            "SINGULARITY, EP 9",
+            "SOLARSTRIDE",
+            "SOVEREIGN",
+            "SOVEREIGN, EP 8",
+            "SPECTRUM",
+            "SPLASHX",
+            "VALIANT HERO",
+            "VCT",
+            "VCT 2025",
+            "XERØFANG"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Custom Sound",
+          "type": "dropdown",
+          "default": "Rogue",
+          "choices": [
+            "Base",
+            "Reaver",
+            "Rogue",
+            "AEMONDIR",
+            "AERIS",
+            "ARAXYS",
+            "ARAXYS, EP 9",
+            "ARCANE COLLECTOR'S SET",
+            "AYAKASHI",
+            "BLACKSPYRE",
+            "BLACKTHORN",
+            "BLASTX",
+            "BOLT",
+            "BUBBLEGUM DEATHWISH",
+            "BUBBLEGUM DEATHWISH 2",
+            "BUBBLEGUM DEATHWISH 3",
+            "BUBBLEGUM DEATHWISH 4",
+            "CHAMPIONS",
+            "CHAMPIONS 2022",
+            "CHAMPIONS 2023",
+            "CHAMPIONS 2024",
+            "CHAMPIONS 2025",
+            "CHRONOVOID",
+            "CRYOSTASIS",
+            "CYRAX",
+            "DIVERGENCE",
+            "DOLMIR'S REVENGE",
+            "DOOMBRINGER",
+            "ELDERFLAME",
+            "EVORI DREAMWINGS",
+            "EX.O",
+            "FORSAKEN",
+            "GAIA'S VENGEANCE",
+            "GAIA'S VENGEANCE, EP 7",
+            "GLITCHPOP",
+            "GLITCHPOP 2.0",
+            "HELIX",
+            "HOLO MERIDIAN",
+            "IMPERIUM",
+            "ION",
+            "ION, EP 5",
+            "KURONAMI",
+            "MAGEPUNK",
+            "MAGEPUNK, EP 3",
+            "MAGEPUNK, EP 6",
+            "MYSTBLOOM",
+            "MYSTBLOOM, V25",
+            "NEO FRONTIER",
+            "NEPTUNE",
+            "NEPTUNE, V25",
+            "NOCTURNUM",
+            "ONI",
+            "ONI, EP 6",
+            "ORA BY ONETAP",
+            "ORA BY ONETAP - LAWYER",
+            "ORA BY ONETAP - RAJA",
+            "ORA BY ONETAP - RENEGADE",
+            "ORA BY ONETAP - WATCH",
+            "ORIGIN",
+            "OVERDRIVE",
+            "PHASEGUARD",
+            "PRELUDE TO CHAOS",
+            "PRELUDE TO CHAOS, V25",
+            "PRIME",
+            "PRIME//2.0",
+            "PRIMORDIUM",
+            "PROTOCOL 781-A",
+            "RADIANT CRISIS 001",
+            "REAVER, EP 5",
+            "REAVER, V26",
+            "RECON",
+            "R.E.S",
+            "R.E.S - DANCE FEVER",
+            "R.E.S - K.NOCK O.UT!!",
+            "RGX 11Z PRO",
+            "RGX 11Z PRO, EP 4",
+            "RGX 11Z PRO, EP 9",
+            "RUINATION",
+            "SENTINELS OF LIGHT",
+            "SENTINELS OF LIGHT, EP 7",
+            "SINGULARITY",
+            "SINGULARITY, EP 9",
+            "SOLARSTRIDE",
+            "SOVEREIGN",
+            "SOVEREIGN, EP 8",
+            "SPECTRUM",
+            "SPLASHX",
+            "VALIANT HERO",
+            "VCT",
+            "VCT 2025",
+            "XERØFANG"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Your Sounds",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Randomize",
+          "type": "dropdown",
+          "default": "Off",
+          "choices": [
+            "Off",
+            "Variant",
+            "Skin and variant",
+            "Chosen",
+            "Per life",
+            "Per life (Chosen)"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Random Pool",
+          "type": "text",
+          "control": "NEVER"
+        },
+        {
+          "name": "Skin Variants",
+          "type": "text",
+          "control": "NEVER"
+        },
+        {
+          "name": "Players",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Mobs",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Bosses",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Headshots",
+          "type": "dropdown",
+          "default": "Head hits",
+          "choices": [
+            "Head hits",
+            "Every kill"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Headshot Banner",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Kill Mark",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFF0000",
+          "control": "FULL"
+        },
+        {
+          "name": "Sound",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Volume",
+          "type": "slider",
+          "default": 0.6000000000000001,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "control": "FULL"
+        },
+        {
+          "name": "Duration",
+          "type": "slider",
+          "default": 2,
+          "min": 1,
+          "max": 5,
+          "step": 0.25,
+          "control": "FULL"
+        },
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 150,
+          "step": 10,
+          "control": "FULL"
+        },
+        {
+          "name": "Streak Reset (seconds)",
+          "type": "text",
+          "control": "NEVER"
+        },
+        {
+          "name": "Unlimited Streak",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Kill 1",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Kill 2",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Kill 3",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Kill 4",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Kill 5",
+          "type": "other",
+          "control": "NEVER"
+        }
+      ]
+    },
+    {
+      "name": "Combo Sounds",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Players",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Mobs",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Volume",
+          "type": "slider",
+          "default": 0.6000000000000001,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "control": "FULL"
+        },
+        {
+          "name": "Combo Reset (seconds)",
+          "type": "text",
+          "control": "NEVER"
+        },
+        {
+          "name": "Sound Sets",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Combo 1",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Combo 2",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Combo 3",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Combo 4",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Combo 5",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "After Combo 5",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "After Combo 5 Order",
+          "type": "dropdown",
+          "default": "Random",
+          "choices": [
+            "Random",
+            "In Order",
+            "Shuffle"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Long Shots",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Long Shot Distance (blocks)",
+          "type": "slider",
+          "default": 50,
+          "min": 10,
+          "max": 120,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Long Shot Sound",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Bow Headshots",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Headshot Sound",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Bow Sounds on Mobs",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Favourite Sounds",
+          "type": "other",
+          "control": "NEVER"
+        }
+      ]
+    },
+    {
+      "name": "Crosshair Tweaks",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Profiles",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Scale",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Thickness",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Background",
+          "type": "dropdown",
+          "default": "Biome",
+          "choices": [
+            "Biome",
+            "Gradient",
+            "Solid Color",
+            "Your Image",
+            "Live Game"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Background Biome",
+          "type": "dropdown",
+          "default": "Cherry Grove",
+          "choices": [
+            "Badlands",
+            "Bamboo Jungle",
+            "Beach",
+            "Birch Forest",
+            "Cherry Grove",
+            "Cold Ocean",
+            "Dappled Forest",
+            "Dark Forest",
+            "Deep Cold Ocean",
+            "Deep Frozen Ocean",
+            "Deep Lukewarm Ocean",
+            "Deep Ocean",
+            "Desert",
+            "Eroded Badlands",
+            "Flower Forest",
+            "Forest",
+            "Frozen Ocean",
+            "Frozen Peaks",
+            "Frozen River",
+            "Grove",
+            "Ice Spikes",
+            "Jagged Peaks",
+            "Jungle",
+            "Lukewarm Ocean",
+            "Mangrove Swamp",
+            "Meadow",
+            "Mushroom Fields",
+            "Ocean",
+            "Old Growth Birch Forest",
+            "Old Growth Pine Taiga",
+            "Old Growth Spruce Taiga",
+            "Pale Garden",
+            "Plains",
+            "River",
+            "Savanna",
+            "Savanna Plateau",
+            "Snowy Beach",
+            "Snowy Plains",
+            "Snowy Slopes",
+            "Snowy Taiga",
+            "Sparse Jungle",
+            "Stony Peaks",
+            "Stony Shore",
+            "Sunflower Plains",
+            "Swamp",
+            "Taiga",
+            "Warm Ocean",
+            "Windswept Forest",
+            "Windswept Gravelly Hills",
+            "Windswept Hills",
+            "Windswept Savanna",
+            "Wooded Badlands",
+            "Deep Dark",
+            "Dripstone Caves",
+            "Lush Caves",
+            "Sulfur Caves",
+            "Basalt Deltas",
+            "Crimson Forest",
+            "Nether Wastes",
+            "Soul Sand Valley",
+            "Warped Forest",
+            "The End",
+            "End Barrens",
+            "End Highlands",
+            "End Midlands",
+            "Small End Islands"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Time of Day",
+          "type": "dropdown",
+          "default": "Noon",
+          "choices": [
+            "Sunrise",
+            "Morning",
+            "Noon",
+            "Sunset",
+            "Night",
+            "Midnight"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Gradient Start",
+          "type": "color",
+          "default": "#FF5AA0E6",
+          "control": "FULL"
+        },
+        {
+          "name": "Gradient End",
+          "type": "color",
+          "default": "#FF1A1F2E",
+          "control": "FULL"
+        },
+        {
+          "name": "Gradient Direction",
+          "type": "dropdown",
+          "default": "Top to Bottom",
+          "choices": [
+            "Top to Bottom",
+            "Left to Right"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Background Color",
+          "type": "color",
+          "default": "#FF3C5A78",
+          "control": "FULL"
+        },
+        {
+          "name": "Your Image",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Background Image",
+          "type": "text",
+          "control": "NEVER"
+        },
+        {
+          "name": "Shape",
+          "type": "dropdown",
+          "default": "Cross",
+          "choices": [
+            "Cross",
+            "Dot",
+            "Square",
+            "Vanilla",
+            "Circle",
+            "Triangle",
+            "Arrow",
+            "Debug",
+            "Drawn"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Gap",
+          "type": "slider",
+          "default": 2,
+          "min": 0,
+          "max": 12,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Outline",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Center Dot",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Width",
+          "type": "slider",
+          "default": 5,
+          "min": 1,
+          "max": 64,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Height",
+          "type": "slider",
+          "default": 5,
+          "min": 1,
+          "max": 64,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Rotation",
+          "type": "slider",
+          "default": 0,
+          "min": -180,
+          "max": 180,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Offset X",
+          "type": "slider",
+          "default": 0,
+          "min": -500,
+          "max": 500,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Offset Y",
+          "type": "slider",
+          "default": 0,
+          "min": -500,
+          "max": 500,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Outline Color",
+          "type": "color",
+          "default": "#FF000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Dot Color",
+          "type": "color",
+          "default": "#FFFFFFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Adaptive Color",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Rainbow",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Rainbow Speed",
+          "type": "slider",
+          "default": 1,
+          "min": 0.1,
+          "max": 10,
+          "step": 0.1,
+          "control": "FULL"
+        },
+        {
+          "name": "Rainbow Phase",
+          "type": "slider",
+          "default": 0,
+          "min": 0,
+          "max": 360,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Dynamic Attack Gap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Dynamic Bow Gap",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Highlight Hostiles",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Highlight Passives",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Highlight Players",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Hostile Color",
+          "type": "color",
+          "default": "#FFFF5555",
+          "control": "FULL"
+        },
+        {
+          "name": "Passive Color",
+          "type": "color",
+          "default": "#FF55FF55",
+          "control": "FULL"
+        },
+        {
+          "name": "Player Color",
+          "type": "color",
+          "default": "#FF55FFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Item Cooldown",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Cooldown Color",
+          "type": "color",
+          "default": "#FF55FFFF",
+          "control": "FULL"
+        },
+        {
+          "name": "Tool Durability Indicator",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Projectile Indicator",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Visible Normally",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Visible with Hidden HUD",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Visible with Debug",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Keep Vanilla Debug",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Visible Holding Ranged Weapon",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Visible Holding Throwable",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Visible Using Spyglass",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Disable Crosshair",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide in Containers",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Show in Third Person",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Show in Spectator",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Remove Blend First Person",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Remove Blend Third Person",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Opacity First Person",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Opacity Third Person",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Disable Attack Indicator",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Remove Attack Blend First Person",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Remove Attack Blend Third Person",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Attack Opacity First Person",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Attack Opacity Third Person",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Debug Attack Indicator",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Drawing Editor",
+          "type": "other",
+          "control": "NEVER"
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Chat Background",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Width",
+          "type": "slider",
+          "default": 320,
+          "min": 100,
+          "max": 600,
+          "step": 10,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Height",
+          "type": "slider",
+          "default": 180,
+          "min": 50,
+          "max": 400,
+          "step": 10,
+          "control": "FULL"
+        },
+        {
+          "name": "Message Animations",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Timestamps",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide Signing Indicators",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Screenshot Link Buttons",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Infinite History",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Text Shadow",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Above Armor Bar",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Heads",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Head Position",
+          "type": "dropdown",
+          "default": "Before name",
+          "choices": [
+            "Before name",
+            "Start of line"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Detect Heads by Name",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Keep Text Aligned",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "AutoReconnect",
+      "category": "SERVER",
+      "neverForced": true,
+      "automation": true,
+      "options": [
+        {
+          "name": "Retry Initial Failures",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Repeat Last Delay",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Reason Filter",
+          "type": "dropdown",
+          "default": "Except Matches",
+          "choices": [
+            "Except Matches",
+            "Only Matches"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Delays and Disconnect Filters",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Enable Reconnect Actions",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Match Action IDs as Regex",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Sign Configured Commands",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Actions After Reconnecting",
+          "type": "other",
+          "control": "NEVER"
+        }
+      ]
+    },
+    {
+      "name": "IgnorePacketErrors",
+      "category": "SERVER",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "DiscordRPC",
+      "category": "SERVER",
+      "neverForced": true,
+      "automation": false,
+      "options": [
+        {
+          "name": "Detail Level",
+          "type": "dropdown",
+          "default": "Full",
+          "choices": [
+            "Full",
+            "Simple",
+            "Minimal"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Share server address",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Share world name",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Show dimension",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Show elapsed time",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Cosmetics",
+      "category": "MECHANIC",
+      "neverForced": true,
+      "automation": false,
+      "options": [
+        {
+          "name": "Show other players' emotes",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Share my emotes",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "HYPIXEL Mods",
+      "category": "HYPIXEL",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Auto GG",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Auto GG: Message",
+          "type": "text",
+          "control": "NEVER"
+        },
+        {
+          "name": "Auto GG: Delay seconds",
+          "type": "slider",
+          "default": 1,
+          "min": 0,
+          "max": 10,
+          "step": 0.5,
+          "control": "FULL"
+        },
+        {
+          "name": "Auto GG: Second Message",
+          "type": "text",
+          "control": "NEVER"
+        },
+        {
+          "name": "Auto GG: Second Message seconds",
+          "type": "slider",
+          "default": 2,
+          "min": 0,
+          "max": 10,
+          "step": 0.5,
+          "control": "FULL"
+        },
+        {
+          "name": "Auto Friend",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Auto Tip",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Auto Tip: Every minutes",
+          "type": "slider",
+          "default": 15,
+          "min": 5,
+          "max": 60,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Auto Play Again",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Auto Play Again: Delay seconds",
+          "type": "slider",
+          "default": 3,
+          "min": 0,
+          "max": 15,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Auto Play Again: Replay when",
+          "type": "dropdown",
+          "default": "After death",
+          "choices": [
+            "After death",
+            "When game ends"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Auto Play Again: Wait for party",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Auto Who",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Cleanup",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Cleanup: Lobby joins",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Cleanup: Boxes and Soul Well",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Cleanup: Rank gifts",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Cleanup: Tips",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Cleanup: Boosters",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Cleanup: Store ads",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Cleanup: Watchdog news",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Cleanup: Karma",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Cleanup: Coins and XP lines",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat Cleanup: Player ads",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Scoreboard",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 150,
+          "step": 25,
+          "control": "FULL"
+        },
+        {
+          "name": "X Offset",
+          "type": "slider",
+          "default": 0,
+          "min": -40,
+          "max": 40,
+          "step": 20,
+          "control": "FULL"
+        },
+        {
+          "name": "Y Offset",
+          "type": "slider",
+          "default": 0,
+          "min": -40,
+          "max": 40,
+          "step": 20,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "dropdown",
+          "default": "Off",
+          "choices": [
+            "Default",
+            "Dark",
+            "Light",
+            "Off"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Text Shadow",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Custom Text Color",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide Red Numbers",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide Sequential Only",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "TabList",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Size",
+          "type": "slider",
+          "default": 100,
+          "min": 10,
+          "max": 200,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "X Offset",
+          "type": "slider",
+          "default": 0,
+          "min": -1000,
+          "max": 1000,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Y Offset",
+          "type": "slider",
+          "default": 10,
+          "min": -1000,
+          "max": 1000,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Background",
+          "type": "dropdown",
+          "default": "Off",
+          "choices": [
+            "Default",
+            "Dark",
+            "Light",
+            "Off"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Text Shadow",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Max Players",
+          "type": "slider",
+          "default": 80,
+          "min": 1,
+          "max": 300,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Players Per Column",
+          "type": "slider",
+          "default": 20,
+          "min": 1,
+          "max": 100,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide Header",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide Footer",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Player Skins",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Player Count",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Player Count Format",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Hide Heads",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide NPC Heads",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Improved Hats",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Hide Objectives",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Header Shadow",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Body Shadow",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Footer Shadow",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Below Boss Bars",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Header Color",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Body Color",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Global Tab Background",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Footer Color",
+          "type": "color",
+          "default": "#80000000",
+          "control": "FULL"
+        },
+        {
+          "name": "Player Row Color",
+          "type": "color",
+          "default": "#20FFFFFF",
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "BetterResolution",
+      "category": "ALL",
+      "neverForced": true,
+      "automation": false,
+      "options": [
+        {
+          "name": "Preset",
+          "type": "dropdown",
+          "default": "Custom",
+          "choices": [
+            "Custom",
+            "Ultra Performance",
+            "Balanced",
+            "Quality",
+            "Super Sampling"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Scale",
+          "type": "slider",
+          "default": 100,
+          "min": 50,
+          "max": 200,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Algorithm",
+          "type": "dropdown",
+          "default": "Smooth",
+          "choices": [
+            "Linear",
+            "Nearest",
+            "Smooth",
+            "Sharp"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Dynamic Resolution",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Target FPS",
+          "type": "dropdown",
+          "default": "60",
+          "choices": [
+            "30",
+            "60",
+            "90",
+            "120",
+            "144",
+            "Unlimited"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Min Scale",
+          "type": "slider",
+          "default": 50,
+          "min": 50,
+          "max": 100,
+          "step": 25,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "XaeroWorldmap",
+      "category": "SERVER",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Minimap",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Cave Mode",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "JEI (Just Enough Items)",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Show Item IDs",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Cheat Mode",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Center Search Bar",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Recipes",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "ScalableLux",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "FarBlockEntities",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Distance",
+          "type": "slider",
+          "default": 128,
+          "min": 64,
+          "max": 256,
+          "step": 16,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Raised",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Hotbar",
+          "type": "slider",
+          "default": 2,
+          "min": 0,
+          "max": 50,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Distance",
+          "type": "slider",
+          "default": 14,
+          "min": 0,
+          "max": 50,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "Chat",
+          "type": "slider",
+          "default": 0,
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "AppleSkin",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Show Saturation",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Food Values",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Exhaustion",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Saturation Overlay",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Health Overlay",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Food Tooltips",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Tooltips Always Visible",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Offhand Food",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Vanilla Animations",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Overlay Opacity",
+          "type": "slider",
+          "default": 65,
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "EnhancedTooltips",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Show Item ID",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Food Values",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Component Count",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Show NBT Tags",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "EnhancedToolbars",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Detailed Durability",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Max Durability",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Colorize Durability",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show Item Attributes",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Durability Style",
+          "type": "dropdown",
+          "default": "Numbers",
+          "choices": [
+            "Numbers",
+            "Bar",
+            "Text"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Show Durability Hint",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Durability Color Style",
+          "type": "dropdown",
+          "default": "Varying",
+          "choices": [
+            "Varying",
+            "Base",
+            "Gold"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Durability Base Color",
+          "type": "color",
+          "default": "#FFAAAAAA",
+          "control": "FULL"
+        },
+        {
+          "name": "Only Vanilla Tools",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Show When Full",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Excluded Mods",
+          "type": "text",
+          "control": "NEVER"
+        }
+      ]
+    },
+    {
+      "name": "NotEnoughAnimations",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Smooth Transitions",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Item Poses",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Riding Poses",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Climbing",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Falling, Crawling and Gliding",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "BetterStats",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "ModernAdvancements",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "Resourcify",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "ResourcePacks",
+      "category": "MECHANIC",
+      "neverForced": true,
+      "automation": false,
+      "options": [
+        {
+          "name": "Transparent pack menu",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Ignore incompatible packs",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "No pack compat check",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "KeepUIOpen",
+      "category": "MECHANIC",
+      "neverForced": true,
+      "automation": true,
+      "options": [
+        {
+          "name": "Keep chat open",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Keep inventory open",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "DisableNarrator",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "SignalLoss",
+      "category": "ALL",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Timeout Threshold (ms)",
+          "type": "text",
+          "control": "NEVER"
+        },
+        {
+          "name": "Minimum Warning Time (ms)",
+          "type": "text",
+          "control": "NEVER"
+        },
+        {
+          "name": "Recovery Linger Time (ms)",
+          "type": "text",
+          "control": "NEVER"
+        },
+        {
+          "name": "Draw Background",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Show in Singleplayer",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        },
+        {
+          "name": "Position",
+          "type": "dropdown",
+          "default": "Center",
+          "choices": [
+            "Left",
+            "Center",
+            "Right"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Text Color",
+          "type": "color",
+          "default": "#FFFF5555",
+          "control": "FULL"
+        },
+        {
+          "name": "Background Color",
+          "type": "color",
+          "default": "#A0000000",
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Flashback Settings",
+      "category": "ALL",
+      "neverForced": true,
+      "automation": false,
+      "options": [
+        {
+          "name": "Replay folder",
+          "type": "text",
+          "control": "NEVER"
+        },
+        {
+          "name": "Choose replay folder",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "Default folder",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
+          "name": "PNG compression",
+          "type": "slider",
+          "default": 6,
+          "min": 0,
+          "max": 9,
+          "step": 1,
+          "control": "FULL"
+        },
+        {
+          "name": "OpenH264 to GPU",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "BetterScreenshots",
+      "category": "ALL",
+      "neverForced": true,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "Clumps",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "SkinLayers",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "3D Preview",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "Lithium",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "FerriteCore",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "XaeroMinimap",
+      "category": "HUD",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "ShulkerBoxUtils",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "World Icon",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Inventory Badge",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Free Slot Bar",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Contents Preview",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Item Counts",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Display Mode",
+          "type": "dropdown",
+          "default": "First Item",
+          "choices": [
+            "First Item",
+            "Single Item Type"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Distance",
+          "type": "slider",
+          "default": 24,
+          "min": 8,
+          "max": 64,
+          "step": 4,
+          "control": "FULL"
+        },
+        {
+          "name": "Icon Size",
+          "type": "slider",
+          "default": 65,
+          "min": 25,
+          "max": 125,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Height",
+          "type": "slider",
+          "default": 35,
+          "min": 10,
+          "max": 100,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Animate",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Remember Observed Contents",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Persist Observed Contents",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "MouseTweaks",
+      "category": "MECHANIC",
+      "neverForced": true,
+      "automation": true,
+      "options": [
+        {
+          "name": "Right-drag places items",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Left-drag gathers items",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Shift-drag moves items",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Scroll moves items",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Scroll pulls from",
+          "type": "dropdown",
+          "default": "Last slot first",
+          "choices": [
+            "First slot first",
+            "Last slot first"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Scroll direction",
+          "type": "dropdown",
+          "default": "Down sends, up pulls",
+          "choices": [
+            "Down sends, up pulls",
+            "Up sends, down pulls",
+            "Toward the other inventory"
+          ],
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "RawInput",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": []
+    },
+    {
+      "name": "BorderlessFullscreen",
+      "category": "MECHANIC",
+      "neverForced": true,
+      "automation": false,
+      "options": [
+        {
+          "name": "True borderless",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "SurvivalTweaks",
+      "category": "MECHANIC",
+      "neverForced": false,
+      "automation": false,
+      "options": [
+        {
+          "name": "Berry bush protection",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Elytra water swim",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "No Thorns/Soul Speed damage",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "100% creeper block drops",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Stable block drops",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Faster obsidian mining",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Flammable cobwebs",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Animals eat floor food",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Dimension brightness",
+          "type": "slider",
+          "default": 100,
+          "min": 0,
+          "max": 200,
+          "step": 5,
+          "control": "FULL"
+        },
+        {
+          "name": "Boat 360 View",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Longer Chat History",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Fast IP Ping",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Keep Bars While Riding",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "StackRefill",
+      "category": "MECHANIC",
+      "neverForced": true,
+      "automation": true,
+      "options": [
+        {
+          "name": "Refill consumables & blocks",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Replace broken tools",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Refill offhand",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        }
+      ]
+    },
+    {
+      "name": "UseWhileMining",
+      "category": "MECHANIC",
+      "neverForced": true,
+      "automation": true,
+      "options": []
+    }
+  ]
+}

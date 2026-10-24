@@ -1,0 +1,55 @@
+# LadsClientAPI Acceptance QA Script for Minecraft 1.8.9, DIRECT backends (no proxy).
+# Velocity 4.2.1 (the live network's proxy) refuses 1.8-1.12 clients at the handshake ("This server is only compatible with
+# Minecraft 1.13 and above"), so 1.8.9 joins two Paper 26.3 backends with Velocity forwarding off: lobby189 (:25721, Via* +
+# LadsClientAPI + rules-qa.yml) and plain189 (:25722, Via* + packet logger, no LadsClientAPI). CHK-08 needs the proxy: not here.
+# Harness: --join 127.0.0.1:25721
+
+# CHK-02 first: the policy toast is up for 8 s from the policy (hello at +1 tick), so it is photographed at +3 s.
+wait 3s
+shot artifacts/verification/ladsapi/shots/chk02_toast
+ladsapi chk02-toast
+wait 5s
+
+# CHK-01: Protocol Handshake (hello -> hello -> policy -> ack)
+ladsapi chk01-handshake
+
+# CHK-03: Fullbright Clamping (max 10% limit)
+settings Fullbright
+wait 1s
+shot artifacts/verification/ladsapi/shots/chk03_fullbright_slider
+screen none
+wait 1s
+shot artifacts/verification/ladsapi/shots/chk03_fullbright_world
+ladsapi chk03-fullbright
+
+# CHK-04: Minimap Hard Block (Blocked by this server)
+shot artifacts/verification/ladsapi/shots/chk04_hud_nominimap
+settings Minimap
+wait 1s
+shot artifacts/verification/ladsapi/shots/chk04_minimap_blocked
+ladsapi chk04-minimap-block
+screen none
+wait 1s
+
+# CHK-05: Forced Option & GUI Lock
+settings Crosshair Tweaks
+wait 1s
+shot artifacts/verification/ladsapi/shots/chk05_crosshair_locked
+ladsapi chk05-forced-option
+screen none
+wait 1s
+
+# CHK-06: Clean Disconnect Reversion
+disconnect
+wait 2s
+shot artifacts/verification/ladsapi/shots/chk06_title_restored
+ladsapi chk06-leave-revert
+
+# CHK-09: direct join to the plugin-less backend (anti-ban: zero lads:api packets; plain189's packet logger)
+connect 127.0.0.1:25722
+wait 15s
+shot artifacts/verification/ladsapi/shots/chk09_plain_direct
+ladsapi chk09-antiban-zero-leak
+disconnect
+wait 3s
+quit

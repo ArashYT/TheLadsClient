@@ -107,6 +107,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new ConnectionTweaks189());
         MinecraftForge.EVENT_BUS.register(new KillBanner189());
         com.thelads.core.v1_8_9.feature.Hypixel189.register();
+        com.thelads.core.v1_8_9.feature.LadsApi189.register();
         MinecraftForge.EVENT_BUS.register(LadsTitleScreen189.INSTANCE);
         MinecraftForge.EVENT_BUS.register(new Tooltips189());
         MinecraftForge.EVENT_BUS.register(new Clumps189());
@@ -126,6 +127,7 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.feature.SideButtons189.install();
         MinecraftForge.EVENT_BUS.register(this);
         com.thelads.core.v1_8_9.feature.fastquit.FastQuitProbe189.initialize();
+        com.thelads.core.v1_8_9.feature.QaProbe189.register();
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
     }
 

@@ -24,4 +24,12 @@ public class FullbrightModule extends Module {
     public float lightmapFactor() {
         return isEnabled() ? (float) (brightness.getValue() / 100) : 0;
     }
+
+    /** True when a server policy blocks Fullbright or has any Fullbright rule. */
+    public static boolean serverLimited() {
+        com.thelads.core.client.ladsapi.ServerPolicy policy = com.thelads.core.client.ladsapi.ServerPolicy.active();
+        if (policy == null) return false;
+        if (policy.module("Fullbright") == com.thelads.core.client.ladsapi.ModuleState.BLOCK) return true;
+        return policy.hasOptionRules("Fullbright");
+    }
 }

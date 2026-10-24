@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class HypixelSafetyManager {
     /** Why a module is off on this server. */
-    public enum Block { NONE, BANNED, UNKNOWN }
+    public enum Block { NONE, BANNED, UNKNOWN, SERVER }
 
     /** The 1.7 Animations option that sends a use packet while digging (OldAnimationsModule.useWhileMining): gated like a risky module. */
     public static final String USE_WHILE_MINING = "UseWhileMining";
@@ -265,6 +265,12 @@ public final class HypixelSafetyManager {
     /** Why this module is off on the current server, bypass or not. Allocation-free: asked per module every frame. */
     public static Block blockOf(String moduleName) {
         if (moduleName == null) return Block.NONE;
+        com.thelads.core.client.ladsapi.ServerPolicy policy = com.thelads.core.client.ladsapi.ServerPolicy.active();
+        if (policy != null) {
+            com.thelads.core.client.ladsapi.ModuleState state = policy.module(moduleName);
+            if (state == com.thelads.core.client.ladsapi.ModuleState.BLOCK) return Block.SERVER;
+            if (state == com.thelads.core.client.ladsapi.ModuleState.ALLOW) return Block.NONE;
+        }
         LadsGameBridge game = LadsGameBridge.get();
         if (!qaOverride && qaAddress == null && !game.isIngame()) return Block.NONE; // menus: nothing to ban
         int flags = qaOverride ? QA_HYPIXEL : server(address(game)).flags; // the last address first: no string work
@@ -286,7 +292,10 @@ public final class HypixelSafetyManager {
      * The module is off on this server right now: blocked by its rules (or unknown rules) and not bypassed by the player.
      */
     public static boolean isDisallowed(String moduleName) {
-        return blockOf(moduleName) != Block.NONE && !isBypassed(moduleName);
+        Block block = blockOf(moduleName);
+        if (block == Block.NONE) return false;
+        if (block == Block.SERVER) return true; // policy BLOCK, NOT bypassable!
+        return !isBypassed(moduleName);
     }
 
     /** Singleplayer, LAN, or one of our own servers (not in the Hypixel QA). */
@@ -399,8 +408,14 @@ public final class HypixelSafetyManager {
 
     /** One line on why the module is off here (the settings notice and the warning say more). */
     public static String getBlockedNotice(String moduleName) {
+        Block block = blockOf(moduleName);
+        if (block == Block.SERVER) {
+            com.thelads.core.client.ladsapi.ServerPolicy p = com.thelads.core.client.ladsapi.ServerPolicy.active();
+            String server = (p != null && !p.serverName().isEmpty()) ? p.serverName() : "this server";
+            return moduleName + " is blocked by " + server + ".";
+        }
         String name = isMinimapModule(moduleName) ? "The minimap" : isTntThroughBlocks(moduleName) ? "TNT Through Blocks" : moduleName;
-        return blockOf(moduleName) == Block.UNKNOWN
+        return block == Block.UNKNOWN
             ? name + " is off on this server: we don't know its rules and its anticheat could ban you."
             : name + " is off on this server: its rules ban it.";
     }
