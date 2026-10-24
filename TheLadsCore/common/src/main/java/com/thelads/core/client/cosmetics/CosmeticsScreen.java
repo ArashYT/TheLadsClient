@@ -29,6 +29,8 @@ public final class CosmeticsScreen {
     }
 
     static final int ROW = 14, BUTTON = 20;
+    /** Wearables have placeholder art, no catalog ids and a stub Friends Only filter: the tab stays hidden until they are real. */
+    public static final boolean WARDROBE = false;
     private final CosmeticsModule cosmetics = CosmeticsModule.get();
     private final Function<String, String> keyLabel;
     private final Runnable onControls, onClose;
@@ -55,7 +57,7 @@ public final class CosmeticsScreen {
 
     public int selected() { return selected; }
     public int tab() { return tab; }
-    public void setTab(int t) { this.tab = t; }
+    public void setTab(int t) { this.tab = WARDROBE ? t : 0; }
 
     public void render(LadsGraphics g, int mx, int my) {
         int width = g.getScaledWidth(), height = g.getScaledHeight();
@@ -63,9 +65,11 @@ public final class CosmeticsScreen {
         g.fill(0, 0, width, height, 0xC0070709);
 
         // Header and Tab Switcher
-        g.drawCenteredText("Cosmetics & Wardrobe", width / 2, 6, LadsPalette.TEXT, true);
-        tabButton(g, tabEmotes, "Emotes Wheel", tab == 0, mx, my);
-        tabButton(g, tabWardrobe, "Wearables Wardrobe", tab == 1, mx, my);
+        g.drawCenteredText(WARDROBE ? "Cosmetics & Wardrobe" : "Cosmetics", width / 2, 6, LadsPalette.TEXT, true);
+        if (WARDROBE) {
+            tabButton(g, tabEmotes, "Emotes Wheel", tab == 0, mx, my);
+            tabButton(g, tabWardrobe, "Wearables Wardrobe", tab == 1, mx, my);
+        }
 
         if (tab == 0) {
             renderEmotes(g, mx, my, width, height);
@@ -171,7 +175,7 @@ public final class CosmeticsScreen {
         if (button != 0 || list == null) return false;
 
         if (tabEmotes != null && tabEmotes.has(x, y)) { tab = 0; return true; }
-        if (tabWardrobe != null && tabWardrobe.has(x, y)) { tab = 1; return true; }
+        if (WARDROBE && tabWardrobe != null && tabWardrobe.has(x, y)) { tab = 1; return true; }
 
         if (tab == 0) {
             int hit = wheel.hovered(x, y);

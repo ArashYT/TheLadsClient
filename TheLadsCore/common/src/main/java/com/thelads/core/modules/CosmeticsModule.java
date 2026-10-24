@@ -51,6 +51,12 @@ public class CosmeticsModule extends Module {
     @Override public boolean isEnabled() { return true; }
     @Override public void setEnabled(boolean enabled) { super.setEnabled(true); }
 
+    /** Wearable options stay out of Lads Settings while the wardrobe is hidden. */
+    public boolean hidden(com.thelads.core.config.Option option) {
+        return !com.thelads.core.client.cosmetics.CosmeticsScreen.WARDROBE && (option == equippedCape || option == equippedHat
+            || option == equippedGlasses || option == visibility || option == showHats || option == showGlasses);
+    }
+
     /** The wheel's slots (null = empty); unknown ids (an emote that is gone) read as empty. */
     public String[] slots() {
         String saved = wheel.get();

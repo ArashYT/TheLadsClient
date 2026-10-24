@@ -2050,6 +2050,7 @@ public final class LadsSettingsScreen {
             .filter(o -> !(detail instanceof com.thelads.core.modules.StackRefillModule refill && refill.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.BetterF3Module f3 && f3.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.KeystrokesModule keys && keys.hidden(o)))
+            .filter(o -> !(detail instanceof com.thelads.core.modules.CosmeticsModule cosm && cosm.hidden(o)))
             .sorted((a, b) -> {
                 if ("Ignore HUD FPS Cap".equals(a.getName())) return 1;
                 if ("Ignore HUD FPS Cap".equals(b.getName())) return -1;
