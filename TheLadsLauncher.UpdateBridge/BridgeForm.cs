@@ -13,7 +13,7 @@ namespace TheLadsLauncher.UpdateBridge
     // Borderless window showing the launcher's snapshot 1:1 at the launcher's client rect, with the startup bar's shine.
     sealed class BridgeForm : Form
     {
-        const double SweepMs = 1600, HoldMs = 350, FadeMs = 150, PollMs = 250, HardCapMs = 10 * 60 * 1000;
+        const double SweepMs = 1600, HoldMs = 350, FadeMs = 150, PollMs = 250, TopMostMs = 30 * 1000, HardCapMs = 10 * 60 * 1000;
 
         readonly Bitmap _image;
         readonly Rectangle _bar;   // in window pixels
@@ -24,7 +24,7 @@ namespace TheLadsLauncher.UpdateBridge
         readonly Stopwatch _clock = Stopwatch.StartNew();
         readonly System.Windows.Forms.Timer _timer = new System.Windows.Forms.Timer { Interval = 15 };
         EventWaitHandle _bridgeShown;   // kept open so a late waiter still sees it
-        double _lastUpdateSeenMs, _lastPollMs = double.MinValue, _fadeStartMs = -1;
+        double _lastUpdateSeenMs, _lastPollMs = double.MinValue, _fadeStartMs = -1, _topMostUntilMs = double.MaxValue;
         float _scale = 1;
 
         public BridgeForm(string image, Rectangle client, Rectangle bar, string updateExe, string relaunch, double graceSeconds, bool reducedMotion, EventWaitHandle launcherShown)
@@ -41,7 +41,7 @@ namespace TheLadsLauncher.UpdateBridge
             Icon = new Icon(typeof(BridgeForm).Assembly.GetManifestResourceStream("icon.ico"));
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = true;
-            TopMost = true;   // the relaunched launcher draws underneath until the fade; every exit path (shown, failure, grace, cap) closes it
+            TopMost = true;   // the relaunched launcher draws underneath until the fade; dropped after 30 s without it (a hung install)
             StartPosition = FormStartPosition.Manual;
             AutoScaleMode = AutoScaleMode.None;
             BackColor = Color.FromArgb(0x17, 0x18, 0x1B);
@@ -53,6 +53,7 @@ namespace TheLadsLauncher.UpdateBridge
         }
 
         [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr hwnd);
+        [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);
 
         protected override void OnHandleCreated(EventArgs e)
         {
@@ -69,6 +70,7 @@ namespace TheLadsLauncher.UpdateBridge
             if (_bridgeShown == null)
             {
                 _bridgeShown = new EventWaitHandle(false, EventResetMode.ManualReset, @"Local\TheLadsClient.UpdateBridgeShown");
+                _topMostUntilMs = _clock.Elapsed.TotalMilliseconds + TopMostMs;
                 BeginInvoke((Action)(() => { _bridgeShown.Set(); Program.Log("shown"); }));   // after this first frame is on screen
             }
         }
@@ -124,9 +126,18 @@ namespace TheLadsLauncher.UpdateBridge
             if (now - _lastPollMs >= PollMs)
             {
                 _lastPollMs = now;
-                if (RaiseUpdateExe()) _lastUpdateSeenMs = now;
-                if (now - _lastUpdateSeenMs >= _graceMs) { GiveUp("no Update.exe for " + (_graceMs / 1000).ToString(CultureInfo.InvariantCulture) + " s and no launcher signal"); return; }
-                if (now >= HardCapMs) { GiveUp("10 min cap reached"); return; }
+                bool installing = RaiseUpdateExe();
+                if (installing) _lastUpdateSeenMs = now;
+                if (now - _lastUpdateSeenMs >= _graceMs) { GiveUp("no Update.exe for " + (_graceMs / 1000).ToString(CultureInfo.InvariantCulture) + " s and no launcher signal", true); return; }
+                if (now >= HardCapMs) { GiveUp("10 min cap reached", !installing); return; }
+                if (now >= _topMostUntilMs)
+                {
+                    _topMostUntilMs = double.MaxValue;
+                    // Stays up, just no longer above other apps. HWND_NOTOPMOST with SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE:
+                    // Form.TopMost = false would also activate the bridge and take the focus from whatever the player switched to.
+                    SetWindowPos(Handle, new IntPtr(-2), 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0010);
+                    Program.Log("no launcher signal 30 s after shown: no longer on top");
+                }
             }
             if (!_reducedMotion) Invalidate(_bar);
         }
@@ -156,12 +167,13 @@ namespace TheLadsLauncher.UpdateBridge
             return alive;
         }
 
-        void GiveUp(string why)
+        void GiveUp(string why, bool relaunch)
         {
             _timer.Stop();
             Program.Log(why);
             string root = Path.GetDirectoryName(_relaunch);
-            if (LauncherRunningUnder(root)) Program.Log("launcher is running, nothing to start");
+            if (!relaunch) Program.Log("Update.exe still running: closing, no relaunch mid-install");
+            else if (LauncherRunningUnder(root)) Program.Log("launcher is running, nothing to start");
             else if (!File.Exists(_relaunch)) Program.Log("skipped, missing: " + _relaunch);
             else
             {

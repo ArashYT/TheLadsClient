@@ -1,8 +1,9 @@
 #Requires -Version 7.0
 # Runs LadsUpdateBridge.exe against a fake Update.exe (a PING copy) in a temp root with spaces and a non-ASCII name.
 # Never touches the real %TEMP%\TheLadsClient-update, %LOCALAPPDATA%\TheLadsClient or .theladsclient: TEMP/TMP point into the root.
+# -Slow adds case 5 (~31 s): a bridge with no launcher signal drops its always-on-top after 30 s.
 [CmdletBinding()]
-param()
+param([switch]$Slow)
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $root = Join-Path $repoRoot "artifacts/bridge-test/bridge test J$([char]0xF6)ns"
@@ -162,6 +163,38 @@ Invoke-FailCase 'case 4a (malformed --client)' @('--image', $png, '--client', '1
     '--update-exe', $updateExe, '--relaunch', $relaunch, '--grace', '15')
 Invoke-FailCase 'case 4b (missing PNG)' @('--image', (Join-Path $root 'missing.png'), '--client', '10,20,400,300', '--bar', '30,220,360,18',
     '--update-exe', $updateExe, '--relaunch', $relaunch, '--grace', '15')
+
+# Case 5 (-Slow): Update.exe hangs and no launcher signals: after 30 s the bridge stays up but is no longer above other apps.
+if ($Slow) {
+    Remove-Item -LiteralPath $log -ErrorAction SilentlyContinue
+    $shown = [Threading.EventWaitHandle]::new($false, [Threading.EventResetMode]::ManualReset, 'Local\TheLadsClient.UpdateBridgeShown')
+    $update = Start-Hidden $updateExe @('-n', '45', '127.0.0.1')   # alive ~44 s, past the 30 s
+    $bridge = $null
+    try {
+        $bridge = Start-Bridge @(120, 140, 400, 300) @(140, 340, 360, 18) 15
+        Assert ($shown.WaitOne(2000)) 'case 5: shown event within 2 s'
+        $since = [Diagnostics.Stopwatch]::StartNew()
+        $bridge.Refresh()
+        $hwnd = $bridge.MainWindowHandle
+        Start-Sleep -Seconds 28
+        Assert ($hwnd -ne 0 -and [BridgeTestWin32]::TopMost($hwnd)) 'case 5: still WS_EX_TOPMOST at 28 s'
+        while ((Read-Log) -notmatch 'no longer on top' -and $since.ElapsedMilliseconds -lt 33000) { Start-Sleep -Milliseconds 100 }
+        $at = $since.ElapsedMilliseconds
+        Assert ((Read-Log) -match 'no longer on top' -and $at -ge 29000) "case 5: 'no longer on top' logged 30 s after shown ($at ms)"
+        Assert (-not [BridgeTestWin32]::TopMost($hwnd)) 'case 5: window no longer WS_EX_TOPMOST'
+        Assert (-not $bridge.HasExited) 'case 5: bridge still up'
+        $launcherShown = $null
+        if ([Threading.EventWaitHandle]::TryOpenExisting('Local\TheLadsClient.LauncherShown', [ref]$launcherShown)) {
+            $launcherShown.Set() | Out-Null
+            $launcherShown.Dispose()
+        }
+        Assert ($bridge.WaitForExit(1500)) 'case 5: a late LauncherShown still fades it out within 1.5 s'
+        Assert ((Read-Log) -notmatch 'relaunch') 'case 5: log has no relaunch'
+    } finally {
+        Stop-All @($bridge, $update)
+        $shown.Dispose()
+    }
+}
 
 if ($script:failures) { Write-Host "Test-UpdateBridge: $($script:failures) FAILED (kept $root)"; exit 1 }
 Remove-Item -LiteralPath $root -Recurse -Force
