@@ -2,13 +2,16 @@ package com.thelads.core.modules;
 
 import com.thelads.core.client.cosmetics.anim.EmoteLibrary;
 import com.thelads.core.config.BoolOption;
+import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
+import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.StringOption;
 import java.util.List;
 
 /**
- * Emotes (later capes, hats...) seen by every Lads player on your server, through our own server, never the game's connection.
+ * Emotes and wearable cosmetics (capes, hats, glasses) seen by every Lads player on your server, through our own server,
+ * never the game's connection.
  * Always on and hidden from the Mods list since 1.9.12: its settings live in the Cosmetics screen (title screen and pause menu).
  */
 public class CosmeticsModule extends Module {
@@ -18,9 +21,25 @@ public class CosmeticsModule extends Module {
     /** The wheel's slots, clockwise from the top, as emote ids joined by commas ("" in a slot = empty); "" = the default wheel. */
     public final StringOption wheel = addOption(new StringOption("Wheel", ""));
 
+    // Wearables slots
+    public final StringOption equippedCape = addOption(new StringOption("Equipped Cape", ""));
+    public final StringOption equippedHat = addOption(new StringOption("Equipped Hat", ""));
+    public final StringOption equippedGlasses = addOption(new StringOption("Equipped Glasses", ""));
+
+    // Visibility settings (everyone / friends / self / none) and per-slot toggles
+    public final DropdownOption visibility = addOption(new DropdownOption("Cosmetics Visibility", 0, "Everyone", "Friends Only", "Self Only", "None"));
+    public final BoolOption showCapes = addOption(new BoolOption("Show Capes", true));
+    public final BoolOption showHats = addOption(new BoolOption("Show Hats", true));
+    public final BoolOption showGlasses = addOption(new BoolOption("Show Glasses", true));
+
+    // AFK auto-emote
+    public final BoolOption afkEmote = addOption(new BoolOption("AFK Auto Emote", false));
+    public final SliderOption afkTimeout = addOption(new SliderOption("AFK Timeout", 60, 15, 300, 5));
+
     public CosmeticsModule() {
-        super(NAME, "Emotes other Lads Client players on your server can see. In multiplayer your Minecraft name, UUID and a hash of the "
-            + "server address go to the Lads cosmetics server; nothing is stored on disk. Hold B (Controls: Emotes) for the emote wheel.");
+        super(NAME, "Emotes and wearable cosmetics other Lads Client players on your server can see. In multiplayer your "
+            + "Minecraft name, UUID and a hash of the server address go to the Lads cosmetics server; nothing is stored on disk. "
+            + "Hold B (Controls: Emotes) for the emote wheel.");
         setEnabled(true);
     }
 

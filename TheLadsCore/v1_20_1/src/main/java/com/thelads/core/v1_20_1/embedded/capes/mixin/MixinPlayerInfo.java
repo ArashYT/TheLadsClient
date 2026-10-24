@@ -2,6 +2,11 @@
 package com.thelads.core.v1_20_1.embedded.capes.mixin;
 
 import com.mojang.authlib.GameProfile;
+import com.thelads.core.client.cosmetics.wearables.CosmeticItem;
+import com.thelads.core.client.cosmetics.wearables.CosmeticLibrary;
+import com.thelads.core.client.cosmetics.wearables.CosmeticSlot;
+import com.thelads.core.client.cosmetics.wearables.CosmeticsManager;
+import com.thelads.core.v1_20_1.cosmetics.wearables.CosmeticsWearablesLayer1201;
 import com.thelads.core.v1_20_1.embedded.capes.CapeConfig;
 import com.thelads.core.v1_20_1.embedded.capes.Capes;
 import com.thelads.core.v1_20_1.embedded.capes.handler.PlayerHandler;
@@ -51,6 +56,19 @@ public abstract class MixinPlayerInfo {
 
     @Inject(method = "getCapeLocation", at = @At("RETURN"), cancellable = true)
     private void getCapeTexture(CallbackInfoReturnable<ResourceLocation> cir) {
+        if (profile != null && profile.getId() != null) {
+            CosmeticsManager manager = CosmeticsManager.get();
+            if (manager.shouldRender(profile.getId(), CosmeticSlot.CAPE)) {
+                String capeId = manager.getEquippedCape(profile.getId());
+                if (capeId != null && !capeId.isEmpty() && !"none".equals(capeId)) {
+                    CosmeticItem item = CosmeticLibrary.get(capeId);
+                    if (item != null && item.texturePath() != null) {
+                        cir.setReturnValue(CosmeticsWearablesLayer1201.getResource(item.texturePath()));
+                        return;
+                    }
+                }
+            }
+        }
         if (!capes$isValid()) return;
         PlayerHandler handler = PlayerHandler.fromProfile(profile);
         if (handler.getHasCape()) {
