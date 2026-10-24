@@ -93,8 +93,10 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
         string package = Path.Combine(VelopackLocator.Current.PackagesDir!, asset.FileName);
         try
         {
-            UpdateSignature.Verify(await _fetchSigned(version, UpdateSignature.ManifestName),
-                await _fetchSigned(version, UpdateSignature.SignatureName), _publicKey, version, package);
+            var manifest = await _fetchSigned(version, UpdateSignature.ManifestName);
+            var signature = await _fetchSigned(version, UpdateSignature.SignatureName);
+            // Hashing ~250 MB (and decompressing every entry for the content hash) takes seconds: never on the UI thread.
+            await Task.Run(() => UpdateSignature.Verify(manifest, signature, _publicKey, version, package));
         }
         catch
         {

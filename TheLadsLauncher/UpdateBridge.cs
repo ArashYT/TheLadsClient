@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Velopack.Locators;
@@ -118,12 +119,17 @@ public static class UpdateBridge
 public sealed class LauncherShownSignal(Action signal)
 {
     private bool _framePresented;
+    private readonly TaskCompletionSource _shown = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Completes once the bridge has been signalled (a first frame, or the fallback), so a window that must not outshine the bridge can wait for it.</summary>
+    public Task Shown => _shown.Task;
 
     /// <summary>The first frame is on screen (the second animation frame after Opened).</summary>
     public void FramePresented()
     {
         _framePresented = true;
         signal();
+        _shown.TrySetResult();
     }
 
     /// <summary>Some time after Opened: signals anyway when no frame came (a stalled renderer), so the bridge doesn't sit out its grace.</summary>

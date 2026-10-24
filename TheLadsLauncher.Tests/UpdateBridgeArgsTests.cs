@@ -57,6 +57,21 @@ public class UpdateBridgeArgsTests
     }
 
     [Fact]
+    public void ShownCompletesWithTheFirstFrameOrTheFallback()
+    {
+        var presented = new LauncherShownSignal(() => { });
+        presented.StartupFinished();
+        Assert.False(presented.Shown.IsCompleted);   // not before the first frame
+        presented.FramePresented();
+        Assert.True(presented.Shown.IsCompleted);
+
+        var stalled = new LauncherShownSignal(() => { });
+        Assert.False(stalled.Shown.IsCompleted);
+        Assert.True(stalled.Fallback());
+        Assert.True(stalled.Shown.IsCompleted);
+    }
+
+    [Fact]
     public void SignalLauncherShownWithoutABridgeDoesNothing()
     {
         UpdateBridge.SignalLauncherShown();

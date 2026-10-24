@@ -399,7 +399,16 @@ public partial class MainWindow : Window
             _updateCheckTimer.Tick += async (_, _) => await PollForUpdatesAsync();
             _updateCheckTimer.Start();
             if (settings.LastSeenReleaseNotesVersion != Program.Version)
+            {
+                // After an update restart the bridge's snapshot still covers only this window's client area: a taller dialog would peek out
+                // around it, so wait for the bridge's signal plus its hold and fade (HoldMs 350 + FadeMs 150 in BridgeForm.cs) and a margin.
+                if (UpdateBridge.TryParseRestoreWindow(Environment.GetCommandLineArgs(), out _, out _, out _, out _))
+                {
+                    await _launcherShown.Shown;
+                    await Task.Delay(600);
+                }
                 await ShowReleaseNotesAsync();
+            }
 
             // Anonymous usage heartbeat (on start and every 6 h while open)
             _ = UsageStatsReporter.SendHeartbeatAsync(settings);
