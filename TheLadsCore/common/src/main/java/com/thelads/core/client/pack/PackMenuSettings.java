@@ -13,6 +13,7 @@ public final class PackMenuSettings {
     public static final String OPTION_TRANSPARENT = "Transparent pack menu";
     public static final String OPTION_IGNORE_INCOMPATIBLE = "Ignore incompatible packs";
     public static final String OPTION_NO_COMPAT_CHECK = "No pack compat check";
+    public static final String OPTION_PROFILES = "Pack profiles";
 
     private PackMenuSettings() {}
 
@@ -28,6 +29,9 @@ public final class PackMenuSettings {
 
     /** Packs made for another version load with no red label and no confirm popup. On by default. */
     public static boolean noCompatCheck() { return bool(OPTION_NO_COMPAT_CHECK, true); }
+
+    /** The pack screen shows the Profiles button (PackProfiles). On by default. */
+    public static boolean profiles() { return bool(OPTION_PROFILES, true); }
 
     private static boolean bool(String option, boolean fallback) {
         Module m = ModuleManager.getInstance().getModule(MODULE_NAME);

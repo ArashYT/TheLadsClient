@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_20_1.utility.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "AnimalMixin1201",
+    "EnderTooltipMixin1201",
+    "GuardsMixin1201",
+    "PackModelAccessor1201",
+    "PackScreenMixin1201",
+    "ServerListDragMixin1201"
+  ]
+}

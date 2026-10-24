@@ -97,6 +97,8 @@ public class LauncherSettings
 
     // Launch
     public string GraphicsRenderer { get; set; } = Services.GraphicsRenderer.Vulkan;
+    /// <summary>1.8.9 renderer for resource packs that use OptiFine features (Services.OptiFinePacks): Auto, Ionium or OptiFine.</summary>
+    public string OptiFinePackRenderer { get; set; } = Services.OptiFinePacks.Auto;
     public bool FullscreenOnLaunch { get; set; } = true;
     public bool QuickLaunch { get; set; } = true;   // skip asset verification if already installed
     public string QuickLaunchServerIp { get; set; } = "";  // server to join on launch ("" = auto from logs)

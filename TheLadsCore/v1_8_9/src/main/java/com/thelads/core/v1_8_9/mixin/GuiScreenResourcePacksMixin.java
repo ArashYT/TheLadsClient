@@ -10,6 +10,7 @@ import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import com.thelads.core.v1_8_9.gui.FolderNav189;
 import com.thelads.core.v1_8_9.gui.ResourcePackBackEntry189;
 import com.thelads.core.v1_8_9.gui.ResourcePackFolderEntry189;
+import com.thelads.core.v1_8_9.utility.PackProfilesScreen189;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -36,7 +37,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(GuiScreenResourcePacks.class)
-public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements FolderNav189 {
+public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements FolderNav189, PackProfilesScreen189.Host {
     @Shadow @Final private GuiScreen parentScreen;
     @Shadow private List<ResourcePackListEntry> availableResourcePacks;
     @Shadow private List<ResourcePackListEntry> selectedResourcePacks;
@@ -44,6 +45,7 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
 
     /** Above every id vanilla (1 Done, 2 Open folder) and Forge use here. */
     @Unique private static final int LADS_FIRE_BUTTON_ID = 0x4C414453 + 20;
+    @Unique private static final int LADS_PROFILES_BUTTON_ID = LADS_FIRE_BUTTON_ID + 1;
 
     @Unique private GuiTextField ladsSearchField;
     @Unique private String ladsCurrentFolder = "";
@@ -65,13 +67,23 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
             PackMenuSettings.overlayLabel(OldAnimationsModule.Feature.LOW_FIRE));
         fire.enabled = PackMenuSettings.overlayAvailable();
         buttonList.add(fire);
-
-        if (ladsMasterSelected.isEmpty() && selectedResourcePacks != null) {
-            ladsMasterSelected.addAll(selectedResourcePacks);
+        // Pack Profiles: top right, beside the search box.
+        if (PackMenuSettings.profiles()) {
+            int w = Math.max(50, Math.min(80, width / 2 - 98));
+            buttonList.add(new GuiButton(LADS_PROFILES_BUTTON_ID, width - w - 4, 6, w, 20, "Profiles"));
         }
-        ladsMasterAllAvailable.clear();
-        if (availableResourcePacks != null) {
-            ladsMasterAllAvailable.addAll(availableResourcePacks);
+
+        // Vanilla lists the packs afresh only while nothing is changed (first open, or a re-init before any move); after a move it
+        // keeps its own lists, which are filtered views by then. So the masters are taken only from fresh lists, and the master of all
+        // packs holds the selected ones too (ladsApplyFilter leaves selected names out): a pack deselected after being selected at
+        // open must come back in Available, and a resize must not rebuild the masters from a filtered view.
+        if (!changed) {
+            ladsMasterSelected.clear();
+            ladsMasterAllAvailable.clear();
+            if (selectedResourcePacks != null) ladsMasterSelected.addAll(selectedResourcePacks);
+            if (availableResourcePacks != null) ladsMasterAllAvailable.addAll(availableResourcePacks);
+            for (ResourcePackListEntry entry : ladsMasterSelected)
+                if (entry instanceof ResourcePackListEntryFound) ladsMasterAllAvailable.add(entry);
         }
         ladsApplyFilter();
     }
@@ -150,6 +162,11 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
     /** Our own button: vanilla's switch on button.id has nothing for it, but it never sees the click. */
     @Inject(method = "actionPerformed", at = @At("HEAD"), cancellable = true)
     private void ladsFireClicked(GuiButton button, CallbackInfo ci) {
+        if (button.id == LADS_PROFILES_BUTTON_ID) {
+            mc.displayGuiScreen(new PackProfilesScreen189(this, this));
+            ci.cancel();
+            return;
+        }
         if (button.id != LADS_FIRE_BUTTON_ID) return;
         PackMenuSettings.toggleOverlay(OldAnimationsModule.Feature.LOW_FIRE);
         button.displayString = PackMenuSettings.overlayLabel(OldAnimationsModule.Feature.LOW_FIRE);
@@ -209,6 +226,36 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
             ladsCurrentFolder = "";
         }
         ladsApplyFilter();
+    }
+
+    /** Pack Profiles: the Selected packs (the whole list, not only what the search shows), top first. */
+    @Override
+    public List<String> ladsSelectedPacks() {
+        List<String> names = new ArrayList<>();
+        for (ResourcePackListEntry entry : ladsMasterSelected) if (entry instanceof ResourcePackListEntryFound) names.add(getEntryName(entry));
+        return names;
+    }
+
+    /** Pack Profiles: these packs (in this order, the ones still here) become the Selected list, then load as Done does. */
+    @Override
+    public void ladsApplyPacks(List<String> profile) {
+        java.util.Map<String, ResourcePackListEntry> found = new java.util.LinkedHashMap<>();
+        ResourcePackListEntry fallback = null;
+        for (List<ResourcePackListEntry> list : java.util.Arrays.asList(ladsMasterSelected, ladsMasterAllAvailable, selectedResourcePacks, availableResourcePacks)) {
+            for (ResourcePackListEntry entry : list) {
+                if (entry instanceof ResourcePackListEntryFound) { if (!found.containsKey(getEntryName(entry))) found.put(getEntryName(entry), entry); }
+                else if (entry instanceof net.minecraft.client.resources.ResourcePackListEntryDefault) fallback = entry;
+            }
+        }
+        ladsMasterSelected.clear();
+        for (String name : com.thelads.core.client.pack.PackProfiles.arrange(profile, found.keySet(), Collections.<String>emptyList()))
+            ladsMasterSelected.add(found.get(name));
+        if (fallback != null) ladsMasterSelected.add(fallback); // the default pack stays last, as vanilla keeps it
+        changed = true;
+        ladsApplyFilter();
+        try {
+            actionPerformed(new GuiButton(1, 0, 0, "")); // vanilla's Done (id 1): ladsBeforeDone copies the master list, then it loads
+        } catch (IOException never) {} // GuiScreenResourcePacks' own actionPerformed throws nothing
     }
 
     @Unique

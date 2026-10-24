@@ -2350,6 +2350,7 @@ public partial class MainWindow : Window
         KeepClosedOnExitCheckbox.IsChecked = settings.KeepClosedOnExit;
         FullscreenOnLaunchCheckbox.IsChecked = settings.FullscreenOnLaunch;
         GraphicsRendererSelector.SelectedIndex = GraphicsRenderer.Normalize(settings.GraphicsRenderer) == GraphicsRenderer.OpenGl ? 1 : 0;
+        OptiFinePackRendererSelector.SelectedIndex = Math.Max(0, Array.IndexOf(OptiFinePackRenderers, settings.OptiFinePackRenderer));
         QuickLaunchCheckbox.IsChecked = settings.QuickLaunch;
         AutoLaunchCheckbox.IsChecked = settings.AutoLaunch;
         AutoFixCrashesCheckbox.IsChecked = settings.AutoFixCrashes;
@@ -2998,6 +2999,7 @@ public partial class MainWindow : Window
         var renderer = GraphicsRendererSelector.SelectedIndex == 1 ? GraphicsRenderer.OpenGl : GraphicsRenderer.Vulkan;
         bool rendererChanged = renderer != GraphicsRenderer.Normalize(settings.GraphicsRenderer);
         settings.GraphicsRenderer = renderer;
+        settings.OptiFinePackRenderer = OptiFinePackRenderers[Math.Max(0, OptiFinePackRendererSelector.SelectedIndex)];
         settings.QuickLaunch = QuickLaunchCheckbox.IsChecked ?? false;
         settings.ShowParticles = ParticleCheckbox.IsChecked ?? true;
         settings.SyncScreenshotsToGlobal = SyncScreenshotsCheckbox.IsChecked ?? true;
@@ -4712,7 +4714,7 @@ public partial class MainWindow : Window
             await BundledModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion, token);
             // Without a loader (Fabric, or Forge on 1.8.9) nothing in Mods loads, as in LaunchService: no choices to apply.
             bool forge = GameVersionPolicy.UsesForge(activeProfile.MinecraftVersion);
-            if ((forge || !string.IsNullOrWhiteSpace(activeProfile.FabricVersion)) && !await InstallClientModsAsync(gameDirectory, activeProfile.MinecraftVersion, token)) return;
+            if ((forge || !string.IsNullOrWhiteSpace(activeProfile.FabricVersion)) && !await InstallClientModsAsync(gameDirectory, activeProfile.MinecraftVersion, token, settings.OptiFinePackRenderer)) return;
             // OptiFine is downloaded from optifine.net and verified; if that fails the game starts without it (warned below).
             string? optiFineWarning = forge ? await Task.Run(() => OptiFineInstaller.InstallAsync(_pathService.BaseDirectory, gameDirectory,
                 status: message => Dispatcher.UIThread.Post(() => GameLaunchStatusText.Text = message), cancellationToken: token)) : null;
@@ -4934,18 +4936,23 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>OptiFinePackRendererSelector's items, in order.</summary>
+    private static readonly string[] OptiFinePackRenderers = { OptiFinePacks.Auto, OptiFinePacks.AlwaysIonium, OptiFinePacks.AlwaysOptiFine };
+
     /// <summary>
     /// Installs the pinned pack. When the requested mods cannot load together (typically a library switched off while a mod
     /// that needs it stays on), it offers the coherent fixes from the dependency planner: disable the mods that need it, or
     /// switch the library back on. The choice is saved and the install tried once more. False: cancelled (status says why).
     /// </summary>
-    private async Task<bool> InstallClientModsAsync(string gameDirectory, string minecraftVersion, CancellationToken token)
+    private async Task<bool> InstallClientModsAsync(string gameDirectory, string minecraftVersion, CancellationToken token,
+        string? optiFinePackRenderer = null)
     {
         // The launch overlay shows it too, or a long download looks like the step before it hanging.
         Action<string> status = message => Dispatcher.UIThread.Post(() => StatusText.Text = GameLaunchStatusText.Text = message);
         try
         {
-            await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status, token);
+            PackNotice(await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status, token,
+                optiFinePackRenderer: optiFinePackRenderer));
             return true;
         }
         catch (ClientModDependencyException problem)
@@ -4970,8 +4977,17 @@ public partial class MainWindow : Window
             if (!result.Success) throw new InvalidOperationException(result.Message);
             Log($"[Mods] {fixes[picked].Text}: {result.Message}");
             // Once: a second failure ends the launch with its own message. (The Mods page reloads when the launch is over.)
-            await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status, token);
+            PackNotice(await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status, token,
+                optiFinePackRenderer: optiFinePackRenderer));
             return true;
+        }
+
+        // 1.8.9: a resource pack with OptiFine features (CIT, CTM...) renders through OptiFine this launch instead of Ionium.
+        void PackNotice(string? notice)
+        {
+            if (notice == null) return;
+            Log($"[Renderer] {notice} (Settings > General > Graphics: 1.8.9 renderer for OptiFine-feature packs).");
+            Dispatcher.UIThread.Post(() => NotificationService.Notify("1.8.9 renderer", notice));
         }
     }
 
