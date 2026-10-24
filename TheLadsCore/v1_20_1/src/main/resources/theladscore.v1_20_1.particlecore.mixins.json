@@ -11,6 +11,7 @@
     "ParticleEngineMixin",
     "LevelRendererMixin",
     "SingleQuadParticleMixin",
-    "ParticleLightMixin"
+    "ParticleLightMixin",
+    "ParticleStyleMixin1201"
   ]
 }

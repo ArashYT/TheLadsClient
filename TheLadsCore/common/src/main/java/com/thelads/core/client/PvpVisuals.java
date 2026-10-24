@@ -11,6 +11,12 @@ import com.thelads.core.modules.DamageTintModule;
 import com.thelads.core.modules.GlintColorizerModule;
 import com.thelads.core.modules.HitColorModule;
 import com.thelads.core.modules.HitboxesModule;
+import com.thelads.core.modules.ItemDespawnModule;
+import com.thelads.core.modules.LootBeamsModule;
+import com.thelads.core.modules.MobOverlayModule;
+import com.thelads.core.modules.MobSizeModule;
+import com.thelads.core.modules.OofModule;
+import com.thelads.core.modules.UhcOverlayModule;
 import com.thelads.core.modules.MountOpacityModule;
 import com.thelads.core.modules.OldAnimationsModule;
 
@@ -19,7 +25,9 @@ import com.thelads.core.modules.OldAnimationsModule;
  * Tweaks, Overlays, Totem Animation, Dark Mode and the Nametags extras. Each adapter calls {@link #tick} once a client tick; its render
  * hooks then read the values cached there, so no hook looks up a module or an option per frame, block or entity. Nametag Health shows
  * more than vanilla does (other players' health), so HypixelSafetyManager gates it: the module reads as off on servers that ban it or
- * whose rules are unknown. Water fog is Fog Customizer's Clear Water.
+ * whose rules are unknown. Water fog is Fog Customizer's Clear Water. Rows 31-38 add Oof Mod, Light Overlay, Loot Beams, Mob Overlay,
+ * Mob Size, Item Despawn and UHC Overlay (their modules cache their own state here); Light Overlay, Loot Beams, Mob Overlay and Mob
+ * Size are gated the same way.
  */
 public final class PvpVisuals {
     public static final String HIDE_MOB_DEATHS = "Hide Mob Deaths";
@@ -32,7 +40,8 @@ public final class PvpVisuals {
     public static final String NAMETAG_HEALTH = "Nametag Health";
     /** The modules every adapter builds in (ModuleSupport.registerBuiltIn); Totem Animation only where totems exist. */
     public static final String[] MODULES = {BlockOverlayModule.NAME, HitColorModule.NAME, DamageTintModule.NAME, GlintColorizerModule.NAME,
-        HIDE_MOB_DEATHS, MountOpacityModule.NAME, HitboxesModule.NAME, RENDER_TWEAKS, OVERLAYS, DARK_MODE, NAMETAG_HEALTH};
+        HIDE_MOB_DEATHS, MountOpacityModule.NAME, HitboxesModule.NAME, RENDER_TWEAKS, OVERLAYS, DARK_MODE, NAMETAG_HEALTH,
+        OofModule.NAME, LightOverlay.NAME, LootBeamsModule.NAME, MobOverlayModule.NAME, MobSizeModule.NAME, ItemDespawnModule.NAME, UhcOverlayModule.NAME};
     public static final BlockOverlayModule BLOCK_OVERLAY = get(BlockOverlayModule.NAME);
     public static final HitColorModule HIT_COLOR = get(HitColorModule.NAME);
     public static final DamageTintModule DAMAGE_TINT = get(DamageTintModule.NAME);
@@ -82,6 +91,12 @@ public final class PvpVisuals {
         MOUNT_OPACITY.refresh();
         HITBOXES.refresh();
         hideMobDeaths = HIDE.isEnabled();
+        LightOverlay.refresh();
+        LootBeamsModule.refresh();
+        MobOverlayModule.refresh();
+        MobSizeModule.refresh();
+        ItemDespawnModule.refresh();
+        UhcOverlayModule.refresh();
 
         ModuleManager modules = ModuleManager.getInstance();
         Module tweaks = on(modules.getModule(RENDER_TWEAKS));

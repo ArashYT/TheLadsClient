@@ -32,6 +32,11 @@ public class DamageTiltPacketsMixin {
         DamageTilt.CLIENT.direction(packet.yaw(), now);
     }
 
+    @Inject(method = "handleSetTime", at = @At("TAIL"), require = 1)
+    private void lads$time(net.minecraft.network.protocol.game.ClientboundSetTimePacket packet, CallbackInfo callback) {
+        com.thelads.core.client.TpsTracker.get().onTimeUpdate(packet.gameTime());
+    }
+
     private static boolean own(int id) {
         var player = Minecraft.getInstance().player;
         return player != null && player.getId() == id;

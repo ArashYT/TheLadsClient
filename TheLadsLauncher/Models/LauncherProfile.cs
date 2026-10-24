@@ -16,6 +16,9 @@ public class LauncherProfile
     public string? PackwizUrl { get; set; }
     public DateTime? LastPlayed { get; set; }
     public string IconKey { get; set; } = "default";
+    public string? IconColor { get; set; }
+    public string? IconSecondaryColor { get; set; }
+    public string? CustomIconPath { get; set; }
     public bool IsFavorite { get; set; }
     public bool LocalResourcePacks { get; set; } = false;
 

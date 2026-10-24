@@ -2,7 +2,6 @@ package com.thelads.core.v26_2.feature;
 
 import com.thelads.core.client.ParticleCore;
 import com.thelads.core.config.ModuleSupport;
-import com.thelads.core.config.ParticleReductionOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,7 +37,7 @@ public final class NativeParticleCore {
             return;
         }
         ModuleSupport.registerBuiltIn(ParticleCore.MODULE);
-        ((ParticleReductionOption) ParticleCore.module().getOption(ParticleCore.RATES)).setCatalog(NativeParticleCore::catalog);
+        ParticleCore.setCatalog(NativeParticleCore::catalog);
         ClientTickEvents.END_CLIENT_TICK.register(NativeParticleCore::tick);
         LOGGER.info("Particle Core ready");
     }

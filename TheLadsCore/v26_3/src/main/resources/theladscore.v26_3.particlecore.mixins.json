@@ -12,6 +12,7 @@
     "QuadParticleGroupMixin",
     "QuadParticleRenderStateMixin",
     "SingleQuadParticleMixin",
-    "ParticleLightMixin"
+    "ParticleLightMixin",
+    "SingleQuadParticleStyleMixin"
   ]
 }

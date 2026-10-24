@@ -15,6 +15,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class LocalSkinMixin {
     @Inject(method = "getSkinTextureLocation()Lnet/minecraft/resources/ResourceLocation;", at = @At("HEAD"), cancellable = true)
     private void ladsLocalSkin(CallbackInfoReturnable<ResourceLocation> cir) {
+        if (com.thelads.core.client.NickHider.isEnabled() && com.thelads.core.client.NickHider.shouldHideSkin(((AbstractClientPlayer) (Object) this).getUUID(), ladsIsLocalAccount())) {
+            cir.setReturnValue(net.minecraft.client.resources.DefaultPlayerSkin.getDefaultSkin(((AbstractClientPlayer) (Object) this).getUUID()));
+            return;
+        }
         var skin = LocalSkins1201.current();
         if (skin != null && ladsIsLocalAccount()) cir.setReturnValue(skin.texture());
     }

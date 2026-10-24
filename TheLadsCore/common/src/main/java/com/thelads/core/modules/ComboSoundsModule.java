@@ -410,12 +410,14 @@ public class ComboSoundsModule extends Module {
 
     /** Each version's attack hook (client thread). */
     public static void onAttack(int entityId, boolean player) {
+        com.thelads.core.client.CombatTracker.get().onAttack(entityId, System.nanoTime());
         ComboSoundsModule module = active();
         if (module != null) module.attacked(entityId, player, System.nanoTime());
     }
 
     /** Each version's hurt hook (client thread): plays the step a landed hit makes. */
     public static void onHurt(int entityId, boolean self) {
+        com.thelads.core.client.CombatTracker.get().onHurt(entityId, self, System.nanoTime());
         ComboSoundsModule module = active();
         if (module == null) return;
         int step = module.hurt(entityId, self, System.nanoTime());

@@ -82,14 +82,38 @@ public final class NativeClientTools {
         if (current == null) return "Items: 0";
         if (current == player && countTick == current.tickCount && countSelection == selection) return countText;
         countTick = current.tickCount; countSelection = selection;
-        Item target = switch (selection) { case 1 -> Items.ARROW; case 2 -> Items.TOTEM_OF_UNDYING; case 3 -> Items.FIREWORK_ROCKET; default -> current.getMainHandItem().getItem(); };
+        Item target = switch (selection) {
+            case 1 -> Items.ARROW;
+            case 2 -> Items.TOTEM_OF_UNDYING;
+            case 3 -> Items.FIREWORK_ROCKET;
+            case 4 -> Items.GOLDEN_APPLE;
+            case 5 -> Items.ENDER_PEARL;
+            case 6 -> Items.POTION;
+            case 7 -> Items.MUSHROOM_STEW;
+            default -> current.getMainHandItem().getItem();
+        };
         int count = 0;
         // Count the 36 storage slots and offhand, not worn armor.
         for (int i = 0; i < 37; i++) {
             var stack = i == 36 ? current.getOffhandItem() : current.getInventory().getItem(i);
-            if (!stack.isEmpty() && (stack.is(target) || selection == 1 && (stack.is(Items.SPECTRAL_ARROW) || stack.is(Items.TIPPED_ARROW)))) count += stack.getCount();
+            if (!stack.isEmpty()) {
+                if (selection == 1 && (stack.is(Items.ARROW) || stack.is(Items.SPECTRAL_ARROW) || stack.is(Items.TIPPED_ARROW))) count += stack.getCount();
+                else if (selection == 4 && (stack.is(Items.GOLDEN_APPLE) || stack.is(Items.ENCHANTED_GOLDEN_APPLE))) count += stack.getCount();
+                else if (selection == 6 && (stack.is(Items.POTION) || stack.is(Items.SPLASH_POTION) || stack.is(Items.LINGERING_POTION))) count += stack.getCount();
+                else if (selection == 7 && (stack.is(Items.MUSHROOM_STEW) || stack.is(Items.SUSPICIOUS_STEW) || stack.is(Items.RABBIT_STEW))) count += stack.getCount();
+                else if (stack.is(target)) count += stack.getCount();
+            }
         }
-        String label = switch (selection) { case 1 -> "Arrows"; case 2 -> "Totems"; case 3 -> "Rockets"; default -> current.getMainHandItem().isEmpty() ? "Held item" : current.getMainHandItem().getHoverName().getString(); };
+        String label = switch (selection) {
+            case 1 -> "Arrows";
+            case 2 -> "Totems";
+            case 3 -> "Rockets";
+            case 4 -> "Golden Apples";
+            case 5 -> "Ender Pearls";
+            case 6 -> "Potions";
+            case 7 -> "Soups";
+            default -> current.getMainHandItem().isEmpty() ? "Held item" : current.getMainHandItem().getHoverName().getString();
+        };
         return countText = label + ": " + count;
     }
     public static void attacked(Entity entity) {

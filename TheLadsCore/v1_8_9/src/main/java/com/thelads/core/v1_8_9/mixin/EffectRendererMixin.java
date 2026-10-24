@@ -38,6 +38,12 @@ public abstract class EffectRendererMixin {
         if (!ParticleCore189.allow(id, x, y, z)) cir.setReturnValue(null);
     }
 
+    /** Particle Core's per-type size, color and fade: the new particle keeps its type's look (EntityFXStyleMixin draws it). */
+    @Inject(method = "spawnEffectParticle", at = @At("RETURN"), require = 0)
+    private void ladsStyle(int id, double x, double y, double z, double dx, double dy, double dz, int[] parameters, CallbackInfoReturnable<EntityFX> cir) {
+        if (com.thelads.core.client.ParticleCore.styled()) ParticleCore189.style(cir.getReturnValue(), id);
+    }
+
     @org.spongepowered.asm.mixin.Shadow
     protected abstract void tickParticle(EntityFX particle);
 

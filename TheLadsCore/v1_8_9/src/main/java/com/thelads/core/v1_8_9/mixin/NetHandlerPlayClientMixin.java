@@ -34,7 +34,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class NetHandlerPlayClientMixin {
     @Inject(method = "handleEntityStatus", at = @At("TAIL"), require = 1)
     private void ladsDeath(S19PacketEntityStatus packet, CallbackInfo ci) {
-        if (packet.getOpCode() == 3 && Minecraft.getMinecraft().theWorld != null) KillBanner189.died(packet.getEntity(Minecraft.getMinecraft().theWorld));
+        if (packet.getOpCode() == 3 && Minecraft.getMinecraft().theWorld != null) {
+            Entity entity = packet.getEntity(Minecraft.getMinecraft().theWorld);
+            KillBanner189.died(entity);
+            if (entity != null && entity == Minecraft.getMinecraft().thePlayer) {
+                com.thelads.core.client.DeathTracker.get().onDeath(entity.posX, entity.posY, entity.posZ,
+                    com.thelads.core.client.bridge.LadsGameBridge.get().getDimensionId(), "Player died");
+            }
+        }
+    }
+
+    @Inject(method = "handleTimeUpdate", at = @At("TAIL"), require = 1)
+    private void ladsTimeUpdate(net.minecraft.network.play.server.S03PacketTimeUpdate packet, CallbackInfo ci) {
+        com.thelads.core.client.TpsTracker.get().onTimeUpdate(packet.getTotalWorldTime());
     }
 
     /** Damage tilt: the client player's hurt (status 2). The server never sends 1.8.9 clients the hit's direction... */

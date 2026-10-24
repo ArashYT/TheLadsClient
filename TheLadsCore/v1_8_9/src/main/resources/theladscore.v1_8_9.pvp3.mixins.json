@@ -1,0 +1,17 @@
+{
+  "required": false,
+  "minVersion": "0.7",
+  "package": "com.thelads.core.v1_8_9.mixin.visuals",
+  "refmap": "theladscore.v1_8_9.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "injectors": {
+    "defaultRequire": 0
+  },
+  "client": [
+    "WorldClientOofMixin189",
+    "RenderEntityItemVisualsMixin189",
+    "RenderGlobalOutlineMixin189",
+    "RendererLivingEntityVisualsMixin189",
+    "RenderItemUhcMixin189"
+  ]
+}

@@ -19,6 +19,8 @@ public final class EmoteLibrary {
     public static final String FACEPALM = "lads:facepalm";
     public static final String SALUTE = "lads:salute";
     public static final String SHRUG = "lads:shrug";
+    public static final String DAB = "lads:dab";
+    public static final String TAUNT = "lads:taunt";
     /** The emote wheel's slot count (the player fills them in the Cosmetics screen: CosmeticsModule.slots). */
     public static final int SLOTS = 8;
     private static final Map<String, Emote> BY_ID = new LinkedHashMap<>();
@@ -33,6 +35,8 @@ public final class EmoteLibrary {
         add(facepalm());
         add(salute());
         add(shrug());
+        add(dab());
+        add(taunt());
     }
 
     private EmoteLibrary() {}
@@ -252,6 +256,38 @@ public final class EmoteLibrary {
         b.key(ch(HEAD, RX), 0, 0, Ease.EASE).key(ch(HEAD, RX), 1.8f, -3, Ease.SMOOTH).key(ch(HEAD, RX), 3.4f, 0, Ease.EASE);
         return b.build();
     }
+
+    /** Dab: head tucks down-left, left arm angled up and out, right arm folded across face. */
+    static Emote dab() {
+        Emote.Builder b = new Emote.Builder(DAB, "Dab", 110, 4);
+        b.key(ch(BODY, RZ), 0, 0, Ease.EASE).key(ch(BODY, RZ), 1.0f, -8, Ease.OUT).key(ch(BODY, RZ), 3.0f, -8, Ease.SMOOTH).key(ch(BODY, RZ), 4.0f, 0, Ease.EASE);
+        b.key(ch(BODY, RY), 0, 0, Ease.EASE).key(ch(BODY, RY), 1.0f, -12, Ease.OUT).key(ch(BODY, RY), 3.0f, -12, Ease.SMOOTH).key(ch(BODY, RY), 4.0f, 0, Ease.EASE);
+        b.key(ch(HEAD, RX), 0, 0, Ease.EASE).key(ch(HEAD, RX), 1.0f, 25, Ease.OUT).key(ch(HEAD, RX), 3.0f, 25, Ease.SMOOTH).key(ch(HEAD, RX), 4.0f, 0, Ease.EASE);
+        b.key(ch(HEAD, RY), 0, 0, Ease.EASE).key(ch(HEAD, RY), 1.0f, -35, Ease.OUT).key(ch(HEAD, RY), 3.0f, -35, Ease.SMOOTH).key(ch(HEAD, RY), 4.0f, 0, Ease.EASE);
+        b.key(ch(HEAD, RZ), 0, 0, Ease.EASE).key(ch(HEAD, RZ), 1.0f, -20, Ease.OUT).key(ch(HEAD, RZ), 3.0f, -20, Ease.SMOOTH).key(ch(HEAD, RZ), 4.0f, 0, Ease.EASE);
+        b.key(ch(RIGHT_ARM, RX), 0, -12, Ease.EASE).key(ch(RIGHT_ARM, RX), 1.0f, -80, Ease.OUT).key(ch(RIGHT_ARM, RX), 3.0f, -80, Ease.SMOOTH).key(ch(RIGHT_ARM, RX), 4.0f, -12, Ease.EASE);
+        b.key(ch(RIGHT_ARM, RY), 0, -8, Ease.EASE).key(ch(RIGHT_ARM, RY), 1.0f, -60, Ease.OUT).key(ch(RIGHT_ARM, RY), 3.0f, -60, Ease.SMOOTH).key(ch(RIGHT_ARM, RY), 4.0f, -8, Ease.EASE);
+        b.key(ch(RIGHT_ARM, RZ), 0, 12, Ease.EASE).key(ch(RIGHT_ARM, RZ), 1.0f, 45, Ease.OUT).key(ch(RIGHT_ARM, RZ), 3.0f, 45, Ease.SMOOTH).key(ch(RIGHT_ARM, RZ), 4.0f, 12, Ease.EASE);
+        b.key(ch(LEFT_ARM, RX), 0, -12, Ease.EASE).key(ch(LEFT_ARM, RX), 1.0f, -70, Ease.OUT).key(ch(LEFT_ARM, RX), 3.0f, -70, Ease.SMOOTH).key(ch(LEFT_ARM, RX), 4.0f, -12, Ease.EASE);
+        b.key(ch(LEFT_ARM, RY), 0, 8, Ease.EASE).key(ch(LEFT_ARM, RY), 1.0f, 20, Ease.OUT).key(ch(LEFT_ARM, RY), 3.0f, 20, Ease.SMOOTH).key(ch(LEFT_ARM, RY), 4.0f, 8, Ease.EASE);
+        b.key(ch(LEFT_ARM, RZ), 0, -12, Ease.EASE).key(ch(LEFT_ARM, RZ), 1.0f, -75, Ease.OUT).key(ch(LEFT_ARM, RZ), 3.0f, -75, Ease.SMOOTH).key(ch(LEFT_ARM, RZ), 4.0f, -12, Ease.EASE);
+        return b.build();
+    }
+
+    /** Taunt: hands on hips, mocking sway and head shake. */
+    static Emote taunt() {
+        Emote.Builder b = new Emote.Builder(TAUNT, "Taunt", 100, 4);
+        b.key(ch(RIGHT_ARM, RX), 0, -10, Ease.EASE).key(ch(RIGHT_ARM, RX), 0.5f, 18, Ease.OUT).key(ch(RIGHT_ARM, RX), 3.5f, 18, Ease.SMOOTH).key(ch(RIGHT_ARM, RX), 4.0f, -10, Ease.EASE);
+        b.key(ch(RIGHT_ARM, RZ), 0, 10, Ease.EASE).key(ch(RIGHT_ARM, RZ), 0.5f, 38, Ease.OUT).key(ch(RIGHT_ARM, RZ), 3.5f, 38, Ease.SMOOTH).key(ch(RIGHT_ARM, RZ), 4.0f, 10, Ease.EASE);
+        b.key(ch(RIGHT_ARM, RY), 0, -5, Ease.EASE).key(ch(RIGHT_ARM, RY), 0.5f, -22, Ease.OUT).key(ch(RIGHT_ARM, RY), 3.5f, -22, Ease.SMOOTH).key(ch(RIGHT_ARM, RY), 4.0f, -5, Ease.EASE);
+        b.key(ch(LEFT_ARM, RX), 0, -10, Ease.EASE).key(ch(LEFT_ARM, RX), 0.5f, 18, Ease.OUT).key(ch(LEFT_ARM, RX), 3.5f, 18, Ease.SMOOTH).key(ch(LEFT_ARM, RX), 4.0f, -10, Ease.EASE);
+        b.key(ch(LEFT_ARM, RZ), 0, -10, Ease.EASE).key(ch(LEFT_ARM, RZ), 0.5f, -38, Ease.OUT).key(ch(LEFT_ARM, RZ), 3.5f, -38, Ease.SMOOTH).key(ch(LEFT_ARM, RZ), 4.0f, -10, Ease.EASE);
+        b.key(ch(LEFT_ARM, RY), 0, 5, Ease.EASE).key(ch(LEFT_ARM, RY), 0.5f, 22, Ease.OUT).key(ch(LEFT_ARM, RY), 3.5f, 22, Ease.SMOOTH).key(ch(LEFT_ARM, RY), 4.0f, 5, Ease.EASE);
+        b.key(ch(HEAD, RY), 0, 0, Ease.EASE).key(ch(HEAD, RY), 1.0f, 18, Ease.SMOOTH).key(ch(HEAD, RY), 2.0f, -18, Ease.SMOOTH).key(ch(HEAD, RY), 3.0f, 18, Ease.SMOOTH).key(ch(HEAD, RY), 4.0f, 0, Ease.EASE);
+        b.key(ch(BODY, RZ), 0, 0, Ease.EASE).key(ch(BODY, RZ), 1.0f, -4, Ease.SMOOTH).key(ch(BODY, RZ), 2.0f, 4, Ease.SMOOTH).key(ch(BODY, RZ), 3.0f, -4, Ease.SMOOTH).key(ch(BODY, RZ), 4.0f, 0, Ease.EASE);
+        return b.build();
+    }
+
 
     /** An arm up at {@code upBeat} and {@code upBeat} + 2, down between; {@code side} -1 right, 1 left (mirrors yaw and roll). */
     private static void pump(Emote.Builder b, int arm, float upBeat, int side) {

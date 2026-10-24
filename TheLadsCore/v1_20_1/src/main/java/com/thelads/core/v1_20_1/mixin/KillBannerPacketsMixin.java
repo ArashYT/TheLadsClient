@@ -25,7 +25,12 @@ public class KillBannerPacketsMixin {
     @Inject(method = "handleEntityEvent", at = @At("TAIL"), require = 1)
     private void lads$death(ClientboundEntityEventPacket packet, CallbackInfo callback) {
         if (packet.getEventId() == EntityEvent.DEATH && Minecraft.getInstance().level != null) {
-            NativeKillBanner1201.died(packet.getEntity(Minecraft.getInstance().level));
+            var ent = packet.getEntity(Minecraft.getInstance().level);
+            NativeKillBanner1201.died(ent);
+            if (ent != null && ent == Minecraft.getInstance().player) {
+                com.thelads.core.client.DeathTracker.get().onDeath(ent.getX(), ent.getY(), ent.getZ(),
+                    Minecraft.getInstance().level.dimension().location().toString(), "Player died");
+            }
         }
     }
 
