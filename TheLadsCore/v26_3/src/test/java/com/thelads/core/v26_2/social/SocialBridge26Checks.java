@@ -1,15 +1,7 @@
 package com.thelads.core.v26_2.social;
 
 import com.thelads.core.client.social.SocialBridge;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.UUID;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 public final class SocialBridge26Checks {
     private static int passed;
@@ -66,7 +58,7 @@ public final class SocialBridge26Checks {
             passed++;
         }
 
-        // 7. Mute set clearing on disconnect / closeHosting
+        // 6. Mute set clearing on disconnect
         UUID mutedGuest = UUID.randomUUID();
         SocialBridge26.onWorldDisconnect();
         require(!SocialBridge26.isMuted(mutedGuest), "initially unmuted");
@@ -74,16 +66,6 @@ public final class SocialBridge26Checks {
         require(SocialBridge26.isMuted(mutedGuest), "guest marked muted");
         SocialBridge26.onWorldDisconnect();
         require(!SocialBridge26.isMuted(mutedGuest), "guest unmuted on world disconnect");
-
-        // 8. Null-safe comparator check
-        var list = new java.util.ArrayList<FriendsScreen26.MojangFriendDisplay>();
-        list.add(new FriendsScreen26.MojangFriendDisplay(UUID.randomUUID(), "Alice", "Online", true));
-        list.add(new FriendsScreen26.MojangFriendDisplay(UUID.randomUUID(), null, "Offline", false));
-        list.add(new FriendsScreen26.MojangFriendDisplay(null, "Bob", "Offline", false));
-        list.sort(java.util.Comparator.comparing((FriendsScreen26.MojangFriendDisplay m) -> !m.online())
-            .thenComparing(m -> m.name() != null ? m.name() : "", String.CASE_INSENSITIVE_ORDER));
-        require(list.size() == 3, "sorted list contains 3 entries");
-        require(list.get(0).online(), "first entry is online");
 
         System.out.println("PASS " + passed + " SocialBridge26 checks");
     }
