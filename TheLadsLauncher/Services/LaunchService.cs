@@ -201,6 +201,7 @@ public class LaunchService : ILaunchService
 
         ConfigureCachedNativesDirectory(path, versionId, launchOption);
         EnsureSecurityJvmArguments(launchOption, requiredJava, gameDir, profile.MinecraftVersion);
+        EnsureLoadingScreenColors(launchOption, settings);
 
         statusCallback?.Invoke("Starting game process...");
         Process process;
@@ -500,6 +501,19 @@ public class LaunchService : ILaunchService
             }
         }
 
+        options.ExtraJvmArguments = list.ToArray();
+    }
+
+    public static void EnsureLoadingScreenColors(MLaunchOption options, LauncherSettings settings)
+    {
+        var jvmArgs = options.ExtraJvmArguments ?? Array.Empty<MArgument>();
+        var list = new List<MArgument>(jvmArgs);
+        if (!string.IsNullOrWhiteSpace(settings.LoadingScreenBgColor))
+            list.Add(MArgument.FromCommandLine($"-Dthelads.loadingBg={settings.LoadingScreenBgColor.Trim()}"));
+        if (!string.IsNullOrWhiteSpace(settings.LoadingScreenBarColor))
+            list.Add(MArgument.FromCommandLine($"-Dthelads.loadingBar={settings.LoadingScreenBarColor.Trim()}"));
+        if (!string.IsNullOrWhiteSpace(settings.LoadingScreenGlowColor))
+            list.Add(MArgument.FromCommandLine($"-Dthelads.loadingGlow={settings.LoadingScreenGlowColor.Trim()}"));
         options.ExtraJvmArguments = list.ToArray();
     }
 

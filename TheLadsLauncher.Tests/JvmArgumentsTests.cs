@@ -1,3 +1,5 @@
+using System.Linq;
+using CmlLib.Core.ProcessBuilder;
 using TheLadsLauncher.Services;
 using Xunit;
 
@@ -27,5 +29,24 @@ public class JvmArgumentsTests
         Assert.Contains("-XX:+UseStringDeduplication", flags25);
         Assert.Contains("-XX:+AlwaysPreTouch", flags8);
         Assert.Contains("-XX:+UseStringDeduplication", flags8);
+    }
+
+    [Fact]
+    public void EnsureLoadingScreenColors_AppendsCustomColors()
+    {
+        var options = new MLaunchOption();
+        var settings = new LauncherSettings
+        {
+            LoadingScreenBgColor = "#112233",
+            LoadingScreenBarColor = "#445566",
+            LoadingScreenGlowColor = "#778899"
+        };
+
+        LaunchService.EnsureLoadingScreenColors(options, settings);
+
+        var args = options.ExtraJvmArguments!.SelectMany(a => a.Values).ToList();
+        Assert.Contains("-Dthelads.loadingBg=#112233", args);
+        Assert.Contains("-Dthelads.loadingBar=#445566", args);
+        Assert.Contains("-Dthelads.loadingGlow=#778899", args);
     }
 }
