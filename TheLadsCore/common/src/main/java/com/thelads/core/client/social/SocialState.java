@@ -418,6 +418,7 @@ public class SocialState {
     }
 
     private void recordDm(UUID friendUuid, Dm dm) {
+        if (dmsMap.size() >= 500 && !dmsMap.containsKey(friendUuid)) return; // the 500-friend cap: no more conversations than that
         List<Dm> list = dmsMap.computeIfAbsent(friendUuid, k -> new ArrayList<>());
         synchronized (list) {
             list.add(dm);
@@ -552,10 +553,7 @@ public class SocialState {
 
     /** The host's per-player menu: kick and ban also take back the guest's acceptance and end their P2P session. */
     public void guestAction(UUID id, SocialBridge.GuestAction action) {
-        if (action == SocialBridge.GuestAction.BAN) {
-            banFromWorld(id);
-            bridge().guestAction(id, action);
-        }
+        if (action == SocialBridge.GuestAction.BAN) banFromWorld(id); // per world; revoke below kicks (not the game-wide ban list)
         if (action == SocialBridge.GuestAction.KICK || action == SocialBridge.GuestAction.BAN) hostSession.revoke(id); // revoke kicks
         else bridge().guestAction(id, action);
     }

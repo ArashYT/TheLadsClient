@@ -28,6 +28,9 @@ public class WorldBackupTest {
         Path backups = Files.createDirectories(game.resolve("lads-backups"));
         for (int i = 0; i < 7; i++) Files.writeString(backups.resolve("MyWorld-2026010" + i + "-1200.zip"), "old");
         Files.writeString(backups.resolve("MyWorld-2-20260101-1200.zip"), "another world");
+        Path stalePart = backups.resolve("MyWorld-20250101-0000.zip.part"); // left by a crash, days old
+        Files.writeString(stalePart, "half");
+        Files.setLastModifiedTime(stalePart, java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis() - 3 * 86_400_000L));
 
         List<Integer> progress = new ArrayList<>();
         Path zip = WorldBackup.zip(world.resolve("."), progress::add); // 1.20.1/26.3 hand over saves/<world>/.
@@ -45,6 +48,7 @@ public class WorldBackupTest {
         }
         assertTrue(Files.exists(zip), "the new backup is among the five kept");
         assertTrue(Files.exists(backups.resolve("MyWorld-2-20260101-1200.zip")), "another world's backups are untouched");
+        assertFalse(Files.exists(stalePart), "a stale .part is cleaned up");
     }
 
     @Test

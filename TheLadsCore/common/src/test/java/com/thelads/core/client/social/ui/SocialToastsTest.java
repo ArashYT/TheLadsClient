@@ -123,4 +123,13 @@ class SocialToastsTest {
         @Override public int getScaledWidth() { return w; }
         @Override public int getScaledHeight() { return h; }
     }
+
+    @Test
+    void atMostTenToasts() {
+        SocialToasts.clear();
+        for (int i = 0; i < 15; i++) SocialToasts.show("Request " + i, "body", "Accept", "Deny", () -> {}, () -> {});
+        assertEquals(10, SocialToasts.activeToasts().size(), "a flood of requests can't grow the toast list");
+        assertEquals("Request 14", SocialToasts.activeToasts().get(0).title(), "newest first");
+        SocialToasts.clear();
+    }
 }

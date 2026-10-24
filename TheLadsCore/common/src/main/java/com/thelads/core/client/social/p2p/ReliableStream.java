@@ -85,6 +85,7 @@ public final class ReliableStream implements AutoCloseable {
     private int rcvNxt = 0;
     private int rcvRead = 0;
     private boolean finReceived = false;
+    private int finSeq; // the peer's sequence number after its last data packet: EOF only once everything before it arrived
     private volatile long lastReceivedTime = System.currentTimeMillis();
     private long lastAckProgress = System.currentTimeMillis(); // under txLock: when sndUna last moved (or data became outstanding)
     private final long deadMs;
@@ -175,8 +176,12 @@ public final class ReliableStream implements AutoCloseable {
         if ((flags & FLAG_FIN) != 0) {
             rxLock.lock();
             try {
-                finReceived = true;
-                rxDataCond.signalAll();
+                int ahead = seq - rcvNxt;
+                if (ahead >= 0 && ahead <= WINDOW_SIZE) { // never behind what we already have: a stale or blind FIN is ignored
+                    finReceived = true;
+                    finSeq = seq;
+                    rxDataCond.signalAll();
+                }
             } finally {
                 rxLock.unlock();
             }
@@ -661,8 +666,8 @@ public final class ReliableStream implements AutoCloseable {
                         }
                     }
 
-                    if (finReceived && rcvRead >= rcvNxt) {
-                        return -1;
+                    if (finReceived && rcvRead >= rcvNxt && rcvNxt - finSeq >= 0) {
+                        return -1; // every packet before the FIN was read
                     }
                     if (closed.get() || dead.get()) {
                         return -1;

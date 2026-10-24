@@ -204,8 +204,10 @@ public final class HostSession {
             return true;
         }
 
+        bridge.setLoginFilter(loginFilter); // before the port opens: canLogin refuses everyone until hosting is on
         int p = bridge.openToFriends(options);
         if (p <= 0) {
+            bridge.setLoginFilter(null);
             LOGGER.warn("HostSession: failed to open to friends (port={})", p);
             return false;
         }
@@ -213,7 +215,6 @@ public final class HostSession {
         this.port = p;
         this.hosting = true;
         this.endedSids.clear();
-        bridge.setLoginFilter(loginFilter);
         bridge.applyHostOptions(options);
         LOGGER.info("HostSession: hosting started on loopback port {}, scope={}, maxPlayers={}", p, options.scope, options.maxPlayers);
         return true;

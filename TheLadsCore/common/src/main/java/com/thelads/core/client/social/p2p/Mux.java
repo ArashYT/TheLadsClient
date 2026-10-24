@@ -216,11 +216,15 @@ public final class Mux implements AutoCloseable {
                     lock.unlock();
                 }
 
-                // Send WINDOW_UPDATE outside rx lock
+                // Send WINDOW_UPDATE outside rx lock; best effort: the bytes just read are returned even if the mux is closing
                 if (updateToSend > 0) {
                     byte[] creditPayload = new byte[4];
                     StunMessage.putIntBE(creditPayload, 0, updateToSend);
-                    mux.writeFrame(streamId, FRAME_WINDOW_UPDATE, creditPayload, 0, 4);
+                    try {
+                        mux.writeFrame(streamId, FRAME_WINDOW_UPDATE, creditPayload, 0, 4);
+                    } catch (IOException closing) {
+                        // no credit to give on a closed mux; the data was read
+                    }
                 }
 
                 return toRead;
