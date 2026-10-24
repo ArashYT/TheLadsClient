@@ -1077,6 +1077,45 @@ public partial class MainWindow : Window
         catch { }
     }
 
+    private async void ShareLogs_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(LogBox.Text))
+            {
+                StatusText.Text = "Log is empty; nothing to share.";
+                return;
+            }
+            StatusText.Text = "Sanitizing and uploading log...";
+            var result = await TheLadsLauncher.Services.LogShareService.UploadLogAsync(LogBox.Text);
+            if (result.Success && result.Url != null)
+            {
+                try
+                {
+                    var process = new Process();
+                    process.StartInfo.FileName = "clip.exe";
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.RedirectStandardInput = true;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.Start();
+                    process.StandardInput.Write(result.Url);
+                    process.StandardInput.Close();
+                    process.WaitForExit(2000);
+                }
+                catch { }
+                StatusText.Text = $"Log uploaded and link copied: {result.Url}";
+            }
+            else
+            {
+                StatusText.Text = $"Could not upload log: {result.ErrorMessage ?? "Unknown error"}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Upload error: {ex.Message}";
+        }
+    }
+
     private void ClearLogs_Click(object? sender, RoutedEventArgs e)
     {
         logLines.Clear();
