@@ -13,7 +13,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
@@ -112,16 +114,19 @@ public final class ShareCode {
     }
 
     /**
-     * Builds a sanitized share payload {v:1, modules:{...}, hud:{...}} from full config.
+     * Builds a sanitized share payload {v:2, modules:{...}, hud:{...}} from full config.
      * Excludes personal/machine-specific data: file paths, account/server/Discord data,
      * keybinds, and unmanagedModules.
+     * v2 leaves out what equals the shipped default (a module with nothing left is not listed): the importer
+     * restores those defaults, so a code stays small however many modules and options exist (see {@link #prepareImportJson}).
      */
     public static JsonObject createSharePayload(JsonObject fullConfig) {
         if (fullConfig == null) {
             fullConfig = ConfigManager.toJson();
         }
         JsonObject payload = new JsonObject();
-        payload.addProperty("v", 1);
+        payload.addProperty("v", 2);
+        Map<String, JsonObject> defaults = defaultEntries();
 
         JsonObject modulesOut = new JsonObject();
         JsonObject modulesIn = fullConfig.has("modules") && fullConfig.get("modules").isJsonObject()
@@ -195,7 +200,9 @@ public final class ShareCode {
             if (optsOut.size() > 0) {
                 mOut.add("options", optsOut);
             }
-            modulesOut.add(name, mOut);
+            if (!defaults.containsKey(name) || !dropDefaults(mOut, defaults.get(name))) {
+                modulesOut.add(name, mOut);
+            }
         }
         payload.add("modules", modulesOut);
 
@@ -209,6 +216,9 @@ public final class ShareCode {
     /**
      * Pure function: transforms an imported payload into a partial JSON object
      * ready for ConfigManager.applyJson based on the selected ImportMode.
+     * A v2 payload lists only what differs from the shipped defaults: every other module and option is filled in
+     * with its default first, so the importer ends up with exactly the sharer's settings. v1 and profile snapshots
+     * (no "v") list everything they mean and are used as they are.
      */
     public static JsonObject prepareImportJson(JsonObject payload, ImportMode mode) {
         if (payload == null) {
@@ -229,6 +239,9 @@ public final class ShareCode {
         // Modules
         if (payload.has("modules") && payload.get("modules").isJsonObject()) {
             JsonObject modulesIn = payload.getAsJsonObject("modules");
+            if (payload.get("v") instanceof JsonPrimitive v && v.isNumber() && v.getAsInt() == 2) {
+                modulesIn = withDefaults(modulesIn);
+            }
             JsonObject modulesOut = new JsonObject();
 
             Set<String> knownModules = new HashSet<>();
@@ -317,6 +330,68 @@ public final class ShareCode {
         }
         String unit = count == 1 ? "module" : "modules";
         return count + " " + unit + ", layout";
+    }
+
+    /** Each module's shipped default entry ({enabled, HUD colours, options}), read from a freshly built module list as resetToDefaults does. */
+    private static Map<String, JsonObject> defaultEntries() {
+        Map<String, JsonObject> entries = new HashMap<>();
+        for (Module m : new ModuleManager().getModules()) {
+            JsonObject entry = new JsonObject();
+            entry.addProperty("enabled", m.isEnabledSetting());
+            if (m instanceof HudModule hm) {
+                entry.addProperty("useGlobalColor", hm.isUseGlobalColor());
+                entry.addProperty("customColor", hm.getCustomColor());
+            }
+            JsonObject options = new JsonObject();
+            for (Option o : m.getOptions()) {
+                JsonElement saved = o.save();
+                if (saved != null && !saved.isJsonNull()) {
+                    options.add(o.getName(), saved);
+                }
+            }
+            entry.add("options", options);
+            entries.put(m.getName(), entry);
+        }
+        return entries;
+    }
+
+    /** Removes from a module entry what equals its default; true when nothing is left. */
+    private static boolean dropDefaults(JsonObject entry, JsonObject defaults) {
+        for (String key : new ArrayList<>(entry.keySet())) {
+            if (key.equals("options")) {
+                JsonObject options = entry.getAsJsonObject(key);
+                JsonObject defaultOptions = defaults.getAsJsonObject(key);
+                options.entrySet().removeIf(e -> e.getValue().equals(defaultOptions.get(e.getKey())));
+                if (options.size() == 0) {
+                    entry.remove(key);
+                }
+            } else if (entry.get(key).equals(defaults.get(key))) {
+                entry.remove(key);
+            }
+        }
+        return entry.size() == 0;
+    }
+
+    /** The v2 modules with every known, non-excluded module and option the payload leaves out set to its default. */
+    private static JsonObject withDefaults(JsonObject listed) {
+        JsonObject all = new JsonObject();
+        for (Map.Entry<String, JsonObject> d : defaultEntries().entrySet()) {
+            if (isExcludedModule(d.getKey())) {
+                continue;
+            }
+            JsonObject entry = d.getValue();
+            if (listed.get(d.getKey()) instanceof JsonObject given) {
+                for (Map.Entry<String, JsonElement> e : given.entrySet()) {
+                    if (e.getKey().equals("options") && e.getValue() instanceof JsonObject options) {
+                        options.entrySet().forEach(o -> entry.getAsJsonObject("options").add(o.getKey(), o.getValue()));
+                    } else {
+                        entry.add(e.getKey(), e.getValue());
+                    }
+                }
+            }
+            all.add(d.getKey(), entry);
+        }
+        return all;
     }
 
     public static boolean isExcludedModule(String moduleName) {
