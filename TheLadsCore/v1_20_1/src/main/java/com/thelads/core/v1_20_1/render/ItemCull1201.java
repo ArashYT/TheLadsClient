@@ -4,6 +4,8 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.thelads.core.perf.BuiltInRender;
 import com.thelads.core.perf.FaceCull;
+import com.thelads.core.perf.GuiItemBaking;
+import com.thelads.core.perf.SodiumPipelineHook;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -61,6 +63,7 @@ public final class ItemCull1201 {
             || !RenderSystem.isOnRenderThread() || !culls(type))
             return model;
         if (context == ItemDisplayContext.GUI) {
+            if (!GuiItemBaking.isEnabled()) return model;
             BakedModel cached = GUI_CACHE.get(model);
             if (cached != null) return cached;
             if (!model.isGui3d()) {

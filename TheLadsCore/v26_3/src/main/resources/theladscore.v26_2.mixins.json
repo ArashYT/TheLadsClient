@@ -107,7 +107,7 @@
     "ChatHeadsMessageMixin",
     "ChatHeadsListenerMixin",
     "ClientToolsAttackMixin",
-    "FontMetricsMixin",
+    "DeferredSkyMixin26",`r`n    "FontMetricsMixin",`r`n    "FontWidthCacheMixin",
     "SmoothScrollMixin",
     "GlobalButtonMixin",
     "GlobalSliderMixin",

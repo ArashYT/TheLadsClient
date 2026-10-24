@@ -38,6 +38,7 @@ public final class ExternalModSettings {
                 + "Its HUD caching engine needs a compatibility port before it can be enabled.");
         }
         external("AppleSkin", "AppleSkin", "appleskin");
+        com.thelads.core.perf.SodiumPipelineHook.setSodiumLoaded(FabricLoader.getInstance().isModLoaded("sodium"));
         external("Performance", "Sodium", "sodium");
         external("Lithium", "Lithium", "lithium");
         external("FerriteCore", "FerriteCore", "ferritecore");

@@ -53,6 +53,8 @@ public final class InputLatency26 {
             }
         }
         LOGGER.info("Lads input: input-latency pacing {}; buffered raw mouse input is SDL3's own on 26.x", reflex ? "on" : "off");
+        VendorLatency26.init();
+        VulkanDisplayTiming26.init();
     }
 
     static LatencyMeter meter() {
@@ -64,6 +66,7 @@ public final class InputLatency26 {
     /** Head of RenderSystem.pollEvents. */
     public static void frameStart() {
         LatencyMeter meter = Thread.currentThread() == renderThread ? qaMeter : null;
+        VendorLatency26.markInputStart();
         if (meter != null) meter.poll();
         pace();
         if (meter != null) meter.input();
@@ -86,6 +89,7 @@ public final class InputLatency26 {
             renderThread = Thread.currentThread();
             LOGGER.info("Lads input: frames are submitted on thread '{}'", renderThread.getName());
         }
+        VendorLatency26.markSubmit();
         if (qaMeter != null) qaMeter.fence();
         if (!reflex || qaPaused) return;
         track();
@@ -102,6 +106,7 @@ public final class InputLatency26 {
 
     /** Right after the frame's present (QA only). */
     public static void afterPresent() {
+        VulkanDisplayTiming26.onPresentComplete(System.nanoTime());
         if (qaMeter != null) qaMeter.poll();
     }
 
