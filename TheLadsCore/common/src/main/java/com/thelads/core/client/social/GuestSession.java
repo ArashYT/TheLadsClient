@@ -59,6 +59,10 @@ public final class GuestSession {
         return active;
     }
 
+    String hostName() {
+        return hostDisplayName;
+    }
+
     public UUID hostUuid() {
         return hostUuid;
     }

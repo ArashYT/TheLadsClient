@@ -87,6 +87,32 @@ class FriendsScreenLogicTest {
     }
 
     @Test
+    void joinWhileInAWorldAsksFirstAndCancelKeepsEverything() {
+        UUID u1 = UUID.randomUUID();
+        SocialBridge.GameInfo game = new SocialBridge.GameInfo("1.8.9", "forge", "plain", "", "", "", "1.9.18");
+        FriendEntry friend = new FriendEntry(u1, "Arash", null, new Presence("hosting", game, null, new Presence.WorldAd("w", "SMP", "friends", 8, 1)), 1);
+        FakeCallbacks callbacks = new FakeCallbacks();
+        callbacks.friends.add(friend);
+        callbacks.joinQuestion = "Leave My World and join Arash's world?";
+        FriendsScreenLogic logic = new FriendsScreenLogic(callbacks);
+        TestGraphics g = new TestGraphics(480, 270);
+        logic.render(g, 0, 0);
+        FriendsScreenLogic.Box joinBtn = logic.joinButtonBox(u1);
+
+        logic.mouseClicked(joinBtn.x() + 2, joinBtn.y() + 2, 0);
+        logic.render(g, 0, 0);
+        assertTrue(callbacks.requestedJoins.isEmpty(), "in a world, Join asks before anything happens");
+        assertTrue(logic.keyPressed(256, 0, 0), "Esc cancels the confirm, not the screen");
+        assertTrue(callbacks.requestedJoins.isEmpty(), "Cancel keeps everything");
+        assertFalse(callbacks.closed);
+
+        logic.mouseClicked(joinBtn.x() + 2, joinBtn.y() + 2, 0);
+        logic.render(g, 0, 0);
+        logic.keyPressed(257, 0, 0); // Enter confirms
+        assertEquals(List.of(u1), callbacks.requestedJoins);
+    }
+
+    @Test
     void incompatibleReasonOnlyShownOnHover() {
         UUID u1 = UUID.randomUUID();
         SocialBridge.GameInfo game = new SocialBridge.GameInfo("1.8.9", "forge", "plain", "", "", "", "1.9.18");
@@ -418,6 +444,8 @@ class FriendsScreenLogicTest {
         @Override public List<FriendsScreenLogic.DmEntry> dms(UUID id) { return dms; }
         @Override public FriendsScreenLogic.JoinCheck canJoin(FriendEntry friend) { return joinCheck; }
         @Override public void requestJoin(UUID id) { requestedJoins.add(id); }
+        String joinQuestion;
+        @Override public String joinQuestion(UUID id) { return joinQuestion; }
         @Override public void sendDm(UUID id, String text) { sentDms.add(new SentDm(id, text)); }
         @Override public void acceptRequest(UUID id) { accepted.add(id); }
         @Override public void declineRequest(UUID id) { declined.add(id); }

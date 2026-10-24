@@ -36,6 +36,8 @@ public class SocialState {
     public record JoinCheck(boolean ok, String reason) {}
     public record Invite(String inviteId, UUID from, String worldName, boolean isServer, String serverAddress) {}
     public record JoinRequest(String reqId, UUID from, SocialBridge.GameInfo game) {}
+    /** "Leave X and join Y?" and what Confirm does. */
+    public record SwitchConfirm(String question, Runnable go) {}
 
     private static volatile SocialState instance;
 
@@ -72,6 +74,7 @@ public class SocialState {
     private volatile boolean showServer = true, appearOffline;
     private volatile Presence lastPresence;
     private volatile UUID dmTarget;
+    private volatile SwitchConfirm pendingSwitch;
     private int ticks; // game thread only
 
     /** The game's own state: SocialBridge.get(), the logged-in session, the -Dlads.social.url / LADS_SOCIAL_URL endpoint. */
@@ -212,6 +215,33 @@ public class SocialState {
         appearOffline = offline;
         send(SocialProtocol.SETTINGS, "appearOffline", offline);
         notifyListeners();
+    }
+
+    /** An invite accepted while in a world, to confirm in the Friends screen before leaving (once). */
+    public SwitchConfirm takePendingSwitch() {
+        SwitchConfirm s = pendingSwitch;
+        pendingSwitch = null;
+        return s;
+    }
+
+    /** What to ask before leaving for this friend's world (Join), or null when we are in no world or server: nothing to leave. */
+    public String joinQuestion(UUID friend) {
+        return switchQuestion(nameOf(friend) + "'s world");
+    }
+
+    private String switchQuestion(String target) {
+        if (!bridge().inWorldOrServer() && !guestSession.isActive()) return null;
+        String here;
+        String addr = LadsGameBridge.get().getServerAddress();
+        if (guestSession.isActive()) here = guestSession.hostName() + "'s world";
+        else if (!"Singleplayer".equalsIgnoreCase(addr)) here = addr;
+        else here = Objects.requireNonNullElse(bridge().worldName(), "this world");
+        return "Leave " + here + " and join " + target + "?";
+    }
+
+    private String nameOf(UUID id) {
+        FriendEntry f = id == null ? null : friendsMap.get(id);
+        return f != null ? f.displayName() : "your friend";
     }
 
     /** The friend a "dm:<uuid>" action asked to open, once (the Friends screen opens on that conversation). */
@@ -502,7 +532,17 @@ public class SocialState {
         String arg = colon == -1 ? "" : actionId.substring(colon + 1);
 
         switch (prefix) {
-            case "invite_accept" -> acceptInvite(arg);
+            case "invite_accept" -> {
+                Invite invite = activeInvites.get(arg);
+                String question = invite == null ? null
+                        : switchQuestion(invite.isServer() ? invite.serverAddress() : nameOf(invite.from()) + "'s world");
+                if (question == null) {
+                    acceptInvite(arg);
+                } else { // in a world or on a server: the Friends screen asks first; Cancel keeps everything
+                    pendingSwitch = new SwitchConfirm(question, () -> acceptInvite(arg));
+                    bridge().openFriendsScreen();
+                }
+            }
             case "invite_decline" -> declineInvite(arg);
             case "join_accept" -> answerJoin(arg, true);
             case "join_deny" -> answerJoin(arg, false);

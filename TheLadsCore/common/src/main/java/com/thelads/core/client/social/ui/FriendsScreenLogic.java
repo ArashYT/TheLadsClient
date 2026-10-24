@@ -1,6 +1,7 @@
 package com.thelads.core.client.social.ui;
 
 import com.thelads.core.client.bridge.LadsGraphics;
+import com.thelads.core.client.gui.ConfirmDialog;
 import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.client.gui.MenuGraphics;
 import com.thelads.core.client.social.FriendEntry;
@@ -62,6 +63,8 @@ public final class FriendsScreenLogic {
         default List<DmEntry> dms(UUID id) { return List.of(); }
         default void invite(UUID id) {}
         default void requestJoin(UUID id) {}
+        /** "Leave X and join Y?" when joining would leave a world or server first; null = join at once. */
+        default String joinQuestion(UUID id) { return null; }
         default String connectionStatus() { return "Connected"; }
         default boolean showServer() { return true; }
         default void setShowServer(boolean show) {}
@@ -71,6 +74,7 @@ public final class FriendsScreenLogic {
     }
 
     private final Callbacks callbacks;
+    private final ConfirmDialog confirm = new ConfirmDialog();
     private Tab currentTab = Tab.FRIENDS;
 
     // DM pane state
@@ -170,6 +174,7 @@ public final class FriendsScreenLogic {
             }
             @Override public void invite(UUID id) { s.invite(id); }
             @Override public void requestJoin(UUID id) { s.requestJoin(id); }
+            @Override public String joinQuestion(UUID id) { return s.joinQuestion(id); }
             @Override public String connectionStatus() { return s.connectionStatus(); }
             @Override public boolean showServer() { return s.showServer(); }
             @Override public void setShowServer(boolean show) { s.setShowServer(show); }
@@ -179,7 +184,14 @@ public final class FriendsScreenLogic {
         });
         FriendEntry dm = s.takeDmTarget();
         if (dm != null) logic.openDm(dm);
+        SocialState.SwitchConfirm pending = s.takePendingSwitch();
+        if (pending != null) logic.confirmSwitch(pending.question(), pending.go());
         return logic;
+    }
+
+    /** The Lads confirm over the screen: Confirm runs go (leave, then join), Cancel keeps everything. */
+    public void confirmSwitch(String question, Runnable go) {
+        confirm.open("Switch worlds?", question, go);
     }
 
     public Tab tab() { return currentTab; }
@@ -277,6 +289,7 @@ public final class FriendsScreenLogic {
     public int maxDmScroll() { return maxDmScroll; }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+        if (confirm.isOpen()) return true;
         int delta = (int) (amount * 20);
         if (activeDmFriend != null) {
             int prev = dmScrollOffset;
@@ -471,6 +484,7 @@ public final class FriendsScreenLogic {
         if (deferredTooltip != null) {
             deferredTooltip.run();
         }
+        confirm.render(g, mouseX, mouseY); // modal, over everything
     }
 
     private void renderFriendsTab(LadsGraphics g, int x, int y, int w, int h, int mx, int my) {
@@ -906,6 +920,7 @@ public final class FriendsScreenLogic {
     }
 
     public boolean mouseClicked(double x, double y, int button) {
+        if (confirm.isOpen()) return confirm.click(x, y, button);
         if (button != 0) return false;
 
         // Inline nickname editing controls
@@ -995,7 +1010,10 @@ public final class FriendsScreenLogic {
                     for (Map.Entry<UUID, Box> e : joinBoxes.entrySet()) {
                         if (e.getValue().has(x, y)) {
                             if (isJoinEnabled(e.getKey())) {
-                                callbacks.requestJoin(e.getKey());
+                                UUID id = e.getKey();
+                                String question = callbacks.joinQuestion(id);
+                                if (question == null) callbacks.requestJoin(id);
+                                else confirmSwitch(question, () -> callbacks.requestJoin(id));
                             }
                             return true;
                         }
@@ -1078,6 +1096,7 @@ public final class FriendsScreenLogic {
     }
 
     public boolean charTyped(char c) {
+        if (confirm.isOpen()) return true;
         if (typingNickInput) {
             if (c >= 32 && c != 127 && nickInput.length() < 32) {
                 nickInput += c;
@@ -1098,6 +1117,7 @@ public final class FriendsScreenLogic {
     }
 
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (confirm.isOpen()) return confirm.key(keyCode == 1 ? 256 : keyCode == 28 ? 257 : keyCode); // 1.8.9's Esc/Enter too
         // Nickname editing keys
         if (typingNickInput) {
             if (keyCode == 256 || keyCode == 1) { // Esc
