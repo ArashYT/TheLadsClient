@@ -339,7 +339,7 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
     @Override
     public String getServerAddress() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.isSingleplayer()) return "Singleplayer";
+        if (mc.hasSingleplayerServer()) return "Singleplayer"; // also while opened to LAN/friends: the host plays its own world
         return mc.getCurrentServer() != null ? mc.getCurrentServer().ip : "Unknown";
     }
 
