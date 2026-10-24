@@ -64,7 +64,7 @@ function Invoke-ShownCase([string]$name, [double[]]$client, [double[]]$bar, [str
             $launcherShown.Set() | Out-Null
             $launcherShown.Dispose()
         }
-        Assert ($bridge.WaitForExit(1000)) "${name}: bridge exits within 1 s of LauncherShown"
+        Assert ($bridge.WaitForExit(1500)) "${name}: bridge exits within 1.5 s of LauncherShown (350 ms hold + 150 ms fade)"
         Assert ((Read-Log) -notmatch 'relaunch') "${name}: log has no relaunch"
     } finally {
         Stop-All @($bridge, $update)
