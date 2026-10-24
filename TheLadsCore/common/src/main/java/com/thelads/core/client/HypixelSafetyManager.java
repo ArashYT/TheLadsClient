@@ -182,11 +182,11 @@ public final class HypixelSafetyManager {
 
     /**
      * Risky on servers, so only on for singleplayer, LAN and trusted servers: Stack Refill clicks the inventory with no inventory open,
-     * which anticheats ban as an AutoRefill cheat (a Minemen.club ban); use-while-mining sends a use packet mid-dig.
-     * Asked per module every frame: no allocation.
+     * which anticheats ban as an AutoRefill cheat (a Minemen.club ban); use-while-mining sends a use packet mid-dig; Hide Foliage's
+     * Tall Plants show a player crouching in tall grass. Asked per module every frame: no allocation.
      */
     public static boolean isSingleplayerOnlyModule(String moduleName) {
-        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName);
+        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName) || HideFoliage.TALL_GATE.equalsIgnoreCase(moduleName);
     }
 
     /** Why this module is off on the current server, bypass or not. Allocation-free: asked per module every frame. */

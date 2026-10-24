@@ -394,6 +394,11 @@ public class ModuleManager {
         register(borderless, Module.Category.MECHANIC);
         register(new SurvivalTweaksModule(), Module.Category.MECHANIC);
         register(new StackRefillModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ColorSaturationModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.MotionBlurModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.MenuBlurModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.HideFoliageModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ClearGlassModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

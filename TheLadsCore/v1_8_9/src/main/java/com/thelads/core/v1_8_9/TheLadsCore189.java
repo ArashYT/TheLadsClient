@@ -111,6 +111,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.Raised189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.PaperDoll189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.EntityCulling189());
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.pvp.PvpVisuals189()); // Color Saturation, Motion/Menu Blur, Hide Foliage, Clear Glass
         com.thelads.core.v1_8_9.feature.ParticleCore189.register();
         com.thelads.core.v1_8_9.world.World189.register(); // Wavy Capes, TNT Timer
         Screenshots189.register();
