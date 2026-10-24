@@ -75,8 +75,15 @@ public static class ClientModInstaller
         return client;
     }
 
-    public static async Task InstallAsync(string bundleRoot, string gameDir, string minecraftVersion,
-        Action<string>? status = null, CancellationToken cancellationToken = default, HttpClient? httpClient = null)
+    /// <summary>Marker: Ionium is off on disk only because a resource pack uses OptiFine features (<see cref="OptiFinePacks"/>).</summary>
+    public const string IoniumOffForPackMarker = "ionium-off-for-pack";
+
+    /// <param name="optiFinePackRenderer">A launch passes LauncherSettings.OptiFinePackRenderer: with a resource pack that uses
+    /// OptiFine features, Ionium stays off for this launch (OptiFine renders). Null (the Mods page): no pack check.</param>
+    /// <returns>The launch notice when Ionium was switched off for a resource pack, else null.</returns>
+    public static async Task<string?> InstallAsync(string bundleRoot, string gameDir, string minecraftVersion,
+        Action<string>? status = null, CancellationToken cancellationToken = default, HttpClient? httpClient = null,
+        string? optiFinePackRenderer = null)
     {
         GameVersionPolicy.ValidateMinecraftVersion(minecraftVersion);
         cancellationToken.ThrowIfCancellationRequested();
@@ -90,7 +97,7 @@ public static class ClientModInstaller
         {
             if (GameVersionPolicy.RequiresBundledCore(minecraftVersion))
                 throw new FileNotFoundException($"Client mod manifest for {minecraftVersion} is missing. Reinstall the complete launcher folder.", manifestPath);
-            if (!Directory.Exists(Path.Combine(game, "mods"))) return;
+            if (!Directory.Exists(Path.Combine(game, "mods"))) return null;
         }
         var manifest = packShipped ? ReadManifest(await File.ReadAllTextAsync(manifestPath, cancellationToken))
             : new Manifest(minecraftVersion, new List<Entry>());
@@ -127,6 +134,8 @@ public static class ClientModInstaller
             var rendererBlocked = GraphicsRenderer.Suspended(game);
             var rendererChoices = new Dictionary<string, (bool Enabled, string? Project)>();
             var rendererJars = new Dictionary<string, ModPreferences.RendererJar?>();
+            var packMarker = SafeChild(game, Path.Combine(cache, IoniumOffForPackMarker));
+            string? packNotice = null;
             if (preferences.Error != null) status?.Invoke(preferences.Error);
             var inventory = await ReadInventory(game, mods, minecraftVersion, cancellationToken);
             // The planned final Mods folder. Every change updates it in commit order, so later checks see earlier moves.
@@ -181,14 +190,24 @@ public static class ClientModInstaller
                 bool Managed(LocalJar jar) => Published(entry.ModId, jar.Hash) || (receiptPin != null && SameHash(jar.Hash, receiptPin));
                 int NameRank(LocalJar jar) => BaseName(jar.Path).Equals(entry.FileName, StringComparison.OrdinalIgnoreCase) ? 0
                     : IsLegacyName(Path.GetFileName(jar.Path), entry.ModId) ? 1 : 2;
-                // No choice yet: the disk state, else the pack's default (an opt-in entry is off and not downloaded).
+                // No choice yet: the disk state, else the pack's default (an opt-in entry is off and not downloaded). An Ionium the
+                // resource pack check below switched off is not a disk state of yours: the default again.
+                bool ionium = entry.ModId == OptiFineInstaller.IoniumModId;
                 var wantEnabled = preferences.GetEnabled(entry.ModId, entry.ProjectId)
-                    ?? (copies.Count == 0 ? DefaultFor(entry, game) : !copies.All(j => j.Disabled));
+                    ?? (copies.Count == 0 || ionium && File.Exists(packMarker) ? DefaultFor(entry, game) : !copies.All(j => j.Disabled));
                 // Ionium needs Pylon's LWJGL 3: with Pylon off it stays off (OptiFine renders instead).
-                if (entry.ModId == OptiFineInstaller.IoniumModId && wantEnabled && PylonOff(manifest, preferences, final.Values))
+                if (ionium && wantEnabled && PylonOff(manifest, preferences, final.Values))
                 {
                     wantEnabled = false;
                     status?.Invoke(entry.Name + ": off while Pylon is off (Ionium needs it).");
+                }
+                // Ionium cannot show OptiFine pack features yet (CIT, CTM...): this launch renders through OptiFine instead.
+                if (ionium && wantEnabled && optiFinePackRenderer != null
+                    && OptiFinePacks.Notice(game, minecraftVersion, optiFinePackRenderer) is { } notice)
+                {
+                    wantEnabled = false;
+                    packNotice = notice;
+                    status?.Invoke(notice);
                 }
                 if (rendererBlocked.Contains(entry.ModId))
                 {
@@ -372,8 +391,9 @@ public static class ClientModInstaller
 
             if (changes.Count == 0)
             {
+                SyncPackMarker();
                 status?.Invoke($"Client mods ready for Minecraft {minecraftVersion}.");
-                return;
+                return packNotice;
             }
 
             status?.Invoke("Preparing client mod changes...");
@@ -408,7 +428,16 @@ public static class ClientModInstaller
                 }
             }
 
+            SyncPackMarker();
             status?.Invoke($"Client mods ready for Minecraft {minecraftVersion}.");
+            return packNotice;
+
+            // After the commit, so a failed one never leaves Ionium switched off without the marker that brings it back.
+            void SyncPackMarker()
+            {
+                if (packNotice != null) File.WriteAllText(packMarker, "");
+                else if (File.Exists(packMarker)) File.Delete(packMarker);
+            }
 
             // A rename is a Change whose staged side is the existing jar; that path is never registered for cleanup.
             void Rename(LocalJar jar, string destination, string id, bool keepOnCollision)

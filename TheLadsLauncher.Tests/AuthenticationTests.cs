@@ -27,6 +27,22 @@ internal static class NoRealLunar
         System.IO.Path.Combine(System.IO.Path.GetTempPath(), "LadsClientTests", "no-lunar-" + Guid.NewGuid().ToString("N")));
 }
 
+/// <summary>No test writes the player's real launcher folder or .minecraft. LauncherSettings.Save (UsageStatsReporter's
+/// install id and client versions) wrote a default settings.json into %APPDATA%\.theladsclient on every test run, which reset
+/// the settings of whoever ran the tests (1.9.18). A test that needs a folder still passes its own sandbox.</summary>
+internal static class NoRealLauncherFolder
+{
+    [System.Runtime.CompilerServices.ModuleInitializer]
+    internal static void Initialize()
+    {
+        string root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "LadsClientTests", "launcher-" + Guid.NewGuid().ToString("N"));
+        typeof(PathService).GetField("_instance", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+            .SetValue(null, new PathService(root));
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(SharedContentService.RootEnvironmentVariable)))
+            Environment.SetEnvironmentVariable(SharedContentService.RootEnvironmentVariable, System.IO.Path.Combine(root, "global-minecraft"));
+    }
+}
+
 public class AuthenticationTests
 {
     /// <summary>Release builds refuse offline accounts unless LADS_DEV_OFFLINE=1 (1.9.10 hardening); these tests need one.</summary>
