@@ -50,12 +50,17 @@ public abstract class SoundManagerResumeMixin189 {
 
     @Inject(method = "stopSound", at = @At("HEAD"))
     private void lads$onStopSound(ISound sound, CallbackInfo ci) {
-        String channel = invPlayingSounds.get(sound);
-        if (channel != null) lads$pausedChannels.remove(channel);
+        String channel = invPlayingSounds.remove(sound);
+        if (channel != null) {
+            lads$pausedChannels.remove(channel);
+            playingSounds.remove(channel);
+        }
+
     }
 
     @Inject(method = "stopAllSounds", at = @At("HEAD"))
     private void lads$onStopAllSounds(CallbackInfo ci) {
         lads$pausedChannels.clear();
+        invPlayingSounds.clear();
     }
 }
