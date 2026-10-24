@@ -220,6 +220,24 @@ public final class CustomSounds {
         }
     }
 
+    /** Plays a sound made in code (Damage Tint's heartbeat) at {@code volume} times the master volume, as {@link #play}; returns at once. */
+    public static void play(Pcm pcm, double volume, String label) {
+        float gain = gain(volume);
+        if (gain <= 0 || pcm.frames() == 0) return;
+        if (PLAYING.incrementAndGet() > VOICES) { PLAYING.decrementAndGet(); return; }
+        try {
+            POOL.execute(() -> {
+                try {
+                    write(pcm, gain, label, 0);
+                } finally {
+                    PLAYING.decrementAndGet();
+                }
+            });
+        } catch (RuntimeException rejected) {
+            PLAYING.decrementAndGet();
+        }
+    }
+
     /** Plays {@code pcm} (the trimmer's selection) as the one preview: it cuts off the preview before it. */
     public static void preview(Pcm pcm, double volume, String label) {
         int preview = PREVIEW.incrementAndGet();

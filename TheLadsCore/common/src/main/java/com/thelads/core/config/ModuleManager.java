@@ -394,6 +394,15 @@ public class ModuleManager {
         register(borderless, Module.Category.MECHANIC);
         register(new SurvivalTweaksModule(), Module.Category.MECHANIC);
         register(new StackRefillModule(), Module.Category.MECHANIC);
+        // PvP visuals (client PvpVisuals; each adapter hooks them): all off by default, visual only but Hitboxes' Through Walls.
+        register(new BlockOverlayModule(), Module.Category.MECHANIC);
+        register(new HitColorModule(), Module.Category.MECHANIC);
+        register(new DamageTintModule(), Module.Category.MECHANIC);
+        register(new GlintColorizerModule(), Module.Category.MECHANIC);
+        register(new Module(com.thelads.core.client.PvpVisuals.HIDE_MOB_DEATHS, "Dying mobs vanish at once instead of tipping over red. "
+            + "Players still show their death."), Module.Category.MECHANIC);
+        register(new MountOpacityModule(), Module.Category.MECHANIC);
+        register(new HitboxesModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {
