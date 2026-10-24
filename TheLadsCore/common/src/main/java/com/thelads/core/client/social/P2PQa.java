@@ -47,7 +47,7 @@ public final class P2PQa {
 
     private static int step, passed, failed, wait, resend;
     private static long stepSince = -1;
-    private static boolean finished, sent, leaving;
+    private static boolean finished, sent, leaving, shot;
     private static UUID peer;
 
     private P2PQa() {}
@@ -246,10 +246,15 @@ public final class P2PQa {
             case 6 -> {
                 String why = game.disconnected();
                 if (why == null) return false;
-                if (!sent) { // photographed first, checked on the next tick (26.3 shoots the next frame)
+                if (!sent) { // let the disconnect screen draw first: 1.8.9 reads the framebuffer at once
                     LOGGER.info("Lads p2p QA: guest disconnected: {}", why.replace('\n', ' '));
-                    game.screenshot("p2p-guest-kicked");
                     sent = true;
+                    wait = 5;
+                    return false;
+                }
+                if (!shot) { // photographed, checked on the next tick (26.3 shoots the next frame)
+                    game.screenshot("p2p-guest-kicked");
+                    shot = true;
                     return false;
                 }
                 if (!why.contains("Kicked by host")) throw new IllegalStateException("the kick did not say why: " + why.replace('\n', ' '));
