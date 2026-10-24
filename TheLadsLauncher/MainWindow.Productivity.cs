@@ -115,9 +115,11 @@ public partial class MainWindow
             await File.WriteAllTextAsync(path, text);
             ShowActionNotice("Settings preset exported. Includes game options, Lads modules and mod toggles; excludes worlds and accounts.");
         });
+        var customize = new MenuItem { Header = "Customize icon…" };
+        customize.Click += async (_, _) => await OpenProfileIconEditorAsync(profile);
         var check = new MenuItem { Header = "Check profile…" };
         check.Click += async (_, _) => await InspectProfileAsync(profile);
-        var menu = new ContextMenu { ItemsSource = new[] { favorite, duplicate, export, check } };
+        var menu = new ContextMenu { ItemsSource = new[] { favorite, customize, duplicate, export, check } };
         button.ContextMenu = menu;
         button.Click += (_, _) => menu.Open(button);
         return button;
@@ -260,4 +262,148 @@ public partial class MainWindow
         catch (Exception e) { await File.WriteAllTextAsync(Path.Combine(output, "result.txt"), "FAIL: " + e); }
         finally { _productivityPreview = null; Close(); }
     }
+
+    private async Task OpenProfileIconEditorAsync(LauncherProfile profile) => await ProfileActionAsync(async () =>
+    {
+        var window = new Window
+        {
+            Title = $"Customize Icon · {profile.Name}",
+            Width = 460,
+            SizeToContent = SizeToContent.Height,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = new SolidColorBrush(Color.Parse("#17181B")),
+            CanResize = false
+        };
+
+        var panel = new StackPanel { Margin = new Thickness(24), Spacing = 12 };
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Customize Profile Icon",
+            Foreground = Brushes.White,
+            FontSize = 18,
+            FontWeight = FontWeight.Bold
+        });
+
+        var previewBorder = new Border
+        {
+            Width = 60, Height = 60,
+            CornerRadius = new CornerRadius(30),
+            Background = new SolidColorBrush(Color.Parse(!string.IsNullOrEmpty(profile.IconColor) ? profile.IconColor : "#E0525E")),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            Margin = new Thickness(0, 6, 0, 6)
+        };
+        var previewGlyph = new TextBlock
+        {
+            Text = ProfileIconService.GetGlyph(profile.IconKey),
+            FontSize = 26,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+        };
+        previewBorder.Child = previewGlyph;
+        panel.Children.Add(previewBorder);
+
+        panel.Children.Add(new TextBlock { Text = "Symbol", Foreground = new SolidColorBrush(Color.Parse("#CCCCCC")), FontSize = 12 });
+        var symbolBox = new ComboBox { HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, Height = 36 };
+        foreach (var sym in ProfileIconService.BuiltInSymbols) symbolBox.Items.Add(sym);
+        symbolBox.SelectedItem = !string.IsNullOrEmpty(profile.IconKey) ? profile.IconKey : "default";
+        panel.Children.Add(symbolBox);
+
+        panel.Children.Add(new TextBlock { Text = "Color Preset", Foreground = new SolidColorBrush(Color.Parse("#CCCCCC")), FontSize = 12 });
+        var presetBox = new ComboBox { HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, Height = 36 };
+        foreach (var grad in ProfileIconService.PresetGradients) presetBox.Items.Add(grad.Name);
+        panel.Children.Add(presetBox);
+
+        panel.Children.Add(new TextBlock { Text = "Primary Color (Hex)", Foreground = new SolidColorBrush(Color.Parse("#CCCCCC")), FontSize = 12 });
+        var primaryBox = new TextBox { Text = profile.IconColor ?? "#E0525E", Height = 36 };
+        panel.Children.Add(primaryBox);
+
+        panel.Children.Add(new TextBlock { Text = "Secondary Color (Hex)", Foreground = new SolidColorBrush(Color.Parse("#CCCCCC")), FontSize = 12 });
+        var secondaryBox = new TextBox { Text = profile.IconSecondaryColor ?? "#8B0000", Height = 36 };
+        panel.Children.Add(secondaryBox);
+
+        void UpdatePreview()
+        {
+            string sym = symbolBox.SelectedItem?.ToString() ?? "default";
+            previewGlyph.Text = ProfileIconService.GetGlyph(sym);
+            if (Color.TryParse(primaryBox.Text?.Trim() ?? "#E0525E", out var c))
+            {
+                previewBorder.Background = new SolidColorBrush(c);
+            }
+        }
+
+        symbolBox.SelectionChanged += (_, _) => UpdatePreview();
+        primaryBox.TextChanged += (_, _) => UpdatePreview();
+        presetBox.SelectionChanged += (_, _) =>
+        {
+            if (presetBox.SelectedItem is string name)
+            {
+                var match = ProfileIconService.PresetGradients.FirstOrDefault(g => g.Name == name);
+                if (match != null)
+                {
+                    primaryBox.Text = match.StartColor;
+                    secondaryBox.Text = match.EndColor;
+                    UpdatePreview();
+                }
+            }
+        };
+
+        var randomBtn = new Button
+        {
+            Content = "🎲 Randomize Icon & Colors",
+            Classes = { "action" },
+            Height = 34,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center
+        };
+        randomBtn.Click += (_, _) =>
+        {
+            var temp = new LauncherProfile();
+            ProfileIconService.Randomize(temp);
+            symbolBox.SelectedItem = temp.IconKey;
+            primaryBox.Text = temp.IconColor;
+            secondaryBox.Text = temp.IconSecondaryColor;
+            UpdatePreview();
+        };
+        panel.Children.Add(randomBtn);
+
+        var btnGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,8,*"), Margin = new Thickness(0, 8, 0, 0) };
+        var saveBtn = new Button
+        {
+            Content = "Save Icon",
+            Classes = { "launch" },
+            Height = 36,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            FontWeight = FontWeight.Bold
+        };
+        saveBtn.Click += (_, _) =>
+        {
+            string sym = symbolBox.SelectedItem?.ToString() ?? "default";
+            ProfileIconService.SetSymbol(profile, sym, primaryBox.Text?.Trim(), secondaryBox.Text?.Trim());
+            _profileService.SaveProfiles();
+            PopulateLaunchProfileSelector();
+            LoadProfilesUI();
+            window.Close();
+            ShowActionNotice($"Updated profile icon for '{profile.Name}'.");
+        };
+        btnGrid.Children.Add(saveBtn);
+        Grid.SetColumn(saveBtn, 0);
+
+        var cancelBtn = new Button
+        {
+            Content = "Cancel",
+            Classes = { "action" },
+            Height = 36,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center
+        };
+        cancelBtn.Click += (_, _) => window.Close();
+        btnGrid.Children.Add(cancelBtn);
+        Grid.SetColumn(cancelBtn, 2);
+
+        panel.Children.Add(btnGrid);
+        window.Content = panel;
+        await window.ShowDialog(this);
+    });
+
 }

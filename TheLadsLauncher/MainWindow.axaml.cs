@@ -2386,6 +2386,9 @@ public partial class MainWindow : Window
         foreach (var sc in scales)
             UiScaleSelector.Items.Add(sc);
         UiScaleSelector.SelectedItem = settings.UiScale;
+        LoadingScreenBgColorBox.Text = settings.LoadingScreenBgColor ?? "";
+        LoadingScreenBarColorBox.Text = settings.LoadingScreenBarColor ?? "";
+        LoadingScreenGlowColorBox.Text = settings.LoadingScreenGlowColor ?? "";
     }
 
     // ── Server list picker ────────────────────────────────────────────────────
@@ -2636,6 +2639,25 @@ public partial class MainWindow : Window
             var leftStack = new StackPanel { Spacing = 8 };
 
             var titlePanel = new WrapPanel { VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+            string glyph = TheLadsLauncher.Services.ProfileIconService.GetGlyph(profile.IconKey);
+            string col = !string.IsNullOrEmpty(profile.IconColor) ? profile.IconColor : "#3A3B42";
+            if (!Color.TryParse(col, out var iconColor)) iconColor = Color.Parse("#3A3B42");
+            var iconBadge = new Border
+            {
+                Width = 26, Height = 26, CornerRadius = new CornerRadius(13),
+                Background = new SolidColorBrush(iconColor),
+                Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = glyph,
+                    FontSize = 13,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                }
+            };
+            titlePanel.Children.Add(iconBadge);
+
             titlePanel.Children.Add(new TextBlock
             {
                 Text = (profile.IsFavorite ? "★ " : "") + profile.Name,
@@ -2996,6 +3018,9 @@ public partial class MainWindow : Window
             settings.UiScale = scale;
             ApplyUiScale();
         }
+        settings.LoadingScreenBgColor = string.IsNullOrWhiteSpace(LoadingScreenBgColorBox.Text) ? "" : LoadingScreenBgColorBox.Text.Trim();
+        settings.LoadingScreenBarColor = string.IsNullOrWhiteSpace(LoadingScreenBarColorBox.Text) ? "" : LoadingScreenBarColorBox.Text.Trim();
+        settings.LoadingScreenGlowColor = string.IsNullOrWhiteSpace(LoadingScreenGlowColorBox.Text) ? "" : LoadingScreenGlowColorBox.Text.Trim();
 
         settings.Save();
         if (rendererChanged) ReloadModsInventory(); // Iris's "Requires OpenGL" lock follows the saved renderer

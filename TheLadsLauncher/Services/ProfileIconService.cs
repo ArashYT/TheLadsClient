@@ -99,4 +99,28 @@ public static class ProfileIconService
         profile.IconSecondaryColor = null;
         profile.CustomIconPath = null;
     }
+
+    /// <summary>
+    /// Returns the UI Unicode symbol glyph for a given icon key.
+    /// </summary>
+    public static string GetGlyph(string? iconKey) => (iconKey?.ToLowerInvariant()) switch
+    {
+        "sword" => "⚔",
+        "pickaxe" => "⛏",
+        "axe" => "🪓",
+        "shield" => "🛡",
+        "bow" => "🏹",
+        "compass" => "🧭",
+        "heart" => "❤",
+        "star" => "★",
+        "flame" => "🔥",
+        "skull" => "💀",
+        "potion" => "🧪",
+        "chest" => "📦",
+        "creeper" => "👾",
+        "ender_eye" => "👁",
+        "stable" => "💎",
+        "nextgen" => "⚡",
+        _ => "🎮"
+    };
 }

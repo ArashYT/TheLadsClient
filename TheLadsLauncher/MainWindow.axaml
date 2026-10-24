@@ -395,6 +395,23 @@
                                         </Border>
                                         <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
                                             <StackPanel Spacing="12">
+                                                <TextBlock Text="LOADING SCREEN THEME" Foreground="{DynamicResource LadsAccent}" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Text="Background Color" Foreground="#CCCCCC" FontSize="14" VerticalAlignment="Center" />
+                                                    <TextBox x:Name="LoadingScreenBgColorBox" Grid.Column="1" Width="160" Height="36" FontSize="13" PlaceholderText="#111111" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                                                    <TextBlock Text="Progress Bar Color" Foreground="#CCCCCC" FontSize="14" VerticalAlignment="Center" />
+                                                    <TextBox x:Name="LoadingScreenBarColorBox" Grid.Column="1" Width="160" Height="36" FontSize="13" PlaceholderText="#FF8800" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                                                    <TextBlock Text="Glow Effect Color" Foreground="#CCCCCC" FontSize="14" VerticalAlignment="Center" />
+                                                    <TextBox x:Name="LoadingScreenGlowColorBox" Grid.Column="1" Width="160" Height="36" FontSize="13" PlaceholderText="#FFAA00" />
+                                                </Grid>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
+                                            <StackPanel Spacing="12">
                                                 <TextBlock Text="BEHAVIOR" Foreground="{DynamicResource LadsAccent}" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
                                                 <Grid ColumnDefinitions="*,24,*">
                                                     <StackPanel Spacing="12">

@@ -57,4 +57,15 @@ public class ProfileIconServiceTests
         var profile = new LauncherProfile();
         Assert.Throws<ArgumentException>(() => ProfileIconService.SetCustomImage(profile, badFile));
     }
+
+    [Theory]
+    [InlineData("sword", "⚔")]
+    [InlineData("pickaxe", "⛏")]
+    [InlineData("shield", "🛡")]
+    [InlineData("heart", "❤")]
+    [InlineData("unknown", "🎮")]
+    public void GetGlyph_ReturnsExpectedUnicodeSymbols(string iconKey, string expected)
+    {
+        Assert.Equal(expected, ProfileIconService.GetGlyph(iconKey));
+    }
 }
