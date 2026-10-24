@@ -96,6 +96,18 @@ public abstract class PauseScreenMixin extends Screen {
                 ||text.equals(Component.translatable("menu.reportBugs").getString())
                 ||text.equals(Component.translatable("menu.playerReporting").getString()))removeWidget(widget);
         }
+        for(var child:java.util.List.copyOf(children()))if(child instanceof Button btn && ladsSlot(btn)==com.thelads.core.client.title.PauseMenuLayout.Slot.QUIT){
+            removeWidget(btn);
+            addRenderableWidget(Button.builder(btn.getMessage(), b -> {
+                boolean isMultiplayer = minecraft != null && !minecraft.isLocalServer();
+                boolean enabled = com.thelads.core.config.ModuleManager.getInstance().getModule("ConfirmDisconnect") != null && com.thelads.core.config.ModuleManager.getInstance().getModule("ConfirmDisconnect").isEnabled();
+                if (!com.thelads.core.client.ConfirmDisconnectHelper.onClickDisconnect(System.currentTimeMillis(), 3000L, isMultiplayer, enabled)) {
+                    b.setMessage(Component.literal("\u00a7cConfirm Disconnect?"));
+                    return;
+                }
+                btn.onPress(null);
+            }).bounds(btn.getX(), btn.getY(), btn.getWidth(), btn.getHeight()).build());
+        }
     }
 
     @Redirect(method = "createPauseMenu()V",

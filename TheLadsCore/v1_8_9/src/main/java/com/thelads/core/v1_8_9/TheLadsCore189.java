@@ -74,6 +74,7 @@ public class TheLadsCore189 {
         LadsGameBridge.set(new VanillaGameBridge189());
         com.thelads.core.security.AntiInjectDetector.init();
         ConfigManager.load();
+        com.thelads.core.client.util.LogPruner.pruneDefault();
         com.thelads.core.v1_8_9.feature.LocalSkins189.initialize(); // the Skin changer's saved skin
         com.thelads.core.v1_8_9.render.Render189.init();
         registerStatuses();

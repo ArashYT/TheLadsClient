@@ -18,6 +18,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.security.AntiInjectDetector.init();
         com.thelads.core.v26_2.feature.paperdoll.PlayerActions.initialize();
         ConfigManager.load();
+        com.thelads.core.client.util.LogPruner.pruneDefault();
         com.thelads.core.v26_2.render.Render26.init();
         com.thelads.core.v26_2.feature.LocalSkins.initialize();
         com.thelads.core.config.ModuleSupport.registerBuiltIn("Threads");

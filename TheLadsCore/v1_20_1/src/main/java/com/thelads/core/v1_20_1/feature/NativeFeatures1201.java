@@ -195,6 +195,7 @@ public final class NativeFeatures1201 {
         if (toggles == null || self == null || mc.options == null) return;
         // What the last tick sent, and whether its input still asked to go forward (aiStep stops a sprint without it).
         toggles.sent(((LocalPlayerAccessor) self).ladsSentSprint(), forward);
+        if (toggles.isDisableDoubleTap()) ((LocalPlayerAccessor) self).ladsSetSprintTriggerTime(0);
         forward = input.up && !input.down;
         boolean separateSprint = !NativeKeyBindings1201.TOGGLE_SPRINT.isUnbound();
         boolean shift = toggles.sneakInput(input.shiftKeyDown, !NativeKeyBindings1201.TOGGLE_SNEAK.isUnbound());

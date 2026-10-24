@@ -394,6 +394,9 @@ public class ModuleManager {
         register(borderless, Module.Category.MECHANIC);
         register(new SurvivalTweaksModule(), Module.Category.MECHANIC);
         register(new StackRefillModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.LogPrunerModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.NumericalEnchantmentsModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ConfirmDisconnectModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

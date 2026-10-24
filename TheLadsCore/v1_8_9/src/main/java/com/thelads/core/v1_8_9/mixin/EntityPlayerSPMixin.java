@@ -17,6 +17,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(EntityPlayerSP.class)
 public abstract class EntityPlayerSPMixin {
+    @org.spongepowered.asm.mixin.Shadow protected int sprintToggleTimer;
+
+    @Inject(method = "onLivingUpdate", at = @At("HEAD"))
+    private void lads$disableDoubleTap(CallbackInfo ci) {
+        if (com.thelads.core.v1_8_9.feature.Options189.bool("ToggleSprint", "Disable double-tap sprint", false)) {
+            this.sprintToggleTimer = 0;
+        }
+    }
     @Redirect(method = "onLivingUpdate", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/settings/KeyBinding;isKeyDown()Z"), require = 1)
     private boolean ladsSprintKey(KeyBinding binding) {
         return Toggles189.isKeyDown(binding);

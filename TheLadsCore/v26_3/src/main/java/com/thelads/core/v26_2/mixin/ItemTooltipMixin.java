@@ -30,7 +30,17 @@ public class ItemTooltipMixin {
         // does without running them: a hidden tooltip shows nothing.
         if (!flag.isCreative() && stack.getOrDefault(DataComponents.TOOLTIP_DISPLAY, TooltipDisplay.DEFAULT).hideTooltip())
             return stack.getItem().shouldPrintOpWarning(stack, player) ? OP_NBT_WARNING : List.of();
-        return NativeTooltips.append(stack, original.call(context, player, flag), flag);
+        List<Component> result = NativeTooltips.append(stack, original.call(context, player, flag), flag);
+        if (com.thelads.core.config.ModuleManager.getInstance().getModule("NumericalEnchantments") != null && com.thelads.core.config.ModuleManager.getInstance().getModule("NumericalEnchantments").isEnabled()) {
+            java.util.ArrayList<Component> converted = new java.util.ArrayList<>(result.size());
+            for (Component c : result) {
+                String str = c.getString();
+                String arabic = com.thelads.core.client.RomanNumerals.convertTrailingRoman(str);
+                if (!arabic.equals(str)) converted.add(Component.literal(arabic).withStyle(c.getStyle())); else converted.add(c);
+            }
+            return converted;
+        }
+        return result;
     }
 
     @Inject(method = "addAttributeTooltips", at = @At("HEAD"), cancellable = true, require = 1)

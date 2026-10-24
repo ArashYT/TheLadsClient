@@ -140,6 +140,16 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
         else if (button == ladsScreenshotsButton) mc.displayGuiScreen(new ScreenshotsScreen189(this));
         else if (button == ladsExtrasButton) mc.displayGuiScreen(new TitleExtrasScreen189(this, TitleExtrasScreen189.of(this, ladsExtras)));
         else if (button instanceof CompactButton189) ((CompactButton189) button).press();
+        else if (button != null && button.id == 1) {
+            boolean isMultiplayer = mc.theWorld != null && !mc.isIntegratedServerRunning();
+            boolean moduleEnabled = com.thelads.core.v1_8_9.feature.Options189.enabled("ConfirmDisconnect");
+            if (!com.thelads.core.client.ConfirmDisconnectHelper.onClickDisconnect(System.currentTimeMillis(), 3000L, isMultiplayer, moduleEnabled)) {
+                button.displayString = "\u00a7cConfirm Disconnect?";
+                ci.cancel();
+                return;
+            }
+            return;
+        }
         else return;
         ci.cancel();
     }

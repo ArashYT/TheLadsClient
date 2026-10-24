@@ -26,7 +26,18 @@ abstract class ItemTooltipMixin {
     @Inject(method = "getTooltipLines", at = @At("RETURN"), cancellable = true)
     private void lads$lines(Player player, TooltipFlag flag, CallbackInfoReturnable<List<Component>> callback) {
         List<Component> lines = callback.getReturnValue(), result = Tooltips1201.append((ItemStack) (Object) this, lines, flag);
-        if (result != lines) callback.setReturnValue(result);
+        if (result != lines) lines = result;
+        if (com.thelads.core.config.ModuleManager.getInstance().getModule("NumericalEnchantments") != null && com.thelads.core.config.ModuleManager.getInstance().getModule("NumericalEnchantments").isEnabled()) {
+            java.util.ArrayList<Component> converted = new java.util.ArrayList<>(lines.size());
+            for (Component c : lines) {
+                String str = c.getString();
+                String arabic = com.thelads.core.client.RomanNumerals.convertTrailingRoman(str);
+                if (!arabic.equals(str)) converted.add(Component.literal(arabic).withStyle(c.getStyle())); else converted.add(c);
+            }
+            callback.setReturnValue(converted);
+        } else if (result != callback.getReturnValue()) {
+            callback.setReturnValue(result);
+        }
     }
 
     @WrapOperation(method = "getTooltipLines", at = @At(value = "INVOKE",
