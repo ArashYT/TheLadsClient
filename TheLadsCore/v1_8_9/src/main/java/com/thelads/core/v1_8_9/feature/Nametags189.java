@@ -57,6 +57,10 @@ public final class Nametags189 {
     /** Formatted text (name tags, tab list) with renamed players; unchanged when nothing matched. */
     public static String rename(String text) {
         if (text == null) return null;
+        if (com.thelads.core.client.hypixel.LevelHead.isEnabled()) {
+            String lvlTag = com.thelads.core.client.hypixel.LevelHead.formatLevelTag(text);
+            if (lvlTag != null) text = lvlTag + text;
+        }
         Map<String, String> names = names();
         if (names.isEmpty()) return text;
         EntityLivingBase entity = RenderTweaks189.currentEntity;

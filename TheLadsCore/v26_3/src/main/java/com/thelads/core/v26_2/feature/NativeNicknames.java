@@ -19,6 +19,10 @@ public final class NativeNicknames {
     /** The text with renamed players, each piece keeping its style; the same instance when nothing is renamed. */
     public static Component rename(Component text) {
         if (text == null) return null;
+        if (com.thelads.core.client.hypixel.LevelHead.isEnabled()) {
+            String lvlTag = com.thelads.core.client.hypixel.LevelHead.formatLevelTag(text.getString());
+            if (lvlTag != null) text = Component.literal(lvlTag).append(text);
+        }
         var names = Nicknames.active(Minecraft.getInstance().getUser().getName());
         if (names.isEmpty()) return text;
         if (names != lastNames) {

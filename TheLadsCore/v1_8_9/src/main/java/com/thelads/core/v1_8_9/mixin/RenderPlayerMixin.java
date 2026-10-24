@@ -19,4 +19,11 @@ public abstract class RenderPlayerMixin {
         model.bipedHeadwear.isHidden = model.bipedBodyWear.isHidden = model.bipedLeftArmwear.isHidden = model.bipedRightArmwear.isHidden
             = model.bipedLeftLegwear.isHidden = model.bipedRightLegwear.isHidden = false;
     }
+
+    @Inject(method = "doRender(Lnet/minecraft/client/entity/AbstractClientPlayer;DDDFF)V", at = @At("HEAD"), cancellable = true, require = 0)
+    private void ladsCrowdHide(AbstractClientPlayer entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
+        if (entity != null && com.thelads.core.client.hypixel.CrowdPlayerHider.shouldHidePlayer(entity == net.minecraft.client.Minecraft.getMinecraft().thePlayer, entity.posX, entity.posY, entity.posZ)) {
+            ci.cancel();
+        }
+    }
 }

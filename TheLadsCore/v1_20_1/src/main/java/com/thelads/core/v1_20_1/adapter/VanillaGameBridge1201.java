@@ -483,6 +483,22 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
     public String getItemCountText(int selection) { return com.thelads.core.v1_20_1.hud.chat.NativeClientTools1201.itemCount(selection); }
 
     @Override
+    public int getHeldItemBlockCount() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return -1;
+        net.minecraft.world.item.ItemStack held = mc.player.getMainHandItem();
+        if (held.isEmpty() || !(held.getItem() instanceof net.minecraft.world.item.BlockItem)) return -1;
+        int total = 0;
+        for (int i = 0; i < 9; i++) {
+            net.minecraft.world.item.ItemStack stack = mc.player.getInventory().getItem(i);
+            if (!stack.isEmpty() && stack.getItem() == held.getItem()) {
+                total += stack.getCount();
+            }
+        }
+        return total;
+    }
+
+    @Override
     public String getRecentReachText() { return com.thelads.core.v1_20_1.hud.chat.NativeClientTools1201.reachText(); }
 
     @Override

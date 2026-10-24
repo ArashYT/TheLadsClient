@@ -16,5 +16,8 @@ public class OldAnimationsPlayerMixin {
         at = @At("TAIL"), require = 1)
     private void lads$oldThirdPerson(Avatar entity, AvatarRenderState state, float partialTick, CallbackInfo callback) {
         NativeOldAnimations.thirdPerson(entity, state);
+        if (entity != null && com.thelads.core.client.hypixel.CrowdPlayerHider.shouldHidePlayer(entity == net.minecraft.client.Minecraft.getInstance().player, entity.getX(), entity.getY(), entity.getZ())) {
+            state.isInvisible = true;
+        }
     }
 }

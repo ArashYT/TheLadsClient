@@ -189,13 +189,20 @@ public final class HypixelSafetyManager {
         return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName);
     }
 
+    public static boolean isGatedHypixelModule(String moduleName) {
+        return "Auto GL".equalsIgnoreCase(moduleName) || "AutoGL".equalsIgnoreCase(moduleName)
+            || "Level Head".equalsIgnoreCase(moduleName) || "LevelHead".equalsIgnoreCase(moduleName)
+            || "HyStats".equalsIgnoreCase(moduleName) || "Opened Chest Highlight".equalsIgnoreCase(moduleName)
+            || "SkyBlock Suite".equalsIgnoreCase(moduleName) || "SkyBlock".equalsIgnoreCase(moduleName);
+    }
+
     /** Why this module is off on the current server, bypass or not. Allocation-free: asked per module every frame. */
     public static Block blockOf(String moduleName) {
         if (moduleName == null) return Block.NONE;
         LadsGameBridge game = LadsGameBridge.get();
         int flags = qaOverride ? QA_HYPIXEL : server(address(game)).flags; // the last address first: no string work
         if ((flags & HYPIXEL) != 0 && isDisallowedModule(moduleName)) return Block.BANNED;
-        boolean minimap = isMinimapModule(moduleName), risky = minimap || isSingleplayerOnlyModule(moduleName);
+        boolean minimap = isMinimapModule(moduleName), risky = minimap || isSingleplayerOnlyModule(moduleName) || ((flags & HYPIXEL) == 0 && isGatedHypixelModule(moduleName));
         if (!risky || (flags & TRUSTED) != 0 || !qaOverride && !game.isIngame()) return Block.NONE; // menus: nothing to ban
         if (minimap) return (flags & NO_MINIMAP) != 0 ? Block.BANNED : (flags & MINIMAP_OK) != 0 ? Block.NONE : Block.UNKNOWN;
         return (flags & NO_AUTOMATION) != 0 ? Block.BANNED : Block.UNKNOWN;

@@ -31,6 +31,9 @@ public abstract class GuiIngameForgeMixin {
     /** Food189 (the AppleSkin module): where Forge drew each heart and hunger icon, shake included, so previews sit on them. */
     @Redirect(method = "renderHealth", at = @At(value = "INVOKE", target = "Lnet/minecraftforge/client/GuiIngameForge;drawTexturedModalRect(IIIIII)V", remap = true), require = 1)
     private void ladsHeartIcon(GuiIngameForge gui, int x, int y, int u, int v, int width, int height) {
+        if (v == 0 && com.thelads.core.client.hypixel.BedWarsExtras.isHardcoreHearts()) {
+            v = 45;
+        }
         gui.drawTexturedModalRect(x, y, u, v, width, height);
         Food189.heartIcon(x, y);
     }
