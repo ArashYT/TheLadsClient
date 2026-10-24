@@ -185,6 +185,19 @@ public final class HypixelSafetyManager {
      * which anticheats ban as an AutoRefill cheat (a Minemen.club ban); use-while-mining sends a use packet mid-dig.
      * Asked per module every frame: no allocation.
      */
+    public static boolean isGatedHudModule(String moduleName) {
+        if (moduleName == null) return false;
+        return switch (moduleName.toLowerCase(java.util.Locale.ROOT)) {
+            case "damageindicator", "damage indicator",
+                 "horsestats", "horse stats",
+                 "playercounter", "player counter",
+                 "totempopcounter", "totem pop counter", "totem counter",
+                 "blockinfo", "block info", "toolstats", "tool stats",
+                 "tiertagger", "tier tagger" -> true;
+            default -> false;
+        };
+    }
+
     public static boolean isSingleplayerOnlyModule(String moduleName) {
         return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName);
     }
@@ -195,7 +208,7 @@ public final class HypixelSafetyManager {
         LadsGameBridge game = LadsGameBridge.get();
         int flags = qaOverride ? QA_HYPIXEL : server(address(game)).flags; // the last address first: no string work
         if ((flags & HYPIXEL) != 0 && isDisallowedModule(moduleName)) return Block.BANNED;
-        boolean minimap = isMinimapModule(moduleName), risky = minimap || isSingleplayerOnlyModule(moduleName);
+        boolean minimap = isMinimapModule(moduleName), risky = minimap || isSingleplayerOnlyModule(moduleName) || isGatedHudModule(moduleName);
         if (!risky || (flags & TRUSTED) != 0 || !qaOverride && !game.isIngame()) return Block.NONE; // menus: nothing to ban
         if (minimap) return (flags & NO_MINIMAP) != 0 ? Block.BANNED : (flags & MINIMAP_OK) != 0 ? Block.NONE : Block.UNKNOWN;
         return (flags & NO_AUTOMATION) != 0 ? Block.BANNED : Block.UNKNOWN;

@@ -31,7 +31,10 @@ public final class NativeHud {
     public static final String[] MODULES = {"FPS", "Coordinates", "PingHUD", "Memory", "Speed", "Day", "Time", "XP", "Potion Effects",
         "CPS", "Keystrokes", "Biome", "Direction", "Health", "Hunger", "TexturePacks", "ArmorHUD", "Scoreboard",
         "Paperdoll", "BossBar", "Autohide", "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates",
-        com.thelads.core.client.hud.ActionBar.MODULE};
+        com.thelads.core.client.hud.ActionBar.MODULE,
+        "DamageIndicator", "JumpReset", "MediaPlayer", "HorseStats", "PlayerCounter",
+        "BlockInfo", "TierTagger", "CustomText", "CustomShape", "PlayerHead",
+        "BlockAbove", "EntityCounter", "ShaderPack", "HeldItemLore"};
     /** QA only (CoreProbe): frames in which HudManager drew the Lads HUD. */
     public static long frames;
     private static final GuiLadsAdapter graphics = new GuiLadsAdapter(null, 0, 0);

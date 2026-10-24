@@ -75,6 +75,21 @@ public class HudManager {
         add(new ActionBarHudElement(), ActionBar.MODULE);
         add(new SessionStatsHudElement(), "Session Stats");
         add(new BedWarsHeightHudElement(), "Bed Wars Height Limit");
+        add(new DamageIndicatorHudElement(), "DamageIndicator");
+        add(new JumpResetHudElement(), "JumpReset");
+        add(new MediaPlayerHudElement(), "MediaPlayer");
+        add(new HorseStatsHudElement(), "HorseStats");
+        add(new PlayerCounterHudElement(), "PlayerCounter");
+        add(new TotemPopHudElement(), "TotemPopCounter");
+        add(new BlockInfoHudElement(), "BlockInfo");
+        add(new TierTaggerHudElement(), "TierTagger");
+        add(new CustomTextHudElement(), "CustomText");
+        add(new CustomShapeHudElement(), "CustomShape");
+        add(new PlayerHeadHudElement(), "PlayerHead");
+        add(new BlockAboveHudElement(), "BlockAbove");
+        add(new EntityCounterHudElement(), "EntityCounter");
+        add(new ShaderPackHudElement(), "ShaderPack");
+        add(new HeldItemLoreHudElement(), "HeldItemLore");
     }
 
     private void add(HudElement element, String moduleName) {

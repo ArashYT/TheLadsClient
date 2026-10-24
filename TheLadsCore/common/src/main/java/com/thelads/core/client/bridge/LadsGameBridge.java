@@ -230,4 +230,21 @@ public interface LadsGameBridge {
     default List<com.thelads.core.mods.LoadedMod> loadedMods() {
         return List.of();
     }
+
+    record EntityTargetInfo(String name, float health, float maxHealth, boolean isPlayer) {}
+    default EntityTargetInfo getTargetEntityInfo() { return null; }
+
+    record HorseStatsInfo(float jumpHeightBlocks, float speedMps, float health, float maxHealth) {}
+    default HorseStatsInfo getRidingHorseStats() { return null; }
+
+    record BlockTargetInfo(String name, String requiredTool, boolean harvestable, int blockLight, int skyLight, float miningProgress) {}
+    default BlockTargetInfo getTargetedBlockInfo() { return null; }
+
+    default String getBlockAboveName() { return "Air"; }
+    default int getLoadedEntityCount() { return 0; }
+    default String getActiveShaderPackName() { return "None"; }
+    default List<String> getHeldItemLore() { return Collections.emptyList(); }
+    default int getPlayerHurtTime() { return 0; }
+    default int getConnectedPlayerCount() { return Math.max(1, getOnlinePlayerNames().size()); }
+    default int getNearbyPlayerCount() { return 1; }
 }

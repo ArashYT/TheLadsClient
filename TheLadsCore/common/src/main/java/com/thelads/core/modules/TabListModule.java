@@ -33,10 +33,49 @@ public final class TabListModule extends Module {
         addOption(new ColorOption("Global Tab Background", false, 0x80000000));
         addOption(new ColorOption("Footer Color", false, 0x80000000));
         addOption(new ColorOption("Player Row Color", false, 0x20ffffff));
+        addOption(new BoolOption("Self First", false));
+        addOption(new BoolOption("Animated Open/Close", false));
+        addOption(new DropdownOption("Key Mode", 0, "Hold", "Toggle"));
         setEnabled(true);
     }
 
     /** Formats player count into the format string (e.g. "Players: {count}"); defaults to "Players: {count}". */
+    public static boolean isSelfFirst() {
+        Module m = ModuleManager.getInstance().getModule("TabList");
+        if (m == null || !m.isEnabled()) return false;
+        Option o = m.getOption("Self First");
+        return (o instanceof BoolOption bo) ? bo.get() : false;
+    }
+
+    public static boolean isAnimatedOpenClose() {
+        Module m = ModuleManager.getInstance().getModule("TabList");
+        if (m == null || !m.isEnabled()) return false;
+        Option o = m.getOption("Animated Open/Close");
+        return (o instanceof BoolOption bo) ? bo.get() : false;
+    }
+
+    public static boolean isToggleMode() {
+        Module m = ModuleManager.getInstance().getModule("TabList");
+        if (m == null || !m.isEnabled()) return false;
+        Option o = m.getOption("Key Mode");
+        return (o instanceof DropdownOption dop) && dop.getIndex() == 1;
+    }
+
+    public static java.util.List<String> sortSelfFirst(java.util.List<String> playerList, String selfName) {
+        if (!isSelfFirst() || selfName == null || playerList == null || playerList.isEmpty()) return playerList;
+        java.util.List<String> sorted = new java.util.ArrayList<>(playerList);
+        for (int i = 0; i < sorted.size(); i++) {
+            if (selfName.equalsIgnoreCase(sorted.get(i))) {
+                if (i > 0) {
+                    String self = sorted.remove(i);
+                    sorted.add(0, self);
+                }
+                break;
+            }
+        }
+        return sorted;
+    }
+
     public static String formatPlayerCount(String format, int count) {
         String template = (format == null || format.isEmpty()) ? "Players: {count}" : format;
         return template.replace("{count}", String.valueOf(count));

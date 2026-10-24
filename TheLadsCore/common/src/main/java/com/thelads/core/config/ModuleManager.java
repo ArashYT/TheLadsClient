@@ -394,6 +394,90 @@ public class ModuleManager {
         register(borderless, Module.Category.MECHANIC);
         register(new SurvivalTweaksModule(), Module.Category.MECHANIC);
         register(new StackRefillModule(), Module.Category.MECHANIC);
+
+        HudModule dmgInd = hud("DamageIndicator", "Enemy health indicators, target hearts and floating damage numbers.");
+        dmgInd.addOption(new DropdownOption("Display mode", 0, "Both", "HUD Bar", "Damage Numbers"));
+        dmgInd.addOption(new BoolOption("Show hearts", true));
+        dmgInd.addOption(new BoolOption("Show numeric HP", true));
+        dmgInd.addOption(new SliderOption("Number duration ms", 1000, 400, 3000, 100));
+        dmgInd.setEnabled(false);
+
+        HudModule jumpReset = hud("JumpReset", "Knockback jump-reset timing analysis and trainer.");
+        jumpReset.addOption(new DropdownOption("Display", 0, "Detailed", "Rating only", "Timing bar"));
+        jumpReset.addOption(new BoolOption("Show streak", true));
+        jumpReset.addOption(new BoolOption("Show ms timing", true));
+        jumpReset.setEnabled(false);
+
+        HudModule mediaPlayer = hud("MediaPlayer", "Media player track title, artist and playback progress overlay.");
+        mediaPlayer.addOption(new BoolOption("Show artist", true));
+        mediaPlayer.addOption(new BoolOption("Show progress", true));
+        mediaPlayer.addOption(new DropdownOption("Progress style", 0, "Bar", "Time", "Both"));
+        mediaPlayer.addOption(new BoolOption("Compact", false));
+        mediaPlayer.setEnabled(false);
+
+        HudModule horseStats = hud("HorseStats", "Displays jump height, movement speed, and health of horses.");
+        horseStats.addOption(new BoolOption("Show jump", true));
+        horseStats.addOption(new BoolOption("Show speed", true));
+        horseStats.addOption(new BoolOption("Show health", true));
+        horseStats.addOption(new DropdownOption("Speed unit", 0, "m/s", "blocks/s", "percent"));
+        horseStats.setEnabled(false);
+
+        HudModule playerCounter = hud("PlayerCounter", "Displays count of connected players and nearby players.");
+        playerCounter.addOption(new DropdownOption("Display", 0, "Both", "Nearby only", "Total only"));
+        playerCounter.addOption(new StringOption("Prefix", "Players: "));
+        playerCounter.setEnabled(false);
+
+        HudModule totemPop = hud("TotemPopCounter", "Tracks and displays opponent totem of undying pop counts.");
+        totemPop.addOption(new BoolOption("Show on HUD", true));
+        totemPop.addOption(new BoolOption("Announce in chat", false));
+        totemPop.addOption(new BoolOption("Reset on death", true));
+        totemPop.addOption(new SliderOption("Duration seconds", 5, 1, 15, 1));
+        totemPop.setEnabled(false);
+
+        HudModule blockInfo = hud("BlockInfo", "Displays harvest tool requirements, harvestability, mining progress and light level of targeted block.");
+        blockInfo.addOption(new BoolOption("Show tool", true));
+        blockInfo.addOption(new BoolOption("Show harvestability", true));
+        blockInfo.addOption(new BoolOption("Show light level", true));
+        blockInfo.addOption(new BoolOption("Show mining progress", true));
+        blockInfo.setEnabled(false);
+
+        HudModule tierTagger = hud("TierTagger", "Displays competitive PvP tiers on nametags and in target HUD.");
+        tierTagger.addOption(new BoolOption("Show on nametag", true));
+        tierTagger.addOption(new BoolOption("Show in HUD", true));
+        tierTagger.addOption(new DropdownOption("Gamemode", 0, "Overall", "Sword", "Axe", "UHC", "Pot", "SMP"));
+        tierTagger.setEnabled(false);
+
+        HudModule customText = hud("CustomText", "Custom user-defined formatted text widget with placeholder support.");
+        customText.addOption(new StringOption("Template", "{player} | FPS: {fps} | Ping: {ping}ms"));
+        customText.setEnabled(false);
+
+        HudModule customShape = hud("CustomShape", "Customizable rectangle and geometric shape overlay on HUD.");
+        customShape.addOption(new SliderOption("Width", 100, 10, 500, 5));
+        customShape.addOption(new SliderOption("Height", 40, 10, 300, 5));
+        customShape.addOption(new SliderOption("Border thickness", 1, 0, 10, 1));
+        customShape.addOption(new ColorOption("Border color", true, 0xFFFFFFFF));
+        customShape.addOption(new ColorOption("Fill color", true, 0x80000000));
+        customShape.setEnabled(false);
+
+        HudModule playerHead = hud("PlayerHead", "Display player avatar head icon on HUD.");
+        playerHead.setEnabled(false);
+
+        HudModule blockAbove = hud("BlockAbove", "Show the block directly above player head.");
+        blockAbove.setEnabled(false);
+
+        HudModule entityCounter = hud("EntityCounter", "Count of living entities in render distance.");
+        entityCounter.setEnabled(false);
+
+        HudModule shaderPack = hud("ShaderPack", "Displays currently active Iris or OptiFine shader pack.");
+        shaderPack.setEnabled(false);
+
+        HudModule heldItemLore = hud("HeldItemLore", "Displays enchantments and lore of currently held item.");
+        heldItemLore.setEnabled(false);
+
+        register(new SubtitlesModule(), Module.Category.HUD);
+        register(new TitleTweakerModule(), Module.Category.HUD);
+        register(new ToastControlModule(), Module.Category.HUD);
+        register(new VanillaHudModule(), Module.Category.HUD);
     }
 
     public static ModuleManager getInstance() {

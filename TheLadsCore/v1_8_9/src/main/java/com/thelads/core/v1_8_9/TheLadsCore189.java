@@ -180,7 +180,8 @@ public class TheLadsCore189 {
         // its berry bush, elytra and boat options) and StackRefill189 (client tick), as 26.x NativeSurvivalTweaks and NativeStackRefill.
         com.thelads.core.modules.SurvivalTweaksModule.NAME, com.thelads.core.modules.StackRefillModule.NAME,
         // KeepUiOpenScreenMixin and KeepUiOpenCloseMixin (1.9.10).
-        com.thelads.core.client.KeepUiOpen.MODULE_NAME
+        com.thelads.core.client.KeepUiOpen.MODULE_NAME,
+        "TitleTweaker", "ToastControl", "VanillaHUD"
     };
 
     /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */
@@ -231,6 +232,8 @@ public class TheLadsCore189 {
         ModuleSupport.registerUnavailable("DisableNarrator", "Minecraft 1.8.9 has no narrator.");
         ModuleSupport.registerUnavailable("Async", "Parallel entity ticking is built for the Minecraft 26.x server; 1.8.9 ticks entities on one thread.");
         ModuleSupport.registerUnavailable("ShulkerBoxUtils", "Minecraft 1.8.9 has no shulker boxes; they were added in Minecraft 1.11.");
+        ModuleSupport.registerUnavailable("Subtitles", "Minecraft 1.8.9 has no closed captions or subtitles.");
+        ModuleSupport.registerUnavailable("TotemPopCounter", "Minecraft 1.8.9 has no totems of undying; they were added in Minecraft 1.11.");
         for (String voice : new String[] {"Voice Chat", "Voice Chat Group"})
             ModuleSupport.registerUnavailable(voice, "Simple Voice Chat does not exist for Minecraft 1.8.9.");
         for (String[] module : LIMITED) ModuleSupport.registerBuiltInLimited(module[0], module[1]);

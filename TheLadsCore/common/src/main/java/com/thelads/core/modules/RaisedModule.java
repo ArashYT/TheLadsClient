@@ -28,6 +28,17 @@ public class RaisedModule extends Module {
         // Its 1.6.0 name and value, so saved settings carry over: the extra lift while chat is open.
         addOption(optDistance = new SliderOption("Distance", 14, 0, 50, 1));
         addOption(optChat = new SliderOption("Chat", 0, 0, 100, 1));
+        addOption(new SliderOption("Hotbar Scale", 100, 50, 150, 5));
+        addOption(new SliderOption("Health X Offset", 0, -200, 200, 1));
+        addOption(new SliderOption("Health Y Offset", 0, -200, 200, 1));
+        addOption(new SliderOption("Health Scale", 100, 50, 150, 5));
+        addOption(new SliderOption("Hunger X Offset", 0, -200, 200, 1));
+        addOption(new SliderOption("Hunger Y Offset", 0, -200, 200, 1));
+        addOption(new SliderOption("Hunger Scale", 100, 50, 150, 5));
+        addOption(new SliderOption("Armor X Offset", 0, -200, 200, 1));
+        addOption(new SliderOption("Armor Y Offset", 0, -200, 200, 1));
+        addOption(new SliderOption("Air & Mount X Offset", 0, -200, 200, 1));
+        addOption(new SliderOption("Air & Mount Y Offset", 0, -200, 200, 1));
         setEnabled(true);
     }
 
@@ -66,6 +77,18 @@ public class RaisedModule extends Module {
                     && move.get("y") != null && move.get("y").isJsonPrimitive()) offset += move.get("y").getAsInt();
         return offset * direction;
     }
+
+    public float hotbarScale() { return isEnabled() ? Math.max(0.5f, pixels("Hotbar Scale") / 100.0f) : 1.0f; }
+    public int healthOffsetX() { return isEnabled() ? pixels("Health X Offset") : 0; }
+    public int healthOffsetY() { return isEnabled() ? pixels("Health Y Offset") : 0; }
+    public float healthScale() { return isEnabled() ? Math.max(0.5f, pixels("Health Scale") / 100.0f) : 1.0f; }
+    public int hungerOffsetX() { return isEnabled() ? pixels("Hunger X Offset") : 0; }
+    public int hungerOffsetY() { return isEnabled() ? pixels("Hunger Y Offset") : 0; }
+    public float hungerScale() { return isEnabled() ? Math.max(0.5f, pixels("Hunger Scale") / 100.0f) : 1.0f; }
+    public int armorOffsetX() { return isEnabled() ? pixels("Armor X Offset") : 0; }
+    public int armorOffsetY() { return isEnabled() ? pixels("Armor Y Offset") : 0; }
+    public int airMountOffsetX() { return isEnabled() ? pixels("Air & Mount X Offset") : 0; }
+    public int airMountOffsetY() { return isEnabled() ? pixels("Air & Mount Y Offset") : 0; }
 
     private int pixels(String option) {
         return getOption(option) instanceof SliderOption slider ? slider.getIntValue() : 0;

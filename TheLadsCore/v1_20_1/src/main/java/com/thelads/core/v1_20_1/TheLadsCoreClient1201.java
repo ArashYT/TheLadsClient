@@ -55,6 +55,11 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             "Autohide", "BossBar", "RawInput", "LegacySwing", "DiscordRPC",
             "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates",
             "Voice Chat", "Voice Chat Group",
+            "DamageIndicator", "JumpReset", "MediaPlayer", "HorseStats",
+            "PlayerCounter", "TotemPopCounter", "BlockInfo", "TierTagger",
+            "CustomText", "CustomShape", "PlayerHead", "BlockAbove",
+            "EntityCounter", "ShaderPack", "HeldItemLore",
+            "Subtitles", "TitleTweaker", "ToastControl", "VanillaHUD",
             // Gameplay & Visuals
             "Chat", "Crosshair Tweaks", "DynamicLights",
             "Custom FOV", "Paperdoll", "KillBanner", com.thelads.core.modules.ComboSoundsModule.NAME, com.thelads.core.client.DamageTilt.MODULE, "VerticalBobbing",
