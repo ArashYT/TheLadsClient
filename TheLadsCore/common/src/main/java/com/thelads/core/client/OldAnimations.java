@@ -295,26 +295,4 @@ public final class OldAnimations {
     private static float cos(float radians) { return (float) Math.cos(radians); }
 
     private static float sqrt(float value) { return (float) Math.sqrt(value); }
-
-    /** CheatBreaker blockhit swing angle and translation. */
-    public static void cheatbreakerBlockhit(Sink out, int side, float swing) {
-        float f = sqrt(swing);
-        translate(out, side, -0.4f * sin(f * PI), 0.2f * sin(f * PI * 2), -0.2f * sin(swing * PI));
-        translate(out, side, -0.5f, 0.2f, 0);
-        rotate(out, side, 30, 0, 1, 0);
-        rotate(out, side, -80, 1, 0, 0);
-        rotate(out, side, 60, 0, 1, 0);
-    }
-
-    /** 1.7 arm swing duration based on Haste/Mining Fatigue potion effects. */
-    public static int swingDuration(int defaultDuration, int hasteLevel, int fatigueLevel) {
-        if (hasteLevel > 0) return Math.max(1, 6 - (1 + hasteLevel));
-        if (fatigueLevel > 0) return 6 + (1 + fatigueLevel) * 2;
-        return defaultDuration;
-    }
-
-    /** Suppresses item re-equip animation if the item type (ID) has not changed. */
-    public static boolean shouldReequip(boolean itemTypeChanged) {
-        return itemTypeChanged;
-    }
 }

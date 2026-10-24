@@ -42,14 +42,7 @@ public final class OldAnimationsModule extends Module {
         NO_COOLDOWN_DIP("No attack-cooldown dip", "The held item stays up after an attack instead of dipping while "
             + "the attack cooldown recharges.", "Minecraft 1.8.9 has no attack cooldown, so the item never dips."),
         LOW_FIRE("Low Fire", "Lowers the first-person fire overlay when burning so it blocks less of your screen.", null),
-        LOW_SHIELD("Low Shield", "Lowers held shields in first person to improve visibility.", "Minecraft 1.8.9 has no shields."),
-        PICKUP_ANIMATION("1.7 pickup animation", "Restores the 1.7 item pickup animation where items smoothly glide towards the player.", null),
-        ROD_AS_STICK("Rod as stick texture", "Renders the uncast fishing rod using the 1.7 stick holding position and model.", null),
-        SWING_SPEED_HASTE("Swing speed scaling", "Scales hand swinging animation speed based on Haste and Mining Fatigue effects as in 1.7.", null),
-        REEQUIP_CONTROL("Item re-equip control", "Suppresses or minimizes the item re-equip lowering/raising animation during durability or stack changes.", null),
-        ADVENTURE_PUNCH("Adventure mode punch", "Allows the punching animation in Adventure mode when targeting unbreakable blocks.", null),
-        CHEATBREAKER_BLOCKHIT("CheatBreaker blockhit", "Applies the distinct CheatBreaker-style blocking swing angle and motion.", null),
-        HELD_ITEM_LIGHTING("1.7 held-item lighting", "Applies 1.7 ambient lighting to held items so they are shaded consistently with the player.", null);
+        LOW_SHIELD("Low Shield", "Lowers held shields in first person to improve visibility.", "Minecraft 1.8.9 has no shields.");
 
         public final String option;
         public final String tooltip;

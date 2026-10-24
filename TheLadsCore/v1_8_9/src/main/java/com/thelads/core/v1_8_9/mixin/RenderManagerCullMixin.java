@@ -30,21 +30,4 @@ public abstract class RenderManagerCullMixin {
         renderWitherSkull(entity, partialTicks);
         cir.setReturnValue(true);
     }
-
-    @Inject(method = "renderShadow", at = @At("HEAD"), cancellable = true, require = 0)
-    private void ladsRenderShadow(Entity entityIn, double x, double y, double z, float shadowAlpha, float partialTicks, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-        if (!com.thelads.core.client.RenderTweaks.isEntityShadowsEnabled()) {
-            ci.cancel();
-        }
-    }
-
-    @Inject(method = "doRenderEntity", at = @At("HEAD"), require = 0)
-    private void ladsScaleMob(Entity entity, double x, double y, double z, float entityYaw, float partialTicks, boolean hideDebugBox, CallbackInfoReturnable<Boolean> cir) {
-        if (com.thelads.core.client.MobSize.isEnabled()) {
-            float s = com.thelads.core.client.MobSize.getScale(entity instanceof net.minecraft.entity.player.EntityPlayer);
-            if (s != 1.0f) {
-                net.minecraft.client.renderer.GlStateManager.scale(s, s, s);
-            }
-        }
-    }
 }

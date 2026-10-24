@@ -43,28 +43,6 @@ public abstract class GuiContainerMouseTweaksMixin extends GuiScreen implements 
     }
 
     @Override public Slot ladsSlotAt(int x, int y) { return getSlotAtPosition(x, y); }
-
-
-    @Inject(method = "drawSlot", at = @At("HEAD"), require = 0)
-    private void ladsUhcSlot(Slot slotIn, CallbackInfo ci) {
-        if (com.thelads.core.client.UhcOverlay.isEnabled() && slotIn != null && slotIn.getHasStack()) {
-            net.minecraft.item.ItemStack stack = slotIn.getStack();
-            if (stack != null && stack.getItem() != null) {
-                String name = stack.getUnlocalizedName();
-                if (com.thelads.core.client.UhcOverlay.isHighlightedItem(name)) {
-                    drawRect(slotIn.xDisplayPosition, slotIn.yDisplayPosition, slotIn.xDisplayPosition + 16, slotIn.yDisplayPosition + 16, com.thelads.core.client.UhcOverlay.getBorderColor());
-                }
-            }
-        }
-    }
-
-    @Inject(method = "drawScreen", at = @At("HEAD"), require = 0)
-    private void ladsDarkModeContainer(int mouseX, int mouseY, float partialTicks, CallbackInfo ci) {
-        if (com.thelads.core.client.DarkMode.shouldDarkenContainers()) {
-            float dim = 1.0f - com.thelads.core.client.DarkMode.getDimFraction() * 0.5f;
-            net.minecraft.client.renderer.GlStateManager.color(dim, dim, dim, 1.0f);
-        }
-    }
     /** Mode 0 is a click (PICKUP), 1 a shift-click (QUICK_MOVE). */
     @Override public void ladsClick(Slot slot, int button, boolean quickMove) { handleMouseClick(slot, slot.slotNumber, button, quickMove ? 1 : 0); }
 }

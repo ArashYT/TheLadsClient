@@ -63,8 +63,6 @@ public class CrosshairModule extends Module {
     /** The chosen picture's copy in the shared backgrounds folder ("" none); set through {@link #chooseImage}, never shown. */
     public final TextOption image = new TextOption("Background Image", "");
     public final ActionOption chooseImage = new ActionOption("Your Image", "Choose image...");
-    public final BoolOption elytraIndicator = addOption(new BoolOption("Elytra Flight Indicator", false));
-    public final ColorOption elytraIndicatorColor = addOption(new ColorOption("Elytra Indicator Color", false, 0xFF55FFFF));
 
     public CrosshairModule() {
         super("Crosshair Tweaks", "Design your crosshair, visibility, aiming feedback and item indicators.");

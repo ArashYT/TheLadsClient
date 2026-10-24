@@ -394,19 +394,6 @@ public class ModuleManager {
         register(borderless, Module.Category.MECHANIC);
         register(new SurvivalTweaksModule(), Module.Category.MECHANIC);
         register(new StackRefillModule(), Module.Category.MECHANIC);
-        register(new DarkModeModule(), Module.Category.MECHANIC);
-        register(new BedWarsBedsModule(), Module.Category.MECHANIC);
-        register(new RenderTweaksModule(), Module.Category.MECHANIC);
-        register(new OverlayTweaksModule(), Module.Category.MECHANIC);
-        register(new TotemAnimationModule(), Module.Category.MECHANIC);
-        register(new OofModModule(), Module.Category.MECHANIC);
-        register(new LightLevelOverlayModule(), Module.Category.MECHANIC);
-        register(new LootBeamsModule(), Module.Category.MECHANIC);
-        register(new MobOverlayModule(), Module.Category.MECHANIC);
-        register(new MobSizeModule(), Module.Category.MECHANIC);
-        register(new ShulkerBulletHighlightModule(), Module.Category.MECHANIC);
-        register(new ItemDespawnFlashModule(), Module.Category.MECHANIC);
-        register(new UhcOverlayModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

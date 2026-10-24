@@ -11,13 +11,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(GameRenderer.class)
 public class VerticalBobbingMixin {
-    @Inject(method = "bobView", at = @At("HEAD"), cancellable = true, require = 0)
-    private void lads$bobDisconnect(CameraRenderState state, PoseStack pose, CallbackInfo callback) {
-        if (com.thelads.core.client.BobbingTweaks.isDisconnectEnabled()) {
-            callback.cancel();
-        }
-    }
-
     @Inject(method = "bobView", at = @At("TAIL"), require = 1)
     private void lads$verticalMotion(CameraRenderState state, PoseStack pose, CallbackInfo callback) {
         // Vanilla calls bobView only when View Bobbing is enabled. Both passes

@@ -111,13 +111,6 @@ public abstract class EntityRendererMixin {
         return ResolutionCache189.get(mc);
     }
 
-    @Inject(method = "setupViewBobbing", at = @At("HEAD"), cancellable = true, require = 0)
-    private void ladsBobDisconnect(float partialTicks, CallbackInfo ci) {
-        if (com.thelads.core.client.BobbingTweaks.isDisconnectEnabled()) {
-            ci.cancel();
-        }
-    }
-
     @Redirect(method = "setupOverlayRendering", at = @At(value = "NEW", target = "net/minecraft/client/gui/ScaledResolution"), require = 0)
     private ScaledResolution ladsSetupOverlayResolution(Minecraft mc) {
         return ResolutionCache189.get(mc);
