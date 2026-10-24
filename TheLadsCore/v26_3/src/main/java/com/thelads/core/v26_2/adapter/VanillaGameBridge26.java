@@ -572,6 +572,7 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     private int cachedPotionCount = 0;
     private int cachedSoupCount = 0;
     private boolean lastAttackKeyDown = false;
+    private int lastEatSlot = -1;
 
     private static java.lang.reflect.Field COOLDOWNS_MAP_26;
     private static java.lang.reflect.Field TICK_COUNT_26;
@@ -732,14 +733,20 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         var useItem = player.getUseItem();
         boolean isGapple = !useItem.isEmpty() && (useItem.is(net.minecraft.world.item.Items.GOLDEN_APPLE) || useItem.is(net.minecraft.world.item.Items.ENCHANTED_GOLDEN_APPLE));
         int gappleCount = isGapple ? useItem.getCount() : 0;
-        net.minecraft.world.InteractionHand hand = player.getUsedItemHand();
-        int eatSlot = (using && hand == net.minecraft.world.InteractionHand.OFF_HAND) ? 36 : player.getInventory().getSelectedSlot();
+        if (isGapple) {
+            net.minecraft.world.InteractionHand hand = player.getUsedItemHand();
+            lastEatSlot = (hand == net.minecraft.world.InteractionHand.OFF_HAND) ? 36 : player.getInventory().getSelectedSlot();
+        }
+        int eatSlot = lastEatSlot >= 0 ? lastEatSlot : ((using && player.getUsedItemHand() == net.minecraft.world.InteractionHand.OFF_HAND) ? 36 : player.getInventory().getSelectedSlot());
         var stackInSlot = eatSlot == 36 ? player.getOffhandItem() : player.getInventory().getItem(eatSlot);
         boolean isGappleInSlot = !stackInSlot.isEmpty() && (stackInSlot.is(net.minecraft.world.item.Items.GOLDEN_APPLE) || stackInSlot.is(net.minecraft.world.item.Items.ENCHANTED_GOLDEN_APPLE));
         int slotGCount = isGappleInSlot ? stackInSlot.getCount() : 0;
         int totalDuration = isGapple ? useItem.getUseDuration(player) : 32;
         int ticksUsed = isGapple ? (totalDuration - player.getUseItemRemainingTicks()) : 0;
         com.thelads.core.client.GappleTracker.get().onTick(using && isGapple, isGappleInSlot, eatSlot, slotGCount, ticksUsed, totalDuration);
+        if (!using) {
+            lastEatSlot = -1;
+        }
 
         // 4. Item tracker inventory diffing (every 10 client ticks)
         if (currentTick % 10 == 0) {
