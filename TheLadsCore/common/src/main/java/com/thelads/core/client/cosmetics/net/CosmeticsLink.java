@@ -5,6 +5,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.cosmetics.Emotes;
+import com.thelads.core.client.cosmetics.wearables.CosmeticSlot;
+import com.thelads.core.client.cosmetics.wearables.CosmeticsManager;
 import com.thelads.core.config.ShareCodeClient;
 import com.thelads.core.modules.CosmeticsModule;
 import java.io.IOException;
@@ -18,7 +20,9 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -26,17 +30,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Relays emotes between Lads players on the same Minecraft server, out of band: one WebSocket to our bot
+ * Relays emotes and wearable cosmetics between Lads players on the same Minecraft server, out of band: one WebSocket to our bot
  * (wss://bot.arashyt.ca/cosmetics/ws, protocol in cosmetics-server/cosmetics.py), never a Minecraft packet or plugin message, so it
  * works on (and is invisible to) every server, Hypixel included. Connected only in a multiplayer world with the Cosmetics module on.
  * Threads: the game thread samples state once a second (tick), a daemon link thread connects and writes (asleep when not
- * connected), a reader thread per connection applies what arrives to Emotes. Nothing here ever blocks the game thread.
+ * connected), a reader thread per connection applies what arrives to Emotes and CosmeticsManager. Nothing here ever blocks the game thread.
  */
 public final class CosmeticsLink {
     static final String DEFAULT_URL = "wss://bot.arashyt.ca/cosmetics/ws";
     private static final String MOJANG_JOIN = "https://sessionserver.mojang.com/session/minecraft/join";
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore/Cosmetics");
     private static final CosmeticsLink LINK = new CosmeticsLink(System.getProperty("lads.cosmetics.url", System.getenv("LADS_COSMETICS_URL")));
+
+    public static CosmeticsLink get() { return LINK; }
 
     /** Where the link should be: who we are and which server room; null = disconnected. */
     record Want(UUID self, String room) {}
@@ -47,7 +53,8 @@ public final class CosmeticsLink {
     private final Object lock = new Object();
     private volatile Want want;
     private volatile String localEmote;
-    private volatile boolean emoteDirty, showOthers = true, shareMine = true;
+    private volatile boolean emoteDirty, equipsDirty, wantLinkCode, showOthers = true, shareMine = true;
+    private final Map<String, String> pendingEquips = new LinkedHashMap<>();
     private Thread thread;
     private int ticks; // game thread only, as the two below
     private String lastAddress, lastRoom;
@@ -67,6 +74,21 @@ public final class CosmeticsLink {
     /** Game thread, every client tick; samples once a second. */
     public static void tick() { LINK.sample(); }
 
+    public void sendEquip(String slot, String itemId) {
+        synchronized (lock) {
+            pendingEquips.put(slot, itemId == null ? "" : itemId);
+            equipsDirty = true;
+            wake();
+        }
+    }
+
+    public void requestLinkCode() {
+        synchronized (lock) {
+            wantLinkCode = true;
+            wake();
+        }
+    }
+
     private void sample() {
         if (++ticks % 20 != 0 || endpoint == null) return;
         CosmeticsModule cosmetics = CosmeticsModule.get();
@@ -80,7 +102,9 @@ public final class CosmeticsLink {
         LadsGameBridge.Session session = (show || share) && lastRoom != null && game.isIngame() ? game.session() : null;
         Want next = session == null || session.uuid() == null ? null : new Want(session.uuid(), lastRoom);
         Want current = want;
-        if (showOthers && !show && current != null) Emotes.clearRemote(current.self());
+        if (showOthers && !show && current != null) {
+            Emotes.clearRemote(current.self());
+        }
         showOthers = show;
         shareMine = share;
         if (Objects.equals(next, current)) return;
@@ -141,6 +165,15 @@ public final class CosmeticsLink {
             reader.setPriority(Thread.MIN_PRIORITY);
             reader.start();
             emoteDirty = localEmote != null; // still emoting from before a reconnect: tell the new room
+
+            // Sync initial equipped cosmetics
+            for (CosmeticSlot slot : new CosmeticSlot[]{CosmeticSlot.CAPE, CosmeticSlot.HAT, CosmeticSlot.GLASSES}) {
+                String equipped = CosmeticsManager.get().getLocalEquipped(slot);
+                if (equipped != null && !equipped.isBlank()) {
+                    ws.sendText(json("t", "equip", "slot", slot.id(), "item", equipped));
+                }
+            }
+
             long nextQa = 0, nextPing = System.currentTimeMillis() + 30_000;
             while (ws.isOpen() && w.equals(want)) {
                 long now = System.currentTimeMillis();
@@ -156,9 +189,31 @@ public final class CosmeticsLink {
                     emoteDirty = false;
                     if (shareMine) ws.sendText(json("t", "emote", "id", localEmote));
                 }
+                if (equipsDirty) {
+                    Map<String, String> toSend;
+                    synchronized (lock) {
+                        equipsDirty = false;
+                        toSend = new LinkedHashMap<>(pendingEquips);
+                        pendingEquips.clear();
+                    }
+                    for (Map.Entry<String, String> e : toSend.entrySet()) {
+                        String item = e.getValue();
+                        if (item == null || item.isEmpty()) {
+                            ws.sendText(json("t", "equip", "slot", e.getKey()));
+                        } else {
+                            ws.sendText(json("t", "equip", "slot", e.getKey(), "item", item));
+                        }
+                    }
+                }
+                if (wantLinkCode) {
+                    wantLinkCode = false;
+                    ws.sendText(json("t", "link"));
+                }
                 long wake = qaEmote != null ? Math.min(nextPing, nextQa) : nextPing;
                 synchronized (lock) {
-                    if (!emoteDirty && ws.isOpen() && w.equals(want)) lock.wait(Math.max(1, wake - System.currentTimeMillis()));
+                    if (!emoteDirty && !equipsDirty && !wantLinkCode && ws.isOpen() && w.equals(want)) {
+                        lock.wait(Math.max(1, wake - System.currentTimeMillis()));
+                    }
                 }
             }
         } catch (InterruptedException e) {
@@ -178,7 +233,7 @@ public final class CosmeticsLink {
         }
     }
 
-    /** One server message: snapshot (a room's players on join), state (someone's emote changed) or leave. */
+    /** One server message: snapshot (a room's players on join), state (someone's emote changed), equip or leave. */
     void handle(String text, UUID self) {
         JsonObject message = parse(text);
         String type = message == null ? null : str(message, "t");
@@ -187,9 +242,24 @@ public final class CosmeticsLink {
             for (JsonElement player : message.getAsJsonArray("players")) if (player.isJsonObject()) apply(player.getAsJsonObject(), self);
         } else if ("state".equals(type)) {
             apply(message, self);
+        } else if ("equip".equals(type)) {
+            UUID uuid = uuid(str(message, "uuid"));
+            String slot = str(message, "slot");
+            String item = str(message, "item");
+            if (uuid != null && slot != null) {
+                CosmeticsManager.get().onRemoteEquip(uuid, slot, item);
+            }
+        } else if ("link_code".equals(type)) {
+            String code = str(message, "code");
+            JsonElement exp = message.get("expires_in");
+            int ttl = exp != null && exp.isJsonPrimitive() ? exp.getAsInt() : 600;
+            CosmeticsManager.get().setLinkCode(code, ttl);
         } else if ("leave".equals(type)) {
             UUID player = uuid(str(message, "uuid"));
-            if (player != null && !player.equals(self)) Emotes.remove(player);
+            if (player != null && !player.equals(self)) {
+                Emotes.remove(player);
+                CosmeticsManager.get().removeRemote(player);
+            }
         }
     }
 
@@ -286,7 +356,6 @@ public final class CosmeticsLink {
         int colon = a.lastIndexOf(':');
         String host = a.substring(0, colon);
         while (host.endsWith(".")) host = host.substring(0, host.length() - 1);
-        // ponytail: last two labels; a public suffix like co.uk would merge its servers into one room (harmless, emotes only apply to players in the world)
         if (!host.startsWith("[") && !host.matches("[0-9.]+")) {
             String[] labels = host.split("\\.");
             if (labels.length > 2) host = labels[labels.length - 2] + "." + labels[labels.length - 1];
