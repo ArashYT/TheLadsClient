@@ -513,6 +513,37 @@ public class IceAgentTest {
         }
     }
 
+    /** "Always use relay" on the host: a guest nominated onto the host's relay candidate is on a relay pair too (it said "direct"). */
+    @Test
+    public void controlledOnTheControllersRelayCountsAsRelayed() throws Exception {
+        IceAgent b = new IceAgent("test-their-relay", false, null, sig -> {});
+        DatagramSocket relay = new DatagramSocket(0, InetAddress.getLoopbackAddress());
+        relay.setSoTimeout(2000);
+        String ctrlUfrag = "ctrlufrg", ctrlPwd = "ctrlpasswordctrlpasswd";
+        try {
+            b.gatherAndSendSignal().join();
+            JsonObject remote = new JsonObject();
+            remote.addProperty("ufrag", ctrlUfrag);
+            remote.addProperty("pwd", ctrlPwd);
+            JsonObject c = new JsonObject();
+            c.addProperty("type", "relay");
+            c.addProperty("ip", "127.0.0.1");
+            c.addProperty("port", relay.getLocalPort());
+            c.addProperty("prio", IceAgent.PRIORITY_RELAY);
+            JsonArray cands = new JsonArray();
+            cands.add(c);
+            remote.add("candidates", cands);
+            b.onSignal(remote);
+
+            assertNotNull(check(relay, new InetSocketAddress(InetAddress.getLoopbackAddress(), port(b)), b, ctrlUfrag, true));
+            b.getConnectedFuture().get(2, TimeUnit.SECONDS);
+            assertTrue(b.isRelayed(), "the selected pair has the controller's relay candidate");
+        } finally {
+            b.close();
+            relay.close();
+        }
+    }
+
     /** Sends a controlling check from a to the agent and returns its validated response (null: none). */
     private static StunMessage check(DatagramSocket a, InetSocketAddress to, IceAgent agent, String ctrlUfrag, boolean useCandidate) throws Exception {
         StunMessage req = new StunMessage(StunMessage.BINDING_REQUEST);

@@ -81,7 +81,8 @@ public final class IceAgent implements AutoCloseable {
     private volatile TurnClient turnClient;
     private final List<TurnClient> allocatedTurnClients = new CopyOnWriteArrayList<>();
     private volatile InetSocketAddress selectedRemoteAddress;
-    private volatile boolean selectedPairRelayed = false;
+    private volatile boolean selectedPairRelayed = false; // either end of the pair is a TURN relay (ours or the peer's)
+    private volatile boolean sendViaOwnRelay = false; // our end is our relay: data goes through our TURN allocation
 
     private final CompletableFuture<Void> connectedFuture = new CompletableFuture<>();
     private final AtomicBoolean closed = new AtomicBoolean(false);
@@ -609,7 +610,9 @@ public final class IceAgent implements AutoCloseable {
 
                 // Controlled: exactly the pair the controller nominated, as it reached us (never one of our own checks)
                 if (useCandidate && !host) {
-                    select(sender, viaRelay);
+                    // Our end is our relay when it came through our allocation; the controller's end may be its relay ("Always use relay")
+                    Candidate from = viaRelay ? null : find(remoteCandidates, sender);
+                    select(sender, viaRelay, viaRelay || from != null && "relay".equals(from.type));
                 }
             } else if (msg.getType() == StunMessage.BINDING_RESPONSE) {
                 // Finding 1: Response must match an outstanding transaction id
@@ -632,7 +635,8 @@ public final class IceAgent implements AutoCloseable {
                 // controller's nomination instead of picking a pair itself.
                 if (!host || !sender.equals(pair.remote.toSocketAddress())) return;
                 if (pair.nominate) {
-                    select(sender, "relay".equals(pair.local.type) || "relay".equals(pair.remote.type));
+                    boolean ours = "relay".equals(pair.local.type);
+                    select(sender, ours, ours || "relay".equals(pair.remote.type));
                 } else {
                     startNomination(pair);
                 }
@@ -660,20 +664,26 @@ public final class IceAgent implements AutoCloseable {
         sendConnectivityCheck(valid.local, valid.remote, true);
     }
 
-    private synchronized void select(InetSocketAddress remoteAddr, boolean isRelayed) {
+    /** viaOwnRelay: send through our TURN allocation (our end is our relay); relayed: either end is a relay (what relayed() reports). */
+    private synchronized void select(InetSocketAddress remoteAddr, boolean viaOwnRelay, boolean relayed) {
         if (!connectedFuture.isDone()) {
             this.selectedRemoteAddress = remoteAddr;
-            this.selectedPairRelayed = isRelayed;
+            this.selectedPairRelayed = relayed;
+            this.sendViaOwnRelay = viaOwnRelay;
 
-            if (isRelayed && turnClient != null) {
-                try {
-                    if (!turnClient.hasPermission(remoteAddr.getAddress())) {
-                        turnClient.createPermission(remoteAddr);
+            TurnClient tc = turnClient;
+            if (viaOwnRelay && tc != null) {
+                // Off this thread: select can run on the TURN reader, which alone receives the answers (a wait there never ends).
+                // Data goes as Send indications until the channel is bound.
+                Thread bind = new Thread(() -> {
+                    try {
+                        if (!tc.hasPermission(remoteAddr.getAddress())) tc.createPermission(remoteAddr);
+                        tc.channelBind(remoteAddr); // RFC 8656: ChannelBind only for the nominated pair
+                    } catch (Exception ignored) {
                     }
-                    // RFC 8656: ChannelBind only for the nominated pair
-                    turnClient.channelBind(remoteAddr);
-                } catch (Exception ignored) {
-                }
+                }, "IceAgent-ChannelBind-" + sid);
+                bind.setDaemon(true);
+                bind.start();
             }
             connectedFuture.complete(null);
         }
@@ -683,7 +693,7 @@ public final class IceAgent implements AutoCloseable {
         if (closed.get()) throw new IOException("IceAgent is closed");
         if (selectedRemoteAddress == null) throw new IOException("IceAgent not connected yet");
 
-        if (selectedPairRelayed && turnClient != null) {
+        if (sendViaOwnRelay && turnClient != null) {
             Integer ch = turnClient.getBoundChannel(selectedRemoteAddress);
             if (ch != null) {
                 turnClient.sendChannelData(ch, data, offset, length);

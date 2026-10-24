@@ -287,6 +287,34 @@ public class TurnClientTest {
         }
     }
 
+    /**
+     * Real Cloudflare relay: a ChannelBind made from the data handler (the reader thread, as ICE selection ran) waited for an answer only
+     * that thread could deliver, so the bind was lost and the server's ChannelData dropped. It now fails at once; elsewhere it works.
+     */
+    @Test
+    public void requestOnTheReaderThreadFailsFastInsteadOfStallingIt() throws Exception {
+        try (DatagramSocket turn = fakeTurn(true); TurnClient tc = new TurnClient("turn:127.0.0.1:" + turn.getLocalPort(), "u", "c")) {
+            InetSocketAddress peer = new InetSocketAddress("198.51.100.7", 4444);
+            CompletableFuture<Long> onReader = new CompletableFuture<>();
+            tc.setDataHandler((p, data, off, len) -> {
+                long start = System.nanoTime();
+                try {
+                    tc.channelBind(new InetSocketAddress("198.51.100.8", 5555));
+                    onReader.complete(-1L);
+                } catch (IOException expected) {
+                    onReader.complete((System.nanoTime() - start) / 1_000_000);
+                }
+            });
+            tc.allocate();
+            int ch = tc.channelBind(peer); // from this thread: answered
+            byte[] cd = TurnClient.encodeChannelData(ch, new byte[16], 0, 16);
+            turn.send(new DatagramPacket(cd, cd.length, InetAddress.getLoopbackAddress(), tc.getSocket().getLocalPort()));
+            long ms = onReader.get(5, java.util.concurrent.TimeUnit.SECONDS);
+            assertTrue(ms >= 0 && ms < 500, "a request on the reader thread must fail at once, took " + ms + " ms");
+            assertNull(tc.getBoundChannel(new InetSocketAddress("198.51.100.8", 5555)), "a failed bind leaves no mapping");
+        }
+    }
+
     /** F6: an authenticated request's success answer without a valid MESSAGE-INTEGRITY (a spoofed relayed address) is refused. */
     @Test
     public void unsignedTurnResponseIsRefused() throws Exception {

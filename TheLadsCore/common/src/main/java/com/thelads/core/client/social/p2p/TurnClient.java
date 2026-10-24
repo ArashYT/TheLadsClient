@@ -284,14 +284,22 @@ public final class TurnClient implements AutoCloseable {
             throw new IllegalArgumentException("Invalid channel number: 0x" + Integer.toHexString(channelNumber));
         }
 
-        StunMessage resp = signedRequest(StunMessage.CHANNEL_BIND_REQUEST, r -> {
-            r.addIntAttribute(StunMessage.ATTR_CHANNEL_NUMBER, channelNumber << 16);
-            r.addXorAddressAttribute(StunMessage.ATTR_XOR_PEER_ADDRESS, peerAddress);
-        });
+        // Mapped before asking: the server's first ChannelData can come right behind its answer, before this thread runs again
+        InetSocketAddress previous = boundChannels.put(channelNumber, peerAddress);
+        StunMessage resp;
+        try {
+            resp = signedRequest(StunMessage.CHANNEL_BIND_REQUEST, r -> {
+                r.addIntAttribute(StunMessage.ATTR_CHANNEL_NUMBER, channelNumber << 16);
+                r.addXorAddressAttribute(StunMessage.ATTR_XOR_PEER_ADDRESS, peerAddress);
+            });
+        } catch (IOException e) {
+            if (previous == null) boundChannels.remove(channelNumber, peerAddress);
+            throw e;
+        }
         if (resp.getType() == StunMessage.CHANNEL_BIND_ERROR) {
+            if (previous == null) boundChannels.remove(channelNumber, peerAddress);
             throw new IOException("ChannelBind failed: " + resp.getErrorCode() + " " + resp.getErrorMessage());
         }
-        boundChannels.put(channelNumber, peerAddress);
         peerToChannel.put(peerAddress, channelNumber);
         channelExpiresAt.put(channelNumber, System.currentTimeMillis() + 600_000L); // 10 minutes
     }
@@ -453,6 +461,8 @@ public final class TurnClient implements AutoCloseable {
 
     /** The server's answer; for a request signed with key (long-term), a success answer must carry a valid MESSAGE-INTEGRITY (F6). */
     private StunMessage sendAndReceive(byte[] requestBytes, byte[] expectedTid, int timeoutMs, byte[] key) throws IOException {
+        // Only the reader thread completes answers: waiting on it would block every relayed packet, then time out
+        if (Thread.currentThread() == readerThread) throw new IOException("TURN request on the TURN reader thread");
         String tidHex = toHex(expectedTid);
         CompletableFuture<byte[]> future = new CompletableFuture<>();
         pendingRequests.put(tidHex, future);
