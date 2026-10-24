@@ -334,6 +334,7 @@ public final class HudProbe {
     }
 
     private static boolean resized(Minecraft mc) throws Exception {
+        if (!framed()) return retry(0); // the previews are measured when drawn: the two ticks can pass without a frame (flaked on Ionium)
         check(bounds("CPS").height() > before.height() && stacked(), "CPS at 150% pushes Day down, still 2 px under it " + bounds("CPS") + " / "
             + bounds("Day") + ", CPS size " + ((SliderOption) module("CPS").getOption("Size")).getValue());
         rightClick(bounds("CPS"));
@@ -400,6 +401,8 @@ public final class HudProbe {
 
     /** Health dragged until it docks under Day, held there (no release) for the capture. */
     private static boolean plainDragging(Minecraft mc) throws Exception {
+        // Show disabled just went off: the previews are placed when drawn, and the two ticks can pass without a frame (flaked on OptiFine).
+        if (!framed()) return retry(0);
         check(!editor.ui().isShowingAll() && editor.ui().listedNames().equals(switchedOn()), "Show disabled off: only the switched-on HUDs again");
         Rect day = bounds("Day"), health = bounds("Health");
         int[] from = center(health);

@@ -191,7 +191,9 @@ public class TheLadsCore189 {
         com.thelads.core.modules.DropConfirmationModule.NAME,
         com.thelads.core.modules.ScrollTweaksModule.NAME,
         com.thelads.core.modules.AutoPerspectiveModule.NAME,
-        com.thelads.core.modules.AutoBackupModule.NAME
+        com.thelads.core.modules.AutoBackupModule.NAME,
+        // Nick Hider: LocalSkinMixin189 (skins) and Nicknames (names). Container QoL: GuiContainerMouseTweaksMixin's click outside.
+        com.thelads.core.modules.NickHiderModule.NAME, com.thelads.core.modules.ContainerQoLModule.NAME
     };
 
     /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */

@@ -194,13 +194,18 @@ final class Probe160s {
         check(gliding(list), "five notches up start a glide back (" + ((GuiSlotAccessor) list).ladsScroll() + " one tick later)");
         list.scrollBy(-1);
         moved = ((GuiSlotAccessor) list).ladsScroll();
+        frames.scroll.clear();
         return after(3);
     }
 
     private static boolean interrupted(Minecraft mc) {
         GuiSlot list = frames.list;
+        // The glide notices the direct scroll in the next frame (SmoothScroll189.frame). After the slow screenshot before it the game
+        // runs its missed ticks back to back, so the three ticks can pass without one (flaked on Ionium): wait for two drawn frames.
+        if (frames.scroll.size() < 2) return CoreProbe.retry(0);
         float now = ((GuiSlotAccessor) list).ladsScroll();
-        check(now == moved && now > 0 && !gliding(list), "a direct scroll during the glide stops it where it was moved (" + now + ")");
+        check(now == moved && now > 0 && !gliding(list), "a direct scroll during the glide stops it where it was moved (" + now + " after "
+            + frames.scroll.size() + " frames)");
         return after(2);
     }
 

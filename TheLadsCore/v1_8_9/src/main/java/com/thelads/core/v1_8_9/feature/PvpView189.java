@@ -28,12 +28,15 @@ public final class PvpView189 {
     public static final KeyBinding FREELOOK = new KeyBinding("key.theladscore.freelook", Keyboard.KEY_NONE, "key.category.theladscore.controls");
     public static final KeyBinding SNAPLOOK = new KeyBinding("key.theladscore.snaplook", Keyboard.KEY_NONE, "key.category.theladscore.controls");
 
+    /** The modules this class makes built in (CoreProbe's catalog check reads them too). */
+    public static final String[] BUILT_IN = {FreelookModule.NAME, ViewModelModule.NAME, TimeChangerModule.NAME, WeatherChangerModule.NAME,
+        FogCustomizerModule.NAME};
+
     public static void register() {
         ClientRegistry.registerKeyBinding(FREELOOK);
         ClientRegistry.registerKeyBinding(SNAPLOOK);
         MinecraftForge.EVENT_BUS.register(new PvpView189());
-        ModuleSupport.registerBuiltIn(FreelookModule.NAME, ViewModelModule.NAME, TimeChangerModule.NAME, WeatherChangerModule.NAME,
-            FogCustomizerModule.NAME);
+        ModuleSupport.registerBuiltIn(BUILT_IN);
         FreelookModule look = FreelookModule.get();
         look.freelookKey.setLabel(() -> label(FREELOOK));
         look.snaplookKey.setLabel(() -> label(SNAPLOOK));
