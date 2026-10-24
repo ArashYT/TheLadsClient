@@ -79,6 +79,7 @@ public static class GameSession
         var pid = process.Id;
         try
         {
+            InstanceAnalyticsService.RecordLaunch(gameDirectory, Path.GetFileName(gameDirectory));
             RunningGameMarker.Write(gameDirectory, pid, process.StartTime.ToUniversalTime(), loadedMods);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -90,6 +91,13 @@ public static class GameSession
         process.EnableRaisingEvents = true;
         process.Exited += async (_, _) =>
         {
+            try
+            {
+                var start = process.StartTime.ToUniversalTime();
+                var duration = DateTime.UtcNow - start;
+                InstanceAnalyticsService.RecordSessionExit(gameDirectory, Path.GetFileName(gameDirectory), duration);
+            }
+            catch { }
             try
             {
                 RunningGameMarker.Delete(gameDirectory, pid);

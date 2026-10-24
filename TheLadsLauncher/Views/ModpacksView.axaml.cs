@@ -775,7 +775,8 @@ public partial class ModpacksView : UserControl
         ManageVersionText.Text = string.IsNullOrEmpty(instance.PackVersion) ? (instance.Source != null ? instance.Source.VersionId : "") : $"v{instance.PackVersion}";
         ManageVersionRow.IsVisible = !string.IsNullOrEmpty(instance.PackVersion) || instance.Source != null;
         ManageLastPlayed.Text = instance.LastPlayedUtc is { } played ? $"▶ {RelativeTime(played)}" : "▶ Never";
-        ManagePlaytime.Text = "⏱ 0m";
+        var analytics = InstanceAnalyticsService.GetAnalytics(instance.Directory, instance.Id);
+        ManagePlaytime.Text = $"⏱ {InstanceAnalyticsService.FormatPlayTime(analytics.TotalPlaySeconds)}";
         ManageCreated.Text = $"📅 {instance.CreatedUtc.ToLocalTime():d}";
         ManageMcVersion.Text = $"🎮 {instance.McVersion}";
         ManageLoader.Text = $"🛠 {LoaderName(instance.Loader)}{(string.IsNullOrEmpty(instance.LoaderVersion) ? "" : $" - {instance.LoaderVersion}")}";
