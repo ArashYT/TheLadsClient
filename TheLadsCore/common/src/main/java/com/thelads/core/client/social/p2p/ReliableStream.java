@@ -153,7 +153,7 @@ public final class ReliableStream implements AutoCloseable {
         int timestamp = StunMessage.getIntBE(data, offset + 12);
 
         int headerLen = BASE_HEADER_SIZE + sackCount * 8;
-        if (headerLen + dataLen > length) return;
+        if (dataLen > MAX_PAYLOAD_SIZE || headerLen + dataLen > length) return;
 
         int actualSacks = Math.min(sackCount, MAX_SACK_LONGS);
         for (int i = 0; i < actualSacks; i++) {
@@ -183,6 +183,7 @@ public final class ReliableStream implements AutoCloseable {
     }
 
     private void handleIncomingData(int seq, byte[] data, int off, int len) {
+        if (len > MAX_PAYLOAD_SIZE) return;
         boolean shouldAck = false;
         rxLock.lock();
         try {
@@ -241,8 +242,12 @@ public final class ReliableStream implements AutoCloseable {
                 }
             }
 
-            if (ack >= sndUna) {
-                int countAcked = ack - sndUna + 1;
+            int diff = ack - sndUna;
+            int unacked = sndNxt - sndUna;
+
+            // Finding 2: Sequence-wraparound-safe ACK range check: sndUna <= ack < sndNxt
+            if (unacked > 0 && diff >= 0 && diff < unacked) {
+                int countAcked = diff + 1;
                 for (int i = 0; i < countAcked; i++) {
                     int seqToFree = sndUna + i;
                     int slotIdx = seqToFree & WINDOW_MASK;
@@ -263,11 +268,13 @@ public final class ReliableStream implements AutoCloseable {
                 for (int bit = 0; bit < 64; bit++) {
                     if ((mask & (1L << bit)) != 0) {
                         int sackedSeq = ack + 1 + (longIdx * 64) + bit;
-                        if (sackedSeq >= sndUna && sackedSeq < sndNxt) {
+                        int sackDiff = sackedSeq - sndUna;
+                        int currentUnacked = sndNxt - sndUna;
+                        if (currentUnacked > 0 && sackDiff >= 0 && sackDiff < currentUnacked) {
                             TxSlot s = txSlots[sackedSeq & WINDOW_MASK];
                             if (s.inUse && s.seq == sackedSeq) {
                                 s.sacked = true;
-                                if (sackedSeq > highestSacked) {
+                                if (sackedSeq - highestSacked > 0) {
                                     highestSacked = sackedSeq;
                                 }
                             }
@@ -277,9 +284,9 @@ public final class ReliableStream implements AutoCloseable {
             }
 
             // Immediate Fast Retransmit: only retransmit un-sacked packets that haven't been retransmitted yet!
-            if (highestSacked > ack) {
+            if (highestSacked - ack > 0) {
                 long now = System.currentTimeMillis();
-                for (int s = sndUna; s < highestSacked && toRetransmitCount < txRetransmitBuf.length; s++) {
+                for (int s = sndUna; (highestSacked - s) > 0 && toRetransmitCount < txRetransmitBuf.length; s++) {
                     TxSlot slot = txSlots[s & WINDOW_MASK];
                     if (slot.inUse && slot.seq == s && !slot.sacked) {
                         if (slot.retransmits == 0) {

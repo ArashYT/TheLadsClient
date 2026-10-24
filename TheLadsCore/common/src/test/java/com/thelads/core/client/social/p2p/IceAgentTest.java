@@ -199,4 +199,182 @@ public class IceAgentTest {
             fakeServer.close();
         }
     }
+
+    @Test
+    public void forgedRequestWithoutIntegrityIsIgnored() throws Exception {
+        IceAgent agent = new IceAgent("test-forged", true, null, sig -> {});
+        try {
+            agent.gatherAndSendSignal().join();
+            int port = agent.getLocalCandidates().get(0).port;
+
+            DatagramSocket attacker = new DatagramSocket();
+            try {
+                // Forged STUN request with ATTR_USE_CANDIDATE, but NO message-integrity
+                StunMessage forged = new StunMessage(StunMessage.BINDING_REQUEST);
+                forged.addStringAttribute(StunMessage.ATTR_USERNAME, agent.getLocalUfrag() + ":attacker");
+                forged.addAttribute(StunMessage.ATTR_USE_CANDIDATE, new byte[0]);
+                byte[] bytes = forged.encode(null, true);
+
+                attacker.send(new DatagramPacket(bytes, bytes.length, new InetSocketAddress("127.0.0.1", port)));
+                Thread.sleep(100);
+
+                assertFalse(agent.getConnectedFuture().isDone(), "Forged request without integrity must be ignored");
+            } finally {
+                attacker.close();
+            }
+        } finally {
+            agent.close();
+        }
+    }
+
+    @Test
+    public void responseWithUnknownTransactionIdIsIgnored() throws Exception {
+        IceAgent agent = new IceAgent("test-unknown-tid", true, null, sig -> {});
+        try {
+            agent.gatherAndSendSignal().join();
+            int port = agent.getLocalCandidates().get(0).port;
+
+            DatagramSocket attacker = new DatagramSocket();
+            try {
+                // STUN response with arbitrary transaction ID not in agent's pending checks
+                StunMessage resp = new StunMessage(StunMessage.BINDING_RESPONSE);
+                resp.addXorAddressAttribute(StunMessage.ATTR_XOR_MAPPED_ADDRESS, new InetSocketAddress("127.0.0.1", attacker.getLocalPort()));
+                byte[] key = StunMessage.deriveShortTermKey("somepwd");
+                byte[] bytes = resp.encode(key, true);
+
+                attacker.send(new DatagramPacket(bytes, bytes.length, new InetSocketAddress("127.0.0.1", port)));
+                Thread.sleep(100);
+
+                assertFalse(agent.getConnectedFuture().isDone(), "Response with unknown TID must be ignored");
+            } finally {
+                attacker.close();
+            }
+        } finally {
+            agent.close();
+        }
+    }
+
+    @Test
+    public void dataFromNonNominatedAddressIsIgnored() throws Exception {
+        AtomicReference<IceAgent> agentARef = new AtomicReference<>();
+        AtomicReference<IceAgent> agentBRef = new AtomicReference<>();
+
+        IceAgent agentA = new IceAgent("test-data-nom", true, null, sig -> {
+            IceAgent b = agentBRef.get();
+            if (b != null) b.onSignal(sig);
+        });
+        agentARef.set(agentA);
+
+        IceAgent agentB = new IceAgent("test-data-nom", false, null, sig -> {
+            IceAgent a = agentARef.get();
+            if (a != null) a.onSignal(sig);
+        });
+        agentBRef.set(agentB);
+
+        try {
+            CompletableFuture.allOf(agentA.gatherAndSendSignal(), agentB.gatherAndSendSignal()).join();
+            agentA.getConnectedFuture().get(5, TimeUnit.SECONDS);
+            agentB.getConnectedFuture().get(5, TimeUnit.SECONDS);
+
+            AtomicBoolean rogueReceived = new AtomicBoolean(false);
+            agentA.setPacketConsumer(data -> {
+                String str = new String(data, StandardCharsets.UTF_8);
+                if ("ROGUE".equals(str)) {
+                    rogueReceived.set(true);
+                }
+            });
+
+            // Send packet from third party socket (not nominated)
+            DatagramSocket rogue = new DatagramSocket();
+            try {
+                int aPort = agentA.getLocalCandidates().get(0).port;
+                byte[] rogueData = "ROGUE".getBytes(StandardCharsets.UTF_8);
+                rogue.send(new DatagramPacket(rogueData, rogueData.length, new InetSocketAddress("127.0.0.1", aPort)));
+
+                Thread.sleep(100);
+                assertFalse(rogueReceived.get(), "Data from non-nominated address must be ignored");
+            } finally {
+                rogue.close();
+            }
+        } finally {
+            agentA.close();
+            agentB.close();
+        }
+    }
+
+    @Test
+    public void twoTurnServersFirstFailsSecondSucceeds() throws Exception {
+        DatagramSocket workingServer = new DatagramSocket(0, InetAddress.getByName("127.0.0.1"));
+        int workingPort = workingServer.getLocalPort();
+        AtomicBoolean running = new AtomicBoolean(true);
+
+        Thread serverThread = new Thread(() -> {
+            byte[] buf = new byte[2048];
+            while (running.get() && !workingServer.isClosed()) {
+                try {
+                    DatagramPacket p = new DatagramPacket(buf, buf.length);
+                    workingServer.receive(p);
+                    StunMessage msg = StunMessage.decode(buf, 0, p.getLength());
+                    if (msg.getType() == StunMessage.ALLOCATE_REQUEST) {
+                        String user = msg.getStringAttribute(StunMessage.ATTR_USERNAME);
+                        if (user == null) {
+                            StunMessage err = new StunMessage(StunMessage.ALLOCATE_ERROR, msg.getTransactionId());
+                            err.addErrorCode(401, "Unauthorized");
+                            err.addStringAttribute(StunMessage.ATTR_REALM, "realm");
+                            err.addStringAttribute(StunMessage.ATTR_NONCE, "nonce");
+                            byte[] resp = err.encode(null, true);
+                            workingServer.send(new DatagramPacket(resp, resp.length, p.getSocketAddress()));
+                        } else {
+                            byte[] key = StunMessage.deriveLongTermKey("u", "realm", "p");
+                            StunMessage ok = new StunMessage(StunMessage.ALLOCATE_RESPONSE, msg.getTransactionId());
+                            ok.addXorAddressAttribute(StunMessage.ATTR_XOR_RELAYED_ADDRESS, new InetSocketAddress("127.0.0.1", 54322));
+                            ok.addIntAttribute(StunMessage.ATTR_LIFETIME, 600);
+                            byte[] resp = ok.encode(key, true);
+                            workingServer.send(new DatagramPacket(resp, resp.length, p.getSocketAddress()));
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        });
+        serverThread.setDaemon(true);
+        serverThread.start();
+
+        try {
+            // First server points to closed port (fail fast), second server works
+            DatagramSocket dummy = new DatagramSocket();
+            int deadPort = dummy.getLocalPort();
+            dummy.close(); // port is closed
+
+            P2PSession.TurnServer ts1 = new P2PSession.TurnServer("turn:127.0.0.1:" + deadPort, "bad", "bad");
+            P2PSession.TurnServer ts2 = new P2PSession.TurnServer("turn:127.0.0.1:" + workingPort, "u", "p");
+            List<P2PSession.TurnServer> turnServers = new ArrayList<>();
+            turnServers.add(ts1);
+            turnServers.add(ts2);
+
+            P2PSession.IceConfig cfg = new P2PSession.IceConfig(
+                    Collections.emptyList(),
+                    turnServers,
+                    true // relayOnly
+            );
+
+            List<JsonObject> sentSignals = new ArrayList<>();
+            IceAgent agent = new IceAgent("test-2turn", true, cfg, sentSignals::add);
+            try {
+                agent.gatherAndSendSignal().join();
+
+                assertFalse(sentSignals.isEmpty());
+                JsonObject sig = sentSignals.get(0);
+                JsonArray candArr = sig.getAsJsonArray("candidates");
+                assertEquals(1, candArr.size(), "Should gather exactly 1 relay candidate (from working server)");
+                JsonObject cand = candArr.get(0).getAsJsonObject();
+                assertEquals(54322, cand.get("port").getAsInt());
+            } finally {
+                agent.close();
+            }
+        } finally {
+            running.set(false);
+            workingServer.close();
+        }
+    }
 }

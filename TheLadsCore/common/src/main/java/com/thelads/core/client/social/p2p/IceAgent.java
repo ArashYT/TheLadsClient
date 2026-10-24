@@ -65,6 +65,7 @@ public final class IceAgent implements AutoCloseable {
     private final List<Candidate> remoteCandidates = new CopyOnWriteArrayList<>();
 
     private volatile TurnClient turnClient;
+    private final List<TurnClient> allocatedTurnClients = new CopyOnWriteArrayList<>();
     private volatile InetSocketAddress selectedRemoteAddress;
     private volatile boolean selectedPairRelayed = false;
 
@@ -193,15 +194,24 @@ public final class IceAgent implements AutoCloseable {
         // 2. TURN candidates (relay)
         if (config.turn() != null && !config.turn().isEmpty()) {
             for (P2PSession.TurnServer ts : config.turn()) {
+                TurnClient tc = null;
                 try {
                     // TurnClient creates its own dedicated DatagramSocket to avoid thread contention
-                    this.turnClient = new TurnClient(ts.url(), ts.user(), ts.credential());
-                    this.turnClient.setDataHandler(this::handleIncomingTurnData);
-                    InetSocketAddress relayed = turnClient.allocate();
+                    tc = new TurnClient(ts.url(), ts.user(), ts.credential());
+                    tc.setDataHandler(this::handleIncomingTurnData);
+                    InetSocketAddress relayed = tc.allocate();
                     if (relayed != null) {
+                        this.turnClient = tc;
+                        allocatedTurnClients.add(tc);
                         localCandidates.add(new Candidate("relay", relayed.getAddress().getHostAddress(), relayed.getPort(), PRIORITY_RELAY));
+                        break; // Stop at first successful allocation!
+                    } else {
+                        tc.close(); // Close any client that failed
                     }
                 } catch (Exception ignored) {
+                    if (tc != null) {
+                        tc.close(); // Close any client that failed
+                    }
                 }
             }
         }
@@ -359,8 +369,26 @@ public final class IceAgent implements AutoCloseable {
 
     private void handleStunPacket(byte[] buf, int off, int len, InetSocketAddress sender, boolean viaRelay) {
         try {
+            // Finding 1: Every incoming STUN Binding request/response must pass FINGERPRINT
+            if (!StunMessage.validateFingerprint(buf, off, len)) {
+                return;
+            }
+
             StunMessage msg = StunMessage.decode(buf, off, len);
             if (msg.getType() == StunMessage.BINDING_REQUEST) {
+                // Finding 1: USERNAME = "<localUfrag>:<remoteUfrag>"
+                String username = msg.getStringAttribute(StunMessage.ATTR_USERNAME);
+                String expectedUsername = localUfrag + ":" + (remoteUfrag != null ? remoteUfrag : "");
+                if (username == null || !username.equals(expectedUsername)) {
+                    return;
+                }
+
+                // Finding 1: MESSAGE-INTEGRITY using short-term key from our local password
+                byte[] integrityKey = StunMessage.deriveShortTermKey(localPwd);
+                if (!StunMessage.validateMessageIntegrity(buf, off, len, integrityKey)) {
+                    return;
+                }
+
                 boolean useCandidate = msg.hasAttribute(StunMessage.ATTR_USE_CANDIDATE);
 
                 StunMessage resp = new StunMessage(StunMessage.BINDING_RESPONSE, msg.getTransactionId());
@@ -388,19 +416,33 @@ public final class IceAgent implements AutoCloseable {
                     nominate(sender, viaRelay);
                 }
             } else if (msg.getType() == StunMessage.BINDING_RESPONSE) {
+                // Finding 1: Response must match an outstanding transaction id
                 String tidHex = toHex(msg.getTransactionId());
                 CandidatePair pair = pendingChecks.get(tidHex);
-                if (pair != null) {
-                    pair.succeeded = true;
-                    boolean isRelayed = "relay".equals(pair.local.type) || "relay".equals(pair.remote.type);
-                    nominate(pair.remote.toSocketAddress(), isRelayed);
+                if (pair == null) {
+                    return; // unknown transaction id -> drop silently
                 }
+
+                // Finding 1: MESSAGE-INTEGRITY using short-term key from peer pwd
+                if (remotePwd == null) return;
+                byte[] integrityKey = StunMessage.deriveShortTermKey(remotePwd);
+                if (!StunMessage.validateMessageIntegrity(buf, off, len, integrityKey)) {
+                    return;
+                }
+
+                pair.succeeded = true;
+                boolean isRelayed = "relay".equals(pair.local.type) || "relay".equals(pair.remote.type);
+                nominate(pair.remote.toSocketAddress(), isRelayed);
             }
         } catch (Exception ignored) {
         }
     }
 
     private void handleDemuxedPacket(byte[] payload, InetSocketAddress sender) {
+        // Finding 1: Data packets are accepted only from the nominated pair's address
+        if (selectedRemoteAddress == null || !sender.equals(selectedRemoteAddress)) {
+            return;
+        }
         bytesReceived.addAndGet(payload.length);
         Consumer<byte[]> c = packetConsumer;
         if (c != null) {
@@ -456,8 +498,17 @@ public final class IceAgent implements AutoCloseable {
     @Override
     public void close() {
         if (closed.compareAndSet(false, true)) {
-            if (turnClient != null) {
-                turnClient.close();
+            for (TurnClient tc : allocatedTurnClients) {
+                try {
+                    tc.close();
+                } catch (Exception ignored) {
+                }
+            }
+            if (turnClient != null && !allocatedTurnClients.contains(turnClient)) {
+                try {
+                    turnClient.close();
+                } catch (Exception ignored) {
+                }
             }
             if (!socket.isClosed()) {
                 socket.close();

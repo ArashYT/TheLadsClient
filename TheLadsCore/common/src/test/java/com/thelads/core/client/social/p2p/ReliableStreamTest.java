@@ -225,4 +225,65 @@ public class ReliableStreamTest {
             sockB.close();
         }
     }
+
+    @Test
+    public void outOfRangeAckIgnoredWithoutSpinningOrStateCorruption() throws Exception {
+        ReliableStream stream = new ReliableStream((data, off, len) -> {});
+        try {
+            // Write 1 chunk of data so sndNxt moves to 1 (sndUna = 0, sndNxt = 1)
+            stream.getOutputStream().write("test".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            stream.getOutputStream().flush();
+
+            // Construct an out-of-range ACK with ack = Integer.MAX_VALUE - 10
+            byte[] badAckPkt = new byte[ReliableStream.BASE_HEADER_SIZE];
+            badAckPkt[0] = (byte) (ReliableStream.FLAG_PROTOCOL | ReliableStream.FLAG_ACK);
+            badAckPkt[1] = 0; // 0 SACK longs
+            badAckPkt[2] = 0;
+            badAckPkt[3] = 0;
+            StunMessage.putIntBE(badAckPkt, 4, 0);
+            StunMessage.putIntBE(badAckPkt, 8, Integer.MAX_VALUE - 10);
+            StunMessage.putIntBE(badAckPkt, 12, 0);
+
+            long start = System.currentTimeMillis();
+            stream.onDatagramReceived(badAckPkt, 0, badAckPkt.length);
+            long elapsed = System.currentTimeMillis() - start;
+
+            assertTrue(elapsed < 500, "Out-of-range ACK must not spin or block: took " + elapsed + "ms");
+
+            // Now send a valid ACK for seq 0
+            byte[] goodAckPkt = new byte[ReliableStream.BASE_HEADER_SIZE];
+            goodAckPkt[0] = (byte) (ReliableStream.FLAG_PROTOCOL | ReliableStream.FLAG_ACK);
+            goodAckPkt[1] = 0;
+            goodAckPkt[2] = 0;
+            goodAckPkt[3] = 0;
+            StunMessage.putIntBE(goodAckPkt, 4, 0);
+            StunMessage.putIntBE(goodAckPkt, 8, 0);
+            StunMessage.putIntBE(goodAckPkt, 12, 0);
+
+            assertDoesNotThrow(() -> stream.onDatagramReceived(goodAckPkt, 0, goodAckPkt.length));
+        } finally {
+            stream.close();
+        }
+    }
+
+    @Test
+    public void rejectOversizedDatagramPayloadWithoutException() throws Exception {
+        ReliableStream stream = new ReliableStream((data, off, len) -> {});
+        try {
+            int oversizedLen = ReliableStream.MAX_PAYLOAD_SIZE + 200;
+            byte[] oversizedPkt = new byte[ReliableStream.BASE_HEADER_SIZE + oversizedLen];
+            oversizedPkt[0] = (byte) (ReliableStream.FLAG_PROTOCOL | ReliableStream.FLAG_DATA | ReliableStream.FLAG_ACK);
+            oversizedPkt[1] = 0;
+            oversizedPkt[2] = (byte) ((oversizedLen >> 8) & 0xFF);
+            oversizedPkt[3] = (byte) (oversizedLen & 0xFF);
+            StunMessage.putIntBE(oversizedPkt, 4, 0);
+            StunMessage.putIntBE(oversizedPkt, 8, -1);
+            StunMessage.putIntBE(oversizedPkt, 12, 0);
+
+            assertDoesNotThrow(() -> stream.onDatagramReceived(oversizedPkt, 0, oversizedPkt.length));
+            assertEquals(0, stream.getInputStream().available());
+        } finally {
+            stream.close();
+        }
+    }
 }

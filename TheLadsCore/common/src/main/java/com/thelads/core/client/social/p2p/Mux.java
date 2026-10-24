@@ -67,9 +67,9 @@ public final class Mux implements AutoCloseable {
                 // Read 5-byte header: streamId (2), type (1), len (2)
                 readFully(underIn, header, 0, 5);
 
-                int streamId = ((header[0] & 0xFF) << 8) | (header[1] & 0xFF);
+                int streamId = StunMessage.getShortBE(header, 0) & 0xFFFF;
                 int type = header[2] & 0xFF;
-                int len = ((header[3] & 0xFF) << 8) | (header[4] & 0xFF);
+                int len = StunMessage.getShortBE(header, 3) & 0xFFFF;
 
                 if (len > payloadBuf.length) {
                     payloadBuf = new byte[len];
@@ -119,11 +119,9 @@ public final class Mux implements AutoCloseable {
 
         synchronized (underOut) {
             byte[] hdr = new byte[5];
-            hdr[0] = (byte) ((streamId >> 8) & 0xFF);
-            hdr[1] = (byte) (streamId & 0xFF);
+            StunMessage.putShortBE(hdr, 0, (short) streamId);
             hdr[2] = (byte) (type & 0xFF);
-            hdr[3] = (byte) ((len >> 8) & 0xFF);
-            hdr[4] = (byte) (len & 0xFF);
+            StunMessage.putShortBE(hdr, 3, (short) len);
 
             underOut.write(hdr);
             if (len > 0) {
@@ -172,12 +170,16 @@ public final class Mux implements AutoCloseable {
         private final Condition creditCond = sendLock.newCondition();
         private long sendCredit = INITIAL_WINDOW_SIZE;
 
+        private final byte[] singleReadBuf = new byte[1];
+        private final byte[] singleWriteBuf = new byte[1];
+
         private final InputStream in = new InputStream() {
             @Override
             public int read() throws IOException {
-                byte[] b = new byte[1];
-                int n = read(b, 0, 1);
-                return n == -1 ? -1 : (b[0] & 0xFF);
+                synchronized (singleReadBuf) {
+                    int n = read(singleReadBuf, 0, 1);
+                    return n == -1 ? -1 : (singleReadBuf[0] & 0xFF);
+                }
             }
 
             @Override
@@ -231,7 +233,10 @@ public final class Mux implements AutoCloseable {
         private final OutputStream out = new OutputStream() {
             @Override
             public void write(int b) throws IOException {
-                write(new byte[]{(byte) b}, 0, 1);
+                synchronized (singleWriteBuf) {
+                    singleWriteBuf[0] = (byte) b;
+                    write(singleWriteBuf, 0, 1);
+                }
             }
 
             @Override
