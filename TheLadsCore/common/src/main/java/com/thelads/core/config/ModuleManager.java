@@ -700,6 +700,11 @@ public class ModuleManager {
         chunks.addOption(new SliderOption(com.thelads.core.client.ChunkBorders.SPACING, 2, 1, 8, 1));
         chunks.addOption(new ColorOption(com.thelads.core.client.ChunkBorders.SECTION, false, 0xFF4040FF));
         register(chunks, Module.Category.MECHANIC);
+        register(com.thelads.core.client.SoundFilters.createModule(), Module.Category.MECHANIC);
+        register(com.thelads.core.client.TrueTypeFont.createModule(), Module.Category.MECHANIC);
+        register(com.thelads.core.client.media.MumbleLink.createModule(), Module.Category.MECHANIC);
+        register(com.thelads.core.client.worldedit.WorldEditCUI.createModule(), Module.Category.MECHANIC);
+        hud("TeamSpeak", "Displays active TeamSpeak 3 channel participants and speaking status.");
     }
 
     public static ModuleManager getInstance() {

@@ -8,6 +8,7 @@
   },
   "client": [
     "ConnectScreenQolMixin1201",
+    "FontMixin1201",
     "GuiGraphicsQolMixin1201",
     "MinecraftQolMixin1201",
     "MouseHandlerAccessor1201",

@@ -77,7 +77,8 @@ public final class Qol26 {
 
     public static void register() {
         ModuleSupport.registerBuiltIn(TooltipScroll.NAME, CrashCatcher.NAME, QuickReconnect.NAME, KeepCursor.NAME, SoundVolumes.NAME,
-            ChunkBorders.NAME);
+            ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.TrueTypeFont.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME, "TeamSpeak");
+
         ModuleSupport.registerUnavailable(GuiScaleOverride.NAME, "26.x keeps the GUI scale a whole number through its whole GUI renderer "
             + "(projection, scissor, text and item atlases): use the game's GUI Scale option.");
         ClientTickEvents.END_CLIENT_TICK.register(Qol26::tick);
@@ -94,6 +95,12 @@ public final class Qol26 {
         KeepCursor.tick();
         SoundVolumes.tick();
         ChunkBorders.tick();
+        boolean water = mc.player != null && (mc.player.isEyeInFluid(net.minecraft.tags.FluidTags.WATER) || mc.player.isInWater());
+        boolean cave = mc.player != null && mc.level != null && !mc.level.canSeeSky(mc.player.blockPosition()) && mc.player.getY() < 60;
+        com.thelads.core.client.SoundFilters.tick(water, cave);
+        com.thelads.core.client.TrueTypeFont.tick();
+        com.thelads.core.client.media.MumbleLink.tick();
+        com.thelads.core.client.worldedit.WorldEditCUI.tick();
         if (!hookChecked) {
             hookChecked = true;
             if (!tickHooked) ModuleSupport.registerUnavailable(CrashCatcher.NAME, "Another mod changes Minecraft.runTick here, so the game tick "
@@ -221,7 +228,7 @@ public final class Qol26 {
 
     private static void chunkBorders(LevelRenderContext context) {
         Minecraft mc = Minecraft.getInstance();
-        if (!ChunkBorders.on || mc.level == null || mc.getCameraEntity() == null) return;
+        if ((!ChunkBorders.on && !com.thelads.core.client.worldedit.WorldEditCUI.on) || mc.level == null || mc.getCameraEntity() == null) return;
         Vec3 camera = context.levelState().cameraRenderState.pos;
         camX = camera.x;
         camY = camera.y;
@@ -235,7 +242,8 @@ public final class Qol26 {
         pose = at;
         lines = buffer;
         var block = mc.getCameraEntity().blockPosition();
-        ChunkBorders.draw(block.getX() >> 4, block.getZ() >> 4, mc.level.getMinY(), mc.level.getMaxY() + 1, SINK);
+        if (ChunkBorders.on) ChunkBorders.draw(block.getX() >> 4, block.getZ() >> 4, mc.level.getMinY(), mc.level.getMaxY() + 1, SINK);
+        if (com.thelads.core.client.worldedit.WorldEditCUI.on) com.thelads.core.client.worldedit.WorldEditCUI.draw(SINK);
         lines = null;
     }
 

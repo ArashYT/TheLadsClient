@@ -8,6 +8,7 @@
   },
   "client": [
     "ConnectScreenQolMixin26",
+    "FontMixin26",
     "GuiGraphicsQolMixin26",
     "GuiQolMixin26",
     "MinecraftQolMixin26",

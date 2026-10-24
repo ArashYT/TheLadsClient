@@ -98,6 +98,20 @@ public abstract class NetHandlerPlayClientMixin {
         LadsApiClient.joinGame(0L);
     }
 
+    @Inject(method = "handleCustomPayload", at = @At("HEAD"), require = 0)
+    private void ladsWorldEditCuiPayload(net.minecraft.network.play.server.S3FPacketCustomPayload packet, CallbackInfo ci) {
+        String channel = packet.getChannelName();
+        if (com.thelads.core.client.worldedit.WorldEditCUI.CHANNEL_MODERN.equalsIgnoreCase(channel)
+                || com.thelads.core.client.worldedit.WorldEditCUI.CHANNEL_LEGACY.equalsIgnoreCase(channel)) {
+            net.minecraft.network.PacketBuffer buffer = packet.getBufferData();
+            if (buffer != null) {
+                byte[] bytes = new byte[buffer.readableBytes()];
+                buffer.readBytes(bytes);
+                com.thelads.core.client.worldedit.WorldEditCUI.onPacket(channel, bytes);
+            }
+        }
+    }
+
     @Inject(method = {"cleanup", "onDisconnect"}, at = @At("HEAD"), require = 1)
     private void ladsResetConnection(CallbackInfo ci) {
         TabListCache189.reset();

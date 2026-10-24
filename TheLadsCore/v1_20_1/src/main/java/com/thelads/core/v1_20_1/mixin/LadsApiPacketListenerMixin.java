@@ -32,6 +32,21 @@ public abstract class LadsApiPacketListenerMixin {
     @Inject(method = "handleCustomPayload", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$handleCustomPayload(ClientboundCustomPayloadPacket packet, CallbackInfo ci) {
         ResourceLocation id = packet.getIdentifier();
+        if (id != null && ("worldedit:cui".equals(id.toString()) || "WECUI".equals(id.getPath()))) {
+            FriendlyByteBuf buf = packet.getData();
+            if (buf != null) {
+                byte[] payload = new byte[buf.readableBytes()];
+                buf.getBytes(buf.readerIndex(), payload);
+                Minecraft mc = Minecraft.getInstance();
+                if (mc != null && mc.isSameThread()) {
+                    com.thelads.core.client.worldedit.WorldEditCUI.onPacket(id.toString(), payload);
+                } else if (mc != null) {
+                    mc.execute(() -> com.thelads.core.client.worldedit.WorldEditCUI.onPacket(id.toString(), payload));
+                }
+            }
+            ci.cancel();
+            return;
+        }
         if (LadsApiTransport1201.isLadsApiChannel(id)) {
             FriendlyByteBuf buf = packet.getData();
             if (buf != null) {
