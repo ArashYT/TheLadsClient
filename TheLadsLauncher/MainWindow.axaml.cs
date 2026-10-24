@@ -1122,8 +1122,28 @@ public partial class MainWindow : Window
                 StatusText.Text = "Log is empty; nothing to share.";
                 return;
             }
-            StatusText.Text = "Sanitizing and uploading log...";
-            var result = await TheLadsLauncher.Services.LogShareService.UploadLogAsync(LogBox.Text);
+
+            string sanitized = TheLadsLauncher.Services.LogShareService.SanitizeLog(LogBox.Text);
+            string preview = sanitized.Length > 2000
+                ? sanitized[..2000] + "\n\n[... truncated preview; full sanitized log will be uploaded ...]"
+                : sanitized;
+
+            string prompt = "The following sanitized log will be publicly uploaded to mclo.gs for sharing:\n\n" + preview;
+            var dialog = CreateLadsDialog(
+                "Upload Log to mclo.gs",
+                prompt,
+                new[] { ("Upload to mclo.gs", false, true) },
+                "Cancel");
+
+            int? choice = await dialog.ShowDialog<int?>(this);
+            if (choice != 0)
+            {
+                StatusText.Text = "Log upload cancelled.";
+                return;
+            }
+
+            StatusText.Text = "Uploading sanitized log to mclo.gs...";
+            var result = await TheLadsLauncher.Services.LogShareService.UploadLogAsync(sanitized);
             if (result.Success && result.Url != null)
             {
                 try
