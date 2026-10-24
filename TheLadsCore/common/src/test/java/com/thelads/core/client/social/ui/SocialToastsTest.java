@@ -124,6 +124,36 @@ class SocialToastsTest {
         @Override public int getScaledHeight() { return h; }
     }
 
+    /** QA low: while the Friends/Host screen draws, toasts sit below its tabs (clicks follow them); afterwards they go back up. */
+    @Test
+    void toastsStayBelowAReservedHeader() {
+        AtomicBoolean accepted = new AtomicBoolean(false);
+        SocialToasts.show("Invite", "body", "Join", null, () -> accepted.set(true), () -> {});
+        SocialToasts.reserveTop(64);
+        assertFalse(SocialToasts.mouseClicked(800 - 210 + 30, 10 + 38, 0, 800, 600), "nothing at the old spot over the tabs");
+        assertTrue(SocialToasts.mouseClicked(800 - 210 + 30, 64 + 38, 0, 800, 600));
+        assertTrue(accepted.get());
+        mockClock.addAndGet(1_000); // the screen closed: no reserve for a while
+        SocialToasts.show("Invite", "body", "Join", null, () -> {}, () -> {});
+        assertTrue(SocialToasts.mouseClicked(800 - 210 + 30, 10 + 38, 0, 800, 600));
+    }
+
+    /** QA low: a request answered elsewhere (Host screen, chat link) or expired on the backend takes its toast with it. */
+    @Test
+    void toastGoesOnceItsRequestIsNoLongerPending() {
+        com.thelads.core.client.social.SocialState social = com.thelads.core.client.social.SocialState.get();
+        social.handleJoinRequest("req-toast-1", java.util.UUID.randomUUID(), null);
+        SocialToasts.showAction("Join Request", "Pal wants to join your world", "join_accept:req-toast-1", "join_deny:req-toast-1");
+        SocialToasts.showAction("Join Request", "Gone", "join_accept:req-unknown", "join_deny:req-unknown");
+        assertEquals(1, SocialToasts.activeToasts().size(), "only a pending request shows buttons");
+        com.google.gson.JsonObject expired = new com.google.gson.JsonObject();
+        expired.addProperty("t", "error");
+        expired.addProperty("code", "expired");
+        expired.addProperty("ref", "req-toast-1");
+        social.onMessage(expired);
+        assertEquals(0, SocialToasts.activeToasts().size());
+    }
+
     @Test
     void atMostTenToasts() {
         SocialToasts.clear();

@@ -280,6 +280,8 @@ public final class HostScreenLogic {
                     active ? LadsPalette.TEXT : LadsPalette.MUTED, active);
         }
 
+        SocialToasts.reserveTop(tabY + tabH + 6);
+
         // Main Settings Card
         int contentY = tabY + tabH + 8;
         int contentH = height - contentY - 36;
@@ -321,7 +323,7 @@ public final class HostScreenLogic {
     }
 
     private void renderGeneralSection(LadsGraphics g, int x, int y, int w, int h, int mx, int my, int sy, int sh) {
-        int totalH = 160;
+        int totalH = 176; // 4 rows x 28 + welcome label 20 + input 22 + padding: the last row scrolls fully into view
         maxScroll = Math.max(0, totalH - (h - 12));
         scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
 
@@ -357,7 +359,7 @@ public final class HostScreenLogic {
 
         itemY += 28;
         // Max players
-        g.drawText("Max guests: " + maxPlayers + " (you not counted)", x + 12, itemY + 6, LadsPalette.TEXT, false);
+        g.drawText("Max guests: " + maxPlayers, x + 12, itemY + 6, LadsPalette.TEXT, false);
         Box minusBtn = new Box(x + w - 80, itemY + 2, 24, optH);
         Box plusBtn = new Box(x + w - 40, itemY + 2, 24, optH);
         if (minusBtn.y + minusBtn.h > sy && minusBtn.y < sy + sh) {

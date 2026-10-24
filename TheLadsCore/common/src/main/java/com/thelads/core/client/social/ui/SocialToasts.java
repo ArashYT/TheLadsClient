@@ -31,6 +31,8 @@ public final class SocialToasts {
 
     private static final List<Toast> toasts = new ArrayList<>();
     private static LongSupplier timeSupplier = System::currentTimeMillis;
+    private static int reservedTop;
+    private static long reservedAt = Long.MIN_VALUE / 2;
 
     private SocialToasts() {}
 
@@ -40,13 +42,19 @@ public final class SocialToasts {
 
     public static synchronized void clear() {
         toasts.clear();
+        reservedAt = Long.MIN_VALUE / 2; // no screen reserve
     }
 
     public static synchronized void show(String title, String body, String acceptAction, String denyAction,
                                          Runnable onAccept, Runnable onDeny) {
+        show(null, title, body, acceptAction, denyAction, onAccept, onDeny);
+    }
+
+    /** id: the SocialState action id the buttons run (purgeExpired drops the toast once it is no longer pending), or null. */
+    private static void show(String id, String title, String body, String acceptAction, String denyAction, Runnable onAccept, Runnable onDeny) {
         long now = timeSupplier.getAsLong();
         Toast toast = new Toast(
-                String.valueOf(now) + "_" + toasts.size(),
+                id != null ? id : now + "_" + toasts.size(),
                 title != null ? title : "",
                 body != null ? body : "",
                 acceptAction,
@@ -65,11 +73,22 @@ public final class SocialToasts {
         if (acceptAction == null && denyAction == null) toasts.removeIf(t -> t.title().equals(title) && t.acceptAction() == null && t.denyAction() == null);
         String acceptLabel = acceptAction == null ? null
                 : acceptAction.startsWith("invite_accept:") ? "Join" : acceptAction.startsWith("dm:") ? "Reply" : "Accept";
-        show(title, body, acceptLabel, denyAction == null ? null : "Decline", action(acceptAction), action(denyAction));
+        show(acceptAction != null ? acceptAction : denyAction, title, body, acceptLabel, denyAction == null ? null : "Decline",
+                action(acceptAction), action(denyAction));
     }
 
     private static Runnable action(String id) {
         return id == null ? null : () -> SocialState.get().handleAction(id);
+    }
+
+    /** An open Friends/Host screen calls this every frame with its header's bottom: toasts stay below its tabs and buttons. */
+    public static synchronized void reserveTop(int y) {
+        reservedTop = y;
+        reservedAt = timeSupplier.getAsLong();
+    }
+
+    private static int top() {
+        return timeSupplier.getAsLong() - reservedAt < 500 ? Math.max(10, reservedTop) : 10;
     }
 
     /** Checked before building a graphics adapter, so the HUD allocates nothing while there is no toast. */
@@ -114,7 +133,8 @@ public final class SocialToasts {
         long now = timeSupplier.getAsLong();
         for (int i = toasts.size() - 1; i >= 0; i--) {
             Toast t = toasts.get(i);
-            if (now - t.createdAt() >= t.durationMs()) {
+            // An action id (showAction) whose request was answered elsewhere or expired: no stale buttons
+            if (now - t.createdAt() >= t.durationMs() || t.id().indexOf(':') > 0 && !SocialState.get().actionPending(t.id())) {
                 toasts.remove(i);
             }
         }
@@ -128,7 +148,7 @@ public final class SocialToasts {
         int maxVisible = 5;
         int count = Math.min(toasts.size(), maxVisible);
         int right = screenWidth - 10;
-        int top = 10;
+        int top = top();
 
         for (int i = 0; i < count; i++) {
             Toast t = toasts.get(i);
@@ -181,7 +201,7 @@ public final class SocialToasts {
         int maxVisible = 5;
         int count = Math.min(toasts.size(), maxVisible);
         int right = screenWidth - 10;
-        int top = 10;
+        int top = top();
 
         for (int i = 0; i < count; i++) {
             Toast t = toasts.get(i);

@@ -696,6 +696,22 @@ public class SocialState {
         }
     }
 
+    /** The request behind a toast/chat action is still open here (answered anywhere or expired: its toast goes away). */
+    public boolean actionPending(String actionId) {
+        int colon = actionId == null ? -1 : actionId.indexOf(':');
+        if (colon == -1) return true;
+        String arg = actionId.substring(colon + 1);
+        return switch (actionId.substring(0, colon)) {
+            case "invite_accept", "invite_decline" -> activeInvites.containsKey(arg);
+            case "join_accept", "join_deny" -> activeJoinRequests.containsKey(arg);
+            case "friend_accept", "friend_decline" -> {
+                UUID id = parseUuid(arg);
+                yield id != null && incomingMap.containsKey(id);
+            }
+            default -> true;
+        };
+    }
+
     // --- Inbound message dispatching ---
 
     public void onHello(JsonObject hello) {
@@ -930,6 +946,11 @@ public class SocialState {
             case SocialProtocol.ERROR -> {
                 String code = str(msg, "code");
                 LOGGER.warn("SocialState: received error from server: {}", code);
+                String ref = str(msg, "ref");
+                if (SocialProtocol.E_EXPIRED.equals(code) && ref != null) { // an invite or join request timed out on the backend
+                    activeInvites.remove(ref);
+                    activeJoinRequests.remove(ref);
+                }
             }
         }
     }

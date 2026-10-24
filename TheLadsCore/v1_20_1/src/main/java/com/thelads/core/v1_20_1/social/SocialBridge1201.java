@@ -436,8 +436,7 @@ public final class SocialBridge1201 implements SocialBridge {
 
     @Override
     public GameInfo gameInfo() {
-        String mcVer = Minecraft.getInstance().getLaunchedVersion();
-        if (mcVer == null || mcVer.isEmpty()) mcVer = "1.20.1";
+        String mcVer = net.minecraft.SharedConstants.getCurrentVersion().getName(); // never the launcher's profile id (fabric-loader-...)
         String loader = "fabric";
         if (FabricLoader.getInstance().isModLoaded("connectormod")) {
             loader = "forge";

@@ -458,6 +458,8 @@ public final class FriendsScreenLogic {
                     active ? LadsPalette.TEXT : LadsPalette.MUTED, active);
         }
 
+        SocialToasts.reserveTop(tabY + tabH + 6);
+
         // Content Area
         int contentY = tabY + tabH + 8;
         int contentH = height - contentY - 36;
