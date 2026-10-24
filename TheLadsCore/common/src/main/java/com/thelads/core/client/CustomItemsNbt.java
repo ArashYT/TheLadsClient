@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.Locale;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * One {@code nbt.<path>=<value>} condition of a Custom Item Textures rule (CustomItems), as OptiFine's public-domain docs describe it
@@ -30,7 +32,15 @@ public final class CustomItemsNbt {
         String raw(Object node);
     }
 
+    private static final Logger LOG = LoggerFactory.getLogger("TheLadsCore");
     private static final int EXACT = 0, PATTERN = 1, IPATTERN = 2, REGEX = 3, IREGEX = 4, RANGE = 5, EXISTS = 6;
+    /** The most of a text a regex reads: names and lore lines are far shorter, and a runaway pattern has less to chew on. */
+    static final int MAX_TEXT = 1024;
+    /**
+     * Characters one regex evaluation may read (about a millisecond). A pack's pattern that backtracks without end (e.g. (a+)+$ on
+     * "aaaa...b") would otherwise freeze the render thread; past this it is a no match and the condition is off (see {@link #off}).
+     */
+    static final int REGEX_BUDGET = 1_000_000;
 
     private final String[] path;
     private final int kind;
@@ -38,6 +48,8 @@ public final class CustomItemsNbt {
     private final String value;
     private final Pattern regex;
     private final int[] range;
+    /** A regex here ran past {@link #REGEX_BUDGET}: the rule never matches again until resources reload (a new condition). */
+    private volatile boolean off;
 
     private CustomItemsNbt(String[] path, int kind, boolean negative, boolean raw, String value, Pattern regex, int[] range) {
         this.path = path;
@@ -100,8 +112,9 @@ public final class CustomItemsNbt {
 
     /** Whether the item's NBT root (null when it has none) passes. */
     public boolean matches(Object root, Access access) {
+        if (off) return false;
         boolean found = root != null && find(root, 0, access);
-        return found != negative;
+        return !off && found != negative;
     }
 
     private boolean find(Object node, int i, Access access) {
@@ -144,7 +157,7 @@ public final class CustomItemsNbt {
             case PATTERN: return glob(value, text);
             case IPATTERN: return glob(value, text.toLowerCase(Locale.ROOT));
             case REGEX:
-            case IREGEX: return regex.matcher(text).matches();
+            case IREGEX: return regex(text);
             case RANGE:
                 if (!(number instanceof Number) || number instanceof Float || number instanceof Double) return false;
                 long n = ((Number) number).longValue();
@@ -166,6 +179,50 @@ public final class CustomItemsNbt {
                     return false;
                 }
         }
+    }
+
+    /** The regex against at most {@link #MAX_TEXT} characters, within {@link #REGEX_BUDGET}; a runaway turns this condition off. */
+    private boolean regex(String text) {
+        if (off) return false;
+        try {
+            return regex.matcher(new Budgeted(text)).matches();
+        } catch (Budgeted.Exceeded runaway) {
+            off = true;
+            LOG.warn("Custom Item Textures: nbt.{} regex '{}' ran too long on an item's text; that rule is off until resources reload",
+                String.join(".", path), regex.pattern());
+            return false;
+        }
+    }
+
+    /** A text a regex reads, cut at {@link #MAX_TEXT}, that gives up once {@link #REGEX_BUDGET} characters have been read. */
+    static final class Budgeted implements CharSequence {
+        /** Thrown through the matcher (no stack trace, one instance: nothing allocated per runaway). */
+        static final class Exceeded extends RuntimeException {
+            static final Exceeded INSTANCE = new Exceeded();
+
+            private Exceeded() {
+                super("regex budget exceeded", null, false, false);
+            }
+        }
+
+        private final String text;
+        private final int length;
+        private int left = REGEX_BUDGET;
+
+        Budgeted(String text) {
+            this.text = text;
+            length = Math.min(text.length(), MAX_TEXT);
+        }
+
+        @Override public int length() { return length; }
+
+        @Override public char charAt(int index) {
+            if (--left < 0) throw Exceeded.INSTANCE;
+            return text.charAt(index);
+        }
+
+        @Override public CharSequence subSequence(int start, int end) { return text.substring(start, end); }
+        @Override public String toString() { return text.substring(0, length); }
     }
 
     /** {@code *} any run of characters, {@code ?} one character, the rest literal; the whole text must match. */

@@ -14,6 +14,8 @@
     "ItemStackCitMixin189",
     "LayerArmorBaseCitMixin189",
     "RenderItemCitInvoker189",
-    "RenderItemCitMixin189"
+    "RenderItemCitMixin189",
+    "StitcherCitAccessor189",
+    "TextureMapCitMixin189"
   ]
 }

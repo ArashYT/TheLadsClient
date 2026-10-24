@@ -7,6 +7,7 @@ import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.CustomItemTexturesModule;
 import com.thelads.core.v1_8_9.cit.mixin.AbstractResourcePackCitAccessor189;
 import com.thelads.core.v1_8_9.cit.mixin.RenderItemCitInvoker189;
+import com.thelads.core.v1_8_9.cit.mixin.StitcherCitAccessor189;
 import com.thelads.core.v1_8_9.feature.Options189;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -25,8 +26,8 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.Iterator;
+import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import net.minecraft.client.Minecraft;
@@ -42,6 +43,8 @@ import net.minecraft.client.renderer.block.model.ItemCameraTransforms;
 import net.minecraft.client.renderer.block.model.ItemModelGenerator;
 import net.minecraft.client.renderer.block.model.ModelBlock;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.renderer.StitcherException;
+import net.minecraft.client.renderer.texture.Stitcher;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.client.resources.AbstractResourcePack;
@@ -70,6 +73,8 @@ import net.minecraft.nbt.NBTTagList;
 import net.minecraft.nbt.NBTTagLong;
 import net.minecraft.nbt.NBTTagShort;
 import net.minecraft.nbt.NBTTagString;
+import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.RegistrySimple;
 import net.minecraft.util.ResourceLocation;
@@ -82,6 +87,7 @@ import net.minecraftforge.client.model.IPerspectiveAwareModel;
 import org.apache.commons.lang3.tuple.Pair;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.fml.common.ProgressManager;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
@@ -124,6 +130,8 @@ public final class Cit189 {
     private static final Map<CustomItems.Rule, Map<IBakedModel, IBakedModel>> BAKED = new IdentityHashMap<CustomItems.Rule, Map<IBakedModel, IBakedModel>>();
     /** Armor and enchantment textures (bound directly, not atlas sprites) by path. */
     private static final Map<String, ResourceLocation> ARMOR = new HashMap<String, ResourceLocation>();
+    private static final Map<CustomItems.Rule, Map<ItemArmor.ArmorMaterial, ResourceLocation[]>> ARMOR_TEXTURES =
+        new IdentityHashMap<CustomItems.Rule, Map<ItemArmor.ArmorMaterial, ResourceLocation[]>>();
     private static final float[] COLOR = new float[4];
     private static ItemCameraTransforms flat;
 
@@ -143,6 +151,8 @@ public final class Cit189 {
         NBTTagCompound tag;
         long checked;
         CustomItems.Rule itemRule, armorRule;
+        /** The armor rule's textures: layer_1, layer_2, layer_1_overlay, layer_2_overlay (null where it has none). */
+        ResourceLocation[] armor;
         CustomItems.Effect[] effects = CustomItems.Rules.NO_EFFECTS;
         IBakedModel original, model;
     }
@@ -207,6 +217,7 @@ public final class Cit189 {
         LAYERS.clear();
         BAKED.clear();
         ARMOR.clear();
+        ARMOR_TEXTURES.clear();
         named = ids;
         rules = loaded;
         epoch++;
@@ -218,22 +229,23 @@ public final class Cit189 {
         List<IResourcePack> packs = new ArrayList<IResourcePack>();
         for (ResourcePackRepository.Entry entry : repository.getRepositoryEntries()) packs.add(entry.getResourcePack());
         if (repository.getResourcePackInstance() != null) packs.add(repository.getResourcePackInstance());
-        final Set<String> files = new TreeSet<String>();
-        for (IResourcePack pack : packs) list(pack, files);
+        // Packs in the order Minecraft applies them (the bottom of the Selected list first, the server's last): a later one wins.
+        final Map<String, Integer> files = new HashMap<String, Integer>();
+        for (int i = 0; i < packs.size(); i++) list(packs.get(i), i, files);
         if (files.isEmpty()) return CustomItems.Rules.EMPTY;
-        List<String> properties = new ArrayList<String>();
-        for (String file : files) if (file.endsWith(".properties")) properties.add(file);
-        return CustomItems.load(properties, name -> read(resources, name), name -> files.contains(name) || exists(resources, name), IDS);
+        Map<String, Integer> properties = new TreeMap<String, Integer>();
+        for (Map.Entry<String, Integer> file : files.entrySet()) if (file.getKey().endsWith(".properties")) properties.put(file.getKey(), file.getValue());
+        return CustomItems.load(properties, name -> read(resources, name), name -> files.containsKey(name) || exists(resources, name), IDS);
     }
 
-    /** Every file under the pack's CIT folders, as "minecraft:path". */
-    private static void list(IResourcePack pack, Set<String> files) {
+    /** Every file under the pack's CIT folders, as "minecraft:path", with this pack's number. */
+    private static void list(IResourcePack pack, int number, Map<String, Integer> files) {
         if (!(pack instanceof AbstractResourcePack)) return;
         File file = ((AbstractResourcePackCitAccessor189) pack).lads$citPackFile();
         if (file == null) return;
         if (file.isDirectory()) {
             File assets = new File(file, "assets/minecraft");
-            for (String folder : CustomItems.FOLDERS) walk(new File(assets, folder), folder, files);
+            for (String folder : CustomItems.FOLDERS) walk(new File(assets, folder), folder, number, files);
             return;
         }
         try (ZipFile zip = new ZipFile(file)) {
@@ -243,19 +255,19 @@ public final class Cit189 {
                 String name = entry.getName();
                 if (entry.isDirectory() || !name.startsWith("assets/minecraft/")) continue;
                 String path = name.substring("assets/minecraft/".length());
-                for (String folder : CustomItems.FOLDERS) if (path.startsWith(folder)) files.add("minecraft:" + path);
+                for (String folder : CustomItems.FOLDERS) if (path.startsWith(folder)) files.put("minecraft:" + path, number);
             }
         } catch (IOException unreadable) {
             LOGGER.warn("Custom Item Textures: cannot list {}", file.getName());
         }
     }
 
-    private static void walk(File dir, String path, Set<String> files) {
+    private static void walk(File dir, String path, int number, Map<String, Integer> files) {
         File[] children = dir.listFiles();
         if (children == null) return;
         for (File child : children) {
-            if (child.isDirectory()) walk(child, path + child.getName() + "/", files);
-            else files.add("minecraft:" + path + child.getName());
+            if (child.isDirectory()) walk(child, path + child.getName() + "/", number, files);
+            else files.put("minecraft:" + path + child.getName(), number);
         }
     }
 
@@ -331,6 +343,80 @@ public final class Cit189 {
         }
     }
 
+    // ---- atlas overflow -----------------------------------------------------------------------------------------------------------
+
+    /** Of the texels the atlas may hold, what CIT may fill: the stitcher's rows waste some. */
+    private static final double PACKING = 0.85;
+
+    /**
+     * TextureMap.loadTextureAtlas, when the atlas could not fit every sprite: leave CIT textures out (the largest first, as few as the
+     * area allows, else all of them) and stitch again, so the game and the packs stay; the items show their own textures instead.
+     * Rethrows when no CIT texture is in the atlas or it still does not fit without them.
+     */
+    public static void refit(Stitcher stitcher, StitcherException full, Runnable stitch) {
+        StitcherCitAccessor189 atlas = (StitcherCitAccessor189) stitcher;
+        List<Stitcher.Holder> cit = new ArrayList<Stitcher.Holder>();
+        long others = 0;
+        for (Stitcher.Holder holder : atlas.lads$holders()) {
+            if (holder.getAtlasSprite() instanceof CitSprite) cit.add(holder);
+            else others += (long) holder.getWidth() * holder.getHeight();
+        }
+        if (cit.isEmpty()) throw full;
+        finishStitchBar();
+        long[] areas = new long[cit.size()];
+        for (int i = 0; i < areas.length; i++) areas[i] = (long) cit.get(i).getWidth() * cit.get(i).getHeight();
+        boolean[] drop = CustomItems.dropToFit(areas, (long) (PACKING * atlas.lads$maxWidth() * (double) atlas.lads$maxHeight()) - others);
+        if (drop != null) {
+            int dropped = 0;
+            for (int i = 0; i < drop.length; i++) {
+                if (!drop[i]) continue;
+                atlas.lads$holders().remove(cit.get(i));
+                dropped++;
+            }
+            try {
+                restitch(atlas, stitch);
+                overflow(dropped, cit.size(), atlas.lads$maxWidth());
+                return;
+            } catch (StitcherException stillFull) {
+                finishStitchBar();
+            }
+        }
+        atlas.lads$holders().removeAll(cit);
+        try {
+            restitch(atlas, stitch);
+        } catch (StitcherException withoutCit) {
+            throw full; // not CIT's doing: vanilla's own handling (Minecraft drops the packs)
+        }
+        overflow(cit.size(), cit.size(), atlas.lads$maxWidth());
+    }
+
+    private static void restitch(StitcherCitAccessor189 atlas, Runnable stitch) {
+        atlas.lads$slots().clear();
+        atlas.lads$setWidth(0);
+        atlas.lads$setHeight(0);
+        stitch.run();
+    }
+
+    /** A failed doStitch leaves its Forge progress bar pushed; finish and pop it as a successful stitch would. */
+    private static void finishStitchBar() {
+        ProgressManager.ProgressBar last = null;
+        for (Iterator<ProgressManager.ProgressBar> bars = ProgressManager.barIterator(); bars.hasNext(); ) {
+            ProgressManager.ProgressBar bar = bars.next();
+            if ("Texture stitching".equals(bar.getTitle())) last = bar;
+        }
+        if (last == null) return;
+        while (last.getStep() < last.getSteps()) last.step("");
+        ProgressManager.pop(last);
+    }
+
+    private static void overflow(int dropped, int total, int maxSize) {
+        String message = "Custom Item Textures: the item atlas is full (largest texture " + maxSize + "px); " + dropped + " of " + total
+            + " pack item textures left out, those items show their normal texture. A lower resolution pack fits more.";
+        LOGGER.warn(message);
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + message));
+    }
+
     // ---- lookup (render thread) ---------------------------------------------------------------------------------------------------
 
     /** ItemModelMesher.getItemModel and renderItemModelForEntity: the stack's CIT model, else {@code original}. */
@@ -346,25 +432,35 @@ public final class Cit189 {
     }
 
     /**
-     * LayerArmorBase.getArmorResource: the CIT texture for this armor layer, or null. {@code texture} is vanilla's path when known
-     * (RenderTweaks189), else the layer is named from the armor material as Forge does.
+     * LayerArmorBase.getArmorResource: the CIT texture for this armor layer (slot 2 is layer 2; type null or "overlay"), or null.
+     * The stack's lookup holds its four layer textures, so this allocates nothing.
      */
-    public static ResourceLocation armor(ItemStack stack, int slot, String type, ResourceLocation texture) {
+    public static ResourceLocation armor(ItemStack stack, int slot, String type) {
         Match match = match(stack, false);
-        if (match == null || match.armorRule == null) return null;
-        String name;
-        if (texture != null) {
-            String path = texture.getResourcePath();
-            name = path.substring(path.lastIndexOf('/') + 1);
-            if (name.endsWith(".png")) name = name.substring(0, name.length() - 4);
-        } else if (stack.getItem() instanceof ItemArmor) {
-            String material = ((ItemArmor) stack.getItem()).getArmorMaterial().getName();
-            name = material.substring(material.indexOf(':') + 1) + "_layer_" + (slot == 2 ? 2 : 1) + (type == null ? "" : "_" + type);
-        } else {
-            return null;
+        if (match == null || match.armor == null) return null;
+        int overlay = type == null ? 0 : "overlay".equals(type) ? 2 : -1;
+        return overlay < 0 ? null : match.armor[(slot == 2 ? 1 : 0) + overlay];
+    }
+
+    /**
+     * The rule's textures for this armor material, by layer: layer_1, layer_2, layer_1_overlay, layer_2_overlay (Forge's names, a
+     * "domain:" prefix dropped). Built once per rule and material per resource load.
+     */
+    private static ResourceLocation[] armorTextures(CustomItems.Rule rule, ItemArmor.ArmorMaterial material) {
+        Map<ItemArmor.ArmorMaterial, ResourceLocation[]> byMaterial = ARMOR_TEXTURES.get(rule);
+        if (byMaterial == null) ARMOR_TEXTURES.put(rule, byMaterial = new IdentityHashMap<ItemArmor.ArmorMaterial, ResourceLocation[]>());
+        ResourceLocation[] textures = byMaterial.get(material);
+        if (textures == null) {
+            String name = material.getName();
+            name = name.substring(name.indexOf(':') + 1);
+            textures = new ResourceLocation[4];
+            for (int i = 0; i < textures.length; i++) {
+                String replacement = rule.texture(name + "_layer_" + (i % 2 + 1) + (i >= 2 ? "_overlay" : ""));
+                textures[i] = replacement == null ? null : location(replacement);
+            }
+            byMaterial.put(material, textures);
         }
-        String replacement = match.armorRule.texture(name);
-        return replacement == null ? null : location(replacement);
+        return textures;
     }
 
     /**
@@ -412,6 +508,7 @@ public final class Cit189 {
         if (itemRule != match.itemRule) match.original = match.model = null;
         match.itemRule = itemRule;
         match.armorRule = armorRule;
+        match.armor = armorRule != null && item instanceof ItemArmor ? armorTextures(armorRule, ((ItemArmor) item).getArmorMaterial()) : null;
         match.epoch = epoch;
         match.item = item;
         match.damage = damage;

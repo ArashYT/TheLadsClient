@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -84,6 +83,8 @@ public final class CustomItems {
         /** {@code model=}, resolved ("namespace:path.json"); parsed, not drawn yet. */
         public final String model;
         public final int weight;
+        /** The pack the file came from: higher is applied later (higher in the Selected list) and wins at equal weight. */
+        public final int pack;
         // enchantment rules
         public final CustomSky.Blend blend;
         public final float speed, rotation, duration;
@@ -95,10 +96,11 @@ public final class CustomItems {
         final CustomItemsNbt[] nbt;
         final int hand;
 
-        Rule(String path, Type type, int[] items, String texture, Map<String, String> textures, String model, int weight, CustomSky.Blend blend,
+        Rule(String path, int pack, Type type, int[] items, String texture, Map<String, String> textures, String model, int weight, CustomSky.Blend blend,
              float speed, float rotation, float duration, int layer, int[] damage, boolean damagePercent, int damageMask, int[] stackSize,
              BitSet enchantmentIds, int[] enchantmentLevels, CustomItemsNbt[] nbt, int hand) {
             this.path = path;
+            this.pack = pack;
             this.type = type;
             this.items = items;
             this.texture = texture;
@@ -164,11 +166,13 @@ public final class CustomItems {
             return blend != CustomSky.Blend.REPLACE;
         }
 
-        /** Highest weight first, then by file name. */
+        /** Highest weight first, then the higher pack (as OptiFine: the one applied later), then by file name. */
         @Override
         public int compareTo(Rule o) {
             int byWeight = Integer.compare(o.weight, weight);
-            return byWeight != 0 ? byWeight : path.compareTo(o.path);
+            if (byWeight != 0) return byWeight;
+            int byPack = Integer.compare(o.pack, pack);
+            return byPack != 0 ? byPack : path.compareTo(o.path);
         }
 
         @Override
@@ -326,10 +330,11 @@ public final class CustomItems {
     }
 
     /**
-     * The rules in {@code files} ("namespace:path" of every .properties under {@link #FOLDERS}, from all packs). {@code read} gives a
-     * file's text (null when missing), {@code exists} whether a texture is in the packs.
+     * The rules in {@code files}: "namespace:path" of every file under {@link #FOLDERS} in all packs, each with the highest pack that
+     * has it (packs numbered in the order they are applied, so higher wins). {@code read} gives a file's text (null when missing),
+     * {@code exists} whether a texture is in the packs.
      */
-    public static Rules load(Collection<String> files, Function<String, String> read, Predicate<String> exists, Ids ids) {
+    public static Rules load(Map<String, Integer> files, Function<String, String> read, Predicate<String> exists, Ids ids) {
         Properties global = null;
         for (String folder : FOLDERS) {
             String text = read.apply("minecraft:" + folder + "cit.properties");
@@ -338,10 +343,11 @@ public final class CustomItems {
             break;
         }
         List<Rule> rules = new ArrayList<>();
-        for (String file : files) {
+        for (Map.Entry<String, Integer> entry : files.entrySet()) {
+            String file = entry.getKey();
             if (!file.endsWith(".properties") || file.endsWith("/cit.properties")) continue;
             String text = read.apply(file);
-            Rule rule = text == null ? null : parse(file, text, exists, ids);
+            Rule rule = text == null ? null : parse(file, entry.getValue(), text, exists, ids);
             if (rule != null) rules.add(rule);
         }
         return new Rules(rules, global);
@@ -349,6 +355,11 @@ public final class CustomItems {
 
     /** One rule file ("namespace:path.properties"); null when it is broken, matches nothing or has no texture to show. */
     public static Rule parse(String path, String text, Predicate<String> exists, Ids ids) {
+        return parse(path, 0, text, exists, ids);
+    }
+
+    /** As {@link #parse(String, String, Predicate, Ids)}, from the {@code pack}th pack applied. */
+    public static Rule parse(String path, int pack, String text, Predicate<String> exists, Ids ids) {
         Properties p = properties(text);
         int colon = path.indexOf(':'), slash = path.lastIndexOf('/');
         if (p == null || slash < colon) return null;
@@ -437,7 +448,7 @@ public final class CustomItems {
             default: hand = HAND_ANY;
         }
 
-        return new Rule(path, type, items, texture, textures, model, integer(get(p, "weight"), 0), CustomSky.blend(get(p, "blend")),
+        return new Rule(path, pack, type, items, texture, textures, model, integer(get(p, "weight"), 0), CustomSky.blend(get(p, "blend")),
             number(get(p, "speed"), 0), number(get(p, "rotation"), 0), number(get(p, "duration"), 1), integer(get(p, "layer"), 0),
             damage, percent, mask, rangesOrNull(get(p, "stackSize")), enchantmentIds, rangesOrNull(get(p, "enchantmentLevels")),
             nbt.toArray(new CustomItemsNbt[0]), hand);
@@ -531,6 +542,24 @@ public final class CustomItems {
         }
     }
 
+    /**
+     * Atlas overflow: which CIT textures to leave out (true) so the rest fit in {@code budget} texels, largest first. {@code areas} are
+     * the textures' sizes in texels; null when even leaving out all of them is not enough.
+     */
+    public static boolean[] dropToFit(long[] areas, long budget) {
+        boolean[] drop = new boolean[areas.length];
+        long total = 0;
+        for (long area : areas) total += area;
+        Integer[] largestFirst = new Integer[areas.length];
+        for (int i = 0; i < areas.length; i++) largestFirst[i] = i;
+        java.util.Arrays.sort(largestFirst, (a, b) -> Long.compare(areas[b], areas[a]));
+        for (int i = 0; i < largestFirst.length && total > budget; i++) {
+            drop[largestFirst[i]] = true;
+            total -= areas[largestFirst[i]];
+        }
+        return total <= budget ? drop : null;
+    }
+
     public static boolean in(int[] ranges, int value) {
         for (int i = 0; i < ranges.length; i += 2) if (value >= ranges[i] && value <= ranges[i + 1]) return true;
         return false;
@@ -569,7 +598,7 @@ public final class CustomItems {
     private static int integer(String value, int fallback) {
         if (value == null) return fallback;
         try {
-            return value.startsWith("0x") ? (int) Long.parseLong(value.substring(2), 16) : Integer.parseInt(value);
+            return value.regionMatches(true, 0, "0x", 0, 2) ? (int) Long.parseLong(value.substring(2), 16) : Integer.parseInt(value);
         } catch (NumberFormatException notNumber) {
             return fallback;
         }

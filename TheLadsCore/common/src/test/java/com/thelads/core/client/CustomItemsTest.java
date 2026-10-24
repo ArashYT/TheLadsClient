@@ -58,6 +58,13 @@ class CustomItemsTest {
         return CustomItems.parse("minecraft:optifine/cit/" + path, text, texture -> true, IDS);
     }
 
+    /** Every file from the same pack. */
+    private static Map<String, Integer> onePack(Map<String, String> files) {
+        Map<String, Integer> packs = new HashMap<>();
+        for (String file : files.keySet()) packs.put(file, 0);
+        return packs;
+    }
+
     private static CustomItems.Stack stack(int item, int damage, int count) {
         CustomItems.Stack s = new CustomItems.Stack();
         s.item = item;
@@ -200,7 +207,7 @@ class CustomItemsTest {
         files.put("minecraft:optifine/cit/cit.properties", "useGlint=false");
         files.put("minecraft:optifine/cit/armor.properties", "type=armor\nitems=diamond_helmet\ntexture.diamond_layer_1=d1");
         files.put("minecraft:optifine/cit/glint.properties", "type=enchantment\ntexture=g\nblend=multiply\nspeed=2\nlayer=1");
-        CustomItems.Rules rules = CustomItems.load(files.keySet(), files::get, t -> true, IDS);
+        CustomItems.Rules rules = CustomItems.load(onePack(files), files::get, t -> true, IDS);
         assertFalse(rules.useGlint);
         assertEquals(5, rules.count, "cit.properties is not a rule");
 
@@ -232,7 +239,7 @@ class CustomItemsTest {
         files.put("minecraft:optifine/cit/sharp_heavy.properties", "type=enchantment\ntexture=sh\nenchantments=sharpness\nlayer=1\nweight=2\nitems=bow");
         files.put("minecraft:optifine/cit/fire.properties", "type=enchantment\ntexture=f\nenchantments=fire_aspect\nblend=alpha");
         files.put("minecraft:optifine/cit/locked.properties", "type=enchantment\ntexture=r\nenchantments=fire_aspect\nlayer=2\nblend=replace");
-        CustomItems.Rules rules = CustomItems.load(files.keySet(), files::get, t -> true, IDS);
+        CustomItems.Rules rules = CustomItems.load(onePack(files), files::get, t -> true, IDS);
         assertTrue(rules.useGlint);
         assertEquals(CustomItems.AVERAGE, rules.method);
 
@@ -253,10 +260,67 @@ class CustomItemsTest {
         assertEquals("minecraft:optifine/cit/sh.png", rules.effects(bow)[0].rule.texture, "an item's own rule with the any-item ones");
 
         files.put("minecraft:optifine/cit/cit.properties", "method=layered\ncap=1\nuseGlint=false");
-        CustomItems.Rules capped = CustomItems.load(files.keySet(), files::get, t -> true, IDS);
+        CustomItems.Rules capped = CustomItems.load(onePack(files), files::get, t -> true, IDS);
         assertFalse(capped.useGlint);
         CustomItems.Effect[] top = capped.effects(s);
         assertEquals(1, top.length, "cap keeps the topmost layer");
         assertEquals("minecraft:optifine/cit/r.png", top[0].rule.texture);
+    }
+
+    @Test
+    void atEqualWeightTheHigherPackWinsThenFileName() {
+        Map<String, String> files = new HashMap<>();
+        files.put("minecraft:optifine/cit/a_sword.properties", "items=276\ntexture=low");
+        files.put("minecraft:optifine/cit/z_sword.properties", "items=276\ntexture=high");
+        files.put("minecraft:optifine/cit/heavy.properties", "items=276\ntexture=heavy\nweight=1\nstackSize=64");
+        Map<String, Integer> packs = new HashMap<>();
+        packs.put("minecraft:optifine/cit/a_sword.properties", 0); // the lower pack
+        packs.put("minecraft:optifine/cit/z_sword.properties", 1); // applied later: higher in the Selected list
+        packs.put("minecraft:optifine/cit/heavy.properties", 0);
+        CustomItems.Rules rules = CustomItems.load(packs, files::get, t -> true, IDS);
+        assertEquals("minecraft:optifine/cit/high.png", rules.item(stack(SWORD, 0, 1)).texture, "pack order beats file name");
+        assertEquals("minecraft:optifine/cit/heavy.png", rules.item(stack(SWORD, 0, 64)).texture, "weight still beats pack order");
+    }
+
+    @Test
+    void hexIntegersTakeEitherCase() {
+        CustomItems.Rule upper = rule("m.properties", "items=potion\ndamage=3\ndamageMask=0X0F\ntexture=t");
+        assertTrue(upper.matches(stack(POTION, 8195, 1)));
+        assertTrue(rule("l.properties", "items=potion\ndamage=3\ndamageMask=0x0f\ntexture=t").matches(stack(POTION, 16387, 1)));
+    }
+
+    @Test
+    void aRunawayRegexIsANoMatchAndTurnsItsRuleOff() {
+        // (a+)+$ backtracks without end on Java 8 (1.8.9's runtime); newer JDKs cut it short, (.*a){12}$ still runs away on them.
+        String catastrophic = "regex:(.*a){12}$";
+        CustomItemsNbt condition = CustomItemsNbt.parse("display.Name", catastrophic);
+        CustomItemsNbt negated = CustomItemsNbt.parse("display.Name", "!" + catastrophic);
+        StringBuilder evil = new StringBuilder();
+        for (int i = 0; i < 64; i++) evil.append('a');
+        Map<String, Object> runaway = compound("display", compound("Name", evil + "!"));
+        Map<String, Object> plain = compound("display", compound("Name", "aaaaaaaaaaaaaaaa"));
+        assertTrue(condition.matches(plain, MAPS), "a fine text still matches before");
+        long start = System.nanoTime();
+        assertFalse(condition.matches(runaway, MAPS), "given up: no match");
+        assertFalse(negated.matches(runaway, MAPS), "a runaway is no match even under !");
+        assertFalse(CustomItemsNbt.parse("display.Name", "regex:(a+)+$").matches(runaway, MAPS));
+        assertTrue((System.nanoTime() - start) / 1_000_000L < 2_000, "bounded, not exponential");
+        assertFalse(condition.matches(plain, MAPS), "the rule stays off for this resource load");
+        assertTrue(CustomItemsNbt.parse("display.Name", catastrophic).matches(plain, MAPS), "a reload (new condition) tries again");
+
+        StringBuilder longName = new StringBuilder();
+        for (int i = 0; i < 2000; i++) longName.append('a');
+        Map<String, Object> tooLong = compound("display", compound("Name", longName + "b"));
+        assertTrue(CustomItemsNbt.parse("display.Name", "regex:a*").matches(tooLong, MAPS), "only the first 1024 characters are read");
+    }
+
+    @Test
+    void atlasOverflowLeavesOutTheLargestTexturesFirst() {
+        long[] areas = {256, 64 * 64, 16 * 16, 128 * 128};
+        assertArrayEquals(new boolean[]{false, false, false, false}, CustomItems.dropToFit(areas, 1L << 20), "it all fits");
+        assertArrayEquals(new boolean[]{false, false, false, true}, CustomItems.dropToFit(areas, 8192), "the 128x128 goes first");
+        assertArrayEquals(new boolean[]{false, true, false, true}, CustomItems.dropToFit(areas, 1024));
+        assertArrayEquals(new boolean[]{true, true, true, true}, CustomItems.dropToFit(areas, 0));
+        assertNull(CustomItems.dropToFit(areas, -1), "not even without them");
     }
 }

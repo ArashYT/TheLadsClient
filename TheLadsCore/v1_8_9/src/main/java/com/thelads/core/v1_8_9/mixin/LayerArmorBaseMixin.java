@@ -34,7 +34,7 @@ public abstract class LayerArmorBaseMixin {
         at = @At("HEAD"), cancellable = true, remap = false, require = 0)
     private void ladsArmourTexture(Entity entity, ItemStack stack, int slot, String type, CallbackInfoReturnable<ResourceLocation> cir) {
         ResourceLocation texture = RenderTweaks189.armourTexture(stack, slot, type);
-        ResourceLocation custom = com.thelads.core.v1_8_9.cit.Cit189.armor(stack, slot, type, texture); // a pack's CIT armor
+        ResourceLocation custom = com.thelads.core.v1_8_9.cit.Cit189.armor(stack, slot, type); // a pack's CIT armor
         if (custom != null) cir.setReturnValue(custom);
         else if (texture != null) cir.setReturnValue(texture);
     }
