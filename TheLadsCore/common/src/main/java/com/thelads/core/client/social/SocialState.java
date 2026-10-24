@@ -798,11 +798,12 @@ public class SocialState {
     }
 
     private static P2PSession.IceConfig parseIceConfig(JsonObject ice) {
-        if (ice == null) return new P2PSession.IceConfig(Collections.emptyList(), Collections.emptyList(), false);
+        if (ice == null) return new P2PSession.IceConfig(List.of(SocialProtocol.STUN_DEFAULT), Collections.emptyList(), false);
         List<String> stuns = new ArrayList<>();
         if (ice.has("stun") && ice.get("stun").isJsonArray()) {
             for (JsonElement e : ice.getAsJsonArray("stun")) stuns.add(e.getAsString());
         }
+        if (stuns.isEmpty()) stuns.add(SocialProtocol.STUN_DEFAULT); // srflx candidates even when the backend names no STUN server
         List<P2PSession.TurnServer> turns = new ArrayList<>();
         if (ice.has("turn") && ice.get("turn").isJsonArray()) {
             for (JsonElement e : ice.getAsJsonArray("turn")) {

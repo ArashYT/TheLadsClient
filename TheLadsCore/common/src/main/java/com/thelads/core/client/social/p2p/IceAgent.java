@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -80,6 +82,8 @@ public final class IceAgent implements AutoCloseable {
 
     // Pending STUN check transaction IDs: tid -> PairCheck
     private final ConcurrentHashMap<String, CandidatePair> pendingChecks = new ConcurrentHashMap<>();
+    // STUN server Binding requests while gathering: tid -> our mapped (server-reflexive) address
+    private final ConcurrentHashMap<String, CompletableFuture<InetSocketAddress>> stunTransactions = new ConcurrentHashMap<>();
 
     private static class CandidatePair {
         final Candidate local;
@@ -190,6 +194,7 @@ public final class IceAgent implements AutoCloseable {
             }
             // Always include loopback
             localCandidates.add(new Candidate("host", "127.0.0.1", localPort, PRIORITY_HOST));
+            gatherServerReflexive();
         }
 
         // 2. TURN candidates (relay)
@@ -216,6 +221,62 @@ public final class IceAgent implements AutoCloseable {
                 }
             }
         }
+    }
+
+    /**
+     * Our address as each STUN server sees this socket (RFC 5389 Binding through the reader thread): srflx candidates beside the host
+     * ones. All servers at once, up to 3 tries each, 3 s in total; a server that does not answer just adds nothing.
+     */
+    private void gatherServerReflexive() {
+        List<InetSocketAddress> servers = new ArrayList<>();
+        List<byte[]> requests = new ArrayList<>();
+        List<CompletableFuture<InetSocketAddress>> answers = new ArrayList<>();
+        for (String url : config.stun()) {
+            try {
+                InetSocketAddress server = TurnClient.parseServerAddress(url);
+                if (server.isUnresolved()) continue;
+                StunMessage request = new StunMessage(StunMessage.BINDING_REQUEST);
+                CompletableFuture<InetSocketAddress> answer = new CompletableFuture<>();
+                stunTransactions.put(toHex(request.getTransactionId()), answer);
+                servers.add(server);
+                requests.add(request.encode(null, true));
+                answers.add(answer);
+            } catch (RuntimeException ignored) { // a bad url: no srflx from it
+            }
+        }
+        long end = System.currentTimeMillis() + 3000;
+        for (int attempt = 0; attempt < 3 && !answers.isEmpty(); attempt++) {
+            for (int i = 0; i < servers.size(); i++) {
+                if (answers.get(i).isDone()) continue;
+                try {
+                    socket.send(new DatagramPacket(requests.get(i), requests.get(i).length, servers.get(i)));
+                } catch (IOException ignored) {
+                }
+            }
+            long wait = Math.min(1000, end - System.currentTimeMillis());
+            if (wait <= 0) break;
+            try {
+                CompletableFuture.allOf(answers.toArray(new CompletableFuture[0])).get(wait, TimeUnit.MILLISECONDS);
+                break;
+            } catch (TimeoutException retry) {
+                // resend to the servers that have not answered
+            } catch (Exception e) {
+                break;
+            }
+        }
+        stunTransactions.clear();
+        for (CompletableFuture<InetSocketAddress> answer : answers) {
+            InetSocketAddress mapped = answer.getNow(null);
+            if (mapped != null && find(localCandidates, mapped) == null) {
+                localCandidates.add(new Candidate("srflx", mapped.getAddress().getHostAddress(), mapped.getPort(), PRIORITY_SRFLX));
+            }
+        }
+    }
+
+    private static Candidate find(List<Candidate> candidates, InetSocketAddress address) {
+        String ip = address.getAddress().getHostAddress();
+        for (Candidate c : candidates) if (c.port == address.getPort() && c.ip.equals(ip)) return c;
+        return null;
     }
 
     private void handleIncomingTurnData(InetSocketAddress peer, byte[] data, int off, int len) {
@@ -394,12 +455,21 @@ public final class IceAgent implements AutoCloseable {
 
     private void handleStunPacket(byte[] buf, int off, int len, InetSocketAddress sender, boolean viaRelay) {
         try {
-            // Finding 1: Every incoming STUN Binding request/response must pass FINGERPRINT
+            StunMessage msg = StunMessage.decode(buf, off, len);
+            if (msg.getType() == StunMessage.BINDING_RESPONSE && !viaRelay) {
+                // A STUN server's answer while gathering, matched by its random transaction id (FINGERPRINT is optional there)
+                CompletableFuture<InetSocketAddress> answer = stunTransactions.remove(toHex(msg.getTransactionId()));
+                if (answer != null) {
+                    answer.complete(msg.getXorAddressAttribute(StunMessage.ATTR_XOR_MAPPED_ADDRESS));
+                    return;
+                }
+            }
+
+            // Finding 1: Every incoming connectivity check request/response must pass FINGERPRINT
             if (!StunMessage.validateFingerprint(buf, off, len)) {
                 return;
             }
 
-            StunMessage msg = StunMessage.decode(buf, off, len);
             if (msg.getType() == StunMessage.BINDING_REQUEST) {
                 // Finding 1: USERNAME = "<localUfrag>:<remoteUfrag>"
                 String username = msg.getStringAttribute(StunMessage.ATTR_USERNAME);
@@ -412,6 +482,10 @@ public final class IceAgent implements AutoCloseable {
                 byte[] integrityKey = StunMessage.deriveShortTermKey(localPwd);
                 if (!StunMessage.validateMessageIntegrity(buf, off, len, integrityKey)) {
                     return;
+                }
+                if (!viaRelay && find(remoteCandidates, sender) == null) {
+                    // Peer-reflexive: the peer's NAT mapping it could not tell us; the next check round includes it
+                    remoteCandidates.add(new Candidate("prflx", sender.getAddress().getHostAddress(), sender.getPort(), PRIORITY_SRFLX));
                 }
 
                 boolean useCandidate = msg.hasAttribute(StunMessage.ATTR_USE_CANDIDATE);

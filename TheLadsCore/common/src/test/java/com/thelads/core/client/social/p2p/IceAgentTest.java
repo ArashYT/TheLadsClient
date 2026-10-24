@@ -377,4 +377,57 @@ public class IceAgentTest {
             workingServer.close();
         }
     }
+
+    @Test
+    public void gathersServerReflexiveCandidateFromStunServer() throws Exception {
+        // Fake STUN server: answers every Binding request with a fixed public mapping; a second server never answers.
+        InetSocketAddress mapped = new InetSocketAddress(InetAddress.getByName("203.0.113.7"), 40000);
+        DatagramSocket stun = new DatagramSocket(0, InetAddress.getLoopbackAddress());
+        DatagramSocket silent = new DatagramSocket(0, InetAddress.getLoopbackAddress());
+        Thread server = new Thread(() -> {
+            byte[] buf = new byte[1500];
+            while (!stun.isClosed()) {
+                try {
+                    DatagramPacket in = new DatagramPacket(buf, buf.length);
+                    stun.receive(in);
+                    StunMessage req = StunMessage.decode(in.getData(), 0, in.getLength());
+                    if (req.getType() != StunMessage.BINDING_REQUEST) continue;
+                    StunMessage resp = new StunMessage(StunMessage.BINDING_RESPONSE, req.getTransactionId());
+                    resp.addXorAddressAttribute(StunMessage.ATTR_XOR_MAPPED_ADDRESS, mapped);
+                    byte[] out = resp.encode(); // no FINGERPRINT: optional for STUN servers
+                    stun.send(new DatagramPacket(out, out.length, in.getSocketAddress()));
+                } catch (IOException e) {
+                    return;
+                }
+            }
+        }, "FakeStun");
+        server.setDaemon(true);
+        server.start();
+
+        List<JsonObject> signals = new ArrayList<>();
+        P2PSession.IceConfig cfg = new P2PSession.IceConfig(
+                List.of("stun:127.0.0.1:" + silent.getLocalPort(), "stun:127.0.0.1:" + stun.getLocalPort()), Collections.emptyList(), false);
+        IceAgent agent = new IceAgent("test-srflx", true, cfg, signals::add);
+        try {
+            long start = System.currentTimeMillis();
+            agent.gatherAndSendSignal().join();
+            long ms = System.currentTimeMillis() - start;
+            assertTrue(ms < 4000, "gathering must give up on a silent STUN server after ~3 s, took " + ms + " ms");
+
+            JsonArray cands = signals.get(0).getAsJsonArray("candidates");
+            boolean srflx = false, loopbackHost = false;
+            for (int i = 0; i < cands.size(); i++) {
+                JsonObject c = cands.get(i).getAsJsonObject();
+                if ("srflx".equals(c.get("type").getAsString()) && "203.0.113.7".equals(c.get("ip").getAsString())
+                        && c.get("port").getAsInt() == 40000) srflx = true;
+                if ("host".equals(c.get("type").getAsString()) && "127.0.0.1".equals(c.get("ip").getAsString())) loopbackHost = true;
+            }
+            assertTrue(srflx, "signal must carry the srflx candidate the STUN server mapped: " + cands);
+            assertTrue(loopbackHost, "host candidates are kept: " + cands);
+        } finally {
+            agent.close();
+            stun.close();
+            silent.close();
+        }
+    }
 }
