@@ -1231,6 +1231,14 @@ try
         qaLines.Add("resourcePacks:[" + string.Join(",", enabled) + "]");
     }
     File.WriteAllLines(qaOptions, qaLines);
+    // QA: the launch's OptiFine pack gate (what ClientModInstaller asks with the setting on Auto) on the packs this run enabled.
+    if (capabilities.Forge && Env("LADS_VERIFY_RESOURCEPACKS") != null)
+    {
+        var gatePacks = OptiFinePacks.EnabledPacks(directory).Select(pack => Path.GetFileName(pack) + "=" + string.Join("/", OptiFinePacks.Features(pack)));
+        string gate = $"Lads OptiFine pack gate (Auto): {OptiFinePacks.Notice(directory, version, OptiFinePacks.Auto) ?? "no notice, Ionium kept"} [{string.Join(", ", gatePacks)}]";
+        Console.WriteLine(gate);
+        keyLines.Add(gate);
+    }
     CopyIfExists(qaOptiFine, Path.Combine(evidence, "optionsof-after-launcher-sync.txt"));
     GameOptionsService.EnsureDataVersion(directory, version); // as GameSession.Configure in the launcher: this options.txt is written after it
     QaDiscord.ForceOff(directory); // QA games never show on the owner's Discord (Essential's activity status, Lads DiscordRPC)

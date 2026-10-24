@@ -210,6 +210,10 @@ public final class CoreProbe {
         } else if ("actionbar".equals(only)) { // 1.9.1 Action Bar module and kill banners above the action bar (Probe191ActionBar)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe191ActionBar::run));
+        } else if ("cit".equals(only)) { // Custom Item Textures under Ionium with the sandbox CIT pack (ProbeCit189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
+            STEPS.addAll(ProbeCit189.STEPS);
         } else if ("f1914".equals(only)) { // 1.9.14 feature capture probe (Probe1914FeatureCapture189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe1914FeatureCapture189::run));
@@ -837,6 +841,11 @@ public final class CoreProbe {
         for (String[] module : com.thelads.core.v1_8_9.hudextras.HudExtras189.LIMITED) expected.add(module[0]);
         expected.addAll(Arrays.asList(ChatTweaks189.BUILT_IN));
         expected.addAll(Arrays.asList(com.thelads.core.client.InventoryTweaks.MODULES));
+        // The util1 lane (Utility189: Survival Guards limited to Anti Tool Break here) and Custom Item Textures (Cit189: built in under
+        // Ionium, limited with OptiFine, whose own Custom Items draws them).
+        expected.addAll(Arrays.asList(com.thelads.core.modules.SurvivalGuardsModule.NAME, com.thelads.core.client.BreedingTimer.NAME,
+            com.thelads.core.client.EnderChestPeek.NAME, com.thelads.core.client.ServerListDrag.NAME,
+            com.thelads.core.modules.CustomItemTexturesModule.NAME));
         java.util.Set<String> missing = new java.util.TreeSet<>(expected), extra = new java.util.TreeSet<>(builtInNames);
         missing.removeAll(builtInNames);
         extra.removeAll(expected);
