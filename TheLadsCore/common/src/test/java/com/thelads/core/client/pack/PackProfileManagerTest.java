@@ -1,5 +1,6 @@
 package com.thelads.core.client.pack;
 
+import com.thelads.core.modules.PackProfilesModule;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,5 +42,20 @@ class PackProfileManagerTest {
         assertTrue(PackProfileManager.deleteProfile("Temp"));
         assertEquals("", PackProfileManager.getActiveProfile());
         assertTrue(PackProfileManager.getProfile("Temp").isEmpty());
+    }
+
+    @Test
+    void testModuleSync() {
+        PackProfilesModule mod = new PackProfilesModule();
+        PackProfileManager.saveProfile("Bedwars", List.of("bw1", "bw2"));
+        PackProfileManager.setActiveProfile("Bedwars");
+        mod.syncFromManager();
+        assertEquals("Bedwars", mod.activeProfile.getValue());
+        assertTrue(mod.profileData.getValue().contains("Bedwars"));
+
+        PackProfileManager.clear();
+        mod.syncToManager();
+        assertEquals("Bedwars", PackProfileManager.getActiveProfile());
+        assertEquals(List.of("bw1", "bw2"), PackProfileManager.getProfile("Bedwars"));
     }
 }

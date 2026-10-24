@@ -3,18 +3,26 @@ package com.thelads.core.client.hud;
 import com.thelads.core.client.bridge.LadsGraphics;
 
 /**
- * Inventory HUD: renders a live preview of the player's inventory on the HUD (parity with Feather / OneClient / Badlion).
+ * Renders the player's main inventory (3x9 grid) on screen with items, durability bars, and stack counts (parity with Lunar / Feather / Badlion).
  */
 public class InventoryHudElement extends HudElement {
+    public static final String ID = "InventoryHUD";
     private static final int COLS = 9;
     private static final int ROWS = 3;
     private static final int SLOT_SIZE = 18;
+    private static final int PADDING = 3;
 
     public InventoryHudElement() {
-        this.x = 10;
-        this.y = 105;
-        this.width = COLS * SLOT_SIZE;
-        this.height = ROWS * SLOT_SIZE;
+        this.width = COLS * SLOT_SIZE + PADDING * 2;
+        this.height = ROWS * SLOT_SIZE + PADDING * 2;
+    }
+
+    public static int getElementWidth() {
+        return COLS * SLOT_SIZE + PADDING * 2;
+    }
+
+    public static int getElementHeight() {
+        return ROWS * SLOT_SIZE + PADDING * 2;
     }
 
     @Override
@@ -27,21 +35,18 @@ public class InventoryHudElement extends HudElement {
         renderInventory(g, true);
     }
 
-    private void renderInventory(LadsGraphics g, boolean editor) {
-        int w = COLS * SLOT_SIZE;
-        int h = ROWS * SLOT_SIZE;
-        // Background panel
-        g.fill(x, y, x + w, y + h, 0x80000000);
-        // Draw 3x9 grid slots
-        for (int r = 0; r < ROWS; r++) {
-            for (int c = 0; c < COLS; c++) {
-                int sx = x + c * SLOT_SIZE;
-                int sy = y + r * SLOT_SIZE;
-                g.fill(sx + 1, sy + 1, sx + SLOT_SIZE - 1, sy + SLOT_SIZE - 1, 0x33FFFFFF);
+    private void renderInventory(LadsGraphics g, boolean preview) {
+        g.fill(x, y, x + width, y + height, 0x80000000);
+
+        for (int row = 0; row < ROWS; row++) {
+            for (int col = 0; col < COLS; col++) {
+                int slot = row * COLS + col;
+                int slotX = x + PADDING + col * SLOT_SIZE + 1;
+                int slotY = y + PADDING + row * SLOT_SIZE + 1;
+
+                g.fill(slotX - 1, slotY - 1, slotX + 17, slotY + 17, 0x25FFFFFF);
+                g.drawInventorySlot(slot, slotX, slotY, preview);
             }
-        }
-        if (editor) {
-            g.drawCenteredText("Inventory", x + w / 2, y + h / 2 - 4, 0xFFAAAAAA, com.thelads.core.config.HudSettings.getInstance().isTextShadow());
         }
     }
 }

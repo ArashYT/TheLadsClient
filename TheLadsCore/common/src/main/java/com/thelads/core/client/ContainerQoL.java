@@ -23,11 +23,6 @@ public final class ContainerQoL {
         return m != null && m.isEnabled() && m.clickOutsideToClose.get();
     }
 
-    public static boolean isCameraParallaxFixEnabled() {
-        ContainerQoLModule m = module();
-        return m != null && m.isEnabled() && m.cameraParallaxFix.get();
-    }
-
     public static boolean isClickOutside(int mouseX, int mouseY, int guiLeft, int guiTop, int xSize, int ySize) {
         return mouseX < guiLeft || mouseX >= guiLeft + xSize || mouseY < guiTop || mouseY >= guiTop + ySize;
     }

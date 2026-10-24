@@ -216,6 +216,31 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
         else { g.item(stack, x, y); g.itemDecorations(font, stack, x, y); }
     }
 
+    @Override
+    public void drawInventorySlot(int slot, int x, int y, boolean preview) {
+        var player = Minecraft.getInstance().player;
+        net.minecraft.world.item.ItemStack stack = net.minecraft.world.item.ItemStack.EMPTY;
+        if (preview) {
+            if (slot == 0) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD);
+            else if (slot == 1) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.GOLDEN_APPLE, 16);
+            else if (slot == 2) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ENDER_PEARL, 8);
+            else if (slot == 3) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_PICKAXE);
+            else if (slot == 4) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 64);
+            else if (slot == 5) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WATER_BUCKET);
+            else if (slot == 6) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BOW);
+            else if (slot == 7) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW, 32);
+        } else if (player != null) {
+            int idx = slot + 9;
+            if (idx >= 0 && idx < player.getInventory().getContainerSize()) {
+                stack = player.getInventory().getItem(idx);
+            }
+        }
+        if (!stack.isEmpty()) {
+            g.item(stack, x, y);
+            g.itemDecorations(font, stack, x, y);
+        }
+    }
+
     @Override public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {
         com.thelads.core.v26_2.feature.paperdoll.PaperDoll26.render(g, x, y, width, height, editor);
     }
