@@ -166,8 +166,11 @@ public static class GraphicsRenderer
         var optionsPath = Path.Combine(game, "options.txt");
         var statePath = Path.Combine(game, StateFile);
         var trackingPath = Path.Combine(game, OptionsStateFile);
+        var choicePath = Path.Combine(game, ChoiceFile);
+        bool writeChoice = SupportsVulkan(version) && plan.Vulkan && File.Exists(choicePath)
+            && !string.Equals(Read<Choice>(choicePath)?.Renderer, Vulkan, StringComparison.OrdinalIgnoreCase);
         if (plan.WriteOptions && SafeFileOps.IsLink(optionsPath) || writeState && SafeFileOps.IsLink(statePath)
-            || writeTracking && SafeFileOps.IsLink(trackingPath))
+            || writeTracking && SafeFileOps.IsLink(trackingPath) || writeChoice && SafeFileOps.IsLink(choicePath))
             throw new IOException("Renderer settings must be regular files in the profile.");
         if (plan.WriteOptions)
         {
@@ -175,6 +178,8 @@ public static class GraphicsRenderer
             plan.Lines.Add(Key + plan.Value);
             await LockFiles.WriteAtomicallyAsync(optionsPath, Encoding.UTF8.GetBytes(string.Join(Environment.NewLine, plan.Lines) + Environment.NewLine), token);
         }
+        if (writeChoice)
+            await LockFiles.WriteAtomicallyAsync(choicePath, JsonSerializer.SerializeToUtf8Bytes(new Choice(Vulkan)), token);
         // After options.txt: a failed options write must leave the choice unapplied, so the next launch writes it again.
         if (writeTracking) await LockFiles.WriteAtomicallyAsync(trackingPath, JsonSerializer.SerializeToUtf8Bytes(plan.New), token);
         // Before the state: after a failed rename the next launch still knows which jars to bring back.
@@ -203,7 +208,7 @@ public static class GraphicsRenderer
         var value = !native ? saved : old?.Applied != choice ? launcher : saved ?? old?.Saved ?? launcher;
         bool vulkan = native && value == "\"vulkan\"";
         return new(lines, value, native && value != saved, vulkan, native ? vulkan : SupportsShaderToggle(version) && choice == Vulkan, old,
-            new OptionsState(native ? choice : old?.Applied, value ?? old?.Saved));
+            new OptionsState(native ? (vulkan ? Vulkan : choice) : old?.Applied, value ?? old?.Saved));
     }
 
     // <mod>.jar -> .jar.disabled for the suspended ids and back for the restored ones. When both names exist (a pack update next
