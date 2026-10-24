@@ -984,8 +984,9 @@ public class SocialState {
             SocialBridge bridge = bridge();
             // The Friends screen shows "Connecting to <friend>'s world..." with Cancel until the link is up (then the game connects)
             if (bridge.inWorldOrServer() || guestSession.isActive()) {
-                guestSession.close("Switching world");
+                guestSession.expect(sid); // the host's ICE signal can arrive while the game is leaving: it waits for start
                 bridge.leaveWorld(() -> {
+                    if (!guestSession.isExpected(sid)) return; // cancelled or replaced meanwhile
                     guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender);
                     bridge.openFriendsScreen();
                 });

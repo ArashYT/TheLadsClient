@@ -37,6 +37,7 @@ public final class IceAgent implements AutoCloseable {
     // Limits on what the peer may send (F5): the peer is any friend, the backend relays its signals as they are
     static final int MAX_SIGNAL_CANDIDATES = 16, MAX_REMOTE_CANDIDATES = 32, MAX_PENDING_CHECKS = 512;
     static final long CHECK_PACE_MS = 20;
+    static final long SIGNAL_RESEND_MS = 1_000, SIGNAL_RESEND_FOR_MS = 10_000;
     private static final Pattern ICE_CHARS = Pattern.compile("[A-Za-z0-9+/]+");
     private static final Pattern IPV4 = Pattern.compile("(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}");
     private static final Pattern IPV6 = Pattern.compile("[0-9A-Fa-f:.]{2,45}");
@@ -110,6 +111,8 @@ public final class IceAgent implements AutoCloseable {
 
     /** Controlling only: the first valid pair, nominated with USE-CANDIDATE checks until the controlled agent answers one. */
     private volatile CandidatePair nominating;
+    /** A valid check came or was answered: the peer has our signal (it can't build or verify one without our ufrag). */
+    private volatile boolean peerHasSignal;
 
     public IceAgent(String sid, boolean host, P2PSession.IceConfig config, Consumer<JsonObject> sendSignal) throws IOException {
         this(sid, host, config, sendSignal, new DatagramSocket(0, InetAddress.getByName("0.0.0.0")));
@@ -180,6 +183,9 @@ public final class IceAgent implements AutoCloseable {
             try {
                 gatherCandidates();
                 sendCandidateSignal();
+                Thread resend = new Thread(this::resendSignal, "IceAgent-Signal-" + sid);
+                resend.setDaemon(true);
+                resend.start();
                 synchronized (this) {
                     startConnectivityChecks();
                 }
@@ -342,6 +348,19 @@ public final class IceAgent implements AutoCloseable {
         json.addProperty("end", true);
 
         sendSignal.accept(json);
+    }
+
+    /** A lost signal (the peer was not listening yet) must not end the session: it goes again every second until the peer has it. */
+    private void resendSignal() {
+        long end = System.currentTimeMillis() + SIGNAL_RESEND_FOR_MS;
+        try {
+            while (true) {
+                Thread.sleep(SIGNAL_RESEND_MS);
+                if (peerHasSignal || connectedFuture.isDone() || closed.get() || System.currentTimeMillis() >= end) return;
+                sendCandidateSignal();
+            }
+        } catch (InterruptedException ignored) {
+        }
     }
 
     /**
@@ -559,6 +578,7 @@ public final class IceAgent implements AutoCloseable {
                 if (!StunMessage.validateMessageIntegrity(buf, off, len, integrityKey)) {
                     return;
                 }
+                peerHasSignal = true;
                 if (!viaRelay && find(remoteCandidates, sender) == null) {
                     // Peer-reflexive: the peer's NAT mapping it could not tell us; the next check round includes it
                     remoteCandidates.add(new Candidate("prflx", sender.getAddress().getHostAddress(), sender.getPort(), PRIORITY_SRFLX));
@@ -606,6 +626,7 @@ public final class IceAgent implements AutoCloseable {
                     return;
                 }
                 pendingChecks.remove(tidHex); // answered (F5: the table only holds unanswered checks)
+                peerHasSignal = true;
 
                 // Valid only on a symmetric path (the answer comes from where the check went); the controlled agent waits for the
                 // controller's nomination instead of picking a pair itself.
