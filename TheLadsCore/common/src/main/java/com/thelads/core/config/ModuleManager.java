@@ -416,6 +416,13 @@ public class ModuleManager {
             + "Players still show their death."), Module.Category.MECHANIC);
         register(new MountOpacityModule(), Module.Category.MECHANIC);
         register(new HitboxesModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ColorSaturationModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.MotionBlurModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.MenuBlurModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.HideFoliageModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ClearGlassModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.CustomSkyModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ChunkAnimatorModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {
