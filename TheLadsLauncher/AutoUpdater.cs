@@ -89,11 +89,12 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
         return version;
     }
 
-    /// <summary>Starts the silent installer, which waits for this process to exit, applies the update and relaunches with <paramref name="restartArgs"/>.</summary>
+    /// <summary>Starts the installer, which waits for this process to exit, applies the update and relaunches with <paramref name="restartArgs"/>.</summary>
     public void ApplyAndRestart(string[] restartArgs)
     {
+        // Velopack's own window stays until the Lads update bridge (Tasks 6-7) ships: silent, players saw the launcher vanish for seconds.
         _manager.WaitExitThenApplyUpdates(PendingVersion != null ? _manager.UpdatePendingRestart!
-            : throw new InvalidOperationException("No verified update is ready."), silent: true, restart: true, restartArgs);
+            : throw new InvalidOperationException("No verified update is ready."), silent: false, restart: true, restartArgs);
         Environment.Exit(0);
     }
 }
