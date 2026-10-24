@@ -517,7 +517,9 @@ public class LaunchService : ILaunchService
             "-XX:G1NewSizePercent=20",
             "-XX:G1ReservePercent=20",
             "-XX:MaxGCPauseMillis=35",
-            "-XX:G1HeapRegionSize=32M"
+            "-XX:G1HeapRegionSize=32M",
+            "-XX:+AlwaysPreTouch",
+            "-XX:+UseStringDeduplication"
         };
 
         bool isForge189 = minecraftVersion != null &&
