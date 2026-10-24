@@ -294,4 +294,63 @@ public class TurnClientTest {
             assertThrows(IOException.class, tc::allocate);
         }
     }
+
+    /** F6: the server rotates its NONCE; each signed request (refresh, permission, channel bind) gets 438, takes the new one, and succeeds. */
+    @Test
+    public void staleNonceIsRenewedAndRetriedOnce() throws Exception {
+        DatagramSocket turn = new DatagramSocket(0, InetAddress.getLoopbackAddress());
+        byte[] key = StunMessage.deriveLongTermKey("u", "r", "c");
+        AtomicInteger stale = new AtomicInteger();
+        java.util.concurrent.atomic.AtomicReference<String> serverNonce = new java.util.concurrent.atomic.AtomicReference<>("n1");
+        Thread fake = new Thread(() -> {
+            byte[] buf = new byte[2048];
+            while (!turn.isClosed()) {
+                try {
+                    DatagramPacket p = new DatagramPacket(buf, buf.length);
+                    turn.receive(p);
+                    StunMessage m = StunMessage.decode(buf, 0, p.getLength());
+                    int type = m.getType();
+                    StunMessage r;
+                    byte[] signWith = key;
+                    if (!m.hasAttribute(StunMessage.ATTR_USERNAME)) {
+                        r = new StunMessage(StunMessage.ALLOCATE_ERROR, m.getTransactionId());
+                        r.addErrorCode(401, "Unauthorized");
+                        r.addStringAttribute(StunMessage.ATTR_REALM, "r");
+                        r.addStringAttribute(StunMessage.ATTR_NONCE, "n0"); // already stale: the signed Allocate gets 438 too
+                        signWith = null;
+                    } else if (!serverNonce.get().equals(m.getStringAttribute(StunMessage.ATTR_NONCE))) {
+                        stale.incrementAndGet();
+                        r = new StunMessage(type | 0x0110, m.getTransactionId()); // the request's error response
+                        r.addErrorCode(438, "Stale Nonce");
+                        r.addStringAttribute(StunMessage.ATTR_REALM, "r");
+                        r.addStringAttribute(StunMessage.ATTR_NONCE, serverNonce.get());
+                        signWith = null;
+                    } else {
+                        r = new StunMessage(type | 0x0100, m.getTransactionId()); // its success response
+                        if (type == StunMessage.ALLOCATE_REQUEST) r.addXorAddressAttribute(StunMessage.ATTR_XOR_RELAYED_ADDRESS, new InetSocketAddress("203.0.113.5", 5000));
+                        if (type == StunMessage.ALLOCATE_REQUEST || type == StunMessage.REFRESH_REQUEST) r.addIntAttribute(StunMessage.ATTR_LIFETIME, 600);
+                    }
+                    byte[] out = r.encode(signWith, true);
+                    turn.send(new DatagramPacket(out, out.length, p.getSocketAddress()));
+                } catch (Exception e) {
+                    if (turn.isClosed()) return;
+                }
+            }
+        }, "fake-turn-nonce");
+        fake.setDaemon(true);
+        fake.start();
+        try (TurnClient tc = new TurnClient("turn:127.0.0.1:" + turn.getLocalPort(), "u", "c")) {
+            tc.allocate();
+            InetSocketAddress peer = new InetSocketAddress("198.51.100.7", 4444);
+            serverNonce.set("n2");
+            assertEquals(600, tc.refresh(600));
+            serverNonce.set("n3");
+            assertDoesNotThrow(() -> tc.createPermission(peer));
+            serverNonce.set("n4");
+            assertDoesNotThrow(() -> tc.channelBind(peer));
+            assertEquals(4, stale.get(), "one 438 per rotation (Allocate, Refresh, CreatePermission, ChannelBind), then the retry succeeds");
+        } finally {
+            turn.close();
+        }
+    }
 }
