@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using TheLadsLauncher;
 using Xunit;
 
@@ -11,6 +12,7 @@ public class AutoUpdaterTests
         public string? PendingVersion { get; set; }
         public int Downloads, Applies;
         public bool FailDownload, FailApply;
+        public Exception? DownloadError;
         public TaskCompletionSource? Wait;
         public ProcessPriorityClass PriorityDuringDownload, PriorityAtApply;
         public string[]? AppliedArgs;
@@ -20,6 +22,7 @@ public class AutoUpdaterTests
             Downloads++;
             PriorityDuringDownload = Process.GetCurrentProcess().PriorityClass;
             if (Wait != null) await Wait.Task;
+            if (DownloadError != null) throw DownloadError;
             if (FailDownload) throw new IOException("Corrupt package");
             PendingVersion = "1.2.2";
             return true;
@@ -83,6 +86,35 @@ public class AutoUpdaterTests
         await updater.PollAsync(() => false, _ => { });
         Assert.Equal(1, backend.Downloads);
         Assert.Equal(1, backend.Applies);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Forbidden, false)]
+    [InlineData(HttpStatusCode.TooManyRequests, false)]
+    [InlineData(HttpStatusCode.Forbidden, true)]   // Velopack may wrap the HTTP error
+    public async Task ARateLimitedCheckBacksOffForAnHour(HttpStatusCode status, bool wrapped)
+    {
+        var error = new HttpRequestException("rate limit", null, status);
+        var backend = new Backend { DownloadError = wrapped ? new InvalidOperationException("check failed", error) : error };
+        var messages = new List<string>();
+        var updater = new AutoUpdater(backend);
+        var start = DateTimeOffset.UtcNow;
+        await updater.PollAsync(() => false, messages.Add);
+        Assert.True(updater.RetryAfter - start >= TimeSpan.FromMinutes(59));
+        Assert.Contains("Update server is busy; will retry in an hour.", messages);
+    }
+
+    [Fact]
+    public async Task OtherFailuresStillRetryAfterTwoMinutes()
+    {
+        var backend = new Backend { DownloadError = new HttpRequestException("not found", null, HttpStatusCode.NotFound) };
+        var messages = new List<string>();
+        var updater = new AutoUpdater(backend);
+        var start = DateTimeOffset.UtcNow;
+        await updater.PollAsync(() => false, messages.Add);
+        Assert.True(updater.RetryAfter - start <= TimeSpan.FromMinutes(3));
+        Assert.Contains(messages, message => message.StartsWith("Automatic update failed; will retry."));
+        Assert.DoesNotContain("Update server is busy; will retry in an hour.", messages);
     }
 
     [Fact]

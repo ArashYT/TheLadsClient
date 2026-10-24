@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,6 +22,8 @@ public interface ILauncherUpdateBackend
 public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
 {
     public const string RepositoryUrl = "https://github.com/ArashYT/TheLadsClient";
+    /// <summary>Static release downloads: github.com/.../releases/latest/download/ redirects to the newest release's files and, unlike api.github.com (60 calls/hour per IP), has no rate limit.</summary>
+    public const string FeedUrl = RepositoryUrl + "/releases/latest/download/";
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(30) };
     private readonly UpdateManager _manager;
     private readonly UpdateManager _fullOnly;
@@ -28,9 +31,9 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
     private readonly string _publicKey;
     private string? _verified; // the downloaded version whose signature this process checked
 
-    public VelopackUpdateBackend() : this(new GithubSource(RepositoryUrl, null, false)) { }
+    public VelopackUpdateBackend() : this(new SimpleWebSource(FeedUrl)) { }
 
-    private VelopackUpdateBackend(GithubSource source) : this(new UpdateManager(source),
+    private VelopackUpdateBackend(SimpleWebSource source) : this(new UpdateManager(source),
         new UpdateManager(source, new UpdateOptions { MaximumDeltasBeforeFallback = -1 }),
         (version, name) => Http.GetByteArrayAsync($"{RepositoryUrl}/releases/download/v{version}/{name}"), UpdateSignature.ReleasePublicKey) { }
 
@@ -102,6 +105,8 @@ public sealed class AutoUpdater
     private readonly SemaphoreSlim _gate = new(1, 1);
     private DateTimeOffset _nextCheck;
     private DateTimeOffset _retryAfter;
+    /// <summary>No check starts before this moment (set after a failed one).</summary>
+    public DateTimeOffset RetryAfter => _retryAfter;
     public AutoUpdater(ILauncherUpdateBackend backend) => _backend = backend;
 
     /// <summary>Once the launcher is open, a verified update is offered through <see cref="Ready"/> instead of restarting on its own.</summary>
@@ -189,10 +194,19 @@ public sealed class AutoUpdater
         }
         catch (Exception ex)
         {
-            report($"Automatic update failed; will retry. {ex.Message}");
-            _nextCheck = DateTimeOffset.UtcNow.AddMinutes(2);
+            bool busy = IsRateLimited(ex);
+            report(busy ? "Update server is busy; will retry in an hour." : $"Automatic update failed; will retry. {ex.Message}");
+            _nextCheck = DateTimeOffset.UtcNow.AddMinutes(busy ? 60 : 2);   // retrying a rate-limited server every 2 minutes keeps its quota at zero
             _retryAfter = _nextCheck;
         }
         finally { _gate.Release(); }
+    }
+
+    /// <summary>A 403 or 429 from the update server, possibly wrapped by Velopack.</summary>
+    private static bool IsRateLimited(Exception? ex)
+    {
+        for (; ex != null; ex = ex.InnerException)
+            if (ex is HttpRequestException { StatusCode: HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests }) return true;
+        return false;
     }
 }
