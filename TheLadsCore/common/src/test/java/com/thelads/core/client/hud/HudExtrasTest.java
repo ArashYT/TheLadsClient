@@ -47,9 +47,9 @@ class HudExtrasTest {
 
     @Test
     void onlyTheWidgetsShowingHiddenInformationAreGated() {
-        for (String gated : new String[] {HudExtras.DAMAGE_INDICATOR, HudExtras.HORSE, HudExtras.PLAYERS, HudExtras.TOTEMS})
+        for (String gated : new String[] {HudExtras.DAMAGE_INDICATOR, HudExtras.HORSE, HudExtras.PLAYERS, HudExtras.TOTEMS, HudExtras.BLOCK_INFO})
             assertTrue(HypixelSafetyManager.isRiskyModule(gated), gated);
-        for (String visual : new String[] {HudExtras.BLOCK_INFO, HudExtras.CUSTOM_TEXT, HudExtras.ENTITIES, HudExtras.JUMP_RESET, HudExtras.MEDIA,
+        for (String visual : new String[] {HudExtras.CUSTOM_TEXT, HudExtras.ENTITIES, HudExtras.JUMP_RESET, HudExtras.MEDIA,
             SubtitlesModule.NAME, VanillaHudModule.NAME})
             assertFalse(HypixelSafetyManager.isRiskyModule(visual), visual);
     }
