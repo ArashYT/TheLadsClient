@@ -91,6 +91,8 @@ public interface LadsGraphics {
     /** Armour slot 0 head to 3 feet: the worn piece with its durability bar, or a faint empty-slot icon (preview: a sample set). */
     default void drawArmorSlot(int slot, int x, int y, boolean preview) {}
 
+    default void drawInventorySlot(int slot, int x, int y, boolean preview) {}
+
     default void drawBossBars(int x,int y,int max,boolean names,boolean preview) {}
 
     /** Where drawBossBars with these arguments draws now: {minX, minY, maxX, maxY}, an empty array for nothing, null when unknown

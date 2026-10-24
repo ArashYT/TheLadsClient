@@ -253,4 +253,10 @@ public abstract class HudElement {
         }
         return def;
     }
+
+    protected double optSlider(String name, double def) {
+        Option o = option(name);
+        if (o instanceof SliderOption s) return s.getValue();
+        return def;
+    }
 }

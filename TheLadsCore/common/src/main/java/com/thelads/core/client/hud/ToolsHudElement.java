@@ -45,8 +45,21 @@ public final class ToolsHudElement extends TextHudElement {
                 yield timerText;
             }
             case "ItemCounter" -> {
-                String s = game.getItemCountText(optCycle("Item", 0));
-                yield (editor && (s == null || s.contains(": 0"))) ? "Totems: 2" : s;
+                int sel = optCycle("Item", 0);
+                String s = game.getItemCountText(sel);
+                if (editor && (s == null || s.contains(": 0"))) {
+                    yield switch (sel) {
+                        case 1 -> "Arrows: 64";
+                        case 2 -> "Totems: 2";
+                        case 3 -> "Rockets: 64";
+                        case 4 -> "Golden Apples: 12";
+                        case 5 -> "Ender Pearls: 16";
+                        case 6 -> "Potions: 6";
+                        case 7 -> "Soups: 4";
+                        default -> "Held item: 64";
+                    };
+                }
+                yield s != null ? s : "Items: 0";
             }
             case "ReachDisplay" -> {
                 String s = game.getRecentReachText();

@@ -650,4 +650,221 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         }
         return java.util.List.of();
     }
+
+    @Override
+    public DefenseEnchants getDefenseEnchants() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) return new DefenseEnchants(0, 0, 0, 0, 0);
+        int prot = 0, fire = 0, blast = 0, proj = 0, ff = 0;
+        for (var slot : ARMOR_SLOTS) {
+            var stack = player.getItemBySlot(slot);
+            if (!stack.isEmpty()) {
+                var enchants = stack.get(net.minecraft.core.component.DataComponents.ENCHANTMENTS);
+                if (enchants != null) {
+                    for (var entry : enchants.entrySet()) {
+                        String path = entry.getKey().unwrapKey().map(k -> k.identifier().getPath()).orElse("");
+                        int lvl = entry.getIntValue();
+                        if (path.contains("fire_protection")) fire += lvl;
+                        else if (path.contains("blast_protection")) blast += lvl;
+                        else if (path.contains("projectile_protection")) proj += lvl;
+                        else if (path.contains("feather_falling") || path.contains("fall_protection")) ff += lvl;
+                        else if (path.contains("protection")) prot += lvl;
+                    }
+                }
+            }
+        }
+        return new DefenseEnchants(prot, fire, blast, proj, ff);
+    }
+
+    private int lastCooldownTick = -1;
+    private List<CooldownEntry> cachedCooldowns = List.of();
+    private int lastInventoryScanTick = -1;
+    private int cachedPotionCount = 0;
+    private int cachedSoupCount = 0;
+    private boolean lastAttackKeyDown = false;
+
+    private static java.lang.reflect.Field COOLDOWNS_MAP_26;
+    private static java.lang.reflect.Field TICK_COUNT_26;
+    private static java.lang.reflect.Field END_TIME_26;
+
+    static {
+        try {
+            for (var f : net.minecraft.world.item.ItemCooldowns.class.getDeclaredFields()) {
+                if (java.util.Map.class.isAssignableFrom(f.getType())) {
+                    f.setAccessible(true);
+                    COOLDOWNS_MAP_26 = f;
+                } else if (f.getType() == int.class) {
+                    f.setAccessible(true);
+                    TICK_COUNT_26 = f;
+                }
+            }
+            for (var inner : net.minecraft.world.item.ItemCooldowns.class.getDeclaredClasses()) {
+                int intCount = 0;
+                for (var f : inner.getDeclaredFields()) {
+                    if (f.getType() == int.class) {
+                        intCount++;
+                        if (intCount == 2 || f.getName().equals("endTime")) {
+                            f.setAccessible(true);
+                            END_TIME_26 = f;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    @Override
+    public List<CooldownEntry> getActiveCooldowns() {
+        var mc = Minecraft.getInstance();
+        var player = mc.player;
+        if (player == null) return List.of();
+        int currentTick = player.tickCount;
+        if (currentTick == lastCooldownTick) {
+            return cachedCooldowns;
+        }
+        lastCooldownTick = currentTick;
+
+        var cooldowns = player.getCooldowns();
+        List<CooldownEntry> list = new ArrayList<>();
+        java.util.Set<net.minecraft.resources.Identifier> seen = new java.util.HashSet<>();
+        int tickNow = currentTick;
+        java.util.Map<?, ?> cdMap = null;
+        if (COOLDOWNS_MAP_26 != null && TICK_COUNT_26 != null) {
+            try {
+                cdMap = (java.util.Map<?, ?>) COOLDOWNS_MAP_26.get(cooldowns);
+                tickNow = TICK_COUNT_26.getInt(cooldowns);
+            } catch (Throwable ignored) {}
+        }
+
+        for (int i = 0; i < 37; i++) {
+            var stack = i == 36 ? player.getOffhandItem() : player.getInventory().getItem(i);
+            if (!stack.isEmpty() && seen.add(cooldowns.getCooldownGroup(stack))) {
+                float remainingPct = cooldowns.getCooldownPercent(stack, 0.0f);
+                if (remainingPct > 0.0f) {
+                    float remainingSec = remainingPct;
+                    if (cdMap != null && END_TIME_26 != null) {
+                        Object inst = cdMap.get(cooldowns.getCooldownGroup(stack));
+                        if (inst != null) {
+                            try {
+                                int endTime = END_TIME_26.getInt(inst);
+                                remainingSec = Math.max(0.0f, (endTime - tickNow) / 20.0f);
+                            } catch (Throwable ignored) {}
+                        }
+                    }
+                    list.add(new CooldownEntry(stack.getHoverName().getString(), remainingPct, remainingSec));
+                }
+            }
+        }
+        cachedCooldowns = list.isEmpty() ? List.of() : list;
+        return cachedCooldowns;
+    }
+
+    @Override
+    public float getToughness() {
+        var player = Minecraft.getInstance().player;
+        return player != null ? (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR_TOUGHNESS) : 0.0f;
+    }
+
+    @Override
+    public int getArmorValue() {
+        var player = Minecraft.getInstance().player;
+        return player != null ? player.getArmorValue() : 0;
+    }
+
+    private void updateInventoryCountsIfNeeded() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) {
+            cachedPotionCount = 0;
+            cachedSoupCount = 0;
+            return;
+        }
+        int curTick = player.tickCount;
+        if (curTick == lastInventoryScanTick) return;
+        lastInventoryScanTick = curTick;
+        int pots = 0, soups = 0;
+        for (int i = 0; i < 37; i++) {
+            var stack = i == 36 ? player.getOffhandItem() : player.getInventory().getItem(i);
+            if (!stack.isEmpty()) {
+                if (stack.is(net.minecraft.world.item.Items.POTION) || stack.is(net.minecraft.world.item.Items.SPLASH_POTION) || stack.is(net.minecraft.world.item.Items.LINGERING_POTION))
+                    pots += stack.getCount();
+                else if (stack.is(net.minecraft.world.item.Items.MUSHROOM_STEW) || stack.is(net.minecraft.world.item.Items.SUSPICIOUS_STEW) || stack.is(net.minecraft.world.item.Items.RABBIT_STEW))
+                    soups += stack.getCount();
+            }
+        }
+        cachedPotionCount = pots;
+        cachedSoupCount = soups;
+    }
+
+    @Override
+    public int getPotionCount() {
+        updateInventoryCountsIfNeeded();
+        return cachedPotionCount;
+    }
+
+    @Override
+    public int getSoupCount() {
+        updateInventoryCountsIfNeeded();
+        return cachedSoupCount;
+    }
+
+    @Override
+    public void tickClient() {
+        var mc = Minecraft.getInstance();
+        var player = mc.player;
+        if (player == null || mc.level == null) return;
+        int currentTick = player.tickCount;
+
+        // 1. Air swing detection (attack key pressed with no entity under crosshair)
+        if (mc.options != null) {
+            boolean attackDown = mc.options.keyAttack.isDown();
+            if (attackDown && !lastAttackKeyDown && mc.gui.screen() == null) {
+                if (mc.hitResult == null || mc.hitResult.getType() != net.minecraft.world.phys.HitResult.Type.ENTITY) {
+                    com.thelads.core.client.CombatTracker.get().onAirSwing();
+                }
+            }
+            lastAttackKeyDown = attackDown;
+
+            // 2. Block counter placed detection (decrease within 2 ticks of use on block)
+            boolean useDown = mc.options.keyUse.isDown();
+            boolean hitBlock = mc.hitResult != null && mc.hitResult.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK;
+            if (useDown && hitBlock && mc.gui.screen() == null) {
+                com.thelads.core.client.BlockTracker.get().onUseKeyOnBlock(currentTick);
+            }
+        }
+        var held = player.getMainHandItem();
+        boolean isBlock = !held.isEmpty() && held.getItem() instanceof net.minecraft.world.item.BlockItem;
+        int heldCount = held.getCount();
+        int slot = player.getInventory().getSelectedSlot();
+        com.thelads.core.client.BlockTracker.get().checkHeldBlockTick(currentTick, slot, isBlock, heldCount);
+
+        // 3. Golden apple eating detection
+        boolean using = player.isUsingItem();
+        var useItem = player.getUseItem();
+        boolean isGapple = !useItem.isEmpty() && (useItem.is(net.minecraft.world.item.Items.GOLDEN_APPLE) || useItem.is(net.minecraft.world.item.Items.ENCHANTED_GOLDEN_APPLE));
+        int gappleCount = isGapple ? useItem.getCount() : 0;
+        net.minecraft.world.InteractionHand hand = player.getUsedItemHand();
+        int eatSlot = (using && hand == net.minecraft.world.InteractionHand.OFF_HAND) ? 36 : player.getInventory().getSelectedSlot();
+        var stackInSlot = eatSlot == 36 ? player.getOffhandItem() : player.getInventory().getItem(eatSlot);
+        boolean isGappleInSlot = !stackInSlot.isEmpty() && (stackInSlot.is(net.minecraft.world.item.Items.GOLDEN_APPLE) || stackInSlot.is(net.minecraft.world.item.Items.ENCHANTED_GOLDEN_APPLE));
+        int slotGCount = isGappleInSlot ? stackInSlot.getCount() : 0;
+        int totalDuration = isGapple ? useItem.getUseDuration(player) : 32;
+        int ticksUsed = isGapple ? (totalDuration - player.getUseItemRemainingTicks()) : 0;
+        com.thelads.core.client.GappleTracker.get().onTick(using && isGapple, isGappleInSlot, eatSlot, slotGCount, ticksUsed, totalDuration);
+
+        // 4. Item tracker inventory diffing (every 10 client ticks)
+        if (currentTick % 10 == 0) {
+            boolean containerOpen = mc.gui.screen() != null && !(mc.gui.screen() instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen);
+            com.thelads.core.client.InventoryDiffTracker diff = com.thelads.core.client.InventoryDiffTracker.get();
+            diff.beginScan(containerOpen);
+            if (!containerOpen) {
+                for (int i = 0; i < 37; i++) {
+                    var stack = i == 36 ? player.getOffhandItem() : player.getInventory().getItem(i);
+                    if (!stack.isEmpty()) {
+                        diff.addScannedItem(net.minecraft.core.registries.BuiltInRegistries.ITEM.getId(stack.getItem()), stack.getCount(), stack.getHoverName().getString());
+                    }
+                }
+            }
+            diff.endScan();
+        }
+    }
 }

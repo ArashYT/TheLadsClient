@@ -42,9 +42,15 @@ public final class Nicknames {
                 return Collections.emptyMap();
             }
         }
-        if (!tags.isEnabled())
+        boolean tagsOn = tags.isEnabled();
+        boolean hiderOn = NickHider.isEnabled();
+        if (!tagsOn && !hiderOn)
             return Collections.emptyMap();
-        String nicks = tags.nicknames.getValue(), display = tags.displayName.getValue().trim();
+        String nicks = tagsOn ? tags.nicknames.getValue() : "";
+        String display = tagsOn ? tags.displayName.getValue().trim() : "";
+        if (hiderOn && NickHider.isHideOwnName()) {
+            display = NickHider.getCustomNick();
+        }
         if (!nicks.equals(lastNicknames) || !display.equals(lastDisplay) || !String.valueOf(ownName).equals(lastOwn)) {
             Map<String, String> names = parse(nicks);
             if (!display.isEmpty() && ownName != null && !ownName.isEmpty()) names.put(ownName.toLowerCase(Locale.ROOT), display);

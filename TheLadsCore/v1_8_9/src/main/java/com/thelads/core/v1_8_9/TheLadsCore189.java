@@ -243,6 +243,7 @@ public class TheLadsCore189 {
         ModuleSupport.registerUnavailable("DisableNarrator", "Minecraft 1.8.9 has no narrator.");
         ModuleSupport.registerUnavailable("Async", "Parallel entity ticking is built for the Minecraft 26.x server; 1.8.9 ticks entities on one thread.");
         ModuleSupport.registerUnavailable("ShulkerBoxUtils", "Minecraft 1.8.9 has no shulker boxes; they were added in Minecraft 1.11.");
+        ModuleSupport.registerUnavailable("Cooldowns", "Minecraft 1.8.9 has no item cooldowns.");
         ModuleSupport.registerUnavailable("Subtitles", "Minecraft 1.8.9 has no closed captions or subtitles.");
         ModuleSupport.registerUnavailable("TotemPopCounter", "Minecraft 1.8.9 has no totems of undying; they were added in Minecraft 1.11.");
         for (String voice : new String[] {"Voice Chat", "Voice Chat Group"})
@@ -261,6 +262,7 @@ public class TheLadsCore189 {
     public void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         NativeMenuKey.tick();
+        com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null) { // window-size HUD buffers go back out of a world
             com.thelads.core.v1_8_9.feature.HudCache189.free();

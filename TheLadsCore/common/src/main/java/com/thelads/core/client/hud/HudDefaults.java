@@ -46,6 +46,22 @@ public final class HudDefaults {
             case com.thelads.core.modules.ToggleSprintModule.NAME -> {x=5;y=h-eh-64;}
             case "Session Stats" -> {x=5;y=h/3;}
             case "Bed Wars Height Limit" -> {x=(w-ew)/2;y=52;}
+            case "ComboCounter" -> {x=w/5;y=h/4+132;}
+            case "PvPInfo" -> {x=5;y=h/3+36;}
+            case "PotionCounter" -> {x=5;y=h-eh-84;}
+            case "ItemTracker" -> {x=w-ew-5;y=h/3;}
+            case "Cooldowns" -> {x=w/2-ew/2;y=h-eh-70;}
+            case "TPS" -> {x=5;y=76;}
+            case "SystemResources" -> {x=5;y=190;}
+            case "Playtime" -> {x=5;y=208;}
+            case "CompassStrip" -> {x=(w-ew)/2;y=20;}
+            case "ViewAngles" -> {x=(w-ew)/2;y=48;}
+            case "MouseTrail" -> {x=w/5+72;y=h/4;}
+            case "BlockCounter" -> {x=5;y=h-eh-104;}
+            case "Protection" -> {x=hotbar.right()+7;y=hotbar.bottom()-eh-24;}
+            case "DeathInfo" -> {x=5;y=h/3+72;}
+            case "Hearts" -> {x=w/2-190;y=h-eh-58;}
+            case "HitIndicator" -> {x=(w-ew)/2;y=(h-eh)/2;}
             case "DamageIndicator" -> {x=(w-ew)/2;y=h/2+28;}
             case "JumpReset" -> {x=(w-ew)/2;y=h/2+48;}
             case "MediaPlayer" -> {x=5;y=h/2-20;}

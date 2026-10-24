@@ -68,6 +68,7 @@ public class HudManager {
         add(new XaeroMinimapHudElement(), "Minimap");
         add(new VoiceChatHudElement(), "Voice Chat");
         add(new VoiceGroupHudElement(), "Voice Chat Group");
+        add(new InventoryHudElement(), "InventoryHUD");
 
         scoreboardElement = new ScoreboardHudElement();
         add(scoreboardElement, "Scoreboard");
@@ -75,6 +76,22 @@ public class HudManager {
         add(new ActionBarHudElement(), ActionBar.MODULE);
         add(new SessionStatsHudElement(), "Session Stats");
         add(new BedWarsHeightHudElement(), "Bed Wars Height Limit");
+        add(new ComboCounterHudElement(), "ComboCounter");
+        add(new PvPInfoHudElement(), "PvPInfo");
+        add(new PotionCounterHudElement(), "PotionCounter");
+        add(new ItemTrackerHudElement(), "ItemTracker");
+        add(new CooldownHudElement(), "Cooldowns");
+        add(new TpsHudElement(), "TPS");
+        add(new SystemResourcesHudElement(), "SystemResources");
+        add(new SessionPlaytimeHudElement(), "Playtime");
+        add(new CompassStripHudElement(), "CompassStrip");
+        add(new ViewAnglesHudElement(), "ViewAngles");
+        add(new MouseTrailHudElement(), "MouseTrail");
+        add(new BlockCounterHudElement(), "BlockCounter");
+        add(new ProtectionHudElement(), "Protection");
+        add(new DeathInfoHudElement(), "DeathInfo");
+        add(new HeartsHudElement(), "Hearts");
+        add(new HitIndicatorHudElement(), "HitIndicator");
         add(new DamageIndicatorHudElement(), "DamageIndicator");
         add(new JumpResetHudElement(), "JumpReset");
         add(new MediaPlayerHudElement(), "MediaPlayer");

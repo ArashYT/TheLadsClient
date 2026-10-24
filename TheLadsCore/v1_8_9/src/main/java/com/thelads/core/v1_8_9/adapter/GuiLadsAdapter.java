@@ -212,6 +212,38 @@ public class GuiLadsAdapter implements LadsGraphics {
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
+    @Override
+    public void drawInventorySlot(int slot, int x, int y, boolean preview) {
+        Minecraft mc = Minecraft.getMinecraft();
+        ItemStack stack = null;
+        if (preview) {
+            if (slot == 0) stack = new ItemStack(net.minecraft.init.Items.diamond_sword);
+            else if (slot == 1) stack = new ItemStack(net.minecraft.init.Items.golden_apple, 16);
+            else if (slot == 2) stack = new ItemStack(net.minecraft.init.Items.ender_pearl, 8);
+            else if (slot == 3) stack = new ItemStack(net.minecraft.init.Items.diamond_pickaxe);
+            else if (slot == 4) stack = new ItemStack(net.minecraft.init.Blocks.cobblestone, 64);
+            else if (slot == 5) stack = new ItemStack(net.minecraft.init.Items.water_bucket);
+            else if (slot == 6) stack = new ItemStack(net.minecraft.init.Items.bow);
+            else if (slot == 7) stack = new ItemStack(net.minecraft.init.Items.arrow, 32);
+        } else if (mc.thePlayer != null && mc.thePlayer.inventory != null) {
+            int idx = slot + 9;
+            if (idx >= 0 && idx < mc.thePlayer.inventory.mainInventory.length) {
+                stack = mc.thePlayer.inventory.mainInventory[idx];
+            }
+        }
+        if (stack != null) {
+            RenderItem items = mc.getRenderItem();
+            GlStateManager.enableDepth();
+            RenderHelper.enableGUIStandardItemLighting();
+            items.renderItemAndEffectIntoGUI(stack, x, y);
+            items.renderItemOverlays(font, stack, x, y);
+            RenderHelper.disableStandardItemLighting();
+            GlStateManager.disableDepth();
+            GlStateManager.enableAlpha();
+            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+        }
+    }
+
     /** A damaged diamond sample in the editor when nothing is worn (as on 1.21.11). */
     static ItemStack armorStack(int index, boolean preview) {
         if (preview) {
