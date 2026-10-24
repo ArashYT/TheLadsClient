@@ -33,8 +33,8 @@ public final class ChatTweaks {
      */
     public static final String LONG_COMMANDS = "Unlimited Command Length";
     public static final int LONG_COMMAND_LIMIT = 32767;
-    /** Custom Tabs' default: Hypixel's party, guild and private message lines, as Chatting's tabs. "Name=regex;Name=regex". */
-    public static final String DEFAULT_TABS = "Party=^(Party|P) >;Guild=^(Guild|G) >;PM=^(From|To) ";
+    /** The built-in tabs, shown only on Hypixel (as Chatting's): its party, guild and private message lines. Custom Tabs: "Name=regex;Name=regex". */
+    static final String HYPIXEL_TABS = "Party=^(Party|P) >;Guild=^(Guild|G) >;PM=^(From|To) ";
     /** Chat tab row and search box height, just above the input bar (clear of the chat lines on every version). */
     public static final int BAR_HEIGHT = 12, BAR_BOTTOM = 15, SEARCH_WIDTH = 100;
     static final long COMPACT_WINDOW = 60_000, PING_GAP = 1_000;
@@ -51,6 +51,7 @@ public final class ChatTweaks {
     private static String[] tabNames = {"All"};
     private static Pattern[] tabPatterns = {null};
     private static String tabsSource, shortcutsSource, selfName;
+    private static boolean tabsHypixel;
     private static Map<String, String> shortcuts = Map.of();
     private static Pattern self;
     private static int activeTab;
@@ -76,7 +77,9 @@ public final class ChatTweaks {
         translate = on && bool(chat, TRANSLATE);
         fuzzy = on && bool(chat, FUZZY);
         translateTo = on && chat.getOption(TRANSLATE_TO) instanceof DropdownOption to ? ChatTranslator.code(to.getIndex()) : null;
-        if (on && chat.getOption(CUSTOM_TABS) instanceof TextOption text && text.getValue() != tabsSource) parseTabs(tabsSource = text.getValue());
+        boolean hypixel = tabsNow && HypixelSafetyManager.isHypixel();
+        if (on && chat.getOption(CUSTOM_TABS) instanceof TextOption text && (text.getValue() != tabsSource || hypixel != tabsHypixel))
+            buildTabs(tabsHypixel = hypixel, tabsSource = text.getValue());
         if (on && chat.getOption(SHORTCUTS) instanceof TextOption text && text.getValue() != shortcutsSource)
             shortcuts = parseShortcuts(shortcutsSource = text.getValue());
         if (!on) {
@@ -122,11 +125,21 @@ public final class ChatTweaks {
 
     // Tabs and search
 
-    static void parseTabs(String source) {
+    /** All, then the built-in Hypixel tabs while on Hypixel, then the player's Custom Tabs (every server). */
+    static void buildTabs(boolean hypixel, String custom) {
         List<String> names = new ArrayList<>();
         List<Pattern> patterns = new ArrayList<>();
         names.add("All");
         patterns.add(null);
+        if (hypixel) parseTabs(HYPIXEL_TABS, names, patterns);
+        parseTabs(custom, names, patterns);
+        tabNames = names.toArray(new String[0]);
+        tabPatterns = patterns.toArray(new Pattern[0]);
+        activeTab = 0; // the tabs changed (another server, or edited): back to All
+        filterRevision++;
+    }
+
+    private static void parseTabs(String source, List<String> names, List<Pattern> patterns) {
         for (String entry : source.split(";")) {
             int eq = entry.indexOf('=');
             if (eq <= 0 || eq == entry.length() - 1) continue;
@@ -137,10 +150,6 @@ public final class ChatTweaks {
                 // a tab with a broken pattern is left out
             }
         }
-        tabNames = names.toArray(new String[0]);
-        tabPatterns = patterns.toArray(new Pattern[0]);
-        if (activeTab >= tabNames.length) activeTab = 0;
-        filterRevision++;
     }
 
     public static int tabCount() { return tabs ? tabNames.length : 0; }

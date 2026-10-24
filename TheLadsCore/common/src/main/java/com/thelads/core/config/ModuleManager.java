@@ -253,7 +253,7 @@ public class ModuleManager {
         register(crosshair, Module.Category.MECHANIC);
 
         // Every chat feature lives here; ConfigManager migrates the old ClientTools timestamps and HideChatIndicators.
-        Module chatMod = new com.thelads.core.modules.ChatModule("Chat size, background, message animations, timestamps, signing indicators, screenshot links and Chat Heads (the sender's head before messages); stacking, tabs (Custom Tabs: Name=regex;Name=regex), search, keys, mentions, filter, Shortcuts (/l=/lobby;gg=Good game) and translation.");
+        Module chatMod = new com.thelads.core.modules.ChatModule("Chat size, background, message animations, timestamps, signing indicators, screenshot links and Chat Heads (the sender's head before messages); stacking, tabs (Party/Guild/PM on Hypixel; Custom Tabs: Name=regex;Name=regex), search, keys, mentions, filter, Shortcuts (/l=/lobby;gg=Good game) and translation.");
         chatMod.addOption(new BoolOption("Chat Background", false));
         chatMod.addOption(new SliderOption("Chat Width", 320, 100, 600, 10));
         chatMod.addOption(new SliderOption("Chat Height", 180, 50, 400, 10));
@@ -276,8 +276,8 @@ public class ModuleManager {
         // parity-1023 (client ChatTweaks; each adapter hooks them): stacking, tabs, search, keys, per-server history, mentions,
         // profanity, shortcuts, message buttons and translation (ChatTranslator, off: it sends the message's text to Google Translate).
         chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.COMPACT, true));
-        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.TABS, true));
-        chatMod.addOption(new TextOption(com.thelads.core.client.ChatTweaks.CUSTOM_TABS, com.thelads.core.client.ChatTweaks.DEFAULT_TABS));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.TABS, false));
+        chatMod.addOption(new TextOption(com.thelads.core.client.ChatTweaks.CUSTOM_TABS, ""));
         chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.SEARCH, true));
         chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.BUTTONS, true));
         chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.KEEP_OPEN, true));
@@ -285,7 +285,7 @@ public class ModuleManager {
         chatMod.addOption(new ActionOption(com.thelads.core.client.ChatTweaks.TOGGLE_KEY, "Controls"));
         chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.SERVER_HISTORY, true));
         chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.MENTIONS, true));
-        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.MENTION_SOUND, true));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.MENTION_SOUND, false));
         chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.PROFANITY, false));
         chatMod.addOption(new TextOption(com.thelads.core.client.ChatTweaks.SHORTCUTS, ""));
         chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.TRANSLATE, false));

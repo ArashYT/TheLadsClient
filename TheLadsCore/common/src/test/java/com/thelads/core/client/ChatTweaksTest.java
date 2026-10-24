@@ -16,6 +16,7 @@ class ChatTweaksTest {
     private static Module chat() { return ModuleManager.getInstance().getModule("Chat"); }
 
     @AfterEach void restore() {
+        HypixelSafetyManager.qaOverride = false;
         for (Option option : chat().getOptions()) option.reset();
         chat().setEnabled(true);
         ChatTweaks.tick();
@@ -24,18 +25,37 @@ class ChatTweaksTest {
         ChatTweaks.breakRepeat();
     }
 
-    @Test void customTabsFilterMessages() {
+    @Test void tabsAreOffByDefaultAndHypixelTabsOnlyOnHypixel() {
         ChatTweaks.tick();
-        assertEquals(4, ChatTweaks.tabCount(), "All plus the default Party, Guild and PM tabs");
+        assertEquals(0, ChatTweaks.tabCount(), "Chat Tabs starts off");
+        ((BoolOption) chat().getOption(ChatTweaks.TABS)).set(true);
+        ChatTweaks.tick();
+        assertEquals(1, ChatTweaks.tabCount(), "off Hypixel only All (no Custom Tabs yet)");
+        ((TextOption) chat().getOption(ChatTweaks.CUSTOM_TABS)).setValue("Trades=(?i)trade");
+        ChatTweaks.tick();
+        assertEquals(2, ChatTweaks.tabCount(), "custom tabs on every server");
+        HypixelSafetyManager.qaOverride = true; // Hypixel
+        ChatTweaks.tick();
+        assertEquals(5, ChatTweaks.tabCount(), "All, Party, Guild, PM, then the custom tab");
+        assertEquals("Trades", ChatTweaks.tabName(4));
+    }
+
+    @Test void customTabsFilterMessages() {
+        ((BoolOption) chat().getOption(ChatTweaks.TABS)).set(true);
+        HypixelSafetyManager.qaOverride = true;
+        ChatTweaks.tick();
+        assertEquals(4, ChatTweaks.tabCount(), "All plus the built-in Party, Guild and PM tabs on Hypixel");
         assertFalse(ChatTweaks.filtering());
         assertTrue(ChatTweaks.selectTab(1));
         assertEquals("Party", ChatTweaks.tabName(1));
         assertTrue(ChatTweaks.shows("Party > [MVP+] Steve: hi"));
         assertFalse(ChatTweaks.shows("Guild > Alex: hi"));
+        HypixelSafetyManager.qaOverride = false;
         ((TextOption) chat().getOption(ChatTweaks.CUSTOM_TABS)).setValue("Bad=([;Trades=(?i)trade");
         ChatTweaks.tick();
         assertEquals(2, ChatTweaks.tabCount(), "a tab with a broken pattern is left out");
         assertEquals("Trades", ChatTweaks.tabName(1));
+        assertEquals(0, ChatTweaks.activeTab(), "changed tabs go back to All");
     }
 
     @Test void searchIsCaseInsensitive() {
@@ -49,6 +69,8 @@ class ChatTweaksTest {
     }
 
     @Test void tabsOffShowsEverything() {
+        ((BoolOption) chat().getOption(ChatTweaks.TABS)).set(true);
+        HypixelSafetyManager.qaOverride = true;
         ChatTweaks.tick();
         ChatTweaks.selectTab(2);
         ((BoolOption) chat().getOption(ChatTweaks.TABS)).set(false);
@@ -100,6 +122,9 @@ class ChatTweaksTest {
     }
 
     @Test void mentionSoundIsThrottled() {
+        ChatTweaks.tick();
+        assertFalse(ChatTweaks.ping(ChatTweaks.marks("hi alex", "Alex"), 1_000), "Mention Sound starts off");
+        ((BoolOption) chat().getOption(ChatTweaks.MENTION_SOUND)).set(true);
         ChatTweaks.tick();
         int[][] marks = ChatTweaks.marks("hi alex", "Alex");
         assertTrue(ChatTweaks.ping(marks, 10_000));
