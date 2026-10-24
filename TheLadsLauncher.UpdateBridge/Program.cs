@@ -2,12 +2,13 @@ using System;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 
 namespace TheLadsLauncher.UpdateBridge
 {
-    // LadsUpdateBridge.exe --image <png> --client x,y,w,h --bar x,y,w,h --update-exe <path> --relaunch <path> --grace <seconds> [--reduced-motion]
+    // LadsUpdateBridge.exe --image <png> --client x,y,w,h --bar x,y,w,h --update-exe <path> --relaunch <path> --grace <seconds> [--reduced-motion] [--app-id <AppUserModelID>]
     // Numbers are invariant culture, rects are physical screen pixels.
     static class Program
     {
@@ -18,7 +19,7 @@ namespace TheLadsLauncher.UpdateBridge
         {
             try
             {
-                string image = null, updateExe = null, relaunch = null;
+                string image = null, updateExe = null, relaunch = null, appId = null;
                 Rectangle client = Rectangle.Empty, bar = Rectangle.Empty;
                 double grace = 15;
                 bool reducedMotion = false;
@@ -33,6 +34,7 @@ namespace TheLadsLauncher.UpdateBridge
                         case "--relaunch": relaunch = Path.GetFullPath(args[++i]); break;
                         case "--grace": grace = double.Parse(args[++i], NumberStyles.Float, CultureInfo.InvariantCulture); break;
                         case "--reduced-motion": reducedMotion = true; break;
+                        case "--app-id": appId = args[++i]; break;
                         default: throw new ArgumentException("unknown argument " + args[i]);
                     }
                 }
@@ -41,6 +43,13 @@ namespace TheLadsLauncher.UpdateBridge
                 Log(string.Format(CultureInfo.InvariantCulture, "start pid {0} client {1},{2},{3},{4} bar {5},{6},{7},{8} grace {9}s{10}",
                     System.Diagnostics.Process.GetCurrentProcess().Id, client.X, client.Y, client.Width, client.Height,
                     bar.X, bar.Y, bar.Width, bar.Height, grace, reducedMotion ? " reduced-motion" : ""));
+
+                // Before any window exists, so the taskbar groups the bridge's button with the launcher's.
+                if (appId != null)
+                {
+                    int result = SetCurrentProcessExplicitAppUserModelID(appId);
+                    Log(result == 0 ? "app id " + appId : "app id " + appId + " not set: 0x" + result.ToString("X8", CultureInfo.InvariantCulture));
+                }
 
                 // Errors inside the message loop (paint, timer) must end the bridge, never leave WinForms' error dialog over the new launcher.
                 Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
@@ -60,6 +69,9 @@ namespace TheLadsLauncher.UpdateBridge
                 return 1;
             }
         }
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        static extern int SetCurrentProcessExplicitAppUserModelID(string appId);
 
         static void Fail(object error)
         {

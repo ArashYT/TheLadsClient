@@ -31,9 +31,9 @@ function Start-Hidden([string]$exe, [string[]]$arguments) {
     [Diagnostics.Process]::Start($psi)
 }
 
-function Start-Bridge([double[]]$client, [double[]]$bar, [double]$grace) {
-    Start-Hidden $bridgeExe @('--image', $png, '--client', (Format-Rect $client), '--bar', (Format-Rect $bar),
-        '--update-exe', $updateExe, '--relaunch', $relaunch, '--grace', $grace.ToString($inv))
+function Start-Bridge([double[]]$client, [double[]]$bar, [double]$grace, [string[]]$extra = @()) {
+    Start-Hidden $bridgeExe (@('--image', $png, '--client', (Format-Rect $client), '--bar', (Format-Rect $bar),
+        '--update-exe', $updateExe, '--relaunch', $relaunch, '--grace', $grace.ToString($inv)) + $extra)
 }
 
 function Read-Log { if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Raw } else { '' } }
@@ -43,14 +43,15 @@ function Stop-All([Diagnostics.Process[]]$processes) {
 }
 
 # Cases 1 and 3: shown -> window at --client -> Update.exe High -> LauncherShown -> exit, no relaunch.
-function Invoke-ShownCase([string]$name, [double[]]$client, [double[]]$bar) {
+function Invoke-ShownCase([string]$name, [double[]]$client, [double[]]$bar, [string]$appId) {
     Remove-Item -LiteralPath $log -ErrorAction SilentlyContinue
     $shown = [Threading.EventWaitHandle]::new($false, [Threading.EventResetMode]::ManualReset, 'Local\TheLadsClient.UpdateBridgeShown')
     $update = Start-Hidden $updateExe @('-n', '60', '127.0.0.1')
     $bridge = $null
     try {
-        $bridge = Start-Bridge $client $bar 15
+        $bridge = Start-Bridge $client $bar 15 @(if ($appId) { '--app-id'; $appId })
         Assert ($shown.WaitOne(2000)) "${name}: shown event within 2 s"
+        if ($appId) { Assert ((Read-Log) -match "(?m) app id $([regex]::Escape($appId))\r?$") "${name}: AppUserModelID $appId set before the window" }
         $bridge.Refresh()
         Assert ($bridge.MainWindowTitle -eq 'The Lads Client') "${name}: window titled 'The Lads Client' (got '$($bridge.MainWindowTitle)')"
         $rect = if ($bridge.MainWindowHandle -ne 0) { [BridgeTestWin32]::Rect($bridge.MainWindowHandle) -join ',' } else { 'no window' }
@@ -106,8 +107,8 @@ public static class BridgeTestWin32 {
 }
 '@
 
-# Case 1: normal handoff.
-Invoke-ShownCase 'case 1' @(120, 140, 400, 300) @(140, 340, 360, 18)
+# Case 1: normal handoff, with the launcher's AppUserModelID so the bridge shares its taskbar button.
+Invoke-ShownCase 'case 1' @(120, 140, 400, 300) @(140, 340, 360, 18) 'velopack.TheLadsClientBridgeTest'
 
 # Case 2: Update.exe still running past the grace: no relaunch until it ends, then relaunch.
 Remove-Item -LiteralPath $log -ErrorAction SilentlyContinue

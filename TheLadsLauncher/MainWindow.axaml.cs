@@ -142,7 +142,10 @@ public partial class MainWindow : Window
             Height = restoreHeight;
             WindowState = restoreState;
         }
-        Opened += (_, _) => Dispatcher.UIThread.Post(UpdateBridge.SignalLauncherShown, DispatcherPriority.Background);
+        // The window is invisible until its first frame is composed (no redirection bitmap), so the bridge is told only after
+        // a frame has rendered: the second animation-frame callback runs after the first frame went out.
+        Opened += (_, _) => RequestAnimationFrame(_ => RequestAnimationFrame(_ =>
+            Dispatcher.UIThread.Post(UpdateBridge.SignalLauncherShown, DispatcherPriority.Background)));
         _autoUpdater.PrepareRestart = PrepareUpdateRestart;
 
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
@@ -304,6 +307,8 @@ public partial class MainWindow : Window
             if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
             LauncherStartupOverlay.IsVisible = false;
             UpdateBridge.SignalLauncherShown();   // still running after a startup install means it failed: dismiss its bridge now, not after 15 s
+            int installingPreview = Array.IndexOf(args, "--preview-installing");
+            if (installingPreview >= 0) { await RunInstallingPreviewAsync(Path.GetFullPath(args[installingPreview + 1])); return; }
             int pagePreview = Array.IndexOf(args, "--preview-page");
             if (pagePreview >= 0 && pagePreview + 2 < args.Length) { await RunPagePreviewAsync(args[pagePreview + 1], Path.GetFullPath(args[pagePreview + 2])); return; }
             int discoveryPreview = Array.IndexOf(args, "--preview-discovery");
@@ -517,28 +522,12 @@ public partial class MainWindow : Window
     private string[] PrepareUpdateRestart(string version)
     {
         if (WindowState == WindowState.Minimized) return Array.Empty<string>();   // nothing on screen to hold; the new launcher opens centred
-        _startupAnimTimer?.Stop();
-        StartupProgressShine.IsVisible = false;   // the bridge sweeps its own shine; a frozen one would sit under it
-        StartupLoadingSpinner.Text = $"Installing update v{version}";
-        LoadingDots.Text = "...";
-        StartupPercentText.Text = "100%";
-        var track = (Control)StartupProgressFill.Parent!;
-        StartupProgressFill.Width = track.Width;
-        LauncherStartupOverlay.IsVisible = true;
-        UpdateLayout();
         try
         {
-            // Physical pixels throughout: the bridge draws the PNG 1:1 over the same screen pixels.
-            double scale = RenderScaling;
-            var size = PixelSize.FromSize(ClientSize, scale);
             string snapshot = Path.Combine(UpdateBridge.Folder, "snapshot.png");
-            Directory.CreateDirectory(UpdateBridge.Folder);
-            using (var bitmap = new RenderTargetBitmap(size, new Vector(96 * scale, 96 * scale)))
-            {
-                bitmap.Render(this);
-                bitmap.Save(snapshot);
-            }
+            var size = RenderInstallingScreen(version, snapshot);
             // Both bar corners go through PointToScreen, so the UI-scale LayoutTransform is included.
+            var track = (Control)StartupProgressFill.Parent!;
             var bar = new PixelRect(track.PointToScreen(new Point(0, 0)), track.PointToScreen(new Point(track.Bounds.Width, track.Bounds.Height)));
             if (!UpdateBridge.TryStart(snapshot, new PixelRect(this.PointToScreen(new Point(0, 0)), size), bar, settings.ReducedMotion))
                 Log("[Updater] The installing screen could not be handed to the bridge; updating without it.");
@@ -548,6 +537,53 @@ public partial class MainWindow : Window
             Log($"[Updater] Could not snapshot the installing screen ({ex.Message}); updating without the bridge.");
         }
         return new[] { UpdateBridge.RestoreWindowArg, UpdateBridge.FormatRestoreWindow(Position, ClientSize.Width, ClientSize.Height, WindowState) };
+    }
+
+    /// <summary>Puts the installing screen up, fully laid out, and saves it to <paramref name="path"/> in physical pixels
+    /// (the bridge draws it 1:1 over the same screen pixels); returns its size.</summary>
+    private PixelSize RenderInstallingScreen(string version, string path)
+    {
+        _startupAnimTimer?.Stop();
+        StartupProgressShine.IsVisible = false;   // the bridge sweeps its own shine; a frozen one would sit under it
+        StartupLoadingSpinner.Text = $"Installing update v{version}";
+        LoadingDots.Text = "...";
+        StartupPercentText.Text = "100%";
+        StartupProgressFill.Width = ((Control)StartupProgressFill.Parent!).Width;
+        LauncherStartupOverlay.IsVisible = true;
+        // Measured and arranged here, not through UpdateLayout(): that does nothing while a layout pass is running (a UI Automation
+        // invoke can arrive inside one), and the snapshot then showed the old text sizes (version cut off, no 100%).
+        foreach (var control in Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(LauncherStartupOverlay).OfType<Avalonia.Layout.Layoutable>())
+            control.InvalidateMeasure();
+        LauncherStartupOverlay.InvalidateMeasure();
+        var area = new Rect(((Avalonia.Layout.Layoutable)LauncherStartupOverlay.Parent!).Bounds.Size);
+        LauncherStartupOverlay.Measure(area.Size);
+        LauncherStartupOverlay.Arrange(area);
+        double scale = RenderScaling;
+        var size = PixelSize.FromSize(ClientSize, scale);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using var bitmap = new RenderTargetBitmap(size, new Vector(96 * scale, 96 * scale));
+        bitmap.Render(this);
+        bitmap.Save(path);
+        return size;
+    }
+
+    /// <summary>QA capture of the Update-button path: the startup screen is long hidden, the timer's update checks wrote to it
+    /// meanwhile, and the click arrives inside a layout pass (as a UI Automation invoke does).</summary>
+    private async Task RunInstallingPreviewAsync(string output)
+    {
+        foreach (string message in new[] { "Checking for launcher updates…", "Downloading v9.9.9: 100%", "" })
+        {
+            ReportUpdate(message);
+            await Task.Delay(300);
+            UpdateLayout();   // the layout pass an on-screen window runs meanwhile; this off-screen one may skip it
+        }
+        var probe = new Border { Width = 1, Height = 1, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+        RootGrid.Children.Add(probe);
+        UpdateLayout();
+        probe.SizeChanged += (_, _) => RenderInstallingScreen(Program.Version, output);   // raised inside the next layout pass
+        probe.Width = 2;
+        UpdateLayout();
+        Close();
     }
 
     /// <summary>The startup screen splits "Downloading v1.3.5: 42%" (VelopackUpdateBackend's wording) into a status line and a large percentage.</summary>

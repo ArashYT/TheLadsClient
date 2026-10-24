@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
@@ -36,6 +37,12 @@ public static class UpdateBridge
                          "--update-exe", updateExe, "--relaunch", Path.Combine(root, "The Lads Client.exe"), "--grace", "15" })
                 start.ArgumentList.Add(arg);
             if (reducedMotion) start.ArgumentList.Add("--reduced-motion");
+            // The bridge's taskbar button groups with the launcher's (Velopack runs it as velopack.<packId>) instead of adding a second one.
+            if (GetCurrentProcessExplicitAppUserModelID(out string? appId) == 0 && !string.IsNullOrEmpty(appId))
+            {
+                start.ArgumentList.Add("--app-id");
+                start.ArgumentList.Add(appId);
+            }
 
             // Created before the bridge starts, so its Set can never land before this wait begins.
             using var shown = new EventWaitHandle(false, EventResetMode.ManualReset, ShownEvent);
@@ -87,6 +94,9 @@ public static class UpdateBridge
         position = new PixelPoint(x, y);
         return true;
     }
+
+    [DllImport("shell32.dll")]
+    private static extern int GetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] out string? appId);
 
     private static string Rect(PixelRect r) => string.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3}", r.X, r.Y, r.Width, r.Height);
 

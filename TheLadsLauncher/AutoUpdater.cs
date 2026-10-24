@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -17,6 +18,8 @@ public interface ILauncherUpdateBackend
     string? PendingVersion { get; }
     Task<bool> DownloadLatestAsync(Action<string> report);
     void ApplyAndRestart(string[] restartArgs);
+    /// <summary>Keeps the updater's own child processes at High until <paramref name="stop"/> is cancelled; never throws.</summary>
+    Task KeepUpdateExeHighAsync(CancellationToken stop);
 }
 
 public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
@@ -108,6 +111,34 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
             : throw new InvalidOperationException("No verified update is ready."), silent: true, restart: true, restartArgs);
         Environment.Exit(0);
     }
+
+    /// <summary>Velopack rebuilds a delta in a child "Update.exe patch", which Windows starts at Normal even under a High launcher
+    /// (only Idle/BelowNormal are inherited); this raises it, polling every 250 ms off the UI thread.</summary>
+    public async Task KeepUpdateExeHighAsync(CancellationToken stop)
+    {
+        try
+        {
+            string path = Path.GetFullPath(VelopackLocator.Current.UpdateExePath ?? throw new InvalidOperationException("not installed"));
+            string name = Path.GetFileNameWithoutExtension(path);
+            while (true)
+            {
+                await Task.Delay(250, stop).ConfigureAwait(false);   // the rebuild starts after the download, never in the first 250 ms
+                foreach (var process in Process.GetProcessesByName(name))
+                {
+                    using (process)
+                    {
+                        try
+                        {
+                            if (process.PriorityClass != ProcessPriorityClass.High && string.Equals(process.MainModule?.FileName, path, StringComparison.OrdinalIgnoreCase))
+                                process.PriorityClass = ProcessPriorityClass.High;
+                        }
+                        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { } // exited meanwhile, or not ours to read
+                    }
+                }
+            }
+        }
+        catch (Exception) { } // cancelled, or no Update.exe to find: the rebuild just runs at Normal
+    }
 }
 
 // Startup and the timer share this coordinator. Only verified packages are applied.
@@ -131,12 +162,17 @@ public sealed class AutoUpdater
             {
                 _askBeforeInstall = value;
                 // The startup screen may stop waiting for a slow check; a download that then continues next to an open launcher must not stay High.
-                if (value) _downloadScope?.Lower(ProcessPriorityClass.BelowNormal);
+                if (value)
+                {
+                    _downloadScope?.Lower(ProcessPriorityClass.BelowNormal);
+                    _keepUpdateExeHigh?.Cancel();
+                }
             }
         }
     }
     private bool _askBeforeInstall;
     private ProcessPriority.ScopeHandle? _downloadScope;
+    private CancellationTokenSource? _keepUpdateExeHigh; // set while the High startup download runs
     private readonly object _priorityLock = new();
     /// <summary>Raised with the version whenever a verified update waits for the user's click.</summary>
     public event Action<string>? Ready;
@@ -186,9 +222,13 @@ public sealed class AutoUpdater
                 report("Checking for launcher updates…");
                 // High only while the startup screen is waiting for the update; an open launcher may have a game running next to it.
                 lock (_priorityLock)
+                {
                     _downloadScope = ProcessPriority.Scope(_askBeforeInstall ? ProcessPriorityClass.BelowNormal : ProcessPriorityClass.High);
+                    // A BelowNormal launcher's children inherit it; a High one's start at Normal, so the delta rebuild is raised by hand.
+                    if (!_askBeforeInstall) _ = _backend.KeepUpdateExeHighAsync((_keepUpdateExeHigh = new()).Token);
+                }
                 try { if (!await _backend.DownloadLatestAsync(report)) { report(""); return; } }
-                finally { lock (_priorityLock) { _downloadScope?.Dispose(); _downloadScope = null; } }
+                finally { lock (_priorityLock) { _downloadScope?.Dispose(); _downloadScope = null; _keepUpdateExeHigh?.Cancel(); _keepUpdateExeHigh = null; } }
             }
             if (AskBeforeInstall)
             {
