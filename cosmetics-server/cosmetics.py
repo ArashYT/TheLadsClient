@@ -1365,6 +1365,9 @@ def setup(
     app.router.add_get("/cosmetics/link/verify", handle_link_verify_http)
     app.on_shutdown.append(close_all)
 
+    import social
+    social.mount(app, insecure=insecure, db_path=db_path)
+
 
 # ---------------------------------------------------------------------------
 # Staff Admin CLI
