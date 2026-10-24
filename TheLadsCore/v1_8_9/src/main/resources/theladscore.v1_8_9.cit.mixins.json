@@ -12,6 +12,8 @@
     "AbstractResourcePackCitAccessor189",
     "ItemModelMesherCitMixin189",
     "ItemStackCitMixin189",
+    "LayerArmorBaseCitMixin189",
+    "RenderItemCitInvoker189",
     "RenderItemCitMixin189"
   ]
 }

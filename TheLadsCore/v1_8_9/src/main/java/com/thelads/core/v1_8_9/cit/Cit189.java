@@ -6,6 +6,7 @@ import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.CustomItemTexturesModule;
 import com.thelads.core.v1_8_9.cit.mixin.AbstractResourcePackCitAccessor189;
+import com.thelads.core.v1_8_9.cit.mixin.RenderItemCitInvoker189;
 import com.thelads.core.v1_8_9.feature.Options189;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -29,6 +30,10 @@ import java.util.TreeSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.ModelBase;
+import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.entity.RenderItem;
+import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.block.model.BlockPart;
 import net.minecraft.client.renderer.block.model.BlockPartFace;
@@ -50,6 +55,7 @@ import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.client.resources.model.ModelRotation;
 import net.minecraft.client.resources.model.SimpleBakedModel;
 import net.minecraft.enchantment.Enchantment;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemArmor;
@@ -74,6 +80,7 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.lwjgl.opengl.GL11;
 
 /**
  * Custom Item Textures on 1.8.9 without OptiFine (Ionium): the resource packs' OptiFine CIT rules (client.CustomItems).
@@ -83,7 +90,8 @@ import org.apache.logging.log4j.Logger;
  * their model to {@link #model}: the first matching rule's textures replace the model's layers by name (texture.bow_pulling_0,
  * texture.potion_overlay, else texture), baked like a vanilla generated item and kept per rule and model. Each stack remembers its
  * lookup (ItemStackCitMixin189) until it changes or a second passes, so a frame does no matching and allocates nothing; items no rule
- * names cost one id lookup. Armor: LayerArmorBaseMixin asks {@link #armor} for the layer texture. With OptiFine nothing is loaded:
+ * names cost one id lookup. Armor: LayerArmorBaseMixin asks {@link #armor} for the layer texture. Enchantment effects replace the
+ * glint where vanilla draws it ({@link #glint}, {@link #armorGlint}); cit.properties' useGlint=false hides the rest. With OptiFine nothing is loaded:
  * OptiFine's own Custom Items setting draws these packs.
  */
 public final class Cit189 {
@@ -108,7 +116,9 @@ public final class Cit189 {
     private static Map<IBakedModel, ModelResourceLocation> modelNames = new IdentityHashMap<IBakedModel, ModelResourceLocation>();
     private static final Map<IBakedModel, String[]> LAYERS = new IdentityHashMap<IBakedModel, String[]>();
     private static final Map<CustomItems.Rule, Map<IBakedModel, IBakedModel>> BAKED = new IdentityHashMap<CustomItems.Rule, Map<IBakedModel, IBakedModel>>();
+    /** Armor and enchantment textures (bound directly, not atlas sprites) by path. */
     private static final Map<String, ResourceLocation> ARMOR = new HashMap<String, ResourceLocation>();
+    private static final float[] COLOR = new float[4];
     private static ItemCameraTransforms flat;
 
     private Cit189() {}
@@ -127,6 +137,7 @@ public final class Cit189 {
         NBTTagCompound tag;
         long checked;
         CustomItems.Rule itemRule, armorRule;
+        CustomItems.Effect[] effects = CustomItems.Rules.NO_EFFECTS;
         IBakedModel original, model;
     }
 
@@ -319,7 +330,7 @@ public final class Cit189 {
     /** ItemModelMesher.getItemModel and renderItemModelForEntity: the stack's CIT model, else {@code original}. */
     public static IBakedModel model(ItemStack stack, IBakedModel original) {
         if (original == null) return original;
-        Match match = match(stack);
+        Match match = match(stack, false);
         if (match == null || match.itemRule == null) return original;
         if (match.original != original) {
             match.model = bake(match.itemRule, original);
@@ -333,7 +344,7 @@ public final class Cit189 {
      * (RenderTweaks189), else the layer is named from the armor material as Forge does.
      */
     public static ResourceLocation armor(ItemStack stack, int slot, String type, ResourceLocation texture) {
-        Match match = match(stack);
+        Match match = match(stack, false);
         if (match == null || match.armorRule == null) return null;
         String name;
         if (texture != null) {
@@ -347,20 +358,22 @@ public final class Cit189 {
             return null;
         }
         String replacement = match.armorRule.texture(name);
-        if (replacement == null) return null;
-        ResourceLocation location = ARMOR.get(replacement);
-        if (location == null) ARMOR.put(replacement, location = new ResourceLocation(replacement));
-        return location;
+        return replacement == null ? null : location(replacement);
     }
 
-    /** The stack's lookup, redone when it changed; null when CIT is off, no rule names its item or this is not the render thread. */
-    private static Match match(ItemStack stack) {
-        if (stack == null || rules.isEmpty() || module == null || !module.isEnabled()) return null;
+    /**
+     * The stack's lookup, redone when it changed; null when CIT is off, no rule can apply (an item or armor rule naming its item; for
+     * {@code glint}, any enchantment rule) or this is not the render thread.
+     */
+    private static Match match(ItemStack stack, boolean glint) {
+        CustomItems.Rules r = rules;
+        if (stack == null || r.isEmpty() || module == null || !module.isEnabled()) return null;
         Item item = stack.getItem();
         if (item == null) return null;
         int id = Item.getIdFromItem(item);
         boolean[] ids = named;
-        if (id < 0 || id >= ids.length || !ids[id] || !Minecraft.getMinecraft().isCallingFromMinecraftThread()) return null;
+        if (id < 0 || (glint ? !r.hasEnchantments() : id >= ids.length || !ids[id])) return null;
+        if (!Minecraft.getMinecraft().isCallingFromMinecraftThread()) return null;
         Cached cached = (Cached) (Object) stack;
         Match match = cached.lads$cit();
         NBTTagCompound tag = stack.getTagCompound();
@@ -387,8 +400,8 @@ public final class Cit189 {
                 s.addEnchantment(enchantment.getShort("id"), enchantment.getShort("lvl"));
             }
         }
-        CustomItems.Rules r = rules;
         CustomItems.Rule itemRule = r.item(s), armorRule = r.armor(s);
+        match.effects = s.glint && r.hasEnchantments() ? r.effects(s) : CustomItems.Rules.NO_EFFECTS;
         s.nbt = null; // the scratch must not keep a tag alive
         if (itemRule != match.itemRule) match.original = match.model = null;
         match.itemRule = itemRule;
@@ -400,6 +413,108 @@ public final class Cit189 {
         match.tag = tag;
         match.checked = now;
         return match;
+    }
+
+    // ---- enchantment effects (type=enchantment) --------------------------------------------------------------------------------------
+
+    /**
+     * RenderItem.renderItem, where vanilla draws the glint (renderEffect): the stack's CIT enchantment effects over the model, each its
+     * texture scrolled by speed, turned by rotation and blended by blend at its intensity, with vanilla's glint state around them.
+     * False when vanilla's glint should draw instead (no effect matches and cit.properties keeps useGlint).
+     */
+    public static boolean glint(RenderItem renderer, ItemStack stack, IBakedModel model) {
+        Match match = match(stack, true);
+        if (match == null) return false;
+        CustomItems.Effect[] effects = match.effects;
+        if (effects.length == 0) return !rules.useGlint;
+        long now = Minecraft.getSystemTime();
+        if (rules.method == CustomItems.CYCLE) rules.intensities(effects, now);
+        TextureManager textures = Minecraft.getMinecraft().getTextureManager();
+        GlStateManager.depthMask(false);
+        GlStateManager.depthFunc(GL11.GL_EQUAL);
+        GlStateManager.disableLighting();
+        GlStateManager.matrixMode(GL11.GL_TEXTURE);
+        for (CustomItems.Effect effect : effects) {
+            if (effect.intensity <= 0) continue;
+            CustomItems.Rule rule = effect.rule;
+            textures.bindTexture(location(rule.texture));
+            rule.blend.color(effect.intensity, COLOR);
+            GlStateManager.blendFunc(rule.blend.source, rule.blend.destination);
+            GlStateManager.pushMatrix();
+            GlStateManager.scale(8F, 8F, 8F); // vanilla's glint scale over the item's atlas UVs
+            GlStateManager.translate(scroll(rule.speed, now) / 8F, 0F, 0F);
+            GlStateManager.rotate(rule.rotation, 0F, 0F, 1F);
+            ((RenderItemCitInvoker189) renderer).lads$renderModel(model, argb(COLOR));
+            GlStateManager.popMatrix();
+        }
+        // vanilla's renderEffect leaves this state
+        GlStateManager.matrixMode(GL11.GL_MODELVIEW);
+        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GlStateManager.enableLighting();
+        GlStateManager.depthFunc(GL11.GL_LEQUAL);
+        GlStateManager.depthMask(true);
+        textures.bindTexture(TextureMap.locationBlocksTexture);
+        return true;
+    }
+
+    /** LayerArmorBase.renderLayer, where vanilla draws the armor glint (renderGlint): as {@link #glint}, over the armor model. */
+    public static boolean armorGlint(ItemStack stack, EntityLivingBase entity, ModelBase model, float limbSwing, float limbSwingAmount,
+                                     float ageInTicks, float netHeadYaw, float headPitch, float scale) {
+        Match match = match(stack, true);
+        if (match == null) return false;
+        CustomItems.Effect[] effects = match.effects;
+        if (effects.length == 0) return !rules.useGlint;
+        long now = Minecraft.getSystemTime();
+        if (rules.method == CustomItems.CYCLE) rules.intensities(effects, now);
+        TextureManager textures = Minecraft.getMinecraft().getTextureManager();
+        GlStateManager.enableBlend();
+        GlStateManager.depthFunc(GL11.GL_EQUAL);
+        GlStateManager.depthMask(false);
+        GlStateManager.disableLighting();
+        for (CustomItems.Effect effect : effects) {
+            if (effect.intensity <= 0) continue;
+            CustomItems.Rule rule = effect.rule;
+            textures.bindTexture(location(rule.texture));
+            rule.blend.color(effect.intensity, COLOR);
+            GlStateManager.color(COLOR[0], COLOR[1], COLOR[2], COLOR[3]);
+            GlStateManager.blendFunc(rule.blend.source, rule.blend.destination);
+            GlStateManager.matrixMode(GL11.GL_TEXTURE);
+            GlStateManager.loadIdentity();
+            GlStateManager.scale(1 / 3F, 1 / 3F, 1 / 3F); // vanilla's armor glint scale
+            GlStateManager.translate(scroll(rule.speed, now), 0F, 0F);
+            GlStateManager.rotate(rule.rotation, 0F, 0F, 1F);
+            GlStateManager.matrixMode(GL11.GL_MODELVIEW);
+            model.render(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
+        }
+        // vanilla's renderGlint leaves this state (with the blend function and colour reset)
+        GlStateManager.matrixMode(GL11.GL_TEXTURE);
+        GlStateManager.loadIdentity();
+        GlStateManager.matrixMode(GL11.GL_MODELVIEW);
+        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GlStateManager.color(1F, 1F, 1F, 1F);
+        GlStateManager.enableLighting();
+        GlStateManager.depthMask(true);
+        GlStateManager.depthFunc(GL11.GL_LEQUAL);
+        GlStateManager.disableBlend();
+        return true;
+    }
+
+    /** How far a texture scrolling at {@code speed} has moved (0-1, wrapping): speed 1 crosses it every 3 seconds, as vanilla's glint. */
+    private static float scroll(float speed, long millis) {
+        if (speed == 0) return 0;
+        double t = millis * (double) speed / 3000.0;
+        return (float) (t - Math.floor(t));
+    }
+
+    private static ResourceLocation location(String texture) {
+        ResourceLocation location = ARMOR.get(texture);
+        if (location == null) ARMOR.put(texture, location = new ResourceLocation(texture));
+        return location;
+    }
+
+    private static int argb(float[] rgba) {
+        return (int) (rgba[3] * 255F + 0.5F) << 24 | (int) (rgba[0] * 255F + 0.5F) << 16 | (int) (rgba[1] * 255F + 0.5F) << 8
+            | (int) (rgba[2] * 255F + 0.5F);
     }
 
     /** The rule's model for this original (kept per rule and model): its layers with the rule's textures, else the original. */

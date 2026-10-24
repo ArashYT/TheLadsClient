@@ -214,11 +214,47 @@ class CustomItemsTest {
         assertEquals("minecraft:optifine/cit/d1.png", armor.texture("diamond_layer_1"));
         assertNull(armor.texture("diamond_layer_2"));
 
-        CustomItems.Rule glint = rules.enchantments().get(0);
+        s.addEnchantment(16, 1);
+        CustomItems.Rule glint = rules.effects(s)[0].rule;
         assertSame(CustomSky.Blend.MULTIPLY, glint.blend);
         assertEquals(2F, glint.speed);
         assertEquals(1, glint.layer);
         assertTrue(rules.itemTextures().contains("minecraft:optifine/cit/h.png"));
         assertFalse(rules.itemTextures().contains("minecraft:optifine/cit/g.png"), "glint textures are not item atlas sprites");
+    }
+
+    @Test
+    void enchantmentEffectsOnePerLayerAveragedByLevel() {
+        Map<String, String> files = new HashMap<>();
+        files.put("minecraft:optifine/cit/sharp.properties", "type=enchantment\ntexture=s\nenchantments=sharpness\nlayer=1");
+        files.put("minecraft:optifine/cit/sharp_heavy.properties", "type=enchantment\ntexture=sh\nenchantments=sharpness\nlayer=1\nweight=2\nitems=bow");
+        files.put("minecraft:optifine/cit/fire.properties", "type=enchantment\ntexture=f\nenchantments=fire_aspect\nblend=alpha");
+        files.put("minecraft:optifine/cit/locked.properties", "type=enchantment\ntexture=r\nenchantments=fire_aspect\nlayer=2\nblend=replace");
+        CustomItems.Rules rules = CustomItems.load(files.keySet(), files::get, t -> true, IDS);
+        assertTrue(rules.useGlint);
+        assertEquals(CustomItems.AVERAGE, rules.method);
+
+        CustomItems.Stack s = stack(SWORD, 0, 1);
+        assertEquals(0, rules.effects(s).length, "nothing enchanted");
+        s.addEnchantment(16, 3);
+        s.addEnchantment(20, 1);
+        CustomItems.Effect[] effects = rules.effects(s);
+        assertEquals(3, effects.length);
+        assertEquals("minecraft:optifine/cit/f.png", effects[0].rule.texture, "bottom layer first");
+        assertEquals("minecraft:optifine/cit/s.png", effects[1].rule.texture, "the bow-only rule is not the sword's");
+        assertEquals(0.25F, effects[0].intensity, 1e-6, "fire aspect I of 4 levels");
+        assertEquals(0.75F, effects[1].intensity, 1e-6, "sharpness III of 4 levels");
+        assertEquals(1F, effects[2].intensity, 1e-6, "replace does not fade");
+
+        CustomItems.Stack bow = stack(BOW, 0, 1);
+        bow.addEnchantment(16, 1);
+        assertEquals("minecraft:optifine/cit/sh.png", rules.effects(bow)[0].rule.texture, "an item's own rule with the any-item ones");
+
+        files.put("minecraft:optifine/cit/cit.properties", "method=layered\ncap=1\nuseGlint=false");
+        CustomItems.Rules capped = CustomItems.load(files.keySet(), files::get, t -> true, IDS);
+        assertFalse(capped.useGlint);
+        CustomItems.Effect[] top = capped.effects(s);
+        assertEquals(1, top.length, "cap keeps the topmost layer");
+        assertEquals("minecraft:optifine/cit/r.png", top[0].rule.texture);
     }
 }

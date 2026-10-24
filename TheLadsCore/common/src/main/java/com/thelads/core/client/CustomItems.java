@@ -139,19 +139,29 @@ public final class CustomItems {
                 }
             }
             if (stackSize != null && !in(stackSize, s.count)) return false;
-            if ((enchantmentIds != null || enchantmentLevels != null) && !enchantments(s)) return false;
+            if ((enchantmentIds != null || enchantmentLevels != null) && enchantmentLevel(s) < 0) return false;
             for (CustomItemsNbt condition : nbt) if (!condition.matches(s.nbt, s.access)) return false;
             return true;
         }
 
-        private boolean enchantments(Stack s) {
-            if (!s.enchanted) return s.glint && enchantmentIds == null && in(enchantmentLevels, 1);
-            if (enchantmentIds == null) return in(enchantmentLevels, s.levelSum);
+        /**
+         * The enchantment level this rule matched (MCPatcher): the sum of all levels without ids, else the highest matching id's level;
+         * 1 for a glint without enchantments; -1 for no match.
+         */
+        private int enchantmentLevel(Stack s) {
+            if (!s.enchanted) return s.glint && enchantmentIds == null && in(enchantmentLevels, 1) ? 1 : -1;
+            if (enchantmentIds == null) return in(enchantmentLevels, s.levelSum) ? s.levelSum : -1;
+            int best = -1;
             for (int id = enchantmentIds.nextSetBit(0); id >= 0; id = enchantmentIds.nextSetBit(id + 1)) {
                 int level = s.levels[id];
-                if (level > 0 && (enchantmentLevels == null || in(enchantmentLevels, level))) return true;
+                if (level > 0 && (enchantmentLevels == null || in(enchantmentLevels, level))) best = Math.max(best, level);
             }
-            return false;
+            return best;
+        }
+
+        /** Whether the blend lets an effect fade (its intensity scales it); replace does not. */
+        boolean fades() {
+            return blend != CustomSky.Blend.REPLACE;
         }
 
         /** Highest weight first, then by file name. */
@@ -167,33 +177,66 @@ public final class CustomItems {
         }
     }
 
+    /** One enchantment effect to draw on a stack: its rule and how strongly (0-1, from cit.properties' method). */
+    public static final class Effect {
+        public final Rule rule;
+        final int level;
+        public float intensity = 1;
+
+        Effect(Rule rule, int level) {
+            this.rule = rule;
+            this.level = level;
+        }
+    }
+
+    /** cit.properties: how several enchantment effects on one stack share it. */
+    public static final int AVERAGE = 0, LAYERED = 1, CYCLE = 2;
+
     /** All rules of the loaded packs, indexed by item. */
     public static final class Rules {
-        public static final Rules EMPTY = new Rules(Collections.<Rule>emptyList(), true);
         private static final Rule[] NONE = new Rule[0];
+        public static final Effect[] NO_EFFECTS = new Effect[0];
+        public static final Rules EMPTY = new Rules(Collections.<Rule>emptyList(), null); // after NONE, which it uses
 
-        private final Map<Integer, Rule[]> items, armor;
-        private final List<Rule> enchantments;
+        private final Map<Integer, Rule[]> items, armor, glints;
+        /** Enchantment rules for any item, for items no enchantment rule names. */
+        private final Rule[] glintsAnyItem;
         /** cit.properties' useGlint: whether the vanilla glint still draws where no enchantment rule matches. */
         public final boolean useGlint;
+        /** cit.properties' method, cap (most effects drawn, the top layers kept) and fade (seconds between effects in a cycle). */
+        public final int method, cap;
+        public final float fade;
         public final int count;
 
-        Rules(List<Rule> rules, boolean useGlint) {
-            this.useGlint = useGlint;
+        /** {@code global} is cit.properties (null when the packs have none). */
+        Rules(List<Rule> rules, Properties global) {
+            useGlint = global == null || !"false".equalsIgnoreCase(get(global, "useGlint"));
+            String how = global == null ? "average" : lower(get(global, "method"), "average");
+            method = how.equals("layered") ? LAYERED : how.equals("cycle") ? CYCLE : AVERAGE;
+            cap = global == null ? 99 : Math.max(0, integer(get(global, "cap"), 99));
+            fade = global == null ? 0.5F : Math.max(0, number(get(global, "fade"), 0.5F));
             count = rules.size();
             List<Rule> sorted = new ArrayList<>(rules);
             Collections.sort(sorted);
             items = index(sorted, Type.ITEM);
             armor = index(sorted, Type.ARMOR);
-            List<Rule> glints = new ArrayList<>();
-            for (Rule rule : sorted) if (rule.type == Type.ENCHANTMENT) glints.add(rule);
-            enchantments = Collections.unmodifiableList(glints);
+            List<Rule> anyItem = new ArrayList<>();
+            for (Rule rule : sorted) if (rule.type == Type.ENCHANTMENT && rule.items == null) anyItem.add(rule);
+            glintsAnyItem = anyItem.toArray(NONE);
+            Map<Integer, Rule[]> named = index(sorted, Type.ENCHANTMENT);
+            glints = new HashMap<>();
+            for (Map.Entry<Integer, Rule[]> e : named.entrySet()) { // as MCPatcher: an item's own effects with the any-item ones, in order
+                List<Rule> merged = new ArrayList<>(java.util.Arrays.asList(e.getValue()));
+                merged.addAll(anyItem);
+                Collections.sort(merged);
+                glints.put(e.getKey(), merged.toArray(NONE));
+            }
         }
 
         private static Map<Integer, Rule[]> index(List<Rule> sorted, Type type) {
             Map<Integer, List<Rule>> byItem = new HashMap<>();
             for (Rule rule : sorted) {
-                if (rule.type != type) continue;
+                if (rule.type != type || rule.items == null) continue;
                 for (int item : rule.items) byItem.computeIfAbsent(item, k -> new ArrayList<>()).add(rule);
             }
             Map<Integer, Rule[]> result = new HashMap<>();
@@ -211,8 +254,57 @@ public final class CustomItems {
         public Rule item(Stack s) { return first(items.get(s.item), s); }
         /** The armor rule for this stack, or null. */
         public Rule armor(Stack s) { return first(armor.get(s.item), s); }
-        /** Enchantment rules, by weight then file name. */
-        public List<Rule> enchantments() { return enchantments; }
+        public boolean hasEnchantments() { return glintsAnyItem.length > 0 || !glints.isEmpty(); }
+
+        /**
+         * The enchantment effects for this stack, bottom layer first: per layer the first matching rule (weight, then file name), at most
+         * {@link #cap} layers (the topmost kept). Intensities are set for average and layered; a cycle needs {@link #intensities} per frame.
+         */
+        public Effect[] effects(Stack s) {
+            Rule[] candidates = glints.get(s.item);
+            if (candidates == null) candidates = glintsAnyItem;
+            if (candidates.length == 0) return NO_EFFECTS;
+            java.util.TreeMap<Integer, Effect> byLayer = new java.util.TreeMap<>();
+            for (Rule rule : candidates) {
+                if (byLayer.containsKey(rule.layer) || !rule.matches(s)) continue;
+                int level = rule.enchantmentIds != null || rule.enchantmentLevels != null ? rule.enchantmentLevel(s) : 1;
+                byLayer.put(rule.layer, new Effect(rule, Math.max(level, 1)));
+            }
+            while (byLayer.size() > cap) byLayer.pollFirstEntry();
+            if (byLayer.isEmpty()) return NO_EFFECTS;
+            Effect[] effects = byLayer.values().toArray(new Effect[0]);
+            if (method != CYCLE) intensities(effects, 0);
+            return effects;
+        }
+
+        /** Sets each effect's intensity (MCPatcher's methods); {@code millis} is the clock a cycle runs on. Allocates nothing. */
+        public void intensities(Effect[] effects, long millis) {
+            if (method == CYCLE) {
+                float total = 0;
+                for (Effect e : effects) if (e.rule.fades()) total += e.rule.duration + 2 * fade;
+                float time = total > 0 ? (float) ((millis / 1000.0) % total) : 0;
+                for (Effect e : effects) {
+                    if (!e.rule.fades()) {
+                        e.intensity = 1;
+                        continue;
+                    }
+                    float duration = e.rule.duration + 2 * fade;
+                    e.intensity = 0;
+                    if (time > 0 && time < duration) {
+                        float edge = (float) Math.sin(Math.PI * fade / duration);
+                        e.intensity = Math.min(1, (float) Math.sin(Math.PI * time / duration) / (edge == 0 ? 1 : edge));
+                    }
+                    time -= duration;
+                }
+                return;
+            }
+            int denominator = 0;
+            for (Effect e : effects) {
+                if (!e.rule.fades()) continue;
+                denominator = method == LAYERED ? Math.max(denominator, e.level) : denominator + e.level;
+            }
+            for (Effect e : effects) e.intensity = e.rule.fades() && denominator > 0 ? Math.min(1, e.level / (float) denominator) : 1;
+        }
 
         private static Rule first(Rule[] candidates, Stack s) {
             if (candidates == null) return null;
@@ -238,12 +330,11 @@ public final class CustomItems {
      * file's text (null when missing), {@code exists} whether a texture is in the packs.
      */
     public static Rules load(Collection<String> files, Function<String, String> read, Predicate<String> exists, Ids ids) {
-        boolean useGlint = true;
+        Properties global = null;
         for (String folder : FOLDERS) {
-            String global = read.apply("minecraft:" + folder + "cit.properties");
-            if (global == null) continue;
-            Properties p = properties(global);
-            if (p != null) useGlint = !"false".equalsIgnoreCase(get(p, "useGlint"));
+            String text = read.apply("minecraft:" + folder + "cit.properties");
+            if (text == null) continue;
+            global = properties(text);
             break;
         }
         List<Rule> rules = new ArrayList<>();
@@ -253,7 +344,7 @@ public final class CustomItems {
             Rule rule = text == null ? null : parse(file, text, exists, ids);
             if (rule != null) rules.add(rule);
         }
-        return new Rules(rules, useGlint);
+        return new Rules(rules, global);
     }
 
     /** One rule file ("namespace:path.properties"); null when it is broken, matches nothing or has no texture to show. */
