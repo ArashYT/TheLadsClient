@@ -32,22 +32,22 @@ public class NametagBackgroundMixin {
     );
 
     @Unique
-    private static final SubmitNodeCollector.CustomGeometryRenderer BADGE_NORMAL_GEOMETRY = (pose, consumer) -> {
-        float s = (float) LadsBadge.NAMETAG_SIZE;
-        consumer.addVertex(pose, 0.0F, 0.0F, 0.0F).setColor(-1).setUv(0.0F, 0.0F).setLight(0xF000F0);
-        consumer.addVertex(pose, 0.0F, s, 0.0F).setColor(-1).setUv(0.0F, 1.0F).setLight(0xF000F0);
-        consumer.addVertex(pose, s, s, 0.0F).setColor(-1).setUv(1.0F, 1.0F).setLight(0xF000F0);
-        consumer.addVertex(pose, s, 0.0F, 0.0F).setColor(-1).setUv(1.0F, 0.0F).setLight(0xF000F0);
-    };
+    private static final SubmitNodeCollector.CustomGeometryRenderer BADGE_NORMAL_GEOMETRY = lads$badge(-1);
 
     @Unique
-    private static final SubmitNodeCollector.CustomGeometryRenderer BADGE_SNEAKING_GEOMETRY = (pose, consumer) -> {
-        float s = (float) LadsBadge.NAMETAG_SIZE;
-        consumer.addVertex(pose, 0.0F, 0.0F, 0.0F).setColor(0x80FFFFFF).setUv(0.0F, 0.0F).setLight(0xF000F0);
-        consumer.addVertex(pose, 0.0F, s, 0.0F).setColor(0x80FFFFFF).setUv(0.0F, 1.0F).setLight(0xF000F0);
-        consumer.addVertex(pose, s, s, 0.0F).setColor(0x80FFFFFF).setUv(1.0F, 1.0F).setLight(0xF000F0);
-        consumer.addVertex(pose, s, 0.0F, 0.0F).setColor(0x80FFFFFF).setUv(1.0F, 0.0F).setLight(0xF000F0);
-    };
+    private static final SubmitNodeCollector.CustomGeometryRenderer BADGE_SNEAKING_GEOMETRY = lads$badge(0x80FFFFFF);
+
+    /** The badge quad in {@code color}; it draws after the submit, so a faded colour is captured here. */
+    @Unique
+    private static SubmitNodeCollector.CustomGeometryRenderer lads$badge(int color) {
+        return (pose, consumer) -> {
+            float s = (float) LadsBadge.NAMETAG_SIZE;
+            consumer.addVertex(pose, 0.0F, 0.0F, 0.0F).setColor(color).setUv(0.0F, 0.0F).setLight(0xF000F0);
+            consumer.addVertex(pose, 0.0F, s, 0.0F).setColor(color).setUv(0.0F, 1.0F).setLight(0xF000F0);
+            consumer.addVertex(pose, s, s, 0.0F).setColor(color).setUv(1.0F, 1.0F).setLight(0xF000F0);
+            consumer.addVertex(pose, s, 0.0F, 0.0F).setColor(color).setUv(1.0F, 0.0F).setLight(0xF000F0);
+        };
+    }
 
     @ModifyVariable(method = "submitNameTag", at = @At("HEAD"), argsOnly = true, require = 1)
     private Component lads$rename(Component name) {
@@ -84,12 +84,17 @@ public class NametagBackgroundMixin {
         poseStack.pushPose();
         poseStack.translate(badgeX, badgeY, 0.0F);
 
+        // Distance Fade like the name's (tagAlpha is 1 for no fade)
+        float fade = com.thelads.core.client.PvpVisuals.tagAlpha;
+        var normal = fade >= 1 ? BADGE_NORMAL_GEOMETRY : lads$badge(com.thelads.core.client.PvpVisuals.alpha(-1, fade));
+        var sneaking = fade >= 1 ? BADGE_SNEAKING_GEOMETRY : lads$badge(com.thelads.core.client.PvpVisuals.alpha(0x80FFFFFF, fade));
+
         SubmitNodeCollection self = (SubmitNodeCollection) (Object) this;
         if (seeThrough) {
-            self.submitCustomGeometry(poseStack, RenderTypes.text(LADS$BADGE_TEXTURE), BADGE_NORMAL_GEOMETRY);
-            self.submitCustomGeometry(poseStack, RenderTypes.textSeeThrough(LADS$BADGE_TEXTURE), BADGE_SNEAKING_GEOMETRY);
+            self.submitCustomGeometry(poseStack, RenderTypes.text(LADS$BADGE_TEXTURE), normal);
+            self.submitCustomGeometry(poseStack, RenderTypes.textSeeThrough(LADS$BADGE_TEXTURE), sneaking);
         } else {
-            self.submitCustomGeometry(poseStack, RenderTypes.text(LADS$BADGE_TEXTURE), BADGE_SNEAKING_GEOMETRY);
+            self.submitCustomGeometry(poseStack, RenderTypes.text(LADS$BADGE_TEXTURE), sneaking);
         }
 
         poseStack.popPose();

@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.thelads.core.client.PvpVisuals;
+import com.thelads.core.client.ladsapi.LadsBadge;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.BlockOverlayModule;
 import com.thelads.core.modules.GlintColorizerModule;
@@ -158,8 +159,10 @@ public final class PvpVisuals26 {
         pose.rotate(camera.orientation);
         float scale = 0.025f * PvpVisuals.tagScale;
         pose.scale(scale, -scale, scale);
-        // the tag shows the renamed name (NametagBackgroundMixin)
-        float x = font.width(com.thelads.core.v26_2.feature.NativeNicknames.rename(state.nameTag)) / 2f + 3;
+        // the tag shows the renamed name (NametagBackgroundMixin), moved right by the Lads badge: Ping and Health follow it
+        var tag = com.thelads.core.v26_2.feature.NativeNicknames.rename(state.nameTag);
+        float x = font.width(tag) / 2f + 3;
+        if (com.thelads.core.v26_2.feature.NametagBadgeContext.isBadgeActive(tag)) x += (LadsBadge.NAMETAG_SIZE + LadsBadge.GAP) / 2f;
         if (PvpVisuals.nametagPing && mc.getConnection() != null) {
             PlayerInfo info = mc.getConnection().getPlayerInfo(player.getUUID());
             if (info != null) x = extra(collector, pose, font, info.getLatency(), MS, PvpVisuals.pingColor(info.getLatency()), x, offset, state.lightCoords) + 3;
