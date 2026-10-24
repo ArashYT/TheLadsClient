@@ -60,7 +60,9 @@ public final class SocialToasts {
     }
 
     /** SocialBridge.toast: the buttons run SocialState action ids (null = no button) on the client; nothing goes to a game server. */
-    public static void showAction(String title, String body, String acceptAction, String denyAction) {
+    public static synchronized void showAction(String title, String body, String acceptAction, String denyAction) {
+        // A toast without buttons replaces the last one with the same title (progress: "Backing up the world: 40%")
+        if (acceptAction == null && denyAction == null) toasts.removeIf(t -> t.title().equals(title) && t.acceptAction() == null && t.denyAction() == null);
         String acceptLabel = acceptAction == null ? null
                 : acceptAction.startsWith("invite_accept:") ? "Join" : acceptAction.startsWith("dm:") ? "Reply" : "Accept";
         show(title, body, acceptLabel, denyAction == null ? null : "Decline", action(acceptAction), action(denyAction));

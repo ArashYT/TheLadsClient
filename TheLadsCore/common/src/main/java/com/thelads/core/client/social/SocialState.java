@@ -11,6 +11,9 @@ import com.thelads.core.config.ModuleManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -20,6 +23,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -31,6 +35,14 @@ public class SocialState {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore/SocialState");
     /** The Lads setting (default on); off = no connection to the social service at all. */
     public static final String MODULE = "Friends & Social";
+    private static final String BACKUP = "World Backup";
+    /** Each backup's zip on its own low-priority daemon thread: the game thread never waits for it. */
+    private static final Executor BACKUP_THREAD = task -> {
+        Thread t = new Thread(task, "Lads-WorldBackup");
+        t.setDaemon(true);
+        t.setPriority(Thread.MIN_PRIORITY);
+        t.start();
+    };
 
     public record Dm(UUID from, String text, long ts) {}
     public record JoinCheck(boolean ok, String reason) {}
@@ -75,6 +87,7 @@ public class SocialState {
     private volatile Presence lastPresence;
     private volatile UUID dmTarget;
     private volatile SwitchConfirm pendingSwitch;
+    private volatile boolean backingUp;
     private int ticks; // game thread only
 
     /** The game's own state: SocialBridge.get(), the logged-in session, the -Dlads.social.url / LADS_SOCIAL_URL endpoint. */
@@ -465,12 +478,39 @@ public class SocialState {
         }
     }
 
-    /** Host screen: opens the world (LAN, or loopback + login filter for friends) and shows it to friends. */
-    public boolean startHosting(HostOptions options) {
-        boolean ok = hostSession.start(options);
+    /**
+     * Host screen: opens the world (LAN, or loopback + login filter for friends) and shows it to friends. With "Backup the world before
+     * opening", the server saves on its thread, the zip runs on a worker with a progress toast, then the world opens on the game thread:
+     * the game never waits. A failed backup warns and still opens.
+     */
+    public void startHosting(HostOptions options) {
+        SocialBridge bridge = bridge();
+        Path world = bridge.worldDir();
+        if (options == null || !options.backupOnOpen || options.scope == HostOptions.Scope.OFF || world == null) {
+            openHosting(options);
+            return;
+        }
+        if (backingUp) return; // a second click while the first backup runs
+        backingUp = true;
+        bridge.toast(BACKUP, "Saving the world...", null, null);
+        bridge.saveWorld().thenRunAsync(() -> {
+            try {
+                WorldBackup.zip(world, pct -> bridge.toast(BACKUP, "Backing up the world: " + pct + "%", null, null));
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }, BACKUP_THREAD).whenComplete((done, err) -> {
+            backingUp = false;
+            if (err != null) LOGGER.warn("SocialState: world backup failed, opening anyway", err);
+            bridge.toast(BACKUP, err == null ? "World backed up" : "Backup failed, opening the world anyway", null, null);
+            bridge.runOnGameThread(() -> openHosting(options));
+        });
+    }
+
+    private void openHosting(HostOptions options) {
+        hostSession.start(options);
         refreshPresence();
         notifyListeners();
-        return ok;
     }
 
     public void stopHosting() {

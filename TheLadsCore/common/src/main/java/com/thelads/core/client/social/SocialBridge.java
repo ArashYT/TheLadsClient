@@ -1,8 +1,10 @@
 package com.thelads.core.client.social;
 
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 
 /**
@@ -79,4 +81,13 @@ public interface SocialBridge {
     default String worldId() { return null; }
 
     default String worldName() { return null; }
+
+    /** Folder of the open singleplayer world (saves/&lt;world&gt;), or null. */
+    default Path worldDir() { return null; }
+
+    /** Saves the open world on the server thread (save-all flush); completes when it is on disk. */
+    default CompletableFuture<Void> saveWorld() { return CompletableFuture.completedFuture(null); }
+
+    /** Runs task on the game (render) thread. */
+    default void runOnGameThread(Runnable task) { task.run(); }
 }

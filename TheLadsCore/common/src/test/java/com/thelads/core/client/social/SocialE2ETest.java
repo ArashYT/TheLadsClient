@@ -96,7 +96,8 @@ public class SocialE2ETest {
             options.scope = HostOptions.Scope.FRIENDS;
             options.approval = HostOptions.Approval.ASK;
             options.backupOnOpen = false;
-            assertTrue(host.startHosting(options));
+            host.startHosting(options);
+            assertTrue(host.hostSession().isHosting());
             await("guest sees the host hosting", () -> friend(guest, hostId).presence().world() != null);
             assertTrue(guest.canJoin(friend(guest, hostId)).ok());
 
@@ -153,7 +154,8 @@ public class SocialE2ETest {
             guest.block(hostId);
             await("block processed", () -> guestInbox.stream().anyMatch(m -> "friend_removed".equals(str(m, "t"))));
             guestInbox.clear();
-            assertTrue(host.startHosting(options));
+            host.startHosting(options);
+            assertTrue(host.hostSession().isHosting());
             Thread.sleep(1500);
             assertFalse(guestInbox.stream().anyMatch(m -> "presence".equals(str(m, "t")) && SocialClient.plain(hostId).equals(str(m, "uuid"))),
                     "a blocked host's presence must not reach the guest: " + guestInbox);

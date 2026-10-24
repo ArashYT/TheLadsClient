@@ -121,21 +121,4 @@ public class SocialBridge1201Test {
         Assertions.assertTrue(options.backupOnOpen);
         Assertions.assertFalse(options.relayOnly);
     }
-
-    @Test
-    public void testBackupWorldCreation(@TempDir Path tempDir) throws Exception {
-        Path worldDir = tempDir.resolve("saves").resolve("MyTestWorld");
-        Files.createDirectories(worldDir);
-        Files.writeString(worldDir.resolve("level.dat"), "dummy level data");
-        Files.writeString(worldDir.resolve("session.lock"), "lock");
-
-        SocialBridge1201.backupWorld(worldDir, "MyTestWorld");
-
-        Path backupDir = tempDir.resolve("saves").resolve("lads-backups");
-        Assertions.assertTrue(Files.isDirectory(backupDir));
-        File[] files = backupDir.toFile().listFiles((d, name) -> name.startsWith("MyTestWorld-") && name.endsWith(".zip"));
-        Assertions.assertNotNull(files);
-        Assertions.assertEquals(1, files.length);
-        Assertions.assertTrue(files[0].length() > 0);
-    }
 }

@@ -85,50 +85,7 @@ public final class SocialBridge26Checks {
         require(list.size() == 3, "sorted list contains 3 entries");
         require(list.get(0).online(), "first entry is online");
 
-        // 9. World backup pruning
-        try {
-            testBackupPruning();
-        } catch (Exception e) {
-            throw new RuntimeException("Backup pruning check failed", e);
-        }
-
         System.out.println("PASS " + passed + " SocialBridge26 checks");
-    }
-
-    private static void testBackupPruning() throws Exception {
-        Path tempDir = Files.createTempDirectory("lads-social-backup-test");
-        try {
-            Path backupDir = tempDir.resolve("lads-backups");
-            Files.createDirectories(backupDir);
-            String world = "TestWorld";
-
-            for (int i = 0; i < 8; i++) {
-                Path file = backupDir.resolve(world + "-20261024-000" + i + ".zip");
-                try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(file.toFile()))) {
-                    zos.putNextEntry(new ZipEntry("level.dat"));
-                    zos.write("test".getBytes());
-                    zos.closeEntry();
-                }
-                file.toFile().setLastModified(1000000L + i * 1000L);
-            }
-
-            File[] initial = backupDir.toFile().listFiles((d, n) -> n.startsWith(world + "-") && n.endsWith(".zip"));
-            require(initial != null && initial.length == 8, "8 initial backups created");
-
-            BackupHelper26.pruneBackups(backupDir, world, 5);
-
-            File[] remaining = backupDir.toFile().listFiles((d, n) -> n.startsWith(world + "-") && n.endsWith(".zip"));
-            require(remaining != null && remaining.length == 5, "exactly 5 backups retained after pruning");
-
-            for (File f : remaining) {
-                require(f.lastModified() >= 1000000L + 3 * 1000L, "old backup pruned");
-            }
-        } finally {
-            Files.walk(tempDir)
-                .sorted((a, b) -> b.compareTo(a))
-                .map(Path::toFile)
-                .forEach(File::delete);
-        }
     }
 
     private static void require(boolean condition, String message) {

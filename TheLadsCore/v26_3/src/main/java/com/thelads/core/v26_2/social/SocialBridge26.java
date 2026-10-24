@@ -76,10 +76,6 @@ public class SocialBridge26 implements SocialBridge {
         if (server == null || !server.isRunning()) return -1;
 
         try {
-            if (options.backupOnOpen) {
-                BackupHelper26.backupWorld(server);
-            }
-
             Path worldDir = server.getWorldPath(LevelResource.ROOT);
             options.save(worldDir);
 
@@ -356,6 +352,24 @@ public class SocialBridge26 implements SocialBridge {
     public String worldId() {
         IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
         return server != null ? server.getWorldPath(LevelResource.ROOT).getFileName().toString() : null;
+    }
+
+    @Override
+    public Path worldDir() {
+        IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        return server == null ? null : server.getWorldPath(LevelResource.ROOT);
+    }
+
+    @Override
+    public java.util.concurrent.CompletableFuture<Void> saveWorld() {
+        IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        return server == null ? java.util.concurrent.CompletableFuture.completedFuture(null)
+            : java.util.concurrent.CompletableFuture.runAsync(() -> server.saveEverything(true, true, true), server); // on the server thread
+    }
+
+    @Override
+    public void runOnGameThread(Runnable task) {
+        Minecraft.getInstance().execute(task);
     }
 
     @Override

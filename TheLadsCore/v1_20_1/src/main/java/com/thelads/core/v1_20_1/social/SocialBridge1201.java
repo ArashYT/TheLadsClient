@@ -9,25 +9,18 @@ import com.thelads.core.client.social.ui.SocialToasts;
 import com.thelads.core.v1_20_1.mixin.social.IntegratedServerAccessor1201;
 import com.thelads.core.v1_20_1.mixin.social.ServerConnectionListenerAccessor1201;
 import io.netty.channel.ChannelFuture;
-import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Predicate;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
@@ -155,15 +148,6 @@ public final class SocialBridge1201 implements SocialBridge {
                 options.save(worldDir);
             } catch (Exception e) {
                 LOGGER.warn("Failed to persist lads-host.json: {}", e.getMessage());
-            }
-
-            if (options.backupOnOpen) {
-                // Before publishing, as 1.8.9 and 26.3: the caller needs the port now (HostSession), and no guest writes during the zip.
-                try {
-                    backupWorld(worldDir, worldId());
-                } catch (IOException e) {
-                    LOGGER.warn("Failed to create world backup: {}", e.getMessage());
-                }
             }
         }
 
@@ -526,6 +510,24 @@ public final class SocialBridge1201 implements SocialBridge {
         return worldId();
     }
 
+    @Override
+    public Path worldDir() {
+        IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        return server == null ? null : server.getWorldPath(LevelResource.ROOT);
+    }
+
+    @Override
+    public CompletableFuture<Void> saveWorld() {
+        IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        return server == null ? CompletableFuture.completedFuture(null)
+            : CompletableFuture.runAsync(() -> server.saveEverything(true, true, true), server); // save-all flush, on the server thread
+    }
+
+    @Override
+    public void runOnGameThread(Runnable task) {
+        Minecraft.getInstance().execute(task);
+    }
+
     private static GameType parseGameType(String mode) {
         if (mode == null) return GameType.SURVIVAL;
         return switch (mode.toLowerCase(Locale.ROOT)) {
@@ -544,52 +546,5 @@ public final class SocialBridge1201 implements SocialBridge {
             return m.group(1);
         }
         return "";
-    }
-
-    public static void backupWorld(Path worldDir, String worldName) throws IOException {
-        if (worldDir == null || !Files.isDirectory(worldDir)) return;
-        Path savesDir = worldDir.getParent();
-        if (savesDir == null) return;
-        Path backupDir = savesDir.resolve("lads-backups");
-        Files.createDirectories(backupDir);
-
-        String safeWorldName = (worldName != null && !worldName.isEmpty()) ? worldName.replaceAll("[^a-zA-Z0-9.-]", "_") : "world";
-        String dateStr = new SimpleDateFormat("yyyyMMdd-HHmm").format(new Date());
-        Path zipFile = backupDir.resolve(safeWorldName + "-" + dateStr + ".zip");
-
-        try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(zipFile))) {
-            Files.walk(worldDir)
-                .filter(path -> !Files.isDirectory(path))
-                .forEach(path -> {
-                    String relative = worldDir.relativize(path).toString().replace('\\', '/');
-                    if (relative.startsWith("session.lock")) return;
-                    try {
-                        zos.putNextEntry(new ZipEntry(relative));
-                        Files.copy(path, zos);
-                        zos.closeEntry();
-                    } catch (IOException e) {
-                        LOGGER.warn("Failed to zip {}: {}", relative, e.getMessage());
-                    }
-                });
-        }
-        LOGGER.info("World backup created at {}", zipFile);
-
-        pruneOldBackups(backupDir, safeWorldName);
-    }
-
-    private static void pruneOldBackups(Path backupDir, String safeWorldName) {
-        try {
-            File[] files = backupDir.toFile().listFiles((dir, name) -> name.startsWith(safeWorldName + "-") && name.endsWith(".zip"));
-            if (files != null && files.length > 5) {
-                Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
-                for (int i = 5; i < files.length; i++) {
-                    if (files[i].delete()) {
-                        LOGGER.info("Pruned old world backup: {}", files[i].getName());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            LOGGER.warn("Failed to prune backups: {}", e.getMessage());
-        }
     }
 }

@@ -133,10 +133,6 @@ public final class SocialBridge189 implements SocialBridge {
         setLoopbackOnly(true);
         String portStr = null;
         try {
-            if (options != null && options.backupOnOpen) {
-                WorldBackupHelper189.backup(server.getFolderName());
-            }
-
             WorldSettings.GameType gameType = WorldSettings.GameType.getByName(options != null && options.guestGameMode != null ? options.guestGameMode : "survival");
             if (gameType == null) gameType = WorldSettings.GameType.SURVIVAL;
             boolean allowCheats = options != null && options.guestOpLevel > 0;
@@ -170,10 +166,6 @@ public final class SocialBridge189 implements SocialBridge {
         if (server == null) return;
 
         setLoopbackOnly(false);
-        if (options != null && options.backupOnOpen) {
-            WorldBackupHelper189.backup(server.getFolderName());
-        }
-
         WorldSettings.GameType gameType = WorldSettings.GameType.getByName(options != null && options.guestGameMode != null ? options.guestGameMode : "survival");
         if (gameType == null) gameType = WorldSettings.GameType.SURVIVAL;
         boolean allowCheats = options != null && options.guestOpLevel > 0;
@@ -514,6 +506,43 @@ public final class SocialBridge189 implements SocialBridge {
             return mc.getIntegratedServer().getFolderName();
         }
         return null;
+    }
+
+    @Override
+    public java.nio.file.Path worldDir() {
+        Minecraft mc = mc();
+        IntegratedServer server = mc == null ? null : mc.getIntegratedServer();
+        return server == null ? null : new java.io.File(new java.io.File(mc.mcDataDir, "saves"), server.getFolderName()).toPath();
+    }
+
+    @Override
+    public java.util.concurrent.CompletableFuture<Void> saveWorld() {
+        java.util.concurrent.CompletableFuture<Void> saved = new java.util.concurrent.CompletableFuture<>();
+        Minecraft mc = mc();
+        IntegratedServer server = mc == null ? null : mc.getIntegratedServer();
+        if (server == null) {
+            saved.complete(null);
+            return saved;
+        }
+        server.addScheduledTask(() -> { // runs while the game is paused too; chunk writes flushed to disk (saveChunkData)
+            try {
+                server.getConfigurationManager().saveAllPlayerData();
+                for (WorldServer ws : server.worldServers) {
+                    if (ws == null) continue;
+                    ws.saveAllChunks(true, null);
+                    ws.saveChunkData();
+                }
+                saved.complete(null);
+            } catch (Throwable t) {
+                saved.completeExceptionally(t);
+            }
+        });
+        return saved;
+    }
+
+    @Override
+    public void runOnGameThread(Runnable task) {
+        mc().addScheduledTask(task);
     }
 
     @Override
