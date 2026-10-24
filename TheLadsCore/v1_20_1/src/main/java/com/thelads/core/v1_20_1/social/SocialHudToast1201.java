@@ -3,19 +3,28 @@ package com.thelads.core.v1_20_1.social;
 import com.mojang.blaze3d.platform.Window;
 import com.thelads.core.client.social.ui.SocialToasts;
 import com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 
-/** Draws the common social toasts on 1.20.1's HUD layer (top right) and routes clicks on them (MouseHandlerMixin). */
+/** The common social toasts on 1.20.1, top right: on the HUD and over every screen (menus too); clicks: MouseHandlerMixin. */
 public final class SocialHudToast1201 {
     private SocialHudToast1201() {}
 
-    public static void render(GuiGraphics g, float tickDelta) {
+    public static void register() {
+        HudRenderCallback.EVENT.register((g, tickDelta) -> {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.screen == null && !mc.options.hideGui) draw(g, -1, -1); // with a screen open: drawn over it instead
+        });
+        ScreenEvents.AFTER_INIT.register((client, screen, w, h) ->
+            ScreenEvents.afterRender(screen).register((s, g, mx, my, delta) -> draw(g, mx, my)));
+    }
+
+    private static void draw(GuiGraphics g, int mx, int my) {
+        if (SocialToasts.isEmpty()) return;
         Minecraft mc = Minecraft.getInstance();
-        if (SocialToasts.isEmpty() || mc.options.hideGui) return;
         Window w = mc.getWindow();
-        int mx = (int) (mc.mouseHandler.xpos() * w.getGuiScaledWidth() / w.getScreenWidth());
-        int my = (int) (mc.mouseHandler.ypos() * w.getGuiScaledHeight() / w.getScreenHeight());
         SocialToasts.render(new GuiGraphicsLadsAdapter1201(g, mc.font), w.getGuiScaledWidth(), w.getGuiScaledHeight(), mx, my);
     }
 

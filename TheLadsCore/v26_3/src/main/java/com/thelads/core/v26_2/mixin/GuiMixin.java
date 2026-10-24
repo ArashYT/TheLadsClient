@@ -19,7 +19,8 @@ public class GuiMixin {
         at = @At("TAIL"), require = 1)
     private void onExtractRenderState(GuiGraphicsExtractor g, DeltaTracker tickDelta, CallbackInfo ci) {
         com.thelads.core.v26_2.feature.NativeAutohide.renderLadsHud(g);
-        if (!com.thelads.core.client.social.ui.SocialToasts.isEmpty()) { // the social toasts, top right
+        // The social toasts, top right (with a screen open: drawn over it, SocialBridge26.registerToasts)
+        if (!com.thelads.core.client.social.ui.SocialToasts.isEmpty() && Minecraft.getInstance().gui.screen() == null) {
             com.thelads.core.client.social.ui.SocialToasts.render(new GuiGraphicsExtractorLadsAdapter(g, Minecraft.getInstance().font),
                 g.guiWidth(), g.guiHeight(), -1, -1);
         }

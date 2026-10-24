@@ -4,6 +4,10 @@ import com.thelads.core.client.social.HostOptions;
 import com.thelads.core.client.social.SocialBridge;
 import com.thelads.core.client.social.SocialState;
 import com.thelads.core.client.social.ui.SocialToasts;
+import com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter;
+import com.thelads.core.v26_2.gui.CommonInput;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
@@ -358,6 +362,17 @@ public class SocialBridge26 implements SocialBridge {
     public String worldName() {
         IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
         return server != null ? server.getWorldData().getLevelName() : null;
+    }
+
+    /** The social toasts over every screen (menus too) and clickable there; with no screen open the HUD draws them (GuiMixin). */
+    public static void registerToasts() {
+        ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
+            ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> {
+                if (!SocialToasts.isEmpty()) SocialToasts.render(new GuiGraphicsExtractorLadsAdapter(g, client.font), s.width, s.height, mx, my);
+            });
+            ScreenMouseEvents.allowMouseClick(screen).register((s, click) ->
+                !SocialToasts.mouseClicked(click.x(), click.y(), CommonInput.button(click.button()), s.width, s.height));
+        });
     }
 
     /** A clicked "/lads:social <id>" chat link: handled here, never sent to the server. */

@@ -17,7 +17,6 @@ import com.thelads.core.v1_20_1.social.SocialBridge1201;
 import com.thelads.core.v1_20_1.social.SocialHudToast1201;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,7 +83,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         com.thelads.core.v1_20_1.feature.ParticleCore1201.register();
         com.thelads.core.v1_20_1.world.World1201.register(); // Wavy Capes, TNT Timer
 
-        HudRenderCallback.EVENT.register((graphics, tickDelta) -> SocialHudToast1201.render(graphics, tickDelta));
+        SocialHudToast1201.register();
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SocialBridge1201.resetLoopbackState());
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
