@@ -75,6 +75,13 @@ public abstract class PauseScreenMixin extends Screen {
         com.thelads.core.client.title.TitleScreenTheme.renderLogo(adapter,width/2,12,Math.min(64,height/6));
         g.fill(16,height-29,width-16,height-28,0x2944202A);
         com.thelads.core.client.title.TitleScreenTheme.renderAccount(adapter,height,minecraft.getUser().getName(),Math.min(170,width-32));
+        if (!com.thelads.core.client.ConfirmDisconnectHelper.isConfirming(System.currentTimeMillis())) {
+            for (var child : children()) {
+                if (child instanceof Button b && b.getMessage().getString().contains("Confirm Disconnect?")) {
+                    b.setMessage(Component.translatable(minecraft != null && !minecraft.isLocalServer() ? "menu.disconnect" : "menu.returnToMenu"));
+                }
+            }
+        }
         super.extractRenderState(g,mx,my,dt);
         ci.cancel();
     }
@@ -95,6 +102,20 @@ public abstract class PauseScreenMixin extends Screen {
             if(text.equals(Component.translatable("menu.sendFeedback").getString())
                 ||text.equals(Component.translatable("menu.reportBugs").getString())
                 ||text.equals(Component.translatable("menu.playerReporting").getString()))removeWidget(widget);
+        }
+        for(var child:java.util.List.copyOf(children()))if(child instanceof Button btn && ladsSlot(btn)==com.thelads.core.client.title.PauseMenuLayout.Slot.QUIT){
+            removeWidget(btn);
+            addRenderableWidget(Button.builder(btn.getMessage(), b -> {
+                boolean isMultiplayer = minecraft != null && !minecraft.isLocalServer();
+                com.thelads.core.config.Module mod = com.thelads.core.config.ModuleManager.getInstance().getModule("ConfirmDisconnect");
+                boolean enabled = mod instanceof com.thelads.core.modules.ConfirmDisconnectModule cdm && cdm.isEnabled();
+                long timeout = mod instanceof com.thelads.core.modules.ConfirmDisconnectModule cdm ? cdm.getTimeoutMillis() : 3000L;
+                if (!com.thelads.core.client.ConfirmDisconnectHelper.onClickDisconnect(System.currentTimeMillis(), timeout, isMultiplayer, enabled)) {
+                    b.setMessage(Component.literal("\u00a7cConfirm Disconnect?"));
+                    return;
+                }
+                btn.onPress(null);
+            }).bounds(btn.getX(), btn.getY(), btn.getWidth(), btn.getHeight()).build());
         }
     }
 

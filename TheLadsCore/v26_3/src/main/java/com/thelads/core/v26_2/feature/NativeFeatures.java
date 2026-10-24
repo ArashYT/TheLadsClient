@@ -80,6 +80,23 @@ public final class NativeFeatures {
             PvpView26.release();
         }
         PvpView26.tick(Minecraft.getInstance());
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            boolean isRiding = mc.player.isPassenger() || mc.player.isFallFlying();
+            Module m = module(com.thelads.core.modules.AutoPerspectiveModule.NAME);
+            if (m instanceof com.thelads.core.modules.AutoPerspectiveModule apm && apm.isEnabled()) {
+                if (apm.isAutoThirdPerson()) {
+                    int current = mc.options.getCameraType().ordinal();
+                    int target = com.thelads.core.client.AutoPerspectiveHelper.checkPerspectiveChange(isRiding, current, true);
+                    if (target >= 0 && target < net.minecraft.client.CameraType.values().length) {
+                        mc.options.setCameraType(net.minecraft.client.CameraType.values()[target]);
+                    }
+                }
+                if (apm.isSmoothCamera()) {
+                    mc.options.smoothCamera = isRiding;
+                }
+            }
+        }
     }
     public static void key(KeyEvent event, int action) {
         if (action == InputConstants.REPEAT) return;
@@ -129,6 +146,7 @@ public final class NativeFeatures {
         var player = Minecraft.getInstance().player;
         // What the last tick sent, and whether its input still asked to go forward (aiStep stops a sprint without it).
         if (player != null) toggles.sent(((com.thelads.core.v26_2.mixin.LocalPlayerAccessor) player).ladsSentSprint(), forward);
+        if (player != null && toggles.isDisableDoubleTap()) ((com.thelads.core.v26_2.mixin.LocalPlayerAccessor) player).ladsSetSprintTriggerTime(0);
         forward = original.forward() && !original.backward();
         boolean separateSprint = !NativeKeyBindings.TOGGLE_SPRINT.isUnbound();
         boolean shift = toggles.sneakInput(original.shift(), !NativeKeyBindings.TOGGLE_SNEAK.isUnbound());
