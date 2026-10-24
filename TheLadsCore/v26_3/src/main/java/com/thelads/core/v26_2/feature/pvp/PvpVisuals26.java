@@ -50,7 +50,7 @@ import org.joml.Vector4f;
  */
 public final class PvpVisuals26 {
     /** OverlayTexture's own hurt pixel (ARGB): red at 70% alpha, a 30% red flash. */
-    static final int VANILLA_HURT = 0xB3FF0000;
+    static final int VANILLA_HURT = 0xB2FF0000; // ldc -1291911168
     /** The glint shader's colour modulator for Glint Colorizer, and the model offset DynamicGpuData's other transforms use. */
     public static final Vector4f GLINT_COLOR = new Vector4f(1, 1, 1, 1);
     public static final Vector3f NO_OFFSET = new Vector3f();

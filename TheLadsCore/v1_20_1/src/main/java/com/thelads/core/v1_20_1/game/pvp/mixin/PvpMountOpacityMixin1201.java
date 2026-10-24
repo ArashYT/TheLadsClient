@@ -22,14 +22,13 @@ public class PvpMountOpacityMixin1201 {
         "Lnet/minecraft/client/renderer/entity/LivingEntityRenderer;getRenderType(Lnet/minecraft/world/entity/LivingEntity;ZZZ)Lnet/minecraft/client/renderer/RenderType;"),
         index = 2)
     private boolean lads$seeThrough(boolean translucent, @Local(argsOnly = true) LivingEntity entity) {
-        PvpVisuals1201.mountNow = PvpVisuals1201.isMount(entity);
-        return translucent || PvpVisuals1201.mountNow;
+        return translucent || PvpVisuals1201.isMount(entity);
     }
 
     @ModifyArg(method = RENDER, at = @At(value = "INVOKE", target =
         "Lnet/minecraft/client/model/EntityModel;renderToBuffer(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;IIFFFF)V"),
         index = 7)
-    private float lads$opacity(float alpha) {
-        return PvpVisuals1201.mountNow ? PvpVisuals.MOUNT_OPACITY.alpha : alpha;
+    private float lads$opacity(float alpha, @Local(argsOnly = true) LivingEntity entity) {
+        return PvpVisuals1201.isMount(entity) ? PvpVisuals.MOUNT_OPACITY.alpha : alpha;
     }
 }

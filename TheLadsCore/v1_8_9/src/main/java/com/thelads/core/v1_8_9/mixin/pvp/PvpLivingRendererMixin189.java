@@ -8,8 +8,10 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Hit Color: setBrightness puts the hurt flash's red, green, blue and strength (1, 0, 0, 0.3) into the brightness buffer, its first
@@ -44,9 +46,21 @@ public class PvpLivingRendererMixin189 {
         return hit.on ? (hit.argb >>> 24) / 255F : strength;
     }
 
+    /** Mount Opacity's flag lives as long as one renderModel call (doRender catches what it throws: the next call sets it first). */
+    @Inject(method = "renderModel", at = @At("HEAD"), require = 0)
+    private void lads$mountStart(EntityLivingBase entity, float limbSwing, float limbSwingAmount, float age, float headYaw, float headPitch,
+                                 float scale, CallbackInfo ci) {
+        PvpVisuals189.mountNow = PvpVisuals189.isMount(entity);
+    }
+
+    @Inject(method = "renderModel", at = @At("RETURN"), require = 0)
+    private void lads$mountEnd(EntityLivingBase entity, float limbSwing, float limbSwingAmount, float age, float headYaw, float headPitch,
+                               float scale, CallbackInfo ci) {
+        PvpVisuals189.mountNow = false;
+    }
+
     @Redirect(method = "renderModel", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/EntityLivingBase;isInvisible()Z"), require = 0)
     private boolean lads$mountInvisible(EntityLivingBase entity) {
-        PvpVisuals189.mountNow = PvpVisuals189.isMount(entity);
         return PvpVisuals189.mountNow || entity.isInvisible();
     }
 

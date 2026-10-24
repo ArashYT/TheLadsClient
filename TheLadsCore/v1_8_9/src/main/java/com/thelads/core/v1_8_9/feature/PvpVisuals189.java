@@ -30,8 +30,12 @@ import org.lwjgl.opengl.GL11;
  * HD U M5 patches these classes but keeps every call they hook (checked against its patched bytecode), require = 0 otherwise.
  */
 public final class PvpVisuals189 {
-    /** Mount Opacity: the entity RendererLivingEntity.renderModel draws now is the player's mount. */
+    /** Mount Opacity: the entity RendererLivingEntity.renderModel draws now is the player's mount; set and cleared around each call. */
     public static boolean mountNow;
+    /** Block Overlay changed drawSelectionBox's line width or colour this call; what vanilla set there, to leave the GL state as it does. */
+    private static boolean selectionChanged;
+    private static float vanillaWidth = 2;
+    private static float vanillaRed, vanillaGreen, vanillaBlue, vanillaAlpha = 0.4F;
 
     private PvpVisuals189() {}
 
@@ -58,6 +62,7 @@ public final class PvpVisuals189 {
             return;
         }
         int fill = overlay.fillArgb, outline = overlay.outlineArgb;
+        selectionChanged = true;
         if (fill >>> 24 != 0) {
             color(fill);
             GlStateManager.disableCull();
@@ -83,7 +88,27 @@ public final class PvpVisuals189 {
     /** Block Overlay: the outline's line width (drawSelectionBox's glLineWidth(2)). */
     public static float lineWidth(float vanilla) {
         BlockOverlayModule overlay = PvpVisuals.BLOCK_OVERLAY;
-        return overlay.on ? overlay.lineWidth : vanilla;
+        if (!overlay.on) return vanilla;
+        vanillaWidth = vanilla;
+        selectionChanged = true;
+        return overlay.lineWidth;
+    }
+
+    /** drawSelectionBox's colour (black at 40%, OptiFine's too), kept to restore once the overlay drew in its own colours. */
+    public static void vanillaColor(float red, float green, float blue, float alpha) {
+        vanillaRed = red;
+        vanillaGreen = green;
+        vanillaBlue = blue;
+        vanillaAlpha = alpha;
+        GlStateManager.color(red, green, blue, alpha);
+    }
+
+    /** drawSelectionBox returns: the line width and colour back to what vanilla leaves (2 and black at 40%). */
+    public static void selectionDone() {
+        if (!selectionChanged) return;
+        selectionChanged = false;
+        GL11.glLineWidth(vanillaWidth);
+        GlStateManager.color(vanillaRed, vanillaGreen, vanillaBlue, vanillaAlpha);
     }
 
     /**
@@ -98,9 +123,17 @@ public final class PvpVisuals189 {
         GlStateManager.disableTexture2D();
         GlStateManager.disableLighting();
         GlStateManager.disableCull();
-        GlStateManager.enableBlend();
-        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        int color = module.color(entity instanceof EntityLivingBase && ((EntityLivingBase) entity).hurtTime > 0);
+        boolean blend = color >>> 24 != 0xFF; // vanilla draws its opaque boxes unblended
+        if (blend) {
+            GlStateManager.enableBlend();
+            GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        } else {
+            GlStateManager.disableBlend();
+        }
         if (module.walls) GlStateManager.disableDepth();
+        // F3+B leaves the line width as it found it: a state query, only while the module draws boxes (once per box).
+        float width = GL11.glGetFloat(GL11.GL_LINE_WIDTH);
         GL11.glLineWidth(module.lineWidth);
         Tessellator tessellator = Tessellator.getInstance();
         WorldRenderer lines = tessellator.getWorldRenderer();
@@ -108,8 +141,7 @@ public final class PvpVisuals189 {
         AxisAlignedBB box = entity.getEntityBoundingBox();
         double dx = x - entity.posX, dy = y - entity.posY, dz = z - entity.posZ;
         boolean living = entity instanceof EntityLivingBase;
-        box(lines, box.minX + dx, box.minY + dy, box.minZ + dz, box.maxX + dx, box.maxY + dy, box.maxZ + dz,
-            module.color(living && ((EntityLivingBase) entity).hurtTime > 0));
+        box(lines, box.minX + dx, box.minY + dy, box.minZ + dz, box.maxX + dx, box.maxY + dy, box.maxZ + dz, color);
         float eye = entity.getEyeHeight(), half = entity.width / 2;
         if (module.eyes && living) box(lines, x - half, y + eye - 0.01, z - half, x + half, y + eye + 0.01, z + half, 0xFFFF0000);
         if (module.look) {
@@ -123,7 +155,7 @@ public final class PvpVisuals189 {
             lines.pos(x + sinYaw * cosPitch * 2, y + eye + sinPitch * 2, z + cosYaw * cosPitch * 2).color(0, 0, 255, 255).endVertex();
         }
         tessellator.draw();
-        GL11.glLineWidth(1);
+        GL11.glLineWidth(width);
         if (module.walls) GlStateManager.enableDepth();
         GlStateManager.disableBlend();
         GlStateManager.enableTexture2D();

@@ -53,8 +53,6 @@ public final class PvpVisuals1201 {
     private static RenderType outlineLines, boxLines;
     private static float outlineWidth, boxWidth;
     private static boolean boxWalls, glintTinted;
-    /** Mount Opacity: the entity LivingEntityRenderer.render draws now is the player's mount (its alpha argument follows). */
-    public static boolean mountNow;
 
     private PvpVisuals1201() {}
 
