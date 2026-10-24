@@ -76,6 +76,36 @@
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/IONNetworkTeam/Ionium",
       "projectUrl": "https://github.com/IONNetworkTeam/Ionium"
+    },
+    {
+      "projectId": "Nv2fQJo5",
+      "projectSlug": "replaymod",
+      "name": "ReplayMod",
+      "modId": "replaymod",
+      "versionId": "OJEjSBv2",
+      "version": "1.8.9-2.6.20",
+      "fileName": "replaymod-1.8.9-2.6.20.jar",
+      "url": "https://cdn.modrinth.com/data/Nv2fQJo5/versions/OJEjSBv2/replaymod-1.8.9-2.6.20.jar",
+      "sha512": "ef49566deeaab0806ed9c282cca49c5edb4e3a79308b9ba479332867fd031a6800ca7b37f7aa6868070b140f1ff64cac3836d207fc83eb2391df837ab57dc5c6",
+      "size": 16074300,
+      "license": "GPL-3.0-or-later",
+      "sourceUrl": "https://github.com/ReplayMod/ReplayMod",
+      "projectUrl": "https://modrinth.com/mod/replaymod"
+    },
+    {
+      "projectId": "Z6se2s8f",
+      "projectSlug": "viaforge",
+      "name": "ViaForge",
+      "modId": "viaforge",
+      "versionId": "PBHerSA6",
+      "version": "4.3.2+1.8.9",
+      "fileName": "viaforge-mc189-4.3.2.jar",
+      "url": "https://cdn.modrinth.com/data/Z6se2s8f/versions/PBHerSA6/viaforge-mc189-4.3.2.jar",
+      "sha512": "70c1e81b9f4f6b778f46477022393d8c0772e87ada4bc9fc33c65a74e62ef4bba3fee21564a9cd0d89684a4bed49c7431c727b259f13e31cb1a2073c5a61e406",
+      "size": 12757681,
+      "license": "GPL-3.0-only",
+      "sourceUrl": "https://github.com/ViaVersion/ViaForge",
+      "projectUrl": "https://modrinth.com/mod/viaforge"
     }
   ],
   "retired": [

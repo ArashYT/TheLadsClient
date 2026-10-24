@@ -72,6 +72,9 @@ public final class Qol26 {
     private static VertexConsumer lines;
     private static PoseStack.Pose pose;
     private static final ChunkBorders.Lines SINK = Qol26::line;
+    private static final com.thelads.core.client.schematic.SchematicManager.Lines SCHEMATIC_SINK = Qol26::line;
+    public static final net.minecraft.client.KeyMapping SAVE_CLIP_KEY = net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.registerKeyMapping(
+        new net.minecraft.client.KeyMapping("key.theladscore.instant_clip", com.mojang.blaze3d.platform.InputConstants.Type.KEYBOARD, com.mojang.blaze3d.platform.InputConstants.KEY_F9, com.thelads.core.v26_2.feature.NativeKeyBindings.CATEGORY));
 
     private Qol26() {}
 
@@ -82,6 +85,7 @@ public final class Qol26 {
             + "(projection, scissor, text and item atlases): use the game's GUI Scale option.");
         ClientTickEvents.END_CLIENT_TICK.register(Qol26::tick);
         LevelRenderEvents.COLLECT_SUBMITS.register(Qol26::chunkBorders);
+        LevelRenderEvents.COLLECT_SUBMITS.register(Qol26::schematicOverlay);
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (screen instanceof DisconnectedScreen) reconnectButton(client, screen);
             else if (screen instanceof DirectJoinServerScreen) directPing(client, screen);
@@ -94,6 +98,13 @@ public final class Qol26 {
         KeepCursor.tick();
         SoundVolumes.tick();
         ChunkBorders.tick();
+        while (SAVE_CLIP_KEY.consumeClick()) {
+            if (com.thelads.core.client.rewind.InstantClipBuffer.isEnabled()) {
+                com.thelads.core.client.rewind.InstantClipBuffer.triggerAsyncSave(new java.io.File(mc.gameDirectory, "replay_recordings"),
+                    com.thelads.core.client.bridge.LadsGameBridge.get().getServerAddress(), "26.3", 769);
+                com.thelads.core.client.bridge.LadsGameBridge.get().displayChatMessage("\u00a7a[The Lads] Instant clip saved to replay_recordings/");
+            }
+        }
         if (!hookChecked) {
             hookChecked = true;
             if (!tickHooked) ModuleSupport.registerUnavailable(CrashCatcher.NAME, "Another mod changes Minecraft.runTick here, so the game tick "
@@ -236,6 +247,24 @@ public final class Qol26 {
         lines = buffer;
         var block = mc.getCameraEntity().blockPosition();
         ChunkBorders.draw(block.getX() >> 4, block.getZ() >> 4, mc.level.getMinY(), mc.level.getMaxY() + 1, SINK);
+        lines = null;
+    }
+
+    private static void schematicOverlay(LevelRenderContext context) {
+        if (!com.thelads.core.client.schematic.SchematicManager.isEnabled() || !com.thelads.core.client.schematic.SchematicManager.isLoaded()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.getCameraEntity() == null) return;
+        Vec3 camera = context.levelState().cameraRenderState.pos;
+        camX = camera.x;
+        camY = camera.y;
+        camZ = camera.z;
+        context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.lines(), Qol26::drawSchematic);
+    }
+
+    private static void drawSchematic(PoseStack.Pose at, VertexConsumer buffer) {
+        pose = at;
+        lines = buffer;
+        com.thelads.core.client.schematic.SchematicManager.draw(SCHEMATIC_SINK, camX, camY, camZ);
         lines = null;
     }
 

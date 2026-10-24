@@ -246,6 +246,9 @@ public final class HypixelSafetyManager {
             || ChatTweaks.LONG_COMMANDS.equalsIgnoreCase(moduleName) || com.thelads.core.modules.AutoTextModule.NAME.equalsIgnoreCase(moduleName)
             || InventoryTweaks.MOVE.equalsIgnoreCase(moduleName) || InventoryTweaks.ARMOR_SWAP.equalsIgnoreCase(moduleName)
             || BreedingTimer.NAME.equalsIgnoreCase(moduleName) || EnderChestPeek.NAME.equalsIgnoreCase(moduleName) // hidden cooldown, chest away from it
+            || "Cross-Version Join".equalsIgnoreCase(moduleName) || "ViaForge".equalsIgnoreCase(moduleName)
+            || "Schematic".equalsIgnoreCase(moduleName) || "Schematic Visualizer".equalsIgnoreCase(moduleName) || "Schematica".equalsIgnoreCase(moduleName)
+            || "Opened Chest Highlight".equalsIgnoreCase(moduleName)
             || isGatedHud(moduleName);
     }
 

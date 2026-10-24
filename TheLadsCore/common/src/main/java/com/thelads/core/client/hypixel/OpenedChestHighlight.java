@@ -51,4 +51,29 @@ public final class OpenedChestHighlight {
             OPENED_CHESTS.clear();
         }
     }
+
+    public interface ChestConsumer {
+        void accept(int x, int y, int z);
+    }
+
+    public static int unpackX(long packed) {
+        return (int) (packed >> 38);
+    }
+
+    public static int unpackY(long packed) {
+        return (int) (packed << 26 >> 52);
+    }
+
+    public static int unpackZ(long packed) {
+        return (int) (packed << 38 >> 38);
+    }
+
+    public static void forEachOpened(ChestConsumer consumer) {
+        if (!isEnabled() || consumer == null) return;
+        synchronized (OPENED_CHESTS) {
+            for (long pos : OPENED_CHESTS) {
+                consumer.accept(unpackX(pos), unpackY(pos), unpackZ(pos));
+            }
+        }
+    }
 }

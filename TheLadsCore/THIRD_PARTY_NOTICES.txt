@@ -124,3 +124,18 @@ components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar
     COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
     OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   No OptiFine code is used.
+
+
+--------------------------------------------------------------------------------
+4. Client Mods Distributed by The Lads Launcher (1.8.9, 1.20.1, 26.3)
+--------------------------------------------------------------------------------
+
+* ReplayMod (1.8.9 Forge, 1.20.1 Fabric)
+  Copyright (c) ReplayMod Contributors
+  License: GNU General Public License v3.0 or later (GPL-3.0-or-later)
+  Source: https://github.com/ReplayMod/ReplayMod
+
+* ViaForge (1.8.9 Forge) & ViaFabricPlus (1.20.1, 26.3 Fabric)
+  Copyright (c) Florian Reuth / ViaVersion Contributors
+  License: GNU General Public License v3.0 only (GPL-3.0-only)
+  Source: https://github.com/ViaVersion/ViaForge, https://github.com/ViaVersion/ViaFabricPlus

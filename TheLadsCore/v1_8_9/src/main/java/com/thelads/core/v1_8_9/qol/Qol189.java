@@ -79,12 +79,15 @@ public final class Qol189 {
     private static double camX, camY, camZ;
     private static WorldRenderer buffer;
     private static final ChunkBorders.Lines SINK = Qol189::line;
+    private static final com.thelads.core.client.schematic.SchematicManager.Lines SCHEMATIC_SINK = Qol189::line;
+    public static final net.minecraft.client.settings.KeyBinding SAVE_CLIP_KEY = new net.minecraft.client.settings.KeyBinding("key.theladscore.instant_clip", org.lwjgl.input.Keyboard.KEY_F9, "key.categories.theladscore");
 
     private Qol189() {}
 
     public static void register() {
         SoundVolumes.legacy = true;
         ModuleSupport.registerBuiltIn(BUILT_IN);
+        net.minecraftforge.fml.client.registry.ClientRegistry.registerKeyBinding(SAVE_CLIP_KEY);
         MinecraftForge.EVENT_BUS.register(new Events());
     }
 
@@ -98,6 +101,15 @@ public final class Qol189 {
             SoundVolumes.tick();
             GuiScaleOverride.tick();
             ChunkBorders.tick();
+            while (SAVE_CLIP_KEY.isPressed()) {
+                if (com.thelads.core.client.rewind.InstantClipBuffer.isEnabled()) {
+                    com.thelads.core.client.rewind.InstantClipBuffer.triggerAsyncSave(new java.io.File(Minecraft.getMinecraft().mcDataDir, "replay_recordings"),
+                        com.thelads.core.client.bridge.LadsGameBridge.get().getServerAddress(), "1.8.9", 47);
+                    if (Minecraft.getMinecraft().thePlayer != null) {
+                        Minecraft.getMinecraft().thePlayer.addChatMessage(new net.minecraft.util.ChatComponentText(net.minecraft.util.EnumChatFormatting.GREEN + "[The Lads] Instant clip saved to replay_recordings/"));
+                    }
+                }
+            }
             if (!hookChecked) {
                 hookChecked = true;
                 if (!tickHooked) ModuleSupport.registerUnavailable(CrashCatcher.NAME, "This game's Minecraft.runGameLoop is changed by another mod, "
@@ -178,6 +190,7 @@ public final class Qol189 {
         @SubscribeEvent
         public void world(RenderWorldLastEvent event) {
             if (ChunkBorders.on) chunkBorders();
+            if (com.thelads.core.client.schematic.SchematicManager.isEnabled() && com.thelads.core.client.schematic.SchematicManager.isLoaded()) schematicOverlay();
         }
     }
 
@@ -294,6 +307,31 @@ public final class Qol189 {
         buffer.begin(GL11.GL_LINES, DefaultVertexFormats.POSITION_COLOR);
         int x = (int) Math.floor(mc.getRenderViewEntity().posX), z = (int) Math.floor(mc.getRenderViewEntity().posZ);
         ChunkBorders.draw(x >> 4, z >> 4, 0, 256, SINK);
+        tessellator.draw();
+        buffer = null;
+        GL11.glLineWidth(1);
+        GlStateManager.depthMask(true);
+        GlStateManager.disableBlend();
+        GlStateManager.enableTexture2D();
+    }
+
+    private static void schematicOverlay() {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.theWorld == null || mc.getRenderViewEntity() == null) return;
+        RenderManager manager = mc.getRenderManager();
+        camX = manager.viewerPosX;
+        camY = manager.viewerPosY;
+        camZ = manager.viewerPosZ;
+        Tessellator tessellator = Tessellator.getInstance();
+        buffer = tessellator.getWorldRenderer();
+        GlStateManager.disableTexture2D();
+        GlStateManager.disableLighting();
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GlStateManager.depthMask(false);
+        GL11.glLineWidth(2);
+        buffer.begin(GL11.GL_LINES, DefaultVertexFormats.POSITION_COLOR);
+        com.thelads.core.client.schematic.SchematicManager.draw(SCHEMATIC_SINK, camX, camY, camZ);
         tessellator.draw();
         buffer = null;
         GL11.glLineWidth(1);

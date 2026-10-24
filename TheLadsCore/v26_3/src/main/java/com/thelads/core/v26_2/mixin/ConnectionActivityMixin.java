@@ -21,7 +21,12 @@ public class ConnectionActivityMixin implements PacketActivitySource {
     @Inject(method = "channelRead0(Lio/netty/channel/ChannelHandlerContext;Lnet/minecraft/network/protocol/Packet;)V",
         at = @At("HEAD"), require = 1)
     private void lads$received(ChannelHandlerContext context, Packet<?> packet, CallbackInfo callback) {
-        if (receiving == PacketFlow.CLIENTBOUND) lads$lastPacketNanos = System.nanoTime();
+        if (receiving == PacketFlow.CLIENTBOUND) {
+            lads$lastPacketNanos = System.nanoTime();
+            if (com.thelads.core.client.rewind.InstantClipBuffer.isEnabled()) {
+                com.thelads.core.client.rewind.InstantClipBuffer.recordPacket(System.currentTimeMillis(), 0, new byte[0]);
+            }
+        }
     }
 
     @Override

@@ -14,5 +14,6 @@ abstract class BreedingLabelsMixin26 {
     @Inject(method = "emitGizmos", at = @At("TAIL"))
     private void lads$breedingLabels(Frustum frustum, double camX, double camY, double camZ, float partial, CallbackInfo ci) {
         Utility26.breedingLabels(partial);
+        com.thelads.core.v26_2.feature.NativeHypixel.openedChestGizmos(frustum);
     }
 }
