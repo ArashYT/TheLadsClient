@@ -37,7 +37,8 @@ class OldAnimationsModuleTest {
         for (Feature feature : Feature.values()) {
             BoolOption option = module.option(feature);
             assertSame(option, module.getOption(feature.option));
-            assertTrue(option.get(), feature + " defaults on inside the module");
+            assertEquals(feature.defaultOn, option.get(), feature + " default inside the module");
+            assertEquals(feature != Feature.CONSTANT_SWING && feature != Feature.NO_REEQUIP, feature.defaultOn, "only the PvP extras start off");
             assertTrue(names.add(feature.option));
             assertFalse(feature.tooltip.isBlank(), feature + " has a tooltip");
         }
@@ -48,6 +49,7 @@ class OldAnimationsModuleTest {
         for (Feature feature : Feature.values())
             for (Platform platform : Platform.values()) assertFalse(module.active(feature, platform), "module off: " + feature);
         module.setEnabled(true);
+        for (Feature feature : Feature.values()) module.option(feature).set(true);
         for (Feature feature : Feature.values()) {
             assertTrue(module.active(feature, Platform.MODERN), feature + " on 1.21.x and 26.x");
             assertEquals(feature != Feature.NO_COOLDOWN_DIP && feature != Feature.LOW_SHIELD, module.active(feature, Platform.V1_8_9), feature + " on 1.8.9");
@@ -169,7 +171,7 @@ class OldAnimationsModuleTest {
             ConfigManager.applyJson(saved);
             assertTrue(module.isEnabled());
             for (Feature feature : Feature.values())
-                assertEquals(feature != Feature.DROPPED_2D && feature != Feature.INSTANT_SNEAK, module.option(feature).get(), feature.toString());
+                assertEquals(feature.defaultOn && feature != Feature.DROPPED_2D && feature != Feature.INSTANT_SNEAK, module.option(feature).get(), feature.toString());
         } finally {
             module.getOptions().forEach(Option::reset);
             module.setEnabled(wasEnabled);

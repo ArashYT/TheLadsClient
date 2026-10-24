@@ -1,6 +1,7 @@
 package com.thelads.core.v1_20_1.game;
 
 import com.thelads.core.client.DamageTilt;
+import com.thelads.core.client.PvpVisuals;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.OldAnimationsModule;
 import com.thelads.core.modules.ToggleSprintModule;
@@ -31,6 +32,9 @@ public final class Gameplay1201 {
         // Modules this lane implements natively. The entrypoint's shared list registered a few of them as built in before they worked.
         ModuleSupport.registerBuiltIn(ToggleSprintModule.NAME, "Fullbright", "LegacySwing", DamageTilt.MODULE, NativeVerticalBob1201.MODULE,
             OldAnimationsModule.NAME, "BetterResolution", "ResourcePacks", com.thelads.core.client.KeepUiOpen.MODULE_NAME);
+        // PvP visuals: the mixin.pvp hooks read PvpVisuals, refreshed in tick.
+        ModuleSupport.registerBuiltIn(PvpVisuals.RENDER_TWEAKS, PvpVisuals.OVERLAYS, PvpVisuals.CLEAR_WATER, PvpVisuals.TOTEM, PvpVisuals.DARK_MODE,
+            PvpVisuals.NAMETAG_HEALTH);
         if (zoomOwnedByMod()) ModuleSupport.registerExternal("Zoom", "Just Zoom", "justzoom", true);
         else ModuleSupport.registerBuiltIn("Zoom");
         if (ModPresence1201.loaded("distanthorizons") && !qaFlag("allow-dh"))
@@ -50,6 +54,7 @@ public final class Gameplay1201 {
     }
 
     private static void tick(Minecraft mc) {
+        PvpVisuals.refresh();
         NativeVerticalBob1201.tick();
         NativeOldAnimations1201.tick(mc.player);
     }

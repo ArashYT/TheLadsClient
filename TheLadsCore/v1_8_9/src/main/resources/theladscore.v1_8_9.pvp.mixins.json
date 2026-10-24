@@ -1,0 +1,22 @@
+{
+  "required": true,
+  "minVersion": "0.7",
+  "package": "com.thelads.core.v1_8_9.mixin.pvp",
+  "refmap": "theladscore.v1_8_9.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "EntityLivingBaseSwingMixin189",
+    "EntityRendererBobMixin189",
+    "FontRendererLabelMixin189",
+    "GuiContainerDarkMixin189",
+    "GuiIngameOverlayMixin189",
+    "ItemRendererPvpMixin189",
+    "MobAppearanceMixin189",
+    "RenderFishLineMixin189",
+    "RenderLightningBoltMixin189",
+    "RenderShadowMixin189"
+  ]
+}

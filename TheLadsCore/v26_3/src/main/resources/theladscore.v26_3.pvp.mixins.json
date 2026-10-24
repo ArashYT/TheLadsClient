@@ -1,0 +1,25 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.mixin.pvp",
+  "compatibilityLevel": "JAVA_25",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "AbstractContainerScreenDarkMixin26",
+    "ElderGuardianParticleStateMixin26",
+    "EntityRendererPvpMixin26",
+    "FirstPersonReequipMixin26",
+    "FishingHookLineMixin26",
+    "GameRendererBobMixin26",
+    "GuiGraphicsLabelMixin26",
+    "HudOverlayMixin26",
+    "LightningBoltRendererMixin26",
+    "LivingEntityRendererF1Mixin26",
+    "LivingEntitySwingMixin26",
+    "ScreenEffectPvpMixin26",
+    "SubmitNodeCollectionTagMixin26",
+    "WaterFogMixin26"
+  ]
+}

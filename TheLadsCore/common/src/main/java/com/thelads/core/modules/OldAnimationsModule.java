@@ -42,16 +42,27 @@ public final class OldAnimationsModule extends Module {
         NO_COOLDOWN_DIP("No attack-cooldown dip", "The held item stays up after an attack instead of dipping while "
             + "the attack cooldown recharges.", "Minecraft 1.8.9 has no attack cooldown, so the item never dips."),
         LOW_FIRE("Low Fire", "Lowers the first-person fire overlay when burning so it blocks less of your screen.", null),
-        LOW_SHIELD("Low Shield", "Lowers held shields in first person to improve visibility.", "Minecraft 1.8.9 has no shields.");
+        LOW_SHIELD("Low Shield", "Lowers held shields in first person to improve visibility.", "Minecraft 1.8.9 has no shields."),
+        // Not 1.7's look but PvP extras next to it, so off until chosen.
+        CONSTANT_SWING("Constant swing speed", "Haste and Mining Fatigue no longer speed up or slow down arm swings (yours and "
+            + "other players'). Only drawn: nothing changes for the server.", null, false),
+        NO_REEQUIP("No re-equip on item changes", "The held item lowers and rises again only when you switch slots or hold a different "
+            + "item, not when its durability, count or enchantments change.", null, false);
 
         public final String option;
         public final String tooltip;
         private final String notOn189;
+        public final boolean defaultOn;
 
         Feature(String option, String tooltip, String notOn189) {
+            this(option, tooltip, notOn189, true);
+        }
+
+        Feature(String option, String tooltip, String notOn189, boolean defaultOn) {
             this.option = option;
             this.tooltip = tooltip;
             this.notOn189 = notOn189;
+            this.defaultOn = defaultOn;
         }
 
         public boolean appliesTo(Platform platform) {
@@ -71,7 +82,7 @@ public final class OldAnimationsModule extends Module {
     public OldAnimationsModule() {
         super(NAME, "Minecraft 1.7 animations: blockhitting, the 1.7 sword, bow, rod and eating poses, red armour, "
             + "2D dropped items and more.");
-        for (Feature feature : Feature.values()) toggles.put(feature, addOption(new BoolOption(feature.option, true)));
+        for (Feature feature : Feature.values()) toggles.put(feature, addOption(new BoolOption(feature.option, feature.defaultOn)));
     }
 
     public BoolOption option(Feature feature) {

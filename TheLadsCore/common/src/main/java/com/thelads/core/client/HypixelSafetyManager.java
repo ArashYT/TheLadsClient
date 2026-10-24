@@ -235,7 +235,8 @@ public final class HypixelSafetyManager {
             || "MouseTweaks".equalsIgnoreCase(moduleName)
             || "ReachDisplay".equalsIgnoreCase(moduleName)
             || "Jade".equalsIgnoreCase(moduleName)
-            || "ShulkerBoxUtils".equalsIgnoreCase(moduleName);
+            || "ShulkerBoxUtils".equalsIgnoreCase(moduleName)
+            || PvpVisuals.CLEAR_WATER.equalsIgnoreCase(moduleName) || PvpVisuals.NAMETAG_HEALTH.equalsIgnoreCase(moduleName);
     }
 
     /** Why this module is off on the current server, bypass or not. Allocation-free: asked per module every frame. */

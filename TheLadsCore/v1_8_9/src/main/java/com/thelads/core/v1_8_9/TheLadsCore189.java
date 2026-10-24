@@ -84,6 +84,7 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.cosmetics.anim.EmoteAnim189.register(); // emotes: key, wheel, stop rules (poses: emotes mixins) (1.9.11)
         com.thelads.core.modules.StackRefillModule.get().noOffhand(); // 1.8.9 has no offhand
         com.thelads.core.v1_8_9.feature.Nametags189.register();
+        com.thelads.core.v1_8_9.feature.PvpVisuals189.register();
         OldAnimations189.register();
         ClientRegistry.registerKeyBinding(Zoom189.ZOOM);
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
@@ -193,8 +194,8 @@ public class TheLadsCore189 {
         {"IgnorePacketErrors", "Minecraft 1.8.9 already keeps playing when a packet fails on the game thread; this covers packets "
             + "that can't be decoded and handlers that fail on the network thread."},
         // Crosshair189 through Forge's crosshair overlay event, as 26.x NativeCrosshair.
-        {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns or spyglass, so the attack indicator, Item Cooldown "
-            + "and spyglass options have nothing to show; Dynamic Attack Gap follows the arm swing."},
+        {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns, spyglass or elytra, so the attack indicator, Item "
+            + "Cooldown, spyglass and Elytra Flight Indicator options have nothing to show; Dynamic Attack Gap follows the arm swing."},
         // AutoReconnect189 through Forge's screen and tick events and GuiDisconnectedAccessor, as 26.x NativeReconnect.
         {"AutoReconnect", "Realms no longer accept Minecraft 1.8.9, so it reconnects to servers and local worlds; 1.8.9 chat is unsigned, "
             + "so Sign Configured Commands has nothing to sign, and it sends at most 100 characters per action message."},
@@ -254,6 +255,7 @@ public class TheLadsCore189 {
         }
         if (!glErrorsDisabled) glErrorChecks(mc);
         OldAnimations189.tick(mc);
+        com.thelads.core.client.PvpVisuals.refresh();
         com.thelads.core.v1_8_9.feature.PaperDoll189.tick(mc);
         com.thelads.core.v1_8_9.feature.DynamicLights189.tick(mc);
         com.thelads.core.v1_8_9.feature.EntityCulling189.tick(mc);
