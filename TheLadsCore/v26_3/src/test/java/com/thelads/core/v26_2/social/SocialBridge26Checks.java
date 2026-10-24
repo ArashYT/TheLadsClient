@@ -1,0 +1,128 @@
+package com.thelads.core.v26_2.social;
+
+import com.thelads.core.client.social.SocialBridge;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+public final class SocialBridge26Checks {
+    private static int passed;
+
+    public static void main(String[] args) {
+        try {
+            net.minecraft.SharedConstants.tryDetectVersion();
+            net.minecraft.server.Bootstrap.bootStrap();
+        } catch (Throwable ignored) {
+        }
+
+        SocialBridge26 bridge = new SocialBridge26();
+
+        // 1. Loopback scope flag
+        require(!SocialBridge26.isLoopbackScope(), "initial loopback scope is false");
+        SocialBridge26.setLoopbackScope(true);
+        require(SocialBridge26.isLoopbackScope(), "loopback scope sets to true");
+        SocialBridge26.setLoopbackScope(false);
+        require(!SocialBridge26.isLoopbackScope(), "loopback scope resets to false");
+
+        // 2. Login filter predicate
+        require(SocialBridge26.getLoginFilter() == null, "initial login filter is null");
+        UUID allowed = UUID.randomUUID();
+        UUID denied = UUID.randomUUID();
+        bridge.setLoginFilter(id -> id != null && id.equals(allowed));
+        require(SocialBridge26.getLoginFilter() != null, "login filter set");
+        require(SocialBridge26.getLoginFilter().test(allowed), "login filter allows invited UUID");
+        require(!SocialBridge26.getLoginFilter().test(denied), "login filter rejects uninvited UUID");
+        require(!SocialBridge26.getLoginFilter().test(null), "login filter rejects null UUID");
+        bridge.setLoginFilter(null);
+
+        // 3. GameInfo
+        SocialBridge.GameInfo info = bridge.gameInfo();
+        require(info != null, "gameInfo non-null");
+        require("fabric".equals(info.loader()), "loader is fabric");
+        require("plain".equals(info.profileKind()), "profileKind is plain");
+
+        // 4. Friends button text
+        require("Friends".equals(SocialBridge26.friendsButtonText().getString()), "friendsButtonText default");
+
+        // 5. SocialToast accept/deny
+        require(!SocialToast26.acceptNewest(), "acceptNewest empty returns false");
+        require(!SocialToast26.denyNewest(), "denyNewest empty returns false");
+        SocialToast26.show("Invite", "Join world", "accept_123", "deny_123");
+        require(SocialToast26.acceptNewest(), "acceptNewest handles pending toast");
+        require(!SocialToast26.acceptNewest(), "acceptNewest empty again");
+
+        // 6. Frozen action ids pass through unchanged
+        String[] frozenActions = {
+            "invite_accept:inv_123",
+            "invite_decline:inv_123",
+            "join_accept:req_456",
+            "join_deny:req_456",
+            "friend_accept:00000000-0000-0000-0000-000000000001",
+            "friend_decline:00000000-0000-0000-0000-000000000001",
+            "open_friends",
+            "dm:00000000-0000-0000-0000-000000000001"
+        };
+        for (String act : frozenActions) {
+            SocialBridge26.onChatActionClicked(act);
+            passed++;
+        }
+
+        // 7. World backup pruning
+        try {
+            testBackupPruning();
+        } catch (Exception e) {
+            throw new RuntimeException("Backup pruning check failed", e);
+        }
+
+        System.out.println("PASS " + passed + " SocialBridge26 checks");
+    }
+
+    private static void testBackupPruning() throws Exception {
+        Path tempDir = Files.createTempDirectory("lads-social-backup-test");
+        try {
+            Path backupDir = tempDir.resolve("lads-backups");
+            Files.createDirectories(backupDir);
+            String world = "TestWorld";
+
+            for (int i = 0; i < 8; i++) {
+                Path file = backupDir.resolve(world + "-20261024-000" + i + ".zip");
+                try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(file.toFile()))) {
+                    zos.putNextEntry(new ZipEntry("level.dat"));
+                    zos.write("test".getBytes());
+                    zos.closeEntry();
+                }
+                file.toFile().setLastModified(1000000L + i * 1000L);
+            }
+
+            File[] initial = backupDir.toFile().listFiles((d, n) -> n.startsWith(world + "-") && n.endsWith(".zip"));
+            require(initial != null && initial.length == 8, "8 initial backups created");
+
+            Method pruneMethod = BackupHelper26.class.getDeclaredMethod("pruneBackups", Path.class, String.class, int.class);
+            pruneMethod.setAccessible(true);
+            pruneMethod.invoke(null, backupDir, world, 5);
+
+            File[] remaining = backupDir.toFile().listFiles((d, n) -> n.startsWith(world + "-") && n.endsWith(".zip"));
+            require(remaining != null && remaining.length == 5, "exactly 5 backups retained after pruning");
+
+            for (File f : remaining) {
+                require(f.lastModified() >= 1000000L + 3 * 1000L, "old backup pruned");
+            }
+        } finally {
+            Files.walk(tempDir)
+                .sorted((a, b) -> b.compareTo(a))
+                .map(Path::toFile)
+                .forEach(File::delete);
+        }
+    }
+
+    private static void require(boolean condition, String message) {
+        if (!condition) throw new AssertionError(message);
+        passed++;
+    }
+}

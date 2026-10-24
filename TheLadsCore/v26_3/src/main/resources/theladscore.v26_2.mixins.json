@@ -175,7 +175,11 @@
     "ShowcaseHotbarMixin",
     "ShowcaseMouseMixin",
     "ShowcasePlayerListAccess",
-    "CloudRendererMixin"
+    "CloudRendererMixin",
+    "IntegratedServerMixin",
+    "MinecraftFriendsMixin",
+    "ScreenChatClickMixin",
+    "ClientPacketListenerChatMixin"
   ],
   "mixins": [
     "DisplayEntityAccessor",
@@ -190,6 +194,8 @@
     "SurvivalFireBlockInvoker",
     "SurvivalAnimalFoodMixin",
     "SurvivalMobFoodPickupMixin",
-    "SurvivalBoat360Mixin"
+    "SurvivalBoat360Mixin",
+    "ServerConnectionListenerMixin",
+    "PlayerListMixin"
   ]
 }
