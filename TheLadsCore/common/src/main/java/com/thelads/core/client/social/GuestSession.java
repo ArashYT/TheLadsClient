@@ -17,6 +17,7 @@ import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -173,6 +174,11 @@ public final class GuestSession {
         }
     }
 
+    /**
+     * The game's socket is never closed with bytes unread: Windows then resets the connection and the game drops what it was sent last
+     * (the host's "Kicked by host"). The host's end is written out, then FIN (half-close); the game reads it and closes its side, and
+     * the socket closes once that side is read to the end (close() bounds it to 5 s).
+     */
     private void acceptAndBridge(String sid, ServerSocket proxy, P2PSession session) {
         try {
             Socket socket = proxy.accept();
@@ -182,14 +188,16 @@ public final class GuestSession {
 
             // Minecraft client TCP -> P2P stream 0; the game closing its connection (leaving the world) ends the session at once
             Thread clientToP2P = new Thread(() -> {
-                pipe(getIn(socket), session.out(P2PSession.MINECRAFT));
+                copy(getIn(socket), session.out(P2PSession.MINECRAFT));
+                try { socket.close(); } catch (IOException ignored) {}
                 close(sid, "Left the friend's world");
             }, "Lads-GuestPipeOut");
             clientToP2P.setDaemon(true);
             clientToP2P.start();
 
-            // P2P stream 0 -> Minecraft client TCP
-            pipe(session.in(P2PSession.MINECRAFT), socket.getOutputStream());
+            // P2P stream 0 -> Minecraft client TCP, to the host's last byte (the session's buffer outlives its close), then FIN
+            copy(session.in(P2PSession.MINECRAFT), socket.getOutputStream());
+            socket.shutdownOutput();
         } catch (IOException e) {
             if (active) LOGGER.warn("GuestSession: proxy connection ended: {}", e.getMessage());
         } finally {
@@ -213,9 +221,12 @@ public final class GuestSession {
             proxyServer = null;
         }
         proxyAddress = null;
-        if (activeSocket != null) {
-            try { activeSocket.close(); } catch (IOException ignored) {}
-            activeSocket = null;
+        Socket game = activeSocket;
+        activeSocket = null;
+        if (game != null) { // the pipes end it gracefully (acceptAndBridge); this only bounds a game that never closes its side
+            CompletableFuture.delayedExecutor(5, TimeUnit.SECONDS).execute(() -> {
+                try { game.close(); } catch (IOException ignored) {}
+            });
         }
 
         String endingSid = this.sid;
@@ -262,17 +273,22 @@ public final class GuestSession {
         try { return s.getInputStream(); } catch (IOException e) { return InputStream.nullInputStream(); }
     }
 
-    private static void pipe(InputStream in, OutputStream out) {
+    /** in -> out until in ends; once out fails the rest of in is read and dropped (never left unread). Closes neither. */
+    static void copy(InputStream in, OutputStream out) {
+        byte[] buf = new byte[8192];
+        boolean sink = false;
         try {
-            byte[] buf = new byte[8192];
             int n;
             while ((n = in.read(buf)) != -1) {
-                out.write(buf, 0, n);
-                out.flush();
+                if (sink) continue;
+                try {
+                    out.write(buf, 0, n);
+                    out.flush();
+                } catch (IOException e) {
+                    sink = true;
+                }
             }
         } catch (IOException ignored) {
-        } finally {
-            try { out.close(); } catch (IOException ignored) {}
         }
     }
 }

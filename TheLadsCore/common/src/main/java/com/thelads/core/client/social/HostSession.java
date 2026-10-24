@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Collections;
@@ -332,13 +331,16 @@ public final class HostSession {
             socket.setTcpNoDelay(true);
             Socket finalSocket = socket;
 
-            // Stream 0 from guest P2P -> loopback TCP socket
-            Thread inPipe = new Thread(() -> pipe(p2p.in(P2PSession.MINECRAFT), getOut(finalSocket)), "Lads-HostPipeIn");
+            // Stream 0 from guest P2P -> loopback TCP socket, then FIN after the guest's last byte: the server reads it and closes its side
+            Thread inPipe = new Thread(() -> {
+                GuestSession.copy(p2p.in(P2PSession.MINECRAFT), getOut(finalSocket));
+                try { finalSocket.shutdownOutput(); } catch (IOException ignored) {}
+            }, "Lads-HostPipeIn");
             inPipe.setDaemon(true);
             inPipe.start();
 
-            // Loopback TCP socket -> Stream 0 to guest P2P
-            pipe(finalSocket.getInputStream(), p2p.out(P2PSession.MINECRAFT));
+            // Loopback TCP socket -> Stream 0 to guest P2P, to the server's last byte (a kick): p2p.close delivers it before the session ends
+            GuestSession.copy(finalSocket.getInputStream(), p2p.out(P2PSession.MINECRAFT));
         } catch (IOException e) {
             LOGGER.warn("HostSession: bridge loopback connection error: {}", e.getMessage());
         } finally {
@@ -351,19 +353,5 @@ public final class HostSession {
 
     private static OutputStream getOut(Socket s) {
         try { return s.getOutputStream(); } catch (IOException e) { return OutputStream.nullOutputStream(); }
-    }
-
-    private static void pipe(InputStream in, OutputStream out) {
-        try {
-            byte[] buf = new byte[8192];
-            int n;
-            while ((n = in.read(buf)) != -1) {
-                out.write(buf, 0, n);
-                out.flush();
-            }
-        } catch (IOException ignored) {
-        } finally {
-            try { out.close(); } catch (IOException ignored) {}
-        }
     }
 }
