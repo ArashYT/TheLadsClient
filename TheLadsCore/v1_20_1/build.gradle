@@ -12,9 +12,6 @@ java {
 // a method (@Inject, @Redirect, @Shadow ...) keeps its Mojang name, which a production (intermediary) Fabric or a Connector setup
 // cannot find: with defaultRequire 0 those hooks were silently skipped. This is why mixins looked "on" but did nothing.
 loom {
-    mixin {
-        useLegacyMixinAp = true
-    }
     // Access for the embedded upstream mods (ETF, EMF, ImmediatelyFast), merged from their own 1.20.1 access wideners.
     accessWidenerPath = file('src/main/resources/theladscore.v1_20_1.accesswidener')
 }
@@ -46,6 +43,13 @@ dependencies {
     modCompileOnly('maven.modrinth:iris:s5eFLITc') { transitive = false }
     modCompileOnly('maven.modrinth:sodium:ygf8cVZg') { transitive = false }
     modCompileOnly('maven.modrinth:3dskinlayers:aiPCdDJa') { transitive = false }
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
 }
 
 apply from: 'perf.gradle'
@@ -71,3 +75,6 @@ jar {
 remapJar {
     archiveClassifier = 'mc1.20.1'
 }
+
+
+
