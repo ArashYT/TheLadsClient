@@ -62,7 +62,7 @@ public final class HudExtras {
     public static String aboveName = "";
     public static int aboveGap;
 
-    /** Entity Counter, Shader Pack, Held Item Lore: on, and what they show. */
+    /** Entity Counter, Shader Pack, Held Item Lore, Totem Pop Counter and Jump Reset are on; what the first three show. */
     public static boolean entities, shader, lore, totems, jumpReset;
     /** Totem Pop Counter: a player's count starts over when they die; your own chat gets a line per pop. */
     public static boolean totemReset, totemChat;
