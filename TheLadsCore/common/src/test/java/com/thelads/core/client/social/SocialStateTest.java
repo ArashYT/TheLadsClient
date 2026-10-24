@@ -639,4 +639,24 @@ public class SocialStateTest {
         assertTrue(HostOptions.load(world).isBanned(friend), "the ban is saved with the world");
         host.stopHosting();
     }
+
+    /** Anti-ban: once the game is connected anywhere but the guest proxy, the tick ends the P2P session and clears the key. */
+    @Test
+    public void tickEndsTheGuestSessionOnAnyOtherConnection() throws Exception {
+        UUID host = UUID.randomUUID();
+        state.requestJoin(host);
+        state.handleP2PStart("sid-tick", host, "Host", "world", "guest", new JsonObject());
+        assertTrue(state.isGuestSessionActive());
+        assertNotNull(com.thelads.core.client.HypixelSafetyManager.getP2PSession());
+
+        LadsGameBridge.set(new DefaultGameBridge() {
+            @Override public String getServerAddress() { return "mc.hypixel.net"; }
+        });
+        bridge.inWorld = true;
+        java.lang.reflect.Method sample = SocialState.class.getDeclaredMethod("sample");
+        sample.setAccessible(true);
+        sample.invoke(state);
+        assertFalse(state.isGuestSessionActive(), "joined another server: the P2P session ends at once");
+        assertNull(com.thelads.core.client.HypixelSafetyManager.getP2PSession());
+    }
 }

@@ -130,26 +130,22 @@ public final class SocialBridge189 implements SocialBridge {
         IntegratedServer server = mc.getIntegratedServer();
         if (server == null) return -1;
 
+        // Loopback-only for the whole hosting (until closeHosting or the world closes): any later endpoint binds 127.0.0.1 too, and a
+        // second publish (vanilla /publish) is refused while the world is open (IntegratedServerMixin)
         setLoopbackOnly(true);
-        String portStr = null;
-        try {
-            WorldSettings.GameType gameType = WorldSettings.GameType.getByName(options != null && options.guestGameMode != null ? options.guestGameMode : "survival");
-            if (gameType == null) gameType = WorldSettings.GameType.SURVIVAL;
-            boolean allowCheats = options != null && options.guestOpLevel > 0;
-
-            portStr = server.shareToLAN(gameType, allowCheats);
-        } finally {
-            setLoopbackOnly(false);
-        }
-
-        if (portStr == null) {
-            return -1;
-        }
+        WorldSettings.GameType gameType = WorldSettings.GameType.getByName(options != null && options.guestGameMode != null ? options.guestGameMode : "survival");
+        if (gameType == null) gameType = WorldSettings.GameType.SURVIVAL;
+        boolean allowCheats = options != null && options.guestOpLevel > 0;
+        String portStr = server.shareToLAN(gameType, allowCheats);
 
         int port;
         try {
-            port = Integer.parseInt(portStr);
+            port = portStr == null ? -1 : Integer.parseInt(portStr);
         } catch (NumberFormatException e) {
+            port = -1;
+        }
+        if (port <= 0) {
+            setLoopbackOnly(false);
             return -1;
         }
 
@@ -405,10 +401,13 @@ public final class SocialBridge189 implements SocialBridge {
 
     @SubscribeEvent
     public void onWorldUnload(WorldEvent.Unload event) {
-        setLoopbackOnly(false);
         guestSnapshot.clear();
-        // The integrated server's overworld unloads only when that world closes: its mutes end with it.
-        if (!event.world.isRemote && event.world.provider.getDimensionId() == 0) mutedGuests.clear();
+        // The integrated server's overworld unloads only when that world closes: its loopback-only hosting and mutes end with it
+        // (a Nether or End unload while hosting must not lift loopback-only).
+        if (!event.world.isRemote && event.world.provider.getDimensionId() == 0) {
+            setLoopbackOnly(false);
+            mutedGuests.clear();
+        }
     }
 
     @Override

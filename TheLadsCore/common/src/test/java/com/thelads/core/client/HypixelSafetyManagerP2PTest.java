@@ -30,12 +30,12 @@ public class HypixelSafetyManagerP2PTest {
     @BeforeEach
     public void setup() {
         HypixelSafetyManager.setBypassFile(tmp.resolve("server_bypasses.json").toFile());
-        HypixelSafetyManager.setP2PSession(null);
+        HypixelSafetyManager.setP2PSession(null, null);
     }
 
     @AfterEach
     public void cleanup() {
-        HypixelSafetyManager.setP2PSession(null);
+        HypixelSafetyManager.setP2PSession(null, null);
         HypixelSafetyManager.setBypassFile(null);
         LadsGameBridge.set(new DefaultGameBridge());
     }
@@ -52,7 +52,7 @@ public class HypixelSafetyManagerP2PTest {
 
         // When a P2P session is active:
         String p2pKey = "p2p:12345678-1234-1234-1234-123456789abc/world-test";
-        HypixelSafetyManager.setP2PSession(p2pKey);
+        HypixelSafetyManager.setP2PSession(p2pKey, "127.0.0.1:25565"); // connected to the guest proxy
 
         assertEquals(p2pKey, HypixelSafetyManager.getP2PSession());
         assertEquals(p2pKey, HypixelSafetyManager.currentHost());
@@ -72,10 +72,31 @@ public class HypixelSafetyManagerP2PTest {
         assertTrue(HypixelSafetyManager.isDisallowed("StackRefill"));
 
         // Once P2P session ends, loopback trust is restored
-        HypixelSafetyManager.setP2PSession(null);
+        HypixelSafetyManager.setP2PSession(null, null);
         assertNull(HypixelSafetyManager.getP2PSession());
         assertTrue(HypixelSafetyManager.isTrustedServer());
         assertFalse(HypixelSafetyManager.isDisallowed("Minimap"));
         assertFalse(HypixelSafetyManager.isDisallowed("StackRefill"));
+    }
+
+    /** The p2p key applies only while the connection IS the guest proxy: a stale key can't mask or grant anything elsewhere. */
+    @Test
+    public void staleP2PKeyNeverAppliesToAnotherAddress() {
+        LoopbackBridge bridge = new LoopbackBridge();
+        LadsGameBridge.set(bridge);
+        String p2pKey = "p2p:12345678-1234-1234-1234-123456789abc/world-test";
+        HypixelSafetyManager.setP2PSession(p2pKey, "127.0.0.1:50000");
+
+        bridge.setServer("mc.hypixel.net");
+        assertTrue(HypixelSafetyManager.isHypixel(), "Hypixel stays Hypixel with a leftover p2p key");
+        assertNotEquals(p2pKey, HypixelSafetyManager.currentHost());
+        assertTrue(HypixelSafetyManager.isDisallowed("Minimap"));
+
+        bridge.setServer("Singleplayer");
+        assertFalse(HypixelSafetyManager.isMultiplayer(), "a leftover key does not turn singleplayer into a server");
+
+        bridge.setServer("127.0.0.1:50000");
+        assertEquals(p2pKey, HypixelSafetyManager.currentHost(), "on the proxy itself the session is the p2p key");
+        assertFalse(HypixelSafetyManager.isTrustedServer());
     }
 }

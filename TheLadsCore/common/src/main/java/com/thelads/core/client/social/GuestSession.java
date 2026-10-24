@@ -96,13 +96,13 @@ public final class GuestSession {
         }
 
         String safetyKey = "p2p:" + hostUuid + "/" + (worldId != null ? worldId : "world");
-        HypixelSafetyManager.setP2PSession(safetyKey);
 
         try {
-            ServerSocket proxy = new ServerSocket(0, 1, InetAddress.getLoopbackAddress());
+            ServerSocket proxy = new ServerSocket(0, 1, InetAddress.getByAddress(new byte[] {127, 0, 0, 1})); // never ::1: proxyAddress says 127.0.0.1
             proxyServer = proxy;
             int localPort = proxy.getLocalPort();
             proxyAddress = "127.0.0.1:" + localPort;
+            HypixelSafetyManager.setP2PSession(safetyKey, proxyAddress); // an unknown server while connected to this proxy
             LOGGER.info("GuestSession: local proxy listening on port {} for sid {}", localPort, sid);
 
             // Connect vanilla client to the loopback proxy
@@ -154,6 +154,7 @@ public final class GuestSession {
     private void acceptAndBridge(String sid, ServerSocket proxy, P2PSession session) {
         try {
             Socket socket = proxy.accept();
+            proxy.close(); // one connection: no other local process can get a second pipe to the friend's world
             socket.setTcpNoDelay(true);
             this.activeSocket = socket;
 
@@ -182,7 +183,7 @@ public final class GuestSession {
     public synchronized void close(String reason) {
         if (!active && proxyServer == null && p2pSession == null && sid == null) return;
         active = false;
-        HypixelSafetyManager.setP2PSession(null);
+        HypixelSafetyManager.setP2PSession(null, null);
 
         if (proxyServer != null) {
             try { proxyServer.close(); } catch (IOException ignored) {}

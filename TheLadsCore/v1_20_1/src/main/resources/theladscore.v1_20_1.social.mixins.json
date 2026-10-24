@@ -14,7 +14,7 @@
   ],
   "client": [
     "IntegratedServerAccessor1201",
-    "LanServerPingerMixin",
+    "IntegratedServerPublishMixin1201",
     "ChatClickActionMixin",
     "ConnectScreenMixin"
   ]
