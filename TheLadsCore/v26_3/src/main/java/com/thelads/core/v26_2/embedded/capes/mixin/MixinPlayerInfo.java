@@ -64,7 +64,9 @@ public abstract class MixinPlayerInfo {
             CapeConfig config = Capes.getConfig();
             PlayerSkin oldTextures = cir.getReturnValue();
             ClientAsset.Texture capeTexture = handler.getCape();
-            ClientAsset.Texture elytraTexture = handler.getHasElytraTexture() && config.getEnableElytraTexture() ? capeTexture : new ClientAsset.ResourceTexture(Identifier.parse("textures/entity/equipment/wings/elytra.png"),null);
+            // Vanilla's elytra when the cape has none: its texture path is what the wings layer draws (null crashed it, as the cape did).
+            Identifier elytra = Identifier.parse("textures/entity/equipment/wings/elytra.png");
+            ClientAsset.Texture elytraTexture = handler.getHasElytraTexture() && config.getEnableElytraTexture() ? capeTexture : new ClientAsset.ResourceTexture(elytra, elytra);
             PlayerSkin newTextures = new PlayerSkin(
                     oldTextures.body(),
                     capeTexture, elytraTexture,

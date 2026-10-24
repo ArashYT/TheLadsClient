@@ -346,6 +346,21 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     }
 
     @Override
+    public boolean isHardcore() {
+        Minecraft mc = mc();
+        return mc.theWorld != null && mc.theWorld.getWorldInfo().isHardcoreModeEnabled();
+    }
+
+    @Override
+    public boolean isMainInventoryEmpty() {
+        Minecraft mc = mc();
+        if (mc.thePlayer == null) return true;
+        net.minecraft.item.ItemStack[] slots = mc.thePlayer.inventory.mainInventory;
+        for (int i = 9; i < slots.length; i++) if (slots[i] != null) return false;
+        return true;
+    }
+
+    @Override
     public int getHeldItemBlockCount() {
         Minecraft mc = mc();
         if (mc.thePlayer == null) return -1;

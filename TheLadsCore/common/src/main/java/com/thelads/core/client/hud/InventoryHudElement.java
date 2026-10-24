@@ -36,6 +36,8 @@ public class InventoryHudElement extends HudElement {
     }
 
     private void renderInventory(LadsGraphics g, boolean preview) {
+        // An empty inventory draws nothing in game; the HUD editor shows sample items (drawInventorySlot's preview) instead.
+        if (!preview && g.getGame() != null && g.getGame().isMainInventoryEmpty()) return;
         g.fill(x, y, x + width, y + height, 0x80000000);
 
         for (int row = 0; row < ROWS; row++) {
