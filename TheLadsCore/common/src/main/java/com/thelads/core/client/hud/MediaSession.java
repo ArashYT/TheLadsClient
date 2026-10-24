@@ -33,6 +33,8 @@ public final class MediaSession {
     /** Position and length in ms, and System.currentTimeMillis the position was true at (it runs on from there while playing). */
     public static volatile long positionMs, durationMs, positionAt;
     private static volatile long wantedAt;
+    /** The API failed once (no WinRT media API): not tried again this session, so a broken system does not log every tick. */
+    private static volatile boolean broken;
     private static Thread reader;
 
     private MediaSession() {}
@@ -40,7 +42,7 @@ public final class MediaSession {
     /** The widget is on (asked once a tick): the reader runs while it is wanted and stops a few seconds after. */
     public static synchronized void want() {
         wantedAt = System.currentTimeMillis();
-        if (!SUPPORTED || reader != null) return;
+        if (!SUPPORTED || broken || reader != null) return;
         reader = new Thread(MediaSession::run, "Lads media session");
         reader.setDaemon(true);
         reader.start();
@@ -59,11 +61,17 @@ public final class MediaSession {
             if (init < 0 && init != 0x80010106) throw new IllegalStateException("RoInitialize failed: 0x" + Integer.toHexString(init));
             manager = manager();
             while (System.currentTimeMillis() - wantedAt < 5000) {
-                read(manager);
+                try {
+                    read(manager);
+                } catch (IllegalStateException slow) { // one app answering late or oddly: nothing shown until the next read
+                    title = "";
+                    playing = false;
+                }
                 Thread.sleep(1000);
             }
-        } catch (Throwable failure) { // no JNA, no WinRT media API (Windows 8 or older): the widget shows nothing
+        } catch (Throwable failure) { // no JNA, no WinRT media API (Windows 8 or older): the widget shows nothing, not tried again
             LOG.warn("Lads media player: the Windows media session can't be read ({})", failure.toString());
+            broken = !(failure instanceof InterruptedException);
             title = "";
         } finally {
             if (manager != null) com(manager, RELEASE);

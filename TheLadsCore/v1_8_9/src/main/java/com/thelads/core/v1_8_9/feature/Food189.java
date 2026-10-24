@@ -153,7 +153,7 @@ public final class Food189 {
             float gain = (regeneration ? FoodPreview.regenerated(level, saturation, exhaustion(own), max - health, true) : 0) + regenerationEffect(held);
             int current = (int) Math.ceil(health), after = (int) Math.ceil(Math.min(max, health + gain));
             int hearts = Math.min((int) Math.ceil(max / 2), heartX.length);
-            int v = mc.theWorld.getWorldInfo().isHardcoreModeEnabled() ? 45 : 0; // icons.png hearts: full 52, half 61; hardcore 45 lower
+            int v = mc.theWorld.getWorldInfo().isHardcoreModeEnabled() || com.thelads.core.client.hud.HudExtras.VANILLA.hardcoreHearts ? 45 : 0; // icons.png hearts: full 52, half 61; hardcore 45 lower
             for (int i = Math.max(0, current / 2); i < Math.min((after + 1) / 2, hearts); i++)
                 icon(Gui.icons, alpha, heartX[i], heartY[i], i * 2 + 1 == after ? 61 : 52, v, 9, 256);
         }

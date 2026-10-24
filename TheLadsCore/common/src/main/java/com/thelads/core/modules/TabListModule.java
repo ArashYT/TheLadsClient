@@ -47,6 +47,7 @@ public final class TabListModule extends Module {
     private boolean keyWasDown, toggled;
     private float openness;
     private long lastFrame;
+    private boolean timing;
 
     public void refresh() {
         boolean on = isEnabled();
@@ -79,10 +80,11 @@ public final class TabListModule extends Module {
     /** How open the list is drawn this frame (0 to 1, 150 ms each way with Animated Open/Close); it is drawn while above 0. */
     public float openness(boolean wanted, long nanos) {
         if (!animated) {
-            lastFrame = 0;
+            timing = false;
             return openness = wanted ? 1 : 0;
         }
-        float step = lastFrame == 0 ? 0 : Math.min(nanos - lastFrame, 50_000_000L) / 150e6f;
+        float step = timing ? Math.min(nanos - lastFrame, 50_000_000L) / 150e6f : 0;
+        timing = true;
         lastFrame = nanos;
         return openness = wanted ? Math.min(1, openness + step) : Math.max(0, openness - step);
     }
