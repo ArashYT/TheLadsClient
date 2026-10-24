@@ -92,6 +92,8 @@ class CustomItemsTest {
         assertNull(rule("x.properties", "type=elytra\nitems=276\ntexture=t"));
         assertNull(rule("x.properties", "items=276\ntexture=t\nnbt.display.Name=regex:(broken"), "a broken condition never widens");
         assertNotNull(rule("x.properties", "type=enchantment\ntexture=glint"), "enchantments may apply to every item");
+        assertNull(rule("x.properties", "type=enchantment\ntexture.diamond_sword=glint"), "an effect needs one texture");
+        assertNotNull(rule("x.properties", (char) 0xFEFF + "items=276\ntexture=t"), "a UTF-8 BOM before the first key");
     }
 
     @Test

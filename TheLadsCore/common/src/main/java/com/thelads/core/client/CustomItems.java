@@ -382,7 +382,7 @@ public final class CustomItems {
         if (texture != null && !exists.test(texture)) texture = null;
         String model = modelPath(first(p, "model"), folder);
         // ponytail: model= is parsed but not drawn yet, so a rule with no texture is dropped rather than shadowing lower rules.
-        if (texture == null && textures.isEmpty()) return null;
+        if (texture == null && (textures.isEmpty() || type == Type.ENCHANTMENT)) return null; // an effect draws one texture
 
         int[] items = null;
         String itemList = first(p, "items", "matchItems");
@@ -539,7 +539,7 @@ public final class CustomItems {
     private static Properties properties(String text) {
         Properties p = new Properties();
         try {
-            p.load(new StringReader(text));
+            p.load(new StringReader(!text.isEmpty() && text.charAt(0) == 0xFEFF ? text.substring(1) : text)); // a UTF-8 BOM would hide the first key
             return p;
         } catch (IOException | IllegalArgumentException broken) {
             return null;
