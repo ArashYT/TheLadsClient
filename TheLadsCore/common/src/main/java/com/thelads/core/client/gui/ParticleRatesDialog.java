@@ -8,6 +8,8 @@ import static com.thelads.core.client.gui.MenuGraphics.*;
 /**
  * Particle Core's per-type editor: a searchable list of the game's particle ids, each with a 0 to 100% spawn slider (100 is
  * vanilla, 0 switches the type off). Opens over the settings screen like {@link ActionDropdown}; the screen saves on every change.
+ * The same list edits the other per-type values (sizes, fade: a slider over the option's range) and colors (a swatch opening its
+ * own color picker on top).
  */
 final class ParticleRatesDialog {
     private static final int ROW = 25;
@@ -19,6 +21,7 @@ final class ParticleRatesDialog {
     private ParticleReductionOption option;
     private List<String> all = List.of(), filtered = List.of();
     private Runnable changed = () -> {};
+    private final ColorPicker picker = new ColorPicker();
 
     boolean isOpen() { return open; }
 
@@ -30,7 +33,7 @@ final class ParticleRatesDialog {
 
     private void filter() {
         String needle = query.toLowerCase(Locale.ROOT);
-        filtered = all.stream().filter(id -> id.contains(needle) && (!changedOnly || option.percent(id) < 100)).toList();
+        filtered = all.stream().filter(id -> id.contains(needle) && (!changedOnly || option.value(id) != option.vanilla)).toList();
         selected = Math.max(0, Math.min(selected, Math.max(0, filtered.size() - 1)));
         offset = 0; scroll = 0;
     }
@@ -48,14 +51,14 @@ final class ParticleRatesDialog {
         scroll += (offset - scroll) * (1 - Math.exp(-dt * 20));
         g.fill(0, 0, g.getScaledWidth(), g.getScaledHeight(), 0xB8000000);
         round(g, x, y, w, h, PANEL);
-        g.drawText("Particle spawn rates", x + 12, y + 11, TEXT);
+        g.drawText("Particle " + option.getName().toLowerCase(Locale.ROOT), x + 12, y + 11, TEXT);
         g.drawText("Done", x + w - 43, y + 11, ACCENT);
         int filterW = 74;
         g.fill(x + 10, y + 30, x + w - 10 - filterW - 6, y + 55, CARD);
         g.drawText(query.isEmpty() ? "Search particle types..." : query + "|", x + 17, y + 38, query.isEmpty() ? MUTED : TEXT);
         round(g, x + w - 10 - filterW, y + 30, filterW, 25, changedOnly ? LadsPalette.PRIMARY : CARD);
         g.drawCenteredText("Changed", x + w - 10 - filterW / 2, y + 38, TEXT);
-        g.drawText("Drag a bar: 100% is vanilla, 0% never spawns. Right-click a row to reset it.", x + 12, y + 64, MUTED);
+        g.drawText(fit(g, option.hint, w - 24), x + 12, y + 64, MUTED);
         int nameW = Math.max(70, Math.min(170, w * 2 / 5));
         trackX = x + 15 + nameW + 8; trackW = Math.max(40, x + w - 62 - trackX);
         g.enableScissor(x + 8, listTop, x + w - 8, listBottom);
@@ -63,20 +66,27 @@ final class ParticleRatesDialog {
             String id = filtered.get(i);
             int ry = listTop + i * ROW - (int) Math.round(scroll);
             if (ry + ROW - 1 < listTop || ry > listBottom) continue;
-            int percent = option.percent(id);
+            int value = option.value(id);
+            boolean vanilla = value == option.vanilla;
             boolean hover = mx >= x + 9 && mx < x + w - 9 && my >= Math.max(ry, listTop) && my < Math.min(ry + ROW - 1, listBottom);
             if (hover || i == selected) g.fill(x + 9, ry, x + w - 9, ry + ROW - 1, CARD);
-            g.drawText(fit(g, id, nameW), x + 15, ry + 8, percent < 100 ? ACCENT : TEXT);
+            g.drawText(fit(g, id, nameW), x + 15, ry + 8, vanilla ? TEXT : ACCENT);
+            if (option.color) {
+                if (vanilla) g.drawText("Vanilla", trackX, ry + 8, MUTED);
+                else { g.fill(trackX, ry + 5, trackX + trackW, ry + 19, LadsPalette.BORDER); g.fill(trackX + 1, ry + 6, trackX + trackW - 1, ry + 18, value); }
+                continue;
+            }
             g.fill(trackX, ry + 10, trackX + trackW, ry + 13, LadsPalette.BORDER);
-            g.fill(trackX, ry + 10, trackX + Math.round(trackW * percent / 100f), ry + 13, ACCENT);
-            String label = percent == 0 ? "Off" : percent + "%";
-            g.drawText(label, x + w - 14 - g.textWidth(label), ry + 8, percent == 100 ? MUTED : TEXT);
+            g.fill(trackX, ry + 10, trackX + Math.round(trackW * (value - option.min) / (float) (option.max - option.min)), ry + 13, ACCENT);
+            String label = value == 0 && option.vanilla == 100 && option.min == 0 ? "Off" : value + "%";
+            g.drawText(label, x + w - 14 - g.textWidth(label), ry + 8, vanilla ? MUTED : TEXT);
         }
         g.disableScissor();
         if (filtered.isEmpty()) g.drawText(changedOnly ? "No changed particle types." : "No matching particle types.", x + 15, listTop + 8, MUTED);
         g.drawText((filtered.size() == all.size() ? filtered.size() + " types" : filtered.size() + " of " + all.size() + " types") + ", " + option.changed() + " changed", x + 12, y + h - 12, MUTED);
         String reset = confirmReset ? "Click again to reset all" : "Reset all";
         g.drawText(reset, x + w - 12 - g.textWidth(reset), y + h - 12, confirmReset ? ACCENT : MUTED);
+        picker.render(g, mx, my);
     }
 
     /** QA and tests drive real clicks at it: the slider track of this type's row as {x, y, width, height} (null while the dialog is closed or the row is not listed). */
@@ -94,13 +104,14 @@ final class ParticleRatesDialog {
     private void apply(int row, double mx) {
         if (row < 0 || row >= filtered.size()) return;
         double t = Math.max(0, Math.min(1, (mx - trackX) / Math.max(1, trackW)));
-        option.set(filtered.get(row), (int) Math.round(t * 20) * 5);
+        option.set(filtered.get(row), option.min + (int) Math.round(t * (option.max - option.min) / 5) * 5);
         selected = row;
         changed.run();
     }
 
     boolean click(double mx, double my, int button) {
         if (!open) return false;
+        if (picker.isOpen()) return picker.click(mx, my, button);
         if (mx < x || mx >= x + w || my < y || my >= y + h || mx >= x + w - 54 && my < y + 28) { open = false; return true; }
         if (button == 0 && my >= y + 30 && my < y + 55 && mx >= x + w - 84) { changedOnly = !changedOnly; filter(); return true; }
         if (my >= y + h - 22) {
@@ -113,31 +124,39 @@ final class ParticleRatesDialog {
         if (my >= y + 80 && my < y + h - 22) {
             int row = index(my);
             if (row < 0 || row >= filtered.size()) return true;
-            if (button == 1) { option.set(filtered.get(row), 100); selected = row; changed.run(); if (changedOnly) filter(); }
-            else if (button == 0) {
+            if (button == 1) { option.set(filtered.get(row), option.vanilla); selected = row; changed.run(); if (changedOnly) filter(); }
+            else if (button == 0 && option.color) {
+                String id = filtered.get(row);
+                int value = option.value(id);
+                selected = row;
+                picker.open(id, value == 0 ? 0xFFFFFFFF : value, color -> { option.set(id, color | 0xFF000000); changed.run(); });
+            } else if (button == 0) {
                 if (mx >= trackX - 4 && mx <= trackX + trackW + 4) { dragging = true; dragRow = row; apply(row, mx); } else selected = row;
             }
         }
         return true;
     }
 
-    boolean drag(double mx) {
+    boolean drag(double mx, double my) {
+        if (open && picker.isOpen()) return picker.move(mx, my);
         if (!open || !dragging) return false;
         apply(dragRow, mx);
         return true;
     }
 
     boolean release() {
+        if (open && picker.isOpen()) return picker.release();
         if (!open || !dragging) return false;
         dragging = false; dragRow = -1;
         if (changedOnly) filter();
         return true;
     }
 
-    boolean wheel(double amount) { if (!open) return false; offset -= (int) (amount * 30 * SmoothScroll.FACTOR); return true; }
+    boolean wheel(double amount) { if (!open) return false; if (picker.isOpen()) return true; offset -= (int) (amount * 30 * SmoothScroll.FACTOR); return true; }
 
     boolean key(int key, int modifiers) {
         if (!open) return false;
+        if (picker.isOpen()) return picker.key(key);
         if (key == 256) { open = false; return true; }
         if (key == 259 && !query.isEmpty()) { query = query.substring(0, query.offsetByCodePoints(query.length(), -1)); filter(); }
         if (key == 65 && (modifiers & 2) != 0) { query = ""; filter(); }
@@ -145,18 +164,19 @@ final class ParticleRatesDialog {
             selected = Math.max(0, Math.min(filtered.size() - 1, selected + (key == 264 ? 1 : -1)));
             offset = Math.max(selected * ROW - (h - 126), Math.min(selected * ROW, offset));
         }
-        if ((key == 262 || key == 263) && !filtered.isEmpty()) {
+        if ((key == 262 || key == 263) && !filtered.isEmpty() && !option.color) {
             int step = (modifiers & 2) != 0 ? 1 : 5;
             String id = filtered.get(selected);
-            option.set(id, option.percent(id) + (key == 262 ? step : -step));
+            option.set(id, option.value(id) + (key == 262 ? step : -step));
             changed.run();
         }
-        if (key == 261 && !filtered.isEmpty()) { option.set(filtered.get(selected), 100); changed.run(); if (changedOnly) filter(); }
+        if (key == 261 && !filtered.isEmpty()) { option.set(filtered.get(selected), option.vanilla); changed.run(); if (changedOnly) filter(); }
         return true;
     }
 
     boolean type(int cp) {
         if (!open) return false;
+        if (picker.isOpen()) return picker.type(cp);
         if (Character.isValidCodePoint(cp) && !Character.isISOControl(cp) && query.length() < 64) { query += new String(Character.toChars(cp)); filter(); }
         return true;
     }

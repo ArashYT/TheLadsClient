@@ -394,6 +394,14 @@ public class ModuleManager {
         register(borderless, Module.Category.MECHANIC);
         register(new SurvivalTweaksModule(), Module.Category.MECHANIC);
         register(new StackRefillModule(), Module.Category.MECHANIC);
+        // PARITY-1023 pvp (rows 31-38): Light Overlay, Loot Beams, Mob Overlay and Mob Size are risky (HypixelSafetyManager), off by default.
+        register(new OofModule(), Module.Category.MECHANIC);
+        register(com.thelads.core.client.LightOverlay.create(), Module.Category.MECHANIC);
+        register(new LootBeamsModule(), Module.Category.MECHANIC);
+        register(new MobOverlayModule(), Module.Category.MECHANIC);
+        register(new MobSizeModule(), Module.Category.MECHANIC);
+        register(new ItemDespawnModule(), Module.Category.MECHANIC);
+        register(new UhcOverlayModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

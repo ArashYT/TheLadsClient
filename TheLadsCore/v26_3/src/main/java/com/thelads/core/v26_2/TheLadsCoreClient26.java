@@ -54,6 +54,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.clumps.NativeClumps.initialize();
         com.thelads.core.v26_2.feature.NativeItemPhysics.initialize();
         com.thelads.core.v26_2.world.World26.register(); // Wavy Capes, TNT Timer
+        com.thelads.core.v26_2.feature.PvpVisuals26.register(); // Oof, Light Overlay, Loot Beams, Mob Overlay/Size, Item Despawn, UHC Overlay
         com.thelads.core.v26_2.feature.NativeDynamicLights.initialize();
         com.thelads.core.v26_2.feature.async.AsyncTicking.initialize();
         com.thelads.core.v26_2.feature.GoodMcAttackSpeedReset.register();

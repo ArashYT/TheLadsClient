@@ -9,6 +9,9 @@ import net.minecraft.client.particle.ParticleEngine;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.particles.ParticleOptions;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.minecraft.client.particle.ParticleRenderType;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -21,6 +24,25 @@ public abstract class ParticleEngineMixin {
     @Inject(method = "createParticle", at = @At("HEAD"), cancellable = true)
     private void ladsSpawn(ParticleOptions options, double x, double y, double z, double dx, double dy, double dz, CallbackInfoReturnable<Particle> cir) {
         if (ParticleCore.active() && !ParticleCore1201.allow(options, x, y, z)) cir.setReturnValue(null);
+    }
+
+    /** Particle Core's per-type size, color and fade: the new particle keeps its type's look (ParticleStyleMixin1201 draws it). */
+    @Inject(method = "createParticle", at = @At("RETURN"))
+    private void ladsStyle(ParticleOptions options, double x, double y, double z, double dx, double dy, double dz, CallbackInfoReturnable<Particle> cir) {
+        if (ParticleCore.styled() && cir.getReturnValue() != null) ParticleCore.style(cir.getReturnValue(), ParticleCore1201.id(options.getType()));
+    }
+
+    /** A fading particle of the opaque sheet goes to the translucent one (same atlas), so its alpha shows instead of cutting off. */
+    @WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/Particle;getRenderType()Lnet/minecraft/client/particle/ParticleRenderType;"))
+    private ParticleRenderType ladsFadeSheet(Particle particle, Operation<ParticleRenderType> original) {
+        ParticleRenderType type = original.call(particle);
+        return type == ParticleRenderType.PARTICLE_SHEET_OPAQUE && particle instanceof ParticleCore1201.Look look && look.lads$fades() ? ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT : type;
+    }
+
+    /** A styled particle ticks with its own size, color and alpha (the look is swapped in only while it draws). */
+    @Inject(method = "tickParticle", at = @At("HEAD"))
+    private void ladsUnstyle(Particle particle, CallbackInfo ci) {
+        if (particle instanceof ParticleCore1201.Look look) look.lads$end();
     }
 
     /**

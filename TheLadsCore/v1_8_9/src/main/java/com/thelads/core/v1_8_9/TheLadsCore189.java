@@ -112,6 +112,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.PaperDoll189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.EntityCulling189());
         com.thelads.core.v1_8_9.feature.ParticleCore189.register();
+        com.thelads.core.v1_8_9.feature.PvpVisuals189.register(); // Oof, Light Overlay, Loot Beams, Mob Overlay/Size, Item Despawn, UHC Overlay
         com.thelads.core.v1_8_9.world.World189.register(); // Wavy Capes, TNT Timer
         Screenshots189.register();
         com.thelads.core.v1_8_9.feature.MouseTweaks189.register();

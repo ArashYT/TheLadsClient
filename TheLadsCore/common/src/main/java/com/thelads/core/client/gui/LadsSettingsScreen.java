@@ -1365,11 +1365,12 @@ public final class LadsSettingsScreen {
             () -> { sound.set(""); changed(module); }, sound.isSet(), mx, my, false);
     }
     private static String builtInSound(Module module, SoundOption sound) {
-        if (!(module instanceof ComboSoundsModule combo)) return "Plain chime";
+        if (!(module instanceof ComboSoundsModule combo)) return module instanceof com.thelads.core.modules.OofModule ? "Built-in classic oof" : "Plain chime";
         return sound == combo.longShotSound ? "Built-in level-up chime" : sound == combo.headshotSound ? "Built-in helmet clink" : "Built-in pling";
     }
     private static double soundVolume(Module module) {
-        return module instanceof ComboSoundsModule combo ? combo.volume.getValue() : module instanceof KillBannerModule banner ? banner.volume.getValue() : 1;
+        return module instanceof ComboSoundsModule combo ? combo.volume.getValue() : module instanceof KillBannerModule banner ? banner.volume.getValue()
+            : module instanceof com.thelads.core.modules.OofModule oof ? oof.volume.getValue() : 1;
     }
     private static void previewSound(SoundOption sound, Module module) {
         if (module instanceof ComboSoundsModule combo) combo.preview(sound);
@@ -1694,7 +1695,7 @@ public final class LadsSettingsScreen {
     public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
         if (confirm.isOpen()) return true;
         if (library.drag(x)) return true;
-        if (particleRates.drag(x)) return true;
+        if (particleRates.drag(x, y)) return true;
         if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); return true; }
         if (colorPicker.move(x, y)) return true;
         if (draggingScrollbar) {

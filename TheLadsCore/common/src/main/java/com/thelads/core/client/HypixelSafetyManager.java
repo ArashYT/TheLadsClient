@@ -195,7 +195,8 @@ public final class HypixelSafetyManager {
         LadsGameBridge game = LadsGameBridge.get();
         int flags = qaOverride ? QA_HYPIXEL : server(address(game)).flags; // the last address first: no string work
         if ((flags & HYPIXEL) != 0 && isDisallowedModule(moduleName)) return Block.BANNED;
-        boolean minimap = isMinimapModule(moduleName), risky = minimap || isSingleplayerOnlyModule(moduleName);
+        boolean minimap = isMinimapModule(moduleName), risky = minimap || isSingleplayerOnlyModule(moduleName)
+            || "Light Overlay".equalsIgnoreCase(moduleName) || "Loot Beams".equalsIgnoreCase(moduleName) || "Mob Overlay".equalsIgnoreCase(moduleName) || "Mob Size".equalsIgnoreCase(moduleName); // pvp rows 32-36
         if (!risky || (flags & TRUSTED) != 0 || !qaOverride && !game.isIngame()) return Block.NONE; // menus: nothing to ban
         if (minimap) return (flags & NO_MINIMAP) != 0 ? Block.BANNED : (flags & MINIMAP_OK) != 0 ? Block.NONE : Block.UNKNOWN;
         return (flags & NO_AUTOMATION) != 0 ? Block.BANNED : Block.UNKNOWN;
