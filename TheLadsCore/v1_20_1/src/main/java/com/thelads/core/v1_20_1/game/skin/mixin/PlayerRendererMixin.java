@@ -45,7 +45,7 @@ abstract class PlayerRendererMixin extends LivingEntityRenderer<AbstractClientPl
 
     @Inject(method = "render(Lnet/minecraft/client/player/AbstractClientPlayer;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V", at = @At("HEAD"), cancellable = true, require = 0)
     private void lads(AbstractClientPlayer entity, float entityYaw, float partialTicks, PoseStack poseStack, MultiBufferSource buffer, int packedLight, CallbackInfo ci) {
-        if (entity != null && com.thelads.core.client.hypixel.CrowdPlayerHider.shouldHidePlayer(entity == net.minecraft.client.Minecraft.getInstance().player, entity.getX(), entity.getY(), entity.getZ())) {
+        if (entity != null && com.thelads.core.client.hypixel.CrowdPlayerHider.shouldHidePitPlayer(entity == net.minecraft.client.Minecraft.getInstance().player, entity.getX(), entity.getY(), entity.getZ())) {
             ci.cancel();
         }
     }

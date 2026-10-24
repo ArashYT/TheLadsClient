@@ -475,6 +475,20 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         }
         return total;
     }
+
+    @Override
+    public int getHotbarBlockCount() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return -1;
+        int total = 0;
+        for (int i = 0; i < 9; i++) {
+            net.minecraft.world.item.ItemStack stack = mc.player.getInventory().getItem(i);
+            if (!stack.isEmpty() && stack.getItem() instanceof net.minecraft.world.item.BlockItem) {
+                total += stack.getCount();
+            }
+        }
+        return total;
+    }
     @Override public String getRecentReachText() { return com.thelads.core.v26_2.feature.NativeClientTools.reachText(); }
 
     @Override

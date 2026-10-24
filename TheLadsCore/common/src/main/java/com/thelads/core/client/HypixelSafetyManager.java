@@ -191,11 +191,8 @@ public final class HypixelSafetyManager {
 
     public static boolean isGatedHypixelModule(String moduleName) {
         return "Auto GL".equalsIgnoreCase(moduleName) || "AutoGL".equalsIgnoreCase(moduleName)
-            || "Level Head".equalsIgnoreCase(moduleName) || "LevelHead".equalsIgnoreCase(moduleName)
-            || "HyStats".equalsIgnoreCase(moduleName) || "Opened Chest Highlight".equalsIgnoreCase(moduleName)
-            || "SkyBlock Suite".equalsIgnoreCase(moduleName) || "SkyBlock".equalsIgnoreCase(moduleName);
+            || "Opened Chest Highlight".equalsIgnoreCase(moduleName);
     }
-
     /** Why this module is off on the current server, bypass or not. Allocation-free: asked per module every frame. */
     public static Block blockOf(String moduleName) {
         if (moduleName == null) return Block.NONE;

@@ -60,15 +60,6 @@ public final class NativeHypixel {
         ClientSendMessageEvents.MODIFY_CHAT.register(HypixelMods::handleOutgoingChat);
         ClientSendMessageEvents.MODIFY_COMMAND.register(HypixelMods::handleOutgoingChat);
         ClientTickEvents.END_CLIENT_TICK.register(client -> HypixelMods.tick(LadsGameBridge.get(), client.level, client.getConnection(), System.nanoTime()));
-        net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-            if (world.isClientSide() && com.thelads.core.client.hypixel.OpenedChestHighlight.isEnabled() && hitResult != null) {
-                net.minecraft.core.BlockPos pos = hitResult.getBlockPos();
-                if (pos != null) {
-                    com.thelads.core.client.hypixel.OpenedChestHighlight.onChestOpened(pos.getX(), pos.getY(), pos.getZ());
-                }
-            }
-            return net.minecraft.world.InteractionResult.PASS;
-        });
         if (FabricLoader.getInstance().isModLoaded("hypixel_mod_api")) return;
         try {
             PayloadTypeRegistry.clientboundPlay().register(TYPE, PingPayload.CODEC);

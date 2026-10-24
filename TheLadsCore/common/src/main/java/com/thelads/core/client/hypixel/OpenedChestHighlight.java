@@ -6,6 +6,7 @@ import java.util.Set;
 /**
  * OpenedChestHighlight: Highlights / dims chests already opened in SkyWars, Blitz SG, and UHC.
  * Uses packed coordinates to prevent object allocations during rendering.
+ * Resets on world/game change.
  */
 public final class OpenedChestHighlight {
     public static final String NAME = "Opened Chest Highlight";
@@ -26,6 +27,10 @@ public final class OpenedChestHighlight {
         synchronized (OPENED_CHESTS) {
             OPENED_CHESTS.add(packPos(x, y, z));
         }
+    }
+
+    public static void recordChestOpened(int x, int y, int z) {
+        onChestOpened(x, y, z);
     }
 
     public static boolean isOpened(int x, int y, int z) {

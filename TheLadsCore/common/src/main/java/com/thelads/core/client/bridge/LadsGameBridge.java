@@ -56,6 +56,8 @@ public interface LadsGameBridge {
     default String getItemCountText(int selection) { return "Items: 0"; }
     /** Total block count of held item type in hotbar slots 0..8, or -1 if not holding a block. */
     default int getHeldItemBlockCount() { return -1; }
+    /** Total count of placeable blocks in hotbar slots 0..8, or -1 if unavailable. */
+    default int getHotbarBlockCount() { return 0; }
     default String getRecentReachText() { return "Reach: --"; }
     /** The logged-in local player's username; empty when not playing or unavailable. */
     default String getPlayerName() { return ""; }

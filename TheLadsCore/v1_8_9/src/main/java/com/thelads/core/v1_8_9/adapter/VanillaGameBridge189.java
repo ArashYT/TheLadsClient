@@ -199,6 +199,20 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     }
 
     @Override
+    public int getHotbarBlockCount() {
+        Minecraft mc = mc();
+        if (mc.thePlayer == null) return -1;
+        int total = 0;
+        for (int i = 0; i < 9; i++) {
+            ItemStack stack = mc.thePlayer.inventory.mainInventory[i];
+            if (stack != null && stack.getItem() instanceof net.minecraft.item.ItemBlock) {
+                total += stack.stackSize;
+            }
+        }
+        return total;
+    }
+
+    @Override
     public String getRecentReachText() {
         Minecraft mc = mc();
         if (mc.thePlayer == null || mc.objectMouseOver == null) return "Reach: --";

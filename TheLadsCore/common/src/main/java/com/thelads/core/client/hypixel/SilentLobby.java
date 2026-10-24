@@ -30,7 +30,7 @@ public final class SilentLobby {
         if (s.contains("explode") || s.contains("explosion")) return true;
 
         // Gadget / pet sounds
-        if (s.contains("bat") || s.contains("cow.say") || s.contains("note.") || s.contains("random.orb")) return true;
+        if (s.contains("bat") || s.contains("cow.say") || s.contains("note.") || s.contains("note_block") || s.contains("random.orb")) return true;
 
         return false;
     }
