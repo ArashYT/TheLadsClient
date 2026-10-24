@@ -47,6 +47,9 @@ public final class HostScreenLogic {
     private static final HostOptions.Scope[] SCOPES = HostOptions.Scope.values();
     private static final HostOptions.Approval[] APPROVALS = HostOptions.Approval.values();
 
+    /** A banned player: UUID string and the name to show. */
+    public record Banned(String uuid, String name) {}
+
     public interface Callbacks {
         HostOptions currentOptions();
         default void saveOptions(HostOptions options) {}
@@ -55,6 +58,9 @@ public final class HostScreenLogic {
         default void stopHosting() {}
         default List<SocialBridge.GuestInfo> guests() { return List.of(); }
         default void guestAction(UUID id, SocialBridge.GuestAction action) {}
+        /** This world's banned players (kept in lads-host.json) and how to lift a ban. */
+        default List<Banned> banned() { return List.of(); }
+        default void unban(String uuid) {}
         default void onClose() {}
     }
 
@@ -75,7 +81,6 @@ public final class HostScreenLogic {
     private boolean backupOnOpen = true;
     private boolean showJoinable = true;
     private String welcome = "";
-    private java.util.Set<String> banned = new java.util.LinkedHashSet<>(); // not edited here, kept on save
 
     // Welcome input
     private boolean typingWelcome = false;
@@ -125,6 +130,16 @@ public final class HostScreenLogic {
             @Override public void stopHosting() { s.stopHosting(); }
             @Override public List<SocialBridge.GuestInfo> guests() { return SocialBridge.get().guests(); }
             @Override public void guestAction(UUID id, SocialBridge.GuestAction action) { s.guestAction(id, action); }
+            @Override public List<Banned> banned() {
+                List<Banned> out = new ArrayList<>();
+                for (String id : s.worldBans()) {
+                    String name = id.length() > 8 ? id.substring(0, 8) : id;
+                    for (com.thelads.core.client.social.FriendEntry f : s.friends()) if (f.id().toString().equals(id)) name = f.displayName();
+                    out.add(new Banned(id, name));
+                }
+                return out;
+            }
+            @Override public void unban(String uuid) { s.unban(uuid); }
             @Override public void onClose() { onClose.run(); }
         });
     }
@@ -145,7 +160,6 @@ public final class HostScreenLogic {
         this.backupOnOpen = o.backupOnOpen;
         this.showJoinable = o.showJoinable;
         this.welcome = o.welcome != null ? o.welcome : "";
-        this.banned = o.banned != null ? new java.util.LinkedHashSet<>(o.banned) : new java.util.LinkedHashSet<>();
     }
 
     public HostOptions buildOptions() {
@@ -163,7 +177,8 @@ public final class HostScreenLogic {
         o.backupOnOpen = this.backupOnOpen;
         o.showJoinable = this.showJoinable;
         o.welcome = this.welcome;
-        o.banned = new java.util.LinkedHashSet<>(this.banned);
+        o.banned = new java.util.LinkedHashSet<>(); // bans are edited by Ban / Unban (saved at once), kept as they are now
+        for (Banned b : safeBanned()) o.banned.add(b.uuid());
         return o;
     }
 
@@ -511,9 +526,20 @@ public final class HostScreenLogic {
         g.drawCenteredText(backupOnOpen ? "ON" : "OFF", backupToggle.x + backupToggle.w / 2, backupToggle.y + 4, LadsPalette.TEXT, false);
     }
 
+    /** Where a banned player's Unban button was last drawn (null: not on screen). */
+    public Box unbanButtonBox(String uuid) {
+        return clickables.get("unban:" + uuid);
+    }
+
+    private List<Banned> safeBanned() {
+        List<Banned> b = callbacks.banned();
+        return b != null ? b : List.of();
+    }
+
     private void renderGuestsSection(LadsGraphics g, int x, int y, int w, int h, int mx, int my, int sy, int sh) {
         List<SocialBridge.GuestInfo> guests = safeGuests();
-        int totalH = 32 + guests.size() * 32;
+        List<Banned> banned = safeBanned();
+        int totalH = 32 + Math.max(1, guests.size()) * 32 + 24 + Math.max(1, banned.size()) * 26;
         maxScroll = Math.max(0, totalH - (h - 12));
         scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
 
@@ -523,7 +549,7 @@ public final class HostScreenLogic {
 
         if (guests.isEmpty()) {
             g.drawText("No guests currently connected.", x + 20, itemY + 10, LadsPalette.MUTED, false);
-            return;
+            itemY += 32;
         }
 
         for (SocialBridge.GuestInfo guest : guests) {
@@ -586,6 +612,26 @@ public final class HostScreenLogic {
             }
 
             itemY += 32;
+        }
+
+        // Banned from this world (lads-host.json): Unban lets them ask to join again
+        itemY += 8;
+        g.drawText("Banned (" + banned.size() + ")", x + 12, itemY, LadsPalette.ACCENT, true);
+        itemY += 16;
+        if (banned.isEmpty()) {
+            g.drawText("Nobody is banned from this world.", x + 20, itemY + 6, LadsPalette.MUTED, false);
+            return;
+        }
+        for (Banned b : banned) {
+            if (itemY + 22 > sy && itemY < sy + sh) {
+                MenuGraphics.round(g, x + 8, itemY, w - 16, 22, LadsPalette.CARD);
+                g.drawText(b.name(), x + 16, itemY + 7, LadsPalette.TEXT, false);
+                Box unbanB = new Box(x + w - 8 - 8 - 50, itemY + 2, 50, 18);
+                clickables.put("unban:" + b.uuid(), unbanB);
+                MenuGraphics.round(g, unbanB.x, unbanB.y, unbanB.w, unbanB.h, unbanB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
+                g.drawCenteredText("Unban", unbanB.x + unbanB.w / 2, unbanB.y + 4, LadsPalette.TEXT, false);
+            }
+            itemY += 26;
         }
     }
 
@@ -653,7 +699,9 @@ public final class HostScreenLogic {
     }
 
     private void handleClick(String key) {
-        if (key.startsWith("scope:")) {
+        if (key.startsWith("unban:")) {
+            callbacks.unban(key.substring("unban:".length()));
+        } else if (key.startsWith("scope:")) {
             setScope(HostOptions.Scope.valueOf(key.substring("scope:".length())));
         } else if (key.startsWith("approval:")) {
             setApproval(HostOptions.Approval.valueOf(key.substring("approval:".length())));

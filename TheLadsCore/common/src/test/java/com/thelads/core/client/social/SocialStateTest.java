@@ -637,6 +637,12 @@ public class SocialStateTest {
         host.invite(friend);
         assertTrue(out.isEmpty(), "no invite for a banned guest");
         assertTrue(HostOptions.load(world).isBanned(friend), "the ban is saved with the world");
+        assertEquals(List.of(friend.toString()), host.worldBans());
+
+        host.unban(friend.toString());
+        assertFalse(HostOptions.load(world).isBanned(friend), "Unban is saved too");
+        host.handleJoinRequest("req-4", friend, null);
+        assertTrue(host.hostSession().canLogin(friend), "an unbanned friend can join again");
         host.stopHosting();
     }
 

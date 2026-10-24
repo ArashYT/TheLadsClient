@@ -442,13 +442,34 @@ public class SocialState {
     /** Banned from this world for good (lads-host.json "banned"), online or not. */
     private void banFromWorld(UUID id) {
         HostOptions options = hostSession.options();
-        if (id == null || !options.banned.add(id.toString())) return;
+        if (id != null && options.banned.add(id.toString())) saveWorldOptions(options);
+    }
+
+    /** This world's bans (UUID strings): the live options while hosting, else its lads-host.json (none without a world). */
+    public List<String> worldBans() {
+        HostOptions options = worldOptions();
+        return options == null ? Collections.emptyList() : new ArrayList<>(options.banned);
+    }
+
+    /** Host screen's Unban: the player may ask to join this world again. */
+    public void unban(String uuid) {
+        HostOptions options = worldOptions();
+        if (options != null && options.banned.remove(uuid)) saveWorldOptions(options);
+    }
+
+    private HostOptions worldOptions() {
+        if (hostSession.isHosting()) return hostSession.options();
+        Path world = bridge().worldDir();
+        return world == null ? null : HostOptions.load(world);
+    }
+
+    private void saveWorldOptions(HostOptions options) {
         Path world = bridge().worldDir();
         if (world == null) return;
         try {
             options.save(world);
         } catch (IOException e) {
-            LOGGER.warn("SocialState: could not save the ban to lads-host.json: {}", e.getMessage());
+            LOGGER.warn("SocialState: could not save lads-host.json: {}", e.getMessage());
         }
     }
 
