@@ -96,6 +96,16 @@ class SocialToastsTest {
         assertEquals(0, SocialToasts.activeToasts().size());
     }
 
+    @Test
+    void emptyToastsRendersImmediatelyWithZeroOperations() {
+        SocialToasts.clear();
+        TestGraphics g = new TestGraphics(800, 600);
+        SocialToasts.render(g, 800, 600, 0, 0);
+        assertFalse(SocialToasts.mouseClicked(100, 100, 0, 800, 600));
+        assertFalse(SocialToasts.acceptNewest());
+        assertFalse(SocialToasts.denyNewest());
+    }
+
     record TestGraphics(int w, int h) implements LadsGraphics {
         @Override public void fill(int a, int b, int c, int d, int e) {}
         @Override public void drawText(String t, int x, int y, int c, boolean s) {}

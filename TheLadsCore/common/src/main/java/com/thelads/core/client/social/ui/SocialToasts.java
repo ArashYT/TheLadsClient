@@ -91,6 +91,7 @@ public final class SocialToasts {
     }
 
     private static void purgeExpired() {
+        if (toasts.isEmpty()) return;
         long now = timeSupplier.getAsLong();
         Iterator<Toast> it = toasts.iterator();
         while (it.hasNext()) {
@@ -102,7 +103,10 @@ public final class SocialToasts {
     }
 
     public static synchronized void render(LadsGraphics g, int screenWidth, int screenHeight, int mouseX, int mouseY) {
+        if (toasts.isEmpty()) return;
         purgeExpired();
+        if (toasts.isEmpty()) return;
+
         int maxVisible = 5;
         int count = Math.min(toasts.size(), maxVisible);
         int right = screenWidth - 10;
@@ -152,8 +156,10 @@ public final class SocialToasts {
     }
 
     public static synchronized boolean mouseClicked(double x, double y, int button, int screenWidth, int screenHeight) {
-        if (button != 0) return false;
+        if (button != 0 || toasts.isEmpty()) return false;
         purgeExpired();
+        if (toasts.isEmpty()) return false;
+
         int maxVisible = 5;
         int count = Math.min(toasts.size(), maxVisible);
         int right = screenWidth - 10;

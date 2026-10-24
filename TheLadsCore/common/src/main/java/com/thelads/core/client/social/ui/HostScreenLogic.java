@@ -17,7 +17,8 @@ import java.util.UUID;
  * Common GUI logic for Multiplayer Options (Host Screen):
  * Scope, approval, max players, guest game mode, op level, PvP, difficulty,
  * gamerules, view distance cap, relay only, backup, show joinable, welcome message,
- * guest list with per-player actions, and Open/Close hosting button.
+ * guest list with per-player actions (Kick, Ban, Op/Deop, GameMode, Mute, TP),
+ * mouse scrolling, and Open/Close hosting button.
  */
 public final class HostScreenLogic {
 
@@ -69,6 +70,10 @@ public final class HostScreenLogic {
 
     // Welcome input
     private boolean typingWelcome = false;
+
+    // Scrolling
+    private int scrollOffset = 0;
+    private int maxScroll = 0;
 
     // Hit-boxes
     private final Map<Section, Box> sectionBoxes = new HashMap<>();
@@ -125,6 +130,16 @@ public final class HostScreenLogic {
     public Section section() { return currentSection; }
     public void setSection(Section section) {
         this.currentSection = section != null ? section : Section.GENERAL;
+        this.scrollOffset = 0;
+    }
+
+    public int scrollOffset() { return scrollOffset; }
+    public int maxScroll() { return maxScroll; }
+
+    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+        int prev = scrollOffset;
+        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - (int) (amount * 20)));
+        return prev != scrollOffset;
     }
 
     public void setScope(HostOptions.Scope scope) { this.scope = scope != null ? scope : HostOptions.Scope.FRIENDS; }
@@ -138,7 +153,10 @@ public final class HostScreenLogic {
     public void setRelayOnly(boolean relay) { this.relayOnly = relay; }
     public void setBackupOnOpen(boolean backup) { this.backupOnOpen = backup; }
     public void setShowJoinable(boolean show) { this.showJoinable = show; }
-    public void setWelcome(String welcome) { this.welcome = welcome != null ? welcome : ""; }
+    public void setWelcome(String welcome) {
+        if (welcome != null && welcome.length() > 256) welcome = welcome.substring(0, 256);
+        this.welcome = welcome != null ? welcome : "";
+    }
     public void setGamerule(String rule, String value) {
         if (value == null) this.gamerules.remove(rule);
         else this.gamerules.put(rule, value);
@@ -154,6 +172,11 @@ public final class HostScreenLogic {
         } else {
             callbacks.startHosting(buildOptions());
         }
+    }
+
+    private List<SocialBridge.GuestInfo> safeGuests() {
+        List<SocialBridge.GuestInfo> g = callbacks.guests();
+        return g != null ? g : List.of();
     }
 
     public void render(LadsGraphics g, int mouseX, int mouseY) {
@@ -196,7 +219,7 @@ public final class HostScreenLogic {
 
             String title = s.title;
             if (s == Section.GUESTS) {
-                int gCount = callbacks.guests().size();
+                int gCount = safeGuests().size();
                 title += " (" + gCount + ")";
             }
             g.drawCenteredText(title, b.x + b.w / 2, b.y + (b.h - g.fontHeight()) / 2 + 1,
@@ -208,15 +231,21 @@ public final class HostScreenLogic {
         int contentH = height - contentY - 36;
         MenuGraphics.round(g, panelX, contentY, panelW, contentH, LadsPalette.PANEL);
 
+        int scissorY = contentY + 4;
+        int scissorH = contentH - 8;
+        g.enableScissor(panelX, scissorY, panelW, scissorH);
+
         switch (currentSection) {
-            case GENERAL -> renderGeneralSection(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
-            case GAMEPLAY -> renderGameplaySection(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
-            case GAMERULES -> renderGamerulesSection(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
-            case ADVANCED -> renderAdvancedSection(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
-            case GUESTS -> renderGuestsSection(g, panelX, contentY, panelW, contentH, mouseX, mouseY);
+            case GENERAL -> renderGeneralSection(g, panelX, contentY, panelW, contentH, mouseX, mouseY, scissorY, scissorH);
+            case GAMEPLAY -> renderGameplaySection(g, panelX, contentY, panelW, contentH, mouseX, mouseY, scissorY, scissorH);
+            case GAMERULES -> renderGamerulesSection(g, panelX, contentY, panelW, contentH, mouseX, mouseY, scissorY, scissorH);
+            case ADVANCED -> renderAdvancedSection(g, panelX, contentY, panelW, contentH, mouseX, mouseY, scissorY, scissorH);
+            case GUESTS -> renderGuestsSection(g, panelX, contentY, panelW, contentH, mouseX, mouseY, scissorY, scissorH);
         }
 
-        // Bottom Action Buttons: [Start/Stop Hosting] and [Done]
+        g.disableScissor();
+
+        // Bottom Action Buttons (outside scissor, never drawn over)
         int btnW = 120, btnH = 22;
         int bottomY = height - 28;
 
@@ -237,8 +266,12 @@ public final class HostScreenLogic {
         g.drawCenteredText("Done", doneBtn.x + doneBtn.w / 2, doneBtn.y + 6, LadsPalette.TEXT, false);
     }
 
-    private void renderGeneralSection(LadsGraphics g, int x, int y, int w, int h, int mx, int my) {
-        int itemY = y + 10;
+    private void renderGeneralSection(LadsGraphics g, int x, int y, int w, int h, int mx, int my, int sy, int sh) {
+        int totalH = 160;
+        maxScroll = Math.max(0, totalH - (h - 12));
+        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
+
+        int itemY = y + 10 - scrollOffset;
 
         // Scope
         g.drawText("Multiplayer Scope", x + 12, itemY + 6, LadsPalette.TEXT, false);
@@ -246,7 +279,7 @@ public final class HostScreenLogic {
         int optX = x + w - 4 * (optW + 4) - 12;
         for (HostOptions.Scope s : HostOptions.Scope.values()) {
             Box b = new Box(optX, itemY + 2, optW, optH);
-            clickables.put("scope:" + s.name(), b);
+            if (b.y + b.h > sy && b.y < sy + sh) clickables.put("scope:" + s.name(), b);
             boolean sel = (this.scope == s);
             MenuGraphics.round(g, b.x, b.y, b.w, b.h, sel ? LadsPalette.PRIMARY : (b.has(mx, my) ? LadsPalette.HOVER : LadsPalette.CARD));
             g.drawCenteredText(s.name(), b.x + b.w / 2, b.y + 4, sel ? LadsPalette.TEXT : LadsPalette.MUTED, false);
@@ -260,7 +293,7 @@ public final class HostScreenLogic {
         int appX = x + w - 3 * (appW + 4) - 12;
         for (HostOptions.Approval a : HostOptions.Approval.values()) {
             Box b = new Box(appX, itemY + 2, appW, optH);
-            clickables.put("approval:" + a.name(), b);
+            if (b.y + b.h > sy && b.y < sy + sh) clickables.put("approval:" + a.name(), b);
             boolean sel = (this.approval == a);
             String label = a == HostOptions.Approval.AUTO_FRIENDS ? "Auto Friends" : a == HostOptions.Approval.ASK ? "Ask Me" : "Invite Only";
             MenuGraphics.round(g, b.x, b.y, b.w, b.h, sel ? LadsPalette.PRIMARY : (b.has(mx, my) ? LadsPalette.HOVER : LadsPalette.CARD));
@@ -273,8 +306,10 @@ public final class HostScreenLogic {
         g.drawText("Max Players: " + maxPlayers, x + 12, itemY + 6, LadsPalette.TEXT, false);
         Box minusBtn = new Box(x + w - 80, itemY + 2, 24, optH);
         Box plusBtn = new Box(x + w - 40, itemY + 2, 24, optH);
-        clickables.put("maxPlayers:minus", minusBtn);
-        clickables.put("maxPlayers:plus", plusBtn);
+        if (minusBtn.y + minusBtn.h > sy && minusBtn.y < sy + sh) {
+            clickables.put("maxPlayers:minus", minusBtn);
+            clickables.put("maxPlayers:plus", plusBtn);
+        }
         MenuGraphics.round(g, minusBtn.x, minusBtn.y, minusBtn.w, minusBtn.h, minusBtn.has(mx, my) ? LadsPalette.HOVER : LadsPalette.CARD);
         g.drawCenteredText("-", minusBtn.x + minusBtn.w / 2, minusBtn.y + 4, LadsPalette.TEXT, false);
         MenuGraphics.round(g, plusBtn.x, plusBtn.y, plusBtn.w, plusBtn.h, plusBtn.has(mx, my) ? LadsPalette.HOVER : LadsPalette.CARD);
@@ -284,7 +319,7 @@ public final class HostScreenLogic {
         // Show joinable
         g.drawText("Show as Joinable in Friends List", x + 12, itemY + 6, LadsPalette.TEXT, false);
         Box joinableToggle = new Box(x + w - 70, itemY + 2, 58, optH);
-        clickables.put("toggle:showJoinable", joinableToggle);
+        if (joinableToggle.y + joinableToggle.h > sy && joinableToggle.y < sy + sh) clickables.put("toggle:showJoinable", joinableToggle);
         MenuGraphics.round(g, joinableToggle.x, joinableToggle.y, joinableToggle.w, joinableToggle.h,
                 showJoinable ? LadsPalette.PRIMARY : LadsPalette.CARD);
         g.drawCenteredText(showJoinable ? "ON" : "OFF", joinableToggle.x + joinableToggle.w / 2, joinableToggle.y + 4, LadsPalette.TEXT, false);
@@ -301,8 +336,12 @@ public final class HostScreenLogic {
         g.drawText(MenuGraphics.fit(g, welDisp, w - 40), welcomeInputBox.x + 8, welcomeInputBox.y + 6, welCol, false);
     }
 
-    private void renderGameplaySection(LadsGraphics g, int x, int y, int w, int h, int mx, int my) {
-        int itemY = y + 10;
+    private void renderGameplaySection(LadsGraphics g, int x, int y, int w, int h, int mx, int my, int sy, int sh) {
+        int totalH = 140;
+        maxScroll = Math.max(0, totalH - (h - 12));
+        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
+
+        int itemY = y + 10 - scrollOffset;
         int optW = 60, optH = 18;
 
         // Guest game mode
@@ -311,7 +350,7 @@ public final class HostScreenLogic {
         int gmX = x + w - 4 * (optW + 4) - 12;
         for (String m : modes) {
             Box b = new Box(gmX, itemY + 2, optW, optH);
-            clickables.put("gamemode:" + m, b);
+            if (b.y + b.h > sy && b.y < sy + sh) clickables.put("gamemode:" + m, b);
             boolean sel = guestGameMode.equalsIgnoreCase(m);
             MenuGraphics.round(g, b.x, b.y, b.w, b.h, sel ? LadsPalette.PRIMARY : (b.has(mx, my) ? LadsPalette.HOVER : LadsPalette.CARD));
             g.drawCenteredText(m.substring(0, 1).toUpperCase() + m.substring(1), b.x + b.w / 2, b.y + 4, sel ? LadsPalette.TEXT : LadsPalette.MUTED, false);
@@ -324,7 +363,7 @@ public final class HostScreenLogic {
         int opX = x + w - 5 * (26 + 4) - 12;
         for (int i = 0; i <= 4; i++) {
             Box b = new Box(opX, itemY + 2, 26, optH);
-            clickables.put("op:" + i, b);
+            if (b.y + b.h > sy && b.y < sy + sh) clickables.put("op:" + i, b);
             boolean sel = (guestOpLevel == i);
             MenuGraphics.round(g, b.x, b.y, b.w, b.h, sel ? LadsPalette.PRIMARY : (b.has(mx, my) ? LadsPalette.HOVER : LadsPalette.CARD));
             g.drawCenteredText(String.valueOf(i), b.x + b.w / 2, b.y + 4, sel ? LadsPalette.TEXT : LadsPalette.MUTED, false);
@@ -335,7 +374,7 @@ public final class HostScreenLogic {
         // PvP Toggle
         g.drawText("Player vs Player (PvP)", x + 12, itemY + 6, LadsPalette.TEXT, false);
         Box pvpToggle = new Box(x + w - 70, itemY + 2, 58, optH);
-        clickables.put("toggle:pvp", pvpToggle);
+        if (pvpToggle.y + pvpToggle.h > sy && pvpToggle.y < sy + sh) clickables.put("toggle:pvp", pvpToggle);
         MenuGraphics.round(g, pvpToggle.x, pvpToggle.y, pvpToggle.w, pvpToggle.h, pvp ? LadsPalette.PRIMARY : LadsPalette.CARD);
         g.drawCenteredText(pvp ? "ON" : "OFF", pvpToggle.x + pvpToggle.w / 2, pvpToggle.y + 4, LadsPalette.TEXT, false);
 
@@ -348,7 +387,7 @@ public final class HostScreenLogic {
         for (String d : diffs) {
             String key = d == null ? "keep" : d;
             Box b = new Box(dfX, itemY + 2, dfW, optH);
-            clickables.put("diff:" + key, b);
+            if (b.y + b.h > sy && b.y < sy + sh) clickables.put("diff:" + key, b);
             boolean sel = (d == null && difficulty == null) || (d != null && d.equalsIgnoreCase(difficulty));
             MenuGraphics.round(g, b.x, b.y, b.w, b.h, sel ? LadsPalette.PRIMARY : (b.has(mx, my) ? LadsPalette.HOVER : LadsPalette.CARD));
             String lbl = d == null ? "Keep" : d.substring(0, 1).toUpperCase() + d.substring(1);
@@ -357,8 +396,7 @@ public final class HostScreenLogic {
         }
     }
 
-    private void renderGamerulesSection(LadsGraphics g, int x, int y, int w, int h, int mx, int my) {
-        int itemY = y + 8;
+    private void renderGamerulesSection(LadsGraphics g, int x, int y, int w, int h, int mx, int my, int sy, int sh) {
         String[] rules = {
                 "keepInventory",
                 "doDaylightCycle",
@@ -366,27 +404,39 @@ public final class HostScreenLogic {
                 "mobGriefing",
                 "doFireTick",
                 "doMobSpawning",
-                "naturalRegeneration"
+                "naturalRegeneration",
+                "playersSleepingPercentage"
         };
 
+        int totalH = rules.length * 24 + 16;
+        maxScroll = Math.max(0, totalH - (h - 12));
+        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
+
+        int itemY = y + 8 - scrollOffset;
+
         for (String r : rules) {
-            g.drawText(r, x + 14, itemY + 4, LadsPalette.TEXT, false);
+            if (itemY + 20 > sy && itemY < sy + sh) {
+                g.drawText(r, x + 14, itemY + 4, LadsPalette.TEXT, false);
 
-            String val = gamerules.get(r);
-            boolean isTrue = "true".equalsIgnoreCase(val);
+                String val = gamerules.get(r);
+                boolean isTrue = "true".equalsIgnoreCase(val);
 
-            Box toggleB = new Box(x + w - 70, itemY, 56, 16);
-            clickables.put("rule:" + r, toggleB);
-            MenuGraphics.round(g, toggleB.x, toggleB.y, toggleB.w, toggleB.h, isTrue ? LadsPalette.PRIMARY : LadsPalette.CARD);
-            g.drawCenteredText(isTrue ? "true" : (val == null ? "default" : "false"),
-                    toggleB.x + toggleB.w / 2, toggleB.y + 4, isTrue ? LadsPalette.TEXT : LadsPalette.MUTED, false);
-
-            itemY += 22;
+                Box toggleB = new Box(x + w - 70, itemY, 56, 16);
+                clickables.put("rule:" + r, toggleB);
+                MenuGraphics.round(g, toggleB.x, toggleB.y, toggleB.w, toggleB.h, isTrue ? LadsPalette.PRIMARY : LadsPalette.CARD);
+                g.drawCenteredText(isTrue ? "true" : (val == null ? "default" : "false"),
+                        toggleB.x + toggleB.w / 2, toggleB.y + 4, isTrue ? LadsPalette.TEXT : LadsPalette.MUTED, false);
+            }
+            itemY += 24;
         }
     }
 
-    private void renderAdvancedSection(LadsGraphics g, int x, int y, int w, int h, int mx, int my) {
-        int itemY = y + 10;
+    private void renderAdvancedSection(LadsGraphics g, int x, int y, int w, int h, int mx, int my, int sy, int sh) {
+        int totalH = 120;
+        maxScroll = Math.max(0, totalH - (h - 12));
+        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
+
+        int itemY = y + 10 - scrollOffset;
         int optH = 18;
 
         // View Distance Cap
@@ -394,8 +444,10 @@ public final class HostScreenLogic {
         g.drawText("Guest View Distance Cap: " + capText, x + 12, itemY + 6, LadsPalette.TEXT, false);
         Box minusVd = new Box(x + w - 80, itemY + 2, 24, optH);
         Box plusVd = new Box(x + w - 40, itemY + 2, 24, optH);
-        clickables.put("viewDistance:minus", minusVd);
-        clickables.put("viewDistance:plus", plusVd);
+        if (minusVd.y + minusVd.h > sy && minusVd.y < sy + sh) {
+            clickables.put("viewDistance:minus", minusVd);
+            clickables.put("viewDistance:plus", plusVd);
+        }
         MenuGraphics.round(g, minusVd.x, minusVd.y, minusVd.w, minusVd.h, minusVd.has(mx, my) ? LadsPalette.HOVER : LadsPalette.CARD);
         g.drawCenteredText("-", minusVd.x + minusVd.w / 2, minusVd.y + 4, LadsPalette.TEXT, false);
         MenuGraphics.round(g, plusVd.x, plusVd.y, plusVd.w, plusVd.h, plusVd.has(mx, my) ? LadsPalette.HOVER : LadsPalette.CARD);
@@ -405,7 +457,7 @@ public final class HostScreenLogic {
         // Relay only
         g.drawText("Always Use Relay (Hide my IP - Cloudflare TURN)", x + 12, itemY + 6, LadsPalette.TEXT, false);
         Box relayToggle = new Box(x + w - 70, itemY + 2, 58, optH);
-        clickables.put("toggle:relayOnly", relayToggle);
+        if (relayToggle.y + relayToggle.h > sy && relayToggle.y < sy + sh) clickables.put("toggle:relayOnly", relayToggle);
         MenuGraphics.round(g, relayToggle.x, relayToggle.y, relayToggle.w, relayToggle.h,
                 relayOnly ? LadsPalette.PRIMARY : LadsPalette.CARD);
         g.drawCenteredText(relayOnly ? "ON" : "OFF", relayToggle.x + relayToggle.w / 2, relayToggle.y + 4, LadsPalette.TEXT, false);
@@ -414,15 +466,19 @@ public final class HostScreenLogic {
         // Backup on open
         g.drawText("Backup World Before Opening", x + 12, itemY + 6, LadsPalette.TEXT, false);
         Box backupToggle = new Box(x + w - 70, itemY + 2, 58, optH);
-        clickables.put("toggle:backupOnOpen", backupToggle);
+        if (backupToggle.y + backupToggle.h > sy && backupToggle.y < sy + sh) clickables.put("toggle:backupOnOpen", backupToggle);
         MenuGraphics.round(g, backupToggle.x, backupToggle.y, backupToggle.w, backupToggle.h,
                 backupOnOpen ? LadsPalette.PRIMARY : LadsPalette.CARD);
         g.drawCenteredText(backupOnOpen ? "ON" : "OFF", backupToggle.x + backupToggle.w / 2, backupToggle.y + 4, LadsPalette.TEXT, false);
     }
 
-    private void renderGuestsSection(LadsGraphics g, int x, int y, int w, int h, int mx, int my) {
-        List<SocialBridge.GuestInfo> guests = callbacks.guests();
-        int itemY = y + 8;
+    private void renderGuestsSection(LadsGraphics g, int x, int y, int w, int h, int mx, int my, int sy, int sh) {
+        List<SocialBridge.GuestInfo> guests = safeGuests();
+        int totalH = 32 + guests.size() * 32;
+        maxScroll = Math.max(0, totalH - (h - 12));
+        scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
+
+        int itemY = y + 8 - scrollOffset;
         g.drawText("Connected Guests (" + guests.size() + ")", x + 12, itemY, LadsPalette.ACCENT, true);
         itemY += 16;
 
@@ -432,49 +488,73 @@ public final class HostScreenLogic {
         }
 
         for (SocialBridge.GuestInfo guest : guests) {
-            Box rowB = new Box(x + 8, itemY, w - 16, 28);
-            MenuGraphics.round(g, rowB.x, rowB.y, rowB.w, rowB.h, LadsPalette.CARD);
+            if (itemY + 28 > sy && itemY < sy + sh) {
+                Box rowB = new Box(x + 8, itemY, w - 16, 28);
+                MenuGraphics.round(g, rowB.x, rowB.y, rowB.w, rowB.h, LadsPalette.CARD);
 
-            String info = guest.name() + " (" + guest.gameMode() + ") " + guest.ping() + "ms" + (guest.op() ? " [OP]" : "");
-            g.drawText(info, rowB.x + 8, itemY + 8, LadsPalette.TEXT, false);
+                String info = guest.name() + " (" + guest.gameMode() + ") " + guest.ping() + "ms" + (guest.op() ? " [OP]" : "");
+                g.drawText(info, rowB.x + 8, itemY + 8, LadsPalette.TEXT, false);
 
-            // Per-guest buttons: Kick, Ban, Op/Deop, Tp
-            Map<SocialBridge.GuestAction, Box> actions = guestActionBoxes.computeIfAbsent(guest.id(), k -> new HashMap<>());
-            int btnY = itemY + 4;
-            int btnH = 20;
-            int curX = rowB.x + rowB.w - 8;
+                Map<SocialBridge.GuestAction, Box> actions = guestActionBoxes.computeIfAbsent(guest.id(), k -> new HashMap<>());
+                int btnY = itemY + 4;
+                int btnH = 20;
+                int curX = rowB.x + rowB.w - 8;
 
-            // Kick
-            curX -= 40;
-            Box kickB = new Box(curX, btnY, 36, btnH);
-            actions.put(SocialBridge.GuestAction.KICK, kickB);
-            MenuGraphics.round(g, kickB.x, kickB.y, kickB.w, kickB.h, kickB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
-            g.drawCenteredText("Kick", kickB.x + kickB.w / 2, kickB.y + 5, LadsPalette.ACCENT, false);
+                // Kick
+                curX -= 36;
+                Box kickB = new Box(curX, btnY, 34, btnH);
+                actions.put(SocialBridge.GuestAction.KICK, kickB);
+                MenuGraphics.round(g, kickB.x, kickB.y, kickB.w, kickB.h, kickB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
+                g.drawCenteredText("Kick", kickB.x + kickB.w / 2, kickB.y + 5, LadsPalette.ACCENT, false);
 
-            // Ban
-            curX -= 38;
-            Box banB = new Box(curX, btnY, 34, btnH);
-            actions.put(SocialBridge.GuestAction.BAN, banB);
-            MenuGraphics.round(g, banB.x, banB.y, banB.w, banB.h, banB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
-            g.drawCenteredText("Ban", banB.x + banB.w / 2, banB.y + 5, LadsPalette.ACCENT, false);
+                // Ban
+                curX -= 34;
+                Box banB = new Box(curX, btnY, 32, btnH);
+                actions.put(SocialBridge.GuestAction.BAN, banB);
+                MenuGraphics.round(g, banB.x, banB.y, banB.w, banB.h, banB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
+                g.drawCenteredText("Ban", banB.x + banB.w / 2, banB.y + 5, LadsPalette.ACCENT, false);
 
-            // Op / Deop
-            curX -= 42;
-            SocialBridge.GuestAction opAction = guest.op() ? SocialBridge.GuestAction.DEOP : SocialBridge.GuestAction.OP;
-            Box opB = new Box(curX, btnY, 38, btnH);
-            actions.put(opAction, opB);
-            MenuGraphics.round(g, opB.x, opB.y, opB.w, opB.h, opB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
-            g.drawCenteredText(guest.op() ? "Deop" : "Op", opB.x + opB.w / 2, opB.y + 5, LadsPalette.TEXT, false);
+                // Mute (Finding 8)
+                curX -= 38;
+                Box muteB = new Box(curX, btnY, 36, btnH);
+                actions.put(SocialBridge.GuestAction.MUTE, muteB);
+                MenuGraphics.round(g, muteB.x, muteB.y, muteB.w, muteB.h, muteB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
+                g.drawCenteredText("Mute", muteB.x + muteB.w / 2, muteB.y + 5, LadsPalette.TEXT, false);
 
-            // TP to me
-            curX -= 38;
-            Box tpB = new Box(curX, btnY, 34, btnH);
-            actions.put(SocialBridge.GuestAction.TP_TO_ME, tpB);
-            MenuGraphics.round(g, tpB.x, tpB.y, tpB.w, tpB.h, tpB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
-            g.drawCenteredText("TP", tpB.x + tpB.w / 2, tpB.y + 5, LadsPalette.TEXT, false);
+                // Op / Deop
+                curX -= 38;
+                SocialBridge.GuestAction opAction = guest.op() ? SocialBridge.GuestAction.DEOP : SocialBridge.GuestAction.OP;
+                Box opB = new Box(curX, btnY, 36, btnH);
+                actions.put(opAction, opB);
+                MenuGraphics.round(g, opB.x, opB.y, opB.w, opB.h, opB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
+                g.drawCenteredText(guest.op() ? "Deop" : "Op", opB.x + opB.w / 2, opB.y + 5, LadsPalette.TEXT, false);
+
+                // GameMode cycle (Finding 8)
+                curX -= 44;
+                SocialBridge.GuestAction nextGm = getNextGameModeAction(guest.gameMode());
+                Box gmB = new Box(curX, btnY, 42, btnH);
+                actions.put(nextGm, gmB);
+                MenuGraphics.round(g, gmB.x, gmB.y, gmB.w, gmB.h, gmB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
+                String gmLabel = guest.gameMode() != null && guest.gameMode().length() >= 4 ? guest.gameMode().substring(0, 4) : "Mode";
+                g.drawCenteredText(gmLabel, gmB.x + gmB.w / 2, gmB.y + 5, LadsPalette.TEXT, false);
+
+                // TP to me
+                curX -= 30;
+                Box tpB = new Box(curX, btnY, 28, btnH);
+                actions.put(SocialBridge.GuestAction.TP_TO_ME, tpB);
+                MenuGraphics.round(g, tpB.x, tpB.y, tpB.w, tpB.h, tpB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
+                g.drawCenteredText("TP", tpB.x + tpB.w / 2, tpB.y + 5, LadsPalette.TEXT, false);
+            }
 
             itemY += 32;
         }
+    }
+
+    private SocialBridge.GuestAction getNextGameModeAction(String currentMode) {
+        if ("survival".equalsIgnoreCase(currentMode)) return SocialBridge.GuestAction.CREATIVE;
+        if ("creative".equalsIgnoreCase(currentMode)) return SocialBridge.GuestAction.ADVENTURE;
+        if ("adventure".equalsIgnoreCase(currentMode)) return SocialBridge.GuestAction.SPECTATOR;
+        return SocialBridge.GuestAction.SURVIVAL;
     }
 
     public boolean mouseClicked(double x, double y, int button) {

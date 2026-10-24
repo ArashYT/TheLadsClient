@@ -103,14 +103,71 @@ class HostScreenLogicTest {
         TestGraphics g = new TestGraphics(480, 270);
         logic.render(g, 0, 0);
 
+        // Kick
         logic.triggerGuestAction(guestId, SocialBridge.GuestAction.KICK);
         assertEquals(1, callbacks.recordedActions.size());
         assertEquals(guestId, callbacks.recordedActions.get(0).id);
         assertEquals(SocialBridge.GuestAction.KICK, callbacks.recordedActions.get(0).action);
 
+        // Op
         logic.triggerGuestAction(guestId, SocialBridge.GuestAction.OP);
         assertEquals(2, callbacks.recordedActions.size());
         assertEquals(SocialBridge.GuestAction.OP, callbacks.recordedActions.get(1).action);
+
+        // Mute (Finding 8)
+        logic.triggerGuestAction(guestId, SocialBridge.GuestAction.MUTE);
+        assertEquals(3, callbacks.recordedActions.size());
+        assertEquals(SocialBridge.GuestAction.MUTE, callbacks.recordedActions.get(2).action);
+
+        // GameMode cycle (Finding 8)
+        logic.triggerGuestAction(guestId, SocialBridge.GuestAction.CREATIVE);
+        assertEquals(4, callbacks.recordedActions.size());
+        assertEquals(SocialBridge.GuestAction.CREATIVE, callbacks.recordedActions.get(3).action);
+    }
+
+    @Test
+    void guestListScrollBounds() {
+        HostOptions options = new HostOptions();
+        FakeHostCallbacks callbacks = new FakeHostCallbacks(options);
+        // Add 20 guests to exceed panel height
+        for (int i = 0; i < 20; i++) {
+            callbacks.guests.add(new SocialBridge.GuestInfo(UUID.randomUUID(), "Guest" + i, 30, false, "survival"));
+        }
+
+        HostScreenLogic logic = new HostScreenLogic(callbacks);
+        logic.setSection(HostScreenLogic.Section.GUESTS);
+
+        TestGraphics g = new TestGraphics(480, 270);
+        logic.render(g, 0, 0);
+
+        assertTrue(logic.maxScroll() > 0, "maxScroll must be > 0 when guests overflow panel");
+        assertEquals(0, logic.scrollOffset());
+
+        // Scroll down
+        logic.mouseScrolled(100, 100, -5);
+        assertTrue(logic.scrollOffset() > 0);
+
+        // Clamp at maxScroll
+        logic.mouseScrolled(100, 100, -100);
+        assertEquals(logic.maxScroll(), logic.scrollOffset());
+
+        // Clamp at 0
+        logic.mouseScrolled(100, 100, 100);
+        assertEquals(0, logic.scrollOffset());
+    }
+
+    @Test
+    void nullCallbacksGuestsDoesNotThrow() {
+        HostScreenLogic.Callbacks nullCallbacks = new HostScreenLogic.Callbacks() {
+            @Override public HostOptions currentOptions() { return new HostOptions(); }
+            @Override public List<SocialBridge.GuestInfo> guests() { return null; }
+        };
+
+        HostScreenLogic logic = new HostScreenLogic(nullCallbacks);
+        logic.setSection(HostScreenLogic.Section.GUESTS);
+
+        TestGraphics g = new TestGraphics(480, 270);
+        assertDoesNotThrow(() -> logic.render(g, 0, 0));
     }
 
     @Test
