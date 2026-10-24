@@ -236,7 +236,8 @@ public final class HypixelSafetyManager {
             || "ReachDisplay".equalsIgnoreCase(moduleName)
             || "Jade".equalsIgnoreCase(moduleName)
             || "ShulkerBoxUtils".equalsIgnoreCase(moduleName)
-            || "Freelook".equalsIgnoreCase(moduleName) || "FogClearView".equalsIgnoreCase(moduleName); // FreelookModule, FogCustomizerModule.CLEAR_VIEW
+            || "Freelook".equalsIgnoreCase(moduleName) || "FogClearView".equalsIgnoreCase(moduleName)
+            || com.thelads.core.modules.HitboxesModule.THROUGH_WALLS.equalsIgnoreCase(moduleName); // FreelookModule, FogCustomizerModule.CLEAR_VIEW
     }
 
     public static boolean isGatedHypixelModule(String moduleName) {

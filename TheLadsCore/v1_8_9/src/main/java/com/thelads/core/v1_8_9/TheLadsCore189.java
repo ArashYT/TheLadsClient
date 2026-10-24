@@ -86,6 +86,7 @@ public class TheLadsCore189 {
         com.thelads.core.modules.StackRefillModule.get().noOffhand(); // 1.8.9 has no offhand
         com.thelads.core.v1_8_9.feature.Nametags189.register();
         OldAnimations189.register();
+        com.thelads.core.v1_8_9.feature.PvpVisuals189.register(); // PvP visuals (parity 1.9.19): theladscore.v1_8_9.pvp.mixins.json
         ClientRegistry.registerKeyBinding(Zoom189.ZOOM);
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
         com.thelads.core.v1_8_9.feature.Toggles189.register();

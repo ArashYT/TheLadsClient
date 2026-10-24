@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.7",
+  "package": "com.thelads.core.v1_8_9.mixin.pvp",
+  "refmap": "theladscore.v1_8_9.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "PvpSelectionBoxMixin189",
+    "PvpLivingRendererMixin189",
+    "PvpRenderManagerMixin189",
+    "PvpGlintItemMixin189",
+    "PvpGlintArmourMixin189",
+    "PvpShinyPotionMixin189"
+  ]
+}

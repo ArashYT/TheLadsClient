@@ -46,6 +46,7 @@ public final class Gameplay1201 {
         com.thelads.core.v1_20_1.game.misc.Misc1201.register();
         com.thelads.core.v1_20_1.game.survival.NativeSurvivalTweaks1201.register();
         com.thelads.core.v1_20_1.game.survival.NativeStackRefill1201.register();
+        com.thelads.core.v1_20_1.game.pvp.PvpVisuals1201.register();
         LOGGER.info("Lads gameplay modules for 1.20.1 registered (loader: {})",
             ModPresence1201.forge() ? "Forge through Connector" : "Fabric");
     }
