@@ -32,7 +32,7 @@ public class SystemResourcesHudElement extends TextHudElement {
         lastUpdate = now;
 
         double cpuVal = g.getGame().getCpuLoad();
-        int cpu = cpuVal >= 0 ? (int) Math.round(cpuVal) : (editor ? 24 : 15);
+        int cpu = cpuVal >= 0 ? (int) Math.round(cpuVal) : (editor ? 24 : -1); // -1: unknown, shown as n/a (never a made-up number)
         long used = g.getGame().getUsedMemoryMb();
         long max = g.getGame().getMaxMemoryMb();
         long pct = max > 0 ? (used * 100 / max) : 0;
@@ -45,7 +45,7 @@ public class SystemResourcesHudElement extends TextHudElement {
         lastLayout = layout;
 
         List<String> parts = new ArrayList<>();
-        if (showCpu) parts.add("CPU: " + cpu + "%");
+        if (showCpu) parts.add(cpu >= 0 ? "CPU: " + cpu + "%" : "CPU: n/a");
         if (showRam) parts.add("RAM: " + pct + "% (" + used + "MB)");
 
         if (parts.isEmpty()) parts.add("Resources");

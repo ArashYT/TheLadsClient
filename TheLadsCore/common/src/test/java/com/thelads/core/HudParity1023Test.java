@@ -337,6 +337,29 @@ public class HudParity1023Test {
     }
 
     @Test
+    void cpuLoadIsRealOrNa() throws InterruptedException {
+        // HotSpot has com.sun.management: a real reading (the first one may still be warming up), never -1 for good.
+        double load = SystemMetrics.getCpuLoad();
+        for (int i = 0; i < 10 && load < 0; i++) {
+            Thread.sleep(100);
+            load = SystemMetrics.getCpuLoad();
+        }
+        assertTrue(load >= 0 && load <= 100, "CPU load " + load);
+
+        // A JVM that cannot tell: "n/a", not a made-up number.
+        LadsGameBridge.set(new DefaultGameBridge() {
+            @Override public double getCpuLoad() { return -1; }
+        });
+        SystemResourcesHudElement element = new SystemResourcesHudElement();
+        element.setModuleName("SystemResources");
+        TestGraphics g = new TestGraphics();
+        element.prepareRender(g, false);
+        element.render(g);
+        assertTrue(g.drawCalls.stream().anyMatch(c -> c.contains("CPU: n/a")), g.drawCalls.toString());
+        assertTrue(g.drawCalls.stream().noneMatch(c -> c.contains("CPU: 15%")));
+    }
+
+    @Test
     void testSessionPlaytimeHudElement() {
         SessionPlaytimeHudElement element = new SessionPlaytimeHudElement();
         element.setModuleName("Playtime");
