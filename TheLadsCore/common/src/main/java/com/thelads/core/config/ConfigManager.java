@@ -195,6 +195,7 @@ public class ConfigManager {
             migrateAutohide(modulesJson);
             migrateHypixelMods(modulesJson);
             migrateUnfocusedCap(modulesJson);
+            migrateHitIndicatorSize(modulesJson);
             java.util.Set<String> known = new java.util.HashSet<>();
             for (Module m : ModuleManager.getInstance().getModules()) {
                 known.add(m.getName());
@@ -503,6 +504,15 @@ public class ConfigManager {
             if (!(dynamic.get("options") instanceof JsonObject)) dynamic.add("options", new JsonObject());
             dynamic.getAsJsonObject("options").add("Unfocused FPS", limit);
         }
+    }
+
+    /**
+     * 1.10.0 renamed the hit indicator's own "Size" to "Arc Size": it shared its name with the HUD Size every HUD module has, so the
+     * one "Size" saved was the arc's (written last). It moves to Arc Size, and the HUD Size goes back to its default.
+     */
+    static void migrateHitIndicatorSize(JsonObject modules) {
+        if (modules.get("HitIndicator") instanceof JsonObject hit && hit.get("options") instanceof JsonObject options
+                && !options.has("Arc Size") && options.has("Size")) options.add("Arc Size", options.remove("Size"));
     }
 
     /** A module entry the player changed (lastModified set); an "enabled" saved without a change is only the default. */

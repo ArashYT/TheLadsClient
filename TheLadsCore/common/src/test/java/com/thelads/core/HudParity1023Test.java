@@ -480,6 +480,41 @@ public class HudParity1023Test {
         element.prepareRender(g, true);
         element.renderEditor(g);
         element.render(g);
+
+        // The editor preview: a solid arc at 45 degrees (up and right), radius 40, Arc Size 20 (40 degrees wide, 4 thick).
+        TestGraphics arc = new TestGraphics();
+        element.renderEditor(arc);
+        int cx = element.getX() + element.getWidth() / 2, cy = element.getY() + element.getHeight() / 2, area = 0;
+        double sumX = 0, sumY = 0;
+        for (String call : arc.drawCalls) {
+            if (!call.startsWith("fill:")) continue;
+            String[] p = call.substring(5).split(",");
+            int x0 = Integer.parseInt(p[0]) - cx, y0 = Integer.parseInt(p[1]) - cy, x1 = Integer.parseInt(p[2]) - cx;
+            assertEquals(y0 + 1, Integer.parseInt(p[3]) - cy, "one pixel row per fill");
+            for (int x = x0; x < x1; x++) {
+                double d = Math.hypot(x + .5, y0 + .5);
+                assertTrue(d >= 40 && d < 44, "inside the ring: " + call);
+                area++;
+                sumX += x + .5;
+                sumY += y0 + .5;
+            }
+        }
+        double expected = Math.toRadians(20) * (44 * 44 - 40 * 40); // the ring segment's area
+        assertEquals(expected, area, expected * 0.15, "a solid arc, not a few dots");
+        assertEquals(45, Math.toDegrees(Math.atan2(sumX, -sumY)), 3, "centred on the hit direction");
+
+        // Its own option no longer shares the HUD Size's name; a config saved with the clash moves its "Size" (the arc's) over.
+        com.thelads.core.config.Module module = ModuleManager.getInstance().getModule("HitIndicator");
+        assertEquals(1, module.getOptions().stream().filter(o -> o.getName().equals("Size")).count());
+        var before = com.thelads.core.config.ConfigManager.toJson();
+        try {
+            com.thelads.core.config.ConfigManager.applyJson(com.google.gson.JsonParser.parseString(
+                "{\"modules\":{\"HitIndicator\":{\"options\":{\"Size\":30}}}}").getAsJsonObject());
+            assertEquals(30, ((com.thelads.core.config.SliderOption) module.getOption("Arc Size")).getValue(), 1e-9);
+            assertEquals(100, ((com.thelads.core.config.SliderOption) module.getOption("Size")).getValue(), 1e-9, "the HUD Size untouched");
+        } finally {
+            com.thelads.core.config.ConfigManager.applyJson(before);
+        }
     }
 
     @Test
