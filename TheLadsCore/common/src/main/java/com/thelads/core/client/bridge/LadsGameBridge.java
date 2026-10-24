@@ -239,6 +239,10 @@ public interface LadsGameBridge {
 
     record CooldownEntry(String name, float percent, float remainingSeconds) {}
 
+    default boolean hasItemCooldowns() {
+        return true;
+    }
+
     default List<CooldownEntry> getActiveCooldowns() {
         return Collections.emptyList();
     }

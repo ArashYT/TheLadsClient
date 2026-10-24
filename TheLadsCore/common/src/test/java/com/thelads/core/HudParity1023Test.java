@@ -136,17 +136,26 @@ public class HudParity1023Test {
         gt.reset();
         assertEquals(0, ct.getGapplesUsed());
 
-        // 1. Normal eat: start eating at 16 gapples in slot 0
-        gt.onTick(true, true, 0, 16);
-        // Finishing eating: isUsing becomes false, count is 15 in slot 0 -> counted!
-        gt.onTick(false, true, 0, 15);
+        // 1. Cancelled eat / right-click tap: using for 1 tick with 16 gapples
+        gt.onTick(true, true, 0, 16, 1, 32);
+        // Release right click immediately: isUsing=false, count is still 16 -> NOT counted!
+        gt.onTick(false, true, 0, 16, 0, 32);
+        assertEquals(0, ct.getGapplesUsed());
+
+        // 2. Cancelled eat midway: using for 15 ticks, then release
+        gt.onTick(true, true, 0, 16, 15, 32);
+        gt.onTick(false, true, 0, 16, 0, 32);
+        assertEquals(0, ct.getGapplesUsed());
+
+        // 3. Normal eat finishes: used for 32 ticks, then count drops to 15
+        gt.onTick(true, true, 0, 16, 32, 32);
+        gt.onTick(false, true, 0, 15, 0, 32);
         assertEquals(1, ct.getGapplesUsed());
 
-        // 2. Cancelled eat: start eating at 15 gapples
-        gt.onTick(true, true, 0, 15);
-        // Cancelled: isUsing becomes false, count is still 15 -> not counted!
-        gt.onTick(false, true, 0, 15);
-        assertEquals(1, ct.getGapplesUsed());
+        // 4. Eat last gapple in stack (1 -> 0): used for 32 ticks, finishes with 0 count
+        gt.onTick(true, true, 0, 1, 32, 32);
+        gt.onTick(false, false, 0, 0, 0, 32);
+        assertEquals(2, ct.getGapplesUsed());
     }
 
     @Test
@@ -165,8 +174,14 @@ public class HudParity1023Test {
         diff.addScannedItem(264, 1, "Diamond");
         diff.endScan();
 
-        // 3. Container open (moving items between chest/inv): should skip diff
+        // 3. Container open (moving items between chest/inv): should keep tracker at no baseline
         diff.beginScan(true);
+        diff.endScan();
+
+        // 4. Container closes: first scan after closing sets baseline only, no records emitted!
+        diff.beginScan(false);
+        diff.addScannedItem(1, 69, "Cobblestone");
+        diff.addScannedItem(264, 1, "Diamond");
         diff.endScan();
     }
 
@@ -263,6 +278,17 @@ public class HudParity1023Test {
     }
 
     @Test
+    void testCooldownHudElementAvailability() {
+        CooldownHudElement element = new CooldownHudElement();
+        assertTrue(element.isAvailable());
+
+        LadsGameBridge.set(new DefaultGameBridge() {
+            @Override public boolean hasItemCooldowns() { return false; }
+        });
+        assertFalse(element.isAvailable());
+    }
+
+    @Test
     void testTpsHudElement() {
         TpsHudElement element = new TpsHudElement();
         element.setModuleName("TPS");
@@ -312,6 +338,17 @@ public class HudParity1023Test {
 
         element.prepareRender(g, true);
         element.render(g);
+    }
+
+    @Test
+    void testCompassStripNegativeYaw() {
+        assertEquals(315.0f, CompassStripHudElement.normalizeYaw(-45.0f), 0.001f);
+        assertEquals(180.0f, CompassStripHudElement.normalizeYaw(-180.0f), 0.001f);
+        assertEquals(0.0f, CompassStripHudElement.normalizeYaw(-360.0f), 0.001f);
+        assertEquals(320.0f, CompassStripHudElement.normalizeYaw(-400.0f), 0.001f);
+        assertEquals(0.0f, CompassStripHudElement.normalizeYaw(0.0f), 0.001f);
+        assertEquals(90.0f, CompassStripHudElement.normalizeYaw(90.0f), 0.001f);
+        assertEquals(180.0f, CompassStripHudElement.normalizeYaw(Float.NaN), 0.001f);
     }
 
     @Test
@@ -374,6 +411,25 @@ public class HudParity1023Test {
         element.prepareRender(g, true);
         element.renderEditor(g);
         element.render(g);
+    }
+
+    @Test
+    void testHeartsAbsorptionTiersAt20And40() {
+        // Absorption = 20 HP (10 full absorption hearts, tier 0 = gold)
+        assertEquals(10, HeartsHudElement.calculateAbsorptionHearts(20.0f));
+        assertEquals(0, HeartsHudElement.calculateAbsorptionTier(20.0f));
+
+        // Absorption = 40 HP (20 full absorption hearts, tier 1 = orange)
+        assertEquals(10, HeartsHudElement.calculateAbsorptionHearts(40.0f));
+        assertEquals(1, HeartsHudElement.calculateAbsorptionTier(40.0f));
+
+        // Absorption = 22 HP (11 hearts -> 1 heart in tier 1 = orange)
+        assertEquals(1, HeartsHudElement.calculateAbsorptionHearts(22.0f));
+        assertEquals(1, HeartsHudElement.calculateAbsorptionTier(22.0f));
+
+        // Absorption = 4 HP (2 hearts in tier 0 = gold)
+        assertEquals(2, HeartsHudElement.calculateAbsorptionHearts(4.0f));
+        assertEquals(0, HeartsHudElement.calculateAbsorptionTier(4.0f));
     }
 
     @Test

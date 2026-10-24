@@ -19,6 +19,18 @@ public class HeartsHudElement extends HudElement {
         height = showArmor ? 22 : 12;
     }
 
+    public static int calculateAbsorptionHearts(float absorption) {
+        if (absorption <= 0) return 0;
+        int absHearts = (int) Math.ceil(absorption / 2.0f);
+        return (absHearts - 1) % 10 + 1;
+    }
+
+    public static int calculateAbsorptionTier(float absorption) {
+        if (absorption <= 0) return 0;
+        int absHearts = (int) Math.ceil(absorption / 2.0f);
+        return (absHearts - 1) / 10;
+    }
+
     @Override
     public void render(LadsGraphics g) {
         renderHearts(g, false);
@@ -69,18 +81,16 @@ public class HeartsHudElement extends HudElement {
 
         // Absorption overlay (condensed)
         if (absorption > 0) {
-            int absTier = (int) (absorption / 20); // 0 = gold, 1 = orange, 2 = cyan
+            int absTier = calculateAbsorptionTier(absorption);
             int absColor = switch (absTier) {
                 case 1 -> 0xFFFF8800; // orange
                 case 2 -> 0xFF00DDFF; // cyan
                 default -> 0xFFFFCC00; // gold
             };
-            int absHearts = (int) ((absorption % 20) / 2);
-            if (condense) {
-                for (int i = 0; i < Math.min(10, absHearts); i++) {
-                    int hx = x + 2 + i * 8;
-                    g.fill(hx + 2, heartY + 2, hx + 5, heartY + 5, absColor);
-                }
+            int absHearts = condense ? calculateAbsorptionHearts(absorption) : (int) Math.min(10, Math.ceil(absorption / 2.0f));
+            for (int i = 0; i < absHearts; i++) {
+                int hx = x + 2 + i * 8;
+                g.fill(hx + 2, heartY + 2, hx + 5, heartY + 5, absColor);
             }
         }
 

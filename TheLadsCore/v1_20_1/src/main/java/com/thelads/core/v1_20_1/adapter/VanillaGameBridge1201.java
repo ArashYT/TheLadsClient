@@ -749,7 +749,14 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
         var useItem = player.getUseItem();
         boolean isGapple = !useItem.isEmpty() && (useItem.is(net.minecraft.world.item.Items.GOLDEN_APPLE) || useItem.is(net.minecraft.world.item.Items.ENCHANTED_GOLDEN_APPLE));
         int gappleCount = isGapple ? useItem.getCount() : 0;
-        com.thelads.core.client.GappleTracker.get().onTick(using, isGapple, slot, gappleCount);
+        net.minecraft.world.InteractionHand hand = player.getUsedItemHand();
+        int eatSlot = (using && hand == net.minecraft.world.InteractionHand.OFF_HAND) ? 36 : player.getInventory().selected;
+        var stackInSlot = eatSlot == 36 ? player.getOffhandItem() : player.getInventory().getItem(eatSlot);
+        boolean isGappleInSlot = !stackInSlot.isEmpty() && (stackInSlot.is(net.minecraft.world.item.Items.GOLDEN_APPLE) || stackInSlot.is(net.minecraft.world.item.Items.ENCHANTED_GOLDEN_APPLE));
+        int slotGCount = isGappleInSlot ? stackInSlot.getCount() : 0;
+        int totalDuration = isGapple ? useItem.getUseDuration() : 32;
+        int ticksUsed = isGapple ? (totalDuration - player.getUseItemRemainingTicks()) : 0;
+        com.thelads.core.client.GappleTracker.get().onTick(using && isGapple, isGappleInSlot, eatSlot, slotGCount, ticksUsed, totalDuration);
 
         // 4. Item tracker inventory diffing (every 10 client ticks)
         if (currentTick % 10 == 0) {

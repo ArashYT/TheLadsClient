@@ -257,6 +257,11 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     }
 
     @Override
+    public boolean hasItemCooldowns() {
+        return false;
+    }
+
+    @Override
     public List<CooldownEntry> getActiveCooldowns() {
         // Minecraft 1.8.9 has no item cooldowns in vanilla netcode (ItemCooldowns was added in 1.9)
         return Collections.emptyList();
@@ -295,7 +300,11 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         boolean using = mc.thePlayer.isUsingItem();
         boolean isGapple = held != null && held.getItem() == net.minecraft.init.Items.golden_apple;
         int gappleCount = isGapple ? held.stackSize : 0;
-        com.thelads.core.client.GappleTracker.get().onTick(using, isGapple, slot, gappleCount);
+        ItemStack useItem = mc.thePlayer.getItemInUse();
+        boolean isUsingGapple = using && useItem != null && useItem.getItem() == net.minecraft.init.Items.golden_apple;
+        int totalDuration = isUsingGapple ? useItem.getMaxItemUseDuration() : 32;
+        int ticksUsed = isUsingGapple ? mc.thePlayer.getItemInUseDuration() : 0;
+        com.thelads.core.client.GappleTracker.get().onTick(isUsingGapple, isGapple, slot, gappleCount, ticksUsed, totalDuration);
 
         // 4. Item tracker inventory diffing (every 10 client ticks)
         if (currentTick % 10 == 0) {

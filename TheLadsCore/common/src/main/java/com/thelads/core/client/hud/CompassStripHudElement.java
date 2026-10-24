@@ -27,13 +27,15 @@ public class CompassStripHudElement extends HudElement {
         renderStrip(g, true);
     }
 
+    public static float normalizeYaw(float rawYaw) {
+        if (!Float.isFinite(rawYaw)) return 180.0f;
+        return ((rawYaw % 360.0f) + 360.0f) % 360.0f;
+    }
+
     private void renderStrip(LadsGraphics g, boolean editor) {
         drawBackground(g);
         float rawYaw = g.getGame().getYaw();
-        if (editor || !Float.isFinite(rawYaw) || rawYaw < 0) {
-            rawYaw = 180.0f; // North
-        }
-        float yaw = ((rawYaw % 360.0f) + 360.0f) % 360.0f;
+        float yaw = editor ? 180.0f : normalizeYaw(rawYaw);
 
         int textColor = resolveColor();
         boolean shadow = HudSettings.getInstance().isTextShadow();

@@ -16,19 +16,22 @@ public final class InventoryDiffTracker {
     private final int[] currIds = new int[MAX_SLOTS];
     private final int[] currQtys = new int[MAX_SLOTS];
     private final String[] currNames = new String[MAX_SLOTS];
+    private boolean containerOpen = false;
 
     private InventoryDiffTracker() {}
 
     public synchronized void reset() {
         prevCount = -1;
         currCount = 0;
+        containerOpen = false;
     }
 
     public synchronized void beginScan(boolean containerOpen) {
+        this.containerOpen = containerOpen;
         if (containerOpen) {
             // While a container screen is open (e.g. chest, furnace), moving items between inventory
             // and container or rearranging slots is skipped to prevent false pickup/drop spam.
-            // Baseline is reset so closing the container seamlessly takes a fresh snapshot.
+            // Baseline is kept at -1 so closing the container takes a fresh baseline without recording.
             prevCount = -1;
             currCount = 0;
             return;
@@ -37,7 +40,7 @@ public final class InventoryDiffTracker {
     }
 
     public synchronized void addScannedItem(int itemId, int count, String displayName) {
-        if (count <= 0 || displayName == null || displayName.isEmpty()) return;
+        if (containerOpen || count <= 0 || displayName == null || displayName.isEmpty()) return;
         for (int i = 0; i < currCount; i++) {
             if (currIds[i] == itemId && currNames[i].equals(displayName)) {
                 currQtys[i] += count;
@@ -53,6 +56,11 @@ public final class InventoryDiffTracker {
     }
 
     public synchronized void endScan() {
+        if (containerOpen) {
+            prevCount = -1;
+            currCount = 0;
+            return;
+        }
         if (prevCount >= 0) {
             // Diff current items against previous snapshot
             for (int i = 0; i < currCount; i++) {

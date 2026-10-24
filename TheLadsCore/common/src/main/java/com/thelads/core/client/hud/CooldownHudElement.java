@@ -16,6 +16,11 @@ public class CooldownHudElement extends HudElement {
     }
 
     @Override
+    public boolean isAvailable() {
+        return com.thelads.core.client.bridge.LadsGameBridge.get().hasItemCooldowns();
+    }
+
+    @Override
     public void prepareRender(LadsGraphics g, boolean editor) {
         List<CooldownEntry> list = getEntries(g, editor);
         int count = Math.max(1, list.size());
