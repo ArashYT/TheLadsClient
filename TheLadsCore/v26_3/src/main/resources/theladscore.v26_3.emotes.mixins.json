@@ -12,6 +12,7 @@
     "EmoteHandHeightMixin26",
     "EmoteHandsMixin26",
     "EmotePlayerModelMixin26",
+    "LivingEntityRendererInvoker26",
     "ShowcaseHandsMixin26"
   ]
 }
