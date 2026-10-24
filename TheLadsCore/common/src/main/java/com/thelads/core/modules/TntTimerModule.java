@@ -58,7 +58,7 @@ public final class TntTimerModule extends Module {
     /** Drawn at this squared distance from the camera: within name tag range, or anywhere with Through blocks. */
     public boolean shows(double distanceSq) { return seeThrough() || distanceSq <= RANGE * RANGE; }
 
-    /** Through blocks, except on Hypixel: there a timer seen through walls would count as ESP, so it is depth tested like a name tag. */
+    /** Through blocks, except when disallowed by server rules (Anti-Ban rule: banned on Hypixel and competitive networks, default off on unknown servers). */
     public boolean seeThrough() { return throughBlocks.get() && !com.thelads.core.client.HypixelSafetyManager.isDisallowed(com.thelads.core.client.HypixelSafetyManager.TNT_THROUGH_BLOCKS); }
 
     /** Precomputed O(1) lookup for integer fuse ticks [0..199]. */
