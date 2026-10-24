@@ -453,7 +453,7 @@ public class HypixelSafetyTest {
     @Test
     void parityGatedModulesAreRisky() {
         for (String name : new String[] {"BlockInfo", "Freelook", "FogClearView", "HitboxesThroughWalls", "Light Overlay", "Loot Beams",
-                "Mob Overlay", "Mob Size", "Fullbright", "Jade", "AutoReconnect",
+                "Mob Overlay", "Mob Size", "Fullbright", "Jade", "AutoReconnect", "Breeding Timer", "Ender Chest Peek",
                 "Unlimited Command Length", "Auto Text", "Inventory Move", "Armor Swap"})
             assertTrue(HypixelSafetyManager.isRiskyModule(name), name + " must be gated");
         assertFalse(HypixelSafetyManager.isRiskyModule("Block Overlay"), "pure visuals stay ungated");

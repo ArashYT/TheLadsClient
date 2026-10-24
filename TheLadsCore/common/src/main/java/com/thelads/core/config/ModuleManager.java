@@ -380,6 +380,7 @@ public class ModuleManager {
         packs.addOption(new BoolOption(com.thelads.core.client.pack.PackMenuSettings.OPTION_TRANSPARENT, true));
         packs.addOption(new BoolOption(com.thelads.core.client.pack.PackMenuSettings.OPTION_IGNORE_INCOMPATIBLE, false));
         packs.addOption(new BoolOption(com.thelads.core.client.pack.PackMenuSettings.OPTION_NO_COMPAT_CHECK, true));
+        packs.addOption(new BoolOption(com.thelads.core.client.pack.PackMenuSettings.OPTION_PROFILES, true)); // Profiles button: named pack sets
         packs.setEnabled(true);
         register(packs, Module.Category.MECHANIC);
         register(com.thelads.core.client.KeepUiOpen.module(), Module.Category.MECHANIC);
@@ -636,6 +637,16 @@ public class ModuleManager {
             + "Off on servers that don't allow it or whose rules are unknown."), Module.Category.MECHANIC);
         register(new Module(com.thelads.core.client.InventoryTweaks.ARMOR_SWAP, "Middle-click armor in your inventory to wear it, swapping "
             + "what you had on. Off on servers that don't allow it or whose rules are unknown."), Module.Category.MECHANIC);
+        // Parity 1.9.19 utility rows 42, 44, 45, 41 (pack profiles are an option on ResourcePacks above).
+        register(new SurvivalGuardsModule(), Module.Category.MECHANIC);
+        register(new Module(com.thelads.core.client.BreedingTimer.NAME,
+            "The time left before an animal you saw breed can breed again, over the animal."), Module.Category.MECHANIC);
+        register(new Module(com.thelads.core.client.EnderChestPeek.NAME,
+            "Hover an ender chest item to see what your ender chest held when you last closed it on this server."), Module.Category.MECHANIC);
+        Module drag = new Module(com.thelads.core.client.ServerListDrag.NAME,
+            "Drag saved servers up and down the multiplayer list to reorder them; the new order is saved.");
+        drag.setEnabled(true);
+        register(drag, Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {
