@@ -6,6 +6,8 @@ namespace TheLadsLauncher;
 
 class Program
 {
+    public static Services.DeepLinkAction? InitialDeepLink { get; set; }
+
     public static readonly string Version = typeof(Program).Assembly
         .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]
         ?? typeof(Program).Assembly.GetName().Version?.ToString(3)
@@ -55,6 +57,20 @@ class Program
             System.Windows.Forms.MessageBox.Show(problem, "The Lads Client", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
             Environment.Exit(2);
             return;
+        }
+
+        foreach (var arg in args)
+        {
+            if (arg.StartsWith(TheLadsLauncher.Services.DeepLinkService.ProtocolScheme + "://", StringComparison.OrdinalIgnoreCase))
+            {
+                InitialDeepLink = TheLadsLauncher.Services.DeepLinkService.ParseUri(arg);
+                break;
+            }
+        }
+
+        if (OperatingSystem.IsWindows() && !TheLadsLauncher.Services.DeepLinkService.IsProtocolRegistered())
+        {
+            TheLadsLauncher.Services.DeepLinkService.RegisterProtocol();
         }
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
