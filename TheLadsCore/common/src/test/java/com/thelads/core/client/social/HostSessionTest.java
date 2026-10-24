@@ -216,4 +216,31 @@ public class HostSessionTest {
         assertTrue(endMsg.get("relayed").getAsBoolean());
         assertEquals(4096L, endMsg.get("bytes").getAsLong());
     }
+
+    /** F17: op level, auto-accept and gamerules count only from a lads-host.json this install wrote; a shipped world's file gets defaults. */
+    @Test
+    public void powerGrantingOptionsOnlyFromOurOwnFile() throws Exception {
+        java.nio.file.Path world = java.nio.file.Files.createTempDirectory("lads-hostopts");
+        HostOptions mine = new HostOptions();
+        mine.approval = HostOptions.Approval.AUTO_FRIENDS;
+        mine.guestOpLevel = 4;
+        mine.gamerules.put("keepInventory", "true");
+        mine.maxPlayers = 5;
+        mine.save(world);
+        HostOptions own = HostOptions.load(world);
+        assertEquals(HostOptions.Approval.AUTO_FRIENDS, own.approval);
+        assertEquals(4, own.guestOpLevel);
+        assertEquals("true", own.gamerules.get("keepInventory"));
+
+        java.nio.file.Path file = world.resolve("lads-host.json");
+        String json = java.nio.file.Files.readString(file).replaceAll("\"writtenBy\":\\s*\"[0-9a-f]+\"","\"writtenBy\": \"someone-else\"");
+        java.nio.file.Files.writeString(file, json);
+        HostOptions shipped = HostOptions.load(world);
+        assertEquals(HostOptions.Approval.ASK, shipped.approval, "no auto-accept from someone else's file");
+        assertEquals(0, shipped.guestOpLevel, "no op level from someone else's file");
+        assertTrue(shipped.gamerules.isEmpty(), "no gamerules from someone else's file");
+        assertEquals(5, shipped.maxPlayers, "harmless values still load");
+        shipped.save(world);
+        assertEquals(HostOptions.Approval.ASK, HostOptions.load(world).approval, "saved once by this install: trusted (with the safe values)");
+    }
 }

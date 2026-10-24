@@ -270,7 +270,8 @@ public final class SocialBridge189 implements SocialBridge {
                 for (WorldServer ws : server.worldServers) {
                     if (ws != null && ws.getGameRules() != null) {
                         for (Map.Entry<String, String> entry : options.gamerules.entrySet()) {
-                            ws.getGameRules().setOrCreateGameRule(entry.getKey(), entry.getValue());
+                            // only rules 1.8.9 knows: setOrCreateGameRule would invent any name a file gives it
+                            if (ws.getGameRules().hasRule(entry.getKey())) ws.getGameRules().setOrCreateGameRule(entry.getKey(), entry.getValue());
                         }
                     }
                 }
