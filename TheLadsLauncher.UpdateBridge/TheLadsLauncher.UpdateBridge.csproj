@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- LadsUpdateBridge.exe: holds the launcher's "Installing update" screen while Velopack's Update.exe swaps current\.
+       .NET Framework 4.6.2 is built into every Windows the launcher supports, so no runtime ships with it.
+       x64 so Process.MainModule can read the x64 Update.exe path. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net462</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- Explicit, or the SDK infers win7-x64 for .NET Framework exes and a "publish -r win-x64" restore misses it. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AssemblyName>LadsUpdateBridge</AssemblyName>
+    <RootNamespace>TheLadsLauncher.UpdateBridge</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- TheLadsLauncher/Assets/icon.ico without its 111 KB 256 px entry (16/32/48 px kept): keeps the exe tiny. -->
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="icon.ico" LogicalName="icon.ico" />
+  </ItemGroup>
+</Project>

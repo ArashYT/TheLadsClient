@@ -51,4 +51,16 @@
     <PackageReference Include="Velopack" Version="1.2.158" />
     <PackageReference Include="XboxAuthNet.Game.Msal" Version="0.1.3" />
   </ItemGroup>
+
+  <!-- LadsUpdateBridge.exe (net462) next to the launcher in build and publish output; not referenced as an assembly.
+       RuntimeIdentifier/SelfContained from a self-contained win-x64 publish must not reach the .NET Framework project. -->
+  <ItemGroup>
+    <ProjectReference Include="..\TheLadsLauncher.UpdateBridge\TheLadsLauncher.UpdateBridge.csproj" ReferenceOutputAssembly="false" PrivateAssets="all"
+                      SkipGetTargetFrameworkProperties="true" GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained" OutputItemType="LadsUpdateBridge" />
+  </ItemGroup>
+  <Target Name="AddLadsUpdateBridge" AfterTargets="ResolveProjectReferences">
+    <ItemGroup>
+      <ContentWithTargetPath Include="@(LadsUpdateBridge)" TargetPath="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
 </Project>
