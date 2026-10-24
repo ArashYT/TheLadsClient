@@ -162,6 +162,9 @@ public interface LadsGraphics {
     /** Vanilla's GUI scale factor (window pixels per GUI unit), or 0 where unknown (no separate Lads HUD scale then). */
     default int guiScale() { return 0; }
 
+    /** The GUI scale as it really is: {@link #guiScale}, or a fraction such as 2.5 while GUI Scale (GuiScaleOverride) is on. */
+    default double exactGuiScale() { return guiScale(); }
+
     /** One vanilla GUI unit in this graphics' units: 1, or the ratio of the two scales inside the Lads HUD's own scale (HudScale). */
     default double hudUnit() { return 1; }
 

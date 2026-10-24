@@ -63,6 +63,8 @@ public final class Qol1201 {
     private static final Vector3f VEC = new Vector3f();
     private static final ServerStatusPinger PINGER = new ServerStatusPinger();
     private static int guiRevision;
+    /** Crash Catcher's tick hook ran (it wraps the tick that fires the tick event); checked once: unavailable when it did not apply. */
+    private static boolean tickHooked, hookChecked;
     private static ServerAddress lastAddress;
     private static ServerData lastServer;
     /** The Direct Connect ping shown now, or null. */
@@ -93,6 +95,11 @@ public final class Qol1201 {
         SoundVolumes.tick();
         GuiScaleOverride.tick();
         ChunkBorders.tick();
+        if (!hookChecked) {
+            hookChecked = true;
+            if (!tickHooked) ModuleSupport.registerUnavailable(CrashCatcher.NAME, "Another mod changes Minecraft.runTick here, so the game tick "
+                + "can't be watched for crashes.");
+        }
         if (guiRevision != GuiScaleOverride.revision) {
             guiRevision = GuiScaleOverride.revision;
             mc.resizeDisplay();
@@ -105,6 +112,11 @@ public final class Qol1201 {
         float fit = TooltipFit.last;
         TooltipScroll.place(placed.x(), placed.y(), width, height, (int) (screenWidth / fit), (int) (screenHeight / fit), System.nanoTime());
         return TooltipScroll.x == placed.x() && TooltipScroll.y == placed.y() ? placed : PLACED.set(TooltipScroll.x, TooltipScroll.y);
+    }
+
+    /** Crash Catcher: runTick's tick hook is in place (MinecraftQolMixin1201). */
+    public static void tickHooked() {
+        tickHooked = true;
     }
 
     /** GUI Scale: the scale resizeDisplay gives the window, vanilla's whole one while the module is off. */
@@ -130,11 +142,13 @@ public final class Qol1201 {
      */
     public static boolean crashed(Minecraft mc, RuntimeException error) {
         long now = System.nanoTime();
-        if (!CrashCatcher.catches(error, mc.level != null && mc.player != null && mc.getOverlay() == null, now)) return false;
+        CrashReport reported = error instanceof ReportedException exception ? exception.getReport() : null;
+        if (!CrashCatcher.catches(error, reported == null ? null : reported.getTitle(), mc.level != null && mc.player != null && mc.getOverlay() == null, now))
+            return false;
         try {
-            CrashReport report = error instanceof ReportedException reported ? reported.getReport()
-                : new CrashReport("Ticking the game (caught by Lads Crash Catcher)", error);
+            CrashReport report = reported != null ? reported : new CrashReport("Ticking the game (caught by Lads Crash Catcher)", error);
             mc.fillReport(report);
+            report.addCategory(CrashCatcher.MARKER).setDetail(CrashCatcher.MARKER_DETAIL, CrashCatcher.MARKER_TEXT); // the launcher sends these
             File file = new File(new File(mc.gameDirectory, "crash-reports"), "crash-" + Util.getFilenameFormattedDateTime() + "-client.txt");
             report.saveToFile(file);
             LoggerFactory.getLogger("TheLadsCore").error("Lads Crash Catcher caught a crash and left the world (report: {})", file, error);

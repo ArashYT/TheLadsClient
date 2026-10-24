@@ -66,6 +66,8 @@ public final class Qol26 {
     /** The Direct Connect ping shown now, or null. */
     private static volatile ServerData pinged;
     private static double camX, camY, camZ;
+    /** Crash Catcher's tick hook ran (it wraps the tick that fires the tick event); checked once: unavailable when it did not apply. */
+    private static boolean tickHooked, hookChecked;
     // Chunk Borders: the geometry being written (render thread).
     private static VertexConsumer lines;
     private static PoseStack.Pose pose;
@@ -92,6 +94,16 @@ public final class Qol26 {
         KeepCursor.tick();
         SoundVolumes.tick();
         ChunkBorders.tick();
+        if (!hookChecked) {
+            hookChecked = true;
+            if (!tickHooked) ModuleSupport.registerUnavailable(CrashCatcher.NAME, "Another mod changes Minecraft.runTick here, so the game tick "
+                + "can't be watched for crashes.");
+        }
+    }
+
+    /** Crash Catcher: runTick's tick hook is in place (MinecraftQolMixin26). */
+    public static void tickHooked() {
+        tickHooked = true;
     }
 
     /** Scrollable Tooltips: where a tooltip goes, from where its positioner put it (in TooltipFit's larger space while it fits one). */
@@ -109,11 +121,13 @@ public final class Qol26 {
      */
     public static boolean crashed(Minecraft mc, RuntimeException error) {
         long now = System.nanoTime();
-        if (!CrashCatcher.catches(error, mc.level != null && mc.player != null && mc.gui.overlay() == null, now)) return false;
+        CrashReport reported = error instanceof ReportedException exception ? exception.getReport() : null;
+        if (!CrashCatcher.catches(error, reported == null ? null : reported.getTitle(), mc.level != null && mc.player != null && mc.gui.overlay() == null, now))
+            return false;
         try {
-            CrashReport report = error instanceof ReportedException reported ? reported.getReport()
-                : new CrashReport("Ticking the game (caught by Lads Crash Catcher)", error);
+            CrashReport report = reported != null ? reported : new CrashReport("Ticking the game (caught by Lads Crash Catcher)", error);
             mc.fillReport(report);
+            report.addCategory(CrashCatcher.MARKER).setDetail(CrashCatcher.MARKER_DETAIL, CrashCatcher.MARKER_TEXT); // the launcher sends these
             Path file = mc.gameDirectory.toPath().resolve("crash-reports").resolve("crash-" + Util.getFilenameFormattedDateTime() + "-client.txt");
             report.saveToFile(file, ReportType.CRASH);
             LoggerFactory.getLogger("TheLadsCore").error("Lads Crash Catcher caught a crash and left the world (report: {})", file, error);

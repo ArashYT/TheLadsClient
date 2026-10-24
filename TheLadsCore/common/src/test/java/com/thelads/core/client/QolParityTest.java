@@ -59,20 +59,21 @@ class QolParityTest {
         Module module = module(CrashCatcher.NAME);
         module.setEnabled(true);
         long now = 100_000_000_000L;
-        assertFalse(CrashCatcher.catches(new IllegalStateException("x"), false, now), "outside a world");
-        assertFalse(CrashCatcher.catches(new OutOfMemoryError(), true, now), "an Error");
-        assertFalse(CrashCatcher.catches(new RuntimeException(new StackOverflowError()), true, now), "an Error among the causes");
+        assertFalse(CrashCatcher.catches(new IllegalStateException("x"), null, false, now), "outside a world");
+        assertFalse(CrashCatcher.catches(new OutOfMemoryError(), null, true, now), "an Error");
+        assertFalse(CrashCatcher.catches(new RuntimeException(new Throwable()), CrashCatcher.DEBUG_CRASH, true, now), "F3+C on purpose");
+        assertFalse(CrashCatcher.catches(new RuntimeException(new StackOverflowError()), null, true, now), "an Error among the causes");
         CrashCatcher.reloading = true;
-        assertFalse(CrashCatcher.catches(new IllegalStateException("x"), true, now), "while resources load");
+        assertFalse(CrashCatcher.catches(new IllegalStateException("x"), null, true, now), "while resources load");
         CrashCatcher.reloading = false;
         IllegalStateException crash = new IllegalStateException("bad entity");
-        assertTrue(CrashCatcher.catches(new RuntimeException("Ticking entity", crash), true, now));
+        assertTrue(CrashCatcher.catches(new RuntimeException("Ticking entity", crash), null, true, now));
         CrashCatcher.caught(new RuntimeException("Ticking entity", crash), "Ticking entity", "report", now);
         assertTrue(CrashCatcher.summary.startsWith("Ticking entity\nIllegalStateException: bad entity\nat "), CrashCatcher.summary);
-        assertFalse(CrashCatcher.catches(crash, true, now + CrashCatcher.REPEAT - 1), "a second crash right after");
-        assertTrue(CrashCatcher.catches(crash, true, now + CrashCatcher.REPEAT));
+        assertFalse(CrashCatcher.catches(crash, null, true, now + CrashCatcher.REPEAT - 1), "a second crash right after");
+        assertTrue(CrashCatcher.catches(crash, null, true, now + CrashCatcher.REPEAT));
         ((SliderOption) module.getOption(CrashCatcher.LIMIT)).setValue(1);
-        assertFalse(CrashCatcher.catches(crash, true, now + 2 * CrashCatcher.REPEAT), "Crash Limit reached");
+        assertFalse(CrashCatcher.catches(crash, null, true, now + 2 * CrashCatcher.REPEAT), "Crash Limit reached");
         module.getOption(CrashCatcher.LIMIT).reset();
     }
 

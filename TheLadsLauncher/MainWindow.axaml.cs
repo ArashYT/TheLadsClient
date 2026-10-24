@@ -5089,8 +5089,19 @@ public partial class MainWindow : Window
             {
                 StatusText.Text = "Game exited normally." + suffix;
                 Log("[Launcher] Game exited normally.");
+                // Lads Crash Catcher kept the game running after a crash: its reports from this session go out as a crash's would.
+                if (settings.SendCrashReports && string.IsNullOrEmpty(profile.PackwizUrl) && GameStart(process) is { } started)
+                    foreach (var report in CrashReporter.CaughtReports(gameDirectory, started))
+                        _ = SendCrashReportAsync(gameDirectory, process.StartInfo.WorkingDirectory, profile.MinecraftVersion, exitCode, report);
             }
         });
+    }
+
+    /// <summary>When the game process started, or null when Windows no longer says.</summary>
+    private static DateTime? GameStart(Process process)
+    {
+        try { return process.StartTime; }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { return null; }
     }
 
     /// <summary>
@@ -5305,9 +5316,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task SendCrashReportAsync(string gameDirectory, string? workingDirectory, string minecraftVersion, int exitCode)
+    private async Task SendCrashReportAsync(string gameDirectory, string? workingDirectory, string minecraftVersion, int exitCode, string? caughtReport = null)
     {
-        string? error = await Task.Run(() => CrashReporter.SendAsync(gameDirectory, workingDirectory, minecraftVersion, exitCode));
+        string? error = await Task.Run(() => CrashReporter.SendAsync(gameDirectory, workingDirectory, minecraftVersion, exitCode, caughtReport));
         await Dispatcher.UIThread.InvokeAsync(() => Log(error == null ? "[Crash] Crash report sent to the Lads team." : $"[Crash] Crash report not sent: {error}"));
     }
 

@@ -212,6 +212,15 @@ class HudAnchorsTest {
         assertSame(screen, HudScale.units(screen));
     }
 
+    /** GUI Scale (fractional): Auto follows the real 2.5; a fixed Lads HUD scale is relative to it, not to the rounded 3. */
+    @Test void aFixedLadsHudScaleIsRelativeToAFractionalGuiScale() {
+        var fractional = new Screen() { @Override public double exactGuiScale() { return 2.5; } };
+        fractional.at(768, 432, 3); // 1920 x 1080 at 2.5; 1.8.9 reports the whole scale rounded up
+        assertSame(fractional, HudScale.units(fractional), "Auto: drawn at the real 2.5");
+        settings.setHudScale(2);
+        assertEquals(1.25, HudScale.units(fractional).hudUnit(), 1e-9, "2.5 / 2, not 3 / 2");
+    }
+
     @Test void theEditorShowsAndEditsAtTheLadsHudScale() {
         screen.at(640, 360, 3);
         settings.setHudScale(2);

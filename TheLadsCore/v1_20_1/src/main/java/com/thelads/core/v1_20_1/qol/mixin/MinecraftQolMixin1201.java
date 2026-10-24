@@ -25,8 +25,10 @@ abstract class MinecraftQolMixin1201 {
     @Shadow public Screen screen;
     @Shadow @Final public MouseHandler mouseHandler;
 
-    @WrapOperation(method = "runTick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;tick()V"))
+    /** require = 0: a pack mod that rewrites runTick (Forge + Connector) cannot stop the game from starting; Qol1201 then reports it. */
+    @WrapOperation(method = "runTick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;tick()V"), require = 0)
     private void lads$catchCrash(Minecraft mc, Operation<Void> original) {
+        Qol1201.tickHooked();
         try {
             original.call(mc);
         } catch (RuntimeException error) {

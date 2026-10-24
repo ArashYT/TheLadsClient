@@ -208,17 +208,20 @@ public final class Qol189 {
     }
 
     /**
-     * Crash Catcher: true when {@code error}, thrown by Minecraft.runTick, was caught: its report is saved and logged as vanilla's
+     * Crash Catcher (MinecraftError, the game's stop signal, is an Error and never reaches here): true when {@code error}, thrown by
+     * Minecraft.runTick, was caught: its report is saved and logged as vanilla's
      * would be, the world is left and the Lads crash screen shows. False (the game crashes as vanilla does) when it may not be caught
      * or leaving the world fails too.
      */
     public static boolean crashed(Minecraft mc, RuntimeException error) {
         long now = System.nanoTime();
-        if (!CrashCatcher.catches(error, mc.theWorld != null && mc.thePlayer != null, now)) return false;
+        CrashReport reported = error instanceof ReportedException ? ((ReportedException) error).getCrashReport() : null;
+        if (!CrashCatcher.catches(error, reported == null ? null : reported.getDescription(), mc.theWorld != null && mc.thePlayer != null, now))
+            return false;
         try {
-            CrashReport report = error instanceof ReportedException ? ((ReportedException) error).getCrashReport()
-                : new CrashReport("Ticking the game (caught by Lads Crash Catcher)", error);
+            CrashReport report = reported != null ? reported : new CrashReport("Ticking the game (caught by Lads Crash Catcher)", error);
             mc.addGraphicsAndWorldToCrashReport(report);
+            report.makeCategory(CrashCatcher.MARKER).addCrashSection(CrashCatcher.MARKER_DETAIL, CrashCatcher.MARKER_TEXT); // the launcher sends these
             File file = new File(new File(mc.mcDataDir, "crash-reports"), "crash-" + new SimpleDateFormat("yyyy-MM-dd_HH.mm.ss").format(new Date()) + "-client.txt");
             report.saveToFile(file);
             LogManager.getLogger("TheLadsCore").error("Lads Crash Catcher caught a crash and left the world (report: " + file + ")", error);

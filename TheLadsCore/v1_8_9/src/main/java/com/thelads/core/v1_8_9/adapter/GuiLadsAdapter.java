@@ -448,6 +448,11 @@ public class GuiLadsAdapter implements LadsGraphics {
     }
 
     @Override
+    public double exactGuiScale() {
+        return com.thelads.core.v1_8_9.qol.Qol189.scale(resolution()); // GUI Scale may be fractional
+    }
+
+    @Override
     public int[] bossBarsBounds(int x, int y, int max, boolean names, boolean preview) {
         boolean hasBoss = net.minecraft.entity.boss.BossStatus.bossName != null && net.minecraft.entity.boss.BossStatus.statusBarTime > 0;
         if (!hasBoss && !preview) return new int[0];

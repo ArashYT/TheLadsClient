@@ -10,11 +10,17 @@ import com.thelads.core.config.SliderOption;
  * and 26.3 (world, entity, particle, sound, screen and input ticking) and Minecraft.runTick on 1.8.9 (the same, plus the packets it
  * handles). Everything else crashes as vanilla does: a crash while drawing a frame (the GL state is unknown afterwards), outside a
  * world, during startup or while resources load, any Error anywhere in its causes (out of memory, stack overflow, a missing class or
- * mixin), a second crash within 30 seconds of a caught one, and more caught crashes in one session than Crash Limit. A caught crash
- * is still written to crash-reports and the log, as vanilla writes it.
+ * mixin), F3+C's deliberate debug crash, a second crash within 30 seconds of a caught one, and more caught crashes in one session than
+ * Crash Limit. A caught crash is still written to crash-reports and the log, as vanilla writes it, with a {@link #MARKER} section: the
+ * game exits normally later, so the launcher sends the reports carrying it as it sends a crash's.
  */
 public final class CrashCatcher {
     public static final String NAME = "Crash Catcher", LIMIT = "Crash Limit";
+    /** The section a caught crash's report gets ("-- Lads Crash Catcher --"), which the launcher looks for (CrashReporter.CaughtMarker). */
+    public static final String MARKER = "Lads Crash Catcher", MARKER_DETAIL = "Caught";
+    public static final String MARKER_TEXT = "The game left the world and kept running instead of closing";
+    /** The title of the crash F3+C makes on purpose: never caught. */
+    static final String DEBUG_CRASH = "Manually triggered debug crash";
     /** A crash this soon after a caught one is not caught: the world it left is not to be trusted. */
     static final long REPEAT = 30_000_000_000L;
     /** 1.8.9: true while Minecraft.refreshResources runs (it runs inside the game tick there, after F3+T or a pack change). */
@@ -26,10 +32,13 @@ public final class CrashCatcher {
 
     private CrashCatcher() {}
 
-    /** May this crash of the game tick be caught: the module is on, the player is in a world and it is none of the cases above. */
-    public static boolean catches(Throwable error, boolean inWorld, long now) {
+    /**
+     * May this crash of the game tick be caught ({@code title}: its crash report's title, null when it has none): the module is on, the
+     * player is in a world and it is none of the cases above.
+     */
+    public static boolean catches(Throwable error, String title, boolean inWorld, long now) {
         Module module = ModuleManager.getInstance().getModule(NAME);
-        if (module == null || !module.isEnabled() || !inWorld || reloading || !(error instanceof Exception)) return false;
+        if (module == null || !module.isEnabled() || !inWorld || reloading || !(error instanceof Exception) || DEBUG_CRASH.equals(title)) return false;
         if (caught > 0 && now - caughtAt < REPEAT) return false;
         if (caught >= (module.getOption(LIMIT) instanceof SliderOption limit ? (int) limit.getValue() : 3)) return false;
         Throwable cause = error;

@@ -593,4 +593,9 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
     public int guiScale() {
         return (int) Minecraft.getInstance().getWindow().getGuiScale();
     }
+
+    @Override
+    public double exactGuiScale() {
+        return Minecraft.getInstance().getWindow().getGuiScale(); // GUI Scale may be fractional
+    }
 }
