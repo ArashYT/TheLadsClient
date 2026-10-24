@@ -250,7 +250,10 @@ public final class HypixelSafetyManager {
             || "Jade".equalsIgnoreCase(moduleName)
             || "ShulkerBoxUtils".equalsIgnoreCase(moduleName)
             || "Freelook".equalsIgnoreCase(moduleName) || "FogClearView".equalsIgnoreCase(moduleName)
-            || com.thelads.core.modules.HitboxesModule.THROUGH_WALLS.equalsIgnoreCase(moduleName); // FreelookModule, FogCustomizerModule.CLEAR_VIEW
+            || com.thelads.core.modules.HitboxesModule.THROUGH_WALLS.equalsIgnoreCase(moduleName) // FreelookModule, FogCustomizerModule.CLEAR_VIEW
+            || PvpVisuals.NAMETAG_HEALTH.equalsIgnoreCase(moduleName)
+            || "Light Overlay".equalsIgnoreCase(moduleName) || "Loot Beams".equalsIgnoreCase(moduleName) // pvp rows 32-36: info vanilla does not show
+            || "Mob Overlay".equalsIgnoreCase(moduleName) || "Mob Size".equalsIgnoreCase(moduleName);
     }
 
     public static boolean isGatedHypixelModule(String moduleName) {

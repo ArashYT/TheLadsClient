@@ -1,0 +1,22 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_20_1.mixin.pvp",
+  "compatibilityLevel": "JAVA_17",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "AbstractContainerScreenDarkMixin1201",
+    "EntityRenderDispatcherShadowMixin1201",
+    "FishingHookLineMixin1201",
+    "GameRendererPvpMixin1201",
+    "GuiGraphicsLabelMixin1201",
+    "GuiOverlayMixin1201",
+    "ItemInHandReequipMixin1201",
+    "LightningBoltRendererMixin1201",
+    "LivingEntitySwingMixin1201",
+    "MobAppearanceParticleMixin1201",
+    "ScreenEffectFireMixin1201"
+  ]
+}

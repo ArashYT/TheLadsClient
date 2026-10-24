@@ -15,7 +15,7 @@ public final class ParticleCore {
     public static final String CULLING = "Culling", OPTIMIZED = "Optimized rendering", HIDE_OWN = "Hide own potion particles",
         HIDE_OTHERS = "Hide others' potion particles", RATES = "Spawn rates", LIMIT = "Limit decorative particles",
         PER_TICK = "Decorative particles per tick", DISTANCE = "Decorative particle distance",
-        WEATHER_CULLING = "Weather particle culling";
+        WEATHER_CULLING = "Weather particle culling", SIZES = "Sizes", COLORS = "Colors", FADE = "Fade out";
     /** Particles that only decorate (smoke, ash, falling leaves, spores, motes): the only ones the optional quota limits. */
     private static final Set<String> DECORATIVE = Set.of("smoke", "large_smoke", "largesmoke", "white_smoke", "campfire_cosy_smoke",
         "campfire_signal_smoke", "ash", "white_ash", "cherry_leaves", "pale_oak_leaves", "falling_spore_blossom", "spore_blossom_air",
@@ -34,7 +34,7 @@ public final class ParticleCore {
 
     private static volatile boolean standDown;
     private static ParticleCoreModule module;
-    private static boolean active, cull, optimized, hideOwn, hideOthers, limit, weatherCull;
+    private static boolean active, cull, optimized, hideOwn, hideOthers, limit, weatherCull, styled;
     private static double radius;
     private static int perTick;
     private static long seed = System.nanoTime() | 1;
@@ -65,6 +65,7 @@ public final class ParticleCore {
         hideOthers = active && core.hideOthers.get();
         limit = active && core.limit.get();
         weatherCull = active && core.weatherCulling.get();
+        styled = active && (core.sizes.changed() + core.colors.changed() + core.fade.changed()) > 0;
         radius = core == null ? 48 : core.distance.getValue();
         perTick = core == null ? 64 : core.perTick.getIntValue();
     }
@@ -73,6 +74,39 @@ public final class ParticleCore {
     public static boolean culling() { return cull; }
     public static boolean optimized() { return optimized; }
     public static boolean weatherCulling() { return weatherCull; }
+    /** Some type has its own size, color or fade: the spawn hooks then look up each new particle's look (else they skip it). */
+    public static boolean styled() { return styled; }
+
+    /** A particle that carries its type's look, set once at spawn (the versions' particle mixins implement it). */
+    public interface Styled {
+        void lads$style(float size, int color, float fade);
+    }
+
+    /** Gives a just-spawned particle of type {@code id} its look; the versions' spawn hooks call this while {@link #styled}. */
+    public static void style(Object particle, String id) {
+        if (particle instanceof Styled styled) styled.lads$style(size(id), color(id), fade(id));
+    }
+
+    /** The game version's particle ids, listed by every per-type editor (rates, sizes, colors, fade). */
+    public static void setCatalog(java.util.function.Supplier<java.util.List<String>> ids) {
+        ParticleCoreModule core = module();
+        if (core == null) return;
+        core.rates.setCatalog(ids); core.sizes.setCatalog(ids); core.colors.setCatalog(ids); core.fade.setCatalog(ids);
+    }
+
+    /** A new particle's size factor (1 is vanilla). Asked once per spawn, only while {@link #styled}. */
+    public static float size(String id) { return module.sizes.value(id) / 100f; }
+    /** A new particle's color as 0xFFRRGGBB, or 0 to keep its own. */
+    public static int color(String id) { return module.colors.value(id); }
+    /** How far a new particle fades out over its life, 0 (vanilla) to 1 (fully gone at the end). */
+    public static float fade(String id) { return module.fade.value(id) / 100f; }
+
+    /** The alpha factor of a particle {@code fade} sets fading, {@code age} ticks (with the partial tick) into its {@code lifetime}. */
+    public static float fadeAlpha(float fade, float age, int lifetime) {
+        if (fade <= 0 || lifetime <= 0) return 1;
+        float t = Math.max(0, Math.min(1, age / lifetime));
+        return 1 - fade * t;
+    }
 
     /** Between worlds the decorative quota starts over. */
     public static void worldChanged() { BUDGET.reset(); }

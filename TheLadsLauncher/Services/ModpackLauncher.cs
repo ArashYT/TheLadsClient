@@ -71,6 +71,31 @@ public static class ModpackLauncher
         }
     }
 
+    /// <summary>A new instance from a CurseForge modpack .zip archive.</summary>
+    public static async Task<ModpackInstance> InstallCurseForgeAsync(string dataDirectory, string zipFile, ContentCatalog? catalog,
+        string? name, string? author, Action<string>? status, CancellationToken token)
+    {
+        var manifest = CurseForgeModpack.ReadManifest(zipFile);
+        var instance = Modpacks.NewInstance(dataDirectory, string.IsNullOrWhiteSpace(name) ? manifest.Name : name);
+        try
+        {
+            await Task.Run(() => CurseForgeModpack.InstallAsync(zipFile, instance.Directory, catalog, status ?? (_ => { }), token), token);
+            instance.McVersion = manifest.MinecraftVersion;
+            instance.Loader = manifest.ModLoader;
+            instance.LoaderVersion = manifest.ModLoaderVersion;
+            instance.PackVersion = manifest.Version;
+            instance.Author = author ?? manifest.Author;
+            ModpackCoreSync.Sync(instance, status: status);
+            Modpacks.Save(instance);
+            return instance;
+        }
+        catch
+        {
+            SafeFileOps.DeleteTree(instance.Directory);
+            throw;
+        }
+    }
+
     /// <summary>Updates an instance to another version of its pack; saves, options and the user's own files stay.</summary>
     public static async Task UpdateAsync(ModpackInstance instance, string mrpackFile, ModpackSource source, HttpClient http,
         Action<string>? status, CancellationToken token)

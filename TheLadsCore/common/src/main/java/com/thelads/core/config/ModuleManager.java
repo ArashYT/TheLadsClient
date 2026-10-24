@@ -424,6 +424,48 @@ public class ModuleManager {
         register(new com.thelads.core.modules.CustomSkyModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.ChunkAnimatorModule(), Module.Category.MECHANIC);
 
+        // PvP visuals (PvpVisuals reads these once a tick). On with vanilla's look, so each option works as soon as it is set.
+        Module renderTweaks = new Module(com.thelads.core.client.PvpVisuals.RENDER_TWEAKS, "Entity shadows, lightning bolts, fishing lines and "
+            + "the Elder Guardian curse. Bobbing Disconnect stops the world bobbing while your hand still bobs.");
+        renderTweaks.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.SHADOWS, true));
+        renderTweaks.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.HIDE_LIGHTNING, false));
+        renderTweaks.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.HIDE_FISHING_LINE, false));
+        renderTweaks.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.HIDE_ELDER_GUARDIAN, false));
+        renderTweaks.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.BOBBING_DISCONNECT, false));
+        renderTweaks.setEnabled(true);
+        register(renderTweaks, Module.Category.MECHANIC);
+
+        Module overlays = new Module(com.thelads.core.client.PvpVisuals.OVERLAYS, "How much the fire, carved pumpkin and nether portal overlays "
+            + "cover your screen. Low Fire is in 1.7 Animations.");
+        overlays.addOption(new SliderOption(com.thelads.core.client.PvpVisuals.FIRE_OPACITY, 100, 0, 100, 5).percent());
+        overlays.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.FIRE_RESISTANCE, false));
+        overlays.addOption(new SliderOption(com.thelads.core.client.PvpVisuals.PUMPKIN_OPACITY, 100, 0, 100, 5).percent());
+        overlays.addOption(new SliderOption(com.thelads.core.client.PvpVisuals.PORTAL_OPACITY, 100, 0, 100, 5).percent());
+        overlays.setEnabled(true);
+        register(overlays, Module.Category.MECHANIC);
+
+        Module totem = new Module(com.thelads.core.client.PvpVisuals.TOTEM, "The Totem of Undying pop animation: hide it or change its size.");
+        totem.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.HIDE_TOTEM, false));
+        totem.addOption(new SliderOption(com.thelads.core.client.PvpVisuals.TOTEM_SCALE, 100, 25, 200, 5).percent());
+        totem.setEnabled(true);
+        register(totem, Module.Category.MECHANIC);
+
+        Module darkMode = new Module(com.thelads.core.client.PvpVisuals.DARK_MODE, "Darkens chest, inventory and other container screens; their "
+            + "titles turn light.");
+        darkMode.addOption(new SliderOption(com.thelads.core.client.PvpVisuals.DARKNESS, 60, 30, 90, 5).percent());
+        register(darkMode, Module.Category.MECHANIC);
+
+        // Other players' health is not on vanilla's name tags: HypixelSafetyManager gates it (risky set).
+        register(new Module(com.thelads.core.client.PvpVisuals.NAMETAG_HEALTH, "Shows each player's health after their name tag. "
+            + "Off on servers that don't allow it."), Module.Category.MECHANIC);
+        // PARITY-1023 pvp (rows 31-38): Light Overlay, Loot Beams, Mob Overlay and Mob Size are risky (HypixelSafetyManager), off by default.
+        register(new OofModule(), Module.Category.MECHANIC);
+        register(com.thelads.core.client.LightOverlay.create(), Module.Category.MECHANIC);
+        register(new LootBeamsModule(), Module.Category.MECHANIC);
+        register(new MobOverlayModule(), Module.Category.MECHANIC);
+        register(new MobSizeModule(), Module.Category.MECHANIC);
+        register(new ItemDespawnModule(), Module.Category.MECHANIC);
+        register(new UhcOverlayModule(), Module.Category.MECHANIC);
         HudModule dmgInd = hud("DamageIndicator", "Enemy health indicators, target hearts and floating damage numbers.");
         dmgInd.addOption(new DropdownOption("Display mode", 0, "Both", "HUD Bar", "Damage Numbers"));
         dmgInd.addOption(new BoolOption("Show hearts", true));

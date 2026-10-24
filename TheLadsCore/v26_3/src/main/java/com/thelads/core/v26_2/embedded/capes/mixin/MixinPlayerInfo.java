@@ -2,6 +2,11 @@
 package com.thelads.core.v26_2.embedded.capes.mixin;
 
 import com.mojang.authlib.GameProfile;
+import com.thelads.core.client.cosmetics.wearables.CosmeticItem;
+import com.thelads.core.client.cosmetics.wearables.CosmeticLibrary;
+import com.thelads.core.client.cosmetics.wearables.CosmeticSlot;
+import com.thelads.core.client.cosmetics.wearables.CosmeticsManager;
+import com.thelads.core.v26_2.cosmetics.wearables.CosmeticsWearablesLayer26;
 import com.thelads.core.v26_2.embedded.capes.CapeConfig;
 import com.thelads.core.v26_2.embedded.capes.Capes;
 import com.thelads.core.v26_2.embedded.capes.handler.PlayerHandler;
@@ -32,6 +37,26 @@ public abstract class MixinPlayerInfo {
 
     @Inject(method = "getSkin", at = @At("TAIL"), cancellable = true)
     private void getCapeTexture(CallbackInfoReturnable<PlayerSkin> cir) {
+        if (profile != null && profile.id() != null) {
+            CosmeticsManager manager = CosmeticsManager.get();
+            if (manager.shouldRender(profile.id(), CosmeticSlot.CAPE)) {
+                String capeId = manager.getEquippedCape(profile.id());
+                if (capeId != null && !capeId.isEmpty() && !"none".equals(capeId)) {
+                    CosmeticItem item = CosmeticLibrary.get(capeId);
+                    if (item != null && item.texturePath() != null) {
+                        PlayerSkin oldTextures = cir.getReturnValue();
+                        Identifier capeIdentifier = CosmeticsWearablesLayer26.getIdentifier(item.texturePath());
+                        ClientAsset.Texture capeTexture = new ClientAsset.ResourceTexture(capeIdentifier, null);
+                        PlayerSkin newTextures = new PlayerSkin(
+                                oldTextures.body(),
+                                capeTexture, oldTextures.elytra(),
+                                oldTextures.model(), oldTextures.secure());
+                        cir.setReturnValue(newTextures);
+                        return;
+                    }
+                }
+            }
+        }
         if (!Utils.isValidProfile(profile)) return;
         PlayerHandler handler = PlayerHandler.fromProfile(profile);
         if (handler.getHasCape()) {

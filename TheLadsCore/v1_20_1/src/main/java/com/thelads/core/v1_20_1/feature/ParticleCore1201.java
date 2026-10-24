@@ -2,7 +2,6 @@ package com.thelads.core.v1_20_1.feature;
 
 import com.thelads.core.client.ParticleCore;
 import com.thelads.core.config.ModuleSupport;
-import com.thelads.core.config.ParticleReductionOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,7 +40,7 @@ public final class ParticleCore1201 {
             return;
         }
         ModuleSupport.registerBuiltIn(ParticleCore.MODULE);
-        ((ParticleReductionOption) ParticleCore.module().getOption(ParticleCore.RATES)).setCatalog(ParticleCore1201::catalog);
+        ParticleCore.setCatalog(ParticleCore1201::catalog);
         ClientTickEvents.END_CLIENT_TICK.register(ParticleCore1201::tick);
         ParticleCoreCapture1201.register(); // QA only: inert without the harness flags
         LOGGER.info("Particle Core ready");
@@ -85,6 +84,13 @@ public final class ParticleCore1201 {
         } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {
             return false;
         }
+    }
+
+    /** A flat particle's per-type look (ParticleStyleMixin1201): swapped in while it draws, its own values back for its tick. */
+    public interface Look {
+        /** Puts the particle's own size, color and alpha back (a no-op when they are not swapped). */
+        void lads$end();
+        boolean lads$fades();
     }
 
     /** The type's id as stored in the rates: "flame", "particlerain:rain". */

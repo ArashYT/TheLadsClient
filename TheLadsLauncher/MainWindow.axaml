@@ -188,7 +188,7 @@
                                 <TextBlock x:Name="MinecraftVersionText" Text="Minecraft" Foreground="#B8B9C2" FontSize="11" />
                             </Border>
                         </Grid>
-                        <Grid x:Name="PlayStandardPanel" Grid.Row="1" RowDefinitions="Auto,Auto,Auto">
+                        <Grid x:Name="PlayStandardPanel" Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto">
                             <Border Grid.Row="0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" ClipToBounds="True" Height="140">
                                 <!-- The art column is twice the banner height: the 2:1 artwork shows whole instead of being cropped to a strip. -->
                                 <Grid ColumnDefinitions="*,280">
@@ -286,6 +286,21 @@
                                     <Border x:Name="HomeSharedNotice" Grid.Row="3" Grid.ColumnSpan="3" IsVisible="False" Margin="0,10,0,0" Background="#202125" BorderBrush="#3A3B42" BorderThickness="1" CornerRadius="4" Padding="12,8" />
                                 </Grid>
                             </Border>
+                            <!-- Home Screen News & Changelog Feed -->
+                            <Border Grid.Row="3" Margin="0,12,0,0" Background="#1D1E22" BorderBrush="#303137" BorderThickness="1" CornerRadius="6" Padding="16,12">
+                                <Grid RowDefinitions="Auto,Auto">
+                                    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,8">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                            <TextBlock Text="WHAT'S NEW" Classes="caption" FontSize="10" FontWeight="Bold" Foreground="#ED727B" VerticalAlignment="Center" />
+                                            <Border x:Name="HomeNewsVersionBadge" Background="#302027" CornerRadius="4" Padding="6,2">
+                                                <TextBlock x:Name="HomeNewsVersionText" Text="v1.9.18" Foreground="#F5B8BE" FontSize="11" FontWeight="SemiBold" />
+                                            </Border>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Content="View all updates &#8594;" Background="Transparent" Foreground="#8F919B" FontSize="11" Click="ReleaseNotes_Click" Cursor="Hand" />
+                                    </Grid>
+                                    <StackPanel x:Name="HomeNewsHighlightsPanel" Grid.Row="1" Spacing="5" />
+                                </Grid>
+                            </Border>
                         </Grid>
                         <views:ExperiencesView x:Name="ExperiencesPage" Grid.Row="1" IsVisible="False" />
                     </Grid>
@@ -376,6 +391,23 @@
                                                 </Grid>
                                                 <CheckBox x:Name="ReducedMotionCheck" Content="Reduce motion (page, button and notification animations)" Margin="0,0,0,8" />
                                     <CheckBox x:Name="ParticleCheckbox" Content="Show background particles" IsChecked="True" />
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
+                                            <StackPanel Spacing="12">
+                                                <TextBlock Text="LOADING SCREEN THEME" Foreground="{DynamicResource LadsAccent}" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Text="Background Color" Foreground="#CCCCCC" FontSize="14" VerticalAlignment="Center" />
+                                                    <TextBox x:Name="LoadingScreenBgColorBox" Grid.Column="1" Width="160" Height="36" FontSize="13" PlaceholderText="#111111" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                                                    <TextBlock Text="Progress Bar Color" Foreground="#CCCCCC" FontSize="14" VerticalAlignment="Center" />
+                                                    <TextBox x:Name="LoadingScreenBarColorBox" Grid.Column="1" Width="160" Height="36" FontSize="13" PlaceholderText="#FF8800" />
+                                                </Grid>
+                                                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                                                    <TextBlock Text="Glow Effect Color" Foreground="#CCCCCC" FontSize="14" VerticalAlignment="Center" />
+                                                    <TextBox x:Name="LoadingScreenGlowColorBox" Grid.Column="1" Width="160" Height="36" FontSize="13" PlaceholderText="#FFAA00" />
+                                                </Grid>
                                             </StackPanel>
                                         </Border>
                                         <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
@@ -542,6 +574,8 @@
                                         </Button>
                                         <Button x:Name="UpdateAllModsBtn" Classes="action" Content="Update my mods" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Update the mods you added yourself from Modrinth; the launcher keeps the pack mods and LadsCore up to date" Click="UpdateAllMods_Click" />
                                         <Button Classes="danger" Content="Restore default mod set" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Clear this profile's saved enable/disable choices and switch the pack mods and LadsCore back on" Click="RestoreDefaultMods_Click" />
+                                        <Button Classes="action" Content="Repair game files" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Verify hashes of game files, client jars and core mods, restoring missing or corrupted files" Click="RepairGameFiles_Click" />
+                                        <Button x:Name="BisectModsBtn" Classes="action" Content="Bisect mods" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Find crash or low-FPS culprit mod using binary search isolation" Click="BisectMods_Click" />
                                         <Button Classes="danger" Content="Reset mods folder" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Move every mod file of this profile to the Recycle Bin (yours too), clear its saved enable/disable choices and reinstall LadsCore and the Lads pack fresh" Click="ResetModsFolder_Click" />
                                         <Button Classes="action" Content="Refresh" Height="36" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="RefreshMods_Click" Margin="0,0,8,8" />
                                     </WrapPanel>
@@ -654,11 +688,12 @@
                         </StackPanel>
                     </Grid>
                     <Grid x:Name="LogsPage" IsVisible="False" Margin="28,24,28,24" RowDefinitions="Auto,*">
-                        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,0,0,12">
+                        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,0,0,12">
                             <TextBlock Text="Logs" Foreground="White" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" />
                             <TextBox x:Name="LogSearchBox" Grid.Column="1" PlaceholderText="Search logs..." Height="36" FontSize="13" Margin="16,0" />
-                            <Button Grid.Column="2" Classes="action" Content="Copy All" Height="36" FontSize="13" Padding="16,0" Margin="0,0,8,0" HorizontalContentAlignment="Center" Click="CopyLogs_Click" />
-                            <Button Grid.Column="3" Classes="danger" Content="Clear" Height="36" FontSize="13" Padding="16,0" HorizontalContentAlignment="Center" Click="ClearLogs_Click" />
+                            <Button Grid.Column="2" Classes="action" Content="Share Log" Height="36" FontSize="13" Padding="16,0" Margin="0,0,8,0" HorizontalContentAlignment="Center" Click="ShareLogs_Click" ToolTip.Tip="Upload sanitized log and copy shareable link" />
+                            <Button Grid.Column="3" Classes="action" Content="Copy All" Height="36" FontSize="13" Padding="16,0" Margin="0,0,8,0" HorizontalContentAlignment="Center" Click="CopyLogs_Click" />
+                            <Button Grid.Column="4" Classes="danger" Content="Clear" Height="36" FontSize="13" Padding="16,0" HorizontalContentAlignment="Center" Click="ClearLogs_Click" />
                         </Grid>
                         <TextBox x:Name="LogBox" VerticalContentAlignment="Top" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" Background="#121315" Foreground="#88AA88" FontFamily="Consolas,Courier New" FontSize="12" BorderBrush="#303137" BorderThickness="1" CornerRadius="4" Padding="12" ScrollViewer.VerticalScrollBarVisibility="Auto" />
                     </Grid>

@@ -13,6 +13,16 @@
     "PvpRenderManagerMixin189",
     "PvpGlintItemMixin189",
     "PvpGlintArmourMixin189",
-    "PvpShinyPotionMixin189"
+    "PvpShinyPotionMixin189",
+    "EntityLivingBaseSwingMixin189",
+    "EntityRendererBobMixin189",
+    "FontRendererLabelMixin189",
+    "GuiContainerDarkMixin189",
+    "GuiIngameOverlayMixin189",
+    "ItemRendererPvpMixin189",
+    "MobAppearanceMixin189",
+    "RenderFishLineMixin189",
+    "RenderLightningBoltMixin189",
+    "RenderShadowMixin189"
   ]
 }
