@@ -77,6 +77,15 @@ public final class HypixelSafetyManager {
     private static final Map<String, Server> CACHED_ADDRESSES = new ConcurrentHashMap<>();
     private static volatile String lastAddress;
     private static volatile Server lastServer = LOCAL;
+    private static volatile String p2pSessionKey;
+
+    public static void setP2PSession(String keyOrNull) {
+        p2pSessionKey = keyOrNull;
+    }
+
+    public static String getP2PSession() {
+        return p2pSessionKey;
+    }
 
     /** host -> bypassed module keys ({@link #bypassKey}). Loaded once, written on every change. */
     private static final Map<String, Set<String>> BYPASSES = new ConcurrentHashMap<>();
@@ -111,6 +120,8 @@ public final class HypixelSafetyManager {
 
     /** Asked per module every frame: the last address first, before any string work. */
     private static Server server(String addr) {
+        String p2p = p2pSessionKey;
+        if (p2p != null) return new Server(0, p2p);
         if (addr == null || addr.isEmpty()) return LOCAL;
         if (addr.equals(lastAddress)) return lastServer;
         Server server = CACHED_ADDRESSES.computeIfAbsent(addr, HypixelSafetyManager::computeServer);
@@ -215,7 +226,7 @@ public final class HypixelSafetyManager {
 
     /** Any server, LAN or Realms (anything but a local world); "Unknown" counts as a server, so a missed case stays off. */
     public static boolean isMultiplayer() {
-        return qaOverride || !"Singleplayer".equalsIgnoreCase(LadsGameBridge.get().getServerAddress());
+        return p2pSessionKey != null || qaOverride || !"Singleplayer".equalsIgnoreCase(LadsGameBridge.get().getServerAddress());
     }
 
     /**

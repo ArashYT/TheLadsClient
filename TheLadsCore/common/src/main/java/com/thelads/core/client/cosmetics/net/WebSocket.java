@@ -23,8 +23,8 @@ import javax.net.ssl.SSLSocketFactory;
  * A tiny RFC 6455 client: text frames, ping/pong and close only, client frames masked. No java.net.http, because 1.8.9 runs this
  * downgraded to Java 8. One reader thread calls readText(); send() is safe from any thread.
  */
-final class WebSocket implements Closeable {
-    static final int TEXT = 1, CLOSE = 8, PING = 9, PONG = 10;
+public final class WebSocket implements Closeable {
+    public static final int TEXT = 1, CLOSE = 8, PING = 9, PONG = 10;
     static final int MAX_IN = 256 * 1024;
     private static final String GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -43,7 +43,7 @@ final class WebSocket implements Closeable {
     }
 
     /** TCP (TLS with hostname checks for wss://), then the HTTP upgrade; every step times out after {@code timeoutMs}. */
-    static WebSocket connect(URI uri, int timeoutMs, String userAgent) throws IOException {
+    public static WebSocket connect(URI uri, int timeoutMs, String userAgent) throws IOException {
         boolean tls = "wss".equals(uri.getScheme());
         String host = uri.getHost();
         int port = uri.getPort() > 0 ? uri.getPort() : tls ? 443 : 80;
@@ -106,12 +106,12 @@ final class WebSocket implements Closeable {
         return line.toString();
     }
 
-    void setReadTimeout(int ms) throws IOException { socket.setSoTimeout(ms); }
+    public void setReadTimeout(int ms) throws IOException { socket.setSoTimeout(ms); }
 
-    boolean isOpen() { return !closed; }
+    public boolean isOpen() { return !closed; }
 
     /** The next text message, answering pings on the way; null once the server closed the connection. */
-    String readText() throws IOException {
+    public String readText() throws IOException {
         while (true) {
             Frame frame = decode(in, MAX_IN);
             switch (frame.opcode()) {
@@ -124,9 +124,9 @@ final class WebSocket implements Closeable {
         }
     }
 
-    void sendText(String text) throws IOException { send(TEXT, text.getBytes(StandardCharsets.UTF_8)); }
+    public void sendText(String text) throws IOException { send(TEXT, text.getBytes(StandardCharsets.UTF_8)); }
 
-    synchronized void send(int opcode, byte[] payload) throws IOException {
+    public synchronized void send(int opcode, byte[] payload) throws IOException {
         byte[] mask = new byte[4];
         RANDOM.nextBytes(mask);
         out.write(encode(opcode, payload, mask));
@@ -149,7 +149,7 @@ final class WebSocket implements Closeable {
     }
 
     /** One final, masked client frame. */
-    static byte[] encode(int opcode, byte[] payload, byte[] mask) {
+    public static byte[] encode(int opcode, byte[] payload, byte[] mask) {
         int n = payload.length, head = n < 126 ? 2 : n <= 0xFFFF ? 4 : 10;
         byte[] frame = new byte[head + 4 + n];
         frame[0] = (byte) (0x80 | opcode);
