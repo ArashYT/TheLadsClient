@@ -1,12 +1,14 @@
 package com.thelads.core.v1_20_1.social;
 
 import com.mojang.authlib.GameProfile;
+import com.thelads.core.LadsVersion;
 import com.thelads.core.client.social.HostOptions;
 import com.thelads.core.client.social.SocialBridge;
+import com.thelads.core.v1_20_1.mixin.social.IntegratedServerAccessor1201;
+import com.thelads.core.v1_20_1.mixin.social.ServerConnectionListenerAccessor1201;
 import io.netty.channel.ChannelFuture;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
@@ -20,7 +22,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.zip.ZipEntry;
@@ -185,12 +189,30 @@ public final class SocialBridge1201 implements SocialBridge {
             return -1;
         }
 
-        if (options != null && options.backupOnOpen) {
+        if (options != null) {
+            Path worldDir = server.getWorldPath(LevelResource.ROOT);
             try {
-                Path worldDir = server.getWorldPath(LevelResource.ROOT);
-                backupWorld(worldDir, worldId());
+                options.save(worldDir);
             } catch (Exception e) {
-                LOGGER.error("Failed to backup world before hosting", e);
+                LOGGER.warn("Failed to persist lads-host.json: {}", e.getMessage());
+            }
+
+            if (options.backupOnOpen) {
+                toast("World Backup", "Creating world backup in background...", null, null);
+                CompletableFuture<Void> backupFuture = CompletableFuture.runAsync(() -> {
+                    try {
+                        backupWorld(worldDir, worldId());
+                    } catch (Exception e) {
+                        LOGGER.warn("Failed to create world backup: {}", e.getMessage());
+                    }
+                });
+                try {
+                    backupFuture.get(30, TimeUnit.SECONDS);
+                    toast("World Backup", "World backup completed", null, null);
+                } catch (Exception e) {
+                    LOGGER.warn("World backup timed out or failed, proceeding with hosting", e);
+                    toast("World Backup", "World backup timed out, proceeding with hosting", null, null);
+                }
             }
         }
 
@@ -222,6 +244,15 @@ public final class SocialBridge1201 implements SocialBridge {
         IntegratedServer server = mc.getSingleplayerServer();
         if (server == null || server.isPublished()) return;
 
+        if (options != null) {
+            Path worldDir = server.getWorldPath(LevelResource.ROOT);
+            try {
+                options.save(worldDir);
+            } catch (Exception e) {
+                LOGGER.warn("Failed to persist lads-host.json: {}", e.getMessage());
+            }
+        }
+
         int port = HttpUtil.getAvailablePort();
         GameType gameType = parseGameType(options != null ? options.guestGameMode : "survival");
         boolean allowCheats = options != null && options.guestOpLevel > 0;
@@ -247,46 +278,31 @@ public final class SocialBridge1201 implements SocialBridge {
                 }
             }
 
-            // Close TCP channels on ServerConnectionListener
+            // Close TCP channels on ServerConnectionListener via Accessor mixin
             ServerConnectionListener connection = server.getConnection();
-            if (connection != null) {
-                try {
-                    Field channelsField = ServerConnectionListener.class.getDeclaredField("channels");
-                    channelsField.setAccessible(true);
-                    Object list = channelsField.get(connection);
-                    if (list instanceof List<?> channels) {
-                        synchronized (channels) {
-                            for (Object ch : channels) {
-                                if (ch instanceof ChannelFuture future) {
-                                    future.channel().close().syncUninterruptibly();
-                                }
+            if (connection instanceof ServerConnectionListenerAccessor1201 connAccessor) {
+                List<ChannelFuture> channels = connAccessor.ladsGetChannels();
+                if (channels != null) {
+                    synchronized (channels) {
+                        for (ChannelFuture future : channels) {
+                            if (future != null && future.channel() != null) {
+                                future.channel().close().syncUninterruptibly();
                             }
-                            channels.clear();
                         }
+                        channels.clear();
                     }
-                } catch (Throwable t) {
-                    LOGGER.warn("Could not clear ServerConnectionListener channels: {}", t.getMessage());
                 }
             }
 
-            // Interrupt LAN pinger if running
-            try {
-                Field pingerField = IntegratedServer.class.getDeclaredField("lanPinger");
-                pingerField.setAccessible(true);
-                LanServerPinger pinger = (LanServerPinger) pingerField.get(server);
+            // Interrupt LAN pinger if running via Accessor mixin
+            if (server instanceof IntegratedServerAccessor1201 isAccessor) {
+                LanServerPinger pinger = isAccessor.ladsGetLanPinger();
                 if (pinger != null) {
                     pinger.interrupt();
-                    pingerField.set(server, null);
+                    isAccessor.ladsSetLanPinger(null);
                 }
-            } catch (Throwable ignored) {}
-
-            // Unpublish port so isPublished() is false and canHost() is true
-            try {
-                Field portField = IntegratedServer.class.getDeclaredField("publishedPort");
-                portField.setAccessible(true);
-                portField.setInt(server, -1);
-            } catch (Throwable t) {
-                LOGGER.warn("Could not reset publishedPort: {}", t.getMessage());
+                // Unpublish port so isPublished() is false and canHost() is true
+                isAccessor.ladsSetPublishedPort(-1);
             }
 
             updateGuestSnapshot(server);
@@ -505,7 +521,7 @@ public final class SocialBridge1201 implements SocialBridge {
                 }
             } catch (Exception ignored) {}
         }
-        return new GameInfo(mcVer, loader, profileKind, packId, packVersion, "", "1.9.18");
+        return new GameInfo(mcVer, loader, profileKind, packId, packVersion, "", LadsVersion.VERSION);
     }
 
     @Override

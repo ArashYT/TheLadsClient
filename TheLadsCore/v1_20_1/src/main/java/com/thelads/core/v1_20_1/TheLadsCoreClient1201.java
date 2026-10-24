@@ -91,6 +91,12 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
                     SocialBridge.get().openFriendsScreen();
                 }
             }
+            while (NativeKeyBindings1201.TOAST_ACCEPT.consumeClick()) {
+                SocialHudToast1201.acceptNewest();
+            }
+            while (NativeKeyBindings1201.TOAST_DENY.consumeClick()) {
+                SocialHudToast1201.denyNewest();
+            }
             NativeFeatures1201.tick();
             NativeDiscordPresence1201.tick();
             com.thelads.core.client.cosmetics.net.CosmeticsLink.tick();

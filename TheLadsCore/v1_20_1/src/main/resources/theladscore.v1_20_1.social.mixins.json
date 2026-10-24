@@ -8,10 +8,12 @@
   },
   "mixins": [
     "ServerConnectionListenerMixin",
+    "ServerConnectionListenerAccessor1201",
     "PlayerListLoginFilterMixin",
     "ServerChatMuteMixin"
   ],
   "client": [
+    "IntegratedServerAccessor1201",
     "LanServerPingerMixin",
     "ChatClickActionMixin",
     "ConnectScreenMixin"

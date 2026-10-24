@@ -150,12 +150,13 @@ public final class NativeFeatures1201 {
             var mc = Minecraft.getInstance();
             if (mc.screen == null) com.thelads.core.client.social.SocialBridge.get().openFriendsScreen();
         }
-        if (down) {
+        if (down && NativeKeyBindings1201.TOAST_ACCEPT.matches(key, scancode)) {
             var mc = Minecraft.getInstance();
-            if (mc.screen == null) {
-                if (key == GLFW.GLFW_KEY_Y) com.thelads.core.v1_20_1.social.SocialHudToast1201.acceptNewest();
-                else if (key == GLFW.GLFW_KEY_N) com.thelads.core.v1_20_1.social.SocialHudToast1201.denyNewest();
-            }
+            if (mc.screen == null) com.thelads.core.v1_20_1.social.SocialHudToast1201.acceptNewest();
+        }
+        if (down && NativeKeyBindings1201.TOAST_DENY.matches(key, scancode)) {
+            var mc = Minecraft.getInstance();
+            if (mc.screen == null) com.thelads.core.v1_20_1.social.SocialHudToast1201.denyNewest();
         }
     }
 

@@ -44,13 +44,13 @@ public final class FriendsScreen1201 extends Screen {
         int tabWidth = 70;
         int startX = (width - (tabWidth * 4 + 12)) / 2;
 
-        addRenderableWidget(Button.builder(Component.literal("Friends"), b -> currentTab = Tab.FRIENDS)
+        addRenderableWidget(Button.builder(Component.literal("Friends"), b -> { currentTab = Tab.FRIENDS; init(); })
             .bounds(startX, tabY, tabWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Requests"), b -> currentTab = Tab.REQUESTS)
+        addRenderableWidget(Button.builder(Component.literal("Requests"), b -> { currentTab = Tab.REQUESTS; init(); })
             .bounds(startX + tabWidth + 4, tabY, tabWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Blocked"), b -> currentTab = Tab.BLOCKED)
+        addRenderableWidget(Button.builder(Component.literal("Blocked"), b -> { currentTab = Tab.BLOCKED; init(); })
             .bounds(startX + (tabWidth + 4) * 2, tabY, tabWidth, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Add Friend"), b -> currentTab = Tab.ADD)
+        addRenderableWidget(Button.builder(Component.literal("Add Friend"), b -> { currentTab = Tab.ADD; init(); })
             .bounds(startX + (tabWidth + 4) * 3, tabY, tabWidth, 20).build());
 
         searchOrAddBox = new EditBox(font, width / 2 - 100, 68, 200, 20, Component.literal("Player Name"));

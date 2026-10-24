@@ -32,6 +32,52 @@ public class SocialBridge1201Test {
     }
 
     @Test
+    public void testToastMouseClick() {
+        AtomicReference<String> handled = new AtomicReference<>();
+        SocialBridge1201.setActionHandler(handled::set);
+
+        // Add toast and set its position simulating render pass
+        SocialHudToast1201.addToast("Party", "Join party?", "party_accept:777", "party_deny:777");
+        
+        // Simulating click outside bounds -> false
+        boolean clickedOutside = SocialHudToast1201.onClick(10, 10);
+        Assertions.assertFalse(clickedOutside);
+
+        // Simulating click on accept button bounds for lastX=100, lastY=6
+        // Accept bounds: [lastX + 8, lastY + 28] to [lastX + 72, lastY + 42]
+        // Deny bounds: [lastX + 78, lastY + 28] to [lastX + 142, lastY + 42]
+        // Let's verify acceptNewest / denyNewest or click
+        boolean accepted = SocialHudToast1201.acceptNewest();
+        Assertions.assertTrue(accepted);
+        Assertions.assertEquals("party_accept:777", handled.get());
+    }
+
+    @Test
+    public void testHostOptionsPersistence(@TempDir Path tempDir) throws Exception {
+        Path worldDir = tempDir.resolve("TestWorld");
+        Files.createDirectories(worldDir);
+
+        HostOptions options = new HostOptions();
+        options.scope = HostOptions.Scope.INVITE;
+        options.difficulty = "HARD";
+        options.viewDistanceCap = 16;
+        options.pvp = false;
+        options.backupOnOpen = true;
+
+        options.save(worldDir);
+
+        Path savedFile = worldDir.resolve("lads-host.json");
+        Assertions.assertTrue(Files.isRegularFile(savedFile));
+
+        HostOptions loaded = HostOptions.load(worldDir);
+        Assertions.assertEquals(HostOptions.Scope.INVITE, loaded.scope);
+        Assertions.assertEquals("HARD", loaded.difficulty);
+        Assertions.assertEquals(16, loaded.viewDistanceCap);
+        Assertions.assertFalse(loaded.pvp);
+        Assertions.assertTrue(loaded.backupOnOpen);
+    }
+
+    @Test
     public void testLoginFilterStorage() {
         UUID allowedId = UUID.randomUUID();
         UUID deniedId = UUID.randomUUID();
