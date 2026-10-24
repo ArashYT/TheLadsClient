@@ -156,6 +156,22 @@ public class HudParity1023Test {
         gt.onTick(true, true, 0, 1, 32, 32);
         gt.onTick(false, false, 0, 0, 0, 32);
         assertEquals(2, ct.getGapplesUsed());
+
+        // 5. Off-hand eat finishes (slot 36): starts at 16 gapples in off-hand
+        gt.onTick(true, true, 36, 16, 32, 32);
+        // Finishing tick: count drops to 15 in off-hand (slot 36)
+        gt.onTick(false, true, 36, 15, 0, 32);
+        assertEquals(3, ct.getGapplesUsed());
+
+        // 6. Off-hand eat cancelled: starts at 15 gapples in off-hand, cancelled after 10 ticks
+        gt.onTick(true, true, 36, 15, 10, 32);
+        gt.onTick(false, true, 36, 15, 0, 32);
+        assertEquals(3, ct.getGapplesUsed());
+
+        // 7. Off-hand eat last gapple in stack (1 -> 0)
+        gt.onTick(true, true, 36, 1, 32, 32);
+        gt.onTick(false, false, 36, 0, 0, 32);
+        assertEquals(4, ct.getGapplesUsed());
     }
 
     @Test
