@@ -3,8 +3,6 @@ package com.thelads.core.client.social.p2p;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
@@ -89,7 +87,14 @@ public final class ReliableStream implements AutoCloseable {
     private boolean finReceived = false;
     private volatile long lastReceivedTime = System.currentTimeMillis();
 
+    // Preallocated buffers for zero-allocation send & receive
+    private final long[] rxSackMask = new long[MAX_SACK_LONGS];
+    private final long[] txSackMask = new long[MAX_SACK_LONGS];
+    private final int[] txRetransmitBuf = new int[32];
+    private final int[] timerRetransmitBuf = new int[64];
     private final byte[] preallocatedAckBuf = new byte[BASE_HEADER_SIZE + MAX_SACK_LONGS * 8];
+    private final byte[] preallocatedPingBuf = new byte[BASE_HEADER_SIZE];
+    private final byte[] preallocatedFinBuf = new byte[BASE_HEADER_SIZE];
 
     private final ReliableOutputStream outputStream = new ReliableOutputStream();
     private final ReliableInputStream inputStream = new ReliableInputStream();
@@ -143,20 +148,20 @@ public final class ReliableStream implements AutoCloseable {
 
         int sackCount = data[offset + 1] & 0xFF;
         int dataLen = ((data[offset + 2] & 0xFF) << 8) | (data[offset + 3] & 0xFF);
-        int seq = ByteBuffer.wrap(data, offset + 4, 4).order(ByteOrder.BIG_ENDIAN).getInt();
-        int ack = ByteBuffer.wrap(data, offset + 8, 4).order(ByteOrder.BIG_ENDIAN).getInt();
-        int timestamp = ByteBuffer.wrap(data, offset + 12, 4).order(ByteOrder.BIG_ENDIAN).getInt();
+        int seq = StunMessage.getIntBE(data, offset + 4);
+        int ack = StunMessage.getIntBE(data, offset + 8);
+        int timestamp = StunMessage.getIntBE(data, offset + 12);
 
         int headerLen = BASE_HEADER_SIZE + sackCount * 8;
         if (headerLen + dataLen > length) return;
 
-        long[] sackMask = new long[sackCount];
-        for (int i = 0; i < sackCount; i++) {
-            sackMask[i] = ByteBuffer.wrap(data, offset + BASE_HEADER_SIZE + i * 8, 8).order(ByteOrder.BIG_ENDIAN).getLong();
+        int actualSacks = Math.min(sackCount, MAX_SACK_LONGS);
+        for (int i = 0; i < actualSacks; i++) {
+            rxSackMask[i] = StunMessage.getLongBE(data, offset + BASE_HEADER_SIZE + i * 8);
         }
 
         if ((flags & (FLAG_ACK | FLAG_DATA | FLAG_FIN | FLAG_PONG)) != 0) {
-            handleAck(ack, sackMask, timestamp);
+            handleAck(ack, rxSackMask, actualSacks, timestamp);
         }
 
         if ((flags & FLAG_FIN) != 0) {
@@ -204,7 +209,7 @@ public final class ReliableStream implements AutoCloseable {
                     shouldAck = true;
                 }
             } else if (diff < 0) {
-                // Duplicate packet, acknowledge occasionally or if duplicate
+                // Duplicate packet, acknowledge so sender knows we already received it!
                 shouldAck = true;
             }
         } finally {
@@ -216,8 +221,7 @@ public final class ReliableStream implements AutoCloseable {
         }
     }
 
-    private void handleAck(int ack, long[] sackMask, int timestamp) {
-        int[] toRetransmitSeqs = null;
+    private void handleAck(int ack, long[] sackMask, int sackCount, int timestamp) {
         int toRetransmitCount = 0;
 
         txLock.lock();
@@ -253,7 +257,7 @@ public final class ReliableStream implements AutoCloseable {
             }
 
             int highestSacked = ack;
-            for (int longIdx = 0; longIdx < sackMask.length; longIdx++) {
+            for (int longIdx = 0; longIdx < sackCount; longIdx++) {
                 long mask = sackMask[longIdx];
                 if (mask == 0) continue;
                 for (int bit = 0; bit < 64; bit++) {
@@ -274,13 +278,12 @@ public final class ReliableStream implements AutoCloseable {
 
             // Immediate Fast Retransmit: only retransmit un-sacked packets that haven't been retransmitted yet!
             if (highestSacked > ack) {
-                toRetransmitSeqs = new int[32];
                 long now = System.currentTimeMillis();
-                for (int s = sndUna; s < highestSacked && toRetransmitCount < 32; s++) {
+                for (int s = sndUna; s < highestSacked && toRetransmitCount < txRetransmitBuf.length; s++) {
                     TxSlot slot = txSlots[s & WINDOW_MASK];
                     if (slot.inUse && slot.seq == s && !slot.sacked) {
                         if (slot.retransmits == 0) {
-                            toRetransmitSeqs[toRetransmitCount++] = s;
+                            txRetransmitBuf[toRetransmitCount++] = s;
                             slot.sendTimeMs = now;
                             slot.retransmits = 1;
                         }
@@ -293,7 +296,7 @@ public final class ReliableStream implements AutoCloseable {
 
         if (toRetransmitCount > 0) {
             for (int i = 0; i < toRetransmitCount; i++) {
-                int seq = toRetransmitSeqs[i];
+                int seq = txRetransmitBuf[i];
                 TxSlot slot;
                 txLock.lock();
                 try {
@@ -313,19 +316,21 @@ public final class ReliableStream implements AutoCloseable {
 
     private void sendAck() {
         int ack;
-        long[] sackMask = new long[MAX_SACK_LONGS];
         int numSackLongs = 0;
 
         rxLock.lock();
         try {
             ack = rcvNxt - 1;
+            for (int l = 0; l < MAX_SACK_LONGS; l++) {
+                txSackMask[l] = 0L;
+            }
             for (int i = 0; i < WINDOW_SIZE; i++) {
                 int testSeq = rcvNxt + i;
                 RxSlot slot = rxSlots[testSeq & WINDOW_MASK];
                 if (slot.received && slot.seq == testSeq) {
                     int longIdx = i / 64;
                     int bitIdx = i % 64;
-                    sackMask[longIdx] |= (1L << bitIdx);
+                    txSackMask[longIdx] |= (1L << bitIdx);
                     if (longIdx + 1 > numSackLongs) {
                         numSackLongs = longIdx + 1;
                     }
@@ -342,13 +347,13 @@ public final class ReliableStream implements AutoCloseable {
             preallocatedAckBuf[2] = 0;
             preallocatedAckBuf[3] = 0;
 
-            ByteBuffer.wrap(preallocatedAckBuf, 4, 4).order(ByteOrder.BIG_ENDIAN).putInt(0);
-            ByteBuffer.wrap(preallocatedAckBuf, 8, 4).order(ByteOrder.BIG_ENDIAN).putInt(ack);
+            StunMessage.putIntBE(preallocatedAckBuf, 4, 0);
+            StunMessage.putIntBE(preallocatedAckBuf, 8, ack);
             int nowTs = (int) (System.currentTimeMillis() & 0xFFFFFFFFL);
-            ByteBuffer.wrap(preallocatedAckBuf, 12, 4).order(ByteOrder.BIG_ENDIAN).putInt(nowTs);
+            StunMessage.putIntBE(preallocatedAckBuf, 12, nowTs);
 
             for (int i = 0; i < numSackLongs; i++) {
-                ByteBuffer.wrap(preallocatedAckBuf, BASE_HEADER_SIZE + i * 8, 8).order(ByteOrder.BIG_ENDIAN).putLong(sackMask[i]);
+                StunMessage.putLongBE(preallocatedAckBuf, BASE_HEADER_SIZE + i * 8, txSackMask[i]);
             }
 
             try {
@@ -360,8 +365,6 @@ public final class ReliableStream implements AutoCloseable {
     }
 
     private void runTimerLoop() {
-        int[] retransmitSeqs = new int[64];
-
         while (!closed.get() && !dead.get()) {
             try {
                 Thread.sleep(10);
@@ -392,11 +395,11 @@ public final class ReliableStream implements AutoCloseable {
             int count = 0;
             txLock.lock();
             try {
-                for (int s = sndUna; s < sndNxt && count < retransmitSeqs.length; s++) {
+                for (int s = sndUna; s < sndNxt && count < timerRetransmitBuf.length; s++) {
                     TxSlot slot = txSlots[s & WINDOW_MASK];
                     if (slot.inUse && slot.seq == s && !slot.sacked) {
                         if (now - slot.sendTimeMs >= slot.slotRto) {
-                            retransmitSeqs[count++] = s;
+                            timerRetransmitBuf[count++] = s;
                             slot.sendTimeMs = now;
                             slot.slotRto = Math.min(3000, slot.slotRto * 2);
                             slot.retransmits++;
@@ -409,7 +412,7 @@ public final class ReliableStream implements AutoCloseable {
 
             if (count > 0) {
                 for (int i = 0; i < count; i++) {
-                    int seq = retransmitSeqs[i];
+                    int seq = timerRetransmitBuf[i];
                     TxSlot slot;
                     txLock.lock();
                     try {
@@ -442,30 +445,35 @@ public final class ReliableStream implements AutoCloseable {
             rxLock.unlock();
         }
 
-        byte[] ping = new byte[BASE_HEADER_SIZE];
-        ping[0] = (byte) (FLAG_PROTOCOL | FLAG_PING | FLAG_ACK);
-        ping[1] = 0;
-        ping[2] = 0;
-        ping[3] = 0;
-        ByteBuffer.wrap(ping, 4, 4).order(ByteOrder.BIG_ENDIAN).putInt(0);
-        ByteBuffer.wrap(ping, 8, 4).order(ByteOrder.BIG_ENDIAN).putInt(ack);
-        int nowTs = (int) (System.currentTimeMillis() & 0xFFFFFFFFL);
-        ByteBuffer.wrap(ping, 12, 4).order(ByteOrder.BIG_ENDIAN).putInt(nowTs);
+        synchronized (preallocatedPingBuf) {
+            preallocatedPingBuf[0] = (byte) (FLAG_PROTOCOL | FLAG_PING | FLAG_ACK);
+            preallocatedPingBuf[1] = 0;
+            preallocatedPingBuf[2] = 0;
+            preallocatedPingBuf[3] = 0;
+            StunMessage.putIntBE(preallocatedPingBuf, 4, 0);
+            StunMessage.putIntBE(preallocatedPingBuf, 8, ack);
+            int nowTs = (int) (System.currentTimeMillis() & 0xFFFFFFFFL);
+            StunMessage.putIntBE(preallocatedPingBuf, 12, nowTs);
 
-        try {
-            sender.send(ping, 0, ping.length);
-            totalBytesSent.addAndGet(ping.length);
-        } catch (Exception ignored) {
+            try {
+                sender.send(preallocatedPingBuf, 0, BASE_HEADER_SIZE);
+                totalBytesSent.addAndGet(BASE_HEADER_SIZE);
+            } catch (Exception ignored) {
+            }
         }
     }
 
     private class ReliableOutputStream extends OutputStream {
         private final byte[] stagingBuf = new byte[MAX_PAYLOAD_SIZE];
+        private final byte[] singleByteBuf = new byte[1];
         private int stagingPos = 0;
 
         @Override
         public void write(int b) throws IOException {
-            write(new byte[]{(byte) b}, 0, 1);
+            synchronized (singleByteBuf) {
+                singleByteBuf[0] = (byte) b;
+                write(singleByteBuf, 0, 1);
+            }
         }
 
         @Override
@@ -533,7 +541,7 @@ public final class ReliableStream implements AutoCloseable {
                 slot.packetData[2] = (byte) ((payloadLen >> 8) & 0xFF);
                 slot.packetData[3] = (byte) (payloadLen & 0xFF);
 
-                ByteBuffer.wrap(slot.packetData, 4, 4).order(ByteOrder.BIG_ENDIAN).putInt(seq);
+                StunMessage.putIntBE(slot.packetData, 4, seq);
 
                 int ack;
                 rxLock.lock();
@@ -542,10 +550,10 @@ public final class ReliableStream implements AutoCloseable {
                 } finally {
                     rxLock.unlock();
                 }
-                ByteBuffer.wrap(slot.packetData, 8, 4).order(ByteOrder.BIG_ENDIAN).putInt(ack);
+                StunMessage.putIntBE(slot.packetData, 8, ack);
 
                 int nowTs = (int) (slot.sendTimeMs & 0xFFFFFFFFL);
-                ByteBuffer.wrap(slot.packetData, 12, 4).order(ByteOrder.BIG_ENDIAN).putInt(nowTs);
+                StunMessage.putIntBE(slot.packetData, 12, nowTs);
 
                 System.arraycopy(stagingBuf, 0, slot.packetData, BASE_HEADER_SIZE, payloadLen);
                 slot.packetLen = BASE_HEADER_SIZE + payloadLen;
@@ -563,38 +571,45 @@ public final class ReliableStream implements AutoCloseable {
         @Override
         public void close() throws IOException {
             flush();
-            byte[] fin = new byte[BASE_HEADER_SIZE];
-            txLock.lock();
-            try {
-                fin[0] = (byte) (FLAG_PROTOCOL | FLAG_FIN | FLAG_ACK);
-                fin[1] = 0;
-                fin[2] = 0;
-                fin[3] = 0;
-                ByteBuffer.wrap(fin, 4, 4).order(ByteOrder.BIG_ENDIAN).putInt(sndNxt);
-                int ack;
-                rxLock.lock();
+            synchronized (preallocatedFinBuf) {
+                preallocatedFinBuf[0] = (byte) (FLAG_PROTOCOL | FLAG_FIN | FLAG_ACK);
+                preallocatedFinBuf[1] = 0;
+                preallocatedFinBuf[2] = 0;
+                preallocatedFinBuf[3] = 0;
+
+                txLock.lock();
                 try {
-                    ack = rcvNxt - 1;
+                    StunMessage.putIntBE(preallocatedFinBuf, 4, sndNxt);
+                    int nowTs = (int) (System.currentTimeMillis() & 0xFFFFFFFFL);
+                    StunMessage.putIntBE(preallocatedFinBuf, 12, nowTs);
+                    int ack;
+                    rxLock.lock();
+                    try {
+                        ack = rcvNxt - 1;
+                    } finally {
+                        rxLock.unlock();
+                    }
+                    StunMessage.putIntBE(preallocatedFinBuf, 8, ack);
                 } finally {
-                    rxLock.unlock();
+                    txLock.unlock();
                 }
-                ByteBuffer.wrap(fin, 8, 4).order(ByteOrder.BIG_ENDIAN).putInt(ack);
-            } finally {
-                txLock.unlock();
-            }
-            try {
-                sender.send(fin, 0, fin.length);
-            } catch (Exception ignored) {
+                try {
+                    sender.send(preallocatedFinBuf, 0, BASE_HEADER_SIZE);
+                } catch (Exception ignored) {
+                }
             }
         }
     }
 
     private class ReliableInputStream extends InputStream {
+        private final byte[] singleReadBuf = new byte[1];
+
         @Override
         public int read() throws IOException {
-            byte[] b = new byte[1];
-            int n = read(b, 0, 1);
-            return n == -1 ? -1 : (b[0] & 0xFF);
+            synchronized (singleReadBuf) {
+                int n = read(singleReadBuf, 0, 1);
+                return n == -1 ? -1 : (singleReadBuf[0] & 0xFF);
+            }
         }
 
         @Override

@@ -14,9 +14,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -84,10 +86,15 @@ public class IceAgentTest {
 
     @Test
     public void relayOnlyUsesRelayCandidate() throws Exception {
-        // Start fake TURN server
+        // Start fake strict TURN server (rejects unbound ChannelData and unpermitted indications)
         DatagramSocket fakeServer = new DatagramSocket(0, InetAddress.getByName("127.0.0.1"));
         int fakePort = fakeServer.getLocalPort();
         AtomicBoolean running = new AtomicBoolean(true);
+
+        java.util.Set<InetAddress> permittedIps = ConcurrentHashMap.newKeySet();
+        ConcurrentHashMap<Integer, InetSocketAddress> boundChannels = new ConcurrentHashMap<>();
+        AtomicInteger unboundDrops = new AtomicInteger(0);
+        AtomicInteger unpermittedDrops = new AtomicInteger(0);
 
         Thread serverThread = new Thread(() -> {
             byte[] buf = new byte[2048];
@@ -95,7 +102,27 @@ public class IceAgentTest {
                 try {
                     DatagramPacket p = new DatagramPacket(buf, buf.length);
                     fakeServer.receive(p);
+
+                    // Reject unbound ChannelData
+                    if (TurnClient.isChannelData(buf, 0, p.getLength())) {
+                        int ch = TurnClient.getChannelNumber(buf, 0);
+                        if (!boundChannels.containsKey(ch)) {
+                            unboundDrops.incrementAndGet();
+                            continue;
+                        }
+                    }
+
                     StunMessage msg = StunMessage.decode(buf, 0, p.getLength());
+
+                    // Reject unpermitted Send indications
+                    if (msg.getType() == StunMessage.SEND_INDICATION) {
+                        InetSocketAddress peer = msg.getXorAddressAttribute(StunMessage.ATTR_XOR_PEER_ADDRESS);
+                        if (peer == null || !permittedIps.contains(peer.getAddress())) {
+                            unpermittedDrops.incrementAndGet();
+                            continue;
+                        }
+                    }
+
                     if (msg.getType() == StunMessage.ALLOCATE_REQUEST) {
                         String user = msg.getStringAttribute(StunMessage.ATTR_USERNAME);
                         if (user == null) {
@@ -114,11 +141,22 @@ public class IceAgentTest {
                             fakeServer.send(new DatagramPacket(resp, resp.length, p.getSocketAddress()));
                         }
                     } else if (msg.getType() == StunMessage.CREATE_PERMISSION_REQUEST) {
+                        InetSocketAddress peer = msg.getXorAddressAttribute(StunMessage.ATTR_XOR_PEER_ADDRESS);
+                        if (peer != null) {
+                            permittedIps.add(peer.getAddress());
+                        }
                         byte[] key = StunMessage.deriveLongTermKey("u", "realm", "p");
                         StunMessage ok = new StunMessage(StunMessage.CREATE_PERMISSION_RESPONSE, msg.getTransactionId());
                         byte[] resp = ok.encode(key, true);
                         fakeServer.send(new DatagramPacket(resp, resp.length, p.getSocketAddress()));
                     } else if (msg.getType() == StunMessage.CHANNEL_BIND_REQUEST) {
+                        Integer chAttr = msg.getIntAttribute(StunMessage.ATTR_CHANNEL_NUMBER);
+                        InetSocketAddress peer = msg.getXorAddressAttribute(StunMessage.ATTR_XOR_PEER_ADDRESS);
+                        int ch = (chAttr != null) ? ((chAttr >>> 16) & 0xFFFF) : 0;
+                        if (ch == 0 && chAttr != null) ch = chAttr & 0xFFFF;
+                        if (ch >= 0x4000 && ch <= 0x7FFE && peer != null) {
+                            boundChannels.put(ch, peer);
+                        }
                         byte[] key = StunMessage.deriveLongTermKey("u", "realm", "p");
                         StunMessage ok = new StunMessage(StunMessage.CHANNEL_BIND_RESPONSE, msg.getTransactionId());
                         byte[] resp = ok.encode(key, true);

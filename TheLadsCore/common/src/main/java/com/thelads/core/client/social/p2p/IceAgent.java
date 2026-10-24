@@ -10,15 +10,14 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
-import java.nio.ByteBuffer;
 import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -62,8 +61,8 @@ public final class IceAgent implements AutoCloseable {
     private volatile String remoteUfrag;
     private volatile String remotePwd;
 
-    private final List<Candidate> localCandidates = new java.util.concurrent.CopyOnWriteArrayList<>();
-    private final List<Candidate> remoteCandidates = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final List<Candidate> localCandidates = new CopyOnWriteArrayList<>();
+    private final List<Candidate> remoteCandidates = new CopyOnWriteArrayList<>();
 
     private volatile TurnClient turnClient;
     private volatile InetSocketAddress selectedRemoteAddress;
@@ -197,6 +196,7 @@ public final class IceAgent implements AutoCloseable {
                 try {
                     // TurnClient creates its own dedicated DatagramSocket to avoid thread contention
                     this.turnClient = new TurnClient(ts.url(), ts.user(), ts.credential());
+                    this.turnClient.setDataHandler(this::handleIncomingTurnData);
                     InetSocketAddress relayed = turnClient.allocate();
                     if (relayed != null) {
                         localCandidates.add(new Candidate("relay", relayed.getAddress().getHostAddress(), relayed.getPort(), PRIORITY_RELAY));
@@ -205,6 +205,22 @@ public final class IceAgent implements AutoCloseable {
                 }
             }
         }
+    }
+
+    private void handleIncomingTurnData(InetSocketAddress peer, byte[] data, int off, int len) {
+        if (len >= StunMessage.HEADER_LENGTH) {
+            int firstByte = data[off] & 0xFF;
+            if ((firstByte & 0xC0) == 0) {
+                int cookie = StunMessage.getIntBE(data, off + 4);
+                if (cookie == StunMessage.MAGIC_COOKIE) {
+                    handleStunPacket(data, off, len, peer, true);
+                    return;
+                }
+            }
+        }
+        byte[] payload = new byte[len];
+        System.arraycopy(data, off, payload, 0, len);
+        handleDemuxedPacket(payload, peer);
     }
 
     private void sendCandidateSignal() {
@@ -283,7 +299,17 @@ public final class IceAgent implements AutoCloseable {
 
             InetSocketAddress target = remote.toSocketAddress();
             if ("relay".equals(local.type) && turnClient != null) {
-                turnClient.sendChannelData(0x4000, encoded, 0, encoded.length);
+                // RFC 8656: create permission for peer IP before sending checks through relay
+                if (!turnClient.hasPermission(target.getAddress())) {
+                    turnClient.createPermission(target);
+                }
+                Integer ch = turnClient.getBoundChannel(target);
+                if (ch != null) {
+                    turnClient.sendChannelData(ch, encoded, 0, encoded.length);
+                } else {
+                    // Send indications before channel bind completes
+                    turnClient.sendIndication(target, encoded, 0, encoded.length);
+                }
             } else {
                 DatagramPacket dp = new DatagramPacket(encoded, encoded.length, target);
                 socket.send(dp);
@@ -308,24 +334,11 @@ public final class IceAgent implements AutoCloseable {
                     if (len >= StunMessage.HEADER_LENGTH) {
                         int firstByte = buf[0] & 0xFF;
                         if ((firstByte & 0xC0) == 0) {
-                            int cookie = ByteBuffer.wrap(buf, 4, 4).getInt();
+                            int cookie = StunMessage.getIntBE(buf, 4);
                             if (cookie == StunMessage.MAGIC_COOKIE) {
-                                handleStunPacket(buf, len, sender);
+                                handleStunPacket(buf, 0, len, sender, false);
                                 continue;
                             }
-                        }
-                    }
-
-                    // Check for TURN ChannelData only when relayed and coming from TURN server
-                    if (selectedPairRelayed && turnClient != null && sender.equals(turnClient.getServerAddress())) {
-                        if (TurnClient.isChannelData(buf, 0, len)) {
-                            int dataLen = TurnClient.getChannelDataLength(buf, 0);
-                            if (dataLen <= len - 4) {
-                                byte[] payload = new byte[dataLen];
-                                System.arraycopy(buf, 4, payload, 0, dataLen);
-                                handleDemuxedPacket(payload, sender);
-                            }
-                            continue;
                         }
                     }
 
@@ -344,9 +357,9 @@ public final class IceAgent implements AutoCloseable {
         readerThread.start();
     }
 
-    private void handleStunPacket(byte[] buf, int len, InetSocketAddress sender) {
+    private void handleStunPacket(byte[] buf, int off, int len, InetSocketAddress sender, boolean viaRelay) {
         try {
-            StunMessage msg = StunMessage.decode(buf, 0, len);
+            StunMessage msg = StunMessage.decode(buf, off, len);
             if (msg.getType() == StunMessage.BINDING_REQUEST) {
                 boolean useCandidate = msg.hasAttribute(StunMessage.ATTR_USE_CANDIDATE);
 
@@ -356,11 +369,23 @@ public final class IceAgent implements AutoCloseable {
                 byte[] key = StunMessage.deriveShortTermKey(localPwd);
                 byte[] encoded = resp.encode(key, true);
 
-                DatagramPacket dp = new DatagramPacket(encoded, encoded.length, sender);
-                socket.send(dp);
+                if (viaRelay && turnClient != null) {
+                    if (!turnClient.hasPermission(sender.getAddress())) {
+                        turnClient.createPermission(sender);
+                    }
+                    Integer ch = turnClient.getBoundChannel(sender);
+                    if (ch != null) {
+                        turnClient.sendChannelData(ch, encoded, 0, encoded.length);
+                    } else {
+                        turnClient.sendIndication(sender, encoded, 0, encoded.length);
+                    }
+                } else {
+                    DatagramPacket dp = new DatagramPacket(encoded, encoded.length, sender);
+                    socket.send(dp);
+                }
 
                 if (useCandidate || !host) {
-                    nominate(sender, false);
+                    nominate(sender, viaRelay);
                 }
             } else if (msg.getType() == StunMessage.BINDING_RESPONSE) {
                 String tidHex = toHex(msg.getTransactionId());
@@ -390,8 +415,11 @@ public final class IceAgent implements AutoCloseable {
 
             if (isRelayed && turnClient != null) {
                 try {
-                    turnClient.createPermission(remoteAddr);
-                    turnClient.channelBind(0x4000, remoteAddr);
+                    if (!turnClient.hasPermission(remoteAddr.getAddress())) {
+                        turnClient.createPermission(remoteAddr);
+                    }
+                    // RFC 8656: ChannelBind only for the nominated pair
+                    turnClient.channelBind(remoteAddr);
                 } catch (Exception ignored) {
                 }
             }
@@ -404,7 +432,12 @@ public final class IceAgent implements AutoCloseable {
         if (selectedRemoteAddress == null) throw new IOException("IceAgent not connected yet");
 
         if (selectedPairRelayed && turnClient != null) {
-            turnClient.sendChannelData(0x4000, data, offset, length);
+            Integer ch = turnClient.getBoundChannel(selectedRemoteAddress);
+            if (ch != null) {
+                turnClient.sendChannelData(ch, data, offset, length);
+            } else {
+                turnClient.sendIndication(selectedRemoteAddress, data, offset, length);
+            }
         } else {
             DatagramPacket dp = new DatagramPacket(data, offset, length, selectedRemoteAddress);
             socket.send(dp);

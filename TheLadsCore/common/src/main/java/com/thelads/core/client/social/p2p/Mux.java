@@ -13,15 +13,21 @@ import java.util.concurrent.locks.ReentrantLock;
  * Multiplexes multiple independent streams over a single underlying ReliableStream.
  * Stream IDs:
  *   0 = Minecraft connection
- *   1 = Control
+ *   1 = Control (high-priority, unthrottled)
  *   2+ = Resource pack transfers / other
+ *
+ * Implements per-stream credit-based flow control (512 KB window) to prevent
+ * head-of-line blocking in the dispatcher thread.
  */
 public final class Mux implements AutoCloseable {
-    public static final int FRAME_DATA  = 0x01;
-    public static final int FRAME_CLOSE = 0x02;
-    public static final int FRAME_RESET = 0x03;
+    public static final int FRAME_DATA          = 0x01;
+    public static final int FRAME_CLOSE         = 0x02;
+    public static final int FRAME_RESET         = 0x03;
+    public static final int FRAME_WINDOW_UPDATE = 0x04;
 
     public static final int MAX_CHUNK_SIZE = 4096;
+    public static final int INITIAL_WINDOW_SIZE = 512 * 1024; // 512 KB
+    public static final int WINDOW_UPDATE_THRESHOLD = 64 * 1024; // 64 KB
 
     private final InputStream underIn;
     private final OutputStream underOut;
@@ -79,6 +85,11 @@ public final class Mux implements AutoCloseable {
                     stream.receiveClose();
                 } else if (type == FRAME_RESET) {
                     stream.receiveReset();
+                } else if (type == FRAME_WINDOW_UPDATE) {
+                    if (len >= 4) {
+                        int credit = StunMessage.getIntBE(payloadBuf, 0);
+                        stream.addSendCredit(credit);
+                    }
                 }
             } catch (Exception e) {
                 // Underlying stream closed or EOF
@@ -144,17 +155,22 @@ public final class Mux implements AutoCloseable {
         private final int streamId;
         private final Mux mux;
 
+        // RX state
         private final ReentrantLock lock = new ReentrantLock();
         private final Condition dataCond = lock.newCondition();
-        private final Condition spaceCond = lock.newCondition();
-
-        // Circular buffer (512 KB capacity)
-        private final byte[] ring = new byte[512 * 1024];
+        // Ring buffer: 512 KB capacity + headroom
+        private final byte[] ring = new byte[INITIAL_WINDOW_SIZE + MAX_CHUNK_SIZE * 2];
         private int head = 0;
         private int tail = 0;
         private int count = 0;
+        private int unackConsumed = 0;
         private boolean eof = false;
         private boolean reset = false;
+
+        // TX flow control credit
+        private final ReentrantLock sendLock = new ReentrantLock();
+        private final Condition creditCond = sendLock.newCondition();
+        private long sendCredit = INITIAL_WINDOW_SIZE;
 
         private final InputStream in = new InputStream() {
             @Override
@@ -167,6 +183,9 @@ public final class Mux implements AutoCloseable {
             @Override
             public int read(byte[] b, int off, int len) throws IOException {
                 if (len == 0) return 0;
+
+                int updateToSend = 0;
+                int toRead;
 
                 lock.lock();
                 try {
@@ -182,17 +201,30 @@ public final class Mux implements AutoCloseable {
                         }
                     }
 
-                    int toRead = Math.min(len, count);
+                    toRead = Math.min(len, count);
                     for (int i = 0; i < toRead; i++) {
                         b[off + i] = ring[head];
                         head = (head + 1) % ring.length;
                     }
                     count -= toRead;
-                    spaceCond.signalAll();
-                    return toRead;
+                    unackConsumed += toRead;
+
+                    if (unackConsumed >= WINDOW_UPDATE_THRESHOLD || (count == 0 && unackConsumed > 0)) {
+                        updateToSend = unackConsumed;
+                        unackConsumed = 0;
+                    }
                 } finally {
                     lock.unlock();
                 }
+
+                // Send WINDOW_UPDATE outside rx lock
+                if (updateToSend > 0) {
+                    byte[] creditPayload = new byte[4];
+                    StunMessage.putIntBE(creditPayload, 0, updateToSend);
+                    mux.writeFrame(streamId, FRAME_WINDOW_UPDATE, creditPayload, 0, 4);
+                }
+
+                return toRead;
             }
         };
 
@@ -204,10 +236,33 @@ public final class Mux implements AutoCloseable {
 
             @Override
             public void write(byte[] b, int off, int len) throws IOException {
+                if (len == 0) return;
                 int remaining = len;
                 int curOff = off;
                 while (remaining > 0) {
                     int chunk = Math.min(remaining, MAX_CHUNK_SIZE);
+
+                    // Flow control: wait for credit unless control stream 1
+                    if (streamId != 1) {
+                        sendLock.lock();
+                        try {
+                            while (sendCredit < chunk) {
+                                if (mux.closed.get() || reset) {
+                                    throw new IOException("Stream " + streamId + " closed or reset");
+                                }
+                                try {
+                                    creditCond.await();
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                    throw new IOException("Write interrupted", e);
+                                }
+                            }
+                            sendCredit -= chunk;
+                        } finally {
+                            sendLock.unlock();
+                        }
+                    }
+
                     mux.writeFrame(streamId, FRAME_DATA, b, curOff, chunk);
                     curOff += chunk;
                     remaining -= chunk;
@@ -233,35 +288,29 @@ public final class Mux implements AutoCloseable {
             return out;
         }
 
+        void addSendCredit(int delta) {
+            sendLock.lock();
+            try {
+                sendCredit += delta;
+                creditCond.signalAll();
+            } finally {
+                sendLock.unlock();
+            }
+        }
+
         void receiveData(byte[] data, int off, int len) {
             lock.lock();
             try {
                 if (eof || reset) return;
 
-                int remaining = len;
-                int curOff = off;
-                while (remaining > 0) {
-                    while (count == ring.length) {
-                        if (eof || reset || mux.closed.get()) return;
-                        try {
-                            spaceCond.await();
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            return;
-                        }
-                    }
-
-                    int space = ring.length - count;
-                    int toCopy = Math.min(remaining, space);
-                    for (int i = 0; i < toCopy; i++) {
-                        ring[tail] = data[curOff + i];
-                        tail = (tail + 1) % ring.length;
-                    }
-                    count += toCopy;
-                    curOff += toCopy;
-                    remaining -= toCopy;
-                    dataCond.signalAll();
+                int space = ring.length - count;
+                int toCopy = Math.min(len, space);
+                for (int i = 0; i < toCopy; i++) {
+                    ring[tail] = data[off + i];
+                    tail = (tail + 1) % ring.length;
                 }
+                count += toCopy;
+                dataCond.signalAll();
             } finally {
                 lock.unlock();
             }
@@ -272,9 +321,14 @@ public final class Mux implements AutoCloseable {
             try {
                 eof = true;
                 dataCond.signalAll();
-                spaceCond.signalAll();
             } finally {
                 lock.unlock();
+            }
+            sendLock.lock();
+            try {
+                creditCond.signalAll();
+            } finally {
+                sendLock.unlock();
             }
         }
 
@@ -283,9 +337,14 @@ public final class Mux implements AutoCloseable {
             try {
                 reset = true;
                 dataCond.signalAll();
-                spaceCond.signalAll();
             } finally {
                 lock.unlock();
+            }
+            sendLock.lock();
+            try {
+                creditCond.signalAll();
+            } finally {
+                sendLock.unlock();
             }
         }
     }

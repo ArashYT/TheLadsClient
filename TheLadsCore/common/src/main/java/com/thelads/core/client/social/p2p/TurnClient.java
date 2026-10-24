@@ -5,18 +5,23 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * TURN client (RFC 8656) supporting Allocate, Refresh, CreatePermission, ChannelBind, and ChannelData.
+ * TURN client (RFC 8656) supporting Allocate, Refresh, CreatePermission, ChannelBind, ChannelData,
+ * and Send/Data indications.
  * Authenticates using the long-term credential mechanism (RFC 5389).
  */
 public final class TurnClient implements AutoCloseable {
+    public interface DataHandler {
+        void onData(InetSocketAddress peer, byte[] data, int off, int len);
+    }
+
     private final String rawUrl;
     private final String username;
     private final String password;
@@ -31,8 +36,20 @@ public final class TurnClient implements AutoCloseable {
     private int lifetimeSeconds;
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
-    // Bound channels: channelNumber -> peer address
+    // Bound channels: channelNumber -> peer address, and peer address -> channelNumber
     private final ConcurrentHashMap<Integer, InetSocketAddress> boundChannels = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<InetSocketAddress, Integer> peerToChannel = new ConcurrentHashMap<>();
+    private final java.util.Set<InetAddress> permittedIps = ConcurrentHashMap.newKeySet();
+    private final ConcurrentHashMap<InetSocketAddress, Long> permissionExpiresAt = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, Long> channelExpiresAt = new ConcurrentHashMap<>();
+    private final AtomicInteger nextChannelNumber = new AtomicInteger(0x4000);
+    private volatile long allocationExpiresAt = 0;
+
+    // Asynchronous request dispatching
+    private final ConcurrentHashMap<String, CompletableFuture<StunMessage>> pendingRequests = new ConcurrentHashMap<>();
+    private volatile DataHandler dataHandler;
+    private Thread readerThread;
+    private Thread refresherThread;
 
     public TurnClient(String url, String username, String password) throws IOException {
         this(url, username, password, new DatagramSocket(), true);
@@ -49,6 +66,8 @@ public final class TurnClient implements AutoCloseable {
         this.socket = socket;
         this.ownsSocket = ownsSocket;
         this.serverAddress = parseServerAddress(url);
+
+        startReader();
     }
 
     public static InetSocketAddress parseServerAddress(String url) {
@@ -90,6 +109,72 @@ public final class TurnClient implements AutoCloseable {
         return socket;
     }
 
+    public void setDataHandler(DataHandler handler) {
+        this.dataHandler = handler;
+    }
+
+    private void startReader() {
+        readerThread = new Thread(this::runReader, "TurnClient-Reader");
+        readerThread.setDaemon(true);
+        readerThread.setPriority(Thread.MIN_PRIORITY + 1);
+        readerThread.start();
+    }
+
+    private void runReader() {
+        byte[] inBuf = new byte[2048];
+        while (!closed.get() && !socket.isClosed()) {
+            try {
+                DatagramPacket inPkt = new DatagramPacket(inBuf, inBuf.length);
+                socket.receive(inPkt);
+                int len = inPkt.getLength();
+                if (len < 4) continue;
+
+                // 1. ChannelData (0x4000 .. 0x7FFE)
+                if (isChannelData(inBuf, 0, len)) {
+                    int chNum = getChannelNumber(inBuf, 0);
+                    int dataLen = getChannelDataLength(inBuf, 0);
+                    if (dataLen <= len - 4) {
+                        InetSocketAddress peer = boundChannels.get(chNum);
+                        DataHandler handler = this.dataHandler;
+                        if (peer != null && handler != null) {
+                            byte[] copy = new byte[dataLen];
+                            System.arraycopy(inBuf, 4, copy, 0, dataLen);
+                            handler.onData(peer, copy, 0, dataLen);
+                        }
+                    }
+                    continue;
+                }
+
+                // 2. STUN message
+                if (len >= StunMessage.HEADER_LENGTH) {
+                    int cookie = StunMessage.getIntBE(inBuf, 4);
+                    if (cookie == StunMessage.MAGIC_COOKIE) {
+                        StunMessage msg = StunMessage.decode(inBuf, 0, len);
+                        if (msg.getType() == StunMessage.DATA_INDICATION) {
+                            InetSocketAddress peer = msg.getXorAddressAttribute(StunMessage.ATTR_XOR_PEER_ADDRESS);
+                            byte[] data = msg.getDataAttribute();
+                            DataHandler handler = this.dataHandler;
+                            if (peer != null && data != null && handler != null) {
+                                handler.onData(peer, data, 0, data.length);
+                            }
+                            continue;
+                        }
+
+                        // Response to pending request
+                        String tidHex = toHex(msg.getTransactionId());
+                        CompletableFuture<StunMessage> f = pendingRequests.remove(tidHex);
+                        if (f != null) {
+                            f.complete(msg);
+                            continue;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                if (closed.get() || socket.isClosed()) break;
+            }
+        }
+    }
+
     /**
      * Executes the initial Allocate handshake with long-term authentication.
      */
@@ -108,6 +193,8 @@ public final class TurnClient implements AutoCloseable {
                 this.relayedAddress = challengeResp.getXorAddressAttribute(StunMessage.ATTR_XOR_RELAYED_ADDRESS);
                 Integer lt = challengeResp.getIntAttribute(StunMessage.ATTR_LIFETIME);
                 this.lifetimeSeconds = lt == null ? 600 : lt;
+                this.allocationExpiresAt = System.currentTimeMillis() + (long) this.lifetimeSeconds * 1000L;
+                ensureRefresherStarted();
                 return this.relayedAddress;
             }
             throw new IOException("Expected 401 challenge, got: 0x" + Integer.toHexString(challengeResp.getType()));
@@ -142,6 +229,8 @@ public final class TurnClient implements AutoCloseable {
         }
         Integer lt = authResp.getIntAttribute(StunMessage.ATTR_LIFETIME);
         this.lifetimeSeconds = lt == null ? 600 : lt;
+        this.allocationExpiresAt = System.currentTimeMillis() + (long) this.lifetimeSeconds * 1000L;
+        ensureRefresherStarted();
         return this.relayedAddress;
     }
 
@@ -167,11 +256,17 @@ public final class TurnClient implements AutoCloseable {
         }
         Integer lt = resp.getIntAttribute(StunMessage.ATTR_LIFETIME);
         this.lifetimeSeconds = lt == null ? 0 : lt;
+        if (this.lifetimeSeconds > 0) {
+            this.allocationExpiresAt = System.currentTimeMillis() + (long) this.lifetimeSeconds * 1000L;
+        } else {
+            this.allocationExpiresAt = 0;
+        }
         return this.lifetimeSeconds;
     }
 
     /**
-     * Creates a permission for the peer IP to send to our relayed address.
+     * Creates a permission for the peer IP to send to our relayed address (RFC 8656 section 9).
+     * Permissions have a lifetime of 5 minutes (300 seconds).
      */
     public synchronized void createPermission(InetSocketAddress peerAddress) throws IOException {
         if (closed.get()) throw new IOException("TurnClient is closed");
@@ -188,10 +283,17 @@ public final class TurnClient implements AutoCloseable {
         if (resp.getType() == StunMessage.CREATE_PERMISSION_ERROR) {
             throw new IOException("CreatePermission failed: " + resp.getErrorCode() + " " + resp.getErrorMessage());
         }
+        permittedIps.add(peerAddress.getAddress());
+        permissionExpiresAt.put(peerAddress, System.currentTimeMillis() + 300_000L); // 5 minutes
+    }
+
+    public boolean hasPermission(InetAddress peerIp) {
+        return permittedIps.contains(peerIp);
     }
 
     /**
-     * Binds a channel number (0x4000 - 0x7FFE) to a peer address.
+     * Binds a channel number (0x4000 - 0x7FFE) to a peer address (RFC 8656 section 11).
+     * Channel bindings have a lifetime of 10 minutes (600 seconds).
      */
     public synchronized void channelBind(int channelNumber, InetSocketAddress peerAddress) throws IOException {
         if (closed.get()) throw new IOException("TurnClient is closed");
@@ -212,6 +314,105 @@ public final class TurnClient implements AutoCloseable {
             throw new IOException("ChannelBind failed: " + resp.getErrorCode() + " " + resp.getErrorMessage());
         }
         boundChannels.put(channelNumber, peerAddress);
+        peerToChannel.put(peerAddress, channelNumber);
+        channelExpiresAt.put(channelNumber, System.currentTimeMillis() + 600_000L); // 10 minutes
+    }
+
+    /**
+     * Binds the next available channel (0x4000+) to a peer address.
+     */
+    public synchronized int channelBind(InetSocketAddress peerAddress) throws IOException {
+        Integer existing = peerToChannel.get(peerAddress);
+        if (existing != null) {
+            channelBind(existing, peerAddress);
+            return existing;
+        }
+        int ch = nextChannelNumber.getAndIncrement();
+        if (ch > 0x7FFE) {
+            throw new IOException("Exhausted TURN channel numbers (0x4000-0x7FFE)");
+        }
+        channelBind(ch, peerAddress);
+        return ch;
+    }
+
+    public Integer getBoundChannel(InetSocketAddress peerAddress) {
+        return peerToChannel.get(peerAddress);
+    }
+
+    public InetSocketAddress getPeerForChannel(int channelNumber) {
+        return boundChannels.get(channelNumber);
+    }
+
+    public boolean isChannelBound(int channelNumber) {
+        return boundChannels.containsKey(channelNumber);
+    }
+
+    /**
+     * Sends data encapsulated in a Send indication (RFC 8656 section 11.1).
+     * Used before channel binding completes (e.g. for initial connectivity checks).
+     */
+    public void sendIndication(InetSocketAddress peerAddress, byte[] data, int offset, int length) throws IOException {
+        StunMessage ind = new StunMessage(StunMessage.SEND_INDICATION);
+        ind.addXorAddressAttribute(StunMessage.ATTR_XOR_PEER_ADDRESS, peerAddress);
+        byte[] payload = new byte[length];
+        System.arraycopy(data, offset, payload, 0, length);
+        ind.addDataAttribute(payload);
+        byte[] encoded = ind.encode(null, true);
+        DatagramPacket dp = new DatagramPacket(encoded, encoded.length, serverAddress);
+        socket.send(dp);
+    }
+
+    private synchronized void ensureRefresherStarted() {
+        if (refresherThread == null && !closed.get()) {
+            refresherThread = new Thread(this::runRefresher, "TurnClient-Refresher");
+            refresherThread.setDaemon(true);
+            refresherThread.setPriority(Thread.MIN_PRIORITY + 1);
+            refresherThread.start();
+        }
+    }
+
+    private void runRefresher() {
+        while (!closed.get()) {
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                break;
+            }
+            if (closed.get()) break;
+
+            long now = System.currentTimeMillis();
+
+            // Refresh allocation before 10 min expiry (60s before)
+            if (allocationExpiresAt > 0 && now >= allocationExpiresAt - 60_000) {
+                try {
+                    refresh(600);
+                } catch (Exception ignored) {
+                }
+            }
+
+            // Refresh permissions before 5 min expiry (30s before)
+            for (java.util.Map.Entry<InetSocketAddress, Long> entry : permissionExpiresAt.entrySet()) {
+                if (now >= entry.getValue() - 30_000) {
+                    try {
+                        createPermission(entry.getKey());
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+
+            // Refresh channel bindings before 10 min expiry (60s before)
+            for (java.util.Map.Entry<Integer, Long> entry : channelExpiresAt.entrySet()) {
+                if (now >= entry.getValue() - 60_000) {
+                    InetSocketAddress peer = boundChannels.get(entry.getKey());
+                    if (peer != null) {
+                        try {
+                            channelBind(entry.getKey(), peer);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -249,54 +450,54 @@ public final class TurnClient implements AutoCloseable {
     }
 
     private StunMessage sendAndReceive(byte[] requestBytes, byte[] expectedTid, int timeoutMs) throws IOException {
-        DatagramPacket outPkt = new DatagramPacket(requestBytes, requestBytes.length, serverAddress);
-        byte[] inBuf = new byte[2048];
-        DatagramPacket inPkt = new DatagramPacket(inBuf, inBuf.length);
-
-        int origTimeout = socket.getSoTimeout();
-        socket.setSoTimeout(timeoutMs);
+        String tidHex = toHex(expectedTid);
+        CompletableFuture<StunMessage> future = new CompletableFuture<>();
+        pendingRequests.put(tidHex, future);
         try {
-            long deadline = System.currentTimeMillis() + timeoutMs;
+            DatagramPacket outPkt = new DatagramPacket(requestBytes, requestBytes.length, serverAddress);
             socket.send(outPkt);
-
-            while (System.currentTimeMillis() < deadline) {
-                try {
-                    socket.receive(inPkt);
-                    if (!inPkt.getAddress().equals(serverAddress.getAddress()) &&
-                        !inPkt.getSocketAddress().equals(serverAddress)) {
-                        continue;
-                    }
-                    if (inPkt.getLength() < StunMessage.HEADER_LENGTH) continue;
-
-                    // Verify magic cookie
-                    int cookie = ByteBuffer.wrap(inBuf, 4, 4).getInt();
-                    if (cookie != StunMessage.MAGIC_COOKIE) continue;
-
-                    byte[] tid = new byte[12];
-                    System.arraycopy(inBuf, 8, tid, 0, 12);
-                    if (Arrays.equals(tid, expectedTid)) {
-                        return StunMessage.decode(inBuf, 0, inPkt.getLength());
-                    }
-                } catch (java.net.SocketTimeoutException e) {
-                    throw new IOException("Timed out waiting for TURN response", e);
-                }
-            }
-            throw new IOException("Timed out waiting for matching Transaction ID");
+            return future.get(timeoutMs, TimeUnit.MILLISECONDS);
+        } catch (java.util.concurrent.TimeoutException e) {
+            throw new IOException("Timed out waiting for TURN response", e);
+        } catch (Exception e) {
+            throw new IOException("TURN request failed: " + e.getMessage(), e);
         } finally {
-            try {
-                socket.setSoTimeout(origTimeout);
-            } catch (Exception ignored) {
-            }
+            pendingRequests.remove(tidHex);
         }
+    }
+
+    private static String toHex(byte[] b) {
+        StringBuilder sb = new StringBuilder(b.length * 2);
+        for (byte x : b) {
+            sb.append(String.format("%02x", x & 0xFF));
+        }
+        return sb.toString();
     }
 
     @Override
     public void close() {
         if (closed.compareAndSet(false, true)) {
+            if (refresherThread != null) {
+                refresherThread.interrupt();
+            }
+            if (readerThread != null) {
+                readerThread.interrupt();
+            }
+            for (CompletableFuture<StunMessage> f : pendingRequests.values()) {
+                f.cancel(true);
+            }
+            pendingRequests.clear();
             try {
                 if (key != null) {
                     // Try to send refresh with 0 lifetime to deallocate cleanly
-                    refresh(0);
+                    StunMessage req = new StunMessage(StunMessage.REFRESH_REQUEST);
+                    req.addIntAttribute(StunMessage.ATTR_LIFETIME, 0);
+                    req.addStringAttribute(StunMessage.ATTR_USERNAME, username);
+                    req.addStringAttribute(StunMessage.ATTR_REALM, realm);
+                    req.addStringAttribute(StunMessage.ATTR_NONCE, nonce);
+                    byte[] bytes = req.encode(key, true);
+                    DatagramPacket outPkt = new DatagramPacket(bytes, bytes.length, serverAddress);
+                    socket.send(outPkt);
                 }
             } catch (Exception ignored) {
             }

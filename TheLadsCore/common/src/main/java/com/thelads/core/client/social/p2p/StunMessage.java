@@ -239,6 +239,14 @@ public final class StunMessage {
         }
     }
 
+    public byte[] getDataAttribute() {
+        return getRawAttribute(ATTR_DATA);
+    }
+
+    public void addDataAttribute(byte[] data) {
+        addAttribute(ATTR_DATA, data);
+    }
+
     public int getErrorCode() {
         byte[] v = getRawAttribute(ATTR_ERROR_CODE);
         if (v == null || v.length < 4) return -1;
@@ -472,5 +480,50 @@ public final class StunMessage {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public static int getIntBE(byte[] b, int off) {
+        return ((b[off] & 0xFF) << 24) |
+               ((b[off + 1] & 0xFF) << 16) |
+               ((b[off + 2] & 0xFF) << 8) |
+               (b[off + 3] & 0xFF);
+    }
+
+    public static void putIntBE(byte[] b, int off, int val) {
+        b[off]     = (byte) ((val >>> 24) & 0xFF);
+        b[off + 1] = (byte) ((val >>> 16) & 0xFF);
+        b[off + 2] = (byte) ((val >>> 8) & 0xFF);
+        b[off + 3] = (byte) (val & 0xFF);
+    }
+
+    public static short getShortBE(byte[] b, int off) {
+        return (short) (((b[off] & 0xFF) << 8) | (b[off + 1] & 0xFF));
+    }
+
+    public static void putShortBE(byte[] b, int off, short val) {
+        b[off]     = (byte) ((val >>> 8) & 0xFF);
+        b[off + 1] = (byte) (val & 0xFF);
+    }
+
+    public static long getLongBE(byte[] b, int off) {
+        return (((long) b[off] & 0xFF) << 56) |
+               (((long) b[off + 1] & 0xFF) << 48) |
+               (((long) b[off + 2] & 0xFF) << 40) |
+               (((long) b[off + 3] & 0xFF) << 32) |
+               (((long) b[off + 4] & 0xFF) << 24) |
+               (((long) b[off + 5] & 0xFF) << 16) |
+               (((long) b[off + 6] & 0xFF) << 8) |
+               ((long) b[off + 7] & 0xFF);
+    }
+
+    public static void putLongBE(byte[] b, int off, long val) {
+        b[off]     = (byte) ((val >>> 56) & 0xFF);
+        b[off + 1] = (byte) ((val >>> 48) & 0xFF);
+        b[off + 2] = (byte) ((val >>> 40) & 0xFF);
+        b[off + 3] = (byte) ((val >>> 32) & 0xFF);
+        b[off + 4] = (byte) ((val >>> 24) & 0xFF);
+        b[off + 5] = (byte) ((val >>> 16) & 0xFF);
+        b[off + 6] = (byte) ((val >>> 8) & 0xFF);
+        b[off + 7] = (byte) (val & 0xFF);
     }
 }
