@@ -2,8 +2,13 @@ package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.client.ChatAnimation;
 import com.thelads.core.client.ChatHeads;
+import com.thelads.core.client.ChatServerHistory;
+import com.thelads.core.client.ChatTweaks;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.thelads.core.v1_8_9.feature.Chat189;
 import com.thelads.core.v1_8_9.feature.ChatHeads189;
+import com.thelads.core.v1_8_9.feature.ChatTweaks189;
 import com.thelads.core.v1_8_9.feature.Options189;
 import net.minecraft.client.gui.ChatLine;
 import net.minecraft.client.gui.FontRenderer;
@@ -32,10 +37,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * The Chat module, as 1.21.11 ChatMixin: size, line backgrounds, the newest message's slide and fade, and (Chat189) timestamps and
  * screenshot buttons. Display only. A message's lines share the tick it arrived in, which keys its animation. Also Chat Heads
- * (ChatHeads189): each message's sender found as it arrives, kept on its lines, drawn before its first line.
+ * (ChatHeads189): each message's sender found as it arrives, kept on its lines, drawn before its first line. And the parity-1023
+ * tweaks (ChatTweaks189): Compact Chat, tab and search filters, Translate Chat, Chat Peek, Toggle Chat and History per Server.
  */
 @Mixin(GuiNewChat.class)
-public abstract class GuiNewChatMixin implements Chat189.History {
+public abstract class GuiNewChatMixin implements Chat189.History, ChatTweaks189.Access {
     @Unique private final ChatAnimation ladsAnimation = new ChatAnimation();
     @Unique private boolean ladsAnimating, ladsLinePushed, ladsFirstLine;
     @Unique private int ladsLine, ladsClickOffset, ladsClickAt, ladsSenderAt, ladsRewrappedAt;
@@ -48,13 +54,64 @@ public abstract class GuiNewChatMixin implements Chat189.History {
     @Shadow public abstract float getChatScale();
     @Shadow public abstract void resetScroll();
     @Shadow public abstract void refreshChat();
-    @Shadow public abstract boolean getChatOpen();
-    @Shadow public abstract void setChatLine(IChatComponent chatComponent, int chatLineId, int updateCounter, boolean displayOnly);
-    @Shadow public abstract void deleteChatLine(int id);
     @Unique private ChatLine ladsDrawn;
     @Unique private NetworkPlayerInfo ladsSender, ladsRewrapped;
     /** Infinite History (ChatHistory): chatLines[0, ladsLaidOut) have their lines in drawnChatLines; -1 while every message has (vanilla). */
     @Unique private int ladsLaidOut = -1;
+    /** The newest stored message and the lines drawn for it (Compact Chat removes both), and whether the message being added shows. */
+    @Unique private ChatLine ladsNewestLine;
+    @Unique private final List<ChatLine> ladsNewestDrawn = new java.util.ArrayList<ChatLine>(4);
+    @Unique private boolean ladsShown = true, ladsDisplayOnly;
+
+    @Override public List<ChatLine> lads$messages() { return chatLines; }
+
+    @Override public void lads$relayout() {
+        ChatTweaks.breakRepeat();
+        refreshChat();
+    }
+
+    /** History per Server: the messages are kept for the server they came from before vanilla clears them (the main menu). */
+    @Inject(method = "clearChatMessages", at = @At("HEAD"), require = 1)
+    private void ladsKeepHistory(CallbackInfo ci) {
+        ChatServerHistory.clearing(chatLines);
+        ladsNewestLine = null;
+        ChatTweaks.breakRepeat();
+    }
+
+    /** Chat Peek: while its key is held the chat shows as if open (every line, no fade). */
+    @Inject(method = "getChatOpen", at = @At("HEAD"), cancellable = true, require = 1)
+    private void ladsPeek(CallbackInfoReturnable<Boolean> cir) {
+        if (ChatTweaks.peeking) cir.setReturnValue(true);
+    }
+
+    /**
+     * The parity-1023 tweaks as a message is stored (its plain text and translation come from Chat189.message): History per Server,
+     * then Compact Chat: a repeat removes the copy before (its stored message and drawn lines) and gets " (x2)".
+     */
+    @WrapOperation(method = "printChatMessageWithOptionalDeletion", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiNewChat;setChatLine(Lnet/minecraft/util/IChatComponent;IIZ)V"), require = 1)
+    private void ladsTweaks(GuiNewChat chat, IChatComponent message, int id, int updateCounter, boolean displayOnly, Operation<Void> original) {
+        ChatTweaks189.server(this);
+        String plain = Chat189.plain;
+        ChatTweaks189.Pending pending = Chat189.pending;
+        Chat189.plain = null;
+        Chat189.pending = null;
+        if (id != 0 || plain == null) ChatTweaks.breakRepeat(); // lines the client replaces by id never stack
+        else {
+            long now = System.currentTimeMillis();
+            int repeat = ChatTweaks.repeat(plain, now);
+            if (repeat > 1 && ladsNewestLine != null && !chatLines.isEmpty() && chatLines.get(0) == ladsNewestLine) {
+                drawnChatLines.removeAll(ladsNewestDrawn);
+                chatLines.remove(0);
+                if (ladsLaidOut > 0) ladsLaidOut--;
+            } else if (repeat > 1) { // the copy before is gone (deleted, cleared, laid out again): this one starts a new count
+                ChatTweaks.breakRepeat();
+                repeat = ChatTweaks.repeat(plain, now);
+            }
+            if (repeat > 1) ChatTweaks189.repeated(message, repeat);
+        }
+        original.call(chat, message, id, updateCounter, displayOnly);
+        if (pending != null) pending.line = ladsNewestLine;
+    }
 
     @Override public int ladsScrollPos() { return scrollPos; }
     @Override public int ladsDrawnLines() { return drawnChatLines.size(); }
@@ -82,6 +139,8 @@ public abstract class GuiNewChatMixin implements Chat189.History {
     /** A resize or a chat setting lays out only the lines near the newest message, not the whole history. */
     @Inject(method = "refreshChat", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsLazyRefresh(CallbackInfo ci) {
+        ladsNewestLine = null; // its drawn lines are made anew
+        ladsNewestDrawn.clear();
         if (!ChatHistory.infinite()) {
             ladsLaidOut = -1;
             return;
@@ -106,22 +165,7 @@ public abstract class GuiNewChatMixin implements Chat189.History {
 
     @Inject(method = "printChatMessageWithOptionalDeletion", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsIgnoreNullChat(IChatComponent message, int chatLineId, CallbackInfo ci) {
-        if (message == null) {
-            ci.cancel();
-            return;
-        }
-        if (com.thelads.core.client.CompactChat.enabled() && chatLineId == 0) {
-            String text = message.getUnformattedText();
-            if (com.thelads.core.client.CompactChat.checkDuplicate(text)) {
-                int count = com.thelads.core.client.CompactChat.getRepeatCount();
-                deleteChatLine(-9991);
-                net.minecraft.util.IChatComponent stacked = new net.minecraft.util.ChatComponentText(message.getFormattedText() + " §7(x" + count + ")");
-                setChatLine(stacked, -9991, net.minecraft.client.Minecraft.getMinecraft().ingameGUI.getUpdateCounter(), false);
-                ci.cancel();
-            } else {
-                deleteChatLine(-9991);
-            }
-        }
+        if (message == null) ci.cancel();
     }
 
     @ModifyVariable(method = "printChatMessageWithOptionalDeletion", at = @At("HEAD"), argsOnly = true, require = 1)
@@ -137,6 +181,9 @@ public abstract class GuiNewChatMixin implements Chat189.History {
 
     @Inject(method = "setChatLine", at = @At("HEAD"), require = 1)
     private void ladsNewestMessage(IChatComponent message, int id, int updateCounter, boolean displayOnly, CallbackInfo ci) {
+        ladsShown = ChatTweaks189.shown(message); // Chat Tabs and Chat Search: a message outside them is stored, not drawn
+        ladsDisplayOnly = displayOnly;
+        if (!displayOnly) ladsNewestDrawn.clear();
         if (!displayOnly) ladsAnimation.start(updateCounter);
         ChatHeads.Match<NetworkPlayerInfo> match = displayOnly ? null : ChatHeads189.sender(message);
         ladsSender = displayOnly ? ladsRewrapped : match == null ? null : match.player();
@@ -162,6 +209,10 @@ public abstract class GuiNewChatMixin implements Chat189.History {
     @Redirect(method = "setChatLine", at = @At(value = "INVOKE", target = "Ljava/util/List;add(ILjava/lang/Object;)V"), require = 2)
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void ladsLineSender(List lines, int index, Object line) {
+        if (lines == drawnChatLines) {
+            if (!ladsShown) return;
+            if (!ladsDisplayOnly) ladsNewestDrawn.add((ChatLine) line);
+        } else ladsNewestLine = (ChatLine) line; // chatLines: a new message is stored
         ((ChatHeads189.Line) line).ladsHead(ladsSender, ladsSenderAt, ladsFirstLine);
         ladsFirstLine = false;
         lines.add(index, line);
@@ -202,32 +253,13 @@ public abstract class GuiNewChatMixin implements Chat189.History {
 
     @Inject(method = "drawChat", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsBeginChat(int updateCounter, CallbackInfo ci) {
-        if (com.thelads.core.client.ChatVisibilityToggle.isChatHidden() && !com.thelads.core.client.ChatPeek.isPeeking()) { ci.cancel(); return; }
+        // Toggle Chat: the hidden chat still shows while typing in it or peeking.
+        if (ChatTweaks.hidden && !ChatTweaks.peeking && !(net.minecraft.client.Minecraft.getMinecraft().currentScreen instanceof net.minecraft.client.gui.GuiChat)) {
+            ci.cancel();
+            return;
+        }
         if (ChatHeads189.layoutChanged()) refreshChat();
         ladsAnimating = Options189.enabled("Chat") && Options189.bool("Chat", "Message Animations", true) && ladsAnimation.running();
-    }
-
-    @Redirect(method = "drawChat", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiNewChat;getChatOpen()Z"), require = 1)
-    private boolean ladsChatOpen(GuiNewChat chat) {
-        return chat.getChatOpen() || com.thelads.core.client.ChatPeek.isPeeking();
-    }
-
-    @Inject(method = "drawChat", at = @At("TAIL"), require = 1)
-    private void ladsDrawChatTabs(int updateCounter, CallbackInfo ci) {
-        if (!getChatOpen() || !com.thelads.core.client.ChatTabs.enabled()) return;
-        int tabCount = com.thelads.core.client.ChatTabs.getTabCount();
-        int active = com.thelads.core.client.ChatTabs.getActiveTab();
-        FontRenderer font = net.minecraft.client.Minecraft.getMinecraft().fontRendererObj;
-        int x = 2;
-        int y = -font.FONT_HEIGHT - 4;
-        for (int i = 0; i < tabCount; i++) {
-            String name = com.thelads.core.client.ChatTabs.getTab(i).getName();
-            int width = font.getStringWidth(name) + 6;
-            int bg = (i == active) ? 0x90000000 : 0x50000000;
-            Gui.drawRect(x, y - 2, x + width, y + font.FONT_HEIGHT + 2, bg);
-            font.drawStringWithShadow(name, x + 3, y, (i == active) ? 0xFFFF55 : 0xAAAAAA);
-            x += width + 4;
-        }
     }
 
     /** The line drawChat is about to draw: its age is read first. */

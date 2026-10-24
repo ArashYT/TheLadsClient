@@ -239,8 +239,9 @@ public final class HypixelSafetyManager {
             || "Freelook".equalsIgnoreCase(moduleName) || "FogClearView".equalsIgnoreCase(moduleName)
             || com.thelads.core.modules.HitboxesModule.THROUGH_WALLS.equalsIgnoreCase(moduleName) // FreelookModule, FogCustomizerModule.CLEAR_VIEW
             || PvpVisuals.NAMETAG_HEALTH.equalsIgnoreCase(moduleName)
-            || "UnlimitedCommandLength".equalsIgnoreCase(moduleName) || "AutoText".equalsIgnoreCase(moduleName) // chat: long packets, typed macros
-            || "InventoryMove".equalsIgnoreCase(moduleName) || "InventorySort".equalsIgnoreCase(moduleName); // moves/clicks with a screen open
+            // parity-1023 chat lane: commands past vanilla's length, keys that send chat, walking and slot clicks with a screen open
+            || ChatTweaks.LONG_COMMANDS.equalsIgnoreCase(moduleName) || com.thelads.core.modules.AutoTextModule.NAME.equalsIgnoreCase(moduleName)
+            || InventoryTweaks.MOVE.equalsIgnoreCase(moduleName) || InventoryTweaks.ARMOR_SWAP.equalsIgnoreCase(moduleName);
     }
 
     public static boolean isGatedHypixelModule(String moduleName) {

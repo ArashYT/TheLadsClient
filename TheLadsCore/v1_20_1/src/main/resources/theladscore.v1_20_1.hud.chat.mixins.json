@@ -20,6 +20,6 @@
     "NarratorShortcutMixin",
     "FontMetricsMixin",
     "NicknameTabMixin",
-    "ChatScreenFeaturesMixin"
+    "ChatScreenTweaksMixin1201"
   ]
 }

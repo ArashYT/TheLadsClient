@@ -100,13 +100,8 @@ public final class NativeFeatures {
     }
     public static void key(KeyEvent event, int action) {
         if (action == InputConstants.REPEAT) return;
-        boolean down = action == InputConstants.PRESS;
-        if (event.key() == InputConstants.KEY_GRAVE) com.thelads.core.client.ChatPeek.setPeeking(down);
-        if (down && (event.key() == InputConstants.KEY_F6 || (event.key() == InputConstants.KEY_H && (event.modifiers() & InputConstants.MOD_CONTROL) != 0))) {
-            com.thelads.core.client.ChatVisibilityToggle.toggle();
-        }
-        if (down && event.key() != 0) com.thelads.core.modules.AutoTextModule.triggerKey(event.key());
         if (!interactive()) { reset(); return; }
+        boolean down = action == InputConstants.PRESS;
         if (NativeKeyBindings.ZOOM.matches(event)) zoom().key(down);
         PvpView26.key(event, down);
         if (sprintToggleKey().matches(event)) sprintKey(down);

@@ -152,16 +152,11 @@ public final class NativeFeatures1201 {
 
     public static void key(int key, int scancode, int action, int modifiers) {
         if (action == GLFW.GLFW_REPEAT) return;
-        boolean down = (action == GLFW.GLFW_PRESS);
-        if (key == GLFW.GLFW_KEY_GRAVE_ACCENT) com.thelads.core.client.ChatPeek.setPeeking(down);
-        if (down && (key == GLFW.GLFW_KEY_F6 || (key == GLFW.GLFW_KEY_H && (modifiers & GLFW.GLFW_MOD_CONTROL) != 0))) {
-            com.thelads.core.client.ChatVisibilityToggle.toggle();
-        }
-        if (down && key != 0) com.thelads.core.modules.AutoTextModule.triggerKey(key);
         if (!interactive()) {
             reset();
             return;
         }
+        boolean down = (action == GLFW.GLFW_PRESS);
         if (!Gameplay1201.zoomOwnedByMod() && NativeKeyBindings1201.ZOOM.matches(key, scancode)) zoom().key(down);
         com.thelads.core.v1_20_1.game.PvpView1201.key(key, scancode, down);
         if (sprintToggleKey().matches(key, scancode)) sprintKey(down);

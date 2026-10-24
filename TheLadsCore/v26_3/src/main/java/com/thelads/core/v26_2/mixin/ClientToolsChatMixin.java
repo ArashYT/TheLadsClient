@@ -2,6 +2,9 @@ package com.thelads.core.v26_2.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.thelads.core.client.ChatAnimation;
+import com.thelads.core.client.ChatServerHistory;
+import com.thelads.core.client.ChatTweaks;
+import com.thelads.core.v26_2.feature.ChatTweaks26;
 import com.thelads.core.v26_2.feature.NativeClientTools;
 import com.thelads.core.v26_2.feature.NativeNicknames;
 import com.thelads.core.v26_2.feature.NativeQualityOfLife;
@@ -25,9 +28,12 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** The Chat module. Modifies display only: signed packets, signatures and report logs stay intact. */
+/**
+ * The Chat module, with the parity-1023 tweaks (ChatTweaks26): Compact Chat, tab and search filters, mentions and profanity, Translate
+ * Chat, Toggle Chat and History per Server. Modifies display only: signed packets, signatures and report logs stay intact.
+ */
 @Mixin(ChatComponent.class)
-public abstract class ClientToolsChatMixin {
+public abstract class ClientToolsChatMixin implements ChatTweaks26.Access {
     @Unique private static final String RENDER = "extractRenderState(Lnet/minecraft/client/gui/components/ChatComponent$ChatGraphicsAccess;IILnet/minecraft/client/gui/components/ChatComponent$DisplayMode;)V";
     @Unique private static final String LINE = "Lnet/minecraft/client/gui/components/ChatComponent$LineConsumer;accept(Lnet/minecraft/client/multiplayer/chat/GuiMessage$Line;IF)V";
     @Unique private final ChatAnimation ladsAnimation = new ChatAnimation();
@@ -43,6 +49,33 @@ public abstract class ClientToolsChatMixin {
     @Shadow public abstract int getLinesPerPage();
     /** Infinite History: allMessages[0, ladsLaidOut) have their lines in trimmedMessages; -1 while every message has (vanilla). */
     @Unique private int ladsLaidOut = -1;
+    /** Timestamps: the last message they stamped and the message before; the newest stored message (Compact Chat stacks onto it) and its translation. */
+    @Unique private Component ladsStamped, ladsUnstamped;
+    @Unique private GuiMessage ladsNewest;
+    @Unique private ChatTweaks26.Pending ladsPending;
+    @Shadow private void refreshTrimmedMessages() { throw new AssertionError(); }
+
+    @Override public List<GuiMessage> lads$messages() { return allMessages; }
+
+    @Override public void lads$relayout() {
+        ladsNewest = null;
+        ChatTweaks.breakRepeat();
+        refreshTrimmedMessages();
+    }
+
+    /** History per Server: the messages are kept for the server they came from before vanilla clears them (disconnect). */
+    @Inject(method = "clearMessages", at = @At("HEAD"), require = 1)
+    private void ladsKeepHistory(boolean history, CallbackInfo ci) {
+        ChatServerHistory.clearing(allMessages);
+        ladsNewest = null;
+        ChatTweaks.breakRepeat();
+    }
+
+    /** Chat Tabs and Chat Search: a message outside the chosen tab or search is stored but not laid out (new ones and refreshes). */
+    @Inject(method = "addMessageToDisplayQueue", at = @At("HEAD"), cancellable = true, require = 1)
+    private void ladsFiltered(GuiMessage message, CallbackInfo ci) {
+        if (!ChatTweaks26.shown(message.content())) ci.cancel();
+    }
 
     /** Infinite History (ChatHistory) / Longer Chat History: the 100-message and 100-line caps become the ceiling. */
     @ModifyConstant(method = {"addMessageToDisplayQueue", "addMessageToQueue"}, constant = @Constant(intValue = 100), require = 2)
@@ -88,9 +121,7 @@ public abstract class ClientToolsChatMixin {
     private void ladsLayOut(int lines) {
         if (ladsLaidOut < 0) return;
         int width = net.minecraft.util.Mth.floor(getWidth() / getScale());
-        ladsLaidOut = ChatHistory.layOut(allMessages, ladsLaidOut, trimmedMessages, lines, message -> (visibleMessageFilter == null || visibleMessageFilter.test(message))
-            && com.thelads.core.client.ChatTabs.filterCurrentTab(message.content().getString())
-            && com.thelads.core.client.ChatSearch.matches(message.content().getString()), message -> {
+        ladsLaidOut = ChatHistory.layOut(allMessages, ladsLaidOut, trimmedMessages, lines, message -> visibleMessageFilter.test(message) && ChatTweaks26.shown(message.content()), message -> {
             var split = message.splitLines(minecraft.font, width);
             var parts = new java.util.ArrayList<GuiMessage.Line>(split.size());
             for (int i = 0; i < split.size(); i++) parts.add(new GuiMessage.Line(message, split.get(i), i == split.size() - 1));
@@ -101,63 +132,41 @@ public abstract class ClientToolsChatMixin {
     @ModifyVariable(method = {"addClientSystemMessage", "addServerSystemMessage", "addPlayerMessage"},
         at = @At("HEAD"), argsOnly = true, ordinal = 0, require = 3)
     private Component ladsTimestamp(Component content) {
-        return NativeClientTools.timestamp(content);
+        ladsUnstamped = content;
+        return ladsStamped = NativeClientTools.timestamp(content);
     }
 
-    /** Nametags renames, rewritten once as a message arrives. */
+    /**
+     * Nametags renames and the chat tweaks (ChatTweaks26: Compact Chat removes the copy before and counts, mentions, profanity,
+     * translation), rewritten once as a message arrives; they work on the message without its timestamp, which goes back on after.
+     */
     @ModifyVariable(method = "addMessage", at = @At("HEAD"), argsOnly = true, require = 1)
     private Component ladsRename(Component content) {
-        Component message = NativeNicknames.rename(content);
-        String raw = message.getString();
-
-        String server = minecraft.getCurrentServer() != null ? minecraft.getCurrentServer().ip : "Singleplayer";
-        com.thelads.core.client.ChatPersistence.recordMessage(server, raw);
-
-        if (com.thelads.core.client.ChatFilter.profanityFilterEnabled()) {
-            String filtered = com.thelads.core.client.ChatFilter.filterProfanity(raw);
-            if (!filtered.equals(raw)) {
-                message = Component.literal(filtered);
-                raw = filtered;
-            }
+        boolean stamped = content == ladsStamped && ladsUnstamped != null;
+        Component renamed = NativeNicknames.rename(stamped ? ladsUnstamped : content);
+        ladsStamped = ladsUnstamped = null;
+        ChatTweaks26.server(this);
+        String plain = renamed.getString();
+        long now = System.currentTimeMillis();
+        int repeat = ChatTweaks.repeat(plain, now);
+        if (repeat > 1 && ladsNewest != null && !allMessages.isEmpty() && allMessages.get(0) == ladsNewest) {
+            allMessages.remove(0);
+            refreshTrimmedMessages();
+        } else if (repeat > 1) { // the copy before is gone (deleted, cleared): this one starts a new count
+            ChatTweaks.breakRepeat();
+            repeat = ChatTweaks.repeat(plain, now);
         }
-
-        if (com.thelads.core.client.ChatFilter.mentionHighlightEnabled() || com.thelads.core.client.ChatFilter.mentionPingEnabled()) {
-            String playerName = minecraft.player != null ? minecraft.player.getGameProfile().name() : null;
-            if (com.thelads.core.client.ChatFilter.isMentioned(raw, playerName)) {
-                if (com.thelads.core.client.ChatFilter.mentionPingEnabled() && minecraft.player != null) {
-                    minecraft.player.playSound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-                }
-                if (com.thelads.core.client.ChatFilter.mentionHighlightEnabled()) {
-                    message = Component.literal("§e[!] §r").append(message);
-                }
-            }
-        }
-
-        if (com.thelads.core.client.ChatTranslator.enabled()) {
-            String cached = com.thelads.core.client.ChatTranslator.getCached(raw);
-            if (cached != null) {
-                message = message.copy().append(Component.literal(" §8[TR: " + cached + "]§r"));
-            } else {
-                com.thelads.core.client.ChatTranslator.requestTranslation(raw, null);
-            }
-        }
-
-        if (com.thelads.core.client.CompactChat.enabled()) {
-            if (com.thelads.core.client.CompactChat.checkDuplicate(raw)) {
-                int count = com.thelads.core.client.CompactChat.getRepeatCount();
-                message = Component.literal(com.thelads.core.client.CompactChat.stripCount(raw) + " §7(x" + count + ")");
-                if (!allMessages.isEmpty()) {
-                    allMessages.remove(0);
-                }
-            }
-        }
-
-        return message;
+        ladsPending = ChatTweaks26.translate(plain);
+        Component message = ChatTweaks26.incoming(renamed, plain, repeat);
+        return stamped ? NativeClientTools.timestamp(message) : message;
     }
 
     @ModifyArg(method = "addMessage", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent;addMessageToDisplayQueue(Lnet/minecraft/client/multiplayer/chat/GuiMessage;)V"), require = 1)
     private GuiMessage ladsNewestMessage(GuiMessage message) {
         ladsAnimation.start(message);
+        ladsNewest = message;
+        if (ladsPending != null) ladsPending.message = message;
+        ladsPending = null;
         return message;
     }
 
@@ -183,7 +192,7 @@ public abstract class ClientToolsChatMixin {
 
     @Inject(method = RENDER, at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsBeginChat(ChatComponent.ChatGraphicsAccess graphics, int screenHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
-        if (com.thelads.core.client.ChatVisibilityToggle.isChatHidden() && !com.thelads.core.client.ChatPeek.isPeeking()) {
+        if (ChatTweaks.hidden && !mode.foreground) { // Toggle Chat: hidden unless typing in it or peeking (ChatTweaksHudMixin26)
             ci.cancel();
             return;
         }

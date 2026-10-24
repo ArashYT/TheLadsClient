@@ -252,7 +252,7 @@ public class ModuleManager {
         register(crosshair, Module.Category.MECHANIC);
 
         // Every chat feature lives here; ConfigManager migrates the old ClientTools timestamps and HideChatIndicators.
-        Module chatMod = new com.thelads.core.modules.ChatModule("Chat size, background, message animations, timestamps, signing indicators, screenshot links and Chat Heads (the sender's head before messages).");
+        Module chatMod = new com.thelads.core.modules.ChatModule("Chat size, background, message animations, timestamps, signing indicators, screenshot links and Chat Heads (the sender's head before messages); stacking, tabs (Custom Tabs: Name=regex;Name=regex), search, keys, mentions, filter, Shortcuts (/l=/lobby;gg=Good game) and translation.");
         chatMod.addOption(new BoolOption("Chat Background", false));
         chatMod.addOption(new SliderOption("Chat Width", 320, 100, 600, 10));
         chatMod.addOption(new SliderOption("Chat Height", 180, 50, 400, 10));
@@ -272,18 +272,23 @@ public class ModuleManager {
         chatMod.addOption(new DropdownOption(com.thelads.core.client.ChatHeads.POSITION, 0, com.thelads.core.client.ChatHeads.POSITIONS));
         chatMod.addOption(new BoolOption(com.thelads.core.client.ChatHeads.BY_NAME, true));
         chatMod.addOption(new BoolOption(com.thelads.core.client.ChatHeads.ALIGNED, false));
-        chatMod.addOption(new BoolOption("Compact Chat", true));
-        chatMod.addOption(new BoolOption("Chat Tabs", true));
-        chatMod.addOption(new BoolOption("Chat Search", true));
-        chatMod.addOption(new BoolOption("Shift+Enter Keep Open", true));
-        chatMod.addOption(new BoolOption("Chat Peek", true));
-        chatMod.addOption(new BoolOption("Persistent History", true));
-        chatMod.addOption(new BoolOption("Chat Translation", false));
-        chatMod.addOption(new DropdownOption("Target Language", 0, com.thelads.core.client.ChatTranslator.LANGUAGES));
-        chatMod.addOption(new BoolOption("Mention Highlight", true));
-        chatMod.addOption(new BoolOption("Mention Ping", true));
-        chatMod.addOption(new BoolOption("Profanity Filter", false));
-        chatMod.addOption(new BoolOption("Chat Shortcuts", true));
+        // parity-1023 (client ChatTweaks; each adapter hooks them): stacking, tabs, search, keys, per-server history, mentions,
+        // profanity, shortcuts, message buttons and translation (ChatTranslator, off: it sends the message's text to Google Translate).
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.COMPACT, true));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.TABS, true));
+        chatMod.addOption(new TextOption(com.thelads.core.client.ChatTweaks.CUSTOM_TABS, com.thelads.core.client.ChatTweaks.DEFAULT_TABS));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.SEARCH, true));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.BUTTONS, true));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.KEEP_OPEN, true));
+        chatMod.addOption(new ActionOption(com.thelads.core.client.ChatTweaks.PEEK_KEY, "Controls"));
+        chatMod.addOption(new ActionOption(com.thelads.core.client.ChatTweaks.TOGGLE_KEY, "Controls"));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.SERVER_HISTORY, true));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.MENTIONS, true));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.MENTION_SOUND, true));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.PROFANITY, false));
+        chatMod.addOption(new TextOption(com.thelads.core.client.ChatTweaks.SHORTCUTS, ""));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.TRANSLATE, false));
+        chatMod.addOption(new DropdownOption(com.thelads.core.client.ChatTweaks.TRANSLATE_TO, 0, com.thelads.core.client.ChatTranslator.NAMES));
         chatMod.setEnabled(true);
         register(chatMod, Module.Category.HUD);
 
@@ -470,12 +475,23 @@ public class ModuleManager {
         // Other players' health is not on vanilla's name tags: HypixelSafetyManager gates it (risky set).
         register(new Module(com.thelads.core.client.PvpVisuals.NAMETAG_HEALTH, "Shows each player's health after their name tag. "
             + "Off on servers that don't allow it."), Module.Category.MECHANIC);
-        register(new com.thelads.core.modules.UnlimitedCommandLengthModule(), Module.Category.MECHANIC);
+        // parity-1023 chat lane (client ChatTweaks / InventoryTweaks). Gated by HypixelSafetyManager (risky set), off by default:
+        // Unlimited Command Length, Auto Text, Inventory Move and Armor Swap.
+        register(new Module(com.thelads.core.client.ChatTweaks.LONG_COMMANDS, "Type commands longer than 256 characters (up to 32767) in "
+            + "singleplayer, where the game's own server takes them. Multiplayer servers keep vanilla's limit."), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.AutoTextModule(), Module.Category.MECHANIC);
-        register(new com.thelads.core.modules.SlotLockingModule(), Module.Category.MECHANIC);
-        register(new com.thelads.core.modules.InventorySearchModule(), Module.Category.MECHANIC);
-        register(new com.thelads.core.modules.InventoryMoveModule(), Module.Category.MECHANIC);
-        register(new com.thelads.core.modules.InventorySortModule(), Module.Category.MECHANIC);
+        Module slotLock = new Module(com.thelads.core.client.InventoryTweaks.SLOT_LOCK, "Point at one of your inventory slots and press the "
+            + "Lock key: its item can't be dropped, picked up, swapped or shift-clicked out until you unlock it. Locked Slots lists them "
+            + "(hotbar 0-8, inventory 9-35, armor 36-39, offhand 40).");
+        slotLock.addOption(new ActionOption(com.thelads.core.client.InventoryTweaks.LOCK_KEY, "Controls"));
+        slotLock.addOption(new TextOption(com.thelads.core.client.InventoryTweaks.LOCKED, ""));
+        register(slotLock, Module.Category.MECHANIC);
+        register(new Module(com.thelads.core.client.InventoryTweaks.SEARCH, "A search box on chests and inventories: stacks whose name "
+            + "doesn't match are dimmed."), Module.Category.MECHANIC);
+        register(new Module(com.thelads.core.client.InventoryTweaks.MOVE, "Walk and jump while a chest or inventory is open. "
+            + "Off on servers that don't allow it or whose rules are unknown."), Module.Category.MECHANIC);
+        register(new Module(com.thelads.core.client.InventoryTweaks.ARMOR_SWAP, "Middle-click armor in your inventory to wear it, swapping "
+            + "what you had on. Off on servers that don't allow it or whose rules are unknown."), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {
