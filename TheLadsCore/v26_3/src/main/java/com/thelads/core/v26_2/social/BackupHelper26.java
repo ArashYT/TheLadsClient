@@ -87,7 +87,7 @@ public final class BackupHelper26 {
         }
     }
 
-    private static void pruneBackups(Path backupDir, String worldName, int keep) {
+    static void pruneBackups(Path backupDir, String worldName, int keep) {
         File[] files = backupDir.toFile().listFiles((dir, name) ->
             name.startsWith(worldName + "-") && name.endsWith(".zip"));
         if (files == null || files.length <= keep) return;

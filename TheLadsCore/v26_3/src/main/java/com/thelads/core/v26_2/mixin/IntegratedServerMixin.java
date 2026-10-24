@@ -1,6 +1,6 @@
 package com.thelads.core.v26_2.mixin;
 
-import com.thelads.core.v26_2.social.SocialBridge26;
+import com.thelads.core.v26_2.social.P2PHostState26;
 import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.client.server.LanServerPinger;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,7 +15,7 @@ public abstract class IntegratedServerMixin {
         require = 1
     )
     private void ladsSuppressLanBroadcast(LanServerPinger pinger) {
-        if (!SocialBridge26.isLoopbackScope()) {
+        if (!P2PHostState26.isLoopbackScope()) {
             pinger.start();
         }
     }

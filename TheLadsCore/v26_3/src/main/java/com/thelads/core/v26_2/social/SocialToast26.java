@@ -32,16 +32,18 @@ public class SocialToast26 implements Toast {
     }
 
     public static void show(String title, String body, String acceptAction, String denyAction) {
-        Minecraft mc = Minecraft.getInstance();
         SocialToast26 toast = new SocialToast26(title, body, acceptAction, denyAction);
         ACTIVE.add(toast);
-        if (mc != null) {
-            mc.execute(() -> {
-                if (mc.gui != null && mc.gui.toastManager() != null) {
-                    mc.gui.toastManager().addToast(toast);
-                }
-            });
-        }
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc != null) {
+                mc.execute(() -> {
+                    if (mc.gui != null && mc.gui.toastManager() != null) {
+                        mc.gui.toastManager().addToast(toast);
+                    }
+                });
+            }
+        } catch (Throwable ignored) {}
     }
 
     public static boolean acceptNewest() {
@@ -87,6 +89,14 @@ public class SocialToast26 implements Toast {
 
     @Override
     public void update(ToastManager toastManager, long currentTime) {
+        try {
+            if (com.thelads.core.v26_2.feature.NativeKeyBindings.TOAST_ACCEPT.consumeClick()) {
+                acceptNewest();
+            } else if (com.thelads.core.v26_2.feature.NativeKeyBindings.TOAST_DENY.consumeClick()) {
+                denyNewest();
+            }
+        } catch (Throwable ignored) {}
+
         if (firstRender == 0) return;
         long duration = (long) (6000L * toastManager.getNotificationDisplayTimeMultiplier());
         if (currentTime - firstRender >= duration) {
@@ -117,8 +127,28 @@ public class SocialToast26 implements Toast {
 
         if (acceptAction != null || denyAction != null) {
             StringBuilder actions = new StringBuilder();
-            if (acceptAction != null) actions.append("[Enter] Accept ");
-            if (denyAction != null) actions.append(" [Esc] Deny");
+            if (acceptAction != null) {
+                String acceptKey;
+                try {
+                    acceptKey = com.thelads.core.v26_2.feature.NativeKeyBindings.TOAST_ACCEPT.isUnbound()
+                        ? "Accept"
+                        : "[" + com.thelads.core.v26_2.feature.NativeKeyBindings.TOAST_ACCEPT.getTranslatedKeyMessage().getString() + "] Accept";
+                } catch (Throwable t) {
+                    acceptKey = "Accept";
+                }
+                actions.append(acceptKey).append(" ");
+            }
+            if (denyAction != null) {
+                String denyKey;
+                try {
+                    denyKey = com.thelads.core.v26_2.feature.NativeKeyBindings.TOAST_DENY.isUnbound()
+                        ? "Deny"
+                        : "[" + com.thelads.core.v26_2.feature.NativeKeyBindings.TOAST_DENY.getTranslatedKeyMessage().getString() + "] Deny";
+                } catch (Throwable t) {
+                    denyKey = "Deny";
+                }
+                actions.append(denyKey);
+            }
             graphics.text(font, Component.literal(actions.toString().trim()), 8, 30, LadsPalette.PRIMARY, false);
         }
     }

@@ -33,25 +33,30 @@ import java.lang.reflect.Method;
  */
 public class SocialBridge26 implements SocialBridge {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore-Social");
-    private static volatile boolean loopbackScope = false;
-    private static volatile Predicate<UUID> loginFilter = null;
-    private static final Set<UUID> mutedGuests = Collections.synchronizedSet(new HashSet<>());
     private final java.util.concurrent.CopyOnWriteArrayList<GuestInfo> guestSnapshot = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     public static boolean isMuted(UUID id) {
-        return id != null && mutedGuests.contains(id);
+        return P2PHostState26.isMuted(id);
+    }
+
+    public static void muteGuest(UUID id) {
+        P2PHostState26.muteGuest(id);
+    }
+
+    public static void clearMutedGuests() {
+        P2PHostState26.clearMutedGuests();
     }
 
     public static boolean isLoopbackScope() {
-        return loopbackScope;
+        return P2PHostState26.isLoopbackScope();
     }
 
     public static void setLoopbackScope(boolean enabled) {
-        loopbackScope = enabled;
+        P2PHostState26.setLoopbackScope(enabled);
     }
 
     public static Predicate<UUID> getLoginFilter() {
-        return loginFilter;
+        return P2PHostState26.getLoginFilter();
     }
 
     @Override
@@ -73,13 +78,13 @@ public class SocialBridge26 implements SocialBridge {
             Path worldDir = server.getWorldPath(LevelResource.ROOT);
             options.save(worldDir);
 
-            loopbackScope = true;
+            P2PHostState26.setLoopbackScope(true);
             int port = findFreePort();
             boolean success = false;
             try {
                 success = server.publishServer(MinecraftServer.MultiplayerScope.LAN, options.guestOpLevel > 0, port);
             } finally {
-                loopbackScope = false;
+                P2PHostState26.setLoopbackScope(false);
             }
             if (!success) {
                 return -1;
@@ -89,7 +94,7 @@ public class SocialBridge26 implements SocialBridge {
             return server.getPort();
         } catch (Throwable t) {
             LOGGER.error("Failed to open world to friends", t);
-            loopbackScope = false;
+            P2PHostState26.setLoopbackScope(false);
             return -1;
         }
     }
@@ -99,7 +104,7 @@ public class SocialBridge26 implements SocialBridge {
         IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
         if (server == null || !server.isRunning()) return;
 
-        loopbackScope = false;
+        P2PHostState26.setLoopbackScope(false);
         server.publishServer(MinecraftServer.MultiplayerScope.LAN, options.guestOpLevel > 0, 0);
         applyHostOptions(options);
     }
@@ -107,9 +112,7 @@ public class SocialBridge26 implements SocialBridge {
     @Override
     public void closeHosting(String reason) {
         IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
-        loopbackScope = false;
-        loginFilter = null;
-        mutedGuests.clear();
+        P2PHostState26.reset();
         if (server != null) {
             server.execute(() -> {
                 if (server.getPlayerList() != null) {
@@ -236,7 +239,7 @@ public class SocialBridge26 implements SocialBridge {
                     }
                 }
                 case MUTE -> {
-                    mutedGuests.add(id);
+                    P2PHostState26.muteGuest(id);
                     Minecraft mc = Minecraft.getInstance();
                     if (mc != null) {
                         mc.execute(() -> {
@@ -252,7 +255,7 @@ public class SocialBridge26 implements SocialBridge {
 
     @Override
     public void setLoginFilter(Predicate<UUID> allowed) {
-        loginFilter = allowed;
+        P2PHostState26.setLoginFilter(allowed);
     }
 
     @Override
@@ -280,9 +283,7 @@ public class SocialBridge26 implements SocialBridge {
     }
 
     public static void onWorldDisconnect() {
-        loopbackScope = false;
-        loginFilter = null;
-        mutedGuests.clear();
+        P2PHostState26.reset();
     }
 
     @Override
@@ -305,7 +306,14 @@ public class SocialBridge26 implements SocialBridge {
                 mcVer = SharedConstants.getCurrentVersion().name();
             }
         } catch (Throwable ignored) {}
-        return new GameInfo(mcVer, "fabric", "plain", "", "", "", "1.9.18");
+        String ladsVer = "1.9.18";
+        try {
+            ladsVer = net.fabricmc.loader.api.FabricLoader.getInstance()
+                .getModContainer("theladscore")
+                .map(c -> c.getMetadata().getVersion().getFriendlyString())
+                .orElse("1.9.18");
+        } catch (Throwable ignored) {}
+        return new GameInfo(mcVer, "fabric", "plain", "", "", "", ladsVer);
     }
 
     @Override

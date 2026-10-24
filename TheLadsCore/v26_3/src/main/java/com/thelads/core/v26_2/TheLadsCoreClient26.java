@@ -19,6 +19,8 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             com.thelads.core.v26_2.social.SocialBridge26.onWorldDisconnect();
         });
+        net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.registerKeyMapping(com.thelads.core.v26_2.feature.NativeKeyBindings.TOAST_ACCEPT);
+        net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.registerKeyMapping(com.thelads.core.v26_2.feature.NativeKeyBindings.TOAST_DENY);
         com.thelads.core.security.AntiInjectDetector.init();
         com.thelads.core.v26_2.feature.paperdoll.PlayerActions.initialize();
         ConfigManager.load();

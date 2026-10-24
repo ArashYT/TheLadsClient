@@ -77,18 +77,10 @@ public final class SocialBridge26Checks {
         UUID mutedGuest = UUID.randomUUID();
         SocialBridge26.onWorldDisconnect();
         require(!SocialBridge26.isMuted(mutedGuest), "initially unmuted");
-        try {
-            java.lang.reflect.Field field = SocialBridge26.class.getDeclaredField("mutedGuests");
-            field.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            java.util.Set<UUID> set = (java.util.Set<UUID>) field.get(null);
-            set.add(mutedGuest);
-            require(SocialBridge26.isMuted(mutedGuest), "guest marked muted");
-            SocialBridge26.onWorldDisconnect();
-            require(!SocialBridge26.isMuted(mutedGuest), "guest unmuted on world disconnect");
-        } catch (Exception e) {
-            throw new RuntimeException("Mute check failed", e);
-        }
+        P2PHostState26.muteGuest(mutedGuest);
+        require(SocialBridge26.isMuted(mutedGuest), "guest marked muted");
+        SocialBridge26.onWorldDisconnect();
+        require(!SocialBridge26.isMuted(mutedGuest), "guest unmuted on world disconnect");
 
         // 8. Null-safe comparator check
         var list = new java.util.ArrayList<FriendsScreen26.MojangFriendDisplay>();
@@ -130,9 +122,7 @@ public final class SocialBridge26Checks {
             File[] initial = backupDir.toFile().listFiles((d, n) -> n.startsWith(world + "-") && n.endsWith(".zip"));
             require(initial != null && initial.length == 8, "8 initial backups created");
 
-            Method pruneMethod = BackupHelper26.class.getDeclaredMethod("pruneBackups", Path.class, String.class, int.class);
-            pruneMethod.setAccessible(true);
-            pruneMethod.invoke(null, backupDir, world, 5);
+            BackupHelper26.pruneBackups(backupDir, world, 5);
 
             File[] remaining = backupDir.toFile().listFiles((d, n) -> n.startsWith(world + "-") && n.endsWith(".zip"));
             require(remaining != null && remaining.length == 5, "exactly 5 backups retained after pruning");

@@ -1,6 +1,6 @@
 package com.thelads.core.v26_2.mixin;
 
-import com.thelads.core.v26_2.social.SocialBridge26;
+import com.thelads.core.v26_2.social.P2PHostState26;
 import net.minecraft.server.network.ServerConnectionListener;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -18,7 +18,7 @@ public abstract class ServerConnectionListenerMixin {
         require = 1
     )
     private InetAddress ladsBindLoopback(InetAddress address) {
-        if (SocialBridge26.isLoopbackScope()) {
+        if (P2PHostState26.isLoopbackScope()) {
             return InetAddress.getLoopbackAddress();
         }
         return address;

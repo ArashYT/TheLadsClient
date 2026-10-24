@@ -1,6 +1,6 @@
 package com.thelads.core.v26_2.mixin;
 
-import com.thelads.core.v26_2.social.SocialBridge26;
+import com.thelads.core.v26_2.social.P2PHostState26;
 import net.minecraft.network.chat.ChatType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.PlayerChatMessage;
@@ -26,7 +26,7 @@ public abstract class PlayerListMixin {
         require = 1
     )
     private void ladsCheckLoginFilter(SocketAddress socketAddress, NameAndId nameAndId, CallbackInfoReturnable<Component> cir) {
-        Predicate<UUID> filter = SocialBridge26.getLoginFilter();
+        Predicate<UUID> filter = P2PHostState26.getLoginFilter();
         if (filter != null) {
             if (nameAndId == null || nameAndId.id() == null || !filter.test(nameAndId.id())) {
                 cir.setReturnValue(Component.literal("You weren't invited to this world"));
@@ -41,7 +41,7 @@ public abstract class PlayerListMixin {
         require = 0
     )
     private void ladsFilterMutedGuestChat(PlayerChatMessage message, ServerPlayer sender, ChatType.Bound bound, CallbackInfo ci) {
-        if (sender != null && SocialBridge26.isMuted(sender.getUUID())) {
+        if (sender != null && P2PHostState26.isMuted(sender.getUUID())) {
             sender.sendSystemMessage(Component.literal("§cYou are muted by the host."));
             ci.cancel();
         }
