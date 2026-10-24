@@ -2,8 +2,13 @@ package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.client.ChatAnimation;
 import com.thelads.core.client.ChatHeads;
+import com.thelads.core.client.ChatServerHistory;
+import com.thelads.core.client.ChatTweaks;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.thelads.core.v1_8_9.feature.Chat189;
 import com.thelads.core.v1_8_9.feature.ChatHeads189;
+import com.thelads.core.v1_8_9.feature.ChatTweaks189;
 import com.thelads.core.v1_8_9.feature.Options189;
 import net.minecraft.client.gui.ChatLine;
 import net.minecraft.client.gui.FontRenderer;
@@ -32,10 +37,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * The Chat module, as 1.21.11 ChatMixin: size, line backgrounds, the newest message's slide and fade, and (Chat189) timestamps and
  * screenshot buttons. Display only. A message's lines share the tick it arrived in, which keys its animation. Also Chat Heads
- * (ChatHeads189): each message's sender found as it arrives, kept on its lines, drawn before its first line.
+ * (ChatHeads189): each message's sender found as it arrives, kept on its lines, drawn before its first line. And the parity-1023
+ * tweaks (ChatTweaks189): Compact Chat, tab and search filters, Translate Chat, Chat Peek, Toggle Chat and History per Server.
  */
 @Mixin(GuiNewChat.class)
-public abstract class GuiNewChatMixin implements Chat189.History {
+public abstract class GuiNewChatMixin implements Chat189.History, ChatTweaks189.Access {
     @Unique private final ChatAnimation ladsAnimation = new ChatAnimation();
     @Unique private boolean ladsAnimating, ladsLinePushed, ladsFirstLine;
     @Unique private int ladsLine, ladsClickOffset, ladsClickAt, ladsSenderAt, ladsRewrappedAt;
@@ -52,6 +58,78 @@ public abstract class GuiNewChatMixin implements Chat189.History {
     @Unique private NetworkPlayerInfo ladsSender, ladsRewrapped;
     /** Infinite History (ChatHistory): chatLines[0, ladsLaidOut) have their lines in drawnChatLines; -1 while every message has (vanilla). */
     @Unique private int ladsLaidOut = -1;
+    /** The newest stored message and the lines drawn for it (Compact Chat removes both), and whether the message being added shows. */
+    @Unique private ChatLine ladsNewestLine;
+    @Unique private final List<ChatLine> ladsNewestDrawn = new java.util.ArrayList<ChatLine>(4);
+    @Unique private boolean ladsShown = true, ladsDisplayOnly;
+    /** Copy and Delete Buttons: the stored message refreshChat is wrapping again, and the hovered line. */
+    @Unique private ChatLine ladsRewrapping;
+    @Unique private int ladsHoverTop, ladsHoverRight;
+
+    @Override public int lads$hoverTop() { return ladsHoverTop; }
+    @Override public int lads$hoverRight() { return ladsHoverRight; }
+
+    /** As drawChat lays the open chat out (from 28 above the bottom and Raised's lift, scaled, 2 in from the left): the line row at mouseY. */
+    @Override public ChatLine lads$hovered(int screenHeight, int mouseY) {
+        float scale = getChatScale();
+        int bottom = screenHeight - 28 - com.thelads.core.v1_8_9.feature.Raised189.chatLift();
+        int row = MathHelper.floor_float((bottom - mouseY) / (9 * scale));
+        if (row < 0 || row >= Math.min(getLineCount(), drawnChatLines.size() - scrollPos)) return null;
+        ladsHoverTop = MathHelper.floor_float(bottom - (row + 1) * 9 * scale);
+        ladsHoverRight = 2 + MathHelper.ceiling_float_int((MathHelper.ceiling_float_int(getChatWidth() / scale) + 6) * scale);
+        return ((com.thelads.core.v1_8_9.feature.ChatTweaks189.Parent) drawnChatLines.get(row + scrollPos)).ladsParent();
+    }
+
+    @Override public List<ChatLine> lads$messages() { return chatLines; }
+
+    @Override public void lads$relayout() {
+        ChatTweaks.breakRepeat();
+        refreshChat();
+    }
+
+    /** History per Server: the messages are kept for the server they came from before vanilla clears them (the main menu). */
+    @Inject(method = "clearChatMessages", at = @At("HEAD"), require = 1)
+    private void ladsKeepHistory(CallbackInfo ci) {
+        ChatServerHistory.clearing(chatLines);
+        ladsNewestLine = null;
+        ChatTweaks.breakRepeat();
+    }
+
+    /** Chat Peek: while its key is held the chat shows as if open (every line, no fade). */
+    @Inject(method = "getChatOpen", at = @At("HEAD"), cancellable = true, require = 1)
+    private void ladsPeek(CallbackInfoReturnable<Boolean> cir) {
+        if (ChatTweaks.peeking) cir.setReturnValue(true);
+    }
+
+    /**
+     * The parity-1023 tweaks as a message is stored (its plain text and translation come from Chat189.message): History per Server,
+     * then Compact Chat: a repeat removes the copy before (its stored message and drawn lines) and gets " (x2)".
+     */
+    @WrapOperation(method = "printChatMessageWithOptionalDeletion", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiNewChat;setChatLine(Lnet/minecraft/util/IChatComponent;IIZ)V"), require = 1)
+    private void ladsTweaks(GuiNewChat chat, IChatComponent message, int id, int updateCounter, boolean displayOnly, Operation<Void> original) {
+        ChatTweaks189.server(this);
+        String plain = Chat189.plain;
+        ChatTweaks189.Pending pending = Chat189.pending;
+        Chat189.plain = null;
+        Chat189.pending = null;
+        if (id != 0 || plain == null) ChatTweaks.breakRepeat(); // lines the client replaces by id never stack
+        else {
+            long now = System.currentTimeMillis();
+            int repeat = ChatTweaks.repeat(plain, now);
+            if (repeat > 1 && ladsNewestLine != null && !chatLines.isEmpty() && chatLines.get(0) == ladsNewestLine) {
+                drawnChatLines.removeAll(ladsNewestDrawn);
+                chatLines.remove(0);
+                if (ladsLaidOut > 0) ladsLaidOut--;
+            } else if (repeat > 1) { // the copy before is gone (deleted, cleared, laid out again): this one starts a new count
+                ChatTweaks.breakRepeat();
+                repeat = ChatTweaks.repeat(plain, now);
+            }
+            if (repeat > 1) ChatTweaks189.repeated(message, repeat);
+        }
+        original.call(chat, message, id, updateCounter, displayOnly);
+        for (ChatLine line : ladsNewestDrawn) ((com.thelads.core.v1_8_9.feature.ChatTweaks189.Parent) line).ladsParent(ladsNewestLine);
+        if (pending != null) pending.line = ladsNewestLine;
+    }
 
     @Override public int ladsScrollPos() { return scrollPos; }
     @Override public int ladsDrawnLines() { return drawnChatLines.size(); }
@@ -79,6 +157,8 @@ public abstract class GuiNewChatMixin implements Chat189.History {
     /** A resize or a chat setting lays out only the lines near the newest message, not the whole history. */
     @Inject(method = "refreshChat", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsLazyRefresh(CallbackInfo ci) {
+        ladsNewestLine = null; // its drawn lines are made anew
+        ladsNewestDrawn.clear();
         if (!ChatHistory.infinite()) {
             ladsLaidOut = -1;
             return;
@@ -119,6 +199,9 @@ public abstract class GuiNewChatMixin implements Chat189.History {
 
     @Inject(method = "setChatLine", at = @At("HEAD"), require = 1)
     private void ladsNewestMessage(IChatComponent message, int id, int updateCounter, boolean displayOnly, CallbackInfo ci) {
+        ladsShown = ChatTweaks189.shown(message); // Chat Tabs and Chat Search: a message outside them is stored, not drawn
+        ladsDisplayOnly = displayOnly;
+        if (!displayOnly) ladsNewestDrawn.clear();
         if (!displayOnly) ladsAnimation.start(updateCounter);
         ChatHeads.Match<NetworkPlayerInfo> match = displayOnly ? null : ChatHeads189.sender(message);
         ladsSender = displayOnly ? ladsRewrapped : match == null ? null : match.player();
@@ -130,6 +213,7 @@ public abstract class GuiNewChatMixin implements Chat189.History {
     /** Chat Heads: refreshChat re-wraps a stored message with the sender it arrived with. */
     @Redirect(method = "refreshChat", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/ChatLine;getChatComponent()Lnet/minecraft/util/IChatComponent;"), require = 1)
     private IChatComponent ladsRewrap(ChatLine line) {
+        ladsRewrapping = line;
         ladsRewrapped = ((ChatHeads189.Line) line).ladsHead();
         ladsRewrappedAt = ((ChatHeads189.Line) line).ladsAt();
         return line.getChatComponent();
@@ -144,6 +228,11 @@ public abstract class GuiNewChatMixin implements Chat189.History {
     @Redirect(method = "setChatLine", at = @At(value = "INVOKE", target = "Ljava/util/List;add(ILjava/lang/Object;)V"), require = 2)
     @SuppressWarnings({"rawtypes", "unchecked"})
     private void ladsLineSender(List lines, int index, Object line) {
+        if (lines == drawnChatLines) {
+            if (!ladsShown) return;
+            if (!ladsDisplayOnly) ladsNewestDrawn.add((ChatLine) line);
+            else ((com.thelads.core.v1_8_9.feature.ChatTweaks189.Parent) line).ladsParent(ladsRewrapping);
+        } else ladsNewestLine = (ChatLine) line; // chatLines: a new message is stored
         ((ChatHeads189.Line) line).ladsHead(ladsSender, ladsSenderAt, ladsFirstLine);
         ladsFirstLine = false;
         lines.add(index, line);
@@ -182,8 +271,13 @@ public abstract class GuiNewChatMixin implements Chat189.History {
         if (Options189.enabled("Chat")) cir.setReturnValue((int) Options189.number("Chat", "Chat Height", 180));
     }
 
-    @Inject(method = "drawChat", at = @At("HEAD"), require = 1)
+    @Inject(method = "drawChat", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsBeginChat(int updateCounter, CallbackInfo ci) {
+        // Toggle Chat: the hidden chat still shows while typing in it or peeking.
+        if (ChatTweaks.hidden && !ChatTweaks.peeking && !(net.minecraft.client.Minecraft.getMinecraft().currentScreen instanceof net.minecraft.client.gui.GuiChat)) {
+            ci.cancel();
+            return;
+        }
         if (ChatHeads189.layoutChanged()) refreshChat();
         ladsAnimating = Options189.enabled("Chat") && Options189.bool("Chat", "Message Animations", true) && ladsAnimation.running();
     }

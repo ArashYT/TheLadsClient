@@ -242,6 +242,9 @@ public final class HypixelSafetyManager {
             || PvpVisuals.NAMETAG_HEALTH.equalsIgnoreCase(moduleName)
             || "Light Overlay".equalsIgnoreCase(moduleName) || "Loot Beams".equalsIgnoreCase(moduleName) // pvp rows 32-36: info vanilla does not show
             || "Mob Overlay".equalsIgnoreCase(moduleName) || "Mob Size".equalsIgnoreCase(moduleName)
+            // parity-1023 chat lane: commands past vanilla's length, keys that send chat, walking and slot clicks with a screen open
+            || ChatTweaks.LONG_COMMANDS.equalsIgnoreCase(moduleName) || com.thelads.core.modules.AutoTextModule.NAME.equalsIgnoreCase(moduleName)
+            || InventoryTweaks.MOVE.equalsIgnoreCase(moduleName) || InventoryTweaks.ARMOR_SWAP.equalsIgnoreCase(moduleName)
             || isGatedHud(moduleName);
     }
 

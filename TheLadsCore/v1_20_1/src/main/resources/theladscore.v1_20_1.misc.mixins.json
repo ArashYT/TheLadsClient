@@ -25,6 +25,8 @@
     "MouseAccess1201",
     "ContainerAccess1201",
     "FarBlockEntitiesMixin",
-    "ItemModelGapsMixin"
+    "ItemModelGapsMixin",
+    "InventoryTweaksMixin1201",
+    "SlotLockGameModeMixin1201"
   ]
 }

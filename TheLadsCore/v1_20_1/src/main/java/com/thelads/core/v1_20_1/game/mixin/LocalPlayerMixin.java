@@ -15,6 +15,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class LocalPlayerMixin {
     @Inject(method = "drop(Z)Z", at = @At("HEAD"), cancellable = true)
     private void lads$dropConfirm(boolean entireStack, org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> cir) {
+        // Slot Lock: the held hotbar slot is locked, so nothing is dropped (and nothing sent).
+        if (com.thelads.core.client.InventoryTweaks.locked(((LocalPlayer) (Object) this).getInventory().selected)) {
+            cir.setReturnValue(false);
+            return;
+        }
         net.minecraft.world.item.ItemStack held = ((LocalPlayer) (Object) this).getMainHandItem();
         if (!held.isEmpty()) {
             com.thelads.core.config.Module m = com.thelads.core.config.ModuleManager.getInstance().getModule(com.thelads.core.modules.DropConfirmationModule.NAME);

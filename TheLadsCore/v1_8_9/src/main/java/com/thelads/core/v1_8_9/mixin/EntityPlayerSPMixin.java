@@ -21,6 +21,11 @@ public abstract class EntityPlayerSPMixin {
 
     @Inject(method = "dropOneItem(Z)Lnet/minecraft/entity/item/EntityItem;", at = @At("HEAD"), cancellable = true)
     private void lads$dropConfirm(boolean dropAll, org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<net.minecraft.entity.item.EntityItem> cir) {
+        // Slot Lock: the held hotbar slot is locked, so nothing is dropped (and nothing sent).
+        if (com.thelads.core.client.InventoryTweaks.locked(((EntityPlayerSP) (Object) this).inventory.currentItem)) {
+            cir.setReturnValue(null);
+            return;
+        }
         net.minecraft.item.ItemStack held = ((EntityPlayerSP) (Object) this).getHeldItem();
         if (held != null) {
             com.thelads.core.config.Module m = com.thelads.core.config.ModuleManager.getInstance().getModule(com.thelads.core.modules.DropConfirmationModule.NAME);
