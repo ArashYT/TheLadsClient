@@ -160,6 +160,8 @@ public class PlayerTabOverlayMixin {
     @WrapOperation(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/PlayerFaceExtractor;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/resources/Identifier;IIIZZI)V"))
     private void betterHatLayer(GuiGraphicsExtractor graphics, Identifier texture, int x, int y, int size, boolean hat, boolean flip, int color, Operation<Void> original) {
         if (TabTweaksConfig.current().improvedHeads) {
+            // Null seen once in a showcase run (crash 2026-10-24 10:35, hold Tab with client NPC entries): an overlay built without the initializer
+            if (ladsTab$playerFaceRenderer == null) ladsTab$playerFaceRenderer = new PlayerFaceExtractor();
             ((Head) ladsTab$playerFaceRenderer).ladsTab$draw(graphics, texture, x, y, size, hat, flip, color);
         } else {
             original.call(graphics, texture, x, y, size, hat, flip, color);
