@@ -42,7 +42,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * The PvP visual modules on 1.20.1 (common PvpVisuals): Block Overlay (LevelRenderer.renderHitOutline), Hitboxes and Hide Mob
  * Deaths (EntityRenderDispatcher), Mount Opacity (LivingEntityRenderer), Glint Colorizer and Shiny Potions (the glint texturing
  * state, RenderSystem and ItemStack.hasFoil) and Hit Color, which repaints the entity overlay texture's hurt row when it changes.
- * Damage Tint is drawn by the common HUD. Mixins: theladscore.v1_20_1.pvp.mixins.json.
+ * Damage Tint is drawn by the common HUD. Mixins: theladscore.v1_20_1.pvp.mixins.json; Render Tweaks, Overlays, Totem Animation,
+ * Dark Mode and the 1.7 extras: theladscore.v1_20_1.pvp2.mixins.json (mixin.pvp); the Nametags extras: Nametags1201.
  */
 public final class PvpVisuals1201 {
     /** OverlayTexture's own hurt pixel (ABGR): red at 70% alpha, a 30% red flash. */
@@ -58,6 +59,7 @@ public final class PvpVisuals1201 {
 
     public static void register() {
         ModuleSupport.registerBuiltIn(PvpVisuals.MODULES);
+        ModuleSupport.registerBuiltIn(PvpVisuals.TOTEM);
         ClientTickEvents.END_CLIENT_TICK.register(PvpVisuals1201::tick);
     }
 

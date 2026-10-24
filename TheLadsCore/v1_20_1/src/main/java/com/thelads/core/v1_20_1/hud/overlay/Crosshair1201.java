@@ -305,8 +305,22 @@ public final class Crosshair1201 {
             if (ammo != null) {
                 graphics.renderItem(ammo.icon(), x, y);
                 graphics.drawString(mc.font, ammo.infinite() ? "∞" : Integer.toString(ammo.count()), x + 18, y + 4, CrosshairDesign.alpha(0xffffffff, opacity), com.thelads.core.config.HudSettings.getInstance().isTextShadow());
+                y += 18;
             }
         }
+        if (flag("Elytra Flight Indicator") && mc.player.isFallFlying()) elytra(graphics, mc, x, y, opacity);
+    }
+
+    /** Elytra Flight Indicator: while gliding, the worn elytra (with its durability bar) and your speed in blocks per second. */
+    private static void elytra(GuiGraphics graphics, Minecraft mc, int x, int y, double opacity) {
+        ItemStack elytra = mc.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
+        graphics.renderItem(elytra, x, y);
+        graphics.renderItemDecorations(mc.font, elytra, x, y);
+        int color = CrosshairDesign.alpha(0xffffffff, opacity);
+        boolean shadow = com.thelads.core.config.HudSettings.getInstance().isTextShadow();
+        String speed = com.thelads.core.client.PvpVisuals.number((int) Math.round(mc.player.getDeltaMovement().length() * 20));
+        graphics.drawString(mc.font, speed, x + 18, y + 4, color, shadow);
+        graphics.drawString(mc.font, "m/s", x + 19 + mc.font.width(speed), y + 4, color, shadow);
     }
 
     record Ammo(ItemStack icon, int count, boolean infinite) {}

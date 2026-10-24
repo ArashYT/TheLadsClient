@@ -12,13 +12,18 @@ import com.thelads.core.modules.HitboxesModule;
 import com.thelads.core.v26_2.feature.pvp.mixin.OverlayTextureAccessor26;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.debug.DebugScreenEntries;
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.debug.EntityHitboxDebugRenderer;
+import net.minecraft.client.renderer.entity.state.AvatarRenderState;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.rendertype.TextureTransform;
 import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.BlockPos;
@@ -27,6 +32,8 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.gizmos.GizmoProperties;
 import net.minecraft.gizmos.GizmoStyle;
 import net.minecraft.gizmos.Gizmos;
+import net.minecraft.network.chat.Style;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -46,7 +53,9 @@ import org.joml.Vector4f;
  * EntityHitboxDebugRenderer's gizmos, also run while F3+B is off), Hide Mob Deaths (EntityRenderDispatcher.shouldRender), Mount
  * Opacity (LivingEntityRenderer: a flag on the render state), Glint Colorizer (the glint render types' colour modulator and scroll)
  * with Shiny Potions (ItemStack.hasFoil) and Hit Color, which repaints the entity overlay texture's hurt row when it changes. Damage
- * Tint is drawn by the common HUD. Mixins: theladscore.v26_3.pvp.mixins.json.
+ * Tint is drawn by the common HUD. Mixins: theladscore.v26_3.pvp.mixins.json; Render Tweaks, Overlays, Totem Animation, Dark Mode,
+ * the 1.7 extras and the Nametags extras: theladscore.v26_3.pvp2.mixins.json (mixin.pvp), which draws ping and health through
+ * {@link #tagExtras}.
  */
 public final class PvpVisuals26 {
     /** OverlayTexture's own hurt pixel (ARGB): red at 70% alpha, a 30% red flash. */
@@ -62,6 +71,9 @@ public final class PvpVisuals26 {
     private static EntityHitboxDebugRenderer hitboxes;
     /** The render type RenderType.writeDynamicTransforms writes now is a glint (its texture transform said so). */
     public static boolean glintNow;
+    private static final FormattedCharSequence MS = FormattedCharSequence.forward("ms", Style.EMPTY), HEART = FormattedCharSequence.forward("\u2764", Style.EMPTY);
+    /** "0".."999" as text to submit, built once each (PvpVisuals.number). */
+    private static final FormattedCharSequence[] NUMBERS = new FormattedCharSequence[1000];
 
     /** Mount Opacity's mark on a LivingEntityRenderState (PvpMountStateMixin26): the player's mount, drawn see-through. */
     public interface MountState {
@@ -74,7 +86,46 @@ public final class PvpVisuals26 {
 
     public static void register() {
         ModuleSupport.registerBuiltIn(PvpVisuals.MODULES);
+        ModuleSupport.registerBuiltIn(PvpVisuals.TOTEM);
         ClientTickEvents.END_CLIENT_TICK.register(PvpVisuals26::tick);
+    }
+
+    /**
+     * Nametags' Show Ping and Nametag Health after a player's name, in the name tag's own place: SubmitNodeCollection.submitNameTag's
+     * transform (attachment, half a block up, facing the camera, text scale and Nametags' Scale), drawn with the normal pass.
+     */
+    public static void tagExtras(EntityRenderState state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera, int offset) {
+        if (!(state instanceof AvatarRenderState avatar) || !PvpVisuals.nametagPing && !PvpVisuals.nametagHealth) return;
+        Minecraft mc = Minecraft.getInstance();
+        Entity entity = mc.level == null || state.nameTagAttachment == null ? null : mc.level.getEntity(avatar.id);
+        if (!(entity instanceof Player player)) return;
+        Font font = mc.font;
+        Vec3 at = state.nameTagAttachment;
+        pose.pushPose();
+        pose.translate(at.x, at.y + 0.5, at.z);
+        pose.rotate(camera.orientation);
+        float scale = 0.025f * PvpVisuals.tagScale;
+        pose.scale(scale, -scale, scale);
+        // the tag shows the renamed name (NametagBackgroundMixin)
+        float x = font.width(com.thelads.core.v26_2.feature.NativeNicknames.rename(state.nameTag)) / 2f + 3;
+        if (PvpVisuals.nametagPing && mc.getConnection() != null) {
+            PlayerInfo info = mc.getConnection().getPlayerInfo(player.getUUID());
+            if (info != null) x = extra(collector, pose, font, info.getLatency(), MS, PvpVisuals.pingColor(info.getLatency()), x, offset, state.lightCoords) + 3;
+        }
+        if (PvpVisuals.nametagHealth) extra(collector, pose, font, (int) Math.ceil(player.getHealth()), HEART, 0xFFFF5555, x, offset, state.lightCoords);
+        pose.popPose();
+    }
+
+    private static float extra(SubmitNodeCollector collector, PoseStack pose, Font font, int value, FormattedCharSequence unit, int color, float x, int y,
+                               int light) {
+        int v = Math.max(0, Math.min(999, value));
+        FormattedCharSequence number = NUMBERS[v];
+        if (number == null) NUMBERS[v] = number = FormattedCharSequence.forward(PvpVisuals.number(v), Style.EMPTY);
+        int faded = PvpVisuals.alpha(color, PvpVisuals.tagAlpha);
+        collector.submitText(pose, x, y, number, false, Font.DisplayMode.NORMAL, light, faded, 0, 0);
+        x += font.width(number);
+        collector.submitText(pose, x, y, unit, false, Font.DisplayMode.NORMAL, light, faded, 0, 0);
+        return x + font.width(unit);
     }
 
     private static void tick(Minecraft mc) {

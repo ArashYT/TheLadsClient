@@ -110,6 +110,7 @@ public class CrosshairModule extends Module {
         addOption(new ColorOption("Cooldown Color", false, 0xff55ffff));
         addOption(new BoolOption("Tool Durability Indicator", false));
         addOption(new BoolOption("Projectile Indicator", false));
+        addOption(new BoolOption("Elytra Flight Indicator", false)); // while gliding: the elytra and your speed (no elytra on 1.8.9)
         addOption(new BoolOption("Visible Normally", true));
         addOption(new BoolOption("Visible with Hidden HUD", false));
         addOption(new BoolOption("Visible with Debug", true));

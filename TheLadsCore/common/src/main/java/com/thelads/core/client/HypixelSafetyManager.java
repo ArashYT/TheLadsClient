@@ -237,7 +237,8 @@ public final class HypixelSafetyManager {
             || "Jade".equalsIgnoreCase(moduleName)
             || "ShulkerBoxUtils".equalsIgnoreCase(moduleName)
             || "Freelook".equalsIgnoreCase(moduleName) || "FogClearView".equalsIgnoreCase(moduleName)
-            || com.thelads.core.modules.HitboxesModule.THROUGH_WALLS.equalsIgnoreCase(moduleName); // FreelookModule, FogCustomizerModule.CLEAR_VIEW
+            || com.thelads.core.modules.HitboxesModule.THROUGH_WALLS.equalsIgnoreCase(moduleName) // FreelookModule, FogCustomizerModule.CLEAR_VIEW
+            || PvpVisuals.NAMETAG_HEALTH.equalsIgnoreCase(moduleName);
     }
 
     public static boolean isGatedHypixelModule(String moduleName) {

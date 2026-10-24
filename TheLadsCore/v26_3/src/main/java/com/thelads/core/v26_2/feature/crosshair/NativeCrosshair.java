@@ -158,7 +158,16 @@ public final class NativeCrosshair {
         var mc=Minecraft.getInstance(); var held=mc.player.getMainHandItem(); int x=cx+14,y=cy+18;
         if(flag("Item Cooldown"))cooldowns(graphics,cx,cy,partial,opacity);
         if(flag("Tool Durability Indicator")&&held.isDamageableItem()){graphics.item(held,x,y);graphics.text(mc.font,Integer.toString(Math.max(0,held.getMaxDamage()-held.getDamageValue())),x+18,y+4,CrosshairDesign.alpha(0xffffffff,opacity),com.thelads.core.config.HudSettings.getInstance().isTextShadow());y+=18;}
-        if(flag("Projectile Indicator")){var weapon=held.getItem() instanceof ProjectileWeaponItem||throwable(held)?held:mc.player.getOffhandItem();var ammo=projectiles(weapon);if(ammo!=null){graphics.item(ammo.icon,x,y);graphics.text(mc.font,ammo.infinite?"∞":Integer.toString(ammo.count),x+18,y+4,CrosshairDesign.alpha(0xffffffff,opacity),com.thelads.core.config.HudSettings.getInstance().isTextShadow());}}
+        if(flag("Projectile Indicator")){var weapon=held.getItem() instanceof ProjectileWeaponItem||throwable(held)?held:mc.player.getOffhandItem();var ammo=projectiles(weapon);if(ammo!=null){graphics.item(ammo.icon,x,y);graphics.text(mc.font,ammo.infinite?"∞":Integer.toString(ammo.count),x+18,y+4,CrosshairDesign.alpha(0xffffffff,opacity),com.thelads.core.config.HudSettings.getInstance().isTextShadow());y+=18;}}
+        if(flag("Elytra Flight Indicator")&&mc.player.isFallFlying())elytra(graphics,mc,x,y,opacity);
+    }
+    /** Elytra Flight Indicator: while gliding, the worn elytra (with its durability bar) and your speed in blocks per second. */
+    private static void elytra(GuiGraphicsExtractor graphics,Minecraft mc,int x,int y,double opacity) {
+        var elytra=mc.player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST);
+        graphics.item(elytra,x,y);graphics.itemDecorations(mc.font,elytra,x,y);
+        int color=CrosshairDesign.alpha(0xffffffff,opacity);boolean shadow=com.thelads.core.config.HudSettings.getInstance().isTextShadow();
+        String speed=com.thelads.core.client.PvpVisuals.number((int)Math.round(mc.player.getDeltaMovement().length()*20));
+        graphics.text(mc.font,speed,x+18,y+4,color,shadow);graphics.text(mc.font,"m/s",x+19+mc.font.width(speed),y+4,color,shadow);
     }
     public record Ammo(ItemStack icon,int count,boolean infinite) {}
     public static Ammo projectiles(ItemStack held) {
