@@ -247,6 +247,7 @@ public class TheLadsCore189 {
     public void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         NativeMenuKey.tick();
+        com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null) { // window-size HUD buffers go back out of a world
             com.thelads.core.v1_8_9.feature.HudCache189.free();

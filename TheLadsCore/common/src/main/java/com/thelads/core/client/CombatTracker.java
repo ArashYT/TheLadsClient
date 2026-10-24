@@ -13,19 +13,22 @@ public final class CombatTracker {
     private long lastHitTime;
     private int hitsLanded;
     private int hitsTaken;
-    private int swings;
+    private int airSwings;
     private int gapplesUsed;
 
     private CombatTracker() {}
 
+    public synchronized void onAirSwing() {
+        airSwings++;
+    }
+
     public synchronized void onSwing() {
-        swings++;
+        airSwings++;
     }
 
     public synchronized void onAttack(int entityId, long now) {
         targetId = entityId;
         attackedAt = now;
-        swings++;
     }
 
     public synchronized int onHurt(int entityId, boolean self, long now) {
@@ -57,11 +60,13 @@ public final class CombatTracker {
 
     public synchronized int getHitsLanded() { return hitsLanded; }
     public synchronized int getHitsTaken() { return hitsTaken; }
-    public synchronized int getSwings() { return swings; }
+    public synchronized int getAirSwings() { return airSwings; }
+    public synchronized int getSwings() { return hitsLanded + airSwings; }
     public synchronized int getGapplesUsed() { return gapplesUsed; }
 
     public synchronized float getAccuracy() {
-        return swings > 0 ? ((float) hitsLanded * 100.0f) / swings : 0.0f;
+        int total = hitsLanded + airSwings;
+        return total > 0 ? ((float) hitsLanded * 100.0f) / total : 0.0f;
     }
 
     public synchronized void reset() {
@@ -69,7 +74,7 @@ public final class CombatTracker {
         combo = 0;
         hitsLanded = 0;
         hitsTaken = 0;
-        swings = 0;
+        airSwings = 0;
         gapplesUsed = 0;
     }
 }

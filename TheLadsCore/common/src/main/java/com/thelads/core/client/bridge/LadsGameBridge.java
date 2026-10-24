@@ -266,4 +266,6 @@ public interface LadsGameBridge {
     default int getSoupCount() {
         return 0;
     }
+
+    default void tickClient() {}
 }

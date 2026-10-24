@@ -1,20 +1,27 @@
 package com.thelads.core.client.hud;
 
 import com.thelads.core.client.bridge.LadsGraphics;
-import java.util.Arrays;
 
 public class FPSHudElement extends TextHudElement {
     private static final long[] INTERVALS = { 0L, 150L, 400L, 1000L };
     private static final int HISTORY_SIZE = 120;
+    private static final int MAX_HISTOGRAM_FPS = 1000;
 
     private double displayed = 0;
     private double target = 0;
     private long lastSample = 0;
 
     private final int[] history = new int[HISTORY_SIZE];
+    private final int[] fpsHistogram = new int[MAX_HISTOGRAM_FPS + 1];
     private int historyHead = 0;
     private int historyCount = 0;
     private long lastHistorySample = 0;
+
+    private int lastGameVal = -1;
+    private int lastHudVal = -1;
+    private int lastMode = -1;
+    private int lastStats = -1;
+    private String cachedText = "";
 
     public FPSHudElement() {
         super(60);
@@ -23,12 +30,6 @@ public class FPSHudElement extends TextHudElement {
         this.width = 60;
         this.height = 16;
     }
-
-    private int lastGameVal = -1;
-    private int lastHudVal = -1;
-    private int lastMode = -1;
-    private int lastStats = -1;
-    private String cachedText = "";
 
     @Override
     protected String updateText(LadsGraphics g) {
@@ -48,7 +49,14 @@ public class FPSHudElement extends TextHudElement {
 
         if (now - lastHistorySample >= 100L) {
             lastHistorySample = now;
+            int clampedFps = Math.max(0, Math.min(MAX_HISTOGRAM_FPS, fps));
+            if (historyCount == HISTORY_SIZE) {
+                int oldFps = history[historyHead];
+                int oldClamped = Math.max(0, Math.min(MAX_HISTOGRAM_FPS, oldFps));
+                if (fpsHistogram[oldClamped] > 0) fpsHistogram[oldClamped]--;
+            }
             history[historyHead] = fps;
+            fpsHistogram[clampedFps]++;
             historyHead = (historyHead + 1) % HISTORY_SIZE;
             if (historyCount < HISTORY_SIZE) historyCount++;
         }
@@ -75,20 +83,29 @@ public class FPSHudElement extends TextHudElement {
             return cachedText = base;
         }
 
+        // Running min, max, avg scan (in L1 cache, zero heap allocations)
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
         long sum = 0;
-        int[] sorted = new int[historyCount];
         for (int i = 0; i < historyCount; i++) {
             int v = history[i];
             if (v < min) min = v;
             if (v > max) max = v;
             sum += v;
-            sorted[i] = v;
         }
         int avg = (int) (sum / historyCount);
-        Arrays.sort(sorted);
-        int low1Pct = sorted[Math.max(0, (int) (historyCount * 0.05))];
+
+        // 1% low calculated from pre-allocated fixed-size histogram (zero sort, zero allocations)
+        int target1PctCount = Math.max(1, (int) Math.ceil(historyCount * 0.01));
+        int accumulated = 0;
+        int low1Pct = 0;
+        for (int i = 0; i <= MAX_HISTOGRAM_FPS; i++) {
+            accumulated += fpsHistogram[i];
+            if (accumulated >= target1PctCount) {
+                low1Pct = i;
+                break;
+            }
+        }
 
         return cachedText = switch (stats) {
             case 1 -> base + " (" + min + " min, " + max + " max)";

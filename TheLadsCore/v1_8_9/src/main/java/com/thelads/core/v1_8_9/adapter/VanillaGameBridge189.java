@@ -218,30 +218,99 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         return label + ": " + total;
     }
 
-    @Override
-    public int getPotionCount() {
+    private int lastInventoryScanTick = -1;
+    private int cachedPotionCount = 0;
+    private int cachedSoupCount = 0;
+    private boolean lastAttackKeyDown = false;
+
+    private void updateInventoryCountsIfNeeded() {
         Minecraft mc = mc();
-        if (mc.thePlayer == null) return 0;
-        int count = 0;
+        if (mc.thePlayer == null) {
+            cachedPotionCount = 0;
+            cachedSoupCount = 0;
+            return;
+        }
+        int curTick = mc.thePlayer.ticksExisted;
+        if (curTick == lastInventoryScanTick) return;
+        lastInventoryScanTick = curTick;
+        int pots = 0, soups = 0;
         for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
-            if (stack != null && stack.getItem() == net.minecraft.init.Items.potionitem) {
-                count += stack.stackSize;
+            if (stack != null) {
+                if (stack.getItem() == net.minecraft.init.Items.potionitem) pots += stack.stackSize;
+                else if (stack.getItem() == net.minecraft.init.Items.mushroom_stew) soups += stack.stackSize;
             }
         }
-        return count;
+        cachedPotionCount = pots;
+        cachedSoupCount = soups;
+    }
+
+    @Override
+    public int getPotionCount() {
+        updateInventoryCountsIfNeeded();
+        return cachedPotionCount;
     }
 
     @Override
     public int getSoupCount() {
+        updateInventoryCountsIfNeeded();
+        return cachedSoupCount;
+    }
+
+    @Override
+    public List<CooldownEntry> getActiveCooldowns() {
+        // Minecraft 1.8.9 has no item cooldowns in vanilla netcode (ItemCooldowns was added in 1.9)
+        return Collections.emptyList();
+    }
+
+    @Override
+    public void tickClient() {
         Minecraft mc = mc();
-        if (mc.thePlayer == null) return 0;
-        int count = 0;
-        for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
-            if (stack != null && stack.getItem() == net.minecraft.init.Items.mushroom_stew) {
-                count += stack.stackSize;
+        if (mc.thePlayer == null || mc.theWorld == null) return;
+        int currentTick = mc.thePlayer.ticksExisted;
+
+        // 1. Air swing detection (attack key pressed with no entity under crosshair)
+        if (mc.gameSettings != null) {
+            boolean attackDown = mc.gameSettings.keyBindAttack.isKeyDown();
+            if (attackDown && !lastAttackKeyDown && mc.currentScreen == null) {
+                if (mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != net.minecraft.util.MovingObjectPosition.MovingObjectType.ENTITY) {
+                    com.thelads.core.client.CombatTracker.get().onAirSwing();
+                }
+            }
+            lastAttackKeyDown = attackDown;
+
+            // 2. Block counter placed detection (decrease within 2 ticks of use on block)
+            boolean useDown = mc.gameSettings.keyBindUseItem.isKeyDown();
+            boolean hitBlock = mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == net.minecraft.util.MovingObjectPosition.MovingObjectType.BLOCK;
+            if (useDown && hitBlock && mc.currentScreen == null) {
+                com.thelads.core.client.BlockTracker.get().onUseKeyOnBlock(currentTick);
             }
         }
-        return count;
+        ItemStack held = mc.thePlayer.getHeldItem();
+        boolean isBlock = held != null && held.getItem() instanceof net.minecraft.item.ItemBlock;
+        int heldCount = held != null ? held.stackSize : 0;
+        int slot = mc.thePlayer.inventory.currentItem;
+        com.thelads.core.client.BlockTracker.get().checkHeldBlockTick(currentTick, slot, isBlock, heldCount);
+
+        // 3. Golden apple eating detection
+        boolean using = mc.thePlayer.isUsingItem();
+        boolean isGapple = held != null && held.getItem() == net.minecraft.init.Items.golden_apple;
+        int gappleCount = isGapple ? held.stackSize : 0;
+        com.thelads.core.client.GappleTracker.get().onTick(using, isGapple, slot, gappleCount);
+
+        // 4. Item tracker inventory diffing (every 10 client ticks)
+        if (currentTick % 10 == 0) {
+            boolean containerOpen = mc.currentScreen != null && !(mc.currentScreen instanceof net.minecraft.client.gui.inventory.GuiInventory);
+            com.thelads.core.client.InventoryDiffTracker diff = com.thelads.core.client.InventoryDiffTracker.get();
+            diff.beginScan(containerOpen);
+            if (!containerOpen) {
+                for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
+                    if (stack != null && stack.getItem() != null) {
+                        diff.addScannedItem(net.minecraft.item.Item.getIdFromItem(stack.getItem()), stack.stackSize, stack.getDisplayName());
+                    }
+                }
+            }
+            diff.endScan();
+        }
     }
 
     @Override

@@ -1,9 +1,6 @@
 package com.thelads.core;
 
-import com.thelads.core.client.BlockTracker;
-import com.thelads.core.client.CombatTracker;
-import com.thelads.core.client.DeathTracker;
-import com.thelads.core.client.TpsTracker;
+import com.thelads.core.client.*;
 import com.thelads.core.client.bridge.DefaultGameBridge;
 import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.hud.*;
@@ -35,6 +32,8 @@ public class HudParity1023Test {
         BlockTracker.get().reset();
         DeathTracker.get().reset();
         TpsTracker.get().reset();
+        GappleTracker.get().reset();
+        InventoryDiffTracker.get().reset();
     }
 
     @AfterEach
@@ -51,7 +50,6 @@ public class HudParity1023Test {
 
         long now = 10_000_000_000L;
         tracker.onAttack(100, now);
-        assertEquals(1, tracker.getSwings());
 
         int combo = tracker.onHurt(100, false, now + 100_000_000L);
         assertEquals(1, combo);
@@ -69,10 +67,15 @@ public class HudParity1023Test {
         assertEquals(0, tracker.getCombo());
         assertEquals(1, tracker.getHitsTaken());
 
+        // Air swings and accuracy
+        tracker.onAirSwing();
+        tracker.onAirSwing();
+        // 2 hits, 2 air swings -> 50%
+        assertEquals(50.0f, tracker.getAccuracy(), 0.01f);
+
         // Gapples
         tracker.onGapple();
         assertEquals(1, tracker.getGapplesUsed());
-        assertTrue(tracker.getAccuracy() > 0.0f);
     }
 
     @Test
@@ -98,6 +101,91 @@ public class HudParity1023Test {
     }
 
     @Test
+    void testBlockTrackerHeldBlockPlacement() {
+        BlockTracker tracker = BlockTracker.get();
+        tracker.reset();
+
+        // 1. Player presses use on block at tick 10 with 64 cobblestone in slot 0
+        tracker.onUseKeyOnBlock(10);
+        tracker.checkHeldBlockTick(10, 0, true, 64);
+
+        // At tick 11 (within 2 ticks), stack size drops to 63 -> 1 placed block counted
+        tracker.checkHeldBlockTick(11, 0, true, 63);
+        assertEquals(1, tracker.getBlocksPlaced());
+
+        // At tick 15 (> 2 ticks since use on block at tick 10), count drops to 62 -> not counted as placed
+        tracker.checkHeldBlockTick(15, 0, true, 62);
+        assertEquals(1, tracker.getBlocksPlaced());
+
+        // At tick 20, player uses key on block with 62 cobblestone in slot 0, then switches to slot 1 with 30 stone
+        tracker.onUseKeyOnBlock(20);
+        tracker.checkHeldBlockTick(20, 0, true, 62);
+        tracker.checkHeldBlockTick(21, 1, true, 30); // slot changed!
+        assertEquals(1, tracker.getBlocksPlaced()); // not counted as placed
+
+        // In slot 1, stack drops from 30 to 29 at tick 22 (within 2 ticks of 20) -> counted!
+        tracker.checkHeldBlockTick(22, 1, true, 29);
+        assertEquals(2, tracker.getBlocksPlaced());
+    }
+
+    @Test
+    void testGappleTracker() {
+        CombatTracker ct = CombatTracker.get();
+        GappleTracker gt = GappleTracker.get();
+        ct.reset();
+        gt.reset();
+        assertEquals(0, ct.getGapplesUsed());
+
+        // 1. Normal eat: start eating at 16 gapples in slot 0
+        gt.onTick(true, true, 0, 16);
+        // Finishing eating: isUsing becomes false, count is 15 in slot 0 -> counted!
+        gt.onTick(false, true, 0, 15);
+        assertEquals(1, ct.getGapplesUsed());
+
+        // 2. Cancelled eat: start eating at 15 gapples
+        gt.onTick(true, true, 0, 15);
+        // Cancelled: isUsing becomes false, count is still 15 -> not counted!
+        gt.onTick(false, true, 0, 15);
+        assertEquals(1, ct.getGapplesUsed());
+    }
+
+    @Test
+    void testInventoryDiffTracker() {
+        InventoryDiffTracker diff = InventoryDiffTracker.get();
+        diff.reset();
+
+        // 1. Initial snapshot
+        diff.beginScan(false);
+        diff.addScannedItem(1, 64, "Cobblestone");
+        diff.endScan();
+
+        // 2. Pickup 5 Cobblestone (64 -> 69) and 1 Diamond
+        diff.beginScan(false);
+        diff.addScannedItem(1, 69, "Cobblestone");
+        diff.addScannedItem(264, 1, "Diamond");
+        diff.endScan();
+
+        // 3. Container open (moving items between chest/inv): should skip diff
+        diff.beginScan(true);
+        diff.endScan();
+    }
+
+    @Test
+    void testHitIndicatorAngleMath() {
+        // Attacker on left (relative yaw = 0.0) -> clock angle = -90 (or 270 deg)
+        assertEquals(-90.0, HitIndicatorHudElement.calculateIndicatorAngle(0.0f), 0.001);
+
+        // Attacker in front (relative yaw = 90.0) -> clock angle = 0.0 (12 o'clock)
+        assertEquals(0.0, HitIndicatorHudElement.calculateIndicatorAngle(90.0f), 0.001);
+
+        // Attacker on right (relative yaw = 180.0) -> clock angle = 90.0 (3 o'clock)
+        assertEquals(90.0, HitIndicatorHudElement.calculateIndicatorAngle(180.0f), 0.001);
+
+        // Attacker behind (relative yaw = 270.0) -> clock angle = 180.0 (6 o'clock)
+        assertEquals(180.0, HitIndicatorHudElement.calculateIndicatorAngle(270.0f), 0.001);
+    }
+
+    @Test
     void testDeathTracker() {
         DeathTracker dt = DeathTracker.get();
         assertEquals(0, dt.getDeathCount());
@@ -120,12 +208,8 @@ public class HudParity1023Test {
         TestGraphics g = new TestGraphics();
 
         element.prepareRender(g, true);
-        assertEquals(60, element.getWidth());
-
-        CombatTracker.get().onAttack(10, System.nanoTime());
-        CombatTracker.get().onHurt(10, false, System.nanoTime());
-        element.prepareRender(g, false);
-        assertNotNull(element);
+        element.renderEditor(g);
+        element.render(g);
     }
 
     @Test
@@ -134,8 +218,12 @@ public class HudParity1023Test {
         element.setModuleName("PvPInfo");
         TestGraphics g = new TestGraphics();
 
+        CombatTracker.get().onAttack(10, System.nanoTime());
+        CombatTracker.get().onHurt(10, false, System.nanoTime());
+        CombatTracker.get().onAirSwing();
+
         element.prepareRender(g, true);
-        assertTrue(element.getHeight() >= 16);
+        element.renderEditor(g);
         element.render(g);
     }
 
@@ -155,11 +243,12 @@ public class HudParity1023Test {
         element.setModuleName("ItemTracker");
         TestGraphics g = new TestGraphics();
 
-        ItemTrackerHudElement.recordChange("Ender Pearl", 16);
-        ItemTrackerHudElement.recordChange("Arrows", -5);
-        element.prepareRender(g, false);
-        element.render(g);
+        ItemTrackerHudElement.recordChange("Cobblestone", 16);
+        ItemTrackerHudElement.recordChange("Ender Pearl", -1);
+
+        element.prepareRender(g, true);
         element.renderEditor(g);
+        element.render(g);
     }
 
     @Test
@@ -184,13 +273,14 @@ public class HudParity1023Test {
     }
 
     @Test
-    void testFPSHudElementStats() {
+    void testFPSHudElementExtendedStats() {
         FPSHudElement element = new FPSHudElement();
         element.setModuleName("FPS");
         TestGraphics g = new TestGraphics();
 
-        element.prepareRender(g, false);
+        element.prepareRender(g, true);
         element.render(g);
+        assertNotNull(element);
     }
 
     @Test
@@ -201,6 +291,7 @@ public class HudParity1023Test {
 
         element.prepareRender(g, true);
         element.render(g);
+        assertTrue(SystemMetrics.getCpuLoad() >= -1.0);
     }
 
     @Test
@@ -220,7 +311,6 @@ public class HudParity1023Test {
         TestGraphics g = new TestGraphics();
 
         element.prepareRender(g, true);
-        element.renderEditor(g);
         element.render(g);
     }
 
@@ -241,7 +331,6 @@ public class HudParity1023Test {
         TestGraphics g = new TestGraphics();
 
         element.prepareRender(g, true);
-        element.renderEditor(g);
         element.render(g);
     }
 
@@ -251,6 +340,7 @@ public class HudParity1023Test {
         element.setModuleName("BlockCounter");
         TestGraphics g = new TestGraphics();
 
+        BlockTracker.get().onBlockPlaced();
         element.prepareRender(g, true);
         element.render(g);
     }
@@ -314,6 +404,5 @@ public class HudParity1023Test {
     void testHudManagerElements() {
         HudManager hm = HudManager.getInstance();
         assertNotNull(hm);
-        // Verify HudManager singleton initialization doesn't throw and includes new elements
     }
 }

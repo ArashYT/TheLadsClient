@@ -79,6 +79,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         com.thelads.core.v1_20_1.world.World1201.register(); // Wavy Capes, TNT Timer
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();
             NativeFeatures1201.tick();
             NativeDiscordPresence1201.tick();
             com.thelads.core.client.cosmetics.net.CosmeticsLink.tick();

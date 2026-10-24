@@ -5,30 +5,38 @@ import com.thelads.core.client.bridge.LadsGraphics;
 
 public class HitIndicatorHudElement extends HudElement {
     public HitIndicatorHudElement() {
-        this.x = 100;
-        this.y = 100;
-        this.width = 80;
-        this.height = 80;
+        this.x = 0;
+        this.y = 0;
+        this.width = 100;
+        this.height = 100;
+    }
+
+    /**
+     * Converts Minecraft/DamageTilt relative yaw (where 0 deg is from the left, 90 deg is front,
+     * 180 deg is right, 270 deg is behind) to a screen clock angle (where 0 deg is 12 o'clock / front,
+     * 90 deg is 3 o'clock / right, 180 deg is 6 o'clock / behind, 270 deg is 9 o'clock / left).
+     */
+    public static double calculateIndicatorAngle(float dirYaw) {
+        return dirYaw - 90.0;
     }
 
     @Override
     public void prepareRender(LadsGraphics g, boolean editor) {
-        int radius = (int) optSlider("Radius", 40);
-        width = radius * 2 + 10;
-        height = radius * 2 + 10;
+        width = 100;
+        height = 100;
     }
 
     @Override
     public void render(LadsGraphics g) {
-        renderIndicator(g, false);
+        renderArc(g, false);
     }
 
     @Override
     public void renderEditor(LadsGraphics g) {
-        renderIndicator(g, true);
+        renderArc(g, true);
     }
 
-    private void renderIndicator(LadsGraphics g, boolean editor) {
+    private void renderArc(LadsGraphics g, boolean editor) {
         int radius = (int) optSlider("Radius", 40);
         long duration = (long) optSlider("Duration (ms)", 800);
         int size = (int) optSlider("Size", 20);
@@ -36,13 +44,13 @@ public class HitIndicatorHudElement extends HudElement {
 
         int cx = x + width / 2;
         int cy = y + height / 2;
-        long now = System.currentTimeMillis();
 
-        float angle;
+        long now = System.currentTimeMillis();
+        double angle;
         float fade;
 
         if (editor) {
-            angle = 45.0f; // 45 degrees for preview
+            angle = 45.0; // 45 degrees for preview
             fade = 0.9f;
         } else {
             long hurtAt = DamageTilt.CLIENT.lastHurtTime();
@@ -56,7 +64,7 @@ public class HitIndicatorHudElement extends HudElement {
             if (Float.isNaN(dirYaw)) {
                 dirYaw = 0.0f;
             }
-            angle = dirYaw;
+            angle = calculateIndicatorAngle(dirYaw);
         }
 
         int alpha = (int) (255 * Math.max(0.0f, Math.min(1.0f, fade)));
@@ -64,7 +72,7 @@ public class HitIndicatorHudElement extends HudElement {
 
         int color = (alpha << 24) | (baseColor & 0x00FFFFFF);
 
-        // Angle in radians (0 is straight up, rotating clockwise)
+        // Angle in radians (0 is straight up / 12 o'clock, rotating clockwise)
         double rad = Math.toRadians(angle);
         double cos = Math.cos(rad);
         double sin = Math.sin(rad);
