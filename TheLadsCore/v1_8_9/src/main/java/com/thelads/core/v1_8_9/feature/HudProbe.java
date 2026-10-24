@@ -193,6 +193,8 @@ public final class HudProbe {
         // The editor fixture of the 26.x probe: FPS clamped to the right edge, CPS, Day and Health on; the other built-in modules
         // are off, so the editor lists and previews only these four until Show disabled.
         for (String name : NativeHud.MODULES) module(name).setEnabled(FIXTURE.contains(name));
+        // The hud2 lane's widgets (HudExtras189, built in, so setup switched them on) are HUD-only modules too.
+        for (String name : com.thelads.core.v1_8_9.hudextras.HudExtras189.MODULES) if (module(name) != null) module(name).setEnabled(false);
         ((SliderOption) module("Day").getOption("Size")).setValue(125);
         HudSettings.getInstance().setPosition("FPS", 10000, 10);
         HudSettings.getInstance().setPosition("CPS", 300, 60);

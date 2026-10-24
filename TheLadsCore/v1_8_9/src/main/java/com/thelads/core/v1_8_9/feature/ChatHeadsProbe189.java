@@ -270,13 +270,17 @@ final class ChatHeadsProbe189 {
         return null;
     }
 
-    /** The chat's stored messages and drawn lines (GuiNewChat's ChatLine lists; the sent-message history holds strings). */
+    /**
+     * The chat's stored messages and drawn lines (GuiNewChat's ChatLine lists; the sent-message history holds strings), each once:
+     * GuiNewChatMixin's own lists (Compact Chat's ladsNewestDrawn) hold some of the same lines again.
+     */
     private static List<ChatLine> lines(GuiNewChat chat) throws Exception {
         List<ChatLine> lines = new ArrayList<ChatLine>();
+        java.util.Set<ChatLine> seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<ChatLine, Boolean>());
         for (Field field : GuiNewChat.class.getDeclaredFields()) {
             if (field.getType() != List.class) continue;
             field.setAccessible(true);
-            for (Object line : (List<?>) field.get(chat)) if (line instanceof ChatLine) lines.add((ChatLine) line);
+            for (Object line : (List<?>) field.get(chat)) if (line instanceof ChatLine && seen.add((ChatLine) line)) lines.add((ChatLine) line);
         }
         return lines;
     }
