@@ -2,7 +2,7 @@ package com.thelads.core.v26_2.mixin.visuals;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.thelads.core.modules.ItemDespawnModule;
-import com.thelads.core.v26_2.feature.PvpVisuals26;
+import com.thelads.core.v26_2.feature.pvp.PvpVisuals26;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.ItemEntityRenderer;
 import net.minecraft.client.renderer.entity.state.ItemEntityRenderState;

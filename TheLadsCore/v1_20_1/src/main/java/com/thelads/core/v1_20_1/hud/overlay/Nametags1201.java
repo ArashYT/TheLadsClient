@@ -5,12 +5,19 @@ import com.thelads.core.v1_20_1.hud.Hud1201;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import com.thelads.core.client.PvpVisuals;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import org.joml.Matrix4f;
 
 /** Nametags (26.3 OwnNametagMixin, NametagBackgroundMixin, NativeNicknames): own tag in third person, background, shadow, renames. */
 public final class Nametags1201 {
@@ -46,6 +53,27 @@ public final class Nametags1201 {
     public static int background(int vanilla) {
         var mod = module();
         return mod != null && mod.isEnabled() && !mod.renderBackground.get() ? 0 : vanilla;
+    }
+
+    /** Nametags' Show Ping and Nametag Health after a player's name (EntityRenderer.renderNameTag, before its pop). */
+    public static void extras(Entity entity, Component name, Matrix4f pose, MultiBufferSource buffers, int light) {
+        if (!(entity instanceof Player player) || !PvpVisuals.nametagPing && !PvpVisuals.nametagHealth) return;
+        Font font = Minecraft.getInstance().font;
+        float x = font.width(name) / 2f + 3;
+        if (PvpVisuals.nametagPing) {
+            ClientPacketListener connection = Minecraft.getInstance().getConnection();
+            PlayerInfo info = connection == null ? null : connection.getPlayerInfo(player.getUUID());
+            if (info != null) x = extra(font, PvpVisuals.number(info.getLatency()), "ms", PvpVisuals.pingColor(info.getLatency()), x, pose, buffers, light) + 3;
+        }
+        if (PvpVisuals.nametagHealth) extra(font, PvpVisuals.number((int) Math.ceil(player.getHealth())), "\u2764", 0xFFFF5555, x, pose, buffers, light);
+    }
+
+    private static float extra(Font font, String number, String unit, int color, float x, Matrix4f pose, MultiBufferSource buffers, int light) {
+        int faded = PvpVisuals.alpha(color, PvpVisuals.tagAlpha);
+        font.drawInBatch(number, x, 0, faded, false, pose, buffers, Font.DisplayMode.NORMAL, 0, light);
+        x += font.width(number);
+        font.drawInBatch(unit, x, 0, faded, false, pose, buffers, Font.DisplayMode.NORMAL, 0, light);
+        return x + font.width(unit);
     }
 
     /** Shadow on the normal pass only; the see-through pass behind walls stays flat and readable. */

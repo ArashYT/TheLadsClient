@@ -2,6 +2,7 @@ package com.thelads.core.modules;
 
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.Module;
+import com.thelads.core.config.SliderOption;
 import com.thelads.core.config.TextOption;
 
 /** On by default: every option but Text Shadow matches vanilla. Renames are display-only (client/Nicknames). */
@@ -19,6 +20,12 @@ public class ToggleNametagsModule extends Module {
         textShadow = addOption(new BoolOption("Text Shadow", true));
         displayName = addOption(new TextOption("Your Display Name", ""));
         nicknames = addOption(new TextOption("Nicknames", ""));
+        // PvpVisuals reads these. Background Opacity applies while Render Background is on; health is its own module (Nametag Health).
+        addOption(new SliderOption("Scale", 100, 50, 200, 5).percent());
+        addOption(new SliderOption("Background Opacity", 25, 0, 100, 5).percent());
+        addOption(new BoolOption("Distance Fade", false));
+        addOption(new BoolOption("Show Ping", false));
+        addOption(new BoolOption("Show with Hidden HUD", false));
         setEnabled(true);
     }
 }

@@ -71,7 +71,8 @@ public final class Zoom189 {
     @SubscribeEvent
     public void fov(EntityViewRenderEvent.FOVModifier event) {
         long now = System.nanoTime();
-        float fov = event.getFOV() * zoom().fovFactor(handPass, now);
+        float base = handPass ? com.thelads.core.modules.ViewModelModule.get().handFov(event.getFOV()) : event.getFOV(); // ViewModel's Hand FOV
+        float fov = base * zoom().fovFactor(handPass, now);
         event.setFOV(fov);
         if (!handPass) {
             lastWorldFov = fov;

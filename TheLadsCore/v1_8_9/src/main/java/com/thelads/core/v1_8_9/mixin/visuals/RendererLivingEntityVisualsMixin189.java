@@ -4,6 +4,7 @@ import com.thelads.core.modules.MobOverlayModule;
 import com.thelads.core.modules.MobSizeModule;
 import com.thelads.core.v1_8_9.feature.PvpVisuals189;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
 import net.minecraft.entity.EntityLivingBase;
 import org.spongepowered.asm.mixin.Mixin;
@@ -28,7 +29,7 @@ public abstract class RendererLivingEntityVisualsMixin189 {
     @Inject(method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V", at = @At(value = "INVOKE", shift = At.Shift.AFTER,
         target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;preRenderCallback(Lnet/minecraft/entity/EntityLivingBase;F)V"))
     private void ladsMobSize(EntityLivingBase entity, double x, double y, double z, float yaw, float partialTicks, CallbackInfo ci) {
-        int kind = PvpVisuals189.kind(entity);
+        int kind = PvpVisuals189.mobKind(entity);
         if (kind == MobOverlayModule.OTHER) return;
         float scale = MobSizeModule.scale(kind == MobOverlayModule.HOSTILE);
         if (scale != 1) GlStateManager.scale(scale, scale, scale);
@@ -36,7 +37,18 @@ public abstract class RendererLivingEntityVisualsMixin189 {
 
     @Inject(method = "setScoreTeamColor(Lnet/minecraft/entity/EntityLivingBase;)Z", at = @At("HEAD"))
     private void ladsOutlineEntity(EntityLivingBase entity, CallbackInfoReturnable<Boolean> cir) {
-        ladsOutlineKind = PvpVisuals189.kind(entity);
+        ladsOutlineKind = PvpVisuals189.mobKind(entity);
+    }
+
+    /**
+     * Mob Overlay without the outline pass (Fast Render keeps the framebuffer off): the mob is tinted in its kind's color, through the
+     * same overlay as a creeper's flash; a hurt flash still wins (setBrightness).
+     */
+    @Inject(method = "getColorMultiplier(Lnet/minecraft/entity/EntityLivingBase;FF)I", at = @At("HEAD"), cancellable = true)
+    private void ladsMobTint(EntityLivingBase entity, float brightness, float partialTicks, CallbackInfoReturnable<Integer> cir) {
+        if (!MobOverlayModule.active() || OpenGlHelper.isFramebufferEnabled()) return;
+        int kind = PvpVisuals189.mobKind(entity);
+        if (MobOverlayModule.outlined(kind)) cir.setReturnValue(0x60000000 | MobOverlayModule.color(kind));
     }
 
     @ModifyConstant(method = "setScoreTeamColor(Lnet/minecraft/entity/EntityLivingBase;)Z", constant = @Constant(intValue = 16777215))

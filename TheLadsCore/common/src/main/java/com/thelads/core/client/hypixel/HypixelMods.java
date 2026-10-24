@@ -33,6 +33,12 @@ public final class HypixelMods {
         TAB_FILL = "Hypixel tab fill",
         AUTO_WHO = "Auto Who", CLEANUP = "Chat Cleanup";
     public static final String CHAT_EMOTES = "Chat emotes", STREAMER_MODE = "Streamer Mode";
+    public static final String AUTO_GL = "Auto GL";
+    public static final String PIT_LAG = CrowdPlayerHider.PIT_LAG;
+    public static final String OPENED_CHESTS = OpenedChestHighlight.NAME;
+    public static final String LOW_BLOCK = LowBlockWarning.NAME;
+    public static final String SILENT_LOBBY = SilentLobby.NAME;
+    public static final String BW_EXTRAS = BedWarsExtras.NAME;
     public static final String REPLAY_WHEN = "Replay when", WAIT_PARTY = "Wait for party";
     static final long GAP = 1_500_000_000L, SECOND = 1_000_000_000L;
     private static final int MAX_QUEUED = 8;
@@ -83,6 +89,17 @@ public final class HypixelMods {
         m.addOption(new BoolOption(CHAT_EMOTES, true));
         m.addOption(new BoolOption(STREAMER_MODE, false));
         m.addOption(new BoolOption(TAB_FILL, true));
+        m.addOption(new BoolOption(AUTO_GL, false));
+        m.addOption(new TextOption(AUTO_GL + ": Message", "glhf"));
+        m.addOption(new SliderOption(AUTO_GL + ": Delay seconds", 0, 0, 5, 0.5));
+        m.addOption(new BoolOption(PIT_LAG, false));
+        m.addOption(new BoolOption(OPENED_CHESTS, false));
+        m.addOption(new BoolOption(LOW_BLOCK, false));
+        m.addOption(new SliderOption(LOW_BLOCK + ": Threshold", 16, 2, 64, 1));
+        m.addOption(new BoolOption(SILENT_LOBBY, false));
+        m.addOption(new BoolOption(BW_EXTRAS, false));
+        m.addOption(new BoolOption(BW_EXTRAS + ": Hardcore Hearts", false));
+        m.addOption(new BoolOption(BW_EXTRAS + ": Bed Alerts", false));
         m.setEnabled(true);
         return m;
     }
@@ -93,7 +110,7 @@ public final class HypixelMods {
         Module m = registered();
         return m != null && m.isEnabled() && HypixelSafetyManager.isHypixel();
     }
-    private static boolean on(String feature) {
+    public static boolean on(String feature) {
         if (!isActiveOnCurrentServer()) return false;
         Module m = registered();
         Option o = m.getOption(feature);
@@ -111,6 +128,25 @@ public final class HypixelMods {
         Option o = option(feature, name);
         String text = o instanceof TextOption t ? t.getValue().replace('\n', ' ').trim() : "";
         return text.length() > 96 ? text.substring(0, 96) : text;
+    }
+
+    public static int lowBlockThreshold() {
+        Option o = option(LOW_BLOCK, "Threshold");
+        return o instanceof SliderOption s ? (int) s.getValue() : 16;
+    }
+    public static boolean bedWarsHardcoreHearts() {
+        Option o = option(BW_EXTRAS, "Hardcore Hearts");
+        return o instanceof BoolOption b ? b.get() : true;
+    }
+    public static boolean bedWarsAlerts() {
+        Option o = option(BW_EXTRAS, "Bed Alerts");
+        return o instanceof BoolOption b ? b.get() : true;
+    }
+    public static boolean isInLobby() {
+        if (!isActiveOnCurrentServer()) return false;
+        if (serverName != null && serverName.toLowerCase(Locale.ROOT).startsWith("lobby")) return true;
+        if (location != null && ("MAIN".equalsIgnoreCase(location[0]) || "LOBBY".equalsIgnoreCase(location[0]))) return true;
+        return false;
     }
 
     public static String replayWhenMode() {
@@ -131,6 +167,7 @@ public final class HypixelMods {
     public static void setMvpPlusPlusForTest(boolean mvp) { mvpPlusPlus = mvp; }
     public static String mapName() { return mapName; }
     public static String serverName() { return serverName; }
+    public static void setLocationForTest(String gametype, String mode) { location = new String[] { gametype, mode }; }
     public static void setMapNameForTest(String map) { mapName = map; }
     public static void setServerNameForTest(String server) { serverName = server; }
 
@@ -155,7 +192,10 @@ public final class HypixelMods {
         if (cmd.equalsIgnoreCase("session") || cmd.toLowerCase(Locale.ROOT).startsWith("session ")) {
             String[] parts = cmd.split("\\s+");
             if (parts.length > 1 && parts[1].equalsIgnoreCase("reset")) {
-                SessionTracker.reset();
+        OpenedChestHighlight.clear();
+        LowBlockWarning.reset();
+        BedWarsExtras.reset();
+        SessionTracker.reset();
                 LadsGameBridge bridge = LadsGameBridge.get();
                 if (bridge != null) bridge.displayChatMessage("§aSession stats have been reset.");
             } else {
@@ -226,6 +266,9 @@ public final class HypixelMods {
             tipOff = false;
             world = null;
             mapName = serverName = null;
+            OpenedChestHighlight.clear();
+            LowBlockWarning.reset();
+            BedWarsExtras.reset();
             tipAt = now + 30 * SECOND; // the first tip half a minute after joining
         }
         if (current == null || !isActiveOnCurrentServer()) {
@@ -238,6 +281,9 @@ public final class HypixelMods {
             selfDiedAt = partyListSent = ggDue = 0;
             location = null;
             mapName = serverName = null;
+            OpenedChestHighlight.clear();
+            LowBlockWarning.reset();
+            BedWarsExtras.reset();
             QUEUE.removeIf(Queued::world);
             PARTY_ALIVE.clear();
             PARTY_ELIMINATED.clear();
@@ -252,6 +298,9 @@ public final class HypixelMods {
         if (on(AUTO_TIP) && !tipOff && now - tipAt >= 0) {
             queue("/tip all", now, false);
             tipAt = now + Math.max(5 * 60 * SECOND, seconds(AUTO_TIP, "Every minutes", 15) * 60);
+        }
+        if (on(LOW_BLOCK)) {
+            LowBlockWarning.checkHotbar(game, location != null ? location[0] : null, location != null ? location[1] : null, lowBlockThreshold());
         }
         send(game, now);
     }
@@ -314,6 +363,7 @@ public final class HypixelMods {
             }
         }
         SessionTracker.onServerChat(message, me);
+        BedWarsExtras.onChat(message, now);
         if (BedWarsHeight.isLimitReachedMessage(message)) {
             int playerY = LadsGameBridge.get() != null ? LadsGameBridge.get().getPlayerY() : 0;
             BedWarsHeight.learnLimit(mapName, playerY);
@@ -388,6 +438,10 @@ public final class HypixelMods {
             PARTY_ALIVE.addAll(PARTY_MEMBERS);
             if (me != null && !me.isEmpty()) PARTY_ALIVE.remove(me.toLowerCase(Locale.ROOT));
             if (on(AUTO_WHO)) queue("/who", now + 2 * SECOND, true);
+            if (on(AUTO_GL)) {
+                String gl = text(AUTO_GL, "Message");
+                if (!gl.isEmpty()) queue("/ac " + gl, now + seconds(AUTO_GL, "Delay seconds", 0), true);
+            }
             if (on(PLAY_AGAIN) && waitParty() && inParty && PARTY_MEMBERS.isEmpty() && !partyListRequestedThisGame) {
                 partyListRequestedThisGame = true;
                 partyListSent = now + 2 * SECOND;
@@ -485,6 +539,9 @@ public final class HypixelMods {
     /** QA: true once local player died/eliminated. */
     public static boolean isSelfOut() { return selfOut; }
     /** QA: re-arms for another game without clearing location or party. */
+    public static String nextQueuedCommandForTest() {
+        return QUEUE.isEmpty() ? null : QUEUE.get(0).text();
+    }
     public static void rearmForQa() {
         SENT.clear();
         QUEUE.clear();
@@ -506,6 +563,9 @@ public final class HypixelMods {
         lastSent = tipSent = locrawSent = selfDiedAt = partyListSent = ggDue = 0; lastCommand = ""; location = null;
         mapName = serverName = null; mvpPlusPlus = false;
         qaPlayerName = null;
+        OpenedChestHighlight.clear();
+        LowBlockWarning.reset();
+        BedWarsExtras.reset();
         SessionTracker.reset();
         BedWarsHeight.resetForTest();
     }

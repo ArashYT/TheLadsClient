@@ -8,7 +8,8 @@ import com.thelads.core.config.ModuleManager;
 /**
  * Mob Overlay (Feather) and Highlight Shulker Bullets (Badlion): hostile and passive mobs, and shulker bullets (1.9 and later), get a
  * colored outline drawn through walls (the glowing outline; on 1.8.9 the spectator outline pass). Outlines through walls show what
- * vanilla does not: a risky module (HypixelSafetyManager), off by default. Players keep their vanilla outlines.
+ * vanilla does not: a risky module (HypixelSafetyManager), off by default. Players keep their vanilla outlines. On 1.8.9 with Fast Render
+ * (no framebuffer for the outline pass) the mobs are tinted in their color instead.
  */
 public final class MobOverlayModule extends Module {
     public static final String NAME = "Mob Overlay";

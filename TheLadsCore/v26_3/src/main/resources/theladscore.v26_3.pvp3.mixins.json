@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.mixin.visuals",
+  "compatibilityLevel": "JAVA_25",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "ClientLevelOofMixin26",
+    "EntityRenderStateVisualMixin26",
+    "EntityRendererVisualMixin26",
+    "ItemEntityVisualsMixin26",
+    "LivingEntityScaleMixin26",
+    "MinecraftGlowMixin26",
+    "EntityTeamColorMixin26",
+    "GuiItemUhcMixin26"
+  ]
+}

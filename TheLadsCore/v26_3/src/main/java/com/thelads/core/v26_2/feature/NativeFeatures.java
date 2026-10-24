@@ -62,6 +62,7 @@ public final class NativeFeatures {
     public static void reset(boolean newPlayer) {
         // Another player or world starts unzoomed; anything else (a screen, focus loss) zooms out smoothly.
         if (newPlayer) zoom().reset(); else zoom().release();
+        PvpView26.release();
         sprintHeld = sneakHeld = false;
     }
     public static void reset() {
@@ -74,13 +75,35 @@ public final class NativeFeatures {
             player = currentPlayer;
             return;
         }
-        if (!interactive()) zoom().release();
+        if (!interactive()) {
+            zoom().release();
+            PvpView26.release();
+        }
+        PvpView26.tick(Minecraft.getInstance());
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            boolean isRiding = mc.player.isPassenger() || mc.player.isFallFlying();
+            Module m = module(com.thelads.core.modules.AutoPerspectiveModule.NAME);
+            if (m instanceof com.thelads.core.modules.AutoPerspectiveModule apm && apm.isEnabled()) {
+                if (apm.isAutoThirdPerson()) {
+                    int current = mc.options.getCameraType().ordinal();
+                    int target = com.thelads.core.client.AutoPerspectiveHelper.checkPerspectiveChange(isRiding, current, true);
+                    if (target >= 0 && target < net.minecraft.client.CameraType.values().length) {
+                        mc.options.setCameraType(net.minecraft.client.CameraType.values()[target]);
+                    }
+                }
+                if (apm.isSmoothCamera()) {
+                    mc.options.smoothCamera = isRiding;
+                }
+            }
+        }
     }
     public static void key(KeyEvent event, int action) {
         if (action == InputConstants.REPEAT) return;
         if (!interactive()) { reset(); return; }
         boolean down = action == InputConstants.PRESS;
         if (NativeKeyBindings.ZOOM.matches(event)) zoom().key(down);
+        PvpView26.key(event, down);
         if (sprintToggleKey().matches(event)) sprintKey(down);
         if (sneakToggleKey().matches(event)) sneakKey(down);
         if (down && NativeKeyBindings.QUICKPLAY.matches(event)) {
@@ -95,6 +118,7 @@ public final class NativeFeatures {
         if (!interactive()) { reset(); return; }
         boolean down = action == InputConstants.PRESS;
         if (NativeKeyBindings.ZOOM.matchesMouse(event)) zoom().key(down);
+        PvpView26.mouse(event, down);
         if (sprintToggleKey().matchesMouse(event)) sprintKey(down);
         if (sneakToggleKey().matchesMouse(event)) sneakKey(down);
         if (down && NativeKeyBindings.QUICKPLAY.matchesMouse(event)) {
@@ -122,6 +146,7 @@ public final class NativeFeatures {
         var player = Minecraft.getInstance().player;
         // What the last tick sent, and whether its input still asked to go forward (aiStep stops a sprint without it).
         if (player != null) toggles.sent(((com.thelads.core.v26_2.mixin.LocalPlayerAccessor) player).ladsSentSprint(), forward);
+        if (player != null && toggles.isDisableDoubleTap()) ((com.thelads.core.v26_2.mixin.LocalPlayerAccessor) player).ladsSetSprintTriggerTime(0);
         forward = original.forward() && !original.backward();
         boolean separateSprint = !NativeKeyBindings.TOGGLE_SPRINT.isUnbound();
         boolean shift = toggles.sneakInput(original.shift(), !NativeKeyBindings.TOGGLE_SNEAK.isUnbound());
@@ -142,6 +167,7 @@ public final class NativeFeatures {
     }
     /** ZoomMixin: the FOV Minecraft computed (dynamic FOV, spyglass and fluids included) times the zoom. */
     public static float fov(float vanilla, boolean hand) {
+        if (hand) vanilla = com.thelads.core.modules.ViewModelModule.get().handFov(vanilla); // ViewModel's Hand FOV
         long now = System.nanoTime();
         float fov = vanilla * zoom().fovFactor(hand, now);
         if (!hand) { lastWorldFov = fov; lastWorldNanos = now; }

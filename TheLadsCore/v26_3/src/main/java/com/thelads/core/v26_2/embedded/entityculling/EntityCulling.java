@@ -122,7 +122,7 @@ public final class EntityCulling {
         if (entity == Minecraft.getInstance().getCameraEntity() || entity instanceof Player || entity instanceof Display
             || entity instanceof Projectile || entity instanceof Guardian || entity instanceof EndCrystal) return true;
         if (entity.isCurrentlyGlowing() || entity.hasCustomName() || entity.isPassenger() || entity.isVehicle()) return true;
-        if (com.thelads.core.modules.MobOverlayModule.outlined(com.thelads.core.v26_2.feature.PvpVisuals26.kind(entity))) return true; // Mob Overlay's outline, as glowing
+        if (com.thelads.core.modules.MobOverlayModule.outlined(com.thelads.core.v26_2.feature.pvp.PvpVisuals26.mobKind(entity))) return true; // Mob Overlay's outline, as glowing
         if (entity instanceof Leashable leashable && leashable.isLeashed()) return true;
         AABB box = entity.getBoundingBox();
         return box.getXsize() > MAX_EDGE || box.getYsize() > MAX_EDGE || box.getZsize() > MAX_EDGE;

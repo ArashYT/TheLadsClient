@@ -38,6 +38,7 @@ public abstract class NetworkManagerMixin implements SignalLoss189.PacketActivit
         ladsLastPacketNanos = System.nanoTime();
         // 1.9.1 real ping: the Hypixel Mod API's answer as it arrives (Hypixel189).
         if (packet instanceof S3FPacketCustomPayload) com.thelads.core.v1_8_9.feature.Hypixel189.payload((S3FPacketCustomPayload) packet);
+        if (packet instanceof net.minecraft.network.play.server.S24PacketBlockAction) com.thelads.core.v1_8_9.feature.Hypixel189.blockAction((net.minecraft.network.play.server.S24PacketBlockAction) packet);
     }
 
     /** Cancel pressed while the socket was still opening (ConnectionTweaks189.cancelledConnect): close it before it logs in. */

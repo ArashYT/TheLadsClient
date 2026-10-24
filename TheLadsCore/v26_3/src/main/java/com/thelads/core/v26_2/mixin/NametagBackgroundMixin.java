@@ -19,7 +19,8 @@ public class NametagBackgroundMixin {
 
     @ModifyArg(method = "submitNameTag", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/SubmitNodeCollection;nameTag(Lorg/joml/Matrix4f;FFLnet/minecraft/util/FormattedCharSequence;IIILnet/minecraft/client/gui/Font$DisplayMode;)Lnet/minecraft/client/renderer/feature/TextFeatureRenderer$Submit;"), index = 6, require = 1)
     private int lads$background(int vanillaColor) {
-        return NativeQualityOfLife.enabled("Nametags") && !NativeQualityOfLife.bool("Nametags", "Render Background", true) ? 0 : vanillaColor;
+        if (NativeQualityOfLife.enabled("Nametags") && !NativeQualityOfLife.bool("Nametags", "Render Background", true) || vanillaColor == 0) return 0;
+        return Math.round(com.thelads.core.client.PvpVisuals.background((vanillaColor >>> 24) / 255f) * 255) << 24; // Background Opacity, Distance Fade
     }
 
     /** Shadow on the normal pass only; the see-through pass behind walls stays flat and readable. */

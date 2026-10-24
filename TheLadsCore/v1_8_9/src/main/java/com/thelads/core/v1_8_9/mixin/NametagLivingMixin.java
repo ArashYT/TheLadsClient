@@ -55,6 +55,13 @@ public abstract class NametagLivingMixin {
         return Nametags189.background() ? alpha : 0;
     }
 
+    /** Nametags' Show with Hidden HUD: tags stay while F1 hides the HUD (vanilla's only F1 check for living entities). */
+    @Redirect(method = "canRenderName(Lnet/minecraft/entity/EntityLivingBase;)Z", at = @At(value = "INVOKE",
+        target = "Lnet/minecraft/client/Minecraft;isGuiEnabled()Z"), require = 0)
+    private boolean ladsNamesInF1() {
+        return Minecraft.isGuiEnabled() || com.thelads.core.client.PvpVisuals.nametagsInF1;
+    }
+
     /** As 26.x OwnNametagMixin: only vanilla's own-camera exclusion is lifted; GUI hidden, invisibility and riding still hide it. */
     @Inject(method = "canRenderName(Lnet/minecraft/entity/EntityLivingBase;)Z", at = @At("HEAD"), cancellable = true, require = 0)
     private void ladsOwnName(EntityLivingBase entity, CallbackInfoReturnable<Boolean> cir) {

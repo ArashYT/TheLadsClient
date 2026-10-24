@@ -1,6 +1,6 @@
 package com.thelads.core.v26_2.mixin.visuals;
 
-import com.thelads.core.v26_2.feature.PvpVisuals26;
+import com.thelads.core.v26_2.feature.pvp.PvpVisuals26;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;

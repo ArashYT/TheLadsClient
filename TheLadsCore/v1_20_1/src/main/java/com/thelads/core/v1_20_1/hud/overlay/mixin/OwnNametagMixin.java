@@ -1,5 +1,6 @@
 package com.thelads.core.v1_20_1.hud.overlay.mixin;
 
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -18,5 +19,12 @@ public class OwnNametagMixin {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;getCameraEntity()Lnet/minecraft/world/entity/Entity;"))
     private Entity lads$ownName(Minecraft minecraft, Operation<Entity> original, @Local(argsOnly = true) LivingEntity entity) {
         return Nametags1201.cameraForNameRule(minecraft, entity, original.call(minecraft));
+    }
+
+    /** Nametags' Show with Hidden HUD: tags stay while F1 hides the HUD. */
+    @ModifyExpressionValue(method = "shouldShowName(Lnet/minecraft/world/entity/LivingEntity;)Z",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;renderNames()Z"))
+    private boolean lads$namesInF1(boolean shown) {
+        return shown || com.thelads.core.client.PvpVisuals.nametagsInF1;
     }
 }

@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.thelads.core.modules.MobOverlayModule;
 import com.thelads.core.v1_8_9.feature.PvpVisuals189;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.client.shader.ShaderGroup;
@@ -20,7 +21,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * Mob Overlay on 1.8.9: 1.8.9's only see-through outline is the spectator one (the entity_outline shader, players only, while the
  * spectator outline key is held). With the module on, that pass runs every frame; it outlines the mobs the module picks, and players
- * only when vanilla would. RendererLivingEntityVisualsMixin189 gives each mob its color.
+ * only when vanilla would. RendererLivingEntityVisualsMixin189 gives each mob its color. The pass needs the main framebuffer: with Fast
+ * Render (Ionium's or OptiFine's) it stays off and the mobs are tinted instead (RendererLivingEntityVisualsMixin189).
  */
 @Mixin(RenderGlobal.class)
 public abstract class RenderGlobalOutlineMixin189 {
@@ -29,8 +31,8 @@ public abstract class RenderGlobalOutlineMixin189 {
 
     @Inject(method = "isRenderEntityOutlines", at = @At("HEAD"), cancellable = true)
     private void ladsMobOutlines(CallbackInfoReturnable<Boolean> cir) {
-        if (MobOverlayModule.active() && entityOutlineFramebuffer != null && entityOutlineShader != null && Minecraft.getMinecraft().thePlayer != null)
-            cir.setReturnValue(true);
+        if (MobOverlayModule.active() && OpenGlHelper.isFramebufferEnabled() && entityOutlineFramebuffer != null && entityOutlineShader != null
+            && Minecraft.getMinecraft().thePlayer != null) cir.setReturnValue(true);
     }
 
     @WrapOperation(method = "renderEntities", constant = @Constant(classValue = EntityPlayer.class))
@@ -39,6 +41,6 @@ public abstract class RenderGlobalOutlineMixin189 {
             Minecraft mc = Minecraft.getMinecraft();
             return mc.thePlayer.isSpectator() && mc.gameSettings.keyBindSpectatorOutlines.isKeyDown(); // vanilla's own player outlines
         }
-        return MobOverlayModule.outlined(PvpVisuals189.kind((Entity) entity));
+        return MobOverlayModule.outlined(PvpVisuals189.mobKind((Entity) entity));
     }
 }

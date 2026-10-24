@@ -1,7 +1,7 @@
 package com.thelads.core.v1_20_1.mixin.visuals;
 
 import com.thelads.core.modules.OofModule;
-import com.thelads.core.v1_20_1.feature.PvpVisuals1201;
+import com.thelads.core.v1_20_1.game.pvp.PvpVisuals1201;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.sounds.SoundEvent;

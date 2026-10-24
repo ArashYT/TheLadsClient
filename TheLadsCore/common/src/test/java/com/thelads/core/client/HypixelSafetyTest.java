@@ -77,6 +77,24 @@ public class HypixelSafetyTest {
         assertFalse(HypixelSafetyManager.isDisallowedModule("Keystrokes"));
         assertFalse(HypixelSafetyManager.isDisallowedModule("ArmorHUD"));
         assertFalse(HypixelSafetyManager.isDisallowedModule("Fullbright"));
+
+        // Risky module set under Anti-Ban rule
+        assertTrue(HypixelSafetyManager.isRiskyModule("AutoReconnect"));
+        assertTrue(HypixelSafetyManager.isRiskyModule("MouseTweaks"));
+        assertTrue(HypixelSafetyManager.isRiskyModule("ReachDisplay"));
+        assertTrue(HypixelSafetyManager.isRiskyModule("Jade"));
+        assertTrue(HypixelSafetyManager.isRiskyModule("ShulkerBoxUtils"));
+        assertTrue(HypixelSafetyManager.isRiskyModule("Fullbright"));
+        assertTrue(HypixelSafetyManager.isRiskyModule(HypixelSafetyManager.TNT_THROUGH_BLOCKS));
+        assertTrue(HypixelSafetyManager.isRiskyModule("StackRefill"));
+        assertTrue(HypixelSafetyManager.isRiskyModule("Minimap"));
+        assertTrue(HypixelSafetyManager.isRiskyModule("XaeroMinimap"));
+        assertTrue(HypixelSafetyManager.isRiskyModule("XaeroWorldMap"));
+        assertFalse(HypixelSafetyManager.isRiskyModule("FPS"));
+        assertFalse(HypixelSafetyManager.isRiskyModule("CPS"));
+        assertFalse(HypixelSafetyManager.isRiskyModule("Coordinates"));
+        assertFalse(HypixelSafetyManager.isRiskyModule("Keystrokes"));
+        assertFalse(HypixelSafetyManager.isRiskyModule("ArmorHUD"));
     }
 
     @Test
@@ -158,7 +176,8 @@ public class HypixelSafetyTest {
         assertTrue(HypixelSafetyManager.isMinimapBanned());
         assertFalse(minimap.isEnabled());
         assertFalse(worldMap.isEnabled());
-        assertTrue(jade.isEnabled(), "only the maps: Jade is a Hypixel-only block");
+        assertFalse(jade.isEnabled(), "Jade is in the risky set: off on Minemen");
+        assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("Jade"));
         assertFalse(HypixelSafetyManager.getBlockedNotice("Minimap").contains("Hypixel"), "the notice names no wrong server");
         bridge.setServer("192.168.1.20:25565"); // a LAN world: no network anticheat
         assertFalse(HypixelSafetyManager.isMinimapBanned());
@@ -181,8 +200,13 @@ public class HypixelSafetyTest {
             assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("StackRefill"), server);
             assertFalse(minimap.isEnabled(), server);
             assertFalse(refill.isEnabled(), server);
-            assertTrue(jade.isEnabled(), "Jade is only a Hypixel block: " + server);
+            assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("Jade"), server);
+            assertFalse(jade.isEnabled(), server);
             assertTrue(HypixelSafetyManager.getBlockedNotice("StackRefill").contains("don't know"), server);
+            assertTrue(HypixelSafetyManager.getBlockedNotice("Jade").contains("don't know"), server);
+            for (String risky : new String[]{"AutoReconnect", "MouseTweaks", "ReachDisplay", "ShulkerBoxUtils", "Fullbright", HypixelSafetyManager.TNT_THROUGH_BLOCKS}) {
+                assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf(risky), server + ": " + risky);
+            }
         }
         bridge.setServer("as.minemen.club");
         assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("StackRefill"));
@@ -318,5 +342,110 @@ public class HypixelSafetyTest {
         } finally {
             HypixelSafetyManager.qaOverride = false;
         }
+    }
+
+    /**
+     * Fullbright is in the risky set (default OFF on unknown servers for least ban risk),
+     * but allowed on servers whose rules explicitly permit it (Hypixel, CubeCraft, MCC Island, Pika).
+     */
+    @Test
+    public void testFullbrightServerGating() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        Module fullbright = new Module("Fullbright", "Fullbright");
+        fullbright.setEnabled(true);
+
+        // Allowed on servers with explicit rules:
+        // Hypixel: https://hypixel.net/rules/#mods (Brightness & Gamma Adjustment Modifications)
+        bridge.setServer("mc.hypixel.net");
+        assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("Fullbright"));
+        assertFalse(fullbright.isBlockedByServer());
+        assertTrue(fullbright.isEnabled());
+
+        // CubeCraft: https://www.cubecraft.net/rules/ (Allowed Utility Mods - Gamma/Brightness mods)
+        bridge.setServer("play.cubecraft.net");
+        assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("Fullbright"));
+        assertFalse(fullbright.isBlockedByServer());
+        assertTrue(fullbright.isEnabled());
+
+        // MCC Island: https://mccisland.net/community-rules (Approved Mods - Gamma/Brightness adjustments)
+        bridge.setServer("play.mccisland.net");
+        assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("Fullbright"));
+        assertFalse(fullbright.isBlockedByServer());
+        assertTrue(fullbright.isEnabled());
+
+        // PikaNetwork: https://pika-network.net/rules/ (Allowed Modifications - brightness adjustments / fullbright)
+        bridge.setServer("play.pika-network.net");
+        assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("Fullbright"));
+        assertFalse(fullbright.isBlockedByServer());
+        assertTrue(fullbright.isEnabled());
+
+        // GommeHD explicitly bans Fullbright: https://www.gommehd.net/rules-minecraft
+        bridge.setServer("gommehd.net");
+        assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("Fullbright"));
+        assertTrue(fullbright.isBlockedByServer());
+        assertFalse(fullbright.isEnabled());
+
+        // Minemen Club bans unapproved modifications
+        bridge.setServer("as.minemen.club");
+        assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("Fullbright"));
+        assertTrue(fullbright.isBlockedByServer());
+        assertFalse(fullbright.isEnabled());
+
+        // Unknown servers default to Block.UNKNOWN (least ban chance)
+        bridge.setServer("play.somesmp.net");
+        assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("Fullbright"));
+        assertTrue(fullbright.isBlockedByServer());
+        assertFalse(fullbright.isEnabled());
+
+        // Bypassable via red warning on unknown server
+        HypixelSafetyManager.bypass("Fullbright");
+        assertTrue(HypixelSafetyManager.isBypassed("Fullbright"));
+        assertFalse(fullbright.isBlockedByServer());
+        assertTrue(fullbright.isEnabled());
+
+        // Singleplayer / trusted
+        bridge.setServer("Singleplayer");
+        assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("Fullbright"));
+        assertFalse(fullbright.isBlockedByServer());
+        assertTrue(fullbright.isEnabled());
+    }
+
+    /**
+     * TNT timer Through-blocks is gated by server rules (ESP-like info through walls is banned on Hypixel/Minemen
+     * and off on unknown servers).
+     */
+    @Test
+    public void testTntTimerThroughBlocksGating() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        com.thelads.core.modules.TntTimerModule tnt = new com.thelads.core.modules.TntTimerModule();
+        tnt.throughBlocks.set(true);
+
+        // Singleplayer: allowed
+        bridge.setServer("Singleplayer");
+        assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf(HypixelSafetyManager.TNT_THROUGH_BLOCKS));
+        assertTrue(tnt.seeThrough());
+
+        // Hypixel: ESP through walls is banned
+        bridge.setServer("mc.hypixel.net");
+        assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf(HypixelSafetyManager.TNT_THROUGH_BLOCKS));
+        assertFalse(tnt.seeThrough());
+
+        // Minemen: banned
+        bridge.setServer("as.minemen.club");
+        assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf(HypixelSafetyManager.TNT_THROUGH_BLOCKS));
+        assertFalse(tnt.seeThrough());
+
+        // Unknown server: Block.UNKNOWN
+        bridge.setServer("play.somesmp.net");
+        assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf(HypixelSafetyManager.TNT_THROUGH_BLOCKS));
+        assertFalse(tnt.seeThrough());
+
+        // Bypass on unknown server
+        HypixelSafetyManager.bypass(HypixelSafetyManager.TNT_THROUGH_BLOCKS);
+        assertTrue(tnt.seeThrough());
+        HypixelSafetyManager.removeBypass(HypixelSafetyManager.TNT_THROUGH_BLOCKS);
+        assertFalse(tnt.seeThrough());
     }
 }
