@@ -33,6 +33,34 @@ public class GameSessionPriorityTests
     }
 
     [Fact]
+    public async Task AGameStartedWhileAnUpdateDownloadsKeepsThePriorityTheLauncherHadBefore()
+    {
+        using var dir = new TestDirectory();
+        var game = Path.Combine(dir.Path, "profile");
+        Directory.CreateDirectory(game);
+        var shared = new SharedContentService(Path.Combine(dir.Path, "global"), Path.Combine(dir.Path, "backups"));
+        var launcher = Process.GetCurrentProcess();
+        var original = launcher.PriorityClass;
+        launcher.PriorityClass = ProcessPriorityClass.Normal;
+        try
+        {
+            Process process;
+            using (ProcessPriority.Scope(ProcessPriorityClass.BelowNormal))   // the background update download
+            {
+                process = Process.Start(new ProcessStartInfo("cmd.exe", "/c ping -n 3 127.0.0.1 >nul")
+                    { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true })!;
+                Assert.Equal(ProcessPriorityClass.BelowNormal, process.PriorityClass);   // Windows hands a child the lowered class
+                GameSession.Attach(process, game, Array.Empty<string>(), _ => { }, shared);
+                process.Refresh();
+                Assert.Equal(ProcessPriorityClass.Normal, process.PriorityClass);
+            }
+            Assert.Null(ProcessPriority.ScopedFrom);
+            using (process) await process.WaitForExitAsync();
+        }
+        finally { launcher.PriorityClass = original; }
+    }
+
+    [Fact]
     public async Task CancelStopsTheWholeGameTreeAndItsExitIsNotACrash()
     {
         using var dir = new TestDirectory();

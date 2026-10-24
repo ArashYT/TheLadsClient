@@ -25,7 +25,8 @@ try
     string feed = Path.Combine(root, corrupt == "1" ? "bad-feed" : "feed");
     var manager = new UpdateManager(feed);
     if (!manager.IsInstalled) throw new InvalidOperationException("The probe is not packaged.");
-    VelopackUpdateBackend Backend() => new(manager, (_, name) => File.ReadAllBytesAsync(Path.Combine(feed, name)),
+    var fullOnly = new UpdateManager(feed, new UpdateOptions { MaximumDeltasBeforeFallback = -1 });
+    VelopackUpdateBackend Backend() => new(manager, fullOnly, (_, name) => File.ReadAllBytesAsync(Path.Combine(feed, name)),
         Environment.GetEnvironmentVariable("LADS_UPDATE_PROBE_KEY") ?? throw new InvalidOperationException("No probe key."));
     if (corrupt != null)
     {

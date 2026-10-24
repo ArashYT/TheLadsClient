@@ -76,6 +76,8 @@ public static class GameSession
         SharedContentService? sharedContent = null, Func<Task>? afterExit = null)
     {
         var shared = sharedContent ?? SharedContentService.Instance;
+        // The launcher runs lower while a background update downloads, and a child inherits that; the game keeps the priority it would have had.
+        if (ProcessPriority.ScopedFrom is { } original) ProcessPriority.TrySet(process, original);
         var pid = process.Id;
         try
         {

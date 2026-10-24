@@ -9,6 +9,7 @@
     <PackageReference Include="Velopack" Version="1.2.158" />
     <Compile Include="../../TheLadsLauncher/AutoUpdater.cs" Link="AutoUpdater.cs" />
     <Compile Include="../../TheLadsLauncher/UpdateSignature.cs" Link="UpdateSignature.cs" />
+    <Compile Include="../../TheLadsLauncher/ProcessPriority.cs" Link="ProcessPriority.cs" />
     <Compile Include="../../TheLadsLauncher/UpdateChecker.cs" Link="ReleaseNotes.cs" />
   </ItemGroup>
 </Project>
