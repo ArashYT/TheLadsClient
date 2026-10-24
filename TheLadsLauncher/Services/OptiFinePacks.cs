@@ -9,9 +9,9 @@ using System.Text.Json;
 namespace TheLadsLauncher.Services;
 
 /// <summary>
-/// Minecraft 1.8.9: Ionium (the fast renderer, on by default) cannot show OptiFine resource-pack features yet (CIT, CTM, custom
-/// sky and colors, emissive, natural textures, better grass). A launch whose enabled resource packs use them renders through
-/// OptiFine instead, as a profile with an OptiFine shader pack does. Packs are only listed and read in place, never extracted:
+/// Minecraft 1.8.9: Ionium (the fast renderer, on by default) cannot show most OptiFine resource-pack features yet (CTM, custom
+/// sky and colors, emissive, natural textures, better grass; Lads Core draws CIT itself under Ionium). A launch whose enabled
+/// resource packs use one of those renders through OptiFine instead, as a profile with an OptiFine shader pack does. Packs are only listed and read in place, never extracted:
 /// a zip's central directory (cached by path, size and time) or a folder's optifine/mcpatcher file names.
 /// </summary>
 public static class OptiFinePacks
@@ -20,7 +20,7 @@ public static class OptiFinePacks
     public const string Auto = "Auto", AlwaysIonium = "Ionium", AlwaysOptiFine = "OptiFine";
 
     /// <summary>Features Lads Core shows under Ionium: Auto keeps Ionium for packs that use only these. Grows as the ports land.</summary>
-    private static readonly string[] IoniumShows = Array.Empty<string>();
+    private static readonly string[] IoniumShows = { "CIT" };
     private static readonly string[] Order = { "CIT", "CTM", "custom sky", "custom colors", "emissive", "natural textures", "better grass" };
     private static readonly string[] Roots = { "assets/minecraft/optifine/", "assets/minecraft/mcpatcher/" };
     private const int MaxEntries = 500_000;

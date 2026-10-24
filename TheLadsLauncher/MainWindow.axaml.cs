@@ -4982,7 +4982,7 @@ public partial class MainWindow : Window
             return true;
         }
 
-        // 1.8.9: a resource pack with OptiFine features (CIT, CTM...) renders through OptiFine this launch instead of Ionium.
+        // 1.8.9: a resource pack with OptiFine features Ionium lacks (CTM, custom sky...) renders through OptiFine this launch.
         void PackNotice(string? notice)
         {
             if (notice == null) return;

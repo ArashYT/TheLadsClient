@@ -43,6 +43,8 @@ public final class PvpVisuals26 {
     public static void register() {
         ModuleSupport.registerBuiltIn(ColorSaturationModule.NAME, MotionBlurModule.NAME, HideFoliageModule.NAME, ClearGlassModule.NAME,
             com.thelads.core.modules.CustomSkyModule.NAME);
+        ModuleSupport.registerUnavailable(com.thelads.core.modules.CustomItemTexturesModule.NAME, "Only on Minecraft 1.8.9 for now: no "
+            + "custom item texture (CIT) mod is included for this version yet.");
         ModuleSupport.registerBuiltInLimited(MenuBlurModule.NAME, "Minecraft 26.x blurs menus itself (Video Settings > Menu Background Blur): "
             + "while this module is on, its strength and toggles replace that setting in a world, and inventories, which 26.x only dims, are blurred too.");
         ModuleSupport.registerUnavailable(com.thelads.core.modules.ChunkAnimatorModule.NAME, "Sodium draws a whole region of chunks at once on "

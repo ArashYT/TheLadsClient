@@ -102,3 +102,25 @@ components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar
 
 * ServerPingerFixer
   License: Apache License 2.0 (`assets/theladscore/licenses/ServerPingerFixer-Apache-2.0.txt`, `ServerPingerFixer-NOTICE.txt`)
+
+--------------------------------------------------------------------------------
+3. Formats Implemented From Public Specifications
+--------------------------------------------------------------------------------
+
+* Custom Item Textures (OptiFine / MCPatcher CIT format), Minecraft 1.8.9 without OptiFine
+  Code: `com.thelads.core.client.CustomItems`, `CustomItemsNbt` (common), `com.thelads.core.v1_8_9.cit` (1.8.9).
+  Written by The Lads from OptiFine's documentation (cit.properties, cit_single.properties; public domain,
+  https://github.com/sp614x/optifine/tree/master/OptiFineDoc/doc). The enchantment level matching and the
+  enchantment effect layering (average, layered, cycle) follow MCPatcher by prupe, used as a reference
+  (https://bitbucket.org/prupe/mcpatcher), whose license is:
+    Copyright (c) 2013
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+    documentation files (the "Software"), to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+    to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above
+    copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+    WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+    COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+    OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  No OptiFine code is used.

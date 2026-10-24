@@ -59,15 +59,40 @@ public class OptiFinePacksTests
         EnablePacks(box, "Plain.zip");
         Assert.Null(OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.Auto));
         EnablePacks(box, "Plain.zip", "PvP.zip", "Missing.zip");
-        Assert.Equal("Using OptiFine: your resource pack uses OptiFine features (CIT/CTM) that Ionium can't show yet",
-            OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.Auto));
-        Assert.NotNull(OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.AlwaysOptiFine));
+        Assert.Equal("Using OptiFine: your resource pack uses OptiFine features (CTM) that Ionium can't show yet",
+            OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.Auto)); // Lads Core draws the CIT under Ionium
+        Assert.Contains("(CIT/CTM)", OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.AlwaysOptiFine));
         Assert.Null(OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.AlwaysIonium));
         Assert.Null(OptiFinePacks.Notice(box.Game, "1.20.1", OptiFinePacks.Auto));
         // A name that leaves the folder is ignored.
         File.WriteAllBytes(Path.Combine(box.Root, "Outside.zip"), Zip("assets/minecraft/optifine/emissive.properties"));
         EnablePacks(box, "../Outside.zip", "..\\Outside.zip");
         Assert.Null(OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.Auto));
+    }
+
+    [Fact]
+    public async Task APackWhoseOnlyOptiFineFeatureIsCitKeepsIoniumUnderAuto()
+    {
+        using var box = new ModSandbox();
+        box.WriteManifest("1.8.9", new[] { box.Pin(OptiFineInstaller.PylonModId, ForgeJar("pylon")), box.Pin(OptiFineInstaller.IoniumModId, ForgeJar("ionium")) });
+        var ionium = box.Mod("ionium-1.0.0.jar");
+        var packs = Packs(box);
+        File.WriteAllBytes(Path.Combine(packs, "Skyblock.zip"), Zip("assets/minecraft/optifine/cit/swords/aote.properties",
+            "assets/minecraft/mcpatcher/cit/potions/heal.properties", "assets/minecraft/optifine/cit/swords/aote.png"));
+        File.WriteAllBytes(Path.Combine(packs, "Sky.zip"), Zip("assets/minecraft/optifine/sky/world0/sky1.properties"));
+        EnablePacks(box, "Skyblock.zip");
+
+        Assert.Null(OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.Auto));
+        Assert.Contains("(CIT)", OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.AlwaysOptiFine)); // the player's choice still wins
+        using (var client = box.Client())
+            Assert.Null(await ClientModInstaller.InstallAsync(box.Bundle, box.Game, "1.8.9", box.Messages.Add, default, client, OptiFinePacks.Auto));
+        Assert.True(File.Exists(ionium));
+        Assert.False(File.Exists(Path.Combine(box.Cache, ClientModInstaller.IoniumOffForPackMarker)));
+
+        // Another feature beside it still needs OptiFine, and the notice names only that one.
+        EnablePacks(box, "Skyblock.zip", "Sky.zip");
+        Assert.Equal("Using OptiFine: your resource pack uses OptiFine features (custom sky) that Ionium can't show yet",
+            OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.Auto));
     }
 
     [Fact]
@@ -115,7 +140,7 @@ public class OptiFinePacksTests
         box.WriteManifest("1.8.9", new[] { box.Pin(OptiFineInstaller.PylonModId, ForgeJar("pylon")), box.Pin(OptiFineInstaller.IoniumModId, ForgeJar("ionium")) });
         var ionium = box.Mod("ionium-1.0.0.jar");
         var marker = Path.Combine(box.Cache, ClientModInstaller.IoniumOffForPackMarker);
-        File.WriteAllBytes(Path.Combine(Packs(box), "PvP.zip"), Zip("assets/minecraft/optifine/cit/sword.properties"));
+        File.WriteAllBytes(Path.Combine(Packs(box), "PvP.zip"), Zip("assets/minecraft/optifine/ctm/glass.properties"));
         async Task<string?> Launch(string? setting)
         {
             using var client = box.Client();
@@ -125,9 +150,9 @@ public class OptiFinePacksTests
         Assert.Null(await Launch(OptiFinePacks.Auto));
         Assert.True(File.Exists(ionium));
 
-        // The CIT pack enabled: Ionium off (renamed, never deleted), the notice returned, the marker kept.
+        // The CTM pack enabled: Ionium off (renamed, never deleted), the notice returned, the marker kept.
         EnablePacks(box, "PvP.zip");
-        Assert.Contains("(CIT)", await Launch(OptiFinePacks.Auto));
+        Assert.Contains("(CTM)", await Launch(OptiFinePacks.Auto));
         Assert.True(File.Exists(ionium + ".disabled"));
         Assert.True(File.Exists(marker));
         Assert.Contains(box.Messages, m => m.StartsWith("Using OptiFine", StringComparison.Ordinal));

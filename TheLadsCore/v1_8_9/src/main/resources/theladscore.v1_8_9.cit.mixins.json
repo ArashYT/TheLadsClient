@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.7",
+  "package": "com.thelads.core.v1_8_9.cit.mixin",
+  "plugin": "com.thelads.core.v1_8_9.cit.CitMixinPlugin189",
+  "refmap": "theladscore.v1_8_9.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "AbstractResourcePackCitAccessor189",
+    "ItemModelMesherCitMixin189",
+    "ItemStackCitMixin189",
+    "LayerArmorBaseCitMixin189",
+    "RenderItemCitInvoker189",
+    "RenderItemCitMixin189",
+    "StitcherCitAccessor189",
+    "TextureMapCitMixin189"
+  ]
+}

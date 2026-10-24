@@ -201,7 +201,7 @@ public static class ClientModInstaller
                     wantEnabled = false;
                     status?.Invoke(entry.Name + ": off while Pylon is off (Ionium needs it).");
                 }
-                // Ionium cannot show OptiFine pack features yet (CIT, CTM...): this launch renders through OptiFine instead.
+                // Ionium cannot show some OptiFine pack features yet (CTM, custom sky...): this launch renders through OptiFine instead.
                 if (ionium && wantEnabled && optiFinePackRenderer != null
                     && OptiFinePacks.Notice(game, minecraftVersion, optiFinePackRenderer) is { } notice)
                 {
