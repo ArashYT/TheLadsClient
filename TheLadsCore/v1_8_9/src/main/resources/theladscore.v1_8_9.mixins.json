@@ -120,6 +120,8 @@
     "SurvivalExplosionMixin",
     "SurvivalPlayerMixin",
     "SurvivalThornsMixin",
-    "WorldProviderMixin"
+    "WorldProviderMixin",
+    "FileResourcePackQuickPackMixin189",
+    "ModDiscovererMixin189"
   ]
 }
