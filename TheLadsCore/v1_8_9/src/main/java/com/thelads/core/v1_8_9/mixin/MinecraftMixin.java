@@ -45,6 +45,7 @@ public abstract class MinecraftMixin {
     }
 
     @Shadow private boolean fullscreen;
+    @Shadow private net.minecraft.server.integrated.IntegratedServer theIntegratedServer;
     @Shadow public EntityPlayerSP thePlayer;
     @Shadow private int rightClickDelayTimer;
     @Shadow public net.minecraft.client.multiplayer.WorldClient theWorld;
@@ -109,6 +110,22 @@ public abstract class MinecraftMixin {
     @Inject(method = "runGameLoop", at = @At("HEAD"), require = 0)
     private void ladsFrameStart(CallbackInfo ci) {
         FrameWork189.start();
+        if (thePlayer != null && gameSettings != null) {
+            boolean isRiding = thePlayer.ridingEntity != null;
+            com.thelads.core.config.Module m = com.thelads.core.config.ModuleManager.getInstance().getModule(com.thelads.core.modules.AutoPerspectiveModule.NAME);
+            if (m instanceof com.thelads.core.modules.AutoPerspectiveModule && m.isEnabled()) {
+                com.thelads.core.modules.AutoPerspectiveModule apm = (com.thelads.core.modules.AutoPerspectiveModule) m;
+                if (apm.isAutoThirdPerson()) {
+                    int target = com.thelads.core.client.AutoPerspectiveHelper.checkPerspectiveChange(isRiding, gameSettings.thirdPersonView, true);
+                    if (target >= 0) {
+                        gameSettings.thirdPersonView = target;
+                    }
+                }
+                if (apm.isSmoothCamera()) {
+                    gameSettings.smoothCamera = isRiding;
+                }
+            }
+        }
         if (com.thelads.core.v1_8_9.feature.Probe173Perf.profilingRequested) {
             if (mcProfiler != null && !mcProfiler.profilingEnabled) mcProfiler.profilingEnabled = true;
         } else if (mcProfiler != null && mcProfiler.profilingEnabled && (gameSettings == null || !gameSettings.showDebugProfilerChart)) {
@@ -124,6 +141,22 @@ public abstract class MinecraftMixin {
     @Inject(method = "launchIntegratedServer", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsWorldBackup(String folder, String name, WorldSettings settings, CallbackInfo ci) {
         if (WorldBackup189.intercept((Minecraft) (Object) this, folder, name, settings)) ci.cancel();
+    }
+
+    @Inject(method = "loadWorld(Lnet/minecraft/client/multiplayer/WorldClient;Ljava/lang/String;)V", at = @At("HEAD"))
+    private void ladsWorldBackupOnClose(net.minecraft.client.multiplayer.WorldClient worldClient, String loadingMessage, CallbackInfo ci) {
+        if (worldClient == null && theIntegratedServer != null) {
+            String folder = theIntegratedServer.getFolderName();
+            if (folder != null) {
+                java.io.File savesDir = new java.io.File(Minecraft.getMinecraft().mcDataDir, "saves");
+                java.io.File worldDir = new java.io.File(savesDir, folder);
+                com.thelads.core.config.Module m = com.thelads.core.config.ModuleManager.getInstance().getModule(com.thelads.core.modules.AutoBackupModule.NAME);
+                if (m instanceof com.thelads.core.modules.AutoBackupModule && m.isEnabled()) {
+                    com.thelads.core.modules.AutoBackupModule abm = (com.thelads.core.modules.AutoBackupModule) m;
+                    com.thelads.core.client.AutoBackupHelper.backupWorldAsync(worldDir, abm.getMaxBackups());
+                }
+            }
+        }
     }
 
     @Inject(method = "refreshResources", at = @At("HEAD"))

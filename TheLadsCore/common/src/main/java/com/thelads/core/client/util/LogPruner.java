@@ -1,6 +1,10 @@
 package com.thelads.core.client.util;
 
+import com.thelads.core.config.Module;
+import com.thelads.core.config.ModuleManager;
+import com.thelads.core.modules.LogPrunerModule;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -48,8 +52,22 @@ public final class LogPruner {
         File[] files = logsDir.listFiles();
         if (files == null) return 0;
 
+        File canonicalDir;
+        try {
+            canonicalDir = logsDir.getCanonicalFile();
+        } catch (IOException e) {
+            canonicalDir = logsDir.getAbsoluteFile();
+        }
+
         List<File> list = new ArrayList<>();
-        for (File f : files) list.add(f);
+        for (File f : files) {
+            try {
+                if (!f.getCanonicalFile().getParentFile().equals(canonicalDir)) continue;
+            } catch (IOException e) {
+                continue;
+            }
+            list.add(f);
+        }
 
         List<File> doomed = findLogsToPrune(list, maxAgeDays, maxFiles, System.currentTimeMillis());
         int count = 0;
@@ -61,7 +79,11 @@ public final class LogPruner {
         return count;
     }
 
-    public static int pruneDefault() {
-        return prune(new File("logs"), 7, 20);
+    public static int pruneIfEnabled(File logsDir) {
+        Module m = ModuleManager.getInstance().getModule(LogPrunerModule.NAME);
+        if (m instanceof LogPrunerModule lpm && lpm.isEnabled()) {
+            return prune(logsDir, lpm.getMaxAgeDays(), lpm.getMaxFiles());
+        }
+        return 0;
     }
 }

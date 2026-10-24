@@ -27,5 +27,7 @@ public class RomanNumeralsTest {
         assertEquals("Efficiency 10", RomanNumerals.convertTrailingRoman("Efficiency X"));
         assertEquals("Speed 2", RomanNumerals.convertTrailingRoman("Speed II"));
         assertEquals("Golden Apple", RomanNumerals.convertTrailingRoman("Golden Apple"));
+        assertEquals("Trail mix", RomanNumerals.convertTrailingRoman("Trail mix"));
+        assertEquals("Civic", RomanNumerals.convertTrailingRoman("Civic"));
     }
 }

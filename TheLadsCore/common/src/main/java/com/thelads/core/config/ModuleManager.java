@@ -397,6 +397,10 @@ public class ModuleManager {
         register(new com.thelads.core.modules.LogPrunerModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.NumericalEnchantmentsModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.ConfirmDisconnectModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.DropConfirmationModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ScrollTweaksModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.AutoPerspectiveModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.AutoBackupModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

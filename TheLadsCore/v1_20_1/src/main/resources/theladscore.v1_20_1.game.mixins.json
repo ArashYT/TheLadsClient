@@ -12,6 +12,8 @@
     "FullbrightShadersMixin",
     "LocalPlayerAccessor",
     "LocalPlayerMixin",
+    "InventoryMixin",
+    "IntegratedServerMixin",
     "KeyboardInputMixin",
     "DamageTiltMixin",
     "DamageTiltPacketsMixin",

@@ -24,7 +24,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         LadsGameBridge.set(new VanillaGameBridge1201());
         com.thelads.core.security.AntiInjectDetector.init();
         ConfigManager.load();
-        com.thelads.core.client.util.LogPruner.pruneDefault();
+        com.thelads.core.client.util.LogPruner.pruneIfEnabled(new java.io.File("logs"));
         NativeKeyBindings1201.init();
         NativeFeatures1201.initialize();
         com.thelads.core.v1_20_1.render.Render1201.init();
@@ -68,7 +68,8 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             "ScalableLux", "ModernAdvancements", "Resourcify", "Minimap",
             // In-pack modular enhancements
             "DynamicFPS", "SkinLayers", "NotEnoughAnimations", "BetterF3", "BetterStats",
-            "Clumps", "AppleSkin", "Jade", "MouseTweaks"
+            "Clumps", "AppleSkin", "Jade", "MouseTweaks",
+            "ConfirmDisconnect", "NumericalEnchantments", "LogPruner", "DropConfirmation", "ScrollTweaks", "AutoPerspective", "AutoBackup"
         );
 
 

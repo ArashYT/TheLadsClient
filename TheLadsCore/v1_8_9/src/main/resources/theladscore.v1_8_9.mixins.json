@@ -50,6 +50,7 @@
     "FoodStatsAccessor",
     "IntegratedServerLogoutMixin189",
     "InventoryEffectRendererMixin",
+    "InventoryPlayerMixin",
     "ItemFoodFields",
     "ItemModelGeneratorMixin",
     "ItemRendererAccessor",

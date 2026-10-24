@@ -127,6 +127,22 @@ public final class NativeFeatures1201 {
             return;
         }
         if (!interactive()) zoom().release();
+        if (mc.player != null) {
+            boolean isRiding = mc.player.isPassenger() || mc.player.isFallFlying();
+            Module m = module(com.thelads.core.modules.AutoPerspectiveModule.NAME);
+            if (m instanceof com.thelads.core.modules.AutoPerspectiveModule apm && apm.isEnabled()) {
+                if (apm.isAutoThirdPerson()) {
+                    int current = mc.options.getCameraType().ordinal();
+                    int target = com.thelads.core.client.AutoPerspectiveHelper.checkPerspectiveChange(isRiding, current, true);
+                    if (target >= 0 && target < net.minecraft.client.CameraType.values().length) {
+                        mc.options.setCameraType(net.minecraft.client.CameraType.values()[target]);
+                    }
+                }
+                if (apm.isSmoothCamera()) {
+                    mc.options.smoothCamera = isRiding;
+                }
+            }
+        }
     }
 
     public static void key(int key, int scancode, int action, int modifiers) {

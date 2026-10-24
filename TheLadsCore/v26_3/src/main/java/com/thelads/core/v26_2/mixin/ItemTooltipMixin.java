@@ -35,6 +35,19 @@ public class ItemTooltipMixin {
             java.util.ArrayList<Component> converted = new java.util.ArrayList<>(result.size());
             for (Component c : result) {
                 String str = c.getString();
+                if (!c.getSiblings().isEmpty()) {
+                    List<Component> siblings = c.getSiblings();
+                    int lastIdx = siblings.size() - 1;
+                    Component last = siblings.get(lastIdx);
+                    String lastStr = last.getString().trim();
+                    int num = com.thelads.core.client.RomanNumerals.parseRoman(lastStr);
+                    if (num > 0) {
+                        net.minecraft.network.chat.MutableComponent copy = c.copy();
+                        copy.getSiblings().set(lastIdx, Component.literal(String.valueOf(num)).withStyle(last.getStyle()));
+                        converted.add(copy);
+                        continue;
+                    }
+                }
                 String arabic = com.thelads.core.client.RomanNumerals.convertTrailingRoman(str);
                 if (!arabic.equals(str)) converted.add(Component.literal(arabic).withStyle(c.getStyle())); else converted.add(c);
             }
