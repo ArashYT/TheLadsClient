@@ -20,7 +20,8 @@ class Program
     public static void Main(string[] args)
     {
         Velopack.VelopackApp.Build().SetAutoApplyOnStartup(false).Run();
-        // After an update the launcher inherits Update.exe's High priority (raised by the bridge), which would starve games started from it.
+        // Safety net: a launcher at High would starve games started from it. Windows passes only Idle/BelowNormal to child processes,
+        // so the launcher Update.exe relaunches (raised to High by the bridge) normally starts at Normal anyway.
         // Only High/RealTime come down, so QA's Idle/BelowNormal runs stay as they are.
         try
         {
