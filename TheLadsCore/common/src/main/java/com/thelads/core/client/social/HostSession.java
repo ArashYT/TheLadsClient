@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
@@ -41,8 +42,8 @@ public final class HostSession {
     private volatile HostOptions options = new HostOptions();
     private volatile int port = -1;
 
+    private final SocialState owner;
     private final Set<UUID> acceptedUuids = ConcurrentHashMap.newKeySet();
-    private final Set<UUID> connectedGuests = ConcurrentHashMap.newKeySet();
     private final Map<String, P2PSession> activeP2PSessions = new ConcurrentHashMap<>();
     private final Map<UUID, String> guestToSid = new ConcurrentHashMap<>();
     private final Map<String, UUID> sidToGuest = new ConcurrentHashMap<>();
@@ -50,14 +51,11 @@ public final class HostSession {
     private final Map<String, Queue<JsonObject>> pendingSignals = new ConcurrentHashMap<>();
     private final Set<String> endedSids = ConcurrentHashMap.newKeySet();
     private final Object signalLock = new Object();
-    private Consumer<JsonObject> endSender = obj -> SocialClient.get().send(obj);
 
     private final Predicate<UUID> loginFilter = this::canLogin;
 
-    public HostSession() {}
-
-    public void setEndSender(Consumer<JsonObject> sender) {
-        this.endSender = sender != null ? sender : obj -> SocialClient.get().send(obj);
+    HostSession(SocialState owner) {
+        this.owner = owner;
     }
 
     public boolean isHosting() {
@@ -80,8 +78,14 @@ public final class HostSession {
         return loginFilter;
     }
 
+    /** Guests in the world now (the integrated server's player list, host excluded). */
     public int activeGuestCount() {
-        return connectedGuests.size();
+        return owner.bridge().guests().size();
+    }
+
+    private boolean isOnline(UUID id) {
+        for (SocialBridge.GuestInfo g : owner.bridge().guests()) if (id.equals(g.id())) return true;
+        return false;
     }
 
     public boolean ownsSid(String sid) {
@@ -109,10 +113,7 @@ public final class HostSession {
 
         // Auto-accept friends in FRIENDS scope
         if (options.scope == HostOptions.Scope.FRIENDS && options.approval == HostOptions.Approval.AUTO_FRIENDS) {
-            SocialState state = SocialState.get();
-            if (state != null && state.isFriend(id)) {
-                acceptedUuids.add(id);
-            }
+            if (owner.isFriend(id)) acceptedUuids.add(id);
         }
 
         if (!acceptedUuids.contains(id)) {
@@ -121,8 +122,9 @@ public final class HostSession {
         }
 
         // Max players enforcement: if not already connected and at cap, reject
-        if (!connectedGuests.contains(id) && connectedGuests.size() >= options.maxPlayers) {
-            LOGGER.info("HostSession: rejected login for UUID {}: world full ({}/{})", id, connectedGuests.size(), options.maxPlayers);
+        int online = activeGuestCount();
+        if (online >= options.maxPlayers && !isOnline(id)) {
+            LOGGER.info("HostSession: rejected login for UUID {}: world full ({}/{})", id, online, options.maxPlayers);
             return false;
         }
 
@@ -138,7 +140,6 @@ public final class HostSession {
     public void revoke(UUID guest) {
         if (guest != null) {
             acceptedUuids.remove(guest);
-            connectedGuests.remove(guest);
             String sid = guestToSid.remove(guest);
             if (sid != null) {
                 sidToGuest.remove(sid);
@@ -152,7 +153,7 @@ public final class HostSession {
                     endSession(sid, "Revoked", null);
                 }
             }
-            SocialBridge.get().guestAction(guest, SocialBridge.GuestAction.KICK);
+            owner.bridge().guestAction(guest, SocialBridge.GuestAction.KICK);
         }
     }
 
@@ -177,23 +178,11 @@ public final class HostSession {
         if (endedSids.add(sid)) {
             boolean relayed = p2p != null && p2p.relayed();
             long bytes = p2p != null ? p2p.bytes() : 0L;
-            endSender.accept(SocialProtocol.msg(SocialProtocol.P2P_END,
+            owner.sendRaw(SocialProtocol.msg(SocialProtocol.P2P_END,
                     "sid", sid,
                     "reason", reason != null ? reason : "Session ended",
                     "relayed", relayed,
                     "bytes", bytes));
-        }
-    }
-
-    public void onGuestConnected(UUID guest) {
-        if (guest != null) {
-            connectedGuests.add(guest);
-        }
-    }
-
-    public void onGuestDisconnected(UUID guest) {
-        if (guest != null) {
-            connectedGuests.remove(guest);
         }
     }
 
@@ -211,13 +200,14 @@ public final class HostSession {
         }
 
         this.options = options;
+        SocialBridge bridge = owner.bridge();
         if (options.scope == HostOptions.Scope.LAN) {
-            SocialBridge.get().openToLan(options);
+            bridge.openToLan(options);
             this.hosting = true;
             return true;
         }
 
-        int p = SocialBridge.get().openToFriends(options);
+        int p = bridge.openToFriends(options);
         if (p <= 0) {
             LOGGER.warn("HostSession: failed to open to friends (port={})", p);
             return false;
@@ -226,8 +216,8 @@ public final class HostSession {
         this.port = p;
         this.hosting = true;
         this.endedSids.clear();
-        SocialBridge.get().setLoginFilter(loginFilter);
-        SocialBridge.get().applyHostOptions(options);
+        bridge.setLoginFilter(loginFilter);
+        bridge.applyHostOptions(options);
         LOGGER.info("HostSession: hosting started on loopback port {}, scope={}, maxPlayers={}", p, options.scope, options.maxPlayers);
         return true;
     }
@@ -252,10 +242,10 @@ public final class HostSession {
         startingSids.clear();
         pendingSignals.clear();
         acceptedUuids.clear();
-        connectedGuests.clear();
 
-        SocialBridge.get().setLoginFilter(null);
-        SocialBridge.get().closeHosting(reason != null ? reason : "Host closed the world");
+        SocialBridge bridge = owner.bridge();
+        bridge.setLoginFilter(null);
+        bridge.closeHosting(reason != null ? reason : "Host closed the world");
         port = -1;
         LOGGER.info("HostSession: hosting stopped ({})", reason);
     }
@@ -273,18 +263,14 @@ public final class HostSession {
         sidToGuest.put(sid, peer);
         startingSids.add(sid);
 
-        p2pStarter.start(sid, true, iceConfig, sendSignal).thenAccept(p2p -> {
-            synchronized (signalLock) {
-                startingSids.remove(sid);
-                activeP2PSessions.put(sid, p2p);
-                Queue<JsonObject> queued = pendingSignals.remove(sid);
-                if (queued != null) {
-                    JsonObject sig;
-                    while ((sig = queued.poll()) != null) {
-                        p2p.onSignal(sig);
-                    }
-                }
-            }
+        // "Always use relay (hide my IP)" holds even if the backend's config did not say so: no host/srflx candidate is ever sent.
+        P2PSession.IceConfig ice = options.relayOnly && !iceConfig.relayOnly()
+                ? new P2PSession.IceConfig(iceConfig.stun(), iceConfig.turn(), true) : iceConfig;
+        CompletableFuture<P2PSession> started = p2pStarter.start(sid, true, ice, sendSignal);
+        // The future is the session itself (P2PSession.start): the guest's candidates must reach it while it connects.
+        if (started instanceof P2PSession connecting) attach(sid, connecting);
+        started.thenAccept(p2p -> {
+            if (!attach(sid, p2p)) return;
 
             p2p.onClose(reason -> {
                 UUID guest = sidToGuest.remove(sid);
@@ -302,12 +288,33 @@ public final class HostSession {
         }).exceptionally(ex -> {
             startingSids.remove(sid);
             pendingSignals.remove(sid);
+            activeP2PSessions.remove(sid);
             UUID guest = sidToGuest.remove(sid);
             if (guest != null) guestToSid.remove(guest);
             endSession(sid, "P2P session start failed", null);
             LOGGER.warn("HostSession: P2P session start failed for sid {}: {}", sid, ex.getMessage());
             return null;
         });
+    }
+
+    /** From now on p2p gets this sid's signals (queued ones first); false, closing it, when the sid ended meanwhile. */
+    private boolean attach(String sid, P2PSession p2p) {
+        synchronized (signalLock) {
+            if (!hosting || !sidToGuest.containsKey(sid)) {
+                p2p.close("Session ended");
+                return false;
+            }
+            startingSids.remove(sid);
+            activeP2PSessions.put(sid, p2p);
+            Queue<JsonObject> queued = pendingSignals.remove(sid);
+            if (queued != null) {
+                JsonObject sig;
+                while ((sig = queued.poll()) != null) {
+                    p2p.onSignal(sig);
+                }
+            }
+            return true;
+        }
     }
 
     private void bridgeToLoopback(P2PSession p2p, int targetPort) {

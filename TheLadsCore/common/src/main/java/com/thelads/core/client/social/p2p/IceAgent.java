@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
@@ -71,6 +73,7 @@ public final class IceAgent implements AutoCloseable {
 
     private final CompletableFuture<Void> connectedFuture = new CompletableFuture<>();
     private final AtomicBoolean closed = new AtomicBoolean(false);
+    private final AtomicBoolean checking = new AtomicBoolean(false);
     private final AtomicLong bytesSent = new AtomicLong(0);
     private final AtomicLong bytesReceived = new AtomicLong(0);
 
@@ -79,19 +82,23 @@ public final class IceAgent implements AutoCloseable {
 
     // Pending STUN check transaction IDs: tid -> PairCheck
     private final ConcurrentHashMap<String, CandidatePair> pendingChecks = new ConcurrentHashMap<>();
+    // STUN server Binding requests while gathering: tid -> our mapped (server-reflexive) address
+    private final ConcurrentHashMap<String, CompletableFuture<InetSocketAddress>> stunTransactions = new ConcurrentHashMap<>();
 
     private static class CandidatePair {
         final Candidate local;
         final Candidate remote;
-        final byte[] tid;
-        volatile boolean succeeded = false;
+        final boolean nominate; // a USE-CANDIDATE check (controlling only)
 
-        CandidatePair(Candidate local, Candidate remote, byte[] tid) {
+        CandidatePair(Candidate local, Candidate remote, boolean nominate) {
             this.local = local;
             this.remote = remote;
-            this.tid = tid;
+            this.nominate = nominate;
         }
     }
+
+    /** Controlling only: the first valid pair, nominated with USE-CANDIDATE checks until the controlled agent answers one. */
+    private volatile CandidatePair nominating;
 
     public IceAgent(String sid, boolean host, P2PSession.IceConfig config, Consumer<JsonObject> sendSignal) throws IOException {
         this(sid, host, config, sendSignal, new DatagramSocket(0, InetAddress.getByName("0.0.0.0")));
@@ -138,6 +145,11 @@ public final class IceAgent implements AutoCloseable {
 
     public boolean isRelayed() {
         return selectedPairRelayed;
+    }
+
+    /** The peer address of the selected pair (null until connected). */
+    public InetSocketAddress getSelectedRemoteAddress() {
+        return selectedRemoteAddress;
     }
 
     public long getBytesSent() {
@@ -189,6 +201,7 @@ public final class IceAgent implements AutoCloseable {
             }
             // Always include loopback
             localCandidates.add(new Candidate("host", "127.0.0.1", localPort, PRIORITY_HOST));
+            gatherServerReflexive();
         }
 
         // 2. TURN candidates (relay)
@@ -215,6 +228,62 @@ public final class IceAgent implements AutoCloseable {
                 }
             }
         }
+    }
+
+    /**
+     * Our address as each STUN server sees this socket (RFC 5389 Binding through the reader thread): srflx candidates beside the host
+     * ones. All servers at once, up to 3 tries each, 3 s in total; a server that does not answer just adds nothing.
+     */
+    private void gatherServerReflexive() {
+        List<InetSocketAddress> servers = new ArrayList<>();
+        List<byte[]> requests = new ArrayList<>();
+        List<CompletableFuture<InetSocketAddress>> answers = new ArrayList<>();
+        for (String url : config.stun()) {
+            try {
+                InetSocketAddress server = TurnClient.parseServerAddress(url);
+                if (server.isUnresolved()) continue;
+                StunMessage request = new StunMessage(StunMessage.BINDING_REQUEST);
+                CompletableFuture<InetSocketAddress> answer = new CompletableFuture<>();
+                stunTransactions.put(toHex(request.getTransactionId()), answer);
+                servers.add(server);
+                requests.add(request.encode(null, true));
+                answers.add(answer);
+            } catch (RuntimeException ignored) { // a bad url: no srflx from it
+            }
+        }
+        long end = System.currentTimeMillis() + 3000;
+        for (int attempt = 0; attempt < 3 && !answers.isEmpty(); attempt++) {
+            for (int i = 0; i < servers.size(); i++) {
+                if (answers.get(i).isDone()) continue;
+                try {
+                    socket.send(new DatagramPacket(requests.get(i), requests.get(i).length, servers.get(i)));
+                } catch (IOException ignored) {
+                }
+            }
+            long wait = Math.min(1000, end - System.currentTimeMillis());
+            if (wait <= 0) break;
+            try {
+                CompletableFuture.allOf(answers.toArray(new CompletableFuture[0])).get(wait, TimeUnit.MILLISECONDS);
+                break;
+            } catch (TimeoutException retry) {
+                // resend to the servers that have not answered
+            } catch (Exception e) {
+                break;
+            }
+        }
+        stunTransactions.clear();
+        for (CompletableFuture<InetSocketAddress> answer : answers) {
+            InetSocketAddress mapped = answer.getNow(null);
+            if (mapped != null && find(localCandidates, mapped) == null) {
+                localCandidates.add(new Candidate("srflx", mapped.getAddress().getHostAddress(), mapped.getPort(), PRIORITY_SRFLX));
+            }
+        }
+    }
+
+    private static Candidate find(List<Candidate> candidates, InetSocketAddress address) {
+        String ip = address.getAddress().getHostAddress();
+        for (Candidate c : candidates) if (c.port == address.getPort() && c.ip.equals(ip)) return c;
+        return null;
     }
 
     private void handleIncomingTurnData(InetSocketAddress peer, byte[] data, int off, int len) {
@@ -277,25 +346,54 @@ public final class IceAgent implements AutoCloseable {
 
     private synchronized void startConnectivityChecks() {
         if (remoteUfrag == null || remotePwd == null || remoteCandidates.isEmpty() || localCandidates.isEmpty()) return;
+        sendCheckRound();
+        // The peer drops a check that arrives before our signal does (it can't verify the USERNAME yet), so checks repeat until a pair
+        // is nominated: one paced thread per agent, ending at connect, close or 20 s (P2PSession's timeout).
+        if (checking.compareAndSet(false, true)) {
+            Thread repeat = new Thread(this::repeatChecks, "IceAgent-Checks-" + sid);
+            repeat.setDaemon(true);
+            repeat.setPriority(Thread.MIN_PRIORITY + 1);
+            repeat.start();
+        }
+    }
 
+    private void repeatChecks() {
+        long end = System.currentTimeMillis() + 20_000;
+        try {
+            while (!connectedFuture.isDone() && !closed.get() && System.currentTimeMillis() < end) {
+                Thread.sleep(200);
+                synchronized (this) {
+                    if (!connectedFuture.isDone()) sendCheckRound();
+                }
+            }
+        } catch (InterruptedException ignored) {
+        }
+    }
+
+    private void sendCheckRound() {
+        CandidatePair nominated = nominating;
+        if (nominated != null) { // controlling: only the nomination is repeated now
+            sendConnectivityCheck(nominated.local, nominated.remote, true);
+            return;
+        }
         List<Candidate> sortedRemote = new ArrayList<>(remoteCandidates);
         sortedRemote.sort((a, b) -> Long.compare(b.prio, a.prio));
 
         for (Candidate r : sortedRemote) {
             for (Candidate l : localCandidates) {
-                sendConnectivityCheck(l, r);
+                sendConnectivityCheck(l, r, false);
             }
         }
     }
 
-    private void sendConnectivityCheck(Candidate local, Candidate remote) {
+    private void sendConnectivityCheck(Candidate local, Candidate remote, boolean nominate) {
         try {
             StunMessage req = new StunMessage(StunMessage.BINDING_REQUEST);
             req.addStringAttribute(StunMessage.ATTR_USERNAME, remoteUfrag + ":" + localUfrag);
             req.addLongAttribute(StunMessage.ATTR_PRIORITY, local.prio);
             if (host) {
                 req.addLongAttribute(StunMessage.ATTR_ICE_CONTROLLING, 0x1234567890ABCDEFL);
-                req.addAttribute(StunMessage.ATTR_USE_CANDIDATE, new byte[0]);
+                if (nominate) req.addAttribute(StunMessage.ATTR_USE_CANDIDATE, new byte[0]);
             } else {
                 req.addLongAttribute(StunMessage.ATTR_ICE_CONTROLLED, 0x1234567890ABCDEFL);
             }
@@ -304,8 +402,7 @@ public final class IceAgent implements AutoCloseable {
             byte[] encoded = req.encode(key, true);
 
             String tidHex = toHex(req.getTransactionId());
-            CandidatePair pair = new CandidatePair(local, remote, req.getTransactionId());
-            pendingChecks.put(tidHex, pair);
+            pendingChecks.put(tidHex, new CandidatePair(local, remote, nominate));
 
             InetSocketAddress target = remote.toSocketAddress();
             if ("relay".equals(local.type) && turnClient != null) {
@@ -369,12 +466,21 @@ public final class IceAgent implements AutoCloseable {
 
     private void handleStunPacket(byte[] buf, int off, int len, InetSocketAddress sender, boolean viaRelay) {
         try {
-            // Finding 1: Every incoming STUN Binding request/response must pass FINGERPRINT
+            StunMessage msg = StunMessage.decode(buf, off, len);
+            if (msg.getType() == StunMessage.BINDING_RESPONSE && !viaRelay) {
+                // A STUN server's answer while gathering, matched by its random transaction id (FINGERPRINT is optional there)
+                CompletableFuture<InetSocketAddress> answer = stunTransactions.remove(toHex(msg.getTransactionId()));
+                if (answer != null) {
+                    answer.complete(msg.getXorAddressAttribute(StunMessage.ATTR_XOR_MAPPED_ADDRESS));
+                    return;
+                }
+            }
+
+            // Finding 1: Every incoming connectivity check request/response must pass FINGERPRINT
             if (!StunMessage.validateFingerprint(buf, off, len)) {
                 return;
             }
 
-            StunMessage msg = StunMessage.decode(buf, off, len);
             if (msg.getType() == StunMessage.BINDING_REQUEST) {
                 // Finding 1: USERNAME = "<localUfrag>:<remoteUfrag>"
                 String username = msg.getStringAttribute(StunMessage.ATTR_USERNAME);
@@ -387,6 +493,10 @@ public final class IceAgent implements AutoCloseable {
                 byte[] integrityKey = StunMessage.deriveShortTermKey(localPwd);
                 if (!StunMessage.validateMessageIntegrity(buf, off, len, integrityKey)) {
                     return;
+                }
+                if (!viaRelay && find(remoteCandidates, sender) == null) {
+                    // Peer-reflexive: the peer's NAT mapping it could not tell us; the next check round includes it
+                    remoteCandidates.add(new Candidate("prflx", sender.getAddress().getHostAddress(), sender.getPort(), PRIORITY_SRFLX));
                 }
 
                 boolean useCandidate = msg.hasAttribute(StunMessage.ATTR_USE_CANDIDATE);
@@ -412,8 +522,9 @@ public final class IceAgent implements AutoCloseable {
                     socket.send(dp);
                 }
 
-                if (useCandidate || !host) {
-                    nominate(sender, viaRelay);
+                // Controlled: exactly the pair the controller nominated, as it reached us (never one of our own checks)
+                if (useCandidate && !host) {
+                    select(sender, viaRelay);
                 }
             } else if (msg.getType() == StunMessage.BINDING_RESPONSE) {
                 // Finding 1: Response must match an outstanding transaction id
@@ -430,9 +541,14 @@ public final class IceAgent implements AutoCloseable {
                     return;
                 }
 
-                pair.succeeded = true;
-                boolean isRelayed = "relay".equals(pair.local.type) || "relay".equals(pair.remote.type);
-                nominate(pair.remote.toSocketAddress(), isRelayed);
+                // Valid only on a symmetric path (the answer comes from where the check went); the controlled agent waits for the
+                // controller's nomination instead of picking a pair itself.
+                if (!host || !sender.equals(pair.remote.toSocketAddress())) return;
+                if (pair.nominate) {
+                    select(sender, "relay".equals(pair.local.type) || "relay".equals(pair.remote.type));
+                } else {
+                    startNomination(pair);
+                }
             }
         } catch (Exception ignored) {
         }
@@ -450,7 +566,14 @@ public final class IceAgent implements AutoCloseable {
         }
     }
 
-    private synchronized void nominate(InetSocketAddress remoteAddr, boolean isRelayed) {
+    /** Controlling: the first valid pair is the one nominated; the others are dropped. */
+    private synchronized void startNomination(CandidatePair valid) {
+        if (nominating != null || connectedFuture.isDone()) return;
+        nominating = valid;
+        sendConnectivityCheck(valid.local, valid.remote, true);
+    }
+
+    private synchronized void select(InetSocketAddress remoteAddr, boolean isRelayed) {
         if (!connectedFuture.isDone()) {
             this.selectedRemoteAddress = remoteAddr;
             this.selectedPairRelayed = isRelayed;

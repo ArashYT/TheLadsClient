@@ -473,4 +473,32 @@ public class SocialStateTest {
         long endCount2 = sentMessages.stream().filter(m -> "p2p_end".equals(m.get("t").getAsString())).count();
         assertEquals(1, endCount2, "Second close call must not send a second p2p_end");
     }
+
+    @Test
+    public void acceptingAnInviteInAWorldAsksBeforeLeaving() {
+        UUID host = UUID.randomUUID();
+        bridge.inWorld = true;
+        JsonObject invite = new JsonObject();
+        invite.addProperty("t", "invite");
+        invite.addProperty("inviteId", "inv-switch");
+        invite.addProperty("from", host.toString());
+        JsonObject world = new JsonObject();
+        world.addProperty("name", "SMP");
+        invite.add("world", world);
+        state.onMessage(invite);
+        sentMessages.clear();
+
+        state.handleAction("invite_accept:inv-switch");
+        assertTrue(sentMessages.isEmpty(), "nothing is accepted before the player confirms");
+        assertTrue(bridge.openFriendsCalled, "the Friends screen asks");
+        assertEquals(0, bridge.leftWorldCount);
+        SocialState.SwitchConfirm ask = state.takePendingSwitch();
+        assertNotNull(ask);
+        assertTrue(ask.question().startsWith("Leave ") && ask.question().endsWith("'s world?"), ask.question());
+        assertNull(state.takePendingSwitch(), "asked once");
+
+        ask.go().run();
+        assertEquals("invite_accept", sentMessages.get(0).get("t").getAsString());
+        assertEquals("inv-switch", sentMessages.get(0).get("inviteId").getAsString());
+    }
 }

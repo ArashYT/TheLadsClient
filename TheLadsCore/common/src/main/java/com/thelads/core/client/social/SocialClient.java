@@ -37,25 +37,9 @@ public class SocialClient {
     private static final String MOJANG_JOIN = "https://sessionserver.mojang.com/session/minecraft/join";
     private static final int MAX_OUTBOUND = 512;
 
-    private static volatile SocialClient instance;
-
-    public static SocialClient get() {
-        if (instance == null) {
-            synchronized (SocialClient.class) {
-                if (instance == null) {
-                    instance = new SocialClient(System.getProperty("lads.social.url", System.getenv("LADS_SOCIAL_URL")));
-                }
-            }
-        }
-        return instance;
-    }
-
-    public static void setInstanceForTest(SocialClient client) {
-        instance = client;
-    }
-
     private final URI endpoint;
     private final boolean local;
+    private final SocialState state;
     private final Object lock = new Object();
     private final Object outboundLock = new Object();
     private final BlockingQueue<JsonObject> outbound = new LinkedBlockingQueue<>();
@@ -67,7 +51,9 @@ public class SocialClient {
     private volatile String status = "Disconnected";
     private Thread clientThread;
 
-    public SocialClient(String urlOverride) {
+    /** Messages go to state; its session supplier says who we are. */
+    public SocialClient(String urlOverride, SocialState state) {
+        this.state = state;
         this.endpoint = resolveEndpoint(urlOverride);
         this.local = endpoint != null && "ws".equals(endpoint.getScheme());
     }
@@ -186,7 +172,7 @@ public class SocialClient {
     private void runLoop() {
         int failures = 0;
         while (running) {
-            LadsGameBridge.Session session = LadsGameBridge.get().session();
+            LadsGameBridge.Session session = state.session();
             if (session == null || session.uuid() == null) {
                 status = "Awaiting login";
                 pause(1000);
@@ -249,12 +235,7 @@ public class SocialClient {
             status = "Connected";
             LOGGER.info("SocialClient: connected to {}", endpoint);
 
-            // Notify SocialState of hello payload
-            SocialState state = SocialState.get();
-            if (state != null) {
-                state.onHello(hello);
-            }
-
+            state.onHello(hello);
             onConnected();
 
             ws.setReadTimeout(90_000);
@@ -303,7 +284,7 @@ public class SocialClient {
 
     private void publishPresence(Presence p) {
         if (p == null) {
-            p = new Presence("menu", SocialBridge.get().gameInfo(), null, null);
+            p = new Presence("menu", state.gameInfo(), null, null);
         }
         JsonObject msg = new JsonObject();
         msg.addProperty("t", SocialProtocol.PRESENCE);
@@ -336,12 +317,7 @@ public class SocialClient {
         try {
             for (String text; (text = ws.readText()) != null; ) {
                 JsonObject json = parse(text);
-                if (json != null) {
-                    SocialState state = SocialState.get();
-                    if (state != null) {
-                        state.onMessage(json);
-                    }
-                }
+                if (json != null) state.onMessage(json);
             }
         } catch (Exception e) {
             if (ws.isOpen()) LOGGER.info("SocialClient: read error ({})", e.toString());

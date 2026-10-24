@@ -73,7 +73,7 @@ public class SocialClientTest {
 
     @Test
     public void boundedQueueDropsOldestPresenceFirst() {
-        SocialClient client = new SocialClient("ws://127.0.0.1:1234/social/ws");
+        SocialClient client = new SocialState(SocialBridge::get, () -> null, "ws://127.0.0.1:1234/social/ws").client();
         // Client is not connected, so all sends queue in outbound
         for (int i = 0; i < 500; i++) {
             client.send(SocialProtocol.DM, "to", UUID.randomUUID().toString(), "text", "msg" + i);
@@ -102,7 +102,7 @@ public class SocialClientTest {
 
     @Test
     public void clientCloseStopsRunningThreadAndSocket() {
-        SocialClient client = new SocialClient("ws://127.0.0.1:1234/social/ws");
+        SocialClient client = new SocialState(SocialBridge::get, () -> null, "ws://127.0.0.1:1234/social/ws").client();
         client.start();
         client.close();
         assertFalse(client.isConnected());
@@ -120,7 +120,7 @@ public class SocialClientTest {
                 }
             });
 
-            SocialClient client = new SocialClient("ws://127.0.0.1:" + server.port() + "/social/ws");
+            SocialClient client = new SocialState(SocialBridge::get, () -> LadsGameBridge.get().session(), "ws://127.0.0.1:" + server.port() + "/social/ws").client();
             client.setFastBackoff(true);
 
             SocialBridge.GameInfo gameInfo = new SocialBridge.GameInfo("1.20.1", "fabric", "plain", "", "", "", "1.9.18");

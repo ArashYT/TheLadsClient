@@ -3,6 +3,7 @@ package com.thelads.core.client.social.ui;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.client.gui.MenuGraphics;
+import com.thelads.core.client.social.SocialState;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.LongSupplier;
@@ -56,6 +57,24 @@ public final class SocialToasts {
                 DEFAULT_DURATION_MS
         );
         show(toast);
+    }
+
+    /** SocialBridge.toast: the buttons run SocialState action ids (null = no button) on the client; nothing goes to a game server. */
+    public static synchronized void showAction(String title, String body, String acceptAction, String denyAction) {
+        // A toast without buttons replaces the last one with the same title (progress: "Backing up the world: 40%")
+        if (acceptAction == null && denyAction == null) toasts.removeIf(t -> t.title().equals(title) && t.acceptAction() == null && t.denyAction() == null);
+        String acceptLabel = acceptAction == null ? null
+                : acceptAction.startsWith("invite_accept:") ? "Join" : acceptAction.startsWith("dm:") ? "Reply" : "Accept";
+        show(title, body, acceptLabel, denyAction == null ? null : "Decline", action(acceptAction), action(denyAction));
+    }
+
+    private static Runnable action(String id) {
+        return id == null ? null : () -> SocialState.get().handleAction(id);
+    }
+
+    /** Checked before building a graphics adapter, so the HUD allocates nothing while there is no toast. */
+    public static synchronized boolean isEmpty() {
+        return toasts.isEmpty();
     }
 
     public static synchronized void show(Toast toast) {

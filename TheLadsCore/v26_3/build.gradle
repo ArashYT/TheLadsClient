@@ -191,7 +191,13 @@ tasks.register('runShowcaseTest', JavaExec) {
     mainClass = 'com.thelads.core.v26_2.showcase.ShowcaseScriptParserTest'
 }
 
+tasks.register('runSocialChecks', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.thelads.core.v26_2.social.SocialBridge26Checks'
+}
+
 tasks.named('test') {
     failOnNoDiscoveredTests = false
-    dependsOn tasks.named('runShowcaseTest')
+    dependsOn tasks.named('runShowcaseTest'), tasks.named('runSocialChecks')
 }

@@ -15,6 +15,7 @@ import java.net.Socket;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -36,27 +37,30 @@ public final class GuestSession {
         p2pStarter = starter != null ? starter : P2PSession::start;
     }
 
+    private final SocialState owner;
     private volatile boolean active;
     private volatile UUID hostUuid;
     private volatile String hostDisplayName;
     private volatile String sid;
     private volatile ServerSocket proxyServer;
+    private volatile String proxyAddress;
     private volatile Socket activeSocket;
     private volatile P2PSession p2pSession;
 
     private final Queue<JsonObject> pendingSignals = new ConcurrentLinkedQueue<>();
     private final Object signalLock = new Object();
     private final AtomicBoolean ended = new AtomicBoolean(false);
-    private Consumer<JsonObject> endSender = obj -> SocialClient.get().send(obj);
 
-    public GuestSession() {}
-
-    public void setEndSender(Consumer<JsonObject> sender) {
-        this.endSender = sender != null ? sender : obj -> SocialClient.get().send(obj);
+    GuestSession(SocialState owner) {
+        this.owner = owner;
     }
 
     public boolean isActive() {
         return active;
+    }
+
+    String hostName() {
+        return hostDisplayName;
     }
 
     public UUID hostUuid() {
@@ -65,6 +69,11 @@ public final class GuestSession {
 
     public String sid() {
         return sid;
+    }
+
+    /** The game's connection is our proxy ("127.0.0.1:<port>", the address connectToLocal used). */
+    boolean isProxy(String serverAddress) {
+        return serverAddress != null && serverAddress.equals(proxyAddress);
     }
 
     public boolean ownsSid(String sid) {
@@ -90,36 +99,34 @@ public final class GuestSession {
         HypixelSafetyManager.setP2PSession(safetyKey);
 
         try {
-            proxyServer = new ServerSocket(0, 1, InetAddress.getLoopbackAddress());
-            proxyServer.setReuseAddress(true);
-            int localPort = proxyServer.getLocalPort();
+            ServerSocket proxy = new ServerSocket(0, 1, InetAddress.getLoopbackAddress());
+            proxyServer = proxy;
+            int localPort = proxy.getLocalPort();
+            proxyAddress = "127.0.0.1:" + localPort;
             LOGGER.info("GuestSession: local proxy listening on port {} for sid {}", localPort, sid);
 
             // Connect vanilla client to the loopback proxy
-            SocialBridge.get().connectToLocal(localPort, this.hostDisplayName);
+            owner.bridge().connectToLocal(localPort, this.hostDisplayName);
 
             // Start P2P session
-            p2pStarter.start(sid, false, iceConfig, sendSignal).thenAccept(session -> {
-                synchronized (signalLock) {
-                    this.p2pSession = session;
-                    JsonObject sig;
-                    while ((sig = pendingSignals.poll()) != null) {
-                        session.onSignal(sig);
-                    }
-                }
+            CompletableFuture<P2PSession> started = p2pStarter.start(sid, false, iceConfig, sendSignal);
+            // The future is the session itself (P2PSession.start): the host's candidates must reach it while it connects.
+            if (started instanceof P2PSession connecting) attach(sid, connecting);
+            started.thenAccept(session -> {
+                if (!attach(sid, session)) return;
 
                 session.onClose(reason -> {
                     LOGGER.info("GuestSession: P2P session closed ({})", reason);
-                    close(reason);
+                    close(sid, reason);
                 });
 
                 // Listen for Minecraft client TCP connection to proxy
-                Thread acceptThread = new Thread(() -> acceptAndBridge(session), "Lads-GuestProxy-" + sid);
+                Thread acceptThread = new Thread(() -> acceptAndBridge(sid, proxy, session), "Lads-GuestProxy-" + sid);
                 acceptThread.setDaemon(true);
                 acceptThread.start();
             }).exceptionally(ex -> {
                 LOGGER.warn("GuestSession: P2P session failed to start: {}", ex.getMessage());
-                close("P2P session failed");
+                close(sid, "P2P session failed");
                 return null;
             });
         } catch (IOException e) {
@@ -128,15 +135,33 @@ public final class GuestSession {
         }
     }
 
-    private void acceptAndBridge(P2PSession session) {
+    /** From now on session gets the signals (queued ones first); false, closing it, when this session was closed or replaced. */
+    private boolean attach(String sid, P2PSession session) {
+        synchronized (signalLock) {
+            if (!active || !Objects.equals(this.sid, sid)) {
+                session.close("Session ended");
+                return false;
+            }
+            this.p2pSession = session;
+            JsonObject sig;
+            while ((sig = pendingSignals.poll()) != null) {
+                session.onSignal(sig);
+            }
+            return true;
+        }
+    }
+
+    private void acceptAndBridge(String sid, ServerSocket proxy, P2PSession session) {
         try {
-            if (proxyServer == null || proxyServer.isClosed()) return;
-            Socket socket = proxyServer.accept();
+            Socket socket = proxy.accept();
             socket.setTcpNoDelay(true);
             this.activeSocket = socket;
 
-            // Minecraft client TCP -> P2P stream 0
-            Thread clientToP2P = new Thread(() -> pipe(getIn(socket), session.out(P2PSession.MINECRAFT)), "Lads-GuestPipeOut");
+            // Minecraft client TCP -> P2P stream 0; the game closing its connection (leaving the world) ends the session at once
+            Thread clientToP2P = new Thread(() -> {
+                pipe(getIn(socket), session.out(P2PSession.MINECRAFT));
+                close(sid, "Left the friend's world");
+            }, "Lads-GuestPipeOut");
             clientToP2P.setDaemon(true);
             clientToP2P.start();
 
@@ -145,8 +170,13 @@ public final class GuestSession {
         } catch (IOException e) {
             if (active) LOGGER.warn("GuestSession: proxy connection ended: {}", e.getMessage());
         } finally {
-            close("Proxy connection finished");
+            close(sid, "Proxy connection finished");
         }
+    }
+
+    /** Ends the session only while it is still sid: a late callback of an older session never ends a newer one. */
+    private synchronized void close(String sid, String reason) {
+        if (Objects.equals(this.sid, sid)) close(reason);
     }
 
     public synchronized void close(String reason) {
@@ -158,6 +188,7 @@ public final class GuestSession {
             try { proxyServer.close(); } catch (IOException ignored) {}
             proxyServer = null;
         }
+        proxyAddress = null;
         if (activeSocket != null) {
             try { activeSocket.close(); } catch (IOException ignored) {}
             activeSocket = null;
@@ -174,7 +205,7 @@ public final class GuestSession {
         if (endingSid != null && ended.compareAndSet(false, true)) {
             boolean relayed = sessionToClose != null && sessionToClose.relayed();
             long bytes = sessionToClose != null ? sessionToClose.bytes() : 0L;
-            endSender.accept(SocialProtocol.msg(SocialProtocol.P2P_END,
+            owner.sendRaw(SocialProtocol.msg(SocialProtocol.P2P_END,
                     "sid", endingSid,
                     "reason", reason != null ? reason : "Session ended",
                     "relayed", relayed,

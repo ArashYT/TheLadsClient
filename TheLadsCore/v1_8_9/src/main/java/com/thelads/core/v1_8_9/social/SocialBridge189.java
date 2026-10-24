@@ -3,6 +3,8 @@ package com.thelads.core.v1_8_9.social;
 import com.thelads.core.LadsVersion;
 import com.thelads.core.client.social.HostOptions;
 import com.thelads.core.client.social.SocialBridge;
+import com.thelads.core.client.social.SocialState;
+import com.thelads.core.client.social.ui.SocialToasts;
 import com.thelads.core.v1_8_9.social.mixin.IntegratedServerAccessor;
 import com.thelads.core.v1_8_9.social.mixin.NetworkSystemAccessor;
 import io.netty.channel.ChannelFuture;
@@ -107,23 +109,12 @@ public final class SocialBridge189 implements SocialBridge {
     }
 
     public static int onlineFriendsCount() {
-        // TODO(S3): return (int) SocialState.get().friends().stream().filter(f -> f.presence() != null && !"offline".equals(f.presence().state())).count();
-        return 0;
+        return SocialState.get().onlineFriendCount();
     }
 
+    /** A clicked "/lads:social <id>" chat link: handled here, never sent to the server. */
     public static void handleChatAction(String actionId) {
-        if (actionId == null || actionId.isEmpty()) return;
-        LOGGER.info("Handling client-side social chat action: {}", actionId);
-        // TODO(S3): SocialState.get().handleAction(actionId);
-        if (actionId.startsWith("accept_invite:") || actionId.startsWith("invite_accept:")) {
-            LOGGER.info("Accepting invite action: {}", actionId);
-        } else if (actionId.startsWith("decline_invite:") || actionId.startsWith("invite_decline:")) {
-            LOGGER.info("Declining invite action: {}", actionId);
-        } else if (actionId.startsWith("accept_join:") || actionId.startsWith("join_accept:")) {
-            LOGGER.info("Accepting join request: {}", actionId);
-        } else if (actionId.startsWith("deny_join:") || actionId.startsWith("join_deny:")) {
-            LOGGER.info("Denying join request: {}", actionId);
-        }
+        SocialState.get().handleAction(actionId);
     }
 
     @Override
@@ -142,10 +133,6 @@ public final class SocialBridge189 implements SocialBridge {
         setLoopbackOnly(true);
         String portStr = null;
         try {
-            if (options != null && options.backupOnOpen) {
-                WorldBackupHelper189.backup(server.getFolderName());
-            }
-
             WorldSettings.GameType gameType = WorldSettings.GameType.getByName(options != null && options.guestGameMode != null ? options.guestGameMode : "survival");
             if (gameType == null) gameType = WorldSettings.GameType.SURVIVAL;
             boolean allowCheats = options != null && options.guestOpLevel > 0;
@@ -179,10 +166,6 @@ public final class SocialBridge189 implements SocialBridge {
         if (server == null) return;
 
         setLoopbackOnly(false);
-        if (options != null && options.backupOnOpen) {
-            WorldBackupHelper189.backup(server.getFolderName());
-        }
-
         WorldSettings.GameType gameType = WorldSettings.GameType.getByName(options != null && options.guestGameMode != null ? options.guestGameMode : "survival");
         if (gameType == null) gameType = WorldSettings.GameType.SURVIVAL;
         boolean allowCheats = options != null && options.guestOpLevel > 0;
@@ -197,6 +180,7 @@ public final class SocialBridge189 implements SocialBridge {
         setLoopbackOnly(false);
         loginFilter = null;
         guestSnapshot.clear();
+        mutedGuests.clear();
 
         Minecraft mc = mc();
         if (mc == null) return;
@@ -423,6 +407,8 @@ public final class SocialBridge189 implements SocialBridge {
     public void onWorldUnload(WorldEvent.Unload event) {
         setLoopbackOnly(false);
         guestSnapshot.clear();
+        // The integrated server's overworld unloads only when that world closes: its mutes end with it.
+        if (!event.world.isRemote && event.world.provider.getDimensionId() == 0) mutedGuests.clear();
     }
 
     @Override
@@ -436,7 +422,7 @@ public final class SocialBridge189 implements SocialBridge {
         if (mc == null) return;
         setConnectingTarget(port, displayName != null ? displayName : "P2P Host");
         ServerData data = new ServerData(displayName != null ? displayName : "P2P Host", "127.0.0.1:" + port, false);
-        mc.displayGuiScreen(new GuiConnecting(mc.currentScreen, mc, data));
+        mc.addScheduledTask(() -> mc.displayGuiScreen(new GuiConnecting(mc.currentScreen, mc, data))); // social threads call this
     }
 
     @Override
@@ -445,7 +431,7 @@ public final class SocialBridge189 implements SocialBridge {
         if (mc == null || address == null) return;
         clearConnectingTarget();
         ServerData data = new ServerData(address, address, false);
-        mc.displayGuiScreen(new GuiConnecting(mc.currentScreen, mc, data));
+        mc.addScheduledTask(() -> mc.displayGuiScreen(new GuiConnecting(mc.currentScreen, mc, data)));
     }
 
     @Override
@@ -464,14 +450,16 @@ public final class SocialBridge189 implements SocialBridge {
             if (then != null) then.run();
             return;
         }
-        if (mc.theWorld != null) {
-            mc.theWorld.sendQuittingDisconnectingPacket();
-        }
-        mc.loadWorld(null);
-        mc.displayGuiScreen(new GuiMainMenu());
-        if (then != null) {
-            mc.addScheduledTask(then);
-        }
+        mc.addScheduledTask(() -> { // social threads call this; runs at once on the game thread
+            if (mc.theWorld != null) {
+                mc.theWorld.sendQuittingDisconnectingPacket();
+            }
+            mc.loadWorld(null);
+            mc.displayGuiScreen(new GuiMainMenu());
+            if (then != null) {
+                mc.addScheduledTask(then);
+            }
+        });
     }
 
     @Override
@@ -495,7 +483,7 @@ public final class SocialBridge189 implements SocialBridge {
 
     @Override
     public void toast(String title, String body, String acceptAction, String denyAction) {
-        SocialToasts189.show(title, body, acceptAction, denyAction);
+        SocialToasts.showAction(title, body, acceptAction, denyAction);
     }
 
     @Override
@@ -508,7 +496,7 @@ public final class SocialBridge189 implements SocialBridge {
         style.setColor(EnumChatFormatting.AQUA);
         style.setUnderlined(true);
         msg.setChatStyle(style);
-        mc.ingameGUI.getChatGUI().printChatMessage(msg);
+        mc.addScheduledTask(() -> mc.ingameGUI.getChatGUI().printChatMessage(msg));
     }
 
     @Override
@@ -518,6 +506,43 @@ public final class SocialBridge189 implements SocialBridge {
             return mc.getIntegratedServer().getFolderName();
         }
         return null;
+    }
+
+    @Override
+    public java.nio.file.Path worldDir() {
+        Minecraft mc = mc();
+        IntegratedServer server = mc == null ? null : mc.getIntegratedServer();
+        return server == null ? null : new java.io.File(new java.io.File(mc.mcDataDir, "saves"), server.getFolderName()).toPath();
+    }
+
+    @Override
+    public java.util.concurrent.CompletableFuture<Void> saveWorld() {
+        java.util.concurrent.CompletableFuture<Void> saved = new java.util.concurrent.CompletableFuture<>();
+        Minecraft mc = mc();
+        IntegratedServer server = mc == null ? null : mc.getIntegratedServer();
+        if (server == null) {
+            saved.complete(null);
+            return saved;
+        }
+        server.addScheduledTask(() -> { // runs while the game is paused too; chunk writes flushed to disk (saveChunkData)
+            try {
+                server.getConfigurationManager().saveAllPlayerData();
+                for (WorldServer ws : server.worldServers) {
+                    if (ws == null) continue;
+                    ws.saveAllChunks(true, null);
+                    ws.saveChunkData();
+                }
+                saved.complete(null);
+            } catch (Throwable t) {
+                saved.completeExceptionally(t);
+            }
+        });
+        return saved;
+    }
+
+    @Override
+    public void runOnGameThread(Runnable task) {
+        mc().addScheduledTask(task);
     }
 
     @Override

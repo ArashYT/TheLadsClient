@@ -1,15 +1,7 @@
 package com.thelads.core.v26_2.social;
 
 import com.thelads.core.client.social.SocialBridge;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.UUID;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 public final class SocialBridge26Checks {
     private static int passed;
@@ -50,14 +42,7 @@ public final class SocialBridge26Checks {
         // 4. Friends button text
         require("Friends".equals(SocialBridge26.friendsButtonText().getString()), "friendsButtonText default");
 
-        // 5. SocialToast accept/deny
-        require(!SocialToast26.acceptNewest(), "acceptNewest empty returns false");
-        require(!SocialToast26.denyNewest(), "denyNewest empty returns false");
-        SocialToast26.show("Invite", "Join world", "accept_123", "deny_123");
-        require(SocialToast26.acceptNewest(), "acceptNewest handles pending toast");
-        require(!SocialToast26.acceptNewest(), "acceptNewest empty again");
-
-        // 6. Frozen action ids pass through unchanged
+        // 5. Frozen action ids go to SocialState without throwing (no game, no connection)
         String[] frozenActions = {
             "invite_accept:inv_123",
             "invite_decline:inv_123",
@@ -73,7 +58,7 @@ public final class SocialBridge26Checks {
             passed++;
         }
 
-        // 7. Mute set clearing on disconnect / closeHosting
+        // 6. Mute set clearing on disconnect
         UUID mutedGuest = UUID.randomUUID();
         SocialBridge26.onWorldDisconnect();
         require(!SocialBridge26.isMuted(mutedGuest), "initially unmuted");
@@ -82,60 +67,7 @@ public final class SocialBridge26Checks {
         SocialBridge26.onWorldDisconnect();
         require(!SocialBridge26.isMuted(mutedGuest), "guest unmuted on world disconnect");
 
-        // 8. Null-safe comparator check
-        var list = new java.util.ArrayList<FriendsScreen26.MojangFriendDisplay>();
-        list.add(new FriendsScreen26.MojangFriendDisplay(UUID.randomUUID(), "Alice", "Online", true));
-        list.add(new FriendsScreen26.MojangFriendDisplay(UUID.randomUUID(), null, "Offline", false));
-        list.add(new FriendsScreen26.MojangFriendDisplay(null, "Bob", "Offline", false));
-        list.sort(java.util.Comparator.comparing((FriendsScreen26.MojangFriendDisplay m) -> !m.online())
-            .thenComparing(m -> m.name() != null ? m.name() : "", String.CASE_INSENSITIVE_ORDER));
-        require(list.size() == 3, "sorted list contains 3 entries");
-        require(list.get(0).online(), "first entry is online");
-
-        // 9. World backup pruning
-        try {
-            testBackupPruning();
-        } catch (Exception e) {
-            throw new RuntimeException("Backup pruning check failed", e);
-        }
-
         System.out.println("PASS " + passed + " SocialBridge26 checks");
-    }
-
-    private static void testBackupPruning() throws Exception {
-        Path tempDir = Files.createTempDirectory("lads-social-backup-test");
-        try {
-            Path backupDir = tempDir.resolve("lads-backups");
-            Files.createDirectories(backupDir);
-            String world = "TestWorld";
-
-            for (int i = 0; i < 8; i++) {
-                Path file = backupDir.resolve(world + "-20261024-000" + i + ".zip");
-                try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(file.toFile()))) {
-                    zos.putNextEntry(new ZipEntry("level.dat"));
-                    zos.write("test".getBytes());
-                    zos.closeEntry();
-                }
-                file.toFile().setLastModified(1000000L + i * 1000L);
-            }
-
-            File[] initial = backupDir.toFile().listFiles((d, n) -> n.startsWith(world + "-") && n.endsWith(".zip"));
-            require(initial != null && initial.length == 8, "8 initial backups created");
-
-            BackupHelper26.pruneBackups(backupDir, world, 5);
-
-            File[] remaining = backupDir.toFile().listFiles((d, n) -> n.startsWith(world + "-") && n.endsWith(".zip"));
-            require(remaining != null && remaining.length == 5, "exactly 5 backups retained after pruning");
-
-            for (File f : remaining) {
-                require(f.lastModified() >= 1000000L + 3 * 1000L, "old backup pruned");
-            }
-        } finally {
-            Files.walk(tempDir)
-                .sorted((a, b) -> b.compareTo(a))
-                .map(Path::toFile)
-                .forEach(File::delete);
-        }
     }
 
     private static void require(boolean condition, String message) {

@@ -4,19 +4,15 @@ import com.mojang.authlib.GameProfile;
 import com.thelads.core.LadsVersion;
 import com.thelads.core.client.social.HostOptions;
 import com.thelads.core.client.social.SocialBridge;
+import com.thelads.core.client.social.SocialState;
+import com.thelads.core.client.social.ui.SocialToasts;
 import com.thelads.core.v1_20_1.mixin.social.IntegratedServerAccessor1201;
 import com.thelads.core.v1_20_1.mixin.social.ServerConnectionListenerAccessor1201;
 import io.netty.channel.ChannelFuture;
-import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -24,11 +20,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
@@ -64,7 +56,6 @@ public final class SocialBridge1201 implements SocialBridge {
     private static volatile Predicate<UUID> loginFilter = null;
     private static volatile int localConnectPort = -1;
     private static volatile String localConnectDisplayName = null;
-    private static volatile Consumer<String> actionHandler = null;
     private static final Set<UUID> mutedGuests = Collections.synchronizedSet(new HashSet<>());
     private static volatile List<GuestInfo> cachedGuests = Collections.emptyList();
 
@@ -88,10 +79,6 @@ public final class SocialBridge1201 implements SocialBridge {
             return name;
         }
         return null;
-    }
-
-    public static void setActionHandler(Consumer<String> handler) {
-        actionHandler = handler;
     }
 
     public static boolean isMuted(UUID uuid) {
@@ -128,47 +115,13 @@ public final class SocialBridge1201 implements SocialBridge {
         cachedGuests = Collections.unmodifiableList(list);
     }
 
+    /** A clicked "/lads:social <id>" chat link: handled here, never sent to the server. */
     public static void handleChatAction(String actionId) {
-        if (actionId == null || actionId.isEmpty()) return;
-        LOGGER.info("Handling social chat action: {}", actionId);
-        if ("open_friends".equals(actionId)) {
-            SocialBridge.get().openFriendsScreen();
-            return;
-        }
-        Consumer<String> handler = actionHandler;
-        if (handler != null) {
-            handler.accept(actionId);
-            return;
-        }
-
-        try {
-            Class<?> stateClass = Class.forName("com.thelads.core.client.social.SocialState");
-            Object stateInstance = stateClass.getMethod("get").invoke(null);
-            if (stateInstance != null) {
-                stateClass.getMethod("handleAction", String.class).invoke(stateInstance, actionId);
-                return;
-            }
-        } catch (Throwable ignored) {
-            // TODO(S3): SocialState not merged yet, stub until it merges
-        }
-    }
-
-    public static int getOnlineFriendCount() {
-        try {
-            Class<?> stateClass = Class.forName("com.thelads.core.client.social.SocialState");
-            Object stateInstance = stateClass.getMethod("get").invoke(null);
-            if (stateInstance != null) {
-                Object countObj = stateClass.getMethod("getOnlineFriendCount").invoke(stateInstance);
-                if (countObj instanceof Integer count) {
-                    return count;
-                }
-            }
-        } catch (Throwable ignored) {}
-        return 0;
+        SocialState.get().handleAction(actionId);
     }
 
     public static Component friendsButtonLabel() {
-        int count = getOnlineFriendCount();
+        int count = SocialState.get().onlineFriendCount();
         if (count > 0) {
             return Component.literal("Friends (" + count + ")");
         }
@@ -195,25 +148,6 @@ public final class SocialBridge1201 implements SocialBridge {
                 options.save(worldDir);
             } catch (Exception e) {
                 LOGGER.warn("Failed to persist lads-host.json: {}", e.getMessage());
-            }
-
-            if (options.backupOnOpen) {
-                options.backupOnOpen = false;
-                toast("World Backup", "Backing up world...", null, null);
-                String wName = worldId();
-                CompletableFuture.runAsync(() -> {
-                    try {
-                        backupWorld(worldDir, wName);
-                    } catch (Exception e) {
-                        LOGGER.warn("Failed to create world backup: {}", e.getMessage());
-                        toast("World Backup", "Backup failed, continuing without backup", null, null);
-                    }
-                }).whenComplete((res, err) -> {
-                    mc.execute(() -> {
-                        openToFriends(options);
-                    });
-                });
-                return 0;
             }
         }
 
@@ -440,7 +374,6 @@ public final class SocialBridge1201 implements SocialBridge {
                 }
             }
             updateGuestSnapshot(server);
-            resetLoopbackState();
         });
     }
 
@@ -459,7 +392,7 @@ public final class SocialBridge1201 implements SocialBridge {
         if (mc == null) return;
         ServerAddress address = new ServerAddress("127.0.0.1", port);
         ServerData data = new ServerData(displayName != null ? displayName : "P2P Host", "127.0.0.1:" + port, false);
-        ConnectScreen.startConnecting(mc.screen != null ? mc.screen : new TitleScreen(), mc, address, data, false);
+        mc.execute(() -> ConnectScreen.startConnecting(mc.screen != null ? mc.screen : new TitleScreen(), mc, address, data, false)); // social threads call this
     }
 
     @Override
@@ -472,7 +405,7 @@ public final class SocialBridge1201 implements SocialBridge {
         if (mc == null) return;
         ServerAddress addr = ServerAddress.parseString(address);
         ServerData data = new ServerData(address, address, false);
-        ConnectScreen.startConnecting(mc.screen != null ? mc.screen : new TitleScreen(), mc, addr, data, false);
+        mc.execute(() -> ConnectScreen.startConnecting(mc.screen != null ? mc.screen : new TitleScreen(), mc, addr, data, false));
     }
 
     @Override
@@ -485,18 +418,20 @@ public final class SocialBridge1201 implements SocialBridge {
     public void leaveWorld(Runnable then) {
         Minecraft mc = Minecraft.getInstance();
         resetLoopbackState();
-        if (mc.level != null) {
-            mc.level.disconnect();
-        }
-        if (mc.hasSingleplayerServer()) {
-            mc.clearLevel(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(Component.translatable("menu.savingLevel")));
-        } else {
-            mc.clearLevel();
-        }
-        mc.setScreen(new TitleScreen());
-        if (then != null) {
-            then.run();
-        }
+        mc.execute(() -> { // social threads call this; runs at once on the game thread
+            if (mc.level != null) {
+                mc.level.disconnect();
+            }
+            if (mc.hasSingleplayerServer()) {
+                mc.clearLevel(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(Component.translatable("menu.savingLevel")));
+            } else {
+                mc.clearLevel();
+            }
+            mc.setScreen(new TitleScreen());
+            if (then != null) {
+                then.run();
+            }
+        });
     }
 
     @Override
@@ -541,7 +476,7 @@ public final class SocialBridge1201 implements SocialBridge {
 
     @Override
     public void toast(String title, String body, String acceptAction, String denyAction) {
-        SocialHudToast1201.addToast(title, body, acceptAction, denyAction);
+        SocialToasts.showAction(title, body, acceptAction, denyAction);
     }
 
     @Override
@@ -556,7 +491,7 @@ public final class SocialBridge1201 implements SocialBridge {
                     .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/lads:social " + actionId))
                 );
             }
-            mc.gui.getChat().addMessage(comp);
+            mc.execute(() -> mc.gui.getChat().addMessage(comp));
         }
     }
 
@@ -573,6 +508,24 @@ public final class SocialBridge1201 implements SocialBridge {
     @Override
     public String worldName() {
         return worldId();
+    }
+
+    @Override
+    public Path worldDir() {
+        IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        return server == null ? null : server.getWorldPath(LevelResource.ROOT);
+    }
+
+    @Override
+    public CompletableFuture<Void> saveWorld() {
+        IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
+        return server == null ? CompletableFuture.completedFuture(null)
+            : CompletableFuture.runAsync(() -> server.saveEverything(true, true, true), server); // save-all flush, on the server thread
+    }
+
+    @Override
+    public void runOnGameThread(Runnable task) {
+        Minecraft.getInstance().execute(task);
     }
 
     private static GameType parseGameType(String mode) {
@@ -593,52 +546,5 @@ public final class SocialBridge1201 implements SocialBridge {
             return m.group(1);
         }
         return "";
-    }
-
-    public static void backupWorld(Path worldDir, String worldName) throws IOException {
-        if (worldDir == null || !Files.isDirectory(worldDir)) return;
-        Path savesDir = worldDir.getParent();
-        if (savesDir == null) return;
-        Path backupDir = savesDir.resolve("lads-backups");
-        Files.createDirectories(backupDir);
-
-        String safeWorldName = (worldName != null && !worldName.isEmpty()) ? worldName.replaceAll("[^a-zA-Z0-9.-]", "_") : "world";
-        String dateStr = new SimpleDateFormat("yyyyMMdd-HHmm").format(new Date());
-        Path zipFile = backupDir.resolve(safeWorldName + "-" + dateStr + ".zip");
-
-        try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(zipFile))) {
-            Files.walk(worldDir)
-                .filter(path -> !Files.isDirectory(path))
-                .forEach(path -> {
-                    String relative = worldDir.relativize(path).toString().replace('\\', '/');
-                    if (relative.startsWith("session.lock")) return;
-                    try {
-                        zos.putNextEntry(new ZipEntry(relative));
-                        Files.copy(path, zos);
-                        zos.closeEntry();
-                    } catch (IOException e) {
-                        LOGGER.warn("Failed to zip {}: {}", relative, e.getMessage());
-                    }
-                });
-        }
-        LOGGER.info("World backup created at {}", zipFile);
-
-        pruneOldBackups(backupDir, safeWorldName);
-    }
-
-    private static void pruneOldBackups(Path backupDir, String safeWorldName) {
-        try {
-            File[] files = backupDir.toFile().listFiles((dir, name) -> name.startsWith(safeWorldName + "-") && name.endsWith(".zip"));
-            if (files != null && files.length > 5) {
-                Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
-                for (int i = 5; i < files.length; i++) {
-                    if (files[i].delete()) {
-                        LOGGER.info("Pruned old world backup: {}", files[i].getName());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            LOGGER.warn("Failed to prune backups: {}", e.getMessage());
-        }
     }
 }
