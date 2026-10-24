@@ -27,6 +27,7 @@
     "KeyboardInputMixin",
     "MouseHandlerMixin",
     "MouseTweaksMixin",
+    "ChatScreenFeaturesMixin",
     "FullbrightMixin",
     "FullbrightShadersMixin",
     "ZoomMixin",

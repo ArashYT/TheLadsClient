@@ -59,6 +59,7 @@ public abstract class ChatComponentMixin {
     @Shadow public abstract double getScale();
     @Shadow public abstract int getLinesPerPage();
     @Shadow public abstract void rescaleChat();
+    @Shadow private boolean isChatFocused() { return false; }
 
     /** Infinite History (ChatHistory): the 100-message and 100-line caps become the ceiling. */
     @ModifyConstant(method = ADD5, constant = @Constant(intValue = 100), require = 2)
@@ -93,7 +94,11 @@ public abstract class ChatComponentMixin {
     private void lads$layOut(int lines) {
         if (ladsLaidOut < 0) return;
         int width = Mth.floor(getWidth() / getScale());
-        ladsLaidOut = ChatHistory.layOut(allMessages, ladsLaidOut, trimmedMessages, lines, message -> true,
+        ladsLaidOut = ChatHistory.layOut(allMessages, ladsLaidOut, trimmedMessages, lines, message -> {
+            String text = message.content().getString();
+            return com.thelads.core.client.ChatTabs.filterCurrentTab(text)
+                && com.thelads.core.client.ChatSearch.matches(text);
+        },
             message -> NativeChatHeads1201.split(minecraft.font, message, width));
     }
 
@@ -107,6 +112,49 @@ public abstract class ChatComponentMixin {
     @ModifyArg(method = ADD3, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent;" + ADD5), index = 0, require = 1)
     private Component lads$message(Component content) {
         Component message = NativeClientTools1201.timestamp(NativeNicknames1201.rename(content));
+        String raw = message.getString();
+
+        String server = minecraft.getCurrentServer() != null ? minecraft.getCurrentServer().ip : "Singleplayer";
+        com.thelads.core.client.ChatPersistence.recordMessage(server, raw);
+
+        if (com.thelads.core.client.ChatFilter.profanityFilterEnabled()) {
+            String filtered = com.thelads.core.client.ChatFilter.filterProfanity(raw);
+            if (!filtered.equals(raw)) {
+                message = Component.literal(filtered);
+                raw = filtered;
+            }
+        }
+
+        if (com.thelads.core.client.ChatFilter.mentionHighlightEnabled() || com.thelads.core.client.ChatFilter.mentionPingEnabled()) {
+            String playerName = minecraft.player != null ? minecraft.player.getGameProfile().getName() : null;
+            if (com.thelads.core.client.ChatFilter.isMentioned(raw, playerName)) {
+                if (com.thelads.core.client.ChatFilter.mentionPingEnabled() && minecraft.player != null) {
+                    minecraft.player.playSound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                }
+                if (com.thelads.core.client.ChatFilter.mentionHighlightEnabled()) {
+                    message = Component.literal("§e[!] §r").append(message);
+                }
+            }
+        }
+
+        if (com.thelads.core.client.ChatTranslator.enabled()) {
+            String cached = com.thelads.core.client.ChatTranslator.getCached(raw);
+            if (cached != null) {
+                message = message.copy().append(Component.literal(" §8[TR: " + cached + "]§r"));
+            } else {
+                com.thelads.core.client.ChatTranslator.requestTranslation(raw, null);
+            }
+        }
+
+        if (com.thelads.core.client.CompactChat.enabled()) {
+            if (com.thelads.core.client.CompactChat.checkDuplicate(raw)) {
+                int count = com.thelads.core.client.CompactChat.getRepeatCount();
+                message = Component.literal(com.thelads.core.client.CompactChat.stripCount(raw) + " §7(x" + count + ")");
+                if (!allMessages.isEmpty()) {
+                    allMessages.remove(0);
+                }
+            }
+        }
         NativeChatHeads1201.prepare(message);
         return message;
     }
@@ -177,4 +225,29 @@ public abstract class ChatComponentMixin {
     private int lads$raiseChatPointer(int height) {
         return height - Raised1201.chatLift();
     }
+
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true, require = 1)
+    private void lads$checkVisibility(GuiGraphics graphics, int tick, int mouseX, int mouseY, CallbackInfo ci) {
+        if (com.thelads.core.client.ChatVisibilityToggle.isChatHidden() && !com.thelads.core.client.ChatPeek.isPeeking()) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "render", at = @At("TAIL"), require = 1)
+    private void lads$drawTabs(GuiGraphics graphics, int tick, int mouseX, int mouseY, CallbackInfo ci) {
+        if (!isChatFocused() || !com.thelads.core.client.ChatTabs.enabled()) return;
+        int tabCount = com.thelads.core.client.ChatTabs.getTabCount();
+        int active = com.thelads.core.client.ChatTabs.getActiveTab();
+        int x = 2;
+        int y = -minecraft.font.lineHeight - 4;
+        for (int i = 0; i < tabCount; i++) {
+            String name = com.thelads.core.client.ChatTabs.getTab(i).getName();
+            int width = minecraft.font.width(name) + 6;
+            int bg = (i == active) ? 0x90000000 : 0x50000000;
+            graphics.fill(x, y - 2, x + width, y + minecraft.font.lineHeight + 2, bg);
+            graphics.drawString(minecraft.font, name, x + 3, y, (i == active) ? 0xFFFF55 : 0xAAAAAA, false);
+            x += width + 4;
+        }
+    }
+
 }

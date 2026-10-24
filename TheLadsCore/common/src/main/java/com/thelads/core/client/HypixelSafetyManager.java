@@ -186,7 +186,9 @@ public final class HypixelSafetyManager {
      * Asked per module every frame: no allocation.
      */
     public static boolean isSingleplayerOnlyModule(String moduleName) {
-        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName);
+        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName)
+            || "UnlimitedCommandLength".equalsIgnoreCase(moduleName) || "AutoText".equalsIgnoreCase(moduleName)
+            || "InventoryMove".equalsIgnoreCase(moduleName) || "InventorySort".equalsIgnoreCase(moduleName);
     }
 
     /** Why this module is off on the current server, bypass or not. Allocation-free: asked per module every frame. */

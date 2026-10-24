@@ -41,7 +41,11 @@ public final class Chat189 {
      */
     public static int layOut(List<ChatLine> chatLines, int laidOut, List<ChatLine> drawnLines, int lines, final int width) {
         final FontRenderer font = Minecraft.getMinecraft().fontRendererObj;
-        return ChatHistory.layOut(chatLines, laidOut, drawnLines, lines, message -> true, message -> {
+        return ChatHistory.layOut(chatLines, laidOut, drawnLines, lines, message -> {
+            String unformatted = message.getChatComponent().getUnformattedText();
+            return com.thelads.core.client.ChatTabs.filterCurrentTab(unformatted)
+                && com.thelads.core.client.ChatSearch.matches(unformatted);
+        }, message -> {
             ChatHeads189.Line sender = (ChatHeads189.Line) message;
             List<ChatLine> parts = new ArrayList<ChatLine>();
             for (IChatComponent line : GuiUtilRenderComponents.splitText(message.getChatComponent(), width - ChatHeads189.offset(sender.ladsHead()), font, false, false)) {
@@ -58,6 +62,41 @@ public final class Chat189 {
         if (message == null) return null;
         messages++;
         if (!Options189.enabled("Chat")) return message;
+
+        String unformatted = message.getUnformattedText();
+        String server = Minecraft.getMinecraft().getCurrentServerData() != null 
+            ? Minecraft.getMinecraft().getCurrentServerData().serverIP : "Singleplayer";
+        com.thelads.core.client.ChatPersistence.recordMessage(server, unformatted);
+
+        if (com.thelads.core.client.ChatFilter.profanityFilterEnabled()) {
+            String filtered = com.thelads.core.client.ChatFilter.filterProfanity(unformatted);
+            if (!filtered.equals(unformatted)) {
+                message = new ChatComponentText(filtered);
+                unformatted = filtered;
+            }
+        }
+
+        if (com.thelads.core.client.ChatFilter.mentionHighlightEnabled() || com.thelads.core.client.ChatFilter.mentionPingEnabled()) {
+            String playerName = Minecraft.getMinecraft().thePlayer != null ? Minecraft.getMinecraft().thePlayer.getName() : null;
+            if (com.thelads.core.client.ChatFilter.isMentioned(unformatted, playerName)) {
+                if (com.thelads.core.client.ChatFilter.mentionPingEnabled() && Minecraft.getMinecraft().thePlayer != null) {
+                    Minecraft.getMinecraft().thePlayer.playSound("random.orb", 1.0f, 1.0f);
+                }
+                if (com.thelads.core.client.ChatFilter.mentionHighlightEnabled()) {
+                    IChatComponent badge = new ChatComponentText("§e[!] §r");
+                    message = new ChatComponentText("").appendSibling(badge).appendSibling(message);
+                }
+            }
+        }
+
+        if (com.thelads.core.client.ChatTranslator.enabled()) {
+            String cached = com.thelads.core.client.ChatTranslator.getCached(unformatted);
+            if (cached != null) {
+                message.appendSibling(new ChatComponentText(" §8[TR: " + cached + "]§r"));
+            } else {
+                com.thelads.core.client.ChatTranslator.requestTranslation(unformatted, null);
+            }
+        }
         if (Options189.bool("Chat", "Screenshot Link Buttons", true)) screenshotButtons(message);
         if (!Options189.bool("Chat", "Timestamps", false)) return message;
         IChatComponent prefix = new ChatComponentText("[" + LocalTime.now().format(CLOCK) + "] ");

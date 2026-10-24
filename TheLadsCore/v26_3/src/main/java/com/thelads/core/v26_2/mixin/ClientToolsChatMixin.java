@@ -88,7 +88,9 @@ public abstract class ClientToolsChatMixin {
     private void ladsLayOut(int lines) {
         if (ladsLaidOut < 0) return;
         int width = net.minecraft.util.Mth.floor(getWidth() / getScale());
-        ladsLaidOut = ChatHistory.layOut(allMessages, ladsLaidOut, trimmedMessages, lines, visibleMessageFilter, message -> {
+        ladsLaidOut = ChatHistory.layOut(allMessages, ladsLaidOut, trimmedMessages, lines, message -> (visibleMessageFilter == null || visibleMessageFilter.test(message))
+            && com.thelads.core.client.ChatTabs.filterCurrentTab(message.content().getString())
+            && com.thelads.core.client.ChatSearch.matches(message.content().getString()), message -> {
             var split = message.splitLines(minecraft.font, width);
             var parts = new java.util.ArrayList<GuiMessage.Line>(split.size());
             for (int i = 0; i < split.size(); i++) parts.add(new GuiMessage.Line(message, split.get(i), i == split.size() - 1));
@@ -105,7 +107,52 @@ public abstract class ClientToolsChatMixin {
     /** Nametags renames, rewritten once as a message arrives. */
     @ModifyVariable(method = "addMessage", at = @At("HEAD"), argsOnly = true, require = 1)
     private Component ladsRename(Component content) {
-        return NativeNicknames.rename(content);
+        Component message = NativeNicknames.rename(content);
+        String raw = message.getString();
+
+        String server = minecraft.getCurrentServer() != null ? minecraft.getCurrentServer().ip : "Singleplayer";
+        com.thelads.core.client.ChatPersistence.recordMessage(server, raw);
+
+        if (com.thelads.core.client.ChatFilter.profanityFilterEnabled()) {
+            String filtered = com.thelads.core.client.ChatFilter.filterProfanity(raw);
+            if (!filtered.equals(raw)) {
+                message = Component.literal(filtered);
+                raw = filtered;
+            }
+        }
+
+        if (com.thelads.core.client.ChatFilter.mentionHighlightEnabled() || com.thelads.core.client.ChatFilter.mentionPingEnabled()) {
+            String playerName = minecraft.player != null ? minecraft.player.getGameProfile().name() : null;
+            if (com.thelads.core.client.ChatFilter.isMentioned(raw, playerName)) {
+                if (com.thelads.core.client.ChatFilter.mentionPingEnabled() && minecraft.player != null) {
+                    minecraft.player.playSound(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                }
+                if (com.thelads.core.client.ChatFilter.mentionHighlightEnabled()) {
+                    message = Component.literal("§e[!] §r").append(message);
+                }
+            }
+        }
+
+        if (com.thelads.core.client.ChatTranslator.enabled()) {
+            String cached = com.thelads.core.client.ChatTranslator.getCached(raw);
+            if (cached != null) {
+                message = message.copy().append(Component.literal(" §8[TR: " + cached + "]§r"));
+            } else {
+                com.thelads.core.client.ChatTranslator.requestTranslation(raw, null);
+            }
+        }
+
+        if (com.thelads.core.client.CompactChat.enabled()) {
+            if (com.thelads.core.client.CompactChat.checkDuplicate(raw)) {
+                int count = com.thelads.core.client.CompactChat.getRepeatCount();
+                message = Component.literal(com.thelads.core.client.CompactChat.stripCount(raw) + " §7(x" + count + ")");
+                if (!allMessages.isEmpty()) {
+                    allMessages.remove(0);
+                }
+            }
+        }
+
+        return message;
     }
 
     @ModifyArg(method = "addMessage", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/ChatComponent;addMessageToDisplayQueue(Lnet/minecraft/client/multiplayer/chat/GuiMessage;)V"), require = 1)
@@ -134,8 +181,12 @@ public abstract class ClientToolsChatMixin {
         return NativeQualityOfLife.enabled("Chat") && !NativeQualityOfLife.bool("Chat", "Chat Background", true) ? (Object) 0.0D : opacity;
     }
 
-    @Inject(method = RENDER, at = @At("HEAD"), require = 1)
+    @Inject(method = RENDER, at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsBeginChat(ChatComponent.ChatGraphicsAccess graphics, int screenHeight, int ticks, ChatComponent.DisplayMode mode, CallbackInfo ci) {
+        if (com.thelads.core.client.ChatVisibilityToggle.isChatHidden() && !com.thelads.core.client.ChatPeek.isPeeking()) {
+            ci.cancel();
+            return;
+        }
         com.thelads.core.v26_2.feature.NativeQualityOfLife.chatWithoutShadow = !ChatHistory.shadow();
         boolean animate = NativeQualityOfLife.enabled("Chat") && NativeQualityOfLife.bool("Chat", "Message Animations", true);
         ladsGraphics = animate && ladsAnimation.running() ? graphics : null;

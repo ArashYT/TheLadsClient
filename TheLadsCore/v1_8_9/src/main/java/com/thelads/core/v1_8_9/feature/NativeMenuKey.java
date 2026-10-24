@@ -39,6 +39,13 @@ public final class NativeMenuKey {
 
     @SubscribeEvent
     public void gameplayKey(InputEvent.KeyInputEvent event) {
+        int eventKey = Keyboard.getEventKey();
+        if (Keyboard.getEventKeyState()) {
+            if (eventKey == Keyboard.KEY_GRAVE) com.thelads.core.client.ChatPeek.setPeeking(true);
+            if (eventKey != 0) com.thelads.core.modules.AutoTextModule.triggerKey(eventKey);
+        } else {
+            if (eventKey == Keyboard.KEY_GRAVE) com.thelads.core.client.ChatPeek.setPeeking(false);
+        }
         key();
     }
 

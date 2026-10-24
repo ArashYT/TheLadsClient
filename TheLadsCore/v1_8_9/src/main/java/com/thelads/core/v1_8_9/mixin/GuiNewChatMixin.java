@@ -48,6 +48,9 @@ public abstract class GuiNewChatMixin implements Chat189.History {
     @Shadow public abstract float getChatScale();
     @Shadow public abstract void resetScroll();
     @Shadow public abstract void refreshChat();
+    @Shadow public abstract boolean getChatOpen();
+    @Shadow public abstract void setChatLine(IChatComponent chatComponent, int chatLineId, int updateCounter, boolean displayOnly);
+    @Shadow public abstract void deleteChatLine(int id);
     @Unique private ChatLine ladsDrawn;
     @Unique private NetworkPlayerInfo ladsSender, ladsRewrapped;
     /** Infinite History (ChatHistory): chatLines[0, ladsLaidOut) have their lines in drawnChatLines; -1 while every message has (vanilla). */
@@ -103,7 +106,22 @@ public abstract class GuiNewChatMixin implements Chat189.History {
 
     @Inject(method = "printChatMessageWithOptionalDeletion", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsIgnoreNullChat(IChatComponent message, int chatLineId, CallbackInfo ci) {
-        if (message == null) ci.cancel();
+        if (message == null) {
+            ci.cancel();
+            return;
+        }
+        if (com.thelads.core.client.CompactChat.enabled() && chatLineId == 0) {
+            String text = message.getUnformattedText();
+            if (com.thelads.core.client.CompactChat.checkDuplicate(text)) {
+                int count = com.thelads.core.client.CompactChat.getRepeatCount();
+                deleteChatLine(-9991);
+                net.minecraft.util.IChatComponent stacked = new net.minecraft.util.ChatComponentText(message.getFormattedText() + " §7(x" + count + ")");
+                setChatLine(stacked, -9991, net.minecraft.client.Minecraft.getMinecraft().ingameGUI.getUpdateCounter(), false);
+                ci.cancel();
+            } else {
+                deleteChatLine(-9991);
+            }
+        }
     }
 
     @ModifyVariable(method = "printChatMessageWithOptionalDeletion", at = @At("HEAD"), argsOnly = true, require = 1)
@@ -182,10 +200,34 @@ public abstract class GuiNewChatMixin implements Chat189.History {
         if (Options189.enabled("Chat")) cir.setReturnValue((int) Options189.number("Chat", "Chat Height", 180));
     }
 
-    @Inject(method = "drawChat", at = @At("HEAD"), require = 1)
+    @Inject(method = "drawChat", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsBeginChat(int updateCounter, CallbackInfo ci) {
+        if (com.thelads.core.client.ChatVisibilityToggle.isChatHidden() && !com.thelads.core.client.ChatPeek.isPeeking()) { ci.cancel(); return; }
         if (ChatHeads189.layoutChanged()) refreshChat();
         ladsAnimating = Options189.enabled("Chat") && Options189.bool("Chat", "Message Animations", true) && ladsAnimation.running();
+    }
+
+    @Redirect(method = "drawChat", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiNewChat;getChatOpen()Z"), require = 1)
+    private boolean ladsChatOpen(GuiNewChat chat) {
+        return chat.getChatOpen() || com.thelads.core.client.ChatPeek.isPeeking();
+    }
+
+    @Inject(method = "drawChat", at = @At("TAIL"), require = 1)
+    private void ladsDrawChatTabs(int updateCounter, CallbackInfo ci) {
+        if (!getChatOpen() || !com.thelads.core.client.ChatTabs.enabled()) return;
+        int tabCount = com.thelads.core.client.ChatTabs.getTabCount();
+        int active = com.thelads.core.client.ChatTabs.getActiveTab();
+        FontRenderer font = net.minecraft.client.Minecraft.getMinecraft().fontRendererObj;
+        int x = 2;
+        int y = -font.FONT_HEIGHT - 4;
+        for (int i = 0; i < tabCount; i++) {
+            String name = com.thelads.core.client.ChatTabs.getTab(i).getName();
+            int width = font.getStringWidth(name) + 6;
+            int bg = (i == active) ? 0x90000000 : 0x50000000;
+            Gui.drawRect(x, y - 2, x + width, y + font.FONT_HEIGHT + 2, bg);
+            font.drawStringWithShadow(name, x + 3, y, (i == active) ? 0xFFFF55 : 0xAAAAAA);
+            x += width + 4;
+        }
     }
 
     /** The line drawChat is about to draw: its age is read first. */

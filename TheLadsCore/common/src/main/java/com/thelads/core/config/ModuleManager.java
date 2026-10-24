@@ -272,6 +272,18 @@ public class ModuleManager {
         chatMod.addOption(new DropdownOption(com.thelads.core.client.ChatHeads.POSITION, 0, com.thelads.core.client.ChatHeads.POSITIONS));
         chatMod.addOption(new BoolOption(com.thelads.core.client.ChatHeads.BY_NAME, true));
         chatMod.addOption(new BoolOption(com.thelads.core.client.ChatHeads.ALIGNED, false));
+        chatMod.addOption(new BoolOption("Compact Chat", true));
+        chatMod.addOption(new BoolOption("Chat Tabs", true));
+        chatMod.addOption(new BoolOption("Chat Search", true));
+        chatMod.addOption(new BoolOption("Shift+Enter Keep Open", true));
+        chatMod.addOption(new BoolOption("Chat Peek", true));
+        chatMod.addOption(new BoolOption("Persistent History", true));
+        chatMod.addOption(new BoolOption("Chat Translation", false));
+        chatMod.addOption(new DropdownOption("Target Language", 0, com.thelads.core.client.ChatTranslator.LANGUAGES));
+        chatMod.addOption(new BoolOption("Mention Highlight", true));
+        chatMod.addOption(new BoolOption("Mention Ping", true));
+        chatMod.addOption(new BoolOption("Profanity Filter", false));
+        chatMod.addOption(new BoolOption("Chat Shortcuts", true));
         chatMod.setEnabled(true);
         register(chatMod, Module.Category.HUD);
 
@@ -394,6 +406,12 @@ public class ModuleManager {
         register(borderless, Module.Category.MECHANIC);
         register(new SurvivalTweaksModule(), Module.Category.MECHANIC);
         register(new StackRefillModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.UnlimitedCommandLengthModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.AutoTextModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.SlotLockingModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.InventorySearchModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.InventoryMoveModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.InventorySortModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {
