@@ -526,6 +526,11 @@ public class SocialState {
         send(SocialProtocol.JOIN_REQUEST, "host", host.toString());
     }
 
+    /** Join requests waiting for an answer (QA: P2PQa answers the toast's request). */
+    public List<JoinRequest> joinRequests() {
+        return new ArrayList<>(activeJoinRequests.values());
+    }
+
     public void answerJoin(String reqId, boolean yes) {
         if (reqId == null) return;
         JoinRequest req = activeJoinRequests.remove(reqId);
@@ -902,6 +907,8 @@ public class SocialState {
                         guestSession.onSignal(data);
                     } else if (hostSession.ownsSid(sid)) {
                         hostSession.onSignal(sid, data);
+                    } else if (P2PQa.ACTIVE) { // QA only: a signal no session owns (yet) is dropped here
+                        LOGGER.warn("Lads p2p QA: signal for sid {} dropped: no guest or host session owns it", sid);
                     }
                 }
             }
