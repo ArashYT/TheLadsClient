@@ -17,8 +17,8 @@ import javax.sound.sampled.AudioFormat;
  */
 public final class DamageTintModule extends Module {
     public static final String NAME = "Damage Tint";
-    /** Bands of the edge glow, each a little fainter than the one outside it. */
-    static final int BANDS = 12;
+    /** Bands of the edge glow, each a little fainter than the one outside it (enough that no step shows). */
+    static final int BANDS = 32;
     /** Just under the threshold the glow already shows this share of the colour's alpha, so the warning is visible at once. */
     static final float START = 0.3F;
     static final int RATE = 22050;
@@ -56,18 +56,28 @@ public final class DamageTintModule extends Module {
             nextBeat = 0;
             return;
         }
-        int w = g.getScaledWidth(), h = g.getScaledHeight(), band = Math.max(1, Math.min(w, h) / 4 / BANDS);
-        for (int i = 0; i < BANDS; i++) {
-            int color = bandColor(argb, strength, i), in = i * band, out = in + band;
-            g.fill(0, in, w, out, color);
-            g.fill(0, h - out, w, h - in, color);
-            g.fill(in, out, out, h - out, color);
-            g.fill(w - out, out, w - in, h - out, color);
-        }
+        edges(g, g.getScaledWidth(), g.getScaledHeight(), argb, strength);
         long now = System.currentTimeMillis();
         if (beat && now >= nextBeat) {
             CustomSounds.play(HEARTBEAT, gain, "Damage Tint heartbeat");
             nextBeat = now + beatMillis(strength);
+        }
+    }
+
+    /**
+     * The edge glow, a quarter of the shorter side deep. Every band runs the full length of its edge, so in a corner a top or bottom
+     * band always crosses a side band: the corner is the two edge fades over each other, the same either side of the diagonal at any
+     * aspect ratio (side bands that stopped short of the top ones left a stepped diagonal seam).
+     */
+    static void edges(LadsGraphics g, int w, int h, int argb, float strength) {
+        int depth = Math.max(1, Math.min(w, h) / 4);
+        for (int i = 0; i < BANDS; i++) {
+            int color = bandColor(argb, strength, i), in = i * depth / BANDS, out = (i + 1) * depth / BANDS;
+            if (out == in) continue;
+            g.fill(0, in, w, out, color);
+            g.fill(0, h - out, w, h - in, color);
+            g.fill(in, 0, out, h, color);
+            g.fill(w - out, 0, w - in, h, color);
         }
     }
 

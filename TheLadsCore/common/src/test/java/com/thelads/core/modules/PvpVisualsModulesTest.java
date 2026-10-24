@@ -6,6 +6,7 @@ import com.thelads.core.client.HypixelSafetyManager;
 import com.thelads.core.client.PvpVisuals;
 import com.thelads.core.client.bridge.DefaultGameBridge;
 import com.thelads.core.client.bridge.LadsGameBridge;
+import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.config.ModuleManager;
 import org.junit.jupiter.api.Test;
 
@@ -49,6 +50,33 @@ class PvpVisualsModulesTest {
         assertEquals(0xFF0000, DamageTintModule.bandColor(argb, 1, DamageTintModule.BANDS) & 0xFFFFFF);
         assertEquals(0, DamageTintModule.bandColor(argb, 1, DamageTintModule.BANDS) >>> 24, "fades out towards the middle");
         assertTrue(DamageTintModule.bandColor(argb, .5F, 0) >>> 24 < 0x99);
+    }
+
+    @Test void damageTintCornersHaveNoSeam() {
+        for (int[] size : new int[][] {{270, 480}, {480, 270}, {320, 240}}) { // 9:16, 16:9, 4:3 (GUI pixels)
+            int w = size[0], h = size[1], depth = Math.min(w, h) / 4;
+            float[] a = new float[w * h];
+            // Blend each fill over the pixels it covers, as the GPU does.
+            LadsGraphics g = (LadsGraphics) java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(), new Class<?>[] {LadsGraphics.class},
+                (proxy, method, args) -> {
+                    if (method.getName().equals("fill")) {
+                        float alpha = ((int) args[4] >>> 24) / 255F;
+                        for (int y = (int) args[1]; y < (int) args[3]; y++)
+                            for (int x = (int) args[0]; x < (int) args[2]; x++) a[y * w + x] += alpha * (1 - a[y * w + x]);
+                    }
+                    return null;
+                });
+            DamageTintModule.edges(g, w, h, 0x99FF0000, 1);
+            assertTrue(a[0] > 0.5F, "the corner glows");
+            assertEquals(0, a[h / 2 * w + w / 2], "the middle stays clear");
+            for (int y = 0; y < depth; y++)
+                for (int x = 0; x < depth; x++) {
+                    // Every corner the same either side of its diagonal, and no hard step anywhere near it.
+                    assertEquals(a[y * w + x], a[x * w + y], 1e-6, w + "x" + h + " top left " + x + "," + y);
+                    assertEquals(a[y * w + x], a[(h - 1 - y) * w + (w - 1 - x)], 1e-6, w + "x" + h + " bottom right " + x + "," + y);
+                    if (x > 0) assertTrue(Math.abs(a[y * w + x] - a[y * w + x - 1]) < 0.04F, w + "x" + h + " step at " + x + "," + y);
+                }
+        }
     }
 
     @Test void heartbeatIsTwoThumpsAndSilence() {
