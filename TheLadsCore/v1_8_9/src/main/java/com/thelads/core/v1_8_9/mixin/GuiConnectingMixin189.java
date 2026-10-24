@@ -19,4 +19,17 @@ public abstract class GuiConnectingMixin189 {
         com.thelads.core.v1_8_9.feature.ConnectionTweaks189.connecting((GuiConnecting) (Object) this); // before connect() starts its thread
         mc.loadWorld(world);
     }
+
+    @Redirect(method = "drawScreen", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/resources/I18n;format(Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String;"), require = 2)
+    private String ladsCustomConnectingText(String key, Object[] params) {
+        String name = com.thelads.core.v1_8_9.social.SocialBridge189.getConnectingDisplayName();
+        if (name != null) {
+            if ("connect.connecting".equals(key)) {
+                return "Connecting to " + name + "...";
+            } else if ("connect.authorizing".equals(key)) {
+                return "Logging in to " + name + "...";
+            }
+        }
+        return net.minecraft.client.resources.I18n.format(key, params);
+    }
 }
