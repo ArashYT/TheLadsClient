@@ -30,8 +30,8 @@ public class ModuleManager {
         var stopwatch = hud("Stopwatch", "A local timer. Bind start/pause and reset in Controls; it continues across menus and worlds.");
         stopwatch.addOption(new ActionOption("Start or pause", "Start / pause timer"));
         stopwatch.addOption(new ActionOption("Reset", "Reset timer"));
-        hud("ItemCounter", "Count held items, arrows, totems or rockets in your inventory and offhand.")
-            .addOption(new DropdownOption("Item", 0, "Held item", "Arrows", "Totems", "Rockets"));
+        hud("ItemCounter", "Count held items, arrows, totems, rockets, golden apples, ender pearls, potions or soups in your inventory and offhand.")
+            .addOption(new DropdownOption("Item", 0, "Held item", "Arrows", "Totems", "Rockets", "Golden Apples", "Ender Pearls", "Potions", "Soups"));
         hud("ReachDisplay", "Show the distance to your last client-observed attack point. Does not change reach.");
         hud("ServerAddress", "Show the connected server address, or hide it while streaming.")
             .addOption(new BoolOption("Hide address", false));
@@ -67,6 +67,7 @@ public class ModuleManager {
         fps.addOption(new DropdownOption("Update rate", 1, "Instant", "Fast", "Normal", "Slow"));
         fps.addOption(new BoolOption("Smooth", true));
         fps.addOption(new DropdownOption("Display", 0, "Game FPS", "HUD FPS", "Both"));
+        fps.addOption(new DropdownOption("Stats", 0, "Off", "Min / Max", "Average", "1% Low", "Full"));
         fps.setEnabled(true);
 
         Module minimap = new Module("Minimap", "Lads controls for the bundled Xaero engine. Uses your existing maps, waypoints and server rules.");
@@ -470,6 +471,81 @@ public class ModuleManager {
         register(new ContainerQoLModule(), Module.Category.MECHANIC);
         HudModule invHud = hud("InventoryHUD", "Display your own inventory contents on screen.");
         invHud.setEnabled(false);
+
+        var combo = hud("ComboCounter", "Displays consecutive melee hits landed on opponents.");
+        combo.addOption(new DropdownOption("Display", 0, "Combo: X", "X Hits", "Number only"));
+        combo.addOption(new BoolOption("Hide when zero", false));
+
+        var pvpInfo = hud("PvPInfo", "Summary of PvP combat statistics: accuracy, hits landed, hits taken, gapples used.");
+        pvpInfo.addOption(new BoolOption("Show accuracy", true));
+        pvpInfo.addOption(new BoolOption("Show hits landed", true));
+        pvpInfo.addOption(new BoolOption("Show hits taken", true));
+        pvpInfo.addOption(new BoolOption("Show gapples", true));
+        pvpInfo.addOption(new DropdownOption("Layout", 0, "Multi-line", "Compact"));
+
+        var potCounter = hud("PotionCounter", "Count splash healing potions and soups in your inventory.");
+        potCounter.addOption(new DropdownOption("Display", 0, "Both", "Potions only", "Soups only"));
+
+        var itemTracker = hud("ItemTracker", "Display recent item pickup and drop history notifications on screen.");
+        itemTracker.addOption(new SliderOption("Max entries", 4, 1, 8, 1));
+        itemTracker.addOption(new SliderOption("Duration (seconds)", 3, 1, 8, 1));
+        itemTracker.addOption(new BoolOption("Show pickups", true));
+        itemTracker.addOption(new BoolOption("Show drops", true));
+
+        var cooldowns = hud("Cooldowns", "Display active item cooldown timers and progress on the HUD.");
+        cooldowns.addOption(new DropdownOption("Display mode", 0, "Text & Time", "Bar & Time", "Compact"));
+        cooldowns.addOption(new BoolOption("Include pearls", true));
+
+        var tps = hud("TPS", "Displays estimated server ticks per second (TPS).");
+        tps.addOption(new DropdownOption("Format", 0, "20.0 TPS", "TPS: 20.0", "Number only"));
+        tps.addOption(new SliderOption("Decimals", 1, 0, 2, 1));
+
+        var sysRes = hud("SystemResources", "Displays real-time CPU, RAM, and system resource utilization.");
+        sysRes.addOption(new BoolOption("Show CPU", true));
+        sysRes.addOption(new BoolOption("Show RAM", true));
+        sysRes.addOption(new DropdownOption("Layout", 0, "Single line", "Multi-line"));
+
+        var playtime = hud("Playtime", "Displays elapsed playtime during your session or in the current world.");
+        playtime.addOption(new DropdownOption("Format", 0, "HH:mm:ss", "Words (1h 24m)", "Minutes"));
+        playtime.addOption(new DropdownOption("Prefix", 0, "Playtime: ", "Session: ", "Uptime: ", "None"));
+
+        var compass = hud("CompassStrip", "Displays a scrolling navigational compass ribbon that rotates with the player.");
+        compass.addOption(new SliderOption("Width", 140, 80, 240, 10));
+        compass.addOption(new BoolOption("Show degrees", true));
+        compass.addOption(new BoolOption("Center notch", true));
+
+        var viewAngles = hud("ViewAngles", "Displays precise camera yaw and pitch degrees.");
+        viewAngles.addOption(new DropdownOption("Format", 0, "Yaw and Pitch", "Short (Y/P)", "Compact (X, Y)", "Yaw only", "Pitch only"));
+        viewAngles.addOption(new SliderOption("Decimals", 1, 0, 2, 1));
+
+        var mouseTrail = hud("MouseTrail", "Displays an animated graphical trail tracking mouse movement.");
+        mouseTrail.addOption(new SliderOption("Box size", 50, 30, 80, 5));
+        mouseTrail.addOption(new SliderOption("Trail lifetime (ms)", 350, 100, 1000, 50));
+        mouseTrail.addOption(new SliderOption("Sensitivity", 100, 50, 200, 10));
+        mouseTrail.addOption(new BoolOption("Center dot", true));
+
+        var blockCounter = hud("BlockCounter", "Tracks blocks placed in this session and blocks remaining in inventory.");
+        blockCounter.addOption(new DropdownOption("Mode", 0, "Placed blocks", "Remaining held", "Both"));
+        blockCounter.addOption(new DropdownOption("Prefix", 0, "Placed: ", "Blocks: ", "None"));
+
+        var protection = hud("Protection", "Displays active defensive enchantments (Protection, Fire Prot, Feather Falling) on equipped gear.");
+        protection.addOption(new DropdownOption("Display", 0, "Summary", "All defensive", "Protection only"));
+        protection.addOption(new BoolOption("Include Feather Falling", true));
+        protection.addOption(new BoolOption("Hide when zero", false));
+
+        var deathInfo = hud("DeathInfo", "Displays total deaths, last death coordinates, and death cause.");
+        deathInfo.addOption(new DropdownOption("Display", 0, "Deaths & Coords", "Deaths only", "Last Coords", "Full"));
+        deathInfo.addOption(new BoolOption("Show dimension", false));
+
+        var hearts = hud("Hearts", "Custom hearts display with condensed absorption rows and armor/toughness points.");
+        hearts.addOption(new BoolOption("Show armor", true));
+        hearts.addOption(new BoolOption("Show toughness", true));
+        hearts.addOption(new BoolOption("Condense absorption", true));
+
+        var hitIndicator = hud("HitIndicator", "Visual directional arc around your crosshair indicating incoming damage direction.");
+        hitIndicator.addOption(new SliderOption("Radius", 40, 20, 80, 5));
+        hitIndicator.addOption(new SliderOption("Duration (ms)", 800, 200, 2000, 100));
+        hitIndicator.addOption(new SliderOption("Size", 20, 10, 40, 2));
     }
 
     public static ModuleManager getInstance() {

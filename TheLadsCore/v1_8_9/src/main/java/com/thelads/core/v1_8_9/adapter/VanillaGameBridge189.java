@@ -171,15 +171,178 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     public String getItemCountText(int selection) {
         Minecraft mc = mc();
         if (mc.thePlayer == null) return "Items: 0";
-        ItemStack held = mc.thePlayer.getHeldItem();
-        if (held == null) return "Items: 0";
+        net.minecraft.item.Item targetItem = null;
+        String label = "Items";
+        switch (selection) {
+            case 1:
+                targetItem = net.minecraft.init.Items.arrow;
+                label = "Arrows";
+                break;
+            case 2:
+                return "Totems: 0";
+            case 3:
+                targetItem = net.minecraft.init.Items.fireworks;
+                label = "Rockets";
+                break;
+            case 4:
+                targetItem = net.minecraft.init.Items.golden_apple;
+                label = "Golden Apples";
+                break;
+            case 5:
+                targetItem = net.minecraft.init.Items.ender_pearl;
+                label = "Ender Pearls";
+                break;
+            case 6:
+                targetItem = net.minecraft.init.Items.potionitem;
+                label = "Potions";
+                break;
+            case 7:
+                targetItem = net.minecraft.init.Items.mushroom_stew;
+                label = "Soups";
+                break;
+            default:
+                ItemStack held = mc.thePlayer.getHeldItem();
+                if (held != null) {
+                    targetItem = held.getItem();
+                    label = held.getDisplayName();
+                }
+                break;
+        }
+        if (targetItem == null) return label + ": 0";
         int total = 0;
         for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
-            if (stack != null && stack.getItem() == held.getItem() && (!held.getHasSubtypes() || stack.getItemDamage() == held.getItemDamage())) {
+            if (stack != null && stack.getItem() == targetItem) {
                 total += stack.stackSize;
             }
         }
-        return held.getDisplayName() + ": " + total;
+        return label + ": " + total;
+    }
+
+    private int lastInventoryScanTick = -1;
+    private int cachedPotionCount = 0;
+    private int cachedSoupCount = 0;
+    private boolean lastAttackKeyDown = false;
+
+    private void updateInventoryCountsIfNeeded() {
+        Minecraft mc = mc();
+        if (mc.thePlayer == null) {
+            cachedPotionCount = 0;
+            cachedSoupCount = 0;
+            return;
+        }
+        int curTick = mc.thePlayer.ticksExisted;
+        if (curTick == lastInventoryScanTick) return;
+        lastInventoryScanTick = curTick;
+        int pots = 0, soups = 0;
+        for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
+            if (stack != null) {
+                if (stack.getItem() == net.minecraft.init.Items.potionitem) pots += stack.stackSize;
+                else if (stack.getItem() == net.minecraft.init.Items.mushroom_stew) soups += stack.stackSize;
+            }
+        }
+        cachedPotionCount = pots;
+        cachedSoupCount = soups;
+    }
+
+    @Override
+    public int getPotionCount() {
+        updateInventoryCountsIfNeeded();
+        return cachedPotionCount;
+    }
+
+    @Override
+    public int getSoupCount() {
+        updateInventoryCountsIfNeeded();
+        return cachedSoupCount;
+    }
+
+    @Override
+    public boolean hasItemCooldowns() {
+        return false;
+    }
+
+    @Override
+    public List<CooldownEntry> getActiveCooldowns() {
+        // Minecraft 1.8.9 has no item cooldowns in vanilla netcode (ItemCooldowns was added in 1.9)
+        return Collections.emptyList();
+    }
+
+    @Override
+    public void tickClient() {
+        Minecraft mc = mc();
+        if (mc.thePlayer == null || mc.theWorld == null) return;
+        int currentTick = mc.thePlayer.ticksExisted;
+
+        // 1. Air swing detection (attack key pressed with no entity under crosshair)
+        if (mc.gameSettings != null) {
+            boolean attackDown = mc.gameSettings.keyBindAttack.isKeyDown();
+            if (attackDown && !lastAttackKeyDown && mc.currentScreen == null) {
+                if (mc.objectMouseOver == null || mc.objectMouseOver.typeOfHit != net.minecraft.util.MovingObjectPosition.MovingObjectType.ENTITY) {
+                    com.thelads.core.client.CombatTracker.get().onAirSwing();
+                }
+            }
+            lastAttackKeyDown = attackDown;
+
+            // 2. Block counter placed detection (decrease within 2 ticks of use on block)
+            boolean useDown = mc.gameSettings.keyBindUseItem.isKeyDown();
+            boolean hitBlock = mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == net.minecraft.util.MovingObjectPosition.MovingObjectType.BLOCK;
+            if (useDown && hitBlock && mc.currentScreen == null) {
+                com.thelads.core.client.BlockTracker.get().onUseKeyOnBlock(currentTick);
+            }
+        }
+        ItemStack held = mc.thePlayer.getHeldItem();
+        boolean isBlock = held != null && held.getItem() instanceof net.minecraft.item.ItemBlock;
+        int heldCount = held != null ? held.stackSize : 0;
+        int slot = mc.thePlayer.inventory.currentItem;
+        com.thelads.core.client.BlockTracker.get().checkHeldBlockTick(currentTick, slot, isBlock, heldCount);
+
+        // 3. Golden apple eating detection
+        boolean using = mc.thePlayer.isUsingItem();
+        boolean isGapple = held != null && held.getItem() == net.minecraft.init.Items.golden_apple;
+        int gappleCount = isGapple ? held.stackSize : 0;
+        ItemStack useItem = mc.thePlayer.getItemInUse();
+        boolean isUsingGapple = using && useItem != null && useItem.getItem() == net.minecraft.init.Items.golden_apple;
+        int totalDuration = isUsingGapple ? useItem.getMaxItemUseDuration() : 32;
+        int ticksUsed = isUsingGapple ? mc.thePlayer.getItemInUseDuration() : 0;
+        com.thelads.core.client.GappleTracker.get().onTick(isUsingGapple, isGapple, slot, gappleCount, ticksUsed, totalDuration);
+
+        // 4. Item tracker inventory diffing (every 10 client ticks)
+        if (currentTick % 10 == 0) {
+            boolean containerOpen = mc.currentScreen != null && !(mc.currentScreen instanceof net.minecraft.client.gui.inventory.GuiInventory);
+            com.thelads.core.client.InventoryDiffTracker diff = com.thelads.core.client.InventoryDiffTracker.get();
+            diff.beginScan(containerOpen);
+            if (!containerOpen) {
+                for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
+                    if (stack != null && stack.getItem() != null) {
+                        diff.addScannedItem(net.minecraft.item.Item.getIdFromItem(stack.getItem()), stack.stackSize, stack.getDisplayName());
+                    }
+                }
+            }
+            diff.endScan();
+        }
+    }
+
+    @Override
+    public DefenseEnchants getDefenseEnchants() {
+        Minecraft mc = mc();
+        if (mc.thePlayer == null) return new DefenseEnchants(0, 0, 0, 0, 0);
+        int prot = 0, fire = 0, blast = 0, proj = 0, ff = 0;
+        for (ItemStack stack : mc.thePlayer.inventory.armorInventory) {
+            if (stack != null) {
+                prot += net.minecraft.enchantment.EnchantmentHelper.getEnchantmentLevel(net.minecraft.enchantment.Enchantment.protection.effectId, stack);
+                fire += net.minecraft.enchantment.EnchantmentHelper.getEnchantmentLevel(net.minecraft.enchantment.Enchantment.fireProtection.effectId, stack);
+                blast += net.minecraft.enchantment.EnchantmentHelper.getEnchantmentLevel(net.minecraft.enchantment.Enchantment.blastProtection.effectId, stack);
+                proj += net.minecraft.enchantment.EnchantmentHelper.getEnchantmentLevel(net.minecraft.enchantment.Enchantment.projectileProtection.effectId, stack);
+                ff += net.minecraft.enchantment.EnchantmentHelper.getEnchantmentLevel(net.minecraft.enchantment.Enchantment.featherFalling.effectId, stack);
+            }
+        }
+        return new DefenseEnchants(prot, fire, blast, proj, ff);
+    }
+
+    @Override
+    public int getArmorValue() {
+        Minecraft mc = mc();
+        return mc.thePlayer != null ? mc.thePlayer.getTotalArmorValue() : 0;
     }
 
     @Override
