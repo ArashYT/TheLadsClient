@@ -1,5 +1,6 @@
 package com.thelads.core.v1_8_9.gui;
 
+import com.thelads.core.client.LadsNetwork;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.config.Module;
@@ -15,6 +16,9 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiButtonLanguage;
 import net.minecraft.client.gui.GuiLanguage;
 import net.minecraft.client.gui.GuiMainMenu;
+import net.minecraft.client.gui.GuiMultiplayer;
+import net.minecraft.client.multiplayer.GuiConnecting;
+import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.fml.common.Loader;
@@ -33,7 +37,7 @@ public final class LadsTitleScreen189 {
     private static final int LADS_ID = 0x4C414453 + 1; // the pause menu's Lads button is 0x4C414453; vanilla and Forge use 0-14
     private GuiMainMenu screen;
     private List<GuiButton> buttons;
-    private GuiButton ladsButton, cosmeticsButton, moreButton, screenshotsButton, switchVersionButton, replaysButton;
+    private GuiButton ladsButton, cosmeticsButton, moreButton, screenshotsButton, switchVersionButton, replaysButton, networkButton;
     private CompactButton189 switchButton, fullscreenButton, languageButton;
     private final List<GuiButton> seen = new ArrayList<>(), main = new ArrayList<>(), extras = new ArrayList<>();
     private long initNanos;
@@ -112,6 +116,8 @@ public final class LadsTitleScreen189 {
         buttons.add(switchVersionButton = new GuiButton(LADS_ID + 6, 0, 0, 1, 1, "Switch Versions"));
         replaysButton = Loader.isModLoaded("replaymod") ? new GuiButton(LADS_ID + 8, 0, 0, 1, 1, "Replays") : null;
         if (replaysButton != null) buttons.add(replaysButton);
+        networkButton = LadsNetwork.titleButton() ? new GuiButton(LADS_ID + 12, 0, 0, 1, 1, LadsNetwork.NAME) : null;
+        if (networkButton != null) buttons.add(networkButton);
 
         // Beside the account name and top right
         GuiMainMenu title = screen;
@@ -135,7 +141,7 @@ public final class LadsTitleScreen189 {
         for (GuiButton button : new ArrayList<>(buttons)) {
             if (button == switchButton || button == fullscreenButton || button == languageButton) continue;
             if (button == ladsButton || button == cosmeticsButton || button == moreButton || button == screenshotsButton
-                || button == switchVersionButton || button == replaysButton
+                || button == switchVersionButton || button == replaysButton || button == networkButton
                 || vanilla(button, 1, 11, 2, 0, 4, 6)) main.add(button);
             else {
                 buttons.remove(button);
@@ -171,6 +177,7 @@ public final class LadsTitleScreen189 {
     }
 
     private int order(GuiButton button) {
+        if (button == networkButton) return 1; // after Multiplayer: the stable sort keeps the vanilla button (added first) ahead
         if (button == ladsButton) return 2;
         if (button == cosmeticsButton) return 4;
         if (button == replaysButton) return 7;
@@ -199,6 +206,7 @@ public final class LadsTitleScreen189 {
         if (button.id == LADS_ID + 6) return "switch";
         if (button.id == LADS_ID + 8) return "replay";
         if (button.id == LADS_ID + 10) return "wardrobe";
+        if (button.id == LADS_ID + 12) return "server";
         switch (button.id) {
             case 1: case 11: return "play";
             case 2: return "server";
@@ -289,6 +297,8 @@ public final class LadsTitleScreen189 {
         else if (event.button == moreButton) mc.displayGuiScreen(new TitleExtrasScreen189(screen, TitleExtrasScreen189.of(screen, extras, LadsTitleScreen189::label)));
         else if (event.button == switchVersionButton) mc.displayGuiScreen(new VersionSwitchScreen189(screen));
         else if (event.button == replaysButton) openReplays(screen);
+        else if (event.button == networkButton)
+            mc.displayGuiScreen(new GuiConnecting(new GuiMultiplayer(screen), mc, new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, false)));
         else if (event.button.id == 4) mc.displayGuiScreen(new QuitConfirmScreen189(screen));
         else if (event.button == switchButton || event.button == fullscreenButton || event.button == languageButton) ((CompactButton189) event.button).press();
         else return;

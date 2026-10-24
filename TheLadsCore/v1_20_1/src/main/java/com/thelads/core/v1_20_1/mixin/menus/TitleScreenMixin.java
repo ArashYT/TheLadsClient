@@ -1,5 +1,6 @@
 package com.thelads.core.v1_20_1.mixin.menus;
 
+import com.thelads.core.client.LadsNetwork;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201;
 import com.thelads.core.v1_20_1.cosmetics.anim.CosmeticsScreen1201;
@@ -26,6 +27,10 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.LanguageSelectScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.network.chat.Component;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixin;
@@ -56,6 +61,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private Button ladsMoreButton;
     @Unique private Button ladsQuitButton;
     @Unique private Button ladsSwitchVersionButton;
+    @Unique private Button ladsNetworkButton;
     @Unique private List<AbstractWidget> ladsExtraWidgets = new ArrayList<>();
     @Unique private long ladsLastFrameNanos;
     @Unique private double ladsAnimationSeconds;
@@ -92,6 +98,9 @@ public abstract class TitleScreenMixin extends Screen {
             button -> minecraft.setScreen(new QuitConfirmScreen1201(this))).bounds(0, 0, 1, 1).build());
         ladsSwitchVersionButton = addRenderableWidget(Button.builder(Component.literal("Switch Versions"),
             button -> minecraft.setScreen(new VersionSwitchScreen1201(this))).bounds(0, 0, 1, 1).build());
+        ladsNetworkButton = !LadsNetwork.titleButton() ? null : addRenderableWidget(Button.builder(Component.literal(LadsNetwork.NAME),
+            button -> ConnectScreen.startConnecting(new JoinMultiplayerScreen(this), minecraft, ServerAddress.parseString(LadsNetwork.ADDRESS),
+                new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, false), false)).bounds(0, 0, 1, 1).build());
 
         // Beside the account name (placed each frame after it)
         ladsSwitchButton = addRenderableWidget(new CompactButton1201(0, 0, 1, 1, Component.literal(TitleScreenTheme.SWITCH),
@@ -163,7 +172,7 @@ public abstract class TitleScreenMixin extends Screen {
             String key = TitleWidgetRegistry1201.messageKey(widget);
             boolean main = widget == ladsSettingsButton || widget == ladsCosmeticsButton || widget == ladsMoreButton
                 || widget == ladsReplaysButton
-                || widget == ladsQuitButton || widget == ladsSwitchVersionButton
+                || widget == ladsQuitButton || widget == ladsSwitchVersionButton || widget == ladsNetworkButton
                 || ladsIsModsEntry(widget)
                 || key.equals("menu.singleplayer") || key.equals("menu.playdemo") || key.equals("menu.multiplayer")
                 || key.equals("menu.options") || key.equals("screen.lads_screenshots.manage_screenshots");
@@ -209,6 +218,7 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private int ladsButtonOrder(AbstractWidget widget) {
+        if (widget == ladsNetworkButton) return 1; // after Multiplayer: the stable sort keeps the vanilla button (added first) ahead
         if (widget == ladsSettingsButton) return 2;
         if (ladsIsModsEntry(widget)) return 3;
         if (widget == ladsCosmeticsButton) return 4;
@@ -233,6 +243,7 @@ public abstract class TitleScreenMixin extends Screen {
         if (widget == ladsReplaysButton) return "replay";
         if (widget == ladsQuitButton) return "quit";
         if (widget == ladsSwitchVersionButton) return "switch";
+        if (widget == ladsNetworkButton) return "server";
         if (ladsIsModsEntry(widget)) return "mods";
         if (widget instanceof PlainTextButton) return "more";
         return switch (TitleWidgetRegistry1201.messageKey(widget)) {
