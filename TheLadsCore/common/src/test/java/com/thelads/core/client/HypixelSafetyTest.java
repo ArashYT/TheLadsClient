@@ -448,4 +448,13 @@ public class HypixelSafetyTest {
         HypixelSafetyManager.removeBypass(HypixelSafetyManager.TNT_THROUGH_BLOCKS);
         assertFalse(tnt.seeThrough());
     }
+
+    /** parity-1023: every new feature that shows what vanilla hides or acts for the player stays in the risky set (anti-ban rule). */
+    @Test
+    void parityGatedModulesAreRisky() {
+        for (String name : new String[] {"BlockInfo", "Freelook", "FogClearView", "HitboxesThroughWalls", "Light Overlay", "Loot Beams",
+                "Mob Overlay", "Mob Size", "Fullbright", "Jade", "AutoReconnect"})
+            assertTrue(HypixelSafetyManager.isRiskyModule(name), name + " must be gated");
+        assertFalse(HypixelSafetyManager.isRiskyModule("Block Overlay"), "pure visuals stay ungated");
+    }
 }
