@@ -13,6 +13,8 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiScreenResourcePacks;
 import net.minecraft.client.gui.GuiTextField;
+import net.minecraft.client.resources.ResourcePackListEntry;
+import net.minecraft.client.resources.ResourcePackListEntryFound;
 import net.minecraft.client.resources.ResourcePackRepository;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import org.apache.logging.log4j.LogManager;
@@ -24,6 +26,7 @@ public final class Probe193Packs189 {
     private static int wait = 0;
     private static final OldAnimationsModule ANIMATIONS = OldAnimations189.MODULE;
     private static boolean animationsWere, lowFireWas;
+    private static String deselected;
 
     public static void ensureSandboxPacks(Minecraft mc) {
         try {
@@ -187,11 +190,50 @@ public final class Probe193Packs189 {
                 CoreProbe.check(!ANIMATIONS.option(Feature.LOW_FIRE).get(), "a click on the inactive Low Fire button changed nothing");
                 ANIMATIONS.option(Feature.LOW_FIRE).set(lowFireWas);
                 ANIMATIONS.setEnabled(animationsWere);
-                mc.displayGuiScreen(new net.minecraft.client.gui.GuiMainMenu());
+                mc.displayGuiScreen(new GuiScreenResourcePacks(new net.minecraft.client.gui.GuiMainMenu()));
+                wait = 20;
+                step++;
+                return false;
+            case 14: { // PRE-1: a pack selected when the screen opens, deselected with its own arrow, is listed in Available again
+                GuiScreenResourcePacks screen = (GuiScreenResourcePacks) mc.currentScreen;
+                List<ResourcePackListEntry> selected = screen.getSelectedResourcePacks();
+                deselected = selected.isEmpty() || !(selected.get(0) instanceof ResourcePackListEntryFound) ? null
+                    : ((ResourcePackListEntryFound) selected.get(0)).func_148318_i().getResourcePackName();
+                CoreProbe.check(deselected != null, "a pack is selected when the pack screen opens (PvPPackOne from step 6)");
+                // The Selected list's first row: the list starts at width / 2 + 4, its rows at 32 + 4 + 13 (header); x 5 is the remove arrow.
+                CoreProbe.click(screen.width / 2 + 4 + 2 + 5, 32 + 4 + 13 + 5);
+                wait = 10;
+                step++;
+                return false;
+            }
+            case 15: {
+                GuiScreenResourcePacks screen = (GuiScreenResourcePacks) mc.currentScreen;
+                CoreProbe.check(packNames(screen.getSelectedResourcePacks()).indexOf(deselected) < 0, deselected + " left Selected after its remove arrow");
+                setSearchText(screen, deselected); // wherever its folder is
+                CoreProbe.check(packNames(screen.getAvailableResourcePacks()).contains(deselected), deselected + " is listed in Available after deselecting it");
+                CoreProbe.screenshot(mc, "189-packs-deselected");
+                setSearchText(screen, "");
+                int before = screen.getAvailableResourcePacks().size();
+                screen.setWorldAndResolution(mc, screen.width, screen.height); // a resize re-inits with the move pending
+                setSearchText(screen, deselected);
+                CoreProbe.check(packNames(screen.getAvailableResourcePacks()).contains(deselected), deselected + " is still in Available after a resize");
+                setSearchText(screen, "");
+                CoreProbe.check(screen.getAvailableResourcePacks().size() == before,
+                    "a resize keeps the Available list (" + before + " rows before, " + screen.getAvailableResourcePacks().size() + " after)");
+                mc.displayGuiScreen(new net.minecraft.client.gui.GuiMainMenu()); // never Done: the selection stays as it was
                 step = 0;
                 return true;
+            }
         }
         return true;
+    }
+
+    /** The pack names of the Found rows in a pack list, in order. */
+    private static List<String> packNames(List<ResourcePackListEntry> rows) {
+        List<String> names = new ArrayList<>();
+        for (ResourcePackListEntry row : rows)
+            if (row instanceof ResourcePackListEntryFound) names.add(((ResourcePackListEntryFound) row).func_148318_i().getResourcePackName());
+        return names;
     }
 
     public static boolean runInGamePacks(Minecraft mc) throws Exception {

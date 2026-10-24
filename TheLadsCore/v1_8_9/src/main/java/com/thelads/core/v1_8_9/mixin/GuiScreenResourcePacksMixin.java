@@ -73,12 +73,17 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
             buttonList.add(new GuiButton(LADS_PROFILES_BUTTON_ID, width - w - 4, 6, w, 20, "Profiles"));
         }
 
-        if (ladsMasterSelected.isEmpty() && selectedResourcePacks != null) {
-            ladsMasterSelected.addAll(selectedResourcePacks);
-        }
-        ladsMasterAllAvailable.clear();
-        if (availableResourcePacks != null) {
-            ladsMasterAllAvailable.addAll(availableResourcePacks);
+        // Vanilla lists the packs afresh only while nothing is changed (first open, or a re-init before any move); after a move it
+        // keeps its own lists, which are filtered views by then. So the masters are taken only from fresh lists, and the master of all
+        // packs holds the selected ones too (ladsApplyFilter leaves selected names out): a pack deselected after being selected at
+        // open must come back in Available, and a resize must not rebuild the masters from a filtered view.
+        if (!changed) {
+            ladsMasterSelected.clear();
+            ladsMasterAllAvailable.clear();
+            if (selectedResourcePacks != null) ladsMasterSelected.addAll(selectedResourcePacks);
+            if (availableResourcePacks != null) ladsMasterAllAvailable.addAll(availableResourcePacks);
+            for (ResourcePackListEntry entry : ladsMasterSelected)
+                if (entry instanceof ResourcePackListEntryFound) ladsMasterAllAvailable.add(entry);
         }
         ladsApplyFilter();
     }
@@ -246,8 +251,6 @@ public abstract class GuiScreenResourcePacksMixin extends GuiScreen implements F
         for (String name : com.thelads.core.client.pack.PackProfiles.arrange(profile, found.keySet(), Collections.<String>emptyList()))
             ladsMasterSelected.add(found.get(name));
         if (fallback != null) ladsMasterSelected.add(fallback); // the default pack stays last, as vanilla keeps it
-        for (ResourcePackListEntry entry : found.values())
-            if (!ladsMasterSelected.contains(entry) && !ladsMasterAllAvailable.contains(entry)) ladsMasterAllAvailable.add(entry);
         changed = true;
         ladsApplyFilter();
         try {
