@@ -29,8 +29,9 @@ public abstract class PlayerListLoginFilterMixin {
         Predicate<UUID> filter = SocialBridge1201.getLoginFilter();
         if (filter != null) {
             MinecraftServer server = getServer();
-            if (server != null && gameProfile != null && server.isSingleplayerOwner(gameProfile)) {
-                return; // Singleplayer owner is always allowed
+            GameProfile owner = server != null ? server.getSingleplayerProfile() : null;
+            if (owner != null && gameProfile != null && owner.getId() != null && owner.getId().equals(gameProfile.getId())) {
+                return; // the host, by UUID (isSingleplayerOwner compares names)
             }
             if (gameProfile == null || gameProfile.getId() == null || !filter.test(gameProfile.getId())) {
                 cir.setReturnValue(Component.literal("You weren't invited to this world"));

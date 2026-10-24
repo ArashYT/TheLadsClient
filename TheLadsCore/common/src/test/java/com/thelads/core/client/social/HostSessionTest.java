@@ -243,4 +243,32 @@ public class HostSessionTest {
         shipped.save(world);
         assertEquals(HostOptions.Approval.ASK, HostOptions.load(world).approval, "saved once by this install: trusted (with the safe values)");
     }
+
+    /** F18: after Friends hosting stops, the filter left on the server refuses everyone (null would let anyone in) until the world closes. */
+    @Test
+    public void afterStopTheLoginFilterRefusesEveryone() {
+        java.util.concurrent.atomic.AtomicReference<Predicate<UUID>> filter = new java.util.concurrent.atomic.AtomicReference<>();
+        SocialBridge bridge = new SocialBridge() {
+            @Override public int openToFriends(HostOptions o) { return 25565; }
+            @Override public void setLoginFilter(Predicate<UUID> allowed) { filter.set(allowed); }
+            @Override public String worldId() { return "w"; } // the world is still open
+        };
+        SocialState state = new SocialState(() -> bridge, () -> null, null);
+        state.setClientSender(m -> {});
+        HostSession host = state.hostSession();
+        HostOptions o = new HostOptions();
+        o.scope = HostOptions.Scope.FRIENDS;
+        assertTrue(host.start(o));
+        UUID guest = UUID.randomUUID();
+        host.accept(guest);
+        assertTrue(filter.get().test(guest));
+        host.stop("Host closed the world");
+        assertNotNull(filter.get(), "never null (= allow all) after hosting stops");
+        assertFalse(filter.get().test(guest), "an accepted guest is refused too");
+        assertFalse(filter.get().test(UUID.randomUUID()));
+        o.scope = HostOptions.Scope.LAN;
+        host.start(o);
+        assertNull(filter.get(), "opening to LAN explicitly returns to vanilla rules");
+        host.stop("done");
+    }
 }

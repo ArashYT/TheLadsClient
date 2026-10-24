@@ -173,8 +173,7 @@ public final class SocialBridge189 implements SocialBridge {
 
     @Override
     public void closeHosting(String reason) {
-        setLoopbackOnly(false);
-        loginFilter = null;
+        setLoopbackOnly(false); // the login filter stays (HostSession leaves it refusing everyone) until the world closes
         guestSnapshot.clear();
         mutedGuests.clear();
 
@@ -407,6 +406,7 @@ public final class SocialBridge189 implements SocialBridge {
         // (a Nether or End unload while hosting must not lift loopback-only).
         if (!event.world.isRemote && event.world.provider.getDimensionId() == 0) {
             setLoopbackOnly(false);
+            loginFilter = null;
             mutedGuests.clear();
         }
     }

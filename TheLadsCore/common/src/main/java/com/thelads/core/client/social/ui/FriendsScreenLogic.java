@@ -882,7 +882,7 @@ public final class FriendsScreenLogic {
         if ("hosting".equals(st)) {
             Presence.WorldAd ad = p.world();
             if (ad != null) {
-                return "Hosting: " + ad.name() + " (" + ad.used() + "/" + ad.slots() + ")";
+                return "Hosting: " + ad.name() + " (" + ad.used() + "/" + ad.slots() + " guests)";
             }
             return "Hosting a world";
         }

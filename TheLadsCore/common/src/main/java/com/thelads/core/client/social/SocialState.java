@@ -320,7 +320,7 @@ public class SocialState {
             // Not "joinable": friends can't ask to join (backend: scope invite), invites still work.
             String scope = o.scope == HostOptions.Scope.FRIENDS && o.showJoinable ? "friends" : "invite";
             return new Presence("hosting", g, null, new Presence.WorldAd(Objects.requireNonNullElse(bridge.worldId(), "world"),
-                    Objects.requireNonNullElse(bridge.worldName(), "My World"), scope, o.maxPlayers, hostSession.activeGuestCount() + 1));
+                    Objects.requireNonNullElse(bridge.worldName(), "My World"), scope, o.maxPlayers, hostSession.activeGuestCount())); // guests/max guests
         }
         if (guestSession.isActive()) return new Presence("server", g, null, null);
         if (!bridge.inWorldOrServer()) return new Presence("menu", g, null, null);

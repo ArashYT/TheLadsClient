@@ -342,7 +342,7 @@ public final class HostScreenLogic {
 
         itemY += 28;
         // Max players
-        g.drawText("Max Players: " + maxPlayers, x + 12, itemY + 6, LadsPalette.TEXT, false);
+        g.drawText("Max guests: " + maxPlayers + " (you not counted)", x + 12, itemY + 6, LadsPalette.TEXT, false);
         Box minusBtn = new Box(x + w - 80, itemY + 2, 24, optH);
         Box plusBtn = new Box(x + w - 40, itemY + 2, 24, optH);
         if (minusBtn.y + minusBtn.h > sy && minusBtn.y < sy + sh) {

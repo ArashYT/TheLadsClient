@@ -113,7 +113,8 @@ public class SocialBridge26 implements SocialBridge {
     @Override
     public void closeHosting(String reason) {
         IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
-        P2PHostState26.reset();
+        P2PHostState26.setLoopbackScope(false);
+        P2PHostState26.clearMutedGuests(); // the login filter stays (HostSession leaves it refusing everyone) until the world closes
         if (server != null) {
             server.execute(() -> {
                 if (server.getPlayerList() != null) {
