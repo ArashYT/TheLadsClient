@@ -34,7 +34,7 @@ public final class P2PQa {
     }
 
     public static final String ROLE = System.getenv("LADS_VERIFY_P2P");
-    public static final boolean ACTIVE = "host".equals(ROLE) || "guest".equals(ROLE);
+    public static final boolean ACTIVE = "host".equals(ROLE) || "guest".equals(ROLE) || "lan".equals(ROLE);
     private static final String PEER = System.getenv("LADS_P2P_PEER");
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
     private static final long STEP_TIMEOUT_MS = Long.getLong("lads.p2pQa.stepTimeoutMs", 180_000L);
@@ -42,6 +42,8 @@ public final class P2PQa {
     private static final String[] HOST_STEPS = {"online", "friends", "friends screen", "hosting", "host screen", "join request",
         "guest in world", "chat", "kick", "stop hosting"};
     private static final String[] GUEST_STEPS = {"online", "friend request", "joinable", "connecting", "in host's world", "chat", "kicked"};
+    /** LADS_VERIFY_P2P=lan (one game): the world opened to plain LAN keeps the host's risky modules (anti-ban rule: the host is local). */
+    private static final String[] LAN_STEPS = {"in world", "open to LAN", "host rules kept", "stop hosting"};
 
     private static int step, passed, failed, wait, resend;
     private static long stepSince = -1;
@@ -55,13 +57,13 @@ public final class P2PQa {
         if (!ACTIVE || finished) return finished;
         if (stepSince < 0) {
             stepSince = System.currentTimeMillis();
-            QaProgress.begin("p2p " + ROLE, ("host".equals(ROLE) ? HOST_STEPS : GUEST_STEPS).length);
+            QaProgress.begin("p2p " + ROLE, steps().length);
             LOGGER.info("Lads p2p QA BEGIN: {} with peer {} via {}", ROLE, PEER, System.getenv("LADS_SOCIAL_URL"));
         }
         if (wait > 0) { wait--; return false; }
-        String[] steps = "host".equals(ROLE) ? HOST_STEPS : GUEST_STEPS;
+        String[] steps = steps();
         try {
-            boolean done = "host".equals(ROLE) ? host(game) : guest(game);
+            boolean done = "host".equals(ROLE) ? host(game) : "guest".equals(ROLE) ? guest(game) : lan(game);
             if (done) next(steps);
             else if (System.currentTimeMillis() - stepSince > STEP_TIMEOUT_MS)
                 throw new IllegalStateException("timed out after " + STEP_TIMEOUT_MS / 1000 + " s: " + state(game));
@@ -104,6 +106,42 @@ public final class P2PQa {
         return null;
     }
 
+    private static String[] steps() { return "host".equals(ROLE) ? HOST_STEPS : "guest".equals(ROLE) ? GUEST_STEPS : LAN_STEPS; }
+
+    /** The host is in its own world (singleplayer, LAN or Friends): Minimap and Stack Refill stay on (no server rules apply). */
+    private static void hostRules(String what) {
+        String address = com.thelads.core.client.bridge.LadsGameBridge.get().getServerAddress();
+        Object minimap = com.thelads.core.client.HypixelSafetyManager.blockOf("Minimap"), refill = com.thelads.core.client.HypixelSafetyManager.blockOf(com.thelads.core.modules.StackRefillModule.NAME);
+        LOGGER.info("Lads p2p QA: {}: address {}, Minimap {}, StackRefill {}", what, address, minimap, refill);
+        if (!"NONE".equals(String.valueOf(minimap)) || !"NONE".equals(String.valueOf(refill)))
+            throw new IllegalStateException(what + ": the host's Minimap/StackRefill are blocked (" + minimap + "/" + refill + ", address " + address + ")");
+    }
+
+    private static boolean lan(Game game) throws Exception {
+        SocialState s = SocialState.get();
+        switch (step) {
+            case 0 -> { return game.inWorld(); }
+            case 1 -> {
+                if (!sent) {
+                    HostOptions o = new HostOptions();
+                    o.scope = HostOptions.Scope.LAN;
+                    s.startHosting(o);
+                    sent = true;
+                }
+                return s.hostSession().isHosting() && game.inWorld();
+            }
+            case 2 -> {
+                if (!sent) { hostRules("open to LAN"); game.screenshot("p2p-lan-host-rules"); sent = true; return false; }
+                return true;
+            }
+            case 3 -> {
+                if (!sent) { s.stopHosting(); sent = true; }
+                return !s.hostSession().isHosting();
+            }
+            default -> { return true; }
+        }
+    }
+
     private static boolean host(Game game) throws Exception {
         SocialState s = SocialState.get();
         switch (step) {
@@ -128,7 +166,10 @@ public final class P2PQa {
                 }
                 return s.hostSession().isHosting();
             }
-            case 4 -> { return shot(game, "p2p-host-screen", () -> SocialBridge.get().openHostScreen()); }
+            case 4 -> {
+                if (shotTicks == 0) hostRules("open to Friends");
+                return shot(game, "p2p-host-screen", () -> SocialBridge.get().openHostScreen());
+            }
             case 5 -> {
                 List<SocialState.JoinRequest> requests = s.joinRequests();
                 if (requests.isEmpty()) return false;
@@ -191,7 +232,9 @@ public final class P2PQa {
                 return true;
             }
             case 4 -> {
-                if (!game.inWorld() || !s.isGuestSessionActive()) return false;
+                // In the host's world: through our P2P proxy, not still in our own singleplayer world
+                if (!game.inWorld() || !s.isGuestSessionActive()
+                    || "Singleplayer".equalsIgnoreCase(com.thelads.core.client.bridge.LadsGameBridge.get().getServerAddress())) return false;
                 game.screenshot("p2p-guest-in-host-world");
                 return true;
             }
@@ -203,8 +246,13 @@ public final class P2PQa {
             case 6 -> {
                 String why = game.disconnected();
                 if (why == null) return false;
-                LOGGER.info("Lads p2p QA: guest disconnected: {}", why.replace('\n', ' '));
-                game.screenshot("p2p-guest-kicked");
+                if (!sent) { // photographed first, checked on the next tick (26.3 shoots the next frame)
+                    LOGGER.info("Lads p2p QA: guest disconnected: {}", why.replace('\n', ' '));
+                    game.screenshot("p2p-guest-kicked");
+                    sent = true;
+                    return false;
+                }
+                if (!why.contains("Kicked by host")) throw new IllegalStateException("the kick did not say why: " + why.replace('\n', ' '));
                 return true;
             }
             default -> { return true; }
