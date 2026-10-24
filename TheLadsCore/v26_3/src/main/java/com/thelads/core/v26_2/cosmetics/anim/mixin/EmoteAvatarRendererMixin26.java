@@ -5,14 +5,11 @@ import com.thelads.core.client.cosmetics.anim.EmotePose;
 import com.thelads.core.v26_2.cosmetics.anim.EmoteAnim26;
 import com.thelads.core.v26_2.cosmetics.anim.EmoteState26;
 import com.thelads.core.v26_2.cosmetics.wearables.CosmeticsWearablesLayer26;
-import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.world.entity.Avatar;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -20,11 +17,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Emotes: each player's pose is sampled once per extraction into its render state; wearables layer registered. */
 @Mixin(AvatarRenderer.class)
 public abstract class EmoteAvatarRendererMixin26 {
-    @Shadow protected abstract boolean addLayer(RenderLayer<AvatarRenderState, PlayerModel> layer);
-
     @Inject(method = "<init>", at = @At("RETURN"))
     private void lads$addWearablesLayer(EntityRendererProvider.Context context, boolean useSlimModel, CallbackInfo callback) {
-        this.addLayer(new CosmeticsWearablesLayer26((AvatarRenderer) (Object) this));
+        ((LivingEntityRendererInvoker26) (Object) this).lads$addLayer(new CosmeticsWearablesLayer26((AvatarRenderer) (Object) this));
     }
 
     @Inject(method = "extractRenderState(Lnet/minecraft/world/entity/Avatar;Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;F)V",
