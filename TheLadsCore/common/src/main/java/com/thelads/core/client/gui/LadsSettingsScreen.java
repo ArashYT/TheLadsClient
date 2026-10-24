@@ -1910,7 +1910,7 @@ public final class LadsSettingsScreen {
     private List<Option> activeOptions() {
         if (detail == null) return List.of();
         String query = searchQuery.toLowerCase(Locale.ROOT); // Sound Volumes found through a sound's name: only the matching sliders
-        boolean sounds = soundMatch(detail, query) && !(detail.getName() + " " + detail.getDescription()).toLowerCase(Locale.ROOT).contains(query);
+        boolean sounds = soundMatch(detail, query) && !detail.getName().toLowerCase(Locale.ROOT).contains(query);
         return detail.getOptions().stream().filter(o -> !(o instanceof PlayerActionOption))
             .filter(o -> !sounds || o.getName().toLowerCase(Locale.ROOT).contains(query))
             .filter(o -> !(detail instanceof KillBannerModule banner && banner.pickerOption(o)))
