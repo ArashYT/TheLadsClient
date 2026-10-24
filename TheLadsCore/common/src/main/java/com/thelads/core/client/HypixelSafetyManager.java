@@ -238,6 +238,11 @@ public final class HypixelSafetyManager {
             || "ShulkerBoxUtils".equalsIgnoreCase(moduleName);
     }
 
+    public static boolean isGatedHypixelModule(String moduleName) {
+        return "Auto GL".equalsIgnoreCase(moduleName) || "AutoGL".equalsIgnoreCase(moduleName)
+            || "Opened Chest Highlight".equalsIgnoreCase(moduleName);
+    }
+
     /** Why this module is off on the current server, bypass or not. Allocation-free: asked per module every frame. */
     public static Block blockOf(String moduleName) {
         if (moduleName == null) return Block.NONE;
@@ -252,7 +257,7 @@ public final class HypixelSafetyManager {
             return Block.UNKNOWN;
         }
         boolean minimap = isMinimapModule(moduleName);
-        boolean risky = isRiskyModule(moduleName);
+        boolean risky = isRiskyModule(moduleName) || ((flags & HYPIXEL) == 0 && isGatedHypixelModule(moduleName));
         if (!risky) return Block.NONE;
         if (minimap) return (flags & NO_MINIMAP) != 0 ? Block.BANNED : (flags & MINIMAP_OK) != 0 ? Block.NONE : Block.UNKNOWN;
         return (flags & NO_AUTOMATION) != 0 ? Block.BANNED : Block.UNKNOWN;

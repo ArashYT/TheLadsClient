@@ -176,6 +176,7 @@
     "ShowcaseHotbarMixin",
     "ShowcaseMouseMixin",
     "ShowcasePlayerListAccess",
+    "EntityRenderDispatcherMixin",
     "CloudRendererMixin"
   ],
   "mixins": [
