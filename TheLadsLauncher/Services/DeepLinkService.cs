@@ -192,18 +192,38 @@ public static class DeepLinkService
         }
     }
 
+    /// <summary>The command lads:// links run now, or null when the protocol is not registered.</summary>
     [SupportedOSPlatform("windows")]
-    public static bool IsProtocolRegistered()
+    public static string? RegisteredCommand()
     {
-        if (!OperatingSystem.IsWindows()) return false;
+        if (!OperatingSystem.IsWindows()) return null;
         try
         {
-            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Classes\" + ProtocolScheme);
-            return key != null;
+            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Classes\" + ProtocolScheme + @"\shell\open\command");
+            return key?.GetValue("") as string;
         }
         catch
         {
-            return false;
+            return null;
         }
     }
+
+    /// <summary>
+    /// The installed launcher's stub ("&lt;root&gt;\The Lads Client.exe") when this process is a Velopack install
+    /// (&lt;root&gt;\current\TheLadsLauncher.exe with Update.exe beside current and no .portable marker); null for dev, QA and portable builds,
+    /// which must never own lads:// links (a QA build registered first kept them pointing into a temp folder).
+    /// </summary>
+    public static string? InstalledStub(string? processPath)
+    {
+        string? current = Path.GetDirectoryName(processPath);
+        if (current == null || !string.Equals(Path.GetFileName(current), "current", StringComparison.OrdinalIgnoreCase)) return null;
+        string? root = Path.GetDirectoryName(current);
+        if (root == null || !File.Exists(Path.Combine(root, "Update.exe")) || File.Exists(Path.Combine(root, ".portable"))) return null;
+        string stub = Path.Combine(root, "The Lads Client.exe");
+        return File.Exists(stub) ? stub : null;
+    }
+
+    /// <summary>Whether lads:// must be (re)written so it runs <paramref name="exe"/>: missing, or pointing at another exe.</summary>
+    public static bool NeedsRegistration(string? registeredCommand, string exe) =>
+        registeredCommand == null || !registeredCommand.StartsWith("\"" + exe + "\"", StringComparison.OrdinalIgnoreCase);
 }

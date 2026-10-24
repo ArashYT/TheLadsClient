@@ -73,9 +73,10 @@ class Program
             }
         }
 
-        if (OperatingSystem.IsWindows() && !TheLadsLauncher.Services.DeepLinkService.IsProtocolRegistered())
+        if (OperatingSystem.IsWindows() && TheLadsLauncher.Services.DeepLinkService.InstalledStub(Environment.ProcessPath) is { } stub
+            && TheLadsLauncher.Services.DeepLinkService.NeedsRegistration(TheLadsLauncher.Services.DeepLinkService.RegisteredCommand(), stub))
         {
-            TheLadsLauncher.Services.DeepLinkService.RegisterProtocol();
+            TheLadsLauncher.Services.DeepLinkService.RegisterProtocol(stub);
         }
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
