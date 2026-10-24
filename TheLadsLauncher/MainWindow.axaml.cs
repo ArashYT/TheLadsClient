@@ -3675,6 +3675,28 @@ public partial class MainWindow : Window
 
     /// <summary>Every mod file of the profile to the Recycle Bin (yours too), saved choices cleared, LadsCore and the pack
     /// reinstalled (ModStateService.ResetModsFolderAsync). The way out when a profile's Mods folder is beyond repair.</summary>
+    private async void RepairGameFiles_Click(object? sender, RoutedEventArgs e)
+    {
+        var profile = _profileService.GetActiveProfile();
+        if (IsGameRunningFor(_pathService.GetProfileDirectory(profile)))
+        {
+            ModsStatus($"Minecraft is running for '{profile.Name}'. Close it, then repair game files.", true);
+            return;
+        }
+
+        ModsStatus($"Repairing game files for '{profile.Name}'...");
+        try
+        {
+            var report = await TheLadsLauncher.Services.GameRepairService.RepairProfileAsync(AppContext.BaseDirectory, profile, s => ModsStatus(s));
+            ModsStatus($"Repair complete: {report.FilesChecked} files checked, {report.FilesRepaired} files repaired.");
+            await ShowLadsDialogAsync("Repair complete", $"Repair finished successfully for '{profile.Name}'.\n\n• Verified {report.FilesChecked} files\n• Repaired/restored {report.FilesRepaired} files", "OK");
+        }
+        catch (Exception ex)
+        {
+            ModsStatus($"Repair failed: {ex.Message}", true);
+        }
+    }
+
     private async void ResetModsFolder_Click(object? sender, RoutedEventArgs e)
     {
         if (!ModsCanChange()) return;
