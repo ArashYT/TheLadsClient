@@ -243,11 +243,6 @@ public final class OldAnimations {
         return Math.round(baseDuration + (vanilla - baseDuration) * (hasteInfluence / 100.0f));
     }
 
-    /** 1.7.10 straight item pickup trajectory: linear interpolation to eye/chest without 1.8 bobbing curves. */
-    public static double pickupY(double itemY, double playerY, float progress) {
-        return itemY + (playerY - itemY) * (progress * progress);
-    }
-
     private static void eat(Sink out, int side, float left, int max) {
         float done = 1 - left / max;                                  // 1.7.10: share of the use already done
         out.translate(0, done > 0.2f ? Math.abs(cos(left / 4 * PI) * 0.1f) : 0, 0);  // 1.7.10: 0.1 jiggle per 4 ticks after 20%

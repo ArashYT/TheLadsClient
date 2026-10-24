@@ -97,7 +97,7 @@ public final class MlgClutch189 {
         GlStateManager.depthMask(false);
         GL11.glLineWidth(2.5f);
 
-        RenderGlobal.drawSelectionBoundingBox(box);
+        RenderGlobal.drawOutlinedBoundingBox(box, (int) (r * 255), (int) (g * 255), (int) (b * 255), (int) (a * 255));
 
         GlStateManager.depthMask(true);
         GlStateManager.enableTexture2D();

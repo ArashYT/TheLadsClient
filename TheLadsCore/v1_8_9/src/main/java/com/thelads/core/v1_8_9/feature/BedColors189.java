@@ -18,20 +18,43 @@ import net.minecraft.world.World;
 
 public final class BedColors189 {
     private static final Random RNG = new Random();
-    private static boolean renderingBed = false;
-    private static BlockPos currentPos;
-    private static IBlockAccess currentWorld;
+
+    public static final class BedRenderContext {
+        private final BlockPos pos;
+        private final IBlockAccess world;
+
+        public BedRenderContext(BlockPos pos, IBlockAccess world) {
+            this.pos = pos;
+            this.world = world;
+        }
+
+        public BlockPos getPos() {
+            return pos;
+        }
+
+        public IBlockAccess getWorld() {
+            return world;
+        }
+    }
+
+    private static final ThreadLocal<BedRenderContext> CURRENT_CONTEXT = new ThreadLocal<>();
 
     private BedColors189() {}
 
     public static boolean isRenderingBed() {
-        return renderingBed && BedColorsModule.isActive();
+        return CURRENT_CONTEXT.get() != null && BedColorsModule.isActive();
     }
 
     public static void setRenderingBed(boolean rendering, BlockPos pos, IBlockAccess world) {
-        renderingBed = rendering;
-        currentPos = pos;
-        currentWorld = world;
+        if (rendering) {
+            CURRENT_CONTEXT.set(new BedRenderContext(pos, world));
+        } else {
+            CURRENT_CONTEXT.remove();
+        }
+    }
+
+    public static BedRenderContext getCurrentContext() {
+        return CURRENT_CONTEXT.get();
     }
 
     /**

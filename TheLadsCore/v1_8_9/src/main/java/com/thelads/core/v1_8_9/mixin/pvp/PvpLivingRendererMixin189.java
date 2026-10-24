@@ -22,55 +22,54 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(RendererLivingEntity.class)
 public class PvpLivingRendererMixin189 {
     private static final String PUT = "Ljava/nio/FloatBuffer;put(F)Ljava/nio/FloatBuffer;";
-    private static EntityLivingBase lads$currentEntity;
+    private static int lads$currentColor;
 
     @Inject(method = "setBrightness", at = @At("HEAD"), require = 0)
     private void lads$captureEntity(EntityLivingBase entity, float partialTicks, boolean combineTextures, CallbackInfoReturnable<Boolean> cir) {
-        lads$currentEntity = entity;
+        HitColorModule hit = PvpVisuals.HIT_COLOR;
+        if (!hit.on) {
+            lads$currentColor = hit.argb;
+            return;
+        }
+        HitColorModule.DamageType type = HitColorModule.DamageType.DEFAULT;
+        if (entity != null) {
+            type = HitColorModule.getDamageType(entity.getEntityId());
+            if (type == HitColorModule.DamageType.DEFAULT) {
+                if (entity.isBurning()) type = HitColorModule.DamageType.FIRE;
+                else if (entity.isInWater() && entity.getAir() <= 0) type = HitColorModule.DamageType.DROWNING;
+                else if (entity.fallDistance > 2.0F) type = HitColorModule.DamageType.FALL;
+            }
+        }
+        lads$currentColor = hit.getColor(type);
     }
 
     @Inject(method = "setBrightness", at = @At("RETURN"), require = 0)
     private void lads$releaseEntity(EntityLivingBase entity, float partialTicks, boolean combineTextures, CallbackInfoReturnable<Boolean> cir) {
-        lads$currentEntity = null;
-    }
-
-    private static int lads$currentColor() {
-        HitColorModule hit = PvpVisuals.HIT_COLOR;
-        if (!hit.on) return hit.argb;
-        HitColorModule.DamageType type = HitColorModule.DamageType.DEFAULT;
-        if (lads$currentEntity != null) {
-            type = HitColorModule.getDamageType(lads$currentEntity.getEntityId());
-            if (type == HitColorModule.DamageType.DEFAULT) {
-                if (lads$currentEntity.isBurning()) type = HitColorModule.DamageType.FIRE;
-                else if (lads$currentEntity.isInWater() && lads$currentEntity.getAir() <= 0) type = HitColorModule.DamageType.DROWNING;
-                else if (lads$currentEntity.fallDistance > 2.0F) type = HitColorModule.DamageType.FALL;
-            }
-        }
-        return hit.getColor(type);
+        lads$currentColor = 0;
     }
 
     @ModifyArg(method = "setBrightness", at = @At(value = "INVOKE", target = PUT, ordinal = 0, remap = false), require = 0)
     private float lads$hitRed(float red) {
         HitColorModule hit = PvpVisuals.HIT_COLOR;
-        return hit.on ? (lads$currentColor() >> 16 & 0xFF) / 255F : red;
+        return hit.on ? (lads$currentColor >> 16 & 0xFF) / 255F : red;
     }
 
     @ModifyArg(method = "setBrightness", at = @At(value = "INVOKE", target = PUT, ordinal = 1, remap = false), require = 0)
     private float lads$hitGreen(float green) {
         HitColorModule hit = PvpVisuals.HIT_COLOR;
-        return hit.on ? (lads$currentColor() >> 8 & 0xFF) / 255F : green;
+        return hit.on ? (lads$currentColor >> 8 & 0xFF) / 255F : green;
     }
 
     @ModifyArg(method = "setBrightness", at = @At(value = "INVOKE", target = PUT, ordinal = 2, remap = false), require = 0)
     private float lads$hitBlue(float blue) {
         HitColorModule hit = PvpVisuals.HIT_COLOR;
-        return hit.on ? (lads$currentColor() & 0xFF) / 255F : blue;
+        return hit.on ? (lads$currentColor & 0xFF) / 255F : blue;
     }
 
     @ModifyArg(method = "setBrightness", at = @At(value = "INVOKE", target = PUT, ordinal = 3, remap = false), require = 0)
     private float lads$hitStrength(float strength) {
         HitColorModule hit = PvpVisuals.HIT_COLOR;
-        return hit.on ? (lads$currentColor() >>> 24) / 255F : strength;
+        return hit.on ? (lads$currentColor >>> 24) / 255F : strength;
     }
 
     /** Mount Opacity's flag lives as long as one renderModel call (doRender catches what it throws: the next call sets it first). */
