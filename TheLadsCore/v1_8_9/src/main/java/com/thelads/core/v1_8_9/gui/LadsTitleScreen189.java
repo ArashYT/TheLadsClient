@@ -116,7 +116,7 @@ public final class LadsTitleScreen189 {
         buttons.add(switchVersionButton = new GuiButton(LADS_ID + 6, 0, 0, 1, 1, "Switch Versions"));
         replaysButton = Loader.isModLoaded("replaymod") ? new GuiButton(LADS_ID + 8, 0, 0, 1, 1, "Replays") : null;
         if (replaysButton != null) buttons.add(replaysButton);
-        networkButton = LadsNetwork.titleButton() ? new GuiButton(LADS_ID + 12, 0, 0, 1, 1, LadsNetwork.NAME) : null;
+        networkButton = LadsNetwork.titleButton() ? new GuiButton(LADS_ID + 12, 0, 0, 1, 1, LadsNetwork.TITLE_LABEL) : null;
         if (networkButton != null) buttons.add(networkButton);
 
         // Beside the account name and top right

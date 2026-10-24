@@ -6,6 +6,9 @@ import java.util.Locale;
 public final class LadsNetwork {
     public static final String NAME = "The Lads Network";
     public static final String ADDRESS = "mc.arashyt.ca";
+    /** The title screen's grid cells fit about 9 characters ("The Lads Network" showed as "The Lad..."). */
+    public static final String TITLE_LABEL = "Network";
+    public static final String TOOLTIP = "Join " + NAME + " (" + ADDRESS + ")";
 
     private LadsNetwork() {
     }

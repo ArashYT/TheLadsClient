@@ -82,9 +82,9 @@ public abstract class TitleScreenMixin extends Screen {
             button -> minecraft.setScreenAndShow(new com.thelads.core.v26_2.gui.QuitConfirmScreen26(this))).bounds(0, 0, 1, 1).build());
         ladsSwitchVersionButton = addRenderableWidget(Button.builder(Component.literal("Switch Versions"),
             button -> minecraft.setScreenAndShow(new com.thelads.core.v26_2.gui.VersionSwitchScreen26(this))).bounds(0, 0, 1, 1).build());
-        ladsNetworkButton = !LadsNetwork.titleButton() ? null : addRenderableWidget(Button.builder(Component.literal(LadsNetwork.NAME),
+        ladsNetworkButton = !LadsNetwork.titleButton() ? null : addRenderableWidget(Button.builder(Component.literal(LadsNetwork.TITLE_LABEL),
             button -> ConnectScreen.startConnecting(new JoinMultiplayerScreen(this), minecraft, ServerAddress.parseString(LadsNetwork.ADDRESS),
-                new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, ServerData.Type.OTHER), false, null)).bounds(0, 0, 1, 1).build());
+                new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, ServerData.Type.OTHER), false, null)).tooltip(Tooltip.create(Component.literal(LadsNetwork.TOOLTIP))).bounds(0, 0, 1, 1).build());
 
         // Beside the account name (placed each frame after it)
         ladsSwitchButton = addRenderableWidget(new CompactButton26(0, 0, 1, 1, Component.literal(TitleScreenTheme.SWITCH),
