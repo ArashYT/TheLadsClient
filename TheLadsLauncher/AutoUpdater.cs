@@ -50,7 +50,9 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
     public bool IsInstalled => _manager.IsInstalled;
     /// <summary>A downloaded update counts only once its signature checked out.</summary>
     public string? PendingVersion => _manager.UpdatePendingRestart?.Version.ToString() is { } v && v == _verified ? v : null;
-    /// <summary>Whether the verified package of the last <see cref="DownloadLatestAsync"/> was rebuilt from deltas (false after a fallback to the full package).</summary>
+    /// <summary>Velopack was offered a delta path for the last <see cref="DownloadLatestAsync"/>; Velopack may still have fallen back to the
+    /// full package internally (e.g. a client 2+ versions behind, whose base the newest delta does not patch). False after our own
+    /// fallback to the full package.</summary>
     public bool LastDownloadWasDelta { get; private set; }
 
     public async Task<bool> DownloadLatestAsync(Action<string> report)
