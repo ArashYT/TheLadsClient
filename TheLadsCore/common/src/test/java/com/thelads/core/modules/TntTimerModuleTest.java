@@ -42,6 +42,13 @@ class TntTimerModuleTest {
         } finally {
             com.thelads.core.client.HypixelSafetyManager.qaOverride = false;
         }
+        com.thelads.core.client.HypixelSafetyManager.qaAddress = "play.somesmp.net";
+        try {
+            assertFalse(module.seeThrough(), "unknown server blocks through-blocks ESP");
+            assertFalse(module.shows(64 * 64 + 1));
+        } finally {
+            com.thelads.core.client.HypixelSafetyManager.qaAddress = null;
+        }
         assertEquals(0.025f, module.scale(), 1e-7);
         module.size.setValue(150);
         assertEquals(0.0375f, module.scale(), 1e-7);
