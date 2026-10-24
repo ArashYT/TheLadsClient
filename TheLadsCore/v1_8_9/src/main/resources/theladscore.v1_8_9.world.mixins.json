@@ -11,6 +11,8 @@
     "LayerCapeWavyMixin",
     "MinecartTntTimerMixin",
     "NetworkPlayerInfoCapeAccessor",
-    "TntTimerMixin"
+    "TntTimerMixin",
+    "WorldLightingMixin189",
+    "ChunkProviderClientLightingMixin189"
   ]
 }

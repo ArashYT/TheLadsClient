@@ -16,6 +16,8 @@
     "RenderItemCitInvoker189",
     "RenderItemCitMixin189",
     "StitcherCitAccessor189",
-    "TextureMapCitMixin189"
+    "TextureMapCitMixin189",
+    "CtmBlockRendererMixin189",
+    "CemRendererMixin189"
   ]
 }

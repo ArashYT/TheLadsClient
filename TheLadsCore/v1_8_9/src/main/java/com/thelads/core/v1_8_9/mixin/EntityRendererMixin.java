@@ -87,6 +87,12 @@ public abstract class EntityRendererMixin {
         return OldAnimations189.cameraEyeHeight(entity, partialTicks);
     }
 
+    /** MC-1846: camera parallax fix shifts first-person eye viewpoint to eliminate backward camera offset. */
+    @ModifyConstant(method = "orientCamera", constant = @Constant(floatValue = -0.1F), require = 0)
+    private float ladsCameraParallax(float original) {
+        return com.thelads.core.perf.Perf189Settings.cameraParallaxFix ? 0.0F : original;
+    }
+
     /** Damage tilt (the OldDamageTilt module): the hit's direction, which 1.8.9 leaves at 0 for its own player, or 0 (Directional off). */
     @Redirect(method = "hurtCameraEffect", at = @At(value = "FIELD", target = "Lnet/minecraft/entity/EntityLivingBase;attackedAtYaw:F"),
         require = 1, allow = 1)
