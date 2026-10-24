@@ -39,6 +39,10 @@ public final class HostScreenLogic {
         Section(String title) { this.title = title; }
     }
 
+    private static final Section[] SECTIONS = Section.values();
+    private static final HostOptions.Scope[] SCOPES = HostOptions.Scope.values();
+    private static final HostOptions.Approval[] APPROVALS = HostOptions.Approval.values();
+
     public interface Callbacks {
         HostOptions currentOptions();
         default void saveOptions(HostOptions options) {}
@@ -76,6 +80,8 @@ public final class HostScreenLogic {
     private int maxScroll = 0;
 
     // Hit-boxes
+    private int scissorY = 0;
+    private int scissorH = Integer.MAX_VALUE;
     private final Map<Section, Box> sectionBoxes = new HashMap<>();
     private final Map<String, Box> clickables = new HashMap<>();
     private final Map<UUID, Map<SocialBridge.GuestAction, Box>> guestActionBoxes = new HashMap<>();
@@ -202,12 +208,11 @@ public final class HostScreenLogic {
 
         // Section Tabs
         int tabY = topY + 24;
-        Section[] sections = Section.values();
-        int tabW = (panelW - (sections.length - 1) * 4) / sections.length;
+        int tabW = (panelW - (SECTIONS.length - 1) * 4) / SECTIONS.length;
         int tabH = 20;
 
-        for (int i = 0; i < sections.length; i++) {
-            Section s = sections[i];
+        for (int i = 0; i < SECTIONS.length; i++) {
+            Section s = SECTIONS[i];
             int tx = panelX + i * (tabW + 4);
             Box b = new Box(tx, tabY, tabW, tabH);
             sectionBoxes.put(s, b);
@@ -231,8 +236,8 @@ public final class HostScreenLogic {
         int contentH = height - contentY - 36;
         MenuGraphics.round(g, panelX, contentY, panelW, contentH, LadsPalette.PANEL);
 
-        int scissorY = contentY + 4;
-        int scissorH = contentH - 8;
+        this.scissorY = contentY + 4;
+        this.scissorH = contentH - 8;
         g.enableScissor(panelX, scissorY, panelW, scissorH);
 
         switch (currentSection) {
@@ -277,7 +282,7 @@ public final class HostScreenLogic {
         g.drawText("Multiplayer Scope", x + 12, itemY + 6, LadsPalette.TEXT, false);
         int optW = 60, optH = 18;
         int optX = x + w - 4 * (optW + 4) - 12;
-        for (HostOptions.Scope s : HostOptions.Scope.values()) {
+        for (HostOptions.Scope s : SCOPES) {
             Box b = new Box(optX, itemY + 2, optW, optH);
             if (b.y + b.h > sy && b.y < sy + sh) clickables.put("scope:" + s.name(), b);
             boolean sel = (this.scope == s);
@@ -291,7 +296,7 @@ public final class HostScreenLogic {
         g.drawText("Join Approval", x + 12, itemY + 6, LadsPalette.TEXT, false);
         int appW = 80;
         int appX = x + w - 3 * (appW + 4) - 12;
-        for (HostOptions.Approval a : HostOptions.Approval.values()) {
+        for (HostOptions.Approval a : APPROVALS) {
             Box b = new Box(appX, itemY + 2, appW, optH);
             if (b.y + b.h > sy && b.y < sy + sh) clickables.put("approval:" + a.name(), b);
             boolean sel = (this.approval == a);
@@ -588,21 +593,24 @@ public final class HostScreenLogic {
             typingWelcome = false;
         }
 
-        // General / Gameplay / Advanced clickables
-        for (Map.Entry<String, Box> entry : clickables.entrySet()) {
-            if (entry.getValue().has(x, y)) {
-                handleClick(entry.getKey());
-                return true;
-            }
-        }
-
-        // Guest actions
-        for (Map.Entry<UUID, Map<SocialBridge.GuestAction, Box>> ge : guestActionBoxes.entrySet()) {
-            UUID gId = ge.getKey();
-            for (Map.Entry<SocialBridge.GuestAction, Box> ae : ge.getValue().entrySet()) {
-                if (ae.getValue().has(x, y)) {
-                    triggerGuestAction(gId, ae.getKey());
+        boolean inScissor = y >= scissorY && y <= scissorY + scissorH;
+        if (inScissor) {
+            // General / Gameplay / Advanced clickables
+            for (Map.Entry<String, Box> entry : clickables.entrySet()) {
+                if (entry.getValue().has(x, y)) {
+                    handleClick(entry.getKey());
                     return true;
+                }
+            }
+
+            // Guest actions
+            for (Map.Entry<UUID, Map<SocialBridge.GuestAction, Box>> ge : guestActionBoxes.entrySet()) {
+                UUID gId = ge.getKey();
+                for (Map.Entry<SocialBridge.GuestAction, Box> ae : ge.getValue().entrySet()) {
+                    if (ae.getValue().has(x, y)) {
+                        triggerGuestAction(gId, ae.getKey());
+                        return true;
+                    }
                 }
             }
         }

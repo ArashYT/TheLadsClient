@@ -298,6 +298,100 @@ class FriendsScreenLogicTest {
         assertEquals(FriendsScreenLogic.Tab.ADD, logic.tab());
     }
 
+    @Test
+    void clicksOutsideScissorViewportIgnored() {
+        FakeCallbacks callbacks = new FakeCallbacks();
+        // Create 10 friends with joinable presence so join buttons exist
+        List<UUID> ids = new ArrayList<>();
+        SocialBridge.GameInfo game = new SocialBridge.GameInfo("1.20.1", "fabric", "plain", "", "", "", "1.9.18");
+        Presence hosting = new Presence("hosting", game, null, new Presence.WorldAd("w1", "World", "friends", 8, 1));
+        for (int i = 0; i < 10; i++) {
+            UUID id = UUID.randomUUID();
+            ids.add(id);
+            callbacks.friends.add(new FriendEntry(id, "Friend" + i, null, hosting, 100 + i));
+        }
+        callbacks.joinCheck = new FriendsScreenLogic.JoinCheck(true, "");
+
+        FriendsScreenLogic logic = new FriendsScreenLogic(callbacks);
+        TestGraphics g = new TestGraphics(480, 270);
+
+        // Initial render establishes layout and scissor bounds
+        logic.render(g, 0, 0);
+
+        // Scroll down slightly so the first friend row is scrolled partially above the scissor viewport
+        logic.mouseScrolled(200, 100, -1.0);
+        logic.render(g, 0, 0);
+
+        UUID firstId = ids.get(0);
+        FriendsScreenLogic.Box firstJoinBtn = logic.joinButtonBox(firstId);
+        assertNotNull(firstJoinBtn, "Join button box should exist for partially visible row");
+        assertTrue(firstJoinBtn.y() < logic.scissorY(), "Button Y must be above scissor viewport after scrolling");
+
+        // Click on the first friend's join button which is outside the scissor viewport
+        boolean clickedClipped = logic.mouseClicked(firstJoinBtn.x() + 2, firstJoinBtn.y() + 2, 0);
+        assertFalse(clickedClipped, "Clicking button outside scissor viewport must return false");
+        assertFalse(callbacks.requestedJoins.contains(firstId), "Action outside scissor viewport must NOT trigger callback");
+
+        // Now click on a friend whose button is fully inside the scissor viewport (e.g. 3rd friend)
+        UUID visibleId = ids.get(2);
+        FriendsScreenLogic.Box visibleJoinBtn = logic.joinButtonBox(visibleId);
+        assertNotNull(visibleJoinBtn);
+        assertTrue(visibleJoinBtn.y() >= logic.scissorY() && visibleJoinBtn.y() <= logic.scissorY() + logic.scissorH(),
+                "Visible button must be inside scissor viewport");
+
+        boolean clickedVisible = logic.mouseClicked(visibleJoinBtn.x() + 2, visibleJoinBtn.y() + 2, 0);
+        assertTrue(clickedVisible, "Clicking button inside scissor viewport must return true");
+        assertTrue(callbacks.requestedJoins.contains(visibleId), "Action inside scissor viewport must trigger callback");
+    }
+
+    @Test
+    void addFriendInputCappedAt16Chars() {
+        FakeCallbacks callbacks = new FakeCallbacks();
+        FriendsScreenLogic logic = new FriendsScreenLogic(callbacks);
+        logic.setTab(FriendsScreenLogic.Tab.ADD);
+
+        // Clamping via setter
+        logic.setAddFriendInput("12345678901234567890");
+        assertEquals("1234567890123456", logic.addFriendInput(), "Username must be clamped to 16 characters via setter");
+
+        // Clamping via typing
+        logic.setAddFriendInput("abcdefghijklmnop"); // 16 chars
+        TestGraphics g = new TestGraphics(480, 270);
+        logic.render(g, 0, 0);
+        FriendsScreenLogic.Box addInputBox = logic.addInputBox();
+        assertNotNull(addInputBox);
+        logic.mouseClicked(addInputBox.x() + 2, addInputBox.y() + 2, 0);
+
+        boolean typedExtra = logic.charTyped('q');
+        assertFalse(typedExtra, "Typing past 16 chars must return false");
+        assertEquals("abcdefghijklmnop", logic.addFriendInput(), "Username must remain 16 chars max");
+    }
+
+    @Test
+    void sortedFriendsCachedUntilListOrPresenceChanges() {
+        FakeCallbacks callbacks = new FakeCallbacks();
+        UUID u1 = UUID.randomUUID();
+        UUID u2 = UUID.randomUUID();
+        Presence offline = Presence.OFFLINE;
+        Presence online = new Presence("menu", null, null, null);
+
+        callbacks.friends.add(new FriendEntry(u1, "Zara", null, offline, 100));
+        callbacks.friends.add(new FriendEntry(u2, "Alice", null, online, 200));
+
+        FriendsScreenLogic logic = new FriendsScreenLogic(callbacks);
+        List<FriendEntry> firstCall = logic.sortedFriends();
+        List<FriendEntry> secondCall = logic.sortedFriends();
+
+        assertSame(firstCall, secondCall, "Subsequent calls without data changes must return cached sorted list");
+
+        // Change presence of Zara to online
+        callbacks.friends.set(0, new FriendEntry(u1, "Zara", null, online, 100));
+        List<FriendEntry> thirdCall = logic.sortedFriends();
+        assertNotSame(firstCall, thirdCall, "Calling after friend presence change must return updated sorted list");
+        assertEquals("Alice", thirdCall.get(0).displayName());
+        assertEquals("Zara", thirdCall.get(1).displayName());
+    }
+
     static class FakeCallbacks implements FriendsScreenLogic.Callbacks {
         final List<FriendEntry> friends = new ArrayList<>();
         final List<FriendEntry> incoming = new ArrayList<>();

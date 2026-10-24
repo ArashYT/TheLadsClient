@@ -8,10 +8,12 @@ import com.thelads.core.client.social.Presence;
 import com.thelads.core.client.social.SocialBridge;
 import com.thelads.core.client.social.SocialProtocol;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -39,6 +41,8 @@ public final class FriendsScreenLogic {
         public final String title;
         Tab(String title) { this.title = title; }
     }
+
+    private static final Tab[] TABS = Tab.values();
 
     public interface Callbacks {
         List<FriendEntry> friends();
@@ -83,12 +87,18 @@ public final class FriendsScreenLogic {
     private Box nickSaveBtn;
     private Box nickCancelBtn;
 
-    // Scroll offsets
+    // Scroll offsets and scissor bounds
     private int scrollOffset = 0;
     private int maxScroll = 0;
     private int dmScrollOffset = 0;
     private int maxDmScroll = 0;
     private boolean stickDmToBottom = true;
+    private int scissorY = 0;
+    private int scissorH = Integer.MAX_VALUE;
+
+    // Cached sorted friends
+    private List<FriendEntry> lastRawFriends = null;
+    private List<FriendEntry> cachedSortedFriends = Collections.emptyList();
 
     // Layout hit-boxes
     private final Map<Tab, Box> tabBoxes = new HashMap<>();
@@ -163,6 +173,17 @@ public final class FriendsScreenLogic {
         this.dmInput = input != null ? input : "";
     }
 
+    public String addFriendInput() { return addFriendInput; }
+    public void setAddFriendInput(String input) {
+        if (input != null && input.length() > 16) {
+            input = input.substring(0, 16);
+        }
+        this.addFriendInput = input != null ? input : "";
+    }
+
+    public int scissorY() { return scissorY; }
+    public int scissorH() { return scissorH; }
+
     public void sendDm() {
         if (activeDmFriend != null && !dmInput.trim().isEmpty()) {
             callbacks.sendDm(activeDmFriend.id(), dmInput.trim());
@@ -234,7 +255,11 @@ public final class FriendsScreenLogic {
     }
 
     public List<FriendEntry> sortedFriends() {
-        List<FriendEntry> list = new ArrayList<>(safeFriends());
+        List<FriendEntry> raw = safeFriends();
+        if (lastRawFriends != null && isSameFriends(raw, lastRawFriends)) {
+            return cachedSortedFriends;
+        }
+        List<FriendEntry> list = new ArrayList<>(raw);
         list.sort((a, b) -> {
             boolean aOnline = a.presence() != null && a.presence().online();
             boolean bOnline = b.presence() != null && b.presence().online();
@@ -245,7 +270,20 @@ public final class FriendsScreenLogic {
             String nameB = b.displayName() != null ? b.displayName() : "";
             return nameA.compareToIgnoreCase(nameB);
         });
-        return list;
+        lastRawFriends = new ArrayList<>(raw);
+        cachedSortedFriends = Collections.unmodifiableList(list);
+        return cachedSortedFriends;
+    }
+
+    private static boolean isSameFriends(List<FriendEntry> a, List<FriendEntry> b) {
+        if (a == b) return true;
+        if (a == null || b == null) return false;
+        int size = a.size();
+        if (size != b.size()) return false;
+        for (int i = 0; i < size; i++) {
+            if (!Objects.equals(a.get(i), b.get(i))) return false;
+        }
+        return true;
     }
 
     // Defensive null-safe getters
@@ -281,6 +319,10 @@ public final class FriendsScreenLogic {
 
     public Box joinButtonBox(UUID friendId) {
         return joinBoxes.get(friendId);
+    }
+
+    public Box addInputBox() {
+        return addInputBox;
     }
 
     public void render(LadsGraphics g, int mouseX, int mouseY) {
@@ -335,11 +377,10 @@ public final class FriendsScreenLogic {
 
         // Tab bar
         int tabY = topY + 26;
-        int tabW = (panelW - (Tab.values().length - 1) * 4) / Tab.values().length;
+        int tabW = (panelW - (TABS.length - 1) * 4) / TABS.length;
         int tabH = 22;
-        Tab[] tabs = Tab.values();
-        for (int i = 0; i < tabs.length; i++) {
-            Tab t = tabs[i];
+        for (int i = 0; i < TABS.length; i++) {
+            Tab t = TABS[i];
             int tx = panelX + i * (tabW + 4);
             Box b = new Box(tx, tabY, tabW, tabH);
             tabBoxes.put(t, b);
@@ -408,6 +449,8 @@ public final class FriendsScreenLogic {
 
         int scissorY = y + 6;
         int scissorH = viewH;
+        this.scissorY = scissorY;
+        this.scissorH = scissorH;
         g.enableScissor(x, scissorY, w, scissorH);
 
         int itemY = y + 6 - scrollOffset;
@@ -545,6 +588,9 @@ public final class FriendsScreenLogic {
         scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
 
         int scissorY = y + 6;
+        int scissorH = viewH;
+        this.scissorY = scissorY;
+        this.scissorH = scissorH;
         g.enableScissor(x, scissorY, w, viewH);
 
         int itemY = y + 8 - scrollOffset;
@@ -608,6 +654,9 @@ public final class FriendsScreenLogic {
         scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
 
         int scissorY = y + 6;
+        int scissorH = viewH;
+        this.scissorY = scissorY;
+        this.scissorH = scissorH;
         g.enableScissor(x, scissorY, w, viewH);
 
         int itemY = y + 8 - scrollOffset;
@@ -820,17 +869,20 @@ public final class FriendsScreenLogic {
 
         // Inline nickname editing controls
         if (editingNickId != null) {
-            if (nickSaveBtn != null && nickSaveBtn.has(x, y)) {
-                commitNick();
-                return true;
-            }
-            if (nickCancelBtn != null && nickCancelBtn.has(x, y)) {
-                cancelNick();
-                return true;
-            }
-            if (nickInputBox != null && nickInputBox.has(x, y)) {
-                typingNickInput = true;
-                return true;
+            boolean inScissor = y >= scissorY && y <= scissorY + scissorH;
+            if (inScissor) {
+                if (nickSaveBtn != null && nickSaveBtn.has(x, y)) {
+                    commitNick();
+                    return true;
+                }
+                if (nickCancelBtn != null && nickCancelBtn.has(x, y)) {
+                    cancelNick();
+                    return true;
+                }
+                if (nickInputBox != null && nickInputBox.has(x, y)) {
+                    typingNickInput = true;
+                    return true;
+                }
             }
         }
 
@@ -896,61 +948,70 @@ public final class FriendsScreenLogic {
         // Tab-specific clicks
         switch (currentTab) {
             case FRIENDS -> {
-                // Join buttons
-                for (Map.Entry<UUID, Box> e : joinBoxes.entrySet()) {
-                    if (e.getValue().has(x, y)) {
-                        if (isJoinEnabled(e.getKey())) {
-                            callbacks.requestJoin(e.getKey());
-                        }
-                        return true;
-                    }
-                }
-                // Invite buttons
-                for (Map.Entry<UUID, Box> e : inviteBoxes.entrySet()) {
-                    if (e.getValue().has(x, y)) {
-                        callbacks.invite(e.getKey());
-                        return true;
-                    }
-                }
-                // Message buttons
-                for (Map.Entry<UUID, Box> e : messageBoxes.entrySet()) {
-                    if (e.getValue().has(x, y)) {
-                        for (FriendEntry f : safeFriends()) {
-                            if (f.id().equals(e.getKey())) {
-                                openDm(f);
-                                break;
+                boolean inScissor = y >= scissorY && y <= scissorY + scissorH;
+                if (inScissor) {
+                    // Join buttons
+                    for (Map.Entry<UUID, Box> e : joinBoxes.entrySet()) {
+                        if (e.getValue().has(x, y)) {
+                            if (isJoinEnabled(e.getKey())) {
+                                callbacks.requestJoin(e.getKey());
                             }
+                            return true;
                         }
-                        return true;
                     }
-                }
-                // More buttons
-                for (Map.Entry<UUID, Box> e : moreBoxes.entrySet()) {
-                    if (e.getValue().has(x, y)) {
-                        popupFriendId = (popupFriendId != null && popupFriendId.equals(e.getKey())) ? null : e.getKey();
-                        return true;
+                    // Invite buttons
+                    for (Map.Entry<UUID, Box> e : inviteBoxes.entrySet()) {
+                        if (e.getValue().has(x, y)) {
+                            callbacks.invite(e.getKey());
+                            return true;
+                        }
+                    }
+                    // Message buttons
+                    for (Map.Entry<UUID, Box> e : messageBoxes.entrySet()) {
+                        if (e.getValue().has(x, y)) {
+                            for (FriendEntry f : safeFriends()) {
+                                if (f.id().equals(e.getKey())) {
+                                    openDm(f);
+                                    break;
+                                }
+                            }
+                            return true;
+                        }
+                    }
+                    // More buttons
+                    for (Map.Entry<UUID, Box> e : moreBoxes.entrySet()) {
+                        if (e.getValue().has(x, y)) {
+                            popupFriendId = (popupFriendId != null && popupFriendId.equals(e.getKey())) ? null : e.getKey();
+                            return true;
+                        }
                     }
                 }
             }
             case REQUESTS -> {
-                for (Map.Entry<UUID, Box> e : acceptBoxes.entrySet()) {
-                    if (e.getValue().has(x, y)) {
-                        callbacks.acceptRequest(e.getKey());
-                        return true;
+                boolean inScissor = y >= scissorY && y <= scissorY + scissorH;
+                if (inScissor) {
+                    for (Map.Entry<UUID, Box> e : acceptBoxes.entrySet()) {
+                        if (e.getValue().has(x, y)) {
+                            callbacks.acceptRequest(e.getKey());
+                            return true;
+                        }
                     }
-                }
-                for (Map.Entry<UUID, Box> e : declineBoxes.entrySet()) {
-                    if (e.getValue().has(x, y)) {
-                        callbacks.declineRequest(e.getKey());
-                        return true;
+                    for (Map.Entry<UUID, Box> e : declineBoxes.entrySet()) {
+                        if (e.getValue().has(x, y)) {
+                            callbacks.declineRequest(e.getKey());
+                            return true;
+                        }
                     }
                 }
             }
             case BLOCKED -> {
-                for (Map.Entry<UUID, Box> e : unblockBoxes.entrySet()) {
-                    if (e.getValue().has(x, y)) {
-                        callbacks.unblockFriend(e.getKey());
-                        return true;
+                boolean inScissor = y >= scissorY && y <= scissorY + scissorH;
+                if (inScissor) {
+                    for (Map.Entry<UUID, Box> e : unblockBoxes.entrySet()) {
+                        if (e.getValue().has(x, y)) {
+                            callbacks.unblockFriend(e.getKey());
+                            return true;
+                        }
                     }
                 }
             }
@@ -987,7 +1048,7 @@ public final class FriendsScreenLogic {
                 return true;
             }
         } else if (typingAddInput) {
-            if (c >= 32 && c != 127) {
+            if (c >= 32 && c != 127 && addFriendInput.length() < 16) {
                 addFriendInput += c;
                 return true;
             }

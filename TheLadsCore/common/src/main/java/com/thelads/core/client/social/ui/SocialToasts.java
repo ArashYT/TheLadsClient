@@ -4,7 +4,6 @@ import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.client.gui.MenuGraphics;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.function.LongSupplier;
 
@@ -93,11 +92,10 @@ public final class SocialToasts {
     private static void purgeExpired() {
         if (toasts.isEmpty()) return;
         long now = timeSupplier.getAsLong();
-        Iterator<Toast> it = toasts.iterator();
-        while (it.hasNext()) {
-            Toast t = it.next();
+        for (int i = toasts.size() - 1; i >= 0; i--) {
+            Toast t = toasts.get(i);
             if (now - t.createdAt() >= t.durationMs()) {
-                it.remove();
+                toasts.remove(i);
             }
         }
     }
