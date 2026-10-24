@@ -73,7 +73,13 @@ import net.minecraft.nbt.NBTTagString;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.RegistrySimple;
 import net.minecraft.util.ResourceLocation;
+import javax.vecmath.Matrix4f;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+import net.minecraft.client.renderer.vertex.VertexFormat;
 import net.minecraftforge.client.event.ModelBakeEvent;
+import net.minecraftforge.client.model.IFlexibleBakedModel;
+import net.minecraftforge.client.model.IPerspectiveAwareModel;
+import org.apache.commons.lang3.tuple.Pair;
 import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -565,9 +571,43 @@ public final class Cit189 {
         }
         List<List<BakedQuad>> faces = new ArrayList<List<BakedQuad>>();
         for (int i = 0; i < EnumFacing.values().length; i++) faces.add(Collections.<BakedQuad>emptyList());
-        // A flat texture keeps a flat item's display (a sword's hold); over a block or a skull it takes a plain item's.
-        ItemCameraTransforms transforms = original.isGui3d() || original.isBuiltInRenderer() ? flat() : original.getItemCameraTransforms();
-        return new SimpleBakedModel(quads, faces, false, false, atlas.getAtlasSprite(textures.get("layer0")), transforms);
+        TextureAtlasSprite particle = atlas.getAtlasSprite(textures.get("layer0"));
+        // Over a block or a skull a flat texture is held like a plain item; over a flat item it keeps that item's hold (a sword's).
+        if (original.isGui3d() || original.isBuiltInRenderer()) return new SimpleBakedModel(quads, faces, false, false, particle, flat());
+        SimpleBakedModel baked = new SimpleBakedModel(quads, faces, false, false, particle, original.getItemCameraTransforms());
+        return original instanceof IPerspectiveAwareModel ? new CitModel(baked, (IPerspectiveAwareModel) original) : baked;
+    }
+
+    /**
+     * A CIT model held and shown as the item it replaces. Forge bakes generated items (ItemLayerModel) with their display as
+     * perspective matrices and default camera transforms, so the matrices are borrowed (kept per perspective: no allocation per frame).
+     */
+    static final class CitModel implements IPerspectiveAwareModel {
+        private final IBakedModel quads;
+        private final IPerspectiveAwareModel original;
+        @SuppressWarnings("unchecked")
+        private final Pair<CitModel, Matrix4f>[] perspectives = new Pair[ItemCameraTransforms.TransformType.values().length];
+
+        CitModel(IBakedModel quads, IPerspectiveAwareModel original) {
+            this.quads = quads;
+            this.original = original;
+        }
+
+        @Override
+        public Pair<? extends IFlexibleBakedModel, Matrix4f> handlePerspective(ItemCameraTransforms.TransformType type) {
+            Pair<CitModel, Matrix4f> pair = perspectives[type.ordinal()];
+            if (pair == null) perspectives[type.ordinal()] = pair = Pair.of(this, original.handlePerspective(type).getRight());
+            return pair;
+        }
+
+        @Override public VertexFormat getFormat() { return DefaultVertexFormats.ITEM; }
+        @Override public List<BakedQuad> getFaceQuads(EnumFacing side) { return quads.getFaceQuads(side); }
+        @Override public List<BakedQuad> getGeneralQuads() { return quads.getGeneralQuads(); }
+        @Override public boolean isAmbientOcclusion() { return false; }
+        @Override public boolean isGui3d() { return false; }
+        @Override public boolean isBuiltInRenderer() { return false; }
+        @Override public TextureAtlasSprite getParticleTexture() { return quads.getParticleTexture(); }
+        @Override public ItemCameraTransforms getItemCameraTransforms() { return quads.getItemCameraTransforms(); }
     }
 
     private static ItemCameraTransforms flat() {
