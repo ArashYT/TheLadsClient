@@ -145,9 +145,17 @@ public static class CurseForgeModpack
                 report($"Downloading mod {current} of {manifest.Files.Count} (Project {f.ProjectId})…");
                 try
                 {
-                    var fileItem = await catalog.LatestFileAsync(
-                        new ModSearchItem { Id = f.ProjectId.ToString(), Provider = "CurseForge" },
-                        ContentKind.Mod, manifest.MinecraftVersion, manifest.ModLoader, cancellationToken);
+                    ContentFile? fileItem = null;
+                    if (f.FileId > 0)
+                    {
+                        fileItem = await catalog.GetCurseForgeFileAsync(f.ProjectId, f.FileId, cancellationToken);
+                    }
+                    if (fileItem == null)
+                    {
+                        fileItem = await catalog.LatestFileAsync(
+                            new ModSearchItem { Id = f.ProjectId.ToString(), Provider = "CurseForge" },
+                            ContentKind.Mod, manifest.MinecraftVersion, manifest.ModLoader, cancellationToken);
+                    }
 
                     if (fileItem != null && !string.IsNullOrEmpty(fileItem.Url))
                     {

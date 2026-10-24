@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
@@ -96,5 +97,26 @@ public class CurseForgeModpackTests
         Assert.Equal("custom-config-value", File.ReadAllText(Path.Combine(instanceDir, "config", "lads.txt")));
         Assert.True(File.Exists(Path.Combine(instanceDir, "options.txt")));
         Assert.Equal("gamma:1.0", File.ReadAllText(Path.Combine(instanceDir, "options.txt")));
+    }
+
+    [Fact]
+    public void ExtractOverrides_GuardsAgainstZipSlip_PathTraversal()
+    {
+        using var tempDir = new TestDirectory();
+        string zipPath = Path.Combine(tempDir.Path, "malicious.zip");
+        string instanceDir = Path.Combine(tempDir.Path, "instance");
+        Directory.CreateDirectory(instanceDir);
+
+        string manifest = @"{""minecraft"":{""version"":""1.20.1"",""modLoaders"":[{""id"":""fabric-0.15.11""}]},""files"":[]}";
+        CreateTestZip(zipPath, manifest, new[]
+        {
+            ("../../escaped.txt", "exploit payload")
+        });
+
+        Assert.Throws<InvalidDataException>(() =>
+            CurseForgeModpack.ExtractOverrides(zipPath, instanceDir, "overrides"));
+
+        // File must not have escaped to tempDir root
+        Assert.False(File.Exists(Path.Combine(tempDir.Path, "escaped.txt")));
     }
 }
