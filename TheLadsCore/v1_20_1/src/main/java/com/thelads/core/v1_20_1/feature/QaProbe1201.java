@@ -194,6 +194,11 @@ public final class QaProbe1201 {
             }
             return;
         }
+        if (mc.level != null && mc.player != null && mc.screen == null && mc.player.tickCount >= 20) {
+            LOGGER.info("Lads auto-world QA READY: joined server/world alive and unpaused");
+            phase = Phase.SCRIPT;
+            return;
+        }
         // Supplementaries opens a welcome screen over the title when part of the pack is missing (QA subsets): leave it so the script can start.
         if (mc.getOverlay() == null && mc.screen != null && mc.screen.getClass().getSimpleName().equals("WelcomeMessageScreen")) mc.setScreen(new TitleScreen());
         if (!(mc.screen instanceof TitleScreen) || mc.getOverlay() != null) {
@@ -358,6 +363,30 @@ public final class QaProbe1201 {
             case "hudcache" -> { // the 1.9.12 HUD cache on/off, to compare shots in one run
                 com.thelads.core.v1_20_1.hud.HudCache1201.off = "off".equalsIgnoreCase(arg(s, 1));
                 LOGGER.info("Lads qa hudcache: {}", com.thelads.core.v1_20_1.hud.HudCache1201.off ? "off" : "on");
+            }
+            case "ladsapi" -> com.thelads.core.client.ladsapi.LadsApiQa.recordProbe(s.length > 1 ? rest(s, 1) : ("step-" + index));
+            case "settings" -> {
+                Screen current = mc.screen;
+                LadsSettingsScreen1201 screen = new LadsSettingsScreen1201(current);
+                mc.setScreen(screen);
+                if (s.length > 1) screen.openModule(rest(s, 1));
+            }
+            case "disconnect" -> {
+                if (mc.level != null) {
+                    mc.level.disconnect();
+                    if (mc.isLocalServer()) mc.clearLevel(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(Component.translatable("menu.savingLevel")));
+                    else mc.clearLevel();
+                }
+                mc.setScreen(new TitleScreen());
+            }
+            case "connect" -> {
+                String address = arg(s, 1);
+                if (mc.level != null) {
+                    mc.level.disconnect();
+                    mc.clearLevel();
+                }
+                net.minecraft.client.multiplayer.ServerData data = new net.minecraft.client.multiplayer.ServerData("QA", address, false);
+                net.minecraft.client.gui.screens.ConnectScreen.startConnecting(new TitleScreen(), mc, net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(address), data, false);
             }
             case "log" -> LOGGER.info("Lads qa log: {}", rest(s, 1));
             case "static" -> { // a public static field of another mod (Quark's Hotbar Changer only opens in a focused window; QA windows never are)
@@ -610,13 +639,22 @@ public final class QaProbe1201 {
 
     // ---- screenshots ------------------------------------------------------------------------------------------------
 
-    /** Writes the main render target (the last finished frame, GUI included) to screenshots/name.png. */
+    /** Writes the main render target (the last finished frame, GUI included) to screenshots/name.png or custom path. */
     static void shot(Minecraft mc, String name) throws IOException {
-        if (!name.matches("[A-Za-z0-9._-]{1,80}")) throw new IllegalArgumentException("shot name must be [A-Za-z0-9._-]");
-        Path dir = gameDir.resolve("screenshots");
-        Files.createDirectories(dir);
+        Path p = Path.of(name.endsWith(".png") ? name : (name + ".png"));
+        Path output = p.isAbsolute() ? p : (name.contains("/") || name.contains("\\") ? gameDir.resolve(p) : gameDir.resolve("screenshots").resolve(name + ".png"));
+        Files.createDirectories(output.getParent());
         try (NativeImage image = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
-            image.writeToFile(dir.resolve(name + ".png"));
+            image.writeToFile(output);
+            if (!p.isAbsolute() && (name.startsWith("artifacts/") || name.startsWith("artifacts\\"))) {
+                Path cwdOutput = Path.of("").toAbsolutePath().resolve(p);
+                if (!cwdOutput.normalize().equals(output.normalize())) {
+                    try {
+                        Files.createDirectories(cwdOutput.getParent());
+                        image.writeToFile(cwdOutput);
+                    } catch (Throwable ignored) {}
+                }
+            }
         }
     }
 

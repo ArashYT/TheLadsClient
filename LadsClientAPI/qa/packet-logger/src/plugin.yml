@@ -1,0 +1,5 @@
+name: PacketLogger
+version: 1.0.0
+main: com.thelads.qa.PacketLoggerPlugin
+api-version: 1.21
+description: QA Verification plugin logging unexpected lads:api payloads on plain backend server.

@@ -62,11 +62,11 @@ public class SliderOption extends Option {
     }
 
     public double getValue() {
-        return value;
+        return com.thelads.core.client.ladsapi.ServerPolicy.applySlider(getModuleName(), getName(), value, min, max, step);
     }
     
     public int getIntValue() {
-        return (int) Math.round(value);
+        return (int) Math.round(getValue());
     }
 
     public void setValue(double v) {
@@ -96,5 +96,15 @@ public class SliderOption extends Option {
             setValue(element.getAsDouble());
         } catch (Exception ignored) {
         }
+    }
+
+    @Override
+    public com.thelads.core.client.ladsapi.ServerControl serverControl() {
+        return com.thelads.core.client.ladsapi.ServerControl.FULL;
+    }
+
+    /** The player's own value, never a server rule: the settings screen edits and config saves use this. */
+    public final double getOwnValue() {
+        return value;
     }
 }

@@ -8,6 +8,8 @@ import com.google.gson.JsonElement;
  */
 public abstract class Option {
     protected final String name;
+    /** The module this option belongs to, set by {@link Module#addOption}: LadsClientAPI rules are keyed by module + option name. */
+    String moduleName = "";
 
     protected Option(String name) {
         this.name = name;
@@ -15,6 +17,15 @@ public abstract class Option {
 
     public String getName() {
         return name;
+    }
+
+    public String getModuleName() {
+        return moduleName;
+    }
+
+    /** How far a LadsClientAPI server may touch this option. Text, actions, sounds and anything else not overriding this: never. */
+    public com.thelads.core.client.ladsapi.ServerControl serverControl() {
+        return com.thelads.core.client.ladsapi.ServerControl.NEVER;
     }
 
     public abstract JsonElement save();

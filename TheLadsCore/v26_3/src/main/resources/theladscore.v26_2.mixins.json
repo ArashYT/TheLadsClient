@@ -51,6 +51,8 @@
     "OwnNametagMixin",
     "NametagBackgroundMixin",
     "NametagShadowDepthMixin",
+    "AvatarRenderStateMixin",
+    "AvatarRendererMixin",
     "NicknameTabMixin",
     "ConnectionActivityMixin",
     "SignalLossHudMixin",
@@ -175,7 +177,9 @@
     "ShowcaseHotbarMixin",
     "ShowcaseMouseMixin",
     "ShowcasePlayerListAccess",
-    "CloudRendererMixin"
+    "CloudRendererMixin",
+    "LadsApiPacketListenerMixin",
+    "LadsApiDisconnectMixin"
   ],
   "mixins": [
     "DisplayEntityAccessor",

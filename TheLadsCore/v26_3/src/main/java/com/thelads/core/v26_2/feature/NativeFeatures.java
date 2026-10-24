@@ -153,6 +153,7 @@ public final class NativeFeatures {
     }
     public static float gamma(float vanilla) {
         // Replace only the lightmap gamma input; effects and the saved vanilla option remain native.
+        if (FullbrightModule.serverLimited()) vanilla = Math.min(1.0f, vanilla);
         double fullbright = fullbrightGamma();
         return fullbright < 0 ? vanilla : (float) Math.max(vanilla, fullbright);
     }

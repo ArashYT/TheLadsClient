@@ -32,6 +32,13 @@ static class Mc1201Qa
                 case "--no-build": Environment.SetEnvironmentVariable("LADS_VERIFY_NO_BUILD", "1"); break;
                 case "--fresh-world": Environment.SetEnvironmentVariable("LADS_VERIFY_FRESH_WORLD", "1"); break;
                 case "--no-world": Environment.SetEnvironmentVariable("LADS_VERIFY_AUTO_WORLD", "0"); break;
+                case "--join":
+                    string joinTarget = Value();
+                    result.Add("--join");
+                    result.Add(joinTarget);
+                    Environment.SetEnvironmentVariable("LADS_VERIFY_JOIN", joinTarget);
+                    Environment.SetEnvironmentVariable("LADS_VERIFY_AUTO_WORLD", "0");
+                    break;
                 case "--expect-core-disabled": result.Add("--expect-core-disabled"); break;
                 default: throw new ArgumentException($"--mc1201: unknown option {a[i]}.");
             }
