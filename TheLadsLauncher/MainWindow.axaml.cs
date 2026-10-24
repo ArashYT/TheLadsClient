@@ -138,6 +138,7 @@ public partial class MainWindow : Window
 
         settings = LauncherSettings.Load();
         InitializeProductivity();
+        LoadHomeNewsFeed();
         TheLadsLauncher.Services.NotificationService.Initialize(new TheLadsLauncher.Services.AvaloniaWindowNotifier(new Avalonia.Controls.Notifications.WindowNotificationManager(this)));
         if (settings.LauncherVersion != Program.Version)
         {
@@ -593,6 +594,40 @@ public partial class MainWindow : Window
         _runningProcesses.Any(p => SafeFileOps.PathsEqual(p.Value, gameDirectory) && IsGameRunning(p.Key)) || GameRunningByMarker(gameDirectory);
 
     private async void ReleaseNotes_Click(object? sender, RoutedEventArgs e) => await ShowReleaseNotesAsync();
+
+
+    private void LoadHomeNewsFeed()
+    {
+        try
+        {
+            var notesDir = Path.Combine(AppContext.BaseDirectory, "release-notes");
+            if (!Directory.Exists(notesDir))
+            {
+                var candidate = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "docs", "releases");
+                if (Directory.Exists(candidate)) notesDir = Path.GetFullPath(candidate);
+            }
+            var notes = ReleaseNotes.Read(notesDir);
+            var latest = notes.FirstOrDefault(n => n.Version == Program.Version) ?? notes.FirstOrDefault();
+            if (latest == null) return;
+
+            HomeNewsVersionText.Text = "v" + latest.Version;
+            HomeNewsHighlightsPanel.Children.Clear();
+            var highlights = ReleaseNotes.Highlights(latest);
+            foreach (var h in highlights)
+            {
+                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("16,*") };
+                row.Children.Add(new TextBlock { Text = "•", Foreground = new SolidColorBrush(Color.Parse("#F17C85")), FontSize = 14 });
+                var text = new TextBlock { Text = h, Foreground = new SolidColorBrush(Color.Parse("#C8CAD2")), FontSize = 12, TextWrapping = TextWrapping.Wrap };
+                Grid.SetColumn(text, 1);
+                row.Children.Add(text);
+                HomeNewsHighlightsPanel.Children.Add(row);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"[Home news feed] {ex.Message}");
+        }
+    }
 
     private async Task ShowReleaseNotesAsync()
     {
