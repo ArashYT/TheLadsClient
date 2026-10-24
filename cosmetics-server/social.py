@@ -52,6 +52,7 @@ RELAY_MAX_BYTES_PER_SEC = 12_500_000  # 100 Mbit/s
 MAX_RELAY_SESSION_BYTES = 50 * 10**9   # 50 GB per session ceiling
 MAX_RELAY_SESSION_DURATION = 6.0 * 3600.0  # 6 hours
 STUN_SERVER = "stun:stun.cloudflare.com:3478"
+TURN_USER_AGENT = "LadsClient-social/1.0"  # explicit: Cloudflare refuses some default library agents
 ALLOWED_STATES = frozenset({"menu", "singleplayer", "hosting", "server", "offline"})
 ALLOWED_SCOPES = frozenset({"off", "lan", "friends", "invite"})
 KNOWN_GAME_KEYS = frozenset({"mc", "loader", "profileKind", "packId", "packVersion", "modsHash", "lads"})
@@ -148,7 +149,8 @@ async def mint_turn_credentials() -> list[dict]:
     url = f"https://rtc.live.cloudflare.com/v1/turn/keys/{key_id}/credentials/generate-ice-servers"
     headers = {
         "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "User-Agent": TURN_USER_AGENT,  # Cloudflare answers 403 to default library agents (seen with urllib)
     }
     body = {"ttl": 21600}
     try:
@@ -168,7 +170,8 @@ async def mint_turn_credentials() -> list[dict]:
                         elif not isinstance(urls, list):
                             urls = [s.get("url")] if s.get("url") else []
                         for u in urls:
-                            if isinstance(u, str) and u.startswith("turn:") and "transport=udp" in u:
+                            # UDP only (the client speaks TURN over UDP); a turn: URL without a transport is UDP (RFC 7065)
+                            if isinstance(u, str) and u.startswith("turn:") and ("transport=" not in u or "transport=udp" in u):
                                 turn_servers.append({"url": u, "user": username, "credential": credential})
                     return turn_servers
                 else:

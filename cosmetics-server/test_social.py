@@ -603,6 +603,57 @@ async def test_turn_minting_http_201_and_filter_stun(monkeypatch):
     assert res[0]["credential"] == "cf_password"
 
 
+async def test_turn_minting_cloudflare_recorded_shape_and_user_agent(monkeypatch):
+    """Recorded generate-ice-servers 201 (2026-10-24, secrets replaced): both UDP TURN URLs, explicit User-Agent, short body."""
+    monkeypatch.setenv("CF_TURN_KEY_ID", "k" * 32)
+    monkeypatch.setenv("CF_TURN_API_TOKEN", "t" * 64)
+    recorded = {
+        "iceServers": [
+            {"urls": ["stun:stun.cloudflare.com:3478", "stun:stun.cloudflare.com:443"]},
+            {
+                "urls": [
+                    "turn:turn.cloudflare.com:3478?transport=udp",
+                    "turn:turn.cloudflare.com:3478?transport=tcp",
+                    "turns:turn.cloudflare.com:5349?transport=tcp",
+                    "turn:turn.cloudflare.com:443?transport=udp",
+                    "turn:turn.cloudflare.com:80?transport=tcp",
+                    "turns:turn.cloudflare.com:443?transport=tcp",
+                ],
+                "username": "u" * 64,
+                "credential": "c" * 64,
+            },
+        ]
+    }
+    sent = {}
+
+    class FakeResponse:
+        status = 201
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def json(self, content_type=None): return recorded
+
+    class FakeSession:
+        def __init__(self, **kw): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        def post(self, url, headers=None, json=None):
+            sent.update(url=url, headers=headers, body=json)
+            return FakeResponse()
+
+    monkeypatch.setattr(aiohttp, "ClientSession", FakeSession)
+    res = await social.mint_turn_credentials()
+
+    assert [r["url"] for r in res] == ["turn:turn.cloudflare.com:3478?transport=udp", "turn:turn.cloudflare.com:443?transport=udp"]
+    assert all(r["user"] == "u" * 64 and r["credential"] == "c" * 64 for r in res)
+    assert sent["url"] == "https://rtc.live.cloudflare.com/v1/turn/keys/" + "k" * 32 + "/credentials/generate-ice-servers"
+    assert sent["headers"]["User-Agent"] == social.TURN_USER_AGENT  # Cloudflare 403s some default agents
+    assert sent["headers"]["Authorization"] == "Bearer " + "t" * 64
+
+    # "urls" as a single string, and a turn: URL without a transport (UDP by default) are accepted too
+    recorded["iceServers"] = [{"urls": "turn:turn.example:3478", "username": "u", "credential": "c"}]
+    assert [r["url"] for r in await social.mint_turn_credentials()] == ["turn:turn.example:3478"]
+
+
 async def test_preauth_idle_timeout(social_app):
     """H2: Auth must complete within 10s or close."""
     ws = await social_app.ws_connect("/social/ws")
