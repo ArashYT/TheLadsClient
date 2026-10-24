@@ -12,7 +12,7 @@
     <AssemblyName>LadsUpdateBridge</AssemblyName>
     <RootNamespace>TheLadsLauncher.UpdateBridge</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <!-- TheLadsLauncher/Assets/icon.ico without its 111 KB 256 px entry (16/32/48 px kept): keeps the exe tiny. -->
+    <!-- icon.ico = 16/32/48 px copy of TheLadsLauncher/Assets/icon.ico (its 111 KB 256 px entry dropped to keep the exe tiny); regenerate it if that icon changes. -->
     <ApplicationIcon>icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>

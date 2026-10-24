@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -28,7 +29,7 @@ namespace TheLadsLauncher.UpdateBridge
 
         public BridgeForm(string image, Rectangle client, Rectangle bar, string updateExe, string relaunch, double graceSeconds, bool reducedMotion, EventWaitHandle launcherShown)
         {
-            _image = new Bitmap(image);
+            _image = new Bitmap(new MemoryStream(File.ReadAllBytes(image)));   // no file lock; GDI+ keeps the stream for the bitmap's lifetime
             _bar = new Rectangle(bar.X - client.X, bar.Y - client.Y, bar.Width, bar.Height);
             _updateExe = updateExe;
             _relaunch = relaunch;
@@ -46,7 +47,6 @@ namespace TheLadsLauncher.UpdateBridge
             Bounds = client;
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
 
-            RaiseUpdateExe();
             _timer.Tick += (s, e) => Tick();
             _timer.Start();
         }
@@ -119,7 +119,7 @@ namespace TheLadsLauncher.UpdateBridge
             {
                 _lastPollMs = now;
                 if (RaiseUpdateExe()) _lastUpdateSeenMs = now;
-                if (now - _lastUpdateSeenMs >= _graceMs) { GiveUp("no Update.exe for " + _graceMs / 1000 + " s and no launcher signal"); return; }
+                if (now - _lastUpdateSeenMs >= _graceMs) { GiveUp("no Update.exe for " + (_graceMs / 1000).ToString(CultureInfo.InvariantCulture) + " s and no launcher signal"); return; }
                 if (now >= HardCapMs) { GiveUp("10 min cap reached"); return; }
             }
             if (!_reducedMotion) Invalidate(_bar);

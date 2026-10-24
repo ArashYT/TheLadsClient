@@ -38,7 +38,14 @@ namespace TheLadsLauncher.UpdateBridge
                 }
                 if (image == null || updateExe == null || relaunch == null || client.Width <= 0 || client.Height <= 0)
                     throw new ArgumentException("needs --image, --client, --update-exe and --relaunch");
-                Log("start pid " + System.Diagnostics.Process.GetCurrentProcess().Id + " client " + client + " bar " + bar + " grace " + grace + "s" + (reducedMotion ? " reduced-motion" : ""));
+                Log(string.Format(CultureInfo.InvariantCulture, "start pid {0} client {1},{2},{3},{4} bar {5},{6},{7},{8} grace {9}s{10}",
+                    System.Diagnostics.Process.GetCurrentProcess().Id, client.X, client.Y, client.Width, client.Height,
+                    bar.X, bar.Y, bar.Width, bar.Height, grace, reducedMotion ? " reduced-motion" : ""));
+
+                // Errors inside the message loop (paint, timer) must end the bridge, never leave WinForms' error dialog over the new launcher.
+                Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+                Application.ThreadException += (s, e) => Fail(e.Exception);
+                AppDomain.CurrentDomain.UnhandledException += (s, e) => Fail(e.ExceptionObject);
 
                 // Created (unsignalled) before the window shows, so the new launcher can always find it.
                 var launcherShown = new EventWaitHandle(false, EventResetMode.ManualReset, @"Local\TheLadsClient.LauncherShown");
@@ -52,6 +59,12 @@ namespace TheLadsLauncher.UpdateBridge
                 Log("failed: " + e);
                 return 1;
             }
+        }
+
+        static void Fail(object error)
+        {
+            Log("failed: " + error);
+            Environment.Exit(1);
         }
 
         static Rectangle ParseRect(string text)

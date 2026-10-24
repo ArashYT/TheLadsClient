@@ -139,6 +139,26 @@ try {
     [cultureinfo]::CurrentCulture = $culture
 }
 
+# Case 4: bad input ends the bridge with exit code 1 and a 'failed:' log line, without ever showing a window.
+function Invoke-FailCase([string]$name, [string[]]$arguments) {
+    Remove-Item -LiteralPath $log -ErrorAction SilentlyContinue
+    $shown = [Threading.EventWaitHandle]::new($false, [Threading.EventResetMode]::ManualReset, 'Local\TheLadsClient.UpdateBridgeShown')
+    $bridge = Start-Hidden $bridgeExe $arguments
+    try {
+        $exited = $bridge.WaitForExit(2000)
+        Assert ($exited -and $bridge.ExitCode -eq 1) "${name}: exits with code 1 within 2 s (exited $exited$(if ($exited) { ", code $($bridge.ExitCode)" }))"
+        Assert (-not $shown.WaitOne(0) -and (Read-Log) -notmatch '(?m) shown\r?$') "${name}: no window shown"
+        Assert ((Read-Log) -match 'failed: ') "${name}: log has a 'failed:' line"
+    } finally {
+        Stop-All @($bridge)
+        $shown.Dispose()
+    }
+}
+Invoke-FailCase 'case 4a (malformed --client)' @('--image', $png, '--client', '10,20,400', '--bar', '30,220,360,18',
+    '--update-exe', $updateExe, '--relaunch', $relaunch, '--grace', '15')
+Invoke-FailCase 'case 4b (missing PNG)' @('--image', (Join-Path $root 'missing.png'), '--client', '10,20,400,300', '--bar', '30,220,360,18',
+    '--update-exe', $updateExe, '--relaunch', $relaunch, '--grace', '15')
+
 if ($script:failures) { Write-Host "Test-UpdateBridge: $($script:failures) FAILED (kept $root)"; exit 1 }
 Remove-Item -LiteralPath $root -Recurse -Force
 Write-Host 'Test-UpdateBridge: all cases PASS'
