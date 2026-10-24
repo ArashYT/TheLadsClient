@@ -407,6 +407,22 @@ public class ModuleManager {
         register(new com.thelads.core.modules.ScrollTweaksModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.AutoPerspectiveModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.AutoBackupModule(), Module.Category.MECHANIC);
+        // PvP visuals (client PvpVisuals; each adapter hooks them): all off by default, visual only but Hitboxes' Through Walls.
+        register(new BlockOverlayModule(), Module.Category.MECHANIC);
+        register(new HitColorModule(), Module.Category.MECHANIC);
+        register(new DamageTintModule(), Module.Category.MECHANIC);
+        register(new GlintColorizerModule(), Module.Category.MECHANIC);
+        register(new Module(com.thelads.core.client.PvpVisuals.HIDE_MOB_DEATHS, "Dying mobs vanish at once instead of tipping over red. "
+            + "Players still show their death."), Module.Category.MECHANIC);
+        register(new MountOpacityModule(), Module.Category.MECHANIC);
+        register(new HitboxesModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ColorSaturationModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.MotionBlurModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.MenuBlurModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.HideFoliageModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ClearGlassModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.CustomSkyModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ChunkAnimatorModule(), Module.Category.MECHANIC);
 
         // PvP visuals (PvpVisuals reads these once a tick). On with vanilla's look, so each option works as soon as it is set.
         Module renderTweaks = new Module(com.thelads.core.client.PvpVisuals.RENDER_TWEAKS, "Entity shadows, lightning bolts, fishing lines and "
@@ -427,7 +443,6 @@ public class ModuleManager {
         overlays.addOption(new SliderOption(com.thelads.core.client.PvpVisuals.PORTAL_OPACITY, 100, 0, 100, 5).percent());
         overlays.setEnabled(true);
         register(overlays, Module.Category.MECHANIC);
-
 
         Module totem = new Module(com.thelads.core.client.PvpVisuals.TOTEM, "The Totem of Undying pop animation: hide it or change its size.");
         totem.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.HIDE_TOTEM, false));

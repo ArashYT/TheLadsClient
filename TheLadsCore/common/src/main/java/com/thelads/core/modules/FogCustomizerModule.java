@@ -8,8 +8,8 @@ import com.thelads.core.config.SliderOption;
 
 /**
  * Fog Customizer (Lunar/Badlion Fog Customizer, Feather Custom Fog): the distance fog moves (Fog Start and Fog End scale the game's
- * own distances) or goes (Disable Fog), and the fog of water can go. Clearing the fog of lava and powder snow, or of Blindness and
- * Darkness, shows what vanilla hides, so those two follow the server rules ({@link #CLEAR_VIEW} is in HypixelSafetyManager's risky
+ * own distances) or goes (Disable Fog). Clearing the fog of water, of lava and powder snow, or of Blindness and Darkness, shows what
+ * vanilla hides, so those three follow the server rules ({@link #CLEAR_VIEW} is in HypixelSafetyManager's risky
  * set: off on servers that ban it and where the rules are unknown). Each version sorts the fog it sets up into a {@link #medium} and
  * asks {@link #clears}, {@link #start} and {@link #end}.
  */
@@ -53,7 +53,7 @@ public final class FogCustomizerModule extends Module {
         if (!isEnabled()) return false;
         switch (medium) {
             case TERRAIN: return disable.get();
-            case WATER: return clearWater.get();
+            case WATER: return clearWater.get() && !HypixelSafetyManager.isDisallowed(CLEAR_VIEW);
             case LAVA: return clearLava.get() && !HypixelSafetyManager.isDisallowed(CLEAR_VIEW);
             case EFFECT: return clearEffects.get() && !HypixelSafetyManager.isDisallowed(CLEAR_VIEW);
             default: return false;

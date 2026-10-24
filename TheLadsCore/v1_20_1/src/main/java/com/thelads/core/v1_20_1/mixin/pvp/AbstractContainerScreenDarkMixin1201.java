@@ -29,11 +29,11 @@ public class AbstractContainerScreenDarkMixin1201 {
 
     @Inject(method = "render", at = @At(value = "INVOKE", target = LABELS))
     private void lads$labelsStart(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
-        PvpVisuals.containerLabels = true;
+        if (PvpVisuals.darkFill != 0) PvpVisuals.containerLabels = true; // Dark Mode off: the labels' text is never checked
     }
 
     @Inject(method = "render", at = @At(value = "INVOKE", target = LABELS, shift = At.Shift.AFTER))
     private void lads$labelsEnd(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
-        PvpVisuals.containerLabels = false;
+        if (PvpVisuals.containerLabels) PvpVisuals.containerLabels = false;
     }
 }

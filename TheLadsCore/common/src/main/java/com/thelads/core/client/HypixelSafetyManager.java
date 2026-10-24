@@ -199,11 +199,11 @@ public final class HypixelSafetyManager {
 
     /**
      * Risky on servers, so only on for singleplayer, LAN and trusted servers: Stack Refill clicks the inventory with no inventory open,
-     * which anticheats ban as an AutoRefill cheat (a Minemen.club ban); use-while-mining sends a use packet mid-dig.
-     * Asked per module every frame: no allocation.
+     * which anticheats ban as an AutoRefill cheat (a Minemen.club ban); use-while-mining sends a use packet mid-dig; Hide Foliage's
+     * Tall Plants show a player crouching in tall grass. Asked per module every frame: no allocation.
      */
     public static boolean isSingleplayerOnlyModule(String moduleName) {
-        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName);
+        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName) || HideFoliage.TALL_GATE.equalsIgnoreCase(moduleName);
     }
 
     public static boolean isFullbrightModule(String moduleName) {
@@ -236,7 +236,8 @@ public final class HypixelSafetyManager {
             || "ReachDisplay".equalsIgnoreCase(moduleName)
             || "Jade".equalsIgnoreCase(moduleName)
             || "ShulkerBoxUtils".equalsIgnoreCase(moduleName)
-            || "Freelook".equalsIgnoreCase(moduleName) || "FogClearView".equalsIgnoreCase(moduleName) // FreelookModule, FogCustomizerModule.CLEAR_VIEW
+            || "Freelook".equalsIgnoreCase(moduleName) || "FogClearView".equalsIgnoreCase(moduleName)
+            || com.thelads.core.modules.HitboxesModule.THROUGH_WALLS.equalsIgnoreCase(moduleName) // FreelookModule, FogCustomizerModule.CLEAR_VIEW
             || PvpVisuals.NAMETAG_HEALTH.equalsIgnoreCase(moduleName);
     }
 

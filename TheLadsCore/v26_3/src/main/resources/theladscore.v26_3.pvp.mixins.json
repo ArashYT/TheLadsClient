@@ -1,24 +1,21 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "com.thelads.core.v26_2.mixin.pvp",
+  "package": "com.thelads.core.v26_2.feature.pvp.mixin",
   "compatibilityLevel": "JAVA_25",
   "injectors": {
     "defaultRequire": 1
   },
   "client": [
-    "AbstractContainerScreenDarkMixin26",
-    "ElderGuardianParticleStateMixin26",
-    "EntityRendererPvpMixin26",
-    "FirstPersonReequipMixin26",
-    "FishingHookLineMixin26",
-    "GameRendererBobMixin26",
-    "GuiGraphicsLabelMixin26",
-    "HudOverlayMixin26",
-    "LightningBoltRendererMixin26",
-    "LivingEntityRendererF1Mixin26",
-    "LivingEntitySwingMixin26",
-    "ScreenEffectPvpMixin26",
-    "SubmitNodeCollectionTagMixin26"
+    "OverlayTextureAccessor26",
+    "PvpBlockOverlayMixin26",
+    "PvpHitboxMixin26",
+    "PvpDebugRendererMixin26",
+    "PvpEntityDispatcherMixin26",
+    "PvpMountStateMixin26",
+    "PvpMountOpacityMixin26",
+    "PvpGlintMixin26",
+    "PvpGlintSpeedMixin26",
+    "PvpShinyPotionMixin26"
   ]
 }

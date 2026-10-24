@@ -8,6 +8,12 @@
     "defaultRequire": 1
   },
   "client": [
+    "PvpSelectionBoxMixin189",
+    "PvpLivingRendererMixin189",
+    "PvpRenderManagerMixin189",
+    "PvpGlintItemMixin189",
+    "PvpGlintArmourMixin189",
+    "PvpShinyPotionMixin189",
     "EntityLivingBaseSwingMixin189",
     "EntityRendererBobMixin189",
     "FontRendererLabelMixin189",

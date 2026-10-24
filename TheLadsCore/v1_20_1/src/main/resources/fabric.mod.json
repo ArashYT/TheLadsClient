@@ -69,12 +69,16 @@
     "theladscore.v1_20_1.screenshots.mixins.json",
         "theladscore.v1_20_1.particlecore.mixins.json",
         "theladscore.v1_20_1.render.mixins.json",
+        "theladscore.v1_20_1.pvp.mixins.json",
+        "theladscore.v1_20_1.visuals.mixins.json",
         "theladscore.v1_20_1.input.mixins.json",
         "theladscore.v1_20_1.quit.mixins.json",
         "theladscore.v1_20_1.ebe.mixins.json",
     "theladscore.v1_20_1.world.mixins.json",
     "theladscore.v1_20_1.emotes.mixins.json",
-    "theladscore.v1_20_1.pvp.mixins.json"
+    "theladscore.v1_20_1.pvp.mixins.json",
+    "theladscore.v1_20_1.visuals.mixins.json",
+    "theladscore.v1_20_1.pvp2.mixins.json"
   ],
   "accessWidener": "theladscore.v1_20_1.accesswidener",
   "depends": {

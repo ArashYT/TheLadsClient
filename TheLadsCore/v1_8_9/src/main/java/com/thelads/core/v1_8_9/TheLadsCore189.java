@@ -85,8 +85,8 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.cosmetics.anim.EmoteAnim189.register(); // emotes: key, wheel, stop rules (poses: emotes mixins) (1.9.11)
         com.thelads.core.modules.StackRefillModule.get().noOffhand(); // 1.8.9 has no offhand
         com.thelads.core.v1_8_9.feature.Nametags189.register();
-        com.thelads.core.v1_8_9.feature.PvpVisuals189.register();
         OldAnimations189.register();
+        com.thelads.core.v1_8_9.feature.PvpVisuals189.register(); // PvP visuals (parity 1.9.19): theladscore.v1_8_9.pvp.mixins.json
         ClientRegistry.registerKeyBinding(Zoom189.ZOOM);
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
         com.thelads.core.v1_8_9.feature.Toggles189.register();
@@ -114,6 +114,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.Raised189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.PaperDoll189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.EntityCulling189());
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.pvp.PvpVisuals189()); // Color Saturation, Motion/Menu Blur, Hide Foliage, Clear Glass
         com.thelads.core.v1_8_9.feature.ParticleCore189.register();
         com.thelads.core.v1_8_9.world.World189.register(); // Wavy Capes, TNT Timer
         Screenshots189.register();
@@ -264,7 +265,6 @@ public class TheLadsCore189 {
         }
         if (!glErrorsDisabled) glErrorChecks(mc);
         OldAnimations189.tick(mc);
-        com.thelads.core.client.PvpVisuals.refresh();
         com.thelads.core.v1_8_9.feature.PaperDoll189.tick(mc);
         com.thelads.core.v1_8_9.feature.DynamicLights189.tick(mc);
         com.thelads.core.v1_8_9.feature.EntityCulling189.tick(mc);

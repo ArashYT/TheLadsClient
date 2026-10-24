@@ -35,6 +35,8 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.ShaderToggleQa26.register(); // QA only: inert without LADS_QA_SHADERTOGGLE
         com.thelads.core.v26_2.feature.NativeAutohide.registerQaBarScreens(); // QA only: the QA progress bar on the screens outside a world
         com.thelads.core.v26_2.feature.NativeQualityOfLife.register();
+        com.thelads.core.v26_2.feature.pvp.PvpVisuals26.register();
+        com.thelads.core.v26_2.pvp.PvpVisuals26.register(); // Color Saturation, Motion/Menu Blur, Hide Foliage, Clear Glass
         com.thelads.core.v26_2.feature.NativeParticleCore.register();
         com.thelads.core.v26_2.feature.NativeFeatures.initialize();
         com.thelads.core.v26_2.feature.PvpView26.register(); // Freelook, ViewModel, Time/Weather Changer, Fog Customizer

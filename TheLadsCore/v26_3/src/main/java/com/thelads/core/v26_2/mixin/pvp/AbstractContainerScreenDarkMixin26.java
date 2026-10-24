@@ -30,11 +30,11 @@ public class AbstractContainerScreenDarkMixin26 {
 
     @Inject(method = "extractContents", at = @At(value = "INVOKE", target = LABELS))
     private void lads$labelsStart(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a, CallbackInfo ci) {
-        PvpVisuals.containerLabels = true;
+        if (PvpVisuals.darkFill != 0) PvpVisuals.containerLabels = true; // Dark Mode off: the labels' text is never checked
     }
 
     @Inject(method = "extractContents", at = @At(value = "INVOKE", target = LABELS, shift = At.Shift.AFTER))
     private void lads$labelsEnd(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a, CallbackInfo ci) {
-        PvpVisuals.containerLabels = false;
+        if (PvpVisuals.containerLabels) PvpVisuals.containerLabels = false;
     }
 }

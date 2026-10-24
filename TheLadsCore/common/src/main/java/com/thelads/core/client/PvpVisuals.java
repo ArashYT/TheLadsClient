@@ -1,18 +1,28 @@
 package com.thelads.core.client;
 
 import com.thelads.core.config.BoolOption;
+import com.thelads.core.config.ColorOption;
+import com.thelads.core.config.HudSettings;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.SliderOption;
+import com.thelads.core.modules.BlockOverlayModule;
+import com.thelads.core.modules.DamageTintModule;
+import com.thelads.core.modules.GlintColorizerModule;
+import com.thelads.core.modules.HitColorModule;
+import com.thelads.core.modules.HitboxesModule;
+import com.thelads.core.modules.MountOpacityModule;
 import com.thelads.core.modules.OldAnimationsModule;
 
 /**
- * PvP visuals: the Render Tweaks, Overlays, Totem Animation and Dark Mode modules and the Nametags extras. Each adapter's client
- * tick calls {@link #refresh}, which reads the modules into the plain fields the render hooks read (no lookups per frame). Nametag
- * Health shows more than vanilla does (other players' health), so HypixelSafetyManager gates it: the module reads as off on servers
- * that ban it or whose rules are unknown. Water fog is Fog Customizer's Clear Water.
+ * The PvP visual modules: Block Overlay, Hit Color, Damage Tint, Glint Colorizer, Hide Mob Deaths, Mount Opacity and Hitboxes; Render
+ * Tweaks, Overlays, Totem Animation, Dark Mode and the Nametags extras. Each adapter calls {@link #tick} once a client tick; its render
+ * hooks then read the values cached there, so no hook looks up a module or an option per frame, block or entity. Nametag Health shows
+ * more than vanilla does (other players' health), so HypixelSafetyManager gates it: the module reads as off on servers that ban it or
+ * whose rules are unknown. Water fog is Fog Customizer's Clear Water.
  */
 public final class PvpVisuals {
+    public static final String HIDE_MOB_DEATHS = "Hide Mob Deaths";
     public static final String RENDER_TWEAKS = "Render Tweaks", SHADOWS = "Entity Shadows", HIDE_LIGHTNING = "Hide Lightning",
         HIDE_FISHING_LINE = "Hide Fishing Line", HIDE_ELDER_GUARDIAN = "Hide Elder Guardian Curse", BOBBING_DISCONNECT = "Bobbing Disconnect";
     public static final String OVERLAYS = "Overlays", FIRE_OPACITY = "Fire Opacity", FIRE_RESISTANCE = "Hide Fire with Fire Resistance",
@@ -20,6 +30,18 @@ public final class PvpVisuals {
     public static final String TOTEM = "Totem Animation", HIDE_TOTEM = "Hide Animation", TOTEM_SCALE = "Totem Scale";
     public static final String DARK_MODE = "Dark Mode", DARKNESS = "Darkness";
     public static final String NAMETAG_HEALTH = "Nametag Health";
+    /** The modules every adapter builds in (ModuleSupport.registerBuiltIn); Totem Animation only where totems exist. */
+    public static final String[] MODULES = {BlockOverlayModule.NAME, HitColorModule.NAME, DamageTintModule.NAME, GlintColorizerModule.NAME,
+        HIDE_MOB_DEATHS, MountOpacityModule.NAME, HitboxesModule.NAME, RENDER_TWEAKS, OVERLAYS, DARK_MODE, NAMETAG_HEALTH};
+    public static final BlockOverlayModule BLOCK_OVERLAY = get(BlockOverlayModule.NAME);
+    public static final HitColorModule HIT_COLOR = get(HitColorModule.NAME);
+    public static final DamageTintModule DAMAGE_TINT = get(DamageTintModule.NAME);
+    public static final GlintColorizerModule GLINT = get(GlintColorizerModule.NAME);
+    public static final MountOpacityModule MOUNT_OPACITY = get(MountOpacityModule.NAME);
+    public static final HitboxesModule HITBOXES = get(HitboxesModule.NAME);
+    private static final Module HIDE = get(HIDE_MOB_DEATHS);
+    /** Hide Mob Deaths: a dying mob (not a player) is not drawn, so it vanishes at once instead of tipping over red. */
+    public static boolean hideMobDeaths;
     /** The dark gray (0x404040) vanilla draws container titles in, and the light gray Dark Mode draws them in instead. */
     static final int LABEL = 0x404040, LIGHT_LABEL = 0xE0E0E0;
 
@@ -46,8 +68,21 @@ public final class PvpVisuals {
 
     private PvpVisuals() {}
 
-    /** Once a client tick, from each adapter. */
-    public static void refresh() {
+    @SuppressWarnings("unchecked")
+    private static <T extends Module> T get(String name) {
+        return (T) ModuleManager.getInstance().getModule(name);
+    }
+
+    /** Once a client tick, on the client thread: the modules cache their state and options for the render hooks. */
+    public static void tick() {
+        BLOCK_OVERLAY.refresh();
+        HIT_COLOR.refresh();
+        DAMAGE_TINT.refresh();
+        GLINT.refresh();
+        MOUNT_OPACITY.refresh();
+        HITBOXES.refresh();
+        hideMobDeaths = HIDE.isEnabled();
+
         ModuleManager modules = ModuleManager.getInstance();
         Module tweaks = on(modules.getModule(RENDER_TWEAKS));
         hideShadows = tweaks != null && !bool(tweaks, SHADOWS);
@@ -91,6 +126,15 @@ public final class PvpVisuals {
     /** A tag's background alpha (0 to 1) from vanilla's: Background Opacity, then the tag's fade. */
     public static float background(float vanilla) {
         return (nametagBackground >= 0 ? nametagBackground / 255f : vanilla) * tagAlpha;
+    }
+
+    /** A colour setting's ARGB: its own, or with "Global" the HUD colour in its own alpha. */
+    public static int argb(ColorOption option) {
+        return argb(option.isUseGlobal(), option.getColor(), HudSettings.getInstance().getGlobalColor());
+    }
+
+    static int argb(boolean global, int own, int globalColor) {
+        return global ? own & 0xFF000000 | globalColor & 0xFFFFFF : own;
     }
 
     /** {@code argb} with its alpha times {@code factor} (0 to 1). */

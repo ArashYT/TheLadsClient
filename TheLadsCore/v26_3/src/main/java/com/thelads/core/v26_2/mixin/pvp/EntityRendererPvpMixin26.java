@@ -3,7 +3,7 @@ package com.thelads.core.v26_2.mixin.pvp;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.thelads.core.client.PvpVisuals;
-import com.thelads.core.v26_2.feature.PvpVisuals26;
+import com.thelads.core.v26_2.feature.pvp.PvpVisuals26;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;

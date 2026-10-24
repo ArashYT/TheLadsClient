@@ -142,8 +142,9 @@ class PvpViewModulesTest {
         fog.clearLava.set(true);
         fog.clearEffects.set(true);
         assertTrue(fog.clears(FogCustomizerModule.LAVA), "singleplayer: allowed");
+        assertTrue(fog.clears(FogCustomizerModule.WATER), "singleplayer: allowed");
         server.address = "play.somesmp.net";
-        assertTrue(fog.clears(FogCustomizerModule.WATER), "clear water is visual only (OptiFine's Clear Water)");
+        assertFalse(fog.clears(FogCustomizerModule.WATER), "unknown rules: water fog stays (seeing farther under water)");
         assertFalse(fog.clears(FogCustomizerModule.LAVA), "unknown rules: lava fog stays");
         assertFalse(fog.clears(FogCustomizerModule.EFFECT), "unknown rules: Blindness/Darkness fog stays");
         assertTrue(fog.isEnabled(), "the module itself is visual only");

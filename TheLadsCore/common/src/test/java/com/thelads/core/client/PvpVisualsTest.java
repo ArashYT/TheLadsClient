@@ -21,11 +21,11 @@ class PvpVisualsTest {
         module(PvpVisuals.NAMETAG_HEALTH).setEnabled(false);
         module(PvpVisuals.OVERLAYS).setEnabled(true);
         PvpVisuals.containerLabels = false;
-        PvpVisuals.refresh();
+        PvpVisuals.tick();
     }
 
     @Test void defaultsLookLikeVanilla() {
-        PvpVisuals.refresh();
+        PvpVisuals.tick();
         assertFalse(PvpVisuals.hideShadows || PvpVisuals.hideLightning || PvpVisuals.hideFishingLine || PvpVisuals.hideElderGuardian
             || PvpVisuals.bobbingDisconnect || PvpVisuals.hideFireWithResistance || PvpVisuals.hideTotem);
         assertEquals(1, PvpVisuals.fireOpacity);
@@ -43,14 +43,14 @@ class PvpVisualsTest {
         ((BoolOption) module(PvpVisuals.RENDER_TWEAKS).getOption(PvpVisuals.BOBBING_DISCONNECT)).set(true);
         ((SliderOption) module(PvpVisuals.OVERLAYS).getOption(PvpVisuals.FIRE_OPACITY)).setValue(40);
         module(PvpVisuals.DARK_MODE).setEnabled(true);
-        PvpVisuals.refresh();
+        PvpVisuals.tick();
         assertTrue(PvpVisuals.hideShadows);
         assertTrue(PvpVisuals.bobbingDisconnect);
         assertEquals(0.4f, PvpVisuals.fireOpacity, 1e-6);
         assertEquals(0x99000000, PvpVisuals.darkFill, "60% black");
 
         module(PvpVisuals.OVERLAYS).setEnabled(false);
-        PvpVisuals.refresh();
+        PvpVisuals.tick();
         assertEquals(1, PvpVisuals.fireOpacity, "Overlays off: vanilla fire");
     }
 
@@ -62,22 +62,22 @@ class PvpVisualsTest {
 
     @Test void darkModeLightensOnlyTheDarkGrayLabelsWhileTheyDraw() {
         module(PvpVisuals.DARK_MODE).setEnabled(true);
-        PvpVisuals.refresh();
+        PvpVisuals.tick();
         assertEquals(4210752, PvpVisuals.label(4210752), "outside a container's labels nothing changes");
         PvpVisuals.containerLabels = true;
         assertEquals(0xE0E0E0, PvpVisuals.label(4210752), "1.8.9 and 1.20.1 pass the gray with no alpha");
         assertEquals(0xFFE0E0E0, PvpVisuals.label(0xFF404040), "26.x passes it opaque");
         assertEquals(0xFFFFFF, PvpVisuals.label(0xFFFFFF), "other colors stay");
         module(PvpVisuals.DARK_MODE).setEnabled(false);
-        PvpVisuals.refresh();
+        PvpVisuals.tick();
         assertEquals(4210752, PvpVisuals.label(4210752), "Dark Mode off");
     }
 
     @Test void distanceFadeKeepsNearTagsAndNeverHidesFarOnes() {
-        PvpVisuals.refresh();
+        PvpVisuals.tick();
         assertEquals(1, PvpVisuals.fade(60 * 60), "off: no fade");
         ((BoolOption) module("Nametags").getOption("Distance Fade")).set(true);
-        PvpVisuals.refresh();
+        PvpVisuals.tick();
         assertEquals(1, PvpVisuals.fade(10 * 10));
         assertEquals(0.625f, PvpVisuals.fade(40 * 40), 1e-6);
         assertEquals(0.25f, PvpVisuals.fade(200 * 200), 1e-6);
