@@ -73,7 +73,34 @@ public final class SocialBridge26Checks {
             passed++;
         }
 
-        // 7. World backup pruning
+        // 7. Mute set clearing on disconnect / closeHosting
+        UUID mutedGuest = UUID.randomUUID();
+        SocialBridge26.onWorldDisconnect();
+        require(!SocialBridge26.isMuted(mutedGuest), "initially unmuted");
+        try {
+            java.lang.reflect.Field field = SocialBridge26.class.getDeclaredField("mutedGuests");
+            field.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            java.util.Set<UUID> set = (java.util.Set<UUID>) field.get(null);
+            set.add(mutedGuest);
+            require(SocialBridge26.isMuted(mutedGuest), "guest marked muted");
+            SocialBridge26.onWorldDisconnect();
+            require(!SocialBridge26.isMuted(mutedGuest), "guest unmuted on world disconnect");
+        } catch (Exception e) {
+            throw new RuntimeException("Mute check failed", e);
+        }
+
+        // 8. Null-safe comparator check
+        var list = new java.util.ArrayList<FriendsScreen26.MojangFriendDisplay>();
+        list.add(new FriendsScreen26.MojangFriendDisplay(UUID.randomUUID(), "Alice", "Online", true));
+        list.add(new FriendsScreen26.MojangFriendDisplay(UUID.randomUUID(), null, "Offline", false));
+        list.add(new FriendsScreen26.MojangFriendDisplay(null, "Bob", "Offline", false));
+        list.sort(java.util.Comparator.comparing((FriendsScreen26.MojangFriendDisplay m) -> !m.online())
+            .thenComparing(m -> m.name() != null ? m.name() : "", String.CASE_INSENSITIVE_ORDER));
+        require(list.size() == 3, "sorted list contains 3 entries");
+        require(list.get(0).online(), "first entry is online");
+
+        // 9. World backup pruning
         try {
             testBackupPruning();
         } catch (Exception e) {

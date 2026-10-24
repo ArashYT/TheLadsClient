@@ -73,11 +73,12 @@ public final class FriendsScreen26 extends Screen {
                     case PLAYING_OFFLINE -> "Playing Singleplayer";
                     case OFFLINE -> "Offline";
                 };
-                mojangFriends.add(new MojangFriendDisplay(f.id(), f.name(), text, isOnline));
+                String name = f.name() != null ? f.name() : (f.id() != null ? f.id().toString() : "Unknown");
+                mojangFriends.add(new MojangFriendDisplay(f.id(), name, text, isOnline));
             }
         }
         mojangFriends.sort(Comparator.comparing((MojangFriendDisplay m) -> !m.online)
-            .thenComparing(m -> m.name, String.CASE_INSENSITIVE_ORDER));
+            .thenComparing(m -> m.name != null ? m.name : "", String.CASE_INSENSITIVE_ORDER));
     }
 
     @Override

@@ -109,6 +109,7 @@ public class SocialBridge26 implements SocialBridge {
         IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
         loopbackScope = false;
         loginFilter = null;
+        mutedGuests.clear();
         if (server != null) {
             server.execute(() -> {
                 if (server.getPlayerList() != null) {
@@ -142,6 +143,10 @@ public class SocialBridge26 implements SocialBridge {
                 }
             }
             server.setGuestCommandAccess(options.guestOpLevel > 0);
+
+            if (server.getGameRules() != null) {
+                server.getGameRules().set(net.minecraft.world.level.gamerules.GameRules.PVP, options.pvp, server);
+            }
 
             if (options.difficulty != null) {
                 Difficulty diff = Difficulty.byName(options.difficulty);
@@ -232,7 +237,14 @@ public class SocialBridge26 implements SocialBridge {
                 }
                 case MUTE -> {
                     mutedGuests.add(id);
-                    Minecraft.getInstance().getPlayerSocialManager().hidePlayer(id);
+                    Minecraft mc = Minecraft.getInstance();
+                    if (mc != null) {
+                        mc.execute(() -> {
+                            if (mc.getPlayerSocialManager() != null) {
+                                mc.getPlayerSocialManager().hidePlayer(id);
+                            }
+                        });
+                    }
                 }
             }
         });
@@ -267,10 +279,15 @@ public class SocialBridge26 implements SocialBridge {
         return mc.level != null;
     }
 
-    @Override
-    public void leaveWorld(Runnable then) {
+    public static void onWorldDisconnect() {
         loopbackScope = false;
         loginFilter = null;
+        mutedGuests.clear();
+    }
+
+    @Override
+    public void leaveWorld(Runnable then) {
+        onWorldDisconnect();
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != null) {
             mc.disconnect(new TitleScreen(), false);
