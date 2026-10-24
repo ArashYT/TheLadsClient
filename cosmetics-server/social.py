@@ -1,4 +1,4 @@
-"""Lads social relay & backend (Task S1, Hardened): friends graph, presence, DMs,
+"""Lads social relay & backend (Task S1, Hardened Round 2): friends graph, presence, DMs,
 invites, join requests, ICE signaling, and Cloudflare TURN minting.
 
 Mounted on the cosmetics aiohttp server at /social/ws.
@@ -25,6 +25,7 @@ from cosmetics import plain_uuid, server_id, has_joined, NAME_RE
 log = logging.getLogger("social")
 
 MAX_FRIENDS = 500
+MAX_BLOCKS_PER_USER = 1000
 FRIEND_REQUEST_RATE_LIMIT = 20  # per hour
 DM_RATE_LIMIT = 30              # per minute
 DM_MAX_CHARS = 256
@@ -32,6 +33,7 @@ INVITE_RATE_LIMIT = 30          # per hour
 JOIN_REQUEST_RATE_LIMIT = 30    # per hour
 OFFLINE_DM_TTL_MS = 7 * 86400 * 1000  # 7 days
 MAX_OFFLINE_DMS_PER_RECIPIENT = 100
+MAX_OFFLINE_DMS_PER_PAIR = 50
 INVITE_TTL_SECONDS = 300        # 5 minutes
 JOIN_REQUEST_TTL_SECONDS = 300  # 5 minutes
 MAX_PENDING_INVITES_PER_HOST = 20
@@ -43,18 +45,30 @@ AUTH_TIMEOUT = 10.0
 WS_MAX_MSG_SIZE = 65536
 RELAY_BUDGET_BYTES = 900 * 10**9  # 900 GB (decimal)
 RELAY_MAX_BYTES_PER_SEC = 12_500_000  # 100 Mbit/s
+MAX_RELAY_SESSION_BYTES = 50 * 10**9   # 50 GB per session ceiling
+MAX_RELAY_SESSION_DURATION = 6.0 * 3600.0  # 6 hours
 STUN_SERVER = "stun:stun.cloudflare.com:3478"
 ALLOWED_STATES = frozenset({"menu", "singleplayer", "hosting", "server", "offline"})
 ALLOWED_SCOPES = frozenset({"off", "lan", "friends", "invite"})
+KNOWN_GAME_KEYS = frozenset({"mc", "loader", "profileKind", "packId", "packVersion", "modsHash", "lads"})
+
+_MOJANG_SEMAPHORE = asyncio.Semaphore(8)
 
 _PROFILE_CACHE: OrderedDict[str, tuple[float, dict | None]] = OrderedDict()
 MAX_PROFILE_CACHE = 10000
 
 
-def get_default_db_path() -> Path:
+def get_default_db_path(db_path: Path | str | None = None) -> Path:
     env_db = os.getenv("SOCIAL_DB")
     if env_db:
         return Path(env_db).resolve()
+    if db_path is not None:
+        p = Path(db_path).resolve()
+        if p.is_dir():
+            return (p / "social.db").resolve()
+        if p.name == "social.db":
+            return p
+        return p.with_name("social.db").resolve()
     cosmetics_env = os.getenv("COSMETICS_DB")
     if cosmetics_env:
         return Path(cosmetics_env).resolve().with_name("social.db")
@@ -101,7 +115,7 @@ async def lookup_mojang_profile(name: str) -> dict | None:
                         _PROFILE_CACHE.popitem(last=False)
                     return None
                 else:
-                    log.warning("Mojang profile lookup returned HTTP %d for %s", resp.status, name)
+                    log.warning("Mojang profile lookup returned HTTP %d", resp.status)
                     return None
     except Exception as e:
         log.warning("Mojang profile lookup error: %s", type(e).__name__)
@@ -158,7 +172,8 @@ def validate_game(game: Any) -> tuple[bool, dict | None]:
     for k, v in game.items():
         if not isinstance(k, str) or len(k) > 32 or not isinstance(v, str) or len(v) > 64:
             return False, None
-        sanitized[k] = v
+        if k in KNOWN_GAME_KEYS:
+            sanitized[k] = v
     return True, sanitized
 
 
@@ -226,10 +241,11 @@ def are_games_compatible(host_game: dict | None, guest_game: dict | None) -> boo
         return False
     if host_game.get("loader") and guest_game.get("loader") and host_game.get("loader") != guest_game.get("loader"):
         return False
-    if host_game.get("packId", "") != guest_game.get("packId", ""):
-        return False
-    if host_game.get("packVersion", "") != guest_game.get("packVersion", ""):
-        return False
+    if host_game.get("profileKind") == "pack" or guest_game.get("profileKind") == "pack":
+        if host_game.get("packId") != guest_game.get("packId"):
+            return False
+        if host_game.get("packVersion") != guest_game.get("packVersion"):
+            return False
     return True
 
 
@@ -239,16 +255,7 @@ def are_games_compatible(host_game: dict | None, guest_game: dict | None) -> boo
 
 class SocialStore:
     def __init__(self, db_path: Path | str | None = None):
-        if db_path is not None:
-            p = Path(db_path).resolve()
-            if p.name == "cosmetics.db":
-                p = p.with_name("social.db")
-            elif p.is_dir():
-                p = p / "social.db"
-            self.db_path = p
-        else:
-            self.db_path = get_default_db_path()
-
+        self.db_path = get_default_db_path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
@@ -348,6 +355,16 @@ class SocialStore:
                 return row[0] if row else None
         return await asyncio.to_thread(_op)
 
+    async def get_name_row(self, name: str) -> tuple[str, str, int] | None:
+        def _op():
+            with self._connect() as conn:
+                row = conn.execute(
+                    "SELECT uuid, name, updated_at FROM player_names WHERE name = ? COLLATE NOCASE ORDER BY updated_at DESC",
+                    (name,)
+                ).fetchone()
+                return (row[0], row[1], row[2]) if row else None
+        return await asyncio.to_thread(_op)
+
     # --- Friends ---
     async def get_friends(self, user_uuid: str) -> list[dict]:
         def _op():
@@ -380,24 +397,22 @@ class SocialStore:
                 return row is not None
         return await asyncio.to_thread(_op)
 
-    async def friend_count(self, user_uuid: str) -> int:
-        def _op():
-            with self._connect() as conn:
-                row = conn.execute("SELECT count(*) FROM friends WHERE user_uuid = ?", (user_uuid,)).fetchone()
-                return row[0] if row else 0
-        return await asyncio.to_thread(_op)
-
     async def add_friend(self, u1: str, u2: str) -> None:
-        now_ms = int(time.time() * 1000)
+        now = int(time.time())
         def _op():
             with self._connect() as conn:
                 conn.execute(
-                    """INSERT OR IGNORE INTO friends (user_uuid, friend_uuid, nick, since)
-                       VALUES (?, ?, NULL, ?), (?, ?, NULL, ?)""",
-                    (u1, u2, now_ms, u2, u1, now_ms)
+                    "INSERT OR IGNORE INTO friends (user_uuid, friend_uuid, since) VALUES (?, ?, ?)",
+                    (u1, u2, now)
                 )
-                conn.execute("DELETE FROM requests WHERE (from_uuid = ? AND to_uuid = ?) OR (from_uuid = ? AND to_uuid = ?)",
-                             (u1, u2, u2, u1))
+                conn.execute(
+                    "INSERT OR IGNORE INTO friends (user_uuid, friend_uuid, since) VALUES (?, ?, ?)",
+                    (u2, u1, now)
+                )
+                conn.execute(
+                    "DELETE FROM requests WHERE (from_uuid = ? AND to_uuid = ?) OR (from_uuid = ? AND to_uuid = ?)",
+                    (u1, u2, u2, u1)
+                )
         await asyncio.to_thread(_op)
 
     async def remove_friend(self, u1: str, u2: str) -> None:
@@ -418,14 +433,14 @@ class SocialStore:
                 )
         await asyncio.to_thread(_op)
 
-    # --- Requests ---
-    async def log_request_attempt(self, from_uuid: str) -> None:
-        now = int(time.time())
+    async def friend_count(self, user_uuid: str) -> int:
         def _op():
             with self._connect() as conn:
-                conn.execute("INSERT INTO request_log (from_uuid, sent_at) VALUES (?, ?)", (from_uuid, now))
-        await asyncio.to_thread(_op)
+                row = conn.execute("SELECT count(*) FROM friends WHERE user_uuid = ?", (user_uuid,)).fetchone()
+                return row[0] if row else 0
+        return await asyncio.to_thread(_op)
 
+    # --- Requests ---
     async def add_request(self, from_uuid: str, to_uuid: str) -> None:
         now = int(time.time())
         def _op():
@@ -434,6 +449,12 @@ class SocialStore:
                     "INSERT OR REPLACE INTO requests (from_uuid, to_uuid, created_at) VALUES (?, ?, ?)",
                     (from_uuid, to_uuid, now)
                 )
+        await asyncio.to_thread(_op)
+
+    async def delete_request(self, from_uuid: str, to_uuid: str) -> None:
+        def _op():
+            with self._connect() as conn:
+                conn.execute("DELETE FROM requests WHERE from_uuid = ? AND to_uuid = ?", (from_uuid, to_uuid))
         await asyncio.to_thread(_op)
 
     async def has_request(self, from_uuid: str, to_uuid: str) -> bool:
@@ -446,19 +467,21 @@ class SocialStore:
                 return row is not None
         return await asyncio.to_thread(_op)
 
-    async def delete_request(self, from_uuid: str, to_uuid: str) -> None:
+    async def log_request_attempt(self, from_uuid: str) -> None:
+        now = int(time.time())
         def _op():
             with self._connect() as conn:
-                conn.execute("DELETE FROM requests WHERE from_uuid = ? AND to_uuid = ?", (from_uuid, to_uuid))
+                conn.execute("INSERT INTO request_log (from_uuid, sent_at) VALUES (?, ?)", (from_uuid, now))
+                conn.execute("DELETE FROM request_log WHERE sent_at < ?", (now - 3600,))
         await asyncio.to_thread(_op)
 
     async def count_requests_last_hour(self, from_uuid: str) -> int:
-        cutoff = int(time.time()) - 3600
+        now = int(time.time())
         def _op():
             with self._connect() as conn:
                 row = conn.execute(
-                    "SELECT count(*) FROM request_log WHERE from_uuid = ? AND sent_at > ?",
-                    (from_uuid, cutoff)
+                    "SELECT count(*) FROM request_log WHERE from_uuid = ? AND sent_at >= ?",
+                    (from_uuid, now - 3600)
                 ).fetchone()
                 return row[0] if row else 0
         return await asyncio.to_thread(_op)
@@ -517,10 +540,25 @@ class SocialStore:
                 return [row[0] for row in cursor.fetchall()]
         return await asyncio.to_thread(_op)
 
+    async def get_block_count(self, user_uuid: str) -> int:
+        def _op():
+            with self._connect() as conn:
+                row = conn.execute("SELECT count(*) FROM blocks WHERE user_uuid = ?", (user_uuid,)).fetchone()
+                return row[0] if row else 0
+        return await asyncio.to_thread(_op)
+
     async def block(self, user_uuid: str, target_uuid: str) -> None:
         now = int(time.time())
         def _op():
             with self._connect() as conn:
+                row = conn.execute("SELECT count(*) FROM blocks WHERE user_uuid = ?", (user_uuid,)).fetchone()
+                count = row[0] if row else 0
+                already = conn.execute(
+                    "SELECT 1 FROM blocks WHERE user_uuid = ? AND blocked_uuid = ?",
+                    (user_uuid, target_uuid)
+                ).fetchone()
+                if not already and count >= MAX_BLOCKS_PER_USER:
+                    return
                 conn.execute(
                     "INSERT OR REPLACE INTO blocks (user_uuid, blocked_uuid, created_at) VALUES (?, ?, ?)",
                     (user_uuid, target_uuid, now)
@@ -570,6 +608,22 @@ class SocialStore:
     async def save_offline_dm(self, from_uuid: str, to_uuid: str, text: str, ts: int) -> None:
         def _op():
             with self._connect() as conn:
+                # Cap at 50 per (sender, recipient) pair
+                row_pair = conn.execute(
+                    "SELECT count(*) FROM dm_offline WHERE from_uuid = ? AND to_uuid = ?",
+                    (from_uuid, to_uuid)
+                ).fetchone()
+                count_pair = row_pair[0] if row_pair else 0
+                if count_pair >= MAX_OFFLINE_DMS_PER_PAIR:
+                    excess_pair = count_pair - MAX_OFFLINE_DMS_PER_PAIR + 1
+                    conn.execute(
+                        """DELETE FROM dm_offline WHERE id IN (
+                            SELECT id FROM dm_offline WHERE from_uuid = ? AND to_uuid = ? ORDER BY ts ASC LIMIT ?
+                        )""",
+                        (from_uuid, to_uuid, excess_pair)
+                    )
+
+                # Cap at 100 per recipient
                 row = conn.execute("SELECT count(*) FROM dm_offline WHERE to_uuid = ?", (to_uuid,)).fetchone()
                 count = row[0] if row else 0
                 if count >= MAX_OFFLINE_DMS_PER_RECIPIENT:
@@ -587,20 +641,18 @@ class SocialStore:
         await asyncio.to_thread(_op)
 
     async def get_and_clear_offline_dms(self, user_uuid: str) -> list[dict]:
-        cutoff = int(time.time() * 1000) - OFFLINE_DM_TTL_MS
+        now_ms = int(time.time() * 1000)
+        cutoff = now_ms - OFFLINE_DM_TTL_MS
         def _op():
             with self._connect() as conn:
                 conn.execute("DELETE FROM dm_offline WHERE ts < ?", (cutoff,))
                 cursor = conn.execute(
-                    "SELECT id, from_uuid, text, ts FROM dm_offline WHERE to_uuid = ? AND ts >= ? ORDER BY ts ASC LIMIT 100",
-                    (user_uuid, cutoff)
+                    "SELECT from_uuid, text, ts FROM dm_offline WHERE to_uuid = ? ORDER BY ts ASC LIMIT 100",
+                    (user_uuid,)
                 )
                 rows = cursor.fetchall()
-                if rows:
-                    ids = [r[0] for r in rows]
-                    placeholders = ",".join("?" for _ in ids)
-                    conn.execute(f"DELETE FROM dm_offline WHERE id IN ({placeholders})", ids)
-                return [{"from": r[1], "text": r[2], "ts": r[3]} for r in rows]
+                conn.execute("DELETE FROM dm_offline WHERE to_uuid = ?", (user_uuid,))
+                return [{"from": r[0], "text": r[1], "ts": r[2]} for r in rows]
         return await asyncio.to_thread(_op)
 
     # --- Relay Usage ---
@@ -637,6 +689,9 @@ class SocialPeer:
         self.gone: bool = False
         self.send_queue: asyncio.Queue[str | None] = asyncio.Queue(maxsize=256)
         self.writer_task: asyncio.Task = asyncio.create_task(self._writer())
+        self.rate_tokens: float = 40.0
+        self.rate_last: float = time.monotonic()
+        self.rate_violations: int = 0
 
     async def _writer(self) -> None:
         try:
@@ -692,13 +747,38 @@ class SocialHub:
         self.store = store
         self.peers: dict[str, SocialPeer] = {}
         self.sessions: dict[str, dict] = {}
+        self.ended_sessions: dict[str, dict] = {}
         self.invites: dict[str, dict] = {}
         self.join_requests: dict[str, dict] = {}
         self.ip_counts: dict[str, int] = {}
+        self.auth_failures: dict[str, list[float]] = {}
+        self.auth_blocked_until: dict[str, float] = {}
         self.dm_limits: dict[str, tuple[float, int]] = {}
         self.invite_limits: dict[str, tuple[float, int]] = {}
         self.join_limits: dict[str, tuple[float, int]] = {}
         self.signal_limits: dict[str, tuple[float, int]] = {}
+
+    def is_ip_auth_blocked(self, ip: str) -> bool:
+        now = time.monotonic()
+        blocked_until = self.auth_blocked_until.get(ip, 0.0)
+        if now < blocked_until:
+            return True
+        if ip in self.auth_blocked_until:
+            del self.auth_blocked_until[ip]
+        return False
+
+    def record_auth_failure(self, ip: str) -> None:
+        now = time.monotonic()
+        fails = self.auth_failures.setdefault(ip, [])
+        fails.append(now)
+        self.auth_failures[ip] = [t for t in fails if now - t <= 60.0]
+        if len(self.auth_failures[ip]) >= 5:
+            self.auth_blocked_until[ip] = now + 60.0
+            self.auth_failures[ip].clear()
+
+    def clear_auth_failure(self, ip: str) -> None:
+        self.auth_failures.pop(ip, None)
+        self.auth_blocked_until.pop(ip, None)
 
     def sweep_expired(self) -> None:
         now = time.time()
@@ -708,6 +788,9 @@ class SocialHub:
         for req_id, req in list(self.join_requests.items()):
             if now > req["expires_at"]:
                 del self.join_requests[req_id]
+        for s_id, s_data in list(self.ended_sessions.items()):
+            if now - s_data.get("ended_at", 0) > 60.0:
+                del self.ended_sessions[s_id]
 
     def check_rate_limit(self, limits_dict: dict, uuid: str, limit: int, window: float) -> bool:
         now = time.monotonic()
@@ -735,7 +818,6 @@ class SocialHub:
 
     async def unregister(self, peer: SocialPeer) -> None:
         if self.peers.get(peer.uuid) is not peer:
-            # Replaced by a newer socket; do NOT tear down active sessions or presence!
             return
 
         del self.peers[peer.uuid]
@@ -745,6 +827,7 @@ class SocialHub:
         for sid, sess in list(self.sessions.items()):
             if sess["host"] == peer.uuid or sess["guest"] == peer.uuid:
                 del self.sessions[sid]
+                self.signal_limits.pop(sid, None)
                 other_uuid = sess["guest"] if sess["host"] == peer.uuid else sess["host"]
                 other = self.peers.get(other_uuid)
                 if other and not other.gone:
@@ -759,7 +842,7 @@ class SocialHub:
             if req["host"] == peer.uuid or req["guest"] == peer.uuid:
                 del self.join_requests[req_id]
 
-        # Broadcast offline presence to friends
+        # Broadcast offline presence to friends (shielded)
         friends = await self.store.get_friends(peer.uuid)
         for f in friends:
             f_uuid = f["uuid"]
@@ -841,17 +924,6 @@ class SocialHub:
         month_str = time.strftime("%Y-%m", time.gmtime())
         relay_bytes = await self.store.get_relay_bytes(month_str)
 
-        # One active session per guest: terminate existing session for guest if any
-        for s_id, s_data in list(self.sessions.items()):
-            if s_data["guest"] == guest_peer.uuid:
-                del self.sessions[s_id]
-                h_peer = self.peers.get(s_data["host"])
-                g_peer = self.peers.get(s_data["guest"])
-                if h_peer and not h_peer.gone:
-                    h_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "replaced"})
-                if g_peer and not g_peer.gone:
-                    g_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "replaced"})
-
         turn_list = []
         relay_status = "none"
         if relay_bytes >= RELAY_BUDGET_BYTES:
@@ -864,6 +936,18 @@ class SocialHub:
                 log.warning("TURN credential minting error: %s", type(e).__name__)
                 turn_list = []
                 relay_status = "none"
+
+        # ATOMIC session replace and insert: all awaits are done before this block
+        for s_id, s_data in list(self.sessions.items()):
+            if s_data["guest"] == guest_peer.uuid:
+                del self.sessions[s_id]
+                self.signal_limits.pop(s_id, None)
+                h_peer = self.peers.get(s_data["host"])
+                g_peer = self.peers.get(s_data["guest"])
+                if h_peer and not h_peer.gone:
+                    h_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "replaced"})
+                if g_peer and not g_peer.gone:
+                    g_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "replaced"})
 
         ice_config = {
             "stun": [STUN_SERVER],
@@ -878,6 +962,7 @@ class SocialHub:
             "guest": guest_peer.uuid,
             "created_at": time.time(),
             "has_turn": bool(turn_list),
+            "reports": {},
             "recorded_bytes": 0
         }
 
@@ -921,11 +1006,15 @@ async def read_ws(ws: web.WebSocketResponse) -> tuple[str | None, dict | None]:
 
 
 async def authenticate(hub: SocialHub, ws: web.WebSocketResponse, ip: str) -> SocialPeer | None:
+    if hub.is_ip_auth_blocked(ip):
+        return None
+
     nonce = secrets.token_hex(16)
     await ws.send_str(json.dumps({"t": "challenge", "nonce": nonce}))
 
     status, msg = await read_ws(ws)
     if status != "ok" or not msg or msg.get("t") != "auth":
+        hub.record_auth_failure(ip)
         return None
 
     uuid_str = plain_uuid(msg.get("uuid"))
@@ -933,18 +1022,22 @@ async def authenticate(hub: SocialHub, ws: web.WebSocketResponse, ip: str) -> So
     sid = server_id(nonce)
 
     if not uuid_str or not isinstance(name, str) or not NAME_RE.fullmatch(name) or msg.get("serverId") != sid:
+        hub.record_auth_failure(ip)
         return None
 
     if not hub.insecure:
         try:
-            joined = await has_joined(name, sid)
+            async with _MOJANG_SEMAPHORE:
+                joined = await has_joined(name, sid)
         except Exception as e:
             log.warning("Mojang hasJoined failed: %s", type(e).__name__)
             joined = None
         if joined != uuid_str:
+            hub.record_auth_failure(ip)
             log.info("Social auth refused for %s", uuid_str)
             return None
 
+    hub.clear_auth_failure(ip)
     await hub.store.save_name(uuid_str, name)
     settings = await hub.store.get_settings(uuid_str)
     peer = SocialPeer(ws=ws, uuid=uuid_str, name=name, settings=settings, ip=ip)
@@ -962,6 +1055,24 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
             break
         if status != "ok" or msg is None:
             break
+
+        # Token bucket rate limiting: 20 msgs/s, burst capacity 40
+        now = time.monotonic()
+        peer.rate_tokens = min(40.0, peer.rate_tokens + (now - peer.rate_last) * 20.0)
+        peer.rate_last = now
+
+        if peer.rate_tokens < 1.0:
+            peer.rate_violations += 1
+            peer.rate_tokens -= 1.0
+            if peer.rate_violations > 20 or peer.rate_tokens < -20.0:
+                await peer.close(code=4008, message=b"rate abuse")
+                break
+            peer.send_json({"t": "error", "code": "rate", "ref": ""})
+            continue
+        else:
+            peer.rate_tokens -= 1.0
+            if peer.rate_violations > 0:
+                peer.rate_violations -= 1
 
         kind = msg.get("t")
         if not isinstance(kind, str):
@@ -1011,7 +1122,7 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     peer.send_json({"t": "error", "code": "limit", "ref": name})
                     continue
 
-                # Resolve name
+                # Resolve name: check active peers, then DB cache (refresh if >24h old), then Mojang
                 target_uuid = None
                 canonical_name = name
                 target_peer = hub.find_peer_by_name(name)
@@ -1019,14 +1130,30 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     target_uuid = target_peer.uuid
                     canonical_name = target_peer.name
                 else:
-                    target_uuid = await store.get_uuid_by_name(name)
-
-                if not target_uuid:
-                    profile = await lookup_mojang_profile(name)
-                    if profile:
-                        target_uuid = profile["id"]
-                        canonical_name = profile["name"]
-                        await store.save_name(target_uuid, canonical_name)
+                    target_row = await store.get_name_row(name)
+                    now_ts = int(time.time())
+                    if target_row:
+                        u, cname, updated_at = target_row
+                        if now_ts - updated_at < 24 * 3600:
+                            target_uuid = u
+                            canonical_name = cname
+                        else:
+                            # Stale cache: refresh from Mojang on lookup
+                            profile = await lookup_mojang_profile(name)
+                            if profile:
+                                target_uuid = profile["id"]
+                                canonical_name = profile["name"]
+                                await store.save_name(target_uuid, canonical_name)
+                            else:
+                                # Fall back to the cache if Mojang fails
+                                target_uuid = u
+                                canonical_name = cname
+                    else:
+                        profile = await lookup_mojang_profile(name)
+                        if profile:
+                            target_uuid = profile["id"]
+                            canonical_name = profile["name"]
+                            await store.save_name(target_uuid, canonical_name)
 
                 if not target_uuid:
                     peer.send_json({"t": "error", "code": "not_found", "ref": name})
@@ -1064,6 +1191,11 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     t_peer = hub.peers.get(target_uuid)
                     if t_peer and not t_peer.gone:
                         t_peer.send_json({"t": "friend_added", "uuid": peer.uuid, "name": peer.name})
+                        # P13: send each side the other's current presence
+                        peer.send_json(hub.format_presence_for(t_peer, peer))
+                        t_peer.send_json(hub.format_presence_for(peer, t_peer))
+                    else:
+                        peer.send_json({"t": "presence", "uuid": target_uuid, "state": "offline"})
                 else:
                     await store.add_request(peer.uuid, target_uuid)
                     peer.send_json({"t": "request_sent", "uuid": target_uuid, "name": canonical_name})
@@ -1092,8 +1224,14 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                 t_peer = hub.peers.get(t_uuid)
                 if t_peer and not t_peer.gone:
                     t_peer.send_json({"t": "friend_added", "uuid": peer.uuid, "name": peer.name})
+                    # P13: send each side the other's current presence
+                    peer.send_json(hub.format_presence_for(t_peer, peer))
+                    t_peer.send_json(hub.format_presence_for(peer, t_peer))
+                else:
+                    peer.send_json({"t": "presence", "uuid": t_uuid, "state": "offline"})
 
             elif kind == "friend_decline":
+                invite_id = msg.get("inviteId")
                 t_uuid = plain_uuid(msg.get("uuid"))
                 if t_uuid:
                     await store.delete_request(t_uuid, peer.uuid)
@@ -1118,12 +1256,19 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     peer.send_json({"t": "error", "code": "self", "ref": t_uuid})
                     continue
 
+                if not await store.is_blocked(peer.uuid, t_uuid):
+                    if await store.get_block_count(peer.uuid) >= MAX_BLOCKS_PER_USER:
+                        peer.send_json({"t": "error", "code": "limit", "ref": t_uuid})
+                        continue
+
+                were_friends = await store.are_friends(peer.uuid, t_uuid)
                 await store.block(peer.uuid, t_uuid)
 
                 # End active sessions between pair
                 for s_id, s_data in list(hub.sessions.items()):
                     if (s_data["host"] == peer.uuid and s_data["guest"] == t_uuid) or (s_data["host"] == t_uuid and s_data["guest"] == peer.uuid):
                         del hub.sessions[s_id]
+                        hub.signal_limits.pop(s_id, None)
                         h_peer = hub.peers.get(s_data["host"])
                         g_peer = hub.peers.get(s_data["guest"])
                         if h_peer and not h_peer.gone:
@@ -1140,10 +1285,12 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     if (req["host"] == peer.uuid and req["guest"] == t_uuid) or (req["host"] == t_uuid and req["guest"] == peer.uuid):
                         del hub.join_requests[req_id]
 
-                peer.send_json({"t": "friend_removed", "uuid": t_uuid})
-                t_peer = hub.peers.get(t_uuid)
-                if t_peer and not t_peer.gone:
-                    t_peer.send_json({"t": "friend_removed", "uuid": peer.uuid})
+                # Lows: block sends friend_removed only if they were friends
+                if were_friends:
+                    peer.send_json({"t": "friend_removed", "uuid": t_uuid})
+                    t_peer = hub.peers.get(t_uuid)
+                    if t_peer and not t_peer.gone:
+                        t_peer.send_json({"t": "friend_removed", "uuid": peer.uuid})
 
             elif kind == "unblock":
                 t_uuid = plain_uuid(msg.get("uuid"))
@@ -1257,6 +1404,7 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     peer.send_json({"t": "error", "code": "bad", "ref": ""})
                     continue
                 inv = hub.invites.get(invite_id)
+                # M1: invite_decline only by the invitee
                 if not inv or inv["guest"] != peer.uuid:
                     peer.send_json({"t": "error", "code": "not_found", "ref": invite_id})
                     continue
@@ -1278,10 +1426,12 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     peer.send_json({"t": "error", "code": "not_found", "ref": invite_id})
                     continue
 
+                del hub.invites[invite_id]
+
                 host_uuid = inv["host"]
                 host_peer = hub.peers.get(host_uuid)
-                if not host_peer or host_peer.gone or host_peer.presence.get("state") != "hosting" or not host_peer.presence.get("world"):
-                    peer.send_json({"t": "error", "code": "expired", "ref": invite_id})
+                if not host_peer or host_peer.gone or host_peer.presence.get("state") != "hosting":
+                    peer.send_json({"t": "error", "code": "offline", "ref": invite_id})
                     continue
 
                 if not await store.are_friends(peer.uuid, host_uuid):
@@ -1292,9 +1442,9 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     peer.send_json({"t": "error", "code": "blocked", "ref": invite_id})
                     continue
 
-                world = host_peer.presence.get("world") or {}
-                slots = world.get("slots", 8)
-                used = world.get("used", 0)
+                w = inv["world"]
+                slots = w.get("slots", 8)
+                used = w.get("used", 0)
                 if used >= slots and slots > 0:
                     peer.send_json({"t": "error", "code": "full", "ref": invite_id})
                     continue
@@ -1303,8 +1453,8 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     peer.send_json({"t": "error", "code": "incompatible", "ref": invite_id})
                     continue
 
-                del hub.invites[invite_id]
-                await hub.start_p2p(host_peer, peer, relay_only=world.get("relayOnly", False))
+                relay_only = w.get("relayOnly", False)
+                await hub.start_p2p(host_peer, peer, relay_only=relay_only)
 
             elif kind == "join_request":
                 host_uuid = plain_uuid(msg.get("host"))
@@ -1320,8 +1470,13 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     peer.send_json({"t": "error", "code": "blocked", "ref": host_uuid})
                     continue
 
+                # Rate limit (30 / hour) surviving reconnect
+                if not hub.check_rate_limit(hub.join_limits, peer.uuid, JOIN_REQUEST_RATE_LIMIT, 3600.0):
+                    peer.send_json({"t": "error", "code": "rate", "ref": host_uuid})
+                    continue
+
                 host_peer = hub.peers.get(host_uuid)
-                if not host_peer or host_peer.gone or host_peer.presence.get("state") != "hosting" or not host_peer.presence.get("world") or host_peer.settings.get("appearOffline", False):
+                if not host_peer or host_peer.gone or host_peer.settings.get("appearOffline", False) or host_peer.presence.get("state") != "hosting":
                     peer.send_json({"t": "error", "code": "offline", "ref": host_uuid})
                     continue
 
@@ -1341,12 +1496,13 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     peer.send_json({"t": "error", "code": "incompatible", "ref": host_uuid})
                     continue
 
-                # Rate limit (30 / hour) surviving reconnect
-                if not hub.check_rate_limit(hub.join_limits, peer.uuid, JOIN_REQUEST_RATE_LIMIT, 3600.0):
-                    peer.send_json({"t": "error", "code": "rate", "ref": host_uuid})
-                    continue
-
                 hub.sweep_expired()
+
+                # N2: at most ONE pending join request per (guest, host) pair: a new one replaces the old
+                for req_id, req in list(hub.join_requests.items()):
+                    if req["guest"] == peer.uuid and req["host"] == host_uuid:
+                        del hub.join_requests[req_id]
+
                 host_req_count = sum(1 for jr in hub.join_requests.values() if jr["host"] == host_uuid)
                 if host_req_count >= MAX_PENDING_JOIN_REQUESTS_PER_HOST:
                     peer.send_json({"t": "error", "code": "limit", "ref": "join_requests"})
@@ -1432,105 +1588,121 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     continue
 
                 del hub.join_requests[req_id]
-                await hub.start_p2p(peer, guest_peer, relay_only=world.get("relayOnly", False))
+                relay_only = world.get("relayOnly", False)
+                await hub.start_p2p(peer, guest_peer, relay_only=relay_only)
 
             elif kind == "signal":
                 sid = msg.get("sid")
                 data = msg.get("data")
-                if not isinstance(sid, str) or data is None:
-                    peer.send_json({"t": "error", "code": "bad", "ref": "signal"})
+                if not isinstance(sid, str) or not isinstance(data, dict):
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
+
+                data_str = json.dumps(data)
+                if len(data_str) > MAX_SIGNAL_DATA_BYTES:
+                    peer.send_json({"t": "error", "code": "limit", "ref": sid})
                     continue
 
                 session = hub.sessions.get(sid)
-                if not session or peer.uuid not in (session["host"], session["guest"]):
+                if not session or (session["host"] != peer.uuid and session["guest"] != peer.uuid):
                     peer.send_json({"t": "error", "code": "not_found", "ref": sid})
                     continue
 
-                # Signal size cap 8 KB
-                try:
-                    str_data = json.dumps(data)
-                except Exception:
-                    peer.send_json({"t": "error", "code": "bad", "ref": "signal_data"})
-                    continue
-
-                if len(str_data) > MAX_SIGNAL_DATA_BYTES:
-                    peer.send_json({"t": "error", "code": "limit", "ref": "signal_data"})
-                    continue
-
-                # Signal rate cap 40 / sec per session
                 if not hub.check_rate_limit(hub.signal_limits, sid, MAX_SIGNALS_PER_SEC, 1.0):
                     peer.send_json({"t": "error", "code": "rate", "ref": sid})
                     continue
 
-                other_uuid = session["guest"] if peer.uuid == session["host"] else session["host"]
-                if not await store.are_friends(peer.uuid, other_uuid):
-                    peer.send_json({"t": "error", "code": "not_friend", "ref": sid})
-                    continue
-
-                target_peer = hub.peers.get(other_uuid)
-                if target_peer and not target_peer.gone:
-                    target_peer.send_json({"t": "signal", "sid": sid, "data": data})
+                other_uuid = session["guest"] if session["host"] == peer.uuid else session["host"]
+                other = hub.peers.get(other_uuid)
+                if other and not other.gone:
+                    other.send_json({"t": "signal", "sid": sid, "data": data})
 
             elif kind == "p2p_end":
                 sid = msg.get("sid")
-                reason = msg.get("reason", "closed")
-                if not isinstance(sid, str) or not isinstance(reason, str) or len(reason) > 64:
-                    peer.send_json({"t": "error", "code": "bad", "ref": "p2p_end"})
+                reason = msg.get("reason", "normal")
+                relayed = msg.get("relayed", False)
+                raw_bytes = msg.get("bytes", 0)
+
+                if not isinstance(sid, str):
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
                     continue
 
-                session = hub.sessions.get(sid)
-                if not session or peer.uuid not in (session["host"], session["guest"]):
+                if not isinstance(reason, str) or len(reason) > 64:
+                    peer.send_json({"t": "error", "code": "bad", "ref": "reason"})
+                    continue
+
+                session = hub.sessions.get(sid) or hub.ended_sessions.get(sid)
+                if not session or (session["host"] != peer.uuid and session["guest"] != peer.uuid):
                     peer.send_json({"t": "error", "code": "not_found", "ref": sid})
                     continue
 
-                # H5: Validate bytes: int, 0 <= bytes <= duration * 12,500,000
-                relayed = msg.get("relayed") is True
-                bytes_val = msg.get("bytes", 0)
-                if bytes_val is not None:
-                    if not isinstance(bytes_val, int) or type(bytes_val) is bool or bytes_val < 0:
+                if raw_bytes is not None and raw_bytes != 0:
+                    if not isinstance(raw_bytes, int) or isinstance(raw_bytes, bool) or raw_bytes < 0:
                         peer.send_json({"t": "error", "code": "bad", "ref": "bytes"})
                         continue
-                    duration = max(1.0, time.time() - session["created_at"])
-                    max_allowed = int(duration * RELAY_MAX_BYTES_PER_SEC)
-                    clamped_bytes = min(bytes_val, max_allowed)
-                    if session["has_turn"] and relayed and clamped_bytes > session["recorded_bytes"]:
-                        delta = clamped_bytes - session["recorded_bytes"]
-                        session["recorded_bytes"] = clamped_bytes
-                        month_str = time.strftime("%Y-%m", time.gmtime())
-                        await store.record_relay_bytes(month_str, delta)
 
-                hub.sessions.pop(sid, None)
-                other_uuid = session["guest"] if peer.uuid == session["host"] else session["host"]
-                target_peer = hub.peers.get(other_uuid)
-                if target_peer and not target_peer.gone:
-                    target_peer.send_json({"t": "p2p_end", "sid": sid, "reason": reason})
+                clamped_bytes = 0
+                if relayed is True and session["has_turn"] and isinstance(raw_bytes, int) and raw_bytes > 0:
+                    elapsed = max(0.0, time.time() - session["created_at"])
+                    elapsed_capped = min(elapsed, MAX_RELAY_SESSION_DURATION)
+                    max_allowed = min(int(elapsed_capped * RELAY_MAX_BYTES_PER_SEC), MAX_RELAY_SESSION_BYTES)
+                    clamped_bytes = min(raw_bytes, max_allowed)
+
+                session.setdefault("reports", {})[peer.uuid] = clamped_bytes
+
+                # Count the max once: record delta = max(reports) - recorded_bytes
+                new_max = max(session["reports"].values()) if session["reports"] else 0
+                delta = new_max - session.get("recorded_bytes", 0)
+                if delta > 0:
+                    month_str = time.strftime("%Y-%m", time.gmtime())
+                    await store.record_relay_bytes(month_str, delta)
+                    session["recorded_bytes"] = new_max
+
+                if sid in hub.sessions:
+                    del hub.sessions[sid]
+                    session["ended"] = True
+                    session["ended_at"] = time.time()
+                    hub.ended_sessions[sid] = session
+                    hub.signal_limits.pop(sid, None)
+
+                    other_uuid = session["guest"] if session["host"] == peer.uuid else session["host"]
+                    other = hub.peers.get(other_uuid)
+                    if other and not other.gone:
+                        other.send_json({"t": "p2p_end", "sid": sid, "reason": reason})
 
             elif kind == "settings":
-                show_server = msg.get("showServer")
-                appear_offline = msg.get("appearOffline")
+                raw_show = msg.get("showServer")
+                raw_appear = msg.get("appearOffline")
 
-                if show_server is not None and not isinstance(show_server, bool):
+                if raw_show is not None and not isinstance(raw_show, bool):
                     peer.send_json({"t": "error", "code": "bad", "ref": "showServer"})
                     continue
-                if appear_offline is not None and not isinstance(appear_offline, bool):
+                if raw_appear is not None and not isinstance(raw_appear, bool):
                     peer.send_json({"t": "error", "code": "bad", "ref": "appearOffline"})
                     continue
 
-                res = await store.update_settings(peer.uuid, show_server, appear_offline)
-                peer.settings = res
+                updated = await store.update_settings(peer.uuid, raw_show, raw_appear)
+                peer.settings = updated
+                peer.send_json({"t": "settings", **updated})
                 await hub.broadcast_presence(peer)
 
             else:
-                peer.send_json({"t": "error", "code": "bad", "ref": kind})
+                peer.send_json({"t": "error", "code": "bad", "ref": str(kind)})
 
         except Exception as e:
             log.warning("Error processing %s from %s: %s", kind, peer.uuid, type(e).__name__)
-            peer.send_json({"t": "error", "code": "bad", "ref": kind})
+            peer.send_json({"t": "error", "code": "bad", "ref": str(kind)})
 
 
 async def handle_social_ws(request: web.Request) -> web.WebSocketResponse:
     hub: SocialHub = request.app["social_hub"]
     ip = get_client_ip(request)
+
+    if hub.is_ip_auth_blocked(ip):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.close(code=4003, message=b"auth throttled")
+        return ws
 
     # Per-IP connection limit check (H2)
     if hub.ip_counts.get(ip, 0) >= MAX_CONCURRENT_SOCKETS_PER_IP:
@@ -1540,19 +1712,19 @@ async def handle_social_ws(request: web.Request) -> web.WebSocketResponse:
         return ws
 
     hub.ip_counts[ip] = hub.ip_counts.get(ip, 0) + 1
-
-    ws = web.WebSocketResponse(
-        heartbeat=30.0,
-        receive_timeout=90.0,
-        max_msg_size=WS_MAX_MSG_SIZE
-    )
-    await ws.prepare(request)
-
     peer = None
     try:
+        ws = web.WebSocketResponse(
+            heartbeat=30.0,
+            receive_timeout=90.0,
+            max_msg_size=WS_MAX_MSG_SIZE
+        )
+        await ws.prepare(request)
+
         try:
             peer = await asyncio.wait_for(authenticate(hub, ws, ip), timeout=AUTH_TIMEOUT)
         except asyncio.TimeoutError:
+            hub.record_auth_failure(ip)
             await ws.close(code=4003, message=b"auth timeout")
             return ws
 
@@ -1560,7 +1732,6 @@ async def handle_social_ws(request: web.Request) -> web.WebSocketResponse:
             await ws.close(code=4003, message=b"unauthorized")
             return ws
 
-        # Build and send hello BEFORE registering into hub.peers so events are not received prior to hello
         hello_data = await hub.build_hello(peer)
         peer.send_json(hello_data)
 
@@ -1568,10 +1739,14 @@ async def handle_social_ws(request: web.Request) -> web.WebSocketResponse:
         await hub.broadcast_presence(peer)
         await serve(hub, peer)
     finally:
-        hub.ip_counts[ip] = max(0, hub.ip_counts.get(ip, 1) - 1)
+        cnt = hub.ip_counts.get(ip, 1) - 1
+        if cnt <= 0:
+            hub.ip_counts.pop(ip, None)
+        else:
+            hub.ip_counts[ip] = cnt
         if peer:
             await peer.close()
-            await hub.unregister(peer)
+            await asyncio.shield(hub.unregister(peer))
 
     return ws
 

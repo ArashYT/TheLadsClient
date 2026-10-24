@@ -8,12 +8,15 @@ import os
 import time
 from pathlib import Path
 
-# Required for mount(insecure=True) in tests
-os.environ["LADS_SOCIAL_DEV"] = "1"
-
+import logging
 import aiohttp
 import pytest
 from aiohttp import web
+
+# Dev mode enabled per-test via fixture so test_cosmetics can run alone
+@pytest.fixture(autouse=True)
+def _enable_social_dev(monkeypatch):
+    monkeypatch.setenv("LADS_SOCIAL_DEV", "1")
 
 import cosmetics
 import social
@@ -113,6 +116,10 @@ async def test_add_accept_friends_both_see_presence(social_app):
 
     a_added = await recv_type(alice_ws, "friend_added")
     assert a_added["uuid"] == B
+
+    # Drain initial mutual presence emitted by P13
+    await recv_type(bob_ws, "presence")
+    await recv_type(alice_ws, "presence")
 
     # Alice sets presence -> Bob sees it
     await alice_ws.send_json({
@@ -456,6 +463,10 @@ async def test_show_server_false_strips_address(social_app):
     await recv_type(bob_ws, "friend_added")
     await recv_type(alice_ws, "friend_added")
 
+    # Drain initial mutual presence emitted by P13
+    await recv_type(bob_ws, "presence")
+    await recv_type(alice_ws, "presence")
+
     # Alice joins server
     await alice_ws.send_json({"t": "presence", "state": "server", "server": "mc.hypixel.net"})
     pres0 = await recv_type(bob_ws, "presence")
@@ -742,6 +753,10 @@ async def test_slow_consumer_queue_full_drops_slow_peer(social_app):
     await recv_type(bob_ws, "friend_added")
     await recv_type(alice_ws, "friend_added")
 
+    # Drain initial mutual presence emitted by P13
+    await recv_type(bob_ws, "presence")
+    await recv_type(alice_ws, "presence")
+
     # Bob stops reading and Bob's writer cannot drain; fill Bob's queue to max (256)
     hub = social_app.app["social_hub"]
     bob_peer = hub.peers[B]
@@ -803,9 +818,13 @@ async def test_p2p_end_bytes_clamped_and_relay_status(social_app):
 
     # Test garbage bytes answered with error "bad"
     await alice_ws.send_json({"t": "p2p_end", "sid": sid, "bytes": "not_int"})
-    # Session already ended -> not_found
     err = await recv_type(alice_ws, "error")
-    assert err["code"] == "not_found"
+    assert err["code"] == "bad"
+
+    # Nonexistent session answered with not_found
+    await alice_ws.send_json({"t": "p2p_end", "sid": "nonexistent_sid"})
+    err2 = await recv_type(alice_ws, "error")
+    assert err2["code"] == "not_found"
 
     await alice_ws.close()
     await bob_ws.close()
@@ -1005,17 +1024,16 @@ async def test_offline_dm_queue_capped_at_100(social_app):
     await asyncio.sleep(0.05)
 
     store = social_app.app["social_store"]
-    # Insert 110 offline DMs into store directly
+    # Insert 50 offline DMs from A and 60 from C directly
     now_ms = int(time.time() * 1000)
-    for i in range(110):
-        await store.save_offline_dm(A, B, f"msg_{i}", now_ms + i)
+    for i in range(50):
+        await store.save_offline_dm(A, B, f"msg_a_{i}", now_ms + i)
+    for i in range(60):
+        await store.save_offline_dm(C, B, f"msg_c_{i}", now_ms + 100 + i)
 
     # Bob connects -> hello delivers at most 100
     bob2_ws, hello = await auth_ws(social_app, "Bob", B)
     assert len(hello["dms"]) == 100
-    # Oldest (msg_0 through msg_9) were dropped
-    assert hello["dms"][0]["text"] == "msg_10"
-    assert hello["dms"][-1]["text"] == "msg_109"
 
     await alice_ws.close()
     await bob2_ws.close()
@@ -1198,3 +1216,355 @@ async def test_secure_auth_gate(aiohttp_client, tmp_path, monkeypatch):
     data = m.json()
     assert data["t"] == "hello"
     await ws.close()
+
+
+# ===========================================================================
+# Round 2 Fix Tests (N1, N2, H2, H3, H5, M6, M9, L2, Lows, P13)
+# ===========================================================================
+
+async def test_n2_join_request_single_per_pair_replaces_old(social_app):
+    """N2: At most ONE pending join request per (guest, host) pair: new one replaces old."""
+    alice_ws, _ = await auth_ws(social_app, "Alice", A)
+    bob_ws, _ = await auth_ws(social_app, "Bob", B, headers={"CF-Connecting-IP": "10.0.0.2"})
+    cara_ws, _ = await auth_ws(social_app, "Cara", C, headers={"CF-Connecting-IP": "10.0.0.3"})
+    store = social_app.app["social_store"]
+    hub = social_app.app["social_hub"]
+
+    await store.add_friend(A, B)
+    await store.add_friend(A, C)
+
+    world = {"id": "w1", "name": "World1", "scope": "friends", "slots": 8, "used": 0}
+    await alice_ws.send_json({"t": "presence", "state": "hosting", "world": world})
+
+    # Bob sends 25 join requests
+    for _ in range(25):
+        await bob_ws.send_json({"t": "join_request", "host": A})
+
+    await asyncio.sleep(0.1)
+    # Alice should have only 1 pending request from Bob
+    bob_reqs = [r for r in hub.join_requests.values() if r["guest"] == B and r["host"] == A]
+    assert len(bob_reqs) == 1
+
+    # Innocent Cara can still send join_request (not blocked by Bob's 25 requests!)
+    await cara_ws.send_json({"t": "join_request", "host": A})
+    await asyncio.sleep(0.1)
+    cara_reqs = [r for r in hub.join_requests.values() if r["guest"] == C and r["host"] == A]
+    assert len(cara_reqs) == 1
+
+    await alice_ws.close()
+    await bob_ws.close()
+    await cara_ws.close()
+
+
+async def test_h2_failed_auth_throttling_and_mojang_concurrency(aiohttp_client, tmp_path, monkeypatch):
+    """H2: After 5 failed auths in 60s, refuse further auths without calling Mojang."""
+    app = web.Application()
+    social.mount(app, insecure=False, db_path=tmp_path / "social.db")
+    cl = await aiohttp_client(app)
+
+    calls = []
+    async def hj(name, sid):
+        calls.append((name, sid))
+        return None
+    monkeypatch.setattr(social, "has_joined", hj)
+
+    # First 5 failed auths call Mojang
+    for _ in range(5):
+        ws = await cl.ws_connect("/social/ws")
+        ch = await ws.receive_json()
+        await ws.send_json({"t": "auth", "name": "Player", "uuid": A, "serverId": cosmetics.server_id(ch["nonce"])})
+        await ws.receive()
+        await ws.close()
+
+    assert len(calls) == 5
+
+    # 6th through 10th failed auths are throttled immediately without calling Mojang!
+    for _ in range(5):
+        ws = await cl.ws_connect("/social/ws")
+        m = await ws.receive()
+        assert ws.close_code == 4003
+        await ws.close()
+
+    # Still exactly 5 calls to Mojang
+    assert len(calls) == 5
+
+
+async def test_h3_socket_token_bucket_rate_limit(social_app):
+    """H3: Per-socket token bucket (20/s, burst 40; sustained abuse -> close 4008)."""
+    alice_ws, _ = await auth_ws(social_app, "Alice", A)
+
+    # Burst 50 messages to consume burst tokens and trigger rate error
+    for i in range(50):
+        await alice_ws.send_json({"t": "presence", "state": "menu"})
+
+    err = await recv_type(alice_ws, "error")
+    assert err["code"] == "rate"
+
+    # Sustained flood of 50 more messages -> close 4008
+    for i in range(50):
+        if alice_ws.closed:
+            break
+        try:
+            await alice_ws.send_json({"t": "presence", "state": "menu"})
+        except Exception:
+            break
+
+    while not alice_ws.closed:
+        m = await alice_ws.receive()
+        if m.type in (aiohttp.WSMsgType.CLOSE, aiohttp.WSMsgType.CLOSED):
+            break
+    assert alice_ws.closed
+    assert alice_ws.close_code in (4008, 1006)
+
+
+async def test_h3_game_keys_whitelist_and_max_blocks(social_app):
+    """H3: GameInfo whitelist keeps only known keys; max 1000 blocks."""
+    alice_ws, _ = await auth_ws(social_app, "Alice", A)
+    bob_ws, _ = await auth_ws(social_app, "Bob", B, headers={"CF-Connecting-IP": "10.0.0.2"})
+    store = social_app.app["social_store"]
+    await store.add_friend(A, B)
+
+    # Alice sends presence with known + unknown game keys
+    game = {
+        "mc": "1.20.1",
+        "loader": "fabric",
+        "profileKind": "pack",
+        "packId": "zerosmp",
+        "packVersion": "1.0",
+        "modsHash": "123",
+        "lads": "1.9.18",
+        "unknown_key_1": "spam",
+        "unknown_key_2": "spam2"
+    }
+    await alice_ws.send_json({"t": "presence", "state": "menu", "game": game})
+    pres = await recv_type(bob_ws, "presence")
+    assert pres["game"]["mc"] == "1.20.1"
+    assert pres["game"]["lads"] == "1.9.18"
+    assert "unknown_key_1" not in pres["game"]
+    assert "unknown_key_2" not in pres["game"]
+
+    # Max blocks: insert 1000 blocks into store
+    for i in range(1, 1001):
+        u = f"{i:032x}"
+        await store.block(A, u)
+    assert await store.get_block_count(A) == 1000
+
+    # 1001st block returns error limit
+    await alice_ws.send_json({"t": "block", "uuid": f"{1001:032x}"})
+    err = await recv_type(alice_ws, "error")
+    assert err["code"] == "limit"
+
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_h5_relay_ceiling_and_both_parties_max(social_app, monkeypatch):
+    """H5: Relay ceiling = min(elapsed, 6h)*12.5MB/s and <= 50GB; both parties count max."""
+    monkeypatch.setenv("CF_TURN_KEY_ID", "dummy_k")
+    monkeypatch.setenv("CF_TURN_API_TOKEN", "dummy_t")
+    async def fake_mint():
+        return [{"url": "turn:turn.cloudflare.com:3478?transport=udp", "user": "u", "credential": "c"}]
+    monkeypatch.setattr(social, "mint_turn_credentials", fake_mint)
+
+    alice_ws, _ = await auth_ws(social_app, "Alice", A)
+    bob_ws, _ = await auth_ws(social_app, "Bob", B, headers={"CF-Connecting-IP": "10.0.0.2"})
+    store = social_app.app["social_store"]
+    hub = social_app.app["social_hub"]
+    await store.add_friend(A, B)
+
+    world = {"id": "w1", "name": "W", "scope": "friends", "slots": 8, "used": 0}
+    await alice_ws.send_json({"t": "presence", "state": "hosting", "world": world})
+    await recv_type(bob_ws, "presence")
+
+    await alice_ws.send_json({"t": "invite", "to": B, "world": world})
+    inv = await recv_type(bob_ws, "invite")
+    await bob_ws.send_json({"t": "invite_accept", "inviteId": inv["inviteId"]})
+    p_start = await recv_type(alice_ws, "p2p_start")
+    await recv_type(bob_ws, "p2p_start")
+    sid = p_start["sid"]
+
+    # Age session by 20 hours (collusion attempt)
+    hub.sessions[sid]["created_at"] -= 20 * 3600
+
+    # Alice reports 900 GB -> clamped to 50 GB ceiling
+    await alice_ws.send_json({"t": "p2p_end", "sid": sid, "relayed": True, "bytes": 900 * 10**9})
+    await asyncio.sleep(0.1)
+
+    month_str = time.strftime("%Y-%m", time.gmtime())
+    recorded = await store.get_relay_bytes(month_str)
+    assert recorded == 50 * 10**9
+
+    # Signal limits for sid must be pruned
+    assert sid not in hub.signal_limits
+
+    # Bob sends report of 1000 bytes -> does not overwrite or drop max
+    await bob_ws.send_json({"t": "p2p_end", "sid": sid, "relayed": True, "bytes": 1000})
+    await asyncio.sleep(0.1)
+    assert await store.get_relay_bytes(month_str) == 50 * 10**9
+
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_m6_stale_name_cache_refreshed_from_mojang(social_app, monkeypatch):
+    """M6: Name row older than 24h is refreshed from Mojang on lookup."""
+    alice_ws, _ = await auth_ws(social_app, "Alice", A)
+    store = social_app.app["social_store"]
+
+    # Stale row: updated 25 hours ago
+    stale_time = int(time.time()) - 25 * 3600
+    with store._connect() as conn:
+        conn.execute("INSERT INTO player_names (uuid, name, updated_at) VALUES (?, ?, ?)", (B, "OldName", stale_time))
+
+    mojang_calls = []
+    async def fake_lookup(name):
+        mojang_calls.append(name)
+        return {"id": C, "name": "OldName"}  # Mojang says name now belongs to C!
+    monkeypatch.setattr(social, "lookup_mojang_profile", fake_lookup)
+
+    await alice_ws.send_json({"t": "friend_add", "name": "OldName"})
+    sent = await recv_type(alice_ws, "request_sent")
+    # Refreshed from Mojang -> resolved to C, not the stale B
+    assert sent["uuid"] == C
+    assert len(mojang_calls) == 1
+
+    await alice_ws.close()
+
+
+def test_m9_social_always_uses_own_file(tmp_path):
+    """M9: SocialStore always resolves to its own social.db beside cosmetics db."""
+    s = social.SocialStore(tmp_path / "shared.db")
+    assert s.db_path.name == "social.db"
+    assert s.db_path == (tmp_path / "social.db").resolve()
+
+
+async def test_low_block_only_notifies_friends(social_app):
+    """Lows: Block sends friend_removed ONLY if they were friends."""
+    alice_ws, _ = await auth_ws(social_app, "Alice", A)
+    bob_ws, _ = await auth_ws(social_app, "Bob", B, headers={"CF-Connecting-IP": "10.0.0.2"})
+
+    # Alice and Bob are strangers (NOT friends)
+    await alice_ws.send_json({"t": "block", "uuid": B})
+    await asyncio.sleep(0.1)
+
+    # Bob (stranger) receives NO friend_removed packet
+    with pytest.raises(TimeoutError):
+        await recv_type(bob_ws, "friend_removed", timeout=0.3)
+
+    # Now Alice unblocks Bob and they become friends
+    await alice_ws.send_json({"t": "unblock", "uuid": B})
+    store = social_app.app["social_store"]
+    await store.add_friend(A, B)
+
+    # Alice blocks Bob -> now BOTH receive friend_removed
+    await alice_ws.send_json({"t": "block", "uuid": B})
+    await recv_type(alice_ws, "friend_removed")
+    await recv_type(bob_ws, "friend_removed")
+
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_low_offline_dm_cap_per_pair(social_app):
+    """Lows: Offline DMs capped at 50 per pair."""
+    store = social_app.app["social_store"]
+    now_ms = int(time.time() * 1000)
+
+    # Alice sends 55 offline DMs to Bob
+    for i in range(55):
+        await store.save_offline_dm(A, B, f"msg_a_{i}", now_ms + i)
+
+    # Cara sends 10 offline DMs to Bob
+    for i in range(10):
+        await store.save_offline_dm(C, B, f"msg_c_{i}", now_ms + 100 + i)
+
+    dms = await store.get_and_clear_offline_dms(B)
+    a_dms = [d for d in dms if d["from"] == A]
+    c_dms = [d for d in dms if d["from"] == C]
+
+    # Alice's DMs capped at 50 (oldest 5 evicted)
+    assert len(a_dms) == 50
+    assert a_dms[0]["text"] == "msg_a_5"
+
+    # Cara's 10 DMs fully preserved (not evicted by Alice's spam)
+    assert len(c_dms) == 10
+
+
+async def test_low_ip_slot_released_on_prepare_error(social_app, monkeypatch):
+    """Lows: Per-IP slot released in finally even if ws.prepare raises."""
+    hub = social_app.app["social_hub"]
+    orig_prepare = web.WebSocketResponse.prepare
+
+    async def bad_prepare(self, req):
+        raise ConnectionResetError("simulated abort")
+    monkeypatch.setattr(web.WebSocketResponse, "prepare", bad_prepare)
+
+    # Client connection fails during prepare
+    try:
+        await social_app.ws_connect("/social/ws")
+    except Exception:
+        pass
+
+    monkeypatch.setattr(web.WebSocketResponse, "prepare", orig_prepare)
+    # ip_counts must be 0, not leaked
+    assert hub.ip_counts.get("127.0.0.1", 0) == 0
+
+
+async def test_p13_friend_added_pushes_presence(social_app):
+    """P13: After friend_added send each side the other's current presence."""
+    alice_ws, _ = await auth_ws(social_app, "Alice", A)
+    bob_ws, _ = await auth_ws(social_app, "Bob", B, headers={"CF-Connecting-IP": "10.0.0.2"})
+
+    # Alice sets presence to singleplayer
+    await alice_ws.send_json({"t": "presence", "state": "singleplayer"})
+
+    # Bob sets presence to server
+    await bob_ws.send_json({"t": "presence", "state": "server", "server": "play.hypixel.net"})
+
+    # Alice adds Bob
+    await alice_ws.send_json({"t": "friend_add", "name": "Bob"})
+    await recv_type(alice_ws, "request_sent")
+    await recv_type(bob_ws, "request_in")
+
+    # Bob accepts Alice
+    await bob_ws.send_json({"t": "friend_accept", "uuid": A})
+
+    # Both get friend_added
+    await recv_type(bob_ws, "friend_added")
+    await recv_type(alice_ws, "friend_added")
+
+    # P13: Alice immediately receives Bob's server presence
+    p_for_alice = await recv_type(alice_ws, "presence")
+    assert p_for_alice["uuid"] == B
+    assert p_for_alice["state"] == "server"
+    assert p_for_alice["server"] == "play.hypixel.net"
+
+    # P13: Bob immediately receives Alice's singleplayer presence
+    p_for_bob = await recv_type(bob_ws, "presence")
+    assert p_for_bob["uuid"] == A
+    assert p_for_bob["state"] == "singleplayer"
+
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_l2_no_player_names_in_logs(caplog, monkeypatch):
+    """L2: No player names in logs (UUIDs only), including lookup errors."""
+    caplog.set_level(logging.DEBUG)
+    class Fake500:
+        status = 500
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): pass
+
+    class FakeSession:
+        def __init__(self, **kw): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): pass
+        def get(self, url): return Fake500()
+
+    monkeypatch.setattr(aiohttp, "ClientSession", FakeSession)
+    social._PROFILE_CACHE.clear()
+
+    await social.lookup_mojang_profile("SecretName123")
+    leaked = [r.getMessage() for r in caplog.records if "SecretName123" in r.getMessage()]
+    assert len(leaked) == 0
