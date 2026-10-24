@@ -1568,3 +1568,265 @@ async def test_l2_no_player_names_in_logs(caplog, monkeypatch):
     await social.lookup_mojang_profile("SecretName123")
     leaked = [r.getMessage() for r in caplog.records if "SecretName123" in r.getMessage()]
     assert len(leaked) == 0
+
+
+# ===========================================================================
+# Round 3 Fix Tests (Rules 1-10)
+# ===========================================================================
+
+async def test_r3_1_since_is_epoch_ms_and_migrates_stored_seconds(social_app, tmp_path):
+    alice_ws, _ = await auth_ws(social_app, 'Alice', A)
+    bob_ws, _ = await auth_ws(social_app, 'Bob', B)
+
+    await alice_ws.send_json({'t': 'friend_add', 'name': 'Bob'})
+    await recv_type(alice_ws, 'request_sent')
+    await recv_type(bob_ws, 'request_in')
+    await bob_ws.send_json({'t': 'friend_accept', 'uuid': A})
+    await recv_type(bob_ws, 'friend_added')
+    await recv_type(alice_ws, 'friend_added')
+
+    hello_alice = await social_app.app['social_hub'].build_hello(social_app.app['social_hub'].peers[A])
+    alice_friend = hello_alice['friends'][0]
+    assert alice_friend['since'] >= 10**12
+
+    await alice_ws.close()
+    await bob_ws.close()
+
+    mig_db = tmp_path / 'legacy.db'
+    store = social.SocialStore(mig_db)
+    legacy_seconds = 1700000000
+    with store._connect() as conn:
+        conn.execute('INSERT OR REPLACE INTO friends (user_uuid, friend_uuid, since) VALUES (?, ?, ?)', (A, B, legacy_seconds))
+    store._init_db()
+    with store._connect() as conn:
+        row = conn.execute('SELECT since FROM friends WHERE user_uuid = ? AND friend_uuid = ?', (A, B)).fetchone()
+        assert row[0] == legacy_seconds * 1000
+
+
+async def test_r3_2_invite_accept_revalidates_current_world_and_preserves_invite_on_refusal(social_app):
+    alice_ws, _ = await auth_ws(social_app, 'Alice', A)
+    bob_ws, _ = await auth_ws(social_app, 'Bob', B)
+
+    await alice_ws.send_json({'t': 'friend_add', 'name': 'Bob'})
+    await recv_type(alice_ws, 'request_sent')
+    await recv_type(bob_ws, 'request_in')
+    await bob_ws.send_json({'t': 'friend_accept', 'uuid': A})
+    await recv_type(bob_ws, 'friend_added')
+    await recv_type(alice_ws, 'friend_added')
+
+    world1 = {'id': 'w1', 'name': 'World1', 'scope': 'friends', 'slots': 2, 'used': 1, 'relayOnly': False}
+    await alice_ws.send_json({'t': 'presence', 'state': 'hosting', 'world': world1})
+    await recv_type(bob_ws, 'presence')
+
+    await alice_ws.send_json({'t': 'invite', 'to': B, 'world': world1})
+    inv = await recv_type(bob_ws, 'invite')
+    invite_id = inv['inviteId']
+
+    world1_full = {'id': 'w1', 'name': 'World1', 'scope': 'friends', 'slots': 2, 'used': 2, 'relayOnly': False}
+    await alice_ws.send_json({'t': 'presence', 'state': 'hosting', 'world': world1_full})
+    await recv_type(bob_ws, 'presence')
+
+    await bob_ws.send_json({'t': 'invite_accept', 'inviteId': invite_id})
+    err = await recv_type(bob_ws, 'error')
+    assert err['code'] == 'full'
+
+    hub = social_app.app['social_hub']
+    assert invite_id in hub.invites
+
+    world1_relay = {'id': 'w1', 'name': 'World1', 'scope': 'friends', 'slots': 2, 'used': 1, 'relayOnly': True}
+    await alice_ws.send_json({'t': 'presence', 'state': 'hosting', 'world': world1_relay})
+    await recv_type(bob_ws, 'presence')
+
+    await bob_ws.send_json({'t': 'invite_accept', 'inviteId': invite_id})
+    a_start = await recv_type(alice_ws, 'p2p_start')
+    b_start = await recv_type(bob_ws, 'p2p_start')
+    assert a_start['ice']['relayOnly'] is True
+    assert b_start['ice']['relayOnly'] is True
+    assert invite_id not in hub.invites
+
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_r3_3_unfriend_ends_sessions_and_signal_rechecks_friendship(social_app):
+    alice_ws, _ = await auth_ws(social_app, 'Alice', A)
+    bob_ws, _ = await auth_ws(social_app, 'Bob', B)
+
+    await alice_ws.send_json({'t': 'friend_add', 'name': 'Bob'})
+    await recv_type(alice_ws, 'request_sent')
+    await recv_type(bob_ws, 'request_in')
+    await bob_ws.send_json({'t': 'friend_accept', 'uuid': A})
+    await recv_type(bob_ws, 'friend_added')
+    await recv_type(alice_ws, 'friend_added')
+
+    world = {'id': 'w1', 'name': 'W', 'scope': 'friends', 'slots': 8, 'used': 0}
+    await alice_ws.send_json({'t': 'presence', 'state': 'hosting', 'world': world})
+    await recv_type(bob_ws, 'presence')
+    await alice_ws.send_json({'t': 'invite', 'to': B, 'world': world})
+    inv = await recv_type(bob_ws, 'invite')
+    await bob_ws.send_json({'t': 'invite_accept', 'inviteId': inv['inviteId']})
+    a_start = await recv_type(alice_ws, 'p2p_start')
+    b_start = await recv_type(bob_ws, 'p2p_start')
+    sid = a_start['sid']
+
+    await alice_ws.send_json({'t': 'signal', 'sid': sid, 'data': {'type': 'offer', 'sdp': 'v=0'}})
+    sig = await recv_type(bob_ws, 'signal')
+    assert sig['data']['type'] == 'offer'
+
+    await alice_ws.send_json({'t': 'friend_remove', 'uuid': B})
+    await recv_type(alice_ws, 'friend_removed')
+    await recv_type(bob_ws, 'friend_removed')
+
+    end_a = await recv_type(alice_ws, 'p2p_end')
+    end_b = await recv_type(bob_ws, 'p2p_end')
+    assert end_a['reason'] == 'unfriended'
+    assert end_b['reason'] == 'unfriended'
+
+    await alice_ws.send_json({'t': 'signal', 'sid': sid, 'data': {'type': 'ping'}})
+    err = await recv_type(alice_ws, 'error')
+    assert err['code'] == 'not_found'
+
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_r3_4_auth_failure_swept_and_capped_at_10k(social_app):
+    hub = social_app.app['social_hub']
+
+    for i in range(10005):
+        hub.record_auth_failure(f'192.168.{i // 256}.{i % 256}')
+
+    assert len(hub.auth_failures) <= 10000
+
+    old_time = time.monotonic() - 70.0
+    hub.auth_failures['10.0.0.1'] = [old_time]
+    hub.auth_blocked_until['10.0.0.2'] = old_time
+
+    hub.sweep_expired()
+    assert '10.0.0.1' not in hub.auth_failures
+    assert '10.0.0.2' not in hub.auth_blocked_until
+
+
+async def test_r3_5_auth_throttle_not_reset_by_success_and_disconnect_not_failure(social_app):
+    hub = social_app.app['social_hub']
+    ip = '1.2.3.4'
+    hub.auth_failures.pop(ip, None)
+    hub.auth_blocked_until.pop(ip, None)
+
+    for _ in range(4):
+        ws = await social_app.ws_connect('/social/ws', headers={'CF-Connecting-IP': ip})
+        await ws.receive_json()
+        await ws.send_json({'t': 'auth', 'uuid': A, 'name': 'Alice', 'serverId': 'wrong_server_id'})
+        await ws.receive()
+        await ws.close()
+
+    assert len(hub.auth_failures.get(ip, [])) == 4
+
+    ws_idle = await social_app.ws_connect('/social/ws', headers={'CF-Connecting-IP': ip})
+    await ws_idle.receive_json()
+    await ws_idle.close()
+    assert len(hub.auth_failures.get(ip, [])) == 4
+
+    ws_succ, _ = await auth_ws(social_app, 'Bob', B, headers={'CF-Connecting-IP': ip})
+    assert len(hub.auth_failures.get(ip, [])) == 4
+    await ws_succ.close()
+
+    ws5 = await social_app.ws_connect('/social/ws', headers={'CF-Connecting-IP': ip})
+    await ws5.receive_json()
+    await ws5.send_json({'t': 'auth', 'uuid': A, 'name': 'Alice', 'serverId': 'wrong_server_id'})
+    await ws5.receive()
+    await ws5.close()
+
+    assert hub.is_ip_auth_blocked(ip) is True
+
+
+async def test_r3_6_user_monthly_relay_budget(social_app, monkeypatch):
+    monkeypatch.setenv('CF_TURN_KEY_ID', 'dummy_key')
+    monkeypatch.setenv('CF_TURN_API_TOKEN', 'dummy_tok')
+
+    async def fake_mint():
+        return [{'url': 'turn:turn.cloudflare.com:3478?transport=udp', 'user': 'u', 'credential': 'c'}]
+    monkeypatch.setattr(social, 'mint_turn_credentials', fake_mint)
+
+    alice_ws, _ = await auth_ws(social_app, 'Alice', A)
+    bob_ws, _ = await auth_ws(social_app, 'Bob', B)
+
+    await alice_ws.send_json({'t': 'friend_add', 'name': 'Bob'})
+    await recv_type(alice_ws, 'request_sent')
+    await recv_type(bob_ws, 'request_in')
+    await bob_ws.send_json({'t': 'friend_accept', 'uuid': A})
+    await recv_type(bob_ws, 'friend_added')
+    await recv_type(alice_ws, 'friend_added')
+
+    month_str = time.strftime('%Y-%m', time.gmtime())
+    store = social_app.app['social_store']
+    await store.record_user_relay_bytes(month_str, A, 31 * 10**9)
+
+    world = {'id': 'w1', 'name': 'W', 'scope': 'friends', 'slots': 8, 'used': 0}
+    await alice_ws.send_json({'t': 'presence', 'state': 'hosting', 'world': world})
+    await recv_type(bob_ws, 'presence')
+
+    await alice_ws.send_json({'t': 'invite', 'to': B, 'world': world})
+    inv = await recv_type(bob_ws, 'invite')
+    await bob_ws.send_json({'t': 'invite_accept', 'inviteId': inv['inviteId']})
+
+    a_start = await recv_type(alice_ws, 'p2p_start')
+    assert a_start['ice']['turn'] == []
+    assert a_start['ice']['relayStatus'] == 'budget'
+
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_r3_7_mojang_404_never_falls_back_to_stale_cache(social_app, monkeypatch):
+    alice_ws, _ = await auth_ws(social_app, 'Alice', A)
+    store = social_app.app['social_store']
+
+    stale_time = int(time.time()) - 25 * 3600
+    with store._connect() as conn:
+        conn.execute('INSERT OR REPLACE INTO player_names (uuid, name, updated_at) VALUES (?, ?, ?)', (B, 'StalePlayer', stale_time))
+
+    async def mock_404(name):
+        return None
+    monkeypatch.setattr(social, 'lookup_mojang_profile', mock_404)
+
+    await alice_ws.send_json({'t': 'friend_add', 'name': 'StalePlayer'})
+    err = await recv_type(alice_ws, 'error')
+    assert err['code'] == 'not_found'
+
+    async def mock_error(name):
+        return False
+    monkeypatch.setattr(social, 'lookup_mojang_profile', mock_error)
+
+    await alice_ws.send_json({'t': 'friend_add', 'name': 'StalePlayer'})
+    sent = await recv_type(alice_ws, 'request_sent')
+    assert sent['uuid'] == B
+
+    await alice_ws.close()
+
+
+async def test_r3_8_offline_dm_evicts_from_heaviest_sender(social_app):
+    store = social_app.app['social_store']
+    recipient = 'r0000000000000000000000000000000'
+    alice = 'a0000000000000000000000000000000'
+    spammer1 = 's1000000000000000000000000000000'
+    spammer2 = 's2000000000000000000000000000000'
+
+    now_ms = int(time.time() * 1000)
+    await store.save_offline_dm(alice, recipient, 'Legit from Alice', now_ms - 10000)
+
+    for i in range(50):
+        await store.save_offline_dm(spammer1, recipient, f'Spam1_{i}', now_ms - 5000 + i)
+
+    for i in range(49):
+        await store.save_offline_dm(spammer2, recipient, f'Spam2_{i}', now_ms - 2000 + i)
+
+    await store.save_offline_dm(spammer2, recipient, 'Spam2_extra', now_ms)
+
+    dms = await store.get_and_clear_offline_dms(recipient)
+    assert len(dms) == 100
+    alice_dms = [d for d in dms if d['from'] == alice]
+    assert len(alice_dms) == 1
+    assert alice_dms[0]['text'] == 'Legit from Alice'
+    spammer1_texts = [d['text'] for d in dms if d['from'] == spammer1]
+    assert 'Spam1_0' not in spammer1_texts
