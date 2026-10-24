@@ -269,6 +269,16 @@ public class SocialState {
         return f != null ? f.displayName() : "your friend";
     }
 
+    /** The friend whose world we are connecting to (the P2P link is not up yet), else null: the Friends screen shows progress. */
+    public String connectingTo() {
+        return guestSession.connectingTo();
+    }
+
+    /** Cancel on that progress: the P2P session ends, nothing connects. */
+    public void cancelConnecting() {
+        guestSession.close("Cancelled");
+    }
+
     /** The friend a "dm:<uuid>" action asked to open, once (the Friends screen opens on that conversation). */
     public FriendEntry takeDmTarget() {
         UUID id = dmTarget;
@@ -320,7 +330,7 @@ public class SocialState {
             // Not "joinable": friends can't ask to join (backend: scope invite), invites still work.
             String scope = o.scope == HostOptions.Scope.FRIENDS && o.showJoinable ? "friends" : "invite";
             return new Presence("hosting", g, null, new Presence.WorldAd(Objects.requireNonNullElse(bridge.worldId(), "world"),
-                    Objects.requireNonNullElse(bridge.worldName(), "My World"), scope, o.maxPlayers, hostSession.activeGuestCount() + 1));
+                    Objects.requireNonNullElse(bridge.worldName(), "My World"), scope, o.maxPlayers, hostSession.activeGuestCount())); // guests/max guests
         }
         if (guestSession.isActive()) return new Presence("server", g, null, null);
         if (!bridge.inWorldOrServer()) return new Presence("menu", g, null, null);
@@ -432,13 +442,34 @@ public class SocialState {
     /** Banned from this world for good (lads-host.json "banned"), online or not. */
     private void banFromWorld(UUID id) {
         HostOptions options = hostSession.options();
-        if (id == null || !options.banned.add(id.toString())) return;
+        if (id != null && options.banned.add(id.toString())) saveWorldOptions(options);
+    }
+
+    /** This world's bans (UUID strings): the live options while hosting, else its lads-host.json (none without a world). */
+    public List<String> worldBans() {
+        HostOptions options = worldOptions();
+        return options == null ? Collections.emptyList() : new ArrayList<>(options.banned);
+    }
+
+    /** Host screen's Unban: the player may ask to join this world again. */
+    public void unban(String uuid) {
+        HostOptions options = worldOptions();
+        if (options != null && options.banned.remove(uuid)) saveWorldOptions(options);
+    }
+
+    private HostOptions worldOptions() {
+        if (hostSession.isHosting()) return hostSession.options();
+        Path world = bridge().worldDir();
+        return world == null ? null : HostOptions.load(world);
+    }
+
+    private void saveWorldOptions(HostOptions options) {
         Path world = bridge().worldDir();
         if (world == null) return;
         try {
             options.save(world);
         } catch (IOException e) {
-            LOGGER.warn("SocialState: could not save the ban to lads-host.json: {}", e.getMessage());
+            LOGGER.warn("SocialState: could not save lads-host.json: {}", e.getMessage());
         }
     }
 
@@ -944,11 +975,16 @@ public class SocialState {
                 return;
             }
             SocialBridge bridge = bridge();
+            // The Friends screen shows "Connecting to <friend>'s world..." with Cancel until the link is up (then the game connects)
             if (bridge.inWorldOrServer() || guestSession.isActive()) {
                 guestSession.close("Switching world");
-                bridge.leaveWorld(() -> guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender));
+                bridge.leaveWorld(() -> {
+                    guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender);
+                    bridge.openFriendsScreen();
+                });
             } else {
                 guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender);
+                bridge.runOnGameThread(bridge::openFriendsScreen);
             }
         }
     }

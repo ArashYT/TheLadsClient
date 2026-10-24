@@ -91,6 +91,23 @@ class HostScreenLogicTest {
     }
 
     @Test
+    void bannedSectionUnbansAndBansSurviveSaving() {
+        FakeHostCallbacks callbacks = new FakeHostCallbacks(new HostOptions());
+        String id = UUID.randomUUID().toString();
+        callbacks.banned.add(new HostScreenLogic.Banned(id, "Griefer"));
+        HostScreenLogic logic = new HostScreenLogic(callbacks);
+        logic.setSection(HostScreenLogic.Section.GUESTS);
+        logic.render(new TestGraphics(480, 270), 0, 0);
+        assertTrue(logic.buildOptions().banned.contains(id), "saving the screen keeps the ban");
+
+        HostScreenLogic.Box unban = logic.unbanButtonBox(id);
+        assertNotNull(unban, "a banned player gets an Unban button");
+        assertTrue(logic.mouseClicked(unban.x() + 2, unban.y() + 2, 0));
+        assertEquals(List.of(id), callbacks.unbanned);
+        assertFalse(logic.buildOptions().banned.contains(id), "unbanned: no longer saved as banned");
+    }
+
+    @Test
     void guestActionsTriggerCallbacks() {
         HostOptions options = new HostOptions();
         FakeHostCallbacks callbacks = new FakeHostCallbacks(options);
@@ -210,6 +227,10 @@ class HostScreenLogicTest {
             recordedActions.add(new RecordedGuestAction(id, action));
         }
         @Override public void onClose() { closed = true; }
+        final List<HostScreenLogic.Banned> banned = new ArrayList<>();
+        final List<String> unbanned = new ArrayList<>();
+        @Override public List<HostScreenLogic.Banned> banned() { return banned; }
+        @Override public void unban(String uuid) { unbanned.add(uuid); banned.removeIf(b -> b.uuid().equals(uuid)); }
     }
 
     record TestGraphics(int w, int h) implements LadsGraphics {

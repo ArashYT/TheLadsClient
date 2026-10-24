@@ -53,6 +53,8 @@ public final class HostSession {
     private final Object signalLock = new Object();
 
     private final Predicate<UUID> loginFilter = this::canLogin;
+    /** After Friends hosting stops, nobody else logs in to this world until it closes (the bridge clears it then) or LAN opens it. */
+    private static final Predicate<UUID> NOBODY = id -> false;
 
     HostSession(SocialState owner) {
         this.owner = owner;
@@ -78,7 +80,7 @@ public final class HostSession {
         return loginFilter;
     }
 
-    /** Guests in the world now (the integrated server's player list, host excluded). */
+    /** Guests in the world now (the integrated server's player list, host excluded; maxPlayers counts guests too). */
     public int activeGuestCount() {
         return owner.bridge().guests().size();
     }
@@ -199,6 +201,7 @@ public final class HostSession {
         this.options = options;
         SocialBridge bridge = owner.bridge();
         if (options.scope == HostOptions.Scope.LAN) {
+            bridge.setLoginFilter(null); // the host chose LAN explicitly: vanilla rules
             bridge.openToLan(options);
             this.hosting = true;
             return true;
@@ -242,7 +245,8 @@ public final class HostSession {
         acceptedUuids.clear();
 
         SocialBridge bridge = owner.bridge();
-        bridge.setLoginFilter(null);
+        // not null (= anyone): refuses everyone until the world closes; once it has closed, nothing is left to guard
+        bridge.setLoginFilter(bridge.worldId() != null ? NOBODY : null);
         bridge.closeHosting(reason != null ? reason : "Host closed the world");
         port = -1;
         LOGGER.info("HostSession: hosting stopped ({})", reason);

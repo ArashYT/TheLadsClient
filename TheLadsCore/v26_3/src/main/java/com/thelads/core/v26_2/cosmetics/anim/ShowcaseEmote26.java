@@ -195,6 +195,12 @@ public final class ShowcaseEmote26 {
             command(server, "setworldspawn " + bestX + " " + y + " " + bestZ);
             tpNow(server, name, 0, 0, 0, 0);
             mc.execute(() -> { // as Open to LAN does it: on the client thread
+                com.thelads.core.client.social.HostSession friends = com.thelads.core.client.social.SocialState.get().hostSession();
+                if (friends.isHosting() && friends.options().scope != com.thelads.core.client.social.HostOptions.Scope.LAN) {
+                    // never an offline, all-interfaces LAN world on top of Friends hosting (F21)
+                    LOGGER.warn("Lads showcase: Friends hosting is on, the showcase LAN world is not opened");
+                    return;
+                }
                 server.setUsesAuthentication(false); // offline showcase accounts on our own LAN game
                 boolean published = server.publishServer(MinecraftServer.MultiplayerScope.LAN, true, port);
                 server.setUsesAuthentication(false);

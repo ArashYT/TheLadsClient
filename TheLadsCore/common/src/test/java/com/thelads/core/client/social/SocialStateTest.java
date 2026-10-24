@@ -637,6 +637,12 @@ public class SocialStateTest {
         host.invite(friend);
         assertTrue(out.isEmpty(), "no invite for a banned guest");
         assertTrue(HostOptions.load(world).isBanned(friend), "the ban is saved with the world");
+        assertEquals(List.of(friend.toString()), host.worldBans());
+
+        host.unban(friend.toString());
+        assertFalse(HostOptions.load(world).isBanned(friend), "Unban is saved too");
+        host.handleJoinRequest("req-4", friend, null);
+        assertTrue(host.hostSession().canLogin(friend), "an unbanned friend can join again");
         host.stopHosting();
     }
 
@@ -657,6 +663,42 @@ public class SocialStateTest {
         sample.setAccessible(true);
         sample.invoke(state);
         assertFalse(state.isGuestSessionActive(), "joined another server: the P2P session ends at once");
+        assertNull(com.thelads.core.client.HypixelSafetyManager.getP2PSession());
+    }
+
+    /** F13: the game connects to the proxy only once the P2P link is up; until then the Friends screen shows progress with Cancel. */
+    @Test
+    public void connectsOnlyOnceTheLinkIsUpAndCancelAborts() {
+        List<String> connects = new ArrayList<>();
+        SocialBridge b = new SocialBridge() {
+            @Override public void connectToLocal(int port, String name) { connects.add(name); }
+        };
+        SocialState guest = new SocialState(() -> b, () -> null, null);
+        List<JsonObject> out = new ArrayList<>();
+        guest.setClientSender(out::add);
+        CompletableFuture<P2PSession> link = new CompletableFuture<>();
+        GuestSession.setP2PStarter((sid, host, cfg, send) -> link);
+        UUID host = UUID.randomUUID();
+        guest.addFriendLocally(new FriendEntry(host, "Arash", null, Presence.OFFLINE, 0));
+
+        guest.requestJoin(host);
+        guest.handleP2PStart("sid-c1", host, "guest", null);
+        assertEquals("Arash", guest.connectingTo(), "progress shows while the link comes up");
+        assertTrue(connects.isEmpty(), "the game does not connect before the link is up");
+        link.complete(new FakeP2PSession(true, 0));
+        assertNull(guest.connectingTo());
+        assertEquals(List.of("Arash (relayed)"), connects, "connects once up, saying direct or relayed");
+        guest.closeGuestSession("done");
+
+        GuestSession.setP2PStarter((sid, h, cfg, send) -> new CompletableFuture<>());
+        guest.requestJoin(host);
+        guest.handleP2PStart("sid-c2", host, "guest", null);
+        out.clear();
+        guest.cancelConnecting();
+        assertFalse(guest.isGuestSessionActive(), "Cancel aborts the session");
+        assertNull(guest.connectingTo());
+        assertTrue(out.stream().anyMatch(m -> "p2p_end".equals(m.get("t").getAsString())));
+        assertEquals(1, connects.size(), "nothing connects after Cancel");
         assertNull(com.thelads.core.client.HypixelSafetyManager.getP2PSession());
     }
 }

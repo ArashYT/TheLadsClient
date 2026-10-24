@@ -65,6 +65,9 @@ public final class FriendsScreenLogic {
         default void requestJoin(UUID id) {}
         /** "Leave X and join Y?" when joining would leave a world or server first; null = join at once. */
         default String joinQuestion(UUID id) { return null; }
+        /** The friend whose world is being connected to (P2P link not up yet), else null: shown as progress with Cancel. */
+        default String connectingTo() { return null; }
+        default void cancelConnecting() {}
         default String connectionStatus() { return "Connected"; }
         default boolean showServer() { return true; }
         default void setShowServer(boolean show) {}
@@ -75,6 +78,7 @@ public final class FriendsScreenLogic {
 
     private final Callbacks callbacks;
     private final ConfirmDialog confirm = new ConfirmDialog();
+    private Box cancelConnectingBtn;
     private Tab currentTab = Tab.FRIENDS;
 
     // DM pane state
@@ -175,6 +179,8 @@ public final class FriendsScreenLogic {
             @Override public void invite(UUID id) { s.invite(id); }
             @Override public void requestJoin(UUID id) { s.requestJoin(id); }
             @Override public String joinQuestion(UUID id) { return s.joinQuestion(id); }
+            @Override public String connectingTo() { return s.connectingTo(); }
+            @Override public void cancelConnecting() { s.cancelConnecting(); }
             @Override public String connectionStatus() { return s.connectionStatus(); }
             @Override public boolean showServer() { return s.showServer(); }
             @Override public void setShowServer(boolean show) { s.setShowServer(show); }
@@ -485,6 +491,24 @@ public final class FriendsScreenLogic {
             deferredTooltip.run();
         }
         confirm.render(g, mouseX, mouseY); // modal, over everything
+        String connecting = callbacks.connectingTo();
+        cancelConnectingBtn = connecting == null ? null : renderConnecting(g, connecting, mouseX, mouseY);
+    }
+
+    /** Modal progress while the P2P link to a friend's world comes up (direct or relayed shows on the connect screen next). */
+    private Box renderConnecting(LadsGraphics g, String friend, int mouseX, int mouseY) {
+        int width = g.getScaledWidth(), height = g.getScaledHeight();
+        int dw = Math.min(260, width - 24), dh = 78, dx = (width - dw) / 2, dy = (height - dh) / 2;
+        g.fill(0, 0, width, height, 0xB0000000);
+        MenuGraphics.round(g, dx, dy, dw, dh, LadsPalette.PANEL);
+        g.fill(dx + 1, dy, dx + dw - 1, dy + 2, LadsPalette.ACCENT);
+        String dots = ".".repeat((int) (System.currentTimeMillis() / 400 % 3) + 1);
+        g.drawCenteredText(MenuGraphics.fit(g, "Connecting to " + friend + "'s world" + dots, dw - 20), dx + dw / 2, dy + 14, LadsPalette.TEXT, true);
+        g.drawCenteredText(MenuGraphics.fit(g, "Finding a direct or relayed path", dw - 20), dx + dw / 2, dy + 28, LadsPalette.MUTED, false);
+        Box cancel = new Box(dx + (dw - 100) / 2, dy + dh - 30, 100, 20);
+        MenuGraphics.round(g, cancel.x, cancel.y, cancel.w, cancel.h, cancel.has(mouseX, mouseY) ? LadsPalette.HOVER : LadsPalette.CARD);
+        g.drawCenteredText("Cancel", cancel.x + cancel.w / 2, cancel.y + (cancel.h - g.fontHeight()) / 2 + 1, LadsPalette.TEXT, false);
+        return cancel;
     }
 
     private void renderFriendsTab(LadsGraphics g, int x, int y, int w, int h, int mx, int my) {
@@ -882,7 +906,7 @@ public final class FriendsScreenLogic {
         if ("hosting".equals(st)) {
             Presence.WorldAd ad = p.world();
             if (ad != null) {
-                return "Hosting: " + ad.name() + " (" + ad.used() + "/" + ad.slots() + ")";
+                return "Hosting: " + ad.name() + " (" + ad.used() + "/" + ad.slots() + " guests)";
             }
             return "Hosting a world";
         }
@@ -921,6 +945,10 @@ public final class FriendsScreenLogic {
 
     public boolean mouseClicked(double x, double y, int button) {
         if (confirm.isOpen()) return confirm.click(x, y, button);
+        if (cancelConnectingBtn != null) { // modal while connecting
+            if (button == 0 && cancelConnectingBtn.has(x, y)) callbacks.cancelConnecting();
+            return true;
+        }
         if (button != 0) return false;
 
         // Inline nickname editing controls
@@ -1118,6 +1146,10 @@ public final class FriendsScreenLogic {
 
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (confirm.isOpen()) return confirm.key(keyCode == 1 ? 256 : keyCode == 28 ? 257 : keyCode); // 1.8.9's Esc/Enter too
+        if (cancelConnectingBtn != null) { // modal while connecting: Esc cancels
+            if (keyCode == 256 || keyCode == 1) callbacks.cancelConnecting();
+            return true;
+        }
         // Nickname editing keys
         if (typingNickInput) {
             if (keyCode == 256 || keyCode == 1) { // Esc

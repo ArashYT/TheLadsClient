@@ -241,7 +241,7 @@ public final class SocialBridge1201 implements SocialBridge {
             }
 
             updateGuestSnapshot(server);
-            resetLoopbackState();
+            mutedGuests.clear(); // the login filter stays (HostSession leaves it refusing everyone) until the world closes
         });
     }
 

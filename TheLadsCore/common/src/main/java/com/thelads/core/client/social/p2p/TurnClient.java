@@ -210,14 +210,8 @@ public final class TurnClient implements AutoCloseable {
         this.key = StunMessage.deriveLongTermKey(username, realm, password);
 
         // 2. Send authenticated Allocate Request
-        StunMessage authReq = new StunMessage(StunMessage.ALLOCATE_REQUEST);
-        authReq.addIntAttribute(StunMessage.ATTR_REQUESTED_TRANSPORT, 0x11000000);
-        authReq.addStringAttribute(StunMessage.ATTR_USERNAME, username);
-        authReq.addStringAttribute(StunMessage.ATTR_REALM, realm);
-        authReq.addStringAttribute(StunMessage.ATTR_NONCE, nonce);
-        byte[] authBytes = authReq.encode(key, true);
-
-        StunMessage authResp = sendAndReceive(authBytes, authReq.getTransactionId(), 3000, key);
+        StunMessage authResp = signedRequest(StunMessage.ALLOCATE_REQUEST,
+            r -> r.addIntAttribute(StunMessage.ATTR_REQUESTED_TRANSPORT, 0x11000000)); // UDP (17)
         if (authResp.getType() == StunMessage.ALLOCATE_ERROR) {
             throw new IOException("Allocate failed: " + authResp.getErrorCode() + " " + authResp.getErrorMessage());
         }
@@ -245,14 +239,7 @@ public final class TurnClient implements AutoCloseable {
             throw new IOException("Cannot refresh before successful allocate");
         }
 
-        StunMessage req = new StunMessage(StunMessage.REFRESH_REQUEST);
-        req.addIntAttribute(StunMessage.ATTR_LIFETIME, lifetimeSec);
-        req.addStringAttribute(StunMessage.ATTR_USERNAME, username);
-        req.addStringAttribute(StunMessage.ATTR_REALM, realm);
-        req.addStringAttribute(StunMessage.ATTR_NONCE, nonce);
-        byte[] bytes = req.encode(key, true);
-
-        StunMessage resp = sendAndReceive(bytes, req.getTransactionId(), 3000, key);
+        StunMessage resp = signedRequest(StunMessage.REFRESH_REQUEST, r -> r.addIntAttribute(StunMessage.ATTR_LIFETIME, lifetimeSec));
         if (resp.getType() == StunMessage.REFRESH_ERROR) {
             throw new IOException("Refresh failed: " + resp.getErrorCode() + " " + resp.getErrorMessage());
         }
@@ -274,14 +261,8 @@ public final class TurnClient implements AutoCloseable {
         if (closed.get()) throw new IOException("TurnClient is closed");
         if (key == null) throw new IOException("Cannot create permission before allocate");
 
-        StunMessage req = new StunMessage(StunMessage.CREATE_PERMISSION_REQUEST);
-        req.addXorAddressAttribute(StunMessage.ATTR_XOR_PEER_ADDRESS, peerAddress);
-        req.addStringAttribute(StunMessage.ATTR_USERNAME, username);
-        req.addStringAttribute(StunMessage.ATTR_REALM, realm);
-        req.addStringAttribute(StunMessage.ATTR_NONCE, nonce);
-        byte[] bytes = req.encode(key, true);
-
-        StunMessage resp = sendAndReceive(bytes, req.getTransactionId(), 3000, key);
+        StunMessage resp = signedRequest(StunMessage.CREATE_PERMISSION_REQUEST,
+            r -> r.addXorAddressAttribute(StunMessage.ATTR_XOR_PEER_ADDRESS, peerAddress));
         if (resp.getType() == StunMessage.CREATE_PERMISSION_ERROR) {
             throw new IOException("CreatePermission failed: " + resp.getErrorCode() + " " + resp.getErrorMessage());
         }
@@ -303,15 +284,10 @@ public final class TurnClient implements AutoCloseable {
             throw new IllegalArgumentException("Invalid channel number: 0x" + Integer.toHexString(channelNumber));
         }
 
-        StunMessage req = new StunMessage(StunMessage.CHANNEL_BIND_REQUEST);
-        req.addIntAttribute(StunMessage.ATTR_CHANNEL_NUMBER, channelNumber << 16);
-        req.addXorAddressAttribute(StunMessage.ATTR_XOR_PEER_ADDRESS, peerAddress);
-        req.addStringAttribute(StunMessage.ATTR_USERNAME, username);
-        req.addStringAttribute(StunMessage.ATTR_REALM, realm);
-        req.addStringAttribute(StunMessage.ATTR_NONCE, nonce);
-        byte[] bytes = req.encode(key, true);
-
-        StunMessage resp = sendAndReceive(bytes, req.getTransactionId(), 3000, key);
+        StunMessage resp = signedRequest(StunMessage.CHANNEL_BIND_REQUEST, r -> {
+            r.addIntAttribute(StunMessage.ATTR_CHANNEL_NUMBER, channelNumber << 16);
+            r.addXorAddressAttribute(StunMessage.ATTR_XOR_PEER_ADDRESS, peerAddress);
+        });
         if (resp.getType() == StunMessage.CHANNEL_BIND_ERROR) {
             throw new IOException("ChannelBind failed: " + resp.getErrorCode() + " " + resp.getErrorMessage());
         }
@@ -449,6 +425,30 @@ public final class TurnClient implements AutoCloseable {
 
     public static int getChannelDataLength(byte[] data, int offset) {
         return ((data[offset + 2] & 0xFF) << 8) | (data[offset + 3] & 0xFF);
+    }
+
+    /**
+     * A request signed with the long-term credentials (USERNAME, REALM, NONCE, MESSAGE-INTEGRITY). A 438 Stale Nonce answer brings the
+     * server's new NONCE (and REALM): taken, and the request is sent once more (RFC 8656 4.3), so a long relay session survives nonce
+     * rotation.
+     */
+    private StunMessage signedRequest(int type, java.util.function.Consumer<StunMessage> attributes) throws IOException {
+        for (int attempt = 0; ; attempt++) {
+            StunMessage req = new StunMessage(type);
+            attributes.accept(req);
+            req.addStringAttribute(StunMessage.ATTR_USERNAME, username);
+            req.addStringAttribute(StunMessage.ATTR_REALM, realm);
+            req.addStringAttribute(StunMessage.ATTR_NONCE, nonce);
+            StunMessage resp = sendAndReceive(req.encode(key, true), req.getTransactionId(), 3000, key);
+            String newNonce = resp.getStringAttribute(StunMessage.ATTR_NONCE);
+            if (attempt > 0 || (resp.getType() & 0x0110) != 0x0110 || resp.getErrorCode() != 438 || newNonce == null) return resp;
+            String newRealm = resp.getStringAttribute(StunMessage.ATTR_REALM);
+            if (newRealm != null && !newRealm.equals(realm)) {
+                realm = newRealm;
+                key = StunMessage.deriveLongTermKey(username, realm, password);
+            }
+            nonce = newNonce;
+        }
     }
 
     /** The server's answer; for a request signed with key (long-term), a success answer must carry a valid MESSAGE-INTEGRITY (F6). */
