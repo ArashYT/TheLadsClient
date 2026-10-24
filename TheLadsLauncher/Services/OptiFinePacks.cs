@@ -20,8 +20,8 @@ public static class OptiFinePacks
     public const string Auto = "Auto", AlwaysIonium = "Ionium", AlwaysOptiFine = "OptiFine";
 
     /// <summary>Features Lads Core shows under Ionium: Auto keeps Ionium for packs that use only these. Grows as the ports land.</summary>
-    private static readonly string[] IoniumShows = { "CIT", "CTM", "CEM", "custom colors" };
-    private static readonly string[] Order = { "CIT", "CTM", "CEM", "custom sky", "custom colors", "emissive", "natural textures", "better grass" };
+    private static readonly string[] IoniumShows = { "CIT" };
+    private static readonly string[] Order = { "CIT", "CTM", "custom sky", "custom colors", "emissive", "natural textures", "better grass" };
     private static readonly string[] Roots = { "assets/minecraft/optifine/", "assets/minecraft/mcpatcher/" };
     private const int MaxEntries = 500_000;
     private static readonly ConcurrentDictionary<(string Path, long Size, DateTime Modified), string[]> ZipCache = new();
@@ -121,7 +121,6 @@ public static class OptiFinePacks
             "color.properties" => "custom colors",
             _ when rules && rest.StartsWith("cit/", StringComparison.Ordinal) => "CIT",
             _ when rules && rest.StartsWith("ctm/", StringComparison.Ordinal) => "CTM",
-            _ when (rules || rest.EndsWith(".jem", StringComparison.Ordinal)) && rest.StartsWith("cem/", StringComparison.Ordinal) => "CEM",
             _ when rules && rest.StartsWith("sky/", StringComparison.Ordinal) => "custom sky",
             _ when rest.StartsWith("colormap/", StringComparison.Ordinal) && !rest.EndsWith('/') => "custom colors",
             _ => null

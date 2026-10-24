@@ -38,11 +38,4 @@ public abstract class LayerArmorBaseMixin {
         if (custom != null) cir.setReturnValue(custom);
         else if (texture != null) cir.setReturnValue(texture);
     }
-
-    @Inject(method = "doRenderLayer", at = @At("HEAD"), require = 0)
-    private void lads$instancedArmorLayer(net.minecraft.entity.EntityLivingBase entity, float p_177141_2_, float p_177141_3_, float partialTicks, float p_177141_5_, float p_177141_6_, float p_177141_7_, float scale, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-        if (com.thelads.core.v1_8_9.perf.EntityInstancing189.isAvailable()) {
-            com.thelads.core.v1_8_9.perf.EntityInstancing189.recordArmorLayer(entity, 0, null, scale);
-        }
-    }
 }

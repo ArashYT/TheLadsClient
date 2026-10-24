@@ -131,8 +131,6 @@
     "FreelookRenderInfoMixin189",
     "FreelookRenderManagerMixin189",
     "ViewModelMixin189",
-    "WorldTimeWeatherMixin189",
-    "RenderGlobalCullingMixin189",
-    "RenderManagerInstancingMixin189"
+    "WorldTimeWeatherMixin189"
   ]
 }

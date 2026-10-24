@@ -36,56 +36,6 @@ public class PerformanceManagerModule extends Module {
                 FontWidthCache.enabled = get();
             }
         });
-        addOption(new BoolOption("GPU Entity Instancing", false) {
-            @Override
-            public void set(boolean value) {
-                super.set(value);
-                Perf189Settings.gpuEntityInstancing = value;
-            }
-
-            @Override
-            public void toggle() {
-                super.toggle();
-                Perf189Settings.gpuEntityInstancing = get();
-            }
-
-            @Override
-            public void reset() {
-                super.reset();
-                Perf189Settings.gpuEntityInstancing = get();
-            }
-
-            @Override
-            public void load(JsonElement element) {
-                super.load(element);
-                Perf189Settings.gpuEntityInstancing = get();
-            }
-        });
-        addOption(new BoolOption("Starlight Lighting Engine", false) {
-            @Override
-            public void set(boolean value) {
-                super.set(value);
-                Perf189Settings.starlightLighting = value;
-            }
-
-            @Override
-            public void toggle() {
-                super.toggle();
-                Perf189Settings.starlightLighting = get();
-            }
-
-            @Override
-            public void reset() {
-                super.reset();
-                Perf189Settings.starlightLighting = get();
-            }
-
-            @Override
-            public void load(JsonElement element) {
-                super.load(element);
-                Perf189Settings.starlightLighting = get();
-            }
-        });
         addOption(new BoolOption("Camera Parallax Fix", false) {
             @Override
             public void set(boolean value) {
@@ -109,31 +59,6 @@ public class PerformanceManagerModule extends Module {
             public void load(JsonElement element) {
                 super.load(element);
                 Perf189Settings.cameraParallaxFix = get();
-            }
-        });
-        addOption(new BoolOption("Chunk Culling Fix", false) {
-            @Override
-            public void set(boolean value) {
-                super.set(value);
-                Perf189Settings.chunkCullingFix = value;
-            }
-
-            @Override
-            public void toggle() {
-                super.toggle();
-                Perf189Settings.chunkCullingFix = get();
-            }
-
-            @Override
-            public void reset() {
-                super.reset();
-                Perf189Settings.chunkCullingFix = get();
-            }
-
-            @Override
-            public void load(JsonElement element) {
-                super.load(element);
-                Perf189Settings.chunkCullingFix = get();
             }
         });
     }

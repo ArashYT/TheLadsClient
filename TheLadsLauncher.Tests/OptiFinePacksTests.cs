@@ -32,7 +32,6 @@ public class OptiFinePacksTests
     [InlineData("assets/minecraft/optifine/cit/swords/diamond.properties", "CIT")]
     [InlineData("assets/minecraft/mcpatcher/cit/pots.properties", "CIT")]
     [InlineData("assets/minecraft/optifine/ctm/glass/glass.properties", "CTM")]
-    [InlineData("assets/minecraft/optifine/cem/creeper.jem", "CEM")]
     [InlineData("assets\\minecraft\\mcpatcher\\ctm\\glass.properties", "CTM")]
     [InlineData("assets/minecraft/mcpatcher/sky/world0/sky1.properties", "custom sky")]
     [InlineData("assets/minecraft/optifine/colormap/grass.png", "custom colors")]
@@ -52,7 +51,7 @@ public class OptiFinePacksTests
     {
         using var box = new ModSandbox();
         var packs = Packs(box);
-        File.WriteAllBytes(Path.Combine(packs, "PvP.zip"), Zip("pack.mcmeta", "assets/minecraft/optifine/natural.properties",
+        File.WriteAllBytes(Path.Combine(packs, "PvP.zip"), Zip("pack.mcmeta", "assets/minecraft/mcpatcher/ctm/glass.properties",
             "assets/minecraft/optifine/cit/sword.properties", "assets/minecraft/textures/items/diamond_sword.png"));
         File.WriteAllBytes(Path.Combine(packs, "Plain.zip"), Zip("pack.mcmeta", "assets/minecraft/textures/blocks/stone.png"));
 
@@ -60,9 +59,9 @@ public class OptiFinePacksTests
         EnablePacks(box, "Plain.zip");
         Assert.Null(OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.Auto));
         EnablePacks(box, "Plain.zip", "PvP.zip", "Missing.zip");
-        Assert.Equal("Using OptiFine: your resource pack uses OptiFine features (natural textures) that Ionium can't show yet",
+        Assert.Equal("Using OptiFine: your resource pack uses OptiFine features (CTM) that Ionium can't show yet",
             OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.Auto)); // Lads Core draws the CIT under Ionium
-        Assert.Contains("(CIT/natural textures)", OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.AlwaysOptiFine));
+        Assert.Contains("(CIT/CTM)", OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.AlwaysOptiFine));
         Assert.Null(OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.AlwaysIonium));
         Assert.Null(OptiFinePacks.Notice(box.Game, "1.20.1", OptiFinePacks.Auto));
         // A name that leaves the folder is ignored.
@@ -141,7 +140,7 @@ public class OptiFinePacksTests
         box.WriteManifest("1.8.9", new[] { box.Pin(OptiFineInstaller.PylonModId, ForgeJar("pylon")), box.Pin(OptiFineInstaller.IoniumModId, ForgeJar("ionium")) });
         var ionium = box.Mod("ionium-1.0.0.jar");
         var marker = Path.Combine(box.Cache, ClientModInstaller.IoniumOffForPackMarker);
-        File.WriteAllBytes(Path.Combine(Packs(box), "PvP.zip"), Zip("assets/minecraft/optifine/natural.properties"));
+        File.WriteAllBytes(Path.Combine(Packs(box), "PvP.zip"), Zip("assets/minecraft/optifine/ctm/glass.properties"));
         async Task<string?> Launch(string? setting)
         {
             using var client = box.Client();
@@ -153,7 +152,7 @@ public class OptiFinePacksTests
 
         // The CTM pack enabled: Ionium off (renamed, never deleted), the notice returned, the marker kept.
         EnablePacks(box, "PvP.zip");
-        Assert.Contains("(natural textures)", await Launch(OptiFinePacks.Auto));
+        Assert.Contains("(CTM)", await Launch(OptiFinePacks.Auto));
         Assert.True(File.Exists(ionium + ".disabled"));
         Assert.True(File.Exists(marker));
         Assert.Contains(box.Messages, m => m.StartsWith("Using OptiFine", StringComparison.Ordinal));
@@ -183,18 +182,5 @@ public class OptiFinePacksTests
         Assert.NotNull(await Launch(OptiFinePacks.Auto));
         Assert.True(File.Exists(ionium + ".disabled"));
         Assert.Equal(true, ModPreferences.Load(box.Game).GetEnabled(OptiFineInstaller.IoniumModId, null));
-    }
-
-    [Fact]
-    public void APackWithCtmAndCemKeepsIoniumUnderAuto()
-    {
-        using var box = new ModSandbox();
-        var packs = Packs(box);
-        File.WriteAllBytes(Path.Combine(packs, "IoniumPack.zip"), Zip("pack.mcmeta",
-            "assets/minecraft/optifine/ctm/glass.properties",
-            "assets/minecraft/optifine/cem/creeper.jem",
-            "assets/minecraft/optifine/colormap/grass.png"));
-        EnablePacks(box, "IoniumPack.zip");
-        Assert.Null(OptiFinePacks.Notice(box.Game, "1.8.9", OptiFinePacks.Auto));
     }
 }
