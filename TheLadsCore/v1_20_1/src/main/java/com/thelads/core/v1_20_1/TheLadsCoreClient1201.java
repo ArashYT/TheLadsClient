@@ -1,6 +1,7 @@
 package com.thelads.core.v1_20_1;
 
 import com.thelads.core.client.bridge.LadsGameBridge;
+import com.thelads.core.client.social.SocialBridge;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.v1_20_1.adapter.VanillaGameBridge1201;
@@ -10,8 +11,11 @@ import com.thelads.core.v1_20_1.feature.NativeKeyBindings1201;
 import com.thelads.core.v1_20_1.feature.NativeKillBanner1201;
 import com.thelads.core.v1_20_1.feature.QaProbe1201;
 import com.thelads.core.v1_20_1.gui.ExternalModSettings1201;
+import com.thelads.core.v1_20_1.social.SocialBridge1201;
+import com.thelads.core.v1_20_1.social.SocialHudToast1201;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +26,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
     public void onInitializeClient() {
         LOGGER.info("Initializing TheLadsCore for Minecraft 1.20.1...");
         LadsGameBridge.set(new VanillaGameBridge1201());
+        SocialBridge.set(new SocialBridge1201());
         com.thelads.core.security.AntiInjectDetector.init();
         ConfigManager.load();
         NativeKeyBindings1201.init();
@@ -41,7 +46,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         com.thelads.core.v1_20_1.feature.ebe.BakedBlockEntities1201.init();
 
         com.thelads.core.v1_20_1.feature.Menus1201.register();
-                com.thelads.core.v1_20_1.feature.fastquit.FastQuitProbe1201.initialize();
+        com.thelads.core.v1_20_1.feature.fastquit.FastQuitProbe1201.initialize();
 
         ModuleSupport.registerBuiltIn("Threads");
         ModuleSupport.registerBuiltIn(com.thelads.core.client.hud.ActionBar.MODULE); // OverlayGuiMixin, ActionBarHudElement
@@ -70,15 +75,28 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             "Clumps", "AppleSkin", "Jade", "MouseTweaks"
         );
 
-
         com.thelads.core.v1_20_1.game.Gameplay1201.register();
         com.thelads.core.v1_20_1.perf.Performance1201.register();
         com.thelads.core.v1_20_1.hud.Hud1201.register();
         com.thelads.core.v1_20_1.feature.Hypixel1201.register();
-                com.thelads.core.v1_20_1.feature.ParticleCore1201.register();
+        com.thelads.core.v1_20_1.feature.ParticleCore1201.register();
         com.thelads.core.v1_20_1.world.World1201.register(); // Wavy Capes, TNT Timer
 
+        HudRenderCallback.EVENT.register((graphics, tickDelta) -> SocialHudToast1201.render(graphics, tickDelta));
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SocialBridge1201.resetLoopbackState());
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            while (NativeKeyBindings1201.FRIENDS.consumeClick()) {
+                if (client.screen == null) {
+                    SocialBridge.get().openFriendsScreen();
+                }
+            }
+            while (NativeKeyBindings1201.TOAST_ACCEPT.consumeClick()) {
+                SocialHudToast1201.acceptNewest();
+            }
+            while (NativeKeyBindings1201.TOAST_DENY.consumeClick()) {
+                SocialHudToast1201.denyNewest();
+            }
             NativeFeatures1201.tick();
             NativeDiscordPresence1201.tick();
             com.thelads.core.client.cosmetics.net.CosmeticsLink.tick();

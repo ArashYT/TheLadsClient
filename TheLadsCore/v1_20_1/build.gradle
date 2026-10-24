@@ -46,6 +46,12 @@ dependencies {
     modCompileOnly('maven.modrinth:iris:s5eFLITc') { transitive = false }
     modCompileOnly('maven.modrinth:sodium:ygf8cVZg') { transitive = false }
     modCompileOnly('maven.modrinth:3dskinlayers:aiPCdDJa') { transitive = false }
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
 }
 
 apply from: 'perf.gradle'

@@ -146,6 +146,10 @@ public final class NativeFeatures1201 {
         if (down && NativeKeyBindings1201.PLAY_AGAIN.matches(key, scancode)) {
             com.thelads.core.client.hypixel.quickplay.QuickplayModule.triggerPlayAgain();
         }
+        if (down && NativeKeyBindings1201.FRIENDS.matches(key, scancode)) {
+            var mc = Minecraft.getInstance();
+            if (mc.screen == null) com.thelads.core.client.social.SocialBridge.get().openFriendsScreen();
+        }
     }
 
     public static void mouse(int button, int action) {
@@ -163,6 +167,10 @@ public final class NativeFeatures1201 {
         }
         if (down && NativeKeyBindings1201.PLAY_AGAIN.matchesMouse(button)) {
             com.thelads.core.client.hypixel.quickplay.QuickplayModule.triggerPlayAgain();
+        }
+        if (down && NativeKeyBindings1201.FRIENDS.matchesMouse(button)) {
+            var mc = Minecraft.getInstance();
+            if (mc.screen == null) com.thelads.core.client.social.SocialBridge.get().openFriendsScreen();
         }
     }
 
@@ -301,4 +309,3 @@ public final class NativeFeatures1201 {
         }
     }
 }
-
