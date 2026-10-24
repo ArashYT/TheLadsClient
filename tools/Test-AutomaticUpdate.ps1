@@ -157,8 +157,11 @@ try {
     if ($evil.version -ne '0.0.3' -or $evil.delta) { throw "Tampered delta did not end on the genuine full package: $probeRoot" }
     $portableOld = Join-Path $probeRoot 'portable-old'
     Expand-Archive -LiteralPath (Join-Path $probeRoot 'old-feed/LadsUpdateProbe-win-Portable.zip') -DestinationPath $portableOld
+    # Like an installed client, which keeps its current full package as the delta base (a portable zip has none).
+    New-Item -ItemType Directory -Path (Join-Path $portableOld 'packages') | Out-Null
+    Copy-Item -LiteralPath (Join-Path $probeRoot 'old-feed/LadsUpdateProbe-0.0.1-full.nupkg') -Destination (Join-Path $portableOld 'packages')
     $old = Invoke-ProbeStage $portableOld 'old-client' 90
-    if ($old.version -ne '0.0.3' -or $old.delta) { throw "Old client did not take the full package: $probeRoot" }
+    if ($old.version -ne '0.0.3' -or -not $old.genuineFull) { throw "Old client did not end on the genuine full package: $probeRoot" }
     $delta = Invoke-ProbeStage $portable 'delta' 120
     if ($delta.version -ne '0.0.3' -or -not $delta.delta) { throw "Delta update failed: $probeRoot" }
     $sizes = '{0:N0} KB delta vs {1:N0} KB full' -f ((Get-Item -LiteralPath (Join-Path $feed3 $deltaName)).Length / 1KB), ((Get-Item -LiteralPath $full3).Length / 1KB)

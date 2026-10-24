@@ -18,7 +18,9 @@ var root = Environment.GetEnvironmentVariable("LADS_UPDATE_PROBE_ROOT")
 var version = Assembly.GetExecutingAssembly().GetName().Version!.ToString(3);
 // LADS_UPDATE_PROBE_STAGE (0.0.3 feeds hold only 0.0.3's full package and its 0.0.2 delta, like a real release):
 // "delta" = 0.0.2 -> 0.0.3 through the delta (its feed lacks the full package), "evil-delta" = a tampered delta must end
-// on the genuine full package, "old-client" = 0.0.1 must take the full package. Unset = 0.0.1 -> 0.0.2.
+// on the genuine full package, "old-client" = an installed 0.0.1 (its 0.0.1 full package seeded) must end on the genuine
+// full package; Velopack may try the 0.0.2-based delta first and fall back itself, so its LastDownloadWasDelta is only
+// recorded. Unset = 0.0.1 -> 0.0.2.
 string? stage = Environment.GetEnvironmentVariable("LADS_UPDATE_PROBE_STAGE");
 var result = Path.Combine(root, stage == null ? "result.json" : $"{stage}-result.json");
 try
@@ -69,7 +71,7 @@ try
         await updater.PollAsync(() => true, messages.Add);   // busy: download and verify, no install yet
         messages.RemoveAll(message => message.StartsWith("Downloading v"));
         if (backend.PendingVersion != "0.0.3") throw new InvalidOperationException($"0.0.3 was not downloaded and verified: {string.Join(" | ", messages)}");
-        if (backend.LastDownloadWasDelta != (stage == "delta"))
+        if (stage != "old-client" && backend.LastDownloadWasDelta != (stage == "delta"))
             throw new InvalidOperationException($"LastDownloadWasDelta is {backend.LastDownloadWasDelta}: {string.Join(" | ", messages)}");
         if (stage == "evil-delta" && !messages.Any(message => message.StartsWith("Delta update did not verify")))
             throw new InvalidOperationException($"The tampered delta was never tried: {string.Join(" | ", messages)}");
