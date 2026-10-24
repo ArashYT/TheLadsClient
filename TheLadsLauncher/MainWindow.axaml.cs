@@ -144,8 +144,12 @@ public partial class MainWindow : Window
         }
         // The window is invisible until its first frame is composed (no redirection bitmap), so the bridge is told only after
         // a frame has rendered: the second animation-frame callback runs after the first frame went out.
-        Opened += (_, _) => RequestAnimationFrame(_ => RequestAnimationFrame(_ =>
-            Dispatcher.UIThread.Post(UpdateBridge.SignalLauncherShown, DispatcherPriority.Background)));
+        Opened += (_, _) =>
+        {
+            RequestAnimationFrame(_ => RequestAnimationFrame(_ => Dispatcher.UIThread.Post(_launcherShown.FramePresented, DispatcherPriority.Background)));
+            DispatcherTimer.RunOnce(() => { if (_launcherShown.Fallback()) Log("[Updater] No frame 2 s after opening; told the update bridge anyway."); },
+                TimeSpan.FromSeconds(2), DispatcherPriority.Background);
+        };
         _autoUpdater.PrepareRestart = PrepareUpdateRestart;
 
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
@@ -306,7 +310,7 @@ public partial class MainWindow : Window
             StartupMining.Stop();
             if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
             LauncherStartupOverlay.IsVisible = false;
-            UpdateBridge.SignalLauncherShown();   // still running after a startup install means it failed: dismiss its bridge now, not after 15 s
+            _launcherShown.StartupFinished();   // still running after a startup install means it failed: dismiss its bridge now, not after 15 s
             int installingPreview = Array.IndexOf(args, "--preview-installing");
             if (installingPreview >= 0) { await RunInstallingPreviewAsync(Path.GetFullPath(args[installingPreview + 1])); return; }
             int pagePreview = Array.IndexOf(args, "--preview-page");
@@ -516,6 +520,7 @@ public partial class MainWindow : Window
     private bool _windowClosed;
     private double? _startupDownload; // 0..1 once the updater reports a download; drives the startup progress bar
     private DispatcherTimer? _startupAnimTimer;
+    private readonly LauncherShownSignal _launcherShown = new(UpdateBridge.SignalLauncherShown);
 
     /// <summary>Right before Update.exe takes over: puts the installing screen up, hands a snapshot of it to the bridge
     /// (which holds it on screen until the new launcher shows) and returns the args that reopen the launcher in this place.</summary>

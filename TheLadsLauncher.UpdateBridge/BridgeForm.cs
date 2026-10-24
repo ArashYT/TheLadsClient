@@ -13,7 +13,7 @@ namespace TheLadsLauncher.UpdateBridge
     // Borderless window showing the launcher's snapshot 1:1 at the launcher's client rect, with the startup bar's shine.
     sealed class BridgeForm : Form
     {
-        const double SweepMs = 1600, HoldMs = 120, FadeMs = 150, PollMs = 250, HardCapMs = 10 * 60 * 1000;
+        const double SweepMs = 1600, HoldMs = 350, FadeMs = 150, PollMs = 250, HardCapMs = 10 * 60 * 1000;
 
         readonly Bitmap _image;
         readonly Rectangle _bar;   // in window pixels
@@ -104,7 +104,11 @@ namespace TheLadsLauncher.UpdateBridge
             double now = _clock.Elapsed.TotalMilliseconds;
             if (_fadeStartMs >= 0)
             {
-                if (now < _fadeStartMs) return;   // still holding: fully opaque
+                if (now < _fadeStartMs)   // still holding fully opaque; the shine keeps moving
+                {
+                    if (!_reducedMotion) Invalidate(_bar);
+                    return;
+                }
                 double opacity = 1 - (now - _fadeStartMs) / FadeMs;
                 if (opacity <= 0) Close();
                 else Opacity = opacity;
@@ -113,7 +117,7 @@ namespace TheLadsLauncher.UpdateBridge
             if (_launcherShown.WaitOne(0))
             {
                 Program.Log("launcher shown: fading out after " + HoldMs.ToString(CultureInfo.InvariantCulture) + " ms");
-                _fadeStartMs = now + HoldMs;   // belt and braces: the launcher's first frame may still be on its way to the screen
+                _fadeStartMs = now + HoldMs;   // the relaunched launcher's first frames are plain background; its UI follows 200-250 ms later
                 return;
             }
             if (now - _lastPollMs >= PollMs)

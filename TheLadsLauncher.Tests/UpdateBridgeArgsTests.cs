@@ -36,6 +36,27 @@ public class UpdateBridgeArgsTests
     }
 
     [Fact]
+    public void LauncherShownWaitsForTheFirstFrameWithAFallback()
+    {
+        int signals = 0;
+        var shown = new LauncherShownSignal(() => signals++);
+        shown.StartupFinished();            // a fast or failed startup check before any frame: the bridge must keep covering
+        Assert.Equal(0, signals);
+        shown.FramePresented();
+        Assert.Equal(1, signals);
+        Assert.False(shown.Fallback());     // a frame came: the fallback stays quiet
+        Assert.Equal(1, signals);
+        shown.StartupFinished();            // after the first frame: dismisses a bridge left by a failed startup install
+        Assert.Equal(2, signals);
+
+        var stalled = new LauncherShownSignal(() => signals++);
+        Assert.True(stalled.Fallback());    // no frame within 2 s: signal anyway
+        Assert.Equal(3, signals);
+        stalled.StartupFinished();
+        Assert.Equal(4, signals);
+    }
+
+    [Fact]
     public void SignalLauncherShownWithoutABridgeDoesNothing()
     {
         UpdateBridge.SignalLauncherShown();
