@@ -8,6 +8,7 @@
   },
   "client": [
     "ClearGlassMixin1201",
+    "CustomSkyMixin1201",
     "HideFoliageMixin1201",
     "PostChainAccessor1201",
     "ScreenBlurMixin1201"

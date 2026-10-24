@@ -25,10 +25,10 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 /**
  * PvP visuals on 1.8.9: Color Saturation, Motion Blur and Menu Blur (ScreenEffects189), Hide Foliage (HideFoliageMixin189, with
- * OptiFine's and Ionium's chunk builders alike: both draw blocks through BlockRendererDispatcher.renderBlock) and Clear Glass
- * (ClearGlassMixin189). 1.8.9 has grass, ferns, dead bushes and the double tall grass and large fern; no seagrass, nether plants or
- * leaf litter. The client tick keeps the hidden groups current and reloads the chunks when they change; Clear Glass reloads resources
- * (F3+T) once when it is turned on or off.
+ * OptiFine's and Ionium's chunk builders alike: both draw blocks through BlockRendererDispatcher.renderBlock), Clear Glass
+ * (ClearGlassMixin189) and Custom Skies without OptiFine (CustomSky189). 1.8.9 has grass, ferns, dead bushes and the double tall
+ * grass and large fern; no seagrass, nether plants or leaf litter. The client tick keeps the hidden groups current and reloads the
+ * chunks when they change; Clear Glass reloads resources (F3+T) once when it is turned on or off.
  */
 public final class PvpVisuals189 {
     private static volatile int hiddenMask;
@@ -43,6 +43,7 @@ public final class PvpVisuals189 {
         glass = (ClearGlassModule) Options189.module(ClearGlassModule.NAME);
         ScreenEffects189.modules((ColorSaturationModule) Options189.module(ColorSaturationModule.NAME),
             (MotionBlurModule) Options189.module(MotionBlurModule.NAME), (MenuBlurModule) Options189.module(MenuBlurModule.NAME));
+        CustomSky189.register();
     }
 
     @SubscribeEvent

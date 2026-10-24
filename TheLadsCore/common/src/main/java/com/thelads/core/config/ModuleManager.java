@@ -399,6 +399,7 @@ public class ModuleManager {
         register(new com.thelads.core.modules.MenuBlurModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.HideFoliageModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.ClearGlassModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.CustomSkyModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

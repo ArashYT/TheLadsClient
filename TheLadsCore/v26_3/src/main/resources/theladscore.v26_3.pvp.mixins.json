@@ -8,6 +8,7 @@
   },
   "client": [
     "ClearGlassMixin26",
+    "CustomSkyMixin26",
     "HideFoliageMixin26",
     "MenuBlurRadiusMixin26",
     "MenuBlurScreenMixin26"

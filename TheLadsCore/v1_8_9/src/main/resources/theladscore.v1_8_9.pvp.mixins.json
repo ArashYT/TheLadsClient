@@ -9,6 +9,7 @@
   },
   "client": [
     "ClearGlassMixin189",
+    "CustomSkyMixin189",
     "GuiScreenBlurMixin189",
     "HideFoliageMixin189"
   ]

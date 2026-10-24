@@ -25,9 +25,9 @@ import net.minecraft.world.level.block.Block;
 
 /**
  * PvP visuals on 26.x: Color Saturation and Motion Blur (ScreenEffects26), Menu Blur through vanilla's own menu blur (the
- * MenuBlur*Mixin26), Hide Foliage (HideFoliageMixin26) and Clear Glass (ClearGlassMixin26). The client tick keeps the hidden blocks
- * current (the module, its groups and the server rules for Tall Plants) and rebuilds the chunk meshes when they change; Clear Glass
- * reloads resources once when it is turned on or off.
+ * MenuBlur*Mixin26), Hide Foliage (HideFoliageMixin26), Clear Glass (ClearGlassMixin26) and Custom Skies (CustomSky26). The
+ * client tick keeps the hidden blocks current (the module, its groups and the server rules for Tall Plants) and rebuilds the chunk
+ * meshes when they change; Clear Glass reloads resources once when it is turned on or off.
  */
 public final class PvpVisuals26 {
     private static volatile Block[] hidden = new Block[0];
@@ -41,10 +41,12 @@ public final class PvpVisuals26 {
     private PvpVisuals26() {}
 
     public static void register() {
-        ModuleSupport.registerBuiltIn(ColorSaturationModule.NAME, MotionBlurModule.NAME, HideFoliageModule.NAME, ClearGlassModule.NAME);
+        ModuleSupport.registerBuiltIn(ColorSaturationModule.NAME, MotionBlurModule.NAME, HideFoliageModule.NAME, ClearGlassModule.NAME,
+            com.thelads.core.modules.CustomSkyModule.NAME);
         ModuleSupport.registerBuiltInLimited(MenuBlurModule.NAME, "Minecraft 26.x blurs menus itself (Video Settings > Menu Background Blur): "
             + "while this module is on, its strength and toggles replace that setting in a world, and inventories, which 26.x only dims, are blurred too.");
         ClientTickEvents.END_CLIENT_TICK.register(PvpVisuals26::tick);
+        CustomSky26.register();
     }
 
     private static void tick(Minecraft mc) {

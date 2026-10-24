@@ -19,9 +19,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 
 /**
- * PvP visuals on 1.20.1: Color Saturation, Motion Blur and Menu Blur (ScreenEffects1201), Hide Foliage (HideFoliageMixin1201) and
- * Clear Glass (ClearGlassMixin1201). The client tick keeps the hidden blocks current (the module, its groups and the server rules
- * for Tall Plants) and rebuilds the chunk meshes when they change; Clear Glass reloads resources once when it is turned on or off.
+ * PvP visuals on 1.20.1: Color Saturation, Motion Blur and Menu Blur (ScreenEffects1201), Hide Foliage (HideFoliageMixin1201),
+ * Clear Glass (ClearGlassMixin1201) and Custom Skies (CustomSky1201). The client tick keeps the hidden blocks current (the module,
+ * its groups and the server rules for Tall Plants) and rebuilds the chunk meshes when they change; Clear Glass reloads resources once
+ * when it is turned on or off.
  */
 public final class PvpVisuals1201 {
     private static volatile Block[] hidden = new Block[0];
@@ -34,8 +35,10 @@ public final class PvpVisuals1201 {
     private PvpVisuals1201() {}
 
     public static void register() {
-        ModuleSupport.registerBuiltIn(ColorSaturationModule.NAME, MotionBlurModule.NAME, MenuBlurModule.NAME, HideFoliageModule.NAME, ClearGlassModule.NAME);
+        ModuleSupport.registerBuiltIn(ColorSaturationModule.NAME, MotionBlurModule.NAME, MenuBlurModule.NAME, HideFoliageModule.NAME, ClearGlassModule.NAME,
+            com.thelads.core.modules.CustomSkyModule.NAME);
         ClientTickEvents.END_CLIENT_TICK.register(PvpVisuals1201::tick);
+        CustomSky1201.register();
     }
 
     private static void tick(Minecraft mc) {
