@@ -1,4 +1,4 @@
-"""Lads social relay & backend (Task S1): friends graph, presence, DMs,
+"""Lads social relay & backend (Task S1, Hardened): friends graph, presence, DMs,
 invites, join requests, ICE signaling, and Cloudflare TURN minting.
 
 Mounted on the cosmetics aiohttp server at /social/ws.
@@ -6,6 +6,7 @@ Mounted on the cosmetics aiohttp server at /social/ws.
 from __future__ import annotations
 
 import asyncio
+from collections import OrderedDict
 import json
 import logging
 import os
@@ -14,7 +15,7 @@ import secrets
 import sqlite3
 import time
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Set
+from typing import Optional, Dict, Any, List, Set, Tuple
 
 import aiohttp
 from aiohttp import web
@@ -30,21 +31,56 @@ DM_MAX_CHARS = 256
 INVITE_RATE_LIMIT = 30          # per hour
 JOIN_REQUEST_RATE_LIMIT = 30    # per hour
 OFFLINE_DM_TTL_MS = 7 * 86400 * 1000  # 7 days
+MAX_OFFLINE_DMS_PER_RECIPIENT = 100
 INVITE_TTL_SECONDS = 300        # 5 minutes
 JOIN_REQUEST_TTL_SECONDS = 300  # 5 minutes
-RELAY_BUDGET_BYTES = 900 * 1024 * 1024 * 1024  # 900 GB monthly budget
+MAX_PENDING_INVITES_PER_HOST = 20
+MAX_PENDING_JOIN_REQUESTS_PER_HOST = 20
+MAX_SIGNALS_PER_SEC = 40
+MAX_SIGNAL_DATA_BYTES = 8192
+MAX_CONCURRENT_SOCKETS_PER_IP = 8
+AUTH_TIMEOUT = 10.0
+WS_MAX_MSG_SIZE = 65536
+RELAY_BUDGET_BYTES = 900 * 10**9  # 900 GB (decimal)
+RELAY_MAX_BYTES_PER_SEC = 12_500_000  # 100 Mbit/s
 STUN_SERVER = "stun:stun.cloudflare.com:3478"
+ALLOWED_STATES = frozenset({"menu", "singleplayer", "hosting", "server", "offline"})
+ALLOWED_SCOPES = frozenset({"off", "lan", "friends", "invite"})
 
-_PROFILE_CACHE: dict[str, tuple[float, dict | None]] = {}
+_PROFILE_CACHE: OrderedDict[str, tuple[float, dict | None]] = OrderedDict()
+MAX_PROFILE_CACHE = 10000
+
+
+def get_default_db_path() -> Path:
+    env_db = os.getenv("SOCIAL_DB")
+    if env_db:
+        return Path(env_db).resolve()
+    cosmetics_env = os.getenv("COSMETICS_DB")
+    if cosmetics_env:
+        return Path(cosmetics_env).resolve().with_name("social.db")
+    return (Path(__file__).resolve().parent / "social.db").resolve()
+
+
+def get_client_ip(request: web.Request) -> str:
+    peer = request.remote or "?"
+    if peer in ("127.0.0.1", "::1", "localhost"):
+        forwarded = request.headers.get("CF-Connecting-IP")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+    return peer
 
 
 async def lookup_mojang_profile(name: str) -> dict | None:
-    """Resolve Minecraft username to {id: plain_uuid, name: canonical_name}."""
+    """Resolve Minecraft username to {id: plain_uuid, name: canonical_name} with bounded LRU cache."""
     now = time.monotonic()
     if name in _PROFILE_CACHE:
         ts, cached = _PROFILE_CACHE[name]
         if now - ts < 3600:
+            _PROFILE_CACHE.move_to_end(name)
             return cached
+        else:
+            del _PROFILE_CACHE[name]
+
     url = f"https://api.mojang.com/users/profiles/minecraft/{name}"
     try:
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
@@ -54,11 +90,21 @@ async def lookup_mojang_profile(name: str) -> dict | None:
                     if isinstance(data, dict) and "id" in data and "name" in data:
                         res = {"id": plain_uuid(data["id"]), "name": data["name"]}
                         _PROFILE_CACHE[name] = (now, res)
+                        _PROFILE_CACHE.move_to_end(name)
+                        if len(_PROFILE_CACHE) > MAX_PROFILE_CACHE:
+                            _PROFILE_CACHE.popitem(last=False)
                         return res
-                _PROFILE_CACHE[name] = (now, None)
-                return None
+                elif resp.status in (204, 404):
+                    _PROFILE_CACHE[name] = (now, None)
+                    _PROFILE_CACHE.move_to_end(name)
+                    if len(_PROFILE_CACHE) > MAX_PROFILE_CACHE:
+                        _PROFILE_CACHE.popitem(last=False)
+                    return None
+                else:
+                    log.warning("Mojang profile lookup returned HTTP %d for %s", resp.status, name)
+                    return None
     except Exception as e:
-        log.warning("Mojang profile lookup failed for %s: %s", name, e)
+        log.warning("Mojang profile lookup error: %s", type(e).__name__)
         return None
 
 
@@ -78,23 +124,98 @@ async def mint_turn_credentials() -> list[dict]:
     try:
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
             async with session.post(url, headers=headers, json=body) as resp:
-                if resp.status == 200:
+                if resp.status in (200, 201):
                     data = await resp.json(content_type=None)
                     turn_servers = []
-                    for s in data.get("iceServers", []):
-                        username = s.get("username", "")
-                        credential = s.get("credential", "")
-                        urls = s.get("urls") or [s.get("url")]
+                    for s in data.get("iceServers", []) if isinstance(data, dict) else []:
+                        if not isinstance(s, dict) or not s.get("username"):
+                            continue
+                        username = str(s["username"])
+                        credential = str(s.get("credential", ""))
+                        urls = s.get("urls")
+                        if isinstance(urls, str):
+                            urls = [urls]
+                        elif not isinstance(urls, list):
+                            urls = [s.get("url")] if s.get("url") else []
                         for u in urls:
-                            if u:
+                            if isinstance(u, str) and u.startswith("turn:") and "transport=udp" in u:
                                 turn_servers.append({"url": u, "user": username, "credential": credential})
                     return turn_servers
                 else:
                     log.warning("CF TURN mint failed with status %d", resp.status)
                     return []
     except Exception as e:
-        log.warning("CF TURN request failed: %s", e)
+        log.warning("CF TURN request failed: %s", type(e).__name__)
         return []
+
+
+def validate_game(game: Any) -> tuple[bool, dict | None]:
+    if game is None:
+        return True, {}
+    if not isinstance(game, dict):
+        return False, None
+    sanitized = {}
+    for k, v in game.items():
+        if not isinstance(k, str) or len(k) > 32 or not isinstance(v, str) or len(v) > 64:
+            return False, None
+        sanitized[k] = v
+    return True, sanitized
+
+
+def validate_world(world: Any) -> tuple[bool, dict | None]:
+    if world is None:
+        return True, None
+    if not isinstance(world, dict):
+        return False, None
+    wid = world.get("id")
+    wname = world.get("name")
+    scope = world.get("scope")
+    slots = world.get("slots")
+    used = world.get("used")
+    relay_only = world.get("relayOnly", False)
+
+    if not isinstance(wid, str) or len(wid) > 64:
+        return False, None
+    if not isinstance(wname, str) or len(wname) > 64:
+        return False, None
+    if not isinstance(scope, str) or scope.lower() not in ALLOWED_SCOPES:
+        return False, None
+    if not isinstance(slots, int) or type(slots) is bool or not (0 <= slots <= 64):
+        return False, None
+    if not isinstance(used, int) or type(used) is bool or not (0 <= used <= 64):
+        return False, None
+
+    return True, {
+        "id": wid,
+        "name": wname,
+        "scope": scope.lower(),
+        "slots": slots,
+        "used": used,
+        "relayOnly": relay_only is True
+    }
+
+
+def validate_presence(state: Any, game: Any, server: Any, world: Any) -> tuple[bool, dict | None]:
+    if not isinstance(state, str) or state not in ALLOWED_STATES:
+        return False, None
+
+    ok_g, g = validate_game(game)
+    if not ok_g:
+        return False, None
+
+    if server is not None and (not isinstance(server, str) or len(server) > 255):
+        return False, None
+
+    ok_w, w = validate_world(world)
+    if not ok_w:
+        return False, None
+
+    return True, {
+        "state": state,
+        "game": g,
+        "server": server,
+        "world": w
+    }
 
 
 def are_games_compatible(host_game: dict | None, guest_game: dict | None) -> bool:
@@ -119,15 +240,14 @@ def are_games_compatible(host_game: dict | None, guest_game: dict | None) -> boo
 class SocialStore:
     def __init__(self, db_path: Path | str | None = None):
         if db_path is not None:
-            p = Path(db_path)
+            p = Path(db_path).resolve()
             if p.name == "cosmetics.db":
                 p = p.with_name("social.db")
             elif p.is_dir():
                 p = p / "social.db"
             self.db_path = p
         else:
-            env_db = os.getenv("SOCIAL_DB")
-            self.db_path = Path(env_db) if env_db else Path("social.db")
+            self.db_path = get_default_db_path()
 
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
@@ -205,10 +325,12 @@ class SocialStore:
     async def save_name(self, uuid: str, name: str) -> None:
         def _op():
             with self._connect() as conn:
+                now = int(time.time())
+                conn.execute("DELETE FROM player_names WHERE name = ? COLLATE NOCASE AND uuid != ?", (name, uuid))
                 conn.execute(
                     """INSERT INTO player_names (uuid, name, updated_at) VALUES (?, ?, ?)
                        ON CONFLICT(uuid) DO UPDATE SET name = ?, updated_at = ?""",
-                    (uuid, name, int(time.time()), name, int(time.time()))
+                    (uuid, name, now, name, now)
                 )
         await asyncio.to_thread(_op)
 
@@ -222,7 +344,7 @@ class SocialStore:
     async def get_uuid_by_name(self, name: str) -> str | None:
         def _op():
             with self._connect() as conn:
-                row = conn.execute("SELECT uuid FROM player_names WHERE name = ? COLLATE NOCASE", (name,)).fetchone()
+                row = conn.execute("SELECT uuid FROM player_names WHERE name = ? COLLATE NOCASE ORDER BY updated_at DESC", (name,)).fetchone()
                 return row[0] if row else None
         return await asyncio.to_thread(_op)
 
@@ -297,6 +419,13 @@ class SocialStore:
         await asyncio.to_thread(_op)
 
     # --- Requests ---
+    async def log_request_attempt(self, from_uuid: str) -> None:
+        now = int(time.time())
+        def _op():
+            with self._connect() as conn:
+                conn.execute("INSERT INTO request_log (from_uuid, sent_at) VALUES (?, ?)", (from_uuid, now))
+        await asyncio.to_thread(_op)
+
     async def add_request(self, from_uuid: str, to_uuid: str) -> None:
         now = int(time.time())
         def _op():
@@ -305,7 +434,6 @@ class SocialStore:
                     "INSERT OR REPLACE INTO requests (from_uuid, to_uuid, created_at) VALUES (?, ?, ?)",
                     (from_uuid, to_uuid, now)
                 )
-                conn.execute("INSERT INTO request_log (from_uuid, sent_at) VALUES (?, ?)", (from_uuid, now))
         await asyncio.to_thread(_op)
 
     async def has_request(self, from_uuid: str, to_uuid: str) -> bool:
@@ -442,6 +570,16 @@ class SocialStore:
     async def save_offline_dm(self, from_uuid: str, to_uuid: str, text: str, ts: int) -> None:
         def _op():
             with self._connect() as conn:
+                row = conn.execute("SELECT count(*) FROM dm_offline WHERE to_uuid = ?", (to_uuid,)).fetchone()
+                count = row[0] if row else 0
+                if count >= MAX_OFFLINE_DMS_PER_RECIPIENT:
+                    excess = count - MAX_OFFLINE_DMS_PER_RECIPIENT + 1
+                    conn.execute(
+                        """DELETE FROM dm_offline WHERE id IN (
+                            SELECT id FROM dm_offline WHERE to_uuid = ? ORDER BY ts ASC LIMIT ?
+                        )""",
+                        (to_uuid, excess)
+                    )
                 conn.execute(
                     "INSERT INTO dm_offline (from_uuid, to_uuid, text, ts) VALUES (?, ?, ?, ?)",
                     (from_uuid, to_uuid, text, ts)
@@ -452,15 +590,17 @@ class SocialStore:
         cutoff = int(time.time() * 1000) - OFFLINE_DM_TTL_MS
         def _op():
             with self._connect() as conn:
-                # Prune old
                 conn.execute("DELETE FROM dm_offline WHERE ts < ?", (cutoff,))
                 cursor = conn.execute(
-                    "SELECT from_uuid, text, ts FROM dm_offline WHERE to_uuid = ? AND ts >= ? ORDER BY ts ASC",
+                    "SELECT id, from_uuid, text, ts FROM dm_offline WHERE to_uuid = ? AND ts >= ? ORDER BY ts ASC LIMIT 100",
                     (user_uuid, cutoff)
                 )
-                dms = [{"from": row[0], "text": row[1], "ts": row[2]} for row in cursor.fetchall()]
-                conn.execute("DELETE FROM dm_offline WHERE to_uuid = ?", (user_uuid,))
-                return dms
+                rows = cursor.fetchall()
+                if rows:
+                    ids = [r[0] for r in rows]
+                    placeholders = ",".join("?" for _ in ids)
+                    conn.execute(f"DELETE FROM dm_offline WHERE id IN ({placeholders})", ids)
+                return [{"from": r[1], "text": r[2], "ts": r[3]} for r in rows]
         return await asyncio.to_thread(_op)
 
     # --- Relay Usage ---
@@ -487,19 +627,63 @@ class SocialStore:
 # ---------------------------------------------------------------------------
 
 class SocialPeer:
-    def __init__(self, ws: web.WebSocketResponse, uuid: str, name: str, settings: dict):
+    def __init__(self, ws: web.WebSocketResponse, uuid: str, name: str, settings: dict, ip: str):
         self.ws = ws
         self.uuid = uuid
         self.name = name
-        self.presence: dict = {"state": "menu"}
         self.settings = settings
-        self.dm_window: float = time.monotonic()
-        self.dm_count: int = 0
-        self.invite_window: float = time.monotonic()
-        self.invite_count: int = 0
-        self.join_req_window: float = time.monotonic()
-        self.join_req_count: int = 0
+        self.ip = ip
+        self.presence: dict = {"state": "menu"}
         self.gone: bool = False
+        self.send_queue: asyncio.Queue[str | None] = asyncio.Queue(maxsize=256)
+        self.writer_task: asyncio.Task = asyncio.create_task(self._writer())
+
+    async def _writer(self) -> None:
+        try:
+            while True:
+                msg = await self.send_queue.get()
+                if msg is None:
+                    break
+                try:
+                    await asyncio.wait_for(self.ws.send_str(msg), timeout=10.0)
+                except Exception:
+                    self.gone = True
+                    try:
+                        await self.ws.close(code=1011, message=b"send timeout")
+                    except Exception:
+                        pass
+                    break
+        except asyncio.CancelledError:
+            pass
+
+    def send_json(self, data: dict) -> bool:
+        if self.gone or self.ws.closed:
+            return False
+        try:
+            text = json.dumps(data)
+            self.send_queue.put_nowait(text)
+            return True
+        except asyncio.QueueFull:
+            self.gone = True
+            log.warning("Send queue full for %s, closing", self.uuid)
+            try:
+                asyncio.create_task(self.ws.close(code=1013, message=b"queue full"))
+            except Exception:
+                pass
+            return False
+
+    async def close(self, code: int = 1000, message: bytes = b"") -> None:
+        self.gone = True
+        try:
+            self.send_queue.put_nowait(None)
+        except Exception:
+            pass
+        if self.writer_task and not self.writer_task.done():
+            self.writer_task.cancel()
+        try:
+            await self.ws.close(code=code, message=message)
+        except Exception:
+            pass
 
 
 class SocialHub:
@@ -510,6 +694,31 @@ class SocialHub:
         self.sessions: dict[str, dict] = {}
         self.invites: dict[str, dict] = {}
         self.join_requests: dict[str, dict] = {}
+        self.ip_counts: dict[str, int] = {}
+        self.dm_limits: dict[str, tuple[float, int]] = {}
+        self.invite_limits: dict[str, tuple[float, int]] = {}
+        self.join_limits: dict[str, tuple[float, int]] = {}
+        self.signal_limits: dict[str, tuple[float, int]] = {}
+
+    def sweep_expired(self) -> None:
+        now = time.time()
+        for inv_id, inv in list(self.invites.items()):
+            if now > inv["expires_at"]:
+                del self.invites[inv_id]
+        for req_id, req in list(self.join_requests.items()):
+            if now > req["expires_at"]:
+                del self.join_requests[req_id]
+
+    def check_rate_limit(self, limits_dict: dict, uuid: str, limit: int, window: float) -> bool:
+        now = time.monotonic()
+        w_start, count = limits_dict.get(uuid, (now, 0))
+        if now - w_start >= window:
+            limits_dict[uuid] = (now, 1)
+            return True
+        if count >= limit:
+            return False
+        limits_dict[uuid] = (w_start, count + 1)
+        return True
 
     def find_peer_by_name(self, name: str) -> SocialPeer | None:
         lower = name.lower()
@@ -522,15 +731,14 @@ class SocialHub:
         old = self.peers.get(peer.uuid)
         self.peers[peer.uuid] = peer
         if old:
-            old.gone = True
-            try:
-                await old.ws.close(code=4001, message=b"replaced")
-            except Exception:
-                pass
+            await old.close(code=4001, message=b"replaced")
 
     async def unregister(self, peer: SocialPeer) -> None:
-        if self.peers.get(peer.uuid) is peer:
-            del self.peers[peer.uuid]
+        if self.peers.get(peer.uuid) is not peer:
+            # Replaced by a newer socket; do NOT tear down active sessions or presence!
+            return
+
+        del self.peers[peer.uuid]
         peer.gone = True
 
         # End active sessions
@@ -540,10 +748,7 @@ class SocialHub:
                 other_uuid = sess["guest"] if sess["host"] == peer.uuid else sess["host"]
                 other = self.peers.get(other_uuid)
                 if other and not other.gone:
-                    try:
-                        await other.ws.send_json({"t": "p2p_end", "sid": sid, "reason": "peer_disconnected"})
-                    except Exception:
-                        pass
+                    other.send_json({"t": "p2p_end", "sid": sid, "reason": "peer_disconnected"})
 
         # Invalidate pending invites / join requests
         for inv_id, inv in list(self.invites.items()):
@@ -562,10 +767,7 @@ class SocialHub:
                 continue
             f_peer = self.peers.get(f_uuid)
             if f_peer and not f_peer.gone:
-                try:
-                    await f_peer.ws.send_json({"t": "presence", "uuid": peer.uuid, "state": "offline"})
-                except Exception:
-                    pass
+                f_peer.send_json({"t": "presence", "uuid": peer.uuid, "state": "offline"})
 
     async def broadcast_presence(self, peer: SocialPeer) -> None:
         friends = await self.store.get_friends(peer.uuid)
@@ -576,10 +778,7 @@ class SocialHub:
             f_peer = self.peers.get(f_uuid)
             if f_peer and not f_peer.gone:
                 payload = self.format_presence_for(peer, f_peer)
-                try:
-                    await f_peer.ws.send_json(payload)
-                except Exception:
-                    pass
+                f_peer.send_json(payload)
 
     def format_presence_for(self, subject: SocialPeer, viewer: SocialPeer) -> dict:
         if subject.settings.get("appearOffline", False):
@@ -639,38 +838,57 @@ class SocialHub:
 
     async def start_p2p(self, host_peer: SocialPeer, guest_peer: SocialPeer, relay_only: bool = False) -> None:
         sid = secrets.token_hex(12)
-        month_str = time.strftime("%Y-%m")
+        month_str = time.strftime("%Y-%m", time.gmtime())
         relay_bytes = await self.store.get_relay_bytes(month_str)
 
+        # One active session per guest: terminate existing session for guest if any
+        for s_id, s_data in list(self.sessions.items()):
+            if s_data["guest"] == guest_peer.uuid:
+                del self.sessions[s_id]
+                h_peer = self.peers.get(s_data["host"])
+                g_peer = self.peers.get(s_data["guest"])
+                if h_peer and not h_peer.gone:
+                    h_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "replaced"})
+                if g_peer and not g_peer.gone:
+                    g_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "replaced"})
+
         turn_list = []
-        if relay_bytes < RELAY_BUDGET_BYTES:
+        relay_status = "none"
+        if relay_bytes >= RELAY_BUDGET_BYTES:
+            relay_status = "budget"
+        else:
             try:
                 turn_list = await mint_turn_credentials()
+                relay_status = "ok" if turn_list else "none"
             except Exception as e:
-                log.warning("TURN credential minting error: %s", e)
+                log.warning("TURN credential minting error: %s", type(e).__name__)
                 turn_list = []
+                relay_status = "none"
 
         ice_config = {
             "stun": [STUN_SERVER],
             "turn": turn_list,
-            "relayOnly": relay_only
+            "relayOnly": bool(relay_only),
+            "relayStatus": relay_status
         }
 
         self.sessions[sid] = {
             "sid": sid,
             "host": host_peer.uuid,
             "guest": guest_peer.uuid,
-            "created_at": time.time()
+            "created_at": time.time(),
+            "has_turn": bool(turn_list),
+            "recorded_bytes": 0
         }
 
-        await host_peer.ws.send_json({
+        host_peer.send_json({
             "t": "p2p_start",
             "sid": sid,
             "peer": guest_peer.uuid,
             "role": "host",
             "ice": ice_config
         })
-        await guest_peer.ws.send_json({
+        guest_peer.send_json({
             "t": "p2p_start",
             "sid": sid,
             "peer": host_peer.uuid,
@@ -680,471 +898,688 @@ class SocialHub:
 
     async def close_all(self, app: web.Application) -> None:
         for p in list(self.peers.values()):
-            try:
-                await p.ws.close(code=1001, message=b"server shutdown")
-            except Exception:
-                pass
+            await p.close(code=1001, message=b"server shutdown")
 
 
 # ---------------------------------------------------------------------------
 # Handshake & Dispatcher
 # ---------------------------------------------------------------------------
 
-async def read_ws(ws: web.WebSocketResponse) -> dict | None:
-    msg = await ws.receive()
+async def read_ws(ws: web.WebSocketResponse) -> tuple[str | None, dict | None]:
+    try:
+        msg = await ws.receive()
+    except Exception:
+        return "error", None
+
     if msg.type != aiohttp.WSMsgType.TEXT:
-        return None
+        return "close", None
     try:
         data = json.loads(msg.data)
-    except ValueError:
-        return None
-    return data if isinstance(data, dict) else None
+    except (ValueError, RecursionError, TypeError):
+        return "malformed", None
+    return "ok", data if isinstance(data, dict) else None
 
 
-async def authenticate(hub: SocialHub, ws: web.WebSocketResponse) -> SocialPeer | None:
+async def authenticate(hub: SocialHub, ws: web.WebSocketResponse, ip: str) -> SocialPeer | None:
     nonce = secrets.token_hex(16)
     await ws.send_str(json.dumps({"t": "challenge", "nonce": nonce}))
-    msg = await read_ws(ws)
-    if not msg or msg.get("t") != "auth":
+
+    status, msg = await read_ws(ws)
+    if status != "ok" or not msg or msg.get("t") != "auth":
         return None
+
     uuid_str = plain_uuid(msg.get("uuid"))
     name = msg.get("name")
     sid = server_id(nonce)
+
     if not uuid_str or not isinstance(name, str) or not NAME_RE.fullmatch(name) or msg.get("serverId") != sid:
         return None
+
     if not hub.insecure:
         try:
             joined = await has_joined(name, sid)
         except Exception as e:
-            log.warning("Mojang hasJoined failed: %s", e)
+            log.warning("Mojang hasJoined failed: %s", type(e).__name__)
             joined = None
         if joined != uuid_str:
-            log.info("Social auth refused for %s (%s)", name, uuid_str)
+            log.info("Social auth refused for %s", uuid_str)
             return None
 
     await hub.store.save_name(uuid_str, name)
     settings = await hub.store.get_settings(uuid_str)
-    peer = SocialPeer(ws=ws, uuid=uuid_str, name=name, settings=settings)
-    await hub.register(peer)
-    log.info("Social auth ok: %s (%s)", name, uuid_str)
+    peer = SocialPeer(ws=ws, uuid=uuid_str, name=name, settings=settings, ip=ip)
+    log.info("Social auth ok: %s", uuid_str)
     return peer
 
 
 async def serve(hub: SocialHub, peer: SocialPeer) -> None:
     store = hub.store
 
-    while (msg := await read_ws(peer.ws)) is not None:
+    while True:
+        status, msg = await read_ws(peer.ws)
+        if status == "malformed":
+            await peer.close(code=4002, message=b"malformed message")
+            break
+        if status != "ok" or msg is None:
+            break
+
         kind = msg.get("t")
+        if not isinstance(kind, str):
+            peer.send_json({"t": "error", "code": "bad", "ref": ""})
+            continue
 
-        if kind == "presence":
-            old_world = peer.presence.get("world")
-            peer.presence = {
-                "state": msg.get("state", "menu"),
-                "game": msg.get("game"),
-                "server": msg.get("server"),
-                "world": msg.get("world")
-            }
-            # If host stopped hosting, invalidate pending invites from this host
-            if old_world and (peer.presence.get("state") != "hosting" or not peer.presence.get("world")):
-                for inv_id, inv in list(hub.invites.items()):
-                    if inv["host"] == peer.uuid:
-                        del hub.invites[inv_id]
+        try:
+            if kind == "presence":
+                ok_pres, pres = validate_presence(
+                    msg.get("state"),
+                    msg.get("game"),
+                    msg.get("server"),
+                    msg.get("world")
+                )
+                if not ok_pres or pres is None:
+                    peer.send_json({"t": "error", "code": "bad", "ref": "presence"})
+                    continue
 
-            await hub.broadcast_presence(peer)
+                old_world = peer.presence.get("world")
+                peer.presence = pres
 
-        elif kind == "friend_add":
-            name = msg.get("name")
-            if not isinstance(name, str) or not NAME_RE.fullmatch(name):
-                await peer.ws.send_json({"t": "error", "code": "not_found", "ref": name or ""})
-                continue
+                # Invalidate pending invites if hosting closed
+                if old_world and (peer.presence.get("state") != "hosting" or not peer.presence.get("world")):
+                    for inv_id, inv in list(hub.invites.items()):
+                        if inv["host"] == peer.uuid:
+                            del hub.invites[inv_id]
 
-            # Rate limit check (20 / hour)
-            recent_count = await store.count_requests_last_hour(peer.uuid)
-            if recent_count >= FRIEND_REQUEST_RATE_LIMIT:
-                await peer.ws.send_json({"t": "error", "code": "rate", "ref": name})
-                continue
+                await hub.broadcast_presence(peer)
 
-            # Friend limit check (500)
-            cur_count = await store.friend_count(peer.uuid)
-            if cur_count >= MAX_FRIENDS:
-                await peer.ws.send_json({"t": "error", "code": "limit", "ref": name})
-                continue
+            elif kind == "friend_add":
+                name = msg.get("name")
+                if not isinstance(name, str) or not NAME_RE.fullmatch(name) or len(name) > 16:
+                    peer.send_json({"t": "error", "code": "bad", "ref": str(name or "")})
+                    continue
 
-            # Resolve name
-            target_uuid = None
-            canonical_name = name
-            target_peer = hub.find_peer_by_name(name)
-            if target_peer:
-                target_uuid = target_peer.uuid
-                canonical_name = target_peer.name
-            else:
-                target_uuid = await store.get_uuid_by_name(name)
+                # Rate limit (20 / hour) counted before lookup
+                recent_count = await store.count_requests_last_hour(peer.uuid)
+                if recent_count >= FRIEND_REQUEST_RATE_LIMIT:
+                    peer.send_json({"t": "error", "code": "rate", "ref": name})
+                    continue
 
-            if not target_uuid:
-                profile = await lookup_mojang_profile(name)
-                if profile:
-                    target_uuid = profile["id"]
-                    canonical_name = profile["name"]
-                    await store.save_name(target_uuid, canonical_name)
+                await store.log_request_attempt(peer.uuid)
 
-            if not target_uuid:
-                await peer.ws.send_json({"t": "error", "code": "not_found", "ref": name})
-                continue
+                # Friend limit check (500)
+                cur_count = await store.friend_count(peer.uuid)
+                if cur_count >= MAX_FRIENDS:
+                    peer.send_json({"t": "error", "code": "limit", "ref": name})
+                    continue
 
-            if target_uuid == peer.uuid:
-                await peer.ws.send_json({"t": "error", "code": "self", "ref": name})
-                continue
+                # Resolve name
+                target_uuid = None
+                canonical_name = name
+                target_peer = hub.find_peer_by_name(name)
+                if target_peer:
+                    target_uuid = target_peer.uuid
+                    canonical_name = target_peer.name
+                else:
+                    target_uuid = await store.get_uuid_by_name(name)
 
-            if await store.are_friends(peer.uuid, target_uuid):
-                await peer.ws.send_json({"t": "error", "code": "already", "ref": name})
-                continue
+                if not target_uuid:
+                    profile = await lookup_mojang_profile(name)
+                    if profile:
+                        target_uuid = profile["id"]
+                        canonical_name = profile["name"]
+                        await store.save_name(target_uuid, canonical_name)
 
-            if await store.is_any_blocked(peer.uuid, target_uuid):
-                await peer.ws.send_json({"t": "error", "code": "blocked", "ref": name})
-                continue
+                if not target_uuid:
+                    peer.send_json({"t": "error", "code": "not_found", "ref": name})
+                    continue
 
-            if await store.has_request(peer.uuid, target_uuid):
-                await peer.ws.send_json({"t": "error", "code": "already", "ref": name})
-                continue
+                if target_uuid == peer.uuid:
+                    peer.send_json({"t": "error", "code": "self", "ref": name})
+                    continue
 
-            # If target already sent a request -> auto accept mutual request
-            if await store.has_request(target_uuid, peer.uuid):
-                await store.add_friend(peer.uuid, target_uuid)
-                await peer.ws.send_json({"t": "friend_added", "uuid": target_uuid, "name": canonical_name})
-                t_peer = hub.peers.get(target_uuid)
-                if t_peer and not t_peer.gone:
-                    await t_peer.ws.send_json({"t": "friend_added", "uuid": peer.uuid, "name": peer.name})
-            else:
-                await store.add_request(peer.uuid, target_uuid)
-                await peer.ws.send_json({"t": "request_sent", "uuid": target_uuid, "name": canonical_name})
-                t_peer = hub.peers.get(target_uuid)
-                if t_peer and not t_peer.gone:
-                    await t_peer.ws.send_json({"t": "request_in", "uuid": peer.uuid, "name": peer.name})
+                if await store.are_friends(peer.uuid, target_uuid):
+                    peer.send_json({"t": "error", "code": "already", "ref": name})
+                    continue
 
-        elif kind == "friend_accept":
-            t_uuid = plain_uuid(msg.get("uuid"))
-            if not t_uuid:
-                await peer.ws.send_json({"t": "error", "code": "not_found", "ref": ""})
-                continue
+                # Block check: if target blocked peer, silent drop to avoid block oracle
+                if await store.is_blocked(target_uuid, peer.uuid):
+                    peer.send_json({"t": "request_sent", "uuid": target_uuid, "name": canonical_name})
+                    continue
 
-            if not await store.has_request(t_uuid, peer.uuid):
-                await peer.ws.send_json({"t": "error", "code": "not_found", "ref": t_uuid})
-                continue
+                if await store.is_blocked(peer.uuid, target_uuid):
+                    peer.send_json({"t": "error", "code": "blocked", "ref": name})
+                    continue
 
-            if await store.friend_count(peer.uuid) >= MAX_FRIENDS or await store.friend_count(t_uuid) >= MAX_FRIENDS:
-                await peer.ws.send_json({"t": "error", "code": "limit", "ref": t_uuid})
-                continue
+                if await store.has_request(peer.uuid, target_uuid):
+                    peer.send_json({"t": "error", "code": "already", "ref": name})
+                    continue
 
-            await store.add_friend(peer.uuid, t_uuid)
-            t_name = await store.get_name(t_uuid) or "Player"
-            await peer.ws.send_json({"t": "friend_added", "uuid": t_uuid, "name": t_name})
+                # Mutual auto-accept
+                if await store.has_request(target_uuid, peer.uuid):
+                    t_count = await store.friend_count(target_uuid)
+                    if t_count >= MAX_FRIENDS:
+                        peer.send_json({"t": "error", "code": "limit", "ref": name})
+                        continue
+                    await store.add_friend(peer.uuid, target_uuid)
+                    peer.send_json({"t": "friend_added", "uuid": target_uuid, "name": canonical_name})
+                    t_peer = hub.peers.get(target_uuid)
+                    if t_peer and not t_peer.gone:
+                        t_peer.send_json({"t": "friend_added", "uuid": peer.uuid, "name": peer.name})
+                else:
+                    await store.add_request(peer.uuid, target_uuid)
+                    peer.send_json({"t": "request_sent", "uuid": target_uuid, "name": canonical_name})
+                    t_peer = hub.peers.get(target_uuid)
+                    if t_peer and not t_peer.gone:
+                        t_peer.send_json({"t": "request_in", "uuid": peer.uuid, "name": peer.name})
 
-            t_peer = hub.peers.get(t_uuid)
-            if t_peer and not t_peer.gone:
-                await t_peer.ws.send_json({"t": "friend_added", "uuid": peer.uuid, "name": peer.name})
+            elif kind == "friend_accept":
+                t_uuid = plain_uuid(msg.get("uuid"))
+                if not t_uuid:
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
 
-        elif kind == "friend_decline":
-            t_uuid = plain_uuid(msg.get("uuid"))
-            if t_uuid:
-                await store.delete_request(t_uuid, peer.uuid)
+                if not await store.has_request(t_uuid, peer.uuid):
+                    peer.send_json({"t": "error", "code": "not_found", "ref": t_uuid})
+                    continue
 
-        elif kind == "friend_remove":
-            t_uuid = plain_uuid(msg.get("uuid"))
-            if t_uuid and await store.are_friends(peer.uuid, t_uuid):
-                await store.remove_friend(peer.uuid, t_uuid)
-                await peer.ws.send_json({"t": "friend_removed", "uuid": t_uuid})
+                if await store.friend_count(peer.uuid) >= MAX_FRIENDS or await store.friend_count(t_uuid) >= MAX_FRIENDS:
+                    peer.send_json({"t": "error", "code": "limit", "ref": t_uuid})
+                    continue
+
+                await store.add_friend(peer.uuid, t_uuid)
+                t_name = await store.get_name(t_uuid) or "Player"
+                peer.send_json({"t": "friend_added", "uuid": t_uuid, "name": t_name})
+
                 t_peer = hub.peers.get(t_uuid)
                 if t_peer and not t_peer.gone:
-                    await t_peer.ws.send_json({"t": "friend_removed", "uuid": peer.uuid})
-                    await t_peer.ws.send_json({"t": "presence", "uuid": peer.uuid, "state": "offline"})
-                    await peer.ws.send_json({"t": "presence", "uuid": t_uuid, "state": "offline"})
+                    t_peer.send_json({"t": "friend_added", "uuid": peer.uuid, "name": peer.name})
 
-        elif kind == "block":
-            t_uuid = plain_uuid(msg.get("uuid"))
-            if not t_uuid:
-                continue
-            if t_uuid == peer.uuid:
-                await peer.ws.send_json({"t": "error", "code": "self", "ref": t_uuid})
-                continue
-            await store.block(peer.uuid, t_uuid)
+            elif kind == "friend_decline":
+                t_uuid = plain_uuid(msg.get("uuid"))
+                if t_uuid:
+                    await store.delete_request(t_uuid, peer.uuid)
 
-        elif kind == "unblock":
-            t_uuid = plain_uuid(msg.get("uuid"))
-            if t_uuid:
-                await store.unblock(peer.uuid, t_uuid)
+            elif kind == "friend_remove":
+                t_uuid = plain_uuid(msg.get("uuid"))
+                if t_uuid and await store.are_friends(peer.uuid, t_uuid):
+                    await store.remove_friend(peer.uuid, t_uuid)
+                    peer.send_json({"t": "friend_removed", "uuid": t_uuid})
+                    t_peer = hub.peers.get(t_uuid)
+                    if t_peer and not t_peer.gone:
+                        t_peer.send_json({"t": "friend_removed", "uuid": peer.uuid})
+                        t_peer.send_json({"t": "presence", "uuid": peer.uuid, "state": "offline"})
+                        peer.send_json({"t": "presence", "uuid": t_uuid, "state": "offline"})
 
-        elif kind == "nick":
-            t_uuid = plain_uuid(msg.get("uuid"))
-            nick = msg.get("nick")
-            if t_uuid:
-                await store.set_nick(peer.uuid, t_uuid, str(nick) if nick is not None else None)
+            elif kind == "block":
+                t_uuid = plain_uuid(msg.get("uuid"))
+                if not t_uuid:
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
+                if t_uuid == peer.uuid:
+                    peer.send_json({"t": "error", "code": "self", "ref": t_uuid})
+                    continue
 
-        elif kind == "dm":
-            to_uuid = plain_uuid(msg.get("to"))
-            text = msg.get("text", "")
-            if not to_uuid or not isinstance(text, str):
-                continue
+                await store.block(peer.uuid, t_uuid)
 
-            if len(text) > DM_MAX_CHARS:
-                await peer.ws.send_json({"t": "error", "code": "limit", "ref": to_uuid})
-                continue
+                # End active sessions between pair
+                for s_id, s_data in list(hub.sessions.items()):
+                    if (s_data["host"] == peer.uuid and s_data["guest"] == t_uuid) or (s_data["host"] == t_uuid and s_data["guest"] == peer.uuid):
+                        del hub.sessions[s_id]
+                        h_peer = hub.peers.get(s_data["host"])
+                        g_peer = hub.peers.get(s_data["guest"])
+                        if h_peer and not h_peer.gone:
+                            h_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "blocked"})
+                        if g_peer and not g_peer.gone:
+                            g_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "blocked"})
 
-            if not await store.are_friends(peer.uuid, to_uuid):
-                await peer.ws.send_json({"t": "error", "code": "not_friend", "ref": to_uuid})
-                continue
+                # Invalidate in-flight invites and join requests
+                for inv_id, inv in list(hub.invites.items()):
+                    if (inv["host"] == peer.uuid and inv["guest"] == t_uuid) or (inv["host"] == t_uuid and inv["guest"] == peer.uuid):
+                        del hub.invites[inv_id]
 
-            if await store.is_any_blocked(peer.uuid, to_uuid):
-                await peer.ws.send_json({"t": "error", "code": "blocked", "ref": to_uuid})
-                continue
+                for req_id, req in list(hub.join_requests.items()):
+                    if (req["host"] == peer.uuid and req["guest"] == t_uuid) or (req["host"] == t_uuid and req["guest"] == peer.uuid):
+                        del hub.join_requests[req_id]
 
-            now = time.monotonic()
-            if now - peer.dm_window >= 60:
-                peer.dm_window, peer.dm_count = now, 0
-            peer.dm_count += 1
-            if peer.dm_count > DM_RATE_LIMIT:
-                await peer.ws.send_json({"t": "error", "code": "rate", "ref": to_uuid})
-                continue
+                peer.send_json({"t": "friend_removed", "uuid": t_uuid})
+                t_peer = hub.peers.get(t_uuid)
+                if t_peer and not t_peer.gone:
+                    t_peer.send_json({"t": "friend_removed", "uuid": peer.uuid})
 
-            now_ms = int(time.time() * 1000)
-            target = hub.peers.get(to_uuid)
-            if target and not target.gone:
-                await target.ws.send_json({"t": "dm", "from": peer.uuid, "text": text, "ts": now_ms})
-            else:
-                await store.save_offline_dm(peer.uuid, to_uuid, text, now_ms)
+            elif kind == "unblock":
+                t_uuid = plain_uuid(msg.get("uuid"))
+                if t_uuid:
+                    await store.unblock(peer.uuid, t_uuid)
 
-        elif kind == "invite":
-            to_uuid = plain_uuid(msg.get("to"))
-            world = msg.get("world")
-            server = msg.get("server")
-            if not to_uuid:
-                continue
+            elif kind == "nick":
+                t_uuid = plain_uuid(msg.get("uuid"))
+                nick = msg.get("nick")
+                if not t_uuid:
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
+                if nick is not None and (not isinstance(nick, str) or len(nick) > 32):
+                    peer.send_json({"t": "error", "code": "bad", "ref": "nick"})
+                    continue
+                await store.set_nick(peer.uuid, t_uuid, nick)
 
-            if not await store.are_friends(peer.uuid, to_uuid):
-                await peer.ws.send_json({"t": "error", "code": "not_friend", "ref": to_uuid})
-                continue
+            elif kind == "dm":
+                to_uuid = plain_uuid(msg.get("to"))
+                text = msg.get("text")
+                if not to_uuid or not isinstance(text, str):
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
 
-            if await store.is_any_blocked(peer.uuid, to_uuid):
-                await peer.ws.send_json({"t": "error", "code": "blocked", "ref": to_uuid})
-                continue
+                if len(text) > DM_MAX_CHARS:
+                    peer.send_json({"t": "error", "code": "limit", "ref": to_uuid})
+                    continue
 
-            now = time.monotonic()
-            if now - peer.invite_window >= 3600:
-                peer.invite_window, peer.invite_count = now, 0
-            peer.invite_count += 1
-            if peer.invite_count > INVITE_RATE_LIMIT:
-                await peer.ws.send_json({"t": "error", "code": "rate", "ref": to_uuid})
-                continue
+                if not await store.are_friends(peer.uuid, to_uuid):
+                    peer.send_json({"t": "error", "code": "not_friend", "ref": to_uuid})
+                    continue
 
-            target = hub.peers.get(to_uuid)
-            if not target or target.gone:
-                await peer.ws.send_json({"t": "error", "code": "offline", "ref": to_uuid})
-                continue
+                if await store.is_any_blocked(peer.uuid, to_uuid):
+                    peer.send_json({"t": "error", "code": "blocked", "ref": to_uuid})
+                    continue
 
-            if server:
-                await target.ws.send_json({"t": "invite", "from": peer.uuid, "server": server})
-                continue
+                # Rate limit (30 / min) surviving reconnect
+                if not hub.check_rate_limit(hub.dm_limits, peer.uuid, DM_RATE_LIMIT, 60.0):
+                    peer.send_json({"t": "error", "code": "rate", "ref": to_uuid})
+                    continue
 
-            invite_id = secrets.token_hex(8)
-            hub.invites[invite_id] = {
-                "invite_id": invite_id,
-                "host": peer.uuid,
-                "guest": to_uuid,
-                "world": world or peer.presence.get("world"),
-                "expires_at": time.time() + INVITE_TTL_SECONDS
-            }
-            await target.ws.send_json({
-                "t": "invite",
-                "inviteId": invite_id,
-                "from": peer.uuid,
-                "world": hub.invites[invite_id]["world"]
-            })
+                now_ms = int(time.time() * 1000)
+                target = hub.peers.get(to_uuid)
+                if target and not target.gone:
+                    target.send_json({"t": "dm", "from": peer.uuid, "text": text, "ts": now_ms})
+                else:
+                    await store.save_offline_dm(peer.uuid, to_uuid, text, now_ms)
 
-        elif kind == "invite_decline":
-            invite_id = msg.get("inviteId")
-            if invite_id in hub.invites:
+            elif kind == "invite":
+                to_uuid = plain_uuid(msg.get("to"))
+                raw_world = msg.get("world")
+                server = msg.get("server")
+                if not to_uuid:
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
+
+                if not await store.are_friends(peer.uuid, to_uuid):
+                    peer.send_json({"t": "error", "code": "not_friend", "ref": to_uuid})
+                    continue
+
+                if await store.is_any_blocked(peer.uuid, to_uuid):
+                    peer.send_json({"t": "error", "code": "blocked", "ref": to_uuid})
+                    continue
+
+                # Rate limit (30 / hour) surviving reconnect
+                if not hub.check_rate_limit(hub.invite_limits, peer.uuid, INVITE_RATE_LIMIT, 3600.0):
+                    peer.send_json({"t": "error", "code": "rate", "ref": to_uuid})
+                    continue
+
+                target = hub.peers.get(to_uuid)
+                if not target or target.gone or target.settings.get("appearOffline", False):
+                    peer.send_json({"t": "error", "code": "offline", "ref": to_uuid})
+                    continue
+
+                if server:
+                    if not isinstance(server, str) or len(server) > 255:
+                        peer.send_json({"t": "error", "code": "bad", "ref": "server"})
+                        continue
+                    target.send_json({"t": "invite", "from": peer.uuid, "server": server})
+                    continue
+
+                ok_w, w = validate_world(raw_world or peer.presence.get("world"))
+                if not ok_w or w is None:
+                    peer.send_json({"t": "error", "code": "bad", "ref": "world"})
+                    continue
+
+                hub.sweep_expired()
+                host_inv_count = sum(1 for iv in hub.invites.values() if iv["host"] == peer.uuid)
+                if host_inv_count >= MAX_PENDING_INVITES_PER_HOST:
+                    peer.send_json({"t": "error", "code": "limit", "ref": "invites"})
+                    continue
+
+                invite_id = secrets.token_hex(8)
+                hub.invites[invite_id] = {
+                    "invite_id": invite_id,
+                    "host": peer.uuid,
+                    "guest": to_uuid,
+                    "world": w,
+                    "expires_at": time.time() + INVITE_TTL_SECONDS
+                }
+                target.send_json({
+                    "t": "invite",
+                    "inviteId": invite_id,
+                    "from": peer.uuid,
+                    "world": w
+                })
+
+            elif kind == "invite_decline":
+                invite_id = msg.get("inviteId")
+                if not isinstance(invite_id, str):
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
+                inv = hub.invites.get(invite_id)
+                if not inv or inv["guest"] != peer.uuid:
+                    peer.send_json({"t": "error", "code": "not_found", "ref": invite_id})
+                    continue
                 del hub.invites[invite_id]
 
-        elif kind == "invite_accept":
-            invite_id = msg.get("inviteId")
-            inv = hub.invites.get(invite_id)
-            if not inv or time.time() > inv["expires_at"]:
-                await peer.ws.send_json({"t": "error", "code": "expired", "ref": invite_id or ""})
-                continue
+            elif kind == "invite_accept":
+                invite_id = msg.get("inviteId")
+                if not isinstance(invite_id, str):
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
 
-            host_uuid = inv["host"]
-            host_peer = hub.peers.get(host_uuid)
-            if not host_peer or host_peer.gone or host_peer.presence.get("state") != "hosting" or not host_peer.presence.get("world"):
-                await peer.ws.send_json({"t": "error", "code": "expired", "ref": invite_id})
-                continue
+                inv = hub.invites.get(invite_id)
+                if not inv or time.time() > inv["expires_at"]:
+                    peer.send_json({"t": "error", "code": "expired", "ref": invite_id})
+                    continue
 
-            if not await store.are_friends(peer.uuid, host_uuid):
-                await peer.ws.send_json({"t": "error", "code": "not_friend", "ref": invite_id})
-                continue
+                # M1: invite_accept only by the invitee
+                if inv["guest"] != peer.uuid:
+                    peer.send_json({"t": "error", "code": "not_found", "ref": invite_id})
+                    continue
 
-            world = host_peer.presence.get("world") or {}
-            slots = world.get("slots", 8)
-            used = world.get("used", 0)
-            if used >= slots and slots > 0:
-                await peer.ws.send_json({"t": "error", "code": "full", "ref": invite_id})
-                continue
+                host_uuid = inv["host"]
+                host_peer = hub.peers.get(host_uuid)
+                if not host_peer or host_peer.gone or host_peer.presence.get("state") != "hosting" or not host_peer.presence.get("world"):
+                    peer.send_json({"t": "error", "code": "expired", "ref": invite_id})
+                    continue
 
-            if not are_games_compatible(host_peer.presence.get("game"), peer.presence.get("game")):
-                await peer.ws.send_json({"t": "error", "code": "incompatible", "ref": invite_id})
-                continue
+                if not await store.are_friends(peer.uuid, host_uuid):
+                    peer.send_json({"t": "error", "code": "not_friend", "ref": invite_id})
+                    continue
 
-            del hub.invites[invite_id]
-            await hub.start_p2p(host_peer, peer, relay_only=world.get("relayOnly", False))
+                if await store.is_any_blocked(peer.uuid, host_uuid):
+                    peer.send_json({"t": "error", "code": "blocked", "ref": invite_id})
+                    continue
 
-        elif kind == "join_request":
-            host_uuid = plain_uuid(msg.get("host"))
-            if not host_uuid:
-                continue
+                world = host_peer.presence.get("world") or {}
+                slots = world.get("slots", 8)
+                used = world.get("used", 0)
+                if used >= slots and slots > 0:
+                    peer.send_json({"t": "error", "code": "full", "ref": invite_id})
+                    continue
 
-            if not await store.are_friends(peer.uuid, host_uuid):
-                await peer.ws.send_json({"t": "error", "code": "not_friend", "ref": host_uuid})
-                continue
+                if not are_games_compatible(host_peer.presence.get("game"), peer.presence.get("game")):
+                    peer.send_json({"t": "error", "code": "incompatible", "ref": invite_id})
+                    continue
 
-            if await store.is_any_blocked(peer.uuid, host_uuid):
-                await peer.ws.send_json({"t": "error", "code": "blocked", "ref": host_uuid})
-                continue
+                del hub.invites[invite_id]
+                await hub.start_p2p(host_peer, peer, relay_only=world.get("relayOnly", False))
 
-            host_peer = hub.peers.get(host_uuid)
-            if not host_peer or host_peer.gone or host_peer.presence.get("state") != "hosting" or not host_peer.presence.get("world"):
-                await peer.ws.send_json({"t": "error", "code": "offline", "ref": host_uuid})
-                continue
+            elif kind == "join_request":
+                host_uuid = plain_uuid(msg.get("host"))
+                if not host_uuid:
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
 
-            world = host_peer.presence.get("world") or {}
-            scope = str(world.get("scope", "friends")).lower()
-            if scope != "friends":
-                await peer.ws.send_json({"t": "error", "code": "invite_only", "ref": host_uuid})
-                continue
+                if not await store.are_friends(peer.uuid, host_uuid):
+                    peer.send_json({"t": "error", "code": "not_friend", "ref": host_uuid})
+                    continue
 
-            slots = world.get("slots", 8)
-            used = world.get("used", 0)
-            if used >= slots and slots > 0:
-                await peer.ws.send_json({"t": "error", "code": "full", "ref": host_uuid})
-                continue
+                if await store.is_any_blocked(peer.uuid, host_uuid):
+                    peer.send_json({"t": "error", "code": "blocked", "ref": host_uuid})
+                    continue
 
-            if not are_games_compatible(host_peer.presence.get("game"), peer.presence.get("game")):
-                await peer.ws.send_json({"t": "error", "code": "incompatible", "ref": host_uuid})
-                continue
+                host_peer = hub.peers.get(host_uuid)
+                if not host_peer or host_peer.gone or host_peer.presence.get("state") != "hosting" or not host_peer.presence.get("world") or host_peer.settings.get("appearOffline", False):
+                    peer.send_json({"t": "error", "code": "offline", "ref": host_uuid})
+                    continue
 
-            now = time.monotonic()
-            if now - peer.join_req_window >= 3600:
-                peer.join_req_window, peer.join_req_count = now, 0
-            peer.join_req_count += 1
-            if peer.join_req_count > JOIN_REQUEST_RATE_LIMIT:
-                await peer.ws.send_json({"t": "error", "code": "rate", "ref": host_uuid})
-                continue
+                world = host_peer.presence.get("world") or {}
+                scope = str(world.get("scope", "friends")).lower()
+                if scope != "friends":
+                    peer.send_json({"t": "error", "code": "invite_only", "ref": host_uuid})
+                    continue
 
-            req_id = secrets.token_hex(8)
-            hub.join_requests[req_id] = {
-                "req_id": req_id,
-                "host": host_uuid,
-                "guest": peer.uuid,
-                "expires_at": time.time() + JOIN_REQUEST_TTL_SECONDS
-            }
-            await host_peer.ws.send_json({
-                "t": "join_request",
-                "reqId": req_id,
-                "from": peer.uuid,
-                "game": peer.presence.get("game")
-            })
+                slots = world.get("slots", 8)
+                used = world.get("used", 0)
+                if used >= slots and slots > 0:
+                    peer.send_json({"t": "error", "code": "full", "ref": host_uuid})
+                    continue
 
-        elif kind == "join_deny":
-            req_id = msg.get("reqId")
-            req = hub.join_requests.pop(req_id, None)
-            if req:
+                if not are_games_compatible(host_peer.presence.get("game"), peer.presence.get("game")):
+                    peer.send_json({"t": "error", "code": "incompatible", "ref": host_uuid})
+                    continue
+
+                # Rate limit (30 / hour) surviving reconnect
+                if not hub.check_rate_limit(hub.join_limits, peer.uuid, JOIN_REQUEST_RATE_LIMIT, 3600.0):
+                    peer.send_json({"t": "error", "code": "rate", "ref": host_uuid})
+                    continue
+
+                hub.sweep_expired()
+                host_req_count = sum(1 for jr in hub.join_requests.values() if jr["host"] == host_uuid)
+                if host_req_count >= MAX_PENDING_JOIN_REQUESTS_PER_HOST:
+                    peer.send_json({"t": "error", "code": "limit", "ref": "join_requests"})
+                    continue
+
+                req_id = secrets.token_hex(8)
+                hub.join_requests[req_id] = {
+                    "req_id": req_id,
+                    "host": host_uuid,
+                    "guest": peer.uuid,
+                    "expires_at": time.time() + JOIN_REQUEST_TTL_SECONDS
+                }
+                host_peer.send_json({
+                    "t": "join_request",
+                    "reqId": req_id,
+                    "from": peer.uuid,
+                    "game": peer.presence.get("game")
+                })
+
+            elif kind == "join_deny":
+                req_id = msg.get("reqId")
+                if not isinstance(req_id, str):
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
+                req = hub.join_requests.get(req_id)
+                if not req or req["host"] != peer.uuid:
+                    peer.send_json({"t": "error", "code": "not_found", "ref": req_id})
+                    continue
+                del hub.join_requests[req_id]
                 guest_peer = hub.peers.get(req["guest"])
                 if guest_peer and not guest_peer.gone:
-                    await guest_peer.ws.send_json({"t": "join_denied", "reqId": req_id})
+                    guest_peer.send_json({"t": "join_denied", "reqId": req_id})
 
-        elif kind == "join_accept":
-            req_id = msg.get("reqId")
-            req = hub.join_requests.pop(req_id, None)
-            if not req or time.time() > req["expires_at"]:
-                await peer.ws.send_json({"t": "error", "code": "expired", "ref": req_id or ""})
-                continue
+            elif kind == "join_accept":
+                req_id = msg.get("reqId")
+                if not isinstance(req_id, str):
+                    peer.send_json({"t": "error", "code": "bad", "ref": ""})
+                    continue
 
-            guest_uuid = req["guest"]
-            guest_peer = hub.peers.get(guest_uuid)
-            if not guest_peer or guest_peer.gone:
-                await peer.ws.send_json({"t": "error", "code": "offline", "ref": req_id})
-                continue
+                req = hub.join_requests.get(req_id)
+                if not req or time.time() > req["expires_at"]:
+                    peer.send_json({"t": "error", "code": "expired", "ref": req_id})
+                    continue
 
-            world = peer.presence.get("world") or {}
-            await hub.start_p2p(peer, guest_peer, relay_only=world.get("relayOnly", False))
+                # M1: join_accept only by the host of that request
+                if req["host"] != peer.uuid:
+                    peer.send_json({"t": "error", "code": "not_found", "ref": req_id})
+                    continue
 
-        elif kind == "signal":
-            sid = msg.get("sid")
-            data = msg.get("data")
-            session = hub.sessions.get(sid)
-            if not session:
-                await peer.ws.send_json({"t": "error", "code": "not_found", "ref": sid or ""})
-                continue
+                # Re-validate host state and guest friendship
+                if peer.presence.get("state") != "hosting" or not peer.presence.get("world"):
+                    peer.send_json({"t": "error", "code": "offline", "ref": req_id})
+                    continue
 
-            if peer.uuid != session["host"] and peer.uuid != session["guest"]:
-                await peer.ws.send_json({"t": "error", "code": "not_found", "ref": sid})
-                continue
+                guest_uuid = req["guest"]
+                if not await store.are_friends(peer.uuid, guest_uuid):
+                    peer.send_json({"t": "error", "code": "not_friend", "ref": req_id})
+                    continue
 
-            other_uuid = session["guest"] if peer.uuid == session["host"] else session["host"]
-            if not await store.are_friends(peer.uuid, other_uuid):
-                await peer.ws.send_json({"t": "error", "code": "not_friend", "ref": sid})
-                continue
+                if await store.is_any_blocked(peer.uuid, guest_uuid):
+                    peer.send_json({"t": "error", "code": "blocked", "ref": req_id})
+                    continue
 
-            target_peer = hub.peers.get(other_uuid)
-            if target_peer and not target_peer.gone:
-                await target_peer.ws.send_json({"t": "signal", "sid": sid, "data": data})
+                world = peer.presence.get("world") or {}
+                scope = str(world.get("scope", "friends")).lower()
+                if scope != "friends":
+                    peer.send_json({"t": "error", "code": "invite_only", "ref": req_id})
+                    continue
 
-        elif kind == "p2p_end":
-            sid = msg.get("sid")
-            reason = msg.get("reason", "closed")
-            relayed = bool(msg.get("relayed", False))
-            byte_count = int(msg.get("bytes", 0))
+                slots = world.get("slots", 8)
+                used = world.get("used", 0)
+                if used >= slots and slots > 0:
+                    peer.send_json({"t": "error", "code": "full", "ref": req_id})
+                    continue
 
-            session = hub.sessions.pop(sid, None)
-            if session:
-                if relayed and byte_count > 0:
-                    month_str = time.strftime("%Y-%m")
-                    await store.record_relay_bytes(month_str, byte_count)
+                guest_peer = hub.peers.get(guest_uuid)
+                if not guest_peer or guest_peer.gone:
+                    peer.send_json({"t": "error", "code": "offline", "ref": req_id})
+                    continue
 
+                if not are_games_compatible(peer.presence.get("game"), guest_peer.presence.get("game")):
+                    peer.send_json({"t": "error", "code": "incompatible", "ref": req_id})
+                    continue
+
+                del hub.join_requests[req_id]
+                await hub.start_p2p(peer, guest_peer, relay_only=world.get("relayOnly", False))
+
+            elif kind == "signal":
+                sid = msg.get("sid")
+                data = msg.get("data")
+                if not isinstance(sid, str) or data is None:
+                    peer.send_json({"t": "error", "code": "bad", "ref": "signal"})
+                    continue
+
+                session = hub.sessions.get(sid)
+                if not session or peer.uuid not in (session["host"], session["guest"]):
+                    peer.send_json({"t": "error", "code": "not_found", "ref": sid})
+                    continue
+
+                # Signal size cap 8 KB
+                try:
+                    str_data = json.dumps(data)
+                except Exception:
+                    peer.send_json({"t": "error", "code": "bad", "ref": "signal_data"})
+                    continue
+
+                if len(str_data) > MAX_SIGNAL_DATA_BYTES:
+                    peer.send_json({"t": "error", "code": "limit", "ref": "signal_data"})
+                    continue
+
+                # Signal rate cap 40 / sec per session
+                if not hub.check_rate_limit(hub.signal_limits, sid, MAX_SIGNALS_PER_SEC, 1.0):
+                    peer.send_json({"t": "error", "code": "rate", "ref": sid})
+                    continue
+
+                other_uuid = session["guest"] if peer.uuid == session["host"] else session["host"]
+                if not await store.are_friends(peer.uuid, other_uuid):
+                    peer.send_json({"t": "error", "code": "not_friend", "ref": sid})
+                    continue
+
+                target_peer = hub.peers.get(other_uuid)
+                if target_peer and not target_peer.gone:
+                    target_peer.send_json({"t": "signal", "sid": sid, "data": data})
+
+            elif kind == "p2p_end":
+                sid = msg.get("sid")
+                reason = msg.get("reason", "closed")
+                if not isinstance(sid, str) or not isinstance(reason, str) or len(reason) > 64:
+                    peer.send_json({"t": "error", "code": "bad", "ref": "p2p_end"})
+                    continue
+
+                session = hub.sessions.get(sid)
+                if not session or peer.uuid not in (session["host"], session["guest"]):
+                    peer.send_json({"t": "error", "code": "not_found", "ref": sid})
+                    continue
+
+                # H5: Validate bytes: int, 0 <= bytes <= duration * 12,500,000
+                relayed = msg.get("relayed") is True
+                bytes_val = msg.get("bytes", 0)
+                if bytes_val is not None:
+                    if not isinstance(bytes_val, int) or type(bytes_val) is bool or bytes_val < 0:
+                        peer.send_json({"t": "error", "code": "bad", "ref": "bytes"})
+                        continue
+                    duration = max(1.0, time.time() - session["created_at"])
+                    max_allowed = int(duration * RELAY_MAX_BYTES_PER_SEC)
+                    clamped_bytes = min(bytes_val, max_allowed)
+                    if session["has_turn"] and relayed and clamped_bytes > session["recorded_bytes"]:
+                        delta = clamped_bytes - session["recorded_bytes"]
+                        session["recorded_bytes"] = clamped_bytes
+                        month_str = time.strftime("%Y-%m", time.gmtime())
+                        await store.record_relay_bytes(month_str, delta)
+
+                hub.sessions.pop(sid, None)
                 other_uuid = session["guest"] if peer.uuid == session["host"] else session["host"]
                 target_peer = hub.peers.get(other_uuid)
                 if target_peer and not target_peer.gone:
-                    await target_peer.ws.send_json({"t": "p2p_end", "sid": sid, "reason": reason})
+                    target_peer.send_json({"t": "p2p_end", "sid": sid, "reason": reason})
 
-        elif kind == "settings":
-            show_server = msg.get("showServer")
-            appear_offline = msg.get("appearOffline")
-            old_appear = peer.settings.get("appearOffline", False)
-            res = await store.update_settings(peer.uuid, show_server, appear_offline)
-            peer.settings = res
-            if res.get("appearOffline") != old_appear:
+            elif kind == "settings":
+                show_server = msg.get("showServer")
+                appear_offline = msg.get("appearOffline")
+
+                if show_server is not None and not isinstance(show_server, bool):
+                    peer.send_json({"t": "error", "code": "bad", "ref": "showServer"})
+                    continue
+                if appear_offline is not None and not isinstance(appear_offline, bool):
+                    peer.send_json({"t": "error", "code": "bad", "ref": "appearOffline"})
+                    continue
+
+                res = await store.update_settings(peer.uuid, show_server, appear_offline)
+                peer.settings = res
                 await hub.broadcast_presence(peer)
+
+            else:
+                peer.send_json({"t": "error", "code": "bad", "ref": kind})
+
+        except Exception as e:
+            log.warning("Error processing %s from %s: %s", kind, peer.uuid, type(e).__name__)
+            peer.send_json({"t": "error", "code": "bad", "ref": kind})
 
 
 async def handle_social_ws(request: web.Request) -> web.WebSocketResponse:
-    ws = web.WebSocketResponse(heartbeat=30.0)
-    await ws.prepare(request)
-
     hub: SocialHub = request.app["social_hub"]
-    peer = await authenticate(hub, ws)
-    if not peer:
-        await ws.close(code=4003, message=b"unauthorized")
+    ip = get_client_ip(request)
+
+    # Per-IP connection limit check (H2)
+    if hub.ip_counts.get(ip, 0) >= MAX_CONCURRENT_SOCKETS_PER_IP:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.close(code=1008, message=b"too many connections")
         return ws
 
+    hub.ip_counts[ip] = hub.ip_counts.get(ip, 0) + 1
+
+    ws = web.WebSocketResponse(
+        heartbeat=30.0,
+        receive_timeout=90.0,
+        max_msg_size=WS_MAX_MSG_SIZE
+    )
+    await ws.prepare(request)
+
+    peer = None
     try:
+        try:
+            peer = await asyncio.wait_for(authenticate(hub, ws, ip), timeout=AUTH_TIMEOUT)
+        except asyncio.TimeoutError:
+            await ws.close(code=4003, message=b"auth timeout")
+            return ws
+
+        if not peer:
+            await ws.close(code=4003, message=b"unauthorized")
+            return ws
+
+        # Build and send hello BEFORE registering into hub.peers so events are not received prior to hello
         hello_data = await hub.build_hello(peer)
-        await ws.send_json(hello_data)
+        peer.send_json(hello_data)
+
+        await hub.register(peer)
         await hub.broadcast_presence(peer)
         await serve(hub, peer)
     finally:
-        await hub.unregister(peer)
+        hub.ip_counts[ip] = max(0, hub.ip_counts.get(ip, 1) - 1)
+        if peer:
+            await peer.close()
+            await hub.unregister(peer)
 
     return ws
 
 
 def mount(app: web.Application, insecure: bool = False, db_path: Path | str | None = None) -> None:
+    if insecure and os.getenv("LADS_SOCIAL_DEV") != "1":
+        raise ValueError("insecure=True requires LADS_SOCIAL_DEV=1 environment variable")
+
     store = SocialStore(db_path)
     hub = SocialHub(insecure=insecure, store=store)
     app["social_store"] = store
