@@ -19,4 +19,11 @@ public abstract class RenderFishMixin {
     private Vec3 ladsLineOrigin(Vec3 origin, float pitch, EntityFishHook hook, double x, double y, double z, float yaw, float partialTicks) {
         return OldAnimations189.rodLine(origin, hook.angler).rotatePitch(pitch);
     }
+
+    @Redirect(method = "doRender(Lnet/minecraft/entity/projectile/EntityFishHook;DDDFF)V",
+        at = @At(value = "FIELD", target = "Lnet/minecraft/entity/projectile/EntityFishHook;angler:Lnet/minecraft/entity/player/EntityPlayer;", ordinal = 0), require = 0)
+    private net.minecraft.entity.player.EntityPlayer ladsHideLine(EntityFishHook hook) {
+        if (com.thelads.core.client.RenderTweaks.isHideFishingLine()) return null;
+        return hook.angler;
+    }
 }

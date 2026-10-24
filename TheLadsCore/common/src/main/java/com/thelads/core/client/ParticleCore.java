@@ -36,6 +36,9 @@ public final class ParticleCore {
     private static boolean active, cull, optimized, hideOwn, hideOthers, limit;
     private static double radius;
     private static int perTick;
+    private static float particleScale = 1.0f;
+    private static boolean critRecolor, sharpnessRecolor;
+    private static int critColor = 0xFFFFD700, sharpnessColor = 0xFF00FFFF;
     private static long seed = System.nanoTime() | 1;
     private static final ClientTools.ParticleBudget BUDGET = new ClientTools.ParticleBudget();
 
@@ -65,11 +68,21 @@ public final class ParticleCore {
         limit = active && core.limit.get();
         radius = core == null ? 48 : core.distance.getValue();
         perTick = core == null ? 64 : core.perTick.getIntValue();
+        particleScale = core == null ? 1.0f : (float) core.particleScale.getValue();
+        critRecolor = core != null && core.critRecolor.get();
+        critColor = core == null ? 0xFFFFD700 : core.critColor.getColor();
+        sharpnessRecolor = core != null && core.sharpnessRecolor.get();
+        sharpnessColor = core == null ? 0xFF00FFFF : core.sharpnessColor.getColor();
     }
 
     public static boolean active() { return active; }
     public static boolean culling() { return cull; }
     public static boolean optimized() { return optimized; }
+    public static float particleScale() { return particleScale; }
+    public static boolean critRecolor() { return critRecolor; }
+    public static int critColor() { return critColor; }
+    public static boolean sharpnessRecolor() { return sharpnessRecolor; }
+    public static int sharpnessColor() { return sharpnessColor; }
 
     /** Between worlds the decorative quota starts over. */
     public static void worldChanged() { BUDGET.reset(); }
@@ -81,6 +94,7 @@ public final class ParticleCore {
      */
     public static boolean allowSpawn(String id, boolean own, double distanceSq, long tick) {
         if (!active) return true;
+        if (ElderGuardianTweaks.isCurseHidden() && (id.contains("mobappearance") || id.contains("elder_guardian"))) { dropped++; return false; }
         if (POTION.contains(id) && (own ? hideOwn : hideOthers)) { dropped++; return false; }
         int percent = module.rates.percent(id);
         if (percent < 100 && !pass(percent, roll())) { dropped++; return false; }

@@ -26,4 +26,18 @@ public abstract class GameRendererShaderReloadMixin1201 {
             ci.cancel();
         }
     }
+
+    @Inject(method = "bobView", at = @At("HEAD"), cancellable = true, require = 0)
+    private void ladsBobDisconnect(com.mojang.blaze3d.vertex.PoseStack matrices, float tickDelta, CallbackInfo ci) {
+        if (com.thelads.core.client.BobbingTweaks.isDisconnectEnabled()) {
+            ci.cancel();
+        }
+    }
+
+    @Inject(method = "renderItemActivationAnimation", at = @At("HEAD"), cancellable = true, require = 0)
+    private void ladsTotemAnimation(int width, int height, float tickDelta, CallbackInfo ci) {
+        if (com.thelads.core.client.TotemAnimation.shouldHideAnimation()) {
+            ci.cancel();
+        }
+    }
 }

@@ -2,6 +2,7 @@ package com.thelads.core.modules;
 
 import com.thelads.core.client.ParticleCore;
 import com.thelads.core.config.BoolOption;
+import com.thelads.core.config.ColorOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ParticleReductionOption;
 import com.thelads.core.config.SliderOption;
@@ -15,6 +16,11 @@ public final class ParticleCoreModule extends Module {
     public final BoolOption culling, optimized, hideOwn, hideOthers, limit;
     public final ParticleReductionOption rates;
     public final SliderOption perTick, distance;
+    public final SliderOption particleScale;
+    public final BoolOption critRecolor;
+    public final ColorOption critColor;
+    public final BoolOption sharpnessRecolor;
+    public final ColorOption sharpnessColor;
 
     public ParticleCoreModule() {
         super(ParticleCore.MODULE, "Skips drawing particles outside your view and draws the rest cheaper, with fewer lightmap and vertex lookups. "
@@ -27,6 +33,11 @@ public final class ParticleCoreModule extends Module {
         limit = addOption(new BoolOption(ParticleCore.LIMIT, false));
         perTick = addOption(new SliderOption(ParticleCore.PER_TICK, 64, 8, 512, 8));
         distance = addOption(new SliderOption(ParticleCore.DISTANCE, 48, 16, 128, 8));
+        particleScale = addOption(new SliderOption("Particle Size Multiplier", 1.0, 0.1, 5.0, 0.1));
+        critRecolor = addOption(new BoolOption("Recolor Critical Particles", false));
+        critColor = addOption(new ColorOption("Crit Particle Color", false, 0xFFFFD700));
+        sharpnessRecolor = addOption(new BoolOption("Recolor Sharpness Particles", false));
+        sharpnessColor = addOption(new ColorOption("Sharpness Particle Color", false, 0xFF00FFFF));
         setEnabled(true);
     }
 }

@@ -186,7 +186,10 @@ public final class HypixelSafetyManager {
      * Asked per module every frame: no allocation.
      */
     public static boolean isSingleplayerOnlyModule(String moduleName) {
-        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName);
+        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName)
+            || "LightLevelOverlay".equalsIgnoreCase(moduleName) || "LootBeams".equalsIgnoreCase(moduleName)
+            || "MobOverlay".equalsIgnoreCase(moduleName) || "MobSize".equalsIgnoreCase(moduleName)
+            || "ShulkerBulletHighlight".equalsIgnoreCase(moduleName);
     }
 
     /** Why this module is off on the current server, bypass or not. Allocation-free: asked per module every frame. */
