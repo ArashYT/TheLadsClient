@@ -25,7 +25,7 @@ public final class SurvivalTweaks189 {
 
     public static void register() {
         SurvivalTweaksModule mod = SurvivalTweaksModule.get();
-        if (mod != null) mod.hideHere("Berry bush protection", "Elytra water swim", "Boat 360 View");
+        if (mod != null) mod.hideHere("Berry bush protection", "Elytra water swim", "Boat 360 View", "Anti strip log", "Anti budding amethyst");
         if (mod == null || mod.isFlammableCobwebsEnabled()) Blocks.fire.setFireInfo(Blocks.web, 600, 60);
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(new SurvivalTweaks189());
     }
