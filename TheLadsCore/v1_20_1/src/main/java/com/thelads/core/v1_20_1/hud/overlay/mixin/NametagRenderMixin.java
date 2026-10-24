@@ -1,32 +1,70 @@
 package com.thelads.core.v1_20_1.hud.overlay.mixin;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.thelads.core.client.PvpVisuals;
+import com.thelads.core.client.ladsapi.LadsBadge;
 import com.thelads.core.v1_20_1.hud.overlay.Nametags1201;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import org.joml.Matrix4f;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Nametags: renames, background and text shadow on every name tag (players' too: PlayerRenderer draws through this method). */
+/** Nametags: renames, background, text shadow and Lads Client badge on every name tag (players' too: PlayerRenderer draws through this method). */
 @Mixin(EntityRenderer.class)
 public class NametagRenderMixin {
     private static final String DRAW = "Lnet/minecraft/client/gui/Font;drawInBatch(Lnet/minecraft/network/chat/Component;FFIZLorg/joml/Matrix4f;Lnet/minecraft/client/renderer/MultiBufferSource;Lnet/minecraft/client/gui/Font$DisplayMode;II)I";
+    @Shadow @Final protected EntityRenderDispatcher entityRenderDispatcher;
+    @Unique private static final ResourceLocation LADS_BADGE = new ResourceLocation(LadsBadge.TEXTURE_NAMESPACE, LadsBadge.TEXTURE_PATH);
+    @Unique private static int lads$lastBadgeTexId = -1;
+    @Unique private Entity lads$tagEntity;
 
-    /** While a name tag draws, Font puts its text in front of the shadow (NametagShadowDepthMixin). */
+    /**
+     * While a name tag draws, Font puts its text in front of the shadow (NametagShadowDepthMixin). Players' tags get Scale and
+     * Distance Fade (PvpVisuals.tagStart).
+     */
     @Inject(method = "renderNameTag", at = @At("HEAD"))
-    private void lads$tagStart(CallbackInfo ci) {
+    private void lads$tagStart(Entity entity, Component name, PoseStack pose, MultiBufferSource buffers, int light, CallbackInfo ci) {
         Nametags1201.drawing = true;
+        PvpVisuals.tagStart(entity instanceof Player, entityRenderDispatcher.distanceToSqr(entity));
+        lads$tagEntity = entity;
+    }
+
+    @Inject(method = "renderNameTag", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;scale(FFF)V", shift = At.Shift.AFTER))
+    private void lads$tagScale(Entity entity, Component name, PoseStack pose, MultiBufferSource buffers, int light, CallbackInfo ci) {
+        float scale = PvpVisuals.tagScale;
+        if (scale != 1) pose.scale(scale, scale, scale);
+    }
+
+    /** Show Ping and Nametag Health after the name, with the normal (depth-tested) pass. */
+    @Inject(method = "renderNameTag", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;popPose()V"))
+    private void lads$tagExtras(Entity entity, Component name, PoseStack pose, MultiBufferSource buffers, int light, CallbackInfo ci) {
+        // The Lads badge moves the name right (lads$draw): Ping/Health follow it. popPose right after drops this translate.
+        if (LadsBadge.showOnNametag(entity.getUUID())) pose.translate((LadsBadge.NAMETAG_SIZE + LadsBadge.GAP) / 2f, 0, 0);
+        Nametags1201.extras(entity, name, pose.last().pose(), buffers, light);
     }
 
     @Inject(method = "renderNameTag", at = @At("RETURN"))
     private void lads$tagEnd(CallbackInfo ci) {
         Nametags1201.drawing = false;
+        lads$tagEntity = null;
     }
 
     @ModifyVariable(method = "renderNameTag", at = @At("HEAD"), argsOnly = true)
@@ -34,14 +72,61 @@ public class NametagRenderMixin {
         return Nametags1201.rename(name);
     }
 
-    @ModifyArg(method = "renderNameTag", at = @At(value = "INVOKE", target = DRAW), index = 8)
-    private int lads$background(int vanillaColor) {
-        return Nametags1201.background(vanillaColor);
-    }
+    @WrapOperation(method = "renderNameTag", at = @At(value = "INVOKE", target = DRAW))
+    private int lads$draw(Font font, Component text, float x, float y, int color, boolean shadow, Matrix4f matrix,
+                          MultiBufferSource buffers, Font.DisplayMode mode, int background, int light, Operation<Integer> original) {
+        // Both passes (see-through, then normal) fade with Distance Fade; background = Nametags then Background Opacity and fade.
+        color = PvpVisuals.alpha(color, PvpVisuals.tagAlpha);
+        int bg = Nametags1201.background(background);
+        bg = bg == 0 ? 0 : Math.round(PvpVisuals.background((bg >>> 24) / 255f) * 255) << 24;
+        boolean sh = Nametags1201.shadow(shadow, mode == Font.DisplayMode.NORMAL);
+        Entity entity = lads$tagEntity;
+        if (entity != null && entity.getUUID() != null && LadsBadge.showOnNametag(entity.getUUID())) {
+            var tex = Minecraft.getInstance().getTextureManager().getTexture(LADS_BADGE);
+            if (tex != null) {
+                int id = tex.getId();
+                if (id != lads$lastBadgeTexId && id != -1) {
+                    lads$lastBadgeTexId = id;
+                    tex.setFilter(true, false);
+                }
+            }
 
-    @ModifyArg(method = "renderNameTag", at = @At(value = "INVOKE", target = DRAW), index = 4)
-    private boolean lads$shadow(Component text, float x, float y, int color, boolean shadow, Matrix4f matrix, MultiBufferSource buffers,
-                                Font.DisplayMode mode, int background, int light) {
-        return Nametags1201.shadow(shadow, mode == Font.DisplayMode.NORMAL);
+            float shift = (float) (LadsBadge.NAMETAG_SIZE + LadsBadge.GAP) / 2.0F;
+            float textX = x + shift;
+            float badgeX0 = textX - (float) (LadsBadge.NAMETAG_SIZE + LadsBadge.GAP);
+            float badgeX1 = badgeX0 + (float) LadsBadge.NAMETAG_SIZE;
+            float badgeY0 = y;
+            float badgeY1 = y + (float) LadsBadge.NAMETAG_SIZE;
+
+            if (bg != 0) {
+                RenderType bgType = (mode == Font.DisplayMode.SEE_THROUGH)
+                        ? RenderType.textBackgroundSeeThrough()
+                        : RenderType.textBackground();
+                VertexConsumer bgBuilder = buffers.getBuffer(bgType);
+                float bgA = ((bg >> 24) & 0xFF) / 255.0F;
+                float bgR = ((bg >> 16) & 0xFF) / 255.0F;
+                float bgG = ((bg >> 8) & 0xFF) / 255.0F;
+                float bgB = (bg & 0xFF) / 255.0F;
+                bgBuilder.vertex(matrix, badgeX0 - 1.0F, badgeY0 - 1.0F, 0.0F).color(bgR, bgG, bgB, bgA).uv2(light).endVertex();
+                bgBuilder.vertex(matrix, badgeX0 - 1.0F, badgeY1 + 1.0F, 0.0F).color(bgR, bgG, bgB, bgA).uv2(light).endVertex();
+                bgBuilder.vertex(matrix, textX, badgeY1 + 1.0F, 0.0F).color(bgR, bgG, bgB, bgA).uv2(light).endVertex();
+                bgBuilder.vertex(matrix, textX, badgeY0 - 1.0F, 0.0F).color(bgR, bgG, bgB, bgA).uv2(light).endVertex();
+            }
+
+            RenderType textType = (mode == Font.DisplayMode.SEE_THROUGH)
+                    ? RenderType.textSeeThrough(LADS_BADGE)
+                    : RenderType.text(LADS_BADGE);
+            VertexConsumer badgeBuilder = buffers.getBuffer(textType);
+            float alpha = ((color >> 24) & 0xFF) / 255.0F;
+            if (alpha <= 0.0F) alpha = 1.0F;
+            badgeBuilder.vertex(matrix, badgeX0, badgeY0, 0.0F).color(1.0F, 1.0F, 1.0F, alpha).uv(0.0F, 0.0F).uv2(light).endVertex();
+            badgeBuilder.vertex(matrix, badgeX0, badgeY1, 0.0F).color(1.0F, 1.0F, 1.0F, alpha).uv(0.0F, 1.0F).uv2(light).endVertex();
+            badgeBuilder.vertex(matrix, badgeX1, badgeY1, 0.0F).color(1.0F, 1.0F, 1.0F, alpha).uv(1.0F, 1.0F).uv2(light).endVertex();
+            badgeBuilder.vertex(matrix, badgeX1, badgeY0, 0.0F).color(1.0F, 1.0F, 1.0F, alpha).uv(1.0F, 0.0F).uv2(light).endVertex();
+
+            return original.call(font, text, textX, y, color, sh, matrix, buffers, mode, bg, light);
+        }
+
+        return original.call(font, text, x, y, color, sh, matrix, buffers, mode, bg, light);
     }
 }

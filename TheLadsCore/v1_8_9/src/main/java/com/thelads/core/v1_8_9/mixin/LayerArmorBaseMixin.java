@@ -19,6 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * tinted body pass. Not hurt, the answer changes nothing.
  * Also the armour texture of vanilla armour items, from RenderTweaks189 instead of a String.format (and, under OptiFine, a
  * reflective Forge call) per piece per frame. getArmorResource is Forge's; OptiFine M5 keeps it with the same signature.
+ * Without OptiFine, a resource pack's CIT armor texture (type=armor, Cit189) replaces either.
  */
 @Mixin(LayerArmorBase.class)
 public abstract class LayerArmorBaseMixin {
@@ -33,6 +34,8 @@ public abstract class LayerArmorBaseMixin {
         at = @At("HEAD"), cancellable = true, remap = false, require = 0)
     private void ladsArmourTexture(Entity entity, ItemStack stack, int slot, String type, CallbackInfoReturnable<ResourceLocation> cir) {
         ResourceLocation texture = RenderTweaks189.armourTexture(stack, slot, type);
-        if (texture != null) cir.setReturnValue(texture);
+        ResourceLocation custom = com.thelads.core.v1_8_9.cit.Cit189.armor(stack, slot, type); // a pack's CIT armor
+        if (custom != null) cir.setReturnValue(custom);
+        else if (texture != null) cir.setReturnValue(texture);
     }
 }

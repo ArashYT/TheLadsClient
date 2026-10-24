@@ -8,6 +8,12 @@ import java.util.HashSet;
 import java.util.List;
 
 public class HudManager {
+    /**
+     * The parity-1023 HUD widgets (hud-a lane) and the Inventory HUD, added below: drawn here on every version, so each Core registers
+     * them built in (1.8.9 through NativeHud.MODULES, without Cooldowns: 1.8.9 has no item cooldowns).
+     */
+    public static final String[] PARITY_HUDS = {"ComboCounter", "PvPInfo", "PotionCounter", "ItemTracker", "Cooldowns", "TPS", "SystemResources",
+        "Playtime", "CompassStrip", "ViewAngles", "MouseTrail", "BlockCounter", "Protection", "DeathInfo", "Hearts", "HitIndicator", InventoryHudElement.ID};
     private static HudManager instance;
     private final List<HudElement> elements = new ArrayList<>();
     private ScoreboardHudElement scoreboardElement;
@@ -68,6 +74,7 @@ public class HudManager {
         add(new XaeroMinimapHudElement(), "Minimap");
         add(new VoiceChatHudElement(), "Voice Chat");
         add(new VoiceGroupHudElement(), "Voice Chat Group");
+        add(new InventoryHudElement(), "InventoryHUD");
 
         scoreboardElement = new ScoreboardHudElement();
         add(scoreboardElement, "Scoreboard");
@@ -75,6 +82,37 @@ public class HudManager {
         add(new ActionBarHudElement(), ActionBar.MODULE);
         add(new SessionStatsHudElement(), "Session Stats");
         add(new BedWarsHeightHudElement(), "Bed Wars Height Limit");
+        add(new ComboCounterHudElement(), "ComboCounter");
+        add(new PvPInfoHudElement(), "PvPInfo");
+        add(new PotionCounterHudElement(), "PotionCounter");
+        add(new ItemTrackerHudElement(), "ItemTracker");
+        add(new CooldownHudElement(), "Cooldowns");
+        add(new TpsHudElement(), "TPS");
+        add(new SystemResourcesHudElement(), "SystemResources");
+        add(new SessionPlaytimeHudElement(), "Playtime");
+        add(new CompassStripHudElement(), "CompassStrip");
+        add(new ViewAnglesHudElement(), "ViewAngles");
+        add(new MouseTrailHudElement(), "MouseTrail");
+        add(new BlockCounterHudElement(), "BlockCounter");
+        add(new ProtectionHudElement(), "Protection");
+        add(new DeathInfoHudElement(), "DeathInfo");
+        add(new HeartsHudElement(), "Hearts");
+        add(new HitIndicatorHudElement(), "HitIndicator");
+        add(new DamageIndicatorHudElement(), "DamageIndicator");
+        add(new JumpResetHudElement(), "JumpReset");
+        add(new MediaPlayerHudElement(), "MediaPlayer");
+        add(new HorseStatsHudElement(), "HorseStats");
+        add(new PlayerCounterHudElement(), "PlayerCounter");
+        add(new TotemPopHudElement(), "TotemPopCounter");
+        add(new BlockInfoHudElement(), "BlockInfo");
+        add(new CustomTextHudElement(), "CustomText");
+        add(new CustomShapeHudElement(), "CustomShape");
+        add(new CustomImageHudElement(), HudExtras.CUSTOM_IMAGE);
+        add(new PlayerHeadHudElement(), "PlayerHead");
+        add(new BlockAboveHudElement(), "BlockAbove");
+        add(new EntityCounterHudElement(), "EntityCounter");
+        add(new ShaderPackHudElement(), "ShaderPack");
+        add(new HeldItemLoreHudElement(), "HeldItemLore");
     }
 
     private void add(HudElement element, String moduleName) {
@@ -93,6 +131,8 @@ public class HudManager {
     public void render(LadsGraphics g) {
         if (g == null || (g.getGame() != null && g.getGame().isHudHidden())) return;
         game = g.getGame();
+        // Damage Tint's edge glow: once a frame (the HUD caches' live pass comes here too, their build does not), F3 or not.
+        com.thelads.core.client.PvpVisuals.DAMAGE_TINT.render(g);
         // F3 hides the Lads HUD modules (Better F3's "Hide Lads HUD", on by default).
         if (hidesAll()) {
             allCovered = true;

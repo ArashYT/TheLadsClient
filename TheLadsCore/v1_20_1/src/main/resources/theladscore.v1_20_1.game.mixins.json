@@ -12,6 +12,8 @@
     "FullbrightShadersMixin",
     "LocalPlayerAccessor",
     "LocalPlayerMixin",
+    "InventoryMixin",
+    "IntegratedServerMixin",
     "KeyboardInputMixin",
     "DamageTiltMixin",
     "DamageTiltPacketsMixin",
@@ -35,6 +37,12 @@
     "LevelTargetsAccessor",
     "RenderScaleMixin",
     "RenderScaleOutlineMixin",
-    "CheatsMixin"
+    "CheatsMixin",
+    "FreelookCameraMixin",
+    "ViewModelMixin",
+    "TimeChangerMixin",
+    "WeatherLevelMixin",
+    "WeatherSnowMixin",
+    "FogCustomizerMixin"
   ]
 }

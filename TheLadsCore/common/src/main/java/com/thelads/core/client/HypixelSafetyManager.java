@@ -24,10 +24,12 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class HypixelSafetyManager {
     /** Why a module is off on this server. */
-    public enum Block { NONE, BANNED, UNKNOWN }
+    public enum Block { NONE, BANNED, UNKNOWN, SERVER }
 
     /** The 1.7 Animations option that sends a use packet while digging (OldAnimationsModule.useWhileMining): gated like a risky module. */
     public static final String USE_WHILE_MINING = "UseWhileMining";
+    /** The TNT Timer option that renders the timer through blocks (ESP-like): gated like a risky module. */
+    public static final String TNT_THROUGH_BLOCKS = "TntThroughBlocks";
 
     private static final Set<String> DISALLOWED_MODULES = new HashSet<>();
 
@@ -64,11 +66,24 @@ public final class HypixelSafetyManager {
         "cubecraft.net", "mccisland.net", "hoplite.gg", "pika-network.net", "jartexnetwork.com", "blocksmc.com", "mineplex.com", "gommehd.net"};
     /** Servers whose published rules allow minimaps (without radar: Xaero obeys their fair-play codes). */
     private static final String[] MINIMAP_ALLOWED_SERVERS = {};
+    /**
+     * Servers whose published rules explicitly allow Fullbright / Gamma adjustments:
+     * - Hypixel: https://hypixel.net/rules/#mods (Brightness & Gamma Adjustment Modifications)
+     * - CubeCraft: https://www.cubecraft.net/rules/ (Allowed Utility Mods - Gamma/Brightness mods)
+     * - MCC Island: https://mccisland.net/community-rules (Approved Mods - Gamma/Brightness adjustments)
+     * - PikaNetwork: https://pika-network.net/rules/ (Allowed Modifications - brightness adjustments / fullbright)
+     */
+    private static final String[] FULLBRIGHT_ALLOWED_SERVERS = {"hypixel.net", "hypixel.io", "cubecraft.net", "mccisland.net", "pika-network.net"};
+    /**
+     * Servers whose published rules explicitly ban Fullbright:
+     * - GommeHD: https://www.gommehd.net/rules-minecraft (Prohibited Client Modifications - Automatic Potion Effects / Fullbright)
+     */
+    private static final String[] FULLBRIGHT_BANNED_SERVERS = {"gommehd.net"};
     /** Our own servers (Zero SMP, the arashyt.ca hosts) and 2b2t (anarchy: no rules): everything is allowed there. */
     private static final String[] TRUSTED_SERVERS = {"nikzerosmp.my.pebble.host", "arashyt.ca", "2b2t.org"};
 
-    private static final int HYPIXEL = 1, NO_MINIMAP = 2, NO_AUTOMATION = 4, TRUSTED = 8, MINIMAP_OK = 16;
-    private static final int QA_HYPIXEL = HYPIXEL | NO_MINIMAP | NO_AUTOMATION;
+    private static final int HYPIXEL = 1, NO_MINIMAP = 2, NO_AUTOMATION = 4, TRUSTED = 8, MINIMAP_OK = 16, FULLBRIGHT_OK = 32, NO_FULLBRIGHT = 64;
+    private static final int QA_HYPIXEL = HYPIXEL | NO_MINIMAP | NO_AUTOMATION | FULLBRIGHT_OK;
 
     /** What an address resolved to: its flags and the host bypasses are kept under. */
     private record Server(int flags, String host) {}
@@ -126,8 +141,10 @@ public final class HypixelSafetyManager {
         if (isLocalHost(host)) return new Server(TRUSTED, host);
         for (String own : TRUSTED_SERVERS) if (isHost(host, own)) return new Server(TRUSTED, host);
         int flags = isHost(host, "hypixel.net") || isHost(host, "hypixel.io") ? HYPIXEL : 0;
-        for (String banned : MINIMAP_BANNED_SERVERS) if (isHost(host, banned)) return new Server(flags | NO_MINIMAP | NO_AUTOMATION, host);
-        for (String allowed : MINIMAP_ALLOWED_SERVERS) if (isHost(host, allowed)) return new Server(flags | MINIMAP_OK, host);
+        for (String banned : MINIMAP_BANNED_SERVERS) if (isHost(host, banned)) flags |= (NO_MINIMAP | NO_AUTOMATION);
+        for (String allowed : MINIMAP_ALLOWED_SERVERS) if (isHost(host, allowed)) flags |= MINIMAP_OK;
+        for (String fbAllowed : FULLBRIGHT_ALLOWED_SERVERS) if (isHost(host, fbAllowed)) flags |= FULLBRIGHT_OK;
+        for (String fbBanned : FULLBRIGHT_BANNED_SERVERS) if (isHost(host, fbBanned)) flags |= NO_FULLBRIGHT;
         return new Server(flags, host);
     }
 
@@ -182,21 +199,91 @@ public final class HypixelSafetyManager {
 
     /**
      * Risky on servers, so only on for singleplayer, LAN and trusted servers: Stack Refill clicks the inventory with no inventory open,
-     * which anticheats ban as an AutoRefill cheat (a Minemen.club ban); use-while-mining sends a use packet mid-dig.
-     * Asked per module every frame: no allocation.
+     * which anticheats ban as an AutoRefill cheat (a Minemen.club ban); use-while-mining sends a use packet mid-dig; Hide Foliage's
+     * Tall Plants show a player crouching in tall grass. Asked per module every frame: no allocation.
      */
     public static boolean isSingleplayerOnlyModule(String moduleName) {
-        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName);
+        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName) || HideFoliage.TALL_GATE.equalsIgnoreCase(moduleName);
+    }
+
+    public static boolean isFullbrightModule(String moduleName) {
+        return "Fullbright".equalsIgnoreCase(moduleName);
+    }
+
+    public static boolean isTntThroughBlocks(String moduleName) {
+        return TNT_THROUGH_BLOCKS.equalsIgnoreCase(moduleName)
+            || "TntTimerThroughBlocks".equalsIgnoreCase(moduleName)
+            || "TNT Timer Through blocks".equalsIgnoreCase(moduleName)
+            || "Through blocks".equalsIgnoreCase(moduleName);
+    }
+
+    /**
+     * Risky module set under the Anti-Ban rule: modules that send unusual packets, automate clicks/actions,
+     * or expose unvanilla information (AutoReconnect, MouseTweaks, ReachDisplay, Jade, ShulkerBoxUtils,
+     * Fullbright, TNT timer Through-blocks, Stack Refill, use-while-mining).
+     * These are default OFF on unknown servers and banned servers; allowed in singleplayer, LAN, and trusted servers
+     * (or servers whose published rules explicitly allow them, like Fullbright on Hypixel/CubeCraft/MCC Island/Pika).
+     * Allocation-free: asked per module every frame.
+     */
+    public static boolean isRiskyModule(String moduleName) {
+        if (moduleName == null) return false;
+        return isMinimapModule(moduleName)
+            || com.thelads.core.client.hud.HudExtras.BLOCK_INFO.equalsIgnoreCase(moduleName)
+            || isSingleplayerOnlyModule(moduleName)
+            || isFullbrightModule(moduleName)
+            || isTntThroughBlocks(moduleName)
+            || "AutoReconnect".equalsIgnoreCase(moduleName)
+            || "MouseTweaks".equalsIgnoreCase(moduleName)
+            || "ReachDisplay".equalsIgnoreCase(moduleName)
+            || "Jade".equalsIgnoreCase(moduleName)
+            || "ShulkerBoxUtils".equalsIgnoreCase(moduleName)
+            || "Freelook".equalsIgnoreCase(moduleName) || "FogClearView".equalsIgnoreCase(moduleName)
+            || com.thelads.core.modules.HitboxesModule.THROUGH_WALLS.equalsIgnoreCase(moduleName) // FreelookModule, FogCustomizerModule.CLEAR_VIEW
+            || PvpVisuals.NAMETAG_HEALTH.equalsIgnoreCase(moduleName)
+            || "Light Overlay".equalsIgnoreCase(moduleName) || "Loot Beams".equalsIgnoreCase(moduleName) // pvp rows 32-36: info vanilla does not show
+            || "Mob Overlay".equalsIgnoreCase(moduleName) || "Mob Size".equalsIgnoreCase(moduleName)
+            // parity-1023 chat lane: commands past vanilla's length, keys that send chat, walking and slot clicks with a screen open
+            || ChatTweaks.LONG_COMMANDS.equalsIgnoreCase(moduleName) || com.thelads.core.modules.AutoTextModule.NAME.equalsIgnoreCase(moduleName)
+            || InventoryTweaks.MOVE.equalsIgnoreCase(moduleName) || InventoryTweaks.ARMOR_SWAP.equalsIgnoreCase(moduleName)
+            || BreedingTimer.NAME.equalsIgnoreCase(moduleName) || EnderChestPeek.NAME.equalsIgnoreCase(moduleName) // hidden cooldown, chest away from it
+            || isGatedHud(moduleName);
+    }
+
+    /** HUD widgets that show what vanilla does not: other players' exact health, a horse's hidden stats, a nearby-player radar, totem pops. */
+    private static boolean isGatedHud(String moduleName) {
+        return com.thelads.core.client.hud.HudExtras.DAMAGE_INDICATOR.equalsIgnoreCase(moduleName)
+            || com.thelads.core.client.hud.HudExtras.HORSE.equalsIgnoreCase(moduleName)
+            || com.thelads.core.client.hud.HudExtras.PLAYERS.equalsIgnoreCase(moduleName)
+            || com.thelads.core.client.hud.HudExtras.TOTEMS.equalsIgnoreCase(moduleName);
+    }
+
+    public static boolean isGatedHypixelModule(String moduleName) {
+        return "Auto GL".equalsIgnoreCase(moduleName) || "AutoGL".equalsIgnoreCase(moduleName)
+            || "Opened Chest Highlight".equalsIgnoreCase(moduleName);
     }
 
     /** Why this module is off on the current server, bypass or not. Allocation-free: asked per module every frame. */
     public static Block blockOf(String moduleName) {
         if (moduleName == null) return Block.NONE;
+        com.thelads.core.client.ladsapi.ServerPolicy policy = com.thelads.core.client.ladsapi.ServerPolicy.active();
+        if (policy != null) {
+            com.thelads.core.client.ladsapi.ModuleState state = policy.module(moduleName);
+            if (state == com.thelads.core.client.ladsapi.ModuleState.BLOCK) return Block.SERVER;
+            if (state == com.thelads.core.client.ladsapi.ModuleState.ALLOW) return Block.NONE;
+        }
         LadsGameBridge game = LadsGameBridge.get();
+        if (!qaOverride && qaAddress == null && !game.isIngame()) return Block.NONE; // menus: nothing to ban
         int flags = qaOverride ? QA_HYPIXEL : server(address(game)).flags; // the last address first: no string work
+        if ((flags & TRUSTED) != 0) return Block.NONE;
         if ((flags & HYPIXEL) != 0 && isDisallowedModule(moduleName)) return Block.BANNED;
-        boolean minimap = isMinimapModule(moduleName), risky = minimap || isSingleplayerOnlyModule(moduleName);
-        if (!risky || (flags & TRUSTED) != 0 || !qaOverride && !game.isIngame()) return Block.NONE; // menus: nothing to ban
+        if (isFullbrightModule(moduleName)) {
+            if ((flags & FULLBRIGHT_OK) != 0) return Block.NONE;
+            if ((flags & NO_FULLBRIGHT) != 0 || (flags & NO_AUTOMATION) != 0) return Block.BANNED;
+            return Block.UNKNOWN;
+        }
+        boolean minimap = isMinimapModule(moduleName);
+        boolean risky = isRiskyModule(moduleName) || ((flags & HYPIXEL) == 0 && isGatedHypixelModule(moduleName));
+        if (!risky) return Block.NONE;
         if (minimap) return (flags & NO_MINIMAP) != 0 ? Block.BANNED : (flags & MINIMAP_OK) != 0 ? Block.NONE : Block.UNKNOWN;
         return (flags & NO_AUTOMATION) != 0 ? Block.BANNED : Block.UNKNOWN;
     }
@@ -205,7 +292,10 @@ public final class HypixelSafetyManager {
      * The module is off on this server right now: blocked by its rules (or unknown rules) and not bypassed by the player.
      */
     public static boolean isDisallowed(String moduleName) {
-        return blockOf(moduleName) != Block.NONE && !isBypassed(moduleName);
+        Block block = blockOf(moduleName);
+        if (block == Block.NONE) return false;
+        if (block == Block.SERVER) return true; // policy BLOCK, NOT bypassable!
+        return !isBypassed(moduleName);
     }
 
     /** Singleplayer, LAN, or one of our own servers (not in the Hypixel QA). */
@@ -237,7 +327,9 @@ public final class HypixelSafetyManager {
 
     /** The minimap and world map share one bypass (one mod); everything else by its own name. */
     private static String bypassKey(String moduleName) {
-        return isMinimapModule(moduleName) ? "Minimap" : moduleName;
+        if (isMinimapModule(moduleName)) return "Minimap";
+        if (isTntThroughBlocks(moduleName)) return TNT_THROUGH_BLOCKS;
+        return moduleName;
     }
 
     /** The player turned this module on for the current server through the red warning. */
@@ -316,8 +408,14 @@ public final class HypixelSafetyManager {
 
     /** One line on why the module is off here (the settings notice and the warning say more). */
     public static String getBlockedNotice(String moduleName) {
-        String name = isMinimapModule(moduleName) ? "The minimap" : moduleName;
-        return blockOf(moduleName) == Block.UNKNOWN
+        Block block = blockOf(moduleName);
+        if (block == Block.SERVER) {
+            com.thelads.core.client.ladsapi.ServerPolicy p = com.thelads.core.client.ladsapi.ServerPolicy.active();
+            String server = (p != null && !p.serverName().isEmpty()) ? p.serverName() : "this server";
+            return moduleName + " is blocked by " + server + ".";
+        }
+        String name = isMinimapModule(moduleName) ? "The minimap" : isTntThroughBlocks(moduleName) ? "TNT Through Blocks" : moduleName;
+        return block == Block.UNKNOWN
             ? name + " is off on this server: we don't know its rules and its anticheat could ban you."
             : name + " is off on this server: its rules ban it.";
     }

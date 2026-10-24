@@ -36,6 +36,7 @@
     "KeepUiOpenCloseMixin",
     "KeepUiOpenScreenMixin",
     "NoResourcePackWarningsMixin",
-    "DimensionSpecialEffectsMixin"
+    "DimensionSpecialEffectsMixin",
+    "LadsApiPacketListenerMixin"
   ]
 }

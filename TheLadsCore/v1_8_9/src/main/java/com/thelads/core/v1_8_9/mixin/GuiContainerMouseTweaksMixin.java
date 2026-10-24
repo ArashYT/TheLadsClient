@@ -19,8 +19,26 @@ public abstract class GuiContainerMouseTweaksMixin extends GuiScreen implements 
     @Shadow private Slot getSlotAtPosition(int x, int y) { return null; }
     @Shadow protected abstract void handleMouseClick(Slot slot, int slotId, int button, int mode);
     @Shadow protected abstract boolean checkHotbarKeys(int keyCode);
+    @Shadow protected int guiLeft;
+    @Shadow protected int guiTop;
+    @Shadow protected int xSize;
+    @Shadow protected int ySize;
 
     /** As later versions: any button but left, right and creative pick-block swaps the hovered slot with the hotbar slot bound to it. */
+    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
+    private void ladsClickOutsideToClose(int x, int y, int button, CallbackInfo ci) {
+        if (((com.thelads.core.v1_8_9.feature.ChatTweaks189.Typing) this).lads$overSearch(x, y)) return; // Inventory Search's box sits above the container
+        if (com.thelads.core.client.ContainerQoL.isClickOutsideToCloseEnabled() && button == 0) {
+            if (com.thelads.core.client.ContainerQoL.isClickOutside(x, y, guiLeft, guiTop, xSize, ySize)) {
+                if (mc.thePlayer != null && mc.thePlayer.inventory.getItemStack() == null) {
+                    mc.thePlayer.closeScreen();
+                    ci.cancel();
+                    return;
+                }
+            }
+        }
+    }
+
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     private void ladsHotbarButton(int x, int y, int button, CallbackInfo ci) {
         if (button == 0 || button == 1 || button - 100 == mc.gameSettings.keyBindPickBlock.getKeyCode() && mc.playerController != null && mc.playerController.isInCreativeMode()) return;

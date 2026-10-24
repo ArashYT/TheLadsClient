@@ -101,6 +101,10 @@ and the run ends when it finishes (log: `Lads qa script END: N passed, M failed`
 | `ui silence <ms>` | SignalLoss sees the server silent for that long (0 = the real connection); the toast shows 5 s after the module became eligible |
 | `kbcap [skin id,...]` | holds the Kill Banner at the frames the 26.3 capture uses and writes the banner crops to `screenshots\kb172\kb-<skin>-v<variant>-k<kills>-f<frame>.png`, to compare with the 26.3 frames of the same name (`LADS_VERIFY_CAPTURE_KILLBANNER=1`) |
 | `channels [name]` | quiet-channels check (1.9.12, `QuietChannelsQa1201`): logs what the client announces (receivers) and what the integrated server heard, and fails if a hypixel:* or appleskin:* channel is in either before the first ping (a name containing "after" means the ping went out): `Lads quiet channels <name>: PASS|FAIL`, `Lads quiet channels END: N checks, M failed`. The `hypixel` step and the `# items-qa` probe take their own samples |
+| `static <class> <field> <value>` | sets a public static boolean/int/float field of another mod and logs `Lads qa static: ...` (Zero SMP: `static org.violetmoon.quark.content.management.module.HotbarChangerModule hotbarChangeOpen true` opens Quark's Hotbar Changer rows, which only toggle in a focused window) |
+| `keymods` | logs the key binds screen's helper and whether Left Shift / K count as key modifiers (`Lads qa keymods: ForgePlatformHelper shiftIsModifier=true kIsModifier=false` on Zero SMP) |
+| `keyselect <binding>` / `keylog <binding>` | the open Lads key binds screen waits for a new key for that binding (as after a click on its button; real key presses then set it) / logs a binding as the game shows it (`Lads qa keylog: key.x = Shift + K`) |
+| `posetrace [frames]` | Zero SMP: for that many frames (default 2) every Forge HUD overlay logs `Lads qa posetrace <pre, preLast or post> <overlay> y=<pose translation> depth=<stack size>`, to find which overlay moves or leaks the pose |
 | `quit` | stops the game |
 
 Example (`artifacts\1.8.5\<lane>\test.txt`):

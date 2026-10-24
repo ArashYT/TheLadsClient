@@ -13,6 +13,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Base64;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.Deflater;
 
@@ -38,6 +39,7 @@ class ShareCodeTest {
     void tearDown() {
         ConfigManager.setTestConfigFile(null);
         ProfileManager.get().setTestFile(null);
+        ModuleManager.getInstance().resetToDefaults();
     }
 
     @Test
@@ -397,12 +399,149 @@ class ShareCodeTest {
 
     @Test
     void typicalShareCodeSize() {
+        ModuleManager.getInstance().resetToDefaults();
         JsonObject full = ConfigManager.toJson();
         JsonObject payload = ShareCode.createSharePayload(full);
         String code = ShareCode.encode(payload);
         System.out.println("TYPICAL_SHARE_CODE_LENGTH: " + code.length() + " chars (bytes: " + code.getBytes(StandardCharsets.UTF_8).length + ")");
         assertTrue(code.startsWith(ShareCode.PREFIX));
-        // 1.9.11: Better F3's per-line toggles and section colours took the full code past 8 KB; the decoder's cap is 16 KB.
-        assertTrue(code.length() > 50 && code.length() < 10_000, "Typical code size should be between 50 chars and 10 KB");
+        // v2 leaves defaults out (v1 wrote every module and option: 10 KB); the server takes 16 KB and old clients decode up to 16 KB.
+        assertTrue(code.length() > 50 && code.length() < 8_000, "Typical code size should be between 50 chars and 8 KB");
+    }
+
+    @Test
+    void defaultConfigCodeIsTiny() {
+        ModuleManager.getInstance().resetToDefaults();
+        JsonObject payload = ShareCode.createSharePayload(ConfigManager.toJson());
+        assertEquals(2, payload.get("v").getAsInt());
+        assertEquals(0, payload.getAsJsonObject("modules").size(), "no module differs: " + payload.getAsJsonObject("modules").keySet());
+        String code = ShareCode.encode(payload);
+        System.out.println("DEFAULT_SHARE_CODE_LENGTH: " + code.length());
+        // No module is left; what remains is the HUD layout section (positions and anchors of every HUD), about 1.5 KB by itself.
+        assertTrue(code.length() < 1_600, "default config code: " + code.length());
+    }
+
+    @Test
+    void thirtyChangedOptionsStaySmall() {
+        ModuleManager.getInstance().resetToDefaults();
+        int changed = 0;
+        for (Module m : ModuleManager.getInstance().getModules()) {
+            for (Option o : m.getOptions()) {
+                if (changed < 30 && o instanceof BoolOption b && !ShareCode.isExcludedModule(m.getName()) && !ShareCode.isExcludedOption(m.getName(), o.getName())) {
+                    b.toggle();
+                    changed++;
+                }
+            }
+        }
+        assertEquals(30, changed);
+        String code = ShareCode.encode(ShareCode.createSharePayload(ConfigManager.toJson()));
+        System.out.println("CHANGED30_SHARE_CODE_LENGTH: " + code.length());
+        assertTrue(code.length() < 4_000, "30 changed options: " + code.length());
+    }
+
+    @Test
+    void v2RoundTripGivesImporterTheSharersSettings() {
+        ModuleManager mm = ModuleManager.getInstance();
+        mm.resetToDefaults();
+        // The sharer changes 3 options on 2 modules.
+        ((BoolOption) mm.getModule("FPS").getOption("Smooth")).set(false);
+        ((DropdownOption) mm.getModule("FPS").getOption("Update rate")).setIndex(3);
+        ((BoolOption) mm.getModule("Coordinates").getOption("Vertical")).set(false);
+        JsonObject sharer = settings();
+        JsonObject payload = ShareCode.decode(ShareCode.encode(ShareCode.createSharePayload(ConfigManager.toJson())));
+
+        assertEquals(2, payload.get("v").getAsInt());
+        JsonObject modules = payload.getAsJsonObject("modules");
+        assertEquals(Set.of("FPS", "Coordinates"), modules.keySet());
+        assertEquals(Set.of("Smooth", "Update rate"), modules.getAsJsonObject("FPS").getAsJsonObject("options").keySet());
+        assertEquals(Set.of("Vertical"), modules.getAsJsonObject("Coordinates").getAsJsonObject("options").keySet());
+
+        // The importer has other changes (and a personal, never shared option).
+        mm.resetToDefaults();
+        ((DropdownOption) mm.getModule("FPS").getOption("Display")).setIndex(2);
+        ((DropdownOption) mm.getModule("Memory").getOption("Display")).setIndex(0);
+        ((BoolOption) mm.getModule("Coordinates").getOption("Show Biome")).set(true);
+        mm.getModule("Clock").setEnabled(true);
+        TextOption image = (TextOption) mm.getModule("Crosshair Tweaks").getOption("Background Image");
+        image.setValue("C:/mine.png");
+        assertNotEquals(sharer, settings());
+
+        ShareCode.applySharePayload(payload, ShareCode.ImportMode.BOTH);
+
+        assertEquals(sharer, settings());
+        assertEquals("C:/mine.png", image.getValue(), "excluded options are never touched");
+    }
+
+    @Test
+    void v2ImportFillsDefaultsAndLeavesExcludedAlone() {
+        ModuleManager mm = ModuleManager.getInstance();
+        mm.resetToDefaults();
+        BoolOption smooth = (BoolOption) mm.getModule("FPS").getOption("Smooth");
+        smooth.set(false);
+        TextOption image = (TextOption) mm.getModule("Crosshair Tweaks").getOption("Background Image");
+        image.setValue("C:/mine.png");
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("v", 2);
+        JsonObject clock = new JsonObject();
+        clock.addProperty("enabled", true);
+        JsonObject clockOpts = new JsonObject();
+        clockOpts.addProperty("12-hour clock", true);
+        clock.add("options", clockOpts);
+        JsonObject modules = new JsonObject();
+        modules.add("Clock", clock);
+        payload.add("modules", modules);
+
+        JsonObject prepared = ShareCode.prepareImportJson(payload, ShareCode.ImportMode.BOTH).getAsJsonObject("modules");
+        assertFalse(prepared.has("DiscordRPC"));
+        assertTrue(prepared.getAsJsonObject("FPS").getAsJsonObject("options").get("Smooth").getAsBoolean(), "an unlisted option is filled in with its default");
+        assertFalse(prepared.getAsJsonObject("Crosshair Tweaks").getAsJsonObject("options").has("Background Image"));
+
+        ShareCode.applySharePayload(payload, ShareCode.ImportMode.BOTH);
+
+        assertTrue(smooth.get(), "an unlisted option is reset to its default");
+        assertTrue(mm.getModule("Clock").isEnabledSetting());
+        assertTrue(((BoolOption) mm.getModule("Clock").getOption("12-hour clock")).get());
+        assertEquals("C:/mine.png", image.getValue(), "excluded options are never touched");
+    }
+
+    @Test
+    void v1CodeStillImportsAsBefore() {
+        ModuleManager mm = ModuleManager.getInstance();
+        mm.resetToDefaults();
+        DropdownOption memory = (DropdownOption) mm.getModule("Memory").getOption("Display");
+        memory.setIndex(0);
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("v", 1);
+        JsonObject fps = new JsonObject();
+        fps.addProperty("enabled", true);
+        JsonObject fpsOpts = new JsonObject();
+        fpsOpts.addProperty("Smooth", false);
+        fps.add("options", fpsOpts);
+        JsonObject modules = new JsonObject();
+        modules.add("FPS", fps);
+        payload.add("modules", modules);
+
+        assertEquals(Set.of("FPS"), ShareCode.prepareImportJson(payload, ShareCode.ImportMode.BOTH).getAsJsonObject("modules").keySet());
+        ShareCode.applySharePayload(payload, ShareCode.ImportMode.BOTH);
+
+        assertFalse(((BoolOption) mm.getModule("FPS").getOption("Smooth")).get());
+        assertEquals(0, memory.getIndex(), "v1 only touches what it lists");
+    }
+
+    /** Every non-excluded module's on/off, HUD colours and options as the config saves them (no favourite / modified time). */
+    private static JsonObject settings() {
+        JsonObject saved = ConfigManager.toJson().getAsJsonObject("modules");
+        JsonObject out = new JsonObject();
+        for (Module m : ModuleManager.getInstance().getModules()) {
+            if (ShareCode.isExcludedModule(m.getName())) continue;
+            JsonObject entry = saved.getAsJsonObject(m.getName());
+            entry.remove("favorite");
+            entry.remove("lastModified");
+            if (entry.get("options") instanceof JsonObject opts) opts.keySet().removeIf(k -> ShareCode.isExcludedOption(m.getName(), k));
+            out.add(m.getName(), entry);
+        }
+        return out;
     }
 }

@@ -44,6 +44,13 @@ public static class ServerStatusService
     /// <summary>Null when neither API answered.</summary>
     public static Task<ServerStatus?> GetAsync(string address) => Cache.GetOrAdd(address.Trim(), FetchAsync);
 
+    /// <summary>As <see cref="GetAsync"/>, after dropping this address's cached status (a count that should be current).</summary>
+    public static Task<ServerStatus?> RefreshAsync(string address)
+    {
+        Cache.TryRemove(address.Trim(), out _);
+        return GetAsync(address);
+    }
+
     public static void ClearCache()
     {
         Cache.Clear();

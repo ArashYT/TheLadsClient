@@ -61,7 +61,7 @@ final class Probe151 {
     private static boolean wasEnabled, legacyWas, physicsWas, focusWas;
     private static double[] posWas;
     private static final StringBuilder BOB = new StringBuilder();
-    private static long legacyFrames;
+    private static long legacyFrames, reeledAt;
     private static int slotWas, viewWas, dropWait;
     private static boolean dropRebuilt;
     private static float pitchWas;
@@ -240,9 +240,13 @@ final class Probe151 {
             },
             mc -> {
                 key(mc.gameSettings.keyBindUseItem, false);
+                reeledAt = System.nanoTime();
                 return after(5);
             },
             mc -> {
+                // The integrated server removes the hook on its own clock: after the slow screenshot the client runs its missed ticks
+                // back to back, so five ticks can pass before the server saw the click (flaked on OptiFine). Up to 3 s of real time.
+                if (mc.thePlayer.fishEntity != null && System.nanoTime() - reeledAt < 3_000_000_000L) return retry(1);
                 check(mc.thePlayer.fishEntity == null, state + "the line is reeled in");
                 select(mc, 4);
                 // Again here: a real mouse moving a focused QA window can have turned the camera since the sequence began.

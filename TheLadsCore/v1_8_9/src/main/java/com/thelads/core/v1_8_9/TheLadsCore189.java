@@ -74,6 +74,7 @@ public class TheLadsCore189 {
         LadsGameBridge.set(new VanillaGameBridge189());
         com.thelads.core.security.AntiInjectDetector.init();
         ConfigManager.load();
+        com.thelads.core.client.util.LogPruner.pruneIfEnabled(new java.io.File("logs"));
         com.thelads.core.v1_8_9.feature.LocalSkins189.initialize(); // the Skin changer's saved skin
         com.thelads.core.v1_8_9.render.Render189.init();
         registerStatuses();
@@ -85,9 +86,16 @@ public class TheLadsCore189 {
         com.thelads.core.modules.StackRefillModule.get().noOffhand(); // 1.8.9 has no offhand
         com.thelads.core.v1_8_9.feature.Nametags189.register();
         OldAnimations189.register();
+        com.thelads.core.v1_8_9.feature.PvpVisuals189.register(); // PvP visuals (parity 1.9.19): theladscore.v1_8_9.pvp.mixins.json
+        com.thelads.core.v1_8_9.cit.Cit189.register(); // Custom Item Textures without OptiFine: theladscore.v1_8_9.cit.mixins.json
+        com.thelads.core.v1_8_9.hudextras.HudExtras189.register(); // HUD widgets and vanilla HUD tweaks (parity 1.9.19)
+        com.thelads.core.v1_8_9.feature.ChatTweaks189.register(); // parity-1023 chat lane: chat and inventory tweaks, their keys
+        com.thelads.core.v1_8_9.utility.Utility189.register(); // Survival Guards, Breeding Timer, Ender Chest Peek, server drag (parity 1.9.19)
+        com.thelads.core.v1_8_9.qol.Qol189.register(); // Scrollable Tooltips, Crash Catcher, Quick Reconnect, Keep Cursor, Sound Volumes, GUI Scale, Chunk Borders
         ClientRegistry.registerKeyBinding(Zoom189.ZOOM);
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
         com.thelads.core.v1_8_9.feature.Toggles189.register();
+        com.thelads.core.v1_8_9.feature.PvpView189.register(); // Freelook, ViewModel, Time/Weather Changer, Fog Customizer
         MinecraftForge.EVENT_BUS.register(new Zoom189());
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
         MinecraftForge.EVENT_BUS.register(new NativeHud());
@@ -100,6 +108,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new ConnectionTweaks189());
         MinecraftForge.EVENT_BUS.register(new KillBanner189());
         com.thelads.core.v1_8_9.feature.Hypixel189.register();
+        com.thelads.core.v1_8_9.feature.LadsApi189.register();
         MinecraftForge.EVENT_BUS.register(LadsTitleScreen189.INSTANCE);
         MinecraftForge.EVENT_BUS.register(new Tooltips189());
         MinecraftForge.EVENT_BUS.register(new Clumps189());
@@ -111,6 +120,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.Raised189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.PaperDoll189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.EntityCulling189());
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.pvp.PvpVisuals189()); // Color Saturation, Motion/Menu Blur, Hide Foliage, Clear Glass
         com.thelads.core.v1_8_9.feature.ParticleCore189.register();
         com.thelads.core.v1_8_9.world.World189.register(); // Wavy Capes, TNT Timer
         Screenshots189.register();
@@ -118,6 +128,7 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.feature.SideButtons189.install();
         MinecraftForge.EVENT_BUS.register(this);
         com.thelads.core.v1_8_9.feature.fastquit.FastQuitProbe189.initialize();
+        com.thelads.core.v1_8_9.feature.QaProbe189.register();
         LOGGER.info("TheLadsCore 1.8.9 initialized successfully.");
     }
 
@@ -180,7 +191,16 @@ public class TheLadsCore189 {
         // its berry bush, elytra and boat options) and StackRefill189 (client tick), as 26.x NativeSurvivalTweaks and NativeStackRefill.
         com.thelads.core.modules.SurvivalTweaksModule.NAME, com.thelads.core.modules.StackRefillModule.NAME,
         // KeepUiOpenScreenMixin and KeepUiOpenCloseMixin (1.9.10).
-        com.thelads.core.client.KeepUiOpen.MODULE_NAME
+        com.thelads.core.client.KeepUiOpen.MODULE_NAME,
+        com.thelads.core.modules.LogPrunerModule.NAME,
+        com.thelads.core.modules.NumericalEnchantmentsModule.NAME,
+        com.thelads.core.modules.ConfirmDisconnectModule.NAME,
+        com.thelads.core.modules.DropConfirmationModule.NAME,
+        com.thelads.core.modules.ScrollTweaksModule.NAME,
+        com.thelads.core.modules.AutoPerspectiveModule.NAME,
+        com.thelads.core.modules.AutoBackupModule.NAME,
+        // Nick Hider: LocalSkinMixin189 (skins) and Nicknames (names). Container QoL: GuiContainerMouseTweaksMixin's click outside.
+        com.thelads.core.modules.NickHiderModule.NAME, com.thelads.core.modules.ContainerQoLModule.NAME
     };
 
     /** Built in, with what Minecraft 1.8.9 itself lacks for some of their options (the launcher shows it). */
@@ -193,8 +213,8 @@ public class TheLadsCore189 {
         {"IgnorePacketErrors", "Minecraft 1.8.9 already keeps playing when a packet fails on the game thread; this covers packets "
             + "that can't be decoded and handlers that fail on the network thread."},
         // Crosshair189 through Forge's crosshair overlay event, as 26.x NativeCrosshair.
-        {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns or spyglass, so the attack indicator, Item Cooldown "
-            + "and spyglass options have nothing to show; Dynamic Attack Gap follows the arm swing."},
+        {"Crosshair Tweaks", "Minecraft 1.8.9 has no attack cooldown, item cooldowns, spyglass or elytra, so the attack indicator, Item "
+            + "Cooldown, spyglass and Elytra Flight Indicator options have nothing to show; Dynamic Attack Gap follows the arm swing."},
         // AutoReconnect189 through Forge's screen and tick events and GuiDisconnectedAccessor, as 26.x NativeReconnect.
         {"AutoReconnect", "Realms no longer accept Minecraft 1.8.9, so it reconnects to servers and local worlds; 1.8.9 chat is unsigned, "
             + "so Sign Configured Commands has nothing to sign, and it sends at most 100 characters per action message."},
@@ -231,6 +251,7 @@ public class TheLadsCore189 {
         ModuleSupport.registerUnavailable("DisableNarrator", "Minecraft 1.8.9 has no narrator.");
         ModuleSupport.registerUnavailable("Async", "Parallel entity ticking is built for the Minecraft 26.x server; 1.8.9 ticks entities on one thread.");
         ModuleSupport.registerUnavailable("ShulkerBoxUtils", "Minecraft 1.8.9 has no shulker boxes; they were added in Minecraft 1.11.");
+        ModuleSupport.registerUnavailable("Cooldowns", "Minecraft 1.8.9 has no item cooldowns.");
         for (String voice : new String[] {"Voice Chat", "Voice Chat Group"})
             ModuleSupport.registerUnavailable(voice, "Simple Voice Chat does not exist for Minecraft 1.8.9.");
         for (String[] module : LIMITED) ModuleSupport.registerBuiltInLimited(module[0], module[1]);
@@ -247,6 +268,7 @@ public class TheLadsCore189 {
     public void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         NativeMenuKey.tick();
+        com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null) { // window-size HUD buffers go back out of a world
             com.thelads.core.v1_8_9.feature.HudCache189.free();
@@ -258,6 +280,7 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.feature.DynamicLights189.tick(mc);
         com.thelads.core.v1_8_9.feature.EntityCulling189.tick(mc);
         Zoom189.tick(mc);
+        com.thelads.core.v1_8_9.feature.PvpView189.tick(mc);
         SkinLayers189.tick(mc);
         com.thelads.core.v1_8_9.feature.Toggles189.tick(mc);
         com.thelads.core.v1_8_9.feature.Fullbright189.tick(mc);

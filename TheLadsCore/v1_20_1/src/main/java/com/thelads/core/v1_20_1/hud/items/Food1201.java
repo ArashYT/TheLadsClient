@@ -336,7 +336,7 @@ public final class Food1201 {
         int after = Mth.ceil(Math.min(maxHealth, player.getHealth() + gain)), hearts = Math.min(Mth.ceil(maxHealth / 2), heartX.length);
         float alpha = previewAlpha();
         if (Math.round(255 * alpha) == 0) return;
-        int v = player.level().getLevelData().isHardcore() ? 45 : 0;
+        int v = player.level().getLevelData().isHardcore() || com.thelads.core.client.hud.HudExtras.VANILLA.hardcoreHearts ? 45 : 0;
         tint(graphics, alpha);
         for (int i = Math.max(0, health / 2); i < Math.min((after + 1) / 2, hearts); i++)
             graphics.blit(ICONS, heartX[i], heartY[i], i * 2 + 1 == after ? HEART_HALF_U : HEART_FULL_U, v, 9, 9);

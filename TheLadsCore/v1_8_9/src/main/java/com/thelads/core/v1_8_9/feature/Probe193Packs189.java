@@ -13,6 +13,8 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiScreenResourcePacks;
 import net.minecraft.client.gui.GuiTextField;
+import net.minecraft.client.resources.ResourcePackListEntry;
+import net.minecraft.client.resources.ResourcePackListEntryFound;
 import net.minecraft.client.resources.ResourcePackRepository;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import org.apache.logging.log4j.LogManager;
@@ -24,6 +26,8 @@ public final class Probe193Packs189 {
     private static int wait = 0;
     private static final OldAnimationsModule ANIMATIONS = OldAnimations189.MODULE;
     private static boolean animationsWere, lowFireWas;
+    private static String deselected;
+    private static boolean pointerOnArrow;
 
     public static void ensureSandboxPacks(Minecraft mc) {
         try {
@@ -187,11 +191,75 @@ public final class Probe193Packs189 {
                 CoreProbe.check(!ANIMATIONS.option(Feature.LOW_FIRE).get(), "a click on the inactive Low Fire button changed nothing");
                 ANIMATIONS.option(Feature.LOW_FIRE).set(lowFireWas);
                 ANIMATIONS.setEnabled(animationsWere);
-                mc.displayGuiScreen(new net.minecraft.client.gui.GuiMainMenu());
+                mc.displayGuiScreen(new GuiScreenResourcePacks(new net.minecraft.client.gui.GuiMainMenu()));
+                wait = 20;
+                step++;
+                return false;
+            case 14: { // PRE-1: a pack selected when the screen opens, deselected with its own arrow, is listed in Available again
+                GuiScreenResourcePacks screen = (GuiScreenResourcePacks) mc.currentScreen;
+                // The Selected list's first row: the list starts at width / 2 + 4, its rows at 32 + 4 + 13 (header); x 5 is the remove arrow.
+                int arrowX = screen.width / 2 + 4 + 2 + 5, arrowY = 32 + 4 + 13 + 5;
+                if (!pointerOnArrow) {
+                    List<ResourcePackListEntry> selected = screen.getSelectedResourcePacks();
+                    deselected = selected.isEmpty() || !(selected.get(0) instanceof ResourcePackListEntryFound) ? null
+                        : ((ResourcePackListEntryFound) selected.get(0)).func_148318_i().getResourcePackName();
+                    CoreProbe.check(deselected != null, "a pack is selected when the pack screen opens (PvPPackOne from step 6)");
+                    // QA: the pointer goes there first. A list takes clicks only where it last drew the pointer (GuiSlot.mouseX, from
+                    // Mouse.getX: the real pointer, not a queued click), so a WM_MOUSEMOVE to the window puts it on the arrow, as
+                    // ItemsProbe189 hovers slots; the OS cursor stays where it is.
+                    int px = (arrowX * mc.displayWidth + mc.displayWidth / 2) / screen.width, py = (arrowY * mc.displayHeight + mc.displayHeight / 2) / screen.height;
+                    com.sun.jna.platform.win32.User32.INSTANCE.PostMessage(Borderless189.hwnd(), 0x0200 /* WM_MOUSEMOVE */,
+                        new com.sun.jna.platform.win32.WinDef.WPARAM(0), new com.sun.jna.platform.win32.WinDef.LPARAM((long) py << 16 | px & 0xFFFF));
+                    pointerOnArrow = true;
+                    wait = 3;
+                    return false;
+                }
+                pointerOnArrow = false;
+                CoreProbe.screenshot(mc, "189-packs-pointer-on-arrow");
+                if (CoreProbe.PYLON) {
+                    // Pylon (Ionium) reads the pointer from SDL, which neither the window message nor a queued event moves: the lists
+                    // get it from a draw at the arrow, then the screen's own mouseClicked runs as a click event would call it.
+                    screen.drawScreen(arrowX, arrowY, 0F);
+                    net.minecraftforge.fml.relauncher.ReflectionHelper.findMethod(net.minecraft.client.gui.GuiScreen.class, screen,
+                        new String[] {"mouseClicked", "func_73864_a"}, int.class, int.class, int.class).invoke(screen, arrowX, arrowY, 0);
+                } else {
+                    CoreProbe.click(arrowX, arrowY);
+                }
+                wait = 10;
+                step++;
+                return false;
+            }
+            case 15: {
+                GuiScreenResourcePacks screen = (GuiScreenResourcePacks) mc.currentScreen;
+                CoreProbe.screenshot(mc, "189-packs-after-arrow");
+                LOG.info("Lads packs QA: after the arrow click: selected {}, available {}, startup packs {}", packNames(screen.getSelectedResourcePacks()),
+                    packNames(screen.getAvailableResourcePacks()), mc.gameSettings.resourcePacks);
+                CoreProbe.check(packNames(screen.getSelectedResourcePacks()).indexOf(deselected) < 0, deselected + " left Selected after its remove arrow");
+                setSearchText(screen, deselected); // wherever its folder is
+                CoreProbe.check(packNames(screen.getAvailableResourcePacks()).contains(deselected), deselected + " is listed in Available after deselecting it");
+                CoreProbe.screenshot(mc, "189-packs-deselected");
+                setSearchText(screen, "");
+                int before = screen.getAvailableResourcePacks().size();
+                screen.setWorldAndResolution(mc, screen.width, screen.height); // a resize re-inits with the move pending
+                setSearchText(screen, deselected);
+                CoreProbe.check(packNames(screen.getAvailableResourcePacks()).contains(deselected), deselected + " is still in Available after a resize");
+                setSearchText(screen, "");
+                CoreProbe.check(screen.getAvailableResourcePacks().size() == before,
+                    "a resize keeps the Available list (" + before + " rows before, " + screen.getAvailableResourcePacks().size() + " after)");
+                mc.displayGuiScreen(new net.minecraft.client.gui.GuiMainMenu()); // never Done: the selection stays as it was
                 step = 0;
                 return true;
+            }
         }
         return true;
+    }
+
+    /** The pack names of the Found rows in a pack list, in order. */
+    private static List<String> packNames(List<ResourcePackListEntry> rows) {
+        List<String> names = new ArrayList<>();
+        for (ResourcePackListEntry row : rows)
+            if (row instanceof ResourcePackListEntryFound) names.add(((ResourcePackListEntryFound) row).func_148318_i().getResourcePackName());
+        return names;
     }
 
     public static boolean runInGamePacks(Minecraft mc) throws Exception {

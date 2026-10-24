@@ -25,10 +25,12 @@ public abstract class RenderScaleMixin {
         target = "Lnet/minecraft/client/Minecraft;getMainRenderTarget()Lcom/mojang/blaze3d/pipeline/RenderTarget;"))
     private void lads$finishWorld(float partial, long nanos, boolean renderLevel, CallbackInfo callback) {
         RenderScale1201.finishWorld(minecraft);
+        com.thelads.core.v1_20_1.pvp.ScreenEffects1201.afterWorld(minecraft); // Color Saturation, Motion Blur
     }
 
     @Inject(method = "reloadShaders", at = @At("HEAD"))
     private void lads$reload(net.minecraft.server.packs.resources.ResourceProvider provider, CallbackInfo callback) {
         RenderScale1201.reloadShader();
+        com.thelads.core.v1_20_1.pvp.ScreenEffects1201.reload();
     }
 }

@@ -18,6 +18,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.security.AntiInjectDetector.init();
         com.thelads.core.v26_2.feature.paperdoll.PlayerActions.initialize();
         ConfigManager.load();
+        com.thelads.core.client.util.LogPruner.pruneIfEnabled(new java.io.File("logs"));
         com.thelads.core.v26_2.render.Render26.init();
         com.thelads.core.v26_2.feature.LocalSkins.initialize();
         com.thelads.core.config.ModuleSupport.registerBuiltIn("Threads");
@@ -27,14 +28,27 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         ModuleSupport.registerBuiltIn("FPS", "Coordinates", "PingHUD", "Memory", "Speed",
             "Day", "Time", "XP", "Potion Effects", "Zoom", com.thelads.core.modules.ToggleSprintModule.NAME,
             "Fullbright", "TitleScreen", "Title Scale", "CPS", "Keystrokes",
-            "Biome", "ArmorHUD", "Direction", "Health", "Hunger", "Scoreboard", "TexturePacks");
+            "Biome", "ArmorHUD", "Direction", "Health", "Hunger", "Scoreboard", "TexturePacks",
+            "ConfirmDisconnect", "NumericalEnchantments", "LogPruner", "DropConfirmation", "ScrollTweaks", "AutoPerspective", "AutoBackup");
+        // HudManager's parity widgets and Inventory HUD; Nick Hider through LocalSkinMixin (skins) and Nicknames (names).
+        ModuleSupport.registerBuiltIn(com.thelads.core.client.hud.HudManager.PARITY_HUDS);
+        ModuleSupport.registerBuiltIn(com.thelads.core.modules.NickHiderModule.NAME);
+        ModuleSupport.registerUnavailable(com.thelads.core.modules.ContainerQoLModule.NAME, "Only for Minecraft 1.8.9, as PolyPatcher's "
+            + "click outside to close; it is not hooked into this version's container screens.");
         com.thelads.core.v26_2.gui.ExternalModSettings.register();
         com.thelads.core.v26_2.gui.ShaderToggleScreen26.register();
         com.thelads.core.v26_2.feature.ShaderToggleQa26.register(); // QA only: inert without LADS_QA_SHADERTOGGLE
         com.thelads.core.v26_2.feature.NativeAutohide.registerQaBarScreens(); // QA only: the QA progress bar on the screens outside a world
         com.thelads.core.v26_2.feature.NativeQualityOfLife.register();
+        com.thelads.core.v26_2.feature.pvp.PvpVisuals26.register();
+        com.thelads.core.v26_2.pvp.PvpVisuals26.register(); // Color Saturation, Motion/Menu Blur, Hide Foliage, Clear Glass
+        com.thelads.core.v26_2.feature.ChatTweaks26.register(); // parity-1023 chat lane: chat and inventory tweaks, their keys
         com.thelads.core.v26_2.feature.NativeParticleCore.register();
         com.thelads.core.v26_2.feature.NativeFeatures.initialize();
+        com.thelads.core.v26_2.feature.PvpView26.register(); // Freelook, ViewModel, Time/Weather Changer, Fog Customizer
+        com.thelads.core.v26_2.hudextras.HudExtras26.register(); // HUD widgets and vanilla HUD tweaks (parity 1.9.19)
+        com.thelads.core.v26_2.utility.Utility26.register(); // Survival Guards, Breeding Timer, Ender Chest Peek, pack profiles, server drag
+        com.thelads.core.v26_2.qol.Qol26.register(); // Scrollable Tooltips, Crash Catcher, Quick Reconnect, Keep Cursor, Sound Volumes, Chunk Borders
         com.thelads.core.v26_2.feature.NativeChatHeads.register();
         com.thelads.core.v26_2.feature.NativeBetterF3.register();
         com.thelads.core.v26_2.feature.NativeCustomFov.register();
@@ -50,6 +64,8 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.paperdoll.PaperDoll26.register();
         com.thelads.core.v26_2.feature.tabtweaks.NativeTabTweaks.initialize();
         com.thelads.core.v26_2.feature.NativeHypixel.initialize();
+        com.thelads.core.v26_2.feature.NativeLadsApi.initialize();
+        com.thelads.core.v26_2.feature.QaProbe26.register();
         com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.register();
         com.thelads.core.v26_2.feature.clumps.NativeClumps.initialize();
         com.thelads.core.v26_2.feature.NativeItemPhysics.initialize();
@@ -72,6 +88,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.mods.NativeCatalogProbe.log();
         // The launcher lists Lads modules from this catalog; late registrations (Minimap) bump the revision on a later tick.
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();
             com.thelads.core.mods.CoreCatalogExporter.exportIfChanged();
             boolean loaded = client.isGameLoadFinished() && client.gui.overlay() == null;
             if (loaded) com.thelads.core.v26_2.feature.EnumValuesHook.reportOnce();

@@ -23,13 +23,17 @@ public final class HudScale {
     public static int of(LadsGraphics g) {
         int vanilla = g.guiScale(), chosen = HudSettings.getInstance().getHudScale();
         if (vanilla <= 0 || chosen <= 0) return vanilla;
-        return Math.min(chosen, max(g.getScaledWidth() * vanilla, g.getScaledHeight() * vanilla));
+        double exact = g.exactGuiScale(); // GUI Scale may be fractional: the window in pixels as it really is
+        return Math.min(chosen, max((int) Math.round(g.getScaledWidth() * exact), (int) Math.round(g.getScaledHeight() * exact)));
     }
 
     /** The graphics in Lads HUD units, or itself when the two scales are the same. Drawing passes straight through. */
     public static LadsGraphics units(LadsGraphics g) {
         int vanilla = g.guiScale(), lads = of(g);
-        return vanilla <= 0 || lads <= 0 || lads == vanilla ? g : new Units(g, vanilla / (double) lads, lads);
+        // Auto draws at vanilla's scale, fractional (GUI Scale) or not; a fixed one is relative to the exact scale.
+        if (vanilla <= 0 || lads <= 0 || HudSettings.getInstance().getHudScale() <= 0) return g;
+        double exact = g.exactGuiScale();
+        return lads == exact ? g : new Units(g, exact / lads, lads);
     }
 
     private static final class Units implements LadsGraphics {
@@ -71,10 +75,12 @@ public final class HudScale {
         @Override public void drawArmorItem(int index, int x, int y, boolean preview) { target.drawArmorItem(index, x, y, preview); }
         @Override public void drawHotbarSlots(int x, int y, int slots) { target.drawHotbarSlots(x, y, slots); }
         @Override public void drawArmorSlot(int slot, int x, int y, boolean preview) { target.drawArmorSlot(slot, x, y, preview); }
+        @Override public void drawInventorySlot(int slot, int x, int y, boolean preview) { target.drawInventorySlot(slot, x, y, preview); }
         @Override public void drawBossBars(int x, int y, int max, boolean names, boolean preview) { target.drawBossBars(x, y, max, names, preview); }
         @Override public int actionBarWidth(Object text) { return target.actionBarWidth(text); }
         @Override public void drawActionBar(Object text, int x, int y, int color, boolean shadow, boolean plain) { target.drawActionBar(text, x, y, color, shadow, plain); }
         @Override public void drawSprite(String sprite, int x, int y, int size) { target.drawSprite(sprite, x, y, size); }
+        @Override public void drawGuiIcon(String sprite, int u, int v, int x, int y, int width, int height) { target.drawGuiIcon(sprite, u, v, x, y, width, height); }
         @Override public void drawPotionIcon(String effectId, int iconIndex, int x, int y, int size) { target.drawPotionIcon(effectId, iconIndex, x, y, size); }
         @Override public boolean drawGameView(int x, int y, int width, int height) { return target.drawGameView(x, y, width, height); }
         @Override public boolean drawImage(String source, int x, int y, int width, int height) { return target.drawImage(source, x, y, width, height); }

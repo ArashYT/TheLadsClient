@@ -78,7 +78,8 @@ public final class Tooltips189 {
             if (wrap > 0) for (String line : lines) count += font.listFormattedStringToWidth(line, wrap).size();
             if (wrap > 0 && height(count) + 10 <= screenHeight) return false;
         } else if (sideFits && height(count) + 10 <= screenHeight) return false;
-        float scale = TooltipFit.scale(width, height(lines.size()), screenWidth, screenHeight, new ScaledResolution(Minecraft.getMinecraft()).getScaleFactor());
+        float scale = TooltipFit.scale(width, height(lines.size()), screenWidth, screenHeight,
+            com.thelads.core.v1_8_9.qol.Qol189.scale(new ScaledResolution(Minecraft.getMinecraft()))); // GUI Scale may be fractional
         int scaledWidth = (int) (screenWidth / scale), scaledX = (int) (x / scale);
         if (scaledX + 12 + width + 4 > scaledWidth && scaledX - 16 - width < 4) scaledX = 4 - 12; // left edge, as later versions place it (no wrap)
         GlStateManager.pushMatrix();

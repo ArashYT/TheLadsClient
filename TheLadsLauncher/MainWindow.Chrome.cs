@@ -148,9 +148,9 @@ public partial class MainWindow
         _settingsSaveTimer.Tick += (_, _) => { _settingsSaveTimer.Stop(); SaveSettingsFromUi(); };
         foreach (var box in new[] { CloseToTrayCheckbox, KeepLauncherOpenCheckbox, KeepClosedOnExitCheckbox, AutoLaunchCheckbox, AutoFixCrashesCheckbox,
                      AutoRelaunchOnCrashCheckbox, AutoRejoinServerCheckbox, MultiInstanceCheckbox, FullscreenOnLaunchCheckbox, QuickLaunchCheckbox,
-                     SyncScreenshotsCheckbox, ParticleCheckbox, DiscordPresenceCheckbox })
+                     SyncScreenshotsCheckbox, ParticleCheckbox, DiscordPresenceCheckbox, SendCrashReportsCheckbox, SendUsageStatsCheckbox })
             box.IsCheckedChanged += (_, _) => ScheduleSettingsSave();
-        foreach (var combo in new[] { ThemeSelector, UiScaleSelector, QuickLaunchServerComboBox, GraphicsRendererSelector, JavaSelector })
+        foreach (var combo in new[] { ThemeSelector, UiScaleSelector, QuickLaunchServerComboBox, GraphicsRendererSelector, OptiFinePackRendererSelector, JavaSelector })
             combo.SelectionChanged += (_, _) => ScheduleSettingsSave();
         foreach (var box in new[] { MicrosoftClientIdTextBox, FabricVersionBox, CurseForgeApiKeyBox, ModrinthApiUrlBox, CurseForgeApiUrlBox, MinecraftVersionOverrideBox })
             box.TextChanged += (_, _) => ScheduleSettingsSave();

@@ -13,30 +13,54 @@ import java.util.function.Supplier;
  * How much of each particle type still spawns: 100 (vanilla) down to 0 (never). Only types below 100 are kept and saved, as
  * {"flame": 40, "smoke": 0}; ids are written without "minecraft:". The settings screen edits it in a searchable list whose
  * catalogue the game version supplies (its particle registry); the spawn hook reads {@link #percent} on every particle, so the
- * map is replaced whole on a change and read without locking.
+ * map is replaced whole on a change and read without locking. The same per-type editor serves Particle Core's other per-type
+ * values (sizes, fade): a range with its own vanilla value, or {@link #colors} (an RGB per type, 0 = vanilla).
  */
 public final class ParticleReductionOption extends Option {
     private volatile Map<String, Integer> reduced = Map.of();
     private Supplier<List<String>> catalog = List::of;
+    public final int min, max, vanilla;
+    public final boolean color;
+    /** The editor's help line. */
+    public final String hint;
 
-    public ParticleReductionOption(String name) { super(name); }
+    public ParticleReductionOption(String name) { this(name, 0, 100, 100, false, "Drag a bar: 100% is vanilla, 0% never spawns. Right-click a row to reset it."); }
+
+    public ParticleReductionOption(String name, int min, int max, int vanilla, String hint) { this(name, min, max, vanilla, false, hint); }
+
+    private ParticleReductionOption(String name, int min, int max, int vanilla, boolean color, String hint) {
+        super(name);
+        this.min = min; this.max = max; this.vanilla = vanilla; this.color = color; this.hint = hint;
+    }
+
+    /** One opaque RGB per type (stored as 0xFFRRGGBB, so black is not "unset"); 0 leaves the type's own colors. */
+    public static ParticleReductionOption colors(String name, String hint) {
+        return new ParticleReductionOption(name, Integer.MIN_VALUE, Integer.MAX_VALUE, 0, true, hint);
+    }
 
     /** The share of this type that still spawns, 0 to 100; types never edited are 100. */
-    public int percent(String id) {
+    public int percent(String id) { return value(id); }
+
+    /** This type's value; types never edited are {@link #vanilla}. */
+    public int value(String id) {
         Integer value = reduced.get(id);
-        return value == null ? 100 : value;
+        return value == null ? vanilla : value;
     }
 
     public void set(String id, int percent) {
         if (id == null || id.isEmpty()) return;
         id = normalise(id);
-        int value = Math.max(0, Math.min(100, percent));
+        int value = clamp(percent);
         Map<String, Integer> next = new LinkedHashMap<>(reduced);
-        if (value == 100) next.remove(id); else next.put(id, value);
+        if (value == vanilla) next.remove(id); else next.put(id, value);
         reduced = Collections.unmodifiableMap(next);
     }
 
-    /** How many types are below 100%. */
+    private int clamp(int value) {
+        return color ? (value == 0 ? 0 : value | 0xFF000000) : Math.max(min, Math.min(max, value));
+    }
+
+    /** How many types differ from vanilla. */
     public int changed() { return reduced.size(); }
 
     public Map<String, Integer> all() { return reduced; }
@@ -72,8 +96,8 @@ public final class ParticleReductionOption extends Option {
         Map<String, Integer> next = new LinkedHashMap<>();
         for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
             try {
-                int value = Math.max(0, Math.min(100, entry.getValue().getAsInt()));
-                if (value < 100 && !entry.getKey().isEmpty()) next.put(normalise(entry.getKey()), value);
+                int value = clamp(entry.getValue().getAsInt());
+                if (value != vanilla && !entry.getKey().isEmpty()) next.put(normalise(entry.getKey()), value);
             } catch (RuntimeException ignored) {}
         }
         reduced = Collections.unmodifiableMap(next);

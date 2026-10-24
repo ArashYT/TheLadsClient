@@ -24,6 +24,15 @@ class CosmeticsScreenTest {
         assertEquals(EmoteLibrary.GROOVE, c.slots()[1]);
         c.setEnabled(false);
         assertTrue(c.isEnabled(), "Cosmetics is always on");
+        assertTrue(c.hidden(c.equippedHat) && c.hidden(c.visibility), "wearable options stay hidden with the wardrobe");
+        assertFalse(c.hidden(c.afkEmote));
+    }
+
+    @Test
+    void wardrobeTabStaysClosedWhileHidden() {
+        CosmeticsScreen screen = new CosmeticsScreen(k -> "", () -> {}, () -> {});
+        screen.setTab(1);
+        assertEquals(0, screen.tab());
     }
 
     @Test

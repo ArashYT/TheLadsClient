@@ -354,6 +354,36 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
         }
     }
 
+    @Override
+    public void drawInventorySlot(int slot, int x, int y, boolean preview) {
+        var player = Minecraft.getInstance().player;
+        ItemStack stack = ItemStack.EMPTY;
+        if (preview) {
+            if (slot == 0) stack = new ItemStack(Items.DIAMOND_SWORD);
+            else if (slot == 1) stack = new ItemStack(Items.GOLDEN_APPLE, 16);
+            else if (slot == 2) stack = new ItemStack(Items.ENDER_PEARL, 8);
+            else if (slot == 3) stack = new ItemStack(Items.DIAMOND_PICKAXE);
+            else if (slot == 4) stack = new ItemStack(Items.COBBLESTONE, 64);
+            else if (slot == 5) stack = new ItemStack(Items.WATER_BUCKET);
+            else if (slot == 6) stack = new ItemStack(Items.BOW);
+            else if (slot == 7) stack = new ItemStack(Items.ARROW, 32);
+        } else if (player != null) {
+            int idx = slot + 9;
+            if (idx >= 0 && idx < player.getInventory().items.size()) {
+                stack = player.getInventory().items.get(idx);
+            }
+        }
+        if (!stack.isEmpty()) {
+            fade(1);
+            try {
+                guiGraphics.renderItem(stack, x, y);
+                guiGraphics.renderItemDecorations(font, stack, x, y);
+            } finally {
+                endFade();
+            }
+        }
+    }
+
     /** A GUI sprite such as "voicechat:icons/microphone": the 16 px texture textures/icons/microphone.png of that namespace. */
     @Override
     public void drawSprite(String sprite, int x, int y, int size) {
@@ -562,5 +592,10 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
     @Override
     public int guiScale() {
         return (int) Minecraft.getInstance().getWindow().getGuiScale();
+    }
+
+    @Override
+    public double exactGuiScale() {
+        return Minecraft.getInstance().getWindow().getGuiScale(); // GUI Scale may be fractional
     }
 }

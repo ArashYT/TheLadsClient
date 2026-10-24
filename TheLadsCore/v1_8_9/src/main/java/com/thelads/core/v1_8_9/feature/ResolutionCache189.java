@@ -10,6 +10,7 @@ public final class ResolutionCache189 {
     private static int lastGuiScale = -1;
     private static boolean lastUnicode = false;
     private static int lastExtraRows = -1;
+    private static int lastGuiScaleRevision = -1;
 
     private ResolutionCache189() {}
 
@@ -26,13 +27,15 @@ public final class ResolutionCache189 {
                 || h != lastHeight
                 || scale != lastGuiScale
                 || unicode != lastUnicode
-                || extra != lastExtraRows) {
+                || extra != lastExtraRows
+                || com.thelads.core.client.GuiScaleOverride.revision != lastGuiScaleRevision) {
             cached = new ScaledResolution(mc);
             lastWidth = w;
             lastHeight = h;
             lastGuiScale = scale;
             lastUnicode = unicode;
             lastExtraRows = extra;
+            lastGuiScaleRevision = com.thelads.core.client.GuiScaleOverride.revision;
         }
         return cached;
     }

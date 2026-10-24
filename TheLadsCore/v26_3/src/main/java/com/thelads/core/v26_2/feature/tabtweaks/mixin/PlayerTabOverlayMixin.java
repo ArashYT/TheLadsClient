@@ -22,6 +22,10 @@ import net.minecraft.client.gui.components.PlayerTabOverlay;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import com.thelads.core.client.ladsapi.LadsBadge;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.FormattedText;
+import net.minecraft.world.level.GameType;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.Scoreboard;
@@ -43,6 +47,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 // Since we may still want some settings to apply, specifically move tab height, let's apply first
 @Mixin(value = PlayerTabOverlay.class, priority = 900)
 public class PlayerTabOverlayMixin {
+    // Static fields stay above the initialised instance fields: JDK 25 gives the implicit constructor's return the line of the last
+    // static initialiser, so Mixin read the instance initialisers below as constructor body and dropped them (26.3 tab list NPE).
+    @Unique
+    private static final Identifier LADS$BADGE_TEXTURE = Identifier.fromNamespaceAndPath(
+        LadsBadge.TEXTURE_NAMESPACE,
+        LadsBadge.TEXTURE_PATH
+    );
     @Shadow @Final private Minecraft minecraft;
     @SuppressWarnings("InstantiationOfUtilityClass")
     @Unique PlayerFaceExtractor ladsTab$playerFaceRenderer = new PlayerFaceExtractor();
@@ -156,6 +167,8 @@ public class PlayerTabOverlayMixin {
     @WrapOperation(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/PlayerFaceExtractor;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/resources/Identifier;IIIZZI)V"))
     private void betterHatLayer(GuiGraphicsExtractor graphics, Identifier texture, int x, int y, int size, boolean hat, boolean flip, int color, Operation<Void> original) {
         if (TabTweaksConfig.current().improvedHeads) {
+            // Null seen once in a showcase run (crash 2026-10-24 10:35, hold Tab with client NPC entries): an overlay built without the initializer
+            if (ladsTab$playerFaceRenderer == null) ladsTab$playerFaceRenderer = new PlayerFaceExtractor();
             ((Head) ladsTab$playerFaceRenderer).ladsTab$draw(graphics, texture, x, y, size, hat, flip, color);
         } else {
             original.call(graphics, texture, x, y, size, hat, flip, color);
@@ -200,10 +213,26 @@ public class PlayerTabOverlayMixin {
         else original.call(instance, font, str, x, y, color);
     }
 
+    @WrapOperation(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Font;width(Lnet/minecraft/network/chat/FormattedText;)I", ordinal = 0))
+    private int lads$badgeNameWidth(Font font, FormattedText text, Operation<Integer> original, @Local PlayerInfo info) {
+        int width = original.call(font, text);
+        if (info != null && LadsBadge.showInTab(info.getProfile().id())) {
+            width += LadsBadge.TAB_SIZE + LadsBadge.GAP;
+        }
+        return width;
+    }
+
     @WrapOperation(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V", ordinal = 0))
-    private void removeBodyShadow(GuiGraphicsExtractor instance, Font font, Component str, int x, int y, int color, Operation<Void> original) {
-        if (TabTweaksConfig.current().removeBodyShadow) instance.text(font, str, x, y, color, false);
-        else original.call(instance, font, str, x, y, color);
+    private void removeBodyShadow(GuiGraphicsExtractor instance, Font font, Component str, int x, int y, int color, Operation<Void> original, @Local PlayerInfo info) {
+        int textX = x;
+        if (info != null && LadsBadge.showInTab(info.getProfile().id())) {
+            int badgeColor = info.getGameMode() == GameType.SPECTATOR ? 0x90FFFFFF : -1;
+            instance.blit(RenderPipelines.GUI_TEXTURED, LADS$BADGE_TEXTURE, x, y, 0.0F, 0.0F,
+                LadsBadge.TAB_SIZE, LadsBadge.TAB_SIZE, LadsBadge.TEXTURE_SIZE, LadsBadge.TEXTURE_SIZE, badgeColor);
+            textX += LadsBadge.TAB_SIZE + LadsBadge.GAP;
+        }
+        if (TabTweaksConfig.current().removeBodyShadow) instance.text(font, str, textX, y, color, false);
+        else original.call(instance, font, str, textX, y, color);
     }
 
     @WrapOperation(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/util/FormattedCharSequence;III)V", ordinal = 1))

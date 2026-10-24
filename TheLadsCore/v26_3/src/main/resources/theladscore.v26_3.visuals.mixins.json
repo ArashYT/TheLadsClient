@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.pvp.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "ClearGlassMixin26",
+    "CustomSkyMixin26",
+    "HideFoliageMixin26",
+    "MenuBlurRadiusMixin26",
+    "MenuBlurScreenMixin26"
+  ]
+}

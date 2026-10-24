@@ -22,7 +22,31 @@ public static class CrashReporter
         @"(eyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]{8,})|((?:accessToken|access_token|token:|Session ID is)[""'=: ]*)[^\s""',]{16,}",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    public static async Task<string?> SendAsync(string gameDirectory, string? workingDirectory, string minecraftVersion, int exitCode)
+    /// <summary>
+    /// The section Lads Crash Catcher adds to a crash report it caught (common CrashCatcher.MARKER): the game left the world and kept
+    /// running, so it exits normally later and those reports are sent from there (<see cref="CaughtReports"/>).
+    /// </summary>
+    public const string CaughtMarker = "-- Lads Crash Catcher --";
+
+    /// <summary>Crash reports in <paramref name="gameDirectory"/> carrying <see cref="CaughtMarker"/>, written since <paramref name="since"/>, oldest first.</summary>
+    public static string[] CaughtReports(string gameDirectory, DateTime since)
+    {
+        string dir = Path.Combine(gameDirectory, "crash-reports");
+        if (!Directory.Exists(dir)) return Array.Empty<string>();
+        return Directory.GetFiles(dir, "*.txt").Where(f => File.GetLastWriteTime(f) >= since && Marked(f)).OrderBy(File.GetLastWriteTime).ToArray();
+    }
+
+    private static bool Marked(string path)
+    {
+        try { return File.ReadLines(path).Any(line => line.Contains(CaughtMarker, StringComparison.Ordinal)); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return false; }
+    }
+
+    /// <summary>
+    /// Sends the game's crash. <paramref name="caughtReport"/>: a crash Lads Crash Catcher caught (the game then exited normally), sent
+    /// as its own report without the JVM or Windows fault files, which belong to no crash then.
+    /// </summary>
+    public static async Task<string?> SendAsync(string gameDirectory, string? workingDirectory, string minecraftVersion, int exitCode, string? caughtReport = null)
     {
         try
         {
@@ -30,9 +54,10 @@ public static class CrashReporter
             string? Newest(string dir, string pattern) => Directory.Exists(dir)
                 ? Directory.GetFiles(dir, pattern).Where(f => File.GetLastWriteTime(f) > fresh).OrderByDescending(File.GetLastWriteTime).FirstOrDefault()
                 : null;
-            await Task.Delay(4000).ConfigureAwait(false); // Windows Error Reporting logs the fault a moment after the process is gone
-            string crash = Read(Newest(Path.Combine(gameDirectory, "crash-reports"), "*.txt"), tail: false);
-            string hsErr = Read(Newest(gameDirectory, "hs_err_pid*.log") ?? Newest(string.IsNullOrEmpty(workingDirectory) ? gameDirectory : workingDirectory, "hs_err_pid*.log")
+            bool caught = caughtReport != null;
+            if (!caught) await Task.Delay(4000).ConfigureAwait(false); // Windows Error Reporting logs the fault a moment after the process is gone
+            string crash = Read(caught ? caughtReport : Newest(Path.Combine(gameDirectory, "crash-reports"), "*.txt"), tail: false);
+            string hsErr = caught ? "" : Read(Newest(gameDirectory, "hs_err_pid*.log") ?? Newest(string.IsNullOrEmpty(workingDirectory) ? gameDirectory : workingDirectory, "hs_err_pid*.log")
                 ?? Newest(Path.GetTempPath(), "hs_err_pid*.log"), tail: false);
             string log = Read(Path.Combine(gameDirectory, "logs", "latest.log"), tail: true);
             if (crash.Length == 0 && hsErr.Length == 0 && log.Contains("/INFO]: Stopping!", StringComparison.Ordinal))
@@ -45,7 +70,7 @@ public static class CrashReporter
                 crash,
                 hsErr,
                 log,
-                windowsEvent = Scrub(WindowsFaults()),
+                windowsEvent = caught ? "" : Scrub(WindowsFaults()),
             };
             using var request = new HttpRequestMessage(HttpMethod.Post, Endpoint) { Content = JsonContent.Create(payload) };
             request.Headers.UserAgent.ParseAdd($"TheLadsLauncher/{Program.Version}");

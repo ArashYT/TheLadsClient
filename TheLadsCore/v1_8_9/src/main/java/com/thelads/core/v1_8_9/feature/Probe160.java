@@ -41,6 +41,7 @@ final class Probe160 {
     private static long modifiedWas;
     private static int slot;
     private static float base;
+    private static long zoomOutAt;
 
     private Probe160() {}
 
@@ -86,10 +87,14 @@ final class Probe160 {
         float before = Zoom189.lastWorldFov;
         CoreProbe.key(Zoom189.ZOOM.getKeyCode(), 'c', false);
         trace.phase("zoom-out", before, base);
+        zoomOutAt = System.nanoTime();
         return after(TICKS);
     }
 
     private static boolean out(Minecraft mc) throws Exception {
+        // Smooth Zoom lands within 0.8 s of real time; after the slow screenshot before it the game runs its missed ticks back to back,
+        // so the 1.2 s of ticks can end first (flaked on OptiFine under load): wait for the landing, up to 3 s of real time.
+        if (Math.abs(Zoom189.lastWorldFov - base) > 1e-3 && System.nanoTime() - zoomOutAt < 3_000_000_000L) return CoreProbe.retry(1);
         screenshot(mc, "160-zoom-4-out");
         trace.finish();
         Zoom189.trace = null;

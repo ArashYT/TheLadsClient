@@ -156,6 +156,9 @@ public partial class MainWindow : Window
 
         settings = LauncherSettings.Load();
         InitializeProductivity();
+        LoadHomeNewsFeed();
+        TheLadsLauncher.Services.NotificationService.Initialize(new TheLadsLauncher.Services.AvaloniaWindowNotifier(new Avalonia.Controls.Notifications.WindowNotificationManager(this)));
+        InitializeDeepLinking();
         if (settings.LauncherVersion != Program.Version)
         {
             settings.LauncherVersion = Program.Version;
@@ -229,6 +232,7 @@ public partial class MainWindow : Window
         LoadSettingsUI();
         InitializeLanguageSetting();
         InitializeSettingsAutoSave();
+        SkinsPage.SkinApplied += ShowAppliedSkin;
         DiscordPresence.Log = Log;
         DiscordPresence.Enable(settings.DiscordRichPresence);
         // Every other launcher window (a dialog) shows on Discord by its title while it is open; the game splash runs with the game.
@@ -311,6 +315,12 @@ public partial class MainWindow : Window
             if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
             LauncherStartupOverlay.IsVisible = false;
             _launcherShown.StartupFinished();   // still running after a startup install means it failed: dismiss its bridge now, not after 15 s
+            if (Program.InitialDeepLink != null)
+            {
+                var initial = Program.InitialDeepLink;
+                Program.InitialDeepLink = null;
+                _ = HandleDeepLinkAsync(initial);
+            }
             int installingPreview = Array.IndexOf(args, "--preview-installing");
             if (installingPreview >= 0) { await RunInstallingPreviewAsync(Path.GetFullPath(args[installingPreview + 1])); return; }
             int pagePreview = Array.IndexOf(args, "--preview-page");
@@ -342,6 +352,11 @@ public partial class MainWindow : Window
                 SaveWindowScreenshot(Path.Combine(output, "accounts.png"));
                 NavigateTo("Skins");
                 await SkinsPage.RunPreviewAsync(output, SaveWindowScreenshot);
+                // Every head of an account that just applied a skin shows it (mc-heads.net would still serve the old one).
+                NavigateTo("Accounts");
+                await Task.Delay(600);
+                SaveWindowScreenshot(Path.Combine(output, "accounts-after-apply.png"));
+                Console.WriteLine($"[Preview] applied heads: PreviewLad={AppliedHead("PreviewLad") != null}, LocalLad={AppliedHead("LocalLad") != null}");
                 Close();
                 return;
             }
@@ -688,6 +703,40 @@ public partial class MainWindow : Window
         _runningProcesses.Any(p => SafeFileOps.PathsEqual(p.Value, gameDirectory) && IsGameRunning(p.Key)) || GameRunningByMarker(gameDirectory);
 
     private async void ReleaseNotes_Click(object? sender, RoutedEventArgs e) => await ShowReleaseNotesAsync();
+
+
+    private void LoadHomeNewsFeed()
+    {
+        try
+        {
+            var notesDir = Path.Combine(AppContext.BaseDirectory, "release-notes");
+            if (!Directory.Exists(notesDir))
+            {
+                var candidate = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "docs", "releases");
+                if (Directory.Exists(candidate)) notesDir = Path.GetFullPath(candidate);
+            }
+            var notes = ReleaseNotes.Read(notesDir);
+            var latest = notes.FirstOrDefault(n => n.Version == Program.Version) ?? notes.FirstOrDefault();
+            if (latest == null) return;
+
+            HomeNewsVersionText.Text = "v" + latest.Version;
+            HomeNewsHighlightsPanel.Children.Clear();
+            var highlights = ReleaseNotes.Highlights(latest);
+            foreach (var h in highlights)
+            {
+                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("16,*") };
+                row.Children.Add(new TextBlock { Text = "•", Foreground = new SolidColorBrush(Color.Parse("#F17C85")), FontSize = 14 });
+                var text = new TextBlock { Text = h, Foreground = new SolidColorBrush(Color.Parse("#C8CAD2")), FontSize = 12, TextWrapping = TextWrapping.Wrap };
+                Grid.SetColumn(text, 1);
+                row.Children.Add(text);
+                HomeNewsHighlightsPanel.Children.Add(row);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"[Home news feed] {ex.Message}");
+        }
+    }
 
     private async Task ShowReleaseNotesAsync()
     {
@@ -1173,6 +1222,65 @@ public partial class MainWindow : Window
         catch { }
     }
 
+    private async void ShareLogs_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(LogBox.Text))
+            {
+                StatusText.Text = "Log is empty; nothing to share.";
+                return;
+            }
+
+            string sanitized = TheLadsLauncher.Services.LogShareService.SanitizeLog(LogBox.Text);
+            string preview = sanitized.Length > 2000
+                ? sanitized[..2000] + "\n\n[... truncated preview; full sanitized log will be uploaded ...]"
+                : sanitized;
+
+            string prompt = "The following sanitized log will be publicly uploaded to mclo.gs for sharing:\n\n" + preview;
+            var dialog = CreateLadsDialog(
+                "Upload Log to mclo.gs",
+                prompt,
+                new[] { ("Upload to mclo.gs", false, true) },
+                "Cancel");
+
+            int? choice = await dialog.ShowDialog<int?>(this);
+            if (choice != 0)
+            {
+                StatusText.Text = "Log upload cancelled.";
+                return;
+            }
+
+            StatusText.Text = "Uploading sanitized log to mclo.gs...";
+            var result = await TheLadsLauncher.Services.LogShareService.UploadLogAsync(sanitized);
+            if (result.Success && result.Url != null)
+            {
+                try
+                {
+                    var process = new Process();
+                    process.StartInfo.FileName = "clip.exe";
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.RedirectStandardInput = true;
+                    process.StartInfo.CreateNoWindow = true;
+                    process.Start();
+                    process.StandardInput.Write(result.Url);
+                    process.StandardInput.Close();
+                    process.WaitForExit(2000);
+                }
+                catch { }
+                StatusText.Text = $"Log uploaded and link copied: {result.Url}";
+            }
+            else
+            {
+                StatusText.Text = $"Could not upload log: {result.ErrorMessage ?? "Unknown error"}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Upload error: {ex.Message}";
+        }
+    }
+
     private void ClearLogs_Click(object? sender, RoutedEventArgs e)
     {
         logLines.Clear();
@@ -1343,6 +1451,7 @@ public partial class MainWindow : Window
     private async Task LoadAccountHeadAsync(TheLadsLauncher.Models.AccountChoice choice)
     {
         if (_accountHeads.TryGetValue(choice.Name, out var cached)) { choice.Head = cached; return; }
+        if (AppliedHead(choice.Name) is { } applied) { choice.Head = _accountHeads[choice.Name] = applied; return; }
         try
         {
             var bytes = await _httpClient.GetByteArrayAsync($"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(choice.Name))}/64");
@@ -1426,7 +1535,8 @@ public partial class MainWindow : Window
             Grid.SetColumn(skinHead, 0);
             grid.Children.Add(skinHead);
 
-            _ = Task.Run(async () =>
+            if (AppliedHead(username) is { } applied) skinHead.Fill = new ImageBrush(applied);
+            else _ = Task.Run(async () =>
             {
                 try
                 {
@@ -1804,7 +1914,7 @@ public partial class MainWindow : Window
             int index = i;
             var confirm = new Button
             {
-                Content = new TextBlock { Text = choices[i].Text, TextWrapping = TextWrapping.Wrap, MaxWidth = 300 },
+                Content = new TextBlock { Text = choices[i].Text, TextWrapping = TextWrapping.Wrap, MaxWidth = 300, Foreground = Brushes.White },
                 Classes = { choices[i].Danger ? "danger" : "launch" }, MinHeight = 32, Padding = new Thickness(14, 6),
                 VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center, IsEnabled = choices[i].Enabled, Margin = new Thickness(0, 0, 8, 0)
             };
@@ -2259,11 +2369,40 @@ public partial class MainWindow : Window
         return username;
     }
 
+    private string AppliedHeadFile(string account) => Path.Combine(_pathService.BaseDirectory, "cache", "applied-heads",
+        string.Concat(account.ToLowerInvariant().Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c)) + ".png");
+
+    /// <summary>
+    /// The head of the skin last applied in the Skins tab. mc-heads.net keeps serving the old skin for a while after an
+    /// upload, so for a day every player head of that account is drawn from the applied texture instead.
+    /// </summary>
+    private Bitmap? AppliedHead(string account)
+    {
+        var file = new FileInfo(AppliedHeadFile(account));
+        if (!file.Exists || file.LastWriteTimeUtc < DateTime.UtcNow.AddDays(-1)) return null;
+        try { return new Bitmap(file.FullName); } catch (Exception) { return null; }
+    }
+
+    private void ShowAppliedSkin(string account, byte[] png)
+    {
+        try
+        {
+            using var head = Views.SkinsView.Head(png, 64);
+            Directory.CreateDirectory(Path.GetDirectoryName(AppliedHeadFile(account))!);
+            head.Save(AppliedHeadFile(account));
+        }
+        catch (Exception) { return; } // the skin itself was applied: only the heads stay old until mc-heads catches up
+        foreach (var key in _accountHeads.Keys.Where(k => string.Equals(k, account, StringComparison.OrdinalIgnoreCase)).ToList())
+            _accountHeads.Remove(key);
+        LoadAccounts(); // sidebar, account pickers (Play, Experiences) and the Accounts list
+    }
+
     private async Task LoadPlayerSkin(string username)
     {
         try
         {
             MiniAccountName.Text = username;
+            if (AppliedHead(username) is { } applied) { MiniSkinHead.Fill = new ImageBrush(applied); return; }
 
             string skinId = ResolveSkinId(username);
 
@@ -2344,6 +2483,7 @@ public partial class MainWindow : Window
         KeepClosedOnExitCheckbox.IsChecked = settings.KeepClosedOnExit;
         FullscreenOnLaunchCheckbox.IsChecked = settings.FullscreenOnLaunch;
         GraphicsRendererSelector.SelectedIndex = GraphicsRenderer.Normalize(settings.GraphicsRenderer) == GraphicsRenderer.OpenGl ? 1 : 0;
+        OptiFinePackRendererSelector.SelectedIndex = Math.Max(0, Array.IndexOf(OptiFinePackRenderers, settings.OptiFinePackRenderer));
         QuickLaunchCheckbox.IsChecked = settings.QuickLaunch;
         AutoLaunchCheckbox.IsChecked = settings.AutoLaunch;
         AutoFixCrashesCheckbox.IsChecked = settings.AutoFixCrashes;
@@ -2380,6 +2520,9 @@ public partial class MainWindow : Window
         foreach (var sc in scales)
             UiScaleSelector.Items.Add(sc);
         UiScaleSelector.SelectedItem = settings.UiScale;
+        LoadingScreenBgColorBox.Text = settings.LoadingScreenBgColor ?? "";
+        LoadingScreenBarColorBox.Text = settings.LoadingScreenBarColor ?? "";
+        LoadingScreenGlowColorBox.Text = settings.LoadingScreenGlowColor ?? "";
     }
 
     // ── Server list picker ────────────────────────────────────────────────────
@@ -2630,6 +2773,25 @@ public partial class MainWindow : Window
             var leftStack = new StackPanel { Spacing = 8 };
 
             var titlePanel = new WrapPanel { VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+            string glyph = TheLadsLauncher.Services.ProfileIconService.GetGlyph(profile.IconKey);
+            string col = !string.IsNullOrEmpty(profile.IconColor) ? profile.IconColor : "#3A3B42";
+            if (!Color.TryParse(col, out var iconColor)) iconColor = Color.Parse("#3A3B42");
+            var iconBadge = new Border
+            {
+                Width = 26, Height = 26, CornerRadius = new CornerRadius(13),
+                Background = new SolidColorBrush(iconColor),
+                Margin = new Thickness(0, 0, 8, 0),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Child = new TextBlock
+                {
+                    Text = glyph,
+                    FontSize = 13,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                }
+            };
+            titlePanel.Children.Add(iconBadge);
+
             titlePanel.Children.Add(new TextBlock
             {
                 Text = (profile.IsFavorite ? "★ " : "") + profile.Name,
@@ -2970,6 +3132,7 @@ public partial class MainWindow : Window
         var renderer = GraphicsRendererSelector.SelectedIndex == 1 ? GraphicsRenderer.OpenGl : GraphicsRenderer.Vulkan;
         bool rendererChanged = renderer != GraphicsRenderer.Normalize(settings.GraphicsRenderer);
         settings.GraphicsRenderer = renderer;
+        settings.OptiFinePackRenderer = OptiFinePackRenderers[Math.Max(0, OptiFinePackRendererSelector.SelectedIndex)];
         settings.QuickLaunch = QuickLaunchCheckbox.IsChecked ?? false;
         settings.ShowParticles = ParticleCheckbox.IsChecked ?? true;
         settings.SyncScreenshotsToGlobal = SyncScreenshotsCheckbox.IsChecked ?? true;
@@ -2990,6 +3153,9 @@ public partial class MainWindow : Window
             settings.UiScale = scale;
             ApplyUiScale();
         }
+        settings.LoadingScreenBgColor = string.IsNullOrWhiteSpace(LoadingScreenBgColorBox.Text) ? "" : LoadingScreenBgColorBox.Text.Trim();
+        settings.LoadingScreenBarColor = string.IsNullOrWhiteSpace(LoadingScreenBarColorBox.Text) ? "" : LoadingScreenBarColorBox.Text.Trim();
+        settings.LoadingScreenGlowColor = string.IsNullOrWhiteSpace(LoadingScreenGlowColorBox.Text) ? "" : LoadingScreenGlowColorBox.Text.Trim();
 
         settings.Save();
         if (rendererChanged) ReloadModsInventory(); // Iris's "Requires OpenGL" lock follows the saved renderer
@@ -3696,6 +3862,121 @@ public partial class MainWindow : Window
 
     /// <summary>Every mod file of the profile to the Recycle Bin (yours too), saved choices cleared, LadsCore and the pack
     /// reinstalled (ModStateService.ResetModsFolderAsync). The way out when a profile's Mods folder is beyond repair.</summary>
+    private async void RepairGameFiles_Click(object? sender, RoutedEventArgs e)
+    {
+        var profile = _profileService.GetActiveProfile();
+        if (IsGameRunningFor(_pathService.GetProfileDirectory(profile)))
+        {
+            ModsStatus($"Minecraft is running for '{profile.Name}'. Close it, then repair game files.", true);
+            return;
+        }
+
+        ModsStatus($"Repairing game files for '{profile.Name}'...");
+        try
+        {
+            var report = await TheLadsLauncher.Services.GameRepairService.RepairProfileAsync(AppContext.BaseDirectory, profile, s => ModsStatus(s));
+            ModsStatus($"Repair complete: {report.FilesChecked} files checked, {report.FilesRepaired} files repaired.");
+            await ShowLadsDialogAsync("Repair complete", $"Repair finished successfully for '{profile.Name}'.\n\n• Verified {report.FilesChecked} files\n• Repaired/restored {report.FilesRepaired} files", "OK");
+        }
+        catch (Exception ex)
+        {
+            ModsStatus($"Repair failed: {ex.Message}", true);
+        }
+    }
+
+    private async void BisectMods_Click(object? sender, RoutedEventArgs e)
+    {
+        var profile = _profileService.GetActiveProfile();
+        string gameDir = _pathService.GetProfileDirectory(profile);
+        if (IsGameRunningFor(gameDir))
+        {
+            ModsStatus($"Minecraft is running for '{profile.Name}'. Close it before bisecting mods.", true);
+            return;
+        }
+
+        var session = TheLadsLauncher.Services.ModBisectService.LoadSession(gameDir);
+        if (session == null || session.State == TheLadsLauncher.Services.BisectState.Inactive)
+        {
+            var startDialog = CreateLadsDialog(
+                "Mod Bisect Troubleshooting",
+                $"Mod Bisect helps isolate a mod that causes crashes or low FPS by dividing candidate mods across test steps.\n\n" +
+                $"A full backup of your mods folder will be created in .lads-mod-cache before starting.\n\n" +
+                $"Start bisect for '{profile.Name}'?",
+                new[] { ("Start Bisect", false, true) },
+                "Cancel");
+
+            int? choice = await startDialog.ShowDialog<int?>(this);
+            if (choice != 0) return;
+
+            try
+            {
+                session = TheLadsLauncher.Services.ModBisectService.StartBisect(gameDir);
+                ModsStatus($"Bisect started (Step 1 of ~{session.TotalEstimatedSteps}). {session.CurrentActiveHalf.Count} mods active.");
+                ReloadModsInventory();
+            }
+            catch (Exception ex)
+            {
+                ModsStatus($"Could not start bisect: {ex.Message}", true);
+                return;
+            }
+        }
+
+        while (session != null && session.State == TheLadsLauncher.Services.BisectState.InProgress)
+        {
+            var stepDialog = CreateLadsDialog(
+                $"Mod Bisect (Step {session.Step} of ~{session.TotalEstimatedSteps})",
+                $"Testing {session.CurrentActiveHalf.Count} active mods (other candidates safely isolated in .lads-mod-cache/bisect-disabled).\n\n" +
+                "1. Launch Minecraft and check if the crash/FPS issue occurs.\n" +
+                "2. Report whether the issue reproduced:\n\n" +
+                "• Crashed / Problem reproduced: Culprit is in the active half.\n" +
+                "• Worked / Problem fixed: Culprit is in the disabled half.\n" +
+                "• Cancel: Restores all your original mods immediately.",
+                new[]
+                {
+                    ("Crashed (reproduced)", true, true),
+                    ("Worked (fixed)", false, true)
+                },
+                "Cancel Bisect");
+
+            int? answer = await stepDialog.ShowDialog<int?>(this);
+            if (answer == 0) // Crashed
+            {
+                session = TheLadsLauncher.Services.ModBisectService.RecordStepResult(gameDir, stillReproduces: true);
+                ReloadModsInventory();
+            }
+            else if (answer == 1) // Worked
+            {
+                session = TheLadsLauncher.Services.ModBisectService.RecordStepResult(gameDir, stillReproduces: false);
+                ReloadModsInventory();
+            }
+            else // Cancel
+            {
+                TheLadsLauncher.Services.ModBisectService.FinishOrCancel(gameDir, keepCulpritDisabled: false);
+                ModsStatus("Mod bisect cancelled. Original mods restored.");
+                ReloadModsInventory();
+                return;
+            }
+        }
+
+        if (session != null && session.State == TheLadsLauncher.Services.BisectState.FoundCulprit)
+        {
+            var resultDialog = CreateLadsDialog(
+                "Culprit Mod Identified!",
+                $"Mod Bisect has successfully isolated the culprit mod:\n\n" +
+                $"★ {session.CulpritFile}\n\n" +
+                "All innocent mods have been returned to your mods folder.\n" +
+                "Would you like to keep this culprit mod disabled?",
+                new[] { ("Keep Culprit Disabled", false, true) },
+                "Re-enable Culprit");
+
+            int? res = await resultDialog.ShowDialog<int?>(this);
+            bool keepDisabled = (res == 0);
+            TheLadsLauncher.Services.ModBisectService.FinishOrCancel(gameDir, keepCulpritDisabled: keepDisabled);
+            ModsStatus($"Bisect complete. Culprit: {session.CulpritFile} ({(keepDisabled ? "kept disabled" : "re-enabled")}).");
+            ReloadModsInventory();
+        }
+    }
+
     private async void ResetModsFolder_Click(object? sender, RoutedEventArgs e)
     {
         if (!ModsCanChange()) return;
@@ -4566,7 +4847,7 @@ public partial class MainWindow : Window
             await BundledModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion, token);
             // Without a loader (Fabric, or Forge on 1.8.9) nothing in Mods loads, as in LaunchService: no choices to apply.
             bool forge = GameVersionPolicy.UsesForge(activeProfile.MinecraftVersion);
-            if ((forge || !string.IsNullOrWhiteSpace(activeProfile.FabricVersion)) && !await InstallClientModsAsync(gameDirectory, activeProfile.MinecraftVersion, token)) return;
+            if ((forge || !string.IsNullOrWhiteSpace(activeProfile.FabricVersion)) && !await InstallClientModsAsync(gameDirectory, activeProfile.MinecraftVersion, token, settings.OptiFinePackRenderer)) return;
             // OptiFine is downloaded from optifine.net and verified; if that fails the game starts without it (warned below).
             string? optiFineWarning = forge ? await Task.Run(() => OptiFineInstaller.InstallAsync(_pathService.BaseDirectory, gameDirectory,
                 status: message => Dispatcher.UIThread.Post(() => GameLaunchStatusText.Text = message), cancellationToken: token)) : null;
@@ -4788,18 +5069,23 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>OptiFinePackRendererSelector's items, in order.</summary>
+    private static readonly string[] OptiFinePackRenderers = { OptiFinePacks.Auto, OptiFinePacks.AlwaysIonium, OptiFinePacks.AlwaysOptiFine };
+
     /// <summary>
     /// Installs the pinned pack. When the requested mods cannot load together (typically a library switched off while a mod
     /// that needs it stays on), it offers the coherent fixes from the dependency planner: disable the mods that need it, or
     /// switch the library back on. The choice is saved and the install tried once more. False: cancelled (status says why).
     /// </summary>
-    private async Task<bool> InstallClientModsAsync(string gameDirectory, string minecraftVersion, CancellationToken token)
+    private async Task<bool> InstallClientModsAsync(string gameDirectory, string minecraftVersion, CancellationToken token,
+        string? optiFinePackRenderer = null)
     {
         // The launch overlay shows it too, or a long download looks like the step before it hanging.
         Action<string> status = message => Dispatcher.UIThread.Post(() => StatusText.Text = GameLaunchStatusText.Text = message);
         try
         {
-            await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status, token);
+            PackNotice(await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status, token,
+                optiFinePackRenderer: optiFinePackRenderer));
             return true;
         }
         catch (ClientModDependencyException problem)
@@ -4824,8 +5110,17 @@ public partial class MainWindow : Window
             if (!result.Success) throw new InvalidOperationException(result.Message);
             Log($"[Mods] {fixes[picked].Text}: {result.Message}");
             // Once: a second failure ends the launch with its own message. (The Mods page reloads when the launch is over.)
-            await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status, token);
+            PackNotice(await ClientModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, minecraftVersion, status, token,
+                optiFinePackRenderer: optiFinePackRenderer));
             return true;
+        }
+
+        // 1.8.9: a resource pack with OptiFine features Ionium lacks (CTM, custom sky...) renders through OptiFine this launch.
+        void PackNotice(string? notice)
+        {
+            if (notice == null) return;
+            Log($"[Renderer] {notice} (Settings > General > Graphics: 1.8.9 renderer for OptiFine-feature packs).");
+            Dispatcher.UIThread.Post(() => NotificationService.Notify("1.8.9 renderer", notice));
         }
     }
 
@@ -4927,8 +5222,19 @@ public partial class MainWindow : Window
             {
                 StatusText.Text = "Game exited normally." + suffix;
                 Log("[Launcher] Game exited normally.");
+                // Lads Crash Catcher kept the game running after a crash: its reports from this session go out as a crash's would.
+                if (settings.SendCrashReports && string.IsNullOrEmpty(profile.PackwizUrl) && GameStart(process) is { } started)
+                    foreach (var report in CrashReporter.CaughtReports(gameDirectory, started))
+                        _ = SendCrashReportAsync(gameDirectory, process.StartInfo.WorkingDirectory, profile.MinecraftVersion, exitCode, report);
             }
         });
+    }
+
+    /// <summary>When the game process started, or null when Windows no longer says.</summary>
+    private static DateTime? GameStart(Process process)
+    {
+        try { return process.StartTime; }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { return null; }
     }
 
     /// <summary>
@@ -5055,6 +5361,7 @@ public partial class MainWindow : Window
                         Log($"[Launcher] Game window detected after {sw.Elapsed.TotalSeconds:F1}s.");
                         splash.SetStatus("Minecraft is ready to show");
                         splash.SetDetail("Opening game window...");
+                        TheLadsLauncher.Services.NotificationService.NotifyGameReady("Minecraft", !this.IsActive || this.WindowState == Avalonia.Controls.WindowState.Minimized || !this.IsVisible);
                         break;
                     }
                 }
@@ -5142,9 +5449,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task SendCrashReportAsync(string gameDirectory, string? workingDirectory, string minecraftVersion, int exitCode)
+    private async Task SendCrashReportAsync(string gameDirectory, string? workingDirectory, string minecraftVersion, int exitCode, string? caughtReport = null)
     {
-        string? error = await Task.Run(() => CrashReporter.SendAsync(gameDirectory, workingDirectory, minecraftVersion, exitCode));
+        string? error = await Task.Run(() => CrashReporter.SendAsync(gameDirectory, workingDirectory, minecraftVersion, exitCode, caughtReport));
         await Dispatcher.UIThread.InvokeAsync(() => Log(error == null ? "[Crash] Crash report sent to the Lads team." : $"[Crash] Crash report not sent: {error}"));
     }
 
@@ -6055,5 +6362,5 @@ public class AvaloniaMsalProvider : IAuthenticationProvider
     public XboxAuthNet.Game.Authenticators.ISessionValidator CreateSessionValidator() => XboxAuthNet.Game.Authenticators.StaticValidator.Invalid;
     public XboxAuthNet.Game.Authenticators.IAuthenticator ClearSession() => _builder.ClearSession();
     public XboxAuthNet.Game.Authenticators.IAuthenticator Signout() => _builder.ClearSession();
-}
 
+}

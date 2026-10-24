@@ -125,9 +125,9 @@ public final class CrosshairDrawingScreen189 extends GuiScreen {
         CrosshairDesign.Rect box = CrosshairDesign.previewBox(width, height);
         if (box != null) {
             fontRendererObj.drawString("LIVE PREVIEW", box.left(), box.top() - 14, 0xffa9afbd);
-            int scale = new ScaledResolution(mc).getScaleFactor();
+            double scale = com.thelads.core.v1_8_9.qol.Qol189.scale(new ScaledResolution(mc)); // GUI Scale may be fractional
             GL11.glEnable(GL11.GL_SCISSOR_TEST);
-            GL11.glScissor(box.left() * scale, mc.displayHeight - box.bottom() * scale, (box.right() - box.left()) * scale, (box.bottom() - box.top()) * scale);
+            GL11.glScissor((int) (box.left() * scale), mc.displayHeight - (int) (box.bottom() * scale), (int) ((box.right() - box.left()) * scale), (int) ((box.bottom() - box.top()) * scale));
             // The background chosen on the settings page (a biome, gradient, colour, your image or the live game).
             CrosshairBackground.draw(new GuiLadsAdapter(fontRendererObj, width, height) {
                 @Override public boolean drawGameView(int x, int y, int w, int h) { return captured && view.draw(x, y, w, h); }

@@ -179,10 +179,14 @@ public class ProfileService : IProfileService
         Directory.CreateDirectory(targetDir);
 
         var coreEnabled = UsesCore(profile, targetDir, out var stateFileError);
+        string? pinError = null;
+        try { await ServerListService.PinLadsNetworkAsync(new ServerListTarget("", _sharedContent.ServersFile, _sharedContent.ServersLockFile)); }
+        catch (Exception e) when (e is not OperationCanceledException) { pinError = $"The Lads Network was not pinned in the server list: {e.Message}"; }
         var report = await _sharedContent.PrepareProfileAsync(targetDir, profile.Name, LegacySharedServersFile, coreEnabled,
             progress, cancellationToken, shareFolders: !withoutSharedFolders);
         var warnings = report.Warnings.ToList();
         if (stateFileError != null) warnings.Add(stateFileError);
+        if (pinError != null) warnings.Add(pinError);
         warnings.AddRange(await ModWelcomeSettings.PrepareAsync(targetDir, cancellationToken));
         try
         {

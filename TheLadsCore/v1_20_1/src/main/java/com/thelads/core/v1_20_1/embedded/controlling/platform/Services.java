@@ -5,6 +5,6 @@ package com.thelads.core.v1_20_1.embedded.controlling.platform;
 public class Services {
     
     public static final IEventHelper EVENT = new FabricEventHandler();
-    public static final IPlatformHelper PLATFORM = new FabricPlatformHelper();
+    public static final IPlatformHelper PLATFORM = ForgePlatformHelper.create(); // The Lads: Forge's key modifiers on Zero SMP
     
 }

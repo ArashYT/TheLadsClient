@@ -54,6 +54,10 @@ public interface LadsGameBridge {
      */
     default void disconnectWithReason(String title, String message) {}
     default String getItemCountText(int selection) { return "Items: 0"; }
+    /** Total block count of held item type in hotbar slots 0..8, or -1 if not holding a block. */
+    default int getHeldItemBlockCount() { return -1; }
+    /** Total count of placeable blocks in hotbar slots 0..8, or -1 if unavailable. */
+    default int getHotbarBlockCount() { return 0; }
     default String getRecentReachText() { return "Reach: --"; }
     /** The logged-in local player's username; empty when not playing or unavailable. */
     default String getPlayerName() { return ""; }
@@ -230,4 +234,52 @@ public interface LadsGameBridge {
     default List<com.thelads.core.mods.LoadedMod> loadedMods() {
         return List.of();
     }
+
+    record DefenseEnchants(int protection, int fireProtection, int blastProtection, int projectileProtection, int featherFalling) {}
+
+    default DefenseEnchants getDefenseEnchants() {
+        return new DefenseEnchants(0, 0, 0, 0, 0);
+    }
+
+    record CooldownEntry(String name, float percent, float remainingSeconds) {}
+
+    default boolean hasItemCooldowns() {
+        return true;
+    }
+
+    default List<CooldownEntry> getActiveCooldowns() {
+        return Collections.emptyList();
+    }
+
+    default double getTps() {
+        return com.thelads.core.client.TpsTracker.get().getTps();
+    }
+
+    default double getCpuLoad() {
+        return com.thelads.core.client.util.SystemMetrics.getCpuLoad();
+    }
+
+    default float getToughness() {
+        return 0.0f;
+    }
+
+    default int getArmorValue() {
+        return 0;
+    }
+
+    default int getPotionCount() {
+        return 0;
+    }
+
+    default int getSoupCount() {
+        return 0;
+    }
+
+    default void tickClient() {}
+
+    /** The world is hardcore (its hearts are drawn the hardcore way). */
+    default boolean isHardcore() { return false; }
+
+    /** Nothing in the 27 main inventory slots (the hotbar and armour not counted): InventoryHUD then draws nothing. */
+    default boolean isMainInventoryEmpty() { return false; }
 }

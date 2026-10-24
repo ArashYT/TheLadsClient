@@ -72,6 +72,66 @@ public class ModpackJoinTests
         Assert.DoesNotContain("--server ", process.StartInfo.Arguments); // 1.20.1 takes quick play, not the old --server/--port
     }
 
+    [Fact]
+    public async Task AutoJoinPutsServerAndPortOnMinecraft189CommandLine()
+    {
+        using var dir = new TestDirectory();
+        var path = new MinecraftPath(dir.Path);
+        string v189 = """
+            {"id":"1.8.9","type":"release","mainClass":"net.minecraft.client.main.Main",
+             "minecraftArguments":"--username ${auth_player_name} --version ${version_name} --gameDir ${game_directory} --assetsDir ${assets_root} --assetIndex ${assets_index_name} --uuid ${auth_uuid} --accessToken ${auth_access_token} --userProperties ${user_properties} --userType ${user_type}",
+             "libraries":[]}
+            """;
+        Directory.CreateDirectory(Path.Combine(path.Versions, "1.8.9"));
+        File.WriteAllText(Path.Combine(path.Versions, "1.8.9", "1.8.9.json"), v189);
+        var parameters = MinecraftLauncherParameters.CreateDefault(path);
+        parameters.VersionLoader = new LocalJsonVersionLoader(path);
+        var options = new MLaunchOption { Session = MSession.CreateOfflineSession("QaPlayer"), JavaPath = "java", MaximumRamMb = 2048, MinimumRamMb = 512 };
+        ModpackLauncher.JoinServer(options, "127.0.0.1:25701");
+        var process = await new MinecraftLauncher(parameters).BuildProcessAsync("1.8.9", options);
+
+        Assert.Contains("--server 127.0.0.1", process.StartInfo.Arguments);
+        Assert.Contains("--port 25701", process.StartInfo.Arguments);
+        Assert.DoesNotContain("--quickPlayMultiplayer", process.StartInfo.Arguments);
+    }
+
+    [Fact]
+    public async Task AutoJoinPutsQuickPlayMultiplayerOnFabric263CommandLine()
+    {
+        using var dir = new TestDirectory();
+        var path = new MinecraftPath(dir.Path);
+        string v263 = """
+            {"id":"26.3","type":"release","mainClass":"net.minecraft.client.main.Main",
+             "arguments":{"game":["--username","${auth_player_name}","--version","${version_name}","--gameDir","${game_directory}","--assetsDir","${assets_root}","--assetIndex","${assets_index_name}","--uuid","${auth_uuid}","--accessToken","${auth_access_token}","--userType","${user_type}","--versionType","${version_type}",
+               {"rules":[{"action":"allow","features":{"is_quick_play_multiplayer":true}}],"value":["--quickPlayMultiplayer","${quickPlayMultiplayer}"]}]},
+             "libraries":[]}
+            """;
+        Directory.CreateDirectory(Path.Combine(path.Versions, "26.3"));
+        File.WriteAllText(Path.Combine(path.Versions, "26.3", "26.3.json"), v263);
+        var parameters = MinecraftLauncherParameters.CreateDefault(path);
+        parameters.VersionLoader = new LocalJsonVersionLoader(path);
+        var options = new MLaunchOption { Session = MSession.CreateOfflineSession("QaPlayer"), JavaPath = "java", MaximumRamMb = 2048, MinimumRamMb = 512 };
+        ModpackLauncher.JoinServer(options, "127.0.0.1:25700");
+        var process = await new MinecraftLauncher(parameters).BuildProcessAsync("26.3", options);
+
+        Assert.Contains("--quickPlayMultiplayer 127.0.0.1:25700", process.StartInfo.Arguments);
+        Assert.DoesNotContain("--server", process.StartInfo.Arguments);
+    }
+
+    [Theory]
+    [InlineData("127.0.0.1:25700", "127.0.0.1", 25700)]
+    [InlineData("127.0.0.1:25701", "127.0.0.1", 25701)]
+    [InlineData("127.0.0.1:25702", "127.0.0.1", 25702)]
+    [InlineData("play.example.com", "play.example.com", 0)]
+    public void JoinServerSetsServerIpAndPort(string address, string expectedIp, int expectedPort)
+    {
+        var options = new MLaunchOption();
+        ModpackLauncher.JoinServer(options, address);
+        Assert.Equal(expectedIp, options.ServerIp);
+        if (expectedPort > 0)
+            Assert.Equal(expectedPort, options.ServerPort);
+    }
+
     [Theory]
     [InlineData(12, 6)]
     [InlineData(24, 12)]

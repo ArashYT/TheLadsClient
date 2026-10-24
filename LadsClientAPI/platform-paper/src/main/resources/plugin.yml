@@ -1,0 +1,19 @@
+name: LadsClientAPI
+version: 1.0.0
+main: com.thelads.ladsapi.paper.LadsPaperPlugin
+api-version: '1.20'
+softdepend: [PlaceholderAPI]
+description: LadsClientAPI Paper & Spigot Plugin
+author: The Lads
+commands:
+  ladsapi:
+    description: Manage LadsClientAPI rules and status
+    permission: ladsapi.admin
+    usage: /<command> [reload|status|inspect|set|clear]
+permissions:
+  ladsapi.admin:
+    description: Allows administering LadsClientAPI
+    default: op
+  ladsapi.bypass:
+    description: Bypass all LadsClientAPI rules
+    default: false

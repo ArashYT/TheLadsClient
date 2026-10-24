@@ -56,6 +56,7 @@ public partial class ServersView : UserControl
         public Control Skeleton = null!, StatusBox = null!;
         public Border? VersionChip;
         public Button? Add, Up, Down;
+        public bool Pinned; // The Lads Network in the shared list: first, not moved or removed here
         public ServerStatus? Status;
         public Task StatusTask = Task.CompletedTask;
         public int Generation;
@@ -92,6 +93,8 @@ public partial class ServersView : UserControl
             foreach (var server in ServerNameResolver.Servers) _find.Add(CreateTile(server));
         var label = Selected?.Label;
         _targets = ServerListService.Targets(SharedContentService.Instance, PathService.Instance.BaseDirectory);
+        try { await ServerListService.PinLadsNetworkAsync(_targets[0]); }
+        catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) { } // ReadSaved reports an unreadable list
         Target.ItemsSource = _targets.Select(t => t.Label).ToList();
         Target.SelectedIndex = Math.Max(0, _targets.ToList().FindIndex(t => t.Label == label));
         ReadSaved();
@@ -155,12 +158,16 @@ public partial class ServersView : UserControl
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(18, 0, 0, 0) };
         actions.Classes.Add("rowActions");
         actions.Children.AddRange(new Control[] { copy, card.Up, card.Down, remove });
+        card.Pinned = Selected == _targets.FirstOrDefault() && ServerListService.IsPinned(address);
+        remove.IsVisible = !card.Pinned; // it comes back at the next launch anyway
 
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,2*,Auto,Auto") };
         grid.ColumnDefinitions[1].MinWidth = 140;
         grid.ColumnDefinitions[1].MaxWidth = 320; // a wide window gives the MOTD the room, not the gap after a short name
         grid.Children.Add(IconTile(card, 48));
-        var info = Info(card, null);
+        var pinChip = card.Pinned ? Chip("Pinned · our network", "accent") : null;
+        if (pinChip != null) pinChip.HorizontalAlignment = HorizontalAlignment.Left;
+        var info = Info(card, pinChip);
         info.Margin = new Thickness(14, 0, 0, 0);
         Grid.SetColumn(info, 1);
         grid.Children.Add(info);
@@ -430,8 +437,8 @@ public partial class ServersView : UserControl
         for (var i = 0; i < shown.Count; i++)
         {
             // Moving within a filtered view would jump over hidden servers.
-            shown[i].Up!.IsEnabled = query.Length == 0 && i > 0;
-            shown[i].Down!.IsEnabled = query.Length == 0 && i < shown.Count - 1;
+            shown[i].Up!.IsEnabled = query.Length == 0 && i > 0 && !shown[i].Pinned && !shown[i - 1].Pinned;
+            shown[i].Down!.IsEnabled = query.Length == 0 && i < shown.Count - 1 && !shown[i].Pinned;
         }
         UpdateEmpty();
         UpdateSummary();

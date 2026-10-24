@@ -106,6 +106,10 @@ public class SoundEngineMixin implements DuckSoundEngine {
 	 */
 	@Inject(method = "play", at = @At("HEAD"), cancellable = true)
 	private void play(SoundInstance instance, CallbackInfoReturnable<SoundEngine.PlayResult> callbackInfo) {
+		if (instance != null && instance.getIdentifier() != null && com.thelads.core.client.hypixel.SilentLobby.shouldMuteSound(instance.getIdentifier().getPath())) {
+			callbackInfo.setReturnValue(SoundEngine.PlayResult.NOT_STARTED);
+			return;
+		}
 		if (SmoothVolumeHandler.volumeMultiplier(instance.getSource()) == 0.0f) {
 			callbackInfo.setReturnValue(SoundEngine.PlayResult.NOT_STARTED);
 		}

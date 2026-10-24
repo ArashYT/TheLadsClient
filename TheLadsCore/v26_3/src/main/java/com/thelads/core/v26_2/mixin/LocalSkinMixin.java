@@ -11,6 +11,10 @@ public class LocalSkinMixin {
     @Inject(method="getSkin",at=@At("HEAD"),cancellable=true,require=1)
     private void ladsLocalSkin(CallbackInfoReturnable<PlayerSkin> ci){
         var player=(AbstractClientPlayer)(Object)this;
+        if(com.thelads.core.client.NickHider.isEnabled()&&com.thelads.core.client.NickHider.shouldHideSkin(player.getUUID(),player.getUUID().equals(Minecraft.getInstance().getUser().getProfileId()))){
+            ci.setReturnValue(net.minecraft.client.resources.DefaultPlayerSkin.get(player.getUUID()));
+            return;
+        }
         var showcase=com.thelads.core.v26_2.cosmetics.anim.ShowcaseEmote26.skin(player);if(showcase!=null){ci.setReturnValue(showcase);return;}
         if(LocalSkins.current()!=null&&player.getUUID().equals(Minecraft.getInstance().getUser().getProfileId()))ci.setReturnValue(LocalSkins.current());
     }

@@ -249,7 +249,9 @@ public final class HypixelQa {
                 wait = 10;
             }
             case 24 -> {
-                check(menu.visibleModuleNames().equals(List.of(HypixelMods.HYPIXEL_MODS)), "the Hypixel category lists the one module " + menu.visibleModuleNames());
+                // HYPIXEL Mods and, since 1.9.14, Quickplay: the two built-in modules of the Hypixel category on every version.
+                check(menu.visibleModuleNames().equals(List.of(HypixelMods.HYPIXEL_MODS, com.thelads.core.client.hypixel.quickplay.QuickplayModule.NAME)),
+                    "the Hypixel category lists its two modules, HYPIXEL Mods and Quickplay " + menu.visibleModuleNames());
                 game.screenshot("hypixel-settings");
                 wait = 5;
             }

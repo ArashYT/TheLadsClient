@@ -157,6 +157,7 @@ public class BetterF3Module extends Module {
         addOption(new ColorOption("Background Color", false, 0x90505050));
         addOption(new BoolOption("Slide In", true));
         addOption(new SliderOption("Animation Speed", 100, 25, 400, 5).percent());
+        addOption(new SliderOption("Update Interval", 100, 0, 1000, 50).suffix(" ms"));
         // 1.8.5: on by default, as requested: the Lads HUD modules step aside while the debug screen is open (whatever else Better F3 does).
         addOption(new BoolOption("Hide Lads HUD", true));
         addOption(new BoolOption("Rainbow Colors", false));
@@ -474,6 +475,7 @@ public class BetterF3Module extends Module {
         List<Line> lines = List.of();
         final Map<String, Integer> order = new HashMap<>(), drawn = new java.util.LinkedHashMap<>();
         int screenWidth;
+        long lastUpdateNanos;
 
         double slot(String key) {
             Integer index = order.get(key);
@@ -508,7 +510,12 @@ public class BetterF3Module extends Module {
             return;
         }
         Side side = left ? leftSide : rightSide;
-        side.lines = style() == BETTERF3 && info != null ? betterF3(column, left, info) : arrange(column);
+        int intervalMs = getOption("Update Interval") instanceof SliderOption slider ? (int) slider.getValue() : 0;
+        long intervalNanos = intervalMs * 1_000_000L;
+        if (intervalNanos <= 0 || side.lines.isEmpty() || now - side.lastUpdateNanos >= intervalNanos) {
+            side.lines = style() == BETTERF3 && info != null ? betterF3(column, left, info) : arrange(column);
+            side.lastUpdateNanos = now;
+        }
         side.screenWidth = screenWidth;
         render(g, side, left, screenWidth, side.slide.step(true, now, seconds()), true);
     }
@@ -523,6 +530,7 @@ public class BetterF3Module extends Module {
             if (progress <= 0) {
                 side.lines = List.of();
                 side.order.clear();
+                side.lastUpdateNanos = 0;
                 continue;
             }
             render(g, side, side == leftSide, side.screenWidth, progress, false);

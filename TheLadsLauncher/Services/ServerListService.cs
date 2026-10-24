@@ -67,6 +67,23 @@ public static class ServerListService
         return true;
     }
 
+    public const string PinnedName = "The Lads Network", PinnedAddress = "mc.arashyt.ca";
+
+    public static bool IsPinned(string address) => Key(address) == Key(PinnedAddress);
+
+    /// <summary>
+    /// The Lads Network first in the shared list (every Lads version's in-game server list and the Servers tab). Put back on
+    /// each launch and each visit to Servers, so removing or moving it lasts until then.
+    /// </summary>
+    public static async Task<bool> PinLadsNetworkAsync(ServerListTarget shared)
+    {
+        using var held = shared.LockFile == null ? null : await LockFiles.AcquireAsync(shared.LockFile, LockTimeout);
+        var list = ReadList(shared.File);
+        if (!list.PinFirst(PinnedName, PinnedAddress) && File.Exists(shared.File)) return false;
+        await list.WriteAsync(shared.File);
+        return true;
+    }
+
     /// <summary>Removes the listed server with this address. False when there is none.</summary>
     public static Task<bool> RemoveAsync(ServerListTarget target, string address) => EditAsync(target, list =>
         list.Entries.FirstOrDefault(e => !e.Hidden && Key(e.Ip) == Key(address)) is { } entry && list.Remove(entry.Raw));

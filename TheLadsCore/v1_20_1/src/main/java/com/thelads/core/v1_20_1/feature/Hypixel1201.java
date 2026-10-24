@@ -44,7 +44,8 @@ public final class Hypixel1201 {
     private Hypixel1201() {}
 
     public static void register() {
-        ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS, "Session Stats", "Bed Wars Height Limit");
+        // Quickplay: QuickplayScreen and its key (NativeFeatures), as 1.8.9 Hypixel189.
+        ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS, "Session Stats", "Bed Wars Height Limit", com.thelads.core.client.hypixel.quickplay.QuickplayModule.NAME);
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> overlay || !HypixelMods.chat(message.getString(), System.nanoTime()));
         ClientReceiveMessageEvents.MODIFY_GAME.register((message, overlay) -> {
             if (!overlay && HypixelMods.isStreamerMode()) {
@@ -58,6 +59,15 @@ public final class Hypixel1201 {
         ClientSendMessageEvents.MODIFY_CHAT.register(HypixelMods::handleOutgoingChat);
         ClientSendMessageEvents.MODIFY_COMMAND.register(HypixelMods::handleOutgoingChat);
         ClientTickEvents.END_CLIENT_TICK.register(client -> HypixelMods.tick(LadsGameBridge.get(), client.level, client.getConnection(), System.nanoTime()));
+        net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+            if (world.isClientSide() && com.thelads.core.client.hypixel.OpenedChestHighlight.isEnabled() && hitResult != null) {
+                net.minecraft.core.BlockPos pos = hitResult.getBlockPos();
+                if (pos != null) {
+                    com.thelads.core.client.hypixel.OpenedChestHighlight.onChestOpened(pos.getX(), pos.getY(), pos.getZ());
+                }
+            }
+            return net.minecraft.world.InteractionResult.PASS;
+        });
         if (Mods1201.loaded("hypixel_mod_api")) return;
         channel = !ClientPlayNetworking.getGlobalReceivers().contains(CHANNEL);
         if (!channel) LOGGER.info("Lads real ping: {} is registered by another mod, using status pings", RealPing.CHANNEL);

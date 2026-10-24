@@ -47,7 +47,7 @@ final class Probe145 {
     /** Frame pacing's cost, a timing check: CoreProbe runs it last, so a busy GPU (another game open) cannot hide the checks after it. */
     static final List<CoreProbe.Step> PACING = Arrays.<CoreProbe.Step>asList(Probe145::pacedStart, Probe145::pacedCount, Probe145::paced,
         Probe145::unpaced, Probe145::pacedAgain);
-    private static long frames, since;
+    private static long frames, since, win32ResizedAt;
     private static float pacedFps, unpacedFps;
     private static int pacingRounds;
     private static int limit;
@@ -391,13 +391,18 @@ final class Probe145 {
     /** What a drag of the window frame ends in on Windows: the window is sized by Windows (WM_WINDOWPOSCHANGED), not by SDL. */
     private static boolean win32Resize(Minecraft mc) throws Exception {
         User32.INSTANCE.SetWindowPos(hwnd(), null, 0, 0, 761, 433, 0x16); // SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE
+        win32ResizedAt = System.nanoTime();
         return after(5);
     }
 
     private static boolean win32Resized(Minecraft mc) throws Exception {
         // The client area is the outside minus the frame and title bar: wider than the 685x358 before, smaller than 761x433.
-        check(mc.displayWidth == Display.getWidth() && mc.displayHeight == Display.getHeight()
-            && mc.displayWidth > 685 && mc.displayWidth < 761 && mc.displayHeight > 358 && mc.displayHeight < 433,
+        boolean followed = mc.displayWidth == Display.getWidth() && mc.displayHeight == Display.getHeight()
+            && mc.displayWidth > 685 && mc.displayWidth < 761 && mc.displayHeight > 358 && mc.displayHeight < 433;
+        // The window's messages are read once a frame (Display.update): after the slow screenshot before it the game runs its missed
+        // ticks back to back, so the five ticks can pass without one (flaked on Ionium). Up to 3 s of real time.
+        if (!followed && System.nanoTime() - win32ResizedAt < 3_000_000_000L) return retry(1);
+        check(followed,
             "a Windows-side resize (761x433 outside, what a frame drag sends): the game follows at " + mc.displayWidth + "x" + mc.displayHeight);
         if (CoreProbe.PYLON) PylonWindow189.size(windowWidth, windowHeight);
         else User32.INSTANCE.SetWindowPos(hwnd(), null, outer.left, outer.top, outer.right - outer.left, outer.bottom - outer.top, 0x14);

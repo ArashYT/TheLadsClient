@@ -1,0 +1,76 @@
+# LadsClientAPI Acceptance QA Script for Minecraft 26.3
+# Walking CHECKLIST.md checks CHK-01..CHK-06 + CHK-08/09
+# Initial connection via --join 127.0.0.1:25700 (Velocity -> Paper lobby :25701)
+
+# Initial wait for handshake, policy rev 1, and world render (fresh servers through Velocity + Via)
+# CHK-02 first: the policy toast is up for 8 s from the policy (hello at +1 tick), so it is photographed at +3 s.
+wait 3s
+shot artifacts/verification/ladsapi/shots/chk02_toast
+ladsapi chk02-toast
+wait 5s
+
+# CHK-01: Protocol Handshake (hello -> hello -> policy -> ack)
+ladsapi chk01-handshake
+
+# CHK-02: Join Notification Toast: screenshot and probe (toastTitle/toastNotice) above
+
+# CHK-03: Fullbright Clamping (max 10% limit)
+settings Fullbright
+wait 1s
+shot artifacts/verification/ladsapi/shots/chk03_fullbright_slider
+screen none
+wait 1s
+shot artifacts/verification/ladsapi/shots/chk03_fullbright_world
+ladsapi chk03-fullbright
+
+# CHK-04: Minimap Hard Block (Blocked by this server)
+shot artifacts/verification/ladsapi/shots/chk04_hud_nominimap
+settings Minimap
+wait 1s
+shot artifacts/verification/ladsapi/shots/chk04_minimap_blocked
+ladsapi chk04-minimap-block
+screen none
+wait 1s
+
+# CHK-05: Forced Option & GUI Lock (Crosshair Tweaks: Shape Cross, Gap 1-4, Outline #FFFF0000; 1.7 Animations)
+settings Crosshair Tweaks
+wait 1s
+shot artifacts/verification/ladsapi/shots/chk05_crosshair_locked
+ladsapi chk05-forced-option
+screen none
+wait 1s
+
+# CHK-06: Clean Disconnect Reversion (Byte-for-byte config integrity & ServerPolicy cleared)
+disconnect
+wait 2s
+shot artifacts/verification/ladsapi/shots/chk06_title_restored
+ladsapi chk06-leave-revert
+
+# CHK-08: Proxy Switch Lobby -> Plain (Velocity reset packet)
+connect 127.0.0.1:25700
+wait 10s
+cmd /server plain
+wait 10s
+shot artifacts/verification/ladsapi/shots/chk08_plain_restored
+ladsapi chk08-proxy-switch
+
+# CHK-09: Plugin-less server (Anti-Ban Rule: ZERO lads:api packets). Still on 'plain' after the proxy switch:
+# Velocity sent reset, plain never says hello, so the client must stay silent (plain's packet-logger + probe counter).
+wait 10s
+shot artifacts/verification/ladsapi/shots/chk09_plain_silent
+ladsapi chk09-antiban-zero-leak
+disconnect
+wait 3s
+
+# CHK-10: Fabric 26.3 server (LadsClientAPI as a Fabric mod), direct join :25703
+connect 127.0.0.1:25703
+wait 12s
+ladsapi chk10-fabric-handshake
+settings Fullbright
+wait 1s
+shot artifacts/verification/ladsapi/shots/chk10_fabric_fullbright
+screen none
+ladsapi chk10-fabric-policy
+disconnect
+wait 3s
+quit

@@ -128,6 +128,13 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
         TitleScreenTheme.renderLogo(g, width / 2, 12, Math.min(64, height / 6));
         drawRect(16, height - 29, width - 16, height - 28, 0x2944202A);
         TitleScreenTheme.renderAccount(g, height, mc.getSession().getUsername(), Math.min(170, width - 32));
+        if (!com.thelads.core.client.ConfirmDisconnectHelper.isConfirming(System.currentTimeMillis())) {
+            for (GuiButton b : buttonList) {
+                if (b != null && b.id == 1 && b.displayString.equals("\u00a7cConfirm Disconnect?")) {
+                    b.displayString = I18n.format(mc.isIntegratedServerRunning() ? "menu.returnToMenu" : "menu.disconnect");
+                }
+            }
+        }
         super.drawScreen(mouseX, mouseY, partialTicks);
         ci.cancel();
     }
@@ -140,6 +147,18 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
         else if (button == ladsScreenshotsButton) mc.displayGuiScreen(new ScreenshotsScreen189(this));
         else if (button == ladsExtrasButton) mc.displayGuiScreen(new TitleExtrasScreen189(this, TitleExtrasScreen189.of(this, ladsExtras)));
         else if (button instanceof CompactButton189) ((CompactButton189) button).press();
+        else if (button != null && button.id == 1) {
+            boolean isMultiplayer = mc.theWorld != null && !mc.isIntegratedServerRunning();
+            com.thelads.core.config.Module m = com.thelads.core.config.ModuleManager.getInstance().getModule(com.thelads.core.modules.ConfirmDisconnectModule.NAME);
+            boolean moduleEnabled = m instanceof com.thelads.core.modules.ConfirmDisconnectModule && m.isEnabled();
+            long timeout = moduleEnabled ? ((com.thelads.core.modules.ConfirmDisconnectModule) m).getTimeoutMillis() : 3000L;
+            if (!com.thelads.core.client.ConfirmDisconnectHelper.onClickDisconnect(System.currentTimeMillis(), timeout, isMultiplayer, moduleEnabled)) {
+                button.displayString = "\u00a7cConfirm Disconnect?";
+                ci.cancel();
+                return;
+            }
+            return;
+        }
         else return;
         ci.cancel();
     }

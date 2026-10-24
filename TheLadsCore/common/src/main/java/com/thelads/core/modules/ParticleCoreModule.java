@@ -12,8 +12,8 @@ import com.thelads.core.config.SliderOption;
  * {@link ParticleCore}. It also carries what the retired ParticleBudget module did (a per-tick quota for decorative particles).
  */
 public final class ParticleCoreModule extends Module {
-    public final BoolOption culling, optimized, hideOwn, hideOthers, limit;
-    public final ParticleReductionOption rates;
+    public final BoolOption culling, optimized, hideOwn, hideOthers, limit, weatherCulling;
+    public final ParticleReductionOption rates, sizes, colors, fade;
     public final SliderOption perTick, distance;
 
     public ParticleCoreModule() {
@@ -27,6 +27,11 @@ public final class ParticleCoreModule extends Module {
         limit = addOption(new BoolOption(ParticleCore.LIMIT, false));
         perTick = addOption(new SliderOption(ParticleCore.PER_TICK, 64, 8, 512, 8));
         distance = addOption(new SliderOption(ParticleCore.DISTANCE, 48, 16, 128, 8));
+        weatherCulling = addOption(new BoolOption(ParticleCore.WEATHER_CULLING, true));
+        // OverflowParticles-style looks per type: size, color, fade out over the particle's life.
+        sizes = addOption(new ParticleReductionOption(ParticleCore.SIZES, 25, 400, 100, "Drag a bar: 100% is the vanilla size. Right-click a row to reset it."));
+        colors = addOption(ParticleReductionOption.colors(ParticleCore.COLORS, "Click a row to pick its color. Right-click a row to reset it."));
+        fade = addOption(new ParticleReductionOption(ParticleCore.FADE, 0, 100, 0, "Drag a bar: how far a particle fades out over its life. 0% is vanilla."));
         setEnabled(true);
     }
 }

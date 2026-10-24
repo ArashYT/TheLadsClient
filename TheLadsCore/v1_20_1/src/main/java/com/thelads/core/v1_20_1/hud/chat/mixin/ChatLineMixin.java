@@ -17,7 +17,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * the message's first line. Chat's Hide Signing Indicators: the line presentation only; the message keeps its signature and tag.
  */
 @Mixin(GuiMessage.Line.class)
-public abstract class ChatLineMixin implements NativeChatHeads1201.Data {
+public abstract class ChatLineMixin implements NativeChatHeads1201.Data, com.thelads.core.v1_20_1.hud.chat.ChatTweaks1201.Parent {
+    /** Copy and Delete Buttons (ChatTweaks1201): the stored message this line was wrapped from. */
+    @Unique private GuiMessage ladsParent;
+
+    @Override public GuiMessage lads$parent() { return ladsParent; }
+    @Override public void lads$parent(GuiMessage message) { ladsParent = message; }
+
     @Unique private Supplier<ResourceLocation> ladsHead;
     @Unique private int ladsAt;
     @Unique private boolean ladsFirst;

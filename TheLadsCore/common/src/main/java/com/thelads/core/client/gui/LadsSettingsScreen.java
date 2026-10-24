@@ -20,6 +20,10 @@ import com.thelads.core.modules.CrosshairModule;
 import com.thelads.core.modules.KillBannerModule;
 import com.thelads.core.modules.OldAnimationsModule;
 import com.thelads.core.modules.ToggleSprintModule;
+import com.thelads.core.client.ladsapi.LadsApiUi;
+import com.thelads.core.client.ladsapi.ModuleState;
+import com.thelads.core.client.ladsapi.OptionRule;
+import com.thelads.core.client.ladsapi.ServerPolicy;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Consumer;
@@ -88,6 +92,8 @@ public final class LadsSettingsScreen {
     // Module description tooltip: shown once the pointer rests on one catalog card for 750 ms.
     private final HoverDelay tip = new HoverDelay(750_000_000L);
     private Module tipModule;
+    private Option tipOption;
+    private OptionRule tipOptionRule;
 
     /** Menu category of a Lads module, shared with the launcher catalog. */
     public static String categoryOf(Module m) {
@@ -216,7 +222,7 @@ public final class LadsSettingsScreen {
         if (Math.abs(scrollOffset - displayedScroll) < .2) displayedScroll = scrollOffset;
         renderScroll = (int)Math.round(displayedScroll);
         if (hoverStates.size() > 1024) hoverStates.clear();
-        width = g.getScaledWidth(); height = g.getScaledHeight(); controls.clear(); tipModule = null; gameView = null;
+        width = g.getScaledWidth(); height = g.getScaledHeight(); controls.clear(); tipModule = null; tipOption = null; tipOptionRule = null; gameView = null;
         g.fill(0, 0, width, height, BG);
         // The side bar needs room for six categories and Installed mods above Edit HUD (1.9.1 added Hypixel): 356 GUI px.
         int pad = width < 450 ? 10 : 20, side = width >= 530 && height >= 356 ? 118 : 0;
@@ -267,20 +273,36 @@ public final class LadsSettingsScreen {
         g.overlay(() -> renderHudFpsDialog(g, pointerX, pointerY));
         g.overlay(() -> library.render(g, pointerX, pointerY));
         g.overlay(() -> confirm.render(g, pointerX, pointerY));
-        if (tip.update(modal || tipModule == null ? null : tipModule.getName(), now)) {
-            String desc = tipModule.getDescription();
-            if (tipModule.isBlockedByServer()) {
-                desc += com.thelads.core.client.HypixelSafetyManager.blockOf(tipModule.getName()) == com.thelads.core.client.HypixelSafetyManager.Block.UNKNOWN
-                    ? " [Off: this server's rules are unknown - open Settings to bypass at your own risk]" : " [Off: this server's rules ban it - Server Rules]";
-            } else if (com.thelads.core.client.HypixelSafetyManager.isBypassed(tipModule.getName())
-                    && com.thelads.core.client.HypixelSafetyManager.blockOf(tipModule.getName()) != com.thelads.core.client.HypixelSafetyManager.Block.NONE) {
-                desc += " [Bypassed on this server - at your own risk]";
-            } else if (com.thelads.core.client.hypixel.HypixelMods.HYPIXEL_MODS.equals(tipModule.getName())
-                    && !com.thelads.core.client.HypixelSafetyManager.isHypixel()) {
-                desc += " [Inactive - Only activates on Hypixel]";
+        String tipKey = modal ? null : tipOption != null ? ("option:" + (detail != null ? detail.getName() : "") + ":" + tipOption.getName()) : tipModule != null ? tipModule.getName() : null;
+        if (tip.update(tipKey, now)) {
+            if (tipOption != null && tipOptionRule != null) {
+                String serverName = ServerPolicy.active() != null ? ServerPolicy.active().serverName() : "";
+                String text = LadsApiUi.formatOptionTooltip(serverName, tipOptionRule, tipOption);
+                g.overlay(() -> tooltip(g, text, pointerX, pointerY));
+            } else if (tipModule != null) {
+                ServerPolicy policy = ServerPolicy.active();
+                ModuleState serverState = policy != null ? policy.module(tipModule.getName()) : ModuleState.INHERIT;
+                String serverName = (policy != null && !policy.serverName().isEmpty()) ? policy.serverName() : "server";
+                boolean refuses = policy != null && policy.refusesChanges();
+
+                String desc = tipModule.getDescription();
+                if (serverState == ModuleState.BLOCK) {
+                    desc += " [Blocked by " + serverName + "]";
+                } else if (serverState == ModuleState.ON && !refuses) {
+                    desc += " [Turned on by " + serverName + "]";
+                } else if (tipModule.isBlockedByServer()) {
+                    desc += com.thelads.core.client.HypixelSafetyManager.blockOf(tipModule.getName()) == com.thelads.core.client.HypixelSafetyManager.Block.UNKNOWN
+                        ? " [Off: this server's rules are unknown - open Settings to bypass at your own risk]" : " [Off: this server's rules ban it - Server Rules]";
+                } else if (com.thelads.core.client.HypixelSafetyManager.isBypassed(tipModule.getName())
+                        && com.thelads.core.client.HypixelSafetyManager.blockOf(tipModule.getName()) != com.thelads.core.client.HypixelSafetyManager.Block.NONE) {
+                    desc += " [Bypassed on this server - at your own risk]";
+                } else if (com.thelads.core.client.hypixel.HypixelMods.HYPIXEL_MODS.equals(tipModule.getName())
+                        && !com.thelads.core.client.HypixelSafetyManager.isHypixel()) {
+                    desc += " [Inactive - Only activates on Hypixel]";
+                }
+                String text = desc;
+                g.overlay(() -> tooltip(g, text, pointerX, pointerY));
             }
-            String text = desc;
-            g.overlay(() -> tooltip(g, text, pointerX, pointerY));
         }
     }
     /** Description tooltip beside the pointer, kept on screen and drawn last so it sits above the frame. */
@@ -355,13 +377,22 @@ public final class LadsSettingsScreen {
             int cx = x + (i % cols) * (cardW + gap), cy = top + (i / cols) * (cardH + gap) - renderScroll;
             if (cy + cardH <= top || cy >= top + viewport.height) continue;
             String id = "card:" + m.getName();
-            boolean blocked = m.isBlockedByServer();
-            boolean toggleable = !blocked && ModuleSupport.isToggleable(m.getName()), on = toggleable && m.isEnabled(), focused = focusId.equals(id);
+            ServerPolicy policy = ServerPolicy.active();
+            ModuleState serverState = policy != null ? policy.module(m.getName()) : ModuleState.INHERIT;
+            String serverName = (policy != null && !policy.serverName().isEmpty()) ? policy.serverName() : "server";
+            boolean refuses = policy != null && policy.refusesChanges();
+
+            boolean serverBlocked = serverState == ModuleState.BLOCK;
+            boolean serverForcedOn = serverState == ModuleState.ON && !refuses;
+            boolean blocked = serverBlocked || m.isBlockedByServer();
+            boolean toggleable = !serverBlocked && !serverForcedOn && !blocked && ModuleSupport.isToggleable(m.getName());
+            boolean on = serverForcedOn || (toggleable && m.isEnabled());
+            boolean focused = focusId.equals(id);
             boolean cardHovered = new Rect(cx, cy, cardW, cardH).contains(mx, my) && viewport.contains(mx, my);
             if (cardHovered) tipModule = m;
             float hover = animate(id, cardHovered);
-            int base = blocked ? LadsPalette.CARD_OFF : (!toggleable ? CARD : on ? LadsPalette.CARD_ON : LadsPalette.CARD_OFF);
-            int glow = blocked ? LadsPalette.DISABLED : (!toggleable ? LadsPalette.DISABLED : on ? LadsPalette.CARD_ON_GLOW : LadsPalette.CARD_OFF_GLOW), fill = mix(base, glow, .14f * hover);
+            int base = blocked ? LadsPalette.CARD_OFF : (!toggleable && !serverForcedOn ? CARD : on ? LadsPalette.CARD_ON : LadsPalette.CARD_OFF);
+            int glow = blocked ? LadsPalette.DISABLED : (!toggleable && !serverForcedOn ? LadsPalette.DISABLED : on ? LadsPalette.CARD_ON_GLOW : LadsPalette.CARD_OFF_GLOW), fill = mix(base, glow, .14f * hover);
             round(g, cx - 1, cy + 2, cardW + 2, cardH + 2, 0x14000000);
             round(g, cx, cy + 1, cardW, cardH + 1, 0x24000000);
             if (toggleable && hover > 0) { // glow: a two-step halo outside the edge
@@ -372,19 +403,31 @@ public final class LadsSettingsScreen {
             round(g, cx, cy, cardW, cardH, mix(base, glow, .35f + .65f * hover));
             round(g, cx + 1, cy + 1, cardW - 2, cardH - 2, fill);
             boolean settingsOnly = ModuleSupport.isSettingsOnly(m.getName());
-            boolean unknownRules = blocked && com.thelads.core.client.HypixelSafetyManager.blockOf(m.getName()) == com.thelads.core.client.HypixelSafetyManager.Block.UNKNOWN;
-            String soon = blocked ? (unknownRules ? "Unknown Rules" : "Server Block") : (toggleable || settingsOnly ? "" : "Soon");
+            boolean unknownRules = blocked && !serverBlocked && com.thelads.core.client.HypixelSafetyManager.blockOf(m.getName()) == com.thelads.core.client.HypixelSafetyManager.Block.UNKNOWN;
+            String soon = serverBlocked ? ("Blocked by " + serverName)
+                : serverForcedOn ? ("Turned on by " + serverName)
+                : blocked ? (unknownRules ? "Unknown Rules" : "Server Block")
+                : (toggleable || settingsOnly ? "" : "Soon");
             if (toggleable) { // state pip, filled when on, so the state is not colour alone
                 round(g, cx + 8, cy + pad + 6, 7, 7, TEXT);
                 if (!on) round(g, cx + 9, cy + pad + 7, 5, 5, fill);
-            } else g.drawText(soon, cx + cardW - 29 - g.textWidth(soon), cy + pad + 6, blocked ? ACCENT : MUTED);
-            g.drawText(fit(g, m.getName(), cardW - 49 - (toggleable ? 0 : g.textWidth(soon) + 4)), cx + 20, cy + pad + 6, toggleable || settingsOnly ? TEXT : MUTED);
+            } else g.drawText(soon, cx + cardW - 29 - g.textWidth(soon), cy + pad + 6, blocked ? ACCENT : serverForcedOn ? 0xFF5DF08A : MUTED);
+            g.drawText(fit(g, m.getName(), cardW - 49 - (toggleable ? 0 : g.textWidth(soon) + 4)), cx + 20, cy + pad + 6, toggleable || settingsOnly || serverForcedOn ? TEXT : MUTED);
             chip(g, "favorite:" + m.getName(), m.isFavorite() ? "*" : "+", new Rect(cx + cardW - 25, cy + pad, 20, 20),
                 () -> { m.setFavorite(!m.isFavorite()); changed(m); }, mx, my, m.isFavorite() ? TEXT : MUTED, false);
             chip(g, "detail:" + m.getName(), "Settings", new Rect(cx + pad, cy + cardH - pad - 23, cardW - 2 * pad, 23), () -> openDetails(m), mx, my, TEXT, true);
             // Added after the star and Settings so those win the click.
-            controls.add(new Control(id, m.getName() + (blocked ? (unknownRules ? ", Off, unknown server rules" : ", Blocked on this server") : (on ? ", On" : toggleable ? ", Off" : settingsOnly ? ", Settings" : ", Soon")), new Rect(cx, cy, cardW, cardH), () -> {
-                if (m.isBlockedByServer()) { // its details hold the notice and the Bypass button
+            String accessibilityLabel = m.getName() + (serverBlocked ? (", Blocked by " + serverName) : serverForcedOn ? (", Turned on by " + serverName) : blocked ? (unknownRules ? ", Off, unknown server rules" : ", Blocked on this server") : (on ? ", On" : toggleable ? ", Off" : settingsOnly ? ", Settings" : ", Soon"));
+            controls.add(new Control(id, accessibilityLabel, new Rect(cx, cy, cardW, cardH), () -> {
+                if (serverBlocked) {
+                    notice = m.getName() + " is blocked by " + serverName + ".";
+                    onNarrate.accept(notice);
+                    openDetails(m);
+                } else if (serverForcedOn) {
+                    notice = m.getName() + " is turned on by " + serverName + ".";
+                    onNarrate.accept(notice);
+                    openDetails(m);
+                } else if (m.isBlockedByServer()) { // its details hold the notice and the Bypass button
                     notice = com.thelads.core.client.HypixelSafetyManager.getBlockedNotice(m.getName());
                     onNarrate.accept(notice);
                     openDetails(m);
@@ -434,9 +477,22 @@ public final class LadsSettingsScreen {
         boolean hypixelInactive = com.thelads.core.client.hypixel.HypixelMods.HYPIXEL_MODS.equals(detail.getName())
             && !com.thelads.core.client.HypixelSafetyManager.isHypixel();
         g.drawText(hypixelInactive ? "LADS MODULE (INACTIVE OFF HYPIXEL)" : "LADS MODULE", x, stateY + 6, ACCENT);
-        boolean bypassed = !detail.isBlockedByServer() && com.thelads.core.client.HypixelSafetyManager.isBypassed(detail.getName())
+        ServerPolicy policy = ServerPolicy.active();
+        ModuleState serverState = policy != null ? policy.module(detail.getName()) : ModuleState.INHERIT;
+        String serverName = (policy != null && !policy.serverName().isEmpty()) ? policy.serverName() : "server";
+        boolean refuses = policy != null && policy.refusesChanges();
+        boolean serverBlocked = serverState == ModuleState.BLOCK;
+        boolean serverForcedOn = serverState == ModuleState.ON && !refuses;
+
+        boolean bypassed = !serverBlocked && !detail.isBlockedByServer() && com.thelads.core.client.HypixelSafetyManager.isBypassed(detail.getName())
             && com.thelads.core.client.HypixelSafetyManager.blockOf(detail.getName()) != com.thelads.core.client.HypixelSafetyManager.Block.NONE;
-        if (detail.isBlockedByServer()) {
+        if (serverBlocked) {
+            button(g, "toggle:detail", "OFF", new Rect(x + headerW - 52, stateY, 52, 22), () -> {}, false, mx, my, false);
+            g.drawText(fit(g, "Blocked by " + serverName, headerW), x, stateY + 28, ACCENT);
+        } else if (serverForcedOn) {
+            button(g, "toggle:detail", "ON", new Rect(x + headerW - 52, stateY, 52, 22), () -> {}, false, mx, my, true);
+            g.drawText(fit(g, "Turned on by " + serverName, headerW), x, stateY + 28, 0xFF5DF08A);
+        } else if (detail.isBlockedByServer()) {
             Module blockedModule = detail;
             button(g, "toggle:detail", "Bypass...", new Rect(x + headerW - 80, stateY, 80, 22), () -> openBypassWarning(blockedModule), true, mx, my, false);
             g.drawText(fit(g, com.thelads.core.client.HypixelSafetyManager.blockOf(detail.getName()) == com.thelads.core.client.HypixelSafetyManager.Block.UNKNOWN
@@ -453,7 +509,7 @@ public final class LadsSettingsScreen {
                 onNarrate.accept(notice);
             }, true, mx, my, false);
         }
-        int top = detail.isBlockedByServer() || bypassed ? stateY + 46 : stateY + 30;
+        int top = (detail.isBlockedByServer() || bypassed || serverBlocked || serverForcedOn) ? stateY + 46 : stateY + 30;
         if(detail.getOptions().stream().anyMatch(o -> o instanceof PlayerActionOption)) {
             button(g,"display-actions","Display actions...",new Rect(x,top,showPreview ? leftW : Math.min(270, w - 8),25),
                 () -> actions.open(detail.getOptions().stream().filter(o -> o instanceof PlayerActionOption).map(o -> (PlayerActionOption)o).toList(), () -> changed(detail)),true,mx,my,false);
@@ -529,6 +585,10 @@ public final class LadsSettingsScreen {
         int start = y, gap = 4;
         int style = banner.bannerStyle.getIndex();
         KillBannerModule.Pick custom = banner.chosen();
+        boolean styleLocked = isServerLocked(banner.bannerStyle);
+        boolean visualLocked = isServerLocked(banner.customVisual);
+        boolean soundLocked = isServerLocked(banner.customSound);
+        boolean randomLocked = isServerLocked(banner.randomize);
 
         // Four tiles a row
         int perRow = 4;
@@ -557,11 +617,13 @@ public final class LadsSettingsScreen {
                 Rect r = new Rect(x + col * (tileW + gap), y + row * (tileH + gap), tileW, tileH);
                 String cSkin = custom.style() == null ? "default" : custom.style().id;
                 tile(g, "kb:skin:custom", "Custom", r, cSkin, custom.variant(), style == KillBannerModule.CUSTOM, mx, my, () -> {
-                    banner.bannerStyle.setIndex(KillBannerModule.CUSTOM);
-                    kbOpen.add("custombanner"); // the choices Custom needs open with it
-                    kbOpen.add("customsound");
-                    changed(detail);
-                }, true);
+                    if (!styleLocked) {
+                        banner.bannerStyle.setIndex(KillBannerModule.CUSTOM);
+                        kbOpen.add("custombanner"); // the choices Custom needs open with it
+                        kbOpen.add("customsound");
+                        changed(detail);
+                    }
+                }, !styleLocked);
                 tileIdx++;
             }
             for (KillBannerStyle skin : visible) {
@@ -571,10 +633,12 @@ public final class LadsSettingsScreen {
                 boolean isSelected = style == sIndex;
                 int v = banner.getVariant(skin);
                 tile(g, "kb:skin:" + skin.id, skin.displayName, r, skin.id, v, isSelected, mx, my, () -> {
-                    banner.bannerStyle.setIndex(sIndex);
-                    changed(detail);
-                    g.getGame().previewKillBannerSound(skin.id, (float) banner.volume.getValue());
-                }, true);
+                    if (!styleLocked) {
+                        banner.bannerStyle.setIndex(sIndex);
+                        changed(detail);
+                        g.getGame().previewKillBannerSound(skin.id, (float) banner.volume.getValue());
+                    }
+                }, !styleLocked);
                 tileIdx++;
             }
             y += ((tileIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
@@ -591,9 +655,11 @@ public final class LadsSettingsScreen {
                     boolean selected = banner.customVisual.getIndex() == kIdx;
                     int v = banner.getVariant(skin);
                     tile(g, "kb:visual:" + skin.id, skin.displayName, r, skin.id, v, selected, mx, my, () -> {
-                        banner.customVisual.setIndex(kIdx);
-                        changed(detail);
-                    }, true);
+                        if (!visualLocked) {
+                            banner.customVisual.setIndex(kIdx);
+                            changed(detail);
+                        }
+                    }, !visualLocked);
                     vIdx++;
                 }
                 y += ((vIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
@@ -616,11 +682,13 @@ public final class LadsSettingsScreen {
                     boolean selected = banner.customSound.getIndex() == kIdx && !banner.ownSounds.get();
                     int v = banner.getVariant(skin);
                     tile(g, "kb:sound:" + skin.id, skin.displayName, r, skin.id, v, selected, mx, my, () -> {
-                        banner.customSound.setIndex(kIdx);
-                        banner.ownSounds.set(false);
-                        changed(detail);
-                        g.getGame().previewKillBannerSound(skin.id, (float) banner.volume.getValue());
-                    }, true);
+                        if (!soundLocked) {
+                            banner.customSound.setIndex(kIdx);
+                            banner.ownSounds.set(false);
+                            changed(detail);
+                            g.getGame().previewKillBannerSound(skin.id, (float) banner.volume.getValue());
+                        }
+                    }, !soundLocked);
                     sIdx++;
                 }
                 y += ((sIdx + perRow - 1) / perRow) * (tileH + gap) + 8;
@@ -634,7 +702,7 @@ public final class LadsSettingsScreen {
             for (int i = 0; i < modes.length; i++) {
                 int index = i;
                 button(g, "kb:random:" + i, modes[i], new Rect(x + i % rPerRow * (cell + gap), y + i / rPerRow * 24, cell, 20),
-                    () -> { banner.randomize.setIndex(index); changed(detail); }, true, mx, my, banner.randomize.getIndex() == i);
+                    () -> { if (!randomLocked) { banner.randomize.setIndex(index); changed(detail); } }, !randomLocked, mx, my, banner.randomize.getIndex() == i);
             }
             y += ((modes.length + rPerRow - 1) / rPerRow) * 24 + 2;
             g.drawText(fit(g, RANDOM_HINTS[Math.min(RANDOM_HINTS.length - 1, banner.randomize.getIndex())], w), x, y, MUTED);
@@ -1294,6 +1362,24 @@ public final class LadsSettingsScreen {
         if (option instanceof ComboSoundsModule.SoundSets && detail instanceof ComboSoundsModule combo) return 43 + combo.soundSets().size() * 24;
         return 43;
     }
+    private static String displayValue(SliderOption s) {
+        return SliderOption.format(s.getValue()) + (s.display().endsWith("%") ? "%" : "");
+    }
+    private static void drawLockIcon(LadsGraphics g, int lx, int ly, int color) {
+        g.fill(lx + 1, ly, lx + 5, ly + 1, color);
+        g.fill(lx + 1, ly + 1, lx + 2, ly + 4, color);
+        g.fill(lx + 4, ly + 1, lx + 5, ly + 4, color);
+        g.fill(lx, ly + 3, lx + 6, ly + 8, color);
+    }
+    private boolean isServerLocked(Option option) {
+        if (option == null) return false;
+        String mod = detail != null ? detail.getName() : option.getModuleName();
+        if (mod == null || mod.isEmpty()) return false;
+        ServerPolicy policy = ServerPolicy.active();
+        if (policy == null) return false;
+        OptionRule rule = policy.option(mod, option.getName());
+        return rule != null && ((rule.forcesValue() && !policy.refusesChanges()) || (rule.lock && !rule.forcesValue()));
+    }
     private void optionRow(LadsGraphics g, Option option, int x, int y, int w, int mx, int my) {
         if (option instanceof CrosshairModule.ProfilesOption profiles) { profilesRow(g, profiles, x, y, w, mx, my); return; }
         if (option instanceof SoundOption sound) { soundRow(g, sound, x, y, w, mx, my); return; }
@@ -1301,7 +1387,24 @@ public final class LadsSettingsScreen {
         if (option instanceof ComboSoundsModule.SoundSets && detail instanceof ComboSoundsModule combo) { setsRow(g, combo, x, y, w, mx, my); return; }
         round(g, x, y, w, 37, CARD);
         int controlW = Math.min(155, w / 2);
-        g.drawText(fit(g, option.getName(), w - controlW - 20), x + 9, y + 14, TEXT);
+
+        ServerPolicy policy = ServerPolicy.active();
+        OptionRule rule = (policy != null && detail != null) ? policy.option(detail.getName(), option.getName()) : null;
+        boolean serverLocked = isServerLocked(option);
+
+        int nameX = x + 9;
+        if (rule != null) {
+            drawLockIcon(g, nameX, y + 14, serverLocked ? ACCENT : MUTED);
+            nameX += 10;
+        }
+        g.drawText(fit(g, option.getName(), w - controlW - (rule != null ? 30 : 20)), nameX, y + 14, TEXT);
+
+        boolean rowHovered = new Rect(x, y, w, 37).contains(mx, my) && viewport.contains(mx, my);
+        if (rowHovered && rule != null) {
+            tipOption = option;
+            tipOptionRule = rule;
+        }
+
         Rect r = new Rect(x + w - controlW - 6, y + 7, controlW, 23);
         String id = "option:" + option.getName();
         if (option instanceof ActionOption action) {
@@ -1309,33 +1412,33 @@ public final class LadsSettingsScreen {
                 if (action.getConfirm() == null) leave(action::run); else confirm.open(action.getConfirm(), () -> leave(action::run));
             }, action.isAvailable(), mx, my, false);
         } else if (option instanceof BoolOption b) {
-            button(g, id, b.get() ? "ON" : "OFF", r, () -> { b.toggle(); changed(detail); }, true, mx, my, b.get());
+            button(g, id, b.get() ? "ON" : "OFF", r, () -> { if (!serverLocked) { b.toggle(); changed(detail); } }, !serverLocked, mx, my, b.get());
         } else if (option instanceof DropdownOption d) {
-            button(g, id, "< " + d.getValue() + " >", r, () -> { d.cycle(); changed(detail); }, true, mx, my, false);
+            button(g, id, "< " + d.getValue() + " >", r, () -> { if (!serverLocked) { d.cycle(); changed(detail); } }, !serverLocked, mx, my, false);
         } else if (option instanceof SliderOption || option instanceof DoubleOption) {
             double min = option instanceof SliderOption s ? s.getMin() : ((DoubleOption)option).getMin();
             double max = option instanceof SliderOption s ? s.getMax() : ((DoubleOption)option).getMax();
             double value = option instanceof SliderOption s ? s.getValue() : ((DoubleOption)option).get();
             // Better Resolution's Scale only counts with the Custom preset: shown greyed and not draggable.
-            boolean free = !(detail instanceof BetterResolutionModule resolution && resolution.locked(option));
+            boolean free = !(detail instanceof BetterResolutionModule resolution && resolution.locked(option)) && !serverLocked;
             if (option instanceof SliderOption s && s.isEditable()) {
                 // The slider, and beside it the value as a text field: click it, type a whole number, Enter.
                 Rect track = new Rect(r.x, r.y, r.width - 50, r.height), field = new Rect(r.x + r.width - 46, r.y, 46, r.height);
                 int first = controls.size();
                 button(g, id, "", track, () -> {}, free, mx, my, false);
-                if (controls.size() > first) controls.set(first, new Control(id, s.getName() + ", " + s.display(), track, () -> {}, free));
+                if (controls.size() > first) controls.set(first, new Control(id, s.getName() + ", " + displayValue(s), track, () -> {}, free));
                 int fillW = (int)((track.width - 8) * (value - min) / Math.max(.001, max - min));
                 g.fill(track.x + 4, track.y + 10, track.x + track.width - 4, track.y + 13, LadsPalette.BORDER);
                 g.fill(track.x + 4, track.y + 10, track.x + 4 + fillW, track.y + 13, ACCENT);
-                button(g, id + ":field", editingOption == option ? inputWindow(g, field.width - 10) : s.display(), field, () -> startEdit(s), free, mx, my, editingOption == option);
+                button(g, id + ":field", editingOption == option ? inputWindow(g, field.width - 10) : displayValue(s), field, () -> { if (!serverLocked) startEdit(s); }, free, mx, my, editingOption == option);
             } else {
                 button(g, id, (option instanceof SliderOption s ? s.display() : SliderOption.format(value)), r, () -> {}, free, mx, my, false);
                 int fillW = (int)((controlW - 8) * (value - min) / Math.max(.001, max - min));
                 g.fill(r.x + 4, r.y + 20, r.x + 4 + fillW, r.y + 22, ACCENT);
             }
         } else if (option instanceof ColorOption c) {
-            button(g, id, editingOption == option ? inputDisplay() : String.format("%08X", c.getColor()), new Rect(r.x, r.y, r.width - 58, r.height), () -> colorPicker.open(option.getName(), c.getColor(), value -> { c.setColor(value); c.setUseGlobal(false); changed(detail); }), true, mx, my, false);
-            button(g, id + ":global", c.isUseGlobal() ? "Global" : "Own", new Rect(r.x + r.width - 54, r.y, 54, r.height), () -> { c.setUseGlobal(!c.isUseGlobal()); changed(detail); }, true, mx, my, c.isUseGlobal());
+            button(g, id, editingOption == option ? inputDisplay() : String.format("%08X", c.getColor()), new Rect(r.x, r.y, r.width - 58, r.height), () -> { if (!serverLocked) colorPicker.open(option.getName(), c.getOwnColor(), val -> { c.setColor(val); c.setUseGlobal(false); changed(detail); }); }, !serverLocked, mx, my, false);
+            button(g, id + ":global", c.isUseGlobal() ? "Global" : "Own", new Rect(r.x + r.width - 54, r.y, 54, r.height), () -> { if (!serverLocked) { c.setUseGlobal(!c.isUseGlobal()); changed(detail); } }, !serverLocked, mx, my, c.isUseGlobal());
         } else if (option instanceof TextOption t) {
             button(g, id, editingOption == option ? inputWindow(g, r.width - 10) : t.getValue(), r, () -> startEdit(option), true, mx, my, editingOption == option);
         } else if (option instanceof ParticleReductionOption p) {
@@ -1365,11 +1468,12 @@ public final class LadsSettingsScreen {
             () -> { sound.set(""); changed(module); }, sound.isSet(), mx, my, false);
     }
     private static String builtInSound(Module module, SoundOption sound) {
-        if (!(module instanceof ComboSoundsModule combo)) return "Plain chime";
+        if (!(module instanceof ComboSoundsModule combo)) return module instanceof com.thelads.core.modules.OofModule ? "Built-in classic oof" : "Plain chime";
         return sound == combo.longShotSound ? "Built-in level-up chime" : sound == combo.headshotSound ? "Built-in helmet clink" : "Built-in pling";
     }
     private static double soundVolume(Module module) {
-        return module instanceof ComboSoundsModule combo ? combo.volume.getValue() : module instanceof KillBannerModule banner ? banner.volume.getValue() : 1;
+        return module instanceof ComboSoundsModule combo ? combo.volume.getValue() : module instanceof KillBannerModule banner ? banner.volume.getValue()
+            : module instanceof com.thelads.core.modules.OofModule oof ? oof.volume.getValue() : 1;
     }
     private static void previewSound(SoundOption sound, Module module) {
         if (module instanceof ComboSoundsModule combo) combo.preview(sound);
@@ -1673,8 +1777,9 @@ public final class LadsSettingsScreen {
             if (!c.rect.contains(x, y) || !c.enabled || contentControl(c.id) && !viewport.contains(x, y)) continue;
             if (!commitEdit()) return true;
             focusId = c.id;
-            if (detail != null && c.id.startsWith("option:") && !c.id.endsWith(":global")) {
+            if (detail != null && c.id.startsWith("option:") && !c.id.endsWith(":global") && !c.id.endsWith(":field")) {
                 Option o = activeOption(c.id.substring(7));
+                if (isServerLocked(o)) return true;
                 if (o instanceof SliderOption || o instanceof DoubleOption) { dragging = o; dragTrack = c.rect; updateDrag(x); return true; }
                 // "< value >": the left half (or a right-click) steps back, the right half steps forward.
                 if (o instanceof DropdownOption d) {
@@ -1694,7 +1799,7 @@ public final class LadsSettingsScreen {
     public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
         if (confirm.isOpen()) return true;
         if (library.drag(x)) return true;
-        if (particleRates.drag(x)) return true;
+        if (particleRates.drag(x, y)) return true;
         if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); return true; }
         if (colorPicker.move(x, y)) return true;
         if (draggingScrollbar) {
@@ -1730,6 +1835,7 @@ public final class LadsSettingsScreen {
         return true;
     }
     private void updateDrag(double x) {
+        if (isServerLocked(dragging)) return;
         double t = Math.max(0, Math.min(1, (x - dragTrack.x - 4) / Math.max(1, dragTrack.width - 8)));
         if (dragging instanceof SliderOption s) s.setValue(s.getMin() + (s.getMax() - s.getMin()) * t);
         else if (dragging instanceof DoubleOption d) d.set(d.getMin() + (d.getMax() - d.getMin()) * t);
@@ -1817,10 +1923,14 @@ public final class LadsSettingsScreen {
             return true;
         }
         if ((key == 262 || key == 263) && detail != null && focusId.startsWith("option:")) {
-            Option o = activeOption(focusId.substring(7)); int direction = key == 262 ? 1 : -1;
-            if (o instanceof SliderOption s) s.setValue(s.getValue() + direction * Math.max(s.getStep(), .1));
+            String optName = focusId.substring(7);
+            if (optName.endsWith(":field")) optName = optName.substring(0, optName.length() - 6);
+            Option o = activeOption(optName);
+            if (isServerLocked(o)) return false;
+            int direction = key == 262 ? 1 : -1;
+            if (o instanceof SliderOption s) s.setValue(s.getOwnValue() + direction * Math.max(s.getStep(), .1));
             else if (o instanceof DoubleOption d) d.set(d.get() + direction * .1);
-            else if (o instanceof DropdownOption d) d.setIndex(d.getIndex() + direction);
+            else if (o instanceof DropdownOption d) d.setIndex(d.getOwnIndex() + direction);
             else return false;
             changed(detail); return true;
         }
@@ -1875,8 +1985,24 @@ public final class LadsSettingsScreen {
         else if (modsView) { modsSearch = editBuffer; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; }
         else setSearchQuery(editBuffer);
     }
-    private void startEdit(Option o) { editingKbSearch = false; editingSearch = false; editingOption = o; editBuffer = o instanceof TextOption t ? t.getValue() : o instanceof SliderOption s ? SliderOption.format(s.getValue()) : String.format("%08X", ((ColorOption)o).getColor()); cursor = editBuffer.length(); selectAll = true; }
+    private void startEdit(Option o) {
+        if (isServerLocked(o)) return;
+        editingKbSearch = false;
+        editingSearch = false;
+        editingOption = o;
+        editBuffer = o instanceof TextOption t ? t.getValue()
+                   : o instanceof SliderOption s ? SliderOption.format(s.getOwnValue())
+                   : String.format("%08X", ((ColorOption)o).getOwnColor());
+        cursor = editBuffer.length();
+        selectAll = true;
+    }
     private boolean commitEdit() {
+        if (isServerLocked(editingOption)) {
+            editingOption = null;
+            editingSearch = false;
+            selectAll = false;
+            return true;
+        }
         String rejected = "";
         if (editingKbSearch) { kbSearch = editBuffer; editingKbSearch = false; }
         if (editingOption instanceof ColorOption c) {
@@ -1900,10 +2026,18 @@ public final class LadsSettingsScreen {
     private void changed(Module m) {
         if (m != null) m.touch(); dirty = true; filterDirty = true; persist();
     }
+    /** Sound Volumes has a slider per kind of sound: searching "rain" finds it. */
+    private static boolean soundMatch(Module m, String query) {
+        return !query.isEmpty() && com.thelads.core.client.SoundVolumes.NAME.equals(m.getName())
+            && m.getOptions().stream().anyMatch(o -> o.getName().toLowerCase(Locale.ROOT).contains(query));
+    }
     private void persist() { if (dirty) { ConfigManager.save(); dirty = false; } }
     private List<Option> activeOptions() {
         if (detail == null) return List.of();
+        String query = searchQuery.toLowerCase(Locale.ROOT); // Sound Volumes found through a sound's name: only the matching sliders
+        boolean sounds = soundMatch(detail, query) && !detail.getName().toLowerCase(Locale.ROOT).contains(query);
         return detail.getOptions().stream().filter(o -> !(o instanceof PlayerActionOption))
+            .filter(o -> !sounds || o.getName().toLowerCase(Locale.ROOT).contains(query))
             .filter(o -> !(detail instanceof KillBannerModule banner && banner.pickerOption(o)))
             .filter(o -> !(detail instanceof OldAnimationsModule animations && animations.hidden(o)))
             .filter(o -> !(detail instanceof ToggleSprintModule toggles && toggles.hidden(o)))
@@ -1912,9 +2046,11 @@ public final class LadsSettingsScreen {
             .filter(o -> !(detail instanceof ComboSoundsModule combo && combo.hidden(o)))
             .filter(o -> !(detail instanceof CrosshairModule crosshair && crosshair.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.SurvivalTweaksModule tweaks && tweaks.hidden(o)))
+            .filter(o -> !(detail instanceof com.thelads.core.modules.SurvivalGuardsModule guards && guards.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.StackRefillModule refill && refill.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.BetterF3Module f3 && f3.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.KeystrokesModule keys && keys.hidden(o)))
+            .filter(o -> !(detail instanceof com.thelads.core.modules.CosmeticsModule cosm && cosm.hidden(o)))
             .sorted((a, b) -> {
                 if ("Ignore HUD FPS Cap".equals(a.getName())) return 1;
                 if ("Ignore HUD FPS Cap".equals(b.getName())) return -1;
@@ -1992,7 +2128,7 @@ public final class LadsSettingsScreen {
                     && m.getCategory() != Module.Category.HYPIXEL && !PERFORMANCE.contains(m.getName()))
             .filter(m -> !enabledOnly || m.isEnabled())
             .filter(m -> !favoritesOnly || m.isFavorite())
-            .filter(m -> (m.getName() + " " + m.getDescription()).toLowerCase(Locale.ROOT).contains(query))
+            .filter(m -> (m.getName() + " " + m.getDescription()).toLowerCase(Locale.ROOT).contains(query) || soundMatch(m, query))
             .sorted(Comparator.comparing(Module::getName, String.CASE_INSENSITIVE_ORDER)).toList();
         ownershipRevision = ModuleSupport.revision(); filterDirty = false; return filtered;
     }

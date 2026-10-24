@@ -103,7 +103,22 @@ public final class ForgeOverlays1201 {
         }
     }
 
+    /** QA (probe step posetrace): frames left in which every overlay logs its pose translation and stack depth (Pre first and last, Post). */
+    public static volatile int traceFrames;
+
+    private static void trace(String where, Object event) {
+        if (traceFrames <= 0) return;
+        try {
+            String name = path(event);
+            if ("vignette".equals(name) && "pre".equals(where) && --traceFrames <= 0) return; // vignette is each frame's first overlay
+            var pose = ((GuiGraphics) guiGraphics.invoke(event)).pose();
+            Hud1201.LOG.info("Lads qa posetrace {} {} y={} depth={} cancelled={}", where, name, pose.last().pose().m31(), HudParts1201.depth(pose), cancelled.invoke(event));
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+        }
+    }
+
     private static void pre(Object event) {
+        trace("pre", event);
         try {
             closeUnfinished(event);
             if (Boolean.TRUE.equals(cancelled.invoke(event))) return; // someone else already skipped it: no Post will come
@@ -113,10 +128,11 @@ public final class ForgeOverlays1201 {
                 cancel.invoke(event, true);
                 return;
             }
-            boolean group = GROUP.contains(name), record = name.contains("record");
-            if (!group && !record) return;
+            boolean group = GROUP.contains(name), record = name.contains("record"), title = "title_text".equals(name);
+            if (!group && !record && !title) return;
             GuiGraphics graphics = (GuiGraphics) guiGraphics.invoke(event);
-            HudParts1201.Scope scope = HudParts1201.begin(graphics, group);
+            HudParts1201.Scope scope = title ? com.thelads.core.v1_20_1.hudextras.HudExtras1201.titleScope(graphics)
+                : HudParts1201.begin(graphics, group, piece(name));
             if (scope == null) {
                 cancel.invoke(event, true); // fully hidden: Forge skips the overlay, and its Post does not come
                 return;
@@ -129,8 +145,22 @@ public final class ForgeOverlays1201 {
         }
     }
 
+    /** Raised's own move and scale of a part (RaisedModule.HOTBAR to MOUNT) by Forge's overlay name; -1 for the others. */
+    private static int piece(String name) {
+        return switch (name) {
+            case "hotbar" -> com.thelads.core.modules.RaisedModule.HOTBAR;
+            case "player_health" -> com.thelads.core.modules.RaisedModule.HEALTH;
+            case "food_level" -> com.thelads.core.modules.RaisedModule.FOOD;
+            case "armor_level" -> com.thelads.core.modules.RaisedModule.ARMOR;
+            case "air_level" -> com.thelads.core.modules.RaisedModule.AIR;
+            case "mount_health" -> com.thelads.core.modules.RaisedModule.MOUNT;
+            default -> -1;
+        };
+    }
+
     /** Another listener cancelled the overlay after we began its part: its Post never comes, so end the part now. */
     private static void preLast(Object event) {
+        trace("preLast", event);
         try {
             Object[] top = OPEN.peek();
             if (top != null && top[0] == event && Boolean.TRUE.equals(cancelled.invoke(event))) {
@@ -143,6 +173,7 @@ public final class ForgeOverlays1201 {
     }
 
     private static void post(Object event) {
+        trace("post", event);
         try {
             Object[] top = OPEN.peek();
             if (top == null) return;

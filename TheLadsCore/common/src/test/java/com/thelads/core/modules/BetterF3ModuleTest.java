@@ -413,4 +413,28 @@ class BetterF3ModuleTest {
             module.setEnabled(before);
         }
     }
+
+    @Test
+    void updateIntervalThrottlesMetricRefreshes() {
+        BetterF3Module f3 = f3();
+        set(f3, "Slide In", false);
+        ((com.thelads.core.config.SliderOption) f3.getOption("Update Interval")).setValue(100);
+        Screen screen = new Screen();
+        Info info1 = screenshot();
+        info1.fps = 100;
+        f3.draw(screen.g, LEFT_189, true, 640, true, info1, 0);
+        assertTrue(screen.drawn.stream().anyMatch(s -> s.contains("100 fps")), "initial frame renders 100 fps");
+
+        // Next frame before 100 ms: info changes to 200 fps, but output should be throttled (remain 100 fps)
+        screen.drawn.clear();
+        Info info2 = screenshot();
+        info2.fps = 200;
+        f3.draw(screen.g, LEFT_189, true, 640, true, info2, 50 * MS);
+        assertTrue(screen.drawn.stream().anyMatch(s -> s.contains("100 fps")), "throttled frame retains cached 100 fps");
+
+        // Frame at 100 ms: now it updates to 200 fps
+        screen.drawn.clear();
+        f3.draw(screen.g, LEFT_189, true, 640, true, info2, 100 * MS);
+        assertTrue(screen.drawn.stream().anyMatch(s -> s.contains("200 fps")), "elapsed interval refreshes to 200 fps");
+    }
 }

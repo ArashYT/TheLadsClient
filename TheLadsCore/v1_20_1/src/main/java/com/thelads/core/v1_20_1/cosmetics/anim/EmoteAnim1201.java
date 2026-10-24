@@ -118,7 +118,8 @@ public final class EmoteAnim1201 {
         StringBuilder freed = new StringBuilder();
         if (KEY.isDefault())
             for (KeyMapping mapping : mc.options.keyMappings)
-                if (mapping != KEY && EmoteKeys.GIVE_WAY.contains(mapping.getName()) && mapping.same(KEY)) {
+                // Only a key still at its own default: a player's own choice (Shift + B under Forge counts as B for same()) stays.
+                if (mapping != KEY && EmoteKeys.GIVE_WAY.contains(mapping.getName()) && mapping.isDefault() && mapping.same(KEY)) {
                     mc.options.setKey(mapping, InputConstants.UNKNOWN);
                     freed.append(freed.length() == 0 ? "" : ", ").append(mapping.getName());
                 }

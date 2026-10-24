@@ -160,5 +160,9 @@ public final class HudCache189 {
             liveDraws = true;
             LIVE.add(g -> g.drawArmorSlot(slot, x, y, preview));
         }
+        @Override public void drawInventorySlot(int slot, int x, int y, boolean preview) {
+            liveDraws = true;
+            LIVE.add(g -> g.drawInventorySlot(slot, x, y, preview));
+        }
     }
 }

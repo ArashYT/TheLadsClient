@@ -30,15 +30,18 @@ class Lads197DefaultsTest {
     private static final Set<String> DEFAULT_ENABLED_VISIBLE = Set.of(
         "1.7 Animations", "Action Bar", "AppleSkin", "ArmorHUD", "AutoReconnect", "Bed Wars Height Limit",
         "BetterF3", "BetterScreenshots", "BorderlessFullscreen", "BossBar", "Chat",
-        "ClientTools", com.thelads.core.modules.CloudHeightModule.NAME, "Clumps", "Coordinates", "Crosshair Tweaks",
+        "ClientTools", com.thelads.core.modules.CloudHeightModule.NAME, "Clumps", "Coordinates", "Crosshair Tweaks", com.thelads.core.modules.CustomSkyModule.NAME, com.thelads.core.modules.CustomItemTexturesModule.NAME,
         "DiscordRPC", "DynamicFPS", com.thelads.core.modules.DynamicLightsModule.NAME, "EnhancedToolbars", "EnhancedTooltips",
         "FarBlockEntities", "FPS", "HYPIXEL Mods", "Quickplay", com.thelads.core.modules.ItemPhysicsModule.NAME, com.thelads.core.client.KeepUiOpen.MODULE_NAME, "KillBanner",
+        com.thelads.core.modules.LadsBadgeModule.NAME, com.thelads.core.modules.MenuBlurModule.NAME,
         "Minimap", "MouseTweaks", "Nametags", com.thelads.core.client.DamageTilt.MODULE, "Particle Core",
-        "PingView", "PingHUD", "Potion Effects", "Raised", "RawInput",
+        "PingView", "PingHUD", "Potion Effects", "Raised", "RawInput", "Server Control",
         com.thelads.core.client.pack.PackMenuSettings.MODULE_NAME, "Scoreboard", "ShulkerBoxUtils", "SignalLoss", "SkinLayers",
         "SmoothHotbar", com.thelads.core.modules.StackRefillModule.NAME, com.thelads.core.modules.SurvivalTweaksModule.NAME, "TabList", "Threads", "Title Scale", "TNT Timer",
-        "Toggle Sprint & Sneak", "VerticalBobbing", "Voice Chat", "Voice Chat Group", com.thelads.core.modules.WavyCapesModule.NAME,
-        "Zoom"
+        "Toggle Sprint & Sneak", "VerticalBobbing", "Render Tweaks", "Overlays", "Totem Animation", "Voice Chat", "Voice Chat Group", com.thelads.core.modules.WavyCapesModule.NAME,
+        "Zoom", com.thelads.core.client.ServerListDrag.NAME,
+        com.thelads.core.client.TooltipScroll.NAME, com.thelads.core.client.CrashCatcher.NAME, com.thelads.core.client.QuickReconnect.NAME,
+        com.thelads.core.client.KeepCursor.NAME, com.thelads.core.client.SoundVolumes.NAME
     );
 
     @Test
@@ -124,6 +127,15 @@ class Lads197DefaultsTest {
         Module chat = mm.getModule("Chat");
         assertFalse(((BoolOption) chat.getOption("Chat Background")).get());
         assertTrue(((BoolOption) chat.getOption("Message Animations")).get());
+        // parity-1023 chat tweaks: least surprise for existing players.
+        assertFalse(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.TABS)).get());
+        assertEquals("", ((com.thelads.core.config.TextOption) chat.getOption(com.thelads.core.client.ChatTweaks.CUSTOM_TABS)).getValue());
+        assertTrue(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.MENTIONS)).get());
+        assertFalse(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.MENTION_SOUND)).get());
+        assertTrue(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.COMPACT)).get());
+        assertTrue(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.SEARCH)).get());
+        assertTrue(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.BUTTONS)).get());
+        assertFalse(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.TRANSLATE)).get());
 
         Module nametags = mm.getModule("Nametags");
         assertFalse(((BoolOption) nametags.getOption("Render Background")).get());

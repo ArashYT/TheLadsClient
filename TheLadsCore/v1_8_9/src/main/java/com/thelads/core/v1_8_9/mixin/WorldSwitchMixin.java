@@ -51,8 +51,8 @@ public abstract class WorldSwitchMixin {
     private void ladsSwitching(WorldClient world, String message, CallbackInfo ci) {
         ladsToWorld = world != null;
         ladsShown = null;
-        com.thelads.core.v1_8_9.feature.EntityCulling189.clear();
-        com.thelads.core.client.ebe.BakedBlockEntities.clear();
+        com.thelads.core.v1_8_9.perf.Sarcio189.onWorldUnload();
+
     }
 
     /** Switching to a world (joining, changing dimension): no loading-screen frame before "Downloading terrain". */

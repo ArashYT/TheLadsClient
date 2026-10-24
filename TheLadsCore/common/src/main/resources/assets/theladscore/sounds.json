@@ -2728,5 +2728,11 @@
     "sounds": [
       "theladscore:killbanner/sovereign-kill-5"
     ]
+  },
+  "oof": {
+    "category": "player",
+    "sounds": [
+      "minecraft:random/classic_hurt"
+    ]
   }
 }

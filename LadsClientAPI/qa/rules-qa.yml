@@ -1,0 +1,18 @@
+# LadsClientAPI QA rules (rules.yml format, PLAN 6.2). Copied into lobby (:25701), Fabric (:25703) and Forge (:25704).
+# The notice text lives in config.yml (notice:), not here.
+modules:
+  Fullbright:
+    state: allow
+    Brightness: { max: 10 }
+  XaeroMinimap:
+    state: block
+  Crosshair Tweaks:
+    Shape: { value: Cross }          # forced dropdown -> greyed + lock tooltip
+    Outline Color: { value: "#FFFF0000" }
+    Gap: { min: 1, max: 4 }
+  1.7 Animations:
+    1.7 sword block pose: { value: false }
+worlds:
+  world_nether:
+    modules:
+      Fullbright: { state: block }

@@ -128,4 +128,53 @@ public class DefaultGameBridge implements LadsGameBridge {
     public boolean isHudHidden() {
         return false;
     }
+
+    @Override
+    public DefenseEnchants getDefenseEnchants() {
+        return new DefenseEnchants(16, 0, 0, 0, 4);
+    }
+
+    @Override
+    public List<CooldownEntry> getActiveCooldowns() {
+        return List.of(new CooldownEntry("Ender Pearl", 0.65f, 9.8f));
+    }
+
+    @Override
+    public double getTps() {
+        return 20.0;
+    }
+
+    @Override
+    public double getCpuLoad() {
+        return 24.0;
+    }
+
+    @Override
+    public float getToughness() {
+        return 8.0f;
+    }
+
+    @Override
+    public int getPotionCount() {
+        return 6;
+    }
+
+    @Override
+    public int getSoupCount() {
+        return 2;
+    }
+
+    @Override
+    public String getItemCountText(int selection) {
+        return switch (selection) {
+            case 1 -> "Arrows: 64";
+            case 2 -> "Totems: 2";
+            case 3 -> "Rockets: 64";
+            case 4 -> "Golden Apples: 12";
+            case 5 -> "Ender Pearls: 16";
+            case 6 -> "Potions: 6";
+            case 7 -> "Soups: 4";
+            default -> "Held item: 64";
+        };
+    }
 }

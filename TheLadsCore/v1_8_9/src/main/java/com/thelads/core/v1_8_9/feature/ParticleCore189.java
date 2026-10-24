@@ -2,7 +2,6 @@ package com.thelads.core.v1_8_9.feature;
 
 import com.thelads.core.client.ParticleCore;
 import com.thelads.core.config.ModuleSupport;
-import com.thelads.core.config.ParticleReductionOption;
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,7 +45,7 @@ public final class ParticleCore189 {
 
     public static void register() {
         ModuleSupport.registerBuiltIn(ParticleCore.MODULE);
-        ((ParticleReductionOption) ParticleCore.module().getOption(ParticleCore.RATES)).setCatalog(ParticleCore189::catalog);
+        ParticleCore.setCatalog(ParticleCore189::catalog);
         MinecraftForge.EVENT_BUS.register(new ParticleCore189());
     }
 
@@ -99,6 +98,12 @@ public final class ParticleCore189 {
             own = box.isVecInside(new Vec3(x, y, z));
         }
         return ParticleCore.allowSpawn(name, own, mc.thePlayer.getDistanceSq(x, y, z), mc.theWorld.getTotalWorldTime());
+    }
+
+    /** A particle just spawned as type {@code id}: its type's size, color and fade (ParticleCore.style). */
+    public static void style(EntityFX particle, int id) {
+        String name = NAMES.get(id);
+        if (particle != null && name != null) ParticleCore.style(particle, name);
     }
 
     private static List<String> catalog() {

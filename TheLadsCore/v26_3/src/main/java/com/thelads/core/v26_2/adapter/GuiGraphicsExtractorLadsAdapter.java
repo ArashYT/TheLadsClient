@@ -170,6 +170,10 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     private static final java.util.concurrent.ConcurrentHashMap<String, com.mojang.authlib.GameProfile> HEAD_PROFILE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
     private static final com.mojang.authlib.GameProfile FALLBACK_PROFILE = new com.mojang.authlib.GameProfile(new java.util.UUID(0L, 0L), "Player");
 
+    @Override public void drawGuiIcon(String sprite, int u, int v, int x, int y, int width, int height) {
+        g.blitSprite(RenderPipelines.GUI_TEXTURED, IDENTIFIER_CACHE.computeIfAbsent(sprite, Identifier::parse), x, y, width, height);
+    }
+
     @Override public void drawSprite(String sprite, int x, int y, int size) {
         if (sprite == null) return;
         Identifier id = IDENTIFIER_CACHE.computeIfAbsent(sprite, Identifier::parse);
@@ -214,6 +218,31 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
         } else if (player != null) stack = player.getItemBySlot(equipment[slot]);
         if (stack.isEmpty()) g.blitSprite(RenderPipelines.GUI_TEXTURED, EMPTY_ARMOR[slot], x, y, 16, 16, 0.35f);
         else { g.item(stack, x, y); g.itemDecorations(font, stack, x, y); }
+    }
+
+    @Override
+    public void drawInventorySlot(int slot, int x, int y, boolean preview) {
+        var player = Minecraft.getInstance().player;
+        net.minecraft.world.item.ItemStack stack = net.minecraft.world.item.ItemStack.EMPTY;
+        if (preview) {
+            if (slot == 0) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD);
+            else if (slot == 1) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.GOLDEN_APPLE, 16);
+            else if (slot == 2) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ENDER_PEARL, 8);
+            else if (slot == 3) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_PICKAXE);
+            else if (slot == 4) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE, 64);
+            else if (slot == 5) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WATER_BUCKET);
+            else if (slot == 6) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BOW);
+            else if (slot == 7) stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW, 32);
+        } else if (player != null) {
+            int idx = slot + 9;
+            if (idx >= 0 && idx < player.getInventory().getContainerSize()) {
+                stack = player.getInventory().getItem(idx);
+            }
+        }
+        if (!stack.isEmpty()) {
+            g.item(stack, x, y);
+            g.itemDecorations(font, stack, x, y);
+        }
     }
 
     @Override public void drawPlayerModel(int x, int y, int width, int height, boolean editor) {

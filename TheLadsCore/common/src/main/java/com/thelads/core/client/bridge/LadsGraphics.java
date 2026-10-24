@@ -91,6 +91,8 @@ public interface LadsGraphics {
     /** Armour slot 0 head to 3 feet: the worn piece with its durability bar, or a faint empty-slot icon (preview: a sample set). */
     default void drawArmorSlot(int slot, int x, int y, boolean preview) {}
 
+    default void drawInventorySlot(int slot, int x, int y, boolean preview) {}
+
     default void drawBossBars(int x,int y,int max,boolean names,boolean preview) {}
 
     /** Where drawBossBars with these arguments draws now: {minX, minY, maxX, maxY}, an empty array for nothing, null when unknown
@@ -108,6 +110,14 @@ public interface LadsGraphics {
         String s = String.valueOf(text);
         // A colour code also ends bold, italic and the rest: a reset (to the given colour) does the same.
         drawText(plain ? s.replaceAll("§[0-9a-fA-F]", "§r") : s, x, y, color, shadow);
+    }
+
+    /**
+     * A vanilla HUD icon (hearts, armour): {@code sprite} in the GUI sprite atlas of Minecraft 1.20.2 and later ("hud/heart/full"),
+     * else the same icon's region (u, v) of textures/gui/icons.png (1.8.9, 1.20.1).
+     */
+    default void drawGuiIcon(String sprite, int u, int v, int x, int y, int width, int height) {
+        blit("minecraft:textures/gui/icons.png", x, y, u, v, width, height);
     }
 
     /** A GUI atlas sprite such as "voicechat:icons/microphone", size by size; nothing where the version has no such sprite. */
@@ -137,7 +147,7 @@ public interface LadsGraphics {
 
     /**
      * A picture covering the box (cropped to its shape, centred): {@code source} is a jar resource ("/assets/...") or a file path,
-     * read by {@link com.thelads.core.client.CrosshairBackground#read}. Each version keeps only the last picture uploaded. False
+     * read by {@link com.thelads.core.client.CrosshairBackground#read}. Each version keeps the last two pictures uploaded. False
      * where the version cannot draw pictures or this one cannot be read.
      */
     default boolean drawImage(String source, int x, int y, int width, int height) { return false; }
@@ -151,6 +161,9 @@ public interface LadsGraphics {
 
     /** Vanilla's GUI scale factor (window pixels per GUI unit), or 0 where unknown (no separate Lads HUD scale then). */
     default int guiScale() { return 0; }
+
+    /** The GUI scale as it really is: {@link #guiScale}, or a fraction such as 2.5 while GUI Scale (GuiScaleOverride) is on. */
+    default double exactGuiScale() { return guiScale(); }
 
     /** One vanilla GUI unit in this graphics' units: 1, or the ratio of the two scales inside the Lads HUD's own scale (HudScale). */
     default double hudUnit() { return 1; }

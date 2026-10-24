@@ -19,6 +19,8 @@ import net.minecraft.util.IChatComponent;
 import com.thelads.core.v1_8_9.feature.DynamicLights189;
 import com.thelads.core.v1_8_9.feature.ScoreboardCache189;
 import com.thelads.core.v1_8_9.feature.TabListCache189;
+import com.thelads.core.client.ladsapi.LadsApiClient;
+import net.minecraft.network.play.server.S01PacketJoinGame;
 import net.minecraft.network.play.server.S27PacketExplosion;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -34,7 +36,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class NetHandlerPlayClientMixin {
     @Inject(method = "handleEntityStatus", at = @At("TAIL"), require = 1)
     private void ladsDeath(S19PacketEntityStatus packet, CallbackInfo ci) {
-        if (packet.getOpCode() == 3 && Minecraft.getMinecraft().theWorld != null) KillBanner189.died(packet.getEntity(Minecraft.getMinecraft().theWorld));
+        if (packet.getOpCode() == 3 && Minecraft.getMinecraft().theWorld != null) {
+            Entity entity = packet.getEntity(Minecraft.getMinecraft().theWorld);
+            KillBanner189.died(entity);
+            if (entity != null && entity == Minecraft.getMinecraft().thePlayer) {
+                com.thelads.core.client.DeathTracker.get().onDeath(entity.posX, entity.posY, entity.posZ,
+                    com.thelads.core.client.bridge.LadsGameBridge.get().getDimensionId(), "Player died");
+            }
+        }
+    }
+
+    @Inject(method = "handleTimeUpdate", at = @At("TAIL"), require = 1)
+    private void ladsTimeUpdate(net.minecraft.network.play.server.S03PacketTimeUpdate packet, CallbackInfo ci) {
+        com.thelads.core.client.TpsTracker.get().onTimeUpdate(packet.getTotalWorldTime());
     }
 
     /** Damage tilt: the client player's hurt (status 2). The server never sends 1.8.9 clients the hit's direction... */
@@ -79,10 +93,16 @@ public abstract class NetHandlerPlayClientMixin {
         DynamicLights189.onExplosion(packet.getX(), packet.getY(), packet.getZ(), packet.getStrength());
     }
 
+    @Inject(method = "handleJoinGame", at = @At("TAIL"), require = 1)
+    private void ladsJoinGame(S01PacketJoinGame packet, CallbackInfo ci) {
+        LadsApiClient.joinGame(0L);
+    }
+
     @Inject(method = {"cleanup", "onDisconnect"}, at = @At("HEAD"), require = 1)
-    private void ladsResetTabList(CallbackInfo ci) {
+    private void ladsResetConnection(CallbackInfo ci) {
         TabListCache189.reset();
         ScoreboardCache189.reset();
         DynamicLights189.reset();
+        LadsApiClient.reset();
     }
 }

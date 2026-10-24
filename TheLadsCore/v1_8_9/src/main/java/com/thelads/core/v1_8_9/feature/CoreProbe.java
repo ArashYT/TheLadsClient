@@ -210,6 +210,10 @@ public final class CoreProbe {
         } else if ("actionbar".equals(only)) { // 1.9.1 Action Bar module and kill banners above the action bar (Probe191ActionBar)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe191ActionBar::run));
+        } else if ("cit".equals(only)) { // Custom Item Textures under Ionium with the sandbox CIT pack (ProbeCit189)
+            STEPS.clear();
+            STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady));
+            STEPS.addAll(ProbeCit189.STEPS);
         } else if ("f1914".equals(only)) { // 1.9.14 feature capture probe (Probe1914FeatureCapture189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe1914FeatureCapture189::run));
@@ -793,14 +797,15 @@ public final class CoreProbe {
         JsonArray modules = root.getAsJsonArray("modules");
         int builtIn = 0, unavailable = 0, pending = 0, external = 0;
         List<String> mismatched = new java.util.ArrayList<>(), builtInNames = new java.util.ArrayList<>();
+        java.util.Set<String> unavailableNames = new java.util.TreeSet<>(), pendingNames = new java.util.TreeSet<>();
         for (JsonElement element : modules) {
             JsonObject module = element.getAsJsonObject();
             String name = module.get("name").getAsString(), support = module.get("support").getAsString();
             if (!support.equals(ModuleSupport.support(name)) || module.get("toggleable").getAsBoolean() != ModuleSupport.isToggleable(name))
                 mismatched.add(name + "=" + support);
             if (support.equals("builtIn")) { builtIn++; builtInNames.add(name); }
-            else if (support.equals("unavailable")) unavailable++;
-            else if (support.equals("pending")) pending++;
+            else if (support.equals("unavailable")) { unavailable++; unavailableNames.add(name); }
+            else if (support.equals("pending")) { pending++; pendingNames.add(name); }
             else if (support.equals("external")) external++;
         }
         check(mismatched.isEmpty(), "every catalog row matches this game's registrations and switchability " + mismatched);
@@ -820,15 +825,52 @@ public final class CoreProbe {
         // 1.9.11: the Lads Jade panel (unless Waila is installed) and the Minimap switch over the pack's Xaero's Minimap.
         if (!Loader.isModLoaded("Waila")) expected.add(com.thelads.core.v1_8_9.feature.jade.Jade189.MODULE);
         if (Minimap189.integrated()) expected.add(Minimap189.NAME);
+        // 1.9.19 parity lanes, from the lists they register: the PvP visuals (PvpVisuals189), the view modules (PvpView189), the screen
+        // effects (pvp.PvpVisuals189), Custom Sky, and Chunk Animator unless Ionium draws the chunks (ChunkAnimator189). NativeHud.MODULES
+        // carries HudManager's parity widgets and GAMEPLAY_MODULES Nick Hider and Container QoL.
+        expected.addAll(Arrays.asList(com.thelads.core.client.PvpVisuals.MODULES));
+        expected.addAll(Arrays.asList(PvpView189.BUILT_IN));
+        expected.addAll(Arrays.asList(com.thelads.core.v1_8_9.pvp.PvpVisuals189.BUILT_IN));
+        expected.add(com.thelads.core.modules.CustomSkyModule.NAME);
+        boolean chunkAnimator = com.thelads.core.v1_8_9.pvp.ChunkAnimator189.builtIn();
+        if (chunkAnimator) expected.add(com.thelads.core.modules.ChunkAnimatorModule.NAME);
+        // The hud2 lane (HudExtras189: widgets, Title Tweaker, Vanilla HUD and Toast Control; Media Player only on Windows) and the chat2
+        // lane (ChatTweaks189's long commands and Auto Text, and the inventory tweaks).
+        expected.addAll(Arrays.asList(com.thelads.core.v1_8_9.hudextras.HudExtras189.MODULES));
+        if (!com.thelads.core.client.hud.MediaSession.SUPPORTED) expected.remove(com.thelads.core.client.hud.HudExtras.MEDIA);
+        for (String[] module : com.thelads.core.v1_8_9.hudextras.HudExtras189.LIMITED) expected.add(module[0]);
+        expected.addAll(Arrays.asList(ChatTweaks189.BUILT_IN));
+        expected.addAll(Arrays.asList(com.thelads.core.client.InventoryTweaks.MODULES));
+        // The util1 lane (Utility189: Survival Guards limited to Anti Tool Break here) and Custom Item Textures (Cit189: built in under
+        // Ionium, limited with OptiFine, whose own Custom Items draws them).
+        expected.addAll(Arrays.asList(com.thelads.core.modules.SurvivalGuardsModule.NAME, com.thelads.core.client.BreedingTimer.NAME,
+            com.thelads.core.client.EnderChestPeek.NAME, com.thelads.core.client.ServerListDrag.NAME,
+            com.thelads.core.modules.CustomItemTexturesModule.NAME));
         java.util.Set<String> missing = new java.util.TreeSet<>(expected), extra = new java.util.TreeSet<>(builtInNames);
         missing.removeAll(builtInNames);
         extra.removeAll(expected);
         check(new java.util.HashSet<>(builtInNames).equals(expected) && builtInNames.size() == expected.size(),
             "exactly the HUD modules NativeHud draws and the native gameplay modules are built in " + builtInNames
             + (missing.isEmpty() && extra.isEmpty() ? "" : " (missing " + missing + ", not expected " + extra + ")"));
-        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size() && unavailable == com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED.length + (optiFine ? 5 : 6) /* + DynamicLights without OptiFine; DisableNarrator, Async, ShulkerBoxUtils, Voice Chat, Voice Chat Group */
-            && pending == modules.size() - unavailable - builtIn - external, "catalog statuses: " + builtIn + " built in, " + unavailable + " unavailable, "
-            + external + " external, " + pending + " pending");
+        // Unavailable, each with its reason (TheLadsCore189.registerStatuses and the lanes): the mod-backed modules, what 1.8.9 lacks
+        // (narrator, async ticking, shulker boxes, item cooldowns, Simple Voice Chat, the Totem of Undying), DynamicLights without
+        // OptiFine and Chunk Animator under Ionium.
+        java.util.Set<String> expectedUnavailable = new java.util.TreeSet<>(Arrays.asList("DisableNarrator", "Async", "ShulkerBoxUtils",
+            "Cooldowns", "Voice Chat", "Voice Chat Group", com.thelads.core.client.PvpVisuals.TOTEM));
+        for (String[] module : com.thelads.core.v1_8_9.TheLadsCore189.MOD_BACKED) expectedUnavailable.add(module[0]);
+        if (!optiFine) expectedUnavailable.add(com.thelads.core.modules.DynamicLightsModule.NAME);
+        if (!chunkAnimator) expectedUnavailable.add(com.thelads.core.modules.ChunkAnimatorModule.NAME);
+        for (String[] module : com.thelads.core.v1_8_9.hudextras.HudExtras189.UNAVAILABLE) expectedUnavailable.add(module[0]);
+        if (!com.thelads.core.client.hud.MediaSession.SUPPORTED) expectedUnavailable.add(com.thelads.core.client.hud.HudExtras.MEDIA);
+        // No status on 1.8.9 (the launcher shows "not connected to this game version yet"): OptiFine189 is a hidden module (its settings
+        // live in OptiFine's own screens); Cosmetics and Cloud Height had none before 1.9.19 either. Any other module must register one.
+        java.util.Set<String> expectedPending = new java.util.TreeSet<>(Arrays.asList(com.thelads.core.modules.OptiFine189Module.NAME,
+            com.thelads.core.modules.CosmeticsModule.NAME, com.thelads.core.modules.CloudHeightModule.NAME));
+        check(modules.size() == ModuleManager.getInstance().getModules().size() && builtIn == expected.size()
+            && unavailableNames.equals(expectedUnavailable) && pendingNames.equals(expectedPending)
+            && pending == modules.size() - unavailable - builtIn - external, "catalog statuses: " + builtIn + " built in, " + unavailable + " unavailable "
+            + unavailableNames + (unavailableNames.equals(expectedUnavailable) ? "" : " (expected " + expectedUnavailable + ")") + ", "
+            + external + " external, " + pending + " pending " + pendingNames + (pendingNames.equals(expectedPending) ? "" : " (expected " + expectedPending + ")"));
         mc.displayGuiScreen(null); // Back to Game: the HUD checks run in gameplay
         return after(10);
     }

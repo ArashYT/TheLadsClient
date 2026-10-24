@@ -212,6 +212,38 @@ public class GuiLadsAdapter implements LadsGraphics {
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
+    @Override
+    public void drawInventorySlot(int slot, int x, int y, boolean preview) {
+        Minecraft mc = Minecraft.getMinecraft();
+        ItemStack stack = null;
+        if (preview) {
+            if (slot == 0) stack = new ItemStack(net.minecraft.init.Items.diamond_sword);
+            else if (slot == 1) stack = new ItemStack(net.minecraft.init.Items.golden_apple, 16);
+            else if (slot == 2) stack = new ItemStack(net.minecraft.init.Items.ender_pearl, 8);
+            else if (slot == 3) stack = new ItemStack(net.minecraft.init.Items.diamond_pickaxe);
+            else if (slot == 4) stack = new ItemStack(net.minecraft.init.Blocks.cobblestone, 64);
+            else if (slot == 5) stack = new ItemStack(net.minecraft.init.Items.water_bucket);
+            else if (slot == 6) stack = new ItemStack(net.minecraft.init.Items.bow);
+            else if (slot == 7) stack = new ItemStack(net.minecraft.init.Items.arrow, 32);
+        } else if (mc.thePlayer != null && mc.thePlayer.inventory != null) {
+            int idx = slot + 9;
+            if (idx >= 0 && idx < mc.thePlayer.inventory.mainInventory.length) {
+                stack = mc.thePlayer.inventory.mainInventory[idx];
+            }
+        }
+        if (stack != null) {
+            RenderItem items = mc.getRenderItem();
+            GlStateManager.enableDepth();
+            RenderHelper.enableGUIStandardItemLighting();
+            items.renderItemAndEffectIntoGUI(stack, x, y);
+            items.renderItemOverlays(font, stack, x, y);
+            RenderHelper.disableStandardItemLighting();
+            GlStateManager.disableDepth();
+            GlStateManager.enableAlpha();
+            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+        }
+    }
+
     /** A damaged diamond sample in the editor when nothing is worn (as on 1.21.11). */
     static ItemStack armorStack(int index, boolean preview) {
         if (preview) {
@@ -312,10 +344,10 @@ public class GuiLadsAdapter implements LadsGraphics {
     /** GUI rectangle to window pixels; OpenGL's scissor origin is the bottom-left corner. */
     private void apply(int[] box) {
         Minecraft mc = Minecraft.getMinecraft();
-        int scale = resolution().getScaleFactor();
+        double scale = com.thelads.core.v1_8_9.qol.Qol189.scale(resolution()); // GUI Scale may be fractional
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
-        GL11.glScissor(box[0] * scale, mc.displayHeight - box[3] * scale,
-            Math.max(0, box[2] - box[0]) * scale, Math.max(0, box[3] - box[1]) * scale);
+        GL11.glScissor((int) (box[0] * scale), mc.displayHeight - (int) (box[3] * scale),
+            (int) (Math.max(0, box[2] - box[0]) * scale), (int) (Math.max(0, box[3] - box[1]) * scale));
     }
 
     @Override
@@ -413,6 +445,11 @@ public class GuiLadsAdapter implements LadsGraphics {
     @Override
     public int guiScale() {
         return resolution().getScaleFactor();
+    }
+
+    @Override
+    public double exactGuiScale() {
+        return com.thelads.core.v1_8_9.qol.Qol189.scale(resolution()); // GUI Scale may be fractional
     }
 
     @Override

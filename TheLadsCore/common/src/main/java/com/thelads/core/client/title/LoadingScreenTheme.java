@@ -53,17 +53,19 @@ public final class LoadingScreenTheme {
      */
     public static void render(LadsGraphics g, int width, int height, float progress, float alpha, float barAlpha, Logo logo) {
         if (alpha <= 0) return;
+        int bg = getBackgroundColor();
         for (int i = 0; i < 32; i++)
-            g.fill(0, i * height / 32, width, (i + 1) * height / 32, fade(mix(LadsPalette.BACKGROUND, 0xFF30111C, i / 31f), alpha));
+            g.fill(0, i * height / 32, width, (i + 1) * height / 32, fade(mix(LadsPalette.BACKGROUND, bg, i / 31f), alpha));
         int logoWidth = Math.max(1, Math.min(width * 46 / 100, height * 2));
         int logoHeight = logoWidth * LOGO_HEIGHT / LOGO_WIDTH;
         int cx = width / 2, logoY = height * 2 / 5 - logoHeight / 2;
-        // A soft red band of light behind the wordmark: rows fading out from its centre line.
+        // A soft band of light behind the wordmark: rows fading out from its centre line.
         int glowCenter = logoY + logoHeight / 2, glowHalf = Math.max(8, logoHeight * 2);
+        int glow = getGlowColor();
         for (int i = 0; i < 40; i++) {
             double d = (i + .5) / 20 - 1;
             g.fill(0, glowCenter - glowHalf + i * glowHalf / 20, width, glowCenter - glowHalf + (i + 1) * glowHalf / 20,
-                fade(0x3A8B0000, alpha * (float)Math.exp(-d * d * 4)));
+                fade(glow, alpha * (float)Math.exp(-d * d * 4)));
         }
         logo.draw(cx - logoWidth / 2, logoY, logoWidth, logoHeight, alpha);
 
@@ -93,7 +95,7 @@ public final class LoadingScreenTheme {
         int barWidth = Math.max(40, logoWidth * 2 / 5), barY = Math.round(cy + ring + Math.max(10, height * .06f));
         int barX = cx - barWidth / 2, filled = Math.round(barWidth * Math.max(0, Math.min(1, progress)));
         g.fill(barX, barY, barX + barWidth, barY + 2, fade(LadsPalette.BORDER, shown * .8f));
-        g.fill(barX, barY, barX + filled, barY + 2, fade(LadsPalette.ACCENT, shown));
+        g.fill(barX, barY, barX + filled, barY + 2, fade(getBarColor(), shown));
     }
 
     private static int fade(int argb, float alpha) {
@@ -105,5 +107,24 @@ public final class LoadingScreenTheme {
         for (int shift = 0; shift <= 24; shift += 8)
             result |= ((int)(((a >>> shift) & 255) * (1 - t) + ((b >>> shift) & 255) * t)) << shift;
         return result;
+    }
+
+    public static int getBackgroundColor() { return parseColorProperty("thelads.loadingBg", 0xFF30111C); }
+    public static int getGlowColor() { return parseColorProperty("thelads.loadingGlow", 0x3A8B0000); }
+    public static int getBarColor() { return parseColorProperty("thelads.loadingBar", LadsPalette.ACCENT); }
+
+    public static int parseColorProperty(String propName, int fallback) {
+        String prop = System.getProperty(propName);
+        if (prop != null && !prop.trim().isEmpty()) {
+            try {
+                prop = prop.trim();
+                if (prop.startsWith("#")) prop = prop.substring(1);
+                if (prop.startsWith("0x") || prop.startsWith("0X")) prop = prop.substring(2);
+                long val = Long.parseLong(prop, 16);
+                if (prop.length() <= 6) val |= 0xFF000000L;
+                return (int) val;
+            } catch (Exception ignored) {}
+        }
+        return fallback;
     }
 }

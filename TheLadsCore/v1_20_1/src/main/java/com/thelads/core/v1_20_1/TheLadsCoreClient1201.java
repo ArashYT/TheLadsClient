@@ -24,6 +24,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         LadsGameBridge.set(new VanillaGameBridge1201());
         com.thelads.core.security.AntiInjectDetector.init();
         ConfigManager.load();
+        com.thelads.core.client.util.LogPruner.pruneIfEnabled(new java.io.File("logs"));
         NativeKeyBindings1201.init();
         NativeFeatures1201.initialize();
         com.thelads.core.v1_20_1.render.Render1201.init();
@@ -67,8 +68,14 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             "ScalableLux", "ModernAdvancements", "Resourcify", "Minimap",
             // In-pack modular enhancements
             "DynamicFPS", "SkinLayers", "NotEnoughAnimations", "BetterF3", "BetterStats",
-            "Clumps", "AppleSkin", "Jade", "MouseTweaks"
+            "Clumps", "AppleSkin", "Jade", "MouseTweaks",
+            "ConfirmDisconnect", "NumericalEnchantments", "LogPruner", "DropConfirmation", "ScrollTweaks", "AutoPerspective", "AutoBackup"
         );
+        // HudManager's parity widgets and Inventory HUD; Nick Hider through LocalSkinMixin (skins) and Nicknames (names).
+        ModuleSupport.registerBuiltIn(com.thelads.core.client.hud.HudManager.PARITY_HUDS);
+        ModuleSupport.registerBuiltIn(com.thelads.core.modules.NickHiderModule.NAME);
+        ModuleSupport.registerUnavailable(com.thelads.core.modules.ContainerQoLModule.NAME, "Only for Minecraft 1.8.9, as PolyPatcher's "
+            + "click outside to close; it is not hooked into this version's container screens.");
 
 
         com.thelads.core.v1_20_1.game.Gameplay1201.register();
@@ -77,8 +84,14 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         com.thelads.core.v1_20_1.feature.Hypixel1201.register();
                 com.thelads.core.v1_20_1.feature.ParticleCore1201.register();
         com.thelads.core.v1_20_1.world.World1201.register(); // Wavy Capes, TNT Timer
+        com.thelads.core.v1_20_1.pvp.PvpVisuals1201.register(); // Color Saturation, Motion/Menu Blur, Hide Foliage, Clear Glass
+        com.thelads.core.v1_20_1.hudextras.HudExtras1201.register(); // HUD widgets and vanilla HUD tweaks (parity 1.9.19)
+        com.thelads.core.v1_20_1.utility.Utility1201.register(); // Survival Guards, Breeding Timer, Ender Chest Peek, pack profiles, server drag
+        com.thelads.core.v1_20_1.qol.Qol1201.register(); // Scrollable Tooltips, Crash Catcher, Quick Reconnect, Keep Cursor, Sound Volumes, GUI Scale, Chunk Borders
+        com.thelads.core.v1_20_1.net.LadsApiTransport1201.init();
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();
             NativeFeatures1201.tick();
             NativeDiscordPresence1201.tick();
             com.thelads.core.client.cosmetics.net.CosmeticsLink.tick();
