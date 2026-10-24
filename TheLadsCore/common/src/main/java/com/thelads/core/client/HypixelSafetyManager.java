@@ -242,6 +242,7 @@ public final class HypixelSafetyManager {
             || PvpVisuals.NAMETAG_HEALTH.equalsIgnoreCase(moduleName)
             || "Light Overlay".equalsIgnoreCase(moduleName) || "Loot Beams".equalsIgnoreCase(moduleName) // pvp rows 32-36: info vanilla does not show
             || "Mob Overlay".equalsIgnoreCase(moduleName) || "Mob Size".equalsIgnoreCase(moduleName)
+            || BreedingTimer.NAME.equalsIgnoreCase(moduleName) || EnderChestPeek.NAME.equalsIgnoreCase(moduleName) // hidden cooldown, chest away from it
             || isGatedHud(moduleName);
     }
 

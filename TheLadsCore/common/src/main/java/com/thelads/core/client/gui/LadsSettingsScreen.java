@@ -1913,6 +1913,7 @@ public final class LadsSettingsScreen {
             .filter(o -> !(detail instanceof ComboSoundsModule combo && combo.hidden(o)))
             .filter(o -> !(detail instanceof CrosshairModule crosshair && crosshair.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.SurvivalTweaksModule tweaks && tweaks.hidden(o)))
+            .filter(o -> !(detail instanceof com.thelads.core.modules.SurvivalGuardsModule guards && guards.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.StackRefillModule refill && refill.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.BetterF3Module f3 && f3.hidden(o)))
             .filter(o -> !(detail instanceof com.thelads.core.modules.KeystrokesModule keys && keys.hidden(o)))

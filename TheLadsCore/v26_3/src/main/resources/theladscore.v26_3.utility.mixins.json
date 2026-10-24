@@ -1,0 +1,18 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.utility.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "AnimalMixin26",
+    "BreedingLabelsMixin26",
+    "EnderTooltipMixin26",
+    "GuardsMixin26",
+    "PackModelAccessor26",
+    "PackScreenMixin26",
+    "ServerListDragMixin26"
+  ]
+}

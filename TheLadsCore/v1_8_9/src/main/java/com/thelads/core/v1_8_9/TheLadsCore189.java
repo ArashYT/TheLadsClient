@@ -88,6 +88,7 @@ public class TheLadsCore189 {
         OldAnimations189.register();
         com.thelads.core.v1_8_9.feature.PvpVisuals189.register(); // PvP visuals (parity 1.9.19): theladscore.v1_8_9.pvp.mixins.json
         com.thelads.core.v1_8_9.hudextras.HudExtras189.register(); // HUD widgets and vanilla HUD tweaks (parity 1.9.19)
+        com.thelads.core.v1_8_9.utility.Utility189.register(); // Survival Guards, Breeding Timer, Ender Chest Peek, server drag (parity 1.9.19)
         ClientRegistry.registerKeyBinding(Zoom189.ZOOM);
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
         com.thelads.core.v1_8_9.feature.Toggles189.register();
