@@ -1818,7 +1818,7 @@ public partial class MainWindow : Window
             int index = i;
             var confirm = new Button
             {
-                Content = new TextBlock { Text = choices[i].Text, TextWrapping = TextWrapping.Wrap, MaxWidth = 300 },
+                Content = new TextBlock { Text = choices[i].Text, TextWrapping = TextWrapping.Wrap, MaxWidth = 300, Foreground = Brushes.White },
                 Classes = { choices[i].Danger ? "danger" : "launch" }, MinHeight = 32, Padding = new Thickness(14, 6),
                 VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center, IsEnabled = choices[i].Enabled, Margin = new Thickness(0, 0, 8, 0)
             };

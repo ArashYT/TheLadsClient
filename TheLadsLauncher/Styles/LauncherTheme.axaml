@@ -63,6 +63,7 @@
     </Setter>
   </Style>
   <Style Selector="Button.launch /template/ ContentPresenter">
+    <Setter Property="TextBlock.Foreground" Value="White"/>
     <Setter Property="BoxShadow" Value="0 2 10 0 #50D42B38"/>
     <Setter Property="Transitions">
       <Transitions>

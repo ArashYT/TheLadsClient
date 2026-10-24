@@ -29,7 +29,7 @@
       <Grid Grid.Row="2" Margin="0,4,0,14">
         <Grid x:Name="MineToolbar" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto">
           <Button Classes="launch" Content="+ Create" Height="34" Padding="16,0" Click="Create_Click" />
-          <Button Grid.Column="1" Classes="action" Content="Import .mrpack" Height="34" Margin="8,0,0,0" Click="Import_Click" />
+          <Button Grid.Column="1" Classes="action" Content="Import .mrpack / .zip" Height="34" Margin="8,0,0,0" Click="Import_Click" />
           <TextBox x:Name="MineSearch" Grid.Column="3" Width="210" PlaceholderText="Search my modpacks…" TextChanged="MineFilter_Changed" />
           <ComboBox x:Name="MineSort" Grid.Column="4" Width="160" Margin="8,0,0,0" SelectionChanged="MineFilter_Changed" />
           <ComboBox x:Name="MineLoader" Grid.Column="5" Width="140" Margin="8,0,0,0" SelectionChanged="MineFilter_Changed" />
