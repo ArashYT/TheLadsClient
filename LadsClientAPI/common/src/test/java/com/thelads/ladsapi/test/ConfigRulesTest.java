@@ -160,4 +160,18 @@ public class ConfigRulesTest {
         assertNotNull(rules.getGroups().get("staff"));
         assertEquals("allow", rules.getGroups().get("staff").get("XaeroMinimap").getState());
     }
+
+    // QA 1.9.19: the real schema has names like "SP: Wood floats"; unquoted they broke rules.yml and every rule was lost.
+    @Test
+    public void testRegenerateWithRealSchemaStaysParseableAndIdempotent(@TempDir Path tempDir) throws IOException {
+        Path rulesFile = tempDir.resolve("rules.yml");
+        Files.writeString(rulesFile, "modules:\n  Fullbright:\n    state: allow\n    Brightness: { max: 10 }\n", StandardCharsets.UTF_8);
+        LadsSchema schema = LadsSchema.loadDefault();
+        LadsRules rules = LadsRules.load(tempDir, schema, null);
+        assertEquals(10.0, rules.getModules().get("Fullbright").getOption("Brightness").getMax());
+        assertTrue(Files.readString(rulesFile).contains("\"SP: Wood floats\":"));
+        String first = Files.readString(rulesFile);
+        LadsRules.load(tempDir, schema, null);
+        assertEquals(first, Files.readString(rulesFile));
+    }
 }
