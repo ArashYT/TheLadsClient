@@ -1,41 +1,16 @@
 package com.thelads.core.perf;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
- * Executes mod discovery tasks concurrently and caches known non-mod library files
- * to accelerate startup on multi-core systems (PolyPatcher parity).
+ * Executes mod discovery tasks concurrently to accelerate startup on multi-core systems (PolyPatcher parity).
  */
 public final class AsyncModScanner {
-    private static final Map<String, Boolean> KNOWN_NON_MODS = new ConcurrentHashMap<>();
-
     private AsyncModScanner() {}
-
-    public static String fileFingerprint(File file) {
-        if (file == null || !file.exists()) return "";
-        return file.getAbsolutePath() + ":" + file.lastModified() + ":" + file.length();
-    }
-
-    public static boolean isKnownNonMod(File file) {
-        if (file == null) return false;
-        return Boolean.TRUE.equals(KNOWN_NON_MODS.get(fileFingerprint(file)));
-    }
-
-    public static void markNonMod(File file) {
-        if (file != null && file.exists()) {
-            KNOWN_NON_MODS.put(fileFingerprint(file), Boolean.TRUE);
-        }
-    }
-
-    public static void clearCache() {
-        KNOWN_NON_MODS.clear();
-    }
 
     /**
      * Maps candidates in parallel using ForkJoinPool, preserving input list order.
@@ -50,7 +25,7 @@ public final class AsyncModScanner {
 
         try {
             return ForkJoinPool.commonPool().submit(() ->
-                items.parallelStream().map(mapper).toList()
+                items.parallelStream().map(mapper).collect(Collectors.toList())
             ).get();
         } catch (Exception e) {
             // Fallback to sequential on any thread pool interruption

@@ -1,5 +1,6 @@
 package com.thelads.core.v1_8_9.perf;
 
+import com.thelads.core.client.ParticleCore;
 import com.thelads.core.client.ebe.BakedBlockEntities;
 import com.thelads.core.v1_8_9.feature.EntityCulling189;
 import com.thelads.core.v1_8_9.feature.HudCache189;
@@ -27,6 +28,7 @@ public final class Sarcio189 {
         ScoreboardCache189.reset();
         TabListCache189.reset();
         HudCache189.free();
+        ParticleCore.worldChanged();
         LOGGER.info("Sarcio 1.8.9: purged session caches and world references on disconnect");
     }
 }
