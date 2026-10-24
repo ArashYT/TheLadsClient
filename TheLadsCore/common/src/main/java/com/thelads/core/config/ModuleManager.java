@@ -444,6 +444,7 @@ public class ModuleManager {
         register(new com.thelads.core.modules.HideFoliageModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.ClearGlassModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.CustomSkyModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.CustomItemTexturesModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.ChunkAnimatorModule(), Module.Category.MECHANIC);
 
         // PvP visuals (PvpVisuals reads these once a tick). On with vanilla's look, so each option works as soon as it is set.
