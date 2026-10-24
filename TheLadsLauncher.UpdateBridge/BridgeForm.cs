@@ -41,6 +41,7 @@ namespace TheLadsLauncher.UpdateBridge
             Icon = new Icon(typeof(BridgeForm).Assembly.GetManifestResourceStream("icon.ico"));
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = true;
+            TopMost = true;   // the relaunched launcher draws underneath until the fade; every exit path (shown, failure, grace, cap) closes it
             StartPosition = FormStartPosition.Manual;
             AutoScaleMode = AutoScaleMode.None;
             BackColor = Color.FromArgb(0x17, 0x18, 0x1B);

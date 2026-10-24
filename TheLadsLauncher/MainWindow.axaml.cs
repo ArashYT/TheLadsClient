@@ -550,6 +550,7 @@ public partial class MainWindow : Window
     {
         _startupAnimTimer?.Stop();
         StartupProgressShine.IsVisible = false;   // the bridge sweeps its own shine; a frozen one would sit under it
+        StartupMining.Freeze(0.81);   // the reduced-motion frame: intact block, pickaxe winding up, no break particles
         StartupLoadingSpinner.Text = $"Installing update v{version}";
         LoadingDots.Text = "...";
         StartupPercentText.Text = "100%";

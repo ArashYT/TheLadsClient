@@ -56,6 +56,7 @@ function Invoke-ShownCase([string]$name, [double[]]$client, [double[]]$bar, [str
         Assert ($bridge.MainWindowTitle -eq 'The Lads Client') "${name}: window titled 'The Lads Client' (got '$($bridge.MainWindowTitle)')"
         $rect = if ($bridge.MainWindowHandle -ne 0) { [BridgeTestWin32]::Rect($bridge.MainWindowHandle) -join ',' } else { 'no window' }
         Assert ($rect -eq ($client -join ',')) "${name}: window at $($client -join ',') (got $rect)"
+        Assert ($bridge.MainWindowHandle -ne 0 -and [BridgeTestWin32]::TopMost($bridge.MainWindowHandle)) "${name}: window is WS_EX_TOPMOST"
         $deadline = [DateTime]::UtcNow.AddSeconds(1)
         while ($update.PriorityClass -ne 'High' -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 50; $update.Refresh() }
         Assert ($update.PriorityClass -eq 'High') "${name}: fake Update.exe raised to High within 1 s (got $($update.PriorityClass))"
@@ -98,6 +99,8 @@ public static class BridgeTestWin32 {
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
     [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
     [DllImport("user32.dll")] static extern IntPtr SetThreadDpiAwarenessContext(IntPtr context);
+    [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr hWnd, int index);
+    public static bool TopMost(IntPtr hWnd) { return (GetWindowLong(hWnd, -20) & 0x8) != 0; }   // GWL_EXSTYLE, WS_EX_TOPMOST
     // Physical pixels whatever this shell's own DPI awareness is (-4 = per-monitor v2).
     public static int[] Rect(IntPtr hWnd) {
         IntPtr old = SetThreadDpiAwarenessContext(new IntPtr(-4));
