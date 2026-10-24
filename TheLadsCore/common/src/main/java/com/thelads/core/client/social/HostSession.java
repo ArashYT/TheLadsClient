@@ -109,13 +109,10 @@ public final class HostSession {
      * Whitelist predicate for the integrated server. Rejects unknown players with "You weren't invited to this world".
      */
     public boolean canLogin(UUID id) {
-        if (!hosting || id == null) return false;
+        if (!hosting || id == null || options.isBanned(id)) return false;
 
-        // Auto-accept friends in FRIENDS scope
-        if (options.scope == HostOptions.Scope.FRIENDS && options.approval == HostOptions.Approval.AUTO_FRIENDS) {
-            if (owner.isFriend(id)) acceptedUuids.add(id);
-        }
-
+        // Only accepted guests (join request answered, invite sent, or a friend auto-accepted at its join request): a kick takes the
+        // acceptance back, so coming back needs a new request (F7)
         if (!acceptedUuids.contains(id)) {
             LOGGER.info("HostSession: rejected login for uninvited UUID {}", id);
             return false;
@@ -132,7 +129,7 @@ public final class HostSession {
     }
 
     public void accept(UUID guest) {
-        if (guest != null) {
+        if (guest != null && !options.isBanned(guest)) {
             acceptedUuids.add(guest);
         }
     }

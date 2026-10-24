@@ -218,23 +218,34 @@ public final class IceAgent implements AutoCloseable {
         // 2. TURN candidates (relay)
         if (config.turn() != null && !config.turn().isEmpty()) {
             for (P2PSession.TurnServer ts : config.turn()) {
+                if (closed.get()) return;
                 TurnClient tc = null;
                 try {
                     // TurnClient creates its own dedicated DatagramSocket to avoid thread contention
                     tc = new TurnClient(ts.url(), ts.user(), ts.credential());
+                    // Listed before allocating, so close() reaches it mid-allocation (F11); re-checked in case close() already ran
+                    allocatedTurnClients.add(tc);
+                    if (closed.get()) {
+                        tc.close();
+                        return;
+                    }
                     tc.setDataHandler(this::handleIncomingTurnData);
                     InetSocketAddress relayed = tc.allocate();
+                    if (closed.get()) {
+                        tc.close();
+                        return;
+                    }
                     if (relayed != null) {
                         this.turnClient = tc;
-                        allocatedTurnClients.add(tc);
                         localCandidates.add(new Candidate("relay", relayed.getAddress().getHostAddress(), relayed.getPort(), PRIORITY_RELAY));
                         break; // Stop at first successful allocation!
-                    } else {
-                        tc.close(); // Close any client that failed
                     }
+                    tc.close();
+                    allocatedTurnClients.remove(tc);
                 } catch (Exception ignored) {
                     if (tc != null) {
                         tc.close(); // Close any client that failed
+                        allocatedTurnClients.remove(tc);
                     }
                 }
             }

@@ -112,9 +112,9 @@ public final class SocialBridge189 implements SocialBridge {
         return SocialState.get().onlineFriendCount();
     }
 
-    /** A clicked "/lads:social <id>" chat link: handled here, never sent to the server. */
-    public static void handleChatAction(String actionId) {
-        SocialState.get().handleAction(actionId);
+    /** A clicked "/lads:social <token>" chat link: handled here, never sent to the server. */
+    public static void handleChatAction(String token) {
+        SocialState.get().handleChatClick(token);
     }
 
     @Override

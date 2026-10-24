@@ -9,7 +9,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 /** Host settings for one world, kept next to it in lads-host.json (contract; defaults are the spec's). */
 public final class HostOptions {
@@ -34,6 +36,12 @@ public final class HostOptions {
     public boolean backupOnOpen = true;
     public boolean showJoinable = true;
     public String welcome = "";
+    /** UUIDs banned from this world: their join requests are denied, they get no invite and the login filter refuses them. */
+    public Set<String> banned = new LinkedHashSet<>();
+
+    public boolean isBanned(java.util.UUID id) {
+        return id != null && banned.contains(id.toString());
+    }
 
     /** The world's saved options, or the defaults when there are none or the file is unreadable. */
     public static HostOptions load(Path worldDir) {
@@ -63,6 +71,7 @@ public final class HostOptions {
         if (guestGameMode == null) guestGameMode = "survival";
         if (gamerules == null) gamerules = new LinkedHashMap<>();
         if (welcome == null) welcome = "";
+        if (banned == null) banned = new LinkedHashSet<>();
         if (welcome.length() > 256) welcome = welcome.substring(0, 256);
         return this;
     }

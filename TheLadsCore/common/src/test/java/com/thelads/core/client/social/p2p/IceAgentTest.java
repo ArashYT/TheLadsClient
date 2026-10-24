@@ -675,4 +675,61 @@ public class IceAgentTest {
             guest.close();
         }
     }
+
+    private static long turnThreads() {
+        return Thread.getAllStackTraces().keySet().stream().filter(t -> t.getName().startsWith("TurnClient-") && t.isAlive()).count();
+    }
+
+    /** F11 (PocLeak): an agent closed while its TURN allocation is in flight used to leave the TurnClient (socket, threads) running. */
+    @Test
+    public void closingMidAllocationReleasesTheTurnClient() throws Exception {
+        DatagramSocket turn = new DatagramSocket(0, InetAddress.getLoopbackAddress());
+        byte[] key = StunMessage.deriveLongTermKey("u", "r", "c");
+        Thread fake = new Thread(() -> {
+            byte[] buf = new byte[2048];
+            while (!turn.isClosed()) {
+                try {
+                    DatagramPacket p = new DatagramPacket(buf, buf.length);
+                    turn.receive(p);
+                    StunMessage m = StunMessage.decode(buf, 0, p.getLength());
+                    if (m.getType() != StunMessage.ALLOCATE_REQUEST) continue;
+                    byte[] out;
+                    if (!m.hasAttribute(StunMessage.ATTR_USERNAME)) {
+                        StunMessage r = new StunMessage(StunMessage.ALLOCATE_ERROR, m.getTransactionId());
+                        r.addErrorCode(401, "Unauthorized");
+                        r.addStringAttribute(StunMessage.ATTR_REALM, "r");
+                        r.addStringAttribute(StunMessage.ATTR_NONCE, "n");
+                        out = r.encode(null, true);
+                    } else {
+                        Thread.sleep(1500); // a slow TURN server
+                        StunMessage r = new StunMessage(StunMessage.ALLOCATE_RESPONSE, m.getTransactionId());
+                        r.addXorAddressAttribute(StunMessage.ATTR_XOR_RELAYED_ADDRESS, new InetSocketAddress("203.0.113.5", 5000));
+                        r.addIntAttribute(StunMessage.ATTR_LIFETIME, 600);
+                        out = r.encode(key, true);
+                    }
+                    turn.send(new DatagramPacket(out, out.length, p.getSocketAddress()));
+                } catch (Exception e) {
+                    if (turn.isClosed()) return;
+                }
+            }
+        }, "fake-slow-turn");
+        fake.setDaemon(true);
+        fake.start();
+        try {
+            P2PSession.IceConfig cfg = new P2PSession.IceConfig(Collections.emptyList(),
+                    List.of(new P2PSession.TurnServer("turn:127.0.0.1:" + turn.getLocalPort(), "u", "c")), true);
+            long before = turnThreads();
+            for (int i = 0; i < 5; i++) {
+                IceAgent agent = new IceAgent("leak" + i, true, cfg, j -> {});
+                agent.gatherAndSendSignal();
+                Thread.sleep(300); // cancelled while allocating
+                agent.close();
+            }
+            long deadline = System.currentTimeMillis() + 4000;
+            while (turnThreads() > before && System.currentTimeMillis() < deadline) Thread.sleep(100);
+            assertEquals(before, turnThreads(), "every TurnClient thread ends after its agent closed mid-allocation");
+        } finally {
+            turn.close();
+        }
+    }
 }

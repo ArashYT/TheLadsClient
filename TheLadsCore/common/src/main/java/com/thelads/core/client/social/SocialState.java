@@ -92,6 +92,14 @@ public class SocialState {
     /** host -> until when its p2p_start is expected: we asked to join it or accepted its invite (F9; the backend's 5 min expiry). */
     private final Map<UUID, Long> joinIntents = new ConcurrentHashMap<>();
     private static final long INTENT_MS = 5 * 60_000;
+    /** Backend invite / join request ids. */
+    private static final java.util.regex.Pattern ID = java.util.regex.Pattern.compile("[A-Za-z0-9_-]{1,64}");
+    /** Chat link token -> action id (F10): a click runs only a link we printed, once, within 10 minutes. */
+    private final Map<String, ChatLink> chatLinks = new ConcurrentHashMap<>();
+    private static final long CHAT_LINK_MS = 10 * 60_000;
+    private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
+
+    private record ChatLink(String actionId, long expiresAt) {}
     private int ticks; // game thread only
 
     /** The game's own state: SocialBridge.get(), the logged-in session, the -Dlads.social.url / LADS_SOCIAL_URL endpoint. */
@@ -420,8 +428,21 @@ public class SocialState {
         notifyListeners();
     }
 
+    /** Banned from this world for good (lads-host.json "banned"), online or not. */
+    private void banFromWorld(UUID id) {
+        HostOptions options = hostSession.options();
+        if (id == null || !options.banned.add(id.toString())) return;
+        Path world = bridge().worldDir();
+        if (world == null) return;
+        try {
+            options.save(world);
+        } catch (IOException e) {
+            LOGGER.warn("SocialState: could not save the ban to lads-host.json: {}", e.getMessage());
+        }
+    }
+
     public void invite(UUID friendUuid) {
-        if (friendUuid == null) return;
+        if (friendUuid == null || hostSession.isHosting() && hostSession.options().isBanned(friendUuid)) return;
         if (hostSession.isHosting()) {
             Presence.WorldAd ad = currentPresence().world();
             if (ad == null) return; // LAN scope: friends join through the LAN, not an invite
@@ -531,7 +552,10 @@ public class SocialState {
 
     /** The host's per-player menu: kick and ban also take back the guest's acceptance and end their P2P session. */
     public void guestAction(UUID id, SocialBridge.GuestAction action) {
-        if (action == SocialBridge.GuestAction.BAN) bridge().guestAction(id, action);
+        if (action == SocialBridge.GuestAction.BAN) {
+            banFromWorld(id);
+            bridge().guestAction(id, action);
+        }
         if (action == SocialBridge.GuestAction.KICK || action == SocialBridge.GuestAction.BAN) hostSession.revoke(id); // revoke kicks
         else bridge().guestAction(id, action);
     }
@@ -571,6 +595,29 @@ public class SocialState {
         return new JoinCheck(true, null);
     }
 
+    /** A chat line with a link: the click value is a one-time random token, never the action itself (any server can print links). */
+    private void chatAction(String text, String actionId) {
+        long now = System.currentTimeMillis();
+        chatLinks.values().removeIf(link -> link.expiresAt() < now);
+        if (chatLinks.size() >= 64) return; // a flood of requests: the toast and the Friends screen still offer them
+        byte[] raw = new byte[16];
+        RANDOM.nextBytes(raw);
+        StringBuilder token = new StringBuilder(32);
+        for (byte b : raw) token.append(Character.forDigit((b >> 4) & 15, 16)).append(Character.forDigit(b & 15, 16));
+        chatLinks.put(token.toString(), new ChatLink(actionId, now + CHAT_LINK_MS));
+        bridge().chatAction(text, token.toString());
+    }
+
+    /** A clicked "/lads:social <token>" (never sent to the server): runs the action it was printed for, once; anything else does nothing. */
+    public void handleChatClick(String token) {
+        ChatLink link = token == null ? null : chatLinks.remove(token);
+        if (link != null && link.expiresAt() >= System.currentTimeMillis()) handleAction(link.actionId());
+    }
+
+    /**
+     * Toast buttons, keys and chat links (frozen ids). Each acts only on something this client holds: a pending friend request, a join
+     * request or invite it received; anything else is ignored (F10).
+     */
     public void handleAction(String actionId) {
         if (actionId == null || actionId.isEmpty()) return;
         int colon = actionId.indexOf(':');
@@ -580,8 +627,8 @@ public class SocialState {
         switch (prefix) {
             case "invite_accept" -> {
                 Invite invite = activeInvites.get(arg);
-                String question = invite == null ? null
-                        : switchQuestion(invite.isServer() ? invite.serverAddress() : nameOf(invite.from()) + "'s world");
+                if (invite == null) return;
+                String question = switchQuestion(invite.isServer() ? invite.serverAddress() : nameOf(invite.from()) + "'s world");
                 if (question == null) {
                     acceptInvite(arg);
                 } else { // in a world or on a server: the Friends screen asks first; Cancel keeps everything
@@ -589,16 +636,22 @@ public class SocialState {
                     bridge().openFriendsScreen();
                 }
             }
-            case "invite_decline" -> declineInvite(arg);
-            case "join_accept" -> answerJoin(arg, true);
-            case "join_deny" -> answerJoin(arg, false);
+            case "invite_decline" -> {
+                if (activeInvites.containsKey(arg)) declineInvite(arg);
+            }
+            case "join_accept" -> {
+                if (activeJoinRequests.containsKey(arg)) answerJoin(arg, true);
+            }
+            case "join_deny" -> {
+                if (activeJoinRequests.containsKey(arg)) answerJoin(arg, false);
+            }
             case "friend_accept" -> {
                 UUID id = parseUuid(arg);
-                if (id != null) accept(id);
+                if (id != null && incomingMap.containsKey(id)) accept(id);
             }
             case "friend_decline" -> {
                 UUID id = parseUuid(arg);
-                if (id != null) decline(id);
+                if (id != null && incomingMap.containsKey(id)) decline(id);
             }
             case "open_friends" -> bridge().openFriendsScreen();
             case "dm" -> {
@@ -730,7 +783,7 @@ public class SocialState {
                     incomingMap.put(entry.id(), entry);
                     bridge().toast("Friend Request", entry.name() + " sent you a friend request",
                             "friend_accept:" + entry.id(), "friend_decline:" + entry.id());
-                    bridge().chatAction(entry.name() + " sent you a friend request [Accept]",
+                    chatAction(entry.name() + " sent you a friend request [Accept]",
                             "friend_accept:" + entry.id());
                     notifyListeners();
                 }
@@ -773,6 +826,7 @@ public class SocialState {
             case SocialProtocol.INVITE -> {
                 String inviteId = str(msg, "inviteId");
                 UUID from = parseUuid(str(msg, "from"));
+                if (inviteId == null || from == null || !ID.matcher(inviteId).matches()) return;
                 String server = str(msg, "server");
                 JsonObject world = msg.getAsJsonObject("world");
                 String worldName = world != null ? str(world, "name") : "their world";
@@ -784,13 +838,13 @@ public class SocialState {
                     activeInvites.put(inviteId, new Invite(inviteId, from, server, true, server));
                     bridge().toast("Server Invite", name + " invited you to " + server,
                             "invite_accept:" + inviteId, "invite_decline:" + inviteId);
-                    bridge().chatAction(name + " invited you to " + server + " [Accept]",
+                    chatAction(name + " invited you to " + server + " [Accept]",
                             "invite_accept:" + inviteId);
                 } else {
                     activeInvites.put(inviteId, new Invite(inviteId, from, worldName, false, null));
                     bridge().toast("Game Invite", name + " invited you to " + worldName,
                             "invite_accept:" + inviteId, "invite_decline:" + inviteId);
-                    bridge().chatAction(name + " invited you to " + worldName + " [Accept]",
+                    chatAction(name + " invited you to " + worldName + " [Accept]",
                             "invite_accept:" + inviteId);
                 }
                 notifyListeners();
@@ -845,7 +899,12 @@ public class SocialState {
     }
 
     public void handleJoinRequest(String reqId, UUID from, SocialBridge.GameInfo game) {
+        if (reqId == null || from == null || !ID.matcher(reqId).matches()) return;
         HostOptions options = hostSession.options();
+        if (options.isBanned(from)) { // banned from this world: denied without asking
+            send(SocialProtocol.JOIN_DENY, "reqId", reqId);
+            return;
+        }
         if (hostSession.isHosting() && options.scope == HostOptions.Scope.FRIENDS
                 && options.approval == HostOptions.Approval.AUTO_FRIENDS
                 && isFriend(from)) {
@@ -859,7 +918,7 @@ public class SocialState {
         String name = friend != null ? friend.displayName() : (from != null ? from.toString().substring(0, 8) : "Player");
         bridge().toast("Join Request", name + " wants to join your world",
                 "join_accept:" + reqId, "join_deny:" + reqId);
-        bridge().chatAction(name + " wants to join your world [Accept]",
+        chatAction(name + " wants to join your world [Accept]",
                 "join_accept:" + reqId);
         notifyListeners();
     }
