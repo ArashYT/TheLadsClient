@@ -1365,6 +1365,11 @@ def setup(
     app.router.add_get("/cosmetics/link/verify", handle_link_verify_http)
     app.on_shutdown.append(close_all)
 
+    if insecure:
+        os.environ.setdefault("LADS_SOCIAL_DEV", "1")
+    import social
+    social.mount(app, insecure=insecure, db_path=db_path)
+
 
 # ---------------------------------------------------------------------------
 # Staff Admin CLI
@@ -1512,6 +1517,8 @@ def main(argv=None) -> None:
     args = parser.parse_args(raw_args)
     if args.dev_insecure_auth and args.host != "127.0.0.1":
         parser.error("--dev-insecure-auth refuses to start unless bound to 127.0.0.1")
+    if args.dev_insecure_auth:
+        os.environ.setdefault("LADS_SOCIAL_DEV", "1")
     logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     app = web.Application()
     setup(app, insecure=args.dev_insecure_auth, db_path=args.db, tebex_secret=args.tebex_secret, auth_secret=args.auth_secret)
