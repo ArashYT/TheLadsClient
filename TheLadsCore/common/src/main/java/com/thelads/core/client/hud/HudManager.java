@@ -98,6 +98,21 @@ public class HudManager {
         add(new DeathInfoHudElement(), "DeathInfo");
         add(new HeartsHudElement(), "Hearts");
         add(new HitIndicatorHudElement(), "HitIndicator");
+        add(new DamageIndicatorHudElement(), "DamageIndicator");
+        add(new JumpResetHudElement(), "JumpReset");
+        add(new MediaPlayerHudElement(), "MediaPlayer");
+        add(new HorseStatsHudElement(), "HorseStats");
+        add(new PlayerCounterHudElement(), "PlayerCounter");
+        add(new TotemPopHudElement(), "TotemPopCounter");
+        add(new BlockInfoHudElement(), "BlockInfo");
+        add(new CustomTextHudElement(), "CustomText");
+        add(new CustomShapeHudElement(), "CustomShape");
+        add(new CustomImageHudElement(), HudExtras.CUSTOM_IMAGE);
+        add(new PlayerHeadHudElement(), "PlayerHead");
+        add(new BlockAboveHudElement(), "BlockAbove");
+        add(new EntityCounterHudElement(), "EntityCounter");
+        add(new ShaderPackHudElement(), "ShaderPack");
+        add(new HeldItemLoreHudElement(), "HeldItemLore");
     }
 
     private void add(HudElement element, String moduleName) {

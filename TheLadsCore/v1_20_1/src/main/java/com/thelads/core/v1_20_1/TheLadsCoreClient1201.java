@@ -85,6 +85,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
                 com.thelads.core.v1_20_1.feature.ParticleCore1201.register();
         com.thelads.core.v1_20_1.world.World1201.register(); // Wavy Capes, TNT Timer
         com.thelads.core.v1_20_1.pvp.PvpVisuals1201.register(); // Color Saturation, Motion/Menu Blur, Hide Foliage, Clear Glass
+        com.thelads.core.v1_20_1.hudextras.HudExtras1201.register(); // HUD widgets and vanilla HUD tweaks (parity 1.9.19)
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();

@@ -42,9 +42,11 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.NativeQualityOfLife.register();
         com.thelads.core.v26_2.feature.pvp.PvpVisuals26.register();
         com.thelads.core.v26_2.pvp.PvpVisuals26.register(); // Color Saturation, Motion/Menu Blur, Hide Foliage, Clear Glass
+        com.thelads.core.v26_2.feature.ChatTweaks26.register(); // parity-1023 chat lane: chat and inventory tweaks, their keys
         com.thelads.core.v26_2.feature.NativeParticleCore.register();
         com.thelads.core.v26_2.feature.NativeFeatures.initialize();
         com.thelads.core.v26_2.feature.PvpView26.register(); // Freelook, ViewModel, Time/Weather Changer, Fog Customizer
+        com.thelads.core.v26_2.hudextras.HudExtras26.register(); // HUD widgets and vanilla HUD tweaks (parity 1.9.19)
         com.thelads.core.v26_2.feature.NativeChatHeads.register();
         com.thelads.core.v26_2.feature.NativeBetterF3.register();
         com.thelads.core.v26_2.feature.NativeCustomFov.register();

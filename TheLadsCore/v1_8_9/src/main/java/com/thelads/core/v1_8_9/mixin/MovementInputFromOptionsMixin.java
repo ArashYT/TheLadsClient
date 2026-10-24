@@ -7,11 +7,11 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-/** Toggle Sprint &amp; Sneak: the movement input's read of the Sneak key sees the toggle. */
+/** Toggle Sprint &amp; Sneak: the movement input's read of the Sneak key sees the toggle; Inventory Move: walking with a container open. */
 @Mixin(MovementInputFromOptions.class)
 public abstract class MovementInputFromOptionsMixin {
     @Redirect(method = "updatePlayerMoveState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/settings/KeyBinding;isKeyDown()Z"), require = 1)
     private boolean ladsSneakKey(KeyBinding binding) {
-        return Toggles189.isKeyDown(binding);
+        return Toggles189.isKeyDown(binding) || com.thelads.core.v1_8_9.feature.ChatTweaks189.moveKey(binding); // Inventory Move (gated)
     }
 }

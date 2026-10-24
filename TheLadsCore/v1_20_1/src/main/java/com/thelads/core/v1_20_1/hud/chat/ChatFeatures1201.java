@@ -22,6 +22,7 @@ public final class ChatFeatures1201 {
     public static void register() {
         NativeChatHeads1201.register();
         NativeClientTools1201.register();
+        ChatTweaks1201.register();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             NativeClientTools1201.tick();
             NativeNarrator1201.tick();

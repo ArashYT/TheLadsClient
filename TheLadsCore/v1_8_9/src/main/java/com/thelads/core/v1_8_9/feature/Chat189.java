@@ -25,6 +25,9 @@ public final class Chat189 {
     private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm");
     /** QA only (Probe150): new messages seen, and newest-message lines drawn while sliding in. */
     public static long messages, animated;
+    /** The new message's plain text before any change (Compact Chat's key) and its pending translation, for GuiNewChatMixin.ladsTweaks. */
+    public static String plain;
+    public static ChatTweaks189.Pending pending;
 
     private Chat189() {}
 
@@ -41,12 +44,13 @@ public final class Chat189 {
      */
     public static int layOut(List<ChatLine> chatLines, int laidOut, List<ChatLine> drawnLines, int lines, final int width) {
         final FontRenderer font = Minecraft.getMinecraft().fontRendererObj;
-        return ChatHistory.layOut(chatLines, laidOut, drawnLines, lines, message -> true, message -> {
+        return ChatHistory.layOut(chatLines, laidOut, drawnLines, lines, message -> ChatTweaks189.shown(message.getChatComponent()), message -> {
             ChatHeads189.Line sender = (ChatHeads189.Line) message;
             List<ChatLine> parts = new ArrayList<ChatLine>();
             for (IChatComponent line : GuiUtilRenderComponents.splitText(message.getChatComponent(), width - ChatHeads189.offset(sender.ladsHead()), font, false, false)) {
                 ChatLine part = new ChatLine(message.getUpdatedCounter(), line, message.getChatLineID());
                 ((ChatHeads189.Line) part).ladsHead(sender.ladsHead(), sender.ladsAt(), parts.isEmpty());
+                ((ChatTweaks189.Parent) part).ladsParent(message);
                 parts.add(part);
             }
             return parts;
@@ -58,7 +62,10 @@ public final class Chat189 {
         if (message == null) return null;
         messages++;
         if (!Options189.enabled("Chat")) return message;
+        plain = message.getUnformattedText();
+        pending = ChatTweaks189.translate(plain);
         if (Options189.bool("Chat", "Screenshot Link Buttons", true)) screenshotButtons(message);
+        message = ChatTweaks189.incoming(message, plain); // Profanity Filter, mentions (ChatTweaks189)
         if (!Options189.bool("Chat", "Timestamps", false)) return message;
         IChatComponent prefix = new ChatComponentText("[" + LocalTime.now().format(CLOCK) + "] ");
         prefix.getChatStyle().setColor(EnumChatFormatting.GRAY);

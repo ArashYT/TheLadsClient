@@ -124,6 +124,15 @@ class Lads197DefaultsTest {
         Module chat = mm.getModule("Chat");
         assertFalse(((BoolOption) chat.getOption("Chat Background")).get());
         assertTrue(((BoolOption) chat.getOption("Message Animations")).get());
+        // parity-1023 chat tweaks: least surprise for existing players.
+        assertFalse(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.TABS)).get());
+        assertEquals("", ((com.thelads.core.config.TextOption) chat.getOption(com.thelads.core.client.ChatTweaks.CUSTOM_TABS)).getValue());
+        assertTrue(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.MENTIONS)).get());
+        assertFalse(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.MENTION_SOUND)).get());
+        assertTrue(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.COMPACT)).get());
+        assertTrue(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.SEARCH)).get());
+        assertTrue(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.BUTTONS)).get());
+        assertFalse(((BoolOption) chat.getOption(com.thelads.core.client.ChatTweaks.TRANSLATE)).get());
 
         Module nametags = mm.getModule("Nametags");
         assertFalse(((BoolOption) nametags.getOption("Render Background")).get());

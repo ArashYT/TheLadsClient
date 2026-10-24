@@ -71,7 +71,8 @@
     "theladscore.v26_3.world.mixins.json",
     "theladscore.v26_3.emotes.mixins.json",
     "theladscore.v26_3.pvp2.mixins.json",
-    "theladscore.v26_3.pvp3.mixins.json"
+    "theladscore.v26_3.pvp3.mixins.json",
+    "theladscore.v26_3.hudextras.mixins.json"
   ],
   "jars": [
     {
