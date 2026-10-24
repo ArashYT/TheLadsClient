@@ -35,6 +35,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.NativeQualityOfLife.register();
         com.thelads.core.v26_2.feature.NativeParticleCore.register();
         com.thelads.core.v26_2.feature.NativeFeatures.initialize();
+        com.thelads.core.v26_2.feature.PvpView26.register(); // Freelook, ViewModel, Time/Weather Changer, Fog Customizer
         com.thelads.core.v26_2.feature.NativeChatHeads.register();
         com.thelads.core.v26_2.feature.NativeBetterF3.register();
         com.thelads.core.v26_2.feature.NativeCustomFov.register();

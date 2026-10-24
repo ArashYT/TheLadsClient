@@ -235,7 +235,8 @@ public final class HypixelSafetyManager {
             || "MouseTweaks".equalsIgnoreCase(moduleName)
             || "ReachDisplay".equalsIgnoreCase(moduleName)
             || "Jade".equalsIgnoreCase(moduleName)
-            || "ShulkerBoxUtils".equalsIgnoreCase(moduleName);
+            || "ShulkerBoxUtils".equalsIgnoreCase(moduleName)
+            || "Freelook".equalsIgnoreCase(moduleName) || "FogClearView".equalsIgnoreCase(moduleName); // FreelookModule, FogCustomizerModule.CLEAR_VIEW
     }
 
     public static boolean isGatedHypixelModule(String moduleName) {

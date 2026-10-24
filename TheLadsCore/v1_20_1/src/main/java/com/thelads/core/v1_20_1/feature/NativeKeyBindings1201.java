@@ -50,6 +50,21 @@ public final class NativeKeyBindings1201 {
         KeyMapping.CATEGORY_MOVEMENT
     ));
 
+    /** Freelook and Snaplook (FreelookModule): unbound, as on every version. */
+    public static final KeyMapping FREELOOK = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        "key.theladscore.freelook",
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_UNKNOWN,
+        CATEGORY
+    ));
+
+    public static final KeyMapping SNAPLOOK = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        "key.theladscore.snaplook",
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_UNKNOWN,
+        CATEGORY
+    ));
+
     private NativeKeyBindings1201() {}
 
     public static void init() {

@@ -36,6 +36,7 @@ public final class Gameplay1201 {
         if (ModPresence1201.loaded("distanthorizons") && !qaFlag("allow-dh"))
             ModuleSupport.registerBuiltInLimited("BetterResolution", "It stays off while Distant Horizons is installed (both draw the world into its own target).");
         NativeCustomFov1201.register();
+        PvpView1201.register(); // Freelook, ViewModel, Time/Weather Changer, Fog Customizer
         GoodMcAttackSpeedReset1201.register();
         com.thelads.core.v1_20_1.game.cheats.Cheats1201.register();
         ClientTickEvents.END_CLIENT_TICK.register(Gameplay1201::tick);

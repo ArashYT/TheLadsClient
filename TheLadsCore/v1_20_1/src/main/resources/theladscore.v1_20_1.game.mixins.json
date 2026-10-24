@@ -35,6 +35,12 @@
     "LevelTargetsAccessor",
     "RenderScaleMixin",
     "RenderScaleOutlineMixin",
-    "CheatsMixin"
+    "CheatsMixin",
+    "FreelookCameraMixin",
+    "ViewModelMixin",
+    "TimeChangerMixin",
+    "WeatherLevelMixin",
+    "WeatherSnowMixin",
+    "FogCustomizerMixin"
   ]
 }

@@ -88,6 +88,7 @@ public class TheLadsCore189 {
         ClientRegistry.registerKeyBinding(Zoom189.ZOOM);
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
         com.thelads.core.v1_8_9.feature.Toggles189.register();
+        com.thelads.core.v1_8_9.feature.PvpView189.register(); // Freelook, ViewModel, Time/Weather Changer, Fog Customizer
         MinecraftForge.EVENT_BUS.register(new Zoom189());
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
         MinecraftForge.EVENT_BUS.register(new NativeHud());
@@ -258,6 +259,7 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.feature.DynamicLights189.tick(mc);
         com.thelads.core.v1_8_9.feature.EntityCulling189.tick(mc);
         Zoom189.tick(mc);
+        com.thelads.core.v1_8_9.feature.PvpView189.tick(mc);
         SkinLayers189.tick(mc);
         com.thelads.core.v1_8_9.feature.Toggles189.tick(mc);
         com.thelads.core.v1_8_9.feature.Fullbright189.tick(mc);

@@ -21,5 +21,10 @@ public final class NativeKeyBindings {
         InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), KeyMapping.Category.MOVEMENT);
     public static final KeyMapping TOGGLE_SNEAK = new KeyMapping("key.theladscore.toggle_sneak",
         InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), KeyMapping.Category.MOVEMENT);
+    /** Freelook and Snaplook (FreelookModule): unbound, as on every version. */
+    public static final KeyMapping FREELOOK = new KeyMapping("key.theladscore.freelook",
+        InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY);
+    public static final KeyMapping SNAPLOOK = new KeyMapping("key.theladscore.snaplook",
+        InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY);
     private NativeKeyBindings() {}
 }
