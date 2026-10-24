@@ -88,15 +88,17 @@ public final class IceAgent implements AutoCloseable {
     private static class CandidatePair {
         final Candidate local;
         final Candidate remote;
-        final byte[] tid;
-        volatile boolean succeeded = false;
+        final boolean nominate; // a USE-CANDIDATE check (controlling only)
 
-        CandidatePair(Candidate local, Candidate remote, byte[] tid) {
+        CandidatePair(Candidate local, Candidate remote, boolean nominate) {
             this.local = local;
             this.remote = remote;
-            this.tid = tid;
+            this.nominate = nominate;
         }
     }
+
+    /** Controlling only: the first valid pair, nominated with USE-CANDIDATE checks until the controlled agent answers one. */
+    private volatile CandidatePair nominating;
 
     public IceAgent(String sid, boolean host, P2PSession.IceConfig config, Consumer<JsonObject> sendSignal) throws IOException {
         this(sid, host, config, sendSignal, new DatagramSocket(0, InetAddress.getByName("0.0.0.0")));
@@ -143,6 +145,11 @@ public final class IceAgent implements AutoCloseable {
 
     public boolean isRelayed() {
         return selectedPairRelayed;
+    }
+
+    /** The peer address of the selected pair (null until connected). */
+    public InetSocketAddress getSelectedRemoteAddress() {
+        return selectedRemoteAddress;
     }
 
     public long getBytesSent() {
@@ -364,24 +371,29 @@ public final class IceAgent implements AutoCloseable {
     }
 
     private void sendCheckRound() {
+        CandidatePair nominated = nominating;
+        if (nominated != null) { // controlling: only the nomination is repeated now
+            sendConnectivityCheck(nominated.local, nominated.remote, true);
+            return;
+        }
         List<Candidate> sortedRemote = new ArrayList<>(remoteCandidates);
         sortedRemote.sort((a, b) -> Long.compare(b.prio, a.prio));
 
         for (Candidate r : sortedRemote) {
             for (Candidate l : localCandidates) {
-                sendConnectivityCheck(l, r);
+                sendConnectivityCheck(l, r, false);
             }
         }
     }
 
-    private void sendConnectivityCheck(Candidate local, Candidate remote) {
+    private void sendConnectivityCheck(Candidate local, Candidate remote, boolean nominate) {
         try {
             StunMessage req = new StunMessage(StunMessage.BINDING_REQUEST);
             req.addStringAttribute(StunMessage.ATTR_USERNAME, remoteUfrag + ":" + localUfrag);
             req.addLongAttribute(StunMessage.ATTR_PRIORITY, local.prio);
             if (host) {
                 req.addLongAttribute(StunMessage.ATTR_ICE_CONTROLLING, 0x1234567890ABCDEFL);
-                req.addAttribute(StunMessage.ATTR_USE_CANDIDATE, new byte[0]);
+                if (nominate) req.addAttribute(StunMessage.ATTR_USE_CANDIDATE, new byte[0]);
             } else {
                 req.addLongAttribute(StunMessage.ATTR_ICE_CONTROLLED, 0x1234567890ABCDEFL);
             }
@@ -390,8 +402,7 @@ public final class IceAgent implements AutoCloseable {
             byte[] encoded = req.encode(key, true);
 
             String tidHex = toHex(req.getTransactionId());
-            CandidatePair pair = new CandidatePair(local, remote, req.getTransactionId());
-            pendingChecks.put(tidHex, pair);
+            pendingChecks.put(tidHex, new CandidatePair(local, remote, nominate));
 
             InetSocketAddress target = remote.toSocketAddress();
             if ("relay".equals(local.type) && turnClient != null) {
@@ -511,8 +522,9 @@ public final class IceAgent implements AutoCloseable {
                     socket.send(dp);
                 }
 
-                if (useCandidate || !host) {
-                    nominate(sender, viaRelay);
+                // Controlled: exactly the pair the controller nominated, as it reached us (never one of our own checks)
+                if (useCandidate && !host) {
+                    select(sender, viaRelay);
                 }
             } else if (msg.getType() == StunMessage.BINDING_RESPONSE) {
                 // Finding 1: Response must match an outstanding transaction id
@@ -529,9 +541,14 @@ public final class IceAgent implements AutoCloseable {
                     return;
                 }
 
-                pair.succeeded = true;
-                boolean isRelayed = "relay".equals(pair.local.type) || "relay".equals(pair.remote.type);
-                nominate(pair.remote.toSocketAddress(), isRelayed);
+                // Valid only on a symmetric path (the answer comes from where the check went); the controlled agent waits for the
+                // controller's nomination instead of picking a pair itself.
+                if (!host || !sender.equals(pair.remote.toSocketAddress())) return;
+                if (pair.nominate) {
+                    select(sender, "relay".equals(pair.local.type) || "relay".equals(pair.remote.type));
+                } else {
+                    startNomination(pair);
+                }
             }
         } catch (Exception ignored) {
         }
@@ -549,7 +566,14 @@ public final class IceAgent implements AutoCloseable {
         }
     }
 
-    private synchronized void nominate(InetSocketAddress remoteAddr, boolean isRelayed) {
+    /** Controlling: the first valid pair is the one nominated; the others are dropped. */
+    private synchronized void startNomination(CandidatePair valid) {
+        if (nominating != null || connectedFuture.isDone()) return;
+        nominating = valid;
+        sendConnectivityCheck(valid.local, valid.remote, true);
+    }
+
+    private synchronized void select(InetSocketAddress remoteAddr, boolean isRelayed) {
         if (!connectedFuture.isDone()) {
             this.selectedRemoteAddress = remoteAddr;
             this.selectedPairRelayed = isRelayed;

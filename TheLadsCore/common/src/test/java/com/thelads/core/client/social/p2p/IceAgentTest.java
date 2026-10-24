@@ -430,4 +430,133 @@ public class IceAgentTest {
             silent.close();
         }
     }
+
+    @Test
+    public void controlledAdoptsExactlyTheControllersNominatedPair() throws Exception {
+        // A fake controlling peer with two adapters (two sockets). B answers checks on both, its own checks succeed on adapter 1, yet it
+        // selects only the pair the controller nominates (USE-CANDIDATE from adapter 2).
+        List<JsonObject> bSignals = new ArrayList<>();
+        IceAgent b = new IceAgent("test-nominate", false, null, bSignals::add);
+        DatagramSocket adapter1 = new DatagramSocket(0, InetAddress.getLoopbackAddress());
+        DatagramSocket adapter2 = new DatagramSocket(0, InetAddress.getLoopbackAddress());
+        String ctrlUfrag = "ctrlufrg", ctrlPwd = "ctrlpasswordctrlpasswd";
+        adapter1.setSoTimeout(2000);
+        adapter2.setSoTimeout(2000);
+        try {
+            b.gatherAndSendSignal().join();
+            JsonObject remote = new JsonObject();
+            remote.addProperty("ufrag", ctrlUfrag);
+            remote.addProperty("pwd", ctrlPwd);
+            JsonArray cands = new JsonArray();
+            for (DatagramSocket a : new DatagramSocket[] {adapter1, adapter2}) {
+                JsonObject c = new JsonObject();
+                c.addProperty("type", "host");
+                c.addProperty("ip", "127.0.0.1");
+                c.addProperty("port", a.getLocalPort());
+                c.addProperty("prio", IceAgent.PRIORITY_HOST);
+                cands.add(c);
+            }
+            remote.add("candidates", cands);
+            b.onSignal(remote);
+
+            // Answer B's own checks on adapter 1: before, that alone made the controlled side pick a pair
+            InetSocketAddress bAddr = null;
+            for (int i = 0; i < 3; i++) {
+                DatagramPacket in = new DatagramPacket(new byte[1500], 1500);
+                adapter1.receive(in);
+                StunMessage req = StunMessage.decode(in.getData(), 0, in.getLength());
+                if (req.getType() != StunMessage.BINDING_REQUEST) continue;
+                bAddr = (InetSocketAddress) in.getSocketAddress();
+                StunMessage resp = new StunMessage(StunMessage.BINDING_RESPONSE, req.getTransactionId());
+                resp.addXorAddressAttribute(StunMessage.ATTR_XOR_MAPPED_ADDRESS, bAddr);
+                byte[] out = resp.encode(StunMessage.deriveShortTermKey(ctrlPwd), true);
+                adapter1.send(new DatagramPacket(out, out.length, bAddr));
+            }
+            assertNotNull(bAddr);
+            // A plain check from adapter 1 is answered but selects nothing
+            assertNotNull(check(adapter1, bAddr, b, ctrlUfrag, false));
+            Thread.sleep(300);
+            assertFalse(b.getConnectedFuture().isDone(), "controlled must not select a pair the controller did not nominate");
+
+            // The nomination from adapter 2 selects exactly adapter 2
+            assertNotNull(check(adapter2, bAddr, b, ctrlUfrag, true));
+            b.getConnectedFuture().get(2, TimeUnit.SECONDS);
+            assertEquals(adapter2.getLocalSocketAddress(), b.getSelectedRemoteAddress());
+        } finally {
+            b.close();
+            adapter1.close();
+            adapter2.close();
+        }
+    }
+
+    /** Sends a controlling check from a to the agent and returns its validated response (null: none). */
+    private static StunMessage check(DatagramSocket a, InetSocketAddress to, IceAgent agent, String ctrlUfrag, boolean useCandidate) throws Exception {
+        StunMessage req = new StunMessage(StunMessage.BINDING_REQUEST);
+        req.addStringAttribute(StunMessage.ATTR_USERNAME, agent.getLocalUfrag() + ":" + ctrlUfrag);
+        req.addLongAttribute(StunMessage.ATTR_PRIORITY, IceAgent.PRIORITY_HOST);
+        req.addLongAttribute(StunMessage.ATTR_ICE_CONTROLLING, 1L);
+        if (useCandidate) req.addAttribute(StunMessage.ATTR_USE_CANDIDATE, new byte[0]);
+        byte[] out = req.encode(StunMessage.deriveShortTermKey(agent.getLocalPwd()), true);
+        a.send(new DatagramPacket(out, out.length, to));
+        long end = System.currentTimeMillis() + 2000;
+        while (System.currentTimeMillis() < end) {
+            DatagramPacket in = new DatagramPacket(new byte[1500], 1500);
+            a.receive(in); // B's own checks arrive here too: skip them
+            StunMessage msg = StunMessage.decode(in.getData(), 0, in.getLength());
+            if (msg.getType() == StunMessage.BINDING_RESPONSE && java.util.Arrays.equals(msg.getTransactionId(), req.getTransactionId())) return msg;
+        }
+        return null;
+    }
+
+    @Test
+    public void bothSidesEndOnTheSamePairWithTwoAddressesEach() throws Exception {
+        // Each side advertises two host addresses (a second loopback address and an unreachable one first, as a multi-adapter PC would)
+        AtomicReference<IceAgent> aRef = new AtomicReference<>(), bRef = new AtomicReference<>();
+        IceAgent a = new IceAgent("test-pair", true, null, sig -> bRef.get().onSignal(twoAdapters(sig)));
+        IceAgent b = new IceAgent("test-pair", false, null, sig -> aRef.get().onSignal(twoAdapters(sig)));
+        aRef.set(a);
+        bRef.set(b);
+        try {
+            CompletableFuture.allOf(a.gatherAndSendSignal(), b.gatherAndSendSignal()).join();
+            a.getConnectedFuture().get(5, TimeUnit.SECONDS);
+            b.getConnectedFuture().get(5, TimeUnit.SECONDS);
+            int aPort = port(a), bPort = port(b);
+            assertEquals(bPort, a.getSelectedRemoteAddress().getPort(), "controller selected B's socket");
+            assertEquals(aPort, b.getSelectedRemoteAddress().getPort(), "controlled selected A's socket");
+
+            // Data only flows when each side's selected address is where the other's packets really come from
+            CountDownLatch both = new CountDownLatch(2);
+            a.setPacketConsumer(bytes -> both.countDown());
+            b.setPacketConsumer(bytes -> both.countDown());
+            byte[] ping = "ping".getBytes(StandardCharsets.UTF_8);
+            a.send(ping, 0, ping.length);
+            b.send(ping, 0, ping.length);
+            assertTrue(both.await(2, TimeUnit.SECONDS), "both directions must deliver on the selected pair");
+        } finally {
+            a.close();
+            b.close();
+        }
+    }
+
+    private static int port(IceAgent agent) {
+        return agent.getLocalCandidates().get(0).port;
+    }
+
+    /** The signal with its candidates replaced by 192.0.2.1 (unreachable), 127.0.0.2 and 127.0.0.1 on the agent's port. */
+    private static JsonObject twoAdapters(JsonObject sig) {
+        JsonObject copy = sig.deepCopy();
+        int port = sig.getAsJsonArray("candidates").get(0).getAsJsonObject().get("port").getAsInt();
+        JsonArray cands = new JsonArray();
+        long prio = IceAgent.PRIORITY_HOST;
+        for (String ip : new String[] {"192.0.2.1", "127.0.0.2", "127.0.0.1"}) {
+            JsonObject c = new JsonObject();
+            c.addProperty("type", "host");
+            c.addProperty("ip", ip);
+            c.addProperty("port", port);
+            c.addProperty("prio", prio--);
+            cands.add(c);
+        }
+        copy.add("candidates", cands);
+        return copy;
+    }
 }
