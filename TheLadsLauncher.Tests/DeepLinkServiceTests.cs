@@ -5,40 +5,88 @@ namespace TheLadsLauncher.Tests;
 
 public class DeepLinkServiceTests
 {
-    [Theory]
-    [InlineData("lads://join/play.thelads.net", "play.thelads.net", 25565)]
-    [InlineData("lads://connect/hypixel.net:25566", "hypixel.net", 25566)]
-    [InlineData("lads://server/mc.hypixel.net", "mc.hypixel.net", 25565)]
-    public void ParseUri_ServerJoin_ParsedCorrectly(string uri, string expectedHost, int expectedPort)
+    [Fact]
+    public void ParseUri_ServerJoin_ValidDnsAndPort_ParsedCorrectly()
     {
-        var action = DeepLinkService.ParseUri(uri);
+        var action = DeepLinkService.ParseUri("lads://join/play.thelads.net:25565");
 
         Assert.Equal(DeepLinkActionType.JoinServer, action.Type);
-        Assert.Equal(expectedHost, action.Target);
-        Assert.Equal(expectedPort, action.Port);
+        Assert.Equal("play.thelads.net", action.Target);
+        Assert.Equal(25565, action.Port);
     }
 
-    [Theory]
-    [InlineData("lads://launch/ZeroSMP", "ZeroSMP")]
-    [InlineData("lads://profile/26.3%20OptiFine", "26.3 OptiFine")]
-    [InlineData("lads://play/Forge189", "Forge189")]
-    public void ParseUri_LaunchProfile_ParsedCorrectly(string uri, string expectedProfile)
+    [Fact]
+    public void ParseUri_ServerJoin_ValidIPv4_DefaultPort()
     {
-        var action = DeepLinkService.ParseUri(uri);
+        var action = DeepLinkService.ParseUri("lads://connect/192.168.1.100");
+
+        Assert.Equal(DeepLinkActionType.JoinServer, action.Type);
+        Assert.Equal("192.168.1.100", action.Target);
+        Assert.Equal(25565, action.Port);
+    }
+
+    [Fact]
+    public void ParseUri_ServerJoin_RejectsInvalidHostOrPort()
+    {
+        var actionBadHost = DeepLinkService.ParseUri("lads://join/invalid host with spaces;cmd");
+        var actionBadPort = DeepLinkService.ParseUri("lads://join/play.thelads.net:999999");
+        var actionNegativePort = DeepLinkService.ParseUri("lads://join/play.thelads.net:-5");
+
+        Assert.Equal(DeepLinkActionType.None, actionBadHost.Type);
+        Assert.Equal(DeepLinkActionType.None, actionBadPort.Type);
+        Assert.Equal(DeepLinkActionType.None, actionNegativePort.Type);
+    }
+
+    [Fact]
+    public void ParseUri_LaunchProfile_ParsedCorrectly()
+    {
+        var action = DeepLinkService.ParseUri("lads://launch/Hardcore-26.3");
 
         Assert.Equal(DeepLinkActionType.LaunchProfile, action.Type);
-        Assert.Equal(expectedProfile, action.Target);
+        Assert.Equal("Hardcore-26.3", action.Target);
+    }
+
+    [Fact]
+    public void ParseUri_UnknownAction_ReturnsUnknownType()
+    {
+        var action = DeepLinkService.ParseUri("lads://steal-data/payload");
+
+        Assert.Equal(DeepLinkActionType.Unknown, action.Type);
+        Assert.Equal("steal-data", action.Target);
+    }
+
+    [Fact]
+    public void ParseUri_InvalidScheme_ReturnsNone()
+    {
+        var action = DeepLinkService.ParseUri("http://play.thelads.net");
+
+        Assert.Equal(DeepLinkActionType.None, action.Type);
+        Assert.Null(action.Target);
     }
 
     [Theory]
-    [InlineData("https://example.com")]
-    [InlineData("lads://unknown/something")]
-    [InlineData("")]
-    [InlineData(null)]
-    public void ParseUri_InvalidOrUnknown_ReturnsNone(string? uri)
+    [InlineData("play.thelads.net", true)]
+    [InlineData("127.0.0.1", true)]
+    [InlineData("mc.hypixel.net", true)]
+    [InlineData("invalid host", false)]
+    [InlineData("test;rm -rf", false)]
+    [InlineData("test\"inject", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void IsValidHost_ValidatesProperly(string? host, bool expected)
     {
-        var action = DeepLinkService.ParseUri(uri);
+        Assert.Equal(expected, DeepLinkService.IsValidHost(host));
+    }
 
-        Assert.Equal(DeepLinkActionType.None, action.Type);
+    [Theory]
+    [InlineData(25565, true)]
+    [InlineData(1, true)]
+    [InlineData(65535, true)]
+    [InlineData(0, false)]
+    [InlineData(-1, false)]
+    [InlineData(65536, false)]
+    public void IsValidPort_ValidatesRange(int port, bool expected)
+    {
+        Assert.Equal(expected, DeepLinkService.IsValidPort(port));
     }
 }

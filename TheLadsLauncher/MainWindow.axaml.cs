@@ -140,6 +140,7 @@ public partial class MainWindow : Window
         InitializeProductivity();
         LoadHomeNewsFeed();
         TheLadsLauncher.Services.NotificationService.Initialize(new TheLadsLauncher.Services.AvaloniaWindowNotifier(new Avalonia.Controls.Notifications.WindowNotificationManager(this)));
+        InitializeDeepLinking();
         if (settings.LauncherVersion != Program.Version)
         {
             settings.LauncherVersion = Program.Version;
@@ -294,6 +295,12 @@ public partial class MainWindow : Window
             StartupMining.Stop();
             if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
             LauncherStartupOverlay.IsVisible = false;
+            if (Program.InitialDeepLink != null)
+            {
+                var initial = Program.InitialDeepLink;
+                Program.InitialDeepLink = null;
+                _ = HandleDeepLinkAsync(initial);
+            }
             int pagePreview = Array.IndexOf(args, "--preview-page");
             if (pagePreview >= 0 && pagePreview + 2 < args.Length) { await RunPagePreviewAsync(args[pagePreview + 1], Path.GetFullPath(args[pagePreview + 2])); return; }
             int discoveryPreview = Array.IndexOf(args, "--preview-discovery");
@@ -6077,5 +6084,5 @@ public class AvaloniaMsalProvider : IAuthenticationProvider
     public XboxAuthNet.Game.Authenticators.ISessionValidator CreateSessionValidator() => XboxAuthNet.Game.Authenticators.StaticValidator.Invalid;
     public XboxAuthNet.Game.Authenticators.IAuthenticator ClearSession() => _builder.ClearSession();
     public XboxAuthNet.Game.Authenticators.IAuthenticator Signout() => _builder.ClearSession();
-}
 
+}

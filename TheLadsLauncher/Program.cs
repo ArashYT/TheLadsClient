@@ -63,6 +63,11 @@ class Program
         {
             if (arg.StartsWith(TheLadsLauncher.Services.DeepLinkService.ProtocolScheme + "://", StringComparison.OrdinalIgnoreCase))
             {
+                if (TheLadsLauncher.Services.DeepLinkService.TryForwardToRunningInstanceAsync(arg).GetAwaiter().GetResult())
+                {
+                    Environment.Exit(0);
+                    return;
+                }
                 InitialDeepLink = TheLadsLauncher.Services.DeepLinkService.ParseUri(arg);
                 break;
             }

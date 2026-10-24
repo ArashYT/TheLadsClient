@@ -1,6 +1,10 @@
 using System;
 using System.IO;
+using System.IO.Pipes;
+using System.Net;
 using System.Runtime.Versioning;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Win32;
 
 namespace TheLadsLauncher.Services;
@@ -10,17 +14,46 @@ public enum DeepLinkActionType
     None,
     JoinServer,
     LaunchProfile,
-    InstallPack
+    InstallPack,
+    Unknown
 }
 
 public sealed record DeepLinkAction(DeepLinkActionType Type, string? Target, int Port = 25565, string? Extra = null);
 
 /// <summary>
-/// Handles custom lads:// URL protocol registration and parsing for deep linking (e.g. lads://join/play.thelads.net).
+/// Handles custom lads:// URL protocol registration, single-instance forwarding, host validation,
+/// and URI parsing for deep linking (e.g. lads://join/play.thelads.net:25565).
 /// </summary>
 public static class DeepLinkService
 {
     public const string ProtocolScheme = "lads";
+    public const string PipeName = "TheLadsClient-DeepLinkPipe";
+
+    public static event Action<DeepLinkAction>? DeepLinkReceived;
+
+    /// <summary>
+    /// Validates that a host name is a valid DNS hostname, IPv4, or IPv6 address,
+    /// without injection characters or whitespace.
+    /// </summary>
+    public static bool IsValidHost(string? host)
+    {
+        if (string.IsNullOrWhiteSpace(host)) return false;
+        host = host.Trim();
+        if (host.Length > 255) return false;
+        if (host.Contains(' ') || host.Contains('\t') || host.Contains('/') || host.Contains('\\')
+            || host.Contains('"') || host.Contains('\'') || host.Contains(';') || host.Contains('&'))
+        {
+            return false;
+        }
+
+        var hostType = Uri.CheckHostName(host);
+        return hostType is UriHostNameType.Dns or UriHostNameType.IPv4 or UriHostNameType.IPv6;
+    }
+
+    /// <summary>
+    /// Validates that a network port is between 1 and 65535.
+    /// </summary>
+    public static bool IsValidPort(int port) => port is >= 1 and <= 65535;
 
     /// <summary>
     /// Parses a lads:// URI string into a typed DeepLinkAction.
@@ -28,6 +61,7 @@ public static class DeepLinkService
     /// - lads://join/&lt;server[:port]&gt; or lads://connect/&lt;server[:port]&gt;
     /// - lads://launch/&lt;profileName&gt; or lads://profile/&lt;profileName&gt;
     /// - lads://install/&lt;urlOrPath&gt;
+    /// Unknown or malformed URIs return DeepLinkActionType.Unknown or None.
     /// </summary>
     public static DeepLinkAction ParseUri(string? uriString)
     {
@@ -50,7 +84,7 @@ public static class DeepLinkService
             "join" or "connect" or "server" => ParseServerAction(payload),
             "launch" or "profile" or "play" => new DeepLinkAction(DeepLinkActionType.LaunchProfile, payload),
             "install" or "modpack" => new DeepLinkAction(DeepLinkActionType.InstallPack, payload),
-            _ => new DeepLinkAction(DeepLinkActionType.None, null)
+            _ => new DeepLinkAction(DeepLinkActionType.Unknown, action, Extra: uriString)
         };
     }
 
@@ -69,7 +103,61 @@ public static class DeepLinkService
             port = p;
         }
 
+        if (!IsValidHost(host) || !IsValidPort(port))
+            return new DeepLinkAction(DeepLinkActionType.None, null, Extra: $"Invalid host or port: '{payload}'");
+
         return new DeepLinkAction(DeepLinkActionType.JoinServer, host, port);
+    }
+
+    /// <summary>
+    /// Tries to forward a lads:// URI to an already-running instance over a local named pipe.
+    /// Returns true if delivered to an active instance; false if no instance was listening.
+    /// </summary>
+    public static async Task<bool> TryForwardToRunningInstanceAsync(string uriString)
+    {
+        try
+        {
+            using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
+            await client.ConnectAsync(300);
+            using var writer = new StreamWriter(client) { AutoFlush = true };
+            await writer.WriteLineAsync(uriString);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Starts background named pipe listener for deep links arriving while the launcher is open.
+    /// </summary>
+    public static void StartIpcListener(Action<DeepLinkAction> onActionReceived)
+    {
+        _ = Task.Run(async () =>
+        {
+            while (true)
+            {
+                try
+                {
+                    using var server = new NamedPipeServerStream(PipeName, PipeDirection.In, 1,
+                        PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                    await server.WaitForConnectionAsync();
+                    using var reader = new StreamReader(server);
+                    string? line = await reader.ReadLineAsync();
+                    if (!string.IsNullOrWhiteSpace(line))
+                    {
+                        var action = ParseUri(line);
+                        onActionReceived(action);
+                        DeepLinkReceived?.Invoke(action);
+                    }
+                }
+                catch
+                {
+                    await Task.Delay(500);
+                }
+            }
+        });
     }
 
     /// <summary>
@@ -104,9 +192,6 @@ public static class DeepLinkService
         }
     }
 
-    /// <summary>
-    /// Checks whether the lads:// protocol is currently registered in Windows registry.
-    /// </summary>
     [SupportedOSPlatform("windows")]
     public static bool IsProtocolRegistered()
     {
@@ -114,7 +199,7 @@ public static class DeepLinkService
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(@"Software\Classes\" + ProtocolScheme);
-            return key != null && key.GetValue("URL Protocol") != null;
+            return key != null;
         }
         catch
         {
