@@ -406,6 +406,70 @@ public class ModuleManager {
         register(borderless, Module.Category.MECHANIC);
         register(new SurvivalTweaksModule(), Module.Category.MECHANIC);
         register(new StackRefillModule(), Module.Category.MECHANIC);
+        // PvP camera and world visuals (parity-1023, all off by default; Freelook and Fog Customizer's see-through options are gated).
+        register(new FreelookModule(), Module.Category.MECHANIC);
+        register(new ViewModelModule(), Module.Category.MECHANIC);
+        register(new TimeChangerModule(), Module.Category.MECHANIC);
+        register(new WeatherChangerModule(), Module.Category.MECHANIC);
+        register(new FogCustomizerModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.LogPrunerModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.NumericalEnchantmentsModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ConfirmDisconnectModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.DropConfirmationModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ScrollTweaksModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.AutoPerspectiveModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.AutoBackupModule(), Module.Category.MECHANIC);
+        // PvP visuals (client PvpVisuals; each adapter hooks them): all off by default, visual only but Hitboxes' Through Walls.
+        register(new BlockOverlayModule(), Module.Category.MECHANIC);
+        register(new HitColorModule(), Module.Category.MECHANIC);
+        register(new DamageTintModule(), Module.Category.MECHANIC);
+        register(new GlintColorizerModule(), Module.Category.MECHANIC);
+        register(new Module(com.thelads.core.client.PvpVisuals.HIDE_MOB_DEATHS, "Dying mobs vanish at once instead of tipping over red. "
+            + "Players still show their death."), Module.Category.MECHANIC);
+        register(new MountOpacityModule(), Module.Category.MECHANIC);
+        register(new HitboxesModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ColorSaturationModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.MotionBlurModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.MenuBlurModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.HideFoliageModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ClearGlassModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.CustomSkyModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ChunkAnimatorModule(), Module.Category.MECHANIC);
+
+        // PvP visuals (PvpVisuals reads these once a tick). On with vanilla's look, so each option works as soon as it is set.
+        Module renderTweaks = new Module(com.thelads.core.client.PvpVisuals.RENDER_TWEAKS, "Entity shadows, lightning bolts, fishing lines and "
+            + "the Elder Guardian curse. Bobbing Disconnect stops the world bobbing while your hand still bobs.");
+        renderTweaks.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.SHADOWS, true));
+        renderTweaks.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.HIDE_LIGHTNING, false));
+        renderTweaks.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.HIDE_FISHING_LINE, false));
+        renderTweaks.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.HIDE_ELDER_GUARDIAN, false));
+        renderTweaks.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.BOBBING_DISCONNECT, false));
+        renderTweaks.setEnabled(true);
+        register(renderTweaks, Module.Category.MECHANIC);
+
+        Module overlays = new Module(com.thelads.core.client.PvpVisuals.OVERLAYS, "How much the fire, carved pumpkin and nether portal overlays "
+            + "cover your screen. Low Fire is in 1.7 Animations.");
+        overlays.addOption(new SliderOption(com.thelads.core.client.PvpVisuals.FIRE_OPACITY, 100, 0, 100, 5).percent());
+        overlays.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.FIRE_RESISTANCE, false));
+        overlays.addOption(new SliderOption(com.thelads.core.client.PvpVisuals.PUMPKIN_OPACITY, 100, 0, 100, 5).percent());
+        overlays.addOption(new SliderOption(com.thelads.core.client.PvpVisuals.PORTAL_OPACITY, 100, 0, 100, 5).percent());
+        overlays.setEnabled(true);
+        register(overlays, Module.Category.MECHANIC);
+
+        Module totem = new Module(com.thelads.core.client.PvpVisuals.TOTEM, "The Totem of Undying pop animation: hide it or change its size.");
+        totem.addOption(new BoolOption(com.thelads.core.client.PvpVisuals.HIDE_TOTEM, false));
+        totem.addOption(new SliderOption(com.thelads.core.client.PvpVisuals.TOTEM_SCALE, 100, 25, 200, 5).percent());
+        totem.setEnabled(true);
+        register(totem, Module.Category.MECHANIC);
+
+        Module darkMode = new Module(com.thelads.core.client.PvpVisuals.DARK_MODE, "Darkens chest, inventory and other container screens; their "
+            + "titles turn light.");
+        darkMode.addOption(new SliderOption(com.thelads.core.client.PvpVisuals.DARKNESS, 60, 30, 90, 5).percent());
+        register(darkMode, Module.Category.MECHANIC);
+
+        // Other players' health is not on vanilla's name tags: HypixelSafetyManager gates it (risky set).
+        register(new Module(com.thelads.core.client.PvpVisuals.NAMETAG_HEALTH, "Shows each player's health after their name tag. "
+            + "Off on servers that don't allow it."), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.UnlimitedCommandLengthModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.AutoTextModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.SlotLockingModule(), Module.Category.MECHANIC);

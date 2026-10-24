@@ -402,7 +402,8 @@ class ShareCodeTest {
         String code = ShareCode.encode(payload);
         System.out.println("TYPICAL_SHARE_CODE_LENGTH: " + code.length() + " chars (bytes: " + code.getBytes(StandardCharsets.UTF_8).length + ")");
         assertTrue(code.startsWith(ShareCode.PREFIX));
-        // 1.9.11: Better F3's per-line toggles and section colours took the full code past 8 KB; the decoder's cap is 16 KB.
-        assertTrue(code.length() > 50 && code.length() < 10_000, "Typical code size should be between 50 chars and 10 KB");
+        // 1.9.11: Better F3's per-line toggles and section colours took the full code past 8 KB; parity 1.9.19's modules past 10 KB.
+        // What must hold is the decoder's cap (16 KB): a code past it could not be pasted back.
+        assertTrue(code.length() > 50 && code.length() < ShareCode.MAX_CODE_CHARS, "Typical code size should be between 50 chars and the 16 KB cap");
     }
 }

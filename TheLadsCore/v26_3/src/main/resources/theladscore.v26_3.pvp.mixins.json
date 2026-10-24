@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v26_2.feature.pvp.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "OverlayTextureAccessor26",
+    "PvpBlockOverlayMixin26",
+    "PvpHitboxMixin26",
+    "PvpDebugRendererMixin26",
+    "PvpEntityDispatcherMixin26",
+    "PvpMountStateMixin26",
+    "PvpMountOpacityMixin26",
+    "PvpGlintMixin26",
+    "PvpGlintSpeedMixin26",
+    "PvpShinyPotionMixin26"
+  ]
+}

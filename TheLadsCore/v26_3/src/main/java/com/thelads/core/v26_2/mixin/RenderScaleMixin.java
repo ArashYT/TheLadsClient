@@ -68,6 +68,7 @@ public abstract class RenderScaleMixin {
             lads$restoreNativeTarget(true);
             lads$renderScale.composite(destination);
         }
+        com.thelads.core.v26_2.pvp.ScreenEffects26.afterWorld(mainRenderTarget); // Color Saturation, Motion Blur
         com.thelads.core.v26_2.feature.HudEditorView.copyWorld(mainRenderTarget);
     }
 
