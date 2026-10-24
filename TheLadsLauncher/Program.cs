@@ -18,6 +18,15 @@ class Program
     public static void Main(string[] args)
     {
         Velopack.VelopackApp.Build().SetAutoApplyOnStartup(false).Run();
+        // After an update the launcher inherits Update.exe's High priority (raised by the bridge), which would starve games started from it.
+        // Only High/RealTime come down, so QA's Idle/BelowNormal runs stay as they are.
+        try
+        {
+            using var self = System.Diagnostics.Process.GetCurrentProcess();
+            if (self.PriorityClass is System.Diagnostics.ProcessPriorityClass.High or System.Diagnostics.ProcessPriorityClass.RealTime)
+                self.PriorityClass = System.Diagnostics.ProcessPriorityClass.Normal;
+        }
+        catch (Exception) { } // never stops the launcher from starting
 
         if (System.Linq.Enumerable.Contains(args, "--test-services"))
         {

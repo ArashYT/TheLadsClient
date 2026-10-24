@@ -133,6 +133,17 @@ public partial class MainWindow : Window
             WindowStartupLocation = WindowStartupLocation.Manual;
             Position = new PixelPoint(-32000, -32000);
         }
+        // After an update the new launcher opens exactly where the old one was, under the bridge's snapshot of it.
+        else if (UpdateBridge.TryParseRestoreWindow(Environment.GetCommandLineArgs(), out var restorePosition, out var restoreWidth, out var restoreHeight, out var restoreState))
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Position = restorePosition;
+            Width = restoreWidth;
+            Height = restoreHeight;
+            WindowState = restoreState;
+        }
+        Opened += (_, _) => Dispatcher.UIThread.Post(UpdateBridge.SignalLauncherShown, DispatcherPriority.Background);
+        _autoUpdater.PrepareRestart = PrepareUpdateRestart;
 
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
@@ -245,7 +256,7 @@ public partial class MainWindow : Window
         int dots = 0;
         double dotAccumulatorMs = 0, shownProgress = 0, lastTickMs = 0;
         if (settings.ReducedMotion) StartupMining.Freeze(0.81);
-        var startupAnimTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        var startupAnimTimer = _startupAnimTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         startupAnimTimer.Tick += (s, e) =>
         {
             double t = startupSw.Elapsed.TotalMilliseconds, dt = t - lastTickMs;
@@ -292,6 +303,7 @@ public partial class MainWindow : Window
             StartupMining.Stop();
             if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
             LauncherStartupOverlay.IsVisible = false;
+            UpdateBridge.SignalLauncherShown();   // still running after a startup install means it failed: dismiss its bridge now, not after 15 s
             int pagePreview = Array.IndexOf(args, "--preview-page");
             if (pagePreview >= 0 && pagePreview + 2 < args.Length) { await RunPagePreviewAsync(args[pagePreview + 1], Path.GetFullPath(args[pagePreview + 2])); return; }
             int discoveryPreview = Array.IndexOf(args, "--preview-discovery");
@@ -498,6 +510,45 @@ public partial class MainWindow : Window
     private bool _releaseNotesOpen;
     private bool _windowClosed;
     private double? _startupDownload; // 0..1 once the updater reports a download; drives the startup progress bar
+    private DispatcherTimer? _startupAnimTimer;
+
+    /// <summary>Right before Update.exe takes over: puts the installing screen up, hands a snapshot of it to the bridge
+    /// (which holds it on screen until the new launcher shows) and returns the args that reopen the launcher in this place.</summary>
+    private string[] PrepareUpdateRestart(string version)
+    {
+        if (WindowState == WindowState.Minimized) return Array.Empty<string>();   // nothing on screen to hold; the new launcher opens centred
+        _startupAnimTimer?.Stop();
+        StartupProgressShine.IsVisible = false;   // the bridge sweeps its own shine; a frozen one would sit under it
+        StartupLoadingSpinner.Text = $"Installing update v{version}";
+        LoadingDots.Text = "...";
+        StartupPercentText.Text = "100%";
+        var track = (Control)StartupProgressFill.Parent!;
+        StartupProgressFill.Width = track.Width;
+        LauncherStartupOverlay.IsVisible = true;
+        UpdateLayout();
+        try
+        {
+            // Physical pixels throughout: the bridge draws the PNG 1:1 over the same screen pixels.
+            double scale = RenderScaling;
+            var size = PixelSize.FromSize(ClientSize, scale);
+            string snapshot = Path.Combine(UpdateBridge.Folder, "snapshot.png");
+            Directory.CreateDirectory(UpdateBridge.Folder);
+            using (var bitmap = new RenderTargetBitmap(size, new Vector(96 * scale, 96 * scale)))
+            {
+                bitmap.Render(this);
+                bitmap.Save(snapshot);
+            }
+            // Both bar corners go through PointToScreen, so the UI-scale LayoutTransform is included.
+            var bar = new PixelRect(track.PointToScreen(new Point(0, 0)), track.PointToScreen(new Point(track.Bounds.Width, track.Bounds.Height)));
+            if (!UpdateBridge.TryStart(snapshot, new PixelRect(this.PointToScreen(new Point(0, 0)), size), bar, settings.ReducedMotion))
+                Log("[Updater] The installing screen could not be handed to the bridge; updating without it.");
+        }
+        catch (Exception ex)
+        {
+            Log($"[Updater] Could not snapshot the installing screen ({ex.Message}); updating without the bridge.");
+        }
+        return new[] { UpdateBridge.RestoreWindowArg, UpdateBridge.FormatRestoreWindow(Position, ClientSize.Width, ClientSize.Height, WindowState) };
+    }
 
     /// <summary>The startup screen splits "Downloading v1.3.5: 42%" (VelopackUpdateBackend's wording) into a status line and a large percentage.</summary>
     private void ShowStartupStatus(string message)
@@ -566,6 +617,9 @@ public partial class MainWindow : Window
     private void UpdateNow_Click(object? sender, RoutedEventArgs e)
     {
         if (_autoUpdater.InstallNow(UpdateBlocked, ReportUpdate)) return;
+        // A failed install must not leave its installing screen, or the bridge's copy of it, over the launcher.
+        LauncherStartupOverlay.IsVisible = false;
+        UpdateBridge.SignalLauncherShown();
         ReportUpdate(UpdateBlocked()
             ? "Close Minecraft and finish signing in or mod changes, then click Update again."
             : "The update is not ready yet; the launcher will offer it again shortly.");
