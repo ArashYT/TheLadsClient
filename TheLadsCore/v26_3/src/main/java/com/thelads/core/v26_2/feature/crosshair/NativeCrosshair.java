@@ -7,6 +7,7 @@ import com.thelads.core.client.CrosshairDrawingStore;
 import com.thelads.core.config.ColorOption;
 import com.thelads.core.config.HudSettings;
 import com.thelads.core.modules.CrosshairModule;
+import com.thelads.core.v26_2.feature.pvp.MlgClutch26;
 import com.thelads.core.v26_2.feature.NativeQualityOfLife;
 import java.awt.Color;
 import java.util.ArrayList;
@@ -93,6 +94,7 @@ public final class NativeCrosshair {
         }
         if(!flag("Disable Attack Indicator")&&(!axes||flag("Debug Attack Indicator"))) attack(graphics,cx,cy,context.thirdPerson());
         if(!flag("Disable Crosshair")&&!axes) indicators(graphics,cx,cy,partial,alpha);
+        MlgClutch26.renderReticle(graphics, cx, cy);
     }
     private static boolean previewing;
     /** Lads settings page: the configured crosshair as in game (first-person opacity, base colour, no dynamic gap) at cx, cy. False when another mod draws it. */

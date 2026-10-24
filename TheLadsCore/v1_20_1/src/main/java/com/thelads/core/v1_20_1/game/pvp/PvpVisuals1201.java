@@ -82,6 +82,7 @@ public final class PvpVisuals1201 {
     private static final Map<String, Boolean> POTION_SHINES = new ConcurrentHashMap<>();
     private static final Edges EDGES = new Edges();
     private static int hurtPixel;
+    private static int lastHurtKey;
     private static RenderType outlineLines, boxLines;
     private static float outlineWidth, boxWidth;
     private static boolean boxWalls, glintTinted;
@@ -107,21 +108,37 @@ public final class PvpVisuals1201 {
         PvpVisuals.tick();
         if (LightOverlay.active() && mc.level != null && mc.player != null) scan(mc.level, mc.player);
         HitColorModule hit = PvpVisuals.HIT_COLOR;
-        int pixel = hit.on ? HitColorModule.abgr(HitColorModule.overlayPixel(hit.argb)) : VANILLA_HURT;
-        if (pixel != hurtPixel) paintHurt(mc, pixel);
+        int def = hit.on ? HitColorModule.abgr(HitColorModule.overlayPixel(hit.argb)) : VANILLA_HURT;
+        int fire = hit.on ? HitColorModule.abgr(HitColorModule.overlayPixel(hit.fireArgb)) : VANILLA_HURT;
+        int fall = hit.on ? HitColorModule.abgr(HitColorModule.overlayPixel(hit.fallArgb)) : VANILLA_HURT;
+        int drown = hit.on ? HitColorModule.abgr(HitColorModule.overlayPixel(hit.drownArgb)) : VANILLA_HURT;
+        int key = def ^ (fire << 1) ^ (fall << 2) ^ (drown << 3);
+        if (key != lastHurtKey) {
+            paintHurt(mc, def, fire, fall, drown);
+            lastHurtKey = key;
+        }
     }
 
-    /** Hit Color: the overlay texture's hurt rows (v 0 to 7; models sample v 3) in the new colour, uploaded as OverlayTexture does. */
-    private static void paintHurt(Minecraft mc, int pixel) {
+    /** Hit Color: the overlay texture's hurt rows (v 0 to 7) in the new colours, uploaded as OverlayTexture does. */
+    private static void paintHurt(Minecraft mc, int def, int fire, int fall, int drown) {
         DynamicTexture texture = ((OverlayTextureAccessor1201) mc.gameRenderer.overlayTexture()).lads$texture();
         NativeImage image = texture.getPixels();
         if (image == null) return;
-        for (int y = 0; y < 8; y++) for (int x = 0; x < 16; x++) image.setPixelRGBA(x, y, pixel);
+        for (int x = 0; x < 16; x++) {
+            image.setPixelRGBA(x, 0, def);
+            image.setPixelRGBA(x, 1, fire);
+            image.setPixelRGBA(x, 2, fall);
+            image.setPixelRGBA(x, 3, def);
+            image.setPixelRGBA(x, 4, drown);
+            image.setPixelRGBA(x, 5, def);
+            image.setPixelRGBA(x, 6, def);
+            image.setPixelRGBA(x, 7, def);
+        }
         RenderSystem.activeTexture(33985);
         texture.bind();
         image.upload(0, 0, 0, 0, 0, image.getWidth(), image.getHeight(), false, true, false, false);
         RenderSystem.activeTexture(33984);
-        hurtPixel = pixel;
+        hurtPixel = def;
     }
 
     /** Block Overlay in place of LevelRenderer.renderHitOutline; false while the module is off (vanilla draws). */
@@ -289,6 +306,7 @@ public final class PvpVisuals1201 {
     }
 
     private static void drawLightOverlay(WorldRenderContext context) {
+        MlgClutch1201.renderWorld(context);
         MultiBufferSource buffers = context.consumers();
         if (!LightOverlay.active() || buffers == null) return;
         Vec3 camera = context.camera().getPosition();

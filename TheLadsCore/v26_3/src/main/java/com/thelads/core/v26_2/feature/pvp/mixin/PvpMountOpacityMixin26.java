@@ -1,6 +1,7 @@
 package com.thelads.core.v26_2.feature.pvp.mixin;
 
 import com.llamalad7.mixinextras.sugar.Local;
+import com.thelads.core.modules.HitColorModule;
 import com.thelads.core.v26_2.feature.pvp.PvpVisuals26;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
@@ -12,8 +13,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Mount Opacity: the player's mount takes vanilla's see-through path (getRenderType's forceTransparent: the translucent render type
- * an invisible mob shows a spectator through) in white at the module's opacity instead of 15%.
+ * Mount Opacity & Damage State: extracts mount status and damage flash overlay V for LivingEntityRenderState.
  */
 @Mixin(LivingEntityRenderer.class)
 public class PvpMountOpacityMixin26 {
@@ -24,6 +24,13 @@ public class PvpMountOpacityMixin26 {
         at = @At("TAIL"))
     private void lads$markMount(LivingEntity entity, LivingEntityRenderState state, float partial, CallbackInfo ci) {
         ((PvpVisuals26.MountState) state).lads$mount(PvpVisuals26.isMount(entity));
+        HitColorModule.DamageType type = HitColorModule.getDamageType(entity.getId());
+        if (type == HitColorModule.DamageType.DEFAULT) {
+            if (entity.isOnFire()) type = HitColorModule.DamageType.FIRE;
+            else if (entity.isUnderWater() && entity.getAirSupply() <= 0) type = HitColorModule.DamageType.DROWNING;
+            else if (entity.fallDistance > 2.0F) type = HitColorModule.DamageType.FALL;
+        }
+        ((PvpVisuals26.DamageState) state).lads$damageV(type.overlayV);
     }
 
     @ModifyArg(method = SUBMIT, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/LivingEntityRenderer;getRenderType("

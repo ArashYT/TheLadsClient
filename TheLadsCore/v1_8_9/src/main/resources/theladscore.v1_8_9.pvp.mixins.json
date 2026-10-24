@@ -23,6 +23,10 @@
     "MobAppearanceMixin189",
     "RenderFishLineMixin189",
     "RenderLightningBoltMixin189",
-    "RenderShadowMixin189"
+    "RenderShadowMixin189",
+    "BlockBedMixin189",
+    "BlockModelRendererBedMixin189",
+    "BakedQuadBedMixin189",
+    "EntityPickupFXMixin189"
   ]
 }

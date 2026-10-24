@@ -7,6 +7,7 @@
     "defaultRequire": 1
   },
   "client": [
+    "LivingEntityOverlayMixin26",
     "OverlayTextureAccessor26",
     "PvpBlockOverlayMixin26",
     "PvpHitboxMixin26",
@@ -16,6 +17,7 @@
     "PvpMountOpacityMixin26",
     "PvpGlintMixin26",
     "PvpGlintSpeedMixin26",
-    "PvpShinyPotionMixin26"
+    "PvpShinyPotionMixin26",
+    "ItemPickupParticleMixin26"
   ]
 }

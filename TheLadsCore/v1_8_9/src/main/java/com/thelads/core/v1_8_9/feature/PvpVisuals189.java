@@ -5,6 +5,7 @@ import com.thelads.core.client.PvpVisuals;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.BlockOverlayModule;
 import com.thelads.core.modules.GlintColorizerModule;
+import com.thelads.core.modules.HitColorModule;
 import com.thelads.core.modules.HitboxesModule;
 import com.thelads.core.modules.ItemDespawnModule;
 import com.thelads.core.modules.LootBeamsModule;
@@ -90,6 +91,20 @@ public final class PvpVisuals189 {
         @SubscribeEvent
         public void world(RenderWorldLastEvent event) {
             if (LightOverlay.active()) drawLightOverlay();
+            MlgClutch189.renderWorld(event.partialTicks);
+        }
+
+        @SubscribeEvent
+        public void onLivingHurt(net.minecraftforge.event.entity.living.LivingHurtEvent event) {
+            if (event.entity != null && event.source != null) {
+                HitColorModule.DamageType type = HitColorModule.classifyDamageSource(
+                    event.source.damageType,
+                    event.source.isFireDamage(),
+                    event.source == net.minecraft.util.DamageSource.fall,
+                    event.source == net.minecraft.util.DamageSource.drown
+                );
+                HitColorModule.recordDamage(event.entity.getEntityId(), type);
+            }
         }
     }
 
