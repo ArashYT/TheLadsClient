@@ -73,6 +73,12 @@ public static class UpdateBridge
         }
     }
 
+    /// <summary>A rect in window DIPs as screen pixels, rounded to nearest. Avalonia rounds sizes up (PixelSize.FromSize) and points
+    /// down (PointToScreen), so float noise (900 px / 1.75 x 1.75 = 900.0000000001) made the snapshot and bridge 1 px too big.</summary>
+    public static PixelRect ToScreenPixels(PixelPoint clientOrigin, Rect rect, double scale) =>
+        new(new PixelPoint(clientOrigin.X + (int)Math.Round(rect.X * scale), clientOrigin.Y + (int)Math.Round(rect.Y * scale)),
+            new PixelPoint(clientOrigin.X + (int)Math.Round(rect.Right * scale), clientOrigin.Y + (int)Math.Round(rect.Bottom * scale)));
+
     public static string FormatRestoreWindow(PixelPoint position, double width, double height, WindowState state) =>
         string.Format(CultureInfo.InvariantCulture, "{0},{1},{2},{3},{4}", position.X, position.Y, width, height, state);
 

@@ -546,10 +546,12 @@ public partial class MainWindow : Window
         {
             string snapshot = Path.Combine(UpdateBridge.Folder, "snapshot.png");
             var size = RenderInstallingScreen(version, snapshot);
-            // Both bar corners go through PointToScreen, so the UI-scale LayoutTransform is included.
+            var origin = this.PointToScreen(new Point(0, 0));
+            // Both bar corners go through TranslatePoint, so the UI-scale LayoutTransform is included.
             var track = (Control)StartupProgressFill.Parent!;
-            var bar = new PixelRect(track.PointToScreen(new Point(0, 0)), track.PointToScreen(new Point(track.Bounds.Width, track.Bounds.Height)));
-            if (!UpdateBridge.TryStart(snapshot, new PixelRect(this.PointToScreen(new Point(0, 0)), size), bar, settings.ReducedMotion))
+            var bar = UpdateBridge.ToScreenPixels(origin, new Rect(track.TranslatePoint(default, this)!.Value,
+                track.TranslatePoint(new Point(track.Bounds.Width, track.Bounds.Height), this)!.Value), RenderScaling);
+            if (!UpdateBridge.TryStart(snapshot, new PixelRect(origin, size), bar, settings.ReducedMotion))
                 Log("[Updater] The installing screen could not be handed to the bridge; updating without it.");
         }
         catch (Exception ex)
@@ -580,7 +582,7 @@ public partial class MainWindow : Window
         LauncherStartupOverlay.Measure(area.Size);
         LauncherStartupOverlay.Arrange(area);
         double scale = RenderScaling;
-        var size = PixelSize.FromSize(ClientSize, scale);
+        var size = UpdateBridge.ToScreenPixels(default, new Rect(ClientSize), scale).Size;   // the bridge's client rect uses the same size
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         using var bitmap = new RenderTargetBitmap(size, new Vector(96 * scale, 96 * scale));
         bitmap.Render(this);

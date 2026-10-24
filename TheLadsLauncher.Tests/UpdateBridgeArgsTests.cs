@@ -61,4 +61,21 @@ public class UpdateBridgeArgsTests
     {
         UpdateBridge.SignalLauncherShown();
     }
+
+    [Theory]
+    [InlineData(1.0)]
+    [InlineData(1.25)]
+    [InlineData(1.5)]
+    [InlineData(1.75)]   // 900 / 1.75 * 1.75 is 900.0000000001: rounding up made the snapshot 901 px
+    public void SnapshotSizeMatchesTheWindowsClientPixels(double scale)
+    {
+        foreach (var (w, h) in new[] { (900, 921), (1259, 709), (1280, 720), (1920, 1009) })
+        {
+            var clientDips = new Avalonia.Size(w / scale, h / scale);   // what Avalonia reports as ClientSize for a w x h px client area
+            var png = UpdateBridge.ToScreenPixels(default, new Rect(clientDips), scale).Size;
+            var client = UpdateBridge.ToScreenPixels(new PixelPoint(-1920, 40), new Rect(clientDips), scale);
+            Assert.Equal(new PixelSize(w, h), png);
+            Assert.Equal(new PixelRect(-1920, 40, w, h), client);
+        }
+    }
 }
