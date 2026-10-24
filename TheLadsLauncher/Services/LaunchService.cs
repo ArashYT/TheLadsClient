@@ -85,7 +85,9 @@ public class LaunchService : ILaunchService
         {
             statusCallback?.Invoke($"Installing bundled core for Minecraft {profile.MinecraftVersion}...");
             await BundledModInstaller.InstallAsync(_bundleRoot, gameDir, profile.MinecraftVersion, cancellationToken);
-            await ClientModInstaller.InstallAsync(_bundleRoot, gameDir, profile.MinecraftVersion, statusCallback, cancellationToken);
+            if (await ClientModInstaller.InstallAsync(_bundleRoot, gameDir, profile.MinecraftVersion, statusCallback, cancellationToken,
+                    optiFinePackRenderer: settings.OptiFinePackRenderer) is { } packNotice)
+                report(packNotice);
             // Downloaded from optifine.net and verified; any failure only means the game starts without it.
             if (usesForge && await OptiFineInstaller.InstallAsync(_pathService.BaseDirectory, gameDir, _optiFine, statusCallback,
                     cancellationToken) is { } optiFineWarning)

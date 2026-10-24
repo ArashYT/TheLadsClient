@@ -150,7 +150,7 @@ public partial class MainWindow
                      AutoRelaunchOnCrashCheckbox, AutoRejoinServerCheckbox, MultiInstanceCheckbox, FullscreenOnLaunchCheckbox, QuickLaunchCheckbox,
                      SyncScreenshotsCheckbox, ParticleCheckbox, DiscordPresenceCheckbox })
             box.IsCheckedChanged += (_, _) => ScheduleSettingsSave();
-        foreach (var combo in new[] { ThemeSelector, UiScaleSelector, QuickLaunchServerComboBox, GraphicsRendererSelector, JavaSelector })
+        foreach (var combo in new[] { ThemeSelector, UiScaleSelector, QuickLaunchServerComboBox, GraphicsRendererSelector, OptiFinePackRendererSelector, JavaSelector })
             combo.SelectionChanged += (_, _) => ScheduleSettingsSave();
         foreach (var box in new[] { MicrosoftClientIdTextBox, FabricVersionBox, CurseForgeApiKeyBox, ModrinthApiUrlBox, CurseForgeApiUrlBox, MinecraftVersionOverrideBox })
             box.TextChanged += (_, _) => ScheduleSettingsSave();
