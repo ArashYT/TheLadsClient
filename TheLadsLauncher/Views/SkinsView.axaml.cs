@@ -32,6 +32,9 @@ public partial class SkinsView : UserControl
     private MinecraftProfile? _profile;
     private bool _busy, _rendering;
 
+    /// <summary>A skin reached the account (account, skin PNG): the launcher's other player heads show it at once.</summary>
+    public event Action<string, byte[]>? SkinApplied;
+
     public SkinsView()
     {
         InitializeComponent();
@@ -257,10 +260,12 @@ public partial class SkinsView : UserControl
                 // Local accounts: unchanged behaviour, the launcher's skin.png.
                 await File.WriteAllBytesAsync(PathService.Instance.SkinFile, png);
                 CurrentPreview.Child = Preview(skin, model, 2);
+                SkinApplied?.Invoke(_account, png);
                 return $"{skin.Name} is now the local skin for {_account}." + (combo?.CapeId != null ? " Capes need a Microsoft account, so the cape was skipped." : "");
             }
             string token = await TokenAsync();
             var profile = await MinecraftSkinApi.SendAsync(_http, MinecraftSkinApi.UploadSkin(token, png, model), default);
+            SkinApplied?.Invoke(_account, png);
             string done = $"{skin.Name} applied to {_account}";
             if (combo != null)
             {
@@ -485,6 +490,22 @@ public partial class SkinsView : UserControl
             Part(4, 52, 4, 12, 8, 20);
         }
         return canvas;
+    }
+
+    /// <summary>The face with its hat layer, size x size, as the sidebar and the account pickers show a player.</summary>
+    internal static Bitmap Head(byte[] png, int size)
+    {
+        using var skin = Decode(png);
+        int r = skin.PixelSize.Width / 64; // HD skins: the same layout, r pixels per skin pixel
+        if (r < 1) throw new InvalidDataException("not a skin texture");
+        var face = new Canvas { Width = size, Height = size };
+        face.Children.Add(Pixelated(new CroppedBitmap(skin, new PixelRect(8 * r, 8 * r, 8 * r, 8 * r)), size, size));
+        face.Children.Add(Pixelated(new CroppedBitmap(skin, new PixelRect(40 * r, 8 * r, 8 * r, 8 * r)), size, size));
+        face.Measure(new Size(size, size));
+        face.Arrange(new Rect(0, 0, size, size));
+        var head = new RenderTargetBitmap(new PixelSize(size, size));
+        head.Render(face);
+        return head;
     }
 
     private static Image Pixelated(IImage source, double width, double height)

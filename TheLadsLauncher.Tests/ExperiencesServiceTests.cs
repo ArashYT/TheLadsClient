@@ -691,7 +691,14 @@ public class ExperiencesServiceTests : IDisposable
         using var codeReader = new StreamReader(modAZip.GetEntry("code.txt")!.Open());
         Assert.Equal("v1", codeReader.ReadToEnd());
     }
+
+    [Theory]
+    [InlineData("zero-smp-1.20.1", true)]
+    [InlineData("zero-smp-1.20.1-dev", true)]
+    [InlineData("lads-smp-reborn-26.3", true)]
+    [InlineData("my-fabric-pack", false)]
+    public void ExperienceInstancesAreKeptOutOfMyModpacks(string instanceId, bool experience)
+    {
+        Assert.Equal(experience, ExperiencesService.IsExperienceInstance(instanceId));
+    }
 }
-
-
-

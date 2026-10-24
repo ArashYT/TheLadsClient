@@ -98,6 +98,21 @@ public partial class ExperiencesView : UserControl
     public async Task LoadAsync()
     {
         await Dispatcher.UIThread.InvokeAsync(() => RefreshState());
+        await ShowZeroSmpPlayersAsync();
+    }
+
+    /// <summary>Players on Zero SMP right now, fetched again each time Experiences opens.</summary>
+    private async Task ShowZeroSmpPlayersAsync()
+    {
+        ZeroSmpPlayersText.Text = "· checking…";
+        var status = await ServerStatusService.RefreshAsync(ExperiencesService.ZeroSmp.ServerAddress);
+        ZeroSmpStatusDot.Fill = Brush.Parse(status is { Online: true } ? "#50C878" : status == null ? "#7E808A" : "#C44343");
+        ZeroSmpPlayersText.Text = status switch
+        {
+            { Online: true } s => $"· {s.Players:N0}{(s.MaxPlayers > 0 ? $" / {s.MaxPlayers:N0}" : "")} {(s.Players == 1 ? "player" : "players")} online",
+            { Online: false } => "· offline",
+            null => "", // neither status API answered: no claim either way
+        };
     }
 
     public void RefreshState() => RefreshState(null);

@@ -51,4 +51,30 @@ public class MicrosoftClientConfigurationTests
         settings.MicrosoftClientId = "";
         Assert.Equal(RegisteredLadsClientId, settings.MicrosoftClientId);
     }
+
+    [Fact]
+    public void AnUnreadableSettingsFileFallsBackToTheSavedCopyNotDefaults()
+    {
+        using var dir = new TestDirectory();
+        string path = Path.Combine(dir.Path, "settings.json");
+        new LauncherSettings { AllowMultiInstance = true, KeepLauncherOpen = true }.SaveTo(path);
+        new LauncherSettings { AllowMultiInstance = true, KeepLauncherOpen = true }.SaveTo(path); // the first copy becomes .bak
+        Assert.True(File.Exists(path + ".bak"));
+
+        File.WriteAllText(path, "{ \"AllowMultiInstance\": tr"); // cut short
+        var loaded = LauncherSettings.LoadFrom(path);
+        Assert.True(loaded.AllowMultiInstance);
+        Assert.True(loaded.KeepLauncherOpen);
+    }
+
+    [Fact]
+    public void ALockedSettingsFileIsReadOnceItIsFree()
+    {
+        using var dir = new TestDirectory();
+        string path = Path.Combine(dir.Path, "settings.json");
+        new LauncherSettings { AllowMultiInstance = true }.SaveTo(path);
+        var held = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        _ = Task.Run(async () => { await Task.Delay(150); held.Dispose(); });
+        Assert.True(LauncherSettings.LoadFrom(path).AllowMultiInstance);
+    }
 }
