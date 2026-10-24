@@ -95,6 +95,7 @@ public final class NativeFeatures1201 {
     public static void reset(boolean newPlayer) {
         // Another player or world starts unzoomed; anything else (a screen, focus loss) zooms out smoothly.
         if (newPlayer) zoom().reset(); else zoom().release();
+        com.thelads.core.v1_20_1.game.PvpView1201.release();
         sprintHeld = sneakHeld = false;
     }
 
@@ -126,7 +127,11 @@ public final class NativeFeatures1201 {
             forward = false;
             return;
         }
-        if (!interactive()) zoom().release();
+        if (!interactive()) {
+            zoom().release();
+            com.thelads.core.v1_20_1.game.PvpView1201.release();
+        }
+        com.thelads.core.v1_20_1.game.PvpView1201.tick(mc);
     }
 
     public static void key(int key, int scancode, int action, int modifiers) {
@@ -137,6 +142,7 @@ public final class NativeFeatures1201 {
         }
         boolean down = (action == GLFW.GLFW_PRESS);
         if (!Gameplay1201.zoomOwnedByMod() && NativeKeyBindings1201.ZOOM.matches(key, scancode)) zoom().key(down);
+        com.thelads.core.v1_20_1.game.PvpView1201.key(key, scancode, down);
         if (sprintToggleKey().matches(key, scancode)) sprintKey(down);
         if (sneakToggleKey().matches(key, scancode)) sneakKey(down);
         if (down && NativeKeyBindings1201.QUICKPLAY.matches(key, scancode)) {
@@ -155,6 +161,7 @@ public final class NativeFeatures1201 {
         }
         boolean down = (action == GLFW.GLFW_PRESS);
         if (!Gameplay1201.zoomOwnedByMod() && NativeKeyBindings1201.ZOOM.matchesMouse(button)) zoom().key(down);
+        com.thelads.core.v1_20_1.game.PvpView1201.mouse(button, down);
         if (sprintToggleKey().matchesMouse(button)) sprintKey(down);
         if (sneakToggleKey().matchesMouse(button)) sneakKey(down);
         if (down && NativeKeyBindings1201.QUICKPLAY.matchesMouse(button)) {
@@ -227,6 +234,7 @@ public final class NativeFeatures1201 {
 
     /** ZoomMixin: the FOV Minecraft computed (dynamic FOV, spyglass and fluids included) times the zoom. */
     public static float fov(float vanilla, boolean hand) {
+        if (hand) vanilla = com.thelads.core.modules.ViewModelModule.get().handFov(vanilla); // ViewModel's Hand FOV
         long now = System.nanoTime();
         if (Gameplay1201.zoomOwnedByMod()) {
             if (!hand) { lastWorldFov = vanilla; lastWorldNanos = now; } // QA reads the FOV even when another mod owns the zoom

@@ -190,6 +190,12 @@
     "SurvivalFireBlockInvoker",
     "SurvivalAnimalFoodMixin",
     "SurvivalMobFoodPickupMixin",
-    "SurvivalBoat360Mixin"
+    "SurvivalBoat360Mixin",
+    "FreelookCameraMixin",
+    "ViewModelMixin",
+    "TimeChangerMixin",
+    "WeatherLevelMixin",
+    "WeatherPrecipitationMixin",
+    "FogCustomizerMixin"
   ]
 }

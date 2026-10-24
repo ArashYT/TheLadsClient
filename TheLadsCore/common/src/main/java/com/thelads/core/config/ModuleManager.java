@@ -394,6 +394,12 @@ public class ModuleManager {
         register(borderless, Module.Category.MECHANIC);
         register(new SurvivalTweaksModule(), Module.Category.MECHANIC);
         register(new StackRefillModule(), Module.Category.MECHANIC);
+        // PvP camera and world visuals (parity-1023, all off by default; Freelook and Fog Customizer's see-through options are gated).
+        register(new FreelookModule(), Module.Category.MECHANIC);
+        register(new ViewModelModule(), Module.Category.MECHANIC);
+        register(new TimeChangerModule(), Module.Category.MECHANIC);
+        register(new WeatherChangerModule(), Module.Category.MECHANIC);
+        register(new FogCustomizerModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

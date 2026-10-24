@@ -62,6 +62,7 @@ public final class NativeFeatures {
     public static void reset(boolean newPlayer) {
         // Another player or world starts unzoomed; anything else (a screen, focus loss) zooms out smoothly.
         if (newPlayer) zoom().reset(); else zoom().release();
+        PvpView26.release();
         sprintHeld = sneakHeld = false;
     }
     public static void reset() {
@@ -74,13 +75,18 @@ public final class NativeFeatures {
             player = currentPlayer;
             return;
         }
-        if (!interactive()) zoom().release();
+        if (!interactive()) {
+            zoom().release();
+            PvpView26.release();
+        }
+        PvpView26.tick(Minecraft.getInstance());
     }
     public static void key(KeyEvent event, int action) {
         if (action == InputConstants.REPEAT) return;
         if (!interactive()) { reset(); return; }
         boolean down = action == InputConstants.PRESS;
         if (NativeKeyBindings.ZOOM.matches(event)) zoom().key(down);
+        PvpView26.key(event, down);
         if (sprintToggleKey().matches(event)) sprintKey(down);
         if (sneakToggleKey().matches(event)) sneakKey(down);
         if (down && NativeKeyBindings.QUICKPLAY.matches(event)) {
@@ -95,6 +101,7 @@ public final class NativeFeatures {
         if (!interactive()) { reset(); return; }
         boolean down = action == InputConstants.PRESS;
         if (NativeKeyBindings.ZOOM.matchesMouse(event)) zoom().key(down);
+        PvpView26.mouse(event, down);
         if (sprintToggleKey().matchesMouse(event)) sprintKey(down);
         if (sneakToggleKey().matchesMouse(event)) sneakKey(down);
         if (down && NativeKeyBindings.QUICKPLAY.matchesMouse(event)) {
@@ -142,6 +149,7 @@ public final class NativeFeatures {
     }
     /** ZoomMixin: the FOV Minecraft computed (dynamic FOV, spyglass and fluids included) times the zoom. */
     public static float fov(float vanilla, boolean hand) {
+        if (hand) vanilla = com.thelads.core.modules.ViewModelModule.get().handFov(vanilla); // ViewModel's Hand FOV
         long now = System.nanoTime();
         float fov = vanilla * zoom().fovFactor(hand, now);
         if (!hand) { lastWorldFov = fov; lastWorldNanos = now; }

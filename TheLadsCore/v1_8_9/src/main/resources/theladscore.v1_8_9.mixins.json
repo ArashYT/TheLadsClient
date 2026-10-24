@@ -120,6 +120,11 @@
     "SurvivalExplosionMixin",
     "SurvivalPlayerMixin",
     "SurvivalThornsMixin",
-    "WorldProviderMixin"
+    "WorldProviderMixin",
+    "FreelookCameraMixin189",
+    "FreelookRenderInfoMixin189",
+    "FreelookRenderManagerMixin189",
+    "ViewModelMixin189",
+    "WorldTimeWeatherMixin189"
   ]
 }
