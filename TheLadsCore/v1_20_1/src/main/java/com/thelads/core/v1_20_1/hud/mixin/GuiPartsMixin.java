@@ -2,6 +2,7 @@ package com.thelads.core.v1_20_1.hud.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.thelads.core.modules.RaisedModule;
 import com.thelads.core.v1_20_1.hud.HudParts1201;
 import com.thelads.core.v1_20_1.hud.Raised1201;
 import net.minecraft.client.gui.Gui;
@@ -23,7 +24,7 @@ public abstract class GuiPartsMixin {
 
     @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = GUI + "renderHotbar(F" + G + ")V"), require = 1)
     private void lads$hotbar(Gui gui, float partialTick, GuiGraphics graphics, Operation<Void> original) {
-        HudParts1201.group(graphics, () -> original.call(gui, partialTick, graphics));
+        HudParts1201.group(graphics, RaisedModule.HOTBAR, () -> original.call(gui, partialTick, graphics));
     }
 
     @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = GUI + "renderPlayerHealth(" + G + ")V"), require = 1)
@@ -33,7 +34,7 @@ public abstract class GuiPartsMixin {
 
     @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = GUI + "renderVehicleHealth(" + G + ")V"), require = 1)
     private void lads$vehicle(Gui gui, GuiGraphics graphics, Operation<Void> original) {
-        HudParts1201.group(graphics, () -> original.call(gui, graphics));
+        HudParts1201.group(graphics, RaisedModule.MOUNT, () -> original.call(gui, graphics));
     }
 
     @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = GUI + "renderJumpMeter(Lnet/minecraft/world/entity/PlayerRideableJumping;" + G + "I)V"), require = 1)

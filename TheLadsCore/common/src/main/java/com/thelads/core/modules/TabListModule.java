@@ -33,7 +33,60 @@ public final class TabListModule extends Module {
         addOption(new ColorOption("Global Tab Background", false, 0x80000000));
         addOption(new ColorOption("Footer Color", false, 0x80000000));
         addOption(new ColorOption("Player Row Color", false, 0x20ffffff));
+        selfFirstOption = addOption(new BoolOption("Self First", false));
+        animatedOption = addOption(new BoolOption("Animated Open/Close", false));
+        keyModeOption = addOption(new DropdownOption("Key Mode", 0, "Hold", "Toggle"));
         setEnabled(true);
+    }
+
+    // OneClient VanillaHUD's tab list extras, read by each version's tab list hooks.
+    private final BoolOption selfFirstOption, animatedOption;
+    private final DropdownOption keyModeOption;
+    /** Cached each tick: your own row first, the list opens and closes animated, the key toggles it. */
+    public boolean selfFirst, animated, toggle;
+    private boolean keyWasDown, toggled;
+    private float openness;
+    private long lastFrame;
+    private boolean timing;
+
+    public void refresh() {
+        boolean on = isEnabled();
+        selfFirst = on && selfFirstOption.get();
+        animated = on && animatedOption.get();
+        toggle = on && keyModeOption.getIndex() == 1;
+        if (!toggle) toggled = false;
+    }
+
+    /** Whether the list is wanted open this frame: while the key is held, or (Key Mode Toggle) from one press of the key to the next. */
+    public boolean wanted(boolean keyDown) {
+        if (keyDown && !keyWasDown) toggled = !toggled;
+        keyWasDown = keyDown;
+        return toggle ? toggled : keyDown;
+    }
+
+    /** How open the list was drawn last (0 to 1): the scale its render uses. */
+    public float openness() {
+        return openness;
+    }
+
+    /**
+     * The tab key's state as everything sees it (each version's KeyMapping.isDown hook, only with Toggle or Animated Open/Close on):
+     * wanted open, or still closing.
+     */
+    public boolean tabKey(boolean physicallyDown, long nanos) {
+        return openness(wanted(physicallyDown), nanos) > 0;
+    }
+
+    /** How open the list is drawn this frame (0 to 1, 150 ms each way with Animated Open/Close); it is drawn while above 0. */
+    public float openness(boolean wanted, long nanos) {
+        if (!animated) {
+            timing = false;
+            return openness = wanted ? 1 : 0;
+        }
+        float step = timing ? Math.min(nanos - lastFrame, 50_000_000L) / 150e6f : 0;
+        timing = true;
+        lastFrame = nanos;
+        return openness = wanted ? Math.min(1, openness + step) : Math.max(0, openness - step);
     }
 
     /** Formats player count into the format string (e.g. "Players: {count}"); defaults to "Players: {count}". */

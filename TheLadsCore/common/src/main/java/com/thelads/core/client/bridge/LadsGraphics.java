@@ -139,7 +139,7 @@ public interface LadsGraphics {
 
     /**
      * A picture covering the box (cropped to its shape, centred): {@code source} is a jar resource ("/assets/...") or a file path,
-     * read by {@link com.thelads.core.client.CrosshairBackground#read}. Each version keeps only the last picture uploaded. False
+     * read by {@link com.thelads.core.client.CrosshairBackground#read}. Each version keeps the last two pictures uploaded. False
      * where the version cannot draw pictures or this one cannot be read.
      */
     default boolean drawImage(String source, int x, int y, int width, int height) { return false; }

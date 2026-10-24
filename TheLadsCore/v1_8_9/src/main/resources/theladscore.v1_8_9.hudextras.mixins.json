@@ -1,0 +1,20 @@
+{
+  "required": true,
+  "minVersion": "0.7",
+  "package": "com.thelads.core.v1_8_9.hudextras.mixin",
+  "refmap": "theladscore.v1_8_9.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "AchievementMixin189",
+    "ForgeHudTweaksMixin189",
+    "GuiIngameTweaksMixin189",
+    "GuiTitleAccessor189",
+    "JumpMixin189",
+    "PlayerControllerAccessor189",
+    "TabKeyMixin189",
+    "TabMixin189"
+  ]
+}

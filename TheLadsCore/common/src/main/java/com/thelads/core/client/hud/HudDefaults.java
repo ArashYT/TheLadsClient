@@ -62,6 +62,21 @@ public final class HudDefaults {
             case "DeathInfo" -> {x=5;y=h/3+72;}
             case "Hearts" -> {x=w/2-190;y=h-eh-58;}
             case "HitIndicator" -> {x=(w-ew)/2;y=(h-eh)/2;}
+            case "DamageIndicator" -> {x=(w-ew)/2;y=h/2+28;}
+            case "JumpReset" -> {x=(w-ew)/2;y=h/2+48;}
+            case "MediaPlayer" -> {x=5;y=h/2-20;}
+            case "HorseStats" -> {x=(w-ew)/2;y=h-eh-60;}
+            case "PlayerCounter" -> {x=5;y=190;}
+            case "TotemPopCounter" -> {x=w-ew-5;y=h/4;}
+            case "BlockInfo" -> {x=(w-ew)/2;y=68;}
+            case "CustomText" -> {x=5;y=208;}
+            case "CustomShape" -> {x=5;y=226;}
+            case "CustomImage" -> {x=w-ew-5;y=h/2;}
+            case "PlayerHead" -> {x=5;y=244;}
+            case "BlockAbove" -> {x=(w-ew)/2;y=84;}
+            case "EntityCounter" -> {x=5;y=262;}
+            case "ShaderPack" -> {x=w-ew-5;y=28;}
+            case "HeldItemLore" -> {x=(w-ew)/2;y=h-eh-80;}
             default -> {return null;}
         }
         return new int[]{Math.max(0,Math.min(x,w-ew)),Math.max(0,Math.min(y,h-eh))};

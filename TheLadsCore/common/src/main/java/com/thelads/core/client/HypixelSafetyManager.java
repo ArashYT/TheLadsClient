@@ -228,6 +228,7 @@ public final class HypixelSafetyManager {
     public static boolean isRiskyModule(String moduleName) {
         if (moduleName == null) return false;
         return isMinimapModule(moduleName)
+            || com.thelads.core.client.hud.HudExtras.BLOCK_INFO.equalsIgnoreCase(moduleName)
             || isSingleplayerOnlyModule(moduleName)
             || isFullbrightModule(moduleName)
             || isTntThroughBlocks(moduleName)
@@ -243,7 +244,16 @@ public final class HypixelSafetyManager {
             || "Mob Overlay".equalsIgnoreCase(moduleName) || "Mob Size".equalsIgnoreCase(moduleName)
             // parity-1023 chat lane: commands past vanilla's length, keys that send chat, walking and slot clicks with a screen open
             || ChatTweaks.LONG_COMMANDS.equalsIgnoreCase(moduleName) || com.thelads.core.modules.AutoTextModule.NAME.equalsIgnoreCase(moduleName)
-            || InventoryTweaks.MOVE.equalsIgnoreCase(moduleName) || InventoryTweaks.ARMOR_SWAP.equalsIgnoreCase(moduleName);
+            || InventoryTweaks.MOVE.equalsIgnoreCase(moduleName) || InventoryTweaks.ARMOR_SWAP.equalsIgnoreCase(moduleName)
+            || isGatedHud(moduleName);
+    }
+
+    /** HUD widgets that show what vanilla does not: other players' exact health, a horse's hidden stats, a nearby-player radar, totem pops. */
+    private static boolean isGatedHud(String moduleName) {
+        return com.thelads.core.client.hud.HudExtras.DAMAGE_INDICATOR.equalsIgnoreCase(moduleName)
+            || com.thelads.core.client.hud.HudExtras.HORSE.equalsIgnoreCase(moduleName)
+            || com.thelads.core.client.hud.HudExtras.PLAYERS.equalsIgnoreCase(moduleName)
+            || com.thelads.core.client.hud.HudExtras.TOTEMS.equalsIgnoreCase(moduleName);
     }
 
     public static boolean isGatedHypixelModule(String moduleName) {
