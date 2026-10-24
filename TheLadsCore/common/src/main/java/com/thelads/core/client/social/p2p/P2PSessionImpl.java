@@ -154,8 +154,8 @@ final class P2PSessionImpl extends CompletableFuture<P2PSession> implements P2PS
 
     /**
      * Never blocks the caller (the game thread kicks, stops hosting, leaves a world): a writer stuck on a full send window holds the mux
-     * output, so the polite "close" line (then FIN) gets at most 1 s on its own thread; then the streams and the ICE socket are shut on a
-     * worker, which wakes any stuck writer.
+     * output, so the polite "close" line (then FIN) gets at most 1 s on its own thread, and its delivery (ACKs) at most 2 s more; then
+     * the streams and the ICE socket are shut on a worker, which wakes any stuck writer.
      */
     @Override
     public void close(String reason) {
@@ -182,6 +182,8 @@ final class P2PSessionImpl extends CompletableFuture<P2PSession> implements P2PS
                 polite.join(1000);
             } catch (InterruptedException ignored) {
             }
+            // The last data (a kick, then FIN) is retransmitted until the peer has it; a close line stuck on a full window: the peer is gone
+            if (!polite.isAlive()) reliableStream.awaitAcked(2000);
             reliableStream.close(); // a writer still stuck on the window throws now
             mux.close();
             try {

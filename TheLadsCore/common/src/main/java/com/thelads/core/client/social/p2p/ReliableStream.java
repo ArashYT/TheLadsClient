@@ -3,6 +3,7 @@ package com.thelads.core.client.social.p2p;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
@@ -144,6 +145,19 @@ public final class ReliableStream implements AutoCloseable {
 
     public boolean isClosed() {
         return closed.get();
+    }
+
+    /** Waits at most timeoutMs until the peer acknowledged everything sent (retransmits go on meanwhile): a close then loses nothing. */
+    public void awaitAcked(long timeoutMs) {
+        long left = TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+        txLock.lock();
+        try {
+            while (sndNxt != sndUna && !closed.get() && !dead.get() && left > 0) left = txWindowCond.awaitNanos(left);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            txLock.unlock();
+        }
     }
 
     public void onDatagramReceived(byte[] data, int offset, int length) {
