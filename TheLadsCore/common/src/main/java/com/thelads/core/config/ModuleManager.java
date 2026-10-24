@@ -394,6 +394,35 @@ public class ModuleManager {
         register(borderless, Module.Category.MECHANIC);
         register(new SurvivalTweaksModule(), Module.Category.MECHANIC);
         register(new StackRefillModule(), Module.Category.MECHANIC);
+        // PvP camera and world visuals (parity-1023, all off by default; Freelook and Fog Customizer's see-through options are gated).
+        register(new FreelookModule(), Module.Category.MECHANIC);
+        register(new ViewModelModule(), Module.Category.MECHANIC);
+        register(new TimeChangerModule(), Module.Category.MECHANIC);
+        register(new WeatherChangerModule(), Module.Category.MECHANIC);
+        register(new FogCustomizerModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.LogPrunerModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.NumericalEnchantmentsModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ConfirmDisconnectModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.DropConfirmationModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ScrollTweaksModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.AutoPerspectiveModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.AutoBackupModule(), Module.Category.MECHANIC);
+        // PvP visuals (client PvpVisuals; each adapter hooks them): all off by default, visual only but Hitboxes' Through Walls.
+        register(new BlockOverlayModule(), Module.Category.MECHANIC);
+        register(new HitColorModule(), Module.Category.MECHANIC);
+        register(new DamageTintModule(), Module.Category.MECHANIC);
+        register(new GlintColorizerModule(), Module.Category.MECHANIC);
+        register(new Module(com.thelads.core.client.PvpVisuals.HIDE_MOB_DEATHS, "Dying mobs vanish at once instead of tipping over red. "
+            + "Players still show their death."), Module.Category.MECHANIC);
+        register(new MountOpacityModule(), Module.Category.MECHANIC);
+        register(new HitboxesModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ColorSaturationModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.MotionBlurModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.MenuBlurModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.HideFoliageModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ClearGlassModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.CustomSkyModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ChunkAnimatorModule(), Module.Category.MECHANIC);
 
         HudModule dmgInd = hud("DamageIndicator", "Enemy health indicators, target hearts and floating damage numbers.");
         dmgInd.addOption(new DropdownOption("Display mode", 0, "Both", "HUD Bar", "Damage Numbers"));

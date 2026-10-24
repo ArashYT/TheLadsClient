@@ -17,4 +17,18 @@ public abstract class ItemStackTooltipMixin {
         return Options189.enabled("EnhancedToolbars") && !Options189.bool("EnhancedToolbars", "Show Item Attributes", true)
             ? ImmutableMultimap.<String, AttributeModifier>of() : stack.getAttributeModifiers();
     }
+
+    @org.spongepowered.asm.mixin.injection.Inject(method = "getTooltip", at = @At("RETURN"))
+    private void ladsNumericalEnchantments(net.minecraft.entity.player.EntityPlayer playerIn, boolean advanced, org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<java.util.List<String>> cir) {
+        if (!Options189.enabled("NumericalEnchantments")) return;
+        java.util.List<String> list = cir.getReturnValue();
+        if (list == null || list.isEmpty()) return;
+        for (int i = 0; i < list.size(); i++) {
+            String line = list.get(i);
+            String converted = com.thelads.core.client.RomanNumerals.convertTrailingRoman(line);
+            if (!converted.equals(line)) {
+                list.set(i, converted);
+            }
+        }
+    }
 }

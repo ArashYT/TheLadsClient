@@ -21,11 +21,13 @@
     "TitleWidgetMixin",
     "PauseScreenMixin",
     "ClientTickMixin",
+    "IntegratedServerMixin",
     "OptionsMixin",
     "CommandSuggestionsMixin",
     "KeyboardHandlerMixin",
     "KeyboardInputMixin",
     "MouseHandlerMixin",
+    "ScrollWheelHandlerMixin",
     "MouseTweaksMixin",
     "FullbrightMixin",
     "FullbrightShadersMixin",
@@ -48,6 +50,7 @@
     "DynamicLightsEntityMixin",
     "DynamicLightsExplosionMixin",
     "ItemTooltipMixin",
+    "MultiPlayerGameModeMixin",
     "OwnNametagMixin",
     "NametagBackgroundMixin",
     "NametagShadowDepthMixin",
@@ -108,6 +111,7 @@
     "ChatHeadsListenerMixin",
     "ClientToolsAttackMixin",
     "FontMetricsMixin",
+    "FontWidthCacheMixin",
     "SmoothScrollMixin",
     "GlobalButtonMixin",
     "GlobalSliderMixin",
@@ -175,6 +179,7 @@
     "ShowcaseHotbarMixin",
     "ShowcaseMouseMixin",
     "ShowcasePlayerListAccess",
+    "EntityRenderDispatcherMixin",
     "CloudRendererMixin"
   ],
   "mixins": [
@@ -190,6 +195,12 @@
     "SurvivalFireBlockInvoker",
     "SurvivalAnimalFoodMixin",
     "SurvivalMobFoodPickupMixin",
-    "SurvivalBoat360Mixin"
+    "SurvivalBoat360Mixin",
+    "FreelookCameraMixin",
+    "ViewModelMixin",
+    "TimeChangerMixin",
+    "WeatherLevelMixin",
+    "WeatherPrecipitationMixin",
+    "FogCustomizerMixin"
   ]
 }

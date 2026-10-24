@@ -51,6 +51,7 @@
     "PlayerControllerMPAccessor",
     "IntegratedServerLogoutMixin189",
     "InventoryEffectRendererMixin",
+    "InventoryPlayerMixin",
     "ItemFoodFields",
     "ItemModelGeneratorMixin",
     "ItemRendererAccessor",
@@ -121,6 +122,13 @@
     "SurvivalExplosionMixin",
     "SurvivalPlayerMixin",
     "SurvivalThornsMixin",
-    "WorldProviderMixin"
+    "WorldProviderMixin",
+    "FileResourcePackQuickPackMixin189",
+    "ModDiscovererMixin189",
+    "FreelookCameraMixin189",
+    "FreelookRenderInfoMixin189",
+    "FreelookRenderManagerMixin189",
+    "ViewModelMixin189",
+    "WorldTimeWeatherMixin189"
   ]
 }

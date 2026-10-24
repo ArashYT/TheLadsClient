@@ -22,7 +22,7 @@ class ParticleCoreTest {
     private final ParticleCoreModule core = (ParticleCoreModule) com.thelads.core.config.ModuleManager.getInstance().getModule(ParticleCore.MODULE);
 
     @AfterEach void restore() {
-        core.rates.reset(); core.hideOwn.set(false); core.hideOthers.set(false); core.limit.set(false); core.setEnabled(true);
+        core.rates.reset(); core.hideOwn.set(false); core.hideOthers.set(false); core.limit.set(false); core.weatherCulling.set(true); core.setEnabled(true);
         ParticleCore.standDown(false); ParticleCore.worldChanged(); ParticleCore.resetStats(); ParticleCore.refresh();
     }
 
@@ -116,6 +116,24 @@ class ParticleCoreTest {
         assertFalse(ParticleCore.allowSpawn("flame", false, 0, 1));
         assertTrue(ParticleCore.culling());
         assertTrue(ParticleCore.optimized());
+    }
+
+    @Test void weatherParticleCullingFollowsOptionAndModuleState() {
+        ParticleCore.refresh();
+        assertTrue(ParticleCore.weatherCulling(), "weather culling on by default");
+        core.weatherCulling.set(false);
+        ParticleCore.refresh();
+        assertFalse(ParticleCore.weatherCulling(), "disabled via option");
+        core.weatherCulling.set(true);
+        core.setEnabled(false);
+        ParticleCore.refresh();
+        assertFalse(ParticleCore.weatherCulling(), "disabled when module is off");
+        core.setEnabled(true);
+        ParticleCore.standDown(true);
+        assertFalse(ParticleCore.weatherCulling(), "disabled when standing down");
+        ParticleCore.standDown(false);
+        ParticleCore.refresh();
+        assertTrue(ParticleCore.weatherCulling(), "active again");
     }
 
     @Test void ratesSaveOnlyWhatChangedAndNormaliseIds() {

@@ -56,7 +56,7 @@ public final class RenderScale1201 {
         return ModPresence1201.loaded("distanthorizons") && !Gameplay1201.qaFlag("allow-dh") || ModPresence1201.loaded("betterresolution") || ModPresence1201.loaded("better_resolution") || ModPresence1201.loaded("better-resolution");
     }
 
-    private static boolean shadersInUse() {
+    public static boolean shadersInUse() {
         if (!irisChecked) {
             irisChecked = true;
             try {

@@ -74,6 +74,7 @@ public class TheLadsCore189 {
         LadsGameBridge.set(new VanillaGameBridge189());
         com.thelads.core.security.AntiInjectDetector.init();
         ConfigManager.load();
+        com.thelads.core.client.util.LogPruner.pruneIfEnabled(new java.io.File("logs"));
         com.thelads.core.v1_8_9.feature.LocalSkins189.initialize(); // the Skin changer's saved skin
         com.thelads.core.v1_8_9.render.Render189.init();
         registerStatuses();
@@ -85,9 +86,11 @@ public class TheLadsCore189 {
         com.thelads.core.modules.StackRefillModule.get().noOffhand(); // 1.8.9 has no offhand
         com.thelads.core.v1_8_9.feature.Nametags189.register();
         OldAnimations189.register();
+        com.thelads.core.v1_8_9.feature.PvpVisuals189.register(); // PvP visuals (parity 1.9.19): theladscore.v1_8_9.pvp.mixins.json
         ClientRegistry.registerKeyBinding(Zoom189.ZOOM);
         ClientRegistry.registerKeyBinding(NativeMenuKey.MODULES);
         com.thelads.core.v1_8_9.feature.Toggles189.register();
+        com.thelads.core.v1_8_9.feature.PvpView189.register(); // Freelook, ViewModel, Time/Weather Changer, Fog Customizer
         MinecraftForge.EVENT_BUS.register(new Zoom189());
         MinecraftForge.EVENT_BUS.register(new NativeMenuKey());
         MinecraftForge.EVENT_BUS.register(new NativeHud());
@@ -111,6 +114,7 @@ public class TheLadsCore189 {
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.Raised189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.PaperDoll189());
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.EntityCulling189());
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.pvp.PvpVisuals189()); // Color Saturation, Motion/Menu Blur, Hide Foliage, Clear Glass
         com.thelads.core.v1_8_9.feature.ParticleCore189.register();
         com.thelads.core.v1_8_9.world.World189.register(); // Wavy Capes, TNT Timer
         Screenshots189.register();
@@ -181,6 +185,13 @@ public class TheLadsCore189 {
         com.thelads.core.modules.SurvivalTweaksModule.NAME, com.thelads.core.modules.StackRefillModule.NAME,
         // KeepUiOpenScreenMixin and KeepUiOpenCloseMixin (1.9.10).
         com.thelads.core.client.KeepUiOpen.MODULE_NAME,
+        com.thelads.core.modules.LogPrunerModule.NAME,
+        com.thelads.core.modules.NumericalEnchantmentsModule.NAME,
+        com.thelads.core.modules.ConfirmDisconnectModule.NAME,
+        com.thelads.core.modules.DropConfirmationModule.NAME,
+        com.thelads.core.modules.ScrollTweaksModule.NAME,
+        com.thelads.core.modules.AutoPerspectiveModule.NAME,
+        com.thelads.core.modules.AutoBackupModule.NAME,
         "TitleTweaker", "ToastControl", "VanillaHUD"
     };
 
@@ -261,6 +272,7 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.feature.DynamicLights189.tick(mc);
         com.thelads.core.v1_8_9.feature.EntityCulling189.tick(mc);
         Zoom189.tick(mc);
+        com.thelads.core.v1_8_9.feature.PvpView189.tick(mc);
         SkinLayers189.tick(mc);
         com.thelads.core.v1_8_9.feature.Toggles189.tick(mc);
         com.thelads.core.v1_8_9.feature.Fullbright189.tick(mc);

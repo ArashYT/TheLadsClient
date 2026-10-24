@@ -21,7 +21,7 @@ public class ToggleSprintModule extends Module {
     /** 0.25 s: no START_SPRINTING follows a STOP_SPRINTING sooner (see {@link #sent}). */
     static final int RESTART_TICKS = 5;
     private final DropdownOption sprintMode, sneakMode;
-    private final BoolOption pauseWhileSneaking, sprintToggled, sneakToggled;
+    private final BoolOption pauseWhileSneaking, sprintToggled, sneakToggled, disableDoubleTap;
     /** Shows the key and opens Controls; adapters set both. */
     public final ActionOption sprintKey, sneakKey;
     private boolean owned, sentSprint, sprinting, sneaking, sprintKeyDown;
@@ -32,6 +32,7 @@ public class ToggleSprintModule extends Module {
             + "the Sprint and Sneak keys toggle; bind them to other keys to keep Sprint and Sneak for holding.");
         sprintMode = addOption(new DropdownOption("Sprint", TOGGLE, "Toggle", "Always", "Vanilla"));
         pauseWhileSneaking = addOption(new BoolOption("Pause sprint while sneaking", true));
+        disableDoubleTap = addOption(new BoolOption("Disable double-tap sprint", false));
         sneakMode = addOption(new DropdownOption("Sneak", 1, "Toggle", "Vanilla"));
         sprintKey = addOption(new ActionOption("Toggle Sprint key", "Controls"));
         sneakKey = addOption(new ActionOption("Toggle Sneak key", "Controls"));
@@ -44,6 +45,7 @@ public class ToggleSprintModule extends Module {
 
     public boolean isSprintToggled() { return sprintToggled.get(); }
     public boolean isSneakToggled() { return sneakToggled.get(); }
+    public boolean isDisableDoubleTap() { return isEnabled() && disableDoubleTap.get(); }
 
     /** The toggle key went down (Sprint itself while Toggle Sprint is unbound). True when the state changed: save the config. */
     public boolean pressSprint() {

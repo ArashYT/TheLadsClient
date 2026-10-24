@@ -108,6 +108,8 @@ public class HudManager {
     public void render(LadsGraphics g) {
         if (g == null || (g.getGame() != null && g.getGame().isHudHidden())) return;
         game = g.getGame();
+        // Damage Tint's edge glow: once a frame (the HUD caches' live pass comes here too, their build does not), F3 or not.
+        com.thelads.core.client.PvpVisuals.DAMAGE_TINT.render(g);
         // F3 hides the Lads HUD modules (Better F3's "Hide Lads HUD", on by default).
         if (hidesAll()) {
             allCovered = true;
