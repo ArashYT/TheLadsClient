@@ -59,11 +59,23 @@ public final class ChatTweaks189 {
         List<ChatLine> lads$messages();
         /** Lays the chat out again and forgets the message Compact Chat would stack onto. */
         void lads$relayout();
+        /** The stored message of the chat line at the pointer's height (open chat), or null; then its line's top and the chat's right edge. */
+        ChatLine lads$hovered(int screenHeight, int mouseY);
+        int lads$hoverTop();
+        int lads$hoverRight();
+    }
+
+    /** A drawn chat line's stored message (ChatLineMixin keeps it). */
+    public interface Parent {
+        ChatLine ladsParent();
+        void ladsParent(ChatLine message);
     }
 
     /** A container screen with Inventory Search's box (InventoryTweaksMixin189): the player is typing in it. */
     public interface Typing {
         boolean lads$typing();
+        /** The point is on the search box (Container QoL's click outside to close leaves it alone). */
+        boolean lads$overSearch(int x, int y);
     }
 
     private ChatTweaks189() {}
@@ -196,6 +208,23 @@ public final class ChatTweaks189 {
         if (key != s.keyBindForward && key != s.keyBindBack && key != s.keyBindLeft && key != s.keyBindRight && key != s.keyBindJump) return false;
         int code = key.getKeyCode();
         return code > 0 && code < 256 && Keyboard.isKeyDown(code);
+    }
+
+    /** Copy and Delete Buttons (GuiChatMixin): Copy puts the message's text on the clipboard, Delete takes it out of the chat. */
+    public static void messageButton(ChatLine message, int button) {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (button == 0) {
+            net.minecraft.client.gui.GuiScreen.setClipboardString(message.getChatComponent().getUnformattedText());
+            return;
+        }
+        Access chat = (Access) mc.ingameGUI.getChatGUI();
+        List<ChatLine> lines = chat.lads$messages();
+        for (int i = 0; i < lines.size(); i++)
+            if (lines.get(i) == message) {
+                lines.remove(i);
+                chat.lads$relayout();
+                return;
+            }
     }
 
     /** Translate Chat: a message waiting for its translation; GuiNewChatMixin fills in the stored line once it is added. */

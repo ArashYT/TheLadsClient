@@ -108,6 +108,7 @@
     "ChatScreenTweaksMixin26",
     "ChatTweaksHudMixin26",
     "InventoryTweaksMixin26",
+    "FuzzyCommandMixin26",
     "ChatHeadsMixin",
     "ChatHeadsLineMixin",
     "ChatHeadsMessageMixin",

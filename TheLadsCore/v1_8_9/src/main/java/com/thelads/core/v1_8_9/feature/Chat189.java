@@ -50,6 +50,7 @@ public final class Chat189 {
             for (IChatComponent line : GuiUtilRenderComponents.splitText(message.getChatComponent(), width - ChatHeads189.offset(sender.ladsHead()), font, false, false)) {
                 ChatLine part = new ChatLine(message.getUpdatedCounter(), line, message.getChatLineID());
                 ((ChatHeads189.Line) part).ladsHead(sender.ladsHead(), sender.ladsAt(), parts.isEmpty());
+                ((ChatTweaks189.Parent) part).ladsParent(message);
                 parts.add(part);
             }
             return parts;

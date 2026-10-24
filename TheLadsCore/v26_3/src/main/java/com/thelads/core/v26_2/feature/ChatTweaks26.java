@@ -52,6 +52,10 @@ public final class ChatTweaks26 {
         List<GuiMessage> lads$messages();
         /** Lays the chat out again and forgets the message Compact Chat would stack onto. */
         void lads$relayout();
+        /** The stored message of the chat line at the pointer's height (open chat), or null; then its line's top and the chat's right edge. */
+        GuiMessage lads$hovered(int screenHeight, double mouseY);
+        int lads$hoverTop();
+        int lads$hoverRight();
     }
 
     private ChatTweaks26() {}
@@ -158,6 +162,23 @@ public final class ChatTweaks26 {
         InputConstants.Key bound = KeyMappingHelper.getBoundKeyOf(key);
         return bound.getType() == InputConstants.Type.KEYBOARD && bound.getValue() != InputConstants.UNKNOWN.getValue()
             && InputConstants.isKeyDown(bound.getValue());
+    }
+
+    /** Copy and Delete Buttons (ChatScreenTweaksMixin26): Copy puts the message's text on the clipboard, Delete takes it out of the chat. */
+    public static void messageButton(GuiMessage message, int button) {
+        Minecraft mc = Minecraft.getInstance();
+        if (button == 0) {
+            mc.keyboardHandler.setClipboard(message.content().getString());
+            return;
+        }
+        Access chat = (Access) mc.gui.hud.getChat();
+        List<GuiMessage> messages = chat.lads$messages();
+        for (int i = 0; i < messages.size(); i++)
+            if (messages.get(i) == message) {
+                messages.remove(i);
+                chat.lads$relayout();
+                return;
+            }
     }
 
     /** Translate Chat: a message waiting for its translation; the chat mixin fills in the stored message once it is added. */

@@ -55,7 +55,8 @@ public abstract class ChatScreenTweaksMixin26 extends Screen {
         if (ChatTweaks.setQuery("")) ChatTweaks26.refilter();
     }
 
-    @Inject(method = "extractRenderState", at = @At("TAIL"), require = 1)
+    /** Drawn first, so a command's suggestion list (drawn last, over this row) stays on top. */
+    @Inject(method = "extractRenderState", at = @At("HEAD"), require = 1)
     private void lads$tabs(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         int y = height - ChatTweaks.BAR_BOTTOM - ChatTweaks.BAR_HEIGHT, x = 2;
         for (int i = 0; i < ChatTweaks.tabCount(); i++) {
@@ -66,11 +67,31 @@ public abstract class ChatScreenTweaksMixin26 extends Screen {
             graphics.text(font, name, x + 4, y + 2, active ? 0xFFFFFF55 : 0xFFC0C0C0, false);
             x += w + 2;
         }
+        if (!ChatTweaks.buttons || minecraft.gui.hud == null) return;
+        ChatTweaks26.Access chat = (ChatTweaks26.Access) minecraft.gui.hud.getChat();
+        if (mouseX < 0 || chat.lads$hovered(height, mouseY) == null || mouseX >= chat.lads$hoverRight() + 2 * ChatTweaks.BUTTON + 1) return;
+        int right = chat.lads$hoverRight(), top = chat.lads$hoverTop(), button = ChatTweaks.button(mouseX, right);
+        for (int i = 0; i < 2; i++) {
+            int left = right + i * (ChatTweaks.BUTTON + 1);
+            graphics.fill(left, top, left + ChatTweaks.BUTTON, top + 9, button == i ? 0xE0303030 : 0xA0000000);
+            graphics.text(font, i == 0 ? ChatTweaks.COPY_LABEL : ChatTweaks.DELETE_LABEL, left + 3, top + 1, button == i ? 0xFFFFFF55 : 0xFFC0C0C0, false);
+        }
     }
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$click(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
         if (ladsSearch != null && ladsSearch.isFocused() && !ladsSearch.isMouseOver(event.x(), event.y())) setFocused(input);
+        if (input.getValue().startsWith("/")) return; // a command's suggestion list may cover the tabs and buttons: it gets the click
+        if (ChatTweaks.buttons && event.button() == InputConstants.MOUSE_BUTTON_LEFT && minecraft.gui.hud != null) {
+            ChatTweaks26.Access chat = (ChatTweaks26.Access) minecraft.gui.hud.getChat();
+            var message = chat.lads$hovered(height, event.y());
+            int button = message == null ? -1 : ChatTweaks.button((int) event.x(), chat.lads$hoverRight());
+            if (button >= 0) {
+                ChatTweaks26.messageButton(message, button);
+                cir.setReturnValue(true);
+                return;
+            }
+        }
         int y = height - ChatTweaks.BAR_BOTTOM - ChatTweaks.BAR_HEIGHT, x = 2;
         if (event.button() != InputConstants.MOUSE_BUTTON_LEFT || event.y() < y || event.y() >= y + ChatTweaks.BAR_HEIGHT) return;
         for (int i = 0; i < ChatTweaks.tabCount(); i++) {

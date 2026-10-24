@@ -43,6 +43,11 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
 
     @Override public boolean lads$typing() { return ladsSearch != null && ladsSearch.isFocused(); }
 
+    @Override public boolean lads$overSearch(int x, int y) {
+        return ladsSearch != null && x >= ladsSearch.xPosition && x < ladsSearch.xPosition + ladsSearch.width
+            && y >= ladsSearch.yPosition && y < ladsSearch.yPosition + ladsSearch.height;
+    }
+
     @Unique
     private boolean ladsTweaked() {
         return !((Object) this instanceof GuiContainerCreative);

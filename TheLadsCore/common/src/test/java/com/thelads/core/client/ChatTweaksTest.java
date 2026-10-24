@@ -121,6 +121,24 @@ class ChatTweaksTest {
         assertEquals("/l", ChatTweaks.expand("/l"), "the Chat module off expands nothing");
     }
 
+    @Test void messageButtons() {
+        assertEquals(-1, ChatTweaks.button(99, 100));
+        assertEquals(0, ChatTweaks.button(100, 100), "Copy starts at the chat's right edge");
+        assertEquals(0, ChatTweaks.button(100 + ChatTweaks.BUTTON - 1, 100));
+        assertEquals(-1, ChatTweaks.button(100 + ChatTweaks.BUTTON, 100), "the gap between them");
+        assertEquals(1, ChatTweaks.button(100 + ChatTweaks.BUTTON + 1, 100));
+        assertEquals(-1, ChatTweaks.button(100 + 2 * ChatTweaks.BUTTON + 1, 100));
+    }
+
+    @Test void fuzzyCommandWords() {
+        assertTrue(ChatTweaks.fuzzyMatch("gamemode", "gmd"));
+        assertTrue(ChatTweaks.fuzzyMatch("tpaccept", "tpc"));
+        assertFalse(ChatTweaks.fuzzyMatch("gamemode", "ga"), "a prefix is vanilla's own suggestion");
+        assertFalse(ChatTweaks.fuzzyMatch("gamemode", "md"), "the first letter must match");
+        assertFalse(ChatTweaks.fuzzyMatch("gamemode", "gdm"), "letters in order");
+        assertFalse(ChatTweaks.fuzzyMatch("give", "g"), "one letter suggests everything already");
+    }
+
     @Test void serverKeys() {
         assertNull(ChatTweaks.serverKey("Singleplayer"));
         assertNull(ChatTweaks.serverKey("Unknown"));

@@ -8,7 +8,13 @@ import org.spongepowered.asm.mixin.Unique;
 
 /** Chat Heads (ChatHeads189): a chat line keeps its message's sender and where the sender's name starts. */
 @Mixin(ChatLine.class)
-public abstract class ChatLineMixin implements ChatHeads189.Line {
+public abstract class ChatLineMixin implements ChatHeads189.Line, com.thelads.core.v1_8_9.feature.ChatTweaks189.Parent {
+    /** Copy and Delete Buttons (ChatTweaks189): a drawn line's stored message. */
+    @Unique private ChatLine ladsParent;
+
+    @Override public ChatLine ladsParent() { return ladsParent; }
+    @Override public void ladsParent(ChatLine message) { ladsParent = message; }
+
     @Unique private NetworkPlayerInfo ladsHead;
     @Unique private int ladsAt;
     @Unique private boolean ladsFirst;

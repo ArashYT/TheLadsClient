@@ -62,6 +62,23 @@ public abstract class GuiNewChatMixin implements Chat189.History, ChatTweaks189.
     @Unique private ChatLine ladsNewestLine;
     @Unique private final List<ChatLine> ladsNewestDrawn = new java.util.ArrayList<ChatLine>(4);
     @Unique private boolean ladsShown = true, ladsDisplayOnly;
+    /** Copy and Delete Buttons: the stored message refreshChat is wrapping again, and the hovered line. */
+    @Unique private ChatLine ladsRewrapping;
+    @Unique private int ladsHoverTop, ladsHoverRight;
+
+    @Override public int lads$hoverTop() { return ladsHoverTop; }
+    @Override public int lads$hoverRight() { return ladsHoverRight; }
+
+    /** As drawChat lays the open chat out (from 28 above the bottom and Raised's lift, scaled, 2 in from the left): the line row at mouseY. */
+    @Override public ChatLine lads$hovered(int screenHeight, int mouseY) {
+        float scale = getChatScale();
+        int bottom = screenHeight - 28 - com.thelads.core.v1_8_9.feature.Raised189.chatLift();
+        int row = MathHelper.floor_float((bottom - mouseY) / (9 * scale));
+        if (row < 0 || row >= Math.min(getLineCount(), drawnChatLines.size() - scrollPos)) return null;
+        ladsHoverTop = MathHelper.floor_float(bottom - (row + 1) * 9 * scale);
+        ladsHoverRight = 2 + MathHelper.ceiling_float_int((MathHelper.ceiling_float_int(getChatWidth() / scale) + 6) * scale);
+        return ((com.thelads.core.v1_8_9.feature.ChatTweaks189.Parent) drawnChatLines.get(row + scrollPos)).ladsParent();
+    }
 
     @Override public List<ChatLine> lads$messages() { return chatLines; }
 
@@ -110,6 +127,7 @@ public abstract class GuiNewChatMixin implements Chat189.History, ChatTweaks189.
             if (repeat > 1) ChatTweaks189.repeated(message, repeat);
         }
         original.call(chat, message, id, updateCounter, displayOnly);
+        for (ChatLine line : ladsNewestDrawn) ((com.thelads.core.v1_8_9.feature.ChatTweaks189.Parent) line).ladsParent(ladsNewestLine);
         if (pending != null) pending.line = ladsNewestLine;
     }
 
@@ -195,6 +213,7 @@ public abstract class GuiNewChatMixin implements Chat189.History, ChatTweaks189.
     /** Chat Heads: refreshChat re-wraps a stored message with the sender it arrived with. */
     @Redirect(method = "refreshChat", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/ChatLine;getChatComponent()Lnet/minecraft/util/IChatComponent;"), require = 1)
     private IChatComponent ladsRewrap(ChatLine line) {
+        ladsRewrapping = line;
         ladsRewrapped = ((ChatHeads189.Line) line).ladsHead();
         ladsRewrappedAt = ((ChatHeads189.Line) line).ladsAt();
         return line.getChatComponent();
@@ -212,6 +231,7 @@ public abstract class GuiNewChatMixin implements Chat189.History, ChatTweaks189.
         if (lines == drawnChatLines) {
             if (!ladsShown) return;
             if (!ladsDisplayOnly) ladsNewestDrawn.add((ChatLine) line);
+            else ((com.thelads.core.v1_8_9.feature.ChatTweaks189.Parent) line).ladsParent(ladsRewrapping);
         } else ladsNewestLine = (ChatLine) line; // chatLines: a new message is stored
         ((ChatHeads189.Line) line).ladsHead(ladsSender, ladsSenderAt, ladsFirstLine);
         ladsFirstLine = false;

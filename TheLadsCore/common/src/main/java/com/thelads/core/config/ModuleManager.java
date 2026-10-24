@@ -290,6 +290,7 @@ public class ModuleManager {
         chatMod.addOption(new TextOption(com.thelads.core.client.ChatTweaks.SHORTCUTS, ""));
         chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.TRANSLATE, false));
         chatMod.addOption(new DropdownOption(com.thelads.core.client.ChatTweaks.TRANSLATE_TO, 0, com.thelads.core.client.ChatTranslator.NAMES));
+        chatMod.addOption(new BoolOption(com.thelads.core.client.ChatTweaks.FUZZY, true));
         chatMod.setEnabled(true);
         register(chatMod, Module.Category.HUD);
 

@@ -61,6 +61,9 @@ public abstract class ChatComponentMixin implements ChatTweaks1201.Access {
     @Unique private GuiMessage ladsNewest;
     @Unique private boolean ladsShown = true;
     @Unique private ChatTweaks1201.Pending ladsPending;
+    /** Copy and Delete Buttons: the lines the message being added got (they learn their stored message as it ends), the stored message a refresh wraps next, the hovered line. */
+    @Unique private final List<GuiMessage.Line> ladsAdded = new java.util.ArrayList<>(4);
+    @Unique private int ladsRefreshing = -1, ladsHoverTop, ladsHoverRight;
     @Shadow @Final private Minecraft minecraft;
     @Shadow @Final private List<GuiMessage> allMessages;
     @Shadow @Final private List<GuiMessage.Line> trimmedMessages;
@@ -70,6 +73,21 @@ public abstract class ChatComponentMixin implements ChatTweaks1201.Access {
     @Shadow public abstract int getLinesPerPage();
     @Shadow public abstract void rescaleChat();
     @Shadow private void refreshTrimmedMessage() { throw new AssertionError(); }
+    @Shadow private int getLineHeight() { throw new AssertionError(); }
+
+    @Override public int lads$hoverTop() { return ladsHoverTop; }
+    @Override public int lads$hoverRight() { return ladsHoverRight; }
+
+    /** As render lays the open chat out (scaled, 4 in from the left, above Raised's lift): the line row at mouseY. */
+    @Override public GuiMessage lads$hovered(double mouseY) {
+        double scale = getScale();
+        int bottom = Mth.floor((minecraft.getWindow().getGuiScaledHeight() - Raised1201.chatLift() - 40) / scale), entry = getLineHeight();
+        int row = Mth.floor((bottom - mouseY / scale) / entry);
+        if (row < 0 || row >= Math.min(getLinesPerPage(), trimmedMessages.size() - chatScrollbarPos)) return null;
+        ladsHoverTop = (int) Math.floor((bottom - (row + 1) * entry) * scale);
+        ladsHoverRight = (int) Math.ceil((Mth.ceil(getWidth() / scale) + 12) * scale);
+        return ((ChatTweaks1201.Parent) (Object) trimmedMessages.get(row + chatScrollbarPos)).lads$parent();
+    }
 
     @Override public List<GuiMessage> lads$messages() { return allMessages; }
 
@@ -103,10 +121,12 @@ public abstract class ChatComponentMixin implements ChatTweaks1201.Access {
     @Inject(method = ADD5, at = @At("HEAD"), require = 1)
     private void lads$filter(Component content, MessageSignature signature, int addedTime, GuiMessageTag tag, boolean displayOnly, CallbackInfo ci) {
         ladsShown = ChatTweaks1201.shown(content);
+        ladsAdded.clear();
     }
 
     @WrapWithCondition(method = ADD5, at = @At(value = "INVOKE", target = "Ljava/util/List;add(ILjava/lang/Object;)V", ordinal = 0), require = 1)
     private boolean lads$filteredLine(List<?> lines, int index, Object line) {
+        if (ladsShown) ladsAdded.add((GuiMessage.Line) line);
         return ladsShown;
     }
 
@@ -119,8 +139,13 @@ public abstract class ChatComponentMixin implements ChatTweaks1201.Access {
     @Inject(method = ADD5, at = @At("RETURN"), require = 1)
     private void lads$newMessageLaidOut(Component content, MessageSignature signature, int addedTime, GuiMessageTag tag, boolean displayOnly, CallbackInfo ci) {
         if (!displayOnly && ladsLaidOut >= 0) ladsLaidOut = Math.min(ladsLaidOut + 1, allMessages.size());
+        // refreshTrimmedMessage wraps the stored messages oldest first, so the one this call wrapped is the next one down.
+        GuiMessage parent = !displayOnly ? (allMessages.isEmpty() ? null : allMessages.get(0))
+            : ladsRefreshing >= 0 && ladsRefreshing < allMessages.size() ? allMessages.get(ladsRefreshing--) : null;
+        for (GuiMessage.Line line : ladsAdded) ((ChatTweaks1201.Parent) (Object) line).lads$parent(parent);
+        ladsAdded.clear();
         if (displayOnly) return;
-        ladsNewest = allMessages.isEmpty() ? null : allMessages.get(0);
+        ladsNewest = parent;
         if (ladsPending != null) ladsPending.message = ladsNewest;
         ladsPending = null;
     }
@@ -128,6 +153,7 @@ public abstract class ChatComponentMixin implements ChatTweaks1201.Access {
     /** A resize or deleted message lays out only the lines near the scroll position, not the whole history. */
     @Inject(method = "refreshTrimmedMessage", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$lazyRefresh(CallbackInfo ci) {
+        ladsRefreshing = allMessages.size() - 1;
         if (!ChatFeatures1201.lazyHistory()) {
             ladsLaidOut = -1;
             return;
@@ -148,7 +174,11 @@ public abstract class ChatComponentMixin implements ChatTweaks1201.Access {
         if (ladsLaidOut < 0) return;
         int width = Mth.floor(getWidth() / getScale());
         ladsLaidOut = ChatHistory.layOut(allMessages, ladsLaidOut, trimmedMessages, lines, message -> ChatTweaks1201.shown(message.content()),
-            message -> NativeChatHeads1201.split(minecraft.font, message, width));
+            message -> {
+                List<GuiMessage.Line> parts = NativeChatHeads1201.split(minecraft.font, message, width);
+                for (GuiMessage.Line part : parts) ((ChatTweaks1201.Parent) (Object) part).lads$parent(message);
+                return parts;
+            });
     }
 
     /** The newest message starts sliding in as it is added. */

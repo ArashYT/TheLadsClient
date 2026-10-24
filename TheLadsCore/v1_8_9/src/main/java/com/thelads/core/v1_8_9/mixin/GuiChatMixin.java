@@ -84,6 +84,17 @@ public abstract class GuiChatMixin extends GuiScreen {
             fontRendererObj.drawString(name, x + 4, y + 2, active ? 0xFFFFFF55 : 0xFFC0C0C0);
             x += w + 2;
         }
+        if (ChatTweaks.buttons) {
+            ChatTweaks189.Access chat = (ChatTweaks189.Access) mc.ingameGUI.getChatGUI();
+            if (mouseX >= 0 && chat.lads$hovered(height, mouseY) != null && mouseX < chat.lads$hoverRight() + 2 * ChatTweaks.BUTTON + 1) {
+                int right = chat.lads$hoverRight(), top = chat.lads$hoverTop(), button = ChatTweaks.button(mouseX, right);
+                for (int i = 0; i < 2; i++) {
+                    int left = right + i * (ChatTweaks.BUTTON + 1);
+                    Gui.drawRect(left, top, left + ChatTweaks.BUTTON, top + 9, button == i ? 0xE0303030 : 0xA0000000);
+                    fontRendererObj.drawString(i == 0 ? ChatTweaks.COPY_LABEL : ChatTweaks.DELETE_LABEL, left + 3, top + 1, button == i ? 0xFFFFFF55 : 0xFFC0C0C0);
+                }
+            }
+        }
         if (ladsSearch == null) return;
         ladsSearch.drawTextBox();
         if (!ladsSearch.isFocused() && ladsSearch.getText().isEmpty())
@@ -92,6 +103,16 @@ public abstract class GuiChatMixin extends GuiScreen {
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsClick(int mouseX, int mouseY, int button, CallbackInfo ci) {
+        if (ChatTweaks.buttons && button == 0) {
+            ChatTweaks189.Access chat = (ChatTweaks189.Access) mc.ingameGUI.getChatGUI();
+            net.minecraft.client.gui.ChatLine message = chat.lads$hovered(height, mouseY);
+            int which = message == null ? -1 : ChatTweaks.button(mouseX, chat.lads$hoverRight());
+            if (which >= 0) {
+                ChatTweaks189.messageButton(message, which);
+                ci.cancel();
+                return;
+            }
+        }
         if (ladsSearch != null) {
             boolean in = mouseX >= ladsSearch.xPosition && mouseX < ladsSearch.xPosition + ladsSearch.width
                 && mouseY >= ladsSearch.yPosition && mouseY < ladsSearch.yPosition + ladsSearch.height;

@@ -26,7 +26,7 @@ public final class ChatTweaks {
         KEEP_OPEN = "Shift+Enter Keeps Chat Open", PEEK_KEY = "Chat Peek key", TOGGLE_KEY = "Toggle Chat key",
         SERVER_HISTORY = "History per Server", MENTIONS = "Mention Highlight", MENTION_SOUND = "Mention Sound",
         PROFANITY = "Profanity Filter", SHORTCUTS = "Shortcuts", BUTTONS = "Copy and Delete Buttons", TRANSLATE = "Translate Chat",
-        TRANSLATE_TO = "Translate To";
+        TRANSLATE_TO = "Translate To", FUZZY = "Fuzzy Command Suggestions";
     /**
      * Unlimited Command Length (its own module, gated, off by default): commands up to 32767 characters, only in singleplayer, where
      * the game's own server takes them (a multiplayer server rejects or kicks for a command past vanilla's limit).
@@ -40,7 +40,7 @@ public final class ChatTweaks {
     static final long COMPACT_WINDOW = 60_000, PING_GAP = 1_000;
     private static final Pattern PROFANE = Pattern.compile("(?i)\\b(?:fuck|shit|bitch|asshole|bastard|cunt|dick|fag|nigg|slut|whore|retard)\\w*");
 
-    public static boolean compact, tabs, search, keepOpen, serverHistory, mentions, mentionSound, profanity, buttons, translate;
+    public static boolean compact, tabs, search, keepOpen, serverHistory, mentions, mentionSound, profanity, buttons, translate, fuzzy;
     /** Translate To's Google Translate code, or null for the game's language. */
     public static String translateTo;
     /** Chat Peek is held / Toggle Chat hid the chat: the adapters poll their keys. */
@@ -74,6 +74,7 @@ public final class ChatTweaks {
         profanity = on && bool(chat, PROFANITY);
         buttons = on && bool(chat, BUTTONS);
         translate = on && bool(chat, TRANSLATE);
+        fuzzy = on && bool(chat, FUZZY);
         translateTo = on && chat.getOption(TRANSLATE_TO) instanceof DropdownOption to ? ChatTranslator.code(to.getIndex()) : null;
         if (on && chat.getOption(CUSTOM_TABS) instanceof TextOption text && text.getValue() != tabsSource) parseTabs(tabsSource = text.getValue());
         if (on && chat.getOption(SHORTCUTS) instanceof TextOption text && text.getValue() != shortcutsSource)
@@ -94,6 +95,16 @@ public final class ChatTweaks {
 
     private static boolean bool(Module module, String name) {
         return module.getOption(name) instanceof BoolOption option && option.get();
+    }
+
+    /** Copy and Delete Buttons: two boxes this wide right of the chat line under the pointer, while the chat is open. */
+    public static final int BUTTON = 10;
+    public static final String COPY_LABEL = "C", DELETE_LABEL = "×";
+
+    /** The Copy (0) or Delete (1) button at {@code mouseX}, the buttons starting at the chat's right edge {@code right}; -1 for neither. */
+    public static int button(int mouseX, int right) {
+        if (mouseX < right || mouseX >= right + 2 * BUTTON + 1) return -1;
+        return mouseX < right + BUTTON ? 0 : mouseX > right + BUTTON ? 1 : -1;
     }
 
     /** Unlimited Command Length applies: the module is on (and allowed) and the world is singleplayer. */
@@ -287,6 +298,23 @@ public final class ChatTweaks {
     private static void mark(byte[] flags, int[] ranges, byte flag) {
         for (int i = 0; i + 1 < ranges.length; i += 2)
             for (int c = ranges[i]; c < ranges[i + 1] && c < flags.length; c++) if (flags[c] == 0) flags[c] = flag;
+    }
+
+    // Fuzzy Command Suggestions
+
+    /**
+     * A command word the typed letters fit loosely (modern versions, LiteralCommandNode): same first letter, the rest in order with
+     * gaps ("gmd" for "gamemode", "tpa" for "tpaccept"). Words that start with the typed text are vanilla's own suggestions already.
+     */
+    public static boolean fuzzyMatch(String literal, String typed) {
+        if (typed.length() < 2 || typed.length() > literal.length() || literal.charAt(0) != typed.charAt(0) || literal.startsWith(typed)) return false;
+        int at = 1;
+        for (int i = 1; i < typed.length(); i++) {
+            at = literal.indexOf(typed.charAt(i), at);
+            if (at < 0) return false;
+            at++;
+        }
+        return true;
     }
 
     // Shortcuts

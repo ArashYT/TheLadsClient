@@ -63,6 +63,22 @@ public abstract class ClientToolsChatMixin implements ChatTweaks26.Access {
         refreshTrimmedMessages();
     }
 
+    @Unique private int ladsHoverTop, ladsHoverRight;
+    @Override public int lads$hoverTop() { return ladsHoverTop; }
+    @Override public int lads$hoverRight() { return ladsHoverRight; }
+
+    /** As extractRenderState lays the open chat out (scaled, 4 in from the left, above Raised's lift): the line row at mouseY. */
+    @Override public GuiMessage lads$hovered(int screenHeight, double mouseY) {
+        double scale = getScale();
+        int chatBottom = net.minecraft.util.Mth.floor((screenHeight - com.thelads.core.v26_2.feature.Raised26.chatLift() - 40) / scale);
+        int entry = (int) (9.0 * (minecraft.options.chatLineSpacing().get() + 1.0));
+        int row = net.minecraft.util.Mth.floor((chatBottom - mouseY / scale) / entry);
+        if (row < 0 || row >= Math.min(getLinesPerPage(), trimmedMessages.size() - chatScrollbarPos)) return null;
+        ladsHoverTop = (int) Math.floor((chatBottom - (row + 1) * entry) * scale);
+        ladsHoverRight = (int) Math.ceil((net.minecraft.util.Mth.ceil(getWidth() / scale) + 12) * scale);
+        return trimmedMessages.get(row + chatScrollbarPos).parent();
+    }
+
     /** History per Server: the messages are kept for the server they came from before vanilla clears them (disconnect). */
     @Inject(method = "clearMessages", at = @At("HEAD"), require = 1)
     private void ladsKeepHistory(boolean history, CallbackInfo ci) {
