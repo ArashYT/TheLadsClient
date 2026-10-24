@@ -37,6 +37,8 @@ public final class PvpVisuals1201 {
     public static void register() {
         ModuleSupport.registerBuiltIn(ColorSaturationModule.NAME, MotionBlurModule.NAME, MenuBlurModule.NAME, HideFoliageModule.NAME, ClearGlassModule.NAME,
             com.thelads.core.modules.CustomSkyModule.NAME);
+        ModuleSupport.registerUnavailable(com.thelads.core.modules.ChunkAnimatorModule.NAME, "Sodium draws a whole region of chunks at once on "
+            + "the GPU, so chunks cannot move one by one; Chunk Animator works on 1.8.9 with OptiFine.");
         ClientTickEvents.END_CLIENT_TICK.register(PvpVisuals1201::tick);
         CustomSky1201.register();
     }

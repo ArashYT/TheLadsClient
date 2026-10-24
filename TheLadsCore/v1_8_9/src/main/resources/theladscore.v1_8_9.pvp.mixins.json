@@ -8,6 +8,8 @@
     "defaultRequire": 1
   },
   "client": [
+    "ChunkAnimatorDrawMixin189",
+    "ChunkAnimatorMixin189",
     "ClearGlassMixin189",
     "CustomSkyMixin189",
     "GuiScreenBlurMixin189",
