@@ -210,6 +210,10 @@ public final class CoreProbe {
         } else if ("actionbar".equals(only)) { // 1.9.1 Action Bar module and kill banners above the action bar (Probe191ActionBar)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe191ActionBar::run));
+        } else if ("p2p".equals(only)) { // QA only: the friends + P2P scenario with another QA game (P2PQa189, LADS_VERIFY_P2P)
+            STEPS.clear();
+            if ("1".equals(System.getenv("LADS_P2P_GUEST_TITLE"))) STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, P2PQa189::run)); // guest joins from the title
+            else STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, P2PQa189::run));
         } else if ("f1914".equals(only)) { // 1.9.14 feature capture probe (Probe1914FeatureCapture189)
             STEPS.clear();
             STEPS.addAll(Arrays.<Step>asList(CoreProbe::titleShown, CoreProbe::quickWorld, CoreProbe::worldReady, Probe1914FeatureCapture189::run));
@@ -250,7 +254,7 @@ public final class CoreProbe {
             STEPS.addAll(Probe170F3Fov.STEPS);
             STEPS.addAll(Probe145.PACING);
         }
-        if (!"fixes".equals(only) && !"ofdefaults".equals(only)) {
+        if (!"fixes".equals(only) && !"ofdefaults".equals(only) && !"p2p".equals(only)) { // p2p: the guest ends kicked, on the disconnected screen
             STEPS.add(CoreProbe::leaveWorld);
             STEPS.add(CoreProbe::leftWorld);
         }
@@ -1116,6 +1120,11 @@ public final class CoreProbe {
     static boolean retry(int ticks) {
         delay = ticks;
         return false;
+    }
+
+    /** A step with its own timeouts (P2PQa189) that is still making progress: the 120 s step watchdog starts over. */
+    static void stillWorking() {
+        waited = 0;
     }
 
     static void check(boolean result, String description) {

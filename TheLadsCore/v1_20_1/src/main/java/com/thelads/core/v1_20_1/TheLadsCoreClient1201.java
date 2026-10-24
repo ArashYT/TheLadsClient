@@ -80,6 +80,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         com.thelads.core.v1_20_1.perf.Performance1201.register();
         com.thelads.core.v1_20_1.hud.Hud1201.register();
         com.thelads.core.v1_20_1.feature.Hypixel1201.register();
+        com.thelads.core.v1_20_1.feature.P2PQa1201.register(); // QA only: inert without LADS_VERIFY_P2P
         com.thelads.core.v1_20_1.feature.ParticleCore1201.register();
         com.thelads.core.v1_20_1.world.World1201.register(); // Wavy Capes, TNT Timer
 

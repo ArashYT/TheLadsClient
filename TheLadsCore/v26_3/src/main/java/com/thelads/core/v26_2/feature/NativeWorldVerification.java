@@ -217,6 +217,7 @@ public final class NativeWorldVerification {
             ActionBarCapture.tick(gameDirectory, captureReady && (ActionBarCapture.busy() || !captureBusy()));
             WorldCapture.tick(gameDirectory, captureReady && (WorldCapture.busy() || !captureBusy()));
             F1914Capture26.tick(gameDirectory, captureReady && (F1914Capture26.busy() || !captureBusy()));
+            P2PCapture26.tick(gameDirectory, captureReady && (P2PCapture26.busy() || !captureBusy())); // QA only: LADS_VERIFY_P2P
             FixesCapture.tick(gameDirectory, captureReady && !captureBusy());
             com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.tick(gameDirectory, captureReady && (com.thelads.core.v26_2.feature.food.AppleSkinSyncCapture.busy() || !captureBusy()));
             barRuns();
@@ -342,6 +343,7 @@ public final class NativeWorldVerification {
         if (Anim1911Capture26.busy()) Anim1911Capture26.frame(target, gameDirectory);
         if (FixesCapture.busy()) FixesCapture.frame(target);
         if (F1914Capture26.busy()) F1914Capture26.frame(target, gameDirectory);
+        if (P2PCapture26.busy()) P2PCapture26.frame(target, gameDirectory);
         renderMenuCapture(target);
         if(TITLE_CAPTURE&&active()&&!opened&&!titleCaptured&&titleSince>0
             &&System.nanoTime()-titleSince>2_000_000_000L&&Minecraft.getInstance().gui.screen() instanceof TitleScreen&&Minecraft.getInstance().gui.overlay()==null) {
@@ -567,6 +569,7 @@ public final class NativeWorldVerification {
             || ItemsCapture.busy()
             || FixesCapture.busy()
             || F1914Capture26.busy()
+            || P2PCapture26.busy()
             || com.thelads.core.v26_2.cosmetics.anim.EmoteCapture26.busy();
     }
     /** A client-only QA fixture of this type, even while the level is Peaceful (a reused QA world may still be; hostile types return null). */
