@@ -270,6 +270,14 @@ public sealed class ContentCatalog
         }, cancellationToken);
     }
 
+    /// <summary>CurseForge's file by exact modId and fileId: GET /v1/mods/{modId}/files/{fileId}.</summary>
+    public async Task<ContentFile?> GetCurseForgeFileAsync(int projectId, int fileId, CancellationToken cancellationToken = default)
+    {
+        string url = $"{_curseForge}/mods/{projectId}/files/{fileId}";
+        return await SendAsync("CurseForge", CurseForgeRequest(HttpMethod.Get, url),
+            root => root.TryGetProperty("data", out var data) ? CurseForgeFile(data) : null, cancellationToken);
+    }
+
     /// <summary>Fetches the list of releases/files for a project from Modrinth or CurseForge.</summary>
     public async Task<List<ProjectVersionItem>> GetProjectVersionsAsync(string provider, string projectId, CancellationToken cancellationToken = default)
     {

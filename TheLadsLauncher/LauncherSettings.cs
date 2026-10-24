@@ -34,6 +34,9 @@ public class LauncherSettings
     public bool ReducedMotion { get; set; }
     /// <summary>Google Translate code of the launcher's language (Services.LauncherTranslator.Languages); "en" is untranslated.</summary>
     public string Language { get; set; } = "en";
+    public string LoadingScreenBgColor { get; set; } = "";
+    public string LoadingScreenBarColor { get; set; } = "";
+    public string LoadingScreenGlowColor { get; set; } = "";
 
     // Behavior
     public bool CloseToTray { get; set; } = true;
