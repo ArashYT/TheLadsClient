@@ -24,6 +24,11 @@ public abstract class EntityPlayerSPMixin {
 
     @Inject(method = "sendChatMessage", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$interceptChat(String message, CallbackInfo ci) {
+        if (message != null && message.startsWith("/lads:social ")) {
+            com.thelads.core.v1_8_9.social.SocialBridge189.handleChatAction(message.substring("/lads:social ".length()).trim());
+            ci.cancel();
+            return;
+        }
         if (HypixelMods.handleOutgoingCommand(message)) {
             ci.cancel();
         }

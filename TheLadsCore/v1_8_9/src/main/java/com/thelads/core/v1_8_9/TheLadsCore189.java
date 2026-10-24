@@ -72,6 +72,12 @@ public class TheLadsCore189 {
             org.lwjgl.opengl.Display.setTitle(windowTitle);
         } catch (Throwable ignored) {}
         LadsGameBridge.set(new VanillaGameBridge189());
+        com.thelads.core.v1_8_9.social.SocialBridge189 socialBridge189 = new com.thelads.core.v1_8_9.social.SocialBridge189();
+        com.thelads.core.client.social.SocialBridge.set(socialBridge189);
+        MinecraftForge.EVENT_BUS.register(socialBridge189);
+        com.thelads.core.v1_8_9.social.SocialKeybind189.register();
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.social.SocialKeybind189());
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.social.SocialToasts189());
         com.thelads.core.security.AntiInjectDetector.init();
         ConfigManager.load();
         com.thelads.core.v1_8_9.feature.LocalSkins189.initialize(); // the Skin changer's saved skin

@@ -46,8 +46,23 @@ public abstract class GuiScreenMixin extends Gui implements LadsButtonPress {
         return now == null || now == (Object) this;
     }
 
+    @Inject(method = "onGuiClosed", at = @At("HEAD"))
+    private void ladsSocialOnGuiClosed(CallbackInfo ci) {
+        if ((Object) this instanceof net.minecraft.client.multiplayer.GuiConnecting) {
+            com.thelads.core.v1_8_9.social.SocialBridge189.clearConnectingTarget();
+        }
+    }
+
     @Inject(method = "handleComponentClick", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsHandleChatClick(IChatComponent component, CallbackInfoReturnable<Boolean> cir) {
+        if (component != null && component.getChatStyle() != null) {
+            net.minecraft.event.ClickEvent click = component.getChatStyle().getChatClickEvent();
+            if (click != null && click.getValue() != null && click.getValue().startsWith("/lads:social ")) {
+                com.thelads.core.v1_8_9.social.SocialBridge189.handleChatAction(click.getValue().substring("/lads:social ".length()).trim());
+                cir.setReturnValue(true);
+                return;
+            }
+        }
         if (Chat189.handleClick(component)) {
             cir.setReturnValue(true);
         }
