@@ -476,6 +476,40 @@ public sealed class GraphicsRendererTests : IDisposable
         File.WriteAllText(Path.Combine(Game, GraphicsRenderer.RelaunchFile), json);
     }
 
+    [Fact]
+    public async Task StaleShaderChoiceDriftToOpenGlHealsOnNextVulkanLaunch()
+    {
+        // Reproduce owner's real 26.3 profile file set:
+        // - lads-renderer-choice.json had stale {"renderer":"OpenGL"} from an earlier shader-on toggle
+        // - options.txt saved "vulkan", lads-renderer.json was running Vulkan with Iris suspended
+        // - lads-renderer-options.json had Applied="OpenGL", Saved="\"vulkan\""
+        // Launcher setting is "Vulkan".
+        File.WriteAllText(Path.Combine(Game, GraphicsRenderer.ChoiceFile), "{\"renderer\":\"OpenGL\"}");
+        File.WriteAllText(Options, "preferredGraphicsBackend:\"vulkan\"\n");
+        File.WriteAllText(Path.Combine(Game, GraphicsRenderer.OptionsStateFile),
+            JsonSerializer.Serialize(new GraphicsRenderer.OptionsState("OpenGL", "\"vulkan\"")));
+        File.WriteAllText(Path.Combine(Game, GraphicsRenderer.StateFile),
+            JsonSerializer.Serialize(new GraphicsRenderer.State(true, new[] { "euphoria_patcher", "iris", "irisflwcompat" })));
+
+        var preference = GraphicsRenderer.Preference(Game, "Vulkan");
+        var suspended = await GraphicsRenderer.PrepareAsync(Game, "26.3", preference);
+
+        Assert.Contains("iris", suspended);
+        var state = GraphicsRenderer.ReadState(Game);
+        Assert.NotNull(state);
+        Assert.True(state!.Vulkan);
+
+        Assert.Equal("Vulkan", GraphicsRenderer.Preference(Game, "Vulkan"));
+        var choice = File.ReadAllText(Path.Combine(Game, GraphicsRenderer.ChoiceFile));
+        Assert.DoesNotContain("OpenGL", choice, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Vulkan", choice, StringComparison.OrdinalIgnoreCase);
+
+        // The next launch settles on Vulkan without touching options.txt again.
+        await GraphicsRenderer.PrepareAsync(Game, "26.3", GraphicsRenderer.Preference(Game, "Vulkan"));
+        Assert.True(GraphicsRenderer.ReadState(Game)!.Vulkan);
+        Assert.Equal("preferredGraphicsBackend:\"vulkan\"", File.ReadAllLines(Options).Single(l => l.StartsWith("preferredGraphicsBackend:")));
+    }
+
     private static string[] Names(string folder) => Directory.EnumerateFiles(folder).Select(Path.GetFileName).Order().ToArray()!;
 
     private void WriteIrisManifest(byte[] jar, string version = "26.3")
