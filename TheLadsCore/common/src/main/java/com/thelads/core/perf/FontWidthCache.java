@@ -1,55 +1,58 @@
 package com.thelads.core.perf;
 
-import com.thelads.core.modules.PerformanceManagerModule;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Global text-width cache for modern Minecraft (1.20.1 and 26.3; parity with 1.8.9 FontCache189).
- * Eliminates repetitive string width calculations across HUD, tab list, chat, scoreboard, and containers.
- * Bounded size (5000 entries) with fast lookup; cleared on font/resource-pack reloads.
+ * High-performance bounded thread-safe text width cache.
+ * Avoids lock contention on the hit path by using a lock-free ConcurrentHashMap.
+ * Bounded to 4,096 entries; clears when capacity is reached to prevent unbounded memory growth.
+ * Invalidation occurs on resource reload or font change via {@link #clear()}.
  */
 public final class FontWidthCache {
-    public static final int MAX_ENTRIES = 5000;
-    private static final Map<String, Integer> CACHE = new HashMap<>();
-    private static final Object LOCK = new Object();
-    private static volatile boolean disabled = "false".equalsIgnoreCase(System.getProperty("thelads.fontWidthCache"));
+    public static final int MAX_ENTRIES = 4096;
+    public static volatile boolean enabled = true;
+
+    private static final ConcurrentHashMap<String, Integer> CACHE = new ConcurrentHashMap<>(1024);
 
     private FontWidthCache() {}
 
     public static boolean isEnabled() {
-        return !disabled && PerformanceManagerModule.bool("Global Text Width Caching", true);
+        return enabled;
     }
 
-    public static void setDisabled(boolean off) {
-        disabled = off;
+    public static void setEnabled(boolean value) {
+        enabled = value;
     }
 
-    public static int get(String text) {
-        if (text == null || !isEnabled()) return -1;
-        synchronized (LOCK) {
-            Integer width = CACHE.get(text);
-            return width != null ? width : -1;
-        }
+    /**
+     * Retrieves the cached width for the given string without locking.
+     * Returns null on cache miss or when disabled.
+     */
+    public static Integer get(String text) {
+        if (!enabled || text == null) return null;
+        return CACHE.get(text);
     }
 
+    /**
+     * Stores the computed width for the given string.
+     * When capacity reaches {@link #MAX_ENTRIES}, flushes the cache to bound memory.
+     */
     public static void put(String text, int width) {
-        if (text == null || width < 0 || !isEnabled()) return;
-        synchronized (LOCK) {
-            if (CACHE.size() >= MAX_ENTRIES) CACHE.clear();
-            CACHE.put(text, width);
-        }
-    }
-
-    public static void clear() {
-        synchronized (LOCK) {
+        if (!enabled || text == null) return;
+        if (CACHE.size() >= MAX_ENTRIES) {
             CACHE.clear();
         }
+        CACHE.put(text, width);
+    }
+
+    /**
+     * Invalidation: flushes all cached measurements (called on font reload or resource pack reload).
+     */
+    public static void clear() {
+        CACHE.clear();
     }
 
     public static int size() {
-        synchronized (LOCK) {
-            return CACHE.size();
-        }
+        return CACHE.size();
     }
 }

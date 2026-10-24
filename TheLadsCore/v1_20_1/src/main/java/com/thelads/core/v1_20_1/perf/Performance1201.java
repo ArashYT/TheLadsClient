@@ -65,7 +65,6 @@ public final class Performance1201 {
      * them again with Forge-aware detection, so Zero SMP (Embeddium, Forge jars) shows the right status.
      */
     private static void integrations() {
-        com.thelads.core.perf.SodiumPipelineHook.setSodiumLoaded(ModPresence1201.loaded("sodium", "embeddium", "rubidium"));
         String renderer = ModPresence1201.loaded("sodium") ? "sodium" : ModPresence1201.loaded("embeddium") ? "embeddium" : "rubidium";
         ModuleSupport.registerExternal("Performance", renderer.equals("sodium") ? "Sodium" : renderer.equals("embeddium") ? "Embeddium" : "Rubidium",
             renderer, ModPresence1201.loaded("sodium", "embeddium", "rubidium"));

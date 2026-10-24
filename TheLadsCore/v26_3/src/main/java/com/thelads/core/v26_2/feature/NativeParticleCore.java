@@ -87,10 +87,4 @@ public final class NativeParticleCore {
             ids.add(key.getNamespace().equals("minecraft") ? key.getPath() : key.toString());
         return ids;
     }
-    public static boolean shouldCullSection(double x, double y, double z) {
-        if (!com.thelads.core.perf.ParticleCullPipeline.isSectionCullingEnabled()) return false;
-        var pcm = ParticleCore.module();
-        if (pcm == null || !pcm.isEnabled()) return false;
-        return !com.thelads.core.perf.ParticleCullPipeline.isSectionVisible(ParticleCore.FRUSTUM, x / 16.0, y / 16.0, z / 16.0);
-    }
 }

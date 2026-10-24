@@ -57,7 +57,6 @@ public final class ItemCull26 {
     /** Whether ItemFeatureRenderer should write this quad of {@code submit} (its pose and display context) with {@code renderType}. */
     public static boolean keep(Object submit, PoseStack.Pose pose, ItemDisplayContext context, RenderType renderType, BakedQuad quad) {
         if (!BuiltInRender.items || !renderType.pipeline().isCull()) return true;
-        if (context == ItemDisplayContext.GUI && !com.thelads.core.perf.GuiItemBaking.isEnabled()) return true;
         if (submit != lastSubmit) {
             lastSubmit = submit;
             usable = projection != null && !shadowPass();
