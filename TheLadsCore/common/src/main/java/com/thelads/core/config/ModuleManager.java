@@ -466,6 +466,10 @@ public class ModuleManager {
         register(new MobSizeModule(), Module.Category.MECHANIC);
         register(new ItemDespawnModule(), Module.Category.MECHANIC);
         register(new UhcOverlayModule(), Module.Category.MECHANIC);
+        register(new NickHiderModule(), Module.Category.MECHANIC);
+        register(new ContainerQoLModule(), Module.Category.MECHANIC);
+        HudModule invHud = hud("InventoryHUD", "Display your own inventory contents on screen.");
+        invHud.setEnabled(false);
     }
 
     public static ModuleManager getInstance() {

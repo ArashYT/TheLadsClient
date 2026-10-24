@@ -68,6 +68,7 @@ public class HudManager {
         add(new XaeroMinimapHudElement(), "Minimap");
         add(new VoiceChatHudElement(), "Voice Chat");
         add(new VoiceGroupHudElement(), "Voice Chat Group");
+        add(new InventoryHudElement(), "InventoryHUD");
 
         scoreboardElement = new ScoreboardHudElement();
         add(scoreboardElement, "Scoreboard");
