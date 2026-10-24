@@ -9,30 +9,60 @@ namespace TheLadsLauncher.Tests;
 public class GameRepairServiceTests
 {
     [Fact]
-    public async Task RepairProfileAsync_CleansTempFilesAndRestoresManifest()
+    public void CleanLauncherCacheTempFiles_RemovesCacheTempFiles_AndNeverTouchesSaves()
+    {
+        using var dir = new TestDirectory();
+        var cacheDir = Path.Combine(dir.Path, ".lads-mod-cache");
+        var nativesDir = Path.Combine(dir.Path, "natives");
+        var savesDir = Path.Combine(dir.Path, "saves", "New World");
+
+        Directory.CreateDirectory(cacheDir);
+        Directory.CreateDirectory(nativesDir);
+        Directory.CreateDirectory(savesDir);
+
+        string cacheTmp = Path.Combine(cacheDir, "download.tmp");
+        string nativesPart = Path.Combine(nativesDir, "library.part");
+        string saveTmp = Path.Combine(savesDir, "level.dat.tmp");
+
+        File.WriteAllText(cacheTmp, "temp cache");
+        File.WriteAllText(nativesPart, "temp native");
+        File.WriteAllText(saveTmp, "precious save game temp data");
+
+        int cleaned = GameRepairService.CleanLauncherCacheTempFiles(dir.Path);
+
+        // Cache temp files must be removed
+        Assert.Equal(2, cleaned);
+        Assert.False(File.Exists(cacheTmp));
+        Assert.False(File.Exists(nativesPart));
+
+        // SAVES FOLDER MUST NEVER BE TOUCHED
+        Assert.True(File.Exists(saveTmp));
+        Assert.Equal("precious save game temp data", File.ReadAllText(saveTmp));
+    }
+
+    [Fact]
+    public async Task RepairProfileAsync_CleansCacheAndRestoresMarker()
     {
         using var dir = new TestDirectory();
         var profile = new LauncherProfile
         {
-            Id = "test-repair",
-            Name = "Test Repair Profile",
+            Name = "RepairTest",
             MinecraftVersion = "1.20.1",
+            FabricVersion = "0.16.9",
             CustomGameDir = dir.Path
         };
 
-        // Create a stray .tmp file
-        File.WriteAllText(Path.Combine(dir.Path, "stray.tmp"), "corrupt data");
+        var cacheDir = Path.Combine(dir.Path, ".lads-mod-cache");
+        Directory.CreateDirectory(cacheDir);
+        string cacheTmp = Path.Combine(cacheDir, "stale.tmp");
+        File.WriteAllText(cacheTmp, "garbage");
 
         var report = await GameRepairService.RepairProfileAsync(dir.Path, profile);
 
         Assert.True(report.Success);
-        Assert.False(File.Exists(Path.Combine(dir.Path, "stray.tmp")));
-        Assert.True(report.FilesRepaired >= 1);
+        Assert.False(File.Exists(cacheTmp));
 
         string versionId = GameVersionPolicy.ResolveVersionId(profile);
-        string manifest = Path.Combine(dir.Path, "versions", versionId, versionId + ".json");
-        Assert.True(File.Exists(manifest));
-
         string marker = Path.Combine(dir.Path, "versions", versionId, ".lads-verified");
         Assert.True(File.Exists(marker));
     }

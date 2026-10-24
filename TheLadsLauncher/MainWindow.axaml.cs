@@ -3724,6 +3724,99 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void BisectMods_Click(object? sender, RoutedEventArgs e)
+    {
+        var profile = _profileService.GetActiveProfile();
+        string gameDir = _pathService.GetProfileDirectory(profile);
+        if (IsGameRunningFor(gameDir))
+        {
+            ModsStatus($"Minecraft is running for '{profile.Name}'. Close it before bisecting mods.", true);
+            return;
+        }
+
+        var session = TheLadsLauncher.Services.ModBisectService.LoadSession(gameDir);
+        if (session == null || session.State == TheLadsLauncher.Services.BisectState.Inactive)
+        {
+            var startDialog = CreateLadsDialog(
+                "Mod Bisect Troubleshooting",
+                $"Mod Bisect helps isolate a mod that causes crashes or low FPS by dividing candidate mods across test steps.\n\n" +
+                $"A full backup of your mods folder will be created in .lads-mod-cache before starting.\n\n" +
+                $"Start bisect for '{profile.Name}'?",
+                new[] { ("Start Bisect", false, true) },
+                "Cancel");
+
+            int? choice = await startDialog.ShowDialog<int?>(this);
+            if (choice != 0) return;
+
+            try
+            {
+                session = TheLadsLauncher.Services.ModBisectService.StartBisect(gameDir);
+                ModsStatus($"Bisect started (Step 1 of ~{session.TotalEstimatedSteps}). {session.CurrentActiveHalf.Count} mods active.");
+                ReloadModsInventory();
+            }
+            catch (Exception ex)
+            {
+                ModsStatus($"Could not start bisect: {ex.Message}", true);
+                return;
+            }
+        }
+
+        while (session != null && session.State == TheLadsLauncher.Services.BisectState.InProgress)
+        {
+            var stepDialog = CreateLadsDialog(
+                $"Mod Bisect (Step {session.Step} of ~{session.TotalEstimatedSteps})",
+                $"Testing {session.CurrentActiveHalf.Count} active mods (other candidates safely isolated in .lads-mod-cache/bisect-disabled).\n\n" +
+                "1. Launch Minecraft and check if the crash/FPS issue occurs.\n" +
+                "2. Report whether the issue reproduced:\n\n" +
+                "• Crashed / Problem reproduced: Culprit is in the active half.\n" +
+                "• Worked / Problem fixed: Culprit is in the disabled half.\n" +
+                "• Cancel: Restores all your original mods immediately.",
+                new[]
+                {
+                    ("Crashed (reproduced)", true, true),
+                    ("Worked (fixed)", false, true)
+                },
+                "Cancel Bisect");
+
+            int? answer = await stepDialog.ShowDialog<int?>(this);
+            if (answer == 0) // Crashed
+            {
+                session = TheLadsLauncher.Services.ModBisectService.RecordStepResult(gameDir, stillReproduces: true);
+                ReloadModsInventory();
+            }
+            else if (answer == 1) // Worked
+            {
+                session = TheLadsLauncher.Services.ModBisectService.RecordStepResult(gameDir, stillReproduces: false);
+                ReloadModsInventory();
+            }
+            else // Cancel
+            {
+                TheLadsLauncher.Services.ModBisectService.FinishOrCancel(gameDir, keepCulpritDisabled: false);
+                ModsStatus("Mod bisect cancelled. Original mods restored.");
+                ReloadModsInventory();
+                return;
+            }
+        }
+
+        if (session != null && session.State == TheLadsLauncher.Services.BisectState.FoundCulprit)
+        {
+            var resultDialog = CreateLadsDialog(
+                "Culprit Mod Identified!",
+                $"Mod Bisect has successfully isolated the culprit mod:\n\n" +
+                $"★ {session.CulpritFile}\n\n" +
+                "All innocent mods have been returned to your mods folder.\n" +
+                "Would you like to keep this culprit mod disabled?",
+                new[] { ("Keep Culprit Disabled", false, true) },
+                "Re-enable Culprit");
+
+            int? res = await resultDialog.ShowDialog<int?>(this);
+            bool keepDisabled = (res == 0);
+            TheLadsLauncher.Services.ModBisectService.FinishOrCancel(gameDir, keepCulpritDisabled: keepDisabled);
+            ModsStatus($"Bisect complete. Culprit: {session.CulpritFile} ({(keepDisabled ? "kept disabled" : "re-enabled")}).");
+            ReloadModsInventory();
+        }
+    }
+
     private async void ResetModsFolder_Click(object? sender, RoutedEventArgs e)
     {
         if (!ModsCanChange()) return;

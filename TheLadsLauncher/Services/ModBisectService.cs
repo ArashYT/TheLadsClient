@@ -17,10 +17,12 @@ public enum BisectState
 public sealed class ModBisectSession
 {
     public string GameDirectory { get; set; } = "";
+    public string BackupDirectory { get; set; } = "";
+    public string DisabledDirectory { get; set; } = "";
     public List<string> AllCandidateFiles { get; set; } = new();
     public List<string> CurrentSuspects { get; set; } = new();
     public List<string> CurrentActiveHalf { get; set; } = new();
-    public List<string> OriginallyDisabledFiles { get; set; } = new();
+    public List<string> CurrentDisabledHalf { get; set; } = new();
     public int Step { get; set; } = 1;
     public int TotalEstimatedSteps { get; set; } = 1;
     public BisectState State { get; set; } = BisectState.Inactive;
@@ -28,8 +30,9 @@ public sealed class ModBisectSession
 }
 
 /// <summary>
-/// Binary search (bisect) debugging tool for mods: automatically isolates crash-causing or low-FPS mods
-/// by dividing candidate mods into halves until the culprit mod is identified, then restoring the profile state.
+/// Binary search (bisect) mod isolation tool.
+/// Creates a timestamped backup before touching mods, moves disabled candidates into .lads-mod-cache/bisect-disabled
+/// (never overwrites or renames in place), and cleanly restores original mods on Finish/Cancel.
 /// </summary>
 public static class ModBisectService
 {
@@ -37,6 +40,9 @@ public static class ModBisectService
 
     public static string SessionPath(string gameDirectory) =>
         Path.Combine(gameDirectory, ".lads-mod-cache", SessionFileName);
+
+    public static string DisabledModsDirectory(string gameDirectory) =>
+        Path.Combine(gameDirectory, ".lads-mod-cache", "bisect-disabled");
 
     public static bool HasActiveSession(string gameDirectory) =>
         File.Exists(SessionPath(gameDirectory));
@@ -66,51 +72,74 @@ public static class ModBisectService
     }
 
     /// <summary>
-    /// Starts a bisect session with candidate mod filenames from mods/.
+    /// Starts a bisect session. Backs up the entire mods folder to .lads-mod-cache/bisect-backup-&lt;timestamp&gt;/
+    /// and isolates the first partition in .lads-mod-cache/bisect-disabled.
     /// </summary>
     public static ModBisectSession StartBisect(string gameDirectory, IReadOnlyList<string>? specificCandidates = null)
     {
         var modsDir = Path.Combine(gameDirectory, "mods");
         if (!Directory.Exists(modsDir)) Directory.CreateDirectory(modsDir);
 
-        var allModFiles = Directory.GetFiles(modsDir, "*.jar*")
+        // 1. Copy the entire mods folder to a timestamped backup before any modifications
+        var timestamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+        var backupDir = Path.Combine(gameDirectory, ".lads-mod-cache", $"bisect-backup-{timestamp}");
+        Directory.CreateDirectory(backupDir);
+
+        foreach (var file in Directory.GetFiles(modsDir))
+        {
+            var fileName = Path.GetFileName(file);
+            File.Copy(file, Path.Combine(backupDir, fileName), overwrite: true);
+        }
+
+        // 2. Prepare disabled candidate staging directory
+        var disabledDir = DisabledModsDirectory(gameDirectory);
+        if (Directory.Exists(disabledDir))
+        {
+            // Restore any leftover files from aborted runs back to mods before starting fresh
+            foreach (var file in Directory.GetFiles(disabledDir))
+            {
+                var dest = Path.Combine(modsDir, Path.GetFileName(file));
+                if (!File.Exists(dest)) File.Move(file, dest);
+            }
+        }
+        Directory.CreateDirectory(disabledDir);
+
+        // 3. Collect active candidate mods (only .jar files, excluding theladscore and .disabled)
+        var candidates = specificCandidates?.ToList() ?? Directory.GetFiles(modsDir, "*.jar")
             .Select(Path.GetFileName)
-            .Where(f => !string.IsNullOrEmpty(f) && !f!.StartsWith("theladscore", StringComparison.OrdinalIgnoreCase))
+            .Where(f => !string.IsNullOrEmpty(f)
+                        && !f!.StartsWith("theladscore", StringComparison.OrdinalIgnoreCase)
+                        && !f.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
             .Select(f => f!)
+            .OrderBy(f => f)
             .ToList();
-
-        var originallyDisabled = allModFiles
-            .Where(f => f.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        var candidates = specificCandidates?.ToList()
-            ?? allModFiles.Where(f => !f.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)).ToList();
 
         if (candidates.Count == 0)
-            throw new InvalidOperationException("No candidate mods to bisect. Enable or add mods first.");
+            throw new InvalidOperationException("No candidate mods to bisect. Add or enable mods in the profile first.");
 
         int totalSteps = Math.Max(1, (int)Math.Ceiling(Math.Log2(candidates.Count)));
 
         var session = new ModBisectSession
         {
             GameDirectory = gameDirectory,
-            AllCandidateFiles = candidates,
+            BackupDirectory = backupDir,
+            DisabledDirectory = disabledDir,
+            AllCandidateFiles = new List<string>(candidates),
             CurrentSuspects = new List<string>(candidates),
-            OriginallyDisabledFiles = originallyDisabled,
             Step = 1,
             TotalEstimatedSteps = totalSteps,
             State = BisectState.InProgress
         };
 
-        ApplyStepPartition(session);
+        ApplyStepPartition(session, modsDir, disabledDir);
         SaveSession(session);
         return session;
     }
 
     /// <summary>
-    /// Records whether the problem still occurs with the currently active half of mods.
+    /// Records whether the problem still reproduces with the currently enabled active half.
     /// </summary>
-    public static ModBisectSession RecordStepResult(string gameDirectory, bool problemStillOccurs)
+    public static ModBisectSession RecordStepResult(string gameDirectory, bool stillReproduces)
     {
         var session = LoadSession(gameDirectory)
             ?? throw new InvalidOperationException("No active bisect session found.");
@@ -118,104 +147,127 @@ public static class ModBisectService
         if (session.State != BisectState.InProgress)
             return session;
 
-        if (problemStillOccurs)
+        var modsDir = Path.Combine(gameDirectory, "mods");
+        var disabledDir = DisabledModsDirectory(gameDirectory);
+
+        if (stillReproduces)
         {
-            // Culprit is inside the active half
+            // The problem reproduced: culprit is among the currently active half
+            // Candidate files in disabledDir are innocent; move them back to modsDir
+            foreach (var file in session.CurrentDisabledHalf)
+            {
+                var src = Path.Combine(disabledDir, file);
+                var dst = Path.Combine(modsDir, file);
+                if (File.Exists(src) && !File.Exists(dst))
+                {
+                    File.Move(src, dst);
+                }
+            }
+
             session.CurrentSuspects = new List<string>(session.CurrentActiveHalf);
         }
         else
         {
-            // Culprit is inside the inactive half
-            session.CurrentSuspects = session.CurrentSuspects
-                .Except(session.CurrentActiveHalf, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            // The problem did not reproduce: active half is innocent, culprit is in disabled half
+            // Move active half to disabledDir, move disabled suspects back to modsDir to partition
+            foreach (var file in session.CurrentActiveHalf)
+            {
+                var src = Path.Combine(modsDir, file);
+                var dst = Path.Combine(disabledDir, file);
+                if (File.Exists(src) && !File.Exists(dst))
+                {
+                    File.Move(src, dst);
+                }
+            }
+
+            foreach (var file in session.CurrentDisabledHalf)
+            {
+                var src = Path.Combine(disabledDir, file);
+                var dst = Path.Combine(modsDir, file);
+                if (File.Exists(src) && !File.Exists(dst))
+                {
+                    File.Move(src, dst);
+                }
+            }
+
+            session.CurrentSuspects = new List<string>(session.CurrentDisabledHalf);
         }
 
         if (session.CurrentSuspects.Count <= 1)
         {
             session.State = BisectState.FoundCulprit;
             session.CulpritFile = session.CurrentSuspects.FirstOrDefault();
+
+            // Return all innocent files from disabledDir to modsDir
+            foreach (var file in Directory.GetFiles(disabledDir))
+            {
+                var fileName = Path.GetFileName(file);
+                if (!string.Equals(fileName, session.CulpritFile, StringComparison.OrdinalIgnoreCase))
+                {
+                    var dst = Path.Combine(modsDir, fileName);
+                    if (!File.Exists(dst)) File.Move(file, dst);
+                }
+            }
+
             SaveSession(session);
             return session;
         }
 
         session.Step++;
-        ApplyStepPartition(session);
+        ApplyStepPartition(session, modsDir, disabledDir);
         SaveSession(session);
         return session;
     }
 
-    private static void ApplyStepPartition(ModBisectSession session)
+    private static void ApplyStepPartition(ModBisectSession session, string modsDir, string disabledDir)
     {
         int halfCount = Math.Max(1, session.CurrentSuspects.Count / 2);
         session.CurrentActiveHalf = session.CurrentSuspects.Take(halfCount).ToList();
-        var disabledHalf = session.CurrentSuspects.Skip(halfCount).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        session.CurrentDisabledHalf = session.CurrentSuspects.Skip(halfCount).ToList();
 
-        var modsDir = Path.Combine(session.GameDirectory, "mods");
-        if (!Directory.Exists(modsDir)) return;
-
-        // In the suspects pool: active half is enabled (.jar), disabled half is .jar.disabled
-        foreach (var mod in session.CurrentSuspects)
+        // Ensure active half is in modsDir
+        foreach (var file in session.CurrentActiveHalf)
         {
-            string baseName = mod.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
-                ? mod[..^".disabled".Length] : mod;
+            var src = Path.Combine(disabledDir, file);
+            var dst = Path.Combine(modsDir, file);
+            if (File.Exists(src) && !File.Exists(dst)) File.Move(src, dst);
+        }
 
-            string enabledPath = Path.Combine(modsDir, baseName);
-            string disabledPath = Path.Combine(modsDir, baseName + ".disabled");
-
-            if (disabledHalf.Contains(mod) || disabledHalf.Contains(baseName))
-            {
-                // Should be disabled
-                if (File.Exists(enabledPath)) File.Move(enabledPath, disabledPath, overwrite: true);
-            }
-            else
-            {
-                // Should be enabled
-                if (File.Exists(disabledPath)) File.Move(disabledPath, enabledPath, overwrite: true);
-            }
+        // Move inactive half to disabledDir (without in-place renaming or overwriting)
+        foreach (var file in session.CurrentDisabledHalf)
+        {
+            var src = Path.Combine(modsDir, file);
+            var dst = Path.Combine(disabledDir, file);
+            if (File.Exists(src) && !File.Exists(dst)) File.Move(src, dst);
         }
     }
 
     /// <summary>
-    /// Finishes or cancels the bisect session and restores the mod files to their original states.
-    /// If keepCulpritDisabled is true and a culprit was found, that culprit is left disabled.
+    /// Finishes or cancels the bisect session and restores the starting mod set.
+    /// If keepCulpritDisabled is true and a culprit was found, that culprit is left in bisect-disabled.
     /// </summary>
     public static void FinishOrCancel(string gameDirectory, bool keepCulpritDisabled = true)
     {
         var session = LoadSession(gameDirectory);
         var modsDir = Path.Combine(gameDirectory, "mods");
+        var disabledDir = DisabledModsDirectory(gameDirectory);
 
-        if (session != null && Directory.Exists(modsDir))
+        if (Directory.Exists(disabledDir))
         {
-            var origDisabledSet = new HashSet<string>(session.OriginallyDisabledFiles.Select(f =>
-                f.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase) ? f[..^".disabled".Length] : f),
-                StringComparer.OrdinalIgnoreCase);
-
-            string? culpritBase = session.CulpritFile != null
-                ? (session.CulpritFile.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)
-                    ? session.CulpritFile[..^".disabled".Length]
-                    : session.CulpritFile)
-                : null;
-
-            foreach (var mod in session.AllCandidateFiles.Concat(session.OriginallyDisabledFiles).Distinct(StringComparer.OrdinalIgnoreCase))
+            foreach (var file in Directory.GetFiles(disabledDir))
             {
-                string baseName = mod.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase) ? mod[..^".disabled".Length] : mod;
-                string enabledPath = Path.Combine(modsDir, baseName);
-                string disabledPath = Path.Combine(modsDir, baseName + ".disabled");
-
-                bool shouldBeDisabled = origDisabledSet.Contains(baseName);
-                if (keepCulpritDisabled && culpritBase != null && string.Equals(baseName, culpritBase, StringComparison.OrdinalIgnoreCase))
+                var fileName = Path.GetFileName(file);
+                if (keepCulpritDisabled && session?.CulpritFile != null &&
+                    string.Equals(fileName, session.CulpritFile, StringComparison.OrdinalIgnoreCase))
                 {
-                    shouldBeDisabled = true;
+                    // Leave culprit in disabled folder
+                    continue;
                 }
 
-                if (shouldBeDisabled)
+                var dst = Path.Combine(modsDir, fileName);
+                if (!File.Exists(dst))
                 {
-                    if (File.Exists(enabledPath)) File.Move(enabledPath, disabledPath, overwrite: true);
-                }
-                else
-                {
-                    if (File.Exists(disabledPath)) File.Move(disabledPath, enabledPath, overwrite: true);
+                    File.Move(file, dst);
                 }
             }
         }
