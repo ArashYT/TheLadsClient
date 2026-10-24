@@ -458,6 +458,14 @@ public class ModuleManager {
         // Other players' health is not on vanilla's name tags: HypixelSafetyManager gates it (risky set).
         register(new Module(com.thelads.core.client.PvpVisuals.NAMETAG_HEALTH, "Shows each player's health after their name tag. "
             + "Off on servers that don't allow it."), Module.Category.MECHANIC);
+        // PARITY-1023 pvp (rows 31-38): Light Overlay, Loot Beams, Mob Overlay and Mob Size are risky (HypixelSafetyManager), off by default.
+        register(new OofModule(), Module.Category.MECHANIC);
+        register(com.thelads.core.client.LightOverlay.create(), Module.Category.MECHANIC);
+        register(new LootBeamsModule(), Module.Category.MECHANIC);
+        register(new MobOverlayModule(), Module.Category.MECHANIC);
+        register(new MobSizeModule(), Module.Category.MECHANIC);
+        register(new ItemDespawnModule(), Module.Category.MECHANIC);
+        register(new UhcOverlayModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

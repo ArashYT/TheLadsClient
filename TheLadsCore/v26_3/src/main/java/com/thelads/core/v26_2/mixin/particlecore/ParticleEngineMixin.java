@@ -22,6 +22,12 @@ public abstract class ParticleEngineMixin {
         if (ParticleCore.active() && !NativeParticleCore.allow(options, x, y, z)) cir.setReturnValue(null);
     }
 
+    /** Particle Core's per-type size, color and fade: the new particle keeps its type's look (SingleQuadParticleStyleMixin draws it). */
+    @Inject(method = "createParticle", at = @At("RETURN"))
+    private void ladsStyle(ParticleOptions options, double x, double y, double z, double xa, double ya, double za, CallbackInfoReturnable<Particle> cir) {
+        if (ParticleCore.styled() && cir.getReturnValue() != null) ParticleCore.style(cir.getReturnValue(), NativeParticleCore.id(options.getType()));
+    }
+
     /** QA timing of the particle extraction (a no-op unless ParticleCore.timing). */
     @Inject(method = "extract", at = @At("HEAD"))
     private void ladsExtractBegin(ParticlesRenderState state, Frustum frustum, Camera camera, float partialTick, CallbackInfo ci) { ParticleCore.timeBegin(); }
