@@ -21,7 +21,8 @@ public interface P2PSession {
 
     /**
      * Gathers candidates, sends them through sendSignal (relayed by the backend to the peer), connects; completes when the reliable
-     * stream is up, exceptionally on failure or after 20 s.
+     * stream is up, exceptionally on failure or after 20 s. The returned future is the session itself: the peer's signals go to its
+     * onSignal while it connects (they arrive before the stream is up; HostSession and GuestSession rely on this).
      */
     static CompletableFuture<P2PSession> start(String sid, boolean host, IceConfig cfg, Consumer<JsonObject> sendSignal) {
         return P2PSessionImpl.start(sid, host, cfg, sendSignal);

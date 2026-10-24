@@ -2,6 +2,8 @@ package com.thelads.core.v1_20_1;
 
 import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.social.SocialBridge;
+import com.thelads.core.client.social.SocialState;
+import com.thelads.core.client.social.ui.SocialToasts;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.v1_20_1.adapter.VanillaGameBridge1201;
@@ -57,7 +59,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             "Day", "Time", "XP", "Potion Effects", "Zoom", com.thelads.core.modules.ToggleSprintModule.NAME,
             "Fullbright", "TitleScreen", "Title Scale", "CPS", "Keystrokes",
             "Biome", "ArmorHUD", "Direction", "Health", "Hunger", "Scoreboard", "TexturePacks",
-            "Autohide", "BossBar", "RawInput", "LegacySwing", "DiscordRPC",
+            "Autohide", "BossBar", "RawInput", "LegacySwing", "DiscordRPC", SocialState.MODULE,
             "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates",
             "Voice Chat", "Voice Chat Group",
             // Gameplay & Visuals
@@ -92,14 +94,15 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
                 }
             }
             while (NativeKeyBindings1201.TOAST_ACCEPT.consumeClick()) {
-                SocialHudToast1201.acceptNewest();
+                SocialToasts.acceptNewest();
             }
             while (NativeKeyBindings1201.TOAST_DENY.consumeClick()) {
-                SocialHudToast1201.denyNewest();
+                SocialToasts.denyNewest();
             }
             NativeFeatures1201.tick();
             NativeDiscordPresence1201.tick();
             com.thelads.core.client.cosmetics.net.CosmeticsLink.tick();
+            SocialState.tick();
             NativeKillBanner1201.tick();
             com.thelads.core.mods.CoreCatalogExporter.exportIfChanged();
         });

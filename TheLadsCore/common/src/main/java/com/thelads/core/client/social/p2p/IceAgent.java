@@ -71,6 +71,7 @@ public final class IceAgent implements AutoCloseable {
 
     private final CompletableFuture<Void> connectedFuture = new CompletableFuture<>();
     private final AtomicBoolean closed = new AtomicBoolean(false);
+    private final AtomicBoolean checking = new AtomicBoolean(false);
     private final AtomicLong bytesSent = new AtomicLong(0);
     private final AtomicLong bytesReceived = new AtomicLong(0);
 
@@ -277,7 +278,31 @@ public final class IceAgent implements AutoCloseable {
 
     private synchronized void startConnectivityChecks() {
         if (remoteUfrag == null || remotePwd == null || remoteCandidates.isEmpty() || localCandidates.isEmpty()) return;
+        sendCheckRound();
+        // The peer drops a check that arrives before our signal does (it can't verify the USERNAME yet), so checks repeat until a pair
+        // is nominated: one paced thread per agent, ending at connect, close or 20 s (P2PSession's timeout).
+        if (checking.compareAndSet(false, true)) {
+            Thread repeat = new Thread(this::repeatChecks, "IceAgent-Checks-" + sid);
+            repeat.setDaemon(true);
+            repeat.setPriority(Thread.MIN_PRIORITY + 1);
+            repeat.start();
+        }
+    }
 
+    private void repeatChecks() {
+        long end = System.currentTimeMillis() + 20_000;
+        try {
+            while (!connectedFuture.isDone() && !closed.get() && System.currentTimeMillis() < end) {
+                Thread.sleep(200);
+                synchronized (this) {
+                    if (!connectedFuture.isDone()) sendCheckRound();
+                }
+            }
+        } catch (InterruptedException ignored) {
+        }
+    }
+
+    private void sendCheckRound() {
         List<Candidate> sortedRemote = new ArrayList<>(remoteCandidates);
         sortedRemote.sort((a, b) -> Long.compare(b.prio, a.prio));
 

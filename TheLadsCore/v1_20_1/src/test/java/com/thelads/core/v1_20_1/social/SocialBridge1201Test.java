@@ -6,54 +6,12 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 public class SocialBridge1201Test {
-
-    @Test
-    public void testToastAddAcceptAndDeny() {
-        AtomicReference<String> handled = new AtomicReference<>();
-        SocialBridge1201.setActionHandler(handled::set);
-
-        SocialHudToast1201.addToast("Invite", "Player1 invited you", "invite_accept:123", "invite_decline:123");
-
-        boolean accepted = SocialHudToast1201.acceptNewest();
-        Assertions.assertTrue(accepted);
-        Assertions.assertEquals("invite_accept:123", handled.get());
-
-        SocialHudToast1201.addToast("Request", "Player2 wants to join", "join_accept:yes", "join_deny:no");
-        boolean denied = SocialHudToast1201.denyNewest();
-        Assertions.assertTrue(denied);
-        Assertions.assertEquals("join_deny:no", handled.get());
-    }
-
-    @Test
-    public void testToastMouseClick() {
-        AtomicReference<String> handled = new AtomicReference<>();
-        SocialBridge1201.setActionHandler(handled::set);
-
-        // Add toast and set its position simulating render pass
-        SocialHudToast1201.addToast("Party", "Join party?", "party_accept:777", "party_deny:777");
-        
-        // Simulating click outside bounds -> false
-        boolean clickedOutside = SocialHudToast1201.onClick(500, 500);
-        Assertions.assertFalse(clickedOutside);
-
-        // Click directly on accept button bounds ([8, 34]..[72, 48]): e.g. x=20, y=36
-        boolean accepted = SocialHudToast1201.onClick(20, 36);
-        Assertions.assertTrue(accepted);
-        Assertions.assertEquals("party_accept:777", handled.get());
-
-        // Add second toast and click deny button bounds ([78, 34]..[142, 48]): e.g. x=90, y=36
-        SocialHudToast1201.addToast("Invite", "Join world?", "join_accept:888", "join_deny:888");
-        boolean denied = SocialHudToast1201.onClick(90, 36);
-        Assertions.assertTrue(denied);
-        Assertions.assertEquals("join_deny:888", handled.get());
-    }
 
     @Test
     public void testHostOptionsPersistence(@TempDir Path tempDir) throws Exception {
@@ -150,15 +108,6 @@ public class SocialBridge1201Test {
         var label = SocialBridge1201.friendsButtonLabel();
         Assertions.assertNotNull(label);
         Assertions.assertTrue(label.getString().startsWith("Friends"));
-    }
-
-    @Test
-    public void testChatActionDispatch() {
-        AtomicReference<String> captured = new AtomicReference<>();
-        SocialBridge1201.setActionHandler(captured::set);
-
-        SocialBridge1201.handleChatAction("invite_accept:xyz");
-        Assertions.assertEquals("invite_accept:xyz", captured.get());
     }
 
     @Test

@@ -2,6 +2,8 @@ package com.thelads.core.v26_2.social;
 
 import com.thelads.core.client.social.HostOptions;
 import com.thelads.core.client.social.SocialBridge;
+import com.thelads.core.client.social.SocialState;
+import com.thelads.core.client.social.ui.SocialToasts;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
@@ -26,7 +28,6 @@ import java.net.ServerSocket;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Predicate;
-import java.lang.reflect.Method;
 
 /**
  * Fabric 26.3 implementation of {@link SocialBridge}.
@@ -260,7 +261,7 @@ public class SocialBridge26 implements SocialBridge {
 
     @Override
     public void connectToLocal(int port, String displayName) {
-        leaveWorld(() -> {
+        Minecraft.getInstance().execute(() -> { // social threads call this; SocialState left any world before
             Minecraft mc = Minecraft.getInstance();
             ServerData data = new ServerData(displayName, "127.0.0.1:" + port, ServerData.Type.OTHER);
             ConnectScreen.startConnecting(null, mc, ServerAddress.parseString("127.0.0.1:" + port), data, false, null);
@@ -269,7 +270,7 @@ public class SocialBridge26 implements SocialBridge {
 
     @Override
     public void connectToServer(String address) {
-        leaveWorld(() -> {
+        Minecraft.getInstance().execute(() -> {
             Minecraft mc = Minecraft.getInstance();
             ServerData data = new ServerData(address, address, ServerData.Type.OTHER);
             ConnectScreen.startConnecting(null, mc, ServerAddress.parseString(address), data, false, null);
@@ -290,12 +291,14 @@ public class SocialBridge26 implements SocialBridge {
     public void leaveWorld(Runnable then) {
         onWorldDisconnect();
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level != null) {
-            mc.disconnect(new TitleScreen(), false);
-        }
-        if (then != null) {
-            mc.execute(then);
-        }
+        mc.execute(() -> { // social threads call this; runs at once on the game thread
+            if (mc.level != null) {
+                mc.disconnect(new TitleScreen(), false);
+            }
+            if (then != null) {
+                mc.execute(then);
+            }
+        });
     }
 
     @Override
@@ -330,7 +333,7 @@ public class SocialBridge26 implements SocialBridge {
 
     @Override
     public void toast(String title, String body, String acceptAction, String denyAction) {
-        SocialToast26.show(title, body, acceptAction, denyAction);
+        SocialToasts.showAction(title, body, acceptAction, denyAction);
     }
 
     @Override
@@ -341,7 +344,7 @@ public class SocialBridge26 implements SocialBridge {
                 style.withClickEvent(new ClickEvent.RunCommand("/lads:social " + actionId))
                      .withUnderlined(true)
                      .withColor(0x3B82F6));
-            mc.gui.chatListener().handleSystemMessage(comp, false);
+            mc.execute(() -> mc.gui.chatListener().handleSystemMessage(comp, false));
         }
     }
 
@@ -357,47 +360,13 @@ public class SocialBridge26 implements SocialBridge {
         return server != null ? server.getWorldData().getLevelName() : null;
     }
 
+    /** A clicked "/lads:social <id>" chat link: handled here, never sent to the server. */
     public static void onChatActionClicked(String actionId) {
-        if (actionId == null || actionId.isEmpty()) return;
-        LOGGER.info("P2P chat action clicked: {}", actionId);
-        // TODO(S3): SocialState.get().handleAction(actionId) once S3 merges
-        try {
-            Class<?> stateClass = Class.forName("com.thelads.core.client.social.SocialState");
-            Method getMethod = stateClass.getMethod("get");
-            Object instance = getMethod.invoke(null);
-            if (instance != null) {
-                Method handleMethod = stateClass.getMethod("handleAction", String.class);
-                handleMethod.invoke(instance, actionId);
-            }
-        } catch (ClassNotFoundException | NoSuchMethodException ignored) {
-            // S3 not merged into this lane yet; logged above
-        } catch (Throwable t) {
-            LOGGER.warn("Failed to dispatch action {} to SocialState", actionId, t);
-        }
-    }
-
-    public static int getOnlineFriendsCount() {
-        try {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc.getPlayerSocialManager() != null && mc.getPlayerSocialManager().isFriendListEnabled()) {
-                var handler = mc.getPlayerSocialManager().getPresenceHandler();
-                var presence = handler != null ? handler.getLatestPresence() : null;
-                if (presence != null && presence.presence() != null) {
-                    int count = 0;
-                    for (var p : presence.presence()) {
-                        if (p.status() != com.mojang.authlib.services.response.PresenceStatus.OFFLINE) {
-                            count++;
-                        }
-                    }
-                    return count;
-                }
-            }
-        } catch (Throwable ignored) {}
-        return 0;
+        SocialState.get().handleAction(actionId);
     }
 
     public static Component friendsButtonText() {
-        int count = getOnlineFriendsCount();
+        int count = SocialState.get().onlineFriendCount();
         return count > 0 ? Component.literal("Friends (" + count + ")") : Component.literal("Friends");
     }
 

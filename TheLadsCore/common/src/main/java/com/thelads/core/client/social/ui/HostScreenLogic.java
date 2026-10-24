@@ -5,6 +5,9 @@ import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.client.gui.MenuGraphics;
 import com.thelads.core.client.social.HostOptions;
 import com.thelads.core.client.social.SocialBridge;
+import com.thelads.core.client.social.SocialState;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -12,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.slf4j.LoggerFactory;
 
 /**
  * Common GUI logic for Multiplayer Options (Host Screen):
@@ -95,6 +99,33 @@ public final class HostScreenLogic {
             @Override public HostOptions currentOptions() { return new HostOptions(); }
         };
         loadFrom(this.callbacks.currentOptions());
+    }
+
+    /** Multiplayer Options for the open world (null = none: defaults, not saved); callbacks go to SocialState.get() and its bridge. */
+    public static HostScreenLogic forWorld(Path worldDir, Runnable onClose) {
+        SocialState s = SocialState.get();
+        return new HostScreenLogic(new Callbacks() {
+            @Override public HostOptions currentOptions() {
+                return s.hostSession().isHosting() || worldDir == null ? s.hostOptions() : HostOptions.load(worldDir);
+            }
+            @Override public void saveOptions(HostOptions options) {
+                if (worldDir == null) return;
+                try {
+                    options.save(worldDir);
+                } catch (IOException e) {
+                    LoggerFactory.getLogger("TheLadsCore/HostScreen").warn("Could not save lads-host.json: {}", e.getMessage());
+                }
+            }
+            @Override public boolean isHosting() { return s.hostSession().isHosting(); }
+            @Override public void startHosting(HostOptions options) {
+                saveOptions(options);
+                s.startHosting(options);
+            }
+            @Override public void stopHosting() { s.stopHosting(); }
+            @Override public List<SocialBridge.GuestInfo> guests() { return SocialBridge.get().guests(); }
+            @Override public void guestAction(UUID id, SocialBridge.GuestAction action) { s.guestAction(id, action); }
+            @Override public void onClose() { onClose.run(); }
+        });
     }
 
     public void loadFrom(HostOptions o) {

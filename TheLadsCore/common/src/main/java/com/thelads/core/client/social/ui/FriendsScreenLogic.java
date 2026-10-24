@@ -7,6 +7,7 @@ import com.thelads.core.client.social.FriendEntry;
 import com.thelads.core.client.social.Presence;
 import com.thelads.core.client.social.SocialBridge;
 import com.thelads.core.client.social.SocialProtocol;
+import com.thelads.core.client.social.SocialState;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -139,6 +140,46 @@ public final class FriendsScreenLogic {
         this.callbacks = callbacks != null ? callbacks : new Callbacks() {
             @Override public List<FriendEntry> friends() { return List.of(); }
         };
+    }
+
+    /** The game's Friends screen: every callback goes to SocialState.get(); per-version screens only forward render and input. */
+    public static FriendsScreenLogic social(Runnable onClose) {
+        SocialState s = SocialState.get();
+        FriendsScreenLogic logic = new FriendsScreenLogic(new Callbacks() {
+            @Override public List<FriendEntry> friends() { return s.friends(); }
+            @Override public List<FriendEntry> incomingRequests() { return s.incoming(); }
+            @Override public List<FriendEntry> outgoingRequests() { return s.outgoing(); }
+            @Override public List<FriendEntry> blocked() { return s.blocked(); }
+            @Override public JoinCheck canJoin(FriendEntry friend) {
+                SocialState.JoinCheck check = s.canJoin(friend);
+                return new JoinCheck(check.ok(), check.reason());
+            }
+            @Override public void addFriend(String name) { s.addFriend(name); }
+            @Override public void acceptRequest(UUID id) { s.accept(id); }
+            @Override public void declineRequest(UUID id) { s.decline(id); }
+            @Override public void removeFriend(UUID id) { s.remove(id); }
+            @Override public void blockFriend(UUID id) { s.block(id); }
+            @Override public void unblockFriend(UUID id) { s.unblock(id); }
+            @Override public void setNick(UUID id, String nick) { s.nick(id, nick); }
+            @Override public void sendDm(UUID id, String text) { s.sendDm(id, text); }
+            @Override public List<DmEntry> dms(UUID id) {
+                List<SocialState.Dm> dms = s.dms(id);
+                List<DmEntry> out = new ArrayList<>(dms.size());
+                for (SocialState.Dm dm : dms) out.add(new DmEntry(dm.from(), dm.text(), dm.ts()));
+                return out;
+            }
+            @Override public void invite(UUID id) { s.invite(id); }
+            @Override public void requestJoin(UUID id) { s.requestJoin(id); }
+            @Override public String connectionStatus() { return s.connectionStatus(); }
+            @Override public boolean showServer() { return s.showServer(); }
+            @Override public void setShowServer(boolean show) { s.setShowServer(show); }
+            @Override public boolean appearOffline() { return s.appearOffline(); }
+            @Override public void setAppearOffline(boolean appearOffline) { s.setAppearOffline(appearOffline); }
+            @Override public void onClose() { onClose.run(); }
+        });
+        FriendEntry dm = s.takeDmTarget();
+        if (dm != null) logic.openDm(dm);
+        return logic;
     }
 
     public Tab tab() { return currentTab; }

@@ -1,68 +1,40 @@
 package com.thelads.core.v1_8_9.social;
 
+import com.thelads.core.client.social.ui.FriendsScreenLogic;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import java.io.IOException;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
-import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
 
-/**
- * Host screen wrapper for the common FriendsScreenLogic (Task S4) on Minecraft 1.8.9.
- */
+/** Host screen for the common FriendsScreenLogic on 1.8.9: forwards render and input only. */
 public final class FriendsScreen189 extends GuiScreen {
-    private final GuiScreen parent;
-    // TODO(S4): private FriendsScreenLogic logic;
+    private final FriendsScreenLogic ui;
 
     public FriendsScreen189(GuiScreen parent) {
-        this.parent = parent;
-        // TODO(S4): this.logic = new FriendsScreenLogic(new FriendsScreenLogic.Callbacks() { ... });
-    }
-
-    public GuiScreen parent() {
-        return parent;
-    }
-
-    @Override
-    public void initGui() {
-        super.initGui();
-        // TODO(S4): if (logic != null) logic.init(width, height);
+        this.ui = FriendsScreenLogic.social(() -> Minecraft.getMinecraft().displayGuiScreen(parent));
     }
 
     @Override
     public void drawScreen(int mx, int my, float partialTicks) {
-        drawDefaultBackground();
-        GuiLadsAdapter g = new GuiLadsAdapter(fontRendererObj, width, height);
-        // TODO(S4): if (logic != null) { logic.render(g, mx, my); } else { ... }
-        renderPlaceholder(g, mx, my);
-        super.drawScreen(mx, my, partialTicks);
-    }
-
-    private void renderPlaceholder(GuiLadsAdapter g, int mx, int my) {
-        int cardW = 340, cardH = 220;
-        int left = width / 2 - cardW / 2;
-        int top = height / 2 - cardH / 2;
-        g.fill(left, top, left + cardW, top + cardH, 0xD0111116);
-        g.fill(left, top, left + cardW, top + 2, 0xFFCF1535);
-
-        g.drawCenteredText("The Lads Friends", width / 2, top + 16, 0xFFFFFFFF, true);
-        g.drawCenteredText("Connecting to social service...", width / 2, height / 2 - 20, 0xFFAAAAAA, true);
-        g.drawCenteredText("SocialState and UI logic arriving from S3/S4 lanes.", width / 2, height / 2, 0xFF777777, true);
-        g.drawCenteredText("Press ESC to return", width / 2, top + cardH - 24, 0xFF555555, true);
+        ui.render(new GuiLadsAdapter(fontRendererObj, width, height), mx, my);
     }
 
     @Override
     protected void mouseClicked(int mx, int my, int button) throws IOException {
-        // TODO(S4): if (logic != null && logic.mouseClicked(mx, my, button)) return;
-        super.mouseClicked(mx, my, button);
+        if (!ui.mouseClicked(mx, my, button)) super.mouseClicked(mx, my, button);
     }
 
     @Override
-    protected void keyTyped(char typedChar, int keyCode) throws IOException {
-        if (keyCode == Keyboard.KEY_ESCAPE) {
-            Minecraft.getMinecraft().displayGuiScreen(parent);
-            return;
-        }
-        // TODO(S4): if (logic != null && logic.keyPressed(keyCode, typedChar)) return;
-        super.keyTyped(typedChar, keyCode);
+    public void handleMouseInput() throws IOException {
+        super.handleMouseInput();
+        int wheel = Mouse.getEventDWheel();
+        if (wheel != 0) ui.mouseScrolled(Mouse.getEventX() * width / mc.displayWidth,
+            height - Mouse.getEventY() * height / mc.displayHeight - 1, Integer.signum(wheel));
+    }
+
+    @Override
+    protected void keyTyped(char typedChar, int keyCode) {
+        if (!ui.keyPressed(keyCode, 0, 0)) ui.charTyped(typedChar); // the logic knows 1.8.9's Esc/Enter/Backspace codes
     }
 }

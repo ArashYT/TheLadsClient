@@ -3,8 +3,11 @@ package com.thelads.core.client.social;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.social.p2p.P2PSession;
+import com.thelads.core.config.Module;
+import com.thelads.core.config.ModuleManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +21,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Client-side friends, presence, DMs, invites and P2P orchestration state.
@@ -25,6 +29,8 @@ import java.util.function.Consumer;
  */
 public class SocialState {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore/SocialState");
+    /** The Lads setting (default on); off = no connection to the social service at all. */
+    public static final String MODULE = "Friends & Social";
 
     public record Dm(UUID from, String text, long ts) {}
     public record JoinCheck(boolean ok, String reason) {}
@@ -54,22 +60,58 @@ public class SocialState {
     private final Map<String, Invite> activeInvites = new ConcurrentHashMap<>();
     private final Map<String, JoinRequest> activeJoinRequests = new ConcurrentHashMap<>();
 
-    private final HostSession hostSession = new HostSession();
-    private final GuestSession guestSession = new GuestSession();
+    private final HostSession hostSession = new HostSession(this);
+    private final GuestSession guestSession = new GuestSession(this);
 
     private final List<Runnable> listeners = new CopyOnWriteArrayList<>();
-    private Consumer<JsonObject> clientSender;
+    private final Supplier<SocialBridge> bridges;
+    private final Supplier<LadsGameBridge.Session> sessions;
+    private final SocialClient client;
+    private volatile Consumer<JsonObject> clientSender;
+    private volatile SocialBridge.GameInfo game;
+    private volatile boolean showServer = true, appearOffline;
+    private volatile Presence lastPresence;
+    private volatile UUID dmTarget;
+    private int ticks; // game thread only
 
+    /** The game's own state: SocialBridge.get(), the logged-in session, the -Dlads.social.url / LADS_SOCIAL_URL endpoint. */
     public SocialState() {
-        this.clientSender = obj -> SocialClient.get().send(obj);
-        this.guestSession.setEndSender(this.clientSender);
-        this.hostSession.setEndSender(this.clientSender);
+        this(SocialBridge::get, () -> LadsGameBridge.get().session(), System.getProperty("lads.social.url", System.getenv("LADS_SOCIAL_URL")));
+    }
+
+    /** One player's state: its bridge, who it is and its endpoint (tests run two of these side by side). */
+    public SocialState(Supplier<SocialBridge> bridges, Supplier<LadsGameBridge.Session> sessions, String url) {
+        this.bridges = bridges;
+        this.sessions = sessions;
+        this.client = new SocialClient(url, this);
+        this.clientSender = client::send;
     }
 
     public void setClientSender(Consumer<JsonObject> sender) {
-        this.clientSender = sender != null ? sender : obj -> SocialClient.get().send(obj);
-        this.guestSession.setEndSender(this.clientSender);
-        this.hostSession.setEndSender(this.clientSender);
+        this.clientSender = sender != null ? sender : client::send;
+    }
+
+    public SocialClient client() {
+        return client;
+    }
+
+    SocialBridge bridge() {
+        return bridges.get();
+    }
+
+    LadsGameBridge.Session session() {
+        return sessions.get();
+    }
+
+    /** Ours, read once: it does not change while the game runs (1.20.1 reads pack.json for it). */
+    SocialBridge.GameInfo gameInfo() {
+        SocialBridge.GameInfo g = game;
+        if (g == null) game = g = bridge().gameInfo();
+        return g;
+    }
+
+    void sendRaw(JsonObject message) {
+        clientSender.accept(message);
     }
 
     public HostSession hostSession() {
@@ -142,7 +184,94 @@ public class SocialState {
     }
 
     public String connectionStatus() {
-        return SocialClient.get().connectionStatus();
+        return client.connectionStatus();
+    }
+
+    public int onlineFriendCount() {
+        int n = 0;
+        for (FriendEntry f : friendsMap.values()) if (f.presence() != null && f.presence().online()) n++;
+        return n;
+    }
+
+    public boolean showServer() {
+        return showServer;
+    }
+
+    public boolean appearOffline() {
+        return appearOffline;
+    }
+
+    public void setShowServer(boolean show) {
+        showServer = show;
+        send(SocialProtocol.SETTINGS, "showServer", show);
+        refreshPresence();
+        notifyListeners();
+    }
+
+    public void setAppearOffline(boolean offline) {
+        appearOffline = offline;
+        send(SocialProtocol.SETTINGS, "appearOffline", offline);
+        notifyListeners();
+    }
+
+    /** The friend a "dm:<uuid>" action asked to open, once (the Friends screen opens on that conversation). */
+    public FriendEntry takeDmTarget() {
+        UUID id = dmTarget;
+        dmTarget = null;
+        return id == null ? null : friendsMap.get(id);
+    }
+
+    // --- Lifecycle (game thread) ---
+
+    /** Every client tick, next to CosmeticsLink.tick(): connection on/off with the setting, presence from the game, session cleanup. */
+    public static void tick() {
+        get().sample();
+    }
+
+    private void sample() {
+        SocialBridge bridge = bridge();
+        // Anti-ban: the P2P key (an unknown server for HypixelSafetyManager) never outlives the tunnel: any other connection ends it.
+        if (guestSession.isActive() && bridge.inWorldOrServer() && !guestSession.isProxy(LadsGameBridge.get().getServerAddress())) {
+            guestSession.close("Left the friend's world");
+        }
+        if (++ticks % 20 != 0) return;
+        if (!enabled()) {
+            client.close();
+            return;
+        }
+        client.start();
+        if (hostSession.isHosting() && bridge.worldId() == null) stopHosting();
+        refreshPresence();
+    }
+
+    private static boolean enabled() {
+        Module module = ModuleManager.getInstance().getModule(MODULE);
+        return module == null || module.isEnabled();
+    }
+
+    /** Publishes what we are doing when it changed (SocialClient repeats it every 60 s and after a reconnect). */
+    public void refreshPresence() {
+        Presence p = currentPresence();
+        if (p.equals(lastPresence)) return;
+        lastPresence = p;
+        client.setPresence(p);
+    }
+
+    private Presence currentPresence() {
+        SocialBridge bridge = bridge();
+        SocialBridge.GameInfo g = gameInfo();
+        if (hostSession.isHosting() && hostSession.options().scope != HostOptions.Scope.LAN) {
+            HostOptions o = hostSession.options();
+            // Not "joinable": friends can't ask to join (backend: scope invite), invites still work.
+            String scope = o.scope == HostOptions.Scope.FRIENDS && o.showJoinable ? "friends" : "invite";
+            return new Presence("hosting", g, null, new Presence.WorldAd(Objects.requireNonNullElse(bridge.worldId(), "world"),
+                    Objects.requireNonNullElse(bridge.worldName(), "My World"), scope, o.maxPlayers, hostSession.activeGuestCount() + 1));
+        }
+        if (guestSession.isActive()) return new Presence("server", g, null, null);
+        if (!bridge.inWorldOrServer()) return new Presence("menu", g, null, null);
+        String addr = LadsGameBridge.get().getServerAddress();
+        if ("Singleplayer".equalsIgnoreCase(addr)) return new Presence("singleplayer", g, null, null);
+        return new Presence("server", g, showServer ? addr : null, null);
     }
 
     // --- Outbound actions ---
@@ -219,7 +348,7 @@ public class SocialState {
         String trimmed = text.length() > SocialProtocol.MAX_DM ? text.substring(0, SocialProtocol.MAX_DM) : text;
         send(SocialProtocol.DM, "to", to.toString(), "text", trimmed);
 
-        LadsGameBridge.Session session = LadsGameBridge.get().session();
+        LadsGameBridge.Session session = session();
         UUID self = session != null && session.uuid() != null ? session.uuid() : new UUID(0, 0);
         recordDm(to, new Dm(self, trimmed, System.currentTimeMillis()));
     }
@@ -247,16 +376,17 @@ public class SocialState {
     public void invite(UUID friendUuid) {
         if (friendUuid == null) return;
         if (hostSession.isHosting()) {
-            HostOptions opt = hostSession.options();
+            Presence.WorldAd ad = currentPresence().world();
+            if (ad == null) return; // LAN scope: friends join through the LAN, not an invite
             JsonObject worldAd = new JsonObject();
-            worldAd.addProperty("id", SocialBridge.get().worldId() != null ? SocialBridge.get().worldId() : "world");
-            worldAd.addProperty("name", SocialBridge.get().worldName() != null ? SocialBridge.get().worldName() : "My World");
-            worldAd.addProperty("scope", opt.scope.name().toLowerCase());
-            worldAd.addProperty("slots", opt.maxPlayers);
-            worldAd.addProperty("used", hostSession.activeGuestCount() + 1);
+            worldAd.addProperty("id", ad.id());
+            worldAd.addProperty("name", ad.name());
+            worldAd.addProperty("scope", ad.scope());
+            worldAd.addProperty("slots", ad.slots());
+            worldAd.addProperty("used", ad.used());
             hostSession.accept(friendUuid);
             send(SocialProtocol.INVITE, "to", friendUuid.toString(), "world", worldAd);
-        } else if (SocialBridge.get().inWorldOrServer()) {
+        } else if (bridge().inWorldOrServer() && showServer && !guestSession.isActive()) {
             String addr = LadsGameBridge.get().getServerAddress();
             if (addr != null && !addr.isEmpty() && !"Singleplayer".equalsIgnoreCase(addr)) {
                 send(SocialProtocol.INVITE, "to", friendUuid.toString(), "server", addr);
@@ -270,11 +400,12 @@ public class SocialState {
         if (invite != null && invite.isServer() && invite.serverAddress() != null) {
             String address = invite.serverAddress();
             send(SocialProtocol.INVITE_ACCEPT, "inviteId", inviteId);
-            if (SocialBridge.get().inWorldOrServer() || guestSession.isActive()) {
+            SocialBridge bridge = bridge();
+            if (bridge.inWorldOrServer() || guestSession.isActive()) {
                 guestSession.close("Switching to server");
-                SocialBridge.get().leaveWorld(() -> SocialBridge.get().connectToServer(address));
+                bridge.leaveWorld(() -> bridge.connectToServer(address));
             } else {
-                SocialBridge.get().connectToServer(address);
+                bridge.connectToServer(address);
             }
             return;
         }
@@ -304,15 +435,17 @@ public class SocialState {
         }
     }
 
-    public void startHosting(HostOptions options) {
-        hostSession.start(options);
-        publishUpdatedPresence();
+    /** Host screen: opens the world (LAN, or loopback + login filter for friends) and shows it to friends. */
+    public boolean startHosting(HostOptions options) {
+        boolean ok = hostSession.start(options);
+        refreshPresence();
         notifyListeners();
+        return ok;
     }
 
     public void stopHosting() {
         hostSession.stop("Host closed the world");
-        publishUpdatedPresence();
+        refreshPresence();
         notifyListeners();
     }
 
@@ -320,25 +453,11 @@ public class SocialState {
         return hostSession.options();
     }
 
-    private void publishUpdatedPresence() {
-        SocialBridge bridge = SocialBridge.get();
-        if (hostSession.isHosting()) {
-            HostOptions opt = hostSession.options();
-            Presence.WorldAd ad = new Presence.WorldAd(
-                    bridge.worldId() != null ? bridge.worldId() : "world",
-                    bridge.worldName() != null ? bridge.worldName() : "My World",
-                    opt.scope.name().toLowerCase(),
-                    opt.maxPlayers,
-                    hostSession.activeGuestCount() + 1
-            );
-            SocialClient.get().setPresence(new Presence("hosting", bridge.gameInfo(), null, ad));
-        } else if (bridge.inWorldOrServer()) {
-            String addr = LadsGameBridge.get().getServerAddress();
-            boolean isSp = "Singleplayer".equalsIgnoreCase(addr);
-            SocialClient.get().setPresence(new Presence(isSp ? "singleplayer" : "server", bridge.gameInfo(), isSp ? null : addr, null));
-        } else {
-            SocialClient.get().setPresence(new Presence("menu", bridge.gameInfo(), null, null));
-        }
+    /** The host's per-player menu: kick and ban also take back the guest's acceptance and end their P2P session. */
+    public void guestAction(UUID id, SocialBridge.GuestAction action) {
+        if (action == SocialBridge.GuestAction.BAN) bridge().guestAction(id, action);
+        if (action == SocialBridge.GuestAction.KICK || action == SocialBridge.GuestAction.BAN) hostSession.revoke(id); // revoke kicks
+        else bridge().guestAction(id, action);
     }
 
     public JoinCheck canJoin(FriendEntry friend) {
@@ -351,7 +470,7 @@ public class SocialState {
 
         SocialBridge.GameInfo hostGame = p.game();
         if (hostGame == null) return new JoinCheck(false, "Unknown game version");
-        SocialBridge.GameInfo ourGame = SocialBridge.get().gameInfo();
+        SocialBridge.GameInfo ourGame = gameInfo();
 
         if (ourGame.mc() != null && !ourGame.mc().isEmpty() && hostGame.mc() != null && !hostGame.mc().isEmpty()) {
             if (!Objects.equals(ourGame.mc(), hostGame.mc())) {
@@ -395,10 +514,10 @@ public class SocialState {
                 UUID id = parseUuid(arg);
                 if (id != null) decline(id);
             }
-            case "open_friends" -> SocialBridge.get().openFriendsScreen();
+            case "open_friends" -> bridge().openFriendsScreen();
             case "dm" -> {
-                UUID id = parseUuid(arg);
-                SocialBridge.get().openFriendsScreen();
+                dmTarget = parseUuid(arg);
+                bridge().openFriendsScreen();
             }
             default -> LOGGER.debug("SocialState: ignored unknown action id: {}", actionId);
         }
@@ -452,6 +571,8 @@ public class SocialState {
             }
         }
 
+        if (hello.get("settings") instanceof JsonObject settings) readSettings(settings);
+
         if (hello.has("dms") && hello.get("dms").isJsonArray()) {
             for (JsonElement e : hello.getAsJsonArray("dms")) {
                 if (e.isJsonObject()) {
@@ -484,6 +605,11 @@ public class SocialState {
         notifyListeners();
     }
 
+    private void readSettings(JsonObject settings) {
+        if (settings.get("showServer") instanceof JsonPrimitive p && p.isBoolean()) showServer = p.getAsBoolean();
+        if (settings.get("appearOffline") instanceof JsonPrimitive p && p.isBoolean()) appearOffline = p.getAsBoolean();
+    }
+
     public void onMessage(JsonObject msg) {
         String t = str(msg, "t");
         if (t == null) return;
@@ -504,9 +630,9 @@ public class SocialState {
                 FriendEntry entry = parseFriendEntry(msg);
                 if (entry != null) {
                     incomingMap.put(entry.id(), entry);
-                    SocialBridge.get().toast("Friend Request", entry.name() + " sent you a friend request",
+                    bridge().toast("Friend Request", entry.name() + " sent you a friend request",
                             "friend_accept:" + entry.id(), "friend_decline:" + entry.id());
-                    SocialBridge.get().chatAction(entry.name() + " sent you a friend request [Accept]",
+                    bridge().chatAction(entry.name() + " sent you a friend request [Accept]",
                             "friend_accept:" + entry.id());
                     notifyListeners();
                 }
@@ -524,7 +650,7 @@ public class SocialState {
                     incomingMap.remove(entry.id());
                     outgoingMap.remove(entry.id());
                     friendsMap.put(entry.id(), entry);
-                    SocialBridge.get().toast("New Friend", entry.name() + " is now your friend!", null, null);
+                    bridge().toast("New Friend", entry.name() + " is now your friend!", null, null);
                     notifyListeners();
                 }
             }
@@ -543,7 +669,7 @@ public class SocialState {
                     recordDm(from, new Dm(from, text, ts));
                     FriendEntry sender = friendsMap.get(from);
                     String name = sender != null ? sender.displayName() : "Friend";
-                    SocialBridge.get().toast("Message from " + name, text, null, null);
+                    bridge().toast("Message from " + name, text, "dm:" + from, null);
                 }
             }
             case SocialProtocol.INVITE -> {
@@ -558,15 +684,15 @@ public class SocialState {
 
                 if (server != null) {
                     activeInvites.put(inviteId, new Invite(inviteId, from, server, true, server));
-                    SocialBridge.get().toast("Server Invite", name + " invited you to " + server,
+                    bridge().toast("Server Invite", name + " invited you to " + server,
                             "invite_accept:" + inviteId, "invite_decline:" + inviteId);
-                    SocialBridge.get().chatAction(name + " invited you to " + server + " [Accept]",
+                    bridge().chatAction(name + " invited you to " + server + " [Accept]",
                             "invite_accept:" + inviteId);
                 } else {
                     activeInvites.put(inviteId, new Invite(inviteId, from, worldName, false, null));
-                    SocialBridge.get().toast("Game Invite", name + " invited you to " + worldName,
+                    bridge().toast("Game Invite", name + " invited you to " + worldName,
                             "invite_accept:" + inviteId, "invite_decline:" + inviteId);
-                    SocialBridge.get().chatAction(name + " invited you to " + worldName + " [Accept]",
+                    bridge().chatAction(name + " invited you to " + worldName + " [Accept]",
                             "invite_accept:" + inviteId);
                 }
                 notifyListeners();
@@ -578,7 +704,7 @@ public class SocialState {
                 handleJoinRequest(reqId, from, game);
             }
             case SocialProtocol.JOIN_DENIED -> {
-                SocialBridge.get().toast("Join Denied", "Host denied your join request", null, null);
+                bridge().toast("Join Denied", "Host denied your join request", null, null);
             }
             case SocialProtocol.P2P_START -> {
                 String sid = str(msg, "sid");
@@ -609,6 +735,10 @@ public class SocialState {
                     }
                 }
             }
+            case SocialProtocol.SETTINGS -> {
+                readSettings(msg);
+                notifyListeners();
+            }
             case SocialProtocol.ERROR -> {
                 String code = str(msg, "code");
                 LOGGER.warn("SocialState: received error from server: {}", code);
@@ -629,9 +759,9 @@ public class SocialState {
         activeJoinRequests.put(reqId, new JoinRequest(reqId, from, game));
         FriendEntry friend = friendsMap.get(from);
         String name = friend != null ? friend.displayName() : (from != null ? from.toString().substring(0, 8) : "Player");
-        SocialBridge.get().toast("Join Request", name + " wants to join your world",
+        bridge().toast("Join Request", name + " wants to join your world",
                 "join_accept:" + reqId, "join_deny:" + reqId);
-        SocialBridge.get().chatAction(name + " wants to join your world [Accept]",
+        bridge().chatAction(name + " wants to join your world [Accept]",
                 "join_accept:" + reqId);
         notifyListeners();
     }
@@ -651,9 +781,10 @@ public class SocialState {
         if ("host".equalsIgnoreCase(role)) {
             hostSession.handleP2PStart(sid, peer, iceConfig, signalSender);
         } else {
-            if (SocialBridge.get().inWorldOrServer() || guestSession.isActive()) {
+            SocialBridge bridge = bridge();
+            if (bridge.inWorldOrServer() || guestSession.isActive()) {
                 guestSession.close("Switching world");
-                SocialBridge.get().leaveWorld(() -> guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender));
+                bridge.leaveWorld(() -> guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender));
             } else {
                 guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender);
             }

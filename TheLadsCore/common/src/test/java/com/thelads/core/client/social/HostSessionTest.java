@@ -59,13 +59,22 @@ public class HostSessionTest {
 
     private HostSession session;
     private List<JsonObject> sentEnds;
+    private final List<SocialBridge.GuestInfo> online = new ArrayList<>();
 
     @BeforeEach
     public void setup() {
         HostSession.skipLoopbackForTest = true;
-        session = new HostSession();
+        SocialBridge bridge = new SocialBridge() {
+            @Override public List<GuestInfo> guests() { return online; }
+        };
+        SocialState state = new SocialState(() -> bridge, () -> null, null);
         sentEnds = new ArrayList<>();
-        session.setEndSender(sentEnds::add);
+        state.setClientSender(sentEnds::add);
+        session = state.hostSession();
+    }
+
+    private void join(UUID id) {
+        online.add(new SocialBridge.GuestInfo(id, "guest", 0, false, "survival"));
     }
 
     @AfterEach
@@ -117,8 +126,8 @@ public class HostSessionTest {
         session.accept(p2);
         session.accept(p3);
 
-        session.onGuestConnected(p1);
-        session.onGuestConnected(p2);
+        join(p1);
+        join(p2);
 
         assertEquals(2, session.activeGuestCount());
 
@@ -127,7 +136,7 @@ public class HostSessionTest {
 
         assertFalse(filter.test(p3), "3rd player must be rejected when maxPlayers=2 is reached");
 
-        session.onGuestDisconnected(p1);
+        online.removeIf(g -> g.id().equals(p1));
         assertEquals(1, session.activeGuestCount());
         assertTrue(filter.test(p3), "Player can join once a slot frees up");
     }

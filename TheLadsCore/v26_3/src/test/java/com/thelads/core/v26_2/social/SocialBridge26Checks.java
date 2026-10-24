@@ -50,14 +50,7 @@ public final class SocialBridge26Checks {
         // 4. Friends button text
         require("Friends".equals(SocialBridge26.friendsButtonText().getString()), "friendsButtonText default");
 
-        // 5. SocialToast accept/deny
-        require(!SocialToast26.acceptNewest(), "acceptNewest empty returns false");
-        require(!SocialToast26.denyNewest(), "denyNewest empty returns false");
-        SocialToast26.show("Invite", "Join world", "accept_123", "deny_123");
-        require(SocialToast26.acceptNewest(), "acceptNewest handles pending toast");
-        require(!SocialToast26.acceptNewest(), "acceptNewest empty again");
-
-        // 6. Frozen action ids pass through unchanged
+        // 5. Frozen action ids go to SocialState without throwing (no game, no connection)
         String[] frozenActions = {
             "invite_accept:inv_123",
             "invite_decline:inv_123",
