@@ -4,17 +4,15 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Multiplexes multiple independent streams over a single underlying ReliableStream.
- * Stream IDs:
- *   0 = Minecraft connection
- *   1 = Control (high-priority, unthrottled)
- *   2+ = Resource pack transfers / other
+ * Stream IDs: 0 = Minecraft connection, 1 = control (high-priority, unthrottled). No other id exists (Phase 3's pack transfers will
+ * open more, up to 8 in all, through a control-stream handshake). A frame for another id, a frame longer than MAX_CHUNK_SIZE or data
+ * beyond a stream's buffer is a protocol violation: the Mux closes, which ends the session. Receive buffers are allocated on first data.
  *
  * Implements per-stream credit-based flow control (512 KB window) to prevent
  * head-of-line blocking in the dispatcher thread.
@@ -28,17 +26,20 @@ public final class Mux implements AutoCloseable {
     public static final int MAX_CHUNK_SIZE = 4096;
     public static final int INITIAL_WINDOW_SIZE = 512 * 1024; // 512 KB
     public static final int WINDOW_UPDATE_THRESHOLD = 64 * 1024; // 64 KB
+    static final int STREAMS = 2;
+    static final int CONTROL_BUFFER = 64 * 1024; // the control stream has no credit flow: lines are tiny
 
     private final InputStream underIn;
     private final OutputStream underOut;
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
-    private final ConcurrentHashMap<Integer, MuxStream> streams = new ConcurrentHashMap<>();
+    private final MuxStream[] streams = new MuxStream[STREAMS];
     private final Thread dispatcherThread;
 
     public Mux(InputStream underIn, OutputStream underOut) {
         this.underIn = underIn;
         this.underOut = underOut;
+        for (int id = 0; id < STREAMS; id++) streams[id] = new MuxStream(id, this);
 
         dispatcherThread = new Thread(this::runDispatcher, "Mux-Dispatcher");
         dispatcherThread.setDaemon(true);
@@ -46,21 +47,22 @@ public final class Mux implements AutoCloseable {
         dispatcherThread.start();
     }
 
-    private MuxStream getOrCreateStream(int streamId) {
-        return streams.computeIfAbsent(streamId, id -> new MuxStream(id, this));
+    private MuxStream stream(int streamId) {
+        if (streamId < 0 || streamId >= STREAMS) throw new IllegalArgumentException("No mux stream " + streamId);
+        return streams[streamId];
     }
 
     public InputStream in(int streamId) {
-        return getOrCreateStream(streamId).getInputStream();
+        return stream(streamId).getInputStream();
     }
 
     public OutputStream out(int streamId) {
-        return getOrCreateStream(streamId).getOutputStream();
+        return stream(streamId).getOutputStream();
     }
 
     private void runDispatcher() {
         byte[] header = new byte[5];
-        byte[] payloadBuf = new byte[MAX_CHUNK_SIZE * 2];
+        byte[] payloadBuf = new byte[MAX_CHUNK_SIZE];
 
         while (!closed.get()) {
             try {
@@ -70,17 +72,15 @@ public final class Mux implements AutoCloseable {
                 int streamId = StunMessage.getShortBE(header, 0) & 0xFFFF;
                 int type = header[2] & 0xFF;
                 int len = StunMessage.getShortBE(header, 3) & 0xFFFF;
+                if (streamId >= STREAMS || len > MAX_CHUNK_SIZE) break; // protocol violation: nothing allocated, the session ends
 
-                if (len > payloadBuf.length) {
-                    payloadBuf = new byte[len];
-                }
                 if (len > 0) {
                     readFully(underIn, payloadBuf, 0, len);
                 }
 
-                MuxStream stream = getOrCreateStream(streamId);
+                MuxStream stream = streams[streamId];
                 if (type == FRAME_DATA) {
-                    stream.receiveData(payloadBuf, 0, len);
+                    if (!stream.receiveData(payloadBuf, 0, len)) break; // more than the peer's credit (or the control buffer) allows
                 } else if (type == FRAME_CLOSE) {
                     stream.receiveClose();
                 } else if (type == FRAME_RESET) {
@@ -97,10 +97,7 @@ public final class Mux implements AutoCloseable {
             }
         }
 
-        // Notify all streams of EOF
-        for (MuxStream s : streams.values()) {
-            s.receiveClose();
-        }
+        close(); // EOF, error or violation: every stream ends
     }
 
     private static void readFully(InputStream in, byte[] b, int off, int len) throws IOException {
@@ -134,7 +131,7 @@ public final class Mux implements AutoCloseable {
     @Override
     public void close() {
         if (closed.compareAndSet(false, true)) {
-            for (MuxStream s : streams.values()) {
+            for (MuxStream s : streams) {
                 s.receiveClose();
             }
             try {
@@ -156,8 +153,8 @@ public final class Mux implements AutoCloseable {
         // RX state
         private final ReentrantLock lock = new ReentrantLock();
         private final Condition dataCond = lock.newCondition();
-        // Ring buffer: 512 KB capacity + headroom
-        private final byte[] ring = new byte[INITIAL_WINDOW_SIZE + MAX_CHUNK_SIZE * 2];
+        // Ring buffer, allocated on first data: the 512 KB credit window + headroom (control: CONTROL_BUFFER)
+        private byte[] ring;
         private int head = 0;
         private int tail = 0;
         private int count = 0;
@@ -303,19 +300,20 @@ public final class Mux implements AutoCloseable {
             }
         }
 
-        void receiveData(byte[] data, int off, int len) {
+        /** False when the data does not fit: the peer ignored its credit (or flooded the control stream). */
+        boolean receiveData(byte[] data, int off, int len) {
             lock.lock();
             try {
-                if (eof || reset) return;
-
-                int space = ring.length - count;
-                int toCopy = Math.min(len, space);
-                for (int i = 0; i < toCopy; i++) {
+                if (eof || reset) return true;
+                if (ring == null) ring = new byte[streamId == 1 ? CONTROL_BUFFER : INITIAL_WINDOW_SIZE + MAX_CHUNK_SIZE * 2];
+                if (len > ring.length - count) return false;
+                for (int i = 0; i < len; i++) {
                     ring[tail] = data[off + i];
                     tail = (tail + 1) % ring.length;
                 }
-                count += toCopy;
+                count += len;
                 dataCond.signalAll();
+                return true;
             } finally {
                 lock.unlock();
             }

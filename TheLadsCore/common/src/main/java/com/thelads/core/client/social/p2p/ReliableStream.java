@@ -86,6 +86,8 @@ public final class ReliableStream implements AutoCloseable {
     private int rcvRead = 0;
     private boolean finReceived = false;
     private volatile long lastReceivedTime = System.currentTimeMillis();
+    private long lastAckProgress = System.currentTimeMillis(); // under txLock: when sndUna last moved (or data became outstanding)
+    private final long deadMs;
 
     // Preallocated buffers for zero-allocation send & receive
     private final long[] rxSackMask = new long[MAX_SACK_LONGS];
@@ -104,7 +106,13 @@ public final class ReliableStream implements AutoCloseable {
     private final AtomicLong totalBytesReceived = new AtomicLong(0);
 
     public ReliableStream(DatagramSender sender) {
+        this(sender, 15_000);
+    }
+
+    /** deadMs: silence, or outstanding data without ACK progress, for this long ends the stream (tests shorten it). */
+    ReliableStream(DatagramSender sender, long deadMs) {
         this.sender = sender;
+        this.deadMs = deadMs;
 
         for (int i = 0; i < WINDOW_SIZE; i++) {
             txSlots[i] = new TxSlot();
@@ -258,6 +266,7 @@ public final class ReliableStream implements AutoCloseable {
                     }
                 }
                 sndUna = ack + 1;
+                lastAckProgress = System.currentTimeMillis();
                 txWindowCond.signalAll();
             }
 
@@ -381,9 +390,17 @@ public final class ReliableStream implements AutoCloseable {
 
             long now = System.currentTimeMillis();
 
-            if (now - lastReceivedTime > 15000) {
+            // Dead: silence, or data outstanding with no ACK progress (a peer that only PINGs does not keep it alive)
+            boolean stalled;
+            txLock.lock();
+            try {
+                stalled = sndNxt != sndUna && now - lastAckProgress > deadMs;
+            } finally {
+                txLock.unlock();
+            }
+            if (now - lastReceivedTime > deadMs || stalled) {
                 dead.set(true);
-                closeReason = "Connection timed out (15s silence)";
+                closeReason = stalled ? "Connection timed out (no acknowledgement)" : "Connection timed out (silence)";
                 rxLock.lock();
                 try {
                     rxDataCond.signalAll();
@@ -532,6 +549,7 @@ public final class ReliableStream implements AutoCloseable {
                     }
                 }
 
+                if (sndNxt == sndUna) lastAckProgress = System.currentTimeMillis(); // the stall clock starts with the first outstanding packet
                 seq = sndNxt++;
                 slot = txSlots[seq & WINDOW_MASK];
                 slot.inUse = true;
