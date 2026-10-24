@@ -19,14 +19,14 @@ import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CosmeticsWearablesLayer1201 extends RenderLayer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> {
     private static final Vector3f POS = new Vector3f();
     private static final Vector3f NORMAL = new Vector3f();
-    private static final Map<String, ResourceLocation> TEXTURES = new HashMap<>();
+    private static final Map<String, ResourceLocation> TEXTURES = new ConcurrentHashMap<>();
 
     public CosmeticsWearablesLayer1201(RenderLayerParent<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> parent) {
         super(parent);

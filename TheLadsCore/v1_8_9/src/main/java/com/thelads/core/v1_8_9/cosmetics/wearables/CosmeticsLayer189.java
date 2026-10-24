@@ -15,13 +15,13 @@ import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CosmeticsLayer189 implements LayerRenderer<AbstractClientPlayer> {
     private final RenderPlayer playerRenderer;
-    private static final Map<String, ResourceLocation> TEXTURES = new HashMap<>();
+    private static final Map<String, ResourceLocation> TEXTURES = new ConcurrentHashMap<>();
 
     public CosmeticsLayer189(RenderPlayer playerRenderer) {
         this.playerRenderer = playerRenderer;

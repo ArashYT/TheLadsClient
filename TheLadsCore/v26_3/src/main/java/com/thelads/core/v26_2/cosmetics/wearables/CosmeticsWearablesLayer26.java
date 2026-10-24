@@ -1,6 +1,7 @@
 package com.thelads.core.v26_2.cosmetics.wearables;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.thelads.core.client.cosmetics.wearables.CosmeticItem;
 import com.thelads.core.client.cosmetics.wearables.CosmeticLibrary;
 import com.thelads.core.client.cosmetics.wearables.CosmeticModels;
@@ -19,14 +20,42 @@ import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CosmeticsWearablesLayer26 extends RenderLayer<AvatarRenderState, PlayerModel> {
     private static final Vector3f POS = new Vector3f();
     private static final Vector3f NORMAL = new Vector3f();
-    private static final Map<String, Identifier> IDENTIFIERS = new HashMap<>();
+    private static final Map<String, Identifier> IDENTIFIERS = new ConcurrentHashMap<>();
+    private static final Map<UUID, PlayerCosmeticsRenderers> RENDERERS = new ConcurrentHashMap<>();
+
+    private static final class CosmeticMeshRenderer implements SubmitNodeCollector.CustomGeometryRenderer {
+        private float[] mesh;
+        private int packedLight;
+
+        void set(float[] mesh, int packedLight) {
+            this.mesh = mesh;
+            this.packedLight = packedLight;
+        }
+
+        @Override
+        public void render(PoseStack.Pose pose, VertexConsumer buffer) {
+            if (mesh == null) return;
+            Matrix4f matrix = pose.pose();
+            for (int i = 0; i < mesh.length; i += CosmeticModels.STRIDE) {
+                matrix.transformPosition(mesh[i], mesh[i + 1], mesh[i + 2], POS);
+                pose.transformNormal(mesh[i + 5], mesh[i + 6], mesh[i + 7], NORMAL);
+                buffer.addVertex(POS.x, POS.y, POS.z, -1, mesh[i + 3], mesh[i + 4],
+                    OverlayTexture.NO_OVERLAY, packedLight, NORMAL.x, NORMAL.y, NORMAL.z);
+            }
+        }
+    }
+
+    private static final class PlayerCosmeticsRenderers {
+        final CosmeticMeshRenderer hat = new CosmeticMeshRenderer();
+        final CosmeticMeshRenderer glasses = new CosmeticMeshRenderer();
+    }
 
     public CosmeticsWearablesLayer26(RenderLayerParent<AvatarRenderState, PlayerModel> renderer) {
         super(renderer);
@@ -54,17 +83,19 @@ public class CosmeticsWearablesLayer26 extends RenderLayer<AvatarRenderState, Pl
         poseStack.pushPose();
         this.getParentModel().getHead().translateAndRotate(poseStack);
 
+        PlayerCosmeticsRenderers playerRenderers = RENDERERS.computeIfAbsent(uuid, k -> new PlayerCosmeticsRenderers());
+
         if (hatId != null && manager.shouldRender(uuid, CosmeticSlot.HAT)) {
-            submitCosmetic(hatId, poseStack, collector, packedLight);
+            submitCosmetic(hatId, poseStack, collector, packedLight, playerRenderers.hat);
         }
         if (glassesId != null && manager.shouldRender(uuid, CosmeticSlot.GLASSES)) {
-            submitCosmetic(glassesId, poseStack, collector, packedLight);
+            submitCosmetic(glassesId, poseStack, collector, packedLight, playerRenderers.glasses);
         }
 
         poseStack.popPose();
     }
 
-    private void submitCosmetic(String itemId, PoseStack poseStack, SubmitNodeCollector collector, int packedLight) {
+    private void submitCosmetic(String itemId, PoseStack poseStack, SubmitNodeCollector collector, int packedLight, CosmeticMeshRenderer renderer) {
         float[] mesh = CosmeticModels.getMesh(itemId);
         if (mesh == null || mesh.length == 0) return;
 
@@ -74,14 +105,7 @@ public class CosmeticsWearablesLayer26 extends RenderLayer<AvatarRenderState, Pl
         Identifier id = getIdentifier(item.texturePath());
         RenderType type = RenderTypes.armorCutoutNoCull(id);
 
-        collector.submitCustomGeometry(poseStack, type, (pose, buffer) -> {
-            Matrix4f matrix = pose.pose();
-            for (int i = 0; i < mesh.length; i += CosmeticModels.STRIDE) {
-                matrix.transformPosition(mesh[i], mesh[i + 1], mesh[i + 2], POS);
-                pose.transformNormal(mesh[i + 5], mesh[i + 6], mesh[i + 7], NORMAL);
-                buffer.addVertex(POS.x, POS.y, POS.z, -1, mesh[i + 3], mesh[i + 4],
-                    OverlayTexture.NO_OVERLAY, packedLight, NORMAL.x, NORMAL.y, NORMAL.z);
-            }
-        });
+        renderer.set(mesh, packedLight);
+        collector.submitCustomGeometry(poseStack, type, renderer);
     }
 }

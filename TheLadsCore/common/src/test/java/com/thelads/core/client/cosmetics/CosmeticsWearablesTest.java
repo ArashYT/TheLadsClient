@@ -116,4 +116,16 @@ public class CosmeticsWearablesTest {
         assertNotNull(discordCape);
         assertTrue(discordCape.description().contains("Discord"));
     }
+
+    @Test
+    void testNullGuardShouldRender() {
+        CosmeticsManager manager = CosmeticsManager.get();
+        UUID uuid = UUID.randomUUID();
+        // Regression test for Finding 1: passing null uuid or slot must return false without NPE
+        assertFalse(manager.shouldRender(null, CosmeticSlot.HAT));
+        assertFalse(manager.shouldRender(uuid, null));
+        assertFalse(manager.shouldRender(null, null));
+        assertNull(manager.getEquipped(null, CosmeticSlot.HAT));
+        assertNull(manager.getEquipped(uuid, null));
+    }
 }

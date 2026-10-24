@@ -155,6 +155,16 @@ public final class CosmeticsScreen {
         // AFK emote toggle
         button(g, afkBtn, "AFK Emote: " + (cosmetics.afkEmote.get() ? "On" : "Off"), mx, my);
         button(g, done, "Done", mx, my);
+
+        // Hover tooltip for visibility option
+        if (visibilityBtn != null && visibilityBtn.has(mx, my) && cosmetics.visibility.getIndex() == 1) {
+            String tip = "Friends Only (needs Lads friends - coming soon)";
+            int tw = g.textWidth(tip);
+            int tx = Math.max(6, visibilityBtn.x + (visibilityBtn.w - tw) / 2);
+            int ty = visibilityBtn.y - g.fontHeight() - 6;
+            g.fill(tx - 4, ty - 2, tx + tw + 4, ty + g.fontHeight() + 2, 0xF0151518);
+            g.drawText(tip, tx, ty, 0xFFFFAA00, false);
+        }
     }
 
     public boolean mouseClicked(double x, double y, int button) {

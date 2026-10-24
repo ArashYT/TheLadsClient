@@ -112,7 +112,7 @@ public final class CosmeticsManager {
 
     /** Whether cosmetics of the given slot should render on this player according to settings. */
     public boolean shouldRender(UUID uuid, CosmeticSlot slot) {
-        if (slot == null) return false;
+        if (uuid == null || slot == null) return false;
         CosmeticsModule module = CosmeticsModule.get();
 
         // Per-slot checks
@@ -125,12 +125,12 @@ public final class CosmeticsManager {
         if (vis == 3) return false; // None
 
         LadsGameBridge.Session session = LadsGameBridge.get().session();
-        boolean isSelf = (session != null && uuid != null && uuid.equals(session.uuid())) || (session == null && !remoteEquipped.containsKey(uuid));
+        boolean isSelf = (session != null && uuid.equals(session.uuid())) || (session == null && !remoteEquipped.containsKey(uuid));
         if (isSelf) return true;
 
         if (vis == 2) return false; // Self only
 
-        // vis == 1 (Friends Only) or vis == 0 (Everyone)
+        // vis == 1: "Friends Only (needs Lads friends - coming soon)" - falls back to showOthers until social lane friends list is wired; vis == 0: Everyone
         return vis == 0 || module.showOthers.get();
     }
 
