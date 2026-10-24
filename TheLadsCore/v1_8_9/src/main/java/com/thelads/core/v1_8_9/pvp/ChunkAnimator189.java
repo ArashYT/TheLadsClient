@@ -30,6 +30,11 @@ public final class ChunkAnimator189 {
 
     private ChunkAnimator189() {}
 
+    /** Built in (with or without OptiFine), or unavailable under Ionium, as register() decides (CoreProbe's catalog check). */
+    public static boolean builtIn() {
+        return !IONIUM;
+    }
+
     static void register() {
         if (IONIUM) {
             ModuleSupport.registerUnavailable(ChunkAnimatorModule.NAME, "Ionium draws a whole region of chunks at once on the GPU, so chunks "

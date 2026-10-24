@@ -46,7 +46,8 @@ public abstract class MixinPlayerInfo {
                     if (item != null && item.texturePath() != null) {
                         PlayerSkin oldTextures = cir.getReturnValue();
                         Identifier capeIdentifier = CosmeticsWearablesLayer26.getIdentifier(item.texturePath());
-                        ClientAsset.Texture capeTexture = new ClientAsset.ResourceTexture(capeIdentifier, null);
+                        // The texture path is what CapeLayer draws: null crashed every frame that drew the player (26.3 QA).
+                        ClientAsset.Texture capeTexture = new ClientAsset.ResourceTexture(capeIdentifier, capeIdentifier);
                         PlayerSkin newTextures = new PlayerSkin(
                                 oldTextures.body(),
                                 capeTexture, oldTextures.elytra(),

@@ -71,6 +71,11 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             "Clumps", "AppleSkin", "Jade", "MouseTweaks",
             "ConfirmDisconnect", "NumericalEnchantments", "LogPruner", "DropConfirmation", "ScrollTweaks", "AutoPerspective", "AutoBackup"
         );
+        // HudManager's parity widgets and Inventory HUD; Nick Hider through LocalSkinMixin (skins) and Nicknames (names).
+        ModuleSupport.registerBuiltIn(com.thelads.core.client.hud.HudManager.PARITY_HUDS);
+        ModuleSupport.registerBuiltIn(com.thelads.core.modules.NickHiderModule.NAME);
+        ModuleSupport.registerUnavailable(com.thelads.core.modules.ContainerQoLModule.NAME, "Only for Minecraft 1.8.9, as PolyPatcher's "
+            + "click outside to close; it is not hooked into this version's container screens.");
 
 
         com.thelads.core.v1_20_1.game.Gameplay1201.register();

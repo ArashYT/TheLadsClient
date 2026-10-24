@@ -27,11 +27,16 @@ import org.lwjgl.opengl.GL11;
  * under a screen while F1 is on, and the HUD editor draws its own previews instead.
  */
 public final class NativeHud {
-    /** The HUD modules drawn here with VanillaGameBridge189 data: built in, as on the other versions. */
-    public static final String[] MODULES = {"FPS", "Coordinates", "PingHUD", "Memory", "Speed", "Day", "Time", "XP", "Potion Effects",
-        "CPS", "Keystrokes", "Biome", "Direction", "Health", "Hunger", "TexturePacks", "ArmorHUD", "Scoreboard",
-        "Paperdoll", "BossBar", "Autohide", "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates",
-        com.thelads.core.client.hud.ActionBar.MODULE};
+    /**
+     * The HUD modules drawn here with VanillaGameBridge189 data: built in, as on the other versions. HudManager's parity widgets join
+     * them, but Cooldowns (TheLadsCore189 registers it unavailable: 1.8.9 has no item cooldowns).
+     */
+    public static final String[] MODULES = java.util.stream.Stream.concat(java.util.stream.Stream.of("FPS", "Coordinates", "PingHUD", "Memory",
+            "Speed", "Day", "Time", "XP", "Potion Effects",
+            "CPS", "Keystrokes", "Biome", "Direction", "Health", "Hunger", "TexturePacks", "ArmorHUD", "Scoreboard",
+            "Paperdoll", "BossBar", "Autohide", "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates",
+            com.thelads.core.client.hud.ActionBar.MODULE),
+        java.util.Arrays.stream(HudManager.PARITY_HUDS).filter(name -> !name.equals("Cooldowns"))).toArray(String[]::new);
     /** QA only (CoreProbe): frames in which HudManager drew the Lads HUD. */
     public static long frames;
     private static final GuiLadsAdapter graphics = new GuiLadsAdapter(null, 0, 0);

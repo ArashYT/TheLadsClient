@@ -30,6 +30,11 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
             "Fullbright", "TitleScreen", "Title Scale", "CPS", "Keystrokes",
             "Biome", "ArmorHUD", "Direction", "Health", "Hunger", "Scoreboard", "TexturePacks",
             "ConfirmDisconnect", "NumericalEnchantments", "LogPruner", "DropConfirmation", "ScrollTweaks", "AutoPerspective", "AutoBackup");
+        // HudManager's parity widgets and Inventory HUD; Nick Hider through LocalSkinMixin (skins) and Nicknames (names).
+        ModuleSupport.registerBuiltIn(com.thelads.core.client.hud.HudManager.PARITY_HUDS);
+        ModuleSupport.registerBuiltIn(com.thelads.core.modules.NickHiderModule.NAME);
+        ModuleSupport.registerUnavailable(com.thelads.core.modules.ContainerQoLModule.NAME, "Only for Minecraft 1.8.9, as PolyPatcher's "
+            + "click outside to close; it is not hooked into this version's container screens.");
         com.thelads.core.v26_2.gui.ExternalModSettings.register();
         com.thelads.core.v26_2.gui.ShaderToggleScreen26.register();
         com.thelads.core.v26_2.feature.ShaderToggleQa26.register(); // QA only: inert without LADS_QA_SHADERTOGGLE

@@ -8,6 +8,12 @@ import java.util.HashSet;
 import java.util.List;
 
 public class HudManager {
+    /**
+     * The parity-1023 HUD widgets (hud-a lane) and the Inventory HUD, added below: drawn here on every version, so each Core registers
+     * them built in (1.8.9 through NativeHud.MODULES, without Cooldowns: 1.8.9 has no item cooldowns).
+     */
+    public static final String[] PARITY_HUDS = {"ComboCounter", "PvPInfo", "PotionCounter", "ItemTracker", "Cooldowns", "TPS", "SystemResources",
+        "Playtime", "CompassStrip", "ViewAngles", "MouseTrail", "BlockCounter", "Protection", "DeathInfo", "Hearts", "HitIndicator", InventoryHudElement.ID};
     private static HudManager instance;
     private final List<HudElement> elements = new ArrayList<>();
     private ScoreboardHudElement scoreboardElement;

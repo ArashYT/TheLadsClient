@@ -37,8 +37,12 @@ public final class PvpVisuals189 {
     private final HideFoliageModule foliage;
     private final ClearGlassModule glass;
 
+    /** The modules this class makes built in (CoreProbe's catalog check reads them too); CustomSky189 and ChunkAnimator189 register their own. */
+    public static final String[] BUILT_IN = {ColorSaturationModule.NAME, MotionBlurModule.NAME, MenuBlurModule.NAME, HideFoliageModule.NAME,
+        ClearGlassModule.NAME};
+
     public PvpVisuals189() {
-        ModuleSupport.registerBuiltIn(ColorSaturationModule.NAME, MotionBlurModule.NAME, MenuBlurModule.NAME, HideFoliageModule.NAME, ClearGlassModule.NAME);
+        ModuleSupport.registerBuiltIn(BUILT_IN);
         foliage = (HideFoliageModule) Options189.module(HideFoliageModule.NAME);
         glass = (ClearGlassModule) Options189.module(ClearGlassModule.NAME);
         ScreenEffects189.modules((ColorSaturationModule) Options189.module(ColorSaturationModule.NAME),
