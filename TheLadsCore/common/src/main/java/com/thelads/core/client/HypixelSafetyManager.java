@@ -226,7 +226,8 @@ public final class HypixelSafetyManager {
      * Allocation-free: asked per module every frame.
      */
     public static boolean isRiskyModule(String moduleName) {
-        if (moduleName == null) return false;
+        if (moduleName == null) return false
+            || com.thelads.core.client.hud.HudExtras.BLOCK_INFO.equalsIgnoreCase(moduleName);
         return isMinimapModule(moduleName)
             || isSingleplayerOnlyModule(moduleName)
             || isFullbrightModule(moduleName)
