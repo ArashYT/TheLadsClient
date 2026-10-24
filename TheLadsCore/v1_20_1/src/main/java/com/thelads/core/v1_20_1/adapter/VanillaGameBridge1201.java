@@ -565,4 +565,78 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
             ));
         });
     }
+
+    @Override
+    public DefenseEnchants getDefenseEnchants() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) return new DefenseEnchants(0, 0, 0, 0, 0);
+        int prot = 0, fire = 0, blast = 0, proj = 0, ff = 0;
+        for (var stack : player.getArmorSlots()) {
+            if (!stack.isEmpty()) {
+                prot += net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(net.minecraft.world.item.enchantment.Enchantments.ALL_DAMAGE_PROTECTION, stack);
+                fire += net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(net.minecraft.world.item.enchantment.Enchantments.FIRE_PROTECTION, stack);
+                blast += net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(net.minecraft.world.item.enchantment.Enchantments.BLAST_PROTECTION, stack);
+                proj += net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(net.minecraft.world.item.enchantment.Enchantments.PROJECTILE_PROTECTION, stack);
+                ff += net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(net.minecraft.world.item.enchantment.Enchantments.FALL_PROTECTION, stack);
+            }
+        }
+        return new DefenseEnchants(prot, fire, blast, proj, ff);
+    }
+
+    @Override
+    public List<CooldownEntry> getActiveCooldowns() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) return List.of();
+        var cooldowns = player.getCooldowns();
+        List<CooldownEntry> list = new ArrayList<>();
+        java.util.Set<net.minecraft.world.item.Item> seen = new java.util.HashSet<>();
+        for (int i = 0; i < 37; i++) {
+            var stack = i == 36 ? player.getOffhandItem() : player.getInventory().getItem(i);
+            if (!stack.isEmpty() && seen.add(stack.getItem())) {
+                if (cooldowns.isOnCooldown(stack.getItem())) {
+                    float pct = cooldowns.getCooldownPercent(stack.getItem(), 0.0f);
+                    list.add(new CooldownEntry(stack.getHoverName().getString(), pct, pct * 15.0f));
+                }
+            }
+        }
+        return list;
+    }
+
+    @Override
+    public float getToughness() {
+        var player = Minecraft.getInstance().player;
+        return player != null ? (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR_TOUGHNESS) : 0.0f;
+    }
+
+    @Override
+    public int getArmorValue() {
+        var player = Minecraft.getInstance().player;
+        return player != null ? player.getArmorValue() : 0;
+    }
+
+    @Override
+    public int getPotionCount() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) return 0;
+        int count = 0;
+        for (int i = 0; i < 37; i++) {
+            var stack = i == 36 ? player.getOffhandItem() : player.getInventory().getItem(i);
+            if (!stack.isEmpty() && (stack.is(net.minecraft.world.item.Items.POTION) || stack.is(net.minecraft.world.item.Items.SPLASH_POTION) || stack.is(net.minecraft.world.item.Items.LINGERING_POTION)))
+                count += stack.getCount();
+        }
+        return count;
+    }
+
+    @Override
+    public int getSoupCount() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) return 0;
+        int count = 0;
+        for (int i = 0; i < 37; i++) {
+            var stack = i == 36 ? player.getOffhandItem() : player.getInventory().getItem(i);
+            if (!stack.isEmpty() && (stack.is(net.minecraft.world.item.Items.MUSHROOM_STEW) || stack.is(net.minecraft.world.item.Items.SUSPICIOUS_STEW) || stack.is(net.minecraft.world.item.Items.RABBIT_STEW)))
+                count += stack.getCount();
+        }
+        return count;
+    }
 }

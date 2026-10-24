@@ -171,15 +171,100 @@ public class VanillaGameBridge189 implements LadsGameBridge {
     public String getItemCountText(int selection) {
         Minecraft mc = mc();
         if (mc.thePlayer == null) return "Items: 0";
-        ItemStack held = mc.thePlayer.getHeldItem();
-        if (held == null) return "Items: 0";
+        net.minecraft.item.Item targetItem = null;
+        String label = "Items";
+        switch (selection) {
+            case 1:
+                targetItem = net.minecraft.init.Items.arrow;
+                label = "Arrows";
+                break;
+            case 2:
+                return "Totems: 0";
+            case 3:
+                targetItem = net.minecraft.init.Items.fireworks;
+                label = "Rockets";
+                break;
+            case 4:
+                targetItem = net.minecraft.init.Items.golden_apple;
+                label = "Golden Apples";
+                break;
+            case 5:
+                targetItem = net.minecraft.init.Items.ender_pearl;
+                label = "Ender Pearls";
+                break;
+            case 6:
+                targetItem = net.minecraft.init.Items.potionitem;
+                label = "Potions";
+                break;
+            case 7:
+                targetItem = net.minecraft.init.Items.mushroom_stew;
+                label = "Soups";
+                break;
+            default:
+                ItemStack held = mc.thePlayer.getHeldItem();
+                if (held != null) {
+                    targetItem = held.getItem();
+                    label = held.getDisplayName();
+                }
+                break;
+        }
+        if (targetItem == null) return label + ": 0";
         int total = 0;
         for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
-            if (stack != null && stack.getItem() == held.getItem() && (!held.getHasSubtypes() || stack.getItemDamage() == held.getItemDamage())) {
+            if (stack != null && stack.getItem() == targetItem) {
                 total += stack.stackSize;
             }
         }
-        return held.getDisplayName() + ": " + total;
+        return label + ": " + total;
+    }
+
+    @Override
+    public int getPotionCount() {
+        Minecraft mc = mc();
+        if (mc.thePlayer == null) return 0;
+        int count = 0;
+        for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
+            if (stack != null && stack.getItem() == net.minecraft.init.Items.potionitem) {
+                count += stack.stackSize;
+            }
+        }
+        return count;
+    }
+
+    @Override
+    public int getSoupCount() {
+        Minecraft mc = mc();
+        if (mc.thePlayer == null) return 0;
+        int count = 0;
+        for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
+            if (stack != null && stack.getItem() == net.minecraft.init.Items.mushroom_stew) {
+                count += stack.stackSize;
+            }
+        }
+        return count;
+    }
+
+    @Override
+    public DefenseEnchants getDefenseEnchants() {
+        Minecraft mc = mc();
+        if (mc.thePlayer == null) return new DefenseEnchants(0, 0, 0, 0, 0);
+        int prot = 0, fire = 0, blast = 0, proj = 0, ff = 0;
+        for (ItemStack stack : mc.thePlayer.inventory.armorInventory) {
+            if (stack != null) {
+                prot += net.minecraft.enchantment.EnchantmentHelper.getEnchantmentLevel(net.minecraft.enchantment.Enchantment.protection.effectId, stack);
+                fire += net.minecraft.enchantment.EnchantmentHelper.getEnchantmentLevel(net.minecraft.enchantment.Enchantment.fireProtection.effectId, stack);
+                blast += net.minecraft.enchantment.EnchantmentHelper.getEnchantmentLevel(net.minecraft.enchantment.Enchantment.blastProtection.effectId, stack);
+                proj += net.minecraft.enchantment.EnchantmentHelper.getEnchantmentLevel(net.minecraft.enchantment.Enchantment.projectileProtection.effectId, stack);
+                ff += net.minecraft.enchantment.EnchantmentHelper.getEnchantmentLevel(net.minecraft.enchantment.Enchantment.featherFalling.effectId, stack);
+            }
+        }
+        return new DefenseEnchants(prot, fire, blast, proj, ff);
+    }
+
+    @Override
+    public int getArmorValue() {
+        Minecraft mc = mc();
+        return mc.thePlayer != null ? mc.thePlayer.getTotalArmorValue() : 0;
     }
 
     @Override

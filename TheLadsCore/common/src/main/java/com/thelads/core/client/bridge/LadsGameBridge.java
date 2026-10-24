@@ -230,4 +230,40 @@ public interface LadsGameBridge {
     default List<com.thelads.core.mods.LoadedMod> loadedMods() {
         return List.of();
     }
+
+    record DefenseEnchants(int protection, int fireProtection, int blastProtection, int projectileProtection, int featherFalling) {}
+
+    default DefenseEnchants getDefenseEnchants() {
+        return new DefenseEnchants(0, 0, 0, 0, 0);
+    }
+
+    record CooldownEntry(String name, float percent, float remainingSeconds) {}
+
+    default List<CooldownEntry> getActiveCooldowns() {
+        return Collections.emptyList();
+    }
+
+    default double getTps() {
+        return com.thelads.core.client.TpsTracker.get().getTps();
+    }
+
+    default double getCpuLoad() {
+        return com.thelads.core.client.util.SystemMetrics.getCpuLoad();
+    }
+
+    default float getToughness() {
+        return 0.0f;
+    }
+
+    default int getArmorValue() {
+        return 0;
+    }
+
+    default int getPotionCount() {
+        return 0;
+    }
+
+    default int getSoupCount() {
+        return 0;
+    }
 }

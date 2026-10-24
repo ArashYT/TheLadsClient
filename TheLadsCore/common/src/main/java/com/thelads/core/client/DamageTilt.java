@@ -54,6 +54,9 @@ public final class DamageTilt {
         return nowMs - hurtAt <= KEEP_MS ? yaw : Float.NaN;
     }
 
+    public long lastHurtTime() { return hurtAt; }
+    public float lastYaw() { return yaw; }
+
     /** The yaw the camera turns by with the module on: the hit's direction while Directional is on and it is known, else 0. */
     public float cameraYaw(Module module, long nowMs) {
         float known = yaw(nowMs);
