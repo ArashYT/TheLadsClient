@@ -107,6 +107,8 @@ public final class LadsApiQa {
 
         root.add("options", options);
 
+        root.addProperty("toastTitle", LadsApiUi.activeToastTitle()); // the QA bar draws over the toast, so its text goes here
+        root.addProperty("toastNotice", LadsApiUi.activeToastNotice());
         root.addProperty("presenceSize", LadsPresence.size());
         root.addProperty("sentBeforeHello", LadsApiClient.sentBeforeHello());
 

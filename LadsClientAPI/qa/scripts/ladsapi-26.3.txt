@@ -6,13 +6,13 @@
 # CHK-02 first: the policy toast is up for 8 s from the policy (hello at +1 tick), so it is photographed at +3 s.
 wait 3s
 shot artifacts/verification/ladsapi/shots/chk02_toast
+ladsapi chk02-toast
 wait 5s
 
 # CHK-01: Protocol Handshake (hello -> hello -> policy -> ack)
 ladsapi chk01-handshake
 
-# CHK-02: Join Notification Toast (screenshot above)
-ladsapi chk02-toast
+# CHK-02: Join Notification Toast: screenshot and probe (toastTitle/toastNotice) above
 
 # CHK-03: Fullbright Clamping (max 10% limit)
 settings Fullbright
