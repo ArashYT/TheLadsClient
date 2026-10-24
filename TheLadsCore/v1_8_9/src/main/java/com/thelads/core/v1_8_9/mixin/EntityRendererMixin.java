@@ -122,4 +122,13 @@ public abstract class EntityRendererMixin {
     private ScaledResolution ladsSetupOverlayResolution(Minecraft mc) {
         return ResolutionCache189.get(mc);
     }
+
+    /** Weather Particle Culling (Badlion Betterframes parity): bypasses rain/snow particle scans when culled, keeping ambient rain audio. */
+    @Redirect(method = "addRainParticles", at = @At(value = "FIELD", target = "Lnet/minecraft/client/settings/GameSettings;particleSetting:I", opcode = org.objectweb.asm.Opcodes.GETFIELD), require = 0)
+    private int ladsWeatherParticleCull(net.minecraft.client.settings.GameSettings settings) {
+        if (com.thelads.core.client.ParticleCore.weatherCulling()) {
+            return 2;
+        }
+        return settings.particleSetting;
+    }
 }

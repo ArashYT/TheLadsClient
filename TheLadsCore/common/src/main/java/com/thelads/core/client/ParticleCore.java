@@ -14,7 +14,8 @@ public final class ParticleCore {
     public static final String MODULE = "Particle Core";
     public static final String CULLING = "Culling", OPTIMIZED = "Optimized rendering", HIDE_OWN = "Hide own potion particles",
         HIDE_OTHERS = "Hide others' potion particles", RATES = "Spawn rates", LIMIT = "Limit decorative particles",
-        PER_TICK = "Decorative particles per tick", DISTANCE = "Decorative particle distance";
+        PER_TICK = "Decorative particles per tick", DISTANCE = "Decorative particle distance",
+        WEATHER_CULLING = "Weather particle culling";
     /** Particles that only decorate (smoke, ash, falling leaves, spores, motes): the only ones the optional quota limits. */
     private static final Set<String> DECORATIVE = Set.of("smoke", "large_smoke", "largesmoke", "white_smoke", "campfire_cosy_smoke",
         "campfire_signal_smoke", "ash", "white_ash", "cherry_leaves", "pale_oak_leaves", "falling_spore_blossom", "spore_blossom_air",
@@ -33,12 +34,9 @@ public final class ParticleCore {
 
     private static volatile boolean standDown;
     private static ParticleCoreModule module;
-    private static boolean active, cull, optimized, hideOwn, hideOthers, limit;
+    private static boolean active, cull, optimized, hideOwn, hideOthers, limit, weatherCull;
     private static double radius;
     private static int perTick;
-    private static float particleScale = 1.0f;
-    private static boolean critRecolor, sharpnessRecolor;
-    private static int critColor = 0xFFFFD700, sharpnessColor = 0xFF00FFFF;
     private static long seed = System.nanoTime() | 1;
     private static final ClientTools.ParticleBudget BUDGET = new ClientTools.ParticleBudget();
 
@@ -66,23 +64,15 @@ public final class ParticleCore {
         hideOwn = active && core.hideOwn.get();
         hideOthers = active && core.hideOthers.get();
         limit = active && core.limit.get();
+        weatherCull = active && core.weatherCulling.get();
         radius = core == null ? 48 : core.distance.getValue();
         perTick = core == null ? 64 : core.perTick.getIntValue();
-        particleScale = core == null ? 1.0f : (float) core.particleScale.getValue();
-        critRecolor = core != null && core.critRecolor.get();
-        critColor = core == null ? 0xFFFFD700 : core.critColor.getColor();
-        sharpnessRecolor = core != null && core.sharpnessRecolor.get();
-        sharpnessColor = core == null ? 0xFF00FFFF : core.sharpnessColor.getColor();
     }
 
     public static boolean active() { return active; }
     public static boolean culling() { return cull; }
     public static boolean optimized() { return optimized; }
-    public static float particleScale() { return particleScale; }
-    public static boolean critRecolor() { return critRecolor; }
-    public static int critColor() { return critColor; }
-    public static boolean sharpnessRecolor() { return sharpnessRecolor; }
-    public static int sharpnessColor() { return sharpnessColor; }
+    public static boolean weatherCulling() { return weatherCull; }
 
     /** Between worlds the decorative quota starts over. */
     public static void worldChanged() { BUDGET.reset(); }
@@ -94,7 +84,6 @@ public final class ParticleCore {
      */
     public static boolean allowSpawn(String id, boolean own, double distanceSq, long tick) {
         if (!active) return true;
-        if (ElderGuardianTweaks.isCurseHidden() && (id.contains("mobappearance") || id.contains("elder_guardian"))) { dropped++; return false; }
         if (POTION.contains(id) && (own ? hideOwn : hideOthers)) { dropped++; return false; }
         int percent = module.rates.percent(id);
         if (percent < 100 && !pass(percent, roll())) { dropped++; return false; }
