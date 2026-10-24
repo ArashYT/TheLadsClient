@@ -60,12 +60,14 @@ public class HostSessionTest {
     private HostSession session;
     private List<JsonObject> sentEnds;
     private final List<SocialBridge.GuestInfo> online = new ArrayList<>();
+    private final List<String> kicks = new ArrayList<>();
 
     @BeforeEach
     public void setup() {
         HostSession.skipLoopbackForTest = true;
         SocialBridge bridge = new SocialBridge() {
             @Override public List<GuestInfo> guests() { return online; }
+            @Override public void guestAction(UUID id, GuestAction action) { kicks.add(action + " " + id); }
         };
         SocialState state = new SocialState(() -> bridge, () -> null, null);
         sentEnds = new ArrayList<>();
@@ -185,7 +187,7 @@ public class HostSessionTest {
     }
 
     @Test
-    public void revokeGuestClosesP2PSessionAndSendsP2PEnd() {
+    public void revokeGuestClosesP2PSessionAndSendsP2PEnd() throws Exception {
         FakeP2PSession p2p = new FakeP2PSession(true, 4096);
         HostSession.setP2PStarter((sid, host, cfg, sendSignal) -> CompletableFuture.completedFuture(p2p));
 
@@ -205,7 +207,12 @@ public class HostSessionTest {
         session.revoke(guest);
 
         assertFalse(session.acceptedUuids().contains(guest));
-        assertTrue(p2p.closed, "P2P session must be closed on revoke");
+        assertEquals(List.of("KICK " + guest), kicks, "the vanilla kick goes first");
+        assertFalse(p2p.closed, "the tunnel stays open so the guest sees \"Kicked by host\"");
+        long until = System.currentTimeMillis() + HostSession.KICK_GRACE_MS + 2_000;
+        while (!p2p.closed && System.currentTimeMillis() < until) Thread.sleep(20);
+        assertTrue(p2p.closed, "P2P session must be closed after the kick");
+        assertFalse(session.ownsSid(sid));
 
         // Verify p2p_end was sent exactly once with relayed=true, bytes=4096
         assertEquals(1, sentEnds.size());

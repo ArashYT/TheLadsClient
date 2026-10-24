@@ -17,6 +17,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -55,6 +56,7 @@ public final class HostSession {
     private final Predicate<UUID> loginFilter = this::canLogin;
     /** After Friends hosting stops, nobody else logs in to this world until it closes (the bridge clears it then) or LAN opens it. */
     private static final Predicate<UUID> NOBODY = id -> false;
+    static final long KICK_GRACE_MS = 2_000; // the disconnect packet reaches the guest before the tunnel goes
 
     HostSession(SocialState owner) {
         this.owner = owner;
@@ -136,30 +138,23 @@ public final class HostSession {
         }
     }
 
+    /** Takes back the acceptance and kicks: the vanilla disconnect ("Kicked by host") goes through the tunnel, which closes after it. */
     public void revoke(UUID guest) {
-        if (guest != null) {
-            acceptedUuids.remove(guest);
-            String sid = guestToSid.remove(guest);
-            if (sid != null) {
-                sidToGuest.remove(sid);
-                startingSids.remove(sid);
-                pendingSignals.remove(sid);
-                P2PSession p2p = activeP2PSessions.remove(sid);
-                if (p2p != null) {
-                    endSession(sid, "Revoked", p2p);
-                    try { p2p.close("Revoked"); } catch (Exception ignored) {}
-                } else {
-                    endSession(sid, "Revoked", null);
-                }
-            }
-            owner.bridge().guestAction(guest, SocialBridge.GuestAction.KICK);
+        if (guest == null) return;
+        acceptedUuids.remove(guest); // the login filter refuses them from now on
+        owner.bridge().guestAction(guest, SocialBridge.GuestAction.KICK);
+        String sid = guestToSid.get(guest);
+        if (sid != null) {
+            CompletableFuture.delayedExecutor(KICK_GRACE_MS, TimeUnit.MILLISECONDS).execute(() -> {
+                if (sid.equals(guestToSid.get(guest))) closeGuest(sid, "Revoked"); // not already ended (guest left, hosting stopped)
+            });
         }
     }
 
     public void closeGuest(String sid, String reason) {
         if (sid != null) {
             UUID guest = sidToGuest.remove(sid);
-            if (guest != null) guestToSid.remove(guest);
+            if (guest != null) guestToSid.remove(guest, sid); // never a newer session of the same guest
             startingSids.remove(sid);
             pendingSignals.remove(sid);
             P2PSession p2p = activeP2PSessions.remove(sid);
