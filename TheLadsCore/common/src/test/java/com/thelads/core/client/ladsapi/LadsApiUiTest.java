@@ -3,6 +3,8 @@ package com.thelads.core.client.ladsapi;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.SliderOption;
+import com.thelads.core.client.hud.ToastAction;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -117,5 +119,24 @@ class LadsApiUiTest {
         // Zero changes and empty notice shows nothing
         LadsApiUi.policyApplied("Lads SMP", 0, "   ");
         assertFalse(LadsApiUi.isToastActive());
+    }
+
+    @Test
+    void testPolicyAppliedWithActions() {
+        ToastAction action = ToastAction.runCommand("Discord", "/discord");
+        LadsApiUi.policyApplied("Lads SMP", 0, "Welcome!", List.of(action));
+        assertTrue(LadsApiUi.isToastActive());
+        assertEquals(1, LadsApiUi.activeToastActions().size());
+        assertEquals("Discord", LadsApiUi.activeToastActions().get(0).getLabel());
+    }
+
+    @Test
+    void testShowNotification() {
+        ToastAction action = ToastAction.openUrl("Store", "https://store.thelads.net");
+        LadsApiUi.showNotification("Announcement", "Big sale!", List.of(action));
+        assertTrue(LadsApiUi.isToastActive());
+        assertEquals("Announcement", LadsApiUi.activeToastTitle());
+        assertEquals("Big sale!", LadsApiUi.activeToastNotice());
+        assertEquals(1, LadsApiUi.activeToastActions().size());
     }
 }

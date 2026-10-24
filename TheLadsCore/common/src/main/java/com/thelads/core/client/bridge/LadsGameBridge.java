@@ -187,6 +187,30 @@ public interface LadsGameBridge {
     /** Sends a line as the player would type it: a command when it starts with "/" (Hypixel mods). */
     default void sendChatLine(String text) {}
     default void displayChatMessage(String text) {}
+    /** Opens the in-game chat screen pre-filled with the specified command/text. */
+    default void openChatWithText(String text) {}
+    /** Opens a safe external web URL (http:// or https://) in the system's default browser. */
+    default void openUrl(String url) {
+        if (!isSafeUrl(url)) return;
+        try {
+            if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                java.awt.Desktop.getDesktop().browse(new java.net.URI(url.trim()));
+            }
+        } catch (Throwable ignored) {}
+    }
+    static boolean isSafeUrl(String url) {
+        if (url == null || url.trim().isEmpty()) return false;
+        String clean = url.trim();
+        if (!clean.regionMatches(true, 0, "http://", 0, 7) && !clean.regionMatches(true, 0, "https://", 0, 8)) {
+            return false;
+        }
+        try {
+            java.net.URI uri = java.net.URI.create(clean);
+            return uri.getHost() != null && !uri.getHost().isEmpty();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
     /** Tab list / online player names on the current server; empty when not connected or unavailable. */
     default List<String> getOnlinePlayerNames() { return Collections.emptyList(); }
     /** Displays a brief client-side system toast / notification. */

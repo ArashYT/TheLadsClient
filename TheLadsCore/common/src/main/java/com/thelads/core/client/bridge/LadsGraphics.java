@@ -93,6 +93,14 @@ public interface LadsGraphics {
 
     default void drawInventorySlot(int slot, int x, int y, boolean preview) {}
 
+    /**
+     * Hypixel SkyBlock Dungeon map rendering: renders the player's held/inventory filled map,
+     * or a preview dungeon room layout when preview is true.
+     */
+    default void drawMap(int x, int y, int size, boolean preview) {
+        com.thelads.core.client.hud.DungeonMapHudElement.drawDungeonPreview(this, x, y, size);
+    }
+
     default void drawBossBars(int x,int y,int max,boolean names,boolean preview) {}
 
     /** Where drawBossBars with these arguments draws now: {minX, minY, maxX, maxY}, an empty array for nothing, null when unknown

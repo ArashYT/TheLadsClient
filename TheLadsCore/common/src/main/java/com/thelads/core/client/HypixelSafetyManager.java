@@ -246,6 +246,7 @@ public final class HypixelSafetyManager {
             || ChatTweaks.LONG_COMMANDS.equalsIgnoreCase(moduleName) || com.thelads.core.modules.AutoTextModule.NAME.equalsIgnoreCase(moduleName)
             || InventoryTweaks.MOVE.equalsIgnoreCase(moduleName) || InventoryTweaks.ARMOR_SWAP.equalsIgnoreCase(moduleName)
             || BreedingTimer.NAME.equalsIgnoreCase(moduleName) || EnderChestPeek.NAME.equalsIgnoreCase(moduleName) // hidden cooldown, chest away from it
+            || "SkyBlock Suite".equalsIgnoreCase(moduleName) || "Server Notification Actions".equalsIgnoreCase(moduleName)
             || isGatedHud(moduleName);
     }
 
@@ -254,7 +255,8 @@ public final class HypixelSafetyManager {
         return com.thelads.core.client.hud.HudExtras.DAMAGE_INDICATOR.equalsIgnoreCase(moduleName)
             || com.thelads.core.client.hud.HudExtras.HORSE.equalsIgnoreCase(moduleName)
             || com.thelads.core.client.hud.HudExtras.PLAYERS.equalsIgnoreCase(moduleName)
-            || com.thelads.core.client.hud.HudExtras.TOTEMS.equalsIgnoreCase(moduleName);
+            || com.thelads.core.client.hud.HudExtras.TOTEMS.equalsIgnoreCase(moduleName)
+            || "DungeonMap".equalsIgnoreCase(moduleName) || "SkyBlockTimers".equalsIgnoreCase(moduleName);
     }
 
     public static boolean isGatedHypixelModule(String moduleName) {

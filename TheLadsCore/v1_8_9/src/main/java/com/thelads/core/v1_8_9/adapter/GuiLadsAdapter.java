@@ -244,7 +244,41 @@ public class GuiLadsAdapter implements LadsGraphics {
         }
     }
 
-    /** A damaged diamond sample in the editor when nothing is worn (as on 1.21.11). */
+@Override
+    public void drawMap(int x, int y, int size, boolean preview) {
+        if (preview) {
+            com.thelads.core.client.hud.DungeonMapHudElement.drawDungeonPreview(this, x, y, size);
+            return;
+        }
+        Minecraft mc = Minecraft.getMinecraft();
+        ItemStack mapStack = null;
+        if (mc.thePlayer != null && mc.thePlayer.inventory != null) {
+            for (ItemStack item : mc.thePlayer.inventory.mainInventory) {
+                if (item != null && item.getItem() == Items.filled_map) {
+                    mapStack = item;
+                    break;
+                }
+            }
+        }
+        if (mapStack != null && mc.theWorld != null) {
+            net.minecraft.world.storage.MapData mapData = Items.filled_map.getMapData(mapStack, mc.theWorld);
+            if (mapData != null) {
+                GlStateManager.pushMatrix();
+                GlStateManager.translate((float) x, (float) y, 0.0f);
+                float scale = (float) size / 128.0f;
+                GlStateManager.scale(scale, scale, 1.0f);
+                GlStateManager.disableLighting();
+                GlStateManager.enableAlpha();
+                mc.entityRenderer.getMapItemRenderer().renderMap(mapData, false);
+                GlStateManager.popMatrix();
+                return;
+            }
+        }
+        fill(x, y, x + size, y + size, 0x80101014);
+        drawCenteredText("No Map Item", x + size / 2, y + (size - fontHeight()) / 2, 0xFF888888, false);
+    }
+
+        /** A damaged diamond sample in the editor when nothing is worn (as on 1.21.11). */
     static ItemStack armorStack(int index, boolean preview) {
         if (preview) {
             ItemStack stack = new ItemStack(index == 0 ? Items.diamond_helmet : Items.diamond_chestplate);

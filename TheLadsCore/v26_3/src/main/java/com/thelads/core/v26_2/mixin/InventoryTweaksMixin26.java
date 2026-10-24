@@ -99,6 +99,16 @@ public abstract class InventoryTweaksMixin26 extends Screen {
             graphics.fill(x, y, x + 16, y + 16, InventoryTweaks.LOCK_TINT);
             graphics.fill(x, y + 15, x + 16, y + 16, InventoryTweaks.LOCK_EDGE);
         }
+        if (slot.hasItem()) {
+            ItemStack s = slot.getItem();
+            String title = getTitle() != null ? getTitle().getString() : "";
+            int highlight = com.thelads.core.client.hypixel.TerminalSolver.getSlotHighlight(
+                title, slot.index, s.getCount(), s.getHoverName().getString(), menu.slots.size()
+            );
+            if (highlight != 0) {
+                graphics.fill(x, y, x + 16, y + 16, highlight);
+            }
+        }
     }
 
     /** Typing in the search box: every key but Escape goes to it (E, Q and the number keys type instead of acting; Enter leaves it); the Lock key. */

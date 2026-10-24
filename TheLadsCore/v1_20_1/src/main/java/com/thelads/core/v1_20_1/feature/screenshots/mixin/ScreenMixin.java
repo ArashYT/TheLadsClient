@@ -20,6 +20,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Screen.class)
 public abstract class ScreenMixin {
+@Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
+   private void lads_toast(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
+      if (com.thelads.core.client.hud.ServerRulesNotice.mouseClicked((int) mouseX, (int) mouseY, button)) {
+         cir.setReturnValue(true);
+      }
+   }
    @Inject(method = "handleComponentClicked", at = @At("HEAD"), cancellable = true)
    private void lads_screenshots$inject_handleClickEvent(Style style, CallbackInfoReturnable<Boolean> cir) {
       ClickEvent clickEvent = style == null ? null : style.getClickEvent();

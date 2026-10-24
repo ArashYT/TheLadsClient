@@ -320,6 +320,10 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         var mc = Minecraft.getInstance(); if (mc.gui != null && mc.gui.hud != null && mc.gui.hud.getChat() != null) mc.gui.hud.getChat().addClientSystemMessage(net.minecraft.network.chat.Component.literal(text));
     }
 
+    @Override public void openChatWithText(String text) {
+        Minecraft.getInstance().setScreenAndShow(new net.minecraft.client.gui.screens.ChatScreen(text != null ? text : "", false));
+    }
+
     @Override public List<String> getOnlinePlayerNames() {
         var connection = Minecraft.getInstance().getConnection();
         if (connection == null) return List.of();

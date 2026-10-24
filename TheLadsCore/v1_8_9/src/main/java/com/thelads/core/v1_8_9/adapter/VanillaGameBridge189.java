@@ -534,6 +534,13 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         if (mc().thePlayer != null) mc().thePlayer.addChatMessage(new net.minecraft.util.ChatComponentText(text));
     }
 
+    @Override
+    public void openChatWithText(String text) {
+        if (mc().thePlayer != null) {
+            mc().displayGuiScreen(new net.minecraft.client.gui.GuiChat(text != null ? text : ""));
+        }
+    }
+
     public List<String> getOnlinePlayerNames() {
         if (mc().getNetHandler() == null) return Collections.emptyList();
         Collection<net.minecraft.client.network.NetworkPlayerInfo> playerInfoMap = mc().getNetHandler().getPlayerInfoMap();

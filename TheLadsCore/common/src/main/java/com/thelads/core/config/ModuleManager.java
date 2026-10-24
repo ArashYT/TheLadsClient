@@ -700,6 +700,19 @@ public class ModuleManager {
         chunks.addOption(new SliderOption(com.thelads.core.client.ChunkBorders.SPACING, 2, 1, 8, 1));
         chunks.addOption(new ColorOption(com.thelads.core.client.ChunkBorders.SECTION, false, 0xFF4040FF));
         register(chunks, Module.Category.MECHANIC);
+
+        // Parity-1023 Lane r2-hypixel: SkyBlock Suite & Server Notification Actions
+        HudModule dungeonMap = hud("DungeonMap", "Hypixel SkyBlock dungeon map overlay rendered from the filled map item.");
+        dungeonMap.setEnabled(false);
+        HudModule sbTimers = hud("SkyBlockTimers", "Hypixel SkyBlock Garden crop, pest, and composter countdown timers.");
+        sbTimers.setEnabled(false);
+        Module sbSuite = new Module("SkyBlock Suite", "Hypixel SkyBlock utilities: in-container terminal solvers (click-order, color, word), dungeon map, and garden timers.");
+        sbSuite.addOption(new BoolOption("Terminal Solvers", true));
+        sbSuite.setEnabled(false);
+        register(sbSuite, Module.Category.HYPIXEL);
+        Module toastActions = new Module("Server Notification Actions", "Allow server notification toasts to display interactive clickable action buttons (commands and URLs).");
+        toastActions.setEnabled(false);
+        register(toastActions, Module.Category.SERVER);
     }
 
     public static ModuleManager getInstance() {

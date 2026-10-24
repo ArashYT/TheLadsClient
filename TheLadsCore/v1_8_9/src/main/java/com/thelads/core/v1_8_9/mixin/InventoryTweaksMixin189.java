@@ -11,6 +11,8 @@ import net.minecraft.client.gui.inventory.GuiInventory;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.Container;
+import net.minecraft.inventory.ContainerChest;
+import com.thelads.core.client.hypixel.TerminalSolver;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemArmor;
@@ -80,7 +82,20 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
     private void ladsOverlay(Slot slot, CallbackInfo ci) {
         boolean dim = slot.slotNumber < ladsDim.length && ladsDim[slot.slotNumber];
         boolean locked = slot.inventory instanceof InventoryPlayer && InventoryTweaks.locked(slot.getSlotIndex());
-        if (!dim && !locked) return;
+        int highlight = 0;
+        if (slot.getHasStack()) {
+            ItemStack stack = slot.getStack();
+            String title = null;
+            if (inventorySlots instanceof ContainerChest) {
+                title = ((ContainerChest) inventorySlots).getLowerChestInventory().getDisplayName().getUnformattedText();
+            } else if (slot.inventory != null && !(slot.inventory instanceof InventoryPlayer)) {
+                title = slot.inventory.getDisplayName().getUnformattedText();
+            }
+            if (title != null) {
+                highlight = TerminalSolver.getSlotHighlight(title, slot.slotNumber, stack.stackSize, stack.getDisplayName(), inventorySlots.inventorySlots.size());
+            }
+        }
+        if (!dim && !locked && highlight == 0) return;
         int x = slot.xDisplayPosition, y = slot.yDisplayPosition;
         GlStateManager.disableLighting();
         GlStateManager.disableDepth();
@@ -88,6 +103,9 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
         if (locked) {
             Gui.drawRect(x, y, x + 16, y + 16, InventoryTweaks.LOCK_TINT);
             Gui.drawRect(x, y + 15, x + 16, y + 16, InventoryTweaks.LOCK_EDGE);
+        }
+        if (highlight != 0) {
+            Gui.drawRect(x, y, x + 16, y + 16, highlight);
         }
         GlStateManager.enableDepth();
         GlStateManager.enableLighting();
