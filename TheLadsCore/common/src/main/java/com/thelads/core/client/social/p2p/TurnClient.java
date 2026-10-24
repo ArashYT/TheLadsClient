@@ -42,11 +42,12 @@ public final class TurnClient implements AutoCloseable {
     private final java.util.Set<InetAddress> permittedIps = ConcurrentHashMap.newKeySet();
     private final ConcurrentHashMap<InetSocketAddress, Long> permissionExpiresAt = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, Long> channelExpiresAt = new ConcurrentHashMap<>();
-    private final AtomicInteger nextChannelNumber = new AtomicInteger(0x4000);
+    // a random first channel: a spoofed ChannelData can't just assume 0x4000
+    private final AtomicInteger nextChannelNumber = new AtomicInteger(0x4000 + new java.security.SecureRandom().nextInt(0x3000));
     private volatile long allocationExpiresAt = 0;
 
     // Asynchronous request dispatching
-    private final ConcurrentHashMap<String, CompletableFuture<StunMessage>> pendingRequests = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, CompletableFuture<byte[]>> pendingRequests = new ConcurrentHashMap<>();
     private volatile DataHandler dataHandler;
     private Thread readerThread;
     private Thread refresherThread;
@@ -127,7 +128,8 @@ public final class TurnClient implements AutoCloseable {
                 DatagramPacket inPkt = new DatagramPacket(inBuf, inBuf.length);
                 socket.receive(inPkt);
                 int len = inPkt.getLength();
-                if (len < 4) continue;
+                // F6: only the TURN server talks on this socket (responses, ChannelData, Data indications); anyone else is dropped
+                if (len < 4 || !serverAddress.equals(inPkt.getSocketAddress())) continue;
 
                 // 1. ChannelData (0x4000 .. 0x7FFE)
                 if (isChannelData(inBuf, 0, len)) {
@@ -160,11 +162,11 @@ public final class TurnClient implements AutoCloseable {
                             continue;
                         }
 
-                        // Response to pending request
+                        // Response to pending request (its integrity is checked by the requester, which knows whether it signed)
                         String tidHex = toHex(msg.getTransactionId());
-                        CompletableFuture<StunMessage> f = pendingRequests.remove(tidHex);
+                        CompletableFuture<byte[]> f = pendingRequests.remove(tidHex);
                         if (f != null) {
-                            f.complete(msg);
+                            f.complete(java.util.Arrays.copyOf(inBuf, len));
                             continue;
                         }
                     }
@@ -186,7 +188,7 @@ public final class TurnClient implements AutoCloseable {
         initReq.addIntAttribute(StunMessage.ATTR_REQUESTED_TRANSPORT, 0x11000000); // UDP (17)
         byte[] initBytes = initReq.encode(null, true);
 
-        StunMessage challengeResp = sendAndReceive(initBytes, initReq.getTransactionId(), 3000);
+        StunMessage challengeResp = sendAndReceive(initBytes, initReq.getTransactionId(), 3000, null);
         if (challengeResp.getType() != StunMessage.ALLOCATE_ERROR) {
             // Unexpected success or wrong message
             if (challengeResp.getType() == StunMessage.ALLOCATE_RESPONSE) {
@@ -215,7 +217,7 @@ public final class TurnClient implements AutoCloseable {
         authReq.addStringAttribute(StunMessage.ATTR_NONCE, nonce);
         byte[] authBytes = authReq.encode(key, true);
 
-        StunMessage authResp = sendAndReceive(authBytes, authReq.getTransactionId(), 3000);
+        StunMessage authResp = sendAndReceive(authBytes, authReq.getTransactionId(), 3000, key);
         if (authResp.getType() == StunMessage.ALLOCATE_ERROR) {
             throw new IOException("Allocate failed: " + authResp.getErrorCode() + " " + authResp.getErrorMessage());
         }
@@ -250,7 +252,7 @@ public final class TurnClient implements AutoCloseable {
         req.addStringAttribute(StunMessage.ATTR_NONCE, nonce);
         byte[] bytes = req.encode(key, true);
 
-        StunMessage resp = sendAndReceive(bytes, req.getTransactionId(), 3000);
+        StunMessage resp = sendAndReceive(bytes, req.getTransactionId(), 3000, key);
         if (resp.getType() == StunMessage.REFRESH_ERROR) {
             throw new IOException("Refresh failed: " + resp.getErrorCode() + " " + resp.getErrorMessage());
         }
@@ -279,7 +281,7 @@ public final class TurnClient implements AutoCloseable {
         req.addStringAttribute(StunMessage.ATTR_NONCE, nonce);
         byte[] bytes = req.encode(key, true);
 
-        StunMessage resp = sendAndReceive(bytes, req.getTransactionId(), 3000);
+        StunMessage resp = sendAndReceive(bytes, req.getTransactionId(), 3000, key);
         if (resp.getType() == StunMessage.CREATE_PERMISSION_ERROR) {
             throw new IOException("CreatePermission failed: " + resp.getErrorCode() + " " + resp.getErrorMessage());
         }
@@ -309,7 +311,7 @@ public final class TurnClient implements AutoCloseable {
         req.addStringAttribute(StunMessage.ATTR_NONCE, nonce);
         byte[] bytes = req.encode(key, true);
 
-        StunMessage resp = sendAndReceive(bytes, req.getTransactionId(), 3000);
+        StunMessage resp = sendAndReceive(bytes, req.getTransactionId(), 3000, key);
         if (resp.getType() == StunMessage.CHANNEL_BIND_ERROR) {
             throw new IOException("ChannelBind failed: " + resp.getErrorCode() + " " + resp.getErrorMessage());
         }
@@ -449,14 +451,23 @@ public final class TurnClient implements AutoCloseable {
         return ((data[offset + 2] & 0xFF) << 8) | (data[offset + 3] & 0xFF);
     }
 
-    private StunMessage sendAndReceive(byte[] requestBytes, byte[] expectedTid, int timeoutMs) throws IOException {
+    /** The server's answer; for a request signed with key (long-term), a success answer must carry a valid MESSAGE-INTEGRITY (F6). */
+    private StunMessage sendAndReceive(byte[] requestBytes, byte[] expectedTid, int timeoutMs, byte[] key) throws IOException {
         String tidHex = toHex(expectedTid);
-        CompletableFuture<StunMessage> future = new CompletableFuture<>();
+        CompletableFuture<byte[]> future = new CompletableFuture<>();
         pendingRequests.put(tidHex, future);
         try {
             DatagramPacket outPkt = new DatagramPacket(requestBytes, requestBytes.length, serverAddress);
             socket.send(outPkt);
-            return future.get(timeoutMs, TimeUnit.MILLISECONDS);
+            byte[] raw = future.get(timeoutMs, TimeUnit.MILLISECONDS);
+            StunMessage resp = StunMessage.decode(raw, 0, raw.length);
+            boolean success = (resp.getType() & 0x0110) == 0x0100;
+            if (key != null && success && !StunMessage.validateMessageIntegrity(raw, 0, raw.length, key)) {
+                throw new IOException("TURN response without a valid MESSAGE-INTEGRITY");
+            }
+            return resp;
+        } catch (IOException e) {
+            throw e;
         } catch (java.util.concurrent.TimeoutException e) {
             throw new IOException("Timed out waiting for TURN response", e);
         } catch (Exception e) {
@@ -483,7 +494,7 @@ public final class TurnClient implements AutoCloseable {
             if (readerThread != null) {
                 readerThread.interrupt();
             }
-            for (CompletableFuture<StunMessage> f : pendingRequests.values()) {
+            for (CompletableFuture<byte[]> f : pendingRequests.values()) {
                 f.cancel(true);
             }
             pendingRequests.clear();

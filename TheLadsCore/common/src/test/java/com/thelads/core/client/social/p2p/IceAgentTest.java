@@ -632,4 +632,47 @@ public class IceAgentTest {
             v.close();
         }
     }
+
+    /** F4 (PocIce 1): a sniffed check with USE-CANDIDATE appended after MESSAGE-INTEGRITY (FINGERPRINT recomputed) nominates nothing. */
+    @Test
+    public void useCandidateAppendedAfterIntegrityIsIgnored() throws Exception {
+        IceAgent guest = new IceAgent("test-mi", false, null, j -> {});
+        try (DatagramSocket attacker = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
+            guest.gatherAndSendSignal().join();
+            String peerUfrag = "PEERUFRG", peerPwd = "PEERPASSWORD1234567890";
+            guest.onSignal(signal(peerUfrag, peerPwd, 1, "127.0.0.1", 40000));
+            int port = port(guest);
+            StunMessage req = new StunMessage(StunMessage.BINDING_REQUEST);
+            req.addStringAttribute(StunMessage.ATTR_USERNAME, guest.getLocalUfrag() + ":" + peerUfrag);
+            req.addLongAttribute(StunMessage.ATTR_PRIORITY, 1L);
+            req.addLongAttribute(StunMessage.ATTR_ICE_CONTROLLING, 7L);
+            byte[] sniffed = req.encode(StunMessage.deriveShortTermKey(guest.getLocalPwd()), true);
+            int upToMi = sniffed.length - 8; // without FINGERPRINT
+            byte[] forged = java.util.Arrays.copyOf(sniffed, upToMi + 4 + 8);
+            forged[upToMi] = 0x00;
+            forged[upToMi + 1] = 0x25; // USE-CANDIDATE, length 0
+            forged[upToMi + 2] = 0;
+            forged[upToMi + 3] = 0;
+            int msgLen = forged.length - 20;
+            forged[2] = (byte) (msgLen >> 8);
+            forged[3] = (byte) msgLen;
+            java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+            crc.update(forged, 0, upToMi + 4);
+            long fp = (crc.getValue() ^ 0x5354554EL) & 0xFFFFFFFFL;
+            forged[upToMi + 4] = (byte) 0x80;
+            forged[upToMi + 5] = 0x28;
+            forged[upToMi + 6] = 0;
+            forged[upToMi + 7] = 4;
+            forged[upToMi + 8] = (byte) (fp >> 24);
+            forged[upToMi + 9] = (byte) (fp >> 16);
+            forged[upToMi + 10] = (byte) (fp >> 8);
+            forged[upToMi + 11] = (byte) fp;
+            assertTrue(StunMessage.validateFingerprint(forged, 0, forged.length), "the forgery itself is well-formed");
+            attacker.send(new DatagramPacket(forged, forged.length, InetAddress.getLoopbackAddress(), port));
+            Thread.sleep(300);
+            assertFalse(guest.getConnectedFuture().isDone(), "an unauthenticated USE-CANDIDATE must not select the attacker's address");
+        } finally {
+            guest.close();
+        }
+    }
 }
