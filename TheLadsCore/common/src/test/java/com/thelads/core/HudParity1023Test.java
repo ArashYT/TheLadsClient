@@ -337,6 +337,18 @@ public class HudParity1023Test {
     }
 
     @Test
+    void mouseTrailDecaysByTimeNotFrames() {
+        assertEquals(0.85F, MouseTrailHudElement.decay(1000.0 / 60), 1e-5, "one 60 FPS frame: the old per-frame factor");
+        assertEquals(1F, MouseTrailHudElement.decay(0), 0);
+        // Half a second at 60 FPS and at 500 FPS leaves the same offset.
+        float at60 = 1, at500 = 1;
+        for (int i = 0; i < 30; i++) at60 *= MouseTrailHudElement.decay(1000.0 / 60);
+        for (int i = 0; i < 250; i++) at500 *= MouseTrailHudElement.decay(2);
+        assertEquals(at60, at500, 1e-4);
+        assertEquals(MouseTrailHudElement.decay(500), at500, 1e-4);
+    }
+
+    @Test
     void cpuLoadIsRealOrNa() throws InterruptedException {
         // HotSpot has com.sun.management: a real reading (the first one may still be warming up), never -1 for good.
         double load = SystemMetrics.getCpuLoad();
