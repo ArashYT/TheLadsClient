@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.7",
+  "package": "com.thelads.core.v1_8_9.qol.mixin",
+  "refmap": "theladscore.v1_8_9.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "GuiEnchantmentQolMixin189",
+    "GuiScaleQolMixin189",
+    "GuiScreenServerListAccessor189",
+    "MinecraftQolMixin189",
+    "SoundManagerQolMixin189"
+  ]
+}

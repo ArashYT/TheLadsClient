@@ -344,10 +344,10 @@ public class GuiLadsAdapter implements LadsGraphics {
     /** GUI rectangle to window pixels; OpenGL's scissor origin is the bottom-left corner. */
     private void apply(int[] box) {
         Minecraft mc = Minecraft.getMinecraft();
-        int scale = resolution().getScaleFactor();
+        double scale = com.thelads.core.v1_8_9.qol.Qol189.scale(resolution()); // GUI Scale may be fractional
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
-        GL11.glScissor(box[0] * scale, mc.displayHeight - box[3] * scale,
-            Math.max(0, box[2] - box[0]) * scale, Math.max(0, box[3] - box[1]) * scale);
+        GL11.glScissor((int) (box[0] * scale), mc.displayHeight - (int) (box[3] * scale),
+            (int) (Math.max(0, box[2] - box[0]) * scale), (int) (Math.max(0, box[3] - box[1]) * scale));
     }
 
     @Override
