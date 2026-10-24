@@ -269,6 +269,16 @@ public class SocialState {
         return f != null ? f.displayName() : "your friend";
     }
 
+    /** The friend whose world we are connecting to (the P2P link is not up yet), else null: the Friends screen shows progress. */
+    public String connectingTo() {
+        return guestSession.connectingTo();
+    }
+
+    /** Cancel on that progress: the P2P session ends, nothing connects. */
+    public void cancelConnecting() {
+        guestSession.close("Cancelled");
+    }
+
     /** The friend a "dm:<uuid>" action asked to open, once (the Friends screen opens on that conversation). */
     public FriendEntry takeDmTarget() {
         UUID id = dmTarget;
@@ -944,11 +954,16 @@ public class SocialState {
                 return;
             }
             SocialBridge bridge = bridge();
+            // The Friends screen shows "Connecting to <friend>'s world..." with Cancel until the link is up (then the game connects)
             if (bridge.inWorldOrServer() || guestSession.isActive()) {
                 guestSession.close("Switching world");
-                bridge.leaveWorld(() -> guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender));
+                bridge.leaveWorld(() -> {
+                    guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender);
+                    bridge.openFriendsScreen();
+                });
             } else {
                 guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender);
+                bridge.runOnGameThread(bridge::openFriendsScreen);
             }
         }
     }

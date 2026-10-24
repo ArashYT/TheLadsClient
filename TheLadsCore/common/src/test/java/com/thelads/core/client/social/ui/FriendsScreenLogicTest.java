@@ -113,6 +113,20 @@ class FriendsScreenLogicTest {
     }
 
     @Test
+    void connectingProgressIsModalAndEscCancels() {
+        FakeCallbacks callbacks = new FakeCallbacks();
+        callbacks.connectingTo = "Arash";
+        FriendsScreenLogic logic = new FriendsScreenLogic(callbacks);
+        TestGraphics g = new TestGraphics(480, 270);
+        logic.render(g, 0, 0);
+        assertTrue(logic.mouseClicked(5, 5, 0), "clicks behind the progress are swallowed");
+        assertFalse(callbacks.closed);
+        assertTrue(logic.keyPressed(256, 0, 0));
+        assertEquals(1, callbacks.cancels, "Esc cancels the connection, not the screen");
+        assertFalse(callbacks.closed);
+    }
+
+    @Test
     void incompatibleReasonOnlyShownOnHover() {
         UUID u1 = UUID.randomUUID();
         SocialBridge.GameInfo game = new SocialBridge.GameInfo("1.8.9", "forge", "plain", "", "", "", "1.9.18");
@@ -446,6 +460,10 @@ class FriendsScreenLogicTest {
         @Override public void requestJoin(UUID id) { requestedJoins.add(id); }
         String joinQuestion;
         @Override public String joinQuestion(UUID id) { return joinQuestion; }
+        String connectingTo;
+        int cancels;
+        @Override public String connectingTo() { return connectingTo; }
+        @Override public void cancelConnecting() { cancels++; connectingTo = null; }
         @Override public void sendDm(UUID id, String text) { sentDms.add(new SentDm(id, text)); }
         @Override public void acceptRequest(UUID id) { accepted.add(id); }
         @Override public void declineRequest(UUID id) { declined.add(id); }

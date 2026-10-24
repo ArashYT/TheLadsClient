@@ -39,6 +39,7 @@ public final class GuestSession {
 
     private final SocialState owner;
     private volatile boolean active;
+    private volatile boolean linkUp; // the P2P stream is up: the game was told to connect
     private volatile UUID hostUuid;
     private volatile String hostDisplayName;
     private volatile String sid;
@@ -76,6 +77,11 @@ public final class GuestSession {
         return serverAddress != null && serverAddress.equals(proxyAddress);
     }
 
+    /** The friend whose world we are connecting to while the P2P link is not up yet (the Friends screen shows it), else null. */
+    String connectingTo() {
+        return active && !linkUp ? hostDisplayName : null;
+    }
+
     public boolean ownsSid(String sid) {
         return active && Objects.equals(this.sid, sid);
     }
@@ -88,6 +94,7 @@ public final class GuestSession {
         this.hostUuid = hostUuid;
         this.hostDisplayName = hostDisplayName != null ? hostDisplayName : "Friend World";
         this.active = true;
+        this.linkUp = false;
         this.ended.set(false);
 
         synchronized (signalLock) {
@@ -105,10 +112,7 @@ public final class GuestSession {
             HypixelSafetyManager.setP2PSession(safetyKey, proxyAddress); // an unknown server while connected to this proxy
             LOGGER.info("GuestSession: local proxy listening on port {} for sid {}", localPort, sid);
 
-            // Connect vanilla client to the loopback proxy
-            owner.bridge().connectToLocal(localPort, this.hostDisplayName);
-
-            // Start P2P session
+            // Start P2P session; the game connects to the proxy only once it is up (F13: nothing else can take the port meanwhile)
             CompletableFuture<P2PSession> started = p2pStarter.start(sid, false, iceConfig, sendSignal);
             // The future is the session itself (P2PSession.start): the host's candidates must reach it while it connects.
             if (started instanceof P2PSession connecting) attach(sid, connecting);
@@ -120,12 +124,15 @@ public final class GuestSession {
                     close(sid, reason);
                 });
 
-                // Listen for Minecraft client TCP connection to proxy
+                // Listen for Minecraft client TCP connection to proxy, then let the game connect
                 Thread acceptThread = new Thread(() -> acceptAndBridge(sid, proxy, session), "Lads-GuestProxy-" + sid);
                 acceptThread.setDaemon(true);
                 acceptThread.start();
+                linkUp = true;
+                owner.bridge().connectToLocal(localPort, this.hostDisplayName + (session.relayed() ? " (relayed)" : " (direct)"));
             }).exceptionally(ex -> {
                 LOGGER.warn("GuestSession: P2P session failed to start: {}", ex.getMessage());
+                if (Objects.equals(this.sid, sid) && active) owner.bridge().toast("Friend's world", "Could not reach " + hostDisplayName + "'s world", null, null);
                 close(sid, "P2P session failed");
                 return null;
             });
