@@ -88,6 +88,7 @@ class LadsApiClientTest {
         assertEquals("Lads SMP: fullbright capped at 10%", active.notice());
         assertEquals(ModuleState.ALLOW, active.module("Fullbright"));
         assertEquals(ModuleState.BLOCK, active.module("XaeroMinimap"));
+        assertEquals(ModuleState.BLOCK, active.module("Minimap"), "the visible Minimap module is the same mod as XaeroMinimap");
         assertEquals(ModuleState.ON, active.module("Crosshair"));
 
         OptionRule fbBright = active.option("Fullbright", "Brightness");
