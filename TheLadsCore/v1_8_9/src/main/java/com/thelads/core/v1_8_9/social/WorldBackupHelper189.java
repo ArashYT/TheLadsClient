@@ -56,10 +56,9 @@ public final class WorldBackupHelper189 {
         byte[] buffer = new byte[8192];
         for (File file : files) {
             if (file.isDirectory()) {
-                if ("lads-host.json".equals(file.getName())) continue;
                 zipDirectory(root, file, zos);
             } else {
-                if (file.getName().endsWith(".lock")) continue; // skip session.lock
+                if (file.getName().endsWith(".lock") || "lads-host.json".equals(file.getName())) continue; // skip session.lock and host config
                 String relativePath = root.toURI().relativize(file.toURI()).getPath();
                 zos.putNextEntry(new ZipEntry(relativePath));
                 try (FileInputStream fis = new FileInputStream(file)) {

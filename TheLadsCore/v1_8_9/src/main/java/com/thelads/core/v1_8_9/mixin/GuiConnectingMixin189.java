@@ -6,11 +6,20 @@ import net.minecraft.client.multiplayer.GuiConnecting;
 import net.minecraft.client.multiplayer.WorldClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /** A join from the pause menu's server list leaves the open world or server first (PauseMultiplayer189.leaveWorld). */
 @Mixin(GuiConnecting.class)
 public abstract class GuiConnectingMixin189 {
+    @Inject(method = "connect", at = @At("HEAD"))
+    private void ladsOnConnect(String ip, int port, CallbackInfo ci) {
+        if (!com.thelads.core.v1_8_9.social.SocialBridge189.isTargetLoopback(ip, port)) {
+            com.thelads.core.v1_8_9.social.SocialBridge189.clearConnectingTarget();
+        }
+    }
+
     @Redirect(method = {"<init>(Lnet/minecraft/client/gui/GuiScreen;Lnet/minecraft/client/Minecraft;Lnet/minecraft/client/multiplayer/ServerData;)V",
         "<init>(Lnet/minecraft/client/gui/GuiScreen;Lnet/minecraft/client/Minecraft;Ljava/lang/String;I)V"}, at = @At(value = "INVOKE",
         target = "Lnet/minecraft/client/Minecraft;loadWorld(Lnet/minecraft/client/multiplayer/WorldClient;)V"), require = 2)

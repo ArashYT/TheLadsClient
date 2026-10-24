@@ -16,7 +16,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class ServerConfigurationManagerMixin {
     @Inject(method = "allowUserToConnect", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsCheckLoginFilter(SocketAddress address, GameProfile profile, CallbackInfoReturnable<String> cir) {
-        if (profile != null && SocialBridge189.isLoginFiltered(profile.getId())) {
+        java.util.UUID id = profile != null ? profile.getId() : null;
+        if (SocialBridge189.isLoginFiltered(id)) {
             cir.setReturnValue("You weren't invited to this world");
         }
     }

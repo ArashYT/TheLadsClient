@@ -3,22 +3,29 @@ package com.thelads.core.v1_8_9.social;
 import com.thelads.core.LadsVersion;
 import com.thelads.core.client.social.HostOptions;
 import com.thelads.core.client.social.SocialBridge;
+import com.thelads.core.v1_8_9.social.mixin.IntegratedServerAccessor;
+import com.thelads.core.v1_8_9.social.mixin.NetworkSystemAccessor;
+import io.netty.channel.ChannelFuture;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Predicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.multiplayer.GuiConnecting;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.ThreadLanServerPing;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.event.ClickEvent;
+import net.minecraft.network.NetworkSystem;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.server.management.UserListBansEntry;
 import net.minecraft.util.ChatComponentText;
@@ -27,6 +34,9 @@ import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.EnumDifficulty;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings;
+import net.minecraftforge.event.ServerChatEvent;
+import net.minecraftforge.event.world.WorldEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -37,8 +47,12 @@ public final class SocialBridge189 implements SocialBridge {
     private static final Logger LOGGER = LogManager.getLogger("TheLadsCore-Social");
     private static volatile boolean loopbackOnly;
     private static volatile Predicate<UUID> loginFilter;
+    private static volatile int connectingPort = -1;
     private static volatile String connectingDisplayName;
     private static final Set<UUID> mutedGuests = Collections.synchronizedSet(new HashSet<>());
+
+    private final List<GuestInfo> guestSnapshot = new CopyOnWriteArrayList<>();
+    private volatile long lastGuestRefreshTime = 0;
 
     private static Minecraft mc() {
         return Minecraft.getMinecraft();
@@ -52,23 +66,41 @@ public final class SocialBridge189 implements SocialBridge {
         loopbackOnly = value;
     }
 
-    public static String getConnectingDisplayName() {
+    public static synchronized String getConnectingDisplayName() {
         return connectingDisplayName;
     }
 
-    public static void setConnectingDisplayName(String name) {
+    public static synchronized void setConnectingTarget(int port, String name) {
+        connectingPort = port;
         connectingDisplayName = name;
     }
 
-    public static boolean isLoginFiltered(UUID uuid) {
-        if (uuid == null) return false;
-        Minecraft mc = mc();
-        // The host is never rejected by the login filter
-        if (mc != null && mc.getSession() != null && mc.getSession().getProfile() != null) {
-            if (uuid.equals(mc.getSession().getProfile().getId())) return false;
+    public static synchronized void clearConnectingTarget() {
+        connectingPort = -1;
+        connectingDisplayName = null;
+    }
+
+    public static synchronized boolean isTargetLoopback(String ip, int port) {
+        if (connectingPort <= 0 || connectingDisplayName == null) {
+            return false;
         }
+        if (port != connectingPort) {
+            return false;
+        }
+        return "127.0.0.1".equals(ip) || "localhost".equalsIgnoreCase(ip);
+    }
+
+    public static boolean isLoginFiltered(UUID uuid) {
         Predicate<UUID> filter = loginFilter;
         if (filter != null) {
+            if (uuid == null) {
+                return true;
+            }
+            Minecraft mc = mc();
+            // The host is never rejected by the login filter
+            if (mc != null && mc.getSession() != null && mc.getSession().getProfile() != null) {
+                if (uuid.equals(mc.getSession().getProfile().getId())) return false;
+            }
             return !filter.test(uuid);
         }
         return false;
@@ -82,19 +114,15 @@ public final class SocialBridge189 implements SocialBridge {
     public static void handleChatAction(String actionId) {
         if (actionId == null || actionId.isEmpty()) return;
         LOGGER.info("Handling client-side social chat action: {}", actionId);
-        // TODO(S3/S4): route action to SocialState / SocialToasts
-        if (actionId.startsWith("accept_invite:")) {
-            String inviteId = actionId.substring("accept_invite:".length());
-            LOGGER.info("Accepting invite {}", inviteId);
-        } else if (actionId.startsWith("decline_invite:")) {
-            String inviteId = actionId.substring("decline_invite:".length());
-            LOGGER.info("Declining invite {}", inviteId);
-        } else if (actionId.startsWith("accept_join:")) {
-            String reqId = actionId.substring("accept_join:".length());
-            LOGGER.info("Accepting join request {}", reqId);
-        } else if (actionId.startsWith("deny_join:")) {
-            String reqId = actionId.substring("deny_join:".length());
-            LOGGER.info("Denying join request {}", reqId);
+        // TODO(S3): SocialState.get().handleAction(actionId);
+        if (actionId.startsWith("accept_invite:") || actionId.startsWith("invite_accept:")) {
+            LOGGER.info("Accepting invite action: {}", actionId);
+        } else if (actionId.startsWith("decline_invite:") || actionId.startsWith("invite_decline:")) {
+            LOGGER.info("Declining invite action: {}", actionId);
+        } else if (actionId.startsWith("accept_join:") || actionId.startsWith("join_accept:")) {
+            LOGGER.info("Accepting join request: {}", actionId);
+        } else if (actionId.startsWith("deny_join:") || actionId.startsWith("join_deny:")) {
+            LOGGER.info("Denying join request: {}", actionId);
         }
     }
 
@@ -112,17 +140,22 @@ public final class SocialBridge189 implements SocialBridge {
         if (server == null) return -1;
 
         setLoopbackOnly(true);
-        if (options != null && options.backupOnOpen) {
-            WorldBackupHelper189.backup(server.getFolderName());
+        String portStr = null;
+        try {
+            if (options != null && options.backupOnOpen) {
+                WorldBackupHelper189.backup(server.getFolderName());
+            }
+
+            WorldSettings.GameType gameType = WorldSettings.GameType.getByName(options != null && options.guestGameMode != null ? options.guestGameMode : "survival");
+            if (gameType == null) gameType = WorldSettings.GameType.SURVIVAL;
+            boolean allowCheats = options != null && options.guestOpLevel > 0;
+
+            portStr = server.shareToLAN(gameType, allowCheats);
+        } finally {
+            setLoopbackOnly(false);
         }
 
-        WorldSettings.GameType gameType = WorldSettings.GameType.getByName(options != null && options.guestGameMode != null ? options.guestGameMode : "survival");
-        if (gameType == null) gameType = WorldSettings.GameType.SURVIVAL;
-        boolean allowCheats = options != null && options.guestOpLevel > 0;
-
-        String portStr = server.shareToLAN(gameType, allowCheats);
         if (portStr == null) {
-            setLoopbackOnly(false);
             return -1;
         }
 
@@ -130,7 +163,6 @@ public final class SocialBridge189 implements SocialBridge {
         try {
             port = Integer.parseInt(portStr);
         } catch (NumberFormatException e) {
-            setLoopbackOnly(false);
             return -1;
         }
 
@@ -163,10 +195,19 @@ public final class SocialBridge189 implements SocialBridge {
     @Override
     public void closeHosting(String reason) {
         setLoopbackOnly(false);
+        loginFilter = null;
+        guestSnapshot.clear();
+
         Minecraft mc = mc();
         if (mc == null) return;
         IntegratedServer server = mc.getIntegratedServer();
         if (server == null) return;
+
+        if (server instanceof IntegratedServer) {
+            try {
+                ((IntegratedServerAccessor) (Object) server).setIsPublic(false);
+            } catch (Throwable ignored) {}
+        }
 
         server.addScheduledTask(() -> {
             UUID hostId = null;
@@ -176,6 +217,48 @@ public final class SocialBridge189 implements SocialBridge {
             for (EntityPlayerMP player : new ArrayList<>(server.getConfigurationManager().getPlayerList())) {
                 if (hostId == null || !player.getUniqueID().equals(hostId)) {
                     player.playerNetServerHandler.kickPlayerFromServer(reason != null ? reason : "Host closed the world");
+                }
+            }
+
+            // Close LAN listening endpoints
+            NetworkSystem netSystem = server.getNetworkSystem();
+            if (netSystem != null) {
+                try {
+                    List<ChannelFuture> endpoints = ((NetworkSystemAccessor) (Object) netSystem).getEndpoints();
+                    if (endpoints != null) {
+                        synchronized (endpoints) {
+                            Iterator<ChannelFuture> it = endpoints.iterator();
+                            while (it.hasNext()) {
+                                ChannelFuture future = it.next();
+                                if (future.channel().localAddress() instanceof java.net.InetSocketAddress
+                                        || future.channel() instanceof io.netty.channel.socket.ServerSocketChannel) {
+                                    try {
+                                        future.channel().close().sync();
+                                    } catch (Throwable ignored) {}
+                                    it.remove();
+                                }
+                            }
+                        }
+                    }
+                } catch (Throwable t) {
+                    LOGGER.warn("Failed to close LAN endpoints: {}", t.getMessage());
+                }
+            }
+
+            // Stop LAN server discovery ping thread if running and reset isPublic
+            if (server instanceof IntegratedServer) {
+                try {
+                    IntegratedServerAccessor isAcc = (IntegratedServerAccessor) (Object) server;
+                    ThreadLanServerPing ping = isAcc.getLanServerPing();
+                    if (ping != null) {
+                        try {
+                            ping.interrupt();
+                        } catch (Throwable ignored) {}
+                        isAcc.setLanServerPing(null);
+                    }
+                    isAcc.setIsPublic(false);
+                } catch (Throwable t) {
+                    LOGGER.warn("Failed to stop LAN ping: {}", t.getMessage());
                 }
             }
         });
@@ -223,23 +306,38 @@ public final class SocialBridge189 implements SocialBridge {
         Minecraft mc = mc();
         if (mc == null) return Collections.emptyList();
         IntegratedServer server = mc.getIntegratedServer();
-        if (server == null) return Collections.emptyList();
-
-        UUID hostId = null;
-        if (mc.getSession() != null && mc.getSession().getProfile() != null) {
-            hostId = mc.getSession().getProfile().getId();
+        if (server == null || !server.isServerRunning()) {
+            guestSnapshot.clear();
+            return Collections.emptyList();
         }
 
-        List<GuestInfo> result = new ArrayList<>();
+        long now = System.currentTimeMillis();
+        if (now - lastGuestRefreshTime >= 1000L) {
+            lastGuestRefreshTime = now;
+            server.addScheduledTask(() -> refreshGuestSnapshot(server));
+        }
+
+        return new ArrayList<>(guestSnapshot);
+    }
+
+    private void refreshGuestSnapshot(IntegratedServer server) {
+        if (server == null || server.getConfigurationManager() == null) return;
+        Minecraft mc = mc();
+        UUID hostId = null;
+        if (mc != null && mc.getSession() != null && mc.getSession().getProfile() != null) {
+            hostId = mc.getSession().getProfile().getId();
+        }
+        List<GuestInfo> updated = new ArrayList<>();
         for (EntityPlayerMP player : server.getConfigurationManager().getPlayerList()) {
             if (hostId != null && player.getUniqueID().equals(hostId)) continue;
             if (player.getName().equalsIgnoreCase(server.getServerOwner())) continue;
 
             boolean op = server.getConfigurationManager().canSendCommands(player.getGameProfile());
             String gm = player.theItemInWorldManager.getGameType().getName();
-            result.add(new GuestInfo(player.getUniqueID(), player.getName(), player.ping, op, gm));
+            updated.add(new GuestInfo(player.getUniqueID(), player.getName(), player.ping, op, gm));
         }
-        return result;
+        guestSnapshot.clear();
+        guestSnapshot.addAll(updated);
     }
 
     @Override
@@ -285,16 +383,46 @@ public final class SocialBridge189 implements SocialBridge {
                     if (guest != null) {
                         EntityPlayerMP host = server.getConfigurationManager().getPlayerByUsername(server.getServerOwner());
                         if (host != null) {
+                            if (guest.dimension != host.dimension) {
+                                server.getConfigurationManager().transferPlayerToDimension(guest, host.dimension);
+                            }
                             guest.setPositionAndUpdate(host.posX, host.posY, host.posZ);
                         }
                     }
                     break;
                 case MUTE:
-                    if (mutedGuests.contains(id)) mutedGuests.remove(id);
-                    else mutedGuests.add(id);
+                    if (guest != null) {
+                        EntityPlayerMP host = server.getConfigurationManager().getPlayerByUsername(server.getServerOwner());
+                        if (mutedGuests.contains(id)) {
+                            mutedGuests.remove(id);
+                            if (host != null) {
+                                host.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "Unmuted " + guest.getName()));
+                            }
+                        } else {
+                            mutedGuests.add(id);
+                            if (host != null) {
+                                host.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW + "Muted " + guest.getName()));
+                            }
+                        }
+                    }
                     break;
             }
+            refreshGuestSnapshot(server);
         });
+    }
+
+    @SubscribeEvent
+    public void onServerChat(ServerChatEvent event) {
+        if (event.player != null && mutedGuests.contains(event.player.getUniqueID())) {
+            event.setCanceled(true);
+            event.player.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "You are muted in this world."));
+        }
+    }
+
+    @SubscribeEvent
+    public void onWorldUnload(WorldEvent.Unload event) {
+        setLoopbackOnly(false);
+        guestSnapshot.clear();
     }
 
     @Override
@@ -306,7 +434,7 @@ public final class SocialBridge189 implements SocialBridge {
     public void connectToLocal(int port, String displayName) {
         Minecraft mc = mc();
         if (mc == null) return;
-        setConnectingDisplayName(displayName != null ? displayName : "P2P Host");
+        setConnectingTarget(port, displayName != null ? displayName : "P2P Host");
         ServerData data = new ServerData(displayName != null ? displayName : "P2P Host", "127.0.0.1:" + port, false);
         mc.displayGuiScreen(new GuiConnecting(mc.currentScreen, mc, data));
     }
@@ -315,7 +443,7 @@ public final class SocialBridge189 implements SocialBridge {
     public void connectToServer(String address) {
         Minecraft mc = mc();
         if (mc == null || address == null) return;
-        setConnectingDisplayName(null);
+        clearConnectingTarget();
         ServerData data = new ServerData(address, address, false);
         mc.displayGuiScreen(new GuiConnecting(mc.currentScreen, mc, data));
     }
@@ -328,6 +456,9 @@ public final class SocialBridge189 implements SocialBridge {
 
     @Override
     public void leaveWorld(Runnable then) {
+        setLoopbackOnly(false);
+        guestSnapshot.clear();
+        clearConnectingTarget();
         Minecraft mc = mc();
         if (mc == null) {
             if (then != null) then.run();
