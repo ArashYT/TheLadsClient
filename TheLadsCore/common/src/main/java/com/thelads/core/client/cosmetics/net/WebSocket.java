@@ -81,7 +81,9 @@ public final class WebSocket implements Closeable {
         String status = line();
         if (!status.startsWith("HTTP/1.1 101")) throw new ProtocolException("upgrade refused: " + status);
         String accept = null;
+        int headers = 0;
         for (String header; !(header = line()).isEmpty(); ) {
+            if (++headers > 100) throw new ProtocolException("too many handshake headers");
             int colon = header.indexOf(':');
             if (colon > 0 && header.substring(0, colon).trim().equalsIgnoreCase("Sec-WebSocket-Accept")) accept = header.substring(colon + 1).trim();
         }

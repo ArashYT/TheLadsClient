@@ -206,12 +206,18 @@ public class SocialStateTest {
         UUID host2 = UUID.randomUUID();
 
         // Guest joins first world
+        state.requestJoin(host1);
         state.handleP2PStart("sid-1", host1, "Host1", "world-1", "guest", new JsonObject());
         assertTrue(state.isGuestSessionActive());
         assertEquals(host1, state.activeGuestHostUuid());
 
         // Now an invite to second world is accepted
         bridge.inWorld = true; // Guest is inside world 1
+        JsonObject invite = new JsonObject();
+        invite.addProperty("t", "invite");
+        invite.addProperty("inviteId", "invite-2");
+        invite.addProperty("from", host2.toString());
+        state.onMessage(invite);
         state.acceptInvite("invite-2");
 
         // Simulate backend p2p_start for second world
@@ -283,7 +289,7 @@ public class SocialStateTest {
 
         // Verify toast and chatAction emitted with invite_accept:inv-server-1
         assertTrue(bridge.toasts.stream().anyMatch(t -> t.contains("invite_accept:inv-server-1")));
-        assertTrue(bridge.chatActions.stream().anyMatch(c -> c.contains("invite_accept:inv-server-1")));
+        assertTrue(bridge.chatActions.stream().anyMatch(c -> c.matches(".* -> [0-9a-f]{32}")), "the chat link carries a one-time token");
 
         // Accept the invite
         state.acceptInvite("inv-server-1");
@@ -361,11 +367,18 @@ public class SocialStateTest {
     @Test
     public void handleActionDispatchesAllFrozenActionIds() {
         UUID friend = UUID.randomUUID();
+        // What the actions act on: a friend request, two invites and two join requests this client received
+        state.onMessage(message("request_in", "uuid", friend.toString(), "name", "Pal"));
+        state.onMessage(message("invite", "inviteId", "inv-99", "from", friend.toString()));
+        state.onMessage(message("invite", "inviteId", "inv-98", "from", friend.toString()));
+        state.onMessage(message("join_request", "reqId", "req-99", "from", friend.toString()));
+        state.onMessage(message("join_request", "reqId", "req-98", "from", friend.toString()));
 
         // 1. friend_accept / friend_decline
         state.handleAction("friend_accept:" + friend);
         assertTrue(sentMessages.stream().anyMatch(m -> "friend_accept".equals(m.get("t").getAsString()) && friend.toString().equals(m.get("uuid").getAsString())));
 
+        state.onMessage(message("request_in", "uuid", friend.toString(), "name", "Pal"));
         state.handleAction("friend_decline:" + friend);
         assertTrue(sentMessages.stream().anyMatch(m -> "friend_decline".equals(m.get("t").getAsString()) && friend.toString().equals(m.get("uuid").getAsString())));
 
@@ -373,15 +386,15 @@ public class SocialStateTest {
         state.handleAction("invite_accept:inv-99");
         assertTrue(sentMessages.stream().anyMatch(m -> "invite_accept".equals(m.get("t").getAsString()) && "inv-99".equals(m.get("inviteId").getAsString())));
 
-        state.handleAction("invite_decline:inv-99");
-        assertTrue(sentMessages.stream().anyMatch(m -> "invite_decline".equals(m.get("t").getAsString()) && "inv-99".equals(m.get("inviteId").getAsString())));
+        state.handleAction("invite_decline:inv-98");
+        assertTrue(sentMessages.stream().anyMatch(m -> "invite_decline".equals(m.get("t").getAsString()) && "inv-98".equals(m.get("inviteId").getAsString())));
 
         // 3. join_accept / join_deny
         state.handleAction("join_accept:req-99");
         assertTrue(sentMessages.stream().anyMatch(m -> "join_accept".equals(m.get("t").getAsString()) && "req-99".equals(m.get("reqId").getAsString())));
 
-        state.handleAction("join_deny:req-99");
-        assertTrue(sentMessages.stream().anyMatch(m -> "join_deny".equals(m.get("t").getAsString()) && "req-99".equals(m.get("reqId").getAsString())));
+        state.handleAction("join_deny:req-98");
+        assertTrue(sentMessages.stream().anyMatch(m -> "join_deny".equals(m.get("t").getAsString()) && "req-98".equals(m.get("reqId").getAsString())));
 
         // 4. open_friends & dm
         state.handleAction("open_friends");
@@ -409,11 +422,13 @@ public class SocialStateTest {
         HostOptions opt = new HostOptions();
         opt.scope = HostOptions.Scope.FRIENDS;
         state.startHosting(opt);
+        state.hostSession().accept(guest);
         state.hostSession().handleP2PStart("sid-host-1", guest, new P2PSession.IceConfig(Collections.emptyList(), Collections.emptyList(), false), sig -> {});
 
         // Guest starts guest session
         FakeP2PSession guestP2P = new FakeP2PSession();
         GuestSession.setP2PStarter((sid, isHost, cfg, sendSignal) -> CompletableFuture.completedFuture(guestP2P));
+        state.requestJoin(host);
         state.handleP2PStart("sid-guest-1", host, "HostWorld", "w1", "guest", new JsonObject());
 
         assertTrue(state.hostSession().ownsSid("sid-host-1"));
@@ -451,6 +466,7 @@ public class SocialStateTest {
         GuestSession.setP2PStarter((sid, host, cfg, sendSignal) -> CompletableFuture.completedFuture(guestP2P));
 
         UUID host = UUID.randomUUID();
+        state.requestJoin(host);
         state.handleP2PStart("sid-end-test", host, "Host", "world", "guest", new JsonObject());
         assertTrue(state.isGuestSessionActive());
 
@@ -500,5 +516,147 @@ public class SocialStateTest {
         ask.go().run();
         assertEquals("invite_accept", sentMessages.get(0).get("t").getAsString());
         assertEquals("inv-switch", sentMessages.get(0).get("inviteId").getAsString());
+    }
+
+    /** F9 (PocState 4): a p2p_start nobody asked for (no join request, no accepted invite) neither leaves the world nor connects. */
+    @Test
+    public void unsolicitedGuestP2PStartIsIgnored() {
+        bridge.inWorld = true;
+        UUID stranger = UUID.randomUUID();
+        JsonObject start = new JsonObject();
+        start.addProperty("t", "p2p_start");
+        start.addProperty("sid", "x1");
+        start.addProperty("peer", stranger.toString());
+        start.addProperty("role", "guest");
+        state.onMessage(start);
+        assertEquals(0, bridge.leftWorldCount, "never leaves the world on the backend's word alone");
+        assertFalse(state.isGuestSessionActive());
+        assertNull(com.thelads.core.client.HypixelSafetyManager.getP2PSession());
+    }
+
+    /** F9 (PocState 2): the host opens no tunnel for a peer it never accepted. */
+    @Test
+    public void hostP2PStartForAStrangerIsIgnored() {
+        List<String> started = new ArrayList<>();
+        HostSession.setP2PStarter((sid, host, cfg, send) -> {
+            started.add(sid);
+            return new CompletableFuture<>();
+        });
+        HostOptions o = new HostOptions();
+        o.scope = HostOptions.Scope.FRIENDS;
+        o.backupOnOpen = false;
+        state.startHosting(o);
+        state.handleP2PStart("sid-stranger", UUID.randomUUID(), "Stranger", "w", "host", null);
+        assertTrue(started.isEmpty(), "no ICE session for a stranger");
+    }
+
+    /** F8 (PocState 5): malformed backend messages are ignored instead of throwing (which dropped the whole social connection). */
+    @Test
+    public void malformedBackendMessagesAreIgnored() {
+        UUID friend = UUID.randomUUID();
+        for (String bad : new String[] {
+                "{\"t\":\"invite\",\"from\":\"" + friend + "\",\"server\":\"a.b\"}",
+                "{\"t\":\"dm\",\"from\":\"" + friend + "\",\"text\":\"hi\",\"ts\":\"x\"}",
+                "{\"t\":\"p2p_start\",\"sid\":\"y\",\"peer\":\"nope\",\"role\":\"host\"}",
+                "{\"t\":\"presence\",\"uuid\":\"" + friend + "\",\"world\":{\"slots\":\"many\"}}",
+                "{\"t\":\"join_request\",\"from\":\"" + friend + "\"}"}) {
+            assertDoesNotThrow(() -> state.onMessage(com.google.gson.JsonParser.parseString(bad).getAsJsonObject()), bad);
+        }
+    }
+
+    private static JsonObject message(String t, String... kv) {
+        JsonObject o = new JsonObject();
+        o.addProperty("t", t);
+        for (int i = 0; i < kv.length; i += 2) o.addProperty(kv[i], kv[i + 1]);
+        return o;
+    }
+
+    /** F10 (PocState 3): an action for something this client never received sends nothing (any chat line could carry one). */
+    @Test
+    public void actionsWithoutAMatchingRequestSendNothing() {
+        state.handleAction("friend_accept:" + UUID.randomUUID());
+        state.handleAction("join_accept:ANYTHING");
+        state.handleAction("invite_accept:whatever");
+        state.handleAction("join_deny:req-1");
+        assertTrue(sentMessages.isEmpty(), "sent: " + sentMessages);
+    }
+
+    /** F10: chat links carry a one-time token, never the action: a forged "/lads:social friend_accept:..." click does nothing. */
+    @Test
+    public void chatLinksRunOnlyTheirOwnOneTimeToken() {
+        UUID friend = UUID.randomUUID();
+        state.onMessage(message("request_in", "uuid", friend.toString(), "name", "Pal"));
+        String printed = bridge.chatActions.get(bridge.chatActions.size() - 1);
+        String token = printed.substring(printed.lastIndexOf(" -> ") + 4);
+        assertTrue(token.matches("[0-9a-f]{32}"), "the click value is a random token: " + token);
+        sentMessages.clear();
+
+        state.handleChatClick("friend_accept:" + friend); // what a server could print
+        assertTrue(sentMessages.isEmpty());
+        state.handleChatClick(token);
+        assertEquals("friend_accept", sentMessages.get(0).get("t").getAsString());
+        state.onMessage(message("request_in", "uuid", friend.toString(), "name", "Pal"));
+        sentMessages.clear();
+        state.handleChatClick(token);
+        assertTrue(sentMessages.isEmpty(), "a token works once");
+    }
+
+    /** F7 (PocState 1): a kicked friend needs a new accept; a ban is kept in lads-host.json and denies requests, invites and logins. */
+    @Test
+    public void kickNeedsANewAcceptAndBanSticksToTheWorld() throws Exception {
+        java.nio.file.Path world = java.nio.file.Files.createTempDirectory("lads-ban");
+        SocialBridge b = new SocialBridge() {
+            @Override public int openToFriends(HostOptions o) { return 25565; }
+            @Override public java.nio.file.Path worldDir() { return world; }
+        };
+        SocialState host = new SocialState(() -> b, () -> null, null);
+        List<JsonObject> out = new ArrayList<>();
+        host.setClientSender(out::add);
+        HostOptions o = new HostOptions();
+        o.scope = HostOptions.Scope.FRIENDS;
+        o.approval = HostOptions.Approval.AUTO_FRIENDS;
+        o.backupOnOpen = false;
+        host.startHosting(o);
+        UUID friend = UUID.randomUUID();
+        host.addFriendLocally(new FriendEntry(friend, "Pal", null, Presence.OFFLINE, 0));
+
+        host.handleJoinRequest("req-1", friend, null); // auto-accepted
+        assertTrue(host.hostSession().canLogin(friend));
+        host.guestAction(friend, SocialBridge.GuestAction.KICK);
+        assertFalse(host.hostSession().canLogin(friend), "kicked: no login until a new accept");
+        host.handleJoinRequest("req-2", friend, null);
+        assertTrue(host.hostSession().canLogin(friend), "a new join request is a new accept");
+
+        host.guestAction(friend, SocialBridge.GuestAction.BAN);
+        assertFalse(host.hostSession().canLogin(friend));
+        out.clear();
+        host.handleJoinRequest("req-3", friend, null);
+        assertEquals("join_deny", out.get(0).get("t").getAsString(), "a banned guest's request is denied without asking");
+        assertFalse(host.hostSession().canLogin(friend));
+        out.clear();
+        host.invite(friend);
+        assertTrue(out.isEmpty(), "no invite for a banned guest");
+        assertTrue(HostOptions.load(world).isBanned(friend), "the ban is saved with the world");
+        host.stopHosting();
+    }
+
+    /** Anti-ban: once the game is connected anywhere but the guest proxy, the tick ends the P2P session and clears the key. */
+    @Test
+    public void tickEndsTheGuestSessionOnAnyOtherConnection() throws Exception {
+        UUID host = UUID.randomUUID();
+        state.requestJoin(host);
+        state.handleP2PStart("sid-tick", host, "Host", "world", "guest", new JsonObject());
+        assertTrue(state.isGuestSessionActive());
+        assertNotNull(com.thelads.core.client.HypixelSafetyManager.getP2PSession());
+
+        LadsGameBridge.set(new DefaultGameBridge() {
+            @Override public String getServerAddress() { return "mc.hypixel.net"; }
+        });
+        bridge.inWorld = true;
+        java.lang.reflect.Method sample = SocialState.class.getDeclaredMethod("sample");
+        sample.setAccessible(true);
+        sample.invoke(state);
+        assertFalse(state.isGuestSessionActive(), "joined another server: the P2P session ends at once");
+        assertNull(com.thelads.core.client.HypixelSafetyManager.getP2PSession());
     }
 }

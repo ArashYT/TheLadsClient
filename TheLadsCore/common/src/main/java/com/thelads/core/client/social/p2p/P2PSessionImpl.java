@@ -2,9 +2,10 @@ package com.thelads.core.client.social.p2p;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import java.io.BufferedReader;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -84,16 +85,20 @@ final class P2PSessionImpl extends CompletableFuture<P2PSession> implements P2PS
         }
     }
 
+    static final int MAX_CONTROL_LINE = 64 * 1024;
+    private static final int MAX_REASON = 128;
+
     private void startControlListener() {
         Thread t = new Thread(() -> {
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(mux.in(CONTROL), StandardCharsets.UTF_8))) {
-                String line;
-                while (!closed.get() && (line = reader.readLine()) != null) {
+            try (InputStream in = new BufferedInputStream(mux.in(CONTROL))) {
+                ByteArrayOutputStream line = new ByteArrayOutputStream();
+                String text;
+                while (!closed.get() && (text = readControlLine(in, line)) != null) {
                     try {
-                        JsonObject obj = JsonParser.parseString(line).getAsJsonObject();
+                        JsonObject obj = JsonParser.parseString(text).getAsJsonObject();
                         if (obj.has("action") && "close".equals(obj.get("action").getAsString())) {
                             String reason = obj.has("reason") ? obj.get("reason").getAsString() : "Peer closed session";
-                            close(reason);
+                            close(reason.length() > MAX_REASON ? reason.substring(0, MAX_REASON) : reason);
                             break;
                         }
                     } catch (Exception ignored) {
@@ -108,6 +113,18 @@ final class P2PSessionImpl extends CompletableFuture<P2PSession> implements P2PS
         t.setDaemon(true);
         t.setPriority(Thread.MIN_PRIORITY + 1);
         t.start();
+    }
+
+    /** One control line without its newline; null at the end of the stream. Longer than MAX_CONTROL_LINE: IOException (the session ends). */
+    static String readControlLine(InputStream in, ByteArrayOutputStream line) throws IOException {
+        line.reset();
+        int b;
+        while ((b = in.read()) != -1) {
+            if (b == '\n') return new String(line.toByteArray(), StandardCharsets.UTF_8);
+            if (line.size() >= MAX_CONTROL_LINE) throw new IOException("Control line over " + MAX_CONTROL_LINE + " bytes");
+            line.write(b);
+        }
+        return line.size() == 0 ? null : new String(line.toByteArray(), StandardCharsets.UTF_8);
     }
 
     @Override
@@ -135,49 +152,51 @@ final class P2PSessionImpl extends CompletableFuture<P2PSession> implements P2PS
         return iceAgent.getBytesSent() + iceAgent.getBytesReceived();
     }
 
+    /**
+     * Never blocks the caller (the game thread kicks, stops hosting, leaves a world): a writer stuck on a full send window holds the mux
+     * output, so the polite "close" line (then FIN) gets at most 1 s on its own thread; then the streams and the ICE socket are shut on a
+     * worker, which wakes any stuck writer.
+     */
     @Override
     public void close(String reason) {
-        if (closed.compareAndSet(false, true)) {
-            ACTIVE_SESSIONS.remove(sid, this);
-            this.closeReason = reason;
+        if (!closed.compareAndSet(false, true)) return;
+        ACTIVE_SESSIONS.remove(sid, this);
+        this.closeReason = reason;
 
-            // Send close control message to peer
+        Thread polite = new Thread(() -> {
             try {
-                OutputStream controlOut = mux.out(CONTROL);
                 JsonObject msg = new JsonObject();
                 msg.addProperty("action", "close");
                 msg.addProperty("reason", reason);
+                OutputStream controlOut = mux.out(CONTROL);
                 controlOut.write((msg.toString() + "\n").getBytes(StandardCharsets.UTF_8));
                 controlOut.flush();
             } catch (Exception ignored) {
             }
-
+            mux.close(); // FIN
+        }, "P2P-CloseLine-" + sid);
+        polite.setDaemon(true);
+        Thread closer = new Thread(() -> {
+            polite.start();
             try {
-                mux.close();
-            } catch (Exception ignored) {
+                polite.join(1000);
+            } catch (InterruptedException ignored) {
             }
+            reliableStream.close(); // a writer still stuck on the window throws now
+            mux.close();
             try {
-                reliableStream.close();
-            } catch (Exception ignored) {
+                Thread.sleep(20); // the last datagrams leave the socket
+            } catch (InterruptedException ignored) {
             }
+            iceAgent.close();
+        }, "P2P-Close-" + sid);
+        closer.setDaemon(true);
+        closer.start();
 
-            // Close iceAgent after a brief moment (20ms) so final datagram can exit the socket buffer
-            Thread cleanup = new Thread(() -> {
-                try {
-                    Thread.sleep(20);
-                } catch (InterruptedException ignored) {}
-                try {
-                    iceAgent.close();
-                } catch (Exception ignored) {}
-            }, "P2P-Cleanup-" + sid);
-            cleanup.setDaemon(true);
-            cleanup.start();
-
-            for (Consumer<String> listener : closeListeners) {
-                try {
-                    listener.accept(reason);
-                } catch (Exception ignored) {
-                }
+        for (Consumer<String> listener : closeListeners) {
+            try {
+                listener.accept(reason);
+            } catch (Exception ignored) {
             }
         }
     }

@@ -42,7 +42,7 @@ public final class SocialBridge26Checks {
         // 4. Friends button text
         require("Friends".equals(SocialBridge26.friendsButtonText().getString()), "friendsButtonText default");
 
-        // 5. Frozen action ids go to SocialState without throwing (no game, no connection)
+        // 5. Clicks carrying raw action ids (what any server could print) are unknown tokens: nothing happens, nothing throws
         String[] frozenActions = {
             "invite_accept:inv_123",
             "invite_decline:inv_123",

@@ -396,6 +396,7 @@ public final class StunMessage {
         }
 
         StunMessage msg = new StunMessage(msgType, tid);
+        boolean afterIntegrity = false; // RFC 8489 14.5: after MESSAGE-INTEGRITY only FINGERPRINT counts (F4: no appended USE-CANDIDATE)
         int bytesRead = 0;
         while (bytesRead + 4 <= msgLength) {
             int attrType = buf.getShort() & 0xFFFF;
@@ -416,7 +417,8 @@ public final class StunMessage {
                 }
                 bytesRead += pad;
             }
-            msg.addAttribute(attrType, attrVal);
+            if (!afterIntegrity || attrType == ATTR_FINGERPRINT) msg.addAttribute(attrType, attrVal);
+            if (attrType == ATTR_MESSAGE_INTEGRITY) afterIntegrity = true;
         }
         return msg;
     }

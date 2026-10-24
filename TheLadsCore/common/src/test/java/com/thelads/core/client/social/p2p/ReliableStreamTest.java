@@ -286,4 +286,31 @@ public class ReliableStreamTest {
             stream.close();
         }
     }
+
+    /** F2 (PocStall): a peer that only PINGs while never ACKing kept the stream alive forever; now no ACK progress ends it. */
+    @Test
+    public void pingsWithoutAckProgressEndTheStream() throws Exception {
+        ReliableStream rs = new ReliableStream((d, off, len) -> { /* the peer never ACKs */ }, 600);
+        byte[] ping = new byte[16];
+        ping[0] = (byte) (0x80 | 0x04 | 0x02); // PROTOCOL | PING | ACK
+        ping[8] = ping[9] = ping[10] = ping[11] = (byte) 0xFF; // ack -1: nothing new
+        java.util.concurrent.ScheduledExecutorService peer = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+        peer.scheduleAtFixedRate(() -> rs.onDatagramReceived(ping, 0, 16), 0, 100, java.util.concurrent.TimeUnit.MILLISECONDS);
+        java.util.concurrent.CompletableFuture<Throwable> writer = java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try {
+                rs.getOutputStream().write(new byte[2_000_000]);
+                rs.getOutputStream().flush();
+                return null;
+            } catch (java.io.IOException e) {
+                return e;
+            }
+        });
+        try {
+            Throwable ended = writer.get(5, java.util.concurrent.TimeUnit.SECONDS);
+            assertNotNull(ended, "the blocked writer must fail once the peer stops acknowledging");
+        } finally {
+            peer.shutdownNow();
+            rs.close();
+        }
+    }
 }

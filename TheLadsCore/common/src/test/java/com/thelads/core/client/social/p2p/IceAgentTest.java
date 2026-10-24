@@ -559,4 +559,177 @@ public class IceAgentTest {
         copy.add("candidates", cands);
         return copy;
     }
+
+    private static JsonObject signal(String ufrag, String pwd, int count, String ip, int basePort) {
+        JsonObject sig = new JsonObject();
+        sig.addProperty("ufrag", ufrag);
+        sig.addProperty("pwd", pwd);
+        JsonArray c = new JsonArray();
+        for (int i = 0; i < count; i++) {
+            JsonObject o = new JsonObject();
+            o.addProperty("type", "host");
+            o.addProperty("ip", ip);
+            o.addProperty("port", basePort + i);
+            o.addProperty("prio", 1000 - i);
+            c.add(o);
+        }
+        sig.add("candidates", c);
+        return sig;
+    }
+
+    private static int remoteCount(IceAgent agent) throws Exception {
+        java.lang.reflect.Field f = IceAgent.class.getDeclaredField("remoteCandidates");
+        f.setAccessible(true);
+        return ((List<?>) f.get(agent)).size();
+    }
+
+    /** F5 (PocIce 2): thousands of candidates per signal used to flood checks and fill pendingChecks; now signals are bounded. */
+    @Test
+    public void remoteCandidatesAndChecksAreBounded() throws Exception {
+        IceAgent host = new IceAgent("test-flood", true, null, j -> {});
+        try {
+            host.gatherAndSendSignal().join();
+            String ufrag = "ATTUFRAG", pwd = "ATTACKERPWD1234567890ab";
+            for (int s = 0; s < 4; s++) host.onSignal(signal(ufrag, pwd, 6000, "127.0.0.1", 1024 + s * 6000));
+            assertEquals(0, remoteCount(host), "a signal with more than 16 candidates is dropped whole");
+            for (int s = 0; s < 4; s++) host.onSignal(signal(ufrag, pwd, IceAgent.MAX_SIGNAL_CANDIDATES, "127.0.0.1", 2000 + s * 100));
+            assertEquals(IceAgent.MAX_REMOTE_CANDIDATES, remoteCount(host), "32 remote candidates in all");
+            Thread.sleep(1000);
+            java.lang.reflect.Field f = IceAgent.class.getDeclaredField("pendingChecks");
+            f.setAccessible(true);
+            int pending = ((java.util.Map<?, ?>) f.get(host)).size();
+            assertTrue(pending <= 1000 / IceAgent.CHECK_PACE_MS + 2, "paced checks: " + pending + " in 1 s");
+        } finally {
+            host.close();
+        }
+    }
+
+    /** F5/F8 (PocIce 3): hostnames, bad addresses, ports and credentials are refused without throwing; the agent keeps working. */
+    @Test
+    public void invalidSignalsAreIgnoredWithoutThrowing() throws Exception {
+        IceAgent v = new IceAgent("test-bad", true, null, j -> {});
+        try {
+            String ok = "GOODPASSWORD1234567890";
+            for (String bad : new String[] {
+                    "{\"ufrag\":\"a\",\"pwd\":\"b\",\"candidates\":[{}]}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"1.2.3.4\",\"port\":\"x\"}]}",
+                    "{\"ufrag\":\"abc\",\"pwd\":\"" + ok + "\"}",
+                    "{\"ufrag\":\"abcd\",\"pwd\":\"short\"}",
+                    "{\"ufrag\":\"ab cd\",\"pwd\":\"" + ok + "\"}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"example.com\",\"port\":5000}]}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"0.0.0.0\",\"port\":5000}]}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"224.0.0.1\",\"port\":5000}]}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"255.255.255.255\",\"port\":5000}]}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"1.2.3.4\",\"port\":0}]}",
+                    "{\"candidates\":[{\"type\":\"host\",\"ip\":\"1.2.3.4\",\"port\":70000}]}",
+                    "{\"candidates\":[{\"type\":\"prflx\",\"ip\":\"1.2.3.4\",\"port\":5000}]}"}) {
+                assertDoesNotThrow(() -> v.onSignal(com.google.gson.JsonParser.parseString(bad).getAsJsonObject()), bad);
+            }
+            assertEquals(0, remoteCount(v), "nothing from a bad signal is kept");
+            v.onSignal(signal("GOODUFRG", ok, 1, "192.0.2.1", 5000));
+            assertEquals(1, remoteCount(v), "a valid signal still works afterwards");
+        } finally {
+            v.close();
+        }
+    }
+
+    /** F4 (PocIce 1): a sniffed check with USE-CANDIDATE appended after MESSAGE-INTEGRITY (FINGERPRINT recomputed) nominates nothing. */
+    @Test
+    public void useCandidateAppendedAfterIntegrityIsIgnored() throws Exception {
+        IceAgent guest = new IceAgent("test-mi", false, null, j -> {});
+        try (DatagramSocket attacker = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
+            guest.gatherAndSendSignal().join();
+            String peerUfrag = "PEERUFRG", peerPwd = "PEERPASSWORD1234567890";
+            guest.onSignal(signal(peerUfrag, peerPwd, 1, "127.0.0.1", 40000));
+            int port = port(guest);
+            StunMessage req = new StunMessage(StunMessage.BINDING_REQUEST);
+            req.addStringAttribute(StunMessage.ATTR_USERNAME, guest.getLocalUfrag() + ":" + peerUfrag);
+            req.addLongAttribute(StunMessage.ATTR_PRIORITY, 1L);
+            req.addLongAttribute(StunMessage.ATTR_ICE_CONTROLLING, 7L);
+            byte[] sniffed = req.encode(StunMessage.deriveShortTermKey(guest.getLocalPwd()), true);
+            int upToMi = sniffed.length - 8; // without FINGERPRINT
+            byte[] forged = java.util.Arrays.copyOf(sniffed, upToMi + 4 + 8);
+            forged[upToMi] = 0x00;
+            forged[upToMi + 1] = 0x25; // USE-CANDIDATE, length 0
+            forged[upToMi + 2] = 0;
+            forged[upToMi + 3] = 0;
+            int msgLen = forged.length - 20;
+            forged[2] = (byte) (msgLen >> 8);
+            forged[3] = (byte) msgLen;
+            java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+            crc.update(forged, 0, upToMi + 4);
+            long fp = (crc.getValue() ^ 0x5354554EL) & 0xFFFFFFFFL;
+            forged[upToMi + 4] = (byte) 0x80;
+            forged[upToMi + 5] = 0x28;
+            forged[upToMi + 6] = 0;
+            forged[upToMi + 7] = 4;
+            forged[upToMi + 8] = (byte) (fp >> 24);
+            forged[upToMi + 9] = (byte) (fp >> 16);
+            forged[upToMi + 10] = (byte) (fp >> 8);
+            forged[upToMi + 11] = (byte) fp;
+            assertTrue(StunMessage.validateFingerprint(forged, 0, forged.length), "the forgery itself is well-formed");
+            attacker.send(new DatagramPacket(forged, forged.length, InetAddress.getLoopbackAddress(), port));
+            Thread.sleep(300);
+            assertFalse(guest.getConnectedFuture().isDone(), "an unauthenticated USE-CANDIDATE must not select the attacker's address");
+        } finally {
+            guest.close();
+        }
+    }
+
+    private static long turnThreads() {
+        return Thread.getAllStackTraces().keySet().stream().filter(t -> t.getName().startsWith("TurnClient-") && t.isAlive()).count();
+    }
+
+    /** F11 (PocLeak): an agent closed while its TURN allocation is in flight used to leave the TurnClient (socket, threads) running. */
+    @Test
+    public void closingMidAllocationReleasesTheTurnClient() throws Exception {
+        DatagramSocket turn = new DatagramSocket(0, InetAddress.getLoopbackAddress());
+        byte[] key = StunMessage.deriveLongTermKey("u", "r", "c");
+        Thread fake = new Thread(() -> {
+            byte[] buf = new byte[2048];
+            while (!turn.isClosed()) {
+                try {
+                    DatagramPacket p = new DatagramPacket(buf, buf.length);
+                    turn.receive(p);
+                    StunMessage m = StunMessage.decode(buf, 0, p.getLength());
+                    if (m.getType() != StunMessage.ALLOCATE_REQUEST) continue;
+                    byte[] out;
+                    if (!m.hasAttribute(StunMessage.ATTR_USERNAME)) {
+                        StunMessage r = new StunMessage(StunMessage.ALLOCATE_ERROR, m.getTransactionId());
+                        r.addErrorCode(401, "Unauthorized");
+                        r.addStringAttribute(StunMessage.ATTR_REALM, "r");
+                        r.addStringAttribute(StunMessage.ATTR_NONCE, "n");
+                        out = r.encode(null, true);
+                    } else {
+                        Thread.sleep(1500); // a slow TURN server
+                        StunMessage r = new StunMessage(StunMessage.ALLOCATE_RESPONSE, m.getTransactionId());
+                        r.addXorAddressAttribute(StunMessage.ATTR_XOR_RELAYED_ADDRESS, new InetSocketAddress("203.0.113.5", 5000));
+                        r.addIntAttribute(StunMessage.ATTR_LIFETIME, 600);
+                        out = r.encode(key, true);
+                    }
+                    turn.send(new DatagramPacket(out, out.length, p.getSocketAddress()));
+                } catch (Exception e) {
+                    if (turn.isClosed()) return;
+                }
+            }
+        }, "fake-slow-turn");
+        fake.setDaemon(true);
+        fake.start();
+        try {
+            P2PSession.IceConfig cfg = new P2PSession.IceConfig(Collections.emptyList(),
+                    List.of(new P2PSession.TurnServer("turn:127.0.0.1:" + turn.getLocalPort(), "u", "c")), true);
+            long before = turnThreads();
+            for (int i = 0; i < 5; i++) {
+                IceAgent agent = new IceAgent("leak" + i, true, cfg, j -> {});
+                agent.gatherAndSendSignal();
+                Thread.sleep(300); // cancelled while allocating
+                agent.close();
+            }
+            long deadline = System.currentTimeMillis() + 4000;
+            while (turnThreads() > before && System.currentTimeMillis() < deadline) Thread.sleep(100);
+            assertEquals(before, turnThreads(), "every TurnClient thread ends after its agent closed mid-allocation");
+        } finally {
+            turn.close();
+        }
+    }
 }

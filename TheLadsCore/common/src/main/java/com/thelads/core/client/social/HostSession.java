@@ -109,13 +109,10 @@ public final class HostSession {
      * Whitelist predicate for the integrated server. Rejects unknown players with "You weren't invited to this world".
      */
     public boolean canLogin(UUID id) {
-        if (!hosting || id == null) return false;
+        if (!hosting || id == null || options.isBanned(id)) return false;
 
-        // Auto-accept friends in FRIENDS scope
-        if (options.scope == HostOptions.Scope.FRIENDS && options.approval == HostOptions.Approval.AUTO_FRIENDS) {
-            if (owner.isFriend(id)) acceptedUuids.add(id);
-        }
-
+        // Only accepted guests (join request answered, invite sent, or a friend auto-accepted at its join request): a kick takes the
+        // acceptance back, so coming back needs a new request (F7)
         if (!acceptedUuids.contains(id)) {
             LOGGER.info("HostSession: rejected login for uninvited UUID {}", id);
             return false;
@@ -132,7 +129,7 @@ public final class HostSession {
     }
 
     public void accept(UUID guest) {
-        if (guest != null) {
+        if (guest != null && !options.isBanned(guest)) {
             acceptedUuids.add(guest);
         }
     }
@@ -207,8 +204,10 @@ public final class HostSession {
             return true;
         }
 
+        bridge.setLoginFilter(loginFilter); // before the port opens: canLogin refuses everyone until hosting is on
         int p = bridge.openToFriends(options);
         if (p <= 0) {
+            bridge.setLoginFilter(null);
             LOGGER.warn("HostSession: failed to open to friends (port={})", p);
             return false;
         }
@@ -216,7 +215,6 @@ public final class HostSession {
         this.port = p;
         this.hosting = true;
         this.endedSids.clear();
-        bridge.setLoginFilter(loginFilter);
         bridge.applyHostOptions(options);
         LOGGER.info("HostSession: hosting started on loopback port {}, scope={}, maxPlayers={}", p, options.scope, options.maxPlayers);
         return true;
@@ -256,6 +254,17 @@ public final class HostSession {
     public void handleP2PStart(String sid, UUID peer, P2PSession.IceConfig iceConfig, Consumer<JsonObject> sendSignal) {
         if (!hosting || port <= 0) {
             LOGGER.warn("HostSession: cannot handle P2P start for sid {}, not hosting", sid);
+            return;
+        }
+        // F9: a tunnel only for a guest we accepted (join request, invite, auto-accepted friend), one per guest, a few beyond the slots
+        if (peer == null || !acceptedUuids.contains(peer)) {
+            LOGGER.warn("HostSession: ignored P2P start for {}: not accepted", peer);
+            return;
+        }
+        String old = guestToSid.get(peer);
+        if (old != null) closeGuest(old, "Replaced");
+        if (activeP2PSessions.size() + startingSids.size() >= options.maxPlayers + 2) {
+            LOGGER.warn("HostSession: ignored P2P start for {}: too many sessions", peer);
             return;
         }
 

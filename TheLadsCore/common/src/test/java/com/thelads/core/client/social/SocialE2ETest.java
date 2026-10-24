@@ -168,7 +168,7 @@ public class SocialE2ETest {
             guest.closeGuestSession("test end");
             host.client().close();
             guest.client().close();
-            HypixelSafetyManager.setP2PSession(null);
+            HypixelSafetyManager.setP2PSession(null, null);
             backend.destroyForcibly().waitFor(10, TimeUnit.SECONDS);
             try (var files = Files.walk(tmp)) {
                 files.sorted(Comparator.reverseOrder()).forEach(p -> p.toFile().delete());

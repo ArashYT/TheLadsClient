@@ -2,6 +2,7 @@ package com.thelads.core.client.social;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
@@ -33,13 +34,14 @@ public final class WorldBackup {
         String name = world.getFileName().toString();
         List<Path> files;
         try (Stream<Path> walk = Files.walk(world)) {
-            files = walk.filter(Files::isRegularFile).filter(p -> {
+            files = walk.filter(p -> Files.isRegularFile(p, LinkOption.NOFOLLOW_LINKS)).filter(p -> { // a symlinked file is not read
                 String n = p.getFileName().toString();
                 return !n.equals("session.lock") && !n.equals(HostOptions.FILE);
             }).collect(Collectors.toList());
         }
         long total = 0;
         for (Path f : files) total += Files.size(f);
+        if (Files.getFileStore(backups).getUsableSpace() < total) throw new IOException("Not enough disk space for the world backup");
 
         Path zip = backups.resolve(name + "-" + new SimpleDateFormat("yyyyMMdd-HHmm", Locale.ROOT).format(new Date()) + ".zip");
         Path part = zip.resolveSibling(zip.getFileName() + ".part");
@@ -72,5 +74,13 @@ public final class WorldBackup {
                 .sorted(Comparator.comparing((Path p) -> p.getFileName().toString()).reversed()).collect(Collectors.toList());
         }
         for (int i = KEEP; i < zips.size(); i++) Files.deleteIfExists(zips.get(i));
+        // a .part left by a crash mid-zip, more than a day old
+        long dayAgo = System.currentTimeMillis() - 86_400_000L;
+        try (Stream<Path> list = Files.list(backups)) {
+            for (Path p : list.filter(p -> p.getFileName().toString().startsWith(world + "-") && p.getFileName().toString().endsWith(".zip.part"))
+                    .collect(Collectors.toList())) {
+                if (Files.getLastModifiedTime(p).toMillis() < dayAgo) Files.deleteIfExists(p);
+            }
+        }
     }
 }

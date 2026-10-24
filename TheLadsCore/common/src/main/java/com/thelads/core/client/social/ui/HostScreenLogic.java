@@ -75,6 +75,7 @@ public final class HostScreenLogic {
     private boolean backupOnOpen = true;
     private boolean showJoinable = true;
     private String welcome = "";
+    private java.util.Set<String> banned = new java.util.LinkedHashSet<>(); // not edited here, kept on save
 
     // Welcome input
     private boolean typingWelcome = false;
@@ -144,6 +145,7 @@ public final class HostScreenLogic {
         this.backupOnOpen = o.backupOnOpen;
         this.showJoinable = o.showJoinable;
         this.welcome = o.welcome != null ? o.welcome : "";
+        this.banned = o.banned != null ? new java.util.LinkedHashSet<>(o.banned) : new java.util.LinkedHashSet<>();
     }
 
     public HostOptions buildOptions() {
@@ -161,6 +163,7 @@ public final class HostScreenLogic {
         o.backupOnOpen = this.backupOnOpen;
         o.showJoinable = this.showJoinable;
         o.welcome = this.welcome;
+        o.banned = new java.util.LinkedHashSet<>(this.banned);
         return o;
     }
 

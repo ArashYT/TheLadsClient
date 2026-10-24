@@ -23,6 +23,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ICE-lite agent for peer-to-peer connectivity establishment.
@@ -30,6 +33,14 @@ import java.util.function.Consumer;
  * nominates the best candidate pair, and transmits application datagrams.
  */
 public final class IceAgent implements AutoCloseable {
+    private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore/IceAgent");
+    // Limits on what the peer may send (F5): the peer is any friend, the backend relays its signals as they are
+    static final int MAX_SIGNAL_CANDIDATES = 16, MAX_REMOTE_CANDIDATES = 32, MAX_PENDING_CHECKS = 512;
+    static final long CHECK_PACE_MS = 20;
+    private static final Pattern ICE_CHARS = Pattern.compile("[A-Za-z0-9+/]+");
+    private static final Pattern IPV4 = Pattern.compile("(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}");
+    private static final Pattern IPV6 = Pattern.compile("[0-9A-Fa-f:.]{2,45}");
+    private static volatile long lastBadSignalLog;
     public static final long PRIORITY_HOST = 2130706431L;
     public static final long PRIORITY_SRFLX = 1694498815L;
     public static final long PRIORITY_RELAY = 16777215L;
@@ -207,23 +218,34 @@ public final class IceAgent implements AutoCloseable {
         // 2. TURN candidates (relay)
         if (config.turn() != null && !config.turn().isEmpty()) {
             for (P2PSession.TurnServer ts : config.turn()) {
+                if (closed.get()) return;
                 TurnClient tc = null;
                 try {
                     // TurnClient creates its own dedicated DatagramSocket to avoid thread contention
                     tc = new TurnClient(ts.url(), ts.user(), ts.credential());
+                    // Listed before allocating, so close() reaches it mid-allocation (F11); re-checked in case close() already ran
+                    allocatedTurnClients.add(tc);
+                    if (closed.get()) {
+                        tc.close();
+                        return;
+                    }
                     tc.setDataHandler(this::handleIncomingTurnData);
                     InetSocketAddress relayed = tc.allocate();
+                    if (closed.get()) {
+                        tc.close();
+                        return;
+                    }
                     if (relayed != null) {
                         this.turnClient = tc;
-                        allocatedTurnClients.add(tc);
                         localCandidates.add(new Candidate("relay", relayed.getAddress().getHostAddress(), relayed.getPort(), PRIORITY_RELAY));
                         break; // Stop at first successful allocation!
-                    } else {
-                        tc.close(); // Close any client that failed
                     }
+                    tc.close();
+                    allocatedTurnClients.remove(tc);
                 } catch (Exception ignored) {
                     if (tc != null) {
                         tc.close(); // Close any client that failed
+                        allocatedTurnClients.remove(tc);
                     }
                 }
             }
@@ -322,33 +344,74 @@ public final class IceAgent implements AutoCloseable {
         sendSignal.accept(json);
     }
 
+    /**
+     * The peer's credentials and candidates (relayed by the backend from a friend: untrusted). A signal with anything out of bounds is
+     * dropped whole and logged (at most every 10 s); the session goes on. Credentials can't change once set (no ICE restart).
+     */
     public synchronized void onSignal(JsonObject data) {
-        if (data.has("ufrag")) {
-            this.remoteUfrag = data.get("ufrag").getAsString();
-        }
-        if (data.has("pwd")) {
-            this.remotePwd = data.get("pwd").getAsString();
-        }
-        if (data.has("candidates")) {
-            JsonArray arr = data.getAsJsonArray("candidates");
-            for (JsonElement el : arr) {
-                JsonObject o = el.getAsJsonObject();
-                String type = o.get("type").getAsString();
-                String ip = o.get("ip").getAsString();
-                int port = o.get("port").getAsInt();
-                long prio = o.has("prio") ? o.get("prio").getAsLong() : 0L;
-                remoteCandidates.add(new Candidate(type, ip, port, prio));
+        try {
+            String ufrag = text(data, "ufrag"), pwd = text(data, "pwd");
+            if (ufrag != null && (!iceString(ufrag, 4) || remoteUfrag != null && !remoteUfrag.equals(ufrag))) throw new IllegalArgumentException("ufrag");
+            if (pwd != null && (!iceString(pwd, 22) || remotePwd != null && !remotePwd.equals(pwd))) throw new IllegalArgumentException("pwd");
+            List<Candidate> parsed = new ArrayList<>();
+            if (data.has("candidates")) {
+                JsonArray arr = data.getAsJsonArray("candidates");
+                if (arr.size() > MAX_SIGNAL_CANDIDATES) throw new IllegalArgumentException(arr.size() + " candidates");
+                for (JsonElement el : arr) parsed.add(candidate(el.getAsJsonObject()));
             }
+            if (ufrag != null) remoteUfrag = ufrag;
+            if (pwd != null) remotePwd = pwd;
+            for (Candidate c : parsed) {
+                if (remoteCandidates.size() >= MAX_REMOTE_CANDIDATES) break;
+                if (find(remoteCandidates, c.toSocketAddress()) == null) remoteCandidates.add(c);
+            }
+        } catch (RuntimeException bad) {
+            logBadSignal(bad);
+            return;
         }
-
         startConnectivityChecks();
+    }
+
+    private static String text(JsonObject o, String key) {
+        JsonElement e = o.get(key);
+        return e == null || e.isJsonNull() ? null : e.getAsString();
+    }
+
+    /** RFC 8445 ice-chars, minLength..256 long. */
+    private static boolean iceString(String s, int minLength) {
+        return s.length() >= minLength && s.length() <= 256 && ICE_CHARS.matcher(s).matches();
+    }
+
+    /** host | srflx | relay at an IP literal (never a hostname: no DNS lookup for the peer) that can be a unicast peer, port 1-65535. */
+    static Candidate candidate(JsonObject o) {
+        String type = o.get("type").getAsString();
+        if (!type.equals("host") && !type.equals("srflx") && !type.equals("relay")) throw new IllegalArgumentException("type " + type);
+        String ip = o.get("ip").getAsString();
+        if (!IPV4.matcher(ip).matches() && !(ip.indexOf(':') >= 0 && IPV6.matcher(ip).matches())) throw new IllegalArgumentException("ip " + ip);
+        InetAddress addr;
+        try {
+            addr = InetAddress.getByName(ip); // a literal: parsed, never resolved
+        } catch (java.net.UnknownHostException e) {
+            throw new IllegalArgumentException("ip " + ip);
+        }
+        if (addr.isAnyLocalAddress() || addr.isMulticastAddress() || ip.equals("255.255.255.255")) throw new IllegalArgumentException("ip " + ip);
+        int port = o.get("port").getAsInt();
+        if (port < 1 || port > 65535) throw new IllegalArgumentException("port " + port);
+        long prio = o.has("prio") ? o.get("prio").getAsLong() : 0L;
+        return new Candidate(type, addr.getHostAddress(), port, prio);
+    }
+
+    private static void logBadSignal(RuntimeException e) {
+        long now = System.currentTimeMillis();
+        if (now - lastBadSignalLog < 10_000) return;
+        lastBadSignalLog = now;
+        LOGGER.warn("IceAgent: ignored a malformed peer signal ({})", e.toString());
     }
 
     private synchronized void startConnectivityChecks() {
         if (remoteUfrag == null || remotePwd == null || remoteCandidates.isEmpty() || localCandidates.isEmpty()) return;
-        sendCheckRound();
         // The peer drops a check that arrives before our signal does (it can't verify the USERNAME yet), so checks repeat until a pair
-        // is nominated: one paced thread per agent, ending at connect, close or 20 s (P2PSession's timeout).
+        // is nominated: one paced thread per agent (one check per CHECK_PACE_MS), ending at connect, close or 20 s (P2PSession's timeout).
         if (checking.compareAndSet(false, true)) {
             Thread repeat = new Thread(this::repeatChecks, "IceAgent-Checks-" + sid);
             repeat.setDaemon(true);
@@ -359,31 +422,32 @@ public final class IceAgent implements AutoCloseable {
 
     private void repeatChecks() {
         long end = System.currentTimeMillis() + 20_000;
+        int next = 0;
         try {
             while (!connectedFuture.isDone() && !closed.get() && System.currentTimeMillis() < end) {
-                Thread.sleep(200);
                 synchronized (this) {
-                    if (!connectedFuture.isDone()) sendCheckRound();
+                    if (!connectedFuture.isDone()) next = sendNextCheck(next);
                 }
+                Thread.sleep(CHECK_PACE_MS);
             }
         } catch (InterruptedException ignored) {
         }
     }
 
-    private void sendCheckRound() {
+    /** One check: the nomination while one is running (controlling), else pair number next of remote (by priority) x local. */
+    private int sendNextCheck(int next) {
         CandidatePair nominated = nominating;
-        if (nominated != null) { // controlling: only the nomination is repeated now
+        if (nominated != null) {
             sendConnectivityCheck(nominated.local, nominated.remote, true);
-            return;
+            return next;
         }
         List<Candidate> sortedRemote = new ArrayList<>(remoteCandidates);
         sortedRemote.sort((a, b) -> Long.compare(b.prio, a.prio));
-
-        for (Candidate r : sortedRemote) {
-            for (Candidate l : localCandidates) {
-                sendConnectivityCheck(l, r, false);
-            }
-        }
+        int pairs = sortedRemote.size() * localCandidates.size();
+        if (pairs == 0) return next;
+        int i = next % pairs;
+        sendConnectivityCheck(localCandidates.get(i % localCandidates.size()), sortedRemote.get(i / localCandidates.size()), false);
+        return i + 1;
     }
 
     private void sendConnectivityCheck(Candidate local, Candidate remote, boolean nominate) {
@@ -402,6 +466,7 @@ public final class IceAgent implements AutoCloseable {
             byte[] encoded = req.encode(key, true);
 
             String tidHex = toHex(req.getTransactionId());
+            if (pendingChecks.size() >= MAX_PENDING_CHECKS) pendingChecks.clear(); // unanswered checks: stale by now
             pendingChecks.put(tidHex, new CandidatePair(local, remote, nominate));
 
             InetSocketAddress target = remote.toSocketAddress();
@@ -540,6 +605,7 @@ public final class IceAgent implements AutoCloseable {
                 if (!StunMessage.validateMessageIntegrity(buf, off, len, integrityKey)) {
                     return;
                 }
+                pendingChecks.remove(tidHex); // answered (F5: the table only holds unanswered checks)
 
                 // Valid only on a symmetric path (the answer comes from where the check went); the controlled agent waits for the
                 // controller's nomination instead of picking a pair itself.

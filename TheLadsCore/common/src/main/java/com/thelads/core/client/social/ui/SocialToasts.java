@@ -79,8 +79,9 @@ public final class SocialToasts {
 
     public static synchronized void show(Toast toast) {
         purgeExpired();
-        // Newest first!
+        // Newest first; at most 10 (a flood of requests can't grow it)
         toasts.add(0, toast);
+        while (toasts.size() > 10) toasts.remove(toasts.size() - 1);
     }
 
     public static synchronized boolean acceptNewest() {

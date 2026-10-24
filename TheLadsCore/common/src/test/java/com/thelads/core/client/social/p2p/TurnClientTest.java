@@ -10,6 +10,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -222,6 +223,75 @@ public class TurnClientTest {
             // 5. SUCCESS TEST: Refresh
             int newLifetime = client.refresh(300);
             assertEquals(300, newLifetime);
+        }
+    }
+
+    /** A fake TURN server: 401 then signed (or, with sign=false, unsigned) answers to Allocate and ChannelBind. */
+    private static DatagramSocket fakeTurn(boolean sign) throws IOException {
+        DatagramSocket turn = new DatagramSocket(0, InetAddress.getLoopbackAddress());
+        byte[] key = StunMessage.deriveLongTermKey("u", "r", "c");
+        Thread t = new Thread(() -> {
+            byte[] buf = new byte[2048];
+            while (!turn.isClosed()) {
+                try {
+                    DatagramPacket p = new DatagramPacket(buf, buf.length);
+                    turn.receive(p);
+                    StunMessage m = StunMessage.decode(buf, 0, p.getLength());
+                    StunMessage r;
+                    if (m.getType() == StunMessage.ALLOCATE_REQUEST && !m.hasAttribute(StunMessage.ATTR_USERNAME)) {
+                        r = new StunMessage(StunMessage.ALLOCATE_ERROR, m.getTransactionId());
+                        r.addErrorCode(401, "Unauthorized");
+                        r.addStringAttribute(StunMessage.ATTR_REALM, "r");
+                        r.addStringAttribute(StunMessage.ATTR_NONCE, "n");
+                        byte[] out = r.encode(null, true);
+                        turn.send(new DatagramPacket(out, out.length, p.getSocketAddress()));
+                        continue;
+                    } else if (m.getType() == StunMessage.ALLOCATE_REQUEST) {
+                        r = new StunMessage(StunMessage.ALLOCATE_RESPONSE, m.getTransactionId());
+                        r.addXorAddressAttribute(StunMessage.ATTR_XOR_RELAYED_ADDRESS, new InetSocketAddress("203.0.113.5", 5000));
+                        r.addIntAttribute(StunMessage.ATTR_LIFETIME, 600);
+                    } else if (m.getType() == StunMessage.CHANNEL_BIND_REQUEST) {
+                        r = new StunMessage(StunMessage.CHANNEL_BIND_RESPONSE, m.getTransactionId());
+                    } else {
+                        continue;
+                    }
+                    byte[] out = r.encode(sign ? key : null, true);
+                    turn.send(new DatagramPacket(out, out.length, p.getSocketAddress()));
+                } catch (Exception e) {
+                    if (turn.isClosed()) return;
+                }
+            }
+        }, "fake-turn-src");
+        t.setDaemon(true);
+        t.start();
+        return turn;
+    }
+
+    /** F6 (PocTurnSrc): ChannelData from anyone but the TURN server used to arrive as data from the bound peer (a blind FIN). */
+    @Test
+    public void datagramsFromOtherSourcesAreIgnored() throws Exception {
+        try (DatagramSocket turn = fakeTurn(true); TurnClient tc = new TurnClient("turn:127.0.0.1:" + turn.getLocalPort(), "u", "c");
+             DatagramSocket attacker = new DatagramSocket(0, InetAddress.getLoopbackAddress())) {
+            CompletableFuture<Integer> got = new CompletableFuture<>();
+            tc.setDataHandler((peer, data, off, len) -> got.complete(len));
+            tc.allocate();
+            int ch = tc.channelBind(new InetSocketAddress("198.51.100.7", 4444));
+            byte[] fin = new byte[16];
+            fin[0] = (byte) (0x80 | 0x10 | 0x02);
+            byte[] cd = TurnClient.encodeChannelData(ch, fin, 0, fin.length);
+            attacker.send(new DatagramPacket(cd, cd.length, InetAddress.getLoopbackAddress(), tc.getSocket().getLocalPort()));
+            assertThrows(java.util.concurrent.TimeoutException.class, () -> got.get(500, java.util.concurrent.TimeUnit.MILLISECONDS),
+                    "ChannelData from a stranger must not reach the data handler");
+            turn.send(new DatagramPacket(cd, cd.length, InetAddress.getLoopbackAddress(), tc.getSocket().getLocalPort()));
+            assertEquals(16, got.get(2, java.util.concurrent.TimeUnit.SECONDS), "the same ChannelData from the TURN server is delivered");
+        }
+    }
+
+    /** F6: an authenticated request's success answer without a valid MESSAGE-INTEGRITY (a spoofed relayed address) is refused. */
+    @Test
+    public void unsignedTurnResponseIsRefused() throws Exception {
+        try (DatagramSocket turn = fakeTurn(false); TurnClient tc = new TurnClient("turn:127.0.0.1:" + turn.getLocalPort(), "u", "c")) {
+            assertThrows(IOException.class, tc::allocate);
         }
     }
 }

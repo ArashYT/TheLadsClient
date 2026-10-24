@@ -389,9 +389,9 @@ public class SocialBridge26 implements SocialBridge {
         });
     }
 
-    /** A clicked "/lads:social <id>" chat link: handled here, never sent to the server. */
-    public static void onChatActionClicked(String actionId) {
-        SocialState.get().handleAction(actionId);
+    /** A clicked "/lads:social <token>" chat link: handled here, never sent to the server. */
+    public static void onChatActionClicked(String token) {
+        SocialState.get().handleChatClick(token);
     }
 
     public static Component friendsButtonText() {

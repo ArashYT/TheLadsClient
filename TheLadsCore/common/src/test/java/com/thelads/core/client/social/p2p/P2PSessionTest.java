@@ -184,4 +184,62 @@ public class P2PSessionTest {
             signalPump.interrupt();
         }
     }
+
+    /** F3 (PocControl): the control stream is read with a 64 KB line cap instead of an unbounded readLine. */
+    @Test
+    public void controlLineOverCapFails() throws Exception {
+        java.io.ByteArrayOutputStream line = new java.io.ByteArrayOutputStream();
+        assertEquals("{\"a\":1}", P2PSessionImpl.readControlLine(new java.io.ByteArrayInputStream("{\"a\":1}\n".getBytes()), line));
+        java.io.InputStream endless = new java.io.InputStream() {
+            @Override public int read() { return 'A'; }
+        };
+        assertThrows(java.io.IOException.class, () -> P2PSessionImpl.readControlLine(endless, line));
+        assertTrue(line.size() <= P2PSessionImpl.MAX_CONTROL_LINE);
+    }
+
+    /** F2 (PocStall): with the peer gone silent and the send window full, close() returns at once and the stuck writer is freed. */
+    @Test
+    public void closeNeverBlocksOnAStuckWriter() throws Exception {
+        String sid = "test-stuck-close";
+        P2PSession.IceConfig cfg = new P2PSession.IceConfig(Collections.emptyList(), Collections.emptyList(), false);
+        BlockingQueue<JsonObject> toGuest = new LinkedBlockingQueue<>(), toHost = new LinkedBlockingQueue<>();
+        CompletableFuture<P2PSession> hostF = P2PSession.start(sid, true, cfg, toGuest::add);
+        CompletableFuture<P2PSession> guestF = P2PSession.start(sid, false, cfg, toHost::add);
+        Thread pump = new Thread(() -> {
+            try {
+                while (true) {
+                    JsonObject a = toGuest.poll(5, TimeUnit.MILLISECONDS);
+                    if (a != null) ((P2PSession) guestF).onSignal(a);
+                    JsonObject b = toHost.poll(5, TimeUnit.MILLISECONDS);
+                    if (b != null) ((P2PSession) hostF).onSignal(b);
+                }
+            } catch (InterruptedException e) {
+                // done
+            }
+        });
+        pump.setDaemon(true);
+        pump.start();
+        P2PSession host = hostF.get(10, TimeUnit.SECONDS), guest = guestF.get(10, TimeUnit.SECONDS);
+        pump.interrupt();
+        // The guest's game freezes: its socket dies without a word, so nothing it got is ever acknowledged
+        java.lang.reflect.Field ice = P2PSessionImpl.class.getDeclaredField("iceAgent");
+        ice.setAccessible(true);
+        ((IceAgent) ice.get(guest)).close();
+
+        CompletableFuture<Void> writer = CompletableFuture.runAsync(() -> {
+            try {
+                host.out(P2PSession.MINECRAFT).write(new byte[4_000_000]);
+            } catch (java.io.IOException expected) {
+                // freed by the close
+            }
+        });
+        Thread.sleep(500); // the 256-packet window is full: the writer holds the mux output
+        assertFalse(writer.isDone(), "the writer must be stuck for this test to mean anything");
+        long start = System.nanoTime();
+        host.close("Kicked");
+        long ms = (System.nanoTime() - start) / 1_000_000;
+        assertTrue(ms < 100, "close() took " + ms + " ms on the caller thread");
+        writer.get(3, TimeUnit.SECONDS); // the worker's hard close frees it after at most ~1 s
+        guest.close("test end");
+    }
 }
