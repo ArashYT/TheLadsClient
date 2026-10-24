@@ -126,7 +126,11 @@ public abstract class EntityRendererFogOfMixin189 {
         return changer == null ? -1 : changer.forced();
     }
 
-    /** Weather Changer: rain, thunder and snow fall in every biome, dry ones too (renderRainSnow's columns, addRainParticles' splashes). */
+    /**
+     * Weather Changer: rain, thunder and snow fall in every biome, dry ones too (renderRainSnow's columns, addRainParticles' splashes).
+     * require = 2 and the temperature redirect's require = 1 hold with OptiFine too: HD U M5's and M6 pre2's patched EntityRenderer
+     * (rebuilt from their patch files) keep exactly one canRain call in each method and one getTemperatureAtHeight in renderRainSnow.
+     */
     @Redirect(method = {"renderRainSnow", "addRainParticles"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/world/biome/BiomeGenBase;canRain()Z"),
         require = 2)
     private boolean lads$weatherEverywhere(BiomeGenBase biome) {

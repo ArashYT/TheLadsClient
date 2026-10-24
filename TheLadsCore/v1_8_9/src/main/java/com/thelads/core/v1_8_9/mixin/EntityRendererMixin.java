@@ -81,6 +81,7 @@ public abstract class EntityRendererMixin {
         Zoom189.handPass = !useFOVSetting;
     }
 
+    // Freelook redirects orientCamera's yaw and pitch reads (and updateCameraAndRender's setAngles) in FreelookCameraMixin189.
     @Redirect(method = "orientCamera", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;getEyeHeight()F"), require = 1, allow = 1)
     private float ladsEyeHeight(Entity entity, float partialTicks) {
         return OldAnimations189.cameraEyeHeight(entity, partialTicks);
