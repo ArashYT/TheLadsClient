@@ -31,11 +31,21 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
     private readonly string _publicKey;
     private string? _verified; // the downloaded version whose signature this process checked
 
+#if LADS_QA_FEED
+    // QA builds only (-p:DefineConstants=LADS_QA_FEED): a local feed folder holding the latest release's files and signature, and a throwaway key.
+    public VelopackUpdateBackend() : this(Environment.GetEnvironmentVariable("LADS_QA_UPDATE_FEED") ?? throw new InvalidOperationException("LADS_QA_UPDATE_FEED is not set.")) { }
+
+    private VelopackUpdateBackend(string feed) : this(new UpdateManager(feed),
+        new UpdateManager(feed, new UpdateOptions { MaximumDeltasBeforeFallback = -1 }),
+        (_, name) => File.ReadAllBytesAsync(Path.Combine(feed, name)),
+        Environment.GetEnvironmentVariable("LADS_QA_UPDATE_KEY") ?? throw new InvalidOperationException("LADS_QA_UPDATE_KEY is not set.")) { }
+#else
     public VelopackUpdateBackend() : this(new SimpleWebSource(FeedUrl)) { }
 
     private VelopackUpdateBackend(SimpleWebSource source) : this(new UpdateManager(source),
         new UpdateManager(source, new UpdateOptions { MaximumDeltasBeforeFallback = -1 }),
         (version, name) => Http.GetByteArrayAsync($"{RepositoryUrl}/releases/download/v{version}/{name}"), UpdateSignature.ReleasePublicKey) { }
+#endif
 
     /// <param name="fullOnly">Same feed as <paramref name="manager"/> but never uses deltas (a negative <c>MaximumDeltasBeforeFallback</c>).</param>
     /// <param name="fetchSigned">(version, file name) -> that release's signature file (see <see cref="UpdateSignature"/>).</param>
