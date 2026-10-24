@@ -47,6 +47,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 // Since we may still want some settings to apply, specifically move tab height, let's apply first
 @Mixin(value = PlayerTabOverlay.class, priority = 900)
 public class PlayerTabOverlayMixin {
+    // Static fields stay above the initialised instance fields: JDK 25 gives the implicit constructor's return the line of the last
+    // static initialiser, so Mixin read the instance initialisers below as constructor body and dropped them (26.3 tab list NPE).
+    @Unique
+    private static final Identifier LADS$BADGE_TEXTURE = Identifier.fromNamespaceAndPath(
+        LadsBadge.TEXTURE_NAMESPACE,
+        LadsBadge.TEXTURE_PATH
+    );
     @Shadow @Final private Minecraft minecraft;
     @SuppressWarnings("InstantiationOfUtilityClass")
     @Unique PlayerFaceExtractor ladsTab$playerFaceRenderer = new PlayerFaceExtractor();
@@ -205,12 +212,6 @@ public class PlayerTabOverlayMixin {
         if (TabTweaksConfig.current().removeHeaderShadow) instance.text(font, str, x, y, color, false);
         else original.call(instance, font, str, x, y, color);
     }
-
-    @Unique
-    private static final Identifier LADS$BADGE_TEXTURE = Identifier.fromNamespaceAndPath(
-        LadsBadge.TEXTURE_NAMESPACE,
-        LadsBadge.TEXTURE_PATH
-    );
 
     @WrapOperation(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Font;width(Lnet/minecraft/network/chat/FormattedText;)I", ordinal = 0))
     private int lads$badgeNameWidth(Font font, FormattedText text, Operation<Integer> original, @Local PlayerInfo info) {
