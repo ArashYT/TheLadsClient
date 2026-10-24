@@ -692,6 +692,20 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         return player != null ? player.getArmorValue() : 0;
     }
 
+    @Override
+    public boolean isHardcore() {
+        var level = Minecraft.getInstance().level;
+        return level != null && level.getLevelData().isHardcore();
+    }
+
+    @Override
+    public boolean isMainInventoryEmpty() {
+        var player = Minecraft.getInstance().player;
+        if (player == null) return true;
+        for (int i = 9; i < 36; i++) if (!player.getInventory().getItem(i).isEmpty()) return false;
+        return true;
+    }
+
     private void updateInventoryCountsIfNeeded() {
         var player = Minecraft.getInstance().player;
         if (player == null) {

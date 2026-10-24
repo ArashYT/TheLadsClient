@@ -276,4 +276,10 @@ public interface LadsGameBridge {
     }
 
     default void tickClient() {}
+
+    /** The world is hardcore (its hearts are drawn the hardcore way). */
+    default boolean isHardcore() { return false; }
+
+    /** Nothing in the 27 main inventory slots (the hotbar and armour not counted): InventoryHUD then draws nothing. */
+    default boolean isMainInventoryEmpty() { return false; }
 }

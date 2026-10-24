@@ -112,6 +112,14 @@ public interface LadsGraphics {
         drawText(plain ? s.replaceAll("§[0-9a-fA-F]", "§r") : s, x, y, color, shadow);
     }
 
+    /**
+     * A vanilla HUD icon (hearts, armour): {@code sprite} in the GUI sprite atlas of Minecraft 1.20.2 and later ("hud/heart/full"),
+     * else the same icon's region (u, v) of textures/gui/icons.png (1.8.9, 1.20.1).
+     */
+    default void drawGuiIcon(String sprite, int u, int v, int x, int y, int width, int height) {
+        blit("minecraft:textures/gui/icons.png", x, y, u, v, width, height);
+    }
+
     /** A GUI atlas sprite such as "voicechat:icons/microphone", size by size; nothing where the version has no such sprite. */
     default void drawSprite(String sprite, int x, int y, int size) {}
 

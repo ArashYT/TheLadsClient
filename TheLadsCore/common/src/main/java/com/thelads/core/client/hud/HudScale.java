@@ -76,6 +76,7 @@ public final class HudScale {
         @Override public int actionBarWidth(Object text) { return target.actionBarWidth(text); }
         @Override public void drawActionBar(Object text, int x, int y, int color, boolean shadow, boolean plain) { target.drawActionBar(text, x, y, color, shadow, plain); }
         @Override public void drawSprite(String sprite, int x, int y, int size) { target.drawSprite(sprite, x, y, size); }
+        @Override public void drawGuiIcon(String sprite, int u, int v, int x, int y, int width, int height) { target.drawGuiIcon(sprite, u, v, x, y, width, height); }
         @Override public void drawPotionIcon(String effectId, int iconIndex, int x, int y, int size) { target.drawPotionIcon(effectId, iconIndex, x, y, size); }
         @Override public boolean drawGameView(int x, int y, int width, int height) { return target.drawGameView(x, y, width, height); }
         @Override public boolean drawImage(String source, int x, int y, int width, int height) { return target.drawImage(source, x, y, width, height); }

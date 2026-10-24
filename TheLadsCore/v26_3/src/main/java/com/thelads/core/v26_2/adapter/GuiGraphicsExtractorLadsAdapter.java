@@ -170,6 +170,10 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     private static final java.util.concurrent.ConcurrentHashMap<String, com.mojang.authlib.GameProfile> HEAD_PROFILE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
     private static final com.mojang.authlib.GameProfile FALLBACK_PROFILE = new com.mojang.authlib.GameProfile(new java.util.UUID(0L, 0L), "Player");
 
+    @Override public void drawGuiIcon(String sprite, int u, int v, int x, int y, int width, int height) {
+        g.blitSprite(RenderPipelines.GUI_TEXTURED, IDENTIFIER_CACHE.computeIfAbsent(sprite, Identifier::parse), x, y, width, height);
+    }
+
     @Override public void drawSprite(String sprite, int x, int y, int size) {
         if (sprite == null) return;
         Identifier id = IDENTIFIER_CACHE.computeIfAbsent(sprite, Identifier::parse);
