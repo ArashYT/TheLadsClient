@@ -454,7 +454,8 @@ public class HypixelSafetyTest {
     void parityGatedModulesAreRisky() {
         for (String name : new String[] {"BlockInfo", "Freelook", "FogClearView", "HitboxesThroughWalls", "Light Overlay", "Loot Beams",
                 "Mob Overlay", "Mob Size", "Fullbright", "Jade", "AutoReconnect", "Breeding Timer", "Ender Chest Peek",
-                "Unlimited Command Length", "Auto Text", "Inventory Move", "Armor Swap"})
+                "Unlimited Command Length", "Auto Text", "Inventory Move", "Armor Swap",
+                "Container Sorting", "Elytra Swap", "Creative Fly Boost"})
             assertTrue(HypixelSafetyManager.isRiskyModule(name), name + " must be gated");
         assertFalse(HypixelSafetyManager.isRiskyModule("Block Overlay"), "pure visuals stay ungated");
         for (String name : new String[] {"Chat", "Slot Lock", "Inventory Search"}) // chat lane: client-side only, nothing extra sent

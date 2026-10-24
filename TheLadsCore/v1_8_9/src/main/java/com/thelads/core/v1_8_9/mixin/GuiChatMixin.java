@@ -86,12 +86,12 @@ public abstract class GuiChatMixin extends GuiScreen {
         }
         if (ChatTweaks.buttons) {
             ChatTweaks189.Access chat = (ChatTweaks189.Access) mc.ingameGUI.getChatGUI();
-            if (mouseX >= 0 && chat.lads$hovered(height, mouseY) != null && mouseX < chat.lads$hoverRight() + 2 * ChatTweaks.BUTTON + 1) {
+            if (mouseX >= 0 && chat.lads$hovered(height, mouseY) != null && mouseX < chat.lads$hoverRight() + 3 * ChatTweaks.BUTTON + 2) {
                 int right = chat.lads$hoverRight(), top = chat.lads$hoverTop(), button = ChatTweaks.button(mouseX, right);
-                for (int i = 0; i < 2; i++) {
+                for (int i = 0; i < 3; i++) {
                     int left = right + i * (ChatTweaks.BUTTON + 1);
                     Gui.drawRect(left, top, left + ChatTweaks.BUTTON, top + 9, button == i ? 0xE0303030 : 0xA0000000);
-                    fontRendererObj.drawString(i == 0 ? ChatTweaks.COPY_LABEL : ChatTweaks.DELETE_LABEL, left + 3, top + 1, button == i ? 0xFFFFFF55 : 0xFFC0C0C0);
+                    fontRendererObj.drawString(i == 0 ? ChatTweaks.COPY_LABEL : i == 1 ? ChatTweaks.DELETE_LABEL : ChatTweaks.IMAGE_LABEL, left + 3, top + 1, button == i ? 0xFFFFFF55 : 0xFFC0C0C0);
                 }
             }
         }

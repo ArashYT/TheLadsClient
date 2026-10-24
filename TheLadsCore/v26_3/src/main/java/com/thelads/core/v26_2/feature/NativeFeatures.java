@@ -13,6 +13,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.world.entity.player.Input;
 import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.world.item.ItemStack;
 
 /** Client-thread state. Never writes vanilla options or bypasses vanilla movement eligibility. */
 public final class NativeFeatures {
@@ -113,6 +114,9 @@ public final class NativeFeatures {
         if (down && NativeKeyBindings.PLAY_AGAIN.matches(event)) {
             com.thelads.core.client.hypixel.quickplay.QuickplayModule.triggerPlayAgain();
         }
+        if (down && NativeKeyBindings.ELYTRA_SWAP.matches(event)) {
+            swapElytra();
+        }
     }
     public static void mouse(MouseButtonEvent event, int action) {
         if (!interactive()) { reset(); return; }
@@ -127,6 +131,9 @@ public final class NativeFeatures {
         }
         if (down && NativeKeyBindings.PLAY_AGAIN.matchesMouse(event)) {
             com.thelads.core.client.hypixel.quickplay.QuickplayModule.triggerPlayAgain();
+        }
+        if (down && NativeKeyBindings.ELYTRA_SWAP.matchesMouse(event)) {
+            swapElytra();
         }
     }
     private static void sprintKey(boolean down) {
@@ -218,5 +225,44 @@ public final class NativeFeatures {
             state.nightVisionEffectIntensity = Math.max(state.nightVisionEffectIntensity, factor);
         }
     }
-}
 
+    public static void swapElytra() {
+        if (!com.thelads.core.client.ElytraSwap.isAllowed()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.gui.screen() != null || mc.player == null || mc.gameMode == null) return;
+        var player = mc.player;
+        net.minecraft.world.inventory.Slot chestSlot = player.inventoryMenu.getSlot(6);
+        ItemStack chestStack = chestSlot.getItem();
+        boolean wearingElytra = chestStack.is(net.minecraft.world.item.Items.ELYTRA);
+
+        int matchSlot = -1;
+        for (int i = 9; i <= 44; i++) {
+            net.minecraft.world.inventory.Slot s = player.inventoryMenu.getSlot(i);
+            if (!s.hasItem()) continue;
+            if (com.thelads.core.client.InventoryTweaks.locked(s.getContainerSlot())) continue;
+            ItemStack item = s.getItem();
+            if (wearingElytra) {
+                net.minecraft.world.entity.EquipmentSlot equip = player.getEquipmentSlotForItem(item);
+                if (equip == net.minecraft.world.entity.EquipmentSlot.CHEST && !item.is(net.minecraft.world.item.Items.ELYTRA)) {
+                    matchSlot = i;
+                    break;
+                }
+            } else {
+                if (item.is(net.minecraft.world.item.Items.ELYTRA)) {
+                    matchSlot = i;
+                    break;
+                }
+            }
+        }
+
+        if (matchSlot != -1) {
+            boolean hasChest = !chestStack.isEmpty();
+            mc.gameMode.handleContainerInput(player.inventoryMenu.containerId, matchSlot, 0, net.minecraft.world.inventory.ContainerInput.PICKUP, player);
+            mc.gameMode.handleContainerInput(player.inventoryMenu.containerId, 6, 0, net.minecraft.world.inventory.ContainerInput.PICKUP, player);
+            if (hasChest) {
+                mc.gameMode.handleContainerInput(player.inventoryMenu.containerId, matchSlot, 0, net.minecraft.world.inventory.ContainerInput.PICKUP, player);
+            }
+        }
+    }
+
+}

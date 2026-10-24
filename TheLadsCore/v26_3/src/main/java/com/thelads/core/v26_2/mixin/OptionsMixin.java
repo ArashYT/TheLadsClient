@@ -51,7 +51,7 @@ public class OptionsMixin {
         // Reloads and upgrades add only missing entries, retaining every other mod's binding.
         for (KeyMapping ours : new KeyMapping[] {NativeKeyBindings.ZOOM, NativeKeyBindings.MODULES,
                 NativeKeyBindings.TOGGLE_SPRINT, NativeKeyBindings.TOGGLE_SNEAK,
-                NativeKeyBindings.QUICKPLAY, NativeKeyBindings.PLAY_AGAIN, NativeKeyBindings.FREELOOK, NativeKeyBindings.SNAPLOOK}) {
+                NativeKeyBindings.QUICKPLAY, NativeKeyBindings.PLAY_AGAIN, NativeKeyBindings.FREELOOK, NativeKeyBindings.SNAPLOOK, NativeKeyBindings.ELYTRA_SWAP}) {
             if (Arrays.asList(keyMappings).contains(ours)) continue;
             keyMappings = Arrays.copyOf(keyMappings, keyMappings.length + 1);
             keyMappings[keyMappings.length - 1] = ours;

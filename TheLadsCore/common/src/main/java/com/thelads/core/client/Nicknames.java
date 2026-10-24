@@ -14,7 +14,9 @@ import java.util.Map;
  * the text they draw (name tags, tab list) or a chat message once as it arrives; nothing is sent to the server.
  */
 public final class Nicknames {
-    private static String lastNicknames, lastDisplay, lastOwn;
+    private static String lastNicknames, lastDisplay, lastOwn, lastOthersNick;
+    private static boolean lastHideOthers;
+    private static int lastOnlineCount = -1;
     private static Map<String, String> active = Collections.emptyMap();
     private static ToggleNametagsModule cachedTagsModule;
     private Nicknames() {}
@@ -51,11 +53,28 @@ public final class Nicknames {
         if (hiderOn && NickHider.isHideOwnName()) {
             display = NickHider.getCustomNick();
         }
-        if (!nicks.equals(lastNicknames) || !display.equals(lastDisplay) || !String.valueOf(ownName).equals(lastOwn)) {
+        boolean hideOthers = hiderOn && NickHider.isHideOthersNames();
+        String othersNick = hideOthers ? NickHider.getOthersNick() : "";
+        List<String> onlinePlayers = hideOthers ? com.thelads.core.client.bridge.LadsGameBridge.get().getOnlinePlayerNames() : Collections.emptyList();
+        int onlineCount = onlinePlayers.size();
+        if (!nicks.equals(lastNicknames) || !display.equals(lastDisplay) || !String.valueOf(ownName).equals(lastOwn)
+            || hideOthers != lastHideOthers || !othersNick.equals(lastOthersNick) || (hideOthers && onlineCount != lastOnlineCount)) {
             Map<String, String> names = parse(nicks);
+            if (hideOthers && !othersNick.isEmpty()) {
+                String ownLower = ownName != null ? ownName.toLowerCase(Locale.ROOT) : "";
+                for (String player : onlinePlayers) {
+                    if (player != null && !player.isEmpty()) {
+                        String lower = player.toLowerCase(Locale.ROOT);
+                        if (!lower.equals(ownLower)) {
+                            names.put(lower, othersNick);
+                        }
+                    }
+                }
+            }
             if (!display.isEmpty() && ownName != null && !ownName.isEmpty()) names.put(ownName.toLowerCase(Locale.ROOT), display);
             active = names;
             lastNicknames = nicks; lastDisplay = display; lastOwn = String.valueOf(ownName);
+            lastHideOthers = hideOthers; lastOthersNick = othersNick; lastOnlineCount = onlineCount;
         }
         return active;
     }

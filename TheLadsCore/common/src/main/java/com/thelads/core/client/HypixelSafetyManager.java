@@ -246,6 +246,7 @@ public final class HypixelSafetyManager {
             || ChatTweaks.LONG_COMMANDS.equalsIgnoreCase(moduleName) || com.thelads.core.modules.AutoTextModule.NAME.equalsIgnoreCase(moduleName)
             || InventoryTweaks.MOVE.equalsIgnoreCase(moduleName) || InventoryTweaks.ARMOR_SWAP.equalsIgnoreCase(moduleName)
             || BreedingTimer.NAME.equalsIgnoreCase(moduleName) || EnderChestPeek.NAME.equalsIgnoreCase(moduleName) // hidden cooldown, chest away from it
+            || "Container Sorting".equalsIgnoreCase(moduleName) || "Elytra Swap".equalsIgnoreCase(moduleName) || "Creative Fly Boost".equalsIgnoreCase(moduleName)
             || isGatedHud(moduleName);
     }
 
@@ -296,6 +297,13 @@ public final class HypixelSafetyManager {
         if (block == Block.NONE) return false;
         if (block == Block.SERVER) return true; // policy BLOCK, NOT bypassable!
         return !isBypassed(moduleName);
+    }
+
+    /**
+     * True only when the module is permitted on this server.
+     */
+    public static boolean isAllowed(String moduleName) {
+        return !isDisallowed(moduleName);
     }
 
     /** Singleplayer, LAN, or one of our own servers (not in the Hypixel QA). */

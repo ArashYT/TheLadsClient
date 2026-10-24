@@ -179,6 +179,10 @@ public final class ChatTweaks1201 {
             mc.keyboardHandler.setClipboard(message.content().getString());
             return;
         }
+        if (button == 2) {
+            ChatTweaks.exportChatImage(message.content().getString(), com.thelads.core.shared.SharedContentPaths.screenshotsDir());
+            return;
+        }
         Access chat = (Access) mc.gui.getChat();
         List<GuiMessage> messages = chat.lads$messages();
         for (int i = 0; i < messages.size(); i++)

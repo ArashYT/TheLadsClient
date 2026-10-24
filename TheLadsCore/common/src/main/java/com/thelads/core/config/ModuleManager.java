@@ -700,6 +700,10 @@ public class ModuleManager {
         chunks.addOption(new SliderOption(com.thelads.core.client.ChunkBorders.SPACING, 2, 1, 8, 1));
         chunks.addOption(new ColorOption(com.thelads.core.client.ChunkBorders.SECTION, false, 0xFF4040FF));
         register(chunks, Module.Category.MECHANIC);
+        // Lane 2 r2-qol: Container Sorting, Elytra Swap, Creative Fly Boost (all gated by HypixelSafetyManager, default OFF)
+        register(new com.thelads.core.modules.ContainerSortingModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ElytraSwapModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.CreativeFlyBoostModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

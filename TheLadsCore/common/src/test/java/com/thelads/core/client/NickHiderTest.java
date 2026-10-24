@@ -63,4 +63,16 @@ class NickHiderTest {
         String renamedChat = Nicknames.rename("<MyOwnAccount> Hello World!", renames);
         assertEquals("<Streamer> Hello World!", renamedChat);
     }
+
+    @Test
+    void testOthersNameDisguise() {
+        NickHiderModule mod = (NickHiderModule) ModuleManager.getInstance().getModule(NickHiderModule.NAME);
+        assertNotNull(mod);
+        mod.setEnabled(true);
+        mod.hideOthersNames.set(true);
+        mod.othersNick.setValue("DisguisedPlayer");
+
+        assertTrue(NickHider.isHideOthersNames());
+        assertEquals("DisguisedPlayer", NickHider.getOthersNick());
+    }
 }

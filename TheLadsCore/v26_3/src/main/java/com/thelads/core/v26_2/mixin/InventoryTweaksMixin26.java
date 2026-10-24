@@ -1,7 +1,10 @@
 package com.thelads.core.v26_2.mixin;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.thelads.core.client.ContainerSorting;
 import com.thelads.core.client.InventoryTweaks;
+import java.util.ArrayList;
+import java.util.List;
 import com.thelads.core.v26_2.feature.ChatTweaks26;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -79,6 +82,17 @@ public abstract class InventoryTweaksMixin26 extends Screen {
         if (ladsSearch != null) lads$place();
     }
 
+    @Inject(method = "extractContents", at = @At("TAIL"), require = 1)
+    private void lads$renderSort(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        if (ContainerSorting.isAllowed() && lads$tweaked()) {
+            int bx = ContainerSorting.getButtonX(leftPos, imageWidth, InventoryTweaks.searchOn);
+            int by = ContainerSorting.getButtonY(topPos);
+            boolean over = ContainerSorting.isOverButton(mouseX, mouseY, bx, by);
+            graphics.fill(bx, by, bx + ContainerSorting.BUTTON_WIDTH, by + ContainerSorting.BUTTON_HEIGHT, over ? 0x90404040 : 0x80000000);
+            graphics.centeredText(font, ContainerSorting.SORT_LABEL, bx + ContainerSorting.BUTTON_WIDTH / 2, by + 2, over ? 0xFFFFA0 : 0xFFFFFF);
+        }
+    }
+
     @Inject(method = "tick", at = @At("HEAD"), require = 1)
     private void lads$search(CallbackInfo ci) {
         int size = menu.slots.size();
@@ -112,6 +126,11 @@ public abstract class InventoryTweaksMixin26 extends Screen {
             cir.setReturnValue(true);
             return;
         }
+        if (event.key() == InputConstants.KEY_R && (ladsSearch == null || !ladsSearch.isFocused()) && ContainerSorting.isAllowed() && lads$tweaked()) {
+            lads$sortContainer();
+            cir.setReturnValue(true);
+            return;
+        }
         if (InventoryTweaks.lockOn && lads$tweaked() && ChatTweaks26.LOCK.matches(event) && hoveredSlot != null
             && hoveredSlot.container instanceof Inventory) {
             InventoryTweaks.toggleLock(hoveredSlot.getContainerSlot());
@@ -124,6 +143,15 @@ public abstract class InventoryTweaksMixin26 extends Screen {
         if (ladsSearch != null && ladsSearch.isFocused() && !ladsSearch.isMouseOver(event.x(), event.y())) {
             ladsSearch.setFocused(false);
             setFocused(null);
+        }
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && ContainerSorting.isAllowed() && lads$tweaked()) {
+            int bx = ContainerSorting.getButtonX(leftPos, imageWidth, InventoryTweaks.searchOn);
+            int by = ContainerSorting.getButtonY(topPos);
+            if (ContainerSorting.isOverButton(event.x(), event.y(), bx, by)) {
+                lads$sortContainer();
+                cir.setReturnValue(true);
+                return;
+            }
         }
         if (event.button() == InputConstants.MOUSE_BUTTON_MIDDLE && lads$armorSwap(getHoveredSlot(event.x(), event.y()))) cir.setReturnValue(true);
     }
@@ -148,4 +176,73 @@ public abstract class InventoryTweaksMixin26 extends Screen {
         if (wearing) slotClicked(from, from.index, 0, ContainerInput.PICKUP);
         return true;
     }
+
+    @Unique
+    private void lads$sortContainer() {
+        if (!ContainerSorting.isAllowed() || minecraft == null || minecraft.player == null || !menu.getCarried().isEmpty()) return;
+
+        List<Slot> containerSlots = new ArrayList<>();
+        List<Slot> playerStorageSlots = new ArrayList<>();
+
+        for (Slot slot : menu.slots) {
+            if (!(slot.container instanceof Inventory)) {
+                containerSlots.add(slot);
+            } else {
+                if (slot.getContainerSlot() >= 9 && slot.getContainerSlot() < 36) {
+                    playerStorageSlots.add(slot);
+                }
+            }
+        }
+
+        List<Slot> targetSlots = null;
+        if (!containerSlots.isEmpty() && ContainerSorting.shouldSortContainer()) {
+            targetSlots = containerSlots;
+        } else if (ContainerSorting.shouldSortInventory() || (containerSlots.isEmpty() && ContainerSorting.isAllowed())) {
+            targetSlots = playerStorageSlots;
+        }
+
+        if (targetSlots == null || targetSlots.size() <= 1) return;
+
+        List<ContainerSorting.SlotItem> items = new ArrayList<>();
+        for (Slot slot : targetSlots) {
+            ItemStack stack = slot.getItem();
+            boolean locked = (slot.container instanceof Inventory) && InventoryTweaks.locked(slot.getContainerSlot());
+            if (stack.isEmpty()) {
+                items.add(new ContainerSorting.SlotItem(slot.index, "", 0, 0, 0, locked));
+            } else {
+                String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                items.add(new ContainerSorting.SlotItem(slot.index, itemId, stack.getCount(), stack.getMaxStackSize(), stack.getDamageValue(), locked));
+            }
+        }
+
+        List<int[]> swaps = ContainerSorting.planSwaps(items);
+        for (int[] swap : swaps) {
+            Slot from = menu.getSlot(swap[0]);
+            Slot to = menu.getSlot(swap[1]);
+            if (from != null && to != null) {
+                lads$swapSlots(from, to);
+            }
+        }
+    }
+
+    @Unique
+    private void lads$swapSlots(Slot from, Slot to) {
+        boolean hasFrom = from.hasItem();
+        boolean hasTo = to.hasItem();
+        if (!hasFrom && !hasTo) return;
+        if (hasFrom && !hasTo) {
+            slotClicked(from, from.index, 0, ContainerInput.PICKUP);
+            slotClicked(to, to.index, 0, ContainerInput.PICKUP);
+        } else if (!hasFrom && hasTo) {
+            slotClicked(to, to.index, 0, ContainerInput.PICKUP);
+            slotClicked(from, from.index, 0, ContainerInput.PICKUP);
+        } else {
+            slotClicked(from, from.index, 0, ContainerInput.PICKUP);
+            slotClicked(to, to.index, 0, ContainerInput.PICKUP);
+            if (menu != null && !menu.getCarried().isEmpty()) {
+                slotClicked(from, from.index, 0, ContainerInput.PICKUP);
+            }
+        }
+    }
+
 }

@@ -65,6 +65,13 @@ public final class NativeKeyBindings1201 {
         CATEGORY
     ));
 
+    public static final KeyMapping ELYTRA_SWAP = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        "key.theladscore.elytra_swap",
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_UNKNOWN,
+        CATEGORY
+    ));
+
     private NativeKeyBindings1201() {}
 
     public static void init() {

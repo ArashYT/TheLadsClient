@@ -39,6 +39,18 @@ public final class NickHider {
         return val.isEmpty() ? "You" : val;
     }
 
+    public static boolean isHideOthersNames() {
+        NickHiderModule m = module();
+        return m != null && m.isEnabled() && m.hideOthersNames.get();
+    }
+
+    public static String getOthersNick() {
+        NickHiderModule m = module();
+        if (m == null) return "Player";
+        String val = m.othersNick.getValue().trim();
+        return val.isEmpty() ? "Player" : val;
+    }
+
     public static boolean shouldHideSkin(UUID playerUuid, boolean isLocal) {
         NickHiderModule m = module();
         if (m == null || !m.isEnabled()) return false;
