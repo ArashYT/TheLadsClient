@@ -63,15 +63,64 @@ try {
     foreach ($patch in Get-ChildItem -LiteralPath 'tools/modpack-manager/patches' -Filter 'update-*.json') {
         if (-not (Test-Path -LiteralPath (Join-Path $publish "modpack-patches/$($patch.Name)"))) { throw "Missing modpack-patches/$($patch.Name)" }
     }
-    @{version=$version; commit=$commit; localChanges=($dirty.Count -gt 0); coreBuilt=(-not $SkipCoreBuild)} |
+    # verifiesContentHash: this launcher checks a delta-rebuilt package by content hash (TheLadsLauncher/UpdateSignature.cs), so the
+    # next release may ship a delta to it. Keep it true only while the launcher code in this commit does that.
+    @{version=$version; commit=$commit; localChanges=($dirty.Count -gt 0); coreBuilt=(-not $SkipCoreBuild); verifiesContentHash=$true} |
         ConvertTo-Json | Set-Content -LiteralPath (Join-Path $publish 'release-build.json')
     & dotnet tool restore
     if ($LASTEXITCODE -ne 0) { throw 'Cannot restore pinned packaging tool.' }
-    & dotnet vpk pack --packId TheLadsClient --packVersion $version --packDir $publish --mainExe TheLadsLauncher.exe --packTitle 'The Lads Client' --packAuthors ArashYT --channel win --runtime win-x64 --icon TheLadsLauncher/Assets/icon.ico --releaseNotes $notes --outputDir $packages
-    if ($LASTEXITCODE -ne 0) { throw 'Installer packaging failed.' }
-    foreach ($required in @('TheLadsClient-win-Setup.exe','releases.win.json',"TheLadsClient-$version-full.nupkg")) {
-        if (-not (Test-Path -LiteralPath (Join-Path $packages $required))) { throw "Packaging did not produce $required" }
+    # A delta package only works for launchers that verify a rebuilt package by content hash. The marker is the release-build.json
+    # written from the same commit as the launcher (verifiesContentHash above), not the signature manifest: Sign-Release.ps1 can be
+    # run from any branch. So this release builds a delta only when the latest published release's launcher verifies it; until
+    # then every update is the full package.
+    $latest = & gh release view --repo $repo --json tagName,assets | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0 -or -not $latest.tagName) { throw 'Cannot read the latest published release (needed to decide on a delta package).' }
+    $deltaAllowed = $false
+    if ($latest.assets.name -contains 'release-build.json') {
+        $previousDir = Join-Path $work 'previous-release'
+        & gh release download $latest.tagName --repo $repo --pattern 'release-build.json' --dir $previousDir
+        if ($LASTEXITCODE -ne 0) { throw "Cannot download release-build.json of $($latest.tagName)." }
+        $deltaAllowed = (ConvertFrom-Json ([IO.File]::ReadAllText((Join-Path $previousDir 'release-build.json')))).verifiesContentHash -eq $true
     }
+    if ($deltaAllowed) {
+        # Seed the output folder with the previous release's feed and full package: vpk builds the delta from them. Through gh
+        # (authenticated, and the same release tools/Sign-Release.ps1 checks the delta against): `vpk download github` is anonymous
+        # and fails with GitHub's 403 rate limit (60 requests per hour per IP) when runs from one IP or runner add up.
+        $previousFull = "TheLadsClient-$($latest.tagName -replace '^v','')-full.nupkg"
+        & gh release download $latest.tagName --repo $repo --pattern 'releases.win.json' --pattern $previousFull --dir $packages
+        if ($LASTEXITCODE -ne 0) { throw "Cannot download releases.win.json and $previousFull of $($latest.tagName) to build the delta from." }
+        foreach ($name in @('releases.win.json', $previousFull)) {
+            if (-not (Test-Path -LiteralPath (Join-Path $packages $name))) { throw "$($latest.tagName) has no $name to build the delta from." }
+        }
+    }
+    Write-Host "Delta package: $(if ($deltaAllowed) { "yes, from $($latest.tagName)" } else { "no, the launcher of $($latest.tagName) does not verify delta packages (release-build.json has no verifiesContentHash)" })"
+    $deltaMode = if ($deltaAllowed) { 'BestSpeed' } else { 'None' }
+    # The splash shows the Lads logo while Setup installs; its progress colour is LadsAccent (Styles/LauncherTheme.axaml).
+    & dotnet vpk pack --packId TheLadsClient --packVersion $version --packDir $publish --mainExe TheLadsLauncher.exe --packTitle 'The Lads Client' --packAuthors ArashYT --channel win --runtime win-x64 --icon TheLadsLauncher/Assets/icon.ico --releaseNotes $notes --outputDir $packages --delta $deltaMode --splashImage TheLadsLauncher/Assets/installer-splash.png --splashProgressColor '#C44343'
+    if ($LASTEXITCODE -ne 0) { throw 'Installer packaging failed.' }
+    $required = @('TheLadsClient-win-Setup.exe','releases.win.json','assets.win.json',"TheLadsClient-$version-full.nupkg")
+    if ($deltaAllowed) { $required += "TheLadsClient-$version-delta.nupkg" }
+    foreach ($name in $required) {
+        if (-not (Test-Path -LiteralPath (Join-Path $packages $name))) { throw "Packaging did not produce $name" }
+    }
+    # vpk lists the seeded previous release too. A release carries only its own packages: clients that are further behind
+    # take the full package, and the previous full package is not a file of this release.
+    $own = "-$version-"
+    Get-ChildItem -LiteralPath $packages -File | Where-Object { $_.Name -match '-(full|delta)\.nupkg$' -and -not $_.Name.Contains($own) } | Remove-Item -Force
+    $noBom = New-Object Text.UTF8Encoding $false
+    $feedPath = Join-Path $packages 'releases.win.json'
+    $feed = [IO.File]::ReadAllText($feedPath) | ConvertFrom-Json
+    $feed.Assets = @($feed.Assets | Where-Object { $_.Version -eq $version })
+    if ($feed.Assets.Count -ne $(if ($deltaAllowed) { 2 } else { 1 })) { throw "releases.win.json must list exactly this version's full package$(if ($deltaAllowed) { ' and delta' })." }
+    [IO.File]::WriteAllText($feedPath, (ConvertTo-Json $feed -Depth 10 -Compress), $noBom)
+    $legacyPath = Join-Path $packages 'RELEASES'
+    if (Test-Path -LiteralPath $legacyPath) {
+        $legacy = @([IO.File]::ReadAllText($legacyPath) -split '(?<=\n)' | Where-Object { $_.Contains($own) })
+        if ($legacy.Count -ne 1 -or -not $legacy[0].Contains("TheLadsClient-$version-full.nupkg")) { throw "RELEASES must list exactly this version's full package (vpk lists only full packages there)." }
+        [IO.File]::WriteAllText($legacyPath, (-join $legacy), (New-Object Text.UTF8Encoding $true))
+    }
+    $listed = [IO.File]::ReadAllText((Join-Path $packages 'assets.win.json')) | ConvertFrom-Json
+    if (@($listed | Where-Object { $_.RelativeFileName -like '*.nupkg' -and -not $_.RelativeFileName.Contains($own) }).Count -gt 0) { throw 'assets.win.json names a package of another version.' }
     Copy-Item -LiteralPath $notes -Destination (Join-Path $packages 'RELEASE_NOTES.md')
     Copy-Item -LiteralPath (Join-Path $publish 'release-build.json') -Destination $packages
     Get-ChildItem -LiteralPath $packages -File | Sort-Object Name | ForEach-Object {
