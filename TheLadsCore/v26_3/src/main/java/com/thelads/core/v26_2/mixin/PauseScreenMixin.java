@@ -46,7 +46,8 @@ public abstract class PauseScreenMixin extends Screen {
         for(int i=0;i<buttons.size();i++) {
             var widget=buttons.get(i);var box=boxes.get(i);
             widget.setX(box.x());widget.setY(box.y());widget.setWidth(box.width());widget.setHeight(box.height());
-            com.thelads.core.client.title.ButtonLift.enable(widget,com.thelads.core.client.title.PauseMenuLayout.icon(slots.get(i)));
+            String icon = widget.getMessage().getString().startsWith("Friends") ? "friends" : com.thelads.core.client.title.PauseMenuLayout.icon(slots.get(i));
+            com.thelads.core.client.title.ButtonLift.enable(widget,icon);
         }
     }
 
@@ -55,9 +56,10 @@ public abstract class PauseScreenMixin extends Screen {
         if(button==ladsExtrasButton)return com.thelads.core.client.title.PauseMenuLayout.Slot.EXTRAS;
         if(text.equals("Lads Client"))return com.thelads.core.client.title.PauseMenuLayout.Slot.LADS;
         if(text.equals("Screenshots"))return com.thelads.core.client.title.PauseMenuLayout.Slot.SCREENSHOTS;
+        if(text.startsWith("Friends"))return com.thelads.core.client.title.PauseMenuLayout.Slot.COSMETICS;
         if(text.equals("Cosmetics"))return com.thelads.core.client.title.PauseMenuLayout.Slot.COSMETICS;
         if(text.equals("Replays"))return com.thelads.core.client.title.PauseMenuLayout.Slot.REPLAYS;
-        if(text.contains("Host")||text.contains("Invite"))return com.thelads.core.client.title.PauseMenuLayout.Slot.WORLD;
+        if(text.equals("Multiplayer Options")||text.contains("Host")||text.contains("Invite"))return com.thelads.core.client.title.PauseMenuLayout.Slot.WORLD;
         String[][] keys={{"menu.returnToGame","BACK"},{"gui.advancements","ADVANCEMENTS"},{"gui.stats","STATS"},{"menu.options","OPTIONS"},
             {"menu.multiplayer","MULTIPLAYER"},{"menu.multiplayerOptions.button","WORLD"},{"options.worldOptions.button","WORLD"},{"menu.worldOptions","WORLD"},{"menu.shareToLan","WORLD"},{"menu.returnToMenu","QUIT"},{"menu.disconnect","QUIT"}};
         for(String[] key:keys)if(text.equals(Component.translatable(key[0]).getString()))
@@ -95,6 +97,13 @@ public abstract class PauseScreenMixin extends Screen {
             if(text.equals(Component.translatable("menu.sendFeedback").getString())
                 ||text.equals(Component.translatable("menu.reportBugs").getString())
                 ||text.equals(Component.translatable("menu.playerReporting").getString()))removeWidget(widget);
+            if(widget instanceof Button btn && (text.equals(Component.translatable("options.worldOptions.button").getString())
+                || text.equals(Component.translatable("menu.shareToLan").getString())
+                || text.equals(Component.translatable("menu.multiplayerOptions.button").getString()))) {
+                removeWidget(btn);
+                addRenderableWidget(Button.builder(Component.literal("Multiplayer Options"),
+                    b -> minecraft.setScreenAndShow(new com.thelads.core.v26_2.social.HostScreen26(this))).width(204).build());
+            }
         }
     }
 
@@ -117,6 +126,8 @@ public abstract class PauseScreenMixin extends Screen {
             button -> com.thelads.core.v26_2.gui.PauseMultiplayer.open(this)).width(204).build(), 2);
         ladsPauseRows.addChild(Button.builder(Component.literal("Screenshots"),
             button -> com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.openFromMenu(this)).width(204).build(), 2);
+        ladsPauseRows.addChild(Button.builder(com.thelads.core.v26_2.social.SocialBridge26.friendsButtonText(),
+            button -> minecraft.setScreenAndShow(new com.thelads.core.v26_2.social.FriendsScreen26(this))).width(204).build(), 2);
         ladsPauseRows.addChild(Button.builder(Component.literal("Cosmetics"),
             button -> minecraft.setScreenAndShow(new com.thelads.core.v26_2.cosmetics.anim.CosmeticsScreen26(this))).width(204).build(), 2);
         if(com.thelads.core.v26_2.gui.FlashbackScreens.available())
