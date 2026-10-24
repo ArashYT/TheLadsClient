@@ -165,10 +165,8 @@ public final class HostScreen1201 extends Screen {
             addRenderableWidget(Button.builder(Component.literal("Open to Friends"), b -> {
                 HostOptions opts = buildOptions();
                 saveOptions(opts);
-                int port = bridge.openToFriends(opts);
-                if (port > 0) {
-                    onClose();
-                }
+                onClose();
+                bridge.openToFriends(opts);
             }).bounds(leftX, y, 150, 20).build()).active = canHost;
 
             addRenderableWidget(Button.builder(Component.literal("Open to LAN"), b -> {

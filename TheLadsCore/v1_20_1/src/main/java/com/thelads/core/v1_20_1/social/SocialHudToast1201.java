@@ -48,7 +48,10 @@ public final class SocialHudToast1201 {
     private SocialHudToast1201() {}
 
     public static synchronized void addToast(String title, String body, String acceptAction, String denyAction) {
-        ACTIVE_TOASTS.add(0, new ToastItem(title, body, acceptAction, denyAction, DEFAULT_LIFETIME));
+        ToastItem item = new ToastItem(title, body, acceptAction, denyAction, DEFAULT_LIFETIME);
+        item.lastX = 0;
+        item.lastY = TOAST_MARGIN;
+        ACTIVE_TOASTS.add(0, item);
         if (ACTIVE_TOASTS.size() > 5) {
             ACTIVE_TOASTS.remove(ACTIVE_TOASTS.size() - 1);
         }

@@ -198,21 +198,22 @@ public final class SocialBridge1201 implements SocialBridge {
             }
 
             if (options.backupOnOpen) {
-                toast("World Backup", "Creating world backup in background...", null, null);
-                CompletableFuture<Void> backupFuture = CompletableFuture.runAsync(() -> {
+                options.backupOnOpen = false;
+                toast("World Backup", "Backing up world...", null, null);
+                String wName = worldId();
+                CompletableFuture.runAsync(() -> {
                     try {
-                        backupWorld(worldDir, worldId());
+                        backupWorld(worldDir, wName);
                     } catch (Exception e) {
                         LOGGER.warn("Failed to create world backup: {}", e.getMessage());
+                        toast("World Backup", "Backup failed, continuing without backup", null, null);
                     }
+                }).whenComplete((res, err) -> {
+                    mc.execute(() -> {
+                        openToFriends(options);
+                    });
                 });
-                try {
-                    backupFuture.get(30, TimeUnit.SECONDS);
-                    toast("World Backup", "World backup completed", null, null);
-                } catch (Exception e) {
-                    LOGGER.warn("World backup timed out or failed, proceeding with hosting", e);
-                    toast("World Backup", "World backup timed out, proceeding with hosting", null, null);
-                }
+                return 0;
             }
         }
 
@@ -306,6 +307,7 @@ public final class SocialBridge1201 implements SocialBridge {
             }
 
             updateGuestSnapshot(server);
+            resetLoopbackState();
         });
     }
 
@@ -438,6 +440,7 @@ public final class SocialBridge1201 implements SocialBridge {
                 }
             }
             updateGuestSnapshot(server);
+            resetLoopbackState();
         });
     }
 

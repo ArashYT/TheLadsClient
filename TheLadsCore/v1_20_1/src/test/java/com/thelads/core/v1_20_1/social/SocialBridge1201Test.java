@@ -40,16 +40,19 @@ public class SocialBridge1201Test {
         SocialHudToast1201.addToast("Party", "Join party?", "party_accept:777", "party_deny:777");
         
         // Simulating click outside bounds -> false
-        boolean clickedOutside = SocialHudToast1201.onClick(10, 10);
+        boolean clickedOutside = SocialHudToast1201.onClick(500, 500);
         Assertions.assertFalse(clickedOutside);
 
-        // Simulating click on accept button bounds for lastX=100, lastY=6
-        // Accept bounds: [lastX + 8, lastY + 28] to [lastX + 72, lastY + 42]
-        // Deny bounds: [lastX + 78, lastY + 28] to [lastX + 142, lastY + 42]
-        // Let's verify acceptNewest / denyNewest or click
-        boolean accepted = SocialHudToast1201.acceptNewest();
+        // Click directly on accept button bounds ([8, 34]..[72, 48]): e.g. x=20, y=36
+        boolean accepted = SocialHudToast1201.onClick(20, 36);
         Assertions.assertTrue(accepted);
         Assertions.assertEquals("party_accept:777", handled.get());
+
+        // Add second toast and click deny button bounds ([78, 34]..[142, 48]): e.g. x=90, y=36
+        SocialHudToast1201.addToast("Invite", "Join world?", "join_accept:888", "join_deny:888");
+        boolean denied = SocialHudToast1201.onClick(90, 36);
+        Assertions.assertTrue(denied);
+        Assertions.assertEquals("join_deny:888", handled.get());
     }
 
     @Test
