@@ -13,8 +13,6 @@ public class NickHiderModule extends Module {
     public final BoolOption hideOwnName;
     public final TextOption customNick;
     public final BoolOption hideOwnSkin;
-    public final BoolOption hideOthersNames;
-    public final TextOption othersNick;
     public final BoolOption hideOthersSkins;
 
     public NickHiderModule() {
@@ -22,8 +20,6 @@ public class NickHiderModule extends Module {
         hideOwnName = addOption(new BoolOption("Hide own name", true));
         customNick = addOption(new TextOption("Custom nickname", "You"));
         hideOwnSkin = addOption(new BoolOption("Hide own skin", true));
-        hideOthersNames = addOption(new BoolOption("Hide others' names", false));
-        othersNick = addOption(new TextOption("Others fake name", "Player"));
         hideOthersSkins = addOption(new BoolOption("Hide others' skins", false));
         setEnabled(false);
     }

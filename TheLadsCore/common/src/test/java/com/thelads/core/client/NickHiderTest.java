@@ -14,10 +14,9 @@ class NickHiderTest {
         NickHiderModule mod = (NickHiderModule) ModuleManager.getInstance().getModule(NickHiderModule.NAME);
         if (mod != null) {
             mod.setEnabled(false);
-            mod.hideOthersNames.set(false);
             mod.hideOwnName.set(true);
+            mod.hideOwnSkin.set(true);
         }
-        NickHider.clearOthers();
     }
 
     @Test
@@ -27,36 +26,41 @@ class NickHiderTest {
         assertTrue(module.hideOwnName.get());
         assertEquals("You", module.customNick.getValue());
         assertTrue(module.hideOwnSkin.get());
-        assertFalse(module.hideOthersNames.get());
-        assertEquals("Player", module.othersNick.getValue());
         assertFalse(module.hideOthersSkins.get());
     }
 
     @Test
     void testSkinHidingLogic() {
+        NickHiderModule mod = (NickHiderModule) ModuleManager.getInstance().getModule(NickHiderModule.NAME);
+        assertNotNull(mod);
         UUID testUuid = UUID.randomUUID();
+
+        mod.setEnabled(false);
         assertFalse(NickHider.shouldHideSkin(testUuid, true));
         assertFalse(NickHider.shouldHideSkin(testUuid, false));
+
+        mod.setEnabled(true);
+        mod.hideOwnSkin.set(true);
+        mod.hideOthersSkins.set(false);
+        assertTrue(NickHider.shouldHideSkin(testUuid, true));
+        assertFalse(NickHider.shouldHideSkin(testUuid, false));
+
+        mod.hideOthersSkins.set(true);
+        assertTrue(NickHider.shouldHideSkin(testUuid, false));
     }
 
     @Test
-    void testOthersNameDisguise() {
+    void testOwnNameDisguise() {
         NickHiderModule mod = (NickHiderModule) ModuleManager.getInstance().getModule(NickHiderModule.NAME);
         assertNotNull(mod);
         mod.setEnabled(true);
-        mod.hideOthersNames.set(true);
         mod.hideOwnName.set(true);
-
-        NickHider.clearOthers();
-        NickHider.registerOtherPlayer("Alice");
-        NickHider.registerOtherPlayer("Bob");
+        mod.customNick.setValue("Streamer");
 
         Map<String, String> renames = Nicknames.active("MyOwnAccount");
-        assertEquals("You", renames.get("myownaccount"));
-        assertEquals("Player", renames.get("alice"));
-        assertEquals("Player", renames.get("bob"));
+        assertEquals("Streamer", renames.get("myownaccount"));
 
-        String renamedChat = Nicknames.rename("<Alice> Hello MyOwnAccount and Bob!", renames);
-        assertEquals("<Player> Hello You and Player!", renamedChat);
+        String renamedChat = Nicknames.rename("<MyOwnAccount> Hello World!", renames);
+        assertEquals("<Streamer> Hello World!", renamedChat);
     }
 }

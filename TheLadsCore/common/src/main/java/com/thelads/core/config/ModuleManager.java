@@ -395,11 +395,7 @@ public class ModuleManager {
         register(new SurvivalTweaksModule(), Module.Category.MECHANIC);
         register(new StackRefillModule(), Module.Category.MECHANIC);
         register(new NickHiderModule(), Module.Category.MECHANIC);
-        register(new PackProfilesModule(), Module.Category.MECHANIC);
         register(new ContainerQoLModule(), Module.Category.MECHANIC);
-        register(new DraggableServersModule(), Module.Category.SERVER);
-        register(new BreedingTimerModule(), Module.Category.MECHANIC);
-        register(new EnderChestPeekModule(), Module.Category.MECHANIC);
         HudModule invHud = hud("InventoryHUD", "Display your own inventory contents on screen.");
         invHud.setEnabled(false);
     }

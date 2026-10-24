@@ -24,10 +24,6 @@ public final class SurvivalTweaksModule extends Module {
     public final BoolOption longerChatHistory;
     public final BoolOption fastIpPing;
     public final BoolOption keepBarsWhileRiding;
-    public final BoolOption blockToolAtLowDurability;
-    public final SliderOption lowDurabilityThreshold;
-    public final BoolOption antiStripLog;
-    public final BoolOption antiBuddingAmethyst;
 
     private static volatile SurvivalTweaksModule cachedInstance;
     private final java.util.Set<String> notHere = new java.util.HashSet<>();
@@ -58,10 +54,6 @@ public final class SurvivalTweaksModule extends Module {
         longerChatHistory = addOption(new BoolOption("Longer Chat History", true));
         fastIpPing = addOption(new BoolOption("Fast IP Ping", true));
         keepBarsWhileRiding = addOption(new BoolOption("Keep Bars While Riding", true));
-        blockToolAtLowDurability = addOption(new BoolOption("Block tool at low durability", false));
-        lowDurabilityThreshold = addOption(new SliderOption("Low durability threshold", 3, 1, 50, 1));
-        antiStripLog = addOption(new BoolOption("Anti strip log", false));
-        antiBuddingAmethyst = addOption(new BoolOption("Anti budding amethyst", false));
         setEnabled(true);
     }
 
@@ -121,21 +113,5 @@ public final class SurvivalTweaksModule extends Module {
 
     public boolean isKeepBarsWhileRidingEnabled() {
         return isEnabled() && keepBarsWhileRiding.get();
-    }
-
-    public boolean isBlockToolAtLowDurabilityEnabled() {
-        return isEnabled() && blockToolAtLowDurability.get();
-    }
-
-    public int getLowDurabilityThreshold() {
-        return lowDurabilityThreshold.getIntValue();
-    }
-
-    public boolean isAntiStripLogEnabled() {
-        return isEnabled() && antiStripLog.get();
-    }
-
-    public boolean isAntiBuddingAmethystEnabled() {
-        return isEnabled() && antiBuddingAmethyst.get();
     }
 }

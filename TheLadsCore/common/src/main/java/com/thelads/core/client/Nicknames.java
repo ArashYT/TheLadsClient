@@ -15,7 +15,6 @@ import java.util.Map;
  */
 public final class Nicknames {
     private static String lastNicknames, lastDisplay, lastOwn;
-    private static int lastHiderHash;
     private static Map<String, String> active = Collections.emptyMap();
     private static ToggleNametagsModule cachedTagsModule;
     private Nicknames() {}
@@ -52,20 +51,11 @@ public final class Nicknames {
         if (hiderOn && NickHider.isHideOwnName()) {
             display = NickHider.getCustomNick();
         }
-        int hiderHash = hiderOn ? (NickHider.getOthersNick().hashCode() * 31 + NickHider.getOtherPlayers().size() * 17 + (NickHider.isHideOthersNames() ? 1 : 0)) : 0;
-        if (!nicks.equals(lastNicknames) || !display.equals(lastDisplay) || !String.valueOf(ownName).equals(lastOwn) || hiderHash != lastHiderHash) {
+        if (!nicks.equals(lastNicknames) || !display.equals(lastDisplay) || !String.valueOf(ownName).equals(lastOwn)) {
             Map<String, String> names = parse(nicks);
-            if (hiderOn && NickHider.isHideOthersNames()) {
-                String otherNick = NickHider.getOthersNick();
-                for (String other : NickHider.getOtherPlayers()) {
-                    if (ownName == null || !other.equalsIgnoreCase(ownName)) {
-                        names.put(other.toLowerCase(Locale.ROOT), otherNick);
-                    }
-                }
-            }
             if (!display.isEmpty() && ownName != null && !ownName.isEmpty()) names.put(ownName.toLowerCase(Locale.ROOT), display);
             active = names;
-            lastNicknames = nicks; lastDisplay = display; lastOwn = String.valueOf(ownName); lastHiderHash = hiderHash;
+            lastNicknames = nicks; lastDisplay = display; lastOwn = String.valueOf(ownName);
         }
         return active;
     }
