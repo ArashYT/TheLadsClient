@@ -648,6 +648,49 @@ public class ModuleManager {
             "Drag saved servers up and down the multiplayer list to reorder them; the new order is saved.");
         drag.setEnabled(true);
         register(drag, Module.Category.MECHANIC);
+        // Parity 1.9.19 chat lane rows 20, 25, 28, 29, 33, 35, 36 (common client TooltipScroll, CrashCatcher, QuickReconnect, KeepCursor,
+        // SoundVolumes, GuiScaleOverride, ChunkBorders; each version's Qol class hooks them). All visual only.
+        Module tooltips = new Module(com.thelads.core.client.TooltipScroll.NAME, "Scroll tooltips taller than the screen with the mouse "
+            + "wheel, and wider ones sideways with Shift held.");
+        tooltips.addOption(new SliderOption(com.thelads.core.client.TooltipScroll.SPEED, 3, 1, 10, 1));
+        tooltips.addOption(new BoolOption(com.thelads.core.client.TooltipScroll.INVERT, false));
+        tooltips.addOption(new BoolOption(com.thelads.core.client.TooltipScroll.SIDEWAYS, true));
+        tooltips.setEnabled(true);
+        register(tooltips, Module.Category.MECHANIC);
+        Module crashes = new Module(com.thelads.core.client.CrashCatcher.NAME, "When the game would crash while you play in a world, leave "
+            + "the world and show what crashed instead of closing the game. The crash report is still saved.");
+        crashes.addOption(new SliderOption(com.thelads.core.client.CrashCatcher.LIMIT, 3, 1, 10, 1));
+        crashes.setEnabled(true);
+        register(crashes, Module.Category.MECHANIC);
+        Module rejoin = new Module(com.thelads.core.client.QuickReconnect.NAME, "A Reconnect button when a server disconnects you, and "
+            + "Direct Connect shows the typed server's MOTD, players and ping.");
+        rejoin.addOption(new BoolOption(com.thelads.core.client.QuickReconnect.BUTTON, true));
+        rejoin.addOption(new BoolOption(com.thelads.core.client.QuickReconnect.PING, true));
+        rejoin.setEnabled(true);
+        register(rejoin, Module.Category.SERVER);
+        Module cursor = new Module(com.thelads.core.client.KeepCursor.NAME, "When a server swaps one chest or menu for another, the "
+            + "pointer stays where it was instead of jumping to the middle.");
+        cursor.setEnabled(true);
+        register(cursor, Module.Category.MECHANIC);
+        Module sounds = new Module(com.thelads.core.client.SoundVolumes.NAME, "A volume slider (0-200%) for each kind of game sound: "
+            + "explosions, note blocks, rain, footsteps and more. Search a sound's name in the settings search.");
+        for (com.thelads.core.client.SoundVolumes.Group group : com.thelads.core.client.SoundVolumes.GROUPS)
+            sounds.addOption(new SliderOption(group.label(), 100, 0, 200, 5).percent());
+        sounds.setEnabled(true);
+        register(sounds, Module.Category.MECHANIC);
+        Module guiScale = new Module(com.thelads.core.client.GuiScaleOverride.NAME, "A GUI scale between the game's whole steps, "
+            + "such as 2.5x, for the HUD and every menu.");
+        guiScale.addOption(new SliderOption(com.thelads.core.client.GuiScaleOverride.SCALE, 2.5, 1, 6, 0.25).suffix("x"));
+        register(guiScale, Module.Category.MECHANIC);
+        Module chunks = new Module(com.thelads.core.client.ChunkBorders.NAME, "F3+G's chunk borders in your colours, with a grid on your "
+            + "chunk's walls and a line at every 16-block section.");
+        chunks.addOption(new ColorOption(com.thelads.core.client.ChunkBorders.CORNER, false, 0xFFFFFF00));
+        chunks.addOption(new ColorOption(com.thelads.core.client.ChunkBorders.NEIGHBOR, false, 0xFFFF0000));
+        chunks.addOption(new BoolOption(com.thelads.core.client.ChunkBorders.GRID, true));
+        chunks.addOption(new ColorOption(com.thelads.core.client.ChunkBorders.GRID_COLOR, false, 0x80FFFF00));
+        chunks.addOption(new SliderOption(com.thelads.core.client.ChunkBorders.SPACING, 2, 1, 8, 1));
+        chunks.addOption(new ColorOption(com.thelads.core.client.ChunkBorders.SECTION, false, 0xFF4040FF));
+        register(chunks, Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {
