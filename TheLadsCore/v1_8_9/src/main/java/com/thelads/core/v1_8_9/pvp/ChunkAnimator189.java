@@ -15,8 +15,10 @@ import net.minecraftforge.fml.client.FMLClientHandler;
  */
 public final class ChunkAnimator189 {
     static final boolean IONIUM = ChunkAnimator189.class.getClassLoader().getResource("org/taumc/ionium/launch/IoniumTweaker.class") != null;
-    /** The time of this frame (RenderTickEvent start), so the chunks of one frame share it. */
+    /** This frame's time and settings (RenderTickEvent start): the chunks of one frame share them, read once. */
     private static long now;
+    private static boolean on, fromAbove;
+    private static double duration;
     private static ChunkAnimatorModule module;
 
     /** A RenderChunk's clock (ChunkAnimatorMixin189): 0 until it is first drawn where it now is. */
@@ -43,14 +45,18 @@ public final class ChunkAnimator189 {
 
     static void frame(long nanos) {
         now = nanos;
+        on = module != null && module.isEnabled();
+        if (!on) return;
+        fromAbove = module.mode.getIndex() == 1;
+        duration = module.duration.getValue();
     }
 
     /** ChunkRenderContainer.preRenderChunk, after the chunk's own translation: per chunk and layer, no allocation. */
     public static void translate(Clock chunk) {
         long shown = chunk.lads$shownAt();
         if (shown == 0) chunk.lads$setShownAt(shown = now);
-        if (module == null || !module.isEnabled()) return;
-        float offset = ChunkAnimator.offset(module.mode.getIndex() == 1, module.duration.getValue(), now - shown);
+        if (!on) return;
+        float offset = ChunkAnimator.offset(fromAbove, duration, now - shown);
         if (offset != 0) GlStateManager.translate(0, offset, 0);
     }
 }

@@ -91,7 +91,10 @@ public final class ScreenEffects1201 {
         blurredFrame = frameStart;
         graphics.flush(); // the HUD and anything batched so far, so it is in the picture that gets blurred
         for (AbstractUniform u : blurRadius) u.set((float) radius);
+        boolean blend = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_BLEND), depth = org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_DEPTH_TEST);
         run(blur, main, mc);
+        if (blend) RenderSystem.enableBlend(); // the menu draws on with the states it had
+        if (depth) RenderSystem.enableDepthTest();
     }
 
     /** Resources reloaded (GameRenderer.reloadShaders): the chains load again on next use. */
