@@ -20,6 +20,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
@@ -33,6 +35,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class SocialClient {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore/SocialClient");
     private static final String MOJANG_JOIN = "https://sessionserver.mojang.com/session/minecraft/join";
+    private static final int MAX_OUTBOUND = 512;
 
     private static volatile SocialClient instance;
 
@@ -47,13 +50,19 @@ public class SocialClient {
         return instance;
     }
 
+    public static void setInstanceForTest(SocialClient client) {
+        instance = client;
+    }
+
     private final URI endpoint;
     private final boolean local;
     private final Object lock = new Object();
+    private final Object outboundLock = new Object();
     private final BlockingQueue<JsonObject> outbound = new LinkedBlockingQueue<>();
 
     private volatile WebSocket currentWs;
     private volatile boolean running;
+    private volatile boolean fastBackoff;
     private volatile Presence currentPresence;
     private volatile String status = "Disconnected";
     private Thread clientThread;
@@ -86,6 +95,39 @@ public class SocialClient {
         clientThread.start();
     }
 
+    public synchronized void close() {
+        running = false;
+        WebSocket ws = currentWs;
+        currentWs = null;
+        if (ws != null) {
+            try { ws.close(); } catch (Exception ignored) {}
+        }
+        if (clientThread != null) {
+            clientThread.interrupt();
+            clientThread = null;
+        }
+        synchronized (lock) {
+            lock.notifyAll();
+        }
+        status = "Disconnected";
+    }
+
+    public synchronized void stop() {
+        close();
+    }
+
+    public void setFastBackoff(boolean fast) {
+        this.fastBackoff = fast;
+    }
+
+    public int outboundQueueSize() {
+        return outbound.size();
+    }
+
+    public List<JsonObject> outboundSnapshot() {
+        return new ArrayList<>(outbound);
+    }
+
     public String connectionStatus() {
         return status;
     }
@@ -102,6 +144,26 @@ public class SocialClient {
         return ws != null && ws.isOpen();
     }
 
+    private void enqueueOutbound(JsonObject obj) {
+        if (obj == null) return;
+        synchronized (outboundLock) {
+            while (outbound.size() >= MAX_OUTBOUND) {
+                boolean removedPresence = false;
+                for (JsonObject candidate : outbound) {
+                    if (candidate != null && SocialProtocol.PRESENCE.equals(str(candidate, "t"))) {
+                        outbound.remove(candidate);
+                        removedPresence = true;
+                        break;
+                    }
+                }
+                if (!removedPresence) {
+                    outbound.poll();
+                }
+            }
+            outbound.offer(obj);
+        }
+    }
+
     public void send(JsonObject obj) {
         if (obj == null) return;
         WebSocket ws = currentWs;
@@ -110,10 +172,10 @@ public class SocialClient {
                 ws.sendText(obj.toString());
             } catch (IOException e) {
                 LOGGER.warn("SocialClient: failed to send message: {}", e.getMessage());
-                outbound.offer(obj);
+                enqueueOutbound(obj);
             }
         } else {
-            outbound.offer(obj);
+            enqueueOutbound(obj);
         }
     }
 
@@ -145,11 +207,13 @@ public class SocialClient {
                 currentWs = null;
             }
 
+            if (!running) break;
+
             if (System.currentTimeMillis() - started > 60_000) {
                 failures = 0;
             }
 
-            long waitMs = backoffMs(++failures, ThreadLocalRandom.current().nextDouble());
+            long waitMs = fastBackoff ? 50L : backoffMs(++failures, ThreadLocalRandom.current().nextDouble());
             pause(waitMs);
         }
     }

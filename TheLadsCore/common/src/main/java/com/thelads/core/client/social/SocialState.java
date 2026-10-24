@@ -62,10 +62,14 @@ public class SocialState {
 
     public SocialState() {
         this.clientSender = obj -> SocialClient.get().send(obj);
+        this.guestSession.setEndSender(this.clientSender);
+        this.hostSession.setEndSender(this.clientSender);
     }
 
     public void setClientSender(Consumer<JsonObject> sender) {
         this.clientSender = sender != null ? sender : obj -> SocialClient.get().send(obj);
+        this.guestSession.setEndSender(this.clientSender);
+        this.hostSession.setEndSender(this.clientSender);
     }
 
     public HostSession hostSession() {
@@ -216,20 +220,27 @@ public class SocialState {
         send(SocialProtocol.DM, "to", to.toString(), "text", trimmed);
 
         LadsGameBridge.Session session = LadsGameBridge.get().session();
-        UUID self = session != null ? session.uuid() : null;
-        if (self != null) {
-            recordDm(to, new Dm(self, trimmed, System.currentTimeMillis()));
-        }
+        UUID self = session != null && session.uuid() != null ? session.uuid() : new UUID(0, 0);
+        recordDm(to, new Dm(self, trimmed, System.currentTimeMillis()));
     }
 
     public List<Dm> dms(UUID friendUuid) {
         if (friendUuid == null) return Collections.emptyList();
         List<Dm> list = dmsMap.get(friendUuid);
-        return list == null ? Collections.emptyList() : Collections.unmodifiableList(list);
+        if (list == null) return Collections.emptyList();
+        synchronized (list) {
+            return Collections.unmodifiableList(new ArrayList<>(list));
+        }
     }
 
     private void recordDm(UUID friendUuid, Dm dm) {
-        dmsMap.computeIfAbsent(friendUuid, k -> new CopyOnWriteArrayList<>()).add(dm);
+        List<Dm> list = dmsMap.computeIfAbsent(friendUuid, k -> new ArrayList<>());
+        synchronized (list) {
+            list.add(dm);
+            while (list.size() > 200) {
+                list.remove(0);
+            }
+        }
         notifyListeners();
     }
 
@@ -255,13 +266,20 @@ public class SocialState {
 
     public void acceptInvite(String inviteId) {
         if (inviteId == null) return;
-        if (SocialBridge.get().inWorldOrServer() || guestSession.isActive()) {
-            guestSession.close("Switching world");
-            SocialBridge.get().leaveWorld(() -> send(SocialProtocol.INVITE_ACCEPT, "inviteId", inviteId));
-        } else {
+        Invite invite = activeInvites.remove(inviteId);
+        if (invite != null && invite.isServer() && invite.serverAddress() != null) {
+            String address = invite.serverAddress();
             send(SocialProtocol.INVITE_ACCEPT, "inviteId", inviteId);
+            if (SocialBridge.get().inWorldOrServer() || guestSession.isActive()) {
+                guestSession.close("Switching to server");
+                SocialBridge.get().leaveWorld(() -> SocialBridge.get().connectToServer(address));
+            } else {
+                SocialBridge.get().connectToServer(address);
+            }
+            return;
         }
-        activeInvites.remove(inviteId);
+
+        send(SocialProtocol.INVITE_ACCEPT, "inviteId", inviteId);
     }
 
     public void declineInvite(String inviteId) {
@@ -272,12 +290,7 @@ public class SocialState {
 
     public void requestJoin(UUID host) {
         if (host == null) return;
-        if (SocialBridge.get().inWorldOrServer() || guestSession.isActive()) {
-            guestSession.close("Switching world");
-            SocialBridge.get().leaveWorld(() -> send(SocialProtocol.JOIN_REQUEST, "host", host.toString()));
-        } else {
-            send(SocialProtocol.JOIN_REQUEST, "host", host.toString());
-        }
+        send(SocialProtocol.JOIN_REQUEST, "host", host.toString());
     }
 
     public void answerJoin(String reqId, boolean yes) {
@@ -363,6 +376,34 @@ public class SocialState {
         return new JoinCheck(true, null);
     }
 
+    public void handleAction(String actionId) {
+        if (actionId == null || actionId.isEmpty()) return;
+        int colon = actionId.indexOf(':');
+        String prefix = colon == -1 ? actionId : actionId.substring(0, colon);
+        String arg = colon == -1 ? "" : actionId.substring(colon + 1);
+
+        switch (prefix) {
+            case "invite_accept" -> acceptInvite(arg);
+            case "invite_decline" -> declineInvite(arg);
+            case "join_accept" -> answerJoin(arg, true);
+            case "join_deny" -> answerJoin(arg, false);
+            case "friend_accept" -> {
+                UUID id = parseUuid(arg);
+                if (id != null) accept(id);
+            }
+            case "friend_decline" -> {
+                UUID id = parseUuid(arg);
+                if (id != null) decline(id);
+            }
+            case "open_friends" -> SocialBridge.get().openFriendsScreen();
+            case "dm" -> {
+                UUID id = parseUuid(arg);
+                SocialBridge.get().openFriendsScreen();
+            }
+            default -> LOGGER.debug("SocialState: ignored unknown action id: {}", actionId);
+        }
+    }
+
     // --- Inbound message dispatching ---
 
     public void onHello(JsonObject hello) {
@@ -371,7 +412,6 @@ public class SocialState {
         outgoingMap.clear();
         blockedMap.clear();
         blockedUuids.clear();
-        dmsMap.clear();
 
         if (hello.has("friends") && hello.get("friends").isJsonArray()) {
             for (JsonElement e : hello.getAsJsonArray("friends")) {
@@ -420,7 +460,22 @@ public class SocialState {
                     String text = str(d, "text");
                     long ts = d.has("ts") ? d.get("ts").getAsLong() : System.currentTimeMillis();
                     if (from != null && text != null) {
-                        recordDm(from, new Dm(from, text, ts));
+                        List<Dm> list = dmsMap.computeIfAbsent(from, k -> new ArrayList<>());
+                        synchronized (list) {
+                            boolean exists = false;
+                            for (Dm existing : list) {
+                                if (existing.ts() == ts && Objects.equals(existing.text(), text)) {
+                                    exists = true;
+                                    break;
+                                }
+                            }
+                            if (!exists) {
+                                list.add(new Dm(from, text, ts));
+                            }
+                            while (list.size() > 200) {
+                                list.remove(0);
+                            }
+                        }
                     }
                 }
             }
@@ -451,6 +506,8 @@ public class SocialState {
                     incomingMap.put(entry.id(), entry);
                     SocialBridge.get().toast("Friend Request", entry.name() + " sent you a friend request",
                             "friend_accept:" + entry.id(), "friend_decline:" + entry.id());
+                    SocialBridge.get().chatAction(entry.name() + " sent you a friend request [Accept]",
+                            "friend_accept:" + entry.id());
                     notifyListeners();
                 }
             }
@@ -503,10 +560,14 @@ public class SocialState {
                     activeInvites.put(inviteId, new Invite(inviteId, from, server, true, server));
                     SocialBridge.get().toast("Server Invite", name + " invited you to " + server,
                             "invite_accept:" + inviteId, "invite_decline:" + inviteId);
+                    SocialBridge.get().chatAction(name + " invited you to " + server + " [Accept]",
+                            "invite_accept:" + inviteId);
                 } else {
                     activeInvites.put(inviteId, new Invite(inviteId, from, worldName, false, null));
                     SocialBridge.get().toast("Game Invite", name + " invited you to " + worldName,
                             "invite_accept:" + inviteId, "invite_decline:" + inviteId);
+                    SocialBridge.get().chatAction(name + " invited you to " + worldName + " [Accept]",
+                            "invite_accept:" + inviteId);
                 }
                 notifyListeners();
             }
@@ -529,15 +590,23 @@ public class SocialState {
             case SocialProtocol.SIGNAL -> {
                 String sid = str(msg, "sid");
                 JsonObject data = msg.getAsJsonObject("data");
-                if (guestSession.isActive() && Objects.equals(sid, guestSession.sid())) {
-                    guestSession.onSignal(data);
+                if (sid != null && data != null) {
+                    if (guestSession.ownsSid(sid)) {
+                        guestSession.onSignal(data);
+                    } else if (hostSession.ownsSid(sid)) {
+                        hostSession.onSignal(sid, data);
+                    }
                 }
             }
             case SocialProtocol.P2P_END -> {
                 String sid = str(msg, "sid");
                 String reason = str(msg, "reason");
-                if (guestSession.isActive() && Objects.equals(sid, guestSession.sid())) {
-                    guestSession.close(reason);
+                if (sid != null) {
+                    if (guestSession.ownsSid(sid)) {
+                        guestSession.close(reason);
+                    } else if (hostSession.ownsSid(sid)) {
+                        hostSession.closeGuest(sid, reason);
+                    }
                 }
             }
             case SocialProtocol.ERROR -> {
@@ -562,6 +631,8 @@ public class SocialState {
         String name = friend != null ? friend.displayName() : (from != null ? from.toString().substring(0, 8) : "Player");
         SocialBridge.get().toast("Join Request", name + " wants to join your world",
                 "join_accept:" + reqId, "join_deny:" + reqId);
+        SocialBridge.get().chatAction(name + " wants to join your world [Accept]",
+                "join_accept:" + reqId);
         notifyListeners();
     }
 
@@ -580,7 +651,12 @@ public class SocialState {
         if ("host".equalsIgnoreCase(role)) {
             hostSession.handleP2PStart(sid, peer, iceConfig, signalSender);
         } else {
-            guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender);
+            if (SocialBridge.get().inWorldOrServer() || guestSession.isActive()) {
+                guestSession.close("Switching world");
+                SocialBridge.get().leaveWorld(() -> guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender));
+            } else {
+                guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender);
+            }
         }
     }
 

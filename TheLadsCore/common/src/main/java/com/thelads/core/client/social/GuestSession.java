@@ -12,7 +12,10 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Objects;
+import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -41,7 +44,16 @@ public final class GuestSession {
     private volatile Socket activeSocket;
     private volatile P2PSession p2pSession;
 
+    private final Queue<JsonObject> pendingSignals = new ConcurrentLinkedQueue<>();
+    private final Object signalLock = new Object();
+    private final AtomicBoolean ended = new AtomicBoolean(false);
+    private Consumer<JsonObject> endSender = obj -> SocialClient.get().send(obj);
+
     public GuestSession() {}
+
+    public void setEndSender(Consumer<JsonObject> sender) {
+        this.endSender = sender != null ? sender : obj -> SocialClient.get().send(obj);
+    }
 
     public boolean isActive() {
         return active;
@@ -55,6 +67,10 @@ public final class GuestSession {
         return sid;
     }
 
+    public boolean ownsSid(String sid) {
+        return active && Objects.equals(this.sid, sid);
+    }
+
     public synchronized void start(String sid, UUID hostUuid, String hostDisplayName, String worldId,
                                    P2PSession.IceConfig iceConfig, Consumer<JsonObject> sendSignal) {
         close("Starting new session");
@@ -63,6 +79,12 @@ public final class GuestSession {
         this.hostUuid = hostUuid;
         this.hostDisplayName = hostDisplayName != null ? hostDisplayName : "Friend World";
         this.active = true;
+        this.ended.set(false);
+
+        synchronized (signalLock) {
+            pendingSignals.clear();
+            p2pSession = null;
+        }
 
         String safetyKey = "p2p:" + hostUuid + "/" + (worldId != null ? worldId : "world");
         HypixelSafetyManager.setP2PSession(safetyKey);
@@ -78,7 +100,14 @@ public final class GuestSession {
 
             // Start P2P session
             p2pStarter.start(sid, false, iceConfig, sendSignal).thenAccept(session -> {
-                this.p2pSession = session;
+                synchronized (signalLock) {
+                    this.p2pSession = session;
+                    JsonObject sig;
+                    while ((sig = pendingSignals.poll()) != null) {
+                        session.onSignal(sig);
+                    }
+                }
+
                 session.onClose(reason -> {
                     LOGGER.info("GuestSession: P2P session closed ({})", reason);
                     close(reason);
@@ -121,7 +150,7 @@ public final class GuestSession {
     }
 
     public synchronized void close(String reason) {
-        if (!active && proxyServer == null && p2pSession == null) return;
+        if (!active && proxyServer == null && p2pSession == null && sid == null) return;
         active = false;
         HypixelSafetyManager.setP2PSession(null);
 
@@ -133,8 +162,25 @@ public final class GuestSession {
             try { activeSocket.close(); } catch (IOException ignored) {}
             activeSocket = null;
         }
-        P2PSession sessionToClose = p2pSession;
-        p2pSession = null;
+
+        String endingSid = this.sid;
+        P2PSession sessionToClose;
+        synchronized (signalLock) {
+            pendingSignals.clear();
+            sessionToClose = p2pSession;
+            p2pSession = null;
+        }
+
+        if (endingSid != null && ended.compareAndSet(false, true)) {
+            boolean relayed = sessionToClose != null && sessionToClose.relayed();
+            long bytes = sessionToClose != null ? sessionToClose.bytes() : 0L;
+            endSender.accept(SocialProtocol.msg(SocialProtocol.P2P_END,
+                    "sid", endingSid,
+                    "reason", reason != null ? reason : "Session ended",
+                    "relayed", relayed,
+                    "bytes", bytes));
+        }
+
         if (sessionToClose != null) {
             try { sessionToClose.close(reason); } catch (Exception ignored) {}
         }
@@ -146,9 +192,14 @@ public final class GuestSession {
     }
 
     public void onSignal(JsonObject data) {
-        P2PSession s = p2pSession;
-        if (s != null && data != null) {
-            s.onSignal(data);
+        if (data == null) return;
+        synchronized (signalLock) {
+            P2PSession s = p2pSession;
+            if (s != null) {
+                s.onSignal(data);
+            } else {
+                pendingSignals.offer(data);
+            }
         }
     }
 

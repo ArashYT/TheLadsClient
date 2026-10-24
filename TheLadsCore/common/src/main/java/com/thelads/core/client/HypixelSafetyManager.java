@@ -78,9 +78,11 @@ public final class HypixelSafetyManager {
     private static volatile String lastAddress;
     private static volatile Server lastServer = LOCAL;
     private static volatile String p2pSessionKey;
+    private static volatile Server p2pServer;
 
     public static void setP2PSession(String keyOrNull) {
         p2pSessionKey = keyOrNull;
+        p2pServer = keyOrNull != null ? new Server(0, keyOrNull) : null;
     }
 
     public static String getP2PSession() {
@@ -120,8 +122,8 @@ public final class HypixelSafetyManager {
 
     /** Asked per module every frame: the last address first, before any string work. */
     private static Server server(String addr) {
-        String p2p = p2pSessionKey;
-        if (p2p != null) return new Server(0, p2p);
+        Server p2p = p2pServer;
+        if (p2p != null) return p2p;
         if (addr == null || addr.isEmpty()) return LOCAL;
         if (addr.equals(lastAddress)) return lastServer;
         Server server = CACHED_ADDRESSES.computeIfAbsent(addr, HypixelSafetyManager::computeServer);
