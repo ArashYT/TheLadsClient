@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.net.URI;
 import java.net.URL;
 import java.util.Collections;
@@ -466,7 +467,7 @@ public final class LinkPreview {
         return thumb;
     }
 
-    private static final class PinnedSSLSocketFactory extends javax.net.ssl.SSLSocketFactory {
+    static final class PinnedSSLSocketFactory extends javax.net.ssl.SSLSocketFactory {
         private final javax.net.ssl.SSLSocketFactory delegate;
         private final InetAddress pinnedAddress;
         private final String targetHost;
@@ -485,6 +486,23 @@ public final class LinkPreview {
         @Override
         public String[] getSupportedCipherSuites() {
             return delegate.getSupportedCipherSuites();
+        }
+
+        @Override
+        public Socket createSocket() throws IOException {
+            return new Socket() {
+                @Override
+                public void connect(SocketAddress endpoint, int timeout) throws IOException {
+                    int port = (endpoint instanceof InetSocketAddress isa) ? isa.getPort() : ((InetSocketAddress) endpoint).getPort();
+                    super.connect(new InetSocketAddress(pinnedAddress, port), timeout);
+                }
+
+                @Override
+                public void connect(SocketAddress endpoint) throws IOException {
+                    int port = (endpoint instanceof InetSocketAddress isa) ? isa.getPort() : ((InetSocketAddress) endpoint).getPort();
+                    super.connect(new InetSocketAddress(pinnedAddress, port));
+                }
+            };
         }
 
         @Override

@@ -2,6 +2,10 @@ package com.thelads.core.client;
 
 import java.awt.image.BufferedImage;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketAddress;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -81,5 +85,25 @@ class LinkPreviewTest {
         assertNull(LinkPreview.request("   ", null));
         assertNull(LinkPreview.getEntry("https://nonexistent-url-test.org"));
         assertFalse(LinkPreview.hasPreview("https://nonexistent-url-test.org"));
+    }
+
+    @Test
+    void pinnedSocketConnectsToPinnedAddress() throws Exception {
+        InetAddress pinned = InetAddress.getByName("127.0.0.1");
+        try (ServerSocket server = new ServerSocket(0, 1, pinned)) {
+            int port = server.getLocalPort();
+            javax.net.ssl.SSLSocketFactory defaultFactory = (javax.net.ssl.SSLSocketFactory) javax.net.ssl.SSLSocketFactory.getDefault();
+            LinkPreview.PinnedSSLSocketFactory factory = new LinkPreview.PinnedSSLSocketFactory(defaultFactory, pinned, "example.com");
+            Socket s = factory.createSocket();
+            assertNotNull(s, "createSocket() must return a socket");
+            SocketAddress endpoint = InetSocketAddress.createUnresolved("rebinding-attacker.invalid", port);
+            s.connect(endpoint, 2000);
+            try (Socket accepted = server.accept()) {
+                assertTrue(s.isConnected(), "Socket must be connected");
+                assertEquals(pinned, s.getInetAddress(), "Socket must connect to the pinned IP address");
+            } finally {
+                s.close();
+            }
+        }
     }
 }

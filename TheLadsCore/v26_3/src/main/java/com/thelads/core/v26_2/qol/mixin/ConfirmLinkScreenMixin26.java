@@ -111,7 +111,7 @@ public abstract class ConfirmLinkScreenMixin26 extends ConfirmScreen {
         }
         DynamicTexture dt = new DynamicTexture(() -> "lads_link_preview", ni);
         this.lads$dynamicTexture = dt;
-        Identifier id = Identifier.fromNamespaceAndPath("theladscore", "link_preview_" + (System.currentTimeMillis() % 1000));
+        Identifier id = com.thelads.core.v26_2.qol.link.LinkPreviewTextureHelper26.nextLocation();
         Minecraft.getInstance().getTextureManager().register(id, dt);
         this.lads$previewLocation = id;
         com.thelads.core.v26_2.qol.link.LinkPreviewTextureHelper26.setActive(id, dt);
@@ -130,7 +130,6 @@ public abstract class ConfirmLinkScreenMixin26 extends ConfirmScreen {
             if (mc != null && mc.getTextureManager() != null) {
                 mc.getTextureManager().release(this.lads$previewLocation);
             }
-
             this.lads$previewLocation = null;
         }
     }

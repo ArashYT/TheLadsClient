@@ -176,7 +176,7 @@ public abstract class InventoryTweaksMixin26 extends Screen {
             cir.setReturnValue(true);
             return;
         }
-        if (event.key() == InputConstants.KEY_R && !lads$hasFocusedTextBox() && ContainerSorting.isAllowed() && lads$tweaked()) {
+        if (event.key() == InputConstants.KEY_R && !lads$hasFocusedTextBox() && ContainerSorting.isAllowed() && lads$sortable()) {
             lads$sortContainer();
             cir.setReturnValue(true);
             return;
@@ -194,7 +194,7 @@ public abstract class InventoryTweaksMixin26 extends Screen {
             ladsSearch.setFocused(false);
             setFocused(null);
         }
-        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && ContainerSorting.isAllowed() && lads$tweaked()) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && ContainerSorting.isAllowed() && lads$sortable()) {
             int bx = ContainerSorting.getButtonX(leftPos, imageWidth, InventoryTweaks.searchOn);
             int by = ContainerSorting.getButtonY(topPos);
             if (ContainerSorting.isOverButton(event.x(), event.y(), bx, by)) {

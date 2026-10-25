@@ -79,7 +79,6 @@ public abstract class GuiConfirmOpenLinkMixin189 extends GuiScreen {
             if (mc != null && mc.getTextureManager() != null) {
                 mc.getTextureManager().deleteTexture(this.lads$previewLocation);
             }
-
             this.lads$previewLocation = null;
             this.lads$loadedImage = null;
         }

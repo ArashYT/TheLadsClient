@@ -14,6 +14,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.gui.screens.recipebook.RecipeBookComponent;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -73,6 +74,9 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
         GuiEventListener focused = getFocused();
         if (focused instanceof EditBox editBox) {
             return editBox.isFocused();
+        }
+        if (focused instanceof RecipeBookComponent rb && rb.isVisible()) {
+            return true;
         }
         return false;
     }
