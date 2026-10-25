@@ -71,6 +71,7 @@ public class TheLadsCore189 {
             windowTitle = com.thelads.core.LadsVersion.clientName();
             org.lwjgl.opengl.Display.setTitle(windowTitle);
         } catch (Throwable ignored) {}
+        com.thelads.core.v1_8_9.feature.PylonWindow189.fillOptiFineDesktopMode();
         LadsGameBridge.set(new VanillaGameBridge189());
         com.thelads.core.security.AntiInjectDetector.init();
         ConfigManager.load();
