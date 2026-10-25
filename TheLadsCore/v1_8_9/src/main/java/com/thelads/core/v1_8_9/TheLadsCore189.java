@@ -71,7 +71,7 @@ public class TheLadsCore189 {
             windowTitle = com.thelads.core.LadsVersion.clientName();
             org.lwjgl.opengl.Display.setTitle(windowTitle);
         } catch (Throwable ignored) {}
-        com.thelads.core.v1_8_9.feature.PylonWindow189.fillOptiFineDesktopMode();
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.PylonWindow189.OptiFineDesktopMode());
         LadsGameBridge.set(new VanillaGameBridge189());
         com.thelads.core.v1_8_9.social.SocialBridge189 socialBridge189 = new com.thelads.core.v1_8_9.social.SocialBridge189();
         com.thelads.core.client.social.SocialBridge.set(socialBridge189);

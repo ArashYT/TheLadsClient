@@ -21,9 +21,17 @@ public final class Probe192OfDefaults {
     public static void run(Minecraft mc) throws Exception {
         LOG.info("Running OptiFine defaults and shaders link probe checks");
 
-        // 0. Video Settings > Fullscreen Mode reads OptiFine's desktop mode, null under Pylon until Lads fills it (PylonWindow189)
+        // 0. Video Settings > Fullscreen Mode reads OptiFine's desktop mode, null under Pylon until Lads fills it (PylonWindow189);
+        //    it must be back to how OptiFine had it once Video Settings closes, or F11 goes exclusive instead of borderless
+        java.lang.reflect.Field desktop = Class.forName("Config").getDeclaredField("desktopDisplayMode");
+        desktop.setAccessible(true);
+        Object before = desktop.get(null);
+        PylonWindow189.OptiFineDesktopMode fill = new PylonWindow189.OptiFineDesktopMode();
+        fill.open(new net.minecraftforge.client.event.GuiOpenEvent(new net.minecraft.client.gui.GuiVideoSettings(null, mc.gameSettings)));
         CoreProbe.check(Class.forName("Config").getMethod("getLargestDisplayMode").invoke(null) != null,
-            "OptiFine has a desktop display mode (Fullscreen Mode option)");
+            "OptiFine has a desktop display mode in Video Settings (Fullscreen Mode option)");
+        fill.open(new net.minecraftforge.client.event.GuiOpenEvent(null));
+        CoreProbe.check(desktop.get(null) == before, "OptiFine's desktop mode is back after Video Settings (F11 stays borderless)");
 
         // 1. Defaults are on in a fresh sandbox (VBOs, Fast Render, Fast Math)
         boolean vbo = mc.gameSettings.useVbo;

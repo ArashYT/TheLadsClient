@@ -30,17 +30,40 @@ public final class PylonWindow189 {
 
     /**
      * OptiFine caches Display.getDesktopDisplayMode once, from GameSettings' constructor, before the window exists. Pylon has no
-     * desktop mode then (null), so Video Settings' Fullscreen Mode crashed (Config.getLargestDisplayMode NPE). Fill it in once the
-     * window is up.
+     * desktop mode then (null), so Video Settings' Fullscreen Mode crashed (Config.getLargestDisplayMode NPE). A desktop mode also
+     * turns OptiFine's F11 into exclusive fullscreen instead of Lads' borderless one (1.11.0 QA), so it is filled only while Video
+     * Settings is open, and put back afterwards unless the player picked a fullscreen mode there.
      */
-    public static void fillOptiFineDesktopMode() {
-        try {
-            java.lang.reflect.Field mode = Class.forName("Config").getDeclaredField("desktopDisplayMode");
-            mode.setAccessible(true);
-            if (mode.get(null) != null) return;
-            mode.set(null, org.lwjgl.opengl.Display.getDesktopDisplayMode());
-            org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").info("OptiFine had no desktop display mode; now {}", mode.get(null));
-        } catch (Throwable notOptiFine) {}
+    public static final class OptiFineDesktopMode {
+        private boolean filled;
+
+        @net.minecraftforge.fml.common.eventhandler.SubscribeEvent
+        public void open(net.minecraftforge.client.event.GuiOpenEvent event) {
+            try {
+                java.lang.reflect.Field mode = Class.forName("Config").getDeclaredField("desktopDisplayMode");
+                mode.setAccessible(true);
+                if (event.gui instanceof net.minecraft.client.gui.GuiVideoSettings) {
+                    if (mode.get(null) == null) {
+                        mode.set(null, org.lwjgl.opengl.Display.getDesktopDisplayMode());
+                        filled = true;
+                    }
+                } else if (filled && "Default".equals(fullscreenMode())) {
+                    mode.set(null, null);
+                    filled = false;
+                }
+            } catch (Throwable notOptiFine) {}
+        }
+
+        /** OptiFine's Fullscreen Mode setting ("Default" = Lads' borderless F11); "Default" when it can't be read. */
+        private static String fullscreenMode() {
+            try {
+                Object settings = net.minecraft.client.Minecraft.getMinecraft().gameSettings;
+                Object value = settings.getClass().getField("ofFullscreenMode").get(settings);
+                return value instanceof String ? (String) value : "Default";
+            } catch (Throwable e) {
+                return "Default";
+            }
+        }
     }
 
     /** Minecraft.checkWindowResize's Display.wasResized, with a latched resize. */
