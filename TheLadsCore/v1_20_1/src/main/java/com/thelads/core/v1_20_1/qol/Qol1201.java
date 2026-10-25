@@ -80,7 +80,12 @@ public final class Qol1201 {
 
     public static void register() {
         ModuleSupport.registerBuiltIn(TooltipScroll.NAME, CrashCatcher.NAME, QuickReconnect.NAME, KeepCursor.NAME, SoundVolumes.NAME,
-            GuiScaleOverride.NAME, ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME);
+            GuiScaleOverride.NAME, ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME,
+            // 1.11.0 lanes: InventoryTweaksMixin1201 (sorting, terminal solvers), AbilitiesMixin1201, NativeFeatures1201's elytra key,
+            // ConfirmLinkScreenMixin1201, MlgClutch1201, the schematic overlay here and MouseHandlerMixin's toast buttons (LaneModuleSupportTest).
+            com.thelads.core.modules.ContainerSortingModule.NAME, com.thelads.core.modules.CreativeFlyBoostModule.NAME,
+            com.thelads.core.modules.ElytraSwapModule.NAME, com.thelads.core.modules.LinkPreviewModule.NAME, com.thelads.core.modules.MlgCobwebModule.NAME,
+            com.thelads.core.client.schematic.SchematicManager.NAME, "Server Notification Actions", com.thelads.core.client.hypixel.SkyBlockSuite.MODULE_NAME);
 
         ClientTickEvents.END_CLIENT_TICK.register(Qol1201::tick);
         WorldRenderEvents.BEFORE_DEBUG_RENDER.register(Qol1201::chunkBorders);

@@ -60,7 +60,12 @@ import org.lwjgl.opengl.GL11;
 public final class Qol189 {
     /** The modules registered as built in here (CoreProbe's catalog check). */
     public static final String[] BUILT_IN = {TooltipScroll.NAME, CrashCatcher.NAME, QuickReconnect.NAME, KeepCursor.NAME, SoundVolumes.NAME,
-        GuiScaleOverride.NAME, ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME};
+        GuiScaleOverride.NAME, ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME,
+        // 1.11.0 lanes: InventoryTweaksMixin189 (sorting, terminal solvers), PlayerCapabilitiesMixin189, GuiConfirmOpenLinkMixin189,
+        // MlgClutch189, the schematic overlay here and GuiScreenMixin's toast buttons (LaneModuleSupportTest).
+        com.thelads.core.modules.ContainerSortingModule.NAME, com.thelads.core.modules.CreativeFlyBoostModule.NAME,
+        com.thelads.core.modules.LinkPreviewModule.NAME, com.thelads.core.modules.MlgCobwebModule.NAME,
+        com.thelads.core.client.schematic.SchematicManager.NAME, "Server Notification Actions", com.thelads.core.client.hypixel.SkyBlockSuite.MODULE_NAME};
     private static final int RECONNECT = 0x4C510;
     private static final OldServerPinger PINGER = new OldServerPinger();
     private static ExecutorService pings;
@@ -86,6 +91,10 @@ public final class Qol189 {
     public static void register() {
         SoundVolumes.legacy = true;
         ModuleSupport.registerBuiltIn(BUILT_IN);
+        ModuleSupport.registerUnavailable(com.thelads.core.modules.ElytraSwapModule.NAME, "Minecraft 1.8.9 has no elytra.");
+        // BedColors189 tints the red bed texture, so other team colors come out nearly black (1.11.0 QA R2-F5): off until it draws right.
+        ModuleSupport.registerUnavailable(com.thelads.core.modules.BedColorsModule.NAME, "Not ready on Minecraft 1.8.9 yet: team colors "
+            + "on the red bed texture still look too dark.");
         MinecraftForge.EVENT_BUS.register(new Events());
     }
 
