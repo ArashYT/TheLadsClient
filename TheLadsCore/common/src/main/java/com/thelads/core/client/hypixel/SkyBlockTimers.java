@@ -4,16 +4,14 @@ import java.util.Locale;
 
 /**
  * Client-side countdown timers for Hypixel SkyBlock Garden:
- * 1. Jacob's Farming Contest: Fixed real-world schedule (runs :15-:35 past every hour). Needs no API.
- * 2. Composter: 10-minute cycle per organic compost, tracked via GUI / chat events.
- * 3. Pest Spawns: ~10-minute cooldown window while farming crops in the Garden.
+ * 1. Composter: Cycle time tracking per organic compost, populated when checking composter inventory.
+ * 2. Pest Spawns: 10-minute cooldown window while farming crops in the Garden.
+ *    Source: Hypixel SkyBlock Garden Update - Chat announcement: "GROSS! A Pest has appeared in Plot - [name]!"
+ *            Reset on pest spawn detection.
  */
 public final class SkyBlockTimers {
     private static long composterEndNanos = 0;
     private static long pestEndNanos = 0;
-
-    private static long cachedJacobEpochSec = -1;
-    private static String cachedJacobString = "Jacob: Ready";
 
     private static long cachedComposterSec = -1;
     private static String cachedComposterString = "Composter: Ready";
@@ -34,7 +32,7 @@ public final class SkyBlockTimers {
     }
 
     public static void resetPestTimer() {
-        // Standard 10 minute pest spawn cooldown in the Garden
+        // Standard 10 minute pest spawn cooldown in the Garden (Source: Hypixel SkyBlock Garden Mechanics)
         cachedPestSec = -1;
         cachedPestString = null;
         pestEndNanos = System.nanoTime() + 600_000_000_000L;
@@ -47,37 +45,6 @@ public final class SkyBlockTimers {
         cachedComposterString = null;
         cachedPestSec = -1;
         cachedPestString = null;
-        cachedJacobEpochSec = -1;
-        cachedJacobString = null;
-    }
-
-    /** Formats the active or upcoming Jacob's Farming Contest timer. */
-    public static String getContestString(boolean preview) {
-        if (preview) {
-            return "Jacob: 18m 20s";
-        }
-        long now = System.currentTimeMillis();
-        long epochSec = now / 1000L;
-        if (epochSec == cachedJacobEpochSec && cachedJacobString != null) {
-            return cachedJacobString;
-        }
-        long minute = (epochSec / 60) % 60;
-        long second = epochSec % 60;
-        String res;
-        if (minute >= 15 && minute < 35) {
-            long remMin = 34 - minute;
-            long remSec = 59 - second;
-            res = "Jacob: ACTIVE (" + remMin + "m " + (remSec < 10 ? "0" : "") + remSec + "s)";
-        } else {
-            long waitMin = (15 - minute + 60) % 60;
-            if (waitMin == 0) waitMin = 60;
-            waitMin--;
-            long remSec = 59 - second;
-            res = "Jacob: " + waitMin + "m " + (remSec < 10 ? "0" : "") + remSec + "s";
-        }
-        cachedJacobEpochSec = epochSec;
-        cachedJacobString = res;
-        return res;
     }
 
     /** Formats remaining composter time or ready status. */
@@ -128,13 +95,16 @@ public final class SkyBlockTimers {
         return res;
     }
 
+    /**
+     * Hypixel chat trigger parser.
+     * Sourced triggers:
+     * - "GROSS! A Pest has appeared in Plot - [name]!" (Hypixel Garden Pest spawn announcement)
+     */
     public static void handleChatMessage(String cleanMessage) {
         if (cleanMessage == null) return;
         String lower = cleanMessage.toLowerCase(Locale.ROOT);
-        if (lower.contains("a pest has appeared") || lower.contains("pest appeared") || lower.contains("spotted a pest")) {
+        if (lower.contains("a pest has appeared in plot") || lower.contains("gross! a pest has appeared")) {
             resetPestTimer();
-        } else if (lower.contains("compost complete") || lower.contains("composter produced") || lower.contains("composter finished")) {
-            setComposterRemainingSeconds(600);
         }
     }
 }

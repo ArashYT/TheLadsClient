@@ -15,10 +15,4 @@ public abstract class ShowcaseOverlayMixin {
     private void lads$showcaseCursor(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         ShowcaseDirector26.drawCursor(g);
     }
-    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
-    private void lads$toastClick(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick, org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> cir) {
-        if (com.thelads.core.client.hud.ServerRulesNotice.mouseClicked((int) event.x(), (int) event.y(), event.button())) {
-            cir.setReturnValue(true);
-        }
-    }
 }

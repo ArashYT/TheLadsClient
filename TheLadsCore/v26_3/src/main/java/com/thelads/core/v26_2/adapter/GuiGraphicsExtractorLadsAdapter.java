@@ -309,11 +309,6 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
         g.disableScissor();
     }
 
-@Override
-    public void drawMap(int x, int y, int size, boolean preview) {
-        com.thelads.core.client.hud.DungeonMapHudElement.drawDungeonPreview(this, x, y, size);
-    }
-
     @Override
     public void blit(String texture, int x, int y, int u, int v, int width, int height) {
         String key = texture != null ? texture : "minecraft:textures/gui/icons.png";

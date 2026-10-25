@@ -15,18 +15,6 @@ class SkyBlockTimersTest {
     }
 
     @Test
-    void testContestStringPreview() {
-        assertEquals("Jacob: 18m 20s", SkyBlockTimers.getContestString(true));
-    }
-
-    @Test
-    void testContestStringRealCalculation() {
-        String s = SkyBlockTimers.getContestString(false);
-        assertNotNull(s);
-        assertTrue(s.startsWith("Jacob: "), "Contest string should start with Jacob: ");
-    }
-
-    @Test
     void testComposterLifecycle() {
         assertEquals("Composter: 4m 12s", SkyBlockTimers.getComposterString(true));
 
@@ -53,21 +41,14 @@ class SkyBlockTimersTest {
 
     @Test
     void testChatTriggers() {
-        SkyBlockTimers.handleChatMessage("A Pest has appeared in Plot 4!");
+        // Hypixel SkyBlock Garden pest spawn announcement
+        SkyBlockTimers.handleChatMessage("GROSS! A Pest has appeared in Plot - 4! CLICK HERE to teleport to the plot!");
         String pest = SkyBlockTimers.getPestString(false);
         assertTrue(pest.contains("Pest: 9m") || pest.contains("Pest: 10m"));
-
-        SkyBlockTimers.handleChatMessage("The Composter produced 1 Organic Compost!");
-        String comp = SkyBlockTimers.getComposterString(false);
-        assertTrue(comp.contains("Composter: 9m") || comp.contains("Composter: 10m"));
     }
 
     @Test
     void testCachedStrings() {
-        String c1 = SkyBlockTimers.getContestString(false);
-        String c2 = SkyBlockTimers.getContestString(false);
-        assertSame(c1, c2, "Repeated calls within same second should return identical cached string reference");
-
         SkyBlockTimers.setComposterRemainingSeconds(100);
         String comp1 = SkyBlockTimers.getComposterString(false);
         String comp2 = SkyBlockTimers.getComposterString(false);

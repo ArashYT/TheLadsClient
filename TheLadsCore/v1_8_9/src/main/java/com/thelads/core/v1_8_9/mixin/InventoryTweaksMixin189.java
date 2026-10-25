@@ -160,6 +160,10 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsClick(int mouseX, int mouseY, int button, CallbackInfo ci) {
+        if (com.thelads.core.client.hud.ServerRulesNotice.mouseClicked(mouseX, mouseY, button)) {
+            ci.cancel();
+            return;
+        }
         if (ladsSearch != null) {
             ladsSearch.mouseClicked(mouseX, mouseY, button); // focuses it when clicked, unfocuses it otherwise
             if (ladsSearch.isFocused()) {

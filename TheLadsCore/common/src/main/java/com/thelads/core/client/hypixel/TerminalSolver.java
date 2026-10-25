@@ -31,7 +31,7 @@ public final class TerminalSolver {
     public static final int COLOR_PANES = 0x7000FF00;
 
     private static final String[] COLOR_NAMES = {
-        "light blue", "magenta", "yellow", "orange", "purple", "silver",
+        "light blue", "light gray", "magenta", "yellow", "orange", "purple", "silver",
         "green", "white", "black", "brown", "pink", "cyan",
         "lime", "gray", "blue", "red"
     };
@@ -152,6 +152,24 @@ public final class TerminalSolver {
     }
 
     /**
+     * Checks if an item matches the target color using exact colour-name match.
+     * Prevents false collisions where "Blue" matches "Light Blue" or "Gray" matches "Light Gray".
+     */
+    public static boolean matchesColor(String itemName, String targetColor) {
+        if (itemName == null || targetColor == null) return false;
+        String clean = stripFormatting(itemName).toLowerCase(Locale.ROOT);
+        String target = targetColor.toLowerCase(Locale.ROOT);
+
+        // Exact colour-name match ("Blue" must not match "Light Blue")
+        if (target.equals("blue") && clean.contains("light blue")) return false;
+        if (target.equals("gray") && clean.contains("light gray")) return false;
+        if (target.equals("silver") && clean.contains("light gray")) return true;
+        if (target.equals("light gray") && clean.contains("silver")) return true;
+
+        return java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(target) + "\\b").matcher(clean).find();
+    }
+
+    /**
      * Finds the current target number (the lowest uncompleted number from 1 to 14)
      * by inspecting container slots.
      */
@@ -226,11 +244,8 @@ public final class TerminalSolver {
                 String targetColor = extractTargetColor(containerTitle);
                 boolean greenGoal = targetColor != null && (targetColor.contains("lime") || targetColor.contains("green"));
                 if (isSlotCompleted(itemName, stackSize, greenGoal)) return 0;
-                if (targetColor != null) {
-                    String clean = stripFormatting(itemName).toLowerCase(Locale.ROOT);
-                    if (clean.contains(targetColor)) {
-                        return COLOR_TARGET;
-                    }
+                if (targetColor != null && matchesColor(itemName, targetColor)) {
+                    return COLOR_TARGET;
                 }
             }
             case STARTS_WITH_LETTER -> {

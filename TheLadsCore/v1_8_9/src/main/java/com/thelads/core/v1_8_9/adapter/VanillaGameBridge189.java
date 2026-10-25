@@ -541,6 +541,21 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         }
     }
 
+    @Override
+    public void openUrlWithConfirmation(String url) {
+        if (!com.thelads.core.client.bridge.LadsGameBridge.isSafeUrl(url)) return;
+        Minecraft mc = mc();
+        mc.addScheduledTask(() -> {
+            net.minecraft.client.gui.GuiScreen parent = mc.currentScreen;
+            mc.displayGuiScreen(new net.minecraft.client.gui.GuiConfirmOpenLink((result, id) -> {
+                if (result) {
+                    openUrl(url);
+                }
+                mc.displayGuiScreen(parent);
+            }, url, 0, false));
+        });
+    }
+
     public List<String> getOnlinePlayerNames() {
         if (mc().getNetHandler() == null) return Collections.emptyList();
         Collection<net.minecraft.client.network.NetworkPlayerInfo> playerInfoMap = mc().getNetHandler().getPlayerInfoMap();

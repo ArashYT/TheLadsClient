@@ -19,6 +19,14 @@ public class MouseHandlerMixin {
     private void ladsMouse(long window, int button, int action, int mods, CallbackInfo ci) {
         Minecraft mc = Minecraft.getInstance();
         if (window != mc.getWindow().getWindow()) return;
+        if (action == GLFW.GLFW_PRESS && mc.screen != null) {
+            double mouseX = mc.mouseHandler.xpos() * (double) mc.getWindow().getGuiScaledWidth() / (double) mc.getWindow().getScreenWidth();
+            double mouseY = mc.mouseHandler.ypos() * (double) mc.getWindow().getGuiScaledHeight() / (double) mc.getWindow().getScreenHeight();
+            if (com.thelads.core.client.hud.ServerRulesNotice.mouseClicked((int) mouseX, (int) mouseY, button)) {
+                ci.cancel();
+                return;
+            }
+        }
         if (NativeMenuKey1201.mouse(button, action, mods)) {
             ci.cancel();
             return;

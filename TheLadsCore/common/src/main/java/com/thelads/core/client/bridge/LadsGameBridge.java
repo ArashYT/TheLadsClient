@@ -198,6 +198,10 @@ public interface LadsGameBridge {
             }
         } catch (Throwable ignored) {}
     }
+    /** Opens a safe external web URL after showing a confirmation screen to the player. */
+    default void openUrlWithConfirmation(String url) {
+        openUrl(url);
+    }
     static boolean isSafeUrl(String url) {
         if (url == null || url.trim().isEmpty()) return false;
         String clean = url.trim();

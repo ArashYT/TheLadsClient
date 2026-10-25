@@ -98,7 +98,9 @@ public interface LadsGraphics {
      * or a preview dungeon room layout when preview is true.
      */
     default void drawMap(int x, int y, int size, boolean preview) {
-        com.thelads.core.client.hud.DungeonMapHudElement.drawDungeonPreview(this, x, y, size);
+        if (preview) {
+            com.thelads.core.client.hud.DungeonMapHudElement.drawDungeonPreview(this, x, y, size);
+        }
     }
 
     default void drawBossBars(int x,int y,int max,boolean names,boolean preview) {}

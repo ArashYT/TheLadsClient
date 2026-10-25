@@ -140,6 +140,25 @@ class TerminalSolverTest {
     }
 
     @Test
+    void testExactColorNameMatchBlueVsLightBlue() {
+        String titleBlue = "Select all the Blue items!";
+        int totalSlots = 54;
+
+        // Blue Wool MUST be highlighted
+        assertEquals(TerminalSolver.COLOR_TARGET, TerminalSolver.getSlotHighlight(titleBlue, 2, 1, "Blue Wool", totalSlots));
+
+        // Light Blue Wool MUST NOT be highlighted when goal is Blue
+        assertEquals(0, TerminalSolver.getSlotHighlight(titleBlue, 3, 1, "Light Blue Wool", totalSlots));
+        assertEquals(0, TerminalSolver.getSlotHighlight(titleBlue, 4, 1, "Light Blue Stained Glass", totalSlots));
+
+        String titleLightBlue = "Select all the Light Blue items!";
+        // Light Blue Wool MUST be highlighted when goal is Light Blue
+        assertEquals(TerminalSolver.COLOR_TARGET, TerminalSolver.getSlotHighlight(titleLightBlue, 3, 1, "Light Blue Wool", totalSlots));
+        // Blue Wool MUST NOT be highlighted when goal is Light Blue
+        assertEquals(0, TerminalSolver.getSlotHighlight(titleLightBlue, 2, 1, "Blue Wool", totalSlots));
+    }
+
+    @Test
     void testSolveSelectLimeItems() {
         String title = "Select all the Lime items!";
         int totalSlots = 54;

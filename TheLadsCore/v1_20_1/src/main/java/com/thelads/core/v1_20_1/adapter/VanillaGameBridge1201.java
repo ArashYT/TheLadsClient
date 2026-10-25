@@ -164,6 +164,21 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
         Minecraft.getInstance().setScreen(new net.minecraft.client.gui.screens.ChatScreen(text != null ? text : ""));
     }
 
+    @Override
+    public void openUrlWithConfirmation(String url) {
+        if (!com.thelads.core.client.bridge.LadsGameBridge.isSafeUrl(url)) return;
+        Minecraft mc = Minecraft.getInstance();
+        mc.tell(() -> {
+            net.minecraft.client.gui.screens.Screen parent = mc.screen;
+            mc.setScreen(new net.minecraft.client.gui.screens.ConfirmLinkScreen(confirmed -> {
+                if (confirmed) {
+                    openUrl(url);
+                }
+                mc.setScreen(parent);
+            }, url, false));
+        });
+    }
+
     @Override public List<String> getOnlinePlayerNames() {
         var connection = Minecraft.getInstance().getConnection();
         if (connection == null) return List.of();

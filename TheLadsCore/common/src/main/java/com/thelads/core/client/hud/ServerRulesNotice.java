@@ -77,7 +77,7 @@ public final class ServerRulesNotice {
 
     public static boolean isActionsEnabled() {
         Module m = ModuleManager.getInstance().getModule("Server Notification Actions");
-        if (m != null && !m.isEnabled()) return false;
+        if (m == null || !m.isEnabled()) return false;
         return !HypixelSafetyManager.isDisallowed("Server Notification Actions");
     }
 
@@ -211,7 +211,7 @@ public final class ServerRulesNotice {
             case OPEN_URL -> {
                 String url = action.getPayload().trim();
                 if (LadsGameBridge.isSafeUrl(url)) {
-                    LadsGameBridge.get().openUrl(url);
+                    LadsGameBridge.get().openUrlWithConfirmation(url);
                 }
                 clearPolicyToast();
             }

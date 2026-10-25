@@ -8,7 +8,7 @@ import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 
 /**
- * Hypixel SkyBlock Garden crop, pest, and composter countdown timer HUD.
+ * Hypixel SkyBlock Garden pest and composter countdown timer HUD.
  * Gated under HypixelSafetyManager.
  */
 public class SkyBlockTimersHudElement extends HudElement {
@@ -16,7 +16,7 @@ public class SkyBlockTimersHudElement extends HudElement {
 
     public SkyBlockTimersHudElement() {
         this.width = 110;
-        this.height = 36;
+        this.height = 26;
         this.moduleName = ID;
         useOrganizedDefaults();
     }
@@ -50,13 +50,11 @@ public class SkyBlockTimersHudElement extends HudElement {
         if (bg == 0) bg = 0xB0101016;
         g.fill(dx, dy, dx + w, dy + h, bg);
 
-        String contest = SkyBlockTimers.getContestString(preview);
         String composter = SkyBlockTimers.getComposterString(preview);
         String pest = SkyBlockTimers.getPestString(preview);
 
         boolean shadow = HudSettings.getInstance().isTextShadow();
-        g.drawText(contest, dx + 4, dy + 3, 0xFFFFCC00, shadow);
-        g.drawText(composter, dx + 4, dy + 14, 0xFF55FF55, shadow);
-        g.drawText(pest, dx + 4, dy + 25, 0xFFFF5555, shadow);
+        g.drawText(composter, dx + 4, dy + 3, 0xFF55FF55, shadow);
+        g.drawText(pest, dx + 4, dy + 14, 0xFFFF5555, shadow);
     }
 }
