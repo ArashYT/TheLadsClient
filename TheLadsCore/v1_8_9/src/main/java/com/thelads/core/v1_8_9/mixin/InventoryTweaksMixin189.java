@@ -77,7 +77,12 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
 
     @Unique
     private boolean ladsTweaked() {
-        return !((Object) this instanceof GuiContainerCreative) && lads$isStorageMenu();
+        return !((Object) this instanceof GuiContainerCreative);
+    }
+
+    @Unique
+    private boolean lads$sortable() {
+        return ladsTweaked() && lads$isStorageMenu();
     }
 
     @Inject(method = "initGui", at = @At("TAIL"), require = 1)
@@ -148,7 +153,7 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
             if (!ladsSearch.isFocused() && ladsSearch.getText().isEmpty())
                 fontRendererObj.drawString("Search", ladsSearch.xPosition + 4, ladsSearch.yPosition + 2, 0xFF606060);
         }
-        if (ContainerSorting.isAllowed() && ladsTweaked()) {
+        if (ContainerSorting.isAllowed() && lads$sortable()) {
             int bx = ContainerSorting.getButtonX(guiLeft, xSize, InventoryTweaks.searchOn);
             int by = ContainerSorting.getButtonY(guiTop);
             boolean over = ContainerSorting.isOverButton(mouseX, mouseY, bx, by);
@@ -167,7 +172,7 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
             ci.cancel();
             return;
         }
-        if (key == Keyboard.KEY_R && !lads$hasFocusedTextBox() && ContainerSorting.isAllowed() && ladsTweaked()) {
+        if (key == Keyboard.KEY_R && !lads$hasFocusedTextBox() && ContainerSorting.isAllowed() && lads$sortable()) {
             lads$sortContainer();
             ci.cancel();
             return;
@@ -188,7 +193,7 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
                 return;
             }
         }
-        if (button == 0 && ContainerSorting.isAllowed() && ladsTweaked()) {
+        if (button == 0 && ContainerSorting.isAllowed() && lads$sortable()) {
             int bx = ContainerSorting.getButtonX(guiLeft, xSize, InventoryTweaks.searchOn);
             int by = ContainerSorting.getButtonY(guiTop);
             if (ContainerSorting.isOverButton(mouseX, mouseY, bx, by)) {

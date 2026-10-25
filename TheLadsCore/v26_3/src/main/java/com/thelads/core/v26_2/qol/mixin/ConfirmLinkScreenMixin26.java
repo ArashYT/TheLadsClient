@@ -25,9 +25,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ConfirmLinkScreen.class)
 public abstract class ConfirmLinkScreenMixin26 extends ConfirmScreen {
-    private static Identifier lads$activeLocation = null;
-    private static DynamicTexture lads$activeTexture = null;
-
     @Shadow @Final private URI url;
 
     @Unique private Identifier lads$previewLocation;
@@ -37,22 +34,6 @@ public abstract class ConfirmLinkScreenMixin26 extends ConfirmScreen {
 
     public ConfirmLinkScreenMixin26() {
         super(null, null, null);
-    }
-
-    public static void releaseActiveTexture() {
-        if (lads$activeTexture != null) {
-            try {
-                lads$activeTexture.close();
-            } catch (Throwable ignored) {}
-            lads$activeTexture = null;
-        }
-        if (lads$activeLocation != null) {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc != null && mc.getTextureManager() != null) {
-                mc.getTextureManager().release(lads$activeLocation);
-            }
-            lads$activeLocation = null;
-        }
     }
 
     @Inject(method = "addButtons(Lnet/minecraft/client/gui/layouts/LinearLayout;)V", at = @At("TAIL"))
@@ -133,8 +114,7 @@ public abstract class ConfirmLinkScreenMixin26 extends ConfirmScreen {
         Identifier id = Identifier.fromNamespaceAndPath("theladscore", "link_preview_" + (System.currentTimeMillis() % 1000));
         Minecraft.getInstance().getTextureManager().register(id, dt);
         this.lads$previewLocation = id;
-        lads$activeTexture = dt;
-        lads$activeLocation = id;
+        com.thelads.core.v26_2.qol.link.LinkPreviewTextureHelper26.setActive(id, dt);
     }
 
     @Unique
@@ -150,10 +130,7 @@ public abstract class ConfirmLinkScreenMixin26 extends ConfirmScreen {
             if (mc != null && mc.getTextureManager() != null) {
                 mc.getTextureManager().release(this.lads$previewLocation);
             }
-            if (lads$activeLocation == this.lads$previewLocation) {
-                lads$activeLocation = null;
-                lads$activeTexture = null;
-            }
+
             this.lads$previewLocation = null;
         }
     }

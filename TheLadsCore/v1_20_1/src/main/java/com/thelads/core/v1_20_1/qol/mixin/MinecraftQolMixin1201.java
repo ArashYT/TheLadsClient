@@ -40,7 +40,7 @@ abstract class MinecraftQolMixin1201 {
     private void lads$containerClosing(Screen next, CallbackInfo ci) {
         if (screen instanceof AbstractContainerScreen<?> && next != screen) KeepCursor.closed(mouseHandler.xpos(), mouseHandler.ypos(), System.nanoTime());
         if (screen instanceof net.minecraft.client.gui.screens.ConfirmLinkScreen && next != screen) {
-            ConfirmLinkScreenMixin1201.releaseActiveTexture();
+            com.thelads.core.v1_20_1.qol.link.LinkPreviewTextureHelper1201.releaseActive();
         }
     }
 

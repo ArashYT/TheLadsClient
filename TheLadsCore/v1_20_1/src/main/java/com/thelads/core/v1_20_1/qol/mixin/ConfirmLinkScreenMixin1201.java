@@ -21,9 +21,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ConfirmLinkScreen.class)
 public abstract class ConfirmLinkScreenMixin1201 extends ConfirmScreen {
-    private static ResourceLocation lads$activeLocation = null;
-    private static DynamicTexture lads$activeTexture = null;
-
     @Shadow @Final private String url;
 
     @Unique private ResourceLocation lads$previewLocation;
@@ -33,22 +30,6 @@ public abstract class ConfirmLinkScreenMixin1201 extends ConfirmScreen {
 
     public ConfirmLinkScreenMixin1201() {
         super(null, null, null);
-    }
-
-    public static void releaseActiveTexture() {
-        if (lads$activeTexture != null) {
-            try {
-                lads$activeTexture.close();
-            } catch (Throwable ignored) {}
-            lads$activeTexture = null;
-        }
-        if (lads$activeLocation != null) {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc != null && mc.getTextureManager() != null) {
-                mc.getTextureManager().release(lads$activeLocation);
-            }
-            lads$activeLocation = null;
-        }
     }
 
     @Inject(method = "addButtons(I)V", at = @At("TAIL"))
@@ -88,14 +69,19 @@ public abstract class ConfirmLinkScreenMixin1201 extends ConfirmScreen {
         NativeImage ni = new NativeImage(w, h, true);
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
-                ni.setPixelRGBA(x, y, img.getRGB(x, y));
+                int argb = img.getRGB(x, y);
+                int a = (argb >> 24) & 0xFF;
+                int r = (argb >> 16) & 0xFF;
+                int g = (argb >> 8) & 0xFF;
+                int b = argb & 0xFF;
+                int abgr = (a << 24) | (b << 16) | (g << 8) | r;
+                ni.setPixelRGBA(x, y, abgr);
             }
         }
         DynamicTexture dt = new DynamicTexture(ni);
         this.lads$dynamicTexture = dt;
         this.lads$previewLocation = Minecraft.getInstance().getTextureManager().register("lads_link_preview", dt);
-        lads$activeTexture = dt;
-        lads$activeLocation = this.lads$previewLocation;
+        com.thelads.core.v1_20_1.qol.link.LinkPreviewTextureHelper1201.setActive(this.lads$previewLocation, dt);
     }
 
     @Unique
@@ -110,10 +96,6 @@ public abstract class ConfirmLinkScreenMixin1201 extends ConfirmScreen {
             Minecraft mc = Minecraft.getInstance();
             if (mc != null && mc.getTextureManager() != null) {
                 mc.getTextureManager().release(this.lads$previewLocation);
-            }
-            if (lads$activeLocation == this.lads$previewLocation) {
-                lads$activeLocation = null;
-                lads$activeTexture = null;
             }
             this.lads$previewLocation = null;
         }

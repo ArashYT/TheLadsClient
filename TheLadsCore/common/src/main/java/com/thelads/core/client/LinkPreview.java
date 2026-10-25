@@ -10,7 +10,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.URI;
 import java.net.URL;
 import java.util.Collections;
@@ -188,10 +191,24 @@ public final class LinkPreview {
                 }
 
                 String host = uri.getHost();
-                if (!isSafePublicHost(host)) {
+                if (host == null || host.isEmpty()) {
                     entry.status = Status.NOT_ALLOWED;
                     return;
                 }
+
+                // Resolve and pin DNS address once; verify all returned addresses are safe public hosts
+                InetAddress[] addrs = InetAddress.getAllByName(host);
+                if (addrs == null || addrs.length == 0) {
+                    entry.status = Status.NOT_ALLOWED;
+                    return;
+                }
+                for (InetAddress a : addrs) {
+                    if (!isSafePublicAddress(a)) {
+                        entry.status = Status.NOT_ALLOWED;
+                        return;
+                    }
+                }
+                final InetAddress pinnedAddr = addrs[0];
 
                 URL url = uri.toURL();
                 conn = (HttpURLConnection) url.openConnection();
@@ -200,6 +217,12 @@ public final class LinkPreview {
                 conn.setInstanceFollowRedirects(false); // follow manually to inspect target IP and scheme
                 conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) TheLadsClient/1.10.0");
                 conn.setRequestProperty("Accept", "image/png,image/jpeg,image/webp,image/gif;q=0.9");
+                conn.setRequestProperty("Host", host);
+
+                if (conn instanceof javax.net.ssl.HttpsURLConnection httpsConn) {
+                    javax.net.ssl.SSLSocketFactory defaultFactory = (javax.net.ssl.SSLSocketFactory) javax.net.ssl.SSLSocketFactory.getDefault();
+                    httpsConn.setSSLSocketFactory(new PinnedSSLSocketFactory(defaultFactory, pinnedAddr, host));
+                }
                 conn.connect();
 
                 int code = conn.getResponseCode();
@@ -399,6 +422,26 @@ public final class LinkPreview {
                     return false;
                 }
             }
+            // IPv6 NAT64 64:ff9b::/96
+            if (b[0] == 0 && b[1] == 0x64 && (b[2] & 0xFF) == 0xFF && (b[3] & 0xFF) == 0x9B &&
+                b[4] == 0 && b[5] == 0 && b[6] == 0 && b[7] == 0 &&
+                b[8] == 0 && b[9] == 0 && b[10] == 0 && b[11] == 0) {
+                byte[] ipv4 = new byte[] { b[12], b[13], b[14], b[15] };
+                try {
+                    return isSafePublicAddress(InetAddress.getByAddress(ipv4));
+                } catch (Exception e) {
+                    return false;
+                }
+            }
+            // IPv6 6to4 2002::/16
+            if ((b[0] & 0xFF) == 0x20 && (b[1] & 0xFF) == 0x02) {
+                byte[] ipv4 = new byte[] { b[2], b[3], b[4], b[5] };
+                try {
+                    return isSafePublicAddress(InetAddress.getByAddress(ipv4));
+                } catch (Exception e) {
+                    return false;
+                }
+            }
             // IPv6 Unique Local fc00::/7 (0xfc or 0xfd)
             int b0 = b[0] & 0xFF;
             if (b0 == 0xFC || b0 == 0xFD) return false;
@@ -421,5 +464,62 @@ public final class LinkPreview {
         g.drawImage(src, 0, 0, targetW, targetH, null);
         g.dispose();
         return thumb;
+    }
+
+    private static final class PinnedSSLSocketFactory extends javax.net.ssl.SSLSocketFactory {
+        private final javax.net.ssl.SSLSocketFactory delegate;
+        private final InetAddress pinnedAddress;
+        private final String targetHost;
+
+        PinnedSSLSocketFactory(javax.net.ssl.SSLSocketFactory delegate, InetAddress pinnedAddress, String targetHost) {
+            this.delegate = delegate;
+            this.pinnedAddress = pinnedAddress;
+            this.targetHost = targetHost;
+        }
+
+        @Override
+        public String[] getDefaultCipherSuites() {
+            return delegate.getDefaultCipherSuites();
+        }
+
+        @Override
+        public String[] getSupportedCipherSuites() {
+            return delegate.getSupportedCipherSuites();
+        }
+
+        @Override
+        public Socket createSocket(Socket s, String host, int port, boolean autoClose) throws IOException {
+            return delegate.createSocket(s, targetHost, port, autoClose);
+        }
+
+        @Override
+        public Socket createSocket(String host, int port) throws IOException {
+            Socket raw = new Socket();
+            raw.connect(new InetSocketAddress(pinnedAddress, port), TIMEOUT_MS);
+            return delegate.createSocket(raw, targetHost, port, true);
+        }
+
+        @Override
+        public Socket createSocket(String host, int port, InetAddress localHost, int localPort) throws IOException {
+            Socket raw = new Socket();
+            raw.bind(new InetSocketAddress(localHost, localPort));
+            raw.connect(new InetSocketAddress(pinnedAddress, port), TIMEOUT_MS);
+            return delegate.createSocket(raw, targetHost, port, true);
+        }
+
+        @Override
+        public Socket createSocket(InetAddress host, int port) throws IOException {
+            Socket raw = new Socket();
+            raw.connect(new InetSocketAddress(pinnedAddress, port), TIMEOUT_MS);
+            return delegate.createSocket(raw, targetHost, port, true);
+        }
+
+        @Override
+        public Socket createSocket(InetAddress address, int port, InetAddress localAddress, int localPort) throws IOException {
+            Socket raw = new Socket();
+            raw.bind(new InetSocketAddress(localAddress, localPort));
+            raw.connect(new InetSocketAddress(pinnedAddress, port), TIMEOUT_MS);
+            return delegate.createSocket(raw, targetHost, port, true);
+        }
     }
 }

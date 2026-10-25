@@ -21,23 +21,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(GuiConfirmOpenLink.class)
 public abstract class GuiConfirmOpenLinkMixin189 extends GuiScreen {
     private static final int LADS_LOAD_PREVIEW_BTN_ID = 991204;
-    private static ResourceLocation lads$activeTextureLoc = null;
 
     @Shadow @Final private String linkText;
 
     @Unique private ResourceLocation lads$previewLocation;
     @Unique private BufferedImage lads$loadedImage;
     @Unique private GuiButton lads$loadBtn;
-
-    public static void releaseActiveTexture() {
-        if (lads$activeTextureLoc != null) {
-            Minecraft mc = Minecraft.getMinecraft();
-            if (mc != null && mc.getTextureManager() != null) {
-                mc.getTextureManager().deleteTexture(lads$activeTextureLoc);
-            }
-            lads$activeTextureLoc = null;
-        }
-    }
 
     @Inject(method = "initGui", at = @At("TAIL"))
     private void lads$initPreview(CallbackInfo ci) {
@@ -81,7 +70,7 @@ public abstract class GuiConfirmOpenLinkMixin189 extends GuiScreen {
         lads$releaseTexture();
         this.lads$loadedImage = img;
         this.lads$previewLocation = mc.getTextureManager().getDynamicTextureLocation("lads_link_preview", new DynamicTexture(img));
-        lads$activeTextureLoc = this.lads$previewLocation;
+        com.thelads.core.v1_8_9.qol.link.LinkPreviewTextureHelper189.setActive(this.lads$previewLocation);
     }
 
     @Unique
@@ -90,9 +79,7 @@ public abstract class GuiConfirmOpenLinkMixin189 extends GuiScreen {
             if (mc != null && mc.getTextureManager() != null) {
                 mc.getTextureManager().deleteTexture(this.lads$previewLocation);
             }
-            if (lads$activeTextureLoc == this.lads$previewLocation) {
-                lads$activeTextureLoc = null;
-            }
+
             this.lads$previewLocation = null;
             this.lads$loadedImage = null;
         }

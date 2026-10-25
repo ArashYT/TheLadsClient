@@ -79,7 +79,12 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
 
     @Unique
     private boolean lads$tweaked() {
-        return !((Object) this instanceof CreativeModeInventoryScreen) && lads$isStorageMenu();
+        return !((Object) this instanceof CreativeModeInventoryScreen);
+    }
+
+    @Unique
+    private boolean lads$sortable() {
+        return lads$tweaked() && lads$isStorageMenu();
     }
 
     @Inject(method = "init", at = @At("TAIL"), require = 1)
@@ -115,7 +120,7 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
 
     @Inject(method = "render", at = @At("TAIL"), require = 1)
     private void lads$renderSort(GuiGraphics graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        if (ContainerSorting.isAllowed() && lads$tweaked()) {
+        if (ContainerSorting.isAllowed() && lads$sortable()) {
             int bx = ContainerSorting.getButtonX(leftPos, imageWidth, InventoryTweaks.searchOn);
             int by = ContainerSorting.getButtonY(topPos);
             boolean over = ContainerSorting.isOverButton(mouseX, mouseY, bx, by);
@@ -171,7 +176,7 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
             cir.setReturnValue(true);
             return;
         }
-        if (key == GLFW.GLFW_KEY_R && !lads$hasFocusedTextBox() && ContainerSorting.isAllowed() && lads$tweaked()) {
+        if (key == GLFW.GLFW_KEY_R && !lads$hasFocusedTextBox() && ContainerSorting.isAllowed() && lads$sortable()) {
             lads$sortContainer();
             cir.setReturnValue(true);
             return;
@@ -189,7 +194,7 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
             ladsSearch.setFocused(false);
             setFocused(null);
         }
-        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && ContainerSorting.isAllowed() && lads$tweaked()) {
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && ContainerSorting.isAllowed() && lads$sortable()) {
             int bx = ContainerSorting.getButtonX(leftPos, imageWidth, InventoryTweaks.searchOn);
             int by = ContainerSorting.getButtonY(topPos);
             if (ContainerSorting.isOverButton(mouseX, mouseY, bx, by)) {

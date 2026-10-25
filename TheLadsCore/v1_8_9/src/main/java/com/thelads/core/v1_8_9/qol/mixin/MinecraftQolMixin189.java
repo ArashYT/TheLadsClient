@@ -49,7 +49,7 @@ public abstract class MinecraftQolMixin189 {
     private void ladsContainerClosing(GuiScreen next, CallbackInfo ci) {
         if (currentScreen instanceof GuiContainer && next != currentScreen) KeepCursor.closed(Mouse.getX(), Mouse.getY(), System.nanoTime());
         if (currentScreen instanceof net.minecraft.client.gui.GuiConfirmOpenLink && next != currentScreen) {
-            GuiConfirmOpenLinkMixin189.releaseActiveTexture();
+            com.thelads.core.v1_8_9.qol.link.LinkPreviewTextureHelper189.releaseActive();
         }
     }
 

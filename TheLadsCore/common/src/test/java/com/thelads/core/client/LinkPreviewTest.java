@@ -38,9 +38,12 @@ class LinkPreviewTest {
         assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("100.64.0.1")), "100.64.0.0/10 is CGNAT");
         assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("0.0.0.0")), "0.0.0.0 is any-local");
         assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("::1")), "::1 is IPv6 loopback");
+        assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("64:ff9b::192.168.1.1")), "NAT64 wrapping private IPv4 must be blocked");
+        assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("2002:c0a8:0101::")), "6to4 wrapping private IPv4 must be blocked");
 
         assertTrue(LinkPreview.isSafePublicAddress(InetAddress.getByName("8.8.8.8")), "8.8.8.8 is public");
         assertTrue(LinkPreview.isSafePublicAddress(InetAddress.getByName("1.1.1.1")), "1.1.1.1 is public");
+        assertTrue(LinkPreview.isSafePublicAddress(InetAddress.getByName("64:ff9b::8.8.8.8")), "NAT64 wrapping public IPv4 is allowed");
     }
 
     @Test

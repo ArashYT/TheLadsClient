@@ -164,7 +164,6 @@ public final class ChatTweaks26 {
             && InputConstants.isKeyDown(bound.getValue());
     }
 
-    /** Copy and Delete Buttons (ChatScreenTweaksMixin26): Copy puts the message's text on the clipboard, Delete takes it out of the chat. */
     public static String toFormatted(Component component) {
         if (component == null) return "";
         StringBuilder sb = new StringBuilder();
@@ -187,6 +186,7 @@ public final class ChatTweaks26 {
         return sb.toString();
     }
 
+    /** Copy and Delete Buttons (ChatScreenTweaksMixin26): Copy puts the message's text on the clipboard, Delete takes it out of the chat. */
     public static void messageButton(GuiMessage message, int button) {
         Minecraft mc = Minecraft.getInstance();
         if (button == 0) {
