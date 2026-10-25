@@ -78,7 +78,14 @@ public final class Qol26 {
 
     public static void register() {
         ModuleSupport.registerBuiltIn(TooltipScroll.NAME, CrashCatcher.NAME, QuickReconnect.NAME, KeepCursor.NAME, SoundVolumes.NAME,
-            ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME);
+            ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME,
+            // 1.11.0 lanes: InventoryTweaksMixin26 (sorting, terminal solvers), AbilitiesMixin26, NativeFeatures' elytra key,
+            // ConfirmLinkScreenMixin26, MlgClutch26, the schematic overlay here and MouseHandlerMixin's toast buttons (LaneModuleSupportTest).
+            com.thelads.core.modules.ContainerSortingModule.NAME, com.thelads.core.modules.CreativeFlyBoostModule.NAME,
+            com.thelads.core.modules.ElytraSwapModule.NAME, com.thelads.core.modules.LinkPreviewModule.NAME, com.thelads.core.modules.MlgCobwebModule.NAME,
+            com.thelads.core.client.schematic.SchematicManager.NAME, "Server Notification Actions");
+        ModuleSupport.registerBuiltInLimited(com.thelads.core.client.hypixel.SkyBlockSuite.MODULE_NAME,
+            "Its dungeon map does not draw on Minecraft 26.3 yet.");
 
         ModuleSupport.registerUnavailable(GuiScaleOverride.NAME, "26.x keeps the GUI scale a whole number through its whole GUI renderer "
             + "(projection, scissor, text and item atlases): use the game's GUI Scale option.");

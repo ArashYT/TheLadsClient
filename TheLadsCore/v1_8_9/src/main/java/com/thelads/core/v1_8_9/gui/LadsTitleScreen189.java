@@ -286,13 +286,18 @@ public final class LadsTitleScreen189 {
         button.height = Math.round((y + height) * ms) - button.yPosition;
     }
 
-    private static void openReplays(GuiMainMenu parent) {
+    /** ReplayMod 2.6.20's own viewer, opened the way its title button does (as ReplayScreens1201 on 1.20.1). */
+    private static void openReplays() {
         try {
-            Class<?> cls = Class.forName("com.replaymod.replay.gui.GuiReplayViewer");
-            Object scr = cls.getConstructor(net.minecraft.client.gui.GuiScreen.class).newInstance(parent);
-            Minecraft.getMinecraft().displayGuiScreen((net.minecraft.client.gui.GuiScreen) scr);
-            return;
-        } catch (Throwable ignored) {}
+            Class<?> modClass = Class.forName("com.replaymod.replay.ReplayModReplay");
+            Class<?> viewer = Class.forName("com.replaymod.replay.gui.screen.GuiReplayViewer");
+            Object screen = viewer.getConstructor(modClass).newInstance(modClass.getField("instance").get(null));
+            viewer.getMethod("display").invoke(screen);
+        } catch (ReflectiveOperationException | LinkageError failure) {
+            LogManager.getLogger("TheLadsCore-1.8.9").warn("Replay Mod's viewer could not open", failure);
+            Minecraft.getMinecraft().displayGuiScreen(new net.minecraft.client.gui.GuiErrorScreen("Replays unavailable",
+                "The installed Replay Mod could not open its viewer."));
+        }
     }
 
     @SubscribeEvent
@@ -306,7 +311,7 @@ public final class LadsTitleScreen189 {
         else if (event.button == screenshotsButton) Screenshots189.open(screen);
         else if (event.button == moreButton) mc.displayGuiScreen(new TitleExtrasScreen189(screen, TitleExtrasScreen189.of(screen, extras, LadsTitleScreen189::label)));
         else if (event.button == switchVersionButton) mc.displayGuiScreen(new VersionSwitchScreen189(screen));
-        else if (event.button == replaysButton) openReplays(screen);
+        else if (event.button == replaysButton) openReplays();
         else if (event.button == networkButton)
             mc.displayGuiScreen(new GuiConnecting(new GuiMultiplayer(screen), mc, new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, false)));
         else if (event.button.id == 4) mc.displayGuiScreen(new QuitConfirmScreen189(screen));

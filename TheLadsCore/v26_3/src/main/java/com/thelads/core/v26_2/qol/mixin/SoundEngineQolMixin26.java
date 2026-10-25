@@ -17,13 +17,13 @@ abstract class SoundEngineQolMixin26 {
     private float lads$soundVolume(SoundInstance sound, Operation<Float> original) {
         String path = sound.getIdentifier().getPath();
         float vol = SoundVolumes.volume(original.call(sound), path);
-        return SoundFilters.filterVolume(vol, path);
+        return SoundFilters.filterVolume(vol, path, sound.getSource().name());
     }
 
     @WrapOperation(method = "calculatePitch(Lnet/minecraft/client/resources/sounds/SoundInstance;)F",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/resources/sounds/SoundInstance;getPitch()F"))
     private float lads$soundPitch(SoundInstance sound, Operation<Float> original) {
         String path = sound.getIdentifier().getPath();
-        return SoundFilters.filterPitch(original.call(sound), path);
+        return SoundFilters.filterPitch(original.call(sound), path, sound.getSource().name());
     }
 }

@@ -37,6 +37,9 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    // LaneModuleSupportTest and RunningVersionTextTest read the version sources: rerun when those change.
+    inputs.files(fileTree('../v1_8_9/src/main/java'), fileTree('../v1_20_1/src/main/java'), fileTree('../v26_3/src/main/java'))
+        .withPropertyName('versionSources').withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 processResources {

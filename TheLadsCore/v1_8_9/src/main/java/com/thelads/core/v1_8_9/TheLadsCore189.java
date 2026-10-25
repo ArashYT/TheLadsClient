@@ -61,6 +61,13 @@ public class TheLadsCore189 {
         // class. It loads from the parent loader instead, as org.lwjgl. does. Set before RawMouse189 (or any JInput class) loads.
         net.minecraft.launchwrapper.Launch.classLoader.addClassLoaderExclusion("net.java.games.input.");
         com.thelads.core.v1_8_9.feature.ebe.BakedBlockEntities189.init(); // before the first texture stitch (preceding FML init)
+        // Mods are constructed before any preInit, so this lands before ReplayMod reads its config: no recording unless turned on.
+        if (net.minecraftforge.fml.common.Loader.isModLoaded("replaymod")) try {
+            if (com.thelads.core.client.ReplayModDefaults.recordingOff189(net.minecraftforge.fml.common.Loader.instance().getConfigDir().toPath()))
+                LOGGER.info("ReplayMod has no config yet: automatic recording starts off");
+        } catch (java.io.IOException | RuntimeException failure) {
+            LOGGER.warn("Could not write ReplayMod's recording defaults", failure);
+        }
     }
 
     @Mod.EventHandler
