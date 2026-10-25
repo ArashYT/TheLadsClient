@@ -77,7 +77,7 @@ public final class Qol26 {
 
     public static void register() {
         ModuleSupport.registerBuiltIn(TooltipScroll.NAME, CrashCatcher.NAME, QuickReconnect.NAME, KeepCursor.NAME, SoundVolumes.NAME,
-            ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.TrueTypeFont.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME, "TeamSpeak");
+            ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME, "TeamSpeak");
 
         ModuleSupport.registerUnavailable(GuiScaleOverride.NAME, "26.x keeps the GUI scale a whole number through its whole GUI renderer "
             + "(projection, scissor, text and item atlases): use the game's GUI Scale option.");
@@ -98,7 +98,6 @@ public final class Qol26 {
         boolean water = mc.player != null && (mc.player.isEyeInFluid(net.minecraft.tags.FluidTags.WATER) || mc.player.isInWater());
         boolean cave = mc.player != null && mc.level != null && !mc.level.canSeeSky(mc.player.blockPosition()) && mc.player.getY() < 60;
         com.thelads.core.client.SoundFilters.tick(water, cave);
-        com.thelads.core.client.TrueTypeFont.tick();
         com.thelads.core.client.media.MumbleLink.tick();
         com.thelads.core.client.worldedit.WorldEditCUI.tick();
         if (!hookChecked) {

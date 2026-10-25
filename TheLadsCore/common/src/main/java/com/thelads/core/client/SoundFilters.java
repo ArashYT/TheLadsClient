@@ -104,32 +104,4 @@ public final class SoundFilters {
         return path.startsWith("gui.") || path.startsWith("random.click") || path.startsWith("ui.")
             || path.contains("menu") || path.startsWith("note.") || path.contains("button");
     }
-
-    /**
-     * Attempts to attach an OpenAL EFX lowpass filter or reverb slot to the native source.
-     * Fails gracefully if OpenAL EFX is unavailable on the current platform/driver.
-     */
-    public static void applyOpenAlFilter(int sourceId) {
-        if (sourceId <= 0 || !on) return;
-        try {
-            // If running on a system with OpenAL EFX, set the low-pass filter on the source
-            Class<?> efxClass = null;
-            try {
-                efxClass = Class.forName("org.lwjgl.openal.EXTEfx"); // LWJGL 3 (1.20.1, 26.3)
-            } catch (ClassNotFoundException e) {
-                try {
-                    efxClass = Class.forName("org.lwjgl.openal.EFX10"); // LWJGL 2 (1.8.9)
-                } catch (ClassNotFoundException ignored) {}
-            }
-            if (efxClass != null && inWater && underwaterMuffle) {
-                // EFX direct low-pass filter attachment
-                int filter = efxClass.getField("AL_DIRECT_FILTER").getInt(null);
-                Class<?> alClass = Class.forName("org.lwjgl.openal.AL10");
-                // Attaching low-pass filter if available
-                alClass.getMethod("alSourcei", int.class, int.class, int.class).invoke(null, sourceId, filter, 0);
-            }
-        } catch (Throwable ignored) {
-            // Fall back to pitch and volume modulation
-        }
-    }
 }

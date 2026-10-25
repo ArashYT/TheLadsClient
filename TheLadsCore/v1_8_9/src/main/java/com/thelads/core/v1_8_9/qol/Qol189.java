@@ -60,7 +60,7 @@ import org.lwjgl.opengl.GL11;
 public final class Qol189 {
     /** The modules registered as built in here (CoreProbe's catalog check). */
     public static final String[] BUILT_IN = {TooltipScroll.NAME, CrashCatcher.NAME, QuickReconnect.NAME, KeepCursor.NAME, SoundVolumes.NAME,
-        GuiScaleOverride.NAME, ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.TrueTypeFont.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME, "TeamSpeak"};
+        GuiScaleOverride.NAME, ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME, "TeamSpeak"};
     private static final int RECONNECT = 0x4C510;
     private static final OldServerPinger PINGER = new OldServerPinger();
     private static ExecutorService pings;
@@ -102,7 +102,6 @@ public final class Qol189 {
             boolean water = mc.thePlayer != null && (mc.thePlayer.isInsideOfMaterial(net.minecraft.block.material.Material.water) || mc.thePlayer.isInWater());
             boolean cave = mc.thePlayer != null && mc.theWorld != null && !mc.theWorld.canSeeSky(new net.minecraft.util.BlockPos(mc.thePlayer)) && mc.thePlayer.posY < 60;
             com.thelads.core.client.SoundFilters.tick(water, cave);
-            com.thelads.core.client.TrueTypeFont.tick();
             com.thelads.core.client.media.MumbleLink.tick();
             com.thelads.core.client.worldedit.WorldEditCUI.tick();
             if (!hookChecked) {

@@ -257,7 +257,6 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     @Override
     public void drawText(String text, int x, int y, int color, boolean shadow) {
         if (text != null && font != null) {
-            if (com.thelads.core.client.TrueTypeFont.isEnabled()) { com.thelads.core.client.TrueTypeFont.drawString(text, x, y, color, shadow); return; }
             g.text(font, text, x, y, color, shadow);
         }
     }
@@ -265,7 +264,6 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     @Override
     public void drawCenteredText(String text, int centerX, int y, int color, boolean shadow) {
         if (text != null && font != null) {
-            if (com.thelads.core.client.TrueTypeFont.isEnabled()) { int w = com.thelads.core.client.TrueTypeFont.getStringWidth(text); com.thelads.core.client.TrueTypeFont.drawString(text, centerX - w / 2, y, color, shadow); return; }
             int tw = font.width(text);
             g.text(font, text, centerX - tw / 2, y, color, shadow);
         }
@@ -273,9 +271,7 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
 
     @Override
     public int textWidth(String text) {
-        if (text == null || font == null) return 0;
-        if (com.thelads.core.client.TrueTypeFont.isEnabled()) return com.thelads.core.client.TrueTypeFont.getStringWidth(text);
-        return font.width(text);
+        return (text != null && font != null) ? font.width(text) : 0;
     }
 
     @Override

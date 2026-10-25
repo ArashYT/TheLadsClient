@@ -60,4 +60,22 @@ class MumbleTeamSpeakTest {
         assertEquals("TeamSpeak", TeamSpeakHudElement.NAME);
         assertTrue(hud.isAvailable());
     }
+
+    @Test
+    void teamSpeakApiKeyOptionAndGetter() {
+        assertEquals("ClientQuery API Key", TeamSpeakBridge.OPTION_API_KEY);
+        TeamSpeakBridge.setApiKey("test-secret-key-1234");
+        assertEquals("test-secret-key-1234", TeamSpeakBridge.getApiKey());
+        TeamSpeakBridge.setApiKey("");
+
+        com.thelads.core.config.Module m = com.thelads.core.config.ModuleManager.getInstance().getModule("TeamSpeak");
+        if (m != null) {
+            com.thelads.core.config.Option opt = m.getOption(TeamSpeakBridge.OPTION_API_KEY);
+            assertTrue(opt instanceof com.thelads.core.config.TextOption, "Option should be TextOption");
+            com.thelads.core.config.TextOption textOpt = (com.thelads.core.config.TextOption) opt;
+            textOpt.setValue("configured-key-5678");
+            assertEquals("configured-key-5678", TeamSpeakBridge.getApiKey());
+            textOpt.setValue("");
+        }
+    }
 }

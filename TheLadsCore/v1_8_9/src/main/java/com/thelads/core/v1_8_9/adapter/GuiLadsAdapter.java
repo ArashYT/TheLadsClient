@@ -64,7 +64,6 @@ public class GuiLadsAdapter implements LadsGraphics {
     public void drawText(String text, int x, int y, int color, boolean shadow) {
         if (text == null) return;
         if (recording != null) recording.add(text);
-        if (com.thelads.core.client.TrueTypeFont.isEnabled()) { com.thelads.core.client.TrueTypeFont.drawString(text, x, y, color, shadow); return; }
         font.drawString(text, x, y, color, shadow);
     }
 
@@ -72,7 +71,6 @@ public class GuiLadsAdapter implements LadsGraphics {
     public void drawCenteredText(String text, int centerX, int y, int color, boolean shadow) {
         if (text == null) return;
         if (recording != null) recording.add(text);
-        if (com.thelads.core.client.TrueTypeFont.isEnabled()) { int w = com.thelads.core.client.TrueTypeFont.getStringWidth(text); com.thelads.core.client.TrueTypeFont.drawString(text, centerX - w / 2, y, color, shadow); return; }
         font.drawString(text, centerX - font.getStringWidth(text) / 2, y, color, shadow);
     }
 
@@ -263,9 +261,7 @@ public class GuiLadsAdapter implements LadsGraphics {
 
     @Override
     public int textWidth(String text) {
-        if (text == null) return 0;
-        if (com.thelads.core.client.TrueTypeFont.isEnabled()) return com.thelads.core.client.TrueTypeFont.getStringWidth(text);
-        return font.getStringWidth(text);
+        return text != null ? font.getStringWidth(text) : 0;
     }
 
     /** Changes on a resource reload or a Unicode/bidi switch (FontCache189), so the HUD keeps measured text widths until then. */

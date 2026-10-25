@@ -22,6 +22,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class TeamSpeakBridge {
     public static final int DEFAULT_PORT = 25639;
     public static final String HOST = "127.0.0.1";
+    public static final String OPTION_API_KEY = "ClientQuery API Key";
+    private static volatile String apiKey = "";
 
     public record TsClient(int clid, String nickname, boolean talking) {}
 
@@ -32,6 +34,28 @@ public final class TeamSpeakBridge {
     private static Thread workerThread;
 
     private TeamSpeakBridge() {}
+
+    public static String getApiKey() {
+        if (apiKey != null && !apiKey.trim().isEmpty()) {
+            return apiKey.trim();
+        }
+        try {
+            com.thelads.core.config.Module m = com.thelads.core.config.ModuleManager.getInstance().getModule("TeamSpeak");
+            if (m != null) {
+                com.thelads.core.config.Option opt = m.getOption(OPTION_API_KEY);
+                if (opt instanceof com.thelads.core.config.TextOption textOpt) {
+                    return textOpt.getValue();
+                } else if (opt instanceof com.thelads.core.config.StringOption strOpt) {
+                    return strOpt.get();
+                }
+            }
+        } catch (Throwable ignored) {}
+        return "";
+    }
+
+    public static void setApiKey(String key) {
+        apiKey = key != null ? key : "";
+    }
 
     public static boolean isConnected() {
         return connected;
@@ -73,6 +97,10 @@ public final class TeamSpeakBridge {
                      PrintWriter writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8)) {
 
                     connected = true;
+                    String key = getApiKey();
+                    if (key != null && !key.trim().isEmpty()) {
+                        writer.println("login " + key.trim());
+                    }
                     // Register for events and query client status
                     writer.println("clientnotifyregister schandlerid=0 event=any");
                     writer.println("whoami");

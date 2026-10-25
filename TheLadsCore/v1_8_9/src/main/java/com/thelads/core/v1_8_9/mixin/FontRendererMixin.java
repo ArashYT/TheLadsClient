@@ -28,18 +28,8 @@ public abstract class FontRendererMixin implements FontCache189.Holder, FontShad
     @Shadow protected abstract void resetStyles();
     @Shadow private int renderString(String text, float x, float y, int color, boolean dropShadow) { return 0; }
 
-    @Inject(method = "renderString", at = @At("HEAD"), cancellable = true)
-    private void ladsTrueTypeRender(String text, float x, float y, int color, boolean dropShadow, CallbackInfoReturnable<Integer> cir) {
-        if (com.thelads.core.client.TrueTypeFont.isEnabled()) {
-            cir.setReturnValue(com.thelads.core.client.TrueTypeFont.drawString(text, x, y, color, dropShadow));
-        }
-    }
-
     @Override
     public int ladsDrawShadow(String text, float x, float y, int color) {
-        if (com.thelads.core.client.TrueTypeFont.isEnabled()) {
-            return com.thelads.core.client.TrueTypeFont.drawString(text, x, y, color, true);
-        }
         if (text == null) return 0;
         GlStateManager.enableAlpha();
         resetStyles();
@@ -55,7 +45,6 @@ public abstract class FontRendererMixin implements FontCache189.Holder, FontShad
 
     @Inject(method = "getStringWidth", at = @At("HEAD"), cancellable = true)
     private void ladsWidth(String text, CallbackInfoReturnable<Integer> cir) {
-        if (com.thelads.core.client.TrueTypeFont.isEnabled()) { cir.setReturnValue(com.thelads.core.client.TrueTypeFont.getStringWidth(text)); return; }
         if (ladsMeasuring) return;
         FontCache189 cache = ladsCache();
         if (text == null || !cache.on()) return;

@@ -79,7 +79,7 @@ public final class Qol1201 {
 
     public static void register() {
         ModuleSupport.registerBuiltIn(TooltipScroll.NAME, CrashCatcher.NAME, QuickReconnect.NAME, KeepCursor.NAME, SoundVolumes.NAME,
-            GuiScaleOverride.NAME, ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.TrueTypeFont.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME, "TeamSpeak");
+            GuiScaleOverride.NAME, ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME, "TeamSpeak");
 
         ClientTickEvents.END_CLIENT_TICK.register(Qol1201::tick);
         WorldRenderEvents.BEFORE_DEBUG_RENDER.register(Qol1201::chunkBorders);
@@ -99,7 +99,6 @@ public final class Qol1201 {
         boolean water = mc.player != null && (mc.player.isEyeInFluid(net.minecraft.tags.FluidTags.WATER) || mc.player.isInWater());
         boolean cave = mc.player != null && mc.level != null && !mc.level.canSeeSky(mc.player.blockPosition()) && mc.player.getY() < 60;
         com.thelads.core.client.SoundFilters.tick(water, cave);
-        com.thelads.core.client.TrueTypeFont.tick();
         com.thelads.core.client.media.MumbleLink.tick();
         com.thelads.core.client.worldedit.WorldEditCUI.tick();
         if (!hookChecked) {
