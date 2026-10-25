@@ -100,9 +100,19 @@ public final class Qol189 {
             GuiScaleOverride.tick();
             ChunkBorders.tick();
             boolean water = mc.thePlayer != null && (mc.thePlayer.isInsideOfMaterial(net.minecraft.block.material.Material.water) || mc.thePlayer.isInWater());
-            boolean cave = mc.thePlayer != null && mc.theWorld != null && !mc.theWorld.canSeeSky(new net.minecraft.util.BlockPos(mc.thePlayer)) && mc.thePlayer.posY < 60;
-            com.thelads.core.client.SoundFilters.tick(water, cave);
-            com.thelads.core.client.media.MumbleLink.tick();
+            com.thelads.core.client.SoundFilters.tick(water);
+            if (mc.thePlayer != null) {
+                double px = mc.thePlayer.posX;
+                double py = mc.thePlayer.posY + mc.thePlayer.getEyeHeight();
+                double pz = mc.thePlayer.posZ;
+                float yaw = mc.thePlayer.rotationYaw;
+                float pitch = mc.thePlayer.rotationPitch;
+                String name = mc.thePlayer.getName();
+                String server = mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "singleplayer";
+                com.thelads.core.client.media.MumbleLink.tick(px, py, pz, yaw, pitch, name, server);
+            } else {
+                com.thelads.core.client.media.MumbleLink.tick();
+            }
             com.thelads.core.client.worldedit.WorldEditCUI.tick();
             if (!hookChecked) {
                 hookChecked = true;

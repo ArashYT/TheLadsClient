@@ -32,6 +32,10 @@ public final class MumbleLink {
     private static Function unmapViewOfFile;
     private static Function closeHandle;
 
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(MumbleLink::shutdown, "Lads-MumbleLink-Shutdown"));
+    }
+
     private MumbleLink() {}
 
     public static Module createModule() {
@@ -40,11 +44,31 @@ public final class MumbleLink {
         return m;
     }
 
-    /** Called once per client tick. */
+    /**
+     * Calculates the normalized front look vector from yaw and pitch (in degrees).
+     * In Minecraft coordinates: yaw 0 faces south (+Z), yaw 90 faces west (-X),
+     * yaw 180 faces north (-Z), yaw 270 faces east (+X).
+     */
+    public static float[] calculateFrontVector(float yaw, float pitch) {
+        double yawRad = Math.toRadians(yaw);
+        double pitchRad = Math.toRadians(pitch);
+        float fx = (float) (-Math.sin(yawRad) * Math.cos(pitchRad));
+        float fy = (float) (-Math.sin(pitchRad));
+        float fz = (float) (Math.cos(yawRad) * Math.cos(pitchRad));
+        return new float[] { fx, fy, fz };
+    }
+
+    /** Called once per client tick when no player coords are passed. */
     public static void tick() {
         if (module == null) module = ModuleManager.getInstance().getModule(NAME);
-        on = module != null && module.isEnabled();
-        if (!on || failed || !Platform.isWindows()) return;
+        boolean enabled = module != null && module.isEnabled();
+        if (!enabled) {
+            if (on) shutdown();
+            on = false;
+            return;
+        }
+        on = true;
+        if (failed || !Platform.isWindows()) return;
 
         LadsGameBridge bridge = LadsGameBridge.get();
         if (bridge == null || !bridge.hasPlayer()) return;
@@ -60,17 +84,30 @@ public final class MumbleLink {
         update(px, py, pz, yaw, pitch, name != null ? name : "Player", server != null ? server : "singleplayer");
     }
 
+    /** Called from version-specific QoL tick with exact double coordinates. */
+    public static void tick(double x, double y, double z, float yaw, float pitch, String name, String server) {
+        if (module == null) module = ModuleManager.getInstance().getModule(NAME);
+        boolean enabled = module != null && module.isEnabled();
+        if (!enabled) {
+            if (on) shutdown();
+            on = false;
+            return;
+        }
+        on = true;
+        if (failed || !Platform.isWindows()) return;
+
+        update(x, y, z, yaw, pitch, name != null ? name : "Player", server != null ? server : "singleplayer");
+    }
+
     public static synchronized void update(double x, double y, double z, float yaw, float pitch, String identity, String context) {
         if (!ensureMapping()) return;
 
         try {
             tickCounter++;
-            // Calculate front look unit vector
-            double yawRad = Math.toRadians(yaw);
-            double pitchRad = Math.toRadians(pitch);
-            float fx = (float) (-Math.sin(yawRad) * Math.cos(pitchRad));
-            float fy = (float) (-Math.sin(pitchRad));
-            float fz = (float) (Math.cos(yawRad) * Math.cos(pitchRad));
+            float[] front = calculateFrontVector(yaw, pitch);
+            float fx = front[0];
+            float fy = front[1];
+            float fz = front[2];
 
             // Top vector (head up)
             float tx = 0.0f;
@@ -187,7 +224,7 @@ public final class MumbleLink {
         ptr.setShort(offset + (len * 2L), (short) 0);
     }
 
-    /** Clean-up hook on client shutdown. */
+    /** Clean-up hook on client shutdown or module disable. */
     public static synchronized void shutdown() {
         try {
             if (sharedMemory != null && unmapViewOfFile != null) {

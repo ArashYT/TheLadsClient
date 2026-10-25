@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,6 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * TeamSpeak 3 ClientQuery Bridge (Lunar / Badlion TeamSpeak HUD):
  * Connects to TeamSpeak 3 local client query on 127.0.0.1:25639 to monitor channel
  * presence and live voice activity (who is currently talking).
+ * Protocol: TeamSpeak 3 ClientQuery.
  * Client-only, visual only, not gated.
  */
 public final class TeamSpeakBridge {
@@ -30,6 +32,9 @@ public final class TeamSpeakBridge {
     private static final AtomicBoolean RUNNING = new AtomicBoolean(false);
     private static volatile boolean connected = false;
     private static volatile String currentChannel = "Default Channel";
+    private static volatile int myClid = -1;
+    private static volatile int myCid = -1;
+    private static volatile PrintWriter activeWriter = null;
     private static final Map<Integer, TsClient> CLIENTS = new ConcurrentHashMap<>();
     private static Thread workerThread;
 
@@ -65,8 +70,15 @@ public final class TeamSpeakBridge {
         return currentChannel;
     }
 
+    public static int getMyClid() {
+        return myClid;
+    }
+
+    public static int getMyCid() {
+        return myCid;
+    }
+
     public static List<TsClient> getClients() {
-        if (!connected) return Collections.emptyList();
         return new ArrayList<>(CLIENTS.values());
     }
 
@@ -84,7 +96,10 @@ public final class TeamSpeakBridge {
             workerThread.interrupt();
             workerThread = null;
         }
+        activeWriter = null;
         connected = false;
+        myClid = -1;
+        myCid = -1;
         CLIENTS.clear();
     }
 
@@ -96,24 +111,36 @@ public final class TeamSpeakBridge {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
                      PrintWriter writer = new PrintWriter(socket.getOutputStream(), true, StandardCharsets.UTF_8)) {
 
+                    activeWriter = writer;
                     connected = true;
                     String key = getApiKey();
                     if (key != null && !key.trim().isEmpty()) {
-                        writer.println("login " + key.trim());
+                        // TeamSpeak 3 ClientQuery command: auth apikey=<key>
+                        writer.println("auth apikey=" + key.trim());
                     }
-                    // Register for events and query client status
+                    // Register for events and query client identity
                     writer.println("clientnotifyregister schandlerid=0 event=any");
                     writer.println("whoami");
-                    writer.println("channelclientlist");
 
-                    String line;
-                    while (RUNNING.get() && (line = reader.readLine()) != null) {
+                    while (RUNNING.get()) {
+                        String line;
+                        try {
+                            line = reader.readLine();
+                        } catch (SocketTimeoutException e) {
+                            // Keep connection alive across idle intervals
+                            continue;
+                        }
+                        if (line == null) {
+                            break; // Connection closed by host
+                        }
                         parseLine(line);
                     }
                 }
             } catch (Throwable t) {
                 connected = false;
                 CLIENTS.clear();
+            } finally {
+                activeWriter = null;
             }
 
             try {
@@ -129,7 +156,19 @@ public final class TeamSpeakBridge {
     public static void parseLine(String line) {
         if (line == null || line.isEmpty()) return;
 
-        if (line.startsWith("notifytalkstatuschange")) {
+        if (line.contains("clid=") && line.contains("cid=") && !line.startsWith("notify")) {
+            // whoami reply: clid=123 cid=456 ...
+            int clid = parseFieldInt(line, "clid");
+            int cid = parseFieldInt(line, "cid");
+            if (clid != -1 && cid != -1) {
+                myClid = clid;
+                myCid = cid;
+                if (activeWriter != null) {
+                    activeWriter.println("channelclientlist cid=" + cid + " -voice");
+                    activeWriter.println("channelinfo cid=" + cid);
+                }
+            }
+        } else if (line.startsWith("notifytalkstatuschange")) {
             // notifytalkstatuschange status=1 is_received_whisper=0 clid=123
             int status = parseFieldInt(line, "status");
             int clid = parseFieldInt(line, "clid");
@@ -146,8 +185,9 @@ public final class TeamSpeakBridge {
                 int clid = parseFieldInt(part, "clid");
                 String nick = parseFieldString(part, "client_nickname");
                 if (clid != -1 && nick != null) {
+                    int talking = parseFieldInt(part, "client_flag_talking");
                     TsClient prev = CLIENTS.get(clid);
-                    boolean isTalking = prev != null && prev.talking();
+                    boolean isTalking = talking == 1 || (talking == -1 && prev != null && prev.talking());
                     CLIENTS.put(clid, new TsClient(clid, unescapeTs(nick), isTalking));
                 }
             }
@@ -155,11 +195,26 @@ public final class TeamSpeakBridge {
             int clid = parseFieldInt(line, "clid");
             if (clid != -1) CLIENTS.remove(clid);
         } else if (line.startsWith("notifyclientmoved")) {
-            // If moved, refresh clients
             int clid = parseFieldInt(line, "clid");
             int ctid = parseFieldInt(line, "ctid");
             if (clid != -1 && ctid != -1) {
-                // Client moved
+                if (clid == myClid) {
+                    // Local client moved channel
+                    myCid = ctid;
+                    CLIENTS.clear();
+                    if (activeWriter != null) {
+                        activeWriter.println("channelclientlist cid=" + ctid + " -voice");
+                        activeWriter.println("channelinfo cid=" + ctid);
+                    }
+                } else if (ctid != myCid) {
+                    // Another client moved out of our channel
+                    CLIENTS.remove(clid);
+                } else {
+                    // Another client moved into our channel
+                    if (activeWriter != null && myCid != -1) {
+                        activeWriter.println("channelclientlist cid=" + myCid + " -voice");
+                    }
+                }
             }
         } else if (line.contains("channel_name=")) {
             String ch = parseFieldString(line, "channel_name");

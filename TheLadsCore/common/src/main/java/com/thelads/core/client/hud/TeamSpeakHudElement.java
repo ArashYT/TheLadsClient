@@ -2,6 +2,7 @@ package com.thelads.core.client.hud;
 
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.media.TeamSpeakBridge;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -16,7 +17,7 @@ public class TeamSpeakHudElement extends HudElement {
     private static final int HEADER_COLOR = 0xFFFFAA00;  // Orange accent
 
     private boolean editor;
-    private int clientCount;
+    private List<TeamSpeakBridge.TsClient> cachedClients = Collections.emptyList();
 
     public TeamSpeakHudElement() {
         this.width = 120;
@@ -30,14 +31,22 @@ public class TeamSpeakHudElement extends HudElement {
     @Override
     public void prepareRender(LadsGraphics g, boolean editor) {
         this.editor = editor;
-        TeamSpeakBridge.start(); // Ensure worker thread is listening
+        if (isEnabled() && !editor) {
+            TeamSpeakBridge.start(); // Ensure worker thread is listening
+            cachedClients = TeamSpeakBridge.getClients();
+        } else {
+            if (!isEnabled()) {
+                TeamSpeakBridge.stop();
+            }
+            cachedClients = Collections.emptyList();
+        }
+
         int count = 0;
         if (editor || !TeamSpeakBridge.isConnected()) {
             count = 2; // Preview lines
         } else {
-            count = TeamSpeakBridge.getClients().size();
+            count = cachedClients.size();
         }
-        clientCount = count;
         this.width = 130;
         this.height = 14 + Math.max(1, count) * 11 + 4;
     }
@@ -48,8 +57,8 @@ public class TeamSpeakHudElement extends HudElement {
         int ry = y;
         boolean shadow = com.thelads.core.config.HudSettings.getInstance().isTextShadow();
 
-        // Background box
-        g.fill(rx, ry, rx + width, ry + height, 0x80000000);
+        // Background box using HUD framework theme
+        drawBackground(g);
 
         String channel = TeamSpeakBridge.isConnected() ? TeamSpeakBridge.getCurrentChannel() : "TeamSpeak";
         if (editor) channel = "TeamSpeak: Lobby";
@@ -69,13 +78,12 @@ public class TeamSpeakHudElement extends HudElement {
             return;
         }
 
-        List<TeamSpeakBridge.TsClient> clients = TeamSpeakBridge.getClients();
-        if (clients.isEmpty()) {
+        if (cachedClients.isEmpty()) {
             g.drawText("○ No users in channel", rx + 6, lineY, IDLE_COLOR, shadow);
             return;
         }
 
-        for (TeamSpeakBridge.TsClient client : clients) {
+        for (TeamSpeakBridge.TsClient client : cachedClients) {
             int dotColor = client.talking() ? TALKING_COLOR : IDLE_COLOR;
             String symbol = client.talking() ? "● " : "○ ";
             g.drawText(symbol + client.nickname(), rx + 6, lineY, dotColor, shadow);

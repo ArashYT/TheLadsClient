@@ -8,13 +8,12 @@ import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.SliderOption;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * WorldEdit CUI Selection Renderer (Lunar / Badlion WorldEdit CUI):
- * Listens on the 'worldedit:cui' and 'WECUI' plugin channels to visualize WorldEdit selections
- * (cuboids and polygons) as 3D bounding box outlines, block highlights, and face grids in world space.
+ * Listens on the 'worldedit:cui' and 'WECUI' plugin channels to visualize WorldEdit cuboid selections
+ * as 3D bounding box outlines, block highlights, and face grids in world space.
+ * Protocol: WorldEdit CUI protocol version 4.
  * GATED: risky set in HypixelSafetyManager, default OFF.
  */
 public final class WorldEditCUI {
@@ -38,20 +37,19 @@ public final class WorldEditCUI {
     public record BlockPos(int x, int y, int z) {}
 
     public enum Shape {
-        NONE, CUBOID, POLYGON
+        NONE, CUBOID
     }
 
     private static Shape shape = Shape.NONE;
     private static BlockPos pos1 = null;
     private static BlockPos pos2 = null;
-    private static final List<BlockPos> POLYGON_POINTS = new ArrayList<>();
     private static Module module;
 
     private WorldEditCUI() {}
 
     public static Module createModule() {
         // GATED: Default OFF
-        Module m = new Module(NAME, "Visualizes WorldEdit cuboid and polygon selections with 3D grid lines.");
+        Module m = new Module(NAME, "Visualizes WorldEdit cuboid selections with 3D grid lines.");
         m.setEnabled(false);
         m.addOption(new ColorOption(COLOR_POS1, false, 0xCCFF3333));
         m.addOption(new ColorOption(COLOR_POS2, false, 0xCC3333FF));
@@ -62,14 +60,13 @@ public final class WorldEditCUI {
     }
 
     public static boolean hasSelection() {
-        return shape != Shape.NONE && (pos1 != null || !POLYGON_POINTS.isEmpty());
+        return shape != Shape.NONE && pos1 != null;
     }
 
     public static void clear() {
         shape = Shape.NONE;
         pos1 = null;
         pos2 = null;
-        POLYGON_POINTS.clear();
     }
 
     /** Called once per client tick. */
@@ -116,14 +113,12 @@ public final class WorldEditCUI {
 
         String cmd = parts[0].toLowerCase();
         switch (cmd) {
-            case "s": // Shape: s|cuboid, s|poly
+            case "s": // Shape: s|cuboid - per CUI protocol, s|<shape> clears current selection first
+                clear();
                 if (parts.length >= 2) {
                     String shapeType = parts[1].toLowerCase();
                     if (shapeType.startsWith("cuboid")) {
                         shape = Shape.CUBOID;
-                    } else if (shapeType.startsWith("poly")) {
-                        shape = Shape.POLYGON;
-                        POLYGON_POINTS.clear();
                     }
                 }
                 break;
@@ -142,25 +137,8 @@ public final class WorldEditCUI {
                             pos2 = pos;
                             if (shape == Shape.NONE) shape = Shape.CUBOID;
                         }
-                        if (shape == Shape.POLYGON) {
-                            while (POLYGON_POINTS.size() <= id) POLYGON_POINTS.add(null);
-                            POLYGON_POINTS.set(id, pos);
-                        }
                     } catch (NumberFormatException ignored) {}
                 }
-                break;
-            case "e": // Expand / bounds: e|<minX>|<minY>|<minZ>|<maxX>|<maxY>|<maxZ>
-                if (parts.length >= 7) {
-                    try {
-                        pos1 = new BlockPos(Integer.parseInt(parts[1]), Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));
-                        pos2 = new BlockPos(Integer.parseInt(parts[4]), Integer.parseInt(parts[5]), Integer.parseInt(parts[6]));
-                        shape = Shape.CUBOID;
-                    } catch (NumberFormatException ignored) {}
-                }
-                break;
-            case "clr":
-            case "clear":
-                clear();
                 break;
         }
     }
@@ -177,13 +155,17 @@ public final class WorldEditCUI {
         if (!on || !hasSelection() || out == null) return;
         if (HypixelSafetyManager.isDisallowed(NAME)) return;
 
-        if (shape == Shape.CUBOID && pos1 != null) {
-            int x1 = pos1.x();
-            int y1 = pos1.y();
-            int z1 = pos1.z();
-            int x2 = pos2 != null ? pos2.x() : x1;
-            int y2 = pos2 != null ? pos2.y() : y1;
-            int z2 = pos2 != null ? pos2.z() : z1;
+        // Copy pos1/pos2 to local variables to prevent race condition with clear()
+        BlockPos p1 = pos1;
+        BlockPos p2 = pos2;
+
+        if (shape == Shape.CUBOID && p1 != null) {
+            int x1 = p1.x();
+            int y1 = p1.y();
+            int z1 = p1.z();
+            int x2 = p2 != null ? p2.x() : x1;
+            int y2 = p2 != null ? p2.y() : y1;
+            int z2 = p2 != null ? p2.z() : z1;
 
             double minX = Math.min(x1, x2);
             double minY = Math.min(y1, y2);
@@ -204,7 +186,7 @@ public final class WorldEditCUI {
             drawBoxOutline(out, x1, y1, z1, x1 + 1.0, y1 + 1.0, z1 + 1.0, colorPos1);
 
             // Draw Pos 2 highlight box (blue)
-            if (pos2 != null) {
+            if (p2 != null) {
                 drawBoxOutline(out, x2, y2, z2, x2 + 1.0, y2 + 1.0, z2 + 1.0, colorPos2);
             }
         }

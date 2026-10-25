@@ -7,25 +7,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.thelads.core.client.hud.TeamSpeakHudElement;
 import com.thelads.core.client.media.MumbleLink;
 import com.thelads.core.client.media.TeamSpeakBridge;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class MumbleTeamSpeakTest {
 
+    @BeforeEach
+    void setUp() {
+        TeamSpeakBridge.stop();
+    }
+
     @Test
     void mumbleVectorCalculation() {
         // Yaw 0 (facing south in Minecraft: -Z is north, +Z is south), Pitch 0 (horizon)
-        double yawRad = Math.toRadians(0);
-        double pitchRad = Math.toRadians(0);
-        float fx = (float) (-Math.sin(yawRad) * Math.cos(pitchRad));
-        float fy = (float) (-Math.sin(pitchRad));
-        float fz = (float) (Math.cos(yawRad) * Math.cos(pitchRad));
+        float[] front = MumbleLink.calculateFrontVector(0f, 0f);
 
-        assertEquals(0.0f, fx, 1e-4);
-        assertEquals(0.0f, fy, 1e-4);
-        assertEquals(1.0f, fz, 1e-4);
+        assertEquals(0.0f, front[0], 1e-4);
+        assertEquals(0.0f, front[1], 1e-4);
+        assertEquals(1.0f, front[2], 1e-4);
 
         // Vector magnitude is 1.0 (unit vector)
-        double mag = Math.sqrt(fx * fx + fy * fy + fz * fz);
+        double mag = Math.sqrt(front[0] * front[0] + front[1] * front[1] + front[2] * front[2]);
         assertEquals(1.0, mag, 1e-4);
     }
 
@@ -41,6 +43,27 @@ class MumbleTeamSpeakTest {
     }
 
     @Test
+    void teamSpeakBridgeWhoamiAndClientMove() {
+        // whoami response
+        TeamSpeakBridge.parseLine("clid=42 cid=101");
+        assertEquals(42, TeamSpeakBridge.getMyClid());
+        assertEquals(101, TeamSpeakBridge.getMyCid());
+
+        // channelclientlist with voice flag
+        TeamSpeakBridge.parseLine("clid=42 client_nickname=LocalUser client_flag_talking=1|clid=99 client_nickname=RemoteUser client_flag_talking=0");
+        assertEquals(2, TeamSpeakBridge.getClients().size());
+
+        // another client moved away
+        TeamSpeakBridge.parseLine("notifyclientmoved clid=99 ctid=200");
+        assertEquals(1, TeamSpeakBridge.getClients().size());
+
+        // local client moved to channel 200
+        TeamSpeakBridge.parseLine("notifyclientmoved clid=42 ctid=200");
+        assertEquals(200, TeamSpeakBridge.getMyCid());
+        assertEquals(0, TeamSpeakBridge.getClients().size()); // cleared pending new channelclientlist
+    }
+
+    @Test
     void teamSpeakBridgeClientState() {
         // Parse client list entry
         TeamSpeakBridge.parseLine("clid=5 client_nickname=Alice|clid=6 client_nickname=Bob");
@@ -50,7 +73,7 @@ class MumbleTeamSpeakTest {
         TeamSpeakBridge.parseLine("notifytalkstatuschange status=0 clid=6");
 
         // Verify active channel name
-        TeamSpeakBridge.parseLine("notifychannelname channel_name=PvP\\sChannel");
+        TeamSpeakBridge.parseLine("channel_name=PvP\\sChannel");
         assertEquals("PvP Channel", TeamSpeakBridge.getCurrentChannel());
     }
 

@@ -13,15 +13,12 @@ class SoundFiltersTest {
     void setUp() {
         SoundFilters.on = true;
         SoundFilters.underwaterMuffle = true;
-        SoundFilters.caveReverb = true;
         SoundFilters.muffleIntensity = 0.7f;
-        SoundFilters.reverbIntensity = 0.5f;
         SoundFilters.inWater = false;
-        SoundFilters.inCave = false;
     }
 
     @Test
-    void normalSoundUnmodifiedWhenNotInWaterOrCave() {
+    void normalSoundUnmodifiedWhenNotInWater() {
         float vol = SoundFilters.filterVolume(1.0f, "entity.zombie.ambient");
         float pitch = SoundFilters.filterPitch(1.0f, "entity.zombie.ambient");
         assertEquals(1.0f, vol, 1e-5);
@@ -38,18 +35,19 @@ class SoundFiltersTest {
     }
 
     @Test
-    void caveReverbModulatesSound() {
-        SoundFilters.inCave = true;
-        float vol = SoundFilters.filterVolume(1.0f, "entity.zombie.ambient");
-        float pitch = SoundFilters.filterPitch(1.0f, "entity.zombie.ambient");
-        assertTrue(vol > 1.0f, "Cave reverb slightly boosts ambient body");
-        assertTrue(pitch <= 1.0f, "Pitch has slight resonance adjustment");
+    void musicAndRecordsExemptFromPitchShift() {
+        SoundFilters.inWater = true;
+        float vol = SoundFilters.filterVolume(1.0f, "music.game");
+        float pitch = SoundFilters.filterPitch(1.0f, "music.game");
+        assertEquals(1.0f, pitch, 1e-5, "Music pitch must remain unchanged underwater");
+
+        float recordPitch = SoundFilters.filterPitch(1.0f, "record.cat");
+        assertEquals(1.0f, recordPitch, 1e-5, "Record pitch must remain unchanged underwater");
     }
 
     @Test
     void uiSoundsBypassFiltering() {
         SoundFilters.inWater = true;
-        SoundFilters.inCave = true;
         float vol = SoundFilters.filterVolume(1.0f, "gui.button.press");
         float pitch = SoundFilters.filterPitch(1.0f, "gui.button.press");
         assertEquals(1.0f, vol, 1e-5, "UI button sound must not be muffled");

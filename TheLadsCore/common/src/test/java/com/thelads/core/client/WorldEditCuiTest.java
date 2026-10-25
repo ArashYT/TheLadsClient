@@ -38,20 +38,24 @@ class WorldEditCuiTest {
     }
 
     @Test
-    void parseExpandCommand() {
-        WorldEditCUI.parseCommand("e|5|10|15|20|30|40");
+    void shapeCommandClearsPreviousSelection() {
+        WorldEditCUI.parseCommand("s|cuboid");
+        WorldEditCUI.parseCommand("p|0|10|20|30|0");
+        assertTrue(WorldEditCUI.hasSelection());
+
+        // Under CUI protocol, receiving s|<shape> resets active points
+        WorldEditCUI.parseCommand("s|cuboid");
+        assertFalse(WorldEditCUI.hasSelection());
         assertEquals(WorldEditCUI.Shape.CUBOID, WorldEditCUI.getShape());
-        assertEquals(5, WorldEditCUI.getPos1().x());
-        assertEquals(20, WorldEditCUI.getPos2().x());
     }
 
     @Test
-    void clearCommandClearsSelection() {
+    void clearMethodClearsSelectionState() {
         WorldEditCUI.parseCommand("s|cuboid");
         WorldEditCUI.parseCommand("p|0|1|2|3|0");
         assertTrue(WorldEditCUI.hasSelection());
 
-        WorldEditCUI.parseCommand("clr");
+        WorldEditCUI.clear();
         assertFalse(WorldEditCUI.hasSelection());
         assertEquals(WorldEditCUI.Shape.NONE, WorldEditCUI.getShape());
     }
