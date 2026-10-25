@@ -742,7 +742,7 @@ public class Minecraft189Tests
         var bundle = AppContext.BaseDirectory;
         var manifest = JsonSerializer.Deserialize<ClientModInstaller.Manifest>(File.ReadAllText(Path.Combine(bundle, "game-mods", "1.8.9", "client-mods.json")),
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
-        Assert.Equal(("1.8.9", 5), (manifest.MinecraftVersion, manifest.Mods.Count)); // Resourcify, 3D Skin Layers, Xaero, Pylon, Ionium
+        Assert.Equal(("1.8.9", 6), (manifest.MinecraftVersion, manifest.Mods.Count)); // Resourcify, 3D Skin Layers, Xaero, Pylon, Ionium, ReplayMod
         Assert.Empty(manifest.Mods.Where(m => !m.DefaultEnabled)); // Ionium is on by default since 1.9.12 (owner)
         Assert.Contains(manifest.Retired ?? new(), r => r.ModId == "essential");
         Assert.DoesNotContain(Directory.EnumerateFiles(Path.Combine(bundle, "game-mods"), "*", SearchOption.AllDirectories),
@@ -750,7 +750,7 @@ public class Minecraft189Tests
                 || (file.EndsWith(".jar", StringComparison.OrdinalIgnoreCase) && FabricModMetadata.ReadForgeJar(file)?.Id == OptiFineInstaller.ModId));
 
         using var box = new ModSandbox();
-        box.Choose(("resourcify", false), ("skinlayers3d", false), ("xaerominimap", false), ("pylon", false));
+        box.Choose(("resourcify", false), ("skinlayers3d", false), ("xaerominimap", false), ("pylon", false), ("replaymod", false));
         await ClientModInstaller.InstallAsync(bundle, box.Game, "1.8.9", httpClient: box.Client());
         Assert.Empty(box.Requests);
         var inventory = await new ModInventoryService().BuildAsync(bundle, box.Game, "1.8.9");
