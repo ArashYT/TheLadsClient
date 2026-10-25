@@ -322,8 +322,11 @@ public final class HostScreenLogic {
         g.drawCenteredText("Done", doneBtn.x + doneBtn.w / 2, doneBtn.y + 6, LadsPalette.TEXT, false);
     }
 
+    /** The host never sends the welcome message to guests yet, so its field stays hidden until it does (1.11.0 notes check). */
+    private static final boolean WELCOME = false;
+
     private void renderGeneralSection(LadsGraphics g, int x, int y, int w, int h, int mx, int my, int sy, int sh) {
-        int totalH = 176; // 4 rows x 28 + welcome label 20 + input 22 + padding: the last row scrolls fully into view
+        int totalH = WELCOME ? 176 : 134; // 4 rows x 28 (+ welcome label 20 + input 22) + padding: the last row scrolls fully into view
         maxScroll = Math.max(0, totalH - (h - 12));
         scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset));
 
@@ -381,6 +384,8 @@ public final class HostScreenLogic {
         g.drawCenteredText(showJoinable ? "ON" : "OFF", joinableToggle.x + joinableToggle.w / 2, joinableToggle.y + 4, LadsPalette.TEXT, false);
 
         itemY += 28;
+        welcomeInputBox = null;
+        if (!WELCOME) return;
         // Welcome message
         g.drawText("Welcome Message", x + 12, itemY + 6, LadsPalette.TEXT, false);
         itemY += 20;
