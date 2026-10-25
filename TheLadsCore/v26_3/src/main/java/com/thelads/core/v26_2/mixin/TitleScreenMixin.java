@@ -43,6 +43,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private int ladsLayoutHeight;
     @Unique private Button ladsSettingsButton;
     @Unique private Button ladsCosmeticsButton;
+    @Unique private Button ladsFriendsButton;
     @Unique private Button ladsSwitchButton;
     @Unique private Button ladsFullscreenButton;
     @Unique private Button ladsLanguageButton;
@@ -72,6 +73,8 @@ public abstract class TitleScreenMixin extends Screen {
 
         ladsSettingsButton = addRenderableWidget(Button.builder(Component.literal("Lads Mods"),
             button -> minecraft.setScreenAndShow(new LadsSettingsScreen26(this))).bounds(0, 0, 1, 1).build());
+        ladsFriendsButton = addRenderableWidget(Button.builder(com.thelads.core.v26_2.social.SocialBridge26.friendsButtonText(),
+            button -> minecraft.setScreenAndShow(new com.thelads.core.v26_2.social.FriendsScreen26(this))).bounds(0, 0, 1, 1).build());
         ladsCosmeticsButton = addRenderableWidget(Button.builder(Component.literal("Cosmetics"),
             button -> minecraft.setScreenAndShow(new com.thelads.core.v26_2.cosmetics.anim.CosmeticsScreen26(this))).bounds(0, 0, 1, 1).build());
         ladsMoreButton = addRenderableWidget(Button.builder(Component.literal("More..."),
@@ -155,7 +158,7 @@ public abstract class TitleScreenMixin extends Screen {
         for (AbstractWidget widget : List.copyOf(ladsTitleWidgets)) {
             String key = ladsMessageKey(widget);
             boolean main = widget == ladsSettingsButton || widget == ladsMoreButton
-                || widget == ladsReplaysButton || widget == ladsCosmeticsButton
+                || widget == ladsReplaysButton || widget == ladsCosmeticsButton || widget == ladsFriendsButton
                 || widget == ladsQuitButton || widget == ladsSwitchVersionButton || widget == ladsNetworkButton
                 || ladsIsModMenuWidget(widget)
                 || key.equals("menu.singleplayer") || key.equals("menu.playdemo") || key.equals("menu.multiplayer")
@@ -214,7 +217,8 @@ public abstract class TitleScreenMixin extends Screen {
         if (widget == ladsNetworkButton) return 1; // after Multiplayer: the stable sort keeps the vanilla button (added first) ahead
         if (widget == ladsSettingsButton) return 2;
         if (ladsIsModMenuWidget(widget)) return 3;
-        if (widget == ladsCosmeticsButton) return 4;
+        if (widget == ladsFriendsButton) return 4;
+        if (widget == ladsCosmeticsButton) return 5;
         if (widget == ladsReplaysButton) return 7;
         if (widget == ladsMoreButton) return 8;
         if (widget == ladsQuitButton || "menu.quit".equals(ladsMessageKey(widget))) return 9;
@@ -231,6 +235,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique
     private String ladsButtonIcon(AbstractWidget widget) {
         if (widget == ladsSettingsButton) return "lads";
+        if (widget == ladsFriendsButton) return "friends";
         if (widget == ladsCosmeticsButton) return "wardrobe";
         if (widget == ladsMoreButton) return "dots";
         if (widget == ladsReplaysButton) return "replay";

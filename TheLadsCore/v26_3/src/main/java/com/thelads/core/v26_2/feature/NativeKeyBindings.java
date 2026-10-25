@@ -15,6 +15,10 @@ public final class NativeKeyBindings {
         InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY);
     public static final KeyMapping PLAY_AGAIN = new KeyMapping("key.theladscore.play_again",
         InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY);
+    public static final KeyMapping TOAST_ACCEPT = new KeyMapping("key.theladscore.toast_accept",
+        InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY);
+    public static final KeyMapping TOAST_DENY = new KeyMapping("key.theladscore.toast_deny",
+        InputConstants.Type.KEYBOARD, InputConstants.UNKNOWN.getValue(), CATEGORY);
     /** Toggle Sprint & Sneak, listed under Movement right after Sprint and Sneak ("Sprint (Toggle)"): unbound by default, so Sprint
      * and Sneak toggle (NativeFeatures); bound, these toggle instead. */
     public static final KeyMapping TOGGLE_SPRINT = new KeyMapping("key.theladscore.toggle_sprint",

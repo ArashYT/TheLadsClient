@@ -22,6 +22,27 @@ public final class NativeKeyBindings1201 {
         CATEGORY
     ));
 
+    public static final KeyMapping FRIENDS = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        "key.theladscore.friends",
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_O,
+        CATEGORY
+    ));
+
+    public static final KeyMapping TOAST_ACCEPT = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        "key.theladscore.toast_accept",
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_UNKNOWN,
+        CATEGORY
+    ));
+
+    public static final KeyMapping TOAST_DENY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        "key.theladscore.toast_deny",
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_UNKNOWN,
+        CATEGORY
+    ));
+
     public static final KeyMapping QUICKPLAY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
         "key.theladscore.quickplay",
         InputConstants.Type.KEYSYM,

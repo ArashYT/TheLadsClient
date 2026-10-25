@@ -38,6 +38,22 @@ class ReconnectSessionTest {
         assertEquals("Retry limit reached · Reconnect", session.retryLabel(now));
     }
 
+    /** A friend's world (P2P guest proxy) is never recorded or offered for reconnect: its loopback port dies with the session. */
+    @Test void friendsWorldProxyIsNeverAReconnectTarget() {
+        HypixelSafetyManager.setP2PSession("p2p:host/world", "127.0.0.1:50123");
+        try {
+            var session = new ReconnectSession();
+            session.begin("127.0.0.1:50123", () -> fail("no reconnect to the proxy"), player);
+            session.joined(null, lists, false, false, false, 0);
+            assertFalse(session.canRetry(player, true));
+            assertEquals("", session.target());
+            session.begin("play.example:25565", () -> {}, player);
+            assertTrue(session.canRetry(player, true), "other servers still reconnect");
+        } finally {
+            HypixelSafetyManager.setP2PSession(null, null);
+        }
+    }
+
     @Test void kicksAndBansDoNotRetryByDefault() {
         for (var reason : List.of(List.of("multiplayer.disconnect.kicked", "Kicked by an operator"),
                 List.of("multiplayer.disconnect.banned.reason", "You are banned from this server."),

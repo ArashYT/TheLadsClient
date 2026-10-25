@@ -92,6 +92,29 @@ public final class HypixelSafetyManager {
     private static final Map<String, Server> CACHED_ADDRESSES = new ConcurrentHashMap<>();
     private static volatile String lastAddress;
     private static volatile Server lastServer = LOCAL;
+    private static volatile String p2pSessionKey;
+    private static volatile Server p2pServer;
+    private static volatile String p2pProxyAddress;
+
+    /**
+     * A P2P guest session: while the game's connection address IS proxyAddress (the guest's loopback proxy, "127.0.0.1:port") it is an
+     * unknown server under key. Any other address is classified as usual, so a key left over by a missed cleanup can't mask or grant.
+     */
+    public static void setP2PSession(String keyOrNull, String proxyAddress) {
+        p2pSessionKey = keyOrNull;
+        p2pProxyAddress = keyOrNull != null ? proxyAddress : null;
+        p2pServer = keyOrNull != null ? new Server(0, keyOrNull) : null;
+    }
+
+    /** address is the P2P guest's loopback proxy (a friend's world through the tunnel, never a server to reconnect to). */
+    public static boolean isP2PProxy(String address) {
+        String proxy = p2pProxyAddress;
+        return proxy != null && proxy.equals(address);
+    }
+
+    public static String getP2PSession() {
+        return p2pSessionKey;
+    }
 
     /** host -> bypassed module keys ({@link #bypassKey}). Loaded once, written on every change. */
     private static final Map<String, Set<String>> BYPASSES = new ConcurrentHashMap<>();
@@ -126,6 +149,8 @@ public final class HypixelSafetyManager {
 
     /** Asked per module every frame: the last address first, before any string work. */
     private static Server server(String addr) {
+        Server p2p = p2pServer;
+        if (p2p != null && addr != null && addr.equals(p2pProxyAddress)) return p2p;
         if (addr == null || addr.isEmpty()) return LOCAL;
         if (addr.equals(lastAddress)) return lastServer;
         Server server = CACHED_ADDRESSES.computeIfAbsent(addr, HypixelSafetyManager::computeServer);
@@ -305,7 +330,7 @@ public final class HypixelSafetyManager {
 
     /** Any server, LAN or Realms (anything but a local world); "Unknown" counts as a server, so a missed case stays off. */
     public static boolean isMultiplayer() {
-        return qaOverride || !"Singleplayer".equalsIgnoreCase(LadsGameBridge.get().getServerAddress());
+        return qaOverride || !"Singleplayer".equalsIgnoreCase(LadsGameBridge.get().getServerAddress()); // the P2P proxy is an address too
     }
 
     /**

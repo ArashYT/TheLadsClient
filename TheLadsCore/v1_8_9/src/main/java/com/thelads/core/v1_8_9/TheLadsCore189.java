@@ -73,6 +73,12 @@ public class TheLadsCore189 {
         } catch (Throwable ignored) {}
         com.thelads.core.v1_8_9.feature.PylonWindow189.fillOptiFineDesktopMode();
         LadsGameBridge.set(new VanillaGameBridge189());
+        com.thelads.core.v1_8_9.social.SocialBridge189 socialBridge189 = new com.thelads.core.v1_8_9.social.SocialBridge189();
+        com.thelads.core.client.social.SocialBridge.set(socialBridge189);
+        MinecraftForge.EVENT_BUS.register(socialBridge189);
+        com.thelads.core.v1_8_9.social.SocialKeybind189.register();
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.social.SocialKeybind189());
+        MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.social.SocialToasts189());
         com.thelads.core.security.AntiInjectDetector.init();
         ConfigManager.load();
         com.thelads.core.client.util.LogPruner.pruneIfEnabled(new java.io.File("logs"));
@@ -169,7 +175,7 @@ public class TheLadsCore189 {
         // MouseTweaks189 through GuiContainerMouseTweaksMixin and Forge's mouse input event, as 26.x NativeMouseTweaks.
         com.thelads.core.modules.MouseTweaksModule.NAME,
         // ThreadPriorityModule (common) knows 1.8.9's thread names. DiscordRPC through Discord189, as 26.x NativeDiscordPresence.
-        "Threads", "DiscordRPC",
+        "Threads", "DiscordRPC", com.thelads.core.client.social.SocialState.MODULE,
         // ComboSounds (common) through KillBanner189's attack event and NetHandlerPlayClientMixin's hurt status, as 26.x.
         com.thelads.core.modules.ComboSoundsModule.NAME,
         // BetterF3189 (Forge's debug text event) and CustomFov189 (AbstractClientPlayerMixin and Forge's FOV event); each hands its
@@ -304,6 +310,7 @@ public class TheLadsCore189 {
         Borderless189.tick(mc);
         com.thelads.core.v1_8_9.feature.Discord189.tick(mc);
         com.thelads.core.client.cosmetics.net.CosmeticsLink.tick();
+        com.thelads.core.client.social.SocialState.tick();
 
         CoreCatalogExporter.exportIfChanged();
         com.thelads.core.v1_8_9.feature.EnumValues189.reportOnce();

@@ -32,7 +32,7 @@ class Lads197DefaultsTest {
         "BetterF3", "BetterScreenshots", "BorderlessFullscreen", "BossBar", "Chat",
         "ClientTools", com.thelads.core.modules.CloudHeightModule.NAME, "Clumps", "Coordinates", "Crosshair Tweaks", com.thelads.core.modules.CustomSkyModule.NAME, com.thelads.core.modules.CustomItemTexturesModule.NAME,
         "DiscordRPC", "DynamicFPS", com.thelads.core.modules.DynamicLightsModule.NAME, "EnhancedToolbars", "EnhancedTooltips",
-        "FarBlockEntities", "FPS", "HYPIXEL Mods", "Quickplay", com.thelads.core.modules.ItemPhysicsModule.NAME, com.thelads.core.client.KeepUiOpen.MODULE_NAME, "KillBanner",
+        "FarBlockEntities", "FPS", com.thelads.core.client.social.SocialState.MODULE, "HYPIXEL Mods", "Quickplay", com.thelads.core.modules.ItemPhysicsModule.NAME, com.thelads.core.client.KeepUiOpen.MODULE_NAME, "KillBanner",
         com.thelads.core.modules.LadsBadgeModule.NAME, com.thelads.core.modules.MenuBlurModule.NAME,
         "Minimap", "MouseTweaks", "Nametags", com.thelads.core.client.DamageTilt.MODULE, "Particle Core",
         "PingView", "PingHUD", "Potion Effects", "Raised", "RawInput", "Server Control",

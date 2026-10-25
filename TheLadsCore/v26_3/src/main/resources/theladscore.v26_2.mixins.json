@@ -189,7 +189,10 @@
     "EntityRenderDispatcherMixin",
     "CloudRendererMixin",
     "LadsApiPacketListenerMixin",
-    "LadsApiDisconnectMixin"
+    "LadsApiDisconnectMixin",
+    "MinecraftFriendsMixin",
+    "ScreenChatClickMixin",
+    "ClientPacketListenerChatMixin"
   ],
   "mixins": [
     "DisplayEntityAccessor",
@@ -210,6 +213,8 @@
     "TimeChangerMixin",
     "WeatherLevelMixin",
     "WeatherPrecipitationMixin",
-    "FogCustomizerMixin"
+    "FogCustomizerMixin",
+    "ServerConnectionListenerMixin",
+    "PlayerListMixin"
   ]
 }

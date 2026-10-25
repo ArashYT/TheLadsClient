@@ -25,6 +25,7 @@ public final class ReconnectSession {
     public void begin(String id, Runnable connect, UUID player) {
         if (reconnecting) return;
         clear();
+        if (HypixelSafetyManager.isP2PProxy(id)) return; // a friend's world: its proxy port is gone once the session ends
         target = id;
         connector = connect;
         account = player;

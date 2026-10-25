@@ -1,6 +1,9 @@
 package com.thelads.core.v1_20_1;
 
 import com.thelads.core.client.bridge.LadsGameBridge;
+import com.thelads.core.client.social.SocialBridge;
+import com.thelads.core.client.social.SocialState;
+import com.thelads.core.client.social.ui.SocialToasts;
 import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.v1_20_1.adapter.VanillaGameBridge1201;
@@ -10,6 +13,8 @@ import com.thelads.core.v1_20_1.feature.NativeKeyBindings1201;
 import com.thelads.core.v1_20_1.feature.NativeKillBanner1201;
 import com.thelads.core.v1_20_1.feature.QaProbe1201;
 import com.thelads.core.v1_20_1.gui.ExternalModSettings1201;
+import com.thelads.core.v1_20_1.social.SocialBridge1201;
+import com.thelads.core.v1_20_1.social.SocialHudToast1201;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import org.slf4j.Logger;
@@ -22,6 +27,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
     public void onInitializeClient() {
         LOGGER.info("Initializing TheLadsCore for Minecraft 1.20.1...");
         LadsGameBridge.set(new VanillaGameBridge1201());
+        SocialBridge.set(new SocialBridge1201());
         com.thelads.core.security.AntiInjectDetector.init();
         ConfigManager.load();
         com.thelads.core.client.util.LogPruner.pruneIfEnabled(new java.io.File("logs"));
@@ -42,7 +48,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         com.thelads.core.v1_20_1.feature.ebe.BakedBlockEntities1201.init();
 
         com.thelads.core.v1_20_1.feature.Menus1201.register();
-                com.thelads.core.v1_20_1.feature.fastquit.FastQuitProbe1201.initialize();
+        com.thelads.core.v1_20_1.feature.fastquit.FastQuitProbe1201.initialize();
 
         ModuleSupport.registerBuiltIn("Threads");
         ModuleSupport.registerBuiltIn(com.thelads.core.client.hud.ActionBar.MODULE); // OverlayGuiMixin, ActionBarHudElement
@@ -53,7 +59,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             "Day", "Time", "XP", "Potion Effects", "Zoom", com.thelads.core.modules.ToggleSprintModule.NAME,
             "Fullbright", "TitleScreen", "Title Scale", "CPS", "Keystrokes",
             "Biome", "ArmorHUD", "Direction", "Health", "Hunger", "Scoreboard", "TexturePacks",
-            "Autohide", "BossBar", "RawInput", "LegacySwing", "DiscordRPC",
+            "Autohide", "BossBar", "RawInput", "LegacySwing", "DiscordRPC", SocialState.MODULE,
             "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates",
             "Voice Chat", "Voice Chat Group",
             // Gameplay & Visuals
@@ -77,12 +83,12 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         ModuleSupport.registerUnavailable(com.thelads.core.modules.ContainerQoLModule.NAME, "Only for Minecraft 1.8.9, as PolyPatcher's "
             + "click outside to close; it is not hooked into this version's container screens.");
 
-
         com.thelads.core.v1_20_1.game.Gameplay1201.register();
         com.thelads.core.v1_20_1.perf.Performance1201.register();
         com.thelads.core.v1_20_1.hud.Hud1201.register();
         com.thelads.core.v1_20_1.feature.Hypixel1201.register();
-                com.thelads.core.v1_20_1.feature.ParticleCore1201.register();
+        com.thelads.core.v1_20_1.feature.P2PQa1201.register(); // QA only: inert without LADS_VERIFY_P2P
+        com.thelads.core.v1_20_1.feature.ParticleCore1201.register();
         com.thelads.core.v1_20_1.world.World1201.register(); // Wavy Capes, TNT Timer
         com.thelads.core.v1_20_1.pvp.PvpVisuals1201.register(); // Color Saturation, Motion/Menu Blur, Hide Foliage, Clear Glass
         com.thelads.core.v1_20_1.hudextras.HudExtras1201.register(); // HUD widgets and vanilla HUD tweaks (parity 1.9.19)
@@ -90,11 +96,26 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
         com.thelads.core.v1_20_1.qol.Qol1201.register(); // Scrollable Tooltips, Crash Catcher, Quick Reconnect, Keep Cursor, Sound Volumes, GUI Scale, Chunk Borders
         com.thelads.core.v1_20_1.net.LadsApiTransport1201.init();
 
+        SocialHudToast1201.register();
+        net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> SocialBridge1201.resetLoopbackState());
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();
+            while (NativeKeyBindings1201.FRIENDS.consumeClick()) {
+                if (client.screen == null) {
+                    SocialBridge.get().openFriendsScreen();
+                }
+            }
+            while (NativeKeyBindings1201.TOAST_ACCEPT.consumeClick()) {
+                SocialToasts.acceptNewest();
+            }
+            while (NativeKeyBindings1201.TOAST_DENY.consumeClick()) {
+                SocialToasts.denyNewest();
+            }
             NativeFeatures1201.tick();
             NativeDiscordPresence1201.tick();
             com.thelads.core.client.cosmetics.net.CosmeticsLink.tick();
+            SocialState.tick();
             NativeKillBanner1201.tick();
             com.thelads.core.mods.CoreCatalogExporter.exportIfChanged();
         });

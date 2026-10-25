@@ -309,6 +309,11 @@ public class ModuleManager {
         register(packets, Module.Category.SERVER);
 
         register(new DiscordRpcModule(), Module.Category.SERVER);
+        Module social = new Module(com.thelads.core.client.social.SocialState.MODULE, "Friends, what they are playing, messages, invites and "
+            + "joining each other's worlds peer to peer, through the Lads social server (never the game's connection). Your Minecraft name and "
+            + "UUID go to that server. Off: no connection to it at all.");
+        social.setEnabled(true);
+        register(social, Module.Category.SERVER);
         registerHidden(new com.thelads.core.modules.CosmeticsModule(), Module.Category.MECHANIC); // always on: the Cosmetics screen
         // 1.9.2: the Hypixel mods grouped into one.
         register(com.thelads.core.client.hypixel.HypixelMods.module(), Module.Category.HYPIXEL);

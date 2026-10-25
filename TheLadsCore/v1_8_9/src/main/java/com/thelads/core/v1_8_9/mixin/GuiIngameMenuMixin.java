@@ -32,7 +32,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseButton {
     @Unique private static final int LADS_BUTTON_ID = 0x4C414453; // "LADS"; vanilla and Forge use 0-12
     @Unique private static boolean ladsLogged;
-    @Unique private GuiButton ladsButton, ladsMultiplayerButton, ladsScreenshotsButton, ladsCosmeticsButton, ladsExtrasButton;
+    @Unique private GuiButton ladsButton, ladsMultiplayerButton, ladsScreenshotsButton, ladsCosmeticsButton, ladsFriendsButton, ladsExtrasButton;
     @Unique private List<GuiButton> ladsExtras;
     @Unique private int ladsLaidOut;
     @Unique private GuiButton ladsFullscreenButton;
@@ -43,6 +43,8 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
         buttonList.add(ladsButton);
         ladsMultiplayerButton = new GuiButton(LADS_BUTTON_ID + 4, width / 2 - 100, height / 4 + 168 - 16, I18n.format("menu.multiplayer"));
         buttonList.add(ladsMultiplayerButton);
+        ladsFriendsButton = new GuiButton(LADS_BUTTON_ID + 9, width / 2 - 100, height / 4 + 168 - 16, friendsButtonText());
+        buttonList.add(ladsFriendsButton);
         ladsCosmeticsButton = new GuiButton(LADS_BUTTON_ID + 8, width / 2 - 100, height / 4 + 168 - 16, "Cosmetics");
         buttonList.add(ladsCosmeticsButton);
         ladsScreenshotsButton = new GuiButton(LADS_BUTTON_ID + 7, width / 2 - 100, height / 4 + 168 - 16, "Screenshots");
@@ -60,7 +62,24 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
 
     /** On the first frame, when Forge mods have added their buttons, and again when the button list changes. */
     @Unique
+    private String friendsButtonText() {
+        int count = com.thelads.core.v1_8_9.social.SocialBridge189.onlineFriendsCount();
+        return count > 0 ? "Friends (" + count + ")" : "Friends";
+    }
+
+    @Unique
     private void ladsLayout() {
+        for (GuiButton b : buttonList) {
+            if (b.id == 7) {
+                b.displayString = "Multiplayer Options";
+                if (mc.isIntegratedServerRunning()) {
+                    b.enabled = true;
+                }
+            }
+        }
+        if (ladsFriendsButton != null) {
+            ladsFriendsButton.displayString = friendsButtonText();
+        }
         boolean changed = ladsLaidOut != buttonList.size();
         for (GuiButton button : new ArrayList<>(buttonList)) {
             if (button == ladsExtrasButton || button == ladsFullscreenButton) continue;
@@ -102,6 +121,7 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
     private PauseMenuLayout.Slot ladsSlot(GuiButton button) {
         if (button == ladsButton) return PauseMenuLayout.Slot.LADS;
         if (button == ladsMultiplayerButton) return PauseMenuLayout.Slot.MULTIPLAYER;
+        if (button == ladsFriendsButton) return PauseMenuLayout.Slot.FRIENDS;
         if (button == ladsCosmeticsButton) return PauseMenuLayout.Slot.COSMETICS;
         if (button == ladsScreenshotsButton) return PauseMenuLayout.Slot.SCREENSHOTS;
         if (button == ladsExtrasButton) return PauseMenuLayout.Slot.EXTRAS;
@@ -143,9 +163,13 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
     private void ladsPauseAction(GuiButton button, CallbackInfo ci) {
         if (button == ladsButton) mc.displayGuiScreen(new LadsSettingsScreen189(this));
         else if (button == ladsMultiplayerButton) PauseMultiplayer189.open(this);
+        else if (button == ladsFriendsButton) com.thelads.core.client.social.SocialBridge.get().openFriendsScreen();
         else if (button == ladsCosmeticsButton) mc.displayGuiScreen(new CosmeticsScreen189(this));
         else if (button == ladsScreenshotsButton) mc.displayGuiScreen(new ScreenshotsScreen189(this));
         else if (button == ladsExtrasButton) mc.displayGuiScreen(new TitleExtrasScreen189(this, TitleExtrasScreen189.of(this, ladsExtras)));
+        else if (button != null && button.id == 7) {
+            com.thelads.core.client.social.SocialBridge.get().openHostScreen();
+        }
         else if (button instanceof CompactButton189) ((CompactButton189) button).press();
         else if (button != null && button.id == 1) {
             boolean isMultiplayer = mc.theWorld != null && !mc.isIntegratedServerRunning();

@@ -11,6 +11,9 @@ import com.thelads.core.v1_20_1.gui.PauseMultiplayer1201;
 import com.thelads.core.v1_20_1.gui.ReplayScreens1201;
 import com.thelads.core.v1_20_1.gui.TitleExtrasScreen1201;
 import com.thelads.core.v1_20_1.gui.Widgets1201;
+import com.thelads.core.v1_20_1.social.FriendsScreen1201;
+import com.thelads.core.v1_20_1.social.HostScreen1201;
+import com.thelads.core.v1_20_1.social.SocialBridge1201;
 import com.llamalad7.mixinextras.sugar.Local;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,10 +64,16 @@ public abstract class PauseScreenMixin extends Screen {
                     widget.visible = false;
                     removeWidget(widget);
                     changed = true;
-                } else if (widget instanceof Button && widget != ladsExtrasButton && widget.getWidth() <= 30) {
-                    if (!ladsExtras.contains(widget)) ladsExtras.add(widget);
-                    widget.visible = false;
-                    removeWidget(widget);
+                } else if (widget instanceof Button btn && btn != ladsExtrasButton && btn.getWidth() <= 30) {
+                    if (!ladsExtras.contains(btn)) ladsExtras.add(btn);
+                    btn.visible = false;
+                    removeWidget(btn);
+                    changed = true;
+                } else if (widget instanceof Button btn && btn.getMessage().getString().equals(Component.translatable("menu.shareToLan").getString())) {
+                    btn.visible = false;
+                    removeWidget(btn);
+                    addRenderableWidget(Button.builder(Component.literal("Multiplayer Options"),
+                        b -> minecraft.setScreen(new HostScreen1201(this))).build());
                     changed = true;
                 }
             }
@@ -85,7 +94,9 @@ public abstract class PauseScreenMixin extends Screen {
             var widget = buttons.get(i);
             var box = boxes.get(i);
             Widgets1201.setBounds(widget, box.x(), box.y(), box.width(), box.height());
-            ButtonLift.enable(widget, PauseMenuLayout.icon(slots.get(i)));
+            String icon = slots.get(i) == PauseMenuLayout.Slot.OTHER && buttons.get(i).getMessage().getString().startsWith("Friends")
+                ? "user" : PauseMenuLayout.icon(slots.get(i));
+            ButtonLift.enable(widget, icon);
         }
     }
 
@@ -97,7 +108,7 @@ public abstract class PauseScreenMixin extends Screen {
         if (text.equals("Cosmetics")) return PauseMenuLayout.Slot.COSMETICS;
         if (text.equals("Screenshots")) return PauseMenuLayout.Slot.SCREENSHOTS;
         if (text.equals("Replays")) return PauseMenuLayout.Slot.REPLAYS;
-        if (text.contains("Host") || text.contains("Invite")) return PauseMenuLayout.Slot.WORLD;
+        if (text.contains("Host") || text.contains("Invite") || text.equals("Multiplayer Options")) return PauseMenuLayout.Slot.WORLD;
         String[][] keys = {{"menu.returnToGame", "BACK"}, {"gui.advancements", "ADVANCEMENTS"}, {"gui.stats", "STATS"}, {"menu.options", "OPTIONS"},
             {"menu.multiplayer", "MULTIPLAYER"}, {"menu.multiplayerOptions.button", "WORLD"}, {"options.worldOptions.button", "WORLD"},
             {"menu.worldOptions", "WORLD"}, {"menu.shareToLan", "WORLD"}, {"menu.returnToMenu", "QUIT"}, {"menu.disconnect", "QUIT"}};
@@ -182,6 +193,8 @@ public abstract class PauseScreenMixin extends Screen {
             button -> com.thelads.core.v1_20_1.feature.screenshots.ScreenshotViewer1201.openFromMenu(this)).width(204).build(), 2);
         ladsPauseRows.addChild(Button.builder(Component.literal("Cosmetics"),
             button -> minecraft.setScreen(new CosmeticsScreen1201(this))).width(204).build(), 2);
+        ladsPauseRows.addChild(Button.builder(SocialBridge1201.friendsButtonLabel(),
+            button -> minecraft.setScreen(new FriendsScreen1201(this))).width(204).build(), 2);
         if (ReplayScreens1201.available()) {
             ladsPauseRows.addChild(Button.builder(Component.literal("Replays"),
                 button -> ReplayScreens1201.open(this)).width(204).build(), 2);

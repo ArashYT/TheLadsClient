@@ -14,6 +14,8 @@ import com.thelads.core.v1_20_1.gui.TitleExtrasScreen1201;
 import com.thelads.core.v1_20_1.gui.TitleWidgetRegistry1201;
 import com.thelads.core.v1_20_1.gui.VersionSwitchScreen1201;
 import com.thelads.core.v1_20_1.gui.Widgets1201;
+import com.thelads.core.v1_20_1.social.FriendsScreen1201;
+import com.thelads.core.v1_20_1.social.SocialBridge1201;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -54,6 +56,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private int ladsLayoutHeight;
     @Unique private Button ladsSettingsButton;
     @Unique private Button ladsCosmeticsButton;
+    @Unique private Button ladsFriendsButton;
     @Unique private Button ladsSwitchButton;
     @Unique private CompactButton1201 ladsFullscreenButton;
     @Unique private Button ladsLanguageButton;
@@ -80,6 +83,7 @@ public abstract class TitleScreenMixin extends Screen {
         ladsExtraWidgets = new ArrayList<>();
         ladsReplaysButton = null;
         ladsCosmeticsButton = null;
+        ladsFriendsButton = null;
         ladsCustomTitle = NativeFeatures1201.enabled("TitleScreen");
         if (!ladsCustomTitle) return;
 
@@ -87,6 +91,8 @@ public abstract class TitleScreenMixin extends Screen {
             button -> minecraft.setScreen(new LadsSettingsScreen1201(this))).bounds(0, 0, 1, 1).build());
         ladsCosmeticsButton = addRenderableWidget(Button.builder(Component.literal("Cosmetics"),
             button -> minecraft.setScreen(new CosmeticsScreen1201(this))).bounds(0, 0, 1, 1).build());
+        ladsFriendsButton = addRenderableWidget(Button.builder(SocialBridge1201.friendsButtonLabel(),
+            button -> minecraft.setScreen(new FriendsScreen1201(this))).bounds(0, 0, 1, 1).build());
         ladsMoreButton = addRenderableWidget(Button.builder(Component.literal("More..."),
             button -> minecraft.setScreen(new TitleExtrasScreen1201(this, ladsExtraWidgets))).bounds(0, 0, 1, 1).build());
         // Only where a replay mod is installed (Replay Mod on 1.20.1): a button that opens nothing helps nobody.
@@ -170,7 +176,7 @@ public abstract class TitleScreenMixin extends Screen {
         }
         for (AbstractWidget widget : List.copyOf(ladsTitleWidgets)) {
             String key = TitleWidgetRegistry1201.messageKey(widget);
-            boolean main = widget == ladsSettingsButton || widget == ladsCosmeticsButton || widget == ladsMoreButton
+            boolean main = widget == ladsSettingsButton || widget == ladsCosmeticsButton || widget == ladsFriendsButton || widget == ladsMoreButton
                 || widget == ladsReplaysButton
                 || widget == ladsQuitButton || widget == ladsSwitchVersionButton || widget == ladsNetworkButton
                 || ladsIsModsEntry(widget)
@@ -222,16 +228,17 @@ public abstract class TitleScreenMixin extends Screen {
         if (widget == ladsSettingsButton) return 2;
         if (ladsIsModsEntry(widget)) return 3;
         if (widget == ladsCosmeticsButton) return 4;
-        if (widget == ladsReplaysButton) return 7;
-        if (widget == ladsMoreButton) return 8;
-        if (widget == ladsQuitButton || "menu.quit".equals(TitleWidgetRegistry1201.messageKey(widget))) return 9;
-        if (widget == ladsSwitchVersionButton) return 10;
+        if (widget == ladsFriendsButton) return 5;
+        if (widget == ladsReplaysButton) return 8;
+        if (widget == ladsMoreButton) return 9;
+        if (widget == ladsQuitButton || "menu.quit".equals(TitleWidgetRegistry1201.messageKey(widget))) return 10;
+        if (widget == ladsSwitchVersionButton) return 11;
         return switch (TitleWidgetRegistry1201.messageKey(widget)) {
             case "menu.singleplayer", "menu.playdemo" -> 0;
             case "menu.multiplayer" -> 1;
-            case "menu.options" -> 5;
-            case "screen.lads_screenshots.manage_screenshots" -> 6;
-            default -> 11;
+            case "menu.options" -> 6;
+            case "screen.lads_screenshots.manage_screenshots" -> 7;
+            default -> 12;
         };
     }
 
@@ -239,6 +246,7 @@ public abstract class TitleScreenMixin extends Screen {
     private String ladsButtonIcon(AbstractWidget widget) {
         if (widget == ladsSettingsButton) return "lads";
         if (widget == ladsCosmeticsButton) return "wardrobe";
+        if (widget == ladsFriendsButton) return "user";
         if (widget == ladsMoreButton) return "dots";
         if (widget == ladsReplaysButton) return "replay";
         if (widget == ladsQuitButton) return "quit";

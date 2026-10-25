@@ -37,7 +37,7 @@ public final class LadsTitleScreen189 {
     private static final int LADS_ID = 0x4C414453 + 1; // the pause menu's Lads button is 0x4C414453; vanilla and Forge use 0-14
     private GuiMainMenu screen;
     private List<GuiButton> buttons;
-    private GuiButton ladsButton, cosmeticsButton, moreButton, screenshotsButton, switchVersionButton, replaysButton, networkButton;
+    private GuiButton ladsButton, cosmeticsButton, friendsButton, moreButton, screenshotsButton, switchVersionButton, replaysButton, networkButton;
     private CompactButton189 switchButton, fullscreenButton, languageButton;
     private final List<GuiButton> seen = new ArrayList<>(), main = new ArrayList<>(), extras = new ArrayList<>();
     private long initNanos;
@@ -53,6 +53,11 @@ public final class LadsTitleScreen189 {
     public GuiMainMenu screen() { return screen; }
     public List<GuiButton> mainButtons() { return main; }
     public GuiButton cosmeticsButton() { return cosmeticsButton; }
+    public GuiButton friendsButton() { return friendsButton; }
+    public static String friendsButtonLabel() {
+        int online = com.thelads.core.v1_8_9.social.SocialBridge189.onlineFriendsCount();
+        return online > 0 ? "Friends (" + online + ")" : "Friends";
+    }
     public GuiButton moreButton() { return moreButton; }
     public GuiButton switchVersionButton() { return switchVersionButton; }
     public GuiButton switchButton() { return switchButton; }
@@ -109,6 +114,7 @@ public final class LadsTitleScreen189 {
 
         buttons.add(ladsButton = new GuiButton(LADS_ID, 0, 0, 1, 1, "Lads Mods"));
         buttons.add(cosmeticsButton = new GuiButton(LADS_ID + 10, 0, 0, 1, 1, "Cosmetics"));
+        buttons.add(friendsButton = new GuiButton(LADS_ID + 12, 0, 0, 1, 1, friendsButtonLabel()));
         buttons.add(moreButton = new GuiButton(LADS_ID + 2, 0, 0, 1, 1, "More..."));
         screenshotsButton = Screenshots189.active() ? new GuiButton(LADS_ID + 4, 0, 0, 1, 1, "Screenshots") : null;
         if (screenshotsButton != null) buttons.add(screenshotsButton);
@@ -116,7 +122,7 @@ public final class LadsTitleScreen189 {
         buttons.add(switchVersionButton = new GuiButton(LADS_ID + 6, 0, 0, 1, 1, "Switch Versions"));
         replaysButton = Loader.isModLoaded("replaymod") ? new GuiButton(LADS_ID + 8, 0, 0, 1, 1, "Replays") : null;
         if (replaysButton != null) buttons.add(replaysButton);
-        networkButton = LadsNetwork.titleButton() ? new GuiButton(LADS_ID + 12, 0, 0, 1, 1, LadsNetwork.TITLE_LABEL) : null;
+        networkButton = LadsNetwork.titleButton() ? new GuiButton(LADS_ID + 14, 0, 0, 1, 1, LadsNetwork.TITLE_LABEL) : null;
         if (networkButton != null) buttons.add(networkButton);
 
         // Beside the account name and top right
@@ -140,7 +146,7 @@ public final class LadsTitleScreen189 {
         main.clear();
         for (GuiButton button : new ArrayList<>(buttons)) {
             if (button == switchButton || button == fullscreenButton || button == languageButton) continue;
-            if (button == ladsButton || button == cosmeticsButton || button == moreButton || button == screenshotsButton
+            if (button == ladsButton || button == cosmeticsButton || button == friendsButton || button == moreButton || button == screenshotsButton
                 || button == switchVersionButton || button == replaysButton || button == networkButton
                 || vanilla(button, 1, 11, 2, 0, 4, 6)) main.add(button);
             else {
@@ -180,10 +186,11 @@ public final class LadsTitleScreen189 {
         if (button == networkButton) return 1; // after Multiplayer: the stable sort keeps the vanilla button (added first) ahead
         if (button == ladsButton) return 2;
         if (button == cosmeticsButton) return 4;
-        if (button == replaysButton) return 7;
-        if (button == moreButton) return 8;
-        if (button.id == 4) return 9; // Quit Game
-        if (button == switchVersionButton) return 10;
+        if (button == friendsButton) return 5;
+        if (button == replaysButton) return 8;
+        if (button == moreButton) return 9;
+        if (button.id == 4) return 10; // Quit Game
+        if (button == switchVersionButton) return 11;
         switch (button.id) {
             case 1: case 11: return 0;
             case 2: return 1;
@@ -206,7 +213,8 @@ public final class LadsTitleScreen189 {
         if (button.id == LADS_ID + 6) return "switch";
         if (button.id == LADS_ID + 8) return "replay";
         if (button.id == LADS_ID + 10) return "wardrobe";
-        if (button.id == LADS_ID + 12) return "server";
+        if (button.id == LADS_ID + 12) return "friends";
+        if (button.id == LADS_ID + 14) return "server";
         switch (button.id) {
             case 1: case 11: return "play";
             case 2: return "server";
@@ -218,6 +226,7 @@ public final class LadsTitleScreen189 {
     }
 
     private static String label(GuiButton button) {
+        if (button.id == LADS_ID + 12) return friendsButtonLabel();
         if (vanilla(button, 14)) return "Realms";
         if (button instanceof GuiButtonLanguage) return "Language";
         String language = Minecraft.getMinecraft().getLanguageManager().getCurrentLanguage().getLanguageCode();
@@ -293,6 +302,7 @@ public final class LadsTitleScreen189 {
         boolean clicked = mc.currentScreen == screen;
         if (event.button == ladsButton) mc.displayGuiScreen(new LadsSettingsScreen189(screen));
         else if (event.button == cosmeticsButton) mc.displayGuiScreen(new CosmeticsScreen189(screen));
+        else if (event.button == friendsButton) com.thelads.core.client.social.SocialBridge.get().openFriendsScreen();
         else if (event.button == screenshotsButton) Screenshots189.open(screen);
         else if (event.button == moreButton) mc.displayGuiScreen(new TitleExtrasScreen189(screen, TitleExtrasScreen189.of(screen, extras, LadsTitleScreen189::label)));
         else if (event.button == switchVersionButton) mc.displayGuiScreen(new VersionSwitchScreen189(screen));
