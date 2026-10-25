@@ -703,7 +703,7 @@ public class ModuleManager {
         // Parity Lane 4 (replay-builder): Instant clip, Schematic visualizer, Cross-version join
         register(new com.thelads.core.modules.InstantClipModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.SchematicModule(), Module.Category.MECHANIC);
-        register(new com.thelads.core.modules.CrossVersionModule(), Module.Category.SERVER);
+
     }
 
     public static ModuleManager getInstance() {

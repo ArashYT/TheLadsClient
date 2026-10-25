@@ -790,4 +790,7 @@ public class VanillaGameBridge189 implements LadsGameBridge {
             mc.displayGuiScreen(new net.minecraft.client.gui.GuiDisconnected(parent, "disconnect.lost", new net.minecraft.util.ChatComponentText(message)));
         });
     }
+
+    @Override public String getMinecraftVersion() { return "1.8.9"; }
+    @Override public int getProtocolVersion() { return 47; }
 }

@@ -1,6 +1,8 @@
 package com.thelads.core.client.rewind;
 
 import com.thelads.core.client.HypixelSafetyManager;
+import com.thelads.core.client.bridge.LadsGameBridge;
+import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.SliderOption;
@@ -12,19 +14,22 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Deque;
+import java.util.List;
 import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 /**
  * Instant clip / rewind buffer: circular in-memory network packet ring buffer (parity with Lunar Rewind).
- * Maintains recent packets up to a configurable duration (30-60s) with a hard memory cap (default 64 MB).
- * Serializes the buffered packets into standard .mcpr replay archives when triggered.
+ * Maintains recent packets up to a configurable duration (30-60s) with a hard memory cap (default 64 MB, capped at 128 MB).
+ * Serializes buffered network packet traces into .mcpr container archives (metaData.json + recording.tmcpr) when triggered.
  */
 public final class InstantClipBuffer {
     private static final Logger LOGGER = LoggerFactory.getLogger("InstantClip");
@@ -61,7 +66,7 @@ public final class InstantClipBuffer {
     }
 
     public static synchronized void setMemoryCapBytes(long bytes) {
-        memoryCapBytes = Math.max(1024L, bytes);
+        memoryCapBytes = Math.max(1024L, Math.min(128 * 1024 * 1024L, bytes));
         Module m = getModule();
         if (m != null && m.getOption(MEMORY_CAP_OPTION) instanceof SliderOption s) {
             s.setValue(Math.max(1, (int) (bytes / (1024 * 1024L))));
@@ -167,11 +172,36 @@ public final class InstantClipBuffer {
         }
     }
 
+    public static byte[] varIntBytes(int value) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        while ((value & 0xFFFFFF80) != 0) {
+            baos.write((value & 0x7F) | 0x80);
+            value >>>= 7;
+        }
+        baos.write(value & 0x7F);
+        return baos.toByteArray();
+    }
+
     /**
-     * Serializes the current circular buffer into a standard ReplayMod .mcpr archive.
+     * Serializes the current circular buffer into a standard .mcpr replay archive container.
+     * Takes an off-lock snapshot so Netty network threads are never blocked during disk I/O.
      */
-    public static synchronized File saveClip(File targetDir, String serverName, String mcVersion, int protocolVersion) throws IOException {
-        if (BUFFER.isEmpty()) return null;
+    public static File saveClip(File targetDir, String serverName, String mcVersion, int protocolVersion) throws IOException {
+        List<PacketRecord> snapshot;
+        long startMs, endMs;
+        int durationMs;
+        int packetCount;
+
+        synchronized (InstantClipBuffer.class) {
+            if (BUFFER.isEmpty()) return null;
+            snapshot = new ArrayList<>(BUFFER);
+            PacketRecord first = snapshot.get(0);
+            PacketRecord last = snapshot.get(snapshot.size() - 1);
+            startMs = first.timestampMs();
+            endMs = last.timestampMs();
+            durationMs = (int) Math.max(1, endMs - startMs);
+            packetCount = snapshot.size();
+        }
 
         if (targetDir == null) {
             targetDir = new File("replay_recordings");
@@ -180,16 +210,10 @@ public final class InstantClipBuffer {
             targetDir.mkdirs();
         }
 
-        PacketRecord first = BUFFER.peekFirst();
-        PacketRecord last = BUFFER.peekLast();
-        long startMs = first != null ? first.timestampMs() : System.currentTimeMillis();
-        long endMs = last != null ? last.timestampMs() : startMs;
-        int durationMs = (int) Math.max(1, endMs - startMs);
-
         String dateStr = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.ROOT).format(new Date(startMs));
         File replayFile = new File(targetDir, "clip_" + dateStr + ".mcpr");
 
-        // Prepare meta.json
+        // Prepare metaData.json (standard ReplayMod metadata naming)
         String effectiveServer = (serverName != null && !serverName.isEmpty()) ? serverName : "Singleplayer";
         String effectiveVersion = (mcVersion != null && !mcVersion.isEmpty()) ? mcVersion : "1.8.9";
         String metaJson = "{\n"
@@ -204,10 +228,10 @@ public final class InstantClipBuffer {
             + "  \"generator\": \"The Lads Client Instant Clip\"\n"
             + "}\n";
 
-        // Write .mcpr (ZIP archive containing meta.json and recording.tmcpr)
+        // Write .mcpr (ZIP archive containing metaData.json and recording.tmcpr)
         try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(replayFile))) {
-            // Entry 1: meta.json
-            ZipEntry metaEntry = new ZipEntry("meta.json");
+            // Entry 1: metaData.json
+            ZipEntry metaEntry = new ZipEntry("metaData.json");
             zos.putNextEntry(metaEntry);
             zos.write(metaJson.getBytes(StandardCharsets.UTF_8));
             zos.closeEntry();
@@ -218,13 +242,15 @@ public final class InstantClipBuffer {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             DataOutputStream dos = new DataOutputStream(baos);
 
-            for (PacketRecord packet : BUFFER) {
+            for (PacketRecord packet : snapshot) {
                 int timestampOffset = (int) Math.max(0, packet.timestampMs() - startMs);
-                byte[] raw = packet.data();
-                int len = raw.length;
+                byte[] varInt = varIntBytes(packet.packetId());
+                byte[] raw = packet.data() != null ? packet.data() : new byte[0];
+                int packetLength = varInt.length + raw.length;
                 dos.writeInt(timestampOffset);
-                dos.writeInt(len);
-                if (len > 0) {
+                dos.writeInt(packetLength);
+                dos.write(varInt);
+                if (raw.length > 0) {
                     dos.write(raw);
                 }
             }
@@ -233,12 +259,12 @@ public final class InstantClipBuffer {
             zos.closeEntry();
         }
 
-        LOGGER.info("Instant clip saved: {} ({} packets, {} ms)", replayFile.getName(), BUFFER.size(), durationMs);
+        LOGGER.info("Instant clip saved: {} ({} packets, {} ms)", replayFile.getName(), packetCount, durationMs);
         return replayFile;
     }
 
     /**
-     * Triggers asynchronous clip save on a background thread.
+     * Triggers asynchronous clip save on a background thread and sends a chat notification only upon completion.
      */
     public static void triggerAsyncSave(File targetDir, String serverName, String mcVersion, int protocolVersion) {
         new Thread(() -> {
@@ -246,6 +272,10 @@ public final class InstantClipBuffer {
                 File file = saveClip(targetDir, serverName, mcVersion, protocolVersion);
                 if (file != null) {
                     LOGGER.info("Instant clip export complete: {}", file.getAbsolutePath());
+                    Module m = getModule();
+                    if (m != null && m.getOption("Chat Notification") instanceof BoolOption b && b.get()) {
+                        LadsGameBridge.get().displayChatMessage("\u00a7a[Instant Clip] Saved clip to " + file.getName());
+                    }
                 }
             } catch (Exception e) {
                 LOGGER.error("Failed to save instant clip: {}", e.getMessage(), e);

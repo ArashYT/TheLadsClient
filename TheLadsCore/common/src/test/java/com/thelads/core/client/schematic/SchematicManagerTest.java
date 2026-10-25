@@ -7,9 +7,12 @@ import com.thelads.core.config.ModuleManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.GZIPOutputStream;
@@ -109,5 +112,29 @@ public class SchematicManagerTest {
         assertEquals(2, SchematicManager.getWidth());
         assertEquals(1, SchematicManager.getHeight());
         assertEquals(2, SchematicManager.getLength());
+    }
+
+    @Test
+    void testLoadSchematicFileFromDisk(@TempDir Path tempDir) throws Exception {
+        Path file = tempDir.resolve("disk_test.schematic");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzos = new GZIPOutputStream(baos);
+             DataOutputStream dos = new DataOutputStream(gzos)) {
+            dos.writeByte(10);
+            dos.writeUTF("Schematic");
+            dos.writeByte(2); dos.writeUTF("Width"); dos.writeShort(1);
+            dos.writeByte(2); dos.writeUTF("Height"); dos.writeShort(1);
+            dos.writeByte(2); dos.writeUTF("Length"); dos.writeShort(1);
+            dos.writeByte(7); dos.writeUTF("Blocks"); dos.writeInt(1);
+            dos.write(new byte[]{1});
+            dos.writeByte(0);
+        }
+        Files.write(file, baos.toByteArray());
+
+        // Must succeed without mark/reset exception on FileInputStream
+        boolean loaded = SchematicManager.loadSchematicFile(file.toFile());
+        assertTrue(loaded, "FileInputStream wrapped in BufferedInputStream must load successfully");
+        assertEquals(1, SchematicManager.getBlocks().size());
+        assertEquals("disk_test.schematic", SchematicManager.getLoadedName());
     }
 }

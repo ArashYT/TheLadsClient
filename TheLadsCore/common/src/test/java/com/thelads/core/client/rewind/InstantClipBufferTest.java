@@ -8,6 +8,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -88,10 +89,10 @@ public class InstantClipBufferTest {
         assertTrue(clip.getName().endsWith(".mcpr"));
         assertTrue(clip.length() > 0);
 
-        // Verify ZIP contents (meta.json and recording.tmcpr)
+        // Verify ZIP contents (metaData.json and recording.tmcpr)
         try (ZipFile zip = new ZipFile(clip)) {
-            ZipEntry meta = zip.getEntry("meta.json");
-            assertNotNull(meta, "meta.json must exist in .mcpr");
+            ZipEntry meta = zip.getEntry("metaData.json");
+            assertNotNull(meta, "metaData.json must exist in .mcpr");
             try (InputStream is = zip.getInputStream(meta)) {
                 String metaContent = new String(is.readAllBytes());
                 assertTrue(metaContent.contains("\"fileFormat\": \"MCPR\""));
@@ -102,6 +103,20 @@ public class InstantClipBufferTest {
             ZipEntry tmcpr = zip.getEntry("recording.tmcpr");
             assertNotNull(tmcpr, "recording.tmcpr must exist in .mcpr");
             assertTrue(tmcpr.getSize() > 0);
+
+            // Verify VarInt packet structure in recording.tmcpr
+            try (DataInputStream dis = new DataInputStream(zip.getInputStream(tmcpr))) {
+                int timestampOffset = dis.readInt();
+                assertEquals(0, timestampOffset);
+                int length = dis.readInt();
+                // 1 byte varint (id=1) + 3 bytes payload = 4 bytes
+                assertEquals(4, length);
+                int varintId = dis.readByte();
+                assertEquals(1, varintId);
+                byte[] payload = new byte[3];
+                dis.readFully(payload);
+                assertArrayEquals(new byte[]{1, 2, 3}, payload);
+            }
         }
     }
 }

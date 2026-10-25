@@ -808,4 +808,7 @@ public class VanillaGameBridge26 implements LadsGameBridge {
             diff.endScan();
         }
     }
+
+    @Override public String getMinecraftVersion() { return "26.3"; }
+    @Override public int getProtocolVersion() { return 769; }
 }

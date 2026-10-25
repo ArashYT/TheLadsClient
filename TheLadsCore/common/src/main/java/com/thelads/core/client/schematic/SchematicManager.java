@@ -8,6 +8,7 @@ import com.thelads.core.config.SliderOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.File;
@@ -30,6 +31,9 @@ public final class SchematicManager {
     public static final String TINT_OPTION = "Ghost Tint";
     public static final String DISTANCE_OPTION = "Render Distance";
     public static final String BOUNDING_BOX_ONLY = "Bounding Box Only";
+    public static final String ORIGIN_X_OPTION = "Origin X";
+    public static final String ORIGIN_Y_OPTION = "Origin Y";
+    public static final String ORIGIN_Z_OPTION = "Origin Z";
 
     public interface Lines {
         void line(double x0, double y0, double z0, double x1, double y1, double z1, int argb);
@@ -43,9 +47,14 @@ public final class SchematicManager {
 
     private SchematicManager() {}
 
-    public static boolean isEnabled() {
+    private static Module getModule() {
         if (module == null) module = ModuleManager.getInstance().getModule(NAME);
-        if (module == null || !module.isEnabled()) return false;
+        return module;
+    }
+
+    public static boolean isEnabled() {
+        Module m = getModule();
+        if (m == null || !m.isEnabled()) return false;
         return !HypixelSafetyManager.isDisallowed(NAME);
     }
 
@@ -65,11 +74,38 @@ public final class SchematicManager {
         originX = x;
         originY = y;
         originZ = z;
+        Module m = getModule();
+        if (m != null) {
+            if (m.getOption(ORIGIN_X_OPTION) instanceof SliderOption sx) sx.setValue(x);
+            if (m.getOption(ORIGIN_Y_OPTION) instanceof SliderOption sy) sy.setValue(y);
+            if (m.getOption(ORIGIN_Z_OPTION) instanceof SliderOption sz) sz.setValue(z);
+        }
     }
 
-    public static synchronized int getOriginX() { return originX; }
-    public static synchronized int getOriginY() { return originY; }
-    public static synchronized int getOriginZ() { return originZ; }
+    public static synchronized int getOriginX() {
+        Module m = getModule();
+        if (m != null && m.getOption(ORIGIN_X_OPTION) instanceof SliderOption sx) {
+            return (int) sx.getValue();
+        }
+        return originX;
+    }
+
+    public static synchronized int getOriginY() {
+        Module m = getModule();
+        if (m != null && m.getOption(ORIGIN_Y_OPTION) instanceof SliderOption sy) {
+            return (int) sy.getValue();
+        }
+        return originY;
+    }
+
+    public static synchronized int getOriginZ() {
+        Module m = getModule();
+        if (m != null && m.getOption(ORIGIN_Z_OPTION) instanceof SliderOption sz) {
+            return (int) sz.getValue();
+        }
+        return originZ;
+    }
+
     public static synchronized int getWidth() { return width; }
     public static synchronized int getHeight() { return height; }
     public static synchronized int getLength() { return length; }
@@ -85,15 +121,26 @@ public final class SchematicManager {
 
     /**
      * Loads a classic .schematic file (GZIP NBT format) from a file or stream.
+     * Uses BufferedInputStream to support mark/reset reliably on any file input stream.
      */
     public static synchronized boolean loadSchematicFile(File file) {
         if (file == null || !file.exists() || !file.canRead()) return false;
-        try (InputStream in = new FileInputStream(file)) {
+        try (InputStream in = new BufferedInputStream(new FileInputStream(file))) {
             return loadFromStream(file.getName(), in);
         } catch (Exception e) {
             LOGGER.error("Failed to load schematic file {}: {}", file.getName(), e.getMessage());
             return false;
         }
+    }
+
+    public static synchronized boolean loadSchematicByName(String name) {
+        if (name == null || name.isEmpty()) return false;
+        File dir = new File("schematics");
+        File file = new File(dir, name.endsWith(".schematic") ? name : name + ".schematic");
+        if (!file.exists()) {
+            file = new File(name.endsWith(".schematic") ? name : name + ".schematic");
+        }
+        return loadSchematicFile(file);
     }
 
     public static synchronized boolean loadFromBytes(String name, byte[] data) {
@@ -107,13 +154,13 @@ public final class SchematicManager {
     }
 
     private static boolean loadFromStream(String name, InputStream in) throws IOException {
-        InputStream stream = in;
+        InputStream stream = in.markSupported() ? in : new BufferedInputStream(in);
         // Check for gzip header (0x1f, 0x8b)
-        in.mark(2);
-        int b1 = in.read(), b2 = in.read();
-        in.reset();
+        stream.mark(2);
+        int b1 = stream.read(), b2 = stream.read();
+        stream.reset();
         if (b1 == 0x1f && b2 == 0x8b) {
-            stream = new GZIPInputStream(in);
+            stream = new GZIPInputStream(stream);
         }
 
         DataInputStream dis = new DataInputStream(stream);
@@ -249,26 +296,31 @@ public final class SchematicManager {
         double maxDist = 32.0;
         boolean boxOnly = false;
 
-        if (module != null) {
-            if (module.getOption(TINT_OPTION) instanceof ColorOption c) tintColor = c.getColor();
-            if (module.getOption(DISTANCE_OPTION) instanceof SliderOption s) maxDist = s.getValue();
-            if (module.getOption(BOUNDING_BOX_ONLY) instanceof com.thelads.core.config.BoolOption b) boxOnly = b.get();
+        Module m = getModule();
+        if (m != null) {
+            if (m.getOption(TINT_OPTION) instanceof ColorOption c) tintColor = c.getColor();
+            if (m.getOption(DISTANCE_OPTION) instanceof SliderOption s) maxDist = s.getValue();
+            if (m.getOption(BOUNDING_BOX_ONLY) instanceof com.thelads.core.config.BoolOption b) boxOnly = b.get();
         }
+
+        int ox = getOriginX();
+        int oy = getOriginY();
+        int oz = getOriginZ();
 
         double maxDistSq = maxDist * maxDist;
 
         // Draw overall bounding box outline in prominent yellow/cyan
         int boxColor = 0xFFFFFF00;
-        box(out, originX, originY, originZ, originX + width, originY + height, originZ + length, boxColor);
+        box(out, ox, oy, oz, ox + width, oy + height, oz + length, boxColor);
 
         if (boxOnly) return;
 
         // Draw individual ghost blocks
         for (int i = 0; i < BLOCKS.size(); i++) {
             SchematicBlock block = BLOCKS.get(i);
-            double bx = originX + block.relX();
-            double by = originY + block.relY();
-            double bz = originZ + block.relZ();
+            double bx = ox + block.relX();
+            double by = oy + block.relY();
+            double bz = oz + block.relZ();
 
             double dx = (bx + 0.5) - camX;
             double dy = (by + 0.5) - camY;

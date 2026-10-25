@@ -51,7 +51,9 @@ public abstract class NetworkManagerMixin implements SignalLoss189.PacketActivit
                 byte[] data = new byte[pb.readableBytes()];
                 pb.readBytes(data);
                 pb.release();
-                com.thelads.core.client.rewind.InstantClipBuffer.recordPacket(System.currentTimeMillis(), 0, data);
+                Integer packetId = net.minecraft.network.EnumConnectionState.PLAY.getPacketId(net.minecraft.network.EnumPacketDirection.CLIENTBOUND, packet);
+                int id = packetId != null ? packetId : 0;
+                com.thelads.core.client.rewind.InstantClipBuffer.recordPacket(System.currentTimeMillis(), id, data);
             } catch (Exception ignored) {}
         }
     }

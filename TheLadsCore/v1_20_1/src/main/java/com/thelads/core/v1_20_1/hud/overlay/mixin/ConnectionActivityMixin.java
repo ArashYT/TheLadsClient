@@ -31,7 +31,12 @@ public class ConnectionActivityMixin implements PacketActivity1201 {
                     byte[] data = new byte[fbb.readableBytes()];
                     fbb.readBytes(data);
                     fbb.release();
-                    com.thelads.core.client.rewind.InstantClipBuffer.recordPacket(System.currentTimeMillis(), 0, data);
+                    int packetId = 0;
+                    try {
+                        Integer id = net.minecraft.network.ConnectionProtocol.PLAY.getPacketId(receiving, packet);
+                        if (id != null) packetId = id;
+                    } catch (Throwable ignored) {}
+                    com.thelads.core.client.rewind.InstantClipBuffer.recordPacket(System.currentTimeMillis(), packetId, data);
                 } catch (Exception ignored) {}
             }
         }

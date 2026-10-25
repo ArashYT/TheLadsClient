@@ -568,6 +568,6 @@ public final class HypixelMods {
         BedWarsExtras.reset();
         SessionTracker.reset();
         BedWarsHeight.resetForTest();
-        RealPing.tick(new com.thelads.core.client.bridge.DefaultGameBridge(), null, 0L);
+
     }
 }
