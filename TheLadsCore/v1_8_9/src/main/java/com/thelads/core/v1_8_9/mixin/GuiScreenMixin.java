@@ -53,6 +53,13 @@ public abstract class GuiScreenMixin extends Gui implements LadsButtonPress {
         }
     }
 
+    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
+    private void ladsToastClick(int mouseX, int mouseY, int mouseButton, CallbackInfo ci) {
+        if (com.thelads.core.client.hud.ServerRulesNotice.mouseClicked(mouseX, mouseY, mouseButton)) {
+            ci.cancel();
+        }
+    }
+
     @Inject(method = "handleComponentClick", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsHandleChatClick(IChatComponent component, CallbackInfoReturnable<Boolean> cir) {
         if (component != null && component.getChatStyle() != null) {

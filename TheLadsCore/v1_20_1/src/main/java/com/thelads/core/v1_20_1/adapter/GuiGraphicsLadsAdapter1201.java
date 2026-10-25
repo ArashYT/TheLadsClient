@@ -384,6 +384,47 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
         }
     }
 
+    @Override
+    public boolean canDrawMap() {
+        return true;
+    }
+
+    @Override
+    public void drawMap(int x, int y, int size, boolean preview) {
+        if (preview) {
+            com.thelads.core.client.hud.DungeonMapHudElement.drawDungeonPreview(this, x, y, size);
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        ItemStack mapStack = ItemStack.EMPTY;
+        if (mc.player != null) {
+            for (ItemStack item : mc.player.getInventory().items) {
+                if (!item.isEmpty() && item.is(net.minecraft.world.item.Items.FILLED_MAP)) {
+                    mapStack = item;
+                    break;
+                }
+            }
+        }
+        if (!mapStack.isEmpty() && mc.level != null) {
+            Integer mapId = net.minecraft.world.item.MapItem.getMapId(mapStack);
+            if (mapId != null) {
+                net.minecraft.world.level.saveddata.maps.MapItemSavedData data = net.minecraft.world.item.MapItem.getSavedData(mapId, mc.level);
+                if (data != null) {
+                    guiGraphics.pose().pushPose();
+                    guiGraphics.pose().translate((float) x, (float) y, 0.0f);
+                    float scale = (float) size / 128.0f;
+                    guiGraphics.pose().scale(scale, scale, 1.0f);
+                    mc.gameRenderer.getMapRenderer().render(guiGraphics.pose(), guiGraphics.bufferSource(), mapId, data, false, 0xF000F0);
+                    guiGraphics.flush();
+                    guiGraphics.pose().popPose();
+                    return;
+                }
+            }
+        }
+        fill(x, y, x + size, y + size, 0x80101014);
+        drawCenteredText("No Map Item", x + size / 2, y + (size - fontHeight()) / 2, 0xFF888888, false);
+    }
+
     /** A GUI sprite such as "voicechat:icons/microphone": the 16 px texture textures/icons/microphone.png of that namespace. */
     @Override
     public void drawSprite(String sprite, int x, int y, int size) {

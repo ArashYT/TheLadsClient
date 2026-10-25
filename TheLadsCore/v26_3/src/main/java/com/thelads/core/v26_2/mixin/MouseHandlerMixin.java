@@ -23,6 +23,12 @@ public class MouseHandlerMixin {
         if (window != mc.getWindow().handle()) return;
         MouseButtonEvent event = new MouseButtonEvent(mc.mouseHandler.getScaledXPos(mc.getWindow()),
             mc.mouseHandler.getScaledYPos(mc.getWindow()), info);
+        if (action == InputConstants.PRESS && mc.gui.screen() != null) {
+            if (com.thelads.core.client.hud.ServerRulesNotice.mouseClicked((int) event.x(), (int) event.y(), info.button())) {
+                ci.cancel();
+                return;
+            }
+        }
         if (NativeMenuKey.mouse(event, action)) { ci.cancel(); return; }
         NativeFeatures.mouse(event, action);
         com.thelads.core.v26_2.feature.dynamicfps.feature.state.IdleHandler.onActivity();

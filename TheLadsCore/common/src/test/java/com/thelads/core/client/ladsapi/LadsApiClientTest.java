@@ -451,4 +451,17 @@ class LadsApiClientTest {
         intOpt.setValue("77");
         assertEquals(77, intOpt.save().getAsInt());
     }
+
+    @Test
+    void testToastNotificationPayload() {
+        String toastJson = "{\"t\":\"toast\",\"title\":\"Store Sale\",\"message\":\"50% off this weekend\","
+            + "\"actions\":[{\"label\":\"Store\",\"url\":\"https://store.thelads.net\"}]}";
+        LadsApiClient.receive(toastJson.getBytes(StandardCharsets.UTF_8));
+        assertTrue(LadsApiUi.isToastActive());
+        assertEquals("Store Sale", LadsApiUi.activeToastTitle());
+        assertEquals("50% off this weekend", LadsApiUi.activeToastNotice());
+        assertEquals(1, LadsApiUi.activeToastActions().size());
+        assertEquals("Store", LadsApiUi.activeToastActions().get(0).getLabel());
+        assertEquals("https://store.thelads.net", LadsApiUi.activeToastActions().get(0).getPayload());
+    }
 }

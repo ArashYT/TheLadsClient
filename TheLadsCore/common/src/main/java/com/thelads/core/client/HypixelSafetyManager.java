@@ -276,6 +276,7 @@ public final class HypixelSafetyManager {
             || "Container Sorting".equalsIgnoreCase(moduleName) || "Elytra Swap".equalsIgnoreCase(moduleName) || "Creative Fly Boost".equalsIgnoreCase(moduleName)
             || "Schematic".equalsIgnoreCase(moduleName) || "Schematic Visualizer".equalsIgnoreCase(moduleName) || "Schematica".equalsIgnoreCase(moduleName)
             || "Opened Chest Highlight".equalsIgnoreCase(moduleName)
+            || "SkyBlock Suite".equalsIgnoreCase(moduleName) || "Server Notification Actions".equalsIgnoreCase(moduleName)
             || isGatedHud(moduleName);
     }
 
@@ -284,7 +285,8 @@ public final class HypixelSafetyManager {
         return com.thelads.core.client.hud.HudExtras.DAMAGE_INDICATOR.equalsIgnoreCase(moduleName)
             || com.thelads.core.client.hud.HudExtras.HORSE.equalsIgnoreCase(moduleName)
             || com.thelads.core.client.hud.HudExtras.PLAYERS.equalsIgnoreCase(moduleName)
-            || com.thelads.core.client.hud.HudExtras.TOTEMS.equalsIgnoreCase(moduleName);
+            || com.thelads.core.client.hud.HudExtras.TOTEMS.equalsIgnoreCase(moduleName)
+            || "DungeonMap".equalsIgnoreCase(moduleName) || "SkyBlockTimers".equalsIgnoreCase(moduleName);
     }
 
     public static boolean isGatedHypixelModule(String moduleName) {

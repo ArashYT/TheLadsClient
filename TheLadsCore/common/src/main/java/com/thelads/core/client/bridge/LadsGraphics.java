@@ -93,6 +93,24 @@ public interface LadsGraphics {
 
     default void drawInventorySlot(int slot, int x, int y, boolean preview) {}
 
+    /**
+     * Whether map item rendering is supported on this Minecraft version.
+     * True on 1.8.9 and 1.20.1, false on 26.3 where map item rendering is MISSING.
+     */
+    default boolean canDrawMap() {
+        return false;
+    }
+
+    /**
+     * Hypixel SkyBlock Dungeon map rendering: renders the player's held/inventory filled map,
+     * or a preview dungeon room layout when preview is true.
+     */
+    default void drawMap(int x, int y, int size, boolean preview) {
+        if (preview) {
+            com.thelads.core.client.hud.DungeonMapHudElement.drawDungeonPreview(this, x, y, size);
+        }
+    }
+
     default void drawBossBars(int x,int y,int max,boolean names,boolean preview) {}
 
     /** Where drawBossBars with these arguments draws now: {minX, minY, maxX, maxY}, an empty array for nothing, null when unknown

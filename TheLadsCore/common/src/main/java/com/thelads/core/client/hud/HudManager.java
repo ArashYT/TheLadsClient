@@ -13,7 +13,7 @@ public class HudManager {
      * them built in (1.8.9 through NativeHud.MODULES, without Cooldowns: 1.8.9 has no item cooldowns).
      */
     public static final String[] PARITY_HUDS = {"ComboCounter", "PvPInfo", "PotionCounter", "ItemTracker", "Cooldowns", "TPS", "SystemResources",
-        "Playtime", "CompassStrip", "ViewAngles", "MouseTrail", "BlockCounter", "Protection", "DeathInfo", "Hearts", "HitIndicator", InventoryHudElement.ID};
+        "Playtime", "CompassStrip", "ViewAngles", "MouseTrail", "BlockCounter", "Protection", "DeathInfo", "Hearts", "HitIndicator", InventoryHudElement.ID, DungeonMapHudElement.ID, SkyBlockTimersHudElement.ID};
     private static HudManager instance;
     private final List<HudElement> elements = new ArrayList<>();
     private ScoreboardHudElement scoreboardElement;
@@ -113,6 +113,8 @@ public class HudManager {
         add(new EntityCounterHudElement(), "EntityCounter");
         add(new ShaderPackHudElement(), "ShaderPack");
         add(new HeldItemLoreHudElement(), "HeldItemLore");
+        add(new DungeonMapHudElement(), DungeonMapHudElement.ID);
+        add(new SkyBlockTimersHudElement(), SkyBlockTimersHudElement.ID);
     }
 
     private void add(HudElement element, String moduleName) {

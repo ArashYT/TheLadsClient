@@ -1,20 +1,25 @@
 package com.thelads.core.client.ladsapi;
 
 import com.thelads.core.client.hud.ServerRulesNotice;
+import com.thelads.core.client.hud.ToastAction;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.Option;
 import com.thelads.core.config.SliderOption;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * What the player sees when a server's rules arrive. FROZEN INTERFACE (phase 0): lane CORE calls it, lane GUI implements the bodies
  * (one toast per policy, never one per mod; the settings screen reads ServerPolicy.active() itself for locks and tooltips).
+ * Extended to support rich server notification toasts with clickable action buttons.
  */
 public final class LadsApiUi {
     private static volatile String activeTitle;
     private static volatile String activeNotice;
     private static volatile long activeUntil;
+    private static volatile List<ToastAction> activeActions = Collections.emptyList();
 
     private LadsApiUi() {}
 
@@ -23,13 +28,18 @@ public final class LadsApiUi {
      * own text or "". Called on the game thread; shows nothing when changed == 0 and notice is empty, or "Show server notice" is off.
      */
     public static void policyApplied(String serverName, int changed, String notice) {
+        policyApplied(serverName, changed, notice, Collections.emptyList());
+    }
+
+    public static void policyApplied(String serverName, int changed, String notice, List<ToastAction> actions) {
         if (!isShowServerNoticeEnabled()) {
             policyCleared();
             return;
         }
 
         String noticeLine = (notice != null && !notice.trim().isEmpty()) ? notice.trim() : null;
-        if (changed <= 0 && noticeLine == null) {
+        boolean hasActions = actions != null && !actions.isEmpty();
+        if (changed <= 0 && noticeLine == null && !hasActions) {
             policyCleared();
             return;
         }
@@ -37,8 +47,19 @@ public final class LadsApiUi {
         String title = formatPolicyToastTitle(serverName, changed);
         activeTitle = title;
         activeNotice = noticeLine;
-        activeUntil = System.nanoTime() + 8_000_000_000L;
-        ServerRulesNotice.showPolicyToast(title, noticeLine);
+        activeActions = hasActions ? actions : Collections.emptyList();
+        activeUntil = System.nanoTime() + (hasActions ? 14_000_000_000L : 8_000_000_000L);
+        ServerRulesNotice.showPolicyToast(title, noticeLine, activeActions);
+    }
+
+    /** Direct notification toast with custom actions triggered from server or client events. */
+    public static void showNotification(String title, String notice, List<ToastAction> actions) {
+        if (!isShowServerNoticeEnabled()) return;
+        activeTitle = title;
+        activeNotice = (notice != null && !notice.trim().isEmpty()) ? notice.trim() : null;
+        activeActions = (actions != null && !actions.isEmpty()) ? actions : Collections.emptyList();
+        activeUntil = System.nanoTime() + (!activeActions.isEmpty() ? 14_000_000_000L : 8_000_000_000L);
+        ServerRulesNotice.showPolicyToast(title, activeNotice, activeActions);
     }
 
     /** The rules are gone (left the server, switch, reset). Closes the toast if it is still up. */
@@ -46,6 +67,7 @@ public final class LadsApiUi {
         activeTitle = null;
         activeNotice = null;
         activeUntil = 0;
+        activeActions = Collections.emptyList();
         ServerRulesNotice.clearPolicyToast();
     }
 
@@ -60,6 +82,10 @@ public final class LadsApiUi {
 
     public static String activeToastNotice() {
         return isToastActive() ? activeNotice : null;
+    }
+
+    public static List<ToastAction> activeToastActions() {
+        return isToastActive() ? activeActions : Collections.emptyList();
     }
 
     /** Formats the title line for a policy notification toast ("Lads SMP limits 3 Lads settings"). */

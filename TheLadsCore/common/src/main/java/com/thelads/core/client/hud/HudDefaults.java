@@ -89,6 +89,8 @@ public final class HudDefaults {
             }
             case "Hearts" -> {x=hotbar.right()+7;y=hotbar.bottom()-eh-44;}
             case "Protection" -> {x=hotbar.right()+7;y=hotbar.bottom()-eh-24;}
+            case "DungeonMap" -> {x=w-ew-10;y=10;}
+            case "SkyBlockTimers" -> {x=LEFT;y=Math.min(260,floor);}
             default -> {return null;}
         }
         return new int[]{Math.max(0,Math.min(x,w-ew)),Math.max(0,Math.min(y,h-eh))};

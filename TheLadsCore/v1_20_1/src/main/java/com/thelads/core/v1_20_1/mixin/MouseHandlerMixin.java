@@ -19,10 +19,11 @@ public class MouseHandlerMixin {
     private void ladsMouse(long window, int button, int action, int mods, CallbackInfo ci) {
         Minecraft mc = Minecraft.getInstance();
         if (window != mc.getWindow().getWindow()) return;
-        if (!mc.mouseHandler.isMouseGrabbed() && mc.screen != null && action == GLFW.GLFW_PRESS && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+        if (action == GLFW.GLFW_PRESS && mc.screen != null) {
             double mx = mc.mouseHandler.xpos() * (double) mc.getWindow().getGuiScaledWidth() / (double) mc.getWindow().getScreenWidth();
             double my = mc.mouseHandler.ypos() * (double) mc.getWindow().getGuiScaledHeight() / (double) mc.getWindow().getScreenHeight();
-            if (com.thelads.core.v1_20_1.social.SocialHudToast1201.onClick(mx, my)) {
+            if ((!mc.mouseHandler.isMouseGrabbed() && button == GLFW.GLFW_MOUSE_BUTTON_LEFT && com.thelads.core.v1_20_1.social.SocialHudToast1201.onClick(mx, my))
+                    || com.thelads.core.client.hud.ServerRulesNotice.mouseClicked((int) mx, (int) my, button)) {
                 ci.cancel();
                 return;
             }

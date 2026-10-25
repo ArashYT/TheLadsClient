@@ -90,6 +90,10 @@ public class HypixelSafetyTest {
         assertTrue(HypixelSafetyManager.isRiskyModule("Minimap"));
         assertTrue(HypixelSafetyManager.isRiskyModule("XaeroMinimap"));
         assertTrue(HypixelSafetyManager.isRiskyModule("XaeroWorldMap"));
+        assertTrue(HypixelSafetyManager.isRiskyModule("SkyBlock Suite"));
+        assertTrue(HypixelSafetyManager.isRiskyModule("Server Notification Actions"));
+        assertTrue(HypixelSafetyManager.isRiskyModule("DungeonMap"));
+        assertTrue(HypixelSafetyManager.isRiskyModule("SkyBlockTimers"));
         assertFalse(HypixelSafetyManager.isRiskyModule("FPS"));
         assertFalse(HypixelSafetyManager.isRiskyModule("CPS"));
         assertFalse(HypixelSafetyManager.isRiskyModule("Coordinates"));

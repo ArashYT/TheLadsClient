@@ -12,6 +12,8 @@ import com.thelads.core.config.ColorOption;
 import com.thelads.core.config.DropdownOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
+import com.thelads.core.client.hud.ToastAction;
+import java.util.Collections;
 import com.thelads.core.config.Option;
 import com.thelads.core.config.SliderOption;
 import java.nio.charset.StandardCharsets;
@@ -99,6 +101,8 @@ public final class LadsApiClient {
             handlePresence(json);
         } else if ("reset".equalsIgnoreCase(type)) {
             handleReset();
+        } else if ("toast".equalsIgnoreCase(type) || "notification".equalsIgnoreCase(type)) {
+            handleToast(json);
         }
     }
 
@@ -159,7 +163,8 @@ public final class LadsApiClient {
         ack.add("refused", refArr);
         sendPayload(ack.toString().getBytes(StandardCharsets.UTF_8));
 
-        LadsApiUi.policyApplied(serverName, result.changedCount, notice);
+        List<ToastAction> actions = parseToastActions(json.get("actions"));
+        LadsApiUi.policyApplied(serverName, result.changedCount, notice, actions);
     }
 
     private static void handlePresence(JsonObject json) {
@@ -177,6 +182,44 @@ public final class LadsApiClient {
                 LadsPresence.serverRemove(toRemove);
             }
         }
+    }
+
+    
+    private static void handleToast(JsonObject json) {
+        String title = json.has("title") && json.get("title").isJsonPrimitive() ? json.get("title").getAsString() : (serverName.isEmpty() ? "Server Notification" : serverName);
+        String msg = json.has("message") && json.get("message").isJsonPrimitive() ? json.get("message").getAsString()
+            : (json.has("notice") && json.get("notice").isJsonPrimitive() ? json.get("notice").getAsString() : null);
+        List<ToastAction> actions = parseToastActions(json.get("actions"));
+        LadsApiUi.showNotification(title, msg, actions);
+    }
+
+    private static List<ToastAction> parseToastActions(JsonElement element) {
+        if (element == null || !element.isJsonArray()) return Collections.emptyList();
+        JsonArray array = element.getAsJsonArray();
+        List<ToastAction> list = new ArrayList<>();
+        for (JsonElement e : array) {
+            if (!e.isJsonObject()) continue;
+            JsonObject obj = e.getAsJsonObject();
+            String label = obj.has("label") && obj.get("label").isJsonPrimitive() ? obj.get("label").getAsString() : "Action";
+            String typeStr = obj.has("type") && obj.get("type").isJsonPrimitive() ? obj.get("type").getAsString()
+                : (obj.has("action") && obj.get("action").isJsonPrimitive() ? obj.get("action").getAsString() : null);
+            String payload = "";
+            if (obj.has("url") && obj.get("url").isJsonPrimitive()) {
+                payload = obj.get("url").getAsString();
+                if (typeStr == null) typeStr = "url";
+            } else if (obj.has("command") && obj.get("command").isJsonPrimitive()) {
+                payload = obj.get("command").getAsString();
+                if (typeStr == null) typeStr = "command";
+            } else if (obj.has("suggest") && obj.get("suggest").isJsonPrimitive()) {
+                payload = obj.get("suggest").getAsString();
+                if (typeStr == null) typeStr = "suggest";
+            } else if (obj.has("payload") && obj.get("payload").isJsonPrimitive()) {
+                payload = obj.get("payload").getAsString();
+            }
+            list.add(ToastAction.parse(label, typeStr, payload));
+            if (list.size() >= 4) break;
+        }
+        return list;
     }
 
     private static void handleReset() {

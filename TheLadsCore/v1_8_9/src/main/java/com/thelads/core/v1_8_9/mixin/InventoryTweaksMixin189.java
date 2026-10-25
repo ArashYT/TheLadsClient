@@ -19,6 +19,8 @@ import com.thelads.core.v1_8_9.qol.mixin.GuiRepairAccessor189;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.Container;
+import net.minecraft.inventory.ContainerChest;
+import com.thelads.core.client.hypixel.TerminalSolver;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemArmor;
@@ -46,6 +48,7 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
     @Shadow private Slot getSlotAtPosition(int x, int y) { throw new AssertionError(); }
     @Shadow protected abstract void handleMouseClick(Slot slot, int slotId, int button, int mode);
     @Unique private GuiTextField ladsSearch;
+    @Unique private int ladsClickOrderTarget = -1;
     /** Container slots Inventory Search dims (worked out each tick while a search is typed). */
     @Unique private boolean[] ladsDim = new boolean[0];
     /** Rate-limited swap queue: processes at most 1 swap per client tick to prevent anticheat packet bursts. */
@@ -132,7 +135,20 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
     private void ladsOverlay(Slot slot, CallbackInfo ci) {
         boolean dim = slot.slotNumber < ladsDim.length && ladsDim[slot.slotNumber];
         boolean locked = slot.inventory instanceof InventoryPlayer && InventoryTweaks.locked(slot.getSlotIndex());
-        if (!dim && !locked) return;
+        int highlight = 0;
+        if (slot.getHasStack()) {
+            ItemStack stack = slot.getStack();
+            String title = null;
+            if (inventorySlots instanceof ContainerChest) {
+                title = ((ContainerChest) inventorySlots).getLowerChestInventory().getDisplayName().getUnformattedText();
+            } else if (slot.inventory != null && !(slot.inventory instanceof InventoryPlayer)) {
+                title = slot.inventory.getDisplayName().getUnformattedText();
+            }
+            if (title != null) {
+                highlight = TerminalSolver.getSlotHighlight(title, slot.slotNumber, stack.stackSize, stack.getDisplayName(), inventorySlots.inventorySlots.size(), ladsClickOrderTarget);
+            }
+        }
+        if (!dim && !locked && highlight == 0) return;
         int x = slot.xDisplayPosition, y = slot.yDisplayPosition;
         GlStateManager.disableLighting();
         GlStateManager.disableDepth();
@@ -141,8 +157,32 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
             Gui.drawRect(x, y, x + 16, y + 16, InventoryTweaks.LOCK_TINT);
             Gui.drawRect(x, y + 15, x + 16, y + 16, InventoryTweaks.LOCK_EDGE);
         }
+        if (highlight != 0) {
+            Gui.drawRect(x, y, x + 16, y + 16, highlight);
+        }
         GlStateManager.enableDepth();
         GlStateManager.enableLighting();
+    }
+
+    @Inject(method = "drawScreen", at = @At("HEAD"))
+    private void ladsBeforeDraw(int mouseX, int mouseY, float partialTicks, CallbackInfo ci) {
+        ladsClickOrderTarget = -1;
+        if (TerminalSolver.isActive()) {
+            String title = null;
+            if (inventorySlots instanceof ContainerChest) {
+                title = ((ContainerChest) inventorySlots).getLowerChestInventory().getDisplayName().getUnformattedText();
+            }
+            if (title != null && TerminalSolver.detectType(title) == TerminalSolver.TerminalType.CLICK_IN_ORDER) {
+                ladsClickOrderTarget = TerminalSolver.findClickInOrderTarget(inventorySlots.inventorySlots.size(), i -> {
+                    Slot s = inventorySlots.inventorySlots.get(i);
+                    if (s != null && s.getHasStack()) {
+                        ItemStack st = s.getStack();
+                        return new TerminalSolver.SlotInfo(s.slotNumber, st.stackSize, st.getDisplayName());
+                    }
+                    return null;
+                });
+            }
+        }
     }
 
     @Inject(method = "drawScreen", at = @At("TAIL"), require = 1)
@@ -186,6 +226,10 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsClick(int mouseX, int mouseY, int button, CallbackInfo ci) {
+        if (com.thelads.core.client.hud.ServerRulesNotice.mouseClicked(mouseX, mouseY, button)) {
+            ci.cancel();
+            return;
+        }
         if (ladsSearch != null) {
             ladsSearch.mouseClicked(mouseX, mouseY, button); // focuses it when clicked, unfocuses it otherwise
             if (ladsSearch.isFocused()) {

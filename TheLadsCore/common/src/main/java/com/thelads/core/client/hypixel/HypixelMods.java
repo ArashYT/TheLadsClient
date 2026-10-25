@@ -364,6 +364,7 @@ public final class HypixelMods {
         }
         SessionTracker.onServerChat(message, me);
         BedWarsExtras.onChat(message, now);
+        SkyBlockTimers.handleChatMessage(message);
         if (BedWarsHeight.isLimitReachedMessage(message)) {
             int playerY = LadsGameBridge.get() != null ? LadsGameBridge.get().getPlayerY() : 0;
             BedWarsHeight.learnLimit(mapName, playerY);
