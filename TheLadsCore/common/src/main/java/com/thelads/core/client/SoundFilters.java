@@ -48,10 +48,10 @@ public final class SoundFilters {
         inWater = water;
     }
 
-    /** Multiplies sound volume when underwater. UI sounds bypass filtering. */
-    public static float filterVolume(float volume, String soundPath) {
+    /** Multiplies sound volume when underwater. UI sounds and music/records bypass filtering. */
+    public static float filterVolume(float volume, String soundPath, String category) {
         if (!on || volume <= 0.0f) return volume;
-        if (isUiSound(soundPath)) return volume;
+        if (isUiSound(soundPath) || isMusicOrRecord(category)) return volume;
 
         float result = volume;
         if (inWater && underwaterMuffle) {
@@ -63,9 +63,9 @@ public final class SoundFilters {
     }
 
     /** Multiplies sound pitch when underwater. UI sounds and music/records bypass pitch shifting. */
-    public static float filterPitch(float pitch, String soundPath) {
+    public static float filterPitch(float pitch, String soundPath, String category) {
         if (!on || pitch <= 0.0f) return pitch;
-        if (isUiSound(soundPath) || isMusicOrRecord(soundPath)) return pitch;
+        if (isUiSound(soundPath) || isMusicOrRecord(category)) return pitch;
 
         float result = pitch;
         if (inWater && underwaterMuffle) {
@@ -82,10 +82,8 @@ public final class SoundFilters {
             || path.contains("menu") || path.startsWith("note.") || path.contains("button");
     }
 
-    public static boolean isMusicOrRecord(String path) {
-        if (path == null) return false;
-        return path.startsWith("music.") || path.startsWith("music_disc.") || path.startsWith("records.")
-            || path.startsWith("music/") || path.startsWith("records/")
-            || path.contains("music.") || path.contains("music_disc.") || path.contains("records.");
+    /** By the sound's category (SoundCategory / SoundSource name, the same on every version), not its id: a pack or mod can name music anything. */
+    public static boolean isMusicOrRecord(String category) {
+        return "MUSIC".equals(category) || "RECORDS".equals(category);
     }
 }

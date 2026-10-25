@@ -4,7 +4,9 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.thelads.core.client.SoundFilters;
 import com.thelads.core.client.SoundVolumes;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.ISound;
+import net.minecraft.client.audio.SoundEventAccessorComposite;
 import net.minecraft.client.audio.SoundManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,12 +18,18 @@ public abstract class SoundManagerQolMixin189 {
     private float ladsSoundVolume(ISound sound, Operation<Float> original) {
         String path = sound.getSoundLocation().getResourcePath();
         float vol = SoundVolumes.volume(original.call(sound), path);
-        return SoundFilters.filterVolume(vol, path);
+        return SoundFilters.filterVolume(vol, path, ladsCategory(sound));
     }
 
     @WrapOperation(method = "getNormalizedPitch", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/audio/ISound;getPitch()F"))
     private float ladsSoundPitch(ISound sound, Operation<Float> original) {
         String path = sound.getSoundLocation().getResourcePath();
-        return SoundFilters.filterPitch(original.call(sound), path);
+        return SoundFilters.filterPitch(original.call(sound), path, ladsCategory(sound));
+    }
+
+    /** The sound's category (MUSIC, RECORDS, ...) as vanilla plays it: from the sound event, as SoundManager.playSound reads it. */
+    private static String ladsCategory(ISound sound) {
+        SoundEventAccessorComposite event = Minecraft.getMinecraft().getSoundHandler().getSound(sound.getSoundLocation());
+        return event == null ? null : event.getSoundCategory().name();
     }
 }
