@@ -143,6 +143,7 @@ public final class Crosshair189 {
         double gap = CrosshairDesign.gap(number("Gap"), flag("Dynamic Attack Gap"), swing, flag("Dynamic Bow Gap"), chargeProgress(mc.thePlayer, partial));
         draw(cx, cy, gap, alpha, context.thirdPerson(), null);
         indicators(mc, cx, cy, alpha);
+        MlgClutch189.renderReticle(cx, cy);
         frames++;
     }
 

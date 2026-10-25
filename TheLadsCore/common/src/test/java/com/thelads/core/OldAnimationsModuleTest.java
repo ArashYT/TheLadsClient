@@ -32,13 +32,13 @@ class OldAnimationsModuleTest {
         assertEquals("Gameplay", LadsSettingsScreen.categoryOf(registered));
         var module = new OldAnimationsModule();
         assertFalse(module.isEnabled(), "visual modules start off, like LegacySwing");
-        assertEquals(Feature.values().length, module.getOptions().size(), "one toggle per option");
+        assertEquals(Feature.values().length + 1, module.getOptions().size(), "one toggle per option plus swing slider");
         var names = new HashSet<String>();
         for (Feature feature : Feature.values()) {
             BoolOption option = module.option(feature);
             assertSame(option, module.getOption(feature.option));
             assertEquals(feature.defaultOn, option.get(), feature + " default inside the module");
-            assertEquals(feature != Feature.CONSTANT_SWING && feature != Feature.NO_REEQUIP, feature.defaultOn, "only the PvP extras start off");
+            assertEquals(feature != Feature.CONSTANT_SWING && feature != Feature.NO_REEQUIP && feature != Feature.ROD_AS_STICK, feature.defaultOn, "only the PvP extras start off");
             assertTrue(names.add(feature.option));
             assertFalse(feature.tooltip.isBlank(), feature + " has a tooltip");
         }

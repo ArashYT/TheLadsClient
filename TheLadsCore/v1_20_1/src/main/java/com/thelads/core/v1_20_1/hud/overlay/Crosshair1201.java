@@ -173,7 +173,10 @@ public final class Crosshair1201 {
                 draw(graphics, cx, cy, gap, alpha, context.thirdPerson(), null);
             }
             if (!flag("Disable Attack Indicator") && (!axes || flag("Debug Attack Indicator"))) attack(graphics, cx, cy, context.thirdPerson());
-            if (!flag("Disable Crosshair") && !axes) indicators(graphics, cx, cy, partial, alpha);
+            if (!flag("Disable Crosshair") && !axes) {
+                indicators(graphics, cx, cy, partial, alpha);
+                com.thelads.core.v1_20_1.game.pvp.MlgClutch1201.renderReticle(graphics, cx, cy);
+            }
         } finally {
             graphics.setColor(1, 1, 1, 1);
             RenderSystem.defaultBlendFunc();

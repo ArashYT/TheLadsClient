@@ -69,7 +69,8 @@ public final class PvpVisuals {
     public static int nametagBackground = -1;
     public static boolean nametagFade, nametagPing, nametagHealth, nametagsInF1;
     /** 1.7 Animations' PvP extras (Constant swing speed, No re-equip on item changes): they apply on every version. */
-    public static boolean constantSwing, noReequip;
+    public static boolean constantSwing, noReequip, rodAsStick, itemLighting;
+    public static int swingHasteInfluence = 100;
     /** Set by the container hooks while a container draws its labels: Dark Mode lightens their dark gray. Render thread only. */
     public static boolean containerLabels;
     /** The name tag drawing now (render thread): its alpha (Distance Fade) and scale; 1 for tags that are not a player's. */
@@ -130,6 +131,10 @@ public final class PvpVisuals {
         OldAnimationsModule anims = modules.getModule(OldAnimationsModule.NAME) instanceof OldAnimationsModule found ? found : null;
         constantSwing = anims != null && anims.active(OldAnimationsModule.Feature.CONSTANT_SWING, OldAnimationsModule.Platform.MODERN);
         noReequip = anims != null && anims.active(OldAnimationsModule.Feature.NO_REEQUIP, OldAnimationsModule.Platform.MODERN);
+
+        rodAsStick = anims != null && anims.rodAsStick(OldAnimationsModule.Platform.MODERN);
+        itemLighting = anims != null && anims.itemLighting(OldAnimationsModule.Platform.MODERN);
+        swingHasteInfluence = (anims != null && anims.isEnabled()) ? anims.swingSpeedHaste.getIntValue() : 100;
     }
 
     /** A name tag starts drawing: players' tags get Scale and Distance Fade; holograms and named mobs keep vanilla's. */
@@ -201,5 +206,9 @@ public final class PvpVisuals {
     /** A percent slider as a factor; 1 (vanilla) while its module is off or missing. */
     private static float percent(Module module, String name) {
         return module != null && module.getOption(name) instanceof SliderOption slider ? (float) slider.getValue() / 100f : 1;
+    }
+    public static int getSwingDuration(int haste, int fatigue, int base) {
+        if (constantSwing) return base;
+        return OldAnimations.swingDuration(haste, fatigue, base, swingHasteInfluence);
     }
 }

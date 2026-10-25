@@ -53,6 +53,13 @@ public class LegacySwingMixin {
         + "ZLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V"), require = 2)
     private void lads$oldItem(ItemInHandRenderer self, LivingEntity entity, ItemStack stack, ItemDisplayContext context, boolean left,
                               PoseStack pose, MultiBufferSource buffers, int light, Operation<Void> original) {
+        if (com.thelads.core.client.PvpVisuals.rodAsStick && stack != null && stack.is(net.minecraft.world.item.Items.FISHING_ROD)
+            && entity instanceof net.minecraft.world.entity.player.Player player && player.fishing != null) {
+            stack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.STICK);
+        }
+        if (com.thelads.core.client.PvpVisuals.itemLighting) {
+            light = 0xF000F0;
+        }
         ItemDisplayContext drawn = NativeOldAnimations1201.firstPerson(entity, stack, pose, context);
         if (drawn != null) original.call(self, entity, stack, drawn, left, pose, buffers, light);
     }

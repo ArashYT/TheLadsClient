@@ -94,6 +94,7 @@ public final class PvpVisuals26 {
     public static final Vector3f NO_OFFSET = new Vector3f();
     private static final Fill FILL = new Fill();
     private static int hurtPixel;
+    private static int lastHurtKey;
     private static int styledBox, styledHurt;
     private static float styledWidth = -1;
     private static GizmoStyle boxStyle, hurtStyle, eyeStyle;
@@ -109,6 +110,11 @@ public final class PvpVisuals26 {
         boolean lads$mount();
 
         void lads$mount(boolean mount);
+    }
+
+    public interface DamageState {
+        int lads$damageV();
+        void lads$damageV(int v);
     }
 
     /** The built-in oof (common sounds.json: Minecraft's own random/classic_hurt). */
@@ -189,15 +195,29 @@ public final class PvpVisuals26 {
         GlintColorizerModule glint = PvpVisuals.GLINT;
         GLINT_COLOR.set(glint.red, glint.green, glint.blue, 1);
         HitColorModule hit = PvpVisuals.HIT_COLOR;
-        int pixel = hit.on ? HitColorModule.overlayPixel(hit.argb) : VANILLA_HURT;
-        if (pixel != hurtPixel) {
-            // Hit Color: the overlay texture's hurt rows (v 0 to 7; models sample v 3) in the new colour.
+        int def = hit.on ? HitColorModule.overlayPixel(hit.argb) : VANILLA_HURT;
+        int fire = hit.on ? HitColorModule.overlayPixel(hit.fireArgb) : VANILLA_HURT;
+        int fall = hit.on ? HitColorModule.overlayPixel(hit.fallArgb) : VANILLA_HURT;
+        int drown = hit.on ? HitColorModule.overlayPixel(hit.drownArgb) : VANILLA_HURT;
+        int key = def ^ (fire << 1) ^ (fall << 2) ^ (drown << 3);
+        if (key != lastHurtKey) {
+            // Hit Color: the overlay texture's hurt rows (v 0 to 7) in the new colours.
             DynamicTexture texture = ((OverlayTextureAccessor26) mc.gameRenderer.overlayTexture()).lads$texture();
             NativeImage image = texture.getPixels();
             if (image == null) return;
-            for (int y = 0; y < 8; y++) for (int x = 0; x < 16; x++) image.setPixel(x, y, pixel);
+            for (int x = 0; x < 16; x++) {
+                image.setPixel(x, 0, def);
+                image.setPixel(x, 1, fire);
+                image.setPixel(x, 2, fall);
+                image.setPixel(x, 3, def);
+                image.setPixel(x, 4, drown);
+                image.setPixel(x, 5, def);
+                image.setPixel(x, 6, def);
+                image.setPixel(x, 7, def);
+            }
             texture.upload();
-            hurtPixel = pixel;
+            lastHurtKey = key;
+            hurtPixel = def;
         }
     }
 
@@ -389,6 +409,7 @@ public final class PvpVisuals26 {
         Vec3 camera = context.levelState().cameraRenderState.pos;
         camX = camera.x; camY = camera.y; camZ = camera.z;
         if (LightOverlay.active()) context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.lines(), PvpVisuals26::drawLightOverlay);
+        MlgClutch26.renderWorld(context);
         drawn = beams;
         beams = 0; // the next frame queues its own
         if (drawn > 0) context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.beaconBeam(BeaconRenderer.BEAM_LOCATION, true),

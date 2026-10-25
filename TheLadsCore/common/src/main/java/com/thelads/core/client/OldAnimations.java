@@ -229,6 +229,20 @@ public final class OldAnimations {
         return !swingInProgress || swingProgressInt >= Math.max(1, swingDuration) / 2 || swingProgressInt < 0;
     }
 
+    public static int vanillaSwingDuration(int hasteLevel, int fatigueLevel) { return vanillaSwingDuration(hasteLevel, fatigueLevel, 6); } public static int vanillaSwingDuration(int hasteLevel, int fatigueLevel, int baseDuration) {
+        if (hasteLevel > 0) { int d = baseDuration - hasteLevel; return d < 1 ? 1 : d; }
+        if (fatigueLevel > 0) return baseDuration + fatigueLevel * 2;
+        return baseDuration;
+
+    }
+
+    public static int swingDuration(int hasteLevel, int fatigueLevel, int baseDuration, float hasteInfluence) {
+        int vanilla = vanillaSwingDuration(hasteLevel, fatigueLevel, baseDuration);
+        if (hasteInfluence <= 0) return baseDuration;
+        if (hasteInfluence >= 100) return vanilla;
+        return Math.round(baseDuration + (vanilla - baseDuration) * (hasteInfluence / 100.0f));
+    }
+
     private static void eat(Sink out, int side, float left, int max) {
         float done = 1 - left / max;                                  // 1.7.10: share of the use already done
         out.translate(0, done > 0.2f ? Math.abs(cos(left / 4 * PI) * 0.1f) : 0, 0);  // 1.7.10: 0.1 jiggle per 4 ticks after 20%

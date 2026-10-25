@@ -32,6 +32,14 @@ public class LegacySwingMixin {
                                    @Local(argsOnly = true, ordinal = 0) float partial, @Local(argsOnly = true, ordinal = 2) float swing,
                                    @Local(argsOnly = true, ordinal = 3) float equip) {
         var player = Minecraft.getInstance().player;
+        if (com.thelads.core.client.PvpVisuals.rodAsStick && item != null && item.is(net.minecraft.world.item.Items.FISHING_ROD) && player != null && player.fishing != null) {
+            item = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.STICK);
+            HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
+            Minecraft.getInstance().getItemModelResolver().updateForLiving(state, item, arm == HumanoidArm.RIGHT ? ItemDisplayContext.FIRST_PERSON_RIGHT_HAND : ItemDisplayContext.FIRST_PERSON_LEFT_HAND, player);
+        }
+        if (com.thelads.core.client.PvpVisuals.itemLighting) {
+            light = 0xF000F0;
+        }
         ItemDisplayContext drawn = player == null ? ItemDisplayContext.FIRST_PERSON_RIGHT_HAND
             : NativeOldAnimations.firstPerson(player, hand, item, partial, swing, equip, pose, ItemDisplayContext.FIRST_PERSON_RIGHT_HAND);
         if (drawn == ItemDisplayContext.NONE) original.call(NativeOldAnimations.firstPersonIcon(hand), pose, collector, light, overlay, outline);

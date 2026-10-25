@@ -47,7 +47,10 @@ public final class OldAnimationsModule extends Module {
         CONSTANT_SWING("Constant swing speed", "Haste and Mining Fatigue no longer speed up or slow down arm swings (yours and "
             + "other players'). Only drawn: nothing changes for the server.", null, false),
         NO_REEQUIP("No re-equip on item changes", "The held item lowers and rises again only when you switch slots or hold a different "
-            + "item, not when its durability, count or enchantments change.", null, false);
+            + "item, not when its durability, count or enchantments change.", null, false),
+
+        ROD_AS_STICK("Cast rod as stick", "Replaces active cast fishing rod texture with a stick sprite.", null, false),
+        ITEM_LIGHTING("1.7 item lighting", "Restores bright 1.7 ambient lighting on held items in first person.", null, true);
 
         public final String option;
         public final String tooltip;
@@ -79,12 +82,14 @@ public final class OldAnimationsModule extends Module {
     /** The game version that runs; the 1.8.9 adapter sets V1_8_9, the Fabric versions keep MODERN. */
     private Platform platform = Platform.MODERN;
 
+    public final com.thelads.core.config.SliderOption swingSpeedHaste;
+
     public OldAnimationsModule() {
         super(NAME, "Minecraft 1.7 animations: blockhitting, the 1.7 sword, bow, rod and eating poses, red armour, "
             + "2D dropped items and more.");
         for (Feature feature : Feature.values()) toggles.put(feature, addOption(new BoolOption(feature.option, feature.defaultOn)));
+        swingSpeedHaste = addOption(new com.thelads.core.config.SliderOption("Swing speed vs haste", 100, 0, 100, 10).percent());
     }
-
     public BoolOption option(Feature feature) {
         return toggles.get(feature);
     }
@@ -162,5 +167,16 @@ public final class OldAnimationsModule extends Module {
     /** No attack-cooldown dip: the attack or swap scale the equip animation reads; 1 keeps the item up. */
     public float equipScale(Platform platform, float vanillaScale) {
         return active(Feature.NO_COOLDOWN_DIP, platform) ? 1 : vanillaScale;
+    }
+
+
+
+
+    public boolean rodAsStick(Platform platform) {
+        return active(Feature.ROD_AS_STICK, platform);
+    }
+
+    public boolean itemLighting(Platform platform) {
+        return active(Feature.ITEM_LIGHTING, platform);
     }
 }

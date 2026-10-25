@@ -12,38 +12,64 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Hit Color: setBrightness puts the hurt flash's red, green, blue and strength (1, 0, 0, 0.3) into the brightness buffer, its first
- * four puts. Mount Opacity: renderModel takes its see-through path (an invisible mob a spectator sees) for the player's mount, at
- * the module's opacity instead of 15%.
+ * Hit Color: setBrightness puts the hurt flash's red, green, blue and strength into the brightness buffer, its first
+ * four puts. Supports per-damage-type flash colors. Mount Opacity: renderModel takes its see-through path (an invisible mob a spectator sees)
+ * for the player's mount, at the module's opacity instead of 15%.
  */
 @Mixin(RendererLivingEntity.class)
 public class PvpLivingRendererMixin189 {
     private static final String PUT = "Ljava/nio/FloatBuffer;put(F)Ljava/nio/FloatBuffer;";
+    private static int lads$currentColor;
+
+    @Inject(method = "setBrightness", at = @At("HEAD"), require = 0)
+    private void lads$captureEntity(EntityLivingBase entity, float partialTicks, boolean combineTextures, CallbackInfoReturnable<Boolean> cir) {
+        HitColorModule hit = PvpVisuals.HIT_COLOR;
+        if (!hit.on) {
+            lads$currentColor = hit.argb;
+            return;
+        }
+        HitColorModule.DamageType type = HitColorModule.DamageType.DEFAULT;
+        if (entity != null) {
+            type = HitColorModule.getDamageType(entity.getEntityId());
+            if (type == HitColorModule.DamageType.DEFAULT) {
+                if (entity.isBurning()) type = HitColorModule.DamageType.FIRE;
+                else if (entity.isInWater() && entity.getAir() <= 0) type = HitColorModule.DamageType.DROWNING;
+                else if (entity.fallDistance > 2.0F) type = HitColorModule.DamageType.FALL;
+            }
+        }
+        lads$currentColor = hit.getColor(type);
+    }
+
+    @Inject(method = "setBrightness", at = @At("RETURN"), require = 0)
+    private void lads$releaseEntity(EntityLivingBase entity, float partialTicks, boolean combineTextures, CallbackInfoReturnable<Boolean> cir) {
+        lads$currentColor = 0;
+    }
 
     @ModifyArg(method = "setBrightness", at = @At(value = "INVOKE", target = PUT, ordinal = 0, remap = false), require = 0)
     private float lads$hitRed(float red) {
         HitColorModule hit = PvpVisuals.HIT_COLOR;
-        return hit.on ? (hit.argb >> 16 & 0xFF) / 255F : red;
+        return hit.on ? (lads$currentColor >> 16 & 0xFF) / 255F : red;
     }
 
     @ModifyArg(method = "setBrightness", at = @At(value = "INVOKE", target = PUT, ordinal = 1, remap = false), require = 0)
     private float lads$hitGreen(float green) {
         HitColorModule hit = PvpVisuals.HIT_COLOR;
-        return hit.on ? (hit.argb >> 8 & 0xFF) / 255F : green;
+        return hit.on ? (lads$currentColor >> 8 & 0xFF) / 255F : green;
     }
 
     @ModifyArg(method = "setBrightness", at = @At(value = "INVOKE", target = PUT, ordinal = 2, remap = false), require = 0)
     private float lads$hitBlue(float blue) {
         HitColorModule hit = PvpVisuals.HIT_COLOR;
-        return hit.on ? (hit.argb & 0xFF) / 255F : blue;
+        return hit.on ? (lads$currentColor & 0xFF) / 255F : blue;
     }
 
     @ModifyArg(method = "setBrightness", at = @At(value = "INVOKE", target = PUT, ordinal = 3, remap = false), require = 0)
     private float lads$hitStrength(float strength) {
         HitColorModule hit = PvpVisuals.HIT_COLOR;
-        return hit.on ? (hit.argb >>> 24) / 255F : strength;
+        return hit.on ? (lads$currentColor >>> 24) / 255F : strength;
     }
 
     /** Mount Opacity's flag lives as long as one renderModel call (doRender catches what it throws: the next call sets it first). */

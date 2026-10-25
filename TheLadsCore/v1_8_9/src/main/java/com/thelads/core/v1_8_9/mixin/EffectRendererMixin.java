@@ -65,4 +65,11 @@ public abstract class EffectRendererMixin {
         }
         ci.cancel();
     }
+
+    @Inject(method = "addBlockDestroyEffects", at = @At("HEAD"))
+    private void ladsBedDestroyParticles(net.minecraft.util.BlockPos pos, net.minecraft.block.state.IBlockState state, CallbackInfo ci) {
+        if (state != null && state.getBlock() instanceof net.minecraft.block.BlockBed) {
+            com.thelads.core.v1_8_9.feature.BedColors189.spawnBedDestructionBurst(pos, state);
+        }
+    }
 }

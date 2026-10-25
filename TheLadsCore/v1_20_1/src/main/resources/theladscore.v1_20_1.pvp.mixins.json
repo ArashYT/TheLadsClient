@@ -7,6 +7,7 @@
     "defaultRequire": 1
   },
   "client": [
+    "LivingEntityOverlayMixin1201",
     "OverlayTextureAccessor1201",
     "PvpBlockOverlayMixin1201",
     "PvpEntityDispatcherMixin1201",
@@ -14,5 +15,6 @@
     "PvpGlintMixin1201",
     "PvpGlintResetMixin1201",
     "PvpShinyPotionMixin1201"
+
   ]
 }

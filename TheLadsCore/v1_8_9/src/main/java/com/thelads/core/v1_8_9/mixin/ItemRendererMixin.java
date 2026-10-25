@@ -1,6 +1,7 @@
 package com.thelads.core.v1_8_9.mixin;
 
 import com.thelads.core.client.OldAnimations;
+import com.thelads.core.client.PvpVisuals;
 import com.thelads.core.client.OldAnimations.Held;
 import com.thelads.core.client.OldAnimations.Use;
 import com.thelads.core.modules.OldAnimationsModule.Feature;
@@ -126,6 +127,13 @@ public abstract class ItemRendererMixin {
         + "Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;Lnet/minecraft/client/renderer/block/model/ItemCameraTransforms$TransformType;)V"),
         require = 1, allow = 1)
     private void ladsDrawItem(ItemRenderer self, EntityLivingBase player, ItemStack stack, TransformType type) {
+        if (PvpVisuals.rodAsStick && stack != null && stack.getItem() == net.minecraft.init.Items.fishing_rod
+            && player instanceof net.minecraft.entity.player.EntityPlayer && ((net.minecraft.entity.player.EntityPlayer) player).fishEntity != null) {
+            stack = new net.minecraft.item.ItemStack(net.minecraft.init.Items.stick);
+        }
+        if (PvpVisuals.itemLighting) {
+            net.minecraft.client.renderer.OpenGlHelper.setLightmapTextureCoords(net.minecraft.client.renderer.OpenGlHelper.lightmapTexUnit, 240.0F, 240.0F);
+        }
         if (!ladsIcon) {
             self.renderItem(player, stack, type);
             return;
