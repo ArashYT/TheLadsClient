@@ -112,7 +112,7 @@ public abstract class NetHandlerPlayClientMixin {
                 addToSendQueue(new net.minecraft.network.play.client.C17PacketCustomPayload("REGISTER",
                         new net.minecraft.network.PacketBuffer(io.netty.buffer.Unpooled.wrappedBuffer(registerBytes))));
                 byte[] handshake = com.thelads.core.client.worldedit.WorldEditCUI.getHandshakePayload();
-                addToSendQueue(new net.minecraft.network.play.client.C17PacketCustomPayload("worldedit:cui",
+                addToSendQueue(new net.minecraft.network.play.client.C17PacketCustomPayload("WECUI",
                         new net.minecraft.network.PacketBuffer(io.netty.buffer.Unpooled.wrappedBuffer(handshake))));
             } catch (Throwable ignored) {}
         }

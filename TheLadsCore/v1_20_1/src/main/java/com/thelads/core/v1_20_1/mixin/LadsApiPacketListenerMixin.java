@@ -34,19 +34,27 @@ public abstract class LadsApiPacketListenerMixin {
     @Inject(method = "handleCustomPayload", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$handleCustomPayload(ClientboundCustomPayloadPacket packet, CallbackInfo ci) {
         ResourceLocation id = packet.getIdentifier();
-        if (id != null && ("worldedit:cui".equals(id.toString()) || "WECUI".equals(id.getPath()))) {
-            FriendlyByteBuf buf = packet.getData();
-            if (buf != null) {
-                byte[] payload = new byte[buf.readableBytes()];
-                buf.getBytes(buf.readerIndex(), payload);
-                Minecraft mc = Minecraft.getInstance();
-                if (mc != null && mc.isSameThread()) {
-                    WorldEditCUI.onPacket(id.toString(), payload);
-                } else if (mc != null) {
-                    mc.execute(() -> WorldEditCUI.onPacket(id.toString(), payload));
+        if (id != null && (("worldedit".equals(id.getNamespace()) && "cui".equals(id.getPath())) || "wecui".equalsIgnoreCase(id.getPath()))) {
+            if (WorldEditCUI.on && !com.thelads.core.client.HypixelSafetyManager.isDisallowed(WorldEditCUI.NAME)) {
+                FriendlyByteBuf buf = packet.getData();
+                if (buf != null) {
+                    try {
+                        byte[] payload = new byte[buf.readableBytes()];
+                        buf.getBytes(buf.readerIndex(), payload);
+                        Minecraft mc = Minecraft.getInstance();
+                        if (mc != null && mc.isSameThread()) {
+                            WorldEditCUI.onPacket(id.toString(), payload);
+                        } else if (mc != null) {
+                            mc.execute(() -> WorldEditCUI.onPacket(id.toString(), payload));
+                        }
+                    } finally {
+                        if (buf.refCnt() > 0) {
+                            buf.release();
+                        }
+                    }
                 }
+                ci.cancel();
             }
-            ci.cancel();
             return;
         }
         if (LadsApiTransport1201.isLadsApiChannel(id)) {

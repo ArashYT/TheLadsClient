@@ -703,8 +703,6 @@ public class ModuleManager {
         register(com.thelads.core.client.SoundFilters.createModule(), Module.Category.MECHANIC);
         register(com.thelads.core.client.media.MumbleLink.createModule(), Module.Category.MECHANIC);
         register(com.thelads.core.client.worldedit.WorldEditCUI.createModule(), Module.Category.MECHANIC);
-        HudModule ts = hud("TeamSpeak", "Displays active TeamSpeak 3 channel participants and speaking status.");
-        ts.addOption(new TextOption(com.thelads.core.client.media.TeamSpeakBridge.OPTION_API_KEY, ""));
     }
 
     public static ModuleManager getInstance() {

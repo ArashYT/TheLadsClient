@@ -84,8 +84,8 @@ public final class SoundFilters {
 
     public static boolean isMusicOrRecord(String path) {
         if (path == null) return false;
-        return path.startsWith("music.") || path.startsWith("record.")
+        return path.startsWith("music.") || path.startsWith("music_disc.") || path.startsWith("records.")
             || path.startsWith("music/") || path.startsWith("records/")
-            || path.contains("music.") || path.contains("record.");
+            || path.contains("music.") || path.contains("music_disc.") || path.contains("records.");
     }
 }

@@ -41,8 +41,13 @@ class SoundFiltersTest {
         float pitch = SoundFilters.filterPitch(1.0f, "music.game");
         assertEquals(1.0f, pitch, 1e-5, "Music pitch must remain unchanged underwater");
 
-        float recordPitch = SoundFilters.filterPitch(1.0f, "record.cat");
-        assertEquals(1.0f, recordPitch, 1e-5, "Record pitch must remain unchanged underwater");
+        // 1.8.9 uses records.*
+        float recordPitch189 = SoundFilters.filterPitch(1.0f, "records.cat");
+        assertEquals(1.0f, recordPitch189, 1e-5, "1.8.9 record pitch must remain unchanged underwater");
+
+        // 1.20.1/26.3 uses music_disc.*
+        float recordPitchModern = SoundFilters.filterPitch(1.0f, "music_disc.cat");
+        assertEquals(1.0f, recordPitchModern, 1e-5, "Modern music_disc pitch must remain unchanged underwater");
     }
 
     @Test

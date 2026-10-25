@@ -77,7 +77,7 @@ public final class Qol26 {
 
     public static void register() {
         ModuleSupport.registerBuiltIn(TooltipScroll.NAME, CrashCatcher.NAME, QuickReconnect.NAME, KeepCursor.NAME, SoundVolumes.NAME,
-            ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME, "TeamSpeak");
+            ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME);
 
         ModuleSupport.registerUnavailable(GuiScaleOverride.NAME, "26.x keeps the GUI scale a whole number through its whole GUI renderer "
             + "(projection, scissor, text and item atlases): use the game's GUI Scale option.");

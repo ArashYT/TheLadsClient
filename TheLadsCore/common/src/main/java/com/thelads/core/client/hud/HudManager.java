@@ -113,7 +113,6 @@ public class HudManager {
         add(new EntityCounterHudElement(), "EntityCounter");
         add(new ShaderPackHudElement(), "ShaderPack");
         add(new HeldItemLoreHudElement(), "HeldItemLore");
-        add(new TeamSpeakHudElement(), "TeamSpeak");
     }
 
     private void add(HudElement element, String moduleName) {

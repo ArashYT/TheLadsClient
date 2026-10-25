@@ -37,7 +37,7 @@ public final class WorldEditCUI {
     public record BlockPos(int x, int y, int z) {}
 
     public enum Shape {
-        NONE, CUBOID
+        NONE, CUBOID, UNSUPPORTED
     }
 
     private static Shape shape = Shape.NONE;
@@ -60,7 +60,7 @@ public final class WorldEditCUI {
     }
 
     public static boolean hasSelection() {
-        return shape != Shape.NONE && pos1 != null;
+        return shape == Shape.CUBOID && pos1 != null;
     }
 
     public static void clear() {
@@ -119,7 +119,11 @@ public final class WorldEditCUI {
                     String shapeType = parts[1].toLowerCase();
                     if (shapeType.startsWith("cuboid")) {
                         shape = Shape.CUBOID;
+                    } else {
+                        shape = Shape.UNSUPPORTED;
                     }
+                } else {
+                    shape = Shape.UNSUPPORTED;
                 }
                 break;
             case "p": // Point: p|<id>|<x>|<y>|<z>|<size>

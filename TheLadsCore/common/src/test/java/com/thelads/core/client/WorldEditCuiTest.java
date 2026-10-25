@@ -76,4 +76,17 @@ class WorldEditCuiTest {
     void safetyManagerGatesWorldEditCui() {
         assertTrue(HypixelSafetyManager.isRiskyModule(WorldEditCUI.NAME), "WorldEdit CUI must be gated as risky under anti-ban rules");
     }
+
+    @Test
+    void nonCuboidShapeDoesNotDrawCuboidOnPoints() {
+        WorldEditCUI.parseCommand("s|polyhedron");
+        assertEquals(WorldEditCUI.Shape.UNSUPPORTED, WorldEditCUI.getShape());
+        WorldEditCUI.parseCommand("p|0|10|20|30|0");
+        WorldEditCUI.parseCommand("p|1|15|25|35|0");
+        assertFalse(WorldEditCUI.hasSelection(), "Unsupported shape must never have active selection");
+
+        AtomicInteger lines = new AtomicInteger(0);
+        WorldEditCUI.draw((x0, y0, z0, x1, y1, z1, argb) -> lines.incrementAndGet());
+        assertEquals(0, lines.get(), "Drawing must emit 0 lines for unsupported shape");
+    }
 }

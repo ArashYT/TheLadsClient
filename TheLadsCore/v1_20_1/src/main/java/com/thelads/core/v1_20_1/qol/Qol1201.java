@@ -79,7 +79,7 @@ public final class Qol1201 {
 
     public static void register() {
         ModuleSupport.registerBuiltIn(TooltipScroll.NAME, CrashCatcher.NAME, QuickReconnect.NAME, KeepCursor.NAME, SoundVolumes.NAME,
-            GuiScaleOverride.NAME, ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME, "TeamSpeak");
+            GuiScaleOverride.NAME, ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME);
 
         ClientTickEvents.END_CLIENT_TICK.register(Qol1201::tick);
         WorldRenderEvents.BEFORE_DEBUG_RENDER.register(Qol1201::chunkBorders);

@@ -191,7 +191,14 @@ tasks.register('runShowcaseTest', JavaExec) {
     mainClass = 'com.thelads.core.v26_2.showcase.ShowcaseScriptParserTest'
 }
 
+tasks.register('runCodecChecks', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.thelads.core.v26_2.feature.WorldEditCuiCodecChecks'
+}
+
 tasks.named('test') {
     failOnNoDiscoveredTests = false
     dependsOn tasks.named('runShowcaseTest')
+    dependsOn tasks.named('runCodecChecks')
 }
