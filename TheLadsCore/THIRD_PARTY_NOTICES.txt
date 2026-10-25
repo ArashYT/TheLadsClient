@@ -38,57 +38,80 @@ components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar
 
 * JvmDowngrader (`xyz.wagyourtail.jvmdowngrader:1.3.6`) — Used in 1.8.9 build
   Copyright (c) Wagyourtail
-  License: LGPL-3.0-only (https://github.com/wagyourtail/JvmDowngrader)
-
-* FastColor (`com.github.Lenni0451:FastColor:1.0.0`) — Bundled in 1.8.9
-  Copyright (c) Lenni0451
-  License: MIT License (https://github.com/Lenni0451/FastColor)
-
-* DiscordIPC / discord-rpc (`com.github.cuchaz:discord-ipc:0.7.1`) — Shaded in 1.8.9
-  Copyright (c) 2017 Cuchaz Interactive
-  License: MIT License (https://github.com/cuchaz/discord-ipc)
+  License: GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later)
 
 --------------------------------------------------------------------------------
-2. Source-Integrated / Clean-Room Reimplementations
+2. Source-Integrated & Embedded Mods (`META-INF/lads-sources/` & `assets/theladscore/licenses/`)
 --------------------------------------------------------------------------------
 
-* ItemPhysic (creative item drop / physics rendering)
-  Clean-room reimplementation in `com.thelads.core.client.itemphysic.*`.
-  Original mod by CreativeMD (LGPL-3.0).
+* Entity Texture Features (ETF) & Entity Model Features (EMF)
+  Copyright (c) Traben
+  License: GNU Lesser General Public License v3.0 only (LGPL-3.0-only)
+  License & Notice: `assets/theladscore/licenses/ETF-NOTICE.txt`, `EMF-NOTICE.txt`, `LGPL-3.0-only.txt`
+  Modified Sources: `META-INF/lads-sources/etf/`, `META-INF/lads-sources/emf/`
 
-* Blur (in-game GUI background blur)
-  Clean-room reimplementation in `com.thelads.core.client.blur.*`.
-  Original mod by Motschen / tterrag1098 (MIT License).
+* ImmediatelyFast
+  Copyright (c) RK_01
+  License: GNU Lesser General Public License v3.0 only (LGPL-3.0-only)
+  License & Notice: `assets/theladscore/licenses/ImmediatelyFast-NOTICE.txt`, `ImmediatelyFast-LGPL-3.0-only.txt`
+  Modified Sources: `META-INF/lads-sources/immediatelyfast/`
 
-* Dynamic Lights / LambDynamicLights
-  Clean-room reimplementation of smooth entity and hand-held item lighting.
-  Original mod by LambdAurora (MIT License).
+* Fast IP Ping
+  Copyright (c) Fallen_Breath
+  License: GNU Lesser General Public License v3.0 only (LGPL-3.0-only)
+  License & Notice: `assets/theladscore/licenses/FastIpPing-NOTICE.txt`, `FastIpPing-LGPL-3.0-only.txt`
+  Modified Sources: `META-INF/lads-sources/fastipping/`
 
-* Wavey Capes (cloth physics simulation for player capes)
-  Clean-room implementation in `com.thelads.core.client.capes.physics.*`.
-  Original mod by tr7zw (LGPL-3.0-only).
+* FixBookGUI
+  License: GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later)
+  License & Notice: `assets/theladscore/licenses/FixBookGUI-NOTICE.txt`, `FixBookGUI-LGPL-3.0-or-later.txt`
+  Modified Sources: `META-INF/lads-sources/fixbookgui/`
 
-* 3D Skin Layers (extruding player second layer into 3D voxels)
-  Bundled as official mod jar in 1.8.9 (`skinlayers3d`).
-  Original mod by tr7zw (tr7zw Protective License).
+* Hovering Hotbar
+  License: GNU Lesser General Public License v2.1 only (LGPL-2.1-only)
+  License & Notice: `assets/theladscore/licenses/HoveringHotbar-NOTICE.txt`, `HoveringHotbar-LGPL-2.1-only.txt`
+  Modified Sources: `META-INF/lads-sources/hoveringhotbar/`
 
-* Sound Physics Remastered (reverberation, occlusion and sound absorption)
-  Clean-room implementation in `com.thelads.core.client.sound.*`.
-  Original mod by henkelmax / sonicether (GPL-3.0-or-later).
+* Signal Loss, Screenshot Viewer & TabTweaks
+  License: GNU Lesser General Public License v3.0 (LGPL-3.0) / MIT
+  License & Notice: `assets/theladscore/licenses/SignalLoss-LGPL-3.0.txt`, `ScreenshotViewer-LGPL-3.0.txt`, `TabTweaks-NOTICE.txt`
+  Modified Sources: `META-INF/lads-sources/signalloss/`, `META-INF/lads-sources/screenshots/`, `META-INF/lads-sources/tabtweaks/`
 
-* Schematica (read-only blueprint ghost overlay, strictly without printer/placement)
-  Clean-room classic .schematic NBT parser and wireframe renderer in `com.thelads.core.client.schematic.*`.
-  Original mod by Lunatrius (Modified BSD License).
+* Capes & NBT Autocomplete
+  License: Mozilla Public License 2.0 (MPL-2.0)
+  License & Notice: `assets/theladscore/licenses/Capes-NOTICE.txt`, `Capes-MPL-2.0.txt`, `NBTAutocomplete-NOTICE.txt`, `NBTAutocomplete-MPL-2.0.txt`
+  Modified Sources: `META-INF/lads-sources/capes/`, `META-INF/lads-sources/nbtac/`
+
+* Jade (Minecraft 26.2 and 26.3 builds only)
+  Copyright (c) Snownee
+  License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC-BY-NC-SA-4.0)
+  License & Notice: `assets/theladscore/licenses/Jade-NOTICE.txt`, `Jade-CC-BY-NC-SA-4.0.txt`
+  Modified Sources: `META-INF/lads-sources/jade/`
+
+* Controlling & Clumps
+  Copyright (c) Jaredlll08
+  License: MIT License (`assets/theladscore/licenses/Controlling-MIT.txt`, `Clumps-MIT.txt`)
+  Modified Sources: `META-INF/lads-sources/clumps/`
+
+* EntityCulling
+  Copyright (c) tr7zw
+  License: tr7zw / MIT License (`assets/theladscore/licenses/EntityCulling-LICENSE.txt`, `EntityCulling-NOTICE.txt`)
+
+* Ksyxis, LazyAI, Optimized Cushions, QuickPack, World Play Time, Screenshot to Clipboard
+  License: MIT License / Unlicense (see `assets/theladscore/licenses/*-MIT.txt` and `ScreenshotToClipboard-Unlicense.txt`)
+
+* ServerPingerFixer
+  License: Apache License 2.0 (`assets/theladscore/licenses/ServerPingerFixer-Apache-2.0.txt`, `ServerPingerFixer-NOTICE.txt`)
 
 --------------------------------------------------------------------------------
-3. OptiFine Custom Item Textures (CIT) Parity (1.8.9)
+3. Formats Implemented From Public Specifications
 --------------------------------------------------------------------------------
 
-* Custom Item Textures (CIT) parser and model matching in `CustomItems.java` and `CustomItemsNbt.java`
-  are clean-room implementations following the OptiFine CIT specification documentation
-  (https://optifine.readthedocs.io/cit.html).
-
-* Weighting and enchantment level layering algorithms incorporate concepts from MCPatcher
+* Custom Item Textures (OptiFine / MCPatcher CIT format), Minecraft 1.8.9 without OptiFine
+  Code: `com.thelads.core.client.CustomItems`, `CustomItemsNbt` (common), `com.thelads.core.v1_8_9.cit` (1.8.9).
+  Written by The Lads from OptiFine's documentation (cit.properties, cit_single.properties; public domain,
+  https://github.com/sp614x/optifine/tree/master/OptiFineDoc/doc). The enchantment level matching and the
+  enchantment effect layering (average, layered, cycle) follow MCPatcher by prupe, used as a reference
   (https://bitbucket.org/prupe/mcpatcher), whose license is:
     Copyright (c) 2013
     Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
@@ -104,15 +127,11 @@ components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar
 
 
 --------------------------------------------------------------------------------
-4. Client Mods Distributed by The Lads Launcher (1.8.9, 1.20.1, 26.3)
+4. Client Mods Distributed by The Lads Launcher (1.8.9, 1.20.1)
 --------------------------------------------------------------------------------
 
-* ReplayMod (1.8.9 Forge, 1.20.1 Fabric)
+* ReplayMod (Modrinth OJEjSBv2, 1.8.9 Forge, 1.20.1 Fabric)
   Copyright (c) ReplayMod Contributors
   License: GNU General Public License v3.0 or later (GPL-3.0-or-later)
   Source: https://github.com/ReplayMod/ReplayMod
 
-* ViaFabricPlus (1.20.1, 26.3 Fabric)
-  Copyright (c) Florian Reuth / ViaVersion Contributors
-  License: GNU General Public License v3.0 only (GPL-3.0-only)
-  Source: https://github.com/ViaVersion/ViaFabricPlus

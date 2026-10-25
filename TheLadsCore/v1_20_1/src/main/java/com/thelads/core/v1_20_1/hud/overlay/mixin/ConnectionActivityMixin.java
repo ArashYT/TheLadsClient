@@ -21,25 +21,7 @@ public class ConnectionActivityMixin implements PacketActivity1201 {
 
     @Inject(method = "channelRead0(Lio/netty/channel/ChannelHandlerContext;Lnet/minecraft/network/protocol/Packet;)V", at = @At("HEAD"))
     private void lads$received(ChannelHandlerContext context, Packet<?> packet, CallbackInfo callback) {
-        if (receiving == PacketFlow.CLIENTBOUND) {
-            lads$lastPacketNanos = System.nanoTime();
-            if (com.thelads.core.client.rewind.InstantClipBuffer.isEnabled()) {
-                try {
-                    io.netty.buffer.ByteBuf bb = io.netty.buffer.Unpooled.buffer();
-                    net.minecraft.network.FriendlyByteBuf fbb = new net.minecraft.network.FriendlyByteBuf(bb);
-                    packet.write(fbb);
-                    byte[] data = new byte[fbb.readableBytes()];
-                    fbb.readBytes(data);
-                    fbb.release();
-                    int packetId = 0;
-                    try {
-                        Integer id = net.minecraft.network.ConnectionProtocol.PLAY.getPacketId(receiving, packet);
-                        if (id != null) packetId = id;
-                    } catch (Throwable ignored) {}
-                    com.thelads.core.client.rewind.InstantClipBuffer.recordPacket(System.currentTimeMillis(), packetId, data);
-                } catch (Exception ignored) {}
-            }
-        }
+        if (receiving == PacketFlow.CLIENTBOUND) lads$lastPacketNanos = System.nanoTime();
     }
 
     @Override

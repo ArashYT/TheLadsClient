@@ -568,6 +568,5 @@ public final class HypixelMods {
         BedWarsExtras.reset();
         SessionTracker.reset();
         BedWarsHeight.resetForTest();
-
     }
 }

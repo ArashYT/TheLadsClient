@@ -73,8 +73,6 @@ public final class Qol26 {
     private static PoseStack.Pose pose;
     private static final ChunkBorders.Lines SINK = Qol26::line;
     private static final com.thelads.core.client.schematic.SchematicManager.Lines SCHEMATIC_SINK = Qol26::line;
-    public static final net.minecraft.client.KeyMapping SAVE_CLIP_KEY = net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.registerKeyMapping(
-        new net.minecraft.client.KeyMapping("key.theladscore.instant_clip", com.mojang.blaze3d.platform.InputConstants.Type.KEYBOARD, com.mojang.blaze3d.platform.InputConstants.KEY_F9, com.thelads.core.v26_2.feature.NativeKeyBindings.CATEGORY));
 
     private Qol26() {}
 
@@ -98,13 +96,6 @@ public final class Qol26 {
         KeepCursor.tick();
         SoundVolumes.tick();
         ChunkBorders.tick();
-        while (SAVE_CLIP_KEY.consumeClick()) {
-            if (com.thelads.core.client.rewind.InstantClipBuffer.isEnabled()) {
-                com.thelads.core.client.rewind.InstantClipBuffer.triggerAsyncSave(new java.io.File(mc.gameDirectory, "replay_recordings"),
-                    com.thelads.core.client.bridge.LadsGameBridge.get().getServerAddress(), "26.3", 769);
-                com.thelads.core.client.bridge.LadsGameBridge.get().displayChatMessage("\u00a7a[The Lads] Instant clip saved to replay_recordings/");
-            }
-        }
         if (!hookChecked) {
             hookChecked = true;
             if (!tickHooked) ModuleSupport.registerUnavailable(CrashCatcher.NAME, "Another mod changes Minecraft.runTick here, so the game tick "

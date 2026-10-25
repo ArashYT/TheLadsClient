@@ -282,7 +282,4 @@ public interface LadsGameBridge {
 
     /** Nothing in the 27 main inventory slots (the hotbar and armour not counted): InventoryHUD then draws nothing. */
     default boolean isMainInventoryEmpty() { return false; }
-
-    default String getMinecraftVersion() { return "1.8.9"; }
-    default int getProtocolVersion() { return 47; }
 }
