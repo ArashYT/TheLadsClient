@@ -48,7 +48,7 @@ public final class OldAnimationsModule extends Module {
             + "other players'). Only drawn: nothing changes for the server.", null, false),
         NO_REEQUIP("No re-equip on item changes", "The held item lowers and rises again only when you switch slots or hold a different "
             + "item, not when its durability, count or enchantments change.", null, false),
-        PICKUP("1.7 pickup animation", "Smooth linear glide for picked up items without 1.8 bobbing curves.", null, true),
+
         ROD_AS_STICK("Cast rod as stick", "Replaces active cast fishing rod texture with a stick sprite.", null, false),
         ITEM_LIGHTING("1.7 item lighting", "Restores bright 1.7 ambient lighting on held items in first person.", null, true);
 
@@ -88,7 +88,7 @@ public final class OldAnimationsModule extends Module {
         super(NAME, "Minecraft 1.7 animations: blockhitting, the 1.7 sword, bow, rod and eating poses, red armour, "
             + "2D dropped items and more.");
         for (Feature feature : Feature.values()) toggles.put(feature, addOption(new BoolOption(feature.option, feature.defaultOn)));
-        swingSpeedHaste = addOption(new com.thelads.core.config.SliderOption("Swing speed vs haste", 0, 0, 100, 10).percent());
+        swingSpeedHaste = addOption(new com.thelads.core.config.SliderOption("Swing speed vs haste", 100, 0, 100, 10).percent());
     }
     public BoolOption option(Feature feature) {
         return toggles.get(feature);
@@ -169,9 +169,8 @@ public final class OldAnimationsModule extends Module {
         return active(Feature.NO_COOLDOWN_DIP, platform) ? 1 : vanillaScale;
     }
 
-    public boolean pickupAnim(Platform platform) {
-        return active(Feature.PICKUP, platform);
-    }
+
+
 
     public boolean rodAsStick(Platform platform) {
         return active(Feature.ROD_AS_STICK, platform);

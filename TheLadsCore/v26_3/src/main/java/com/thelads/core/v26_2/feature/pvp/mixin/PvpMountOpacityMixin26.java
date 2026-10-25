@@ -24,13 +24,15 @@ public class PvpMountOpacityMixin26 {
         at = @At("TAIL"))
     private void lads$markMount(LivingEntity entity, LivingEntityRenderState state, float partial, CallbackInfo ci) {
         ((PvpVisuals26.MountState) state).lads$mount(PvpVisuals26.isMount(entity));
-        HitColorModule.DamageType type = HitColorModule.getDamageType(entity.getId());
-        if (type == HitColorModule.DamageType.DEFAULT) {
-            if (entity.isOnFire()) type = HitColorModule.DamageType.FIRE;
-            else if (entity.isUnderWater() && entity.getAirSupply() <= 0) type = HitColorModule.DamageType.DROWNING;
-            else if (entity.fallDistance > 2.0F) type = HitColorModule.DamageType.FALL;
+        if (com.thelads.core.client.PvpVisuals.HIT_COLOR.on) {
+            HitColorModule.DamageType type = HitColorModule.getDamageType(entity.getId());
+            if (type == HitColorModule.DamageType.DEFAULT) {
+                if (entity.isOnFire()) type = HitColorModule.DamageType.FIRE;
+                else if (entity.isUnderWater() && entity.getAirSupply() <= 0) type = HitColorModule.DamageType.DROWNING;
+                else if (entity.fallDistance > 2.0F) type = HitColorModule.DamageType.FALL;
+            }
+            ((PvpVisuals26.DamageState) state).lads$damageV(type.overlayV);
         }
-        ((PvpVisuals26.DamageState) state).lads$damageV(type.overlayV);
     }
 
     @ModifyArg(method = SUBMIT, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/LivingEntityRenderer;getRenderType("

@@ -17,7 +17,7 @@ public class LivingEntitySwingMixin1201 {
         if (living.level().isClientSide) {
             if (PvpVisuals.constantSwing) {
                 cir.setReturnValue(6);
-            } else if (PvpVisuals.swingHasteInfluence < 0.999f) {
+            } else if (PvpVisuals.swingHasteInfluence < 100) {
                 int haste = living.hasEffect(MobEffects.DIG_SPEED) ? 1 + living.getEffect(MobEffects.DIG_SPEED).getAmplifier() : 0;
                 int fatigue = living.hasEffect(MobEffects.DIG_SLOWDOWN) ? 1 + living.getEffect(MobEffects.DIG_SLOWDOWN).getAmplifier() : 0;
                 cir.setReturnValue(PvpVisuals.getSwingDuration(haste, fatigue, 6));

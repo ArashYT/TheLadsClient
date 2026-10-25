@@ -29,18 +29,26 @@ public final class MlgClutchHelper {
         return false;
     }
 
-    public static LandingPrediction predictLanding(double x, double y, double z, double motionY, float fallDistance, int minFall) {
+    public static LandingPrediction predictLanding(double playerY, double groundY, double motionY, double fallDistance, int minFall) {
+        if (motionY >= -0.1 || fallDistance < minFall) return null;
+        double dist = playerY - groundY;
+        if (dist <= 0) return null;
+        double speed = Math.abs(motionY) * 20.0;
+        double secondsToImpact = dist / Math.max(0.5, speed);
+        boolean fatal = fallDistance >= 12.0;
+        boolean inTimingWindow = secondsToImpact <= 0.35 && secondsToImpact >= 0.0;
+        return new LandingPrediction(0, (int) Math.floor(groundY), 0, dist, secondsToImpact, fatal, inTimingWindow);
+    }
+
+    public static LandingPrediction predictLanding(double x, double y, double z, double motionY, double fallDistance, int minFall) {
         if (motionY >= -0.1 || fallDistance < minFall) return null;
         int blockX = (int) Math.floor(x);
         int blockZ = (int) Math.floor(z);
-        // Estimate ground landing Y based on downward trajectory
         double fallSpeed = Math.abs(motionY);
         double distance = Math.max(1.0, fallSpeed * 3.0);
         int targetY = (int) Math.floor(y - distance);
-        double distToGround = y - targetY;
-        double secondsToImpact = distToGround / Math.max(0.5, fallSpeed * 20.0);
-        boolean fatal = fallDistance >= 12.0f;
-        boolean inTimingWindow = secondsToImpact <= 0.35 && secondsToImpact >= 0.0;
-        return new LandingPrediction(blockX, targetY, blockZ, distToGround, secondsToImpact, fatal, inTimingWindow);
+        LandingPrediction p = predictLanding(y, targetY, motionY, fallDistance, minFall);
+        if (p == null) return null;
+        return new LandingPrediction(blockX, targetY, blockZ, p.distanceToLanding(), p.secondsToImpact(), p.fatal(), p.inTimingWindow());
     }
 }

@@ -17,7 +17,7 @@ public abstract class EntityLivingBaseSwingMixin189 {
         if (living.worldObj != null && living.worldObj.isRemote) {
             if (PvpVisuals.constantSwing) {
                 cir.setReturnValue(6);
-            } else if (PvpVisuals.swingHasteInfluence < 0.999f) {
+            } else if (PvpVisuals.swingHasteInfluence < 100) {
                 int haste = living.isPotionActive(Potion.digSpeed) ? 1 + living.getActivePotionEffect(Potion.digSpeed).getAmplifier() : 0;
                 int fatigue = living.isPotionActive(Potion.digSlowdown) ? 1 + living.getActivePotionEffect(Potion.digSlowdown).getAmplifier() : 0;
                 cir.setReturnValue(PvpVisuals.getSwingDuration(haste, fatigue, 6));

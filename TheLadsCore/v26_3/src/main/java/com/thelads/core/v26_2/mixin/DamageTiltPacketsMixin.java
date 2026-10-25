@@ -18,10 +18,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(ClientPacketListener.class)
 public class DamageTiltPacketsMixin {
-    @Inject(method = "handleDamageEvent", at = @At("HEAD"), require = 1)
+    @Inject(method = "handleDamageEvent", at = @At("TAIL"), require = 1)
     private void lads$recordDamageType(ClientboundDamageEventPacket packet, CallbackInfo callback) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level != null) {
+        if (mc.isSameThread() && mc.level != null) {
             var damageSource = packet.getSource(mc.level);
             if (damageSource != null) {
                 var type = HitColorModule.classifyDamageSource(

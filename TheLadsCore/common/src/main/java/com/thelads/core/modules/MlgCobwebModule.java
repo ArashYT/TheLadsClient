@@ -28,6 +28,6 @@ public final class MlgCobwebModule extends Module {
 
     public static boolean isActive() {
         MlgCobwebModule mod = get();
-        return mod != null && mod.isEnabled();
+        return mod != null && mod.isEnabled() && !com.thelads.core.client.HypixelSafetyManager.isDisallowed(NAME);
     }
 }

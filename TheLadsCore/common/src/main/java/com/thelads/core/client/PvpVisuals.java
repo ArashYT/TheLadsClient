@@ -69,7 +69,7 @@ public final class PvpVisuals {
     public static int nametagBackground = -1;
     public static boolean nametagFade, nametagPing, nametagHealth, nametagsInF1;
     /** 1.7 Animations' PvP extras (Constant swing speed, No re-equip on item changes): they apply on every version. */
-    public static boolean constantSwing, noReequip, pickupAnim, rodAsStick, itemLighting;
+    public static boolean constantSwing, noReequip, rodAsStick, itemLighting;
     public static int swingHasteInfluence = 100;
     /** Set by the container hooks while a container draws its labels: Dark Mode lightens their dark gray. Render thread only. */
     public static boolean containerLabels;
@@ -131,10 +131,10 @@ public final class PvpVisuals {
         OldAnimationsModule anims = modules.getModule(OldAnimationsModule.NAME) instanceof OldAnimationsModule found ? found : null;
         constantSwing = anims != null && anims.active(OldAnimationsModule.Feature.CONSTANT_SWING, OldAnimationsModule.Platform.MODERN);
         noReequip = anims != null && anims.active(OldAnimationsModule.Feature.NO_REEQUIP, OldAnimationsModule.Platform.MODERN);
-        pickupAnim = anims != null && anims.pickupAnim(OldAnimationsModule.Platform.MODERN);
+
         rodAsStick = anims != null && anims.rodAsStick(OldAnimationsModule.Platform.MODERN);
         itemLighting = anims != null && anims.itemLighting(OldAnimationsModule.Platform.MODERN);
-        swingHasteInfluence = anims != null ? anims.swingSpeedHaste.getIntValue() : 100;
+        swingHasteInfluence = (anims != null && anims.isEnabled()) ? anims.swingSpeedHaste.getIntValue() : 100;
     }
 
     /** A name tag starts drawing: players' tags get Scale and Distance Fade; holograms and named mobs keep vanilla's. */

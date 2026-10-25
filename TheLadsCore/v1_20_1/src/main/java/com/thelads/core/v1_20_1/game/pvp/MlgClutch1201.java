@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -54,11 +55,14 @@ public final class MlgClutch1201 {
         }
 
         if (currentTarget != null) {
-            double dist = player.getY() - currentTarget.getY();
-            double speed = Math.abs(player.getDeltaMovement().y) * 20.0;
-            secondsToImpact = dist / Math.max(0.5, speed);
-            inWindow = secondsToImpact <= 0.35 && secondsToImpact >= 0.0;
-            fatal = player.fallDistance >= 12.0f;
+            MlgClutchHelper.LandingPrediction pred = MlgClutchHelper.predictLanding(player.getY(), currentTarget.getY(), player.getDeltaMovement().y, player.fallDistance, mod.minFallDistance.getIntValue());
+            if (pred != null) {
+                secondsToImpact = pred.secondsToImpact();
+                inWindow = pred.inTimingWindow();
+                fatal = pred.fatal();
+            } else {
+                currentTarget = null;
+            }
         }
     }
 
@@ -86,7 +90,7 @@ public final class MlgClutch1201 {
         int g = (color >> 8) & 0xFF;
         int b = color & 0xFF;
 
-        drawBoxLines(lines, last, 0, 0, 0, 1, 1, 1, r, g, b, a);
+        LevelRenderer.renderLineBox(poseStack, lines, 0, 0, 0, 1, 1, 1, r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f);
 
         poseStack.popPose();
         if (buffers instanceof MultiBufferSource.BufferSource source) {

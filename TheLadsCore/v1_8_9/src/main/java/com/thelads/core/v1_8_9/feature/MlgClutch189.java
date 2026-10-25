@@ -50,11 +50,14 @@ public final class MlgClutch189 {
         }
 
         if (currentTarget != null) {
-            double dist = player.posY - currentTarget.getY();
-            double speed = Math.abs(player.motionY) * 20.0;
-            secondsToImpact = dist / Math.max(0.5, speed);
-            inWindow = secondsToImpact <= 0.35 && secondsToImpact >= 0.0;
-            fatal = player.fallDistance >= 12.0f;
+            MlgClutchHelper.LandingPrediction pred = MlgClutchHelper.predictLanding(player.posY, currentTarget.getY(), player.motionY, player.fallDistance, mod.minFallDistance.getIntValue());
+            if (pred != null) {
+                secondsToImpact = pred.secondsToImpact();
+                inWindow = pred.inTimingWindow();
+                fatal = pred.fatal();
+            } else {
+                currentTarget = null;
+            }
         }
     }
 

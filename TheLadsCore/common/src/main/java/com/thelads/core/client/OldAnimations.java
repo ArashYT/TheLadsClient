@@ -229,15 +229,15 @@ public final class OldAnimations {
         return !swingInProgress || swingProgressInt >= Math.max(1, swingDuration) / 2 || swingProgressInt < 0;
     }
 
-    public static int vanillaSwingDuration(int hasteLevel, int fatigueLevel) {
-        int hasteOffset = hasteLevel > 0 ? (1 + hasteLevel) : 0;
-        int fatigueOffset = fatigueLevel > 0 ? (1 + fatigueLevel) * 2 : 0;
-        int duration = 6 - hasteOffset + fatigueOffset;
-        return duration < 1 ? 1 : duration;
+    public static int vanillaSwingDuration(int hasteLevel, int fatigueLevel) { return vanillaSwingDuration(hasteLevel, fatigueLevel, 6); } public static int vanillaSwingDuration(int hasteLevel, int fatigueLevel, int baseDuration) {
+        if (hasteLevel > 0) { int d = baseDuration - hasteLevel; return d < 1 ? 1 : d; }
+        if (fatigueLevel > 0) return baseDuration + fatigueLevel * 2;
+        return baseDuration;
+
     }
 
     public static int swingDuration(int hasteLevel, int fatigueLevel, int baseDuration, float hasteInfluence) {
-        int vanilla = vanillaSwingDuration(hasteLevel, fatigueLevel);
+        int vanilla = vanillaSwingDuration(hasteLevel, fatigueLevel, baseDuration);
         if (hasteInfluence <= 0) return baseDuration;
         if (hasteInfluence >= 100) return vanilla;
         return Math.round(baseDuration + (vanilla - baseDuration) * (hasteInfluence / 100.0f));

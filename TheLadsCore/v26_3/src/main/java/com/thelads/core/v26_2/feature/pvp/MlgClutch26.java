@@ -55,11 +55,14 @@ public final class MlgClutch26 {
         }
 
         if (currentTarget != null) {
-            double dist = player.getY() - currentTarget.getY();
-            double speed = Math.abs(player.getDeltaMovement().y) * 20.0;
-            secondsToImpact = dist / Math.max(0.5, speed);
-            inWindow = secondsToImpact <= 0.35 && secondsToImpact >= 0.0;
-            fatal = player.fallDistance >= 12.0f;
+            com.thelads.core.client.mlg.MlgClutchHelper.LandingPrediction pred = com.thelads.core.client.mlg.MlgClutchHelper.predictLanding(player.getY(), currentTarget.getY(), player.getDeltaMovement().y, player.fallDistance, mod.minFallDistance.getIntValue());
+            if (pred != null) {
+                secondsToImpact = pred.secondsToImpact();
+                inWindow = pred.inTimingWindow();
+                fatal = pred.fatal();
+            } else {
+                currentTarget = null;
+            }
         }
     }
 
