@@ -196,9 +196,10 @@ public final class PvpVisuals26 {
         GLINT_COLOR.set(glint.red, glint.green, glint.blue, 1);
         HitColorModule hit = PvpVisuals.HIT_COLOR;
         int def = hit.on ? HitColorModule.overlayPixel(hit.argb) : VANILLA_HURT;
-        int fire = hit.on ? HitColorModule.overlayPixel(hit.fireArgb) : VANILLA_HURT;
-        int fall = hit.on ? HitColorModule.overlayPixel(hit.fallArgb) : VANILLA_HURT;
-        int drown = hit.on ? HitColorModule.overlayPixel(hit.drownArgb) : VANILLA_HURT;
+        boolean perType = hit.perDamageType.get(); // off: every damage type uses the main colour
+        int fire = hit.on ? HitColorModule.overlayPixel(perType ? hit.fireArgb : hit.argb) : VANILLA_HURT;
+        int fall = hit.on ? HitColorModule.overlayPixel(perType ? hit.fallArgb : hit.argb) : VANILLA_HURT;
+        int drown = hit.on ? HitColorModule.overlayPixel(perType ? hit.drownArgb : hit.argb) : VANILLA_HURT;
         int key = def ^ (fire << 1) ^ (fall << 2) ^ (drown << 3);
         if (key != lastHurtKey) {
             // Hit Color: the overlay texture's hurt rows (v 0 to 7) in the new colours.

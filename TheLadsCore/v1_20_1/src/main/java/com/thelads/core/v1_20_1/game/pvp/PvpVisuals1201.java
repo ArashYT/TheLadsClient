@@ -109,9 +109,10 @@ public final class PvpVisuals1201 {
         if (LightOverlay.active() && mc.level != null && mc.player != null) scan(mc.level, mc.player);
         HitColorModule hit = PvpVisuals.HIT_COLOR;
         int def = hit.on ? HitColorModule.abgr(HitColorModule.overlayPixel(hit.argb)) : VANILLA_HURT;
-        int fire = hit.on ? HitColorModule.abgr(HitColorModule.overlayPixel(hit.fireArgb)) : VANILLA_HURT;
-        int fall = hit.on ? HitColorModule.abgr(HitColorModule.overlayPixel(hit.fallArgb)) : VANILLA_HURT;
-        int drown = hit.on ? HitColorModule.abgr(HitColorModule.overlayPixel(hit.drownArgb)) : VANILLA_HURT;
+        boolean perType = hit.perDamageType.get(); // off: every damage type uses the main colour
+        int fire = hit.on ? HitColorModule.abgr(HitColorModule.overlayPixel(perType ? hit.fireArgb : hit.argb)) : VANILLA_HURT;
+        int fall = hit.on ? HitColorModule.abgr(HitColorModule.overlayPixel(perType ? hit.fallArgb : hit.argb)) : VANILLA_HURT;
+        int drown = hit.on ? HitColorModule.abgr(HitColorModule.overlayPixel(perType ? hit.drownArgb : hit.argb)) : VANILLA_HURT;
         int key = def ^ (fire << 1) ^ (fall << 2) ^ (drown << 3);
         if (key != lastHurtKey) {
             paintHurt(mc, def, fire, fall, drown);

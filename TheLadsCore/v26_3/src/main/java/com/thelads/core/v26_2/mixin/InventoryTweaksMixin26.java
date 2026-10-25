@@ -140,7 +140,7 @@ public abstract class InventoryTweaksMixin26 extends Screen {
             int by = ContainerSorting.getButtonY(topPos);
             boolean over = ContainerSorting.isOverButton(mouseX, mouseY, bx, by);
             graphics.fill(bx, by, bx + ContainerSorting.BUTTON_WIDTH, by + ContainerSorting.BUTTON_HEIGHT, over ? 0x90404040 : 0x80000000);
-            graphics.centeredText(font, ContainerSorting.SORT_LABEL, bx + ContainerSorting.BUTTON_WIDTH / 2, by + 2, over ? 0xFFFFA0 : 0xFFFFFF);
+            graphics.centeredText(font, ContainerSorting.SORT_LABEL, bx + ContainerSorting.BUTTON_WIDTH / 2, by + 2, over ? 0xFFFFFFA0 : 0xFFFFFFFF);
         }
     }
 
