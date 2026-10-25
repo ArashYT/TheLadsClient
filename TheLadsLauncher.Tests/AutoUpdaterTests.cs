@@ -17,6 +17,14 @@ public class AutoUpdaterTests
         public ProcessPriorityClass PriorityDuringDownload, PriorityAtApply;
         public string[]? AppliedArgs;
         public Action? OnApply;
+        public int Raisers;
+        public CancellationToken RaiseToken;
+        public Task KeepUpdateExeHighAsync(CancellationToken stop)
+        {
+            Raisers++;
+            RaiseToken = stop;
+            return Task.CompletedTask;
+        }
         public async Task<bool> DownloadLatestAsync(Action<string> report)
         {
             Downloads++;
@@ -185,6 +193,31 @@ public class AutoUpdaterTests
         await new AutoUpdater(open) { AskBeforeInstall = true }.PollAsync(() => true, _ => { });
         Assert.Equal(ProcessPriorityClass.BelowNormal, open.PriorityDuringDownload);
         Assert.Equal(ProcessPriorityClass.Normal, Process.GetCurrentProcess().PriorityClass);
+    });
+
+    [Fact]
+    public Task OnlyTheHighStartupDownloadKeepsVelopacksUpdateExeHigh() => WithNormalPriority(async () =>
+    {
+        var startup = new Backend { Wait = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var poll = new AutoUpdater(startup).PollAsync(() => true, _ => { });
+        Assert.Equal(1, startup.Raisers);
+        Assert.False(startup.RaiseToken.IsCancellationRequested);   // raising while the download and its delta rebuild run
+        startup.Wait.SetResult();
+        await poll;
+        Assert.True(startup.RaiseToken.IsCancellationRequested);    // stopped with the High scope
+
+        var open = new Backend();
+        await new AutoUpdater(open) { AskBeforeInstall = true }.PollAsync(() => true, _ => { });
+        Assert.Equal(0, open.Raisers);   // BelowNormal is inherited by the child: nothing to raise
+
+        var slow = new Backend { Wait = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously) };
+        var updater = new AutoUpdater(slow);
+        var slowPoll = updater.PollAsync(() => true, _ => { });
+        Assert.False(slow.RaiseToken.IsCancellationRequested);
+        updater.AskBeforeInstall = true;   // the startup screen stopped waiting; the download goes on BelowNormal
+        Assert.True(slow.RaiseToken.IsCancellationRequested);
+        slow.Wait.SetResult();
+        await slowPoll;
     });
 
     [Fact]

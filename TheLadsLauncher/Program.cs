@@ -20,6 +20,16 @@ class Program
     public static void Main(string[] args)
     {
         Velopack.VelopackApp.Build().SetAutoApplyOnStartup(false).Run();
+        // Safety net: a launcher at High would starve games started from it. Windows passes only Idle/BelowNormal to child processes,
+        // so the launcher Update.exe relaunches (raised to High by the bridge) normally starts at Normal anyway.
+        // Only High/RealTime come down, so QA's Idle/BelowNormal runs stay as they are.
+        try
+        {
+            using var self = System.Diagnostics.Process.GetCurrentProcess();
+            if (self.PriorityClass is System.Diagnostics.ProcessPriorityClass.High or System.Diagnostics.ProcessPriorityClass.RealTime)
+                self.PriorityClass = System.Diagnostics.ProcessPriorityClass.Normal;
+        }
+        catch (Exception) { } // never stops the launcher from starting
 
         if (System.Linq.Enumerable.Contains(args, "--test-services"))
         {
@@ -29,7 +39,7 @@ class Program
         }
 
         // QA captures of the shared-content and Mods UI: only ever against sandbox folders, never the real .minecraft or launcher data.
-        foreach (var preview in new[] { "--preview-shared", "--preview-mods", "--preview-worlds", "--preview-servers", "--preview-productivity", "--preview-discovery", "--preview-startup", "--preview-chrome", "--preview-content", "--preview-modpacks", "--preview-skins", "--preview-language", "--preview-page" })
+        foreach (var preview in new[] { "--preview-shared", "--preview-mods", "--preview-worlds", "--preview-servers", "--preview-productivity", "--preview-discovery", "--preview-startup", "--preview-chrome", "--preview-content", "--preview-modpacks", "--preview-skins", "--preview-language", "--preview-page", "--preview-installing" })
         {
             int index = System.Array.IndexOf(args, preview);
             if (index >= 0 && (index + 1 >= args.Length

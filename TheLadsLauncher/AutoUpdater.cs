@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -17,6 +18,8 @@ public interface ILauncherUpdateBackend
     string? PendingVersion { get; }
     Task<bool> DownloadLatestAsync(Action<string> report);
     void ApplyAndRestart(string[] restartArgs);
+    /// <summary>Keeps the updater's own child processes at High until <paramref name="stop"/> is cancelled; never throws.</summary>
+    Task KeepUpdateExeHighAsync(CancellationToken stop);
 }
 
 public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
@@ -31,11 +34,21 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
     private readonly string _publicKey;
     private string? _verified; // the downloaded version whose signature this process checked
 
+#if LADS_QA_FEED
+    // QA builds only (-p:DefineConstants=LADS_QA_FEED): a local feed folder holding the latest release's files and signature, and a throwaway key.
+    public VelopackUpdateBackend() : this(Environment.GetEnvironmentVariable("LADS_QA_UPDATE_FEED") ?? throw new InvalidOperationException("LADS_QA_UPDATE_FEED is not set.")) { }
+
+    private VelopackUpdateBackend(string feed) : this(new UpdateManager(feed),
+        new UpdateManager(feed, new UpdateOptions { MaximumDeltasBeforeFallback = -1 }),
+        (_, name) => File.ReadAllBytesAsync(Path.Combine(feed, name)),
+        Environment.GetEnvironmentVariable("LADS_QA_UPDATE_KEY") ?? throw new InvalidOperationException("LADS_QA_UPDATE_KEY is not set.")) { }
+#else
     public VelopackUpdateBackend() : this(new SimpleWebSource(FeedUrl)) { }
 
     private VelopackUpdateBackend(SimpleWebSource source) : this(new UpdateManager(source),
         new UpdateManager(source, new UpdateOptions { MaximumDeltasBeforeFallback = -1 }),
         (version, name) => Http.GetByteArrayAsync($"{RepositoryUrl}/releases/download/v{version}/{name}"), UpdateSignature.ReleasePublicKey) { }
+#endif
 
     /// <param name="fullOnly">Same feed as <paramref name="manager"/> but never uses deltas (a negative <c>MaximumDeltasBeforeFallback</c>).</param>
     /// <param name="fetchSigned">(version, file name) -> that release's signature file (see <see cref="UpdateSignature"/>).</param>
@@ -50,7 +63,9 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
     public bool IsInstalled => _manager.IsInstalled;
     /// <summary>A downloaded update counts only once its signature checked out.</summary>
     public string? PendingVersion => _manager.UpdatePendingRestart?.Version.ToString() is { } v && v == _verified ? v : null;
-    /// <summary>Whether the verified package of the last <see cref="DownloadLatestAsync"/> was rebuilt from deltas (false after a fallback to the full package).</summary>
+    /// <summary>Velopack was offered a delta path for the last <see cref="DownloadLatestAsync"/>; Velopack may still have fallen back to the
+    /// full package internally (e.g. a client 2+ versions behind, whose base the newest delta does not patch). False after our own
+    /// fallback to the full package.</summary>
     public bool LastDownloadWasDelta { get; private set; }
 
     public async Task<bool> DownloadLatestAsync(Action<string> report)
@@ -78,8 +93,10 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
         string package = Path.Combine(VelopackLocator.Current.PackagesDir!, asset.FileName);
         try
         {
-            UpdateSignature.Verify(await _fetchSigned(version, UpdateSignature.ManifestName),
-                await _fetchSigned(version, UpdateSignature.SignatureName), _publicKey, version, package);
+            var manifest = await _fetchSigned(version, UpdateSignature.ManifestName);
+            var signature = await _fetchSigned(version, UpdateSignature.SignatureName);
+            // Hashing ~250 MB (and decompressing every entry for the content hash) takes seconds: never on the UI thread.
+            await Task.Run(() => UpdateSignature.Verify(manifest, signature, _publicKey, version, package));
         }
         catch
         {
@@ -89,13 +106,40 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
         return version;
     }
 
-    /// <summary>Starts the installer, which waits for this process to exit, applies the update and relaunches with <paramref name="restartArgs"/>.</summary>
+    /// <summary>Starts the silent installer, which waits for this process to exit, applies the update and relaunches with <paramref name="restartArgs"/>.</summary>
     public void ApplyAndRestart(string[] restartArgs)
     {
-        // Velopack's own window stays until the Lads update bridge (Tasks 6-7) ships: silent, players saw the launcher vanish for seconds.
         _manager.WaitExitThenApplyUpdates(PendingVersion != null ? _manager.UpdatePendingRestart!
-            : throw new InvalidOperationException("No verified update is ready."), silent: false, restart: true, restartArgs);
+            : throw new InvalidOperationException("No verified update is ready."), silent: true, restart: true, restartArgs);
         Environment.Exit(0);
+    }
+
+    /// <summary>Velopack rebuilds a delta in a child "Update.exe patch", which Windows starts at Normal even under a High launcher
+    /// (only Idle/BelowNormal are inherited); this raises it, polling every 250 ms off the UI thread.</summary>
+    public async Task KeepUpdateExeHighAsync(CancellationToken stop)
+    {
+        try
+        {
+            string path = Path.GetFullPath(VelopackLocator.Current.UpdateExePath ?? throw new InvalidOperationException("not installed"));
+            string name = Path.GetFileNameWithoutExtension(path);
+            while (true)
+            {
+                await Task.Delay(250, stop).ConfigureAwait(false);   // the rebuild starts after the download, never in the first 250 ms
+                foreach (var process in Process.GetProcessesByName(name))
+                {
+                    using (process)
+                    {
+                        try
+                        {
+                            if (process.PriorityClass != ProcessPriorityClass.High && string.Equals(process.MainModule?.FileName, path, StringComparison.OrdinalIgnoreCase))
+                                process.PriorityClass = ProcessPriorityClass.High;
+                        }
+                        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException) { } // exited meanwhile, or not ours to read
+                    }
+                }
+            }
+        }
+        catch (Exception) { } // cancelled, or no Update.exe to find: the rebuild just runs at Normal
     }
 }
 
@@ -120,12 +164,23 @@ public sealed class AutoUpdater
             {
                 _askBeforeInstall = value;
                 // The startup screen may stop waiting for a slow check; a download that then continues next to an open launcher must not stay High.
-                if (value) _downloadScope?.Lower(ProcessPriorityClass.BelowNormal);
+                if (value)
+                {
+                    _downloadScope?.Lower(ProcessPriorityClass.BelowNormal);
+                    StopKeepingUpdateExeHigh();
+                }
             }
         }
     }
     private bool _askBeforeInstall;
     private ProcessPriority.ScopeHandle? _downloadScope;
+    private CancellationTokenSource? _keepUpdateExeHigh; // set while the High startup download runs
+    private void StopKeepingUpdateExeHigh() // under _priorityLock
+    {
+        _keepUpdateExeHigh?.Cancel();
+        _keepUpdateExeHigh?.Dispose();
+        _keepUpdateExeHigh = null;
+    }
     private readonly object _priorityLock = new();
     /// <summary>Raised with the version whenever a verified update waits for the user's click.</summary>
     public event Action<string>? Ready;
@@ -175,9 +230,13 @@ public sealed class AutoUpdater
                 report("Checking for launcher updates…");
                 // High only while the startup screen is waiting for the update; an open launcher may have a game running next to it.
                 lock (_priorityLock)
+                {
                     _downloadScope = ProcessPriority.Scope(_askBeforeInstall ? ProcessPriorityClass.BelowNormal : ProcessPriorityClass.High);
+                    // A BelowNormal launcher's children inherit it; a High one's start at Normal, so the delta rebuild is raised by hand.
+                    if (!_askBeforeInstall) _ = _backend.KeepUpdateExeHighAsync((_keepUpdateExeHigh = new()).Token);
+                }
                 try { if (!await _backend.DownloadLatestAsync(report)) { report(""); return; } }
-                finally { lock (_priorityLock) { _downloadScope?.Dispose(); _downloadScope = null; } }
+                finally { lock (_priorityLock) { _downloadScope?.Dispose(); _downloadScope = null; StopKeepingUpdateExeHigh(); } }
             }
             if (AskBeforeInstall)
             {

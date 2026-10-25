@@ -133,6 +133,24 @@ public partial class MainWindow : Window
             WindowStartupLocation = WindowStartupLocation.Manual;
             Position = new PixelPoint(-32000, -32000);
         }
+        // After an update the new launcher opens exactly where the old one was, under the bridge's snapshot of it.
+        else if (UpdateBridge.TryParseRestoreWindow(Environment.GetCommandLineArgs(), out var restorePosition, out var restoreWidth, out var restoreHeight, out var restoreState))
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Position = restorePosition;
+            Width = restoreWidth;
+            Height = restoreHeight;
+            WindowState = restoreState;
+        }
+        // The window is invisible until its first frame is composed (no redirection bitmap), so the bridge is told only after
+        // a frame has rendered: the second animation-frame callback runs after the first frame went out.
+        Opened += (_, _) =>
+        {
+            RequestAnimationFrame(_ => RequestAnimationFrame(_ => Dispatcher.UIThread.Post(_launcherShown.FramePresented, DispatcherPriority.Background)));
+            DispatcherTimer.RunOnce(() => { if (_launcherShown.Fallback()) Log("[Updater] No frame 2 s after opening; told the update bridge anyway."); },
+                TimeSpan.FromSeconds(2), DispatcherPriority.Background);
+        };
+        _autoUpdater.PrepareRestart = PrepareUpdateRestart;
 
         _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
@@ -249,7 +267,7 @@ public partial class MainWindow : Window
         int dots = 0;
         double dotAccumulatorMs = 0, shownProgress = 0, lastTickMs = 0;
         if (settings.ReducedMotion) StartupMining.Freeze(0.81);
-        var startupAnimTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        var startupAnimTimer = _startupAnimTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         startupAnimTimer.Tick += (s, e) =>
         {
             double t = startupSw.Elapsed.TotalMilliseconds, dt = t - lastTickMs;
@@ -296,12 +314,15 @@ public partial class MainWindow : Window
             StartupMining.Stop();
             if (StartupProgressFill != null) StartupProgressFill.Width = startupBarWidth;
             LauncherStartupOverlay.IsVisible = false;
+            _launcherShown.StartupFinished();   // still running after a startup install means it failed: dismiss its bridge now, not after 15 s
             if (Program.InitialDeepLink != null)
             {
                 var initial = Program.InitialDeepLink;
                 Program.InitialDeepLink = null;
                 _ = HandleDeepLinkAsync(initial);
             }
+            int installingPreview = Array.IndexOf(args, "--preview-installing");
+            if (installingPreview >= 0) { await RunInstallingPreviewAsync(Path.GetFullPath(args[installingPreview + 1])); return; }
             int pagePreview = Array.IndexOf(args, "--preview-page");
             if (pagePreview >= 0 && pagePreview + 2 < args.Length) { await RunPagePreviewAsync(args[pagePreview + 1], Path.GetFullPath(args[pagePreview + 2])); return; }
             int discoveryPreview = Array.IndexOf(args, "--preview-discovery");
@@ -378,7 +399,16 @@ public partial class MainWindow : Window
             _updateCheckTimer.Tick += async (_, _) => await PollForUpdatesAsync();
             _updateCheckTimer.Start();
             if (settings.LastSeenReleaseNotesVersion != Program.Version)
+            {
+                // After an update restart the bridge's snapshot still covers only this window's client area: a taller dialog would peek out
+                // around it, so wait for the bridge's signal plus its hold and fade (HoldMs 350 + FadeMs 150 in BridgeForm.cs) and a margin.
+                if (UpdateBridge.TryParseRestoreWindow(Environment.GetCommandLineArgs(), out _, out _, out _, out _))
+                {
+                    await _launcherShown.Shown;
+                    await Task.Delay(600);
+                }
                 await ShowReleaseNotesAsync();
+            }
 
             // Anonymous usage heartbeat (on start and every 6 h while open)
             _ = UsageStatsReporter.SendHeartbeatAsync(settings);
@@ -513,6 +543,80 @@ public partial class MainWindow : Window
     private bool _releaseNotesOpen;
     private bool _windowClosed;
     private double? _startupDownload; // 0..1 once the updater reports a download; drives the startup progress bar
+    private DispatcherTimer? _startupAnimTimer;
+    private readonly LauncherShownSignal _launcherShown = new(UpdateBridge.SignalLauncherShown);
+
+    /// <summary>Right before Update.exe takes over: puts the installing screen up, hands a snapshot of it to the bridge
+    /// (which holds it on screen until the new launcher shows) and returns the args that reopen the launcher in this place.</summary>
+    private string[] PrepareUpdateRestart(string version)
+    {
+        if (WindowState == WindowState.Minimized) return Array.Empty<string>();   // nothing on screen to hold; the new launcher opens centred
+        try
+        {
+            string snapshot = Path.Combine(UpdateBridge.Folder, "snapshot.png");
+            var size = RenderInstallingScreen(version, snapshot);
+            var origin = this.PointToScreen(new Point(0, 0));
+            // Both bar corners go through TranslatePoint, so the UI-scale LayoutTransform is included.
+            var track = (Control)StartupProgressFill.Parent!;
+            var bar = UpdateBridge.ToScreenPixels(origin, new Rect(track.TranslatePoint(default, this)!.Value,
+                track.TranslatePoint(new Point(track.Bounds.Width, track.Bounds.Height), this)!.Value), RenderScaling);
+            if (!UpdateBridge.TryStart(snapshot, new PixelRect(origin, size), bar, settings.ReducedMotion))
+                Log("[Updater] The installing screen could not be handed to the bridge; updating without it.");
+        }
+        catch (Exception ex)
+        {
+            Log($"[Updater] Could not snapshot the installing screen ({ex.Message}); updating without the bridge.");
+        }
+        return new[] { UpdateBridge.RestoreWindowArg, UpdateBridge.FormatRestoreWindow(Position, ClientSize.Width, ClientSize.Height, WindowState) };
+    }
+
+    /// <summary>Puts the installing screen up, fully laid out, and saves it to <paramref name="path"/> in physical pixels
+    /// (the bridge draws it 1:1 over the same screen pixels); returns its size.</summary>
+    private PixelSize RenderInstallingScreen(string version, string path)
+    {
+        _startupAnimTimer?.Stop();
+        StartupProgressShine.IsVisible = false;   // the bridge sweeps its own shine; a frozen one would sit under it
+        StartupMining.Freeze(0.81);   // the reduced-motion frame: intact block, pickaxe winding up, no break particles
+        StartupLoadingSpinner.Text = $"Installing update v{version}";
+        LoadingDots.Text = "...";
+        StartupPercentText.Text = "100%";
+        StartupProgressFill.Width = ((Control)StartupProgressFill.Parent!).Width;
+        LauncherStartupOverlay.IsVisible = true;
+        // Measured and arranged here, not through UpdateLayout(): that does nothing while a layout pass is running (a UI Automation
+        // invoke can arrive inside one), and the snapshot then showed the old text sizes (version cut off, no 100%).
+        foreach (var control in Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(LauncherStartupOverlay).OfType<Avalonia.Layout.Layoutable>())
+            control.InvalidateMeasure();
+        LauncherStartupOverlay.InvalidateMeasure();
+        var area = new Rect(((Avalonia.Layout.Layoutable)LauncherStartupOverlay.Parent!).Bounds.Size);
+        LauncherStartupOverlay.Measure(area.Size);
+        LauncherStartupOverlay.Arrange(area);
+        double scale = RenderScaling;
+        var size = UpdateBridge.ToScreenPixels(default, new Rect(ClientSize), scale).Size;   // the bridge's client rect uses the same size
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using var bitmap = new RenderTargetBitmap(size, new Vector(96 * scale, 96 * scale));
+        bitmap.Render(this);
+        bitmap.Save(path);
+        return size;
+    }
+
+    /// <summary>QA capture of the Update-button path: the startup screen is long hidden, the timer's update checks wrote to it
+    /// meanwhile, and the click arrives inside a layout pass (as a UI Automation invoke does).</summary>
+    private async Task RunInstallingPreviewAsync(string output)
+    {
+        foreach (string message in new[] { "Checking for launcher updates…", "Downloading v9.9.9: 100%", "" })
+        {
+            ReportUpdate(message);
+            await Task.Delay(300);
+            UpdateLayout();   // the layout pass an on-screen window runs meanwhile; this off-screen one may skip it
+        }
+        var probe = new Border { Width = 1, Height = 1, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+        RootGrid.Children.Add(probe);
+        UpdateLayout();
+        probe.SizeChanged += (_, _) => RenderInstallingScreen(Program.Version, output);   // raised inside the next layout pass
+        probe.Width = 2;
+        UpdateLayout();
+        Close();
+    }
 
     /// <summary>The startup screen splits "Downloading v1.3.5: 42%" (VelopackUpdateBackend's wording) into a status line and a large percentage.</summary>
     private void ShowStartupStatus(string message)
@@ -581,6 +685,9 @@ public partial class MainWindow : Window
     private void UpdateNow_Click(object? sender, RoutedEventArgs e)
     {
         if (_autoUpdater.InstallNow(UpdateBlocked, ReportUpdate)) return;
+        // A failed install must not leave its installing screen, or the bridge's copy of it, over the launcher.
+        LauncherStartupOverlay.IsVisible = false;
+        UpdateBridge.SignalLauncherShown();
         ReportUpdate(UpdateBlocked()
             ? "Close Minecraft and finish signing in or mod changes, then click Update again."
             : "The update is not ready yet; the launcher will offer it again shortly.");
