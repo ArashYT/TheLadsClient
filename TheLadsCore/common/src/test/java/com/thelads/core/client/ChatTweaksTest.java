@@ -150,9 +150,27 @@ class ChatTweaksTest {
         assertEquals(-1, ChatTweaks.button(99, 100));
         assertEquals(0, ChatTweaks.button(100, 100), "Copy starts at the chat's right edge");
         assertEquals(0, ChatTweaks.button(100 + ChatTweaks.BUTTON - 1, 100));
-        assertEquals(-1, ChatTweaks.button(100 + ChatTweaks.BUTTON, 100), "the gap between them");
+        assertEquals(-1, ChatTweaks.button(100 + ChatTweaks.BUTTON, 100), "gap between Copy and Delete");
         assertEquals(1, ChatTweaks.button(100 + ChatTweaks.BUTTON + 1, 100));
-        assertEquals(-1, ChatTweaks.button(100 + 2 * ChatTweaks.BUTTON + 1, 100));
+        assertEquals(1, ChatTweaks.button(100 + 2 * ChatTweaks.BUTTON, 100));
+        assertEquals(-1, ChatTweaks.button(100 + 2 * ChatTweaks.BUTTON + 1, 100), "gap between Delete and Image");
+        assertEquals(2, ChatTweaks.button(100 + 2 * ChatTweaks.BUTTON + 2, 100), "Save as Image button");
+        assertEquals(2, ChatTweaks.button(100 + 3 * ChatTweaks.BUTTON + 1, 100));
+        assertEquals(-1, ChatTweaks.button(100 + 3 * ChatTweaks.BUTTON + 2, 100));
+    }
+
+    @Test void exportChatImageTest() throws Exception {
+        java.nio.file.Path tempDir = java.nio.file.Files.createTempDirectory("lads-chat-export-test");
+        java.nio.file.Path file = ChatTweaks.exportChatImage("§a[Server] §fWelcome to §bThe Lads§f!", tempDir).get(5, java.util.concurrent.TimeUnit.SECONDS);
+        assertNotNull(file);
+        assertTrue(java.nio.file.Files.exists(file));
+        assertTrue(java.nio.file.Files.size(file) > 0);
+        java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(file.toFile());
+        assertNotNull(img);
+        assertTrue(img.getWidth() > 50);
+        assertTrue(img.getHeight() > 20);
+        java.nio.file.Files.deleteIfExists(file);
+        java.nio.file.Files.deleteIfExists(tempDir);
     }
 
     @Test void fuzzyCommandWords() {

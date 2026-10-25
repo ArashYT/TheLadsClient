@@ -710,6 +710,11 @@ public class ModuleManager {
         register(com.thelads.core.client.SoundFilters.createModule(), Module.Category.MECHANIC);
         register(com.thelads.core.client.media.MumbleLink.createModule(), Module.Category.MECHANIC);
         register(com.thelads.core.client.worldedit.WorldEditCUI.createModule(), Module.Category.MECHANIC);
+        // Lane 2 r2-qol: Container Sorting, Elytra Swap, Creative Fly Boost (all gated by HypixelSafetyManager, default OFF)
+        register(new com.thelads.core.modules.ContainerSortingModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.ElytraSwapModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.CreativeFlyBoostModule(), Module.Category.MECHANIC);
+        register(new com.thelads.core.modules.LinkPreviewModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

@@ -52,7 +52,7 @@ public class OptionsMixin {
         for (KeyMapping ours : new KeyMapping[] {NativeKeyBindings.ZOOM, NativeKeyBindings.MODULES,
                 NativeKeyBindings.TOGGLE_SPRINT, NativeKeyBindings.TOGGLE_SNEAK,
                 NativeKeyBindings.QUICKPLAY, NativeKeyBindings.PLAY_AGAIN, NativeKeyBindings.FREELOOK, NativeKeyBindings.SNAPLOOK,
-                NativeKeyBindings.TOAST_ACCEPT, NativeKeyBindings.TOAST_DENY}) {
+                NativeKeyBindings.TOAST_ACCEPT, NativeKeyBindings.TOAST_DENY, NativeKeyBindings.ELYTRA_SWAP}) {
             if (Arrays.asList(keyMappings).contains(ours)) continue;
             keyMappings = Arrays.copyOf(keyMappings, keyMappings.length + 1);
             keyMappings[keyMappings.length - 1] = ours;

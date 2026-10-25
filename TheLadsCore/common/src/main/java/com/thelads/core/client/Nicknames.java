@@ -4,20 +4,53 @@ import com.thelads.core.config.ModuleManager;
 import com.thelads.core.modules.ToggleNametagsModule;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Nametags module renames: Your Display Name for the local player and Nicknames for others. Display-only: adapters rewrite
  * the text they draw (name tags, tab list) or a chat message once as it arrives; nothing is sent to the server.
  */
 public final class Nicknames {
-    private static String lastNicknames, lastDisplay, lastOwn;
+    private static String lastNicknames, lastDisplay, lastOwn, lastOthersNick;
+    private static boolean lastHideOthers;
+    private static long playersVersion = 0;
+    private static long lastPlayersVersion = -1;
+    private static Set<String> cachedPlayerSet = Collections.emptySet();
+    private static List<String> cachedOnlinePlayers = Collections.emptyList();
     private static Map<String, String> active = Collections.emptyMap();
     private static ToggleNametagsModule cachedTagsModule;
     private Nicknames() {}
+
+    /**
+     * Polls online player names once per client tick instead of every render frame.
+     * Uses Set comparison to invalidate cached renames whenever player identities change,
+     * avoiding thousands of render-thread allocations per second.
+     */
+    public static void tick() {
+        boolean hiderOn = NickHider.isEnabled();
+        boolean hideOthers = hiderOn && NickHider.isHideOthersNames();
+        if (!hideOthers) {
+            if (!cachedOnlinePlayers.isEmpty()) {
+                cachedOnlinePlayers = Collections.emptyList();
+                cachedPlayerSet = Collections.emptySet();
+                playersVersion++;
+            }
+            return;
+        }
+
+        List<String> current = com.thelads.core.client.bridge.LadsGameBridge.get().getOnlinePlayerNames();
+        Set<String> set = new HashSet<>(current);
+        if (!set.equals(cachedPlayerSet)) {
+            cachedPlayerSet = set;
+            cachedOnlinePlayers = new ArrayList<>(current);
+            playersVersion++;
+        }
+    }
 
     /** "Name=Nick, Name2=Nick2" as lower-case name -> nick; pairs without both sides are skipped. */
     public static Map<String, String> parse(String spec) {
@@ -51,11 +84,29 @@ public final class Nicknames {
         if (hiderOn && NickHider.isHideOwnName()) {
             display = NickHider.getCustomNick();
         }
-        if (!nicks.equals(lastNicknames) || !display.equals(lastDisplay) || !String.valueOf(ownName).equals(lastOwn)) {
+        boolean hideOthers = hiderOn && NickHider.isHideOthersNames();
+        String othersNick = hideOthers ? NickHider.getOthersNick() : "";
+        if (hideOthers && cachedPlayerSet.isEmpty() && playersVersion == 0) {
+            tick();
+        }
+        if (!nicks.equals(lastNicknames) || !display.equals(lastDisplay) || !String.valueOf(ownName).equals(lastOwn)
+            || hideOthers != lastHideOthers || !othersNick.equals(lastOthersNick) || (hideOthers && playersVersion != lastPlayersVersion)) {
             Map<String, String> names = parse(nicks);
+            if (hideOthers && !othersNick.isEmpty()) {
+                String ownLower = ownName != null ? ownName.toLowerCase(Locale.ROOT) : "";
+                for (String player : cachedOnlinePlayers) {
+                    if (player != null && !player.isEmpty()) {
+                        String lower = player.toLowerCase(Locale.ROOT);
+                        if (!lower.equals(ownLower)) {
+                            names.put(lower, othersNick);
+                        }
+                    }
+                }
+            }
             if (!display.isEmpty() && ownName != null && !ownName.isEmpty()) names.put(ownName.toLowerCase(Locale.ROOT), display);
             active = names;
             lastNicknames = nicks; lastDisplay = display; lastOwn = String.valueOf(ownName);
+            lastHideOthers = hideOthers; lastOthersNick = othersNick; lastPlayersVersion = playersVersion;
         }
         return active;
     }

@@ -156,8 +156,16 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
     }
 
     @Override public void displayChatMessage(String text) {
-        var player = Minecraft.getInstance().player;
-        if (player != null) player.displayClientMessage(net.minecraft.network.chat.Component.literal(text), false);
+        var mc = Minecraft.getInstance();
+        if (mc.isSameThread()) {
+            var player = mc.player;
+            if (player != null) player.displayClientMessage(net.minecraft.network.chat.Component.literal(text), false);
+        } else {
+            mc.execute(() -> {
+                var player = mc.player;
+                if (player != null) player.displayClientMessage(net.minecraft.network.chat.Component.literal(text), false);
+            });
+        }
     }
 
     @Override public List<String> getOnlinePlayerNames() {
@@ -175,12 +183,24 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
     }
 
     @Override public void showToast(String title, String message) {
-        net.minecraft.client.gui.components.toasts.SystemToast.add(
-            Minecraft.getInstance().getToasts(),
-            net.minecraft.client.gui.components.toasts.SystemToast.SystemToastIds.PERIODIC_NOTIFICATION,
-            net.minecraft.network.chat.Component.literal(title),
-            net.minecraft.network.chat.Component.literal(message)
-        );
+        var mc = Minecraft.getInstance();
+        if (mc.isSameThread()) {
+            net.minecraft.client.gui.components.toasts.SystemToast.add(
+                mc.getToasts(),
+                net.minecraft.client.gui.components.toasts.SystemToast.SystemToastIds.PERIODIC_NOTIFICATION,
+                net.minecraft.network.chat.Component.literal(title),
+                net.minecraft.network.chat.Component.literal(message)
+            );
+        } else {
+            mc.execute(() -> {
+                net.minecraft.client.gui.components.toasts.SystemToast.add(
+                    mc.getToasts(),
+                    net.minecraft.client.gui.components.toasts.SystemToast.SystemToastIds.PERIODIC_NOTIFICATION,
+                    net.minecraft.network.chat.Component.literal(title),
+                    net.minecraft.network.chat.Component.literal(message)
+                );
+            });
+        }
     }
 
     @Override public boolean sendPluginMessage(String channel, byte[] data) {

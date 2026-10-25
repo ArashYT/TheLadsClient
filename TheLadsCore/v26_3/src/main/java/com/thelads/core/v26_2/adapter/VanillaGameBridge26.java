@@ -317,7 +317,18 @@ public class VanillaGameBridge26 implements LadsGameBridge {
     }
 
     @Override public void displayChatMessage(String text) {
-        var mc = Minecraft.getInstance(); if (mc.gui != null && mc.gui.hud != null && mc.gui.hud.getChat() != null) mc.gui.hud.getChat().addClientSystemMessage(net.minecraft.network.chat.Component.literal(text));
+        var mc = Minecraft.getInstance();
+        if (mc.isSameThread()) {
+            if (mc.gui != null && mc.gui.hud != null && mc.gui.hud.getChat() != null) {
+                mc.gui.hud.getChat().addClientSystemMessage(net.minecraft.network.chat.Component.literal(text));
+            }
+        } else {
+            mc.execute(() -> {
+                if (mc.gui != null && mc.gui.hud != null && mc.gui.hud.getChat() != null) {
+                    mc.gui.hud.getChat().addClientSystemMessage(net.minecraft.network.chat.Component.literal(text));
+                }
+            });
+        }
     }
 
     @Override public List<String> getOnlinePlayerNames() {
@@ -336,13 +347,26 @@ public class VanillaGameBridge26 implements LadsGameBridge {
 
     @Override public void showToast(String title, String message) {
         var mc = Minecraft.getInstance();
-        if (mc != null && mc.gui != null && mc.gui.toastManager() != null) {
-            net.minecraft.client.gui.components.toasts.SystemToast.add(
-                mc.gui.toastManager(),
-                net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
-                net.minecraft.network.chat.Component.literal(title),
-                net.minecraft.network.chat.Component.literal(message)
-            );
+        if (mc.isSameThread()) {
+            if (mc != null && mc.gui != null && mc.gui.toastManager() != null) {
+                net.minecraft.client.gui.components.toasts.SystemToast.add(
+                    mc.gui.toastManager(),
+                    net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+                    net.minecraft.network.chat.Component.literal(title),
+                    net.minecraft.network.chat.Component.literal(message)
+                );
+            }
+        } else {
+            mc.execute(() -> {
+                if (mc != null && mc.gui != null && mc.gui.toastManager() != null) {
+                    net.minecraft.client.gui.components.toasts.SystemToast.add(
+                        mc.gui.toastManager(),
+                        net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+                        net.minecraft.network.chat.Component.literal(title),
+                        net.minecraft.network.chat.Component.literal(message)
+                    );
+                }
+            });
         }
     }
 

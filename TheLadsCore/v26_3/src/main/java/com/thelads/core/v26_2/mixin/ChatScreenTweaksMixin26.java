@@ -69,12 +69,12 @@ public abstract class ChatScreenTweaksMixin26 extends Screen {
         }
         if (!ChatTweaks.buttons || minecraft.gui.hud == null) return;
         ChatTweaks26.Access chat = (ChatTweaks26.Access) minecraft.gui.hud.getChat();
-        if (mouseX < 0 || chat.lads$hovered(height, mouseY) == null || mouseX >= chat.lads$hoverRight() + 2 * ChatTweaks.BUTTON + 1) return;
+        if (mouseX < 0 || chat.lads$hovered(height, mouseY) == null || mouseX >= chat.lads$hoverRight() + 3 * ChatTweaks.BUTTON + 2) return;
         int right = chat.lads$hoverRight(), top = chat.lads$hoverTop(), button = ChatTweaks.button(mouseX, right);
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < 3; i++) {
             int left = right + i * (ChatTweaks.BUTTON + 1);
             graphics.fill(left, top, left + ChatTweaks.BUTTON, top + 9, button == i ? 0xE0303030 : 0xA0000000);
-            graphics.text(font, i == 0 ? ChatTweaks.COPY_LABEL : ChatTweaks.DELETE_LABEL, left + 3, top + 1, button == i ? 0xFFFFFF55 : 0xFFC0C0C0, false);
+            graphics.text(font, i == 0 ? ChatTweaks.COPY_LABEL : i == 1 ? ChatTweaks.DELETE_LABEL : ChatTweaks.IMAGE_LABEL, left + 3, top + 1, button == i ? 0xFFFFFF55 : 0xFFC0C0C0, false);
         }
     }
 

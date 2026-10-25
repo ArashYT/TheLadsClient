@@ -13,6 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.controls.KeyBindsScreen;
 import net.minecraft.client.player.KeyboardInput;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.item.ItemStack;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -172,6 +173,9 @@ public final class NativeFeatures1201 {
             var mc = Minecraft.getInstance();
             if (mc.screen == null) com.thelads.core.client.social.SocialBridge.get().openFriendsScreen();
         }
+        if (down && NativeKeyBindings1201.ELYTRA_SWAP.matches(key, scancode)) {
+            swapElytra();
+        }
     }
 
     public static void mouse(int button, int action) {
@@ -194,6 +198,9 @@ public final class NativeFeatures1201 {
         if (down && NativeKeyBindings1201.FRIENDS.matchesMouse(button)) {
             var mc = Minecraft.getInstance();
             if (mc.screen == null) com.thelads.core.client.social.SocialBridge.get().openFriendsScreen();
+        }
+        if (down && NativeKeyBindings1201.ELYTRA_SWAP.matchesMouse(button)) {
+            swapElytra();
         }
     }
 
@@ -334,4 +341,36 @@ public final class NativeFeatures1201 {
             }
         }
     }
+
+    public static void swapElytra() {
+        if (!com.thelads.core.client.ElytraSwap.isAllowed()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen != null || mc.player == null || mc.gameMode == null) return;
+        LocalPlayer player = mc.player;
+        net.minecraft.world.inventory.Slot chestSlot = player.inventoryMenu.getSlot(6);
+        ItemStack chestStack = chestSlot.getItem();
+        boolean wearingElytra = chestStack.is(net.minecraft.world.item.Items.ELYTRA);
+
+        java.util.List<String> slotItemIds = new java.util.ArrayList<>(36);
+        for (int i = 9; i <= 44; i++) {
+            net.minecraft.world.inventory.Slot s = player.inventoryMenu.getSlot(i);
+            if (!s.hasItem() || com.thelads.core.client.InventoryTweaks.locked(s.getContainerSlot())) {
+                slotItemIds.add(null);
+            } else {
+                slotItemIds.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem().getItem()).toString());
+            }
+        }
+        int foundIdx = com.thelads.core.client.ElytraSwap.findSwapSlot(wearingElytra, slotItemIds);
+        int matchSlot = foundIdx != -1 ? 9 + foundIdx : -1;
+
+        if (matchSlot != -1) {
+            boolean hasChest = !chestStack.isEmpty();
+            mc.gameMode.handleInventoryMouseClick(player.inventoryMenu.containerId, matchSlot, 0, net.minecraft.world.inventory.ClickType.PICKUP, player);
+            mc.gameMode.handleInventoryMouseClick(player.inventoryMenu.containerId, 6, 0, net.minecraft.world.inventory.ClickType.PICKUP, player);
+            if (hasChest) {
+                mc.gameMode.handleInventoryMouseClick(player.inventoryMenu.containerId, matchSlot, 0, net.minecraft.world.inventory.ClickType.PICKUP, player);
+            }
+        }
+    }
+
 }

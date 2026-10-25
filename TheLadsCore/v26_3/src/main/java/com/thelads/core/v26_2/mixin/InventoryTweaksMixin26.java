@@ -1,7 +1,12 @@
 package com.thelads.core.v26_2.mixin;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.thelads.core.client.ContainerSorting;
 import com.thelads.core.client.InventoryTweaks;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
 import com.thelads.core.v26_2.feature.ChatTweaks26;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -14,6 +19,10 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.ShulkerBoxMenu;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -46,16 +55,41 @@ public abstract class InventoryTweaksMixin26 extends Screen {
     @Unique private EditBox ladsSearch;
     /** Menu slots Inventory Search dims (worked out each tick while a search is typed). */
     @Unique private boolean[] ladsDim = new boolean[0];
+    /** Rate-limited swap queue: processes at most 1 swap per client tick to prevent anticheat packet bursts. */
+    @Unique private final Queue<int[]> lads$sortQueue = new ArrayDeque<>();
 
     private InventoryTweaksMixin26(Component title) { super(title); }
+
+    @Unique
+    private boolean lads$isStorageMenu() {
+        return this.menu instanceof ChestMenu 
+            || this.menu instanceof ShulkerBoxMenu 
+            || this.menu instanceof InventoryMenu;
+    }
+
+    @Unique
+    private boolean lads$hasFocusedTextBox() {
+        if (ladsSearch != null && ladsSearch.isFocused()) return true;
+        GuiEventListener focused = getFocused();
+        if (focused instanceof EditBox editBox) {
+            return editBox.isFocused();
+        }
+        return false;
+    }
 
     @Unique
     private boolean lads$tweaked() {
         return !((Object) this instanceof CreativeModeInventoryScreen);
     }
 
+    @Unique
+    private boolean lads$sortable() {
+        return lads$tweaked() && lads$isStorageMenu();
+    }
+
     @Inject(method = "init", at = @At("TAIL"), require = 1)
     private void lads$init(CallbackInfo ci) {
+        lads$sortQueue.clear();
         ladsSearch = null;
         if (!InventoryTweaks.searchOn || !lads$tweaked()) return;
         Component hint = Component.literal("Search");
@@ -65,6 +99,11 @@ public abstract class InventoryTweaksMixin26 extends Screen {
         ladsSearch.setResponder(InventoryTweaks::setQuery);
         lads$place();
         addRenderableWidget(ladsSearch);
+    }
+
+    @Inject(method = "removed", at = @At("HEAD"))
+    private void lads$onRemoved(CallbackInfo ci) {
+        lads$sortQueue.clear();
     }
 
     /** The box sits on the container's top right corner, following it when the recipe book moves the screen. */
@@ -79,8 +118,33 @@ public abstract class InventoryTweaksMixin26 extends Screen {
         if (ladsSearch != null) lads$place();
     }
 
+    @Inject(method = "extractContents", at = @At("TAIL"), require = 1)
+    private void lads$renderSort(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        if (ContainerSorting.isAllowed() && lads$sortable()) {
+            int bx = ContainerSorting.getButtonX(leftPos, imageWidth, InventoryTweaks.searchOn);
+            int by = ContainerSorting.getButtonY(topPos);
+            boolean over = ContainerSorting.isOverButton(mouseX, mouseY, bx, by);
+            graphics.fill(bx, by, bx + ContainerSorting.BUTTON_WIDTH, by + ContainerSorting.BUTTON_HEIGHT, over ? 0x90404040 : 0x80000000);
+            graphics.centeredText(font, ContainerSorting.SORT_LABEL, bx + ContainerSorting.BUTTON_WIDTH / 2, by + 2, over ? 0xFFFFA0 : 0xFFFFFF);
+        }
+    }
+
     @Inject(method = "tick", at = @At("HEAD"), require = 1)
     private void lads$search(CallbackInfo ci) {
+        if (!lads$sortQueue.isEmpty()) {
+            if (minecraft == null || minecraft.player == null || (menu != null && !menu.getCarried().isEmpty())) {
+                lads$sortQueue.clear();
+            } else {
+                int[] swap = lads$sortQueue.poll();
+                if (swap != null) {
+                    Slot from = menu.getSlot(swap[0]);
+                    Slot to = menu.getSlot(swap[1]);
+                    if (from != null && to != null) {
+                        lads$swapSlots(from, to);
+                    }
+                }
+            }
+        }
         int size = menu.slots.size();
         if (ladsDim.length != size) ladsDim = new boolean[size];
         boolean searching = ladsSearch != null && !InventoryTweaks.query().isEmpty();
@@ -112,6 +176,11 @@ public abstract class InventoryTweaksMixin26 extends Screen {
             cir.setReturnValue(true);
             return;
         }
+        if (event.key() == InputConstants.KEY_R && !lads$hasFocusedTextBox() && ContainerSorting.isAllowed() && lads$sortable()) {
+            lads$sortContainer();
+            cir.setReturnValue(true);
+            return;
+        }
         if (InventoryTweaks.lockOn && lads$tweaked() && ChatTweaks26.LOCK.matches(event) && hoveredSlot != null
             && hoveredSlot.container instanceof Inventory) {
             InventoryTweaks.toggleLock(hoveredSlot.getContainerSlot());
@@ -125,6 +194,16 @@ public abstract class InventoryTweaksMixin26 extends Screen {
             ladsSearch.setFocused(false);
             setFocused(null);
         }
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && ContainerSorting.isAllowed() && lads$sortable()) {
+            int bx = ContainerSorting.getButtonX(leftPos, imageWidth, InventoryTweaks.searchOn);
+            int by = ContainerSorting.getButtonY(topPos);
+            if (ContainerSorting.isOverButton(event.x(), event.y(), bx, by)) {
+                lads$sortContainer();
+                cir.setReturnValue(true);
+                return;
+            }
+        }
+        if (!lads$sortQueue.isEmpty()) lads$sortQueue.clear();
         if (event.button() == InputConstants.MOUSE_BUTTON_MIDDLE && lads$armorSwap(getHoveredSlot(event.x(), event.y()))) cir.setReturnValue(true);
     }
 
@@ -148,4 +227,76 @@ public abstract class InventoryTweaksMixin26 extends Screen {
         if (wearing) slotClicked(from, from.index, 0, ContainerInput.PICKUP);
         return true;
     }
+
+    @Unique
+    private void lads$sortContainer() {
+        if (!ContainerSorting.isAllowed() || !lads$isStorageMenu() || !lads$sortQueue.isEmpty() || minecraft == null || minecraft.player == null || !menu.getCarried().isEmpty()) return;
+
+        List<Slot> containerSlots = new ArrayList<>();
+        List<Slot> playerStorageSlots = new ArrayList<>();
+
+        if (this.menu instanceof ChestMenu || this.menu instanceof ShulkerBoxMenu) {
+            for (Slot slot : menu.slots) {
+                if (!(slot.container instanceof Inventory)) {
+                    containerSlots.add(slot);
+                } else if (slot.getContainerSlot() >= 9 && slot.getContainerSlot() < 36) {
+                    playerStorageSlots.add(slot);
+                }
+            }
+        } else if (this.menu instanceof InventoryMenu) {
+            // Player inventory: main inventory only (slots 9..35); never crafting grid, result, armor, offhand
+            for (Slot slot : menu.slots) {
+                if (slot.container instanceof Inventory && slot.getContainerSlot() >= 9 && slot.getContainerSlot() < 36) {
+                    playerStorageSlots.add(slot);
+                }
+            }
+        } else {
+            return;
+        }
+
+        List<Slot> targetSlots = null;
+        if (!containerSlots.isEmpty() && ContainerSorting.shouldSortContainer()) {
+            targetSlots = containerSlots;
+        } else if (ContainerSorting.shouldSortInventory() || (containerSlots.isEmpty() && ContainerSorting.isAllowed())) {
+            targetSlots = playerStorageSlots;
+        }
+
+        if (targetSlots == null || targetSlots.size() <= 1) return;
+
+        List<ContainerSorting.SlotItem> items = new ArrayList<>();
+        for (Slot slot : targetSlots) {
+            ItemStack stack = slot.getItem();
+            boolean locked = (slot.container instanceof Inventory) && InventoryTweaks.locked(slot.getContainerSlot());
+            if (stack.isEmpty()) {
+                items.add(new ContainerSorting.SlotItem(slot.index, "", 0, 0, 0, locked));
+            } else {
+                String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                items.add(new ContainerSorting.SlotItem(slot.index, itemId, stack.getCount(), stack.getMaxStackSize(), stack.getDamageValue(), locked));
+            }
+        }
+
+        List<int[]> swaps = ContainerSorting.planSwaps(items);
+        lads$sortQueue.addAll(swaps);
+    }
+
+    @Unique
+    private void lads$swapSlots(Slot from, Slot to) {
+        boolean hasFrom = from.hasItem();
+        boolean hasTo = to.hasItem();
+        if (!hasFrom && !hasTo) return;
+        if (hasFrom && !hasTo) {
+            slotClicked(from, from.index, 0, ContainerInput.PICKUP);
+            slotClicked(to, to.index, 0, ContainerInput.PICKUP);
+        } else if (!hasFrom && hasTo) {
+            slotClicked(to, to.index, 0, ContainerInput.PICKUP);
+            slotClicked(from, from.index, 0, ContainerInput.PICKUP);
+        } else {
+            slotClicked(from, from.index, 0, ContainerInput.PICKUP);
+            slotClicked(to, to.index, 0, ContainerInput.PICKUP);
+            if (menu != null && !menu.getCarried().isEmpty()) {
+                slotClicked(from, from.index, 0, ContainerInput.PICKUP);
+            }
+        }
+    }
+
 }

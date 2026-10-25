@@ -112,6 +112,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             while (NativeKeyBindings1201.TOAST_DENY.consumeClick()) {
                 SocialToasts.denyNewest();
             }
+            com.thelads.core.client.Nicknames.tick();
             NativeFeatures1201.tick();
             NativeDiscordPresence1201.tick();
             com.thelads.core.client.cosmetics.net.CosmeticsLink.tick();

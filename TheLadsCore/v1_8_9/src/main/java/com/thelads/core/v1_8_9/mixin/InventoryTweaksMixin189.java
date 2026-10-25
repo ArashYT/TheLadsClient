@@ -1,13 +1,21 @@
 package com.thelads.core.v1_8_9.mixin;
 
+import com.thelads.core.client.ContainerSorting;
 import com.thelads.core.client.InventoryTweaks;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
 import com.thelads.core.v1_8_9.feature.ChatTweaks189;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.gui.inventory.GuiContainerCreative;
+import net.minecraft.client.gui.inventory.GuiChest;
 import net.minecraft.client.gui.inventory.GuiInventory;
+import net.minecraft.client.gui.GuiRepair;
+import com.thelads.core.v1_8_9.qol.mixin.GuiRepairAccessor189;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.Container;
@@ -40,6 +48,8 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
     @Unique private GuiTextField ladsSearch;
     /** Container slots Inventory Search dims (worked out each tick while a search is typed). */
     @Unique private boolean[] ladsDim = new boolean[0];
+    /** Rate-limited swap queue: processes at most 1 swap per client tick to prevent anticheat packet bursts. */
+    @Unique private final Queue<int[]> lads$sortQueue = new ArrayDeque<>();
 
     @Override public boolean lads$typing() { return ladsSearch != null && ladsSearch.isFocused(); }
 
@@ -49,12 +59,35 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
     }
 
     @Unique
+    private boolean lads$isStorageMenu() {
+        return (Object) this instanceof GuiChest || (Object) this instanceof GuiInventory;
+    }
+
+    @Unique
+    private boolean lads$hasFocusedTextBox() {
+        if (ladsSearch != null && ladsSearch.isFocused()) return true;
+        if ((Object) this instanceof GuiRepair) {
+            try {
+                net.minecraft.client.gui.GuiTextField nameField = ((GuiRepairAccessor189) this).lads$getNameField();
+                if (nameField != null && nameField.isFocused()) return true;
+            } catch (Throwable ignored) {}
+        }
+        return false;
+    }
+
+    @Unique
     private boolean ladsTweaked() {
         return !((Object) this instanceof GuiContainerCreative);
     }
 
+    @Unique
+    private boolean lads$sortable() {
+        return ladsTweaked() && lads$isStorageMenu();
+    }
+
     @Inject(method = "initGui", at = @At("TAIL"), require = 1)
     private void ladsInit(CallbackInfo ci) {
+        lads$sortQueue.clear();
         ladsSearch = null;
         if (!InventoryTweaks.searchOn || !ladsTweaked()) return;
         ladsSearch = new GuiTextField(0, fontRendererObj, guiLeft + xSize - InventoryTweaks.SEARCH_WIDTH, guiTop - InventoryTweaks.SEARCH_HEIGHT - 2,
@@ -63,8 +96,27 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
         ladsSearch.setText(InventoryTweaks.query());
     }
 
+    @Inject(method = "onGuiClosed", at = @At("HEAD"))
+    private void ladsOnClosed(CallbackInfo ci) {
+        lads$sortQueue.clear();
+    }
+
     @Inject(method = "updateScreen", at = @At("HEAD"), require = 1)
     private void ladsSearchTick(CallbackInfo ci) {
+        if (!lads$sortQueue.isEmpty()) {
+            if (mc.thePlayer == null || mc.thePlayer.inventory == null || mc.thePlayer.inventory.getItemStack() != null) {
+                lads$sortQueue.clear();
+            } else {
+                int[] swap = lads$sortQueue.poll();
+                if (swap != null) {
+                    Slot from = inventorySlots.getSlot(swap[0]);
+                    Slot to = inventorySlots.getSlot(swap[1]);
+                    if (from != null && to != null) {
+                        lads$swapSlots(from, to);
+                    }
+                }
+            }
+        }
         if (ladsSearch != null) ladsSearch.updateCursorCounter();
         int size = inventorySlots.inventorySlots.size();
         if (ladsDim.length != size) ladsDim = new boolean[size];
@@ -95,11 +147,20 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
 
     @Inject(method = "drawScreen", at = @At("TAIL"), require = 1)
     private void ladsDrawSearch(int mouseX, int mouseY, float partialTicks, CallbackInfo ci) {
-        if (ladsSearch == null) return;
-        net.minecraft.client.renderer.RenderHelper.disableStandardItemLighting(); // drawScreen ends with item lighting on
-        ladsSearch.drawTextBox();
-        if (!ladsSearch.isFocused() && ladsSearch.getText().isEmpty())
-            fontRendererObj.drawString("Search", ladsSearch.xPosition + 4, ladsSearch.yPosition + 2, 0xFF606060);
+        if (ladsSearch != null) {
+            net.minecraft.client.renderer.RenderHelper.disableStandardItemLighting(); // drawScreen ends with item lighting on
+            ladsSearch.drawTextBox();
+            if (!ladsSearch.isFocused() && ladsSearch.getText().isEmpty())
+                fontRendererObj.drawString("Search", ladsSearch.xPosition + 4, ladsSearch.yPosition + 2, 0xFF606060);
+        }
+        if (ContainerSorting.isAllowed() && lads$sortable()) {
+            int bx = ContainerSorting.getButtonX(guiLeft, xSize, InventoryTweaks.searchOn);
+            int by = ContainerSorting.getButtonY(guiTop);
+            boolean over = ContainerSorting.isOverButton(mouseX, mouseY, bx, by);
+            net.minecraft.client.renderer.RenderHelper.disableStandardItemLighting();
+            Gui.drawRect(bx, by, bx + ContainerSorting.BUTTON_WIDTH, by + ContainerSorting.BUTTON_HEIGHT, over ? 0x90404040 : 0x80000000);
+            drawCenteredString(fontRendererObj, ContainerSorting.SORT_LABEL, bx + ContainerSorting.BUTTON_WIDTH / 2, by + 2, over ? 0xFFFFA0 : 0xFFFFFF);
+        }
     }
 
     /** Typing in the search box: every key but Escape goes to it (E, Q and the number keys type instead of acting; Enter leaves it); the Lock key. */
@@ -108,6 +169,11 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
         if (ladsSearch != null && ladsSearch.isFocused() && key != Keyboard.KEY_ESCAPE) {
             if (key == Keyboard.KEY_RETURN || key == Keyboard.KEY_NUMPADENTER) ladsSearch.setFocused(false);
             else if (ladsSearch.textboxKeyTyped(typed, key)) InventoryTweaks.setQuery(ladsSearch.getText());
+            ci.cancel();
+            return;
+        }
+        if (key == Keyboard.KEY_R && !lads$hasFocusedTextBox() && ContainerSorting.isAllowed() && lads$sortable()) {
+            lads$sortContainer();
             ci.cancel();
             return;
         }
@@ -127,6 +193,16 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
                 return;
             }
         }
+        if (button == 0 && ContainerSorting.isAllowed() && lads$sortable()) {
+            int bx = ContainerSorting.getButtonX(guiLeft, xSize, InventoryTweaks.searchOn);
+            int by = ContainerSorting.getButtonY(guiTop);
+            if (ContainerSorting.isOverButton(mouseX, mouseY, bx, by)) {
+                lads$sortContainer();
+                ci.cancel();
+                return;
+            }
+        }
+        if (!lads$sortQueue.isEmpty()) lads$sortQueue.clear();
         if (button == 2 && ladsArmorSwap(getSlotAtPosition(mouseX, mouseY))) ci.cancel();
     }
 
@@ -148,4 +224,79 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
         if (wearing) handleMouseClick(from, from.slotNumber, 0, InventoryTweaks.PICKUP);
         return true;
     }
+
+    @Unique
+    private void lads$sortContainer() {
+        if (!ContainerSorting.isAllowed() || !lads$isStorageMenu() || !lads$sortQueue.isEmpty() || mc.thePlayer == null || mc.thePlayer.inventory.getItemStack() != null) return;
+
+        List<Slot> containerSlots = new ArrayList<Slot>();
+        List<Slot> playerStorageSlots = new ArrayList<Slot>();
+
+        if ((Object) this instanceof GuiChest) {
+            for (Object obj : inventorySlots.inventorySlots) {
+                if (!(obj instanceof Slot)) continue;
+                Slot slot = (Slot) obj;
+                if (slot.inventory != mc.thePlayer.inventory) {
+                    containerSlots.add(slot);
+                } else if (slot.getSlotIndex() >= 9 && slot.getSlotIndex() < 36) {
+                    playerStorageSlots.add(slot);
+                }
+            }
+        } else if ((Object) this instanceof GuiInventory) {
+            for (Object obj : inventorySlots.inventorySlots) {
+                if (!(obj instanceof Slot)) continue;
+                Slot slot = (Slot) obj;
+                if (slot.inventory instanceof InventoryPlayer && slot.getSlotIndex() >= 9 && slot.getSlotIndex() < 36) {
+                    playerStorageSlots.add(slot);
+                }
+            }
+        } else {
+            return;
+        }
+
+        List<Slot> targetSlots = null;
+        if (!containerSlots.isEmpty() && ContainerSorting.shouldSortContainer()) {
+            targetSlots = containerSlots;
+        } else if (ContainerSorting.shouldSortInventory() || (containerSlots.isEmpty() && ContainerSorting.isAllowed())) {
+            targetSlots = playerStorageSlots;
+        }
+
+        if (targetSlots == null || targetSlots.size() <= 1) return;
+
+        List<ContainerSorting.SlotItem> items = new ArrayList<ContainerSorting.SlotItem>();
+        for (Slot slot : targetSlots) {
+            ItemStack stack = slot.getStack();
+            boolean locked = (slot.inventory instanceof InventoryPlayer) && InventoryTweaks.locked(slot.getSlotIndex());
+            if (stack == null || stack.getItem() == null) {
+                items.add(new ContainerSorting.SlotItem(slot.slotNumber, "", 0, 0, 0, locked));
+            } else {
+                String itemId = String.valueOf(Item.itemRegistry.getNameForObject(stack.getItem()));
+                items.add(new ContainerSorting.SlotItem(slot.slotNumber, itemId, stack.stackSize, stack.getMaxStackSize(), stack.getMetadata(), locked));
+            }
+        }
+
+        List<int[]> swaps = ContainerSorting.planSwaps(items);
+        lads$sortQueue.addAll(swaps);
+    }
+
+    @Unique
+    private void lads$swapSlots(Slot from, Slot to) {
+        boolean hasFrom = from.getHasStack();
+        boolean hasTo = to.getHasStack();
+        if (!hasFrom && !hasTo) return;
+        if (hasFrom && !hasTo) {
+            handleMouseClick(from, from.slotNumber, 0, InventoryTweaks.PICKUP);
+            handleMouseClick(to, to.slotNumber, 0, InventoryTweaks.PICKUP);
+        } else if (!hasFrom && hasTo) {
+            handleMouseClick(to, to.slotNumber, 0, InventoryTweaks.PICKUP);
+            handleMouseClick(from, from.slotNumber, 0, InventoryTweaks.PICKUP);
+        } else {
+            handleMouseClick(from, from.slotNumber, 0, InventoryTweaks.PICKUP);
+            handleMouseClick(to, to.slotNumber, 0, InventoryTweaks.PICKUP);
+            if (mc.thePlayer != null && mc.thePlayer.inventory.getItemStack() != null) {
+                handleMouseClick(from, from.slotNumber, 0, InventoryTweaks.PICKUP);
+            }
+        }
+    }
+
 }

@@ -220,6 +220,10 @@ public final class ChatTweaks189 {
             net.minecraft.client.gui.GuiScreen.setClipboardString(message.getChatComponent().getUnformattedText());
             return;
         }
+        if (button == 2) {
+            ChatTweaks.exportChatImage(message.getChatComponent().getFormattedText(), com.thelads.core.shared.SharedContentPaths.screenshotsDir());
+            return;
+        }
         Access chat = (Access) mc.ingameGUI.getChatGUI();
         List<ChatLine> lines = chat.lads$messages();
         for (int i = 0; i < lines.size(); i++)

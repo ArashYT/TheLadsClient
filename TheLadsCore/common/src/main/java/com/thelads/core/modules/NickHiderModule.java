@@ -14,6 +14,8 @@ public class NickHiderModule extends Module {
     public final TextOption customNick;
     public final BoolOption hideOwnSkin;
     public final BoolOption hideOthersSkins;
+    public final BoolOption hideOthersNames;
+    public final TextOption othersNick;
 
     public NickHiderModule() {
         super(NAME, "Replaces client-side player username and skin to protect streamer identity.");
@@ -21,6 +23,8 @@ public class NickHiderModule extends Module {
         customNick = addOption(new TextOption("Custom nickname", "You"));
         hideOwnSkin = addOption(new BoolOption("Hide own skin", true));
         hideOthersSkins = addOption(new BoolOption("Hide others' skins", false));
+        hideOthersNames = addOption(new BoolOption("Hide others' names", false));
+        othersNick = addOption(new TextOption("Others' nickname", "Player"));
         setEnabled(false);
     }
 }

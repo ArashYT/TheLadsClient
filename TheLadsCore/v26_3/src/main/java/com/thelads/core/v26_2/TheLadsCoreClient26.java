@@ -96,6 +96,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         // The launcher lists Lads modules from this catalog; late registrations (Minimap) bump the revision on a later tick.
         net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents.END_CLIENT_TICK.register(client -> {
             com.thelads.core.client.bridge.LadsGameBridge.get().tickClient();
+            com.thelads.core.client.Nicknames.tick();
             com.thelads.core.mods.CoreCatalogExporter.exportIfChanged();
             boolean loaded = client.isGameLoadFinished() && client.gui.overlay() == null;
             if (loaded) com.thelads.core.v26_2.feature.EnumValuesHook.reportOnce();
