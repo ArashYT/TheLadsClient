@@ -21,6 +21,10 @@ public final class Probe192OfDefaults {
     public static void run(Minecraft mc) throws Exception {
         LOG.info("Running OptiFine defaults and shaders link probe checks");
 
+        // 0. Video Settings > Fullscreen Mode reads OptiFine's desktop mode, null under Pylon until Lads fills it (PylonWindow189)
+        CoreProbe.check(Class.forName("Config").getMethod("getLargestDisplayMode").invoke(null) != null,
+            "OptiFine has a desktop display mode (Fullscreen Mode option)");
+
         // 1. Defaults are on in a fresh sandbox (VBOs, Fast Render, Fast Math)
         boolean vbo = mc.gameSettings.useVbo;
         boolean fastRender = OptiFineShaderLink189.isFastRenderOn();

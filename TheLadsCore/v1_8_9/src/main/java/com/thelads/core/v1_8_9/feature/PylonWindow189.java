@@ -28,6 +28,21 @@ public final class PylonWindow189 {
         if (PRESENT && org.lwjgl.opengl.Display.wasResized()) resizedLatched = true;
     }
 
+    /**
+     * OptiFine caches Display.getDesktopDisplayMode once, from GameSettings' constructor, before the window exists. Pylon has no
+     * desktop mode then (null), so Video Settings' Fullscreen Mode crashed (Config.getLargestDisplayMode NPE). Fill it in once the
+     * window is up.
+     */
+    public static void fillOptiFineDesktopMode() {
+        try {
+            java.lang.reflect.Field mode = Class.forName("Config").getDeclaredField("desktopDisplayMode");
+            mode.setAccessible(true);
+            if (mode.get(null) != null) return;
+            mode.set(null, org.lwjgl.opengl.Display.getDesktopDisplayMode());
+            org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").info("OptiFine had no desktop display mode; now {}", mode.get(null));
+        } catch (Throwable notOptiFine) {}
+    }
+
     /** Minecraft.checkWindowResize's Display.wasResized, with a latched resize. */
     public static boolean wasResized() {
         boolean resized = org.lwjgl.opengl.Display.wasResized() || resizedLatched;
