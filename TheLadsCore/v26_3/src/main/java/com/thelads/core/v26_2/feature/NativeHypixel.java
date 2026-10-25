@@ -61,6 +61,15 @@ public final class NativeHypixel {
         ClientSendMessageEvents.MODIFY_CHAT.register(HypixelMods::handleOutgoingChat);
         ClientSendMessageEvents.MODIFY_COMMAND.register(HypixelMods::handleOutgoingChat);
         ClientTickEvents.END_CLIENT_TICK.register(client -> HypixelMods.tick(LadsGameBridge.get(), client.level, client.getConnection(), System.nanoTime()));
+        net.fabricmc.fabric.api.event.player.UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
+            if (world.isClientSide() && com.thelads.core.client.hypixel.OpenedChestHighlight.isEnabled() && hitResult != null) {
+                net.minecraft.core.BlockPos pos = hitResult.getBlockPos();
+                if (pos != null) {
+                    com.thelads.core.client.hypixel.OpenedChestHighlight.onChestOpened(pos.getX(), pos.getY(), pos.getZ());
+                }
+            }
+            return net.minecraft.world.InteractionResult.PASS;
+        });
         if (FabricLoader.getInstance().isModLoaded("hypixel_mod_api")) return;
         try {
             PayloadTypeRegistry.clientboundPlay().register(TYPE, PingPayload.CODEC);
@@ -80,6 +89,18 @@ public final class NativeHypixel {
     static boolean answersQa() { return answersQa; }
 
     /** RealPing's Mod API request (the bridge's sendPluginMessage). */
+    private static final net.minecraft.gizmos.GizmoStyle OPENED_CHEST_STYLE = net.minecraft.gizmos.GizmoStyle.stroke(0xCC00FF00, 2.0f);
+
+    public static void openedChestGizmos(net.minecraft.client.renderer.culling.Frustum frustum) {
+        if (!com.thelads.core.client.hypixel.OpenedChestHighlight.isEnabled()) return;
+        com.thelads.core.client.hypixel.OpenedChestHighlight.forEachOpened((x, y, z) -> {
+            net.minecraft.world.phys.AABB box = new net.minecraft.world.phys.AABB(x + 0.0625, y, z + 0.0625, x + 0.9375, y + 0.875, z + 0.9375);
+            if (frustum == null || frustum.isVisible(box)) {
+                net.minecraft.gizmos.Gizmos.cuboid(box, OPENED_CHEST_STYLE);
+            }
+        });
+    }
+
     public static boolean send(String name, byte[] data) {
         if (!channel || !RealPing.CHANNEL.equals(name) || Minecraft.getInstance().getConnection() == null) return false;
         try {

@@ -79,6 +79,7 @@ public final class Qol189 {
     private static double camX, camY, camZ;
     private static WorldRenderer buffer;
     private static final ChunkBorders.Lines SINK = Qol189::line;
+    private static final com.thelads.core.client.schematic.SchematicManager.Lines SCHEMATIC_SINK = Qol189::line;
 
     private Qol189() {}
 
@@ -194,6 +195,7 @@ public final class Qol189 {
         @SubscribeEvent
         public void world(RenderWorldLastEvent event) {
             if (ChunkBorders.on || com.thelads.core.client.worldedit.WorldEditCUI.on) renderWorldLines();
+            if (com.thelads.core.client.schematic.SchematicManager.isEnabled() && com.thelads.core.client.schematic.SchematicManager.isLoaded()) schematicOverlay();
         }
     }
 
@@ -311,6 +313,31 @@ public final class Qol189 {
         int x = (int) Math.floor(mc.getRenderViewEntity().posX), z = (int) Math.floor(mc.getRenderViewEntity().posZ);
         if (ChunkBorders.on) ChunkBorders.draw(x >> 4, z >> 4, 0, 256, SINK);
         if (com.thelads.core.client.worldedit.WorldEditCUI.on) com.thelads.core.client.worldedit.WorldEditCUI.draw(SINK);
+        tessellator.draw();
+        buffer = null;
+        GL11.glLineWidth(1);
+        GlStateManager.depthMask(true);
+        GlStateManager.disableBlend();
+        GlStateManager.enableTexture2D();
+    }
+
+    private static void schematicOverlay() {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.theWorld == null || mc.getRenderViewEntity() == null) return;
+        RenderManager manager = mc.getRenderManager();
+        camX = manager.viewerPosX;
+        camY = manager.viewerPosY;
+        camZ = manager.viewerPosZ;
+        Tessellator tessellator = Tessellator.getInstance();
+        buffer = tessellator.getWorldRenderer();
+        GlStateManager.disableTexture2D();
+        GlStateManager.disableLighting();
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
+        GlStateManager.depthMask(false);
+        GL11.glLineWidth(2);
+        buffer.begin(GL11.GL_LINES, DefaultVertexFormats.POSITION_COLOR);
+        com.thelads.core.client.schematic.SchematicManager.draw(SCHEMATIC_SINK, camX, camY, camZ);
         tessellator.draw();
         buffer = null;
         GL11.glLineWidth(1);

@@ -72,6 +72,7 @@ public final class Qol26 {
     private static VertexConsumer lines;
     private static PoseStack.Pose pose;
     private static final ChunkBorders.Lines SINK = Qol26::line;
+    private static final com.thelads.core.client.schematic.SchematicManager.Lines SCHEMATIC_SINK = Qol26::line;
 
     private Qol26() {}
 
@@ -83,6 +84,7 @@ public final class Qol26 {
             + "(projection, scissor, text and item atlases): use the game's GUI Scale option.");
         ClientTickEvents.END_CLIENT_TICK.register(Qol26::tick);
         LevelRenderEvents.COLLECT_SUBMITS.register(Qol26::chunkBorders);
+        LevelRenderEvents.COLLECT_SUBMITS.register(Qol26::schematicOverlay);
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (screen instanceof DisconnectedScreen) reconnectButton(client, screen);
             else if (screen instanceof DirectJoinServerScreen) directPing(client, screen);
@@ -253,6 +255,24 @@ public final class Qol26 {
         var block = mc.getCameraEntity().blockPosition();
         if (ChunkBorders.on) ChunkBorders.draw(block.getX() >> 4, block.getZ() >> 4, mc.level.getMinY(), mc.level.getMaxY() + 1, SINK);
         if (com.thelads.core.client.worldedit.WorldEditCUI.on) com.thelads.core.client.worldedit.WorldEditCUI.draw(SINK);
+        lines = null;
+    }
+
+    private static void schematicOverlay(LevelRenderContext context) {
+        if (!com.thelads.core.client.schematic.SchematicManager.isEnabled() || !com.thelads.core.client.schematic.SchematicManager.isLoaded()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.getCameraEntity() == null) return;
+        Vec3 camera = context.levelState().cameraRenderState.pos;
+        camX = camera.x;
+        camY = camera.y;
+        camZ = camera.z;
+        context.submitNodeCollector().submitCustomGeometry(context.poseStack(), RenderTypes.lines(), Qol26::drawSchematic);
+    }
+
+    private static void drawSchematic(PoseStack.Pose at, VertexConsumer buffer) {
+        pose = at;
+        lines = buffer;
+        com.thelads.core.client.schematic.SchematicManager.draw(SCHEMATIC_SINK, camX, camY, camZ);
         lines = null;
     }
 

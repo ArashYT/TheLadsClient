@@ -455,7 +455,7 @@ public class HypixelSafetyTest {
         for (String name : new String[] {"BlockInfo", "Freelook", "FogClearView", "HitboxesThroughWalls", "Light Overlay", "Loot Beams",
                 "Mob Overlay", "Mob Size", "Fullbright", "Jade", "AutoReconnect", "Breeding Timer", "Ender Chest Peek",
                 "Unlimited Command Length", "Auto Text", "Inventory Move", "Armor Swap",
-                "Container Sorting", "Elytra Swap", "Creative Fly Boost"})
+                "Container Sorting", "Elytra Swap", "Creative Fly Boost", "Schematic", "Schematic Visualizer", "Schematica", "Opened Chest Highlight"})
             assertTrue(HypixelSafetyManager.isRiskyModule(name), name + " must be gated");
         assertFalse(HypixelSafetyManager.isRiskyModule("Block Overlay"), "pure visuals stay ungated");
         for (String name : new String[] {"Chat", "Slot Lock", "Inventory Search"}) // chat lane: client-side only, nothing extra sent

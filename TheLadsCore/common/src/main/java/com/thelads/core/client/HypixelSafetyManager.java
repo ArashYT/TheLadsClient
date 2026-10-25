@@ -274,6 +274,8 @@ public final class HypixelSafetyManager {
             || com.thelads.core.modules.MlgCobwebModule.NAME.equalsIgnoreCase(moduleName)
             || com.thelads.core.client.worldedit.WorldEditCUI.NAME.equalsIgnoreCase(moduleName)
             || "Container Sorting".equalsIgnoreCase(moduleName) || "Elytra Swap".equalsIgnoreCase(moduleName) || "Creative Fly Boost".equalsIgnoreCase(moduleName)
+            || "Schematic".equalsIgnoreCase(moduleName) || "Schematic Visualizer".equalsIgnoreCase(moduleName) || "Schematica".equalsIgnoreCase(moduleName)
+            || "Opened Chest Highlight".equalsIgnoreCase(moduleName)
             || isGatedHud(moduleName);
     }
 

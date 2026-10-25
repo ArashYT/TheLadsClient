@@ -76,6 +76,21 @@
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/IONNetworkTeam/Ionium",
       "projectUrl": "https://github.com/IONNetworkTeam/Ionium"
+    },
+    {
+      "projectId": "Nv2fQJo5",
+      "projectSlug": "replaymod",
+      "name": "ReplayMod",
+      "modId": "replaymod",
+      "versionId": "OJEjSBv2",
+      "version": "1.8.9-2.6.20",
+      "fileName": "replaymod-1.8.9-2.6.20.jar",
+      "url": "https://cdn.modrinth.com/data/Nv2fQJo5/versions/OJEjSBv2/replaymod-1.8.9-2.6.20.jar",
+      "sha512": "ef49566deeaab0806ed9c282cca49c5edb4e3a79308b9ba479332867fd031a6800ca7b37f7aa6868070b140f1ff64cac3836d207fc83eb2391df837ab57dc5c6",
+      "size": 16074300,
+      "license": "GPL-3.0-or-later",
+      "sourceUrl": "https://github.com/ReplayMod/ReplayMod",
+      "projectUrl": "https://modrinth.com/mod/replaymod"
     }
   ],
   "retired": [

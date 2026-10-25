@@ -715,6 +715,8 @@ public class ModuleManager {
         register(new com.thelads.core.modules.ElytraSwapModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.CreativeFlyBoostModule(), Module.Category.MECHANIC);
         register(new com.thelads.core.modules.LinkPreviewModule(), Module.Category.MECHANIC);
+        // Parity Lane 4 (replay-builder): Schematic visualizer (gated)
+        register(new com.thelads.core.modules.SchematicModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {

@@ -74,6 +74,7 @@ public final class Qol1201 {
     private static PoseStack.Pose pose;
     private static double camX, camY, camZ;
     private static final ChunkBorders.Lines SINK = Qol1201::line;
+    private static final com.thelads.core.client.schematic.SchematicManager.Lines SCHEMATIC_SINK = Qol1201::line;
 
     private Qol1201() {}
 
@@ -83,6 +84,7 @@ public final class Qol1201 {
 
         ClientTickEvents.END_CLIENT_TICK.register(Qol1201::tick);
         WorldRenderEvents.BEFORE_DEBUG_RENDER.register(Qol1201::chunkBorders);
+        WorldRenderEvents.BEFORE_DEBUG_RENDER.register(Qol1201::schematicOverlay);
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
             if (screen instanceof DisconnectedScreen) reconnectButton(client, screen);
             else if (screen instanceof DirectJoinServerScreen) directPing(screen);
@@ -271,6 +273,22 @@ public final class Qol1201 {
         var at = mc.getCameraEntity().blockPosition();
         if (ChunkBorders.on) ChunkBorders.draw(at.getX() >> 4, at.getZ() >> 4, mc.level.getMinBuildHeight(), mc.level.getMaxBuildHeight(), SINK);
         if (com.thelads.core.client.worldedit.WorldEditCUI.on) com.thelads.core.client.worldedit.WorldEditCUI.draw(SINK);
+        lines = null;
+        if (buffers instanceof MultiBufferSource.BufferSource source) source.endBatch(RenderType.lines());
+    }
+
+    private static void schematicOverlay(WorldRenderContext context) {
+        if (!com.thelads.core.client.schematic.SchematicManager.isEnabled() || !com.thelads.core.client.schematic.SchematicManager.isLoaded()) return;
+        MultiBufferSource buffers = context.consumers();
+        Minecraft mc = Minecraft.getInstance();
+        if (buffers == null || mc.level == null || mc.getCameraEntity() == null) return;
+        Vec3 camera = context.camera().getPosition();
+        camX = camera.x;
+        camY = camera.y;
+        camZ = camera.z;
+        pose = context.matrixStack().last();
+        lines = buffers.getBuffer(RenderType.lines());
+        com.thelads.core.client.schematic.SchematicManager.draw(SCHEMATIC_SINK, camX, camY, camZ);
         lines = null;
         if (buffers instanceof MultiBufferSource.BufferSource source) source.endBatch(RenderType.lines());
     }
