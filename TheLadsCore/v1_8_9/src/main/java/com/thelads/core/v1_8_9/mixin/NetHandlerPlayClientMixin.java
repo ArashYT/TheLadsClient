@@ -23,6 +23,7 @@ import com.thelads.core.client.ladsapi.LadsApiClient;
 import net.minecraft.network.play.server.S01PacketJoinGame;
 import net.minecraft.network.play.server.S27PacketExplosion;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -34,6 +35,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(NetHandlerPlayClient.class)
 public abstract class NetHandlerPlayClientMixin {
+    @Shadow
+    public abstract void addToSendQueue(net.minecraft.network.Packet p);
+
     @Inject(method = "handleEntityStatus", at = @At("TAIL"), require = 1)
     private void ladsDeath(S19PacketEntityStatus packet, CallbackInfo ci) {
         if (packet.getOpCode() == 3 && Minecraft.getMinecraft().theWorld != null) {
@@ -96,6 +100,37 @@ public abstract class NetHandlerPlayClientMixin {
     @Inject(method = "handleJoinGame", at = @At("TAIL"), require = 1)
     private void ladsJoinGame(S01PacketJoinGame packet, CallbackInfo ci) {
         LadsApiClient.joinGame(0L);
+        com.thelads.core.client.worldedit.WorldEditCUI.clear();
+        ladsSendWorldEditHandshake();
+    }
+
+    private void ladsSendWorldEditHandshake() {
+        if (com.thelads.core.client.worldedit.WorldEditCUI.on
+                && !com.thelads.core.client.HypixelSafetyManager.isDisallowed(com.thelads.core.client.worldedit.WorldEditCUI.NAME)) {
+            try {
+                byte[] registerBytes = "worldedit:cui\0WECUI".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                addToSendQueue(new net.minecraft.network.play.client.C17PacketCustomPayload("REGISTER",
+                        new net.minecraft.network.PacketBuffer(io.netty.buffer.Unpooled.wrappedBuffer(registerBytes))));
+                byte[] handshake = com.thelads.core.client.worldedit.WorldEditCUI.getHandshakePayload();
+                addToSendQueue(new net.minecraft.network.play.client.C17PacketCustomPayload("WECUI",
+                        new net.minecraft.network.PacketBuffer(io.netty.buffer.Unpooled.wrappedBuffer(handshake))));
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    @Inject(method = "handleCustomPayload", at = @At("HEAD"), require = 1)
+    private void ladsWorldEditCuiPayload(net.minecraft.network.play.server.S3FPacketCustomPayload packet, CallbackInfo ci) {
+        if (!Minecraft.getMinecraft().isCallingFromMinecraftThread()) return;
+        String channel = packet.getChannelName();
+        if (com.thelads.core.client.worldedit.WorldEditCUI.CHANNEL_MODERN.equalsIgnoreCase(channel)
+                || com.thelads.core.client.worldedit.WorldEditCUI.CHANNEL_LEGACY.equalsIgnoreCase(channel)) {
+            net.minecraft.network.PacketBuffer buffer = packet.getBufferData();
+            if (buffer != null) {
+                byte[] bytes = new byte[buffer.readableBytes()];
+                buffer.getBytes(buffer.readerIndex(), bytes);
+                com.thelads.core.client.worldedit.WorldEditCUI.onPacket(channel, bytes);
+            }
+        }
     }
 
     @Inject(method = {"cleanup", "onDisconnect"}, at = @At("HEAD"), require = 1)
@@ -104,5 +139,6 @@ public abstract class NetHandlerPlayClientMixin {
         ScoreboardCache189.reset();
         DynamicLights189.reset();
         LadsApiClient.reset();
+        com.thelads.core.client.worldedit.WorldEditCUI.clear();
     }
 }

@@ -1,6 +1,8 @@
 package com.thelads.core.v1_20_1.mixin;
 
 import com.thelads.core.client.ladsapi.LadsApiClient;
+import com.thelads.core.client.worldedit.WorldEditCUI;
+import com.thelads.core.v1_20_1.feature.WorldEditCui1201;
 import com.thelads.core.v1_20_1.net.LadsApiTransport1201;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -32,6 +34,29 @@ public abstract class LadsApiPacketListenerMixin {
     @Inject(method = "handleCustomPayload", at = @At("HEAD"), cancellable = true, require = 1)
     private void lads$handleCustomPayload(ClientboundCustomPayloadPacket packet, CallbackInfo ci) {
         ResourceLocation id = packet.getIdentifier();
+        if (id != null && (("worldedit".equals(id.getNamespace()) && "cui".equals(id.getPath())) || "wecui".equalsIgnoreCase(id.getPath()))) {
+            if (WorldEditCUI.on && !com.thelads.core.client.HypixelSafetyManager.isDisallowed(WorldEditCUI.NAME)) {
+                FriendlyByteBuf buf = packet.getData();
+                if (buf != null) {
+                    try {
+                        byte[] payload = new byte[buf.readableBytes()];
+                        buf.getBytes(buf.readerIndex(), payload);
+                        Minecraft mc = Minecraft.getInstance();
+                        if (mc != null && mc.isSameThread()) {
+                            WorldEditCUI.onPacket(id.toString(), payload);
+                        } else if (mc != null) {
+                            mc.execute(() -> WorldEditCUI.onPacket(id.toString(), payload));
+                        }
+                    } finally {
+                        if (buf.refCnt() > 0) {
+                            buf.release();
+                        }
+                    }
+                }
+                ci.cancel();
+            }
+            return;
+        }
         if (LadsApiTransport1201.isLadsApiChannel(id)) {
             FriendlyByteBuf buf = packet.getData();
             if (buf != null) {
@@ -60,16 +85,19 @@ public abstract class LadsApiPacketListenerMixin {
     @Inject(method = "handleLogin", at = @At("TAIL"), require = 1)
     private void lads$handleLogin(ClientboundLoginPacket packet, CallbackInfo ci) {
         LadsApiClient.joinGame(packet.seed());
+        WorldEditCui1201.onJoin();
     }
 
     @Inject(method = "handleRespawn", at = @At("TAIL"), require = 1)
     private void lads$handleRespawn(ClientboundRespawnPacket packet, CallbackInfo ci) {
         LadsApiClient.respawn(packet.getSeed());
+        WorldEditCUI.clear();
     }
 
     @Inject(method = "onDisconnect", at = @At("HEAD"), require = 1)
     private void lads$onDisconnect(Component reason, CallbackInfo ci) {
         LadsApiClient.reset();
+        WorldEditCUI.clear();
     }
 
     // Leaving through the pause menu (level.disconnect + Minecraft.clearLevel) never reaches onDisconnect on 1.20.1: the closed
@@ -77,5 +105,6 @@ public abstract class LadsApiPacketListenerMixin {
     @Inject(method = "close", at = @At("HEAD"), require = 1)
     private void lads$onClose(CallbackInfo ci) {
         LadsApiClient.reset();
+        WorldEditCUI.clear();
     }
 }

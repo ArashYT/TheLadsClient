@@ -60,7 +60,7 @@ import org.lwjgl.opengl.GL11;
 public final class Qol189 {
     /** The modules registered as built in here (CoreProbe's catalog check). */
     public static final String[] BUILT_IN = {TooltipScroll.NAME, CrashCatcher.NAME, QuickReconnect.NAME, KeepCursor.NAME, SoundVolumes.NAME,
-        GuiScaleOverride.NAME, ChunkBorders.NAME};
+        GuiScaleOverride.NAME, ChunkBorders.NAME, com.thelads.core.client.SoundFilters.NAME, com.thelads.core.client.media.MumbleLink.NAME, com.thelads.core.client.worldedit.WorldEditCUI.NAME};
     private static final int RECONNECT = 0x4C510;
     private static final OldServerPinger PINGER = new OldServerPinger();
     private static ExecutorService pings;
@@ -92,18 +92,34 @@ public final class Qol189 {
         @SubscribeEvent
         public void tick(TickEvent.ClientTickEvent event) {
             if (event.phase != TickEvent.Phase.END) return;
+            Minecraft mc = Minecraft.getMinecraft();
             TooltipScroll.tick();
             QuickReconnect.tick();
             KeepCursor.tick();
             SoundVolumes.tick();
             GuiScaleOverride.tick();
             ChunkBorders.tick();
+            boolean water = mc.thePlayer != null && (mc.thePlayer.isInsideOfMaterial(net.minecraft.block.material.Material.water) || mc.thePlayer.isInWater());
+            com.thelads.core.client.SoundFilters.tick(water);
+            if (mc.thePlayer != null) {
+                double px = mc.thePlayer.posX;
+                double py = mc.thePlayer.posY + mc.thePlayer.getEyeHeight();
+                double pz = mc.thePlayer.posZ;
+                float yaw = mc.thePlayer.rotationYaw;
+                float pitch = mc.thePlayer.rotationPitch;
+                String name = mc.thePlayer.getName();
+                String server = mc.getCurrentServerData() != null ? mc.getCurrentServerData().serverIP : "singleplayer";
+                com.thelads.core.client.media.MumbleLink.tick(px, py, pz, yaw, pitch, name, server);
+            } else {
+                com.thelads.core.client.media.MumbleLink.tick();
+            }
+            com.thelads.core.client.worldedit.WorldEditCUI.tick();
             if (!hookChecked) {
                 hookChecked = true;
                 if (!tickHooked) ModuleSupport.registerUnavailable(CrashCatcher.NAME, "This game's Minecraft.runGameLoop is changed by another mod, "
                     + "so the game tick can't be watched for crashes.");
             }
-            Minecraft mc = Minecraft.getMinecraft();
+
             if (guiRevision != GuiScaleOverride.revision) { // lay the open screen out at the new scale
                 guiRevision = GuiScaleOverride.revision;
                 if (mc.currentScreen != null) {
@@ -177,7 +193,7 @@ public final class Qol189 {
 
         @SubscribeEvent
         public void world(RenderWorldLastEvent event) {
-            if (ChunkBorders.on) chunkBorders();
+            if (ChunkBorders.on || com.thelads.core.client.worldedit.WorldEditCUI.on) renderWorldLines();
         }
     }
 
@@ -276,7 +292,7 @@ public final class Qol189 {
         return GuiScaleOverride.on ? (int) Math.round(pixels * resolution.getScaleFactor() / scale(resolution)) : pixels;
     }
 
-    private static void chunkBorders() {
+    private static void renderWorldLines() {
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null || mc.getRenderViewEntity() == null) return;
         RenderManager manager = mc.getRenderManager();
@@ -293,7 +309,8 @@ public final class Qol189 {
         GL11.glLineWidth(2);
         buffer.begin(GL11.GL_LINES, DefaultVertexFormats.POSITION_COLOR);
         int x = (int) Math.floor(mc.getRenderViewEntity().posX), z = (int) Math.floor(mc.getRenderViewEntity().posZ);
-        ChunkBorders.draw(x >> 4, z >> 4, 0, 256, SINK);
+        if (ChunkBorders.on) ChunkBorders.draw(x >> 4, z >> 4, 0, 256, SINK);
+        if (com.thelads.core.client.worldedit.WorldEditCUI.on) com.thelads.core.client.worldedit.WorldEditCUI.draw(SINK);
         tessellator.draw();
         buffer = null;
         GL11.glLineWidth(1);

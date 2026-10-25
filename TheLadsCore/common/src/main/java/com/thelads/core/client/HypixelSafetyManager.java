@@ -271,7 +271,9 @@ public final class HypixelSafetyManager {
             || ChatTweaks.LONG_COMMANDS.equalsIgnoreCase(moduleName) || com.thelads.core.modules.AutoTextModule.NAME.equalsIgnoreCase(moduleName)
             || InventoryTweaks.MOVE.equalsIgnoreCase(moduleName) || InventoryTweaks.ARMOR_SWAP.equalsIgnoreCase(moduleName)
             || BreedingTimer.NAME.equalsIgnoreCase(moduleName) || EnderChestPeek.NAME.equalsIgnoreCase(moduleName) // hidden cooldown, chest away from it
-            || com.thelads.core.modules.MlgCobwebModule.NAME.equalsIgnoreCase(moduleName) || isGatedHud(moduleName);
+            || com.thelads.core.modules.MlgCobwebModule.NAME.equalsIgnoreCase(moduleName)
+            || com.thelads.core.client.worldedit.WorldEditCUI.NAME.equalsIgnoreCase(moduleName)
+            || isGatedHud(moduleName);
     }
 
     /** HUD widgets that show what vanilla does not: other players' exact health, a horse's hidden stats, a nearby-player radar, totem pops. */

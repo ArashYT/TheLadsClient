@@ -707,6 +707,9 @@ public class ModuleManager {
         register(chunks, Module.Category.MECHANIC);
         register(new BedColorsModule(), Module.Category.MECHANIC);
         register(new MlgCobwebModule(), Module.Category.MECHANIC);
+        register(com.thelads.core.client.SoundFilters.createModule(), Module.Category.MECHANIC);
+        register(com.thelads.core.client.media.MumbleLink.createModule(), Module.Category.MECHANIC);
+        register(com.thelads.core.client.worldedit.WorldEditCUI.createModule(), Module.Category.MECHANIC);
     }
 
     public static ModuleManager getInstance() {
