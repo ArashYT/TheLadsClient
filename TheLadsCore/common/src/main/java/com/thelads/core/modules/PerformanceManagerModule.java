@@ -36,7 +36,7 @@ public class PerformanceManagerModule extends Module {
                 FontWidthCache.enabled = get();
             }
         });
-        addOption(new BoolOption("Camera Parallax Fix", false) {
+        addOption(new BoolOption("Camera Parallax Fix (1.8.9)", false) {
             @Override
             public void set(boolean value) {
                 super.set(value);

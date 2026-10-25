@@ -87,7 +87,7 @@ public abstract class EntityRendererMixin {
         return OldAnimations189.cameraEyeHeight(entity, partialTicks);
     }
 
-    /** MC-1846: camera parallax fix shifts first-person eye viewpoint to eliminate backward camera offset. */
+    /** Mojang MC-1846 (First-person perspective parallax problem): eliminate backward -0.1F camera offset. */
     @ModifyConstant(method = "orientCamera", constant = @Constant(floatValue = -0.1F), require = 0)
     private float ladsCameraParallax(float original) {
         return com.thelads.core.perf.Perf189Settings.cameraParallaxFix ? 0.0F : original;

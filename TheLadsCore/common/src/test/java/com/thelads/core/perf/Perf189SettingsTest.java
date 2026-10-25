@@ -12,7 +12,7 @@ class Perf189SettingsTest {
     void testOptionSync() {
         PerformanceManagerModule module = new PerformanceManagerModule();
 
-        BoolOption parallax = (BoolOption) module.getOption("Camera Parallax Fix");
+        BoolOption parallax = (BoolOption) module.getOption("Camera Parallax Fix (1.8.9)");
 
         assertFalse(Perf189Settings.isCameraParallaxFix());
 
