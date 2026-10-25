@@ -111,6 +111,7 @@ final class RecordingGraphics implements LadsGraphics {
     @Override public boolean drawGameView(int x, int y, int width, int height) { unknown = true; mark("view", 0, x, y, width, height); ops.add(g -> g.drawGameView(x, y, width, height)); return true; }
     @Override public boolean drawImage(String source, int x, int y, int width, int height) { box(x, y, x + width, y + height); mark("image", Objects.hashCode(source), x, y, width, height); ops.add(g -> g.drawImage(source, x, y, width, height)); return true; }
     @Override public void drawMap(int x, int y, int size, boolean preview) { box(x, y, x + size, y + size); mark("map", preview ? 1231 : 1237, x, y, size); ops.add(g -> g.drawMap(x, y, size, preview)); }
+    @Override public boolean canDrawMap() { return target.canDrawMap(); }
 
     @Override public int textWidth(String text) { return target.textWidth(text); }
     @Override public Object textMetricsKey() { return target.textMetricsKey(); }

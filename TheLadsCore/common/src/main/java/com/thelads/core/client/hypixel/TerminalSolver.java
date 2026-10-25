@@ -36,9 +36,14 @@ public final class TerminalSolver {
         "lime", "gray", "blue", "red"
     };
 
+    private static final java.util.Map<String, java.util.regex.Pattern> COLOR_PATTERNS = new java.util.HashMap<>();
+
     static {
         // Ensure COLOR_NAMES is sorted by length descending so multi-word colors (e.g. "light blue") are checked before shorter substrings ("blue")
         java.util.Arrays.sort(COLOR_NAMES, (a, b) -> Integer.compare(b.length(), a.length()));
+        for (String c : COLOR_NAMES) {
+            COLOR_PATTERNS.put(c.toLowerCase(Locale.ROOT), java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(c.toLowerCase(Locale.ROOT)) + "\\b"));
+        }
     }
 
     /**
@@ -166,7 +171,11 @@ public final class TerminalSolver {
         if (target.equals("silver") && clean.contains("light gray")) return true;
         if (target.equals("light gray") && clean.contains("silver")) return true;
 
-        return java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(target) + "\\b").matcher(clean).find();
+        java.util.regex.Pattern pattern = COLOR_PATTERNS.get(target);
+        if (pattern == null) {
+            pattern = java.util.regex.Pattern.compile("\\b" + java.util.regex.Pattern.quote(target) + "\\b");
+        }
+        return pattern.matcher(clean).find();
     }
 
     /**
@@ -271,7 +280,16 @@ public final class TerminalSolver {
     }
 
     public static String stripFormatting(String text) {
-        if (text == null) return "";
-        return text.replaceAll("§[0-9a-fk-orA-FK-OR]", "");
+        if (text == null || text.indexOf('§') == -1) return text != null ? text : "";
+        StringBuilder sb = new StringBuilder(text.length());
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '§') {
+                i++;
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 }

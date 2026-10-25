@@ -8,15 +8,15 @@ import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
 
 /**
- * Hypixel SkyBlock Garden pest and composter countdown timer HUD.
+ * Hypixel SkyBlock countdown timer HUD (Dark Auction).
  * Gated under HypixelSafetyManager.
  */
 public class SkyBlockTimersHudElement extends HudElement {
     public static final String ID = "SkyBlockTimers";
 
     public SkyBlockTimersHudElement() {
-        this.width = 110;
-        this.height = 26;
+        this.width = 140;
+        this.height = 14;
         this.moduleName = ID;
         useOrganizedDefaults();
     }
@@ -50,11 +50,9 @@ public class SkyBlockTimersHudElement extends HudElement {
         if (bg == 0) bg = 0xB0101016;
         g.fill(dx, dy, dx + w, dy + h, bg);
 
-        String composter = SkyBlockTimers.getComposterString(preview);
-        String pest = SkyBlockTimers.getPestString(preview);
+        String da = SkyBlockTimers.getDarkAuctionString(preview);
 
         boolean shadow = HudSettings.getInstance().isTextShadow();
-        g.drawText(composter, dx + 4, dy + 3, 0xFF55FF55, shadow);
-        g.drawText(pest, dx + 4, dy + 14, 0xFFFF5555, shadow);
+        g.drawText(da, dx + 4, dy + 3, 0xFFFFAA00, shadow);
     }
 }

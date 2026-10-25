@@ -704,9 +704,9 @@ public class ModuleManager {
         // Parity-1023 Lane r2-hypixel: SkyBlock Suite & Server Notification Actions
         HudModule dungeonMap = hud("DungeonMap", "Hypixel SkyBlock dungeon map overlay rendered from the filled map item.");
         dungeonMap.setEnabled(false);
-        HudModule sbTimers = hud("SkyBlockTimers", "Hypixel SkyBlock Garden crop, pest, and composter countdown timers.");
+        HudModule sbTimers = hud("SkyBlockTimers", "Hypixel SkyBlock Dark Auction countdown timer.");
         sbTimers.setEnabled(false);
-        Module sbSuite = new Module("SkyBlock Suite", "Hypixel SkyBlock utilities: in-container terminal solvers (click-order, color, word), dungeon map, and garden timers.");
+        Module sbSuite = new Module("SkyBlock Suite", "Hypixel SkyBlock utilities: in-container terminal solvers (click-order, color, word), dungeon map, and Dark Auction timer.");
         sbSuite.addOption(new BoolOption("Terminal Solvers", true));
         sbSuite.setEnabled(false);
         register(sbSuite, Module.Category.HYPIXEL);

@@ -1,66 +1,74 @@
-package com.thelads.core.client.hud;
-
-import com.thelads.core.client.HypixelSafetyManager;
-import com.thelads.core.client.bridge.LadsGraphics;
-import com.thelads.core.config.HudSettings;
-import com.thelads.core.config.Module;
-import com.thelads.core.config.ModuleManager;
-
-/**
- * Hypixel SkyBlock Dungeon map overlay rendered from the client's filled map item.
- * When in HUD editor / preview mode, renders a procedural dungeon floor layout.
- * Gated under HypixelSafetyManager.
- */
-public class DungeonMapHudElement extends HudElement {
-    public static final String ID = "DungeonMap";
-
-    public DungeonMapHudElement() {
-        this.width = 80;
-        this.height = 88;
-        this.moduleName = ID;
-        useOrganizedDefaults();
-    }
-
-    @Override
-    public void render(LadsGraphics g) {
-        if (!shouldRender(false)) return;
-        drawMapFrame(g, false);
-    }
-
-    @Override
-    public void renderEditor(LadsGraphics g) {
-        drawMapFrame(g, true);
-    }
-
-    private boolean shouldRender(boolean editor) {
-        if (editor) return true;
-        Module m = ModuleManager.getInstance().getModule(ID);
-        if (m == null || !m.isEnabled()) return false;
-        if (HypixelSafetyManager.isDisallowed(ID) || HypixelSafetyManager.isDisallowed("SkyBlock Suite")) return false;
-        return true;
-    }
-
-    private void drawMapFrame(LadsGraphics g, boolean preview) {
-        int dx = getDisplayX(g);
-        int dy = getDisplayY(g);
-        int w = width;
-        int h = height;
-
-        int bg = resolveBackground();
-        if (bg == 0) bg = 0xB0101016;
-        g.fill(dx, dy, dx + w, dy + h, bg);
-
-        // Header bar
-        g.fill(dx, dy, dx + w, dy + 10, 0xDD2A1824);
-        boolean shadow = HudSettings.getInstance().isTextShadow();
-        g.drawCenteredText("Dungeon Map", dx + w / 2, dy + 1, 0xFFFFFFFF, shadow);
-
-        // Inner map area
-        int mapSize = w - 4;
-        int mapX = dx + 2;
-        int mapY = dy + 11;
-        g.drawMap(mapX, mapY, mapSize, preview);
-    }
+package com.thelads.core.client.hud;
+
+import com.thelads.core.client.HypixelSafetyManager;
+import com.thelads.core.client.bridge.LadsGraphics;
+import com.thelads.core.config.HudSettings;
+import com.thelads.core.config.Module;
+import com.thelads.core.config.ModuleManager;
+
+/**
+ * Hypixel SkyBlock Dungeon map overlay rendered from the client's filled map item.
+ * When in HUD editor / preview mode, renders a procedural dungeon floor layout.
+ * On versions where map item rendering is unavailable (26.3), renders an unavailability notice.
+ * Gated under HypixelSafetyManager.
+ */
+public class DungeonMapHudElement extends HudElement {
+    public static final String ID = "DungeonMap";
+
+    public DungeonMapHudElement() {
+        this.width = 80;
+        this.height = 88;
+        this.moduleName = ID;
+        useOrganizedDefaults();
+    }
+
+    @Override
+    public void render(LadsGraphics g) {
+        if (!shouldRender(false)) return;
+        drawMapFrame(g, false);
+    }
+
+    @Override
+    public void renderEditor(LadsGraphics g) {
+        drawMapFrame(g, true);
+    }
+
+    private boolean shouldRender(boolean editor) {
+        if (editor) return true;
+        Module m = ModuleManager.getInstance().getModule(ID);
+        if (m == null || !m.isEnabled()) return false;
+        if (HypixelSafetyManager.isDisallowed(ID) || HypixelSafetyManager.isDisallowed("SkyBlock Suite")) return false;
+        return true;
+    }
+
+    private void drawMapFrame(LadsGraphics g, boolean preview) {
+        int dx = getDisplayX(g);
+        int dy = getDisplayY(g);
+        int w = width;
+        int h = height;
+
+        int bg = resolveBackground();
+        if (bg == 0) bg = 0xB0101016;
+        g.fill(dx, dy, dx + w, dy + h, bg);
+
+        // Header bar
+        g.fill(dx, dy, dx + w, dy + 10, 0xDD2A1824);
+        boolean shadow = HudSettings.getInstance().isTextShadow();
+        g.drawCenteredText("Dungeon Map", dx + w / 2, dy + 1, 0xFFFFFFFF, shadow);
+
+        // Inner map area
+        int mapSize = w - 4;
+        int mapX = dx + 2;
+        int mapY = dy + 11;
+
+        if (!g.canDrawMap()) {
+            g.drawCenteredText("Not available", dx + w / 2, mapY + mapSize / 2 - 6, 0xFFAAAAAA, shadow);
+            g.drawCenteredText("on 26.3", dx + w / 2, mapY + mapSize / 2 + 5, 0xFFAAAAAA, shadow);
+            return;
+        }
+
+        g.drawMap(mapX, mapY, mapSize, preview);
+    }
 
     public static void drawDungeonPreview(LadsGraphics g, int x, int y, int size) {
         g.fill(x, y, x + size, y + size, 0xFF18151E);

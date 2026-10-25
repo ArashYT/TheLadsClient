@@ -1,110 +1,77 @@
 package com.thelads.core.client.hypixel;
 
-import java.util.Locale;
-
 /**
- * Client-side countdown timers for Hypixel SkyBlock Garden:
- * 1. Composter: Cycle time tracking per organic compost, populated when checking composter inventory.
- * 2. Pest Spawns: 10-minute cooldown window while farming crops in the Garden.
- *    Source: Hypixel SkyBlock Garden Update - Chat announcement: "GROSS! A Pest has appeared in Plot - [name]!"
- *            Reset on pest spawn detection.
+ * Client-side countdown timers for Hypixel SkyBlock:
+ * Dark Auction: Runs once every real-life hour at :55:00 (55 minutes past each hour, lasting ~5 minutes).
+ * Verified authentic schedule requiring no external API key.
  */
 public final class SkyBlockTimers {
-    private static long composterEndNanos = 0;
-    private static long pestEndNanos = 0;
-
-    private static long cachedComposterSec = -1;
-    private static String cachedComposterString = "Composter: Ready";
-
-    private static long cachedPestSec = -1;
-    private static String cachedPestString = "Pest: Ready";
+    private static long cachedDaSec = -1;
+    private static String cachedDaString = null;
 
     private SkyBlockTimers() {}
 
-    public static void setComposterRemainingSeconds(int seconds) {
-        cachedComposterSec = -1;
-        cachedComposterString = null;
-        if (seconds <= 0) {
-            composterEndNanos = 0;
-        } else {
-            composterEndNanos = System.nanoTime() + (long) seconds * 1_000_000_000L;
-        }
-    }
-
-    public static void resetPestTimer() {
-        // Standard 10 minute pest spawn cooldown in the Garden (Source: Hypixel SkyBlock Garden Mechanics)
-        cachedPestSec = -1;
-        cachedPestString = null;
-        pestEndNanos = System.nanoTime() + 600_000_000_000L;
-    }
-
     public static void clearTimers() {
-        composterEndNanos = 0;
-        pestEndNanos = 0;
-        cachedComposterSec = -1;
-        cachedComposterString = null;
-        cachedPestSec = -1;
-        cachedPestString = null;
-    }
-
-    /** Formats remaining composter time or ready status. */
-    public static String getComposterString(boolean preview) {
-        if (preview) {
-            return "Composter: 4m 12s";
-        }
-        if (composterEndNanos == 0) {
-            return "Composter: Ready";
-        }
-        long remainingNanos = composterEndNanos - System.nanoTime();
-        if (remainingNanos <= 0) {
-            return "Composter: Done!";
-        }
-        long totalSeconds = remainingNanos / 1_000_000_000L;
-        if (totalSeconds == cachedComposterSec && cachedComposterString != null) {
-            return cachedComposterString;
-        }
-        long min = totalSeconds / 60;
-        long sec = totalSeconds % 60;
-        String res = "Composter: " + min + "m " + (sec < 10 ? "0" : "") + sec + "s";
-        cachedComposterSec = totalSeconds;
-        cachedComposterString = res;
-        return res;
-    }
-
-    /** Formats remaining pest spawn timer or ready status. */
-    public static String getPestString(boolean preview) {
-        if (preview) {
-            return "Pest: 2m 45s";
-        }
-        if (pestEndNanos == 0) {
-            return "Pest: Ready";
-        }
-        long remainingNanos = pestEndNanos - System.nanoTime();
-        if (remainingNanos <= 0) {
-            return "Pest: Due!";
-        }
-        long totalSeconds = remainingNanos / 1_000_000_000L;
-        if (totalSeconds == cachedPestSec && cachedPestString != null) {
-            return cachedPestString;
-        }
-        long min = totalSeconds / 60;
-        long sec = totalSeconds % 60;
-        String res = "Pest: " + min + "m " + (sec < 10 ? "0" : "") + sec + "s";
-        cachedPestSec = totalSeconds;
-        cachedPestString = res;
-        return res;
+        cachedDaSec = -1;
+        cachedDaString = null;
     }
 
     /**
-     * Hypixel chat trigger parser.
-     * Sourced triggers:
-     * - "GROSS! A Pest has appeared in Plot - [name]!" (Hypixel Garden Pest spawn announcement)
+     * Calculates the remaining seconds until the next Dark Auction event begins at :55:00 past the hour.
+     * Returns 0 if Dark Auction is currently active (between :55:00 and :59:59).
      */
-    public static void handleChatMessage(String cleanMessage) {
-        if (cleanMessage == null) return;
-        String lower = cleanMessage.toLowerCase(Locale.ROOT);
-        if (lower.contains("a pest has appeared in plot") || lower.contains("gross! a pest has appeared")) {
-            resetPestTimer();
+    public static long getDarkAuctionSecondsUntil(long epochMillis) {
+        long totalSec = epochMillis / 1000L;
+        long secIntoHour = totalSec % 3600L;
+        if (secIntoHour < 0) secIntoHour += 3600L;
+
+        long daStartSec = 55L * 60L; // 3300
+        if (secIntoHour >= daStartSec) {
+            return 0L; // Active
+        }
+        return daStartSec - secIntoHour;
+    }
+
+    /**
+     * Formats the active or upcoming Dark Auction timer for the HUD.
+     * Uses second-based string caching to prevent garbage allocation on the render thread.
+     */
+    public static String getDarkAuctionString(boolean preview) {
+        if (preview) {
+            return "Dark Auction: 42m 15s";
+        }
+        long nowMillis = System.currentTimeMillis();
+        long nowSec = nowMillis / 1000L;
+        if (nowSec == cachedDaSec && cachedDaString != null) {
+            return cachedDaString;
+        }
+
+        String res = formatDarkAuction(nowMillis);
+        cachedDaSec = nowSec;
+        cachedDaString = res;
+        return res;
+    }
+
+    /** Formats Dark Auction status for a given epoch timestamp. */
+    static String formatDarkAuction(long epochMillis) {
+        long totalSec = epochMillis / 1000L;
+        long secIntoHour = totalSec % 3600L;
+        if (secIntoHour < 0) secIntoHour += 3600L;
+
+        long daStartSec = 55L * 60L; // 3300
+        if (secIntoHour >= daStartSec) {
+            long remActive = 3600L - secIntoHour;
+            long remMin = remActive / 60L;
+            long remSec = remActive % 60L;
+            return "Dark Auction: ACTIVE (" + remMin + "m " + (remSec < 10 ? "0" : "") + remSec + "s)";
+        } else {
+            long remaining = daStartSec - secIntoHour;
+            long min = remaining / 60L;
+            long sec = remaining % 60L;
+            return "Dark Auction: " + min + "m " + (sec < 10 ? "0" : "") + sec + "s";
         }
     }
+
+    /** Chat trigger receiver (kept for HypixelMods event hook compatibility). */
+    public static void handleChatMessage(String cleanMessage) {}
 }

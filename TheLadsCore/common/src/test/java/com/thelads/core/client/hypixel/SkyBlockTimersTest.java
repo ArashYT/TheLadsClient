@@ -15,48 +15,46 @@ class SkyBlockTimersTest {
     }
 
     @Test
-    void testComposterLifecycle() {
-        assertEquals("Composter: 4m 12s", SkyBlockTimers.getComposterString(true));
-
-        assertEquals("Composter: Ready", SkyBlockTimers.getComposterString(false));
-
-        SkyBlockTimers.setComposterRemainingSeconds(120);
-        String s = SkyBlockTimers.getComposterString(false);
-        assertTrue(s.contains("Composter: 1m") || s.contains("Composter: 2m"), "Expected ~2m remaining");
-
-        SkyBlockTimers.setComposterRemainingSeconds(0);
-        assertEquals("Composter: Ready", SkyBlockTimers.getComposterString(false));
+    void testDarkAuctionPreview() {
+        assertEquals("Dark Auction: 42m 15s", SkyBlockTimers.getDarkAuctionString(true));
     }
 
     @Test
-    void testPestLifecycle() {
-        assertEquals("Pest: 2m 45s", SkyBlockTimers.getPestString(true));
+    void testDarkAuctionCalculation() {
+        // Epoch 0 is 1970-01-01 00:00:00 UTC (0 seconds into the hour)
+        // Next DA is at 55:00 (3300 seconds)
+        assertEquals(3300L, SkyBlockTimers.getDarkAuctionSecondsUntil(0L));
+        assertEquals("Dark Auction: 55m 00s", SkyBlockTimers.formatDarkAuction(0L));
 
-        assertEquals("Pest: Ready", SkyBlockTimers.getPestString(false));
+        // 30 minutes into the hour (1800 seconds) -> 25 minutes (1500 seconds) remaining
+        assertEquals(1500L, SkyBlockTimers.getDarkAuctionSecondsUntil(1800_000L));
+        assertEquals("Dark Auction: 25m 00s", SkyBlockTimers.formatDarkAuction(1800_000L));
 
-        SkyBlockTimers.resetPestTimer();
-        String s = SkyBlockTimers.getPestString(false);
-        assertTrue(s.contains("Pest: 9m") || s.contains("Pest: 10m"), "Expected ~10m remaining on reset");
-    }
+        // 54 minutes 30 seconds (3270 seconds) -> 30 seconds remaining
+        assertEquals(30L, SkyBlockTimers.getDarkAuctionSecondsUntil(3270_000L));
+        assertEquals("Dark Auction: 0m 30s", SkyBlockTimers.formatDarkAuction(3270_000L));
 
-    @Test
-    void testChatTriggers() {
-        // Hypixel SkyBlock Garden pest spawn announcement
-        SkyBlockTimers.handleChatMessage("GROSS! A Pest has appeared in Plot - 4! CLICK HERE to teleport to the plot!");
-        String pest = SkyBlockTimers.getPestString(false);
-        assertTrue(pest.contains("Pest: 9m") || pest.contains("Pest: 10m"));
+        // Exactly at 55:00 (3300 seconds) -> Active (0s until start)
+        assertEquals(0L, SkyBlockTimers.getDarkAuctionSecondsUntil(3300_000L));
+        assertEquals("Dark Auction: ACTIVE (5m 00s)", SkyBlockTimers.formatDarkAuction(3300_000L));
+
+        // At 58:15 (3495 seconds) -> Active (1m 45s remaining)
+        assertEquals(0L, SkyBlockTimers.getDarkAuctionSecondsUntil(3495_000L));
+        assertEquals("Dark Auction: ACTIVE (1m 45s)", SkyBlockTimers.formatDarkAuction(3495_000L));
+
+        // At 59:59 (3599 seconds) -> Active (0m 01s remaining)
+        assertEquals(0L, SkyBlockTimers.getDarkAuctionSecondsUntil(3599_000L));
+        assertEquals("Dark Auction: ACTIVE (0m 01s)", SkyBlockTimers.formatDarkAuction(3599_000L));
+
+        // At 01:00:00 (3600 seconds) -> Cycles back to 55m 00s until next DA
+        assertEquals(3300L, SkyBlockTimers.getDarkAuctionSecondsUntil(3600_000L));
+        assertEquals("Dark Auction: 55m 00s", SkyBlockTimers.formatDarkAuction(3600_000L));
     }
 
     @Test
     void testCachedStrings() {
-        SkyBlockTimers.setComposterRemainingSeconds(100);
-        String comp1 = SkyBlockTimers.getComposterString(false);
-        String comp2 = SkyBlockTimers.getComposterString(false);
-        assertSame(comp1, comp2, "Repeated calls within same second should return identical cached string reference");
-
-        SkyBlockTimers.resetPestTimer();
-        String pest1 = SkyBlockTimers.getPestString(false);
-        String pest2 = SkyBlockTimers.getPestString(false);
-        assertSame(pest1, pest2, "Repeated calls within same second should return identical cached string reference");
+        String s1 = SkyBlockTimers.getDarkAuctionString(false);
+        String s2 = SkyBlockTimers.getDarkAuctionString(false);
+        assertSame(s1, s2, "Repeated calls within same second should return identical cached string reference");
     }
 }

@@ -339,7 +339,7 @@ public class VanillaGameBridge26 implements LadsGameBridge {
                     mc.setScreenAndShow(parent);
                 }, uri, false));
             } catch (Throwable t) {
-                openUrl(url);
+                // Fail closed: do not open url without confirmation
             }
         });
     }

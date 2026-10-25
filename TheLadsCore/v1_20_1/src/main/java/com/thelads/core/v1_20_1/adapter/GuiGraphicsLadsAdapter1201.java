@@ -384,7 +384,12 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
         }
     }
 
-@Override
+    @Override
+    public boolean canDrawMap() {
+        return true;
+    }
+
+    @Override
     public void drawMap(int x, int y, int size, boolean preview) {
         if (preview) {
             com.thelads.core.client.hud.DungeonMapHudElement.drawDungeonPreview(this, x, y, size);
