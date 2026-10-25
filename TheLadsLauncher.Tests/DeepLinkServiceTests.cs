@@ -89,4 +89,27 @@ public class DeepLinkServiceTests
     {
         Assert.Equal(expected, DeepLinkService.IsValidPort(port));
     }
+
+    [Fact]
+    public void OnlyAnInstalledLauncherOwnsLinks_AndRepairsAKeyPointingElsewhere()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "lads-deeplink-" + Guid.NewGuid().ToString("N"));
+        string current = Directory.CreateDirectory(Path.Combine(root, "current")).FullName;
+        try
+        {
+            string exe = Path.Combine(current, "TheLadsLauncher.exe"), stub = Path.Combine(root, "The Lads Client.exe");
+            File.WriteAllText(exe, ""); File.WriteAllText(stub, "");
+            Assert.Null(DeepLinkService.InstalledStub(exe)); // no Update.exe: a dev/QA build
+            File.WriteAllText(Path.Combine(root, "Update.exe"), "");
+            Assert.Equal(stub, DeepLinkService.InstalledStub(exe));
+            File.WriteAllText(Path.Combine(root, ".portable"), "");
+            Assert.Null(DeepLinkService.InstalledStub(exe)); // portable
+            Assert.Null(DeepLinkService.InstalledStub(@"C:\dev\bin\Debug\TheLadsLauncher.exe"));
+
+            Assert.True(DeepLinkService.NeedsRegistration(null, stub));
+            Assert.True(DeepLinkService.NeedsRegistration("\"C:\\Temp\\wqa\\TheLadsLauncher.exe\" \"%1\"", stub));
+            Assert.False(DeepLinkService.NeedsRegistration("\"" + stub + "\" \"%1\"", stub));
+        }
+        finally { Directory.Delete(root, true); }
+    }
 }
