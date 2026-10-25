@@ -1,17 +1,46 @@
 package com.thelads.core.client;
 
 import java.awt.image.BufferedImage;
+import java.net.InetAddress;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LinkPreviewTest {
+    @Test
+    void defaultDisabled() {
+        assertFalse(LinkPreview.isEnabled(), "Link preview module must default to disabled");
+    }
+
     @Test
     void urlExtraction() {
         assertNull(LinkPreview.extractUrl(null));
         assertNull(LinkPreview.extractUrl(""));
         assertNull(LinkPreview.extractUrl("hello world with no links"));
         assertEquals("https://example.com/image.png", LinkPreview.extractUrl("Look at this: https://example.com/image.png it is cool!"));
-        assertEquals("http://test.org/path?q=1#frag", LinkPreview.extractUrl("link http://test.org/path?q=1#frag"));
+        assertNull(LinkPreview.extractUrl("link http://test.org/path?q=1#frag"), "http:// must not be extracted (https only)");
+    }
+
+    @Test
+    void httpsOnlyEnforcement() {
+        LinkPreview.Entry entry = LinkPreview.request("http://insecure.example.com/test.png", null);
+        assertNotNull(entry);
+        assertEquals(LinkPreview.Status.NOT_ALLOWED, entry.getStatus(), "Non-HTTPS requests must be NOT_ALLOWED");
+    }
+
+    @Test
+    void privateAndLoopbackIpCheck() throws Exception {
+        assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("127.0.0.1")), "127.0.0.1 is loopback");
+        assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("localhost")), "localhost is loopback");
+        assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("10.0.0.1")), "10.0.0.0/8 is private");
+        assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("192.168.1.100")), "192.168.0.0/16 is private");
+        assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("172.16.5.1")), "172.16.0.0/12 is private");
+        assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("169.254.1.1")), "169.254.0.0/16 is link-local");
+        assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("100.64.0.1")), "100.64.0.0/10 is CGNAT");
+        assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("0.0.0.0")), "0.0.0.0 is any-local");
+        assertFalse(LinkPreview.isSafePublicAddress(InetAddress.getByName("::1")), "::1 is IPv6 loopback");
+
+        assertTrue(LinkPreview.isSafePublicAddress(InetAddress.getByName("8.8.8.8")), "8.8.8.8 is public");
+        assertTrue(LinkPreview.isSafePublicAddress(InetAddress.getByName("1.1.1.1")), "1.1.1.1 is public");
     }
 
     @Test

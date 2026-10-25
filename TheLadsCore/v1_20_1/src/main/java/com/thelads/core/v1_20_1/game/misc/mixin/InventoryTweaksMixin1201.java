@@ -17,6 +17,10 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.ShulkerBoxMenu;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Inventory;
@@ -57,8 +61,25 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
     private InventoryTweaksMixin1201(Component title) { super(title); }
 
     @Unique
+    private boolean lads$isStorageMenu() {
+        return this.menu instanceof ChestMenu 
+            || this.menu instanceof ShulkerBoxMenu 
+            || this.menu instanceof InventoryMenu;
+    }
+
+    @Unique
+    private boolean lads$hasFocusedTextBox() {
+        if (ladsSearch != null && ladsSearch.isFocused()) return true;
+        GuiEventListener focused = getFocused();
+        if (focused instanceof EditBox editBox) {
+            return editBox.isFocused();
+        }
+        return false;
+    }
+
+    @Unique
     private boolean lads$tweaked() {
-        return !((Object) this instanceof CreativeModeInventoryScreen);
+        return !((Object) this instanceof CreativeModeInventoryScreen) && lads$isStorageMenu();
     }
 
     @Inject(method = "init", at = @At("TAIL"), require = 1)
@@ -150,7 +171,7 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
             cir.setReturnValue(true);
             return;
         }
-        if (key == GLFW.GLFW_KEY_R && (ladsSearch == null || !ladsSearch.isFocused()) && ContainerSorting.isAllowed() && lads$tweaked()) {
+        if (key == GLFW.GLFW_KEY_R && !lads$hasFocusedTextBox() && ContainerSorting.isAllowed() && lads$tweaked()) {
             lads$sortContainer();
             cir.setReturnValue(true);
             return;
@@ -204,19 +225,28 @@ public abstract class InventoryTweaksMixin1201 extends Screen {
 
     @Unique
     private void lads$sortContainer() {
-        if (!ContainerSorting.isAllowed() || !lads$sortQueue.isEmpty() || minecraft == null || minecraft.player == null || !menu.getCarried().isEmpty()) return;
+        if (!ContainerSorting.isAllowed() || !lads$isStorageMenu() || !lads$sortQueue.isEmpty() || minecraft == null || minecraft.player == null || !menu.getCarried().isEmpty()) return;
 
         List<Slot> containerSlots = new ArrayList<>();
         List<Slot> playerStorageSlots = new ArrayList<>();
 
-        for (Slot slot : menu.slots) {
-            if (!(slot.container instanceof Inventory)) {
-                containerSlots.add(slot);
-            } else {
-                if (slot.getContainerSlot() >= 9 && slot.getContainerSlot() < 36) {
+        if (this.menu instanceof ChestMenu || this.menu instanceof ShulkerBoxMenu) {
+            for (Slot slot : menu.slots) {
+                if (!(slot.container instanceof Inventory)) {
+                    containerSlots.add(slot);
+                } else if (slot.getContainerSlot() >= 9 && slot.getContainerSlot() < 36) {
                     playerStorageSlots.add(slot);
                 }
             }
+        } else if (this.menu instanceof InventoryMenu) {
+            // Player inventory: main inventory only (slots 9..35); never crafting grid, result, armor, offhand
+            for (Slot slot : menu.slots) {
+                if (slot.container instanceof Inventory && slot.getContainerSlot() >= 9 && slot.getContainerSlot() < 36) {
+                    playerStorageSlots.add(slot);
+                }
+            }
+        } else {
+            return;
         }
 
         List<Slot> targetSlots = null;

@@ -10,6 +10,7 @@
   "client": [
     "GuiConfirmOpenLinkMixin189",
     "GuiEnchantmentQolMixin189",
+    "GuiRepairAccessor189",
     "GuiScaleQolMixin189",
     "GuiScreenServerListAccessor189",
     "MinecraftQolMixin189",

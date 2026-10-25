@@ -235,25 +235,17 @@ public final class NativeFeatures {
         ItemStack chestStack = chestSlot.getItem();
         boolean wearingElytra = chestStack.is(net.minecraft.world.item.Items.ELYTRA);
 
-        int matchSlot = -1;
+        java.util.List<String> slotItemIds = new java.util.ArrayList<>(36);
         for (int i = 9; i <= 44; i++) {
             net.minecraft.world.inventory.Slot s = player.inventoryMenu.getSlot(i);
-            if (!s.hasItem()) continue;
-            if (com.thelads.core.client.InventoryTweaks.locked(s.getContainerSlot())) continue;
-            ItemStack item = s.getItem();
-            if (wearingElytra) {
-                net.minecraft.world.entity.EquipmentSlot equip = player.getEquipmentSlotForItem(item);
-                if (equip == net.minecraft.world.entity.EquipmentSlot.CHEST && !item.is(net.minecraft.world.item.Items.ELYTRA)) {
-                    matchSlot = i;
-                    break;
-                }
+            if (!s.hasItem() || com.thelads.core.client.InventoryTweaks.locked(s.getContainerSlot())) {
+                slotItemIds.add(null);
             } else {
-                if (item.is(net.minecraft.world.item.Items.ELYTRA)) {
-                    matchSlot = i;
-                    break;
-                }
+                slotItemIds.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem().getItem()).toString());
             }
         }
+        int foundIdx = com.thelads.core.client.ElytraSwap.findSwapSlot(wearingElytra, slotItemIds);
+        int matchSlot = foundIdx != -1 ? 9 + foundIdx : -1;
 
         if (matchSlot != -1) {
             boolean hasChest = !chestStack.isEmpty();

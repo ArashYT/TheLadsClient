@@ -12,7 +12,10 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.gui.inventory.GuiContainerCreative;
+import net.minecraft.client.gui.inventory.GuiChest;
 import net.minecraft.client.gui.inventory.GuiInventory;
+import net.minecraft.client.gui.GuiRepair;
+import com.thelads.core.v1_8_9.qol.mixin.GuiRepairAccessor189;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.inventory.Container;
@@ -56,8 +59,25 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
     }
 
     @Unique
+    private boolean lads$isStorageMenu() {
+        return (Object) this instanceof GuiChest || (Object) this instanceof GuiInventory;
+    }
+
+    @Unique
+    private boolean lads$hasFocusedTextBox() {
+        if (ladsSearch != null && ladsSearch.isFocused()) return true;
+        if ((Object) this instanceof GuiRepair) {
+            try {
+                net.minecraft.client.gui.GuiTextField nameField = ((GuiRepairAccessor189) this).lads$getNameField();
+                if (nameField != null && nameField.isFocused()) return true;
+            } catch (Throwable ignored) {}
+        }
+        return false;
+    }
+
+    @Unique
     private boolean ladsTweaked() {
-        return !((Object) this instanceof GuiContainerCreative);
+        return !((Object) this instanceof GuiContainerCreative) && lads$isStorageMenu();
     }
 
     @Inject(method = "initGui", at = @At("TAIL"), require = 1)
@@ -147,7 +167,7 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
             ci.cancel();
             return;
         }
-        if (key == Keyboard.KEY_R && !lads$typing() && ContainerSorting.isAllowed() && ladsTweaked()) {
+        if (key == Keyboard.KEY_R && !lads$hasFocusedTextBox() && ContainerSorting.isAllowed() && ladsTweaked()) {
             lads$sortContainer();
             ci.cancel();
             return;
@@ -202,21 +222,31 @@ public abstract class InventoryTweaksMixin189 extends GuiScreen implements ChatT
 
     @Unique
     private void lads$sortContainer() {
-        if (!ContainerSorting.isAllowed() || !lads$sortQueue.isEmpty() || mc.thePlayer == null || mc.thePlayer.inventory.getItemStack() != null) return;
+        if (!ContainerSorting.isAllowed() || !lads$isStorageMenu() || !lads$sortQueue.isEmpty() || mc.thePlayer == null || mc.thePlayer.inventory.getItemStack() != null) return;
 
         List<Slot> containerSlots = new ArrayList<Slot>();
         List<Slot> playerStorageSlots = new ArrayList<Slot>();
 
-        for (Object obj : inventorySlots.inventorySlots) {
-            if (!(obj instanceof Slot)) continue;
-            Slot slot = (Slot) obj;
-            if (!(slot.inventory instanceof InventoryPlayer)) {
-                containerSlots.add(slot);
-            } else {
-                if (slot.getSlotIndex() >= 9 && slot.getSlotIndex() < 36) {
+        if ((Object) this instanceof GuiChest) {
+            for (Object obj : inventorySlots.inventorySlots) {
+                if (!(obj instanceof Slot)) continue;
+                Slot slot = (Slot) obj;
+                if (slot.inventory != mc.thePlayer.inventory) {
+                    containerSlots.add(slot);
+                } else if (slot.getSlotIndex() >= 9 && slot.getSlotIndex() < 36) {
                     playerStorageSlots.add(slot);
                 }
             }
+        } else if ((Object) this instanceof GuiInventory) {
+            for (Object obj : inventorySlots.inventorySlots) {
+                if (!(obj instanceof Slot)) continue;
+                Slot slot = (Slot) obj;
+                if (slot.inventory instanceof InventoryPlayer && slot.getSlotIndex() >= 9 && slot.getSlotIndex() < 36) {
+                    playerStorageSlots.add(slot);
+                }
+            }
+        } else {
+            return;
         }
 
         List<Slot> targetSlots = null;

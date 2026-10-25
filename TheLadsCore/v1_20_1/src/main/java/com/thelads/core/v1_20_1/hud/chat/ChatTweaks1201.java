@@ -173,6 +173,28 @@ public final class ChatTweaks1201 {
     }
 
     /** Copy and Delete Buttons (ChatScreenTweaksMixin1201): Copy puts the message's text on the clipboard, Delete takes it out of the chat. */
+    public static String toFormatted(Component component) {
+        if (component == null) return "";
+        StringBuilder sb = new StringBuilder();
+        component.visit((style, text) -> {
+            if (text.isEmpty()) return Optional.empty();
+            sb.append("§r");
+            if (style != null) {
+                if (style.getColor() != null) {
+                    sb.append('§').append(com.thelads.core.client.LegacyText.code(style.getColor().getValue()));
+                }
+                if (style.isBold()) sb.append("§l");
+                if (style.isItalic()) sb.append("§o");
+                if (style.isUnderlined()) sb.append("§n");
+                if (style.isStrikethrough()) sb.append("§m");
+                if (style.isObfuscated()) sb.append("§k");
+            }
+            sb.append(text);
+            return Optional.empty();
+        }, Style.EMPTY);
+        return sb.toString();
+    }
+
     public static void messageButton(GuiMessage message, int button) {
         Minecraft mc = Minecraft.getInstance();
         if (button == 0) {
@@ -180,7 +202,7 @@ public final class ChatTweaks1201 {
             return;
         }
         if (button == 2) {
-            ChatTweaks.exportChatImage(message.content().getString(), com.thelads.core.shared.SharedContentPaths.screenshotsDir());
+            ChatTweaks.exportChatImage(toFormatted(message.content()), com.thelads.core.shared.SharedContentPaths.screenshotsDir());
             return;
         }
         Access chat = (Access) mc.gui.getChat();

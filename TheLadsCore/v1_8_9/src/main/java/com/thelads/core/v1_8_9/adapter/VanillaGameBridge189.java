@@ -531,7 +531,13 @@ public class VanillaGameBridge189 implements LadsGameBridge {
 
     @Override
     public void displayChatMessage(String text) {
-        if (mc().thePlayer != null) mc().thePlayer.addChatMessage(new net.minecraft.util.ChatComponentText(text));
+        if (mc().isCallingFromMinecraftThread()) {
+            if (mc().thePlayer != null) mc().thePlayer.addChatMessage(new net.minecraft.util.ChatComponentText(text));
+        } else {
+            mc().addScheduledTask(() -> {
+                if (mc().thePlayer != null) mc().thePlayer.addChatMessage(new net.minecraft.util.ChatComponentText(text));
+            });
+        }
     }
 
     public List<String> getOnlinePlayerNames() {
@@ -549,8 +555,16 @@ public class VanillaGameBridge189 implements LadsGameBridge {
 
     @Override
     public void showToast(String title, String message) {
-        if (mc().thePlayer != null) {
-            mc().thePlayer.addChatMessage(new net.minecraft.util.ChatComponentText("§c[" + title + "] §f" + message));
+        if (mc().isCallingFromMinecraftThread()) {
+            if (mc().thePlayer != null) {
+                mc().thePlayer.addChatMessage(new net.minecraft.util.ChatComponentText("§c[" + title + "] §f" + message));
+            }
+        } else {
+            mc().addScheduledTask(() -> {
+                if (mc().thePlayer != null) {
+                    mc().thePlayer.addChatMessage(new net.minecraft.util.ChatComponentText("§c[" + title + "] §f" + message));
+                }
+            });
         }
     }
 

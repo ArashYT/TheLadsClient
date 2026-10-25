@@ -18,6 +18,9 @@ abstract class GuiQolMixin26 {
 
     @Inject(method = "setScreen", at = @At("HEAD"))
     private void lads$containerClosing(Screen next, CallbackInfo ci) {
+        if (screen instanceof net.minecraft.client.gui.screens.ConfirmLinkScreen && next != screen) {
+            ConfirmLinkScreenMixin26.releaseActiveTexture();
+        }
         if (!(screen instanceof AbstractContainerScreen<?>) || next == screen) return;
         Minecraft mc = Minecraft.getInstance();
         KeepCursor.closed(mc.mouseHandler.xpos(), mc.mouseHandler.ypos(), System.nanoTime());
