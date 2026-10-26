@@ -17,6 +17,9 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <!-- Horizon mods (HorizonEngine.InstallLadsMods) are copied next to the launcher, not embedded. -->
+    <AvaloniaResource Remove="Assets\horizon\**" />
+    <Content Include="Assets\horizon\*.hmod" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\THIRD_PARTY_NOTICES.txt" Link="THIRD_PARTY_NOTICES.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="..\docs\releases\*.md" Link="release-notes\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="game-mods\**\*.jar" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

@@ -154,6 +154,7 @@ public static class HorizonEngine
     {
         string home = Home(baseDirectory);
         Directory.CreateDirectory(home);
+        InstallLadsMods(home, Path.Combine(AppContext.BaseDirectory, "Assets", "horizon", "lads_hud.hmod"));
         var psi = new ProcessStartInfo(Path.Combine(game, "horizon-client.exe"))
         {
             WorkingDirectory = home,
@@ -174,6 +175,28 @@ public static class HorizonEngine
             psi.ArgumentList.Add(WriteSessionFile(home, session));
         }
         return Process.Start(psi) ?? throw new InvalidOperationException("Could not start Horizon.");
+    }
+
+    /// <summary>
+    /// Copies the bundled Lads HUD mod into Horizon's mod folder when missing or changed, and turns it on in horizon-mods.txt the
+    /// first time only: a mod.lads_hud line (true or false) already there is the player's choice and stays.
+    /// </summary>
+    public static void InstallLadsMods(string home, string bundledHmod)
+    {
+        if (!File.Exists(bundledHmod)) return;
+        string dir = Path.Combine(home, "horizon-mods");
+        string target = Path.Combine(dir, "lads_hud.hmod");
+        byte[] bytes = File.ReadAllBytes(bundledHmod);
+        if (!File.Exists(target) || !SHA256.HashData(File.ReadAllBytes(target)).AsSpan().SequenceEqual(SHA256.HashData(bytes)))
+        {
+            Directory.CreateDirectory(dir);
+            File.WriteAllBytes(target + ".part", bytes);
+            File.Move(target + ".part", target, true);
+        }
+        string settings = Path.Combine(home, "horizon-mods.txt");
+        string text = File.Exists(settings) ? File.ReadAllText(settings) : "";
+        if (!Array.Exists(text.Split('\n'), line => line.TrimStart().StartsWith("mod.lads_hud:", StringComparison.Ordinal)))
+            File.AppendAllText(settings, (text.Length == 0 || text.EndsWith('\n') ? "" : "\n") + "mod.lads_hud:true\n");
     }
 
     public static string WriteSessionFile(string home, MSession session)

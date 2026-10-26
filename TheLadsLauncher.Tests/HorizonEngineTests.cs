@@ -42,4 +42,54 @@ public class HorizonEngineTests : IDisposable
         Assert.Equal("msa", root.GetProperty("user_type").GetString());
         Assert.Equal("2535", root.GetProperty("xuid").GetString());
     }
+
+    string Bundled(string content)
+    {
+        string file = Path.Combine(_home, "bundle", "lads_hud.hmod");
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        File.WriteAllText(file, content);
+        return file;
+    }
+
+    [Fact]
+    public void InstallLadsMods_FirstCall_CopiesTheModAndTurnsItOn()
+    {
+        HorizonEngine.InstallLadsMods(_home, Bundled("hmod-v1"));
+
+        Assert.Equal("hmod-v1", File.ReadAllText(Path.Combine(_home, "horizon-mods", "lads_hud.hmod")));
+        Assert.Equal("mod.lads_hud:true\n", File.ReadAllText(Path.Combine(_home, "horizon-mods.txt")));
+    }
+
+    [Fact]
+    public void InstallLadsMods_KeepsThePlayersChoiceAndOtherLines()
+    {
+        string settings = Path.Combine(_home, "horizon-mods.txt");
+        Directory.CreateDirectory(_home);
+        File.WriteAllText(settings, "mod.other:true\nmod.lads_hud:false");
+        string bundled = Bundled("hmod-v1");
+
+        HorizonEngine.InstallLadsMods(_home, bundled);
+        HorizonEngine.InstallLadsMods(_home, bundled);
+
+        Assert.Equal("mod.other:true\nmod.lads_hud:false", File.ReadAllText(settings));
+    }
+
+    [Fact]
+    public void InstallLadsMods_ReplacesAChangedCopy()
+    {
+        HorizonEngine.InstallLadsMods(_home, Bundled("hmod-v1"));
+        HorizonEngine.InstallLadsMods(_home, Bundled("hmod-v2"));
+
+        string installed = Path.Combine(_home, "horizon-mods", "lads_hud.hmod");
+        Assert.Equal("hmod-v2", File.ReadAllText(installed));
+        Assert.False(File.Exists(installed + ".part"));
+    }
+
+    [Fact]
+    public void InstallLadsMods_MissingBundledFile_DoesNothing()
+    {
+        HorizonEngine.InstallLadsMods(_home, Path.Combine(_home, "nope", "lads_hud.hmod"));
+
+        Assert.False(Directory.Exists(_home));
+    }
 }
