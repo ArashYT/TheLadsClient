@@ -122,4 +122,100 @@ public class HorizonEngineTests : IDisposable
 
         Assert.False(Directory.Exists(_home));
     }
+
+    [Fact]
+    public void NewCrashReports_ReturnsOnlyNewClientCrashFiles_OldestFirst()
+    {
+        string crashDir = Path.Combine(_home, "crash-reports");
+        Directory.CreateDirectory(crashDir);
+
+        DateTime baseTime = DateTime.UtcNow.AddMinutes(-30);
+        string oldReport = Path.Combine(crashDir, "crash-2026-10-26_10.00.00-client.txt");
+        File.WriteAllText(oldReport, "old crash");
+        File.SetLastWriteTimeUtc(oldReport, baseTime.AddMinutes(-5));
+
+        DateTime startTime = baseTime;
+
+        string newReport1 = Path.Combine(crashDir, "crash-2026-10-26_10.05.00-client.txt");
+        File.WriteAllText(newReport1, "new crash 1");
+        File.SetLastWriteTimeUtc(newReport1, startTime.AddMinutes(5));
+
+        string newReport2 = Path.Combine(crashDir, "crash-2026-10-26_10.10.00-client.txt");
+        File.WriteAllText(newReport2, "new crash 2");
+        File.SetLastWriteTimeUtc(newReport2, startTime.AddMinutes(10));
+
+        // Files that should be ignored because of pattern
+        string serverReport = Path.Combine(crashDir, "crash-2026-10-26_10.08.00-server.txt");
+        File.WriteAllText(serverReport, "server crash");
+        File.SetLastWriteTimeUtc(serverReport, startTime.AddMinutes(8));
+
+        string otherFile = Path.Combine(crashDir, "hs_err_pid1234.log");
+        File.WriteAllText(otherFile, "hs_err");
+        File.SetLastWriteTimeUtc(otherFile, startTime.AddMinutes(8));
+
+        var result = HorizonEngine.NewCrashReports(_home, startTime);
+
+        Assert.Equal(2, result.Length);
+        Assert.Equal(newReport1, result[0]);
+        Assert.Equal(newReport2, result[1]);
+    }
+
+    [Fact]
+    public void NewCrashReports_MissingDirectory_ReturnsEmpty()
+    {
+        var result = HorizonEngine.NewCrashReports(Path.Combine(_home, "nonexistent"), DateTime.UtcNow);
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task SendNewCrashReports_WhenDisabled_SendsZero()
+    {
+        string crashDir = Path.Combine(_home, "crash-reports");
+        Directory.CreateDirectory(crashDir);
+        DateTime startTime = DateTime.UtcNow.AddMinutes(-5);
+
+        string report = Path.Combine(crashDir, "crash-2026-10-26_12.00.00-client.txt");
+        File.WriteAllText(report, "crash content");
+        File.SetLastWriteTimeUtc(report, startTime.AddMinutes(1));
+
+        int callCount = 0;
+        int sent = await HorizonEngine.SendNewCrashReportsAsync(
+            _home,
+            startTime,
+            1,
+            isEnabled: () => false,
+            reportSender: r => { callCount++; return System.Threading.Tasks.Task.FromResult<string?>(null); });
+
+        Assert.Equal(0, sent);
+        Assert.Equal(0, callCount);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task SendNewCrashReports_WhenEnabled_SendsAllNewReports()
+    {
+        string crashDir = Path.Combine(_home, "crash-reports");
+        Directory.CreateDirectory(crashDir);
+        DateTime startTime = DateTime.UtcNow.AddMinutes(-5);
+
+        string report1 = Path.Combine(crashDir, "crash-2026-10-26_12.00.00-client.txt");
+        File.WriteAllText(report1, "crash 1");
+        File.SetLastWriteTimeUtc(report1, startTime.AddMinutes(1));
+
+        string report2 = Path.Combine(crashDir, "crash-2026-10-26_12.02.00-client.txt");
+        File.WriteAllText(report2, "crash 2");
+        File.SetLastWriteTimeUtc(report2, startTime.AddMinutes(2));
+
+        var sentFiles = new System.Collections.Generic.List<string>();
+        int sent = await HorizonEngine.SendNewCrashReportsAsync(
+            _home,
+            startTime,
+            1,
+            isEnabled: () => true,
+            reportSender: r => { sentFiles.Add(r); return System.Threading.Tasks.Task.FromResult<string?>(null); });
+
+        Assert.Equal(2, sent);
+        Assert.Equal(2, sentFiles.Count);
+        Assert.Equal(report1, sentFiles[0]);
+        Assert.Equal(report2, sentFiles[1]);
+    }
 }
