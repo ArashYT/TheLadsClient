@@ -243,7 +243,7 @@ public static class HorizonEngine
             }
             else
             {
-                await CrashReporter.SendAsync(home, home, MinecraftVersion, exitCode, report).ConfigureAwait(false);
+                await CrashReporter.SendAsync(home, home, MinecraftVersion + "-horizon", exitCode, report).ConfigureAwait(false);
             }
             sent++;
         }
