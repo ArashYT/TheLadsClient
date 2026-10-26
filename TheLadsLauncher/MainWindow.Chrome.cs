@@ -148,8 +148,15 @@ public partial class MainWindow
         _settingsSaveTimer.Tick += (_, _) => { _settingsSaveTimer.Stop(); SaveSettingsFromUi(); };
         foreach (var box in new[] { CloseToTrayCheckbox, KeepLauncherOpenCheckbox, KeepClosedOnExitCheckbox, AutoLaunchCheckbox, AutoFixCrashesCheckbox,
                      AutoRelaunchOnCrashCheckbox, AutoRejoinServerCheckbox, MultiInstanceCheckbox, FullscreenOnLaunchCheckbox, QuickLaunchCheckbox,
-                     SyncScreenshotsCheckbox, ParticleCheckbox, DiscordPresenceCheckbox, SendCrashReportsCheckbox, SendUsageStatsCheckbox })
+                     SyncScreenshotsCheckbox, ParticleCheckbox, DiscordPresenceCheckbox, SendCrashReportsCheckbox, SendUsageStatsCheckbox, HorizonCheckbox })
             box.IsCheckedChanged += (_, _) => ScheduleSettingsSave();
+        HorizonCheckbox.IsCheckedChanged += async (_, _) =>
+        {
+            // Turning it on always asks first; anything but the red button leaves it off.
+            if (HorizonCheckbox.IsChecked == true && !await ShowLadsDialogAsync("⚠️ USE AT YOUR OWN RISK", HorizonEngine.RiskWarning,
+                    "I accept the risk", "Keep it off", danger: true))
+                HorizonCheckbox.IsChecked = false;
+        };
         foreach (var combo in new[] { ThemeSelector, UiScaleSelector, QuickLaunchServerComboBox, GraphicsRendererSelector, OptiFinePackRendererSelector, JavaSelector })
             combo.SelectionChanged += (_, _) => ScheduleSettingsSave();
         foreach (var box in new[] { MicrosoftClientIdTextBox, FabricVersionBox, CurseForgeApiKeyBox, ModrinthApiUrlBox, CurseForgeApiUrlBox, MinecraftVersionOverrideBox })

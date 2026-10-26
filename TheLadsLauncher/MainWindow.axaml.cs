@@ -803,6 +803,7 @@ public partial class MainWindow : Window
         AccountsPage.IsVisible = page == "Accounts";
         SkinsPage.IsVisible = page == "Skins";
         SettingsPage.IsVisible = page == "Settings";
+        if (page == "Settings") _ = ExperimentalAllowedAsync();
         ModsPage.IsVisible = page is "Mods" or "Packs";
         if (page is "Mods" or "Packs")
         {
@@ -2250,6 +2251,40 @@ public partial class MainWindow : Window
 
     private static bool IsDevOfflineAllowed => AuthService.IsDevOfflineAllowed;
 
+    /// <summary>Experimental modes (Horizon): every Dev Launcher build, else only Microsoft accounts invited with
+    /// /experimental_invite on Discord. Shows or hides their Settings section; LaunchGame asks again before using one.</summary>
+    private async Task<bool> ExperimentalAllowedAsync()
+    {
+        bool allowed = IsDevOfflineAllowed;
+        if (!allowed)
+        {
+            var names = GetAccountSummaries().Where(a => a.type == "microsoft").Select(a => a.username).ToList();
+            try { allowed = await ExperiencesService.HasAccessAsync(_pathService.BaseDirectory, HorizonEngine.InviteId, names); }
+            catch { allowed = false; }
+        }
+        ExperimentalSection.IsVisible = allowed;
+        return allowed;
+    }
+
+    /// <summary>Experimental, at the player's own risk: Horizon (26.3 in Rust) instead of the Lads Client. Installs the pinned
+    /// release, prepares it once from the profile's vanilla 26.3 files, then starts it with the signed-in account.</summary>
+    private async Task LaunchHorizonAsync(MinecraftLauncher launcher, string gameDirectory, string javaPath, MSession session, bool offline, CancellationToken token)
+    {
+        void Status(string message) => Dispatcher.UIThread.Post(() => GameLaunchStatusText.Text = StatusText.Text = message);
+        Log($"[Horizon] Experimental: starting Horizon {HorizonEngine.Tag} instead of the Lads Client.");
+        string game = await HorizonEngine.InstallAsync(_pathService.BaseDirectory, Status, token);
+        if (!HorizonEngine.IsPrepared(_pathService.BaseDirectory))
+        {
+            Status("Installing the Minecraft 26.3 files Horizon prepares from...");
+            await launcher.GetAllVersionsAsync(token);
+            await launcher.InstallAsync(HorizonEngine.MinecraftVersion, token);
+        }
+        string resources = await HorizonEngine.PrepareAsync(game, gameDirectory, javaPath, Status, token);
+        var process = HorizonEngine.Start(_pathService.BaseDirectory, game, resources, session, offline);
+        Log($"[Horizon] Started (pid {process.Id}). Log: {Path.Combine(HorizonEngine.Home(_pathService.BaseDirectory), "logs", "latest.log")}");
+        StatusText.Text = "Horizon running (experimental).";
+    }
+
     private async void AddOfflineAccount_Click(object? sender, RoutedEventArgs e)
     {
         if (!IsDevOfflineAllowed || _addingAccount || _launching || _authCts != null) return;
@@ -2492,6 +2527,7 @@ public partial class MainWindow : Window
         KeepLauncherOpenCheckbox.IsChecked = settings.KeepLauncherOpen;
         DiscordPresenceCheckbox.IsChecked = settings.DiscordRichPresence;
         KeepClosedOnExitCheckbox.IsChecked = settings.KeepClosedOnExit;
+        HorizonCheckbox.IsChecked = settings.UseHorizon;
         FullscreenOnLaunchCheckbox.IsChecked = settings.FullscreenOnLaunch;
         GraphicsRendererSelector.SelectedIndex = GraphicsRenderer.Normalize(settings.GraphicsRenderer) == GraphicsRenderer.OpenGl ? 1 : 0;
         OptiFinePackRendererSelector.SelectedIndex = Math.Max(0, Array.IndexOf(OptiFinePackRenderers, settings.OptiFinePackRenderer));
@@ -3128,6 +3164,7 @@ public partial class MainWindow : Window
         settings.DiscordRichPresence = DiscordPresenceCheckbox.IsChecked ?? true;
         DiscordPresence.Enable(settings.DiscordRichPresence);
         settings.KeepClosedOnExit = KeepClosedOnExitCheckbox.IsChecked ?? false;
+        settings.UseHorizon = HorizonCheckbox.IsChecked == true;
         settings.AutoLaunch = AutoLaunchCheckbox.IsChecked ?? false;
         settings.AutoFixCrashes = AutoFixCrashesCheckbox.IsChecked ?? true;
         settings.AutoRelaunchOnCrash = AutoRelaunchOnCrashCheckbox.IsChecked ?? false;
@@ -4853,6 +4890,11 @@ public partial class MainWindow : Window
 
             if (_javaService.GetJavaMajorVersion(launchOpt.JavaPath) != requiredJava)
                 throw new InvalidOperationException($"Select a Java {requiredJava} installation for Minecraft {activeProfile.MinecraftVersion}.");
+            if (settings.UseHorizon && HorizonEngine.Applies(activeProfile.MinecraftVersion) && await ExperimentalAllowedAsync())
+            {
+                await LaunchHorizonAsync(launcher, gameDirectory, launchOpt.JavaPath, session, isOffline, token);
+                return;
+            }
             await RunPackwizInstaller(activeProfile, launchOpt.JavaPath, token);
             await GraphicsRenderer.PrepareAsync(gameDirectory, activeProfile.MinecraftVersion, GraphicsRenderer.Preference(gameDirectory, settings.GraphicsRenderer), message => Dispatcher.UIThread.Post(() => StatusText.Text = message), token);
             await BundledModInstaller.InstallAsync(AppContext.BaseDirectory, gameDirectory, activeProfile.MinecraftVersion, token);

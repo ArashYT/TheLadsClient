@@ -240,16 +240,19 @@ public static class ExperiencesService
     /// Whether an Experience may be shown for these Minecraft usernames. Invite-only Experiences ask the bot, whose list staff
     /// edit live with /smp_invite. The last answer is cached so the card stays right offline; never answered means hidden.
     /// </summary>
-    public static async Task<bool> HasAccessAsync(string baseDirectory, ExperienceDefinition exp, IEnumerable<string> usernames, HttpClient? http = null, CancellationToken token = default)
+    public static async Task<bool> HasAccessAsync(string baseDirectory, ExperienceDefinition exp, IEnumerable<string> usernames, HttpClient? http = null, CancellationToken token = default) =>
+        !exp.InviteOnly || await HasAccessAsync(baseDirectory, exp.Id, usernames, http, token);
+
+    /// <summary>The bot's invite list <paramref name="inviteId"/> (an Experience, or "experimental" for /experimental_invite).</summary>
+    public static async Task<bool> HasAccessAsync(string baseDirectory, string inviteId, IEnumerable<string> usernames, HttpClient? http = null, CancellationToken token = default)
     {
-        if (!exp.InviteOnly) return true;
         var names = usernames.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim().ToLowerInvariant()).Distinct().OrderBy(n => n, StringComparer.Ordinal).ToList();
         if (names.Count == 0) return false;
         var key = string.Join(",", names);
-        var cache = Path.Combine(PackRoot(baseDirectory, exp.Id), "access.json");
+        var cache = Path.Combine(PackRoot(baseDirectory, inviteId), "access.json");
         try
         {
-            var url = AccessEndpoint + Uri.EscapeDataString(exp.Id) + "/access?" + string.Join("&", names.Select(n => "u=" + Uri.EscapeDataString(n)));
+            var url = AccessEndpoint + Uri.EscapeDataString(inviteId) + "/access?" + string.Join("&", names.Select(n => "u=" + Uri.EscapeDataString(n)));
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
             using var doc = JsonDocument.Parse(await (http ?? DefaultHttp).GetStringAsync(url, cts.Token));

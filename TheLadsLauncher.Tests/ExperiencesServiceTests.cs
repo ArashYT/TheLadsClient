@@ -581,6 +581,16 @@ public class ExperiencesServiceTests : IDisposable
         Assert.False(await ExperiencesService.HasAccessAsync(_tempDir, exp, new[] { "mallory" }, offline));
     }
 
+    [Fact]
+    public async Task ExperimentalModes_AskTheExperimentalInviteList()
+    {
+        var routes = new RouteHandler();
+        routes.Add(ExperiencesService.AccessEndpoint + "experimental/access?u=alice", Encoding.UTF8.GetBytes("{\"allowed\":true}"));
+        Assert.True(await ExperiencesService.HasAccessAsync(_tempDir, HorizonEngine.InviteId, new[] { "Alice" }, new HttpClient(routes)));
+        Assert.False(await ExperiencesService.HasAccessAsync(_tempDir, HorizonEngine.InviteId, Array.Empty<string>(), new HttpClient(routes)));
+        Assert.False(await ExperiencesService.HasAccessAsync(_tempDir, HorizonEngine.InviteId, new[] { "bob" }, new HttpClient(new RouteHandler())));
+    }
+
     private sealed class RouteHandler : HttpMessageHandler
     {
         private readonly System.Collections.Generic.Dictionary<string, byte[]> _routes = new(StringComparer.OrdinalIgnoreCase);
