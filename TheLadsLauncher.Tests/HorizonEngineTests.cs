@@ -26,6 +26,36 @@ public class HorizonEngineTests : IDisposable
         Assert.False(new LauncherSettings().UseHorizon);
     }
 
+    string DropLadsDevExe()
+    {
+        string exe = HorizonEngine.LadsDevExe(_home);
+        Directory.CreateDirectory(Path.GetDirectoryName(exe)!);
+        File.WriteAllText(exe, "exe");
+        return exe;
+    }
+
+    [Fact]
+    public void ClientExe_ReleaseBuild_IgnoresADroppedInLadsExe()
+    {
+        DropLadsDevExe();
+
+        Assert.Equal(Path.Combine("game", "horizon-client.exe"), HorizonEngine.ClientExe(_home, "game", devBuild: false));
+    }
+
+    [Fact]
+    public void ClientExe_DevBuild_UsesTheDroppedInLadsExe()
+    {
+        string exe = DropLadsDevExe();
+
+        Assert.Equal(exe, HorizonEngine.ClientExe(_home, "game", devBuild: true));
+    }
+
+    [Fact]
+    public void ClientExe_DevBuild_WithoutADroppedInExe_UsesTheOfficialOne()
+    {
+        Assert.Equal(Path.Combine("game", "horizon-client.exe"), HorizonEngine.ClientExe(_home, "game", devBuild: true));
+    }
+
     [Fact]
     public void SessionFile_HasHorizonsFields_AndReplacesALeftoverOne()
     {

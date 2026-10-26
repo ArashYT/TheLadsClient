@@ -2281,7 +2281,7 @@ public partial class MainWindow : Window
         }
         string resources = await HorizonEngine.PrepareAsync(game, gameDirectory, javaPath, Status, token);
         var process = HorizonEngine.Start(_pathService.BaseDirectory, game, resources, session, offline);
-        Log($"[Horizon] Started (pid {process.Id}). Log: {Path.Combine(HorizonEngine.Home(_pathService.BaseDirectory), "logs", "latest.log")}");
+        Log($"[Horizon] Started (pid {process.Id}) from {process.StartInfo.FileName}. Log: {Path.Combine(HorizonEngine.Home(_pathService.BaseDirectory), "logs", "latest.log")}");
         StatusText.Text = "Horizon running (experimental).";
     }
 

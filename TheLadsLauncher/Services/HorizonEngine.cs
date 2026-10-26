@@ -41,6 +41,14 @@ public static class HorizonEngine
     public static string Root(string baseDirectory) => Path.Combine(baseDirectory, "horizon");
     public static string GameDirectory(string baseDirectory) => Path.Combine(Root(baseDirectory), Tag, "horizon-windows-x64");
     public static string Home(string baseDirectory) => Path.Combine(Root(baseDirectory), "home");
+
+    /// <summary>Where a Lads Horizon fork build is dropped for testing: same Minecraft 26.3, so it uses the official build's prepared resources.</summary>
+    public static string LadsDevExe(string baseDirectory) => Path.Combine(Root(baseDirectory), "lads-dev", "horizon-client.exe");
+
+    /// <summary>The exe to start: the dropped-in Lads Horizon build in developer builds only, otherwise the official one in <paramref name="game"/>.</summary>
+    public static string ClientExe(string baseDirectory, string game, bool devBuild) =>
+        devBuild && File.Exists(LadsDevExe(baseDirectory)) ? LadsDevExe(baseDirectory) : Path.Combine(game, "horizon-client.exe");
+
     static string Resources(string game) => Path.Combine(game, ".local", "horizon-client", MinecraftVersion);
     static string PreparedMarker(string game) => Path.Combine(game, ".lads-prepared");
 
@@ -155,7 +163,7 @@ public static class HorizonEngine
         string home = Home(baseDirectory);
         Directory.CreateDirectory(home);
         InstallLadsMods(home, Path.Combine(AppContext.BaseDirectory, "Assets", "horizon", "lads_hud.hmod"));
-        var psi = new ProcessStartInfo(Path.Combine(game, "horizon-client.exe"))
+        var psi = new ProcessStartInfo(ClientExe(baseDirectory, game, AuthService.IsDevOfflineAllowed))
         {
             WorkingDirectory = home,
             UseShellExecute = false,
