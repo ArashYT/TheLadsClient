@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -150,7 +151,7 @@ public static class HorizonEngine
     }
 
     /// <summary>Starts horizon-client.exe; a Microsoft account goes over as Horizon's one-shot session file (read, then deleted).</summary>
-    public static Process Start(string baseDirectory, string game, string resources, MSession session, bool offline)
+    public static Process Start(string baseDirectory, string game, string resources, MSession session, bool offline, Func<bool>? sendCrashReports = null)
     {
         string home = Home(baseDirectory);
         Directory.CreateDirectory(home);
@@ -174,7 +175,71 @@ public static class HorizonEngine
             psi.ArgumentList.Add("--session-file");
             psi.ArgumentList.Add(WriteSessionFile(home, session));
         }
-        return Process.Start(psi) ?? throw new InvalidOperationException("Could not start Horizon.");
+        DateTime startedUtc = DateTime.UtcNow;
+        var process = Process.Start(psi) ?? throw new InvalidOperationException("Could not start Horizon.");
+        try { startedUtc = process.StartTime.ToUniversalTime(); } catch { }
+
+        process.EnableRaisingEvents = true;
+        process.Exited += async (_, _) =>
+        {
+            try
+            {
+                int exitCode = 0;
+                try { exitCode = process.ExitCode; } catch { }
+                await SendNewCrashReportsAsync(home, startedUtc, exitCode, sendCrashReports).ConfigureAwait(false);
+            }
+            catch
+            {
+            }
+        };
+
+        return process;
+    }
+
+    /// <summary>
+    /// Crash reports in Horizon home (crash-reports/crash-*-client.txt) newer than <paramref name="started"/>, oldest first.
+    /// </summary>
+    public static string[] NewCrashReports(string home, DateTime started)
+    {
+        string dir = Path.Combine(home, "crash-reports");
+        if (!Directory.Exists(dir)) return Array.Empty<string>();
+        DateTime startedUtc = started.ToUniversalTime();
+        return Directory.GetFiles(dir, "crash-*-client.txt")
+            .Where(f => File.GetLastWriteTimeUtc(f) >= startedUtc)
+            .OrderBy(File.GetLastWriteTimeUtc)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// When Horizon exits, sends any new crash reports to the bot through CrashReporter if "Send crash reports" is enabled.
+    /// </summary>
+    public static async Task<int> SendNewCrashReportsAsync(
+        string home,
+        DateTime started,
+        int exitCode,
+        Func<bool>? isEnabled = null,
+        Func<string, Task<string?>>? reportSender = null)
+    {
+        bool allowed = isEnabled != null ? isEnabled() : LauncherSettings.Load().SendCrashReports;
+        if (!allowed) return 0;
+
+        var reports = NewCrashReports(home, started);
+        if (reports.Length == 0) return 0;
+
+        int sent = 0;
+        foreach (var report in reports)
+        {
+            if (reportSender != null)
+            {
+                await reportSender(report).ConfigureAwait(false);
+            }
+            else
+            {
+                await CrashReporter.SendAsync(home, home, MinecraftVersion, exitCode, report).ConfigureAwait(false);
+            }
+            sent++;
+        }
+        return sent;
     }
 
     /// <summary>
