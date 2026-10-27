@@ -13,29 +13,30 @@ using CmlLib.Core.Auth;
 namespace TheLadsLauncher.Services;
 
 /// <summary>
-/// Experimental: Horizon (github.com/ludovic111/horizon, MIT), Minecraft 26.3 rewritten in Rust, started instead of the Lads
-/// Client for a 26.3 profile. Off by default; Dev Launcher builds or accounts invited with /experimental_invite only. None of
-/// LadsCore runs in it, so none of the Lads anti-ban gating does either: the player accepts that risk when turning it on.
+/// Experimental: Lads Horizon, our fork (ArashYT/lads-horizon) of Horizon (github.com/ludovic111/horizon, MIT), Minecraft 26.3
+/// rewritten in Rust, started instead of the Lads Client for a 26.3 profile. Off by default; Dev Launcher builds or accounts
+/// invited with /experimental_invite only. It has the Lads HUD essentials and its own server rules (lads_rules); LadsCore does not run in it.
 /// </summary>
 public static class HorizonEngine
 {
     public const string MinecraftVersion = "26.3";
     public const string InviteId = "experimental";
-    // ponytail: one pinned release (they ship several a day); bump Tag + ZipSha256 together after testing a newer one.
-    public const string Tag = "v0.2.75";
-    public const string ZipSha256 = "aa7cb138a34471072433a422261ac2bf5bcf7e34834b004b0e15cfd51c8cb211";
-    const string ZipUrl = "https://github.com/ludovic111/horizon/releases/download/" + Tag + "/horizon-windows-x64.zip";
-    // research-lock.json of that release: the 26.3 server jar its preparation accepts.
+    // ponytail: one pinned Lads Horizon build (lads-horizon tools/lads/build-windows.ps1, on Horizon v0.2.75); bump Tag + ZipSha256 together.
+    public const string Tag = "lads-0.1.0";
+    public const string ZipSha256 = "36b8bab572ee88ae00c659cb00b922334f916741f44a79da6282d088f3589ba0";
+    const string ZipUrl = "https://bot.arashyt.ca/packs/lads-horizon-0.1.0-windows-x64.zip";
+    // research-lock.json of Horizon v0.2.75: the 26.3 server jar its preparation accepts.
     public const string ServerJarSha1 = "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c";
 
     public const string RiskWarning =
-        "Horizon is NOT the Lads Client. It is a separate, unofficial Minecraft 26.3 rewritten in Rust by another developer " +
+        "Lads Horizon is an early, experimental Lads Client built on Horizon, an unofficial Minecraft 26.3 rewritten in Rust " +
         "(github.com/ludovic111/horizon).\n\n" +
-        "• None of the Lads Client runs in it: no HUD mods, cosmetics, emotes, friends or ban protection.\n" +
-        "• Servers can see it is not the normal game. Joining servers with it CAN GET YOUR ACCOUNT BANNED.\n" +
+        "• Only a few Lads modules work yet (HUD essentials, Lads Zoom); the rest are greyed out. No cosmetics, emotes or friends.\n" +
+        "• Servers can see it is not the normal game. Joining servers with it CAN GET YOUR ACCOUNT BANNED, even with its " +
+        "server rules turning risky features off.\n" +
         "• It gets your Minecraft login so it can join servers.\n" +
         "• Its worlds are kept apart from your Lads worlds. It may crash or lose things.\n\n" +
-        "When on, Play on a 26.3 profile starts Horizon. USE AT YOUR OWN RISK.";
+        "When on, Play on a 26.3 profile starts Lads Horizon. USE AT YOUR OWN RISK.";
 
     public static bool Applies(string? minecraftVersion) => minecraftVersion == MinecraftVersion;
 
