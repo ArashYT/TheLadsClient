@@ -48,10 +48,14 @@ public sealed class SkinRasterizer
     public void Resize(int width, int height)
     {
         width = Math.Max(1, width); height = Math.Max(1, height);
-        if (width == Width && height == Height) return;
         Width = width; Height = height;
-        Pixels = new uint[width * height];
-        _depth = new float[width * height];
+        int needed = width * height;
+        if (Pixels.Length < needed)
+        {
+            int capacity = Math.Max(needed, Pixels.Length == 0 ? needed : Pixels.Length * 2);
+            Pixels = new uint[capacity];
+            _depth = new float[capacity];
+        }
     }
 
     /// <summary>Pixels per skin pixel at the player's centre, for the floor shadow and tests.</summary>
@@ -67,8 +71,8 @@ public sealed class SkinRasterizer
 
     public void Render(IReadOnlyList<SkinMeshPart> parts, SkinCamera camera, SkinPose pose)
     {
-        Array.Clear(Pixels);
-        Array.Clear(_depth);
+        Array.Clear(Pixels, 0, Width * Height);
+        Array.Clear(_depth, 0, Width * Height);
         float rad = MathF.PI / 180;
         _view = Matrix4x4.CreateTranslation(-Target) * Matrix4x4.CreateRotationY(camera.Yaw * rad) * Matrix4x4.CreateRotationX(camera.Pitch * rad);
         // Fit ~35 x 22 skin pixels (the player plus a margin for the hat and a swinging cape) into the viewport.
