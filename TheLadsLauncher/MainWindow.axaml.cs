@@ -420,14 +420,12 @@ public partial class MainWindow : Window
         var logTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
         logTimer.Tick += (_, _) =>
         {
-            lock (logLines)
-            {
-                if (!_logDirty) return;
-                LogBox.Text = string.Join(Environment.NewLine, logLines);
-                _logDirty = false;
-            }
+            if (LogBox.IsFocused && !string.IsNullOrEmpty(LogBox.SelectedText))
+                return; // pause UI updates while player is selecting text
+            UpdateLogDisplay();
         };
         logTimer.Start();
+        LogSearchBox.TextChanged += (_, _) => { _logDirty = true; UpdateLogDisplay(); };
         Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); _usageHeartbeatTimer?.Stop(); _updateNowPulse?.Stop(); _particleTimer?.Stop(); _statSmoothTimer?.Stop(); _modSearchDebounce?.Stop(); _filesMeasureCts?.Cancel(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
         // Stats timer (1 second)
         _statsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -1174,7 +1172,6 @@ public partial class MainWindow : Window
 
     private static readonly System.Collections.Concurrent.ConcurrentQueue<string> _pendingFileLogs = new();
     private static int _fileLogWriterRunning;
-    private static bool _logRotationChecked;
     private readonly System.Collections.Concurrent.ConcurrentQueue<string> _pendingUiLogs = new();
     private int _uiLogDrainScheduled;
 
@@ -1195,20 +1192,16 @@ public partial class MainWindow : Window
             Directory.CreateDirectory(logsDir);
             var logFile = Path.Combine(logsDir, "launcher_debug.txt");
 
-            if (!_logRotationChecked)
+            try
             {
-                _logRotationChecked = true;
-                try
+                var fi = new FileInfo(logFile);
+                if (fi.Exists && fi.Length > 4 * 1024 * 1024)
                 {
-                    var fi = new FileInfo(logFile);
-                    if (fi.Exists && fi.Length > 4 * 1024 * 1024)
-                    {
-                        var oldFile = Path.Combine(logsDir, "launcher_debug.old.txt");
-                        File.Move(logFile, oldFile, overwrite: true);
-                    }
+                    var oldFile = Path.Combine(logsDir, "launcher_debug.old.txt");
+                    File.Move(logFile, oldFile, overwrite: true);
                 }
-                catch { }
             }
+            catch { }
 
             while (!_pendingFileLogs.IsEmpty)
             {
@@ -1273,16 +1266,67 @@ public partial class MainWindow : Window
         }
     }
 
+    private void UpdateLogDisplay()
+    {
+        lock (logLines)
+        {
+            if (!_logDirty) return;
+            string filter = LogSearchBox?.Text?.Trim() ?? "";
+            if (string.IsNullOrEmpty(filter))
+            {
+                LogBox.Text = string.Join(Environment.NewLine, logLines);
+            }
+            else
+            {
+                var matches = allLogLines.Where(l => l.Contains(filter, StringComparison.OrdinalIgnoreCase)).TakeLast(500);
+                LogBox.Text = string.Join(Environment.NewLine, matches);
+            }
+            _logDirty = false;
+        }
+    }
+
+    private static string GetRecentLogText(int maxLines = 2500)
+    {
+        try
+        {
+            var logsDir = TheLadsLauncher.Services.PathService.Instance.LogsDirectory;
+            var logFile = Path.Combine(logsDir, "launcher_debug.txt");
+            if (File.Exists(logFile))
+            {
+                using var fs = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var reader = new StreamReader(fs);
+                var queue = new Queue<string>(maxLines);
+                while (reader.ReadLine() is { } line)
+                {
+                    if (queue.Count >= maxLines) queue.Dequeue();
+                    queue.Enqueue(line);
+                }
+                if (queue.Count > 0)
+                    return string.Join(Environment.NewLine, queue);
+            }
+        }
+        catch { }
+        return "";
+    }
+
     private async void CopyLogs_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
-            if (!string.IsNullOrEmpty(LogBox.Text))
+            string textToCopy = LogBox.Text ?? "";
+            if (string.IsNullOrWhiteSpace(LogSearchBox?.Text))
+            {
+                string fileText = GetRecentLogText(2500);
+                if (!string.IsNullOrWhiteSpace(fileText))
+                    textToCopy = fileText;
+            }
+
+            if (!string.IsNullOrEmpty(textToCopy))
             {
                 var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
                 if (clipboard != null)
                 {
-                    await clipboard.SetTextAsync(LogBox.Text);
+                    await clipboard.SetTextAsync(textToCopy);
                     StatusText.Text = "Logs copied to clipboard!";
                 }
                 else
@@ -1301,13 +1345,17 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(LogBox.Text))
+            string logText = GetRecentLogText(2500);
+            if (string.IsNullOrWhiteSpace(logText))
+                logText = LogBox.Text ?? "";
+
+            if (string.IsNullOrWhiteSpace(logText))
             {
                 StatusText.Text = "Log is empty; nothing to share.";
                 return;
             }
 
-            string sanitized = TheLadsLauncher.Services.LogShareService.SanitizeLog(LogBox.Text);
+            string sanitized = TheLadsLauncher.Services.LogShareService.SanitizeLog(logText);
             string preview = sanitized.Length > 2000
                 ? sanitized[..2000] + "\n\n[... truncated preview; full sanitized log will be uploaded ...]"
                 : sanitized;
@@ -1358,9 +1406,13 @@ public partial class MainWindow : Window
 
     private void ClearLogs_Click(object? sender, RoutedEventArgs e)
     {
-        logLines.Clear();
-        allLogLines.Clear();
-        LogBox.Text = "";
+        lock (logLines)
+        {
+            logLines.Clear();
+            allLogLines.Clear();
+            LogBox.Text = "";
+            _logDirty = false;
+        }
     }
 
     // ═══════════════════════════════════════
