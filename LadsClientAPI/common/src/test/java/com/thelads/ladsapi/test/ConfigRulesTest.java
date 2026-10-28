@@ -174,4 +174,105 @@ public class ConfigRulesTest {
         LadsRules.load(tempDir, schema, null);
         assertEquals(first, Files.readString(rulesFile));
     }
+    @Test
+    public void testRulesRegenerationWithCommentSpacing(@TempDir Path tempDir) throws IOException {
+        Path rulesFile = tempDir.resolve("rules.yml");
+        String initial = """
+                # Rules
+                modules:   # my custom comment with spaces
+                  Fullbright:
+                    state: block
+                """;
+        Files.writeString(rulesFile, initial, StandardCharsets.UTF_8);
+        LadsSchema schema = LadsSchema.loadDefault();
+        LadsRules rules = LadsRules.load(tempDir, schema, null);
+        assertNotNull(rules.getModules().get("Fullbright"));
+        assertEquals("block", rules.getModules().get("Fullbright").getState());
+        assertTrue(Files.readString(rulesFile).contains("# my custom comment with spaces"));
+        assertTrue(Files.exists(tempDir.resolve("rules.yml.bak")));
+    }
+
+    @Test
+    public void testRulesRegenerationFourSpaceIndent(@TempDir Path tempDir) throws IOException {
+        Path rulesFile = tempDir.resolve("rules.yml");
+        String initial = """
+                modules:
+                    Fullbright:
+                        state: allow
+                """;
+        Files.writeString(rulesFile, initial, StandardCharsets.UTF_8);
+        LadsSchema schema = LadsSchema.loadDefault();
+        LadsRules rules = LadsRules.load(tempDir, schema, null);
+        assertNotNull(rules.getModules().get("Fullbright"));
+        assertEquals("allow", rules.getModules().get("Fullbright").getState());
+        String regenerated = Files.readString(rulesFile);
+        // Verify SnakeYAML parses without error
+        assertFalse(rules.getModules().isEmpty());
+    }
+
+    @Test
+    public void testRulesRegenerationOnlyGroupsAndWorlds(@TempDir Path tempDir) throws IOException {
+        Path rulesFile = tempDir.resolve("rules.yml");
+        String initial = """
+                # Custom groups only
+                groups:
+                  staff:
+                    modules:
+                      Fullbright:
+                        state: allow
+                worlds:
+                  nether:
+                    modules:
+                      Fullbright:
+                        state: block
+                """;
+        Files.writeString(rulesFile, initial, StandardCharsets.UTF_8);
+        LadsSchema schema = LadsSchema.loadDefault();
+        LadsRules rules = LadsRules.load(tempDir, schema, null);
+        assertNotNull(rules.getGroups().get("staff"));
+        assertNotNull(rules.getWorlds().get("nether"));
+        assertEquals("allow", rules.getGroups().get("staff").get("Fullbright").getState());
+        assertEquals("block", rules.getWorlds().get("nether").get("Fullbright").getState());
+        // Modules section was added without wiping groups or worlds
+        assertNotNull(rules.getModules().get("Fullbright"));
+    }
+
+    @Test
+    public void testRulesRegenerationShorthandAndFlowStyle(@TempDir Path tempDir) throws IOException {
+        Path rulesFile = tempDir.resolve("rules.yml");
+        String initial = """
+                modules:
+                  Fullbright: block
+                  XaeroMinimap: {state: block}
+                """;
+        Files.writeString(rulesFile, initial, StandardCharsets.UTF_8);
+        LadsSchema schema = LadsSchema.loadDefault();
+        LadsRules rules = LadsRules.load(tempDir, schema, null);
+        assertEquals("block", rules.getModules().get("Fullbright").getState());
+        assertEquals("block", rules.getModules().get("XaeroMinimap").getState());
+        String regenerated = Files.readString(rulesFile);
+        // Valid YAML check
+        assertFalse(rules.getModules().isEmpty());
+    }
+
+    @Test
+    public void testRulesLoadReadOnlyFile(@TempDir Path tempDir) throws IOException {
+        Path rulesFile = tempDir.resolve("rules.yml");
+        String initial = """
+                modules:
+                  Fullbright:
+                    state: block
+                """;
+        Files.writeString(rulesFile, initial, StandardCharsets.UTF_8);
+        rulesFile.toFile().setReadOnly();
+        try {
+            LadsSchema schema = LadsSchema.loadDefault();
+            LadsRules rules = LadsRules.load(tempDir, schema, null);
+            // Even though regenerate failed on read-only file, readFrom must still succeed
+            assertNotNull(rules.getModules().get("Fullbright"));
+            assertEquals("block", rules.getModules().get("Fullbright").getState());
+        } finally {
+            rulesFile.toFile().setWritable(true);
+        }
+    }
 }

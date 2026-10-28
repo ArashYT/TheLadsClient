@@ -22,9 +22,15 @@ public final class LadsRules {
 
     public static LadsRules load(Path dataFolder, LadsSchema schema, Logger logger) {
         LadsRules rules = new LadsRules();
+        Path rulesFile = dataFolder.resolve("rules.yml");
         try {
-            Path rulesFile = dataFolder.resolve("rules.yml");
             RulesGenerator.regenerate(rulesFile, schema, logger);
+        } catch (Exception e) {
+            if (logger != null) {
+                logger.warning("[LadsClientAPI] Error regenerating rules.yml: " + e.getMessage());
+            }
+        }
+        try {
             rules.readFrom(rulesFile, logger);
         } catch (Exception e) {
             if (logger != null) {

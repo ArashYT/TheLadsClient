@@ -3,13 +3,17 @@ package com.thelads.ladsapi.rules;
 import com.thelads.ladsapi.schema.LadsSchema;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
+import org.yaml.snakeyaml.Yaml;
 
 /**
  * Generates and regenerates rules.yml from ladsapi-schema.json.
@@ -33,7 +37,7 @@ public final class RulesGenerator {
                 if (mod.getOptions() != null) {
                     for (LadsSchema.SchemaOption opt : mod.getOptions()) {
                         String optName = opt.getName();
-                        sb.append(formatOptionLine(optName, opt.formatComment()));
+                        sb.append(formatOptionLine("    ", optName, opt.formatComment())).append("\n");
                     }
                 }
             }
@@ -56,7 +60,21 @@ public final class RulesGenerator {
         List<String> lines = Files.readAllLines(rulesFile, StandardCharsets.UTF_8);
         List<String> updated = updateRulesLines(lines, schema);
         if (!updated.equals(lines)) {
-            Files.write(rulesFile, updated, StandardCharsets.UTF_8);
+            Path bakFile = rulesFile.resolveSibling(rulesFile.getFileName().toString() + ".bak");
+            Files.copy(rulesFile, bakFile, StandardCopyOption.REPLACE_EXISTING);
+
+            Path tempFile = Files.createTempFile(rulesFile.getParent(), "rules", ".tmp");
+            try {
+                Files.write(tempFile, updated, StandardCharsets.UTF_8);
+                try {
+                    Files.move(tempFile, rulesFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                } catch (AtomicMoveNotSupportedException e) {
+                    Files.move(tempFile, rulesFile, StandardCopyOption.REPLACE_EXISTING);
+                }
+            } finally {
+                Files.deleteIfExists(tempFile);
+            }
+
             if (logger != null) {
                 logger.info("[LadsClientAPI] rules.yml regenerated with missing schema entries.");
             }
@@ -68,21 +86,47 @@ public final class RulesGenerator {
             return new ArrayList<>(existingLines);
         }
 
+        // Parse with SnakeYAML first to verify valid structure
+        try {
+            Yaml yaml = new Yaml();
+            Object loaded = yaml.load(String.join("\n", existingLines));
+            if (loaded != null && !(loaded instanceof Map<?, ?>)) {
+                return new ArrayList<>(existingLines);
+            }
+        } catch (Exception e) {
+            return new ArrayList<>(existingLines);
+        }
+
         List<String> result = new ArrayList<>(existingLines);
 
-        // Find "modules:" line index
+        // Find top-level "modules:" line index matching ^modules:\s*(#.*)?$
         int modulesIdx = -1;
         for (int i = 0; i < result.size(); i++) {
-            String trimmed = result.get(i).trim();
-            if (trimmed.equals("modules:") || trimmed.startsWith("modules: #")) {
-                modulesIdx = i;
-                break;
+            String line = result.get(i);
+            if (!line.startsWith(" ") && !line.startsWith("\t")) {
+                String trimmed = line.trim();
+                if (trimmed.matches("^modules:\\s*(#.*)?$")) {
+                    modulesIdx = i;
+                    break;
+                }
             }
         }
 
         if (modulesIdx == -1) {
-            // No modules section, append full content
-            return List.of(generateRulesContent(schema).split("\n"));
+            // No modules: section found; insert before worlds/groups or at end without destroying existing file
+            int insertPos = result.size();
+            for (int i = 0; i < result.size(); i++) {
+                String line = result.get(i);
+                if (!line.startsWith(" ") && !line.startsWith("\t")) {
+                    String trimmed = line.trim();
+                    if (trimmed.startsWith("worlds:") || trimmed.startsWith("groups:")) {
+                        insertPos = i;
+                        break;
+                    }
+                }
+            }
+            result.add(insertPos, "modules:");
+            modulesIdx = insertPos;
         }
 
         // Find the end of modules section (next top-level section: worlds, groups, etc.)
@@ -95,32 +139,60 @@ public final class RulesGenerator {
             }
         }
 
+        // Detect module and option indent from existing lines under modules:
+        int modIndentLen = 2;
+        int optIndentLen = -1;
+        for (int i = modulesIdx + 1; i < modulesEndIdx; i++) {
+            String line = result.get(i);
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
+            int spaces = countLeadingSpaces(line);
+            if (spaces > 0) {
+                if (modIndentLen == 2 && spaces != 2) {
+                    modIndentLen = spaces;
+                }
+                if (spaces > modIndentLen) {
+                    optIndentLen = spaces;
+                    break;
+                }
+            }
+        }
+        if (optIndentLen <= modIndentLen) {
+            optIndentLen = modIndentLen + (modIndentLen == 2 ? 2 : modIndentLen);
+        }
+        String modIndent = " ".repeat(modIndentLen);
+        String optIndent = " ".repeat(optIndentLen);
+
         for (LadsSchema.SchemaModule mod : schema.getModules()) {
             String modName = mod.getName();
-            int modLineIdx = findModuleLine(result, modulesIdx + 1, modulesEndIdx, modName);
+            int modLineIdx = findModuleLine(result, modulesIdx + 1, modulesEndIdx, modIndentLen, modName);
 
             if (modLineIdx == -1) {
                 // Entire module is missing: insert before modulesEndIdx
                 List<String> modBlock = new ArrayList<>();
-                modBlock.add("  " + yamlKey(modName) + ":");
-                modBlock.add("    state:                     # allow | block | on   (blank = inherit)");
+                modBlock.add(modIndent + yamlKey(modName) + ":");
+                modBlock.add(optIndent + "state:                     # allow | block | on   (blank = inherit)");
                 if (mod.getOptions() != null) {
                     for (LadsSchema.SchemaOption opt : mod.getOptions()) {
-                        modBlock.add(formatOptionLine(opt.getName(), opt.formatComment()));
+                        modBlock.add(formatOptionLine(optIndent, opt.getName(), opt.formatComment()));
                     }
                 }
                 result.addAll(modulesEndIdx, modBlock);
                 modulesEndIdx += modBlock.size();
             } else {
-                // Module exists, check for missing options
-                int nextModOrSection = findNextModuleOrSection(result, modLineIdx + 1, modulesEndIdx);
+                // Module exists: check if it is a block mapping (not shorthand or flow-style)
+                if (!isBlockMappingModule(result.get(modLineIdx))) {
+                    continue;
+                }
+
+                int nextModOrSection = findNextModuleOrSection(result, modLineIdx + 1, modulesEndIdx, modIndentLen);
                 Set<String> existingOptions = extractExistingOptionNames(result, modLineIdx + 1, nextModOrSection);
 
                 if (mod.getOptions() != null) {
                     List<String> toInsert = new ArrayList<>();
                     for (LadsSchema.SchemaOption opt : mod.getOptions()) {
                         if (!existingOptions.contains(opt.getName().toLowerCase())) {
-                            toInsert.add(formatOptionLine(opt.getName(), opt.formatComment()));
+                            toInsert.add(formatOptionLine(optIndent, opt.getName(), opt.formatComment()));
                         }
                     }
                     if (!toInsert.isEmpty()) {
@@ -155,27 +227,46 @@ public final class RulesGenerator {
         return plain ? name : "\"" + name.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
     }
 
-    private static String formatOptionLine(String optName, String comment) {
+    private static String formatOptionLine(String indent, String optName, String comment) {
         StringBuilder sb = new StringBuilder();
         String key = yamlKey(optName);
-        sb.append("    ").append(key).append(":");
-        int pad = Math.max(1, 31 - (4 + key.length() + 1));
+        sb.append(indent).append(key).append(":");
+        int pad = Math.max(1, 31 - (indent.length() + key.length() + 1));
         sb.append(" ".repeat(pad));
         sb.append(comment);
         return sb.toString();
     }
 
-    private static int findModuleLine(List<String> lines, int start, int end, String modName) {
-        String target1 = "  " + modName + ":";
-        String target2 = "  \"" + modName + "\":";
-        String target3 = "  '" + modName + "':";
+    private static int countLeadingSpaces(String line) {
+        int count = 0;
+        while (count < line.length() && line.charAt(count) == ' ') {
+            count++;
+        }
+        return count;
+    }
+
+    private static boolean isBlockMappingModule(String line) {
+        String trimmed = line.trim();
+        int colon = trimmed.indexOf(':');
+        if (trimmed.startsWith("\"") || trimmed.startsWith("'")) {
+            int close = trimmed.indexOf(trimmed.charAt(0), 1);
+            if (close > 0) {
+                colon = trimmed.indexOf(':', close + 1);
+            }
+        }
+        if (colon < 0) return false;
+        String rest = trimmed.substring(colon + 1).trim();
+        return rest.isEmpty() || rest.startsWith("#");
+    }
+
+    private static int findModuleLine(List<String> lines, int start, int end, int modIndentLen, String modName) {
         for (int i = start; i < end; i++) {
             String line = lines.get(i);
             String trimmed = line.trim();
-            if (line.startsWith("  ") && !line.startsWith("    ") && !line.startsWith("   \t")) {
-                if (trimmed.equals(target1.trim()) || trimmed.startsWith(target1.trim() + " ") || trimmed.startsWith(target1.trim() + "#")
-                    || trimmed.equals(target2.trim()) || trimmed.startsWith(target2.trim() + " ")
-                    || trimmed.equals(target3.trim()) || trimmed.startsWith(target3.trim() + " ")) {
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
+            if (countLeadingSpaces(line) == modIndentLen) {
+                String key = extractKey(trimmed);
+                if (key != null && key.equalsIgnoreCase(modName)) {
                     return i;
                 }
             }
@@ -183,12 +274,34 @@ public final class RulesGenerator {
         return -1;
     }
 
-    private static int findNextModuleOrSection(List<String> lines, int start, int maxEnd) {
+    private static String extractKey(String trimmed) {
+        if (trimmed.startsWith("\"")) {
+            int close = trimmed.indexOf('"', 1);
+            if (close > 1) {
+                String after = trimmed.substring(close + 1).trim();
+                if (after.startsWith(":")) return trimmed.substring(1, close);
+            }
+        } else if (trimmed.startsWith("'")) {
+            int close = trimmed.indexOf('\'', 1);
+            if (close > 1) {
+                String after = trimmed.substring(close + 1).trim();
+                if (after.startsWith(":")) return trimmed.substring(1, close);
+            }
+        } else {
+            int colon = trimmed.indexOf(':');
+            if (colon > 0) {
+                return trimmed.substring(0, colon).trim();
+            }
+        }
+        return null;
+    }
+
+    private static int findNextModuleOrSection(List<String> lines, int start, int maxEnd, int modIndentLen) {
         for (int i = start; i < maxEnd; i++) {
             String line = lines.get(i);
-            if (line.isEmpty() || line.trim().startsWith("#")) continue;
-            // 2 spaces = next module, 0 spaces = next section
-            if (!line.startsWith("    ") && !line.startsWith("   \t")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
+            if (countLeadingSpaces(line) <= modIndentLen) {
                 return i;
             }
         }
@@ -201,15 +314,9 @@ public final class RulesGenerator {
             String line = lines.get(i);
             String trimmed = line.trim();
             if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
-            if (trimmed.startsWith("\"") || trimmed.startsWith("'")) {
-                // quoted key: may itself contain ':' ("SP: Wood floats")
-                int close = trimmed.indexOf(trimmed.charAt(0), 1);
-                if (close > 1) set.add(trimmed.substring(1, close).toLowerCase());
-                continue;
-            }
-            int colon = trimmed.indexOf(':');
-            if (colon > 0) {
-                set.add(trimmed.substring(0, colon).trim().toLowerCase());
+            String key = extractKey(trimmed);
+            if (key != null) {
+                set.add(key.toLowerCase());
             }
         }
         return set;
