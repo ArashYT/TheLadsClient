@@ -128,11 +128,38 @@ public static class CurseForgeModpack
         return skipped;
     }
 
+    /// <summary>
+    /// Installs a CurseForge pack into <paramref name="gameDirectory"/>: its required mods, each the exact file the manifest pins, then its
+    /// overrides. Throws before anything is written or downloaded when the pack cannot be complete: no CurseForge key, a pinned file that
+    /// CurseForge no longer has, or a mod whose author allows no downloads outside CurseForge. The newest release is never taken in place
+    /// of a pinned file, and optional mods (required: false) are left out.
+    /// </summary>
     public static async Task InstallAsync(string zipPath, string gameDirectory, ContentCatalog? catalog,
         Action<string> report, CancellationToken cancellationToken = default)
     {
         report("Reading CurseForge modpack manifest…");
         var manifest = ReadManifest(zipPath);
+        var mods = manifest.Files.Where(f => f.Required).ToList();
+        if (mods.Count < manifest.Files.Count) report($"Leaving out {manifest.Files.Count - mods.Count} optional mod(s) of the pack.");
+        if (mods.Count > 0 && catalog is not { HasCurseForgeKey: true }) throw new ContentSourceException(ContentCatalog.MissingKeyMessage);
+
+        var plan = new List<ContentFile>();
+        var unavailable = new List<string>();
+        foreach (var (f, number) in mods.Select((f, i) => (f, i + 1)))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            report($"Checking mod {number} of {mods.Count} (Project {f.ProjectId})…");
+            ContentFile? file;
+            try { file = await catalog!.GetCurseForgeFileAsync(f.ProjectId, f.FileId, cancellationToken); }
+            catch (ContentSourceException e) { throw new ContentSourceException($"Project {f.ProjectId}, file {f.FileId}: {e.Message}", e); }
+            if (file == null) unavailable.Add($"project {f.ProjectId}, file {f.FileId} (CurseForge no longer has it)");
+            else if (string.IsNullOrEmpty(file.Url))
+                unavailable.Add($"{file.FileName} (its author allows no downloads outside CurseForge: https://www.curseforge.com/projects/{f.ProjectId})");
+            else plan.Add(file);
+        }
+        if (unavailable.Count > 0)
+            throw new ContentSourceException($"{unavailable.Count} of the pack's {mods.Count} required mods cannot be downloaded, so it was not imported: "
+                + string.Join("; ", unavailable.Take(8)) + (unavailable.Count > 8 ? $"; and {unavailable.Count - 8} more." : "."));
 
         report("Extracting modpack configuration overrides…");
         var skipped = ExtractOverrides(zipPath, gameDirectory, manifest.OverridesDir);
@@ -140,41 +167,13 @@ public static class CurseForgeModpack
 
         var modsDir = Path.Combine(gameDirectory, "mods");
         Directory.CreateDirectory(modsDir);
-
-        if (catalog != null && manifest.Files.Count > 0)
+        for (int i = 0; i < plan.Count; i++)
         {
-            int current = 0;
-            foreach (var f in manifest.Files)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                current++;
-                report($"Downloading mod {current} of {manifest.Files.Count} (Project {f.ProjectId})…");
-                try
-                {
-                    ContentFile? fileItem = null;
-                    if (f.FileId > 0)
-                    {
-                        fileItem = await catalog.GetCurseForgeFileAsync(f.ProjectId, f.FileId, cancellationToken);
-                    }
-                    if (fileItem == null)
-                    {
-                        fileItem = await catalog.LatestFileAsync(
-                            new ModSearchItem { Id = f.ProjectId.ToString(), Provider = "CurseForge" },
-                            ContentKind.Mod, manifest.MinecraftVersion, manifest.ModLoader, cancellationToken);
-                    }
-
-                    if (fileItem != null && !string.IsNullOrEmpty(fileItem.Url))
-                    {
-                        using var incoming = SharedContentService.Instance.CreateIncomingFolder(modsDir);
-                        var downloaded = await catalog.DownloadVerifiedAsync(fileItem, incoming.Path, null, cancellationToken);
-                        SafeFileOps.MoveToFreeName(downloaded, modsDir, fileItem.FileName);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    report($"Warning: Could not download mod {f.ProjectId}: {ex.Message}");
-                }
-            }
+            cancellationToken.ThrowIfCancellationRequested();
+            report($"Downloading mod {i + 1} of {plan.Count} ({plan[i].FileName})…");
+            using var incoming = SharedContentService.Instance.CreateIncomingFolder(modsDir);
+            var downloaded = await catalog!.DownloadVerifiedAsync(plan[i], incoming.Path, null, cancellationToken);
+            SafeFileOps.MoveToFreeName(downloaded, modsDir, plan[i].FileName);
         }
 
         report("Modpack installation complete.");

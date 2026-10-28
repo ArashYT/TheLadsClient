@@ -204,6 +204,111 @@ public class CurseForgeModpackTests
         Assert.Contains("a.jar", Modpacks.Mods(instance).Select(m => m.FileName));
     }
 
+    // ------------------------------------------------------------------ a complete pack, or none
+
+    private static string ManifestOf(params (int Project, int File, bool Required)[] files) =>
+        JsonSerializer.Serialize(new
+        {
+            minecraft = new { version = "1.20.1", modLoaders = new[] { new { id = "fabric-0.15.11" } } }, name = "Epic", version = "1.0",
+            files = files.Select(f => new { projectID = f.Project, fileID = f.File, required = f.Required })
+        });
+
+    private static string PackZip(TestDirectory temp, string manifest)
+    {
+        string zip = Path.Combine(temp.Path, "pack.zip");
+        CreateTestZip(zip, manifest, new[] { ("config/x.txt", "x") });
+        return zip;
+    }
+
+    private static void AssertNothingWritten(string gameDirectory)
+    {
+        Assert.False(File.Exists(Path.Combine(gameDirectory, "config", "x.txt")));
+        Assert.False(Directory.Exists(Path.Combine(gameDirectory, "mods")));
+    }
+
+    [Fact]
+    public async Task InstallAsync_WithoutACurseForgeKey_FailsAtOnceAndWritesNothing()
+    {
+        if (ContentCatalog.BuiltInCurseForgeKey.Length > 0) return; // this build has a key built in
+        using var temp = new TestDirectory();
+        string game = Path.Combine(temp.Path, "minecraft");
+        var api = new CurseForgeApi(new Mod(111, 222, "a.jar", "mod a"));
+        using var http = new HttpClient(api);
+
+        var error = await Assert.ThrowsAsync<ContentSourceException>(() => CurseForgeModpack.InstallAsync(
+            PackZip(temp, ManifestOf((111, 222, true))), game, new ContentCatalog(http, null, null, ""), _ => { }));
+
+        Assert.Equal(ContentCatalog.MissingKeyMessage, error.Message);
+        Assert.Empty(api.Requests);
+        AssertNothingWritten(game);
+    }
+
+    [Fact]
+    public async Task InstallAsync_NeverTakesTheNewestReleaseInPlaceOfAFileThatIsGone()
+    {
+        using var temp = new TestDirectory();
+        string game = Path.Combine(temp.Path, "minecraft");
+        var api = new CurseForgeApi(new Mod(111, 222, "a.jar", "mod a", Missing: true));
+        using var http = new HttpClient(api);
+
+        var error = await Assert.ThrowsAsync<ContentSourceException>(() => CurseForgeModpack.InstallAsync(
+            PackZip(temp, ManifestOf((111, 222, true))), game, new ContentCatalog(http, null, null, "test-key"), _ => { }));
+
+        Assert.Contains("Project 111, file 222", error.Message);
+        Assert.DoesNotContain(api.Requests, url => url.Contains("gameVersion")); // the unpinned "latest file" lookup
+        AssertNothingWritten(game);
+    }
+
+    [Fact]
+    public async Task InstallAsync_ListsEveryModWhoseAuthorBlocksDownloads_AndInstallsNothing()
+    {
+        using var temp = new TestDirectory();
+        string game = Path.Combine(temp.Path, "minecraft");
+        var api = new CurseForgeApi(new Mod(1, 10, "fine.jar", "fine"), new Mod(2, 20, "blocked-b.jar", "b", Blocked: true), new Mod(3, 30, "blocked-c.jar", "c", Blocked: true));
+        using var http = new HttpClient(api);
+
+        var error = await Assert.ThrowsAsync<ContentSourceException>(() => CurseForgeModpack.InstallAsync(
+            PackZip(temp, ManifestOf((1, 10, true), (2, 20, true), (3, 30, true))), game, new ContentCatalog(http, null, null, "test-key"), _ => { }));
+
+        Assert.Contains("2 of the pack's 3 required mods", error.Message);
+        Assert.Contains("blocked-b.jar", error.Message);
+        Assert.Contains("https://www.curseforge.com/projects/2", error.Message);
+        Assert.Contains("blocked-c.jar", error.Message);
+        Assert.DoesNotContain("fine.jar", error.Message);
+        Assert.DoesNotContain(api.Requests, url => url.StartsWith("https://edge.forgecdn.net/")); // nothing was downloaded
+        AssertNothingWritten(game);
+    }
+
+    [Fact]
+    public async Task InstallAsync_LeavesOutOptionalMods()
+    {
+        using var temp = new TestDirectory();
+        string game = Path.Combine(temp.Path, "minecraft");
+        var api = new CurseForgeApi(new Mod(1, 10, "needed.jar", "needed"), new Mod(2, 20, "extra.jar", "extra"));
+        using var http = new HttpClient(api);
+        var report = new List<string>();
+
+        await CurseForgeModpack.InstallAsync(PackZip(temp, ManifestOf((1, 10, true), (2, 20, false))), game, new ContentCatalog(http, null, null, "test-key"), report.Add);
+
+        Assert.Equal(new[] { "needed.jar" }, Directory.GetFiles(Path.Combine(game, "mods")).Select(Path.GetFileName));
+        Assert.DoesNotContain(api.Requests, url => url.Contains("/mods/2/") || url.EndsWith("extra.jar"));
+        Assert.Contains(report, m => m.Contains("Leaving out 1 optional mod"));
+        Assert.Equal("x", File.ReadAllText(Path.Combine(game, "config", "x.txt")));
+    }
+
+    [Fact]
+    public async Task AnImportThatCannotBeCompleteLeavesNoInstanceBehind()
+    {
+        using var temp = new TestDirectory();
+        using var http = new HttpClient(new CurseForgeApi(new Mod(2, 20, "blocked.jar", "b", Blocked: true)));
+
+        await Assert.ThrowsAsync<ContentSourceException>(() => ModpackLauncher.InstallCurseForgeAsync(temp.Path,
+            PackZip(temp, ManifestOf((2, 20, true))), new ContentCatalog(http, null, null, "test-key"), null, null, null, default));
+
+        Assert.Empty(Modpacks.List(temp.Path));
+        Assert.Empty(Directory.GetDirectories(Modpacks.Root(temp.Path)));
+    }
+
     private static ModpackInstance OlderImport(string dataDirectory)
     {
         var instance = Modpacks.NewInstance(dataDirectory, "Old Import");
