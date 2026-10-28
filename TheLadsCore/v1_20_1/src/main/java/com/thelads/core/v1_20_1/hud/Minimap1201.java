@@ -1,8 +1,10 @@
 package com.thelads.core.v1_20_1.hud;
 
+import com.thelads.core.client.HypixelSafetyManager;
 import com.thelads.core.config.ActionOption;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
+import java.lang.reflect.Method;
 import java.util.function.Function;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -14,7 +16,10 @@ public final class Minimap1201 {
     private static Class<?> transformType;
     private static Boolean lastEnabled;
     private static int lastX = Integer.MIN_VALUE, lastY = Integer.MIN_VALUE;
-    private static boolean attempted;
+    private static boolean attempted, loaded, fallbackFailed;
+    /** {@link #failClosed}: Xaero's session, its minimap processor and the processor's "no minimap" switch; the processor it switched off. */
+    private static Method currentSession, processor, noMinimap, setNoMinimap;
+    private static Object switchedOff;
 
     private Minimap1201() {}
 
@@ -28,7 +33,7 @@ public final class Minimap1201 {
         Minecraft mc = Minecraft.getInstance();
         if (!attempted) {
             attempted = true;
-            if (!Mods1201.loaded("xaerominimap")) return;
+            if (!(loaded = Mods1201.loaded("xaerominimap"))) return;
             try {
                 mod = Class.forName("xaero.common.HudMod").getField("INSTANCE").get(null);
                 map = Class.forName("xaero.hud.minimap.BuiltInHudModules").getField("MINIMAP").get(null);
@@ -50,7 +55,10 @@ public final class Minimap1201 {
                 LoggerFactory.getLogger("TheLadsCore").warn("Xaero integration unavailable", failure);
             }
         }
-        if (map == null) return;
+        if (map == null) {
+            if (loaded) failClosed();
+            return;
+        }
         try {
             boolean enabled = ModuleManager.getInstance().getModule("Minimap").isEnabled();
             if (lastEnabled == null || lastEnabled != enabled) {
@@ -61,6 +69,33 @@ public final class Minimap1201 {
         } catch (ReflectiveOperationException failure) {
             LoggerFactory.getLogger("TheLadsCore").warn("Xaero integration failed", failure);
             map = null;
+        }
+    }
+
+    /**
+     * Xaero's HUD API above is missing (another Xaero version, a modpack's own): where the server rules block minimaps, its older
+     * "no minimap" switch (the one a server's chat code sets, which its renderer honours) keeps it off, so the gate fails closed. It
+     * only switches back what it switched off itself, and leaves a server's own "no minimap" alone.
+     */
+    private static void failClosed() {
+        if (fallbackFailed) return;
+        try {
+            if (setNoMinimap == null) {
+                Class<?> session = Class.forName("xaero.common.XaeroMinimapSession"), minimap = Class.forName("xaero.common.minimap.MinimapProcessor");
+                currentSession = session.getMethod("getCurrentSession");
+                processor = session.getMethod("getMinimapProcessor");
+                noMinimap = minimap.getMethod("getNoMinimapMessageReceived");
+                setNoMinimap = minimap.getMethod("setNoMinimapMessageReceived", boolean.class);
+            }
+            Object session = currentSession.invoke(null), current = session == null ? null : processor.invoke(session);
+            boolean banned = HypixelSafetyManager.isMinimapBanned();
+            if (current == null || banned == (current == switchedOff)) return;
+            if (banned && (Boolean) noMinimap.invoke(current)) return; // the server switched it off itself
+            setNoMinimap.invoke(current, banned);
+            switchedOff = banned ? current : null;
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
+            fallbackFailed = true;
+            LoggerFactory.getLogger("TheLadsCore").warn("Xaero's Minimap cannot be switched off where the server rules block minimaps", failure);
         }
     }
 
