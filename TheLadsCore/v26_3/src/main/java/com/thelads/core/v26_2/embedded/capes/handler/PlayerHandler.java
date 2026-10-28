@@ -4,6 +4,7 @@ package com.thelads.core.v26_2.embedded.capes.handler;
 import com.google.gson.Gson;
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.platform.NativeImage;
+import com.thelads.core.client.CapeImageGuard;
 import com.thelads.core.v26_2.embedded.capes.CapeConfig;
 import com.thelads.core.v26_2.embedded.capes.CapeType;
 import com.thelads.core.v26_2.embedded.capes.Capes;
@@ -16,6 +17,7 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.ClientAsset;
 import net.minecraft.core.UUIDUtil;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -23,25 +25,30 @@ import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class PlayerHandler {
-    private static final HashMap<UUID, PlayerHandler> instances = new HashMap<>();
+    // Read from the render thread (every frame, per player) and written when a profile is first seen.
+    private static final Map<UUID, PlayerHandler> instances = new ConcurrentHashMap<>();
     private static final ExecutorService capeExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    /** Lads: connect and read timeout; a stalled endpoint must not hold a thread and a socket for ever. */
+    private static final int TIMEOUT_MS = 5000;
 
     private final GameProfile profile;
     private final UUID uuid;
-    private int lastFrame = 0;
-    private int maxFrames = 0;
+    // Written by the download thread and the main thread, read by the render thread.
+    private volatile int lastFrame = 0;
+    private volatile int maxFrames = 0;
     private long lastFrameTime = 0L;
-    private boolean hasCape = false;
-    private boolean hasElytraTexture = true;
-    private boolean hasAnimatedCape = false;
-    private CapeType capeType = null;
+    private volatile boolean hasCape = false;
+    private volatile boolean hasElytraTexture = true;
+    private volatile boolean hasAnimatedCape = false;
+    private volatile CapeType capeType = null;
     private boolean hasLoadedTextures = false;
 
     public PlayerHandler(GameProfile profile) {
@@ -92,13 +99,15 @@ public class PlayerHandler {
     public static HttpURLConnection connection(String url) throws IOException, URISyntaxException {
         HttpURLConnection connection = (HttpURLConnection) new URI(url).toURL().openConnection(Minecraft.getInstance().getProxy());
         connection.addRequestProperty("User-Agent", "Mozilla/5.0");
+        connection.setConnectTimeout(TIMEOUT_MS);
+        connection.setReadTimeout(TIMEOUT_MS);
         connection.setDoInput(true);
         connection.setDoOutput(false);
         return connection;
     }
 
     public ClientAsset.Texture getCape() {
-        if (!hasAnimatedCape) return new ClientAsset.ResourceTexture(Capes.identifier(uuid.toString()), Capes.identifier(uuid.toString()));
+        if (!hasAnimatedCape || maxFrames <= 0) return new ClientAsset.ResourceTexture(Capes.identifier(uuid.toString()), Capes.identifier(uuid.toString()));
         long time = System.currentTimeMillis();
         if (time > this.lastFrameTime + 100L) {
             int thisFrame = (this.lastFrame + 1) % this.maxFrames;
@@ -126,69 +135,89 @@ public class PlayerHandler {
     }
 
     public boolean setStandardCape(HttpURLConnection connection, boolean labymod, boolean animated) throws IOException {
-        connection.connect();
-        if (connection.getResponseCode() / 100 == 2) {
-            return setCapeTexture(connection.getInputStream(), animated, labymod);
+        try {
+            connection.connect();
+            if (connection.getResponseCode() / 100 == 2) {
+                try (InputStream stream = connection.getInputStream()) {
+                    byte[] png = CapeImageGuard.readPng(stream);
+                    if (png != null) {
+                        return setCapeTexture(new ByteArrayInputStream(png), animated, labymod);
+                    }
+                }
+            }
+            return false;
+        } finally {
+            connection.disconnect();
         }
-        return false;
     }
 
     public boolean setCosmeticaCape(HttpURLConnection connection) throws IOException, URISyntaxException {
-        connection.connect();
-        if (connection.getResponseCode() / 100 == 2) {
-            Reader reader = new InputStreamReader(connection.getInputStream(), "UTF-8");
-            CosmeticaData result = new Gson().fromJson(reader, CosmeticaData.class);
-            if (result.cloak() == null || result.cloak().texture() == null) return false;
-            // upstream shadows the parameter: val connection = connection(result.cloak.texture)
-            HttpURLConnection textureConnection = connection(result.cloak().texture());
-
-            if (textureConnection.getResponseCode() / 100 == 2) {
-                return setStandardCape(textureConnection, false, result.cloak().isAnimated());
+        String json;
+        try {
+            connection.connect();
+            if (connection.getResponseCode() / 100 != 2) return false;
+            try (InputStream stream = connection.getInputStream()) {
+                json = CapeImageGuard.readJson(stream);
             }
+        } finally {
+            connection.disconnect();
         }
-        return false;
+        if (json == null) return false;
+        CosmeticaData result = new Gson().fromJson(json, CosmeticaData.class);
+        if (result == null || result.cloak() == null || result.cloak().texture() == null) return false;
+        String texture = result.cloak().texture();
+        if (!CapeImageGuard.isHttps(texture)) return false;
+        HttpURLConnection textureConnection = connection(texture);
+        return setStandardCape(textureConnection, false, result.cloak().isAnimated());
     }
 
     public boolean setMCMCape(HttpURLConnection connection) throws IOException, URISyntaxException {
-        connection.connect();
-        if (connection.getResponseCode() / 100 == 2) {
-            Reader reader = new InputStreamReader(connection.getInputStream(), "UTF-8");
-            MCMData profile = new Gson().fromJson(reader, MCMData.class);
-
-            HttpURLConnection result = connection(profile.cape_url());
-            result.connect();
-            if (result.getResponseCode() / 100 == 2) {
-                return setCapeTexture(result.getInputStream(), profile.animated_cape_url() != null, false);
+        String json;
+        try {
+            connection.connect();
+            if (connection.getResponseCode() / 100 != 2) return false;
+            try (InputStream stream = connection.getInputStream()) {
+                json = CapeImageGuard.readJson(stream);
             }
+        } finally {
+            connection.disconnect();
         }
-        return false;
+        if (json == null) return false;
+        MCMData profile = new Gson().fromJson(json, MCMData.class);
+
+        HttpURLConnection result = connection(profile.cape_url());
+        return setStandardCape(result, false, profile.animated_cape_url() != null);
     }
 
     public boolean setCapeTexture(InputStream image, boolean animated, boolean labymod) {
         try {
             NativeImage cape = NativeImage.read(image);
             if (labymod && UUIDUtil.uuidFromIntArray(cape.getPixels()).toString().equals("ff305f81-ff30-5f90-ff30-5f90ff305f90")) {
+                cape.close();
                 return false;
             }
             Minecraft.getInstance().submit(() -> {
                 if (animated) {
                     Int2ObjectOpenHashMap<NativeImage> animatedCapeFrames = parseAnimatedCape(cape);
-                    for (Int2ObjectMap.Entry<NativeImage> entry : animatedCapeFrames.int2ObjectEntrySet()) {
-                        int frame = entry.getIntKey();
-                        Minecraft.getInstance().getTextureManager().register(
-                                Capes.identifier(uuid + "/" + frame), new DynamicTexture(() -> uuid + "/" + frame, entry.getValue())
-                        );
+                    if (!animatedCapeFrames.isEmpty()) {
+                        for (Int2ObjectMap.Entry<NativeImage> entry : animatedCapeFrames.int2ObjectEntrySet()) {
+                            int frame = entry.getIntKey();
+                            Minecraft.getInstance().getTextureManager().register(
+                                    Capes.identifier(uuid + "/" + frame), new DynamicTexture(() -> uuid + "/" + frame, entry.getValue())
+                            );
+                        }
+                        this.maxFrames = animatedCapeFrames.size();
+                        this.hasCape = true;
+                        this.hasAnimatedCape = true;
+                        cape.close();
+                        return;
                     }
-                    this.maxFrames = animatedCapeFrames.size();
-                    this.hasCape = true;
-                    this.hasAnimatedCape = true;
-                } else {
-                    this.hasElytraTexture = Math.floorDiv(cape.getWidth(), cape.getHeight()) == 2;
-                    Minecraft.getInstance().getTextureManager().register(
-                            Capes.identifier(uuid.toString()), new DynamicTexture(() -> uuid.toString(), parseCape(cape))
-                    );
-                    this.hasCape = true;
                 }
+                this.hasElytraTexture = Math.floorDiv(cape.getWidth(), cape.getHeight()) == 2;
+                Minecraft.getInstance().getTextureManager().register(
+                        Capes.identifier(uuid.toString()), new DynamicTexture(() -> uuid.toString(), parseCape(cape))
+                );
+                this.hasCape = true;
             });
             return true;
         } catch (Exception exception) {
@@ -218,7 +247,7 @@ public class PlayerHandler {
 
     private Int2ObjectOpenHashMap<NativeImage> parseAnimatedCape(NativeImage img) {
         Int2ObjectOpenHashMap<NativeImage> animatedCape = new Int2ObjectOpenHashMap<>();
-        int totalFrames = img.getHeight() / (img.getWidth() / 2);
+        int totalFrames = CapeImageGuard.frameCount(img.getWidth(), img.getHeight());
         for (int currentFrame = 0; currentFrame < totalFrames; currentFrame++) {
             NativeImage frame = new NativeImage(img.getWidth(), img.getWidth() / 2, true);
             for (int x = 0; x < frame.getWidth(); x++) {
