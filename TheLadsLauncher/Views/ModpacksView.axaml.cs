@@ -698,6 +698,16 @@ public partial class ModpacksView : UserControl
 
     private static string Downloads(long n) => n >= 1_000_000 ? $"{n / 1_000_000.0:0.#}M" : n >= 1_000 ? $"{n / 1_000.0:0.#}K" : n.ToString();
 
+    private static void CacheRemoteIcon(string url, Bitmap? bitmap)
+    {
+        if (RemoteIcons.Count >= 100)
+        {
+            var firstKey = RemoteIcons.Keys.FirstOrDefault();
+            if (firstKey != null) RemoteIcons.Remove(firstKey);
+        }
+        RemoteIcons[url] = bitmap;
+    }
+
     private static async Task LoadRemoteIconAsync(Border target, string? url)
     {
         if (string.IsNullOrEmpty(url)) return;
@@ -713,19 +723,22 @@ public partial class ModpacksView : UserControl
                         var info = FabricModMetadata.ReadJar(corePath, includeIcon: true);
                         if (info?.Icon is { Length: > 0 } iconBytes)
                         {
-                            bitmap = new Bitmap(new MemoryStream(iconBytes));
+                            using var ms = new MemoryStream(iconBytes);
+                            bitmap = Bitmap.DecodeToWidth(ms, 96);
                         }
                     }
                 }
                 else
                 {
-                    bitmap = new Bitmap(new MemoryStream(await Http.GetByteArrayAsync(url)));
+                    var bytes = await Http.GetByteArrayAsync(url);
+                    using var ms = new MemoryStream(bytes);
+                    bitmap = Bitmap.DecodeToWidth(ms, 96);
                 }
-                RemoteIcons[url] = bitmap;
+                CacheRemoteIcon(url, bitmap);
             }
             if (bitmap != null) target.Child = new Image { Source = bitmap, Stretch = Stretch.UniformToFill };
         }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or ArgumentException or InvalidDataException or NotSupportedException) { RemoteIcons[url] = null; }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or ArgumentException or InvalidDataException or NotSupportedException) { CacheRemoteIcon(url, null); }
     }
 
     /// <summary>The newest version of the pack for the Browse filters, installed as a new instance.</summary>
@@ -2223,7 +2236,7 @@ public partial class ModpacksView : UserControl
             .ToList();
         ScreenshotsHeader.Text = $"SCREENSHOTS ({files.Count})";
 
-        foreach (var file in files)
+        foreach (var file in files.Take(60))
         {
             try
             {
@@ -2236,13 +2249,23 @@ public partial class ModpacksView : UserControl
                     BorderThickness = new Thickness(1),
                     Cursor = new Cursor(StandardCursorType.Hand)
                 };
-                var img = new Image { Source = new Bitmap(file), Stretch = Stretch.UniformToFill };
+                var img = new Image { Stretch = Stretch.UniformToFill };
                 card.Child = img;
                 card.PointerPressed += (_, _) =>
                 {
                     Process.Start(new ProcessStartInfo(file) { UseShellExecute = true });
                 };
                 ScreenshotsGallery.Children.Add(card);
+                _ = Task.Run(() =>
+                {
+                    try
+                    {
+                        using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                        var bmp = Bitmap.DecodeToWidth(stream, 240);
+                        Dispatcher.UIThread.Post(() => img.Source = bmp);
+                    }
+                    catch { }
+                });
             }
             catch { }
         }

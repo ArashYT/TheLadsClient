@@ -6393,6 +6393,20 @@ public partial class MainWindow : Window
         return $"{count} downloads";
     }
 
+    private static readonly Dictionary<string, Bitmap> _browseIconCache = new();
+    private static void CacheBrowseIcon(string url, Bitmap bmp)
+    {
+        lock (_browseIconCache)
+        {
+            if (_browseIconCache.Count >= 200)
+            {
+                var first = _browseIconCache.Keys.FirstOrDefault();
+                if (first != null) _browseIconCache.Remove(first);
+            }
+            _browseIconCache[url] = bmp;
+        }
+    }
+
     private void RenderSearchResults(List<ModSearchItem> results, string mcVersion, bool isResourcePack, StackPanel listPanel)
     {
         if (results == null || results.Count == 0)
@@ -6432,26 +6446,31 @@ public partial class MainWindow : Window
             string authorPart = string.IsNullOrEmpty(item.Author) || item.Author == "CurseForge Creator" ? "" : $"  ·  by {item.Author}";
             if (downloadsBlock != null) downloadsBlock.Text = $"⬇ {FormatDownloadCount(item.DownloadCount)}  ·  {item.Provider}{authorPart}";
 
-            // Fetch and set Icon Asynchronously
+            // Fetch and set Icon Asynchronously (downscaled, decoded off UI thread, bounded cache)
             if (iconImage != null && !string.IsNullOrEmpty(item.IconUrl))
             {
-                _ = Task.Run(async () =>
+                if (_browseIconCache.TryGetValue(item.IconUrl, out var cachedBmp))
                 {
-                    try
+                    iconImage.Source = cachedBmp;
+                }
+                else
+                {
+                    _ = Task.Run(async () =>
                     {
-                        var bytes = await _httpClient.GetByteArrayAsync(item.IconUrl);
-                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        try
                         {
-                            try
+                            var bytes = await _httpClient.GetByteArrayAsync(item.IconUrl);
+                            using var ms = new MemoryStream(bytes);
+                            var bmp = Bitmap.DecodeToWidth(ms, 96);
+                            CacheBrowseIcon(item.IconUrl, bmp);
+                            await Dispatcher.UIThread.InvokeAsync(() =>
                             {
-                                using var ms = new MemoryStream(bytes);
-                                iconImage.Source = new Bitmap(ms);
-                            }
-                            catch {}
-                        });
-                    }
-                    catch {}
-                });
+                                iconImage.Source = bmp;
+                            });
+                        }
+                        catch {}
+                    });
+                }
             }
 
             // Populate Category Badges

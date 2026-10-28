@@ -417,7 +417,9 @@ public partial class ServersView : UserControl
     {
         try
         {
-            var image = new Image { Source = new Bitmap(new MemoryStream(png)), Stretch = Stretch.UniformToFill };
+            if (!ServerStatusService.IsValidFaviconPng(png)) return;
+            using var ms = new MemoryStream(png);
+            var image = new Image { Source = Bitmap.DecodeToWidth(ms, 64), Stretch = Stretch.UniformToFill };
             RenderOptions.SetBitmapInterpolationMode(image, BitmapInterpolationMode.HighQuality);
             card.Icon.Child = image;
             card.Icon.Background = Brushes.Transparent;

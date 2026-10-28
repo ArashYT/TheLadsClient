@@ -97,6 +97,17 @@ public static class ServerStatusService
     /// <summary>Either API's JSON: {online, players{online,max}, motd{raw,clean}, icon "data:image/png;base64,...", version,
     /// ip/ip_address, port}; mcsrvstat.us gives the MOTD as arrays of HTML-escaped lines and the version as a plain string,
     /// mcstatus.io as strings and {name_clean}.</summary>
+    /// <summary>Validates that the server favicon is a valid PNG with 64x64 dimensions, matching vanilla requirements.</summary>
+    public static bool IsValidFaviconPng(byte[] png)
+    {
+        ReadOnlySpan<byte> signature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        if (png.Length < 24 || !png.AsSpan(0, 8).SequenceEqual(signature) || png[12] != 'I' || png[13] != 'H' || png[14] != 'D' || png[15] != 'R')
+            return false;
+        int width = (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
+        int height = (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23];
+        return width == 64 && height == 64;
+    }
+
     public static ServerStatus Parse(string json)
     {
         var root = JsonNode.Parse(json)!;
@@ -104,8 +115,18 @@ public static class ServerStatusService
         var icon = root["icon"]?.GetValue<string>();
         var comma = icon?.IndexOf("base64,", StringComparison.Ordinal) ?? -1;
         var version = root["version"] is JsonObject v ? v["name_clean"]?.GetValue<string>() : root["version"]?.GetValue<string>();
+        byte[]? iconBytes = null;
+        if (comma >= 0)
+        {
+            try
+            {
+                var bytes = Convert.FromBase64String(icon![(comma + 7)..]);
+                if (IsValidFaviconPng(bytes)) iconBytes = bytes;
+            }
+            catch { }
+        }
         return new ServerStatus(online, root["players"]?["online"]?.GetValue<int>() ?? 0, root["players"]?["max"]?.GetValue<int>() ?? 0,
-            Lines(root["motd"]?["clean"], trim: true), comma < 0 ? null : Convert.FromBase64String(icon![(comma + 7)..]))
+            Lines(root["motd"]?["clean"], trim: true), iconBytes)
         {
             MotdRaw = Lines(root["motd"]?["raw"], trim: false),
             Version = MinecraftText.Strip(WebUtility.HtmlDecode(version ?? "")).Trim(),
