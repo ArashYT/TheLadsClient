@@ -13,6 +13,7 @@
     "GuiHudCapMixin",
     "WindowMinimizedPollMixin",
     "XaeroWorldMapPaceMixin",
+    "XaeroWorldMapGateMixin",
     "GuiRendererHudTextureMixin",
     "XaeroMinimapHudPassMixin",
     "XaeroConfigMemoMixin",
