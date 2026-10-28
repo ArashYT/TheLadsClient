@@ -491,7 +491,11 @@ public final class HypixelSafetyManager {
             file.getParentFile().mkdirs();
             temporary = Files.createTempFile(file.getParentFile().toPath(), "server_bypasses-", ".tmp");
             Files.writeString(temporary, json.toString(), StandardCharsets.UTF_8);
-            Files.move(temporary, file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            try {
+                Files.move(temporary, file.toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
+                Files.move(temporary, file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (Exception e) {
             System.err.println("[TheLadsCore] could not save server_bypasses.json: " + e);
         } finally {

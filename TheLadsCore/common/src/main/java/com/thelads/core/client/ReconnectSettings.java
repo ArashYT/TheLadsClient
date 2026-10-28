@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.annotations.SerializedName;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -105,7 +106,11 @@ public final class ReconnectSettings {
             Files.createDirectories(file.getParent());
             temporary = Files.createTempFile(file.getParent(), "reconnect-", ".tmp");
             Files.write(temporary, json);
-            Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
+            try {
+                Files.move(temporary, file, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException unsupported) {
+                Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException failed) {
             throw new IllegalStateException("Reconnect settings could not be saved", failed);
         } finally {
