@@ -106,7 +106,11 @@ public class SocialBridge26 implements SocialBridge {
         if (server == null || !server.isRunning()) return;
 
         P2PHostState26.setLoopbackScope(false);
-        server.publishServer(MinecraftServer.MultiplayerScope.LAN, options.guestOpLevel > 0, 0);
+        // A real port, as openToFriends: vanilla binds port 0 to a random one but advertises "0" on the LAN and in getPort()
+        if (!server.publishServer(MinecraftServer.MultiplayerScope.LAN, options.guestOpLevel > 0, findFreePort())) {
+            LOGGER.warn("Failed to open world to LAN");
+            return;
+        }
         applyHostOptions(options);
     }
 
