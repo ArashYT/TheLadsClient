@@ -415,7 +415,15 @@ public partial class MainWindow
         var stack = new StackPanel();
         stack.Children.Add(new AspectBox { Child = media });
         stack.Children.Add(caption);
-        var card = new Border { Classes = { "galleryTile" }, Child = stack, Tag = path };
+        var card = new Border { Classes = { "galleryTile" }, Child = stack, Tag = path, Focusable = true };
+        card.KeyDown += (_, e) =>
+        {
+            if (e.Key is Avalonia.Input.Key.Enter or Avalonia.Input.Key.Space)
+            {
+                ShowGalleryViewer(path);
+                e.Handled = true;
+            }
+        };
         card.PointerPressed += (_, e) =>
         {
             if (e.GetCurrentPoint(card).Properties.IsLeftButtonPressed) ShowGalleryViewer(path);
@@ -427,6 +435,7 @@ public partial class MainWindow
     {
         var b = new Button { Classes = { "tileAction" }, Content = LadsIcons.Glyph(icon, 15, Brush.Parse(color ?? "#FFFFFF")) };
         ToolTip.SetTip(b, tip);
+        Avalonia.Automation.AutomationProperties.SetName(b, tip);
         return b;
     }
 

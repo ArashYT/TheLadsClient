@@ -1671,14 +1671,16 @@ public partial class MainWindow : Window
             // Refresh Button
             var refreshBtn = new Button
             {
-                Content = "",
+                Content = TheLadsLauncher.Views.LadsIcons.Glyph(TheLadsLauncher.Views.LadsIcons.Refresh, 14),
                 Classes = { "action" },
                 Height = 28, Width = 28,
                 FontSize = 11,
                 Margin = new Thickness(2, 0),
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
             };
-            ToolTip.SetTip(refreshBtn, isOffline ? "Reload skin" : "Refresh session; right-click to sign in again");
+            string refreshTip = isOffline ? "Reload skin" : "Refresh session; right-click to sign in again";
+            ToolTip.SetTip(refreshBtn, refreshTip);
+            Avalonia.Automation.AutomationProperties.SetName(refreshBtn, refreshTip);
             refreshBtn.Click += async (s, e) => await RefreshSavedAccountAsync(username);
             if (!isOffline)
             {
@@ -1686,6 +1688,21 @@ public partial class MainWindow : Window
                 signInAgain.Click += async (_, _) => await RefreshSavedAccountAsync(username, true);
                 refreshBtn.ContextMenu = new ContextMenu();
                 refreshBtn.ContextMenu.Items.Add(signInAgain);
+
+                var signInAgainBtn = new Button
+                {
+                    Content = "Sign in again",
+                    Classes = { "action" },
+                    Height = 28,
+                    FontSize = 11,
+                    FontWeight = FontWeight.SemiBold,
+                    Margin = new Thickness(2, 0),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                };
+                ToolTip.SetTip(signInAgainBtn, "Sign in again with Microsoft");
+                Avalonia.Automation.AutomationProperties.SetName(signInAgainBtn, "Sign in again with Microsoft");
+                signInAgainBtn.Click += async (s, e) => await RefreshSavedAccountAsync(username, true);
+                actions.Children.Add(signInAgainBtn);
             }
             actions.Children.Add(refreshBtn);
 
