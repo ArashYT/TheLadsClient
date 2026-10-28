@@ -7,6 +7,7 @@ import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
+import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -32,6 +33,7 @@ import java.nio.file.Path;
 )
 public final class LadsVelocityPlugin {
     public static final MinecraftChannelIdentifier CHANNEL = MinecraftChannelIdentifier.from(LadsCore.CHANNEL);
+    private static final byte[] RESET = "{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8);
 
     private final ProxyServer server;
     private final Logger logger;
@@ -85,17 +87,27 @@ public final class LadsVelocityPlugin {
         logger.info("LadsClientAPI disabled on Velocity.");
     }
 
+    /**
+     * Velocity waits for this event before it forwards the new backend's JoinGame and resumes reading from the backend, so the reset
+     * always reaches the client before anything the new backend sends (vanilla clients ignore it). ServerPostConnectEvent is async
+     * and can run after the backend's own hello, which would wipe the policy the client just accepted.
+     */
+    @Subscribe
+    public void onServerConnected(ServerConnectedEvent event) {
+        if (core != null && core.config().isEnabled() && event.getPreviousServer().isPresent()) {
+            event.getPlayer().sendPluginMessage(CHANNEL, RESET);
+        }
+    }
+
     @Subscribe
     public void onServerPostConnect(ServerPostConnectEvent event) {
-        Player player = event.getPlayer();
-        // Proxy mode: always send {"t":"reset"} on every ServerPostConnectEvent (vanilla clients ignore it)
-        player.sendPluginMessage(CHANNEL, "{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8));
-
-        // Only run full session/policy logic on the proxy when proxy-rules: true
+        // Session/policy logic on the proxy only with proxy-rules: true
         if (core != null && core.config().isProxyRules()) {
+            Player player = event.getPlayer();
             if (event.getPreviousServer() == null) {
                 core.join(platform.handleOf(player));
             } else {
+                // The client reset on the switch: the new backend needs hello -> policy again (per-backend rules)
                 core.worldChanged(platform.handleOf(player));
             }
         }

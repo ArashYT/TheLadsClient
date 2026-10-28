@@ -115,6 +115,18 @@ public class LadsForgeMod {
         }
     }
 
+    // Respawn (death, End exit) builds a new ServerPlayer: the session must follow it, and a respawn into another world needs a new policy
+    @SubscribeEvent
+    public void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            LadsPlayerHandle handle = platform.getOrCreatePlayer(player);
+            LadsCore currentCore = LadsCore.get();
+            if (currentCore != null) {
+                currentCore.respawned(handle);
+            }
+        }
+    }
+
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();

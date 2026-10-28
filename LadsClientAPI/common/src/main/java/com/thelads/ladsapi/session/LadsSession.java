@@ -18,7 +18,8 @@ import java.util.UUID;
  * Manages protocol state and policy for one connected player handle.
  */
 public final class LadsSession {
-    private final LadsPlayerHandle handle;
+    /** Fabric/Forge create a new ServerPlayer on respawn, so the handle is replaced when the platform hands over a fresh one. */
+    private volatile LadsPlayerHandle handle;
     private final SessionManager manager;
     private final RateLimiter rateLimiter = new RateLimiter(8);
     private final Map<String, ModuleRule> apiOverrides = new LinkedHashMap<>();
@@ -31,6 +32,8 @@ public final class LadsSession {
     private boolean helloSent = false;
     private boolean helloResent = false;
     private boolean helloAcked = false;
+    /** World/backend the last policy was built for; a respawn into another world needs a new policy. */
+    private volatile String syncedWorld = "";
 
     public LadsSession(LadsPlayerHandle handle, SessionManager manager) {
         this.handle = handle;
@@ -39,6 +42,8 @@ public final class LadsSession {
     }
 
     public LadsPlayerHandle getHandle() { return handle; }
+    public void setHandle(LadsPlayerHandle handle) { if (handle != null) this.handle = handle; }
+    public String getSyncedWorld() { return syncedWorld; }
     public SessionManager getManager() { return manager; }
     public LadsPlayerImpl getLadsPlayer() { return ladsPlayer; }
     public int getRev() { return rev; }
@@ -89,6 +94,7 @@ public final class LadsSession {
 
     public void sendPolicy() {
         rev++;
+        syncedWorld = handle.world();
         String json = PolicyBuilder.buildPolicyJson(
                 manager.getRules(),
                 manager.getConfig(),

@@ -9,6 +9,7 @@ import java.util.logging.Logger;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -71,6 +72,15 @@ public class LadsFabricMod implements ModInitializer {
             LadsCore currentCore = LadsCore.get();
             if (currentCore != null) {
                 currentCore.worldChanged(handle);
+            }
+        });
+
+        // Respawn (death, End exit) builds a new ServerPlayer: the session must follow it, and a respawn into another world needs a new policy
+        ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
+            LadsPlayerHandle handle = platform.getOrCreatePlayer(newPlayer);
+            LadsCore currentCore = LadsCore.get();
+            if (currentCore != null) {
+                currentCore.respawned(handle);
             }
         });
 

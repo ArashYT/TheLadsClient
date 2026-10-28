@@ -90,10 +90,17 @@ public final class LadsCore {
         }
     }
 
-    /** World changed: per-world rules may differ, so a new policy goes out. */
+    /** World changed (Velocity: backend switch): per-world rules may differ and the client may have reset, so hello and policy go out again. */
     public void worldChanged(LadsPlayerHandle player) {
         if (sessionManager != null) {
             sessionManager.worldChanged(player);
+        }
+    }
+
+    /** Fabric/Forge respawn: the player object is new, so the session takes the fresh handle (and resyncs if the world differs). */
+    public void respawned(LadsPlayerHandle player) {
+        if (sessionManager != null) {
+            sessionManager.respawned(player);
         }
     }
 

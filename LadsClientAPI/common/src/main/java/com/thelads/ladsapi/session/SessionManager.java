@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -58,13 +59,9 @@ public final class SessionManager implements LadsClientAPI {
     public void join(LadsPlayerHandle handle) {
         if (handle == null) return;
 
-        // Proxy mode: send reset first
-        if (platform.isProxy()) {
-            handle.send("{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8));
-            // Only run session/policy logic on proxy if proxy-rules: true
-            if (!config.isProxyRules()) {
-                return;
-            }
+        // A proxy runs sessions only with proxy-rules: true; otherwise the backends own the policy (the proxy just sends reset).
+        if (platform.isProxy() && !config.isProxyRules()) {
+            return;
         }
 
         if (!config.isEnabled()) {
@@ -72,30 +69,29 @@ public final class SessionManager implements LadsClientAPI {
         }
 
         LadsSession session = new LadsSession(handle, this);
-        sessions.put(handle.uuid(), session);
+        UUID uuid = handle.uuid();
+        sessions.put(uuid, session);
 
+        // The tasks belong to this session object: a quick reconnect must not inherit the old tasks.
         // Schedule hello at +1 tick
         platform.runLater(() -> {
-            LadsSession s = sessions.get(handle.uuid());
-            if (s != null && !s.isHelloAcked() && !s.isHelloSent()) {
-                s.sendHello();
+            if (sessions.get(uuid) == session && !session.isHelloAcked() && !session.isHelloSent()) {
+                session.sendHello();
             }
         }, 1);
 
         // Resend hello at +60 ticks if no reply, never more
         platform.runLater(() -> {
-            LadsSession s = sessions.get(handle.uuid());
-            if (s != null && !s.isHelloAcked() && !s.isHelloResent()) {
-                s.setHelloResent(true);
-                s.sendHello();
+            if (sessions.get(uuid) == session && !session.isHelloAcked() && !session.isHelloResent()) {
+                session.setHelloResent(true);
+                session.sendHello();
             }
         }, 60);
 
         // require-lads-client: kick 5 s (100 ticks) after hello if no reply
         platform.runLater(() -> {
-            LadsSession s = sessions.get(handle.uuid());
-            if (s != null && config.isRequireLadsClient() && !s.isLads()) {
-                handle.kick(config.getRequireLadsClientMessage());
+            if (sessions.get(uuid) == session && config.isRequireLadsClient() && !session.isLads()) {
+                session.getHandle().kick(config.getRequireLadsClientMessage());
             }
         }, 100);
     }
@@ -113,11 +109,40 @@ public final class SessionManager implements LadsClientAPI {
         }
     }
 
+    /**
+     * World changed (Paper, Fabric, Forge) or proxy server switch (Velocity). The client resets itself on a JoinGame or on a Respawn into
+     * a world with another seed, and then drops every policy until a new hello arrives (PROTOCOL.md section 4), so a bare policy is
+     * not enough: hello, policy and presence go out again.
+     */
     public void worldChanged(LadsPlayerHandle handle) {
+        refresh(handle, platform.isProxy());
+    }
+
+    /** Fabric/Forge build a new player object on respawn: keep the handle current and resync only if the world differs. */
+    public void respawned(LadsPlayerHandle handle) {
+        refresh(handle, false);
+    }
+
+    private void refresh(LadsPlayerHandle handle, boolean force) {
         if (handle == null) return;
         LadsSession s = sessions.get(handle.uuid());
-        if (s != null && s.isLads()) {
-            s.sendPolicy();
+        if (s == null) return;
+        s.setHandle(handle);
+        if (s.isLads()) {
+            if (force || !Objects.equals(handle.world(), s.getSyncedWorld())) {
+                resync(s);
+            }
+        } else if (s.isHelloSent() && !s.isHelloAcked()) {
+            // Our hello may have reached the client before it reset: ask again, the first reply completes the handshake as usual.
+            s.sendHello();
+        }
+    }
+
+    private void resync(LadsSession s) {
+        s.sendHello(); // the client clears policy and presence on hello; the reply is ignored because the session is already acked
+        s.sendPolicy();
+        if (config.isBadgePresence()) {
+            s.sendPresence(true, getAllLadsPlayerUuids(), Collections.emptyList());
         }
     }
 
@@ -130,6 +155,7 @@ public final class SessionManager implements LadsClientAPI {
         if (session == null) {
             return;
         }
+        session.setHandle(handle);
 
         if (!session.checkRateLimit()) {
             if (config.isDebug() && platform.logger() != null) {
