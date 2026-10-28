@@ -29,6 +29,12 @@ public class ProfileToolsTests
     }
 
     [Fact]
+    public void PlayableVersions_ContainsExpectedLauncherVersions()
+    {
+        Assert.Equal(new[] { "26.3", "1.20.1", "1.8.9" }, ProfileTools.PlayableVersions);
+    }
+
+    [Fact]
     public void PresetRoundTripCreatesIndependentSettingsWithoutAccountsOrLocalPaths()
     {
         using var dir = new TestDirectory();

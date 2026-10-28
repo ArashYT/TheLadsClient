@@ -325,17 +325,9 @@ public partial class MainWindow
 
         static bool TryNormalizeColor(string? input, out string normalized, out Color color)
         {
-            normalized = "";
             color = default;
-            if (string.IsNullOrWhiteSpace(input)) return false;
-            string s = input.Trim();
-            if (!s.StartsWith("#") && (s.Length == 6 || s.Length == 8) && System.Text.RegularExpressions.Regex.IsMatch(s, "^[0-9A-Fa-f]+$"))
-                s = "#" + s;
-            if (Color.TryParse(s, out color))
-            {
-                normalized = s;
+            if (ProfileIconService.TryNormalizeHexColor(input, out normalized) && Color.TryParse(normalized, out color))
                 return true;
-            }
             return false;
         }
 
