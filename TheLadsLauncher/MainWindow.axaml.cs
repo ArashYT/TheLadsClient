@@ -1037,9 +1037,23 @@ public partial class MainWindow : Window
         if (double.TryParse(settings.UiScale.Replace("%", ""), out double pct))
         {
             double scale = pct / 100.0;
-            // Keep all controls reachable at the supported scale settings.
-            MinWidth = 960 * scale;
-            MinHeight = 540 * scale;
+            // Keep all controls reachable at the supported scale settings, clamped to screen working area.
+            double minW = 960 * scale;
+            double minH = 540 * scale;
+            if (Screens.ScreenFromWindow(this) is { } screen)
+            {
+                double scrScale = ScreenScaling();
+                if (scrScale <= 0) scrScale = 1.0;
+                double maxW = screen.WorkingArea.Width / scrScale;
+                double maxH = screen.WorkingArea.Height / scrScale;
+                if (maxW > 100 && maxH > 100)
+                {
+                    minW = Math.Min(minW, maxW);
+                    minH = Math.Min(minH, maxH);
+                }
+            }
+            MinWidth = minW;
+            MinHeight = minH;
             if (UiScaleTransformControl?.LayoutTransform is ScaleTransform st)
             {
                 st.ScaleX = scale;
