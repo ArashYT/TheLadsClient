@@ -514,7 +514,7 @@ public partial class ExperiencesView : UserControl
             await ExperiencesService.ApplyPendingPatchesAsync(DataDirectory, instance.Id, Http, Report, token, ExperiencesService.BundledPatchesDirectory);
 
             Report("Signing in...");
-            var session = await host.ResolveModpackSessionAsync(token);
+            var session = await host.ResolveModpackSessionAsync(token, instance.GameDirectory);
 
             Report($"Preparing Minecraft {exp.McVersion} & Fabric {exp.LoaderVersion}...");
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token,
@@ -660,7 +660,7 @@ public partial class ExperiencesView : UserControl
             ExperiencesService.EnsureZeroSmpServer(instance.GameDirectory);
 
             Report("Signing in...");
-            var session = await host.ResolveModpackSessionAsync(token);
+            var session = await host.ResolveModpackSessionAsync(token, instance.GameDirectory);
 
             Report("Preparing Minecraft 1.20.1 & Forge 47.4.10...");
             string? joinServer = host.ModpackSettings.ZeroSmpAutoJoin ? ExperiencesService.ZeroSmp.ServerAddress : null;

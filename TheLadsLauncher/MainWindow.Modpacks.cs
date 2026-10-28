@@ -49,8 +49,19 @@ public partial class MainWindow
 
     private async void NavModpacks_Click(object? sender, RoutedEventArgs e) { NavigateTo("Modpacks"); await ModpacksPage.LoadAsync(); }
 
-    /// <summary>The account Play would use, signed in as LaunchGame does: silently, then Microsoft's sign-in window when asked for.</summary>
-    internal async Task<MSession> ResolveModpackSessionAsync(CancellationToken token)
+    /// <summary>The account Play would use, signed in as LaunchGame does: silently, then Microsoft's sign-in window when asked for.
+    /// <paramref name="gameDirectory"/> (the launcher's own instances only, never another launcher's folder) also gets the in-game
+    /// account switcher's list, as LaunchGame writes it for a profile: without it Core makes up an offline "LadsPlayer".</summary>
+    internal async Task<MSession> ResolveModpackSessionAsync(CancellationToken token, string? gameDirectory = null)
+    {
+        var session = await SignInModpackAccountAsync(token);
+        if (gameDirectory != null)
+            await WriteLaunchAccountFilesAsync(session, GetAccountSummaries().Any(a => a.type == "offline"
+                && string.Equals(a.username, session.Username, StringComparison.OrdinalIgnoreCase)), gameDirectory);
+        return session;
+    }
+
+    private async Task<MSession> SignInModpackAccountAsync(CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(_selectedAccount)) throw new InvalidOperationException("Add or select an account on the Accounts page first.");
         string user = ResolveLaunchAccountName();

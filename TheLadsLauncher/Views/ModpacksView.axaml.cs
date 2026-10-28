@@ -3166,7 +3166,7 @@ public partial class ModpacksView : UserControl
         try
         {
             Report("Signing in...");
-            var session = await host.ResolveModpackSessionAsync(launch.Token);
+            var session = await host.ResolveModpackSessionAsync(launch.Token, instance.IsExternal ? null : instance.GameDirectory);
             var launchedUtc = DateTime.UtcNow;
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, launch.Token,
                 relaunch?.Server, relaunch?.World);

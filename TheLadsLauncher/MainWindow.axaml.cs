@@ -5298,7 +5298,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (AccountSwitch.Apply(gameDirectory, GetAccountSummaries(), settings, Log) is not { } account)
+            if (AccountSwitch.Apply(gameDirectory, GetAccountSummaries(), settings, Log, IsDevOfflineAllowed) is not { } account)
                 return false;
 
             _launchAccountOverride = account.username;

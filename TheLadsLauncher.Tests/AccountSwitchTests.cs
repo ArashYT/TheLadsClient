@@ -103,6 +103,28 @@ public class AccountSwitchTests
         Assert.Contains(log, line => line.Contains("Next launch will use NewPlayer", StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>A release build cannot launch offline accounts: the account Core's switcher makes up ("LadsPlayer") or adds in-game
+    /// must not become the next launch's account, where Play then fails and a modpack starts offline.</summary>
+    [Fact]
+    public void NewOfflineAccountIsRefusedWhenOfflineAccountsAreNotAllowed()
+    {
+        using var dir = new TestDirectory();
+        var settings = new LauncherSettings();
+        var accounts = new List<AccountSummary> { new("Steve", "11111111-1111-1111-1111-111111111111", "microsoft") };
+        var log = new List<string>();
+        Request(dir.Path, $$"""{"username":"LadsPlayer","uuid":"{{AccountIdentity.OfflineUuid("LadsPlayer")}}","type":"offline"}""");
+
+        var applied = AccountSwitch.Apply(dir.Path, accounts, settings, log.Add, offlineAllowed: false);
+
+        Assert.Null(applied);
+        Assert.Empty(settings.OfflineAccounts);
+        Assert.False(File.Exists(Path.Combine(dir.Path, AccountSwitch.RequestFile)));
+        Assert.Contains(log, line => line.Contains("only available in debug builds", StringComparison.OrdinalIgnoreCase));
+        // A saved Microsoft account is still switched to.
+        Request(dir.Path, """{"username":"Steve","uuid":"11111111111111111111111111111111","type":"microsoft"}""");
+        Assert.Equal("Steve", AccountSwitch.Apply(dir.Path, accounts, settings, log.Add, offlineAllowed: false)?.username);
+    }
+
     [Fact]
     public void RefusedAccountLeavesSettingsAlone()
     {
