@@ -442,7 +442,7 @@ public final class HypixelSafetyManager {
                 if (json != null) for (Map.Entry<String, JsonElement> e : json.entrySet()) {
                     if (!e.getValue().isJsonArray()) continue;
                     Set<String> modules = ConcurrentHashMap.newKeySet();
-                    for (JsonElement m : e.getValue().getAsJsonArray()) modules.add(m.getAsString());
+                    for (JsonElement m : e.getValue().getAsJsonArray()) if (m.isJsonPrimitive()) modules.add(m.getAsString()); // a bad entry, not the file
                     if (!modules.isEmpty()) BYPASSES.put(e.getKey(), modules);
                 }
             }
@@ -459,12 +459,17 @@ public final class HypixelSafetyManager {
             modules.stream().sorted().forEach(list::add);
             json.add(host, list);
         });
-        try {
-            File file = bypassFile();
-            if (file.getParentFile() != null) file.getParentFile().mkdirs();
-            Files.writeString(file.toPath(), json.toString(), StandardCharsets.UTF_8);
+        File file = bypassFile().getAbsoluteFile();
+        java.nio.file.Path temporary = null;
+        try { // a temporary file first (as ReconnectSettings.save), so a crash mid-write never leaves half a file
+            file.getParentFile().mkdirs();
+            temporary = Files.createTempFile(file.getParentFile().toPath(), "server_bypasses-", ".tmp");
+            Files.writeString(temporary, json.toString(), StandardCharsets.UTF_8);
+            Files.move(temporary, file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception e) {
             System.err.println("[TheLadsCore] could not save server_bypasses.json: " + e);
+        } finally {
+            if (temporary != null) try { Files.deleteIfExists(temporary); } catch (Exception ignored) { }
         }
     }
 

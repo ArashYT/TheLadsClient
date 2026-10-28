@@ -559,4 +559,22 @@ public class HypixelSafetyTest {
         bridge.ingame = false;
         assertTrue(local.canRetry(player, false));
     }
+
+    /** server_bypasses.json: one bad entry is skipped (not every bypass), and a save leaves no temporary file behind. */
+    @Test
+    void bypassFileSurvivesBadEntriesAndSavesWhole() throws Exception {
+        java.nio.file.Path file = tmp.resolve("server_bypasses.json");
+        java.nio.file.Files.writeString(file, "{\"play.somesmp.net\":[{\"x\":1},null,\"Minimap\"],\"other.net\":\"not a list\"}");
+        HypixelSafetyManager.setBypassFile(file.toFile());
+        assertTrue(HypixelSafetyManager.isAllowedOn("XaeroMinimap", "play.somesmp.net"), "the good entry is kept");
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        bridge.setServer("play.somesmp.net");
+        HypixelSafetyManager.bypass("StackRefill");
+        try (java.util.stream.Stream<java.nio.file.Path> files = java.nio.file.Files.list(tmp)) {
+            assertEquals(List.of("server_bypasses.json"), files.map(p -> p.getFileName().toString()).toList(), "no temporary file left");
+        }
+        HypixelSafetyManager.setBypassFile(file.toFile()); // reload from disk
+        assertTrue(HypixelSafetyManager.isBypassed("StackRefill") && HypixelSafetyManager.isBypassed("Minimap"));
+    }
 }
