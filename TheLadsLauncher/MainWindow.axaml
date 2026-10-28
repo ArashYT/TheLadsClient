@@ -419,11 +419,11 @@
                                                         <CheckBox x:Name="KeepLauncherOpenCheckbox" Content="Keep launcher open after launching the game" IsChecked="False" />
                                                         <CheckBox x:Name="KeepClosedOnExitCheckbox" Content="Don't re-open the launcher when the game closes" IsChecked="False" />
                                                         <CheckBox x:Name="DiscordPresenceCheckbox" Content="Show what I'm doing on Discord (Rich Presence)" IsChecked="True" />
-                                                        <CheckBox x:Name="AutoLaunchCheckbox" Content="Auto-launch game when launcher opens" IsChecked="False" />
+                                                        <CheckBox x:Name="AutoLaunchCheckbox" IsVisible="False" Content="Auto-launch game when launcher opens" IsChecked="False" />
                                                         <CheckBox x:Name="MultiInstanceCheckbox" Content="Allow launching multiple copies of the same instance" IsChecked="False" />
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2" Spacing="12">
-                                                        <CheckBox x:Name="AutoFixCrashesCheckbox" Content="Auto-Fix issues on crash (Disables broken mods)" IsChecked="True" />
+                                                        <CheckBox x:Name="AutoFixCrashesCheckbox" IsVisible="False" Content="Auto-Fix issues on crash (Disables broken mods)" IsChecked="True" />
                                                         <CheckBox x:Name="AutoRelaunchOnCrashCheckbox" Content="Auto-relaunch game on crash" IsChecked="False" />
                                                         <CheckBox x:Name="SendCrashReportsCheckbox" Content="Send crash reports to the Lads team (client only)" IsChecked="True" ToolTip.Tip="When the Lads Client crashes, its crash report and game log go to the Lads team so we can fix it. Your Windows user name and login tokens are removed first. Modpacks and Experiences are never sent." />
                                                         <CheckBox x:Name="SendUsageStatsCheckbox" Content="Send anonymous usage stats" IsChecked="True" ToolTip.Tip="Shares anonymous client version and heartbeat stats with the Lads team to help us prioritize updates and see active player counts. No names, UUIDs, or IP addresses are stored." />
@@ -510,7 +510,7 @@
                                                 </StackPanel>
                                                 <StackPanel Spacing="4">
                                                     <TextBlock Text="Fabric Loader Version" Foreground="#A0A1AA" FontSize="12" />
-                                                    <TextBox x:Name="FabricVersionBox" MinHeight="32" FontSize="12" />
+                                                    <TextBox x:Name="FabricVersionBox" IsReadOnly="True" MinHeight="32" FontSize="12" />
                                                 </StackPanel>
                                                 <StackPanel Spacing="4">
                                                     <TextBlock Text="CurseForge API Key" Foreground="#A0A1AA" FontSize="12" />
@@ -526,7 +526,7 @@
                                                 </StackPanel>
                                                 <StackPanel Spacing="4">
                                                     <TextBlock Text="Minecraft Version Override" Foreground="#A0A1AA" FontSize="12" />
-                                                    <TextBox x:Name="MinecraftVersionOverrideBox" Height="32" FontSize="12" />
+                                                    <TextBox x:Name="MinecraftVersionOverrideBox" IsReadOnly="True" Height="32" FontSize="12" />
                                                 </StackPanel>
                                             </StackPanel>
                                         </Border>

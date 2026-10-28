@@ -4993,6 +4993,7 @@ public partial class MainWindow : Window
 
             string installedMarker = Path.Combine(gameDirectory, "versions", launchVersionId, ".lads-verified");
             LaunchService.ConfigureCachedNativesDirectory(path, launchVersionId, launchOpt);
+            LaunchService.EnsureLoadingScreenColors(launchOpt, settings);
             LaunchService.EnsureSecurityJvmArguments(launchOpt, requiredJava, gameDirectory, activeProfile.MinecraftVersion);
             if (settings.QuickLaunch && File.Exists(installedMarker))
             {
@@ -5602,20 +5603,7 @@ public partial class MainWindow : Window
             if (rendererHint.Length > 0) crashInfo += "\n" + rendererHint;
             Log($"[Crash] {crashInfo}");
 
-            if (settings.AutoFixCrashes)
-            {
-                bool fixedCrash = false;
-
-                // AutoFixCrashes removed by user request
-                // The launcher will no longer rename crashed mods to .disabled
-
-                if (fixedCrash)
-                {
-                    StatusText.Text = "Crash auto-fixed. Relaunching...";
-                    _ = LaunchGame();
-                    return;
-                }
-            }
+            // AutoFixCrashes removed by user request (inert setting retained for settings.json compatibility)
 
             if (settings.AutoRelaunchOnCrash)
             {
