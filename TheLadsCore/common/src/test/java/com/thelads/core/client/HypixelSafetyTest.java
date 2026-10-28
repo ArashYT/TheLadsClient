@@ -465,4 +465,54 @@ public class HypixelSafetyTest {
         for (String name : new String[] {"Chat", "Slot Lock", "Inventory Search"}) // chat lane: client-side only, nothing extra sent
             assertFalse(HypixelSafetyManager.isRiskyModule(name), name + " stays ungated");
     }
+
+    /** 1.12.0 anti-ban: Survival Tweaks' dig-speed and movement options act only where a server can't flag them; the rest stay on. */
+    @Test
+    void survivalMechanicsOnlyWhereTheServerRulesAllow() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        com.thelads.core.modules.SurvivalTweaksModule tweaks = com.thelads.core.modules.SurvivalTweaksModule.get();
+        assertTrue(tweaks.isEnabled());
+        for (String allowed : new String[]{"Singleplayer", "192.168.1.20:25565", "smp.arashyt.ca"}) {
+            bridge.setServer(allowed);
+            assertTrue(tweaks.isFasterObsidianMiningEnabled() && tweaks.isBerryBushProtectionEnabled() && tweaks.isElytraWaterSwimEnabled(), allowed);
+        }
+        for (String server : new String[]{"mc.hypixel.net", "as.minemen.club", "play.somesmp.net", "Unknown"}) {
+            bridge.setServer(server);
+            assertFalse(tweaks.isFasterObsidianMiningEnabled(), server + ": FastBreak");
+            assertFalse(tweaks.isBerryBushProtectionEnabled(), server + ": movement in bushes");
+            assertFalse(tweaks.isElytraWaterSwimEnabled(), server + ": elytra state");
+            assertTrue(tweaks.isEnabled() && tweaks.isBoat360ViewEnabled() && tweaks.isLongerChatHistoryEnabled() && tweaks.isFastIpPingEnabled()
+                && tweaks.isKeepBarsWhileRidingEnabled() && tweaks.isCreeperFullDropsEnabled(), server + ": the rest of the module stays on");
+        }
+        bridge.setServer("play.somesmp.net");
+        HypixelSafetyManager.bypass(com.thelads.core.modules.SurvivalTweaksModule.MECHANICS);
+        assertTrue(tweaks.isFasterObsidianMiningEnabled(), "bypassed for this server");
+    }
+
+    /** Dimension brightness past vanilla's Bright is a Fullbright: only where Fullbright is allowed; darker or up to Bright everywhere. */
+    @Test
+    void dimensionBrightnessFollowsTheFullbrightRules() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        com.thelads.core.modules.SurvivalTweaksModule tweaks = com.thelads.core.modules.SurvivalTweaksModule.get();
+        double was = tweaks.dimensionBrightness.getValue();
+        try {
+            tweaks.dimensionBrightness.setValue(200);
+            for (String server : new String[]{"Singleplayer", "mc.hypixel.net"}) { // local, and a server whose rules allow Fullbright
+                bridge.setServer(server);
+                assertEquals(2.0f, tweaks.brightness(1.0f), 1e-6f, server);
+            }
+            for (String server : new String[]{"gommehd.net", "play.somesmp.net"}) { // bans Fullbright / unknown rules
+                bridge.setServer(server);
+                assertEquals(1.0f, tweaks.brightness(1.0f), 1e-6f, server + ": vanilla's Bright at most");
+                assertEquals(0.8f, tweaks.brightness(0.4f), 1e-6f, server + ": brighter up to Bright is vanilla too");
+                assertEquals(3.0f, tweaks.brightness(3.0f), 1e-6f, server + ": a gamma the player set in options.txt is not cut");
+            }
+            tweaks.dimensionBrightness.setValue(50);
+            assertEquals(0.5f, tweaks.brightness(1.0f), 1e-6f, "darker is fine everywhere");
+        } finally {
+            tweaks.dimensionBrightness.setValue(was);
+        }
+    }
 }

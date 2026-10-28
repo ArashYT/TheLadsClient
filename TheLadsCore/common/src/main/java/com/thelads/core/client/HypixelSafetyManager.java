@@ -225,10 +225,13 @@ public final class HypixelSafetyManager {
     /**
      * Risky on servers, so only on for singleplayer, LAN and trusted servers: Stack Refill clicks the inventory with no inventory open,
      * which anticheats ban as an AutoRefill cheat (a Minemen.club ban); use-while-mining sends a use packet mid-dig; Hide Foliage's
-     * Tall Plants show a player crouching in tall grass. Asked per module every frame: no allocation.
+     * Tall Plants show a player crouching in tall grass; Survival Tweaks' faster obsidian mining, berry bush and elytra swim change the
+     * dig speed and movement the server checks; Keep inventory open clicks in an inventory the server closed. Asked per module every
+     * frame: no allocation.
      */
     public static boolean isSingleplayerOnlyModule(String moduleName) {
-        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName) || HideFoliage.TALL_GATE.equalsIgnoreCase(moduleName);
+        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName) || HideFoliage.TALL_GATE.equalsIgnoreCase(moduleName)
+            || com.thelads.core.modules.SurvivalTweaksModule.MECHANICS.equalsIgnoreCase(moduleName) || KeepUiOpen.INVENTORY_GATE.equalsIgnoreCase(moduleName);
     }
 
     public static boolean isFullbrightModule(String moduleName) {

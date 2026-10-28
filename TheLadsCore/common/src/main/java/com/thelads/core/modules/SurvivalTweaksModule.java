@@ -1,5 +1,6 @@
 package com.thelads.core.modules;
 
+import com.thelads.core.client.HypixelSafetyManager;
 import com.thelads.core.config.BoolOption;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
@@ -10,6 +11,12 @@ import com.thelads.core.config.SliderOption;
  */
 public final class SurvivalTweaksModule extends Module {
     public static final String NAME = "SurvivalTweaks";
+    /**
+     * The server-rules name of the options that change what a server checks: the dig speed (Faster obsidian mining) and the
+     * player's movement (Berry bush protection's slowdown, Elytra water swim). A server without them sees ghost-fast mining and moves
+     * its simulation does not expect, so they act only in singleplayer, LAN and trusted servers (HypixelSafetyManager).
+     */
+    public static final String MECHANICS = "SurvivalMechanics";
 
     public final BoolOption berryBushProtection;
     public final BoolOption elytraWaterSwim;
@@ -40,7 +47,8 @@ public final class SurvivalTweaksModule extends Module {
     public SurvivalTweaksModule() {
         super(NAME, "Survival and world quality-of-life tweaks: berry bush armor & sneak protection, faster obsidian mining, "
                 + "100% creeper block drops, no Soul Speed/Thorns durability loss, elytra water swim, stable block drops, "
-                + "flammable cobwebs, animals eating dropped food, boat 360 view, longer chat history, fast IP ping, and keeping status bars while riding.");
+                + "flammable cobwebs, animals eating dropped food, boat 360 view, longer chat history, fast IP ping, and keeping status bars while riding. "
+                + "Faster obsidian mining, berry bush protection and elytra water swim only work in singleplayer, LAN and servers known to allow them.");
         berryBushProtection = addOption(new BoolOption("Berry bush protection", true));
         elytraWaterSwim = addOption(new BoolOption("Elytra water swim", true));
         noEnchantDurabilityLoss = addOption(new BoolOption("No Thorns/Soul Speed damage", true));
@@ -68,11 +76,11 @@ public final class SurvivalTweaksModule extends Module {
     }
 
     public boolean isBerryBushProtectionEnabled() {
-        return isEnabled() && berryBushProtection.get();
+        return isEnabled() && berryBushProtection.get() && !HypixelSafetyManager.isDisallowed(MECHANICS);
     }
 
     public boolean isElytraWaterSwimEnabled() {
-        return isEnabled() && elytraWaterSwim.get();
+        return isEnabled() && elytraWaterSwim.get() && !HypixelSafetyManager.isDisallowed(MECHANICS);
     }
 
     public boolean isNoEnchantDurabilityLossEnabled() {
@@ -88,7 +96,18 @@ public final class SurvivalTweaksModule extends Module {
     }
 
     public boolean isFasterObsidianMiningEnabled() {
-        return isEnabled() && fasterObsidianMining.get();
+        return isEnabled() && fasterObsidianMining.get() && !HypixelSafetyManager.isDisallowed(MECHANICS);
+    }
+
+    /**
+     * The lightmap's gamma scaled by Dimension brightness. Past vanilla's Bright (1.0) it is a Fullbright, so brighter than that only
+     * where Fullbright's server rules allow it.
+     */
+    public float brightness(float gamma) {
+        int pct = dimensionBrightness.getIntValue();
+        if (pct == 100) return gamma;
+        float scaled = gamma * (pct / 100.0f);
+        return pct > 100 && scaled > 1.0f && HypixelSafetyManager.isDisallowed("Fullbright") ? Math.max(gamma, 1.0f) : scaled;
     }
 
     public boolean isFlammableCobwebsEnabled() {

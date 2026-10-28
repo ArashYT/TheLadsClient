@@ -52,8 +52,7 @@ public final class SurvivalTweaks189 {
     /** The gamma the lightmap uses, scaled by Dimension brightness %, as 26.x scales its brightness option. */
     public static float brightness(float gamma) {
         SurvivalTweaksModule m = on();
-        int pct = m == null ? 100 : m.dimensionBrightness.getIntValue();
-        return pct == 100 ? gamma : gamma * (pct / 100.0f);
+        return m == null ? gamma : m.brightness(gamma);
     }
 
     /** A block or mob drop (EntityItem's stack constructor) keeps still, or drifts to the nearest sneaking player within 2.5. */
