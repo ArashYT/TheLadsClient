@@ -1099,7 +1099,8 @@ CRASH_RULES = [
         )
     },
     {
-        "pattern": r"(nvoglv64\.dll|ig9ic64\.dll|ig10ic64\.dll|atio6axx\.dll|EXCEPTION_ACCESS_VIOLATION.*# C.*\[(nv|ig|at))",
+        # The hs_err "Problematic frame" line ("# C  [nvoglv64.dll+0x...]"): line-anchored, so it stays linear on hostile input
+        "pattern": r"(?m)(nvoglv64\.dll|ig9ic64\.dll|ig10ic64\.dll|atio6axx\.dll|^#[ \t]+C[ \t]+\[(nv|ig|at))",
         "title": "GPU Graphics Driver Crash",
         "color": 0xE74C3C,
         "solution": (
@@ -1117,7 +1118,7 @@ CRASH_RULES = [
         )
     },
     {
-        "pattern": r"(MixinPrepareException|Mixin apply for mod .* failed)",
+        "pattern": r"(MixinPrepareException|Mixin apply for mod .{0,200} failed)",
         "title": "Fabric / Mod Mixin Conflict",
         "color": 0x9B59B6,
         "solution": (
@@ -1127,7 +1128,12 @@ CRASH_RULES = [
     }
 ]
 
+CRASH_SCAN_CHARS = 256_000  # head and tail of a log that the rules scan: bounds the cost of /crash, attachments and /crashlog
+
+
 def analyze_crash_text(log_text: str):
+    if len(log_text) > 2 * CRASH_SCAN_CHARS:
+        log_text = log_text[:CRASH_SCAN_CHARS] + "\n" + log_text[-CRASH_SCAN_CHARS:]
     for rule in CRASH_RULES:
         if re.search(rule["pattern"], log_text, re.IGNORECASE):
             return rule
