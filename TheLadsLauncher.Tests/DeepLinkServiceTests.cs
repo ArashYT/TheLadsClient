@@ -174,4 +174,37 @@ public class DeepLinkServiceTests
         }
         finally { Directory.Delete(root, true); }
     }
+
+    [Fact]
+    public async Task StartIpcListener_LogsFirstUnauthorizedAccessExceptionOnce()
+    {
+        var logs = new List<string>();
+        DeepLinkService.Log = logs.Add;
+        using var cts = new CancellationTokenSource();
+        int attempts = 0;
+        DeepLinkService.ServerFactory = _ =>
+        {
+            attempts++;
+            throw new UnauthorizedAccessException("Pipe is occupied");
+        };
+        try
+        {
+            DeepLinkService.StartIpcListener(_ => { }, "test-pipe", cts.Token);
+            for (int i = 0; i < 50 && attempts < 1; i++)
+                await Task.Delay(20);
+
+            Assert.True(attempts >= 1);
+            Assert.Single(logs.Where(l => l.Contains("pipe squatting", StringComparison.OrdinalIgnoreCase)));
+
+            await Task.Delay(600);
+            Assert.True(attempts >= 2);
+            Assert.Single(logs.Where(l => l.Contains("pipe squatting", StringComparison.OrdinalIgnoreCase)));
+        }
+        finally
+        {
+            cts.Cancel();
+            DeepLinkService.ServerFactory = DeepLinkService.CreateIpcServer;
+            DeepLinkService.Log = null;
+        }
+    }
 }

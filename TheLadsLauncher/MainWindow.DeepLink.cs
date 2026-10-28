@@ -10,6 +10,7 @@ public partial class MainWindow : Window
 {
     private void InitializeDeepLinking()
     {
+        DeepLinkService.Log = Log;
         DeepLinkService.StartIpcListener(action =>
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(async () =>

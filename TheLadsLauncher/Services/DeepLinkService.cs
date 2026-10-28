@@ -40,6 +40,8 @@ public static class DeepLinkService
     }
 
     public static event Action<DeepLinkAction>? DeepLinkReceived;
+    public static Action<string>? Log { get; set; }
+    public static Func<string, NamedPipeServerStream> ServerFactory { get; set; } = CreateIpcServer;
 
     /// <summary>
     /// Validates that a host name is a valid DNS hostname, IPv4, or IPv6 address,
@@ -159,18 +161,20 @@ public static class DeepLinkService
     /// <summary>
     /// Starts background named pipe listener for deep links arriving while the launcher is open.
     /// </summary>
-    public static void StartIpcListener(Action<DeepLinkAction> onActionReceived)
+    public static void StartIpcListener(Action<DeepLinkAction> onActionReceived, string? pipeName = null, CancellationToken cancellationToken = default)
     {
         _ = Task.Run(async () =>
         {
-            while (true)
+            bool unauthorizedLogged = false;
+            string pipe = pipeName ?? PipeName;
+            while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    using var server = CreateIpcServer(PipeName);
-                    await server.WaitForConnectionAsync();
+                    using var server = ServerFactory(pipe);
+                    await server.WaitForConnectionAsync(cancellationToken);
                     using var reader = new StreamReader(server);
-                    string? line = await reader.ReadLineAsync();
+                    string? line = await reader.ReadLineAsync(cancellationToken);
                     if (!string.IsNullOrWhiteSpace(line))
                     {
                         var action = ParseUri(line);
@@ -178,9 +182,24 @@ public static class DeepLinkService
                         DeepLinkReceived?.Invoke(action);
                     }
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    if (!unauthorizedLogged)
+                    {
+                        unauthorizedLogged = true;
+                        Log?.Invoke($"[DeepLink] Pipe listener unauthorized (pipe squatting): {ex.Message}");
+                    }
+                    try { await Task.Delay(500, cancellationToken); }
+                    catch (OperationCanceledException) { break; }
+                }
                 catch
                 {
-                    await Task.Delay(500);
+                    try { await Task.Delay(500, cancellationToken); }
+                    catch (OperationCanceledException) { break; }
                 }
             }
         });
