@@ -632,7 +632,7 @@ public static class ClientModInstaller
     /// <summary>Copies at most <paramref name="limit"/> bytes and returns the count. A slow transfer never times out here;
     /// only <paramref name="idle"/> without a single byte does (TimeoutException).</summary>
     public static async Task<long> CopyWithStallTimeoutAsync(Stream input, Stream output, long limit, TimeSpan idle, string name,
-        CancellationToken token)
+        CancellationToken token, Action<long>? onProgress = null)
     {
         using var stall = CancellationTokenSource.CreateLinkedTokenSource(token);
         var buffer = new byte[81920]; long total = 0; int count;
@@ -647,6 +647,7 @@ public static class ClientModInstaller
                 total += count;
                 if (total > limit) throw new InvalidDataException($"Oversized download for {name}.");
                 await output.WriteAsync(buffer.AsMemory(0, count), token);
+                onProgress?.Invoke(total);
             }
         }
         catch (OperationCanceledException) when (!token.IsCancellationRequested)

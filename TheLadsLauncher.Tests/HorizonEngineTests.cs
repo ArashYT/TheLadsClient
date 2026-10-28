@@ -218,4 +218,28 @@ public class HorizonEngineTests : IDisposable
         Assert.Equal(report1, sentFiles[0]);
         Assert.Equal(report2, sentFiles[1]);
     }
+
+    [Fact]
+    public void ScrubSessionFiles_DeletesExistingSessionFiles()
+    {
+        var session = new MSession("Alex", "token-xyz", "0123456789abcdef0123456789abcdef");
+        string file1 = HorizonEngine.WriteSessionFile(_home, session);
+        Assert.True(File.Exists(file1));
+
+        HorizonEngine.ScrubSessionFiles(_home);
+        Assert.False(File.Exists(file1));
+    }
+
+    [Fact]
+    public void Start_WhenProcessFailsToStart_DeletesSessionFile()
+    {
+        var session = new MSession("Player", "token-fail", "0123456789abcdef0123456789abcdef");
+        string nonexistentGame = Path.Combine(_home, "nonexistent-game");
+
+        Assert.ThrowsAny<Exception>(() =>
+            HorizonEngine.Start(_home, nonexistentGame, Path.Combine(_home, "resources"), session, offline: false));
+
+        string sessionsDir = Path.Combine(_home, "sessions");
+        Assert.True(!Directory.Exists(sessionsDir) || Directory.GetFiles(sessionsDir, "session-*.json").Length == 0);
+    }
 }
