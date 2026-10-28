@@ -98,7 +98,7 @@ public class ProfileManager {
             if (mode == null || mode == ShareCode.ImportMode.BOTH) {
                 ConfigManager.applyJson(snap);
             } else {
-                JsonObject prepared = ShareCode.prepareImportJson(snap, mode);
+                JsonObject prepared = ShareCode.prepareImportJson(snap, mode, false);
                 ConfigManager.applyJson(prepared);
             }
             ConfigManager.saveLater();

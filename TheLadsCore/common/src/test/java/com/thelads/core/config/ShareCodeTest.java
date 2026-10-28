@@ -2,6 +2,7 @@ package com.thelads.core.config;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -531,6 +532,53 @@ class ShareCodeTest {
     }
 
     @Test
+    void codesCarryOnlyVisualValuesAndNeverChangeTheRest() {
+        ModuleManager mm = ModuleManager.getInstance();
+        mm.resetToDefaults();
+        TextOption macro = (TextOption) mm.getModule("Auto Text").getOption("Message 1");
+        SoundOption oof = (SoundOption) mm.getModule("Oof Mod").getOption("Oof sound");
+        TextOption shortcuts = (TextOption) mm.getModule("Chat").getOption("Shortcuts");
+        BoolOption letServers = (BoolOption) mm.getModule("Server Control").getOption("Let servers change my Lads settings");
+        BoolOption autoFriend = (BoolOption) mm.getModule("HYPIXEL Mods").getOption("Auto Friend");
+        TextOption gg = (TextOption) mm.getModule("HYPIXEL Mods").getOption("Auto GG: Message");
+
+        // Exporting: private text, sounds and security switches stay home; the visual change travels.
+        macro.setValue("/login hunter2");
+        oof.set("mine.mp3");
+        shortcuts.setValue("brb=be right back");
+        letServers.set(false);
+        ((BoolOption) mm.getModule("FPS").getOption("Smooth")).set(false);
+        JsonObject exported = ShareCode.createSharePayload(ConfigManager.toJson()).getAsJsonObject("modules");
+        assertEquals(Set.of("FPS"), exported.keySet());
+        assertFalse(exported.toString().contains("hunter2"));
+
+        // Importing a stranger's v2 code that tries to change all of it: only the visual values apply, nothing else is reset.
+        mm.getModule("StackRefill").setEnabled(false); // on by default; the player turned it off
+        JsonObject payload = JsonParser.parseString("{\"v\":2,\"modules\":{"
+            + "\"Oof Mod\":{\"enabled\":true,\"options\":{\"Oof sound\":\"evil.mp3\",\"Volume\":0.5}},"
+            + "\"Auto Text\":{\"enabled\":true,\"options\":{\"Message 1\":\"/pay attacker 1000\"}},"
+            + "\"HYPIXEL Mods\":{\"options\":{\"Auto GG: Message\":\"buy cheats\",\"Auto Friend\":true}},"
+            + "\"Server Control\":{\"options\":{\"Let servers change my Lads settings\":true}},"
+            + "\"IgnorePacketErrors\":{\"enabled\":true},\"StackRefill\":{\"enabled\":true},"
+            + "\"Chat\":{\"options\":{\"Shortcuts\":\"gg=/pay attacker 1\",\"Custom Tabs\":\"A=(a+)+$\"}}}}").getAsJsonObject();
+        ShareCode.applySharePayload(payload, ShareCode.ImportMode.BOTH);
+
+        assertEquals("/login hunter2", macro.getValue());
+        assertFalse(mm.getModule("Auto Text").isEnabledSetting());
+        assertEquals("mine.mp3", oof.get(), "a code never sets a sound file");
+        assertEquals("brb=be right back", shortcuts.getValue());
+        assertEquals("", ((TextOption) mm.getModule("Chat").getOption("Custom Tabs")).getValue());
+        assertFalse(letServers.get(), "Server Control stays the player's choice");
+        assertFalse(autoFriend.get());
+        assertEquals("gg", gg.getValue());
+        assertFalse(mm.getModule("IgnorePacketErrors").isEnabledSetting());
+        assertFalse(mm.getModule("StackRefill").isEnabledSetting(), "automation is never switched on by a code");
+        assertTrue(mm.getModule("Oof Mod").isEnabledSetting(), "visual switches still import");
+        assertEquals(0.5, ((SliderOption) mm.getModule("Oof Mod").getOption("Volume")).getValue(), 1e-9);
+        assertTrue(((BoolOption) mm.getModule("FPS").getOption("Smooth")).get(), "an unlisted visual option is reset (v2)");
+    }
+
+    @Test
     void defaultsComeFromTheLiveModulesNotASecondModuleList() {
         var optifine = com.thelads.core.modules.OptiFine189Module.getInstance();
         long monitors = priorityMonitors();
@@ -543,6 +591,39 @@ class ShareCodeTest {
 
     private static long priorityMonitors() {
         return Thread.getAllStackTraces().keySet().stream().filter(t -> t.getName().equals("Lads priority monitor")).count();
+    }
+
+    @Test
+    void sharedLayoutsCannotBloatTheConfig() {
+        JsonObject positions = new JsonObject();
+        positions.add("x".repeat(200), xy(1, 1));
+        for (int i = 0; i < 5000; i++) positions.add("junk" + i, xy(i, i));
+        JsonArray fade = new JsonArray();
+        for (int i = 0; i < 5000; i++) fade.add(0x111111 * (i % 15));
+        JsonObject hud = new JsonObject();
+        hud.add("positions", positions);
+        hud.add("fadePlaylist", fade);
+        JsonObject payload = new JsonObject();
+        payload.addProperty("v", 1);
+        payload.add("hud", hud);
+        HudSettings settings = HudSettings.getInstance();
+        try {
+            settings.resetToDefaults();
+            ShareCode.applySharePayload(payload, ShareCode.ImportMode.SETTINGS);
+            assertEquals(ConfigManager.MAX_HUD_ENTRIES, settings.getPositions().size());
+            assertFalse(settings.getPositions().containsKey("x".repeat(200)), "no name longer than 128");
+            assertEquals(HudSettings.MAX_FADE, settings.getFadePlaylist().size());
+            assertSame(settings.getFadePalette(), settings.getFadePalette(), "one palette, not a new array per HUD element per frame");
+        } finally {
+            settings.resetToDefaults();
+        }
+    }
+
+    private static JsonArray xy(int x, int y) {
+        JsonArray a = new JsonArray();
+        a.add(x);
+        a.add(y);
+        return a;
     }
 
     /** Every non-excluded module's on/off, HUD colours and options as the config saves them (no favourite / modified time). */

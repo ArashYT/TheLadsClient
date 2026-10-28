@@ -32,6 +32,8 @@ import java.util.zip.Inflater;
  *  - Caps inflate output at 256 KB (zip-bomb defense).
  *  - Strict JSON validation.
  *  - Ignores unmanaged modules and sensitive/machine-specific options.
+ *  - Allow-list: a code carries and applies only visual values ({@link #isExcludedOption}), never text, sounds, paths or the
+ *    privacy, security and automation modules ({@link #isExcludedModule}); a v2 import never resets what it may not carry.
  */
 public final class ShareCode {
     public static final String PREFIX = "LADS1:";
@@ -220,6 +222,11 @@ public final class ShareCode {
      * (no "v") list everything they mean and are used as they are.
      */
     public static JsonObject prepareImportJson(JsonObject payload, ImportMode mode) {
+        return prepareImportJson(payload, mode, true);
+    }
+
+    /** {@code fromStranger} false: the player's own profile (ProfileManager), which restores every module and option its mode covers. */
+    static JsonObject prepareImportJson(JsonObject payload, ImportMode mode, boolean fromStranger) {
         if (payload == null) {
             return new JsonObject();
         }
@@ -250,7 +257,7 @@ public final class ShareCode {
 
             for (Map.Entry<String, JsonElement> entry : modulesIn.entrySet()) {
                 String modName = entry.getKey();
-                if (!knownModules.contains(modName) || isExcludedModule(modName)) {
+                if (!knownModules.contains(modName) || fromStranger && isExcludedModule(modName)) {
                     continue; // Ignore unknown or excluded modules
                 }
                 if (!entry.getValue().isJsonObject()) {
@@ -286,7 +293,7 @@ public final class ShareCode {
                         JsonObject optsOut = new JsonObject();
                         for (Map.Entry<String, JsonElement> optEntry : optsIn.entrySet()) {
                             String optName = optEntry.getKey();
-                            if (!isExcludedOption(modName, optName) && optEntry.getValue() != null && !optEntry.getValue().isJsonNull()) {
+                            if (!(fromStranger && isExcludedOption(modName, optName)) && optEntry.getValue() != null && !optEntry.getValue().isJsonNull()) {
                                 optsOut.add(optName, optEntry.getValue().deepCopy());
                             }
                         }
@@ -370,10 +377,19 @@ public final class ShareCode {
         return all;
     }
 
+    /**
+     * Modules a share code (a stranger's) never carries or changes: privacy (Friends &amp; Social and Cosmetics send your name to Lads
+     * servers), security switches (Server Control, Server Notification Actions, IgnorePacketErrors) and automation that sends chat,
+     * commands or clicks for the player (Auto Text, HYPIXEL Mods' Auto GG/Friend/Tip..., LadsApiRules automation).
+     */
+    private static final Set<String> NOT_SHARED = Set.of("server control", "server notification actions", "ignorepacketerrors",
+        "friends & social", "cosmetics", "auto text", "hypixel mods");
+
     public static boolean isExcludedModule(String moduleName) {
         if (moduleName == null) return true;
         String lower = moduleName.toLowerCase(Locale.ROOT);
-        return lower.equals("discordrpc") || lower.contains("discord");
+        return lower.equals("discordrpc") || lower.contains("discord") || NOT_SHARED.contains(lower)
+            || com.thelads.core.client.ladsapi.LadsApiRules.isAutomation(moduleName);
     }
 
     public static boolean isExcludedOption(String moduleName, String optionName) {
@@ -395,7 +411,12 @@ public final class ShareCode {
         if (lower.contains("password") || lower.contains("token") || lower.contains("secret") || lower.contains("api key") || lower.contains("server address")) {
             return true;
         }
-        return false;
+        // Allow-list: only plain visual values travel (switches, sliders, choices, colours, particle rates). Text (chat messages,
+        // shortcuts, regexes, file paths, URLs), sounds (file names), actions and options this build doesn't have never do.
+        Module module = ModuleManager.getInstance().getModule(moduleName);
+        Option option = module == null ? null : module.getOption(optionName);
+        return !(option instanceof BoolOption || option instanceof SliderOption || option instanceof DropdownOption
+            || option instanceof ColorOption || option instanceof DoubleOption || option instanceof ParticleReductionOption);
     }
 
     private static byte[] deflate(byte[] data) {
