@@ -1191,6 +1191,13 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>An exception that escaped a UI handler (<see cref="Program"/> logged it in full): the launcher goes on, and says so.</summary>
+    internal void ShowUnhandled(Exception error)
+    {
+        Log($"[UNHANDLED] {error.GetType().Name}: {error.Message} (full report in logs\\crash_ui.txt)");
+        ShowActionNotice($"Something went wrong: {error.Message} The details are in logs\\crash_ui.txt.", error: true);
+    }
+
     private void DrainPendingUiLogs()
     {
         System.Threading.Interlocked.Exchange(ref _uiLogDrainScheduled, 0);
