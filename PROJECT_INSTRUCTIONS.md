@@ -57,11 +57,6 @@ You can run these commands directly using your terminal/bash execution tools:
     ```powershell
     powershell -ExecutionPolicy Bypass -File .\Build-LadsClient.ps1 -Launcher
     ```
-    
-*   **Watch Mode (Auto-rebuild on source edits):**
-    ```powershell
-    powershell -ExecutionPolicy Bypass -File .\Build-LadsClient.ps1 -Watch
-    ```
 
 ---
 
