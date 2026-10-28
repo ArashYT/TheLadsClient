@@ -17,6 +17,7 @@ import sqlite3
 import time
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Set, Tuple
+from urllib.parse import quote
 
 import aiohttp
 from aiohttp import web
@@ -51,6 +52,7 @@ MAX_AUTH_DICT_ENTRIES = 10_000
 RELAY_MAX_BYTES_PER_SEC = 12_500_000  # 100 Mbit/s
 MAX_RELAY_SESSION_BYTES = 50 * 10**9   # 50 GB per session ceiling
 MAX_RELAY_SESSION_DURATION = 6.0 * 3600.0  # 6 hours
+TURN_MINTS_PER_DAY = 60  # TURN credential sets per account (host or guest) per day
 STUN_SERVER = "stun:stun.cloudflare.com:3478"
 TURN_USER_AGENT = "LadsClient-social/1.0"  # explicit: Cloudflare refuses some default library agents
 ALLOWED_STATES = frozenset({"menu", "singleplayer", "hosting", "server", "offline"})
@@ -180,6 +182,27 @@ async def mint_turn_credentials() -> list[dict]:
     except Exception as e:
         log.warning("CF TURN request failed: %s", type(e).__name__)
         return []
+
+
+async def revoke_turn_credentials(usernames: list[str]) -> None:
+    """Best effort: revoke a finished session's TURN credentials so they cannot be used for the rest of their TTL."""
+    key_id = os.getenv("CF_TURN_KEY_ID")
+    token = os.getenv("CF_TURN_API_TOKEN")
+    if not key_id or not token:
+        return
+    headers = {"Authorization": f"Bearer {token}", "User-Agent": TURN_USER_AGENT}
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
+            for user in usernames:
+                url = f"https://rtc.live.cloudflare.com/v1/turn/keys/{key_id}/credentials/{quote(user, safe='')}/revoke"
+                async with session.post(url, headers=headers) as resp:
+                    if resp.status not in (200, 204):
+                        log.warning("CF TURN revoke failed with status %d", resp.status)
+    except Exception as e:
+        log.warning("CF TURN revoke request failed: %s", type(e).__name__)
+
+
+_BACKGROUND: set[asyncio.Task] = set()  # strong refs so fire-and-forget revokes are not garbage collected mid-request
 
 
 def validate_game(game: Any) -> tuple[bool, dict | None]:
@@ -814,6 +837,25 @@ class SocialHub:
         self.invite_limits: dict[str, tuple[float, int]] = {}
         self.join_limits: dict[str, tuple[float, int]] = {}
         self.signal_limits: dict[str, tuple[float, int]] = {}
+        self.turn_limits: dict[str, tuple[float, int]] = {}
+
+    def drop_session(self, sid: str, reason: str, notify: tuple[str, ...]) -> None:
+        """Every way a P2P session ends: keep it 60 s for late p2p_end byte reports, revoke its TURN credentials, tell the peers."""
+        sess = self.sessions.pop(sid, None)
+        if sess is None:
+            return
+        self.signal_limits.pop(sid, None)
+        sess["ended"] = True
+        sess["ended_at"] = time.time()
+        self.ended_sessions[sid] = sess
+        if sess.get("turn_users"):
+            task = asyncio.create_task(revoke_turn_credentials(sess["turn_users"]))
+            _BACKGROUND.add(task)
+            task.add_done_callback(_BACKGROUND.discard)
+        for uuid in notify:
+            p = self.peers.get(uuid)
+            if p and not p.gone:
+                p.send_json({"t": "p2p_end", "sid": sid, "reason": reason})
 
     def is_ip_auth_blocked(self, ip: str) -> bool:
         ip_key = get_auth_ip_key(ip)
@@ -921,12 +963,8 @@ class SocialHub:
         # End active sessions
         for sid, sess in list(self.sessions.items()):
             if sess["host"] == peer.uuid or sess["guest"] == peer.uuid:
-                del self.sessions[sid]
-                self.signal_limits.pop(sid, None)
                 other_uuid = sess["guest"] if sess["host"] == peer.uuid else sess["host"]
-                other = self.peers.get(other_uuid)
-                if other and not other.gone:
-                    other.send_json({"t": "p2p_end", "sid": sid, "reason": "peer_disconnected"})
+                self.drop_session(sid, "peer_disconnected", (other_uuid,))
 
         # Invalidate pending invites / join requests
         for inv_id, inv in list(self.invites.items()):
@@ -1025,6 +1063,9 @@ class SocialHub:
         relay_status = "none"
         if relay_bytes >= RELAY_BUDGET_BYTES or host_bytes >= USER_RELAY_BUDGET_BYTES or guest_bytes >= USER_RELAY_BUDGET_BYTES:
             relay_status = "budget"
+        elif not (self.check_rate_limit(self.turn_limits, host_peer.uuid, TURN_MINTS_PER_DAY, 86400.0)
+                  and self.check_rate_limit(self.turn_limits, guest_peer.uuid, TURN_MINTS_PER_DAY, 86400.0)):
+            relay_status = "budget"  # per-account daily cap on credential sets: direct P2P still works
         else:
             try:
                 turn_list = await mint_turn_credentials()
@@ -1037,14 +1078,7 @@ class SocialHub:
         # ATOMIC session replace and insert: all awaits are done before this block
         for s_id, s_data in list(self.sessions.items()):
             if s_data["guest"] == guest_peer.uuid:
-                del self.sessions[s_id]
-                self.signal_limits.pop(s_id, None)
-                h_peer = self.peers.get(s_data["host"])
-                g_peer = self.peers.get(s_data["guest"])
-                if h_peer and not h_peer.gone:
-                    h_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "replaced"})
-                if g_peer and not g_peer.gone:
-                    g_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "replaced"})
+                self.drop_session(s_id, "replaced", (s_data["host"], s_data["guest"]))
 
         ice_config = {
             "stun": [STUN_SERVER],
@@ -1059,6 +1093,7 @@ class SocialHub:
             "guest": guest_peer.uuid,
             "created_at": time.time(),
             "has_turn": bool(turn_list),
+            "turn_users": sorted({t["user"] for t in turn_list}),
             "reports": {},
             "recorded_bytes": 0
         }
@@ -1351,14 +1386,7 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     # End active sessions between pair (Rule 3)
                     for s_id, s_data in list(hub.sessions.items()):
                         if (s_data["host"] == peer.uuid and s_data["guest"] == t_uuid) or (s_data["host"] == t_uuid and s_data["guest"] == peer.uuid):
-                            del hub.sessions[s_id]
-                            hub.signal_limits.pop(s_id, None)
-                            h_peer = hub.peers.get(s_data["host"])
-                            g_peer = hub.peers.get(s_data["guest"])
-                            if h_peer and not h_peer.gone:
-                                h_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "unfriended"})
-                            if g_peer and not g_peer.gone:
-                                g_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "unfriended"})
+                            hub.drop_session(s_id, "unfriended", (s_data["host"], s_data["guest"]))
 
                     # Invalidate in-flight invites and join requests
                     for inv_id, inv in list(hub.invites.items()):
@@ -1389,14 +1417,7 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                 # End active sessions between pair
                 for s_id, s_data in list(hub.sessions.items()):
                     if (s_data["host"] == peer.uuid and s_data["guest"] == t_uuid) or (s_data["host"] == t_uuid and s_data["guest"] == peer.uuid):
-                        del hub.sessions[s_id]
-                        hub.signal_limits.pop(s_id, None)
-                        h_peer = hub.peers.get(s_data["host"])
-                        g_peer = hub.peers.get(s_data["guest"])
-                        if h_peer and not h_peer.gone:
-                            h_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "blocked"})
-                        if g_peer and not g_peer.gone:
-                            g_peer.send_json({"t": "p2p_end", "sid": s_id, "reason": "blocked"})
+                        hub.drop_session(s_id, "blocked", (s_data["host"], s_data["guest"]))
 
                 # Invalidate in-flight invites and join requests
                 for inv_id, inv in list(hub.invites.items()):
@@ -1795,29 +1816,24 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     max_allowed = min(int(elapsed_capped * RELAY_MAX_BYTES_PER_SEC), MAX_RELAY_SESSION_BYTES)
                     clamped_bytes = min(raw_bytes, max_allowed)
 
-                session.setdefault("reports", {})[peer.uuid] = clamped_bytes
+                reports = session.setdefault("reports", {})
+                own_delta = clamped_bytes - reports.get(peer.uuid, 0)
+                if own_delta > 0:
+                    reports[peer.uuid] = clamped_bytes
 
-                # Count the max once: record delta = max(reports) - recorded_bytes
-                new_max = max(session["reports"].values()) if session["reports"] else 0
+                # The global budget counts the session once (the larger report); each player's monthly
+                # quota takes only their own report, so a friend cannot use it up with an inflated one.
+                new_max = max(reports.values(), default=0)
                 delta = new_max - session.get("recorded_bytes", 0)
+                month_str = time.strftime("%Y-%m", time.gmtime())
                 if delta > 0:
-                    month_str = time.strftime("%Y-%m", time.gmtime())
-                    await store.record_relay_bytes(month_str, delta)
-                    await store.record_user_relay_bytes(month_str, session["host"], delta)
-                    await store.record_user_relay_bytes(month_str, session["guest"], delta)
                     session["recorded_bytes"] = new_max
+                    await store.record_relay_bytes(month_str, delta)
+                if own_delta > 0:
+                    await store.record_user_relay_bytes(month_str, peer.uuid, own_delta)
 
-                if sid in hub.sessions:
-                    del hub.sessions[sid]
-                    session["ended"] = True
-                    session["ended_at"] = time.time()
-                    hub.ended_sessions[sid] = session
-                    hub.signal_limits.pop(sid, None)
-
-                    other_uuid = session["guest"] if session["host"] == peer.uuid else session["host"]
-                    other = hub.peers.get(other_uuid)
-                    if other and not other.gone:
-                        other.send_json({"t": "p2p_end", "sid": sid, "reason": reason})
+                other_uuid = session["guest"] if session["host"] == peer.uuid else session["host"]
+                hub.drop_session(sid, reason, (other_uuid,))
 
             elif kind == "settings":
                 raw_show = msg.get("showServer")

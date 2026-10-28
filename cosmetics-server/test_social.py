@@ -21,6 +21,18 @@ def _enable_social_dev(monkeypatch):
 import cosmetics
 import social
 
+
+@pytest.fixture(autouse=True)
+def revoked(monkeypatch):
+    """TURN revokes never reach Cloudflare in tests; the list records the usernames revoked."""
+    calls = []
+
+    async def fake_revoke(usernames):
+        calls.extend(usernames)
+
+    monkeypatch.setattr(social, "revoke_turn_credentials", fake_revoke)
+    return calls
+
 A = "a" * 32
 B = "b" * 32
 C = "c" * 32
@@ -1881,3 +1893,109 @@ async def test_r3_8_offline_dm_evicts_from_heaviest_sender(social_app):
     assert alice_dms[0]['text'] == 'Legit from Alice'
     spammer1_texts = [d['text'] for d in dms if d['from'] == spammer1]
     assert 'Spam1_0' not in spammer1_texts
+
+
+# ===========================================================================
+# 1.12.0 backend lane: TURN relay hardening (A/2, B/6)
+# ===========================================================================
+
+async def _relay_session(social_app, monkeypatch, user="cred_user"):
+    """Alice hosts, Bob joins by invite; TURN keys present (mint faked). Returns (alice_ws, bob_ws, sid)."""
+    monkeypatch.setenv("CF_TURN_KEY_ID", "dummy_k")
+    monkeypatch.setenv("CF_TURN_API_TOKEN", "dummy_t")
+
+    async def fake_mint():
+        return [{"url": "turn:turn.cloudflare.com:3478?transport=udp", "user": user, "credential": "c"}]
+    monkeypatch.setattr(social, "mint_turn_credentials", fake_mint)
+
+    alice_ws, _ = await auth_ws(social_app, "Alice", A)
+    bob_ws, _ = await auth_ws(social_app, "Bob", B, headers={"CF-Connecting-IP": "10.0.0.2"})
+    await social_app.app["social_store"].add_friend(A, B)
+    world = {"id": "w1", "name": "W", "scope": "friends", "slots": 8, "used": 0}
+    await alice_ws.send_json({"t": "presence", "state": "hosting", "world": world})
+    await recv_type(bob_ws, "presence")
+    await alice_ws.send_json({"t": "invite", "to": B, "world": world})
+    inv = await recv_type(bob_ws, "invite")
+    await bob_ws.send_json({"t": "invite_accept", "inviteId": inv["inviteId"]})
+    start = await recv_type(alice_ws, "p2p_start")
+    await recv_type(bob_ws, "p2p_start")
+    return alice_ws, bob_ws, start["sid"]
+
+
+async def test_turn_credentials_revoked_on_p2p_end(social_app, monkeypatch, revoked):
+    alice_ws, bob_ws, sid = await _relay_session(social_app, monkeypatch)
+    await alice_ws.send_json({"t": "p2p_end", "sid": sid})
+    await recv_type(bob_ws, "p2p_end")
+    await asyncio.sleep(0.05)
+    assert revoked == ["cred_user"]
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_turn_credentials_revoked_when_peer_disconnects_and_late_report_still_counts(social_app, monkeypatch, revoked):
+    alice_ws, bob_ws, sid = await _relay_session(social_app, monkeypatch)
+    hub = social_app.app["social_hub"]
+    store = social_app.app["social_store"]
+    hub.sessions[sid]["created_at"] -= 3600
+
+    await bob_ws.close()
+    end = await recv_type(alice_ws, "p2p_end")
+    assert end["reason"] == "peer_disconnected"
+    await asyncio.sleep(0.05)
+    assert revoked == ["cred_user"]
+
+    # The host's report after the guest vanished is still accepted (it used to get not_found and was never counted)
+    await alice_ws.send_json({"t": "p2p_end", "sid": sid, "relayed": True, "bytes": 5_000_000})
+    await asyncio.sleep(0.1)
+    month = time.strftime("%Y-%m", time.gmtime())
+    assert await store.get_relay_bytes(month) == 5_000_000
+    await alice_ws.close()
+
+
+async def test_turn_credentials_revoked_on_block(social_app, monkeypatch, revoked):
+    alice_ws, bob_ws, sid = await _relay_session(social_app, monkeypatch)
+    await bob_ws.send_json({"t": "block", "uuid": A})
+    assert (await recv_type(alice_ws, "p2p_end"))["reason"] == "blocked"
+    await asyncio.sleep(0.05)
+    assert revoked == ["cred_user"]
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_relay_report_charges_only_the_reporter(social_app, monkeypatch):
+    """A friend's inflated report no longer uses up the other player's monthly quota."""
+    alice_ws, bob_ws, sid = await _relay_session(social_app, monkeypatch)
+    store = social_app.app["social_store"]
+    social_app.app["social_hub"].sessions[sid]["created_at"] -= 3 * 3600
+
+    await alice_ws.send_json({"t": "p2p_end", "sid": sid, "relayed": True, "bytes": 30 * 10**9})
+    await recv_type(bob_ws, "p2p_end")
+    await bob_ws.send_json({"t": "p2p_end", "sid": sid, "relayed": True, "bytes": 2_000})
+    await asyncio.sleep(0.1)
+
+    month = time.strftime("%Y-%m", time.gmtime())
+    assert await store.get_user_relay_bytes(month, A) == 30 * 10**9
+    assert await store.get_user_relay_bytes(month, B) == 2_000
+    assert await store.get_relay_bytes(month) == 30 * 10**9  # the session counts once globally
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_turn_mint_daily_cap_per_account(social_app, monkeypatch):
+    monkeypatch.setattr(social, "TURN_MINTS_PER_DAY", 1)
+    alice_ws, bob_ws, sid = await _relay_session(social_app, monkeypatch)
+
+    world = {"id": "w1", "name": "W", "scope": "friends", "slots": 8, "used": 0}
+    await alice_ws.send_json({"t": "invite", "to": B, "world": world})
+    inv = await recv_type(bob_ws, "invite")
+    await bob_ws.send_json({"t": "invite_accept", "inviteId": inv["inviteId"]})
+    second = None
+    for _ in range(3):  # the replaced session's p2p_end can arrive first
+        msg = await recv_type(alice_ws, "p2p_start")
+        if msg["sid"] != sid:
+            second = msg
+            break
+    assert second["ice"]["turn"] == []
+    assert second["ice"]["relayStatus"] == "budget"
+    await alice_ws.close()
+    await bob_ws.close()
