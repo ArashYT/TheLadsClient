@@ -17,9 +17,8 @@ public final class Minimap1201 {
     private static Boolean lastEnabled;
     private static int lastX = Integer.MIN_VALUE, lastY = Integer.MIN_VALUE;
     private static boolean attempted, loaded, fallbackFailed;
-    /** {@link #failClosed}: Xaero's session, its minimap processor and the processor's "no minimap" switch; the processor it switched off. */
+    /** {@link #failClosed}: Xaero's session, its minimap processor and the processor's "no minimap" switch. */
     private static Method currentSession, processor, noMinimap, setNoMinimap;
-    private static Object switchedOff;
 
     private Minimap1201() {}
 
@@ -74,10 +73,9 @@ public final class Minimap1201 {
 
     /**
      * Xaero's HUD API above is missing (another Xaero version, a modpack's own): where the server rules block minimaps, its older
-     * "no minimap" switch (the one a server's chat code sets, which its renderer honours) keeps it off, so the gate fails closed. It
-     * only switches back what it switched off itself, and leaves a server's own "no minimap" alone.
+     * "no minimap" switch (the one a server's chat code sets) keeps it off, so the gate fails closed statelessly.
      */
-    private static void failClosed() {
+    static void failClosed() {
         if (fallbackFailed) return;
         try {
             if (setNoMinimap == null) {
@@ -87,16 +85,32 @@ public final class Minimap1201 {
                 noMinimap = minimap.getMethod("getNoMinimapMessageReceived");
                 setNoMinimap = minimap.getMethod("setNoMinimapMessageReceived", boolean.class);
             }
+            if (!HypixelSafetyManager.isMinimapBanned()) return;
             Object session = currentSession.invoke(null), current = session == null ? null : processor.invoke(session);
-            boolean banned = HypixelSafetyManager.isMinimapBanned();
-            if (current == null || banned == (current == switchedOff)) return;
-            if (banned && (Boolean) noMinimap.invoke(current)) return; // the server switched it off itself
-            setNoMinimap.invoke(current, banned);
-            switchedOff = banned ? current : null;
-        } catch (ReflectiveOperationException | RuntimeException | LinkageError failure) {
+            if (current != null && !(Boolean) noMinimap.invoke(current)) {
+                setNoMinimap.invoke(current, true);
+            }
+        } catch (ClassNotFoundException | NoSuchMethodException | LinkageError failure) {
             fallbackFailed = true;
             LoggerFactory.getLogger("TheLadsCore").warn("Xaero's Minimap cannot be switched off where the server rules block minimaps", failure);
+        } catch (Throwable failure) {
+            LoggerFactory.getLogger("TheLadsCore").warn("Xaero fail-closed check failed, retrying next tick", failure);
         }
+    }
+
+    static boolean isFallbackFailed() {
+        return fallbackFailed;
+    }
+
+    static void resetForTests() {
+        attempted = false;
+        loaded = false;
+        map = null;
+        fallbackFailed = false;
+        currentSession = null;
+        processor = null;
+        noMinimap = null;
+        setNoMinimap = null;
     }
 
     public static int[] size() {
