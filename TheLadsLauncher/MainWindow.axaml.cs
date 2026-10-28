@@ -239,6 +239,14 @@ public partial class MainWindow : Window
         WindowOpenedEvent.AddClassHandler<Window>((window, _) => { if (window is not MainWindow and not Views.GameStartupSplash) DiscordPresence.Dialog(window.Title); });
         WindowClosedEvent.AddClassHandler<Window>((window, _) => { if (window is not MainWindow and not Views.GameStartupSplash) DiscordPresence.Dialog(null); });
         ModsSubTabControl.SelectionChanged += ModsSubTab_SelectionChanged;
+        if (!string.IsNullOrEmpty(_profileService.StartupWarning))
+        {
+            Log($"[Profiles] {_profileService.StartupWarning}");
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await ShowLadsChoiceAsync("Profiles Recovered", _profileService.StartupWarning, new[] { ("OK", false, true) }, "");
+            });
+        }
         PopulateLaunchProfileSelector();
         LoadProfilesUI();
         LoadAccounts();
