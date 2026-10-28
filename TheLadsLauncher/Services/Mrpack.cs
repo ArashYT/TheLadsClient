@@ -77,6 +77,7 @@ public static class Mrpack
         return full;
     }
 
+    private static readonly string[] ExactLadsStateFiles = { "server_bypasses.json", "install-id" };
     private static readonly string[] LadsStatePrefixes = { "thelads_", "lads_", "lads-", ".lads-" };
 
     /// <summary>
@@ -97,7 +98,7 @@ public static class Mrpack
         }
         if (path.Count > 0 && path[0].Equals("configureddefaults", StringComparison.OrdinalIgnoreCase))
             path.RemoveAt(0);
-        return path.Count > 0 && (path[0].Equals("server_bypasses.json", StringComparison.OrdinalIgnoreCase)
+        return path.Count > 0 && (ExactLadsStateFiles.Any(exact => path[0].Equals(exact, StringComparison.OrdinalIgnoreCase))
             || LadsStatePrefixes.Any(prefix => path[0].StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
     }
 

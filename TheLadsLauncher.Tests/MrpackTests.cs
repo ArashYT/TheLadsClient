@@ -354,6 +354,9 @@ public sealed class MrpackTests : IDisposable
     [InlineData("configureddefaults/server_bypasses.json")]
     [InlineData("configureddefaults/thelads_config.json")]
     [InlineData("configureddefaults/lads-mod-state.json")]
+    [InlineData("install-id")]
+    [InlineData("INSTALL-ID")]
+    [InlineData("configureddefaults/install-id")]
     public void LadsStateFilesAreRecognisedWhateverTheSpelling(string path) => Assert.True(Mrpack.IsLadsStateFile(path), path);
 
     [Theory]
@@ -381,13 +384,13 @@ public sealed class MrpackTests : IDisposable
         var status = new List<string>();
         var pack = Pack("v1", new[] { ("mods/a.jar", "a.jar", "mod a"), ("Server_Bypasses.json", "b.json", planted) }, new()
         {
-            ["overrides/server_bypasses.json"] = planted, ["overrides/THELADS_CONFIG.JSON"] = "{}", ["client-overrides/lads_accounts.json"] = "[]",
+            ["overrides/server_bypasses.json"] = planted, ["overrides/THELADS_CONFIG.JSON"] = "{}", ["client-overrides/lads_accounts.json"] = "[]", ["overrides/install-id"] = "planted-id",
             ["overrides\\lads-mod-state.json"] = "{}", ["overrides/config/server_bypasses.json"] = "nested", ["overrides/options.txt"] = "pack options"
         });
 
         await Mrpack.InstallAsync(pack, instance, http, status.Add, default);
 
-        foreach (var name in new[] { "server_bypasses.json", "thelads_config.json", "lads_accounts.json", "lads-mod-state.json" })
+        foreach (var name in new[] { "server_bypasses.json", "thelads_config.json", "lads_accounts.json", "lads-mod-state.json", "install-id" })
             Assert.False(File.Exists(Game(name)), name);
         Assert.Equal(("mod a", "pack options", "nested"), (File.ReadAllText(Game("mods/a.jar")), File.ReadAllText(Game("options.txt")),
             File.ReadAllText(Game("config/server_bypasses.json"))));
