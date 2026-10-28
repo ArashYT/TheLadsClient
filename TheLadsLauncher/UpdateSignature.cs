@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -9,14 +10,20 @@ using System.Text.Json;
 namespace TheLadsLauncher;
 
 /// <summary>Launcher updates are installed only when signed with The Lads' release key, which never leaves the owner's PC
-/// (tools/Sign-Release.ps1 signs a CI draft before it is published). Someone who gets into the GitHub repo or its CI can
-/// publish a release, but not this signature, so no launcher installs it.</summary>
+/// (tools/Sign-Release.ps1 signs a CI draft before it is published, and only one whose files carry the release workflow's
+/// attestation for the owner's tag). Someone who gets into the GitHub repo or its CI can publish a release, but not this
+/// signature, so no launcher installs it. tools/Sign-Release.ps1 and tools/Test-SignedRelease.ps1 compile this file too.</summary>
 public static class UpdateSignature
 {
     public const string ManifestName = "lads-update.json";
     public const string SignatureName = "lads-update.json.sig";
-    /// <summary>The release key's public half (P-256, SubjectPublicKeyInfo).</summary>
-    public const string ReleasePublicKey = "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEfmUJlYtOxImIQnK6gxSsgElWPH5kL49R3gOrj/uq3VPb6ZumFo2HmVYyPJ2cIW/54VYoBjxE4RzQvTnT2ZFqxA==";
+    /// <summary>Public halves (P-256, SubjectPublicKeyInfo) of the release keys an update may be signed with. A launcher trusts only the
+    /// keys it shipped with, so a new key is added a release ahead of signing with it (and kept offline until then), and an old one is
+    /// dropped only once the launchers still in use trust its successor.</summary>
+    public static IReadOnlyList<string> ReleasePublicKeys { get; } = new[]
+    {
+        "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEfmUJlYtOxImIQnK6gxSsgElWPH5kL49R3gOrj/uq3VPb6ZumFo2HmVYyPJ2cIW/54VYoBjxE4RzQvTnT2ZFqxA==",
+    };
 
     /// <summary><c>sha256</c> is the package file's hash; <c>contentSha256</c> (see <see cref="ContentHash"/>) is the hash of what is
     /// inside it, which a package rebuilt from a Velopack delta keeps although its zip container bytes differ.</summary>
@@ -39,40 +46,37 @@ public static class UpdateSignature
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Concat(lines.Values))));
     }
 
-    /// <summary>The signed statement for one release package.</summary>
-    public static byte[] CreateManifest(string version, string packagePath)
-    {
-        using var file = File.OpenRead(packagePath);
-        return JsonSerializer.SerializeToUtf8Bytes(new Manifest(version, Path.GetFileName(packagePath), Convert.ToHexString(SHA256.HashData(file)), ContentHash(packagePath)));
-    }
-
-    public static byte[] Sign(byte[] manifest, string privateKeyPem)
+    /// <summary>True when <paramref name="signature"/> (ECDSA P-256 over SHA-256) is one of <paramref name="publicKeys"/>' over <paramref name="data"/>.</summary>
+    public static bool IsSigned(byte[] data, byte[] signature, IEnumerable<string> publicKeys) => publicKeys.Any(publicKey =>
     {
         using var key = ECDsa.Create();
-        key.ImportFromPem(privateKeyPem);
-        return key.SignData(manifest, HashAlgorithmName.SHA256);
+        key.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKey), out _);
+        return key.VerifyData(data, signature, HashAlgorithmName.SHA256);
+    });
+
+    /// <summary>Throws unless <paramref name="signature"/> is a release key's over <paramref name="manifest"/>, which names
+    /// <paramref name="version"/> and <paramref name="packageName"/>; returns the signed statement. Needs no package, so launchers
+    /// check it before downloading one.</summary>
+    public static Manifest VerifyStatement(byte[] manifest, byte[] signature, IEnumerable<string> publicKeys, string version, string packageName)
+    {
+        if (!IsSigned(manifest, signature, publicKeys))
+            throw new InvalidDataException($"v{version} is not signed by The Lads; it was not installed.");
+        var statement = JsonSerializer.Deserialize<Manifest>(manifest) ?? throw new InvalidDataException("Empty update signature.");
+        if (statement.version != version || !string.Equals(statement.package, packageName, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException($"The update signature is for v{statement.version} ({statement.package}), not v{version}.");
+        return statement;
     }
 
-    /// <summary>Throws unless <paramref name="signature"/> is the release key's over <paramref name="manifest"/>, which names
-    /// <paramref name="version"/> and <paramref name="packagePath"/>'s exact bytes, or (when the manifest has a content hash) its
-    /// exact entries, as in a package Velopack rebuilt from a delta.</summary>
-    public static void Verify(byte[] manifest, byte[] signature, string publicKey, string version, string packagePath)
+    /// <summary>Throws unless <paramref name="packagePath"/> holds the signed package's exact bytes or, only for a package Velopack
+    /// rebuilt from a delta (<paramref name="rebuiltFromDelta"/>) and a statement with a content hash, its exact entries.</summary>
+    public static void VerifyPackage(Manifest statement, string packagePath, bool rebuiltFromDelta)
     {
-        using (var key = ECDsa.Create())
-        {
-            key.ImportSubjectPublicKeyInfo(Convert.FromBase64String(publicKey), out _);
-            if (!key.VerifyData(manifest, signature, HashAlgorithmName.SHA256))
-                throw new InvalidDataException($"v{version} is not signed by The Lads; it was not installed.");
-        }
-        var statement = JsonSerializer.Deserialize<Manifest>(manifest) ?? throw new InvalidDataException("Empty update signature.");
-        if (statement.version != version || !string.Equals(statement.package, Path.GetFileName(packagePath), StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException($"The update signature is for v{statement.version} ({statement.package}), not v{version}.");
         using (var file = File.OpenRead(packagePath))
             if (string.Equals(Convert.ToHexString(SHA256.HashData(file)), statement.sha256, StringComparison.OrdinalIgnoreCase))
                 return;
-        if (statement.contentSha256 is not null && ContentMatches(packagePath, statement.contentSha256))
+        if (rebuiltFromDelta && statement.contentSha256 is not null && ContentMatches(packagePath, statement.contentSha256))
             return;
-        throw new InvalidDataException($"The downloaded v{version} package differs from the signed one; it was not installed.");
+        throw new InvalidDataException($"The downloaded v{statement.version} package differs from the signed one; it was not installed.");
     }
 
     /// <summary>False for a package that is not a readable zip or has duplicate entries, like for any other mismatch.</summary>

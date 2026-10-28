@@ -36,15 +36,30 @@ public class UpdateSignatureTests
 
     private static string Sha256(string path) => System.Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
 
+    /// <summary>The statement tools/Sign-Release.ps1 signs for one release package.</summary>
+    private static byte[] CreateManifest(string version, string packagePath) => JsonSerializer.SerializeToUtf8Bytes(
+        new UpdateSignature.Manifest(version, Path.GetFileName(packagePath), Sha256(packagePath), UpdateSignature.ContentHash(packagePath)));
+
+    private static byte[] Sign(byte[] manifest, string privateKeyPem)
+    {
+        using var key = ECDsa.Create();
+        key.ImportFromPem(privateKeyPem);
+        return key.SignData(manifest, HashAlgorithmName.SHA256);
+    }
+
+    /// <summary>What a launcher checks: the statement before the download, the package after it.</summary>
+    private static void Verify(byte[] manifest, byte[] signature, string publicKey, string version, string packagePath, bool rebuiltFromDelta = false) =>
+        UpdateSignature.VerifyPackage(UpdateSignature.VerifyStatement(manifest, signature, new[] { publicKey }, version, Path.GetFileName(packagePath)), packagePath, rebuiltFromDelta);
+
     [Fact]
     public void ASignedPackageVerifies()
     {
         using var dir = new TestDirectory();
         var (pem, pub) = NewKey();
         string package = Package(dir);
-        byte[] manifest = UpdateSignature.CreateManifest("1.9.0", package);
+        byte[] manifest = CreateManifest("1.9.0", package);
 
-        UpdateSignature.Verify(manifest, UpdateSignature.Sign(manifest, pem), pub, "1.9.0", package);
+        Verify(manifest, Sign(manifest, pem), pub, "1.9.0", package);
     }
 
     [Fact]
@@ -54,21 +69,70 @@ public class UpdateSignatureTests
         var (pem, pub) = NewKey();
         var (otherPem, _) = NewKey();
         string package = Package(dir);
-        byte[] manifest = UpdateSignature.CreateManifest("1.9.0", package);
-        byte[] signature = UpdateSignature.Sign(manifest, pem);
+        byte[] manifest = CreateManifest("1.9.0", package);
+        byte[] signature = Sign(manifest, pem);
 
-        Assert.Throws<InvalidDataException>(() => UpdateSignature.Verify(manifest, UpdateSignature.Sign(manifest, otherPem), pub, "1.9.0", package));
-        Assert.Throws<InvalidDataException>(() => UpdateSignature.Verify(manifest, signature, pub, "1.9.1", package));
+        Assert.Throws<InvalidDataException>(() => Verify(manifest, Sign(manifest, otherPem), pub, "1.9.0", package));
+        Assert.Throws<InvalidDataException>(() => Verify(manifest, signature, pub, "1.9.1", package));
         File.WriteAllText(package, "attacker bytes");
-        Assert.Throws<InvalidDataException>(() => UpdateSignature.Verify(manifest, signature, pub, "1.9.0", package));
+        Assert.Throws<InvalidDataException>(() => Verify(manifest, signature, pub, "1.9.0", package));
     }
 
     [Fact]
-    public void TheShippedKeyIsAValidP256PublicKey()
+    public void TheStatementIsCheckedBeforeThereIsAPackage()
     {
-        using var key = ECDsa.Create();
-        key.ImportSubjectPublicKeyInfo(System.Convert.FromBase64String(UpdateSignature.ReleasePublicKey), out _);
-        Assert.Equal(256, key.KeySize);
+        using var dir = new TestDirectory();
+        var (pem, pub) = NewKey();
+        var (otherPem, _) = NewKey();
+        string package = Package(dir), sha256 = Sha256(package);
+        byte[] manifest = CreateManifest("1.9.0", package);
+        byte[] signature = Sign(manifest, pem);
+        File.Delete(package);   // launchers check the statement first and download only when it holds
+
+        Assert.Equal(sha256, UpdateSignature.VerifyStatement(manifest, signature, new[] { pub }, "1.9.0", "TheLadsClient-1.9.0-full.nupkg").sha256);
+        Assert.Throws<InvalidDataException>(() => UpdateSignature.VerifyStatement(manifest, Sign(manifest, otherPem), new[] { pub }, "1.9.0", "TheLadsClient-1.9.0-full.nupkg"));
+        Assert.Throws<InvalidDataException>(() => UpdateSignature.VerifyStatement(manifest, signature, new[] { pub }, "1.9.1", "TheLadsClient-1.9.0-full.nupkg"));
+        Assert.Throws<InvalidDataException>(() => UpdateSignature.VerifyStatement(manifest, signature, new[] { pub }, "1.9.0", "TheLadsClient-1.9.0-delta.nupkg"));
+        Assert.Throws<InvalidDataException>(() => UpdateSignature.VerifyStatement(manifest, signature, System.Array.Empty<string>(), "1.9.0", "TheLadsClient-1.9.0-full.nupkg"));
+    }
+
+    [Fact]
+    public void ASignatureByAnyPinnedKeyVerifies()
+    {
+        using var dir = new TestDirectory();
+        var (currentPem, current) = NewKey();
+        var (nextPem, next) = NewKey();
+        var (otherPem, _) = NewKey();
+        byte[] manifest = CreateManifest("1.9.0", Package(dir));
+
+        foreach (string pem in new[] { currentPem, nextPem })
+            UpdateSignature.VerifyStatement(manifest, Sign(manifest, pem), new[] { current, next }, "1.9.0", "TheLadsClient-1.9.0-full.nupkg");
+        Assert.Throws<InvalidDataException>(() => UpdateSignature.VerifyStatement(manifest, Sign(manifest, otherPem), new[] { current, next }, "1.9.0", "TheLadsClient-1.9.0-full.nupkg"));
+    }
+
+    [Fact]
+    public void TheShippedKeysAreValidP256PublicKeys()
+    {
+        Assert.NotEmpty(UpdateSignature.ReleasePublicKeys);
+        Assert.Equal(UpdateSignature.ReleasePublicKeys.Count, UpdateSignature.ReleasePublicKeys.Distinct().Count());
+        foreach (string publicKey in UpdateSignature.ReleasePublicKeys)
+        {
+            using var key = ECDsa.Create();
+            key.ImportSubjectPublicKeyInfo(System.Convert.FromBase64String(publicKey), out _);
+            Assert.Equal(256, key.KeySize);
+        }
+    }
+
+    /// <summary>The published v1.11.1 lads-update.json and its signature: the current release key must stay pinned until every launcher
+    /// in use trusts its successor, or no launcher can update again.</summary>
+    [Fact]
+    public void ThePublishedReleaseSignatureVerifiesWithThePinnedKeys()
+    {
+        byte[] manifest = System.Text.Encoding.UTF8.GetBytes("{\"version\":\"1.11.1\",\"package\":\"TheLadsClient-1.11.1-full.nupkg\",\"sha256\":\"1680E8D8C0781201B16CED6B0EE01160121DD33D587A8675FC2211D83D042FC8\",\"contentSha256\":\"F3F6DC043A400FC2B22802B73B4A06758A50345DEFF59EC981D6C3B5718F2624\"}");
+        byte[] signature = System.Convert.FromBase64String("rQD+euWr+Kc5wLzbQ6vuwRcZJFYG0hsvEAlJEex5Z79m1b5oRj0gEHLeO4Sr4a9ePD9F0hMvBUI4HCI1bT4Tlg==");
+
+        var statement = UpdateSignature.VerifyStatement(manifest, signature, UpdateSignature.ReleasePublicKeys, "1.11.1", "TheLadsClient-1.11.1-full.nupkg");
+        Assert.Equal("1680E8D8C0781201B16CED6B0EE01160121DD33D587A8675FC2211D83D042FC8", statement.sha256);
     }
 
     [Fact]
@@ -89,9 +153,26 @@ public class UpdateSignatureTests
         var (pem, pub) = NewKey();
         string a = Zip(dir, "TheLadsClient-1.9.0-full.nupkg", CompressionLevel.Optimal, ("lib/app/x.dll", "X"), ("y.nuspec", "Y"));
         string rebuilt = Zip(dir, Path.Combine("rebuilt", "TheLadsClient-1.9.0-full.nupkg"), CompressionLevel.NoCompression, ("y.nuspec", "Y"), ("lib/app/x.dll", "X"));
-        byte[] manifest = UpdateSignature.CreateManifest("1.9.0", a);
+        byte[] manifest = CreateManifest("1.9.0", a);
 
-        UpdateSignature.Verify(manifest, UpdateSignature.Sign(manifest, pem), pub, "1.9.0", rebuilt);
+        Verify(manifest, Sign(manifest, pem), pub, "1.9.0", rebuilt, rebuiltFromDelta: true);
+    }
+
+    /// <summary>Only a package Velopack rebuilt from a delta may differ in its zip container: a full download must be the signed bytes,
+    /// or any difference between .NET's zip reader and Update.exe's would let a re-packed container through.</summary>
+    [Fact]
+    public void AFullDownloadMustBeTheSignedBytes()
+    {
+        using var dir = new TestDirectory();
+        var (pem, pub) = NewKey();
+        string a = Zip(dir, "TheLadsClient-1.9.0-full.nupkg", CompressionLevel.Optimal, ("lib/app/x.dll", "X"), ("y.nuspec", "Y"));
+        string repacked = Zip(dir, Path.Combine("repacked", "TheLadsClient-1.9.0-full.nupkg"), CompressionLevel.NoCompression, ("y.nuspec", "Y"), ("lib/app/x.dll", "X"));
+        byte[] manifest = CreateManifest("1.9.0", a);
+        byte[] signature = Sign(manifest, pem);
+
+        var error = Assert.Throws<InvalidDataException>(() => Verify(manifest, signature, pub, "1.9.0", repacked));
+        Assert.Contains("differs from the signed one", error.Message);
+        Verify(manifest, signature, pub, "1.9.0", a);
     }
 
     [Fact]
@@ -101,9 +182,9 @@ public class UpdateSignatureTests
         var (pem, pub) = NewKey();
         string a = Zip(dir, "TheLadsClient-1.9.0-full.nupkg", CompressionLevel.Optimal, ("lib/app/x.dll", "X"), ("y.nuspec", "Y"));
         string changed = Zip(dir, Path.Combine("changed", "TheLadsClient-1.9.0-full.nupkg"), CompressionLevel.Optimal, ("lib/app/x.dll", "X2"), ("y.nuspec", "Y"));
-        byte[] manifest = UpdateSignature.CreateManifest("1.9.0", a);
+        byte[] manifest = CreateManifest("1.9.0", a);
 
-        var error = Assert.Throws<InvalidDataException>(() => UpdateSignature.Verify(manifest, UpdateSignature.Sign(manifest, pem), pub, "1.9.0", changed));
+        var error = Assert.Throws<InvalidDataException>(() => Verify(manifest, Sign(manifest, pem), pub, "1.9.0", changed, rebuiltFromDelta: true));
         Assert.Contains("differs from the signed one", error.Message);
     }
 
@@ -125,10 +206,10 @@ public class UpdateSignatureTests
         string a = Zip(dir, "TheLadsClient-1.9.0-full.nupkg", CompressionLevel.Optimal, ("lib/app/x.dll", "X"), ("y.nuspec", "Y"));
         string rebuilt = Zip(dir, Path.Combine("rebuilt", "TheLadsClient-1.9.0-full.nupkg"), CompressionLevel.NoCompression, ("y.nuspec", "Y"), ("lib/app/x.dll", "X"));
         byte[] manifest = JsonSerializer.SerializeToUtf8Bytes(new { version = "1.9.0", package = Path.GetFileName(a), sha256 = Sha256(a) });
-        byte[] signature = UpdateSignature.Sign(manifest, pem);
+        byte[] signature = Sign(manifest, pem);
 
-        UpdateSignature.Verify(manifest, signature, pub, "1.9.0", a);
-        Assert.Throws<InvalidDataException>(() => UpdateSignature.Verify(manifest, signature, pub, "1.9.0", rebuilt));
+        Verify(manifest, signature, pub, "1.9.0", a);
+        Assert.Throws<InvalidDataException>(() => Verify(manifest, signature, pub, "1.9.0", rebuilt, rebuiltFromDelta: true));
     }
 
     [Fact]

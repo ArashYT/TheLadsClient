@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -7,10 +8,15 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Velopack;
+using Velopack.Exceptions;
 using Velopack.Locators;
 using Velopack.Sources;
 
 namespace TheLadsLauncher;
+
+/// <summary>The latest release cannot be installed as published: it has no valid signature, or its package does not match the signed
+/// one. Retrying soon cannot change that, so checks back off for an hour and nothing large is downloaded for it.</summary>
+public sealed class UpdateRejectedException(string message, Exception? inner = null) : Exception(message, inner);
 
 public interface ILauncherUpdateBackend
 {
@@ -31,8 +37,9 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
     private readonly UpdateManager _manager;
     private readonly UpdateManager _fullOnly;
     private readonly Func<string, string, Task<byte[]>> _fetchSigned;
-    private readonly string _publicKey;
+    private readonly IReadOnlyList<string> _publicKeys;
     private string? _verified; // the downloaded version whose signature this process checked
+    private UpdateSignature.Manifest? _rejected; // a signed package whose download did not match it: this process never fetches it again
 
 #if LADS_QA_FEED
     // QA builds only (-p:DefineConstants=LADS_QA_FEED): a local feed folder holding the latest release's files and signature, and a throwaway key.
@@ -41,23 +48,23 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
     private VelopackUpdateBackend(string feed) : this(new UpdateManager(feed),
         new UpdateManager(feed, new UpdateOptions { MaximumDeltasBeforeFallback = -1 }),
         (_, name) => File.ReadAllBytesAsync(Path.Combine(feed, name)),
-        Environment.GetEnvironmentVariable("LADS_QA_UPDATE_KEY") ?? throw new InvalidOperationException("LADS_QA_UPDATE_KEY is not set.")) { }
+        new[] { Environment.GetEnvironmentVariable("LADS_QA_UPDATE_KEY") ?? throw new InvalidOperationException("LADS_QA_UPDATE_KEY is not set.") }) { }
 #else
     public VelopackUpdateBackend() : this(new SimpleWebSource(FeedUrl)) { }
 
     private VelopackUpdateBackend(SimpleWebSource source) : this(new UpdateManager(source),
         new UpdateManager(source, new UpdateOptions { MaximumDeltasBeforeFallback = -1 }),
-        (version, name) => Http.GetByteArrayAsync($"{RepositoryUrl}/releases/download/v{version}/{name}"), UpdateSignature.ReleasePublicKey) { }
+        (version, name) => Http.GetByteArrayAsync($"{RepositoryUrl}/releases/download/v{version}/{name}"), UpdateSignature.ReleasePublicKeys) { }
 #endif
 
     /// <param name="fullOnly">Same feed as <paramref name="manager"/> but never uses deltas (a negative <c>MaximumDeltasBeforeFallback</c>).</param>
     /// <param name="fetchSigned">(version, file name) -> that release's signature file (see <see cref="UpdateSignature"/>).</param>
-    public VelopackUpdateBackend(UpdateManager manager, UpdateManager fullOnly, Func<string, string, Task<byte[]>> fetchSigned, string publicKey)
+    public VelopackUpdateBackend(UpdateManager manager, UpdateManager fullOnly, Func<string, string, Task<byte[]>> fetchSigned, IReadOnlyList<string> publicKeys)
     {
         _manager = manager;
         _fullOnly = fullOnly;
         _fetchSigned = fetchSigned;
-        _publicKey = publicKey;
+        _publicKeys = publicKeys;
     }
 
     public bool IsInstalled => _manager.IsInstalled;
@@ -73,37 +80,74 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
         var update = await _manager.CheckForUpdatesAsync();
         if (update == null) return false;
         LastDownloadWasDelta = update.DeltasToTarget.Length > 0;
-        try { _verified = await DownloadAndVerifyAsync(_manager, update, report); }
+        try { _verified = await DownloadAndVerifyAsync(_manager, update, LastDownloadWasDelta, report); }
         catch (InvalidDataException) when (LastDownloadWasDelta) // the rebuilt package is already deleted; a full one may still verify
         {
             report("Delta update did not verify; downloading the full package…");
             LastDownloadWasDelta = false;
             var full = await _fullOnly.CheckForUpdatesAsync() ?? throw new InvalidOperationException("The full update package is no longer available.");
-            _verified = await DownloadAndVerifyAsync(_fullOnly, full, report);
+            _verified = await DownloadAndVerifyAsync(_fullOnly, full, false, report);
         }
         return true;
     }
 
+    /// <param name="delta">Velopack may rebuild the package from a delta, which then matches the signed one by content only.</param>
     /// <returns>The version of the downloaded package, which has been verified; a package that fails is deleted.</returns>
-    private async Task<string> DownloadAndVerifyAsync(UpdateManager manager, UpdateInfo update, Action<string> report)
+    private async Task<string> DownloadAndVerifyAsync(UpdateManager manager, UpdateInfo update, bool delta, Action<string> report)
     {
         var asset = update.TargetFullRelease;
         string version = asset.Version.ToString();
-        await manager.DownloadUpdatesAsync(update, percent => report($"Downloading v{version}: {percent}%"));
+        // The signed statement first: a few hundred bytes decide whether up to ~250 MB are downloaded (and a delta rebuilt) at all.
+        var statement = await FetchStatementAsync(asset);
+        try { await manager.DownloadUpdatesAsync(update, percent => report($"Downloading v{version}: {percent}%")); }
+        catch (ChecksumFailedException ex) // the file on the server is not the one its feed (and so the signature) names
+        {
+            _rejected = statement;
+            throw new UpdateRejectedException($"The v{version} package on the update server is damaged; it is not downloaded again.", ex);
+        }
         string package = Path.Combine(VelopackLocator.Current.PackagesDir!, asset.FileName);
         try
         {
-            var manifest = await _fetchSigned(version, UpdateSignature.ManifestName);
-            var signature = await _fetchSigned(version, UpdateSignature.SignatureName);
             // Hashing ~250 MB (and decompressing every entry for the content hash) takes seconds: never on the UI thread.
-            await Task.Run(() => UpdateSignature.Verify(manifest, signature, _publicKey, version, package));
+            await Task.Run(() => UpdateSignature.VerifyPackage(statement, package, delta));
         }
-        catch
+        catch (Exception ex)
         {
             try { File.Delete(package); } catch (IOException) { } // never leave an unsigned package to be applied later
+            if (ex is InvalidDataException && !delta) // the full package itself differs from the signed one
+            {
+                _rejected = statement;
+                throw new UpdateRejectedException(ex.Message, ex);
+            }
             throw;
         }
         return version;
+    }
+
+    /// <summary>The release's signed statement for <paramref name="asset"/>, checked before any package is downloaded.</summary>
+    /// <exception cref="UpdateRejectedException">No signature, not a release key's, or not for this package.</exception>
+    private async Task<UpdateSignature.Manifest> FetchStatementAsync(VelopackAsset asset)
+    {
+        string version = asset.Version.ToString();
+        byte[] manifest, signature;
+        try
+        {
+            manifest = await _fetchSigned(version, UpdateSignature.ManifestName);
+            signature = await _fetchSigned(version, UpdateSignature.SignatureName);
+        }
+        catch (Exception ex) when (ex is HttpRequestException { StatusCode: HttpStatusCode.NotFound } or FileNotFoundException)
+        {
+            throw new UpdateRejectedException($"v{version} is not signed by The Lads yet; it was not downloaded.", ex);
+        }
+        UpdateSignature.Manifest statement;
+        try { statement = UpdateSignature.VerifyStatement(manifest, signature, _publicKeys, version, asset.FileName); }
+        catch (InvalidDataException ex) { throw new UpdateRejectedException(ex.Message, ex); }
+        // Velopack checks a full download against the feed's hash, so a feed naming another package only ever fetches one that fails.
+        if (!string.IsNullOrEmpty(asset.SHA256) && !string.Equals(asset.SHA256, statement.sha256, StringComparison.OrdinalIgnoreCase))
+            throw new UpdateRejectedException($"The v{version} update feed names another package than the signed one; it was not downloaded.");
+        if (statement == _rejected)
+            throw new UpdateRejectedException($"v{version} did not match its signature; it is not downloaded again.");
+        return statement;
     }
 
     /// <summary>Starts the silent installer, which waits for this process to exit, applies the update and relaunches with <paramref name="restartArgs"/>.</summary>
@@ -254,9 +298,11 @@ public sealed class AutoUpdater
         }
         catch (Exception ex)
         {
-            bool busy = IsRateLimited(ex);
-            report(busy ? "Update server is busy; will retry in an hour." : $"Automatic update failed; will retry. {ex.Message}");
-            _nextCheck = DateTimeOffset.UtcNow.AddMinutes(busy ? 60 : 2);   // retrying a rate-limited server every 2 minutes keeps its quota at zero
+            bool busy = IsRateLimited(ex), rejected = ex is UpdateRejectedException;
+            report(busy ? "Update server is busy; will retry in an hour." : rejected ? $"{ex.Message} Will check again in an hour."
+                : $"Automatic update failed; will retry. {ex.Message}");
+            // Retrying a rate-limited server every 2 minutes keeps its quota at zero; a refused release changes only when the owner fixes it.
+            _nextCheck = DateTimeOffset.UtcNow.AddMinutes(busy || rejected ? 60 : 2);
             _retryAfter = _nextCheck;
         }
         finally { _gate.Release(); }

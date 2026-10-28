@@ -26,30 +26,44 @@ var result = Path.Combine(root, stage == null ? "result.json" : $"{stage}-result
 try
 {
     File.AppendAllText(Path.Combine(root, "probe.log"), $"Started {version}, PID {Environment.ProcessId}, stage {stage}\n");
-    // LADS_UPDATE_PROBE_CORRUPT: "1" = a damaged package, "unsigned" = signed with a key other than the probe's.
+    // LADS_UPDATE_PROBE_CORRUPT: "1" = a damaged package, "unsigned" = signed with a key other than the probe's, "nosig" = no signature yet.
     string? corrupt = Environment.GetEnvironmentVariable("LADS_UPDATE_PROBE_CORRUPT");
-    string feed = Path.Combine(root, corrupt == "1" ? "bad-feed" : stage switch
+    string feed = Path.Combine(root, corrupt switch { "1" => "bad-feed", "nosig" => "nosig-feed", _ => stage switch
     {
         null => "feed",
         "delta" => "feed3-delta",
         "evil-delta" => "feed3-evil",
         "old-client" => "feed3",
         _ => throw new InvalidOperationException($"Unknown stage {stage}.")
-    });
+    } });
     var manager = new UpdateManager(feed);
     if (!manager.IsInstalled) throw new InvalidOperationException("The probe is not packaged.");
     var fullOnly = new UpdateManager(feed, new UpdateOptions { MaximumDeltasBeforeFallback = -1 });
+    // LADS_UPDATE_PROBE_KEY: the pinned keys, comma-separated, like UpdateSignature.ReleasePublicKeys.
     VelopackUpdateBackend Backend() => new(manager, fullOnly, (_, name) => File.ReadAllBytesAsync(Path.Combine(feed, name)),
-        Environment.GetEnvironmentVariable("LADS_UPDATE_PROBE_KEY") ?? throw new InvalidOperationException("No probe key."));
+        (Environment.GetEnvironmentVariable("LADS_UPDATE_PROBE_KEY") ?? throw new InvalidOperationException("No probe key.")).Split(','));
     if (corrupt != null)
     {
         var messages = new List<string>();
         var backend = Backend();
         await new AutoUpdater(backend).PollAsync(() => false, messages.Add);
-        if (backend.PendingVersion != null || !messages.Any(message => message.Contains("failed; will retry")))
-            throw new InvalidOperationException($"A {(corrupt == "1" ? "corrupt" : "wrongly signed")} package was not rejected.");
-        if (corrupt == "unsigned" && Directory.EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "..", "packages"), "*.nupkg").Any())
-            throw new InvalidOperationException("The wrongly signed package was left for a later install.");
+        string kind = corrupt switch { "1" => "corrupt", "nosig" => "unsigned", _ => "wrongly signed" };
+        if (backend.PendingVersion != null || !messages.Any(message => message.EndsWith("Will check again in an hour.")))
+            throw new InvalidOperationException($"A {kind} package was not rejected: {string.Join(" | ", messages)}");
+        string packages = Path.Combine(AppContext.BaseDirectory, "..", "packages");
+        if (Directory.Exists(packages) && Directory.EnumerateFiles(packages, "*.nupkg").Any())
+            throw new InvalidOperationException($"The {kind} package was left for a later install.");
+        int downloads = messages.Count(message => message.StartsWith("Downloading v"));
+        // Without a valid signature nothing is downloaded at all; a damaged package is downloaded once, and not again by a later check.
+        if (corrupt != "1" && downloads > 0) throw new InvalidOperationException($"The {kind} package was downloaded: {string.Join(" | ", messages)}");
+        if (corrupt == "1")
+        {
+            var again = new List<string>();
+            await new AutoUpdater(backend).PollAsync(() => false, again.Add);   // a fresh coordinator: no back-off holds it
+            if (again.Any(message => message.StartsWith("Downloading v")) || !again.Any(message => message.Contains("did not match its signature; it is not downloaded again")))
+                throw new InvalidOperationException($"The damaged package was downloaded again: {string.Join(" | ", again)}");
+            messages.AddRange(again);
+        }
         File.WriteAllText(Path.Combine(root, $"corrupt-{corrupt}-result.json"), JsonSerializer.Serialize(new { passed = true, version, messages }));
         return;
     }

@@ -125,6 +125,23 @@ public class AutoUpdaterTests
         Assert.DoesNotContain("Update server is busy; will retry in an hour.", messages);
     }
 
+    /// <summary>An unsigned or mis-signed latest release does not change in 2 minutes: checking it again sooner only costs requests.</summary>
+    [Fact]
+    public async Task ARejectedReleaseBacksOffForAnHour()
+    {
+        var backend = new Backend { DownloadError = new UpdateRejectedException("v1.2.2 is not signed by The Lads yet; it was not downloaded.") };
+        var messages = new List<string>();
+        var updater = new AutoUpdater(backend);
+        var start = DateTimeOffset.UtcNow;
+        await updater.PollAsync(() => false, messages.Add);
+        await updater.PollAsync(() => false, messages.Add);
+        Assert.True(updater.RetryAfter - start >= TimeSpan.FromMinutes(59));
+        Assert.Equal(1, backend.Downloads);
+        Assert.Equal(0, backend.Applies);
+        Assert.Contains("v1.2.2 is not signed by The Lads yet; it was not downloaded. Will check again in an hour.", messages);
+        Assert.DoesNotContain(messages, message => message.StartsWith("Automatic update failed"));
+    }
+
     [Fact]
     public async Task FailedVerificationNeverAppliesAndRetriesAreThrottled()
     {

@@ -123,14 +123,25 @@ try {
     $deltaFeed = Join-Path $probeRoot 'feed3-delta'
     Copy-Item -LiteralPath $feed3 -Destination $deltaFeed -Recurse
     Remove-Item -LiteralPath (Join-Path $deltaFeed $fullName3)
-    # A release signed by someone else's key (here: the probe trusts a different one) must be refused and its package removed.
-    $env:LADS_UPDATE_PROBE_KEY = [Convert]::ToBase64String([Security.Cryptography.ECDsa]::Create([Security.Cryptography.ECCurve+NamedCurves]::nistP256).ExportSubjectPublicKeyInfo())
+    # A release signed by someone else's key (here: the probe trusts a different one) must be refused before its package is downloaded.
+    $otherKey = [Convert]::ToBase64String([Security.Cryptography.ECDsa]::Create([Security.Cryptography.ECCurve+NamedCurves]::nistP256).ExportSubjectPublicKeyInfo())
+    $env:LADS_UPDATE_PROBE_KEY = $otherKey
     $env:LADS_UPDATE_PROBE_CORRUPT = 'unsigned'
     $unsignedProcess = Start-Process -FilePath $exe.FullName -WorkingDirectory $exe.DirectoryName -WindowStyle Hidden -PassThru
     if (-not $unsignedProcess.WaitForExit(30000)) { throw "Unsigned-package probe timed out: $probeRoot" }
     $unsignedResult = Join-Path $probeRoot 'corrupt-unsigned-result.json'
     if (-not (Test-Path -LiteralPath $unsignedResult) -or -not (Get-Content -LiteralPath $unsignedResult -Raw | ConvertFrom-Json).passed) { throw "Wrongly signed package was not safely rejected: $probeRoot" }
-    $env:LADS_UPDATE_PROBE_KEY = [Convert]::ToBase64String($probeKey.ExportSubjectPublicKeyInfo())
+    # From here the probe pins two keys, like a launcher during a key rotation: the release is signed with the second one.
+    $env:LADS_UPDATE_PROBE_KEY = "$otherKey," + [Convert]::ToBase64String($probeKey.ExportSubjectPublicKeyInfo())
+    # A release published before Sign-Release.ps1 ran (no lads-update.json yet) must be refused without downloading anything.
+    $noSigFeed = Join-Path $probeRoot 'nosig-feed'
+    Copy-Item -LiteralPath (Join-Path $probeRoot 'feed') -Destination $noSigFeed -Recurse
+    Remove-Item -LiteralPath (Join-Path $noSigFeed 'lads-update.json'), (Join-Path $noSigFeed 'lads-update.json.sig')
+    $env:LADS_UPDATE_PROBE_CORRUPT = 'nosig'
+    $noSigProcess = Start-Process -FilePath $exe.FullName -WorkingDirectory $exe.DirectoryName -WindowStyle Hidden -PassThru
+    if (-not $noSigProcess.WaitForExit(30000)) { throw "Missing-signature probe timed out: $probeRoot" }
+    $noSigResult = Join-Path $probeRoot 'corrupt-nosig-result.json'
+    if (-not (Test-Path -LiteralPath $noSigResult) -or -not (Get-Content -LiteralPath $noSigResult -Raw | ConvertFrom-Json).passed) { throw "A release without a signature was not refused before downloading: $probeRoot" }
     $badFeed = Join-Path $probeRoot 'bad-feed'
     Copy-Item -LiteralPath (Join-Path $probeRoot 'feed') -Destination $badFeed -Recurse
     $badPackage = Get-ChildItem -LiteralPath $badFeed -Filter '*-full.nupkg' | Select-Object -First 1
@@ -165,7 +176,7 @@ try {
     $delta = Invoke-ProbeStage $portable 'delta' 120
     if ($delta.version -ne '0.0.3' -or -not $delta.delta) { throw "Delta update failed: $probeRoot" }
     $sizes = '{0:N0} KB delta vs {1:N0} KB full' -f ((Get-Item -LiteralPath (Join-Path $feed3 $deltaName)).Length / 1KB), ((Get-Item -LiteralPath $full3).Length / 1KB)
-    Write-Output "PASS: corrupt-package rejection, wrongly signed package rejection, real full-package replacement, deferred install, automatic restart, file removal, preserved user data, offline notes, delta update ($sizes), tampered delta fell back to full, old client used full. Evidence: $probeRoot"
+    Write-Output "PASS: corrupt-package rejection (not downloaded again), wrongly signed and unsigned releases refused before downloading, two pinned keys, real full-package replacement, deferred install, automatic restart, file removal, preserved user data, offline notes, delta update ($sizes), tampered delta fell back to full, old client used full. Evidence: $probeRoot"
 } finally {
     $env:LADS_UPDATE_PROBE_ROOT = $oldProbeRoot
     $env:LADS_UPDATE_PROBE_CORRUPT = $oldCorrupt
