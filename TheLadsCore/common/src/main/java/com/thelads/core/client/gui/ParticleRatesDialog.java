@@ -105,8 +105,7 @@ final class ParticleRatesDialog {
         if (row < 0 || row >= filtered.size()) return;
         double t = Math.max(0, Math.min(1, (mx - trackX) / Math.max(1, trackW)));
         option.set(filtered.get(row), option.min + (int) Math.round(t * (option.max - option.min) / 5) * 5);
-        selected = row;
-        changed.run();
+        selected = row; // saved by release(), once per drag
     }
 
     boolean click(double mx, double my, int button) {
@@ -146,8 +145,9 @@ final class ParticleRatesDialog {
 
     boolean release() {
         if (open && picker.isOpen()) return picker.release();
-        if (!open || !dragging) return false;
+        if (!dragging) return false; // also when Esc closed the editor mid-drag: what it set is still saved
         dragging = false; dragRow = -1;
+        changed.run();
         if (changedOnly) filter();
         return true;
     }

@@ -1026,10 +1026,12 @@ public final class LadsSettingsScreen {
         int index = Math.round(fraction * (levels.length - 1));
         index = Math.max(0, Math.min(levels.length - 1, index));
         int chosen = levels[index];
+        // A drag passes each level many times: the config is written when the level changes, not on every mouse move.
+        boolean same = chosen == HudSettings.getInstance().getHudFpsLimit() && HudSettings.getInstance().isHudFpsCapEnabled();
         HudSettings.getInstance().setHudFpsLimit(chosen);
         if (!HudSettings.getInstance().isHudFpsCapEnabled()) HudSettings.getInstance().setHudFpsCapEnabled(true);
         fpsBuffer = chosen == 0 ? "0" : String.valueOf(chosen);
-        ConfigManager.save();
+        if (!same) ConfigManager.save();
         dirty = true;
     }
     /** QA and tests: the HUD FPS popup's box, then every control in it, as the last frame laid them out (empty while it is closed or not drawn). */
@@ -1839,7 +1841,8 @@ public final class LadsSettingsScreen {
         double t = Math.max(0, Math.min(1, (x - dragTrack.x - 4) / Math.max(1, dragTrack.width - 8)));
         if (dragging instanceof SliderOption s) s.setValue(s.getMin() + (s.getMax() - s.getMin()) * t);
         else if (dragging instanceof DoubleOption d) d.set(d.getMin() + (d.getMax() - d.getMin()) * t);
-        dirty = true; detail.touch(); persist();
+        // Saved once, when the drag ends (mouseReleased) or the page closes (finish): not the whole config on every mouse move.
+        dirty = true; if (detail != null) detail.touch();
     }
     public boolean mouseScrolled(double x, double y, double amount) {
         if (confirm.isOpen()) return true;
