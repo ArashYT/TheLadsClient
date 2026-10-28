@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -28,6 +29,7 @@ public partial class MainWindow
     private string _filesRootDir = "";
     private bool _filesEditorWired;
     private bool _filesPreviewOpened;
+    private CancellationTokenSource? _filesMeasureCts;
 
     /// <summary>The Files page follows the active profile: back to its game folder on every profile switch.</summary>
     private void ResetFilesRoot()
@@ -79,14 +81,59 @@ public partial class MainWindow
                 ToolTip.SetTip(FilesSharedChip, $"This folder's content lives in {sharedArea.SharedPath}");
             }
 
+            var pending = new List<(string path, bool isDir, TextBlock sizeText, TextBlock dateText)>();
+
             foreach (var d in Directory.GetDirectories(dir).OrderBy(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase))
-                FilesList.Children.Add(BuildFileRow(d, true, atRoot ? statuses.FirstOrDefault(s => SafeFileOps.PathsEqual(s.ProfilePath, d)) : null));
+                FilesList.Children.Add(BuildFileRow(d, true, atRoot ? statuses.FirstOrDefault(s => SafeFileOps.PathsEqual(s.ProfilePath, d)) : null, pending));
             foreach (var f in Directory.GetFiles(dir).Where(f => !f.EndsWith(".lads-tmp", StringComparison.OrdinalIgnoreCase))
                          .OrderBy(p => Path.GetFileName(p), StringComparer.OrdinalIgnoreCase))
-                FilesList.Children.Add(BuildFileRow(f, false, null));
+                FilesList.Children.Add(BuildFileRow(f, false, null, pending));
 
             if (FilesList.Children.Count == 0)
                 FilesList.Children.Add(FilesEmptyState("Empty folder", "Nothing here yet."));
+
+            _filesMeasureCts?.Cancel();
+            var cts = _filesMeasureCts = new CancellationTokenSource();
+            var token = cts.Token;
+            _ = Task.Run(() =>
+            {
+                foreach (var (path, isDir, sizeText, dateText) in pending)
+                {
+                    if (token.IsCancellationRequested) return;
+                    string size = "", modified = "";
+                    try
+                    {
+                        if (isDir)
+                        {
+                            int count = Directory.EnumerateFileSystemEntries(path).Take(1000).Count();
+                            size = count == 0 ? "Empty" : count >= 1000 ? "999+ items" : count == 1 ? "1 item" : $"{count} items";
+                            modified = Directory.GetLastWriteTime(path).ToString("g");
+                        }
+                        else
+                        {
+                            var info = new FileInfo(path);
+                            size = FormatBytes(info.Length);
+                            modified = info.LastWriteTime.ToString("g");
+                        }
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        size = isDir ? "" : "size unknown";
+                    }
+
+                    if (!token.IsCancellationRequested)
+                    {
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                        {
+                            if (!token.IsCancellationRequested)
+                            {
+                                sizeText.Text = size;
+                                dateText.Text = modified;
+                            }
+                        });
+                    }
+                }
+            }, token);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -141,7 +188,7 @@ public partial class MainWindow
         _ => null
     };
 
-    private Border BuildFileRow(string path, bool isDir, SharedFolderStatus? shared)
+    private Border BuildFileRow(string path, bool isDir, SharedFolderStatus? shared, List<(string, bool, TextBlock, TextBlock)>? pending = null)
     {
         string name = Path.GetFileName(path);
         var row = new Border { Classes = { "fileRow" } };
@@ -170,27 +217,34 @@ public partial class MainWindow
         Grid.SetColumn(nameLine, 1);
         grid.Children.Add(nameLine);
 
-        string size = "", modified = "";
-        try
-        {
-            if (isDir)
-            {
-                int count = Directory.EnumerateFileSystemEntries(path).Take(1000).Count();
-                size = count == 0 ? "Empty" : count >= 1000 ? "999+ items" : count == 1 ? "1 item" : $"{count} items";
-                modified = Directory.GetLastWriteTime(path).ToString("g");
-            }
-            else
-            {
-                var info = new FileInfo(path);
-                size = FormatBytes(info.Length);
-                modified = info.LastWriteTime.ToString("g");
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { size = isDir ? "" : "size unknown"; }
-        var sizeText = new TextBlock { Text = size, Foreground = Brush.Parse("#8F919C"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(8, 0, 16, 0) };
+        var sizeText = new TextBlock { Text = "", Foreground = Brush.Parse("#8F919C"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(8, 0, 16, 0) };
         Grid.SetColumn(sizeText, 2);
         grid.Children.Add(sizeText);
-        var dateText = new TextBlock { Text = modified, Foreground = Brush.Parse("#8F919C"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+        var dateText = new TextBlock { Text = "", Foreground = Brush.Parse("#8F919C"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+
+        if (pending != null)
+        {
+            pending.Add((path, isDir, sizeText, dateText));
+        }
+        else
+        {
+            try
+            {
+                if (isDir)
+                {
+                    int count = Directory.EnumerateFileSystemEntries(path).Take(1000).Count();
+                    sizeText.Text = count == 0 ? "Empty" : count >= 1000 ? "999+ items" : count == 1 ? "1 item" : $"{count} items";
+                    dateText.Text = Directory.GetLastWriteTime(path).ToString("g");
+                }
+                else
+                {
+                    var info = new FileInfo(path);
+                    sizeText.Text = FormatBytes(info.Length);
+                    dateText.Text = info.LastWriteTime.ToString("g");
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { sizeText.Text = isDir ? "" : "size unknown"; }
+        }
         Grid.SetColumn(dateText, 3);
         grid.Children.Add(dateText);
 
