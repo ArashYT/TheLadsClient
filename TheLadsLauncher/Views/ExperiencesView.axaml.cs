@@ -21,7 +21,7 @@ public partial class ExperiencesView : UserControl
 {
     private sealed record RunningInstance(int Number, string Username, Process Process);
 
-    private static readonly HttpClient Http = new();
+    private static readonly HttpClient Http = ExperiencesService.DefaultHttp;
     private static string DataDirectory => PathService.Instance.BaseDirectory;
     private static string LadsSmpRebornInstanceId => ExperiencesService.ActiveLadsSmpRebornInstanceId();
     private static string ZeroSmpInstanceId => ExperiencesService.ActiveZeroSmpInstanceId();
@@ -143,6 +143,7 @@ public partial class ExperiencesView : UserControl
             _ladsSmpRebornCts != null,
             allowMultiInstance,
             LadsSmpRebornPlayBtn,
+            LadsSmpRebornCancelBtn,
             LadsSmpRebornStatusBadge,
             LadsSmpRebornStatusBadgeText,
             LadsSmpRebornStatusText,
@@ -168,6 +169,7 @@ public partial class ExperiencesView : UserControl
             _zeroSmpCts != null,
             allowMultiInstance,
             ZeroSmpPlayBtn,
+            ZeroSmpCancelBtn,
             ZeroSmpStatusBadge,
             ZeroSmpStatusBadgeText,
             ZeroSmpStatusText,
@@ -214,6 +216,7 @@ public partial class ExperiencesView : UserControl
         bool busy,
         bool allowMultiInstance,
         Button playBtn,
+        Button cancelBtn,
         Border statusBadge,
         TextBlock statusBadgeText,
         TextBlock statusText,
@@ -270,10 +273,30 @@ public partial class ExperiencesView : UserControl
         }
 
         statusText.IsVisible = !string.IsNullOrWhiteSpace(statusText.Text);
+        cancelBtn.IsVisible = busy;
+        cancelBtn.IsEnabled = busy;
         folderBtn.IsEnabled = installed && !busy;
         reinstallBtn.IsEnabled = installed && !busy && !running;
 
         UpdateRunningInstancesUi(exp, runningList, busy, statusText, progressBar, instancesDropdownBtn, instancesDropdownText, instancesBar, instancesQuickButtons);
+    }
+
+    private void LadsSmpRebornCancel_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_ladsSmpRebornCts is { IsCancellationRequested: false } cts)
+        {
+            SetStatusText(LadsSmpRebornStatusText, "Cancelling...");
+            cts.Cancel();
+        }
+    }
+
+    private void ZeroSmpCancel_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_zeroSmpCts is { IsCancellationRequested: false } cts)
+        {
+            SetStatusText(ZeroSmpStatusText, "Cancelling...");
+            cts.Cancel();
+        }
     }
 
     private void LadsSmpRebornRamBox_ValueChanged(object? sender, NumericUpDownValueChangedEventArgs e) =>

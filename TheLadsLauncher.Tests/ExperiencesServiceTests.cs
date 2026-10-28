@@ -711,4 +711,37 @@ public class ExperiencesServiceTests : IDisposable
     {
         Assert.Equal(experience, ExperiencesService.IsExperienceInstance(instanceId));
     }
+
+    [Fact]
+    public async Task EnsurePackSourceAsync_WhenCancelled_CleansUpPartFile()
+    {
+        var exp = new ExperienceDefinition(
+            Id: "test-pack",
+            Title: "Test Pack",
+            Subtitle: "",
+            Description: "",
+            McVersion: "1.20.1",
+            Loader: "fabric",
+            LoaderVersion: "0.15.0",
+            ModCount: 1,
+            ServerAddress: "",
+            IconAsset: "",
+            RecommendedRamMb: 4096,
+            PackArchiveUrl: "https://example.com/test-pack.zip",
+            PackArchiveSha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        );
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var router = new RouteHandler();
+        router.Add(exp.PackArchiveUrl, new byte[1024]);
+        using var http = new HttpClient(router);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            ExperiencesService.EnsurePackSourceAsync(_tempDir, exp, http, null, cts.Token));
+
+        var part = ExperiencesService.PackArchivePath(_tempDir, exp.Id) + ".part";
+        Assert.False(File.Exists(part));
+    }
 }

@@ -84,6 +84,7 @@
 
             <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
               <Button x:Name="LadsSmpRebornPlayBtn" Classes="launch" Content="Play" Height="46" MinWidth="136" Padding="28,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" FontWeight="Bold" Click="LadsSmpRebornPlay_Click" />
+              <Button x:Name="LadsSmpRebornCancelBtn" Classes="action" Content="Cancel" Height="46" Padding="20,0" IsVisible="False" Click="LadsSmpRebornCancel_Click" />
 
               <Button x:Name="LadsSmpRebornInstancesDropdownBtn" Classes="action" Height="46" Padding="14,0" IsVisible="False" ToolTip.Tip="Manage running The Lads SMP Reborn instances">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -199,6 +200,7 @@
 
             <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
               <Button x:Name="ZeroSmpPlayBtn" Classes="launch" Content="Play" Height="46" MinWidth="136" Padding="28,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" FontWeight="Bold" Click="ZeroSmpPlay_Click" />
+              <Button x:Name="ZeroSmpCancelBtn" Classes="action" Content="Cancel" Height="46" Padding="20,0" IsVisible="False" Click="ZeroSmpCancel_Click" />
 
               <Button x:Name="ZeroSmpInstancesDropdownBtn" Classes="action" Height="46" Padding="14,0" IsVisible="False" ToolTip.Tip="Manage running Zero SMP instances">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
