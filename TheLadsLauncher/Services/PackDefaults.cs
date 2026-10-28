@@ -26,6 +26,7 @@ public static class PackDefaults
         {
             var relative = Path.GetRelativePath(source, file);
             if (relative.Equals("README.md", StringComparison.OrdinalIgnoreCase)) continue; // notes about the folder, not a default
+            if (Mrpack.IsLadsStateFile(relative)) continue;
             var target = Path.Combine(gameDirectory, relative);
             try
             {

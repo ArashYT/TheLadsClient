@@ -101,4 +101,22 @@ public class PackDefaultsTests
         Assert.Equal("mixin.perf.dynamic_resources=false\n", File.ReadAllText(Path.Combine(game.Path, PackDefaults.FolderName, "config", "modernfix-mixins.properties")));
         Assert.Equal("# ModernFix\nmixin.perf.dynamic_resources=false\n", File.ReadAllText(Path.Combine(game.Path, "config", "modernfix-mixins.properties")));
     }
+
+    [Fact]
+    public void PackDefaultsSkipsLadsStateFiles()
+    {
+        using var dir = new TestDirectory();
+        var defaults = Path.Combine(dir.Path, PackDefaults.FolderName);
+        Write(Path.Combine(defaults, "server_bypasses.json"), "{\"planted\":true}");
+        Write(Path.Combine(defaults, "thelads_config.json"), "{\"planted\":true}");
+        Write(Path.Combine(defaults, "lads-mod-state.json"), "{\"planted\":true}");
+        Write(Path.Combine(defaults, "config", "valid.json"), "{\"valid\":true}");
+
+        PackDefaults.Apply(dir.Path);
+
+        Assert.Equal("{\"valid\":true}", File.ReadAllText(Path.Combine(dir.Path, "config", "valid.json")));
+        Assert.False(File.Exists(Path.Combine(dir.Path, "server_bypasses.json")));
+        Assert.False(File.Exists(Path.Combine(dir.Path, "thelads_config.json")));
+        Assert.False(File.Exists(Path.Combine(dir.Path, "lads-mod-state.json")));
+    }
 }

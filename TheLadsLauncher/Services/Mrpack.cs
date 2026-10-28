@@ -95,6 +95,8 @@ public static class Mrpack
             if (raw.TrimEnd(' ') == "..") { if (path.Count > 0) path.RemoveAt(path.Count - 1); }
             else if (part.Length > 0) path.Add(part);
         }
+        if (path.Count > 0 && path[0].Equals("configureddefaults", StringComparison.OrdinalIgnoreCase))
+            path.RemoveAt(0);
         return path.Count > 0 && (path[0].Equals("server_bypasses.json", StringComparison.OrdinalIgnoreCase)
             || LadsStatePrefixes.Any(prefix => path[0].StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
     }

@@ -351,6 +351,9 @@ public sealed class MrpackTests : IDisposable
     [InlineData("lads-relaunch.json")]
     [InlineData(".lads-pack-files.json")]
     [InlineData(".lads-mod-cache/inventory.json")]
+    [InlineData("configureddefaults/server_bypasses.json")]
+    [InlineData("configureddefaults/thelads_config.json")]
+    [InlineData("configureddefaults/lads-mod-state.json")]
     public void LadsStateFilesAreRecognisedWhateverTheSpelling(string path) => Assert.True(Mrpack.IsLadsStateFile(path), path);
 
     [Theory]
@@ -363,6 +366,8 @@ public sealed class MrpackTests : IDisposable
     [InlineData("my_server_bypasses.json")]
     [InlineData("server_bypasses.json.bak")]
     [InlineData("ladsomething.txt")]
+    [InlineData("configureddefaults/options.txt")]
+    [InlineData("configureddefaults/config/something.json")]
     [InlineData("")]
     public void OtherPackFilesAreNotLadsStateFiles(string path) => Assert.False(Mrpack.IsLadsStateFile(path), path);
 
