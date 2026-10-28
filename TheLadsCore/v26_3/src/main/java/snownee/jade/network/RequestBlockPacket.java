@@ -29,6 +29,9 @@ public record RequestBlockPacket(
 			RequestBlockPacket::new);
 
 	public static void handle(RequestBlockPacket message, ServerPayloadContext context) {
+		if (!RequestLimiter.allow(context.player())) {
+			return;
+		}
 		BlockAccessorImpl.handleRequest(message, context, tag -> ReceiveDataPacket.send(tag, context));
 	}
 
