@@ -530,6 +530,21 @@ class ShareCodeTest {
         assertEquals(0, memory.getIndex(), "v1 only touches what it lists");
     }
 
+    @Test
+    void defaultsComeFromTheLiveModulesNotASecondModuleList() {
+        var optifine = com.thelads.core.modules.OptiFine189Module.getInstance();
+        long monitors = priorityMonitors();
+        ModuleManager.getInstance().resetToDefaults();
+        JsonObject payload = ShareCode.createSharePayload(ConfigManager.toJson());
+        ShareCode.prepareImportJson(payload, ShareCode.ImportMode.BOTH);
+        assertSame(optifine, com.thelads.core.modules.OptiFine189Module.getInstance(), "the OptiFine module the screen edits is still the saved one");
+        assertEquals(monitors, priorityMonitors(), "no Threads monitor started by a throwaway module list");
+    }
+
+    private static long priorityMonitors() {
+        return Thread.getAllStackTraces().keySet().stream().filter(t -> t.getName().equals("Lads priority monitor")).count();
+    }
+
     /** Every non-excluded module's on/off, HUD colours and options as the config saves them (no favourite / modified time). */
     private static JsonObject settings() {
         JsonObject saved = ConfigManager.toJson().getAsJsonObject("modules");

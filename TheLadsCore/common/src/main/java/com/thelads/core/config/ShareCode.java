@@ -15,7 +15,6 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
@@ -126,7 +125,7 @@ public final class ShareCode {
         }
         JsonObject payload = new JsonObject();
         payload.addProperty("v", 2);
-        Map<String, JsonObject> defaults = defaultEntries();
+        Map<String, JsonObject> defaults = ModuleManager.getInstance().defaultEntries();
 
         JsonObject modulesOut = new JsonObject();
         JsonObject modulesIn = fullConfig.has("modules") && fullConfig.get("modules").isJsonObject()
@@ -332,29 +331,6 @@ public final class ShareCode {
         return count + " " + unit + ", layout";
     }
 
-    /** Each module's shipped default entry ({enabled, HUD colours, options}), read from a freshly built module list as resetToDefaults does. */
-    private static Map<String, JsonObject> defaultEntries() {
-        Map<String, JsonObject> entries = new HashMap<>();
-        for (Module m : new ModuleManager().getModules()) {
-            JsonObject entry = new JsonObject();
-            entry.addProperty("enabled", m.isEnabledSetting());
-            if (m instanceof HudModule hm) {
-                entry.addProperty("useGlobalColor", hm.isUseGlobalColor());
-                entry.addProperty("customColor", hm.getCustomColor());
-            }
-            JsonObject options = new JsonObject();
-            for (Option o : m.getOptions()) {
-                JsonElement saved = o.save();
-                if (saved != null && !saved.isJsonNull()) {
-                    options.add(o.getName(), saved);
-                }
-            }
-            entry.add("options", options);
-            entries.put(m.getName(), entry);
-        }
-        return entries;
-    }
-
     /** Removes from a module entry what equals its default; true when nothing is left. */
     private static boolean dropDefaults(JsonObject entry, JsonObject defaults) {
         for (String key : new ArrayList<>(entry.keySet())) {
@@ -375,7 +351,7 @@ public final class ShareCode {
     /** The v2 modules with every known, non-excluded module and option the payload leaves out set to its default. */
     private static JsonObject withDefaults(JsonObject listed) {
         JsonObject all = new JsonObject();
-        for (Map.Entry<String, JsonObject> d : defaultEntries().entrySet()) {
+        for (Map.Entry<String, JsonObject> d : ModuleManager.getInstance().defaultEntries().entrySet()) {
             if (isExcludedModule(d.getKey())) {
                 continue;
             }
