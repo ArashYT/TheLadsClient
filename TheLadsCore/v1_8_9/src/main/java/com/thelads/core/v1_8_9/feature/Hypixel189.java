@@ -74,19 +74,11 @@ public final class Hypixel189 {
         }
     }
 
+    /** Opened Chest Highlight: only the chests you open (not every lid the server animates for anyone in range). */
     @SubscribeEvent
     public void interact(net.minecraftforge.event.entity.player.PlayerInteractEvent event) {
         if (event != null && event.action == net.minecraftforge.event.entity.player.PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK && event.pos != null) {
             com.thelads.core.client.hypixel.OpenedChestHighlight.onChestOpened(event.pos.getX(), event.pos.getY(), event.pos.getZ());
-        }
-    }
-
-    public static void blockAction(net.minecraft.network.play.server.S24PacketBlockAction packet) {
-        if (packet != null && packet.getData2() > 0 && com.thelads.core.client.hypixel.OpenedChestHighlight.isEnabled()) {
-            net.minecraft.util.BlockPos pos = packet.getBlockPosition();
-            if (pos != null) {
-                com.thelads.core.client.hypixel.OpenedChestHighlight.onChestOpened(pos.getX(), pos.getY(), pos.getZ());
-            }
         }
     }
 

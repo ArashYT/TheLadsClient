@@ -30,11 +30,13 @@ public class OpenedChestHighlightCoordsTest {
     }
 
     @BeforeEach
-    void setUp() {
+    void setUp(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) {
         bridge = new TestBridge();
         LadsGameBridge.set(bridge);
-        HypixelSafetyManager.qaOverride = true;
         HypixelMods.resetForTest();
+        // Opened Chest Highlight is in the risky set: on Hypixel (the bridge's mc.hypixel.net) only once the player bypassed it.
+        HypixelSafetyManager.setBypassFile(tmp.resolve("server_bypasses.json").toFile());
+        HypixelSafetyManager.bypass(OpenedChestHighlight.NAME);
 
         Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
         if (m != null) {
@@ -49,6 +51,7 @@ public class OpenedChestHighlightCoordsTest {
     @AfterEach
     void tearDown() {
         OpenedChestHighlight.clear();
+        HypixelSafetyManager.setBypassFile(null);
         HypixelSafetyManager.qaOverride = false;
         HypixelMods.resetForTest();
         RealPing.tick(new DefaultGameBridge(), null, 0L);

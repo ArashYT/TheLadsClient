@@ -212,10 +212,24 @@ HypixelMods.tick(bridge, new Object(), new Object(), 0L);
     }
 
     @Test
-    public void testOpenedChestHighlight() {
+    public void testOpenedChestHighlight(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) {
         enableOption(HypixelMods.OPENED_CHESTS);
         assertTrue(HypixelMods.on(HypixelMods.OPENED_CHESTS));
+        // Remembering opened chests shows what vanilla does not (risky set): off on Hypixel unless the player bypassed it there.
+        assertFalse(OpenedChestHighlight.isEnabled());
+        OpenedChestHighlight.recordChestOpened(10, 64, -20);
+        assertEquals(0, OpenedChestHighlight.count());
+        HypixelSafetyManager.qaOverride = false; // the Hypixel QA ignores bypasses: the real address (mc.hypixel.net)
+        HypixelSafetyManager.setBypassFile(tmp.resolve("server_bypasses.json").toFile());
+        try {
+            HypixelSafetyManager.bypass(OpenedChestHighlight.NAME);
+            openedChestsRecordAndClear();
+        } finally {
+            HypixelSafetyManager.setBypassFile(null);
+        }
+    }
 
+    private void openedChestsRecordAndClear() {
         assertEquals(0, OpenedChestHighlight.count());
         assertFalse(OpenedChestHighlight.isOpened(10, 64, -20));
 
