@@ -58,6 +58,7 @@ public final class SocialBridge1201 implements SocialBridge {
     private static volatile String localConnectDisplayName = null;
     private static final Set<UUID> mutedGuests = Collections.synchronizedSet(new HashSet<>());
     private static volatile List<GuestInfo> cachedGuests = Collections.emptyList();
+    private static volatile long lastGuestRefresh;
 
     public static boolean isLoopbackPublish() {
         return loopbackPublish;
@@ -298,9 +299,11 @@ public final class SocialBridge1201 implements SocialBridge {
         Minecraft mc = Minecraft.getInstance();
         IntegratedServer server = mc.getSingleplayerServer();
         if (server == null) return Collections.emptyList();
+        long now = System.currentTimeMillis();
         if (server.isSameThread()) {
             updateGuestSnapshot(server);
-        } else {
+        } else if (now - lastGuestRefresh >= 1000L) { // the host screen asks every frame: one server task a second, as on 1.8.9
+            lastGuestRefresh = now;
             server.execute(() -> updateGuestSnapshot(server));
         }
         return cachedGuests;
