@@ -114,6 +114,56 @@ public class SchematicManagerTest {
         assertEquals(2, SchematicManager.getLength());
     }
 
+    private interface Tags { void write(DataOutputStream dos) throws java.io.IOException; }
+
+    /** A gzipped classic schematic: the root compound around {@code tags}. */
+    private static byte[] schematic(Tags tags) throws java.io.IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (DataOutputStream dos = new DataOutputStream(new GZIPOutputStream(baos))) {
+            dos.writeByte(10);
+            dos.writeUTF("Schematic");
+            tags.write(dos);
+            dos.writeByte(0);
+        }
+        return baos.toByteArray();
+    }
+
+    private static void size(DataOutputStream dos, int w, int h, int l) throws java.io.IOException {
+        dos.writeByte(2); dos.writeUTF("Width"); dos.writeShort(w);
+        dos.writeByte(2); dos.writeUTF("Height"); dos.writeShort(h);
+        dos.writeByte(2); dos.writeUTF("Length"); dos.writeShort(l);
+    }
+
+    @Test
+    @org.junit.jupiter.api.Timeout(20)
+    void malformedFilesAreRefusedWithoutHangingOrRunningOutOfMemory() throws Exception {
+        // A 2 GB array: refused before it is allocated (an OutOfMemoryError slipped past catch (Exception)).
+        assertFalse(SchematicManager.loadFromBytes("huge-array", schematic(dos -> {
+            dos.writeByte(7); dos.writeUTF("Blocks"); dos.writeInt(Integer.MAX_VALUE);
+        })));
+        // 32767^3 blocks with 4 bytes of data: refused, not looped over for days.
+        assertFalse(SchematicManager.loadFromBytes("huge-size", schematic(dos -> {
+            size(dos, 32767, 32767, 32767);
+            dos.writeByte(7); dos.writeUTF("Blocks"); dos.writeInt(4); dos.write(new byte[]{1, 1, 1, 1});
+        })));
+        // A list claiming millions of entries in a few bytes: the end of the file stops it.
+        assertFalse(SchematicManager.loadFromBytes("endless-list", schematic(dos -> {
+            dos.writeByte(9); dos.writeUTF("Entities"); dos.writeByte(4); dos.writeInt(60_000_000);
+        })));
+        assertFalse(SchematicManager.loadFromBytes("end-list", schematic(dos -> {
+            dos.writeByte(9); dos.writeUTF("Entities"); dos.writeByte(0); dos.writeInt(Integer.MAX_VALUE);
+        })));
+        assertFalse(SchematicManager.isLoaded());
+
+        // Fine files still load, block by block where the nested loops put them: index = (y * length + z) * width + x.
+        assertTrue(SchematicManager.loadFromBytes("cube", schematic(dos -> {
+            size(dos, 2, 2, 2);
+            dos.writeByte(7); dos.writeUTF("Blocks"); dos.writeInt(8); dos.write(new byte[]{1, 2, 3, 4, 5, 6, 7, 8});
+        })));
+        assertEquals(8, SchematicManager.getBlocks().size());
+        assertEquals(new SchematicBlock(1, 1, 0, 6, "block_6", 0x8055FFFF), SchematicManager.getBlocks().get(5));
+    }
+
     @Test
     void testLoadSchematicFileFromDisk(@TempDir Path tempDir) throws Exception {
         Path file = tempDir.resolve("disk_test.schematic");
