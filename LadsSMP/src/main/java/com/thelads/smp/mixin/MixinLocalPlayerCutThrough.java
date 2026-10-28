@@ -27,6 +27,18 @@ import java.util.function.Predicate;
 @Mixin(LocalPlayer.class)
 public abstract class MixinLocalPlayerCutThrough {
 
+    private static boolean ladssmp$isCutThroughAllowed() {
+        if (!LadsConfig.get().features.cutThrough) return false;
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        if (mc.isSingleplayer()) return true;
+        try {
+            return net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.canSend(
+                    com.thelads.smp.features.arise.nb5.network.ParkourActionPayload.TYPE);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
     @ModifyArg(
             method = "raycastHitResult",
             at = @At(
@@ -35,7 +47,7 @@ public abstract class MixinLocalPlayerCutThrough {
             )
     )
     private static Predicate<Entity> ladssmp$filterAliveInRaycast(Predicate<Entity> entitySelector) {
-        if (!LadsConfig.get().features.cutThrough) {
+        if (!ladssmp$isCutThroughAllowed()) {
             return entitySelector;
         }
         return entitySelector.and(Entity::isAlive);
@@ -49,7 +61,7 @@ public abstract class MixinLocalPlayerCutThrough {
             )
     )
     private static Predicate<Entity> ladssmp$filterAliveInPick(Predicate<Entity> entitySelector) {
-        if (!LadsConfig.get().features.cutThrough) {
+        if (!ladssmp$isCutThroughAllowed()) {
             return entitySelector;
         }
         return entitySelector.and(Entity::isAlive);
@@ -67,7 +79,7 @@ public abstract class MixinLocalPlayerCutThrough {
             float partialTicks,
             @Share("originalHitResult") LocalRef<HitResult> originalHitResultRef
     ) {
-        if (!LadsConfig.get().features.cutThrough) {
+        if (!ladssmp$isCutThroughAllowed()) {
             return hitResult;
         }
         if (hitResult.getType() == HitResult.Type.BLOCK && hitResult instanceof BlockHitResult blockHitResult) {
