@@ -61,7 +61,7 @@ public static class HorizonEngine
     static HttpClient CreateHttp()
     {
         var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("TheLadsLauncher");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd(LauncherHttp.UserAgent);
         return http;
     }
 

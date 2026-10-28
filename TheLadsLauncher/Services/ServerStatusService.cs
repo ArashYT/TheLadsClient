@@ -37,7 +37,7 @@ public static class ServerStatusService
     private static HttpClient CreateClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("TheLadsClient/" + Program.Version); // mcsrvstat.us refuses requests without one
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(LauncherHttp.UserAgent); // mcsrvstat.us refuses requests without one
         return client;
     }
 

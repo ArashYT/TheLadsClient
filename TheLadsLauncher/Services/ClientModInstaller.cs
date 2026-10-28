@@ -71,7 +71,7 @@ public static class ClientModInstaller
     private static HttpClient CreateClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromMinutes(3) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("TheLadsClient/1.1");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(LauncherHttp.UserAgent);
         return client;
     }
 
@@ -535,7 +535,7 @@ public static class ClientModInstaller
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeout.CancelAfter(TimeSpan.FromSeconds(5)); // Metadata only; never hold up a launch for long.
             using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.modrinth.com/v2/version_file/{hash}?algorithm=sha512");
-            request.Headers.UserAgent.ParseAdd("TheLadsClient/1.2.3");
+            request.Headers.UserAgent.ParseAdd(LauncherHttp.UserAgent);
             using var response = await client.SendAsync(request, timeout.Token);
             response.EnsureSuccessStatusCode();
             using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));

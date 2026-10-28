@@ -44,7 +44,7 @@ public static class OptiFineInstaller
     private static HttpClient CreateClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromMinutes(3) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("TheLadsClient/1.4");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(LauncherHttp.UserAgent);
         return client;
     }
 

@@ -158,7 +158,7 @@ public sealed class ModIconService
 
     private async Task<JsonDocument> SendAsync(HttpRequestMessage request, CancellationToken token)
     {
-        request.Headers.UserAgent.ParseAdd("TheLadsClient/" + Program.Version);
+        request.Headers.UserAgent.ParseAdd(LauncherHttp.UserAgent);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
         timeout.CancelAfter(TimeSpan.FromSeconds(10));
         using var response = await _http.SendAsync(request, timeout.Token).ConfigureAwait(false);

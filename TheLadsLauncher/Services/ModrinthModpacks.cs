@@ -24,7 +24,7 @@ public static class ModrinthModpacks
     public static HttpClient CreateClient()
     {
         var http = new HttpClient { Timeout = TimeSpan.FromMinutes(2) };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd($"TheLadsLauncher/{Program.Version} (contact@thelads.com)");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd(LauncherHttp.UserAgent);
         return http;
     }
 

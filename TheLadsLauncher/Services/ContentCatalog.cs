@@ -45,7 +45,7 @@ public sealed class ContentSourceException(string message, Exception? inner = nu
 /// </summary>
 public sealed class ContentCatalog
 {
-    public const string UserAgent = "TheLadsLauncher/1.0.0 (contact@thelads.com)";
+    public static string UserAgent => LauncherHttp.UserAgent;
     public const string MissingKeyMessage = "CurseForge needs an API key, and none is set. Enter yours in Mods > Mod Manager Settings (get one at console.curseforge.com), or search Modrinth.";
 
     private static readonly HashSet<string> AllowedModrinthHosts = new(StringComparer.OrdinalIgnoreCase)

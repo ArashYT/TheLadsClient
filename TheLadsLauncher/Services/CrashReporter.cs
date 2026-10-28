@@ -73,7 +73,7 @@ public static class CrashReporter
                 windowsEvent = caught ? "" : Scrub(WindowsFaults()),
             };
             using var request = new HttpRequestMessage(HttpMethod.Post, Endpoint) { Content = JsonContent.Create(payload) };
-            request.Headers.UserAgent.ParseAdd($"TheLadsLauncher/{Program.Version}");
+            request.Headers.UserAgent.ParseAdd(LauncherHttp.UserAgent);
             using var response = await Http.SendAsync(request).ConfigureAwait(false);
             return response.IsSuccessStatusCode ? null : $"the server answered {(int)response.StatusCode}";
         }
