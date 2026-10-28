@@ -350,7 +350,9 @@ public final class HypixelSafetyManager {
     public static boolean isAllowedOn(String moduleName, String address) {
         if (blockOf(moduleName, address) == Block.NONE) return true;
         if (!bypassesLoaded) loadBypasses();
-        Set<String> modules = qaOverride ? null : BYPASSES.get(server(address).host);
+        String host = server(address).host;
+        if (host == null || host.isEmpty() || host.equalsIgnoreCase("unknown")) return false;
+        Set<String> modules = qaOverride ? null : BYPASSES.get(host);
         return modules != null && modules.contains(bypassKey(moduleName));
     }
 
@@ -424,14 +426,16 @@ public final class HypixelSafetyManager {
     public static boolean isBypassed(String moduleName) {
         if (!bypassesLoaded) loadBypasses();
         if (qaOverride || BYPASSES.isEmpty()) return false;
-        Set<String> modules = BYPASSES.get(currentHost());
+        String host = currentHost();
+        if (host == null || host.isEmpty() || host.equalsIgnoreCase("unknown")) return false;
+        Set<String> modules = BYPASSES.get(host);
         return modules != null && modules.contains(bypassKey(moduleName));
     }
 
     /** At the player's own risk (only after the red warning): keeps the module on for the current server. */
     public static void bypass(String moduleName) {
         String host = currentHost();
-        if (moduleName == null || host.isEmpty() || qaOverride) return;
+        if (moduleName == null || host == null || host.isEmpty() || host.equalsIgnoreCase("unknown") || qaOverride) return;
         if (!bypassesLoaded) loadBypasses();
         BYPASSES.computeIfAbsent(host, h -> ConcurrentHashMap.newKeySet()).add(bypassKey(moduleName));
         saveBypasses();
@@ -439,10 +443,12 @@ public final class HypixelSafetyManager {
 
     /** Takes a bypass back: the server's rules apply again. */
     public static void removeBypass(String moduleName) {
+        String host = currentHost();
+        if (host == null || host.isEmpty() || host.equalsIgnoreCase("unknown")) return;
         if (!bypassesLoaded) loadBypasses();
-        Set<String> modules = BYPASSES.get(currentHost());
+        Set<String> modules = BYPASSES.get(host);
         if (modules != null && modules.remove(bypassKey(moduleName))) {
-            if (modules.isEmpty()) BYPASSES.remove(currentHost());
+            if (modules.isEmpty()) BYPASSES.remove(host);
             saveBypasses();
         }
     }

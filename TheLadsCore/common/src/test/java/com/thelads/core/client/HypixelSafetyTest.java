@@ -617,4 +617,34 @@ public class HypixelSafetyTest {
         HypixelSafetyManager.setBypassFile(file.toFile()); // reload from disk
         assertTrue(HypixelSafetyManager.isBypassed("StackRefill") && HypixelSafetyManager.isBypassed("Minimap"));
     }
+
+    @Test
+    public void testBypassRefusesAndIgnoresUnknownHost() throws Exception {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        bridge.setServer("Unknown");
+
+        // 1. Bypassing on "Unknown" is refused
+        HypixelSafetyManager.bypass("Minimap");
+        assertFalse(HypixelSafetyManager.isBypassed("Minimap"), "bypassing on unknown must be refused");
+        assertFalse(HypixelSafetyManager.isAllowedOn("Minimap", "Unknown"), "isAllowedOn for Unknown must be false");
+        assertFalse(HypixelSafetyManager.isAllowedOn("Minimap", "unknown"), "isAllowedOn for unknown must be false");
+
+        // 2. Even if server_bypasses.json contains an "unknown" entry, isBypassed and isAllowedOn ignore it
+        java.nio.file.Path file = tmp.resolve("server_bypasses.json");
+        java.nio.file.Files.writeString(file, "{\"unknown\":[\"Minimap\"],\"play.somesmp.net\":[\"Minimap\"]}");
+        HypixelSafetyManager.setBypassFile(file.toFile());
+
+        assertFalse(HypixelSafetyManager.isBypassed("Minimap"), "isBypassed ignores unknown host");
+        assertFalse(HypixelSafetyManager.isAllowedOn("Minimap", "Unknown"), "isAllowedOn ignores unknown host");
+        assertFalse(HypixelSafetyManager.isAllowedOn("Minimap", "unknown"), "isAllowedOn ignores unknown host");
+
+        // 3. removeBypass safely ignores unknown host without throwing or clearing other bypasses
+        HypixelSafetyManager.removeBypass("Minimap");
+
+        // Legitimate bypass on known server is preserved
+        bridge.setServer("play.somesmp.net");
+        assertTrue(HypixelSafetyManager.isBypassed("Minimap"), "known server bypass works");
+        assertTrue(HypixelSafetyManager.isAllowedOn("Minimap", "play.somesmp.net"), "known server isAllowedOn works");
+    }
 }
