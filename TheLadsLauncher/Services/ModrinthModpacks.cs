@@ -51,44 +51,6 @@ public static class ModrinthModpacks
             Strings(h, "categories").Where(LoaderFilters.Contains).ToList())).ToList();
     }
 
-    public static async Task<string> DownloadLatestFileAsync(HttpClient http, string projectId, string projectType, string? gameVersion, string? loader, string targetFolder, CancellationToken token)
-    {
-        var query = new List<string>();
-        if (!string.IsNullOrEmpty(gameVersion)) query.Add("game_versions=" + Uri.EscapeDataString("[\"" + gameVersion + "\"]"));
-        if (!string.IsNullOrEmpty(loader) && (projectType == "mod" || projectType == "modpack")) query.Add("loaders=" + Uri.EscapeDataString("[\"" + loader + "\"]"));
-        string qs = query.Count > 0 ? "?" + string.Join("&", query) : "";
-        string url = $"{Api}/project/{Uri.EscapeDataString(projectId)}/version{qs}";
-        using var doc = JsonDocument.Parse(await http.GetStringAsync(url, token));
-        var versions = doc.RootElement.EnumerateArray().ToList();
-        if (versions.Count == 0)
-        {
-            // Try without loader constraint as fallback
-            if (!string.IsNullOrEmpty(loader))
-            {
-                string fallbackUrl = $"{Api}/project/{Uri.EscapeDataString(projectId)}/version" + (!string.IsNullOrEmpty(gameVersion) ? $"?game_versions={Uri.EscapeDataString("[\"" + gameVersion + "\"]")}" : "");
-                using var fallbackDoc = JsonDocument.Parse(await http.GetStringAsync(fallbackUrl, token));
-                versions = fallbackDoc.RootElement.EnumerateArray().ToList();
-            }
-            if (versions.Count == 0) throw new InvalidOperationException("No compatible versions found on Modrinth for this Minecraft version.");
-        }
-        var ver = versions[0];
-        var files = ver.GetProperty("files").EnumerateArray().ToList();
-        var file = files.FirstOrDefault(f => f.TryGetProperty("primary", out var p) && p.GetBoolean());
-        if (file.ValueKind == JsonValueKind.Undefined && files.Count > 0) file = files[0];
-        if (file.ValueKind == JsonValueKind.Undefined) throw new InvalidOperationException("No downloadable files found in this version.");
-        string fileUrl = file.GetProperty("url").GetString()!;
-        string fileName = file.GetProperty("filename").GetString()!;
-        Directory.CreateDirectory(targetFolder);
-        string dest = Path.Combine(targetFolder, fileName);
-
-        using var response = await http.GetAsync(fileUrl, HttpCompletionOption.ResponseHeadersRead, token);
-        response.EnsureSuccessStatusCode();
-        await using var input = await response.Content.ReadAsStreamAsync(token);
-        await using var output = new FileStream(dest, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
-        await input.CopyToAsync(output, token);
-        return fileName;
-    }
-
     /// <summary>The project's versions that ship a .mrpack, newest first.</summary>
     public static async Task<List<ModpackVersion>> VersionsAsync(HttpClient http, string projectId, CancellationToken token)
     {
