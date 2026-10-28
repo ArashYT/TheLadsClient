@@ -268,8 +268,7 @@ public static class ModpackLauncher
         process.StartInfo.CreateNoWindow = true;
         process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = dataDirectory;
         process.StartInfo.Environment["THELADS_DIR"] = instance.GameDirectory;
-        process.StartInfo.Environment.Remove("_JAVA_OPTIONS");
-        process.StartInfo.Environment.Remove("JAVA_TOOL_OPTIONS");
+        GameSession.RemoveJavaOptionVariables(process.StartInfo);
         LaunchToken.Hide(process, instance.GameDirectory, session.AccessToken); // the caller sends it after Start
         if (!own) return process;
         if (instance.Loader == "forge" && instance.McVersion == "1.20.1")
