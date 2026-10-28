@@ -84,6 +84,12 @@ public class ProfileManager {
         persist();
     }
 
+    /** A profile restores what it saved: the one-time overrides already ran on the live config (ConfigManager.markOverridesApplied). */
+    private static JsonObject restoring(JsonObject snap) {
+        if (snap.get("hud") instanceof JsonObject hud) ConfigManager.markOverridesApplied(hud);
+        return snap;
+    }
+
     /** Apply a stored profile to the live config (all modules and settings). */
     public void apply(String name) {
         apply(name, ShareCode.ImportMode.BOTH);
@@ -96,7 +102,7 @@ public class ProfileManager {
         if (snap != null) {
             saveAs("Before import");
             if (mode == null || mode == ShareCode.ImportMode.BOTH) {
-                ConfigManager.applyJson(snap);
+                ConfigManager.applyJson(restoring(snap));
             } else {
                 JsonObject prepared = ShareCode.prepareImportJson(snap, mode, false);
                 ConfigManager.applyJson(prepared);
@@ -173,7 +179,7 @@ public class ProfileManager {
         ensureLoaded();
         String prof = bindings.get(contextKey);
         if (prof != null && profiles.containsKey(prof)) {
-            ConfigManager.applyJson(profiles.get(prof));
+            ConfigManager.applyJson(restoring(profiles.get(prof)));
             ConfigManager.saveLater();
         }
     }

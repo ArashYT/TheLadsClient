@@ -239,7 +239,9 @@ public final class ShareCode {
 
         // HUD layout & appearances
         if ((mode == ImportMode.SETTINGS || mode == ImportMode.BOTH) && payload.has("hud") && payload.get("hud").isJsonObject()) {
-            out.add("hud", payload.getAsJsonObject("hud").deepCopy());
+            JsonObject hud = payload.getAsJsonObject("hud").deepCopy();
+            ConfigManager.markOverridesApplied(hud);
+            out.add("hud", hud);
         }
 
         // Modules

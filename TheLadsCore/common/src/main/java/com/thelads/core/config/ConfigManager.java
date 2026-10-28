@@ -174,6 +174,16 @@ public class ConfigManager {
         return json;
     }
 
+    /**
+     * Profiles and share codes restore what they saved: the one-time overrides below (apply1910HudOverride...) ran on the live config
+     * already, so an older snapshot must not run them again over its own values.
+     */
+    static void markOverridesApplied(JsonObject hud) {
+        for (String flag : new String[] {HUD_1910_FLAG, F3_1911_FLAG, KEYSTROKES_1912_FLAG, KEYSTROKES_1914_FLAG, CLOUD_HEIGHT_1914_FLAG, MOB_KILL_BANNER_1914_FLAG}) {
+            hud.addProperty(flag, true);
+        }
+    }
+
     /** Most HUD positions or anchors a config, profile or share code adds: there are about 60 HUDs, a shared code could carry thousands. */
     static final int MAX_HUD_ENTRIES = 256;
 

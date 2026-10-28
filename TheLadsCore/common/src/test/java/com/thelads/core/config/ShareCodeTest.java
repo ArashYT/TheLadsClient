@@ -594,6 +594,36 @@ class ShareCodeTest {
     }
 
     @Test
+    void olderProfilesAndCodesRestoreWhatTheySaved() {
+        ModuleManager mm = ModuleManager.getInstance();
+        mm.resetToDefaults();
+        Module clouds = mm.getModule(com.thelads.core.modules.CloudHeightModule.NAME);
+        DropdownOption style = (DropdownOption) mm.getModule("Keystrokes").getOption("Style");
+        clouds.setEnabled(false);
+        style.setIndex(1);
+        ProfileManager pm = ProfileManager.get();
+        pm.saveAs("Saved in 1.9.11");
+        JsonObject hud = pm.getProfile("Saved in 1.9.11").getAsJsonObject("hud");
+        for (String flag : new String[] {ConfigManager.KEYSTROKES_1912_FLAG, ConfigManager.KEYSTROKES_1914_FLAG, ConfigManager.CLOUD_HEIGHT_1914_FLAG,
+                ConfigManager.MOB_KILL_BANNER_1914_FLAG}) {
+            hud.remove(flag); // written before those one-time overrides existed
+        }
+        clouds.setEnabled(true);
+        style.setIndex(0);
+
+        pm.apply("Saved in 1.9.11");
+        assertFalse(clouds.isEnabledSetting(), "the profile's Cloud Height, not the 1.9.14 override again");
+        assertEquals(1, style.getIndex(), "the profile's Keystrokes style, not the 1.9.12 override again");
+
+        JsonObject code = JsonParser.parseString("{\"v\":1,\"modules\":{\"Keystrokes\":{\"options\":{\"Style\":1}}},\"hud\":{\"hudScale\":2}}").getAsJsonObject();
+        style.setIndex(0);
+        ShareCode.applySharePayload(code, ShareCode.ImportMode.SETTINGS);
+        assertEquals(1, style.getIndex());
+        assertFalse(clouds.isEnabledSetting(), "an old code does not switch Cloud Height on");
+        HudSettings.getInstance().resetToDefaults();
+    }
+
+    @Test
     void sharedLayoutsCannotBloatTheConfig() {
         JsonObject positions = new JsonObject();
         positions.add("x".repeat(200), xy(1, 1));
