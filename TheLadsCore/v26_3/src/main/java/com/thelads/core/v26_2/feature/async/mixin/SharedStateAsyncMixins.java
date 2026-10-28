@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.thelads.core.v26_2.feature.async.AsyncTicking;
 import java.util.Collection;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import net.minecraft.advancements.triggers.SimpleCriterionTrigger;
 import net.minecraft.core.Holder;
@@ -12,8 +13,11 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.ClassInstanceMultiMap;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.RandomSequences;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.gameevent.GameEventDispatcher;
+import net.minecraft.world.level.storage.loot.LootContext;
+import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 
@@ -36,6 +40,18 @@ final class SharedStateAsyncMixins {
         @WrapMethod(method = "get")
         private RandomSource lads$lockGet(Identifier key, long seed, Operation<RandomSource> original) {
             return AsyncTicking.locked(original, key, seed);
+        }
+    }
+
+    /**
+     * Every roll draws from its table's random sequence, one per table for the whole server: two workers' chickens laying,
+     * piglins bartering or villagers gifting in the same tick would advance it at once (die() already holds the lock).
+     */
+    @Mixin(LootTable.class)
+    abstract static class LootRolls {
+        @WrapMethod(method = "getRandomItemsRaw(Lnet/minecraft/world/level/storage/loot/LootContext;Ljava/util/function/Consumer;)V")
+        private void lads$lockRoll(LootContext context, Consumer<ItemStack> output, Operation<Void> original) {
+            AsyncTicking.locked(original, context, output);
         }
     }
 
