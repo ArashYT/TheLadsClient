@@ -724,6 +724,14 @@ public partial class MainWindow
             if (GalleryPage.IsVisible && !GalleryViewerOverlay.IsVisible) GallerySourcesBtn.Flyout?.ShowAt(GallerySourcesBtn);
             return;
         }
+        string fileName = Path.GetFileName(path);
+        if (!await ShowLadsDialogAsync("Upload to Imgur",
+            $"Upload '{fileName}' publicly to Imgur and copy the link to the clipboard?\n\n" +
+            "Anyone with the link can view it (including chat, player names, and coordinates in the screenshot).",
+            "Upload", "Cancel"))
+        {
+            return;
+        }
         try
         {
             StatusText.Text = "Uploading to Imgur...";
@@ -739,9 +747,13 @@ public partial class MainWindow
             if (doc.RootElement.TryGetProperty("data", out var data) && data.TryGetProperty("link", out var linkEl))
             {
                 string link = linkEl.GetString() ?? "";
+                string deleteHash = data.TryGetProperty("deletehash", out var delEl) ? (delEl.GetString() ?? "") : "";
                 CopyTextToClipboard(link);
                 StatusText.Text = "Imgur link copied: " + link;
-                Log($"[Gallery] Uploaded: {link}");
+                if (!string.IsNullOrEmpty(deleteHash))
+                    Log($"[Gallery] Uploaded: {link} (delete URL: https://imgur.com/delete/{deleteHash})");
+                else
+                    Log($"[Gallery] Uploaded: {link}");
             }
             else
             {
