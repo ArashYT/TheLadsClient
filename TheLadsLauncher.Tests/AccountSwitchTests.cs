@@ -126,6 +126,27 @@ public class AccountSwitchTests
     }
 
     [Fact]
+    public void ResolveOfflineModpackSession_RefusesOfflineAccountInReleaseBuilds()
+    {
+        var accounts = new List<AccountSummary>
+        {
+            new("Steve", "11111111-1111-1111-1111-111111111111", "microsoft"),
+            new("OfflinePlayer", AccountIdentity.OfflineUuid("OfflinePlayer"), "offline")
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            MainWindow.ResolveOfflineModpackSession("OfflinePlayer", accounts, devOfflineAllowed: false));
+        Assert.Contains("only available in debug builds", ex.Message, StringComparison.OrdinalIgnoreCase);
+
+        var session = MainWindow.ResolveOfflineModpackSession("OfflinePlayer", accounts, devOfflineAllowed: true);
+        Assert.NotNull(session);
+        Assert.Equal("OfflinePlayer", session.Username);
+
+        var msSession = MainWindow.ResolveOfflineModpackSession("Steve", accounts, devOfflineAllowed: false);
+        Assert.Null(msSession);
+    }
+
+    [Fact]
     public void RefusedAccountLeavesSettingsAlone()
     {
         using var dir = new TestDirectory();
