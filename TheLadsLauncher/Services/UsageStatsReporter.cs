@@ -30,11 +30,12 @@ public static class UsageStatsReporter
         LauncherSettings settings,
         IEnumerable<string>? clientVersions = null,
         string? launcherVersion = null,
-        string? os = null)
+        string? os = null,
+        bool? isSandbox = null)
     {
         // QA/sandbox runs (THELADS_DIR set) are not real installs.
-        if (settings == null || !settings.SendAnonymousUsageStats
-            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THELADS_DIR")))
+        bool isSandboxEffective = isSandbox ?? !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THELADS_DIR"));
+        if (settings == null || !settings.SendAnonymousUsageStats || isSandboxEffective)
         {
             return null;
         }
@@ -103,11 +104,12 @@ public static class UsageStatsReporter
     public static async Task<bool> SendHeartbeatAsync(
         LauncherSettings settings,
         HttpClient? httpClient = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool? isSandbox = null)
     {
         try
         {
-            var payload = BuildPayload(settings);
+            var payload = BuildPayload(settings, isSandbox: isSandbox);
             if (payload == null) return false;
 
             var client = httpClient ?? DefaultHttp;
