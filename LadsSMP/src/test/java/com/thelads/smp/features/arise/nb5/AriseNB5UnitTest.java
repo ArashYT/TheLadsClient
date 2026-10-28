@@ -5,6 +5,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.thelads.smp.features.arise.nb5.client.ParkourClientController;
+import com.thelads.smp.features.arise.nb5.network.ParkourSyncPayload;
 
 /**
  * Unit test suite for NB5 (ParCool-style Parkour & Stamina systems).
@@ -274,5 +276,23 @@ public class AriseNB5UnitTest {
         assertEquals(14, payload.actionTicks());
         assertEquals(ParkourActionType.ROLL, payload.getActionType());
         assertEquals("ladssmp:parkour_anim", payload.type().id().toString());
+    }
+
+    @Test
+    @DisplayName("Verify anti-ban server gating: parkour disabled on foreign servers until confirmed by sync")
+    void testAntiBanServerGating() {
+        ParkourClientController.resetSession();
+        assertFalse(ParkourClientController.isServerConfirmed(), "Parkour must not be confirmed by default");
+        assertFalse(ParkourClientController.isParkourAllowed(), "Parkour must be disabled without server confirmation");
+
+        // Simulate server sync reception
+        ParkourSyncPayload payload = new ParkourSyncPayload(800, false, ParkourActionType.NONE.getId(), 0);
+        ParkourClientController.onSync(payload);
+        assertTrue(ParkourClientController.isServerConfirmed(), "Sync packet must confirm server presence");
+
+        // Disconnect / session reset
+        ParkourClientController.resetSession();
+        assertFalse(ParkourClientController.isServerConfirmed(), "Disconnect must revoke server confirmation");
+        assertFalse(ParkourClientController.isParkourAllowed(), "Parkour must be disabled after disconnect");
     }
 }
