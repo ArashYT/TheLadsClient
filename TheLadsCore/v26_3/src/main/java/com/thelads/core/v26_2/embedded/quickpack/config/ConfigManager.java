@@ -23,7 +23,8 @@ public class ConfigManager {
             try {
                 String data = Files.readString(configFile);
                 try {
-                    config = GSON.fromJson(data, Config.class);
+                    Config parsed = GSON.fromJson(data, Config.class); // null for an empty file or the text "null"
+                    if (parsed != null) config = parsed;
                 } catch (JsonSyntaxException e) {
                     LOGGER.error("Failed to parse quick-pack config", e);
                 }

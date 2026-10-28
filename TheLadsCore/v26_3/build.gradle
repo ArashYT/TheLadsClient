@@ -212,7 +212,13 @@ tasks.register('runJadeStandDownTest', JavaExec) {
     mainClass = 'com.thelads.core.v26_2.embedded.jade.JadeStandDownTest'
 }
 
+tasks.register('runQuickPackConfigTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.thelads.core.v26_2.embedded.quickpack.QuickPackConfigTest'
+}
+
 tasks.named('test') {
     failOnNoDiscoveredTests = false
-    dependsOn tasks.named('runShowcaseTest'), tasks.named('runSocialChecks'), tasks.named('runCodecChecks'), tasks.named('runJadeStandDownTest')
+    dependsOn tasks.named('runShowcaseTest'), tasks.named('runSocialChecks'), tasks.named('runCodecChecks'), tasks.named('runJadeStandDownTest'), tasks.named('runQuickPackConfigTest')
 }
