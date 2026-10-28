@@ -105,7 +105,7 @@ public static class CurseForgeModpack
         return ParseManifest(stream);
     }
 
-    public static void ExtractOverrides(string zipPath, string instanceDirectory, string overridesDir = "overrides")
+    public static void ExtractOverrides(string zipPath, string gameDirectory, string overridesDir = "overrides")
     {
         using var zip = ZipFile.OpenRead(zipPath);
         string prefix = overridesDir.TrimEnd('/', '\\') + "/";
@@ -116,23 +116,23 @@ public static class CurseForgeModpack
             string rel = entry.FullName[prefix.Length..];
             if (string.IsNullOrWhiteSpace(rel) || rel.EndsWith('/')) continue;
 
-            string dest = Mrpack.SafePath(instanceDirectory, rel);
+            string dest = Mrpack.SafePath(gameDirectory, rel);
             string? dir = Path.GetDirectoryName(dest);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
             entry.ExtractToFile(dest, overwrite: true);
         }
     }
 
-    public static async Task InstallAsync(string zipPath, string instanceDirectory, ContentCatalog? catalog,
+    public static async Task InstallAsync(string zipPath, string gameDirectory, ContentCatalog? catalog,
         Action<string> report, CancellationToken cancellationToken = default)
     {
         report("Reading CurseForge modpack manifest…");
         var manifest = ReadManifest(zipPath);
 
         report("Extracting modpack configuration overrides…");
-        ExtractOverrides(zipPath, instanceDirectory, manifest.OverridesDir);
+        ExtractOverrides(zipPath, gameDirectory, manifest.OverridesDir);
 
-        var modsDir = Path.Combine(instanceDirectory, "mods");
+        var modsDir = Path.Combine(gameDirectory, "mods");
         Directory.CreateDirectory(modsDir);
 
         if (catalog != null && manifest.Files.Count > 0)

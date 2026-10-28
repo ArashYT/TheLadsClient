@@ -79,7 +79,7 @@ public static class ModpackLauncher
         var instance = Modpacks.NewInstance(dataDirectory, string.IsNullOrWhiteSpace(name) ? manifest.Name : name);
         try
         {
-            await Task.Run(() => CurseForgeModpack.InstallAsync(zipFile, instance.Directory, catalog, status ?? (_ => { }), token), token);
+            await Task.Run(() => CurseForgeModpack.InstallAsync(zipFile, instance.GameDirectory, catalog, status ?? (_ => { }), token), token);
             instance.McVersion = manifest.MinecraftVersion;
             instance.Loader = manifest.ModLoader;
             instance.LoaderVersion = manifest.ModLoaderVersion;
@@ -93,6 +93,52 @@ public static class ModpackLauncher
         {
             SafeFileOps.DeleteTree(instance.Directory);
             throw;
+        }
+    }
+
+    // What the launcher itself keeps in an instance folder beside the game folder; anything else there is from a pack.
+    private static readonly string[] InstanceOwnFiles = { "minecraft", "instance.json", "instance.json.tmp", "icon.png", Mrpack.RecordFile,
+        ".lads-applied-patches.json", "instance-analytics.json" };
+
+    /// <summary>
+    /// CurseForge imports before 1.12.0 put the pack's mods and overrides in the instance folder (&lt;instance&gt;/mods, /config, ...)
+    /// instead of in its game folder, so the game started without them. Moves them in, merging with what the game folder has: anything
+    /// that already exists there stays where it is, with its twin outside, so nothing is replaced or deleted. Only an instance with an
+    /// &lt;instance&gt;/mods folder is touched (nothing else makes one). The Core setting that import saved as "unsupported" (it looked
+    /// at an empty game folder) is decided again once everything is in; a move that fails is tried again the next time.
+    /// </summary>
+    public static void RepairCurseForgeLayout(ModpackInstance instance)
+    {
+        var misplacedMods = Path.Combine(instance.Directory, "mods");
+        if (instance.IsExternal || !Directory.Exists(misplacedMods)) return;
+        try
+        {
+            Directory.CreateDirectory(instance.GameDirectory);
+            foreach (var entry in Directory.GetFileSystemEntries(instance.Directory))
+                if (!InstanceOwnFiles.Contains(Path.GetFileName(entry), StringComparer.OrdinalIgnoreCase))
+                    MoveInto(entry, Path.Combine(instance.GameDirectory, Path.GetFileName(entry)));
+            if (instance.LadsCore == false && !Directory.Exists(misplacedMods))
+            {
+                instance.LadsCore = null;
+                Modpacks.Save(instance);
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException) { }
+    }
+
+    // Moves source to target; when both are folders their entries are merged. A file that is already at target stays, and so does source.
+    private static void MoveInto(string source, string target)
+    {
+        bool folder = Directory.Exists(source) && !SafeFileOps.IsLink(source); // a link is moved as the link it is, never entered
+        if (folder && Directory.Exists(target))
+        {
+            foreach (var entry in Directory.GetFileSystemEntries(source)) MoveInto(entry, Path.Combine(target, Path.GetFileName(entry)));
+            try { Directory.Delete(source); } catch (IOException) { } // only an empty folder goes
+        }
+        else if (!File.Exists(target) && !Directory.Exists(target))
+        {
+            if (Directory.Exists(source)) Directory.Move(source, target);
+            else File.Move(source, target);
         }
     }
 
