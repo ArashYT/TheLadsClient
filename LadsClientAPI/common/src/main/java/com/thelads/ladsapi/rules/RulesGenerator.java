@@ -26,14 +26,14 @@ public final class RulesGenerator {
         StringBuilder sb = new StringBuilder();
         sb.append("# LadsClientAPI rules.yml (auto-generated from schema)\n");
         sb.append("# Blank module state = player's own (inherit). Options left blank = player's own.\n");
-        sb.append("# State options: allow | block | on   (on = forced, only for server-controllable modules)\n");
+        sb.append("# State options: allow | block | \"on\"   (\"on\" should be quoted in YAML; forced on, only for server-controllable modules)\n");
         sb.append("# Option rules: { value: ..., min: ..., max: ..., choices: [...], lock: true/false }\n\n");
         sb.append("modules:\n");
 
         if (schema != null && schema.getModules() != null) {
             for (LadsSchema.SchemaModule mod : schema.getModules()) {
                 sb.append("  ").append(yamlKey(mod.getName())).append(":\n");
-                sb.append("    state:                     # allow | block | on   (blank = inherit)\n");
+                sb.append("    state:                     # allow | block | \"on\"   (blank = inherit)\n");
                 if (mod.getOptions() != null) {
                     for (LadsSchema.SchemaOption opt : mod.getOptions()) {
                         String optName = opt.getName();
@@ -171,7 +171,7 @@ public final class RulesGenerator {
                 // Entire module is missing: insert before modulesEndIdx
                 List<String> modBlock = new ArrayList<>();
                 modBlock.add(modIndent + yamlKey(modName) + ":");
-                modBlock.add(optIndent + "state:                     # allow | block | on   (blank = inherit)");
+                modBlock.add(optIndent + "state:                     # allow | block | \"on\"   (blank = inherit)");
                 if (mod.getOptions() != null) {
                     for (LadsSchema.SchemaOption opt : mod.getOptions()) {
                         modBlock.add(formatOptionLine(optIndent, opt.getName(), opt.formatComment()));

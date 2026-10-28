@@ -45,7 +45,7 @@ public final class LadsRules {
         try (InputStream in = Files.newInputStream(rulesFile)) {
             Map<String, Object> data = yaml.load(in);
             if (data != null) {
-                parseYaml(data);
+                parseYaml(data, logger);
             }
         } catch (Exception e) {
             if (logger != null) {
@@ -56,6 +56,11 @@ public final class LadsRules {
 
     @SuppressWarnings("unchecked")
     public void parseYaml(Map<String, Object> data) {
+        parseYaml(data, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    public void parseYaml(Map<String, Object> data, Logger logger) {
         modules.clear();
         worlds.clear();
         groups.clear();
@@ -64,7 +69,7 @@ public final class LadsRules {
 
         Object modsObj = data.get("modules");
         if (modsObj instanceof Map<?, ?> modsMap) {
-            parseModulesMap((Map<String, Object>) modsMap, this.modules);
+            parseModulesMap((Map<String, Object>) modsMap, this.modules, logger);
         }
 
         Object worldsObj = data.get("worlds");
@@ -75,9 +80,9 @@ public final class LadsRules {
                     Map<String, ModuleRule> wMods = new LinkedHashMap<>();
                     Object subMods = wContent.get("modules");
                     if (subMods instanceof Map<?, ?> subModsMap) {
-                        parseModulesMap((Map<String, Object>) subModsMap, wMods);
+                        parseModulesMap((Map<String, Object>) subModsMap, wMods, logger);
                     } else {
-                        parseModulesMap((Map<String, Object>) wContent, wMods);
+                        parseModulesMap((Map<String, Object>) wContent, wMods, logger);
                     }
                     this.worlds.put(worldName, wMods);
                 }
@@ -92,9 +97,9 @@ public final class LadsRules {
                     Map<String, ModuleRule> gMods = new LinkedHashMap<>();
                     Object subMods = gContent.get("modules");
                     if (subMods instanceof Map<?, ?> subModsMap) {
-                        parseModulesMap((Map<String, Object>) subModsMap, gMods);
+                        parseModulesMap((Map<String, Object>) subModsMap, gMods, logger);
                     } else {
-                        parseModulesMap((Map<String, Object>) gContent, gMods);
+                        parseModulesMap((Map<String, Object>) gContent, gMods, logger);
                     }
                     this.groups.put(groupName, gMods);
                 }
@@ -103,7 +108,7 @@ public final class LadsRules {
     }
 
     @SuppressWarnings("unchecked")
-    private void parseModulesMap(Map<String, Object> map, Map<String, ModuleRule> target) {
+    private void parseModulesMap(Map<String, Object> map, Map<String, ModuleRule> target, Logger logger) {
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             String modName = entry.getKey();
             Object val = entry.getValue();
@@ -116,8 +121,20 @@ public final class LadsRules {
 
                     if ("state".equalsIgnoreCase(optKey)) {
                         if (optVal != null) {
-                            String s = String.valueOf(optVal).trim().toLowerCase();
+                            String s;
+                            if (optVal instanceof Boolean b) {
+                                s = b ? "on" : "inherit";
+                            } else {
+                                s = String.valueOf(optVal).trim().toLowerCase();
+                                if ("true".equals(s)) s = "on";
+                                else if ("false".equals(s)) s = "inherit";
+                            }
                             if (!s.isEmpty()) {
+                                if (!s.equals("allow") && !s.equals("block") && !s.equals("on") && !s.equals("inherit")) {
+                                    if (logger != null) {
+                                        logger.warning("[LadsClientAPI] Unknown module state '" + s + "' for module " + modName + " (expected: allow | block | on)");
+                                    }
+                                }
                                 modRule.setState(s);
                             }
                         }
@@ -130,9 +147,18 @@ public final class LadsRules {
                 }
             } else if (val instanceof String strVal) {
                 String s = strVal.trim().toLowerCase();
+                if ("true".equals(s)) s = "on";
+                else if ("false".equals(s)) s = "inherit";
                 if (!s.isEmpty()) {
+                    if (!s.equals("allow") && !s.equals("block") && !s.equals("on") && !s.equals("inherit")) {
+                        if (logger != null) {
+                            logger.warning("[LadsClientAPI] Unknown module state '" + s + "' for module " + modName + " (expected: allow | block | on)");
+                        }
+                    }
                     modRule.setState(s);
                 }
+            } else if (val instanceof Boolean b) {
+                modRule.setState(b ? "on" : "inherit");
             }
             target.put(modName, modRule);
         }

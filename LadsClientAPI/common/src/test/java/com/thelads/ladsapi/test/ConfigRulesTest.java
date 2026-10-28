@@ -275,4 +275,31 @@ public class ConfigRulesTest {
             rulesFile.toFile().setWritable(true);
         }
     }
+    @Test
+    public void testYamlStateOnAndShorthandOn(@TempDir Path tempDir) throws IOException {
+        Path rulesFile = tempDir.resolve("rules.yml");
+        String yaml = """
+                modules:
+                  Fullbright:
+                    state: on
+                  Crosshair: on
+                  XaeroMinimap:
+                    state: "on"
+                """;
+        Files.writeString(rulesFile, yaml, StandardCharsets.UTF_8);
+        LadsRules rules = new LadsRules();
+        rules.readFrom(rulesFile, null);
+
+        ModuleRule fb = rules.getModules().get("Fullbright");
+        assertNotNull(fb);
+        assertEquals("on", fb.getState());
+
+        ModuleRule ch = rules.getModules().get("Crosshair");
+        assertNotNull(ch);
+        assertEquals("on", ch.getState());
+
+        ModuleRule xm = rules.getModules().get("XaeroMinimap");
+        assertNotNull(xm);
+        assertEquals("on", xm.getState());
+    }
 }
