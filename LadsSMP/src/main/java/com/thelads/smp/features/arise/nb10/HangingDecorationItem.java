@@ -1,5 +1,6 @@
 package com.thelads.smp.features.arise.nb10;
 
+import com.thelads.smp.features.arise.nb1.AdminClaimsFeature;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -80,12 +81,12 @@ public class HangingDecorationItem extends Item {
         } else if (clickedState.is(BlockTags.FENCES) || clickedState.is(BlockTags.WALLS)) {
             // For fences and walls: if clicked top and space above is air/replaceable, place on top
             BlockPos above = clickedPos.above();
-            if (clickedFace == Direction.UP && (level.isEmptyBlock(above) || level.getBlockState(above).is(AriseNB10Features.FASTENER_BLOCK))) {
+            if (clickedFace == Direction.UP && isAnchorCell(level, above)) {
                 anchorPos = above;
                 anchorFace = Direction.UP;
             } else {
                 BlockPos offset = clickedPos.relative(clickedFace);
-                if (level.isEmptyBlock(offset) || level.getBlockState(offset).is(AriseNB10Features.FASTENER_BLOCK)) {
+                if (isAnchorCell(level, offset)) {
                     anchorPos = offset;
                     anchorFace = clickedFace;
                 } else {
@@ -96,13 +97,19 @@ public class HangingDecorationItem extends Item {
         } else {
             // Solid block surface: place in adjacent block against the clicked face
             BlockPos offset = clickedPos.relative(clickedFace);
-            if (level.isEmptyBlock(offset) || level.getBlockState(offset).is(AriseNB10Features.FASTENER_BLOCK)) {
+            if (isAnchorCell(level, offset)) {
                 anchorPos = offset;
                 anchorFace = clickedFace;
             } else {
-                anchorPos = clickedPos;
+                anchorPos = clickedPos; // only valid if the clicked block itself is replaceable (grass, snow)
                 anchorFace = clickedFace;
             }
+        }
+
+        // Never replace a real block: the anchor must already be a fastener or a replaceable cell the player may build in
+        if (!canAnchorAt(level, player, anchorPos, anchorFace, stack)) {
+            sendFeedback(player, Component.literal("§cNo room for a fastener there."));
+            return InteractionResult.FAIL;
         }
 
         ConnectionTracker.PendingConnection pending = ConnectionTracker.getPending(player);
@@ -132,6 +139,13 @@ public class HangingDecorationItem extends Item {
             int maxDist = AriseNB10Config.get().maxConnectionDistance;
             if (distSq > (double) maxDist * maxDist) {
                 sendFeedback(player, Component.literal("§cToo far! Maximum connection distance is " + maxDist + " blocks."));
+                return InteractionResult.FAIL;
+            }
+
+            // The start was checked up to 2 minutes ago: check both ends again right before placing
+            if (!canAnchorAt(level, player, startPos, pending.face(), stack)) {
+                sendFeedback(player, Component.literal("§cThe start point is blocked now. Start anchor cancelled."));
+                ConnectionTracker.clearPending(player);
                 return InteractionResult.FAIL;
             }
 
@@ -168,6 +182,20 @@ public class HangingDecorationItem extends Item {
                 return InteractionResult.FAIL;
             }
         }
+    }
+
+    /** An existing fastener, or a replaceable cell (air, grass, snow, water): never a real block. */
+    private static boolean isAnchorCell(Level level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        return state.is(AriseNB10Features.FASTENER_BLOCK) || state.canBeReplaced();
+    }
+
+    /** An anchor cell where the player may build (Adventure rules, spawn protection, world border, admin claims). */
+    private static boolean canAnchorAt(Level level, Player player, BlockPos pos, Direction face, ItemStack stack) {
+        return isAnchorCell(level, pos)
+                && player.mayUseItemAt(pos, face, stack)
+                && level.mayInteract(player, pos)
+                && !AdminClaimsFeature.isProtectedFrom(player, level, pos);
     }
 
     private void ensureFastener(Level level, BlockPos pos, Direction face) {

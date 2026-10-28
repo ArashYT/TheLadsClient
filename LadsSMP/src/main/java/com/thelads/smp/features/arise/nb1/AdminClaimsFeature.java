@@ -143,6 +143,11 @@ public final class AdminClaimsFeature {
         return CLAIMED_CHUNKS.contains(key);
     }
 
+    /** True when pos is in an admin-claimed chunk and the player is not an admin (for features that change blocks). */
+    public static boolean isProtectedFrom(Player player, Level level, BlockPos pos) {
+        return isChunkClaimed(level, pos) && !hasAdminPermission(player);
+    }
+
     public static boolean isProtectedAgainstExplosion(Level level, BlockPos pos) {
         if (!isEnabled() || !AriseNB1Config.get().adminClaims.protectExplosions) {
             return false;
