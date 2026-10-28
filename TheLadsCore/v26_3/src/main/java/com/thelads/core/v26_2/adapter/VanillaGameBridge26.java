@@ -502,9 +502,12 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         var user = Minecraft.getInstance().getUser();
         return user == null ? null : new Session(user.getProfileId(), user.getName(), user.getAccessToken());
     }
+    /** "Singleplayer" only for this game's own world (also opened to LAN): a connection without server data is "Unknown", whose rules block. */
     @Override public String getServerAddress() {
-        var server = Minecraft.getInstance().getCurrentServer();
-        return server == null ? "Singleplayer" : server.ip;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.getSingleplayerServer() != null) return "Singleplayer";
+        var server = mc.getCurrentServer();
+        return server == null ? "Unknown" : server.ip;
     }
     @Override public String getItemCountText(int selection) { return com.thelads.core.v26_2.feature.NativeClientTools.itemCount(selection); }
 
