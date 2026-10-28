@@ -204,6 +204,97 @@ public sealed class MrpackTests : IDisposable
         Assert.False(File.Exists(Path.Combine(_root, "escape.txt")));
     }
 
+    // ------------------------------------------------------------------ Lads' own state files
+
+    [Theory]
+    [InlineData("server_bypasses.json")]
+    [InlineData("SERVER_BYPASSES.JSON")]
+    [InlineData("Server_Bypasses.Json")]
+    [InlineData("./server_bypasses.json")]
+    [InlineData(".\\server_bypasses.json")]
+    [InlineData("mods/../server_bypasses.json")]
+    [InlineData("config\\..\\server_bypasses.json")]
+    [InlineData("a/b/../../server_bypasses.json")]
+    [InlineData("../server_bypasses.json")]
+    [InlineData("/server_bypasses.json")]
+    [InlineData("server_bypasses.json.")]
+    [InlineData("server_bypasses.json ")]
+    [InlineData("server_bypasses.json:stream")]
+    [InlineData("server_bypasses.json::$DATA")]
+    [InlineData("thelads_config.json")]
+    [InlineData("THELADS_PROFILES.JSON")]
+    [InlineData("thelads_crosshair_profiles.json")]
+    [InlineData("thelads_pack_profiles.json")]
+    [InlineData("lads_accounts.json")]
+    [InlineData("lads_profile.json")]
+    [InlineData("lads_next_account.json")]
+    [InlineData("lads_next_version.json")]
+    [InlineData("lads_versions.json")]
+    [InlineData("lads-mod-state.json")]
+    [InlineData("lads-renderer.json")]
+    [InlineData("lads-renderer-choice.json")]
+    [InlineData("lads-relaunch.json")]
+    [InlineData(".lads-pack-files.json")]
+    [InlineData(".lads-mod-cache/inventory.json")]
+    public void LadsStateFilesAreRecognisedWhateverTheSpelling(string path) => Assert.True(Mrpack.IsLadsStateFile(path), path);
+
+    [Theory]
+    [InlineData("options.txt")]
+    [InlineData("servers.dat")]
+    [InlineData("config/server_bypasses.json")] // nothing reads it there
+    [InlineData("config/thelads_config.json")]
+    [InlineData("mods/lads-core.jar")]
+    [InlineData("saves/World/lads-host.json")]
+    [InlineData("my_server_bypasses.json")]
+    [InlineData("server_bypasses.json.bak")]
+    [InlineData("ladsomething.txt")]
+    [InlineData("")]
+    public void OtherPackFilesAreNotLadsStateFiles(string path) => Assert.False(Mrpack.IsLadsStateFile(path), path);
+
+    [Fact]
+    public async Task APackNeverWritesLadsStateFiles_ButItsOtherFilesInstall()
+    {
+        const string planted = "{\"hypixel.net\":[\"StackRefill\",\"Minimap\"]}";
+        using var http = new HttpClient(new Handler(new() { ["https://cdn.modrinth.com/a.jar"] = "mod a", ["https://cdn.modrinth.com/b.json"] = planted }));
+        var instance = Path.Combine(_root, "instance");
+        string Game(string relative) => Path.Combine(instance, "minecraft", relative);
+        var status = new List<string>();
+        var pack = Pack("v1", new[] { ("mods/a.jar", "a.jar", "mod a"), ("Server_Bypasses.json", "b.json", planted) }, new()
+        {
+            ["overrides/server_bypasses.json"] = planted, ["overrides/THELADS_CONFIG.JSON"] = "{}", ["client-overrides/lads_accounts.json"] = "[]",
+            ["overrides\\lads-mod-state.json"] = "{}", ["overrides/config/server_bypasses.json"] = "nested", ["overrides/options.txt"] = "pack options"
+        });
+
+        await Mrpack.InstallAsync(pack, instance, http, status.Add, default);
+
+        foreach (var name in new[] { "server_bypasses.json", "thelads_config.json", "lads_accounts.json", "lads-mod-state.json" })
+            Assert.False(File.Exists(Game(name)), name);
+        Assert.Equal(("mod a", "pack options", "nested"), (File.ReadAllText(Game("mods/a.jar")), File.ReadAllText(Game("options.txt")),
+            File.ReadAllText(Game("config/server_bypasses.json"))));
+        Assert.Contains(status, m => m.StartsWith("Skipped Lads settings files") && m.Contains("Server_Bypasses.json") && m.Contains("THELADS_CONFIG.JSON"));
+        Assert.DoesNotContain("lads_accounts", File.ReadAllText(Path.Combine(instance, Mrpack.RecordFile)), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AnUpdateRemovesAStateFileAnOlderLauncherInstalledFromAPack_UnlessThePlayerChangedIt()
+    {
+        using var http = new HttpClient(new Handler(new()));
+        var instance = Path.Combine(_root, "instance");
+        string Game(string relative) => Path.Combine(instance, "minecraft", relative);
+        Directory.CreateDirectory(Game("."));
+        // As an older launcher left it: the pack's server_bypasses.json (unchanged) and thelads_config.json (the player has since changed it).
+        File.WriteAllText(Game("server_bypasses.json"), "planted");
+        File.WriteAllText(Game("thelads_config.json"), "mine");
+        File.WriteAllText(Path.Combine(instance, Mrpack.RecordFile), JsonSerializer.Serialize(new Dictionary<string, string>
+            { ["server_bypasses.json"] = Sha1("planted"), ["thelads_config.json"] = Sha1("pack config") }));
+
+        await Mrpack.InstallAsync(Pack("v2", Array.Empty<(string, string, string)>(),
+            new() { ["overrides/server_bypasses.json"] = "planted", ["overrides/thelads_config.json"] = "pack config" }), instance, http, null, default);
+
+        Assert.False(File.Exists(Game("server_bypasses.json")));
+        Assert.Equal("mine", File.ReadAllText(Game("thelads_config.json")));
+    }
+
     private string Pack(string version, (string Path, string Url, string Content)[] files, Dictionary<string, string> overrides,
         (string Path, string Url)? serverOnly = null)
     {

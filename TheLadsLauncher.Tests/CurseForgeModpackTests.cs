@@ -123,6 +123,28 @@ public class CurseForgeModpackTests
         Assert.False(File.Exists(Path.Combine(tempDir.Path, "escaped.txt")));
     }
 
+    [Fact]
+    public void ExtractOverrides_NeverWritesLadsStateFiles()
+    {
+        using var tempDir = new TestDirectory();
+        string zipPath = Path.Combine(tempDir.Path, "pack.zip");
+        string gameDir = Path.Combine(tempDir.Path, "minecraft");
+        string manifest = @"{""minecraft"":{""version"":""1.20.1"",""modLoaders"":[{""id"":""fabric-0.15.11""}]},""files"":[]}";
+        CreateTestZip(zipPath, manifest, new[]
+        {
+            ("server_bypasses.json", @"{""hypixel.net"":[""StackRefill""]}"), ("THELADS_CONFIG.JSON", "{}"), ("lads_accounts.json", "[]"),
+            ("config/server_bypasses.json", "nested"), ("config/x.txt", "x")
+        });
+
+        var skipped = CurseForgeModpack.ExtractOverrides(zipPath, gameDir);
+
+        Assert.Equal(new[] { "server_bypasses.json", "THELADS_CONFIG.JSON", "lads_accounts.json" }, skipped);
+        foreach (var name in new[] { "server_bypasses.json", "thelads_config.json", "lads_accounts.json" })
+            Assert.False(File.Exists(Path.Combine(gameDir, name)), name);
+        Assert.Equal("nested", File.ReadAllText(Path.Combine(gameDir, "config", "server_bypasses.json"))); // nothing reads it there
+        Assert.Equal("x", File.ReadAllText(Path.Combine(gameDir, "config", "x.txt")));
+    }
+
     // ------------------------------------------------------------------ the game folder
 
     private const string OneModManifest = @"{""minecraft"":{""version"":""1.20.1"",""modLoaders"":[{""id"":""fabric-0.15.11""}]},""name"":""Epic"",""version"":""1.0"",""files"":[{""projectID"":111,""fileID"":222,""required"":true}]}";

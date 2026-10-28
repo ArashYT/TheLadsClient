@@ -77,6 +77,28 @@ public static class Mrpack
         return full;
     }
 
+    private static readonly string[] LadsStatePrefixes = { "thelads_", "lads_", "lads-", ".lads-" };
+
+    /// <summary>
+    /// Whether a pack path is one of Lads' own state files: server_bypasses.json (the per-server opt-outs from the anti-ban rules) and
+    /// the settings, profiles, accounts, mod state, renderer and switch files the game and this launcher keep at the top of the game
+    /// folder (thelads_*, lads_*, lads-*, .lads-*). They are the player's: a pack that could write them could switch the server rules
+    /// off or replace the player's settings. Both slashes, any case, "." and ".." segments, and the ":stream" and trailing dots and
+    /// spaces Windows ignores all name the same file, so the path is resolved first. Only the top level counts: nothing reads them elsewhere.
+    /// </summary>
+    public static bool IsLadsStateFile(string relative)
+    {
+        var path = new List<string>();
+        foreach (var raw in relative.Split('/', '\\'))
+        {
+            var part = raw.Split(':')[0].TrimEnd('.', ' ');
+            if (raw.TrimEnd(' ') == "..") { if (path.Count > 0) path.RemoveAt(path.Count - 1); }
+            else if (part.Length > 0) path.Add(part);
+        }
+        return path.Count > 0 && (path[0].Equals("server_bypasses.json", StringComparison.OrdinalIgnoreCase)
+            || LadsStatePrefixes.Any(prefix => path[0].StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
+    }
+
     /// <summary>Every hash the pack gives must match, and it must give at least one.</summary>
     public static bool HashMatches(string file, string? sha1, string? sha512)
     {
@@ -126,6 +148,13 @@ public static class Mrpack
             .Where(e => e.Order >= 0).OrderBy(e => e.Order)
             .Select(e => (e.Entry, Relative: e.Name[(e.Name.IndexOf('/') + 1)..])).ToList();
         foreach (var o in overrides) SafePath(game, o.Relative);
+
+        // Lads' own state files (server_bypasses.json, thelads_config.json, ...) are the player's, never a pack's.
+        var skipped = files.Where(f => IsLadsStateFile(f.File.Path)).Select(f => f.File.Path)
+            .Concat(overrides.Where(o => IsLadsStateFile(o.Relative)).Select(o => o.Relative)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        files.RemoveAll(f => IsLadsStateFile(f.File.Path));
+        overrides.RemoveAll(o => IsLadsStateFile(o.Relative));
+        if (skipped.Count > 0) status?.Invoke("Skipped Lads settings files in the pack: " + string.Join(", ", skipped));
 
         // A kept file keeps its recorded hash, so it still counts as the user's at the next update; one the pack never installed stays unrecorded.
         void Record(string key, string target, bool kept)

@@ -105,10 +105,13 @@ public static class CurseForgeModpack
         return ParseManifest(stream);
     }
 
-    public static void ExtractOverrides(string zipPath, string gameDirectory, string overridesDir = "overrides")
+    /// <summary>Extracts the overrides into the game folder, except Lads' own state files (<see cref="Mrpack.IsLadsStateFile"/>);
+    /// returns the paths it left out.</summary>
+    public static IReadOnlyList<string> ExtractOverrides(string zipPath, string gameDirectory, string overridesDir = "overrides")
     {
         using var zip = ZipFile.OpenRead(zipPath);
         string prefix = overridesDir.TrimEnd('/', '\\') + "/";
+        var skipped = new List<string>();
 
         foreach (var entry in zip.Entries)
         {
@@ -117,10 +120,12 @@ public static class CurseForgeModpack
             if (string.IsNullOrWhiteSpace(rel) || rel.EndsWith('/')) continue;
 
             string dest = Mrpack.SafePath(gameDirectory, rel);
+            if (Mrpack.IsLadsStateFile(rel)) { skipped.Add(rel); continue; }
             string? dir = Path.GetDirectoryName(dest);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
             entry.ExtractToFile(dest, overwrite: true);
         }
+        return skipped;
     }
 
     public static async Task InstallAsync(string zipPath, string gameDirectory, ContentCatalog? catalog,
@@ -130,7 +135,8 @@ public static class CurseForgeModpack
         var manifest = ReadManifest(zipPath);
 
         report("Extracting modpack configuration overrides…");
-        ExtractOverrides(zipPath, gameDirectory, manifest.OverridesDir);
+        var skipped = ExtractOverrides(zipPath, gameDirectory, manifest.OverridesDir);
+        if (skipped.Count > 0) report("Skipped Lads settings files in the pack: " + string.Join(", ", skipped));
 
         var modsDir = Path.Combine(gameDirectory, "mods");
         Directory.CreateDirectory(modsDir);

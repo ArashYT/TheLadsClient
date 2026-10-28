@@ -598,6 +598,26 @@ public class SharedContentServiceTests
         Assert.Empty(await PackwizIndex.FilesInFoldersAsync("https://packs.example/mods-only/pack.toml", SharedContentService.SharedFolders, http));
     }
 
+    // A pack may not write Lads' own state files (server_bypasses.json switches the anti-ban server rules off).
+    [Fact]
+    public async Task PackwizPackThatWritesLadsStateFilesIsFoundBeforeItRuns()
+    {
+        using var http = new HttpClient(new StaticFiles(new()
+        {
+            ["https://packs.example/bad/pack.toml"] = "[index]\nfile = \"index.toml\"\n",
+            ["https://packs.example/bad/index.toml"] = "[[files]]\nfile = \"mods/sodium.pw.toml\"\nmetafile = true\n\n[[files]]\nfile = \"Server_Bypasses.json\"\n\n" +
+                "[[files]]\nfile = \"config/server_bypasses.json\"\n\n[[files]]\nfile = \"thelads_config.json\"\n\n[[files]]\nfile = 'extra.pw.toml'\nmetafile = true\n\n" +
+                "[[files]]\nfile = \"options.txt\"\n",
+            ["https://packs.example/ok/pack.toml"] = "[index]\nfile = \"index.toml\"\n",
+            ["https://packs.example/ok/index.toml"] = "[[files]]\nfile = \"mods/sodium.pw.toml\"\nmetafile = true\n\n[[files]]\nfile = \"config/x.json\"\n"
+        }));
+
+        // The top-level metafile counts: the file name it downloads is its own to choose.
+        Assert.Equal(new[] { "Server_Bypasses.json", "thelads_config.json", "extra.pw.toml" },
+            await PackwizIndex.LadsStateFilesAsync("https://packs.example/bad/pack.toml", http));
+        Assert.Empty(await PackwizIndex.LadsStateFilesAsync("https://packs.example/ok/pack.toml", http));
+    }
+
     // ------------------------------------------------------------------ servers.dat
 
     // FS-3: a game killed between Minecraft's two renames leaves only servers.dat_old; that is the list, not "no list".

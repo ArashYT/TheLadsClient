@@ -21,8 +21,17 @@ public static class PackwizIndex
     private static readonly Regex FileKey = new(@"^\s*file\s*=\s*(?:""((?:[^""\\]|\\.)*)""|'([^']*)')");
 
     /// <summary>The index entries that land in one of <paramref name="folders"/> (e.g. resourcepacks/Pack.zip), in index order.</summary>
-    public static async Task<IReadOnlyList<string>> FilesInFoldersAsync(string packUrl, IReadOnlyCollection<string> folders, HttpClient http,
-        CancellationToken cancellationToken = default)
+    public static Task<IReadOnlyList<string>> FilesInFoldersAsync(string packUrl, IReadOnlyCollection<string> folders, HttpClient http,
+        CancellationToken cancellationToken = default) => MatchingFilesAsync(packUrl, http, file => InFolder(file, folders), cancellationToken);
+
+    /// <summary>The index entries that would write one of Lads' own state files (<see cref="Mrpack.IsLadsStateFile"/>: server_bypasses.json,
+    /// thelads_config.json, ...), in index order. A metafile at the top of the game folder counts too: the file name it downloads is its
+    /// own to choose, and could be one of those.</summary>
+    public static Task<IReadOnlyList<string>> LadsStateFilesAsync(string packUrl, HttpClient http, CancellationToken cancellationToken = default) =>
+        MatchingFilesAsync(packUrl, http, file => Mrpack.IsLadsStateFile(file) || IsTopLevelMetafile(file), cancellationToken);
+
+    private static async Task<IReadOnlyList<string>> MatchingFilesAsync(string packUrl, HttpClient http, Func<string, bool> matches,
+        CancellationToken cancellationToken)
     {
         var pack = new Uri(packUrl, UriKind.Absolute);
         var indexName = Files(await ReadAsync(pack, http, cancellationToken), "index").FirstOrDefault()
@@ -31,7 +40,13 @@ public static class PackwizIndex
         // Entries are relative to the index; packs keep it next to pack.toml, so both readings are checked.
         var indexFolder = Path.GetDirectoryName(indexName.Replace('\\', '/')) ?? "";
         return Files(await ReadAsync(index, http, cancellationToken), "files")
-            .Where(file => InFolder(file, folders) || InFolder(Path.Combine(indexFolder, file), folders)).ToList();
+            .Where(file => matches(file) || matches(Path.Combine(indexFolder, file))).ToList();
+    }
+
+    private static bool IsTopLevelMetafile(string relative)
+    {
+        var parts = relative.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries).Where(p => p != ".").ToList();
+        return parts.Count == 1 && parts[0].EndsWith(".pw.toml", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool InFolder(string relative, IReadOnlyCollection<string> folders)

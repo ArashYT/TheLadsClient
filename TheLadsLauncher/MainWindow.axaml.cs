@@ -5723,19 +5723,25 @@ public partial class MainWindow : Window
         // every version uses. A pack that manages files there is not run.
         var linked = SharedContentService.Instance.GetStatus(_pathService.GetProfileDirectory(profile))
             .Where(s => s.State is not (SharedFolderState.SeparateFolder or SharedFolderState.NotCreated)).Select(s => s.Name).ToList();
-        if (linked.Count > 0)
+        IReadOnlyList<string> shared = Array.Empty<string>(), ladsFiles;
+        try
         {
-            IReadOnlyList<string> shared;
-            try { shared = await PackwizIndex.FilesInFoldersAsync(profile.PackwizUrl, linked, _httpClient, token); }
-            catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException or UriFormatException or TaskCanceledException)
-            {
-                throw new InvalidOperationException($"Could not read this profile's Packwiz pack '{profile.PackwizUrl}' ({ex.Message}). Check its Packwiz URL and connection.", ex);
-            }
-            if (shared.Count > 0)
-                throw new InvalidOperationException($"This profile's Packwiz pack manages files in the folders every version shares " +
-                    $"({string.Join(", ", shared.Take(5))}{(shared.Count > 5 ? $" and {shared.Count - 5} more" : "")}). Packwiz would replace or delete " +
-                    "them for every version, so it was not run. Remove those files from the pack, or clear this profile's Packwiz URL in Profiles.");
+            if (linked.Count > 0) shared = await PackwizIndex.FilesInFoldersAsync(profile.PackwizUrl, linked, _httpClient, token);
+            ladsFiles = await PackwizIndex.LadsStateFilesAsync(profile.PackwizUrl, _httpClient, token);
         }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException or UriFormatException or TaskCanceledException)
+        {
+            throw new InvalidOperationException($"Could not read this profile's Packwiz pack '{profile.PackwizUrl}' ({ex.Message}). Check its Packwiz URL and connection.", ex);
+        }
+        if (shared.Count > 0)
+            throw new InvalidOperationException($"This profile's Packwiz pack manages files in the folders every version shares " +
+                $"({string.Join(", ", shared.Take(5))}{(shared.Count > 5 ? $" and {shared.Count - 5} more" : "")}). Packwiz would replace or delete " +
+                "them for every version, so it was not run. Remove those files from the pack, or clear this profile's Packwiz URL in Profiles.");
+        // A pack may not write Lads' own state files (server_bypasses.json would switch the anti-ban server rules off).
+        if (ladsFiles.Count > 0)
+            throw new InvalidOperationException($"This profile's Packwiz pack writes Lads' own settings files " +
+                $"({string.Join(", ", ladsFiles.Take(5))}{(ladsFiles.Count > 5 ? $" and {ladsFiles.Count - 5} more" : "")}), which only the player may change, " +
+                "so it was not run. Remove those files from the pack, or clear this profile's Packwiz URL in Profiles.");
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo(javaPath)
         {
