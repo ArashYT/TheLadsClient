@@ -87,7 +87,7 @@ class ReconnectSessionTest {
 
     @Test void initialFailuresRetryOnlyWhenAskedAndOnlyForTheSameAccount() {
         var session = new ReconnectSession();
-        session.begin("localhost:25565", () -> { }, player); // never joined: judged by the target, here a server on this PC
+        session.begin("192.168.1.20:25565", () -> { }, player); // never joined: judged by the target, here a LAN server
         assertFalse(session.canRetry(player, false));
         assertTrue(session.canRetry(player, true));
         assertFalse(session.canRetry(UUID.randomUUID(), true));

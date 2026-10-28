@@ -35,6 +35,7 @@ public class HypixelSafetyManagerP2PTest {
 
     @AfterEach
     public void cleanup() {
+        HypixelSafetyManager.trustLocalForTests(false);
         HypixelSafetyManager.setP2PSession(null, null);
         HypixelSafetyManager.setBypassFile(null);
         LadsGameBridge.set(new DefaultGameBridge());
@@ -45,7 +46,8 @@ public class HypixelSafetyManagerP2PTest {
         LoopbackBridge bridge = new LoopbackBridge();
         LadsGameBridge.set(bridge);
 
-        // Normally, loopback 127.0.0.1 is trusted:
+        // A QA run (LADS_QA_TRUST_LOCAL=1) trusts its servers on this PC, 127.0.0.1 too (players get unknown rules there):
+        HypixelSafetyManager.trustLocalForTests(true);
         assertTrue(HypixelSafetyManager.isTrustedServer());
         assertFalse(HypixelSafetyManager.isDisallowed("Minimap"));
         assertFalse(HypixelSafetyManager.isDisallowed("StackRefill"));
@@ -56,7 +58,7 @@ public class HypixelSafetyManagerP2PTest {
 
         assertEquals(p2pKey, HypixelSafetyManager.getP2PSession());
         assertEquals(p2pKey, HypixelSafetyManager.currentHost());
-        assertFalse(HypixelSafetyManager.isTrustedServer(), "P2P session must NOT be trusted even on 127.0.0.1");
+        assertFalse(HypixelSafetyManager.isTrustedServer(), "P2P session must NOT be trusted even on 127.0.0.1, even in QA");
         assertTrue(HypixelSafetyManager.isMultiplayer());
 
         // Risky modules must be blocked as UNKNOWN
@@ -71,7 +73,7 @@ public class HypixelSafetyManagerP2PTest {
         assertFalse(HypixelSafetyManager.isDisallowed("Minimap"));
         assertTrue(HypixelSafetyManager.isDisallowed("StackRefill"));
 
-        // Once P2P session ends, loopback trust is restored
+        // Once P2P session ends, the QA's loopback trust is restored
         HypixelSafetyManager.setP2PSession(null, null);
         assertNull(HypixelSafetyManager.getP2PSession());
         assertTrue(HypixelSafetyManager.isTrustedServer());

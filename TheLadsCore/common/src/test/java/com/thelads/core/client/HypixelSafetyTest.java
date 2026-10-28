@@ -215,7 +215,7 @@ public class HypixelSafetyTest {
         bridge.setServer("as.minemen.club");
         assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("StackRefill"));
         assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("XaeroWorldMap"));
-        for (String trusted : new String[]{"Singleplayer", "localhost:25565", "127.0.0.1", "10.0.0.7", "172.20.1.1", "[::1]:25565",
+        for (String trusted : new String[]{"Singleplayer", "10.0.0.7", "172.20.1.1", "192.168.1.20:25565", "my-pc.local",
                 "nikzerosmp.my.pebble.host", "smp.arashyt.ca", "arisesmp.arashyt.ca", "dev.arashyt.ca:25565", "2b2t.org"}) { // Lads SMP Reborn's servers.dat entries
             bridge.setServer(trusted);
             assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("StackRefill"), trusted);
@@ -528,7 +528,7 @@ public class HypixelSafetyTest {
         assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("AutoReconnect"), "menus: the module itself shows on");
         assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("AutoReconnect", "play.somesmp.net"));
         assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("AutoReconnect", "na.minemen.club"));
-        for (String ok : new String[]{"Singleplayer", "localhost:25565", "192.168.1.20", "smp.arashyt.ca"})
+        for (String ok : new String[]{"Singleplayer", "192.168.1.20", "smp.arashyt.ca"})
             assertTrue(HypixelSafetyManager.isAllowedOn("AutoReconnect", ok), ok);
         UUID player = UUID.randomUUID();
         ReconnectSettings lists = new ReconnectSettings();
@@ -558,6 +558,44 @@ public class HypixelSafetyTest {
         local.joined(null, lists, false, false, false, 0);
         bridge.ingame = false;
         assertTrue(local.canRetry(player, false));
+    }
+
+    /**
+     * A server on this computer can be a proxy (ViaProxy, a relay agent) to Hypixel or any network: unknown rules, bypassable per host.
+     * Only QA and bench runs (LADS_QA_TRUST_LOCAL=1) trust it; the LAN and the player's own world stay trusted either way.
+     */
+    @Test
+    void loopbackServersAreUnknownUnlessQaTrustsThem() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        Module refill = new Module("StackRefill", "Stack Refill");
+        refill.setEnabled(true);
+        HypixelSafetyManager.trustLocalForTests(false);
+        try {
+            for (String loopback : new String[]{"localhost", "localhost:25568", "127.0.0.1", "127.1.2.3:25565", "[::1]:25565", "mc.localhost"}) {
+                bridge.setServer(loopback);
+                assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("StackRefill"), loopback);
+                assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("XaeroMinimap"), loopback);
+                assertFalse(refill.isEnabled(), loopback);
+                assertFalse(HypixelSafetyManager.isTrustedServer(), loopback);
+            }
+            for (String trusted : new String[]{"Singleplayer", "192.168.1.20:25565", "10.0.0.7", "172.16.0.9", "my-pc.local", "smp.arashyt.ca"}) {
+                bridge.setServer(trusted);
+                assertTrue(refill.isEnabled(), trusted);
+            }
+            bridge.setServer("127.example.net"); // a name, not 127.x
+            assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("StackRefill"));
+            bridge.setServer("localhost:25568");
+            HypixelSafetyManager.bypass("StackRefill"); // the red warning, for this host only
+            assertTrue(refill.isEnabled(), "bypassed for localhost");
+            HypixelSafetyManager.trustLocalForTests(true); // the QA/bench harness
+            for (String loopback : new String[]{"localhost:25599", "127.0.0.1:1", "[::1]:25565"}) {
+                bridge.setServer(loopback);
+                assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("StackRefill"), loopback);
+            }
+        } finally {
+            HypixelSafetyManager.trustLocalForTests(false);
+        }
     }
 
     /** server_bypasses.json: one bad entry is skipped (not every bypass), and a save leaves no temporary file behind. */

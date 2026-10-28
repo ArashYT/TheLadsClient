@@ -92,6 +92,8 @@ public final class HypixelSafetyManager {
     private static final Map<String, Server> CACHED_ADDRESSES = new ConcurrentHashMap<>();
     private static volatile String lastAddress;
     private static volatile Server lastServer = LOCAL;
+    /** QA and bench runs (LADS_QA_TRUST_LOCAL=1): a server on this computer is their own test server, trusted like the LAN. */
+    private static volatile boolean trustLocal = "1".equals(System.getenv("LADS_QA_TRUST_LOCAL"));
     private static volatile String p2pSessionKey;
     private static volatile Server p2pServer;
     private static volatile String p2pProxyAddress;
@@ -114,6 +116,13 @@ public final class HypixelSafetyManager {
 
     public static String getP2PSession() {
         return p2pSessionKey;
+    }
+
+    /** Tests: servers on this computer trusted as with LADS_QA_TRUST_LOCAL=1, or not; addresses classified so far are forgotten. */
+    static void trustLocalForTests(boolean trust) {
+        trustLocal = trust;
+        CACHED_ADDRESSES.clear();
+        lastAddress = null;
     }
 
     /** host -> bypassed module keys ({@link #bypassKey}). Loaded once, written on every change. */
@@ -163,7 +172,8 @@ public final class HypixelSafetyManager {
         if (addr.equalsIgnoreCase("Singleplayer")) return LOCAL;
         String host = host(addr);
         if (host.isEmpty() || host.equals("unknown")) return new Server(0, "unknown"); // a server we can't name: unknown rules
-        if (isLocalHost(host)) return new Server(TRUSTED, host);
+        if (isThisComputer(host)) return new Server(trustLocal ? TRUSTED : 0, host);
+        if (isLocalNetwork(host)) return new Server(TRUSTED, host);
         for (String own : TRUSTED_SERVERS) if (isHost(host, own)) return new Server(TRUSTED, host);
         int flags = isHost(host, "hypixel.net") || isHost(host, "hypixel.io") ? HYPIXEL : 0;
         for (String banned : MINIMAP_BANNED_SERVERS) if (isHost(host, banned)) flags |= (NO_MINIMAP | NO_AUTOMATION);
@@ -186,17 +196,32 @@ public final class HypixelSafetyManager {
         return host;
     }
 
-    /** This computer or the local network (an Open to LAN world, a server the player runs): no network anticheat to ban anyone. */
-    private static boolean isLocalHost(String host) {
-        if (host.equals("localhost") || host.endsWith(".localhost") || host.endsWith(".local") || host.equals("::1")) return true;
+    /**
+     * A server on this computer (localhost, 127.x, ::1): it can be a proxy (ViaProxy, a relay agent) to any network, Hypixel too, so its
+     * rules are unknown; only with {@link #trustLocal} (QA and bench) is it trusted. The player's own world is "Singleplayer", no address.
+     */
+    private static boolean isThisComputer(String host) {
+        if (host.equals("localhost") || host.endsWith(".localhost") || host.equals("::1")) return true;
+        int[] ip = ipv4(host);
+        return ip != null && ip[0] == 127;
+    }
+
+    /** The local network (an Open to LAN world, a server the player runs there): no network anticheat to ban anyone. */
+    private static boolean isLocalNetwork(String host) {
+        if (host.endsWith(".local")) return true;
+        int[] ip = ipv4(host);
+        return ip != null && (ip[0] == 10 || ip[0] == 192 && ip[1] == 168 || ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31);
+    }
+
+    private static int[] ipv4(String host) {
         String[] parts = host.split("\\.");
-        if (parts.length != 4) return false;
+        if (parts.length != 4) return null;
         int[] ip = new int[4];
         for (int i = 0; i < 4; i++) {
-            try { ip[i] = Integer.parseInt(parts[i]); } catch (NumberFormatException e) { return false; }
-            if (ip[i] < 0 || ip[i] > 255) return false;
+            try { ip[i] = Integer.parseInt(parts[i]); } catch (NumberFormatException e) { return null; }
+            if (ip[i] < 0 || ip[i] > 255) return null;
         }
-        return ip[0] == 127 || ip[0] == 10 || ip[0] == 192 && ip[1] == 168 || ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31;
+        return ip;
     }
 
     /** {@code host} is {@code domain} or one of its subdomains (not merely ending in the same letters). */
