@@ -12,6 +12,8 @@ public final class ReconnectSession {
     private final ReconnectPlan plan = new ReconnectPlan();
     private final ReconnectActions actions = new ReconnectActions();
     private String target;
+    /** The address the server rules are judged by: the target, then where the game really joined ("Singleplayer", a Realm's own). */
+    private String rules;
     private Runnable connector;
     private UUID account;
     private boolean joined, reconnecting, reasonAllowed;
@@ -26,7 +28,7 @@ public final class ReconnectSession {
         if (reconnecting) return;
         clear();
         if (HypixelSafetyManager.isP2PProxy(id)) return; // a friend's world: its proxy port is gone once the session ends
-        target = id;
+        target = rules = id;
         connector = connect;
         account = player;
     }
@@ -35,9 +37,17 @@ public final class ReconnectSession {
     public String reason() { return reason; }
     public boolean reconnecting() { return reconnecting; }
 
+    /**
+     * AutoReconnect is off for the target's server: Hypixel, or its rules (the rules of the server being reconnected to, not the
+     * menus the disconnect screen is in) block it and the player did not bypass it there.
+     */
+    private boolean blocked() {
+        return HypixelSafetyManager.isHypixelAddress(target) || !HypixelSafetyManager.isAllowedOn("AutoReconnect", rules);
+    }
+
     /** A retry makes sense: there is a target, the same account is signed in, and it was joined once (or initial failures retry). */
     public boolean canRetry(UUID player, boolean retryInitialFailures) {
-        if (HypixelSafetyManager.isHypixelAddress(target)) return false;
+        if (blocked()) return false;
         return target != null && account.equals(player) && (joined || retryInitialFailures);
     }
 
@@ -47,7 +57,7 @@ public final class ReconnectSession {
         if (screen == dialog) return;
         dialog = screen;
         reason = reasonText;
-        if (HypixelSafetyManager.isHypixelAddress(target)) {
+        if (blocked()) {
             reasonAllowed = false;
             return;
         }
@@ -84,7 +94,7 @@ public final class ReconnectSession {
     /** Forget the target (back in the menus, account switched or module off). */
     public void clear() {
         cancelCountdown();
-        target = null;
+        target = rules = null;
         connector = null;
         account = null;
         joined = false;
@@ -107,6 +117,7 @@ public final class ReconnectSession {
      */
     public boolean joined(Object connection, ReconnectSettings lists, boolean actionsOn, boolean regexTargets, boolean signed, long now) {
         joined = true;
+        rules = com.thelads.core.client.bridge.LadsGameBridge.get().getServerAddress();
         dialog = null;
         actions.clear();
         boolean automatic = plan.joined();

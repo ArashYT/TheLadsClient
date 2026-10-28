@@ -515,4 +515,48 @@ public class HypixelSafetyTest {
             tweaks.dimensionBrightness.setValue(was);
         }
     }
+
+    /**
+     * AutoReconnect acts on the disconnect screen, outside any world: it follows the rules of the server it reconnects to (the menus
+     * shortcut does not let it through), with the player's bypass for that server; local worlds and LAN always reconnect.
+     */
+    @Test
+    void autoReconnectFollowsTheTargetServersRules() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        bridge.ingame = false; // the disconnect screen
+        assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("AutoReconnect"), "menus: the module itself shows on");
+        assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("AutoReconnect", "play.somesmp.net"));
+        assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("AutoReconnect", "na.minemen.club"));
+        for (String ok : new String[]{"Singleplayer", "localhost:25565", "192.168.1.20", "smp.arashyt.ca"})
+            assertTrue(HypixelSafetyManager.isAllowedOn("AutoReconnect", ok), ok);
+        UUID player = UUID.randomUUID();
+        ReconnectSettings lists = new ReconnectSettings();
+        ReconnectSession session = new ReconnectSession();
+        session.begin("play.somesmp.net:25565", () -> fail("no reconnect to a server with unknown rules"), player);
+        bridge.ingame = true;
+        bridge.setServer("play.somesmp.net:25565");
+        session.joined(null, lists, false, false, false, 0);
+        bridge.ingame = false;
+        assertFalse(session.canRetry(player, false));
+        Object screen = new Object();
+        session.disconnected(screen, List.of("disconnect.timeout"), "Timed out", lists, false, false, 0);
+        assertFalse(session.counting(), "no countdown");
+        assertFalse(session.due(screen, 100_000_000_000L));
+
+        bridge.ingame = true; // the red warning, back on that server: bypassed there
+        HypixelSafetyManager.bypass("AutoReconnect");
+        bridge.ingame = false;
+        assertTrue(session.canRetry(player, false), "bypassed for that server");
+        session.disconnected(new Object(), List.of("disconnect.timeout"), "Timed out", lists, false, false, 0);
+        assertTrue(session.counting());
+
+        ReconnectSession local = new ReconnectSession(); // a local world: its folder name is no address, the join says "Singleplayer"
+        local.begin("New World", () -> {}, player);
+        bridge.ingame = true;
+        bridge.setServer("Singleplayer");
+        local.joined(null, lists, false, false, false, 0);
+        bridge.ingame = false;
+        assertTrue(local.canRetry(player, false));
+    }
 }

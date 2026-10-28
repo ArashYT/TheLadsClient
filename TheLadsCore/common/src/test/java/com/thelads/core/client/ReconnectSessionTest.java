@@ -6,6 +6,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.*;
@@ -16,6 +18,14 @@ class ReconnectSessionTest {
     private final ReconnectSettings lists = new ReconnectSettings();
 
     private static List<String> keys(String... keys) { return List.of(keys); }
+
+    /** Joining asks the game where it is: the default bridge says "Singleplayer", whose rules let AutoReconnect act. */
+    @BeforeEach void localGame(@TempDir Path folder) {
+        com.thelads.core.client.bridge.LadsGameBridge.set(new com.thelads.core.client.bridge.DefaultGameBridge());
+        HypixelSafetyManager.setBypassFile(folder.resolve("server_bypasses.json").toFile());
+    }
+
+    @AfterEach void realBypasses() { HypixelSafetyManager.setBypassFile(null); }
 
     @Test void countsDownThroughEachDelayAndKeepsTheAttemptAcrossItsOwnReconnects() {
         var session = new ReconnectSession(); int[] connects = {0};
@@ -47,8 +57,8 @@ class ReconnectSessionTest {
             session.joined(null, lists, false, false, false, 0);
             assertFalse(session.canRetry(player, true));
             assertEquals("", session.target());
-            session.begin("play.example:25565", () -> {}, player);
-            assertTrue(session.canRetry(player, true), "other servers still reconnect");
+            session.begin("192.168.1.20:25565", () -> {}, player);
+            assertTrue(session.canRetry(player, true), "other servers still reconnect (a LAN one: unknown rules would block it)");
         } finally {
             HypixelSafetyManager.setP2PSession(null, null);
         }
@@ -77,7 +87,7 @@ class ReconnectSessionTest {
 
     @Test void initialFailuresRetryOnlyWhenAskedAndOnlyForTheSameAccount() {
         var session = new ReconnectSession();
-        session.begin("server", () -> { }, player);
+        session.begin("localhost:25565", () -> { }, player); // never joined: judged by the target, here a server on this PC
         assertFalse(session.canRetry(player, false));
         assertTrue(session.canRetry(player, true));
         assertFalse(session.canRetry(UUID.randomUUID(), true));

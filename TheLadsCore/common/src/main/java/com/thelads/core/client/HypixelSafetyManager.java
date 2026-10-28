@@ -308,7 +308,27 @@ public final class HypixelSafetyManager {
         }
         LadsGameBridge game = LadsGameBridge.get();
         if (!qaOverride && qaAddress == null && !game.isIngame()) return Block.NONE; // menus: nothing to ban
-        int flags = qaOverride ? QA_HYPIXEL : server(address(game)).flags; // the last address first: no string work
+        return blockFor(moduleName, qaOverride ? QA_HYPIXEL : server(address(game)).flags); // the last address first: no string work
+    }
+
+    /**
+     * Why this module would be off on that server (an address as the game gives it, "Singleplayer" for a local world), in a world or
+     * not: for what acts outside one, as AutoReconnect on the disconnect screen. No LadsClientAPI policy: it ends with its connection.
+     */
+    public static Block blockOf(String moduleName, String address) {
+        if (moduleName == null) return Block.NONE;
+        return blockFor(moduleName, qaOverride ? QA_HYPIXEL : server(address).flags);
+    }
+
+    /** The module may act for that server: its rules allow it there, or the player bypassed it for that server. */
+    public static boolean isAllowedOn(String moduleName, String address) {
+        if (blockOf(moduleName, address) == Block.NONE) return true;
+        if (!bypassesLoaded) loadBypasses();
+        Set<String> modules = qaOverride ? null : BYPASSES.get(server(address).host);
+        return modules != null && modules.contains(bypassKey(moduleName));
+    }
+
+    private static Block blockFor(String moduleName, int flags) {
         if ((flags & TRUSTED) != 0) return Block.NONE;
         if ((flags & HYPIXEL) != 0 && isDisallowedModule(moduleName)) return Block.BANNED;
         if (isFullbrightModule(moduleName)) {
