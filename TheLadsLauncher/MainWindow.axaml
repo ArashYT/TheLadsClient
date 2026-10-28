@@ -293,7 +293,7 @@
                                         <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                             <TextBlock Text="WHAT'S NEW" Classes="caption" FontSize="10" FontWeight="Bold" Foreground="#ED727B" VerticalAlignment="Center" />
                                             <Border x:Name="HomeNewsVersionBadge" Background="#302027" CornerRadius="4" Padding="6,2">
-                                                <TextBlock x:Name="HomeNewsVersionText" Text="v1.9.18" Foreground="#F5B8BE" FontSize="11" FontWeight="SemiBold" />
+                                                <TextBlock x:Name="HomeNewsVersionText" Text="" Foreground="#F5B8BE" FontSize="11" FontWeight="SemiBold" />
                                             </Border>
                                         </StackPanel>
                                         <Button Grid.Column="2" Content="View all updates &#8594;" Background="Transparent" Foreground="#8F919B" FontSize="11" Click="ReleaseNotes_Click" Cursor="Hand" />
@@ -437,7 +437,7 @@
                                                 </Grid>
                                                 <TextBlock Text="GRAPHICS" Foreground="{DynamicResource LadsAccent}" FontWeight="Bold" Margin="0,8,0,0" />
                                                 <ComboBox x:Name="GraphicsRendererSelector" HorizontalAlignment="Stretch" SelectedIndex="0">
-                                                    <ComboBoxItem Content="Vulkan — primary (26.2+)" />
+                                                    <ComboBoxItem Content="Vulkan — primary (26.3+)" />
                                                     <ComboBoxItem Content="OpenGL — compatibility and Iris shaders" />
                                                 </ComboBox>
                                                 <TextBlock Text="Applies on next launch. Vulkan uses OpenGL if unavailable; Iris shader mods stay off in Vulkan mode. Minecraft 1.20.1 has no Vulkan: with Vulkan chosen it starts with shaders off and Iris suspended; turn shaders on in the game's Video settings. Other older versions use OpenGL." TextWrapping="Wrap" Foreground="#A0A1AA" FontSize="12" />

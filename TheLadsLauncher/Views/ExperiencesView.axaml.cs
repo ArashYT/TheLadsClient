@@ -710,7 +710,7 @@ public partial class ExperiencesView : UserControl
             Report("Signing in...");
             var session = await host.ResolveModpackSessionAsync(token);
 
-            Report("Preparing Minecraft 1.20.1 & Forge 47.4.10...");
+            Report($"Preparing Minecraft {ExperiencesService.ZeroSmp.McVersion} & {ExperiencesService.ZeroSmp.Loader} {ExperiencesService.ZeroSmp.LoaderVersion}...");
             string? joinServer = host.ModpackSettings.ZeroSmpAutoJoin ? ExperiencesService.ZeroSmp.ServerAddress : null;
             var launchedUtc = DateTime.UtcNow;
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token, joinServer);
@@ -745,7 +745,7 @@ public partial class ExperiencesView : UserControl
             });
 
             Report($"Zero SMP Instance {instNumber} started as {session.Username}!");
-            host.ModpackLog($"Started Zero SMP Instance {instNumber} (Forge 47.4.10, Minecraft 1.20.1) PID {process.Id}."
+            host.ModpackLog($"Started Zero SMP Instance {instNumber} ({ExperiencesService.ZeroSmp.Loader} {ExperiencesService.ZeroSmp.LoaderVersion}, Minecraft {ExperiencesService.ZeroSmp.McVersion}) PID {process.Id}."
                 + (joinServer == null ? "" : $" Auto-join: --quickPlayMultiplayer {ModpackLauncher.QuickPlayServer(process)}."));
             RefreshState();
         }

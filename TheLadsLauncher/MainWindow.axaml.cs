@@ -3358,9 +3358,9 @@ public partial class MainWindow : Window
         string mcVersion = string.IsNullOrEmpty(settings.SelectedMinecraftVersionOverride)
             ? ResolveMinecraftVersion()
             : settings.SelectedMinecraftVersionOverride;
-        MinecraftVersionText.Text = $"Minecraft {mcVersion} / Fabric";
-        LaunchButton.Content = "Play";
-        GameLaunchVersionText.Text = $"Minecraft {mcVersion} · Fabric";
+        string loader = GameVersionPolicy.UsesForge(mcVersion) ? "Forge" : "Fabric";
+        MinecraftVersionText.Text = $"Minecraft {mcVersion} / {loader}";
+        GameLaunchVersionText.Text = $"Minecraft {mcVersion} · {loader}";
     }
 
     // ═══════════════════════════════════════
