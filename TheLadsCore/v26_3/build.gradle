@@ -111,7 +111,8 @@ tasks.register('jadeCompatibilityIdentity', Jar) {
 processResources {
     dependsOn tasks.named('jadeCompatibilityIdentity')
     from(tasks.named('jadeCompatibilityIdentity').flatMap { it.archiveFile }) { into 'META-INF/jars' }
-    from('src/main/java/snownee/jade') { into 'META-INF/lads-sources/jade/snownee/jade' }
+    // The sources of what the jar holds: not Jade's test addon (its classes are excluded from the jar below).
+    from('src/main/java/snownee/jade') { exclude 'test/**'; into 'META-INF/lads-sources/jade/snownee/jade' }
 }
 jar {
     exclude 'snownee/jade/test/**', 'com/terraformersmc/**', 'dummy/**', 'cc/cassian/**', 'me/shedaniel/rei/**'
@@ -138,9 +139,11 @@ tasks.register('verifyJadePackaging') {
         def archive = new java.util.zip.ZipFile(tasks.named('jar').get().archiveFile.get().asFile)
         try {
             def entries = archive.entries().collect { it.name }
-            ['snownee/jade/Jade.class', 'snownee/jade/api/IWailaPlugin.class', 'META-INF/jars/lads-jade-api-identity.jar'].each {
+            ['snownee/jade/Jade.class', 'snownee/jade/api/IWailaPlugin.class', 'META-INF/jars/lads-jade-api-identity.jar', 'theladscore.jade.mixins.json'].each {
                 if (!entries.contains(it)) throw new GradleException("Missing native Jade artifact: " + it)
             }
+            // Fabric refuses to start when two mods use one mixin config name: the real Jade's is jade.mixins.json.
+            if (entries.contains('jade.mixins.json')) throw new GradleException('Core must not ship a mixin config named jade.mixins.json; it clashes with the real Jade mod')
             def forbidden = ['com/terraformersmc/', 'cc/cassian/', 'me/shedaniel/rei/', 'dummy/', 'qa/', 'snownee/jade/test/']
             if (entries.any { entry -> entry.endsWith('.class') && forbidden.any { entry.startsWith(it) } })
                 throw new GradleException('A compile-only stub or QA addon leaked into the production Core jar')
@@ -203,7 +206,13 @@ tasks.register('runCodecChecks', JavaExec) {
     mainClass = 'com.thelads.core.v26_2.feature.WorldEditCuiCodecChecks'
 }
 
+tasks.register('runJadeStandDownTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.thelads.core.v26_2.embedded.jade.JadeStandDownTest'
+}
+
 tasks.named('test') {
     failOnNoDiscoveredTests = false
-    dependsOn tasks.named('runShowcaseTest'), tasks.named('runSocialChecks'), tasks.named('runCodecChecks')
+    dependsOn tasks.named('runShowcaseTest'), tasks.named('runSocialChecks'), tasks.named('runCodecChecks'), tasks.named('runJadeStandDownTest')
 }

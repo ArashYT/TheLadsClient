@@ -45,7 +45,7 @@
     "theladscore.clumps.mixins.json",
     "theladscore.async.mixins.json",
     "theladscore.v26_3.quit.mixins.json",
-    "jade.mixins.json",
+    "theladscore.jade.mixins.json",
     "theladscore.embedded.etf.mixins.json",
     "theladscore.embedded.emf.mixins.json",
     "theladscore.embedded.ksyxis.mixins.json",
