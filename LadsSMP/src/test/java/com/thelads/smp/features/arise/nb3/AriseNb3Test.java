@@ -256,14 +256,20 @@ public class AriseNb3Test {
 
     @Test
     void testSnailMailFeatureDeliveries() {
+        SnailMailFeature.clearPendingForTesting();
         UUID sender = UUID.randomUUID();
+        UUID recipient = UUID.randomUUID();
 
         // Access checks
         assertTrue(SnailMailFeature.canAccessMailbox(null, null, 0)); // Unclaimed
 
+        // Record recipient name
+        SnailMailFeature.recordPlayerName("Steve", recipient);
+        assertEquals(recipient, SnailMailFeature.resolveRecipient(null, "Steve"));
+
         // Delivery scheduling
         long now = 100_000L;
-        var delivery = SnailMailFeature.scheduleDelivery(sender, "Steve", ItemStack.EMPTY, now);
+        var delivery = SnailMailFeature.scheduleDelivery(sender, recipient, "Steve", ItemStack.EMPTY, now);
         assertNotNull(delivery);
         assertEquals(1, SnailMailFeature.getPendingDeliveries().size());
 
@@ -276,7 +282,8 @@ public class AriseNb3Test {
         List<SnailMailFeature.PendingDelivery> readyFuture = SnailMailFeature.getReadyDeliveries(future);
         assertEquals(1, readyFuture.size());
         assertEquals("Steve", readyFuture.get(0).recipientName());
-        assertTrue(SnailMailFeature.getPendingDeliveries().isEmpty());
+        assertEquals(recipient, readyFuture.get(0).recipientUuid());
+        assertEquals(1, SnailMailFeature.getPendingDeliveries().size());
     }
 
     @Test

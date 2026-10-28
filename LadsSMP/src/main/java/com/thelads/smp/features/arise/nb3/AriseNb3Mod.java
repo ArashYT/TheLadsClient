@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Common entrypoint and registry initializer for native batch NB3.
@@ -124,6 +125,7 @@ public final class AriseNb3Mod {
         // Server Network Packet Receivers
         // Cosmetic armor: registers its (player data) attachment before any player loads, plus its receiver
         CosmeticArmorFeature.init();
+        SnailMailFeature.init();
 
         ServerPlayNetworking.registerGlobalReceiver(SwapBackWeaponPayload.TYPE, (payload, context) -> {
             context.server().execute(() -> {
@@ -161,9 +163,14 @@ public final class AriseNb3Mod {
                                             ctx.getSource().sendFailure(Component.literal("You must hold an item in your main hand to send mail!"));
                                             return 0;
                                         }
+                                        UUID recipientUuid = SnailMailFeature.resolveRecipient(ctx.getSource().getServer(), recipient);
+                                        if (recipientUuid == null) {
+                                            ctx.getSource().sendFailure(Component.literal("Unknown player: " + recipient + " (they must join the server at least once before you can send mail to them)"));
+                                            return 0;
+                                        }
                                         ItemStack toSend = held.copy();
                                         held.setCount(0);
-                                        SnailMailFeature.scheduleDelivery(player.getUUID(), recipient, toSend, System.currentTimeMillis());
+                                        SnailMailFeature.scheduleDelivery(player.getUUID(), recipientUuid, recipient, toSend, System.currentTimeMillis());
                                         ctx.getSource().sendSuccess(() -> Component.literal("Sent " + toSend.getHoverName().getString() + " to " + recipient + " via Snail Mail!").withStyle(ChatFormatting.GREEN), false);
                                         return 1;
                                     }))));

@@ -56,7 +56,7 @@ public class MailboxBlock extends Block implements EntityBlock {
                     }
                 }
                 mailbox.getInbox().clear();
-                SnailMailFeature.unregisterMailbox(mailbox.getOwnerUuid());
+                SnailMailFeature.unregisterMailbox(mailbox.getOwnerUuid(), level, pos);
             }
         }
         return super.playerWillDestroy(level, pos, state, player);
