@@ -47,9 +47,10 @@ public final class EntityCulling {
     private static final double CAMERA_STEP = 0.5;
     private static final long MAX_AGE = 100_000_000L, FORGET = 1_000_000_000L, PASS = 10_000_000L, IDLE = 50_000_000L;
     /**
-     * A moving camera keeps the worker's ray cache (cells seen or hidden from the camera) for up to one game tick, the
-     * original Entity Culling's re-cull rate, instead of wiping it on every 0.05-block drift (every 10 ms pass while walking);
-     * the passes in between still re-test every target against it. Changing block always wipes it: it is indexed from the camera's block.
+     * The worker's ray cache (cells seen or hidden from the camera) lives for at most one game tick, the original Entity
+     * Culling's re-cull rate, moving or not: a block broken or placed in front of a still camera shows within a tick. Moving
+     * keeps it instead of wiping it on every 0.05-block drift (every 10 ms pass while walking); the passes in between still
+     * re-test every target against it. Changing block always wipes it: it is indexed from the camera's block.
      */
     private static final long RETEST = 50_000_000L;
     private static final MethodHandle IRIS_SHADOW = irisShadowPass();
@@ -200,8 +201,7 @@ public final class EntityCulling {
             for (Cullable added; (added = ADDED.poll()) != null; ) tracked.add(added);
             boolean otherBlock = Double.isNaN(lastX) || MathUtilities.floor(current.x) != MathUtilities.floor(lastX)
                 || MathUtilities.floor(current.y) != MathUtilities.floor(lastY) || MathUtilities.floor(current.z) != MathUtilities.floor(lastZ);
-            boolean drifted = Math.abs(current.x - lastX) + Math.abs(current.y - lastY) + Math.abs(current.z - lastZ) > 0.05;
-            if (otherBlock || drifted && now - resetAt >= RETEST) {
+            if (otherBlock || now - resetAt >= RETEST) {
                 culling.resetCache();
                 lastX = current.x;
                 lastY = current.y;
