@@ -539,25 +539,38 @@ class ShareCodeTest {
         SoundOption oof = (SoundOption) mm.getModule("Oof Mod").getOption("Oof sound");
         TextOption shortcuts = (TextOption) mm.getModule("Chat").getOption("Shortcuts");
         BoolOption letServers = (BoolOption) mm.getModule("Server Control").getOption("Let servers change my Lads settings");
-        BoolOption autoFriend = (BoolOption) mm.getModule("HYPIXEL Mods").getOption("Auto Friend");
-        TextOption gg = (TextOption) mm.getModule("HYPIXEL Mods").getOption("Auto GG: Message");
+        Module hypixel = mm.getModule("HYPIXEL Mods");
+        BoolOption autoFriend = (BoolOption) hypixel.getOption("Auto Friend");
+        BoolOption autoTip = (BoolOption) hypixel.getOption("Auto Tip");
+        SliderOption ggDelay = (SliderOption) hypixel.getOption("Auto GG: Delay seconds");
+        BoolOption streamer = (BoolOption) hypixel.getOption("Streamer Mode");
+        BoolOption cleanup = (BoolOption) hypixel.getOption("Chat Cleanup");
+        TextOption gg = (TextOption) hypixel.getOption("Auto GG: Message");
 
-        // Exporting: private text, sounds and security switches stay home; the visual change travels.
+        // Exporting: private text, sounds, security switches and chat automation stay home; the visual changes travel.
         macro.setValue("/login hunter2");
         oof.set("mine.mp3");
         shortcuts.setValue("brb=be right back");
         letServers.set(false);
+        autoTip.set(false);
+        hypixel.setEnabled(false);
+        streamer.set(true);
         ((BoolOption) mm.getModule("FPS").getOption("Smooth")).set(false);
         JsonObject exported = ShareCode.createSharePayload(ConfigManager.toJson()).getAsJsonObject("modules");
-        assertEquals(Set.of("FPS"), exported.keySet());
+        assertEquals(Set.of("FPS", "HYPIXEL Mods"), exported.keySet());
+        assertEquals(Set.of("options"), exported.getAsJsonObject("HYPIXEL Mods").keySet(), "HYPIXEL Mods' on/off stays home");
+        assertEquals(Set.of("Streamer Mode"), exported.getAsJsonObject("HYPIXEL Mods").getAsJsonObject("options").keySet(),
+            "its visual toggles travel, its automation does not");
         assertFalse(exported.toString().contains("hunter2"));
+        streamer.set(false);
 
         // Importing a stranger's v2 code that tries to change all of it: only the visual values apply, nothing else is reset.
         mm.getModule("StackRefill").setEnabled(false); // on by default; the player turned it off
         JsonObject payload = JsonParser.parseString("{\"v\":2,\"modules\":{"
             + "\"Oof Mod\":{\"enabled\":true,\"options\":{\"Oof sound\":\"evil.mp3\",\"Volume\":0.5}},"
             + "\"Auto Text\":{\"enabled\":true,\"options\":{\"Message 1\":\"/pay attacker 1000\"}},"
-            + "\"HYPIXEL Mods\":{\"options\":{\"Auto GG: Message\":\"buy cheats\",\"Auto Friend\":true}},"
+            + "\"HYPIXEL Mods\":{\"enabled\":true,\"options\":{\"Auto GG: Message\":\"buy cheats\",\"Auto Friend\":true,\"Auto Tip\":true,"
+            + "\"Auto GG: Delay seconds\":0,\"Streamer Mode\":true,\"Chat Cleanup\":false}},"
             + "\"Server Control\":{\"options\":{\"Let servers change my Lads settings\":true}},"
             + "\"IgnorePacketErrors\":{\"enabled\":true},\"StackRefill\":{\"enabled\":true},"
             + "\"Chat\":{\"options\":{\"Shortcuts\":\"gg=/pay attacker 1\",\"Custom Tabs\":\"A=(a+)+$\"}}}}").getAsJsonObject();
@@ -570,7 +583,12 @@ class ShareCodeTest {
         assertEquals("", ((TextOption) mm.getModule("Chat").getOption("Custom Tabs")).getValue());
         assertFalse(letServers.get(), "Server Control stays the player's choice");
         assertFalse(autoFriend.get());
+        assertFalse(autoTip.get(), "the player's own Auto Tip, not the code's (nor its default, on)");
+        assertEquals(1, ggDelay.getValue(), 1e-9, "Auto GG's settings stay the player's");
         assertEquals("gg", gg.getValue());
+        assertFalse(hypixel.isEnabledSetting(), "HYPIXEL Mods stays off: a code never switches its automation on");
+        assertTrue(streamer.get(), "HYPIXEL Mods' visual toggles still import");
+        assertFalse(cleanup.get());
         assertFalse(mm.getModule("IgnorePacketErrors").isEnabledSetting());
         assertFalse(mm.getModule("StackRefill").isEnabledSetting(), "automation is never switched on by a code");
         assertTrue(mm.getModule("Oof Mod").isEnabledSetting(), "visual switches still import");

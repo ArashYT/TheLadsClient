@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
+import com.thelads.core.client.hypixel.HypixelMods;
 import com.thelads.core.modules.HudModule;
 
 import java.io.ByteArrayOutputStream;
@@ -151,7 +152,9 @@ public final class ShareCode {
                     enabled = p.getAsBoolean();
                 }
             }
-            mOut.addProperty("enabled", enabled);
+            if (sharesEnabled(name)) {
+                mOut.addProperty("enabled", enabled);
+            }
 
             if (m instanceof HudModule hm) {
                 boolean useGlobal = hm.isUseGlobalColor();
@@ -268,7 +271,7 @@ public final class ShareCode {
                 JsonObject mIn = entry.getValue().getAsJsonObject();
                 JsonObject mOut = new JsonObject();
 
-                if (mode == ImportMode.MODS || mode == ImportMode.BOTH) {
+                if ((mode == ImportMode.MODS || mode == ImportMode.BOTH) && (!fromStranger || sharesEnabled(modName))) {
                     if (mIn.has("enabled") && mIn.get("enabled").isJsonPrimitive()) {
                         JsonPrimitive p = mIn.getAsJsonPrimitive("enabled");
                         if (p.isBoolean()) {
@@ -382,10 +385,23 @@ public final class ShareCode {
     /**
      * Modules a share code (a stranger's) never carries or changes: privacy (Friends &amp; Social and Cosmetics send your name to Lads
      * servers), security switches (Server Control, Server Notification Actions, IgnorePacketErrors) and automation that sends chat,
-     * commands or clicks for the player (Auto Text, HYPIXEL Mods' Auto GG/Friend/Tip..., LadsApiRules automation).
+     * commands or clicks for the player (Auto Text, LadsApiRules automation; HYPIXEL Mods' own: {@link #HYPIXEL_AUTOMATION}).
      */
     private static final Set<String> NOT_SHARED = Set.of("server control", "server notification actions", "ignorepacketerrors",
-        "friends & social", "cosmetics", "auto text", "hypixel mods");
+        "friends & social", "cosmetics", "auto text");
+
+    /**
+     * HYPIXEL Mods' switches that send chat or commands for the player (/ac gg, /ac glhf, /friend accept, /tip all, /who, /play and
+     * /party list) and their own settings ("Auto GG: Delay seconds"): never in a code. Its visual toggles (Chat Cleanup, Streamer
+     * Mode...) travel; its on/off, the master switch of that automation (Auto GG and Auto Tip are on by default), does not.
+     */
+    private static final Set<String> HYPIXEL_AUTOMATION = Set.of(HypixelMods.AUTO_GG, HypixelMods.AUTO_GL, HypixelMods.AUTO_FRIEND,
+        HypixelMods.AUTO_TIP, HypixelMods.AUTO_WHO, HypixelMods.PLAY_AGAIN);
+
+    /** Whether a code carries and applies this module's on/off (HYPIXEL Mods': never, see {@link #HYPIXEL_AUTOMATION}). */
+    private static boolean sharesEnabled(String moduleName) {
+        return !HypixelMods.HYPIXEL_MODS.equals(moduleName);
+    }
 
     public static boolean isExcludedModule(String moduleName) {
         if (moduleName == null) return true;
@@ -411,6 +427,10 @@ public final class ShareCode {
         }
         // Excluded secrets/credentials/servers
         if (lower.contains("password") || lower.contains("token") || lower.contains("secret") || lower.contains("api key") || lower.contains("server address")) {
+            return true;
+        }
+        int setting = optionName.indexOf(": ");
+        if (HypixelMods.HYPIXEL_MODS.equals(moduleName) && HYPIXEL_AUTOMATION.contains(setting < 0 ? optionName : optionName.substring(0, setting))) {
             return true;
         }
         // Allow-list: only plain visual values travel (switches, sliders, choices, colours, particle rates). Text (chat messages,
