@@ -218,14 +218,24 @@ public sealed class AutoUpdater
         finally { _gate.Release(); }
     }
 
-    public async Task PollAsync(Func<bool> isBusy, Action<string> report, bool disabled = false)
+    public async Task PollAsync(Func<bool> isBusy, Action<string> report, bool disabled = false, bool force = false)
     {
-        if (disabled || !_backend.IsInstalled || DateTimeOffset.UtcNow < _retryAfter || !await _gate.WaitAsync(0)) return;
+        if (disabled || !await _gate.WaitAsync(0)) return;
         try
         {
+            if (!_backend.IsInstalled)
+            {
+                if (force) report($"Launcher is up to date (v{Program.Version}).");
+                return;
+            }
+            if (DateTimeOffset.UtcNow < _retryAfter)
+            {
+                if (force) report($"Update server busy; try again after {_retryAfter.ToLocalTime():t}.");
+                return;
+            }
             if (_backend.PendingVersion == null)
             {
-                if (DateTimeOffset.UtcNow < _nextCheck) return;
+                if (!force && DateTimeOffset.UtcNow < _nextCheck) return;
                 _nextCheck = DateTimeOffset.UtcNow.AddMinutes(10);
                 report("Checking for launcher updates…");
                 // High only while the startup screen is waiting for the update; an open launcher may have a game running next to it.
@@ -235,7 +245,7 @@ public sealed class AutoUpdater
                     // A BelowNormal launcher's children inherit it; a High one's start at Normal, so the delta rebuild is raised by hand.
                     if (!_askBeforeInstall) _ = _backend.KeepUpdateExeHighAsync((_keepUpdateExeHigh = new()).Token);
                 }
-                try { if (!await _backend.DownloadLatestAsync(report)) { report(""); return; } }
+                try { if (!await _backend.DownloadLatestAsync(report)) { report(force ? $"Launcher is up to date (v{Program.Version})." : ""); return; } }
                 finally { lock (_priorityLock) { _downloadScope?.Dispose(); _downloadScope = null; StopKeepingUpdateExeHigh(); } }
             }
             if (AskBeforeInstall)

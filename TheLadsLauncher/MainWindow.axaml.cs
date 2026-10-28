@@ -565,6 +565,7 @@ public partial class MainWindow : Window
     /// (which holds it on screen until the new launcher shows) and returns the args that reopen the launcher in this place.</summary>
     private string[] PrepareUpdateRestart(string version)
     {
+        FlushSettingsSave();
         if (WindowState == WindowState.Minimized) return Array.Empty<string>();   // nothing on screen to hold; the new launcher opens centred
         try
         {
@@ -649,8 +650,8 @@ public partial class MainWindow : Window
         StartupLoadingSpinner.Text = string.IsNullOrEmpty(message) ? "Loading resources" : message.TrimEnd('…', '.');
     }
 
-    private Task PollForUpdatesAsync() => _autoUpdater.PollAsync(UpdateBlocked, ReportUpdate,
-        Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") == "1" || _windowClosed);
+    private Task PollForUpdatesAsync(bool force = false) => _autoUpdater.PollAsync(UpdateBlocked, ReportUpdate,
+        Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") == "1" || _windowClosed, force);
 
     /// <summary>Installing restarts the launcher, so it waits for Minecraft, sign-in, mod work and open dialogs.</summary>
     private bool UpdateBlocked() => _windowClosed || _launching || _modsBusy || _addingAccount || _showingMicrosoftSetup || _releaseNotesOpen
@@ -665,6 +666,17 @@ public partial class MainWindow : Window
             ShowStartupStatus(message);
             UpdateBannerText.Text = message;
             UpdateBanner.IsVisible = !string.IsNullOrEmpty(message);
+            if (!string.IsNullOrEmpty(message) && (message.StartsWith("Launcher is up to date") || message.StartsWith("Update server busy")))
+            {
+                DispatcherTimer.RunOnce(() =>
+                {
+                    if (UpdateBannerText.Text == message)
+                    {
+                        UpdateBannerText.Text = "";
+                        UpdateBanner.IsVisible = false;
+                    }
+                }, TimeSpan.FromSeconds(4));
+            }
         });
         if (!string.IsNullOrEmpty(message)) Log($"[Updater] {message}");
     }
@@ -909,7 +921,7 @@ public partial class MainWindow : Window
     {
         Log("[Updater] Manual update check triggered.");
         ReportUpdate("Checking for updates...");
-        await PollForUpdatesAsync();
+        await PollForUpdatesAsync(force: true);
     }
 
     private void MinimizeBtn_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
