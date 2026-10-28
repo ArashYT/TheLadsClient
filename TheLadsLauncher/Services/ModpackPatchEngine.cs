@@ -104,7 +104,7 @@ public static class ModpackPatchEngine
         }
     }
 
-    public static async Task ApplyPatchAsync(string instanceDirectory, ModpackPatch patch, HttpClient? http, Action<string>? status, CancellationToken token = default)
+    public static async Task<bool> ApplyPatchAsync(string instanceDirectory, ModpackPatch patch, HttpClient? http, Action<string>? status, CancellationToken token = default)
     {
         var gameDir = Path.Combine(instanceDirectory, "minecraft");
         Directory.CreateDirectory(gameDir);
@@ -134,6 +134,7 @@ public static class ModpackPatchEngine
 
         // A patch with a skipped config is not recorded: every step is repeatable, so the next launch runs it again.
         if (complete) RecordAppliedPatch(instanceDirectory, patch.Version);
+        return complete;
     }
 
     public static void ApplyKeybinds(string gameDir, PatchKeybinds? keybinds)

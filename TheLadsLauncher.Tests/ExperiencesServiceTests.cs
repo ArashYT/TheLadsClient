@@ -336,6 +336,46 @@ public class ExperiencesServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task IncompletePatch_HaltsApplication_PreservingOrdering()
+    {
+        var root = ExperiencesService.PackRoot(_tempDir, "zero-smp-1.20.1");
+        var patches = Path.Combine(root, "patches");
+        Directory.CreateDirectory(patches);
+        // Patch 1: valid keybind
+        File.WriteAllText(Path.Combine(patches, "update-1.0.1.json"),
+            "{\"packId\":\"zero-smp-1.20.1\",\"version\":\"1.0.1\",\"keybinds\":{\"defaults\":{\"key_first\":\"key.keyboard.a\"}}}");
+        // Patch 2: modifies config/broken.json which contains invalid JSON -> will be incomplete
+        File.WriteAllText(Path.Combine(patches, "update-1.0.2.json"),
+            "{\"packId\":\"zero-smp-1.20.1\",\"version\":\"1.0.2\",\"configPatches\":[{\"file\":\"config/broken.json\",\"set\":{\"k\":true}}]}");
+        // Patch 3: newer patch that should NOT be applied out-of-order before 1.0.2 completes
+        File.WriteAllText(Path.Combine(patches, "update-1.0.3.json"),
+            "{\"packId\":\"zero-smp-1.20.1\",\"version\":\"1.0.3\",\"keybinds\":{\"defaults\":{\"key_third\":\"key.keyboard.c\"}}}");
+
+        var instDir = ExperiencesService.InstanceDirectory(_tempDir, "zero-smp-1.20.1");
+        var gameDir = Path.Combine(instDir, "minecraft");
+        Directory.CreateDirectory(Path.Combine(gameDir, "config"));
+        File.WriteAllText(Path.Combine(gameDir, "config", "broken.json"), "{ invalid json ");
+
+        // First run: patch 1.0.1 applies, patch 1.0.2 fails, patch 1.0.3 is NOT applied (loop breaks)
+        int applied = await ExperiencesService.ApplyPendingPatchesAsync(_tempDir, "zero-smp-1.20.1", null, null, CancellationToken.None);
+        Assert.Equal(1, applied);
+        Assert.Equal(new[] { "1.0.1" }, ModpackPatchEngine.GetAppliedPatches(instDir));
+        var options = File.ReadAllText(Path.Combine(gameDir, "options.txt"));
+        Assert.Contains("key_first:key.keyboard.a", options);
+        Assert.DoesNotContain("key_third:key.keyboard.c", options);
+
+        // Fix the broken json config file
+        File.WriteAllText(Path.Combine(gameDir, "config", "broken.json"), "{}");
+
+        // Next run: patch 1.0.2 and 1.0.3 apply in correct order
+        int appliedSecond = await ExperiencesService.ApplyPendingPatchesAsync(_tempDir, "zero-smp-1.20.1", null, null, CancellationToken.None);
+        Assert.Equal(2, appliedSecond);
+        Assert.Equal(new[] { "1.0.1", "1.0.2", "1.0.3" }, ModpackPatchEngine.GetAppliedPatches(instDir));
+        options = File.ReadAllText(Path.Combine(gameDir, "options.txt"));
+        Assert.Contains("key_third:key.keyboard.c", options);
+    }
+
+    [Fact]
     public async Task PatchMods_AreHashChecked_AndOnlyWellFormedNamesAndHttpsUrlsAreUsed()
     {
         var gameDir = Path.Combine(_tempDir, "minecraft");
