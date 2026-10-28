@@ -16,9 +16,9 @@ import org.yaml.snakeyaml.Yaml;
  * Parsed representation of rules.yml.
  */
 public final class LadsRules {
-    private final Map<String, ModuleRule> modules = new LinkedHashMap<>();
-    private final Map<String, Map<String, ModuleRule>> worlds = new LinkedHashMap<>();
-    private final Map<String, Map<String, ModuleRule>> groups = new LinkedHashMap<>();
+    private volatile Map<String, ModuleRule> modules = new LinkedHashMap<>();
+    private volatile Map<String, Map<String, ModuleRule>> worlds = new LinkedHashMap<>();
+    private volatile Map<String, Map<String, ModuleRule>> groups = new LinkedHashMap<>();
 
     public static LadsRules load(Path dataFolder, LadsSchema schema, Logger logger) {
         LadsRules rules = new LadsRules();
@@ -61,15 +61,20 @@ public final class LadsRules {
 
     @SuppressWarnings("unchecked")
     public void parseYaml(Map<String, Object> data, Logger logger) {
-        modules.clear();
-        worlds.clear();
-        groups.clear();
+        if (data == null) {
+            this.modules = Collections.emptyMap();
+            this.worlds = Collections.emptyMap();
+            this.groups = Collections.emptyMap();
+            return;
+        }
 
-        if (data == null) return;
+        Map<String, ModuleRule> newModules = new LinkedHashMap<>();
+        Map<String, Map<String, ModuleRule>> newWorlds = new LinkedHashMap<>();
+        Map<String, Map<String, ModuleRule>> newGroups = new LinkedHashMap<>();
 
         Object modsObj = data.get("modules");
         if (modsObj instanceof Map<?, ?> modsMap) {
-            parseModulesMap((Map<String, Object>) modsMap, this.modules, logger);
+            parseModulesMap((Map<String, Object>) modsMap, newModules, logger);
         }
 
         Object worldsObj = data.get("worlds");
@@ -84,7 +89,7 @@ public final class LadsRules {
                     } else {
                         parseModulesMap((Map<String, Object>) wContent, wMods, logger);
                     }
-                    this.worlds.put(worldName, wMods);
+                    newWorlds.put(worldName, Collections.unmodifiableMap(wMods));
                 }
             }
         }
@@ -101,10 +106,14 @@ public final class LadsRules {
                     } else {
                         parseModulesMap((Map<String, Object>) gContent, gMods, logger);
                     }
-                    this.groups.put(groupName, gMods);
+                    newGroups.put(groupName, Collections.unmodifiableMap(gMods));
                 }
             }
         }
+
+        this.modules = Collections.unmodifiableMap(newModules);
+        this.worlds = Collections.unmodifiableMap(newWorlds);
+        this.groups = Collections.unmodifiableMap(newGroups);
     }
 
     @SuppressWarnings("unchecked")

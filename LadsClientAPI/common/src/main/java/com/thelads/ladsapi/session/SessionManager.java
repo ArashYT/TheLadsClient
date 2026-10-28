@@ -31,9 +31,10 @@ public final class SessionManager implements LadsClientAPI {
 
     private final LadsPlatform platform;
     private final LadsConfig config;
-    private final LadsRules rules;
+    private volatile LadsRules rules;
     private final Map<UUID, LadsSession> sessions = new ConcurrentHashMap<>();
     private final List<Consumer<LadsPlayer>> readyListeners = new ArrayList<>();
+    private final Object lock = new Object();
 
     public SessionManager(LadsPlatform platform, LadsConfig config, LadsRules rules) {
         this.platform = platform;
@@ -44,10 +45,13 @@ public final class SessionManager implements LadsClientAPI {
     public LadsPlatform getPlatform() { return platform; }
     public LadsConfig getConfig() { return config; }
     public LadsRules getRules() { return rules; }
+    public void setRules(LadsRules rules) { this.rules = rules; }
     public Map<UUID, LadsSession> getSessions() { return sessions; }
 
     public void addReadyListener(Consumer<LadsPlayer> listener) {
-        readyListeners.add(listener);
+        synchronized (lock) {
+            readyListeners.add(listener);
+        }
     }
 
     @Override
@@ -72,44 +76,73 @@ public final class SessionManager implements LadsClientAPI {
             return;
         }
 
-        LadsSession session = new LadsSession(handle, this);
+        LadsSession session;
         UUID uuid = handle.uuid();
-        sessions.put(uuid, session);
+        synchronized (lock) {
+            session = new LadsSession(handle, this);
+            sessions.put(uuid, session);
+        }
 
         // The tasks belong to this session object: a quick reconnect must not inherit the old tasks.
         // Schedule hello at +1 tick
         platform.runLater(() -> {
-            if (sessions.get(uuid) == session && !session.isHelloAcked() && !session.isHelloSent()) {
+            boolean shouldSend = false;
+            synchronized (lock) {
+                if (sessions.get(uuid) == session && !session.isHelloAcked() && !session.isHelloSent()) {
+                    shouldSend = true;
+                }
+            }
+            if (shouldSend) {
                 session.sendHello();
             }
         }, 1);
 
         // Resend hello at +60 ticks if no reply, never more
         platform.runLater(() -> {
-            if (sessions.get(uuid) == session && !session.isHelloAcked() && !session.isHelloResent()) {
-                session.setHelloResent(true);
+            boolean shouldSend = false;
+            synchronized (lock) {
+                if (sessions.get(uuid) == session && !session.isHelloAcked() && !session.isHelloResent()) {
+                    session.setHelloResent(true);
+                    shouldSend = true;
+                }
+            }
+            if (shouldSend) {
                 session.sendHello();
             }
         }, 60);
 
-        // require-lads-client: kick 5 s (100 ticks) after hello if no reply
+        // require-lads-client: kick 5 s (100 ticks) after hello if no reply (kick executed outside lock)
         platform.runLater(() -> {
-            if (sessions.get(uuid) == session && config.isRequireLadsClient() && !session.isLads()) {
-                session.getHandle().kick(config.getRequireLadsClientMessage());
+            boolean shouldKick = false;
+            String kickMsg = null;
+            synchronized (lock) {
+                if (sessions.get(uuid) == session && config.isRequireLadsClient() && !session.isLads()) {
+                    shouldKick = true;
+                    kickMsg = config.getRequireLadsClientMessage();
+                }
+            }
+            if (shouldKick) {
+                session.getHandle().kick(kickMsg);
             }
         }, 100);
     }
 
     public void quit(UUID uuid) {
         if (uuid == null) return;
-        LadsSession s = sessions.remove(uuid);
-        if (s != null && s.isLads() && config.isBadgePresence()) {
-            // Send presence remove to remaining Lads players
-            for (LadsSession other : sessions.values()) {
-                if (other.isLads()) {
-                    other.sendPresence(false, Collections.emptyList(), List.of(uuid));
+        LadsSession s;
+        List<LadsSession> others = new ArrayList<>();
+        synchronized (lock) {
+            s = sessions.remove(uuid);
+            if (s != null && s.isLads() && config.isBadgePresence()) {
+                for (LadsSession other : sessions.values()) {
+                    if (other.isLads()) {
+                        others.add(other);
+                    }
                 }
             }
+        }
+        for (LadsSession other : others) {
+            other.sendPresence(false, Collections.emptyList(), List.of(uuid));
         }
     }
 
@@ -129,15 +162,24 @@ public final class SessionManager implements LadsClientAPI {
 
     private void refresh(LadsPlayerHandle handle, boolean force) {
         if (handle == null) return;
-        LadsSession s = sessions.get(handle.uuid());
-        if (s == null) return;
-        s.setHandle(handle);
-        if (s.isLads()) {
-            if (force || !Objects.equals(handle.world(), s.getSyncedWorld())) {
-                resync(s);
+        LadsSession s;
+        boolean doResync = false;
+        boolean doHello = false;
+        synchronized (lock) {
+            s = sessions.get(handle.uuid());
+            if (s == null) return;
+            s.setHandle(handle);
+            if (s.isLads()) {
+                if (force || !Objects.equals(handle.world(), s.getSyncedWorld())) {
+                    doResync = true;
+                }
+            } else if (s.isHelloSent() && !s.isHelloAcked()) {
+                doHello = true;
             }
-        } else if (s.isHelloSent() && !s.isHelloAcked()) {
-            // Our hello may have reached the client before it reset: ask again, the first reply completes the handshake as usual.
+        }
+        if (doResync) {
+            resync(s);
+        } else if (doHello) {
             s.sendHello();
         }
     }
@@ -155,11 +197,14 @@ public final class SessionManager implements LadsClientAPI {
             return; // Dropped
         }
 
-        LadsSession session = sessions.get(handle.uuid());
-        if (session == null) {
-            return;
+        LadsSession session;
+        synchronized (lock) {
+            session = sessions.get(handle.uuid());
+            if (session == null) {
+                return;
+            }
+            session.setHandle(handle);
         }
-        session.setHandle(handle);
 
         if (!session.checkRateLimit()) {
             if (config.isDebug() && platform.logger() != null) {
@@ -190,50 +235,68 @@ public final class SessionManager implements LadsClientAPI {
     }
 
     private void handleHello(LadsSession session, LadsPlayerHandle handle, JsonObject root) {
-        if (session.isHelloAcked()) return;
+        String kickMsg = null;
+        boolean sendFull = false;
+        List<Consumer<LadsPlayer>> listeners = null;
+        List<UUID> allLads = null;
+        List<LadsSession> otherSessions = null;
 
-        // PROTOCOL.md section 5: a server receiving a `v` it does not know treats the player as non-Lads.
-        int v = whole(root, "v", 0);
-        if (v < 1 || v > LadsCore.PROTOCOL) return;
+        synchronized (lock) {
+            if (session.isHelloAcked()) return;
 
-        // Both strings reach commands, PlaceholderAPI and the kick text: only plain version text gets through.
-        String ladsVersion = VersionUtil.clean(text(root, "lads"));
-        String mcVersion = VersionUtil.clean(text(root, "mc"));
+            // PROTOCOL.md section 5: a server receiving a `v` it does not know treats the player as non-Lads.
+            int v = whole(root, "v", 0);
+            if (v < 1 || v > LadsCore.PROTOCOL) return;
 
-        // min-client-version check
-        if (!config.getMinClientVersion().isBlank() && VersionUtil.isOlder(ladsVersion, config.getMinClientVersion())) {
-            String msg = config.getMinClientVersionMessage()
-                    .replace("%client%", ladsVersion)
-                    .replace("%min%", config.getMinClientVersion());
-            handle.kick(msg);
-            return;
-        }
+            // Both strings reach commands, PlaceholderAPI and the kick text: only plain version text gets through.
+            String ladsVersion = VersionUtil.clean(text(root, "lads"));
+            String mcVersion = VersionUtil.clean(text(root, "mc"));
 
-        session.setHelloAcked(true);
-        session.setLads(true, ladsVersion, mcVersion);
-
-        for (Consumer<LadsPlayer> listener : readyListeners) {
-            try {
-                listener.accept(session.getLadsPlayer());
-            } catch (Throwable t) {
-                if (platform.logger() != null) {
-                    platform.logger().warning("[LadsClientAPI] Error in ready listener: " + t.getMessage());
+            // min-client-version check
+            if (!config.getMinClientVersion().isBlank() && VersionUtil.isOlder(ladsVersion, config.getMinClientVersion())) {
+                kickMsg = config.getMinClientVersionMessage()
+                        .replace("%client%", ladsVersion)
+                        .replace("%min%", config.getMinClientVersion());
+            } else {
+                session.setHelloAcked(true);
+                session.setLads(true, ladsVersion, mcVersion);
+                sendFull = true;
+                listeners = new ArrayList<>(readyListeners);
+                if (config.isBadgePresence()) {
+                    allLads = getAllLadsPlayerUuids();
+                    otherSessions = new ArrayList<>(sessions.values());
                 }
             }
         }
 
-        // Send policy
-        session.sendPolicy();
+        if (kickMsg != null) {
+            handle.kick(kickMsg);
+            return;
+        }
 
-        // Send presence full if badge.presence
-        if (config.isBadgePresence()) {
-            List<UUID> allLads = getAllLadsPlayerUuids();
-            session.sendPresence(true, allLads, Collections.emptyList());
+        if (sendFull) {
+            for (Consumer<LadsPlayer> listener : listeners) {
+                try {
+                    listener.accept(session.getLadsPlayer());
+                } catch (Throwable t) {
+                    if (platform.logger() != null) {
+                        platform.logger().warning("[LadsClientAPI] Error in ready listener: " + t.getMessage());
+                    }
+                }
+            }
 
-            // Send presence add to other players
-            for (LadsSession other : sessions.values()) {
-                if (other != session && other.isLads()) {
-                    other.sendPresence(false, List.of(handle.uuid()), Collections.emptyList());
+            // Send policy
+            session.sendPolicy();
+
+            // Send presence full if badge.presence
+            if (allLads != null) {
+                session.sendPresence(true, allLads, Collections.emptyList());
+
+                // Send presence add to other players
+                for (LadsSession other : otherSessions) {
+                    if (other != session && other.isLads()) {
+                        other.sendPresence(false, List.of(handle.uuid()), Collections.emptyList());
+                    }
                 }
             }
         }
@@ -273,28 +336,42 @@ public final class SessionManager implements LadsClientAPI {
 
     public List<UUID> getAllLadsPlayerUuids() {
         List<UUID> list = new ArrayList<>();
-        for (LadsSession s : sessions.values()) {
-            if (s.isLads()) {
-                list.add(s.getHandle().uuid());
+        synchronized (lock) {
+            for (LadsSession s : sessions.values()) {
+                if (s.isLads()) {
+                    list.add(s.getHandle().uuid());
+                }
             }
         }
         return list;
     }
 
     public void resendAllPolicies() {
-        for (LadsSession s : sessions.values()) {
-            if (s.isLads()) {
-                s.sendPolicy();
+        List<LadsSession> ladsSessions = new ArrayList<>();
+        synchronized (lock) {
+            for (LadsSession s : sessions.values()) {
+                if (s.isLads()) {
+                    ladsSessions.add(s);
+                }
             }
+        }
+        for (LadsSession s : ladsSessions) {
+            s.sendPolicy();
         }
     }
 
     public void stop() {
-        for (LadsSession s : sessions.values()) {
-            if (s.isLads()) {
-                s.sendReset();
+        List<LadsSession> ladsSessions = new ArrayList<>();
+        synchronized (lock) {
+            for (LadsSession s : sessions.values()) {
+                if (s.isLads()) {
+                    ladsSessions.add(s);
+                }
             }
+            sessions.clear();
         }
-        sessions.clear();
+        for (LadsSession s : ladsSessions) {
+            s.sendReset();
+        }
     }
 }

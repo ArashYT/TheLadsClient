@@ -23,7 +23,7 @@ public final class LadsCore {
     private final LadsPlatform platform;
     private final LadsConfig config;
     private final LadsSchema schema;
-    private final LadsRules rules;
+    private volatile LadsRules rules;
     private final SessionManager sessionManager;
 
     private LadsCore(LadsPlatform platform) {

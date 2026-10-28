@@ -27,13 +27,13 @@ public final class LadsSession {
     private final Map<String, ModuleRule> apiOverrides = new LinkedHashMap<>();
     private final LadsPlayerImpl ladsPlayer;
 
-    private int rev = 0;
-    private boolean lads = false;
-    private String ladsVersion = "";
-    private String mcVersion = "";
-    private boolean helloSent = false;
-    private boolean helloResent = false;
-    private boolean helloAcked = false;
+    private volatile int rev = 0;
+    private volatile boolean lads = false;
+    private volatile String ladsVersion = "";
+    private volatile String mcVersion = "";
+    private volatile boolean helloSent = false;
+    private volatile boolean helloResent = false;
+    private volatile boolean helloAcked = false;
     /** World/backend the last policy was built for; a respawn into another world needs a new policy. */
     private volatile String syncedWorld = "";
 
@@ -97,11 +97,15 @@ public final class LadsSession {
     public void sendPolicy() {
         rev++;
         syncedWorld = handle.world();
+        Map<String, ModuleRule> overridesCopy;
+        synchronized (apiOverrides) {
+            overridesCopy = new LinkedHashMap<>(apiOverrides);
+        }
         String json = PolicyBuilder.buildPolicyJson(
                 manager.getRules(),
                 manager.getConfig(),
                 handle,
-                apiOverrides,
+                overridesCopy,
                 rev
         );
         handle.send(json.getBytes(StandardCharsets.UTF_8));
@@ -132,28 +136,36 @@ public final class LadsSession {
     }
 
     public void setApiOverrideModuleState(String module, String state) {
-        apiOverrides.computeIfAbsent(module, k -> new ModuleRule()).setState(state);
+        synchronized (apiOverrides) {
+            apiOverrides.computeIfAbsent(module, k -> new ModuleRule()).setState(state);
+        }
     }
 
     public void setApiOverrideOptionLimit(String module, String option, double min, double max) {
-        ModuleRule mr = apiOverrides.computeIfAbsent(module, k -> new ModuleRule());
-        RuleOption opt = mr.getOptions().computeIfAbsent(option, k -> new RuleOption());
-        if (!Double.isNaN(min)) opt.setMin(min);
-        if (!Double.isNaN(max)) opt.setMax(max);
+        synchronized (apiOverrides) {
+            ModuleRule mr = apiOverrides.computeIfAbsent(module, k -> new ModuleRule());
+            RuleOption opt = mr.getOptions().computeIfAbsent(option, k -> new RuleOption());
+            if (!Double.isNaN(min)) opt.setMin(min);
+            if (!Double.isNaN(max)) opt.setMax(max);
+        }
     }
 
     public void setApiOverrideOptionForce(String module, String option, Object value) {
-        ModuleRule mr = apiOverrides.computeIfAbsent(module, k -> new ModuleRule());
-        RuleOption opt = mr.getOptions().computeIfAbsent(option, k -> new RuleOption());
-        opt.setValue(value);
-        opt.setLock(true);
+        synchronized (apiOverrides) {
+            ModuleRule mr = apiOverrides.computeIfAbsent(module, k -> new ModuleRule());
+            RuleOption opt = mr.getOptions().computeIfAbsent(option, k -> new RuleOption());
+            opt.setValue(value);
+            opt.setLock(true);
+        }
     }
 
     public void clearApiOverrides(String module) {
-        if (module == null) {
-            apiOverrides.clear();
-        } else {
-            apiOverrides.remove(module);
+        synchronized (apiOverrides) {
+            if (module == null) {
+                apiOverrides.clear();
+            } else {
+                apiOverrides.remove(module);
+            }
         }
     }
 }

@@ -68,11 +68,13 @@ public class LadsForgeMod {
             ServerPlayer player = ctx.getSender();
             ctx.setPacketHandled(true);
             if (player != null) {
-                LadsPlayerHandle handle = platform.getOrCreatePlayer(player);
-                LadsCore currentCore = LadsCore.get();
-                if (currentCore != null) {
-                    currentCore.receive(handle, bytes);
-                }
+                ctx.enqueueWork(() -> {
+                    LadsPlayerHandle handle = platform.getOrCreatePlayer(player);
+                    LadsCore currentCore = LadsCore.get();
+                    if (currentCore != null) {
+                        currentCore.receive(handle, bytes);
+                    }
+                });
             }
         });
 
