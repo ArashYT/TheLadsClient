@@ -1,11 +1,14 @@
 using System;
 using System.IO;
 using System.IO.Pipes;
+using System.Linq;
 using System.Net;
 using System.Runtime.Versioning;
+using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
+using TheLadsLauncher.Models;
 
 namespace TheLadsLauncher.Services;
 
@@ -27,7 +30,14 @@ public sealed record DeepLinkAction(DeepLinkActionType Type, string? Target, int
 public static class DeepLinkService
 {
     public const string ProtocolScheme = "lads";
-    public const string PipeName = "TheLadsClient-DeepLinkPipe";
+    /// <summary>Pipe names are machine-wide: one per Windows user (SID), so another user's launcher can neither take it nor get these links.</summary>
+    public static readonly string PipeName = "TheLadsClient-DeepLinkPipe-" + CurrentUserSid();
+
+    private static string CurrentUserSid()
+    {
+        using var identity = WindowsIdentity.GetCurrent();
+        return identity.User?.Value ?? Environment.UserName;
+    }
 
     public static event Action<DeepLinkAction>? DeepLinkReceived;
 
@@ -55,6 +65,20 @@ public static class DeepLinkService
     /// </summary>
     public static bool IsValidPort(int port) => port is >= 1 and <= 65535;
 
+    /// <summary>A profile name or id a link may name: 1-100 characters, none of them control characters (it reaches the log and a dialog).</summary>
+    public static bool IsValidProfileName(string? name) =>
+        !string.IsNullOrWhiteSpace(name) && name.Length <= 100 && !name.Any(char.IsControl);
+
+    /// <summary>Why a link may not make <paramref name="profile"/> the active one (the version picker's own checks), or null when it may.</summary>
+    public static string? ProfileSwitchRefusal(LauncherProfile profile)
+    {
+        if (GameVersionPolicy.IsComingNever(profile.MinecraftVersion)) return GameVersionPolicy.ComingNeverMessage;
+        if (GameVersionPolicy.IsPaused(profile.MinecraftVersion)) return GameVersionPolicy.PausedMessage;
+        if (!ProfileTools.PlayableVersions.Contains(profile.MinecraftVersion)) return $"Minecraft {profile.MinecraftVersion} is not offered on the Play screen.";
+        try { GameVersionPolicy.ResolveVersionId(profile); return null; }
+        catch (ArgumentException ex) { return ex.Message; } // a profile kept for repair: switching to it would throw in ApplyProfile
+    }
+
     /// <summary>
     /// Parses a lads:// URI string into a typed DeepLinkAction.
     /// Supports:
@@ -69,7 +93,7 @@ public static class DeepLinkService
             return new DeepLinkAction(DeepLinkActionType.None, null);
 
         uriString = uriString.Trim();
-        if (!uriString.StartsWith(ProtocolScheme + "://", StringComparison.OrdinalIgnoreCase))
+        if (uriString.Length > 2048 || !uriString.StartsWith(ProtocolScheme + "://", StringComparison.OrdinalIgnoreCase))
             return new DeepLinkAction(DeepLinkActionType.None, null);
 
         string remainder = uriString[(ProtocolScheme.Length + 3)..];
@@ -82,7 +106,9 @@ public static class DeepLinkService
         return action switch
         {
             "join" or "connect" or "server" => ParseServerAction(payload),
-            "launch" or "profile" or "play" => new DeepLinkAction(DeepLinkActionType.LaunchProfile, payload),
+            "launch" or "profile" or "play" => IsValidProfileName(payload)
+                ? new DeepLinkAction(DeepLinkActionType.LaunchProfile, payload)
+                : new DeepLinkAction(DeepLinkActionType.None, null, Extra: "Invalid profile name"),
             "install" or "modpack" => new DeepLinkAction(DeepLinkActionType.InstallPack, payload),
             _ => new DeepLinkAction(DeepLinkActionType.Unknown, action, Extra: uriString)
         };
@@ -113,11 +139,12 @@ public static class DeepLinkService
     /// Tries to forward a lads:// URI to an already-running instance over a local named pipe.
     /// Returns true if delivered to an active instance; false if no instance was listening.
     /// </summary>
-    public static async Task<bool> TryForwardToRunningInstanceAsync(string uriString)
+    public static async Task<bool> TryForwardToRunningInstanceAsync(string uriString, string? pipeName = null)
     {
         try
         {
-            using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
+            // CurrentUserOnly: refuses a pipe another user created under this name.
+            using var client = new NamedPipeClientStream(".", pipeName ?? PipeName, PipeDirection.Out, PipeOptions.CurrentUserOnly);
             await client.ConnectAsync(300);
             using var writer = new StreamWriter(client) { AutoFlush = true };
             await writer.WriteLineAsync(uriString);
@@ -140,8 +167,7 @@ public static class DeepLinkService
             {
                 try
                 {
-                    using var server = new NamedPipeServerStream(PipeName, PipeDirection.In, 1,
-                        PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                    using var server = CreateIpcServer(PipeName);
                     await server.WaitForConnectionAsync();
                     using var reader = new StreamReader(server);
                     string? line = await reader.ReadLineAsync();
@@ -159,6 +185,10 @@ public static class DeepLinkService
             }
         });
     }
+
+    /// <summary>The listening end: one instance, and only the current Windows user may open it (PipeOptions.CurrentUserOnly).</summary>
+    public static NamedPipeServerStream CreateIpcServer(string pipeName) =>
+        new(pipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
 
     /// <summary>
     /// Registers the lads:// protocol in the Windows registry (HKCU\Software\Classes\lads).
