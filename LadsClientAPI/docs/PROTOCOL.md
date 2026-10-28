@@ -39,12 +39,13 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
 ```
 - `rev`: int >= 1, increases per player per connection. Client echoes it in `ack`.
 - `unlisted`: `inherit` (default; Lads built-in rules) | `allow` | `block` for modules not in `modules`.
-  `allow` via `unlisted` never lifts **automation** modules (StackRefill, UseWhileMining, AutoReconnect, MouseTweaks): those
-  must be listed by name.
+  Since client 1.12.0 `allow` via `unlisted` is the same as `inherit` (anti-ban: it lifted gated automation the list missed):
+  a module whose safety block should lift must be listed by name.
 - `modules`: name -> `allow` | `block` | `on`.
   - `block`: module off; player can't turn it on; no "own risk" bypass.
   - `allow`: lifts the client's own safety block (HypixelSafetyManager BANNED/UNKNOWN) on this server; player still chooses.
   - `on`: forced on. Only for server-controllable modules (not automation, not Discord RPC). Otherwise ignored + reported.
+    Options of those modules, and Chat's Translate Chat / Translate To, take no rules either (ignored + reported).
 - `options`: module name -> option name -> rule (nested because option names contain dots). Rule fields, all optional:
   | field | Bool / PlayerAction | Slider | Dropdown | Color |
   |---|---|---|---|---|

@@ -210,22 +210,70 @@ class LadsApiClientTest {
     void testAutomationVsUnlistedAllow() {
         sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test\"}");
 
-        // unlisted: allow lifts regular modules, but never automation modules!
-        String policyJson = "{\"t\":\"policy\",\"rev\":6,\"unlisted\":\"allow\"}";
+        // Anti-ban: unlisted "allow" is the client default for every module; only a by-name "allow" lifts a safety block
+        String policyJson = "{\"t\":\"policy\",\"rev\":6,\"unlisted\":\"allow\",\"modules\":{\"Minimap\":\"allow\"}}";
         JsonObject ack = sendAndGetLastJson(policyJson);
         assertNotNull(ack);
 
         ServerPolicy policy = ServerPolicy.active();
-        // Automation modules stay INHERIT
-        assertEquals(ModuleState.INHERIT, policy.module("StackRefill"));
-        assertEquals(ModuleState.INHERIT, policy.module("UseWhileMining"));
-        assertEquals(ModuleState.INHERIT, policy.module("AutoReconnect"));
-        assertEquals(ModuleState.INHERIT, policy.module("MouseTweaks"));
-        assertEquals(ModuleState.INHERIT, policy.module("KeepUiOpen"));
+        for (String gated : new String[] {"StackRefill", "UseWhileMining", "AutoReconnect", "MouseTweaks", "KeepUIOpen", "Elytra Swap",
+                "Inventory Move", "Armor Swap", "Container Sorting", "Auto Text", "Creative Fly Boost", "MLG Cobweb", "Fullbright", "FPS"}) {
+            assertEquals(ModuleState.INHERIT, policy.module(gated), gated);
+        }
+        assertEquals(ModuleState.ALLOW, policy.module("Minimap"), "by name, allow still lifts the block");
+    }
 
-        // Non-automation modules get ALLOW
-        assertEquals(ModuleState.ALLOW, policy.module("FPS"));
-        assertEquals(ModuleState.ALLOW, policy.module("Fullbright"));
+    @Test
+    void testNeverForcedModulesAndPrivacyOptions() {
+        sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test\"}");
+
+        String policyJson = "{\"t\":\"policy\",\"rev\":7,\"modules\":{\"Toggle Sprint & Sneak\":\"on\",\"Elytra Swap\":\"on\",\"Inventory Move\":\"on\","
+            + "\"Armor Swap\":\"on\",\"Container Sorting\":\"on\",\"Auto Text\":\"on\",\"Creative Fly Boost\":\"on\",\"MLG Cobweb\":\"on\","
+            + "\"Server Notification Actions\":\"on\",\"Crosshair\":\"on\"},"
+            + "\"options\":{\"Chat\":{\"Translate Chat\":{\"value\":true},\"Translate To\":{\"choices\":[\"English\"]},"
+            + "\"Fuzzy Command Suggestions\":{\"value\":false}},\"DiscordRPC\":{\"Detail Level\":{\"choices\":[\"Full\"]}}}}";
+        JsonObject ack = sendAndGetLastJson(policyJson);
+        assertNotNull(ack);
+        String ignored = ack.get("ignored").getAsJsonArray().toString();
+
+        ServerPolicy policy = ServerPolicy.active();
+        for (String name : new String[] {"Toggle Sprint & Sneak", "Elytra Swap", "Inventory Move", "Armor Swap", "Container Sorting",
+                "Auto Text", "Creative Fly Boost", "MLG Cobweb", "Server Notification Actions"}) {
+            assertEquals(ModuleState.INHERIT, policy.module(name), name + " can't be forced on");
+            assertTrue(ignored.contains(name), name + " reported as ignored");
+        }
+        assertEquals(ModuleState.ON, policy.module("Crosshair"));
+
+        assertNull(policy.option("Chat", "Translate Chat"), "a server never turns on chat translation (every line goes to Google)");
+        assertNull(policy.option("Chat", "Translate To"));
+        assertNull(policy.option("DiscordRPC", "Detail Level"), "a choices limit on a privacy module would force a value");
+        assertTrue(ignored.contains("Chat.Translate Chat") && ignored.contains("DiscordRPC.Detail Level"));
+        assertNotNull(policy.option("Chat", "Fuzzy Command Suggestions"), "other Chat options stay controllable");
+    }
+
+    @Test
+    void testPresenceAndToastNeedHelloAndAreCapped() {
+        UUID id = UUID.randomUUID();
+        LadsApiClient.receive(("{\"t\":\"presence\",\"full\":true,\"add\":[\"" + id + "\"]}").getBytes(StandardCharsets.UTF_8));
+        LadsApiClient.receive("{\"t\":\"toast\",\"title\":\"Hi\"}".getBytes(StandardCharsets.UTF_8));
+        assertFalse(LadsPresence.isLads(id), "no presence from a server that never said hello");
+        assertFalse(LadsApiUi.isToastActive(), "no toast from a server that never said hello");
+
+        sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test\"}");
+        String longText = "x".repeat(100_000);
+        LadsApiClient.receive(("{\"t\":\"toast\",\"title\":\"" + longText + "\",\"message\":\"" + longText + "\","
+            + "\"actions\":[{\"label\":\"" + longText + "\",\"command\":\"/" + longText + "\"}]}").getBytes(StandardCharsets.UTF_8));
+        assertTrue(LadsApiUi.isToastActive());
+        assertEquals(64, LadsApiUi.activeToastTitle().length());
+        assertEquals(256, LadsApiUi.activeToastNotice().length());
+        assertEquals(32, LadsApiUi.activeToastActions().get(0).getLabel().length());
+        assertEquals(512, LadsApiUi.activeToastActions().get(0).getPayload().length());
+
+        List<UUID> many = new ArrayList<>();
+        for (int i = 0; i <= LadsPresence.MAX_SERVER; i++) many.add(new UUID(7, i));
+        LadsPresence.serverAdd(many);
+        assertEquals(LadsPresence.MAX_SERVER, LadsPresence.size(), "a server can't grow the badge set without bound");
+        LadsPresence.serverClear();
     }
 
     @Test
@@ -454,6 +502,7 @@ class LadsApiClientTest {
 
     @Test
     void testToastNotificationPayload() {
+        sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test\"}");
         String toastJson = "{\"t\":\"toast\",\"title\":\"Store Sale\",\"message\":\"50% off this weekend\","
             + "\"actions\":[{\"label\":\"Store\",\"url\":\"https://store.thelads.net\"}]}";
         LadsApiClient.receive(toastJson.getBytes(StandardCharsets.UTF_8));

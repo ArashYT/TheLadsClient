@@ -94,13 +94,14 @@ public final class LadsApiClient {
 
         if ("hello".equalsIgnoreCase(type)) {
             handleHello(json);
+        } else if ("reset".equalsIgnoreCase(type)) {
+            handleReset();
+        } else if (!sessionOk) {
+            return; // policy, presence and toasts only from a server that said hello (any server can use the channel)
         } else if ("policy".equalsIgnoreCase(type)) {
-            if (!sessionOk) return;
             handlePolicy(json);
         } else if ("presence".equalsIgnoreCase(type)) {
             handlePresence(json);
-        } else if ("reset".equalsIgnoreCase(type)) {
-            handleReset();
         } else if ("toast".equalsIgnoreCase(type) || "notification".equalsIgnoreCase(type)) {
             handleToast(json);
         }
@@ -190,7 +191,11 @@ public final class LadsApiClient {
         String msg = json.has("message") && json.get("message").isJsonPrimitive() ? json.get("message").getAsString()
             : (json.has("notice") && json.get("notice").isJsonPrimitive() ? json.get("notice").getAsString() : null);
         List<ToastAction> actions = parseToastActions(json.get("actions"));
-        LadsApiUi.showNotification(title, msg, actions);
+        LadsApiUi.showNotification(cap(title, 64), cap(msg, 256), actions); // the HUD measures and draws both every frame
+    }
+
+    private static String cap(String s, int max) {
+        return s != null && s.length() > max ? s.substring(0, max) : s;
     }
 
     private static List<ToastAction> parseToastActions(JsonElement element) {
@@ -216,7 +221,7 @@ public final class LadsApiClient {
             } else if (obj.has("payload") && obj.get("payload").isJsonPrimitive()) {
                 payload = obj.get("payload").getAsString();
             }
-            list.add(ToastAction.parse(label, typeStr, payload));
+            list.add(ToastAction.parse(cap(label, 32), typeStr, cap(payload, 512)));
             if (list.size() >= 4) break;
         }
         return list;
@@ -337,13 +342,11 @@ public final class LadsApiClient {
         List<String> refused = new ArrayList<>();
         boolean playerRefuses = isPlayerRefusingChanges();
 
-        ModuleState unlistedState = ModuleState.INHERIT;
+        ModuleState unlistedState = ModuleState.INHERIT; // "allow" too: never lifts a safety block (ServerPolicy.module)
         if (json.has("unlisted") && json.get("unlisted").isJsonPrimitive()) {
             String u = json.get("unlisted").getAsString();
             if ("block".equalsIgnoreCase(u)) {
                 unlistedState = ModuleState.BLOCK;
-            } else if ("allow".equalsIgnoreCase(u)) {
-                unlistedState = ModuleState.ALLOW;
             }
         }
 
@@ -455,7 +458,7 @@ public final class LadsApiClient {
                     String canonicalOptName = option.getName();
                     String fullKey = rawModName + "." + rawOptName;
 
-                    if (option.serverControl() == ServerControl.NEVER) {
+                    if (option.serverControl() == ServerControl.NEVER || LadsApiRules.isNeverForced(canonicalModName, canonicalOptName)) {
                         addLimited(ignored, fullKey);
                         continue;
                     }

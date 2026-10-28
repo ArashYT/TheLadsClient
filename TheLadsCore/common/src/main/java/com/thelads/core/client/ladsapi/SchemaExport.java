@@ -90,7 +90,9 @@ public final class SchemaExport {
 
         JsonArray optionsArray = new JsonArray();
         for (Option option : module.getOptions()) {
-            optionsArray.add(serializeOption(option));
+            JsonObject opt = serializeOption(option);
+            if (LadsApiRules.isNeverForced(module.getName(), option.getName())) opt.addProperty("control", ServerControl.NEVER.name()); // the client ignores its rules
+            optionsArray.add(opt);
         }
         obj.add("options", optionsArray);
         return obj;

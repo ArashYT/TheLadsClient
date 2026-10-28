@@ -79,12 +79,7 @@ public final class ServerPolicy {
         if (unlisted == ModuleState.BLOCK) {
             return ModuleState.BLOCK;
         }
-        if (unlisted == ModuleState.ALLOW) {
-            if (LadsApiRules.isAutomation(moduleName)) {
-                return ModuleState.INHERIT;
-            }
-            return ModuleState.ALLOW;
-        }
+        // Anti-ban: "unlisted: allow" is the client default too; lifting a safety block takes the module's name
         return ModuleState.INHERIT;
     }
 
