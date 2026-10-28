@@ -151,7 +151,8 @@ class Program
                        System.IO.FileAccess.Write, System.IO.FileShare.ReadWrite)) // MainWindow's writer keeps it open too
             using (var writer = new System.IO.StreamWriter(stream))
                 writer.WriteLine(text);
-            System.IO.File.WriteAllText(System.IO.Path.Combine(logs, "crash_ui.txt"), text);
+            if (!string.Equals(source, "task", StringComparison.OrdinalIgnoreCase))
+                System.IO.File.WriteAllText(System.IO.Path.Combine(logs, "crash_ui.txt"), text);
         }
         catch (Exception) { } // the log must never be what ends the launcher
     }

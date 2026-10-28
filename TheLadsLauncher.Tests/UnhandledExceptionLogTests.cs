@@ -44,6 +44,24 @@ public class UnhandledExceptionLogTests
         using var held = new FileStream(crash, FileMode.Open, FileAccess.Read, FileShare.None); // another process has the file open
 
         LogUnhandled.Invoke(null, new object?[] { "task", new Exception("while the file is locked") });
+        LogUnhandled.Invoke(null, new object?[] { "UI thread", new Exception("while the crash file is locked") });
         LogUnhandled.Invoke(null, new object?[] { "task", null });
+    }
+
+    [Fact]
+    public void TaskSourceDoesNotOverwriteCrashUiFile()
+    {
+        string logs = PathService.Instance.LogsDirectory;
+        Directory.CreateDirectory(logs);
+        string crash = Path.Combine(logs, "crash_ui.txt");
+        File.WriteAllText(crash, "prior UI crash");
+
+        LogUnhandled.Invoke(null, new object?[] { "task", new Exception("background task failed") });
+
+        string debug = File.ReadAllText(Path.Combine(logs, "launcher_debug.txt"));
+        Assert.Contains("[UNHANDLED task]", debug);
+        Assert.Contains("background task failed", debug);
+
+        Assert.Equal("prior UI crash", File.ReadAllText(crash));
     }
 }
