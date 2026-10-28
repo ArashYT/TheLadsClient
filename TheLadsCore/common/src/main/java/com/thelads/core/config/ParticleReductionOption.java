@@ -95,6 +95,7 @@ public final class ParticleReductionOption extends Option {
         if (!(element instanceof JsonObject object)) return;
         Map<String, Integer> next = new LinkedHashMap<>();
         for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
+            if (next.size() >= 1024) break; // more types than any pack has: a shared code could carry thousands (the editor lists them all)
             try {
                 int value = clamp(entry.getValue().getAsInt());
                 if (value != vanilla && !entry.getKey().isEmpty()) next.put(normalise(entry.getKey()), value);
