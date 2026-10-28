@@ -1314,7 +1314,7 @@ public partial class MainWindow : Window
             Guid.TryParse(settings.MicrosoftClientId, out var id) ? id.ToString() : Guid.Empty.ToString());
         _msalProvider = new AvaloniaMsalProvider(new MsalOAuthBuilder(app), this);
         _msalProvider.OnCancelRequested = () => _authCts?.Cancel();
-        loginHandler = new MicrosoftAccountService(app, _msalProvider, _pathService.BaseDirectory, _httpClient);
+        loginHandler = new MicrosoftAccountService(app, _msalProvider, _pathService.BaseDirectory, _httpClient) { Log = Log };
     }
 
     private void LoadAccounts()

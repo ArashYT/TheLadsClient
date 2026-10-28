@@ -31,6 +31,7 @@ public sealed class MicrosoftAccountService
     private readonly Func<MSession, CancellationToken, Task>? _verifyLicense;
     private readonly Dictionary<string, string> _verifiedTokens = new(StringComparer.OrdinalIgnoreCase);
     public IXboxGameAccountManager AccountManager => _handler.AccountManager;
+    public Action<string>? Log { get; set; }
 
     public MicrosoftAccountService(IPublicClientApplication app, IAuthenticationProvider provider,
         string baseDirectory, HttpClient httpClient)
@@ -88,12 +89,19 @@ public sealed class MicrosoftAccountService
                 // That account was never added by the player: it must not stay in Accounts, nor its tokens on this PC.
                 if (!savedIds.Contains(NormalizeId(session.UUID)))
                 {
-                    var unwanted = AccountManager.GetAccounts().FirstOrDefault(a =>
-                        string.Equals(NormalizeId(a.Identifier), NormalizeId(session.UUID), StringComparison.OrdinalIgnoreCase));
-                    if (unwanted != null) await _handler.Signout(unwanted);
-                    if (_app != null && savedMsal != null)
-                        foreach (var added in (await _app.GetAccountsAsync()).Where(a => !savedMsal.Contains(a.HomeAccountId?.Identifier)))
-                            await _app.RemoveAsync(added);
+                    try
+                    {
+                        var unwanted = AccountManager.GetAccounts().FirstOrDefault(a =>
+                            string.Equals(NormalizeId(a.Identifier), NormalizeId(session.UUID), StringComparison.OrdinalIgnoreCase));
+                        if (unwanted != null) await _handler.Signout(unwanted);
+                        if (_app != null && savedMsal != null)
+                            foreach (var added in (await _app.GetAccountsAsync()).Where(a => !savedMsal.Contains(a.HomeAccountId?.Identifier)))
+                                await _app.RemoveAsync(added);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log?.Invoke($"[AUTH] Could not clean up wrong account {session.UUID}: {ex.Message}");
+                    }
                 }
                 throw new InvalidOperationException("You signed in to a different Minecraft account. Select that account in the launcher or sign in again with the selected account.");
             }

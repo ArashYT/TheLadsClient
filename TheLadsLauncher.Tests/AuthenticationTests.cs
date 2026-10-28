@@ -277,6 +277,26 @@ public class AuthenticationTests
     /// <summary>Re-signing in to A while the browser is on a sibling's account B: CmlLib saves B before the launcher refuses it.
     /// B must not stay in Accounts unless the player had added it before.</summary>
     [Fact]
+    public async Task WrongBrowserAccountCleanupFailureIsLoggedAndThrowsMismatchedAccountError()
+    {
+        using var dir = new TestDirectory();
+        string sibling = Guid.NewGuid().ToString("N");
+        var backend = new FakeBackend(dir.Path, DateTime.UtcNow.AddHours(1))
+        {
+            InteractiveUuid = sibling,
+            SavesInteractiveAccount = true,
+            SignoutFailure = new IOException("Storage write failure")
+        };
+        var logs = new List<string>();
+        var service = new MicrosoftAccountService(backend) { Log = logs.Add };
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => service.AuthenticateInteractively(backend.Account));
+        Assert.Contains("different Minecraft account", error.Message);
+        Assert.Single(logs.Where(l => l.Contains("Could not clean up wrong account", StringComparison.OrdinalIgnoreCase)));
+        Assert.Contains("Storage write failure", logs.Single());
+    }
+
+    [Fact]
     public async Task WrongBrowserAccountIsNotKeptUnlessItWasAlreadySaved()
     {
         using var dir = new TestDirectory();
@@ -381,6 +401,7 @@ public class AuthenticationTests
         public bool SavesInteractiveAccount; // as CmlLib: the browser's account is saved as a new account before the caller sees it
         public Exception? SilentFailure;
         public int InteractiveCalls;
+        public Exception? SignoutFailure;
 
         public FakeBackend(string directory, DateTime expires)
         {
@@ -424,6 +445,6 @@ public class AuthenticationTests
             }
             return Task.FromResult(result);
         }
-        public Task Signout(IXboxGameAccount account) { foreach (var key in account.SessionStorage.Keys.ToArray()) account.SessionStorage.Remove(key); AccountManager.SaveAccounts(); return Task.CompletedTask; }
+        public Task Signout(IXboxGameAccount account) { if (SignoutFailure != null) throw SignoutFailure; foreach (var key in account.SessionStorage.Keys.ToArray()) account.SessionStorage.Remove(key); AccountManager.SaveAccounts(); return Task.CompletedTask; }
     }
 }
