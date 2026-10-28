@@ -297,6 +297,24 @@ public class AuthenticationTests
         Assert.NotNull(Saved(sibling));
     }
 
+    [Theory]
+    [InlineData("https://www.microsoft.com/link", "https://www.microsoft.com/link")]
+    [InlineData("https://microsoft.com/devicelogin", "https://microsoft.com/devicelogin")]
+    [InlineData("https://login.microsoftonline.com/common/oauth2/deviceauth", "https://login.microsoftonline.com/common/oauth2/deviceauth")]
+    [InlineData("https://login.live.com/oauth20_remoteconnect.srf", "https://login.live.com/oauth20_remoteconnect.srf")]
+    [InlineData("http://www.microsoft.com/link", null)]
+    [InlineData("file:///C:/Windows/System32/calc.exe", null)]
+    [InlineData("ms-settings:privacy", null)]
+    [InlineData("https://microsoft.com.evil.example/link", null)]
+    [InlineData("https://evilmicrosoft.com/link", null)]
+    [InlineData("https://microsoft.com@evil.example/link", null)]
+    [InlineData("\\\\evil.example\\share\\x.exe", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void DeviceCodeDialogOpensOnlyHttpsMicrosoftPages(string? url, string? expected) =>
+        Assert.Equal(expected ?? TheLadsLauncher.Views.DeviceCodeLoginDialog.FallbackVerificationUrl,
+            TheLadsLauncher.Views.DeviceCodeLoginDialog.SafeVerificationUrl(url));
+
     [Fact]
     public async Task ClearRemovesLoadedAndPersistedAccounts()
     {

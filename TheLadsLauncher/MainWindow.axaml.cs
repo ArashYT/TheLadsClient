@@ -6407,6 +6407,9 @@ public class AvaloniaMsalProvider : IAuthenticationProvider
                     OnCancelRequested?.Invoke();
                 });
                 CurrentDialog = dialog;
+                // A hidden (tray) owner cannot own the dialog, and a minimized one hides the code the player has to enter.
+                if (!_window.IsVisible) _window.Show();
+                if (_window.WindowState == WindowState.Minimized) _window.WindowState = WindowState.Normal;
                 dialog.Show(_window);
         });
     });
