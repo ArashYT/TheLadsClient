@@ -231,7 +231,13 @@ try {
     $listed = [IO.File]::ReadAllText((Join-Path $packages 'assets.win.json')) | ConvertFrom-Json
     if (@($listed | Where-Object { $_.RelativeFileName -like '*.nupkg' -and -not $_.RelativeFileName.Contains($own) }).Count -gt 0) { throw 'assets.win.json names a package of another version.' }
     Copy-Item -LiteralPath $notes -Destination (Join-Path $packages 'RELEASE_NOTES.md')
-    Copy-Item -LiteralPath (Join-Path $publish 'release-build.json') -Destination $packages
+    $buildInfo = Get-Content -LiteralPath (Join-Path $publish 'release-build.json') -Raw | ConvertFrom-Json
+    $pkgHashes = [ordered]@{}
+    Get-ChildItem -LiteralPath $packages -File | Sort-Object Name | ForEach-Object {
+        $pkgHashes[$_.Name] = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    $buildInfo | Add-Member -NotePropertyName 'hashes' -NotePropertyValue $pkgHashes -Force
+    [IO.File]::WriteAllText((Join-Path $packages 'release-build.json'), (ConvertTo-Json $buildInfo -Depth 5))
     Get-ChildItem -LiteralPath $packages -File | Sort-Object Name | ForEach-Object {
         '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name
     } | Set-Content -LiteralPath (Join-Path $packages 'SHA256SUMS.txt')
