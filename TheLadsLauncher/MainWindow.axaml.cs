@@ -428,11 +428,12 @@ public partial class MainWindow : Window
             }
         };
         logTimer.Start();
-        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); _usageHeartbeatTimer?.Stop(); _updateNowPulse?.Stop(); _modSearchDebounce?.Stop(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
+        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); _usageHeartbeatTimer?.Stop(); _updateNowPulse?.Stop(); _particleTimer?.Stop(); _statSmoothTimer?.Stop(); _modSearchDebounce?.Stop(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
         // Stats timer (1 second)
         _statsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statsTimer.Tick += UpdateSystemStats;
         _statsTimer.Tick += WatchModFiles;
+        _statsTimer.Tick += (_, _) => UpdateAnimationTimers();
         _statsTimer.Start();
 
         // Smoothly ease the CPU/RAM numbers toward their targets (like the FPS counter)
@@ -490,6 +491,14 @@ public partial class MainWindow : Window
             _particleTimer.Start();
         }
 
+        PropertyChanged += (s, e) =>
+        {
+            if (e.Property == WindowStateProperty || e.Property == IsVisibleProperty)
+                UpdateAnimationTimers();
+        };
+        Activated += (_, _) => UpdateAnimationTimers();
+        Deactivated += (_, _) => UpdateAnimationTimers();
+
         // Immediate toggle listener
         ParticleCheckbox.IsCheckedChanged += (s, e) =>
         {
@@ -505,16 +514,13 @@ public partial class MainWindow : Window
                     ParticleCanvas.Children.Add(_meshControl);
                     _meshControlAdded = true;
                 }
-                if (!_particleTimer.IsEnabled)
-                    _particleTimer.Start();
             }
             else
             {
-                if (_particleTimer.IsEnabled)
-                    _particleTimer.Stop();
                 ParticleCanvas.Children.Clear();
                 _meshControlAdded = false;
             }
+            UpdateAnimationTimers();
         };
 
         // Custom title bar dragging
@@ -657,6 +663,46 @@ public partial class MainWindow : Window
 
     private DispatcherTimer? _updateNowPulse;
     private string? _readyUpdateVersion; // a verified update waits for the Update button (offered again at Play)
+    private double _updateNowPulseElapsed;
+
+    private bool AnyGameRunning() => _runningProcesses.Keys.Any(IsGameRunning) || _profileService.GetProfiles().Any(p => GameRunningByMarker(_pathService.GetProfileDirectory(p)));
+
+    private void UpdateAnimationTimers()
+    {
+        if (_windowClosed) return;
+        bool shouldAnimate = IsVisible && WindowState != WindowState.Minimized && !AnyGameRunning();
+        bool activeForPulse = shouldAnimate && IsActive;
+
+        // Particle timer
+        if (shouldAnimate && settings.ShowParticles && !settings.ReducedMotion)
+        {
+            if (_particleTimer != null && !_particleTimer.IsEnabled) _particleTimer.Start();
+        }
+        else
+        {
+            _particleTimer?.Stop();
+        }
+
+        // Stat smooth timer
+        if (shouldAnimate && !settings.ReducedMotion)
+        {
+            if (_statSmoothTimer != null && !_statSmoothTimer.IsEnabled) _statSmoothTimer.Start();
+        }
+        else
+        {
+            _statSmoothTimer?.Stop();
+        }
+
+        // Update now pulse timer (pauses when minimized, inactive, or game running; stops after 10s)
+        if (activeForPulse && !settings.ReducedMotion && _readyUpdateVersion != null && _updateNowPulseElapsed < 10.0)
+        {
+            if (_updateNowPulse != null && !_updateNowPulse.IsEnabled) _updateNowPulse.Start();
+        }
+        else
+        {
+            _updateNowPulse?.Stop();
+        }
+    }
 
     /// <summary>A verified update found while the launcher is open waits for the user behind the glowing title-bar button.</summary>
     private void ShowUpdateButton(string version)
@@ -668,19 +714,32 @@ public partial class MainWindow : Window
         UpdateNowHost.IsVisible = true;
         Log($"[Updater] v{version} is ready; waiting for the Update button.");
         if (settings.ReducedMotion) return;
-        var clock = Stopwatch.StartNew();
-        _updateNowPulse = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        _updateNowPulse?.Stop();
+        _updateNowPulseElapsed = 0;
+        _updateNowPulse = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
         _updateNowPulse.Tick += (_, _) =>
         {
-            double t = clock.Elapsed.TotalSeconds;
+            _updateNowPulseElapsed += 0.033;
+            if (_updateNowPulseElapsed >= 10.0)
+            {
+                UpdateNowGlow.Opacity = 0.65;
+                if (UpdateNowShine.RenderTransform is Avalonia.Media.TransformGroup g && g.Children.Count > 1 && g.Children[1] is Avalonia.Media.TranslateTransform s)
+                {
+                    s.X = -40;
+                }
+                _updateNowPulse.Stop();
+                _updateNowPulse = null;
+                return;
+            }
+            double t = _updateNowPulseElapsed;
             UpdateNowGlow.Opacity = 0.45 + 0.4 * (0.5 + 0.5 * Math.Sin(t * Math.PI / 0.9)); // slow breathing glow
-            if (UpdateNowShine.RenderTransform is Avalonia.Media.TransformGroup group && group.Children[1] is Avalonia.Media.TranslateTransform shine)
+            if (UpdateNowShine.RenderTransform is Avalonia.Media.TransformGroup group && group.Children.Count > 1 && group.Children[1] is Avalonia.Media.TranslateTransform shine)
             {
                 double phase = t % 2.6, width = UpdateNowBtn.Bounds.Width + 60; // one sweep, then a pause
                 shine.X = phase < 0.9 ? -40 + width * (phase / 0.9) : -40;
             }
         };
-        _updateNowPulse.Start();
+        UpdateAnimationTimers();
     }
 
     private void UpdateNow_Click(object? sender, RoutedEventArgs e)
@@ -5105,7 +5164,7 @@ public partial class MainWindow : Window
             PrepareAccountSwitch(gameDirectory);
             process.Start();
             LaunchToken.Send(process);
-            _runningProcesses[process] = gameDirectory;
+            _runningProcesses[process] = gameDirectory; UpdateAnimationTimers();
             DiscordPresence.GameRunning(gameStarted = true);
             // Running marker now; on exit (once): marker removed, server list reconciled, then OnGameExitedAsync.
             var sessionMessages = optiFineWarning == null ? new List<string>() : new List<string> { optiFineWarning };
@@ -5276,7 +5335,7 @@ public partial class MainWindow : Window
         }
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            _runningProcesses.Remove(process);
+            _runningProcesses.Remove(process); UpdateAnimationTimers();
             DiscordPresence.GameRunning(_runningProcesses.Count > 0);
             ApplyNextAccountRequest(gameDirectory);
             // Cancelled from the startup splash: killed on purpose, so no crash report or auto-relaunch.
@@ -5895,10 +5954,10 @@ public partial class MainWindow : Window
             IsVisible = true
         };
 
-        _trayIcon.Clicked += (s, e) => { this.Show(); this.WindowState = WindowState.Normal; this.Activate(); };
+        _trayIcon.Clicked += (s, e) => { this.Show(); this.WindowState = WindowState.Normal; this.Activate(); UpdateAnimationTimers(); };
 
         var showItem = new NativeMenuItem("Show Launcher");
-        showItem.Click += (s, e) => { this.Show(); this.WindowState = WindowState.Normal; this.Activate(); };
+        showItem.Click += (s, e) => { this.Show(); this.WindowState = WindowState.Normal; this.Activate(); UpdateAnimationTimers(); };
 
         var exitItem = new NativeMenuItem("Exit");
         exitItem.Click += (s, e) => { FlushSettingsSave(); Environment.Exit(0); };
@@ -5929,6 +5988,33 @@ public class ParticleMeshControl : Avalonia.Controls.Control
 
 public partial class MainWindow : Window
 {
+    private static readonly Dictionary<(Color, int), SolidColorBrush> _brushBucketCache = new();
+    private static readonly Dictionary<(Color, int), Pen> _penBucketCache = new();
+
+    private static SolidColorBrush GetCachedBrush(Color color, double opacity)
+    {
+        int bucket = Math.Clamp((int)Math.Round(opacity * 50.0), 0, 50);
+        var key = (color, bucket);
+        if (!_brushBucketCache.TryGetValue(key, out var brush))
+        {
+            brush = new SolidColorBrush(color, bucket / 50.0);
+            _brushBucketCache[key] = brush;
+        }
+        return brush;
+    }
+
+    private static Pen GetCachedPen(Color color, double opacity)
+    {
+        int bucket = Math.Clamp((int)Math.Round(opacity * 50.0), 0, 50);
+        var key = (color, bucket);
+        if (!_penBucketCache.TryGetValue(key, out var pen))
+        {
+            pen = new Pen(GetCachedBrush(color, opacity), 1.0);
+            _penBucketCache[key] = pen;
+        }
+        return pen;
+    }
+
     public void DrawParticleMesh(DrawingContext context, double width, double height)
     {
         if (!settings.ShowParticles || settings.ReducedMotion) return;
@@ -5945,7 +6031,7 @@ public partial class MainWindow : Window
             {
                 double t = ring / 5.0;
                 double alpha = n.BaseOpacity * pulse * (1.0 - t) * 0.9 + 0.004;
-                var brush = new SolidColorBrush(primaryColor, alpha);
+                var brush = GetCachedBrush(primaryColor, alpha);
                 context.DrawEllipse(brush, null, new Point(n.X, n.Y), n.Radius * t, n.Radius * t * 0.78);
             }
         }
@@ -5977,7 +6063,7 @@ public partial class MainWindow : Window
                     double lineOpacity = distanceFactor * Math.Min(fadeOpacity1, fadeOpacity2) * 0.45;
                     if (lineOpacity > 0.01)
                     {
-                        var linePen = new Pen(new SolidColorBrush(primaryColor, lineOpacity), 1.0);
+                        var linePen = GetCachedPen(primaryColor, lineOpacity);
                         context.DrawLine(linePen, new Point(p1.X, p1.Y), new Point(p2.X, p2.Y));
                     }
                 }
@@ -5993,7 +6079,7 @@ public partial class MainWindow : Window
 
             if (fadeOpacity > 0.01)
             {
-                var brush = new SolidColorBrush(accentColor, fadeOpacity);
+                var brush = GetCachedBrush(accentColor, fadeOpacity);
                 context.DrawEllipse(brush, null, new Point(p.X, p.Y), p.Size / 2.0, p.Size / 2.0);
             }
         }
