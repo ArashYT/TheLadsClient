@@ -170,4 +170,42 @@ public class NbtTests
         var error = Assert.Throws<InvalidDataException>(() => MinecraftServerListReader.ReadFile(path));
         Assert.Contains(path, error.Message);
     }
+
+    [Fact]
+    public void Nbt_WhenListLengthExceedsRemainingBytes_ThrowsInvalidDataException()
+    {
+        var bytes = new Bytes().Tag(10, "").Tag(9, "hugeList").B(1).Int(50_000_000).B(1, 2, 3, 4, 5, 6, 7, 8, 9, 10).ToArray();
+        var ex = Assert.Throws<InvalidDataException>(() => Nbt.Read(bytes));
+        Assert.Contains("elements", ex.Message);
+    }
+
+    [Fact]
+    public void Nbt_WhenArrayLengthExceedsRemainingBytes_ThrowsInvalidDataException()
+    {
+        var bytes = new Bytes().Tag(10, "").Tag(7, "hugeArray").Int(10_000_000).B(1, 2, 3, 4).ToArray();
+        var ex = Assert.Throws<InvalidDataException>(() => Nbt.Read(bytes));
+        Assert.Contains("elements", ex.Message);
+    }
+
+    [Fact]
+    public void Nbt_WhenGzipBombCraftedList_ThrowsInvalidDataException()
+    {
+        var uncompressed = new Bytes().Tag(10, "").Tag(9, "bomb").B(1).Int(10_000_000).B(1, 2, 3).ToArray();
+        using var ms = new MemoryStream();
+        using (var gzip = new GZipStream(ms, CompressionMode.Compress, leaveOpen: true))
+        {
+            gzip.Write(uncompressed, 0, uncompressed.Length);
+        }
+        var ex = Assert.Throws<InvalidDataException>(() => Nbt.Read(ms.ToArray()));
+        Assert.NotNull(ex);
+    }
+
+    [Fact]
+    public void ServerListFile_ReadBytes_Enforces4MbLimit()
+    {
+        using var dir = new TestDirectory();
+        string serversDat = Path.Combine(dir.Path, "servers.dat");
+        File.WriteAllBytes(serversDat, new byte[5 * 1024 * 1024]);
+        Assert.Throws<InvalidDataException>(() => ServerListFile.ReadBytes(serversDat));
+    }
 }

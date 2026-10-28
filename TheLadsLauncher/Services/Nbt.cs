@@ -86,18 +86,20 @@ public sealed class NbtCompound : NbtTag
 public static class Nbt
 {
     private const int MaxDepth = 512;
+    public const int MaxTags = 2_000_000;
     // A real server list with ~30 servers and icons is ~220 KB; this bounds corrupt or hostile (gzip-bomb) input.
     public const int MaxBytes = 32 * 1024 * 1024;
+    public const int ServerListMaxBytes = 4 * 1024 * 1024;
 
-    internal static byte[] ReadCapped(Stream source)
+    internal static byte[] ReadCapped(Stream source, int maxBytes = MaxBytes)
     {
         using var copy = new MemoryStream();
         var buffer = new byte[81920];
         int read;
         while ((read = source.Read(buffer, 0, buffer.Length)) > 0)
         {
-            if (copy.Length + read > MaxBytes)
-                throw new InvalidDataException($"The NBT data is larger than {MaxBytes / (1024 * 1024)} MB, which no server list reaches.");
+            if (copy.Length + read > maxBytes)
+                throw new InvalidDataException($"The NBT data is larger than {maxBytes / (1024 * 1024)} MB.");
             copy.Write(buffer, 0, read);
         }
         return copy.ToArray();
@@ -241,9 +243,12 @@ public static class Nbt
 
         public string String() => DecodeModifiedUtf8(Take(BigEndian(2) & 0xFFFF));
 
+        private int _tagsRemaining = MaxTags;
+
         public NbtTag Payload(NbtTagType type, int depth)
         {
             if (depth > MaxDepth) throw new InvalidDataException("The NBT data is nested too deeply.");
+            if (--_tagsRemaining < 0) throw new InvalidDataException($"The NBT data contains more than {MaxTags} tags.");
             switch (type)
             {
                 case NbtTagType.Byte: return new NbtNumber(type, BigEndian(1));
@@ -254,12 +259,19 @@ public static class Nbt
                 case NbtTagType.ByteArray: case NbtTagType.IntArray: case NbtTagType.LongArray:
                     var count = BigEndian(4);
                     if (count < 0) throw new InvalidDataException("Negative NBT array length.");
-                    return new NbtArray(type, Take(count * ElementSize(type)).ToArray());
+                    long bytesNeeded = count * (long)ElementSize(type);
+                    if (bytesNeeded > _data.Length - Position)
+                        throw new InvalidDataException($"NBT array declares {count} elements ({bytesNeeded} bytes) but only {_data.Length - Position} bytes remain.");
+                    return new NbtArray(type, Take(bytesNeeded).ToArray());
                 case NbtTagType.List:
                     var elementType = (NbtTagType)Byte();
                     var length = BigEndian(4);
                     if (elementType > NbtTagType.LongArray || length < 0 || (elementType == NbtTagType.End && length > 0))
                         throw new InvalidDataException($"Invalid NBT list header ({elementType}, {length}).");
+                    if (length > _data.Length - Position)
+                        throw new InvalidDataException($"NBT list declares {length} elements but only {_data.Length - Position} bytes remain.");
+                    if (length > _tagsRemaining)
+                        throw new InvalidDataException($"NBT list declares {length} elements which exceeds the remaining tag budget of {_tagsRemaining}.");
                     var list = new NbtList(elementType);
                     for (var i = 0; i < length; i++) list.Items.Add(Payload(elementType, depth + 1));
                     return list;
@@ -328,7 +340,7 @@ public sealed class ServerListFile
     public static byte[] ReadBytes(string path)
     {
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-        return Nbt.ReadCapped(stream);
+        return Nbt.ReadCapped(stream, Nbt.ServerListMaxBytes);
     }
 
     public void Add(NbtCompound entry)
