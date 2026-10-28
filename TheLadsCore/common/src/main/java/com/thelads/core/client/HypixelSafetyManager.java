@@ -93,7 +93,15 @@ public final class HypixelSafetyManager {
     private static volatile String lastAddress;
     private static volatile Server lastServer = LOCAL;
     /** QA and bench runs (LADS_QA_TRUST_LOCAL=1): a server on this computer is their own test server, trusted like the LAN. */
-    private static volatile boolean trustLocal = "1".equals(System.getenv("LADS_QA_TRUST_LOCAL"));
+    private static volatile boolean trustLocal = initTrustLocal();
+
+    private static boolean initTrustLocal() {
+        boolean trust = "1".equals(System.getenv("LADS_QA_TRUST_LOCAL"));
+        if (trust) {
+            System.out.println("[TheLadsCore] local servers are trusted for QA (LADS_QA_TRUST_LOCAL=1)");
+        }
+        return trust;
+    }
     private static volatile String p2pSessionKey;
     private static volatile Server p2pServer;
     private static volatile String p2pProxyAddress;
