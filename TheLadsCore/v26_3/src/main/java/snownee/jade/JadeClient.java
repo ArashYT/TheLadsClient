@@ -123,6 +123,9 @@ public final class JadeClient {
 	}
 
 	public static void onKeyPressed(int action) {
+		if (!com.thelads.core.v26_2.feature.NativeQualityOfLife.enabled("Jade")) {
+			return;
+		}
 		Minecraft mc = Minecraft.getInstance();
 		while (JadeKeys.openConfig().consumeClick()) {
 			Jade.invalidateConfig();

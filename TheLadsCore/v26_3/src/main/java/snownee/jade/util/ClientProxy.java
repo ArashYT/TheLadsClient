@@ -102,6 +102,8 @@ public final class ClientProxy implements ClientModInitializer {
 	public static final JadeMetadata metadata = new FabricJadeMetadata();
 	private static boolean bossbarShown;
 	private static int bossbarHeight;
+	/** Lads: the Jade module's state at the last tick, to send the handshake when it turns on while connected. */
+	private static boolean ladsModuleOn;
 
 	public static Optional<String> getModName(String namespace, boolean translate) {
 		if (translate) {
@@ -152,6 +154,11 @@ public final class ClientProxy implements ClientModInitializer {
 
 	private static void onClientTick(Minecraft mc) {
 		try {
+			boolean moduleOn = com.thelads.core.v26_2.feature.NativeQualityOfLife.enabled("Jade");
+			if (moduleOn && !ladsModuleOn) {
+				handshake(mc); // switched on, or the server rules arrived, after the join: connect now
+			}
+			ladsModuleOn = moduleOn;
 			JadeClient.tickHandler().tickClient();
 		} catch (Throwable e) {
 			WailaExceptionHandler.handleErr(e, null, null);
@@ -291,9 +298,13 @@ public final class ClientProxy implements ClientModInitializer {
 		ClientPlayNetworking.send(payload);
 	}
 
-	/** Lads: once per connection, after the login (player set), on a server that can receive Jade's handshake. */
+	/**
+	 * Lads: once per connection, after the login (player set), on a server that can receive Jade's handshake, and only while the
+	 * Jade module is on (Anti-Ban: off or blocked here means no Jade packet at all).
+	 */
 	private static void handshake(Minecraft client) {
-		if (client.player == null || !ClientPlayNetworking.canSend(ClientHandshakePacket.TYPE)
+		if (client.player == null || !com.thelads.core.v26_2.feature.NativeQualityOfLife.enabled("Jade")
+				|| !ClientPlayNetworking.canSend(ClientHandshakePacket.TYPE)
 				|| ClientPlayNetworking.getReceived().contains(ServerHandshakePacket.TYPE.id())) {
 			return;
 		}
