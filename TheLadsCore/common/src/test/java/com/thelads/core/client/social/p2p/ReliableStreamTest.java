@@ -135,6 +135,8 @@ public class ReliableStreamTest {
     public void throughputAtLeast4MBpsOnLoopback() throws Exception {
         DatagramSocket sockA = new DatagramSocket(0, InetAddress.getByName("127.0.0.1"));
         DatagramSocket sockB = new DatagramSocket(0, InetAddress.getByName("127.0.0.1"));
+        sockA.setReceiveBufferSize(IceAgent.RECEIVE_BUFFER); // as IceAgent's sockets: a whole window fits
+        sockB.setReceiveBufferSize(IceAgent.RECEIVE_BUFFER);
 
         int portA = sockA.getLocalPort();
         int portB = sockB.getLocalPort();
@@ -285,6 +287,107 @@ public class ReliableStreamTest {
         } finally {
             stream.close();
         }
+    }
+
+    /**
+     * One direction of a simulated internet path: one-way delay, random loss, and optionally a bottleneck (bytes/s) whose drop-tail
+     * queue holds queueBytes. Counts the data packets it carries, and how many were resends of a sequence number already sent.
+     */
+    private static final class SimLink implements ReliableStream.DatagramSender {
+        private final long delayNanos;
+        private final double loss;
+        private final long bytesPerSecond;
+        private final long queueBytes;
+        private final Random random;
+        private final java.util.concurrent.ScheduledExecutorService wire = java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+        private final java.util.Set<Integer> seen = new java.util.HashSet<>();
+        private long busyUntil = System.nanoTime();
+        volatile ReliableStream to;
+        int dataPackets, resends;
+
+        SimLink(long delayMs, double loss, long bytesPerSecond, long queueBytes, long seed) {
+            this.delayNanos = TimeUnit.MILLISECONDS.toNanos(delayMs);
+            this.loss = loss;
+            this.bytesPerSecond = bytesPerSecond;
+            this.queueBytes = queueBytes;
+            this.random = new Random(seed);
+        }
+
+        @Override
+        public synchronized void send(byte[] data, int off, int len) {
+            if ((data[off] & ReliableStream.FLAG_DATA) != 0 && len > ReliableStream.BASE_HEADER_SIZE) {
+                dataPackets++;
+                if (!seen.add(StunMessage.getIntBE(data, off + 4))) resends++;
+            }
+            long now = System.nanoTime(), departs = now;
+            if (bytesPerSecond > 0) {
+                long start = Math.max(now, busyUntil);
+                if ((start - now) * bytesPerSecond / 1_000_000_000L > queueBytes) return; // the router's queue is full
+                departs = busyUntil = start + len * 1_000_000_000L / bytesPerSecond;
+            }
+            if (random.nextDouble() < loss) return;
+            byte[] copy = java.util.Arrays.copyOfRange(data, off, off + len);
+            wire.schedule(() -> to.onDatagramReceived(copy, 0, copy.length), departs - now + delayNanos, TimeUnit.NANOSECONDS);
+        }
+
+        synchronized String stats() {
+            return dataPackets + " data packets, " + resends + " resends";
+        }
+    }
+
+    /** Sends size bytes A to B over the two links; returns the milliseconds until B read them all intact. */
+    private static long transfer(SimLink aToB, SimLink bToA, int size) throws Exception {
+        ReliableStream a = new ReliableStream(aToB);
+        ReliableStream b = new ReliableStream(bToA);
+        aToB.to = b;
+        bToA.to = a;
+        try {
+            byte[] sent = new byte[size];
+            new Random(7).nextBytes(sent);
+            long start = System.currentTimeMillis();
+            CompletableFuture<byte[]> received = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return b.getInputStream().readNBytes(size);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            a.getOutputStream().write(sent);
+            a.getOutputStream().flush();
+            assertArrayEquals(sent, received.get(60, TimeUnit.SECONDS));
+            return System.currentTimeMillis() - start;
+        } finally {
+            a.close();
+            b.close();
+            aToB.wire.shutdownNow();
+            bToA.wire.shutdownNow();
+        }
+    }
+
+    /** B1: 100 ms RTT, nothing lost: the RTT comes from our own clock now, so nothing is sent twice (was: most packets 2-3 times). */
+    @Test
+    public void noResendsOnA100msPath() throws Exception {
+        SimLink aToB = new SimLink(50, 0, 0, 0, 1), bToA = new SimLink(50, 0, 0, 0, 2);
+        transfer(aToB, bToA, 1024 * 1024);
+        assertTrue(aToB.resends <= aToB.dataPackets / 100, aToB.stats());
+    }
+
+    /** B1: a 16 Mbit/s uplink with a deep queue: RTT climbs as the window queues up and the RTO follows it instead of resending. */
+    @Test
+    public void queueingDelayDoesNotCauseResends() throws Exception {
+        SimLink aToB = new SimLink(25, 0, 2_000_000, 1_000_000, 3), bToA = new SimLink(25, 0, 0, 0, 4);
+        long ms = transfer(aToB, bToA, 2 * 1024 * 1024);
+        assertTrue(aToB.resends <= aToB.dataPackets / 50, aToB.stats());
+        assertTrue(ms < 10_000, "2 MB at 2 MB/s took " + ms + " ms");
+    }
+
+    /** B1: 100 ms RTT and 3% loss both ways: lost packets are resent (SACK, then RTO), and little else is. */
+    @Test
+    public void lossOnA100msPathResendsAboutWhatWasLost() throws Exception {
+        SimLink aToB = new SimLink(50, 0.03, 0, 0, 5), bToA = new SimLink(50, 0.03, 0, 0, 6);
+        long ms = transfer(aToB, bToA, 1024 * 1024);
+        assertTrue(aToB.resends <= aToB.dataPackets / 10, aToB.stats());
+        assertTrue(ms < 30_000, "1 MB took " + ms + " ms");
     }
 
     /** F2 (PocStall): a peer that only PINGs while never ACKing kept the stream alive forever; now no ACK progress ends it. */

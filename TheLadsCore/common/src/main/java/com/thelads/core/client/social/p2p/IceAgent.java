@@ -38,6 +38,8 @@ public final class IceAgent implements AutoCloseable {
     static final int MAX_SIGNAL_CANDIDATES = 16, MAX_REMOTE_CANDIDATES = 32, MAX_PENDING_CHECKS = 512;
     static final long CHECK_PACE_MS = 20;
     static final long SIGNAL_RESEND_MS = 1_000, SIGNAL_RESEND_FOR_MS = 10_000;
+    /** UDP receive buffer: a whole ReliableStream window (~300 KB) fits; Windows' 64 KB default dropped bursts on LAN-fast paths. */
+    static final int RECEIVE_BUFFER = 1 << 20;
     private static final Pattern ICE_CHARS = Pattern.compile("[A-Za-z0-9+/]+");
     private static final Pattern IPV4 = Pattern.compile("(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}");
     private static final Pattern IPV6 = Pattern.compile("[0-9A-Fa-f:.]{2,45}");
@@ -125,6 +127,7 @@ public final class IceAgent implements AutoCloseable {
         this.config = config == null ? new P2PSession.IceConfig(Collections.emptyList(), Collections.emptyList(), false) : config;
         this.sendSignal = sendSignal;
         this.socket = socket;
+        socket.setReceiveBufferSize(RECEIVE_BUFFER);
 
         this.localUfrag = randomString(8);
         this.localPwd = randomString(22);

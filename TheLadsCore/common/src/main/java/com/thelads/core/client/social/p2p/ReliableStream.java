@@ -15,7 +15,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * - 1200-byte max datagram payload
  * - Sliding window of 256 packets
  * - Selective ACK (SACK) with fast retransmit
- * - Jacobson/Karels RTO estimation from RTT (min 50 ms)
+ * - RFC 6298 RTO from RTTs on our own clock (Karn: never a retransmitted packet), 1 s until the first sample, exponential backoff
  * - Keepalive every 5 s, dead after 15 s silence
  * - Zero allocations per packet in steady state (reusable buffer slots)
  * - One reader/receiver thread + one timer thread per session (MIN_PRIORITY + 1, daemon)
@@ -34,6 +34,9 @@ public final class ReliableStream implements AutoCloseable {
     public static final int FLAG_PING     = 0x04;
     public static final int FLAG_PONG     = 0x08;
     public static final int FLAG_FIN      = 0x10;
+
+    /** RTO in ms: 1 s before any sample; the variance term never under 200 ms (Linux's tcp_rto_min), so a steady path keeps slack. */
+    static final long INITIAL_RTO = 1000, MIN_RTO = 200, MAX_RTO = 3000;
 
     @FunctionalInterface
     public interface DatagramSender {
@@ -75,10 +78,10 @@ public final class ReliableStream implements AutoCloseable {
     private int sndNxt = 0;
     private volatile long lastSentTime = System.currentTimeMillis();
 
-    // RTO state (Jacobson/Karels)
-    private long srtt = 0;
-    private long rttvar = 0;
-    private long baseRto = 50; // ms, min 50
+    // RTO state (RFC 6298, under txLock): RTT = our send time to the ACK, never the header timestamp (the peer's wall clock)
+    private double srtt = -1; // ms; -1 until the first sample
+    private double rttvar = 0;
+    private long baseRto = INITIAL_RTO;
 
     // Receiver state
     private final ReentrantLock rxLock = new ReentrantLock();
@@ -173,7 +176,6 @@ public final class ReliableStream implements AutoCloseable {
         int dataLen = ((data[offset + 2] & 0xFF) << 8) | (data[offset + 3] & 0xFF);
         int seq = StunMessage.getIntBE(data, offset + 4);
         int ack = StunMessage.getIntBE(data, offset + 8);
-        int timestamp = StunMessage.getIntBE(data, offset + 12);
 
         int headerLen = BASE_HEADER_SIZE + sackCount * 8;
         if (dataLen > MAX_PAYLOAD_SIZE || headerLen + dataLen > length) return;
@@ -184,7 +186,7 @@ public final class ReliableStream implements AutoCloseable {
         }
 
         if ((flags & (FLAG_ACK | FLAG_DATA | FLAG_FIN | FLAG_PONG)) != 0) {
-            handleAck(ack, rxSackMask, actualSacks, timestamp);
+            handleAck(ack, rxSackMask, actualSacks);
         }
 
         if ((flags & FLAG_FIN) != 0) {
@@ -249,26 +251,13 @@ public final class ReliableStream implements AutoCloseable {
         }
     }
 
-    private void handleAck(int ack, long[] sackMask, int sackCount, int timestamp) {
+    private void handleAck(int ack, long[] sackMask, int sackCount) {
         int toRetransmitCount = 0;
+        long now = System.currentTimeMillis();
 
         txLock.lock();
         try {
-            if (timestamp > 0) {
-                int nowTs = (int) (System.currentTimeMillis() & 0xFFFFFFFFL);
-                long rtt = nowTs - timestamp;
-                if (rtt >= 0 && rtt < 10000) {
-                    if (srtt == 0) {
-                        srtt = rtt;
-                        rttvar = rtt / 2;
-                    } else {
-                        rttvar = (3 * rttvar + Math.abs(srtt - rtt)) / 4;
-                        srtt = (7 * srtt + rtt) / 8;
-                    }
-                    baseRto = Math.max(50, Math.min(3000, srtt + 4 * rttvar));
-                }
-            }
-
+            long sampleSent = -1; // send time of the newest packet this ACK covers first; never a retransmitted one (Karn)
             int diff = ack - sndUna;
             int unacked = sndNxt - sndUna;
 
@@ -280,6 +269,7 @@ public final class ReliableStream implements AutoCloseable {
                     int slotIdx = seqToFree & WINDOW_MASK;
                     TxSlot slot = txSlots[slotIdx];
                     if (slot.inUse && slot.seq == seqToFree) {
+                        if (!slot.sacked && slot.retransmits == 0) sampleSent = slot.sendTimeMs;
                         slot.inUse = false;
                         slot.sacked = false;
                     }
@@ -301,6 +291,7 @@ public final class ReliableStream implements AutoCloseable {
                         if (currentUnacked > 0 && sackDiff >= 0 && sackDiff < currentUnacked) {
                             TxSlot s = txSlots[sackedSeq & WINDOW_MASK];
                             if (s.inUse && s.seq == sackedSeq) {
+                                if (!s.sacked && s.retransmits == 0) sampleSent = s.sendTimeMs;
                                 s.sacked = true;
                                 if (sackedSeq - highestSacked > 0) {
                                     highestSacked = sackedSeq;
@@ -311,9 +302,10 @@ public final class ReliableStream implements AutoCloseable {
                 }
             }
 
+            if (sampleSent >= 0) updateRto(now - sampleSent);
+
             // Immediate Fast Retransmit: only retransmit un-sacked packets that haven't been retransmitted yet!
             if (highestSacked - ack > 0) {
-                long now = System.currentTimeMillis();
                 for (int s = sndUna; (highestSacked - s) > 0 && toRetransmitCount < txRetransmitBuf.length; s++) {
                     TxSlot slot = txSlots[s & WINDOW_MASK];
                     if (slot.inUse && slot.seq == s && !slot.sacked) {
@@ -347,6 +339,19 @@ public final class ReliableStream implements AutoCloseable {
                 }
             }
         }
+    }
+
+    /** RFC 6298 (2.2-2.4) with one RTT sample in ms; under txLock. A new sample also ends a timeout backoff. */
+    private void updateRto(long rtt) {
+        if (rtt < 0) return; // the wall clock stepped back
+        if (srtt < 0) {
+            srtt = rtt;
+            rttvar = rtt / 2.0;
+        } else {
+            rttvar = 0.75 * rttvar + 0.25 * Math.abs(srtt - rtt);
+            srtt = 0.875 * srtt + 0.125 * rtt;
+        }
+        baseRto = Math.min(MAX_RTO, (long) (srtt + Math.max(MIN_RTO, 4 * rttvar)));
     }
 
     private void sendAck() {
@@ -444,8 +449,10 @@ public final class ReliableStream implements AutoCloseable {
                         if (now - slot.sendTimeMs >= slot.slotRto) {
                             timerRetransmitBuf[count++] = s;
                             slot.sendTimeMs = now;
-                            slot.slotRto = Math.min(3000, slot.slotRto * 2);
+                            slot.slotRto = Math.min(MAX_RTO, slot.slotRto * 2);
                             slot.retransmits++;
+                            // RFC 6298 5.5: the oldest packet timed out: back off for new packets too until a sample (Karn)
+                            if (s == sndUna) baseRto = Math.min(MAX_RTO, baseRto * 2);
                         }
                     }
                 }
