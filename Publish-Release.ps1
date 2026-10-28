@@ -1,11 +1,94 @@
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param(
     [switch]$PrepareOnly,
     [switch]$SkipCoreBuild,
+    [switch]$Publish,
     [switch]$Draft
 )
 $ErrorActionPreference = 'Stop'
 $repo = 'ArashYT/TheLadsClient'
+
+function Assert-ReleaseSignature {
+    param(
+        [string]$Tag,
+        [string]$Repo,
+        [string]$Version,
+        [string]$WorkDir
+    )
+    $remote = & gh release view $Tag --repo $Repo --json assets | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0) { throw "Unable to verify assets of release $Tag." }
+    $assetNames = @($remote.assets | ForEach-Object { $_.name })
+    if ($assetNames -notcontains 'lads-update.json' -or $assetNames -notcontains 'lads-update.json.sig') {
+        throw "Cannot publish ${Tag}: signature assets (lads-update.json, lads-update.json.sig) are missing. Run tools/Sign-Release.ps1 first."
+    }
+    $sigDir = Join-Path $WorkDir 'sig-verify'
+    New-Item -ItemType Directory -Path $sigDir -Force | Out-Null
+    & gh release download $Tag --repo $Repo --pattern 'lads-update.json*' --dir $sigDir
+    if ($LASTEXITCODE -ne 0) { throw "Failed to download signature assets for $Tag." }
+
+    $manifestBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'lads-update.json'))
+    $sigBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'lads-update.json.sig'))
+
+    $updateSigPath = Join-Path $PSScriptRoot 'TheLadsLauncher/UpdateSignature.cs'
+    $sigCs = Get-Content -LiteralPath $updateSigPath -Raw
+    $m = [regex]::Match($sigCs, '(?s)ReleasePublicKeys.*?=\s*new\[\]\s*\{(.*?)\};')
+    $pinnedKeys = @([regex]::Matches($m.Groups[1].Value, '"([A-Za-z0-9+/=]{40,})"') | ForEach-Object { $_.Groups[1].Value })
+    if ($pinnedKeys.Count -eq 0) { throw 'No pinned public keys found in UpdateSignature.cs.' }
+
+    $verified = $false
+    foreach ($pubKey in $pinnedKeys) {
+        $ecdsa = [Security.Cryptography.ECDsa]::Create()
+        try {
+            $read = 0
+            $ecdsa.ImportSubjectPublicKeyInfo([Convert]::FromBase64String($pubKey), [ref]$read)
+            if ($ecdsa.VerifyData($manifestBytes, $sigBytes, [Security.Cryptography.HashAlgorithmName]::SHA256)) {
+                $verified = $true
+                break
+            }
+        } finally {
+            $ecdsa.Dispose()
+        }
+    }
+    if (-not $verified) {
+        throw "Cannot publish ${Tag}: lads-update.json signature does not verify against any pinned public key."
+    }
+
+    $statement = [Text.Encoding]::UTF8.GetString($manifestBytes) | ConvertFrom-Json
+    if ($statement.version -ne $Version) {
+        throw "Cannot publish ${Tag}: signature manifest is for version $($statement.version), expected $Version."
+    }
+    $expectedPackage = "TheLadsClient-$Version-full.nupkg"
+    if ($statement.package -ne $expectedPackage) {
+        throw "Cannot publish ${Tag}: signature manifest is for package $($statement.package), expected $expectedPackage."
+    }
+    if ($assetNames -contains 'SHA256SUMS.txt') {
+        if ($assetNames -notcontains 'SHA256SUMS.txt.sig') {
+            throw "Cannot publish ${Tag}: SHA256SUMS.txt is present but SHA256SUMS.txt.sig is missing. Run tools/Sign-Release.ps1 first."
+        }
+        & gh release download $Tag --repo $Repo --pattern 'SHA256SUMS.txt*' --dir $sigDir
+        if ($LASTEXITCODE -ne 0) { throw "Failed to download SHA256SUMS assets for $Tag." }
+        $sumsBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'SHA256SUMS.txt'))
+        $sumsSigBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'SHA256SUMS.txt.sig'))
+        $sumsVerified = $false
+        foreach ($pubKey in $pinnedKeys) {
+            $ecdsa = [Security.Cryptography.ECDsa]::Create()
+            try {
+                $read = 0
+                $ecdsa.ImportSubjectPublicKeyInfo([Convert]::FromBase64String($pubKey), [ref]$read)
+                if ($ecdsa.VerifyData($sumsBytes, $sumsSigBytes, [Security.Cryptography.HashAlgorithmName]::SHA256)) {
+                    $sumsVerified = $true
+                    break
+                }
+            } finally {
+                $ecdsa.Dispose()
+            }
+        }
+        if (-not $sumsVerified) {
+            throw "Cannot publish ${Tag}: SHA256SUMS.txt signature does not verify against any pinned public key."
+        }
+    }
+    Write-Host "Verified release signature for $Tag against pinned public key."
+}
 Push-Location -LiteralPath $PSScriptRoot
 try {
     [xml]$project = Get-Content -LiteralPath 'TheLadsLauncher/TheLadsLauncher.csproj' -Raw
@@ -30,8 +113,32 @@ try {
         if ($LASTEXITCODE -ne 0 -or $tagCommit -ne $commit) { throw "Create $tag on the current commit and push it before releasing." }
         $remoteTag = @(git ls-remote origin "refs/tags/$tag" "refs/tags/$tag^{}")
         if ($LASTEXITCODE -ne 0 -or -not ($remoteTag | Where-Object { $_ -match "^$commit\s" })) { throw 'The release tag must point to this commit on origin.' }
-        cmd /c "gh release view $tag --repo $repo >nul 2>&1"
-        if ($LASTEXITCODE -eq 0) { throw "Release $tag already exists. Choose a new version; never replace published packages." }
+        $viewOutput = & gh release view $tag --repo $repo --json isDraft,assets 2>$null
+        if ($LASTEXITCODE -eq 0 -and $viewOutput) {
+            $existing = $viewOutput | ConvertFrom-Json
+            if (-not $existing.isDraft) {
+                throw "Release $tag already exists and is published. Choose a new version; never replace published packages."
+            }
+            if ($Publish) {
+                Write-Host "Draft $tag already exists on GitHub. Verifying signatures before publishing..."
+                $verifyWork = Join-Path ([IO.Path]::GetTempPath()) ("lads-pub-" + [guid]::NewGuid().ToString('N'))
+                New-Item -ItemType Directory -Path $verifyWork -Force | Out-Null
+                try {
+                    Assert-ReleaseSignature -Tag $tag -Repo $repo -Version $version -WorkDir $verifyWork
+                    if ($PSCmdlet.ShouldProcess($tag, "Publish release and mark latest")) {
+                        & gh release edit $tag --repo $repo --draft=false --latest
+                        if ($LASTEXITCODE -ne 0) { throw "Failed to publish release $tag." }
+                    }
+                    Write-Host "Release $tag published to https://github.com/$repo/releases"
+                    Write-Host "Installed clients will update automatically."
+                    return
+                } finally {
+                    Remove-Item -LiteralPath $verifyWork -Recurse -Force -ErrorAction SilentlyContinue
+                }
+            } else {
+                throw "Release draft $tag already exists. Choose a new version, or publish the signed draft with -Publish."
+            }
+        }
     }
 
     $work = Join-Path $PSScriptRoot ('artifacts/releases/' + $version + '-' + [guid]::NewGuid().ToString('N'))
@@ -142,12 +249,16 @@ try {
     foreach ($asset in Get-ChildItem -LiteralPath $packages -File) {
         if (-not ($remote.assets | Where-Object { $_.name -eq $asset.Name -and $_.size -eq $asset.Length })) { throw "Draft asset missing or wrong size: $($asset.Name)" }
     }
-    if ($Draft) {
+    if (-not $Publish) {
         Write-Host "Draft ready: https://github.com/$repo/releases"
-        Write-Host "Review notes and assets, then publish $tag as the latest stable release. Installed clients will update automatically."
+        Write-Host "Review notes and assets, then sign the release with tools/Sign-Release.ps1 -Version $version."
+        Write-Host "After signing, publish with: ./Publish-Release.ps1 -Publish"
     } else {
-        & gh release edit $tag --repo $repo --draft=false --latest
-        if ($LASTEXITCODE -ne 0) { throw "Failed to publish release $tag." }
+        Assert-ReleaseSignature -Tag $tag -Repo $repo -Version $version -WorkDir $work
+        if ($PSCmdlet.ShouldProcess($tag, "Publish release and mark latest")) {
+            & gh release edit $tag --repo $repo --draft=false --latest
+            if ($LASTEXITCODE -ne 0) { throw "Failed to publish release $tag." }
+        }
         Write-Host "Release $tag published to https://github.com/$repo/releases"
         Write-Host "Installed clients will update automatically."
     }
