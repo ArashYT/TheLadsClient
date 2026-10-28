@@ -428,7 +428,7 @@ public partial class MainWindow : Window
             }
         };
         logTimer.Start();
-        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); _usageHeartbeatTimer?.Stop(); _updateNowPulse?.Stop(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
+        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); _usageHeartbeatTimer?.Stop(); _updateNowPulse?.Stop(); _modSearchDebounce?.Stop(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
         // Stats timer (1 second)
         _statsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statsTimer.Tick += UpdateSystemStats;
@@ -3894,18 +3894,29 @@ public partial class MainWindow : Window
 
     private void RefreshMods_Click(object? sender, RoutedEventArgs e) => ReloadModsInventory();
 
+    private DispatcherTimer? _modSearchDebounce;
+
     private void ModNameSearch_TextChanged(object? sender, TextChangedEventArgs e)
     {
-        if (!_resettingModFilters) RenderModsInventory();
+        if (_resettingModFilters) return;
+        _modSearchDebounce ??= new DispatcherTimer(TimeSpan.FromMilliseconds(150), DispatcherPriority.Background, (_, _) =>
+        {
+            _modSearchDebounce!.Stop();
+            RenderModsInventory();
+        });
+        _modSearchDebounce.Stop();
+        _modSearchDebounce.Start();
     }
 
     private void ModsFilter_Changed(object? sender, SelectionChangedEventArgs e)
     {
+        _modSearchDebounce?.Stop();
         if (!_resettingModFilters) RenderModsInventory();
     }
 
     private void SetModFilters(int filter, string search)
     {
+        _modSearchDebounce?.Stop();
         _resettingModFilters = true;
         try
         {
