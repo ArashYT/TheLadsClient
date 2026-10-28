@@ -1,5 +1,6 @@
 package com.thelads.ladsapi.command;
 
+import com.thelads.ladsapi.schema.LadsSchema;
 import com.thelads.ladsapi.LadsCore;
 import com.thelads.ladsapi.api.LadsClientAPI;
 import com.thelads.ladsapi.api.LadsPlayer;
@@ -92,6 +93,53 @@ public final class LadsCommandHandler {
         return lines;
     }
 
+    record ResolvedTarget(String module, String option) {}
+
+    static ResolvedTarget resolveTarget(LadsSchema schema, String target) {
+        if (target == null || target.isBlank()) return null;
+
+        if (schema != null && schema.getModules() != null) {
+            // 1. Check if target matches a module name exactly (case-insensitive)
+            for (LadsSchema.SchemaModule mod : schema.getModules()) {
+                if (mod.getName().equalsIgnoreCase(target)) {
+                    return new ResolvedTarget(mod.getName(), null);
+                }
+            }
+
+            // 2. Check if target is Module.Option (longest module prefix wins)
+            LadsSchema.SchemaModule bestMod = null;
+            String matchedOptName = null;
+            for (LadsSchema.SchemaModule mod : schema.getModules()) {
+                String modPrefix = mod.getName().toLowerCase() + ".";
+                if (target.toLowerCase().startsWith(modPrefix)) {
+                    if (bestMod == null || mod.getName().length() > bestMod.getName().length()) {
+                        String optPart = target.substring(modPrefix.length());
+                        if (mod.getOptions() != null) {
+                            for (LadsSchema.SchemaOption opt : mod.getOptions()) {
+                                if (opt.getName().equalsIgnoreCase(optPart)) {
+                                    bestMod = mod;
+                                    matchedOptName = opt.getName();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (bestMod != null) {
+                return new ResolvedTarget(bestMod.getName(), matchedOptName);
+            }
+            return null; // Unknown module/option
+        }
+
+        // Fallback when schema is unavailable
+        int dot = target.lastIndexOf('.');
+        if (dot > 0 && dot < target.length() - 1) {
+            return new ResolvedTarget(target.substring(0, dot), target.substring(dot + 1));
+        }
+        return new ResolvedTarget(target, null);
+    }
+
     private static List<String> handleSet(LadsCore core, String[] args) {
         if (args.length < 4) {
             return List.of("§cUsage: /ladsapi set <player> <Module> <state> OR /ladsapi set <player> <Module.Option> <rule>");
@@ -106,14 +154,17 @@ public final class LadsCommandHandler {
         }
         LadsPlayer lp = optLp.get();
 
-        String target = args[2];
-        String ruleVal = args[3];
+        String target = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length - 1));
+        String ruleVal = args[args.length - 1];
 
-        if (target.contains(".")) {
-            // Module.Option
-            int dot = target.indexOf('.');
-            String module = target.substring(0, dot);
-            String option = target.substring(dot + 1);
+        ResolvedTarget resolved = resolveTarget(core.schema(), target);
+        if (resolved == null) {
+            return List.of("§cUnknown module or option: " + target);
+        }
+
+        if (resolved.option != null) {
+            String module = resolved.module;
+            String option = resolved.option;
 
             String lower = ruleVal.toLowerCase();
             if (lower.startsWith("max=")) {
@@ -136,19 +187,19 @@ public final class LadsCommandHandler {
             } else {
                 lp.force(module, option, parseScalarValue(ruleVal));
             }
-            return List.of("§aSet " + target + " to " + ruleVal + " for " + handle.name());
+            return List.of("§aSet " + module + "." + option + " to " + ruleVal + " for " + handle.name());
         } else {
-            // Module state
+            String module = resolved.module;
             String state = ruleVal.toLowerCase();
             switch (state) {
-                case "allow" -> lp.allow(target);
-                case "block" -> lp.block(target);
-                case "on" -> lp.forceOn(target);
+                case "allow" -> lp.allow(module);
+                case "block" -> lp.block(module);
+                case "on" -> lp.forceOn(module);
                 default -> {
                     return List.of("§cInvalid state: " + ruleVal + " (expected: allow | block | on)");
                 }
             }
-            return List.of("§aSet module " + target + " state to " + state + " for " + handle.name());
+            return List.of("§aSet module " + module + " state to " + state + " for " + handle.name());
         }
     }
 

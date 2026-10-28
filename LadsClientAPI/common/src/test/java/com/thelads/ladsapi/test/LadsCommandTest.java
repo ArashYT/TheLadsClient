@@ -1,0 +1,107 @@
+package com.thelads.ladsapi.test;
+
+import com.thelads.ladsapi.LadsCore;
+import com.thelads.ladsapi.api.LadsClientAPI;
+import com.thelads.ladsapi.api.LadsPlayer;
+import com.thelads.ladsapi.rules.ModuleRule;
+import com.thelads.ladsapi.rules.RuleOption;
+import com.thelads.ladsapi.session.LadsSession;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+public class LadsCommandTest {
+    private FakePlatform platform;
+    private LadsCore core;
+    private FakePlayerHandle player;
+
+    @BeforeEach
+    public void setup(@TempDir Path tempDir) {
+        platform = new FakePlatform("paper", false, tempDir);
+        core = LadsCore.start(platform);
+        assertNotNull(core);
+
+        player = new FakePlayerHandle(UUID.randomUUID(), "Steve", "world");
+        platform.addPlayer(player);
+        core.join(player);
+
+        // Send hello to complete handshake
+        String hello = "{\"t\":\"hello\",\"v\":1,\"lads\":\"1.9.13\",\"mc\":\"26.3\"}";
+        core.receive(player, hello.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @AfterEach
+    public void teardown() {
+        if (core != null) {
+            core.stop();
+        }
+    }
+
+    @Test
+    public void testSetMultiWordModule() {
+        List<String> res = core.command(new String[]{"set", "Steve", "Crosshair", "Tweaks", "block"}, true);
+        assertEquals(1, res.size());
+        assertTrue(res.get(0).contains("Set module Crosshair Tweaks state to block"));
+
+        Optional<LadsPlayer> lp = LadsClientAPI.get().player(player.uuid());
+        assertTrue(lp.isPresent());
+        LadsSession session = core.sessionManager().getSessions().get(player.uuid());
+        ModuleRule rule = session.getApiOverrides().get("Crosshair Tweaks");
+        assertNotNull(rule);
+        assertEquals("block", rule.getState());
+    }
+
+    @Test
+    public void testSetMultiWordModuleAndOption() {
+        List<String> res = core.command(new String[]{"set", "Steve", "Crosshair", "Tweaks.Outline", "Color", "value=#FF0000"}, true);
+        assertEquals(1, res.size());
+        assertTrue(res.get(0).contains("Set Crosshair Tweaks.Outline Color to value=#FF0000"));
+
+        LadsSession session = core.sessionManager().getSessions().get(player.uuid());
+        ModuleRule rule = session.getApiOverrides().get("Crosshair Tweaks");
+        assertNotNull(rule);
+        RuleOption opt = rule.getOption("Outline Color");
+        assertNotNull(opt);
+        assertEquals("#FF0000", opt.getValue());
+    }
+
+    @Test
+    public void testSetModuleWithDotsAndOptions() {
+        List<String> res = core.command(new String[]{"set", "Steve", "1.7", "Animations.1.7", "sword", "block", "pose", "value=false"}, true);
+        assertEquals(1, res.size());
+        assertTrue(res.get(0).contains("Set 1.7 Animations.1.7 sword block pose"));
+
+        LadsSession session = core.sessionManager().getSessions().get(player.uuid());
+        ModuleRule rule = session.getApiOverrides().get("1.7 Animations");
+        assertNotNull(rule);
+        RuleOption opt = rule.getOption("1.7 sword block pose");
+        assertNotNull(opt);
+        assertEquals(false, opt.getValue());
+    }
+
+    @Test
+    public void testSetUnknownModuleReportsError() {
+        List<String> res = core.command(new String[]{"set", "Steve", "BogusModule", "block"}, true);
+        assertEquals(1, res.size());
+        assertTrue(res.get(0).contains("Unknown module or option: BogusModule"));
+
+        LadsSession session = core.sessionManager().getSessions().get(player.uuid());
+        assertFalse(session.getApiOverrides().containsKey("BogusModule"));
+    }
+
+    @Test
+    public void testSetUnknownOptionReportsError() {
+        List<String> res = core.command(new String[]{"set", "Steve", "Fullbright.BogusOption", "value=1"}, true);
+        assertEquals(1, res.size());
+        assertTrue(res.get(0).contains("Unknown module or option: Fullbright.BogusOption"));
+    }
+}
