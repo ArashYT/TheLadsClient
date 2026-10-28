@@ -538,7 +538,7 @@ public class LadsSMPUnitTest {
         assertTrue(f.noFeatherTrample);
         assertTrue(f.enchantingCommands);
         assertTrue(f.stonecutterDamage);
-        assertTrue(f.noSpeedLimit);
+        assertFalse(f.noSpeedLimit); // A/2: imfast is off by default (and only a bounded 4x relax when on)
         assertTrue(f.loginProtection);
         assertEquals(50, f.loginProtectionSeconds);
         assertTrue(f.defaultServerProperties);
