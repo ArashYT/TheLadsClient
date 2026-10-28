@@ -41,7 +41,7 @@ public class GameRepairServiceTests
     }
 
     [Fact]
-    public async Task RepairProfileAsync_CleansCacheAndRestoresMarker()
+    public async Task RepairProfileAsync_WhenVersionInstallThrows_ReturnsFailureWithoutMarker()
     {
         using var dir = new TestDirectory();
         var profile = new LauncherProfile
@@ -59,11 +59,13 @@ public class GameRepairServiceTests
 
         var report = await GameRepairService.RepairProfileAsync(dir.Path, profile);
 
-        Assert.True(report.Success);
+        // When install/verify fails, repair must report failure and must NOT write .lads-verified marker
+        Assert.False(report.Success);
         Assert.False(File.Exists(cacheTmp));
 
         string versionId = GameVersionPolicy.ResolveVersionId(profile);
         string marker = Path.Combine(dir.Path, "versions", versionId, ".lads-verified");
-        Assert.True(File.Exists(marker));
+        Assert.False(File.Exists(marker));
+        Assert.Contains(report.Messages, m => m.Contains("failed") || m.Contains("Could not"));
     }
 }

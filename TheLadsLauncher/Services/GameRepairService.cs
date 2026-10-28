@@ -105,6 +105,8 @@ public static class GameRepairService
             try { File.Delete(marker); } catch { }
         }
 
+        bool hasErrors = false;
+
         // 3. Restore bundled LadsCore mod
         statusCallback?.Invoke("Verifying bundled Lads Core client files…");
         string coreJar = Path.Combine(modsDir, "theladscore.jar");
@@ -121,6 +123,7 @@ public static class GameRepairService
             }
             catch (Exception ex)
             {
+                hasErrors = true;
                 messages.Add($"Could not restore LadsCore mod: {ex.Message}");
             }
         }
@@ -138,53 +141,74 @@ public static class GameRepairService
 
         if (manifestMissingOrCorrupt)
         {
-            if (usesFabric)
+            try
             {
-                statusCallback?.Invoke($"Re-downloading Fabric {profile.FabricVersion} manifest…");
-                var loaderVer = versionId.Substring("fabric-loader-".Length,
-                    versionId.Length - "fabric-loader-".Length - profile.MinecraftVersion.Length - 1);
-                using var http = new HttpClient();
-                var fabricInstaller = new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(http);
-                await fabricInstaller.Install(profile.MinecraftVersion, loaderVer, path);
-                repaired.Add($"Re-downloaded Fabric manifest for {versionId}");
+                if (usesFabric)
+                {
+                    statusCallback?.Invoke($"Re-downloading Fabric {profile.FabricVersion} manifest…");
+                    var loaderVer = versionId.Substring("fabric-loader-".Length,
+                        versionId.Length - "fabric-loader-".Length - profile.MinecraftVersion.Length - 1);
+                    using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                    var fabricInstaller = new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(http);
+                    await fabricInstaller.Install(profile.MinecraftVersion, loaderVer, path);
+                    repaired.Add($"Re-downloaded Fabric manifest for {versionId}");
+                }
+                else if (usesForge)
+                {
+                    using var forgeHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                    await LaunchService.InstallForgeAsync(launcher, gameDir, forgeHttp, statusCallback, cancellationToken);
+                    repaired.Add($"Re-installed Forge manifest for {versionId}");
+                }
+                else
+                {
+                    await launcher.GetAllVersionsAsync(cancellationToken);
+                    repaired.Add($"Re-fetched vanilla manifest for {versionId}");
+                }
             }
-            else if (usesForge)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                using var forgeHttp = new HttpClient();
-                await LaunchService.InstallForgeAsync(launcher, gameDir, forgeHttp, statusCallback, cancellationToken);
-                repaired.Add($"Re-installed Forge manifest for {versionId}");
-            }
-            else
-            {
-                await launcher.GetAllVersionsAsync(cancellationToken);
-                repaired.Add($"Re-fetched vanilla manifest for {versionId}");
+                hasErrors = true;
+                messages.Add($"Could not restore version manifest: {ex.Message}");
             }
         }
 
         // 5. Run full launcher install & verification pass (re-checks SHA-1 checksums of libraries and assets)
         statusCallback?.Invoke("Verifying file hashes and integrity…");
+        bool installSucceeded = false;
         try
         {
             await launcher.GetAllVersionsAsync(cancellationToken);
             await launcher.InstallAsync(versionId, cancellationToken);
-            checkedCount += 10; // Libraries and asset indices verified
+            installSucceeded = true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            messages.Add($"Integrity check note: {ex.Message}");
+            hasErrors = true;
+            messages.Add($"Integrity check failed: {ex.Message}");
         }
 
-        // 6. Write fresh verification marker
-        try
+        // 6. Write fresh verification marker only if verification succeeded without error
+        if (installSucceeded && !hasErrors)
         {
-            await File.WriteAllTextAsync(marker, DateTime.UtcNow.ToString("O"), cancellationToken);
-            checkedCount++;
+            try
+            {
+                await File.WriteAllTextAsync(marker, DateTime.UtcNow.ToString("O"), cancellationToken);
+                checkedCount++;
+            }
+            catch { }
         }
-        catch { }
 
-        statusCallback?.Invoke($"Repair complete. {repaired.Count} items restored.");
-        messages.Add($"Verified installation and restored {repaired.Count} items.");
+        bool success = installSucceeded && !hasErrors;
+        if (success)
+        {
+            statusCallback?.Invoke($"Repair complete. {repaired.Count} items restored.");
+            messages.Add($"Verified installation and restored {repaired.Count} items.");
+        }
+        else
+        {
+            statusCallback?.Invoke($"Repair finished with problems. {repaired.Count} items restored.");
+        }
 
-        return new GameRepairReport(true, checkedCount, repaired.Count, repaired, messages);
+        return new GameRepairReport(success, checkedCount, repaired.Count, repaired, messages);
     }
 }

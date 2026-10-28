@@ -3923,10 +3923,15 @@ public partial class MainWindow : Window
         await AfterModsChangedAsync();
     }
 
-    /// <summary>Every mod file of the profile to the Recycle Bin (yours too), saved choices cleared, LadsCore and the pack
-    /// reinstalled (ModStateService.ResetModsFolderAsync). The way out when a profile's Mods folder is beyond repair.</summary>
+    /// <summary>Checks game files, libraries and LadsCore mod integrity, reinstalling any missing or corrupted files.</summary>
     private async void RepairGameFiles_Click(object? sender, RoutedEventArgs e)
     {
+        if (_modsBusy || _launching)
+        {
+            ModsStatus("Cannot repair game files while a launch or mod update is in progress.", true);
+            return;
+        }
+
         var profile = _profileService.GetActiveProfile();
         if (IsGameRunningFor(_pathService.GetProfileDirectory(profile)))
         {
@@ -3934,16 +3939,34 @@ public partial class MainWindow : Window
             return;
         }
 
+        _modsBusy = true;
+        var repairBtn = sender as Button;
+        if (repairBtn != null) repairBtn.IsEnabled = false;
         ModsStatus($"Repairing game files for '{profile.Name}'...");
         try
         {
             var report = await TheLadsLauncher.Services.GameRepairService.RepairProfileAsync(AppContext.BaseDirectory, profile, s => ModsStatus(s));
-            ModsStatus($"Repair complete: {report.FilesChecked} files checked, {report.FilesRepaired} files repaired.");
-            await ShowLadsDialogAsync("Repair complete", $"Repair finished successfully for '{profile.Name}'.\n\n• Verified {report.FilesChecked} files\n• Repaired/restored {report.FilesRepaired} files", "OK");
+            if (report.Success)
+            {
+                ModsStatus($"Repair complete: {report.FilesChecked} checks passed, {report.FilesRepaired} items repaired.");
+                await ShowLadsDialogAsync("Repair complete", $"Repair finished successfully for '{profile.Name}'.\n\n• Verified {report.FilesChecked} checks\n• Repaired/restored {report.FilesRepaired} items", "OK");
+            }
+            else
+            {
+                string details = report.Messages.Count > 0 ? "\n\n• " + string.Join("\n• ", report.Messages) : "";
+                ModsStatus($"Repair finished with problems for '{profile.Name}'.", true);
+                await ShowLadsDialogAsync("Repair finished with problems", $"Game repair for '{profile.Name}' could not verify all files.{details}", "OK");
+            }
         }
         catch (Exception ex)
         {
             ModsStatus($"Repair failed: {ex.Message}", true);
+            await ShowLadsDialogAsync("Repair failed", $"Game repair encountered an unexpected error:\n\n{ex.Message}", "OK");
+        }
+        finally
+        {
+            _modsBusy = false;
+            if (repairBtn != null) repairBtn.IsEnabled = true;
         }
     }
 
