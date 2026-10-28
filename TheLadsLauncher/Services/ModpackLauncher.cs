@@ -59,7 +59,10 @@ public static class ModpackLauncher
                     await File.WriteAllBytesAsync(Path.Combine(instance.Directory, "icon.png"), await http.GetByteArrayAsync(icon, token), token);
                     instance.IconPath = "icon.png";
                 }
-                catch (HttpRequestException) { } // the card shows its placeholder
+                catch (Exception e) when (e is HttpRequestException or IOException or UnauthorizedAccessException or TaskCanceledException && !token.IsCancellationRequested)
+                {
+                    // The card shows its placeholder: a stalled icon (HttpClient's timeout is a TaskCanceledException) is no reason to throw the finished install away.
+                }
             }
             Modpacks.Save(instance);
             return instance;

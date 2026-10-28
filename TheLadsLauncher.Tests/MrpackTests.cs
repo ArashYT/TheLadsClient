@@ -273,6 +273,44 @@ public sealed class MrpackTests : IDisposable
         Assert.Equal("mod a", File.ReadAllText(Path.Combine(_root, "instance", "minecraft", "mods", "a.jar")));
     }
 
+    [Fact]
+    public async Task AnIconThatTimesOutDoesNotThrowAwayTheFinishedInstall()
+    {
+        using var http = new HttpClient(new SlowFirstMirror());
+        var data = Path.Combine(_root, "data");
+
+        var instance = await ModpackLauncher.InstallAsync(data, Pack("v1", Array.Empty<(string, string, string)>(), new() { ["overrides/options.txt"] = "pack" }),
+            null, null, null, "https://slow.example/icon.png", http, null, default);
+
+        Assert.Equal("pack", File.ReadAllText(Path.Combine(instance.GameDirectory, "options.txt")));
+        Assert.Null(instance.IconPath); // the placeholder
+        Assert.Equal(instance.Id, Assert.Single(Modpacks.List(data)).Id);
+    }
+
+    [Fact]
+    public async Task CancellingDuringTheIconStillRemovesTheNewInstance()
+    {
+        using var cancel = new CancellationTokenSource();
+        using var http = new HttpClient(new CancelsWhenAsked(cancel));
+        var data = Path.Combine(_root, "data");
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ModpackLauncher.InstallAsync(data,
+            Pack("v1", Array.Empty<(string, string, string)>(), new() { ["overrides/options.txt"] = "pack" }), null, null, null,
+            "https://slow.example/icon.png", http, null, cancel.Token));
+
+        Assert.Empty(Modpacks.List(data));
+        Assert.Empty(Directory.GetDirectories(Modpacks.Root(data)));
+    }
+
+    private sealed class CancelsWhenAsked(CancellationTokenSource cancel) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            cancel.Cancel();
+            throw new TaskCanceledException("canceled by the caller", null, cancel.Token);
+        }
+    }
+
     // HttpClient's own timeout surfaces as a TaskCanceledException.
     private sealed class SlowFirstMirror : HttpMessageHandler
     {
