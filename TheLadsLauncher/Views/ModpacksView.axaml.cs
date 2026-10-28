@@ -1671,6 +1671,7 @@ public partial class ModpacksView : UserControl
                     RenderOtherContent(folder, typeHeader, list);
                     UpdateHeaderCounts();
                 }
+                catch (OperationCanceledException) { ManageStatus.Text = "Delete cancelled."; }
                 catch (Exception e) { ManageStatus.Text = $"Could not delete {item.Name}: {e.Message}"; }
             };
             Grid.SetColumn(delBtn, 2);
@@ -1915,13 +1916,14 @@ public partial class ModpacksView : UserControl
             };
             delBtn.Click += async (_, _) =>
             {
-                if (Host is { } host && !await host.ConfirmModpackAsync("Delete world", $"Delete world '{world.Name}'? This cannot be undone.", "Delete")) return;
+                if (Host is { } host && !await host.ConfirmModpackAsync("Delete world", $"Move world '{world.Name}' to the Recycle Bin?", "Delete")) return;
                 try
                 {
                     if (Directory.Exists(folderPath)) SafeFileOps.DeleteToRecycleBin(folderPath);
                     RenderWorlds();
                     UpdateHeaderCounts();
                 }
+                catch (OperationCanceledException) { ManageStatus.Text = "Delete cancelled."; }
                 catch (Exception ex) { ManageStatus.Text = $"Could not delete world: {ex.Message}"; }
             };
             Grid.SetColumn(delBtn, 3);

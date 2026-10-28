@@ -1356,12 +1356,14 @@ public partial class MainWindow : Window
                 _selectedAccount = allAccountNames[0];
             }
             MiniAccountName.Text = _selectedAccount;
+            RemoveAccountBtn.Content = $"Remove '{_selectedAccount}'";
             _ = LoadPlayerSkin(_selectedAccount);
         }
         else
         {
             _selectedAccount = "";
             MiniAccountName.Text = "Offline User";
+            RemoveAccountBtn.Content = "Remove Account";
         }
 
         // Listing accounts is local. Only launch or explicit refresh authenticates.
@@ -1807,6 +1809,11 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(username) || _addingAccount || _launching) return;
 
         bool isOffline = !loginHandler.AccountManager.GetAccounts().OfType<CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount>().Any(a => string.Equals(a.Profile?.Username, username, StringComparison.OrdinalIgnoreCase)) && settings.OfflineAccounts.Contains(username, StringComparer.OrdinalIgnoreCase);
+        string message = isOffline
+            ? $"Remove local account '{username}'?"
+            : $"Remove '{username}'? You'll need to sign in with Microsoft again.";
+        if (!await ShowLadsDialogAsync("Remove Account", message, "Remove", "Cancel", danger: true))
+            return;
         if (isOffline)
         {
             settings.OfflineAccounts.Remove(username);
@@ -2239,6 +2246,17 @@ public partial class MainWindow : Window
     private async void ClearCache_Click(object? sender, RoutedEventArgs e)
     {
         if (_addingAccount || _launching) return;
+        var msAccounts = loginHandler.AccountManager.GetAccounts()
+            .OfType<CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount>().ToList();
+        int count = msAccounts.Count;
+        string message = count switch
+        {
+            0 => "Sign out Microsoft accounts? No Microsoft accounts are currently signed in.",
+            1 => $"Sign out of Microsoft account '{msAccounts[0].Profile?.Username ?? "Account"}'? You'll need to sign in with Microsoft again.",
+            _ => $"Sign out of all {count} Microsoft accounts? You'll need to sign in with Microsoft again."
+        };
+        if (!await ShowLadsDialogAsync("Sign out Microsoft", message, "Sign out", "Cancel", danger: true))
+            return;
         try
         {
             await loginHandler.ClearAsync();
@@ -2976,9 +2994,11 @@ public partial class MainWindow : Window
                     Padding = new Thickness(12, 0),
                     FontSize = 12
                 };
-                deleteBtn.Click += (s, e) =>
+                deleteBtn.Click += async (s, e) =>
                 {
                     if (_launching) return;
+                    if (!await ShowLadsDialogAsync("Delete Profile", $"Delete profile '{profile.Name}'? This cannot be undone.", "Delete", "Cancel", danger: true))
+                        return;
                     _profileService.DeleteProfile(profile.Id);
                     PopulateLaunchProfileSelector();
                     LoadProfilesUI();

@@ -158,8 +158,10 @@ public static class Modpacks
 
     public static void DeleteContent(ModpackContentItem item)
     {
-        if (File.Exists(item.Path)) File.Delete(item.Path);
-        else if (System.IO.Directory.Exists(item.Path)) System.IO.Directory.Delete(item.Path, true);
+        if (File.Exists(item.Path) || System.IO.Directory.Exists(item.Path))
+        {
+            SafeFileOps.DeleteToRecycleBin(item.Path);
+        }
     }
 }
 
