@@ -631,6 +631,9 @@ public partial class ModpacksView : UserControl
     internal void PressPlay() => Play_Click(null, new RoutedEventArgs());
     internal string ManageStatusText => ManageStatus.Text ?? "";
     internal Process? RunningGame(string id) => _running.GetValueOrDefault(id);
+    /// <summary>The modpack games started here, and whether a launch, update or import is running: a launcher update must not restart over them.</summary>
+    internal IEnumerable<Process> RunningGames => _running.Values;
+    internal bool IsBusy => _launching.Count > 0 || _busy.Count > 0 || _importing;
     internal bool BrowseLoaded => Results.Children.Count > 0;
 
     private void BrowseFilter_Changed(object? sender, SelectionChangedEventArgs e) { if (_ready && _browsed) _ = SearchAsync(more: false); }

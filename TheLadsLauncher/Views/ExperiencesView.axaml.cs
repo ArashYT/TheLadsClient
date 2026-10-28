@@ -78,6 +78,11 @@ public partial class ExperiencesView : UserControl
         return list.Count > 0;
     }
 
+    /// <summary>The Zero SMP and Lads SMP Reborn games started here, and whether one is installing or launching: a launcher update
+    /// must not restart over them, nor X close the launcher (their post-exit switches run here).</summary>
+    internal IEnumerable<Process> RunningGames => _runningZeroSmp.Concat(_runningLadsSmpReborn).Select(i => i.Process);
+    internal bool IsBusy => _zeroSmpCts != null || _ladsSmpRebornCts != null;
+
     private static int NextInstanceNumber(List<RunningInstance> list)
     {
         int n = 1;
