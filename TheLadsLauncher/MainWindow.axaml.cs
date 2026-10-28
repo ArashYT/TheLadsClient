@@ -3059,7 +3059,14 @@ public partial class MainWindow : Window
         var nameBox = new TextBox { PlaceholderText = "Profile Name (e.g. My 26.3)", Text = "New Profile", Height = 36 };
         panel.Children.Add(nameBox);
 
-        var versionBox = new TextBox { PlaceholderText = "Minecraft Version (e.g. 26.3, 1.8.9)", Text = "26.3", Height = 36 };
+        var versionBox = new ComboBox
+        {
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+            Height = 36
+        };
+        foreach (var ver in ProfileTools.PlayableVersions)
+            versionBox.Items.Add(ver);
+        versionBox.SelectedIndex = 0;
         panel.Children.Add(versionBox);
 
         var isolateCheck = new CheckBox
@@ -3083,19 +3090,16 @@ public partial class MainWindow : Window
         createBtn.Click += (s, ev) =>
         {
             string name = nameBox.Text?.Trim() ?? "";
-            string version = versionBox.Text?.Trim() ?? "26.3";
-            if (GameVersionPolicy.IsDropped(version)) { versionBox.Text = ""; versionBox.PlaceholderText = $"Minecraft {version} is no longer supported (1.8.9, 1.20.1 or 26.3)"; return; }
-            if (GameVersionPolicy.IsPaused(version)) { versionBox.Text = ""; versionBox.PlaceholderText = GameVersionPolicy.PausedMessage; return; }
-            if (GameVersionPolicy.IsComingNever(version)) { versionBox.Text = ""; versionBox.PlaceholderText = $"1.7.10: {GameVersionPolicy.ComingNeverMessage}"; return; }
+            string version = versionBox.SelectedItem?.ToString() ?? "26.3";
             if (string.IsNullOrEmpty(name)) name = $"Profile {version}";
 
             bool forge = GameVersionPolicy.UsesForge(version); // 1.8.9: Forge (Java 25 through 8to25), never Fabric
-            int javaVer = forge ? GameVersionPolicy.GetRequiredJavaMajor(version) : version.StartsWith("1.20") ? 17 : (version.StartsWith("1.21") ? 21 : (version.StartsWith("26") ? 25 : 21));
+            int javaVer = GameVersionPolicy.GetRequiredJavaMajor(version);
             var newProfile = new TheLadsLauncher.Models.LauncherProfile
             {
                 Name = name,
                 MinecraftVersion = version,
-                FabricVersion = forge ? null : "0.16.9",
+                FabricVersion = forge ? null : "0.19.5",
                 JavaMajorVersion = javaVer,
                 IsIsolated = isolateCheck.IsChecked ?? false
             };
