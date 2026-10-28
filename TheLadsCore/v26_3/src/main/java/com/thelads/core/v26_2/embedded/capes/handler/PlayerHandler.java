@@ -184,6 +184,7 @@ public class PlayerHandler {
         }
         if (json == null) return false;
         MCMData profile = new Gson().fromJson(json, MCMData.class);
+        if (profile == null || profile.cape_url() == null || !CapeImageGuard.isHttps(profile.cape_url())) return false;
 
         HttpURLConnection result = connection(profile.cape_url());
         return setStandardCape(result, false, profile.animated_cape_url() != null);
