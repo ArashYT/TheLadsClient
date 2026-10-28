@@ -17,6 +17,8 @@ public final class SurvivalTweaksModule extends Module {
      * its simulation does not expect, so they act only in singleplayer, LAN and trusted servers (HypixelSafetyManager).
      */
     public static final String MECHANICS = "SurvivalMechanics";
+    /** The server-rules name of Boat 360 View: it sends head turns past the boat's clamp, which vanilla never sends. */
+    public static final String BOAT_VIEW = "Boat360View";
 
     public final BoolOption berryBushProtection;
     public final BoolOption elytraWaterSwim;
@@ -48,7 +50,8 @@ public final class SurvivalTweaksModule extends Module {
         super(NAME, "Survival and world quality-of-life tweaks: berry bush armor & sneak protection, faster obsidian mining, "
                 + "100% creeper block drops, no Soul Speed/Thorns durability loss, elytra water swim, stable block drops, "
                 + "flammable cobwebs, animals eating dropped food, boat 360 view, longer chat history, fast IP ping, and keeping status bars while riding. "
-                + "Faster obsidian mining, berry bush protection and elytra water swim only work in singleplayer, LAN and servers known to allow them.");
+                + "Faster obsidian mining, berry bush protection, elytra water swim and boat 360 view only work in singleplayer, LAN and servers known to "
+                + "allow them.");
         berryBushProtection = addOption(new BoolOption("Berry bush protection", true));
         elytraWaterSwim = addOption(new BoolOption("Elytra water swim", true));
         noEnchantDurabilityLoss = addOption(new BoolOption("No Thorns/Soul Speed damage", true));
@@ -119,7 +122,7 @@ public final class SurvivalTweaksModule extends Module {
     }
 
     public boolean isBoat360ViewEnabled() {
-        return isEnabled() && boat360View.get();
+        return isEnabled() && boat360View.get() && !HypixelSafetyManager.isDisallowed(BOAT_VIEW);
     }
 
     public boolean isLongerChatHistoryEnabled() {

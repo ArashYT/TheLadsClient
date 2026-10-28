@@ -475,14 +475,16 @@ public class HypixelSafetyTest {
         assertTrue(tweaks.isEnabled());
         for (String allowed : new String[]{"Singleplayer", "192.168.1.20:25565", "smp.arashyt.ca"}) {
             bridge.setServer(allowed);
-            assertTrue(tweaks.isFasterObsidianMiningEnabled() && tweaks.isBerryBushProtectionEnabled() && tweaks.isElytraWaterSwimEnabled(), allowed);
+            assertTrue(tweaks.isFasterObsidianMiningEnabled() && tweaks.isBerryBushProtectionEnabled() && tweaks.isElytraWaterSwimEnabled()
+                && tweaks.isBoat360ViewEnabled(), allowed);
         }
         for (String server : new String[]{"mc.hypixel.net", "as.minemen.club", "play.somesmp.net", "Unknown"}) {
             bridge.setServer(server);
             assertFalse(tweaks.isFasterObsidianMiningEnabled(), server + ": FastBreak");
             assertFalse(tweaks.isBerryBushProtectionEnabled(), server + ": movement in bushes");
             assertFalse(tweaks.isElytraWaterSwimEnabled(), server + ": elytra state");
-            assertTrue(tweaks.isEnabled() && tweaks.isBoat360ViewEnabled() && tweaks.isLongerChatHistoryEnabled() && tweaks.isFastIpPingEnabled()
+            assertFalse(tweaks.isBoat360ViewEnabled(), server + ": head turns past the boat's clamp");
+            assertTrue(tweaks.isEnabled() && tweaks.isLongerChatHistoryEnabled() && tweaks.isFastIpPingEnabled()
                 && tweaks.isKeepBarsWhileRidingEnabled() && tweaks.isCreeperFullDropsEnabled(), server + ": the rest of the module stays on");
         }
         bridge.setServer("play.somesmp.net");
