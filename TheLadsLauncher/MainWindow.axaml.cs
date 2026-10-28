@@ -13,6 +13,7 @@ using System.Text.Json.Nodes;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
@@ -1213,25 +1214,28 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CopyLogs_Click(object? sender, RoutedEventArgs e)
+    private async void CopyLogs_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
             if (!string.IsNullOrEmpty(LogBox.Text))
             {
-                var process = new Process();
-                process.StartInfo.FileName = "clip.exe";
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.RedirectStandardInput = true;
-                process.StartInfo.CreateNoWindow = true;
-                process.Start();
-                process.StandardInput.Write(LogBox.Text);
-                process.StandardInput.Close();
-                process.WaitForExit(2000);
-                StatusText.Text = "Logs copied to clipboard!";
+                var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+                if (clipboard != null)
+                {
+                    await clipboard.SetTextAsync(LogBox.Text);
+                    StatusText.Text = "Logs copied to clipboard!";
+                }
+                else
+                {
+                    StatusText.Text = "Clipboard unavailable.";
+                }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Failed to copy logs: {ex.Message}";
+        }
     }
 
     private async void ShareLogs_Click(object? sender, RoutedEventArgs e)
@@ -1267,20 +1271,20 @@ public partial class MainWindow : Window
             var result = await TheLadsLauncher.Services.LogShareService.UploadLogAsync(sanitized);
             if (result.Success && result.Url != null)
             {
+                bool copied = false;
                 try
                 {
-                    var process = new Process();
-                    process.StartInfo.FileName = "clip.exe";
-                    process.StartInfo.UseShellExecute = false;
-                    process.StartInfo.RedirectStandardInput = true;
-                    process.StartInfo.CreateNoWindow = true;
-                    process.Start();
-                    process.StandardInput.Write(result.Url);
-                    process.StandardInput.Close();
-                    process.WaitForExit(2000);
+                    var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+                    if (clipboard != null)
+                    {
+                        await clipboard.SetTextAsync(result.Url);
+                        copied = true;
+                    }
                 }
                 catch { }
-                StatusText.Text = $"Log uploaded and link copied: {result.Url}";
+                StatusText.Text = copied
+                    ? $"Log uploaded and link copied: {result.Url}"
+                    : $"Log uploaded: {result.Url}";
             }
             else
             {

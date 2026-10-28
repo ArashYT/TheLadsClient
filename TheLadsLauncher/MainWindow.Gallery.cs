@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.LogicalTree;
@@ -682,38 +683,72 @@ public partial class MainWindow
         catch (Exception ex) { Log($"[Gallery] show in folder failed: {ex.Message}"); }
     }
 
-    private void CopyTextToClipboard(string text)
+    private async Task<bool> CopyTextToClipboardAsync(string text)
     {
         try
         {
-            var p = new Process();
-            p.StartInfo.FileName = "clip.exe";
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.RedirectStandardInput = true;
-            p.StartInfo.CreateNoWindow = true;
-            p.Start();
-            p.StandardInput.Write(text);
-            p.StandardInput.Close();
-            p.WaitForExit(1000);
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard != null)
+            {
+                await clipboard.SetTextAsync(text);
+                return true;
+            }
         }
         catch (Exception ex) { Log($"[Gallery] copy text failed: {ex.Message}"); }
+        return false;
     }
 
-    private void CopyImageToClipboard(string path)
+    private async void CopyTextToClipboard(string text)
     {
+        await CopyTextToClipboardAsync(text);
+    }
+
+    private async void CopyImageToClipboard(string path)
+    {
+        StatusText.Text = "Copying image to clipboard...";
         try
         {
-            var p = new Process();
-            p.StartInfo.FileName = "powershell";
-            p.StartInfo.Arguments = "-NoProfile -STA -Command \"Add-Type -AssemblyName System.Windows.Forms,System.Drawing; [System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile($env:LADS_CLIP_PATH))\"";
-            p.StartInfo.Environment["LADS_CLIP_PATH"] = path;
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.CreateNoWindow = true;
-            p.Start();
-            p.WaitForExit(4000);
-            StatusText.Text = "Copied image to clipboard.";
+            int exitCode = await Task.Run(async () =>
+            {
+                using var p = new Process();
+                p.StartInfo.FileName = "powershell";
+                p.StartInfo.Arguments = "-NoProfile -STA -Command \"Add-Type -AssemblyName System.Windows.Forms,System.Drawing; [System.Windows.Forms.Clipboard]::SetImage([System.Drawing.Image]::FromFile($env:LADS_CLIP_PATH))\"";
+                p.StartInfo.Environment["LADS_CLIP_PATH"] = path;
+                p.StartInfo.UseShellExecute = false;
+                p.StartInfo.CreateNoWindow = true;
+                p.Start();
+                try
+                {
+                    using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+                    await p.WaitForExitAsync(cts.Token);
+                    return p.ExitCode;
+                }
+                catch (OperationCanceledException)
+                {
+                    try { if (!p.HasExited) p.Kill(); } catch { }
+                    throw;
+                }
+            });
+
+            if (exitCode == 0)
+            {
+                StatusText.Text = "Copied image to clipboard.";
+            }
+            else
+            {
+                StatusText.Text = $"Failed to copy image to clipboard (code {exitCode}).";
+            }
         }
-        catch (Exception ex) { Log($"[Gallery] copy image failed: {ex.Message}"); }
+        catch (OperationCanceledException)
+        {
+            StatusText.Text = "Copy image timed out.";
+            Log("[Gallery] copy image timed out after 5s");
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Failed to copy image: {ex.Message}";
+            Log($"[Gallery] copy image failed: {ex.Message}");
+        }
     }
 
     private async void UploadImgur(string path)
@@ -739,8 +774,8 @@ public partial class MainWindow
             if (doc.RootElement.TryGetProperty("data", out var data) && data.TryGetProperty("link", out var linkEl))
             {
                 string link = linkEl.GetString() ?? "";
-                CopyTextToClipboard(link);
-                StatusText.Text = "Imgur link copied: " + link;
+                bool copied = await CopyTextToClipboardAsync(link);
+                StatusText.Text = copied ? "Imgur link copied: " + link : "Imgur uploaded: " + link;
                 Log($"[Gallery] Uploaded: {link}");
             }
             else
