@@ -1317,7 +1317,9 @@ async def handle_crash_report(request):
         return web.json_response({"error": "rate limit exceeded"}, status=429, headers={"Retry-After": "600"})
     _crash_rate_history[ip] = hits + [now_ts]
     if len(_crash_rate_history) > 5000:
-        _crash_rate_history.clear()
+        stale = [k for k, ts_list in _crash_rate_history.items() if not ts_list or ts_list[-1] < now_ts - 600]
+        for k in stale:
+            del _crash_rate_history[k]
     try:
         data = await request.json()
     except Exception:
@@ -1417,9 +1419,9 @@ async def start_web_server():
         app.router.add_post('/crash', handle_crash_report)
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, '0.0.0.0', 8085)
+        site = web.TCPSite(runner, '127.0.0.1', 8085)
         await site.start()
-        print("  Status Web Server running on http://0.0.0.0:8085", flush=True)
+        print("  Status Web Server running on http://127.0.0.1:8085", flush=True)
     except Exception as e:
         print(f"  Note: web status server startup error: {e}", flush=True)
 

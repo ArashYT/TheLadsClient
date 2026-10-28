@@ -181,9 +181,7 @@ async def has_joined(name: str, sid: str) -> str | None:
             return plain_uuid(body.get("id")) if isinstance(body, dict) else None
 
 
-def client_ip(request: web.Request) -> str:
-    forwarded = request.headers.get("CF-Connecting-IP")  # set by the Cloudflare tunnel
-    return forwarded.split(",")[0].strip() if forwarded else (request.remote or "?")
+from client_ip import client_ip, get_client_ip
 
 
 def verify_tebex_signature(raw_body: bytes, signature: str | None, secret: str | None) -> bool:

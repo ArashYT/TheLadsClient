@@ -259,17 +259,13 @@ async def get_cached_github_downloads_async(repo: str = GITHUB_REPO, max_age: fl
         return _github_cache["total"]
 
 
-def get_client_ip(request: web.Request) -> str:
-    """Extract client IP from Cloudflare or forward headers; never logged or saved."""
-    cf_ip = request.headers.get("CF-Connecting-IP")
-    if cf_ip:
-        return cf_ip.split(",")[0].strip()
-    xf = request.headers.get("X-Forwarded-For")
-    if xf:
-        return xf.split(",")[0].strip()
-    if request.remote:
-        return request.remote
-    return "127.0.0.1"
+try:
+    from client_ip import get_client_ip
+except ImportError:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from client_ip import get_client_ip
 
 
 def check_rate_limit(ip: str, now_ts: Optional[float] = None) -> bool:

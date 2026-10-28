@@ -63,14 +63,13 @@ DEFAULT_IP_SALT = _load_or_create_ip_salt()
 BASE64URL_PATTERN = re.compile(r"^[A-Za-z0-9\-_]+={0,2}$")
 
 
-def get_client_ip(request: web.Request) -> str:
-    """Extract client IP from CF-Connecting-IP header or fallback to remote address."""
-    cf_ip = request.headers.get("CF-Connecting-IP")
-    if cf_ip:
-        return cf_ip.split(",")[0].strip()
-    if request.remote:
-        return request.remote
-    return "127.0.0.1"
+try:
+    from client_ip import get_client_ip
+except ImportError:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from client_ip import get_client_ip
 
 
 def hash_creator(ip: str, salt: str = DEFAULT_IP_SALT) -> str:

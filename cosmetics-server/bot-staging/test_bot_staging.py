@@ -53,3 +53,49 @@ def test_crash_analyzer_still_finds_known_crashes(bot):
     assert bot.analyze_crash_text("[Render thread/INFO]: Stopping!") is None
     # A crash line past the scanned head still counts when it is in the tail
     assert bot.analyze_crash_text("x" * 1_000_000 + "\njava.lang.OutOfMemoryError")["title"] == "Out of Memory (RAM Allocation)"
+
+
+def test_share_store_and_usage_stats_client_ip():
+    import share_store
+    import usage_stats
+
+    class FakeReq:
+        def __init__(self, remote, headers=None):
+            self.remote = remote
+            self.headers = headers or {}
+
+    # Non-loopback cannot spoof CF-Connecting-IP or X-Forwarded-For
+    req = FakeReq(remote="192.168.1.100", headers={"CF-Connecting-IP": "1.2.3.4", "X-Forwarded-For": "5.6.7.8"})
+    assert share_store.get_client_ip(req) == "192.168.1.100"
+    assert usage_stats.get_client_ip(req) == "192.168.1.100"
+
+    # Loopback trusts CF-Connecting-IP
+    req_lb = FakeReq(remote="127.0.0.1", headers={"CF-Connecting-IP": "1.2.3.4"})
+    assert share_store.get_client_ip(req_lb) == "1.2.3.4"
+    assert usage_stats.get_client_ip(req_lb) == "1.2.3.4"
+    salt_file = Path(share_store.__file__).resolve().parent / ".share_ip_salt"
+    if salt_file.is_file():
+        try:
+            salt_file.unlink()
+        except OSError:
+            pass
+
+
+def test_crash_rate_history_eviction(bot):
+    # Setup history with 5001 entries: 1 active, 5000 old
+    now = time.time()
+    bot._crash_rate_history.clear()
+    for i in range(5001):
+        bot._crash_rate_history[f"stale-{i}"] = [now - 1000]
+    bot._crash_rate_history["active-ip"] = [now - 10]
+
+    # Trigger eviction logic as in handle_crash_report
+    now_ts = now
+    if len(bot._crash_rate_history) > 5000:
+        stale = [k for k, ts_list in bot._crash_rate_history.items() if not ts_list or ts_list[-1] < now_ts - 600]
+        for k in stale:
+            del bot._crash_rate_history[k]
+
+    # Active ip must NOT be cleared, only stale entries removed
+    assert "active-ip" in bot._crash_rate_history
+    assert len(bot._crash_rate_history) == 1

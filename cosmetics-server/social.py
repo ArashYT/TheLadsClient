@@ -82,25 +82,7 @@ def get_default_db_path(db_path: Path | str | None = None) -> Path:
     return (Path(__file__).resolve().parent / "social.db").resolve()
 
 
-def get_client_ip(request: web.Request) -> str:
-    peer = request.remote or "?"
-    if peer in ("127.0.0.1", "::1", "localhost"):
-        forwarded = request.headers.get("CF-Connecting-IP")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-    return peer
-
-
-def get_auth_ip_key(ip: str) -> str:
-    """Normalize IP address, keying IPv6 by /64 to prevent address-cycling attacks."""
-    try:
-        addr = ipaddress.ip_address(ip)
-        if addr.version == 6:
-            net = ipaddress.ip_network(f"{ip}/64", strict=False)
-            return str(net.network_address)
-        return str(addr)
-    except ValueError:
-        return ip
+from client_ip import get_client_ip, normalize_ip as get_auth_ip_key
 
 
 async def lookup_mojang_profile(name: str) -> dict | None | False:
