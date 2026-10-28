@@ -1462,22 +1462,31 @@ public partial class MainWindow : Window
     }
 
     // Skin heads by account name, so re-filling the picker does not download them again.
-    private readonly Dictionary<string, Bitmap> _accountHeads = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Bitmap> _accountHeads = new(StringComparer.OrdinalIgnoreCase);
 
-    private async Task LoadAccountHeadAsync(TheLadsLauncher.Models.AccountChoice choice)
+    private async Task<Bitmap?> GetOrLoadAccountHeadAsync(string username)
     {
-        if (_accountHeads.TryGetValue(choice.Name, out var cached)) { choice.Head = cached; return; }
-        if (AppliedHead(choice.Name) is { } applied) { choice.Head = _accountHeads[choice.Name] = applied; return; }
+        if (_accountHeads.TryGetValue(username, out var cached)) return cached;
+        if (AppliedHead(username) is { } applied) { _accountHeads[username] = applied; return applied; }
         try
         {
-            var bytes = await _httpClient.GetByteArrayAsync($"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(choice.Name))}/64");
+            var bytes = await _httpClient.GetByteArrayAsync($"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(username))}/64");
             using var ms = new MemoryStream(bytes);
-            choice.Head = _accountHeads[choice.Name] = new Bitmap(ms);
+            var bmp = new Bitmap(ms);
+            _accountHeads[username] = bmp;
+            return bmp;
         }
         catch
         {
             // Offline or no such player: the picker keeps the grey placeholder.
+            return null;
         }
+    }
+
+    private async Task LoadAccountHeadAsync(TheLadsLauncher.Models.AccountChoice choice)
+    {
+        if (await GetOrLoadAccountHeadAsync(choice.Name) is { } head)
+            choice.Head = head;
     }
 
     private void LaunchAccountSelector_SelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -1551,28 +1560,29 @@ public partial class MainWindow : Window
             Grid.SetColumn(skinHead, 0);
             grid.Children.Add(skinHead);
 
-            if (AppliedHead(username) is { } applied) skinHead.Fill = new ImageBrush(applied);
-            else _ = Task.Run(async () =>
+            if (_accountHeads.TryGetValue(username, out var cachedHead))
             {
-                try
+                skinHead.Fill = new ImageBrush(cachedHead);
+            }
+            else if (AppliedHead(username) is { } applied)
+            {
+                _accountHeads[username] = applied;
+                skinHead.Fill = new ImageBrush(applied);
+            }
+            else
+            {
+                _ = Task.Run(async () =>
                 {
-                    string headUrl = $"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(username))}/28";
-                    var headBytes = await _httpClient.GetByteArrayAsync(headUrl);
-                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    var headBmp = await GetOrLoadAccountHeadAsync(username);
+                    if (headBmp != null)
                     {
-                        try
+                        await Dispatcher.UIThread.InvokeAsync(() =>
                         {
-                            using (var ms = new MemoryStream(headBytes))
-                            {
-                                var headBmp = new Bitmap(ms);
-                                skinHead.Fill = new ImageBrush(headBmp);
-                            }
-                        }
-                        catch { }
-                    });
-                }
-                catch { }
-            });
+                            skinHead.Fill = new ImageBrush(headBmp);
+                        });
+                    }
+                });
+            }
 
             // Account Name & Badges Stack
             var infoStack = new StackPanel
@@ -2422,6 +2432,8 @@ public partial class MainWindow : Window
     private string AppliedHeadFile(string account) => Path.Combine(_pathService.BaseDirectory, "cache", "applied-heads",
         string.Concat(account.ToLowerInvariant().Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c)) + ".png");
 
+    private readonly Dictionary<string, (DateTime writeTime, Bitmap bmp)> _appliedHeadCache = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// The head of the skin last applied in the Skins tab. mc-heads.net keeps serving the old skin for a while after an
     /// upload, so for a day every player head of that account is drawn from the applied texture instead.
@@ -2430,7 +2442,15 @@ public partial class MainWindow : Window
     {
         var file = new FileInfo(AppliedHeadFile(account));
         if (!file.Exists || file.LastWriteTimeUtc < DateTime.UtcNow.AddDays(-1)) return null;
-        try { return new Bitmap(file.FullName); } catch (Exception) { return null; }
+        if (_appliedHeadCache.TryGetValue(account, out var entry) && entry.writeTime == file.LastWriteTimeUtc)
+            return entry.bmp;
+        try
+        {
+            var bmp = new Bitmap(file.FullName);
+            _appliedHeadCache[account] = (file.LastWriteTimeUtc, bmp);
+            return bmp;
+        }
+        catch (Exception) { return null; }
     }
 
     private void ShowAppliedSkin(string account, byte[] png)
@@ -2442,8 +2462,9 @@ public partial class MainWindow : Window
             head.Save(AppliedHeadFile(account));
         }
         catch (Exception) { return; } // the skin itself was applied: only the heads stay old until mc-heads catches up
+        _appliedHeadCache.Remove(account);
         foreach (var key in _accountHeads.Keys.Where(k => string.Equals(k, account, StringComparison.OrdinalIgnoreCase)).ToList())
-            _accountHeads.Remove(key);
+            _accountHeads.TryRemove(key, out _);
         LoadAccounts(); // sidebar, account pickers (Play, Experiences) and the Accounts list
     }
 
@@ -2452,17 +2473,26 @@ public partial class MainWindow : Window
         try
         {
             MiniAccountName.Text = username;
-            if (AppliedHead(username) is { } applied) { MiniSkinHead.Fill = new ImageBrush(applied); return; }
-
-            string skinId = ResolveSkinId(username);
-
-            // Load head for mini icon
-            string headUrl = $"https://mc-heads.net/avatar/{Uri.EscapeDataString(skinId)}/24";
-            var headBytes = await _httpClient.GetByteArrayAsync(headUrl);
-            using (var ms = new MemoryStream(headBytes))
+            if (_accountHeads.TryGetValue(username, out var cached))
             {
-                var headBmp = new Bitmap(ms);
+                MiniSkinHead.Fill = new ImageBrush(cached);
+                return;
+            }
+            if (AppliedHead(username) is { } applied)
+            {
+                _accountHeads[username] = applied;
+                MiniSkinHead.Fill = new ImageBrush(applied);
+                return;
+            }
+
+            var headBmp = await GetOrLoadAccountHeadAsync(username);
+            if (headBmp != null)
+            {
                 MiniSkinHead.Fill = new ImageBrush(headBmp);
+            }
+            else
+            {
+                MiniSkinHead.Fill = new SolidColorBrush(Color.Parse("#202125"));
             }
         }
         catch
