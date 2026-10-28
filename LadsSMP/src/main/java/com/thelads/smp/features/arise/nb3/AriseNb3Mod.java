@@ -16,7 +16,6 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
-import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
@@ -28,8 +27,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -125,28 +122,8 @@ public final class AriseNb3Mod {
         PayloadTypeRegistry.clientboundPlay().register(SyncCosmeticArmorPayload.TYPE, SyncCosmeticArmorPayload.STREAM_CODEC);
 
         // Server Network Packet Receivers
-        ServerPlayNetworking.registerGlobalReceiver(UpdateCosmeticArmorPayload.TYPE, (payload, context) -> {
-            var player = context.player();
-            var data = CosmeticArmorFeature.getOrCreate(player.getUUID());
-            data.set(EquipmentSlot.HEAD, payload.head());
-            data.set(EquipmentSlot.CHEST, payload.chest());
-            data.set(EquipmentSlot.LEGS, payload.legs());
-            data.set(EquipmentSlot.FEET, payload.feet());
-            data.setVisibility(EquipmentSlot.HEAD, payload.headVis());
-            data.setVisibility(EquipmentSlot.CHEST, payload.chestVis());
-            data.setVisibility(EquipmentSlot.LEGS, payload.legsVis());
-            data.setVisibility(EquipmentSlot.FEET, payload.feetVis());
-
-            SyncCosmeticArmorPayload sync = new SyncCosmeticArmorPayload(
-                    player.getUUID(),
-                    payload.head(), payload.chest(), payload.legs(), payload.feet(),
-                    payload.headVis(), payload.chestVis(), payload.legsVis(), payload.feetVis()
-            );
-            for (var trackingPlayer : PlayerLookup.tracking(player)) {
-                ServerPlayNetworking.send(trackingPlayer, sync);
-            }
-            ServerPlayNetworking.send(player, sync);
-        });
+        // Cosmetic armor: registers its (player data) attachment before any player loads, plus its receiver
+        CosmeticArmorFeature.init();
 
         ServerPlayNetworking.registerGlobalReceiver(SwapBackWeaponPayload.TYPE, (payload, context) -> {
             context.server().execute(() -> {
@@ -154,23 +131,11 @@ public final class AriseNb3Mod {
             });
         });
 
-        // Player Join: Record name for mail delivery & sync existing cosmetics
+        // Player Join: Record name for mail delivery & sync own cosmetics (others arrive via START_TRACKING)
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayer joiningPlayer = handler.getPlayer();
             SnailMailFeature.recordPlayerName(joiningPlayer.getName().getString(), joiningPlayer.getUUID());
-
-            // Sync cosmetic armor of all players to the joining player
-            for (ServerPlayer other : server.getPlayerList().getPlayers()) {
-                var data = CosmeticArmorFeature.getOrCreate(other.getUUID());
-                SyncCosmeticArmorPayload sync = new SyncCosmeticArmorPayload(
-                        other.getUUID(),
-                        data.get(EquipmentSlot.HEAD), data.get(EquipmentSlot.CHEST),
-                        data.get(EquipmentSlot.LEGS), data.get(EquipmentSlot.FEET),
-                        data.isVisible(EquipmentSlot.HEAD), data.isVisible(EquipmentSlot.CHEST),
-                        data.isVisible(EquipmentSlot.LEGS), data.isVisible(EquipmentSlot.FEET)
-                );
-                ServerPlayNetworking.send(joiningPlayer, sync);
-            }
+            CosmeticArmorFeature.sendTo(joiningPlayer, joiningPlayer);
         });
 
         // Snail Mail Server Tick for scheduled transit arrivals
@@ -178,7 +143,7 @@ public final class AriseNb3Mod {
 
         // Death persistence hook for cosmetic armor
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) -> {
-            if (entity instanceof Player player) {
+            if (entity instanceof ServerPlayer player) {
                 CosmeticArmorFeature.onPlayerDeath(player);
             }
         });

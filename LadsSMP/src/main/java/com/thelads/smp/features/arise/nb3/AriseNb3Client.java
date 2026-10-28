@@ -12,6 +12,7 @@ import com.thelads.smp.features.arise.nb3.obscuretooltips.ObscureTooltipComponen
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.ClientTooltipComponentCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
@@ -94,8 +95,13 @@ public final class AriseNb3Client implements ClientModInitializer {
                 data.setVisibility(EquipmentSlot.CHEST, payload.chestVis());
                 data.setVisibility(EquipmentSlot.LEGS, payload.legsVis());
                 data.setVisibility(EquipmentSlot.FEET, payload.feetVis());
+                if (context.client().player != null && payload.targetPlayerUuid().equals(context.client().player.getUUID())
+                        && context.client().gui.screen() instanceof CosmeticArmorScreen open) {
+                    open.refresh();
+                }
             });
         });
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> CosmeticArmorFeature.clearClientCache());
 
         // Inventory Screen hook: adds cosmetic armor button
         ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {

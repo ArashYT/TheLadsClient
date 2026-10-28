@@ -199,6 +199,31 @@ public class AriseNb3Test {
     }
 
     @Test
+    void testCosmeticArmorPayloadCarriesNoItems() {
+        // A1/B1: the client may only send slot clicks; any ItemStack in the C2S payload would be trusted client data again
+        for (var component : com.thelads.smp.features.arise.nb3.cosmeticarmor.UpdateCosmeticArmorPayload.class.getRecordComponents()) {
+            assertNotEquals(ItemStack.class, component.getType(), component.getName());
+        }
+    }
+
+    @Test
+    void testCosmeticArmorDataCodecKeepsVisibility() {
+        CosmeticArmorData data = new CosmeticArmorData();
+        data.setVisible(EquipmentSlot.LEGS, false);
+        var json = CosmeticArmorData.CODEC.encodeStart(com.mojang.serialization.JsonOps.INSTANCE, data).getOrThrow();
+        CosmeticArmorData back = CosmeticArmorData.CODEC.parse(com.mojang.serialization.JsonOps.INSTANCE, json).getOrThrow();
+        assertFalse(back.isVisible(EquipmentSlot.LEGS));
+        assertTrue(back.isVisible(EquipmentSlot.HEAD));
+        assertTrue(back.isEmpty());
+
+        // A short/old record still loads with defaults instead of failing (and losing the stored items)
+        var partial = com.google.gson.JsonParser.parseString("{\"visible\":[false]}");
+        CosmeticArmorData loaded = CosmeticArmorData.CODEC.parse(com.mojang.serialization.JsonOps.INSTANCE, partial).getOrThrow();
+        assertFalse(loaded.isVisible(EquipmentSlot.HEAD));
+        assertTrue(loaded.isVisible(EquipmentSlot.FEET));
+    }
+
+    @Test
     void testImmersiveUIShakeAndEasing() {
         assertEquals(0.0f, ImmersiveUIState.getShakeOffset(), 0.001f);
 
