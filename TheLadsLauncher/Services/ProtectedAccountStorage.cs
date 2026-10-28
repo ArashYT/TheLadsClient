@@ -43,8 +43,9 @@ public sealed class ProtectedAccountStorage : IJsonStorage
             try
             {
                 var node = JsonNode.Parse(File.ReadAllText(_legacyPath)) ?? new JsonObject();
+                // Copied, never deleted: it is CmlLib's shared default file (.minecraft\cml_accounts.json), which other launchers use too.
+                // Once _path exists it is not imported again.
                 Write(node, null);
-                try { File.Delete(_legacyPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
                 return node;
             }
             catch (JsonException)

@@ -200,7 +200,7 @@ public class AuthenticationTests
         File.WriteAllText(legacy, "{\"account\":{\"token\":\"test\"}}");
         var storage = new ProtectedAccountStorage(current, legacy);
         Assert.NotNull(storage.ReadAsJsonNode()!["account"]);
-        Assert.False(File.Exists(legacy));
+        Assert.Equal("{\"account\":{\"token\":\"test\"}}", File.ReadAllText(legacy)); // other CmlLib launchers' accounts stay signed in
         storage.Write(new JsonObject(), null);
         Assert.Empty(new ProtectedAccountStorage(current, legacy).ReadAsJsonNode()!.AsObject());
     }
