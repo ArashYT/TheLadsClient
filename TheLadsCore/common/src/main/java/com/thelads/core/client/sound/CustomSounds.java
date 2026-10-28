@@ -125,18 +125,33 @@ public final class CustomSounds {
 
     private static final Map<String, TrimData> TRIM_CACHE = new ConcurrentHashMap<>();
 
+    /**
+     * {@code name} as a file directly in {@link #folder}, or null. A name from a config or profile is never a path anywhere else: an
+     * absolute, UNC ("\\host\share") or ".." name would make Windows open it, and send the player's login hash to that host.
+     */
+    static Path inFolder(String name) {
+        if (name == null || name.isEmpty()) return null;
+        try {
+            Path folder = folder().normalize(), path = folder.resolve(name).normalize();
+            return folder.equals(path.getParent()) ? path : null;
+        } catch (java.nio.file.InvalidPathException invalid) {
+            return null;
+        }
+    }
+
     /** Deletes a sound from {@link #folder} (so from every version's library). */
     public static void delete(String file) throws IOException {
-        Path folder = folder().normalize(), path = folder.resolve(file).normalize();
-        if (!folder.equals(path.getParent())) throw new IOException("Not a sound in the sounds folder: " + file);
+        Path path = inFolder(file), trim = trimDataFile(file);
+        if (path == null || trim == null) throw new IOException("Not a sound in the sounds folder: " + file);
         Files.deleteIfExists(path);
-        Files.deleteIfExists(trimDataFile(file));
+        Files.deleteIfExists(trim);
         CACHE.remove(file);
         TRIM_CACHE.remove(file);
     }
 
+    /** {@code file}'s trim data beside it in {@link #folder}; null when {@code file} is not a name there ({@link #inFolder}). */
     public static Path trimDataFile(String file) {
-        return folder().resolve(file + ".trim");
+        return inFolder(file) == null ? null : inFolder(file + ".trim");
     }
 
     public static TrimData loadTrimData(String file) {
@@ -146,7 +161,9 @@ public final class CustomSounds {
 
     public static void saveTrimData(String file, TrimData data) throws IOException {
         if (file == null || file.isEmpty()) return;
-        data.save(trimDataFile(file));
+        Path path = trimDataFile(file);
+        if (path == null) throw new IOException("Not a sound in the sounds folder: " + file);
+        data.save(path);
         TRIM_CACHE.remove(file);
     }
 
@@ -262,9 +279,9 @@ public final class CustomSounds {
     }
 
     private static Pcm read(String name) {
-        Path folder = folder().normalize(), path = folder.resolve(name).normalize();
-        if (!folder.equals(path.getParent())) { // a name from the config is a file in sounds/, nothing else
-            LOGGER.warn("Custom sound {} is not in {}", name, folder);
+        Path path = inFolder(name);
+        if (path == null) { // a name from the config is a file in sounds/, nothing else
+            LOGGER.warn("Custom sound {} is not in {}", name, folder());
             return FAILED;
         }
         try (InputStream in = new BufferedInputStream(Files.newInputStream(path))) {
