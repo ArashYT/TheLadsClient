@@ -435,28 +435,76 @@ public partial class ExperiencesView : UserControl
         quickButtons.Children.Add(closeAllBtn);
     }
 
-    private void CloseInstance(ExperienceDefinition exp, List<RunningInstance> runningList, bool busy, TextBlock statusText, ProgressBar progressBar, RunningInstance inst)
+    private async void CloseInstance(ExperienceDefinition exp, List<RunningInstance> runningList, bool busy, TextBlock statusText, ProgressBar progressBar, RunningInstance inst)
     {
+        if (Host is { } host && !await host.ConfirmModpackAsync("Close Instance", $"Close {exp.Title} Instance {inst.Number} ({inst.Username})?\n\nUnsaved progress may be lost if closed forcefully.", "Close"))
+            return;
+
         runningList.Remove(inst);
-        GameSession.Cancel(inst.Process);
-        Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
-        SetStatusText(statusText, $"Closed Instance {inst.Number} ({inst.Username}).");
+        Host?.ModpackLog($"Closing {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id})...");
+        SetStatusText(statusText, $"Closing Instance {inst.Number} ({inst.Username})...");
         if (!HasRunningProcess(runningList) && !busy) progressBar.IsVisible = false;
         RefreshState();
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                inst.Process.CloseMainWindow();
+                for (int i = 0; i < 60; i++)
+                {
+                    if (inst.Process.HasExited) break;
+                    await Task.Delay(500);
+                }
+            }
+            catch { }
+            if (!inst.Process.HasExited)
+            {
+                GameSession.Cancel(inst.Process);
+            }
+            Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
+        });
     }
 
-    private void CloseAllInstances(ExperienceDefinition exp, List<RunningInstance> runningList, bool busy, TextBlock statusText, ProgressBar progressBar)
+    private async void CloseAllInstances(ExperienceDefinition exp, List<RunningInstance> runningList, bool busy, TextBlock statusText, ProgressBar progressBar)
     {
         var toClose = runningList.ToList();
+        if (toClose.Count == 0) return;
+        string msg = toClose.Count > 1
+            ? $"Close all {toClose.Count} {exp.Title} instances?\n\nUnsaved progress may be lost if closed forcefully."
+            : $"Close {exp.Title} instance?\n\nUnsaved progress may be lost if closed forcefully.";
+        if (Host is { } host && !await host.ConfirmModpackAsync("Close All Instances", msg, "Close All"))
+            return;
+
         runningList.Clear();
-        foreach (var inst in toClose)
-        {
-            GameSession.Cancel(inst.Process);
-            Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
-        }
-        SetStatusText(statusText, toClose.Count > 1 ? $"Closed all {toClose.Count} {exp.Title} instances." : $"Closed {exp.Title} instance.");
+        SetStatusText(statusText, toClose.Count > 1 ? $"Closing all {toClose.Count} {exp.Title} instances..." : $"Closing {exp.Title} instance...");
         if (!busy) progressBar.IsVisible = false;
         RefreshState();
+
+        _ = Task.Run(async () =>
+        {
+            foreach (var inst in toClose)
+            {
+                try
+                {
+                    inst.Process.CloseMainWindow();
+                }
+                catch { }
+            }
+            for (int i = 0; i < 60; i++)
+            {
+                if (toClose.All(inst => inst.Process.HasExited)) break;
+                await Task.Delay(500);
+            }
+            foreach (var inst in toClose)
+            {
+                if (!inst.Process.HasExited)
+                {
+                    GameSession.Cancel(inst.Process);
+                }
+                Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
+            }
+        });
     }
 
     private void ZeroSmpAutoJoin_Changed(object? sender, RoutedEventArgs e)
