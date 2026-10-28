@@ -9,10 +9,12 @@ import java.util.Set;
  */
 public final class LadsApiRules {
     /** Automation: sends clicks/packets the player didn't make. "unlisted: allow" never lifts these; only a by-name "allow" does. */
-    private static final Set<String> AUTOMATION = Set.of("stackrefill", "usewhilemining", "autoreconnect", "mousetweaks", "keepuiopen");
+    private static final Set<String> AUTOMATION = Set.of("stackrefill", "usewhilemining", "autoreconnect", "mousetweaks", "keepuiopen",
+        "keepinventoryopen", "survivalmechanics", "boat360view");
 
     /** Never forced on: automation, privacy (Discord, cosmetics relay, voice chat, replays, screenshots), input, files, window, threads. */
     private static final Set<String> NEVER_FORCED = Set.of("stackrefill", "usewhilemining", "autoreconnect", "mousetweaks", "keepuiopen",
+        "keepinventoryopen", "survivalmechanics", "boat360view",
         "discordrpc", "cosmetics", "togglesprint", "voice chat", "voice chat group", "flashback settings", "betterscreenshots", "clienttools",
         "resourcepacks", "texturepacks", "threads", "performance", "borderlessfullscreen", "betterresolution");
 
