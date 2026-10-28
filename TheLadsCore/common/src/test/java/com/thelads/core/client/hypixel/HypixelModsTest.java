@@ -254,6 +254,29 @@ class HypixelModsTest {
         assertFalse(RealPing.receive("minecraft:brand", new byte[] {1}, 8 * S));
     }
 
+    /** Nothing shows the measured ping (Ping HUD and PingView off): no Mod API or status pings at all, the listed values stand. */
+    @Test void realPingStaysQuietWithoutAPingDisplay() {
+        Module hud = ModuleManager.getInstance().getModule("PingHUD"), view = ModuleManager.getInstance().getModule("PingView");
+        boolean hudWas = hud.isEnabledSetting(), viewWas = view.isEnabledSetting();
+        address = null; // no real status ping
+        try {
+            hud.setEnabled(false);
+            view.setEnabled(false);
+            RealPing.tick(game, connection, 0);
+            RealPing.tick(game, connection, 2 * S);
+            assertFalse(RealPing.fakeListing());
+            assertTrue(payloads.isEmpty(), "no Mod API ping");
+            assertEquals(1, RealPing.own(1));
+            view.setEnabled(true);
+            RealPing.tick(game, connection, 3 * S);
+            assertTrue(RealPing.fakeListing());
+            assertEquals(1, payloads.size(), "PingView on: measured again");
+        } finally {
+            hud.setEnabled(hudWas);
+            view.setEnabled(viewWas);
+        }
+    }
+
     @Test void fakeListingIsDetectedOnAnyNetworkButNotLocally() {
         server = "play.example.net";
         address = null; // no status ping in this test

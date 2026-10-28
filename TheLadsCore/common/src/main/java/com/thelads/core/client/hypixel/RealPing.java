@@ -179,7 +179,7 @@ public final class RealPing {
             modApiTracker.reset();
             statusTracker.reset();
         }
-        if (current == null) return;
+        if (current == null || !shown()) { fake = false; return; } // nothing shows it: no pings at all (no extra traffic)
         boolean hypixel = HypixelSafetyManager.isHypixel();
         InetSocketAddress address = game.getServerSocketAddress();
         if (hypixel) fake = true;
@@ -219,6 +219,13 @@ public final class RealPing {
                 }
             });
         }
+    }
+
+    /** The Ping HUD or PingView (the tab list's numbers) is on: something shows the measured ping. */
+    private static boolean shown() {
+        com.thelads.core.config.ModuleManager modules = com.thelads.core.config.ModuleManager.getInstance();
+        com.thelads.core.config.Module hud = modules.getModule("PingHUD"), view = modules.getModule("PingView");
+        return hud != null && hud.isEnabled() || view != null && view.isEnabled();
     }
 
     /** Every listed latency (two or more players) is 1 ms or less, on a server that is not this PC or the LAN: fake. */
