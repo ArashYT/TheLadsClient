@@ -2502,8 +2502,19 @@ public partial class MainWindow : Window
             .Select(a => new AccountSummary(a.Profile!.Username!, a.Profile.UUID ?? "", "microsoft"))
             .ToList();
         foreach (string name in settings.OfflineAccounts)
+        {
             if (!accounts.Any(a => string.Equals(a.username, name, StringComparison.OrdinalIgnoreCase)))
-                accounts.Add(new AccountSummary(name, AccountIdentity.OfflineUuid(name), "offline"));
+            {
+                try
+                {
+                    accounts.Add(new AccountSummary(name, AccountIdentity.OfflineUuid(name), "offline"));
+                }
+                catch (ArgumentException ex)
+                {
+                    Log($"[Accounts] Skipping invalid offline account '{name}': {ex.Message}");
+                }
+            }
+        }
         return accounts;
     }
 
@@ -4593,6 +4604,7 @@ public partial class MainWindow : Window
                 System.IO.File.WriteAllText(crashFile, ex.ToString());
             } catch { }
             Log($"[CRASH] {ex.Message}");
+            StatusText.Text = $"Launch failed: {ex.Message}";
         } finally {
             LaunchButton.IsEnabled = true;
             GameLaunchOverlay.IsVisible = false;
