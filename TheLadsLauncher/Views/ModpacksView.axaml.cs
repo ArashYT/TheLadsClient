@@ -3168,18 +3168,25 @@ public partial class ModpacksView : UserControl
             Report("Signing in...");
             var session = await host.ResolveModpackSessionAsync(launch.Token);
             var launchedUtc = DateTime.UtcNow;
+            InstanceAnalyticsService.RecordLaunch(instance.Directory, instance.Id);
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, launch.Token,
                 relaunch?.Server, relaunch?.World);
             _running[instance.Id] = process;
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) => Dispatcher.UIThread.Post(() =>
             {
+                var sessionDuration = DateTime.UtcNow - launchedUtc;
+                InstanceAnalyticsService.RecordSessionExit(instance.Directory, instance.Id, sessionDuration);
                 if (_running.TryGetValue(instance.Id, out var current) && current == process)
                     _running.Remove(instance.Id);
                 int code = process.ExitCode;
                 host.ModpackLog($"{instance.Name} closed (exit code {code}).");
                 if (_selected == instance)
+                {
                     ManageStatus.Text = code == 0 ? "Game closed." : $"Minecraft closed with exit code {code}. See minecraft\\logs\\latest.log (and crash-reports) in Open folder.";
+                    var analytics = InstanceAnalyticsService.GetAnalytics(instance.Directory, instance.Id);
+                    ManagePlaytime.Text = $"⏱ {InstanceAnalyticsService.FormatPlayTime(analytics.TotalPlaySeconds)}";
+                }
                 else if (instance.IsExternal)
                     Status.Text = code == 0 ? $"{instance.Name} closed." : $"{instance.Name} closed with exit code {code}. See logs\\latest.log (and crash-reports) in its folder.";
                 Refresh();

@@ -540,6 +540,8 @@ public partial class ExperiencesView : UserControl
             var session = await host.ResolveModpackSessionAsync(token);
 
             Report($"Preparing Minecraft {exp.McVersion} & Fabric {exp.LoaderVersion}...");
+            var launchedUtc = DateTime.UtcNow;
+            InstanceAnalyticsService.RecordLaunch(instance.Directory, instance.Id);
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token,
                 relaunch?.Server, relaunch?.World);
 
@@ -549,6 +551,8 @@ public partial class ExperiencesView : UserControl
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) => Dispatcher.UIThread.Post(() =>
             {
+                var sessionDuration = DateTime.UtcNow - launchedUtc;
+                InstanceAnalyticsService.RecordSessionExit(instance.Directory, instance.Id, sessionDuration);
                 _runningLadsSmpReborn.Remove(runningInst);
                 bool wasCancelled = GameSession.WasCancelled(process);
                 int code = process.ExitCode;
@@ -688,6 +692,7 @@ public partial class ExperiencesView : UserControl
             Report("Preparing Minecraft 1.20.1 & Forge 47.4.10...");
             string? joinServer = host.ModpackSettings.ZeroSmpAutoJoin ? ExperiencesService.ZeroSmp.ServerAddress : null;
             var launchedUtc = DateTime.UtcNow;
+            InstanceAnalyticsService.RecordLaunch(instance.Directory, instance.Id);
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token, joinServer);
 
             int instNumber = NextInstanceNumber(_runningZeroSmp);
@@ -696,6 +701,8 @@ public partial class ExperiencesView : UserControl
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) => Dispatcher.UIThread.Post(() =>
             {
+                var sessionDuration = DateTime.UtcNow - launchedUtc;
+                InstanceAnalyticsService.RecordSessionExit(instance.Directory, instance.Id, sessionDuration);
                 _runningZeroSmp.Remove(runningInst);
                 bool wasCancelled = GameSession.WasCancelled(process);
                 int code = process.ExitCode;
