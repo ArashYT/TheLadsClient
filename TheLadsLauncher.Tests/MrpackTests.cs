@@ -204,6 +204,83 @@ public sealed class MrpackTests : IDisposable
         Assert.False(File.Exists(Path.Combine(_root, "escape.txt")));
     }
 
+    // ------------------------------------------------------------------ updates
+
+    [Fact]
+    public async Task EachUpdateWritesTheClientOverridesVariantOverTheOverridesOne()
+    {
+        using var http = new HttpClient(new Handler(new()));
+        var instance = Path.Combine(_root, "instance");
+        string Config() => File.ReadAllText(Path.Combine(instance, "minecraft", "config", "x.txt"));
+        foreach (var version in new[] { "v1", "v2", "v3" })
+        {
+            await Mrpack.InstallAsync(Pack(version, Array.Empty<(string, string, string)>(),
+                new() { ["overrides/config/x.txt"] = "pack " + version, ["client-overrides/config/x.txt"] = "client " + version }), instance, http, null, default);
+            Assert.Equal("client " + version, Config()); // updates used to leave "pack v2" there, and never touch it again
+        }
+    }
+
+    [Fact]
+    public async Task AFileInBothTheFileListAndOverridesTakesTheOverridesCopy_AUserChangeStays()
+    {
+        using var http = new HttpClient(new Handler(new() { ["https://cdn.modrinth.com/a1.jar"] = "mod a v1", ["https://cdn.modrinth.com/a2.jar"] = "mod a v2",
+            ["https://cdn.modrinth.com/a3.jar"] = "mod a v3" }));
+        var instance = Path.Combine(_root, "instance");
+        var jar = Path.Combine(instance, "minecraft", "mods", "a.jar");
+        await Mrpack.InstallAsync(Pack("v1", new[] { ("mods/a.jar", "a1.jar", "mod a v1") }, new() { ["overrides/mods/a.jar"] = "override v1" }), instance, http, null, default);
+        Assert.Equal("override v1", File.ReadAllText(jar));
+
+        await Mrpack.InstallAsync(Pack("v2", new[] { ("mods/a.jar", "a2.jar", "mod a v2") }, new() { ["overrides/mods/a.jar"] = "override v2" }), instance, http, null, default);
+        Assert.Equal("override v2", File.ReadAllText(jar));
+
+        File.WriteAllText(jar, "mine");
+        await Mrpack.InstallAsync(Pack("v3", new[] { ("mods/a.jar", "a3.jar", "mod a v3") }, new() { ["overrides/mods/a.jar"] = "override v3" }), instance, http, null, default);
+        Assert.Equal("mine", File.ReadAllText(jar));
+    }
+
+    [Fact]
+    public async Task AModWhoseNameChangesOnlyInCaseIsUpdatedNotDeleted()
+    {
+        using var http = new HttpClient(new Handler(new() { ["https://cdn.modrinth.com/a1.jar"] = "mod a v1", ["https://cdn.modrinth.com/a2.jar"] = "mod a v2" }));
+        var instance = Path.Combine(_root, "instance");
+        var mods = Path.Combine(instance, "minecraft", "mods");
+        await Mrpack.InstallAsync(Pack("v1", new[] { ("mods/Foo.jar", "a1.jar", "mod a v1") }, new()), instance, http, null, default);
+
+        await Mrpack.InstallAsync(Pack("v2", new[] { ("mods/foo.jar", "a2.jar", "mod a v2") }, new()), instance, http, null, default);
+
+        var jar = Assert.Single(Directory.GetFiles(mods));
+        Assert.Equal("mod a v2", File.ReadAllText(jar));
+        Assert.Contains("foo.jar", File.ReadAllText(Path.Combine(instance, Mrpack.RecordFile)), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ADownloadThatTimesOutMovesOnToTheNextMirror()
+    {
+        var pack = Path.Combine(_root, "mirrors.mrpack");
+        using (var zip = ZipFile.Open(pack, ZipArchiveMode.Create))
+        using (var w = new StreamWriter(zip.CreateEntry("modrinth.index.json").Open()))
+            w.Write(JsonSerializer.Serialize(new
+            {
+                formatVersion = 1, game = "minecraft", versionId = "v1", name = "Pack",
+                dependencies = new Dictionary<string, string> { ["minecraft"] = "1.21.1", ["fabric-loader"] = "0.16.5" },
+                files = new[] { new { path = "mods/a.jar", hashes = new { sha1 = Sha1("mod a"), sha512 = Sha512("mod a") },
+                    downloads = new[] { "https://slow.example/a.jar", "https://cdn.modrinth.com/a.jar" }, fileSize = 5 } }
+            }));
+        using var http = new HttpClient(new SlowFirstMirror());
+
+        await Mrpack.InstallAsync(pack, Path.Combine(_root, "instance"), http, null, default);
+
+        Assert.Equal("mod a", File.ReadAllText(Path.Combine(_root, "instance", "minecraft", "mods", "a.jar")));
+    }
+
+    // HttpClient's own timeout surfaces as a TaskCanceledException.
+    private sealed class SlowFirstMirror : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            request.RequestUri!.Host == "slow.example" ? throw new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout.", new TimeoutException())
+                : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("mod a") });
+    }
+
     // ------------------------------------------------------------------ Lads' own state files
 
     [Theory]

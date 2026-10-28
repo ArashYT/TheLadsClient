@@ -128,10 +128,12 @@ public static class Mrpack
         Directory.CreateDirectory(game);
         var recordPath = Path.Combine(instanceDirectory, RecordFile);
         bool updating = File.Exists(recordPath);
-        var previous = updating
-            ? JsonSerializer.Deserialize<Dictionary<string, string>>(await File.ReadAllTextAsync(recordPath, token)) ?? new()
-            : new Dictionary<string, string>();
+        // Case-insensitive like the disk and `installed`: "mods/Foo.jar" renamed to "mods/foo.jar" is the same file, not a removed one.
+        var previous = new Dictionary<string, string>(
+            updating ? JsonSerializer.Deserialize<Dictionary<string, string>>(await File.ReadAllTextAsync(recordPath, token)) ?? new() : new(),
+            StringComparer.OrdinalIgnoreCase);
         var installed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var written = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // the keys this run put on disk, as opposed to kept as the user's
 
         using var zip = ZipFile.OpenRead(mrpackFile);
         MrpackIndex index;
@@ -160,7 +162,12 @@ public static class Mrpack
         void Record(string key, string target, bool kept)
         {
             string? sha1 = !kept ? Sha1Of(target) : previous.TryGetValue(key, out var old) ? old : null;
-            if (sha1 != null) lock (installed) installed[key] = sha1;
+            if (sha1 == null) return;
+            lock (installed)
+            {
+                installed[key] = sha1;
+                if (!kept) written.Add(key);
+            }
         }
 
         try
@@ -183,8 +190,9 @@ public static class Mrpack
                 token.ThrowIfCancellationRequested();
                 var key = Key(relative);
                 var target = OnDisk(SafePath(game, relative));
-                // A file this run already wrote (overrides/ before client-overrides/) is the pack's, not the user's.
-                bool kept = UserChanged(target, key, previous, updating && !installed.ContainsKey(key));
+                // A file this run already wrote (overrides/ before client-overrides/) is the pack's, not the user's: whatever the
+                // previous record says, it differs from it now.
+                bool kept = !written.Contains(key) && UserChanged(target, key, previous, updating && !installed.ContainsKey(key));
                 if (!kept)
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(target)!);
@@ -247,7 +255,7 @@ public static class Mrpack
                 File.Move(temp, target, overwrite: true);
                 return;
             }
-            catch (Exception e) when (e is HttpRequestException or InvalidDataException or IOException or TimeoutException && !token.IsCancellationRequested)
+            catch (Exception e) when (e is HttpRequestException or InvalidDataException or IOException or TimeoutException or TaskCanceledException && !token.IsCancellationRequested)
             {
                 last = e;
             }
