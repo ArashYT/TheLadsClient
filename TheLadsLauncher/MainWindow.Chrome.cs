@@ -169,6 +169,7 @@ public partial class MainWindow
                     HorizonCheckbox.IsChecked = false; // comes back here unchecked, which saves it off
                     return;
                 }
+                settings.HorizonRiskAccepted = true;
             }
             ScheduleSettingsSave();
         };

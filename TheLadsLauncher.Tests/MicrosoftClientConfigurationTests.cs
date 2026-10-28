@@ -67,6 +67,19 @@ public class MicrosoftClientConfigurationTests
         Assert.True(loaded.KeepLauncherOpen);
     }
 
+    [Theory]
+    [InlineData("{\"UseHorizon\":true}", false)]                              // saved before 1.12.0, maybe never accepted
+    [InlineData("{\"UseHorizon\":true,\"HorizonRiskAccepted\":false}", false)]
+    [InlineData("{\"UseHorizon\":true,\"HorizonRiskAccepted\":true}", true)]
+    [InlineData("{\"UseHorizon\":false,\"HorizonRiskAccepted\":true}", false)]
+    public void HorizonStaysOnOnlyWithARecordedRiskAcceptance(string json, bool horizon)
+    {
+        using var dir = new TestDirectory();
+        string path = Path.Combine(dir.Path, "settings.json");
+        File.WriteAllText(path, json);
+        Assert.Equal(horizon, LauncherSettings.LoadFrom(path).UseHorizon);
+    }
+
     [Fact]
     public void ALockedSettingsFileIsReadOnceItIsFree()
     {
