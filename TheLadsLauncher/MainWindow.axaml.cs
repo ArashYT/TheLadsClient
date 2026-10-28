@@ -3164,7 +3164,7 @@ public partial class MainWindow : Window
         settings.DiscordRichPresence = DiscordPresenceCheckbox.IsChecked ?? true;
         DiscordPresence.Enable(settings.DiscordRichPresence);
         settings.KeepClosedOnExit = KeepClosedOnExitCheckbox.IsChecked ?? false;
-        settings.UseHorizon = HorizonCheckbox.IsChecked == true;
+        settings.UseHorizon = HorizonCheckbox.IsChecked == true && !_horizonAsking;
         settings.AutoLaunch = AutoLaunchCheckbox.IsChecked ?? false;
         settings.AutoFixCrashes = AutoFixCrashesCheckbox.IsChecked ?? true;
         settings.AutoRelaunchOnCrash = AutoRelaunchOnCrashCheckbox.IsChecked ?? false;
