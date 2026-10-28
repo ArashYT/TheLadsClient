@@ -274,6 +274,29 @@ public class AuthenticationTests
         Assert.Contains("different Minecraft account", error.Message);
     }
 
+    /// <summary>Re-signing in to A while the browser is on a sibling's account B: CmlLib saves B before the launcher refuses it.
+    /// B must not stay in Accounts unless the player had added it before.</summary>
+    [Fact]
+    public async Task WrongBrowserAccountIsNotKeptUnlessItWasAlreadySaved()
+    {
+        using var dir = new TestDirectory();
+        string sibling = Guid.NewGuid().ToString("N");
+        var backend = new FakeBackend(dir.Path, DateTime.UtcNow.AddHours(1)) { InteractiveUuid = sibling, SavesInteractiveAccount = true };
+        var service = new MicrosoftAccountService(backend);
+        string? Saved(string id) => service.AccountManager.GetAccounts().Select(a => a.Identifier).FirstOrDefault(a => a == id);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.AuthenticateInteractively(backend.Account));
+        Assert.Null(Saved(sibling));
+        Assert.NotNull(Saved(backend.Account.Identifier!));
+        var disk = new JsonXboxGameAccountManager(System.IO.Path.Combine(dir.Path, "accounts.json"), JEGameAccount.FromSessionStorage, null);
+        Assert.DoesNotContain(disk.GetAccounts(), a => a.Identifier == sibling);
+
+        await service.AuthenticateInteractively(); // the player adds B on purpose
+        Assert.NotNull(Saved(sibling));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.AuthenticateInteractively(backend.Account));
+        Assert.NotNull(Saved(sibling));
+    }
+
     [Fact]
     public async Task ClearRemovesLoadedAndPersistedAccounts()
     {
@@ -337,6 +360,7 @@ public class AuthenticationTests
         public int MaximumConcurrentCalls;
         private int _active;
         public string? InteractiveUuid;
+        public bool SavesInteractiveAccount; // as CmlLib: the browser's account is saved as a new account before the caller sees it
         public Exception? SilentFailure;
         public int InteractiveCalls;
 
@@ -375,6 +399,11 @@ public class AuthenticationTests
             Interlocked.Increment(ref InteractiveCalls);
             var result = Account.ToLauncherSession();
             result.UUID = InteractiveUuid ?? result.UUID;
+            if (SavesInteractiveAccount)
+            {
+                AccountManager.NewAccount().SessionStorage.Set("JEProfile", new JEProfile { Username = "Sibling", UUID = result.UUID });
+                AccountManager.SaveAccounts();
+            }
             return Task.FromResult(result);
         }
         public Task Signout(IXboxGameAccount account) { foreach (var key in account.SessionStorage.Keys.ToArray()) account.SessionStorage.Remove(key); AccountManager.SaveAccounts(); return Task.CompletedTask; }
