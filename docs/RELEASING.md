@@ -26,7 +26,7 @@ For a local review build, run `pwsh ./Publish-Release.ps1 -PrepareOnly`. `-SkipC
 - `releases.win.json`: update feed with package hashes, sizes, versions, and notes. Each release's feed lists only its own version; launchers more than one version behind fall back to the full package.
 - Additional Velopack-generated assets (including portable ZIP and legacy feed).
 - `SHA256SUMS.txt`, `RELEASE_NOTES.md`, and `release-build.json`.
-- `lads-update.json` and `lads-update.json.sig`: added by `tools/Sign-Release.ps1` (step 7).
+- `lads-update.json`, `lads-update.json.sig`, and `SHA256SUMS.txt.sig`: added by `tools/Sign-Release.ps1` (step 7).
 
 Upload all generated files together to a draft before publishing. Never upload a lone launcher EXE and never replace an already-published version. Fix a bad release by publishing a higher version. Drafts and prereleases are excluded from the stable updater. Network errors may delay checking; failures are logged and retried.
 

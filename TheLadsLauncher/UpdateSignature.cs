@@ -17,6 +17,7 @@ public static class UpdateSignature
 {
     public const string ManifestName = "lads-update.json";
     public const string SignatureName = "lads-update.json.sig";
+    public const string SumsSignatureName = "SHA256SUMS.txt.sig";
     /// <summary>Public halves (P-256, SubjectPublicKeyInfo) of the release keys an update may be signed with. A launcher trusts only the
     /// keys it shipped with, so a new key is added a release ahead of signing with it (and kept offline until then), and an old one is
     /// dropped only once the launchers still in use trust its successor.</summary>

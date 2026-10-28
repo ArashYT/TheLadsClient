@@ -107,13 +107,50 @@ try {
         $ecdsa.ImportFromPem([IO.File]::ReadAllText($Key))
         $signature = $ecdsa.SignData($manifest, [Security.Cryptography.HashAlgorithmName]::SHA256)
         if (-not $ecdsa.VerifyData($manifest, $signature, [Security.Cryptography.HashAlgorithmName]::SHA256)) { throw 'Signature self-check failed.' }
+
+        # Download and verify SHA256SUMS.txt, then sign it
+        $sumsName = 'SHA256SUMS.txt'
+        gh release download $tag --repo $Repo --pattern $sumsName --dir $work
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath (Join-Path $work $sumsName))) {
+            throw "Could not download $sumsName from the $tag release draft."
+        }
+        $sumsPath = Join-Path $work $sumsName
+        $sumsLines = Get-Content -LiteralPath $sumsPath
+        $sumsMap = @{}
+        foreach ($line in $sumsLines) {
+            if ($line -match '^([a-fA-F0-9]{64})\s+(.+)$') {
+                $sumsMap[$Matches[2].Trim()] = $Matches[1].ToLowerInvariant()
+            }
+        }
+        if (-not $sumsMap.ContainsKey($package)) {
+            throw "$sumsName does not list $package."
+        }
+        if ($sumsMap[$package] -ne $sha.ToLowerInvariant()) {
+            throw "Hash of $package in $sumsName ($($sumsMap[$package])) does not match downloaded package hash ($sha)."
+        }
+        if ($buildRecord.hashes) {
+            foreach ($prop in $buildRecord.hashes.PSObject.Properties) {
+                $fName = $prop.Name
+                $expectedH = $prop.Value.ToLowerInvariant()
+                if ($sumsMap.ContainsKey($fName) -and $sumsMap[$fName] -ne $expectedH) {
+                    throw "Hash mismatch for $fName between release-build.json ($expectedH) and $sumsName ($($sumsMap[$fName]))."
+                }
+            }
+        }
+        $sumsBytes = [IO.File]::ReadAllBytes($sumsPath)
+        $sumsSig = $ecdsa.SignData($sumsBytes, [Security.Cryptography.HashAlgorithmName]::SHA256)
+        if (-not $ecdsa.VerifyData($sumsBytes, $sumsSig, [Security.Cryptography.HashAlgorithmName]::SHA256)) {
+            throw "$sumsName signature self-check failed."
+        }
+        [IO.File]::WriteAllBytes((Join-Path $work "$sumsName.sig"), $sumsSig)
     } finally { $ecdsa.Dispose() }
+
     [IO.File]::WriteAllBytes((Join-Path $work 'lads-update.json'), $manifest)
     [IO.File]::WriteAllBytes((Join-Path $work 'lads-update.json.sig'), $signature)
 
-    if ($PSCmdlet.ShouldProcess($tag, "Upload signature manifest to release")) {
-        gh release upload $tag (Join-Path $work 'lads-update.json') (Join-Path $work 'lads-update.json.sig') --repo $Repo --clobber
+    if ($PSCmdlet.ShouldProcess($tag, "Upload signatures to release")) {
+        gh release upload $tag (Join-Path $work 'lads-update.json') (Join-Path $work 'lads-update.json.sig') (Join-Path $work 'SHA256SUMS.txt.sig') --repo $Repo --clobber
         if ($LASTEXITCODE -ne 0) { throw 'Upload failed.' }
     }
-    "Signed $tag : $package sha256 $sha contentSha256 $contentSha"
+    "Signed $tag : $package sha256 $sha contentSha256 $contentSha and SHA256SUMS.txt"
 } finally { Pop-Location; if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force -WhatIf:$false } }
