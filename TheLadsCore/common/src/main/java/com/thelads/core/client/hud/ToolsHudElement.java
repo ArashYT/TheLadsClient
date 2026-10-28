@@ -65,7 +65,7 @@ public final class ToolsHudElement extends TextHudElement {
                 String s = game.getRecentReachText();
                 yield (editor && (s == null || s.contains("--"))) ? "Reach: 3.42m" : s;
             }
-            case "ServerAddress" -> optBool("Hide address", false) ? "Server hidden" : (editor && ("Singleplayer".equals(game.getServerAddress()) || game.getServerAddress().isEmpty())) ? "mc.thelads.net" : game.getServerAddress();
+            case "ServerAddress" -> optBool("Hide address", false) ? "Server hidden" : (editor && ("Singleplayer".equals(game.getServerAddress()) || "Unknown".equalsIgnoreCase(game.getServerAddress()) || game.getServerAddress().isEmpty())) ? "mc.thelads.net" : game.getServerAddress();
             case "PortalCoordinates" -> {
                 String target = ClientTools.portal(game.getDimensionId(), game.getPlayerX(), game.getPlayerZ());
                 yield target.isEmpty() ? (editor ? "Portal: X: 120, Z: -85" : "Portal: unavailable here") : target;

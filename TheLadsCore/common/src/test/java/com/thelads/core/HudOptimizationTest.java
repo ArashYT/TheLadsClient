@@ -54,4 +54,25 @@ class HudOptimizationTest {
             ownership.close();
         }
     }
+    @Test void serverAddressSampleShowsLadsNetForUnknownInEditor() {
+        var previous = LadsGameBridge.get();
+        String[] address = { "Unknown" };
+        LadsGameBridge.set(new DefaultGameBridge() { @Override public String getServerAddress() { return address[0]; } });
+        try {
+            var element = new ToolsHudElement(); element.setModuleName("ServerAddress");
+            var graphics = new Graphics();
+            element.prepareRender(graphics, true); element.render(graphics);
+            assertTrue(graphics.drawCalls.stream().anyMatch(c -> c.contains("mc.thelads.net")), "editor sample should be mc.thelads.net for Unknown");
+            graphics.drawCalls.clear();
+
+            address[0] = "Singleplayer";
+            element.prepareRender(graphics, true); element.render(graphics);
+            assertTrue(graphics.drawCalls.stream().anyMatch(c -> c.contains("mc.thelads.net")), "editor sample should be mc.thelads.net for Singleplayer");
+            graphics.drawCalls.clear();
+
+            address[0] = "play.example.com";
+            element.prepareRender(graphics, true); element.render(graphics);
+            assertTrue(graphics.drawCalls.stream().anyMatch(c -> c.contains("play.example.com")), "editor mode on active server keeps address");
+        } finally { LadsGameBridge.set(previous); }
+    }
 }
