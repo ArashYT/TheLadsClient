@@ -518,6 +518,80 @@ public class SocialStateTest {
         assertEquals("inv-switch", sentMessages.get(0).get("inviteId").getAsString());
     }
 
+    /** F12: a host that accepts after the player moved on never pulls them out: the client asks again first. */
+    @Test
+    public void lateAcceptAsksAgainInsteadOfLeaving() {
+        UUID host = UUID.randomUUID();
+        state.requestJoin(host); // asked from the menus
+        bridge.inWorld = true;   // then joined a server
+        state.handleP2PStart("sid-late", host, "Host", "world-1", "guest", new JsonObject());
+        assertEquals(0, bridge.leftWorldCount, "never leaves on an answer given somewhere else");
+        assertFalse(state.isGuestSessionActive());
+        assertTrue(bridge.toasts.stream().anyMatch(t -> t.contains("p2p_join:sid-late")), bridge.toasts.toString());
+
+        state.handleAction("p2p_join:sid-late");
+        assertEquals(1, bridge.leftWorldCount, "Join leaves, then connects");
+        assertTrue(state.isGuestSessionActive());
+        assertEquals("sid-late", state.activeGuestSid());
+    }
+
+    /** F12: the same address can be another match by now (a network lobby): an old answer asks again; "not now" ends the session. */
+    @Test
+    public void oldAnswerAsksAgainAndNotNowEndsTheSession() {
+        long saved = SocialState.reconfirmMs;
+        SocialState.reconfirmMs = -1; // every answer counts as old
+        try {
+            bridge.inWorld = true;
+            UUID host = UUID.randomUUID();
+            state.requestJoin(host);
+            state.handleP2PStart("sid-old", host, "Host", "world-1", "guest", new JsonObject());
+            assertEquals(0, bridge.leftWorldCount);
+
+            sentMessages.clear();
+            state.handleAction("p2p_skip:sid-old");
+            assertTrue(sentMessages.stream().anyMatch(m -> "p2p_end".equals(m.get("t").getAsString()) && "sid-old".equals(m.get("sid").getAsString())),
+                    "the host stops waiting: " + sentMessages);
+            state.handleAction("p2p_join:sid-old");
+            assertEquals(0, bridge.leftWorldCount, "a declined join can't start later");
+            assertFalse(state.isGuestSessionActive());
+        } finally {
+            SocialState.reconfirmMs = saved;
+        }
+    }
+
+    /** B4: backend errors reach the player, and Add Friend reports the backend's answer instead of an optimistic "sent". */
+    @Test
+    public void backendErrorsAreShownAndAddFriendFollowsTheAnswer() {
+        state.addFriend("Notch_Typo");
+        assertNull(state.addFriendResult(), "nothing claimed before the backend answers");
+        state.onMessage(message("error", "code", "not_found", "ref", "Notch_Typo"));
+        assertEquals("No Minecraft player called Notch_Typo", state.addFriendResult());
+        assertTrue(bridge.toasts.stream().anyMatch(t -> t.contains("No Minecraft player called Notch_Typo")), bridge.toasts.toString());
+
+        state.addFriend("Pal");
+        state.onMessage(message("request_sent", "uuid", UUID.randomUUID().toString(), "name", "Pal"));
+        assertEquals("Request sent to Pal!", state.addFriendResult());
+
+        UUID host = UUID.randomUUID();
+        state.addFriendLocally(new FriendEntry(host, "Arash", null, Presence.OFFLINE, 0));
+        state.requestJoin(host);
+        state.onMessage(message("error", "code", "full", "ref", host.toString().replace("-", ""))); // the backend's plain UUID
+        assertTrue(bridge.toasts.stream().anyMatch(t -> t.contains("Arash's world is full")), bridge.toasts.toString());
+        state.handleP2PStart("sid-x", host, "Arash", "w", "guest", new JsonObject());
+        assertFalse(state.isGuestSessionActive(), "a failed join request arms nothing");
+
+        int before = bridge.toasts.size();
+        state.onMessage(message("error", "code", "not_found", "ref", "0123456789abcdef")); // an id that was answered already
+        state.onMessage(message("error", "code", "bad", "ref", ""));
+        assertEquals(before, bridge.toasts.size(), "no toast for what the player can't act on");
+
+        for (String code : new String[] {SocialProtocol.E_SELF, SocialProtocol.E_ALREADY, SocialProtocol.E_BLOCKED, SocialProtocol.E_LIMIT,
+                SocialProtocol.E_RATE, SocialProtocol.E_NOT_FRIEND, SocialProtocol.E_EXPIRED, SocialProtocol.E_INVITE_ONLY,
+                SocialProtocol.E_INCOMPATIBLE, SocialProtocol.E_OFFLINE}) {
+            assertNotNull(SocialState.errorText(code, "", "Pal"), code);
+        }
+    }
+
     /** F9 (PocState 4): a p2p_start nobody asked for (no join request, no accepted invite) neither leaves the world nor connects. */
     @Test
     public void unsolicitedGuestP2PStartIsIgnored() {
