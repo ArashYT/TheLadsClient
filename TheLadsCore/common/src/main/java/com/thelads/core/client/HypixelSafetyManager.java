@@ -172,7 +172,7 @@ public final class HypixelSafetyManager {
         if (addr.equalsIgnoreCase("Singleplayer")) return LOCAL;
         String host = host(addr);
         if (host.isEmpty() || host.equals("unknown")) return new Server(0, "unknown"); // a server we can't name: unknown rules
-        if (isThisComputer(host)) return new Server(trustLocal ? TRUSTED : 0, host);
+        if (isThisComputer(host)) return new Server(trustLocal ? TRUSTED : 0, localKey(addr, host));
         if (isLocalNetwork(host)) return new Server(TRUSTED, host);
         for (String own : TRUSTED_SERVERS) if (isHost(host, own)) return new Server(TRUSTED, host);
         int flags = isHost(host, "hypixel.net") || isHost(host, "hypixel.io") ? HYPIXEL : 0;
@@ -181,6 +181,18 @@ public final class HypixelSafetyManager {
         for (String fbAllowed : FULLBRIGHT_ALLOWED_SERVERS) if (isHost(host, fbAllowed)) flags |= FULLBRIGHT_OK;
         for (String fbBanned : FULLBRIGHT_BANNED_SERVERS) if (isHost(host, fbBanned)) flags |= NO_FULLBRIGHT;
         return new Server(flags, host);
+    }
+
+    private static String localKey(String addr, String host) {
+        String clean = addr.trim().toLowerCase(Locale.ROOT);
+        while (clean.endsWith(".")) clean = clean.substring(0, clean.length() - 1);
+        if (clean.startsWith("[")) return clean;
+        if (host.equals("::1")) return "[::1]";
+        int colon = clean.indexOf(':');
+        if (colon != -1 && clean.indexOf(':', colon + 1) == -1) {
+            return host + clean.substring(colon);
+        }
+        return host;
     }
 
     /** The lower-case host of an address, without port or trailing dots. */

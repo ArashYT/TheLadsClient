@@ -589,7 +589,11 @@ public class HypixelSafetyTest {
             assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("StackRefill"));
             bridge.setServer("localhost:25568");
             HypixelSafetyManager.bypass("StackRefill"); // the red warning, for this host only
-            assertTrue(refill.isEnabled(), "bypassed for localhost");
+            assertTrue(refill.isEnabled(), "bypassed for localhost:25568");
+            bridge.setServer("localhost:25569");
+            assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("StackRefill"), "other local port still unknown");
+            assertFalse(refill.isEnabled(), "other local port still off");
+            assertFalse(HypixelSafetyManager.isBypassed("StackRefill"), "bypass is per port on local servers");
             HypixelSafetyManager.trustLocalForTests(true); // the QA/bench harness
             for (String loopback : new String[]{"localhost:25599", "127.0.0.1:1", "[::1]:25565"}) {
                 bridge.setServer(loopback);
