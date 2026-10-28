@@ -53,8 +53,7 @@ public static class GameSession
         startInfo.Environment["THELADS_GLOBAL_DIR"] = SharedContentService.TryResolveLauncherDataDirectory(gameDirectory) ?? PathService.Instance.BaseDirectory;
         startInfo.Environment[SharedContentService.RootEnvironmentVariable] = sharedRoot;
         startInfo.Environment[GameOptionsService.LunarEnvironmentVariable] = GameOptionsService.LunarRoot();
-        startInfo.Environment.Remove("_JAVA_OPTIONS");
-        startInfo.Environment.Remove("JAVA_TOOL_OPTIONS");
+        RemoveJavaOptionVariables(startInfo);
         if (minecraftVersion != null)
         {
             GameOptionsService.EnsureDataVersion(gameDirectory, minecraftVersion);
@@ -64,6 +63,16 @@ public static class GameSession
             }
         }
         PackDefaults.Apply(gameDirectory);
+    }
+
+    /// <summary>The environment variables Java reads extra options from (-javaagent among them; JDK_JAVA_OPTIONS by the Java 9+ launcher):
+    /// a program that set one for the user must not get its agent into the game, where the access token is.</summary>
+    public static readonly string[] JavaOptionVariables = { "_JAVA_OPTIONS", "JAVA_TOOL_OPTIONS", "JDK_JAVA_OPTIONS" };
+
+    /// <summary>Removes <see cref="JavaOptionVariables"/> from a game's start info (every game process, profiles and modpacks).</summary>
+    public static void RemoveJavaOptionVariables(ProcessStartInfo startInfo)
+    {
+        foreach (var name in JavaOptionVariables) startInfo.Environment.Remove(name);
     }
 
     /// <summary>
