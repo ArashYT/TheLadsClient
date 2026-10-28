@@ -398,4 +398,32 @@ public class CurseForgeModpackTests
         Assert.False(File.Exists(Path.Combine(instance.GameDirectory, "notes.txt")));
         Assert.Equal(false, Modpacks.List(temp.Path).Single().LadsCore);
     }
+
+    [Fact]
+    public void RepairCurseForgeLayout_MovesModsLast_SoFailureBeforeModsLeavesModsIntactForRetry()
+    {
+        using var temp = new TestDirectory();
+        var instance = OlderImport(temp.Path);
+        Directory.CreateDirectory(Path.Combine(instance.Directory, "mods"));
+        File.WriteAllText(Path.Combine(instance.Directory, "mods", "a.jar"), "a");
+
+        var configDir = Path.Combine(instance.Directory, "config");
+        Directory.CreateDirectory(configDir);
+        var lockedFile = Path.Combine(configDir, "locked.txt");
+        File.WriteAllText(lockedFile, "locked content");
+
+        Directory.CreateDirectory(Path.Combine(instance.GameDirectory, "config"));
+        using (var stream = new FileStream(lockedFile, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            ModpackLauncher.RepairCurseForgeLayout(instance);
+        }
+
+        Assert.True(Directory.Exists(Path.Combine(instance.Directory, "mods")));
+        Assert.True(File.Exists(Path.Combine(instance.Directory, "mods", "a.jar")));
+
+        ModpackLauncher.RepairCurseForgeLayout(instance);
+        Assert.False(Directory.Exists(Path.Combine(instance.Directory, "mods")));
+        Assert.True(File.Exists(Path.Combine(instance.GameDirectory, "mods", "a.jar")));
+        Assert.True(File.Exists(Path.Combine(instance.GameDirectory, "config", "locked.txt")));
+    }
 }

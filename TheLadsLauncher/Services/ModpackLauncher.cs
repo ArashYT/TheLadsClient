@@ -117,7 +117,8 @@ public static class ModpackLauncher
         try
         {
             Directory.CreateDirectory(instance.GameDirectory);
-            foreach (var entry in Directory.GetFileSystemEntries(instance.Directory))
+            foreach (var entry in Directory.GetFileSystemEntries(instance.Directory)
+                .OrderBy(e => Path.GetFileName(e).Equals("mods", StringComparison.OrdinalIgnoreCase) ? 1 : 0))
                 if (!InstanceOwnFiles.Contains(Path.GetFileName(entry), StringComparer.OrdinalIgnoreCase))
                     MoveInto(entry, Path.Combine(instance.GameDirectory, Path.GetFileName(entry)));
             if (instance.LadsCore == false && !Directory.Exists(misplacedMods))
