@@ -97,8 +97,14 @@ public final class Flerovium189 {
         return new GuiBakedModel(model, keptFace, keptGeneral, keptTotal, Math.max(0, originalTotal - keptTotal), false);
     }
 
+    /**
+     * Keeps copies of the source model's properties, never the model itself: GUI_CACHE holds its values strongly, so a value
+     * that referenced its weak key would keep every model ever drawn (and its quads) alive across resource reloads.
+     */
     private static final class GuiBakedModel implements IBakedModel {
-        private final IBakedModel delegate;
+        private final boolean ambientOcclusion, gui3d, builtInRenderer;
+        private final TextureAtlasSprite particleTexture;
+        private final ItemCameraTransforms cameraTransforms;
         private final List<BakedQuad> southFaceQuads;
         private final List<BakedQuad> southGeneralQuads;
         final int keptCount;
@@ -107,7 +113,11 @@ public final class Flerovium189 {
 
         GuiBakedModel(IBakedModel delegate, List<BakedQuad> southFaceQuads, List<BakedQuad> southGeneralQuads,
                       int keptCount, int culledCount, boolean passthrough) {
-            this.delegate = delegate;
+            this.ambientOcclusion = delegate.isAmbientOcclusion();
+            this.gui3d = delegate.isGui3d();
+            this.builtInRenderer = delegate.isBuiltInRenderer();
+            this.particleTexture = delegate.getParticleTexture();
+            this.cameraTransforms = delegate.getItemCameraTransforms();
             this.southFaceQuads = southFaceQuads;
             this.southGeneralQuads = southGeneralQuads;
             this.keptCount = keptCount;
@@ -127,27 +137,27 @@ public final class Flerovium189 {
 
         @Override
         public boolean isAmbientOcclusion() {
-            return delegate.isAmbientOcclusion();
+            return ambientOcclusion;
         }
 
         @Override
         public boolean isGui3d() {
-            return delegate.isGui3d();
+            return gui3d;
         }
 
         @Override
         public boolean isBuiltInRenderer() {
-            return delegate.isBuiltInRenderer();
+            return builtInRenderer;
         }
 
         @Override
         public TextureAtlasSprite getParticleTexture() {
-            return delegate.getParticleTexture();
+            return particleTexture;
         }
 
         @Override
         public ItemCameraTransforms getItemCameraTransforms() {
-            return delegate.getItemCameraTransforms();
+            return cameraTransforms;
         }
     }
 }
