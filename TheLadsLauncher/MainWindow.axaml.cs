@@ -52,6 +52,13 @@ public partial class MainWindow : Window
     private bool _launching;
     private CancellationTokenSource? _launchCts; // the launch overlay's Cancel, until the game process starts
     private bool _populatingProfileSelector = false;
+    private readonly Dictionary<string, TheLadsLauncher.Services.AutoRelaunchPolicy> _relaunchPolicies = new(StringComparer.OrdinalIgnoreCase);
+    private TheLadsLauncher.Services.AutoRelaunchPolicy GetRelaunchPolicy(string profileId)
+    {
+        if (!_relaunchPolicies.TryGetValue(profileId, out var policy))
+            _relaunchPolicies[profileId] = policy = new TheLadsLauncher.Services.AutoRelaunchPolicy();
+        return policy;
+    }
 
     private string _selectedAccountInternal = "";
     private string _selectedAccount 
@@ -4639,8 +4646,13 @@ public partial class MainWindow : Window
         finally { _showingMicrosoftSetup = false; }
     }
 
-    private async Task LaunchGame(bool afterVersionSwitch = false, GraphicsRenderer.Relaunch? relaunch = null)
+    private async Task LaunchGame(bool afterVersionSwitch = false, GraphicsRenderer.Relaunch? relaunch = null, string? relaunchProfileId = null, bool isCrashRelaunch = false)
     {
+        if (!string.IsNullOrEmpty(relaunchProfileId))
+        {
+            var target = _profileService.GetProfile(relaunchProfileId);
+            if (target != null) _profileService.SetActiveProfile(target.Id);
+        }
         if (_launching || _addingAccount || _authCts != null || _showingMicrosoftSetup)
         {
             if (afterVersionSwitch) Log("[Launcher] The game was not started again: a launch or sign-in is already in progress.");
@@ -4925,7 +4937,7 @@ public partial class MainWindow : Window
             // A renderer relaunch goes back where the player was (a world, a server or the title screen) instead.
             if (relaunch?.World is { } world) ModpackLauncher.JoinWorld(launchOpt, world);
             else if (relaunch?.Server is { } server) ModpackLauncher.JoinServer(launchOpt, server);
-            else if (relaunch == null && settings.AutoRejoinServer)
+            else if (relaunch == null && !isCrashRelaunch && settings.AutoRejoinServer)
             {
                 // Prefer a manually-picked server; fall back to the last log-detected one
                 string rejoinIp = !string.IsNullOrEmpty(settings.QuickLaunchServerIp)
@@ -5275,8 +5287,13 @@ public partial class MainWindow : Window
             {
                 StatusText.Text = $"Game crashed! (exit code: {exitCode}){suffix}";
                 Log($"[Launcher] Game exited with code {exitCode}");
-                HandleCrashDetection(gameDirectory);
-                if (settings.SendCrashReports && string.IsNullOrEmpty(profile.PackwizUrl))
+                var policy = GetRelaunchPolicy(profile.Id);
+                var uptime = DateTime.UtcNow - (GameStart(process) ?? DateTime.UtcNow);
+                string relaunchReason = "Auto-relaunch disabled in settings.";
+                bool canRelaunch = settings.AutoRelaunchOnCrash && policy.ShouldRelaunch(uptime, cancelled, DateTimeOffset.UtcNow, out relaunchReason);
+                Log($"[Crash Detection] {relaunchReason}");
+                HandleCrashDetection(gameDirectory, canRelaunch, relaunchReason, profile);
+                if (settings.SendCrashReports && string.IsNullOrEmpty(profile.PackwizUrl) && policy.ShouldSendCrashReport(DateTimeOffset.UtcNow))
                     _ = SendCrashReportAsync(gameDirectory, process.StartInfo.WorkingDirectory, profile.MinecraftVersion, exitCode);
             }
             else
@@ -5516,7 +5533,7 @@ public partial class MainWindow : Window
         await Dispatcher.UIThread.InvokeAsync(() => Log(error == null ? "[Crash] Crash report sent to the Lads team." : $"[Crash] Crash report not sent: {error}"));
     }
 
-    private void HandleCrashDetection(string gameDirectory)
+    private void HandleCrashDetection(string gameDirectory, bool allowAutoRelaunch = false, string? loopGuardReason = null, Models.LauncherProfile? crashedProfile = null)
     {
         try
         {
@@ -5607,10 +5624,20 @@ public partial class MainWindow : Window
 
             if (settings.AutoRelaunchOnCrash)
             {
-                Log("[Crash Detection] Auto-relaunching due to AutoRelaunchOnCrash setting.");
-                StatusText.Text = ("Auto-relaunching after crash... " + rendererHint).TrimEnd();
-                _ = LaunchGame();
-                return;
+                if (allowAutoRelaunch)
+                {
+                    Log("[Crash Detection] Auto-relaunching due to AutoRelaunchOnCrash setting.");
+                    StatusText.Text = ("Auto-relaunching after crash... " + rendererHint).TrimEnd();
+                    _ = LaunchGame(relaunchProfileId: crashedProfile?.Id, isCrashRelaunch: true);
+                    return;
+                }
+                else
+                {
+                    Log($"[Crash Detection] Auto-relaunch skipped: {loopGuardReason}");
+                    StatusText.Text = $"Auto-relaunch stopped: {loopGuardReason}";
+                    if (!string.IsNullOrEmpty(loopGuardReason))
+                        crashInfo += "\n\n⚠️ " + loopGuardReason;
+                }
             }
 
             ShowCrashDialog(crashInfo, crashFile);
