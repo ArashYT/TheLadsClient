@@ -22,7 +22,7 @@ from urllib.parse import quote
 import aiohttp
 from aiohttp import web
 
-from cosmetics import plain_uuid, server_id, has_joined, NAME_RE
+from cosmetics import plain_uuid, server_id, has_joined, NAME_RE, MojangUnavailableError, _MOJANG_SEMAPHORE
 
 log = logging.getLogger("social")
 
@@ -59,7 +59,6 @@ ALLOWED_STATES = frozenset({"menu", "singleplayer", "hosting", "server", "offlin
 ALLOWED_SCOPES = frozenset({"off", "lan", "friends", "invite"})
 KNOWN_GAME_KEYS = frozenset({"mc", "loader", "profileKind", "packId", "packVersion", "modsHash", "lads"})
 
-_MOJANG_SEMAPHORE = asyncio.Semaphore(8)
 
 _PROFILE_CACHE: OrderedDict[str, tuple[float, dict | None]] = OrderedDict()
 MAX_PROFILE_CACHE = 10000
@@ -1146,6 +1145,10 @@ async def authenticate(hub: SocialHub, ws: web.WebSocketResponse, ip: str) -> So
         try:
             async with _MOJANG_SEMAPHORE:
                 joined = await has_joined(name, sid)
+        except MojangUnavailableError as e:
+            log.warning("Mojang unavailable: %s", e)
+            await ws.close(code=1013, message=b"try again later")
+            return None
         except Exception as e:
             log.warning("Mojang hasJoined failed: %s", type(e).__name__)
             joined = None
@@ -1876,7 +1879,8 @@ async def handle_social_ws(request: web.Request) -> web.WebSocketResponse:
             return ws
 
         if not peer:
-            await ws.close(code=4003, message=b"unauthorized")
+            if not ws.closed:
+                await ws.close(code=4003, message=b"unauthorized")
             return ws
 
         hello_data = await hub.build_hello(peer)

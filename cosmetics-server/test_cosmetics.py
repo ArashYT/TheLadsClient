@@ -1268,3 +1268,36 @@ def test_get_all_cosmetics_source_of_truth():
     assert cape_item["free"] is False
 
 
+
+
+async def test_cosmetics_auth_failure_throttle(client, monkeypatch):
+    """5 auth failures within 60s blocks IP for 60s (A/7)."""
+    async def wrong_mojang(name, sid):
+        return None  # Auth refused
+    monkeypatch.setattr(cosmetics, "has_joined", wrong_mojang)
+
+    ip_headers = {"CF-Connecting-IP": "198.51.100.22"}
+    for i in range(5):
+        ws = await client.ws_connect("/cosmetics/ws", headers=ip_headers)
+        ch = await ws.receive_json(timeout=2)
+        await ws.send_json({"t": "auth", "name": "FakeUser", "uuid": "0" * 32, "serverId": cosmetics.server_id(ch["nonce"])})
+        await ws.receive(timeout=2)
+        assert ws.close_code in (4003, None)
+
+    # 6th attempt should be rejected with 429
+    resp = await client.get("/cosmetics/ws", headers=ip_headers)
+    assert resp.status == 429
+
+
+async def test_cosmetics_mojang_unavailable_closes_1013(client, monkeypatch):
+    """When Mojang is unavailable (429/5xx), closes with 1013 and does not count as auth failure (A/7)."""
+    async def unavailable(name, sid):
+        raise cosmetics.MojangUnavailableError("Mojang 429 rate limit")
+    monkeypatch.setattr(cosmetics, "has_joined", unavailable)
+
+    ip_headers = {"CF-Connecting-IP": "198.51.100.33"}
+    ws = await client.ws_connect("/cosmetics/ws", headers=ip_headers)
+    ch = await ws.receive_json(timeout=2)
+    await ws.send_json({"t": "auth", "name": "Alice", "uuid": "1" * 32, "serverId": cosmetics.server_id(ch["nonce"])})
+    await ws.receive(timeout=2)
+    assert ws.close_code == 1013

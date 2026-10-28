@@ -173,15 +173,37 @@ def plain_uuid(value) -> str | None:
 
 async def has_joined(name: str, sid: str) -> str | None:
     """Mojang's answer: the profile id that joined with this serverId, or None. The tests replace this."""
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
+    try:
+        session = await get_mojang_session()
         async with session.get(HAS_JOINED, params={"username": name, "serverId": sid}) as response:
+            if response.status == 429 or response.status >= 500:
+                raise MojangUnavailableError(f"Mojang status {response.status}")
             if response.status != 200:
                 return None
             body = await response.json(content_type=None)
             return plain_uuid(body.get("id")) if isinstance(body, dict) else None
+    except aiohttp.ClientError as e:
+        raise MojangUnavailableError(f"Mojang connection error: {e}") from e
 
 
-from client_ip import client_ip, get_client_ip
+from client_ip import client_ip, get_client_ip, normalize_ip as get_auth_ip_key
+
+class MojangUnavailableError(Exception):
+    """Raised when Mojang sessionserver returns 429, 5xx, or network failure."""
+    pass
+
+_MOJANG_SEMAPHORE = asyncio.Semaphore(8)
+_mojang_session: aiohttp.ClientSession | None = None
+
+async def get_mojang_session() -> aiohttp.ClientSession:
+    global _mojang_session
+    if _mojang_session is None or _mojang_session.closed:
+        connector = aiohttp.TCPConnector(limit=16, ttl_dns_roundrobin=True)
+        _mojang_session = aiohttp.ClientSession(
+            connector=connector,
+            timeout=aiohttp.ClientTimeout(total=5)
+        )
+    return _mojang_session
 
 
 def verify_tebex_signature(raw_body: bytes, signature: str | None, secret: str | None) -> bool:
@@ -898,6 +920,29 @@ class Hub:
         self.peers: dict[str, Peer] = {}  # uuid -> its one socket
         self.rooms: dict[str, set[Peer]] = {}
         self.ips: dict[str, int] = {}
+        self.auth_failures: dict[str, list[float]] = {}
+        self.auth_blocked_until: dict[str, float] = {}
+
+    def is_ip_auth_blocked(self, ip: str) -> bool:
+        ip_key = get_auth_ip_key(ip)
+        now = time.monotonic()
+        blocked_until = self.auth_blocked_until.get(ip_key, 0.0)
+        if now < blocked_until:
+            return True
+        if ip_key in self.auth_blocked_until:
+            del self.auth_blocked_until[ip_key]
+        return False
+
+    def record_auth_failure(self, ip: str) -> None:
+        ip_key = get_auth_ip_key(ip)
+        now = time.monotonic()
+        fails = self.auth_failures.setdefault(ip_key, [])
+        fails.append(now)
+        valid = [t for t in fails if now - t <= 60.0]
+        self.auth_failures[ip_key] = valid
+        if len(valid) >= 5:
+            self.auth_blocked_until[ip_key] = now + 60.0
+            self.auth_failures.pop(ip_key, None)
 
     async def leave(self, peer: Peer) -> None:
         room, peer.room, peer.emote = peer.room, None, None
@@ -982,23 +1027,35 @@ async def read(ws) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
-async def authenticate(hub: Hub, ws) -> Peer | None:
+async def authenticate(hub: Hub, ws, ip: str = "127.0.0.1") -> Peer | None:
+    if hub.is_ip_auth_blocked(ip):
+        await ws.close(code=4003, message=b"auth throttled")
+        return None
     nonce = secrets.token_hex(16)
     await ws.send_str(json.dumps({"t": "challenge", "nonce": nonce}))
     msg = await read(ws)
     if not msg or msg.get("t") != "auth":
+        hub.record_auth_failure(ip)
         return None
     uuid, name, sid = plain_uuid(msg.get("uuid")), msg.get("name"), server_id(nonce)
     if not uuid or not isinstance(name, str) or not NAME_RE.fullmatch(name) or msg.get("serverId") != sid:
+        hub.record_auth_failure(ip)
         return None
     if not hub.insecure:
         try:
-            joined = await has_joined(name, sid)
+            async with _MOJANG_SEMAPHORE:
+                joined = await has_joined(name, sid)
+        except MojangUnavailableError as e:
+            log.warning("mojang unavailable: %s", e)
+            await ws.close(code=1013, message=b"try again later")
+            return None
         except Exception as e:
             log.warning("mojang hasJoined failed: %s", type(e).__name__)
             joined = None
         if joined != uuid:
+            hub.record_auth_failure(ip)
             log.info("auth refused %s", uuid)
+            await ws.close(code=4003, message=b"auth refused")
             return None
     peer = Peer(ws, uuid)
     old = hub.peers.get(uuid)
@@ -1063,12 +1120,14 @@ async def handle_ws(request: web.Request) -> web.StreamResponse:
     ip = client_ip(request)
     if hub.ips.get(ip, 0) >= MAX_PER_IP:
         return web.json_response({"error": "too many connections"}, status=429)
+    if hub.is_ip_auth_blocked(ip):
+        return web.json_response({"error": "auth throttled"}, status=429)
     hub.ips[ip] = hub.ips.get(ip, 0) + 1
     ws = web.WebSocketResponse(heartbeat=HEARTBEAT, receive_timeout=IDLE_TIMEOUT, max_msg_size=MAX_FRAME)
     peer = None
     try:
         await ws.prepare(request)
-        peer = await asyncio.wait_for(authenticate(hub, ws), AUTH_TIMEOUT)
+        peer = await asyncio.wait_for(authenticate(hub, ws, ip), AUTH_TIMEOUT)
         if peer:
             await serve(hub, peer)
     except (asyncio.TimeoutError, ConnectionError):
@@ -1306,6 +1365,10 @@ async def handle_link_verify_http(request: web.Request) -> web.Response:
 
 async def close_all(app: web.Application) -> None:
     await asyncio.gather(*(p.ws.close(code=1001, message=b"restart") for p in list(app[HUB].peers.values())))
+    global _mojang_session
+    if _mojang_session and not _mojang_session.closed:
+        await _mojang_session.close()
+        _mojang_session = None
 
 
 HUB = web.AppKey("cosmetics_hub", Hub)

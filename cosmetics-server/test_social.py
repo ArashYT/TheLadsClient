@@ -1999,3 +1999,21 @@ async def test_turn_mint_daily_cap_per_account(social_app, monkeypatch):
     assert second["ice"]["relayStatus"] == "budget"
     await alice_ws.close()
     await bob_ws.close()
+
+
+async def test_social_mojang_unavailable_closes_1013(aiohttp_client, fake_profiles, tmp_path, monkeypatch):
+    """When Mojang is unavailable (429/5xx), closes with 1013 without throttling (A/7, B/7)."""
+    async def unavailable(name, sid):
+        raise cosmetics.MojangUnavailableError("Mojang 503")
+    monkeypatch.setattr(social, "has_joined", unavailable)
+
+    app = web.Application()
+    db_file = tmp_path / "social.db"
+    social.mount(app, insecure=False, db_path=db_file)
+    cl = await aiohttp_client(app)
+
+    ws = await cl.ws_connect("/social/ws", headers={"CF-Connecting-IP": "198.51.100.44"})
+    ch = await ws.receive_json(timeout=2)
+    await ws.send_json({"t": "auth", "name": "Alice", "uuid": A, "serverId": cosmetics.server_id(ch["nonce"])})
+    await ws.receive(timeout=2)
+    assert ws.close_code == 1013
