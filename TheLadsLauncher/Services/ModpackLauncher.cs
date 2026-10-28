@@ -209,7 +209,7 @@ public static class ModpackLauncher
             var sharedConfig = Path.Combine(dataDirectory, "shared", "thelads_config.json");
             var rootConfig = Path.Combine(dataDirectory, "thelads_config.json");
             var instanceConfig = Path.Combine(gameDirectory, "thelads_config.json");
-            if (File.Exists(instanceConfig))
+            if (File.Exists(instanceConfig) && !SharedContentService.IsDatedInTheFuture(File.GetLastWriteTimeUtc(instanceConfig)))
             {
                 if (!File.Exists(sharedConfig) || File.GetLastWriteTimeUtc(instanceConfig) >= File.GetLastWriteTimeUtc(sharedConfig))
                 {
