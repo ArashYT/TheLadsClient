@@ -6,6 +6,7 @@ import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.GLAllocation;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.texture.ITextureObject;
+import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
@@ -39,7 +40,7 @@ public final class LadsClouds189 {
     private static final int MIN_ALPHA = 32;
     private static int lists = -1, texture = -1, builtX = Integer.MIN_VALUE, builtZ;
     private static final boolean[] solid = new boolean[256 * 256];
-    private static boolean failed;
+    private static boolean failed, reloadHooked;
     /** QA (CoreProbe): frames drawn here, and the share of cloud texels in the texture (percent). */
     public static long frames;
     public static int cloudPercent = -1;
@@ -77,6 +78,10 @@ public final class LadsClouds189 {
         cloudZ -= MathHelper.floor_double(cloudZ / 2048.0) * 2048;
         int cellX = MathHelper.floor_double(cloudX), cellZ = MathHelper.floor_double(cloudZ);
 
+        if (!reloadHooked) { // a reload re-uploads the texture into the same object, often under the GL name it just freed
+            reloadHooked = true;
+            ((IReloadableResourceManager) mc.getResourceManager()).registerReloadListener(manager -> texture = -1);
+        }
         mc.getTextureManager().bindTexture(CLOUDS);
         ITextureObject cloudTexture = mc.getTextureManager().getTexture(CLOUDS);
         int id = cloudTexture == null ? -1 : cloudTexture.getGlTextureId();
