@@ -1898,6 +1898,17 @@ public partial class MainWindow : Window
             : new[] { (confirmText, danger, confirmEnabled) }, cancelText) == 0;
 
     /// <summary>
+    /// A window hidden to the tray cannot own a dialog (Avalonia throws "Cannot show window with non-visible owner."), and an exception
+    /// there ended the launcher. A dialog that must be seen (the crash dialog, a deep-link join) brings the window back first.
+    /// </summary>
+    private void ShowForDialog()
+    {
+        if (!IsVisible) Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    /// <summary>
     /// The same dialog with one button per choice (a disabled choice cannot be pressed) and a cancel button. Returns the
     /// index of the pressed choice, or -1 for cancel, closing the window, or a hidden (tray) window.
     /// </summary>
@@ -5693,7 +5704,12 @@ public partial class MainWindow : Window
             };
             openBtn.Click += (s, e) =>
             {
-                Process.Start(new ProcessStartInfo(crashFile) { UseShellExecute = true });
+                try { Process.Start(new ProcessStartInfo(crashFile) { UseShellExecute = true }); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or InvalidOperationException)
+                {
+                    Log($"[Crash Detection] Could not open the crash report '{crashFile}': {ex.Message}");
+                    StatusText.Text = $"Could not open the crash report: {ex.Message}";
+                }
             };
             buttonRow.Children.Add(openBtn);
         }
@@ -5712,7 +5728,15 @@ public partial class MainWindow : Window
 
         panel.Children.Add(buttonRow);
         window.Content = panel;
-        await window.ShowDialog(this);
+        try
+        {
+            ShowForDialog(); // hidden to the tray after the launch, and kept closed on exit: the dialog still has to be seen
+            await window.ShowDialog(this);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log($"[Crash Detection ERROR] Could not show the crash dialog: {ex.Message}");
+        }
     }
 
     // ═══════════════════════════════════════
