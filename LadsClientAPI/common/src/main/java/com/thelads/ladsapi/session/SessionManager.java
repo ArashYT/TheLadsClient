@@ -3,6 +3,7 @@ package com.thelads.ladsapi.session;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.thelads.ladsapi.LadsCore;
 import com.thelads.ladsapi.api.LadsClientAPI;
 import com.thelads.ladsapi.api.LadsPlayer;
 import com.thelads.ladsapi.config.LadsConfig;
@@ -25,6 +26,9 @@ import java.util.function.Consumer;
  * Manages player sessions, protocol messages, presence, and implements LadsClientAPI.
  */
 public final class SessionManager implements LadsClientAPI {
+    /** Biggest client -> server payload (PROTOCOL.md section 1); the platforms cap their inbound packets the same way. */
+    public static final int MAX_IN = 32_000;
+
     private final LadsPlatform platform;
     private final LadsConfig config;
     private final LadsRules rules;
@@ -147,7 +151,7 @@ public final class SessionManager implements LadsClientAPI {
     }
 
     public void receive(LadsPlayerHandle handle, byte[] payload) {
-        if (handle == null || payload == null || payload.length == 0 || payload.length > 32000) {
+        if (handle == null || payload == null || payload.length == 0 || payload.length > MAX_IN) {
             return; // Dropped
         }
 
@@ -170,12 +174,13 @@ public final class SessionManager implements LadsClientAPI {
             JsonElement el = JsonParser.parseString(jsonStr);
             if (!el.isJsonObject()) return;
             root = el.getAsJsonObject();
-        } catch (Exception e) {
+        } catch (Exception | StackOverflowError e) {
             return; // Malformed dropped, never crash/kick
         }
 
-        if (!root.has("t")) return;
-        String type = root.get("t").getAsString();
+        // Valid JSON can still carry any type in any field: read them type-checked (PROTOCOL.md: malformed = dropped, never a crash/kick).
+        String type = text(root, "t");
+        if (type == null) return;
 
         if ("hello".equalsIgnoreCase(type)) {
             handleHello(session, handle, root);
@@ -187,12 +192,13 @@ public final class SessionManager implements LadsClientAPI {
     private void handleHello(LadsSession session, LadsPlayerHandle handle, JsonObject root) {
         if (session.isHelloAcked()) return;
 
-        if (!root.has("v")) return;
-        int v = root.get("v").getAsInt();
-        if (v < 1) return; // Non-lads player
+        // PROTOCOL.md section 5: a server receiving a `v` it does not know treats the player as non-Lads.
+        int v = whole(root, "v", 0);
+        if (v < 1 || v > LadsCore.PROTOCOL) return;
 
-        String ladsVersion = root.has("lads") ? root.get("lads").getAsString() : "";
-        String mcVersion = root.has("mc") ? root.get("mc").getAsString() : "";
+        // Both strings reach commands, PlaceholderAPI and the kick text: only plain version text gets through.
+        String ladsVersion = VersionUtil.clean(text(root, "lads"));
+        String mcVersion = VersionUtil.clean(text(root, "mc"));
 
         // min-client-version check
         if (!config.getMinClientVersion().isBlank() && VersionUtil.isOlder(ladsVersion, config.getMinClientVersion())) {
@@ -237,12 +243,32 @@ public final class SessionManager implements LadsClientAPI {
         if (!session.isLads()) return;
 
         if (config.isDebug() && platform.logger() != null) {
-            int rev = root.has("rev") ? root.get("rev").getAsInt() : 0;
-            JsonElement ignored = root.get("ignored");
-            JsonElement refused = root.get("refused");
-            platform.logger().info("[LadsClientAPI] Player " + handle.name() + " ack rev=" + rev
-                    + ", ignored=" + ignored + ", refused=" + refused);
+            platform.logger().info("[LadsClientAPI] Player " + handle.name() + " ack rev=" + whole(root, "rev", 0)
+                    + ", ignored=" + shortJson(root.get("ignored")) + ", refused=" + shortJson(root.get("refused")));
         }
+    }
+
+    /** A string field, or null when it is missing or any other JSON type. */
+    private static String text(JsonObject o, String key) {
+        JsonElement e = o.get(key);
+        return e != null && e.isJsonPrimitive() && e.getAsJsonPrimitive().isString() ? e.getAsString() : null;
+    }
+
+    /** An int field, or {@code fallback} when it is missing, not a number or not a whole number in int range. */
+    private static int whole(JsonObject o, String key, int fallback) {
+        JsonElement e = o.get(key);
+        if (e == null || !e.isJsonPrimitive() || !e.getAsJsonPrimitive().isNumber()) return fallback;
+        try {
+            return e.getAsBigDecimal().intValueExact();
+        } catch (ArithmeticException | NumberFormatException ex) {
+            return fallback;
+        }
+    }
+
+    /** Client JSON goes into the log only in short form: a hostile client controls its length. */
+    private static String shortJson(JsonElement e) {
+        String s = String.valueOf(e);
+        return s.length() > 200 ? s.substring(0, 200) + "..." : s;
     }
 
     public List<UUID> getAllLadsPlayerUuids() {

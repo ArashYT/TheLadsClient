@@ -2,12 +2,14 @@ package com.thelads.ladsapi.session;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.thelads.ladsapi.LadsCore;
 import com.thelads.ladsapi.api.LadsPlayerImpl;
 import com.thelads.ladsapi.platform.LadsPlayerHandle;
 import com.thelads.ladsapi.policy.PolicyBuilder;
 import com.thelads.ladsapi.rules.ModuleRule;
 import com.thelads.ladsapi.rules.RuleOption;
 import com.thelads.ladsapi.util.RateLimiter;
+import com.thelads.ladsapi.util.VersionUtil;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -61,8 +63,8 @@ public final class LadsSession {
 
     public void setLads(boolean lads, String ladsVersion, String mcVersion) {
         this.lads = lads;
-        this.ladsVersion = ladsVersion != null ? ladsVersion : "";
-        this.mcVersion = mcVersion != null ? mcVersion : "";
+        this.ladsVersion = VersionUtil.clean(ladsVersion);
+        this.mcVersion = VersionUtil.clean(mcVersion);
     }
 
     public boolean checkRateLimit() {
@@ -76,7 +78,7 @@ public final class LadsSession {
     public void sendHello() {
         JsonObject obj = new JsonObject();
         obj.addProperty("t", "hello");
-        obj.addProperty("v", 1);
+        obj.addProperty("v", LadsCore.PROTOCOL);
         String serverName = manager.getConfig() != null ? manager.getConfig().getServerName() : "Lads Server";
         if (serverName != null && serverName.length() > 32) {
             serverName = serverName.substring(0, 32);

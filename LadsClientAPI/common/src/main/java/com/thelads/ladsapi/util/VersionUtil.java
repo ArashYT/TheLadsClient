@@ -4,7 +4,17 @@ package com.thelads.ladsapi.util;
  * Utility for comparing dotted version strings such as "1.9.13" vs "1.9.12".
  */
 public final class VersionUtil {
+    private static final java.util.regex.Pattern PLAIN_VERSION = java.util.regex.Pattern.compile("[0-9A-Za-z.+_-]{1,32}");
+
     private VersionUtil() {}
+
+    /**
+     * Version text a client sent about itself ("1.11.1", "26.3", "1.20.1"): returned as is when it is 1-32 plain characters
+     * (letters, digits and . + _ -), otherwise (missing, too long, colour codes, MiniMessage tags, control characters) "unknown".
+     */
+    public static String clean(String text) {
+        return text != null && PLAIN_VERSION.matcher(text).matches() ? text : "unknown";
+    }
 
     /**
      * Compares two dotted version strings.
