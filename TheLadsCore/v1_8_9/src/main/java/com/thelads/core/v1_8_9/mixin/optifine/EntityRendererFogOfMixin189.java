@@ -1,5 +1,6 @@
 package com.thelads.core.v1_8_9.mixin.optifine;
 
+import com.thelads.core.client.HypixelSafetyManager;
 import com.thelads.core.modules.FogCustomizerModule;
 import com.thelads.core.modules.OptiFine189Module;
 import com.thelads.core.modules.WeatherChangerModule;
@@ -14,6 +15,7 @@ import net.minecraft.potion.Potion;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.biome.WorldChunkManager;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GLContext;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -55,32 +57,30 @@ public abstract class EntityRendererFogOfMixin189 {
         }
     }
 
+    /**
+     * OptiFine's options touch only the fog they are for: Blindness, the cloud fog, lava and the Nether's close fog keep vanilla's
+     * (a Fog Start past Blindness' 5-block end turned it see-through). Clear Water shows what vanilla hides, so it follows the server
+     * rules Fog Customizer's Clear Water does.
+     */
     @Inject(method = "setupFog", at = @At("RETURN"))
     private void lads$setupFogReturn(int startEnd, float partialTicks, CallbackInfo ci) {
         if (lads$customFog(startEnd, partialTicks)) return;
         if (OptiFine189Module.sOfFogType == 2) return;
 
-        Entity entity = mc.getRenderViewEntity();
-        if (entity == null) return;
-
-        boolean inWater = ActiveRenderInfo.getBlockAtEntityViewpoint(mc.theWorld, entity, partialTicks).getMaterial() == Material.water;
-
-        if (inWater && OptiFine189Module.sOfClearWater) {
+        int medium = lads$medium(partialTicks);
+        if (medium == FogCustomizerModule.WATER && OptiFine189Module.sOfClearWater && !HypixelSafetyManager.isDisallowed(FogCustomizerModule.CLEAR_VIEW)) {
             // Clear water: push fog start & end much farther
             GlStateManager.setFogStart(farPlaneDistance * 0.1f);
             GlStateManager.setFogEnd(farPlaneDistance * 0.8f);
             GlStateManager.setFogDensity(0.01f);
             return;
         }
-
-        if (startEnd >= 0) {
-            float start = farPlaneDistance * OptiFine189Module.sOfFogStart;
-            GlStateManager.setFogStart(start);
-            if (OptiFine189Module.sOfFogType == 0) {
-                // Fast fog uses GL_EXP
-                GlStateManager.setFog(GL11.GL_EXP);
-            }
-        }
+        if (medium != FogCustomizerModule.TERRAIN) return;
+        Entity entity = mc.getRenderViewEntity();
+        if (startEnd >= 0 && !mc.theWorld.provider.doesXZShowFog((int) entity.posX, (int) entity.posZ))
+            GlStateManager.setFogStart(farPlaneDistance * OptiFine189Module.sOfFogStart);
+        // Fast: OptiFine's planar fog distance where vanilla asks for radial (GL_EXP here had no density: fogged out at 3 blocks).
+        if (OptiFine189Module.sOfFogType == 0 && GLContext.getCapabilities().GL_NV_fog_distance) GL11.glFogi(34138, 34140); // GL_FOG_DISTANCE_MODE_NV, GL_EYE_PLANE_ABSOLUTE_NV
     }
 
     /** setupFog's branches in vanilla's order: Blindness, the cloud fog (left alone: -1), water, lava, else the distance fog. */
