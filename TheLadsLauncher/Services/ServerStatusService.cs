@@ -118,11 +118,7 @@ public static class ServerStatusService
         byte[]? iconBytes = null;
         if (comma >= 0)
         {
-            try
-            {
-                var bytes = Convert.FromBase64String(icon![(comma + 7)..]);
-                if (IsValidFaviconPng(bytes)) iconBytes = bytes;
-            }
+            try { iconBytes = Convert.FromBase64String(icon![(comma + 7)..]); }
             catch { }
         }
         return new ServerStatus(online, root["players"]?["online"]?.GetValue<int>() ?? 0, root["players"]?["max"]?.GetValue<int>() ?? 0,

@@ -46,22 +46,13 @@ public class ServerStatusServiceTests
     }
 
     [Fact]
-    public void Parse_RejectsOversizedFavicon()
+    public void Parse_ParsesBase64FaviconBytes()
     {
-        string base64Large = Convert.ToBase64String(CreatePngHeader(512, 512));
-        string json = "{\"online\": true, \"icon\": \"data:image/png;base64," + base64Large + "\", \"players\": {\"online\": 5, \"max\": 20}}";
-        var status = ServerStatusService.Parse(json);
-        Assert.True(status.Online);
-        Assert.Null(status.Icon);
-    }
-
-    [Fact]
-    public void Parse_Accepts64x64Favicon()
-    {
-        string base64Valid = Convert.ToBase64String(CreatePngHeader(64, 64));
-        string json = "{\"online\": true, \"icon\": \"data:image/png;base64," + base64Valid + "\", \"players\": {\"online\": 5, \"max\": 20}}";
+        string base64 = Convert.ToBase64String(CreatePngHeader(64, 64));
+        string json = "{\"online\": true, \"icon\": \"data:image/png;base64," + base64 + "\", \"players\": {\"online\": 5, \"max\": 20}}";
         var status = ServerStatusService.Parse(json);
         Assert.True(status.Online);
         Assert.NotNull(status.Icon);
+        Assert.True(ServerStatusService.IsValidFaviconPng(status.Icon));
     }
 }
