@@ -1,7 +1,6 @@
 // Adapted from World Play Time Reborn 1.2.6 by KoroWin, based on World Play Time by Khajiitos (MIT); modified by The Lads: repackaged into Lads Core.
 package com.thelads.core.v26_2.embedded.playtime.mixin;
 
-import com.google.gson.JsonIOException;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Dynamic;
@@ -41,8 +40,15 @@ public class LevelStorageSourceMixin {
 	 */
 	@Inject(at = @At("RETURN"), method = "makeLevelSummary")
 	public void onMakeLevelSummary(Dynamic<?> dynamic, LevelStorageSource.LevelDirectory levelDirectory, boolean idk, int idk2, CallbackInfoReturnable<LevelSummary> cir) {
-		LevelSummary levelSummary = cir.getReturnValue();
+		try {
+			worldplaytimereborn$attach(cir.getReturnValue(), levelDirectory);
+		} catch (RuntimeException ignored) {
+			// Lads: the caller turns any exception from here into a "corrupted world" entry with only a Recover action, so a broken stats file must not escape.
+		}
+	}
 
+	@Unique
+	private static void worldplaytimereborn$attach(LevelSummary levelSummary, LevelStorageSource.LevelDirectory levelDirectory) {
 		if (levelSummary instanceof IWithPlayTime withPlayTime) {
 			if (WptConfig.showWorldSize.get() && Files.isDirectory(levelDirectory.path())) {
 				long[] worldSize = {0};
@@ -114,6 +120,7 @@ public class LevelStorageSourceMixin {
 	 */
 	@Unique
 	private static int worldplaytimereborn$readPlayTime(File file) {
+		if (!file.isFile() || !file.getName().endsWith(".json")) return 0; // Lads: stats/ may hold other files
 		try (FileReader fileReader = new FileReader(file)) {
 			JsonObject jsonObject = JsonParser.parseReader(fileReader).getAsJsonObject();
 
@@ -129,7 +136,7 @@ public class LevelStorageSourceMixin {
 					}
 				}
 			}
-		} catch (JsonIOException | IOException | IllegalStateException ignored) {
+		} catch (IOException | RuntimeException ignored) { // Lads: includes JsonSyntaxException from a truncated file
 		}
 
 		return 0;

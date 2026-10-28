@@ -8,6 +8,10 @@ import com.thelads.core.v1_20_1.embedded.playtime.WorldPlayTimeReborn;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -40,9 +44,21 @@ public class ServerPlayTimeManager {
 		}
 
 		try {
-			NbtIo.write(compoundTag, FILE);
+			writeAtomically(compoundTag);
 		} catch (IOException e) {
 			WorldPlayTimeReborn.LOGGER.error("Failed to write servers_playtime.dat", e);
+		}
+	}
+
+	/** Lads: written beside the file and moved over it, so a crash during the write keeps the old table. */
+	private static void writeAtomically(CompoundTag compoundTag) throws IOException {
+		Path target = FILE.toPath();
+		Path temp = target.resolveSibling(FILE.getName() + ".tmp");
+		NbtIo.write(compoundTag, temp.toFile());
+		try {
+			Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+		} catch (AtomicMoveNotSupportedException unsupported) {
+			Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
 		}
 	}
 
@@ -81,7 +97,10 @@ public class ServerPlayTimeManager {
 	 * Saves server playtime table asynchronously.
 	 */
 	public static void saveAsync() {
-		CompletableFuture.runAsync(ServerPlayTimeManager::save);
+		CompletableFuture.runAsync(ServerPlayTimeManager::save).exceptionally(failure -> {
+			WorldPlayTimeReborn.LOGGER.error("Failed to save servers_playtime.dat", failure);
+			return null;
+		});
 	}
 
 	/**
