@@ -640,7 +640,8 @@ public partial class MainWindow : Window
     /// <summary>Installing restarts the launcher, so it waits for Minecraft, sign-in, mod work and open dialogs.</summary>
     private bool UpdateBlocked() => _windowClosed || _launching || _modsBusy || _addingAccount || _showingMicrosoftSetup || _releaseNotesOpen
         || _runningProcesses.Keys.Any(IsGameRunning) || SharedContentService.Instance.IsBusy
-        || _profileService.GetProfiles().Any(p => GameRunningByMarker(_pathService.GetProfileDirectory(p)));
+        || _profileService.GetProfiles().Any(p => GameRunningByMarker(_pathService.GetProfileDirectory(p)))
+        || (FilesEditor != null && FilesEditor.IsDirty);
 
     private void ReportUpdate(string message)
     {
@@ -900,11 +901,15 @@ public partial class MainWindow : Window
     private void MinimizeBtn_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
     private void CloseBtn_Click(object? sender, RoutedEventArgs e)
     {
-        FlushSettingsSave();
         if (settings.CloseToTray && _runningProcesses.Keys.Any(IsGameRunning))
+        {
+            FlushSettingsSave();
             this.Hide();
+        }
         else
-            Environment.Exit(0);
+        {
+            Close();
+        }
     }
 
     private void AspectLockBtn_Click(object? sender, RoutedEventArgs e)
@@ -5899,7 +5904,7 @@ public partial class MainWindow : Window
         showItem.Click += (s, e) => { this.Show(); this.WindowState = WindowState.Normal; this.Activate(); };
 
         var exitItem = new NativeMenuItem("Exit");
-        exitItem.Click += (s, e) => { FlushSettingsSave(); Environment.Exit(0); };
+        exitItem.Click += (s, e) => { Close(); };
 
         var menu = new NativeMenu();
         menu.Items.Add(showItem);

@@ -166,7 +166,7 @@ public partial class MainWindow
         Mirror(ModrinthApiUrlBox_ModTab, ModrinthApiUrlBox);
         Mirror(CurseForgeApiUrlBox_ModTab, CurseForgeApiUrlBox);
         Mirror(CfApiKeyInputBox, CurseForgeApiKeyBox);
-        Closing += (_, _) => FlushSettingsSave();
+        Closing += Window_Closing;
         _settingsAutoSave = true;
     }
 
@@ -196,6 +196,29 @@ public partial class MainWindow
         InstancePathBox.Text = settings.InstancePath;
         if (JavaSelector.Items.Contains(settings.JavaPath)) JavaSelector.SelectedItem = settings.JavaPath;
         _settingsAutoSave = autoSave;
+    }
+
+    private bool _isClosingConfirmed;
+    private async void Window_Closing(object? sender, WindowClosingEventArgs e)
+    {
+        if (_isClosingConfirmed) return;
+
+        if (FilesEditor != null && FilesEditor.IsDirty)
+        {
+            e.Cancel = true;
+            bool allowed = await FilesEditor.RequestCloseAsync();
+            if (!allowed) return;
+        }
+
+        e.Cancel = true;
+        _isClosingConfirmed = true;
+        try
+        {
+            if (ControlsSettings != null) await ControlsSettings.FlushAsync();
+        }
+        catch { }
+        FlushSettingsSave();
+        Close();
     }
 
     /// <summary>Saves a change still waiting for the timer (closing, exit from the tray).</summary>
