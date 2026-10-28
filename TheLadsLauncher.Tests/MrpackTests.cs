@@ -357,6 +357,11 @@ public sealed class MrpackTests : IDisposable
     [InlineData("install-id")]
     [InlineData("INSTALL-ID")]
     [InlineData("configureddefaults/install-id")]
+    [InlineData("SERVER~1.JSO")]
+    [InlineData("THELAD~1.JSO")]
+    [InlineData("CONFIG~1/foo.json")]
+    [InlineData("configureddefaults/SERVER~1.JSO")]
+    [InlineData("FOOBAR~2.TXT")]
     public void LadsStateFilesAreRecognisedWhateverTheSpelling(string path) => Assert.True(Mrpack.IsLadsStateFile(path), path);
 
     [Theory]
@@ -371,6 +376,9 @@ public sealed class MrpackTests : IDisposable
     [InlineData("ladsomething.txt")]
     [InlineData("configureddefaults/options.txt")]
     [InlineData("configureddefaults/config/something.json")]
+    [InlineData("mods/mod~1.jar")]
+    [InlineData("config/mod~1.cfg")]
+    [InlineData("~tilde.txt")]
     [InlineData("")]
     public void OtherPackFilesAreNotLadsStateFiles(string path) => Assert.False(Mrpack.IsLadsStateFile(path), path);
 

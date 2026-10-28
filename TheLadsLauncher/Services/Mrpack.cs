@@ -98,8 +98,10 @@ public static class Mrpack
         }
         if (path.Count > 0 && path[0].Equals("configureddefaults", StringComparison.OrdinalIgnoreCase))
             path.RemoveAt(0);
-        return path.Count > 0 && (ExactLadsStateFiles.Any(exact => path[0].Equals(exact, StringComparison.OrdinalIgnoreCase))
-            || LadsStatePrefixes.Any(prefix => path[0].StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
+        if (path.Count == 0) return false;
+        if (System.Text.RegularExpressions.Regex.IsMatch(path[0], @"~\d")) return true;
+        return ExactLadsStateFiles.Any(exact => path[0].Equals(exact, StringComparison.OrdinalIgnoreCase))
+            || LadsStatePrefixes.Any(prefix => path[0].StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Every hash the pack gives must match, and it must give at least one.</summary>
