@@ -20,6 +20,7 @@ Features:
 
 import os
 import sys
+import shutil
 from typing import Any, Optional
 import json
 import base64
@@ -184,22 +185,35 @@ def load_state():
         "pending_links": {}      # user_id -> {"ign": str, "uuid": str, "code": str, "requested_at": iso}
     }
     if STATE_FILE.exists():
-        try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                for k, v in default_state.items():
-                    if k not in data:
-                        data[k] = v
-                return data
-        except Exception:
-            pass
+        last_err = None
+        for attempt in range(3):
+            try:
+                with open(STATE_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    for k, v in default_state.items():
+                        if k not in data:
+                            data[k] = v
+                    return data
+            except Exception as e:
+                last_err = e
+                time.sleep(0.05)
+        raise RuntimeError(f"Failed to read/parse state file {STATE_FILE}: {last_err}")
     return default_state
 
 def save_state(state):
+    if not isinstance(state, dict) or state.get("_is_fallback"):
+        print("Error: refusing to save fallback or invalid state", flush=True)
+        return
     try:
         tmp_file = STATE_FILE.with_name(f"{STATE_FILE.name}.tmp")
         with open(tmp_file, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=2)
+        if STATE_FILE.exists():
+            bak_file = STATE_FILE.with_name(f"{STATE_FILE.name}.bak")
+            try:
+                shutil.copy2(STATE_FILE, bak_file)
+            except Exception as e:
+                print(f"Warning: could not backup state file: {e}", flush=True)
         os.replace(tmp_file, STATE_FILE)
     except Exception as e:
         print(f"Error saving state: {e}", flush=True)
