@@ -319,7 +319,7 @@ public final class ShareCode {
      * Applies an imported payload: saves "Before import" snapshot, applies via applyJson, then saves.
      */
     public static void applySharePayload(JsonObject payload, ImportMode mode) {
-        ProfileManager.get().saveAs("Before import");
+        ProfileManager.get().saveBeforeImport();
         JsonObject prepared = prepareImportJson(payload, mode);
         ConfigManager.applyJson(prepared);
         ConfigManager.saveLater();

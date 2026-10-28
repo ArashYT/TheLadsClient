@@ -624,6 +624,31 @@ class ShareCodeTest {
     }
 
     @Test
+    void eachImportKeepsTheBackupsBeforeIt() {
+        ModuleManager mm = ModuleManager.getInstance();
+        mm.resetToDefaults();
+        BoolOption smooth = (BoolOption) mm.getModule("FPS").getOption("Smooth");
+        smooth.set(false);
+        ProfileManager pm = ProfileManager.get();
+        ShareCode.applySharePayload(JsonParser.parseString("{\"v\":1,\"modules\":{\"FPS\":{\"options\":{\"Smooth\":true}}}}").getAsJsonObject(), ShareCode.ImportMode.BOTH);
+        ShareCode.applySharePayload(JsonParser.parseString("{\"v\":1,\"modules\":{\"FPS\":{\"options\":{\"Update rate\":3}}}}").getAsJsonObject(), ShareCode.ImportMode.BOTH);
+
+        assertTrue(smooth(pm.getProfile("Before import")), "before the second import");
+        assertFalse(smooth(pm.getProfile("Before import (2)")), "before the first: the settings the player had");
+        pm.saveBeforeImport();
+        pm.saveBeforeImport(); // nothing changed since: nothing moves
+        assertFalse(smooth(pm.getProfile("Before import (3)")));
+        smooth.set(false);
+        pm.saveBeforeImport();
+        assertTrue(smooth(pm.getProfile("Before import (3)")), "three are kept: the oldest moved out");
+        assertFalse(pm.hasProfile("Before import (4)"));
+    }
+
+    private static boolean smooth(JsonObject snapshot) {
+        return snapshot.getAsJsonObject("modules").getAsJsonObject("FPS").getAsJsonObject("options").get("Smooth").getAsBoolean();
+    }
+
+    @Test
     void sharedLayoutsCannotBloatTheConfig() {
         JsonObject positions = new JsonObject();
         positions.add("x".repeat(200), xy(1, 1));

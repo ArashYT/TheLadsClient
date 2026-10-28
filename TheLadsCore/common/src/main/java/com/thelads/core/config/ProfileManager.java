@@ -84,6 +84,30 @@ public class ProfileManager {
         persist();
     }
 
+    private static final String BEFORE_IMPORT = "Before import";
+    /** How many "Before import" snapshots are kept: the newest under that name, older ones as "Before import (2)", "(3)". */
+    private static final int BEFORE_IMPORT_KEPT = 3;
+
+    /**
+     * Snapshots the current config before an import or a profile load. The earlier snapshots move down one place instead of being
+     * overwritten, so a second import still leaves the settings from before the first; nothing moves when nothing changed since.
+     */
+    public void saveBeforeImport() {
+        ensureLoaded();
+        JsonObject now = ConfigManager.toJson();
+        if (now.equals(profiles.get(BEFORE_IMPORT))) return;
+        for (int n = BEFORE_IMPORT_KEPT; n > 1; n--) {
+            JsonObject older = profiles.get(beforeImport(n - 1));
+            if (older != null) profiles.put(beforeImport(n), older);
+        }
+        profiles.put(BEFORE_IMPORT, now);
+        persist();
+    }
+
+    private static String beforeImport(int n) {
+        return n == 1 ? BEFORE_IMPORT : BEFORE_IMPORT + " (" + n + ")";
+    }
+
     /** A profile restores what it saved: the one-time overrides already ran on the live config (ConfigManager.markOverridesApplied). */
     private static JsonObject restoring(JsonObject snap) {
         if (snap.get("hud") instanceof JsonObject hud) ConfigManager.markOverridesApplied(hud);
@@ -100,7 +124,7 @@ public class ProfileManager {
         ensureLoaded();
         JsonObject snap = profiles.get(name);
         if (snap != null) {
-            saveAs("Before import");
+            saveBeforeImport();
             if (mode == null || mode == ShareCode.ImportMode.BOTH) {
                 ConfigManager.applyJson(restoring(snap));
             } else {
