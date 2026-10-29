@@ -191,37 +191,46 @@ public class PlayerHandler {
     }
 
     public boolean setCapeTexture(InputStream image, boolean animated, boolean labymod) {
+        NativeImage cape = null;
         try {
-            NativeImage cape = NativeImage.read(image);
+            cape = NativeImage.read(image);
             if (labymod && UUIDUtil.uuidFromIntArray(cape.getPixels()).toString().equals("ff305f81-ff30-5f90-ff30-5f90ff305f90")) {
                 cape.close();
                 return false;
             }
+            final NativeImage finalCape = cape;
             Minecraft.getInstance().submit(() -> {
-                if (animated) {
-                    Int2ObjectOpenHashMap<NativeImage> animatedCapeFrames = parseAnimatedCape(cape);
-                    if (!animatedCapeFrames.isEmpty()) {
-                        for (Int2ObjectMap.Entry<NativeImage> entry : animatedCapeFrames.int2ObjectEntrySet()) {
-                            int frame = entry.getIntKey();
-                            Minecraft.getInstance().getTextureManager().register(
-                                    Capes.identifier(uuid + "/" + frame), new DynamicTexture(() -> uuid + "/" + frame, entry.getValue())
-                            );
+                try {
+                    if (animated) {
+                        Int2ObjectOpenHashMap<NativeImage> animatedCapeFrames = parseAnimatedCape(finalCape);
+                        if (!animatedCapeFrames.isEmpty()) {
+                            for (Int2ObjectMap.Entry<NativeImage> entry : animatedCapeFrames.int2ObjectEntrySet()) {
+                                int frame = entry.getIntKey();
+                                Minecraft.getInstance().getTextureManager().register(
+                                        Capes.identifier(uuid + "/" + frame), new DynamicTexture(() -> uuid + "/" + frame, entry.getValue())
+                                );
+                            }
+                            this.maxFrames = animatedCapeFrames.size();
+                            this.hasCape = true;
+                            this.hasAnimatedCape = true;
+                            finalCape.close();
+                            return;
                         }
-                        this.maxFrames = animatedCapeFrames.size();
-                        this.hasCape = true;
-                        this.hasAnimatedCape = true;
-                        cape.close();
-                        return;
                     }
+                    this.hasElytraTexture = Math.floorDiv(finalCape.getWidth(), finalCape.getHeight()) == 2;
+                    Minecraft.getInstance().getTextureManager().register(
+                            Capes.identifier(uuid.toString()), new DynamicTexture(() -> uuid.toString(), parseCape(finalCape))
+                    );
+                    this.hasCape = true;
+                } catch (Throwable t) {
+                    finalCape.close();
                 }
-                this.hasElytraTexture = Math.floorDiv(cape.getWidth(), cape.getHeight()) == 2;
-                Minecraft.getInstance().getTextureManager().register(
-                        Capes.identifier(uuid.toString()), new DynamicTexture(() -> uuid.toString(), parseCape(cape))
-                );
-                this.hasCape = true;
             });
             return true;
         } catch (Exception exception) {
+            if (cape != null) {
+                cape.close();
+            }
             exception.printStackTrace();
             return false;
         }
