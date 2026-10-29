@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+import com.thelads.core.client.hypixel.HypixelMods;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -630,6 +631,42 @@ class ShareCodeTest {
         assertTrue(mm.getModule("Oof Mod").isEnabledSetting(), "visual switches still import");
         assertEquals(0.5, ((SliderOption) mm.getModule("Oof Mod").getOption("Volume")).getValue(), 1e-9);
         assertTrue(((BoolOption) mm.getModule("FPS").getOption("Smooth")).get(), "an unlisted visual option is reset (v2)");
+    }
+
+    @Test
+    void hypixelModsOptionsAreExhaustivelyClassifiedAndAutomationCannotBeShared() {
+        Module hypixel = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        assertNotNull(hypixel, "HYPIXEL Mods must be registered");
+
+        for (Option opt : hypixel.getOptions()) {
+            String name = opt.getName();
+            int setting = name.indexOf(": ");
+            String baseFeature = setting < 0 ? name : name.substring(0, setting);
+
+            boolean isVisual = ShareCode.HYPIXEL_VISUAL.contains(baseFeature);
+            boolean isAutomation = ShareCode.HYPIXEL_AUTOMATION.contains(baseFeature);
+
+            // Fail if an option is neither visual nor automation (future unclassified option)
+            assertTrue(isVisual || isAutomation,
+                "Every HYPIXEL Mods option must be explicitly classified as visual or automation: " + name);
+            // Ensure no option is in both
+            assertFalse(isVisual && isAutomation,
+                "Option cannot be both visual and automation: " + name);
+
+            if (isAutomation) {
+                assertTrue(ShareCode.isExcludedOption(HypixelMods.HYPIXEL_MODS, name),
+                    "HYPIXEL Mods automation option must never be allowed in share code: " + name);
+            } else if (opt instanceof BoolOption || opt instanceof SliderOption || opt instanceof DropdownOption) {
+                assertFalse(ShareCode.isExcludedOption(HypixelMods.HYPIXEL_MODS, name),
+                    "HYPIXEL Mods visual option must be allowed in share code: " + name);
+            }
+        }
+
+        // Test fails closed on unknown future option
+        assertTrue(ShareCode.isExcludedOption(HypixelMods.HYPIXEL_MODS, "FutureUnknownCommandOption"),
+            "Unknown future HYPIXEL Mods option must be excluded by default");
+        assertTrue(ShareCode.isExcludedOption(HypixelMods.HYPIXEL_MODS, "FutureFeature: SubOption"),
+            "Unknown future HYPIXEL Mods sub-option must be excluded by default");
     }
 
     @Test

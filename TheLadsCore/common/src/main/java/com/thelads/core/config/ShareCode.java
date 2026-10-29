@@ -396,8 +396,24 @@ public final class ShareCode {
      * /party list) and their own settings ("Auto GG: Delay seconds"): never in a code. Its visual toggles (Chat Cleanup, Streamer
      * Mode...) travel; its on/off, the master switch of that automation (Auto GG and Auto Tip are on by default), does not.
      */
-    private static final Set<String> HYPIXEL_AUTOMATION = Set.of(HypixelMods.AUTO_GG, HypixelMods.AUTO_GL, HypixelMods.AUTO_FRIEND,
+    public static final Set<String> HYPIXEL_AUTOMATION = Set.of(HypixelMods.AUTO_GG, HypixelMods.AUTO_GL, HypixelMods.AUTO_FRIEND,
         HypixelMods.AUTO_TIP, HypixelMods.AUTO_WHO, HypixelMods.PLAY_AGAIN);
+
+    /**
+     * Explicit allow-list of HYPIXEL Mods visual features that can travel in a stranger's share code.
+     * All chat/command automation and unlisted future options are excluded by default (fails closed).
+     */
+    public static final Set<String> HYPIXEL_VISUAL = Set.of(
+        HypixelMods.CLEANUP,
+        HypixelMods.CHAT_EMOTES,
+        HypixelMods.STREAMER_MODE,
+        HypixelMods.TAB_FILL,
+        HypixelMods.PIT_LAG,
+        HypixelMods.OPENED_CHESTS,
+        HypixelMods.LOW_BLOCK,
+        HypixelMods.SILENT_LOBBY,
+        HypixelMods.BW_EXTRAS
+    );
 
     /** Whether a code carries and applies this module's on/off (HYPIXEL Mods': never, see {@link #HYPIXEL_AUTOMATION}). */
     private static boolean sharesEnabled(String moduleName) {
@@ -448,9 +464,12 @@ public final class ShareCode {
         if (isMachineSpecificOption(optionName)) {
             return true;
         }
-        int setting = optionName.indexOf(": ");
-        if (HypixelMods.HYPIXEL_MODS.equals(moduleName) && HYPIXEL_AUTOMATION.contains(setting < 0 ? optionName : optionName.substring(0, setting))) {
-            return true;
+        if (HypixelMods.HYPIXEL_MODS.equals(moduleName)) {
+            int setting = optionName.indexOf(": ");
+            String baseFeature = setting < 0 ? optionName : optionName.substring(0, setting);
+            if (!HYPIXEL_VISUAL.contains(baseFeature)) {
+                return true;
+            }
         }
         // Allow-list: only plain visual values travel (switches, sliders, choices, colours, particle rates). Text (chat messages,
         // shortcuts, regexes, file paths, URLs), sounds (file names), actions and options this build doesn't have never do.
