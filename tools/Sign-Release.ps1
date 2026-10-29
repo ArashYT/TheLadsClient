@@ -43,6 +43,29 @@ try {
     if ($buildRecord.PSObject.Properties['coreBuilt'] -and -not $buildRecord.coreBuilt) {
         throw "Build record indicates the core build was skipped."
     }
+    if (-not $buildRecord.hashes) {
+        throw "Build record release-build.json is missing the mandatory 'hashes' map."
+    }
+
+    function Assert-ProvenanceAttestation([string]$filePath) {
+        $fileName = Split-Path -Leaf $filePath
+        $verifyOutput = & gh attestation verify $filePath --repo $Repo --signer-workflow "$Repo/.github/workflows/release.yml" --source-ref "refs/tags/$tag" --format json 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "Attestation verification failed for $fileName: $verifyOutput"
+        }
+        $attestations = $verifyOutput | ConvertFrom-Json
+        $attestedCommit = $attestations | ForEach-Object {
+            $_.verificationResult.signature.certificate.sourceRepositoryDigest
+        } | Where-Object { $_ } | Select-Object -First 1
+        if (-not $attestedCommit) {
+            $attestedCommit = $attestations | ForEach-Object {
+                $_.verificationResult.signature.certificate.buildSignerDigest
+            } | Where-Object { $_ } | Select-Object -First 1
+        }
+        if (-not $attestedCommit -or $attestedCommit -ne $tagCommit) {
+            throw "Attested commit ($attestedCommit) for $fileName does not match expected tag commit ($tagCommit)."
+        }
+    }
 
     $package = "TheLadsClient-$Version-full.nupkg"
     gh release download $tag --repo $Repo --pattern $package --dir $work
@@ -51,15 +74,14 @@ try {
     $sha = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($path)))
 
     # 3. Verify downloaded assets against build record hashes
-    if ($buildRecord.hashes) {
-        $expectedHash = $buildRecord.hashes.PSObject.Properties[$package]?.Value
-        if (-not $expectedHash) {
-            throw "Build record hashes do not list $package."
-        }
-        if ($sha.ToLowerInvariant() -ne $expectedHash.ToLowerInvariant()) {
-            throw "Downloaded package $package hash ($sha) does not match build record hash ($expectedHash)."
-        }
+    $expectedHash = $buildRecord.hashes.PSObject.Properties[$package]?.Value
+    if (-not $expectedHash) {
+        throw "Build record hashes do not list $package."
     }
+    if ($sha.ToLowerInvariant() -ne $expectedHash.ToLowerInvariant()) {
+        throw "Downloaded package $package hash ($sha) does not match build record hash ($expectedHash)."
+    }
+    Assert-ProvenanceAttestation $path
 
     $contentSha = & (Join-Path $PSScriptRoot 'Get-PackageContentHash.ps1') -Path $path
     $deltaName = "TheLadsClient-$Version-delta.nupkg"
@@ -81,12 +103,13 @@ try {
         }
         gh release download $tag --repo $Repo --pattern $deltaName --dir $work
         if ($LASTEXITCODE -ne 0) { throw "Could not download $deltaName from the $tag release." }
-        if ($buildRecord.hashes -and $buildRecord.hashes.PSObject.Properties[$deltaName]) {
-            $deltaSha = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes((Join-Path $work $deltaName))))
-            $expectedDeltaHash = $buildRecord.hashes.PSObject.Properties[$deltaName].Value
-            if ($deltaSha.ToLowerInvariant() -ne $expectedDeltaHash.ToLowerInvariant()) {
-                throw "Downloaded delta $deltaName hash ($deltaSha) does not match build record hash ($expectedDeltaHash)."
-            }
+        $expectedDeltaHash = $buildRecord.hashes.PSObject.Properties[$deltaName]?.Value
+        if (-not $expectedDeltaHash) {
+            throw "Build record hashes do not list delta package $deltaName."
+        }
+        $deltaSha = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes((Join-Path $work $deltaName))))
+        if ($deltaSha.ToLowerInvariant() -ne $expectedDeltaHash.ToLowerInvariant()) {
+            throw "Downloaded delta $deltaName hash ($deltaSha) does not match build record hash ($expectedDeltaHash)."
         }
         $rebuilt = Join-Path $work 'rebuilt.nupkg'
         dotnet vpk delta patch --base $base --patch (Join-Path $work $deltaName) --output $rebuilt
@@ -128,13 +151,14 @@ try {
         if ($sumsMap[$package] -ne $sha.ToLowerInvariant()) {
             throw "Hash of $package in $sumsName ($($sumsMap[$package])) does not match downloaded package hash ($sha)."
         }
-        if ($buildRecord.hashes) {
-            foreach ($prop in $buildRecord.hashes.PSObject.Properties) {
-                $fName = $prop.Name
-                $expectedH = $prop.Value.ToLowerInvariant()
-                if ($sumsMap.ContainsKey($fName) -and $sumsMap[$fName] -ne $expectedH) {
-                    throw "Hash mismatch for $fName between release-build.json ($expectedH) and $sumsName ($($sumsMap[$fName]))."
-                }
+        foreach ($prop in $buildRecord.hashes.PSObject.Properties) {
+            $fName = $prop.Name
+            $expectedH = $prop.Value.ToLowerInvariant()
+            if (-not $sumsMap.ContainsKey($fName)) {
+                throw "$sumsName does not list $fName from build record hashes."
+            }
+            if ($sumsMap[$fName] -ne $expectedH) {
+                throw "Hash mismatch for $fName between release-build.json ($expectedH) and $sumsName ($($sumsMap[$fName]))."
             }
         }
         $sumsBytes = [IO.File]::ReadAllBytes($sumsPath)
