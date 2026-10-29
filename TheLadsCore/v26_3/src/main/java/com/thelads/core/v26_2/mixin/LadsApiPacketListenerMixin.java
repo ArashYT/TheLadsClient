@@ -58,7 +58,7 @@ abstract class LadsApiPacketListenerMixin {
 
     @Inject(method = "handleConfigurationStart", at = @At("HEAD"), require = 1)
     private void lads$onConfigurationStart(ClientboundStartConfigurationPacket packet, CallbackInfo ci) {
-        LadsApiClient.reset();
+        LadsApiClient.serverSwitch();
         WorldEditCUI.clear();
     }
 }

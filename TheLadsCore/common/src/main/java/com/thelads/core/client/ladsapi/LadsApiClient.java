@@ -40,10 +40,14 @@ public final class LadsApiClient {
     private static volatile boolean sessionOk = false;
     private static volatile String serverName = "";
     private static int helloReplies = 0;
-    private static long rateWindowStart = 0;
-    private static int rateCount = 0;
+    /** Incoming messages: 8 a second on average, bursts of 16 (a plugin's join-time overrides arrive together, the newest last). */
+    static final int RATE_PER_SECOND = 8, RATE_BURST = 16;
+    private static double rateTokens = RATE_BURST;
+    private static long rateLast = 0;
     private static Long lastHashedSeed = null;
+    private static Integer lastDimension = null;
     private static volatile int sentBeforeHelloCount = 0;
+    private static final Gson GSON = new Gson();
 
     private static void sendPayload(byte[] bytes) {
         Transport t = transport;
@@ -70,18 +74,17 @@ public final class LadsApiClient {
         }
 
         long now = System.currentTimeMillis();
-        if (now - rateWindowStart >= 1000) {
-            rateWindowStart = now;
-            rateCount = 0;
-        }
-        if (++rateCount > 8) {
+        rateTokens = Math.min(RATE_BURST, rateTokens + Math.max(0, now - rateLast) * RATE_PER_SECOND / 1000.0);
+        rateLast = now;
+        if (rateTokens < 1) {
             return;
         }
+        rateTokens--;
 
         JsonObject json;
         try {
             String str = new String(payload, StandardCharsets.UTF_8);
-            json = new Gson().fromJson(str, JsonObject.class);
+            json = GSON.fromJson(str, JsonObject.class);
             if (json == null) return;
         } catch (Exception e) {
             return;
@@ -165,7 +168,7 @@ public final class LadsApiClient {
         sendPayload(ack.toString().getBytes(StandardCharsets.UTF_8));
 
         List<ToastAction> actions = parseToastActions(json.get("actions"));
-        LadsApiUi.policyApplied(serverName, result.changedCount, notice, actions);
+        LadsApiUi.policyApplied(serverName, result.changedCount, result.unlocked, notice, actions);
     }
 
     private static void handlePresence(JsonObject json) {
@@ -227,35 +230,61 @@ public final class LadsApiClient {
         return list;
     }
 
+    /**
+     * Server reset, JoinGame/Login, 26.3 configuration start, a seed-changing Respawn: the old backend's or world's policy, presence and
+     * toast go, and the next hello is answered again. The session stays: a proxy (proxy-rules) or a multi-world server sends its next
+     * policy without a new hello, which was dropped for the rest of the connection. Only a disconnect ends the session ({@link #reset}).
+     */
     private static void handleReset() {
         ServerPolicy.set(null);
         LadsPresence.serverClear();
         LadsApiUi.policyCleared();
-        sessionOk = false;
+        helloReplies = 0;
     }
 
-    /** Disconnect, every JoinGame/Login packet, 26.3 configuration start: everything from the old server goes. */
+    /** Disconnect: everything from the connection goes, the session too. */
     public static void reset() {
         handleReset();
+        sessionOk = false;
         serverName = "";
-        helloReplies = 0;
-        rateWindowStart = 0;
-        rateCount = 0;
+        rateTokens = RATE_BURST;
+        rateLast = 0;
         lastHashedSeed = null;
+        lastDimension = null;
     }
 
-    /** JoinGame/Login packet with the world's hashed seed: reset, then remember the seed for {@link #respawn}. */
+    /** JoinGame/Login packet with the world's hashed seed: the old backend's rules go, then the seed is kept for {@link #respawn}. */
     public static void joinGame(long hashedSeed) {
-        reset();
+        serverSwitch();
         lastHashedSeed = hashedSeed;
     }
 
-    /** Respawn packet: resets only when the hashed seed differs from the last one (a proxy switch), not on death or a dimension change. */
+    /** 26.3 configuration start (a backend switch, or the first join): the old backend's rules go. */
+    public static void serverSwitch() {
+        handleReset();
+        lastHashedSeed = null;
+        lastDimension = null;
+    }
+
+    /** Respawn packet: the rules go only when the hashed seed differs from the last one (a proxy switch or another world), not on death. */
     public static void respawn(long hashedSeed) {
         if (lastHashedSeed == null || lastHashedSeed.longValue() != hashedSeed) {
-            reset();
+            handleReset();
             lastHashedSeed = hashedSeed;
         }
+    }
+
+    /**
+     * 1.8.9 JoinGame/Respawn dimension (its Respawn has no seed). A dimension change is also how BungeeCord switches 1.8 backends, and the
+     * next backend may never have opted in: every by-name "allow" goes (anti-ban), blocks and limits stay. A server that runs the jar
+     * sends its policy again on a world change.
+     */
+    public static void dimension(int dimension) {
+        if (lastDimension != null && lastDimension != dimension) {
+            ServerPolicy policy = ServerPolicy.active();
+            if (policy != null) ServerPolicy.set(policy.withoutAllows());
+        }
+        lastDimension = dimension;
     }
 
     static Transport transport() { return transport; }
@@ -277,13 +306,14 @@ public final class LadsApiClient {
         final ServerPolicy policy;
         final List<String> ignored;
         final List<String> refused;
-        final int changedCount;
+        final int changedCount, unlocked;
 
-        PolicyValidationResult(ServerPolicy policy, List<String> ignored, List<String> refused, int changedCount) {
+        PolicyValidationResult(ServerPolicy policy, List<String> ignored, List<String> refused, int changedCount, int unlocked) {
             this.policy = policy;
             this.ignored = ignored;
             this.refused = refused;
             this.changedCount = changedCount;
+            this.unlocked = unlocked;
         }
     }
 
@@ -351,7 +381,7 @@ public final class LadsApiClient {
         }
 
         Map<String, ModuleState> modulesMap = new HashMap<>();
-        int changedCount = 0;
+        int changedCount = 0, unlocked = 0;
 
         if (json.has("modules") && json.get("modules").isJsonObject()) {
             JsonObject modsObj = json.getAsJsonObject("modules");
@@ -405,7 +435,9 @@ public final class LadsApiClient {
                 if (!canonicalName.equals(rawName)) {
                     modulesMap.put(rawName, state);
                 }
-                if (state != ModuleState.INHERIT) {
+                if (state == ModuleState.ALLOW) {
+                    if (LadsApiRules.isGated(canonicalName)) unlocked++; // lifts the client's safety block: the join toast says so
+                } else if (state != ModuleState.INHERIT) {
                     changedCount++;
                 }
             }
@@ -484,7 +516,7 @@ public final class LadsApiClient {
         }
 
         ServerPolicy snapshot = new ServerPolicy(sName, unlistedState, modulesMap, optionsMap, changedCount, notice);
-        return new PolicyValidationResult(snapshot, ignored, refused, changedCount);
+        return new PolicyValidationResult(snapshot, ignored, refused, changedCount, unlocked);
     }
 
     private static OptionRule validateOptionRule(Option option, JsonObject ruleObj, String fullKey,

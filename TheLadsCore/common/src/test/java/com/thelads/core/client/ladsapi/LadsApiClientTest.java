@@ -374,8 +374,25 @@ class LadsApiClientTest {
         assertTrue(LadsApiClient.isSessionOk(), "Same seed respawn must not reset");
 
         // Different seed respawn DOES reset
-        LadsApiClient.respawn(99999L);
-        assertFalse(LadsApiClient.isSessionOk(), "Different seed respawn must reset");
+        LadsApiClient.respawn(88888L);
+        sendAndGetLastJson("{\"t\":\"policy\",\"rev\":1,\"modules\":{\"Crosshair\":\"on\"}}");
+        assertNotNull(ServerPolicy.active());
+
+        // Different seed respawn clears active policy but keeps sessionOk
+        LadsApiClient.respawn(77777L);
+        assertTrue(LadsApiClient.isSessionOk(), "Different seed respawn must keep sessionOk for proxy/multiworld");
+        assertNull(ServerPolicy.active(), "Different seed respawn clears active policy");
+
+        // Server switch / configuration start clears active policy but keeps sessionOk
+        sendAndGetLastJson("{\"t\":\"policy\",\"rev\":2,\"modules\":{\"Crosshair\":\"on\"}}");
+        assertNotNull(ServerPolicy.active());
+        LadsApiClient.serverSwitch();
+        assertTrue(LadsApiClient.isSessionOk(), "serverSwitch keeps sessionOk");
+        assertNull(ServerPolicy.active(), "serverSwitch clears active policy");
+
+        // Disconnect reset clears sessionOk
+        LadsApiClient.reset();
+        assertFalse(LadsApiClient.isSessionOk(), "reset() on disconnect ends session");
     }
 
     @Test
@@ -383,15 +400,69 @@ class LadsApiClientTest {
         sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test\"}");
         int sentInitial = sentPayloads.size();
 
-        // Send 7 more messages (total 8 messages in the 1-second window)
-        for (int i = 1; i <= 7; i++) {
+        // Rate limit: 8/s refill, burst 16. Hello used 1 token, 15 tokens remain.
+        // Send 15 more messages (total 16 in the burst window)
+        for (int i = 1; i <= 15; i++) {
             LadsApiClient.receive(("{\"t\":\"policy\",\"rev\":" + i + ",\"unlisted\":\"inherit\"}").getBytes(StandardCharsets.UTF_8));
         }
-        assertEquals(sentInitial + 7, sentPayloads.size());
+        assertEquals(sentInitial + 15, sentPayloads.size());
 
-        // 9th message in same second must be dropped!
+        // 17th message in immediate burst must be dropped!
         LadsApiClient.receive("{\"t\":\"policy\",\"rev\":99,\"unlisted\":\"inherit\"}".getBytes(StandardCharsets.UTF_8));
-        assertEquals(sentInitial + 7, sentPayloads.size(), "9th message in same second must be rate-limited and dropped");
+        assertEquals(sentInitial + 15, sentPayloads.size(), "17th message in immediate burst must be rate-limited and dropped");
+    }
+
+    @Test
+    void testDimensionChangeStripsAllows() {
+        sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test\"}");
+        LadsApiClient.dimension(0);
+        sendAndGetLastJson("{\"t\":\"policy\",\"rev\":1,\"modules\":{\"Minimap\":\"allow\",\"Crosshair\":\"block\"}}");
+        ServerPolicy p1 = ServerPolicy.active();
+        assertNotNull(p1);
+        assertEquals(ModuleState.ALLOW, p1.module("Minimap"));
+        assertEquals(ModuleState.BLOCK, p1.module("Crosshair"));
+
+        // Respawn in same dimension keeps allows
+        LadsApiClient.dimension(0);
+        assertEquals(ModuleState.ALLOW, ServerPolicy.active().module("Minimap"));
+
+        // Dimension change (0 -> -1) strips by-name allow under Anti-Ban rule
+        LadsApiClient.dimension(-1);
+        ServerPolicy p2 = ServerPolicy.active();
+        assertNotNull(p2);
+        assertEquals(ModuleState.INHERIT, p2.module("Minimap"), "by-name allow must be stripped on dimension change");
+        assertEquals(ModuleState.BLOCK, p2.module("Crosshair"), "blocks remain on dimension change");
+    }
+
+    @Test
+    void testResetClearsHelloReplies() {
+        assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server1\"}"));
+        assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server2\"}"));
+        int sentBefore = sentPayloads.size();
+        LadsApiClient.receive("{\"t\":\"hello\",\"v\":1,\"server\":\"Server3\"}".getBytes(StandardCharsets.UTF_8));
+        assertEquals(sentBefore, sentPayloads.size(), "3rd hello without reset is dropped");
+
+        // Server reset clears helloReplies counter so the new backend gets a reply
+        LadsApiClient.receive("{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8));
+        assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server4\"}"));
+    }
+
+    @Test
+    void testGatedAndNeverForcedIntegration() {
+        assertTrue(LadsApiRules.isGated("Minimap"));
+        assertTrue(LadsApiRules.isGated("Fullbright"));
+        assertTrue(LadsApiRules.isGated("ReachDisplay"));
+        assertTrue(LadsApiRules.isGated("Auto GL"));
+        assertTrue(LadsApiRules.isGated("Opened Chest Highlight"));
+        assertTrue(LadsApiRules.isGated("Elytra Swap"));
+        assertFalse(LadsApiRules.isGated("Crosshair Tweaks"));
+
+        assertTrue(LadsApiRules.isNeverForced("Fullbright"));
+        assertTrue(LadsApiRules.isNeverForced("ReachDisplay"));
+        assertTrue(LadsApiRules.isNeverForced("Auto GL"));
+        assertTrue(LadsApiRules.isNeverForced("Elytra Swap"));
+        assertTrue(LadsApiRules.isNeverForced("DiscordRPC"));
+        assertFalse(LadsApiRules.isNeverForced("Crosshair Tweaks"));
     }
 
     @Test
