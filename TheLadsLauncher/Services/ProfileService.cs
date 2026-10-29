@@ -22,6 +22,7 @@ public class ProfileService : IProfileService
     /// they were, never listed, launched or deleted.</summary>
     private readonly List<LauncherProfile> _dropped = new();
     private string _activeProfileId = "26.3";
+    private bool _primaryParsed;
     public string? StartupWarning { get; private set; }
 
     // There is deliberately no constructor without the shared-content root: tests must pass a sandbox root.
@@ -392,67 +393,110 @@ public class ProfileService : IProfileService
         }
     }
 
+    private static string ReadProfilesFileWithRetry(string path)
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            try
+            {
+                return File.ReadAllText(path);
+            }
+            catch (Exception ex) when (i < 2 && (ex is IOException or UnauthorizedAccessException))
+            {
+                Thread.Sleep(50);
+            }
+        }
+        return File.ReadAllText(path);
+    }
+
     private bool TryLoadProfiles(string path)
     {
+        if (!File.Exists(path)) return false;
+
+        string json;
         try
         {
-            if (!File.Exists(path)) return false;
-            var json = File.ReadAllText(path);
-            if (string.IsNullOrWhiteSpace(json)) return false;
-            var container = JsonSerializer.Deserialize<ProfilesData>(json);
-            if (container?.Profiles == null || container.Profiles.Count == 0 || container.Profiles.Any(p => p == null))
-                return false;
-
-            _profiles.Clear();
-            _profiles.AddRange(container.Profiles);
-            _dropped.Clear();
-            _dropped.AddRange(container.DroppedProfiles ?? new());
-            var dropped = _profiles.Where(p => GameVersionPolicy.IsDropped(p.MinecraftVersion)).ToList();
-            _dropped.AddRange(dropped);
-            _profiles.RemoveAll(dropped.Contains);
-            _activeProfileId = container.ActiveProfileId ?? _profiles.FirstOrDefault()?.Id ?? "";
-            var changed = dropped.Count > 0;
-            foreach (var savedProfile in _profiles)
-                changed |= MigrateSavedProfile(savedProfile);
-            if (!container.Shared189)
-            {
-                foreach (var forge in _profiles.Where(p => GameVersionPolicy.UsesForge(p.MinecraftVersion)))
-                    forge.IsIsolated = false;
-                changed = true;
-            }
-            foreach (var added in CreateDefaultProfiles())
-            {
-                if (_profiles.Any(p => p.MinecraftVersion == added.MinecraftVersion))
-                    continue;
-                if (_profiles.Any(p => string.Equals(p.Id, added.Id, StringComparison.OrdinalIgnoreCase)))
-                    added.Id = added.MinecraftVersion + "-" + Guid.NewGuid().ToString("N");
-                _profiles.Add(added);
-                changed = true;
-            }
-            var active = _profiles.FirstOrDefault(p => string.Equals(p.Id, _activeProfileId, StringComparison.OrdinalIgnoreCase));
-            if (active == null || !IsValidStartupProfile(active))
-            {
-                var defaultVersion = CreateDefaultProfiles().First().MinecraftVersion;
-                var fallback = _profiles.FirstOrDefault(p => p.MinecraftVersion == defaultVersion && IsValidStartupProfile(p))
-                    ?? _profiles.FirstOrDefault(p => GameVersionPolicy.RequiresFabric(p.MinecraftVersion) && IsValidStartupProfile(p));
-                if (fallback == null)
-                {
-                    fallback = CreateDefaultProfiles().First();
-                    if (_profiles.Any(p => string.Equals(p.Id, fallback.Id, StringComparison.OrdinalIgnoreCase)))
-                        fallback.Id += "-" + Guid.NewGuid().ToString("N");
-                    _profiles.Add(fallback);
-                }
-                _activeProfileId = fallback.Id;
-                changed = true;
-            }
-            if (changed)
-                SaveProfilesToDisk();
-            return true;
+            json = ReadProfilesFileWithRetry(path);
         }
-        catch
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            if (path == _profilesConfigPath)
+            {
+                // Do not replace an unreadable user profile file with defaults.
+                throw new InvalidDataException($"Could not load '{path}'. Existing profiles were left intact; repair or restore this file before continuing.", ex);
+            }
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(json)) return false;
+
+        ProfilesData? container;
+        try
+        {
+            container = JsonSerializer.Deserialize<ProfilesData>(json);
+        }
+        catch (JsonException)
         {
             return false;
         }
+
+        if (container?.Profiles == null || container.Profiles.Count == 0 || container.Profiles.Any(p => p == null))
+            return false;
+
+        _profiles.Clear();
+        _profiles.AddRange(container.Profiles);
+        _dropped.Clear();
+        _dropped.AddRange(container.DroppedProfiles ?? new());
+        // 1.6.0 dropped Minecraft 1.21.1: its profiles stop being offered (an active one falls back to the default
+        // below). The entries stay in profiles.json and their game folders, worlds and settings are left alone.
+        var dropped = _profiles.Where(p => GameVersionPolicy.IsDropped(p.MinecraftVersion)).ToList();
+        _dropped.AddRange(dropped);
+        _profiles.RemoveAll(dropped.Contains);
+        _activeProfileId = container.ActiveProfileId ?? _profiles.FirstOrDefault()?.Id ?? "";
+        var changed = dropped.Count > 0;
+        foreach (var savedProfile in _profiles)
+            changed |= MigrateSavedProfile(savedProfile);
+        // Before 1.4.8 every 1.8.9 profile was forced to keep its own settings; it shares them now, like any profile
+        // (once: the user may isolate it again).
+        if (!container.Shared189)
+        {
+            foreach (var forge in _profiles.Where(p => GameVersionPolicy.UsesForge(p.MinecraftVersion)))
+                forge.IsIsolated = false;
+            changed = true;
+        }
+        foreach (var added in CreateDefaultProfiles())
+        {
+            if (_profiles.Any(p => p.MinecraftVersion == added.MinecraftVersion))
+                continue;
+            // A user may already use the default ID for a different profile/world.
+            if (_profiles.Any(p => string.Equals(p.Id, added.Id, StringComparison.OrdinalIgnoreCase)))
+                added.Id = added.MinecraftVersion + "-" + Guid.NewGuid().ToString("N");
+            _profiles.Add(added);
+            changed = true;
+        }
+        var active = _profiles.FirstOrDefault(p => string.Equals(p.Id, _activeProfileId, StringComparison.OrdinalIgnoreCase));
+        if (active == null || !IsValidStartupProfile(active))
+        {
+            // Keep unresolved aliases/custom profiles for the user to repair, but
+            // never pass one to startup's exact-version resolver as the active profile.
+            // The default version first, then any Fabric profile, as before 1.8.9 had a bundled Core: never switch a
+            // player to 1.8.9 by surprise.
+            var defaultVersion = CreateDefaultProfiles().First().MinecraftVersion;
+            var fallback = _profiles.FirstOrDefault(p => p.MinecraftVersion == defaultVersion && IsValidStartupProfile(p))
+                ?? _profiles.FirstOrDefault(p => GameVersionPolicy.RequiresFabric(p.MinecraftVersion) && IsValidStartupProfile(p));
+            if (fallback == null)
+            {
+                fallback = CreateDefaultProfiles().First();
+                if (_profiles.Any(p => string.Equals(p.Id, fallback.Id, StringComparison.OrdinalIgnoreCase)))
+                    fallback.Id += "-" + Guid.NewGuid().ToString("N");
+                _profiles.Add(fallback);
+            }
+            _activeProfileId = fallback.Id;
+            changed = true;
+        }
+        if (changed)
+            SaveProfilesToDisk();
+        return true;
     }
 
     private void LoadProfiles()
@@ -460,8 +504,14 @@ public class ProfileService : IProfileService
         if (File.Exists(_profilesConfigPath))
         {
             if (TryLoadProfiles(_profilesConfigPath))
+            {
+                _primaryParsed = true;
+                try { File.Copy(_profilesConfigPath, _profilesConfigPath + ".bak", true); }
+                catch (IOException) { }
                 return;
+            }
 
+            _primaryParsed = false;
             string bakPath = _profilesConfigPath + ".bak";
             if (File.Exists(bakPath) && TryLoadProfiles(bakPath))
             {
@@ -483,6 +533,7 @@ public class ProfileService : IProfileService
         }
 
         // Populate default multi-version profiles
+        _primaryParsed = false;
         _profiles.Clear();
         _profiles.AddRange(CreateDefaultProfiles());
         _activeProfileId = "26.3";
@@ -664,9 +715,13 @@ public class ProfileService : IProfileService
             try
             {
                 File.WriteAllText(temp, json);
-                try { if (File.Exists(_profilesConfigPath)) File.Copy(_profilesConfigPath, _profilesConfigPath + ".bak", true); }
-                catch (IOException) { }
+                if (_primaryParsed && File.Exists(_profilesConfigPath))
+                {
+                    try { File.Copy(_profilesConfigPath, _profilesConfigPath + ".bak", true); }
+                    catch (IOException) { }
+                }
                 File.Move(temp, _profilesConfigPath, true);
+                _primaryParsed = true;
             }
             finally
             {

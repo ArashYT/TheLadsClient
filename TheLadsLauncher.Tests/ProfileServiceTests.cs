@@ -75,4 +75,27 @@ public class ProfileServiceTests
         Assert.Single(corruptFiles);
         Assert.Equal("not valid json", File.ReadAllText(corruptFiles[0]));
     }
+
+    [Fact]
+    public void ProfileService_WhenPrimaryLockedBySharingViolation_ThrowsWithoutOverwritingFile()
+    {
+        using var dir = new TestDirectory();
+        var paths = new PathService(dir.Path);
+        var shared = new SharedContentService(Path.Combine(dir.Path, "shared"));
+
+        string configPath = Path.Combine(dir.Path, "profiles.json");
+        Directory.CreateDirectory(dir.Path);
+        File.WriteAllText(configPath, "{\"ActiveProfileId\":\"custom\",\"Profiles\":[{\"Id\":\"custom\",\"Name\":\"MySavedProfile\",\"MinecraftVersion\":\"26.3\",\"JavaMajorVersion\":25}]}");
+
+        // Lock file with exclusive access
+        using (var stream = new FileStream(configPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            var ex = Assert.Throws<InvalidDataException>(() => new ProfileService(paths, shared));
+            Assert.Contains("Existing profiles were left intact", ex.Message);
+        }
+
+        // After unlock, file still contains the original custom profile
+        var content = File.ReadAllText(configPath);
+        Assert.Contains("MySavedProfile", content);
+    }
 }
