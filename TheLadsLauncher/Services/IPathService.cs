@@ -11,10 +11,8 @@ public interface IPathService
     string LogsDirectory { get; }
     string BinDirectory { get; }
     string AccountsFile { get; }
-    string ProfileConfigFile { get; }
     string SharedOptionsFile { get; }
     string SharedAccountsFile { get; }
-    string SharedProfileConfigFile { get; }
     string SkinFile { get; }
     string CapeFile { get; }
     string PresetsDirectory { get; }
