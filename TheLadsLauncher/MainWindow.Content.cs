@@ -19,9 +19,13 @@ public partial class MainWindow
 {
     private ContentCatalog Catalog() => new(_httpClient, settings.ModrinthApiUrl, settings.CurseForgeApiUrl, settings.CurseForgeApiKey);
 
+    private int _browseModsGeneration;
+    private int _browseRpGeneration;
+
     /// <summary>Searches the tab's source for its Minecraft version; a failure (no CurseForge key, offline, refused) is shown in the list.</summary>
     private async Task SearchBrowseAsync(TextBox queryBox, ComboBox providerBox, ComboBox versionBox, bool isResourcePack, StackPanel list)
     {
+        int generation = isResourcePack ? ++_browseRpGeneration : ++_browseModsGeneration;
         string provider = (providerBox.SelectedItem as ComboBoxItem)?.Content as string ?? "Modrinth";
         string mcVersion = versionBox.SelectedItem as string ?? ResolveMinecraftVersion();
         string loader = ContentCatalog.ModLoader(mcVersion);
@@ -46,10 +50,12 @@ public partial class MainWindow
         {
             var results = await Catalog().SearchAsync(provider, isResourcePack ? ContentKind.ResourcePack : ContentKind.Mod, queryBox.Text ?? "", mcVersion,
                 loader, category, sort);
+            if (generation != (isResourcePack ? _browseRpGeneration : _browseModsGeneration)) return; // a newer search owns the list
             RenderSearchResults(results, mcVersion, isResourcePack, list);
         }
         catch (Exception ex) // an async void handler: never take the launcher down over a search
         {
+            if (generation != (isResourcePack ? _browseRpGeneration : _browseModsGeneration)) return;
             Log($"[Search Error] {provider}: {ex.Message}");
             ShowSearchMessage(list, ex.Message);
         }

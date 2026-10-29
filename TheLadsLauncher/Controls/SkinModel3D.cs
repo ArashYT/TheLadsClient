@@ -132,6 +132,12 @@ public sealed class SkinModel3D : Control
         _frameRequested = false;
         if (!IsEffectivelyVisible || VisualRoot == null) return; // hidden or detached: stop until Wake
         double now = Now;
+        bool interactive = _dragging || _resetting || MathF.Abs(_yawSpeed) > 0.5f || MathF.Abs(_pitchSpeed) > 0.5f;
+        if (!interactive && (now - _lastFrame) < 0.033)
+        {
+            if (Animating) RequestFrame();
+            return;
+        }
         float dt = (float)Math.Clamp(now - _lastFrame, 0, 0.1);
         _lastFrame = now;
         if (_resetting)
@@ -306,14 +312,21 @@ public sealed class SkinModel3D : Control
         uint[] source = _raster.Pixels;
         if (ss > 1)
         {
-            if (_resolved.Length != w * h) _resolved = new uint[w * h];
+            if (_resolved.Length < w * h) _resolved = new uint[Math.Max(w * h, _resolved.Length == 0 ? w * h : _resolved.Length * 2)];
             _raster.Downsample(_resolved, ss);
             source = _resolved;
         }
         using var fb = _bitmap.Lock();
-        var bytes = MemoryMarshal.AsBytes(source.AsSpan());
-        for (int y = 0; y < h; y++)
-            Marshal.Copy(bytes.Slice(y * w * 4, w * 4).ToArray(), 0, fb.Address + y * fb.RowBytes, w * 4);
+        int[] intSource = System.Runtime.CompilerServices.Unsafe.As<uint[], int[]>(ref source);
+        if (fb.RowBytes == w * 4)
+        {
+            Marshal.Copy(intSource, 0, fb.Address, w * h);
+        }
+        else
+        {
+            for (int y = 0; y < h; y++)
+                Marshal.Copy(intSource, y * w, fb.Address + y * fb.RowBytes, w);
+        }
     }
 
     /// <summary>Renders the current skin off-screen to a PNG (QA screenshots and UV checks).</summary>

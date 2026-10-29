@@ -13,6 +13,7 @@ using System.Text.Json.Nodes;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
@@ -438,27 +439,34 @@ public partial class MainWindow : Window
         var logTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
         logTimer.Tick += (_, _) =>
         {
-            lock (logLines)
-            {
-                if (!_logDirty) return;
-                LogBox.Text = string.Join(Environment.NewLine, logLines);
-                _logDirty = false;
-            }
+            if (LogBox.IsFocused && !string.IsNullOrEmpty(LogBox.SelectedText))
+                return; // pause UI updates while player is selecting text
+            UpdateLogDisplay();
         };
         logTimer.Start();
-        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); _usageHeartbeatTimer?.Stop(); _updateNowPulse?.Stop(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
+        LogSearchBox.TextChanged += (_, _) => { _logDirty = true; UpdateLogDisplay(); };
+        Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); _usageHeartbeatTimer?.Stop(); _updateNowPulse?.Stop(); _particleTimer?.Stop(); _statSmoothTimer?.Stop(); _modSearchDebounce?.Stop(); _filesMeasureCts?.Cancel(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
         // Stats timer (1 second)
         _statsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statsTimer.Tick += UpdateSystemStats;
         _statsTimer.Tick += WatchModFiles;
+        _statsTimer.Tick += (_, _) => UpdateAnimationTimers();
         _statsTimer.Start();
 
         // Smoothly ease the CPU/RAM numbers toward their targets (like the FPS counter)
         _statSmoothTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         _statSmoothTimer.Tick += (s, e) =>
         {
-            _dispCpu += (_targetCpu - _dispCpu) * 0.18;
-            _dispRam += (_targetRam - _dispRam) * 0.18;
+            if (settings.ReducedMotion)
+            {
+                _dispCpu = _targetCpu;
+                _dispRam = _targetRam;
+            }
+            else
+            {
+                _dispCpu += (_targetCpu - _dispCpu) * 0.18;
+                _dispRam += (_targetRam - _dispRam) * 0.18;
+            }
             CpuText.Text = $"{_dispCpu:F1}%";
             RamText.Text = $"{_dispRam:F2} GB";
         };
@@ -508,6 +516,14 @@ public partial class MainWindow : Window
             _particleTimer.Start();
         }
 
+        PropertyChanged += (s, e) =>
+        {
+            if (e.Property == WindowStateProperty || e.Property == IsVisibleProperty)
+                UpdateAnimationTimers();
+        };
+        Activated += (_, _) => UpdateAnimationTimers();
+        Deactivated += (_, _) => UpdateAnimationTimers();
+
         // Immediate toggle listener
         ParticleCheckbox.IsCheckedChanged += (s, e) =>
         {
@@ -523,16 +539,13 @@ public partial class MainWindow : Window
                     ParticleCanvas.Children.Add(_meshControl);
                     _meshControlAdded = true;
                 }
-                if (!_particleTimer.IsEnabled)
-                    _particleTimer.Start();
             }
             else
             {
-                if (_particleTimer.IsEnabled)
-                    _particleTimer.Stop();
                 ParticleCanvas.Children.Clear();
                 _meshControlAdded = false;
             }
+            UpdateAnimationTimers();
         };
 
         // Custom title bar dragging
@@ -692,6 +705,67 @@ public partial class MainWindow : Window
 
     private DispatcherTimer? _updateNowPulse;
     private string? _readyUpdateVersion; // a verified update waits for the Update button (offered again at Play)
+    private double _updateNowPulseElapsed;
+
+    private DateTime _lastMarkerCheckUtc;
+    private bool _cachedAnyMarkerRunning;
+
+    private bool AnyMarkerRunningCached()
+    {
+        if (DateTime.UtcNow - _lastMarkerCheckUtc < TimeSpan.FromSeconds(30))
+            return _cachedAnyMarkerRunning;
+
+        _lastMarkerCheckUtc = DateTime.UtcNow;
+        try
+        {
+            _cachedAnyMarkerRunning = _profileService.GetProfiles().Any(p => GameRunningByMarker(_pathService.GetProfileDirectory(p)));
+        }
+        catch
+        {
+            _cachedAnyMarkerRunning = false;
+        }
+        return _cachedAnyMarkerRunning;
+    }
+
+    private bool AnyGameRunning() => _runningProcesses.Keys.Any(IsGameRunning) || AnyMarkerRunningCached();
+
+    private void UpdateAnimationTimers()
+    {
+        if (_windowClosed) return;
+        bool shouldAnimate = IsVisible && WindowState != WindowState.Minimized && !AnyGameRunning();
+        bool activeForPulse = shouldAnimate && IsActive;
+
+        // Particle timer
+        if (shouldAnimate && settings.ShowParticles && !settings.ReducedMotion)
+        {
+            if (_particleTimer != null && !_particleTimer.IsEnabled) _particleTimer.Start();
+        }
+        else
+        {
+            _particleTimer?.Stop();
+        }
+
+        // Stat smooth timer (gate only on visibility and not minimized; drop ReducedMotion and AnyGameRunning so readouts always update)
+        bool isWindowVisible = IsVisible && WindowState != WindowState.Minimized;
+        if (isWindowVisible)
+        {
+            if (_statSmoothTimer != null && !_statSmoothTimer.IsEnabled) _statSmoothTimer.Start();
+        }
+        else
+        {
+            _statSmoothTimer?.Stop();
+        }
+
+        // Update now pulse timer (pauses when minimized, inactive, or game running; stops after 10s)
+        if (activeForPulse && !settings.ReducedMotion && _readyUpdateVersion != null && _updateNowPulseElapsed < 10.0)
+        {
+            if (_updateNowPulse != null && !_updateNowPulse.IsEnabled) _updateNowPulse.Start();
+        }
+        else
+        {
+            _updateNowPulse?.Stop();
+        }
+    }
 
     /// <summary>A verified update found while the launcher is open waits for the user behind the glowing title-bar button.</summary>
     private void ShowUpdateButton(string version)
@@ -703,19 +777,32 @@ public partial class MainWindow : Window
         UpdateNowHost.IsVisible = true;
         Log($"[Updater] v{version} is ready; waiting for the Update button.");
         if (settings.ReducedMotion) return;
-        var clock = Stopwatch.StartNew();
-        _updateNowPulse = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        _updateNowPulse?.Stop();
+        _updateNowPulseElapsed = 0;
+        _updateNowPulse = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
         _updateNowPulse.Tick += (_, _) =>
         {
-            double t = clock.Elapsed.TotalSeconds;
+            _updateNowPulseElapsed += 0.033;
+            if (_updateNowPulseElapsed >= 10.0)
+            {
+                UpdateNowGlow.Opacity = 0.65;
+                if (UpdateNowShine.RenderTransform is Avalonia.Media.TransformGroup g && g.Children.Count > 1 && g.Children[1] is Avalonia.Media.TranslateTransform s)
+                {
+                    s.X = -40;
+                }
+                _updateNowPulse.Stop();
+                _updateNowPulse = null;
+                return;
+            }
+            double t = _updateNowPulseElapsed;
             UpdateNowGlow.Opacity = 0.45 + 0.4 * (0.5 + 0.5 * Math.Sin(t * Math.PI / 0.9)); // slow breathing glow
-            if (UpdateNowShine.RenderTransform is Avalonia.Media.TransformGroup group && group.Children[1] is Avalonia.Media.TranslateTransform shine)
+            if (UpdateNowShine.RenderTransform is Avalonia.Media.TransformGroup group && group.Children.Count > 1 && group.Children[1] is Avalonia.Media.TranslateTransform shine)
             {
                 double phase = t % 2.6, width = UpdateNowBtn.Bounds.Width + 60; // one sweep, then a pause
                 shine.X = phase < 0.9 ? -40 + width * (phase / 0.9) : -40;
             }
         };
-        _updateNowPulse.Start();
+        UpdateAnimationTimers();
     }
 
     private void UpdateNow_Click(object? sender, RoutedEventArgs e)
@@ -735,13 +822,18 @@ public partial class MainWindow : Window
         catch (InvalidOperationException) { return false; }
     }
 
+    private readonly HashSet<string> _loggedMarkerErrors = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>A game started for this folder by any launcher instance (running marker). Unreadable counts as running.</summary>
     private bool GameRunningByMarker(string gameDirectory)
     {
         try { return RunningGameMarker.IsRunning(gameDirectory); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Log($"[Launcher] Could not read the running-game marker in '{gameDirectory}': {ex.Message}. Treating the game as running.");
+            if (_loggedMarkerErrors.Add(gameDirectory))
+            {
+                Log($"[Launcher] Could not read the running-game marker in '{gameDirectory}': {ex.Message}. Treating the game as running.");
+            }
             return true;
         }
     }
@@ -1154,6 +1246,14 @@ public partial class MainWindow : Window
             {
                 GameStateText.Text = "IDLE";
             }
+
+            if (_statSmoothTimer == null || !_statSmoothTimer.IsEnabled)
+            {
+                _dispCpu = _targetCpu;
+                _dispRam = _targetRam;
+                CpuText.Text = $"{_dispCpu:F1}%";
+                RamText.Text = $"{_dispRam:F2} GB";
+            }
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
@@ -1169,7 +1269,6 @@ public partial class MainWindow : Window
 
     private static readonly System.Collections.Concurrent.ConcurrentQueue<string> _pendingFileLogs = new();
     private static int _fileLogWriterRunning;
-    private static bool _logRotationChecked;
     private readonly System.Collections.Concurrent.ConcurrentQueue<string> _pendingUiLogs = new();
     private int _uiLogDrainScheduled;
 
@@ -1190,20 +1289,16 @@ public partial class MainWindow : Window
             Directory.CreateDirectory(logsDir);
             var logFile = Path.Combine(logsDir, "launcher_debug.txt");
 
-            if (!_logRotationChecked)
+            try
             {
-                _logRotationChecked = true;
-                try
+                var fi = new FileInfo(logFile);
+                if (fi.Exists && fi.Length > 4 * 1024 * 1024)
                 {
-                    var fi = new FileInfo(logFile);
-                    if (fi.Exists && fi.Length > 4 * 1024 * 1024)
-                    {
-                        var oldFile = Path.Combine(logsDir, "launcher_debug.old.txt");
-                        File.Move(logFile, oldFile, overwrite: true);
-                    }
+                    var oldFile = Path.Combine(logsDir, "launcher_debug.old.txt");
+                    File.Move(logFile, oldFile, overwrite: true);
                 }
-                catch { }
             }
+            catch { }
 
             while (!_pendingFileLogs.IsEmpty)
             {
@@ -1275,40 +1370,114 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CopyLogs_Click(object? sender, RoutedEventArgs e)
+    private void UpdateLogDisplay()
+    {
+        lock (logLines)
+        {
+            if (!_logDirty) return;
+            string filter = LogSearchBox?.Text?.Trim() ?? "";
+            if (string.IsNullOrEmpty(filter))
+            {
+                LogBox.Text = string.Join(Environment.NewLine, logLines);
+            }
+            else
+            {
+                var matches = allLogLines.Where(l => l.Contains(filter, StringComparison.OrdinalIgnoreCase)).TakeLast(500);
+                LogBox.Text = string.Join(Environment.NewLine, matches);
+            }
+            _logDirty = false;
+        }
+    }
+
+    private long _logClearCutoffBytes = -1;
+
+    private static string GetRecentLogText(int maxLines = 2500, long cutoffBytes = -1)
     {
         try
         {
-            if (!string.IsNullOrEmpty(LogBox.Text))
+            var logsDir = TheLadsLauncher.Services.PathService.Instance.LogsDirectory;
+            var logFile = Path.Combine(logsDir, "launcher_debug.txt");
+            if (File.Exists(logFile))
             {
-                var process = new Process();
-                process.StartInfo.FileName = "clip.exe";
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.RedirectStandardInput = true;
-                process.StartInfo.CreateNoWindow = true;
-                process.Start();
-                process.StandardInput.Write(LogBox.Text);
-                process.StandardInput.Close();
-                process.WaitForExit(2000);
-                StatusText.Text = "Logs copied to clipboard!";
+                using var fs = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                if (cutoffBytes >= 0)
+                {
+                    if (cutoffBytes >= fs.Length) return "";
+                    fs.Seek(cutoffBytes, SeekOrigin.Begin);
+                }
+                using var reader = new StreamReader(fs);
+                if (cutoffBytes > 0) reader.ReadLine();
+                var queue = new Queue<string>(maxLines);
+                while (reader.ReadLine() is { } line)
+                {
+                    if (queue.Count >= maxLines) queue.Dequeue();
+                    queue.Enqueue(line);
+                }
+                if (queue.Count > 0)
+                    return string.Join(Environment.NewLine, queue);
             }
         }
         catch { }
+        return "";
+    }
+
+    private async void CopyLogs_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            string textToCopy = LogBox.Text ?? "";
+            if (string.IsNullOrWhiteSpace(LogSearchBox?.Text))
+            {
+                long cutoff = _logClearCutoffBytes;
+                string fileText = await Task.Run(() => GetRecentLogText(2500, cutoff));
+                if (!string.IsNullOrWhiteSpace(fileText))
+                    textToCopy = fileText;
+                else if (_logClearCutoffBytes >= 0)
+                    textToCopy = LogBox.Text ?? "";
+            }
+
+            if (!string.IsNullOrEmpty(textToCopy))
+            {
+                var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+                if (clipboard != null)
+                {
+                    await clipboard.SetTextAsync(textToCopy);
+                    StatusText.Text = "Logs copied to clipboard!";
+                }
+                else
+                {
+                    StatusText.Text = "Clipboard unavailable.";
+                }
+            }
+            else
+            {
+                StatusText.Text = "Log is empty; nothing to copy.";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Failed to copy logs: {ex.Message}";
+        }
     }
 
     private async void ShareLogs_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(LogBox.Text))
+            long cutoff = _logClearCutoffBytes;
+            string logText = await Task.Run(() => GetRecentLogText(2500, cutoff));
+            if (string.IsNullOrWhiteSpace(logText))
+                logText = LogBox.Text ?? "";
+
+            if (string.IsNullOrWhiteSpace(logText))
             {
                 StatusText.Text = "Log is empty; nothing to share.";
                 return;
             }
 
-            string sanitized = TheLadsLauncher.Services.LogShareService.SanitizeLog(LogBox.Text);
+            string sanitized = TheLadsLauncher.Services.LogShareService.SanitizeLog(logText);
             string preview = sanitized.Length > 2000
-                ? sanitized[..2000] + "\n\n[... truncated preview; full sanitized log will be uploaded ...]"
+                ? "[... older lines omitted ...]\n\n" + sanitized[^2000..]
                 : sanitized;
 
             string prompt = "The following sanitized log will be publicly uploaded to mclo.gs for sharing:\n\n" + preview;
@@ -1329,20 +1498,20 @@ public partial class MainWindow : Window
             var result = await TheLadsLauncher.Services.LogShareService.UploadLogAsync(sanitized);
             if (result.Success && result.Url != null)
             {
+                bool copied = false;
                 try
                 {
-                    var process = new Process();
-                    process.StartInfo.FileName = "clip.exe";
-                    process.StartInfo.UseShellExecute = false;
-                    process.StartInfo.RedirectStandardInput = true;
-                    process.StartInfo.CreateNoWindow = true;
-                    process.Start();
-                    process.StandardInput.Write(result.Url);
-                    process.StandardInput.Close();
-                    process.WaitForExit(2000);
+                    var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+                    if (clipboard != null)
+                    {
+                        await clipboard.SetTextAsync(result.Url);
+                        copied = true;
+                    }
                 }
                 catch { }
-                StatusText.Text = $"Log uploaded and link copied: {result.Url}";
+                StatusText.Text = copied
+                    ? $"Log uploaded and link copied: {result.Url}"
+                    : $"Log uploaded: {result.Url}";
             }
             else
             {
@@ -1357,9 +1526,23 @@ public partial class MainWindow : Window
 
     private void ClearLogs_Click(object? sender, RoutedEventArgs e)
     {
-        logLines.Clear();
-        allLogLines.Clear();
-        LogBox.Text = "";
+        lock (logLines)
+        {
+            logLines.Clear();
+            allLogLines.Clear();
+            LogBox.Text = "";
+            _logDirty = false;
+            try
+            {
+                var logsDir = TheLadsLauncher.Services.PathService.Instance.LogsDirectory;
+                var logFile = Path.Combine(logsDir, "launcher_debug.txt");
+                _logClearCutoffBytes = File.Exists(logFile) ? new FileInfo(logFile).Length : 0;
+            }
+            catch
+            {
+                _logClearCutoffBytes = long.MaxValue;
+            }
+        }
     }
 
     // ═══════════════════════════════════════
@@ -1527,22 +1710,34 @@ public partial class MainWindow : Window
     }
 
     // Skin heads by account name, so re-filling the picker does not download them again.
-    private readonly Dictionary<string, Bitmap> _accountHeads = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Bitmap> _accountHeads = new(StringComparer.OrdinalIgnoreCase);
 
-    private async Task LoadAccountHeadAsync(TheLadsLauncher.Models.AccountChoice choice)
+    private async Task<Bitmap?> GetOrLoadAccountHeadAsync(string username)
     {
-        if (_accountHeads.TryGetValue(choice.Name, out var cached)) { choice.Head = cached; return; }
-        if (AppliedHead(choice.Name) is { } applied) { choice.Head = _accountHeads[choice.Name] = applied; return; }
+        if (_accountHeads.TryGetValue(username, out var cached)) return cached;
+        Bitmap? applied = Dispatcher.UIThread.CheckAccess()
+            ? AppliedHead(username)
+            : await Dispatcher.UIThread.InvokeAsync(() => AppliedHead(username));
+        if (applied != null) { _accountHeads[username] = applied; return applied; }
         try
         {
-            var bytes = await _httpClient.GetByteArrayAsync($"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(choice.Name))}/64");
+            var bytes = await _httpClient.GetByteArrayAsync($"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(username))}/64");
             using var ms = new MemoryStream(bytes);
-            choice.Head = _accountHeads[choice.Name] = new Bitmap(ms);
+            var bmp = new Bitmap(ms);
+            _accountHeads[username] = bmp;
+            return bmp;
         }
         catch
         {
             // Offline or no such player: the picker keeps the grey placeholder.
+            return null;
         }
+    }
+
+    private async Task LoadAccountHeadAsync(TheLadsLauncher.Models.AccountChoice choice)
+    {
+        if (await GetOrLoadAccountHeadAsync(choice.Name) is { } head)
+            choice.Head = head;
     }
 
     private void LaunchAccountSelector_SelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -1616,28 +1811,29 @@ public partial class MainWindow : Window
             Grid.SetColumn(skinHead, 0);
             grid.Children.Add(skinHead);
 
-            if (AppliedHead(username) is { } applied) skinHead.Fill = new ImageBrush(applied);
-            else _ = Task.Run(async () =>
+            if (_accountHeads.TryGetValue(username, out var cachedHead))
             {
-                try
+                skinHead.Fill = new ImageBrush(cachedHead);
+            }
+            else if (AppliedHead(username) is { } applied)
+            {
+                _accountHeads[username] = applied;
+                skinHead.Fill = new ImageBrush(applied);
+            }
+            else
+            {
+                _ = Task.Run(async () =>
                 {
-                    string headUrl = $"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(username))}/28";
-                    var headBytes = await _httpClient.GetByteArrayAsync(headUrl);
-                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    var headBmp = await GetOrLoadAccountHeadAsync(username);
+                    if (headBmp != null)
                     {
-                        try
+                        await Dispatcher.UIThread.InvokeAsync(() =>
                         {
-                            using (var ms = new MemoryStream(headBytes))
-                            {
-                                var headBmp = new Bitmap(ms);
-                                skinHead.Fill = new ImageBrush(headBmp);
-                            }
-                        }
-                        catch { }
-                    });
-                }
-                catch { }
-            });
+                            skinHead.Fill = new ImageBrush(headBmp);
+                        });
+                    }
+                });
+            }
 
             // Account Name & Badges Stack
             var infoStack = new StackPanel
@@ -2531,6 +2727,8 @@ public partial class MainWindow : Window
     private string AppliedHeadFile(string account) => Path.Combine(_pathService.BaseDirectory, "cache", "applied-heads",
         string.Concat(account.ToLowerInvariant().Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c)) + ".png");
 
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime writeTime, Bitmap bmp)> _appliedHeadCache = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// The head of the skin last applied in the Skins tab. mc-heads.net keeps serving the old skin for a while after an
     /// upload, so for a day every player head of that account is drawn from the applied texture instead.
@@ -2539,7 +2737,15 @@ public partial class MainWindow : Window
     {
         var file = new FileInfo(AppliedHeadFile(account));
         if (!file.Exists || file.LastWriteTimeUtc < DateTime.UtcNow.AddDays(-1)) return null;
-        try { return new Bitmap(file.FullName); } catch (Exception) { return null; }
+        if (_appliedHeadCache.TryGetValue(account, out var entry) && entry.writeTime == file.LastWriteTimeUtc)
+            return entry.bmp;
+        try
+        {
+            var bmp = new Bitmap(file.FullName);
+            _appliedHeadCache[account] = (file.LastWriteTimeUtc, bmp);
+            return bmp;
+        }
+        catch (Exception) { return null; }
     }
 
     private void ShowAppliedSkin(string account, byte[] png)
@@ -2551,8 +2757,9 @@ public partial class MainWindow : Window
             head.Save(AppliedHeadFile(account));
         }
         catch (Exception) { return; } // the skin itself was applied: only the heads stay old until mc-heads catches up
+        _appliedHeadCache.TryRemove(account, out _);
         foreach (var key in _accountHeads.Keys.Where(k => string.Equals(k, account, StringComparison.OrdinalIgnoreCase)).ToList())
-            _accountHeads.Remove(key);
+            _accountHeads.TryRemove(key, out _);
         LoadAccounts(); // sidebar, account pickers (Play, Experiences) and the Accounts list
     }
 
@@ -2561,17 +2768,26 @@ public partial class MainWindow : Window
         try
         {
             MiniAccountName.Text = username;
-            if (AppliedHead(username) is { } applied) { MiniSkinHead.Fill = new ImageBrush(applied); return; }
-
-            string skinId = ResolveSkinId(username);
-
-            // Load head for mini icon
-            string headUrl = $"https://mc-heads.net/avatar/{Uri.EscapeDataString(skinId)}/24";
-            var headBytes = await _httpClient.GetByteArrayAsync(headUrl);
-            using (var ms = new MemoryStream(headBytes))
+            if (_accountHeads.TryGetValue(username, out var cached))
             {
-                var headBmp = new Bitmap(ms);
+                MiniSkinHead.Fill = new ImageBrush(cached);
+                return;
+            }
+            if (AppliedHead(username) is { } applied)
+            {
+                _accountHeads[username] = applied;
+                MiniSkinHead.Fill = new ImageBrush(applied);
+                return;
+            }
+
+            var headBmp = await GetOrLoadAccountHeadAsync(username);
+            if (headBmp != null)
+            {
                 MiniSkinHead.Fill = new ImageBrush(headBmp);
+            }
+            else
+            {
+                MiniSkinHead.Fill = new SolidColorBrush(Color.Parse("#202125"));
             }
         }
         catch
@@ -3996,18 +4212,29 @@ public partial class MainWindow : Window
 
     private void RefreshMods_Click(object? sender, RoutedEventArgs e) => ReloadModsInventory();
 
+    private DispatcherTimer? _modSearchDebounce;
+
     private void ModNameSearch_TextChanged(object? sender, TextChangedEventArgs e)
     {
-        if (!_resettingModFilters) RenderModsInventory();
+        if (_resettingModFilters) return;
+        _modSearchDebounce ??= new DispatcherTimer(TimeSpan.FromMilliseconds(150), DispatcherPriority.Background, (_, _) =>
+        {
+            _modSearchDebounce!.Stop();
+            RenderModsInventory();
+        });
+        _modSearchDebounce.Stop();
+        _modSearchDebounce.Start();
     }
 
     private void ModsFilter_Changed(object? sender, SelectionChangedEventArgs e)
     {
+        _modSearchDebounce?.Stop();
         if (!_resettingModFilters) RenderModsInventory();
     }
 
     private void SetModFilters(int filter, string search)
     {
+        _modSearchDebounce?.Stop();
         _resettingModFilters = true;
         try
         {
@@ -5236,7 +5463,7 @@ public partial class MainWindow : Window
             PrepareAccountSwitch(gameDirectory);
             process.Start();
             LaunchToken.Send(process);
-            _runningProcesses[process] = gameDirectory;
+            _runningProcesses[process] = gameDirectory; UpdateAnimationTimers();
             DiscordPresence.GameRunning(gameStarted = true);
             // Running marker now; on exit (once): marker removed, server list reconciled, then OnGameExitedAsync.
             var sessionMessages = optiFineWarning == null ? new List<string>() : new List<string> { optiFineWarning };
@@ -5407,7 +5634,7 @@ public partial class MainWindow : Window
         }
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            _runningProcesses.Remove(process);
+            _runningProcesses.Remove(process); UpdateAnimationTimers();
             DiscordPresence.GameRunning(_runningProcesses.Count > 0);
             ApplyNextAccountRequest(gameDirectory);
             // Cancelled from the startup splash: killed on purpose, so no crash report or auto-relaunch.
@@ -6046,10 +6273,10 @@ public partial class MainWindow : Window
             IsVisible = true
         };
 
-        _trayIcon.Clicked += (s, e) => { this.Show(); this.WindowState = WindowState.Normal; this.Activate(); };
+        _trayIcon.Clicked += (s, e) => { this.Show(); this.WindowState = WindowState.Normal; this.Activate(); UpdateAnimationTimers(); };
 
         var showItem = new NativeMenuItem("Show Launcher");
-        showItem.Click += (s, e) => { this.Show(); this.WindowState = WindowState.Normal; this.Activate(); };
+        showItem.Click += (s, e) => { this.Show(); this.WindowState = WindowState.Normal; this.Activate(); UpdateAnimationTimers(); };
 
         var exitItem = new NativeMenuItem("Exit");
         exitItem.Click += (s, e) => { Close(); };
@@ -6080,6 +6307,33 @@ public class ParticleMeshControl : Avalonia.Controls.Control
 
 public partial class MainWindow : Window
 {
+    private static readonly Dictionary<(Color, int), SolidColorBrush> _brushBucketCache = new();
+    private static readonly Dictionary<(Color, int), Pen> _penBucketCache = new();
+
+    private static SolidColorBrush GetCachedBrush(Color color, double opacity)
+    {
+        int bucket = Math.Clamp((int)Math.Round(opacity * 50.0), 0, 50);
+        var key = (color, bucket);
+        if (!_brushBucketCache.TryGetValue(key, out var brush))
+        {
+            brush = new SolidColorBrush(color, bucket / 50.0);
+            _brushBucketCache[key] = brush;
+        }
+        return brush;
+    }
+
+    private static Pen GetCachedPen(Color color, double opacity)
+    {
+        int bucket = Math.Clamp((int)Math.Round(opacity * 50.0), 0, 50);
+        var key = (color, bucket);
+        if (!_penBucketCache.TryGetValue(key, out var pen))
+        {
+            pen = new Pen(GetCachedBrush(color, opacity), 1.0);
+            _penBucketCache[key] = pen;
+        }
+        return pen;
+    }
+
     public void DrawParticleMesh(DrawingContext context, double width, double height)
     {
         if (!settings.ShowParticles || settings.ReducedMotion) return;
@@ -6096,7 +6350,7 @@ public partial class MainWindow : Window
             {
                 double t = ring / 5.0;
                 double alpha = n.BaseOpacity * pulse * (1.0 - t) * 0.9 + 0.004;
-                var brush = new SolidColorBrush(primaryColor, alpha);
+                var brush = GetCachedBrush(primaryColor, alpha);
                 context.DrawEllipse(brush, null, new Point(n.X, n.Y), n.Radius * t, n.Radius * t * 0.78);
             }
         }
@@ -6128,7 +6382,7 @@ public partial class MainWindow : Window
                     double lineOpacity = distanceFactor * Math.Min(fadeOpacity1, fadeOpacity2) * 0.45;
                     if (lineOpacity > 0.01)
                     {
-                        var linePen = new Pen(new SolidColorBrush(primaryColor, lineOpacity), 1.0);
+                        var linePen = GetCachedPen(primaryColor, lineOpacity);
                         context.DrawLine(linePen, new Point(p1.X, p1.Y), new Point(p2.X, p2.Y));
                     }
                 }
@@ -6144,7 +6398,7 @@ public partial class MainWindow : Window
 
             if (fadeOpacity > 0.01)
             {
-                var brush = new SolidColorBrush(accentColor, fadeOpacity);
+                var brush = GetCachedBrush(accentColor, fadeOpacity);
                 context.DrawEllipse(brush, null, new Point(p.X, p.Y), p.Size / 2.0, p.Size / 2.0);
             }
         }
@@ -6406,6 +6660,17 @@ public partial class MainWindow : Window
         return $"{count} downloads";
     }
 
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Bitmap> _browseIconCache = new();
+    private static void CacheBrowseIcon(string url, Bitmap bmp)
+    {
+        if (_browseIconCache.Count >= 200)
+        {
+            var first = _browseIconCache.Keys.FirstOrDefault();
+            if (first != null) _browseIconCache.TryRemove(first, out _);
+        }
+        _browseIconCache[url] = bmp;
+    }
+
     private void RenderSearchResults(List<ModSearchItem> results, string mcVersion, bool isResourcePack, StackPanel listPanel)
     {
         if (results == null || results.Count == 0)
@@ -6445,26 +6710,31 @@ public partial class MainWindow : Window
             string authorPart = string.IsNullOrEmpty(item.Author) || item.Author == "CurseForge Creator" ? "" : $"  ·  by {item.Author}";
             if (downloadsBlock != null) downloadsBlock.Text = $"⬇ {FormatDownloadCount(item.DownloadCount)}  ·  {item.Provider}{authorPart}";
 
-            // Fetch and set Icon Asynchronously
+            // Fetch and set Icon Asynchronously (downscaled, decoded off UI thread, bounded cache)
             if (iconImage != null && !string.IsNullOrEmpty(item.IconUrl))
             {
-                _ = Task.Run(async () =>
+                if (_browseIconCache.TryGetValue(item.IconUrl, out var cachedBmp))
                 {
-                    try
+                    iconImage.Source = cachedBmp;
+                }
+                else
+                {
+                    _ = Task.Run(async () =>
                     {
-                        var bytes = await _httpClient.GetByteArrayAsync(item.IconUrl);
-                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        try
                         {
-                            try
+                            var bytes = await _httpClient.GetByteArrayAsync(item.IconUrl);
+                            using var ms = new MemoryStream(bytes);
+                            var bmp = Bitmap.DecodeToWidth(ms, 96);
+                            CacheBrowseIcon(item.IconUrl, bmp);
+                            await Dispatcher.UIThread.InvokeAsync(() =>
                             {
-                                using var ms = new MemoryStream(bytes);
-                                iconImage.Source = new Bitmap(ms);
-                            }
-                            catch {}
-                        });
-                    }
-                    catch {}
-                });
+                                iconImage.Source = bmp;
+                            });
+                        }
+                        catch {}
+                    });
+                }
             }
 
             // Populate Category Badges

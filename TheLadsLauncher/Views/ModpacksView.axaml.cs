@@ -704,6 +704,16 @@ public partial class ModpacksView : UserControl
 
     private static string Downloads(long n) => n >= 1_000_000 ? $"{n / 1_000_000.0:0.#}M" : n >= 1_000 ? $"{n / 1_000.0:0.#}K" : n.ToString();
 
+    private static void CacheRemoteIcon(string url, Bitmap? bitmap)
+    {
+        if (RemoteIcons.Count >= 100)
+        {
+            var firstKey = RemoteIcons.Keys.FirstOrDefault();
+            if (firstKey != null) RemoteIcons.Remove(firstKey);
+        }
+        RemoteIcons[url] = bitmap;
+    }
+
     private static async Task LoadRemoteIconAsync(Border target, string? url)
     {
         if (string.IsNullOrEmpty(url)) return;
@@ -719,19 +729,28 @@ public partial class ModpacksView : UserControl
                         var info = FabricModMetadata.ReadJar(corePath, includeIcon: true);
                         if (info?.Icon is { Length: > 0 } iconBytes)
                         {
-                            bitmap = new Bitmap(new MemoryStream(iconBytes));
+                            bitmap = await Task.Run(() =>
+                            {
+                                using var ms = new MemoryStream(iconBytes);
+                                return Bitmap.DecodeToWidth(ms, 96);
+                            });
                         }
                     }
                 }
                 else
                 {
-                    bitmap = new Bitmap(new MemoryStream(await Http.GetByteArrayAsync(url)));
+                    var bytes = await Http.GetByteArrayAsync(url);
+                    bitmap = await Task.Run(() =>
+                    {
+                        using var ms = new MemoryStream(bytes);
+                        return Bitmap.DecodeToWidth(ms, 96);
+                    });
                 }
-                RemoteIcons[url] = bitmap;
+                CacheRemoteIcon(url, bitmap);
             }
             if (bitmap != null) target.Child = new Image { Source = bitmap, Stretch = Stretch.UniformToFill };
         }
-        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or ArgumentException or InvalidDataException or NotSupportedException) { RemoteIcons[url] = null; }
+        catch (Exception e) when (e is HttpRequestException or TaskCanceledException or ArgumentException or InvalidDataException or NotSupportedException) { CacheRemoteIcon(url, null); }
     }
 
     /// <summary>The newest version of the pack for the Browse filters, installed as a new instance.</summary>
@@ -780,6 +799,7 @@ public partial class ModpacksView : UserControl
     internal void OpenManage(ModpackInstance instance)
     {
         _selected = instance;
+        _screenshotsCountShown = 60;
         LibraryPanel.IsVisible = false;
         ManagePanel.IsVisible = true;
         ManageArt.Child = Art(instance, 82);
@@ -902,6 +922,7 @@ public partial class ModpacksView : UserControl
     private void Back_Click(object? sender, RoutedEventArgs e)
     {
         _selected = null;
+        _screenshotsCountShown = 60;
         ManagePanel.IsVisible = false;
         LibraryPanel.IsVisible = true;
         RenderCards();
@@ -2228,6 +2249,8 @@ public partial class ModpacksView : UserControl
         else Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
     }
 
+    private int _screenshotsCountShown = 60;
+
     private void LoadScreenshots()
     {
         if (_selected is not { } instance) return;
@@ -2242,9 +2265,13 @@ public partial class ModpacksView : UserControl
             .Where(f => f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(f => File.GetLastWriteTimeUtc(f))
             .ToList();
-        ScreenshotsHeader.Text = $"SCREENSHOTS ({files.Count})";
 
-        foreach (var file in files)
+        if (files.Count > _screenshotsCountShown)
+            ScreenshotsHeader.Text = $"SCREENSHOTS ({_screenshotsCountShown} of {files.Count})";
+        else
+            ScreenshotsHeader.Text = $"SCREENSHOTS ({files.Count})";
+
+        foreach (var file in files.Take(_screenshotsCountShown))
         {
             try
             {
@@ -2257,15 +2284,55 @@ public partial class ModpacksView : UserControl
                     BorderThickness = new Thickness(1),
                     Cursor = new Cursor(StandardCursorType.Hand)
                 };
-                var img = new Image { Source = new Bitmap(file), Stretch = Stretch.UniformToFill };
+                var img = new Image { Stretch = Stretch.UniformToFill };
                 card.Child = img;
                 card.PointerPressed += (_, _) =>
                 {
                     Process.Start(new ProcessStartInfo(file) { UseShellExecute = true });
                 };
                 ScreenshotsGallery.Children.Add(card);
+                _ = Task.Run(() =>
+                {
+                    try
+                    {
+                        using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                        var bmp = Bitmap.DecodeToWidth(stream, 240);
+                        Dispatcher.UIThread.Post(() => img.Source = bmp);
+                    }
+                    catch { }
+                });
             }
             catch { }
+        }
+
+        if (files.Count > _screenshotsCountShown)
+        {
+            var moreCard = new Border
+            {
+                Width = 180, Height = 140, Margin = new Thickness(0, 0, 12, 12),
+                CornerRadius = new CornerRadius(6),
+                Background = new SolidColorBrush(Color.Parse("#202127")),
+                BorderBrush = new SolidColorBrush(Color.Parse("#3E404D")),
+                BorderThickness = new Thickness(1),
+                Cursor = new Cursor(StandardCursorType.Hand)
+            };
+            var moreText = new TextBlock
+            {
+                Text = $"+ Show more\n({files.Count - _screenshotsCountShown} remaining)",
+                TextAlignment = TextAlignment.Center,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Foreground = new SolidColorBrush(Color.Parse("#C5C7D0")),
+                FontSize = 12,
+                FontWeight = FontWeight.SemiBold
+            };
+            moreCard.Child = moreText;
+            moreCard.PointerPressed += (_, _) =>
+            {
+                _screenshotsCountShown += 60;
+                LoadScreenshots();
+            };
+            ScreenshotsGallery.Children.Add(moreCard);
         }
     }
 
