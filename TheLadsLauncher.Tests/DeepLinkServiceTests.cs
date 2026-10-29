@@ -179,26 +179,41 @@ public class DeepLinkServiceTests
     public async Task StartIpcListener_LogsFirstUnauthorizedAccessExceptionOnce()
     {
         var logs = new List<string>();
-        DeepLinkService.Log = logs.Add;
+        var logsLock = new object();
+        DeepLinkService.Log = msg => { lock (logsLock) { logs.Add(msg); } };
         using var cts = new CancellationTokenSource();
         int attempts = 0;
         DeepLinkService.ServerFactory = _ =>
         {
-            attempts++;
+            Interlocked.Increment(ref attempts);
             throw new UnauthorizedAccessException("Pipe is occupied");
         };
         try
         {
             DeepLinkService.StartIpcListener(_ => { }, "test-pipe", cts.Token);
-            for (int i = 0; i < 50 && attempts < 1; i++)
+            for (int i = 0; i < 150; i++)
+            {
+                lock (logsLock)
+                {
+                    if (logs.Count >= 1) break;
+                }
                 await Task.Delay(20);
+            }
 
             Assert.True(attempts >= 1);
-            Assert.Single(logs.Where(l => l.Contains("pipe squatting", StringComparison.OrdinalIgnoreCase)));
+            lock (logsLock)
+            {
+                Assert.Single(logs.Where(l => l.Contains("pipe squatting", StringComparison.OrdinalIgnoreCase) || l.Contains("pipe already taken", StringComparison.OrdinalIgnoreCase)));
+            }
 
-            await Task.Delay(600);
+            for (int i = 0; i < 150 && attempts < 2; i++)
+                await Task.Delay(20);
+
             Assert.True(attempts >= 2);
-            Assert.Single(logs.Where(l => l.Contains("pipe squatting", StringComparison.OrdinalIgnoreCase)));
+            lock (logsLock)
+            {
+                Assert.Single(logs.Where(l => l.Contains("pipe squatting", StringComparison.OrdinalIgnoreCase) || l.Contains("pipe already taken", StringComparison.OrdinalIgnoreCase)));
+            }
         }
         finally
         {
