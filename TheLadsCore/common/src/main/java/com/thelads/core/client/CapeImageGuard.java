@@ -14,8 +14,11 @@ public final class CapeImageGuard {
     /** A cape PNG is a few KB (up to a few hundred KB for HD and animated ones). */
     public static final int MAX_IMAGE_BYTES = 2 * 1024 * 1024;
     public static final int MAX_WIDTH = 2048;
-    /** Animated capes are frames stacked in one tall image. */
-    public static final int MAX_HEIGHT = 8192;
+    /** Static capes are at most 2048x1024 (canvas doubles to fit). */
+    public static final int MAX_STATIC_HEIGHT = 1024;
+    public static final int MAX_HEIGHT = 1024;
+    public static final int MAX_FRAMES = 256;
+    public static final int MIN_ANIMATED_WIDTH = 16;
     public static final int MAX_PIXELS = 4 * 1024 * 1024;
     /** The JSON a provider answers with before the image URL. */
     public static final int MAX_JSON_BYTES = 64 * 1024;
@@ -27,8 +30,12 @@ public final class CapeImageGuard {
 
     /** The PNG bytes of {@code in}, or null when it is longer than {@link #MAX_IMAGE_BYTES}, not a PNG, or its size is out of bounds. */
     public static byte[] readPng(InputStream in) throws IOException {
+        return readPng(in, false);
+    }
+
+    public static byte[] readPng(InputStream in, boolean animated) throws IOException {
         byte[] bytes = readLimited(in, MAX_IMAGE_BYTES);
-        return bytes != null && acceptablePng(bytes) ? bytes : null;
+        return bytes != null && acceptablePng(bytes, animated) ? bytes : null;
     }
 
     /** The UTF-8 text of {@code in}, or null when it is longer than {@link #MAX_JSON_BYTES}. */
@@ -37,8 +44,13 @@ public final class CapeImageGuard {
         return bytes == null ? null : new String(bytes, StandardCharsets.UTF_8);
     }
 
-    /** True for a PNG whose header (signature, then the IHDR chunk with the width and height) is in bounds. */
+    /** True for a static PNG whose header is in bounds. */
     public static boolean acceptablePng(byte[] png) {
+        return acceptablePng(png, false);
+    }
+
+    /** True for a PNG whose header (signature, then the IHDR chunk with the width and height) is in bounds. */
+    public static boolean acceptablePng(byte[] png, boolean animated) {
         if (png.length < 24) {
             return false;
         }
@@ -51,7 +63,26 @@ public final class CapeImageGuard {
             return false;
         }
         long width = uint32(png, 16), height = uint32(png, 20);
-        return width >= 1 && height >= 1 && width <= MAX_WIDTH && height <= MAX_HEIGHT && width * height <= MAX_PIXELS;
+        return fits((int) width, (int) height, animated);
+    }
+
+    /**
+     * Static: height <= 1024 and width <= 2048.
+     * Animated: frames <= 256 and width >= 16.
+     */
+    public static boolean fits(int width, int height, boolean animated) {
+        if (width < 1 || height < 1 || width > MAX_WIDTH || (long) width * height > MAX_PIXELS) {
+            return false;
+        }
+        if (!animated) {
+            return width <= MAX_WIDTH && height <= MAX_STATIC_HEIGHT;
+        } else {
+            if (width < MIN_ANIMATED_WIDTH) {
+                return false;
+            }
+            int frames = frameCount(width, height);
+            return frames >= 1 && frames <= MAX_FRAMES;
+        }
     }
 
     /** Frames in an animated cape image (each frame is width x width/2, stacked); 0 when it is too small to hold one. */

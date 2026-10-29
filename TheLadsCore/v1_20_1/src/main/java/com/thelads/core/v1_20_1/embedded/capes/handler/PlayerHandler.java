@@ -148,7 +148,7 @@ public class PlayerHandler {
             connection.connect();
             if (connection.getResponseCode() / 100 == 2) {
                 try (InputStream stream = connection.getInputStream()) {
-                    byte[] png = CapeImageGuard.readPng(stream);
+                    byte[] png = CapeImageGuard.readPng(stream, animated);
                     if (png != null) {
                         return setCapeTexture(new ByteArrayInputStream(png), animated, labymod);
                     }

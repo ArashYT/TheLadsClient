@@ -51,6 +51,31 @@ public class CapeImageGuardTest {
         byte[] hugeWidth = validPngHeader.clone();
         hugeWidth[18] = 0x10; // width = 4096
         assertFalse(CapeImageGuard.acceptablePng(hugeWidth));
+
+        // Static height > MAX_STATIC_HEIGHT (e.g. 1x8192 bomb)
+        byte[] tallBomb = validPngHeader.clone();
+        tallBomb[19] = 1; // width = 1
+        tallBomb[22] = 0x20; // height = 8192
+        assertFalse(CapeImageGuard.acceptablePng(tallBomb));
+    }
+
+    @Test
+    public void testStaticCapeBounds() {
+        assertTrue(CapeImageGuard.fits(64, 32, false));
+        assertTrue(CapeImageGuard.fits(2048, 1024, false));
+        assertFalse(CapeImageGuard.fits(1, 8192, false), "1x8192 static bomb must be rejected");
+        assertFalse(CapeImageGuard.fits(8193, 1, false), "Width > 2048 must be rejected");
+        assertFalse(CapeImageGuard.fits(64, 2048, false), "Static height > 1024 must be rejected");
+    }
+
+    @Test
+    public void testAnimatedCapeBounds() {
+        assertTrue(CapeImageGuard.fits(64, 32 * 10, true));
+        assertTrue(CapeImageGuard.fits(16, 8 * 256, true));
+        assertFalse(CapeImageGuard.fits(2, 8192, true), "Width < 16 must be rejected for animated");
+        assertFalse(CapeImageGuard.fits(1, 8192, true), "Width < 16 must be rejected for animated");
+        assertFalse(CapeImageGuard.fits(64, 16, true), "Less than 1 frame must be rejected");
+        assertFalse(CapeImageGuard.fits(64, 32 * 257, true), "Over 256 frames must be rejected");
     }
 
     @Test
