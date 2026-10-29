@@ -1595,7 +1595,10 @@ public partial class MainWindow : Window
     private async Task<Bitmap?> GetOrLoadAccountHeadAsync(string username)
     {
         if (_accountHeads.TryGetValue(username, out var cached)) return cached;
-        if (AppliedHead(username) is { } applied) { _accountHeads[username] = applied; return applied; }
+        Bitmap? applied = Dispatcher.UIThread.CheckAccess()
+            ? AppliedHead(username)
+            : await Dispatcher.UIThread.InvokeAsync(() => AppliedHead(username));
+        if (applied != null) { _accountHeads[username] = applied; return applied; }
         try
         {
             var bytes = await _httpClient.GetByteArrayAsync($"https://mc-heads.net/avatar/{Uri.EscapeDataString(ResolveSkinId(username))}/64");
@@ -2560,7 +2563,7 @@ public partial class MainWindow : Window
     private string AppliedHeadFile(string account) => Path.Combine(_pathService.BaseDirectory, "cache", "applied-heads",
         string.Concat(account.ToLowerInvariant().Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c)) + ".png");
 
-    private readonly Dictionary<string, (DateTime writeTime, Bitmap bmp)> _appliedHeadCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime writeTime, Bitmap bmp)> _appliedHeadCache = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// The head of the skin last applied in the Skins tab. mc-heads.net keeps serving the old skin for a while after an
@@ -2590,7 +2593,7 @@ public partial class MainWindow : Window
             head.Save(AppliedHeadFile(account));
         }
         catch (Exception) { return; } // the skin itself was applied: only the heads stay old until mc-heads catches up
-        _appliedHeadCache.Remove(account);
+        _appliedHeadCache.TryRemove(account, out _);
         foreach (var key in _accountHeads.Keys.Where(k => string.Equals(k, account, StringComparison.OrdinalIgnoreCase)).ToList())
             _accountHeads.TryRemove(key, out _);
         LoadAccounts(); // sidebar, account pickers (Play, Experiences) and the Accounts list
@@ -6410,18 +6413,15 @@ public partial class MainWindow : Window
         return $"{count} downloads";
     }
 
-    private static readonly Dictionary<string, Bitmap> _browseIconCache = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Bitmap> _browseIconCache = new();
     private static void CacheBrowseIcon(string url, Bitmap bmp)
     {
-        lock (_browseIconCache)
+        if (_browseIconCache.Count >= 200)
         {
-            if (_browseIconCache.Count >= 200)
-            {
-                var first = _browseIconCache.Keys.FirstOrDefault();
-                if (first != null) _browseIconCache.Remove(first);
-            }
-            _browseIconCache[url] = bmp;
+            var first = _browseIconCache.Keys.FirstOrDefault();
+            if (first != null) _browseIconCache.TryRemove(first, out _);
         }
+        _browseIconCache[url] = bmp;
     }
 
     private void RenderSearchResults(List<ModSearchItem> results, string mcVersion, bool isResourcePack, StackPanel listPanel)
