@@ -21,6 +21,18 @@ def _enable_social_dev(monkeypatch):
 import cosmetics
 import social
 
+
+@pytest.fixture(autouse=True)
+def revoked(monkeypatch):
+    """TURN revokes never reach Cloudflare in tests; the list records the usernames revoked."""
+    calls = []
+
+    async def fake_revoke(usernames):
+        calls.extend(usernames)
+
+    monkeypatch.setattr(social, "revoke_turn_credentials", fake_revoke)
+    return calls
+
 A = "a" * 32
 B = "b" * 32
 C = "c" * 32
@@ -1881,3 +1893,216 @@ async def test_r3_8_offline_dm_evicts_from_heaviest_sender(social_app):
     assert alice_dms[0]['text'] == 'Legit from Alice'
     spammer1_texts = [d['text'] for d in dms if d['from'] == spammer1]
     assert 'Spam1_0' not in spammer1_texts
+
+
+# ===========================================================================
+# 1.12.0 backend lane: TURN relay hardening (A/2, B/6)
+# ===========================================================================
+
+async def _relay_session(social_app, monkeypatch, user="cred_user"):
+    """Alice hosts, Bob joins by invite; TURN keys present (mint faked). Returns (alice_ws, bob_ws, sid)."""
+    monkeypatch.setenv("CF_TURN_KEY_ID", "dummy_k")
+    monkeypatch.setenv("CF_TURN_API_TOKEN", "dummy_t")
+
+    async def fake_mint():
+        return [{"url": "turn:turn.cloudflare.com:3478?transport=udp", "user": user, "credential": "c"}]
+    monkeypatch.setattr(social, "mint_turn_credentials", fake_mint)
+
+    alice_ws, _ = await auth_ws(social_app, "Alice", A)
+    bob_ws, _ = await auth_ws(social_app, "Bob", B, headers={"CF-Connecting-IP": "10.0.0.2"})
+    await social_app.app["social_store"].add_friend(A, B)
+    world = {"id": "w1", "name": "W", "scope": "friends", "slots": 8, "used": 0}
+    await alice_ws.send_json({"t": "presence", "state": "hosting", "world": world})
+    await recv_type(bob_ws, "presence")
+    await alice_ws.send_json({"t": "invite", "to": B, "world": world})
+    inv = await recv_type(bob_ws, "invite")
+    await bob_ws.send_json({"t": "invite_accept", "inviteId": inv["inviteId"]})
+    start = await recv_type(alice_ws, "p2p_start")
+    await recv_type(bob_ws, "p2p_start")
+    return alice_ws, bob_ws, start["sid"]
+
+
+async def test_turn_credentials_revoked_on_p2p_end(social_app, monkeypatch, revoked):
+    alice_ws, bob_ws, sid = await _relay_session(social_app, monkeypatch)
+    await alice_ws.send_json({"t": "p2p_end", "sid": sid})
+    await recv_type(bob_ws, "p2p_end")
+    await asyncio.sleep(0.05)
+    assert revoked == ["cred_user"]
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_turn_credentials_revoked_when_peer_disconnects_and_late_report_still_counts(social_app, monkeypatch, revoked):
+    alice_ws, bob_ws, sid = await _relay_session(social_app, monkeypatch)
+    hub = social_app.app["social_hub"]
+    store = social_app.app["social_store"]
+    hub.sessions[sid]["created_at"] -= 3600
+
+    await bob_ws.close()
+    end = await recv_type(alice_ws, "p2p_end")
+    assert end["reason"] == "peer_disconnected"
+    await asyncio.sleep(0.05)
+    assert revoked == ["cred_user"]
+
+    # The host's report after the guest vanished is still accepted (it used to get not_found and was never counted)
+    await alice_ws.send_json({"t": "p2p_end", "sid": sid, "relayed": True, "bytes": 5_000_000})
+    await asyncio.sleep(0.1)
+    month = time.strftime("%Y-%m", time.gmtime())
+    assert await store.get_relay_bytes(month) == 5_000_000
+    await alice_ws.close()
+
+
+async def test_turn_credentials_revoked_on_block(social_app, monkeypatch, revoked):
+    alice_ws, bob_ws, sid = await _relay_session(social_app, monkeypatch)
+    await bob_ws.send_json({"t": "block", "uuid": A})
+    assert (await recv_type(alice_ws, "p2p_end"))["reason"] == "blocked"
+    await asyncio.sleep(0.05)
+    assert revoked == ["cred_user"]
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_relay_report_charges_only_the_reporter(social_app, monkeypatch):
+    """A friend's inflated report no longer uses up the other player's monthly quota."""
+    alice_ws, bob_ws, sid = await _relay_session(social_app, monkeypatch)
+    store = social_app.app["social_store"]
+    social_app.app["social_hub"].sessions[sid]["created_at"] -= 3 * 3600
+
+    await alice_ws.send_json({"t": "p2p_end", "sid": sid, "relayed": True, "bytes": 30 * 10**9})
+    await recv_type(bob_ws, "p2p_end")
+    await bob_ws.send_json({"t": "p2p_end", "sid": sid, "relayed": True, "bytes": 2_000})
+    await asyncio.sleep(0.1)
+
+    month = time.strftime("%Y-%m", time.gmtime())
+    assert await store.get_user_relay_bytes(month, A) == 30 * 10**9
+    assert await store.get_user_relay_bytes(month, B) == 2_000
+    assert await store.get_relay_bytes(month) == 30 * 10**9  # the session counts once globally
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_turn_mint_daily_cap_per_account(social_app, monkeypatch):
+    monkeypatch.setattr(social, "TURN_MINTS_PER_DAY", 1)
+    alice_ws, bob_ws, sid = await _relay_session(social_app, monkeypatch)
+
+    world = {"id": "w1", "name": "W", "scope": "friends", "slots": 8, "used": 0}
+    await alice_ws.send_json({"t": "invite", "to": B, "world": world})
+    inv = await recv_type(bob_ws, "invite")
+    await bob_ws.send_json({"t": "invite_accept", "inviteId": inv["inviteId"]})
+    second = None
+    for _ in range(3):  # the replaced session's p2p_end can arrive first
+        msg = await recv_type(alice_ws, "p2p_start")
+        if msg["sid"] != sid:
+            second = msg
+            break
+    assert second["ice"]["turn"] == []
+    assert second["ice"]["relayStatus"] == "budget"
+    await alice_ws.close()
+    await bob_ws.close()
+
+
+async def test_social_mojang_unavailable_closes_1013(aiohttp_client, fake_profiles, tmp_path, monkeypatch):
+    """When Mojang is unavailable (429/5xx), closes with 1013 without throttling (A/7, B/7)."""
+    async def unavailable(name, sid):
+        raise cosmetics.MojangUnavailableError("Mojang 503")
+    monkeypatch.setattr(social, "has_joined", unavailable)
+
+    app = web.Application()
+    db_file = tmp_path / "social.db"
+    social.mount(app, insecure=False, db_path=db_file)
+    cl = await aiohttp_client(app)
+
+    ws = await cl.ws_connect("/social/ws", headers={"CF-Connecting-IP": "198.51.100.44"})
+    ch = await ws.receive_json(timeout=2)
+    await ws.send_json({"t": "auth", "name": "Alice", "uuid": A, "serverId": cosmetics.server_id(ch["nonce"])})
+    await ws.receive(timeout=2)
+    assert ws.close_code == 1013
+
+
+async def test_offline_dms_cleared_after_hello_sent(social_app):
+    """Offline DMs are cleared only after hello is sent, and get_offline_dms inspects without clearing (A/14, B/15)."""
+    hub = social_app.app["social_hub"]
+    store = hub.store
+    now_ms = int(time.time() * 1000)
+
+    await store.save_offline_dm(A, B, "msg_persist_1", now_ms)
+    await store.save_offline_dm(A, B, "msg_persist_2", now_ms + 10)
+
+    # get_offline_dms should return the messages WITHOUT deleting them
+    dms = await store.get_offline_dms(B)
+    assert len(dms) == 2
+    assert dms[0]["text"] == "msg_persist_1"
+
+    # Verify they are still in DB
+    dms_again = await store.get_offline_dms(B)
+    assert len(dms_again) == 2
+
+    # Clear up to first message
+    await store.clear_offline_dms(B, max_ts=now_ms)
+    dms_after = await store.get_offline_dms(B)
+    assert len(dms_after) == 1
+    assert dms_after[0]["text"] == "msg_persist_2"
+
+
+@pytest.mark.asyncio
+async def test_blocked_with_single_query(tmp_path):
+    store = social.SocialStore(tmp_path / "test.db")
+    u1 = "u" * 32
+    u2 = "v" * 32
+    u3 = "w" * 32
+    # u1 blocks u2
+    await store.block(u1, u2)
+    # u3 blocks u1
+    await store.block(u3, u1)
+    blocked = await store.blocked_with(u1)
+    assert blocked == {u2, u3}
+    blocked2 = await store.blocked_with(u2)
+    assert blocked2 == {u1}
+
+
+@pytest.mark.asyncio
+async def test_hello_queued_before_register_and_dms_cleared_only_on_send(social_app):
+    client = social_app
+    hub = client.server.app["social_hub"]
+
+    now_ms = int(time.time() * 1000)
+    await hub.store.save_offline_dm(to_uuid=B, from_uuid=A, text="Hello Bob offline", ts=now_ms)
+
+    ws_b, hello_b = await auth_ws(client, "Bob", B)
+    assert hello_b.get("t") == "hello"
+    assert len(hello_b.get("dms", [])) == 1
+    assert hello_b["dms"][0]["text"] == "Hello Bob offline"
+
+    # Allow background clear_offline_dms thread to complete
+    for _ in range(20):
+        await asyncio.sleep(0.02)
+        remaining = await hub.store.get_offline_dms(B)
+        if len(remaining) == 0:
+            break
+    assert len(remaining) == 0
+    await ws_b.close()
+
+
+@pytest.mark.asyncio
+async def test_offline_dms_retained_if_hello_send_fails(tmp_path):
+    store = social.SocialStore(tmp_path / "test_dms.db")
+    hub = social.SocialHub(insecure=True, store=store)
+    now_ms = int(time.time() * 1000)
+    await store.save_offline_dm(to_uuid=B, from_uuid=A, text="Keep me safe", ts=now_ms)
+
+    from unittest.mock import MagicMock
+    dummy_ws = MagicMock()
+    dummy_ws.closed = False
+    peer = social.SocialPeer(ws=dummy_ws, uuid=B, name="Bob", settings={}, ip="127.0.0.1")
+    peer.send_json = MagicMock(return_value=False)
+
+    hello_data = await hub.build_hello(peer)
+    sent = peer.send_json(hello_data)
+    await hub.register(peer)
+    if sent and hello_data.get("dms"):
+        max_ts = max(d["ts"] for d in hello_data["dms"])
+        await hub.store.clear_offline_dms(peer.uuid, max_ts=max_ts)
+
+    dms_left = await store.get_offline_dms(B)
+    assert len(dms_left) == 1
+    assert dms_left[0]["text"] == "Keep me safe"

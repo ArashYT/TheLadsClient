@@ -25,7 +25,7 @@ import secrets
 import sqlite3
 import sys
 import time
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 import aiohttp
 from aiohttp import web
@@ -46,6 +46,7 @@ ALLOWED_SLOTS: frozenset[str] = frozenset({"emote", "cape", "hat", "glasses"})
 ITEM_ID_RE = re.compile(r"^[a-z0-9_]{1,32}:[a-z0-9_]{1,32}$")
 LINK_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
 LINK_CODE_TTL = 600  # 10 minutes
+MAX_AUTH_DICT_ENTRIES = 10_000
 
 def load_catalog_from_file(path: str | Path | None) -> dict[int | str, str] | None:
     """Load Tebex package -> cosmetic item catalog from a JSON file.
@@ -173,17 +174,37 @@ def plain_uuid(value) -> str | None:
 
 async def has_joined(name: str, sid: str) -> str | None:
     """Mojang's answer: the profile id that joined with this serverId, or None. The tests replace this."""
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
+    try:
+        session = await get_mojang_session()
         async with session.get(HAS_JOINED, params={"username": name, "serverId": sid}) as response:
+            if response.status == 429 or response.status >= 500:
+                raise MojangUnavailableError(f"Mojang status {response.status}")
             if response.status != 200:
                 return None
             body = await response.json(content_type=None)
             return plain_uuid(body.get("id")) if isinstance(body, dict) else None
+    except (aiohttp.ClientError, asyncio.TimeoutError, TimeoutError) as e:
+        raise MojangUnavailableError(f"Mojang connection error: {e}") from e
 
 
-def client_ip(request: web.Request) -> str:
-    forwarded = request.headers.get("CF-Connecting-IP")  # set by the Cloudflare tunnel
-    return forwarded.split(",")[0].strip() if forwarded else (request.remote or "?")
+from client_ip import client_ip, get_client_ip, normalize_ip as get_auth_ip_key
+
+class MojangUnavailableError(Exception):
+    """Raised when Mojang sessionserver returns 429, 5xx, or network failure."""
+    pass
+
+_MOJANG_SEMAPHORE = asyncio.Semaphore(8)
+_mojang_session: aiohttp.ClientSession | None = None
+
+async def get_mojang_session() -> aiohttp.ClientSession:
+    global _mojang_session
+    if _mojang_session is None or _mojang_session.closed:
+        connector = aiohttp.TCPConnector(limit=16)
+        _mojang_session = aiohttp.ClientSession(
+            connector=connector,
+            timeout=aiohttp.ClientTimeout(total=5)
+        )
+    return _mojang_session
 
 
 def verify_tebex_signature(raw_body: bytes, signature: str | None, secret: str | None) -> bool:
@@ -197,13 +218,14 @@ def verify_tebex_signature(raw_body: bytes, signature: str | None, secret: str |
         return False
     sig = signature.strip()
     # Tebex two-step HMAC
-    body_hash = hashlib.sha256(raw_body).hexdigest()
-    expected_two_step = hmac.new(secret.encode("utf-8"), body_hash.encode("utf-8"), hashlib.sha256).hexdigest()
-    if hmac.compare_digest(expected_two_step, sig):
+    sig_bytes = sig.encode("ascii", errors="replace")
+    body_hash = hashlib.sha256(raw_body).hexdigest().encode("ascii")
+    expected_two_step = hmac.new(secret.encode("utf-8"), body_hash, hashlib.sha256).hexdigest().encode("ascii")
+    if hmac.compare_digest(expected_two_step, sig_bytes):
         return True
     # Standard single-step HMAC
-    expected_single_step = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
-    if hmac.compare_digest(expected_single_step, sig):
+    expected_single_step = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest().encode("ascii")
+    if hmac.compare_digest(expected_single_step, sig_bytes):
         return True
     return False
 
@@ -871,11 +893,12 @@ class CosmeticsStore:
 # ---------------------------------------------------------------------------
 
 class Peer:
-    __slots__ = ("ws", "uuid", "room", "emote", "since", "window", "sent", "gone")
+    __slots__ = ("ws", "uuid", "room", "emote", "since", "window", "sent", "gone", "room_history")
 
     def __init__(self, ws, uuid):
         self.ws, self.uuid, self.room, self.emote, self.since = ws, uuid, None, None, 0.0
         self.window, self.sent, self.gone = 0.0, 0, False
+        self.room_history = []
 
     def view(self, now: float) -> dict:
         return {"uuid": self.uuid, "emote": self.emote, "age": int((now - self.since) * 1000) if self.emote else 0}
@@ -900,6 +923,64 @@ class Hub:
         self.peers: dict[str, Peer] = {}  # uuid -> its one socket
         self.rooms: dict[str, set[Peer]] = {}
         self.ips: dict[str, int] = {}
+        self.auth_failures: dict[str, list[float]] = {}
+        self.auth_blocked_until: dict[str, float] = {}
+        self._last_sweep: float = time.monotonic()
+
+    def is_ip_auth_blocked(self, ip: str) -> bool:
+        ip_key = get_auth_ip_key(ip)
+        now = time.monotonic()
+        blocked_until = self.auth_blocked_until.get(ip_key, 0.0)
+        if now < blocked_until:
+            return True
+        if ip_key in self.auth_blocked_until:
+            del self.auth_blocked_until[ip_key]
+        return False
+
+    def record_auth_failure(self, ip: str) -> None:
+        ip_key = get_auth_ip_key(ip)
+        now = time.monotonic()
+        fails = self.auth_failures.setdefault(ip_key, [])
+        fails.append(now)
+        valid = [t for t in fails if now - t <= 60.0]
+        if len(valid) >= 5:
+            self.auth_blocked_until[ip_key] = now + 60.0
+            self.auth_failures.pop(ip_key, None)
+            while len(self.auth_blocked_until) > MAX_AUTH_DICT_ENTRIES:
+                self.auth_blocked_until.pop(next(iter(self.auth_blocked_until)), None)
+        else:
+            self.auth_failures[ip_key] = valid
+            while len(self.auth_failures) > MAX_AUTH_DICT_ENTRIES:
+                self.auth_failures.pop(next(iter(self.auth_failures)), None)
+
+    def clear_auth_failure(self, ip: str) -> None:
+        ip_key = get_auth_ip_key(ip)
+        self.auth_failures.pop(ip_key, None)
+        self.auth_blocked_until.pop(ip_key, None)
+
+    def maybe_sweep(self) -> None:
+        now = time.monotonic()
+        if now - self._last_sweep >= 60.0:
+            self.sweep_expired()
+            self._last_sweep = now
+
+    def sweep_expired(self) -> None:
+        now_mono = time.monotonic()
+        for ip_k, fails in list(self.auth_failures.items()):
+            valid = [t for t in fails if now_mono - t <= 60.0]
+            if valid:
+                self.auth_failures[ip_k] = valid
+            else:
+                del self.auth_failures[ip_k]
+
+        for ip_k, until in list(self.auth_blocked_until.items()):
+            if now_mono >= until:
+                del self.auth_blocked_until[ip_k]
+
+        while len(self.auth_failures) > MAX_AUTH_DICT_ENTRIES:
+            self.auth_failures.pop(next(iter(self.auth_failures)), None)
+        while len(self.auth_blocked_until) > MAX_AUTH_DICT_ENTRIES:
+            self.auth_blocked_until.pop(next(iter(self.auth_blocked_until)), None)
 
     async def leave(self, peer: Peer) -> None:
         room, peer.room, peer.emote = peer.room, None, None
@@ -984,23 +1065,37 @@ async def read(ws) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
-async def authenticate(hub: Hub, ws) -> Peer | None:
+async def authenticate(hub: Hub, ws, ip: str = "127.0.0.1") -> Peer | None:
+    if hub.is_ip_auth_blocked(ip):
+        await ws.close(code=4003, message=b"auth throttled")
+        return None
     nonce = secrets.token_hex(16)
     await ws.send_str(json.dumps({"t": "challenge", "nonce": nonce}))
     msg = await read(ws)
-    if not msg or msg.get("t") != "auth":
+    if not msg:
+        return None
+    if msg.get("t") != "auth":
+        hub.record_auth_failure(ip)
         return None
     uuid, name, sid = plain_uuid(msg.get("uuid")), msg.get("name"), server_id(nonce)
     if not uuid or not isinstance(name, str) or not NAME_RE.fullmatch(name) or msg.get("serverId") != sid:
+        hub.record_auth_failure(ip)
         return None
     if not hub.insecure:
         try:
-            joined = await has_joined(name, sid)
+            async with _MOJANG_SEMAPHORE:
+                joined = await has_joined(name, sid)
+        except MojangUnavailableError as e:
+            log.warning("mojang unavailable: %s", e)
+            await ws.close(code=1013, message=b"try again later")
+            return None
         except Exception as e:
             log.warning("mojang hasJoined failed: %s", type(e).__name__)
             joined = None
         if joined != uuid:
+            hub.record_auth_failure(ip)
             log.info("auth refused %s", uuid)
+            await ws.close(code=4003, message=b"auth refused")
             return None
     peer = Peer(ws, uuid)
     old = hub.peers.get(uuid)
@@ -1027,6 +1122,12 @@ async def serve(hub: Hub, peer: Peer) -> None:
             room = msg.get("room")
             if room is not None and not (isinstance(room, str) and ROOM_RE.fullmatch(room)):
                 return
+            now_mono = time.monotonic()
+            peer.room_history = [t for t in peer.room_history if t > now_mono - 60.0]
+            if len(peer.room_history) >= 6:
+                await send(peer, {"t": "error", "error": "room rate limit exceeded"})
+                continue
+            peer.room_history.append(now_mono)
             await hub.join(peer, room)
         elif kind == "emote":
             emote = msg.get("id")
@@ -1062,15 +1163,18 @@ async def serve(hub: Hub, peer: Peer) -> None:
 
 async def handle_ws(request: web.Request) -> web.StreamResponse:
     hub = request.app[HUB]
+    hub.maybe_sweep()
     ip = client_ip(request)
     if hub.ips.get(ip, 0) >= MAX_PER_IP:
         return web.json_response({"error": "too many connections"}, status=429)
+    if hub.is_ip_auth_blocked(ip):
+        return web.json_response({"error": "auth throttled"}, status=429)
     hub.ips[ip] = hub.ips.get(ip, 0) + 1
     ws = web.WebSocketResponse(heartbeat=HEARTBEAT, receive_timeout=IDLE_TIMEOUT, max_msg_size=MAX_FRAME)
     peer = None
     try:
         await ws.prepare(request)
-        peer = await asyncio.wait_for(authenticate(hub, ws), AUTH_TIMEOUT)
+        peer = await asyncio.wait_for(authenticate(hub, ws, ip), AUTH_TIMEOUT)
         if peer:
             await serve(hub, peer)
     except (asyncio.TimeoutError, ConnectionError):
@@ -1112,7 +1216,7 @@ def _check_http_auth(request: web.Request) -> bool:
     if not secret or not auth_header.startswith("Bearer "):
         return False
     token = auth_header[len("Bearer "):].strip()
-    return hmac.compare_digest(token, secret)
+    return hmac.compare_digest(token.encode("utf-8", errors="replace"), secret.encode("utf-8", errors="replace"))
 
 
 async def handle_equip_http(request: web.Request) -> web.Response:
@@ -1308,6 +1412,10 @@ async def handle_link_verify_http(request: web.Request) -> web.Response:
 
 async def close_all(app: web.Application) -> None:
     await asyncio.gather(*(p.ws.close(code=1001, message=b"restart") for p in list(app[HUB].peers.values())))
+    global _mojang_session
+    if _mojang_session and not _mojang_session.closed:
+        await _mojang_session.close()
+        _mojang_session = None
 
 
 HUB = web.AppKey("cosmetics_hub", Hub)
@@ -1367,8 +1475,6 @@ def setup(
     app.router.add_get("/cosmetics/link/verify", handle_link_verify_http)
     app.on_shutdown.append(close_all)
 
-    if insecure:
-        os.environ.setdefault("LADS_SOCIAL_DEV", "1")
     import social
     social.mount(app, insecure=insecure, db_path=db_path)
 

@@ -221,6 +221,7 @@ async def test_dev_insecure_auth_skips_mojang(aiohttp_client, monkeypatch, tmp_p
     async def boom(name, sid):
         raise AssertionError("Mojang must not be asked in dev mode")
 
+    monkeypatch.setenv("LADS_SOCIAL_DEV", "1")
     monkeypatch.setattr(cosmetics, "has_joined", boom)
     app = web.Application()
     cosmetics.setup(app, insecure=True, db_path=tmp_path / "dev.db")
@@ -1268,3 +1269,138 @@ def test_get_all_cosmetics_source_of_truth():
     assert cape_item["free"] is False
 
 
+
+
+async def test_cosmetics_auth_failure_throttle(client, monkeypatch):
+    """5 auth failures within 60s blocks IP for 60s (A/7)."""
+    async def wrong_mojang(name, sid):
+        return None  # Auth refused
+    monkeypatch.setattr(cosmetics, "has_joined", wrong_mojang)
+
+    ip_headers = {"CF-Connecting-IP": "198.51.100.22"}
+    for i in range(5):
+        ws = await client.ws_connect("/cosmetics/ws", headers=ip_headers)
+        ch = await ws.receive_json(timeout=2)
+        await ws.send_json({"t": "auth", "name": "FakeUser", "uuid": "0" * 32, "serverId": cosmetics.server_id(ch["nonce"])})
+        await ws.receive(timeout=2)
+        assert ws.close_code in (4003, None)
+
+    # 6th attempt should be rejected with 429
+    resp = await client.get("/cosmetics/ws", headers=ip_headers)
+    assert resp.status == 429
+
+
+async def test_cosmetics_mojang_unavailable_closes_1013(client, monkeypatch):
+    """When Mojang is unavailable (429/5xx), closes with 1013 and does not count as auth failure (A/7)."""
+    async def unavailable(name, sid):
+        raise cosmetics.MojangUnavailableError("Mojang 429 rate limit")
+    monkeypatch.setattr(cosmetics, "has_joined", unavailable)
+
+    ip_headers = {"CF-Connecting-IP": "198.51.100.33"}
+    ws = await client.ws_connect("/cosmetics/ws", headers=ip_headers)
+    ch = await ws.receive_json(timeout=2)
+    await ws.send_json({"t": "auth", "name": "Alice", "uuid": "1" * 32, "serverId": cosmetics.server_id(ch["nonce"])})
+    await ws.receive(timeout=2)
+    assert ws.close_code == 1013
+
+
+def test_dev_insecure_auth_without_env_var_raises(tmp_path, monkeypatch):
+    monkeypatch.delenv("LADS_SOCIAL_DEV", raising=False)
+    app = web.Application()
+    with pytest.raises(ValueError, match="LADS_SOCIAL_DEV=1"):
+        cosmetics.setup(app, insecure=True, db_path=tmp_path / "dev.db")
+
+
+def test_verify_tebex_signature_non_ascii():
+    assert cosmetics.verify_tebex_signature(b"payload", "bad_sig_\xff\xfe", "secret") is False
+
+
+def test_check_http_auth_non_ascii():
+    app = web.Application()
+    app[cosmetics.AUTH_SECRET] = "my_secret"
+    req = type("Req", (), {"headers": {"Authorization": "Bearer token_\xff\xfe"}, "app": app})()
+    assert cosmetics._check_http_auth(req) is False
+
+
+async def test_room_switch_rate_limit(client):
+    ws, _ = await login(client, "Alice", "a" * 32)
+    # Login did 1st join; 5 more for 6 total allowed within 60s
+    for i in range(1, 6):
+        room_hash = f"{i:064x}"
+        await ws.send_json({"t": "room", "room": room_hash})
+        msg = await ws.receive_json(timeout=2)
+        assert msg.get("t") == "snapshot"
+    # 7th switch should return rate limit error
+    await ws.send_json({"t": "room", "room": "f" * 64})
+    err = await ws.receive_json(timeout=2)
+    assert err.get("t") == "error"
+    assert "room rate limit" in err.get("error", "")
+
+
+async def test_real_has_joined_against_local_server(aiohttp_server, monkeypatch):
+    async def handle_has_joined(request):
+        username = request.query.get("username")
+        if username == "Alice":
+            return web.json_response({"id": "a" * 32, "name": "Alice"})
+        if username == "Bob":
+            return web.Response(status=204)
+        if username == "Timeout":
+            await asyncio.sleep(0.5)
+            return web.Response(status=200)
+        if username == "Unavailable":
+            return web.Response(status=503)
+        return web.Response(status=404)
+
+    app = web.Application()
+    app.router.add_get("/hasJoined", handle_has_joined)
+    server = await aiohttp_server(app)
+
+    local_url = f"http://{server.host}:{server.port}/hasJoined"
+    monkeypatch.setattr(cosmetics, "HAS_JOINED", local_url)
+
+    if cosmetics._mojang_session and not cosmetics._mojang_session.closed:
+        await cosmetics._mojang_session.close()
+    cosmetics._mojang_session = None
+
+    try:
+        res = await cosmetics.has_joined("Alice", "sid123")
+        assert res == "a" * 32
+        assert await cosmetics.has_joined("Bob", "sid123") is None
+        assert await cosmetics.has_joined("Unknown", "sid123") is None
+        with pytest.raises(cosmetics.MojangUnavailableError):
+            await cosmetics.has_joined("Unavailable", "sid123")
+        await cosmetics._mojang_session.close()
+        cosmetics._mojang_session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=16), timeout=aiohttp.ClientTimeout(total=0.05))
+        with pytest.raises(cosmetics.MojangUnavailableError):
+            await cosmetics.has_joined("Timeout", "sid123")
+    finally:
+        if cosmetics._mojang_session and not cosmetics._mojang_session.closed:
+            await cosmetics._mojang_session.close()
+        cosmetics._mojang_session = None
+
+
+async def test_pre_auth_close_does_not_count_as_auth_failure(client):
+    hub = client.server.app[cosmetics.HUB]
+    ip_key = cosmetics.get_auth_ip_key("127.0.0.1")
+    hub.clear_auth_failure("127.0.0.1")
+
+    # Connect and receive challenge, then immediately close without sending auth
+    ws = await client.ws_connect("/cosmetics/ws")
+    ch = await ws.receive_json(timeout=2)
+    assert ch.get("t") == "challenge"
+    await ws.close()
+
+    # Must NOT record an auth failure
+    assert ip_key not in hub.auth_failures
+    assert not hub.is_ip_auth_blocked("127.0.0.1")
+
+
+def test_cosmetics_auth_dict_entries_cap_and_sweep():
+    import time
+    hub = cosmetics.Hub(insecure=True, store=None)
+    # Populate auth_failures beyond cap
+    for i in range(cosmetics.MAX_AUTH_DICT_ENTRIES + 50):
+        hub.auth_failures[f"ip_{i}"] = [time.monotonic()]
+    assert len(hub.auth_failures) > cosmetics.MAX_AUTH_DICT_ENTRIES
+    hub.sweep_expired()
+    assert len(hub.auth_failures) <= cosmetics.MAX_AUTH_DICT_ENTRIES
