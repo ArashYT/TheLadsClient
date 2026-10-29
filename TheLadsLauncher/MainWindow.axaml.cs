@@ -4700,15 +4700,21 @@ public partial class MainWindow : Window
 
     private async Task LaunchGame(bool afterVersionSwitch = false, GraphicsRenderer.Relaunch? relaunch = null, string? relaunchProfileId = null, bool isCrashRelaunch = false)
     {
+        if (_launching || _addingAccount || _authCts != null || _showingMicrosoftSetup)
+        {
+            if (afterVersionSwitch || isCrashRelaunch) Log("[Launcher] The game was not started again: a launch or sign-in is already in progress.");
+            return;
+        }
         if (!string.IsNullOrEmpty(relaunchProfileId))
         {
             var target = _profileService.GetProfile(relaunchProfileId);
-            if (target != null) _profileService.SetActiveProfile(target.Id);
-        }
-        if (_launching || _addingAccount || _authCts != null || _showingMicrosoftSetup)
-        {
-            if (afterVersionSwitch) Log("[Launcher] The game was not started again: a launch or sign-in is already in progress.");
-            return;
+            if (target != null && !string.Equals(_profileService.GetActiveProfile().Id, target.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                _profileService.SetActiveProfile(target.Id);
+                ApplyProfile(_profileService.GetActiveProfile(), true);
+                PopulateLaunchProfileSelector();
+                LoadProfilesUI();
+            }
         }
         if (GameVersionPolicy.IsPaused(_profileService.GetActiveProfile().MinecraftVersion))
         {
