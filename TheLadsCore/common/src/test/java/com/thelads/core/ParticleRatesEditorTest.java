@@ -8,6 +8,7 @@ import com.thelads.core.config.ConfigManager;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.ModuleSupport;
 import com.thelads.core.modules.ParticleCoreModule;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -118,6 +119,46 @@ class ParticleRatesEditorTest {
         assertFalse(screen.shows("Particle spawn rates"));
         assertTrue(screen.showsStart(ParticleCore.RATES), "the module page is still open");
         assertFalse(ui.isEditingText());
+    }
+
+    @Test void dragsSaveTheConfigOnceWhenTheyEnd() throws Exception {
+        Path config = dir.resolve("config.json");
+        var ui = new LadsSettingsScreen();
+        ui.openModule(ParticleCore.MODULE);
+        screen.frame(ui);
+        String id = "option:" + ParticleCore.PER_TICK;
+        for (int i = 0; i < 100 && !ui.revealed(id); i++) {
+            ui.scrollIntoView(ui.controlBounds(id));
+            screen.frame(ui);
+        }
+        assertTrue(ui.revealed(id), "the slider is on screen");
+        var slider = ui.controlBounds(id);
+        double y = slider.y() + slider.height() / 2.0;
+        Files.deleteIfExists(config);
+        ui.mouseClicked(slider.x() + 6, y, 0);
+        for (int i = 1; i <= 5; i++) ui.mouseDragged(slider.x() + slider.width() * i / 10.0, y, 0, 0, 0);
+        assertFalse(Files.exists(config), "nothing is written while the slider moves");
+        ui.mouseReleased(slider.x() + slider.width() / 2.0, y, 0);
+        assertTrue(Files.exists(config), "the drag is saved when it ends");
+        assertEquals(core.perTick.getValue(), ConfigManager.toJson().getAsJsonObject("modules").getAsJsonObject(ParticleCore.MODULE)
+            .getAsJsonObject("options").get(ParticleCore.PER_TICK).getAsDouble(), "the final value");
+        assertTrue(Files.readString(config).contains("\"" + ParticleCore.PER_TICK + "\": " + (int) core.perTick.getValue()), "the final value is on disk");
+
+        // The rates editor's bars: the same.
+        ui = new LadsSettingsScreen();
+        ui.openModule(ParticleCore.MODULE);
+        screen.frame(ui);
+        click(ui, ui.controlBounds("option:" + ParticleCore.RATES), .5, 0);
+        screen.frame(ui);
+        var track = ui.particleRatesTrack("flame");
+        Files.deleteIfExists(config);
+        ui.mouseClicked(track.x() + track.width() * 0.5, track.y(), 0);
+        ui.mouseDragged(track.x() + track.width() * 0.4, track.y(), 0, 0, 0);
+        ui.mouseDragged(track.x() + track.width() * 0.2, track.y(), 0, 0, 0);
+        assertFalse(Files.exists(config), "nothing is written while a bar moves");
+        ui.mouseReleased(track.x() + track.width() * 0.2, track.y(), 0);
+        assertTrue(Files.exists(config), "the drag is saved when it ends");
+        assertTrue(Files.readString(config).contains("\"flame\": 20"), "the final rate is on disk");
     }
 
     @Test void changedRatesShowOnTheRowAndSurviveASave() {

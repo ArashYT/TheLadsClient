@@ -174,18 +174,39 @@ public class ConfigManager {
         return json;
     }
 
+    /**
+     * Profiles and share codes restore what they saved: the one-time overrides below (apply1910HudOverride...) ran on the live config
+     * already, so an older snapshot must not run them again over its own values.
+     */
+    static void markOverridesApplied(JsonObject hud) {
+        for (String flag : new String[] {HUD_1910_FLAG, F3_1911_FLAG, KEYSTROKES_1912_FLAG, KEYSTROKES_1914_FLAG, CLOUD_HEIGHT_1914_FLAG, MOB_KILL_BANNER_1914_FLAG}) {
+            hud.addProperty(flag, true);
+        }
+    }
+
+    /** Most HUD positions or anchors a config, profile or share code adds: there are about 60 HUDs, a shared code could carry thousands. */
+    static final int MAX_HUD_ENTRIES = 256;
+
+    /** One HUD setting: a wrongly typed value (a hand edit, another tool) skips that setting instead of stopping the game from starting. */
+    private static void hudValue(Runnable apply) {
+        try {
+            apply.run();
+        } catch (RuntimeException skipped) {
+            System.err.println("Skipped a HUD setting the config can't use: " + skipped);
+        }
+    }
+
     /** Apply a JSON snapshot to the live module + HUD state. */
     public static void applyJson(JsonObject json) {
         if (json == null) {
             return;
         }
         migrateToggles(json);
-        if (json.get(EMOTE_KEYS_FLAG) instanceof JsonArray emoteKeys) emoteKeys.forEach(version -> emoteKeysResolved.add(version.getAsString()));
-        if (!json.has(SkinLayersLodMigration.FLAG) || !json.get(SkinLayersLodMigration.FLAG).getAsBoolean()) {
+        if (json.get(EMOTE_KEYS_FLAG) instanceof JsonArray emoteKeys) emoteKeys.forEach(version -> { if (version.isJsonPrimitive()) emoteKeysResolved.add(version.getAsString()); });
+        if (!bool(json.get(SkinLayersLodMigration.FLAG))) {
             SkinLayersLodMigration.migrate(null);
         }
-        if (json.has("modules")) {
-            JsonObject modulesJson = json.getAsJsonObject("modules");
+        if (json.get("modules") instanceof JsonObject modulesJson) {
             migrateChat(modulesJson);
             migrateChatHeads(modulesJson);
             migrateDynamicLights(modulesJson);
@@ -256,66 +277,82 @@ public class ConfigManager {
                 }
             }
         }
-        if (json.has("hud")) {
-            JsonObject hud = json.getAsJsonObject("hud");
-            if (hud.has("globalColor")) {
-                HudSettings.getInstance().setGlobalColor(hud.get("globalColor").getAsInt());
-            }
-            if (hud.has("globalBackground")) {
-                HudSettings.getInstance().setGlobalBackground(hud.get("globalBackground").getAsInt());
-            }
-            if (hud.has("textShadow")) {
-                HudSettings.getInstance().setTextShadow(hud.get("textShadow").getAsBoolean());
-            }
-            if (hud.has("softShadow")) {
-                // 1.9.1 makes On the default shadow. Soft was the shipped default, so a Soft saved without the marker below was never
-                // a choice: it becomes On, once. Saved with the marker, Soft is the player's own pick and stays.
-                HudSettings.getInstance().setSoftShadow(hud.get("softShadow").getAsBoolean() && hud.has("shadowOnDefault"));
-            }
-            if (hud.has("hudFpsLimit")) {
-                HudSettings.getInstance().setHudFpsLimit(hud.get("hudFpsLimit").getAsInt());
-            }
-            if (hud.has("hudFpsCapOnDefault")) {
-                if (hud.has("hudFpsCapOptIn")) {
-                    HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapOptIn").getAsBoolean());
-                } else if (hud.has("hudFpsCapEnabled")) {
-                    HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapEnabled").getAsBoolean());
+        if (json.get("hud") instanceof JsonObject hud) {
+            hudValue(() -> {
+                if (hud.has("globalColor")) {
+                    HudSettings.getInstance().setGlobalColor(hud.get("globalColor").getAsInt());
                 }
-            } else {
-                // 1.9.2: HUD FPS cap is on by default at 60. Configs from 1.9.1 and older had hudFpsCapOptIn=false
-                // written by default; turn the cap on at 60 for configs that never changed it from the old default.
-                if (hud.has("hudFpsCapOptIn")) {
-                    boolean optIn = hud.get("hudFpsCapOptIn").getAsBoolean();
-                    if (optIn) {
-                        HudSettings.getInstance().setHudFpsCapEnabled(true);
-                    } else if (HudSettings.getInstance().getHudFpsLimit() == 60) {
-                        HudSettings.getInstance().setHudFpsCapEnabled(true);
-                    } else {
-                        HudSettings.getInstance().setHudFpsCapEnabled(false);
-                    }
-                } else if (hud.has("hudFpsCapEnabled")) {
-                    // 1.4.1-1.4.4 saved their default (on, 60) in every config; uncapped was not an explicit choice.
-                    if (HudSettings.getInstance().getHudFpsLimit() == 60) {
-                        HudSettings.getInstance().setHudFpsCapEnabled(true);
-                    } else {
+            });
+            hudValue(() -> {
+                if (hud.has("globalBackground")) {
+                    HudSettings.getInstance().setGlobalBackground(hud.get("globalBackground").getAsInt());
+                }
+            });
+            hudValue(() -> {
+                if (hud.has("textShadow")) {
+                    HudSettings.getInstance().setTextShadow(hud.get("textShadow").getAsBoolean());
+                }
+            });
+            hudValue(() -> {
+                if (hud.has("softShadow")) {
+                    // 1.9.1 makes On the default shadow. Soft was the shipped default, so a Soft saved without the marker below was never
+                    // a choice: it becomes On, once. Saved with the marker, Soft is the player's own pick and stays.
+                    HudSettings.getInstance().setSoftShadow(hud.get("softShadow").getAsBoolean() && hud.has("shadowOnDefault"));
+                }
+            });
+            hudValue(() -> {
+                if (hud.has("hudFpsLimit")) {
+                    HudSettings.getInstance().setHudFpsLimit(hud.get("hudFpsLimit").getAsInt());
+                }
+            });
+            hudValue(() -> {
+                if (hud.has("hudFpsCapOnDefault")) {
+                    if (hud.has("hudFpsCapOptIn")) {
+                        HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapOptIn").getAsBoolean());
+                    } else if (hud.has("hudFpsCapEnabled")) {
                         HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapEnabled").getAsBoolean());
                     }
                 } else {
-                    HudSettings.getInstance().setHudFpsCapEnabled(true);
-                    HudSettings.getInstance().setHudFpsLimit(60);
+                    // 1.9.2: HUD FPS cap is on by default at 60. Configs from 1.9.1 and older had hudFpsCapOptIn=false
+                    // written by default; turn the cap on at 60 for configs that never changed it from the old default.
+                    if (hud.has("hudFpsCapOptIn")) {
+                        boolean optIn = hud.get("hudFpsCapOptIn").getAsBoolean();
+                        if (optIn) {
+                            HudSettings.getInstance().setHudFpsCapEnabled(true);
+                        } else if (HudSettings.getInstance().getHudFpsLimit() == 60) {
+                            HudSettings.getInstance().setHudFpsCapEnabled(true);
+                        } else {
+                            HudSettings.getInstance().setHudFpsCapEnabled(false);
+                        }
+                    } else if (hud.has("hudFpsCapEnabled")) {
+                        // 1.4.1-1.4.4 saved their default (on, 60) in every config; uncapped was not an explicit choice.
+                        if (HudSettings.getInstance().getHudFpsLimit() == 60) {
+                            HudSettings.getInstance().setHudFpsCapEnabled(true);
+                        } else {
+                            HudSettings.getInstance().setHudFpsCapEnabled(hud.get("hudFpsCapEnabled").getAsBoolean());
+                        }
+                    } else {
+                        HudSettings.getInstance().setHudFpsCapEnabled(true);
+                        HudSettings.getInstance().setHudFpsLimit(60);
+                    }
                 }
-            }
-            if (hud.has("backgrounds")) HudSettings.getInstance().setBackgrounds(hud.get("backgrounds").getAsBoolean());
-            if (hud.has("favoriteColors")) {
-                var favorites = HudSettings.getInstance().getFavoriteColors(); favorites.clear();
-                for (var color : hud.getAsJsonArray("favoriteColors")) {
-                    if (favorites.size() >= 24) break;
-                    try { favorites.add(color.getAsInt()); } catch (RuntimeException ignored) {}
+            });
+            hudValue(() -> {
+                if (hud.has("backgrounds")) HudSettings.getInstance().setBackgrounds(hud.get("backgrounds").getAsBoolean());
+            });
+            hudValue(() -> {
+                if (hud.has("favoriteColors")) {
+                    var favorites = HudSettings.getInstance().getFavoriteColors(); favorites.clear();
+                    for (var color : hud.getAsJsonArray("favoriteColors")) {
+                        if (favorites.size() >= 24) break;
+                        try { favorites.add(color.getAsInt()); } catch (RuntimeException ignored) {}
+                    }
                 }
-            }
-            if (hud.has("positions")) {
-                JsonObject pos = hud.getAsJsonObject("positions");
+            });
+            if (hud.get("positions") instanceof JsonObject pos) {
+                Map<String, int[]> positions = HudSettings.getInstance().getPositions();
                 for (String key : pos.keySet()) {
+                    if (positions.size() >= MAX_HUD_ENTRIES && !positions.containsKey(key)) continue;
                     try {
                         JsonArray xy = pos.getAsJsonArray(key);
                         HudSettings.getInstance().setPosition(key, xy.get(0).getAsInt(), xy.get(1).getAsInt());
@@ -324,7 +361,9 @@ public class ConfigManager {
                 }
             }
             if (hud.get("anchors") instanceof JsonObject anchors) {
+                Map<String, HudSettings.Anchor> live = HudSettings.getInstance().getAnchors();
                 for (String key : anchors.keySet()) {
+                    if (live.size() >= MAX_HUD_ENTRIES && !live.containsKey(key)) continue;
                     try {
                         JsonObject a = anchors.getAsJsonObject(key);
                         JsonArray at = a.getAsJsonArray("at"), h = a.getAsJsonArray("x"), v = a.getAsJsonArray("y");
@@ -340,14 +379,19 @@ public class ConfigManager {
             if (!hud.has(KEYSTROKES_1914_FLAG)) apply1914KeystrokesOverride();
             if (!hud.has(CLOUD_HEIGHT_1914_FLAG)) apply1914CloudHeightOverride();
             if (!hud.has(MOB_KILL_BANNER_1914_FLAG)) apply1914MobKillBannerOverride();
-            if (hud.has("hudScale")) HudSettings.getInstance().setHudScale(hud.get("hudScale").getAsInt());
-            if (hud.has("fadePlaylist")) {
-                HudSettings.getInstance().getFadePlaylist().clear();
-                JsonArray fade = hud.getAsJsonArray("fadePlaylist");
-                for (int i = 0; i < fade.size(); i++) {
-                    HudSettings.getInstance().getFadePlaylist().add(fade.get(i).getAsInt());
+            hudValue(() -> {
+                if (hud.has("hudScale")) HudSettings.getInstance().setHudScale(hud.get("hudScale").getAsInt());
+            });
+            hudValue(() -> {
+                if (hud.has("fadePlaylist")) {
+                    java.util.List<Integer> fade = new java.util.ArrayList<>();
+                    for (JsonElement color : hud.getAsJsonArray("fadePlaylist")) {
+                        if (fade.size() >= HudSettings.MAX_FADE) break;
+                        try { fade.add(color.getAsInt()); } catch (RuntimeException ignored) {}
+                    }
+                    HudSettings.getInstance().setFadePlaylist(fade);
                 }
-            }
+            });
             if (hud.has("locked")) {
                 HudSettings.getInstance().replaceLocked(readHudNames(hud.get("locked")));
             }
@@ -740,6 +784,12 @@ public class ConfigManager {
         try (InputStreamReader reader = new InputStreamReader(
                 new FileInputStream(configFile), StandardCharsets.UTF_8)) {
             loaded = GSON.fromJson(reader, JsonObject.class);
+        } catch (com.google.gson.JsonSyntaxException | IllegalStateException e) {
+            System.err.println("Failed to load config");
+            e.printStackTrace();
+            // Unreadable (cut short, hand-edited): keep a copy, then start like a new install (whose defaults are saved over it).
+            if (!keepCopy(configFile)) return;
+            loaded = null;
         } catch (Exception e) {
             System.err.println("Failed to load config");
             e.printStackTrace();
@@ -750,10 +800,31 @@ public class ConfigManager {
             resetTo197PresetAndSave();
             return;
         }
-        boolean dirty = needsMigrationSave(loaded);
-        applyJson(loaded);
-        if (dirty && testConfigFile == null) {
-            save();
+        try {
+            boolean dirty = needsMigrationSave(loaded);
+            applyJson(loaded);
+            if (dirty && testConfigFile == null) {
+                save();
+            }
+        } catch (RuntimeException e) {
+            // A value this build can't apply must not stop every version from starting: keep the file as it was, save what applied.
+            System.err.println("Failed to apply config");
+            e.printStackTrace();
+            if (keepCopy(configFile) && testConfigFile == null) save();
+        }
+    }
+
+    /** Copies {@code file} to "<name>.corrupt-<date-time>" beside it, before a save replaces it; false when it couldn't. */
+    private static boolean keepCopy(File file) {
+        try {
+            Path copy = file.toPath().resolveSibling(file.getName() + ".corrupt-"
+                + java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")));
+            Files.copy(file.toPath(), copy, StandardCopyOption.REPLACE_EXISTING);
+            System.err.println("Kept the config Lads could not use as " + copy);
+            return true;
+        } catch (IOException | RuntimeException e) {
+            e.printStackTrace();
+            return false;
         }
     }
 

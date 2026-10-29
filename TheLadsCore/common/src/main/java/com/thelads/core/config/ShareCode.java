@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
+import com.thelads.core.client.hypixel.HypixelMods;
 import com.thelads.core.modules.HudModule;
 
 import java.io.ByteArrayOutputStream;
@@ -15,7 +16,6 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
@@ -33,6 +33,8 @@ import java.util.zip.Inflater;
  *  - Caps inflate output at 256 KB (zip-bomb defense).
  *  - Strict JSON validation.
  *  - Ignores unmanaged modules and sensitive/machine-specific options.
+ *  - Allow-list: a code carries and applies only visual values ({@link #isExcludedOption}), never text, sounds, paths or the
+ *    privacy, security and automation modules ({@link #isExcludedModule}); a v2 import never resets what it may not carry.
  */
 public final class ShareCode {
     public static final String PREFIX = "LADS1:";
@@ -126,7 +128,7 @@ public final class ShareCode {
         }
         JsonObject payload = new JsonObject();
         payload.addProperty("v", 2);
-        Map<String, JsonObject> defaults = defaultEntries();
+        Map<String, JsonObject> defaults = ModuleManager.getInstance().defaultEntries();
 
         JsonObject modulesOut = new JsonObject();
         JsonObject modulesIn = fullConfig.has("modules") && fullConfig.get("modules").isJsonObject()
@@ -150,7 +152,9 @@ public final class ShareCode {
                     enabled = p.getAsBoolean();
                 }
             }
-            mOut.addProperty("enabled", enabled);
+            if (sharesEnabled(name)) {
+                mOut.addProperty("enabled", enabled);
+            }
 
             if (m instanceof HudModule hm) {
                 boolean useGlobal = hm.isUseGlobalColor();
@@ -221,6 +225,11 @@ public final class ShareCode {
      * (no "v") list everything they mean and are used as they are.
      */
     public static JsonObject prepareImportJson(JsonObject payload, ImportMode mode) {
+        return prepareImportJson(payload, mode, true);
+    }
+
+    /** {@code fromStranger} false: the player's own profile (ProfileManager), which restores every module and option its mode covers. */
+    static JsonObject prepareImportJson(JsonObject payload, ImportMode mode, boolean fromStranger) {
         if (payload == null) {
             return new JsonObject();
         }
@@ -233,7 +242,9 @@ public final class ShareCode {
 
         // HUD layout & appearances
         if ((mode == ImportMode.SETTINGS || mode == ImportMode.BOTH) && payload.has("hud") && payload.get("hud").isJsonObject()) {
-            out.add("hud", payload.getAsJsonObject("hud").deepCopy());
+            JsonObject hud = payload.getAsJsonObject("hud").deepCopy();
+            ConfigManager.markOverridesApplied(hud);
+            out.add("hud", hud);
         }
 
         // Modules
@@ -251,7 +262,7 @@ public final class ShareCode {
 
             for (Map.Entry<String, JsonElement> entry : modulesIn.entrySet()) {
                 String modName = entry.getKey();
-                if (!knownModules.contains(modName) || isExcludedModule(modName)) {
+                if (!knownModules.contains(modName) || (fromStranger ? isExcludedModule(modName) : isMachineSpecificModule(modName))) {
                     continue; // Ignore unknown or excluded modules
                 }
                 if (!entry.getValue().isJsonObject()) {
@@ -260,7 +271,7 @@ public final class ShareCode {
                 JsonObject mIn = entry.getValue().getAsJsonObject();
                 JsonObject mOut = new JsonObject();
 
-                if (mode == ImportMode.MODS || mode == ImportMode.BOTH) {
+                if ((mode == ImportMode.MODS || mode == ImportMode.BOTH) && (!fromStranger || sharesEnabled(modName))) {
                     if (mIn.has("enabled") && mIn.get("enabled").isJsonPrimitive()) {
                         JsonPrimitive p = mIn.getAsJsonPrimitive("enabled");
                         if (p.isBoolean()) {
@@ -287,7 +298,8 @@ public final class ShareCode {
                         JsonObject optsOut = new JsonObject();
                         for (Map.Entry<String, JsonElement> optEntry : optsIn.entrySet()) {
                             String optName = optEntry.getKey();
-                            if (!isExcludedOption(modName, optName) && optEntry.getValue() != null && !optEntry.getValue().isJsonNull()) {
+                            boolean excluded = fromStranger ? isExcludedOption(modName, optName) : isMachineSpecificOption(optName);
+                            if (!excluded && optEntry.getValue() != null && !optEntry.getValue().isJsonNull()) {
                                 optsOut.add(optName, optEntry.getValue().deepCopy());
                             }
                         }
@@ -311,7 +323,7 @@ public final class ShareCode {
      * Applies an imported payload: saves "Before import" snapshot, applies via applyJson, then saves.
      */
     public static void applySharePayload(JsonObject payload, ImportMode mode) {
-        ProfileManager.get().saveAs("Before import");
+        ProfileManager.get().saveBeforeImport();
         JsonObject prepared = prepareImportJson(payload, mode);
         ConfigManager.applyJson(prepared);
         ConfigManager.saveLater();
@@ -330,29 +342,6 @@ public final class ShareCode {
         }
         String unit = count == 1 ? "module" : "modules";
         return count + " " + unit + ", layout";
-    }
-
-    /** Each module's shipped default entry ({enabled, HUD colours, options}), read from a freshly built module list as resetToDefaults does. */
-    private static Map<String, JsonObject> defaultEntries() {
-        Map<String, JsonObject> entries = new HashMap<>();
-        for (Module m : new ModuleManager().getModules()) {
-            JsonObject entry = new JsonObject();
-            entry.addProperty("enabled", m.isEnabledSetting());
-            if (m instanceof HudModule hm) {
-                entry.addProperty("useGlobalColor", hm.isUseGlobalColor());
-                entry.addProperty("customColor", hm.getCustomColor());
-            }
-            JsonObject options = new JsonObject();
-            for (Option o : m.getOptions()) {
-                JsonElement saved = o.save();
-                if (saved != null && !saved.isJsonNull()) {
-                    options.add(o.getName(), saved);
-                }
-            }
-            entry.add("options", options);
-            entries.put(m.getName(), entry);
-        }
-        return entries;
     }
 
     /** Removes from a module entry what equals its default; true when nothing is left. */
@@ -375,7 +364,7 @@ public final class ShareCode {
     /** The v2 modules with every known, non-excluded module and option the payload leaves out set to its default. */
     private static JsonObject withDefaults(JsonObject listed) {
         JsonObject all = new JsonObject();
-        for (Map.Entry<String, JsonObject> d : defaultEntries().entrySet()) {
+        for (Map.Entry<String, JsonObject> d : ModuleManager.getInstance().defaultEntries().entrySet()) {
             if (isExcludedModule(d.getKey())) {
                 continue;
             }
@@ -394,13 +383,62 @@ public final class ShareCode {
         return all;
     }
 
-    public static boolean isExcludedModule(String moduleName) {
+    /**
+     * Modules a share code (a stranger's) never carries or changes: privacy (Friends &amp; Social and Cosmetics send your name to Lads
+     * servers), security switches (Server Control, Server Notification Actions, IgnorePacketErrors) and automation that sends chat,
+     * commands or clicks for the player (Auto Text, LadsApiRules automation; HYPIXEL Mods' own: {@link #HYPIXEL_AUTOMATION}).
+     */
+    private static final Set<String> NOT_SHARED = Set.of("server control", "server notification actions", "ignorepacketerrors",
+        "friends & social", "cosmetics", "auto text");
+
+    /**
+     * HYPIXEL Mods' switches that send chat or commands for the player (/ac gg, /ac glhf, /friend accept, /tip all, /who, /play and
+     * /party list) and their own settings ("Auto GG: Delay seconds"): never in a code. Its visual toggles (Chat Cleanup, Streamer
+     * Mode...) travel; its on/off, the master switch of that automation (Auto GG and Auto Tip are on by default), does not.
+     */
+    public static final Set<String> HYPIXEL_AUTOMATION = Set.of(HypixelMods.AUTO_GG, HypixelMods.AUTO_GL, HypixelMods.AUTO_FRIEND,
+        HypixelMods.AUTO_TIP, HypixelMods.AUTO_WHO, HypixelMods.PLAY_AGAIN);
+
+    /**
+     * Explicit allow-list of HYPIXEL Mods visual features that can travel in a stranger's share code.
+     * All chat/command automation and unlisted future options are excluded by default (fails closed).
+     */
+    public static final Set<String> HYPIXEL_VISUAL = Set.of(
+        HypixelMods.CLEANUP,
+        HypixelMods.CHAT_EMOTES,
+        HypixelMods.STREAMER_MODE,
+        HypixelMods.TAB_FILL,
+        HypixelMods.PIT_LAG,
+        HypixelMods.OPENED_CHESTS,
+        HypixelMods.LOW_BLOCK,
+        HypixelMods.SILENT_LOBBY,
+        HypixelMods.BW_EXTRAS
+    );
+
+    /** Whether a code carries and applies this module's on/off (HYPIXEL Mods': never, see {@link #HYPIXEL_AUTOMATION}). */
+    private static boolean sharesEnabled(String moduleName) {
+        return !HypixelMods.HYPIXEL_MODS.equals(moduleName);
+    }
+
+    /** Modules containing account, presence or machine state: never applied on partial profile loads or stranger codes. */
+    public static boolean isMachineSpecificModule(String moduleName) {
         if (moduleName == null) return true;
         String lower = moduleName.toLowerCase(Locale.ROOT);
         return lower.equals("discordrpc") || lower.contains("discord");
     }
 
-    public static boolean isExcludedOption(String moduleName, String optionName) {
+    public static boolean isExcludedModule(String moduleName) {
+        if (moduleName == null) return true;
+        String lower = moduleName.toLowerCase(Locale.ROOT);
+        return isMachineSpecificModule(moduleName) || NOT_SHARED.contains(lower)
+            || com.thelads.core.client.ladsapi.LadsApiRules.isAutomation(moduleName);
+    }
+
+    /**
+     * Machine-specific, personal or secret options: never applied on partial profile loads (Settings or Mods mode)
+     * and never carried in share codes.
+     */
+    public static boolean isMachineSpecificOption(String optionName) {
         if (optionName == null) return false;
         String lower = optionName.toLowerCase(Locale.ROOT);
         // Excluded file paths
@@ -408,7 +446,7 @@ public final class ShareCode {
             return true;
         }
         // Excluded personal account / identity
-        if (lower.equals("your display name") || lower.equals("nicknames")) {
+        if (lower.equals("your display name") || lower.equals("display name") || lower.equals("nicknames")) {
             return true;
         }
         // Excluded keybinds
@@ -420,6 +458,25 @@ public final class ShareCode {
             return true;
         }
         return false;
+    }
+
+    public static boolean isExcludedOption(String moduleName, String optionName) {
+        if (isMachineSpecificOption(optionName)) {
+            return true;
+        }
+        if (HypixelMods.HYPIXEL_MODS.equals(moduleName)) {
+            int setting = optionName.indexOf(": ");
+            String baseFeature = setting < 0 ? optionName : optionName.substring(0, setting);
+            if (!HYPIXEL_VISUAL.contains(baseFeature)) {
+                return true;
+            }
+        }
+        // Allow-list: only plain visual values travel (switches, sliders, choices, colours, particle rates). Text (chat messages,
+        // shortcuts, regexes, file paths, URLs), sounds (file names), actions and options this build doesn't have never do.
+        Module module = ModuleManager.getInstance().getModule(moduleName);
+        Option option = module == null ? null : module.getOption(optionName);
+        return !(option instanceof BoolOption || option instanceof SliderOption || option instanceof DropdownOption
+            || option instanceof ColorOption || option instanceof DoubleOption || option instanceof ParticleReductionOption);
     }
 
     private static byte[] deflate(byte[] data) {

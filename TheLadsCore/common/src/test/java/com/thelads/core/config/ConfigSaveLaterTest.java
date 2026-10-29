@@ -92,6 +92,43 @@ class ConfigSaveLaterTest {
         }
     }
 
+    @Test void aWronglyTypedValueIsSkippedAndAnUnreadableConfigIsKept(@TempDir Path dir) throws Exception {
+        File config = dir.resolve("thelads_config.json").toFile();
+        ConfigManager.setTestConfigFile(config);
+        try {
+            // Each of these threw out of load(), and so out of every version's mod start, at every launch.
+            Files.writeString(config.toPath(), "{\"" + SkinLayersLodMigration.FLAG + "\":true,\"modules\":[],\"hud\":{\"hudScale\":\"auto\","
+                + "\"globalColor\":{},\"textShadow\":[1,2],\"fadePlaylist\":{},\"positions\":[],\"favoriteColors\":7,\"backgrounds\":false}}");
+            ConfigManager.load();
+            assertFalse(HudSettings.getInstance().isBackgrounds(), "the values that are fine still apply");
+            ConfigManager.applyJson(com.google.gson.JsonParser.parseString("{\"modules\":{\"FPS\":7},\"hud\":[]}").getAsJsonObject());
+
+            String cut = "{\"modules\":{\"FPS\":{\"enabled\":";
+            Files.writeString(config.toPath(), cut);
+            ConfigManager.load();
+            File[] kept = dir.toFile().listFiles((folder, name) -> name.startsWith("thelads_config.json.corrupt-"));
+            assertEquals(1, kept.length, "an unreadable config is kept before a save can replace it");
+            assertEquals(cut, Files.readString(kept[0].toPath()));
+        } finally {
+            ModuleManager.getInstance().resetToDefaults();
+            HudSettings.getInstance().resetToDefaults();
+        }
+    }
+
+    @Test void anIoErrorDuringLoadDoesNotCreateCorruptCopyOrResetDefaults(@TempDir Path dir) throws Exception {
+        File configDir = dir.resolve("locked_config_dir").toFile();
+        assertTrue(configDir.mkdir());
+        // Pointing testConfigFile to a directory causes FileInputStream to throw IOException on open
+        ConfigManager.setTestConfigFile(configDir);
+        try {
+            ConfigManager.load();
+            File[] kept = dir.toFile().listFiles((folder, name) -> name.contains(".corrupt-"));
+            assertTrue(kept == null || kept.length == 0, "an IO failure must not create a .corrupt copy or reset defaults");
+        } finally {
+            ConfigManager.setTestConfigFile(null);
+        }
+    }
+
     @Test void mirrorTargetsIncludeSharedRootProfilesAndInstances(@TempDir Path dir) throws Exception {
         com.thelads.core.client.util.ClientPaths.setBaseDir(dir);
         try {

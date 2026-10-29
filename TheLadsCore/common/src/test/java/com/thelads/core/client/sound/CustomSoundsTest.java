@@ -110,6 +110,30 @@ class CustomSoundsTest {
     }
 
     @Test
+    void soundNamesNeverReachOutsideTheSoundsFolder(@TempDir Path base) throws IOException {
+        ClientPaths.setBaseDir(base);
+        try {
+            // Trim data beside the folder: an absolute name used to read it (Oof Mod plays on the game thread).
+            Path outside = Files.writeString(base.resolve("secret.trim"), "{\"volume\":0.25}");
+            String absolute = outside.toString().substring(0, outside.toString().length() - ".trim".length());
+            java.util.List<String> names = new java.util.ArrayList<>(java.util.List.of(absolute, "//localhost/no-such-share/a", "../secret",
+                "sub/hit.wav", "a\u0000b.wav"));
+            if (java.io.File.separatorChar == '\\') names.addAll(java.util.List.of("\\\\localhost\\no-such-share\\a", "..\\secret", "C:\\x.wav"));
+            for (String name : names) {
+                assertNull(CustomSounds.trimDataFile(name), name); // first: a regression must fail here, before any file is opened
+                assertEquals(TrimData.DEFAULT_VOLUME, CustomSounds.volume(name), name);
+                assertNull(CustomSounds.decoded(name), name);
+                assertThrows(IOException.class, () -> CustomSounds.delete(name), name);
+                assertThrows(IOException.class, () -> CustomSounds.saveTrimData(name, new TrimData(2)), name);
+            }
+            assertEquals("{\"volume\":0.25}", Files.readString(outside), "nothing outside the folder is read, written or deleted");
+            assertEquals(CustomSounds.folder().normalize().resolve("hit.wav.trim"), CustomSounds.trimDataFile("hit.wav"));
+        } finally {
+            ClientPaths.setBaseDir(null);
+        }
+    }
+
+    @Test
     void comboCountsLandedHitsUntilYouAreHurtOrItTimesOut() {
         ComboSoundsModule combo = new ComboSoundsModule();
         assertFalse(combo.isEnabled(), "off by default");

@@ -2,7 +2,9 @@ package com.thelads.core.config;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
+import com.thelads.core.client.hypixel.HypixelMods;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -313,6 +315,42 @@ class ShareCodeTest {
     }
 
     @Test
+    void partialProfileLoadsMaintainMachineSpecificOptionExclusions() {
+        JsonObject snap = new JsonObject();
+        JsonObject modules = new JsonObject();
+
+        JsonObject fps = new JsonObject();
+        JsonObject fpsOpts = new JsonObject();
+        fpsOpts.addProperty("Update rate", 5);
+        fpsOpts.addProperty("Toggle key", "K");
+        fpsOpts.addProperty("Background Image", "C:/secret/img.png");
+        fpsOpts.addProperty("Token", "secret_token_123");
+        fps.add("options", fpsOpts);
+        fps.addProperty("enabled", true);
+        modules.add("FPS", fps);
+
+        JsonObject discord = new JsonObject();
+        discord.addProperty("enabled", true);
+        modules.add("DiscordRPC", discord);
+
+        snap.add("modules", modules);
+
+        // Partial Settings load for own profile (fromStranger = false)
+        JsonObject preparedSettings = ShareCode.prepareImportJson(snap, ShareCode.ImportMode.SETTINGS, false);
+        JsonObject fpsOut = preparedSettings.getAsJsonObject("modules").getAsJsonObject("FPS").getAsJsonObject("options");
+        assertTrue(fpsOut.has("Update rate"), "regular option must be included in partial profile load");
+        assertFalse(fpsOut.has("Toggle key"), "keybind must be excluded in partial profile load");
+        assertFalse(fpsOut.has("Background Image"), "machine-specific path must be excluded in partial profile load");
+        assertFalse(fpsOut.has("Token"), "secret/token must be excluded in partial profile load");
+        assertFalse(preparedSettings.getAsJsonObject("modules").has("DiscordRPC"), "Discord module must be excluded in partial profile load");
+
+        // Partial Mods load for own profile (fromStranger = false)
+        JsonObject preparedMods = ShareCode.prepareImportJson(snap, ShareCode.ImportMode.MODS, false);
+        assertTrue(preparedMods.getAsJsonObject("modules").has("FPS"));
+        assertFalse(preparedMods.getAsJsonObject("modules").has("DiscordRPC"), "Discord module must be excluded in partial profile load");
+    }
+
+    @Test
     void beforeImportSnapshotCreatedOnApply() {
         ProfileManager pm = ProfileManager.get();
         pm.saveAs("Initial");
@@ -528,6 +566,210 @@ class ShareCodeTest {
 
         assertFalse(((BoolOption) mm.getModule("FPS").getOption("Smooth")).get());
         assertEquals(0, memory.getIndex(), "v1 only touches what it lists");
+    }
+
+    @Test
+    void codesCarryOnlyVisualValuesAndNeverChangeTheRest() {
+        ModuleManager mm = ModuleManager.getInstance();
+        mm.resetToDefaults();
+        TextOption macro = (TextOption) mm.getModule("Auto Text").getOption("Message 1");
+        SoundOption oof = (SoundOption) mm.getModule("Oof Mod").getOption("Oof sound");
+        TextOption shortcuts = (TextOption) mm.getModule("Chat").getOption("Shortcuts");
+        BoolOption letServers = (BoolOption) mm.getModule("Server Control").getOption("Let servers change my Lads settings");
+        Module hypixel = mm.getModule("HYPIXEL Mods");
+        BoolOption autoFriend = (BoolOption) hypixel.getOption("Auto Friend");
+        BoolOption autoTip = (BoolOption) hypixel.getOption("Auto Tip");
+        SliderOption ggDelay = (SliderOption) hypixel.getOption("Auto GG: Delay seconds");
+        BoolOption streamer = (BoolOption) hypixel.getOption("Streamer Mode");
+        BoolOption cleanup = (BoolOption) hypixel.getOption("Chat Cleanup");
+        TextOption gg = (TextOption) hypixel.getOption("Auto GG: Message");
+
+        // Exporting: private text, sounds, security switches and chat automation stay home; the visual changes travel.
+        macro.setValue("/login hunter2");
+        oof.set("mine.mp3");
+        shortcuts.setValue("brb=be right back");
+        letServers.set(false);
+        autoTip.set(false);
+        hypixel.setEnabled(false);
+        streamer.set(true);
+        ((BoolOption) mm.getModule("FPS").getOption("Smooth")).set(false);
+        JsonObject exported = ShareCode.createSharePayload(ConfigManager.toJson()).getAsJsonObject("modules");
+        assertEquals(Set.of("FPS", "HYPIXEL Mods"), exported.keySet());
+        assertEquals(Set.of("options"), exported.getAsJsonObject("HYPIXEL Mods").keySet(), "HYPIXEL Mods' on/off stays home");
+        assertEquals(Set.of("Streamer Mode"), exported.getAsJsonObject("HYPIXEL Mods").getAsJsonObject("options").keySet(),
+            "its visual toggles travel, its automation does not");
+        assertFalse(exported.toString().contains("hunter2"));
+        streamer.set(false);
+
+        // Importing a stranger's v2 code that tries to change all of it: only the visual values apply, nothing else is reset.
+        mm.getModule("StackRefill").setEnabled(false); // on by default; the player turned it off
+        JsonObject payload = JsonParser.parseString("{\"v\":2,\"modules\":{"
+            + "\"Oof Mod\":{\"enabled\":true,\"options\":{\"Oof sound\":\"evil.mp3\",\"Volume\":0.5}},"
+            + "\"Auto Text\":{\"enabled\":true,\"options\":{\"Message 1\":\"/pay attacker 1000\"}},"
+            + "\"HYPIXEL Mods\":{\"enabled\":true,\"options\":{\"Auto GG: Message\":\"buy cheats\",\"Auto Friend\":true,\"Auto Tip\":true,"
+            + "\"Auto GG: Delay seconds\":0,\"Streamer Mode\":true,\"Chat Cleanup\":false}},"
+            + "\"Server Control\":{\"options\":{\"Let servers change my Lads settings\":true}},"
+            + "\"IgnorePacketErrors\":{\"enabled\":true},\"StackRefill\":{\"enabled\":true},"
+            + "\"Chat\":{\"options\":{\"Shortcuts\":\"gg=/pay attacker 1\",\"Custom Tabs\":\"A=(a+)+$\"}}}}").getAsJsonObject();
+        ShareCode.applySharePayload(payload, ShareCode.ImportMode.BOTH);
+
+        assertEquals("/login hunter2", macro.getValue());
+        assertFalse(mm.getModule("Auto Text").isEnabledSetting());
+        assertEquals("mine.mp3", oof.get(), "a code never sets a sound file");
+        assertEquals("brb=be right back", shortcuts.getValue());
+        assertEquals("", ((TextOption) mm.getModule("Chat").getOption("Custom Tabs")).getValue());
+        assertFalse(letServers.get(), "Server Control stays the player's choice");
+        assertFalse(autoFriend.get());
+        assertFalse(autoTip.get(), "the player's own Auto Tip, not the code's (nor its default, on)");
+        assertEquals(1, ggDelay.getValue(), 1e-9, "Auto GG's settings stay the player's");
+        assertEquals("gg", gg.getValue());
+        assertFalse(hypixel.isEnabledSetting(), "HYPIXEL Mods stays off: a code never switches its automation on");
+        assertTrue(streamer.get(), "HYPIXEL Mods' visual toggles still import");
+        assertFalse(cleanup.get());
+        assertFalse(mm.getModule("IgnorePacketErrors").isEnabledSetting());
+        assertFalse(mm.getModule("StackRefill").isEnabledSetting(), "automation is never switched on by a code");
+        assertTrue(mm.getModule("Oof Mod").isEnabledSetting(), "visual switches still import");
+        assertEquals(0.5, ((SliderOption) mm.getModule("Oof Mod").getOption("Volume")).getValue(), 1e-9);
+        assertTrue(((BoolOption) mm.getModule("FPS").getOption("Smooth")).get(), "an unlisted visual option is reset (v2)");
+    }
+
+    @Test
+    void hypixelModsOptionsAreExhaustivelyClassifiedAndAutomationCannotBeShared() {
+        Module hypixel = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        assertNotNull(hypixel, "HYPIXEL Mods must be registered");
+
+        for (Option opt : hypixel.getOptions()) {
+            String name = opt.getName();
+            int setting = name.indexOf(": ");
+            String baseFeature = setting < 0 ? name : name.substring(0, setting);
+
+            boolean isVisual = ShareCode.HYPIXEL_VISUAL.contains(baseFeature);
+            boolean isAutomation = ShareCode.HYPIXEL_AUTOMATION.contains(baseFeature);
+
+            // Fail if an option is neither visual nor automation (future unclassified option)
+            assertTrue(isVisual || isAutomation,
+                "Every HYPIXEL Mods option must be explicitly classified as visual or automation: " + name);
+            // Ensure no option is in both
+            assertFalse(isVisual && isAutomation,
+                "Option cannot be both visual and automation: " + name);
+
+            if (isAutomation) {
+                assertTrue(ShareCode.isExcludedOption(HypixelMods.HYPIXEL_MODS, name),
+                    "HYPIXEL Mods automation option must never be allowed in share code: " + name);
+            } else if (opt instanceof BoolOption || opt instanceof SliderOption || opt instanceof DropdownOption) {
+                assertFalse(ShareCode.isExcludedOption(HypixelMods.HYPIXEL_MODS, name),
+                    "HYPIXEL Mods visual option must be allowed in share code: " + name);
+            }
+        }
+
+        // Test fails closed on unknown future option
+        assertTrue(ShareCode.isExcludedOption(HypixelMods.HYPIXEL_MODS, "FutureUnknownCommandOption"),
+            "Unknown future HYPIXEL Mods option must be excluded by default");
+        assertTrue(ShareCode.isExcludedOption(HypixelMods.HYPIXEL_MODS, "FutureFeature: SubOption"),
+            "Unknown future HYPIXEL Mods sub-option must be excluded by default");
+    }
+
+    @Test
+    void defaultsComeFromTheLiveModulesNotASecondModuleList() {
+        var optifine = com.thelads.core.modules.OptiFine189Module.getInstance();
+        long monitors = priorityMonitors();
+        ModuleManager.getInstance().resetToDefaults();
+        JsonObject payload = ShareCode.createSharePayload(ConfigManager.toJson());
+        ShareCode.prepareImportJson(payload, ShareCode.ImportMode.BOTH);
+        assertSame(optifine, com.thelads.core.modules.OptiFine189Module.getInstance(), "the OptiFine module the screen edits is still the saved one");
+        assertEquals(monitors, priorityMonitors(), "no Threads monitor started by a throwaway module list");
+    }
+
+    private static long priorityMonitors() {
+        return Thread.getAllStackTraces().keySet().stream().filter(t -> t.getName().equals("Lads priority monitor")).count();
+    }
+
+    @Test
+    void olderProfilesAndCodesRestoreWhatTheySaved() {
+        ModuleManager mm = ModuleManager.getInstance();
+        mm.resetToDefaults();
+        Module clouds = mm.getModule(com.thelads.core.modules.CloudHeightModule.NAME);
+        DropdownOption style = (DropdownOption) mm.getModule("Keystrokes").getOption("Style");
+        clouds.setEnabled(false);
+        style.setIndex(1);
+        ProfileManager pm = ProfileManager.get();
+        pm.saveAs("Saved in 1.9.11");
+        JsonObject hud = pm.getProfile("Saved in 1.9.11").getAsJsonObject("hud");
+        for (String flag : new String[] {ConfigManager.KEYSTROKES_1912_FLAG, ConfigManager.KEYSTROKES_1914_FLAG, ConfigManager.CLOUD_HEIGHT_1914_FLAG,
+                ConfigManager.MOB_KILL_BANNER_1914_FLAG}) {
+            hud.remove(flag); // written before those one-time overrides existed
+        }
+        clouds.setEnabled(true);
+        style.setIndex(0);
+
+        pm.apply("Saved in 1.9.11");
+        assertFalse(clouds.isEnabledSetting(), "the profile's Cloud Height, not the 1.9.14 override again");
+        assertEquals(1, style.getIndex(), "the profile's Keystrokes style, not the 1.9.12 override again");
+
+        JsonObject code = JsonParser.parseString("{\"v\":1,\"modules\":{\"Keystrokes\":{\"options\":{\"Style\":1}}},\"hud\":{\"hudScale\":2}}").getAsJsonObject();
+        style.setIndex(0);
+        ShareCode.applySharePayload(code, ShareCode.ImportMode.SETTINGS);
+        assertEquals(1, style.getIndex());
+        assertFalse(clouds.isEnabledSetting(), "an old code does not switch Cloud Height on");
+        HudSettings.getInstance().resetToDefaults();
+    }
+
+    @Test
+    void eachImportKeepsTheBackupsBeforeIt() {
+        ModuleManager mm = ModuleManager.getInstance();
+        mm.resetToDefaults();
+        BoolOption smooth = (BoolOption) mm.getModule("FPS").getOption("Smooth");
+        smooth.set(false);
+        ProfileManager pm = ProfileManager.get();
+        ShareCode.applySharePayload(JsonParser.parseString("{\"v\":1,\"modules\":{\"FPS\":{\"options\":{\"Smooth\":true}}}}").getAsJsonObject(), ShareCode.ImportMode.BOTH);
+        ShareCode.applySharePayload(JsonParser.parseString("{\"v\":1,\"modules\":{\"FPS\":{\"options\":{\"Update rate\":3}}}}").getAsJsonObject(), ShareCode.ImportMode.BOTH);
+
+        assertTrue(smooth(pm.getProfile("Before import")), "before the second import");
+        assertFalse(smooth(pm.getProfile("Before import (2)")), "before the first: the settings the player had");
+        pm.saveBeforeImport();
+        pm.saveBeforeImport(); // nothing changed since: nothing moves
+        assertFalse(smooth(pm.getProfile("Before import (3)")));
+        smooth.set(false);
+        pm.saveBeforeImport();
+        assertTrue(smooth(pm.getProfile("Before import (3)")), "three are kept: the oldest moved out");
+        assertFalse(pm.hasProfile("Before import (4)"));
+    }
+
+    private static boolean smooth(JsonObject snapshot) {
+        return snapshot.getAsJsonObject("modules").getAsJsonObject("FPS").getAsJsonObject("options").get("Smooth").getAsBoolean();
+    }
+
+    @Test
+    void sharedLayoutsCannotBloatTheConfig() {
+        JsonObject positions = new JsonObject();
+        positions.add("x".repeat(200), xy(1, 1));
+        for (int i = 0; i < 5000; i++) positions.add("junk" + i, xy(i, i));
+        JsonArray fade = new JsonArray();
+        for (int i = 0; i < 5000; i++) fade.add(0x111111 * (i % 15));
+        JsonObject hud = new JsonObject();
+        hud.add("positions", positions);
+        hud.add("fadePlaylist", fade);
+        JsonObject payload = new JsonObject();
+        payload.addProperty("v", 1);
+        payload.add("hud", hud);
+        HudSettings settings = HudSettings.getInstance();
+        try {
+            settings.resetToDefaults();
+            ShareCode.applySharePayload(payload, ShareCode.ImportMode.SETTINGS);
+            assertEquals(ConfigManager.MAX_HUD_ENTRIES, settings.getPositions().size());
+            assertFalse(settings.getPositions().containsKey("x".repeat(200)), "no name longer than 128");
+            assertEquals(HudSettings.MAX_FADE, settings.getFadePlaylist().size());
+            assertSame(settings.getFadePalette(), settings.getFadePalette(), "one palette, not a new array per HUD element per frame");
+        } finally {
+            settings.resetToDefaults();
+        }
+    }
+
+    private static JsonArray xy(int x, int y) {
+        JsonArray a = new JsonArray();
+        a.add(x);
+        a.add(y);
+        return a;
     }
 
     /** Every non-excluded module's on/off, HUD colours and options as the config saves them (no favourite / modified time). */

@@ -84,6 +84,36 @@ public class ProfileManager {
         persist();
     }
 
+    private static final String BEFORE_IMPORT = "Before import";
+    /** How many "Before import" snapshots are kept: the newest under that name, older ones as "Before import (2)", "(3)". */
+    private static final int BEFORE_IMPORT_KEPT = 3;
+
+    /**
+     * Snapshots the current config before an import or a profile load. The earlier snapshots move down one place instead of being
+     * overwritten, so a second import still leaves the settings from before the first; nothing moves when nothing changed since.
+     */
+    public void saveBeforeImport() {
+        ensureLoaded();
+        JsonObject now = ConfigManager.toJson();
+        if (now.equals(profiles.get(BEFORE_IMPORT))) return;
+        for (int n = BEFORE_IMPORT_KEPT; n > 1; n--) {
+            JsonObject older = profiles.get(beforeImport(n - 1));
+            if (older != null) profiles.put(beforeImport(n), older);
+        }
+        profiles.put(BEFORE_IMPORT, now);
+        persist();
+    }
+
+    private static String beforeImport(int n) {
+        return n == 1 ? BEFORE_IMPORT : BEFORE_IMPORT + " (" + n + ")";
+    }
+
+    /** A profile restores what it saved: the one-time overrides already ran on the live config (ConfigManager.markOverridesApplied). */
+    private static JsonObject restoring(JsonObject snap) {
+        if (snap.get("hud") instanceof JsonObject hud) ConfigManager.markOverridesApplied(hud);
+        return snap;
+    }
+
     /** Apply a stored profile to the live config (all modules and settings). */
     public void apply(String name) {
         apply(name, ShareCode.ImportMode.BOTH);
@@ -94,11 +124,11 @@ public class ProfileManager {
         ensureLoaded();
         JsonObject snap = profiles.get(name);
         if (snap != null) {
-            saveAs("Before import");
+            saveBeforeImport();
             if (mode == null || mode == ShareCode.ImportMode.BOTH) {
-                ConfigManager.applyJson(snap);
+                ConfigManager.applyJson(restoring(snap));
             } else {
-                JsonObject prepared = ShareCode.prepareImportJson(snap, mode);
+                JsonObject prepared = ShareCode.prepareImportJson(snap, mode, false);
                 ConfigManager.applyJson(prepared);
             }
             ConfigManager.saveLater();
@@ -173,7 +203,7 @@ public class ProfileManager {
         ensureLoaded();
         String prof = bindings.get(contextKey);
         if (prof != null && profiles.containsKey(prof)) {
-            ConfigManager.applyJson(profiles.get(prof));
+            ConfigManager.applyJson(restoring(profiles.get(prof)));
             ConfigManager.saveLater();
         }
     }

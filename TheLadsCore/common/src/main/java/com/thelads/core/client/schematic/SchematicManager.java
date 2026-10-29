@@ -133,16 +133,6 @@ public final class SchematicManager {
         }
     }
 
-    public static synchronized boolean loadSchematicByName(String name) {
-        if (name == null || name.isEmpty()) return false;
-        File dir = new File("schematics");
-        File file = new File(dir, name.endsWith(".schematic") ? name : name + ".schematic");
-        if (!file.exists()) {
-            file = new File(name.endsWith(".schematic") ? name : name + ".schematic");
-        }
-        return loadSchematicFile(file);
-    }
-
     public static synchronized boolean loadFromBytes(String name, byte[] data) {
         if (data == null || data.length == 0) return false;
         try (InputStream in = new ByteArrayInputStream(data)) {
@@ -185,8 +175,7 @@ public final class SchematicManager {
                 else if ("Height".equalsIgnoreCase(tagName)) h = val;
                 else if ("Length".equalsIgnoreCase(tagName)) l = val;
             } else if (tagType == 7) { // Tag_ByteArray
-                int len = dis.readInt();
-                byte[] arr = new byte[len];
+                byte[] arr = new byte[length(dis)];
                 dis.readFully(arr);
                 if ("Blocks".equalsIgnoreCase(tagName)) blocks = arr;
                 else if ("Data".equalsIgnoreCase(tagName)) blockData = arr;
@@ -195,23 +184,19 @@ public final class SchematicManager {
             }
         }
 
-        if (w <= 0 || h <= 0 || l <= 0 || blocks == null) {
+        // The file's sizes are not trusted: 32767^3 blocks would loop for days, millions of ghost blocks would fill the memory.
+        long volume = (long) w * h * l;
+        if (w <= 0 || h <= 0 || l <= 0 || blocks == null || volume > MAX_BYTES) {
             return false;
         }
 
         List<SchematicBlock> list = new ArrayList<>();
         int defaultColor = 0x8055FFFF; // Cyan tint
-        for (int y = 0; y < h; y++) {
-            for (int z = 0; z < l; z++) {
-                for (int x = 0; x < w; x++) {
-                    int index = (y * l + z) * w + x;
-                    if (index < blocks.length) {
-                        int id = blocks[index] & 0xFF;
-                        if (id > 0) { // Non-air block
-                            list.add(new SchematicBlock(x, y, z, id, "block_" + id, defaultColor));
-                        }
-                    }
-                }
+        for (int index = 0, end = (int) Math.min(volume, blocks.length); index < end; index++) { // index = (y * l + z) * w + x
+            int id = blocks[index] & 0xFF;
+            if (id > 0) { // Non-air block
+                if (list.size() >= MAX_BLOCKS) return false;
+                list.add(new SchematicBlock(index % w, index / (w * l), index / w % l, id, "block_" + id, defaultColor));
             }
         }
 
@@ -219,23 +204,32 @@ public final class SchematicManager {
         return true;
     }
 
+    /** Largest array or volume read (64 MB), and most ghost blocks kept (each is drawn every frame within the render distance). */
+    static final int MAX_BYTES = 64 << 20, MAX_BLOCKS = 2_000_000;
+
+    /** An array or list length from the file, refused past {@link #MAX_BYTES} (or below 0) before anything is allocated or looped. */
+    private static int length(DataInputStream dis) throws IOException {
+        int length = dis.readInt();
+        if (length < 0 || length > MAX_BYTES) throw new IOException("Schematic tag too long: " + length);
+        return length;
+    }
+
+    /** Skips one tag's payload; skipNBytes throws at the end of the file (skipBytes returned 0 there, so a huge count spun on). */
     private static void skipTag(DataInputStream dis, int tagType) throws IOException {
         switch (tagType) {
-            case 1 -> dis.skipBytes(1); // Byte
-            case 2 -> dis.skipBytes(2); // Short
-            case 3 -> dis.skipBytes(4); // Int
-            case 4 -> dis.skipBytes(8); // Long
-            case 5 -> dis.skipBytes(4); // Float
-            case 6 -> dis.skipBytes(8); // Double
-            case 7 -> { // Byte_Array
-                int len = dis.readInt();
-                dis.skipBytes(len);
-            }
+            case 1 -> dis.skipNBytes(1); // Byte
+            case 2 -> dis.skipNBytes(2); // Short
+            case 3 -> dis.skipNBytes(4); // Int
+            case 4 -> dis.skipNBytes(8); // Long
+            case 5 -> dis.skipNBytes(4); // Float
+            case 6 -> dis.skipNBytes(8); // Double
+            case 7 -> dis.skipNBytes(length(dis)); // Byte_Array
             case 8 -> dis.readUTF(); // String
             case 9 -> { // List
                 int elemType = dis.readByte();
-                int count = dis.readInt();
-                for (int i = 0; i < count; i++) skipPayload(dis, elemType);
+                int count = length(dis);
+                if (count > 0 && (elemType < 1 || elemType > 12)) throw new IOException("Schematic list of tag type " + elemType);
+                for (int i = 0; i < count; i++) skipTag(dis, elemType);
             }
             case 10 -> { // Compound
                 while (true) {
@@ -245,43 +239,8 @@ public final class SchematicManager {
                     skipTag(dis, t);
                 }
             }
-            case 11 -> { // Int_Array
-                int len = dis.readInt();
-                dis.skipBytes(len * 4);
-            }
-            case 12 -> { // Long_Array
-                int len = dis.readInt();
-                dis.skipBytes(len * 8);
-            }
-            default -> {}
-        }
-    }
-
-    private static void skipPayload(DataInputStream dis, int tagType) throws IOException {
-        switch (tagType) {
-            case 1 -> dis.skipBytes(1);
-            case 2 -> dis.skipBytes(2);
-            case 3 -> dis.skipBytes(4);
-            case 4 -> dis.skipBytes(8);
-            case 5 -> dis.skipBytes(4);
-            case 6 -> dis.skipBytes(8);
-            case 7 -> dis.skipBytes(dis.readInt());
-            case 8 -> dis.readUTF();
-            case 9 -> {
-                int elemType = dis.readByte();
-                int count = dis.readInt();
-                for (int i = 0; i < count; i++) skipPayload(dis, elemType);
-            }
-            case 10 -> {
-                while (true) {
-                    int t = dis.readByte();
-                    if (t == 0) break;
-                    dis.readUTF();
-                    skipTag(dis, t);
-                }
-            }
-            case 11 -> dis.skipBytes(dis.readInt() * 4);
-            case 12 -> dis.skipBytes(dis.readInt() * 8);
+            case 11 -> dis.skipNBytes(4L * length(dis)); // Int_Array
+            case 12 -> dis.skipNBytes(8L * length(dis)); // Long_Array
             default -> {}
         }
     }

@@ -4,6 +4,8 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.thelads.core.modules.*;
 import com.thelads.core.client.hud.CustomImageHudElement;
 import com.thelads.core.client.hud.CustomTextHudElement;
@@ -13,6 +15,11 @@ public class ModuleManager {
     private static final ModuleManager INSTANCE = new ModuleManager();
     private final Map<String, Module> modules = new LinkedHashMap<>();
     private final java.util.Set<String> hiddenModuleNames = new java.util.HashSet<>();
+    /**
+     * Each module's shipped default {enabled, HUD colours, options}, kept as the constructor built it. Resets and share codes read
+     * these: a second ModuleManager would rerun every module constructor (a Threads monitor that never stops, OptiFine's instance).
+     */
+    private final Map<String, JsonObject> defaults = new LinkedHashMap<>();
 
     public ModuleManager() {
         Module autohide=new Module("Autohide", "Fade the hotbar, status bars and Lads HUD widgets while idle; restore them on gameplay changes.");
@@ -729,6 +736,31 @@ public class ModuleManager {
         Module toastActions = new Module("Server Notification Actions", "Allow server notification toasts to display interactive clickable action buttons (commands and URLs).");
         toastActions.setEnabled(false);
         register(toastActions, Module.Category.SERVER);
+        for (Module m : modules.values()) defaults.put(m.getName(), defaultEntry(m));
+    }
+
+    /** {enabled, HUD colours, options} as {@code m} stands now (the constructor's end: its shipped default). */
+    private static JsonObject defaultEntry(Module m) {
+        JsonObject entry = new JsonObject();
+        entry.addProperty("enabled", m.isEnabledSetting());
+        if (m instanceof HudModule hm) {
+            entry.addProperty("useGlobalColor", hm.isUseGlobalColor());
+            entry.addProperty("customColor", hm.getCustomColor());
+        }
+        JsonObject options = new JsonObject();
+        for (Option o : m.getOptions()) {
+            JsonElement saved = o.save();
+            if (saved != null && !saved.isJsonNull()) options.add(o.getName(), saved);
+        }
+        entry.add("options", options);
+        return entry;
+    }
+
+    /** A copy of each module's shipped default entry ({@link #defaults}), by module name. */
+    public Map<String, JsonObject> defaultEntries() {
+        Map<String, JsonObject> copy = new LinkedHashMap<>();
+        defaults.forEach((name, entry) -> copy.put(name, entry.deepCopy()));
+        return copy;
     }
 
     public static ModuleManager getInstance() {
@@ -790,25 +822,24 @@ public class ModuleManager {
      * while preserving existing {@link Module} object references.
      */
     public synchronized void resetToDefaults() {
-        ModuleManager defaults = new ModuleManager();
-        for (Map.Entry<String, Module> entry : defaults.modules.entrySet()) {
-            Module defMod = entry.getValue();
+        for (Map.Entry<String, JsonObject> entry : defaultEntries().entrySet()) {
+            JsonObject defMod = entry.getValue();
             Module liveMod = modules.get(entry.getKey());
             if (liveMod == null) {
                 continue;
             }
-            liveMod.setEnabled(defMod.isEnabled());
+            liveMod.setEnabled(defMod.get("enabled").getAsBoolean());
             liveMod.setFavorite(false);
             liveMod.setLastModified(0L);
-            if (liveMod instanceof HudModule liveHud && defMod instanceof HudModule defHud) {
-                liveHud.setUseGlobalColor(defHud.isUseGlobalColor());
-                liveHud.setCustomColor(defHud.getCustomColor());
+            if (liveMod instanceof HudModule liveHud) {
+                liveHud.setUseGlobalColor(defMod.get("useGlobalColor").getAsBoolean());
+                liveHud.setCustomColor(defMod.get("customColor").getAsInt());
             }
-            for (Option defOpt : defMod.getOptions()) {
-                Option liveOpt = liveMod.getOption(defOpt.getName());
+            for (Map.Entry<String, JsonElement> defOpt : defMod.getAsJsonObject("options").entrySet()) {
+                Option liveOpt = liveMod.getOption(defOpt.getKey());
                 if (liveOpt != null) {
                     try {
-                        liveOpt.load(defOpt.save());
+                        liveOpt.load(defOpt.getValue());
                     } catch (Exception ignored) {}
                 }
             }

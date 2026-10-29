@@ -65,6 +65,7 @@ public class HudSettings {
     private final Map<String, int[]> positions = new HashMap<>();
     private final Map<String, Anchor> anchors = new HashMap<>();
     private final List<Integer> fadePlaylist = new ArrayList<>();
+    private int[] fadePalette; // getFadePalette's array, built by setFadePlaylist: no new array per HUD element per frame
     private final Set<String> locked = new HashSet<>();          // locked element names
     private final List<Set<String>> groups = new ArrayList<>();  // groups of element names
     private final Set<String> excludedModules = new LinkedHashSet<>();
@@ -112,6 +113,7 @@ public class HudSettings {
         hudFpsLimit = 60;
         favoriteColors.clear();
         fadePlaylist.clear();
+        fadePalette = null;
         excludedModules.clear();
         excludedExternalMods.clear();
         positions.clear();
@@ -176,6 +178,7 @@ public class HudSettings {
 
     /** A position saved without an anchor; the next layout anchors it where it shows (HudAnchors). */
     public void setPosition(String name, int x, int y) {
+        if (!validName(name)) return;
         positions.put(name, new int[] { x, y });
         anchors.remove(name);
     }
@@ -214,8 +217,23 @@ public class HudSettings {
 
     // --- Custom Fade colour playlist ---
 
+    /** Most Fade colours kept: a shared code could carry thousands, and the palette is read per HUD element per frame. */
+    public static final int MAX_FADE = 64;
+
     public List<Integer> getFadePlaylist() {
-        return fadePlaylist;
+        return java.util.Collections.unmodifiableList(fadePlaylist);
+    }
+
+    /** Replaces the playlist (its first {@link #MAX_FADE} colours) and the palette {@link #getFadePalette} hands out. */
+    public void setFadePlaylist(List<Integer> colors) {
+        fadePlaylist.clear();
+        for (int color : colors) if (fadePlaylist.size() < MAX_FADE) fadePlaylist.add(color);
+        int[] palette = null;
+        if (fadePlaylist.size() >= 2) {
+            palette = new int[fadePlaylist.size()];
+            for (int i = 0; i < palette.length; i++) palette[i] = fadePlaylist.get(i) | 0xFF000000;
+        }
+        fadePalette = palette;
     }
 
     // --- Locked elements ---
@@ -278,15 +296,8 @@ public class HudSettings {
     }
     private static boolean validName(String name){return name!=null&&!name.isBlank()&&name.length()<=128;}
 
-    /** Returns the playlist as an opaque-ARGB array, or null if too short to use. */
+    /** Returns the playlist as an opaque-ARGB array (shared: read it, never change it), or null if too short to use. */
     public int[] getFadePalette() {
-        if (fadePlaylist.size() < 2) {
-            return null;
-        }
-        int[] a = new int[fadePlaylist.size()];
-        for (int i = 0; i < a.length; i++) {
-            a[i] = fadePlaylist.get(i) | 0xFF000000;
-        }
-        return a;
+        return fadePalette;
     }
 }
