@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.thelads.ladsapi.LadsCore;
 import com.thelads.ladsapi.platform.LadsPlayerHandle;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -140,6 +141,35 @@ public class LadsForgeMod {
                     return 1;
                 })
                 .then(Commands.argument("args", StringArgumentType.greedyString())
+                    .suggests((ctx, builder) -> {
+                        LadsCore currentCore = LadsCore.get();
+                        if (currentCore == null) return builder.buildFuture();
+                        String input = builder.getRemaining();
+                        String[] split;
+                        if (input.isEmpty()) {
+                            split = new String[]{""};
+                        } else {
+                            String[] rawSplit = input.split("\\s+");
+                            if (input.endsWith(" ")) {
+                                split = new String[rawSplit.length + 1];
+                                System.arraycopy(rawSplit, 0, split, 0, rawSplit.length);
+                                split[rawSplit.length] = "";
+                            } else {
+                                split = rawSplit;
+                            }
+                        }
+                        List<String> playerNames = new ArrayList<>();
+                        for (ServerPlayer sp : ctx.getSource().getServer().getPlayerList().getPlayers()) {
+                            playerNames.add(ForgeReflection.getPlayerName(sp));
+                        }
+                        List<String> suggestions = com.thelads.ladsapi.command.LadsCommandHandler.suggest(currentCore, split, playerNames);
+                        int lastSpace = builder.getInput().lastIndexOf(' ');
+                        var subBuilder = builder.createOffset(lastSpace + 1);
+                        for (String s : suggestions) {
+                            subBuilder.suggest(s);
+                        }
+                        return subBuilder.buildFuture();
+                    })
                     .executes(ctx -> {
                         String raw = StringArgumentType.getString(ctx, "args");
                         String[] split = raw.trim().isEmpty() ? new String[0] : raw.trim().split("\\s+");

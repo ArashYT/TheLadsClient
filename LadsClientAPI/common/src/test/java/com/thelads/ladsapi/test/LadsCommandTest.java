@@ -104,4 +104,26 @@ public class LadsCommandTest {
         assertEquals(1, res.size());
         assertTrue(res.get(0).contains("Unknown module or option: Fullbright.BogusOption"));
     }
+    @Test
+    public void testSuggestSubcommandsAndPlayers() {
+        List<String> subs = com.thelads.ladsapi.command.LadsCommandHandler.suggest(core, new String[]{""}, List.of("Steve", "Alex"));
+        assertTrue(subs.contains("set"));
+        assertTrue(subs.contains("reload"));
+
+        List<String> players = com.thelads.ladsapi.command.LadsCommandHandler.suggest(core, new String[]{"set", "S"}, List.of("Steve", "Alex"));
+        assertEquals(List.of("Steve"), players);
+    }
+
+    @Test
+    public void testSuggestModulesAndRules() {
+        List<String> targets = com.thelads.ladsapi.command.LadsCommandHandler.suggest(core, new String[]{"set", "Steve", "Full"}, List.of("Steve"));
+        assertTrue(targets.contains("Fullbright"));
+        assertTrue(targets.contains("Fullbright.Brightness"));
+
+        List<String> modRules = com.thelads.ladsapi.command.LadsCommandHandler.suggest(core, new String[]{"set", "Steve", "Fullbright", ""}, List.of("Steve"));
+        assertEquals(List.of("allow", "block", "on"), modRules);
+
+        List<String> optRules = com.thelads.ladsapi.command.LadsCommandHandler.suggest(core, new String[]{"set", "Steve", "Fullbright.Brightness", ""}, List.of("Steve"));
+        assertEquals(List.of("max=", "min=", "value="), optRules);
+    }
 }

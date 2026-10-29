@@ -1,6 +1,7 @@
 package com.thelads.ladsapi.command;
 
 import com.thelads.ladsapi.schema.LadsSchema;
+import java.util.Collections;
 import com.thelads.ladsapi.LadsCore;
 import com.thelads.ladsapi.api.LadsClientAPI;
 import com.thelads.ladsapi.api.LadsPlayer;
@@ -242,4 +243,63 @@ public final class LadsCommandHandler {
             return val;
         }
     }
+    public static List<String> suggest(LadsCore core, String[] args, List<String> playerNames) {
+        if (args == null || args.length <= 1) {
+            String prefix = (args == null || args.length == 0) ? "" : args[0];
+            return filterMatching(List.of("reload", "status", "inspect", "set", "clear"), prefix);
+        }
+
+        String sub = args[0].toLowerCase();
+        if (args.length == 2) {
+            if ("inspect".equals(sub) || "set".equals(sub) || "clear".equals(sub)) {
+                return filterMatching(playerNames != null ? playerNames : Collections.emptyList(), args[1]);
+            }
+            return Collections.emptyList();
+        }
+
+        if ("set".equals(sub)) {
+            String targetSoFar = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length - 1)).trim();
+            String current = args[args.length - 1];
+
+            LadsSchema schema = core != null ? core.schema() : null;
+            if (!targetSoFar.isEmpty() && schema != null) {
+                ResolvedTarget resolved = resolveTarget(schema, targetSoFar);
+                if (resolved != null) {
+                    if (resolved.option() != null) {
+                        return filterMatching(List.of("max=", "min=", "value="), current);
+                    } else {
+                        return filterMatching(List.of("allow", "block", "on"), current);
+                    }
+                }
+            }
+
+            List<String> targets = new ArrayList<>();
+            if (schema != null && schema.getModules() != null) {
+                for (LadsSchema.SchemaModule mod : schema.getModules()) {
+                    targets.add(mod.getName());
+                    if (mod.getOptions() != null) {
+                        for (LadsSchema.SchemaOption opt : mod.getOptions()) {
+                            targets.add(mod.getName() + "." + opt.getName());
+                        }
+                    }
+                }
+            }
+            return filterMatching(targets, current);
+        }
+
+        return Collections.emptyList();
+    }
+
+    public static List<String> filterMatching(List<String> options, String prefix) {
+        if (prefix == null || prefix.isEmpty()) return options;
+        String lower = prefix.toLowerCase();
+        List<String> res = new ArrayList<>();
+        for (String opt : options) {
+            if (opt.toLowerCase().startsWith(lower)) {
+                res.add(opt);
+            }
+        }
+        return res;
+    }
+
 }

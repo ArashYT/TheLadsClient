@@ -19,18 +19,9 @@ public class LadsFabricPlatform implements LadsPlatform {
     private static final Logger LOGGER = Logger.getLogger("LadsClientAPI");
     private final Path dataFolder;
     private final Map<UUID, LadsFabricPlayerHandle> players = new ConcurrentHashMap<>();
-    private final Queue<ScheduledTask> scheduledTasks = new ConcurrentLinkedQueue<>();
     private volatile MinecraftServer server;
 
-    private static class ScheduledTask {
-        int ticksRemaining;
-        final Runnable task;
-
-        ScheduledTask(int ticksRemaining, Runnable task) {
-            this.ticksRemaining = ticksRemaining;
-            this.task = task;
-        }
-    }
+    private final com.thelads.ladsapi.util.TickScheduler scheduler = new com.thelads.ladsapi.util.TickScheduler(LOGGER);
 
     public LadsFabricPlatform() {
         this.dataFolder = FabricLoader.getInstance().getConfigDir().resolve("ladsclientapi");
@@ -43,23 +34,7 @@ public class LadsFabricPlatform implements LadsPlatform {
 
     private void onServerTick(MinecraftServer server) {
         this.server = server;
-        if (scheduledTasks.isEmpty()) return;
-
-        int size = scheduledTasks.size();
-        for (int i = 0; i < size; i++) {
-            ScheduledTask entry = scheduledTasks.poll();
-            if (entry == null) break;
-            entry.ticksRemaining--;
-            if (entry.ticksRemaining <= 0) {
-                try {
-                    entry.task.run();
-                } catch (Throwable t) {
-                    LOGGER.severe("Error running scheduled task: " + t.getMessage());
-                }
-            } else {
-                scheduledTasks.add(entry);
-            }
-        }
+        scheduler.tick();
     }
 
     public LadsFabricPlayerHandle getOrCreatePlayer(ServerPlayer player) {
@@ -99,7 +74,7 @@ public class LadsFabricPlatform implements LadsPlatform {
                 task.run();
             }
         } else {
-            scheduledTasks.add(new ScheduledTask(ticks, task));
+            scheduler.runLater(task, ticks);
         }
     }
 
