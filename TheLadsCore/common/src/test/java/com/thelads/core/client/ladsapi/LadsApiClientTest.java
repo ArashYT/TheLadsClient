@@ -621,7 +621,7 @@ class LadsApiClientTest {
 
         ServerPolicy active = ServerPolicy.active();
         assertNotNull(active);
-        assertEquals(ModuleState.ALLOW, active.module("Fullbright"), "unlisted normal modules are allowed");
+        assertEquals(ModuleState.INHERIT, active.module("Fullbright"), "since 1.12.0 unlisted allow = client default (net lane, anti-ban)");
 
         // Automation modules must remain INHERIT under unlisted: allow
         assertEquals(ModuleState.INHERIT, active.module("KeepInventoryOpen"));
