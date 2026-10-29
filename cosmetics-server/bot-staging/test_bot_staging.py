@@ -322,3 +322,21 @@ def test_usage_stats_registered_in_tree():
     mock_bot.tree = MagicMock()
     usage_stats.setup_slash_command(mock_bot)
     mock_bot.tree.command.assert_called_once()
+
+
+def test_ign_regex_validation():
+    import re
+    pattern = r"^[a-zA-Z0-9_]{1,16}$"
+    assert re.fullmatch(pattern, "Notch")
+    assert re.fullmatch(pattern, "Player_123")
+    assert not re.fullmatch(pattern, "../../etc/passwd")
+    assert not re.fullmatch(pattern, "invalid name with spaces")
+    assert not re.fullmatch(pattern, "a" * 17)
+
+
+def test_color_selection_rejected_if_not_in_catalog():
+    import bot
+    all_names = [c["name"] for c in bot.COLOR_ROLES]
+    assert "Admin" not in all_names
+    assert "Owner" not in all_names
+    assert any("Crimson Red" in name for name in all_names)

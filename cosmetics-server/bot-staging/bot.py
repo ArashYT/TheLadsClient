@@ -396,6 +396,9 @@ class ColorSelectMenu(discord.ui.Select):
         selected = self.values[0]
 
         all_color_names = [c["name"] for c in COLOR_ROLES]
+        if selected != "RESET" and selected not in all_color_names:
+            await interaction.response.send_message("\u274c Invalid color selection.", ephemeral=True)
+            return
         roles_to_remove = [r for r in member.roles if r.name in all_color_names]
         if roles_to_remove:
             try:
@@ -3253,9 +3256,13 @@ async def slash_profile(interaction: discord.Interaction, user: discord.Member =
 
     if ign:
         clean_ign = ign.strip()
+        if not re.fullmatch(r"^[a-zA-Z0-9_]{1,16}$", clean_ign):
+            await interaction.followup.send("\u274c Invalid Minecraft username. Names must be 1-16 letters, numbers, or underscores.")
+            return
+        quoted_ign = urllib.parse.quote(clean_ign, safe="")
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"https://api.mojang.com/users/profiles/minecraft/{clean_ign}") as resp:
+                async with session.get(f"https://api.mojang.com/users/profiles/minecraft/{quoted_ign}") as resp:
                     if resp.status == 200:
                         data = await resp.json()
                         target_ign = data["name"]
@@ -4394,7 +4401,10 @@ async def slash_meme(interaction: discord.Interaction):
             if not data:
                 async with session.get("https://meme-api.com/gimme/wholesomememes", timeout=aiohttp.ClientTimeout(total=5)) as resp:
                     if resp.status == 200:
-                        data = await resp.json()
+                        candidate = await resp.json()
+                        img_url = candidate.get("url", "")
+                        if any(img_url.lower().endswith(ext) for ext in valid_exts) and not candidate.get("nsfw"):
+                            data = candidate
 
         if not data or not data.get("url"):
             await interaction.followup.send("❌ Could not fetch a meme image right now. Please try again!")
@@ -4539,6 +4549,7 @@ async def slash_faq_post(interaction: discord.Interaction):
     app_commands.Choice(name="Survival SMP", value="Survival SMP"),
     app_commands.Choice(name="Other / Custom Game", value="Custom Game"),
 ])
+@app_commands.checks.cooldown(1, 300, key=lambda i: (i.guild_id, i.user.id))
 async def slash_lfg(interaction: discord.Interaction, game: app_commands.Choice[str], needed: app_commands.Range[int, 1, 4], notes: str = None):
     lfg_ch = discord.utils.get(interaction.guild.text_channels, name="looking-for-group")
     target_ch = lfg_ch if lfg_ch else interaction.channel
