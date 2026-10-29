@@ -736,6 +736,7 @@ public partial class MainWindow : Window
             if (latest == null) return;
 
             HomeNewsVersionText.Text = "v" + latest.Version;
+            HomeNewsVersionBadge.IsVisible = true;
             HomeNewsHighlightsPanel.Children.Clear();
             var highlights = ReleaseNotes.Highlights(latest);
             foreach (var h in highlights)
