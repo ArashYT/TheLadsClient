@@ -12,6 +12,11 @@ import com.thelads.core.config.Option;
  */
 public final class KeepUiOpen {
     public static final String MODULE_NAME = "KeepUIOpen", CHAT = "Keep chat open", INVENTORY = "Keep inventory open";
+    /**
+     * The server-rules name of Keep inventory open: the next clicks go to an inventory the server (and its anticheat) closed, so it
+     * acts only in singleplayer, LAN and trusted servers (HypixelSafetyManager). The chat part sends nothing: everywhere.
+     */
+    public static final String INVENTORY_GATE = "KeepInventoryOpen";
 
     /** What a screen is, as far as this cares: none, chat, a death or loading screen that pushes chat away, or anything else. */
     public enum Kind { NONE, CHAT, TRANSITION, OTHER }
@@ -23,7 +28,8 @@ public final class KeepUiOpen {
 
     public static Module module() {
         Module m = new Module(MODULE_NAME, "The server can't close your chat or inventory: deaths, respawns and game switches bring your "
-            + "chat back with what you typed, and a server close leaves your own inventory open (chests still close).");
+            + "chat back with what you typed, and a server close leaves your own inventory open (chests still close). Keep inventory open "
+            + "only works in singleplayer, LAN and servers known to allow it.");
         m.addOption(new BoolOption(CHAT, true));
         m.addOption(new BoolOption(INVENTORY, true));
         m.setEnabled(true);
@@ -39,7 +45,7 @@ public final class KeepUiOpen {
 
     /** A server close-container packet arrived: true to ignore it ({@code current} open, {@code ownInventory}: it is your inventory). */
     public static boolean keepOnServerClose(Kind current, boolean ownInventory) {
-        return current == Kind.CHAT && on(CHAT) || ownInventory && on(INVENTORY);
+        return current == Kind.CHAT && on(CHAT) || ownInventory && on(INVENTORY) && !HypixelSafetyManager.isDisallowed(INVENTORY_GATE);
     }
 
     /**

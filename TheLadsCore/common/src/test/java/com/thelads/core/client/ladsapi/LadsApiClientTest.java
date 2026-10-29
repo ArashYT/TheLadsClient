@@ -464,4 +464,23 @@ class LadsApiClientTest {
         assertEquals("Store", LadsApiUi.activeToastActions().get(0).getLabel());
         assertEquals("https://store.thelads.net", LadsApiUi.activeToastActions().get(0).getPayload());
     }
+
+    @Test
+    void testPolicyUnlistedAllowDoesNotEnableAutomation() {
+        sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test Server\"}");
+        JsonObject ack = sendAndGetLastJson("{\"t\":\"policy\",\"rev\":1,\"unlisted\":\"allow\"}");
+        assertNotNull(ack);
+
+        ServerPolicy active = ServerPolicy.active();
+        assertNotNull(active);
+        assertEquals(ModuleState.ALLOW, active.module("Fullbright"), "unlisted normal modules are allowed");
+
+        // Automation modules must remain INHERIT under unlisted: allow
+        assertEquals(ModuleState.INHERIT, active.module("KeepInventoryOpen"));
+        assertEquals(ModuleState.INHERIT, active.module("keepinventoryopen"));
+        assertEquals(ModuleState.INHERIT, active.module("SurvivalMechanics"));
+        assertEquals(ModuleState.INHERIT, active.module("survivalmechanics"));
+        assertEquals(ModuleState.INHERIT, active.module("Boat360View"));
+        assertEquals(ModuleState.INHERIT, active.module("boat360view"));
+    }
 }

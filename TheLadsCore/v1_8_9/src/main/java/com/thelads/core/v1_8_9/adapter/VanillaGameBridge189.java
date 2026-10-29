@@ -161,10 +161,12 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         return session == null ? null : new Session(net.minecraft.entity.player.EntityPlayer.getUUID(session.getProfile()), session.getUsername(), session.getToken());
     }
 
+    /** "Singleplayer" only for this game's own world: a connection without server data (GuiConnecting(host, port)) is "Unknown", whose rules block. */
     @Override
     public String getServerAddress() {
         Minecraft mc = mc();
-        return mc.isSingleplayer() || mc.getCurrentServerData() == null ? "Singleplayer" : mc.getCurrentServerData().serverIP;
+        if (mc.isSingleplayer()) return "Singleplayer";
+        return mc.getCurrentServerData() == null ? "Unknown" : mc.getCurrentServerData().serverIP;
     }
 
     @Override

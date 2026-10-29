@@ -15,12 +15,6 @@ public abstract class SurvivalLightmapBrightnessMixin {
     )
     private float lads$modifyDimensionBrightness(float original) {
         SurvivalTweaksModule mod = SurvivalTweaksModule.get();
-        if (NativeSurvivalTweaks.active() && mod != null) {
-            int pct = mod.dimensionBrightness.getIntValue();
-            if (pct != 100) {
-                return original * (pct / 100.0f);
-            }
-        }
-        return original;
+        return NativeSurvivalTweaks.active() && mod != null ? mod.brightness(original) : original;
     }
 }

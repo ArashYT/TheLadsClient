@@ -92,6 +92,16 @@ public final class HypixelSafetyManager {
     private static final Map<String, Server> CACHED_ADDRESSES = new ConcurrentHashMap<>();
     private static volatile String lastAddress;
     private static volatile Server lastServer = LOCAL;
+    /** QA and bench runs (LADS_QA_TRUST_LOCAL=1): a server on this computer is their own test server, trusted like the LAN. */
+    private static volatile boolean trustLocal = initTrustLocal();
+
+    private static boolean initTrustLocal() {
+        boolean trust = "1".equals(System.getenv("LADS_QA_TRUST_LOCAL"));
+        if (trust) {
+            System.out.println("[TheLadsCore] local servers are trusted for QA (LADS_QA_TRUST_LOCAL=1)");
+        }
+        return trust;
+    }
     private static volatile String p2pSessionKey;
     private static volatile Server p2pServer;
     private static volatile String p2pProxyAddress;
@@ -114,6 +124,13 @@ public final class HypixelSafetyManager {
 
     public static String getP2PSession() {
         return p2pSessionKey;
+    }
+
+    /** Tests: servers on this computer trusted as with LADS_QA_TRUST_LOCAL=1, or not; addresses classified so far are forgotten. */
+    static void trustLocalForTests(boolean trust) {
+        trustLocal = trust;
+        CACHED_ADDRESSES.clear();
+        lastAddress = null;
     }
 
     /** host -> bypassed module keys ({@link #bypassKey}). Loaded once, written on every change. */
@@ -163,7 +180,8 @@ public final class HypixelSafetyManager {
         if (addr.equalsIgnoreCase("Singleplayer")) return LOCAL;
         String host = host(addr);
         if (host.isEmpty() || host.equals("unknown")) return new Server(0, "unknown"); // a server we can't name: unknown rules
-        if (isLocalHost(host)) return new Server(TRUSTED, host);
+        if (isThisComputer(host)) return new Server(trustLocal ? TRUSTED : 0, localKey(addr, host));
+        if (isLocalNetwork(host)) return new Server(TRUSTED, host);
         for (String own : TRUSTED_SERVERS) if (isHost(host, own)) return new Server(TRUSTED, host);
         int flags = isHost(host, "hypixel.net") || isHost(host, "hypixel.io") ? HYPIXEL : 0;
         for (String banned : MINIMAP_BANNED_SERVERS) if (isHost(host, banned)) flags |= (NO_MINIMAP | NO_AUTOMATION);
@@ -171,6 +189,18 @@ public final class HypixelSafetyManager {
         for (String fbAllowed : FULLBRIGHT_ALLOWED_SERVERS) if (isHost(host, fbAllowed)) flags |= FULLBRIGHT_OK;
         for (String fbBanned : FULLBRIGHT_BANNED_SERVERS) if (isHost(host, fbBanned)) flags |= NO_FULLBRIGHT;
         return new Server(flags, host);
+    }
+
+    private static String localKey(String addr, String host) {
+        String clean = addr.trim().toLowerCase(Locale.ROOT);
+        while (clean.endsWith(".")) clean = clean.substring(0, clean.length() - 1);
+        if (clean.startsWith("[")) return clean;
+        if (host.equals("::1")) return "[::1]";
+        int colon = clean.indexOf(':');
+        if (colon != -1 && clean.indexOf(':', colon + 1) == -1) {
+            return host + clean.substring(colon);
+        }
+        return host;
     }
 
     /** The lower-case host of an address, without port or trailing dots. */
@@ -186,17 +216,32 @@ public final class HypixelSafetyManager {
         return host;
     }
 
-    /** This computer or the local network (an Open to LAN world, a server the player runs): no network anticheat to ban anyone. */
-    private static boolean isLocalHost(String host) {
-        if (host.equals("localhost") || host.endsWith(".localhost") || host.endsWith(".local") || host.equals("::1")) return true;
+    /**
+     * A server on this computer (localhost, 127.x, ::1): it can be a proxy (ViaProxy, a relay agent) to any network, Hypixel too, so its
+     * rules are unknown; only with {@link #trustLocal} (QA and bench) is it trusted. The player's own world is "Singleplayer", no address.
+     */
+    private static boolean isThisComputer(String host) {
+        if (host.equals("localhost") || host.endsWith(".localhost") || host.equals("::1")) return true;
+        int[] ip = ipv4(host);
+        return ip != null && ip[0] == 127;
+    }
+
+    /** The local network (an Open to LAN world, a server the player runs there): no network anticheat to ban anyone. */
+    private static boolean isLocalNetwork(String host) {
+        if (host.endsWith(".local")) return true;
+        int[] ip = ipv4(host);
+        return ip != null && (ip[0] == 10 || ip[0] == 192 && ip[1] == 168 || ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31);
+    }
+
+    private static int[] ipv4(String host) {
         String[] parts = host.split("\\.");
-        if (parts.length != 4) return false;
+        if (parts.length != 4) return null;
         int[] ip = new int[4];
         for (int i = 0; i < 4; i++) {
-            try { ip[i] = Integer.parseInt(parts[i]); } catch (NumberFormatException e) { return false; }
-            if (ip[i] < 0 || ip[i] > 255) return false;
+            try { ip[i] = Integer.parseInt(parts[i]); } catch (NumberFormatException e) { return null; }
+            if (ip[i] < 0 || ip[i] > 255) return null;
         }
-        return ip[0] == 127 || ip[0] == 10 || ip[0] == 192 && ip[1] == 168 || ip[0] == 172 && ip[1] >= 16 && ip[1] <= 31;
+        return ip;
     }
 
     /** {@code host} is {@code domain} or one of its subdomains (not merely ending in the same letters). */
@@ -225,10 +270,14 @@ public final class HypixelSafetyManager {
     /**
      * Risky on servers, so only on for singleplayer, LAN and trusted servers: Stack Refill clicks the inventory with no inventory open,
      * which anticheats ban as an AutoRefill cheat (a Minemen.club ban); use-while-mining sends a use packet mid-dig; Hide Foliage's
-     * Tall Plants show a player crouching in tall grass. Asked per module every frame: no allocation.
+     * Tall Plants show a player crouching in tall grass; Survival Tweaks' faster obsidian mining, berry bush and elytra swim change the
+     * dig speed and movement the server checks, and its Boat 360 View sends head turns vanilla clamps in a boat; Keep inventory open
+     * clicks in an inventory the server closed. Asked per module every frame: no allocation.
      */
     public static boolean isSingleplayerOnlyModule(String moduleName) {
-        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName) || HideFoliage.TALL_GATE.equalsIgnoreCase(moduleName);
+        return "StackRefill".equalsIgnoreCase(moduleName) || USE_WHILE_MINING.equalsIgnoreCase(moduleName) || HideFoliage.TALL_GATE.equalsIgnoreCase(moduleName)
+            || com.thelads.core.modules.SurvivalTweaksModule.MECHANICS.equalsIgnoreCase(moduleName) || KeepUiOpen.INVENTORY_GATE.equalsIgnoreCase(moduleName)
+            || com.thelads.core.modules.SurvivalTweaksModule.BOAT_VIEW.equalsIgnoreCase(moduleName);
     }
 
     public static boolean isFullbrightModule(String moduleName) {
@@ -305,7 +354,29 @@ public final class HypixelSafetyManager {
         }
         LadsGameBridge game = LadsGameBridge.get();
         if (!qaOverride && qaAddress == null && !game.isIngame()) return Block.NONE; // menus: nothing to ban
-        int flags = qaOverride ? QA_HYPIXEL : server(address(game)).flags; // the last address first: no string work
+        return blockFor(moduleName, qaOverride ? QA_HYPIXEL : server(address(game)).flags); // the last address first: no string work
+    }
+
+    /**
+     * Why this module would be off on that server (an address as the game gives it, "Singleplayer" for a local world), in a world or
+     * not: for what acts outside one, as AutoReconnect on the disconnect screen. No LadsClientAPI policy: it ends with its connection.
+     */
+    public static Block blockOf(String moduleName, String address) {
+        if (moduleName == null) return Block.NONE;
+        return blockFor(moduleName, qaOverride ? QA_HYPIXEL : server(address).flags);
+    }
+
+    /** The module may act for that server: its rules allow it there, or the player bypassed it for that server. */
+    public static boolean isAllowedOn(String moduleName, String address) {
+        if (blockOf(moduleName, address) == Block.NONE) return true;
+        if (!bypassesLoaded) loadBypasses();
+        String host = server(address).host;
+        if (host == null || host.isEmpty() || host.equalsIgnoreCase("unknown")) return false;
+        Set<String> modules = qaOverride ? null : BYPASSES.get(host);
+        return modules != null && modules.contains(bypassKey(moduleName));
+    }
+
+    private static Block blockFor(String moduleName, int flags) {
         if ((flags & TRUSTED) != 0) return Block.NONE;
         if ((flags & HYPIXEL) != 0 && isDisallowedModule(moduleName)) return Block.BANNED;
         if (isFullbrightModule(moduleName)) {
@@ -375,14 +446,16 @@ public final class HypixelSafetyManager {
     public static boolean isBypassed(String moduleName) {
         if (!bypassesLoaded) loadBypasses();
         if (qaOverride || BYPASSES.isEmpty()) return false;
-        Set<String> modules = BYPASSES.get(currentHost());
+        String host = currentHost();
+        if (host == null || host.isEmpty() || host.equalsIgnoreCase("unknown")) return false;
+        Set<String> modules = BYPASSES.get(host);
         return modules != null && modules.contains(bypassKey(moduleName));
     }
 
     /** At the player's own risk (only after the red warning): keeps the module on for the current server. */
     public static void bypass(String moduleName) {
         String host = currentHost();
-        if (moduleName == null || host.isEmpty() || qaOverride) return;
+        if (moduleName == null || host == null || host.isEmpty() || host.equalsIgnoreCase("unknown") || qaOverride) return;
         if (!bypassesLoaded) loadBypasses();
         BYPASSES.computeIfAbsent(host, h -> ConcurrentHashMap.newKeySet()).add(bypassKey(moduleName));
         saveBypasses();
@@ -390,10 +463,12 @@ public final class HypixelSafetyManager {
 
     /** Takes a bypass back: the server's rules apply again. */
     public static void removeBypass(String moduleName) {
+        String host = currentHost();
+        if (host == null || host.isEmpty() || host.equalsIgnoreCase("unknown")) return;
         if (!bypassesLoaded) loadBypasses();
-        Set<String> modules = BYPASSES.get(currentHost());
+        Set<String> modules = BYPASSES.get(host);
         if (modules != null && modules.remove(bypassKey(moduleName))) {
-            if (modules.isEmpty()) BYPASSES.remove(currentHost());
+            if (modules.isEmpty()) BYPASSES.remove(host);
             saveBypasses();
         }
     }
@@ -419,7 +494,7 @@ public final class HypixelSafetyManager {
                 if (json != null) for (Map.Entry<String, JsonElement> e : json.entrySet()) {
                     if (!e.getValue().isJsonArray()) continue;
                     Set<String> modules = ConcurrentHashMap.newKeySet();
-                    for (JsonElement m : e.getValue().getAsJsonArray()) modules.add(m.getAsString());
+                    for (JsonElement m : e.getValue().getAsJsonArray()) if (m.isJsonPrimitive()) modules.add(m.getAsString()); // a bad entry, not the file
                     if (!modules.isEmpty()) BYPASSES.put(e.getKey(), modules);
                 }
             }
@@ -436,12 +511,21 @@ public final class HypixelSafetyManager {
             modules.stream().sorted().forEach(list::add);
             json.add(host, list);
         });
-        try {
-            File file = bypassFile();
-            if (file.getParentFile() != null) file.getParentFile().mkdirs();
-            Files.writeString(file.toPath(), json.toString(), StandardCharsets.UTF_8);
+        File file = bypassFile().getAbsoluteFile();
+        java.nio.file.Path temporary = null;
+        try { // a temporary file first (as ReconnectSettings.save), so a crash mid-write never leaves half a file
+            file.getParentFile().mkdirs();
+            temporary = Files.createTempFile(file.getParentFile().toPath(), "server_bypasses-", ".tmp");
+            Files.writeString(temporary, json.toString(), StandardCharsets.UTF_8);
+            try {
+                Files.move(temporary, file.toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
+                Files.move(temporary, file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (Exception e) {
             System.err.println("[TheLadsCore] could not save server_bypasses.json: " + e);
+        } finally {
+            if (temporary != null) try { Files.deleteIfExists(temporary); } catch (Exception ignored) { }
         }
     }
 

@@ -61,6 +61,7 @@ public class LauncherSettings
     public bool DiscordRichPresence { get; set; } = true;  // launcher activity on Discord; the game has its own DiscordRPC module
     public bool KeepClosedOnExit { get; set; } = false;   // don't re-open the launcher when the game closes
     public bool UseHorizon { get; set; } = false;     // experimental, at own risk: 26.3 Play starts Horizon (Dev Launcher or /experimental_invite only)
+    public bool HorizonRiskAccepted { get; set; } = false; // the player pressed "I accept the risk" (UseHorizon needs it: LoadFrom)
 
     // Gallery
     public List<string> GalleryFavorites { get; set; } = new();
@@ -141,6 +142,9 @@ public class LauncherSettings
                     var loaded = JsonSerializer.Deserialize<LauncherSettings>(File.ReadAllText(path)) ?? throw new JsonException("empty");
                     // Before 1.4.5 everyone was saved with a flat 4 GB; keep only an amount the user picked.
                     if (!loaded.RamChosenByUser) loaded.MaxRamMb = RecommendedRamMb(TotalMemoryBytes());
+                    // Before 1.12.0 Horizon could be saved on while its red risk question was still open (or never answered): without a
+                    // recorded acceptance it starts off again, so the question comes back the next time it is ticked.
+                    if (loaded.UseHorizon && !loaded.HorizonRiskAccepted) loaded.UseHorizon = false;
                     return loaded;
                 }
                 catch (IOException) { System.Threading.Thread.Sleep(100); }

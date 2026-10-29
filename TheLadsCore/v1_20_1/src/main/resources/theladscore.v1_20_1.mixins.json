@@ -35,6 +35,7 @@
     "CommandSuggestionsMixin",
     "KeepUiOpenCloseMixin",
     "KeepUiOpenScreenMixin",
+    "XaeroWorldMapGateMixin",
     "NoResourcePackWarningsMixin",
     "DimensionSpecialEffectsMixin",
     "LadsApiPacketListenerMixin"

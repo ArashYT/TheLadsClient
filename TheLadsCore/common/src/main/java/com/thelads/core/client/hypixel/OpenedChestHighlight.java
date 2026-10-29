@@ -14,8 +14,9 @@ public final class OpenedChestHighlight {
 
     private OpenedChestHighlight() {}
 
+    /** Remembering which chests were opened is what vanilla does not show: it follows the server rules (risky set), bypass or not. */
     public static boolean isEnabled() {
-        return HypixelMods.isActiveOnCurrentServer() && HypixelMods.on(NAME);
+        return HypixelMods.isActiveOnCurrentServer() && HypixelMods.on(NAME) && !com.thelads.core.client.HypixelSafetyManager.isDisallowed(NAME);
     }
 
     private static long packPos(int x, int y, int z) {

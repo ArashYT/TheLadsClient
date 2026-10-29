@@ -75,7 +75,7 @@ class PvpViewModulesTest {
         assertEquals(FreelookModule.FRONT, look.perspective(FreelookModule.BACK, 0, 0));
         assertFalse(look.detached());
         assertEquals(HypixelSafetyManager.Block.BANNED, blockAt("mc.hypixel.net", FreelookModule.NAME));
-        assertEquals(HypixelSafetyManager.Block.NONE, blockAt("localhost", FreelookModule.NAME));
+        assertEquals(HypixelSafetyManager.Block.NONE, blockAt("192.168.1.20", FreelookModule.NAME)); // the LAN (a server on this PC can be a proxy)
     }
 
     @Test

@@ -140,6 +140,7 @@ public partial class MainWindow
 
     private readonly DispatcherTimer _settingsSaveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private bool _settingsAutoSave;
+    private bool _horizonAsking; // the Horizon risk question is open: UseHorizon is not saved on yet
 
     /// <summary>Every Settings control saves on change (debounced) through SaveSettingsFromUi. Hooked after LoadSettingsUI, so
     /// filling the controls at start-up saves nothing.</summary>
@@ -148,14 +149,29 @@ public partial class MainWindow
         _settingsSaveTimer.Tick += (_, _) => { _settingsSaveTimer.Stop(); SaveSettingsFromUi(); };
         foreach (var box in new[] { CloseToTrayCheckbox, KeepLauncherOpenCheckbox, KeepClosedOnExitCheckbox, AutoLaunchCheckbox, AutoFixCrashesCheckbox,
                      AutoRelaunchOnCrashCheckbox, AutoRejoinServerCheckbox, MultiInstanceCheckbox, FullscreenOnLaunchCheckbox, QuickLaunchCheckbox,
-                     SyncScreenshotsCheckbox, ParticleCheckbox, DiscordPresenceCheckbox, SendCrashReportsCheckbox, SendUsageStatsCheckbox, HorizonCheckbox })
+                     SyncScreenshotsCheckbox, ParticleCheckbox, DiscordPresenceCheckbox, SendCrashReportsCheckbox, SendUsageStatsCheckbox })
             box.IsCheckedChanged += (_, _) => ScheduleSettingsSave();
         HorizonCheckbox.IsCheckedChanged += async (_, _) =>
         {
-            // Turning it on always asks first; anything but the red button leaves it off.
-            if (HorizonCheckbox.IsChecked == true && !await ShowLadsDialogAsync("⚠️ USE AT YOUR OWN RISK", HorizonEngine.RiskWarning,
-                    "I accept the risk", "Keep it off", danger: true))
-                HorizonCheckbox.IsChecked = false;
+            // Turning it on always asks first; anything but the red button leaves it off. Saved only once answered: while the
+            // question is open SaveSettingsFromUi keeps it off, so leaving then (tray Exit, a crash) never turns it on.
+            if (HorizonCheckbox.IsChecked == true)
+            {
+                _horizonAsking = true;
+                bool accepted;
+                try
+                {
+                    accepted = await ShowLadsDialogAsync("⚠️ USE AT YOUR OWN RISK", HorizonEngine.RiskWarning, "I accept the risk", "Keep it off", danger: true);
+                }
+                finally { _horizonAsking = false; }
+                if (!accepted)
+                {
+                    HorizonCheckbox.IsChecked = false; // comes back here unchecked, which saves it off
+                    return;
+                }
+                settings.HorizonRiskAccepted = true;
+            }
+            ScheduleSettingsSave();
         };
         foreach (var combo in new[] { ThemeSelector, UiScaleSelector, QuickLaunchServerComboBox, GraphicsRendererSelector, OptiFinePackRendererSelector, JavaSelector })
             combo.SelectionChanged += (_, _) => ScheduleSettingsSave();

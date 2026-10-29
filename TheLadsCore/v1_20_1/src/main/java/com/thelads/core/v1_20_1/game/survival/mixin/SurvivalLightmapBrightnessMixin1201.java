@@ -19,12 +19,6 @@ public abstract class SurvivalLightmapBrightnessMixin1201 {
         at = @At(value = "INVOKE", target = "Ljava/lang/Double;floatValue()F", ordinal = 0))
     private float lads$modifyDimensionBrightness(float original) {
         SurvivalTweaksModule mod = SurvivalTweaksModule.get();
-        if (NativeSurvivalTweaks1201.active() && mod != null) {
-            int pct = mod.dimensionBrightness.getIntValue();
-            if (pct != 100) {
-                return original * (pct / 100.0f);
-            }
-        }
-        return original;
+        return NativeSurvivalTweaks1201.active() && mod != null ? mod.brightness(original) : original;
     }
 }

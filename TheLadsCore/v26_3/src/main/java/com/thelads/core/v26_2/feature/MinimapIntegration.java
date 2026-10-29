@@ -34,8 +34,8 @@ public final class MinimapIntegration {
                 });
                 ModuleSupport.registerBuiltIn("Minimap");
             }catch(ReflectiveOperationException|RuntimeException failure){map=null;LoggerFactory.getLogger("TheLadsCore").warn("Xaero integration unavailable",failure);}
-            try{
-                if(map!=null)net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.replaceElement(net.minecraft.resources.Identifier.fromNamespaceAndPath("xaerohud","hud"),element->{
+            try{ // also when Xaero's API above failed: the server rules then still hide the map (fail closed)
+                net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.replaceElement(net.minecraft.resources.Identifier.fromNamespaceAndPath("xaerohud","hud"),element->{
                     if(element!=xaero){xaero=element;faded=(graphics,delta)->{if(com.thelads.core.client.HypixelSafetyManager.isMinimapBanned())return;
                         // Under the tab list or the debug text the map steps aside with the Lads HUD (HudCover).
                         if(com.thelads.core.client.hud.HudManager.getInstance().isCovered("Minimap"))return;float previous=NativeAutohide.scopeOpacity;

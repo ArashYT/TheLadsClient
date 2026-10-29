@@ -215,7 +215,7 @@ public class HypixelSafetyTest {
         bridge.setServer("as.minemen.club");
         assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("StackRefill"));
         assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("XaeroWorldMap"));
-        for (String trusted : new String[]{"Singleplayer", "localhost:25565", "127.0.0.1", "10.0.0.7", "172.20.1.1", "[::1]:25565",
+        for (String trusted : new String[]{"Singleplayer", "10.0.0.7", "172.20.1.1", "192.168.1.20:25565", "my-pc.local",
                 "nikzerosmp.my.pebble.host", "smp.arashyt.ca", "arisesmp.arashyt.ca", "dev.arashyt.ca:25565", "2b2t.org"}) { // Lads SMP Reborn's servers.dat entries
             bridge.setServer(trusted);
             assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("StackRefill"), trusted);
@@ -464,5 +464,191 @@ public class HypixelSafetyTest {
         assertFalse(HypixelSafetyManager.isRiskyModule("Block Overlay"), "pure visuals stay ungated");
         for (String name : new String[] {"Chat", "Slot Lock", "Inventory Search"}) // chat lane: client-side only, nothing extra sent
             assertFalse(HypixelSafetyManager.isRiskyModule(name), name + " stays ungated");
+    }
+
+    /** 1.12.0 anti-ban: Survival Tweaks' dig-speed and movement options act only where a server can't flag them; the rest stay on. */
+    @Test
+    void survivalMechanicsOnlyWhereTheServerRulesAllow() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        com.thelads.core.modules.SurvivalTweaksModule tweaks = com.thelads.core.modules.SurvivalTweaksModule.get();
+        assertTrue(tweaks.isEnabled());
+        for (String allowed : new String[]{"Singleplayer", "192.168.1.20:25565", "smp.arashyt.ca"}) {
+            bridge.setServer(allowed);
+            assertTrue(tweaks.isFasterObsidianMiningEnabled() && tweaks.isBerryBushProtectionEnabled() && tweaks.isElytraWaterSwimEnabled()
+                && tweaks.isBoat360ViewEnabled(), allowed);
+        }
+        for (String server : new String[]{"mc.hypixel.net", "as.minemen.club", "play.somesmp.net", "Unknown"}) {
+            bridge.setServer(server);
+            assertFalse(tweaks.isFasterObsidianMiningEnabled(), server + ": FastBreak");
+            assertFalse(tweaks.isBerryBushProtectionEnabled(), server + ": movement in bushes");
+            assertFalse(tweaks.isElytraWaterSwimEnabled(), server + ": elytra state");
+            assertFalse(tweaks.isBoat360ViewEnabled(), server + ": head turns past the boat's clamp");
+            assertTrue(tweaks.isEnabled() && tweaks.isLongerChatHistoryEnabled() && tweaks.isFastIpPingEnabled()
+                && tweaks.isKeepBarsWhileRidingEnabled() && tweaks.isCreeperFullDropsEnabled(), server + ": the rest of the module stays on");
+        }
+        bridge.setServer("play.somesmp.net");
+        HypixelSafetyManager.bypass(com.thelads.core.modules.SurvivalTweaksModule.MECHANICS);
+        assertTrue(tweaks.isFasterObsidianMiningEnabled(), "bypassed for this server");
+    }
+
+    /** Dimension brightness past vanilla's Bright is a Fullbright: only where Fullbright is allowed; darker or up to Bright everywhere. */
+    @Test
+    void dimensionBrightnessFollowsTheFullbrightRules() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        com.thelads.core.modules.SurvivalTweaksModule tweaks = com.thelads.core.modules.SurvivalTweaksModule.get();
+        double was = tweaks.dimensionBrightness.getValue();
+        try {
+            tweaks.dimensionBrightness.setValue(200);
+            for (String server : new String[]{"Singleplayer", "mc.hypixel.net"}) { // local, and a server whose rules allow Fullbright
+                bridge.setServer(server);
+                assertEquals(2.0f, tweaks.brightness(1.0f), 1e-6f, server);
+            }
+            for (String server : new String[]{"gommehd.net", "play.somesmp.net"}) { // bans Fullbright / unknown rules
+                bridge.setServer(server);
+                assertEquals(1.0f, tweaks.brightness(1.0f), 1e-6f, server + ": vanilla's Bright at most");
+                assertEquals(0.8f, tweaks.brightness(0.4f), 1e-6f, server + ": brighter up to Bright is vanilla too");
+                assertEquals(3.0f, tweaks.brightness(3.0f), 1e-6f, server + ": a gamma the player set in options.txt is not cut");
+            }
+            tweaks.dimensionBrightness.setValue(50);
+            assertEquals(0.5f, tweaks.brightness(1.0f), 1e-6f, "darker is fine everywhere");
+        } finally {
+            tweaks.dimensionBrightness.setValue(was);
+        }
+    }
+
+    /**
+     * AutoReconnect acts on the disconnect screen, outside any world: it follows the rules of the server it reconnects to (the menus
+     * shortcut does not let it through), with the player's bypass for that server; local worlds and LAN always reconnect.
+     */
+    @Test
+    void autoReconnectFollowsTheTargetServersRules() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        bridge.ingame = false; // the disconnect screen
+        assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("AutoReconnect"), "menus: the module itself shows on");
+        assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("AutoReconnect", "play.somesmp.net"));
+        assertEquals(HypixelSafetyManager.Block.BANNED, HypixelSafetyManager.blockOf("AutoReconnect", "na.minemen.club"));
+        for (String ok : new String[]{"Singleplayer", "192.168.1.20", "smp.arashyt.ca"})
+            assertTrue(HypixelSafetyManager.isAllowedOn("AutoReconnect", ok), ok);
+        UUID player = UUID.randomUUID();
+        ReconnectSettings lists = new ReconnectSettings();
+        ReconnectSession session = new ReconnectSession();
+        session.begin("play.somesmp.net:25565", () -> fail("no reconnect to a server with unknown rules"), player);
+        bridge.ingame = true;
+        bridge.setServer("play.somesmp.net:25565");
+        session.joined(null, lists, false, false, false, 0);
+        bridge.ingame = false;
+        assertFalse(session.canRetry(player, false));
+        Object screen = new Object();
+        session.disconnected(screen, List.of("disconnect.timeout"), "Timed out", lists, false, false, 0);
+        assertFalse(session.counting(), "no countdown");
+        assertFalse(session.due(screen, 100_000_000_000L));
+
+        bridge.ingame = true; // the red warning, back on that server: bypassed there
+        HypixelSafetyManager.bypass("AutoReconnect");
+        bridge.ingame = false;
+        assertTrue(session.canRetry(player, false), "bypassed for that server");
+        session.disconnected(new Object(), List.of("disconnect.timeout"), "Timed out", lists, false, false, 0);
+        assertTrue(session.counting());
+
+        ReconnectSession local = new ReconnectSession(); // a local world: its folder name is no address, the join says "Singleplayer"
+        local.begin("New World", () -> {}, player);
+        bridge.ingame = true;
+        bridge.setServer("Singleplayer");
+        local.joined(null, lists, false, false, false, 0);
+        bridge.ingame = false;
+        assertTrue(local.canRetry(player, false));
+    }
+
+    /**
+     * A server on this computer can be a proxy (ViaProxy, a relay agent) to Hypixel or any network: unknown rules, bypassable per host.
+     * Only QA and bench runs (LADS_QA_TRUST_LOCAL=1) trust it; the LAN and the player's own world stay trusted either way.
+     */
+    @Test
+    void loopbackServersAreUnknownUnlessQaTrustsThem() {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        Module refill = new Module("StackRefill", "Stack Refill");
+        refill.setEnabled(true);
+        HypixelSafetyManager.trustLocalForTests(false);
+        try {
+            for (String loopback : new String[]{"localhost", "localhost:25568", "127.0.0.1", "127.1.2.3:25565", "[::1]:25565", "mc.localhost"}) {
+                bridge.setServer(loopback);
+                assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("StackRefill"), loopback);
+                assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("XaeroMinimap"), loopback);
+                assertFalse(refill.isEnabled(), loopback);
+                assertFalse(HypixelSafetyManager.isTrustedServer(), loopback);
+            }
+            for (String trusted : new String[]{"Singleplayer", "192.168.1.20:25565", "10.0.0.7", "172.16.0.9", "my-pc.local", "smp.arashyt.ca"}) {
+                bridge.setServer(trusted);
+                assertTrue(refill.isEnabled(), trusted);
+            }
+            bridge.setServer("127.example.net"); // a name, not 127.x
+            assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("StackRefill"));
+            bridge.setServer("localhost:25568");
+            HypixelSafetyManager.bypass("StackRefill"); // the red warning, for this host only
+            assertTrue(refill.isEnabled(), "bypassed for localhost:25568");
+            bridge.setServer("localhost:25569");
+            assertEquals(HypixelSafetyManager.Block.UNKNOWN, HypixelSafetyManager.blockOf("StackRefill"), "other local port still unknown");
+            assertFalse(refill.isEnabled(), "other local port still off");
+            assertFalse(HypixelSafetyManager.isBypassed("StackRefill"), "bypass is per port on local servers");
+            HypixelSafetyManager.trustLocalForTests(true); // the QA/bench harness
+            for (String loopback : new String[]{"localhost:25599", "127.0.0.1:1", "[::1]:25565"}) {
+                bridge.setServer(loopback);
+                assertEquals(HypixelSafetyManager.Block.NONE, HypixelSafetyManager.blockOf("StackRefill"), loopback);
+            }
+        } finally {
+            HypixelSafetyManager.trustLocalForTests(false);
+        }
+    }
+
+    /** server_bypasses.json: one bad entry is skipped (not every bypass), and a save leaves no temporary file behind. */
+    @Test
+    void bypassFileSurvivesBadEntriesAndSavesWhole() throws Exception {
+        java.nio.file.Path file = tmp.resolve("server_bypasses.json");
+        java.nio.file.Files.writeString(file, "{\"play.somesmp.net\":[{\"x\":1},null,\"Minimap\"],\"other.net\":\"not a list\"}");
+        HypixelSafetyManager.setBypassFile(file.toFile());
+        assertTrue(HypixelSafetyManager.isAllowedOn("XaeroMinimap", "play.somesmp.net"), "the good entry is kept");
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        bridge.setServer("play.somesmp.net");
+        HypixelSafetyManager.bypass("StackRefill");
+        try (java.util.stream.Stream<java.nio.file.Path> files = java.nio.file.Files.list(tmp)) {
+            assertEquals(List.of("server_bypasses.json"), files.map(p -> p.getFileName().toString()).toList(), "no temporary file left");
+        }
+        HypixelSafetyManager.setBypassFile(file.toFile()); // reload from disk
+        assertTrue(HypixelSafetyManager.isBypassed("StackRefill") && HypixelSafetyManager.isBypassed("Minimap"));
+    }
+
+    @Test
+    public void testBypassRefusesAndIgnoresUnknownHost() throws Exception {
+        TestGameBridge bridge = new TestGameBridge();
+        LadsGameBridge.set(bridge);
+        bridge.setServer("Unknown");
+
+        // 1. Bypassing on "Unknown" is refused
+        HypixelSafetyManager.bypass("Minimap");
+        assertFalse(HypixelSafetyManager.isBypassed("Minimap"), "bypassing on unknown must be refused");
+        assertFalse(HypixelSafetyManager.isAllowedOn("Minimap", "Unknown"), "isAllowedOn for Unknown must be false");
+        assertFalse(HypixelSafetyManager.isAllowedOn("Minimap", "unknown"), "isAllowedOn for unknown must be false");
+
+        // 2. Even if server_bypasses.json contains an "unknown" entry, isBypassed and isAllowedOn ignore it
+        java.nio.file.Path file = tmp.resolve("server_bypasses.json");
+        java.nio.file.Files.writeString(file, "{\"unknown\":[\"Minimap\"],\"play.somesmp.net\":[\"Minimap\"]}");
+        HypixelSafetyManager.setBypassFile(file.toFile());
+
+        assertFalse(HypixelSafetyManager.isBypassed("Minimap"), "isBypassed ignores unknown host");
+        assertFalse(HypixelSafetyManager.isAllowedOn("Minimap", "Unknown"), "isAllowedOn ignores unknown host");
+        assertFalse(HypixelSafetyManager.isAllowedOn("Minimap", "unknown"), "isAllowedOn ignores unknown host");
+
+        // 3. removeBypass safely ignores unknown host without throwing or clearing other bypasses
+        HypixelSafetyManager.removeBypass("Minimap");
+
+        // Legitimate bypass on known server is preserved
+        bridge.setServer("play.somesmp.net");
+        assertTrue(HypixelSafetyManager.isBypassed("Minimap"), "known server bypass works");
+        assertTrue(HypixelSafetyManager.isAllowedOn("Minimap", "play.somesmp.net"), "known server isAllowedOn works");
     }
 }
