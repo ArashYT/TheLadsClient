@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.LongSupplier;
 
 /**
  * The version adapters' only door into LadsClientAPI. Each adapter hands over raw lads:api payloads and connection events; this class
@@ -45,6 +46,7 @@ public final class LadsApiClient {
     static final int MAX_CONNECTION_HELLO_REPLIES = 10;
     /** Incoming messages: 8 a second on average, bursts of 16 (a plugin's join-time overrides arrive together, the newest last). */
     static final int RATE_PER_SECOND = 8, RATE_BURST = 16;
+    static LongSupplier clock = System::currentTimeMillis;
     private static double rateTokens = RATE_BURST;
     private static long rateLast = 0;
     private static Long lastHashedSeed = null;
@@ -76,7 +78,7 @@ public final class LadsApiClient {
             return;
         }
 
-        long now = System.currentTimeMillis();
+        long now = clock.getAsLong();
         rateTokens = Math.min(RATE_BURST, rateTokens + Math.max(0, now - rateLast) * RATE_PER_SECOND / 1000.0);
         rateLast = now;
         if (rateTokens < 1) {
@@ -256,6 +258,7 @@ public final class LadsApiClient {
         lastHashedSeed = null;
         lastDimension = null;
         connectionHelloReplies = 0;
+        clock = System::currentTimeMillis;
     }
 
     /** JoinGame/Login packet with the world's hashed seed: the old backend's rules go, then the seed is kept for {@link #respawn}. */

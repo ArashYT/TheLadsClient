@@ -397,6 +397,9 @@ class LadsApiClientTest {
 
     @Test
     void testRateLimit() {
+        java.util.concurrent.atomic.AtomicLong testTime = new java.util.concurrent.atomic.AtomicLong(1_000_000L);
+        LadsApiClient.clock = testTime::get;
+
         sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test\"}");
         int sentInitial = sentPayloads.size();
 
@@ -410,6 +413,11 @@ class LadsApiClientTest {
         // 17th message in immediate burst must be dropped!
         LadsApiClient.receive("{\"t\":\"policy\",\"rev\":99,\"unlisted\":\"inherit\"}".getBytes(StandardCharsets.UTF_8));
         assertEquals(sentInitial + 15, sentPayloads.size(), "17th message in immediate burst must be rate-limited and dropped");
+
+        // Advance clock by 250ms (refills 2 tokens at 8/s)
+        testTime.addAndGet(250L);
+        LadsApiClient.receive("{\"t\":\"policy\",\"rev\":100,\"unlisted\":\"inherit\"}".getBytes(StandardCharsets.UTF_8));
+        assertEquals(sentInitial + 16, sentPayloads.size(), "Message after refill must be accepted");
     }
 
     @Test
