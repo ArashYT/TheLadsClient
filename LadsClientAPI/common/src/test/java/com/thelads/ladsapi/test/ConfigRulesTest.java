@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 public class ConfigRulesTest {
 
@@ -261,8 +262,9 @@ public class ConfigRulesTest {
                     state: block
                 """;
         Files.writeString(rulesFile, initial, StandardCharsets.UTF_8);
-        tempDir.toFile().setReadOnly();
-        rulesFile.toFile().setReadOnly();
+        rulesFile.toFile().setWritable(false, false);
+        tempDir.toFile().setWritable(false, false);
+        assumeTrue(!rulesFile.toFile().canWrite() || !tempDir.toFile().canWrite(), "Filesystem does not enforce read-only (running as root?)");
         try {
             LadsSchema schema = LadsSchema.loadDefault();
             LadsRules rules = LadsRules.load(tempDir, schema, null);
@@ -270,8 +272,8 @@ public class ConfigRulesTest {
             assertNotNull(rules.getModules().get("Fullbright"));
             assertEquals("block", rules.getModules().get("Fullbright").getState());
         } finally {
-            rulesFile.toFile().setWritable(true);
-            tempDir.toFile().setWritable(true);
+            rulesFile.toFile().setWritable(true, false);
+            tempDir.toFile().setWritable(true, false);
         }
     }
     @Test

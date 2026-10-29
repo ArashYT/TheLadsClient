@@ -31,7 +31,7 @@ public final class SessionManager implements LadsClientAPI {
 
     private final LadsPlatform platform;
     private final LadsConfig config;
-    private volatile LadsRules rules;
+    private final LadsRules rules;
     private final Map<UUID, LadsSession> sessions = new ConcurrentHashMap<>();
     private final List<Consumer<LadsPlayer>> readyListeners = new ArrayList<>();
     private final Object lock = new Object();
