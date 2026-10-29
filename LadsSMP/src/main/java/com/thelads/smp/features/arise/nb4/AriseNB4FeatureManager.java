@@ -74,6 +74,9 @@ public final class AriseNB4FeatureManager {
             if (!world.getBlockState(hitResult.getBlockPos()).is(Blocks.MELON)) {
                 return InteractionResult.PASS;
             }
+            if (!player.mayBuild() || com.thelads.smp.features.arise.nb1.AdminClaimsFeature.isProtected(world, hitResult.getBlockPos(), player)) {
+                return InteractionResult.PASS;
+            }
 
             if (!world.isClientSide()) {
                 if (!player.getAbilities().instabuild) {

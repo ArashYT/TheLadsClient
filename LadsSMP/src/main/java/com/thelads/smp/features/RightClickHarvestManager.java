@@ -58,6 +58,9 @@ public final class RightClickHarvestManager {
         if (!player.mayBuild() || !level.mayInteract(player, pos)) {
             return InteractionResult.PASS;
         }
+        if (com.thelads.smp.features.arise.nb1.AdminClaimsFeature.isProtected(level, pos, player)) {
+            return InteractionResult.PASS;
+        }
 
         Block block = state.getBlock();
         if (block instanceof CropBlock || block instanceof NetherWartBlock || block instanceof CocoaBlock) {

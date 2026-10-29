@@ -21,6 +21,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -84,14 +89,38 @@ public final class AdminClaimsFeature {
             return InteractionResult.PASS;
         });
 
-        // 3. Block interaction / placement protection
+        // 3. Block interaction / placement protection (checks clicked block and placement offset across chunk borders)
         UseBlockCallback.EVENT.register((player, level, hand, hitResult) -> {
             if (!isEnabled() || level.isClientSide()) {
                 return InteractionResult.PASS;
             }
-            if (isChunkClaimed(level, hitResult.getBlockPos()) && !hasAdminPermission(player)) {
+            BlockPos targetPos = hitResult.getBlockPos();
+            BlockPos placePos = targetPos.relative(hitResult.getDirection());
+            if ((isChunkClaimed(level, targetPos) || isChunkClaimed(level, placePos)) && !hasAdminPermission(player)) {
                 sendDeniedFeedback(player);
                 return InteractionResult.FAIL;
+            }
+            return InteractionResult.PASS;
+        });
+
+        // 3b. Bucket / fluid use protection (A/7)
+        net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, level, hand) -> {
+            if (!isEnabled() || level.isClientSide()) return InteractionResult.PASS;
+            ItemStack stack = player.getItemInHand(hand);
+            if (stack.getItem() instanceof net.minecraft.world.item.BucketItem) {
+                Vec3 start = player.getEyePosition();
+                Vec3 view = player.getViewVector(1.0f);
+                double reach = player.blockInteractionRange();
+                Vec3 end = start.add(view.scale(reach));
+                BlockHitResult hit = level.clip(new ClipContext(start, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.SOURCE_ONLY, player));
+                if (hit.getType() == HitResult.Type.BLOCK) {
+                    BlockPos targetPos = hit.getBlockPos();
+                    BlockPos placePos = targetPos.relative(hit.getDirection());
+                    if ((isChunkClaimed(level, targetPos) || isChunkClaimed(level, placePos)) && !hasAdminPermission(player)) {
+                        sendDeniedFeedback(player);
+                        return InteractionResult.FAIL;
+                    }
+                }
             }
             return InteractionResult.PASS;
         });
@@ -146,6 +175,10 @@ public final class AdminClaimsFeature {
     /** True when pos is in an admin-claimed chunk and the player is not an admin (for features that change blocks). */
     public static boolean isProtectedFrom(Player player, Level level, BlockPos pos) {
         return isChunkClaimed(level, pos) && !hasAdminPermission(player);
+    }
+
+    public static boolean isProtected(Level level, BlockPos pos, Player player) {
+        return isProtectedFrom(player, level, pos);
     }
 
     public static boolean isProtectedAgainstExplosion(Level level, BlockPos pos) {
