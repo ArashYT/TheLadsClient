@@ -46,6 +46,7 @@ ALLOWED_SLOTS: frozenset[str] = frozenset({"emote", "cape", "hat", "glasses"})
 ITEM_ID_RE = re.compile(r"^[a-z0-9_]{1,32}:[a-z0-9_]{1,32}$")
 LINK_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
 LINK_CODE_TTL = 600  # 10 minutes
+MAX_AUTH_DICT_ENTRIES = 10_000
 
 def load_catalog_from_file(path: str | Path | None) -> dict[int | str, str] | None:
     """Load Tebex package -> cosmetic item catalog from a JSON file.
@@ -924,6 +925,7 @@ class Hub:
         self.ips: dict[str, int] = {}
         self.auth_failures: dict[str, list[float]] = {}
         self.auth_blocked_until: dict[str, float] = {}
+        self._last_sweep: float = time.monotonic()
 
     def is_ip_auth_blocked(self, ip: str) -> bool:
         ip_key = get_auth_ip_key(ip)
@@ -941,10 +943,44 @@ class Hub:
         fails = self.auth_failures.setdefault(ip_key, [])
         fails.append(now)
         valid = [t for t in fails if now - t <= 60.0]
-        self.auth_failures[ip_key] = valid
         if len(valid) >= 5:
             self.auth_blocked_until[ip_key] = now + 60.0
             self.auth_failures.pop(ip_key, None)
+            while len(self.auth_blocked_until) > MAX_AUTH_DICT_ENTRIES:
+                self.auth_blocked_until.pop(next(iter(self.auth_blocked_until)), None)
+        else:
+            self.auth_failures[ip_key] = valid
+            while len(self.auth_failures) > MAX_AUTH_DICT_ENTRIES:
+                self.auth_failures.pop(next(iter(self.auth_failures)), None)
+
+    def clear_auth_failure(self, ip: str) -> None:
+        ip_key = get_auth_ip_key(ip)
+        self.auth_failures.pop(ip_key, None)
+        self.auth_blocked_until.pop(ip_key, None)
+
+    def maybe_sweep(self) -> None:
+        now = time.monotonic()
+        if now - self._last_sweep >= 60.0:
+            self.sweep_expired()
+            self._last_sweep = now
+
+    def sweep_expired(self) -> None:
+        now_mono = time.monotonic()
+        for ip_k, fails in list(self.auth_failures.items()):
+            valid = [t for t in fails if now_mono - t <= 60.0]
+            if valid:
+                self.auth_failures[ip_k] = valid
+            else:
+                del self.auth_failures[ip_k]
+
+        for ip_k, until in list(self.auth_blocked_until.items()):
+            if now_mono >= until:
+                del self.auth_blocked_until[ip_k]
+
+        while len(self.auth_failures) > MAX_AUTH_DICT_ENTRIES:
+            self.auth_failures.pop(next(iter(self.auth_failures)), None)
+        while len(self.auth_blocked_until) > MAX_AUTH_DICT_ENTRIES:
+            self.auth_blocked_until.pop(next(iter(self.auth_blocked_until)), None)
 
     async def leave(self, peer: Peer) -> None:
         room, peer.room, peer.emote = peer.room, None, None
@@ -1036,7 +1072,9 @@ async def authenticate(hub: Hub, ws, ip: str = "127.0.0.1") -> Peer | None:
     nonce = secrets.token_hex(16)
     await ws.send_str(json.dumps({"t": "challenge", "nonce": nonce}))
     msg = await read(ws)
-    if not msg or msg.get("t") != "auth":
+    if not msg:
+        return None
+    if msg.get("t") != "auth":
         hub.record_auth_failure(ip)
         return None
     uuid, name, sid = plain_uuid(msg.get("uuid")), msg.get("name"), server_id(nonce)
@@ -1125,6 +1163,7 @@ async def serve(hub: Hub, peer: Peer) -> None:
 
 async def handle_ws(request: web.Request) -> web.StreamResponse:
     hub = request.app[HUB]
+    hub.maybe_sweep()
     ip = client_ip(request)
     if hub.ips.get(ip, 0) >= MAX_PER_IP:
         return web.json_response({"error": "too many connections"}, status=429)

@@ -1377,3 +1377,30 @@ async def test_real_has_joined_against_local_server(aiohttp_server, monkeypatch)
         if cosmetics._mojang_session and not cosmetics._mojang_session.closed:
             await cosmetics._mojang_session.close()
         cosmetics._mojang_session = None
+
+
+async def test_pre_auth_close_does_not_count_as_auth_failure(client):
+    hub = client.server.app[cosmetics.HUB]
+    ip_key = cosmetics.get_auth_ip_key("127.0.0.1")
+    hub.clear_auth_failure("127.0.0.1")
+
+    # Connect and receive challenge, then immediately close without sending auth
+    ws = await client.ws_connect("/cosmetics/ws")
+    ch = await ws.receive_json(timeout=2)
+    assert ch.get("t") == "challenge"
+    await ws.close()
+
+    # Must NOT record an auth failure
+    assert ip_key not in hub.auth_failures
+    assert not hub.is_ip_auth_blocked("127.0.0.1")
+
+
+def test_cosmetics_auth_dict_entries_cap_and_sweep():
+    import time
+    hub = cosmetics.Hub(insecure=True, store=None)
+    # Populate auth_failures beyond cap
+    for i in range(cosmetics.MAX_AUTH_DICT_ENTRIES + 50):
+        hub.auth_failures[f"ip_{i}"] = [time.monotonic()]
+    assert len(hub.auth_failures) > cosmetics.MAX_AUTH_DICT_ENTRIES
+    hub.sweep_expired()
+    assert len(hub.auth_failures) <= cosmetics.MAX_AUTH_DICT_ENTRIES
