@@ -757,12 +757,26 @@ public partial class MainWindow
             {
                 string link = linkEl.GetString() ?? "";
                 string deleteHash = data.TryGetProperty("deletehash", out var delEl) ? (delEl.GetString() ?? "") : "";
+                string deleteUrl = !string.IsNullOrEmpty(deleteHash) ? $"https://imgur.com/delete/{deleteHash}" : "";
                 CopyTextToClipboard(link);
-                StatusText.Text = "Imgur link copied: " + link;
-                if (!string.IsNullOrEmpty(deleteHash))
-                    Log($"[Gallery] Uploaded: {link} (delete URL: https://imgur.com/delete/{deleteHash})");
+                if (!string.IsNullOrEmpty(deleteUrl))
+                {
+                    StatusText.Text = $"Imgur link copied: {link} (Delete URL: {deleteUrl})";
+                    Log($"[Gallery] Uploaded: {link} (delete URL: {deleteUrl})");
+                    int chosen = await ShowLadsChoiceAsync("Uploaded to Imgur",
+                        $"Image link copied to clipboard:\n{link}\n\nDelete URL (use to remove the upload later):\n{deleteUrl}",
+                        new[] { ("Copy Delete URL", false, true) }, "Close");
+                    if (chosen == 0)
+                    {
+                        CopyTextToClipboard(deleteUrl);
+                        StatusText.Text = "Delete URL copied: " + deleteUrl;
+                    }
+                }
                 else
+                {
+                    StatusText.Text = "Imgur link copied: " + link;
                     Log($"[Gallery] Uploaded: {link}");
+                }
             }
             else
             {
