@@ -117,14 +117,28 @@ public final class LadsCore {
     }
 
     public void reload() {
+        boolean wasEnabled = config != null && config.isEnabled();
+        boolean prevProxyRules = config != null && config.isProxyRules();
+
         if (config != null) {
             config.readFrom(platform.dataFolder().resolve("config.yml"), platform.logger());
+            if (config.isProxyRules() != prevProxyRules && platform.logger() != null) {
+                platform.logger().warning("[LadsClientAPI] proxy-rules change requires a server restart to take effect.");
+            }
         }
         if (rules != null) {
             rules.readFrom(platform.dataFolder().resolve("rules.yml"), platform.logger());
         }
         if (sessionManager != null) {
-            sessionManager.resendAllPolicies();
+            if (config != null && !config.isEnabled()) {
+                sessionManager.stop();
+            } else if (!wasEnabled) {
+                for (LadsPlayerHandle handle : platform.online()) {
+                    sessionManager.join(handle);
+                }
+            } else {
+                sessionManager.resendAllPolicies();
+            }
         }
     }
 }

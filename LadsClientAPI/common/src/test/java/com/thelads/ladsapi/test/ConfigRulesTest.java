@@ -1,5 +1,6 @@
 package com.thelads.ladsapi.test;
 
+import com.thelads.ladsapi.LadsCore;
 import com.thelads.ladsapi.config.LadsConfig;
 import com.thelads.ladsapi.rules.LadsRules;
 import com.thelads.ladsapi.rules.ModuleRule;
@@ -301,5 +302,55 @@ public class ConfigRulesTest {
         ModuleRule xm = rules.getModules().get("XaeroMinimap");
         assertNotNull(xm);
         assertEquals("on", xm.getState());
+    }
+    @Test
+    public void testConfigReloadRevertsRemovedKeysToDefault(@TempDir Path tempDir) throws IOException {
+        Path configFile = tempDir.resolve("config.yml");
+        String custom = """
+                require-lads-client: true
+                min-client-version: "2.0.0"
+                """;
+        Files.writeString(configFile, custom, StandardCharsets.UTF_8);
+        LadsConfig config = new LadsConfig();
+        config.readFrom(configFile, null);
+        assertTrue(config.isRequireLadsClient());
+        assertEquals("2.0.0", config.getMinClientVersion());
+
+        // Remove require-lads-client from file
+        String updated = """
+                min-client-version: "2.0.0"
+                """;
+        Files.writeString(configFile, updated, StandardCharsets.UTF_8);
+        config.readFrom(configFile, null);
+        assertFalse(config.isRequireLadsClient()); // Reverted to default
+        assertEquals("2.0.0", config.getMinClientVersion());
+    }
+
+    @Test
+    public void testCoreReloadDisablesAndReEnables(@TempDir Path tempDir) throws IOException {
+        FakePlatform platform = new FakePlatform("paper", false, tempDir);
+        FakePlayerHandle p = new FakePlayerHandle(java.util.UUID.randomUUID(), "Steve", "world");
+        platform.addPlayer(p);
+
+        LadsCore core = LadsCore.start(platform);
+        assertNotNull(core);
+        try {
+            core.join(p);
+            assertFalse(core.sessionManager().getSessions().isEmpty());
+
+            // Disable via config reload
+            Files.writeString(tempDir.resolve("config.yml"), "enabled: false\n", StandardCharsets.UTF_8);
+            core.reload();
+            assertFalse(core.config().isEnabled());
+            assertTrue(core.sessionManager().getSessions().isEmpty());
+
+            // Re-enable via config reload
+            Files.writeString(tempDir.resolve("config.yml"), "enabled: true\n", StandardCharsets.UTF_8);
+            core.reload();
+            assertTrue(core.config().isEnabled());
+            assertFalse(core.sessionManager().getSessions().isEmpty());
+        } finally {
+            core.stop();
+        }
     }
 }

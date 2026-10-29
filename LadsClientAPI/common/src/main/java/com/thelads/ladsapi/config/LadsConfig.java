@@ -72,6 +72,7 @@ debug: false
         try (InputStream in = Files.newInputStream(configFile)) {
             Map<String, Object> map = yaml.load(in);
             if (map != null) {
+                resetDefaults();
                 applyMap(map);
             }
         } catch (Exception e) {
@@ -79,6 +80,23 @@ debug: false
                 logger.warning("[LadsClientAPI] Error parsing config.yml: " + e.getMessage());
             }
         }
+    }
+
+    public void resetDefaults() {
+        this.enabled = true;
+        this.unlistedModules = "inherit";
+        this.notifyPlayers = true;
+        this.letPlayersRefuseChanges = true;
+        this.requireLadsClient = false;
+        this.requireLadsClientMessage = "You must connect with the Lads Client to play on this server.";
+        this.minClientVersion = "";
+        this.minClientVersionMessage = "Your Lads Client is outdated (%client% < %min%). Please update.";
+        this.serverName = "Lads Server";
+        this.notice = "";
+        this.proxyRules = false;
+        this.badgePresence = true;
+        this.badgePlaceholder = "&c✿ ";
+        this.debug = false;
     }
 
     public void applyMap(Map<String, Object> map) {
