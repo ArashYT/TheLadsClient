@@ -29,6 +29,9 @@ public record RequestEntityPacket(
 			RequestEntityPacket::new);
 
 	public static void handle(RequestEntityPacket message, ServerPayloadContext context) {
+		if (!RequestLimiter.allow(context.player())) {
+			return;
+		}
 		EntityAccessorImpl.handleRequest(message, context, tag -> ReceiveDataPacket.send(tag, context));
 	}
 

@@ -113,6 +113,12 @@ public class WailaTickHandler {
 			return;
 		}
 
+		// Lads Anti-Ban: while the Jade module is off or blocked on this server there is no ray trace, tooltip, data request or narration.
+		if (!com.thelads.core.v26_2.feature.NativeQualityOfLife.enabled("Jade")) {
+			clearState();
+			return;
+		}
+
 		progressTracker.tick();
 
 		General config = IWailaConfig.get().general();

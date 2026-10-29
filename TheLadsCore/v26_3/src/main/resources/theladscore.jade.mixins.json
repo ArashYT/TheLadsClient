@@ -1,6 +1,7 @@
 {
 	"required": true,
 	"package": "snownee.jade.mixin",
+	"plugin": "com.thelads.core.v26_2.embedded.jade.JadeMixinPlugin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
 		"AbstractHorseAccess",

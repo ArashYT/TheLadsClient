@@ -34,38 +34,38 @@ placed into the public domain and remain under their original authors' copyright
 
 - LGPL-3.0-only / LGPL-3.0-or-later / LGPL-2.1-only:
   - Entity Texture Features (ETF) & Entity Model Features (EMF) by Traben (LGPL-3.0-only)
-  - ImmediatelyFast by RK_01 (LGPL-3.0-only)
+  - ImmediatelyFast by RK_01 (LGPL-3.0-or-later)
   - Fast IP Ping by Fallen_Breath (LGPL-3.0-only)
-  - FixBookGUI by memoryleak / upstream contributors (LGPL-3.0-or-later)
-  - Hovering Hotbar by upstream contributors (LGPL-2.1-only)
-  - Signal Loss / Screenshot Viewer / TabTweaks integrations (LGPL-3.0)
+  - FixBookGUI by KosmoMoustache (LGPL-3.0-only)
+  - TabTweaks by MicrocontrollersDev (LGPL-3.0-only)
+  - Capes by Cael (LGPL-2.1-only)
+  - NBT Autocomplete by MT (LGPL-3.0-only)
   - JvmDowngrader by wagyourtail (LGPL-3.0-or-later, 1.8.9 build)
   Complete modified source code for all LGPL-licensed integrations is bundled directly inside
-  every `theladscore.jar` under `META-INF/lads-sources/` and license texts under
-  `assets/theladscore/licenses/`.
+  every `theladscore.jar` under `META-INF/lads-sources/`.
 
 - MPL-2.0:
-  - Capes by Cael (MPL-2.0)
-  - NBT Autocomplete by upstream contributors (MPL-2.0)
-  Complete modified source Files for MPL-2.0 integrations are bundled inside `theladscore.jar`
-  under `META-INF/lads-sources/` and license texts under `assets/theladscore/licenses/`.
+  - Hovering Hotbar by Fuzs (MPL-2.0)
+  Complete modified source files for MPL-2.0 integrations are bundled inside `theladscore.jar`
+  under `META-INF/lads-sources/`.
 
-- MIT / Apache-2.0 / BSD-3-Clause / Unlicense:
+- MIT / Apache-2.0:
   - Controlling & Clumps by Jaredlll08 (MIT)
-  - EntityCulling by tr7zw (MIT / tr7zw license)
+  - EntityCulling by LogisticsCraft (OcclusionCulling, MIT)
   - Ksyxis by VidTu (MIT)
-  - LazyAI, Optimized Cushions, QuickPack, World Play Time, Screenshot to Clipboard (MIT / Unlicense)
-  - ServerPingerFixer (Apache-2.0)
-  - CatConfig & CatConfig-MC (MIT)
+  - LazyAI, Optimized Cushions, QuickPack, World Play Time, Screenshot to Clipboard (MIT)
+  - ServerPingerFixer (MIT)
+  - CatConfig & CatConfig-MC (MIT, bundled in 26.2/26.3)
+  - Signal Loss by Hexandcube (Apache-2.0)
+  - Screenshot Viewer by LGatodu47 (MIT)
   - Reflect (`net.lenni0451:Reflect:1.6.2`) by Lenni0451 (MIT, bundled in 1.21.11)
   - Google Gson (Apache-2.0, shaded in 1.8.9), SLF4J (MIT, shaded in 1.8.9), SpongePowered Mixin (MIT, 1.8.9)
-  - java-objc-bridge by Steve Hannah (BSD-3-Clause, bundled in 26.2/26.3)
+  - java-objc-bridge by Steve Hannah (Apache-2.0, bundled in 26.2/26.3)
 
 - CC-BY-NC-SA-4.0 (Minecraft 26.2 and 26.3 builds):
   - Jade (`snownee.jade.*`) by Snownee is source-integrated in the 26.2 (`v26_2`) and 26.3 (`v26_3`)
-    builds for native HUD/tooltip integration and addon API compatibility. Complete modified sources
-    are bundled under `META-INF/lads-sources/jade/` alongside `assets/theladscore/licenses/Jade-NOTICE.txt`
-    and `assets/theladscore/licenses/Jade-CC-BY-NC-SA-4.0.txt`. Use and redistribution of the 26.2/26.3
+    builds for native HUD/tooltip integration and addon API compatibility. License texts are bundled
+    under `assets/theladscore/licenses/Jade-NOTICE.txt` and `assets/theladscore/licenses/Jade-CC-BY-NC-SA-4.0.txt`. Use and redistribution of the 26.2/26.3
     Jade integration is strictly non-commercial under CC-BY-NC-SA-4.0.
 
-See `THIRD_PARTY_NOTICES.txt` and `assets/theladscore/licenses/` for full attributions and license texts.
+See `THIRD_PARTY_NOTICES.txt`, `META-INF/lads-sources/`, and `assets/theladscore/licenses/` for full attributions and license texts.

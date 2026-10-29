@@ -38,7 +38,6 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:0.92.2+1.20.1"
 
     implementation project(':common')
-    implementation files('../v26_2/libs/catconfig-mc-26.2-0.2.1.jar', '../v26_2/libs/catconfig-0.3.0.jar')
 
     // Embedded Entity Texture/Model Features: the optional-mod APIs upstream's own 1.20.1 Fabric build compiles against
     // (Iris, Sodium, 3D Skin Layers; same Modrinth versions). Compile only, they stay optional mods.

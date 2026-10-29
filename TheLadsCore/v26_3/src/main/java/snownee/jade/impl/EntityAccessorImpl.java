@@ -56,6 +56,10 @@ public class EntityAccessorImpl extends AccessorImpl<EntityHitResult> implements
 			}
 
 			Entity entity = accessor.getEntity();
+			// Validate existence, removal state, dimension match, and chunk loaded state. Reachability is checked below via Jade.isOutOfReach.
+			if (entity == null || entity.isRemoved() || entity.level() != player.level() || !player.level().isLoaded(entity.blockPosition())) {
+				return;
+			}
 			CompoundTag tag = accessor.getServerData();
 			tag.putInt("EntityId", entity.getId());
 
@@ -219,7 +223,7 @@ public class EntityAccessorImpl extends AccessorImpl<EntityHitResult> implements
 		@Nullable
 		public EntityAccessor unpack(ServerPlayer player) {
 			Entity entity = CommonProxy.getPartEntity(player.level().getEntity(id), partIndex);
-			if (entity == null) {
+			if (entity == null || entity.isRemoved()) {
 				return null;
 			}
 			return new EntityAccessorImpl.Builder()
