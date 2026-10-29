@@ -90,13 +90,13 @@ public class LadsCommandTest {
 
     @Test
     public void testSetUnknownModuleAppliesWithWarning() {
-        List<String> res = core.command(new String[]{"set", "Steve", "Freelook", "block"}, true);
+        List<String> res = core.command(new String[]{"set", "Steve", "BogusModule", "block"}, true);
         assertTrue(res.stream().anyMatch(s -> s.contains("not in schema")));
-        assertTrue(res.stream().anyMatch(s -> s.contains("Set module Freelook state to block")));
+        assertTrue(res.stream().anyMatch(s -> s.contains("Set module BogusModule state to block")));
 
         LadsSession session = core.sessionManager().getSessions().get(player.uuid());
-        assertTrue(session.getApiOverrides().containsKey("Freelook"));
-        assertEquals("block", session.getApiOverrides().get("Freelook").getState());
+        assertTrue(session.getApiOverrides().containsKey("BogusModule"));
+        assertEquals("block", session.getApiOverrides().get("BogusModule").getState());
     }
 
     @Test
