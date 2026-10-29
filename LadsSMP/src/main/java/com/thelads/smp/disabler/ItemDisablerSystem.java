@@ -81,11 +81,16 @@ public final class ItemDisablerSystem {
     private static volatile CompiledRuleSet PROTECTED_BLOCK_RULES = CompiledRuleSet.EMPTY;
 
     private static final Map<UUID, Long> LAST_PLAYER_NOTIFY_MS = new ConcurrentHashMap<>();
+    private static volatile boolean lastLoadFailed = false;
 
     private ItemDisablerSystem() {}
 
     public static void init() {
-        reload();
+        if (!reload()) {
+            applyConfig(CONFIG);
+            lastLoadFailed = true;
+            LOGGER.error("Failed to load disabled_items.json on startup! Enforcing built-in default rules.");
+        }
         registerInteractionCallbacks();
         LOGGER.info("Initialized Lads SMP ItemDisablerSystem with {} global rules, {} loot rules, {} recipe rules.",
                 CONFIG.disabledItems.size(), CONFIG.lootOnlyDisabledItems.size(), CONFIG.recipeOnlyDisabledItems.size());
@@ -99,8 +104,10 @@ public final class ItemDisablerSystem {
         DisabledContentConfig loaded = DisabledContentConfig.load(configPath);
         if (loaded != null) {
             applyConfig(loaded);
+            lastLoadFailed = false;
             return true;
         }
+        lastLoadFailed = true;
         return false;
     }
 
@@ -111,6 +118,10 @@ public final class ItemDisablerSystem {
         RECIPE_ONLY_RULES = CompiledRuleSet.compile(config.recipeOnlyDisabledItems);
         RECIPE_ID_RULES = CompiledRuleSet.compile(config.disabledRecipeIds);
         PROTECTED_BLOCK_RULES = CompiledRuleSet.compile(LadsConfig.get().features.protectedBlockPatterns);
+    }
+
+    public static boolean wasLastLoadFailed() {
+        return lastLoadFailed;
     }
 
     public static DisabledContentConfig getConfig() {
@@ -125,7 +136,11 @@ public final class ItemDisablerSystem {
             if (reason != null && !reason.isBlank()) {
                 CONFIG.disableReasons.put(normalized, reason);
             }
-            DisabledContentConfig.save(DisabledContentConfig.getDefaultPath(), CONFIG);
+            if (!lastLoadFailed) {
+                DisabledContentConfig.save(DisabledContentConfig.getDefaultPath(), CONFIG);
+            } else {
+                LOGGER.warn("Skipping save of disabled_items.json in addDisabledRule because the last file load failed");
+            }
             applyConfig(CONFIG);
             return true;
         }
@@ -137,7 +152,11 @@ public final class ItemDisablerSystem {
         boolean removed = CONFIG.disabledItems.remove(normalized);
         CONFIG.disableReasons.remove(normalized);
         if (removed) {
-            DisabledContentConfig.save(DisabledContentConfig.getDefaultPath(), CONFIG);
+            if (!lastLoadFailed) {
+                DisabledContentConfig.save(DisabledContentConfig.getDefaultPath(), CONFIG);
+            } else {
+                LOGGER.warn("Skipping save of disabled_items.json in removeDisabledRule because the last file load failed");
+            }
             applyConfig(CONFIG);
         }
         return removed;

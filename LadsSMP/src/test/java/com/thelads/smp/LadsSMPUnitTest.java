@@ -304,6 +304,13 @@ public class LadsSMPUnitTest {
             assertTrue(stream.anyMatch(p -> p.getFileName().toString().startsWith("disabled_items.json.broken-")),
                     "A .broken-* backup file must be created on corrupt parse");
         }
+
+        assertTrue(ItemDisablerSystem.wasLastLoadFailed());
+        // Verify add/remove rule does not overwrite the corrupt file when last load failed
+        long brokenMtime = java.nio.file.Files.getLastModifiedTime(disablerPath).toMillis();
+        ItemDisablerSystem.addDisabledRule("testmod:another_sword", "reason");
+        assertEquals(brokenMtime, java.nio.file.Files.getLastModifiedTime(disablerPath).toMillis(), "Must skip saving over broken file");
+        assertEquals("{invalid json content,,", java.nio.file.Files.readString(disablerPath), "Corrupt file must not be overwritten");
     }
 
     @Test
