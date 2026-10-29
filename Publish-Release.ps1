@@ -29,7 +29,7 @@ function Assert-ReleaseSignature {
     $manifestBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'lads-update.json'))
     $sigBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'lads-update.json.sig'))
 
-    $updateSigPath = Join-Path $PSScriptRoot 'TheLadsLauncher/UpdateSignature.cs'
+    $updateSigPath = if ($env:LADS_UPDATE_SIGNATURE_PATH) { $env:LADS_UPDATE_SIGNATURE_PATH } else { Join-Path $PSScriptRoot 'TheLadsLauncher/UpdateSignature.cs' }
     $sigCs = Get-Content -LiteralPath $updateSigPath -Raw
     $m = [regex]::Match($sigCs, '(?s)ReleasePublicKeys.*?=\s*new\[\]\s*\{(.*?)\};')
     $pinnedKeys = @([regex]::Matches($m.Groups[1].Value, '"([A-Za-z0-9+/=]{40,})"') | ForEach-Object { $_.Groups[1].Value })

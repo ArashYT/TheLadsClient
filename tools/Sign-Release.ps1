@@ -51,7 +51,7 @@ try {
         $fileName = Split-Path -Leaf $filePath
         $verifyOutput = & gh attestation verify $filePath --repo $Repo --signer-workflow "$Repo/.github/workflows/release.yml" --source-ref "refs/tags/$tag" --format json 2>&1
         if ($LASTEXITCODE -ne 0) {
-            throw "Attestation verification failed for $fileName: $verifyOutput"
+            throw "Attestation verification failed for $($fileName): $verifyOutput"
         }
         $attestations = $verifyOutput | ConvertFrom-Json
         $attestedCommit = $attestations | ForEach-Object {
