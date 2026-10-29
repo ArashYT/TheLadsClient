@@ -274,8 +274,6 @@ public class AuthenticationTests
         Assert.Contains("different Minecraft account", error.Message);
     }
 
-    /// <summary>Re-signing in to A while the browser is on a sibling's account B: CmlLib saves B before the launcher refuses it.
-    /// B must not stay in Accounts unless the player had added it before.</summary>
     [Fact]
     public async Task WrongBrowserAccountCleanupFailureIsLoggedAndThrowsMismatchedAccountError()
     {
@@ -296,6 +294,8 @@ public class AuthenticationTests
         Assert.Contains("Storage write failure", logs.Single());
     }
 
+    /// <summary>Re-signing in to A while the browser is on a sibling's account B: CmlLib saves B before the launcher refuses it.
+    /// B must not stay in Accounts unless the player had added it before.</summary>
     [Fact]
     public async Task WrongBrowserAccountIsNotKeptUnlessItWasAlreadySaved()
     {
