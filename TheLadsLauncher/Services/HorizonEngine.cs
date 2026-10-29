@@ -88,11 +88,16 @@ public static class HorizonEngine
         await Task.Run(() => ZipFile.ExtractToDirectory(zip, staging), token);
         File.Delete(zip);
         string targetDir = Path.Combine(root, Tag);
-        if (Directory.Exists(targetDir)) Directory.Delete(targetDir, true);
-        Directory.Move(staging, targetDir);
+        ReplaceInstall(staging, targetDir);
         if (!File.Exists(Path.Combine(game, "horizon-client.exe")))
             throw new InvalidOperationException($"Horizon installation completed but horizon-client.exe was not found in {game}.");
         return game;
+    }
+
+    internal static void ReplaceInstall(string staging, string target)
+    {
+        if (Directory.Exists(target)) Directory.Delete(target, true);
+        Directory.Move(staging, target);
     }
 
     /// <summary>

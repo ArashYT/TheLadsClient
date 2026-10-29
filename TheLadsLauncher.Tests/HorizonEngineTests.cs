@@ -243,4 +243,29 @@ public class HorizonEngineTests : IDisposable
         Assert.True(Directory.Exists(sessionsDir));
         Assert.Empty(Directory.GetFiles(sessionsDir, "session-*.json"));
     }
+
+    [Fact]
+    public void ReplaceInstall_ExistingTargetFolderLackingExe_ReplacesWithStaging()
+    {
+        string staging = Path.Combine(_home, "staging");
+        string target = Path.Combine(_home, "target");
+
+        // Existing target folder lacking horizon-client.exe (e.g. broken or interrupted installation)
+        string targetGame = Path.Combine(target, "horizon-windows-x64");
+        Directory.CreateDirectory(targetGame);
+        File.WriteAllText(Path.Combine(targetGame, "corrupted.dat"), "broken install lacking exe");
+        Assert.False(File.Exists(Path.Combine(targetGame, "horizon-client.exe")));
+
+        // Staging directory containing new extraction with the exe
+        string stagingGame = Path.Combine(staging, "horizon-windows-x64");
+        Directory.CreateDirectory(stagingGame);
+        File.WriteAllText(Path.Combine(stagingGame, "horizon-client.exe"), "binary");
+
+        HorizonEngine.ReplaceInstall(staging, target);
+
+        Assert.False(Directory.Exists(staging));
+        Assert.True(Directory.Exists(target));
+        Assert.False(File.Exists(Path.Combine(targetGame, "corrupted.dat")));
+        Assert.True(File.Exists(Path.Combine(targetGame, "horizon-client.exe")));
+    }
 }
