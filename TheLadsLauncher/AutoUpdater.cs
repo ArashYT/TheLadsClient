@@ -190,6 +190,8 @@ public sealed class VelopackUpdateBackend : ILauncherUpdateBackend
 // Startup and the timer share this coordinator. Only verified packages are applied.
 public sealed class AutoUpdater
 {
+    /// <summary>This build's version; read here, not from Program, because tools/UpdateProbe compiles this file without Program.</summary>
+    private static readonly string CurrentVersion = typeof(AutoUpdater).Assembly.GetName().Version?.ToString(3) ?? "?";
     private readonly ILauncherUpdateBackend _backend;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private DateTimeOffset _nextCheck;
@@ -269,7 +271,7 @@ public sealed class AutoUpdater
         {
             if (!_backend.IsInstalled)
             {
-                if (force) report($"Launcher is up to date (v{Program.Version}).");
+                if (force) report($"Launcher is up to date (v{CurrentVersion}).");
                 return;
             }
             if (DateTimeOffset.UtcNow < _retryAfter)
@@ -289,7 +291,7 @@ public sealed class AutoUpdater
                     // A BelowNormal launcher's children inherit it; a High one's start at Normal, so the delta rebuild is raised by hand.
                     if (!_askBeforeInstall) _ = _backend.KeepUpdateExeHighAsync((_keepUpdateExeHigh = new()).Token);
                 }
-                try { if (!await _backend.DownloadLatestAsync(report)) { report(force ? $"Launcher is up to date (v{Program.Version})." : ""); return; } }
+                try { if (!await _backend.DownloadLatestAsync(report)) { report(force ? $"Launcher is up to date (v{CurrentVersion})." : ""); return; } }
                 finally { lock (_priorityLock) { _downloadScope?.Dispose(); _downloadScope = null; StopKeepingUpdateExeHigh(); } }
             }
             if (AskBeforeInstall)
