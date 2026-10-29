@@ -239,7 +239,8 @@ public class HorizonEngineTests : IDisposable
         Assert.ThrowsAny<Exception>(() =>
             HorizonEngine.Start(_home, nonexistentGame, Path.Combine(_home, "resources"), session, offline: false));
 
-        string sessionsDir = Path.Combine(_home, "sessions");
-        Assert.True(!Directory.Exists(sessionsDir) || Directory.GetFiles(sessionsDir, "session-*.json").Length == 0);
+        string sessionsDir = Path.Combine(HorizonEngine.Home(_home), "sessions");
+        Assert.True(Directory.Exists(sessionsDir));
+        Assert.Empty(Directory.GetFiles(sessionsDir, "session-*.json"));
     }
 }
