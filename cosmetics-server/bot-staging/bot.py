@@ -4099,8 +4099,10 @@ async def slash_roles_panel(interaction: discord.Interaction, channel: discord.T
 async def publish_release_notes(guild: discord.Guild, version: str, force: bool = False) -> str:
     """Shared by /postchangelog and !postchangelog. Returns the status line to show the caller."""
     version = version.strip().lstrip("v")
-    file_path = RELEASES_DIR / f"{version}.md"
-    if not file_path.exists():
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+        return f"❌ Invalid version format `{version}`. Expected `X.Y.Z` (e.g. `1.12.0`)."
+    file_path = (RELEASES_DIR / f"{version}.md").resolve()
+    if file_path.parent != RELEASES_DIR.resolve() or not file_path.exists():
         return f"❌ Could not find changelog file for version `{version}` in `{RELEASES_DIR}`."
     if version in load_state().get("posted_versions", []) and not force:
         return f"ℹ️ v{version} was already posted to <#1556193307766427750>. Use `force: True` to post it again."

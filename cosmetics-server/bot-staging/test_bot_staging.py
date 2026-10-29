@@ -200,3 +200,14 @@ def test_usage_stats_bounds_and_negative_cache(tmp_path):
     cur = conn.execute("SELECT COUNT(*) FROM installs WHERE install_id = ?", (u2,))
     assert cur.fetchone()[0] == 0
     conn.close()
+
+
+@pytest.mark.asyncio
+async def test_publish_release_notes_validates_version_and_path(bot):
+    # Path traversal rejected
+    res = await bot.publish_release_notes(None, "../../secret")
+    assert "Invalid version format" in res
+
+    # Non-semver rejected
+    res = await bot.publish_release_notes(None, "beta-version")
+    assert "Invalid version format" in res
