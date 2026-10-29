@@ -204,7 +204,6 @@ public class ConfigRulesTest {
         LadsRules rules = LadsRules.load(tempDir, schema, null);
         assertNotNull(rules.getModules().get("Fullbright"));
         assertEquals("allow", rules.getModules().get("Fullbright").getState());
-        String regenerated = Files.readString(rulesFile);
         // Verify SnakeYAML parses without error
         assertFalse(rules.getModules().isEmpty());
     }
@@ -249,7 +248,6 @@ public class ConfigRulesTest {
         LadsRules rules = LadsRules.load(tempDir, schema, null);
         assertEquals("block", rules.getModules().get("Fullbright").getState());
         assertEquals("block", rules.getModules().get("XaeroMinimap").getState());
-        String regenerated = Files.readString(rulesFile);
         // Valid YAML check
         assertFalse(rules.getModules().isEmpty());
     }
@@ -263,6 +261,7 @@ public class ConfigRulesTest {
                     state: block
                 """;
         Files.writeString(rulesFile, initial, StandardCharsets.UTF_8);
+        tempDir.toFile().setReadOnly();
         rulesFile.toFile().setReadOnly();
         try {
             LadsSchema schema = LadsSchema.loadDefault();
@@ -272,6 +271,7 @@ public class ConfigRulesTest {
             assertEquals("block", rules.getModules().get("Fullbright").getState());
         } finally {
             rulesFile.toFile().setWritable(true);
+            tempDir.toFile().setWritable(true);
         }
     }
     @Test

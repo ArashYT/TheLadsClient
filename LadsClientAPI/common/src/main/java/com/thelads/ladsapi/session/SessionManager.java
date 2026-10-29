@@ -45,7 +45,6 @@ public final class SessionManager implements LadsClientAPI {
     public LadsPlatform getPlatform() { return platform; }
     public LadsConfig getConfig() { return config; }
     public LadsRules getRules() { return rules; }
-    public void setRules(LadsRules rules) { this.rules = rules; }
     public Map<UUID, LadsSession> getSessions() { return sessions; }
 
     public void addReadyListener(Consumer<LadsPlayer> listener) {

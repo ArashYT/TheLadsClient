@@ -17,8 +17,6 @@ $config = @"
 enabled: true
 server-name: "Lads QA"
 unlisted-modules: inherit
-notify-players: true
-let-players-refuse-changes: true
 require-lads-client: false
 min-client-version: ""
 notice: "Lads QA Lobby: Fullbright capped at 10%"
