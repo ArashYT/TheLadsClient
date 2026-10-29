@@ -1335,3 +1335,45 @@ async def test_room_switch_rate_limit(client):
     err = await ws.receive_json(timeout=2)
     assert err.get("t") == "error"
     assert "room rate limit" in err.get("error", "")
+
+
+async def test_real_has_joined_against_local_server(aiohttp_server, monkeypatch):
+    async def handle_has_joined(request):
+        username = request.query.get("username")
+        if username == "Alice":
+            return web.json_response({"id": "a" * 32, "name": "Alice"})
+        if username == "Bob":
+            return web.Response(status=204)
+        if username == "Timeout":
+            await asyncio.sleep(0.5)
+            return web.Response(status=200)
+        if username == "Unavailable":
+            return web.Response(status=503)
+        return web.Response(status=404)
+
+    app = web.Application()
+    app.router.add_get("/hasJoined", handle_has_joined)
+    server = await aiohttp_server(app)
+
+    local_url = f"http://{server.host}:{server.port}/hasJoined"
+    monkeypatch.setattr(cosmetics, "HAS_JOINED", local_url)
+
+    if cosmetics._mojang_session and not cosmetics._mojang_session.closed:
+        await cosmetics._mojang_session.close()
+    cosmetics._mojang_session = None
+
+    try:
+        res = await cosmetics.has_joined("Alice", "sid123")
+        assert res == "a" * 32
+        assert await cosmetics.has_joined("Bob", "sid123") is None
+        assert await cosmetics.has_joined("Unknown", "sid123") is None
+        with pytest.raises(cosmetics.MojangUnavailableError):
+            await cosmetics.has_joined("Unavailable", "sid123")
+        await cosmetics._mojang_session.close()
+        cosmetics._mojang_session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=16), timeout=aiohttp.ClientTimeout(total=0.05))
+        with pytest.raises(cosmetics.MojangUnavailableError):
+            await cosmetics.has_joined("Timeout", "sid123")
+    finally:
+        if cosmetics._mojang_session and not cosmetics._mojang_session.closed:
+            await cosmetics._mojang_session.close()
+        cosmetics._mojang_session = None

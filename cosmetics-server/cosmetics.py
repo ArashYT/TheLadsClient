@@ -182,7 +182,7 @@ async def has_joined(name: str, sid: str) -> str | None:
                 return None
             body = await response.json(content_type=None)
             return plain_uuid(body.get("id")) if isinstance(body, dict) else None
-    except aiohttp.ClientError as e:
+    except (aiohttp.ClientError, asyncio.TimeoutError, TimeoutError) as e:
         raise MojangUnavailableError(f"Mojang connection error: {e}") from e
 
 
@@ -198,7 +198,7 @@ _mojang_session: aiohttp.ClientSession | None = None
 async def get_mojang_session() -> aiohttp.ClientSession:
     global _mojang_session
     if _mojang_session is None or _mojang_session.closed:
-        connector = aiohttp.TCPConnector(limit=16, ttl_dns_roundrobin=True)
+        connector = aiohttp.TCPConnector(limit=16)
         _mojang_session = aiohttp.ClientSession(
             connector=connector,
             timeout=aiohttp.ClientTimeout(total=5)
