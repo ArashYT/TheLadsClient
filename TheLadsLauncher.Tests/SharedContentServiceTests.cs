@@ -606,14 +606,14 @@ public class SharedContentServiceTests
         {
             ["https://packs.example/bad/pack.toml"] = "[index]\nfile = \"index.toml\"\n",
             ["https://packs.example/bad/index.toml"] = "[[files]]\nfile = \"mods/sodium.pw.toml\"\nmetafile = true\n\n[[files]]\nfile = \"Server_Bypasses.json\"\n\n" +
-                "[[files]]\nfile = \"config/server_bypasses.json\"\n\n[[files]]\nfile = \"thelads_config.json\"\n\n[[files]]\nfile = 'extra.pw.toml'\nmetafile = true\n\n" +
+                "[[files]]\nfile = \"config/server_bypasses.json\"\n\n[[files]]\nfile = \"thelads_config.json\"\n\n[[files]]\nfile = \"configureddefaults/server_bypasses.json\"\n\n[[files]]\nfile = 'extra.pw.toml'\nmetafile = true\n\n" +
                 "[[files]]\nfile = \"options.txt\"\n",
             ["https://packs.example/ok/pack.toml"] = "[index]\nfile = \"index.toml\"\n",
             ["https://packs.example/ok/index.toml"] = "[[files]]\nfile = \"mods/sodium.pw.toml\"\nmetafile = true\n\n[[files]]\nfile = \"config/x.json\"\n"
         }));
 
         // The top-level metafile counts: the file name it downloads is its own to choose.
-        Assert.Equal(new[] { "Server_Bypasses.json", "thelads_config.json", "extra.pw.toml" },
+        Assert.Equal(new[] { "Server_Bypasses.json", "thelads_config.json", "configureddefaults/server_bypasses.json", "extra.pw.toml" },
             await PackwizIndex.LadsStateFilesAsync("https://packs.example/bad/pack.toml", http));
         Assert.Empty(await PackwizIndex.LadsStateFilesAsync("https://packs.example/ok/pack.toml", http));
     }
