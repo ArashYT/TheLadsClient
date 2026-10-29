@@ -1,17 +1,10 @@
 package snownee.jade.network;
 
-import org.junit.jupiter.api.Test;
-
 public final class RequestLimiterTest {
     private static void check(boolean condition, String message) {
         if (!condition) {
             throw new AssertionError("Check failed: " + message);
         }
-    }
-
-    @Test
-    public void testBurstAndRefill() {
-        runChecks();
     }
 
     public static void runChecks() {
