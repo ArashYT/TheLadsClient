@@ -191,7 +191,7 @@ public static class DeepLinkService
                     if (!unauthorizedLogged)
                     {
                         unauthorizedLogged = true;
-                        Log?.Invoke($"[DeepLink] Pipe listener unauthorized (pipe squatting): {ex.Message}");
+                        Log?.Invoke($"[DeepLink] Pipe listener unauthorized: pipe already taken (another launcher instance, or a program squatting on it): {ex.Message}");
                     }
                     try { await Task.Delay(500, cancellationToken); }
                     catch (OperationCanceledException) { break; }
