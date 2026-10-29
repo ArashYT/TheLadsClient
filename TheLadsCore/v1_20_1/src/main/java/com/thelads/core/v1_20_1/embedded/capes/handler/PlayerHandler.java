@@ -20,8 +20,6 @@ import net.minecraft.resources.ResourceLocation;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -91,7 +89,11 @@ public class PlayerHandler {
         } else if (!playerHandler.hasLoadedTextures) {
             capeExecutor.submit(() -> {
                 for (CapeType capeType : CapeType.values()) {
-                    if (playerHandler.setCape(capeType)) break;
+                    try {
+                        if (playerHandler.setCape(capeType)) break;
+                    } catch (Exception e) {
+                        Capes.LOGGER.warn("Failed to load cape from provider " + capeType + " for " + playerHandler.profile.getName() + ": " + e.getMessage());
+                    }
                 }
                 return null;
             });
