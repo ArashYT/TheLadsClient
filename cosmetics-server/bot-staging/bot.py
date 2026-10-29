@@ -1444,12 +1444,27 @@ async def handle_crash_report(request):
                     print(f"crash report post failed: {e}", flush=True)
     return web.json_response({"ok": True})
 
+_exp_rate_history: dict[str, list[float]] = {}
+
 async def handle_experience_access(request):
     # Launcher asks: may any of these Minecraft usernames see this Experience? Edited live with /smp_invite.
+    import client_ip
+    ip = client_ip.client_ip(request)
+    now_ts = time.time()
+    if len(_exp_rate_history) > 5000:
+        stale = [k for k, ts_list in _exp_rate_history.items() if not ts_list or ts_list[-1] < now_ts - 60.0]
+        for k in stale:
+            del _exp_rate_history[k]
+    hits = [t for t in _exp_rate_history.get(ip, []) if t > now_ts - 60.0]
+    if len(hits) >= 60:
+        return web.json_response({"error": "rate limit exceeded"}, status=429)
+    hits.append(now_ts)
+    _exp_rate_history[ip] = hits
+
     exp = request.match_info['exp']
     if exp not in INVITE_ONLY_EXPERIENCES:
         return web.json_response({"allowed": True})
-    names = {n.strip().lower() for n in request.query.getall('u', [])[:20] if n.strip()}
+    names = {n.strip().lower() for n in request.query.getall('u', [])[:3] if n.strip()}
     invited = set(load_state().get("experience_invites", {}).get(exp, []))
     return web.json_response({"allowed": bool(names & invited)}, headers={"Cache-Control": "no-store"})
 
@@ -3421,9 +3436,23 @@ async def edit_invites(interaction: discord.Interaction, exp: str, label: str, a
     if action.value == "add" and name not in invites:
         invites.append(name)
         save_state(state)
+        embed = discord.Embed(
+            title="\U0001f4cb Experience Invite Added",
+            description=f"**Experience:** {label} (`{exp}`)\n**IGN:** `{name}`\n**Staff:** {interaction.user.mention}",
+            color=0x2ECC71,
+            timestamp=datetime.now()
+        )
+        await log_to_modlogs(interaction.guild, embed)
     elif action.value == "remove" and name in invites:
         invites.remove(name)
         save_state(state)
+        embed = discord.Embed(
+            title="\U0001f4cb Experience Invite Removed",
+            description=f"**Experience:** {label} (`{exp}`)\n**IGN:** `{name}`\n**Staff:** {interaction.user.mention}",
+            color=0xE74C3C,
+            timestamp=datetime.now()
+        )
+        await log_to_modlogs(interaction.guild, embed)
     listing = ", ".join(f"`{n}`" for n in sorted(invites)) or "nobody"
     await interaction.response.send_message(f"✅ {label} invites ({len(invites)}): {listing}", ephemeral=True)
 

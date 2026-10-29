@@ -340,3 +340,18 @@ def test_color_selection_rejected_if_not_in_catalog():
     assert "Admin" not in all_names
     assert "Owner" not in all_names
     assert any("Crimson Red" in name for name in all_names)
+
+
+@pytest.mark.asyncio
+async def test_experience_access_names_capped_and_rate_limited():
+    import bot
+    from unittest.mock import MagicMock
+    req = MagicMock()
+    req.remote = "127.0.0.1"
+    req.headers = {}
+    req.match_info = {"exp": "experimental"}
+    # 5 names submitted, only first 3 evaluated
+    req.query = MagicMock()
+    req.query.getall.return_value = ["alice", "bob", "carol", "dave", "eve"]
+    resp = await bot.handle_experience_access(req)
+    assert resp.status == 200
