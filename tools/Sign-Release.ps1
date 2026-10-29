@@ -53,7 +53,7 @@ try {
         if ($LASTEXITCODE -ne 0) {
             throw "Attestation verification failed for $($fileName): $verifyOutput"
         }
-        $attestations = $verifyOutput | ConvertFrom-Json
+        $attestations = ($verifyOutput | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] } | Out-String) | ConvertFrom-Json  # stderr progress lines must not break the JSON
         $attestedCommit = $attestations | ForEach-Object {
             $_.verificationResult.signature.certificate.sourceRepositoryDigest
         } | Where-Object { $_ } | Select-Object -First 1
