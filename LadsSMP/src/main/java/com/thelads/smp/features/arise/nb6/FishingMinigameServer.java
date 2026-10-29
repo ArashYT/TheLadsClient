@@ -130,10 +130,11 @@ public final class FishingMinigameServer {
         Entity hookEntity = player.level().getEntity(hookId);
         FishingHook hook = (hookEntity instanceof FishingHook fh) ? fh : null;
 
-        // Anti-exploit check: impossible speed completion
-        if (won && ticksElapsed < 25) {
-            LOGGER.warn("[Fishing Minigame] Player {} claimed impossible minigame completion in {} ticks. Marking as failed.",
-                    player.getScoreboardName(), ticksElapsed);
+        // Anti-exploit check: impossible speed completion (validate against server session ticks)
+        int elapsed = session.getTicksElapsed();
+        if (won && elapsed < 25) {
+            LOGGER.warn("[Fishing Minigame] Player {} claimed impossible minigame completion in server {} ticks (client claimed {}). Marking as failed.",
+                    player.getScoreboardName(), elapsed, ticksElapsed);
             won = false;
         }
 

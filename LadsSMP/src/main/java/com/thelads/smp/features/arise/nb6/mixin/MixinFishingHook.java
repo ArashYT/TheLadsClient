@@ -93,7 +93,7 @@ public abstract class MixinFishingHook {
                     ItemStack loot = FishingLootManager.rollLoot(self, serverPlayer, stack);
                     FishingMinigameServer.awardLootDirect(serverPlayer, self, loot, stack);
                     self.discard();
-                    cir.setReturnValue(1);
+                    cir.setReturnValue(0); // B/18: awardLootDirect already damaged the rod; 0 prevents vanilla double-damage
                     return;
                 }
             }

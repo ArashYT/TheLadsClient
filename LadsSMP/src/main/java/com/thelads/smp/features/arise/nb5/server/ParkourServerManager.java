@@ -118,6 +118,9 @@ public final class ParkourServerManager {
     }
 
     private static void handleActionPayload(ServerPlayer player, ParkourActionPayload payload) {
+        if (!Float.isFinite(payload.dirX()) || !Float.isFinite(payload.dirY()) || !Float.isFinite(payload.dirZ()) || !Float.isFinite(payload.param())) {
+            return;
+        }
         AriseNB5Config config = AriseNB5Config.get();
         if (!config.enabled || player.isSpectator()) return;
 
@@ -220,11 +223,14 @@ public final class ParkourServerManager {
         BlockPos ledgeTop = chestPos.above();
 
         if (level.getBlockState(chestPos).isSolid() && !level.getBlockState(ledgeTop).isSolid()) {
+            boolean wasHanging = data.getActiveAction() == ParkourActionType.LEDGE_HANG;
             data.setActiveAction(ParkourActionType.LEDGE_HANG, 200);
             player.setDeltaMovement(Vec3.ZERO);
             player.resetFallDistance();
             syncToPlayer(player, data);
-            broadcastAnimation(player, data.getActiveAction(), data.getActionTicks());
+            if (!wasHanging) {
+                broadcastAnimation(player, data.getActiveAction(), data.getActionTicks());
+            }
         }
     }
 
