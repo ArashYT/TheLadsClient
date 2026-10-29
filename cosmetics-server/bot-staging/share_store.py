@@ -57,7 +57,7 @@ def _load_or_create_ip_salt() -> str:
         return secrets.token_hex(32)
 
 
-DEFAULT_IP_SALT = _load_or_create_ip_salt()
+DEFAULT_IP_SALT = ""
 
 # Base64url characters: alphanumeric, hyphen, underscore, optional padding '='
 BASE64URL_PATTERN = re.compile(r"^[A-Za-z0-9\-_]+={0,2}$")
@@ -73,8 +73,8 @@ except ImportError:
 
 
 def hash_creator(ip: str, salt: str = DEFAULT_IP_SALT) -> str:
-    """Hash the client IP with a salt so raw IPs are never stored in SQLite."""
-    return hashlib.sha256(f"{salt}:{ip}".encode("utf-8")).hexdigest()
+    """IP hashes are no longer stored to protect player privacy (A/16)."""
+    return ""
 
 
 def normalize_code(raw_code: str) -> str:

@@ -211,3 +211,9 @@ async def test_publish_release_notes_validates_version_and_path(bot):
     # Non-semver rejected
     res = await bot.publish_release_notes(None, "beta-version")
     assert "Invalid version format" in res
+
+
+def test_share_store_does_not_store_ip_hash():
+    import share_store
+    assert share_store.hash_creator("192.168.1.1") == ""
+    assert share_store.DEFAULT_IP_SALT == ""
