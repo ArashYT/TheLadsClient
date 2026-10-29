@@ -89,20 +89,21 @@ public class LadsCommandTest {
     }
 
     @Test
-    public void testSetUnknownModuleReportsError() {
-        List<String> res = core.command(new String[]{"set", "Steve", "BogusModule", "block"}, true);
-        assertEquals(1, res.size());
-        assertTrue(res.get(0).contains("Unknown module or option: BogusModule"));
+    public void testSetUnknownModuleAppliesWithWarning() {
+        List<String> res = core.command(new String[]{"set", "Steve", "Freelook", "block"}, true);
+        assertTrue(res.stream().anyMatch(s -> s.contains("not in schema")));
+        assertTrue(res.stream().anyMatch(s -> s.contains("Set module Freelook state to block")));
 
         LadsSession session = core.sessionManager().getSessions().get(player.uuid());
-        assertFalse(session.getApiOverrides().containsKey("BogusModule"));
+        assertTrue(session.getApiOverrides().containsKey("Freelook"));
+        assertEquals("block", session.getApiOverrides().get("Freelook").getState());
     }
 
     @Test
-    public void testSetUnknownOptionReportsError() {
+    public void testSetUnknownOptionAppliesWithWarning() {
         List<String> res = core.command(new String[]{"set", "Steve", "Fullbright.BogusOption", "value=1"}, true);
-        assertEquals(1, res.size());
-        assertTrue(res.get(0).contains("Unknown module or option: Fullbright.BogusOption"));
+        assertTrue(res.stream().anyMatch(s -> s.contains("not in schema")));
+        assertTrue(res.stream().anyMatch(s -> s.contains("Set Fullbright.BogusOption to value=1")));
     }
     @Test
     public void testSuggestSubcommandsAndPlayers() {

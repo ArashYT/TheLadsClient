@@ -94,7 +94,11 @@ public final class LadsCommandHandler {
         return lines;
     }
 
-    record ResolvedTarget(String module, String option) {}
+    record ResolvedTarget(String module, String option, boolean inSchema) {
+        ResolvedTarget(String module, String option) {
+            this(module, option, true);
+        }
+    }
 
     static ResolvedTarget resolveTarget(LadsSchema schema, String target) {
         if (target == null || target.isBlank()) return null;
@@ -103,7 +107,7 @@ public final class LadsCommandHandler {
             // 1. Check if target matches a module name exactly (case-insensitive)
             for (LadsSchema.SchemaModule mod : schema.getModules()) {
                 if (mod.getName().equalsIgnoreCase(target)) {
-                    return new ResolvedTarget(mod.getName(), null);
+                    return new ResolvedTarget(mod.getName(), null, true);
                 }
             }
 
@@ -127,18 +131,32 @@ public final class LadsCommandHandler {
                     }
                 }
             }
-            if (bestMod != null) {
-                return new ResolvedTarget(bestMod.getName(), matchedOptName);
+            if (bestMod != null && matchedOptName != null) {
+                return new ResolvedTarget(bestMod.getName(), matchedOptName, true);
             }
-            return null; // Unknown module/option
+
+            // 3. Check if target starts with a known module name followed by '.' even if option is not in schema
+            LadsSchema.SchemaModule prefixMod = null;
+            for (LadsSchema.SchemaModule mod : schema.getModules()) {
+                String modPrefix = mod.getName().toLowerCase() + ".";
+                if (target.toLowerCase().startsWith(modPrefix)) {
+                    if (prefixMod == null || mod.getName().length() > prefixMod.getName().length()) {
+                        prefixMod = mod;
+                    }
+                }
+            }
+            if (prefixMod != null) {
+                String optPart = target.substring(prefixMod.getName().length() + 1);
+                return new ResolvedTarget(prefixMod.getName(), optPart, false);
+            }
         }
 
-        // Fallback when schema is unavailable
+        // Fallback for names not found in schema
         int dot = target.lastIndexOf('.');
         if (dot > 0 && dot < target.length() - 1) {
-            return new ResolvedTarget(target.substring(0, dot), target.substring(dot + 1));
+            return new ResolvedTarget(target.substring(0, dot), target.substring(dot + 1), false);
         }
-        return new ResolvedTarget(target, null);
+        return new ResolvedTarget(target, null, false);
     }
 
     private static List<String> handleSet(LadsCore core, String[] args) {
@@ -161,6 +179,11 @@ public final class LadsCommandHandler {
         ResolvedTarget resolved = resolveTarget(core.schema(), target);
         if (resolved == null) {
             return List.of("§cUnknown module or option: " + target);
+        }
+
+        List<String> output = new ArrayList<>();
+        if (!resolved.inSchema()) {
+            output.add("§eWarning: '" + target + "' is not in schema.");
         }
 
         if (resolved.option != null) {
@@ -188,7 +211,8 @@ public final class LadsCommandHandler {
             } else {
                 lp.force(module, option, parseScalarValue(ruleVal));
             }
-            return List.of("§aSet " + module + "." + option + " to " + ruleVal + " for " + handle.name());
+            output.add("§aSet " + module + "." + option + " to " + ruleVal + " for " + handle.name());
+            return output;
         } else {
             String module = resolved.module;
             String state = ruleVal.toLowerCase();
@@ -200,7 +224,8 @@ public final class LadsCommandHandler {
                     return List.of("§cInvalid state: " + ruleVal + " (expected: allow | block | on)");
                 }
             }
-            return List.of("§aSet module " + module + " state to " + state + " for " + handle.name());
+            output.add("§aSet module " + module + " state to " + state + " for " + handle.name());
+            return output;
         }
     }
 
@@ -264,7 +289,7 @@ public final class LadsCommandHandler {
             LadsSchema schema = core != null ? core.schema() : null;
             if (!targetSoFar.isEmpty() && schema != null) {
                 ResolvedTarget resolved = resolveTarget(schema, targetSoFar);
-                if (resolved != null) {
+                if (resolved != null && resolved.inSchema()) {
                     if (resolved.option() != null) {
                         return filterMatching(List.of("max=", "min=", "value="), current);
                     } else {
