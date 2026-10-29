@@ -173,3 +173,6 @@ desktop.ini
 !TheLadsCore/v26_2/libs/catconfig-mc-26.2-0.2.1.jar
 !TheLadsCore/v26_2/libs/catconfig-0.3.0.jar
 TheLadsLauncher/settings.json
+
+# local SQLite databases (tests create them; live data must never be committed)
+*.db
