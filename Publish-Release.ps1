@@ -143,9 +143,9 @@ try {
     }
 
     $work = Join-Path $PSScriptRoot ('artifacts/releases/' + $version + '-' + [guid]::NewGuid().ToString('N'))
-    $publish = Join-Path $work 'app'
+    $publishDir = Join-Path $work 'app'
     $packages = Join-Path $work 'packages'
-    New-Item -ItemType Directory -Path $publish,$packages -Force -WhatIf:$false | Out-Null
+    New-Item -ItemType Directory -Path $publishDir,$packages -Force -WhatIf:$false | Out-Null
     if (-not $SkipCoreBuild) {
         Push-Location 'TheLadsCore'
         try {
@@ -157,26 +157,26 @@ try {
     }
     & dotnet test TheLadsLauncher.Tests/TheLadsLauncher.Tests.csproj -c Release --nologo
     if ($LASTEXITCODE -ne 0) { throw 'Launcher tests failed.' }
-    & dotnet publish TheLadsLauncher/TheLadsLauncher.csproj -c Release -r win-x64 --self-contained true -o $publish
+    & dotnet publish TheLadsLauncher/TheLadsLauncher.csproj -c Release -r win-x64 --self-contained true -o $publishDir
     if ($LASTEXITCODE -ne 0) { throw 'Launcher publish failed.' }
     # Holds the "Installing update" screen while Update.exe swaps the launcher (UpdateBridge.cs); without it updates show nothing.
-    if (-not (Test-Path -LiteralPath (Join-Path $publish 'LadsUpdateBridge.exe'))) { throw 'Missing LadsUpdateBridge.exe' }
+    if (-not (Test-Path -LiteralPath (Join-Path $publishDir 'LadsUpdateBridge.exe'))) { throw 'Missing LadsUpdateBridge.exe' }
     foreach ($gameVersion in @('1.8.9','1.20.1','1.21.11','26.2','26.3')) {
         foreach ($file in @('theladscore.jar','client-mods.json')) {
-            if (-not (Test-Path -LiteralPath (Join-Path $publish "game-mods/$gameVersion/$file"))) { throw "Missing $gameVersion/$file" }
+            if (-not (Test-Path -LiteralPath (Join-Path $publishDir "game-mods/$gameVersion/$file"))) { throw "Missing $gameVersion/$file" }
         }
     }
     # Forge 1.20.1 packs' Lads early loading window; without it players silently get Forge's (ModpackLauncher.UseEarlyWindow).
-    if (-not (Test-Path -LiteralPath (Join-Path $publish 'game-mods/1.20.1/lads-earlywindow.jar'))) { throw 'Missing 1.20.1/lads-earlywindow.jar' }
-    if (-not (Test-Path -LiteralPath (Join-Path $publish "release-notes/$version.md"))) { throw 'Current release notes were not bundled.' }
+    if (-not (Test-Path -LiteralPath (Join-Path $publishDir 'game-mods/1.20.1/lads-earlywindow.jar'))) { throw 'Missing 1.20.1/lads-earlywindow.jar' }
+    if (-not (Test-Path -LiteralPath (Join-Path $publishDir "release-notes/$version.md"))) { throw 'Current release notes were not bundled.' }
     # Zero SMP pack patches: installed packs only get them through the launcher (ExperiencesService.BundledPatchesDirectory).
     foreach ($patch in Get-ChildItem -LiteralPath 'tools/modpack-manager/patches' -Filter 'update-*.json') {
-        if (-not (Test-Path -LiteralPath (Join-Path $publish "modpack-patches/$($patch.Name)"))) { throw "Missing modpack-patches/$($patch.Name)" }
+        if (-not (Test-Path -LiteralPath (Join-Path $publishDir "modpack-patches/$($patch.Name)"))) { throw "Missing modpack-patches/$($patch.Name)" }
     }
     # verifiesContentHash: this launcher checks a delta-rebuilt package by content hash (TheLadsLauncher/UpdateSignature.cs), so the
     # next release may ship a delta to it. Keep it true only while the launcher code in this commit does that.
     @{version=$version; commit=$commit; localChanges=($dirty.Count -gt 0); coreBuilt=(-not $SkipCoreBuild); verifiesContentHash=$true} |
-        ConvertTo-Json | Set-Content -LiteralPath (Join-Path $publish 'release-build.json') -WhatIf:$false
+        ConvertTo-Json | Set-Content -LiteralPath (Join-Path $publishDir 'release-build.json') -WhatIf:$false
     & dotnet tool restore
     if ($LASTEXITCODE -ne 0) { throw 'Cannot restore pinned packaging tool.' }
     # A delta package only works for launchers that verify a rebuilt package by content hash. The marker is the release-build.json
@@ -206,7 +206,7 @@ try {
     Write-Host "Delta package: $(if ($deltaAllowed) { "yes, from $($latest.tagName)" } else { "no, the launcher of $($latest.tagName) does not verify delta packages (release-build.json has no verifiesContentHash)" })"
     $deltaMode = if ($deltaAllowed) { 'BestSpeed' } else { 'None' }
     # The splash shows the Lads logo while Setup installs; its progress colour is LadsAccent (Styles/LauncherTheme.axaml).
-    & dotnet vpk pack --packId TheLadsClient --packVersion $version --packDir $publish --mainExe TheLadsLauncher.exe --packTitle 'The Lads Client' --packAuthors ArashYT --channel win --runtime win-x64 --icon TheLadsLauncher/Assets/icon.ico --releaseNotes $notes --outputDir $packages --delta $deltaMode --splashImage TheLadsLauncher/Assets/installer-splash.png --splashProgressColor '#C44343'
+    & dotnet vpk pack --packId TheLadsClient --packVersion $version --packDir $publishDir --mainExe TheLadsLauncher.exe --packTitle 'The Lads Client' --packAuthors ArashYT --channel win --runtime win-x64 --icon TheLadsLauncher/Assets/icon.ico --releaseNotes $notes --outputDir $packages --delta $deltaMode --splashImage TheLadsLauncher/Assets/installer-splash.png --splashProgressColor '#C44343'
     if ($LASTEXITCODE -ne 0) { throw 'Installer packaging failed.' }
     $required = @('TheLadsClient-win-Setup.exe','releases.win.json','assets.win.json',"TheLadsClient-$version-full.nupkg")
     if ($deltaAllowed) { $required += "TheLadsClient-$version-delta.nupkg" }
@@ -232,7 +232,7 @@ try {
     $listed = [IO.File]::ReadAllText((Join-Path $packages 'assets.win.json')) | ConvertFrom-Json
     if (@($listed | Where-Object { $_.RelativeFileName -like '*.nupkg' -and -not $_.RelativeFileName.Contains($own) }).Count -gt 0) { throw 'assets.win.json names a package of another version.' }
     Copy-Item -LiteralPath $notes -Destination (Join-Path $packages 'RELEASE_NOTES.md') -WhatIf:$false
-    $buildInfo = Get-Content -LiteralPath (Join-Path $publish 'release-build.json') -Raw | ConvertFrom-Json
+    $buildInfo = Get-Content -LiteralPath (Join-Path $publishDir 'release-build.json') -Raw | ConvertFrom-Json
     $pkgHashes = [ordered]@{}
     Get-ChildItem -LiteralPath $packages -File | Sort-Object Name | ForEach-Object {
         $pkgHashes[$_.Name] = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
