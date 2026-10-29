@@ -64,4 +64,37 @@ public class UnhandledExceptionLogTests
 
         Assert.Equal("prior UI crash", File.ReadAllText(crash));
     }
+
+    private static Avalonia.Threading.DispatcherUnhandledExceptionEventArgs CreateEventArgs(Exception ex)
+    {
+        var type = typeof(Avalonia.Threading.DispatcherUnhandledExceptionEventArgs);
+        var args = (Avalonia.Threading.DispatcherUnhandledExceptionEventArgs)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(type);
+        type.GetField("_exception", BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(args, ex);
+        return args;
+    }
+
+    [Fact]
+    public void UiHandlerCircuitBreakerTripsAfterExcessiveErrors()
+    {
+        string logs = PathService.Instance.LogsDirectory;
+        var method = typeof(PathService).Assembly.GetType("TheLadsLauncher.Program")!
+            .GetMethod("OnUiThreadException", BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(method);
+
+        // Send 10 errors
+        for (int i = 0; i < 10; i++)
+        {
+            var args = CreateEventArgs(new Exception($"error {i}"));
+            method.Invoke(null, new object?[] { null, args });
+            Assert.True(args.Handled);
+        }
+
+        // The 11th error trips the circuit breaker
+        var tripArgs = CreateEventArgs(new Exception("trip error"));
+        method.Invoke(null, new object?[] { null, tripArgs });
+        Assert.False(tripArgs.Handled);
+
+        string debug = File.ReadAllText(Path.Combine(logs, "launcher_debug.txt"));
+        Assert.Contains("circuit breaker tripped", debug);
+    }
 }

@@ -157,23 +157,42 @@ class Program
         catch (Exception) { } // the log must never be what ends the launcher
     }
 
+    internal const int MaxUiErrorsPerWindow = 10;
+    internal static readonly TimeSpan UiErrorWindow = TimeSpan.FromSeconds(10);
+    private static int _uiErrorBurstCount;
+    private static DateTime _uiErrorWindowStart;
     private static string? _lastUiError;
     private static DateTime _lastUiErrorAt;
 
     // An exception that escapes any UI handler (the launcher has 80+ async void ones) would end the process, and with it the exit handling
     // of a running game (options sync-back, crash report). It is logged and shown instead. Only a state the process cannot be trusted in
     // still ends it, logged. The same error again within 30 s (a timer that keeps throwing) is handled quietly, not logged over and over.
-    private static void OnUiThreadException(object? sender, Avalonia.Threading.DispatcherUnhandledExceptionEventArgs e)
+    // If a rapid storm of unhandled UI errors exceeds 10 in 10 s, the circuit breaker trips and lets the process terminate.
+    internal static void OnUiThreadException(object? sender, Avalonia.Threading.DispatcherUnhandledExceptionEventArgs e)
     {
         if (e.Exception is OutOfMemoryException or AccessViolationException)
         {
             LogUnhandled("UI thread, fatal", e.Exception);
             return;
         }
+
+        DateTime now = DateTime.UtcNow;
+        if (now - _uiErrorWindowStart > UiErrorWindow)
+        {
+            _uiErrorWindowStart = now;
+            _uiErrorBurstCount = 0;
+        }
+        _uiErrorBurstCount++;
+        if (_uiErrorBurstCount > MaxUiErrorsPerWindow)
+        {
+            LogUnhandled("UI thread, fatal (circuit breaker tripped)", e.Exception);
+            return;
+        }
+
         e.Handled = true;
         string key = e.Exception.GetType().FullName + e.Exception.Message;
-        if (key == _lastUiError && DateTime.UtcNow - _lastUiErrorAt < TimeSpan.FromSeconds(30)) return;
-        (_lastUiError, _lastUiErrorAt) = (key, DateTime.UtcNow);
+        if (key == _lastUiError && now - _lastUiErrorAt < TimeSpan.FromSeconds(30)) return;
+        (_lastUiError, _lastUiErrorAt) = (key, now);
         LogUnhandled("UI thread", e.Exception);
         try
         {
