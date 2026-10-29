@@ -120,12 +120,6 @@ public final class AriseNB9Features {
     private static void registerEventCallbacks() {
         UseBlockCallback.EVENT.register(AmendmentsBlockInteractions::handleUseBlock);
         AttackEntityCallback.EVENT.register(TorchFireHandler::handleAttack);
-        PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, be) -> {
-            if (HangingSignItemManager.isHangingSign(state)) {
-                HangingSignItemManager.onSignRemoved(level, pos, be);
-            }
-            return true;
-        });
     }
 
     private static <T extends Block> T registerBlock(

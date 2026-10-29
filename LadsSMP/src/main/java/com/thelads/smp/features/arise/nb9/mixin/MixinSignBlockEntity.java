@@ -53,4 +53,13 @@ public abstract class MixinSignBlockEntity extends BlockEntity implements Hangin
     private void ladssmp$loadDisplayedItem(ValueInput input, CallbackInfo ci) {
         this.ladssmp$displayedItem = input.read("LadssmpDisplayedItem", ItemStack.CODEC).orElse(ItemStack.EMPTY);
     }
+
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        super.preRemoveSideEffects(pos, state);
+        if (level != null && !level.isClientSide() && ladssmp$displayedItem != null && !ladssmp$displayedItem.isEmpty()) {
+            net.minecraft.world.level.block.Block.popResource(level, pos, ladssmp$displayedItem);
+            ladssmp$displayedItem = ItemStack.EMPTY;
+        }
+    }
 }
