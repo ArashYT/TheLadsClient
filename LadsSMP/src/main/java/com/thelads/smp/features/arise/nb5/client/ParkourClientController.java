@@ -46,10 +46,6 @@ public final class ParkourClientController {
         return serverConfirmed;
     }
 
-    public static void setServerConfirmedForTesting(boolean confirmed) {
-        serverConfirmed = confirmed;
-    }
-
     public static void resetSession() {
         serverConfirmed = false;
         stamina = 1000;
