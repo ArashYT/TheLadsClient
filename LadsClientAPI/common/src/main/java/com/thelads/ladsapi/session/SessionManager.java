@@ -86,28 +86,20 @@ public final class SessionManager implements LadsClientAPI {
         // The tasks belong to this session object: a quick reconnect must not inherit the old tasks.
         // Schedule hello at +1 tick
         platform.runLater(() -> {
-            boolean shouldSend = false;
             synchronized (lock) {
                 if (sessions.get(uuid) == session && !session.isHelloAcked() && !session.isHelloSent()) {
-                    shouldSend = true;
+                    session.sendHello();
                 }
-            }
-            if (shouldSend) {
-                session.sendHello();
             }
         }, 1);
 
         // Resend hello at +60 ticks if no reply, never more
         platform.runLater(() -> {
-            boolean shouldSend = false;
             synchronized (lock) {
                 if (sessions.get(uuid) == session && !session.isHelloAcked() && !session.isHelloResent()) {
                     session.setHelloResent(true);
-                    shouldSend = true;
+                    session.sendHello();
                 }
-            }
-            if (shouldSend) {
-                session.sendHello();
             }
         }, 60);
 
