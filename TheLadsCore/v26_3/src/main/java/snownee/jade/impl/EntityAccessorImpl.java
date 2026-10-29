@@ -56,7 +56,8 @@ public class EntityAccessorImpl extends AccessorImpl<EntityHitResult> implements
 			}
 
 			Entity entity = accessor.getEntity();
-			if (entity == null || entity.isRemoved() || !player.level().isLoaded(entity.blockPosition())) {
+			// Validate existence, removal state, dimension match, and chunk loaded state. Reachability is checked below via Jade.isOutOfReach.
+			if (entity == null || entity.isRemoved() || entity.level() != player.level() || !player.level().isLoaded(entity.blockPosition())) {
 				return;
 			}
 			CompoundTag tag = accessor.getServerData();
