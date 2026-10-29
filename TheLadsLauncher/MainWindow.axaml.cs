@@ -1302,7 +1302,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private static string GetRecentLogText(int maxLines = 2500)
+    private long _logClearCutoffBytes = -1;
+
+    private static string GetRecentLogText(int maxLines = 2500, long cutoffBytes = -1)
     {
         try
         {
@@ -1311,7 +1313,13 @@ public partial class MainWindow : Window
             if (File.Exists(logFile))
             {
                 using var fs = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                if (cutoffBytes >= 0)
+                {
+                    if (cutoffBytes >= fs.Length) return "";
+                    fs.Seek(cutoffBytes, SeekOrigin.Begin);
+                }
                 using var reader = new StreamReader(fs);
+                if (cutoffBytes > 0) reader.ReadLine();
                 var queue = new Queue<string>(maxLines);
                 while (reader.ReadLine() is { } line)
                 {
@@ -1333,9 +1341,11 @@ public partial class MainWindow : Window
             string textToCopy = LogBox.Text ?? "";
             if (string.IsNullOrWhiteSpace(LogSearchBox?.Text))
             {
-                string fileText = GetRecentLogText(2500);
+                string fileText = GetRecentLogText(2500, _logClearCutoffBytes);
                 if (!string.IsNullOrWhiteSpace(fileText))
                     textToCopy = fileText;
+                else if (_logClearCutoffBytes >= 0)
+                    textToCopy = LogBox.Text ?? "";
             }
 
             if (!string.IsNullOrEmpty(textToCopy))
@@ -1351,6 +1361,10 @@ public partial class MainWindow : Window
                     StatusText.Text = "Clipboard unavailable.";
                 }
             }
+            else
+            {
+                StatusText.Text = "Log is empty; nothing to copy.";
+            }
         }
         catch (Exception ex)
         {
@@ -1362,7 +1376,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            string logText = GetRecentLogText(2500);
+            string logText = GetRecentLogText(2500, _logClearCutoffBytes);
             if (string.IsNullOrWhiteSpace(logText))
                 logText = LogBox.Text ?? "";
 
@@ -1374,7 +1388,7 @@ public partial class MainWindow : Window
 
             string sanitized = TheLadsLauncher.Services.LogShareService.SanitizeLog(logText);
             string preview = sanitized.Length > 2000
-                ? sanitized[..2000] + "\n\n[... truncated preview; full sanitized log will be uploaded ...]"
+                ? "[... older lines omitted ...]\n\n" + sanitized[^2000..]
                 : sanitized;
 
             string prompt = "The following sanitized log will be publicly uploaded to mclo.gs for sharing:\n\n" + preview;
@@ -1429,6 +1443,16 @@ public partial class MainWindow : Window
             allLogLines.Clear();
             LogBox.Text = "";
             _logDirty = false;
+            try
+            {
+                var logsDir = TheLadsLauncher.Services.PathService.Instance.LogsDirectory;
+                var logFile = Path.Combine(logsDir, "launcher_debug.txt");
+                _logClearCutoffBytes = File.Exists(logFile) ? new FileInfo(logFile).Length : 0;
+            }
+            catch
+            {
+                _logClearCutoffBytes = long.MaxValue;
+            }
         }
     }
 
