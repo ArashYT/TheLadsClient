@@ -17,7 +17,14 @@ import java.io.IOException;
 public final class AriseNB6Config {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsSMP/AriseNB6Config");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final File CONFIG_FILE = new File("config/ladssmp/arise-nb6.json");
+    private static File getDefaultConfigFile() {
+        try {
+            return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ladssmp").resolve("arise-nb6.json").toFile();
+        } catch (Throwable ignored) {
+            return new File("build/test-config/ladssmp/arise-nb6.json");
+        }
+    }
+    private static final File CONFIG_FILE = getDefaultConfigFile();
 
     private static AriseNB6Config INSTANCE = new AriseNB6Config();
 

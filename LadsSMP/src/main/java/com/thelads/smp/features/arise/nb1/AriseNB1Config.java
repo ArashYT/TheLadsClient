@@ -18,7 +18,14 @@ import java.util.*;
 public final class AriseNB1Config {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsSMP-AriseNB1Config");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_PATH = Path.of("config", "ladssmp", "arise-nb1.json");
+    private static Path getDefaultConfigPath() {
+        try {
+            return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ladssmp").resolve("arise-nb1.json");
+        } catch (Throwable ignored) {
+            return Path.of("build", "test-config", "ladssmp", "arise-nb1.json");
+        }
+    }
+    private static final Path CONFIG_PATH = getDefaultConfigPath();
     private static AriseNB1Config INSTANCE = new AriseNB1Config();
 
     public static AriseNB1Config get() {

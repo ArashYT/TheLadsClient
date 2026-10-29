@@ -31,7 +31,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class DimensionAccessFeature {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsSMP-DimensionAccess");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path ACCESS_PATH = Path.of("config", "ladssmp", "dimension_access.json");
+    private static Path getDefaultAccessPath() {
+        try {
+            return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ladssmp").resolve("dimension_access.json");
+        } catch (Throwable ignored) {
+            return Path.of("build", "test-config", "ladssmp", "dimension_access.json");
+        }
+    }
+    private static final Path ACCESS_PATH = getDefaultAccessPath();
 
     // Key: player UUID or lowercase username -> Set of denied dimension IDs (e.g. "minecraft:the_nether")
     private static final Map<String, Set<String>> DENIED_DIMENSIONS = new ConcurrentHashMap<>();

@@ -24,7 +24,14 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class FishingJournalManager {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsSMP/FishingJournalManager");
-    private static final File STORAGE_DIR = new File("config/ladssmp/fishing_journal");
+    private static File getDefaultStorageDir() {
+        try {
+            return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ladssmp").resolve("fishing_journal").toFile();
+        } catch (Throwable ignored) {
+            return new File("build/test-config/ladssmp/fishing_journal");
+        }
+    }
+    private static final File STORAGE_DIR = getDefaultStorageDir();
     private static final Map<UUID, FishingJournalData> CACHE = new ConcurrentHashMap<>();
 
     private FishingJournalManager() {}
