@@ -652,8 +652,7 @@ public partial class MainWindow : Window
 
     /// <summary>Installing restarts the launcher, so it waits for Minecraft, sign-in, mod work and open dialogs.</summary>
     private bool UpdateBlocked() => _windowClosed || _launching || _modsBusy || _addingAccount || _showingMicrosoftSetup || _releaseNotesOpen
-        || _runningProcesses.Keys.Any(IsGameRunning) || SharedContentService.Instance.IsBusy
-        || _profileService.GetProfiles().Any(p => GameRunningByMarker(_pathService.GetProfileDirectory(p)));
+        || SharedContentService.Instance.IsBusy || AnyGameRunning();
 
     private void ReportUpdate(string message)
     {
@@ -671,7 +670,27 @@ public partial class MainWindow : Window
     private string? _readyUpdateVersion; // a verified update waits for the Update button (offered again at Play)
     private double _updateNowPulseElapsed;
 
-    private bool AnyGameRunning() => _runningProcesses.Keys.Any(IsGameRunning) || _profileService.GetProfiles().Any(p => GameRunningByMarker(_pathService.GetProfileDirectory(p)));
+    private DateTime _lastMarkerCheckUtc;
+    private bool _cachedAnyMarkerRunning;
+
+    private bool AnyMarkerRunningCached()
+    {
+        if (DateTime.UtcNow - _lastMarkerCheckUtc < TimeSpan.FromSeconds(30))
+            return _cachedAnyMarkerRunning;
+
+        _lastMarkerCheckUtc = DateTime.UtcNow;
+        try
+        {
+            _cachedAnyMarkerRunning = _profileService.GetProfiles().Any(p => GameRunningByMarker(_pathService.GetProfileDirectory(p)));
+        }
+        catch
+        {
+            _cachedAnyMarkerRunning = false;
+        }
+        return _cachedAnyMarkerRunning;
+    }
+
+    private bool AnyGameRunning() => _runningProcesses.Keys.Any(IsGameRunning) || AnyMarkerRunningCached();
 
     private void UpdateAnimationTimers()
     {
@@ -766,13 +785,18 @@ public partial class MainWindow : Window
         catch (InvalidOperationException) { return false; }
     }
 
+    private readonly HashSet<string> _loggedMarkerErrors = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>A game started for this folder by any launcher instance (running marker). Unreadable counts as running.</summary>
     private bool GameRunningByMarker(string gameDirectory)
     {
         try { return RunningGameMarker.IsRunning(gameDirectory); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Log($"[Launcher] Could not read the running-game marker in '{gameDirectory}': {ex.Message}. Treating the game as running.");
+            if (_loggedMarkerErrors.Add(gameDirectory))
+            {
+                Log($"[Launcher] Could not read the running-game marker in '{gameDirectory}': {ex.Message}. Treating the game as running.");
+            }
             return true;
         }
     }
