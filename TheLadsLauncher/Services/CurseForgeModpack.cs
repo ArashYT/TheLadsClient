@@ -149,10 +149,15 @@ public static class CurseForgeModpack
         {
             cancellationToken.ThrowIfCancellationRequested();
             report($"Checking mod {number} of {mods.Count} (Project {f.ProjectId})…");
-            ContentFile? file;
+            ContentFile? file = null;
             try { file = await catalog!.GetCurseForgeFileAsync(f.ProjectId, f.FileId, cancellationToken); }
+            catch (ContentSourceException e) when (e.Message.Contains("404"))
+            {
+                unavailable.Add($"Project {f.ProjectId}, file {f.FileId} (CurseForge no longer has it)");
+                continue;
+            }
             catch (ContentSourceException e) { throw new ContentSourceException($"Project {f.ProjectId}, file {f.FileId}: {e.Message}", e); }
-            if (file == null) unavailable.Add($"project {f.ProjectId}, file {f.FileId} (CurseForge no longer has it)");
+            if (file == null) unavailable.Add($"Project {f.ProjectId}, file {f.FileId} (CurseForge no longer has it)");
             else if (string.IsNullOrEmpty(file.Url))
                 unavailable.Add($"{file.FileName} (its author allows no downloads outside CurseForge: https://www.curseforge.com/projects/{f.ProjectId})");
             else plan.Add(file);

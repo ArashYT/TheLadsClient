@@ -260,6 +260,23 @@ public class CurseForgeModpackTests
     }
 
     [Fact]
+    public async Task InstallAsync_ListsEveryMissingModWhenCurseForgeReturns404()
+    {
+        using var temp = new TestDirectory();
+        string game = Path.Combine(temp.Path, "minecraft");
+        var api = new CurseForgeApi(new Mod(111, 222, "a.jar", "mod a", Missing: true), new Mod(333, 444, "b.jar", "mod b", Missing: true));
+        using var http = new HttpClient(api);
+
+        var error = await Assert.ThrowsAsync<ContentSourceException>(() => CurseForgeModpack.InstallAsync(
+            PackZip(temp, ManifestOf((111, 222, true), (333, 444, true))), game, new ContentCatalog(http, null, null, "test-key"), _ => { }));
+
+        Assert.Contains("2 of the pack's 2 required mods cannot be downloaded", error.Message);
+        Assert.Contains("Project 111, file 222", error.Message);
+        Assert.Contains("Project 333, file 444", error.Message);
+        AssertNothingWritten(game);
+    }
+
+    [Fact]
     public async Task InstallAsync_ListsEveryModWhoseAuthorBlocksDownloads_AndInstallsNothing()
     {
         using var temp = new TestDirectory();
