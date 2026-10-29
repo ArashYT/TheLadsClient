@@ -172,3 +172,4 @@ desktop.ini
 # Pinned, licensed configuration libraries used by the native 26.2 gallery.
 !TheLadsCore/v26_2/libs/catconfig-mc-26.2-0.2.1.jar
 !TheLadsCore/v26_2/libs/catconfig-0.3.0.jar
+TheLadsLauncher/settings.json

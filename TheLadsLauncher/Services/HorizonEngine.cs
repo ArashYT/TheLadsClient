@@ -27,6 +27,8 @@ public static class HorizonEngine
     const string ZipUrl = "https://bot.arashyt.ca/packs/lads-horizon-0.1.0-windows-x64.zip";
     // research-lock.json of Horizon v0.2.75: the 26.3 server jar its preparation accepts.
     public const string ServerJarSha1 = "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c";
+    public const long MaxZipBytes = 250L * 1024 * 1024; // 250 MB max for Horizon zip
+    public const long MaxServerJarBytes = 100L * 1024 * 1024; // 100 MB max for 26.3 server jar
 
     public const string RiskWarning =
         "Lads Horizon is an early, experimental Lads Client built on Horizon, an unofficial Minecraft 26.3 rewritten in Rust " +
@@ -61,7 +63,7 @@ public static class HorizonEngine
     static HttpClient CreateHttp()
     {
         var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("TheLadsLauncher");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd(LauncherHttp.UserAgent);
         return http;
     }
 
@@ -85,8 +87,17 @@ public static class HorizonEngine
         status("Unpacking Horizon...");
         await Task.Run(() => ZipFile.ExtractToDirectory(zip, staging), token);
         File.Delete(zip);
-        Directory.Move(staging, Path.Combine(root, Tag));
+        string targetDir = Path.Combine(root, Tag);
+        ReplaceInstall(staging, targetDir);
+        if (!File.Exists(Path.Combine(game, "horizon-client.exe")))
+            throw new InvalidOperationException($"Horizon installation completed but horizon-client.exe was not found in {game}.");
         return game;
+    }
+
+    internal static void ReplaceInstall(string staging, string target)
+    {
+        if (Directory.Exists(target)) Directory.Delete(target, true);
+        Directory.Move(staging, target);
     }
 
     /// <summary>
@@ -106,7 +117,7 @@ public static class HorizonEngine
             string url = doc.RootElement.GetProperty("downloads").GetProperty("server").GetProperty("url").GetString()!;
             if (!url.StartsWith("https://piston-data.mojang.com/", StringComparison.Ordinal))
                 throw new InvalidOperationException("The 26.3 version file names an unexpected server jar host.");
-            await DownloadAsync(url, serverJar + ".part", token);
+            await DownloadAsync(url, serverJar + ".part", token, MaxServerJarBytes);
             if (!string.Equals(await Sha1Async(serverJar + ".part", token), ServerJarSha1, StringComparison.OrdinalIgnoreCase))
             {
                 File.Delete(serverJar + ".part");
@@ -145,8 +156,9 @@ public static class HorizonEngine
         void Line(string? line)
         {
             if (string.IsNullOrWhiteSpace(line)) return;
-            sink.WriteLine(line);
-            status("Horizon: " + (line.Length > 120 ? line[..120] + "…" : line));
+            try { sink.WriteLine(line); }
+            catch (ObjectDisposedException) { return; }
+            try { status("Horizon: " + (line.Length > 120 ? line[..120] + "…" : line)); } catch { }
         }
         process.OutputDataReceived += (_, e) => Line(e.Data);
         process.ErrorDataReceived += (_, e) => Line(e.Data);
@@ -154,7 +166,12 @@ public static class HorizonEngine
         process.BeginErrorReadLine();
         try { await process.WaitForExitAsync(token); }
         catch (OperationCanceledException) { try { process.Kill(true); } catch { } throw; }
-        finally { sink.Dispose(); }
+        finally
+        {
+            try { process.CancelOutputRead(); } catch { }
+            try { process.CancelErrorRead(); } catch { }
+            sink.Dispose();
+        }
         if (process.ExitCode != 0)
             throw new InvalidOperationException($"Horizon's preparation failed (exit {process.ExitCode}). See {log}");
     }
@@ -174,6 +191,7 @@ public static class HorizonEngine
         psi.Environment["HORIZON_HOME"] = home;
         psi.ArgumentList.Add("--resources");
         psi.ArgumentList.Add(resources);
+        string? sessionFile = null;
         if (offline)
         {
             psi.ArgumentList.Add("--name");
@@ -181,16 +199,42 @@ public static class HorizonEngine
         }
         else
         {
+            sessionFile = WriteSessionFile(home, session);
             psi.ArgumentList.Add("--session-file");
-            psi.ArgumentList.Add(WriteSessionFile(home, session));
+            psi.ArgumentList.Add(sessionFile);
         }
         DateTime startedUtc = DateTime.UtcNow;
-        var process = Process.Start(psi) ?? throw new InvalidOperationException("Could not start Horizon.");
+        Process process;
+        try
+        {
+            process = Process.Start(psi) ?? throw new InvalidOperationException("Could not start Horizon.");
+        }
+        catch
+        {
+            if (sessionFile != null)
+            {
+                try { if (File.Exists(sessionFile)) File.Delete(sessionFile); } catch { }
+            }
+            throw;
+        }
         try { startedUtc = process.StartTime.ToUniversalTime(); } catch { }
+
+        if (sessionFile != null)
+        {
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(60)).ConfigureAwait(false);
+                try { if (File.Exists(sessionFile)) File.Delete(sessionFile); } catch { }
+            });
+        }
 
         process.EnableRaisingEvents = true;
         process.Exited += async (_, _) =>
         {
+            if (sessionFile != null)
+            {
+                try { if (File.Exists(sessionFile)) File.Delete(sessionFile); } catch { }
+            }
             try
             {
                 int exitCode = 0;
@@ -273,12 +317,21 @@ public static class HorizonEngine
             File.AppendAllText(settings, (text.Length == 0 || text.EndsWith('\n') ? "" : "\n") + "mod.lads_hud:true\n");
     }
 
+    public static void ScrubSessionFiles(string home)
+    {
+        string dir = Path.Combine(home, "sessions");
+        if (Directory.Exists(dir))
+        {
+            foreach (var old in Directory.GetFiles(dir, "session-*.json"))
+                try { File.Delete(old); } catch (IOException) { }
+        }
+    }
+
     public static string WriteSessionFile(string home, MSession session)
     {
         string dir = Path.Combine(home, "sessions");
         Directory.CreateDirectory(dir);
-        // A game that died before reading its file leaves the token on disk: never keep an old one.
-        foreach (var old in Directory.GetFiles(dir, "session-*.json")) try { File.Delete(old); } catch (IOException) { }
+        ScrubSessionFiles(home);
         string file = Path.Combine(dir, $"session-{Guid.NewGuid():N}.json");
         using var stream = new FileStream(file, FileMode.CreateNew, FileAccess.Write, FileShare.None);
         JsonSerializer.Serialize(stream, new
@@ -292,12 +345,15 @@ public static class HorizonEngine
         return file;
     }
 
-    static async Task DownloadAsync(string url, string file, CancellationToken token)
+    static async Task DownloadAsync(string url, string file, CancellationToken token, long maxBytes = MaxZipBytes)
     {
         using var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
         response.EnsureSuccessStatusCode();
+        long limit = response.Content.Headers.ContentLength ?? maxBytes;
+        if (limit > maxBytes) limit = maxBytes;
+        await using var input = await response.Content.ReadAsStreamAsync(token);
         await using var output = new FileStream(file, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-        await response.Content.CopyToAsync(output, token);
+        await ClientModInstaller.CopyWithStallTimeoutAsync(input, output, limit, TimeSpan.FromSeconds(60), Path.GetFileName(file), token);
     }
 
     public static async Task<string> Sha256Async(string file, CancellationToken token)

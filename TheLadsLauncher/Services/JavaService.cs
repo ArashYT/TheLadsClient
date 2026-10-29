@@ -25,7 +25,16 @@ public class JavaService : IJavaService
     public JavaService(IPathService pathService, HttpClient? httpClient = null)
     {
         _pathService = pathService;
-        _httpClient = httpClient ?? new HttpClient();
+        if (httpClient != null)
+        {
+            _httpClient = httpClient;
+        }
+        else
+        {
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(LauncherHttp.UserAgent);
+            _httpClient = client;
+        }
     }
 
     private readonly ConcurrentDictionary<int, string> _detectedJavaCache = new();
@@ -160,27 +169,30 @@ public class JavaService : IJavaService
             {
                 response.EnsureSuccessStatusCode();
                 var totalBytes = response.Content.Headers.ContentLength ?? -1L;
+                long limit = totalBytes > 0 ? (totalBytes + 1024 * 1024) : (500L * 1024 * 1024);
 
-                using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken))
-                using (var fileStream = new FileStream(tempZip, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true))
-                {
-                    var buffer = new byte[81920];
-                    long totalRead = 0;
-                    int bytesRead;
+                await using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+                await using var fileStream = new FileStream(tempZip, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
 
-                    while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+                long copied = await ClientModInstaller.CopyWithStallTimeoutAsync(
+                    contentStream,
+                    fileStream,
+                    limit,
+                    TimeSpan.FromSeconds(60),
+                    $"Java {majorVersion}",
+                    cancellationToken,
+                    totalRead =>
                     {
-                        await fileStream.WriteAsync(buffer, 0, bytesRead, cancellationToken);
-                        totalRead += bytesRead;
-
                         if (totalBytes > 0)
                         {
                             var pct = (double)totalRead / totalBytes * 100.0;
                             progress?.Report(pct);
                             statusCallback?.Invoke($"Downloading Java {majorVersion} ({pct:F0}%)...");
                         }
-                    }
-                }
+                    });
+
+                if (totalBytes > 0 && copied != totalBytes)
+                    throw new InvalidDataException($"Incomplete download for Java {majorVersion}: expected {totalBytes} bytes, received {copied}.");
             }
 
             if (string.IsNullOrWhiteSpace(sha256))

@@ -54,19 +54,6 @@ public static class ServerListService
         return true;
     }
 
-    /// <summary>
-    /// Ensures a server with <paramref name="name"/> and <paramref name="address"/> is in the server list of <paramref name="target"/>.
-    /// Existing entries with matching address or name are updated; all other servers are preserved.
-    /// </summary>
-    public static async Task<bool> EnsureServerAsync(ServerListTarget target, string name, string address)
-    {
-        using var held = target.LockFile == null ? null : await LockFiles.AcquireAsync(target.LockFile, LockTimeout);
-        var list = ReadList(target.File);
-        if (!list.EnsureEntry(name, address) && File.Exists(target.File)) return false;
-        await list.WriteAsync(target.File);
-        return true;
-    }
-
     public const string PinnedName = "The Lads Network", PinnedAddress = "mc.arashyt.ca";
 
     public static bool IsPinned(string address) => Key(address) == Key(PinnedAddress);

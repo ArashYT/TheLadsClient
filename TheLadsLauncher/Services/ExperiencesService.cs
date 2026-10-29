@@ -276,7 +276,7 @@ public static class ExperiencesService
     private static HttpClient CreateDefaultHttp()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("TheLadsLauncher/1.0 (https://bot.arashyt.ca)");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(LauncherHttp.UserAgent);
         return client;
     }
 

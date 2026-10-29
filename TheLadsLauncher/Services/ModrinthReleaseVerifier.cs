@@ -20,7 +20,7 @@ public static class ModrinthReleaseVerifier
             throw new InvalidDataException("Invalid Modrinth project or release ID.");
         using var request = new HttpRequestMessage(HttpMethod.Get,
             "https://api.modrinth.com/v2/version/" + entry.VersionId);
-        request.Headers.UserAgent.ParseAdd("TheLadsClient/1.2.1");
+        request.Headers.UserAgent.ParseAdd(LauncherHttp.UserAgent);
         using var response = await client.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));

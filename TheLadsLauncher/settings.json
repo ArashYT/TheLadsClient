@@ -1,8 +1,0 @@
-{
-    "ModrinthApiUrl": "http://127.0.0.1:64985",
-    "CurseForgeApiUrl": "http://127.0.0.1:64985",
-    "CurseForgeApiKey": "workflow_key",
-    "InstancePath": "test_instance",
-    "MaxRamMb": 6144,
-    "ShowParticles": true
-}

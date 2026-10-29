@@ -34,7 +34,7 @@ Inside the main folder `<repo-root>`, the components are organized as follows:
     - `index.toml`: List of all mods, resource packs, and configurations with SHA256 hashes.
     - `mods/`: Subfolder where all mod `.jar` files are stored.
 
-### C. `TheLadsLauncher_Clean/` (Client Launcher)
+### C. `TheLadsLauncher/` (Client Launcher)
 *   **Language:** C#
 *   **Framework:** .NET SDK (`TheLadsLauncher.csproj`)
 *   **Build Tool:** `dotnet` CLI
@@ -45,33 +45,35 @@ Inside the main folder `<repo-root>`, the components are organized as follows:
 
 Instead of running manual builds, there is an automated build and deploy script: **`Build-LadsClient.ps1`**.
 
-You can run these commands directly using your terminal/bash execution tools:
+You can run these commands directly using PowerShell:
 
-*   **Build and Deploy Mod to Packwiz (Default):**
+*   **Build Core Modules (Default):**
     ```powershell
     powershell -ExecutionPolicy Bypass -File .\Build-LadsClient.ps1
     ```
-    This compiles the Java code (`TheLadsCore`), copies the resulting `.jar` into the `The Lads Client Packwiz/mods` directory, and recalculates the SHA256 hashes inside `index.toml` and `pack.toml`.
-    
-*   **Build Mod + C# Launcher:**
+    Compiles the multi-version Java core (`TheLadsCore`) and deploys the production jars to the launcher's `game-mods/<version>` directories (`1.8.9`, `1.20.1`, `1.21.11`, `26.2`, `26.3`).
+
+*   **Build Core + C# Launcher:**
     ```powershell
     powershell -ExecutionPolicy Bypass -File .\Build-LadsClient.ps1 -Launcher
     ```
-    
-*   **Watch Mode (Auto-rebuild on source edits):**
+    Builds the core modules and publishes the C# launcher (`TheLadsLauncher`) to `artifacts/client` (self-contained `win-x64`), validating core jars, mod manifests, and bundled documentation.
+
+*   **Build and Install Locally:**
     ```powershell
-    powershell -ExecutionPolicy Bypass -File .\Build-LadsClient.ps1 -Watch
+    powershell -ExecutionPolicy Bypass -File .\Build-LadsClient.ps1 -Install
     ```
+    Builds core, publishes the launcher, and runs `tools/Install-LadsRelease.ps1` to install the release locally.
 
 ---
 
 ## 4. How to Code & Assist Arash
 
 When writing code or helping debug issues:
-1.  **Fabric Modding (Java):** If asked to write new features for `TheLadsCore`, locate the sources in `TheLadsCore/src/main/java`. Keep edits compatible with the Fabric API version specified in `gradle.properties`.
-2.  **Launcher Features (C#):** Work inside `TheLadsLauncher_Clean/` to add launcher tweaks or authentication updates.
+1.  **Fabric Modding (Java):** If asked to write new features for `TheLadsCore`, locate the sources in `TheLadsCore/common` and version-specific modules. Keep edits compatible with the supported Minecraft versions.
+2.  **Launcher Features (C#):** Work inside `TheLadsLauncher/` to add launcher tweaks or authentication updates.
 3.  **Compile & Test Cycle:**
     - Make your code changes in the target components.
-    - Execute the build script `.\Build-LadsClient.ps1` using your shell execution tool to compile the jar and update Packwiz.
+    - Execute the build script `.\Build-LadsClient.ps1` (or `.\Build-LadsClient.ps1 -Launcher`) using PowerShell to compile and verify.
     - Check the console logs for compilation errors. If a build fails, inspect `gradlew.bat` output or `dotnet build` output and correct the source.
-4.  **Auto-Run / Verification:** Once built successfully, notify Arash that the mod is compiled and deployed to the Packwiz configuration, ready for Minecraft execution.
+4.  **Auto-Run / Verification:** Once built successfully, notify Arash that the changes are compiled and ready.

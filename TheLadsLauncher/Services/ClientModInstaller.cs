@@ -71,7 +71,7 @@ public static class ClientModInstaller
     private static HttpClient CreateClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromMinutes(3) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("TheLadsClient/1.1");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(LauncherHttp.UserAgent);
         return client;
     }
 
@@ -535,7 +535,7 @@ public static class ClientModInstaller
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeout.CancelAfter(TimeSpan.FromSeconds(5)); // Metadata only; never hold up a launch for long.
             using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.modrinth.com/v2/version_file/{hash}?algorithm=sha512");
-            request.Headers.UserAgent.ParseAdd("TheLadsClient/1.2.3");
+            request.Headers.UserAgent.ParseAdd(LauncherHttp.UserAgent);
             using var response = await client.SendAsync(request, timeout.Token);
             response.EnsureSuccessStatusCode();
             using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
@@ -632,7 +632,7 @@ public static class ClientModInstaller
     /// <summary>Copies at most <paramref name="limit"/> bytes and returns the count. A slow transfer never times out here;
     /// only <paramref name="idle"/> without a single byte does (TimeoutException).</summary>
     public static async Task<long> CopyWithStallTimeoutAsync(Stream input, Stream output, long limit, TimeSpan idle, string name,
-        CancellationToken token)
+        CancellationToken token, Action<long>? onProgress = null)
     {
         using var stall = CancellationTokenSource.CreateLinkedTokenSource(token);
         var buffer = new byte[81920]; long total = 0; int count;
@@ -647,6 +647,7 @@ public static class ClientModInstaller
                 total += count;
                 if (total > limit) throw new InvalidDataException($"Oversized download for {name}.");
                 await output.WriteAsync(buffer.AsMemory(0, count), token);
+                onProgress?.Invoke(total);
             }
         }
         catch (OperationCanceledException) when (!token.IsCancellationRequested)

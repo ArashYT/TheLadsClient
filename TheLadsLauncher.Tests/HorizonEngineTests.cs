@@ -218,4 +218,54 @@ public class HorizonEngineTests : IDisposable
         Assert.Equal(report1, sentFiles[0]);
         Assert.Equal(report2, sentFiles[1]);
     }
+
+    [Fact]
+    public void ScrubSessionFiles_DeletesExistingSessionFiles()
+    {
+        var session = new MSession("Alex", "token-xyz", "0123456789abcdef0123456789abcdef");
+        string file1 = HorizonEngine.WriteSessionFile(_home, session);
+        Assert.True(File.Exists(file1));
+
+        HorizonEngine.ScrubSessionFiles(_home);
+        Assert.False(File.Exists(file1));
+    }
+
+    [Fact]
+    public void Start_WhenProcessFailsToStart_DeletesSessionFile()
+    {
+        var session = new MSession("Player", "token-fail", "0123456789abcdef0123456789abcdef");
+        string nonexistentGame = Path.Combine(_home, "nonexistent-game");
+
+        Assert.ThrowsAny<Exception>(() =>
+            HorizonEngine.Start(_home, nonexistentGame, Path.Combine(_home, "resources"), session, offline: false));
+
+        string sessionsDir = Path.Combine(HorizonEngine.Home(_home), "sessions");
+        Assert.True(Directory.Exists(sessionsDir));
+        Assert.Empty(Directory.GetFiles(sessionsDir, "session-*.json"));
+    }
+
+    [Fact]
+    public void ReplaceInstall_ExistingTargetFolderLackingExe_ReplacesWithStaging()
+    {
+        string staging = Path.Combine(_home, "staging");
+        string target = Path.Combine(_home, "target");
+
+        // Existing target folder lacking horizon-client.exe (e.g. broken or interrupted installation)
+        string targetGame = Path.Combine(target, "horizon-windows-x64");
+        Directory.CreateDirectory(targetGame);
+        File.WriteAllText(Path.Combine(targetGame, "corrupted.dat"), "broken install lacking exe");
+        Assert.False(File.Exists(Path.Combine(targetGame, "horizon-client.exe")));
+
+        // Staging directory containing new extraction with the exe
+        string stagingGame = Path.Combine(staging, "horizon-windows-x64");
+        Directory.CreateDirectory(stagingGame);
+        File.WriteAllText(Path.Combine(stagingGame, "horizon-client.exe"), "binary");
+
+        HorizonEngine.ReplaceInstall(staging, target);
+
+        Assert.False(Directory.Exists(staging));
+        Assert.True(Directory.Exists(target));
+        Assert.False(File.Exists(Path.Combine(targetGame, "corrupted.dat")));
+        Assert.True(File.Exists(Path.Combine(targetGame, "horizon-client.exe")));
+    }
 }
