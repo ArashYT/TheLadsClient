@@ -357,12 +357,14 @@ public class ExperiencesServiceTests : IDisposable
         File.WriteAllText(Path.Combine(gameDir, "config", "broken.json"), "{ invalid json ");
 
         // First run: patch 1.0.1 applies, patch 1.0.2 fails, patch 1.0.3 is NOT applied (loop breaks)
-        int applied = await ExperiencesService.ApplyPendingPatchesAsync(_tempDir, "zero-smp-1.20.1", null, null, CancellationToken.None);
+        var statuses = new System.Collections.Generic.List<string>();
+        int applied = await ExperiencesService.ApplyPendingPatchesAsync(_tempDir, "zero-smp-1.20.1", null, statuses.Add, CancellationToken.None);
         Assert.Equal(1, applied);
         Assert.Equal(new[] { "1.0.1" }, ModpackPatchEngine.GetAppliedPatches(instDir));
         var options = File.ReadAllText(Path.Combine(gameDir, "options.txt"));
         Assert.Contains("key_first:key.keyboard.a", options);
         Assert.DoesNotContain("key_third:key.keyboard.c", options);
+        Assert.Contains(statuses, s => s.Contains("Update 1.0.2 is incomplete, so newer updates wait for it."));
 
         // Fix the broken json config file
         File.WriteAllText(Path.Combine(gameDir, "config", "broken.json"), "{}");

@@ -429,7 +429,10 @@ public static class ExperiencesService
         {
             token.ThrowIfCancellationRequested();
             if (!await ModpackPatchEngine.ApplyPatchAsync(instDir, patch, http, status, token))
+            {
+                status?.Invoke($"Update {patch.Version} is incomplete, so newer updates wait for it.");
                 break;
+            }
             applied++;
         }
         return applied;
