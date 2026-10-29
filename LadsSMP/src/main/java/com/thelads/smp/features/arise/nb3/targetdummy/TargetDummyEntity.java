@@ -57,6 +57,13 @@ public class TargetDummyEntity extends ArmorStand {
 
         // Shift + empty hand to dismantle and pick up dummy
         if (damageSource.getEntity() instanceof ServerPlayer player && player.isShiftKeyDown() && player.getMainHandItem().isEmpty()) {
+            for (EquipmentSlot slot : EquipmentSlot.VALUES) {
+                ItemStack stack = this.getItemBySlot(slot);
+                if (!stack.isEmpty()) {
+                    this.spawnAtLocation(serverLevel, stack);
+                    this.setItemSlot(slot, ItemStack.EMPTY);
+                }
+            }
             this.kill(serverLevel, player);
             this.spawnAtLocation(serverLevel, new ItemStack(AriseNb3Mod.TARGET_DUMMY_ITEM));
             return true;

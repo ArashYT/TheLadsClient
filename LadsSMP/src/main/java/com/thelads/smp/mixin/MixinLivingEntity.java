@@ -74,6 +74,7 @@ public abstract class MixinLivingEntity {
         LivingEntity self = (LivingEntity) (Object) this;
         if (!self.hasCustomName()) return;
         if (self instanceof Slime slime && slime.getSize() != 4) return;
+        if (self instanceof net.minecraft.world.entity.npc.AbstractVillager || self instanceof net.minecraft.world.entity.monster.zombie.ZombieVillager) return;
 
         ItemStack tagStack = new ItemStack(Items.NAME_TAG);
         tagStack.set(DataComponents.CUSTOM_NAME, self.getCustomName());
