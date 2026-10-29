@@ -208,4 +208,18 @@ public class NbtTests
         File.WriteAllBytes(serversDat, new byte[5 * 1024 * 1024]);
         Assert.Throws<InvalidDataException>(() => ServerListFile.ReadBytes(serversDat));
     }
+
+    [Fact]
+    public void Nbt_WhenListLengthExceedsTagBudget_ThrowsInvalidDataException()
+    {
+        // 2,000,001 elements exceeds MaxTags (2,000,000).
+        // Provide payload buffer so remaining bytes check passes and the tag budget check trips.
+        int count = 2_000_001;
+        var header = new Bytes().Tag(10, "").Tag(9, "overflowList").B(1).Int(count).ToArray();
+        var data = new byte[header.Length + count];
+        Buffer.BlockCopy(header, 0, data, 0, header.Length);
+
+        var ex = Assert.Throws<InvalidDataException>(() => Nbt.Read(data));
+        Assert.Contains("exceeds the remaining tag budget", ex.Message);
+    }
 }

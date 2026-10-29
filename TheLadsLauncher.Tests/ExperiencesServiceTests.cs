@@ -712,6 +712,43 @@ public class ExperiencesServiceTests : IDisposable
         Assert.Equal(experience, ExperiencesService.IsExperienceInstance(instanceId));
     }
 
+    private sealed class SlowCancellingHandler : HttpMessageHandler
+    {
+        private readonly CancellationTokenSource _cts;
+
+        public SlowCancellingHandler(CancellationTokenSource cts) => _cts = cts;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var stream = new CancellingStream(_cts);
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(stream)
+            };
+            response.Content.Headers.ContentLength = 4096;
+            return Task.FromResult(response);
+        }
+
+        private sealed class CancellingStream : MemoryStream
+        {
+            private readonly CancellationTokenSource _cts;
+            private bool _cancelled;
+
+            public CancellingStream(CancellationTokenSource cts) : base(new byte[4096]) => _cts = cts;
+
+            public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            {
+                if (!_cancelled)
+                {
+                    _cancelled = true;
+                    _cts.Cancel();
+                    return await base.ReadAsync(buffer[..Math.Min(buffer.Length, 512)], cancellationToken);
+                }
+                throw new OperationCanceledException(_cts.Token);
+            }
+        }
+    }
+
     [Fact]
     public async Task EnsurePackSourceAsync_WhenCancelled_CleansUpPartFile()
     {
@@ -732,11 +769,7 @@ public class ExperiencesServiceTests : IDisposable
         );
 
         using var cts = new CancellationTokenSource();
-        cts.Cancel();
-
-        var router = new RouteHandler();
-        router.Add(exp.PackArchiveUrl, new byte[1024]);
-        using var http = new HttpClient(router);
+        using var http = new HttpClient(new SlowCancellingHandler(cts));
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             ExperiencesService.EnsurePackSourceAsync(_tempDir, exp, http, null, cts.Token));
