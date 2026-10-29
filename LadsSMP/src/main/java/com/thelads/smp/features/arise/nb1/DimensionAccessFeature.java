@@ -20,6 +20,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -109,18 +110,24 @@ public final class DimensionAccessFeature {
     }
 
     public static void loadData() {
-        DENIED_DIMENSIONS.clear();
         if (!Files.exists(ACCESS_PATH)) {
+            DENIED_DIMENSIONS.clear();
             saveData();
             return;
         }
         try (Reader reader = Files.newBufferedReader(ACCESS_PATH)) {
             Map<String, Set<String>> loaded = GSON.fromJson(reader, new TypeToken<Map<String, Set<String>>>(){}.getType());
             if (loaded != null) {
+                DENIED_DIMENSIONS.clear();
                 loaded.forEach((k, v) -> DENIED_DIMENSIONS.put(k.toLowerCase(Locale.ROOT), Collections.synchronizedSet(new HashSet<>(v))));
             }
         } catch (Exception e) {
             LOGGER.error("Failed to load dimension access rules from {}", ACCESS_PATH, e);
+            try {
+                Path corrupt = ACCESS_PATH.resolveSibling(ACCESS_PATH.getFileName().toString() + ".corrupt-" + System.currentTimeMillis());
+                Files.copy(ACCESS_PATH, corrupt, StandardCopyOption.REPLACE_EXISTING);
+                LOGGER.warn("Corrupt dimension access file backed up to {}", corrupt);
+            } catch (Exception ignored) {}
         }
     }
 
@@ -129,9 +136,11 @@ public final class DimensionAccessFeature {
             if (ACCESS_PATH.getParent() != null) {
                 Files.createDirectories(ACCESS_PATH.getParent());
             }
-            try (Writer writer = Files.newBufferedWriter(ACCESS_PATH)) {
+            Path temp = ACCESS_PATH.resolveSibling(ACCESS_PATH.getFileName().toString() + ".tmp");
+            try (Writer writer = Files.newBufferedWriter(temp)) {
                 GSON.toJson(DENIED_DIMENSIONS, writer);
             }
+            Files.move(temp, ACCESS_PATH, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception e) {
             LOGGER.error("Failed to save dimension access rules to {}", ACCESS_PATH, e);
         }

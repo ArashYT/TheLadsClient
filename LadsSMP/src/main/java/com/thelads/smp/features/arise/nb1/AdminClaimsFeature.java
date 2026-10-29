@@ -37,6 +37,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -248,7 +249,6 @@ public final class AdminClaimsFeature {
     }
 
     public static void loadClaims(MinecraftServer server) {
-        CLAIMED_CHUNKS.clear();
         Path path = getStoragePath(server);
 
         // Fallback migration: if world data does not exist yet, import from global config
@@ -263,11 +263,17 @@ public final class AdminClaimsFeature {
         try (Reader reader = Files.newBufferedReader(path)) {
             Set<String> loaded = GSON.fromJson(reader, new TypeToken<Set<String>>(){}.getType());
             if (loaded != null) {
+                CLAIMED_CHUNKS.clear();
                 CLAIMED_CHUNKS.addAll(loaded);
+                LOGGER.info("[Lads SMP] Loaded {} admin claims from {}", CLAIMED_CHUNKS.size(), path);
             }
-            LOGGER.info("[Lads SMP] Loaded {} admin claims from {}", CLAIMED_CHUNKS.size(), path);
         } catch (Exception e) {
             LOGGER.error("Failed to load admin claims from {}", path, e);
+            try {
+                Path corrupt = path.resolveSibling(path.getFileName().toString() + ".corrupt-" + System.currentTimeMillis());
+                Files.copy(path, corrupt, StandardCopyOption.REPLACE_EXISTING);
+                LOGGER.warn("Corrupt admin claims file backed up to {}", corrupt);
+            } catch (Exception ignored) {}
         }
     }
 
@@ -277,9 +283,11 @@ public final class AdminClaimsFeature {
             if (path.getParent() != null) {
                 Files.createDirectories(path.getParent());
             }
-            try (Writer writer = Files.newBufferedWriter(path)) {
+            Path temp = path.resolveSibling(path.getFileName().toString() + ".tmp");
+            try (Writer writer = Files.newBufferedWriter(temp)) {
                 GSON.toJson(CLAIMED_CHUNKS, writer);
             }
+            Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception e) {
             LOGGER.error("Failed to save admin claims to {}", path, e);
         }
