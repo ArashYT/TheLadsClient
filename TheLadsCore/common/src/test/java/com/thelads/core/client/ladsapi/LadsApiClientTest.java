@@ -457,13 +457,13 @@ class LadsApiClientTest {
         LadsApiClient.receive("{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8));
         assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server4\"}"));
 
-        // Per-connection absolute cap is 10 hello replies: 3 sent so far, test up to 10 and beyond
-        for (int i = 5; i <= 11; i++) {
+        // Per-connection absolute cap is 10 hello replies: 3 sent so far, 7 more reach cap (total 10)
+        for (int i = 5; i <= 12; i++) {
             testTime.addAndGet(500L); // advance clock to refill rate limiter tokens
             LadsApiClient.receive("{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8));
             JsonObject reply = sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server" + i + "\"}");
-            if (i <= 10) {
-                assertNotNull(reply, "Reply " + i + " should succeed before absolute connection cap");
+            if (i <= 11) {
+                assertNotNull(reply, "Reply for server " + i + " should succeed before absolute connection cap");
             } else {
                 assertNull(reply, "11th reply should be dropped by per-connection absolute cap");
             }
