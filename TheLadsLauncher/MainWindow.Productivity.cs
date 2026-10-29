@@ -343,7 +343,6 @@ public partial class MainWindow
 
         symbolBox.SelectionChanged += (_, _) => UpdatePreview();
         primaryBox.TextChanged += (_, _) => UpdatePreview();
-        secondaryBox.TextChanged += (_, _) => UpdatePreview();
         presetBox.SelectionChanged += (_, _) =>
         {
             if (presetBox.SelectedItem is string name)
