@@ -683,7 +683,7 @@ class SocialStore:
                 )
         await asyncio.to_thread(_op)
 
-    async def get_and_clear_offline_dms(self, user_uuid: str) -> list[dict]:
+    async def get_offline_dms(self, user_uuid: str) -> list[dict]:
         now_ms = int(time.time() * 1000)
         cutoff = now_ms - OFFLINE_DM_TTL_MS
         def _op():
@@ -694,9 +694,24 @@ class SocialStore:
                     (user_uuid,)
                 )
                 rows = cursor.fetchall()
-                conn.execute("DELETE FROM dm_offline WHERE to_uuid = ?", (user_uuid,))
                 return [{"from": r[0], "text": r[1], "ts": r[2]} for r in rows]
         return await asyncio.to_thread(_op)
+
+    async def clear_offline_dms(self, user_uuid: str, max_ts: int | None = None) -> None:
+        def _op():
+            with self._connect() as conn:
+                if max_ts is not None:
+                    conn.execute("DELETE FROM dm_offline WHERE to_uuid = ? AND ts <= ?", (user_uuid, max_ts))
+                else:
+                    conn.execute("DELETE FROM dm_offline WHERE to_uuid = ?", (user_uuid,))
+        await asyncio.to_thread(_op)
+
+    async def get_and_clear_offline_dms(self, user_uuid: str) -> list[dict]:
+        dms = await self.get_offline_dms(user_uuid)
+        if dms:
+            max_ts = max(d["ts"] for d in dms)
+            await self.clear_offline_dms(user_uuid, max_ts=max_ts)
+        return dms
 
     # --- Relay Usage ---
     async def record_relay_bytes(self, month: str, count: int) -> None:
@@ -1019,7 +1034,7 @@ class SocialHub:
         outgoing = await self.store.get_outgoing_requests(peer.uuid)
         blocked = await self.store.get_blocked(peer.uuid)
         settings = await self.store.get_settings(peer.uuid)
-        dms = await self.store.get_and_clear_offline_dms(peer.uuid)
+        dms = await self.store.get_offline_dms(peer.uuid)
 
         return {
             "t": "hello",
@@ -1883,10 +1898,13 @@ async def handle_social_ws(request: web.Request) -> web.WebSocketResponse:
                 await ws.close(code=4003, message=b"unauthorized")
             return ws
 
+        await hub.register(peer)
         hello_data = await hub.build_hello(peer)
         peer.send_json(hello_data)
+        if hello_data.get("dms"):
+            max_ts = max(d["ts"] for d in hello_data["dms"])
+            await hub.store.clear_offline_dms(peer.uuid, max_ts=max_ts)
 
-        await hub.register(peer)
         await hub.broadcast_presence(peer)
         await serve(hub, peer)
     finally:

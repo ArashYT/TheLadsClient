@@ -2017,3 +2017,28 @@ async def test_social_mojang_unavailable_closes_1013(aiohttp_client, fake_profil
     await ws.send_json({"t": "auth", "name": "Alice", "uuid": A, "serverId": cosmetics.server_id(ch["nonce"])})
     await ws.receive(timeout=2)
     assert ws.close_code == 1013
+
+
+async def test_offline_dms_cleared_after_hello_sent(social_app):
+    """Offline DMs are cleared only after hello is sent, and get_offline_dms inspects without clearing (A/14, B/15)."""
+    hub = social_app.app["social_hub"]
+    store = hub.store
+    now_ms = int(time.time() * 1000)
+
+    await store.save_offline_dm(A, B, "msg_persist_1", now_ms)
+    await store.save_offline_dm(A, B, "msg_persist_2", now_ms + 10)
+
+    # get_offline_dms should return the messages WITHOUT deleting them
+    dms = await store.get_offline_dms(B)
+    assert len(dms) == 2
+    assert dms[0]["text"] == "msg_persist_1"
+
+    # Verify they are still in DB
+    dms_again = await store.get_offline_dms(B)
+    assert len(dms_again) == 2
+
+    # Clear up to first message
+    await store.clear_offline_dms(B, max_ts=now_ms)
+    dms_after = await store.get_offline_dms(B)
+    assert len(dms_after) == 1
+    assert dms_after[0]["text"] == "msg_persist_2"
