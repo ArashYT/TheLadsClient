@@ -37,6 +37,7 @@ placed into the public domain and remain under their original authors' copyright
   - ImmediatelyFast by RK_01 (LGPL-3.0-or-later)
   - Fast IP Ping by Fallen_Breath (LGPL-3.0-only)
   - FixBookGUI by KosmoMoustache (LGPL-3.0-only)
+  - TabTweaks by MicrocontrollersDev (LGPL-3.0-only)
   - Capes by Cael (LGPL-2.1-only)
   - NBT Autocomplete by MT (LGPL-3.0-only)
   - JvmDowngrader by wagyourtail (LGPL-3.0-or-later, 1.8.9 build)
@@ -44,20 +45,19 @@ placed into the public domain and remain under their original authors' copyright
   every `theladscore.jar` under `META-INF/lads-sources/`.
 
 - MPL-2.0:
-  - Hovering Hotbar by supersaiyansubtlety (MPL-2.0)
+  - Hovering Hotbar by Fuzs (MPL-2.0)
   Complete modified source files for MPL-2.0 integrations are bundled inside `theladscore.jar`
   under `META-INF/lads-sources/`.
 
-- MIT / Apache-2.0 / Unlicense:
+- MIT / Apache-2.0:
   - Controlling & Clumps by Jaredlll08 (MIT)
-  - EntityCulling by tr7zw / LogisticsCraft (MIT)
+  - EntityCulling by LogisticsCraft (OcclusionCulling, MIT)
   - Ksyxis by VidTu (MIT)
-  - LazyAI, Optimized Cushions, QuickPack, World Play Time, Screenshot to Clipboard (MIT / Unlicense)
+  - LazyAI, Optimized Cushions, QuickPack, World Play Time, Screenshot to Clipboard (MIT)
   - ServerPingerFixer (MIT)
   - CatConfig & CatConfig-MC (MIT, bundled in 26.2/26.3)
   - Signal Loss by Hexandcube (Apache-2.0)
   - Screenshot Viewer by LGatodu47 (MIT)
-  - TabTweaks (MIT)
   - Reflect (`net.lenni0451:Reflect:1.6.2`) by Lenni0451 (MIT, bundled in 1.21.11)
   - Google Gson (Apache-2.0, shaded in 1.8.9), SLF4J (MIT, shaded in 1.8.9), SpongePowered Mixin (MIT, 1.8.9)
   - java-objc-bridge by Steve Hannah (Apache-2.0, bundled in 26.2/26.3)

@@ -69,16 +69,21 @@ components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar
   Modified Sources: `META-INF/lads-sources/fixbookgui/`
 
 * Hovering Hotbar
-  Copyright (c) supersaiyansubtlety
+  Copyright (c) Fuzs
   License: Mozilla Public License 2.0 (MPL-2.0)
   License & Notice: `META-INF/lads-sources/hoveringhotbar/LICENSE`, `META-INF/lads-sources/hoveringhotbar/NOTICE.txt`
   Modified Sources: `META-INF/lads-sources/hoveringhotbar/`
 
-* Signal Loss, Screenshot Viewer & TabTweaks
+* TabTweaks
+  Copyright (c) MicrocontrollersDev
+  License: GNU Lesser General Public License v3.0 only (LGPL-3.0-only)
+  License & Notice: `META-INF/lads-sources/tabtweaks/BUILDING.txt`, `META-INF/lads-sources/tabtweaks/COPYING.LESSER`
+  Modified Sources: `META-INF/lads-sources/tabtweaks/`
+
+* Signal Loss & Screenshot Viewer
   Signal Loss: Apache License 2.0 (Hexandcube; see `META-INF/lads-sources/signalloss/` or `assets/theladscore/licenses/SignalLoss-common-LICENSE.txt`)
   Screenshot Viewer: MIT License (LGatodu47; see `assets/theladscore/licenses/ScreenshotViewer-LICENSE.txt`)
-  TabTweaks: MIT License (see `META-INF/lads-sources/tabtweaks/`)
-  Modified Sources: `META-INF/lads-sources/signalloss/`, `META-INF/lads-sources/screenshots/`, `META-INF/lads-sources/tabtweaks/`
+  Modified Sources: `META-INF/lads-sources/signalloss/`, `META-INF/lads-sources/screenshots/`
 
 * Capes & NBT Autocomplete
   Capes: GNU Lesser General Public License v2.1 only (LGPL-2.1-only) by Cael (see `META-INF/lads-sources/capes/LICENSE`, `META-INF/lads-sources/capes/NOTICE.txt`)
@@ -97,7 +102,7 @@ components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar
   Modified Sources: `META-INF/lads-sources/controlling/`, `META-INF/lads-sources/clumps/`
 
 * EntityCulling
-  Copyright (c) tr7zw / LogisticsCraft (OcclusionCulling)
+  Copyright (c) LogisticsCraft (OcclusionCulling)
   License: MIT License (see `META-INF/lads-sources/entityculling/LICENSE`, `META-INF/lads-sources/entityculling/NOTICE.txt`)
 
 * Ksyxis, LazyAI, Optimized Cushions, QuickPack, World Play Time, Screenshot to Clipboard
