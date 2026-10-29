@@ -77,6 +77,36 @@ public sealed class ExternalLaunchTests
         }
     }
 
+    [Fact]
+    public async Task PrepareAsync_RemovesJdkJavaOptionsAndOtherJavaOptionVariables()
+    {
+        Environment.SetEnvironmentVariable("JDK_JAVA_OPTIONS", "-javaagent:malware.jar");
+        Environment.SetEnvironmentVariable("JAVA_TOOL_OPTIONS", "-javaagent:malware.jar");
+        Environment.SetEnvironmentVariable("_JAVA_OPTIONS", "-javaagent:malware.jar");
+        try
+        {
+            using var dir = new TestDirectory();
+            string data = Path.Combine(dir.Path, "data");
+            FakeVersion(data, "26.3");
+            var java = new FakeJava(dir.Path);
+            var instance = new ModpackInstance
+            {
+                Id = "test-pack", Name = "Test Pack", McVersion = "26.3", Loader = "vanilla",
+                Directory = Path.Combine(data, "instances", "test-pack")
+            };
+            using var process = await ModpackLauncher.PrepareAsync(data, instance, Session(), Settings(), java, new HttpClient(), null, CancellationToken.None);
+            Assert.DoesNotContain(process.StartInfo.Environment.Keys, k => GameSession.JavaOptionVariables.Contains(k, StringComparer.OrdinalIgnoreCase));
+            Assert.False(process.StartInfo.Environment.ContainsKey("JDK_JAVA_OPTIONS"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("JDK_JAVA_OPTIONS", null);
+            Environment.SetEnvironmentVariable("JAVA_TOOL_OPTIONS", null);
+            Environment.SetEnvironmentVariable("_JAVA_OPTIONS", null);
+        }
+    }
+
+
     // ── Fixtures ────────────────────────────────────────────────────────────
 
     private static MSession Session() => new() { Username = "LadsQA", UUID = "00000000000000000000000000000001", AccessToken = Token, UserType = "msa" };

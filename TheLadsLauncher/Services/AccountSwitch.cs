@@ -57,14 +57,17 @@ public static class AccountSwitch
 
     /// <summary>After a game exited from <paramref name="gameDirectory"/>: when it asked for another account, validates the request
     /// against saved accounts (or adds a new valid offline account to <paramref name="settings"/>). Returns the matched or added
-    /// account summary; null when the game asked for nothing (or something refused).</summary>
-    public static AccountSummary? Apply(string gameDirectory, IEnumerable<AccountSummary> accounts, LauncherSettings settings, Action<string> log)
+    /// account summary; null when the game asked for nothing (or something refused). <paramref name="offlineAllowed"/> false (release builds,
+    /// where offline accounts cannot launch) refuses a new offline account instead of making it the next launch's account.</summary>
+    public static AccountSummary? Apply(string gameDirectory, IEnumerable<AccountSummary> accounts, LauncherSettings settings, Action<string> log,
+        bool offlineAllowed = true)
     {
         if (TakeRequest(gameDirectory, log) is not { } request) return null;
-        return ValidateAndApply(request, accounts, settings, log);
+        return ValidateAndApply(request, accounts, settings, log, offlineAllowed);
     }
 
-    public static AccountSummary? ValidateAndApply(AccountSwitchRequest request, IEnumerable<AccountSummary> accounts, LauncherSettings settings, Action<string> log)
+    public static AccountSummary? ValidateAndApply(AccountSwitchRequest request, IEnumerable<AccountSummary> accounts, LauncherSettings settings, Action<string> log,
+        bool offlineAllowed = true)
     {
         string name = request.Username;
         string uuid = request.Uuid;
@@ -75,6 +78,11 @@ public static class AccountSwitch
             string.Equals(a.username, name, StringComparison.OrdinalIgnoreCase) &&
             string.Equals(a.uuid.Replace("-", ""), uuid.Replace("-", ""), StringComparison.OrdinalIgnoreCase));
 
+        if (existing == null && type == "offline" && !offlineAllowed)
+        {
+            log($"[Accounts] Offline account {name} was not added: offline accounts are only available in debug builds.");
+            return null;
+        }
         if (existing == null && type == "offline")
         {
             try

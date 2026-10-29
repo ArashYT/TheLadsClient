@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="380"
         x:Class="TheLadsLauncher.Views.DeviceCodeLoginDialog"
         Title="Microsoft Account Sign-In"
-        Width="500" Height="380"
+        Width="500" SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         Background="#1D1E22">
@@ -26,15 +26,25 @@
                     <TextBlock Text="1. Your sign-in code has been generated:" Foreground="#CCCCCC" FontSize="13"/>
 
                     <!-- Code Display Box -->
-                    <Border Background="#12121E" CornerRadius="4" BorderBrush="#C44343" BorderThickness="1" Padding="12">
-                        <TextBlock x:Name="UserCodeText" Classes="notranslate" Text="XXXX-XXXX"
-                                   Foreground="#FFD700" FontSize="22" FontWeight="Bold"
-                                   FontFamily="Consolas, monospace"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   LetterSpacing="1"/>
-                    </Border>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Border Background="#12121E" CornerRadius="4" BorderBrush="#C44343" BorderThickness="1" Padding="12">
+                            <SelectableTextBlock x:Name="UserCodeText" Classes="notranslate" Text="XXXX-XXXX"
+                                       Foreground="#FFD700" FontSize="22" FontWeight="Bold"
+                                       FontFamily="Consolas, monospace"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       LetterSpacing="1"/>
+                        </Border>
+                        <Button Grid.Column="1" x:Name="CopyCodeBtn" Content="Copy code" Margin="8,0,0,0" VerticalAlignment="Center" Click="CopyCode_Click"/>
+                    </Grid>
 
                     <TextBlock Text="2. Go to the Microsoft verification link:" Foreground="#CCCCCC" FontSize="13"/>
+
+                    <!-- The link as text too: sign-in still works when no browser opens -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <SelectableTextBlock x:Name="VerificationUrlText" Classes="notranslate" Text="https://microsoft.com/link"
+                                             Foreground="#8AB4F8" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" x:Name="CopyLinkBtn" Content="Copy link" Margin="8,0,0,0" VerticalAlignment="Center" Click="CopyLink_Click"/>
+                    </Grid>
 
                     <!-- Open Browser Button -->
                     <Button x:Name="OpenBrowserBtn" Classes="launch" Content="Open Link &amp; Copy Code to Browser"

@@ -200,7 +200,7 @@ public class AuthenticationTests
         File.WriteAllText(legacy, "{\"account\":{\"token\":\"test\"}}");
         var storage = new ProtectedAccountStorage(current, legacy);
         Assert.NotNull(storage.ReadAsJsonNode()!["account"]);
-        Assert.False(File.Exists(legacy));
+        Assert.Equal("{\"account\":{\"token\":\"test\"}}", File.ReadAllText(legacy)); // other CmlLib launchers' accounts stay signed in
         storage.Write(new JsonObject(), null);
         Assert.Empty(new ProtectedAccountStorage(current, legacy).ReadAsJsonNode()!.AsObject());
     }
@@ -275,6 +275,67 @@ public class AuthenticationTests
     }
 
     [Fact]
+    public async Task WrongBrowserAccountCleanupFailureIsLoggedAndThrowsMismatchedAccountError()
+    {
+        using var dir = new TestDirectory();
+        string sibling = Guid.NewGuid().ToString("N");
+        var backend = new FakeBackend(dir.Path, DateTime.UtcNow.AddHours(1))
+        {
+            InteractiveUuid = sibling,
+            SavesInteractiveAccount = true,
+            SignoutFailure = new IOException("Storage write failure")
+        };
+        var logs = new List<string>();
+        var service = new MicrosoftAccountService(backend) { Log = logs.Add };
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => service.AuthenticateInteractively(backend.Account));
+        Assert.Contains("different Minecraft account", error.Message);
+        Assert.Single(logs.Where(l => l.Contains("Could not clean up wrong account", StringComparison.OrdinalIgnoreCase)));
+        Assert.Contains("Storage write failure", logs.Single());
+    }
+
+    /// <summary>Re-signing in to A while the browser is on a sibling's account B: CmlLib saves B before the launcher refuses it.
+    /// B must not stay in Accounts unless the player had added it before.</summary>
+    [Fact]
+    public async Task WrongBrowserAccountIsNotKeptUnlessItWasAlreadySaved()
+    {
+        using var dir = new TestDirectory();
+        string sibling = Guid.NewGuid().ToString("N");
+        var backend = new FakeBackend(dir.Path, DateTime.UtcNow.AddHours(1)) { InteractiveUuid = sibling, SavesInteractiveAccount = true };
+        var service = new MicrosoftAccountService(backend);
+        string? Saved(string id) => service.AccountManager.GetAccounts().Select(a => a.Identifier).FirstOrDefault(a => a == id);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.AuthenticateInteractively(backend.Account));
+        Assert.Null(Saved(sibling));
+        Assert.NotNull(Saved(backend.Account.Identifier!));
+        var disk = new JsonXboxGameAccountManager(System.IO.Path.Combine(dir.Path, "accounts.json"), JEGameAccount.FromSessionStorage, null);
+        Assert.DoesNotContain(disk.GetAccounts(), a => a.Identifier == sibling);
+
+        await service.AuthenticateInteractively(); // the player adds B on purpose
+        Assert.NotNull(Saved(sibling));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.AuthenticateInteractively(backend.Account));
+        Assert.NotNull(Saved(sibling));
+    }
+
+    [Theory]
+    [InlineData("https://www.microsoft.com/link", "https://www.microsoft.com/link")]
+    [InlineData("https://microsoft.com/devicelogin", "https://microsoft.com/devicelogin")]
+    [InlineData("https://login.microsoftonline.com/common/oauth2/deviceauth", "https://login.microsoftonline.com/common/oauth2/deviceauth")]
+    [InlineData("https://login.live.com/oauth20_remoteconnect.srf", "https://login.live.com/oauth20_remoteconnect.srf")]
+    [InlineData("http://www.microsoft.com/link", null)]
+    [InlineData("file:///C:/Windows/System32/calc.exe", null)]
+    [InlineData("ms-settings:privacy", null)]
+    [InlineData("https://microsoft.com.evil.example/link", null)]
+    [InlineData("https://evilmicrosoft.com/link", null)]
+    [InlineData("https://microsoft.com@evil.example/link", null)]
+    [InlineData("\\\\evil.example\\share\\x.exe", null)]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void DeviceCodeDialogOpensOnlyHttpsMicrosoftPages(string? url, string? expected) =>
+        Assert.Equal(expected ?? TheLadsLauncher.Views.DeviceCodeLoginDialog.FallbackVerificationUrl,
+            TheLadsLauncher.Views.DeviceCodeLoginDialog.SafeVerificationUrl(url));
+
+    [Fact]
     public async Task ClearRemovesLoadedAndPersistedAccounts()
     {
         using var dir = new TestDirectory();
@@ -337,8 +398,10 @@ public class AuthenticationTests
         public int MaximumConcurrentCalls;
         private int _active;
         public string? InteractiveUuid;
+        public bool SavesInteractiveAccount; // as CmlLib: the browser's account is saved as a new account before the caller sees it
         public Exception? SilentFailure;
         public int InteractiveCalls;
+        public Exception? SignoutFailure;
 
         public FakeBackend(string directory, DateTime expires)
         {
@@ -375,8 +438,13 @@ public class AuthenticationTests
             Interlocked.Increment(ref InteractiveCalls);
             var result = Account.ToLauncherSession();
             result.UUID = InteractiveUuid ?? result.UUID;
+            if (SavesInteractiveAccount)
+            {
+                AccountManager.NewAccount().SessionStorage.Set("JEProfile", new JEProfile { Username = "Sibling", UUID = result.UUID });
+                AccountManager.SaveAccounts();
+            }
             return Task.FromResult(result);
         }
-        public Task Signout(IXboxGameAccount account) { foreach (var key in account.SessionStorage.Keys.ToArray()) account.SessionStorage.Remove(key); AccountManager.SaveAccounts(); return Task.CompletedTask; }
+        public Task Signout(IXboxGameAccount account) { if (SignoutFailure != null) throw SignoutFailure; foreach (var key in account.SessionStorage.Keys.ToArray()) account.SessionStorage.Remove(key); AccountManager.SaveAccounts(); return Task.CompletedTask; }
     }
 }

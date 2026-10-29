@@ -637,10 +637,14 @@ public partial class MainWindow : Window
     private Task PollForUpdatesAsync() => _autoUpdater.PollAsync(UpdateBlocked, ReportUpdate,
         Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") == "1" || _windowClosed);
 
-    /// <summary>Installing restarts the launcher, so it waits for Minecraft, sign-in, mod work and open dialogs.</summary>
+    /// <summary>Installing restarts the launcher, so it waits for Minecraft, sign-in, mod work, Zero SMP / modpack installs and open dialogs.</summary>
     private bool UpdateBlocked() => _windowClosed || _launching || _modsBusy || _addingAccount || _showingMicrosoftSetup || _releaseNotesOpen
-        || _runningProcesses.Keys.Any(IsGameRunning) || SharedContentService.Instance.IsBusy
+        || GameProcesses().Any(IsGameRunning) || PagesBusy() || SharedContentService.Instance.IsBusy
         || _profileService.GetProfiles().Any(p => GameRunningByMarker(_pathService.GetProfileDirectory(p)));
+
+    /// <summary>Every game this launcher started: Play's, and the Experiences' and Modpacks' own (they write no running marker).</summary>
+    private IEnumerable<Process> GameProcesses() => _runningProcesses.Keys.Concat(ExperiencesPage.RunningGames).Concat(ModpacksPage.RunningGames);
+    private bool PagesBusy() => ExperiencesPage.IsBusy || ModpacksPage.IsBusy;
 
     private void ReportUpdate(string message)
     {
@@ -689,7 +693,7 @@ public partial class MainWindow : Window
         LauncherStartupOverlay.IsVisible = false;
         UpdateBridge.SignalLauncherShown();
         ReportUpdate(UpdateBlocked()
-            ? "Close Minecraft and finish signing in or mod changes, then click Update again."
+            ? "Close Minecraft and finish signing in, installs or mod changes, then click Update again."
             : "The update is not ready yet; the launcher will offer it again shortly.");
     }
 
@@ -901,7 +905,7 @@ public partial class MainWindow : Window
     private void CloseBtn_Click(object? sender, RoutedEventArgs e)
     {
         FlushSettingsSave();
-        if (settings.CloseToTray && _runningProcesses.Keys.Any(IsGameRunning))
+        if (settings.CloseToTray && (GameProcesses().Any(IsGameRunning) || PagesBusy()))
             this.Hide();
         else
             Environment.Exit(0);
@@ -1080,7 +1084,7 @@ public partial class MainWindow : Window
             double launcherGb = proc.WorkingSet64 / (1024.0 * 1024.0 * 1024.0);
             _targetRam = launcherGb;
 
-            var activeProcesses = _runningProcesses.Keys.Where(IsGameRunning).ToList();
+            var activeProcesses = GameProcesses().Where(IsGameRunning).ToList();
             if (activeProcesses.Count > 0)
             {
                 double totalGameRam = 0;
@@ -1317,7 +1321,7 @@ public partial class MainWindow : Window
             Guid.TryParse(settings.MicrosoftClientId, out var id) ? id.ToString() : Guid.Empty.ToString());
         _msalProvider = new AvaloniaMsalProvider(new MsalOAuthBuilder(app), this);
         _msalProvider.OnCancelRequested = () => _authCts?.Cancel();
-        loginHandler = new MicrosoftAccountService(app, _msalProvider, _pathService.BaseDirectory, _httpClient);
+        loginHandler = new MicrosoftAccountService(app, _msalProvider, _pathService.BaseDirectory, _httpClient) { Log = Log };
     }
 
     private void LoadAccounts()
@@ -5316,7 +5320,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (AccountSwitch.Apply(gameDirectory, GetAccountSummaries(), settings, Log) is not { } account)
+            if (AccountSwitch.Apply(gameDirectory, GetAccountSummaries(), settings, Log, IsDevOfflineAllowed) is not { } account)
                 return false;
 
             _launchAccountOverride = account.username;
@@ -6444,6 +6448,9 @@ public class AvaloniaMsalProvider : IAuthenticationProvider
                     OnCancelRequested?.Invoke();
                 });
                 CurrentDialog = dialog;
+                // A hidden (tray) owner cannot own the dialog, and a minimized one hides the code the player has to enter.
+                if (!_window.IsVisible) _window.Show();
+                if (_window.WindowState == WindowState.Minimized) _window.WindowState = WindowState.Normal;
                 dialog.Show(_window);
         });
     });

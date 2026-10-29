@@ -31,6 +31,7 @@ public sealed class MicrosoftAccountService
     private readonly Func<MSession, CancellationToken, Task>? _verifyLicense;
     private readonly Dictionary<string, string> _verifiedTokens = new(StringComparer.OrdinalIgnoreCase);
     public IXboxGameAccountManager AccountManager => _handler.AccountManager;
+    public Action<string>? Log { get; set; }
 
     public MicrosoftAccountService(IPublicClientApplication app, IAuthenticationProvider provider,
         string baseDirectory, HttpClient httpClient)
@@ -75,12 +76,43 @@ public sealed class MicrosoftAccountService
         try
         {
             await _cacheReady.WaitAsync(cancellationToken);
+            // What was saved before: CmlLib saves whichever account the browser signs in to, before the check below can refuse it.
+            var savedIds = AccountManager.GetAccounts().Select(a => NormalizeId(a.Identifier)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var savedMsal = expectedAccount == null || _app == null ? null
+                : (await _app.GetAccountsAsync()).Select(a => a.HomeAccountId?.Identifier).ToHashSet();
             // A new account preserves the previous identity when the browser selects a different user.
             var session = await _handler.AuthenticateInteractively(cancellationToken);
             ValidateSession(session);
             if (expectedAccount?.Identifier is { } expected &&
-                !string.Equals(expected.Replace("-", ""), session.UUID?.Replace("-", ""), StringComparison.OrdinalIgnoreCase))
+                !string.Equals(NormalizeId(expected), NormalizeId(session.UUID), StringComparison.OrdinalIgnoreCase))
+            {
+                // That account was never added by the player: it must not stay in Accounts, nor its tokens on this PC.
+                if (!savedIds.Contains(NormalizeId(session.UUID)))
+                {
+                    try
+                    {
+                        var unwanted = AccountManager.GetAccounts().FirstOrDefault(a =>
+                            string.Equals(NormalizeId(a.Identifier), NormalizeId(session.UUID), StringComparison.OrdinalIgnoreCase));
+                        if (unwanted != null) await _handler.Signout(unwanted);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log?.Invoke($"[AUTH] Could not clean up wrong account {session.UUID} (signout): {ex.Message}");
+                    }
+
+                    try
+                    {
+                        if (_app != null && savedMsal != null)
+                            foreach (var added in (await _app.GetAccountsAsync()).Where(a => !savedMsal.Contains(a.HomeAccountId?.Identifier)))
+                                await _app.RemoveAsync(added);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log?.Invoke($"[AUTH] Could not clean up wrong account {session.UUID} (MSAL tokens): {ex.Message}");
+                    }
+                }
                 throw new InvalidOperationException("You signed in to a different Minecraft account. Select that account in the launcher or sign in again with the selected account.");
+            }
             await VerifyLicenseOnceAsync(session, cancellationToken);
             return session;
         }
@@ -152,6 +184,8 @@ public sealed class MicrosoftAccountService
         }
         finally { _gate.Release(); }
     }
+
+    private static string NormalizeId(string? id) => id?.Replace("-", "") ?? "";
 
     public static void ValidateSession(MSession session)
     {

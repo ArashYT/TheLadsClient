@@ -1,3 +1,7 @@
+using System.IO.Pipes;
+using System.Security.AccessControl;
+using System.Security.Principal;
+using TheLadsLauncher.Models;
 using TheLadsLauncher.Services;
 using Xunit;
 
@@ -90,6 +94,64 @@ public class DeepLinkServiceTests
         Assert.Equal(expected, DeepLinkService.IsValidPort(port));
     }
 
+    [Theory]
+    [InlineData("lads://launch/Bad%0AName")]          // a control character (would forge a log line)
+    [InlineData("lads://profile/%20%20")]             // blank
+    [InlineData("lads://play/")]                      // none
+    public void ParseUri_LaunchProfile_RefusesInvalidNames(string uri)
+    {
+        var action = DeepLinkService.ParseUri(uri);
+
+        Assert.Equal(DeepLinkActionType.None, action.Type);
+        Assert.Null(action.Target);
+    }
+
+    [Fact]
+    public void ParseUri_RefusesOverlongNamesAndLinks()
+    {
+        Assert.Equal(DeepLinkActionType.LaunchProfile, DeepLinkService.ParseUri("lads://launch/" + new string('a', 100)).Type);
+        Assert.Equal(DeepLinkActionType.None, DeepLinkService.ParseUri("lads://launch/" + new string('a', 101)).Type);
+        Assert.Equal(DeepLinkActionType.None, DeepLinkService.ParseUri("lads://steal-data/" + new string('a', 3000)).Type);
+    }
+
+    [Fact]
+    public void ProfileSwitchRefusal_UsesTheVersionPickersChecks()
+    {
+        static LauncherProfile Profile(string version, string? fabric = null) => new() { Name = "P", MinecraftVersion = version, FabricVersion = fabric };
+
+        Assert.Null(DeepLinkService.ProfileSwitchRefusal(Profile("26.3", "0.19.5")));
+        Assert.Null(DeepLinkService.ProfileSwitchRefusal(Profile("1.8.9")));
+        Assert.Equal(GameVersionPolicy.PausedMessage, DeepLinkService.ProfileSwitchRefusal(Profile("26.2")));
+        Assert.Equal(GameVersionPolicy.ComingNeverMessage, DeepLinkService.ProfileSwitchRefusal(Profile("1.7.10")));
+        Assert.Contains("not offered", DeepLinkService.ProfileSwitchRefusal(Profile("1.21.11")));
+        // A profile LoadProfiles keeps for repair: switching to it threw in ApplyProfile and closed the launcher.
+        Assert.Contains("does not match", DeepLinkService.ProfileSwitchRefusal(Profile("26.3", "fabric-loader-0.19.5-1.20.1")));
+    }
+
+    [Fact]
+    public async Task IpcPipe_IsPerUserAndOnlyTheCurrentUserCanOpenIt()
+    {
+        using var identity = WindowsIdentity.GetCurrent();
+        Assert.EndsWith(identity.User!.Value, DeepLinkService.PipeName); // another Windows user's launcher has its own pipe
+
+        string name = "lads-test-" + Guid.NewGuid().ToString("N");
+        using var server = DeepLinkService.CreateIpcServer(name);
+        var rules = server.GetAccessControl().GetAccessRules(true, true, typeof(SecurityIdentifier)).Cast<PipeAccessRule>().ToList();
+        var rule = Assert.Single(rules);
+        Assert.Equal(identity.Owner, rule.IdentityReference);
+        Assert.Equal(AccessControlType.Allow, rule.AccessControlType);
+
+        var received = Task.Run(async () =>
+        {
+            await server.WaitForConnectionAsync();
+            using var reader = new StreamReader(server, leaveOpen: true);
+            return await reader.ReadLineAsync();
+        });
+        Assert.True(await DeepLinkService.TryForwardToRunningInstanceAsync("lads://join/play.thelads.net", name));
+        Assert.Equal("lads://join/play.thelads.net", await received.WaitAsync(TimeSpan.FromSeconds(10)));
+        Assert.False(await DeepLinkService.TryForwardToRunningInstanceAsync("lads://join/x", "lads-test-" + Guid.NewGuid().ToString("N")));
+    }
+
     [Fact]
     public void OnlyAnInstalledLauncherOwnsLinks_AndRepairsAKeyPointingElsewhere()
     {
@@ -111,5 +173,53 @@ public class DeepLinkServiceTests
             Assert.False(DeepLinkService.NeedsRegistration("\"" + stub + "\" \"%1\"", stub));
         }
         finally { Directory.Delete(root, true); }
+    }
+
+    [Fact]
+    public async Task StartIpcListener_LogsFirstUnauthorizedAccessExceptionOnce()
+    {
+        var logs = new List<string>();
+        var logsLock = new object();
+        DeepLinkService.Log = msg => { lock (logsLock) { logs.Add(msg); } };
+        using var cts = new CancellationTokenSource();
+        int attempts = 0;
+        DeepLinkService.ServerFactory = _ =>
+        {
+            Interlocked.Increment(ref attempts);
+            throw new UnauthorizedAccessException("Pipe is occupied");
+        };
+        try
+        {
+            DeepLinkService.StartIpcListener(_ => { }, "test-pipe", cts.Token);
+            for (int i = 0; i < 150; i++)
+            {
+                lock (logsLock)
+                {
+                    if (logs.Count >= 1) break;
+                }
+                await Task.Delay(20);
+            }
+
+            Assert.True(attempts >= 1);
+            lock (logsLock)
+            {
+                Assert.Single(logs.Where(l => l.Contains("pipe squatting", StringComparison.OrdinalIgnoreCase) || l.Contains("pipe already taken", StringComparison.OrdinalIgnoreCase)));
+            }
+
+            for (int i = 0; i < 150 && attempts < 2; i++)
+                await Task.Delay(20);
+
+            Assert.True(attempts >= 2);
+            lock (logsLock)
+            {
+                Assert.Single(logs.Where(l => l.Contains("pipe squatting", StringComparison.OrdinalIgnoreCase) || l.Contains("pipe already taken", StringComparison.OrdinalIgnoreCase)));
+            }
+        }
+        finally
+        {
+            cts.Cancel();
+            DeepLinkService.ServerFactory = DeepLinkService.CreateIpcServer;
+            DeepLinkService.Log = null;
+        }
     }
 }

@@ -84,6 +84,7 @@ public partial class ModpacksView : UserControl
     private CancellationTokenSource? _search;
     private int _browseOffset;
     private bool _browsed, _importing;
+    private int _installing;
     private readonly bool _ready;
 
     private List<ModpackModItem> _instanceMods = new();
@@ -631,6 +632,11 @@ public partial class ModpacksView : UserControl
     internal void PressPlay() => Play_Click(null, new RoutedEventArgs());
     internal string ManageStatusText => ManageStatus.Text ?? "";
     internal Process? RunningGame(string id) => _running.GetValueOrDefault(id);
+    /// <summary>The modpack games started here, and whether a launch, update or import is running: a launcher update must not restart over them.</summary>
+    internal IEnumerable<Process> RunningGames => _running.Values;
+    internal bool IsBusy => CalculateIsBusy(_launching?.Count ?? 0, _busy?.Count ?? 0, _importing, _installing);
+    public static bool CalculateIsBusy(int launchingCount, int busyCount, bool importing, int installingCount) =>
+        launchingCount > 0 || busyCount > 0 || importing || installingCount > 0;
     internal bool BrowseLoaded => Results.Children.Count > 0;
 
     private void BrowseFilter_Changed(object? sender, SelectionChangedEventArgs e) { if (_ready && _browsed) _ = SearchAsync(more: false); }
@@ -731,6 +737,7 @@ public partial class ModpacksView : UserControl
     /// <summary>The newest version of the pack for the Browse filters, installed as a new instance.</summary>
     private async Task InstallAsync(ModpackHit hit, Button install, ProgressBar progress, TextBlock status)
     {
+        _installing++;
         install.IsEnabled = false;
         progress.IsVisible = true;
         void Report(string message) => Dispatcher.UIThread.Post(() => status.Text = message);
@@ -747,7 +754,12 @@ public partial class ModpacksView : UserControl
             Report($"Installed {instance.Name} {instance.PackVersion} (Minecraft {instance.McVersion}, {LoaderName(instance.Loader)}). Open it in My Modpacks.");
         }
         catch (Exception error) { Report("Install failed: " + error.Message); Host?.ModpackLog($"Install of {hit.Title} failed: {error}"); }
-        finally { install.IsEnabled = true; progress.IsVisible = false; }
+        finally
+        {
+            _installing--;
+            install.IsEnabled = true;
+            progress.IsVisible = false;
+        }
     }
 
     private static async Task<T> WithDownloadedPackAsync<T>(ModpackVersion version, Action<string> report, Func<string, Task<T>> use)
@@ -1441,6 +1453,7 @@ public partial class ModpacksView : UserControl
     {
         if (_selected is not { } instance || item.UpdateFile == null) return;
         if (updateBtn != null) { updateBtn.IsEnabled = false; updateBtn.Content = "Updating..."; }
+        _installing++;
         try
         {
             string modsDir = Path.Combine(instance.GameDirectory, "mods");
@@ -1458,6 +1471,10 @@ public partial class ModpacksView : UserControl
             ManageStatus.Text = $"Update failed for {item.DisplayName}: {ex.Message}";
             if (updateBtn != null) { updateBtn.IsEnabled = true; updateBtn.Content = "Retry"; }
         }
+        finally
+        {
+            _installing--;
+        }
     }
 
     private async void UpdateAll_Click(object? sender, RoutedEventArgs e)
@@ -1471,6 +1488,7 @@ public partial class ModpacksView : UserControl
         }
 
         _updatingAll = true;
+        _installing++;
         UpdateAllButton.IsEnabled = false;
         ContentUpdateStatus.Text = $"Updating {toUpdate.Count} mod(s)...";
         int updated = 0;
@@ -1501,6 +1519,7 @@ public partial class ModpacksView : UserControl
         }
         finally
         {
+            _installing--;
             _updatingAll = false;
             UpdateAllButton.IsEnabled = true;
         }
@@ -2330,21 +2349,29 @@ public partial class ModpacksView : UserControl
             FileTypeFilter = new[] { filter }
         });
         if (files == null || files.Count == 0) return;
-        string targetDir = Path.Combine(i.GameDirectory, folder);
-        Directory.CreateDirectory(targetDir);
-        int copied = 0;
-        foreach (var file in files)
+        _installing++;
+        try
         {
-            try
+            string targetDir = Path.Combine(i.GameDirectory, folder);
+            Directory.CreateDirectory(targetDir);
+            int copied = 0;
+            foreach (var file in files)
             {
-                string dest = Path.Combine(targetDir, file.Name);
-                File.Copy(file.Path.LocalPath, dest, true);
-                copied++;
+                try
+                {
+                    string dest = Path.Combine(targetDir, file.Name);
+                    File.Copy(file.Path.LocalPath, dest, true);
+                    copied++;
+                }
+                catch (Exception ex) { ManageStatus.Text = $"Error copying {file.Name}: {ex.Message}"; }
             }
-            catch (Exception ex) { ManageStatus.Text = $"Error copying {file.Name}: {ex.Message}"; }
+            ManageStatus.Text = $"Installed {copied} file(s) into {folder}.";
+            RenderAllContent();
         }
-        ManageStatus.Text = $"Installed {copied} file(s) into {folder}.";
-        RenderAllContent();
+        finally
+        {
+            _installing--;
+        }
     }
 
     private string _addContentType = "mod";
@@ -2614,6 +2641,7 @@ public partial class ModpacksView : UserControl
                 if (_selected is not { } instance) return;
                 actionBtn.IsEnabled = false;
                 actionBtn.Content = "Installing...";
+                _installing++;
                 try
                 {
                     if (hit.Id == "theladscore" || hit.Provider == "The Lads")
@@ -2670,6 +2698,10 @@ public partial class ModpacksView : UserControl
                     actionBtn.IsEnabled = true;
                     actionBtn.Content = "Retry";
                     AddContentStatus.Text = $"Installation failed: {ex.Message}";
+                }
+                finally
+                {
+                    _installing--;
                 }
             };
         }
@@ -2879,6 +2911,7 @@ public partial class ModpacksView : UserControl
     private async void ModDetailsAction_Click(object? sender, RoutedEventArgs e)
     {
         if (_selected is not { } instance || _currentDetailProject is not { } hit) return;
+        _installing++;
         ModDetailsActionBtn.IsEnabled = false;
         ModDetailsActionBtn.Content = "Installing...";
         try
@@ -2936,6 +2969,10 @@ public partial class ModpacksView : UserControl
             ModDetailsActionBtn.IsEnabled = true;
             ModDetailsActionBtn.Content = "Retry";
             ManageStatus.Text = "Installation failed: " + ex.Message;
+        }
+        finally
+        {
+            _installing--;
         }
     }
 
@@ -3071,6 +3108,7 @@ public partial class ModpacksView : UserControl
                 {
                     actionBtn.IsEnabled = false;
                     actionBtn.Content = "Installing...";
+                    _installing++;
                     try
                     {
                         string targetDir = string.IsNullOrEmpty(_addContentTargetDir) ? Path.Combine(instance.GameDirectory, "mods") : _addContentTargetDir;
@@ -3122,6 +3160,10 @@ public partial class ModpacksView : UserControl
                         actionBtn.Content = "Retry";
                         ManageStatus.Text = $"Install failed: {ex.Message}";
                     }
+                    finally
+                    {
+                        _installing--;
+                    }
                 };
             }
             Grid.SetColumn(actionBtn, 5);
@@ -3166,7 +3208,7 @@ public partial class ModpacksView : UserControl
         try
         {
             Report("Signing in...");
-            var session = await host.ResolveModpackSessionAsync(launch.Token);
+            var session = await host.ResolveModpackSessionAsync(launch.Token, instance.IsExternal ? null : instance.GameDirectory);
             var launchedUtc = DateTime.UtcNow;
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, launch.Token,
                 relaunch?.Server, relaunch?.World);

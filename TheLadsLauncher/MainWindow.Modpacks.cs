@@ -49,13 +49,35 @@ public partial class MainWindow
 
     private async void NavModpacks_Click(object? sender, RoutedEventArgs e) { NavigateTo("Modpacks"); await ModpacksPage.LoadAsync(); }
 
-    /// <summary>The account Play would use, signed in as LaunchGame does: silently, then Microsoft's sign-in window when asked for.</summary>
-    internal async Task<MSession> ResolveModpackSessionAsync(CancellationToken token)
+    /// <summary>The account Play would use, signed in as LaunchGame does: silently, then Microsoft's sign-in window when asked for.
+    /// <paramref name="gameDirectory"/> (the launcher's own instances only, never another launcher's folder) also gets the in-game
+    /// account switcher's list, as LaunchGame writes it for a profile: without it Core makes up an offline "LadsPlayer".</summary>
+    internal async Task<MSession> ResolveModpackSessionAsync(CancellationToken token, string? gameDirectory = null)
+    {
+        var session = await SignInModpackAccountAsync(token);
+        if (gameDirectory != null)
+            await WriteLaunchAccountFilesAsync(session, GetAccountSummaries().Any(a => a.type == "offline"
+                && string.Equals(a.username, session.Username, StringComparison.OrdinalIgnoreCase)), gameDirectory);
+        return session;
+    }
+
+    public static MSession? ResolveOfflineModpackSession(string user, IEnumerable<AccountSummary> accounts, bool devOfflineAllowed)
+    {
+        if (accounts.Any(a => a.type == "offline" && string.Equals(a.username, user, StringComparison.OrdinalIgnoreCase)))
+        {
+            if (!devOfflineAllowed)
+                throw new InvalidOperationException("Offline accounts are only available in debug builds. Sign in with a Microsoft account.");
+            return AccountIdentity.CreateOfflineSession(user);
+        }
+        return null;
+    }
+
+    private async Task<MSession> SignInModpackAccountAsync(CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(_selectedAccount)) throw new InvalidOperationException("Add or select an account on the Accounts page first.");
         string user = ResolveLaunchAccountName();
-        if (GetAccountSummaries().Any(a => a.type == "offline" && string.Equals(a.username, user, StringComparison.OrdinalIgnoreCase)))
-            return AccountIdentity.CreateOfflineSession(user);
+        if (ResolveOfflineModpackSession(user, GetAccountSummaries(), IsDevOfflineAllowed) is { } offlineSession)
+            return offlineSession;
         if (!Guid.TryParse(settings.MicrosoftClientId, out var clientId) || clientId == Guid.Empty)
             throw new InvalidOperationException("Configure your approved Microsoft application ID in Settings before launching a Microsoft account.");
         var account = loginHandler.AccountManager.GetAccounts()

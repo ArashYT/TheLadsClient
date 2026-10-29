@@ -78,6 +78,11 @@ public partial class ExperiencesView : UserControl
         return list.Count > 0;
     }
 
+    /// <summary>The Zero SMP and Lads SMP Reborn games started here, and whether one is installing or launching: a launcher update
+    /// must not restart over them, nor X close the launcher (their post-exit switches run here).</summary>
+    internal IEnumerable<Process> RunningGames => _runningZeroSmp.Concat(_runningLadsSmpReborn).Select(i => i.Process);
+    internal bool IsBusy => _zeroSmpCts != null || _ladsSmpRebornCts != null;
+
     private static int NextInstanceNumber(List<RunningInstance> list)
     {
         int n = 1;
@@ -514,7 +519,7 @@ public partial class ExperiencesView : UserControl
             await ExperiencesService.ApplyPendingPatchesAsync(DataDirectory, instance.Id, Http, Report, token, ExperiencesService.BundledPatchesDirectory);
 
             Report("Signing in...");
-            var session = await host.ResolveModpackSessionAsync(token);
+            var session = await host.ResolveModpackSessionAsync(token, instance.GameDirectory);
 
             Report($"Preparing Minecraft {exp.McVersion} & Fabric {exp.LoaderVersion}...");
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token,
@@ -660,7 +665,7 @@ public partial class ExperiencesView : UserControl
             ExperiencesService.EnsureZeroSmpServer(instance.GameDirectory);
 
             Report("Signing in...");
-            var session = await host.ResolveModpackSessionAsync(token);
+            var session = await host.ResolveModpackSessionAsync(token, instance.GameDirectory);
 
             Report("Preparing Minecraft 1.20.1 & Forge 47.4.10...");
             string? joinServer = host.ModpackSettings.ZeroSmpAutoJoin ? ExperiencesService.ZeroSmp.ServerAddress : null;

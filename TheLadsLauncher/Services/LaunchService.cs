@@ -593,7 +593,7 @@ public class LaunchService : ILaunchService
         var trimmed = argument.Trim();
         if (IsDisallowedAgentFlag(trimmed))
         {
-            throw new InvalidOperationException($"External JVM agent '{trimmed}' is not permitted. Java agents (-javaagent, -agentpath, -agentlib) are blocked for client integrity.");
+            throw new InvalidOperationException($"External JVM agent or code-loading option '{trimmed}' is not permitted. Java agents (-javaagent, -agentpath, -agentlib), argument files (@file) and boot class path, module patch or class loader overrides are blocked for client integrity.");
         }
     }
 
@@ -610,15 +610,22 @@ public class LaunchService : ILaunchService
         }
     }
 
+    /// <summary>JVM options that load an agent or other code, or more options from a file nobody checks (an @argfile, a VM options or flags
+    /// file); -Xrun&lt;lib&gt; is the old -agentlib.</summary>
+    private static readonly string[] DisallowedJvmPrefixes =
+    {
+        "-javaagent", "-agentpath", "-agentlib", "-xrun", "-xdebug",
+        "@", "-xx:vmoptionsfile", "-xx:flags=",
+        "-xbootclasspath", "--patch-module", "-djava.system.class.loader"
+    };
+
     public static bool IsDisallowedAgentFlag(string arg)
     {
         if (string.IsNullOrWhiteSpace(arg)) return false;
         var lower = arg.Trim().ToLowerInvariant();
-        return lower.StartsWith("-javaagent")
-            || lower.StartsWith("-agentpath")
-            || lower.StartsWith("-agentlib")
-            || lower.StartsWith("-xrunjdwp")
-            || lower.StartsWith("-xdebug");
+        return DisallowedJvmPrefixes.Any(prefix => lower.StartsWith(prefix, StringComparison.Ordinal))
+            // Turning the attach mechanism back on would let a running program load an agent: only the launcher's own "+" form.
+            || (lower.Contains("disableattachmechanism") && lower != "-xx:+disableattachmechanism");
     }
 }
 

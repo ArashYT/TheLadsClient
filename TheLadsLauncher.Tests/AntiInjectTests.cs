@@ -46,6 +46,16 @@ public class AntiInjectTests
     [InlineData("-agentpath:C:\\cheats\\inject.dll")]
     [InlineData("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005")]
     [InlineData("-JAVAAGENT:payload.jar")]
+    [InlineData("@C:\\Users\\x\\args.txt")]                    // Java argument file: its -javaagent was never checked
+    [InlineData("-XX:VMOptionsFile=C:\\x\\vm.txt")]
+    [InlineData("-XX:Flags=C:\\x\\.hotspotrc")]
+    [InlineData("-Xbootclasspath/a:C:\\cheats\\inject.jar")]
+    [InlineData("--patch-module")]
+    [InlineData("--patch-module=java.base=C:\\x\\patch.jar")]
+    [InlineData("-Djava.system.class.loader=com.cheat.Loader")]
+    [InlineData("-Xrunhprof")]                                 // -Xrun<lib>: the old -agentlib
+    [InlineData("-XX:-DisableAttachMechanism")]                // would let a running program attach an agent
+    [InlineData("-XX:DisableAttachMechanism=false")]
     public void ValidateJvmArguments_ThrowsOnUnexpectedAgentFlags(string agentArg)
     {
         var ex = Assert.Throws<InvalidOperationException>(() =>
@@ -82,10 +92,29 @@ public class AntiInjectTests
     [InlineData("-XX:+UseG1GC")]
     [InlineData("-Dthelads.test=true")]
     [InlineData("-Dmax.bg.threads=4")]
+    [InlineData("-XX:+DisableAttachMechanism")]
+    [InlineData("--add-opens=java.base/java.lang=ALL-UNNAMED")]
     public void ValidateJvmArguments_AllowsNormalFlags(string validArg)
     {
         // Should not throw
         LaunchService.ValidateJvmArguments(validArg);
+    }
+
+    /// <summary>The Java 9+ launcher prepends JDK_JAVA_OPTIONS to its arguments: a -javaagent set there for the user must not reach the game.</summary>
+    [Fact]
+    public void GameProcessGetsNoJavaOptionVariables()
+    {
+        var start = new System.Diagnostics.ProcessStartInfo("java");
+        start.Environment["JDK_JAVA_OPTIONS"] = "-javaagent:stealer.jar";
+        start.Environment["jdk_java_options"] = "-javaagent:stealer.jar"; // Windows names ignore case
+        start.Environment["JAVA_TOOL_OPTIONS"] = "-javaagent:stealer.jar";
+        start.Environment["_JAVA_OPTIONS"] = "-javaagent:stealer.jar";
+        start.Environment["PATH_KEPT"] = "1";
+
+        GameSession.RemoveJavaOptionVariables(start);
+
+        Assert.DoesNotContain(start.Environment.Keys, k => GameSession.JavaOptionVariables.Contains(k, StringComparer.OrdinalIgnoreCase));
+        Assert.Equal("1", start.Environment["PATH_KEPT"]);
     }
 
     [Fact]
