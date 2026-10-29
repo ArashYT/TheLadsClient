@@ -78,6 +78,6 @@ jobs:
           name: windows-release
           path: packages
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@c074443f1ecf4024c935349e2e5bba9445315b1f # v2
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
         with:
           subject-path: 'packages/*'
