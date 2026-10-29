@@ -108,7 +108,14 @@ public final class LadsSession {
                 overridesCopy,
                 rev
         );
-        handle.send(json.getBytes(StandardCharsets.UTF_8));
+        byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > 524_288) {
+            if (manager.getPlatform().logger() != null) {
+                manager.getPlatform().logger().severe("[LadsClientAPI] Policy json exceeds max size of 524288 bytes (" + bytes.length + " bytes), dropping outbound policy!");
+            }
+            return;
+        }
+        handle.send(bytes);
     }
 
     public void sendPresence(boolean full, Collection<UUID> add, Collection<UUID> remove) {

@@ -32,9 +32,9 @@ public class LadsFabricMod implements ModInitializer {
             return;
         }
 
-        // Register payload codec (max 1 MiB) in play S2C + C2S registries
+        // Register payload codec: clientbound max 1 MiB (512 KiB spec + headroom), serverbound vanilla 32,767 limit
         PayloadTypeRegistry.clientboundPlay().registerLarge(LadsPayload.TYPE, LadsPayload.CODEC, 1024 * 1024);
-        PayloadTypeRegistry.serverboundPlay().registerLarge(LadsPayload.TYPE, LadsPayload.CODEC, 1024 * 1024);
+        PayloadTypeRegistry.serverboundPlay().register(LadsPayload.TYPE, LadsPayload.CODEC);
 
         // C2S global receiver -> LadsCore.receive
         ServerPlayNetworking.registerGlobalReceiver(LadsPayload.TYPE, (payload, context) -> {

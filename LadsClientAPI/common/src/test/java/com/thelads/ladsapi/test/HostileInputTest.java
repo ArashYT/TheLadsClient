@@ -140,4 +140,15 @@ public class HostileInputTest {
         f.send(head + "x".repeat(padLen) + tail); // exactly 32,000 bytes
         assertTrue(f.session().isLads());
     }
+    @Test
+    public void policyOver524288BytesIsDropped(@TempDir Path dir) {
+        Fixture f = new Fixture(dir, new LadsConfig());
+        f.send("{\"t\":\"hello\",\"v\":1,\"lads\":\"1.11.1\",\"mc\":\"26.3\"}");
+        f.player.getSentPayloads().clear();
+
+        f.manager.getConfig().setNotice("X".repeat(600_000));
+        f.session().sendPolicy();
+
+        assertTrue(f.player.getSentPayloads().isEmpty());
+    }
 }

@@ -32,4 +32,17 @@ public class LadsPayloadCodecTest {
         assertEquals((byte) 42, pLarge.data()[0]);
         assertEquals((byte) 42, pLarge.data()[large.length - 1]);
     }
+    @Test
+    public void testCodecOversizeInboundReturnsEmptyPayload() {
+        io.netty.buffer.ByteBuf nettyBuf = io.netty.buffer.Unpooled.buffer();
+        byte[] oversize = new byte[35_000];
+        Arrays.fill(oversize, (byte) 1);
+        nettyBuf.writeBytes(oversize);
+        net.minecraft.network.FriendlyByteBuf buf = new net.minecraft.network.FriendlyByteBuf(nettyBuf);
+
+        LadsPayload decoded = LadsPayload.CODEC.decode(buf);
+        assertNotNull(decoded);
+        assertEquals(0, decoded.data().length);
+        assertEquals(0, buf.readableBytes());
+    }
 }

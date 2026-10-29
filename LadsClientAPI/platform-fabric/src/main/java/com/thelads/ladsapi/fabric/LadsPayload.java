@@ -15,7 +15,12 @@ public record LadsPayload(byte[] data) implements CustomPacketPayload {
             buf.writeBytes(payload.data());
         },
         buf -> {
-            byte[] bytes = new byte[buf.readableBytes()];
+            int len = buf.readableBytes();
+            if (len > com.thelads.ladsapi.session.SessionManager.MAX_IN) {
+                buf.skipBytes(len);
+                return new LadsPayload(new byte[0]);
+            }
+            byte[] bytes = new byte[len];
             buf.readBytes(bytes);
             return new LadsPayload(bytes);
         }
