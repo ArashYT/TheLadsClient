@@ -130,3 +130,39 @@ def test_state_save_creates_backup_and_refuses_fallback(bot, tmp_path, monkeypat
     bot.save_state(fallback_data)
     # File content must still be 6, not 0
     assert json.loads(state_file.read_text(encoding="utf-8"))["tickets_count"] == 6
+
+
+def test_prune_crash_reports(bot, tmp_path):
+    import os
+    crash_dir = tmp_path / "crashes"
+    crash_dir.mkdir()
+
+    # 1 file older than 30 days
+    old_file = crash_dir / "old.txt"
+    old_file.write_text("old crash report")
+    old_mtime = time.time() - (35 * 86400)
+    os.utime(old_file, (old_mtime, old_mtime))
+
+    # 1 recent file
+    recent_file = crash_dir / "recent.txt"
+    recent_file.write_text("recent crash report")
+
+    bot.prune_crash_reports(str(crash_dir), max_age_days=30, max_total_mb=10)
+    assert not old_file.exists()
+    assert recent_file.exists()
+
+    # Test size limit pruning (oldest-first)
+    f1 = crash_dir / "f1.txt"
+    f1.write_bytes(b"x" * (2 * 1024 * 1024))
+    t1 = time.time() - 200
+    os.utime(f1, (t1, t1))
+
+    f2 = crash_dir / "f2.txt"
+    f2.write_bytes(b"x" * (2 * 1024 * 1024))
+    t2 = time.time() - 100
+    os.utime(f2, (t2, t2))
+
+    # Cap at 3 MB -> f1 (oldest) should be deleted, f2 and recent kept
+    bot.prune_crash_reports(str(crash_dir), max_age_days=30, max_total_mb=3)
+    assert not f1.exists()
+    assert f2.exists()

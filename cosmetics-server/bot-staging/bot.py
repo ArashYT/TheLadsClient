@@ -1319,17 +1319,68 @@ _pack_rate_history = {}
 INVITE_ONLY_EXPERIENCES = {"lads-smp-reborn-26.3", "experimental"}  # "experimental": launcher experimental modes (Horizon), /experimental_invite
 
 _crash_rate_history = {}
+_global_crash_history = []
+_discord_crash_history = []
+_recent_crash_hashes = {}
 CRASH_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'crash_reports')
+
+def prune_crash_reports(crash_dir: str = CRASH_DIR, max_age_days: int = 30, max_total_mb: int = 200):
+    """Delete crash reports older than 30 days and enforce total size limit (oldest-first)."""
+    if not os.path.isdir(crash_dir):
+        return
+    now = time.time()
+    max_age_sec = max_age_days * 86400
+    files = []
+    total_bytes = 0
+    try:
+        for entry in os.scandir(crash_dir):
+            if entry.is_file():
+                try:
+                    stat = entry.stat()
+                    mtime = stat.st_mtime
+                    size = stat.st_size
+                    if now - mtime > max_age_sec:
+                        try:
+                            os.remove(entry.path)
+                        except OSError:
+                            pass
+                    else:
+                        files.append((entry.path, mtime, size))
+                        total_bytes += size
+                except OSError:
+                    pass
+    except Exception as e:
+        print(f"Error scanning crash reports: {e}", flush=True)
+        return
+
+    max_bytes = max_total_mb * 1024 * 1024
+    if total_bytes > max_bytes:
+        files.sort(key=lambda x: x[1])  # oldest first
+        for p, _, size in files:
+            try:
+                os.remove(p)
+                total_bytes -= size
+                if total_bytes <= max_bytes:
+                    break
+            except OSError:
+                pass
 
 async def handle_crash_report(request):
     # Lads launcher (client profiles only) posts a crashed game's report, hs_err and log tail; staff see it in #crash-reports.
     import share_store
     ip = share_store.get_client_ip(request)
     now_ts = time.time()
+
+    global _global_crash_history
+    _global_crash_history = [t for t in _global_crash_history if t > now_ts - 3600]
+    if len(_global_crash_history) >= 30:
+        return web.json_response({"error": "global rate limit exceeded"}, status=429, headers={"Retry-After": "3600"})
+
     hits = [t for t in _crash_rate_history.get(ip, []) if t > now_ts - 600]
     if len(hits) >= 3:
         return web.json_response({"error": "rate limit exceeded"}, status=429, headers={"Retry-After": "600"})
     _crash_rate_history[ip] = hits + [now_ts]
+    _global_crash_history.append(now_ts)
     if len(_crash_rate_history) > 5000:
         stale = [k for k, ts_list in _crash_rate_history.items() if not ts_list or ts_list[-1] < now_ts - 600]
         for k in stale:
@@ -1340,7 +1391,7 @@ async def handle_crash_report(request):
         return web.json_response({"error": "bad json"}, status=400)
     if not isinstance(data, dict):
         return web.json_response({"error": "bad json"}, status=400)
-    part = lambda k, n=300_000: str(data.get(k) or "")[:n]
+    part = lambda k, n=200_000: str(data.get(k) or "")[:n]
     crash, hs_err, log, win = part("crash"), part("hsErr"), part("log"), part("windowsEvent", 20_000)
     launcher, mc, code = part("launcher", 32), part("minecraft", 32), part("exitCode", 16)
     if not (crash or hs_err or log or win):
@@ -1349,9 +1400,10 @@ async def handle_crash_report(request):
     ign = user.group(1) if user else "unknown"
     kind = "Java crash report" if crash else "JVM crash (hs_err)" if hs_err else "Windows crash event" if win else "no crash report (log only)"
     os.makedirs(CRASH_DIR, exist_ok=True)
+    prune_crash_reports(CRASH_DIR)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     name = f"{stamp}-{re.sub(r'[^A-Za-z0-9_]', '', ign)}-{random.randint(0, 0xffff):04x}.txt"
-    body = (f"Lads launcher {launcher} | Minecraft {mc} | exit code {code} | {ign}\n\n"
+    body = (f"Lads launcher {launcher} | Minecraft {mc} | exit code {code} | {ign} (unverified)\n\n"
             f"===== crash report =====\n{crash}\n\n===== hs_err =====\n{hs_err}\n\n===== Windows crash events =====\n{win}\n\n===== latest.log (tail) =====\n{log}\n")
     with open(os.path.join(CRASH_DIR, name), "w", encoding="utf-8") as f:
         f.write(body)
@@ -1368,14 +1420,24 @@ async def handle_crash_report(request):
             rule = analyze_crash_text(crash + "\n" + hs_err + "\n" + win + "\n" + log)
             key_lines = [m.group(0).strip() for m in re.finditer(r"^Description:.*|^Caused by:.*|^#\s+EXCEPTION_\w+.*|^# [CVJj]  .*|Faulting module name:.*|Exception code:.*", crash + "\n" + hs_err + "\n" + win, re.M)]
             first = "\n".join(dict.fromkeys(key_lines))[:600]
-            embed = discord.Embed(title=f"💥 Client crash: {ign}", color=0xE74C3C,
-                                  description=f"**{kind}**\nMinecraft `{mc}` · launcher `{launcher}` · exit `{code}`\n{first}")
-            if rule:
-                embed.add_field(name=rule.get("title", "Known issue"), value=rule.get("solution", "")[:1000], inline=False)
-            try:
-                await channel.send(embed=embed, file=discord.File(os.path.join(CRASH_DIR, name)))
-            except Exception as e:
-                print(f"crash report post failed: {e}", flush=True)
+            key_hash = hashlib.sha256(first.encode("utf-8")).hexdigest()
+            now_mono = time.monotonic()
+            stale_hashes = [h for h, ts in _recent_crash_hashes.items() if now_mono - ts > 3600]
+            for h in stale_hashes:
+                del _recent_crash_hashes[h]
+            global _discord_crash_history
+            _discord_crash_history = [t for t in _discord_crash_history if t > now_mono - 3600]
+            if len(_discord_crash_history) < 10 and key_hash not in _recent_crash_hashes:
+                _discord_crash_history.append(now_mono)
+                _recent_crash_hashes[key_hash] = now_mono
+                embed = discord.Embed(title=f"\U0001f4a5 Client crash: {ign} (unverified)", color=0xE74C3C,
+                                      description=f"**{kind}**\nMinecraft `{mc}` · launcher `{launcher}` · exit `{code}`\n{first}")
+                if rule:
+                    embed.add_field(name=rule.get("title", "Known issue"), value=rule.get("solution", "")[:1000], inline=False)
+                try:
+                    await channel.send(embed=embed, file=discord.File(os.path.join(CRASH_DIR, name)))
+                except Exception as e:
+                    print(f"crash report post failed: {e}", flush=True)
     return web.json_response({"ok": True})
 
 async def handle_experience_access(request):
