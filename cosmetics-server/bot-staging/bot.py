@@ -24,6 +24,21 @@ import shutil
 from typing import Any, Optional
 import json
 import math
+import logging
+from logging.handlers import RotatingFileHandler
+
+# ------------------ STRUCTURED LOGGING CONFIGURATION ------------------
+LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot_output.log")
+try:
+    _file_handler = RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8")
+    _file_handler.setFormatter(logging.Formatter("[%(asctime)s] [%(levelname)s] %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
+    _root_log = logging.getLogger()
+    _root_log.setLevel(logging.INFO)
+    _root_log.addHandler(_file_handler)
+    for _mod in ("cosmetics", "social", "share_store", "usage_stats", "discord"):
+        logging.getLogger(_mod).setLevel(logging.INFO)
+except Exception as _log_err:
+    print(f"Note: could not initialize file logger: {_log_err}", flush=True)
 import base64
 import hmac
 import hashlib

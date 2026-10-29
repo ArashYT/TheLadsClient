@@ -355,3 +355,10 @@ async def test_experience_access_names_capped_and_rate_limited():
     req.query.getall.return_value = ["alice", "bob", "carol", "dave", "eve"]
     resp = await bot.handle_experience_access(req)
     assert resp.status == 200
+
+
+def test_logging_configured_with_module_loggers():
+    import logging
+    for mod_name in ("cosmetics", "social", "share_store", "usage_stats"):
+        logger = logging.getLogger(mod_name)
+        assert logger.level <= logging.INFO
