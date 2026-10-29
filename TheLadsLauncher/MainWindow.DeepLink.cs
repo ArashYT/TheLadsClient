@@ -46,6 +46,7 @@ public partial class MainWindow : Window
                 new[] { ("Join Server", false, true) },
                 "Cancel");
 
+            ShowForDialog(); // the launcher sits in the tray while the game runs; a hidden window cannot own the dialog
             int? choice = await dialog.ShowDialog<int?>(this);
             if (choice == 0)
             {

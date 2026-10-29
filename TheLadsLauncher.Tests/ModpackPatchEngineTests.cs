@@ -163,6 +163,86 @@ public class ModpackPatchEngineTests : IDisposable
     }
 
     [Fact]
+    public void ApplyKeybinds_ChangesOnlyItsOwnLines_AndWritesTheFileAtomically()
+    {
+        var gameDir = Path.Combine(_tempDir, "minecraft");
+        Directory.CreateDirectory(gameDir);
+        var options = Path.Combine(gameDir, "options.txt");
+        // Lines the key:value map would lose or merge: no colon, a padded value, keys that differ only in case, a repeated key.
+        File.WriteAllText(options, "version:3465\r\nkey_key.jump:key.keyboard.space\r\n# not a pair\r\nautoJump:false\r\nresourcePacks:[ \"a\" ]  \r\n" +
+            "Gamma:1.0\r\ngamma:0.5\r\nkey_dup:one\r\nkey_dup:two\r\n");
+
+        ModpackPatchEngine.ApplyKeybinds(gameDir, new PatchKeybinds
+        {
+            Defaults = new() { ["key_newmod.zoom"] = "key.keyboard.c", ["key_key.jump"] = "ignored: already there" },
+            Force = new() { ["key_key.jump"] = "key.keyboard.j", ["key_dup"] = "three" }
+        });
+
+        Assert.Equal("version:3465\r\nkey_key.jump:key.keyboard.j\r\n# not a pair\r\nautoJump:false\r\nresourcePacks:[ \"a\" ]  \r\n" +
+            "Gamma:1.0\r\ngamma:0.5\r\nkey_dup:one\r\nkey_dup:three\r\nkey_newmod.zoom:key.keyboard.c\r\n", File.ReadAllText(options));
+        Assert.Equal(new[] { "options.txt" }, Directory.GetFiles(gameDir).Select(Path.GetFileName)); // no temp file left beside it
+    }
+
+    [Fact]
+    public void ApplyConfigPatch_LeavesAJsonFileThatDoesNotParseExactlyAsItIs()
+    {
+        var gameDir = Path.Combine(_tempDir, "minecraft");
+        Directory.CreateDirectory(Path.Combine(gameDir, "config"));
+        using var doc = JsonDocument.Parse("true");
+        PatchConfig Patch(string file) => new() { File = file, Set = new() { ["graphics.enableFog"] = doc.RootElement } };
+        var withComments = "{\n  // the player's own notes\n  \"playerCustomSetting\": 42,\n  \"graphics\": { \"renderScale\": 1.5, },\n}";
+        File.WriteAllText(Path.Combine(gameDir, "config", "comments.json"), withComments);
+        File.WriteAllText(Path.Combine(gameDir, "config", "array.json"), "[1, 2, 3]");
+        File.WriteAllText(Path.Combine(gameDir, "config", "cut.json"), "{ \"playerCustomSetting\": 4");
+        File.WriteAllText(Path.Combine(gameDir, "config", "empty.json"), " \n");
+
+        Assert.False(ModpackPatchEngine.ApplyConfigPatch(gameDir, Patch("config/comments.json")));
+        Assert.False(ModpackPatchEngine.ApplyConfigPatch(gameDir, Patch("config/array.json")));
+        Assert.False(ModpackPatchEngine.ApplyConfigPatch(gameDir, Patch("config/cut.json")));
+
+        Assert.Equal(withComments, File.ReadAllText(Path.Combine(gameDir, "config", "comments.json")));
+        Assert.Equal("[1, 2, 3]", File.ReadAllText(Path.Combine(gameDir, "config", "array.json")));
+        Assert.Equal("{ \"playerCustomSetting\": 4", File.ReadAllText(Path.Combine(gameDir, "config", "cut.json")));
+        // Nothing to lose in an empty or missing file: it is patched.
+        Assert.True(ModpackPatchEngine.ApplyConfigPatch(gameDir, Patch("config/empty.json")));
+        Assert.True(ModpackPatchEngine.ApplyConfigPatch(gameDir, Patch("config/missing.json")));
+        Assert.True(JsonNode.Parse(File.ReadAllText(Path.Combine(gameDir, "config", "empty.json")))!["graphics"]!["enableFog"]!.GetValue<bool>());
+        Assert.True(File.Exists(Path.Combine(gameDir, "config", "missing.json")));
+    }
+
+    [Fact]
+    public async Task APatchWithASkippedConfigIsReportedAndRetriedAtTheNextLaunch()
+    {
+        var instance = Path.Combine(_tempDir, "instance");
+        var config = Path.Combine(instance, "minecraft", "config", "mod.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(config)!);
+        File.WriteAllText(config, "{ \"keep\": 1, // comment\n }");
+        using var doc = JsonDocument.Parse("2");
+        var patch = new ModpackPatch
+        {
+            PackId = "p", Version = "1.0.1",
+            Keybinds = new PatchKeybinds { Defaults = new() { ["key_newmod.zoom"] = "key.keyboard.c" } },
+            ConfigPatches = new() { new PatchConfig { File = "config/mod.json", Set = new() { ["value"] = doc.RootElement } } }
+        };
+        var status = new List<string>();
+
+        await ModpackPatchEngine.ApplyPatchAsync(instance, patch, null, status.Add);
+
+        Assert.Contains(status, m => m.Contains("Could not patch config/mod.json") && m.Contains("next launch"));
+        Assert.Equal("{ \"keep\": 1, // comment\n }", File.ReadAllText(config));
+        Assert.Empty(ModpackPatchEngine.GetAppliedPatches(instance)); // so the next launch applies it again...
+        Assert.Contains("key_newmod.zoom:key.keyboard.c", File.ReadAllText(Path.Combine(instance, "minecraft", "options.txt"))); // (the rest of it went in)
+
+        File.WriteAllText(config, "{ \"keep\": 1 }"); // ...once the player has fixed the file
+        await ModpackPatchEngine.ApplyPatchAsync(instance, patch, null, status.Add);
+
+        Assert.Equal(new[] { "1.0.1" }, ModpackPatchEngine.GetAppliedPatches(instance));
+        var patched = JsonNode.Parse(File.ReadAllText(config))!.AsObject();
+        Assert.Equal((1, 2), (patched["keep"]!.GetValue<int>(), patched["value"]!.GetValue<int>()));
+        Assert.Equal(1, File.ReadAllLines(Path.Combine(instance, "minecraft", "options.txt")).Count(l => l.StartsWith("key_newmod.zoom:")));
+    }
+
+    [Fact]
     public void RecordAndGetAppliedPatches_TracksVersions()
     {
         var applied = ModpackPatchEngine.GetAppliedPatches(_tempDir);

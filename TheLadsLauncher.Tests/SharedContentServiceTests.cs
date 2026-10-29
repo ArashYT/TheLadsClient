@@ -598,6 +598,50 @@ public class SharedContentServiceTests
         Assert.Empty(await PackwizIndex.FilesInFoldersAsync("https://packs.example/mods-only/pack.toml", SharedContentService.SharedFolders, http));
     }
 
+    // A pack may not write Lads' own state files (server_bypasses.json switches the anti-ban server rules off).
+    [Fact]
+    public async Task PackwizPackThatWritesLadsStateFilesIsFoundBeforeItRuns()
+    {
+        using var http = new HttpClient(new StaticFiles(new()
+        {
+            ["https://packs.example/bad/pack.toml"] = "[index]\nfile = \"index.toml\"\n",
+            ["https://packs.example/bad/index.toml"] = "[[files]]\nfile = \"mods/sodium.pw.toml\"\nmetafile = true\n\n[[files]]\nfile = \"Server_Bypasses.json\"\n\n" +
+                "[[files]]\nfile = \"config/server_bypasses.json\"\n\n[[files]]\nfile = \"thelads_config.json\"\n\n[[files]]\nfile = \"configureddefaults/server_bypasses.json\"\n\n[[files]]\nfile = 'extra.pw.toml'\nmetafile = true\n\n" +
+                "[[files]]\nfile = \"options.txt\"\n",
+            ["https://packs.example/ok/pack.toml"] = "[index]\nfile = \"index.toml\"\n",
+            ["https://packs.example/ok/index.toml"] = "[[files]]\nfile = \"mods/sodium.pw.toml\"\nmetafile = true\n\n[[files]]\nfile = \"config/x.json\"\n"
+        }));
+
+        // The top-level metafile counts: the file name it downloads is its own to choose.
+        Assert.Equal(new[] { "Server_Bypasses.json", "thelads_config.json", "configureddefaults/server_bypasses.json", "extra.pw.toml" },
+            await PackwizIndex.LadsStateFilesAsync("https://packs.example/bad/pack.toml", http));
+        Assert.Empty(await PackwizIndex.LadsStateFilesAsync("https://packs.example/ok/pack.toml", http));
+    }
+
+    // A pack's thelads_config.json carried a zip date up to 2107; the newest-wins sync copied it everywhere, dated like that, for good.
+    [Fact]
+    public void LadsSettingsDatedInTheFutureNeverWinTheSync()
+    {
+        using var temp = new TestDirectory();
+        string shared = Path.Combine(temp.Path, "shared", "thelads_config.json");
+        string planted = Path.Combine(temp.Path, "instances", "pack", "minecraft", "thelads_config.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(shared)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(planted)!);
+        Directory.CreateDirectory(Path.Combine(temp.Path, "instances", "pack", "minecraft", "mods"));
+        File.WriteAllText(shared, "{\"lads197PresetApplied\": true, \"owner\": \"player\"}");
+        File.SetLastWriteTimeUtc(shared, DateTime.UtcNow.AddHours(-1));
+        File.WriteAllText(planted, "{\"lads197PresetApplied\": true, \"owner\": \"pack\"}");
+        File.SetLastWriteTimeUtc(planted, new DateTime(2100, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        SharedContentService.SyncLadsSettingsAcrossAllInstances(temp.Path);
+
+        Assert.Contains("player", File.ReadAllText(shared));
+        Assert.Contains("player", File.ReadAllText(planted)); // the pack's copy is replaced...
+        Assert.True(File.GetLastWriteTimeUtc(planted) < DateTime.UtcNow.AddDays(1)); // ...and its date does not spread
+        Assert.True(SharedContentService.IsDatedInTheFuture(new DateTime(2100, 1, 1, 0, 0, 0, DateTimeKind.Utc)));
+        Assert.False(SharedContentService.IsDatedInTheFuture(DateTime.UtcNow.AddMinutes(2))); // a little clock skew is fine
+    }
+
     // ------------------------------------------------------------------ servers.dat
 
     // FS-3: a game killed between Minecraft's two renames leaves only servers.dat_old; that is the list, not "no list".

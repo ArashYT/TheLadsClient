@@ -104,7 +104,7 @@ public static class ModpackPatchEngine
         }
     }
 
-    public static async Task ApplyPatchAsync(string instanceDirectory, ModpackPatch patch, HttpClient? http, Action<string>? status, CancellationToken token = default)
+    public static async Task<bool> ApplyPatchAsync(string instanceDirectory, ModpackPatch patch, HttpClient? http, Action<string>? status, CancellationToken token = default)
     {
         var gameDir = Path.Combine(instanceDirectory, "minecraft");
         Directory.CreateDirectory(gameDir);
@@ -115,11 +115,14 @@ public static class ModpackPatchEngine
         ApplyKeybinds(gameDir, patch.Keybinds);
 
         // 2. Surgical Config Patches
+        bool complete = true;
         if (patch.ConfigPatches != null)
         {
             foreach (var cfgPatch in patch.ConfigPatches)
             {
-                ApplyConfigPatch(gameDir, cfgPatch);
+                if (ApplyConfigPatch(gameDir, cfgPatch)) continue;
+                complete = false;
+                status?.Invoke($"Could not patch {cfgPatch.File}: it is not valid JSON, so it was left as it is. The update is tried again at the next launch.");
             }
         }
 
@@ -129,16 +132,18 @@ public static class ModpackPatchEngine
             await ApplyModSyncAsync(gameDir, patch.Mods, http, status, token);
         }
 
-        RecordAppliedPatch(instanceDirectory, patch.Version);
+        // A patch with a skipped config is not recorded: every step is repeatable, so the next launch runs it again.
+        if (complete) RecordAppliedPatch(instanceDirectory, patch.Version);
+        return complete;
     }
 
     public static void ApplyKeybinds(string gameDir, PatchKeybinds? keybinds)
     {
         if (keybinds == null) return;
         var optionsFile = Path.Combine(gameDir, "options.txt");
-        var map = File.Exists(optionsFile)
-            ? GameOptionsService.ParseOptions(File.ReadAllText(optionsFile))
-            : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        // Edited line by line (the player's other lines, their order and the line endings stay) and written atomically (a launcher
+        // killed mid-write leaves the old file, never a cut-off one): the options map is lossy and File.WriteAllText is not atomic.
+        var options = GameOptionsFile.Parse(File.Exists(optionsFile) ? File.ReadAllText(optionsFile) : null);
 
         bool changed = false;
 
@@ -147,9 +152,9 @@ public static class ModpackPatchEngine
         {
             foreach (var (k, v) in keybinds.Defaults)
             {
-                if (!map.ContainsKey(k))
+                if (options.Get(k) == null)
                 {
-                    map[k] = v;
+                    options.Set(k, v);
                     changed = true;
                 }
             }
@@ -160,9 +165,9 @@ public static class ModpackPatchEngine
         {
             foreach (var (k, v) in keybinds.Force)
             {
-                if (!map.TryGetValue(k, out var cur) || cur != v)
+                if (options.Get(k) != v)
                 {
-                    map[k] = v;
+                    options.Set(k, v);
                     changed = true;
                 }
             }
@@ -170,13 +175,16 @@ public static class ModpackPatchEngine
 
         if (changed)
         {
-            File.WriteAllText(optionsFile, GameOptionsService.SerializeOptions(map));
+            GameOptionsService.WriteAtomically(optionsFile, options.ToString());
         }
     }
 
-    public static void ApplyConfigPatch(string gameDir, PatchConfig patch)
+    /// <summary>Applies one config patch. False when the file is JSON that does not parse (comments, a trailing comma, a half-written
+    /// file) or is not an object: it is left exactly as it is, because writing back only the patched keys would wipe the rest. The
+    /// caller reports that and does not record the patch as applied.</summary>
+    public static bool ApplyConfigPatch(string gameDir, PatchConfig patch)
     {
-        if (string.IsNullOrWhiteSpace(patch.File)) return;
+        if (string.IsNullOrWhiteSpace(patch.File)) return true;
         string filePath;
         try
         {
@@ -184,7 +192,7 @@ public static class ModpackPatchEngine
         }
         catch (Exception ex) when (ex is InvalidDataException or ArgumentException)
         {
-            return;
+            return true;
         }
         var dir = Path.GetDirectoryName(filePath);
         if (dir != null) Directory.CreateDirectory(dir);
@@ -193,22 +201,12 @@ public static class ModpackPatchEngine
 
         if (fmt == "json" && patch.Set != null)
         {
-            JsonObject root;
-            if (File.Exists(filePath))
+            var root = new JsonObject();
+            var text = File.Exists(filePath) ? File.ReadAllText(filePath) : "";
+            if (!string.IsNullOrWhiteSpace(text))
             {
-                try
-                {
-                    var node = JsonNode.Parse(File.ReadAllText(filePath));
-                    root = node as JsonObject ?? new JsonObject();
-                }
-                catch
-                {
-                    root = new JsonObject();
-                }
-            }
-            else
-            {
-                root = new JsonObject();
+                try { root = JsonNode.Parse(text) as JsonObject ?? throw new JsonException("The file is not a JSON object."); }
+                catch (JsonException) { return false; }
             }
 
             foreach (var (path, element) in patch.Set)
@@ -237,6 +235,7 @@ public static class ModpackPatchEngine
 
             File.WriteAllLines(filePath, lines);
         }
+        return true;
     }
 
     /// <summary>Where <paramref name="key"/> is in a key=value file: its line (-1 if missing) and where a missing one goes. A TOML key

@@ -424,12 +424,18 @@ public static class ExperiencesService
             .SelectMany(dir => ModpackPatchEngine.PendingPatches(dir, instDir, packId))
             .GroupBy(p => p.Version, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
             .OrderBy(p => Version.TryParse(p.Version, out var v) ? v : new Version(0, 0)).ToList());
+        int applied = 0;
         foreach (var patch in pending)
         {
             token.ThrowIfCancellationRequested();
-            await ModpackPatchEngine.ApplyPatchAsync(instDir, patch, http, status, token);
+            if (!await ModpackPatchEngine.ApplyPatchAsync(instDir, patch, http, status, token))
+            {
+                status?.Invoke($"Update {patch.Version} is incomplete, so newer updates wait for it.");
+                break;
+            }
+            applied++;
         }
-        return pending.Count;
+        return applied;
     }
 
     /// <summary>The folder the install copies from: an extracted source, else the archive extracted, else the archive downloaded and

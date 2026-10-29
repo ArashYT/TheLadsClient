@@ -204,6 +204,228 @@ public sealed class MrpackTests : IDisposable
         Assert.False(File.Exists(Path.Combine(_root, "escape.txt")));
     }
 
+    // ------------------------------------------------------------------ updates
+
+    [Fact]
+    public async Task EachUpdateWritesTheClientOverridesVariantOverTheOverridesOne()
+    {
+        using var http = new HttpClient(new Handler(new()));
+        var instance = Path.Combine(_root, "instance");
+        string Config() => File.ReadAllText(Path.Combine(instance, "minecraft", "config", "x.txt"));
+        foreach (var version in new[] { "v1", "v2", "v3" })
+        {
+            await Mrpack.InstallAsync(Pack(version, Array.Empty<(string, string, string)>(),
+                new() { ["overrides/config/x.txt"] = "pack " + version, ["client-overrides/config/x.txt"] = "client " + version }), instance, http, null, default);
+            Assert.Equal("client " + version, Config()); // updates used to leave "pack v2" there, and never touch it again
+        }
+    }
+
+    [Fact]
+    public async Task AFileInBothTheFileListAndOverridesTakesTheOverridesCopy_AUserChangeStays()
+    {
+        using var http = new HttpClient(new Handler(new() { ["https://cdn.modrinth.com/a1.jar"] = "mod a v1", ["https://cdn.modrinth.com/a2.jar"] = "mod a v2",
+            ["https://cdn.modrinth.com/a3.jar"] = "mod a v3" }));
+        var instance = Path.Combine(_root, "instance");
+        var jar = Path.Combine(instance, "minecraft", "mods", "a.jar");
+        await Mrpack.InstallAsync(Pack("v1", new[] { ("mods/a.jar", "a1.jar", "mod a v1") }, new() { ["overrides/mods/a.jar"] = "override v1" }), instance, http, null, default);
+        Assert.Equal("override v1", File.ReadAllText(jar));
+
+        await Mrpack.InstallAsync(Pack("v2", new[] { ("mods/a.jar", "a2.jar", "mod a v2") }, new() { ["overrides/mods/a.jar"] = "override v2" }), instance, http, null, default);
+        Assert.Equal("override v2", File.ReadAllText(jar));
+
+        File.WriteAllText(jar, "mine");
+        await Mrpack.InstallAsync(Pack("v3", new[] { ("mods/a.jar", "a3.jar", "mod a v3") }, new() { ["overrides/mods/a.jar"] = "override v3" }), instance, http, null, default);
+        Assert.Equal("mine", File.ReadAllText(jar));
+    }
+
+    [Fact]
+    public async Task AModWhoseNameChangesOnlyInCaseIsUpdatedNotDeleted()
+    {
+        using var http = new HttpClient(new Handler(new() { ["https://cdn.modrinth.com/a1.jar"] = "mod a v1", ["https://cdn.modrinth.com/a2.jar"] = "mod a v2" }));
+        var instance = Path.Combine(_root, "instance");
+        var mods = Path.Combine(instance, "minecraft", "mods");
+        await Mrpack.InstallAsync(Pack("v1", new[] { ("mods/Foo.jar", "a1.jar", "mod a v1") }, new()), instance, http, null, default);
+
+        await Mrpack.InstallAsync(Pack("v2", new[] { ("mods/foo.jar", "a2.jar", "mod a v2") }, new()), instance, http, null, default);
+
+        var jar = Assert.Single(Directory.GetFiles(mods));
+        Assert.Equal("mod a v2", File.ReadAllText(jar));
+        Assert.Contains("foo.jar", File.ReadAllText(Path.Combine(instance, Mrpack.RecordFile)), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ADownloadThatTimesOutMovesOnToTheNextMirror()
+    {
+        var pack = Path.Combine(_root, "mirrors.mrpack");
+        using (var zip = ZipFile.Open(pack, ZipArchiveMode.Create))
+        using (var w = new StreamWriter(zip.CreateEntry("modrinth.index.json").Open()))
+            w.Write(JsonSerializer.Serialize(new
+            {
+                formatVersion = 1, game = "minecraft", versionId = "v1", name = "Pack",
+                dependencies = new Dictionary<string, string> { ["minecraft"] = "1.21.1", ["fabric-loader"] = "0.16.5" },
+                files = new[] { new { path = "mods/a.jar", hashes = new { sha1 = Sha1("mod a"), sha512 = Sha512("mod a") },
+                    downloads = new[] { "https://slow.example/a.jar", "https://cdn.modrinth.com/a.jar" }, fileSize = 5 } }
+            }));
+        using var http = new HttpClient(new SlowFirstMirror());
+
+        await Mrpack.InstallAsync(pack, Path.Combine(_root, "instance"), http, null, default);
+
+        Assert.Equal("mod a", File.ReadAllText(Path.Combine(_root, "instance", "minecraft", "mods", "a.jar")));
+    }
+
+    [Fact]
+    public async Task AnIconThatTimesOutDoesNotThrowAwayTheFinishedInstall()
+    {
+        using var http = new HttpClient(new SlowFirstMirror());
+        var data = Path.Combine(_root, "data");
+
+        var instance = await ModpackLauncher.InstallAsync(data, Pack("v1", Array.Empty<(string, string, string)>(), new() { ["overrides/options.txt"] = "pack" }),
+            null, null, null, "https://slow.example/icon.png", http, null, default);
+
+        Assert.Equal("pack", File.ReadAllText(Path.Combine(instance.GameDirectory, "options.txt")));
+        Assert.Null(instance.IconPath); // the placeholder
+        Assert.Equal(instance.Id, Assert.Single(Modpacks.List(data)).Id);
+    }
+
+    [Fact]
+    public async Task CancellingDuringTheIconStillRemovesTheNewInstance()
+    {
+        using var cancel = new CancellationTokenSource();
+        using var http = new HttpClient(new CancelsWhenAsked(cancel));
+        var data = Path.Combine(_root, "data");
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ModpackLauncher.InstallAsync(data,
+            Pack("v1", Array.Empty<(string, string, string)>(), new() { ["overrides/options.txt"] = "pack" }), null, null, null,
+            "https://slow.example/icon.png", http, null, cancel.Token));
+
+        Assert.Empty(Modpacks.List(data));
+        Assert.Empty(Directory.GetDirectories(Modpacks.Root(data)));
+    }
+
+    private sealed class CancelsWhenAsked(CancellationTokenSource cancel) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            cancel.Cancel();
+            throw new TaskCanceledException("canceled by the caller", null, cancel.Token);
+        }
+    }
+
+    // HttpClient's own timeout surfaces as a TaskCanceledException.
+    private sealed class SlowFirstMirror : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            request.RequestUri!.Host == "slow.example" ? throw new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout.", new TimeoutException())
+                : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("mod a") });
+    }
+
+    // ------------------------------------------------------------------ Lads' own state files
+
+    [Theory]
+    [InlineData("server_bypasses.json")]
+    [InlineData("SERVER_BYPASSES.JSON")]
+    [InlineData("Server_Bypasses.Json")]
+    [InlineData("./server_bypasses.json")]
+    [InlineData(".\\server_bypasses.json")]
+    [InlineData("mods/../server_bypasses.json")]
+    [InlineData("config\\..\\server_bypasses.json")]
+    [InlineData("a/b/../../server_bypasses.json")]
+    [InlineData("../server_bypasses.json")]
+    [InlineData("/server_bypasses.json")]
+    [InlineData("server_bypasses.json.")]
+    [InlineData("server_bypasses.json ")]
+    [InlineData("server_bypasses.json:stream")]
+    [InlineData("server_bypasses.json::$DATA")]
+    [InlineData("thelads_config.json")]
+    [InlineData("THELADS_PROFILES.JSON")]
+    [InlineData("thelads_crosshair_profiles.json")]
+    [InlineData("thelads_pack_profiles.json")]
+    [InlineData("lads_accounts.json")]
+    [InlineData("lads_profile.json")]
+    [InlineData("lads_next_account.json")]
+    [InlineData("lads_next_version.json")]
+    [InlineData("lads_versions.json")]
+    [InlineData("lads-mod-state.json")]
+    [InlineData("lads-renderer.json")]
+    [InlineData("lads-renderer-choice.json")]
+    [InlineData("lads-relaunch.json")]
+    [InlineData(".lads-pack-files.json")]
+    [InlineData(".lads-mod-cache/inventory.json")]
+    [InlineData("configureddefaults/server_bypasses.json")]
+    [InlineData("configureddefaults/thelads_config.json")]
+    [InlineData("configureddefaults/lads-mod-state.json")]
+    [InlineData("install-id")]
+    [InlineData("INSTALL-ID")]
+    [InlineData("configureddefaults/install-id")]
+    [InlineData("SERVER~1.JSO")]
+    [InlineData("THELAD~1.JSO")]
+    [InlineData("CONFIG~1/foo.json")]
+    [InlineData("configureddefaults/SERVER~1.JSO")]
+    [InlineData("FOOBAR~2.TXT")]
+    public void LadsStateFilesAreRecognisedWhateverTheSpelling(string path) => Assert.True(Mrpack.IsLadsStateFile(path), path);
+
+    [Theory]
+    [InlineData("options.txt")]
+    [InlineData("servers.dat")]
+    [InlineData("config/server_bypasses.json")] // nothing reads it there
+    [InlineData("config/thelads_config.json")]
+    [InlineData("mods/lads-core.jar")]
+    [InlineData("saves/World/lads-host.json")]
+    [InlineData("my_server_bypasses.json")]
+    [InlineData("server_bypasses.json.bak")]
+    [InlineData("ladsomething.txt")]
+    [InlineData("configureddefaults/options.txt")]
+    [InlineData("configureddefaults/config/something.json")]
+    [InlineData("mods/mod~1.jar")]
+    [InlineData("config/mod~1.cfg")]
+    [InlineData("~tilde.txt")]
+    [InlineData("")]
+    public void OtherPackFilesAreNotLadsStateFiles(string path) => Assert.False(Mrpack.IsLadsStateFile(path), path);
+
+    [Fact]
+    public async Task APackNeverWritesLadsStateFiles_ButItsOtherFilesInstall()
+    {
+        const string planted = "{\"hypixel.net\":[\"StackRefill\",\"Minimap\"]}";
+        using var http = new HttpClient(new Handler(new() { ["https://cdn.modrinth.com/a.jar"] = "mod a", ["https://cdn.modrinth.com/b.json"] = planted }));
+        var instance = Path.Combine(_root, "instance");
+        string Game(string relative) => Path.Combine(instance, "minecraft", relative);
+        var status = new List<string>();
+        var pack = Pack("v1", new[] { ("mods/a.jar", "a.jar", "mod a"), ("Server_Bypasses.json", "b.json", planted) }, new()
+        {
+            ["overrides/server_bypasses.json"] = planted, ["overrides/THELADS_CONFIG.JSON"] = "{}", ["client-overrides/lads_accounts.json"] = "[]", ["overrides/install-id"] = "planted-id",
+            ["overrides\\lads-mod-state.json"] = "{}", ["overrides/config/server_bypasses.json"] = "nested", ["overrides/options.txt"] = "pack options"
+        });
+
+        await Mrpack.InstallAsync(pack, instance, http, status.Add, default);
+
+        foreach (var name in new[] { "server_bypasses.json", "thelads_config.json", "lads_accounts.json", "lads-mod-state.json", "install-id" })
+            Assert.False(File.Exists(Game(name)), name);
+        Assert.Equal(("mod a", "pack options", "nested"), (File.ReadAllText(Game("mods/a.jar")), File.ReadAllText(Game("options.txt")),
+            File.ReadAllText(Game("config/server_bypasses.json"))));
+        Assert.Contains(status, m => m.StartsWith("Skipped Lads settings files") && m.Contains("Server_Bypasses.json") && m.Contains("THELADS_CONFIG.JSON"));
+        Assert.DoesNotContain("lads_accounts", File.ReadAllText(Path.Combine(instance, Mrpack.RecordFile)), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AnUpdateRemovesAStateFileAnOlderLauncherInstalledFromAPack_UnlessThePlayerChangedIt()
+    {
+        using var http = new HttpClient(new Handler(new()));
+        var instance = Path.Combine(_root, "instance");
+        string Game(string relative) => Path.Combine(instance, "minecraft", relative);
+        Directory.CreateDirectory(Game("."));
+        // As an older launcher left it: the pack's server_bypasses.json (unchanged) and thelads_config.json (the player has since changed it).
+        File.WriteAllText(Game("server_bypasses.json"), "planted");
+        File.WriteAllText(Game("thelads_config.json"), "mine");
+        File.WriteAllText(Path.Combine(instance, Mrpack.RecordFile), JsonSerializer.Serialize(new Dictionary<string, string>
+            { ["server_bypasses.json"] = Sha1("planted"), ["thelads_config.json"] = Sha1("pack config") }));
+
+        await Mrpack.InstallAsync(Pack("v2", Array.Empty<(string, string, string)>(),
+            new() { ["overrides/server_bypasses.json"] = "planted", ["overrides/thelads_config.json"] = "pack config" }), instance, http, null, default);
+
+        Assert.False(File.Exists(Game("server_bypasses.json")));
+        Assert.Equal("mine", File.ReadAllText(Game("thelads_config.json")));
+    }
+
     private string Pack(string version, (string Path, string Url, string Content)[] files, Dictionary<string, string> overrides,
         (string Path, string Url)? serverOnly = null)
     {

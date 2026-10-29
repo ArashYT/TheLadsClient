@@ -316,6 +316,10 @@ public sealed class SharedContentService
         return null;
     }
 
+    /// <summary>A settings file dated more than a few minutes ahead of the clock (a zip entry can say up to 2107) is not the newest one:
+    /// it would win every later sync, copy that date onto every copy, and the player's own changes would never stick.</summary>
+    public static bool IsDatedInTheFuture(DateTime lastWriteUtc) => lastWriteUtc > DateTime.UtcNow.AddMinutes(10);
+
     /// <summary>
     /// Synchronizes Lads Client configuration files (<c>thelads_config.json</c>, <c>thelads_profiles.json</c>,
     /// <c>thelads_crosshair_profiles.json</c>) across <c>shared\</c>, the root launcher directory, all profile directories,
@@ -393,6 +397,7 @@ public sealed class SharedContentService
                             }
                         }
                         var mtime = info.LastWriteTimeUtc;
+                        if (IsDatedInTheFuture(mtime)) continue; // its copies in the other folders are replaced by the newest of the rest
                         if (newestFile == null || mtime > newestTime)
                         {
                             newestFile = candidate;

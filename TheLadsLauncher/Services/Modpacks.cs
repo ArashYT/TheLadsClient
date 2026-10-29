@@ -78,6 +78,7 @@ public static class Modpacks
                 var instance = JsonSerializer.Deserialize<ModpackInstance>(File.ReadAllText(Path.Combine(dir, "instance.json")), Json);
                 if (instance == null || instance.Id != Path.GetFileName(dir)) continue;
                 instance.Directory = dir;
+                ModpackLauncher.RepairCurseForgeLayout(instance); // CurseForge imports before 1.12.0 left the pack outside the game folder
                 list.Add(instance);
             }
             catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException or InvalidDataException) { }

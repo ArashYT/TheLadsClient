@@ -77,6 +77,34 @@ public static class Mrpack
         return full;
     }
 
+    private static readonly string[] ExactLadsStateFiles = { "server_bypasses.json", "install-id" };
+    private static readonly string[] LadsStatePrefixes = { "thelads_", "lads_", "lads-", ".lads-" };
+
+    /// <summary>
+    /// Whether a pack path is one of Lads' own state files: server_bypasses.json (the per-server opt-outs from the anti-ban rules),
+    /// install-id, and the settings, profiles, accounts, mod state, renderer and switch files the game and this launcher keep at the top
+    /// of the game folder (thelads_*, lads_*, lads-*, .lads-*), including under configureddefaults/ or matching 8.3 short names (~N).
+    /// They are the player's: a pack that could write them could switch the server rules off or replace the player's settings.
+    /// Both slashes, any case, "." and ".." segments, and the ":stream" and trailing dots and spaces Windows ignores all name the same
+    /// file, so the path is resolved first. Only the top level counts (or immediately under configureddefaults/): nothing reads them elsewhere.
+    /// </summary>
+    public static bool IsLadsStateFile(string relative)
+    {
+        var path = new List<string>();
+        foreach (var raw in relative.Split('/', '\\'))
+        {
+            var part = raw.Split(':')[0].TrimEnd('.', ' ');
+            if (raw.TrimEnd(' ') == "..") { if (path.Count > 0) path.RemoveAt(path.Count - 1); }
+            else if (part.Length > 0) path.Add(part);
+        }
+        if (path.Count > 0 && path[0].Equals("configureddefaults", StringComparison.OrdinalIgnoreCase))
+            path.RemoveAt(0);
+        if (path.Count == 0) return false;
+        if (System.Text.RegularExpressions.Regex.IsMatch(path[0], @"~\d")) return true;
+        return ExactLadsStateFiles.Any(exact => path[0].Equals(exact, StringComparison.OrdinalIgnoreCase))
+            || LadsStatePrefixes.Any(prefix => path[0].StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>Every hash the pack gives must match, and it must give at least one.</summary>
     public static bool HashMatches(string file, string? sha1, string? sha512)
     {
@@ -106,10 +134,12 @@ public static class Mrpack
         Directory.CreateDirectory(game);
         var recordPath = Path.Combine(instanceDirectory, RecordFile);
         bool updating = File.Exists(recordPath);
-        var previous = updating
-            ? JsonSerializer.Deserialize<Dictionary<string, string>>(await File.ReadAllTextAsync(recordPath, token)) ?? new()
-            : new Dictionary<string, string>();
+        // Case-insensitive like the disk and `installed`: "mods/Foo.jar" renamed to "mods/foo.jar" is the same file, not a removed one.
+        var previous = new Dictionary<string, string>(
+            updating ? JsonSerializer.Deserialize<Dictionary<string, string>>(await File.ReadAllTextAsync(recordPath, token)) ?? new() : new(),
+            StringComparer.OrdinalIgnoreCase);
         var installed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var written = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // the keys this run put on disk, as opposed to kept as the user's
 
         using var zip = ZipFile.OpenRead(mrpackFile);
         MrpackIndex index;
@@ -127,11 +157,23 @@ public static class Mrpack
             .Select(e => (e.Entry, Relative: e.Name[(e.Name.IndexOf('/') + 1)..])).ToList();
         foreach (var o in overrides) SafePath(game, o.Relative);
 
+        // Lads' own state files (server_bypasses.json, thelads_config.json, ...) are the player's, never a pack's.
+        var skipped = files.Where(f => IsLadsStateFile(f.File.Path)).Select(f => f.File.Path)
+            .Concat(overrides.Where(o => IsLadsStateFile(o.Relative)).Select(o => o.Relative)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        files.RemoveAll(f => IsLadsStateFile(f.File.Path));
+        overrides.RemoveAll(o => IsLadsStateFile(o.Relative));
+        if (skipped.Count > 0) status?.Invoke("Skipped Lads settings files in the pack: " + string.Join(", ", skipped));
+
         // A kept file keeps its recorded hash, so it still counts as the user's at the next update; one the pack never installed stays unrecorded.
         void Record(string key, string target, bool kept)
         {
             string? sha1 = !kept ? Sha1Of(target) : previous.TryGetValue(key, out var old) ? old : null;
-            if (sha1 != null) lock (installed) installed[key] = sha1;
+            if (sha1 == null) return;
+            lock (installed)
+            {
+                installed[key] = sha1;
+                if (!kept) written.Add(key);
+            }
         }
 
         try
@@ -154,8 +196,9 @@ public static class Mrpack
                 token.ThrowIfCancellationRequested();
                 var key = Key(relative);
                 var target = OnDisk(SafePath(game, relative));
-                // A file this run already wrote (overrides/ before client-overrides/) is the pack's, not the user's.
-                bool kept = UserChanged(target, key, previous, updating && !installed.ContainsKey(key));
+                // A file this run already wrote (overrides/ before client-overrides/) is the pack's, not the user's: whatever the
+                // previous record says, it differs from it now.
+                bool kept = !written.Contains(key) && UserChanged(target, key, previous, updating && !installed.ContainsKey(key));
                 if (!kept)
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(target)!);
@@ -218,7 +261,7 @@ public static class Mrpack
                 File.Move(temp, target, overwrite: true);
                 return;
             }
-            catch (Exception e) when (e is HttpRequestException or InvalidDataException or IOException or TimeoutException && !token.IsCancellationRequested)
+            catch (Exception e) when (e is HttpRequestException or InvalidDataException or IOException or TimeoutException or TaskCanceledException && !token.IsCancellationRequested)
             {
                 last = e;
             }

@@ -1191,6 +1191,13 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>An exception that escaped a UI handler (<see cref="Program"/> logged it in full): the launcher goes on, and says so.</summary>
+    internal void ShowUnhandled(Exception error)
+    {
+        Log($"[UNHANDLED] {error.GetType().Name}: {error.Message} (full report in logs\\crash_ui.txt)");
+        ShowActionNotice($"Something went wrong: {error.Message} The details are in logs\\crash_ui.txt.", error: true);
+    }
+
     private void DrainPendingUiLogs()
     {
         System.Threading.Interlocked.Exchange(ref _uiLogDrainScheduled, 0);
@@ -1889,6 +1896,17 @@ public partial class MainWindow : Window
         bool danger = false, bool confirmEnabled = true) =>
         await ShowLadsChoiceAsync(title, message, confirmText == null ? Array.Empty<(string, bool, bool)>()
             : new[] { (confirmText, danger, confirmEnabled) }, cancelText) == 0;
+
+    /// <summary>
+    /// A window hidden to the tray cannot own a dialog (Avalonia throws "Cannot show window with non-visible owner."), and an exception
+    /// there ended the launcher. A dialog that must be seen (the crash dialog, a deep-link join) brings the window back first.
+    /// </summary>
+    private void ShowForDialog()
+    {
+        if (!IsVisible) Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+    }
 
     /// <summary>
     /// The same dialog with one button per choice (a disabled choice cannot be pressed) and a cancel button. Returns the
@@ -5686,7 +5704,12 @@ public partial class MainWindow : Window
             };
             openBtn.Click += (s, e) =>
             {
-                Process.Start(new ProcessStartInfo(crashFile) { UseShellExecute = true });
+                try { Process.Start(new ProcessStartInfo(crashFile) { UseShellExecute = true }); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or InvalidOperationException)
+                {
+                    Log($"[Crash Detection] Could not open the crash report '{crashFile}': {ex.Message}");
+                    StatusText.Text = $"Could not open the crash report: {ex.Message}";
+                }
             };
             buttonRow.Children.Add(openBtn);
         }
@@ -5705,7 +5728,15 @@ public partial class MainWindow : Window
 
         panel.Children.Add(buttonRow);
         window.Content = panel;
-        await window.ShowDialog(this);
+        try
+        {
+            ShowForDialog(); // hidden to the tray after the launch, and kept closed on exit: the dialog still has to be seen
+            await window.ShowDialog(this);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log($"[Crash Detection ERROR] Could not show the crash dialog: {ex.Message}");
+        }
     }
 
     // ═══════════════════════════════════════
@@ -5723,19 +5754,25 @@ public partial class MainWindow : Window
         // every version uses. A pack that manages files there is not run.
         var linked = SharedContentService.Instance.GetStatus(_pathService.GetProfileDirectory(profile))
             .Where(s => s.State is not (SharedFolderState.SeparateFolder or SharedFolderState.NotCreated)).Select(s => s.Name).ToList();
-        if (linked.Count > 0)
+        IReadOnlyList<string> shared = Array.Empty<string>(), ladsFiles;
+        try
         {
-            IReadOnlyList<string> shared;
-            try { shared = await PackwizIndex.FilesInFoldersAsync(profile.PackwizUrl, linked, _httpClient, token); }
-            catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException or UriFormatException or TaskCanceledException)
-            {
-                throw new InvalidOperationException($"Could not read this profile's Packwiz pack '{profile.PackwizUrl}' ({ex.Message}). Check its Packwiz URL and connection.", ex);
-            }
-            if (shared.Count > 0)
-                throw new InvalidOperationException($"This profile's Packwiz pack manages files in the folders every version shares " +
-                    $"({string.Join(", ", shared.Take(5))}{(shared.Count > 5 ? $" and {shared.Count - 5} more" : "")}). Packwiz would replace or delete " +
-                    "them for every version, so it was not run. Remove those files from the pack, or clear this profile's Packwiz URL in Profiles.");
+            if (linked.Count > 0) shared = await PackwizIndex.FilesInFoldersAsync(profile.PackwizUrl, linked, _httpClient, token);
+            ladsFiles = await PackwizIndex.LadsStateFilesAsync(profile.PackwizUrl, _httpClient, token);
         }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException or UriFormatException or TaskCanceledException)
+        {
+            throw new InvalidOperationException($"Could not read this profile's Packwiz pack '{profile.PackwizUrl}' ({ex.Message}). Check its Packwiz URL and connection.", ex);
+        }
+        if (shared.Count > 0)
+            throw new InvalidOperationException($"This profile's Packwiz pack manages files in the folders every version shares " +
+                $"({string.Join(", ", shared.Take(5))}{(shared.Count > 5 ? $" and {shared.Count - 5} more" : "")}). Packwiz would replace or delete " +
+                "them for every version, so it was not run. Remove those files from the pack, or clear this profile's Packwiz URL in Profiles.");
+        // A pack may not write Lads' own state files (server_bypasses.json would switch the anti-ban server rules off).
+        if (ladsFiles.Count > 0)
+            throw new InvalidOperationException($"This profile's Packwiz pack writes Lads' own settings files " +
+                $"({string.Join(", ", ladsFiles.Take(5))}{(ladsFiles.Count > 5 ? $" and {ladsFiles.Count - 5} more" : "")}), which only the player may change, " +
+                "so it was not run. Remove those files from the pack, or clear this profile's Packwiz URL in Profiles.");
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo(javaPath)
         {

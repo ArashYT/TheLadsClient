@@ -19,6 +19,9 @@ class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // First of all: whatever nothing catches is written to the log before the process goes (it used to just disappear).
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => LogUnhandled(e.IsTerminating ? "AppDomain, fatal" : "AppDomain", e.ExceptionObject);
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, e) => LogUnhandled("task", e.Exception);
         Velopack.VelopackApp.Build().SetAutoApplyOnStartup(false).Run();
         // Safety net: a launcher at High would starve games started from it. Windows passes only Idle/BelowNormal to child processes,
         // so the launcher Update.exe relaunches (raised to High by the bridge) normally starts at Normal anyway.
@@ -130,5 +133,53 @@ class Program
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
-            .LogToTrace();
+            .LogToTrace()
+            .AfterSetup(_ => Avalonia.Threading.Dispatcher.UIThread.UnhandledException += OnUiThreadException);
+
+    /// <summary>
+    /// Writes an exception that nothing caught to logs\launcher_debug.txt (where MainWindow.Log writes) and, for non-task exceptions,
+    /// in full as the latest one to logs\crash_ui.txt. Synchronous, because the process may be going: the log is the only trace a fatal one leaves. Never throws.
+    /// </summary>
+    internal static void LogUnhandled(string source, object? error)
+    {
+        try
+        {
+            string text = $"[{DateTime.Now:HH:mm:ss}] [UNHANDLED {source}] {error}";
+            string logs = Services.PathService.Instance.LogsDirectory;
+            System.IO.Directory.CreateDirectory(logs);
+            using (var stream = new System.IO.FileStream(System.IO.Path.Combine(logs, "launcher_debug.txt"), System.IO.FileMode.Append,
+                       System.IO.FileAccess.Write, System.IO.FileShare.ReadWrite)) // MainWindow's writer keeps it open too
+            using (var writer = new System.IO.StreamWriter(stream))
+                writer.WriteLine(text);
+            if (!string.Equals(source, "task", StringComparison.OrdinalIgnoreCase))
+                System.IO.File.WriteAllText(System.IO.Path.Combine(logs, "crash_ui.txt"), text);
+        }
+        catch (Exception) { } // the log must never be what ends the launcher
+    }
+
+    private static string? _lastUiError;
+    private static DateTime _lastUiErrorAt;
+
+    // An exception that escapes any UI handler (the launcher has 80+ async void ones) would end the process, and with it the exit handling
+    // of a running game (options sync-back, crash report). It is logged and shown instead. Only a state the process cannot be trusted in
+    // still ends it, logged. The same error again within 30 s (a timer that keeps throwing) is handled quietly, not logged over and over.
+    private static void OnUiThreadException(object? sender, Avalonia.Threading.DispatcherUnhandledExceptionEventArgs e)
+    {
+        if (e.Exception is OutOfMemoryException or AccessViolationException)
+        {
+            LogUnhandled("UI thread, fatal", e.Exception);
+            return;
+        }
+        e.Handled = true;
+        string key = e.Exception.GetType().FullName + e.Exception.Message;
+        if (key == _lastUiError && DateTime.UtcNow - _lastUiErrorAt < TimeSpan.FromSeconds(30)) return;
+        (_lastUiError, _lastUiErrorAt) = (key, DateTime.UtcNow);
+        LogUnhandled("UI thread", e.Exception);
+        try
+        {
+            if ((Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow is MainWindow window)
+                window.ShowUnhandled(e.Exception);
+        }
+        catch (Exception) { } // the notice is a courtesy; the log has it
+    }
 }
