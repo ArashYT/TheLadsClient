@@ -148,14 +148,14 @@ public static class GameRepairService
                     statusCallback?.Invoke($"Re-downloading Fabric {profile.FabricVersion} manifest…");
                     var loaderVer = versionId.Substring("fabric-loader-".Length,
                         versionId.Length - "fabric-loader-".Length - profile.MinecraftVersion.Length - 1);
-                    using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                    using var http = new HttpClient(new LaunchService.LaunchCancellationHandler(cancellationToken));
                     var fabricInstaller = new CmlLib.Core.ModLoaders.FabricMC.FabricInstaller(http);
                     await fabricInstaller.Install(profile.MinecraftVersion, loaderVer, path);
                     repaired.Add($"Re-downloaded Fabric manifest for {versionId}");
                 }
                 else if (usesForge)
                 {
-                    using var forgeHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+                    using var forgeHttp = new HttpClient(new LaunchService.LaunchCancellationHandler(cancellationToken));
                     await LaunchService.InstallForgeAsync(launcher, gameDir, forgeHttp, statusCallback, cancellationToken);
                     repaired.Add($"Re-installed Forge manifest for {versionId}");
                 }
