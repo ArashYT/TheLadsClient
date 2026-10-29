@@ -30,6 +30,10 @@ public abstract class MixinDedicatedServerProperties {
         if (!LadsConfig.get().features.defaultServerProperties) return;
 
         try {
+            if (Files.exists(path)) {
+                return; // A/16: Existing server.properties must never be overwritten
+            }
+
             Path gameDir = FabricLoader.getInstance().getGameDir();
             Path defaultSettingsPath = gameDir.resolve("default-server.properties");
             if (!Files.exists(defaultSettingsPath)) {
@@ -42,13 +46,14 @@ public abstract class MixinDedicatedServerProperties {
                 return;
             }
 
+            Properties props = Settings.loadFromFile(defaultSettingsPath);
+            DedicatedServerProperties seeded = new DedicatedServerProperties(props);
+
             if (Files.notExists(markerPath.getParent())) {
                 Files.createDirectories(markerPath.getParent());
             }
             Files.writeString(markerPath, "");
 
-            Properties props = Settings.loadFromFile(defaultSettingsPath);
-            DedicatedServerProperties seeded = new DedicatedServerProperties(props);
             LOGGER.info("[Lads SMP/DSP] Successfully seeded server properties from default-server.properties!");
             cir.setReturnValue(seeded);
         } catch (IOException e) {
