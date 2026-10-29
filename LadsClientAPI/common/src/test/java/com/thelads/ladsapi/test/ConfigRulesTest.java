@@ -386,4 +386,29 @@ public class ConfigRulesTest {
         List<String> updated = RulesGenerator.updateRulesLines(flowLines, schema);
         assertEquals(flowLines, updated);
     }
+
+    @Test
+    public void testBooleanOptionMappedToSchemaChoiceString(@TempDir Path tempDir) throws IOException {
+        Path rulesFile = tempDir.resolve("rules.yml");
+        String yaml = """
+                modules:
+                  DynamicFPS:
+                    Mode: Off
+                  Scoreboard:
+                    Background: Off
+                  TabList:
+                    Background: Off
+                  KillBanner:
+                    Randomize: Off
+                  ArmorHUD:
+                    Durability: Off
+                """;
+        Files.writeString(rulesFile, yaml, StandardCharsets.UTF_8);
+        LadsRules rules = LadsRules.load(tempDir, null, null);
+        assertEquals("Off", rules.getModules().get("DynamicFPS").getOption("Mode").getValue());
+        assertEquals("Off", rules.getModules().get("Scoreboard").getOption("Background").getValue());
+        assertEquals("Off", rules.getModules().get("TabList").getOption("Background").getValue());
+        assertEquals("Off", rules.getModules().get("KillBanner").getOption("Randomize").getValue());
+        assertEquals("Off", rules.getModules().get("ArmorHUD").getOption("Durability").getValue());
+    }
 }

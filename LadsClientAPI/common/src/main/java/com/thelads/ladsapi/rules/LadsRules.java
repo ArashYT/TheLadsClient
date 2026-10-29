@@ -16,12 +16,21 @@ import org.yaml.snakeyaml.Yaml;
  * Parsed representation of rules.yml.
  */
 public final class LadsRules {
+    private final LadsSchema schema;
     private volatile Map<String, ModuleRule> modules = new LinkedHashMap<>();
     private volatile Map<String, Map<String, ModuleRule>> worlds = new LinkedHashMap<>();
     private volatile Map<String, Map<String, ModuleRule>> groups = new LinkedHashMap<>();
 
+    public LadsRules() {
+        this(null);
+    }
+
+    public LadsRules(LadsSchema schema) {
+        this.schema = schema != null ? schema : LadsSchema.loadDefault();
+    }
+
     public static LadsRules load(Path dataFolder, LadsSchema schema, Logger logger) {
-        LadsRules rules = new LadsRules();
+        LadsRules rules = new LadsRules(schema);
         Path rulesFile = dataFolder.resolve("rules.yml");
         try {
             RulesGenerator.regenerate(rulesFile, schema, logger);
@@ -148,7 +157,7 @@ public final class LadsRules {
                             }
                         }
                     } else {
-                        RuleOption optRule = parseOptionRule(optVal);
+                        RuleOption optRule = parseOptionRule(optVal, modName, optKey, logger);
                         if (optRule != null && !optRule.isEmpty()) {
                             modRule.setOption(optKey, optRule);
                         }
@@ -173,13 +182,52 @@ public final class LadsRules {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private RuleOption parseOptionRule(Object val) {
+        return parseOptionRule(val, null, null, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    private RuleOption parseOptionRule(Object val, String modName, String optKey, Logger logger) {
         if (val == null) return null;
         RuleOption opt = new RuleOption();
+        LadsSchema.SchemaOption sOpt = (modName != null && optKey != null) ? findSchemaOption(modName, optKey) : null;
+        List<String> schemaChoices = sOpt != null ? sOpt.getChoices() : null;
+
         if (val instanceof Map<?, ?> map) {
+            List<String> parsedChoices = null;
+            if (map.containsKey("choices")) {
+                Object c = map.get("choices");
+                if (c instanceof List<?> list) {
+                    parsedChoices = new ArrayList<>();
+                    for (Object item : list) {
+                        if (item instanceof Boolean b) {
+                            Object mapped = mapBooleanToChoice(b, schemaChoices);
+                            if (mapped instanceof Boolean) {
+                                parsedChoices.add(b ? "On" : "Off");
+                            } else {
+                                parsedChoices.add(String.valueOf(mapped));
+                            }
+                        } else {
+                            parsedChoices.add(String.valueOf(item));
+                        }
+                    }
+                    opt.setChoices(parsedChoices);
+                }
+            }
             if (map.containsKey("value")) {
-                opt.setValue(map.get("value"));
+                Object rawVal = map.get("value");
+                if (rawVal instanceof Boolean b) {
+                    List<String> effectiveChoices = parsedChoices != null ? parsedChoices : schemaChoices;
+                    Object mapped = mapBooleanToChoice(b, effectiveChoices);
+                    if (mapped instanceof Boolean && sOpt != null && "dropdown".equalsIgnoreCase(sOpt.getType())) {
+                        if (logger != null) {
+                            logger.warning("[LadsClientAPI] Option " + modName + "." + optKey + " is a dropdown but boolean " + b + " does not match choices " + effectiveChoices);
+                        }
+                    }
+                    opt.setValue(mapped);
+                } else {
+                    opt.setValue(rawVal);
+                }
             }
             if (map.containsKey("min")) {
                 opt.setMin(asDouble(map.get("min")));
@@ -187,25 +235,54 @@ public final class LadsRules {
             if (map.containsKey("max")) {
                 opt.setMax(asDouble(map.get("max")));
             }
-            if (map.containsKey("choices")) {
-                Object c = map.get("choices");
-                if (c instanceof List<?> list) {
-                    List<String> strList = new ArrayList<>();
-                    for (Object item : list) strList.add(String.valueOf(item));
-                    opt.setChoices(strList);
-                }
-            }
             if (map.containsKey("lock")) {
                 opt.setLock(Boolean.parseBoolean(String.valueOf(map.get("lock"))));
             }
         } else if (val instanceof Boolean b) {
-            opt.setValue(b);
+            Object mapped = mapBooleanToChoice(b, schemaChoices);
+            if (mapped instanceof Boolean && sOpt != null && "dropdown".equalsIgnoreCase(sOpt.getType())) {
+                if (logger != null) {
+                    logger.warning("[LadsClientAPI] Option " + modName + "." + optKey + " is a dropdown but boolean " + b + " does not match choices " + schemaChoices);
+                }
+            }
+            opt.setValue(mapped);
         } else if (val instanceof Number n) {
             opt.setValue(n);
         } else if (val instanceof String s) {
             opt.setValue(s);
         }
         return opt;
+    }
+
+    private LadsSchema.SchemaOption findSchemaOption(String modName, String optKey) {
+        if (schema == null || schema.getModules() == null) return null;
+        for (LadsSchema.SchemaModule mod : schema.getModules()) {
+            if (mod.getName().equalsIgnoreCase(modName)) {
+                if (mod.getOptions() != null) {
+                    for (LadsSchema.SchemaOption opt : mod.getOptions()) {
+                        if (opt.getName().equalsIgnoreCase(optKey)) {
+                            return opt;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+        return null;
+    }
+
+    private static Object mapBooleanToChoice(Boolean b, List<String> choices) {
+        if (choices != null) {
+            for (String choice : choices) {
+                if (!b && ("off".equalsIgnoreCase(choice) || "false".equalsIgnoreCase(choice))) {
+                    return choice;
+                }
+                if (b && ("on".equalsIgnoreCase(choice) || "true".equalsIgnoreCase(choice))) {
+                    return choice;
+                }
+            }
+        }
+        return b;
     }
 
     private static Double asDouble(Object obj) {
