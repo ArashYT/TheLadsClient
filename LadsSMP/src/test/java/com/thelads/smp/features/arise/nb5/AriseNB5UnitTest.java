@@ -305,7 +305,7 @@ public class AriseNB5UnitTest {
         ParkourClientController.setActionSenderForTesting(sentPayload::set);
 
         try {
-            ParkourActionPayload payload = new ParkourActionPayload(ParkourActionType.DODGE, 1.0f);
+            ParkourActionPayload payload = new ParkourActionPayload(ParkourActionType.DODGE.getId(), 0.0f, 0.0f, 0.0f, 1.0f);
 
             // 1. When not allowed (server not confirmed), sendAction must not send
             assertFalse(ParkourClientController.isParkourAllowed());
@@ -320,7 +320,7 @@ public class AriseNB5UnitTest {
             // 3. sendAction should now invoke the network actionSender without recursion or crash
             ParkourClientController.sendAction(payload);
             assertNotNull(sentPayload.get(), "sendAction must send payload when parkour is allowed");
-            assertEquals(ParkourActionType.DODGE, sentPayload.get().actionType());
+            assertEquals(ParkourActionType.DODGE, sentPayload.get().getActionType());
             assertEquals(1.0f, sentPayload.get().param(), 0.001f);
         } finally {
             ParkourClientController.setActionSenderForTesting(null);
