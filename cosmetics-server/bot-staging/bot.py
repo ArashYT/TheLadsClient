@@ -1483,7 +1483,7 @@ async def handle_experience_access(request):
     invited = set(load_state().get("experience_invites", {}).get(exp, []))
     return web.json_response({"allowed": bool(names & invited)}, headers={"Cache-Control": "no-store"})
 
-async def start_web_server():
+async def start_web_server(port: int = 8085):
     try:
         app = web.Application(client_max_size=2 * 1024 * 1024)
         try:
@@ -1529,11 +1529,13 @@ async def start_web_server():
         app.router.add_post('/crash', handle_crash_report)
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, '127.0.0.1', 8085)
+        site = web.TCPSite(runner, '127.0.0.1', port)
         await site.start()
-        print("  Status Web Server running on http://127.0.0.1:8085", flush=True)
+        print(f"  Status Web Server running on http://127.0.0.1:{port}", flush=True)
+        return runner, site
     except Exception as e:
         print(f"  Note: web status server startup error: {e}", flush=True)
+        sys.exit(f"Web status server startup error: {e}")
 
 
 # ------------------ BOT CLASS ------------------
@@ -1579,8 +1581,9 @@ class LadsBot(commands.Bot):
         # Register slash commands from helper modules before tree.sync
         try:
             import usage_stats
-            usage_stats.setup_slash_command(self)
-            print("Registered /stats slash command", flush=True)
+            if self.tree.get_command("stats") is None:
+                usage_stats.setup_slash_command(self)
+                print("Registered /stats slash command", flush=True)
         except Exception as e:
             print(f"Note: usage_stats slash command not registered: {e}", flush=True)
 

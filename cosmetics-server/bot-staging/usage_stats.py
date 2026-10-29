@@ -426,6 +426,8 @@ def setup_slash_command(bot: Any) -> None:
     """Register the /stats slash command on the Discord bot tree."""
     if not bot or not hasattr(bot, "tree"):
         return
+    if hasattr(bot.tree, "get_command") and bot.tree.get_command("stats") is not None:
+        return
 
     import discord
 

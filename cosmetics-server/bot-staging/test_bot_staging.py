@@ -376,3 +376,27 @@ async def test_link_consumes_cosmetics_code_and_grants_cape(tmp_path, monkeypatc
     assert consumed == test_uuid
     await store.grant(test_uuid, "lads:cape_discord", source="discord-link")
     assert await store.has_entitlement(test_uuid, "lads:cape_discord")
+
+
+@pytest.mark.asyncio
+async def test_start_web_server_and_slash_command_idempotent(bot, monkeypatch):
+    # Test that start_web_server starts cleanly and registers routes
+    runner, site = await bot.start_web_server(port=0)
+    try:
+        assert site is not None
+        # Verify /stats registration is idempotent (cannot raise CommandAlreadyRegistered)
+        import usage_stats
+        usage_stats.setup_slash_command(bot.bot)
+        usage_stats.setup_slash_command(bot.bot)
+    finally:
+        await runner.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_start_web_server_fatal_on_failure(bot, monkeypatch):
+    from aiohttp import web
+    async def fake_start(self):
+        raise OSError("Simulated bind failure")
+    monkeypatch.setattr(web.TCPSite, "start", fake_start)
+    with pytest.raises(SystemExit):
+        await bot.start_web_server(port=0)
