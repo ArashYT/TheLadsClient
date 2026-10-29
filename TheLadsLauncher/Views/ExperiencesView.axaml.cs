@@ -443,27 +443,32 @@ public partial class ExperiencesView : UserControl
         if (Host is { } host && !await host.ConfirmModpackAsync("Close Instance", $"Close {exp.Title} Instance {inst.Number} ({inst.Username})?\n\nUnsaved progress may be lost if closed forcefully.", "Close"))
             return;
 
-        runningList.Remove(inst);
         Host?.ModpackLog($"Closing {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id})...");
         SetStatusText(statusText, $"Closing Instance {inst.Number} ({inst.Username})...");
-        if (!HasRunningProcess(runningList) && !busy) progressBar.IsVisible = false;
-        RefreshState();
 
         _ = Task.Run(async () =>
         {
+            bool closed = false;
             try
             {
-                inst.Process.CloseMainWindow();
+                closed = inst.Process.CloseMainWindow();
+            }
+            catch { }
+            if (!closed)
+            {
+                GameSession.Cancel(inst.Process);
+            }
+            else
+            {
                 for (int i = 0; i < 60; i++)
                 {
                     if (inst.Process.HasExited) break;
                     await Task.Delay(500);
                 }
-            }
-            catch { }
-            if (!inst.Process.HasExited)
-            {
-                GameSession.Cancel(inst.Process);
+                if (!inst.Process.HasExited)
+                {
+                    GameSession.Cancel(inst.Process);
+                }
             }
             Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
         });
@@ -479,32 +484,42 @@ public partial class ExperiencesView : UserControl
         if (Host is { } host && !await host.ConfirmModpackAsync("Close All Instances", msg, "Close All"))
             return;
 
-        runningList.Clear();
         SetStatusText(statusText, toClose.Count > 1 ? $"Closing all {toClose.Count} {exp.Title} instances..." : $"Closing {exp.Title} instance...");
-        if (!busy) progressBar.IsVisible = false;
-        RefreshState();
 
         _ = Task.Run(async () =>
         {
+            var graceful = new List<RunningInstance>();
             foreach (var inst in toClose)
             {
+                bool closed = false;
                 try
                 {
-                    inst.Process.CloseMainWindow();
+                    closed = inst.Process.CloseMainWindow();
                 }
                 catch { }
+                if (!closed)
+                {
+                    GameSession.Cancel(inst.Process);
+                }
+                else
+                {
+                    graceful.Add(inst);
+                }
             }
             for (int i = 0; i < 60; i++)
             {
-                if (toClose.All(inst => inst.Process.HasExited)) break;
+                if (graceful.All(inst => inst.Process.HasExited)) break;
                 await Task.Delay(500);
             }
-            foreach (var inst in toClose)
+            foreach (var inst in graceful)
             {
                 if (!inst.Process.HasExited)
                 {
                     GameSession.Cancel(inst.Process);
                 }
+            }
+            foreach (var inst in toClose)
+            {
                 Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
             }
         });
