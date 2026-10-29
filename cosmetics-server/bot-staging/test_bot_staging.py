@@ -362,3 +362,17 @@ def test_logging_configured_with_module_loggers():
     for mod_name in ("cosmetics", "social", "share_store", "usage_stats"):
         logger = logging.getLogger(mod_name)
         assert logger.level <= logging.INFO
+
+
+@pytest.mark.asyncio
+async def test_link_consumes_cosmetics_code_and_grants_cape(tmp_path, monkeypatch):
+    import cosmetics
+    db_file = tmp_path / "cosmetics_test.db"
+    store = cosmetics.CosmeticsStore(db_file)
+    monkeypatch.setattr(cosmetics, "_DEFAULT_STORE", store)
+    test_uuid = "e" * 32
+    code = await store.create_link_code(test_uuid)
+    consumed = await store.consume_link_code(code)
+    assert consumed == test_uuid
+    await store.grant(test_uuid, "lads:cape_discord", source="discord-link")
+    assert await store.has_entitlement(test_uuid, "lads:cape_discord")

@@ -3137,7 +3137,21 @@ async def slash_link(interaction: discord.Interaction, ign: str, code: str = Non
     clean_code = code.strip().upper().removeprefix("LADS-") if code else ""
     verified = False
     if clean_code:
-        if (
+        # Check cosmetics in-game link code and grant Discord cloak
+        try:
+            import cosmetics
+            store = cosmetics._DEFAULT_STORE or cosmetics.CosmeticsStore()
+            consumed_uuid = await store.consume_link_code(clean_code)
+            if consumed_uuid and consumed_uuid.lower() == uuid.lower():
+                verified = True
+                try:
+                    await store.grant(uuid, "lads:cape_discord", source="discord-link")
+                except Exception as _ge:
+                    print(f"Note: error granting discord cape: {_ge}", flush=True)
+        except Exception as _ce:
+            print(f"Note: cosmetics link code check error: {_ce}", flush=True)
+
+        if not verified and (
             hmac.compare_digest(clean_code, expected_user_code)
             or hmac.compare_digest(clean_code, expected_uuid_code)
             or (pending_code and hmac.compare_digest(clean_code, pending_code))
