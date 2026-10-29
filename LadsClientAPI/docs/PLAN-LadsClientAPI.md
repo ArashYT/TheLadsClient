@@ -172,8 +172,6 @@ LadsClientAPI/
 ```yaml
 enabled: true
 unlisted-modules: inherit      # inherit | allow | block
-notify-players: true           # the one toast on join
-let-players-refuse-changes: true
 require-lads-client: false     # kick non-Lads players (private servers)
 min-client-version: ""         # e.g. "1.9.13"
 badge:

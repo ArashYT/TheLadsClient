@@ -2,12 +2,14 @@ package com.thelads.ladsapi.session;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.thelads.ladsapi.LadsCore;
 import com.thelads.ladsapi.api.LadsPlayerImpl;
 import com.thelads.ladsapi.platform.LadsPlayerHandle;
 import com.thelads.ladsapi.policy.PolicyBuilder;
 import com.thelads.ladsapi.rules.ModuleRule;
 import com.thelads.ladsapi.rules.RuleOption;
 import com.thelads.ladsapi.util.RateLimiter;
+import com.thelads.ladsapi.util.VersionUtil;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -18,19 +20,22 @@ import java.util.UUID;
  * Manages protocol state and policy for one connected player handle.
  */
 public final class LadsSession {
-    private final LadsPlayerHandle handle;
+    /** Fabric/Forge create a new ServerPlayer on respawn, so the handle is replaced when the platform hands over a fresh one. */
+    private volatile LadsPlayerHandle handle;
     private final SessionManager manager;
     private final RateLimiter rateLimiter = new RateLimiter(8);
     private final Map<String, ModuleRule> apiOverrides = new LinkedHashMap<>();
     private final LadsPlayerImpl ladsPlayer;
 
-    private int rev = 0;
-    private boolean lads = false;
-    private String ladsVersion = "";
-    private String mcVersion = "";
-    private boolean helloSent = false;
-    private boolean helloResent = false;
-    private boolean helloAcked = false;
+    private volatile int rev = 0;
+    private volatile boolean lads = false;
+    private volatile String ladsVersion = "";
+    private volatile String mcVersion = "";
+    private volatile boolean helloSent = false;
+    private volatile boolean helloResent = false;
+    private volatile boolean helloAcked = false;
+    /** World/backend the last policy was built for; a respawn into another world needs a new policy. */
+    private volatile String syncedWorld = "";
 
     public LadsSession(LadsPlayerHandle handle, SessionManager manager) {
         this.handle = handle;
@@ -39,6 +44,8 @@ public final class LadsSession {
     }
 
     public LadsPlayerHandle getHandle() { return handle; }
+    public void setHandle(LadsPlayerHandle handle) { if (handle != null) this.handle = handle; }
+    public String getSyncedWorld() { return syncedWorld; }
     public SessionManager getManager() { return manager; }
     public LadsPlayerImpl getLadsPlayer() { return ladsPlayer; }
     public int getRev() { return rev; }
@@ -56,8 +63,8 @@ public final class LadsSession {
 
     public void setLads(boolean lads, String ladsVersion, String mcVersion) {
         this.lads = lads;
-        this.ladsVersion = ladsVersion != null ? ladsVersion : "";
-        this.mcVersion = mcVersion != null ? mcVersion : "";
+        this.ladsVersion = VersionUtil.clean(ladsVersion);
+        this.mcVersion = VersionUtil.clean(mcVersion);
     }
 
     public boolean checkRateLimit() {
@@ -71,7 +78,7 @@ public final class LadsSession {
     public void sendHello() {
         JsonObject obj = new JsonObject();
         obj.addProperty("t", "hello");
-        obj.addProperty("v", 1);
+        obj.addProperty("v", LadsCore.PROTOCOL);
         String serverName = manager.getConfig() != null ? manager.getConfig().getServerName() : "Lads Server";
         if (serverName != null && serverName.length() > 32) {
             serverName = serverName.substring(0, 32);
@@ -89,14 +96,26 @@ public final class LadsSession {
 
     public void sendPolicy() {
         rev++;
+        syncedWorld = handle.world();
+        Map<String, ModuleRule> overridesCopy;
+        synchronized (apiOverrides) {
+            overridesCopy = new LinkedHashMap<>(apiOverrides);
+        }
         String json = PolicyBuilder.buildPolicyJson(
                 manager.getRules(),
                 manager.getConfig(),
                 handle,
-                apiOverrides,
+                overridesCopy,
                 rev
         );
-        handle.send(json.getBytes(StandardCharsets.UTF_8));
+        byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > 524_288) {
+            if (manager.getPlatform().logger() != null) {
+                manager.getPlatform().logger().severe("[LadsClientAPI] Policy json exceeds max size of 524288 bytes (" + bytes.length + " bytes), dropping outbound policy!");
+            }
+            return;
+        }
+        handle.send(bytes);
     }
 
     public void sendPresence(boolean full, Collection<UUID> add, Collection<UUID> remove) {
@@ -124,28 +143,36 @@ public final class LadsSession {
     }
 
     public void setApiOverrideModuleState(String module, String state) {
-        apiOverrides.computeIfAbsent(module, k -> new ModuleRule()).setState(state);
+        synchronized (apiOverrides) {
+            apiOverrides.computeIfAbsent(module, k -> new ModuleRule()).setState(state);
+        }
     }
 
     public void setApiOverrideOptionLimit(String module, String option, double min, double max) {
-        ModuleRule mr = apiOverrides.computeIfAbsent(module, k -> new ModuleRule());
-        RuleOption opt = mr.getOptions().computeIfAbsent(option, k -> new RuleOption());
-        if (!Double.isNaN(min)) opt.setMin(min);
-        if (!Double.isNaN(max)) opt.setMax(max);
+        synchronized (apiOverrides) {
+            ModuleRule mr = apiOverrides.computeIfAbsent(module, k -> new ModuleRule());
+            RuleOption opt = mr.getOptions().computeIfAbsent(option, k -> new RuleOption());
+            if (!Double.isNaN(min)) opt.setMin(min);
+            if (!Double.isNaN(max)) opt.setMax(max);
+        }
     }
 
     public void setApiOverrideOptionForce(String module, String option, Object value) {
-        ModuleRule mr = apiOverrides.computeIfAbsent(module, k -> new ModuleRule());
-        RuleOption opt = mr.getOptions().computeIfAbsent(option, k -> new RuleOption());
-        opt.setValue(value);
-        opt.setLock(true);
+        synchronized (apiOverrides) {
+            ModuleRule mr = apiOverrides.computeIfAbsent(module, k -> new ModuleRule());
+            RuleOption opt = mr.getOptions().computeIfAbsent(option, k -> new RuleOption());
+            opt.setValue(value);
+            opt.setLock(true);
+        }
     }
 
     public void clearApiOverrides(String module) {
-        if (module == null) {
-            apiOverrides.clear();
-        } else {
-            apiOverrides.remove(module);
+        synchronized (apiOverrides) {
+            if (module == null) {
+                apiOverrides.clear();
+            } else {
+                apiOverrides.remove(module);
+            }
         }
     }
 }

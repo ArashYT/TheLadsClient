@@ -53,6 +53,10 @@ public final class LadsPaperPlugin extends JavaPlugin implements PluginMessageLi
             getLogger().info("Hooked into PlaceholderAPI.");
         }
 
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            core.join(platform.handleOf(p));
+        }
+
         getLogger().info("LadsClientAPI enabled on Paper/Spigot.");
     }
 

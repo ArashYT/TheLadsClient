@@ -90,10 +90,17 @@ public final class LadsCore {
         }
     }
 
-    /** World changed: per-world rules may differ, so a new policy goes out. */
+    /** World changed (Velocity: backend switch): per-world rules may differ and the client may have reset, so hello and policy go out again. */
     public void worldChanged(LadsPlayerHandle player) {
         if (sessionManager != null) {
             sessionManager.worldChanged(player);
+        }
+    }
+
+    /** Fabric/Forge respawn: the player object is new, so the session takes the fresh handle (and resyncs if the world differs). */
+    public void respawned(LadsPlayerHandle player) {
+        if (sessionManager != null) {
+            sessionManager.respawned(player);
         }
     }
 
@@ -110,14 +117,28 @@ public final class LadsCore {
     }
 
     public void reload() {
+        boolean wasEnabled = config != null && config.isEnabled();
+        boolean prevProxyRules = config != null && config.isProxyRules();
+
         if (config != null) {
             config.readFrom(platform.dataFolder().resolve("config.yml"), platform.logger());
+            if (config.isProxyRules() != prevProxyRules && platform.logger() != null) {
+                platform.logger().warning("[LadsClientAPI] proxy-rules change requires a server restart to take effect.");
+            }
         }
         if (rules != null) {
             rules.readFrom(platform.dataFolder().resolve("rules.yml"), platform.logger());
         }
         if (sessionManager != null) {
-            sessionManager.resendAllPolicies();
+            if (config != null && !config.isEnabled()) {
+                sessionManager.stop();
+            } else if (!wasEnabled) {
+                for (LadsPlayerHandle handle : platform.online()) {
+                    sessionManager.join(handle);
+                }
+            } else {
+                sessionManager.resendAllPolicies();
+            }
         }
     }
 }

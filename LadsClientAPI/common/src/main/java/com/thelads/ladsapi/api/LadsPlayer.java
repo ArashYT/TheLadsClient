@@ -5,6 +5,7 @@ import java.util.UUID;
 /**
  * A Lads Client player. Overrides set here sit on top of config.yml/rules.yml for this player only, until cleared or they leave.
  * Every change sends a fresh full policy. FROZEN INTERFACE (phase 0).
+ * Note: methods must be called from the server's main thread.
  */
 public interface LadsPlayer {
     UUID uuid();
