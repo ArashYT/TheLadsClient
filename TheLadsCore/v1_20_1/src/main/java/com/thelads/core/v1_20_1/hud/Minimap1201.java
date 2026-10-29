@@ -17,6 +17,7 @@ public final class Minimap1201 {
     private static Boolean lastEnabled;
     private static int lastX = Integer.MIN_VALUE, lastY = Integer.MIN_VALUE;
     private static boolean attempted, loaded, fallbackFailed;
+    private static long lastRetryWarn;
     /** {@link #failClosed}: Xaero's session, its minimap processor and the processor's "no minimap" switch. */
     private static Method currentSession, processor, noMinimap, setNoMinimap;
 
@@ -94,7 +95,11 @@ public final class Minimap1201 {
             fallbackFailed = true;
             LoggerFactory.getLogger("TheLadsCore").warn("Xaero's Minimap cannot be switched off where the server rules block minimaps", failure);
         } catch (Throwable failure) {
-            LoggerFactory.getLogger("TheLadsCore").warn("Xaero fail-closed check failed, retrying next tick", failure);
+            long now = System.currentTimeMillis();
+            if (now - lastRetryWarn >= 60_000L) {
+                lastRetryWarn = now;
+                LoggerFactory.getLogger("TheLadsCore").warn("Xaero fail-closed check failed, retrying next tick", failure);
+            }
         }
     }
 
@@ -111,6 +116,7 @@ public final class Minimap1201 {
         processor = null;
         noMinimap = null;
         setNoMinimap = null;
+        lastRetryWarn = 0;
     }
 
     public static int[] size() {
