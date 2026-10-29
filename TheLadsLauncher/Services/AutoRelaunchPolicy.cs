@@ -67,12 +67,6 @@ public sealed class AutoRelaunchPolicy
         return true;
     }
 
-    public void Reset()
-    {
-        _relaunchTimestamps.Clear();
-        _lastCrashReportTime = null;
-    }
-
     private void Prune(DateTimeOffset now)
     {
         _relaunchTimestamps.RemoveAll(ts => now - ts > TimeWindow);
