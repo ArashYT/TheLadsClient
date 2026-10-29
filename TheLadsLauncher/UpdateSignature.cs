@@ -10,14 +10,13 @@ using System.Text.Json;
 namespace TheLadsLauncher;
 
 /// <summary>Launcher updates are installed only when signed with The Lads' release key, which never leaves the owner's PC
-/// (tools/Sign-Release.ps1 signs a CI draft before it is published, and only one whose files carry the release workflow's
+/// (tools/Sign-Release.ps1 signs a CI draft before it is published, verifying that draft files carry the release workflow's
 /// attestation for the owner's tag). Someone who gets into the GitHub repo or its CI can publish a release, but not this
-/// signature, so no launcher installs it. tools/Sign-Release.ps1 and tools/Test-SignedRelease.ps1 compile this file too.</summary>
+/// signature, so no launcher installs it. Publish-Release.ps1 extracts pinned public keys from this file to verify release signatures before publishing.</summary>
 public static class UpdateSignature
 {
     public const string ManifestName = "lads-update.json";
     public const string SignatureName = "lads-update.json.sig";
-    public const string SumsSignatureName = "SHA256SUMS.txt.sig";
     /// <summary>Public halves (P-256, SubjectPublicKeyInfo) of the release keys an update may be signed with. A launcher trusts only the
     /// keys it shipped with, so a new key is added a release ahead of signing with it (and kept offline until then), and an old one is
     /// dropped only once the launchers still in use trust its successor.</summary>
