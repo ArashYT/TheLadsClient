@@ -378,4 +378,12 @@ public class ConfigRulesTest {
             assertTrue(rules.getModules().containsKey(mod.getName()), "Missing top-level module: " + mod.getName());
         }
     }
+
+    @Test
+    public void testUpdateRulesLinesLeavesFlowModulesUntouched() {
+        LadsSchema schema = LadsSchema.loadDefault();
+        List<String> flowLines = List.of("modules: {Fullbright: block}", "worlds: {}");
+        List<String> updated = RulesGenerator.updateRulesLines(flowLines, schema);
+        assertEquals(flowLines, updated);
+    }
 }

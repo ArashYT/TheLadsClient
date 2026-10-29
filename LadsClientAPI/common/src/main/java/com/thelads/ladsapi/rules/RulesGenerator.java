@@ -59,7 +59,7 @@ public final class RulesGenerator {
         }
 
         List<String> lines = Files.readAllLines(rulesFile, StandardCharsets.UTF_8);
-        List<String> updated = updateRulesLines(lines, schema);
+        List<String> updated = updateRulesLines(lines, schema, logger);
         if (!updated.equals(lines)) {
             Path bakFile = rulesFile.resolveSibling(rulesFile.getFileName().toString() + ".bak");
             Files.copy(rulesFile, bakFile, StandardCopyOption.REPLACE_EXISTING);
@@ -83,16 +83,24 @@ public final class RulesGenerator {
     }
 
     public static List<String> updateRulesLines(List<String> existingLines, LadsSchema schema) {
+        return updateRulesLines(existingLines, schema, null);
+    }
+
+    public static List<String> updateRulesLines(List<String> existingLines, LadsSchema schema, Logger logger) {
         if (schema == null || schema.getModules() == null || schema.getModules().isEmpty()) {
             return new ArrayList<>(existingLines);
         }
 
         // Parse with SnakeYAML first to verify valid structure
+        Map<?, ?> parsedRoot = null;
         try {
             Yaml yaml = new Yaml();
             Object loaded = yaml.load(String.join("\n", existingLines));
             if (loaded != null && !(loaded instanceof Map<?, ?>)) {
                 return new ArrayList<>(existingLines);
+            }
+            if (loaded instanceof Map<?, ?> map) {
+                parsedRoot = map;
             }
         } catch (Exception e) {
             return new ArrayList<>(existingLines);
@@ -114,6 +122,15 @@ public final class RulesGenerator {
         }
 
         if (modulesIdx == -1) {
+            if (parsedRoot != null && parsedRoot.containsKey("modules")) {
+                String warnMsg = "[LadsClientAPI] rules.yml contains 'modules' mapping in non-standard format; leaving file unchanged.";
+                if (logger != null) {
+                    logger.warning(warnMsg);
+                } else {
+                    Logger.getLogger("LadsClientAPI").warning(warnMsg);
+                }
+                return new ArrayList<>(existingLines);
+            }
             // No modules: section found; insert before worlds/groups or at end without destroying existing file
             int insertPos = result.size();
             for (int i = 0; i < result.size(); i++) {
