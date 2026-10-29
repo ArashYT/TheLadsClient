@@ -284,11 +284,13 @@ public partial class MainWindow
             FontWeight = FontWeight.Bold
         });
 
+        Color initialBg = Color.TryParse(profile.IconColor, out var cInit) ? cInit
+            : (Color.TryParse("#" + profile.IconColor, out var cInit2) ? cInit2 : Color.Parse("#E0525E"));
         var previewBorder = new Border
         {
             Width = 60, Height = 60,
             CornerRadius = new CornerRadius(30),
-            Background = new SolidColorBrush(Color.Parse(!string.IsNullOrEmpty(profile.IconColor) ? profile.IconColor : "#E0525E")),
+            Background = new SolidColorBrush(initialBg),
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
             Margin = new Thickness(0, 6, 0, 6)
         };
@@ -321,11 +323,19 @@ public partial class MainWindow
         var secondaryBox = new TextBox { Text = profile.IconSecondaryColor ?? "#8B0000", Height = 36 };
         panel.Children.Add(secondaryBox);
 
+        static bool TryNormalizeColor(string? input, out string normalized, out Color color)
+        {
+            color = default;
+            if (ProfileIconService.TryNormalizeHexColor(input, out normalized) && Color.TryParse(normalized, out color))
+                return true;
+            return false;
+        }
+
         void UpdatePreview()
         {
             string sym = symbolBox.SelectedItem?.ToString() ?? "default";
             previewGlyph.Text = ProfileIconService.GetGlyph(sym);
-            if (Color.TryParse(primaryBox.Text?.Trim() ?? "#E0525E", out var c))
+            if (TryNormalizeColor(primaryBox.Text, out _, out var c))
             {
                 previewBorder.Background = new SolidColorBrush(c);
             }
@@ -366,6 +376,16 @@ public partial class MainWindow
         };
         panel.Children.Add(randomBtn);
 
+        var errorBlock = new TextBlock
+        {
+            Foreground = Brush.Parse("#FF8A8A"),
+            FontSize = 11,
+            IsVisible = false,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 4, 0, 0)
+        };
+        panel.Children.Add(errorBlock);
+
         var btnGrid = new Grid { ColumnDefinitions = new ColumnDefinitions("*,8,*"), Margin = new Thickness(0, 8, 0, 0) };
         var saveBtn = new Button
         {
@@ -378,8 +398,25 @@ public partial class MainWindow
         };
         saveBtn.Click += (_, _) =>
         {
+            if (!TryNormalizeColor(primaryBox.Text, out string primaryNorm, out _))
+            {
+                errorBlock.Text = "Please enter a valid hex color for Primary (e.g. #E0525E or E0525E).";
+                errorBlock.IsVisible = true;
+                return;
+            }
+            string? secondaryNorm = null;
+            if (!string.IsNullOrWhiteSpace(secondaryBox.Text))
+            {
+                if (!TryNormalizeColor(secondaryBox.Text, out secondaryNorm, out _))
+                {
+                    errorBlock.Text = "Please enter a valid hex color for Secondary (e.g. #8B0000 or 8B0000).";
+                    errorBlock.IsVisible = true;
+                    return;
+                }
+            }
+
             string sym = symbolBox.SelectedItem?.ToString() ?? "default";
-            ProfileIconService.SetSymbol(profile, sym, primaryBox.Text?.Trim(), secondaryBox.Text?.Trim());
+            ProfileIconService.SetSymbol(profile, sym, primaryNorm, secondaryNorm);
             _profileService.SaveProfiles();
             PopulateLaunchProfileSelector();
             LoadProfilesUI();

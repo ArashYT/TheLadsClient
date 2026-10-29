@@ -49,4 +49,46 @@ public class JvmArgumentsTests
         Assert.Contains("-Dthelads.loadingBar=#445566", args);
         Assert.Contains("-Dthelads.loadingGlow=#778899", args);
     }
+
+    [Theory]
+    [InlineData("#112233", true)]
+    [InlineData("112233", true)]
+    [InlineData("#11223344", true)]
+    [InlineData("AABBCC", true)]
+    [InlineData("aabbccdd", true)]
+    [InlineData("dark red", false)]
+    [InlineData("#111 -Xbootclasspath/a:x.jar", false)]
+    [InlineData("xyz", false)]
+    [InlineData("#12", false)]
+    [InlineData("", false)]
+    [InlineData("   ", false)]
+    [InlineData(null, false)]
+    public void IsValidLoadingScreenColor_ValidatesCorrectly(string? input, bool expected)
+    {
+        Assert.Equal(expected, LaunchService.IsValidLoadingScreenColor(input));
+    }
+
+    [Fact]
+    public void EnsureLoadingScreenColors_WithInvalidValuesBlanked_OmitsInvalidArguments()
+    {
+        var options = new MLaunchOption();
+        var settings = new LauncherSettings
+        {
+            LoadingScreenBgColor = "dark red",
+            LoadingScreenBarColor = "#111 -Xbootclasspath/a:x.jar",
+            LoadingScreenGlowColor = "#112233"
+        };
+
+        var launchSettings = settings.Clone();
+        if (!LaunchService.IsValidLoadingScreenColor(launchSettings.LoadingScreenBgColor)) launchSettings.LoadingScreenBgColor = "";
+        if (!LaunchService.IsValidLoadingScreenColor(launchSettings.LoadingScreenBarColor)) launchSettings.LoadingScreenBarColor = "";
+        if (!LaunchService.IsValidLoadingScreenColor(launchSettings.LoadingScreenGlowColor)) launchSettings.LoadingScreenGlowColor = "";
+
+        LaunchService.EnsureLoadingScreenColors(options, launchSettings);
+
+        var args = options.ExtraJvmArguments!.SelectMany(a => a.Values).ToList();
+        Assert.DoesNotContain(args, a => a.Contains("loadingBg"));
+        Assert.DoesNotContain(args, a => a.Contains("loadingBar"));
+        Assert.Contains("-Dthelads.loadingGlow=#112233", args);
+    }
 }

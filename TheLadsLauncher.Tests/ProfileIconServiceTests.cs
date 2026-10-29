@@ -68,4 +68,30 @@ public class ProfileIconServiceTests
     {
         Assert.Equal(expected, ProfileIconService.GetGlyph(iconKey));
     }
+
+    [Theory]
+    [InlineData("E0525E", "#E0525E")]
+    [InlineData("#e0525e", "#E0525E")]
+    [InlineData("12345678", "#12345678")]
+    [InlineData("#aabbccdd", "#AABBCCDD")]
+    public void TryNormalizeHexColor_ValidInputs_ReturnsTrueAndNormalized(string input, string expected)
+    {
+        bool success = ProfileIconService.TryNormalizeHexColor(input, out string normalized);
+        Assert.True(success);
+        Assert.Equal(expected, normalized);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    [InlineData("not-a-color")]
+    [InlineData("#12345")]
+    [InlineData("12345")]
+    [InlineData("#GG0011")]
+    public void TryNormalizeHexColor_InvalidInputs_ReturnsFalse(string? input)
+    {
+        bool success = ProfileIconService.TryNormalizeHexColor(input, out _);
+        Assert.False(success);
+    }
 }

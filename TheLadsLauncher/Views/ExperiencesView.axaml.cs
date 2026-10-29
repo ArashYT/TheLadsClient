@@ -83,6 +83,9 @@ public partial class ExperiencesView : UserControl
     internal IEnumerable<Process> RunningGames => _runningZeroSmp.Concat(_runningLadsSmpReborn).Select(i => i.Process);
     internal bool IsBusy => _zeroSmpCts != null || _ladsSmpRebornCts != null;
 
+    private static string FormatLoader(string? loader) =>
+        string.IsNullOrEmpty(loader) ? "" : char.ToUpperInvariant(loader[0]) + loader[1..];
+
     private static int NextInstanceNumber(List<RunningInstance> list)
     {
         int n = 1;
@@ -440,28 +443,91 @@ public partial class ExperiencesView : UserControl
         quickButtons.Children.Add(closeAllBtn);
     }
 
-    private void CloseInstance(ExperienceDefinition exp, List<RunningInstance> runningList, bool busy, TextBlock statusText, ProgressBar progressBar, RunningInstance inst)
+    private async void CloseInstance(ExperienceDefinition exp, List<RunningInstance> runningList, bool busy, TextBlock statusText, ProgressBar progressBar, RunningInstance inst)
     {
-        runningList.Remove(inst);
-        GameSession.Cancel(inst.Process);
-        Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
-        SetStatusText(statusText, $"Closed Instance {inst.Number} ({inst.Username}).");
-        if (!HasRunningProcess(runningList) && !busy) progressBar.IsVisible = false;
-        RefreshState();
+        if (Host is { } host && !await host.ConfirmModpackAsync("Close Instance", $"Close {exp.Title} Instance {inst.Number} ({inst.Username})?\n\nUnsaved progress may be lost if closed forcefully.", "Close"))
+            return;
+
+        Host?.ModpackLog($"Closing {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id})...");
+        SetStatusText(statusText, $"Closing Instance {inst.Number} ({inst.Username})...");
+
+        _ = Task.Run(async () =>
+        {
+            bool closed = false;
+            try
+            {
+                closed = inst.Process.CloseMainWindow();
+            }
+            catch { }
+            if (!closed)
+            {
+                GameSession.Cancel(inst.Process);
+            }
+            else
+            {
+                for (int i = 0; i < 60; i++)
+                {
+                    if (inst.Process.HasExited) break;
+                    await Task.Delay(500);
+                }
+                if (!inst.Process.HasExited)
+                {
+                    GameSession.Cancel(inst.Process);
+                }
+            }
+            Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
+        });
     }
 
-    private void CloseAllInstances(ExperienceDefinition exp, List<RunningInstance> runningList, bool busy, TextBlock statusText, ProgressBar progressBar)
+    private async void CloseAllInstances(ExperienceDefinition exp, List<RunningInstance> runningList, bool busy, TextBlock statusText, ProgressBar progressBar)
     {
         var toClose = runningList.ToList();
-        runningList.Clear();
-        foreach (var inst in toClose)
+        if (toClose.Count == 0) return;
+        string msg = toClose.Count > 1
+            ? $"Close all {toClose.Count} {exp.Title} instances?\n\nUnsaved progress may be lost if closed forcefully."
+            : $"Close {exp.Title} instance?\n\nUnsaved progress may be lost if closed forcefully.";
+        if (Host is { } host && !await host.ConfirmModpackAsync("Close All Instances", msg, "Close All"))
+            return;
+
+        SetStatusText(statusText, toClose.Count > 1 ? $"Closing all {toClose.Count} {exp.Title} instances..." : $"Closing {exp.Title} instance...");
+
+        _ = Task.Run(async () =>
         {
-            GameSession.Cancel(inst.Process);
-            Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
-        }
-        SetStatusText(statusText, toClose.Count > 1 ? $"Closed all {toClose.Count} {exp.Title} instances." : $"Closed {exp.Title} instance.");
-        if (!busy) progressBar.IsVisible = false;
-        RefreshState();
+            var graceful = new List<RunningInstance>();
+            foreach (var inst in toClose)
+            {
+                bool closed = false;
+                try
+                {
+                    closed = inst.Process.CloseMainWindow();
+                }
+                catch { }
+                if (!closed)
+                {
+                    GameSession.Cancel(inst.Process);
+                }
+                else
+                {
+                    graceful.Add(inst);
+                }
+            }
+            for (int i = 0; i < 60; i++)
+            {
+                if (graceful.All(inst => inst.Process.HasExited)) break;
+                await Task.Delay(500);
+            }
+            foreach (var inst in graceful)
+            {
+                if (!inst.Process.HasExited)
+                {
+                    GameSession.Cancel(inst.Process);
+                }
+            }
+            foreach (var inst in toClose)
+            {
+                Host?.ModpackLog($"Closed {exp.Title} Instance {inst.Number} ({inst.Username}, PID {inst.Process.Id}).");
+            }
+        });
     }
 
     private void ZeroSmpAutoJoin_Changed(object? sender, RoutedEventArgs e)
@@ -667,7 +733,7 @@ public partial class ExperiencesView : UserControl
             Report("Signing in...");
             var session = await host.ResolveModpackSessionAsync(token, instance.GameDirectory);
 
-            Report("Preparing Minecraft 1.20.1 & Forge 47.4.10...");
+            Report($"Preparing Minecraft {ExperiencesService.ZeroSmp.McVersion} & {FormatLoader(ExperiencesService.ZeroSmp.Loader)} {ExperiencesService.ZeroSmp.LoaderVersion}...");
             string? joinServer = host.ModpackSettings.ZeroSmpAutoJoin ? ExperiencesService.ZeroSmp.ServerAddress : null;
             var launchedUtc = DateTime.UtcNow;
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token, joinServer);
@@ -702,7 +768,7 @@ public partial class ExperiencesView : UserControl
             });
 
             Report($"Zero SMP Instance {instNumber} started as {session.Username}!");
-            host.ModpackLog($"Started Zero SMP Instance {instNumber} (Forge 47.4.10, Minecraft 1.20.1) PID {process.Id}."
+            host.ModpackLog($"Started Zero SMP Instance {instNumber} ({FormatLoader(ExperiencesService.ZeroSmp.Loader)} {ExperiencesService.ZeroSmp.LoaderVersion}, Minecraft {ExperiencesService.ZeroSmp.McVersion}) PID {process.Id}."
                 + (joinServer == null ? "" : $" Auto-join: --quickPlayMultiplayer {ModpackLauncher.QuickPlayServer(process)}."));
             RefreshState();
         }

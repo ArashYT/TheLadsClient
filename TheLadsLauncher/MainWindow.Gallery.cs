@@ -415,7 +415,15 @@ public partial class MainWindow
         var stack = new StackPanel();
         stack.Children.Add(new AspectBox { Child = media });
         stack.Children.Add(caption);
-        var card = new Border { Classes = { "galleryTile" }, Child = stack, Tag = path };
+        var card = new Border { Classes = { "galleryTile" }, Child = stack, Tag = path, Focusable = true };
+        card.KeyDown += (_, e) =>
+        {
+            if (e.Key is Avalonia.Input.Key.Enter or Avalonia.Input.Key.Space)
+            {
+                ShowGalleryViewer(path);
+                e.Handled = true;
+            }
+        };
         card.PointerPressed += (_, e) =>
         {
             if (e.GetCurrentPoint(card).Properties.IsLeftButtonPressed) ShowGalleryViewer(path);
@@ -427,6 +435,7 @@ public partial class MainWindow
     {
         var b = new Button { Classes = { "tileAction" }, Content = LadsIcons.Glyph(icon, 15, Brush.Parse(color ?? "#FFFFFF")) };
         ToolTip.SetTip(b, tip);
+        Avalonia.Automation.AutomationProperties.SetName(b, tip);
         return b;
     }
 
@@ -724,6 +733,14 @@ public partial class MainWindow
             if (GalleryPage.IsVisible && !GalleryViewerOverlay.IsVisible) GallerySourcesBtn.Flyout?.ShowAt(GallerySourcesBtn);
             return;
         }
+        string fileName = Path.GetFileName(path);
+        if (!await ShowLadsDialogAsync("Upload to Imgur",
+            $"Upload '{fileName}' publicly to Imgur and copy the link to the clipboard?\n\n" +
+            "Anyone with the link can view it (including chat, player names, and coordinates in the screenshot).",
+            "Upload", "Cancel"))
+        {
+            return;
+        }
         try
         {
             StatusText.Text = "Uploading to Imgur...";
@@ -739,9 +756,27 @@ public partial class MainWindow
             if (doc.RootElement.TryGetProperty("data", out var data) && data.TryGetProperty("link", out var linkEl))
             {
                 string link = linkEl.GetString() ?? "";
+                string deleteHash = data.TryGetProperty("deletehash", out var delEl) ? (delEl.GetString() ?? "") : "";
+                string deleteUrl = !string.IsNullOrEmpty(deleteHash) ? $"https://imgur.com/delete/{deleteHash}" : "";
                 CopyTextToClipboard(link);
-                StatusText.Text = "Imgur link copied: " + link;
-                Log($"[Gallery] Uploaded: {link}");
+                if (!string.IsNullOrEmpty(deleteUrl))
+                {
+                    StatusText.Text = $"Imgur link copied: {link} (Delete URL: {deleteUrl})";
+                    Log($"[Gallery] Uploaded: {link} (delete URL: {deleteUrl})");
+                    int chosen = await ShowLadsChoiceAsync("Uploaded to Imgur",
+                        $"Image link copied to clipboard:\n{link}\n\nDelete URL (use to remove the upload later):\n{deleteUrl}",
+                        new[] { ("Copy Delete URL", false, true) }, "Close");
+                    if (chosen == 0)
+                    {
+                        CopyTextToClipboard(deleteUrl);
+                        StatusText.Text = "Delete URL copied: " + deleteUrl;
+                    }
+                }
+                else
+                {
+                    StatusText.Text = "Imgur link copied: " + link;
+                    Log($"[Gallery] Uploaded: {link}");
+                }
             }
             else
             {

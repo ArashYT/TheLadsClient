@@ -182,7 +182,7 @@ public partial class MainWindow
         Mirror(ModrinthApiUrlBox_ModTab, ModrinthApiUrlBox);
         Mirror(CurseForgeApiUrlBox_ModTab, CurseForgeApiUrlBox);
         Mirror(CfApiKeyInputBox, CurseForgeApiKeyBox);
-        Closing += (_, _) => FlushSettingsSave();
+        Closing += Window_Closing;
         _settingsAutoSave = true;
     }
 
@@ -214,6 +214,30 @@ public partial class MainWindow
         _settingsAutoSave = autoSave;
     }
 
+    private bool _isClosingConfirmed;
+    private async void Window_Closing(object? sender, WindowClosingEventArgs e)
+    {
+        if (_isClosingConfirmed) return;
+
+        if (FilesEditor != null && FilesEditor.IsDirty)
+        {
+            if (!IsVisible) { Show(); Activate(); }
+            e.Cancel = true;
+            bool allowed = await FilesEditor.RequestCloseAsync();
+            if (!allowed) return;
+        }
+
+        e.Cancel = true;
+        _isClosingConfirmed = true;
+        try
+        {
+            if (ControlsSettings != null) await ControlsSettings.FlushAsync();
+        }
+        catch { }
+        FlushSettingsSave();
+        Close();
+    }
+
     /// <summary>Saves a change still waiting for the timer (closing, exit from the tray).</summary>
     private void FlushSettingsSave()
     {
@@ -238,6 +262,11 @@ public partial class MainWindow
 
     private static string? CurseForgeApiUrlError(string? text) =>
         ContentCatalog.IsTrustedCurseForgeApiUrl(text) ? null : "The CurseForge API URL must use https://api.curseforge.com.";
+
+    private static string? LoadingScreenColorError(string? text) =>
+        string.IsNullOrWhiteSpace(text) || Services.LaunchService.IsValidLoadingScreenColor(text)
+            ? null
+            : "Enter a 6- or 8-digit hex colour (e.g. #RRGGBB).";
 
     // ═══════════════════════════════════════
     //  INSTALLED MODS: ICONS, TWO COLUMNS

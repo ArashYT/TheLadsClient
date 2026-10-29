@@ -65,6 +65,10 @@ public partial class MainWindow : Window
                 settings.MainAccount = value;
                 settings.Save();
             }
+            if (RemoveAccountBtn != null)
+            {
+                RemoveAccountBtn.Content = string.IsNullOrEmpty(value) ? "Remove Account" : $"Remove '{value}'";
+            }
             ExperiencesPage?.RefreshState();
         }
     }
@@ -640,7 +644,8 @@ public partial class MainWindow : Window
     /// <summary>Installing restarts the launcher, so it waits for Minecraft, sign-in, mod work, Zero SMP / modpack installs and open dialogs.</summary>
     private bool UpdateBlocked() => _windowClosed || _launching || _modsBusy || _addingAccount || _showingMicrosoftSetup || _releaseNotesOpen
         || GameProcesses().Any(IsGameRunning) || PagesBusy() || SharedContentService.Instance.IsBusy
-        || _profileService.GetProfiles().Any(p => GameRunningByMarker(_pathService.GetProfileDirectory(p)));
+        || _profileService.GetProfiles().Any(p => GameRunningByMarker(_pathService.GetProfileDirectory(p)))
+        || (FilesEditor != null && FilesEditor.IsDirty);
 
     /// <summary>Every game this launcher started: Play's, and the Experiences' and Modpacks' own (they write no running marker).</summary>
     private IEnumerable<Process> GameProcesses() => _runningProcesses.Keys.Concat(ExperiencesPage.RunningGames).Concat(ModpacksPage.RunningGames);
@@ -735,6 +740,7 @@ public partial class MainWindow : Window
             if (latest == null) return;
 
             HomeNewsVersionText.Text = "v" + latest.Version;
+            HomeNewsVersionBadge.IsVisible = true;
             HomeNewsHighlightsPanel.Children.Clear();
             var highlights = ReleaseNotes.Highlights(latest);
             foreach (var h in highlights)
@@ -906,9 +912,13 @@ public partial class MainWindow : Window
     {
         FlushSettingsSave();
         if (settings.CloseToTray && (GameProcesses().Any(IsGameRunning) || PagesBusy()))
+        {
             this.Hide();
+        }
         else
-            Environment.Exit(0);
+        {
+            Close();
+        }
     }
 
     private void AspectLockBtn_Click(object? sender, RoutedEventArgs e)
@@ -1041,9 +1051,23 @@ public partial class MainWindow : Window
         if (double.TryParse(settings.UiScale.Replace("%", ""), out double pct))
         {
             double scale = pct / 100.0;
-            // Keep all controls reachable at the supported scale settings.
-            MinWidth = 960 * scale;
-            MinHeight = 540 * scale;
+            // Keep all controls reachable at the supported scale settings, clamped to screen working area.
+            double minW = 960 * scale;
+            double minH = 540 * scale;
+            if (Screens.ScreenFromWindow(this) is { } screen)
+            {
+                double scrScale = ScreenScaling();
+                if (scrScale <= 0) scrScale = 1.0;
+                double maxW = screen.WorkingArea.Width / scrScale;
+                double maxH = screen.WorkingArea.Height / scrScale;
+                if (maxW > 100 && maxH > 100)
+                {
+                    minW = Math.Min(minW, maxW);
+                    minH = Math.Min(minH, maxH);
+                }
+            }
+            MinWidth = minW;
+            MinHeight = minH;
             if (UiScaleTransformControl?.LayoutTransform is ScaleTransform st)
             {
                 st.ScaleX = scale;
@@ -1367,12 +1391,14 @@ public partial class MainWindow : Window
                 _selectedAccount = allAccountNames[0];
             }
             MiniAccountName.Text = _selectedAccount;
+            RemoveAccountBtn.Content = $"Remove '{_selectedAccount}'";
             _ = LoadPlayerSkin(_selectedAccount);
         }
         else
         {
             _selectedAccount = "";
             MiniAccountName.Text = "Offline User";
+            RemoveAccountBtn.Content = "Remove Account";
         }
 
         // Listing accounts is local. Only launch or explicit refresh authenticates.
@@ -1680,14 +1706,16 @@ public partial class MainWindow : Window
             // Refresh Button
             var refreshBtn = new Button
             {
-                Content = "",
+                Content = TheLadsLauncher.Views.LadsIcons.Glyph(TheLadsLauncher.Views.LadsIcons.Refresh, 14),
                 Classes = { "action" },
                 Height = 28, Width = 28,
                 FontSize = 11,
                 Margin = new Thickness(2, 0),
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
             };
-            ToolTip.SetTip(refreshBtn, isOffline ? "Reload skin" : "Refresh session; right-click to sign in again");
+            string refreshTip = isOffline ? "Reload skin" : "Refresh session; right-click to sign in again";
+            ToolTip.SetTip(refreshBtn, refreshTip);
+            Avalonia.Automation.AutomationProperties.SetName(refreshBtn, refreshTip);
             refreshBtn.Click += async (s, e) => await RefreshSavedAccountAsync(username);
             if (!isOffline)
             {
@@ -1695,6 +1723,21 @@ public partial class MainWindow : Window
                 signInAgain.Click += async (_, _) => await RefreshSavedAccountAsync(username, true);
                 refreshBtn.ContextMenu = new ContextMenu();
                 refreshBtn.ContextMenu.Items.Add(signInAgain);
+
+                var signInAgainBtn = new Button
+                {
+                    Content = "Sign in again",
+                    Classes = { "action" },
+                    Height = 28,
+                    FontSize = 11,
+                    FontWeight = FontWeight.SemiBold,
+                    Margin = new Thickness(2, 0),
+                    VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+                };
+                ToolTip.SetTip(signInAgainBtn, "Sign in again with Microsoft");
+                Avalonia.Automation.AutomationProperties.SetName(signInAgainBtn, "Sign in again with Microsoft");
+                signInAgainBtn.Click += async (s, e) => await RefreshSavedAccountAsync(username, true);
+                actions.Children.Add(signInAgainBtn);
             }
             actions.Children.Add(refreshBtn);
 
@@ -1818,6 +1861,11 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(username) || _addingAccount || _launching) return;
 
         bool isOffline = !loginHandler.AccountManager.GetAccounts().OfType<CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount>().Any(a => string.Equals(a.Profile?.Username, username, StringComparison.OrdinalIgnoreCase)) && settings.OfflineAccounts.Contains(username, StringComparer.OrdinalIgnoreCase);
+        string message = isOffline
+            ? $"Remove local account '{username}'?"
+            : $"Remove '{username}'? You'll need to sign in with Microsoft again.";
+        if (!await ShowLadsDialogAsync("Remove Account", message, "Remove", "Cancel", danger: true))
+            return;
         if (isOffline)
         {
             settings.OfflineAccounts.Remove(username);
@@ -2261,6 +2309,17 @@ public partial class MainWindow : Window
     private async void ClearCache_Click(object? sender, RoutedEventArgs e)
     {
         if (_addingAccount || _launching) return;
+        var msAccounts = loginHandler.AccountManager.GetAccounts()
+            .OfType<CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount>().ToList();
+        int count = msAccounts.Count;
+        string message = count switch
+        {
+            0 => "Sign out Microsoft accounts? No Microsoft accounts are currently signed in.",
+            1 => $"Sign out of Microsoft account '{msAccounts[0].Profile?.Username ?? "Account"}'? You'll need to sign in with Microsoft again.",
+            _ => $"Sign out of all {count} Microsoft accounts? You'll need to sign in with Microsoft again."
+        };
+        if (!await ShowLadsDialogAsync("Sign out Microsoft", message, "Sign out", "Cancel", danger: true))
+            return;
         try
         {
             await loginHandler.ClearAsync();
@@ -2998,9 +3057,11 @@ public partial class MainWindow : Window
                     Padding = new Thickness(12, 0),
                     FontSize = 12
                 };
-                deleteBtn.Click += (s, e) =>
+                deleteBtn.Click += async (s, e) =>
                 {
                     if (_launching) return;
+                    if (!await ShowLadsDialogAsync("Delete Profile", $"Delete profile '{profile.Name}'? This cannot be undone.", "Delete", "Cancel", danger: true))
+                        return;
                     _profileService.DeleteProfile(profile.Id);
                     PopulateLaunchProfileSelector();
                     LoadProfilesUI();
@@ -3061,7 +3122,14 @@ public partial class MainWindow : Window
         var nameBox = new TextBox { PlaceholderText = "Profile Name (e.g. My 26.3)", Text = "New Profile", Height = 36 };
         panel.Children.Add(nameBox);
 
-        var versionBox = new TextBox { PlaceholderText = "Minecraft Version (e.g. 26.3, 1.8.9)", Text = "26.3", Height = 36 };
+        var versionBox = new ComboBox
+        {
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+            Height = 36
+        };
+        foreach (var ver in ProfileTools.PlayableVersions)
+            versionBox.Items.Add(ver);
+        versionBox.SelectedIndex = 0;
         panel.Children.Add(versionBox);
 
         var isolateCheck = new CheckBox
@@ -3085,19 +3153,16 @@ public partial class MainWindow : Window
         createBtn.Click += (s, ev) =>
         {
             string name = nameBox.Text?.Trim() ?? "";
-            string version = versionBox.Text?.Trim() ?? "26.3";
-            if (GameVersionPolicy.IsDropped(version)) { versionBox.Text = ""; versionBox.PlaceholderText = $"Minecraft {version} is no longer supported (1.8.9, 1.20.1 or 26.3)"; return; }
-            if (GameVersionPolicy.IsPaused(version)) { versionBox.Text = ""; versionBox.PlaceholderText = GameVersionPolicy.PausedMessage; return; }
-            if (GameVersionPolicy.IsComingNever(version)) { versionBox.Text = ""; versionBox.PlaceholderText = $"1.7.10: {GameVersionPolicy.ComingNeverMessage}"; return; }
+            string version = versionBox.SelectedItem?.ToString() ?? "26.3";
             if (string.IsNullOrEmpty(name)) name = $"Profile {version}";
 
             bool forge = GameVersionPolicy.UsesForge(version); // 1.8.9: Forge (Java 25 through 8to25), never Fabric
-            int javaVer = forge ? GameVersionPolicy.GetRequiredJavaMajor(version) : version.StartsWith("1.20") ? 17 : (version.StartsWith("1.21") ? 21 : (version.StartsWith("26") ? 25 : 21));
+            int javaVer = GameVersionPolicy.GetRequiredJavaMajor(version);
             var newProfile = new TheLadsLauncher.Models.LauncherProfile
             {
                 Name = name,
                 MinecraftVersion = version,
-                FabricVersion = forge ? null : "0.16.9",
+                FabricVersion = forge ? null : "0.19.5",
                 JavaMajorVersion = javaVer,
                 IsIsolated = isolateCheck.IsChecked ?? false
             };
@@ -3174,9 +3239,15 @@ public partial class MainWindow : Window
         string? fabricError = string.IsNullOrWhiteSpace(FabricVersionBox.Text) ? "Enter a Fabric loader version." : null;
         string? modrinthError = ModrinthApiUrlError(ModrinthApiUrlBox.Text);
         string? curseForgeError = CurseForgeApiUrlError(CurseForgeApiUrlBox.Text);
+        string? loadingBgError = LoadingScreenColorError(LoadingScreenBgColorBox.Text);
+        string? loadingBarError = LoadingScreenColorError(LoadingScreenBarColorBox.Text);
+        string? loadingGlowError = LoadingScreenColorError(LoadingScreenGlowColorBox.Text);
         bool valid = ShowFieldError(MicrosoftClientIdTextBox, clientIdError) & ShowFieldError(FabricVersionBox, fabricError)
             & ShowFieldError(ModrinthApiUrlBox, modrinthError) & ShowFieldError(ModrinthApiUrlBox_ModTab, modrinthError)
-            & ShowFieldError(CurseForgeApiUrlBox, curseForgeError) & ShowFieldError(CurseForgeApiUrlBox_ModTab, curseForgeError);
+            & ShowFieldError(CurseForgeApiUrlBox, curseForgeError) & ShowFieldError(CurseForgeApiUrlBox_ModTab, curseForgeError)
+            & ShowFieldError(LoadingScreenBgColorBox, loadingBgError)
+            & ShowFieldError(LoadingScreenBarColorBox, loadingBarError)
+            & ShowFieldError(LoadingScreenGlowColorBox, loadingGlowError);
 
         int ramMb = (int)RamSlider.Value * 1024;
         settings.RamChosenByUser |= ramMb != settings.MaxRamMb;
@@ -3360,9 +3431,9 @@ public partial class MainWindow : Window
         string mcVersion = string.IsNullOrEmpty(settings.SelectedMinecraftVersionOverride)
             ? ResolveMinecraftVersion()
             : settings.SelectedMinecraftVersionOverride;
-        MinecraftVersionText.Text = $"Minecraft {mcVersion} / Fabric";
-        LaunchButton.Content = "Play";
-        GameLaunchVersionText.Text = $"Minecraft {mcVersion} · Fabric";
+        string loader = GameVersionPolicy.UsesForge(mcVersion) ? "Forge" : "Fabric";
+        MinecraftVersionText.Text = $"Minecraft {mcVersion} / {loader}";
+        GameLaunchVersionText.Text = $"Minecraft {mcVersion} · {loader}";
     }
 
     // ═══════════════════════════════════════
@@ -4995,6 +5066,11 @@ public partial class MainWindow : Window
 
             string installedMarker = Path.Combine(gameDirectory, "versions", launchVersionId, ".lads-verified");
             LaunchService.ConfigureCachedNativesDirectory(path, launchVersionId, launchOpt);
+            var launchSettings = settings.Clone();
+            if (!LaunchService.IsValidLoadingScreenColor(launchSettings.LoadingScreenBgColor)) launchSettings.LoadingScreenBgColor = "";
+            if (!LaunchService.IsValidLoadingScreenColor(launchSettings.LoadingScreenBarColor)) launchSettings.LoadingScreenBarColor = "";
+            if (!LaunchService.IsValidLoadingScreenColor(launchSettings.LoadingScreenGlowColor)) launchSettings.LoadingScreenGlowColor = "";
+            LaunchService.EnsureLoadingScreenColors(launchOpt, launchSettings);
             LaunchService.EnsureSecurityJvmArguments(launchOpt, requiredJava, gameDirectory, activeProfile.MinecraftVersion);
             if (settings.QuickLaunch && File.Exists(installedMarker))
             {
@@ -5604,20 +5680,7 @@ public partial class MainWindow : Window
             if (rendererHint.Length > 0) crashInfo += "\n" + rendererHint;
             Log($"[Crash] {crashInfo}");
 
-            if (settings.AutoFixCrashes)
-            {
-                bool fixedCrash = false;
-
-                // AutoFixCrashes removed by user request
-                // The launcher will no longer rename crashed mods to .disabled
-
-                if (fixedCrash)
-                {
-                    StatusText.Text = "Crash auto-fixed. Relaunching...";
-                    _ = LaunchGame();
-                    return;
-                }
-            }
+            // AutoFixCrashes removed by user request (inert setting retained for settings.json compatibility)
 
             if (settings.AutoRelaunchOnCrash)
             {
@@ -5897,7 +5960,7 @@ public partial class MainWindow : Window
         showItem.Click += (s, e) => { this.Show(); this.WindowState = WindowState.Normal; this.Activate(); };
 
         var exitItem = new NativeMenuItem("Exit");
-        exitItem.Click += (s, e) => { FlushSettingsSave(); Environment.Exit(0); };
+        exitItem.Click += (s, e) => { Close(); };
 
         var menu = new NativeMenu();
         menu.Items.Add(showItem);

@@ -205,6 +205,16 @@ public partial class MainWindow
         grid.Children.Add(actions);
 
         row.Child = grid;
+        row.Focusable = true;
+        row.KeyDown += (s, e) =>
+        {
+            if (e.Key is Avalonia.Input.Key.Enter or Avalonia.Input.Key.Space)
+            {
+                if (isDir) LoadFiles(path);
+                else _ = OpenFileInEditorAsync(path);
+                e.Handled = true;
+            }
+        };
         ToolTip.SetTip(row, isDir ? null : (TextFileCodec.IsImageExtension(path) ? "Click to view" : "Click to open in the editor"));
         row.PointerPressed += (_, _) =>
         {
@@ -219,6 +229,7 @@ public partial class MainWindow
         var button = new Button { Classes = { "icon", "rowAction" }, Width = 28, Height = 28, Content = LadsIcons.Glyph(icon, 14, Brush.Parse(danger ? "#E08A8A" : "#B5B7C0")) };
         if (danger) button.Classes.Add("danger");
         ToolTip.SetTip(button, tip);
+        Avalonia.Automation.AutomationProperties.SetName(button, tip);
         return button;
     }
 

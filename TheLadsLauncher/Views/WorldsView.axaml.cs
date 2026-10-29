@@ -185,7 +185,15 @@ public partial class WorldsView : UserControl
         var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
         grid.Children.Add(thumb);
         Grid.SetColumn(body, 1); grid.Children.Add(body);
-        var card = new Border { Classes = { "card", "interactive" }, Padding = new Thickness(12), Child = grid };
+        var card = new Border { Classes = { "card", "interactive" }, Padding = new Thickness(12), Child = grid, Focusable = true };
+        card.KeyDown += (_, e) =>
+        {
+            if (e.Key is Avalonia.Input.Key.Enter or Avalonia.Input.Key.Space)
+            {
+                OpenFolder(world.Folder);
+                e.Handled = true;
+            }
+        };
         card.DoubleTapped += (_, _) => OpenFolder(world.Folder);
         return card;
     }

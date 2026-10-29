@@ -63,6 +63,24 @@ public static class ProfileIconService
     }
 
     /// <summary>
+    /// Validates and normalizes hex color strings (e.g. "E0525E" or "#E0525E" -> "#E0525E").
+    /// </summary>
+    public static bool TryNormalizeHexColor(string? input, out string normalized)
+    {
+        normalized = "";
+        if (string.IsNullOrWhiteSpace(input)) return false;
+        string s = input.Trim();
+        if (!s.StartsWith("#") && (s.Length == 6 || s.Length == 8) && System.Text.RegularExpressions.Regex.IsMatch(s, "^[0-9A-Fa-f]+$"))
+            s = "#" + s;
+        if (s.StartsWith("#") && (s.Length == 7 || s.Length == 9) && System.Text.RegularExpressions.Regex.IsMatch(s[1..], "^[0-9A-Fa-f]+$"))
+        {
+            normalized = s.ToUpperInvariant();
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Customizes a profile's icon with a chosen symbol and colors.
     /// </summary>
     public static void SetSymbol(LauncherProfile profile, string symbol, string? primaryColor = null, string? secondaryColor = null)

@@ -301,6 +301,7 @@ public partial class ServersView : UserControl
         var button = new Button { Content = Glyph(glyph, 14) };
         button.Classes.AddRange(new[] { "icon", "small" });
         ToolTip.SetTip(button, tip);
+        Avalonia.Automation.AutomationProperties.SetName(button, tip);
         return button;
     }
 
