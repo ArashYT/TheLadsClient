@@ -246,6 +246,11 @@ public partial class MainWindow
     private static string? CurseForgeApiUrlError(string? text) =>
         ContentCatalog.IsTrustedCurseForgeApiUrl(text) ? null : "The CurseForge API URL must use https://api.curseforge.com.";
 
+    private static string? LoadingScreenColorError(string? text) =>
+        string.IsNullOrWhiteSpace(text) || Services.LaunchService.IsValidLoadingScreenColor(text)
+            ? null
+            : "Enter a 6- or 8-digit hex colour (e.g. #RRGGBB).";
+
     // ═══════════════════════════════════════
     //  INSTALLED MODS: ICONS, TWO COLUMNS
     // ═══════════════════════════════════════

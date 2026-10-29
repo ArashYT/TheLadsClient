@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.Http;
@@ -506,8 +507,14 @@ public class LaunchService : ILaunchService
         options.ExtraJvmArguments = list.ToArray();
     }
 
+    private static readonly Regex LoadingScreenHexColorRegex = new(@"^#?[0-9A-Fa-f]{6,8}$", RegexOptions.Compiled);
+
+    public static bool IsValidLoadingScreenColor(string? color) =>
+        !string.IsNullOrWhiteSpace(color) && LoadingScreenHexColorRegex.IsMatch(color.Trim());
+
     public static void EnsureLoadingScreenColors(MLaunchOption options, LauncherSettings settings)
     {
+        // NEEDS CLAUDE: Filter invalid loading screen colors inside LaunchService/ModpackLauncher.
         var jvmArgs = options.ExtraJvmArguments ?? Array.Empty<MArgument>();
         var list = new List<MArgument>(jvmArgs);
         if (!string.IsNullOrWhiteSpace(settings.LoadingScreenBgColor))

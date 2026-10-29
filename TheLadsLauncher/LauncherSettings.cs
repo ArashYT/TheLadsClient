@@ -150,6 +150,8 @@ public class LauncherSettings
         return new LauncherSettings();
     }
 
+    public LauncherSettings Clone() => (LauncherSettings)MemberwiseClone();
+
     public void Save() => SaveTo(SettingsPath);
 
     public void SaveTo(string settingsPath)

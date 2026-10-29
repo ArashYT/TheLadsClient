@@ -243,6 +243,7 @@ public static class ModpackLauncher
         // Agent check and the security flags always; the Lads GC tuning only when the instance brings no JVM arguments of its own (two
         // collectors on one command line stop the JVM), and no clean-up of stray files in a folder that is not ours.
         LaunchService.EnsureSecurityJvmArguments(options, instance.JvmArguments.Count > 0 ? null : requiredJava, own ? instance.GameDirectory : null, instance.McVersion);
+        // NEEDS CLAUDE: Wire EnsureLoadingScreenColors (with hex validation) into modpack launch path.
 
         string verifiedMarker = Path.Combine(launcher.MinecraftPath.Versions, versionId, ".lads-verified");
         Process process;

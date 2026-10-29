@@ -3212,9 +3212,15 @@ public partial class MainWindow : Window
         string? fabricError = string.IsNullOrWhiteSpace(FabricVersionBox.Text) ? "Enter a Fabric loader version." : null;
         string? modrinthError = ModrinthApiUrlError(ModrinthApiUrlBox.Text);
         string? curseForgeError = CurseForgeApiUrlError(CurseForgeApiUrlBox.Text);
+        string? loadingBgError = LoadingScreenColorError(LoadingScreenBgColorBox.Text);
+        string? loadingBarError = LoadingScreenColorError(LoadingScreenBarColorBox.Text);
+        string? loadingGlowError = LoadingScreenColorError(LoadingScreenGlowColorBox.Text);
         bool valid = ShowFieldError(MicrosoftClientIdTextBox, clientIdError) & ShowFieldError(FabricVersionBox, fabricError)
             & ShowFieldError(ModrinthApiUrlBox, modrinthError) & ShowFieldError(ModrinthApiUrlBox_ModTab, modrinthError)
-            & ShowFieldError(CurseForgeApiUrlBox, curseForgeError) & ShowFieldError(CurseForgeApiUrlBox_ModTab, curseForgeError);
+            & ShowFieldError(CurseForgeApiUrlBox, curseForgeError) & ShowFieldError(CurseForgeApiUrlBox_ModTab, curseForgeError)
+            & ShowFieldError(LoadingScreenBgColorBox, loadingBgError)
+            & ShowFieldError(LoadingScreenBarColorBox, loadingBarError)
+            & ShowFieldError(LoadingScreenGlowColorBox, loadingGlowError);
 
         int ramMb = (int)RamSlider.Value * 1024;
         settings.RamChosenByUser |= ramMb != settings.MaxRamMb;
@@ -5033,7 +5039,11 @@ public partial class MainWindow : Window
 
             string installedMarker = Path.Combine(gameDirectory, "versions", launchVersionId, ".lads-verified");
             LaunchService.ConfigureCachedNativesDirectory(path, launchVersionId, launchOpt);
-            LaunchService.EnsureLoadingScreenColors(launchOpt, settings);
+            var launchSettings = settings.Clone();
+            if (!LaunchService.IsValidLoadingScreenColor(launchSettings.LoadingScreenBgColor)) launchSettings.LoadingScreenBgColor = "";
+            if (!LaunchService.IsValidLoadingScreenColor(launchSettings.LoadingScreenBarColor)) launchSettings.LoadingScreenBarColor = "";
+            if (!LaunchService.IsValidLoadingScreenColor(launchSettings.LoadingScreenGlowColor)) launchSettings.LoadingScreenGlowColor = "";
+            LaunchService.EnsureLoadingScreenColors(launchOpt, launchSettings);
             LaunchService.EnsureSecurityJvmArguments(launchOpt, requiredJava, gameDirectory, activeProfile.MinecraftVersion);
             if (settings.QuickLaunch && File.Exists(installedMarker))
             {
