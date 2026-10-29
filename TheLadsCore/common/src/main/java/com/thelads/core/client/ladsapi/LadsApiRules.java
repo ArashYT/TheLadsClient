@@ -1,5 +1,6 @@
 package com.thelads.core.client.ladsapi;
 
+import com.thelads.core.client.HypixelSafetyManager;
 import java.util.Locale;
 import java.util.Set;
 
@@ -26,15 +27,34 @@ public final class LadsApiRules {
         return moduleName != null && AUTOMATION.contains(key(moduleName));
     }
 
+    /**
+     * Whether this module is gated by the client's anti-ban / safety rules (HypixelSafetyManager).
+     * If a server policy allows it by name, the join toast reports it as an unlocked module.
+     */
+    public static boolean isGated(String moduleName) {
+        if (moduleName == null) return false;
+        return HypixelSafetyManager.isRiskyModule(moduleName)
+            || HypixelSafetyManager.isGatedHypixelModule(moduleName)
+            || HypixelSafetyManager.isDisallowedModule(moduleName)
+            || AUTOMATION.contains(key(moduleName));
+    }
+
     /** A server may not use "on" for this module (it may still block or allow it). */
     public static boolean isNeverForced(String moduleName) {
-        return moduleName != null && (AUTOMATION.contains(key(moduleName)) || NEVER_FORCED.contains(key(moduleName)));
+        if (moduleName == null) return false;
+        return AUTOMATION.contains(key(moduleName))
+            || NEVER_FORCED.contains(key(moduleName))
+            || HypixelSafetyManager.isRiskyModule(moduleName)
+            || HypixelSafetyManager.isGatedHypixelModule(moduleName);
     }
 
     /** A server may not touch this option (its rules are ignored and reported): every option of a never-forced module, and privacy ones. */
     public static boolean isNeverForced(String moduleName, String optionName) {
-        return isNeverForced(moduleName) || moduleName != null && optionName != null
-            && NEVER_FORCED_OPTIONS.contains(key(moduleName) + "." + key(optionName));
+        if (moduleName == null) return false;
+        String modKey = key(moduleName);
+        return AUTOMATION.contains(modKey)
+            || NEVER_FORCED.contains(modKey)
+            || (optionName != null && NEVER_FORCED_OPTIONS.contains(modKey + "." + key(optionName)));
     }
 
     /** "Toggle Sprint & Sneak" -> "togglesprintsneak". */
