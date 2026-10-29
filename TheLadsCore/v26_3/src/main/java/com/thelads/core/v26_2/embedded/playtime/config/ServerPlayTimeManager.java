@@ -18,14 +18,22 @@ import java.util.concurrent.CompletableFuture;
 
 public class ServerPlayTimeManager {
 	private static final File FILE = new File("config/worldplaytimereborn/servers_playtime.dat");
+	private static final Object WRITE_LOCK = new Object();
 	private static final HashMap<String, Integer> SERVER_PLAY_TIMES = new HashMap<>();
 
 	/**
 	 * Saves the server playtime table to disk.
 	 */
-	public static synchronized void save() {
-		if (SERVER_PLAY_TIMES.isEmpty()) {
-			return;
+	public static void save() {
+		CompoundTag compoundTag;
+		synchronized (ServerPlayTimeManager.class) {
+			if (SERVER_PLAY_TIMES.isEmpty()) {
+				return;
+			}
+			compoundTag = new CompoundTag();
+			for (Map.Entry<String, Integer> entry : SERVER_PLAY_TIMES.entrySet()) {
+				compoundTag.putInt(entry.getKey(), entry.getValue());
+			}
 		}
 
 		File parent = FILE.getParentFile();
@@ -34,19 +42,12 @@ public class ServerPlayTimeManager {
 			return;
 		}
 
-		CompoundTag compoundTag = new CompoundTag();
-
-		for (Map.Entry<String, Integer> entry : SERVER_PLAY_TIMES.entrySet()) {
-			String serverIp = entry.getKey();
-			int playTime = entry.getValue();
-
-			compoundTag.putInt(serverIp, playTime);
-		}
-
-		try {
-			writeAtomically(compoundTag);
-		} catch (IOException e) {
-			WorldPlayTimeReborn.LOGGER.error("Failed to write servers_playtime.dat", e);
+		synchronized (WRITE_LOCK) {
+			try {
+				writeAtomically(compoundTag);
+			} catch (IOException e) {
+				WorldPlayTimeReborn.LOGGER.error("Failed to write servers_playtime.dat", e);
+			}
 		}
 	}
 
