@@ -25,8 +25,6 @@ public class ConfigRulesTest {
         LadsConfig config = LadsConfig.load(tempDir, null);
         assertTrue(config.isEnabled());
         assertEquals("inherit", config.getUnlistedModules());
-        assertTrue(config.isNotifyPlayers());
-        assertTrue(config.isLetPlayersRefuseChanges());
         assertFalse(config.isRequireLadsClient());
         assertEquals("", config.getMinClientVersion());
         assertTrue(config.isBadgePresence());

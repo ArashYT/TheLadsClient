@@ -17,8 +17,6 @@ public final class LadsConfig {
 # LadsClientAPI Configuration
 enabled: true
 unlisted-modules: inherit      # inherit | allow | block
-notify-players: true           # the one toast on join
-let-players-refuse-changes: true
 require-lads-client: false     # kick non-Lads players (private servers)
 require-lads-client-message: "You must connect with the Lads Client to play on this server."
 min-client-version: ""         # e.g. "1.9.13"
@@ -34,8 +32,6 @@ debug: false
 
     private boolean enabled = true;
     private String unlistedModules = "inherit";
-    private boolean notifyPlayers = true;
-    private boolean letPlayersRefuseChanges = true;
     private boolean requireLadsClient = false;
     private String requireLadsClientMessage = "You must connect with the Lads Client to play on this server.";
     private String minClientVersion = "";
@@ -85,8 +81,6 @@ debug: false
     public void resetDefaults() {
         this.enabled = true;
         this.unlistedModules = "inherit";
-        this.notifyPlayers = true;
-        this.letPlayersRefuseChanges = true;
         this.requireLadsClient = false;
         this.requireLadsClientMessage = "You must connect with the Lads Client to play on this server.";
         this.minClientVersion = "";
@@ -105,12 +99,6 @@ debug: false
         }
         if (map.containsKey("unlisted-modules")) {
             this.unlistedModules = String.valueOf(map.get("unlisted-modules")).trim();
-        }
-        if (map.containsKey("notify-players")) {
-            this.notifyPlayers = Boolean.parseBoolean(String.valueOf(map.get("notify-players")));
-        }
-        if (map.containsKey("let-players-refuse-changes")) {
-            this.letPlayersRefuseChanges = Boolean.parseBoolean(String.valueOf(map.get("let-players-refuse-changes")));
         }
         if (map.containsKey("require-lads-client")) {
             this.requireLadsClient = Boolean.parseBoolean(String.valueOf(map.get("require-lads-client")));
@@ -151,8 +139,6 @@ debug: false
 
     public boolean isEnabled() { return enabled; }
     public String getUnlistedModules() { return unlistedModules; }
-    public boolean isNotifyPlayers() { return notifyPlayers; }
-    public boolean isLetPlayersRefuseChanges() { return letPlayersRefuseChanges; }
     public boolean isRequireLadsClient() { return requireLadsClient; }
     public String getRequireLadsClientMessage() { return requireLadsClientMessage; }
     public String getMinClientVersion() { return minClientVersion; }
