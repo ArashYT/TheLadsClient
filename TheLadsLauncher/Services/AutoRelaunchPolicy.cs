@@ -15,6 +15,22 @@ public sealed class AutoRelaunchPolicy
     private readonly List<DateTimeOffset> _relaunchTimestamps = new();
     private DateTimeOffset? _lastCrashReportTime;
 
+    /// <summary>
+    /// Calculates elapsed uptime from process start time. Ensures both operands
+    /// use the same time standard to avoid UTC offset skew.
+    /// </summary>
+    public static TimeSpan CalculateUptime(DateTime? processStartTime, DateTime? now = null)
+    {
+        var current = now ?? DateTime.Now;
+        var start = processStartTime ?? current;
+        if (start.Kind == DateTimeKind.Utc)
+            start = start.ToLocalTime();
+        if (current.Kind == DateTimeKind.Utc)
+            current = current.ToLocalTime();
+        var diff = current - start;
+        return diff < TimeSpan.Zero ? TimeSpan.Zero : diff;
+    }
+
     public bool ShouldRelaunch(TimeSpan gameUptime, bool wasCancelled, DateTimeOffset now, out string reason)
     {
         if (wasCancelled)

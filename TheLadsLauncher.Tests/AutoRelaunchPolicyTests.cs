@@ -68,4 +68,29 @@ public class AutoRelaunchPolicyTests
         // After 10 min: allowed
         Assert.True(policy.ShouldSendCrashReport(now.AddMinutes(11)));
     }
+
+    [Fact]
+    public void CalculateUptime_WithLocalProcessStartTime_CalculatesAccurateUptime()
+    {
+        var now = DateTime.Now;
+        var localStart = now.AddSeconds(-25);
+        var uptime = AutoRelaunchPolicy.CalculateUptime(localStart, now);
+        Assert.Equal(TimeSpan.FromSeconds(25), uptime);
+    }
+
+    [Fact]
+    public void CalculateUptime_WhenStartTimeLocalAndNowUtc_DoesNotSkewByUtcOffset()
+    {
+        var localStart = DateTime.Now.AddSeconds(-30);
+        var utcNow = DateTime.UtcNow;
+        var uptime = AutoRelaunchPolicy.CalculateUptime(localStart, utcNow);
+        Assert.True(uptime >= TimeSpan.FromSeconds(29) && uptime <= TimeSpan.FromSeconds(31));
+    }
+
+    [Fact]
+    public void CalculateUptime_WhenStartTimeNull_ReturnsZero()
+    {
+        var uptime = AutoRelaunchPolicy.CalculateUptime(null, DateTime.Now);
+        Assert.Equal(TimeSpan.Zero, uptime);
+    }
 }

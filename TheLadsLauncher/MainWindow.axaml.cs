@@ -5335,7 +5335,7 @@ public partial class MainWindow : Window
                 StatusText.Text = $"Game crashed! (exit code: {exitCode}){suffix}";
                 Log($"[Launcher] Game exited with code {exitCode}");
                 var policy = GetRelaunchPolicy(profile.Id);
-                var uptime = DateTime.UtcNow - (GameStart(process) ?? DateTime.UtcNow);
+                var uptime = AutoRelaunchPolicy.CalculateUptime(GameStart(process));
                 string relaunchReason = "Auto-relaunch disabled in settings.";
                 bool canRelaunch = settings.AutoRelaunchOnCrash && policy.ShouldRelaunch(uptime, cancelled, DateTimeOffset.UtcNow, out relaunchReason);
                 Log($"[Crash Detection] {relaunchReason}");
