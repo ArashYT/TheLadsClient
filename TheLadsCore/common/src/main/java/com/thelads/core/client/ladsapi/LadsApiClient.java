@@ -40,6 +40,9 @@ public final class LadsApiClient {
     private static volatile boolean sessionOk = false;
     private static volatile String serverName = "";
     private static int helloReplies = 0;
+    private static int connectionHelloReplies = 0;
+    static final int MAX_HELLO_REPLIES = 2;
+    static final int MAX_CONNECTION_HELLO_REPLIES = 10;
     /** Incoming messages: 8 a second on average, bursts of 16 (a plugin's join-time overrides arrive together, the newest last). */
     static final int RATE_PER_SECOND = 8, RATE_BURST = 16;
     private static double rateTokens = RATE_BURST;
@@ -127,8 +130,9 @@ public final class LadsApiClient {
         serverName = name;
         sessionOk = true;
 
-        if (helloReplies < 2) {
+        if (helloReplies < MAX_HELLO_REPLIES && connectionHelloReplies < MAX_CONNECTION_HELLO_REPLIES) {
             helloReplies++;
+            connectionHelloReplies++;
             JsonObject reply = new JsonObject();
             reply.addProperty("t", "hello");
             reply.addProperty("v", 1);
@@ -251,6 +255,7 @@ public final class LadsApiClient {
         rateLast = 0;
         lastHashedSeed = null;
         lastDimension = null;
+        connectionHelloReplies = 0;
     }
 
     /** JoinGame/Login packet with the world's hashed seed: the old backend's rules go, then the seed is kept for {@link #respawn}. */

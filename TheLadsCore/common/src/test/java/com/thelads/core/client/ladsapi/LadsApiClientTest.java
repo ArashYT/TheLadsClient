@@ -442,9 +442,24 @@ class LadsApiClientTest {
         LadsApiClient.receive("{\"t\":\"hello\",\"v\":1,\"server\":\"Server3\"}".getBytes(StandardCharsets.UTF_8));
         assertEquals(sentBefore, sentPayloads.size(), "3rd hello without reset is dropped");
 
-        // Server reset clears helloReplies counter so the new backend gets a reply
+        // Server reset clears per-backend helloReplies counter so the new backend gets a reply
         LadsApiClient.receive("{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8));
         assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server4\"}"));
+
+        // Per-connection absolute cap is 10 hello replies: 3 sent so far, test up to 10 and beyond
+        for (int i = 5; i <= 11; i++) {
+            LadsApiClient.receive("{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8));
+            JsonObject reply = sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server" + i + "\"}");
+            if (i <= 10) {
+                assertNotNull(reply, "Reply " + i + " should succeed before absolute connection cap");
+            } else {
+                assertNull(reply, "11th reply should be dropped by per-connection absolute cap");
+            }
+        }
+
+        // Full disconnect reset clears per-connection absolute cap
+        LadsApiClient.reset();
+        assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"ServerAfterReset\"}"));
     }
 
     @Test
