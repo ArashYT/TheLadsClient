@@ -47,12 +47,13 @@ public final class EntityCulling {
     private static final long MAX_AGE = 100_000_000L, FORGET = 1_000_000_000L, PASS = 10_000_000L, IDLE = 50_000_000L;
     private static final MethodHandle IRIS_SHADOW = irisShadowPass();
     private static final ConcurrentLinkedQueue<Cullable> ADDED = new ConcurrentLinkedQueue<>();
-    private static final AtomicLong DRAWN = new AtomicLong(), CULLED = new AtomicLong(), BE_DRAWN = new AtomicLong(), BE_CULLED = new AtomicLong();
+    private static final AtomicLong EVALUATED = new AtomicLong(), DRAWN = new AtomicLong(), CULLED = new AtomicLong(), BE_DRAWN = new AtomicLong(), BE_CULLED = new AtomicLong();
 
     private record View(ClientLevel level, double x, double y, double z, int version) {}
 
     private static volatile View view;
     private static volatile Thread worker;
+    private static volatile int trackedCount;
     private static volatile long frameNow = System.nanoTime();
     // Render thread only.
     private static WeakReference<ClientLevel> anchorLevel = new WeakReference<>(null);
@@ -94,6 +95,7 @@ public final class EntityCulling {
 
     /** Render thread, for an entity vanilla is about to draw: false when it was found fully occluded. */
     public static boolean drawEntity(Entity entity) {
+        if (QA) EVALUATED.incrementAndGet();
         if (exempt(entity)) return true;
         boolean hidden = hidden((Cullable) entity);
         if (QA) (hidden ? CULLED : DRAWN).incrementAndGet();
@@ -184,6 +186,7 @@ public final class EntityCulling {
                 }
             }
             for (Cullable added; (added = ADDED.poll()) != null; ) tracked.add(added);
+            trackedCount = tracked.size();
             if (Double.isNaN(lastX) || Math.abs(current.x - lastX) + Math.abs(current.y - lastY) + Math.abs(current.z - lastZ) > 0.05) {
                 culling.resetCache();
                 lastX = current.x;
@@ -240,7 +243,7 @@ public final class EntityCulling {
     }
 
     /** QA only: the ray caster against a synthetic wall, and that the culling state was merged into the game classes. */
-    public static void selfTest() {
+    public static boolean selfTest() {
         OcclusionCullingInstance test = new OcclusionCullingInstance(REACH, new com.thelads.core.v26_2.embedded.entityculling.occlusion.DataProvider() {
             @Override public boolean prepareChunk(int chunkX, int chunkZ) { return true; }
             @Override public boolean isOpaqueFullCube(int x, int y, int z) { return x == 5; }
@@ -248,9 +251,31 @@ public final class EntityCulling {
         Vec3d camera = new Vec3d(0.5, 64.5, 0.5);
         boolean hidden = !test.isAABBVisible(new Vec3d(10, 64, 0), new Vec3d(11, 65, 1), camera);
         boolean open = test.isAABBVisible(new Vec3d(-11, 64, 0), new Vec3d(-10, 65, 1), camera);
-        LOGGER.info("Entity culling self-test: box behind a wall hidden {}, open box visible {}, state on entities {}, on block entities {}",
-            hidden ? "PASS" : "FAIL", open ? "PASS" : "FAIL", Cullable.class.isAssignableFrom(Entity.class) ? "merged" : "MISSING",
-            Cullable.class.isAssignableFrom(BlockEntity.class) ? "merged" : "MISSING");
+        boolean entities = Cullable.class.isAssignableFrom(Entity.class), blockEntities = Cullable.class.isAssignableFrom(BlockEntity.class);
+        boolean pass = hidden && open && entities && blockEntities;
+        LOGGER.info("PERF-PROBE entityculling SELFTEST {} wallHidden={} openVisible={} cullableOnEntity={} cullableOnBlockEntity={}",
+            pass ? "PASS" : "FAIL", hidden, open, entities, blockEntities);
+        return pass;
+    }
+
+    /** QA probe, once in a world every 600 ticks: counters since the last line; PASS when entities were evaluated and the worker runs. */
+    public static void probeReport() {
+        Thread thread = worker;
+        long evaluated = EVALUATED.getAndSet(0);
+        boolean alive = thread != null && thread.isAlive();
+        String result;
+        if (thread != null && !alive) {
+            result = "FAIL";
+        } else if (evaluated == 0) {
+            result = "SKIP (nothing rendered)";
+        } else if (alive) {
+            result = "PASS";
+        } else {
+            result = "FAIL";
+        }
+        LOGGER.info("PERF-PROBE entityculling {} evaluated={} drawn={} culled={} blockEntitiesDrawn={} blockEntitiesCulled={} tracking={} worker={} shadowApi={}",
+            result, evaluated, DRAWN.getAndSet(0), CULLED.getAndSet(0), BE_DRAWN.getAndSet(0), BE_CULLED.getAndSet(0),
+            trackedCount, thread == null ? "not-started" : alive ? "alive" : "dead", IRIS_SHADOW != null ? "iris" : "none");
     }
 
     private static MethodHandle irisShadowPass() {

@@ -312,8 +312,18 @@ public final class EntityCulling {
         Thread thread = worker;
         long evaluated = EVALUATED.getAndSet(0);
         boolean alive = thread != null && thread.isAlive();
+        String result;
+        if (thread != null && !alive) {
+            result = "FAIL";
+        } else if (evaluated == 0) {
+            result = "SKIP (nothing rendered)";
+        } else if (alive) {
+            result = "PASS";
+        } else {
+            result = "FAIL";
+        }
         LOGGER.info("PERF-PROBE entityculling {} evaluated={} drawn={} culled={} blockEntitiesDrawn={} blockEntitiesCulled={} tracking={} worker={} shadowApi={}",
-            evaluated > 0 && alive ? "PASS" : "FAIL", evaluated, DRAWN.getAndSet(0), CULLED.getAndSet(0), BE_DRAWN.getAndSet(0), BE_CULLED.getAndSet(0),
+            result, evaluated, DRAWN.getAndSet(0), CULLED.getAndSet(0), BE_DRAWN.getAndSet(0), BE_CULLED.getAndSet(0),
             trackedCount, thread == null ? "not-started" : alive ? "alive" : "dead", Shadow.api);
     }
 }
