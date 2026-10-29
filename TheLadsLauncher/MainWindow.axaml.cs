@@ -251,7 +251,7 @@ public partial class MainWindow : Window
             Log($"[Profiles] {_profileService.StartupWarning}");
             Dispatcher.UIThread.Post(async () =>
             {
-                await ShowLadsChoiceAsync("Profiles Recovered", _profileService.StartupWarning, new[] { ("OK", false, true) }, "");
+                await ShowLadsDialogAsync("Profiles Recovered", _profileService.StartupWarning);
             });
         }
         PopulateLaunchProfileSelector();
