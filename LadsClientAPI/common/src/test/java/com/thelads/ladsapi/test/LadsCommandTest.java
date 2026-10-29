@@ -127,4 +127,13 @@ public class LadsCommandTest {
         List<String> optRules = com.thelads.ladsapi.command.LadsCommandHandler.suggest(core, new String[]{"set", "Steve", "Fullbright.Brightness", ""}, List.of("Steve"));
         assertEquals(List.of("max=", "min=", "value="), optRules);
     }
+
+    @Test
+    public void testSuggestMultiWordModules() {
+        List<String> res1 = com.thelads.ladsapi.command.LadsCommandHandler.suggest(core, new String[]{"set", "Steve", "Crosshair", "T"}, List.of("Steve"));
+        assertEquals(List.of("Tweaks"), res1);
+
+        List<String> res2 = com.thelads.ladsapi.command.LadsCommandHandler.suggest(core, new String[]{"set", "Steve", "Crosshair", "Tweaks", ""}, List.of("Steve"));
+        assertEquals(List.of("allow", "block", "on"), res2);
+    }
 }

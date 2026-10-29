@@ -2,6 +2,7 @@ package com.thelads.ladsapi.command;
 
 import com.thelads.ladsapi.schema.LadsSchema;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import com.thelads.ladsapi.LadsCore;
 import com.thelads.ladsapi.api.LadsClientAPI;
 import com.thelads.ladsapi.api.LadsPlayer;
@@ -10,6 +11,7 @@ import com.thelads.ladsapi.session.LadsSession;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -285,19 +287,12 @@ public final class LadsCommandHandler {
         if ("set".equals(sub)) {
             String targetSoFar = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length - 1)).trim();
             String current = args[args.length - 1];
+            String fullPrefix = String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length));
+            String soFarPrefix = (args.length > 3)
+                    ? String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length - 1)) + " "
+                    : "";
 
             LadsSchema schema = core != null ? core.schema() : null;
-            if (!targetSoFar.isEmpty() && schema != null) {
-                ResolvedTarget resolved = resolveTarget(schema, targetSoFar);
-                if (resolved != null && resolved.inSchema()) {
-                    if (resolved.option() != null) {
-                        return filterMatching(List.of("max=", "min=", "value="), current);
-                    } else {
-                        return filterMatching(List.of("allow", "block", "on"), current);
-                    }
-                }
-            }
-
             List<String> targets = new ArrayList<>();
             if (schema != null && schema.getModules() != null) {
                 for (LadsSchema.SchemaModule mod : schema.getModules()) {
@@ -309,7 +304,47 @@ public final class LadsCommandHandler {
                     }
                 }
             }
-            return filterMatching(targets, current);
+
+            Set<String> suggestions = new LinkedHashSet<>();
+
+            // 1. If user is typing module/option name (single or multi-word), suggest next words or matching targets
+            String lowerFull = fullPrefix.toLowerCase();
+            String lowerSoFar = soFarPrefix.toLowerCase();
+            for (String t : targets) {
+                if (t.toLowerCase().startsWith(lowerFull)) {
+                    if (soFarPrefix.isEmpty()) {
+                        suggestions.add(t);
+                    } else if (t.toLowerCase().startsWith(lowerSoFar)) {
+                        String rem = t.substring(soFarPrefix.length());
+                        int end = rem.length();
+                        for (int i = current.length(); i < rem.length(); i++) {
+                            char c = rem.charAt(i);
+                            if (c == ' ' || (c == '.' && i > current.indexOf('.'))) {
+                                end = i;
+                                break;
+                            }
+                        }
+                        String nextToken = rem.substring(0, end);
+                        if (!nextToken.isEmpty()) {
+                            suggestions.add(nextToken);
+                        }
+                    }
+                }
+            }
+
+            // 2. If text before current word is already a valid schema target, suggest states or option rules
+            if (!targetSoFar.isEmpty() && schema != null) {
+                ResolvedTarget resolved = resolveTarget(schema, targetSoFar);
+                if (resolved != null && resolved.inSchema()) {
+                    if (resolved.option() != null) {
+                        suggestions.addAll(filterMatching(List.of("max=", "min=", "value="), current));
+                    } else {
+                        suggestions.addAll(filterMatching(List.of("allow", "block", "on"), current));
+                    }
+                }
+            }
+
+            return new ArrayList<>(suggestions);
         }
 
         return Collections.emptyList();
