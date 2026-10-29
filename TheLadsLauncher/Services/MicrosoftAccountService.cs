@@ -94,13 +94,21 @@ public sealed class MicrosoftAccountService
                         var unwanted = AccountManager.GetAccounts().FirstOrDefault(a =>
                             string.Equals(NormalizeId(a.Identifier), NormalizeId(session.UUID), StringComparison.OrdinalIgnoreCase));
                         if (unwanted != null) await _handler.Signout(unwanted);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log?.Invoke($"[AUTH] Could not clean up wrong account {session.UUID} (signout): {ex.Message}");
+                    }
+
+                    try
+                    {
                         if (_app != null && savedMsal != null)
                             foreach (var added in (await _app.GetAccountsAsync()).Where(a => !savedMsal.Contains(a.HomeAccountId?.Identifier)))
                                 await _app.RemoveAsync(added);
                     }
                     catch (Exception ex)
                     {
-                        Log?.Invoke($"[AUTH] Could not clean up wrong account {session.UUID}: {ex.Message}");
+                        Log?.Invoke($"[AUTH] Could not clean up wrong account {session.UUID} (MSAL tokens): {ex.Message}");
                     }
                 }
                 throw new InvalidOperationException("You signed in to a different Minecraft account. Select that account in the launcher or sign in again with the selected account.");
