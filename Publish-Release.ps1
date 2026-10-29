@@ -1,11 +1,92 @@
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param(
     [switch]$PrepareOnly,
     [switch]$SkipCoreBuild,
-    [switch]$Draft
+    [switch]$Publish,
+    [switch]$Draft # Kept for release.yml compatibility; draft creation is now the default
 )
 $ErrorActionPreference = 'Stop'
 $repo = 'ArashYT/TheLadsClient'
+
+function Assert-ReleaseSignature {
+    param(
+        [string]$Tag,
+        [string]$Repo,
+        [string]$Version,
+        [string]$WorkDir
+    )
+    $remote = & gh release view $Tag --repo $Repo --json assets | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0) { throw "Unable to verify assets of release $Tag." }
+    $assetNames = @($remote.assets | ForEach-Object { $_.name })
+    if ($assetNames -notcontains 'lads-update.json' -or $assetNames -notcontains 'lads-update.json.sig') {
+        throw "Cannot publish ${Tag}: signature assets (lads-update.json, lads-update.json.sig) are missing. Run tools/Sign-Release.ps1 first."
+    }
+    $sigDir = Join-Path $WorkDir 'sig-verify'
+    New-Item -ItemType Directory -Path $sigDir -Force | Out-Null
+    & gh release download $Tag --repo $Repo --pattern 'lads-update.json*' --dir $sigDir
+    if ($LASTEXITCODE -ne 0) { throw "Failed to download signature assets for $Tag." }
+
+    $manifestBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'lads-update.json'))
+    $sigBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'lads-update.json.sig'))
+
+    $updateSigPath = if ($env:LADS_UPDATE_SIGNATURE_PATH) { $env:LADS_UPDATE_SIGNATURE_PATH } else { Join-Path $PSScriptRoot 'TheLadsLauncher/UpdateSignature.cs' }
+    $sigCs = Get-Content -LiteralPath $updateSigPath -Raw
+    $m = [regex]::Match($sigCs, '(?s)ReleasePublicKeys.*?=\s*new\[\]\s*\{(.*?)\};')
+    $pinnedKeys = @([regex]::Matches($m.Groups[1].Value, '"([A-Za-z0-9+/=]{40,})"') | ForEach-Object { $_.Groups[1].Value })
+    if ($pinnedKeys.Count -eq 0) { throw 'No pinned public keys found in UpdateSignature.cs.' }
+
+    $verified = $false
+    foreach ($pubKey in $pinnedKeys) {
+        $ecdsa = [Security.Cryptography.ECDsa]::Create()
+        try {
+            $read = 0
+            $ecdsa.ImportSubjectPublicKeyInfo([Convert]::FromBase64String($pubKey), [ref]$read)
+            if ($ecdsa.VerifyData($manifestBytes, $sigBytes, [Security.Cryptography.HashAlgorithmName]::SHA256)) {
+                $verified = $true
+                break
+            }
+        } finally {
+            $ecdsa.Dispose()
+        }
+    }
+    if (-not $verified) {
+        throw "Cannot publish ${Tag}: lads-update.json signature does not verify against any pinned public key."
+    }
+
+    $statement = [Text.Encoding]::UTF8.GetString($manifestBytes) | ConvertFrom-Json
+    if ($statement.version -ne $Version) {
+        throw "Cannot publish ${Tag}: signature manifest is for version $($statement.version), expected $Version."
+    }
+    $expectedPackage = "TheLadsClient-$Version-full.nupkg"
+    if ($statement.package -ne $expectedPackage) {
+        throw "Cannot publish ${Tag}: signature manifest is for package $($statement.package), expected $expectedPackage."
+    }
+    if ($assetNames -notcontains 'SHA256SUMS.txt' -or $assetNames -notcontains 'SHA256SUMS.txt.sig') {
+        throw "Cannot publish ${Tag}: SHA256SUMS.txt and SHA256SUMS.txt.sig are mandatory release assets. Run tools/Sign-Release.ps1 first."
+    }
+    & gh release download $Tag --repo $Repo --pattern 'SHA256SUMS.txt*' --dir $sigDir
+    if ($LASTEXITCODE -ne 0) { throw "Failed to download SHA256SUMS assets for $Tag." }
+    $sumsBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'SHA256SUMS.txt'))
+    $sumsSigBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'SHA256SUMS.txt.sig'))
+    $sumsVerified = $false
+    foreach ($pubKey in $pinnedKeys) {
+        $ecdsa = [Security.Cryptography.ECDsa]::Create()
+        try {
+            $read = 0
+            $ecdsa.ImportSubjectPublicKeyInfo([Convert]::FromBase64String($pubKey), [ref]$read)
+            if ($ecdsa.VerifyData($sumsBytes, $sumsSigBytes, [Security.Cryptography.HashAlgorithmName]::SHA256)) {
+                $sumsVerified = $true
+                break
+            }
+        } finally {
+            $ecdsa.Dispose()
+        }
+    }
+    if (-not $sumsVerified) {
+        throw "Cannot publish ${Tag}: SHA256SUMS.txt signature does not verify against any pinned public key."
+    }
+    Write-Host "Verified release signature for $Tag against pinned public key."
+}
 Push-Location -LiteralPath $PSScriptRoot
 try {
     [xml]$project = Get-Content -LiteralPath 'TheLadsLauncher/TheLadsLauncher.csproj' -Raw
@@ -30,14 +111,41 @@ try {
         if ($LASTEXITCODE -ne 0 -or $tagCommit -ne $commit) { throw "Create $tag on the current commit and push it before releasing." }
         $remoteTag = @(git ls-remote origin "refs/tags/$tag" "refs/tags/$tag^{}")
         if ($LASTEXITCODE -ne 0 -or -not ($remoteTag | Where-Object { $_ -match "^$commit\s" })) { throw 'The release tag must point to this commit on origin.' }
-        cmd /c "gh release view $tag --repo $repo >nul 2>&1"
-        if ($LASTEXITCODE -eq 0) { throw "Release $tag already exists. Choose a new version; never replace published packages." }
+        $viewOutput = & gh release view $tag --repo $repo --json isDraft,assets 2>$null
+        if ($LASTEXITCODE -eq 0 -and $viewOutput) {
+            $existing = $viewOutput | ConvertFrom-Json
+            if (-not $existing.isDraft) {
+                throw "Release $tag already exists and is published. Choose a new version; never replace published packages."
+            }
+            if ($Publish) {
+                Write-Host "Draft $tag already exists on GitHub. Verifying signatures before publishing..."
+                $verifyWork = Join-Path ([IO.Path]::GetTempPath()) ("lads-pub-" + [guid]::NewGuid().ToString('N'))
+                New-Item -ItemType Directory -Path $verifyWork -Force | Out-Null
+                try {
+                    Assert-ReleaseSignature -Tag $tag -Repo $repo -Version $version -WorkDir $verifyWork
+                    if ($PSCmdlet.ShouldProcess($tag, "Publish release and mark latest")) {
+                        & gh release edit $tag --repo $repo --draft=false --latest
+                        if ($LASTEXITCODE -ne 0) { throw "Failed to publish release $tag." }
+                    }
+                    Write-Host "Release $tag published to https://github.com/$repo/releases"
+                    Write-Host "Installed clients will update automatically."
+                    return
+                } finally {
+                    Remove-Item -LiteralPath $verifyWork -Recurse -Force -ErrorAction SilentlyContinue
+                }
+            } else {
+                throw "Release draft $tag already exists. Choose a new version, or publish the signed draft with -Publish."
+            }
+        }
+        if ($Publish) {
+            throw "Release draft $tag does not exist on GitHub. A draft must be created and signed before publishing with -Publish."
+        }
     }
 
     $work = Join-Path $PSScriptRoot ('artifacts/releases/' + $version + '-' + [guid]::NewGuid().ToString('N'))
     $publish = Join-Path $work 'app'
     $packages = Join-Path $work 'packages'
-    New-Item -ItemType Directory -Path $publish,$packages -Force | Out-Null
+    New-Item -ItemType Directory -Path $publish,$packages -Force -WhatIf:$false | Out-Null
     if (-not $SkipCoreBuild) {
         Push-Location 'TheLadsCore'
         try {
@@ -68,7 +176,7 @@ try {
     # verifiesContentHash: this launcher checks a delta-rebuilt package by content hash (TheLadsLauncher/UpdateSignature.cs), so the
     # next release may ship a delta to it. Keep it true only while the launcher code in this commit does that.
     @{version=$version; commit=$commit; localChanges=($dirty.Count -gt 0); coreBuilt=(-not $SkipCoreBuild); verifiesContentHash=$true} |
-        ConvertTo-Json | Set-Content -LiteralPath (Join-Path $publish 'release-build.json')
+        ConvertTo-Json | Set-Content -LiteralPath (Join-Path $publish 'release-build.json') -WhatIf:$false
     & dotnet tool restore
     if ($LASTEXITCODE -ne 0) { throw 'Cannot restore pinned packaging tool.' }
     # A delta package only works for launchers that verify a rebuilt package by content hash. The marker is the release-build.json
@@ -108,7 +216,7 @@ try {
     # vpk lists the seeded previous release too. A release carries only its own packages: clients that are further behind
     # take the full package, and the previous full package is not a file of this release.
     $own = "-$version-"
-    Get-ChildItem -LiteralPath $packages -File | Where-Object { $_.Name -match '-(full|delta)\.nupkg$' -and -not $_.Name.Contains($own) } | Remove-Item -Force
+    Get-ChildItem -LiteralPath $packages -File | Where-Object { $_.Name -match '-(full|delta)\.nupkg$' -and -not $_.Name.Contains($own) } | Remove-Item -Force -WhatIf:$false
     $noBom = New-Object Text.UTF8Encoding $false
     $feedPath = Join-Path $packages 'releases.win.json'
     $feed = [IO.File]::ReadAllText($feedPath) | ConvertFrom-Json
@@ -123,32 +231,34 @@ try {
     }
     $listed = [IO.File]::ReadAllText((Join-Path $packages 'assets.win.json')) | ConvertFrom-Json
     if (@($listed | Where-Object { $_.RelativeFileName -like '*.nupkg' -and -not $_.RelativeFileName.Contains($own) }).Count -gt 0) { throw 'assets.win.json names a package of another version.' }
-    Copy-Item -LiteralPath $notes -Destination (Join-Path $packages 'RELEASE_NOTES.md')
-    Copy-Item -LiteralPath (Join-Path $publish 'release-build.json') -Destination $packages
+    Copy-Item -LiteralPath $notes -Destination (Join-Path $packages 'RELEASE_NOTES.md') -WhatIf:$false
+    $buildInfo = Get-Content -LiteralPath (Join-Path $publish 'release-build.json') -Raw | ConvertFrom-Json
+    $pkgHashes = [ordered]@{}
+    Get-ChildItem -LiteralPath $packages -File | Sort-Object Name | ForEach-Object {
+        $pkgHashes[$_.Name] = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    $buildInfo | Add-Member -NotePropertyName 'hashes' -NotePropertyValue $pkgHashes -Force
+    [IO.File]::WriteAllText((Join-Path $packages 'release-build.json'), (ConvertTo-Json $buildInfo -Depth 5))
     Get-ChildItem -LiteralPath $packages -File | Sort-Object Name | ForEach-Object {
         '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name
-    } | Set-Content -LiteralPath (Join-Path $packages 'SHA256SUMS.txt')
+    } | Set-Content -LiteralPath (Join-Path $packages 'SHA256SUMS.txt') -WhatIf:$false
     if ($PrepareOnly) {
         Write-Host "Prepared local packages: $packages"
         Write-Host 'Nothing was uploaded. Local preparation is not a published release.'
         return
     }
     $assets = @(Get-ChildItem -LiteralPath $packages -File | Select-Object -ExpandProperty FullName)
-    & gh release create $tag @assets --repo $repo --verify-tag --draft --title "The Lads Client $version" --notes-file $notes
-    if ($LASTEXITCODE -ne 0) { throw 'Draft release/upload failed. Inspect the draft before retrying; do not publish incomplete assets.' }
-    # Verify that the draft contains every expected file before declaring it ready.
-    $remote = & gh release view $tag --repo $repo --json assets | ConvertFrom-Json
-    if ($LASTEXITCODE -ne 0) { throw 'Unable to verify uploaded draft assets.' }
-    foreach ($asset in Get-ChildItem -LiteralPath $packages -File) {
-        if (-not ($remote.assets | Where-Object { $_.name -eq $asset.Name -and $_.size -eq $asset.Length })) { throw "Draft asset missing or wrong size: $($asset.Name)" }
+    if ($PSCmdlet.ShouldProcess($tag, "Create draft release with $(@($assets).Count) assets")) {
+        & gh release create $tag @assets --repo $repo --verify-tag --draft --title "The Lads Client $version" --notes-file $notes
+        if ($LASTEXITCODE -ne 0) { throw 'Draft release/upload failed. Inspect the draft before retrying; do not publish incomplete assets.' }
+        # Verify that the draft contains every expected file before declaring it ready.
+        $remote = & gh release view $tag --repo $repo --json assets | ConvertFrom-Json
+        if ($LASTEXITCODE -ne 0) { throw 'Unable to verify uploaded draft assets.' }
+        foreach ($asset in Get-ChildItem -LiteralPath $packages -File) {
+            if (-not ($remote.assets | Where-Object { $_.name -eq $asset.Name -and $_.size -eq $asset.Length })) { throw "Draft asset missing or wrong size: $($asset.Name)" }
+        }
     }
-    if ($Draft) {
-        Write-Host "Draft ready: https://github.com/$repo/releases"
-        Write-Host "Review notes and assets, then publish $tag as the latest stable release. Installed clients will update automatically."
-    } else {
-        & gh release edit $tag --repo $repo --draft=false --latest
-        if ($LASTEXITCODE -ne 0) { throw "Failed to publish release $tag." }
-        Write-Host "Release $tag published to https://github.com/$repo/releases"
-        Write-Host "Installed clients will update automatically."
-    }
+    Write-Host "Draft ready: https://github.com/$repo/releases"
+    Write-Host "Review notes and assets, then sign the release with tools/Sign-Release.ps1 -Version $version."
+    Write-Host "After signing, publish with: ./Publish-Release.ps1 -Publish"
 } finally { Pop-Location }

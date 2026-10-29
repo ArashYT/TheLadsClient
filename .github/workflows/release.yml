@@ -2,14 +2,15 @@ name: Windows release
 on:
   push:
     tags: ['v*']
-permissions:
-  contents: write
+permissions: {}
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   package:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -62,3 +63,21 @@ jobs:
           name: windows-release
           path: artifacts/releases/**/packages/*
           if-no-files-found: ignore
+
+  attest:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
+        with:
+          name: windows-release
+          path: packages
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@c074443f1ecf4024c935349e2e5bba9445315b1f # v2
+        with:
+          subject-path: 'packages/*'
