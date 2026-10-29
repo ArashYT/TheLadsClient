@@ -71,7 +71,7 @@ public final class AdminClaimsFeature {
             if (!isEnabled() || level.isClientSide()) {
                 return true;
             }
-            if (isChunkClaimed(level, pos) && !hasAdminPermission(player)) {
+            if (isProtectedFrom(player, level, pos)) {
                 sendDeniedFeedback(player);
                 return false;
             }
@@ -83,7 +83,7 @@ public final class AdminClaimsFeature {
             if (!isEnabled() || level.isClientSide()) {
                 return InteractionResult.PASS;
             }
-            if (isChunkClaimed(level, pos) && !hasAdminPermission(player)) {
+            if (isProtectedFrom(player, level, pos)) {
                 sendDeniedFeedback(player);
                 return InteractionResult.FAIL;
             }
@@ -96,10 +96,17 @@ public final class AdminClaimsFeature {
                 return InteractionResult.PASS;
             }
             BlockPos targetPos = hitResult.getBlockPos();
-            BlockPos placePos = targetPos.relative(hitResult.getDirection());
-            if ((isChunkClaimed(level, targetPos) || isChunkClaimed(level, placePos)) && !hasAdminPermission(player)) {
+            if (isProtectedFrom(player, level, targetPos)) {
                 sendDeniedFeedback(player);
                 return InteractionResult.FAIL;
+            }
+            ItemStack stack = player.getItemInHand(hand);
+            if (stack.getItem() instanceof net.minecraft.world.item.BlockItem || stack.getItem() instanceof net.minecraft.world.item.BucketItem) {
+                BlockPos placePos = targetPos.relative(hitResult.getDirection());
+                if (isProtectedFrom(player, level, placePos)) {
+                    sendDeniedFeedback(player);
+                    return InteractionResult.FAIL;
+                }
             }
             return InteractionResult.PASS;
         });
@@ -117,7 +124,7 @@ public final class AdminClaimsFeature {
                 if (hit.getType() == HitResult.Type.BLOCK) {
                     BlockPos targetPos = hit.getBlockPos();
                     BlockPos placePos = targetPos.relative(hit.getDirection());
-                    if ((isChunkClaimed(level, targetPos) || isChunkClaimed(level, placePos)) && !hasAdminPermission(player)) {
+                    if (isProtectedFrom(player, level, targetPos) || isProtectedFrom(player, level, placePos)) {
                         sendDeniedFeedback(player);
                         return InteractionResult.FAIL;
                     }
@@ -131,7 +138,7 @@ public final class AdminClaimsFeature {
             if (!isEnabled() || level.isClientSide()) {
                 return InteractionResult.PASS;
             }
-            if (isChunkClaimed(level, entity.blockPosition()) && !hasAdminPermission(player)) {
+            if (isProtectedFrom(player, level, entity.blockPosition())) {
                 sendDeniedFeedback(player);
                 return InteractionResult.FAIL;
             }
@@ -143,7 +150,7 @@ public final class AdminClaimsFeature {
             if (!isEnabled() || level.isClientSide()) {
                 return InteractionResult.PASS;
             }
-            if (isChunkClaimed(level, entity.blockPosition()) && !hasAdminPermission(player)) {
+            if (isProtectedFrom(player, level, entity.blockPosition())) {
                 sendDeniedFeedback(player);
                 return InteractionResult.FAIL;
             }
