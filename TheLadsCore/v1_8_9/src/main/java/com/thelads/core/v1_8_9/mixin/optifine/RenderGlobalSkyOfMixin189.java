@@ -21,10 +21,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * - Sky dome gating
  * - Star field gating
  * - Celestial bodies gating
- * - Chunk Updates per frame limiting
+ * - Chunk Updates per frame limiting, without OptiFine only: OptiFine's own updateChunks spends its own Chunk Updates budget
+ *   (Config.getUpdatesPerFrame), and Ionium replaces updateChunks
  */
 @Mixin(RenderGlobal.class)
 public abstract class RenderGlobalSkyOfMixin189 {
+    @Unique private static final boolean LADS_OPTIFINE = RenderGlobal.class.getClassLoader().getResource("optifine/OptiFineForgeTweaker.class") != null;
     @Shadow private int starGLCallList;
     @Shadow @Final private static ResourceLocation locationSunPng;
     @Shadow @Final private static ResourceLocation locationMoonPhasesPng;
@@ -65,6 +67,7 @@ public abstract class RenderGlobalSkyOfMixin189 {
 
     @Redirect(method = "updateChunks", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/chunk/ChunkRenderDispatcher;updateChunkLater(Lnet/minecraft/client/renderer/chunk/RenderChunk;)Z"), require = 0)
     private boolean lads$limitChunkUpdates(ChunkRenderDispatcher dispatcher, RenderChunk chunk) {
+        if (LADS_OPTIFINE) return dispatcher.updateChunkLater(chunk);
         int max = OptiFine189Module.sOfChunkUpdates;
         if (OptiFine189Module.sOfDynamicUpdates) {
             net.minecraft.client.entity.EntityPlayerSP player = net.minecraft.client.Minecraft.getMinecraft().thePlayer;

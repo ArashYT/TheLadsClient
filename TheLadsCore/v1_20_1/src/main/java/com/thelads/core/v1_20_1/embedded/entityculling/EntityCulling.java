@@ -47,6 +47,11 @@ public final class EntityCulling {
     /** A new camera version starts once the camera is this far from where the current one began. */
     private static final double CAMERA_STEP = 0.5;
     private static final long MAX_AGE = 100_000_000L, FORGET = 1_000_000_000L, PASS = 10_000_000L, IDLE = 50_000_000L;
+    /**
+     * The worker's ray cache is wiped at least once a game tick (the original Entity Culling's re-cull rate), also while the
+     * camera stands still: it remembers walls, so a block broken or placed in front of a still camera shows within a tick.
+     */
+    private static final long RETEST = 50_000_000L;
     private static final ConcurrentLinkedQueue<Cullable> ADDED = new ConcurrentLinkedQueue<>();
     private static final AtomicLong EVALUATED = new AtomicLong(), DRAWN = new AtomicLong(), CULLED = new AtomicLong(), BE_DRAWN = new AtomicLong(), BE_CULLED = new AtomicLong();
 
@@ -198,7 +203,9 @@ public final class EntityCulling {
         private final ArrayList<Cullable> tracked = new ArrayList<>();
         private final Vec3d min = new Vec3d(0, 0, 0), max = new Vec3d(0, 0, 0), viewer = new Vec3d(0, 0, 0);
         private ClientLevel level;
+        /** Camera position (and time) of the last cache wipe. */
         private double lastX = Double.NaN, lastY, lastZ;
+        private long resetAt;
         private boolean warned;
 
         @Override
@@ -237,11 +244,13 @@ public final class EntityCulling {
                 }
             }
             for (Cullable added; (added = ADDED.poll()) != null; ) tracked.add(added);
-            if (Double.isNaN(lastX) || Math.abs(current.x - lastX) + Math.abs(current.y - lastY) + Math.abs(current.z - lastZ) > 0.05) {
+            if (Double.isNaN(lastX) || Math.abs(current.x - lastX) + Math.abs(current.y - lastY) + Math.abs(current.z - lastZ) > 0.05
+                || now - resetAt >= RETEST) {
                 culling.resetCache();
                 lastX = current.x;
                 lastY = current.y;
                 lastZ = current.z;
+                resetAt = now;
             }
             data.level(level);
             viewer.set(current.x, current.y, current.z);

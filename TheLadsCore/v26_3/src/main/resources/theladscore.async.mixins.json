@@ -24,6 +24,7 @@
     "ServerPlayerAsyncMixin",
     "SharedStateAsyncMixins$Criteria",
     "SharedStateAsyncMixins$GameEvents",
+    "SharedStateAsyncMixins$LootRolls",
     "SharedStateAsyncMixins$LootSequences",
     "SharedStateAsyncMixins$SectionLists"
   ],
