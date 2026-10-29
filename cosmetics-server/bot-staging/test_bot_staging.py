@@ -453,3 +453,20 @@ def test_crash_dedupe_hash_log_only():
     assert hash1 != empty_hash
     assert hash2 != empty_hash
     assert hash1 != hash2
+
+
+@pytest.mark.asyncio
+async def test_loops_and_tasks_survive_corrupt_state(bot, monkeypatch):
+    def bad_load_state():
+        raise RuntimeError("Corrupt state.json test")
+    monkeypatch.setattr(bot, "load_state", bad_load_state)
+
+    # changelog_watcher should catch RuntimeError and skip tick cleanly
+    await bot.changelog_watcher()
+
+    # giveaway_ender should catch RuntimeError and skip tick cleanly
+    await bot.giveaway_ender()
+
+    # latest_client_version should catch RuntimeError and return fallback
+    ver = await bot.latest_client_version()
+    assert ver is None or isinstance(ver, str)

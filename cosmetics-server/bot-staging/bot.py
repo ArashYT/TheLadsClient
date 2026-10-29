@@ -217,8 +217,8 @@ def load_state():
     return default_state
 
 def save_state(state):
-    if not isinstance(state, dict) or state.get("_is_fallback"):
-        print("Error: refusing to save fallback or invalid state", flush=True)
+    if not isinstance(state, dict):
+        print("Error: refusing to save invalid state", flush=True)
         return
     try:
         tmp_file = STATE_FILE.with_name(f"{STATE_FILE.name}.tmp")
@@ -1797,9 +1797,14 @@ class LadsBot(commands.Bot):
         bot_role = discord.utils.get(guild.roles, name="🤖 Bots")
         linked_role = discord.utils.get(guild.roles, name="🎮 Linked")
 
-        state = load_state()
-        linked_data = state.get("linked_accounts", {})
-        levels_data = state.get("levels", {})
+        try:
+            state = load_state()
+            linked_data = state.get("linked_accounts", {})
+            levels_data = state.get("levels", {})
+        except Exception as e:
+            print(f"Warning: could not load state in on_ready: {e}", flush=True)
+            linked_data = {}
+            levels_data = {}
 
         for m in guild.members:
             if m.bot:
@@ -2166,7 +2171,11 @@ async def changelog_watcher():
     if not guild:
         return
 
-    state = load_state()
+    try:
+        state = load_state()
+    except Exception as e:
+        print(f"Warning: could not load state in changelog_watcher: {e}", flush=True)
+        return
     posted_versions = set(state.get("posted_versions", []))
 
     release_files = list(RELEASES_DIR.glob("*.md"))
@@ -2209,7 +2218,11 @@ async def latest_client_version():
     except Exception as e:
         print(f"GitHub latest release lookup failed: {e}", flush=True)
 
-    known = list(load_state().get("posted_versions", []))
+    try:
+        known = list(load_state().get("posted_versions", []))
+    except Exception as e:
+        print(f"Warning: could not load state in latest_client_version: {e}", flush=True)
+        known = []
     if RELEASES_DIR.exists():
         known += [f.stem for f in RELEASES_DIR.glob("*.md")]
     known = [v for v in known if re.fullmatch(r"\d+\.\d+\.\d+", v)]
@@ -2256,7 +2269,12 @@ async def server_stats_updater():
 @tasks.loop(minutes=1)
 async def giveaway_ender():
     now = datetime.now(timezone.utc)
-    for msg_id, giveaway in list(load_state().get("giveaways", {}).items()):
+    try:
+        giveaways = list(load_state().get("giveaways", {}).items())
+    except Exception as e:
+        print(f"Warning: could not load state in giveaway_ender: {e}", flush=True)
+        return
+    for msg_id, giveaway in giveaways:
         try:
             if datetime.fromisoformat(giveaway["ends_at"]) <= now:
                 await end_giveaway(msg_id)
