@@ -81,23 +81,25 @@ def test_share_store_and_usage_stats_client_ip():
             pass
 
 
-def test_crash_rate_history_eviction(bot):
-    # Setup history with 5001 entries: 1 active, 5000 old
+@pytest.mark.asyncio
+async def test_crash_rate_history_eviction(bot):
+    from unittest.mock import AsyncMock, MagicMock
     now = time.time()
     bot._crash_rate_history.clear()
     for i in range(5001):
         bot._crash_rate_history[f"stale-{i}"] = [now - 1000]
-    bot._crash_rate_history["active-ip"] = [now - 10]
+    bot._crash_rate_history["127.0.0.1"] = [now - 10]
 
-    # Trigger eviction logic as in handle_crash_report
-    now_ts = now
-    if len(bot._crash_rate_history) > 5000:
-        stale = [k for k, ts_list in bot._crash_rate_history.items() if not ts_list or ts_list[-1] < now_ts - 600]
-        for k in stale:
-            del bot._crash_rate_history[k]
+    req = MagicMock()
+    req.remote = "127.0.0.1"
+    req.headers = {}
+    req.json = AsyncMock(side_effect=ValueError("bad json"))
+
+    # Call production handle_crash_report
+    await bot.handle_crash_report(req)
 
     # Active ip must NOT be cleared, only stale entries removed
-    assert "active-ip" in bot._crash_rate_history
+    assert "127.0.0.1" in bot._crash_rate_history
     assert len(bot._crash_rate_history) == 1
 
 
@@ -125,9 +127,8 @@ def test_state_save_creates_backup_and_refuses_fallback(bot, tmp_path, monkeypat
     assert bak_file.exists()
     assert json.loads(bak_file.read_text(encoding="utf-8"))["tickets_count"] == 5
 
-    # Fallback state must be refused
-    fallback_data = {"tickets_count": 0, "_is_fallback": True}
-    bot.save_state(fallback_data)
+    # Invalid state must be refused
+    bot.save_state("not a dict")
     # File content must still be 6, not 0
     assert json.loads(state_file.read_text(encoding="utf-8"))["tickets_count"] == 6
 
@@ -296,23 +297,28 @@ def test_can_act_role_hierarchy():
     assert not allowed
 
 
-def test_health_latency_infinite_or_nan():
+@pytest.mark.asyncio
+async def test_health_latency_handler(bot, aiohttp_client):
     import math
     from unittest.mock import patch, PropertyMock
-    import bot
+    from aiohttp import web
+
+    app = web.Application()
+    app.router.add_get('/health', lambda r: web.json_response({"status": "ok", "latency_ms": round(bot.bot.latency * 1000) if bot.bot.latency and math.isfinite(bot.bot.latency) and bot.bot.latency > 0 else None}))
+    client = await aiohttp_client(app)
 
     with patch.object(type(bot.bot), "latency", new_callable=PropertyMock) as mock_lat:
         mock_lat.return_value = math.inf
-        lat = round(bot.bot.latency * 1000) if bot.bot.latency and math.isfinite(bot.bot.latency) and bot.bot.latency > 0 else None
-        assert lat is None
+        resp = await client.get("/health")
+        assert (await resp.json())["latency_ms"] is None
 
         mock_lat.return_value = float("nan")
-        lat_nan = round(bot.bot.latency * 1000) if bot.bot.latency and math.isfinite(bot.bot.latency) and bot.bot.latency > 0 else None
-        assert lat_nan is None
+        resp = await client.get("/health")
+        assert (await resp.json())["latency_ms"] is None
 
         mock_lat.return_value = 0.045
-        lat_ok = round(bot.bot.latency * 1000) if bot.bot.latency and math.isfinite(bot.bot.latency) and bot.bot.latency > 0 else None
-        assert lat_ok == 45
+        resp = await client.get("/health")
+        assert (await resp.json())["latency_ms"] == 45
 
 
 def test_usage_stats_registered_in_tree():
@@ -320,26 +326,35 @@ def test_usage_stats_registered_in_tree():
     import usage_stats
     mock_bot = MagicMock()
     mock_bot.tree = MagicMock()
+    mock_bot.tree.get_command.return_value = None
     usage_stats.setup_slash_command(mock_bot)
     mock_bot.tree.command.assert_called_once()
 
 
-def test_ign_regex_validation():
-    import re
-    pattern = r"^[a-zA-Z0-9_]{1,16}$"
-    assert re.fullmatch(pattern, "Notch")
-    assert re.fullmatch(pattern, "Player_123")
-    assert not re.fullmatch(pattern, "../../etc/passwd")
-    assert not re.fullmatch(pattern, "invalid name with spaces")
-    assert not re.fullmatch(pattern, "a" * 17)
+def test_ign_regex_validation(bot):
+    import cosmetics
+    assert bot.COSMETICS_MC_NAME_RE.fullmatch("Notch")
+    assert bot.COSMETICS_MC_NAME_RE.fullmatch("Player_123")
+    assert not bot.COSMETICS_MC_NAME_RE.fullmatch("../../etc/passwd")
+    assert not bot.COSMETICS_MC_NAME_RE.fullmatch("invalid name with spaces")
+    assert not bot.COSMETICS_MC_NAME_RE.fullmatch("a" * 17)
+
+    assert cosmetics.NAME_RE.fullmatch("Notch")
+    assert not cosmetics.NAME_RE.fullmatch("a" * 17)
 
 
-def test_color_selection_rejected_if_not_in_catalog():
-    import bot
-    all_names = [c["name"] for c in bot.COLOR_ROLES]
-    assert "Admin" not in all_names
-    assert "Owner" not in all_names
-    assert any("Crimson Red" in name for name in all_names)
+@pytest.mark.asyncio
+async def test_color_selection_rejected_if_not_in_catalog(bot):
+    from unittest.mock import AsyncMock, MagicMock
+    select = bot.ColorSelectMenu()
+    select._values = ["InvalidColorRole"]
+    interaction = MagicMock()
+    interaction.response.send_message = AsyncMock()
+    await select.callback(interaction)
+    interaction.response.send_message.assert_called_once()
+    args, kwargs = interaction.response.send_message.call_args
+    assert "Invalid color selection" in args[0]
+    assert kwargs.get("ephemeral") is True
 
 
 @pytest.mark.asyncio
@@ -372,26 +387,61 @@ async def test_experience_access_names_capped_and_rate_limited(bot, monkeypatch)
     body11 = json.loads(resp11.text)
     assert body11.get("allowed") is False
 
+    # Rate limit check: 60 requests within 60s triggers 429
+    bot._exp_rate_history["10.0.0.1"] = [time.time()] * 60
+    resp_rate = await bot.handle_experience_access(req)
+    assert resp_rate.status == 429
+
 
 def test_logging_configured_with_module_loggers():
     import logging
-    for mod_name in ("cosmetics", "social", "share_store", "usage_stats"):
+    for mod_name in ("cosmetics", "social", "share_store", "usage_stats", "discord"):
         logger = logging.getLogger(mod_name)
-        assert logger.level <= logging.INFO
+        assert logger.level == logging.INFO
 
 
 @pytest.mark.asyncio
-async def test_link_consumes_cosmetics_code_and_grants_cape(tmp_path, monkeypatch):
+async def test_link_consumes_cosmetics_code_and_grants_cape(bot, tmp_path, monkeypatch):
     import cosmetics
+    import aiohttp
+    from unittest.mock import AsyncMock, MagicMock
+
     db_file = tmp_path / "cosmetics_test.db"
     store = cosmetics.CosmeticsStore(db_file)
     monkeypatch.setattr(cosmetics, "_DEFAULT_STORE", store)
+
     test_uuid = "e" * 32
     code = await store.create_link_code(test_uuid)
-    consumed = await store.consume_link_code(code)
-    assert consumed == test_uuid
-    await store.grant(test_uuid, "lads:cape_discord", source="discord-link")
+
+    class FakeResponse:
+        status = 200
+        async def json(self):
+            return {"id": test_uuid, "name": "PlayerE"}
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            pass
+
+    class FakeSession:
+        def get(self, url):
+            return FakeResponse()
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            pass
+
+    monkeypatch.setattr(aiohttp, "ClientSession", FakeSession)
+
+    interaction = MagicMock()
+    interaction.response.defer = AsyncMock()
+    interaction.followup.send = AsyncMock()
+    interaction.user.id = 123456789
+    interaction.guild = MagicMock()
+
+    await bot.slash_link.callback(interaction, "PlayerE", code=code)
+
     assert await store.has_entitlement(test_uuid, "lads:cape_discord")
+    assert await store.consume_link_code(code) is None
 
 
 @pytest.mark.asyncio
