@@ -5,7 +5,7 @@ NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR 
 
 This file documents the third-party open-source and community libraries and mods embedded or
 source-integrated into `TheLadsCore` (`theladscore.jar`). Full license texts and notices are packaged
-directly inside `theladscore.jar` under `META-INF/lads-sources/<mod>/` and modified source code for copyleft
+directly inside `theladscore.jar` under `META-INF/lads-sources/` and modified source code for copyleft
 components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar` under
 `META-INF/lads-sources/`.
 

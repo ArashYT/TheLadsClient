@@ -168,6 +168,7 @@ tasks.register('verifyThirdPartyNotices') {
             def missing = []
             while (matcher.find()) {
                 def path = matcher.group(1).trim()
+                if (path.contains('<') || path.contains('>')) continue
                 if (path.startsWith('assets/') || path.startsWith('META-INF/lads-sources/')) {
                     if (path.endsWith('/')) {
                         if (!entries.any { it.startsWith(path) }) missing << path
