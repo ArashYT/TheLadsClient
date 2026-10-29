@@ -61,31 +61,29 @@ function Assert-ReleaseSignature {
     if ($statement.package -ne $expectedPackage) {
         throw "Cannot publish ${Tag}: signature manifest is for package $($statement.package), expected $expectedPackage."
     }
-    if ($assetNames -contains 'SHA256SUMS.txt') {
-        if ($assetNames -notcontains 'SHA256SUMS.txt.sig') {
-            throw "Cannot publish ${Tag}: SHA256SUMS.txt is present but SHA256SUMS.txt.sig is missing. Run tools/Sign-Release.ps1 first."
-        }
-        & gh release download $Tag --repo $Repo --pattern 'SHA256SUMS.txt*' --dir $sigDir
-        if ($LASTEXITCODE -ne 0) { throw "Failed to download SHA256SUMS assets for $Tag." }
-        $sumsBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'SHA256SUMS.txt'))
-        $sumsSigBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'SHA256SUMS.txt.sig'))
-        $sumsVerified = $false
-        foreach ($pubKey in $pinnedKeys) {
-            $ecdsa = [Security.Cryptography.ECDsa]::Create()
-            try {
-                $read = 0
-                $ecdsa.ImportSubjectPublicKeyInfo([Convert]::FromBase64String($pubKey), [ref]$read)
-                if ($ecdsa.VerifyData($sumsBytes, $sumsSigBytes, [Security.Cryptography.HashAlgorithmName]::SHA256)) {
-                    $sumsVerified = $true
-                    break
-                }
-            } finally {
-                $ecdsa.Dispose()
+    if ($assetNames -notcontains 'SHA256SUMS.txt' -or $assetNames -notcontains 'SHA256SUMS.txt.sig') {
+        throw "Cannot publish ${Tag}: SHA256SUMS.txt and SHA256SUMS.txt.sig are mandatory release assets. Run tools/Sign-Release.ps1 first."
+    }
+    & gh release download $Tag --repo $Repo --pattern 'SHA256SUMS.txt*' --dir $sigDir
+    if ($LASTEXITCODE -ne 0) { throw "Failed to download SHA256SUMS assets for $Tag." }
+    $sumsBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'SHA256SUMS.txt'))
+    $sumsSigBytes = [IO.File]::ReadAllBytes((Join-Path $sigDir 'SHA256SUMS.txt.sig'))
+    $sumsVerified = $false
+    foreach ($pubKey in $pinnedKeys) {
+        $ecdsa = [Security.Cryptography.ECDsa]::Create()
+        try {
+            $read = 0
+            $ecdsa.ImportSubjectPublicKeyInfo([Convert]::FromBase64String($pubKey), [ref]$read)
+            if ($ecdsa.VerifyData($sumsBytes, $sumsSigBytes, [Security.Cryptography.HashAlgorithmName]::SHA256)) {
+                $sumsVerified = $true
+                break
             }
+        } finally {
+            $ecdsa.Dispose()
         }
-        if (-not $sumsVerified) {
-            throw "Cannot publish ${Tag}: SHA256SUMS.txt signature does not verify against any pinned public key."
-        }
+    }
+    if (-not $sumsVerified) {
+        throw "Cannot publish ${Tag}: SHA256SUMS.txt signature does not verify against any pinned public key."
     }
     Write-Host "Verified release signature for $Tag against pinned public key."
 }

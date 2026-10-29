@@ -151,6 +151,41 @@ try {
         if ($sumsMap[$package] -ne $sha.ToLowerInvariant()) {
             throw "Hash of $package in $sumsName ($($sumsMap[$package])) does not match downloaded package hash ($sha)."
         }
+
+        # Download and verify installer and portable packages before signing SHA256SUMS.txt
+        $setupName = 'TheLadsClient-win-Setup.exe'
+        $portableName = 'TheLadsClient-win-Portable.zip'
+        if ($assets -notcontains $setupName) {
+            throw "Asset list of $tag lacks $setupName."
+        }
+        if ($assets -notcontains $portableName) {
+            throw "Asset list of $tag lacks $portableName."
+        }
+        gh release download $tag --repo $Repo --pattern $setupName --dir $work
+        if ($LASTEXITCODE -ne 0) { throw "Could not download $setupName from the $tag release." }
+        $setupPath = Join-Path $work $setupName
+        $setupSha = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($setupPath)))
+
+        gh release download $tag --repo $Repo --pattern $portableName --dir $work
+        if ($LASTEXITCODE -ne 0) { throw "Could not download $portableName from the $tag release." }
+        $portablePath = Join-Path $work $portableName
+        $portableSha = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($portablePath)))
+
+        if (-not $sumsMap.ContainsKey($setupName)) {
+            throw "$sumsName does not list $setupName."
+        }
+        if ($sumsMap[$setupName] -ne $setupSha.ToLowerInvariant()) {
+            throw "Hash of $setupName in $sumsName ($($sumsMap[$setupName])) does not match downloaded installer hash ($setupSha)."
+        }
+        if (-not $sumsMap.ContainsKey($portableName)) {
+            throw "$sumsName does not list $portableName."
+        }
+        if ($sumsMap[$portableName] -ne $portableSha.ToLowerInvariant()) {
+            throw "Hash of $portableName in $sumsName ($($sumsMap[$portableName])) does not match downloaded portable zip hash ($portableSha)."
+        }
+
+        Assert-ProvenanceAttestation $setupPath
+        Assert-ProvenanceAttestation $sumsPath
         foreach ($prop in $buildRecord.hashes.PSObject.Properties) {
             $fName = $prop.Name
             $expectedH = $prop.Value.ToLowerInvariant()
