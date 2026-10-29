@@ -110,6 +110,7 @@ public final class LadsCommands {
         ConsolidatedFeatures.applyAttributeFixes();
         if (!disablerOk) {
             ctx.getSource().sendFailure(Component.literal("[Lads SMP] disabled_items.json failed to parse (backed up to .broken-*); keeping active rules."));
+            return 0;
         }
 
         int swept = 0;
