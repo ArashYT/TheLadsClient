@@ -166,3 +166,37 @@ def test_prune_crash_reports(bot, tmp_path):
     bot.prune_crash_reports(str(crash_dir), max_age_days=30, max_total_mb=3)
     assert not f1.exists()
     assert f2.exists()
+
+
+def test_usage_stats_bounds_and_negative_cache(tmp_path):
+    import usage_stats
+    import uuid
+    import json
+    db = tmp_path / "usage_test.db"
+
+    # Insert an install with 40 client versions
+    vers = [f"1.20.{i}" for i in range(40)]
+    u1 = str(uuid.uuid4())
+    usage_stats.record_heartbeat(u1, "1.0", vers, "windows", db_path=db)
+
+    # Re-read and check capped at 32
+    conn = usage_stats.init_db(db)
+    cur = conn.execute("SELECT client_versions FROM installs WHERE install_id = ?", (u1,))
+    stored = json.loads(cur.fetchone()[0])
+    assert len(stored) == 32
+    conn.close()
+
+    # Old install (>120 days) should be pruned on heartbeat
+    u2 = str(uuid.uuid4())
+    old_ts = int(time.time()) - (130 * 86400)
+    conn = usage_stats.init_db(db)
+    with conn:
+        conn.execute("INSERT INTO installs VALUES (?, ?, ?, ?, ?, ?)", (u2, old_ts, old_ts, "1.0", "[]", "windows"))
+    conn.close()
+
+    # Next heartbeat prunes u2
+    usage_stats.record_heartbeat(u1, "1.0", ["1.20.1"], "windows", db_path=db)
+    conn = usage_stats.init_db(db)
+    cur = conn.execute("SELECT COUNT(*) FROM installs WHERE install_id = ?", (u2,))
+    assert cur.fetchone()[0] == 0
+    conn.close()

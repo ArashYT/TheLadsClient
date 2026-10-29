@@ -43,28 +43,33 @@ _github_cache: Dict[str, Any] = {
 }
 
 
+_INITIALIZED_DBS: Set[str] = set()
+
 def init_db(db_path: Optional[Path] = None) -> sqlite3.Connection:
-    """Initialize the SQLite usage database with WAL mode and schema."""
-    target_path = db_path or DEFAULT_DB_PATH
+    """Initialize SQLite usage database with WAL mode and schema once, then reuse connection."""
+    target_path = (db_path or DEFAULT_DB_PATH).resolve()
+    target_str = str(target_path)
     os.makedirs(target_path.parent, exist_ok=True)
-    conn = sqlite3.connect(str(target_path))
+    conn = sqlite3.connect(target_str)
     conn.row_factory = sqlite3.Row
-    with conn:
-        conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA synchronous=NORMAL;")
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS installs (
-                install_id TEXT PRIMARY KEY,
-                first_seen INTEGER NOT NULL,
-                last_seen INTEGER NOT NULL,
-                launcher_version TEXT NOT NULL,
-                client_versions TEXT NOT NULL,
-                os TEXT NOT NULL
-            );
-        """)
-        conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_installs_last_seen ON installs(last_seen);
-        """)
+    if target_str not in _INITIALIZED_DBS:
+        with conn:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA synchronous=NORMAL;")
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS installs (
+                    install_id TEXT PRIMARY KEY,
+                    first_seen INTEGER NOT NULL,
+                    last_seen INTEGER NOT NULL,
+                    launcher_version TEXT NOT NULL,
+                    client_versions TEXT NOT NULL,
+                    os TEXT NOT NULL
+                );
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_installs_last_seen ON installs(last_seen);
+            """)
+        _INITIALIZED_DBS.add(target_str)
     return conn
 
 
@@ -103,6 +108,9 @@ def record_heartbeat(
     conn = init_db(db_path)
     try:
         with conn:
+            # Prune installs inactive for >120 days
+            conn.execute("DELETE FROM installs WHERE last_seen < ?", (now - (120 * 86400),))
+
             cur = conn.execute(
                 "SELECT client_versions FROM installs WHERE install_id = ?",
                 (normalized_id,)
@@ -116,14 +124,14 @@ def record_heartbeat(
                         existing_versions = set(loaded)
                 except Exception:
                     pass
-                merged = sorted(existing_versions | incoming_versions)
+                merged = sorted(existing_versions | incoming_versions)[:32]
                 conn.execute("""
                     UPDATE installs
                     SET last_seen = ?, launcher_version = ?, client_versions = ?, os = ?
                     WHERE install_id = ?
                 """, (now, clean_launcher_ver, json.dumps(merged), clean_os, normalized_id))
             else:
-                merged = sorted(incoming_versions)
+                merged = sorted(incoming_versions)[:32]
                 conn.execute("""
                     INSERT INTO installs (install_id, first_seen, last_seen, launcher_version, client_versions, os)
                     VALUES (?, ?, ?, ?, ?, ?)
@@ -256,6 +264,8 @@ async def get_cached_github_downloads_async(repo: str = GITHUB_REPO, max_age: fl
         return count
     except Exception as e:
         logger.error("Failed to fetch GitHub downloads from %s: %s", repo, e)
+        # 5-minute negative cache so failures don't hammer GitHub on every request
+        _github_cache["cached_at"] = now - max_age + 300.0
         return _github_cache["total"]
 
 
@@ -342,7 +352,8 @@ async def handle_usage_heartbeat(request: web.Request) -> web.Response:
 
     db_path = request.app.get("usage_db_path", DEFAULT_DB_PATH)
     try:
-        record_heartbeat(
+        await asyncio.to_thread(
+            record_heartbeat,
             install_id=raw_install_id,
             launcher_version=launcher_version,
             client_versions_used=client_versions,
@@ -363,7 +374,7 @@ async def handle_usage_summary(request: web.Request) -> web.Response:
     Returns JSON metrics with numbers only.
     """
     db_path = request.app.get("usage_db_path", DEFAULT_DB_PATH)
-    metrics = get_usage_metrics(db_path=db_path)
+    metrics = await asyncio.to_thread(get_usage_metrics, db_path=db_path)
     downloads = await get_cached_github_downloads_async()
 
     summary = {
@@ -388,7 +399,7 @@ async def get_stats_targets(stats_cat: Optional[Any] = None) -> Dict[str, str]:
     """
     try:
         downloads = await get_cached_github_downloads_async()
-        metrics = get_usage_metrics()
+        metrics = await asyncio.to_thread(get_usage_metrics)
         active_7d = metrics.get("active_7d", 0)
 
         targets = {"Active (7d):": f"🟢 Active (7d): {active_7d:,}"}
@@ -422,7 +433,7 @@ def setup_slash_command(bot: Any) -> None:
     async def slash_stats(interaction: discord.Interaction):
         await interaction.response.defer()
         downloads = await get_cached_github_downloads_async()
-        metrics = get_usage_metrics()
+        metrics = await asyncio.to_thread(get_usage_metrics)
 
         embed = discord.Embed(
             title="📊 The Lads Client — Statistics",
