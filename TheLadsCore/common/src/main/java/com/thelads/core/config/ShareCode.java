@@ -262,7 +262,7 @@ public final class ShareCode {
 
             for (Map.Entry<String, JsonElement> entry : modulesIn.entrySet()) {
                 String modName = entry.getKey();
-                if (!knownModules.contains(modName) || fromStranger && isExcludedModule(modName)) {
+                if (!knownModules.contains(modName) || (fromStranger ? isExcludedModule(modName) : isMachineSpecificModule(modName))) {
                     continue; // Ignore unknown or excluded modules
                 }
                 if (!entry.getValue().isJsonObject()) {
@@ -298,7 +298,8 @@ public final class ShareCode {
                         JsonObject optsOut = new JsonObject();
                         for (Map.Entry<String, JsonElement> optEntry : optsIn.entrySet()) {
                             String optName = optEntry.getKey();
-                            if (!(fromStranger && isExcludedOption(modName, optName)) && optEntry.getValue() != null && !optEntry.getValue().isJsonNull()) {
+                            boolean excluded = fromStranger ? isExcludedOption(modName, optName) : isMachineSpecificOption(optName);
+                            if (!excluded && optEntry.getValue() != null && !optEntry.getValue().isJsonNull()) {
                                 optsOut.add(optName, optEntry.getValue().deepCopy());
                             }
                         }
@@ -403,14 +404,25 @@ public final class ShareCode {
         return !HypixelMods.HYPIXEL_MODS.equals(moduleName);
     }
 
+    /** Modules containing account, presence or machine state: never applied on partial profile loads or stranger codes. */
+    public static boolean isMachineSpecificModule(String moduleName) {
+        if (moduleName == null) return true;
+        String lower = moduleName.toLowerCase(Locale.ROOT);
+        return lower.equals("discordrpc") || lower.contains("discord");
+    }
+
     public static boolean isExcludedModule(String moduleName) {
         if (moduleName == null) return true;
         String lower = moduleName.toLowerCase(Locale.ROOT);
-        return lower.equals("discordrpc") || lower.contains("discord") || NOT_SHARED.contains(lower)
+        return isMachineSpecificModule(moduleName) || NOT_SHARED.contains(lower)
             || com.thelads.core.client.ladsapi.LadsApiRules.isAutomation(moduleName);
     }
 
-    public static boolean isExcludedOption(String moduleName, String optionName) {
+    /**
+     * Machine-specific, personal or secret options: never applied on partial profile loads (Settings or Mods mode)
+     * and never carried in share codes.
+     */
+    public static boolean isMachineSpecificOption(String optionName) {
         if (optionName == null) return false;
         String lower = optionName.toLowerCase(Locale.ROOT);
         // Excluded file paths
@@ -418,7 +430,7 @@ public final class ShareCode {
             return true;
         }
         // Excluded personal account / identity
-        if (lower.equals("your display name") || lower.equals("nicknames")) {
+        if (lower.equals("your display name") || lower.equals("display name") || lower.equals("nicknames")) {
             return true;
         }
         // Excluded keybinds
@@ -427,6 +439,13 @@ public final class ShareCode {
         }
         // Excluded secrets/credentials/servers
         if (lower.contains("password") || lower.contains("token") || lower.contains("secret") || lower.contains("api key") || lower.contains("server address")) {
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean isExcludedOption(String moduleName, String optionName) {
+        if (isMachineSpecificOption(optionName)) {
             return true;
         }
         int setting = optionName.indexOf(": ");

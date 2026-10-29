@@ -314,6 +314,42 @@ class ShareCodeTest {
     }
 
     @Test
+    void partialProfileLoadsMaintainMachineSpecificOptionExclusions() {
+        JsonObject snap = new JsonObject();
+        JsonObject modules = new JsonObject();
+
+        JsonObject fps = new JsonObject();
+        JsonObject fpsOpts = new JsonObject();
+        fpsOpts.addProperty("Update rate", 5);
+        fpsOpts.addProperty("Toggle key", "K");
+        fpsOpts.addProperty("Background Image", "C:/secret/img.png");
+        fpsOpts.addProperty("Token", "secret_token_123");
+        fps.add("options", fpsOpts);
+        fps.addProperty("enabled", true);
+        modules.add("FPS", fps);
+
+        JsonObject discord = new JsonObject();
+        discord.addProperty("enabled", true);
+        modules.add("DiscordRPC", discord);
+
+        snap.add("modules", modules);
+
+        // Partial Settings load for own profile (fromStranger = false)
+        JsonObject preparedSettings = ShareCode.prepareImportJson(snap, ShareCode.ImportMode.SETTINGS, false);
+        JsonObject fpsOut = preparedSettings.getAsJsonObject("modules").getAsJsonObject("FPS").getAsJsonObject("options");
+        assertTrue(fpsOut.has("Update rate"), "regular option must be included in partial profile load");
+        assertFalse(fpsOut.has("Toggle key"), "keybind must be excluded in partial profile load");
+        assertFalse(fpsOut.has("Background Image"), "machine-specific path must be excluded in partial profile load");
+        assertFalse(fpsOut.has("Token"), "secret/token must be excluded in partial profile load");
+        assertFalse(preparedSettings.getAsJsonObject("modules").has("DiscordRPC"), "Discord module must be excluded in partial profile load");
+
+        // Partial Mods load for own profile (fromStranger = false)
+        JsonObject preparedMods = ShareCode.prepareImportJson(snap, ShareCode.ImportMode.MODS, false);
+        assertTrue(preparedMods.getAsJsonObject("modules").has("FPS"));
+        assertFalse(preparedMods.getAsJsonObject("modules").has("DiscordRPC"), "Discord module must be excluded in partial profile load");
+    }
+
+    @Test
     void beforeImportSnapshotCreatedOnApply() {
         ProfileManager pm = ProfileManager.get();
         pm.saveAs("Initial");
