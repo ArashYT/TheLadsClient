@@ -91,4 +91,23 @@ public class JvmArgumentsTests
         Assert.DoesNotContain(args, a => a.Contains("loadingBar"));
         Assert.Contains("-Dthelads.loadingGlow=#112233", args);
     }
+
+    [Fact]
+    public void EnsureLoadingScreenColors_WithInvalidHexDirectly_OmitsInvalidArguments()
+    {
+        var options = new MLaunchOption();
+        var settings = new LauncherSettings
+        {
+            LoadingScreenBgColor = "dark red",
+            LoadingScreenBarColor = "#111 -Xbootclasspath/a:x.jar",
+            LoadingScreenGlowColor = "#112233"
+        };
+
+        LaunchService.EnsureLoadingScreenColors(options, settings);
+
+        var args = options.ExtraJvmArguments!.SelectMany(a => a.Values).ToList();
+        Assert.DoesNotContain(args, a => a.Contains("loadingBg"));
+        Assert.DoesNotContain(args, a => a.Contains("loadingBar"));
+        Assert.Contains("-Dthelads.loadingGlow=#112233", args);
+    }
 }

@@ -514,15 +514,14 @@ public class LaunchService : ILaunchService
 
     public static void EnsureLoadingScreenColors(MLaunchOption options, LauncherSettings settings)
     {
-        // NEEDS CLAUDE: Filter invalid loading screen colors inside LaunchService/ModpackLauncher.
         var jvmArgs = options.ExtraJvmArguments ?? Array.Empty<MArgument>();
         var list = new List<MArgument>(jvmArgs);
-        if (!string.IsNullOrWhiteSpace(settings.LoadingScreenBgColor))
-            list.Add(MArgument.FromCommandLine($"-Dthelads.loadingBg={settings.LoadingScreenBgColor.Trim()}"));
-        if (!string.IsNullOrWhiteSpace(settings.LoadingScreenBarColor))
-            list.Add(MArgument.FromCommandLine($"-Dthelads.loadingBar={settings.LoadingScreenBarColor.Trim()}"));
-        if (!string.IsNullOrWhiteSpace(settings.LoadingScreenGlowColor))
-            list.Add(MArgument.FromCommandLine($"-Dthelads.loadingGlow={settings.LoadingScreenGlowColor.Trim()}"));
+        if (IsValidLoadingScreenColor(settings.LoadingScreenBgColor))
+            list.Add(MArgument.FromCommandLine($"-Dthelads.loadingBg={settings.LoadingScreenBgColor!.Trim()}"));
+        if (IsValidLoadingScreenColor(settings.LoadingScreenBarColor))
+            list.Add(MArgument.FromCommandLine($"-Dthelads.loadingBar={settings.LoadingScreenBarColor!.Trim()}"));
+        if (IsValidLoadingScreenColor(settings.LoadingScreenGlowColor))
+            list.Add(MArgument.FromCommandLine($"-Dthelads.loadingGlow={settings.LoadingScreenGlowColor!.Trim()}"));
         options.ExtraJvmArguments = list.ToArray();
     }
 
