@@ -115,6 +115,20 @@ class ConfigSaveLaterTest {
         }
     }
 
+    @Test void anIoErrorDuringLoadDoesNotCreateCorruptCopyOrResetDefaults(@TempDir Path dir) throws Exception {
+        File configDir = dir.resolve("locked_config_dir").toFile();
+        assertTrue(configDir.mkdir());
+        // Pointing testConfigFile to a directory causes FileInputStream to throw IOException on open
+        ConfigManager.setTestConfigFile(configDir);
+        try {
+            ConfigManager.load();
+            File[] kept = dir.toFile().listFiles((folder, name) -> name.contains(".corrupt-"));
+            assertTrue(kept == null || kept.length == 0, "an IO failure must not create a .corrupt copy or reset defaults");
+        } finally {
+            ConfigManager.setTestConfigFile(null);
+        }
+    }
+
     @Test void mirrorTargetsIncludeSharedRootProfilesAndInstances(@TempDir Path dir) throws Exception {
         com.thelads.core.client.util.ClientPaths.setBaseDir(dir);
         try {

@@ -784,12 +784,16 @@ public class ConfigManager {
         try (InputStreamReader reader = new InputStreamReader(
                 new FileInputStream(configFile), StandardCharsets.UTF_8)) {
             loaded = GSON.fromJson(reader, JsonObject.class);
-        } catch (Exception e) {
+        } catch (com.google.gson.JsonSyntaxException | IllegalStateException e) {
             System.err.println("Failed to load config");
             e.printStackTrace();
             // Unreadable (cut short, hand-edited): keep a copy, then start like a new install (whose defaults are saved over it).
             if (!keepCopy(configFile)) return;
             loaded = null;
+        } catch (Exception e) {
+            System.err.println("Failed to load config");
+            e.printStackTrace();
+            return;
         }
         // 1.9.7 one-time migration: override pre-1.9.7 module & HUD settings into the new 1.9.7 default preset.
         if (!has197PresetApplied(loaded) && (testConfigFile == null || (loaded != null && loaded.has("enforce197PresetMigration")))) {
