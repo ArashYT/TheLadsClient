@@ -444,6 +444,9 @@ class LadsApiClientTest {
 
     @Test
     void testResetClearsHelloReplies() {
+        java.util.concurrent.atomic.AtomicLong testTime = new java.util.concurrent.atomic.AtomicLong(1_000_000L);
+        LadsApiClient.clock = testTime::get;
+
         assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server1\"}"));
         assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server2\"}"));
         int sentBefore = sentPayloads.size();
@@ -456,6 +459,7 @@ class LadsApiClientTest {
 
         // Per-connection absolute cap is 10 hello replies: 3 sent so far, test up to 10 and beyond
         for (int i = 5; i <= 11; i++) {
+            testTime.addAndGet(500L); // advance clock to refill rate limiter tokens
             LadsApiClient.receive("{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8));
             JsonObject reply = sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server" + i + "\"}");
             if (i <= 10) {
@@ -466,6 +470,7 @@ class LadsApiClientTest {
         }
 
         // Full disconnect reset clears per-connection absolute cap
+        testTime.addAndGet(500L);
         LadsApiClient.reset();
         assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"ServerAfterReset\"}"));
     }
