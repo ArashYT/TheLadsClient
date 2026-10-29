@@ -364,10 +364,16 @@ public final class ParkourClientController {
         return result != null ? result.normalize() : null;
     }
 
-    private static void sendAction(ParkourActionPayload payload) {
+    static java.util.function.Consumer<ParkourActionPayload> actionSender = ClientPlayNetworking::send;
+
+    public static void sendAction(ParkourActionPayload payload) {
         if (isParkourAllowed()) {
-            ClientPlayNetworking.send(payload);
+            actionSender.accept(payload);
         }
+    }
+
+    public static void setActionSenderForTesting(java.util.function.Consumer<ParkourActionPayload> sender) {
+        actionSender = sender != null ? sender : ClientPlayNetworking::send;
     }
 
     private static Vec3 findAdjacentWallNormal(LocalPlayer player, Level level) {

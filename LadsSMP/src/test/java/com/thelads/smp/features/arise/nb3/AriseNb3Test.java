@@ -2,6 +2,9 @@ package com.thelads.smp.features.arise.nb3;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.JsonOps;
 import com.thelads.smp.features.arise.nb3.backweapon.BackWeaponFeature;
 import com.thelads.smp.features.arise.nb3.botanypots.BotanyPotsFeature;
 import com.thelads.smp.features.arise.nb3.cosmeticarmor.CosmeticArmorData;
@@ -10,8 +13,17 @@ import com.thelads.smp.features.arise.nb3.holdmyitems.HoldMyItemsFeature;
 import com.thelads.smp.features.arise.nb3.immersiveui.ImmersiveUIState;
 import com.thelads.smp.features.arise.nb3.obscuretooltips.ObscureTooltipsFeature;
 import com.thelads.smp.features.arise.nb3.snailmail.SnailMailFeature;
+import net.minecraft.SharedConstants;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.resources.RegistryOps;
+import net.minecraft.server.Bootstrap;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -22,6 +34,7 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -41,6 +54,15 @@ import static org.junit.jupiter.api.Assertions.*;
 public class AriseNb3Test {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+    @BeforeAll
+    static void initMinecraft() {
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
+        Items.DIAMOND.builtInRegistryHolder().bindComponents(DataComponentMap.EMPTY);
+        Items.IRON_INGOT.builtInRegistryHolder().bindComponents(DataComponentMap.EMPTY);
+        Items.AIR.builtInRegistryHolder().bindComponents(DataComponentMap.EMPTY);
+    }
 
     @TempDir
     Path tempDir;
@@ -267,11 +289,14 @@ public class AriseNb3Test {
         SnailMailFeature.recordPlayerName("Steve", recipient);
         assertEquals(recipient, SnailMailFeature.resolveRecipient(null, "Steve"));
 
-        // Delivery scheduling
+        // Delivery scheduling with non-empty item stack
         long now = 100_000L;
-        var delivery = SnailMailFeature.scheduleDelivery(sender, recipient, "Steve", ItemStack.EMPTY, now);
+        ItemStack diamondStack = new ItemStack(Items.DIAMOND, 3);
+        var delivery = SnailMailFeature.scheduleDelivery(sender, recipient, "Steve", diamondStack, now);
         assertNotNull(delivery);
         assertEquals(1, SnailMailFeature.getPendingDeliveries().size());
+        assertEquals(Items.DIAMOND, delivery.mailStack().getItem());
+        assertEquals(3, delivery.mailStack().getCount());
 
         // Check not ready immediately
         List<SnailMailFeature.PendingDelivery> readyNow = SnailMailFeature.getReadyDeliveries(now);
@@ -283,7 +308,37 @@ public class AriseNb3Test {
         assertEquals(1, readyFuture.size());
         assertEquals("Steve", readyFuture.get(0).recipientName());
         assertEquals(recipient, readyFuture.get(0).recipientUuid());
+        assertEquals(Items.DIAMOND, readyFuture.get(0).mailStack().getItem());
+        assertEquals(3, readyFuture.get(0).mailStack().getCount());
         assertEquals(1, SnailMailFeature.getPendingDeliveries().size());
+
+        // tryDeliver tests: empty stack succeeds; non-empty stack fails when server is null
+        assertTrue(SnailMailFeature.tryDeliver(null, new SnailMailFeature.PendingDelivery(sender, recipient, "Steve", ItemStack.EMPTY, now)));
+        assertFalse(SnailMailFeature.tryDeliver(null, delivery));
+
+        // MailData CODEC roundtrip test
+        RegistryAccess registryAccess = RegistryAccess.EMPTY;
+        RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, registryAccess);
+        SnailMailFeature.MailboxLocation mailboxLoc = new SnailMailFeature.MailboxLocation(Level.OVERWORLD, new BlockPos(100, 64, 200));
+        SnailMailFeature.MailData mailData = new SnailMailFeature.MailData(
+                List.of(delivery),
+                Map.of("steve", recipient),
+                Map.of(recipient, mailboxLoc)
+        );
+
+        DataResult<JsonElement> encoded = SnailMailFeature.MailData.CODEC.encodeStart(ops, mailData);
+        assertTrue(encoded.result().isPresent(), "Encoding MailData must succeed");
+        JsonElement json = encoded.result().get();
+
+        DataResult<SnailMailFeature.MailData> decoded = SnailMailFeature.MailData.CODEC.parse(ops, json);
+        assertTrue(decoded.result().isPresent(), "Decoding MailData must succeed");
+        SnailMailFeature.MailData parsed = decoded.result().get();
+        assertEquals(1, parsed.getPending().size());
+        assertEquals("Steve", parsed.getPending().get(0).recipientName());
+        assertEquals(3, parsed.getPending().get(0).mailStack().getCount());
+        assertEquals(Items.DIAMOND, parsed.getPending().get(0).mailStack().getItem());
+        assertEquals(recipient, parsed.getNames().get("steve"));
+        assertEquals(mailboxLoc, parsed.getMailboxes().get(recipient));
     }
 
     @Test

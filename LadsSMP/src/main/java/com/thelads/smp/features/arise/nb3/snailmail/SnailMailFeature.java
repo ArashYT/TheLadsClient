@@ -47,7 +47,7 @@ public final class SnailMailFeature {
             ItemStack mailStack,
             long deliverAtTimestampMs
     ) {
-        static final Codec<PendingDelivery> CODEC = RecordCodecBuilder.create(i -> i.group(
+        public static final Codec<PendingDelivery> CODEC = RecordCodecBuilder.create(i -> i.group(
                 UUIDUtil.STRING_CODEC.fieldOf("sender").forGetter(PendingDelivery::senderUuid),
                 UUIDUtil.STRING_CODEC.fieldOf("recipient").forGetter(PendingDelivery::recipientUuid),
                 Codec.STRING.fieldOf("recipient_name").forGetter(PendingDelivery::recipientName),
@@ -57,14 +57,14 @@ public final class SnailMailFeature {
     }
 
     public record MailboxLocation(ResourceKey<Level> dimension, BlockPos pos) {
-        static final Codec<MailboxLocation> CODEC = RecordCodecBuilder.create(i -> i.group(
+        public static final Codec<MailboxLocation> CODEC = RecordCodecBuilder.create(i -> i.group(
                 net.minecraft.resources.ResourceKey.codec(net.minecraft.core.registries.Registries.DIMENSION).fieldOf("dimension").forGetter(MailboxLocation::dimension),
                 BlockPos.CODEC.fieldOf("pos").forGetter(MailboxLocation::pos)
         ).apply(i, MailboxLocation::new));
     }
 
     public static final class MailData extends SavedData {
-        static final Codec<MailData> CODEC = RecordCodecBuilder.create(i -> i.group(
+        public static final Codec<MailData> CODEC = RecordCodecBuilder.create(i -> i.group(
                 PendingDelivery.CODEC.listOf().optionalFieldOf("pending", List.of()).forGetter(d -> d.pending),
                 Codec.unboundedMap(Codec.STRING, UUIDUtil.STRING_CODEC).optionalFieldOf("names", Map.of()).forGetter(d -> d.names),
                 Codec.unboundedMap(UUIDUtil.STRING_CODEC, MailboxLocation.CODEC).optionalFieldOf("mailboxes", Map.of()).forGetter(d -> d.mailboxes)
@@ -76,14 +76,26 @@ public final class SnailMailFeature {
         final Map<String, UUID> names; // lower-case name -> uuid, recorded on join
         final Map<UUID, MailboxLocation> mailboxes;
 
-        MailData() {
+        public MailData() {
             this(List.of(), Map.of(), Map.of());
         }
 
-        private MailData(List<PendingDelivery> pending, Map<String, UUID> names, Map<UUID, MailboxLocation> mailboxes) {
+        public MailData(List<PendingDelivery> pending, Map<String, UUID> names, Map<UUID, MailboxLocation> mailboxes) {
             this.pending = new ArrayList<>(pending);
             this.names = new HashMap<>(names);
             this.mailboxes = new HashMap<>(mailboxes);
+        }
+
+        public List<PendingDelivery> getPending() {
+            return pending;
+        }
+
+        public Map<String, UUID> getNames() {
+            return names;
+        }
+
+        public Map<UUID, MailboxLocation> getMailboxes() {
+            return mailboxes;
         }
     }
 
@@ -202,9 +214,10 @@ public final class SnailMailFeature {
         }
     }
 
-    private static boolean tryDeliver(MinecraftServer server, PendingDelivery delivery) {
+    public static boolean tryDeliver(MinecraftServer server, PendingDelivery delivery) {
         ItemStack stack = delivery.mailStack();
         if (stack.isEmpty()) return true; // nothing left to deliver (e.g. the item's mod was removed)
+        if (server == null) return false;
         UUID targetUuid = delivery.recipientUuid();
         ServerPlayer recipient = server.getPlayerList().getPlayer(targetUuid);
         MailboxLocation loc = data.mailboxes.get(targetUuid);

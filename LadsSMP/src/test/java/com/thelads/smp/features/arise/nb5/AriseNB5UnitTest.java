@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 import com.thelads.smp.features.arise.nb5.client.ParkourClientController;
+import com.thelads.smp.features.arise.nb5.network.ParkourActionPayload;
 import com.thelads.smp.features.arise.nb5.network.ParkourSyncPayload;
 
 /**
@@ -294,5 +295,36 @@ public class AriseNB5UnitTest {
         ParkourClientController.resetSession();
         assertFalse(ParkourClientController.isServerConfirmed(), "Disconnect must revoke server confirmation");
         assertFalse(ParkourClientController.isParkourAllowed(), "Parkour must be disabled after disconnect");
+    }
+
+    @Test
+    @DisplayName("Verify sendAction reaches network call when parkour is allowed without recursion")
+    void testSendActionReachesNetworkCall() {
+        ParkourClientController.resetSession();
+        java.util.concurrent.atomic.AtomicReference<ParkourActionPayload> sentPayload = new java.util.concurrent.atomic.AtomicReference<>();
+        ParkourClientController.setActionSenderForTesting(sentPayload::set);
+
+        try {
+            ParkourActionPayload payload = new ParkourActionPayload(ParkourActionType.DODGE, 1.0f);
+
+            // 1. When not allowed (server not confirmed), sendAction must not send
+            assertFalse(ParkourClientController.isParkourAllowed());
+            ParkourClientController.sendAction(payload);
+            assertNull(sentPayload.get(), "sendAction must not send when parkour is not allowed");
+
+            // 2. Confirm server via sync
+            ParkourSyncPayload sync = new ParkourSyncPayload(1000, false, ParkourActionType.NONE.getId(), 0);
+            ParkourClientController.onSync(sync);
+            assertTrue(ParkourClientController.isParkourAllowed());
+
+            // 3. sendAction should now invoke the network actionSender without recursion or crash
+            ParkourClientController.sendAction(payload);
+            assertNotNull(sentPayload.get(), "sendAction must send payload when parkour is allowed");
+            assertEquals(ParkourActionType.DODGE, sentPayload.get().actionType());
+            assertEquals(1.0f, sentPayload.get().param(), 0.001f);
+        } finally {
+            ParkourClientController.setActionSenderForTesting(null);
+            ParkourClientController.resetSession();
+        }
     }
 }
