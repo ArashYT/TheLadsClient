@@ -65,6 +65,10 @@ public partial class MainWindow : Window
                 settings.MainAccount = value;
                 settings.Save();
             }
+            if (RemoveAccountBtn != null)
+            {
+                RemoveAccountBtn.Content = string.IsNullOrEmpty(value) ? "Remove Account" : $"Remove '{value}'";
+            }
             ExperiencesPage?.RefreshState();
         }
     }
