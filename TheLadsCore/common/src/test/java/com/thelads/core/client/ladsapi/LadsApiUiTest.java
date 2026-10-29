@@ -123,6 +123,11 @@ class LadsApiUiTest {
         // Zero changes and empty notice shows nothing
         LadsApiUi.policyApplied("Lads SMP", 0, "   ");
         assertFalse(LadsApiUi.isToastActive());
+
+        // Unlocked modules show toast even without limits or notice
+        LadsApiUi.policyApplied("Lads SMP", 0, 1, "", java.util.Collections.emptyList());
+        assertTrue(LadsApiUi.isToastActive());
+        assertEquals("Lads SMP unlocks 1 Lads setting", LadsApiUi.activeToastTitle());
     }
 
     @Test

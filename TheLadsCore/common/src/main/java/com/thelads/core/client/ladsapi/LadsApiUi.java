@@ -37,7 +37,7 @@ public final class LadsApiUi {
 
     /** {@code unlocked} = modules whose own safety block the server lifted by name: the toast always says so (never silently). */
     public static void policyApplied(String serverName, int changed, int unlocked, String notice, List<ToastAction> actions) {
-        if (!isShowServerNoticeEnabled()) {
+        if (!isShowServerNoticeEnabled() && unlocked <= 0) {
             policyCleared();
             return;
         }
