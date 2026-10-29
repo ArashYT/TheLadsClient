@@ -35,6 +35,11 @@ public static class BundledModInstaller
         var preferencesPath = SafeChild(game, Path.Combine(game, ModPreferences.FileName));
         if (ModPreferences.Parse(ModPreferences.ReadShared(preferencesPath), preferencesPath).GetEnabled(CoreModId, null) == false)
             return Disable(game, mods, destination, forge, cancellationToken);
+        bool disabledJade = false;
+        if (minecraftVersion is "26.3" or "26.2")
+        {
+            disabledJade = ModpackCoreSync.DisableRootJadeJars(mods);
+        }
         if (!File.Exists(source))
         {
             if (GameVersionPolicy.RequiresBundledCore(minecraftVersion))
@@ -99,7 +104,7 @@ public static class BundledModInstaller
             contentChanged = !sourceHash.AsSpan().SequenceEqual(currentHash);
         }
         if (!contentChanged && legacyCores.Count == 0)
-            return false;
+            return disabledJade;
         if (contentChanged && destinationIsCore)
             legacyCores.Add(destination);
 

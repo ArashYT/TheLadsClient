@@ -60,7 +60,8 @@ public static class ClientModInstaller
         "shieldbannerfix",
         "fadeless",
         "misctweaks",
-        "stackrefill"
+        "stackrefill",
+        "jade"
     };
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
     private static readonly HttpClient Http = CreateClient();

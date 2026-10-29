@@ -328,6 +328,47 @@ public static class ModpackCoreSync
     public static bool ResolveDefaultLadsCore(ModpackInstance instance) =>
         ResolveDefaultLadsCore(instance, null);
 
+    /// <summary>Disables any root Jade jar in <paramref name="modsDirectory"/> when Core is present for Minecraft 26.3 (Jade is built into Core 26.3).</summary>
+    public static bool DisableRootJadeJars(string modsDirectory, Action<string>? status = null)
+    {
+        if (!Directory.Exists(modsDirectory)) return false;
+        bool disabledAny = false;
+        try
+        {
+            var files = Directory.EnumerateFiles(modsDirectory)
+                .Where(f => f.EndsWith(".jar", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var jar in files)
+            {
+                var name = Path.GetFileName(jar);
+                if (name.StartsWith("theladscore", StringComparison.OrdinalIgnoreCase) ||
+                    name.Contains("TheLadsCore", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                try
+                {
+                    var info = FabricModMetadata.ReadJar(jar);
+                    if (string.Equals(info?.Id, "jade", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var dest = jar + ".disabled";
+                        File.Move(jar, dest, overwrite: true);
+                        var icon = jar + ".icon.png";
+                        if (File.Exists(icon))
+                        {
+                            try { File.Move(icon, jar + ".disabled.icon.png", overwrite: true); } catch { }
+                        }
+                        status?.Invoke($"Disabled '{name}': Jade is built into The Lads Core.");
+                        disabledAny = true;
+                    }
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException) { }
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        return disabledAny;
+    }
+
     /// <summary>Brings the Core of an instance up to date according to its <see cref="ModpackInstance.LadsCore"/> setting:
     /// - ON: adds the bundled jar (mods\theladscore.jar) when missing, restores disabled jars, and syncs to bundled build.
     /// - OFF: renames any enabled Core jars to .disabled (never deletes any jar, even pack-shipped jars).
@@ -393,6 +434,12 @@ public static class ModpackCoreSync
         var bundled = FindBundledJar(instance.McVersion, bundleRoot);
         if (bundled == null) return false;
 
+        bool disabledJade = false;
+        if (instance.McVersion is "26.3" or "26.2")
+        {
+            disabledJade = DisableRootJadeJars(modsDirectory, status);
+        }
+
         // Restore any disabled Core jars first (OFF -> ON restores)
         var disabledCores = DisabledCoreJars(modsDirectory);
         foreach (var disabled in disabledCores)
@@ -432,9 +479,10 @@ public static class ModpackCoreSync
         try
         {
             var updated = SyncJar(modsDirectory, bundled);
-            if (newlyAdded || updated)
+            if (newlyAdded || updated || disabledJade)
             {
-                status?.Invoke(newlyAdded ? "Added The Lads Core to this modpack." : "Updated The Lads Core to this launcher's build.");
+                if (newlyAdded || updated)
+                    status?.Invoke(newlyAdded ? "Added The Lads Core to this modpack." : "Updated The Lads Core to this launcher's build.");
                 return true;
             }
             return false;
@@ -442,7 +490,7 @@ public static class ModpackCoreSync
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             status?.Invoke($"Could not update The Lads Core ({e.Message}); the installed one is kept.");
-            return false;
+            return disabledJade;
         }
     }
 
@@ -453,16 +501,21 @@ public static class ModpackCoreSync
         if (CoreJars(modsDirectory).Count == 0) return false;
         var bundled = FindBundledJar(mcVersion, bundleRoot);
         if (bundled == null) return false;
+        bool disabledJade = false;
+        if (mcVersion is "26.3" or "26.2")
+        {
+            disabledJade = DisableRootJadeJars(modsDirectory, status);
+        }
         try
         {
             var updated = SyncJar(modsDirectory, bundled);
             if (updated) status?.Invoke("Updated The Lads Core to this launcher's build.");
-            return updated;
+            return updated || disabledJade;
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             status?.Invoke($"Could not update The Lads Core ({e.Message}); the installed one is kept.");
-            return false;
+            return disabledJade;
         }
     }
 
