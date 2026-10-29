@@ -438,3 +438,18 @@ async def test_usage_stats_endpoints_and_targets(aiohttp_client, tmp_path, monke
     assert "Active (7d): 1" in targets["Active (7d):"]
     assert "Downloads:" in targets
     assert "Downloads: 42" in targets["Downloads:"]
+
+
+def test_crash_dedupe_hash_log_only():
+    import hashlib
+    # Verify that log-only reports do not produce identical empty hashes
+    ign1, ign2 = "Alice", "Bob"
+    kind = "no crash report (log only)"
+    log1 = "line 1\nline 2\nend 1"
+    log2 = "line 1\nline 2\nend 2"
+    hash1 = hashlib.sha256(f"{ign1}:{kind}:{log1[-500:]}".encode("utf-8")).hexdigest()
+    hash2 = hashlib.sha256(f"{ign2}:{kind}:{log2[-500:]}".encode("utf-8")).hexdigest()
+    empty_hash = hashlib.sha256(b"").hexdigest()
+    assert hash1 != empty_hash
+    assert hash2 != empty_hash
+    assert hash1 != hash2

@@ -1439,7 +1439,11 @@ async def handle_crash_report(request):
             rule = analyze_crash_text(crash + "\n" + hs_err + "\n" + win + "\n" + log)
             key_lines = [m.group(0).strip() for m in re.finditer(r"^Description:.*|^Caused by:.*|^#\s+EXCEPTION_\w+.*|^# [CVJj]  .*|Faulting module name:.*|Exception code:.*", crash + "\n" + hs_err + "\n" + win, re.M)]
             first = "\n".join(dict.fromkeys(key_lines))[:600]
-            key_hash = hashlib.sha256(first.encode("utf-8")).hexdigest()
+            if first:
+                key_hash = hashlib.sha256(first.encode("utf-8")).hexdigest()
+            else:
+                log_tail = log[-500:] if log else ""
+                key_hash = hashlib.sha256(f"{ign}:{kind}:{log_tail}".encode("utf-8")).hexdigest()
             now_mono = time.monotonic()
             stale_hashes = [h for h, ts in _recent_crash_hashes.items() if now_mono - ts > 3600]
             for h in stale_hashes:
