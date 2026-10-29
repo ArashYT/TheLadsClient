@@ -170,35 +170,10 @@ public final class DeathBackupManager {
                         if (damage > 0 && stack.isDamageableItem()) {
                             stack.setDamageValue(damage);
                         }
-                        if (!inv.add(stack)) {
-                            target.drop(stack, false, null);
-                        }
-                        restored++;
-                    }
-                }
-            }
-        }
-        if (snap.has("equipment") && snap.get("equipment").isJsonArray()) {
-            for (JsonElement el : snap.getAsJsonArray("equipment")) {
-                if (!el.isJsonObject()) continue;
-                JsonObject obj = el.getAsJsonObject();
-                String slotName = obj.has("slot") ? obj.get("slot").getAsString() : "";
-                EquipmentSlot slot = EquipmentSlot.byName(slotName);
-                if (slot == null) continue;
-                String idStr = obj.get("id").getAsString();
-                int count = obj.get("count").getAsInt();
-                int damage = obj.has("damage") ? obj.get("damage").getAsInt() : 0;
-                Identifier id = Identifier.tryParse(idStr);
-                if (id != null && BuiltInRegistries.ITEM.containsKey(id)) {
-                    Item item = BuiltInRegistries.ITEM.getValue(id);
-                    if (item != Items.AIR) {
-                        ItemStack stack = new ItemStack(item, count);
-                        if (damage > 0 && stack.isDamageableItem()) {
-                            stack.setDamageValue(damage);
-                        }
-                        if (target.getItemBySlot(slot).isEmpty()) {
-                            target.setItemSlot(slot, stack);
-                        } else if (!target.getInventory().add(stack)) {
+                        int slot = obj.has("slot") ? obj.get("slot").getAsInt() : -1;
+                        if (slot >= 0 && slot < inv.getContainerSize() && inv.getItem(slot).isEmpty()) {
+                            inv.setItem(slot, stack);
+                        } else if (!inv.add(stack)) {
                             target.drop(stack, false, null);
                         }
                         restored++;
