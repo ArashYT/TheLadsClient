@@ -195,8 +195,8 @@ public final class LadsConfig {
         /** Consolidates 'stonecutter-damage': Stonecutters damage entities standing on them with a custom damage type. */
         public boolean stonecutterDamage = true;
 
-        /** Consolidates 'imfast': Removes hardcoded server speed/movement limits to prevent rubberbanding. */
-        public boolean noSpeedLimit = true;
+        /** Consolidates 'imfast': relaxes the server's 'moved too quickly' limits 4x to reduce rubberbanding (never unlimited; 'moved wrongly' stays vanilla). Off by default. */
+        public boolean noSpeedLimit = false;
 
         /** Consolidates 'logprot': Invulnerability for N seconds after login/dimension change/respawn until player moves or acts. */
         public boolean loginProtection = true;

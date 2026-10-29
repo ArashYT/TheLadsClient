@@ -38,8 +38,57 @@ public final class ParkourClientController {
     // Fall tracking for breakfall
     private static double maxFallDistanceThisFall = 0.0;
     private static boolean wasInAir = false;
+    private static boolean serverConfirmed = false;
 
     private ParkourClientController() {}
+
+    public static boolean isServerConfirmed() {
+        return serverConfirmed;
+    }
+
+    public static void resetSession() {
+        serverConfirmed = false;
+        stamina = 1000;
+        exhausted = false;
+        activeAction = ParkourActionType.NONE;
+        actionTicks = 0;
+        dodgeCooldown = 0;
+        wallJumpCooldown = 0;
+        doubleTapWTimer = 0;
+        doubleTapATimer = 0;
+        doubleTapSTimer = 0;
+        doubleTapDTimer = 0;
+        prevW = false;
+        prevA = false;
+        prevS = false;
+        prevD = false;
+        maxFallDistanceThisFall = 0.0;
+        wasInAir = false;
+    }
+
+    private static java.util.function.BooleanSupplier channelChecker = () -> {
+        try {
+            return ClientPlayNetworking.canSend(ParkourActionPayload.TYPE);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    };
+
+    public static boolean isParkourAllowed() {
+        if (!AriseNB5Config.get().enabled) return false;
+        if (!serverConfirmed) return false;
+        return channelChecker.getAsBoolean();
+    }
+
+    public static void setChannelCheckerForTesting(java.util.function.BooleanSupplier checker) {
+        channelChecker = checker != null ? checker : () -> {
+            try {
+                return ClientPlayNetworking.canSend(ParkourActionPayload.TYPE);
+            } catch (Throwable ignored) {
+                return false;
+            }
+        };
+    }
 
     public static int getStamina() {
         return stamina;
@@ -58,6 +107,7 @@ public final class ParkourClientController {
     }
 
     public static void onSync(ParkourSyncPayload payload) {
+        serverConfirmed = true;
         stamina = payload.stamina();
         exhausted = payload.exhausted();
         activeAction = payload.getActionType();
@@ -65,8 +115,8 @@ public final class ParkourClientController {
     }
 
     public static void onLocalPlayerAiStep(LocalPlayer player) {
+        if (!isParkourAllowed() || player.isSpectator() || player.isSleeping()) return;
         AriseNB5Config config = AriseNB5Config.get();
-        if (!config.enabled || player.isSpectator() || player.isSleeping()) return;
 
         // Decrement cooldowns
         if (dodgeCooldown > 0) dodgeCooldown--;
@@ -177,7 +227,7 @@ public final class ParkourClientController {
             activeAction = ParkourActionType.LEDGE_CLIMB;
             actionTicks = 12;
             player.setDeltaMovement(new Vec3(look.x * 0.35, 0.44, look.z * 0.35));
-            ClientPlayNetworking.send(new ParkourActionPayload(ParkourActionType.LEDGE_CLIMB.getId(), (float) look.x, 0, (float) look.z, 0));
+            sendAction(new ParkourActionPayload(ParkourActionType.LEDGE_CLIMB.getId(), (float) look.x, 0, (float) look.z, 0));
         } else if (player.input.keyPresses.shift()) {
             // Release hang
             activeAction = ParkourActionType.NONE;
@@ -186,7 +236,7 @@ public final class ParkourClientController {
             // Suspend in air
             player.setDeltaMovement(Vec3.ZERO);
             if (player.tickCount % 20 == 0) {
-                ClientPlayNetworking.send(new ParkourActionPayload(ParkourActionType.LEDGE_HANG.getId(), (float) look.x, 0, (float) look.z, 0));
+                sendAction(new ParkourActionPayload(ParkourActionType.LEDGE_HANG.getId(), (float) look.x, 0, (float) look.z, 0));
             }
         }
     }
@@ -215,7 +265,7 @@ public final class ParkourClientController {
         activeAction = ParkourActionType.BREAKFALL;
         actionTicks = 10;
         player.fallDistance = (float) Math.max(0.0, player.fallDistance - 5.0);
-        ClientPlayNetworking.send(new ParkourActionPayload(ParkourActionType.BREAKFALL.getId(), 0, 0, 0, (float) fallDist));
+        sendAction(new ParkourActionPayload(ParkourActionType.BREAKFALL.getId(), 0, 0, 0, (float) fallDist));
     }
 
     private static void triggerLedgeHang(LocalPlayer player, Vec3 look) {
@@ -223,7 +273,7 @@ public final class ParkourClientController {
         actionTicks = 200;
         player.setDeltaMovement(Vec3.ZERO);
         player.resetFallDistance();
-        ClientPlayNetworking.send(new ParkourActionPayload(ParkourActionType.LEDGE_HANG.getId(), (float) look.x, 0, (float) look.z, 0));
+        sendAction(new ParkourActionPayload(ParkourActionType.LEDGE_HANG.getId(), (float) look.x, 0, (float) look.z, 0));
     }
 
     private static void triggerWallJump(LocalPlayer player, Vec3 wallNormal, AriseNB5Config config) {
@@ -240,7 +290,7 @@ public final class ParkourClientController {
         player.setDeltaMovement(jumpVel);
         player.resetFallDistance();
 
-        ClientPlayNetworking.send(new ParkourActionPayload(ParkourActionType.WALL_JUMP.getId(), (float) wallNormal.x, 0, (float) wallNormal.z, 0));
+        sendAction(new ParkourActionPayload(ParkourActionType.WALL_JUMP.getId(), (float) wallNormal.x, 0, (float) wallNormal.z, 0));
     }
 
     private static void triggerVault(LocalPlayer player, Vec3 look) {
@@ -250,7 +300,7 @@ public final class ParkourClientController {
         Vec3 vaultVel = new Vec3(look.x * 0.45, 0.40, look.z * 0.45);
         player.setDeltaMovement(vaultVel);
 
-        ClientPlayNetworking.send(new ParkourActionPayload(ParkourActionType.VAULT.getId(), (float) look.x, 0, (float) look.z, 0));
+        sendAction(new ParkourActionPayload(ParkourActionType.VAULT.getId(), (float) look.x, 0, (float) look.z, 0));
     }
 
     private static void triggerSlide(LocalPlayer player, AriseNB5Config config) {
@@ -262,7 +312,7 @@ public final class ParkourClientController {
         Vec3 slideVel = new Vec3(forward.x * 0.50, player.getDeltaMovement().y, forward.z * 0.50);
         player.setDeltaMovement(slideVel);
 
-        ClientPlayNetworking.send(new ParkourActionPayload(ParkourActionType.SLIDE.getId(), (float) forward.x, 0, (float) forward.z, 0));
+        sendAction(new ParkourActionPayload(ParkourActionType.SLIDE.getId(), (float) forward.x, 0, (float) forward.z, 0));
     }
 
     private static void triggerDodgeRoll(LocalPlayer player, Vec3 dodgeDir, AriseNB5Config config) {
@@ -277,7 +327,7 @@ public final class ParkourClientController {
         Vec3 dodgeVel = new Vec3(dodgeDir.x * speed, 0.15, dodgeDir.z * speed);
         player.setDeltaMovement(dodgeVel);
 
-        ClientPlayNetworking.send(new ParkourActionPayload(action.getId(), (float) dodgeDir.x, 0, (float) dodgeDir.z, 0));
+        sendAction(new ParkourActionPayload(action.getId(), (float) dodgeDir.x, 0, (float) dodgeDir.z, 0));
     }
 
     private static Vec3 checkDodgeInput(LocalPlayer player) {
@@ -322,6 +372,18 @@ public final class ParkourClientController {
         prevD = curD;
 
         return result != null ? result.normalize() : null;
+    }
+
+    static java.util.function.Consumer<ParkourActionPayload> actionSender = ClientPlayNetworking::send;
+
+    public static void sendAction(ParkourActionPayload payload) {
+        if (isParkourAllowed()) {
+            actionSender.accept(payload);
+        }
+    }
+
+    public static void setActionSenderForTesting(java.util.function.Consumer<ParkourActionPayload> sender) {
+        actionSender = sender != null ? sender : ClientPlayNetworking::send;
     }
 
     private static Vec3 findAdjacentWallNormal(LocalPlayer player, Level level) {

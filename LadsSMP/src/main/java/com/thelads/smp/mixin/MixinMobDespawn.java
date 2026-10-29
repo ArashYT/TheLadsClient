@@ -14,6 +14,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import net.minecraft.world.entity.monster.Enderman;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 
 /**
  * Consolidates 'letmedespawn': Prevents mobs that pick up items from becoming permanently persistent
@@ -53,6 +57,24 @@ public abstract class MixinMobDespawn implements PickedEquipmentTracker {
         this.persistenceRequired = self.hasCustomName();
     }
 
+    @Inject(
+            method = "addAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueOutput;)V",
+            at = @At("RETURN")
+    )
+    private void ladssmp$savePickedSlots(ValueOutput output, CallbackInfo ci) {
+        if (this.ladssmp$pickedUpSlotsBitmask != 0) {
+            output.putInt("ladssmp_picked_slots", this.ladssmp$pickedUpSlotsBitmask);
+        }
+    }
+
+    @Inject(
+            method = "readAdditionalSaveData(Lnet/minecraft/world/level/storage/ValueInput;)V",
+            at = @At("RETURN")
+    )
+    private void ladssmp$loadPickedSlots(ValueInput input, CallbackInfo ci) {
+        this.ladssmp$pickedUpSlotsBitmask = input.getIntOr("ladssmp_picked_slots", 0);
+    }
+
     @Inject(method = "equipItemIfPossible", at = @At("RETURN"))
     private void ladssmp$onEquipItemIfPossible(ServerLevel level, ItemStack itemStack, CallbackInfoReturnable<ItemStack> cir) {
         if (!LadsConfig.get().features.letMeDespawn) return;
@@ -73,15 +95,18 @@ public abstract class MixinMobDespawn implements PickedEquipmentTracker {
             )
     )
     private void ladssmp$dropPickedItemsOnDespawn(Mob instance) {
-        if (LadsConfig.get().features.letMeDespawn
-                && this.ladssmp$hasPickedEquipment()
-                && instance.level() instanceof ServerLevel serverLevel) {
-            for (EquipmentSlot slot : EquipmentSlot.values()) {
-                if (this.ladssmp$isSlotPicked(slot)) {
-                    ItemStack stack = instance.getItemBySlot(slot);
-                    if (!stack.isEmpty()) {
-                        instance.spawnAtLocation(serverLevel, stack);
-                        instance.setItemSlot(slot, ItemStack.EMPTY);
+        if (LadsConfig.get().features.letMeDespawn && instance.level() instanceof ServerLevel serverLevel) {
+            if (instance instanceof Enderman enderman && enderman.getCarriedBlock() != null) {
+                Block.dropResources(enderman.getCarriedBlock(), serverLevel, instance.blockPosition());
+            }
+            if (this.ladssmp$hasPickedEquipment()) {
+                for (EquipmentSlot slot : EquipmentSlot.values()) {
+                    if (this.ladssmp$isSlotPicked(slot)) {
+                        ItemStack stack = instance.getItemBySlot(slot);
+                        if (!stack.isEmpty()) {
+                            instance.spawnAtLocation(serverLevel, stack);
+                            instance.setItemSlot(slot, ItemStack.EMPTY);
+                        }
                     }
                 }
             }

@@ -10,6 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.Writer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -24,7 +28,14 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class FishingJournalManager {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsSMP/FishingJournalManager");
-    private static final File STORAGE_DIR = new File("config/ladssmp/fishing_journal");
+    private static File getDefaultStorageDir() {
+        try {
+            return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ladssmp").resolve("fishing_journal").toFile();
+        } catch (Throwable ignored) {
+            return new File("build/test-config/ladssmp/fishing_journal");
+        }
+    }
+    private static final File STORAGE_DIR = getDefaultStorageDir();
     private static final Map<UUID, FishingJournalData> CACHE = new ConcurrentHashMap<>();
 
     private FishingJournalManager() {}
@@ -53,6 +64,12 @@ public final class FishingJournalManager {
                 }
             } catch (Exception e) {
                 LOGGER.error("[Fishing Journal] Failed to load journal for {}. Initializing fresh.", uuid, e);
+                try {
+                    Path path = file.toPath();
+                    Path corrupt = path.resolveSibling(path.getFileName().toString() + ".corrupt-" + System.currentTimeMillis());
+                    Files.copy(path, corrupt, StandardCopyOption.REPLACE_EXISTING);
+                    LOGGER.warn("Corrupt fishing journal backed up to {}", corrupt);
+                } catch (Exception ignored) {}
             }
         }
         FishingJournalData fresh = new FishingJournalData(uuid);
@@ -77,12 +94,16 @@ public final class FishingJournalManager {
         if (data == null || data.getPlayerId() == null) {
             return;
         }
-        if (!STORAGE_DIR.exists()) {
-            STORAGE_DIR.mkdirs();
-        }
-        File file = new File(STORAGE_DIR, data.getPlayerId().toString() + ".json");
-        try (FileWriter writer = new FileWriter(file)) {
-            writer.write(data.toJson());
+        Path path = STORAGE_DIR.toPath().resolve(data.getPlayerId().toString() + ".json");
+        try {
+            if (path.getParent() != null) {
+                Files.createDirectories(path.getParent());
+            }
+            Path temp = path.resolveSibling(path.getFileName().toString() + ".tmp");
+            try (Writer writer = Files.newBufferedWriter(temp)) {
+                writer.write(data.toJson());
+            }
+            Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             LOGGER.error("[Fishing Journal] Failed to write journal file for {}", data.getPlayerId(), e);
         }

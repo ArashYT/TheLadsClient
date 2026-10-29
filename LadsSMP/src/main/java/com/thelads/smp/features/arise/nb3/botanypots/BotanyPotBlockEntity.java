@@ -47,6 +47,25 @@ public class BotanyPotBlockEntity extends BlockEntity {
         this.growthTicks = input.getIntOr("growth_ticks", 0);
     }
 
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (this.level != null && !this.level.isClientSide()) {
+            if (!this.soil.isEmpty()) {
+                net.minecraft.world.Containers.dropItemStack(this.level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, this.soil);
+                this.soil = ItemStack.EMPTY;
+            }
+            if (!this.crop.isEmpty()) {
+                net.minecraft.world.Containers.dropItemStack(this.level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, this.crop);
+                this.crop = ItemStack.EMPTY;
+            }
+            if (!this.output.isEmpty()) {
+                net.minecraft.world.Containers.dropItemStack(this.level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, this.output);
+                this.output = ItemStack.EMPTY;
+            }
+        }
+        super.preRemoveSideEffects(pos, state);
+    }
+
     public void setSoil(ItemStack s) {
         this.soil = s;
         setChanged();

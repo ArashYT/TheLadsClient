@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.Containers;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
@@ -51,6 +52,33 @@ public class MailboxBlockEntity extends BlockEntity {
         input.getString("owner_name").ifPresent(name -> this.ownerName = name);
         this.inbox.clear();
         input.read("inbox", ItemStack.CODEC.listOf()).ifPresent(this.inbox::addAll);
+        if (this.level != null && !this.level.isClientSide() && ownerUuid != null) {
+            SnailMailFeature.registerMailboxIfAbsent(ownerUuid, this.level, this.worldPosition);
+        }
+    }
+
+    @Override
+    public void setLevel(Level level) {
+        super.setLevel(level);
+        if (level != null && !level.isClientSide() && ownerUuid != null) {
+            SnailMailFeature.registerMailboxIfAbsent(ownerUuid, level, this.worldPosition);
+        }
+    }
+
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (this.level != null && !this.level.isClientSide()) {
+            for (ItemStack item : inbox) {
+                if (!item.isEmpty()) {
+                    Containers.dropItemStack(this.level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, item);
+                }
+            }
+            inbox.clear();
+            if (ownerUuid != null) {
+                SnailMailFeature.unregisterMailbox(ownerUuid, this.level, pos);
+            }
+        }
+        super.preRemoveSideEffects(pos, state);
     }
 
     public void setOwner(UUID uuid, String name) {

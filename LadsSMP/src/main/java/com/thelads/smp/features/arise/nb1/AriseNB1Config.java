@@ -9,6 +9,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 /**
@@ -18,7 +19,14 @@ import java.util.*;
 public final class AriseNB1Config {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsSMP-AriseNB1Config");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_PATH = Path.of("config", "ladssmp", "arise-nb1.json");
+    private static Path getDefaultConfigPath() {
+        try {
+            return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ladssmp").resolve("arise-nb1.json");
+        } catch (Throwable ignored) {
+            return Path.of("build", "test-config", "ladssmp", "arise-nb1.json");
+        }
+    }
+    private static final Path CONFIG_PATH = getDefaultConfigPath();
     private static AriseNB1Config INSTANCE = new AriseNB1Config();
 
     public static AriseNB1Config get() {
@@ -177,10 +185,19 @@ public final class AriseNB1Config {
         }
         try (Reader reader = Files.newBufferedReader(path)) {
             AriseNB1Config config = GSON.fromJson(reader, AriseNB1Config.class);
-            INSTANCE = config != null ? config : new AriseNB1Config();
+            if (config != null) {
+                INSTANCE = config;
+            }
         } catch (Exception e) {
-            LOGGER.error("Failed to load Arise NB1 config from {}, using defaults", path, e);
-            INSTANCE = new AriseNB1Config();
+            LOGGER.error("Failed to load Arise NB1 config from {}, keeping active configuration", path, e);
+            try {
+                Path corrupt = path.resolveSibling(path.getFileName().toString() + ".corrupt-" + System.currentTimeMillis());
+                Files.copy(path, corrupt, StandardCopyOption.REPLACE_EXISTING);
+                LOGGER.warn("Corrupt Arise NB1 config backed up to {}", corrupt);
+            } catch (Exception ignored) {}
+            if (INSTANCE == null) {
+                INSTANCE = new AriseNB1Config();
+            }
         }
         return INSTANCE;
     }
@@ -194,9 +211,11 @@ public final class AriseNB1Config {
             if (path.getParent() != null) {
                 Files.createDirectories(path.getParent());
             }
-            try (Writer writer = Files.newBufferedWriter(path)) {
+            Path temp = path.resolveSibling(path.getFileName().toString() + ".tmp");
+            try (Writer writer = Files.newBufferedWriter(temp)) {
                 GSON.toJson(config, writer);
             }
+            Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception e) {
             LOGGER.error("Failed to save Arise NB1 config to {}", path, e);
         }

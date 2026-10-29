@@ -45,6 +45,9 @@ public final class AmendmentsBlockInteractions {
             InteractionHand hand,
             BlockHitResult hitResult
     ) {
+        if (!player.mayBuild() || com.thelads.smp.features.arise.nb1.AdminClaimsFeature.isProtected(level, hitResult.getBlockPos(), player)) {
+            return InteractionResult.PASS;
+        }
         AriseNB9Config config = AriseNB9Config.get();
         BlockPos pos = hitResult.getBlockPos();
         BlockState state = level.getBlockState(pos);

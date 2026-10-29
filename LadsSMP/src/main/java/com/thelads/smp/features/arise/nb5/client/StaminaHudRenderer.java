@@ -19,6 +19,9 @@ public final class StaminaHudRenderer {
         if (!config.enabled || !config.staminaEnabled || "Hide".equalsIgnoreCase(config.staminaHudType)) {
             return;
         }
+        if (!ParkourClientController.isParkourAllowed()) {
+            return;
+        }
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || (mc.gui != null && mc.gui.hud != null && mc.gui.hud.isHidden())) return;

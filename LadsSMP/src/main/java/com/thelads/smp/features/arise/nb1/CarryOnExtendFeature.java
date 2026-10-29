@@ -74,12 +74,21 @@ public final class CarryOnExtendFeature {
             } else if (carryData.getType() == CarryOnData.CarryType.BLOCK) {
                 BlockState state = carryData.getBlock();
                 if (state != null && !state.isAir()) {
-                    BlockPos eyePos = BlockPos.containing(player.getEyePosition());
-                    FallingBlockEntity falling = FallingBlockEntity.fall(player.level(), eyePos, state);
                     CompoundTag contentNbt = carryData.getContentNbt();
                     if (contentNbt != null && !contentNbt.isEmpty()) {
-                        falling.blockData = contentNbt;
+                        player.sendSystemMessage(Component.literal("Blocks with stored items cannot be thrown.").withStyle(ChatFormatting.RED));
+                        return false;
                     }
+                    BlockPos eyePos = BlockPos.containing(player.getEyePosition());
+                    if (!player.level().getBlockState(eyePos).isAir()) {
+                        player.sendSystemMessage(Component.literal("Not enough space to throw block.").withStyle(ChatFormatting.RED));
+                        return false;
+                    }
+                    if (AdminClaimsFeature.isChunkClaimed(player.level(), eyePos) && !AdminClaimsFeature.hasAdminPermission(player)) {
+                        player.sendSystemMessage(Component.literal("Cannot throw blocks into admin-claimed land.").withStyle(ChatFormatting.RED));
+                        return false;
+                    }
+                    FallingBlockEntity falling = FallingBlockEntity.fall(player.level(), eyePos, state);
                     falling.setDeltaMovement(velocity);
                 }
             }
@@ -103,13 +112,16 @@ public final class CarryOnExtendFeature {
         dispatcher.register(Commands.literal("throw")
                 .executes(ctx -> {
                     ServerPlayer player = ctx.getSource().getPlayerOrException();
-                    if (throwCarried(player)) {
-                        ctx.getSource().sendSuccess(() -> Component.literal("Threw carried object!").withStyle(ChatFormatting.GREEN), false);
-                        return 1;
-                    } else {
+                    CarryOnData carry = CarryOnDataManager.getCarryData(player);
+                    if (carry == null || !carry.isCarrying()) {
                         ctx.getSource().sendFailure(Component.literal("You are not carrying anything with Carry On.").withStyle(ChatFormatting.RED));
                         return 0;
                     }
+                    if (throwCarried(player)) {
+                        ctx.getSource().sendSuccess(() -> Component.literal("Threw carried object!").withStyle(ChatFormatting.GREEN), false);
+                        return 1;
+                    }
+                    return 0;
                 })
         );
 
@@ -117,29 +129,17 @@ public final class CarryOnExtendFeature {
                 .then(Commands.literal("throw")
                         .executes(ctx -> {
                             ServerPlayer player = ctx.getSource().getPlayerOrException();
-                            if (throwCarried(player)) {
-                                ctx.getSource().sendSuccess(() -> Component.literal("Threw carried object!").withStyle(ChatFormatting.GREEN), false);
-                                return 1;
-                            } else {
+                            CarryOnData carry = CarryOnDataManager.getCarryData(player);
+                            if (carry == null || !carry.isCarrying()) {
                                 ctx.getSource().sendFailure(Component.literal("You are not carrying anything with Carry On.").withStyle(ChatFormatting.RED));
                                 return 0;
                             }
+                            if (throwCarried(player)) {
+                                ctx.getSource().sendSuccess(() -> Component.literal("Threw carried object!").withStyle(ChatFormatting.GREEN), false);
+                                return 1;
+                            }
+                            return 0;
                         }))
-        );
-
-        dispatcher.register(Commands.literal("ladssmp")
-                .then(Commands.literal("carry")
-                        .then(Commands.literal("throw")
-                                .executes(ctx -> {
-                                    ServerPlayer player = ctx.getSource().getPlayerOrException();
-                                    if (throwCarried(player)) {
-                                        ctx.getSource().sendSuccess(() -> Component.literal("Threw carried object!").withStyle(ChatFormatting.GREEN), false);
-                                        return 1;
-                                    } else {
-                                        ctx.getSource().sendFailure(Component.literal("You are not carrying anything with Carry On.").withStyle(ChatFormatting.RED));
-                                        return 0;
-                                    }
-                                })))
         );
     }
 }

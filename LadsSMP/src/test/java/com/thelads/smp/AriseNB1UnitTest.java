@@ -314,6 +314,12 @@ public class AriseNB1UnitTest {
         SaveClipboardPayload payload = new SaveClipboardPayload("Hello Lads SMP!");
         assertEquals("Hello Lads SMP!", payload.text());
         assertEquals("ladssmp:save_clipboard", payload.type().id().toString());
+
+        // B/10 clamp test
+        assertEquals("abc", UsefulClipboardFeature.clampText("abcdef", 3));
+        assertEquals("short", UsefulClipboardFeature.clampText("short", 10));
+        assertEquals("", UsefulClipboardFeature.clampText("hello", 0));
+        assertEquals("", UsefulClipboardFeature.clampText(null, 5));
     }
 
     // ==========================================

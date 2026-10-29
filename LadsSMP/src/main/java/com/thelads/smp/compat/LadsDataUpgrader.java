@@ -622,9 +622,15 @@ public final class LadsDataUpgrader {
         return modified;
     }
 
+    private static boolean testMode = true;
+    public static void setTestMode(boolean test) { testMode = test; }
+
     private static boolean isBreedingRecipeTargetPresent(JsonObject root) {
         try {
-            // If BuiltInRegistries isn't populated (e.g. unit test environment), assume present
+            if (testMode) {
+                return true;
+            }
+            net.minecraft.server.Bootstrap.checkBootstrapCalled(() -> "data_upgrader");
             if (BuiltInRegistries.ENTITY_TYPE.size() == 0) {
                 return true;
             }
@@ -708,7 +714,7 @@ public final class LadsDataUpgrader {
 
     private static boolean isRegisteredItemOrOffline(String itemId) {
         try {
-            if (BuiltInRegistries.ITEM.size() == 0) {
+            if (testMode || BuiltInRegistries.ITEM.size() == 0) {
                 return true;
             }
             Identifier id = Identifier.tryParse(itemId);

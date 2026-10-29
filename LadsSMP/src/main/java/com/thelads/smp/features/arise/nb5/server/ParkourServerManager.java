@@ -36,6 +36,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ParkourServerManager {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsSMP/ParkourServer");
     private static final Map<UUID, PlayerStaminaData> STAMINA_MAP = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> LAST_ACTION_TIMES = new ConcurrentHashMap<>();
+    private static final Map<UUID, Long> LEDGE_HANG_COOLDOWNS = new ConcurrentHashMap<>();
 
     private ParkourServerManager() {}
 
@@ -87,6 +89,8 @@ public final class ParkourServerManager {
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             if (handler.player != null) {
                 STAMINA_MAP.remove(handler.player.getUUID());
+                LAST_ACTION_TIMES.remove(handler.player.getUUID());
+                LEDGE_HANG_COOLDOWNS.remove(handler.player.getUUID());
             }
         });
 
@@ -118,6 +122,20 @@ public final class ParkourServerManager {
     }
 
     private static void handleActionPayload(ServerPlayer player, ParkourActionPayload payload) {
+        if (!Float.isFinite(payload.dirX()) || !Float.isFinite(payload.dirY()) || !Float.isFinite(payload.dirZ()) || !Float.isFinite(payload.param())) {
+            return;
+        }
+        float clampedParam = Math.clamp(payload.param(), 0.0f, 256.0f);
+        if (clampedParam != payload.param()) {
+            payload = new ParkourActionPayload(payload.actionTypeId(), payload.dirX(), payload.dirY(), payload.dirZ(), clampedParam);
+        }
+
+        long now = System.currentTimeMillis();
+        Long lastTime = LAST_ACTION_TIMES.put(player.getUUID(), now);
+        if (lastTime != null && (now - lastTime) < 50) {
+            return; // Min interval 50ms per player
+        }
+
         AriseNB5Config config = AriseNB5Config.get();
         if (!config.enabled || player.isSpectator()) return;
 
@@ -209,6 +227,21 @@ public final class ParkourServerManager {
     private static void validateAndExecuteLedgeHang(ServerPlayer player, ParkourActionPayload payload, PlayerStaminaData data, AriseNB5Config config, boolean isCreative) {
         if (!config.ledgeGrabEnabled || !data.canPerform(ParkourActionType.LEDGE_HANG, isCreative)) return;
 
+        boolean wasHanging = data.getActiveAction() == ParkourActionType.LEDGE_HANG;
+        if (wasHanging) {
+            return; // Already actively hanging: do not reset duration or trigger sync spam
+        }
+
+        long now = System.currentTimeMillis();
+        Long cd = LEDGE_HANG_COOLDOWNS.get(player.getUUID());
+        if (cd != null && now < cd) {
+            return; // Ledge hang on cooldown
+        }
+
+        if (!isCreative && config.staminaEnabled && data.getCurrentStamina() < config.ledgeHangStaminaCostPerTick) {
+            return; // Insufficient stamina for initial grab
+        }
+
         Level level = player.level();
         Vec3 dir = new Vec3(payload.dirX(), 0, payload.dirZ()).normalize();
         if (dir.lengthSqr() < 1e-4) {
@@ -220,6 +253,10 @@ public final class ParkourServerManager {
         BlockPos ledgeTop = chestPos.above();
 
         if (level.getBlockState(chestPos).isSolid() && !level.getBlockState(ledgeTop).isSolid()) {
+            LEDGE_HANG_COOLDOWNS.put(player.getUUID(), now + 500); // 500ms cooldown
+            if (!isCreative && config.staminaEnabled) {
+                data.setCurrentStamina(data.getCurrentStamina() - config.ledgeHangStaminaCostPerTick);
+            }
             data.setActiveAction(ParkourActionType.LEDGE_HANG, 200);
             player.setDeltaMovement(Vec3.ZERO);
             player.resetFallDistance();

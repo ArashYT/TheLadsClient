@@ -7,6 +7,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.Writer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.io.FileWriter;
 import java.io.IOException;
 
@@ -17,7 +21,14 @@ import java.io.IOException;
 public final class AriseNB6Config {
     private static final Logger LOGGER = LoggerFactory.getLogger("LadsSMP/AriseNB6Config");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final File CONFIG_FILE = new File("config/ladssmp/arise-nb6.json");
+    private static File getDefaultConfigFile() {
+        try {
+            return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("ladssmp").resolve("arise-nb6.json").toFile();
+        } catch (Throwable ignored) {
+            return new File("build/test-config/ladssmp/arise-nb6.json");
+        }
+    }
+    private static final File CONFIG_FILE = getDefaultConfigFile();
 
     private static AriseNB6Config INSTANCE = new AriseNB6Config();
 
@@ -50,7 +61,14 @@ public final class AriseNB6Config {
                     return INSTANCE;
                 }
             } catch (Exception e) {
-                LOGGER.error("[Arise NB6] Failed to load config from {}. Using defaults.", CONFIG_FILE.getPath(), e);
+                LOGGER.error("[Arise NB6] Failed to load config from {}. Keeping active configuration.", CONFIG_FILE.getPath(), e);
+                try {
+                    Path path = CONFIG_FILE.toPath();
+                    Path corrupt = path.resolveSibling(path.getFileName().toString() + ".corrupt-" + System.currentTimeMillis());
+                    Files.copy(path, corrupt, StandardCopyOption.REPLACE_EXISTING);
+                    LOGGER.warn("Corrupt Arise NB6 config backed up to {}", corrupt);
+                } catch (Exception ignored) {}
+                if (INSTANCE != null) return INSTANCE;
             }
         }
         INSTANCE = new AriseNB6Config();
@@ -60,12 +78,16 @@ public final class AriseNB6Config {
 
     public static synchronized void save(AriseNB6Config config) {
         INSTANCE = config;
-        File parent = CONFIG_FILE.getParentFile();
-        if (parent != null && !parent.exists()) {
-            parent.mkdirs();
-        }
-        try (FileWriter writer = new FileWriter(CONFIG_FILE)) {
-            GSON.toJson(config, writer);
+        Path path = CONFIG_FILE.toPath();
+        try {
+            if (path.getParent() != null) {
+                Files.createDirectories(path.getParent());
+            }
+            Path temp = path.resolveSibling(path.getFileName().toString() + ".tmp");
+            try (Writer writer = Files.newBufferedWriter(temp)) {
+                GSON.toJson(config, writer);
+            }
+            Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             LOGGER.error("[Arise NB6] Failed to save config to {}", CONFIG_FILE.getPath(), e);
         }

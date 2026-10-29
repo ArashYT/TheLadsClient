@@ -106,8 +106,12 @@ public final class LadsCommands {
     private static int executeReload(CommandContext<CommandSourceStack> ctx) {
         LadsConfig.load();
         com.thelads.smp.features.arise.nb8.AriseNB8Config.load();
-        ItemDisablerSystem.reload();
+        boolean disablerOk = ItemDisablerSystem.reload();
         ConsolidatedFeatures.applyAttributeFixes();
+        if (!disablerOk) {
+            ctx.getSource().sendFailure(Component.literal("[Lads SMP] disabled_items.json failed to parse (backed up to .broken-*); keeping active rules."));
+            return 0;
+        }
 
         int swept = 0;
         for (ServerPlayer player : ctx.getSource().getServer().getPlayerList().getPlayers()) {

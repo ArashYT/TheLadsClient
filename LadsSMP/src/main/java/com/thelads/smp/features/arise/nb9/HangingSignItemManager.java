@@ -1,5 +1,6 @@
 package com.thelads.smp.features.arise.nb9;
 
+import com.thelads.smp.features.arise.nb1.AdminClaimsFeature;
 import net.minecraft.core.BlockPos;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -89,6 +90,15 @@ public final class HangingSignItemManager {
     ) {
         if (!AriseNB9Config.get().itemsOnSigns || !isHangingSign(state)) {
             return InteractionResult.PASS;
+        }
+
+        if (player != null) {
+            if (!player.mayBuild() || (level != null && !level.mayInteract(player, pos))) {
+                return InteractionResult.PASS;
+            }
+            if (level != null && AdminClaimsFeature.isProtected(level, pos, player)) {
+                return InteractionResult.PASS;
+            }
         }
 
         ItemStack held = player.getItemInHand(hand);

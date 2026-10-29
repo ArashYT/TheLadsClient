@@ -36,20 +36,18 @@ public class CosmeticArmorScreen extends Screen {
 
         for (int i = 0; i < slots.length; i++) {
             final EquipmentSlot slot = slots[i];
+            final int index = i; // wire slot index: 0 head .. 3 feet
             int y = startY + (i * 30);
 
-            // Slot interaction button
-            this.addRenderableWidget(Button.builder(Component.literal(slotNames[i] + ": " + getSlotLabel(slot)), btn -> {
-                handleSlotClick(slot);
-                btn.setMessage(Component.literal(slotNames[slot.ordinal()] + ": " + getSlotLabel(slot)));
-            }).bounds(centerX - 100, y, 140, 20).build());
+            // Slot interaction button (the server moves the item and syncs back; labels refresh on that sync)
+            this.addRenderableWidget(Button.builder(Component.literal(slotNames[i] + ": " + getSlotLabel(slot)),
+                    btn -> sendAction(index, true, data.isVisible(slot))
+            ).bounds(centerX - 100, y, 140, 20).build());
 
             // Eye visibility toggle button
-            this.addRenderableWidget(Button.builder(Component.literal(data.isVisible(slot) ? "👁 Shown" : "Ø Hidden"), btn -> {
-                boolean vis = data.toggleVisibility(slot);
-                btn.setMessage(Component.literal(vis ? "👁 Shown" : "Ø Hidden"));
-                syncToServer();
-            }).bounds(centerX + 45, y, 65, 20).tooltip(Tooltip.create(Component.literal("Toggle slot visibility"))).build());
+            this.addRenderableWidget(Button.builder(Component.literal(data.isVisible(slot) ? "👁 Shown" : "Ø Hidden"),
+                    btn -> sendAction(index, false, !data.isVisible(slot))
+            ).bounds(centerX + 45, y, 65, 20).tooltip(Tooltip.create(Component.literal("Toggle slot visibility"))).build());
         }
 
         // Done button
@@ -63,44 +61,14 @@ public class CosmeticArmorScreen extends Screen {
         return s.isEmpty() ? "[Empty]" : s.getHoverName().getString();
     }
 
-    private void handleSlotClick(EquipmentSlot slot) {
-        var mc = net.minecraft.client.Minecraft.getInstance();
-        if (mc.player == null) return;
-        ItemStack held = mc.player.getMainHandItem();
-
-        if (held.isEmpty()) {
-            // Unequip to mainhand if holding nothing
-            ItemStack cosmetic = data.get(slot);
-            if (!cosmetic.isEmpty()) {
-                mc.player.getInventory().add(cosmetic.copy());
-                data.set(slot, ItemStack.EMPTY);
-            }
-        } else {
-            // Swap held item with cosmetic slot
-            ItemStack old = data.get(slot);
-            ItemStack toEquip = held.copy();
-            toEquip.setCount(1);
-            data.set(slot, toEquip);
-            held.shrink(1);
-            if (!old.isEmpty()) {
-                mc.player.getInventory().add(old);
-            }
-        }
-        syncToServer();
+    /** Called when the server's sync for the local player arrives. */
+    public void refresh() {
+        this.rebuildWidgets();
     }
 
-    private void syncToServer() {
+    private static void sendAction(int index, boolean swap, boolean visible) {
         if (ClientPlayNetworking.canSend(UpdateCosmeticArmorPayload.TYPE)) {
-            ClientPlayNetworking.send(new UpdateCosmeticArmorPayload(
-                    data.get(EquipmentSlot.HEAD),
-                    data.get(EquipmentSlot.CHEST),
-                    data.get(EquipmentSlot.LEGS),
-                    data.get(EquipmentSlot.FEET),
-                    data.isVisible(EquipmentSlot.HEAD),
-                    data.isVisible(EquipmentSlot.CHEST),
-                    data.isVisible(EquipmentSlot.LEGS),
-                    data.isVisible(EquipmentSlot.FEET)
-            ));
+            ClientPlayNetworking.send(new UpdateCosmeticArmorPayload(index, swap, visible));
         }
     }
 
@@ -113,7 +81,6 @@ public class CosmeticArmorScreen extends Screen {
 
     @Override
     public void onClose() {
-        syncToServer();
         if (this.minecraft != null) {
             this.minecraft.gui.setScreen(this.parent);
         }

@@ -12,6 +12,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -141,17 +142,27 @@ public final class DisabledContentConfig {
             save(path, defaults);
             return defaults;
         } catch (Exception e) {
-            LOGGER.error("Failed to load disabled_items.json from {}, using defaults", path, e);
-            return new DisabledContentConfig();
+            LOGGER.error("Failed to load disabled_items.json from {}, keeping active configuration", path, e);
+            try {
+                Path broken = path.resolveSibling(path.getFileName().toString() + ".broken-" + System.currentTimeMillis());
+                Files.copy(path, broken, StandardCopyOption.REPLACE_EXISTING);
+                LOGGER.warn("Corrupt disabled items file backed up to {}", broken);
+            } catch (Exception ignored) {}
+            return null;
         }
     }
 
     public static synchronized void save(Path path, DisabledContentConfig config) {
+        if (config == null) return;
         try {
-            Files.createDirectories(path.getParent());
-            try (Writer writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
+            if (path.getParent() != null) {
+                Files.createDirectories(path.getParent());
+            }
+            Path temp = path.resolveSibling(path.getFileName().toString() + ".tmp");
+            try (Writer writer = Files.newBufferedWriter(temp, StandardCharsets.UTF_8)) {
                 GSON.toJson(config, writer);
             }
+            Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             LOGGER.error("Failed to save disabled_items.json to {}", path, e);
         }

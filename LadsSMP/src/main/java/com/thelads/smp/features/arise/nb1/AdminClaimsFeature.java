@@ -21,6 +21,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -32,6 +37,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -65,7 +71,7 @@ public final class AdminClaimsFeature {
             if (!isEnabled() || level.isClientSide()) {
                 return true;
             }
-            if (isChunkClaimed(level, pos) && !hasAdminPermission(player)) {
+            if (isProtectedFrom(player, level, pos)) {
                 sendDeniedFeedback(player);
                 return false;
             }
@@ -77,21 +83,52 @@ public final class AdminClaimsFeature {
             if (!isEnabled() || level.isClientSide()) {
                 return InteractionResult.PASS;
             }
-            if (isChunkClaimed(level, pos) && !hasAdminPermission(player)) {
+            if (isProtectedFrom(player, level, pos)) {
                 sendDeniedFeedback(player);
                 return InteractionResult.FAIL;
             }
             return InteractionResult.PASS;
         });
 
-        // 3. Block interaction / placement protection
+        // 3. Block interaction / placement protection (checks clicked block and placement offset across chunk borders)
         UseBlockCallback.EVENT.register((player, level, hand, hitResult) -> {
             if (!isEnabled() || level.isClientSide()) {
                 return InteractionResult.PASS;
             }
-            if (isChunkClaimed(level, hitResult.getBlockPos()) && !hasAdminPermission(player)) {
+            BlockPos targetPos = hitResult.getBlockPos();
+            if (isProtectedFrom(player, level, targetPos)) {
                 sendDeniedFeedback(player);
                 return InteractionResult.FAIL;
+            }
+            ItemStack stack = player.getItemInHand(hand);
+            if (stack.getItem() instanceof net.minecraft.world.item.BlockItem || stack.getItem() instanceof net.minecraft.world.item.BucketItem) {
+                BlockPos placePos = targetPos.relative(hitResult.getDirection());
+                if (isProtectedFrom(player, level, placePos)) {
+                    sendDeniedFeedback(player);
+                    return InteractionResult.FAIL;
+                }
+            }
+            return InteractionResult.PASS;
+        });
+
+        // 3b. Bucket / fluid use protection (A/7)
+        net.fabricmc.fabric.api.event.player.UseItemCallback.EVENT.register((player, level, hand) -> {
+            if (!isEnabled() || level.isClientSide()) return InteractionResult.PASS;
+            ItemStack stack = player.getItemInHand(hand);
+            if (stack.getItem() instanceof net.minecraft.world.item.BucketItem) {
+                Vec3 start = player.getEyePosition();
+                Vec3 view = player.getViewVector(1.0f);
+                double reach = player.blockInteractionRange();
+                Vec3 end = start.add(view.scale(reach));
+                BlockHitResult hit = level.clip(new ClipContext(start, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.SOURCE_ONLY, player));
+                if (hit.getType() == HitResult.Type.BLOCK) {
+                    BlockPos targetPos = hit.getBlockPos();
+                    BlockPos placePos = targetPos.relative(hit.getDirection());
+                    if (isProtectedFrom(player, level, targetPos) || isProtectedFrom(player, level, placePos)) {
+                        sendDeniedFeedback(player);
+                        return InteractionResult.FAIL;
+                    }
+                }
             }
             return InteractionResult.PASS;
         });
@@ -101,7 +138,7 @@ public final class AdminClaimsFeature {
             if (!isEnabled() || level.isClientSide()) {
                 return InteractionResult.PASS;
             }
-            if (isChunkClaimed(level, entity.blockPosition()) && !hasAdminPermission(player)) {
+            if (isProtectedFrom(player, level, entity.blockPosition())) {
                 sendDeniedFeedback(player);
                 return InteractionResult.FAIL;
             }
@@ -113,7 +150,7 @@ public final class AdminClaimsFeature {
             if (!isEnabled() || level.isClientSide()) {
                 return InteractionResult.PASS;
             }
-            if (isChunkClaimed(level, entity.blockPosition()) && !hasAdminPermission(player)) {
+            if (isProtectedFrom(player, level, entity.blockPosition())) {
                 sendDeniedFeedback(player);
                 return InteractionResult.FAIL;
             }
@@ -141,6 +178,15 @@ public final class AdminClaimsFeature {
         String dimension = level != null ? level.dimension().identifier().toString() : "minecraft:overworld";
         String key = formatKey(dimension, pos.getX() >> 4, pos.getZ() >> 4);
         return CLAIMED_CHUNKS.contains(key);
+    }
+
+    /** True when pos is in an admin-claimed chunk and the player is not an admin (for features that change blocks). */
+    public static boolean isProtectedFrom(Player player, Level level, BlockPos pos) {
+        return isChunkClaimed(level, pos) && !hasAdminPermission(player);
+    }
+
+    public static boolean isProtected(Level level, BlockPos pos, Player player) {
+        return isProtectedFrom(player, level, pos);
     }
 
     public static boolean isProtectedAgainstExplosion(Level level, BlockPos pos) {
@@ -210,7 +256,6 @@ public final class AdminClaimsFeature {
     }
 
     public static void loadClaims(MinecraftServer server) {
-        CLAIMED_CHUNKS.clear();
         Path path = getStoragePath(server);
 
         // Fallback migration: if world data does not exist yet, import from global config
@@ -225,11 +270,17 @@ public final class AdminClaimsFeature {
         try (Reader reader = Files.newBufferedReader(path)) {
             Set<String> loaded = GSON.fromJson(reader, new TypeToken<Set<String>>(){}.getType());
             if (loaded != null) {
+                CLAIMED_CHUNKS.clear();
                 CLAIMED_CHUNKS.addAll(loaded);
+                LOGGER.info("[Lads SMP] Loaded {} admin claims from {}", CLAIMED_CHUNKS.size(), path);
             }
-            LOGGER.info("[Lads SMP] Loaded {} admin claims from {}", CLAIMED_CHUNKS.size(), path);
         } catch (Exception e) {
             LOGGER.error("Failed to load admin claims from {}", path, e);
+            try {
+                Path corrupt = path.resolveSibling(path.getFileName().toString() + ".corrupt-" + System.currentTimeMillis());
+                Files.copy(path, corrupt, StandardCopyOption.REPLACE_EXISTING);
+                LOGGER.warn("Corrupt admin claims file backed up to {}", corrupt);
+            } catch (Exception ignored) {}
         }
     }
 
@@ -239,9 +290,11 @@ public final class AdminClaimsFeature {
             if (path.getParent() != null) {
                 Files.createDirectories(path.getParent());
             }
-            try (Writer writer = Files.newBufferedWriter(path)) {
+            Path temp = path.resolveSibling(path.getFileName().toString() + ".tmp");
+            try (Writer writer = Files.newBufferedWriter(temp)) {
                 GSON.toJson(CLAIMED_CHUNKS, writer);
             }
+            Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception e) {
             LOGGER.error("Failed to save admin claims to {}", path, e);
         }
