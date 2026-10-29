@@ -85,7 +85,6 @@ public partial class ModpacksView : UserControl
     private int _browseOffset;
     private bool _browsed, _importing;
     private int _installing;
-    internal int InstallingCount { get => _installing; set => _installing = value; }
     private readonly bool _ready;
 
     private List<ModpackModItem> _instanceMods = new();
@@ -2349,20 +2348,20 @@ public partial class ModpacksView : UserControl
         try
         {
             string targetDir = Path.Combine(i.GameDirectory, folder);
-        Directory.CreateDirectory(targetDir);
-        int copied = 0;
-        foreach (var file in files)
-        {
-            try
+            Directory.CreateDirectory(targetDir);
+            int copied = 0;
+            foreach (var file in files)
             {
-                string dest = Path.Combine(targetDir, file.Name);
-                File.Copy(file.Path.LocalPath, dest, true);
-                copied++;
+                try
+                {
+                    string dest = Path.Combine(targetDir, file.Name);
+                    File.Copy(file.Path.LocalPath, dest, true);
+                    copied++;
+                }
+                catch (Exception ex) { ManageStatus.Text = $"Error copying {file.Name}: {ex.Message}"; }
             }
-            catch (Exception ex) { ManageStatus.Text = $"Error copying {file.Name}: {ex.Message}"; }
-        }
-        ManageStatus.Text = $"Installed {copied} file(s) into {folder}.";
-        RenderAllContent();
+            ManageStatus.Text = $"Installed {copied} file(s) into {folder}.";
+            RenderAllContent();
         }
         finally
         {
