@@ -145,7 +145,7 @@ try {
     $work = Join-Path $PSScriptRoot ('artifacts/releases/' + $version + '-' + [guid]::NewGuid().ToString('N'))
     $publish = Join-Path $work 'app'
     $packages = Join-Path $work 'packages'
-    New-Item -ItemType Directory -Path $publish,$packages -Force | Out-Null
+    New-Item -ItemType Directory -Path $publish,$packages -Force -WhatIf:$false | Out-Null
     if (-not $SkipCoreBuild) {
         Push-Location 'TheLadsCore'
         try {
@@ -176,7 +176,7 @@ try {
     # verifiesContentHash: this launcher checks a delta-rebuilt package by content hash (TheLadsLauncher/UpdateSignature.cs), so the
     # next release may ship a delta to it. Keep it true only while the launcher code in this commit does that.
     @{version=$version; commit=$commit; localChanges=($dirty.Count -gt 0); coreBuilt=(-not $SkipCoreBuild); verifiesContentHash=$true} |
-        ConvertTo-Json | Set-Content -LiteralPath (Join-Path $publish 'release-build.json')
+        ConvertTo-Json | Set-Content -LiteralPath (Join-Path $publish 'release-build.json') -WhatIf:$false
     & dotnet tool restore
     if ($LASTEXITCODE -ne 0) { throw 'Cannot restore pinned packaging tool.' }
     # A delta package only works for launchers that verify a rebuilt package by content hash. The marker is the release-build.json
@@ -216,7 +216,7 @@ try {
     # vpk lists the seeded previous release too. A release carries only its own packages: clients that are further behind
     # take the full package, and the previous full package is not a file of this release.
     $own = "-$version-"
-    Get-ChildItem -LiteralPath $packages -File | Where-Object { $_.Name -match '-(full|delta)\.nupkg$' -and -not $_.Name.Contains($own) } | Remove-Item -Force
+    Get-ChildItem -LiteralPath $packages -File | Where-Object { $_.Name -match '-(full|delta)\.nupkg$' -and -not $_.Name.Contains($own) } | Remove-Item -Force -WhatIf:$false
     $noBom = New-Object Text.UTF8Encoding $false
     $feedPath = Join-Path $packages 'releases.win.json'
     $feed = [IO.File]::ReadAllText($feedPath) | ConvertFrom-Json
@@ -231,7 +231,7 @@ try {
     }
     $listed = [IO.File]::ReadAllText((Join-Path $packages 'assets.win.json')) | ConvertFrom-Json
     if (@($listed | Where-Object { $_.RelativeFileName -like '*.nupkg' -and -not $_.RelativeFileName.Contains($own) }).Count -gt 0) { throw 'assets.win.json names a package of another version.' }
-    Copy-Item -LiteralPath $notes -Destination (Join-Path $packages 'RELEASE_NOTES.md')
+    Copy-Item -LiteralPath $notes -Destination (Join-Path $packages 'RELEASE_NOTES.md') -WhatIf:$false
     $buildInfo = Get-Content -LiteralPath (Join-Path $publish 'release-build.json') -Raw | ConvertFrom-Json
     $pkgHashes = [ordered]@{}
     Get-ChildItem -LiteralPath $packages -File | Sort-Object Name | ForEach-Object {
@@ -241,20 +241,22 @@ try {
     [IO.File]::WriteAllText((Join-Path $packages 'release-build.json'), (ConvertTo-Json $buildInfo -Depth 5))
     Get-ChildItem -LiteralPath $packages -File | Sort-Object Name | ForEach-Object {
         '{0}  {1}' -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name
-    } | Set-Content -LiteralPath (Join-Path $packages 'SHA256SUMS.txt')
+    } | Set-Content -LiteralPath (Join-Path $packages 'SHA256SUMS.txt') -WhatIf:$false
     if ($PrepareOnly) {
         Write-Host "Prepared local packages: $packages"
         Write-Host 'Nothing was uploaded. Local preparation is not a published release.'
         return
     }
     $assets = @(Get-ChildItem -LiteralPath $packages -File | Select-Object -ExpandProperty FullName)
-    & gh release create $tag @assets --repo $repo --verify-tag --draft --title "The Lads Client $version" --notes-file $notes
-    if ($LASTEXITCODE -ne 0) { throw 'Draft release/upload failed. Inspect the draft before retrying; do not publish incomplete assets.' }
-    # Verify that the draft contains every expected file before declaring it ready.
-    $remote = & gh release view $tag --repo $repo --json assets | ConvertFrom-Json
-    if ($LASTEXITCODE -ne 0) { throw 'Unable to verify uploaded draft assets.' }
-    foreach ($asset in Get-ChildItem -LiteralPath $packages -File) {
-        if (-not ($remote.assets | Where-Object { $_.name -eq $asset.Name -and $_.size -eq $asset.Length })) { throw "Draft asset missing or wrong size: $($asset.Name)" }
+    if ($PSCmdlet.ShouldProcess($tag, "Create draft release with $(@($assets).Count) assets")) {
+        & gh release create $tag @assets --repo $repo --verify-tag --draft --title "The Lads Client $version" --notes-file $notes
+        if ($LASTEXITCODE -ne 0) { throw 'Draft release/upload failed. Inspect the draft before retrying; do not publish incomplete assets.' }
+        # Verify that the draft contains every expected file before declaring it ready.
+        $remote = & gh release view $tag --repo $repo --json assets | ConvertFrom-Json
+        if ($LASTEXITCODE -ne 0) { throw 'Unable to verify uploaded draft assets.' }
+        foreach ($asset in Get-ChildItem -LiteralPath $packages -File) {
+            if (-not ($remote.assets | Where-Object { $_.name -eq $asset.Name -and $_.size -eq $asset.Length })) { throw "Draft asset missing or wrong size: $($asset.Name)" }
+        }
     }
     Write-Host "Draft ready: https://github.com/$repo/releases"
     Write-Host "Review notes and assets, then sign the release with tools/Sign-Release.ps1 -Version $version."

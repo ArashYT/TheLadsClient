@@ -125,6 +125,10 @@ try {
     }
 
     $manifest = [Text.Encoding]::UTF8.GetBytes((ConvertTo-Json -Compress ([ordered]@{ version = $Version; package = $package; sha256 = $sha; contentSha256 = $contentSha })))
+    if (-not $PSCmdlet.ShouldProcess($tag, "Sign release with key $Key and upload signatures")) {
+        Write-Host "WhatIf: Target $tag - Verified release assets and provenance. Skipping private key loading, signing, and signature upload under -WhatIf."
+        return
+    }
     $ecdsa = [Security.Cryptography.ECDsa]::Create()
     try {
         $ecdsa.ImportFromPem([IO.File]::ReadAllText($Key))
@@ -207,9 +211,7 @@ try {
     [IO.File]::WriteAllBytes((Join-Path $work 'lads-update.json'), $manifest)
     [IO.File]::WriteAllBytes((Join-Path $work 'lads-update.json.sig'), $signature)
 
-    if ($PSCmdlet.ShouldProcess($tag, "Upload signatures to release")) {
-        gh release upload $tag (Join-Path $work 'lads-update.json') (Join-Path $work 'lads-update.json.sig') (Join-Path $work 'SHA256SUMS.txt.sig') --repo $Repo --clobber
-        if ($LASTEXITCODE -ne 0) { throw 'Upload failed.' }
-    }
+    gh release upload $tag (Join-Path $work 'lads-update.json') (Join-Path $work 'lads-update.json.sig') (Join-Path $work 'SHA256SUMS.txt.sig') --repo $Repo --clobber
+    if ($LASTEXITCODE -ne 0) { throw 'Upload failed.' }
     "Signed $tag : $package sha256 $sha contentSha256 $contentSha and SHA256SUMS.txt"
 } finally { Pop-Location; if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force -WhatIf:$false } }
