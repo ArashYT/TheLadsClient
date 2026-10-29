@@ -2042,3 +2042,19 @@ async def test_offline_dms_cleared_after_hello_sent(social_app):
     dms_after = await store.get_offline_dms(B)
     assert len(dms_after) == 1
     assert dms_after[0]["text"] == "msg_persist_2"
+
+
+@pytest.mark.asyncio
+async def test_blocked_with_single_query(tmp_path):
+    store = social.SocialStore(tmp_path / "test.db")
+    u1 = "u" * 32
+    u2 = "v" * 32
+    u3 = "w" * 32
+    # u1 blocks u2
+    await store.block(u1, u2)
+    # u3 blocks u1
+    await store.block(u3, u1)
+    blocked = await store.blocked_with(u1)
+    assert blocked == {u2, u3}
+    blocked2 = await store.blocked_with(u2)
+    assert blocked2 == {u1}

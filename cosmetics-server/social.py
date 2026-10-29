@@ -569,6 +569,18 @@ class SocialStore:
                 return [row[0] for row in cursor.fetchall()]
         return await asyncio.to_thread(_op)
 
+    async def blocked_with(self, user_uuid: str) -> set[str]:
+        def _op():
+            with self._connect() as conn:
+                cursor = conn.execute(
+                    "SELECT blocked_uuid FROM blocks WHERE user_uuid = ? "
+                    "UNION "
+                    "SELECT user_uuid FROM blocks WHERE blocked_uuid = ?",
+                    (user_uuid, user_uuid)
+                )
+                return {row[0] for row in cursor.fetchall()}
+        return await asyncio.to_thread(_op)
+
     async def get_block_count(self, user_uuid: str) -> int:
         def _op():
             with self._connect() as conn:
@@ -971,9 +983,10 @@ class SocialHub:
 
         # Broadcast offline presence to friends (shielded)
         friends = await self.store.get_friends(peer.uuid)
+        blocked = await self.store.blocked_with(peer.uuid)
         for f in friends:
             f_uuid = f["uuid"]
-            if await self.store.is_any_blocked(peer.uuid, f_uuid):
+            if f_uuid in blocked:
                 continue
             f_peer = self.peers.get(f_uuid)
             if f_peer and not f_peer.gone:
@@ -981,9 +994,10 @@ class SocialHub:
 
     async def broadcast_presence(self, peer: SocialPeer) -> None:
         friends = await self.store.get_friends(peer.uuid)
+        blocked = await self.store.blocked_with(peer.uuid)
         for f in friends:
             f_uuid = f["uuid"]
-            if await self.store.is_any_blocked(peer.uuid, f_uuid):
+            if f_uuid in blocked:
                 continue
             f_peer = self.peers.get(f_uuid)
             if f_peer and not f_peer.gone:
@@ -1009,11 +1023,12 @@ class SocialHub:
 
     async def build_hello(self, peer: SocialPeer) -> dict:
         friends_raw = await self.store.get_friends(peer.uuid)
+        blocked = await self.store.blocked_with(peer.uuid)
         friends = []
         for f in friends_raw:
             f_uuid = f["uuid"]
             pres = {"state": "offline"}
-            if not await self.store.is_any_blocked(peer.uuid, f_uuid):
+            if f_uuid not in blocked:
                 f_peer = self.peers.get(f_uuid)
                 if f_peer and not f_peer.gone:
                     fp = self.format_presence_for(f_peer, peer)
@@ -1224,6 +1239,8 @@ async def serve(hub: SocialHub, peer: SocialPeer) -> None:
                     peer.send_json({"t": "error", "code": "bad", "ref": "presence"})
                     continue
 
+                if peer.presence == pres:
+                    continue
                 old_world = peer.presence.get("world")
                 peer.presence = pres
 
