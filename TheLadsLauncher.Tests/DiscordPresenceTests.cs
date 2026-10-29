@@ -34,7 +34,7 @@ public class DiscordPresenceTests
     [InlineData("Customize Icon · MyProfile", "Customize Icon")]
     [InlineData("Customize Icon - SecretName", "Customize Icon")]
     [InlineData("Customize Icon — Personal", "Customize Icon")]
-    [InlineData("Profile Settings: TestUser", "Profile Settings")]
+    [InlineData("Microsoft Account Sign-In", "Microsoft Account Sign-In")]
     [InlineData("The Lads Client — Add Account", "Add Account")]
     [InlineData("Settings", "Settings")]
     public void SanitizeDialogTitle_StripsSeparatorsAndLauncherPrefix(string title, string expected)

@@ -50,9 +50,16 @@ public static class DiscordPresence
     {
         if (string.IsNullOrWhiteSpace(title)) return null;
         var clean = title.Replace("The Lads Client — ", "").Replace("The Lads Client - ", "").Trim();
-        int sepIdx = clean.IndexOfAny(new[] { '·', '—', '-', ':' });
-        if (sepIdx > 0)
-            clean = clean[..sepIdx].Trim();
+        string[] separators = { " · ", " — ", " - " };
+        int earliest = -1;
+        foreach (var sep in separators)
+        {
+            int idx = clean.IndexOf(sep, StringComparison.Ordinal);
+            if (idx > 0 && (earliest == -1 || idx < earliest))
+                earliest = idx;
+        }
+        if (earliest > 0)
+            clean = clean[..earliest].Trim();
         return string.IsNullOrWhiteSpace(clean) ? "In a dialog" : clean;
     }
 
