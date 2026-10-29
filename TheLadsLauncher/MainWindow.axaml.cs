@@ -1347,6 +1347,11 @@ public partial class MainWindow : Window
         {
             _accountCacheRecoveryShown = true;
             Log("[AUTH] " + recovery);
+            StatusText.Text = recovery;
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await ShowLadsDialogAsync("Account Cache Restored", recovery);
+            });
         }
         var allAccountNames = new List<string>();
 
