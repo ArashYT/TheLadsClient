@@ -892,11 +892,12 @@ class CosmeticsStore:
 # ---------------------------------------------------------------------------
 
 class Peer:
-    __slots__ = ("ws", "uuid", "room", "emote", "since", "window", "sent", "gone")
+    __slots__ = ("ws", "uuid", "room", "emote", "since", "window", "sent", "gone", "room_history")
 
     def __init__(self, ws, uuid):
         self.ws, self.uuid, self.room, self.emote, self.since = ws, uuid, None, None, 0.0
         self.window, self.sent, self.gone = 0.0, 0, False
+        self.room_history = []
 
     def view(self, now: float) -> dict:
         return {"uuid": self.uuid, "emote": self.emote, "age": int((now - self.since) * 1000) if self.emote else 0}
@@ -1083,6 +1084,12 @@ async def serve(hub: Hub, peer: Peer) -> None:
             room = msg.get("room")
             if room is not None and not (isinstance(room, str) and ROOM_RE.fullmatch(room)):
                 return
+            now_mono = time.monotonic()
+            peer.room_history = [t for t in peer.room_history if t > now_mono - 60.0]
+            if len(peer.room_history) >= 6:
+                await send(peer, {"t": "error", "error": "room rate limit exceeded"})
+                continue
+            peer.room_history.append(now_mono)
             await hub.join(peer, room)
         elif kind == "emote":
             emote = msg.get("id")

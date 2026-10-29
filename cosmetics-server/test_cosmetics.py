@@ -1320,3 +1320,18 @@ def test_check_http_auth_non_ascii():
     app[cosmetics.AUTH_SECRET] = "my_secret"
     req = type("Req", (), {"headers": {"Authorization": "Bearer token_\xff\xfe"}, "app": app})()
     assert cosmetics._check_http_auth(req) is False
+
+
+async def test_room_switch_rate_limit(client):
+    ws, _ = await login(client, "Alice", "a" * 32)
+    # Login did 1st join; 5 more for 6 total allowed within 60s
+    for i in range(1, 6):
+        room_hash = f"{i:064x}"
+        await ws.send_json({"t": "room", "room": room_hash})
+        msg = await ws.receive_json(timeout=2)
+        assert msg.get("t") == "snapshot"
+    # 7th switch should return rate limit error
+    await ws.send_json({"t": "room", "room": "f" * 64})
+    err = await ws.receive_json(timeout=2)
+    assert err.get("t") == "error"
+    assert "room rate limit" in err.get("error", "")
