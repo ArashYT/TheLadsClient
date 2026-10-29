@@ -19,7 +19,7 @@ public final class LadsApiCodecChecks {
         checkRoundTripEmpty();
         checkRoundTripMaxIn();
         checkRejectOversized();
-        System.out.println("PASS " + passed + " lads:api codec checks: round-trip, empty, max bound, and oversize rejection");
+        System.out.println("PASS " + passed + " lads:api codec checks: round-trip, empty, max bound, and oversize drop");
     }
 
     private static void checkChannelIdentifier() {
@@ -73,13 +73,9 @@ public final class LadsApiCodecChecks {
         FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer(LadsApi.MAX_IN + 1));
         try {
             buf.writeZero(LadsApi.MAX_IN + 1);
-            boolean rejected = false;
-            try {
-                LadsApiPayload.CODEC.decode(buf);
-            } catch (IllegalArgumentException expected) {
-                rejected = expected.getMessage() != null && expected.getMessage().contains("exceeds max size");
-            }
-            require(rejected, "payload exceeding MAX_IN (" + (LadsApi.MAX_IN + 1) + " bytes) is rejected with IllegalArgumentException");
+            LadsApiPayload decoded = LadsApiPayload.CODEC.decode(buf);
+            boolean dropped = decoded.data() != null && decoded.data().length == 0 && buf.readableBytes() == 0;
+            require(dropped, "payload exceeding MAX_IN (" + (LadsApi.MAX_IN + 1) + " bytes) is dropped as empty payload and bytes skipped");
         } finally {
             buf.release();
         }
