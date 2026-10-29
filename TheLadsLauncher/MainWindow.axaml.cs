@@ -438,8 +438,16 @@ public partial class MainWindow : Window
         _statSmoothTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
         _statSmoothTimer.Tick += (s, e) =>
         {
-            _dispCpu += (_targetCpu - _dispCpu) * 0.18;
-            _dispRam += (_targetRam - _dispRam) * 0.18;
+            if (settings.ReducedMotion)
+            {
+                _dispCpu = _targetCpu;
+                _dispRam = _targetRam;
+            }
+            else
+            {
+                _dispCpu += (_targetCpu - _dispCpu) * 0.18;
+                _dispRam += (_targetRam - _dispRam) * 0.18;
+            }
             CpuText.Text = $"{_dispCpu:F1}%";
             RamText.Text = $"{_dispRam:F2} GB";
         };
@@ -681,8 +689,9 @@ public partial class MainWindow : Window
             _particleTimer?.Stop();
         }
 
-        // Stat smooth timer
-        if (shouldAnimate && !settings.ReducedMotion)
+        // Stat smooth timer (gate only on visibility and not minimized; drop ReducedMotion and AnyGameRunning so readouts always update)
+        bool isWindowVisible = IsVisible && WindowState != WindowState.Minimized;
+        if (isWindowVisible)
         {
             if (_statSmoothTimer != null && !_statSmoothTimer.IsEnabled) _statSmoothTimer.Start();
         }
@@ -1156,6 +1165,14 @@ public partial class MainWindow : Window
             else
             {
                 GameStateText.Text = "IDLE";
+            }
+
+            if (_statSmoothTimer == null || !_statSmoothTimer.IsEnabled)
+            {
+                _dispCpu = _targetCpu;
+                _dispRam = _targetRam;
+                CpuText.Text = $"{_dispCpu:F1}%";
+                RamText.Text = $"{_dispRam:F2} GB";
             }
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
