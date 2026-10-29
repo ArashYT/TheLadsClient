@@ -1,6 +1,7 @@
 package com.thelads.smp.features;
 
 import com.thelads.smp.config.LadsConfig;
+import com.thelads.smp.features.arise.nb1.AdminClaimsFeature;
 import com.thelads.smp.mixin.MixinCropBlockAccessor;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.core.BlockPos;
@@ -79,6 +80,7 @@ public final class RightClickHarvestManager {
                 if (radius == 1 && circle) {
                     for (Direction dir : CARDINAL_DIRECTIONS) {
                         BlockPos targetPos = pos.relative(dir);
+                        if (AdminClaimsFeature.isProtected(level, targetPos, player)) continue;
                         BlockState targetState = level.getBlockState(targetPos);
                         if ((targetState.getBlock() instanceof CropBlock || targetState.getBlock() instanceof NetherWartBlock) && isMature(targetState)) {
                             harvestAndReplant(level, targetPos, targetState, player, held);
@@ -90,6 +92,7 @@ public final class RightClickHarvestManager {
                             if (dx == 0 && dz == 0) continue;
                             if (circle && dx * dx + dz * dz > radius * radius + 1) continue;
                             BlockPos targetPos = pos.offset(dx, 0, dz);
+                            if (AdminClaimsFeature.isProtected(level, targetPos, player)) continue;
                             BlockState targetState = level.getBlockState(targetPos);
                             if ((targetState.getBlock() instanceof CropBlock || targetState.getBlock() instanceof NetherWartBlock) && isMature(targetState)) {
                                 harvestAndReplant(level, targetPos, targetState, player, held);
@@ -124,6 +127,7 @@ public final class RightClickHarvestManager {
             }
             if (!level.isClientSide()) {
                 for (BlockPos cur = top; !cur.equals(bottom); cur = cur.below()) {
+                    if (AdminClaimsFeature.isProtected(level, cur, player)) continue;
                     level.destroyBlock(cur, true, player);
                 }
                 player.causeFoodExhaustion(0.005f);
