@@ -56,15 +56,24 @@ public final class UsefulClipboardFeature {
         return AriseNB1Config.get().usefulClipboard.enabled;
     }
 
+    public static String clampText(String text, int maxChars) {
+        if (text == null) return "";
+        if (maxChars <= 0) return "";
+        return text.length() <= maxChars ? text : text.substring(0, maxChars);
+    }
+
     public static void savePlayerClipboardText(ServerPlayer player, String text) {
-        if (!isEnabled()) return;
+        if (!isEnabled() || player == null || player.isSpectator() || text == null) return;
+
+        int max = Math.max(0, AriseNB1Config.get().usefulClipboard.maxCharacters);
+        String clamped = clampText(text, max);
 
         ItemStack stack = player.getItemInHand(InteractionHand.MAIN_HAND);
         if (!stack.is(CLIPBOARD)) {
             stack = player.getItemInHand(InteractionHand.OFF_HAND);
         }
         if (stack.is(CLIPBOARD)) {
-            CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putString("ClipboardText", text));
+            CustomData.update(DataComponents.CUSTOM_DATA, stack, tag -> tag.putString("ClipboardText", clamped));
         }
     }
 }
