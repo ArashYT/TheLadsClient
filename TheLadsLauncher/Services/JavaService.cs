@@ -31,7 +31,7 @@ public class JavaService : IJavaService
         }
         else
         {
-            var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+            var client = new HttpClient();
             client.DefaultRequestHeaders.UserAgent.ParseAdd(LauncherHttp.UserAgent);
             _httpClient = client;
         }
