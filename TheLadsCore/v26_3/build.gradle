@@ -155,7 +155,34 @@ tasks.register('verifyJadePackaging') {
         } finally { archive.close() }
     }
 }
-tasks.named('check') { dependsOn tasks.named('verifyJadePackaging') }
+tasks.register('verifyThirdPartyNotices') {
+    dependsOn tasks.named('jar')
+    doLast {
+        def archive = new java.util.zip.ZipFile(tasks.named('jar').get().archiveFile.get().asFile)
+        try {
+            def entries = archive.entries().collect { it.name } as Set
+            def noticeEntry = archive.getEntry('assets/theladscore/licenses/THIRD_PARTY_NOTICES.txt')
+            if (noticeEntry == null) throw new GradleException('Missing assets/theladscore/licenses/THIRD_PARTY_NOTICES.txt in built jar')
+            def text = archive.getInputStream(noticeEntry).text
+            def matcher = text =~ /`([^`\n]+)`/
+            def missing = []
+            while (matcher.find()) {
+                def path = matcher.group(1).trim()
+                if (path.startsWith('assets/') || path.startsWith('META-INF/lads-sources/')) {
+                    if (path.endsWith('/')) {
+                        if (!entries.any { it.startsWith(path) }) missing << path
+                    } else {
+                        if (!entries.contains(path)) missing << path
+                    }
+                }
+            }
+            if (!missing.isEmpty()) {
+                throw new GradleException("THIRD_PARTY_NOTICES references paths missing from jar: " + missing)
+            }
+        } finally { archive.close() }
+    }
+}
+tasks.named('check') { dependsOn tasks.named('verifyJadePackaging'), tasks.named('verifyThirdPartyNotices') }
 
 // Embedded LGPL mods (1.4.6): the complete modified sources ship in the jar beside their notices.
 processResources {

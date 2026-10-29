@@ -18,7 +18,7 @@ components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar
   License: MIT License (https://github.com/Lenni0451/Reflect)
 
 * CatConfig & CatConfig-MC (`catconfig-0.3.0`, `catconfig-mc-26.2-0.2.1`) — Bundled in 26.2, 26.3
-  License: MIT License (see `META-INF/lads-sources/catconfig/` or `v26_3/libs/`)
+  License: MIT License (see `assets/theladscore/licenses/CatConfig-LICENSE.txt` and `assets/theladscore/licenses/CatConfig-MC-LICENSE.txt`)
 
 * java-objc-bridge (`ca.weblite:java-objc-bridge:1.0.0`) — Bundled in 26.2, 26.3
   Copyright (c) Web Lite Solutions Corp. (Steve Hannah)
@@ -88,13 +88,13 @@ components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar
 * Jade (Minecraft 26.2 and 26.3 builds only)
   Copyright (c) Snownee
   License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC-BY-NC-SA-4.0)
-  License & Notice: `META-INF/lads-sources/jade/LICENSE`, `META-INF/lads-sources/jade/NOTICE.txt`
+  License & Notice: `assets/theladscore/licenses/Jade-NOTICE.txt`, `assets/theladscore/licenses/Jade-CC-BY-NC-SA-4.0.txt`
   Modified Sources: `META-INF/lads-sources/jade/`
 
 * Controlling & Clumps
   Copyright (c) Jaredlll08
-  License: MIT License (see `META-INF/lads-sources/clumps/` or upstream repositories)
-  Modified Sources: `META-INF/lads-sources/clumps/`
+  License: MIT License (see `META-INF/lads-sources/controlling/LICENSE`, `META-INF/lads-sources/controlling/NOTICE.txt`, `META-INF/lads-sources/clumps/LICENSE.txt`)
+  Modified Sources: `META-INF/lads-sources/controlling/`, `META-INF/lads-sources/clumps/`
 
 * EntityCulling
   Copyright (c) tr7zw / LogisticsCraft (OcclusionCulling)

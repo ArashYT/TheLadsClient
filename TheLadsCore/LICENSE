@@ -64,8 +64,8 @@ placed into the public domain and remain under their original authors' copyright
 
 - CC-BY-NC-SA-4.0 (Minecraft 26.2 and 26.3 builds):
   - Jade (`snownee.jade.*`) by Snownee is source-integrated in the 26.2 (`v26_2`) and 26.3 (`v26_3`)
-    builds for native HUD/tooltip integration and addon API compatibility. Complete modified sources
-    are bundled under `META-INF/lads-sources/jade/`. Use and redistribution of the 26.2/26.3
+    builds for native HUD/tooltip integration and addon API compatibility. License texts are bundled
+    under `assets/theladscore/licenses/Jade-NOTICE.txt` and `assets/theladscore/licenses/Jade-CC-BY-NC-SA-4.0.txt`. Use and redistribution of the 26.2/26.3
     Jade integration is strictly non-commercial under CC-BY-NC-SA-4.0.
 
-See `THIRD_PARTY_NOTICES.txt` and `META-INF/lads-sources/` for full attributions and license texts.
+See `THIRD_PARTY_NOTICES.txt`, `META-INF/lads-sources/`, and `assets/theladscore/licenses/` for full attributions and license texts.
