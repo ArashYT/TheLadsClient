@@ -2058,3 +2058,51 @@ async def test_blocked_with_single_query(tmp_path):
     assert blocked == {u2, u3}
     blocked2 = await store.blocked_with(u2)
     assert blocked2 == {u1}
+
+
+@pytest.mark.asyncio
+async def test_hello_queued_before_register_and_dms_cleared_only_on_send(social_app):
+    client = social_app
+    hub = client.server.app["social_hub"]
+
+    now_ms = int(time.time() * 1000)
+    await hub.store.save_offline_dm(to_uuid=B, from_uuid=A, text="Hello Bob offline", ts=now_ms)
+
+    ws_b, hello_b = await auth_ws(client, "Bob", B)
+    assert hello_b.get("t") == "hello"
+    assert len(hello_b.get("dms", [])) == 1
+    assert hello_b["dms"][0]["text"] == "Hello Bob offline"
+
+    # Allow background clear_offline_dms thread to complete
+    for _ in range(20):
+        await asyncio.sleep(0.02)
+        remaining = await hub.store.get_offline_dms(B)
+        if len(remaining) == 0:
+            break
+    assert len(remaining) == 0
+    await ws_b.close()
+
+
+@pytest.mark.asyncio
+async def test_offline_dms_retained_if_hello_send_fails(tmp_path):
+    store = social.SocialStore(tmp_path / "test_dms.db")
+    hub = social.SocialHub(insecure=True, store=store)
+    now_ms = int(time.time() * 1000)
+    await store.save_offline_dm(to_uuid=B, from_uuid=A, text="Keep me safe", ts=now_ms)
+
+    from unittest.mock import MagicMock
+    dummy_ws = MagicMock()
+    dummy_ws.closed = False
+    peer = social.SocialPeer(ws=dummy_ws, uuid=B, name="Bob", settings={}, ip="127.0.0.1")
+    peer.send_json = MagicMock(return_value=False)
+
+    hello_data = await hub.build_hello(peer)
+    sent = peer.send_json(hello_data)
+    await hub.register(peer)
+    if sent and hello_data.get("dms"):
+        max_ts = max(d["ts"] for d in hello_data["dms"])
+        await hub.store.clear_offline_dms(peer.uuid, max_ts=max_ts)
+
+    dms_left = await store.get_offline_dms(B)
+    assert len(dms_left) == 1
+    assert dms_left[0]["text"] == "Keep me safe"

@@ -1913,10 +1913,10 @@ async def handle_social_ws(request: web.Request) -> web.WebSocketResponse:
                 await ws.close(code=4003, message=b"unauthorized")
             return ws
 
-        await hub.register(peer)
         hello_data = await hub.build_hello(peer)
-        peer.send_json(hello_data)
-        if hello_data.get("dms"):
+        sent = peer.send_json(hello_data)
+        await hub.register(peer)
+        if sent and hello_data.get("dms"):
             max_ts = max(d["ts"] for d in hello_data["dms"])
             await hub.store.clear_offline_dms(peer.uuid, max_ts=max_ts)
 
