@@ -1483,7 +1483,7 @@ async def handle_experience_access(request):
     exp = request.match_info['exp']
     if exp not in INVITE_ONLY_EXPERIENCES:
         return web.json_response({"allowed": True})
-    names = {n.strip().lower() for n in request.query.getall('u', [])[:3] if n.strip()}
+    names = {n.strip().lower() for n in request.query.getall('u', [])[:10] if n.strip()}
     invited = set(load_state().get("experience_invites", {}).get(exp, []))
     return web.json_response({"allowed": bool(names & invited)}, headers={"Cache-Control": "no-store"})
 

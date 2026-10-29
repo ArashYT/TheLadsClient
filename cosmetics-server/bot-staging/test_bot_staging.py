@@ -343,18 +343,34 @@ def test_color_selection_rejected_if_not_in_catalog():
 
 
 @pytest.mark.asyncio
-async def test_experience_access_names_capped_and_rate_limited():
+async def test_experience_access_names_capped_and_rate_limited(bot, monkeypatch):
+    import json
     import bot
     from unittest.mock import MagicMock
+
+    fake_state = {"experience_invites": {"experimental": ["dave"]}}
+    monkeypatch.setattr(bot, "load_state", lambda: fake_state)
+
     req = MagicMock()
-    req.remote = "127.0.0.1"
+    req.remote = "10.0.0.1"
     req.headers = {}
     req.match_info = {"exp": "experimental"}
-    # 5 names submitted, only first 3 evaluated
+    # 4th name "dave" should be evaluated with cap=10
     req.query = MagicMock()
-    req.query.getall.return_value = ["alice", "bob", "carol", "dave", "eve"]
+    req.query.getall.return_value = ["alice", "bob", "carol", "dave"]
     resp = await bot.handle_experience_access(req)
     assert resp.status == 200
+    body = json.loads(resp.text)
+    assert body.get("allowed") is True
+
+    # 11th name should NOT be evaluated under cap=10
+    fake_state_11 = {"experience_invites": {"experimental": ["name_11"]}}
+    monkeypatch.setattr(bot, "load_state", lambda: fake_state_11)
+    req.query.getall.return_value = [f"name_{i}" for i in range(1, 12)]
+    resp11 = await bot.handle_experience_access(req)
+    assert resp11.status == 200
+    body11 = json.loads(resp11.text)
+    assert body11.get("allowed") is False
 
 
 def test_logging_configured_with_module_loggers():
