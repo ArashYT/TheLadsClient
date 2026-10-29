@@ -169,7 +169,7 @@ public sealed class ModIconService
     private async Task<byte[]?> DownloadAsync(string url, CancellationToken token)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.UserAgent.ParseAdd("TheLadsClient/" + Program.Version);
+        request.Headers.UserAgent.ParseAdd(LauncherHttp.UserAgent);
         using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength > MaximumIconBytes) return null;
         var bytes = await response.Content.ReadAsByteArrayAsync(token).ConfigureAwait(false);
