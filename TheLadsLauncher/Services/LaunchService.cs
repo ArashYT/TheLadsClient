@@ -417,7 +417,7 @@ public class LaunchService : ILaunchService
             throw new InvalidDataException($"{loader} manifest '{manifest}' does not match the selected version '{versionId}'. Repair this version before launching.");
     }
 
-    private sealed class LaunchCancellationHandler : DelegatingHandler
+    internal sealed class LaunchCancellationHandler : DelegatingHandler
     {
         private readonly CancellationToken _launchCancellation;
 

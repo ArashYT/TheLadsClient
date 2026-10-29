@@ -327,4 +327,31 @@ public class AutoUpdaterTests
         }
         finally { Directory.Delete(directory, true); }
     }
+
+    [Fact]
+    public async Task PollAsync_WhenForceOnNonInstalled_ReportsUpToDate()
+    {
+        var backend = new Backend { IsInstalled = false };
+        string reported = "";
+        await new AutoUpdater(backend).PollAsync(() => false, msg => reported = msg, force: true);
+        Assert.Contains("up to date", reported);
+    }
+
+    [Fact]
+    public async Task PollAsync_WhenForcedWithinNextCheckWindow_ChecksAnyway()
+    {
+        var backend = new Backend();
+        var updater = new AutoUpdater(backend);
+        await updater.PollAsync(() => false, _ => { });
+        Assert.Equal(1, backend.Downloads);
+
+        // A second non-forced check within 10 min does not download again
+        await updater.PollAsync(() => false, _ => { });
+        Assert.Equal(1, backend.Downloads);
+
+        // A forced check bypasses nextCheck window
+        backend.PendingVersion = null;
+        await updater.PollAsync(() => false, _ => { }, force: true);
+        Assert.Equal(2, backend.Downloads);
+    }
 }

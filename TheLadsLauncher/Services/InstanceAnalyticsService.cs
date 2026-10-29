@@ -78,7 +78,15 @@ public static class InstanceAnalyticsService
                         return rec;
                 }
             }
-            catch { }
+            catch (JsonException)
+            {
+                try
+                {
+                    var corruptPath = path + ".corrupt";
+                    File.Move(path, corruptPath, overwrite: true);
+                }
+                catch { }
+            }
         }
 
         return new InstanceAnalyticsRecord { InstanceId = instanceId };
@@ -99,8 +107,14 @@ public static class InstanceAnalyticsService
                         dict = JsonSerializer.Deserialize<Dictionary<string, InstanceAnalyticsRecord>>(File.ReadAllText(path))
                                ?? new Dictionary<string, InstanceAnalyticsRecord>(StringComparer.OrdinalIgnoreCase);
                     }
-                    catch
+                    catch (JsonException)
                     {
+                        try
+                        {
+                            var corruptPath = path + ".corrupt";
+                            File.Move(path, corruptPath, overwrite: true);
+                        }
+                        catch { }
                         dict = new Dictionary<string, InstanceAnalyticsRecord>(StringComparer.OrdinalIgnoreCase);
                     }
                 }
@@ -112,7 +126,8 @@ public static class InstanceAnalyticsService
                 dict[record.InstanceId] = record;
                 var dir = Path.GetDirectoryName(path);
                 if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-                File.WriteAllText(path, JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true }));
+                var json = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
+                LockFiles.WriteAtomicallyAsync(path, System.Text.Encoding.UTF8.GetBytes(json)).GetAwaiter().GetResult();
             }
             catch { }
         }

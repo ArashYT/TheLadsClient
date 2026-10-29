@@ -51,4 +51,23 @@ public class InstanceAnalyticsServiceTests
         string formatted = InstanceAnalyticsService.FormatPlayTime(seconds);
         Assert.Equal(expected, formatted);
     }
+
+    [Fact]
+    public void CorruptedAnalyticsFile_IsPreservedToCorruptFile_AndNewRecordCreated()
+    {
+        using var dir = new TestDirectory();
+        string instId = "corrupt-test";
+        string filePath = InstanceAnalyticsService.AnalyticsFilePath(dir.Path);
+        Directory.CreateDirectory(dir.Path);
+        File.WriteAllText(filePath, "{ this is not valid json !!!");
+
+        InstanceAnalyticsService.RecordLaunch(dir.Path, instId);
+
+        string corruptPath = filePath + ".corrupt";
+        Assert.True(File.Exists(corruptPath), "Corrupt file was not preserved");
+        Assert.Equal("{ this is not valid json !!!", File.ReadAllText(corruptPath));
+
+        var stats = InstanceAnalyticsService.GetAnalytics(dir.Path, instId);
+        Assert.Equal(1, stats.LaunchCount);
+    }
 }

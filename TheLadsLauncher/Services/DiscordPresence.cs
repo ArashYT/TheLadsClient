@@ -46,7 +46,25 @@ public static class DiscordPresence
     /// <summary>The game version being started, shown over everything else until null.</summary>
     public static void Launching(string? version) { lock (Gate) _launching = version; Signal(); }
     /// <summary>An open dialog's window title, shown over the page until null.</summary>
-    public static void Dialog(string? title) { lock (Gate) _dialog = title?.Replace("The Lads Client — ", ""); Signal(); }
+    public static string? SanitizeDialogTitle(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return null;
+        var clean = title.Replace("The Lads Client — ", "").Replace("The Lads Client - ", "").Trim();
+        string[] separators = { " · ", " — ", " - " };
+        int earliest = -1;
+        foreach (var sep in separators)
+        {
+            int idx = clean.IndexOf(sep, StringComparison.Ordinal);
+            if (idx > 0 && (earliest == -1 || idx < earliest))
+                earliest = idx;
+        }
+        if (earliest > 0)
+            clean = clean[..earliest].Trim();
+        return string.IsNullOrWhiteSpace(clean) ? "In a dialog" : clean;
+    }
+
+    /// <summary>An open dialog's window title, shown over the page until null.</summary>
+    public static void Dialog(string? title) { lock (Gate) _dialog = SanitizeDialogTitle(title); Signal(); }
     public static void GameRunning(bool running) { lock (Gate) _gameRunning = running; Signal(); }
 
     public static string PageLabel(string page) => page switch
@@ -114,7 +132,7 @@ public static class DiscordPresence
                     continue;
                 }
             }
-            catch (Exception e) when (e is IOException or TimeoutException or OperationCanceledException or InvalidDataException or JsonException)
+            catch (Exception e)
             {
                 Log($"[Discord] {e.Message} Retrying.");
                 pipe?.Dispose(); pipe = null; sent = null;
@@ -133,7 +151,7 @@ public static class DiscordPresence
         {
             var pipe = new NamedPipeClientStream(".", $"discord-ipc-{i}", PipeDirection.InOut, PipeOptions.Asynchronous);
             try { await pipe.ConnectAsync(100); }
-            catch (Exception e) when (e is TimeoutException or IOException) { pipe.Dispose(); continue; }
+            catch (Exception e) when (e is TimeoutException or IOException or UnauthorizedAccessException) { pipe.Dispose(); continue; }
             await WriteAsync(pipe, 0, new JsonObject { ["v"] = 1, ["client_id"] = ApplicationId });
             var (op, ready) = await ReadAsync(pipe);
             if (op == 1 && (string?)ready["evt"] == "READY") { Log("[Discord] Connected."); return pipe; }

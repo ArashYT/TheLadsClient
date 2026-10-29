@@ -8,6 +8,7 @@ namespace TheLadsLauncher.Services;
 
 public interface IProfileService
 {
+    string? StartupWarning { get; }
     IReadOnlyList<LauncherProfile> GetProfiles();
     LauncherProfile? GetProfile(string id);
     LauncherProfile GetActiveProfile();

@@ -28,4 +28,26 @@ public class DiscordPresenceTests
      InlineData("Skins"), InlineData("Settings"), InlineData("Mods"), InlineData("BrowseMods"), InlineData("ModSettings"), InlineData("Packs"),
      InlineData("Shaders"), InlineData("DataPacks"), InlineData("Files"), InlineData("Gallery"), InlineData("Logs")]
     public void EveryLauncherPageHasItsOwnLabel(string page) => Assert.NotEqual("In the launcher", DiscordPresence.PageLabel(page));
+
+    [Theory]
+    [InlineData("The Lads Client — Customize Icon · MyProfile", "Customize Icon")]
+    [InlineData("Customize Icon · MyProfile", "Customize Icon")]
+    [InlineData("Customize Icon - SecretName", "Customize Icon")]
+    [InlineData("Customize Icon — Personal", "Customize Icon")]
+    [InlineData("Microsoft Account Sign-In", "Microsoft Account Sign-In")]
+    [InlineData("The Lads Client — Add Account", "Add Account")]
+    [InlineData("Settings", "Settings")]
+    public void SanitizeDialogTitle_StripsSeparatorsAndLauncherPrefix(string title, string expected)
+    {
+        Assert.Equal(expected, DiscordPresence.SanitizeDialogTitle(title));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SanitizeDialogTitle_EmptyOrNull_ReturnsNull(string? title)
+    {
+        Assert.Null(DiscordPresence.SanitizeDialogTitle(title));
+    }
 }

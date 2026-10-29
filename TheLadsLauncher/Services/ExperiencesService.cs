@@ -220,7 +220,7 @@ public static class ExperiencesService
     public static bool EnsureZeroSmpServerInstance(string baseDirectory) =>
         EnsureZeroSmpServer(Path.Combine(InstanceDirectory(baseDirectory, ZeroSmp.Id), "minecraft"));
 
-    private static readonly HttpClient DefaultHttp = CreateDefaultHttp();
+    public static readonly HttpClient DefaultHttp = CreateDefaultHttp();
 
     private static readonly HashSet<string> AllowedDownloadHosts = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -491,38 +491,91 @@ public static class ExperiencesService
         || Directory.Exists(Path.Combine(source, "all_mods"))
         || File.Exists(Path.Combine(source, "modrinth.index.json"));
 
+    private sealed class ProgressStream : Stream
+    {
+        private readonly Stream _inner;
+        private readonly long _total;
+        private readonly Action<string>? _status;
+        private long _done;
+        private int _lastMb = -1;
+
+        public ProgressStream(Stream inner, long total, Action<string>? status)
+        {
+            _inner = inner;
+            _total = total;
+            _status = status;
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            _inner.Write(buffer, offset, count);
+            Report(count);
+        }
+
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await _inner.WriteAsync(buffer, cancellationToken);
+            Report(buffer.Length);
+        }
+
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            await _inner.WriteAsync(buffer, offset, count, cancellationToken);
+            Report(count);
+        }
+
+        private void Report(int bytes)
+        {
+            _done += bytes;
+            if ((int)(_done >> 20) is var mb && mb != _lastMb)
+            {
+                _lastMb = mb;
+                _status?.Invoke(_total > 0 ? $"Downloading the pack... {mb}/{_total >> 20} MB" : $"Downloading the pack... {mb} MB");
+            }
+        }
+
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => _inner.CanWrite;
+        public override long Length => _inner.Length;
+        public override long Position { get => _inner.Position; set => _inner.Position = value; }
+        public override void Flush() => _inner.Flush();
+        public override Task FlushAsync(CancellationToken cancellationToken) => _inner.FlushAsync(cancellationToken);
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => _inner.SetLength(value);
+    }
+
     private static async Task DownloadArchiveAsync(HttpClient http, Uri url, string archive, string sha256, Action<string>? status, CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(sha256))
             throw new InvalidDataException("A published SHA-256 checksum is required to download the pack archive.");
 
         var part = archive + ".part";
-        using (var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token))
+        try
         {
-            response.EnsureSuccessStatusCode();
-            long total = response.Content.Headers.ContentLength ?? 0, done = 0;
-            await using var input = await response.Content.ReadAsStreamAsync(token);
-            await using var output = new FileStream(part, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-            var buffer = new byte[81920];
-            int read, lastMb = -1;
-            while ((read = await input.ReadAsync(buffer, token)) > 0)
+            using (var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token))
             {
-                await output.WriteAsync(buffer.AsMemory(0, read), token);
-                done += read;
-                if ((int)(done >> 20) is var mb && mb != lastMb)
-                {
-                    lastMb = mb;
-                    status?.Invoke(total > 0 ? $"Downloading the pack... {mb}/{total >> 20} MB" : $"Downloading the pack... {mb} MB");
-                }
+                response.EnsureSuccessStatusCode();
+                long total = response.Content.Headers.ContentLength ?? (1L << 31);
+                await using var input = await response.Content.ReadAsStreamAsync(token);
+                await using var fileOutput = new FileStream(part, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+                await using var progressOutput = new ProgressStream(fileOutput, response.Content.Headers.ContentLength ?? 0, status);
+                await ClientModInstaller.CopyWithStallTimeoutAsync(input, progressOutput, total > 0 ? total : (1L << 31), TimeSpan.FromSeconds(60), Path.GetFileName(archive), token);
             }
+            string actual = await FileSha256Async(part, token);
+            if (!actual.Equals(sha256, StringComparison.OrdinalIgnoreCase))
+            {
+                File.Delete(part);
+                throw new InvalidDataException($"The downloaded pack does not match its published checksum (expected {sha256}, got {actual}).");
+            }
+            File.Move(part, archive, overwrite: true);
         }
-        string actual = await FileSha256Async(part, token);
-        if (!actual.Equals(sha256, StringComparison.OrdinalIgnoreCase))
+        catch
         {
-            File.Delete(part);
-            throw new InvalidDataException($"The downloaded pack does not match its published checksum (expected {sha256}, got {actual}).");
+            try { if (File.Exists(part)) File.Delete(part); } catch { }
+            throw;
         }
-        File.Move(part, archive, overwrite: true);
     }
 
     private static async Task<string> FileSha256Async(string path, CancellationToken token)

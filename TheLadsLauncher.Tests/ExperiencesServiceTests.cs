@@ -753,4 +753,70 @@ public class ExperiencesServiceTests : IDisposable
     {
         Assert.Equal(experience, ExperiencesService.IsExperienceInstance(instanceId));
     }
+
+    private sealed class SlowCancellingHandler : HttpMessageHandler
+    {
+        private readonly CancellationTokenSource _cts;
+
+        public SlowCancellingHandler(CancellationTokenSource cts) => _cts = cts;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var stream = new CancellingStream(_cts);
+            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StreamContent(stream)
+            };
+            response.Content.Headers.ContentLength = 4096;
+            return Task.FromResult(response);
+        }
+
+        private sealed class CancellingStream : MemoryStream
+        {
+            private readonly CancellationTokenSource _cts;
+            private bool _cancelled;
+
+            public CancellingStream(CancellationTokenSource cts) : base(new byte[4096]) => _cts = cts;
+
+            public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            {
+                if (!_cancelled)
+                {
+                    _cancelled = true;
+                    _cts.Cancel();
+                    return await base.ReadAsync(buffer[..Math.Min(buffer.Length, 512)], cancellationToken);
+                }
+                throw new OperationCanceledException(_cts.Token);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task EnsurePackSourceAsync_WhenCancelled_CleansUpPartFile()
+    {
+        var exp = new ExperienceDefinition(
+            Id: "test-pack",
+            Title: "Test Pack",
+            Subtitle: "",
+            Description: "",
+            McVersion: "1.20.1",
+            Loader: "fabric",
+            LoaderVersion: "0.15.0",
+            ModCount: 1,
+            ServerAddress: "",
+            IconAsset: "",
+            RecommendedRamMb: 4096,
+            PackArchiveUrl: "https://example.com/test-pack.zip",
+            PackArchiveSha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        );
+
+        using var cts = new CancellationTokenSource();
+        using var http = new HttpClient(new SlowCancellingHandler(cts));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            ExperiencesService.EnsurePackSourceAsync(_tempDir, exp, http, null, cts.Token));
+
+        var part = ExperiencesService.PackArchivePath(_tempDir, exp.Id) + ".part";
+        Assert.False(File.Exists(part));
+    }
 }

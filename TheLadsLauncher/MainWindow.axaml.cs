@@ -52,6 +52,13 @@ public partial class MainWindow : Window
     private bool _launching;
     private CancellationTokenSource? _launchCts; // the launch overlay's Cancel, until the game process starts
     private bool _populatingProfileSelector = false;
+    private readonly Dictionary<string, TheLadsLauncher.Services.AutoRelaunchPolicy> _relaunchPolicies = new(StringComparer.OrdinalIgnoreCase);
+    private TheLadsLauncher.Services.AutoRelaunchPolicy GetRelaunchPolicy(string profileId)
+    {
+        if (!_relaunchPolicies.TryGetValue(profileId, out var policy))
+            _relaunchPolicies[profileId] = policy = new TheLadsLauncher.Services.AutoRelaunchPolicy();
+        return policy;
+    }
 
     private string _selectedAccountInternal = "";
     private string _selectedAccount 
@@ -243,6 +250,14 @@ public partial class MainWindow : Window
         WindowOpenedEvent.AddClassHandler<Window>((window, _) => { if (window is not MainWindow and not Views.GameStartupSplash) DiscordPresence.Dialog(window.Title); });
         WindowClosedEvent.AddClassHandler<Window>((window, _) => { if (window is not MainWindow and not Views.GameStartupSplash) DiscordPresence.Dialog(null); });
         ModsSubTabControl.SelectionChanged += ModsSubTab_SelectionChanged;
+        if (!string.IsNullOrEmpty(_profileService.StartupWarning))
+        {
+            Log($"[Profiles] {_profileService.StartupWarning}");
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await ShowLadsDialogAsync("Profiles Recovered", _profileService.StartupWarning);
+            });
+        }
         PopulateLaunchProfileSelector();
         LoadProfilesUI();
         LoadAccounts();
@@ -554,6 +569,7 @@ public partial class MainWindow : Window
     /// (which holds it on screen until the new launcher shows) and returns the args that reopen the launcher in this place.</summary>
     private string[] PrepareUpdateRestart(string version)
     {
+        FlushSettingsSave();
         if (WindowState == WindowState.Minimized) return Array.Empty<string>();   // nothing on screen to hold; the new launcher opens centred
         try
         {
@@ -638,8 +654,8 @@ public partial class MainWindow : Window
         StartupLoadingSpinner.Text = string.IsNullOrEmpty(message) ? "Loading resources" : message.TrimEnd('…', '.');
     }
 
-    private Task PollForUpdatesAsync() => _autoUpdater.PollAsync(UpdateBlocked, ReportUpdate,
-        Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") == "1" || _windowClosed);
+    private Task PollForUpdatesAsync(bool force = false) => _autoUpdater.PollAsync(UpdateBlocked, ReportUpdate,
+        Environment.GetEnvironmentVariable("LADS_SKIP_UPDATE") == "1" || _windowClosed, force);
 
     /// <summary>Installing restarts the launcher, so it waits for Minecraft, sign-in, mod work, Zero SMP / modpack installs and open dialogs.</summary>
     private bool UpdateBlocked() => _windowClosed || _launching || _modsBusy || _addingAccount || _showingMicrosoftSetup || _releaseNotesOpen
@@ -659,6 +675,17 @@ public partial class MainWindow : Window
             ShowStartupStatus(message);
             UpdateBannerText.Text = message;
             UpdateBanner.IsVisible = !string.IsNullOrEmpty(message);
+            if (!string.IsNullOrEmpty(message) && (message.StartsWith("Launcher is up to date") || message.StartsWith("Update server busy")))
+            {
+                DispatcherTimer.RunOnce(() =>
+                {
+                    if (UpdateBannerText.Text == message)
+                    {
+                        UpdateBannerText.Text = "";
+                        UpdateBanner.IsVisible = false;
+                    }
+                }, TimeSpan.FromSeconds(4));
+            }
         });
         if (!string.IsNullOrEmpty(message)) Log($"[Updater] {message}");
     }
@@ -904,7 +931,7 @@ public partial class MainWindow : Window
     {
         Log("[Updater] Manual update check triggered.");
         ReportUpdate("Checking for updates...");
-        await PollForUpdatesAsync();
+        await PollForUpdatesAsync(force: true);
     }
 
     private void MinimizeBtn_Click(object? sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
@@ -1355,6 +1382,11 @@ public partial class MainWindow : Window
         {
             _accountCacheRecoveryShown = true;
             Log("[AUTH] " + recovery);
+            StatusText.Text = recovery;
+            Dispatcher.UIThread.Post(async () =>
+            {
+                await ShowLadsDialogAsync("Account Cache Restored", recovery);
+            });
         }
         var allAccountNames = new List<string>();
 
@@ -2556,8 +2588,19 @@ public partial class MainWindow : Window
             .Select(a => new AccountSummary(a.Profile!.Username!, a.Profile.UUID ?? "", "microsoft"))
             .ToList();
         foreach (string name in settings.OfflineAccounts)
+        {
             if (!accounts.Any(a => string.Equals(a.username, name, StringComparison.OrdinalIgnoreCase)))
-                accounts.Add(new AccountSummary(name, AccountIdentity.OfflineUuid(name), "offline"));
+            {
+                try
+                {
+                    accounts.Add(new AccountSummary(name, AccountIdentity.OfflineUuid(name), "offline"));
+                }
+                catch (ArgumentException ex)
+                {
+                    Log($"[Accounts] Skipping invalid offline account '{name}': {ex.Message}");
+                }
+            }
+        }
         return accounts;
     }
 
@@ -4001,10 +4044,15 @@ public partial class MainWindow : Window
         await AfterModsChangedAsync();
     }
 
-    /// <summary>Every mod file of the profile to the Recycle Bin (yours too), saved choices cleared, LadsCore and the pack
-    /// reinstalled (ModStateService.ResetModsFolderAsync). The way out when a profile's Mods folder is beyond repair.</summary>
+    /// <summary>Checks game files, libraries and LadsCore mod integrity, reinstalling any missing or corrupted files.</summary>
     private async void RepairGameFiles_Click(object? sender, RoutedEventArgs e)
     {
+        if (_modsBusy || _launching)
+        {
+            ModsStatus("Cannot repair game files while a launch or mod update is in progress.", true);
+            return;
+        }
+
         var profile = _profileService.GetActiveProfile();
         if (IsGameRunningFor(_pathService.GetProfileDirectory(profile)))
         {
@@ -4012,16 +4060,34 @@ public partial class MainWindow : Window
             return;
         }
 
+        _modsBusy = true;
+        var repairBtn = sender as Button;
+        if (repairBtn != null) repairBtn.IsEnabled = false;
         ModsStatus($"Repairing game files for '{profile.Name}'...");
         try
         {
             var report = await TheLadsLauncher.Services.GameRepairService.RepairProfileAsync(AppContext.BaseDirectory, profile, s => ModsStatus(s));
-            ModsStatus($"Repair complete: {report.FilesChecked} files checked, {report.FilesRepaired} files repaired.");
-            await ShowLadsDialogAsync("Repair complete", $"Repair finished successfully for '{profile.Name}'.\n\n• Verified {report.FilesChecked} files\n• Repaired/restored {report.FilesRepaired} files", "OK");
+            if (report.Success)
+            {
+                ModsStatus($"Repair complete: {report.FilesChecked} checks passed, {report.FilesRepaired} items repaired.");
+                await ShowLadsDialogAsync("Repair complete", $"Repair finished successfully for '{profile.Name}'.\n\n• Verified {report.FilesChecked} checks\n• Repaired/restored {report.FilesRepaired} items", "OK");
+            }
+            else
+            {
+                string details = report.Messages.Count > 0 ? "\n\n• " + string.Join("\n• ", report.Messages) : "";
+                ModsStatus($"Repair finished with problems for '{profile.Name}'.", true);
+                await ShowLadsDialogAsync("Repair finished with problems", $"Game repair for '{profile.Name}' could not verify all files.{details}", "OK");
+            }
         }
         catch (Exception ex)
         {
             ModsStatus($"Repair failed: {ex.Message}", true);
+            await ShowLadsDialogAsync("Repair failed", $"Game repair encountered an unexpected error:\n\n{ex.Message}", "OK");
+        }
+        finally
+        {
+            _modsBusy = false;
+            if (repairBtn != null) repairBtn.IsEnabled = true;
         }
     }
 
@@ -4636,6 +4702,7 @@ public partial class MainWindow : Window
                 System.IO.File.WriteAllText(crashFile, ex.ToString());
             } catch { }
             Log($"[CRASH] {ex.Message}");
+            StatusText.Text = $"Launch failed: {ex.Message}";
         } finally {
             LaunchButton.IsEnabled = true;
             GameLaunchOverlay.IsVisible = false;
@@ -4724,12 +4791,23 @@ public partial class MainWindow : Window
         finally { _showingMicrosoftSetup = false; }
     }
 
-    private async Task LaunchGame(bool afterVersionSwitch = false, GraphicsRenderer.Relaunch? relaunch = null)
+    private async Task LaunchGame(bool afterVersionSwitch = false, GraphicsRenderer.Relaunch? relaunch = null, string? relaunchProfileId = null, bool isCrashRelaunch = false)
     {
         if (_launching || _addingAccount || _authCts != null || _showingMicrosoftSetup)
         {
-            if (afterVersionSwitch) Log("[Launcher] The game was not started again: a launch or sign-in is already in progress.");
+            if (afterVersionSwitch || isCrashRelaunch) Log("[Launcher] The game was not started again: a launch or sign-in is already in progress.");
             return;
+        }
+        if (!string.IsNullOrEmpty(relaunchProfileId))
+        {
+            var target = _profileService.GetProfile(relaunchProfileId);
+            if (target != null && !string.Equals(_profileService.GetActiveProfile().Id, target.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                _profileService.SetActiveProfile(target.Id);
+                ApplyProfile(_profileService.GetActiveProfile(), true);
+                PopulateLaunchProfileSelector();
+                LoadProfilesUI();
+            }
         }
         if (GameVersionPolicy.IsPaused(_profileService.GetActiveProfile().MinecraftVersion))
         {
@@ -5010,7 +5088,7 @@ public partial class MainWindow : Window
             // A renderer relaunch goes back where the player was (a world, a server or the title screen) instead.
             if (relaunch?.World is { } world) ModpackLauncher.JoinWorld(launchOpt, world);
             else if (relaunch?.Server is { } server) ModpackLauncher.JoinServer(launchOpt, server);
-            else if (relaunch == null && settings.AutoRejoinServer)
+            else if (relaunch == null && !isCrashRelaunch && settings.AutoRejoinServer)
             {
                 // Prefer a manually-picked server; fall back to the last log-detected one
                 string rejoinIp = !string.IsNullOrEmpty(settings.QuickLaunchServerIp)
@@ -5365,8 +5443,13 @@ public partial class MainWindow : Window
             {
                 StatusText.Text = $"Game crashed! (exit code: {exitCode}){suffix}";
                 Log($"[Launcher] Game exited with code {exitCode}");
-                HandleCrashDetection(gameDirectory);
-                if (settings.SendCrashReports && string.IsNullOrEmpty(profile.PackwizUrl))
+                var policy = GetRelaunchPolicy(profile.Id);
+                var uptime = AutoRelaunchPolicy.CalculateUptime(GameStart(process));
+                string relaunchReason = "Auto-relaunch disabled in settings.";
+                bool canRelaunch = settings.AutoRelaunchOnCrash && policy.ShouldRelaunch(uptime, cancelled, DateTimeOffset.UtcNow, out relaunchReason);
+                Log($"[Crash Detection] {relaunchReason}");
+                HandleCrashDetection(gameDirectory, canRelaunch, relaunchReason, profile);
+                if (settings.SendCrashReports && string.IsNullOrEmpty(profile.PackwizUrl) && policy.ShouldSendCrashReport(DateTimeOffset.UtcNow))
                     _ = SendCrashReportAsync(gameDirectory, process.StartInfo.WorkingDirectory, profile.MinecraftVersion, exitCode);
             }
             else
@@ -5512,7 +5595,6 @@ public partial class MainWindow : Window
                         Log($"[Launcher] Game window detected after {sw.Elapsed.TotalSeconds:F1}s.");
                         splash.SetStatus("Minecraft is ready to show");
                         splash.SetDetail("Opening game window...");
-                        TheLadsLauncher.Services.NotificationService.NotifyGameReady("Minecraft", !this.IsActive || this.WindowState == Avalonia.Controls.WindowState.Minimized || !this.IsVisible);
                         break;
                     }
                 }
@@ -5606,7 +5688,7 @@ public partial class MainWindow : Window
         await Dispatcher.UIThread.InvokeAsync(() => Log(error == null ? "[Crash] Crash report sent to the Lads team." : $"[Crash] Crash report not sent: {error}"));
     }
 
-    private void HandleCrashDetection(string gameDirectory)
+    private void HandleCrashDetection(string gameDirectory, bool allowAutoRelaunch = false, string? loopGuardReason = null, Models.LauncherProfile? crashedProfile = null)
     {
         try
         {
@@ -5684,10 +5766,20 @@ public partial class MainWindow : Window
 
             if (settings.AutoRelaunchOnCrash)
             {
-                Log("[Crash Detection] Auto-relaunching due to AutoRelaunchOnCrash setting.");
-                StatusText.Text = ("Auto-relaunching after crash... " + rendererHint).TrimEnd();
-                _ = LaunchGame();
-                return;
+                if (allowAutoRelaunch)
+                {
+                    Log("[Crash Detection] Auto-relaunching due to AutoRelaunchOnCrash setting.");
+                    StatusText.Text = ("Auto-relaunching after crash... " + rendererHint).TrimEnd();
+                    _ = LaunchGame(relaunchProfileId: crashedProfile?.Id, isCrashRelaunch: true);
+                    return;
+                }
+                else
+                {
+                    Log($"[Crash Detection] Auto-relaunch skipped: {loopGuardReason}");
+                    StatusText.Text = $"Auto-relaunch stopped: {loopGuardReason}";
+                    if (!string.IsNullOrEmpty(loopGuardReason))
+                        crashInfo += "\n\n⚠️ " + loopGuardReason;
+                }
             }
 
             ShowCrashDialog(crashInfo, crashFile);

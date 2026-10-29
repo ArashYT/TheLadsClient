@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using System;
+using TheLadsLauncher.Services;
 
 namespace TheLadsLauncher.Views;
 
@@ -48,9 +49,13 @@ public partial class AddOfflineAccountDialog : Window
             return;
         }
 
-        if (username.Length < 3 || username.Length > 16)
+        try
         {
-            ErrorLabel.Text = "Minecraft username must be between 3 and 16 characters.";
+            username = AccountIdentity.NormalizeOfflineName(username);
+        }
+        catch (ArgumentException ex)
+        {
+            ErrorLabel.Text = ex.Message;
             ErrorLabel.IsVisible = true;
             return;
         }

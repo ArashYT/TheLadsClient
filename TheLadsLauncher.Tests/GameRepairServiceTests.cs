@@ -41,7 +41,7 @@ public class GameRepairServiceTests
     }
 
     [Fact]
-    public async Task RepairProfileAsync_CleansCacheAndRestoresMarker()
+    public async Task RepairProfileAsync_WhenVersionInstallThrows_ReturnsFailureWithoutMarker()
     {
         using var dir = new TestDirectory();
         var profile = new LauncherProfile
@@ -52,6 +52,18 @@ public class GameRepairServiceTests
             CustomGameDir = dir.Path
         };
 
+        string versionId = GameVersionPolicy.ResolveVersionId(profile);
+
+        // Stub step 3: LadsCore mod exists so step 3 does not fail
+        var modsDir = Path.Combine(dir.Path, "mods");
+        Directory.CreateDirectory(modsDir);
+        File.WriteAllBytes(Path.Combine(modsDir, "theladscore.jar"), new byte[] { 0x50, 0x4B, 0x03, 0x04 });
+
+        // Stub step 4: Fabric version manifest exists and has valid json, so step 4 does not fail
+        var versionDir = Path.Combine(dir.Path, "versions", versionId);
+        Directory.CreateDirectory(versionDir);
+        File.WriteAllText(Path.Combine(versionDir, versionId + ".json"), "{\"id\":\"" + versionId + "\",\"inheritsFrom\":\"nonexistent-version-xyz\"}");
+
         var cacheDir = Path.Combine(dir.Path, ".lads-mod-cache");
         Directory.CreateDirectory(cacheDir);
         string cacheTmp = Path.Combine(cacheDir, "stale.tmp");
@@ -59,11 +71,13 @@ public class GameRepairServiceTests
 
         var report = await GameRepairService.RepairProfileAsync(dir.Path, profile);
 
-        Assert.True(report.Success);
+        // Steps 3 & 4 succeeded, but step 5 (integrity check / launcher install) failed.
+        // Repair must report failure and must NOT write .lads-verified marker.
+        Assert.False(report.Success);
         Assert.False(File.Exists(cacheTmp));
 
-        string versionId = GameVersionPolicy.ResolveVersionId(profile);
-        string marker = Path.Combine(dir.Path, "versions", versionId, ".lads-verified");
-        Assert.True(File.Exists(marker));
+        string marker = Path.Combine(versionDir, ".lads-verified");
+        Assert.False(File.Exists(marker));
+        Assert.Contains(report.Messages, m => m.Contains("Integrity check failed"));
     }
 }

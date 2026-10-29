@@ -15,21 +15,19 @@ public sealed class AvaloniaWindowNotifier(WindowNotificationManager manager) : 
 }
 
 /// <summary>
-/// Provides native OS and in-window notifications for launcher events (e.g. game launched / ready while minimized).
+/// Provides in-window notifications for launcher events.
 /// </summary>
 public static class NotificationService
 {
     private static ILauncherNotifier? _notifier;
-    private static System.Windows.Forms.NotifyIcon? _trayIcon;
 
-    public static void Initialize(ILauncherNotifier? notifier, System.Windows.Forms.NotifyIcon? trayIcon = null)
+    public static void Initialize(ILauncherNotifier? notifier)
     {
         _notifier = notifier;
-        _trayIcon = trayIcon;
     }
 
     /// <summary>
-    /// Displays a notification to the user (via in-window notification manager and/or native OS balloon notification).
+    /// Displays a notification to the user via in-window notification manager.
     /// </summary>
     public static void Notify(string title, string message, NotificationType type = NotificationType.Information)
     {
@@ -38,31 +36,5 @@ public static class NotificationService
             _notifier?.Show(title, message, type);
         }
         catch { }
-
-        if (OperatingSystem.IsWindows() && _trayIcon != null)
-        {
-            try
-            {
-                var tipIcon = type switch
-                {
-                    NotificationType.Error => System.Windows.Forms.ToolTipIcon.Error,
-                    NotificationType.Warning => System.Windows.Forms.ToolTipIcon.Warning,
-                    _ => System.Windows.Forms.ToolTipIcon.Info
-                };
-                _trayIcon.ShowBalloonTip(3000, title, message, tipIcon);
-            }
-            catch { }
-        }
-    }
-
-    /// <summary>
-    /// Notifies that the game process is ready and playing.
-    /// </summary>
-    public static void NotifyGameReady(string profileName, bool isMinimizedOrInactive = true)
-    {
-        if (isMinimizedOrInactive)
-        {
-            Notify("The Lads Client", $"Minecraft is ready! {profileName} launched successfully.", NotificationType.Success);
-        }
     }
 }
