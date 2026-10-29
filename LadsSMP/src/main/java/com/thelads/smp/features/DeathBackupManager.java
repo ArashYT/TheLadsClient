@@ -6,6 +6,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.mojang.serialization.JsonOps;
+import net.minecraft.resources.RegistryOps;
 import com.thelads.smp.config.LadsConfig;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.loader.api.FabricLoader;
@@ -83,17 +85,14 @@ public final class DeathBackupManager {
             snapshot.addProperty("cause", deathCause);
             snapshot.addProperty("xpLevel", player.experienceLevel);
 
+            RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, player.registryAccess());
+
             JsonArray itemsArr = new JsonArray();
             Inventory inv = player.getInventory();
             for (int i = 0; i < inv.getContainerSize(); i++) {
                 ItemStack stack = inv.getItem(i);
                 if (!stack.isEmpty()) {
-                    JsonObject entry = new JsonObject();
-                    entry.addProperty("slot", i);
-                    entry.addProperty("id", BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
-                    entry.addProperty("count", stack.getCount());
-                    entry.addProperty("damage", stack.getDamageValue());
-                    itemsArr.add(entry);
+                    itemsArr.add(serializeStack(ops, stack, i));
                 }
             }
 
@@ -101,11 +100,8 @@ public final class DeathBackupManager {
             for (EquipmentSlot eq : EquipmentSlot.VALUES) {
                 ItemStack eqStack = player.getItemBySlot(eq);
                 if (!eqStack.isEmpty()) {
-                    JsonObject entry = new JsonObject();
+                    JsonObject entry = serializeStack(ops, eqStack, -1);
                     entry.addProperty("slot", eq.getName());
-                    entry.addProperty("id", BuiltInRegistries.ITEM.getKey(eqStack.getItem()).toString());
-                    entry.addProperty("count", eqStack.getCount());
-                    entry.addProperty("damage", eqStack.getDamageValue());
                     equipArr.add(entry);
                 }
             }
@@ -152,6 +148,7 @@ public final class DeathBackupManager {
         int actualIdx = snapshots.size() - 1 - Math.max(0, indexFromLatest);
         if (actualIdx < 0 || actualIdx >= snapshots.size()) return -1;
 
+        RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, target.registryAccess());
         JsonObject snap = snapshots.get(actualIdx);
         int restored = 0;
         if (snap.has("inventory") && snap.get("inventory").isJsonArray()) {
@@ -159,25 +156,15 @@ public final class DeathBackupManager {
             for (JsonElement el : snap.getAsJsonArray("inventory")) {
                 if (!el.isJsonObject()) continue;
                 JsonObject obj = el.getAsJsonObject();
-                String idStr = obj.get("id").getAsString();
-                int count = obj.get("count").getAsInt();
-                int damage = obj.has("damage") ? obj.get("damage").getAsInt() : 0;
-                Identifier id = Identifier.tryParse(idStr);
-                if (id != null && BuiltInRegistries.ITEM.containsKey(id)) {
-                    Item item = BuiltInRegistries.ITEM.getValue(id);
-                    if (item != Items.AIR) {
-                        ItemStack stack = new ItemStack(item, count);
-                        if (damage > 0 && stack.isDamageableItem()) {
-                            stack.setDamageValue(damage);
-                        }
-                        int slot = obj.has("slot") ? obj.get("slot").getAsInt() : -1;
-                        if (slot >= 0 && slot < inv.getContainerSize() && inv.getItem(slot).isEmpty()) {
-                            inv.setItem(slot, stack);
-                        } else if (!inv.add(stack)) {
-                            target.drop(stack, false, null);
-                        }
-                        restored++;
+                ItemStack stack = deserializeStack(ops, obj);
+                if (!stack.isEmpty()) {
+                    int slot = obj.has("slot") ? obj.get("slot").getAsInt() : -1;
+                    if (slot >= 0 && slot < inv.getContainerSize() && inv.getItem(slot).isEmpty()) {
+                        inv.setItem(slot, stack);
+                    } else if (!inv.add(stack)) {
+                        target.drop(stack, false, null);
                     }
+                    restored++;
                 }
             }
         }
@@ -191,5 +178,43 @@ public final class DeathBackupManager {
         } catch (Throwable ignored) {
             return Path.of("build", "test-config", "ladssmp", "death_backups");
         }
+    }
+
+    public static JsonObject serializeStack(RegistryOps<JsonElement> ops, ItemStack stack, int slot) {
+        JsonObject entry = new JsonObject();
+        if (slot >= 0) {
+            entry.addProperty("slot", slot);
+        }
+        entry.addProperty("id", BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+        entry.addProperty("count", stack.getCount());
+        entry.addProperty("damage", stack.getDamageValue());
+        ItemStack.CODEC.encodeStart(ops, stack).result().ifPresent(json -> entry.add("stack", json));
+        return entry;
+    }
+
+    public static ItemStack deserializeStack(RegistryOps<JsonElement> ops, JsonObject obj) {
+        if (obj == null) return ItemStack.EMPTY;
+        JsonElement stackElement = obj.has("stack") ? obj.get("stack") : (obj.has("item") ? obj.get("item") : null);
+        if (stackElement != null) {
+            ItemStack parsed = ItemStack.CODEC.parse(ops, stackElement).result().orElse(ItemStack.EMPTY);
+            if (!parsed.isEmpty()) return parsed;
+        }
+        if (obj.has("id")) {
+            String idStr = obj.get("id").getAsString();
+            int count = obj.has("count") ? obj.get("count").getAsInt() : 1;
+            int damage = obj.has("damage") ? obj.get("damage").getAsInt() : 0;
+            Identifier id = Identifier.tryParse(idStr);
+            if (id != null && BuiltInRegistries.ITEM.containsKey(id)) {
+                Item item = BuiltInRegistries.ITEM.getValue(id);
+                if (item != Items.AIR) {
+                    ItemStack stack = new ItemStack(item, count);
+                    if (damage > 0 && stack.isDamageableItem()) {
+                        stack.setDamageValue(damage);
+                    }
+                    return stack;
+                }
+            }
+        }
+        return ItemStack.EMPTY;
     }
 }

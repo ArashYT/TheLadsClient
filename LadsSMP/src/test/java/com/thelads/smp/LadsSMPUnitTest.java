@@ -33,6 +33,7 @@ public class LadsSMPUnitTest {
         LadsConfig.setInstanceForTesting(new LadsConfig());
         ItemDisablerSystem.applyConfig(new DisabledContentConfig());
         LadsDataUpgrader.resetCounters();
+        LadsDataUpgrader.setTestMode(true);
     }
 
     @Test
