@@ -400,3 +400,41 @@ async def test_start_web_server_fatal_on_failure(bot, monkeypatch):
     monkeypatch.setattr(web.TCPSite, "start", fake_start)
     with pytest.raises(SystemExit):
         await bot.start_web_server(port=0)
+
+
+@pytest.mark.asyncio
+async def test_usage_stats_endpoints_and_targets(aiohttp_client, tmp_path, monkeypatch):
+    import uuid as uuid_mod
+    import usage_stats
+    from aiohttp import web
+
+    db_file = tmp_path / "test_usage.db"
+    monkeypatch.setattr(usage_stats, "DEFAULT_DB_PATH", db_file)
+    app = web.Application()
+    usage_stats.setup(app, db_path=db_file)
+    client = await aiohttp_client(app)
+
+    # 1. POST /usage with valid heartbeat
+    inst_id = str(uuid_mod.uuid4())
+    resp = await client.post("/usage", json={"install_id": inst_id, "version": "1.12.0"})
+    assert resp.status == 200
+    body = await resp.json()
+    assert body == {"ok": True}
+
+    # 2. GET /usage/summary returns aggregated counts
+    resp_sum = await client.get("/usage/summary")
+    assert resp_sum.status == 200
+    sum_body = await resp_sum.json()
+    assert sum_body.get("total_installs") == 1
+    assert sum_body.get("active_24h") == 1
+
+    # 3. get_stats_targets computes target channel strings without NameError
+    # Mock cached github downloads to 42
+    async def fake_downloads():
+        return 42
+    monkeypatch.setattr(usage_stats, "get_cached_github_downloads_async", fake_downloads)
+    targets = await usage_stats.get_stats_targets()
+    assert "Active (7d):" in targets
+    assert "Active (7d): 1" in targets["Active (7d):"]
+    assert "Downloads:" in targets
+    assert "Downloads: 42" in targets["Downloads:"]
