@@ -26,6 +26,10 @@ class LadsApiUiTest {
         assertEquals("Lads SMP", LadsApiUi.formatPolicyToastTitle("Lads SMP", 0));
         assertEquals("This server limits 2 Lads settings", LadsApiUi.formatPolicyToastTitle(null, 2));
         assertEquals("This server limits 2 Lads settings", LadsApiUi.formatPolicyToastTitle("", 2));
+        assertEquals("Lads SMP unlocks 1 Lads setting", LadsApiUi.formatPolicyToastTitle("Lads SMP", 0, 1));
+        assertEquals("Lads SMP unlocks 2 Lads settings", LadsApiUi.formatPolicyToastTitle("Lads SMP", 0, 2));
+        assertEquals("Lads SMP limits 3 Lads settings and unlocks 1", LadsApiUi.formatPolicyToastTitle("Lads SMP", 3, 1));
+        assertEquals("Lads SMP limits 1 Lads setting and unlocks 2", LadsApiUi.formatPolicyToastTitle("Lads SMP", 1, 2));
     }
 
     @Test
