@@ -50,7 +50,7 @@ public sealed class ModrinthReleaseVerifierTests
         {
             token.ThrowIfCancellationRequested();
             Assert.Equal("https://api.modrinth.com/v2/version/release1", request.RequestUri!.AbsoluteUri);
-            Assert.Contains(request.Headers.UserAgent, value => value.Product?.Name is "TheLadsLauncher" or "TheLadsClient");
+            Assert.Contains(request.Headers.UserAgent, value => value.Product?.Name == "TheLadsLauncher");
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json) });
         }
     }
