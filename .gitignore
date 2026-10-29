@@ -154,6 +154,8 @@ venv/
 *.jar
 !TheLadsCore/gradle/wrapper/gradle-wrapper.jar
 !TheLadsCore/v1_8_9/gradle/wrapper/gradle-wrapper.jar
+!LadsClientAPI/gradle/wrapper/gradle-wrapper.jar
+!LadsSMP/gradle/wrapper/gradle-wrapper.jar
 *.mp4
 *.gif
 *.zip

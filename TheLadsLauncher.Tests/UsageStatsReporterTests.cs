@@ -46,7 +46,8 @@ public class UsageStatsReporterTests
             settings,
             clientVersions: new[] { "1.8.9" },
             launcherVersion: "1.9.14",
-            os: "windows");
+            os: "windows",
+            isSandbox: false);
 
         Assert.NotNull(payload);
         Assert.True(Guid.TryParse(payload.InstallId, out _));
@@ -68,7 +69,8 @@ public class UsageStatsReporterTests
         var payload = UsageStatsReporter.BuildPayload(
             settings,
             clientVersions: new[] { "1.8.9" },
-            launcherVersion: "1.9.14");
+            launcherVersion: "1.9.14",
+            isSandbox: false);
 
         Assert.Null(payload);
     }
@@ -83,7 +85,7 @@ public class UsageStatsReporterTests
             InstallId = expectedGuid
         };
 
-        var payload = UsageStatsReporter.BuildPayload(settings, clientVersions: Array.Empty<string>());
+        var payload = UsageStatsReporter.BuildPayload(settings, clientVersions: Array.Empty<string>(), isSandbox: false);
 
         Assert.NotNull(payload);
         Assert.Equal(expectedGuid, payload.InstallId);
@@ -99,7 +101,7 @@ public class UsageStatsReporterTests
 
         var payload = UsageStatsReporter.BuildPayload(
             settings,
-            clientVersions: new[] { "1.20.1", "1.8.9", "1.20.1", "  ", "26.3" });
+            clientVersions: new[] { "1.20.1", "1.8.9", "1.20.1", "  ", "26.3" }, isSandbox: false);
 
         Assert.NotNull(payload);
         Assert.Equal(new[] { "1.20.1", "1.8.9", "26.3" }, payload.ClientVersionsUsed);
@@ -133,7 +135,7 @@ public class UsageStatsReporterTests
             SendAnonymousUsageStats = false
         };
 
-        bool result = await UsageStatsReporter.SendHeartbeatAsync(settings, client);
+        bool result = await UsageStatsReporter.SendHeartbeatAsync(settings, client, isSandbox: false);
 
         Assert.False(result);
         Assert.Equal(0, handler.RequestCount);
@@ -152,7 +154,7 @@ public class UsageStatsReporterTests
         };
         settings.ClientVersionsUsed.Add("1.8.9");
 
-        bool result = await UsageStatsReporter.SendHeartbeatAsync(settings, client);
+        bool result = await UsageStatsReporter.SendHeartbeatAsync(settings, client, isSandbox: false);
 
         Assert.True(result);
         Assert.Equal(1, handler.RequestCount);
@@ -170,5 +172,52 @@ public class UsageStatsReporterTests
         Assert.Equal(JsonValueKind.Array, cv.ValueKind);
         Assert.Equal("1.8.9", cv[0].GetString());
         Assert.True(root.TryGetProperty("os", out _));
+    }
+
+    [Fact]
+    public void BuildPayload_WhenSandboxEnvSet_AndNoOverride_ReturnsNull()
+    {
+        var settings = new LauncherSettings
+        {
+            SendAnonymousUsageStats = true,
+            InstallId = "4a187e14-d03b-487e-97c5-5553b6cb5921"
+        };
+
+        // Explicit isSandbox = true always returns null
+        var payloadExplicit = UsageStatsReporter.BuildPayload(settings, isSandbox: true);
+        Assert.Null(payloadExplicit);
+
+        // When default parameter is used under THELADS_DIR environment variable
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THELADS_DIR")))
+        {
+            var payloadDefault = UsageStatsReporter.BuildPayload(settings);
+            Assert.Null(payloadDefault);
+        }
+    }
+
+    [Fact]
+    public async Task SendHeartbeatAsync_WhenSandboxEnvSet_AndNoOverride_DoesNotSend()
+    {
+        var handler = new MockHttpMessageHandler();
+        using var client = new HttpClient(handler);
+
+        var settings = new LauncherSettings
+        {
+            SendAnonymousUsageStats = true,
+            InstallId = "4a187e14-d03b-487e-97c5-5553b6cb5921"
+        };
+
+        // Explicit isSandbox = true never sends
+        bool resultExplicit = await UsageStatsReporter.SendHeartbeatAsync(settings, client, isSandbox: true);
+        Assert.False(resultExplicit);
+        Assert.Equal(0, handler.RequestCount);
+
+        // When default parameter is used under THELADS_DIR environment variable
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("THELADS_DIR")))
+        {
+            bool resultDefault = await UsageStatsReporter.SendHeartbeatAsync(settings, client);
+            Assert.False(resultDefault);
+            Assert.Equal(0, handler.RequestCount);
+        }
     }
 }
