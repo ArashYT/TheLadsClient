@@ -407,12 +407,12 @@ public class CurseForgeModpackTests
         Directory.CreateDirectory(Path.Combine(instance.Directory, "mods"));
         File.WriteAllText(Path.Combine(instance.Directory, "mods", "a.jar"), "a");
 
-        var configDir = Path.Combine(instance.Directory, "config");
-        Directory.CreateDirectory(configDir);
-        var lockedFile = Path.Combine(configDir, "locked.txt");
+        var savesDir = Path.Combine(instance.Directory, "saves");
+        Directory.CreateDirectory(savesDir);
+        var lockedFile = Path.Combine(savesDir, "locked.txt");
         File.WriteAllText(lockedFile, "locked content");
 
-        Directory.CreateDirectory(Path.Combine(instance.GameDirectory, "config"));
+        Directory.CreateDirectory(Path.Combine(instance.GameDirectory, "saves"));
         using (var stream = new FileStream(lockedFile, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
         {
             ModpackLauncher.RepairCurseForgeLayout(instance);
@@ -424,6 +424,6 @@ public class CurseForgeModpackTests
         ModpackLauncher.RepairCurseForgeLayout(instance);
         Assert.False(Directory.Exists(Path.Combine(instance.Directory, "mods")));
         Assert.True(File.Exists(Path.Combine(instance.GameDirectory, "mods", "a.jar")));
-        Assert.True(File.Exists(Path.Combine(instance.GameDirectory, "config", "locked.txt")));
+        Assert.True(File.Exists(Path.Combine(instance.GameDirectory, "saves", "locked.txt")));
     }
 }
