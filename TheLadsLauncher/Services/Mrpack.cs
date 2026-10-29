@@ -81,11 +81,12 @@ public static class Mrpack
     private static readonly string[] LadsStatePrefixes = { "thelads_", "lads_", "lads-", ".lads-" };
 
     /// <summary>
-    /// Whether a pack path is one of Lads' own state files: server_bypasses.json (the per-server opt-outs from the anti-ban rules) and
-    /// the settings, profiles, accounts, mod state, renderer and switch files the game and this launcher keep at the top of the game
-    /// folder (thelads_*, lads_*, lads-*, .lads-*). They are the player's: a pack that could write them could switch the server rules
-    /// off or replace the player's settings. Both slashes, any case, "." and ".." segments, and the ":stream" and trailing dots and
-    /// spaces Windows ignores all name the same file, so the path is resolved first. Only the top level counts: nothing reads them elsewhere.
+    /// Whether a pack path is one of Lads' own state files: server_bypasses.json (the per-server opt-outs from the anti-ban rules),
+    /// install-id, and the settings, profiles, accounts, mod state, renderer and switch files the game and this launcher keep at the top
+    /// of the game folder (thelads_*, lads_*, lads-*, .lads-*), including under configureddefaults/ or matching 8.3 short names (~N).
+    /// They are the player's: a pack that could write them could switch the server rules off or replace the player's settings.
+    /// Both slashes, any case, "." and ".." segments, and the ":stream" and trailing dots and spaces Windows ignores all name the same
+    /// file, so the path is resolved first. Only the top level counts (or immediately under configureddefaults/): nothing reads them elsewhere.
     /// </summary>
     public static bool IsLadsStateFile(string relative)
     {

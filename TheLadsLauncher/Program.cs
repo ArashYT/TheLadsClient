@@ -137,8 +137,8 @@ class Program
             .AfterSetup(_ => Avalonia.Threading.Dispatcher.UIThread.UnhandledException += OnUiThreadException);
 
     /// <summary>
-    /// Writes an exception that nothing caught to logs\launcher_debug.txt (where MainWindow.Log writes) and, in full as the latest one,
-    /// to logs\crash_ui.txt. Synchronous, because the process may be going: the log is the only trace a fatal one leaves. Never throws.
+    /// Writes an exception that nothing caught to logs\launcher_debug.txt (where MainWindow.Log writes) and, for non-task exceptions,
+    /// in full as the latest one to logs\crash_ui.txt. Synchronous, because the process may be going: the log is the only trace a fatal one leaves. Never throws.
     /// </summary>
     internal static void LogUnhandled(string source, object? error)
     {
