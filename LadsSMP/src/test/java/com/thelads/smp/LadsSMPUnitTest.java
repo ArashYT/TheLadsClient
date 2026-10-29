@@ -276,7 +276,7 @@ public class LadsSMPUnitTest {
     }
 
     @Test
-    void testConfigPersistenceRoundTrip() {
+    void testConfigPersistenceRoundTrip() throws Exception {
         Path cfgPath = tempDir.resolve("config.json");
         LadsConfig cfg = new LadsConfig();
         cfg.features.eggHatchChance = 0.5;
@@ -290,8 +290,19 @@ public class LadsSMPUnitTest {
         disCfg.disabledItems.add("testmod:op_sword");
         DisabledContentConfig.save(disablerPath, disCfg);
 
-        ItemDisablerSystem.reload(disablerPath);
+        assertTrue(ItemDisablerSystem.reload(disablerPath));
         assertTrue(ItemDisablerSystem.isIdDisabled("testmod:op_sword"));
+
+        // B/6: Corrupt file must not wipe active config and must create backup
+        java.nio.file.Files.writeString(disablerPath, "{invalid json content,,");
+        assertFalse(ItemDisablerSystem.reload(disablerPath), "Corrupt config must return false on reload");
+        assertTrue(ItemDisablerSystem.isIdDisabled("testmod:op_sword"), "Active ban list must be preserved on corrupt reload");
+
+        // Verify .broken file created
+        try (var stream = java.nio.file.Files.list(tempDir)) {
+            assertTrue(stream.anyMatch(p -> p.getFileName().toString().startsWith("disabled_items.json.broken-")),
+                    "A .broken-* backup file must be created on corrupt parse");
+        }
     }
 
     @Test

@@ -91,13 +91,17 @@ public final class ItemDisablerSystem {
                 CONFIG.disabledItems.size(), CONFIG.lootOnlyDisabledItems.size(), CONFIG.recipeOnlyDisabledItems.size());
     }
 
-    public static synchronized void reload() {
-        reload(DisabledContentConfig.getDefaultPath());
+    public static synchronized boolean reload() {
+        return reload(DisabledContentConfig.getDefaultPath());
     }
 
-    public static synchronized void reload(Path configPath) {
+    public static synchronized boolean reload(Path configPath) {
         DisabledContentConfig loaded = DisabledContentConfig.load(configPath);
-        applyConfig(loaded);
+        if (loaded != null) {
+            applyConfig(loaded);
+            return true;
+        }
+        return false;
     }
 
     public static synchronized void applyConfig(DisabledContentConfig config) {

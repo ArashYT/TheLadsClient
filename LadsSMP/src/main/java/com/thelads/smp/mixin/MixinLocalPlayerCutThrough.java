@@ -30,7 +30,7 @@ public abstract class MixinLocalPlayerCutThrough {
     private static boolean ladssmp$isCutThroughAllowed() {
         if (!LadsConfig.get().features.cutThrough) return false;
         net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
-        if (mc.isSingleplayer()) return true;
+        if (mc.hasSingleplayerServer()) return true;
         try {
             return net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.canSend(
                     com.thelads.smp.features.arise.nb5.network.ParkourActionPayload.TYPE);
