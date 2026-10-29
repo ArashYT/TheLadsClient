@@ -698,11 +698,6 @@ public partial class MainWindow
         return false;
     }
 
-    private async void CopyTextToClipboard(string text)
-    {
-        await CopyTextToClipboardAsync(text);
-    }
-
     private async void CopyImageToClipboard(string path)
     {
         StatusText.Text = "Copying image to clipboard...";

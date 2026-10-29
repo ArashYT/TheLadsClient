@@ -188,7 +188,7 @@ public partial class MainWindow
         _ => null
     };
 
-    private Border BuildFileRow(string path, bool isDir, SharedFolderStatus? shared, List<(string, bool, TextBlock, TextBlock)>? pending = null)
+    private Border BuildFileRow(string path, bool isDir, SharedFolderStatus? shared, List<(string, bool, TextBlock, TextBlock)> pending)
     {
         string name = Path.GetFileName(path);
         var row = new Border { Classes = { "fileRow" } };
@@ -221,30 +221,7 @@ public partial class MainWindow
         Grid.SetColumn(sizeText, 2);
         grid.Children.Add(sizeText);
         var dateText = new TextBlock { Text = "", Foreground = Brush.Parse("#8F919C"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-
-        if (pending != null)
-        {
-            pending.Add((path, isDir, sizeText, dateText));
-        }
-        else
-        {
-            try
-            {
-                if (isDir)
-                {
-                    int count = Directory.EnumerateFileSystemEntries(path).Take(1000).Count();
-                    sizeText.Text = count == 0 ? "Empty" : count >= 1000 ? "999+ items" : count == 1 ? "1 item" : $"{count} items";
-                    dateText.Text = Directory.GetLastWriteTime(path).ToString("g");
-                }
-                else
-                {
-                    var info = new FileInfo(path);
-                    sizeText.Text = FormatBytes(info.Length);
-                    dateText.Text = info.LastWriteTime.ToString("g");
-                }
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { sizeText.Text = isDir ? "" : "size unknown"; }
-        }
+        pending.Add((path, isDir, sizeText, dateText));
         Grid.SetColumn(dateText, 3);
         grid.Children.Add(dateText);
 

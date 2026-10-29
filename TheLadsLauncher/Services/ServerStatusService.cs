@@ -94,9 +94,6 @@ public static class ServerStatusService
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or InvalidOperationException or FormatException) { return null; }
     }
 
-    /// <summary>Either API's JSON: {online, players{online,max}, motd{raw,clean}, icon "data:image/png;base64,...", version,
-    /// ip/ip_address, port}; mcsrvstat.us gives the MOTD as arrays of HTML-escaped lines and the version as a plain string,
-    /// mcstatus.io as strings and {name_clean}.</summary>
     /// <summary>Validates that the server favicon is a valid PNG with 64x64 dimensions, matching vanilla requirements.</summary>
     public static bool IsValidFaviconPng(byte[] png)
     {
@@ -108,6 +105,9 @@ public static class ServerStatusService
         return width == 64 && height == 64;
     }
 
+    /// <summary>Either API's JSON: {online, players{online,max}, motd{raw,clean}, icon "data:image/png;base64,...", version,
+    /// ip/ip_address, port}; mcsrvstat.us gives the MOTD as arrays of HTML-escaped lines and the version as a plain string,
+    /// mcstatus.io as strings and {name_clean}.</summary>
     public static ServerStatus Parse(string json)
     {
         var root = JsonNode.Parse(json)!;
