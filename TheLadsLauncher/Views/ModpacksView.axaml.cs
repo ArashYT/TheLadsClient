@@ -723,16 +723,22 @@ public partial class ModpacksView : UserControl
                         var info = FabricModMetadata.ReadJar(corePath, includeIcon: true);
                         if (info?.Icon is { Length: > 0 } iconBytes)
                         {
-                            using var ms = new MemoryStream(iconBytes);
-                            bitmap = Bitmap.DecodeToWidth(ms, 96);
+                            bitmap = await Task.Run(() =>
+                            {
+                                using var ms = new MemoryStream(iconBytes);
+                                return Bitmap.DecodeToWidth(ms, 96);
+                            });
                         }
                     }
                 }
                 else
                 {
                     var bytes = await Http.GetByteArrayAsync(url);
-                    using var ms = new MemoryStream(bytes);
-                    bitmap = Bitmap.DecodeToWidth(ms, 96);
+                    bitmap = await Task.Run(() =>
+                    {
+                        using var ms = new MemoryStream(bytes);
+                        return Bitmap.DecodeToWidth(ms, 96);
+                    });
                 }
                 CacheRemoteIcon(url, bitmap);
             }
@@ -781,6 +787,7 @@ public partial class ModpacksView : UserControl
     internal void OpenManage(ModpackInstance instance)
     {
         _selected = instance;
+        _screenshotsCountShown = 60;
         LibraryPanel.IsVisible = false;
         ManagePanel.IsVisible = true;
         ManageArt.Child = Art(instance, 82);
@@ -903,6 +910,7 @@ public partial class ModpacksView : UserControl
     private void Back_Click(object? sender, RoutedEventArgs e)
     {
         _selected = null;
+        _screenshotsCountShown = 60;
         ManagePanel.IsVisible = false;
         LibraryPanel.IsVisible = true;
         RenderCards();
@@ -2220,6 +2228,8 @@ public partial class ModpacksView : UserControl
         else Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
     }
 
+    private int _screenshotsCountShown = 60;
+
     private void LoadScreenshots()
     {
         if (_selected is not { } instance) return;
@@ -2234,9 +2244,13 @@ public partial class ModpacksView : UserControl
             .Where(f => f.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(f => File.GetLastWriteTimeUtc(f))
             .ToList();
-        ScreenshotsHeader.Text = $"SCREENSHOTS ({files.Count})";
 
-        foreach (var file in files.Take(60))
+        if (files.Count > _screenshotsCountShown)
+            ScreenshotsHeader.Text = $"SCREENSHOTS ({_screenshotsCountShown} of {files.Count})";
+        else
+            ScreenshotsHeader.Text = $"SCREENSHOTS ({files.Count})";
+
+        foreach (var file in files.Take(_screenshotsCountShown))
         {
             try
             {
@@ -2268,6 +2282,36 @@ public partial class ModpacksView : UserControl
                 });
             }
             catch { }
+        }
+
+        if (files.Count > _screenshotsCountShown)
+        {
+            var moreCard = new Border
+            {
+                Width = 180, Height = 140, Margin = new Thickness(0, 0, 12, 12),
+                CornerRadius = new CornerRadius(6),
+                Background = new SolidColorBrush(Color.Parse("#202127")),
+                BorderBrush = new SolidColorBrush(Color.Parse("#3E404D")),
+                BorderThickness = new Thickness(1),
+                Cursor = new Cursor(StandardCursorType.Hand)
+            };
+            var moreText = new TextBlock
+            {
+                Text = $"+ Show more\n({files.Count - _screenshotsCountShown} remaining)",
+                TextAlignment = TextAlignment.Center,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Foreground = new SolidColorBrush(Color.Parse("#C5C7D0")),
+                FontSize = 12,
+                FontWeight = FontWeight.SemiBold
+            };
+            moreCard.Child = moreText;
+            moreCard.PointerPressed += (_, _) =>
+            {
+                _screenshotsCountShown += 60;
+                LoadScreenshots();
+            };
+            ScreenshotsGallery.Children.Add(moreCard);
         }
     }
 
