@@ -366,7 +366,7 @@ public final class ParkourClientController {
 
     private static void sendAction(ParkourActionPayload payload) {
         if (isParkourAllowed()) {
-            sendAction(payload);
+            ClientPlayNetworking.send(payload);
         }
     }
 
