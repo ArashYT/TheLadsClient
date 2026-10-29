@@ -1341,7 +1341,8 @@ public partial class MainWindow : Window
             string textToCopy = LogBox.Text ?? "";
             if (string.IsNullOrWhiteSpace(LogSearchBox?.Text))
             {
-                string fileText = GetRecentLogText(2500, _logClearCutoffBytes);
+                long cutoff = _logClearCutoffBytes;
+                string fileText = await Task.Run(() => GetRecentLogText(2500, cutoff));
                 if (!string.IsNullOrWhiteSpace(fileText))
                     textToCopy = fileText;
                 else if (_logClearCutoffBytes >= 0)
@@ -1376,7 +1377,8 @@ public partial class MainWindow : Window
     {
         try
         {
-            string logText = GetRecentLogText(2500, _logClearCutoffBytes);
+            long cutoff = _logClearCutoffBytes;
+            string logText = await Task.Run(() => GetRecentLogText(2500, cutoff));
             if (string.IsNullOrWhiteSpace(logText))
                 logText = LogBox.Text ?? "";
 
