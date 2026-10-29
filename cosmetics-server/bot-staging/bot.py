@@ -28,7 +28,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 # ------------------ STRUCTURED LOGGING CONFIGURATION ------------------
-LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot_output.log")
+LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bot_app.log")
 try:
     _file_handler = RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8")
     _file_handler.setFormatter(logging.Formatter("[%(asctime)s] [%(levelname)s] %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
