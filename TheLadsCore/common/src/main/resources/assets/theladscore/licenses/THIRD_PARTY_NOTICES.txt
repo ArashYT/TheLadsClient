@@ -4,8 +4,8 @@ The Lads Core — Third-Party Open-Source Notices
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 
 This file documents the third-party open-source and community libraries and mods embedded or
-source-integrated into `TheLadsCore` (`theladscore.jar`). Full license texts are packaged inside
-`theladscore.jar` under `assets/theladscore/licenses/` and modified source code for copyleft
+source-integrated into `TheLadsCore` (`theladscore.jar`). Full license texts and notices are packaged
+directly inside `theladscore.jar` under `META-INF/lads-sources/<mod>/` and modified source code for copyleft
 components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar` under
 `META-INF/lads-sources/`.
 
@@ -17,12 +17,12 @@ components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar
   Copyright (c) Lenni0451
   License: MIT License (https://github.com/Lenni0451/Reflect)
 
-* CatConfig & CatConfig-MC (`catconfig-0.3.0`, `catconfig-mc-26.2-0.2.1`) — Bundled in 1.20.1, 26.2, 26.3
-  License: MIT License (see `assets/theladscore/licenses/CatConfig-NOTICE.txt`)
+* CatConfig & CatConfig-MC (`catconfig-0.3.0`, `catconfig-mc-26.2-0.2.1`) — Bundled in 26.2, 26.3
+  License: MIT License (see `META-INF/lads-sources/catconfig/` or `v26_3/libs/`)
 
 * java-objc-bridge (`ca.weblite:java-objc-bridge:1.0.0`) — Bundled in 26.2, 26.3
   Copyright (c) Web Lite Solutions Corp. (Steve Hannah)
-  License: BSD 3-Clause License
+  License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
 
 * Google Gson (`com.google.code.gson:gson:2.10.1` / `2.11.0`) — Shaded in 1.8.9 (`com.thelads.core.shaded.gson`)
   Copyright (c) Google Inc.
@@ -41,64 +41,99 @@ components (LGPL, MPL, CC-BY-NC-SA) is packaged directly inside `theladscore.jar
   License: GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later)
 
 --------------------------------------------------------------------------------
-2. Source-Integrated & Embedded Mods (`META-INF/lads-sources/` & `assets/theladscore/licenses/`)
+2. Source-Integrated & Embedded Mods (`META-INF/lads-sources/`)
 --------------------------------------------------------------------------------
 
 * Entity Texture Features (ETF) & Entity Model Features (EMF)
   Copyright (c) Traben
   License: GNU Lesser General Public License v3.0 only (LGPL-3.0-only)
-  License & Notice: `assets/theladscore/licenses/ETF-NOTICE.txt`, `EMF-NOTICE.txt`, `LGPL-3.0-only.txt`
+  License & Notice: `META-INF/lads-sources/etf/LICENSE`, `META-INF/lads-sources/etf/NOTICE.txt`, `META-INF/lads-sources/emf/LICENSE`, `META-INF/lads-sources/emf/NOTICE.txt`
   Modified Sources: `META-INF/lads-sources/etf/`, `META-INF/lads-sources/emf/`
 
 * ImmediatelyFast
   Copyright (c) RK_01
-  License: GNU Lesser General Public License v3.0 only (LGPL-3.0-only)
-  License & Notice: `assets/theladscore/licenses/ImmediatelyFast-NOTICE.txt`, `ImmediatelyFast-LGPL-3.0-only.txt`
+  License: GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later)
+  License & Notice: `META-INF/lads-sources/immediatelyfast/LICENSE`, `META-INF/lads-sources/immediatelyfast/NOTICE.txt`
   Modified Sources: `META-INF/lads-sources/immediatelyfast/`
 
 * Fast IP Ping
   Copyright (c) Fallen_Breath
   License: GNU Lesser General Public License v3.0 only (LGPL-3.0-only)
-  License & Notice: `assets/theladscore/licenses/FastIpPing-NOTICE.txt`, `FastIpPing-LGPL-3.0-only.txt`
+  License & Notice: `META-INF/lads-sources/fastipping/LICENSE`, `META-INF/lads-sources/fastipping/NOTICE.txt`
   Modified Sources: `META-INF/lads-sources/fastipping/`
 
 * FixBookGUI
-  License: GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later)
-  License & Notice: `assets/theladscore/licenses/FixBookGUI-NOTICE.txt`, `FixBookGUI-LGPL-3.0-or-later.txt`
+  Copyright (c) KosmoMoustache
+  License: GNU Lesser General Public License v3.0 only (LGPL-3.0-only)
+  License & Notice: `META-INF/lads-sources/fixbookgui/LICENSE`, `META-INF/lads-sources/fixbookgui/NOTICE.txt`
   Modified Sources: `META-INF/lads-sources/fixbookgui/`
 
 * Hovering Hotbar
-  License: GNU Lesser General Public License v2.1 only (LGPL-2.1-only)
-  License & Notice: `assets/theladscore/licenses/HoveringHotbar-NOTICE.txt`, `HoveringHotbar-LGPL-2.1-only.txt`
+  Copyright (c) supersaiyansubtlety
+  License: Mozilla Public License 2.0 (MPL-2.0)
+  License & Notice: `META-INF/lads-sources/hoveringhotbar/LICENSE`, `META-INF/lads-sources/hoveringhotbar/NOTICE.txt`
   Modified Sources: `META-INF/lads-sources/hoveringhotbar/`
 
 * Signal Loss, Screenshot Viewer & TabTweaks
-  License: GNU Lesser General Public License v3.0 (LGPL-3.0) / MIT
-  License & Notice: `assets/theladscore/licenses/SignalLoss-LGPL-3.0.txt`, `ScreenshotViewer-LGPL-3.0.txt`, `TabTweaks-NOTICE.txt`
+  Signal Loss: Apache License 2.0 (Hexandcube; see `META-INF/lads-sources/signalloss/` or `assets/theladscore/licenses/SignalLoss-common-LICENSE.txt`)
+  Screenshot Viewer: MIT License (LGatodu47; see `assets/theladscore/licenses/ScreenshotViewer-LICENSE.txt`)
+  TabTweaks: MIT License (see `META-INF/lads-sources/tabtweaks/`)
   Modified Sources: `META-INF/lads-sources/signalloss/`, `META-INF/lads-sources/screenshots/`, `META-INF/lads-sources/tabtweaks/`
 
 * Capes & NBT Autocomplete
-  License: Mozilla Public License 2.0 (MPL-2.0)
-  License & Notice: `assets/theladscore/licenses/Capes-NOTICE.txt`, `Capes-MPL-2.0.txt`, `NBTAutocomplete-NOTICE.txt`, `NBTAutocomplete-MPL-2.0.txt`
+  Capes: GNU Lesser General Public License v2.1 only (LGPL-2.1-only) by Cael (see `META-INF/lads-sources/capes/LICENSE`, `META-INF/lads-sources/capes/NOTICE.txt`)
+  NBT Autocomplete: GNU Lesser General Public License v3.0 only (LGPL-3.0-only) by MT (see `META-INF/lads-sources/nbtac/LICENSE`, `META-INF/lads-sources/nbtac/NOTICE.txt`)
   Modified Sources: `META-INF/lads-sources/capes/`, `META-INF/lads-sources/nbtac/`
 
 * Jade (Minecraft 26.2 and 26.3 builds only)
   Copyright (c) Snownee
   License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC-BY-NC-SA-4.0)
-  License & Notice: `assets/theladscore/licenses/Jade-NOTICE.txt`, `Jade-CC-BY-NC-SA-4.0.txt`
+  License & Notice: `META-INF/lads-sources/jade/LICENSE`, `META-INF/lads-sources/jade/NOTICE.txt`
   Modified Sources: `META-INF/lads-sources/jade/`
 
 * Controlling & Clumps
   Copyright (c) Jaredlll08
-  License: MIT License (`assets/theladscore/licenses/Controlling-MIT.txt`, `Clumps-MIT.txt`)
+  License: MIT License (see `META-INF/lads-sources/clumps/` or upstream repositories)
   Modified Sources: `META-INF/lads-sources/clumps/`
 
 * EntityCulling
-  Copyright (c) tr7zw
-  License: tr7zw / MIT License (`assets/theladscore/licenses/EntityCulling-LICENSE.txt`, `EntityCulling-NOTICE.txt`)
+  Copyright (c) tr7zw / LogisticsCraft (OcclusionCulling)
+  License: MIT License (see `META-INF/lads-sources/entityculling/LICENSE`, `META-INF/lads-sources/entityculling/NOTICE.txt`)
 
 * Ksyxis, LazyAI, Optimized Cushions, QuickPack, World Play Time, Screenshot to Clipboard
-  License: MIT License / Unlicense (see `assets/theladscore/licenses/*-MIT.txt` and `ScreenshotToClipboard-Unlicense.txt`)
+  License: MIT License (see `META-INF/lads-sources/ksyxis/LICENSE`, `META-INF/lads-sources/quickpack/LICENSE`, `META-INF/lads-sources/playtime/LICENSE`, etc.)
 
 * ServerPingerFixer
-  License: Apache License 2.0 (`assets/theladscore/licenses/ServerPingerFixer-Apache-2.0.txt`, `ServerPingerFixer-NOTICE.txt`)
+  License: MIT License (see `META-INF/lads-sources/serverpingerfixer/LICENSE`, `META-INF/lads-sources/serverpingerfixer/NOTICE.txt`)
+
+--------------------------------------------------------------------------------
+3. Formats Implemented From Public Specifications
+--------------------------------------------------------------------------------
+
+* Custom Item Textures (OptiFine / MCPatcher CIT format), Minecraft 1.8.9 without OptiFine
+  Code: `com.thelads.core.client.CustomItems`, `CustomItemsNbt` (common), `com.thelads.core.v1_8_9.cit` (1.8.9).
+  Written by The Lads from OptiFine's documentation (cit.properties, cit_single.properties; public domain,
+  https://github.com/sp614x/optifine/tree/master/OptiFineDoc/doc). The enchantment level matching and the
+  enchantment effect layering (average, layered, cycle) follow MCPatcher by prupe, used as a reference
+  (https://bitbucket.org/prupe/mcpatcher), whose license is:
+    Copyright (c) 2013
+    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+    documentation files (the "Software"), to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and
+    to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above
+    copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+    WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+    COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+    OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+  No OptiFine code is used.
+
+
+--------------------------------------------------------------------------------
+4. Client Mods Distributed by The Lads Launcher (1.8.9, 1.20.1)
+--------------------------------------------------------------------------------
+
+* ReplayMod (Modrinth OJEjSBv2, 1.8.9 Forge, 1.20.1 Fabric)
+  Copyright (c) ReplayMod Contributors
+  License: GNU General Public License v3.0 or later (GPL-3.0-or-later)
+  Source: https://github.com/ReplayMod/ReplayMod
