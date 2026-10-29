@@ -256,7 +256,10 @@ async def log_to_modlogs(guild: discord.Guild, embed: discord.Embed):
 
 async def reply_with_error(interaction: discord.Interaction, error: Exception):
     """Shared by the slash command tree, views and modals: log the traceback, tell the user privately."""
-    if isinstance(error, app_commands.CheckFailure):
+    if isinstance(error, app_commands.CommandOnCooldown):
+        retry = max(1, int(error.retry_after + 0.999))
+        text = f"\u23f3 You are on cooldown for this command. Please try again in {retry}s."
+    elif isinstance(error, app_commands.CheckFailure):
         text = "🚫 You don't have permission to use this command."
     else:
         text = "⚠️ Something went wrong while running that. The error was logged for staff; please try again in a moment."

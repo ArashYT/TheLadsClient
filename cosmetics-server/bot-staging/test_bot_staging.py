@@ -486,3 +486,30 @@ async def test_loops_and_tasks_survive_corrupt_state(bot, monkeypatch):
     # latest_client_version should catch RuntimeError and return fallback
     ver = await bot.latest_client_version()
     assert ver is None or isinstance(ver, str)
+
+
+@pytest.mark.asyncio
+async def test_reply_with_error_handles_cooldown_separately(bot):
+    import discord
+    from discord import app_commands
+    from unittest.mock import AsyncMock, MagicMock
+
+    interaction = MagicMock()
+    interaction.response.is_done.return_value = False
+    interaction.response.send_message = AsyncMock()
+
+    # 1. Cooldown error should give retry-after message
+    cooldown_err = app_commands.CommandOnCooldown(cooldown=MagicMock(), retry_after=12.4)
+    await bot.reply_with_error(interaction, cooldown_err)
+    interaction.response.send_message.assert_called_once()
+    sent_text = interaction.response.send_message.call_args[0][0]
+    assert "cooldown" in sent_text.lower()
+    assert "13s" in sent_text
+
+    # 2. Plain CheckFailure should give permission message
+    interaction.response.send_message.reset_mock()
+    check_err = app_commands.CheckFailure("No perms")
+    await bot.reply_with_error(interaction, check_err)
+    interaction.response.send_message.assert_called_once()
+    sent_text2 = interaction.response.send_message.call_args[0][0]
+    assert "permission" in sent_text2.lower()
