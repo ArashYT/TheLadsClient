@@ -23,6 +23,7 @@ import sys
 import shutil
 from typing import Any, Optional
 import json
+import math
 import base64
 import hmac
 import hashlib
@@ -1263,7 +1264,7 @@ async def handle_status_page(request):
     hours, rem = divmod(uptime_sec, 3600)
     minutes, seconds = divmod(rem, 60)
     uptime_str = f"{hours}h {minutes}m {seconds}s"
-    ping_ms = round(bot.latency * 1000) if bot.latency and bot.latency > 0 else 12
+    ping_ms = round(bot.latency * 1000) if bot.latency and math.isfinite(bot.latency) and bot.latency > 0 else 12
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1458,7 +1459,7 @@ async def start_web_server():
         except Exception as e:
             print(f"  Note: cosmetics routes not loaded: {e}", flush=True)
         app.router.add_get('/', handle_status_page)
-        app.router.add_get('/health', lambda r: web.json_response({"status": "ok", "latency_ms": round(bot.latency * 1000) if bot.latency else 0}))
+        app.router.add_get('/health', lambda r: web.json_response({"status": "ok", "latency_ms": round(bot.latency * 1000) if bot.latency and math.isfinite(bot.latency) and bot.latency > 0 else None}))
         import share_store
         app.router.add_post('/share', share_store.handle_post_share)
         app.router.add_get('/share/{code}', share_store.handle_get_share)
@@ -1541,6 +1542,19 @@ class LadsBot(commands.Bot):
         self.add_view(LFGSquadView())
         self.add_dynamic_items(GiveawayButton)
         print("Registered persistent UI Views", flush=True)
+
+        # Register slash commands from helper modules before tree.sync
+        try:
+            import usage_stats
+            usage_stats.setup_slash_command(self)
+            print("Registered /stats slash command", flush=True)
+        except Exception as e:
+            print(f"Note: usage_stats slash command not registered: {e}", flush=True)
+
+        # Start Web Server in setup_hook before gateway connect/tree.sync so player APIs are decoupled
+        if not getattr(self, "web_server_started", False):
+            self.web_server_started = True
+            await start_web_server()
 
     async def on_ready(self):
         print(f"\n[Bot Ready] Logged in as: {self.user} (ID: {self.user.id})", flush=True)

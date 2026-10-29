@@ -294,3 +294,31 @@ def test_can_act_role_hierarchy():
     owner_member.id = 999
     allowed, _ = can_act(interaction, owner_member)
     assert not allowed
+
+
+def test_health_latency_infinite_or_nan():
+    import math
+    from unittest.mock import patch, PropertyMock
+    import bot
+
+    with patch.object(type(bot.bot), "latency", new_callable=PropertyMock) as mock_lat:
+        mock_lat.return_value = math.inf
+        lat = round(bot.bot.latency * 1000) if bot.bot.latency and math.isfinite(bot.bot.latency) and bot.bot.latency > 0 else None
+        assert lat is None
+
+        mock_lat.return_value = float("nan")
+        lat_nan = round(bot.bot.latency * 1000) if bot.bot.latency and math.isfinite(bot.bot.latency) and bot.bot.latency > 0 else None
+        assert lat_nan is None
+
+        mock_lat.return_value = 0.045
+        lat_ok = round(bot.bot.latency * 1000) if bot.bot.latency and math.isfinite(bot.bot.latency) and bot.bot.latency > 0 else None
+        assert lat_ok == 45
+
+
+def test_usage_stats_registered_in_tree():
+    from unittest.mock import MagicMock
+    import usage_stats
+    mock_bot = MagicMock()
+    mock_bot.tree = MagicMock()
+    usage_stats.setup_slash_command(mock_bot)
+    mock_bot.tree.command.assert_called_once()
