@@ -2513,10 +2513,50 @@ async def slash_blacklist_list(interaction: discord.Interaction):
 
 # ------------------ MODERATION SUITE (SLASH COMMANDS) ------------------
 
+def can_act(interaction: discord.Interaction, target: discord.Member | discord.Role) -> tuple[bool, str]:
+    """Ensure the invoking user can act on the target member or role according to Discord hierarchy."""
+    guild = interaction.guild
+    invoker = interaction.user
+    if not guild or not isinstance(invoker, discord.Member):
+        return False, "This command can only be used in a server."
+
+    is_owner = (guild.owner_id == invoker.id)
+
+    if isinstance(target, discord.Role):
+        if target.is_default():  # @everyone
+            return False, "Cannot modify the default @everyone role."
+        if target.managed:
+            return False, "Cannot modify bot-managed or integration roles."
+        if not is_owner and invoker.top_role <= target:
+            return False, f"You cannot manage {target.mention} because your top role is not higher than it."
+        bot_member = guild.me
+        if bot_member and bot_member.top_role <= target:
+            return False, f"I cannot manage {target.mention} because my top role is not higher than it."
+        return True, ""
+
+    elif isinstance(target, discord.Member):
+        if target.id == invoker.id:
+            return False, "You cannot target yourself with this moderation action."
+        if target.id == guild.owner_id:
+            return False, "You cannot moderate the server owner."
+        if not is_owner and invoker.top_role <= target.top_role:
+            return False, f"You cannot moderate {target.mention} because their top role is higher than or equal to yours."
+        bot_member = guild.me
+        if bot_member and bot_member.top_role <= target.top_role:
+            return False, f"I cannot moderate {target.mention} because their top role is higher than or equal to mine."
+        return True, ""
+
+    return False, "Invalid target."
+
+
 @bot.tree.command(name="ban", description="Ban a member from the server.")
 @app_commands.describe(user="Member to ban", reason="Reason for ban", delete_days="Days of message history to delete (0-7)")
 @app_commands.checks.has_permissions(ban_members=True)
 async def slash_ban(interaction: discord.Interaction, user: discord.Member, reason: str = "No reason provided", delete_days: int = 0):
+    allowed, msg = can_act(interaction, user)
+    if not allowed:
+        await interaction.response.send_message(f"\u274c {msg}", ephemeral=True)
+        return
     try:
         await user.ban(reason=reason, delete_message_days=min(max(delete_days, 0), 7))
         embed = discord.Embed(
@@ -2554,6 +2594,10 @@ async def slash_unban(interaction: discord.Interaction, user_id: str, reason: st
 @app_commands.describe(user="Member to kick", reason="Reason for kick")
 @app_commands.checks.has_permissions(kick_members=True)
 async def slash_kick(interaction: discord.Interaction, user: discord.Member, reason: str = "No reason provided"):
+    allowed, msg = can_act(interaction, user)
+    if not allowed:
+        await interaction.response.send_message(f"\u274c {msg}", ephemeral=True)
+        return
     try:
         await user.kick(reason=reason)
         embed = discord.Embed(
@@ -2572,6 +2616,10 @@ async def slash_kick(interaction: discord.Interaction, user: discord.Member, rea
 @app_commands.describe(user="Member to timeout", minutes="Duration in minutes", reason="Reason for timeout")
 @app_commands.checks.has_permissions(moderate_members=True)
 async def slash_timeout(interaction: discord.Interaction, user: discord.Member, minutes: int, reason: str = "No reason provided"):
+    allowed, msg = can_act(interaction, user)
+    if not allowed:
+        await interaction.response.send_message(f"\u274c {msg}", ephemeral=True)
+        return
     try:
         duration = timedelta(minutes=minutes)
         await user.timeout(duration, reason=reason)
@@ -2591,6 +2639,10 @@ async def slash_timeout(interaction: discord.Interaction, user: discord.Member, 
 @app_commands.describe(user="Member to remove timeout from", reason="Reason")
 @app_commands.checks.has_permissions(moderate_members=True)
 async def slash_untimeout(interaction: discord.Interaction, user: discord.Member, reason: str = "Timeout removed"):
+    allowed, msg = can_act(interaction, user)
+    if not allowed:
+        await interaction.response.send_message(f"\u274c {msg}", ephemeral=True)
+        return
     try:
         await user.timeout(None, reason=reason)
         embed = discord.Embed(
@@ -4070,6 +4122,14 @@ async def slash_suggestion_action(interaction: discord.Interaction, message_id: 
 @app_commands.describe(user="Member to give the role to", role="Role to assign")
 @app_commands.checks.has_permissions(manage_roles=True)
 async def slash_role_give(interaction: discord.Interaction, user: discord.Member, role: discord.Role):
+    allowed_r, msg_r = can_act(interaction, role)
+    if not allowed_r:
+        await interaction.response.send_message(f"\u274c {msg_r}", ephemeral=True)
+        return
+    allowed_u, msg_u = can_act(interaction, user)
+    if not allowed_u:
+        await interaction.response.send_message(f"\u274c {msg_u}", ephemeral=True)
+        return
     try:
         await user.add_roles(role, reason=f"Given by {interaction.user.name}")
         await interaction.response.send_message(f"✅ Added {role.mention} to {user.mention}!")
@@ -4081,6 +4141,14 @@ async def slash_role_give(interaction: discord.Interaction, user: discord.Member
 @app_commands.describe(user="Member to remove the role from", role="Role to remove")
 @app_commands.checks.has_permissions(manage_roles=True)
 async def slash_role_remove(interaction: discord.Interaction, user: discord.Member, role: discord.Role):
+    allowed_r, msg_r = can_act(interaction, role)
+    if not allowed_r:
+        await interaction.response.send_message(f"\u274c {msg_r}", ephemeral=True)
+        return
+    allowed_u, msg_u = can_act(interaction, user)
+    if not allowed_u:
+        await interaction.response.send_message(f"\u274c {msg_u}", ephemeral=True)
+        return
     try:
         await user.remove_roles(role, reason=f"Removed by {interaction.user.name}")
         await interaction.response.send_message(f"✅ Removed {role.mention} from {user.mention}!")

@@ -228,3 +228,69 @@ def test_phishing_regex_does_not_match_plain_conversation(bot):
     assert bot.PHISHING_REGEX.search("Check this https://steamcommunity-gift.ru/trade")
     assert bot.PHISHING_REGEX.search("Get free-nitro here: https://scam.xyz/free-nitro")
     assert bot.PHISHING_REGEX.search("http://fake-discord.com/nitro-gift")
+
+
+def test_can_act_role_hierarchy():
+    from bot import can_act
+    import discord
+    from unittest.mock import MagicMock
+
+    guild = MagicMock(spec=discord.Guild)
+    guild.owner_id = 999
+    guild.me = MagicMock(spec=discord.Member)
+    bot_role = MagicMock(spec=discord.Role)
+    bot_role.__gt__ = lambda s, o: s.pos > o.pos
+    bot_role.__le__ = lambda s, o: s.pos <= o.pos
+    bot_role.pos = 50
+    guild.me.top_role = bot_role
+
+    invoker = MagicMock(spec=discord.Member)
+    invoker.id = 123
+    inv_role = MagicMock(spec=discord.Role)
+    inv_role.__gt__ = lambda s, o: s.pos > o.pos
+    inv_role.__le__ = lambda s, o: s.pos <= o.pos
+    inv_role.pos = 30
+    invoker.top_role = inv_role
+
+    interaction = MagicMock(spec=discord.Interaction)
+    interaction.guild = guild
+    interaction.user = invoker
+
+    # Self action refused
+    allowed, _ = can_act(interaction, invoker)
+    assert not allowed
+
+    # Higher member refused
+    high_member = MagicMock(spec=discord.Member)
+    high_member.id = 456
+    high_role = MagicMock(spec=discord.Role)
+    high_role.__gt__ = lambda s, o: s.pos > o.pos
+    high_role.__le__ = lambda s, o: s.pos <= o.pos
+    high_role.pos = 40
+    high_member.top_role = high_role
+    allowed, _ = can_act(interaction, high_member)
+    assert not allowed
+
+    # Lower member allowed
+    low_member = MagicMock(spec=discord.Member)
+    low_member.id = 789
+    low_role = MagicMock(spec=discord.Role)
+    low_role.__gt__ = lambda s, o: s.pos > o.pos
+    low_role.__le__ = lambda s, o: s.pos <= o.pos
+    low_role.pos = 10
+    low_member.top_role = low_role
+    allowed, _ = can_act(interaction, low_member)
+    assert allowed
+
+    # Managed role refused
+    managed_role = MagicMock(spec=discord.Role)
+    managed_role.is_default.return_value = False
+    managed_role.managed = True
+    allowed, _ = can_act(interaction, managed_role)
+    assert not allowed
+
+    # Server owner action refused
+    owner_member = MagicMock(spec=discord.Member)
+    owner_member.id = 999
+    allowed, _ = can_act(interaction, owner_member)
+    assert not allowed
