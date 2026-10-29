@@ -9,6 +9,7 @@ The client side connects via `TheLadsCore/common/.../client/cosmetics/net/Cosmet
 |---|---|---|---|
 | `GET` | `/cosmetics/health` | None | Service health status, active player count, active room count. |
 | `GET` | `/cosmetics/ws` | Mojang `hasJoined` | Authenticated background WebSocket connection for emote/equip sync and in-game link codes. |
+| `GET` | `/social/ws` | Mojang `hasJoined` | Authenticated background WebSocket for friends, presence, DMs, and P2P signalling. |
 | `GET` | `/cosmetics/profile/{uuid}` | None | Returns owned cosmetics and currently equipped items (`{"owned":[...],"equipped":{...}}`). |
 | `POST` | `/cosmetics/equip` | `Bearer <token>` | HTTP equip endpoint: `{"uuid":"...","slot":"...","item":"..."}` (requires auth; normal players equip via authenticated WS). |
 | `POST` | `/cosmetics/tebex` | `X-Tebex-Signature` | Tebex webhook endpoint (fail-closed, signature-verified, idempotent by transaction ID, handles payments and refunds). |
@@ -70,12 +71,15 @@ python cosmetics.py revoke <uuid> <item_id> [--db <db_path>]
 
 # List active entitlements, revoked entitlements, and equipped items
 python cosmetics.py list <uuid> [--db <db_path>]
+
+# Toggle all-access override for player
+python cosmetics.py allaccess <uuid> <on|off> [--granted-by <admin>] [--db <db_path>]
 ```
 
 ## Running Locally
 
 ```bash
 pip install aiohttp pytest pytest-aiohttp
-python -m pytest -v                                   # full test suite (41 tests)
+python -m pytest -v                                   # full test suite
 python cosmetics.py --port 8095 --dev-insecure-auth   # offline QA server
 ```

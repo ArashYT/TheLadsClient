@@ -221,6 +221,7 @@ async def test_dev_insecure_auth_skips_mojang(aiohttp_client, monkeypatch, tmp_p
     async def boom(name, sid):
         raise AssertionError("Mojang must not be asked in dev mode")
 
+    monkeypatch.setenv("LADS_SOCIAL_DEV", "1")
     monkeypatch.setattr(cosmetics, "has_joined", boom)
     app = web.Application()
     cosmetics.setup(app, insecure=True, db_path=tmp_path / "dev.db")
@@ -1301,3 +1302,21 @@ async def test_cosmetics_mojang_unavailable_closes_1013(client, monkeypatch):
     await ws.send_json({"t": "auth", "name": "Alice", "uuid": "1" * 32, "serverId": cosmetics.server_id(ch["nonce"])})
     await ws.receive(timeout=2)
     assert ws.close_code == 1013
+
+
+def test_dev_insecure_auth_without_env_var_raises(tmp_path, monkeypatch):
+    monkeypatch.delenv("LADS_SOCIAL_DEV", raising=False)
+    app = web.Application()
+    with pytest.raises(ValueError, match="LADS_SOCIAL_DEV=1"):
+        cosmetics.setup(app, insecure=True, db_path=tmp_path / "dev.db")
+
+
+def test_verify_tebex_signature_non_ascii():
+    assert cosmetics.verify_tebex_signature(b"payload", "bad_sig_\xff\xfe", "secret") is False
+
+
+def test_check_http_auth_non_ascii():
+    app = web.Application()
+    app[cosmetics.AUTH_SECRET] = "my_secret"
+    req = type("Req", (), {"headers": {"Authorization": "Bearer token_\xff\xfe"}, "app": app})()
+    assert cosmetics._check_http_auth(req) is False

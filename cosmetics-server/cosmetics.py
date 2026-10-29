@@ -25,7 +25,7 @@ import secrets
 import sqlite3
 import sys
 import time
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 import aiohttp
 from aiohttp import web
@@ -217,13 +217,14 @@ def verify_tebex_signature(raw_body: bytes, signature: str | None, secret: str |
         return False
     sig = signature.strip()
     # Tebex two-step HMAC
-    body_hash = hashlib.sha256(raw_body).hexdigest()
-    expected_two_step = hmac.new(secret.encode("utf-8"), body_hash.encode("utf-8"), hashlib.sha256).hexdigest()
-    if hmac.compare_digest(expected_two_step, sig):
+    sig_bytes = sig.encode("ascii", errors="replace")
+    body_hash = hashlib.sha256(raw_body).hexdigest().encode("ascii")
+    expected_two_step = hmac.new(secret.encode("utf-8"), body_hash, hashlib.sha256).hexdigest().encode("ascii")
+    if hmac.compare_digest(expected_two_step, sig_bytes):
         return True
     # Standard single-step HMAC
-    expected_single_step = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
-    if hmac.compare_digest(expected_single_step, sig):
+    expected_single_step = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest().encode("ascii")
+    if hmac.compare_digest(expected_single_step, sig_bytes):
         return True
     return False
 
@@ -1169,7 +1170,7 @@ def _check_http_auth(request: web.Request) -> bool:
     if not secret or not auth_header.startswith("Bearer "):
         return False
     token = auth_header[len("Bearer "):].strip()
-    return hmac.compare_digest(token, secret)
+    return hmac.compare_digest(token.encode("utf-8", errors="replace"), secret.encode("utf-8", errors="replace"))
 
 
 async def handle_equip_http(request: web.Request) -> web.Response:
@@ -1428,8 +1429,6 @@ def setup(
     app.router.add_get("/cosmetics/link/verify", handle_link_verify_http)
     app.on_shutdown.append(close_all)
 
-    if insecure:
-        os.environ.setdefault("LADS_SOCIAL_DEV", "1")
     import social
     social.mount(app, insecure=insecure, db_path=db_path)
 
