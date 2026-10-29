@@ -5486,7 +5486,6 @@ public partial class MainWindow : Window
                         Log($"[Launcher] Game window detected after {sw.Elapsed.TotalSeconds:F1}s.");
                         splash.SetStatus("Minecraft is ready to show");
                         splash.SetDetail("Opening game window...");
-                        TheLadsLauncher.Services.NotificationService.NotifyGameReady("Minecraft", !this.IsActive || this.WindowState == Avalonia.Controls.WindowState.Minimized || !this.IsVisible);
                         break;
                     }
                 }

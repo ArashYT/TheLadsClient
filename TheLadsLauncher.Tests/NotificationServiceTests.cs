@@ -33,28 +33,4 @@ public class NotificationServiceTests
         Assert.Equal(NotificationType.Success, mock.LastType);
     }
 
-    [Fact]
-    public void NotifyGameReady_TriggersNotificationWhenMinimized()
-    {
-        var mock = new MockNotifier();
-        NotificationService.Initialize(mock);
-
-        NotificationService.NotifyGameReady("Default Profile", isMinimizedOrInactive: true);
-
-        Assert.Equal("The Lads Client", mock.LastTitle);
-        Assert.Contains("ready", mock.LastMessage);
-        Assert.Contains("Default Profile", mock.LastMessage);
-    }
-
-    [Fact]
-    public void NotifyGameReady_SkipsWhenActiveAndNotMinimized()
-    {
-        var mock = new MockNotifier();
-        NotificationService.Initialize(mock);
-
-        NotificationService.NotifyGameReady("Default Profile", isMinimizedOrInactive: false);
-
-        Assert.Null(mock.LastTitle);
-        Assert.Null(mock.LastMessage);
-    }
 }

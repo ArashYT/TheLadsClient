@@ -37,15 +37,4 @@ public static class NotificationService
         }
         catch { }
     }
-
-    /// <summary>
-    /// Notifies that the game process is ready and playing.
-    /// </summary>
-    public static void NotifyGameReady(string profileName, bool isMinimizedOrInactive = true)
-    {
-        if (isMinimizedOrInactive)
-        {
-            Notify("The Lads Client", $"Minecraft is ready! {profileName} launched successfully.", NotificationType.Success);
-        }
-    }
 }
