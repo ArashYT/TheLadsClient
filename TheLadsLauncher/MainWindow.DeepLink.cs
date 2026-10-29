@@ -82,6 +82,7 @@ public partial class MainWindow : Window
                 StatusText.Text = refusal;
                 return;
             }
+            ShowForDialog(); // same as the join confirm: a hidden (tray) window cannot own the dialog
             int choice = await ShowLadsChoiceAsync("Switch Profile Confirmation",
                 $"A link asks to make this your active profile:\n\n{profile!.Name} (Minecraft {profile.MinecraftVersion})\n\nSwitch now?",
                 new[] { ("Switch Profile", false, true) });
