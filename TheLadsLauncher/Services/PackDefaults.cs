@@ -18,6 +18,14 @@ public static class PackDefaults
     {
         var source = Path.Combine(gameDirectory, FolderName);
         if (!Directory.Exists(source)) return;
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var rel = Path.GetRelativePath(source, file);
+            if (Mrpack.IsLadsStateFile(rel))
+            {
+                try { File.Delete(file); } catch { }
+            }
+        }
         // The original mod, while still installed, does this itself.
         var mods = Path.Combine(gameDirectory, "mods");
         if (Directory.Exists(mods) && Directory.EnumerateFiles(mods, "*.jar")

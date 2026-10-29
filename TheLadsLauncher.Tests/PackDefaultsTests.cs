@@ -118,5 +118,22 @@ public class PackDefaultsTests
         Assert.False(File.Exists(Path.Combine(dir.Path, "server_bypasses.json")));
         Assert.False(File.Exists(Path.Combine(dir.Path, "thelads_config.json")));
         Assert.False(File.Exists(Path.Combine(dir.Path, "lads-mod-state.json")));
+        Assert.False(File.Exists(Path.Combine(defaults, "server_bypasses.json")));
+    }
+
+    [Fact]
+    public void PackDefaultsPurgesLadsStateFilesEvenWhenConfiguredDefaultsModIsInstalled()
+    {
+        using var dir = new TestDirectory();
+        var defaults = Path.Combine(dir.Path, PackDefaults.FolderName);
+        Write(Path.Combine(defaults, "server_bypasses.json"), "{\"planted\":true}");
+        Write(Path.Combine(defaults, "config", "x.json"), "{}");
+        Write(Path.Combine(dir.Path, "mods", "ConfiguredDefaults-v26.2.0-mc26.2.x-Fabric.jar"), "");
+
+        PackDefaults.Apply(dir.Path);
+
+        Assert.False(File.Exists(Path.Combine(defaults, "server_bypasses.json")));
+        Assert.False(File.Exists(Path.Combine(dir.Path, "server_bypasses.json")));
+        Assert.False(File.Exists(Path.Combine(dir.Path, "config", "x.json")));
     }
 }

@@ -28,7 +28,7 @@ public static class PackwizIndex
     /// thelads_config.json, ...), in index order. A metafile at the top of the game folder counts too: the file name it downloads is its
     /// own to choose, and could be one of those.</summary>
     public static Task<IReadOnlyList<string>> LadsStateFilesAsync(string packUrl, HttpClient http, CancellationToken cancellationToken = default) =>
-        MatchingFilesAsync(packUrl, http, file => Mrpack.IsLadsStateFile(file) || IsTopLevelMetafile(file), cancellationToken);
+        MatchingFilesAsync(packUrl, http, file => Mrpack.IsLadsStateFile(file) || IsTargetMetafile(file), cancellationToken);
 
     private static async Task<IReadOnlyList<string>> MatchingFilesAsync(string packUrl, HttpClient http, Func<string, bool> matches,
         CancellationToken cancellationToken)
@@ -43,10 +43,11 @@ public static class PackwizIndex
             .Where(file => matches(file) || matches(Path.Combine(indexFolder, file))).ToList();
     }
 
-    private static bool IsTopLevelMetafile(string relative)
+    private static bool IsTargetMetafile(string relative)
     {
         var parts = relative.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries).Where(p => p != ".").ToList();
-        return parts.Count == 1 && parts[0].EndsWith(".pw.toml", StringComparison.OrdinalIgnoreCase);
+        if (parts.Count == 0 || !parts[^1].EndsWith(".pw.toml", StringComparison.OrdinalIgnoreCase)) return false;
+        return parts.Count == 1 || (parts.Count == 2 && parts[0].Equals("configureddefaults", StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool InFolder(string relative, IReadOnlyCollection<string> folders)
