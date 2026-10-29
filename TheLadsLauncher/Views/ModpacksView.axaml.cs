@@ -3167,15 +3167,17 @@ public partial class ModpacksView : UserControl
         {
             Report("Signing in...");
             var session = await host.ResolveModpackSessionAsync(launch.Token);
-            var launchedUtc = DateTime.UtcNow;
-            InstanceAnalyticsService.RecordLaunch(instance.Directory, instance.Id);
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, launch.Token,
                 relaunch?.Server, relaunch?.World);
+            var launchedUtc = DateTime.UtcNow;
+            InstanceAnalyticsService.RecordLaunch(instance.Directory, instance.Id);
             _running[instance.Id] = process;
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) => Dispatcher.UIThread.Post(() =>
             {
-                var sessionDuration = DateTime.UtcNow - launchedUtc;
+                DateTime? start = null;
+                try { start = process.StartTime.ToUniversalTime(); } catch { }
+                var sessionDuration = start != null ? DateTime.UtcNow - start.Value : (DateTime.UtcNow - launchedUtc);
                 InstanceAnalyticsService.RecordSessionExit(instance.Directory, instance.Id, sessionDuration);
                 if (_running.TryGetValue(instance.Id, out var current) && current == process)
                     _running.Remove(instance.Id);

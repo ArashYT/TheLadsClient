@@ -540,10 +540,10 @@ public partial class ExperiencesView : UserControl
             var session = await host.ResolveModpackSessionAsync(token);
 
             Report($"Preparing Minecraft {exp.McVersion} & Fabric {exp.LoaderVersion}...");
-            var launchedUtc = DateTime.UtcNow;
-            InstanceAnalyticsService.RecordLaunch(instance.Directory, instance.Id);
             var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token,
                 relaunch?.Server, relaunch?.World);
+            var launchedUtc = DateTime.UtcNow;
+            InstanceAnalyticsService.RecordLaunch(instance.Directory, instance.Id);
 
             int instNumber = NextInstanceNumber(_runningLadsSmpReborn);
             var runningInst = new RunningInstance(instNumber, session.Username ?? "Player", process);
@@ -551,7 +551,9 @@ public partial class ExperiencesView : UserControl
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) => Dispatcher.UIThread.Post(() =>
             {
-                var sessionDuration = DateTime.UtcNow - launchedUtc;
+                DateTime? start = null;
+                try { start = process.StartTime.ToUniversalTime(); } catch { }
+                var sessionDuration = start != null ? DateTime.UtcNow - start.Value : (DateTime.UtcNow - launchedUtc);
                 InstanceAnalyticsService.RecordSessionExit(instance.Directory, instance.Id, sessionDuration);
                 _runningLadsSmpReborn.Remove(runningInst);
                 bool wasCancelled = GameSession.WasCancelled(process);
@@ -691,9 +693,9 @@ public partial class ExperiencesView : UserControl
 
             Report("Preparing Minecraft 1.20.1 & Forge 47.4.10...");
             string? joinServer = host.ModpackSettings.ZeroSmpAutoJoin ? ExperiencesService.ZeroSmp.ServerAddress : null;
+            var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token, joinServer);
             var launchedUtc = DateTime.UtcNow;
             InstanceAnalyticsService.RecordLaunch(instance.Directory, instance.Id);
-            var process = await ModpackLauncher.LaunchAsync(DataDirectory, instance, session, host.ModpackSettings, JavaService.Instance, Http, Report, token, joinServer);
 
             int instNumber = NextInstanceNumber(_runningZeroSmp);
             var runningInst = new RunningInstance(instNumber, session.Username ?? "Player", process);
@@ -701,7 +703,9 @@ public partial class ExperiencesView : UserControl
             process.EnableRaisingEvents = true;
             process.Exited += (_, _) => Dispatcher.UIThread.Post(() =>
             {
-                var sessionDuration = DateTime.UtcNow - launchedUtc;
+                DateTime? start = null;
+                try { start = process.StartTime.ToUniversalTime(); } catch { }
+                var sessionDuration = start != null ? DateTime.UtcNow - start.Value : (DateTime.UtcNow - launchedUtc);
                 InstanceAnalyticsService.RecordSessionExit(instance.Directory, instance.Id, sessionDuration);
                 _runningZeroSmp.Remove(runningInst);
                 bool wasCancelled = GameSession.WasCancelled(process);

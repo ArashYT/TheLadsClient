@@ -78,7 +78,7 @@ public static class InstanceAnalyticsService
                         return rec;
                 }
             }
-            catch
+            catch (JsonException)
             {
                 try
                 {
@@ -107,7 +107,7 @@ public static class InstanceAnalyticsService
                         dict = JsonSerializer.Deserialize<Dictionary<string, InstanceAnalyticsRecord>>(File.ReadAllText(path))
                                ?? new Dictionary<string, InstanceAnalyticsRecord>(StringComparer.OrdinalIgnoreCase);
                     }
-                    catch
+                    catch (JsonException)
                     {
                         try
                         {
