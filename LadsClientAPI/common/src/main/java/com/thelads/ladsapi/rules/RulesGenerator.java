@@ -10,6 +10,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
@@ -140,6 +141,7 @@ public final class RulesGenerator {
         }
 
         // Detect module and option indent from existing lines under modules:
+        boolean foundModIndent = false;
         int modIndentLen = 2;
         int optIndentLen = -1;
         for (int i = modulesIdx + 1; i < modulesEndIdx; i++) {
@@ -148,10 +150,10 @@ public final class RulesGenerator {
             if (trimmed.isEmpty() || trimmed.startsWith("#")) continue;
             int spaces = countLeadingSpaces(line);
             if (spaces > 0) {
-                if (modIndentLen == 2 && spaces != 2) {
+                if (!foundModIndent) {
                     modIndentLen = spaces;
-                }
-                if (spaces > modIndentLen) {
+                    foundModIndent = true;
+                } else if (spaces > modIndentLen) {
                     optIndentLen = spaces;
                     break;
                 }
@@ -217,7 +219,33 @@ public final class RulesGenerator {
             result.add("groups:                        # players with permission ladsapi.group.<name>");
         }
 
-        return result;
+        // Safety net: re-parse result and return original lines unless root.modules is a Map containing every schema module as a top-level key
+        try {
+            Yaml yaml = new Yaml();
+            Object loaded = yaml.load(String.join("\n", result));
+            if (loaded instanceof Map<?, ?> root) {
+                Object modsObj = root.get("modules");
+                if (modsObj instanceof Map<?, ?> modsMap) {
+                    Set<String> topKeys = new HashSet<>();
+                    for (Object k : modsMap.keySet()) {
+                        if (k != null) topKeys.add(k.toString().toLowerCase(Locale.ROOT));
+                    }
+                    boolean allPresent = true;
+                    for (LadsSchema.SchemaModule mod : schema.getModules()) {
+                        if (!topKeys.contains(mod.getName().toLowerCase(Locale.ROOT))) {
+                            allPresent = false;
+                            break;
+                        }
+                    }
+                    if (allPresent) {
+                        return result;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // failed to parse
+        }
+        return new ArrayList<>(existingLines);
     }
 
     /** Schema names like "SP: Wood floats" or "Auto GG: Message" break a plain YAML key, so those get double quotes. */

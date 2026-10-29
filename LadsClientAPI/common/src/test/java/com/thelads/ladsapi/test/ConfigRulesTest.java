@@ -351,4 +351,31 @@ public class ConfigRulesTest {
             core.stop();
         }
     }
+
+    @Test
+    public void testRegenerateGeneratedRulesContentIsIdempotent() {
+        LadsSchema schema = LadsSchema.loadDefault();
+        String generated = RulesGenerator.generateRulesContent(schema);
+        List<String> lines = List.of(generated.split("\r?\n"));
+        List<String> updated = RulesGenerator.updateRulesLines(lines, schema);
+        assertEquals(lines, updated);
+    }
+
+    @Test
+    public void testPartialTwoSpaceFileRegeneratesWithTopLevelKeys(@TempDir Path tempDir) throws IOException {
+        Path rulesFile = tempDir.resolve("rules.yml");
+        String initial = """
+                modules:
+                  Fullbright:
+                    state: block
+                """;
+        Files.writeString(rulesFile, initial, StandardCharsets.UTF_8);
+        LadsSchema schema = LadsSchema.loadDefault();
+        LadsRules rules = LadsRules.load(tempDir, schema, null);
+        assertNotNull(rules.getModules().get("Fullbright"));
+        assertEquals("block", rules.getModules().get("Fullbright").getState());
+        for (LadsSchema.SchemaModule mod : schema.getModules()) {
+            assertTrue(rules.getModules().containsKey(mod.getName()), "Missing top-level module: " + mod.getName());
+        }
+    }
 }
