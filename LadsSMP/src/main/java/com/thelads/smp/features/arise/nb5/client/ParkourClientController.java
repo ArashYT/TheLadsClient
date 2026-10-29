@@ -66,14 +66,28 @@ public final class ParkourClientController {
         wasInAir = false;
     }
 
-    public static boolean isParkourAllowed() {
-        if (!AriseNB5Config.get().enabled) return false;
-        if (!serverConfirmed) return false;
+    private static java.util.function.BooleanSupplier channelChecker = () -> {
         try {
             return ClientPlayNetworking.canSend(ParkourActionPayload.TYPE);
         } catch (Throwable ignored) {
             return false;
         }
+    };
+
+    public static boolean isParkourAllowed() {
+        if (!AriseNB5Config.get().enabled) return false;
+        if (!serverConfirmed) return false;
+        return channelChecker.getAsBoolean();
+    }
+
+    public static void setChannelCheckerForTesting(java.util.function.BooleanSupplier checker) {
+        channelChecker = checker != null ? checker : () -> {
+            try {
+                return ClientPlayNetworking.canSend(ParkourActionPayload.TYPE);
+            } catch (Throwable ignored) {
+                return false;
+            }
+        };
     }
 
     public static int getStamina() {

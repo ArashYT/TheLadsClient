@@ -303,6 +303,7 @@ public class AriseNB5UnitTest {
         ParkourClientController.resetSession();
         java.util.concurrent.atomic.AtomicReference<ParkourActionPayload> sentPayload = new java.util.concurrent.atomic.AtomicReference<>();
         ParkourClientController.setActionSenderForTesting(sentPayload::set);
+        ParkourClientController.setChannelCheckerForTesting(() -> true);
 
         try {
             ParkourActionPayload payload = new ParkourActionPayload(ParkourActionType.DODGE.getId(), 0.0f, 0.0f, 0.0f, 1.0f);
@@ -324,6 +325,7 @@ public class AriseNB5UnitTest {
             assertEquals(1.0f, sentPayload.get().param(), 0.001f);
         } finally {
             ParkourClientController.setActionSenderForTesting(null);
+            ParkourClientController.setChannelCheckerForTesting(null);
             ParkourClientController.resetSession();
         }
     }
