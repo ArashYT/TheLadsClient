@@ -132,8 +132,34 @@ public final class SnailMailFeature {
 
     /** Online player, or anyone who joined since this was saved; null = unknown (refuse instead of losing the item). */
     public static UUID resolveRecipient(MinecraftServer server, String name) {
+        if (name == null || name.isBlank()) return null;
         ServerPlayer online = server != null ? server.getPlayerList().getPlayerByName(name) : null;
-        return online != null ? online.getUUID() : data.names.get(name.toLowerCase(Locale.ROOT));
+        if (online != null) {
+            return online.getUUID();
+        }
+        UUID fromData = data.names.get(name.toLowerCase(Locale.ROOT));
+        if (fromData != null) {
+            return fromData;
+        }
+        if (server != null && server.services() != null) {
+            try {
+                if (server.services().nameToIdCache() != null) {
+                    var cached = server.services().nameToIdCache().get(name);
+                    if (cached.isPresent()) {
+                        return cached.get().id();
+                    }
+                }
+            } catch (Exception ignored) {}
+            try {
+                if (server.services().profileResolver() != null) {
+                    var profile = server.services().profileResolver().fetchByName(name);
+                    if (profile.isPresent()) {
+                        return profile.get().id();
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        return null;
     }
 
     public static void registerMailbox(UUID owner, Level level, BlockPos pos) {
