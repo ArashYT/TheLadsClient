@@ -63,12 +63,15 @@ public class BotanyPotBlock extends BaseEntityBlock {
             if (be instanceof BotanyPotBlockEntity pot) {
                 if (!pot.getSoil().isEmpty()) {
                     Containers.dropItemStack(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, pot.getSoil());
+                    pot.setSoil(ItemStack.EMPTY);
                 }
                 if (!pot.getCrop().isEmpty()) {
                     Containers.dropItemStack(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, pot.getCrop());
+                    pot.setCrop(ItemStack.EMPTY);
                 }
                 if (!pot.getOutput().isEmpty()) {
                     Containers.dropItemStack(level, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, pot.getOutput());
+                    pot.extractOutput();
                 }
             }
         }
