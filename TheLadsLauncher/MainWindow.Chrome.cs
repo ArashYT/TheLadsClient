@@ -205,6 +205,7 @@ public partial class MainWindow
 
         if (FilesEditor != null && FilesEditor.IsDirty)
         {
+            if (!IsVisible) { Show(); Activate(); }
             e.Cancel = true;
             bool allowed = await FilesEditor.RequestCloseAsync();
             if (!allowed) return;
