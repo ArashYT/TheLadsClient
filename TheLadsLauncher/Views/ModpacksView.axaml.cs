@@ -1453,6 +1453,7 @@ public partial class ModpacksView : UserControl
     {
         if (_selected is not { } instance || item.UpdateFile == null) return;
         if (updateBtn != null) { updateBtn.IsEnabled = false; updateBtn.Content = "Updating..."; }
+        _installing++;
         try
         {
             string modsDir = Path.Combine(instance.GameDirectory, "mods");
@@ -1469,6 +1470,10 @@ public partial class ModpacksView : UserControl
         {
             ManageStatus.Text = $"Update failed for {item.DisplayName}: {ex.Message}";
             if (updateBtn != null) { updateBtn.IsEnabled = true; updateBtn.Content = "Retry"; }
+        }
+        finally
+        {
+            _installing--;
         }
     }
 
@@ -2636,6 +2641,7 @@ public partial class ModpacksView : UserControl
                 if (_selected is not { } instance) return;
                 actionBtn.IsEnabled = false;
                 actionBtn.Content = "Installing...";
+                _installing++;
                 try
                 {
                     if (hit.Id == "theladscore" || hit.Provider == "The Lads")
@@ -2692,6 +2698,10 @@ public partial class ModpacksView : UserControl
                     actionBtn.IsEnabled = true;
                     actionBtn.Content = "Retry";
                     AddContentStatus.Text = $"Installation failed: {ex.Message}";
+                }
+                finally
+                {
+                    _installing--;
                 }
             };
         }
@@ -3098,6 +3108,7 @@ public partial class ModpacksView : UserControl
                 {
                     actionBtn.IsEnabled = false;
                     actionBtn.Content = "Installing...";
+                    _installing++;
                     try
                     {
                         string targetDir = string.IsNullOrEmpty(_addContentTargetDir) ? Path.Combine(instance.GameDirectory, "mods") : _addContentTargetDir;
@@ -3148,6 +3159,10 @@ public partial class ModpacksView : UserControl
                         actionBtn.IsEnabled = true;
                         actionBtn.Content = "Retry";
                         ManageStatus.Text = $"Install failed: {ex.Message}";
+                    }
+                    finally
+                    {
+                        _installing--;
                     }
                 };
             }
