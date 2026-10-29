@@ -4,6 +4,7 @@ package com.thelads.core.v1_20_1.embedded.capes.handler;
 import com.google.gson.Gson;
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.platform.NativeImage;
+import com.thelads.core.client.util.CapePng;
 import com.thelads.core.v1_20_1.embedded.capes.CapeConfig;
 import com.thelads.core.v1_20_1.embedded.capes.CapeType;
 import com.thelads.core.v1_20_1.embedded.capes.Capes;
@@ -16,6 +17,7 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.resources.ResourceLocation;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -33,8 +35,8 @@ import java.util.concurrent.Executors;
 public class PlayerHandler {
     // Read from the render thread (every frame, per player) and written when a profile is first seen.
     private static final Map<UUID, PlayerHandler> instances = new ConcurrentHashMap<>();
-    // 1.20.1 runs on Java 17: no virtual threads, so one short-lived daemon thread per download (cached pool).
-    private static final ExecutorService capeExecutor = Executors.newCachedThreadPool(task -> {
+    // 1.20.1 runs on Java 17: no virtual threads, so 4 daemon threads take the downloads in turn (a crowded lobby queues, not 100 threads).
+    private static final ExecutorService capeExecutor = Executors.newFixedThreadPool(4, task -> {
         Thread thread = new Thread(task, "Capes download");
         thread.setDaemon(true);
         return thread;
@@ -101,6 +103,8 @@ public class PlayerHandler {
         connection.addRequestProperty("User-Agent", "Mozilla/5.0");
         connection.setDoInput(true);
         connection.setDoOutput(false);
+        connection.setConnectTimeout(5_000); // a provider that never answers held a download thread forever
+        connection.setReadTimeout(5_000);
         return connection;
     }
 
@@ -179,7 +183,9 @@ public class PlayerHandler {
 
     public boolean setCapeTexture(InputStream image, boolean animated, boolean labymod) {
         try {
-            NativeImage cape = NativeImage.read(image);
+            byte[] png = CapePng.read(image, animated); // size checked before decoding: OptiFine capes come over plain HTTP
+            if (png == null) return false;
+            NativeImage cape = NativeImage.read(new ByteArrayInputStream(png));
             if (labymod && UUIDUtil.uuidFromIntArray(cape.getPixelsRGBA()).toString().equals("ff305f81-ff30-5f90-ff30-5f90ff305f90")) {
                 return false;
             }

@@ -16,6 +16,7 @@ public final class WorldEditCuiCodecChecks {
         checkRoundTrip();
         checkRoundTripEmpty();
         System.out.println("PASS " + passed + " worldedit:cui codec checks");
+        LadsApiCodecChecks.main(args);
     }
 
     private static void checkChannelIdentifier() {

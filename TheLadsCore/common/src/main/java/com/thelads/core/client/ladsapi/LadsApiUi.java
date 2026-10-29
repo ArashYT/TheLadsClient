@@ -32,19 +32,24 @@ public final class LadsApiUi {
     }
 
     public static void policyApplied(String serverName, int changed, String notice, List<ToastAction> actions) {
-        if (!isShowServerNoticeEnabled()) {
+        policyApplied(serverName, changed, 0, notice, actions);
+    }
+
+    /** {@code unlocked} = modules whose own safety block the server lifted by name: the toast always says so (never silently). */
+    public static void policyApplied(String serverName, int changed, int unlocked, String notice, List<ToastAction> actions) {
+        if (!isShowServerNoticeEnabled() && unlocked <= 0) {
             policyCleared();
             return;
         }
 
         String noticeLine = (notice != null && !notice.trim().isEmpty()) ? notice.trim() : null;
         boolean hasActions = actions != null && !actions.isEmpty();
-        if (changed <= 0 && noticeLine == null && !hasActions) {
+        if (changed <= 0 && unlocked <= 0 && noticeLine == null && !hasActions) {
             policyCleared();
             return;
         }
 
-        String title = formatPolicyToastTitle(serverName, changed);
+        String title = formatPolicyToastTitle(serverName, changed, unlocked);
         activeTitle = title;
         activeNotice = noticeLine;
         activeActions = hasActions ? actions : Collections.emptyList();
@@ -90,11 +95,19 @@ public final class LadsApiUi {
 
     /** Formats the title line for a policy notification toast ("Lads SMP limits 3 Lads settings"). */
     public static String formatPolicyToastTitle(String serverName, int changed) {
+        return formatPolicyToastTitle(serverName, changed, 0);
+    }
+
+    /** "Lads SMP limits 3 Lads settings", "... and unlocks 1", "Lads SMP unlocks 2 Lads settings" (an allow is not a limit). */
+    public static String formatPolicyToastTitle(String serverName, int changed, int unlocked) {
         String server = (serverName == null || serverName.trim().isEmpty()) ? "This server" : serverName.trim();
-        if (changed <= 0) {
+        if (changed <= 0 && unlocked <= 0) {
             return server;
         }
-        return server + " limits " + changed + (changed == 1 ? " Lads setting" : " Lads settings");
+        if (changed <= 0) {
+            return server + " unlocks " + unlocked + (unlocked == 1 ? " Lads setting" : " Lads settings");
+        }
+        return server + " limits " + changed + (changed == 1 ? " Lads setting" : " Lads settings") + (unlocked > 0 ? " and unlocks " + unlocked : "");
     }
 
     /**

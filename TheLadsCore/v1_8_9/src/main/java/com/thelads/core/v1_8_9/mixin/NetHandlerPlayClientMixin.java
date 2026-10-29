@@ -21,6 +21,7 @@ import com.thelads.core.v1_8_9.feature.ScoreboardCache189;
 import com.thelads.core.v1_8_9.feature.TabListCache189;
 import com.thelads.core.client.ladsapi.LadsApiClient;
 import net.minecraft.network.play.server.S01PacketJoinGame;
+import net.minecraft.network.play.server.S07PacketRespawn;
 import net.minecraft.network.play.server.S27PacketExplosion;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -100,8 +101,14 @@ public abstract class NetHandlerPlayClientMixin {
     @Inject(method = "handleJoinGame", at = @At("TAIL"), require = 1)
     private void ladsJoinGame(S01PacketJoinGame packet, CallbackInfo ci) {
         LadsApiClient.joinGame(0L);
+        LadsApiClient.dimension(packet.getDimension());
         com.thelads.core.client.worldedit.WorldEditCUI.clear();
         ladsSendWorldEditHandshake();
+    }
+
+    @Inject(method = "handleRespawn", at = @At("TAIL"), require = 1)
+    private void ladsRespawn(S07PacketRespawn packet, CallbackInfo ci) {
+        LadsApiClient.dimension(packet.getDimensionID());
     }
 
     private void ladsSendWorldEditHandshake() {

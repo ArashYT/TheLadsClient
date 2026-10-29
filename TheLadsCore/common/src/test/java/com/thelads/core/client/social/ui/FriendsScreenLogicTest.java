@@ -407,6 +407,29 @@ class FriendsScreenLogicTest {
         assertEquals("abcdefghijklmnop", logic.addFriendInput(), "Username must remain 16 chars max");
     }
 
+    /** B4: Add Friend claims nothing until the backend answers, then shows that answer (sent, or why not). */
+    @Test
+    void addFriendNoticeFollowsTheBackendAnswer() {
+        FakeCallbacks callbacks = new FakeCallbacks();
+        FriendsScreenLogic logic = new FriendsScreenLogic(callbacks);
+        logic.setTab(FriendsScreenLogic.Tab.ADD);
+        logic.setAddFriendInput("Pal");
+        TestGraphics g = new TestGraphics(480, 270);
+        logic.render(g, 0, 0);
+        logic.mouseClicked(logic.addInputBox().x() + 2, logic.addInputBox().y() + 2, 0);
+        assertTrue(logic.keyPressed(257, 0, 0));
+        assertEquals(List.of("Pal"), callbacks.addedNames);
+
+        logic.render(g, 0, 0);
+        assertTrue(g.drawnTexts().contains("Sending a request to Pal..."), g.drawnTexts().toString());
+        assertFalse(g.drawnTexts().stream().anyMatch(t -> t.startsWith("Request sent")), "nothing claimed before the answer");
+
+        callbacks.addResult = "No Minecraft player called Pal";
+        g.drawnTexts().clear();
+        logic.render(g, 0, 0);
+        assertTrue(g.drawnTexts().contains("No Minecraft player called Pal"), g.drawnTexts().toString());
+    }
+
     @Test
     void sortedFriendsCachedUntilListOrPresenceChanges() {
         FakeCallbacks callbacks = new FakeCallbacks();
@@ -471,6 +494,8 @@ class FriendsScreenLogicTest {
         @Override public void blockFriend(UUID id) { blockedIds.add(id); }
         @Override public void setNick(UUID id, String nick) { nicked.put(id, nick); }
         @Override public void addFriend(String name) { addedNames.add(name); }
+        String addResult;
+        @Override public String addFriendResult() { return addResult; }
         @Override public void onClose() { closed = true; }
     }
 

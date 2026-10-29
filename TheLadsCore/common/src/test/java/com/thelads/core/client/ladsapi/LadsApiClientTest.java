@@ -210,22 +210,70 @@ class LadsApiClientTest {
     void testAutomationVsUnlistedAllow() {
         sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test\"}");
 
-        // unlisted: allow lifts regular modules, but never automation modules!
-        String policyJson = "{\"t\":\"policy\",\"rev\":6,\"unlisted\":\"allow\"}";
+        // Anti-ban: unlisted "allow" is the client default for every module; only a by-name "allow" lifts a safety block
+        String policyJson = "{\"t\":\"policy\",\"rev\":6,\"unlisted\":\"allow\",\"modules\":{\"Minimap\":\"allow\"}}";
         JsonObject ack = sendAndGetLastJson(policyJson);
         assertNotNull(ack);
 
         ServerPolicy policy = ServerPolicy.active();
-        // Automation modules stay INHERIT
-        assertEquals(ModuleState.INHERIT, policy.module("StackRefill"));
-        assertEquals(ModuleState.INHERIT, policy.module("UseWhileMining"));
-        assertEquals(ModuleState.INHERIT, policy.module("AutoReconnect"));
-        assertEquals(ModuleState.INHERIT, policy.module("MouseTweaks"));
-        assertEquals(ModuleState.INHERIT, policy.module("KeepUiOpen"));
+        for (String gated : new String[] {"StackRefill", "UseWhileMining", "AutoReconnect", "MouseTweaks", "KeepUIOpen", "Elytra Swap",
+                "Inventory Move", "Armor Swap", "Container Sorting", "Auto Text", "Creative Fly Boost", "MLG Cobweb", "Fullbright", "FPS"}) {
+            assertEquals(ModuleState.INHERIT, policy.module(gated), gated);
+        }
+        assertEquals(ModuleState.ALLOW, policy.module("Minimap"), "by name, allow still lifts the block");
+    }
 
-        // Non-automation modules get ALLOW
-        assertEquals(ModuleState.ALLOW, policy.module("FPS"));
-        assertEquals(ModuleState.ALLOW, policy.module("Fullbright"));
+    @Test
+    void testNeverForcedModulesAndPrivacyOptions() {
+        sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test\"}");
+
+        String policyJson = "{\"t\":\"policy\",\"rev\":7,\"modules\":{\"Toggle Sprint & Sneak\":\"on\",\"Elytra Swap\":\"on\",\"Inventory Move\":\"on\","
+            + "\"Armor Swap\":\"on\",\"Container Sorting\":\"on\",\"Auto Text\":\"on\",\"Creative Fly Boost\":\"on\",\"MLG Cobweb\":\"on\","
+            + "\"Server Notification Actions\":\"on\",\"Crosshair\":\"on\"},"
+            + "\"options\":{\"Chat\":{\"Translate Chat\":{\"value\":true},\"Translate To\":{\"choices\":[\"English\"]},"
+            + "\"Fuzzy Command Suggestions\":{\"value\":false}},\"DiscordRPC\":{\"Detail Level\":{\"choices\":[\"Full\"]}}}}";
+        JsonObject ack = sendAndGetLastJson(policyJson);
+        assertNotNull(ack);
+        String ignored = ack.get("ignored").getAsJsonArray().toString();
+
+        ServerPolicy policy = ServerPolicy.active();
+        for (String name : new String[] {"Toggle Sprint & Sneak", "Elytra Swap", "Inventory Move", "Armor Swap", "Container Sorting",
+                "Auto Text", "Creative Fly Boost", "MLG Cobweb", "Server Notification Actions"}) {
+            assertEquals(ModuleState.INHERIT, policy.module(name), name + " can't be forced on");
+            assertTrue(ignored.contains(name), name + " reported as ignored");
+        }
+        assertEquals(ModuleState.ON, policy.module("Crosshair"));
+
+        assertNull(policy.option("Chat", "Translate Chat"), "a server never turns on chat translation (every line goes to Google)");
+        assertNull(policy.option("Chat", "Translate To"));
+        assertNull(policy.option("DiscordRPC", "Detail Level"), "a choices limit on a privacy module would force a value");
+        assertTrue(ignored.contains("Chat.Translate Chat") && ignored.contains("DiscordRPC.Detail Level"));
+        assertNotNull(policy.option("Chat", "Fuzzy Command Suggestions"), "other Chat options stay controllable");
+    }
+
+    @Test
+    void testPresenceAndToastNeedHelloAndAreCapped() {
+        UUID id = UUID.randomUUID();
+        LadsApiClient.receive(("{\"t\":\"presence\",\"full\":true,\"add\":[\"" + id + "\"]}").getBytes(StandardCharsets.UTF_8));
+        LadsApiClient.receive("{\"t\":\"toast\",\"title\":\"Hi\"}".getBytes(StandardCharsets.UTF_8));
+        assertFalse(LadsPresence.isLads(id), "no presence from a server that never said hello");
+        assertFalse(LadsApiUi.isToastActive(), "no toast from a server that never said hello");
+
+        sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test\"}");
+        String longText = "x".repeat(100_000);
+        LadsApiClient.receive(("{\"t\":\"toast\",\"title\":\"" + longText + "\",\"message\":\"" + longText + "\","
+            + "\"actions\":[{\"label\":\"" + longText + "\",\"command\":\"/" + longText + "\"}]}").getBytes(StandardCharsets.UTF_8));
+        assertTrue(LadsApiUi.isToastActive());
+        assertEquals(64, LadsApiUi.activeToastTitle().length());
+        assertEquals(256, LadsApiUi.activeToastNotice().length());
+        assertEquals(32, LadsApiUi.activeToastActions().get(0).getLabel().length());
+        assertEquals(512, LadsApiUi.activeToastActions().get(0).getPayload().length());
+
+        List<UUID> many = new ArrayList<>();
+        for (int i = 0; i <= LadsPresence.MAX_SERVER; i++) many.add(new UUID(7, i));
+        LadsPresence.serverAdd(many);
+        assertEquals(LadsPresence.MAX_SERVER, LadsPresence.size(), "a server can't grow the badge set without bound");
+        LadsPresence.serverClear();
     }
 
     @Test
@@ -326,24 +374,123 @@ class LadsApiClientTest {
         assertTrue(LadsApiClient.isSessionOk(), "Same seed respawn must not reset");
 
         // Different seed respawn DOES reset
-        LadsApiClient.respawn(99999L);
-        assertFalse(LadsApiClient.isSessionOk(), "Different seed respawn must reset");
+        LadsApiClient.respawn(88888L);
+        sendAndGetLastJson("{\"t\":\"policy\",\"rev\":1,\"modules\":{\"Crosshair\":\"on\"}}");
+        assertNotNull(ServerPolicy.active());
+
+        // Different seed respawn clears active policy but keeps sessionOk
+        LadsApiClient.respawn(77777L);
+        assertTrue(LadsApiClient.isSessionOk(), "Different seed respawn must keep sessionOk for proxy/multiworld");
+        assertNull(ServerPolicy.active(), "Different seed respawn clears active policy");
+
+        // Server switch / configuration start clears active policy but keeps sessionOk
+        sendAndGetLastJson("{\"t\":\"policy\",\"rev\":2,\"modules\":{\"Crosshair\":\"on\"}}");
+        assertNotNull(ServerPolicy.active());
+        LadsApiClient.serverSwitch();
+        assertTrue(LadsApiClient.isSessionOk(), "serverSwitch keeps sessionOk");
+        assertNull(ServerPolicy.active(), "serverSwitch clears active policy");
+
+        // Disconnect reset clears sessionOk
+        LadsApiClient.reset();
+        assertFalse(LadsApiClient.isSessionOk(), "reset() on disconnect ends session");
     }
 
     @Test
     void testRateLimit() {
+        java.util.concurrent.atomic.AtomicLong testTime = new java.util.concurrent.atomic.AtomicLong(1_000_000L);
+        LadsApiClient.clock = testTime::get;
+
         sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test\"}");
         int sentInitial = sentPayloads.size();
 
-        // Send 7 more messages (total 8 messages in the 1-second window)
-        for (int i = 1; i <= 7; i++) {
+        // Rate limit: 8/s refill, burst 16. Hello used 1 token, 15 tokens remain.
+        // Send 15 more messages (total 16 in the burst window)
+        for (int i = 1; i <= 15; i++) {
             LadsApiClient.receive(("{\"t\":\"policy\",\"rev\":" + i + ",\"unlisted\":\"inherit\"}").getBytes(StandardCharsets.UTF_8));
         }
-        assertEquals(sentInitial + 7, sentPayloads.size());
+        assertEquals(sentInitial + 15, sentPayloads.size());
 
-        // 9th message in same second must be dropped!
+        // 17th message in immediate burst must be dropped!
         LadsApiClient.receive("{\"t\":\"policy\",\"rev\":99,\"unlisted\":\"inherit\"}".getBytes(StandardCharsets.UTF_8));
-        assertEquals(sentInitial + 7, sentPayloads.size(), "9th message in same second must be rate-limited and dropped");
+        assertEquals(sentInitial + 15, sentPayloads.size(), "17th message in immediate burst must be rate-limited and dropped");
+
+        // Advance clock by 250ms (refills 2 tokens at 8/s)
+        testTime.addAndGet(250L);
+        LadsApiClient.receive("{\"t\":\"policy\",\"rev\":100,\"unlisted\":\"inherit\"}".getBytes(StandardCharsets.UTF_8));
+        assertEquals(sentInitial + 16, sentPayloads.size(), "Message after refill must be accepted");
+    }
+
+    @Test
+    void testDimensionChangeStripsAllows() {
+        sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test\"}");
+        LadsApiClient.dimension(0);
+        sendAndGetLastJson("{\"t\":\"policy\",\"rev\":1,\"modules\":{\"Minimap\":\"allow\",\"Crosshair\":\"block\"}}");
+        ServerPolicy p1 = ServerPolicy.active();
+        assertNotNull(p1);
+        assertEquals(ModuleState.ALLOW, p1.module("Minimap"));
+        assertEquals(ModuleState.BLOCK, p1.module("Crosshair"));
+
+        // Respawn in same dimension keeps allows
+        LadsApiClient.dimension(0);
+        assertEquals(ModuleState.ALLOW, ServerPolicy.active().module("Minimap"));
+
+        // Dimension change (0 -> -1) strips by-name allow under Anti-Ban rule
+        LadsApiClient.dimension(-1);
+        ServerPolicy p2 = ServerPolicy.active();
+        assertNotNull(p2);
+        assertEquals(ModuleState.INHERIT, p2.module("Minimap"), "by-name allow must be stripped on dimension change");
+        assertEquals(ModuleState.BLOCK, p2.module("Crosshair"), "blocks remain on dimension change");
+    }
+
+    @Test
+    void testResetClearsHelloReplies() {
+        java.util.concurrent.atomic.AtomicLong testTime = new java.util.concurrent.atomic.AtomicLong(1_000_000L);
+        LadsApiClient.clock = testTime::get;
+
+        assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server1\"}"));
+        assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server2\"}"));
+        int sentBefore = sentPayloads.size();
+        LadsApiClient.receive("{\"t\":\"hello\",\"v\":1,\"server\":\"Server3\"}".getBytes(StandardCharsets.UTF_8));
+        assertEquals(sentBefore, sentPayloads.size(), "3rd hello without reset is dropped");
+
+        // Server reset clears per-backend helloReplies counter so the new backend gets a reply
+        LadsApiClient.receive("{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8));
+        assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server4\"}"));
+
+        // Per-connection absolute cap is 10 hello replies: 3 sent so far, 7 more reach cap (total 10)
+        for (int i = 5; i <= 12; i++) {
+            testTime.addAndGet(500L); // advance clock to refill rate limiter tokens
+            LadsApiClient.receive("{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8));
+            JsonObject reply = sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Server" + i + "\"}");
+            if (i <= 11) {
+                assertNotNull(reply, "Reply for server " + i + " should succeed before absolute connection cap");
+            } else {
+                assertNull(reply, "11th reply should be dropped by per-connection absolute cap");
+            }
+        }
+
+        // Full disconnect reset clears per-connection absolute cap
+        testTime.addAndGet(500L);
+        LadsApiClient.reset();
+        assertNotNull(sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"ServerAfterReset\"}"));
+    }
+
+    @Test
+    void testGatedAndNeverForcedIntegration() {
+        assertTrue(LadsApiRules.isGated("Minimap"));
+        assertTrue(LadsApiRules.isGated("Fullbright"));
+        assertTrue(LadsApiRules.isGated("ReachDisplay"));
+        assertTrue(LadsApiRules.isGated("Auto GL"));
+        assertTrue(LadsApiRules.isGated("Opened Chest Highlight"));
+        assertTrue(LadsApiRules.isGated("Elytra Swap"));
+        assertFalse(LadsApiRules.isGated("Crosshair Tweaks"));
+
+        assertTrue(LadsApiRules.isNeverForced("Fullbright"));
+        assertTrue(LadsApiRules.isNeverForced("ReachDisplay"));
+        assertTrue(LadsApiRules.isNeverForced("Auto GL"));
+        assertTrue(LadsApiRules.isNeverForced("Elytra Swap"));
+        assertTrue(LadsApiRules.isNeverForced("DiscordRPC"));
+        assertFalse(LadsApiRules.isNeverForced("Crosshair Tweaks"));
     }
 
     @Test
@@ -454,6 +601,7 @@ class LadsApiClientTest {
 
     @Test
     void testToastNotificationPayload() {
+        sendAndGetLastJson("{\"t\":\"hello\",\"v\":1,\"server\":\"Test\"}");
         String toastJson = "{\"t\":\"toast\",\"title\":\"Store Sale\",\"message\":\"50% off this weekend\","
             + "\"actions\":[{\"label\":\"Store\",\"url\":\"https://store.thelads.net\"}]}";
         LadsApiClient.receive(toastJson.getBytes(StandardCharsets.UTF_8));

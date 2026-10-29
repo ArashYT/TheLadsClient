@@ -89,9 +89,17 @@ public class SocialState {
     private volatile SwitchConfirm pendingSwitch;
     private volatile boolean backingUp;
     private volatile long lastBadMessageLog;
-    /** host -> until when its p2p_start is expected: we asked to join it or accepted its invite (F9; the backend's 5 min expiry). */
-    private final Map<UUID, Long> joinIntents = new ConcurrentHashMap<>();
+    /** host -> when and where we asked to join it or accepted its invite: its p2p_start is expected for 5 min (F9; the backend's expiry). */
+    private final Map<UUID, Intent> joinIntents = new ConcurrentHashMap<>();
+    private record Intent(long at, String here) {}
     private static final long INTENT_MS = 5 * 60_000;
+    /** An accept older than this, or from elsewhere, asks again before leaving (the player may be in a match by now). Tests change it. */
+    static long reconfirmMs = 20_000;
+    /** A late p2p_start waiting for the player's "Join" (toast or chat link). */
+    private record PendingJoin(String sid, Runnable go) {}
+    private volatile PendingJoin pendingJoin;
+    /** The last Add Friend: its name and the backend's answer for the Friends screen (null while waiting). */
+    private volatile String addingName, addResult;
     /** Backend invite / join request ids. */
     private static final java.util.regex.Pattern ID = java.util.regex.Pattern.compile("[A-Za-z0-9_-]{1,64}");
     /** Chat link token -> action id (F10): a click runs only a link we printed, once, within 10 minutes. */
@@ -255,13 +263,17 @@ public class SocialState {
     }
 
     private String switchQuestion(String target) {
+        String here = here();
+        return here == null ? null : "Leave " + here + " and join " + target + "?";
+    }
+
+    /** What joining would leave (a friend's world, a server address, this world's name), or null in the menus. */
+    private String here() {
         if (!bridge().inWorldOrServer() && !guestSession.isActive()) return null;
-        String here;
         String addr = LadsGameBridge.get().getServerAddress();
-        if (guestSession.isActive()) here = guestSession.hostName() + "'s world";
-        else if (!"Singleplayer".equalsIgnoreCase(addr)) here = addr;
-        else here = Objects.requireNonNullElse(bridge().worldName(), "this world");
-        return "Leave " + here + " and join " + target + "?";
+        if (guestSession.isActive()) return guestSession.hostName() + "'s world";
+        if (!"Singleplayer".equalsIgnoreCase(addr)) return addr;
+        return Objects.requireNonNullElse(bridge().worldName(), "this world");
     }
 
     private String nameOf(UUID id) {
@@ -347,8 +359,15 @@ public class SocialState {
 
     public void addFriend(String name) {
         if (name != null && !name.trim().isEmpty()) {
+            addingName = name.trim();
+            addResult = null;
             send(SocialProtocol.FRIEND_ADD, "name", name.trim());
         }
+    }
+
+    /** The backend's answer to the last Add Friend ("Request sent to X!" or why not), or null while it is on its way. */
+    public String addFriendResult() {
+        return addResult;
     }
 
     public void accept(UUID uuid) {
@@ -510,7 +529,7 @@ public class SocialState {
             return;
         }
 
-        if (invite != null && invite.from() != null) joinIntents.put(invite.from(), System.currentTimeMillis() + INTENT_MS);
+        if (invite != null && invite.from() != null) joinIntents.put(invite.from(), new Intent(System.currentTimeMillis(), here()));
         send(SocialProtocol.INVITE_ACCEPT, "inviteId", inviteId);
     }
 
@@ -522,7 +541,7 @@ public class SocialState {
 
     public void requestJoin(UUID host) {
         if (host == null) return;
-        joinIntents.put(host, System.currentTimeMillis() + INTENT_MS);
+        joinIntents.put(host, new Intent(System.currentTimeMillis(), here()));
         send(SocialProtocol.JOIN_REQUEST, "host", host.toString());
     }
 
@@ -687,6 +706,17 @@ public class SocialState {
                 UUID id = parseUuid(arg);
                 if (id != null && incomingMap.containsKey(id)) decline(id);
             }
+            case "p2p_join", "p2p_skip" -> {
+                PendingJoin p = pendingJoin;
+                if (p == null || !p.sid().equals(arg)) return;
+                pendingJoin = null;
+                if (prefix.equals("p2p_join")) {
+                    p.go().run();
+                } else {
+                    if (guestSession.isExpected(arg)) guestSession.close("Declined");
+                    send(SocialProtocol.P2P_END, "sid", arg, "reason", "Declined"); // the host stops waiting
+                }
+            }
             case "open_friends" -> bridge().openFriendsScreen();
             case "dm" -> {
                 dmTarget = parseUuid(arg);
@@ -704,6 +734,10 @@ public class SocialState {
         return switch (actionId.substring(0, colon)) {
             case "invite_accept", "invite_decline" -> activeInvites.containsKey(arg);
             case "join_accept", "join_deny" -> activeJoinRequests.containsKey(arg);
+            case "p2p_join", "p2p_skip" -> {
+                PendingJoin p = pendingJoin;
+                yield p != null && p.sid().equals(arg);
+            }
             case "friend_accept", "friend_decline" -> {
                 UUID id = parseUuid(arg);
                 yield id != null && incomingMap.containsKey(id);
@@ -842,6 +876,7 @@ public class SocialState {
                 FriendEntry entry = parseFriendEntry(msg);
                 if (entry != null) {
                     outgoingMap.put(entry.id(), entry);
+                    if (entry.name().equalsIgnoreCase(addingName)) addResult = "Request sent to " + entry.name() + "!";
                     notifyListeners();
                 }
             }
@@ -852,6 +887,7 @@ public class SocialState {
                     outgoingMap.remove(entry.id());
                     friendsMap.put(entry.id(), entry);
                     bridge().toast("New Friend", entry.name() + " is now your friend!", null, null);
+                    if (entry.name().equalsIgnoreCase(addingName)) addResult = entry.name() + " is now your friend!"; // they had asked us
                     notifyListeners();
                 }
             }
@@ -932,6 +968,8 @@ public class SocialState {
                 String sid = str(msg, "sid");
                 String reason = str(msg, "reason");
                 if (sid != null) {
+                    PendingJoin p = pendingJoin;
+                    if (p != null && p.sid().equals(sid)) pendingJoin = null; // the host gave up waiting for our "Join"
                     if (guestSession.ownsSid(sid)) {
                         guestSession.close(reason);
                     } else if (hostSession.ownsSid(sid)) {
@@ -951,8 +989,38 @@ public class SocialState {
                     activeInvites.remove(ref);
                     activeJoinRequests.remove(ref);
                 }
+                // B4: the player sees why (ref: the name typed in Add Friend, a player's UUID, or an invite/request id)
+                UUID refId = parseUuid(ref);
+                if (refId != null) joinIntents.remove(refId); // a join request that failed: no p2p_start follows
+                boolean adding = ref != null && ref.equalsIgnoreCase(addingName);
+                String text = SocialProtocol.E_NOT_FOUND.equals(code) && !adding ? null // an id already answered or gone
+                        : errorText(code, ref, adding ? ref : refId != null ? nameOf(refId) : null);
+                if (adding) addResult = text != null ? text : "Could not send the request";
+                if (text != null) bridge().toast("Friends", text, null, null);
             }
         }
+    }
+
+    /** A backend error code as one line for the player (who: a name, or null), or null for codes they can't act on ("bad"). */
+    static String errorText(String code, String ref, String who) {
+        if (code == null) return null;
+        String them = who != null && !who.isEmpty() ? who : "that player";
+        return switch (code) {
+            case SocialProtocol.E_NOT_FOUND -> "No Minecraft player called " + them;
+            case SocialProtocol.E_SELF -> "You can't add yourself";
+            case SocialProtocol.E_ALREADY -> "Already friends with " + them + ", or already asked";
+            case SocialProtocol.E_BLOCKED -> "Blocked: you can't reach " + them;
+            case SocialProtocol.E_LIMIT -> "invites".equals(ref) ? "Too many open invites: wait for answers"
+                    : "join_requests".equals(ref) ? "That world has too many join requests waiting" : "Limit reached (500 friends)";
+            case SocialProtocol.E_RATE -> "Slow down: too many requests, try again later";
+            case SocialProtocol.E_NOT_FRIEND -> "You're not friends with " + them;
+            case SocialProtocol.E_EXPIRED -> "That invite or join request expired";
+            case SocialProtocol.E_INVITE_ONLY -> them + "'s world only takes invited friends";
+            case SocialProtocol.E_FULL -> them + "'s world is full";
+            case SocialProtocol.E_INCOMPATIBLE -> them + "'s world needs another Minecraft version or modpack";
+            case SocialProtocol.E_OFFLINE -> "Can't reach " + them + ": offline or not hosting";
+            default -> null;
+        };
     }
 
     public void handleJoinRequest(String reqId, UUID from, SocialBridge.GameInfo game) {
@@ -997,24 +1065,39 @@ public class SocialState {
             hostSession.handleP2PStart(sid, peer, iceConfig, signalSender); // only for a guest we accepted (HostSession)
         } else {
             // F9: only for a host we asked to join or whose invite we accepted; never "leave your world now" on the backend's word alone
-            Long until = joinIntents.remove(peer);
-            if (until == null || until < System.currentTimeMillis()) {
+            Intent intent = joinIntents.remove(peer);
+            long now = System.currentTimeMillis();
+            if (intent == null || now - intent.at() > INTENT_MS) {
                 LOGGER.warn("SocialState: ignored p2p_start from {}: no join request or accepted invite", peer);
                 return;
             }
-            SocialBridge bridge = bridge();
-            // The Friends screen shows "Connecting to <friend>'s world..." with Cancel until the link is up (then the game connects)
-            if (bridge.inWorldOrServer() || guestSession.isActive()) {
-                guestSession.expect(sid); // the host's ICE signal can arrive while the game is leaving: it waits for start
-                bridge.leaveWorld(() -> {
-                    if (!guestSession.isExpected(sid)) return; // cancelled or replaced meanwhile
-                    guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender);
-                    bridge.openFriendsScreen();
-                });
-            } else {
-                guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender);
-                bridge.runOnGameThread(bridge::openFriendsScreen);
+            String here = here();
+            if (here != null && (!here.equals(intent.here()) || now - intent.at() > reconfirmMs)) {
+                // F12: the "leave?" answer was for another place or a while ago (a match may have started since): ask again, leave nothing yet
+                pendingJoin = new PendingJoin(sid, () -> joinNow(sid, peer, peerName, worldId, iceConfig, signalSender));
+                if (!guestSession.isActive()) guestSession.expect(sid); // holds the host's first signals; ends nothing (no friend's world open)
+                bridge().toast(peerName + " accepted", "Leave " + here + " and join?", "p2p_join:" + sid, "p2p_skip:" + sid);
+                chatAction(peerName + " accepted your join request: leave " + here + " and join? [Join]", "p2p_join:" + sid);
+                return;
             }
+            joinNow(sid, peer, peerName, worldId, iceConfig, signalSender);
+        }
+    }
+
+    private void joinNow(String sid, UUID peer, String peerName, String worldId, P2PSession.IceConfig iceConfig,
+                         Consumer<JsonObject> signalSender) {
+        SocialBridge bridge = bridge();
+        // The Friends screen shows "Connecting to <friend>'s world..." with Cancel until the link is up (then the game connects)
+        if (bridge.inWorldOrServer() || guestSession.isActive()) {
+            guestSession.expect(sid); // the host's ICE signal can arrive while the game is leaving: it waits for start
+            bridge.leaveWorld(() -> {
+                if (!guestSession.isExpected(sid)) return; // cancelled or replaced meanwhile
+                guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender);
+                bridge.openFriendsScreen();
+            });
+        } else {
+            guestSession.start(sid, peer, peerName, worldId, iceConfig, signalSender);
+            bridge.runOnGameThread(bridge::openFriendsScreen);
         }
     }
 

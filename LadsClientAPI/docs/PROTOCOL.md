@@ -39,12 +39,13 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
 ```
 - `rev`: int >= 1, increases per player per connection. Client echoes it in `ack`.
 - `unlisted`: `inherit` (default; Lads built-in rules) | `allow` | `block` for modules not in `modules`.
-  `allow` via `unlisted` never lifts **automation** modules (StackRefill, UseWhileMining, AutoReconnect, MouseTweaks): those
-  must be listed by name.
+  Since client 1.12.0 `allow` via `unlisted` is the same as `inherit` (anti-ban: it lifted gated automation the list missed):
+  a module whose safety block should lift must be listed by name.
 - `modules`: name -> `allow` | `block` | `on`.
   - `block`: module off; player can't turn it on; no "own risk" bypass.
   - `allow`: lifts the client's own safety block (HypixelSafetyManager BANNED/UNKNOWN) on this server; player still chooses.
   - `on`: forced on. Only for server-controllable modules (not automation, not Discord RPC). Otherwise ignored + reported.
+    Options of those modules, and Chat's Translate Chat / Translate To, take no rules either (ignored + reported).
 - `options`: module name -> option name -> rule (nested because option names contain dots). Rule fields, all optional:
   | field | Bool / PlayerAction | Slider | Dropdown | Color |
   |---|---|---|---|---|
@@ -77,7 +78,7 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
 ```json
 {"t":"hello","v":1,"lads":"1.9.13","mc":"26.3"}
 ```
-- Sent once per server `hello` received (max 2 per connection). Nothing else about the player: no mods, settings, hardware.
+- Sent once per server `hello` received (max 2 per backend/reset, max 10 per connection). Nothing else about the player: no mods, settings, hardware.
 
 ### ack
 ```json
@@ -90,10 +91,13 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
 ## 4. Client state rules
 
 - One `ServerPolicy` snapshot (or none) + one presence set + `serverName` + `sessionOk` flag (set by a valid server hello).
-- Reset (drop all, `sessionOk=false`) on: disconnect; every JoinGame/Login packet; 26.3 start of configuration phase;
-  server `reset`; a new server `hello` (drops the old policy, then replies); a Respawn whose hashed seed differs from the last
-  JoinGame/Respawn seed. A Respawn with the same seed (death, dimension change) is not a reset.
-- Rate limit: max 8 incoming messages per second; extra ones dropped (the next full `policy` fixes any gap).
+- Complete reset (drop all, `sessionOk=false`, clear hello reply cap) on: client disconnect.
+- Server switch / reset: server `reset`, JoinGame/Login packet, 26.3 start of configuration phase,
+  or a Respawn whose hashed seed differs from the last JoinGame/Respawn seed clears the active policy,
+  presence and toast, resets the per-backend hello reply counter, but keeps `sessionOk=true`.
+  A new server `hello` drops the old policy, then replies. A Respawn with the same seed (death) is not a reset.
+- Dimension change (e.g. 1.8.9 JoinGame/Respawn): strips by-name `allow` rules (anti-ban), keeping blocks and limits.
+- Rate limit: token bucket with refill rate of 8 incoming messages per second and a burst capacity of 16 tokens; extra messages dropped (the next full `policy` fixes any gap).
 - Nothing from a policy is ever written to disk. Config files only ever hold the player's own values.
 
 ## 5. Version handling

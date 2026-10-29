@@ -85,12 +85,14 @@ public abstract class LadsApiPacketListenerMixin {
     @Inject(method = "handleLogin", at = @At("TAIL"), require = 1)
     private void lads$handleLogin(ClientboundLoginPacket packet, CallbackInfo ci) {
         LadsApiClient.joinGame(packet.seed());
+        LadsApiClient.dimension(packet.dimension().hashCode());
         WorldEditCui1201.onJoin();
     }
 
     @Inject(method = "handleRespawn", at = @At("TAIL"), require = 1)
     private void lads$handleRespawn(ClientboundRespawnPacket packet, CallbackInfo ci) {
         LadsApiClient.respawn(packet.getSeed());
+        LadsApiClient.dimension(packet.getDimension().hashCode());
         WorldEditCUI.clear();
     }
 

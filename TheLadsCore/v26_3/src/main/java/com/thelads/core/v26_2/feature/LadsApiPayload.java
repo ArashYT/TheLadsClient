@@ -22,7 +22,8 @@ public record LadsApiPayload(byte[] data) implements CustomPacketPayload {
         buf -> {
             int readable = buf.readableBytes();
             if (readable > LadsApi.MAX_IN) {
-                throw new IllegalArgumentException("lads:api payload exceeds max size: " + readable + " > " + LadsApi.MAX_IN);
+                buf.skipBytes(readable);
+                return new LadsApiPayload(new byte[0]);
             }
             byte[] data = new byte[readable];
             buf.readBytes(data);

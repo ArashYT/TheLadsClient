@@ -53,6 +53,8 @@ public final class FriendsScreenLogic {
         default List<FriendEntry> blocked() { return List.of(); }
         default JoinCheck canJoin(FriendEntry friend) { return new JoinCheck(true, ""); }
         default void addFriend(String name) {}
+        /** The backend's answer to the last addFriend ("Request sent to X!" or why not), or null while waiting. */
+        default String addFriendResult() { return null; }
         default void acceptRequest(UUID id) {}
         default void declineRequest(UUID id) {}
         default void removeFriend(UUID id) {}
@@ -163,6 +165,7 @@ public final class FriendsScreenLogic {
                 return new JoinCheck(check.ok(), check.reason());
             }
             @Override public void addFriend(String name) { s.addFriend(name); }
+            @Override public String addFriendResult() { return s.addFriendResult(); }
             @Override public void acceptRequest(UUID id) { s.accept(id); }
             @Override public void declineRequest(UUID id) { s.decline(id); }
             @Override public void removeFriend(UUID id) { s.remove(id); }
@@ -796,6 +799,8 @@ public final class FriendsScreenLogic {
         g.drawCenteredText("Send Request", centerX, addSendBtn.y + 6, LadsPalette.TEXT, false);
 
         if (!addNotice.isEmpty()) {
+            String result = callbacks.addFriendResult(); // sent, or why not: the backend's answer replaces "Sending..."
+            if (result != null) addNotice = result;
             itemY += 26;
             g.drawCenteredText(addNotice, centerX, itemY, LadsPalette.CARD_ON_GLOW, false);
         }
@@ -1114,7 +1119,7 @@ public final class FriendsScreenLogic {
                 if (addSendBtn != null && addSendBtn.has(x, y)) {
                     if (!addFriendInput.trim().isEmpty()) {
                         callbacks.addFriend(addFriendInput.trim());
-                        addNotice = "Request sent to " + addFriendInput.trim() + "!";
+                        addNotice = "Sending a request to " + addFriendInput.trim() + "...";
                         addFriendInput = "";
                     }
                     return true;
@@ -1191,7 +1196,7 @@ public final class FriendsScreenLogic {
             }
             if (typingAddInput && !addFriendInput.trim().isEmpty()) {
                 callbacks.addFriend(addFriendInput.trim());
-                addNotice = "Request sent to " + addFriendInput.trim() + "!";
+                addNotice = "Sending a request to " + addFriendInput.trim() + "...";
                 addFriendInput = "";
                 return true;
             }

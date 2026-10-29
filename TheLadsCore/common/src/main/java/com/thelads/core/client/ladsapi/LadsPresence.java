@@ -12,6 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class LadsPresence {
     private static final Set<UUID> SERVER = ConcurrentHashMap.newKeySet(), RELAY = ConcurrentHashMap.newKeySet();
+    /** A server's adds stop here (about 1 MB): it can't grow the set for the whole session. */
+    static final int MAX_SERVER = 10_000;
 
     private LadsPresence() {}
 
@@ -27,11 +29,14 @@ public final class LadsPresence {
     /** presence {full:true}: replaces the server's set. */
     public static void serverReplace(Collection<UUID> players) {
         SERVER.clear();
-        SERVER.addAll(players);
+        serverAdd(players);
     }
 
     public static void serverAdd(Collection<UUID> players) {
-        SERVER.addAll(players);
+        for (UUID player : players) {
+            if (SERVER.size() >= MAX_SERVER) return;
+            SERVER.add(player);
+        }
     }
 
     public static void serverRemove(Collection<UUID> players) {

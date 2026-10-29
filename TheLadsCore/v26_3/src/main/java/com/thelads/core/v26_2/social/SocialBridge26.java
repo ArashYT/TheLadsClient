@@ -39,6 +39,7 @@ import java.util.function.Predicate;
 public class SocialBridge26 implements SocialBridge {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore-Social");
     private final java.util.concurrent.CopyOnWriteArrayList<GuestInfo> guestSnapshot = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private volatile long lastGuestRefresh;
 
     public static boolean isMuted(UUID id) {
         return P2PHostState26.isMuted(id);
@@ -106,7 +107,11 @@ public class SocialBridge26 implements SocialBridge {
         if (server == null || !server.isRunning()) return;
 
         P2PHostState26.setLoopbackScope(false);
-        server.publishServer(MinecraftServer.MultiplayerScope.LAN, options.guestOpLevel > 0, 0);
+        // A real port, as openToFriends: vanilla binds port 0 to a random one but advertises "0" on the LAN and in getPort()
+        if (!server.publishServer(MinecraftServer.MultiplayerScope.LAN, options.guestOpLevel > 0, findFreePort())) {
+            LOGGER.warn("Failed to open world to LAN");
+            return;
+        }
         applyHostOptions(options);
     }
 
@@ -188,9 +193,11 @@ public class SocialBridge26 implements SocialBridge {
     public List<GuestInfo> guests() {
         IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
         if (server == null) return Collections.emptyList();
+        long now = System.currentTimeMillis();
         if (server.isSameThread()) {
             updateGuestSnapshot(server);
-        } else {
+        } else if (now - lastGuestRefresh >= 1000L) { // the host screen asks every frame: one server task a second, as on 1.8.9
+            lastGuestRefresh = now;
             server.execute(() -> updateGuestSnapshot(server));
         }
         return new ArrayList<>(guestSnapshot);

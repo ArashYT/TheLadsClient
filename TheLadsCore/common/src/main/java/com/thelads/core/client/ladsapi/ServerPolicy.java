@@ -34,6 +34,14 @@ public final class ServerPolicy {
         this.notice = notice == null ? "" : notice;
     }
 
+    /** The same rules without any by-name "allow" (a 1.8.9 dimension change: maybe another backend), or this when there is none. */
+    ServerPolicy withoutAllows() {
+        if (!modules.containsValue(ModuleState.ALLOW)) return this;
+        Map<String, ModuleState> kept = new java.util.HashMap<>(modules);
+        kept.values().removeIf(state -> state == ModuleState.ALLOW);
+        return new ServerPolicy(serverName, unlisted, kept, options, changedCount, notice);
+    }
+
     /** The rules in force, or null (no LadsClientAPI server, or not yet received). One volatile read: the fast path for every getter. */
     public static ServerPolicy active() {
         return active;
@@ -79,12 +87,7 @@ public final class ServerPolicy {
         if (unlisted == ModuleState.BLOCK) {
             return ModuleState.BLOCK;
         }
-        if (unlisted == ModuleState.ALLOW) {
-            if (LadsApiRules.isAutomation(moduleName)) {
-                return ModuleState.INHERIT;
-            }
-            return ModuleState.ALLOW;
-        }
+        // Anti-ban: "unlisted: allow" is the client default too; lifting a safety block takes the module's name
         return ModuleState.INHERIT;
     }
 

@@ -66,6 +66,7 @@ public final class TurnClient implements AutoCloseable {
         this.password = password;
         this.socket = socket;
         this.ownsSocket = ownsSocket;
+        socket.setReceiveBufferSize(IceAgent.RECEIVE_BUFFER); // relayed sessions arrive here
         this.serverAddress = parseServerAddress(url);
 
         startReader();

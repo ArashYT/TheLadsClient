@@ -4,6 +4,7 @@ package com.thelads.core.v26_2.embedded.capes.handler;
 import com.google.gson.Gson;
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.platform.NativeImage;
+import com.thelads.core.client.util.CapePng;
 import com.thelads.core.v26_2.embedded.capes.CapeConfig;
 import com.thelads.core.v26_2.embedded.capes.CapeType;
 import com.thelads.core.v26_2.embedded.capes.Capes;
@@ -16,6 +17,7 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.ClientAsset;
 import net.minecraft.core.UUIDUtil;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -94,6 +96,8 @@ public class PlayerHandler {
         connection.addRequestProperty("User-Agent", "Mozilla/5.0");
         connection.setDoInput(true);
         connection.setDoOutput(false);
+        connection.setConnectTimeout(5_000); // a provider that never answers held a download thread forever
+        connection.setReadTimeout(5_000);
         return connection;
     }
 
@@ -166,7 +170,9 @@ public class PlayerHandler {
 
     public boolean setCapeTexture(InputStream image, boolean animated, boolean labymod) {
         try {
-            NativeImage cape = NativeImage.read(image);
+            byte[] png = CapePng.read(image, animated); // size checked before decoding: OptiFine capes come over plain HTTP
+            if (png == null) return false;
+            NativeImage cape = NativeImage.read(new ByteArrayInputStream(png));
             if (labymod && UUIDUtil.uuidFromIntArray(cape.getPixels()).toString().equals("ff305f81-ff30-5f90-ff30-5f90ff305f90")) {
                 return false;
             }

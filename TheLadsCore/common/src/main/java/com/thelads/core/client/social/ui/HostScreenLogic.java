@@ -129,17 +129,27 @@ public final class HostScreenLogic {
             }
             @Override public void stopHosting() { s.stopHosting(); }
             @Override public List<SocialBridge.GuestInfo> guests() { return SocialBridge.get().guests(); }
-            @Override public void guestAction(UUID id, SocialBridge.GuestAction action) { s.guestAction(id, action); }
+            private List<Banned> bannedCache; // asked every frame; worldBans() reads lads-host.json when not hosting: re-read after Ban/Unban only
+
+            @Override public void guestAction(UUID id, SocialBridge.GuestAction action) {
+                s.guestAction(id, action);
+                bannedCache = null;
+            }
             @Override public List<Banned> banned() {
+                if (bannedCache != null) return bannedCache;
+                List<com.thelads.core.client.social.FriendEntry> friends = s.friends();
                 List<Banned> out = new ArrayList<>();
                 for (String id : s.worldBans()) {
                     String name = id.length() > 8 ? id.substring(0, 8) : id;
-                    for (com.thelads.core.client.social.FriendEntry f : s.friends()) if (f.id().toString().equals(id)) name = f.displayName();
+                    for (com.thelads.core.client.social.FriendEntry f : friends) if (f.id().toString().equals(id)) name = f.displayName();
                     out.add(new Banned(id, name));
                 }
-                return out;
+                return bannedCache = out;
             }
-            @Override public void unban(String uuid) { s.unban(uuid); }
+            @Override public void unban(String uuid) {
+                s.unban(uuid);
+                bannedCache = null;
+            }
             @Override public void onClose() { onClose.run(); }
         });
     }

@@ -105,7 +105,7 @@ class SchemaExportTest {
         // Verify Fullbright.Brightness
         assertNotNull(fullbright, "Fullbright module must be present in schema");
         assertEquals("MECHANIC", fullbright.get("category").getAsString());
-        assertFalse(fullbright.get("neverForced").getAsBoolean());
+        assertTrue(fullbright.get("neverForced").getAsBoolean(), "Fullbright is risky under Anti-Ban, so neverForced");
         assertFalse(fullbright.get("automation").getAsBoolean());
 
         JsonObject brightnessOpt = null;
