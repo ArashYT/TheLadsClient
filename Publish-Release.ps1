@@ -3,7 +3,7 @@ param(
     [switch]$PrepareOnly,
     [switch]$SkipCoreBuild,
     [switch]$Publish,
-    [switch]$Draft
+    [switch]$Draft # Kept for release.yml compatibility; draft creation is now the default
 )
 $ErrorActionPreference = 'Stop'
 $repo = 'ArashYT/TheLadsClient'
@@ -137,6 +137,9 @@ try {
                 throw "Release draft $tag already exists. Choose a new version, or publish the signed draft with -Publish."
             }
         }
+        if ($Publish) {
+            throw "Release draft $tag does not exist on GitHub. A draft must be created and signed before publishing with -Publish."
+        }
     }
 
     $work = Join-Path $PSScriptRoot ('artifacts/releases/' + $version + '-' + [guid]::NewGuid().ToString('N'))
@@ -253,17 +256,7 @@ try {
     foreach ($asset in Get-ChildItem -LiteralPath $packages -File) {
         if (-not ($remote.assets | Where-Object { $_.name -eq $asset.Name -and $_.size -eq $asset.Length })) { throw "Draft asset missing or wrong size: $($asset.Name)" }
     }
-    if (-not $Publish) {
-        Write-Host "Draft ready: https://github.com/$repo/releases"
-        Write-Host "Review notes and assets, then sign the release with tools/Sign-Release.ps1 -Version $version."
-        Write-Host "After signing, publish with: ./Publish-Release.ps1 -Publish"
-    } else {
-        Assert-ReleaseSignature -Tag $tag -Repo $repo -Version $version -WorkDir $work
-        if ($PSCmdlet.ShouldProcess($tag, "Publish release and mark latest")) {
-            & gh release edit $tag --repo $repo --draft=false --latest
-            if ($LASTEXITCODE -ne 0) { throw "Failed to publish release $tag." }
-        }
-        Write-Host "Release $tag published to https://github.com/$repo/releases"
-        Write-Host "Installed clients will update automatically."
-    }
+    Write-Host "Draft ready: https://github.com/$repo/releases"
+    Write-Host "Review notes and assets, then sign the release with tools/Sign-Release.ps1 -Version $version."
+    Write-Host "After signing, publish with: ./Publish-Release.ps1 -Publish"
 } finally { Pop-Location }
