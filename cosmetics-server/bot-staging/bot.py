@@ -1899,7 +1899,11 @@ async def on_voice_state_update(member: discord.Member, before: discord.VoiceSta
 # ------------------ EVENT: AUTOMOD, XP, STICKY & CRASH LOGS ------------------
 
 INVITE_REGEX = re.compile(r"(discord\.gg/|discord\.com/invite/|discordapp\.com/invite/)", re.IGNORECASE)
-PHISHING_REGEX = re.compile(r"(steamcommunity-.*\.(com|ru|link)|nitro.*gift|free-nitro|steam-giveaway)", re.IGNORECASE)
+PHISHING_REGEX = re.compile(
+    r"(?:https?://\S*(?:steamcommunity-[^\s/]+\.(?:com|ru|link)|(?:discord|nitro)[^\s/]*gift|free-nitro|steam-giveaway)"
+    r"|steamcommunity-[^\s/]+\.(?:com|ru|link))",
+    re.IGNORECASE
+)
 
 @bot.event
 async def on_message(message: discord.Message):
@@ -1932,7 +1936,7 @@ async def on_message(message: discord.Message):
                     print(f"Blacklist Error: {e}", flush=True)
 
     # 2. Phishing / Scam Link Detection
-    if PHISHING_REGEX.search(message.content):
+    if not is_staff and PHISHING_REGEX.search(message.content):
         try:
             await message.delete()
             await author.timeout(timedelta(hours=1), reason="AutoMod: Phishing/Scam link detected")

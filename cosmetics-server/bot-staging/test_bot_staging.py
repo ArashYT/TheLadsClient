@@ -217,3 +217,14 @@ def test_share_store_does_not_store_ip_hash():
     import share_store
     assert share_store.hash_creator("192.168.1.1") == ""
     assert share_store.DEFAULT_IP_SALT == ""
+
+
+def test_phishing_regex_does_not_match_plain_conversation(bot):
+    # Plain speech should never trigger phishing automod
+    assert not bot.PHISHING_REGEX.search("my friend got me nitro as a gift for my birthday")
+    assert not bot.PHISHING_REGEX.search("I want to buy nitro gift for someone")
+
+    # Actual scam links should trigger
+    assert bot.PHISHING_REGEX.search("Check this https://steamcommunity-gift.ru/trade")
+    assert bot.PHISHING_REGEX.search("Get free-nitro here: https://scam.xyz/free-nitro")
+    assert bot.PHISHING_REGEX.search("http://fake-discord.com/nitro-gift")
