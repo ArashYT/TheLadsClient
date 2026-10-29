@@ -31,10 +31,6 @@ public final class LadsApiUi {
         policyApplied(serverName, changed, notice, Collections.emptyList());
     }
 
-    public static void policyApplied(String serverName, int changed, int unlocked, String notice) {
-        policyApplied(serverName, changed, unlocked, notice, Collections.emptyList());
-    }
-
     public static void policyApplied(String serverName, int changed, String notice, List<ToastAction> actions) {
         policyApplied(serverName, changed, 0, notice, actions);
     }
