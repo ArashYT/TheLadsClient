@@ -26,6 +26,7 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,7 +64,13 @@ public final class DeathBackupManager {
                     if (parsed != null && parsed.isJsonArray()) {
                         history = parsed.getAsJsonArray();
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception e) {
+                    LOGGER.error("Failed to parse death backup for {}, backing up corrupt file", player.getScoreboardName(), e);
+                    try {
+                        Path corrupt = file.resolveSibling(file.getFileName().toString() + ".corrupt-" + System.currentTimeMillis());
+                        Files.copy(file, corrupt, StandardCopyOption.REPLACE_EXISTING);
+                    } catch (Exception ignored) {}
+                }
             }
 
             JsonObject snapshot = new JsonObject();
@@ -112,9 +119,11 @@ public final class DeathBackupManager {
                 history.remove(0);
             }
 
-            try (Writer writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
+            Path temp = file.resolveSibling(file.getFileName().toString() + ".tmp");
+            try (Writer writer = Files.newBufferedWriter(temp, StandardCharsets.UTF_8)) {
                 GSON.toJson(history, writer);
             }
+            Files.move(temp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             LOGGER.error("Failed to save death backup for {}", player.getScoreboardName(), e);
         }
@@ -162,6 +171,34 @@ public final class DeathBackupManager {
                             stack.setDamageValue(damage);
                         }
                         if (!inv.add(stack)) {
+                            target.drop(stack, false, null);
+                        }
+                        restored++;
+                    }
+                }
+            }
+        }
+        if (snap.has("equipment") && snap.get("equipment").isJsonArray()) {
+            for (JsonElement el : snap.getAsJsonArray("equipment")) {
+                if (!el.isJsonObject()) continue;
+                JsonObject obj = el.getAsJsonObject();
+                String slotName = obj.has("slot") ? obj.get("slot").getAsString() : "";
+                EquipmentSlot slot = EquipmentSlot.byName(slotName);
+                if (slot == null) continue;
+                String idStr = obj.get("id").getAsString();
+                int count = obj.get("count").getAsInt();
+                int damage = obj.has("damage") ? obj.get("damage").getAsInt() : 0;
+                Identifier id = Identifier.tryParse(idStr);
+                if (id != null && BuiltInRegistries.ITEM.containsKey(id)) {
+                    Item item = BuiltInRegistries.ITEM.getValue(id);
+                    if (item != Items.AIR) {
+                        ItemStack stack = new ItemStack(item, count);
+                        if (damage > 0 && stack.isDamageableItem()) {
+                            stack.setDamageValue(damage);
+                        }
+                        if (target.getItemBySlot(slot).isEmpty()) {
+                            target.setItemSlot(slot, stack);
+                        } else if (!target.getInventory().add(stack)) {
                             target.drop(stack, false, null);
                         }
                         restored++;
