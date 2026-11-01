@@ -209,6 +209,10 @@ public final class QaProbe26 {
                     mc.player.connection.sendChat(rest(s, 1));
                 }
             }
+            case "hold" -> { // hold tab [off]: the player list, as holding Tab
+                if (!"tab".equalsIgnoreCase(arg(s, 1))) throw new IllegalArgumentException("hold: tab");
+                mc.options.keyPlayerList.setDown(!"off".equalsIgnoreCase(s.length > 2 ? s[2] : "on"));
+            }
             case "log" -> LOGGER.info("Lads 26.3 qa log: {}", rest(s, 1));
             case "quit" -> {
                 LOGGER.info("Lads 26.3 qa quit requested");

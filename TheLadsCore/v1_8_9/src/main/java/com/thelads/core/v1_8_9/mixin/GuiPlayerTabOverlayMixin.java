@@ -53,8 +53,11 @@ public abstract class GuiPlayerTabOverlayMixin {
     @Unique private boolean ladsHeads, ladsNpc;
     /** The list's move and scale this frame: a point p of the list is drawn at scale * (p + move). */
     @Unique private float ladsScale = 1, ladsMoveX, ladsMoveY;
-    @Unique private NetworkPlayerInfo ladsWidthInfo;
     @Unique private NetworkPlayerInfo ladsRowInfo;
+    /** A listed player shows the Lads badge this frame: every row gets the badge column left of the head (heads stay aligned). */
+    @Unique private boolean ladsBadgeColumn;
+    /** The left edge of the row being drawn: the badge column. */
+    @Unique private int ladsRowX;
     @Redirect(method = RENDER, at = @At(value = "INVOKE", target = "Lcom/google/common/collect/Ordering;sortedCopy(Ljava/lang/Iterable;)Ljava/util/List;", remap = false), require = 1)
     private List<NetworkPlayerInfo> ladsSortedCopy(Ordering<NetworkPlayerInfo> ordering, Iterable<NetworkPlayerInfo> elements) {
         int currentVersion = TabListCache189.getVersion();
@@ -76,6 +79,12 @@ public abstract class GuiPlayerTabOverlayMixin {
         ladsScale = TabTweaks189.tabScale;
         ladsMoveX = TabTweaks189.moveTabHorizontal;
         ladsMoveY = TabTweaks189.down();
+        ladsBadgeColumn = false;
+        if (mc.getNetHandler() != null) {
+            for (NetworkPlayerInfo info : mc.getNetHandler().getPlayerInfoMap()) {
+                if (LadsBadge.showInTab(info.getGameProfile().getId())) { ladsBadgeColumn = true; break; }
+            }
+        }
         GlStateManager.pushMatrix();
         GlStateManager.scale(ladsScale, ladsScale, 1.0F);
         GlStateManager.translate(ladsMoveX, ladsMoveY, 0.0F);
@@ -89,7 +98,6 @@ public abstract class GuiPlayerTabOverlayMixin {
 
     @Inject(method = RENDER, at = @At("RETURN"), require = 1)
     private void ladsMoveTabDone(int width, Scoreboard scoreboard, ScoreObjective objective, CallbackInfo ci) {
-        ladsWidthInfo = null;
         ladsRowInfo = null;
         GlStateManager.popMatrix();
     }
@@ -133,7 +141,10 @@ public abstract class GuiPlayerTabOverlayMixin {
     }
 
     @ModifyArg(method = RENDER, at = @At(value = "INVOKE", target = RECT, ordinal = 2), index = 4, require = 1)
-    private int ladsRowColor(int color) { return TabTweaks189.layout ? TabTweaks189.tabPlayerListColor : color; }
+    private int ladsRowColor(int left, int top, int right, int bottom, int color) {
+        ladsRowX = left;
+        return TabTweaks189.layout ? TabTweaks189.tabPlayerListColor : color;
+    }
 
     @ModifyArg(method = RENDER, at = @At(value = "INVOKE", target = RECT, ordinal = 3), index = 4, require = 1)
     private int ladsFooterColor(int left, int top, int right, int bottom, int color) {
@@ -162,6 +173,7 @@ public abstract class GuiPlayerTabOverlayMixin {
 
     @Redirect(method = RENDER, at = @At(value = "INVOKE", target = FACE, ordinal = 0), require = 1)
     private void ladsFace(int x, int y, float u, float v, int uWidth, int vHeight, int width, int height, float tileWidth, float tileHeight) {
+        if (ladsBadgeColumn) x += LadsBadge.TAB_SIZE + LadsBadge.GAP;
         if (!ladsNpc) Gui.drawScaledCustomSizeModalRect(x, y, u, v, uWidth, vHeight, width, height, tileWidth, tileHeight);
     }
 
@@ -169,6 +181,7 @@ public abstract class GuiPlayerTabOverlayMixin {
     @Redirect(method = RENDER, at = @At(value = "INVOKE", target = FACE, ordinal = 1), require = 1)
     private void ladsHat(int x, int y, float u, float v, int uWidth, int vHeight, int width, int height, float tileWidth, float tileHeight) {
         if (ladsNpc) return;
+        if (ladsBadgeColumn) x += LadsBadge.TAB_SIZE + LadsBadge.GAP;
         if (!TabTweaks189.improvedHeads) {
             Gui.drawScaledCustomSizeModalRect(x, y, u, v, uWidth, vHeight, width, height, tileWidth, tileHeight);
             return;
@@ -184,24 +197,10 @@ public abstract class GuiPlayerTabOverlayMixin {
         return font.drawString(text, x, y, color, !TabTweaks189.removeHeaderShadow);
     }
 
-    @Redirect(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiPlayerTabOverlay;getPlayerName(Lnet/minecraft/client/network/NetworkPlayerInfo;)Ljava/lang/String;", ordinal = 0), require = 1)
-    private String ladsCaptureWidthInfo(GuiPlayerTabOverlay overlay, NetworkPlayerInfo info) {
-        ladsWidthInfo = info;
-        return overlay.getPlayerName(info);
-    }
-
     @Redirect(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/FontRenderer;getStringWidth(Ljava/lang/String;)I", ordinal = 0), require = 1)
     private int ladsRowWidth(FontRenderer font, String text) {
         int w = font.getStringWidth(text);
-        if (ladsWidthInfo != null) {
-            if (ladsWidthInfo.getGameProfile() != null && ladsWidthInfo.getGameProfile().getId() != null) {
-                if (LadsBadge.showInTab(ladsWidthInfo.getGameProfile().getId())) {
-                    w += LadsBadge.TAB_SIZE + LadsBadge.GAP;
-                }
-            }
-            ladsWidthInfo = null;
-        }
-        return w;
+        return ladsBadgeColumn ? w + LadsBadge.TAB_SIZE + LadsBadge.GAP : w;
     }
 
     @Redirect(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiPlayerTabOverlay;getPlayerName(Lnet/minecraft/client/network/NetworkPlayerInfo;)Ljava/lang/String;", ordinal = 1), require = 1)
@@ -225,9 +224,10 @@ public abstract class GuiPlayerTabOverlayMixin {
         float drawX = x + (ladsHeads && TabTweaks189.improvedHeads ? 1 : 0);
         NetworkPlayerInfo info = ladsRowInfo;
         ladsRowInfo = null;
-        if (info != null && info.getGameProfile() != null && info.getGameProfile().getId() != null) {
-            UUID id = info.getGameProfile().getId();
-            if (LadsBadge.showInTab(id)) {
+        // The Lads badge sits in its column at the row's left edge, left of the head; the name moves right with the head.
+        if (ladsBadgeColumn) {
+            drawX += LadsBadge.TAB_SIZE + LadsBadge.GAP;
+            if (info != null && info.getGameProfile() != null && LadsBadge.showInTab(info.getGameProfile().getId())) {
                 mc.getTextureManager().bindTexture(LADS_BADGE);
                 GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
                 GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
@@ -236,11 +236,10 @@ public abstract class GuiPlayerTabOverlayMixin {
                 GlStateManager.color(1.0F, 1.0F, 1.0F, alpha);
                 GlStateManager.enableBlend();
                 GlStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
-                Gui.drawScaledCustomSizeModalRect((int) drawX, (int) y, 0.0F, 0.0F,
+                Gui.drawScaledCustomSizeModalRect(ladsRowX, (int) y, 0.0F, 0.0F,
                         LadsBadge.TEXTURE_SIZE, LadsBadge.TEXTURE_SIZE,
                         LadsBadge.TAB_SIZE, LadsBadge.TAB_SIZE,
                         (float) LadsBadge.TEXTURE_SIZE, (float) LadsBadge.TEXTURE_SIZE);
-                drawX += LadsBadge.TAB_SIZE + LadsBadge.GAP;
             }
         }
         return font.drawString(text, drawX, y, color, !TabTweaks189.removeBodyShadow);

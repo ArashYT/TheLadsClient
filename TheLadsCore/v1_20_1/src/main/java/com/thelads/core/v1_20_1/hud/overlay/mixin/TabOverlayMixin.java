@@ -53,13 +53,22 @@ public class TabOverlayMixin {
     @Unique private PlayerInfo lads$row;
     /** Where the list is drawn this frame (its move and scale on the GUI's pose); null outside its render. */
     @Unique private Matrix4f lads$pose;
-    @Unique private PlayerInfo lads$widthInfo;
     @Unique private PlayerInfo lads$renderInfo;
+    /** A listed player shows the Lads badge this frame: every row gets the badge column left of the head (heads stay aligned). */
+    @Unique private boolean lads$badgeColumn;
+    /** The left edge of the row being drawn: the badge column. */
+    @Unique private int lads$rowX;
 
     @WrapMethod(method = RENDER)
     private void lads$moveTab(GuiGraphics graphics, int screenWidth, Scoreboard scoreboard, Objective objective, Operation<Void> original) {
         TabTweaks1201.refresh();
         float scale = TabTweaks1201.tabScale;
+        lads$badgeColumn = false;
+        if (minecraft.getConnection() != null) {
+            for (PlayerInfo info : minecraft.getConnection().getListedOnlinePlayers()) {
+                if (info.getProfile() != null && LadsBadge.showInTab(info.getProfile().getId())) { lads$badgeColumn = true; break; }
+            }
+        }
         graphics.pose().pushPose();
         try {
             graphics.pose().scale(scale, scale, 1F);
@@ -68,7 +77,6 @@ public class TabOverlayMixin {
             original.call(graphics, (int) (screenWidth / scale), scoreboard, TabTweaks1201.removeObjectives ? null : objective);
         } finally {
             lads$pose = null;
-            lads$widthInfo = null;
             lads$renderInfo = null;
             graphics.pose().popPose();
         }
@@ -114,6 +122,12 @@ public class TabOverlayMixin {
         return TabTweaks1201.layout ? TabTweaks1201.tabBodyColor : color;
     }
 
+    @ModifyArg(method = RENDER, at = @At(value = "INVOKE", target = FILL, ordinal = 2), index = 0)
+    private int lads$rowLeft(int left) {
+        lads$rowX = left;
+        return left;
+    }
+
     @ModifyArg(method = RENDER, at = @At(value = "INVOKE", target = FILL, ordinal = 3), index = 4)
     private int lads$footerColor(int left, int top, int right, int bottom, int color) {
         lads$cover(left, top, right, bottom);
@@ -145,24 +159,10 @@ public class TabOverlayMixin {
         return TabTweaks1201.removeFooterShadow ? graphics.drawString(font, text, x, y, color, false) : original.call(graphics, font, text, x, y, color);
     }
 
-    @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/PlayerTabOverlay;getNameForDisplay(Lnet/minecraft/client/multiplayer/PlayerInfo;)Lnet/minecraft/network/chat/Component;", ordinal = 0))
-    private Component lads$captureWidthInfo(PlayerTabOverlay instance, PlayerInfo info, Operation<Component> original) {
-        lads$widthInfo = info;
-        return original.call(instance, info);
-    }
-
     @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Font;width(Lnet/minecraft/network/chat/FormattedText;)I", ordinal = 0))
     private int lads$rowWidth(Font font, FormattedText text, Operation<Integer> original) {
         int w = original.call(font, text);
-        if (lads$widthInfo != null) {
-            if (lads$widthInfo.getProfile() != null && lads$widthInfo.getProfile().getId() != null) {
-                if (LadsBadge.showInTab(lads$widthInfo.getProfile().getId())) {
-                    w += LadsBadge.TAB_SIZE + LadsBadge.GAP;
-                }
-            }
-            lads$widthInfo = null;
-        }
-        return w;
+        return lads$badgeColumn ? w + LadsBadge.TAB_SIZE + LadsBadge.GAP : w;
     }
 
     @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/PlayerTabOverlay;getNameForDisplay(Lnet/minecraft/client/multiplayer/PlayerInfo;)Lnet/minecraft/network/chat/Component;", ordinal = 1))
@@ -171,14 +171,18 @@ public class TabOverlayMixin {
         return original.call(instance, info);
     }
 
-    /** The name: moved over the hidden face (or one pixel right of the larger hat) and drawn without shadow when asked. */
+    /**
+     * The name: moved over the hidden face (or one pixel right of the larger hat) and drawn without shadow when asked. The Lads
+     * badge sits in its column at the row's left edge, left of the head; the name moves right with the head.
+     */
     @WrapOperation(method = RENDER, at = @At(value = "INVOKE", target = NAME, ordinal = 0))
     private int lads$name(GuiGraphics graphics, Font font, Component text, int x, int y, int color, Operation<Integer> original) {
         int moved = TabTweaks1201.removeHeads ? x - 8 : TabTweaks1201.improvedHeads ? x + 1 : x;
         PlayerInfo info = lads$renderInfo;
         lads$renderInfo = null;
-        if (info != null && info.getProfile() != null && info.getProfile().getId() != null) {
-            if (LadsBadge.showInTab(info.getProfile().getId())) {
+        if (lads$badgeColumn) {
+            moved += LadsBadge.TAB_SIZE + LadsBadge.GAP;
+            if (info != null && info.getProfile() != null && LadsBadge.showInTab(info.getProfile().getId())) {
                 var tex = minecraft.getTextureManager().getTexture(LADS_BADGE);
                 if (tex != null) {
                     int id = tex.getId();
@@ -190,10 +194,9 @@ public class TabOverlayMixin {
                 float alpha = ((color >> 24) & 0xFF) / 255.0F;
                 if (alpha <= 0.0F) alpha = 1.0F;
                 graphics.setColor(1.0F, 1.0F, 1.0F, alpha);
-                graphics.blit(LADS_BADGE, moved, y, LadsBadge.TAB_SIZE, LadsBadge.TAB_SIZE, 0.0F, 0.0F,
+                graphics.blit(LADS_BADGE, lads$rowX, y, LadsBadge.TAB_SIZE, LadsBadge.TAB_SIZE, 0.0F, 0.0F,
                         LadsBadge.TEXTURE_SIZE, LadsBadge.TEXTURE_SIZE, LadsBadge.TEXTURE_SIZE, LadsBadge.TEXTURE_SIZE);
                 graphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
-                moved += LadsBadge.TAB_SIZE + LadsBadge.GAP;
             }
         }
         return TabTweaks1201.removeBodyShadow ? graphics.drawString(font, text, moved, y, color, false) : original.call(graphics, font, text, moved, y, color);
@@ -210,6 +213,7 @@ public class TabOverlayMixin {
         PlayerInfo row = lads$row;
         lads$row = null;
         if (TabTweaks1201.removeHeads) return;
+        if (lads$badgeColumn) x += LadsBadge.TAB_SIZE + LadsBadge.GAP;
         // Server-side NPCs are listed with version 2 UUIDs.
         if (TabTweaks1201.removeNpcHeads && row != null && row.getProfile().getId() != null && row.getProfile().getId().version() == 2) return;
         if (TabTweaks1201.improvedHeads) TabTweaks1201.drawHead(graphics, skin, x, y, size, hat, upsideDown);

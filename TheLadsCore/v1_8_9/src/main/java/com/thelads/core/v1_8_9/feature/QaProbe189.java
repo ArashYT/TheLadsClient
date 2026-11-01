@@ -231,6 +231,11 @@ public final class QaProbe189 {
                     mc.thePlayer.sendChatMessage(rest(s, 1));
                 }
                 break;
+            case "hold": // hold tab [off]: the player list, as holding Tab
+                if (!"tab".equalsIgnoreCase(arg(s, 1))) throw new IllegalArgumentException("hold: tab");
+                net.minecraft.client.settings.KeyBinding.setKeyBindState(mc.gameSettings.keyBindPlayerList.getKeyCode(),
+                        !"off".equalsIgnoreCase(s.length > 2 ? s[2] : "on"));
+                break;
             case "log":
                 LOGGER.info("Lads 1.8.9 qa log: {}", rest(s, 1));
                 break;

@@ -59,6 +59,10 @@ public class PlayerTabOverlayMixin {
     @Unique PlayerFaceExtractor ladsTab$playerFaceRenderer = new PlayerFaceExtractor();
     /** Where the list is drawn this frame (its move and scale on the GUI's pose); null outside its render. */
     @Unique private Matrix3x2f lads$pose;
+    /** A listed player shows the Lads badge this frame: every row gets the badge column left of the head (heads stay aligned). */
+    @Unique private boolean lads$badgeColumn;
+    /** The left edge of the row being drawn: the badge column. */
+    @Unique private int lads$rowX;
 
     /**
      * HudCover: the header, body and footer backgrounds are the list's box on screen; the Lads HUD widgets under it step aside. A
@@ -87,6 +91,12 @@ public class PlayerTabOverlayMixin {
     private int modifyTabBodyColor(int left, int top, int right, int bottom, int color) {
         lads$cover(left, top, right, bottom);
         return TabTweaksConfig.current().layout ? TabTweaksConfig.current().tabBodyColor : color;
+    }
+
+    @ModifyArg(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V", ordinal = 2), index = 0)
+    private int lads$rowLeft(int left) {
+        lads$rowX = left;
+        return left;
     }
 
     @ModifyArg(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;fill(IIIII)V", ordinal = 3), index = 4)
@@ -138,6 +148,12 @@ public class PlayerTabOverlayMixin {
                 : TabTweaksConfig.current().moveTabDown;
         float distanceX = TabTweaksConfig.current().moveTabHorizontal;
         float scale = TabTweaksConfig.current().tabScale;
+        lads$badgeColumn = false;
+        if (minecraft.getConnection() != null) {
+            for (PlayerInfo info : minecraft.getConnection().getListedOnlinePlayers()) {
+                if (LadsBadge.showInTab(info.getProfile().id())) { lads$badgeColumn = true; break; }
+            }
+        }
         graphics.pose().pushMatrix();
         try {
             graphics.pose().scale(scale, scale);
@@ -166,6 +182,7 @@ public class PlayerTabOverlayMixin {
     // https://github.com/Polyfrost/VanillaHUD
     @WrapOperation(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/PlayerFaceExtractor;extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;Lnet/minecraft/resources/Identifier;IIIZZI)V"))
     private void betterHatLayer(GuiGraphicsExtractor graphics, Identifier texture, int x, int y, int size, boolean hat, boolean flip, int color, Operation<Void> original) {
+        if (lads$badgeColumn) x += LadsBadge.TAB_SIZE + LadsBadge.GAP;
         if (TabTweaksConfig.current().improvedHeads) {
             // Null seen once in a showcase run (crash 2026-10-24 10:35, hold Tab with client NPC entries): an overlay built without the initializer
             if (ladsTab$playerFaceRenderer == null) ladsTab$playerFaceRenderer = new PlayerFaceExtractor();
@@ -214,22 +231,23 @@ public class PlayerTabOverlayMixin {
     }
 
     @WrapOperation(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Font;width(Lnet/minecraft/network/chat/FormattedText;)I", ordinal = 0))
-    private int lads$badgeNameWidth(Font font, FormattedText text, Operation<Integer> original, @Local PlayerInfo info) {
+    private int lads$badgeNameWidth(Font font, FormattedText text, Operation<Integer> original) {
         int width = original.call(font, text);
-        if (info != null && LadsBadge.showInTab(info.getProfile().id())) {
-            width += LadsBadge.TAB_SIZE + LadsBadge.GAP;
-        }
-        return width;
+        return lads$badgeColumn ? width + LadsBadge.TAB_SIZE + LadsBadge.GAP : width;
     }
 
+    /** The badge sits in its column at the row's left edge, left of the head; the name moves right with the head. */
     @WrapOperation(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;III)V", ordinal = 0))
     private void removeBodyShadow(GuiGraphicsExtractor instance, Font font, Component str, int x, int y, int color, Operation<Void> original, @Local PlayerInfo info) {
         int textX = x;
-        if (info != null && LadsBadge.showInTab(info.getProfile().id())) {
-            int badgeColor = info.getGameMode() == GameType.SPECTATOR ? 0x90FFFFFF : -1;
-            instance.blit(RenderPipelines.GUI_TEXTURED, LADS$BADGE_TEXTURE, x, y, 0.0F, 0.0F,
-                LadsBadge.TAB_SIZE, LadsBadge.TAB_SIZE, LadsBadge.TEXTURE_SIZE, LadsBadge.TEXTURE_SIZE, badgeColor);
+        if (lads$badgeColumn) {
             textX += LadsBadge.TAB_SIZE + LadsBadge.GAP;
+            if (info != null && LadsBadge.showInTab(info.getProfile().id())) {
+                int badgeColor = info.getGameMode() == GameType.SPECTATOR ? 0x90FFFFFF : -1;
+                // The whole 64x64 texture scaled to 8x8 (the 11-argument blit drew only its top-left 8x8 pixels)
+                instance.blit(RenderPipelines.GUI_TEXTURED, LADS$BADGE_TEXTURE, lads$rowX, y, 0.0F, 0.0F, LadsBadge.TAB_SIZE, LadsBadge.TAB_SIZE,
+                    LadsBadge.TEXTURE_SIZE, LadsBadge.TEXTURE_SIZE, LadsBadge.TEXTURE_SIZE, LadsBadge.TEXTURE_SIZE, badgeColor);
+            }
         }
         if (TabTweaksConfig.current().removeBodyShadow) instance.text(font, str, textX, y, color, false);
         else original.call(instance, font, str, textX, y, color);
