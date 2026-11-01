@@ -7,12 +7,12 @@
       "projectSlug": "architectury-api",
       "name": "Architectury API",
       "modId": "architectury",
-      "versionId": "gAI51C1M",
-      "version": "22.0.3+fabric",
-      "fileName": "architectury-fabric-22.0.3.jar",
-      "url": "https://cdn.modrinth.com/data/lhGA9TYQ/versions/gAI51C1M/architectury-fabric-22.0.3.jar",
-      "sha512": "0045da94a9e8fd48a9ed6eea8d0d981257fa38188d4b3d54c959349b16cbb13965fe4f9050c166d0cb67c1438409f10a856afa48b05430b92a5022206fffac59",
-      "size": 622449,
+      "versionId": "1pMaB6So",
+      "version": "22.0.5+fabric",
+      "fileName": "architectury-fabric-22.0.5.jar",
+      "url": "https://cdn.modrinth.com/data/lhGA9TYQ/versions/1pMaB6So/architectury-fabric-22.0.5.jar",
+      "sha512": "14c61af2088b80b465f06edd3b3005038fa5be1c95a2161ce712c8da408a358038b7cd7ae4acf3198f6d47c693e4fdf65d646dac7e124f7cdd7f32bbc0dcd0ce",
+      "size": 622542,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/architectury/architectury",
       "projectUrl": "https://modrinth.com/mod/architectury-api"
@@ -67,12 +67,12 @@
       "projectSlug": "better-stats",
       "name": "Better Statistics Screen",
       "modId": "betterstats",
-      "versionId": "9bTgB5wS",
-      "version": "5.6.0-beta.2+fn-26.3",
-      "fileName": "betterstats-5.6.0-beta.2+fn-26.3.jar",
-      "url": "https://cdn.modrinth.com/data/n6PXGAoM/versions/9bTgB5wS/betterstats-5.6.0-beta.2%2Bfn-26.3.jar",
-      "sha512": "7edb8d61555bf5f5bb4aab4316ae30dd0e91816a04e4064f60e81a802f350641d4042a613ab04a9575c28caaca6c474cb72e58bb6f18f0924749a53a9e9537b7",
-      "size": 410777,
+      "versionId": "GSF3fkG9",
+      "version": "5.8.0+fn-26.3",
+      "fileName": "betterstats-5.8.0+fn-26.3.jar",
+      "url": "https://cdn.modrinth.com/data/n6PXGAoM/versions/GSF3fkG9/betterstats-5.8.0%2Bfn-26.3.jar",
+      "sha512": "f4352c27f3c60e0bd93d5f3bb7ab2d7078164332933fe1d03cec4e8b795cc484458fbe4651eda10aade89dc20226beaf27d935d891b3f3e648fc07e44fee68ab",
+      "size": 423129,
       "license": "LicenseRef-Better-Statistics-Screen-License",
       "sourceUrl": "https://github.com/TheCSDev/betterstats",
       "projectUrl": "https://modrinth.com/mod/better-stats"
@@ -112,12 +112,12 @@
       "projectSlug": "collective",
       "name": "Collective",
       "modId": "collective",
-      "versionId": "NVCphSNt",
-      "version": "26.3.0-8.41-fabric+forge+neo",
-      "fileName": "collective-26.3.0-8.41.jar",
-      "url": "https://cdn.modrinth.com/data/e0M1UDsY/versions/NVCphSNt/collective-26.3.0-8.41.jar",
-      "sha512": "04582ade5e58506550b872a4c29cc5b7c9d2ffec9021e00bdb01ece1e5cf458cfec968198536b7d53e8756012ed69b908ee7c1d244892b5ad91e36ac9a7400e5",
-      "size": 1084200,
+      "versionId": "6QxC3Axy",
+      "version": "26.3.0-8.72-fabric+forge+neo",
+      "fileName": "collective-26.3.0-8.72.jar",
+      "url": "https://cdn.modrinth.com/data/e0M1UDsY/versions/6QxC3Axy/collective-26.3.0-8.72.jar",
+      "sha512": "6e85b85aa43af9e0835468216f9af8b5c0f01acd869d345bff5dd04a192d01d8e68b6f87135ec72a9176be58f7035b555175f15031fed10b38554bda05a87d59",
+      "size": 1355175,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/Serilum/Collective",
       "projectUrl": "https://modrinth.com/mod/collective"
@@ -172,14 +172,14 @@
       "projectSlug": "fabric-api",
       "name": "Fabric API",
       "modId": "fabric-api",
-      "versionId": "bNnaTiuM",
-      "version": "0.161.0+26.3",
-      "fileName": "fabric-api-0.161.0+26.3.jar",
-      "url": "https://cdn.modrinth.com/data/P7dR8mSH/versions/bNnaTiuM/fabric-api-0.161.0%2B26.3.jar",
-      "sha512": "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
-      "size": 2620967,
+      "versionId": "EQKgpeKu",
+      "version": "0.165.0+26.3",
+      "fileName": "fabric-api-0.165.0+26.3.jar",
+      "url": "https://cdn.modrinth.com/data/P7dR8mSH/versions/EQKgpeKu/fabric-api-0.165.0%2B26.3.jar",
+      "sha512": "0a4b8a14e847b71567b557b43d906c2167fa263eeeef37454a821ba286996e3da1616dc2d9647736d28a250d5ecf400541cae808359b29a62324a8a6f2ad5e30",
+      "size": 1778588,
       "license": "Apache-2.0",
-      "sourceUrl": "https://github.com/FabricMC/fabric",
+      "sourceUrl": "https://github.com/FabricMC/fabric-api",
       "projectUrl": "https://modrinth.com/mod/fabric-api"
     },
     {
@@ -187,12 +187,12 @@
       "projectSlug": "fabric-language-kotlin",
       "name": "Fabric Language Kotlin",
       "modId": "fabric-language-kotlin",
-      "versionId": "eRRZzGMc",
-      "version": "1.14.1+kotlin.2.4.20",
-      "fileName": "fabric-language-kotlin-1.14.1+kotlin.2.4.20.jar",
-      "url": "https://cdn.modrinth.com/data/Ha28R6CL/versions/eRRZzGMc/fabric-language-kotlin-1.14.1%2Bkotlin.2.4.20.jar",
-      "sha512": "91404f87774466ce8604aafea791d8cc97b603bc310dce17c8188f94f7783cca6dc14fc726ce871ca317bfe9033c199d8d858d51284106a00754e952147703b8",
-      "size": 8142858,
+      "versionId": "SKW1BTL3",
+      "version": "1.14.2+kotlin.2.4.21",
+      "fileName": "fabric-language-kotlin-1.14.2+kotlin.2.4.21.jar",
+      "url": "https://cdn.modrinth.com/data/Ha28R6CL/versions/SKW1BTL3/fabric-language-kotlin-1.14.2%2Bkotlin.2.4.21.jar",
+      "sha512": "7fb475c4a7e7bdf8d0aca4b5798a58a354c51443d5b1fbde3e8cf34dfbf7191ef4238b5f07d08ec9490ec180b371624523326c3ad45d4ed2b2be541de9407e5d",
+      "size": 8142878,
       "license": "Apache-2.0",
       "sourceUrl": "https://github.com/FabricMC/fabric-language-kotlin/",
       "projectUrl": "https://modrinth.com/mod/fabric-language-kotlin"
@@ -292,12 +292,12 @@
       "projectSlug": "ixeris",
       "name": "Ixeris",
       "modId": "ixeris",
-      "versionId": "QocCYDs0",
-      "version": "4.6.8+26.3-fabric",
-      "fileName": "Ixeris-4.6.8+26.3-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/p8RJPJIC/versions/QocCYDs0/Ixeris-4.6.8%2B26.3-fabric.jar",
-      "sha512": "5bc37bc60b3fa5c48ae097166363f02e5e3dafaa17afa2521c85251747ed2f8f30affad912d1db2816301dc6ae32fe7858a74c2cd0674fe44332150a2ccb6e69",
-      "size": 759635,
+      "versionId": "mj30lAl8",
+      "version": "4.6.11+26.3-fabric",
+      "fileName": "Ixeris-4.6.11+26.3-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/p8RJPJIC/versions/mj30lAl8/Ixeris-4.6.11%2B26.3-fabric.jar",
+      "sha512": "f7e63c8721c200c56c860188d142699db7b5133cc6354b536660016b26345b83375d0dd14b98971e48e96faa22c261f2a30ea444fe68237064d72f2b4c4ca345",
+      "size": 769078,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/decce6/Ixeris",
       "projectUrl": "https://modrinth.com/mod/ixeris"
@@ -307,12 +307,12 @@
       "projectSlug": "jei",
       "name": "Just Enough Items (JEI)",
       "modId": "jei",
-      "versionId": "pjjNQBoS",
-      "version": "31.9.0.56",
-      "fileName": "jei-26.3-fabric-31.9.0.56.jar",
-      "url": "https://cdn.modrinth.com/data/u6dRKJwZ/versions/pjjNQBoS/jei-26.3-fabric-31.9.0.56.jar",
-      "sha512": "2d1d3d436d4123dff057fef8fc65f21f7136d220fd01f8467be2de7b771140c06daf0753c1b9ab15e02d5451a100fc966ff23692600842051ab61efba80dd627",
-      "size": 2371991,
+      "versionId": "Zebwcvua",
+      "version": "31.14.0.72",
+      "fileName": "jei-26.3-fabric-31.14.0.72.jar",
+      "url": "https://cdn.modrinth.com/data/u6dRKJwZ/versions/Zebwcvua/jei-26.3-fabric-31.14.0.72.jar",
+      "sha512": "5bbf0499207292d1e47fdc03139adec6dd90302b10648e7b283e4737631524d8c2b17ca9b7263b13f1fcdde9fd3f5867874b0a9c333c02bc55466dbbf8ce8ead",
+      "size": 2410982,
       "license": "MIT",
       "sourceUrl": "https://github.com/mezz/JustEnoughItems",
       "projectUrl": "https://modrinth.com/mod/jei"
@@ -322,12 +322,12 @@
       "projectSlug": "lithium",
       "name": "Lithium",
       "modId": "lithium",
-      "versionId": "xS0Q8LSi",
-      "version": "mc26.3-0.26.2-fabric",
-      "fileName": "lithium-fabric-0.26.2+mc26.3.jar",
-      "url": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/xS0Q8LSi/lithium-fabric-0.26.2%2Bmc26.3.jar",
-      "sha512": "4d7fee66132eedc71feab9390b92c95d7058edbdad0fecfac1d836a2950b97a7ca463afbede61c7ef361ce65e1f927ab9e89dde5bf2e0e0ce486afb5c5dbee40",
-      "size": 914543,
+      "versionId": "fWv5bnZk",
+      "version": "mc26.3-0.26.3-fabric",
+      "fileName": "lithium-fabric-0.26.3+mc26.3.jar",
+      "url": "https://cdn.modrinth.com/data/gvQqBUqZ/versions/fWv5bnZk/lithium-fabric-0.26.3%2Bmc26.3.jar",
+      "sha512": "2ca92fb530135d2baddf0ba4cc4f93976234876a38c4aa02b487b2552400f005afcfbeebf5373fb4396fe2020537a42d7597b8da5a52b904355ef51d5fef07ad",
+      "size": 919892,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/caffeinemc/lithium-fabric",
       "projectUrl": "https://modrinth.com/mod/lithium"
@@ -337,12 +337,12 @@
       "projectSlug": "mezzconfig",
       "name": "MezzConfig",
       "modId": "mezz_config",
-      "versionId": "GKiA7PV4",
-      "version": "0.6.8",
-      "fileName": "mezz_config-26.3-fabric-0.6.8.jar",
-      "url": "https://cdn.modrinth.com/data/7tEfOcA7/versions/GKiA7PV4/mezz_config-26.3-fabric-0.6.8.jar",
-      "sha512": "cf0957c09bd0af1be7627cf68d1ceaad92bcb06c529ab85db5c26ae8a4950b236b7c62e5d096fc1b82c718578519b674b0970f8843c2d2178c14f3e63c28fd06",
-      "size": 368401,
+      "versionId": "kWsxPwbN",
+      "version": "0.6.10",
+      "fileName": "mezz_config-26.3-fabric-0.6.10.jar",
+      "url": "https://cdn.modrinth.com/data/7tEfOcA7/versions/kWsxPwbN/mezz_config-26.3-fabric-0.6.10.jar",
+      "sha512": "2077711375e15d72a442d6c4fb6ca198d6197fc10df577fdcfbbe95606862ce4f353944f63936744a75e36c3fac84109fcd70ac44cfe7cccc6685388ef13552b",
+      "size": 389573,
       "license": "MIT",
       "sourceUrl": "https://github.com/mezz/MezzConfig",
       "projectUrl": "https://modrinth.com/mod/mezzconfig"
@@ -412,14 +412,14 @@
       "projectSlug": "mru",
       "name": "MRU",
       "modId": "mru",
-      "versionId": "KHZGiSVg",
-      "version": "1.0.41+26.3-fabric",
-      "fileName": "mru-1.0.41+26.3-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/SNVQ2c0g/versions/KHZGiSVg/mru-1.0.41%2B26.3-fabric.jar",
-      "sha512": "b37a8186f73e8bc19767848e9d55935aff22d922d92e4976ef60bf30d16cff25e81596421c95dcf62e7412a06d68ac4f510ead3f77472619c68879151f791702",
-      "size": 156753,
+      "versionId": "fHDvIf3d",
+      "version": "1.0.44+26.3-fabric",
+      "fileName": "mru-1.0.44+26.3-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/SNVQ2c0g/versions/fHDvIf3d/mru-1.0.44%2B26.3-fabric.jar",
+      "sha512": "ed04ad67e85f370a9a8275b604cd78b2c206082ac9b44e983d3884036ccbb59f190288bcd9d6be9f42450c43d5d10d9e9f70774b04d58d7606caa5014119efe7",
+      "size": 158509,
       "license": "LicenseRef-All-Rights-Reserved",
-      "sourceUrl": "https://github.com/IMB11-Mods/MRU",
+      "sourceUrl": "https://github.com/IMB11-Mods/JavaEditionMods/tree/main/mru",
       "projectUrl": "https://modrinth.com/mod/mru"
     },
     {
@@ -502,12 +502,12 @@
       "projectSlug": "3dskinlayers",
       "name": "3D Skin Layers",
       "modId": "skinlayers3d",
-      "versionId": "G8BCRxv5",
-      "version": "1.11.3",
-      "fileName": "skinlayers3d-fabric-1.11.3-mc26.3.jar",
-      "url": "https://cdn.modrinth.com/data/zV5r3pPn/versions/G8BCRxv5/skinlayers3d-fabric-1.11.3-mc26.3.jar",
-      "sha512": "5217aac8fc55952d5837932fbad3eb2d8a2211a57ff602db9be7a0e2678ea90f11cc5c37d4e44abee835f7831508af770c1ba6334dd2933290fe6699978f4118",
-      "size": 1890220,
+      "versionId": "gjM2TO0L",
+      "version": "1.11.4",
+      "fileName": "skinlayers3d-fabric-1.11.4-mc26.3.jar",
+      "url": "https://cdn.modrinth.com/data/zV5r3pPn/versions/gjM2TO0L/skinlayers3d-fabric-1.11.4-mc26.3.jar",
+      "sha512": "1a93ba9f726f8053e111abbe225f67b85e74bdfb78955711218ef103e670bc2c0f011f5911bf725686b79a1b85cecbb1ba733bf1b2eaa2856e53c4f842680627",
+      "size": 1892299,
       "license": "LicenseRef-tr7zw-Protective-License",
       "sourceUrl": "https://github.com/tr7zw/3d-skin-layers",
       "projectUrl": "https://modrinth.com/mod/3dskinlayers"
@@ -547,12 +547,12 @@
       "projectSlug": "tcdcommons",
       "name": "TCDCommons API",
       "modId": "tcdcommons",
-      "versionId": "FwE7UAgA",
-      "version": "5.6.0-beta.2+fn-26.3",
-      "fileName": "tcdcommons-5.6.0-beta.2+fn-26.3.jar",
-      "url": "https://cdn.modrinth.com/data/Eldc1g37/versions/FwE7UAgA/tcdcommons-5.6.0-beta.2%2Bfn-26.3.jar",
-      "sha512": "39adb15641f7ac8e6d54bcb2c1ee135e403266f3942f51d030949b612f1f6c5a56052d30f9c30ae33c091471fe4c94d7ae8d8613d61a986417259a9a5029854d",
-      "size": 508304,
+      "versionId": "GVSkIJY4",
+      "version": "5.8.0+fn-26.3",
+      "fileName": "tcdcommons-5.8.0+fn-26.3.jar",
+      "url": "https://cdn.modrinth.com/data/Eldc1g37/versions/GVSkIJY4/tcdcommons-5.8.0%2Bfn-26.3.jar",
+      "sha512": "adc5b07d91700fe27d2b3c7a482e2fed968705ccf1af69bfecb37895265872740f0766d340549e4f92ff6a75143ec9a621cba64d4a81a31e0e041a73fe37fd81",
+      "size": 510530,
       "license": "LicenseRef-TCDCommons-API-License",
       "sourceUrl": "https://github.com/TheCSDev/tcdcommons",
       "projectUrl": "https://modrinth.com/mod/tcdcommons"
@@ -649,8 +649,14 @@
     }
   ],
   "published": {
+    "architectury": [
+      "0045da94a9e8fd48a9ed6eea8d0d981257fa38188d4b3d54c959349b16cbb13965fe4f9050c166d0cb67c1438409f10a856afa48b05430b92a5022206fffac59"
+    ],
     "balm": [
       "20932c46420edbb18112410008cab41e52d05598e2dc15837753cd065807f79c69c109eceba5228f1c832bf0230698226e74f098e01f4964750a3f52dc787650"
+    ],
+    "betterstats": [
+      "7edb8d61555bf5f5bb4aab4316ae30dd0e91816a04e4064f60e81a802f350641d4042a613ab04a9575c28caaca6c474cb72e58bb6f18f0924749a53a9e9537b7"
     ],
     "c2me": [
       "bb741d118c88ea6d9577fed1affacc1f1f0a7b725a619ee933437cc5e403c8f1474a708ab9bd402d154efde3ce66ef4d83ed950c0cf4f7dc656e525837239226"
@@ -659,7 +665,14 @@
       "94435f1d5e9a51f4a626a585141ea23e39b9911a0d96273058a6ebae619c6b257a0b19a5f94d8fda99d69605a217d8645d64dd8a9014320a6bde09fb541b68b8"
     ],
     "collective": [
-      "b006643721cfd47a30072d58fdb3e0dcc8136c3437e6a7d2c114250b4b34484f7541bd046373d2fd1ad9f929a2ff40b850e42d96cf2d9cabe6c9faa793519b5a"
+      "b006643721cfd47a30072d58fdb3e0dcc8136c3437e6a7d2c114250b4b34484f7541bd046373d2fd1ad9f929a2ff40b850e42d96cf2d9cabe6c9faa793519b5a",
+      "04582ade5e58506550b872a4c29cc5b7c9d2ffec9021e00bdb01ece1e5cf458cfec968198536b7d53e8756012ed69b908ee7c1d244892b5ad91e36ac9a7400e5"
+    ],
+    "fabric-api": [
+      "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d"
+    ],
+    "fabric-language-kotlin": [
+      "91404f87774466ce8604aafea791d8cc97b603bc310dce17c8188f94f7783cca6dc14fc726ce871ca317bfe9033c199d8d858d51284106a00754e952147703b8"
     ],
     "fzzy_config": [
       "c33e0464b6bcda00a7bdb7b84f7390ed1b168b1ce9e553226bef2bbfc0608f127665040ba7cb3701d30cb34f70e2cae72d4847da0d2994092d3af15fb7a3ccd4"
@@ -667,20 +680,37 @@
     "iris": [
       "cd0fdc5a275a851b3d72e3e699c957671f293f5c87951736ad83adcdabaa58f533e9791110a227c7817b312269c32c063121b183a39d8c11a22e55d2c76cdb25"
     ],
+    "ixeris": [
+      "5bc37bc60b3fa5c48ae097166363f02e5e3dafaa17afa2521c85251747ed2f8f30affad912d1db2816301dc6ae32fe7858a74c2cd0674fe44332150a2ccb6e69"
+    ],
     "jasione": [
       "5f486d84ead692ce40baf1c4966b17c0cd2c97daea06bc679297ffee3c936fa1003ef35eb8c2e924da38a8451f55b9247dec2adb75b80cc035158eaeb94d54fa"
     ],
     "jei": [
-      "fa8b2207f39099a317d2f59a940b5d65c56744ceed9e984c8a5d26b620f19fefc941e080e27f0cabbed6874b66bd76a4dbc5504eb2ac7b92f0f2230e96ba0a8f"
+      "fa8b2207f39099a317d2f59a940b5d65c56744ceed9e984c8a5d26b620f19fefc941e080e27f0cabbed6874b66bd76a4dbc5504eb2ac7b92f0f2230e96ba0a8f",
+      "2d1d3d436d4123dff057fef8fc65f21f7136d220fd01f8467be2de7b771140c06daf0753c1b9ab15e02d5451a100fc966ff23692600842051ab61efba80dd627"
+    ],
+    "lithium": [
+      "4d7fee66132eedc71feab9390b92c95d7058edbdad0fecfac1d836a2950b97a7ca463afbede61c7ef361ce65e1f927ab9e89dde5bf2e0e0ce486afb5c5dbee40"
     ],
     "mezz_config": [
-      "5b02eae5d29d47051867beffbb4fb72b9c182437b3b2928266cb1c574619be99431ebca4a7045f4aa6d61ce6f5665b17b0059e59cd5fb5d343d9f4f70d1ec1ce"
+      "5b02eae5d29d47051867beffbb4fb72b9c182437b3b2928266cb1c574619be99431ebca4a7045f4aa6d61ce6f5665b17b0059e59cd5fb5d343d9f4f70d1ec1ce",
+      "cf0957c09bd0af1be7627cf68d1ceaad92bcb06c529ab85db5c26ae8a4950b236b7c62e5d096fc1b82c718578519b674b0970f8843c2d2178c14f3e63c28fd06"
     ],
     "moreculling": [
       "9a2e90e65a4ed7d0e332f5c951d603be1d4d60c92b1cd1886483892fcea1330c8c656c29181e6367bd32101b7492d732d93634377bc1bfc04276bdf90664d6c8"
     ],
+    "mru": [
+      "b37a8186f73e8bc19767848e9d55935aff22d922d92e4976ef60bf30d16cff25e81596421c95dcf62e7412a06d68ac4f510ead3f77472619c68879151f791702"
+    ],
     "obe": [
       "8aa584fcf0c3d30bfed54ef147bdfa54b270fa52f4f911c6ac9c532b745d7fcfeb19d31bc5deb1ee10b73aef0f62ccb95977bc4de86a06e3a9fa39c0763e3d2c"
+    ],
+    "skinlayers3d": [
+      "5217aac8fc55952d5837932fbad3eb2d8a2211a57ff602db9be7a0e2678ea90f11cc5c37d4e44abee835f7831508af770c1ba6334dd2933290fe6699978f4118"
+    ],
+    "tcdcommons": [
+      "39adb15641f7ac8e6d54bcb2c1ee135e403266f3942f51d030949b612f1f6c5a56052d30f9c30ae33c091471fe4c94d7ae8d8613d61a986417259a9a5029854d"
     ]
   },
   "retired": [
