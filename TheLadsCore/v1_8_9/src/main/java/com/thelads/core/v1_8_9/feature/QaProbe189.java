@@ -39,6 +39,8 @@ public final class QaProbe189 {
     private static List<String[]> steps = new ArrayList<String[]>();
     private static int index, waitTicks, titleTicks, passed, failedSteps;
     private static String pendingShot;
+    /** "hold tab": regaining focus reads every key from the keyboard again (KeyBinding.updateKeyBindState), so it is set each tick. */
+    private static boolean holdTab;
     private static long nextStopCheck;
 
     public QaProbe189() {}
@@ -69,6 +71,7 @@ public final class QaProbe189 {
             }
         }
         if (failed) return;
+        if (holdTab) net.minecraft.client.settings.KeyBinding.setKeyBindState(mc.gameSettings.keyBindPlayerList.getKeyCode(), true);
         long now = System.nanoTime();
         if (now >= nextStopCheck) {
             nextStopCheck = now + 250_000_000L;
@@ -231,11 +234,21 @@ public final class QaProbe189 {
                     mc.thePlayer.sendChatMessage(rest(s, 1));
                 }
                 break;
-            case "hold": // hold tab [off]: the player list, as holding Tab
-                if (!"tab".equalsIgnoreCase(arg(s, 1))) throw new IllegalArgumentException("hold: tab");
-                net.minecraft.client.settings.KeyBinding.setKeyBindState(mc.gameSettings.keyBindPlayerList.getKeyCode(),
-                        !"off".equalsIgnoreCase(s.length > 2 ? s[2] : "on"));
+            case "srvcmd": { // a command run by the integrated server itself (full permission: QA worlds have cheats off)
+                final net.minecraft.server.MinecraftServer server = mc.getIntegratedServer();
+                if (server == null) throw new IllegalStateException("srvcmd: no integrated server");
+                final String command = rest(s, 1).replaceFirst("^/", "");
+                server.addScheduledTask(() -> server.getCommandManager().executeCommand(server, command));
                 break;
+            }
+            case "hold": { // hold tab [off]: the player list, as holding Tab (the QA bar steps aside: both sit at the top)
+                if (!"tab".equalsIgnoreCase(arg(s, 1))) throw new IllegalArgumentException("hold: tab");
+                boolean down = !"off".equalsIgnoreCase(s.length > 2 ? s[2] : "on");
+                holdTab = down;
+                net.minecraft.client.settings.KeyBinding.setKeyBindState(mc.gameSettings.keyBindPlayerList.getKeyCode(), down);
+                com.thelads.core.client.qa.QaProgress.hide(down);
+                break;
+            }
             case "log":
                 LOGGER.info("Lads 1.8.9 qa log: {}", rest(s, 1));
                 break;

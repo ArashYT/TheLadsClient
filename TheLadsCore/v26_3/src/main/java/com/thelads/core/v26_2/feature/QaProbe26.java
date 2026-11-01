@@ -209,9 +209,11 @@ public final class QaProbe26 {
                     mc.player.connection.sendChat(rest(s, 1));
                 }
             }
-            case "hold" -> { // hold tab [off]: the player list, as holding Tab
+            case "hold" -> { // hold tab [off]: the player list, as holding Tab (the QA bar steps aside: both sit at the top)
                 if (!"tab".equalsIgnoreCase(arg(s, 1))) throw new IllegalArgumentException("hold: tab");
-                mc.options.keyPlayerList.setDown(!"off".equalsIgnoreCase(s.length > 2 ? s[2] : "on"));
+                boolean down = !"off".equalsIgnoreCase(s.length > 2 ? s[2] : "on");
+                mc.options.keyPlayerList.setDown(down);
+                com.thelads.core.client.qa.QaProgress.hide(down);
             }
             case "log" -> LOGGER.info("Lads 26.3 qa log: {}", rest(s, 1));
             case "quit" -> {

@@ -82,6 +82,8 @@ public final class QaProbe1201 {
     private static long phaseSince, nextStopCheck;
     private static int titleTicks, setupTicks, waitTicks, index, passed, failedSteps, confirmTicks, barWaits;
     private static boolean barShotDone;
+    /** "hold tab": MouseHandler.grabMouse resets every key to the keyboard (KeyMapping.setAll), so the held list key is set again each tick. */
+    private static boolean holdTab;
     private static String pendingShot;
     private static List<String[]> steps = new ArrayList<>();
     private static final List<InputConstants.Key> releaseNext = new ArrayList<>();
@@ -117,6 +119,7 @@ public final class QaProbe1201 {
         registered = true;
         ClientLifecycleEvents.CLIENT_STARTED.register(QaProbe1201::begin);
         ClientTickEvents.START_CLIENT_TICK.register(QaProbe1201::tick);
+        ClientTickEvents.END_CLIENT_TICK.register(mc -> { if (holdTab) mc.options.keyPlayerList.setDown(true); });
     }
 
     /** A script verb for a lane's own routine (ticked until it returns true; an exception fails the step). */
@@ -571,6 +574,10 @@ public final class QaProbe1201 {
             default -> throw new IllegalArgumentException("hold: forward back left right jump sneak sprint attack use tab");
         };
         mapping.setDown(down);
+        if (mapping == mc.options.keyPlayerList) {
+            holdTab = down;
+            com.thelads.core.client.qa.QaProgress.hide(down); // both sit at the top
+        }
     }
 
     private static Module findModule(String name) {
