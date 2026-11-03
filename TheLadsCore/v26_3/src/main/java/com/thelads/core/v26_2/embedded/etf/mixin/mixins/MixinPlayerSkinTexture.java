@@ -23,6 +23,10 @@ public abstract class MixinPlayerSkinTexture {
     private static void setNoAlpha(final NativeImage image, final int x, final int y, final int width, final int height) {
     }
 
+    @Shadow
+    private static void doNotchTransparencyHack(final NativeImage image, final int x, final int y, final int width, final int height) {
+    }
+
     @Inject(method = "setNoAlpha", cancellable = true, at = @At("HEAD"))
     private static void etf$cancelling(final NativeImage image, final int x1, final int y1, final int x2, final int y2, final CallbackInfo ci) {
         if (ETF.config().getConfig() != null) {
@@ -54,6 +58,8 @@ public abstract class MixinPlayerSkinTexture {
         //head
         setNoAlpha(image, 8, 0, 24, 8);
         setNoAlpha(image, 0, 8, 32, 16);
+        // Lads: what vanilla does next, which this early return skips: an old skin's solid unused half would be a black hat over the face.
+        doNotchTransparencyHack(image, 32, 0, 64, 32);
 
         //og body
         setNoAlpha(image, 4, 16, 12, 20);
