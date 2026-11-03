@@ -1,6 +1,8 @@
 package com.thelads.core.client.gui;
 
 import com.thelads.core.client.bridge.LadsGraphics;
+import com.thelads.core.client.title.ButtonIcons;
+import com.thelads.core.client.title.TitleScreenTheme;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,6 +52,23 @@ public final class MenuGraphics {
             g.fill(x + w - r, y + i, x + w - inset, y + i + 1, color);
             g.fill(x + w - r, y + h - i - 1, x + w - inset, y + h - i, color);
         }
+    }
+    /**
+     * A button's label centred on cx, its text top at y, with the icon of its label (the given icon name, else ButtonIcons) before it, the
+     * two centred together. Where there is no icon, or both do not fit a button width wide, only the label, as it was.
+     */
+    public static void iconLabel(LadsGraphics g, String label, String icon, int cx, int y, int width, int color) {
+        iconLabel(g, label, icon, cx, y, width, color, com.thelads.core.config.HudSettings.getInstance().isTextShadow());
+    }
+    public static void iconLabel(LadsGraphics g, String label, String icon, int cx, int y, int width, int color, boolean shadow) {
+        if (icon == null) icon = ButtonIcons.of(null, label);
+        int textWidth = g.textWidth(label), size = g.fontHeight(), gap = TitleScreenTheme.LABEL_ICON_GAP;
+        if (icon == null || label.isEmpty() || !TitleScreenTheme.iconFits(width, textWidth)) {
+            g.drawCenteredText(label, cx, y, color, shadow);
+            return;
+        }
+        TitleScreenTheme.icon(g, icon, cx - (size + gap + textWidth) / 2, y, size, color);
+        g.drawCenteredText(label, cx + (size + gap) / 2, y, color, shadow);
     }
     public static String fit(LadsGraphics g, String text, int width) {
         if (width <= 0) return "";

@@ -329,7 +329,7 @@ public final class HostScreenLogic {
         boolean doneHover = doneBtn.has(mouseX, mouseY);
         MenuGraphics.round(g, doneBtn.x, doneBtn.y, doneBtn.w, doneBtn.h,
                 doneHover ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY);
-        g.drawCenteredText("Done", doneBtn.x + doneBtn.w / 2, doneBtn.y + 6, LadsPalette.TEXT, false);
+        MenuGraphics.iconLabel(g, "Done", null, doneBtn.x + doneBtn.w / 2, doneBtn.y + 6, doneBtn.w, LadsPalette.TEXT, false);
     }
 
     /** The host never sends the welcome message to guests yet, so its field stays hidden until it does (1.11.0 notes check). */
@@ -587,21 +587,21 @@ public final class HostScreenLogic {
                 Box kickB = new Box(curX, btnY, 34, btnH);
                 actions.put(SocialBridge.GuestAction.KICK, kickB);
                 MenuGraphics.round(g, kickB.x, kickB.y, kickB.w, kickB.h, kickB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
-                g.drawCenteredText("Kick", kickB.x + kickB.w / 2, kickB.y + 5, LadsPalette.ACCENT, false);
+                MenuGraphics.iconLabel(g, "Kick", null, kickB.x + kickB.w / 2, kickB.y + 5, kickB.w, LadsPalette.ACCENT, false);
 
                 // Ban
                 curX -= 34;
                 Box banB = new Box(curX, btnY, 32, btnH);
                 actions.put(SocialBridge.GuestAction.BAN, banB);
                 MenuGraphics.round(g, banB.x, banB.y, banB.w, banB.h, banB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
-                g.drawCenteredText("Ban", banB.x + banB.w / 2, banB.y + 5, LadsPalette.ACCENT, false);
+                MenuGraphics.iconLabel(g, "Ban", null, banB.x + banB.w / 2, banB.y + 5, banB.w, LadsPalette.ACCENT, false);
 
                 // Mute (Finding 8)
                 curX -= 38;
                 Box muteB = new Box(curX, btnY, 36, btnH);
                 actions.put(SocialBridge.GuestAction.MUTE, muteB);
                 MenuGraphics.round(g, muteB.x, muteB.y, muteB.w, muteB.h, muteB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
-                g.drawCenteredText("Mute", muteB.x + muteB.w / 2, muteB.y + 5, LadsPalette.TEXT, false);
+                MenuGraphics.iconLabel(g, "Mute", null, muteB.x + muteB.w / 2, muteB.y + 5, muteB.w, LadsPalette.TEXT, false);
 
                 // Op / Deop
                 curX -= 38;
@@ -646,7 +646,7 @@ public final class HostScreenLogic {
                 Box unbanB = new Box(x + w - 8 - 8 - 50, itemY + 2, 50, 18);
                 clickables.put("unban:" + b.uuid(), unbanB);
                 MenuGraphics.round(g, unbanB.x, unbanB.y, unbanB.w, unbanB.h, unbanB.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
-                g.drawCenteredText("Unban", unbanB.x + unbanB.w / 2, unbanB.y + 4, LadsPalette.TEXT, false);
+                MenuGraphics.iconLabel(g, "Unban", null, unbanB.x + unbanB.w / 2, unbanB.y + 4, unbanB.w, LadsPalette.TEXT, false);
             }
             itemY += 26;
         }

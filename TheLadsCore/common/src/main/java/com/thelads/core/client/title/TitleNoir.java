@@ -258,21 +258,21 @@ public final class TitleNoir {
     }
 
     /** During this layout's frame: draws a title button by the tier of its place. False: not this layout's button, or no frame. */
-    static boolean renderButton(LadsGraphics g, int x, int y, int width, int height, String label,
+    static boolean renderButton(LadsGraphics g, int x, int y, int width, int height, String label, String icon,
                                 boolean focused, boolean active, float hover) {
         if (frame == null) return false;
         int index = frame.buttons().indexOf(new Rect(x, y, width, height));
         if (index < 0) return false;
         switch (frame.tiers().get(index)) {
-            case PRIMARY -> hero(g, x, y, width, height, label, true, focused, active, hover);
-            case HERO -> hero(g, x, y, width, height, label, false, focused, active, hover);
-            case NETWORK -> networkRow(g, x, y, width, height, label, focused, active, hover);
-            default -> link(g, x, y, width, height, label, focused, active, hover);
+            case PRIMARY -> hero(g, x, y, width, height, label, icon, true, focused, active, hover);
+            case HERO -> hero(g, x, y, width, height, label, icon, false, focused, active, hover);
+            case NETWORK -> networkRow(g, x, y, width, height, label, icon, focused, active, hover);
+            default -> link(g, x, y, width, height, label, icon, focused, active, hover);
         }
         return true;
     }
 
-    private static void hero(LadsGraphics g, int x, int y, int w, int h, String label, boolean primary, boolean focused, boolean active, float hover) {
+    private static void hero(LadsGraphics g, int x, int y, int w, int h, String label, String icon, boolean primary, boolean focused, boolean active, float hover) {
         int lip = 3, faceHeight = h - lip, faceBottom = y + faceHeight;
         if (focused && active) outline(g, x - 1, y - 1, w + 2, h + 2, FOCUS);
         if (!active) {
@@ -289,6 +289,12 @@ public final class TitleNoir {
         }
         int color = active ? TEXT : DISABLED;
         int textX = x + 11, room = w - 11 - 16;
+        if (icon != null) { // before the label: as tall as the doubled text where that fits, else a small one
+            int big = 2 * (g.fontHeight() - 1), size = faceHeight >= big && 2 * g.textWidth(label) + big + 6 <= room ? big : Math.min(10, faceHeight - 4);
+            TitleScreenTheme.icon(g, icon, textX, y + (faceHeight - size) / 2, size, color);
+            textX += size + (size == big ? 6 : 5);
+            room -= size + (size == big ? 6 : 5);
+        }
         if (2 * g.textWidth(label) <= room && faceHeight >= 2 * (g.fontHeight() - 1)) {
             g.pushPose();
             g.translate(textX, y + (faceHeight - 2 * (g.fontHeight() - 1)) / 2);
@@ -302,7 +308,7 @@ public final class TitleNoir {
         for (int i = 0; i < 4; i++) g.fill(cx + i, cy - 3 + i, cx + i + 1, cy + 4 - i, color);
     }
 
-    private static void networkRow(LadsGraphics g, int x, int y, int w, int h, String label, boolean focused, boolean active, float hover) {
+    private static void networkRow(LadsGraphics g, int x, int y, int w, int h, String label, String icon, boolean focused, boolean active, float hover) {
         g.fill(x, y, x + w, y + h, mix(PANEL, PANEL_ALT, hover));
         outline(g, x, y, w, h, focused && active ? FOCUS : hover > .5f ? LINE_ACCENT : LINE);
         int textY = y + (h - g.fontHeight()) / 2 + 1;
@@ -312,16 +318,20 @@ public final class TitleNoir {
         int statusX = x + w - 6 - g.textWidth(shown);
         g.fill(statusX - 8, textY + 1, statusX - 3, textY + 6, up ? GREEN : DISABLED);
         g.drawText(shown, statusX, textY, up ? TEXT : MUTED, false);
-        g.drawText(TitleScreenTheme.fit(g, label, statusX - 10 - x - 8), x + 8, textY, active ? TEXT : DISABLED, false);
+        int lead = icon == null ? 0 : 13;
+        if (icon != null) TitleScreenTheme.icon(g, icon, x + 8, textY, 9, active ? TEXT : DISABLED);
+        g.drawText(TitleScreenTheme.fit(g, label, statusX - 10 - x - 8 - lead), x + 8 + lead, textY, active ? TEXT : DISABLED, false);
     }
 
-    private static void link(LadsGraphics g, int x, int y, int w, int h, String label, boolean focused, boolean active, float hover) {
+    private static void link(LadsGraphics g, int x, int y, int w, int h, String label, String icon, boolean focused, boolean active, float hover) {
         if (hover > .01f || focused) {
             g.fill(x, y, x + w, y + h, 0x2ECC1427);
             g.fill(x, y, x + 2, y + h, focused && active ? FOCUS : RED);
         }
         int color = !active ? DISABLED : hover > .5f || focused ? TEXT : MUTED;
-        g.drawText(TitleScreenTheme.fit(g, label, w - 5), x + 4, y + (h - g.fontHeight()) / 2 + 1, color, false);
+        int lead = icon == null ? 0 : 13; // the icons share one column, the labels start after it
+        if (icon != null) TitleScreenTheme.icon(g, icon, x + 5, y + (h - 9) / 2, 9, color);
+        g.drawText(TitleScreenTheme.fit(g, label, w - 5 - lead), x + 4 + lead, y + (h - g.fontHeight()) / 2 + 1, color, false);
     }
 
     /** During this layout's frame: a hard-edged compact button (header controls, Switch). False: no frame. */

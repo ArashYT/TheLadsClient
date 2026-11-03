@@ -1,5 +1,6 @@
 package com.thelads.core.v26_2.adapter;
 
+import com.thelads.core.client.bridge.IconAtlas;
 import com.thelads.core.client.bridge.LadsGraphics;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -88,6 +89,15 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     private static final java.util.concurrent.ConcurrentHashMap<String, Identifier> MOB_EFFECT_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
     private static final java.util.concurrent.ConcurrentHashMap<String, com.mojang.authlib.GameProfile> HEAD_PROFILE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
     private static final com.mojang.authlib.GameProfile FALLBACK_PROFILE = new com.mojang.authlib.GameProfile(new java.util.UUID(0L, 0L), "Player");
+
+    private static final Identifier ICONS = Identifier.fromNamespaceAndPath(IconAtlas.NAMESPACE, IconAtlas.PATH);
+
+    /** A glyph of the Flaticon atlas, its white tinted by {@code color}: the cell's square scaled to size by size (linear filter: lads_icons.png.mcmeta). */
+    @Override public boolean drawIcon(int cell, int x, int y, int size, int color) {
+        g.blit(RenderPipelines.GUI_TEXTURED, ICONS, x, y, IconAtlas.u(cell), IconAtlas.v(cell), size, size, IconAtlas.CELL, IconAtlas.CELL,
+            IconAtlas.SIZE, IconAtlas.SIZE, color);
+        return true;
+    }
 
     @Override public void drawSprite(String sprite, int x, int y, int size) {
         if (sprite == null) return;

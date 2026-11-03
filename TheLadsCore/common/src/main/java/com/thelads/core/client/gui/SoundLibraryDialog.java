@@ -278,7 +278,7 @@ public final class SoundLibraryDialog {
         // Idle: a dark tint, so a button shows on the panel and on a list row alike.
         int color = !enabled ? 0x30000000 : primary ? hover ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY : hover ? LadsPalette.HOVER : 0x50000000;
         round(g, r.x(), r.y(), r.width(), r.height(), color);
-        g.drawCenteredText(fit(g, label, r.width() - 6), r.x() + r.width() / 2, r.y() + (r.height() - g.fontHeight()) / 2 + 1, enabled ? TEXT : LadsPalette.DISABLED);
+        iconLabel(g, fit(g, label, r.width() - 6), null, r.x() + r.width() / 2, r.y() + (r.height() - g.fontHeight()) / 2 + 1, r.width(), enabled ? TEXT : LadsPalette.DISABLED);
         if (enabled) hits.add(new Hit(id, r, action));
     }
 

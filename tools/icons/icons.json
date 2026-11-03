@@ -82,6 +82,7 @@
     "layout": "fi-sr-layout-fluid",
     "link": "fi-sr-link",
     "lock": "fi-sr-lock",
+    "mail": "fi-sr-envelope",
     "memory": "fi-sr-memory",
     "menu-dots": "fi-sr-menu-dots",
     "minus": "fi-sr-minus",

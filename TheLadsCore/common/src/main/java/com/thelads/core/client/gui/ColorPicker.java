@@ -90,7 +90,7 @@ public final class ColorPicker {
     }
     private static void button(LadsGraphics g, int x, int y, int w, String text) {
         g.fill(x, y, x + w, y + 20, LadsPalette.CARD);
-        g.drawCenteredText(text, x + w / 2, y + 6, LadsPalette.TEXT);
+        MenuGraphics.iconLabel(g, text, null, x + w / 2, y + 6, w, LadsPalette.TEXT);
     }
     public boolean click(double mx, double my, int button) {
         if (!isOpen()) return false;

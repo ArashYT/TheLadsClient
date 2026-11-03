@@ -311,7 +311,7 @@ public class DraggableHudScreen {
         MenuGraphics.round(g,b.x(),b.y(),b.width(),b.height(),!c.enabled()?LadsPalette.PANEL:on?(hover?LadsPalette.PRIMARY_HOVER:LadsPalette.PRIMARY):hover?LadsPalette.HOVER:LadsPalette.CARD);
         int ty=b.y()+(b.height()-g.fontHeight())/2+1,color=c.enabled()?LadsPalette.TEXT:LadsPalette.DISABLED;
         if(leftAligned)g.drawText(MenuGraphics.fit(g,c.label(),b.width()-10),b.x()+5,ty,on||!search.isEmpty()?color:LadsPalette.MUTED,false);
-        else g.drawCenteredText(MenuGraphics.fit(g,c.label(),b.width()-6),b.x()+b.width()/2,ty,color,false);
+        else MenuGraphics.iconLabel(g,MenuGraphics.fit(g,c.label(),b.width()-6),null,b.x()+b.width()/2,ty,b.width(),color,false);
     }
     private void drawContext(LadsGraphics g,int mx,int my){
         contextControls.clear();

@@ -1,5 +1,6 @@
 package com.thelads.core.v1_21_11.adapter;
 
+import com.thelads.core.client.bridge.IconAtlas;
 import com.thelads.core.client.bridge.LadsGraphics;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -147,6 +148,16 @@ public class GuiGraphicsLadsAdapter implements LadsGraphics {
             guiGraphics.blit(RenderPipelines.GUI_TEXTURED, loc, x, y, u, v, width, height,
                 gpuTexture.getWidth(0), gpuTexture.getHeight(0));
         }
+    }
+
+    private static final Identifier ICONS = Identifier.fromNamespaceAndPath(IconAtlas.NAMESPACE, IconAtlas.PATH);
+
+    /** A glyph of the Flaticon atlas, its white tinted by {@code color}: the cell's square scaled to size by size (linear filter: lads_icons.png.mcmeta). */
+    @Override
+    public boolean drawIcon(int cell, int x, int y, int size, int color) {
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, ICONS, x, y, IconAtlas.u(cell), IconAtlas.v(cell), size, size, IconAtlas.CELL, IconAtlas.CELL,
+            IconAtlas.SIZE, IconAtlas.SIZE, color);
+        return true;
     }
 
     @Override

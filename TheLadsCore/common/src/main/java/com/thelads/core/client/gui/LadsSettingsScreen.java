@@ -90,6 +90,8 @@ public final class LadsSettingsScreen {
     private Consumer<String> onNarrate = ignored -> {};
     private Supplier<String> clipboardReader = () -> "";
     private Consumer<String> clipboardWriter = text -> {};
+    /** Credit for the Flaticon icons (THIRD_PARTY_NOTICES.txt). */
+    private static final String ICON_CREDIT = "Icons by Flaticon (flaticon.com)";
     private static final String[] CATEGORIES = {"All", "HUD", "Gameplay", "Performance", "Server", "Hypixel"};
     private static final Set<String> PERFORMANCE = Set.of("Performance", "DynamicFPS", "UnfocusedFpsCap", "Exordium", "BetterResolution", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore", "Async", com.thelads.core.client.ParticleCore.MODULE);
     // Installed mods view: its own state, search and "mods:" row ids, so the native catalog above stays native-only.
@@ -284,6 +286,8 @@ public final class LadsSettingsScreen {
         else if (detail == null) renderCatalog(g, x, w, side == 0, mouseX, mouseY);
         else renderDetails(g, x, w, mouseX, mouseY);
         g.drawText(fit(g, notice.isEmpty() ? "Ctrl+F search / Tab navigate / Esc back" : notice, w), x, height - 15, MUTED);
+        // The icons' credit (Flaticon licence), right of the hint while no notice is showing and there is room for both.
+        if (notice.isEmpty() && g.textWidth(ICON_CREDIT) + 190 <= w) g.drawText(ICON_CREDIT, x + w - g.textWidth(ICON_CREDIT), height - 15, MUTED);
         // Each popup is its own layer in front of everything before it (see LadsGraphics.overlay).
         g.overlay(() -> colorPicker.render(g, pointerX, pointerY));
         g.overlay(() -> actions.render(g, pointerX, pointerY));
@@ -1686,7 +1690,7 @@ public final class LadsSettingsScreen {
         if (focusId.equals(id)) round(g, r.x - 1, r.y - 1, r.width + 2, r.height + 2, ACCENT);
         int color = !enabled ? PANEL : selected ? mix(LadsPalette.PRIMARY, LadsPalette.PRIMARY_HOVER, progress) : mix(CARD, LadsPalette.HOVER, progress);
         round(g, r.x, r.y, r.width, r.height, color);
-        g.drawCenteredText(fit(g, label, r.width - 10), r.x + r.width / 2, r.y + (r.height - g.fontHeight()) / 2 + 1, enabled ? TEXT : LadsPalette.DISABLED);
+        iconLabel(g, fit(g, label, r.width - 10), id.equals("hud") ? "edit" : null, r.x + r.width / 2, r.y + (r.height - g.fontHeight()) / 2 + 1, r.width, enabled ? TEXT : LadsPalette.DISABLED);
         controls.add(new Control(id, label, r, action, enabled));
     }
     /** Card sub-button: dark glass that reads on green, red and neutral cards; the Settings bar puts a gear before its label. */
@@ -1700,12 +1704,9 @@ public final class LadsSettingsScreen {
         g.drawCenteredText(label, center, textY, color);
         controls.add(new Control(id, label, r, action, true));
     }
-    /** 9x9 cog: ring with a 3x3 hole, four teeth and four corner nubs. */
+    /** The 9x9 cog before the Settings label. */
     private static void gear(LadsGraphics g, int x, int y, int color) {
-        g.fill(x + 3, y, x + 6, y + 2, color); g.fill(x + 3, y + 7, x + 6, y + 9, color);
-        g.fill(x, y + 3, x + 3, y + 6, color); g.fill(x + 6, y + 3, x + 9, y + 6, color);
-        g.fill(x + 2, y + 2, x + 7, y + 3, color); g.fill(x + 2, y + 6, x + 7, y + 7, color);
-        for (int i = 0; i < 4; i++) g.fill(x + 1 + i % 2 * 6, y + 1 + i / 2 * 6, x + 2 + i % 2 * 6, y + 2 + i / 2 * 6, color);
+        com.thelads.core.client.title.TitleScreenTheme.icon(g, "settings", x, y, 9, color);
     }
     private float animate(String id, boolean active) {
         float target = active ? 1 : 0;

@@ -73,7 +73,7 @@ public final class QuickplayScreen {
         int closeBtnY = dialogY + 6;
         boolean closeHover = mouseX >= closeBtnX && mouseX <= closeBtnX + 16 && mouseY >= closeBtnY && mouseY <= closeBtnY + 16;
         MenuGraphics.round(g, closeBtnX, closeBtnY, 16, 16, closeHover ? LadsPalette.HOVER : LadsPalette.CARD);
-        g.drawCenteredText("§7✕", closeBtnX + 8, closeBtnY + 4, closeHover ? LadsPalette.ACCENT : LadsPalette.MUTED);
+        com.thelads.core.client.title.TitleScreenTheme.icon(g, "cross", closeBtnX + 4, closeBtnY + 4, 8, closeHover ? LadsPalette.ACCENT : LadsPalette.MUTED);
 
         int currentY = dialogY + headerH + 6;
 

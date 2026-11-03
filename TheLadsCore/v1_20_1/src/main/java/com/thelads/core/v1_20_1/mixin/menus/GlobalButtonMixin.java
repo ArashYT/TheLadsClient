@@ -1,5 +1,6 @@
 package com.thelads.core.v1_20_1.mixin.menus;
 
+import com.thelads.core.client.title.ButtonIcons;
 import com.thelads.core.client.title.ButtonLift;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201;
@@ -9,8 +10,11 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.LiteralContents;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.util.Mth;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -22,6 +26,22 @@ public abstract class GlobalButtonMixin extends AbstractWidget {
         super(x, y, width, height, message);
     }
 
+    /**
+     * The icon drawn before the button's label: the one its screen gave it (the pause menu's), else the one its text maps to
+     * (ButtonIcons: vanilla's keys, the Lads' own labels); null for none, or for a button too narrow for both.
+     */
+    @Unique
+    private String ladsIcon(Font font) {
+        String icon = ButtonLift.icon(this);
+        if (icon == null) {
+            Component message = getMessage();
+            if (message == null || !message.getSiblings().isEmpty()) return null;
+            icon = ButtonIcons.of(message.getContents() instanceof TranslatableContents t ? t.getKey() : null,
+                message.getContents() instanceof LiteralContents l ? l.text() : null);
+        }
+        return icon != null && TitleScreenTheme.iconFits(getWidth(), font.width(getMessage())) ? icon : null;
+    }
+
     @Inject(method = "renderWidget(Lnet/minecraft/client/gui/GuiGraphics;IIF)V", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsButton(GuiGraphics g, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         var adapter = new GuiGraphicsLadsAdapter1201(g);
@@ -30,8 +50,8 @@ public abstract class GlobalButtonMixin extends AbstractWidget {
             isFocused(), active, alpha, lift));
         Font font = Minecraft.getInstance().font;
         int color = (active ? 0xFFFFFF : 0xA0A0A0) | Mth.ceil(alpha * 255.0f) << 24;
-        // The pause menu's buttons: an icon before the label, the two centred together.
-        String icon = ButtonLift.icon(this);
+        // An icon before the label, the two centred together.
+        String icon = ladsIcon(font);
         if (icon != null) {
             int textWidth = font.width(getMessage());
             TitleScreenTheme.renderLabelIcon(adapter, icon, getX(), getY(), getWidth(), getHeight(), textWidth, active ? 0xFFFFFFFF : 0xFFA0A0A0);

@@ -290,7 +290,7 @@ public final class CosmeticsScreen {
         if (b == null) return;
         boolean hover = b.has(mx, my);
         TitleScreenTheme.renderButtonSurface(g, b.x, b.y, b.w, b.h, hover, false, true, 1);
-        g.drawCenteredText(label, b.x + b.w / 2, b.y + (b.h - g.fontHeight()) / 2 + 1, hover ? LadsPalette.TEXT : LadsPalette.MUTED, false);
+        com.thelads.core.client.gui.MenuGraphics.iconLabel(g, label, null, b.x + b.w / 2, b.y + (b.h - g.fontHeight()) / 2 + 1, b.w, hover ? LadsPalette.TEXT : LadsPalette.MUTED, false);
     }
 
     private static void tabButton(LadsGraphics g, Box b, String label, boolean active, int mx, int my) {

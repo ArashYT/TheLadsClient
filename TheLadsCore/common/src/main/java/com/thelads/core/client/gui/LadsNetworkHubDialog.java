@@ -101,12 +101,12 @@ public final class LadsNetworkHubDialog {
         closeBtn = new Rect(dx + dw - 22, dy + 7, 15, 15);
         boolean hoverClose = closeBtn.contains(mx, my);
         round(g, closeBtn.x(), closeBtn.y(), closeBtn.width(), closeBtn.height(), hoverClose ? LadsPalette.HOVER : LadsPalette.CARD);
-        g.drawCenteredText("x", closeBtn.x() + closeBtn.width() / 2, closeBtn.y() + 3, hoverClose ? LadsPalette.TEXT : LadsPalette.MUTED);
+        com.thelads.core.client.title.TitleScreenTheme.icon(g, "cross", closeBtn.x() + (closeBtn.width() - 9) / 2, closeBtn.y() + (closeBtn.height() - 9) / 2, 9, hoverClose ? LadsPalette.TEXT : LadsPalette.MUTED);
 
         refreshBtn = new Rect(closeBtn.x() - 56, dy + 7, 52, 15);
         boolean hoverRefresh = refreshBtn.contains(mx, my);
         round(g, refreshBtn.x(), refreshBtn.y(), refreshBtn.width(), refreshBtn.height(), hoverRefresh ? LadsPalette.HOVER : LadsPalette.CARD);
-        g.drawCenteredText("Refresh", refreshBtn.x() + refreshBtn.width() / 2, refreshBtn.y() + 4, LadsPalette.TEXT);
+        com.thelads.core.client.gui.MenuGraphics.iconLabel(g, "Refresh", null, refreshBtn.x() + refreshBtn.width() / 2, refreshBtn.y() + 4, refreshBtn.width(), LadsPalette.TEXT);
 
         int badgeW = g.textWidth(badgeText) + 18;
         int badgeX = refreshBtn.x() - badgeW - 6;
@@ -150,8 +150,8 @@ public final class LadsNetworkHubDialog {
         String mainLabel = connected
             ? "Return to Network Hub (" + effectiveHub + ")"
             : "Join The Lads Network (" + LadsNetwork.ADDRESS + ")";
-        g.drawCenteredText(fit(g, mainLabel, joinMainBtn.width() - 16),
-            joinMainBtn.x() + joinMainBtn.width() / 2, joinMainBtn.y() + 8, LadsPalette.TEXT);
+        com.thelads.core.client.gui.MenuGraphics.iconLabel(g, fit(g, mainLabel, joinMainBtn.width() - 16), connected ? "arrow-left" : "enter",
+            joinMainBtn.x() + joinMainBtn.width() / 2, joinMainBtn.y() + 8, joinMainBtn.width(), LadsPalette.TEXT);
 
         // Sub-server cards grid (2 columns x 3 rows)
         subCards.clear();
