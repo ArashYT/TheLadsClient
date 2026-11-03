@@ -15,12 +15,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 abstract class ServerLanHeaderMixin {
     @Unique private int ladsCentre;
 
-    @Inject(method = "render", at = @At("HEAD"))
+    @Inject(require = 0, method = "render", at = @At("HEAD"))
     private void ladsCell(GuiGraphics graphics, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick, CallbackInfo ci) {
         ladsCentre = left + width / 2;
     }
 
-    @ModifyExpressionValue(method = "render", at = @At(value = "FIELD", target = "Lnet/minecraft/client/gui/screens/Screen;width:I"))
+    @ModifyExpressionValue(require = 0, method = "render", at = @At(value = "FIELD", target = "Lnet/minecraft/client/gui/screens/Screen;width:I"))
     private int ladsCellWidth(int screenWidth) {
         return ladsCentre * 2;
     }

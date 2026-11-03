@@ -5,6 +5,7 @@ import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -15,9 +16,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(ServerData.class)
 abstract class ServerDataForceMixin {
+    /** A forced protocol this ViaFabricPlus cannot apply: kept for the versions that can. */
+    @Unique private Integer ladsUnapplied;
+
     @Inject(method = "write", at = @At("RETURN"))
     private void ladsWriteForced(CallbackInfoReturnable<CompoundTag> cir) {
         Integer forced = ViaForce.forced(this);
+        if (forced == null) forced = ladsUnapplied;
         if (forced != null) cir.getReturnValue().putInt(ViaForce.TAG, forced);
     }
 
@@ -28,6 +33,8 @@ abstract class ServerDataForceMixin {
 
     @Inject(method = "read", at = @At("RETURN"))
     private static void ladsReadForced(CompoundTag tag, CallbackInfoReturnable<ServerData> cir) {
-        if (tag.contains(ViaForce.TAG, Tag.TAG_INT)) ViaForce.force(cir.getReturnValue(), tag.getInt(ViaForce.TAG));
+        if (tag.contains(ViaForce.TAG, Tag.TAG_INT) && !ViaForce.force(cir.getReturnValue(), tag.getInt(ViaForce.TAG))) {
+            ((ServerDataForceMixin) (Object) cir.getReturnValue()).ladsUnapplied = tag.getInt(ViaForce.TAG);
+        }
     }
 }

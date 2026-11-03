@@ -73,29 +73,29 @@ abstract class ServerEntryMixin {
         return ServerListEntryUi.buttonLabel(ladsWidth, minecraft.font::width);
     }
 
-    @Inject(method = "render", at = @At("HEAD"))
+    @Inject(require = 0, method = "render", at = @At("HEAD"))
     private void ladsRowWidth(GuiGraphics graphics, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick, CallbackInfo ci) {
         ladsWidth = width;
     }
 
     /** Vanilla's red version replaces the player count on a mismatch: the count stays, the version has its own place. */
-    @ModifyExpressionValue(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/chat/MutableComponent;withStyle(Lnet/minecraft/ChatFormatting;)Lnet/minecraft/network/chat/MutableComponent;"))
+    @ModifyExpressionValue(require = 0, method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/chat/MutableComponent;withStyle(Lnet/minecraft/ChatFormatting;)Lnet/minecraft/network/chat/MutableComponent;"))
     private MutableComponent ladsCountStays(MutableComponent redVersion) {
         return serverData.status.copy();
     }
 
-    @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIZ)I"))
+    @WrapOperation(require = 0, method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;IIIZ)I"))
     private int ladsClipName(GuiGraphics graphics, Font font, String name, int x, int y, int color, boolean shadow, Operation<Integer> original) {
         return original.call(graphics, font, ServerListEntryUi.clip(name, lads$firstLine()[0], font::width), x, y, color, shadow);
     }
 
     /** The button takes the MOTD's second line. */
-    @ModifyArg(method = "render", at = @At(value = "INVOKE", target = "Ljava/lang/Math;min(II)I"), index = 1)
+    @ModifyArg(require = 0, method = "render", at = @At(value = "INVOKE", target = "Ljava/lang/Math;min(II)I"), index = 1)
     private int ladsMotdLines(int lines) {
         return lads$buttonLabel() != null ? 1 : lines;
     }
 
-    @Inject(method = "render", at = @At("RETURN"))
+    @Inject(require = 0, method = "render", at = @At("RETURN"))
     private void ladsVersionAndButton(GuiGraphics graphics, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick, CallbackInfo ci) {
         ServerListEntryUi.Version version = lads$version();
         if (version == ServerListEntryUi.Version.NONE) return;
@@ -113,7 +113,7 @@ abstract class ServerEntryMixin {
     }
 
     /** Sets ViaFabricPlus' forced version of this server only to what the ping reported, saves and joins. Only ever from a click here. */
-    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
+    @Inject(require = 0, method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     private void ladsButtonPress(double x, double y, int button, CallbackInfoReturnable<Boolean> cir) {
         String label = button == 0 ? lads$buttonLabel() : null;
         if (label == null) return;
@@ -131,7 +131,7 @@ abstract class ServerEntryMixin {
     }
 
     /** Vanilla reads the click against the single row's left edge; with columns each row has its own. */
-    @ModifyExpressionValue(method = "mouseClicked", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/multiplayer/ServerSelectionList;getRowLeft()I"))
+    @ModifyExpressionValue(require = 0, method = "mouseClicked", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/multiplayer/ServerSelectionList;getRowLeft()I"))
     private int ladsRowLeft(int left) {
         return ((ServerListColumns.Rows) ((ServerListScreenAccessor) screen).ladsServerList()).lads$rowLeft(lads$index());
     }
@@ -157,7 +157,7 @@ abstract class ServerEntryMixin {
     }
 
     /** Every move of a row, the arrows' and Shift+arrows', ends here. A click on the pinned row's icon where the arrow would be just selects it. */
-    @Inject(method = "swap", at = @At("HEAD"), cancellable = true)
+    @Inject(require = 0, method = "swap", at = @At("HEAD"), cancellable = true)
     private void ladsKeepPinned(int from, int to, CallbackInfo ci) {
         if (ServerListDrag.canSwap(from, to, lads$first())) return;
         screen.setSelected((ServerSelectionList.Entry) (Object) this);

@@ -34,6 +34,15 @@ public abstract class WorldListMenuMixin189 extends GuiScreen {
     @Shadow protected abstract String func_146621_a(int world);
     @Shadow protected abstract String func_146614_d(int world);
     @Unique private final ListContextMenu ladsMenu = new ListContextMenu();
+    @Unique private boolean ladsPressTaken;
+
+    /** handleMouseInput hands the list every mouse event after the screen's: not the press the menu took, or a row under it would be selected. */
+    @Inject(method = "handleMouseInput", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiScreen;handleMouseInput()V", shift = At.Shift.AFTER), cancellable = true)
+    private void ladsNoClickThrough(CallbackInfo ci) {
+        if (!ladsPressTaken) return;
+        ladsPressTaken = org.lwjgl.input.Mouse.isButtonDown(0);
+        ci.cancel();
+    }
 
     /** The list's private inner class can't be named by an accessor; a right click is rare enough to look it up. */
     @Unique
@@ -59,7 +68,10 @@ public abstract class WorldListMenuMixin189 extends GuiScreen {
 
     @Override
     protected void mouseClicked(int x, int y, int button) throws IOException {
-        if (ladsMenu.mouseClicked(x, y)) return;
+        if (ladsMenu.mouseClicked(x, y)) {
+            ladsPressTaken = true;
+            return;
+        }
         if (button == 1 && lads$list().isMouseYWithinSlotBounds(y)) {
             int world = lads$list().getSlotIndexFromScreenCoords(x, y);
             if (world >= 0) {
@@ -84,7 +96,7 @@ public abstract class WorldListMenuMixin189 extends GuiScreen {
                 case "copy": setClipboardString(func_146614_d(world)); break;
                 default: break;
             }
-        } catch (IOException failure) {
+        } catch (IOException | RuntimeException failure) {
             org.apache.logging.log4j.LogManager.getLogger("TheLadsCore").warn("World menu: {} failed", id, failure);
         }
     }

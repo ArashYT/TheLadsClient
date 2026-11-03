@@ -35,7 +35,7 @@ abstract class ServerListDragMixin189 extends GuiScreen {
 
     @Inject(method = "mouseClicked", at = @At("HEAD"))
     private void lads$press(int x, int y, int button, CallbackInfo ci) {
-        int slot = serverListSelector.getSlotIndexFromScreenCoords(x, y);
+        int slot = serverListSelector.isMouseYWithinSlotBounds(y) ? serverListSelector.getSlotIndexFromScreenCoords(x, y) : -1;
         lads$pressed = button == 0 && slot >= 0 && slot < savedServerList.countServers() && !ListContextMenu.anyOpen()
             && !LadsNetwork.isPinned(savedServerList.getServerData(slot).serverIP) && ServerListDrag.enabled();
         lads$pressX = x;

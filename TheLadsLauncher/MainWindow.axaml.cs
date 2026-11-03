@@ -76,7 +76,7 @@ public partial class MainWindow : Window
             }
             if (RemoveAccountBtn != null)
             {
-                RemoveAccountBtn.Content = string.IsNullOrEmpty(value) ? "Remove Account" : $"Remove '{value}'";
+                RemoveAccountBtn.Content = string.IsNullOrEmpty(value) ? "Remove Account" : $"Remove '{value.Replace("_", "__")}'";
             }
             ExperiencesPage?.RefreshState();
         }
@@ -1616,7 +1616,7 @@ public partial class MainWindow : Window
                 _selectedAccount = allAccountNames[0];
             }
             MiniAccountName.Text = _selectedAccount;
-            RemoveAccountBtn.Content = $"Remove '{_selectedAccount}'";
+            RemoveAccountBtn.Content = $"Remove '{_selectedAccount.Replace("_", "__")}'";
             _ = LoadPlayerSkin(_selectedAccount);
         }
         else

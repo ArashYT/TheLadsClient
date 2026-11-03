@@ -87,23 +87,23 @@ abstract class ServerEntryMixin {
     }
 
     /** Vanilla's red version replaces the player count on a mismatch: the count stays, the version has its own place. */
-    @ModifyExpressionValue(method = "renderContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/chat/MutableComponent;withStyle(Lnet/minecraft/ChatFormatting;)Lnet/minecraft/network/chat/MutableComponent;"))
+    @ModifyExpressionValue(require = 0, method = "renderContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/chat/MutableComponent;withStyle(Lnet/minecraft/ChatFormatting;)Lnet/minecraft/network/chat/MutableComponent;"))
     private MutableComponent ladsCountStays(MutableComponent redVersion) {
         return serverData.status.copy();
     }
 
-    @WrapOperation(method = "renderContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;III)V"))
+    @WrapOperation(require = 0, method = "renderContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;III)V"))
     private void ladsClipName(GuiGraphics graphics, Font font, String name, int x, int y, int color, Operation<Void> original) {
         original.call(graphics, font, ServerListEntryUi.clip(name, lads$firstLine()[0], font::width), x, y, color);
     }
 
     /** The button takes the MOTD's second line. */
-    @ModifyArg(method = "renderContent", at = @At(value = "INVOKE", target = "Ljava/lang/Math;min(II)I"), index = 1)
+    @ModifyArg(require = 0, method = "renderContent", at = @At(value = "INVOKE", target = "Ljava/lang/Math;min(II)I"), index = 1)
     private int ladsMotdLines(int lines) {
         return lads$buttonLabel() != null ? 1 : lines;
     }
 
-    @Inject(method = "renderContent", at = @At("TAIL"))
+    @Inject(require = 0, method = "renderContent", at = @At("TAIL"))
     private void ladsVersionAndButton(GuiGraphics graphics, int mouseX, int mouseY, boolean hovered, float partialTick, CallbackInfo ci) {
         ServerListEntryUi.Version version = lads$version();
         if (version == ServerListEntryUi.Version.NONE) return;
@@ -122,7 +122,7 @@ abstract class ServerEntryMixin {
     }
 
     /** Sets ViaFabricPlus' forced version of this server only to what the ping reported, saves and joins. Only ever from a click here. */
-    @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
+    @Inject(require = 0, method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     private void ladsButtonPress(MouseButtonEvent event, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
         String label = event.button() == InputConstants.MOUSE_BUTTON_LEFT ? lads$buttonLabel() : null;
         if (label == null || !lads$overButton(label, event.x(), event.y())) return;
@@ -146,12 +146,12 @@ abstract class ServerEntryMixin {
         return servers.size() == 0 ? 0 : ServerListDrag.firstMovable(servers.get(0).ip);
     }
 
-    @ModifyExpressionValue(method = {"renderContent", "mouseClicked"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/multiplayer/ServerSelectionList$OnlineServerEntry;mouseOverTopLeftQuarter(III)Z"))
+    @ModifyExpressionValue(require = 0, method = {"renderContent", "mouseClicked"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/multiplayer/ServerSelectionList$OnlineServerEntry;mouseOverTopLeftQuarter(III)Z"))
     private boolean ladsNoUp(boolean over) {
         return over && ServerListDrag.canSwap(lads$index(), lads$index() - 1, lads$first());
     }
 
-    @ModifyExpressionValue(method = {"renderContent", "mouseClicked"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/multiplayer/ServerSelectionList$OnlineServerEntry;mouseOverBottomLeftQuarter(III)Z"))
+    @ModifyExpressionValue(require = 0, method = {"renderContent", "mouseClicked"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/multiplayer/ServerSelectionList$OnlineServerEntry;mouseOverBottomLeftQuarter(III)Z"))
     private boolean ladsNoDown(boolean over) {
         return over && ServerListDrag.canSwap(lads$index(), lads$index() + 1, lads$first());
     }
@@ -165,7 +165,7 @@ abstract class ServerEntryMixin {
     }
 
     /** Every move of a row, the arrows' and Shift+arrows', ends here. */
-    @Inject(method = "swap", at = @At("HEAD"), cancellable = true)
+    @Inject(require = 0, method = "swap", at = @At("HEAD"), cancellable = true)
     private void ladsKeepPinned(int from, int to, CallbackInfo ci) {
         if (!ServerListDrag.canSwap(from, to, lads$first())) ci.cancel();
     }

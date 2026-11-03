@@ -33,6 +33,7 @@ public class AccountSwitcherScreen {
     /** The removal under way: the launcher does it off the render thread, and tick() reloads the list after it. */
     private CompletableFuture<Void> removing;
     private LadsAccount removeTarget, confirmingRemoval;
+    private final boolean nextLaunchOnly;
     private boolean fromLauncher; // the list is the launcher's published one, not this game folder's own file
     private boolean statusIsError;
     private final List<LadsAccount> accounts = new ArrayList<>();
@@ -53,7 +54,8 @@ public class AccountSwitcherScreen {
 
     public AccountSwitcherScreen(LiveSession live, AccountTokens tokens) {
         // A game the launcher gave no way back to it (a third-party modpack) only records the choice, as a version without live switching.
-        this.live = tokens.nextLaunchOnly() ? null : live;
+        this.nextLaunchOnly = tokens.nextLaunchOnly();
+        this.live = nextLaunchOnly ? null : live;
         this.tokens = tokens;
         loadAccounts();
     }
@@ -410,7 +412,7 @@ public class AccountSwitcherScreen {
 
             if (isSel) {
                 g.drawText(live != null ? "PLAYING" : "NEXT", cardX + cardW - 65, itemY + 10, LadsPalette.TEXT, false);
-            } else {
+            } else if (!nextLaunchOnly) {
                 boolean hot = acc == confirmingRemoval || overBin(mouseX, mouseY, cardX, cardW, itemY, itemH);
                 TitleScreenTheme.icon(g, "delete", cardX + cardW - BIN_INSET, itemY + 11, 10, hot ? 0xFFFF6666 : LadsPalette.MUTED);
             }
@@ -475,7 +477,7 @@ public class AccountSwitcherScreen {
             int itemY = listY + ((i - scrollOffset) * itemH);
             if (itemY + itemH > cardY + cardH - 50) break;
             if (mouseX >= cardX + 16 && mouseX <= cardX + cardW - 16 && mouseY >= itemY && mouseY <= itemY + itemH - 4) {
-                if (!accounts.get(i).isSelected() && overBin(mouseX, mouseY, cardX, cardW, itemY, itemH)) removeAccount(accounts.get(i));
+                if (!nextLaunchOnly && !accounts.get(i).isSelected() && overBin(mouseX, mouseY, cardX, cardW, itemY, itemH)) removeAccount(accounts.get(i));
                 else selectAccount(accounts.get(i));
                 return true;
             }

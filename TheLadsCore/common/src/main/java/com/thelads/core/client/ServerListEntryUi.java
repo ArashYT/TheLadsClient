@@ -52,8 +52,11 @@ public final class ServerListEntryUi {
         return contentWidth - PING - statusWidth - SPACE;
     }
 
+    private static final int MAX_CLIPPED = 128;
+
     /** {@code text} cut with ".." to fit, unchanged when it fits; "" when not even that does. */
     public static String clip(String text, int maxWidth, ToIntFunction<String> width) {
+        if (text.length() > MAX_CLIPPED) text = text.substring(0, MAX_CLIPPED); // a server names its own version: this runs every frame
         if (width.applyAsInt(text) <= maxWidth) return text;
         for (int end = text.length() - 1; end > 0; end--) {
             String cut = text.substring(0, end) + "..";
@@ -90,7 +93,7 @@ public final class ServerListEntryUi {
         }
         items.add(new Item("copy", "Copy address", "copy", true));
         items.add(new Item("refresh", "Refresh", "refresh", true));
-        if (!pinned && changeVersion) items.add(new Item("version", "Change version and reconnect", "switch", true));
+        if (changeVersion) items.add(new Item("version", "Change version and reconnect", "switch", true));
         return items;
     }
 

@@ -44,6 +44,15 @@ public abstract class GuiMultiplayerMixin189 extends GuiScreen {
     @Shadow private void refreshServerList() {}
     @Unique private GuiButton ladsDiscoverButton, ladsColumnsButton;
     @Unique private final ListContextMenu ladsMenu = new ListContextMenu();
+    @Unique private boolean ladsPressTaken;
+
+    /** handleMouseInput hands the list every mouse event after the screen's: not the press the menu took, or a row under it would be selected. */
+    @Inject(method = "handleMouseInput", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiScreen;handleMouseInput()V", shift = At.Shift.AFTER), cancellable = true)
+    private void ladsNoClickThrough(CallbackInfo ci) {
+        if (!ladsPressTaken) return;
+        ladsPressTaken = org.lwjgl.input.Mouse.isButtonDown(0);
+        ci.cancel();
+    }
 
     @Inject(method = "initGui", at = @At("TAIL"))
     private void ladsAddDiscoverButton(CallbackInfo ci) {
@@ -152,7 +161,12 @@ public abstract class GuiMultiplayerMixin189 extends GuiScreen {
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     private void ladsMenuClick(int x, int y, int button, CallbackInfo ci) {
-        if (ladsMenu.mouseClicked(x, y) || button == 1 && ladsOpenMenu(x, y)) ci.cancel();
+        if (ladsMenu.mouseClicked(x, y)) {
+            ladsPressTaken = true;
+            ci.cancel();
+        } else if (button == 1 && ladsOpenMenu(x, y)) {
+            ci.cancel();
+        }
     }
 
     /** Right click selects the row and opens its menu. False off the rows (the LAN header has none). */

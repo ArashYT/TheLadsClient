@@ -148,7 +148,9 @@ class ServerListUiTest {
     void menuItemsByEntryState() {
         assertEquals(List.of("join", "edit", "delete", "copy", "refresh"), ids(ServerListEntryUi.serverMenu(false, false)));
         assertEquals(List.of("join", "edit", "delete", "copy", "refresh", "version"), ids(ServerListEntryUi.serverMenu(false, true)));
-        assertEquals(List.of("join", "copy", "refresh"), ids(ServerListEntryUi.serverMenu(true, true)), "the pinned entry cannot be edited or deleted");
+        assertEquals(List.of("join", "copy", "refresh"), ids(ServerListEntryUi.serverMenu(true, false)), "the pinned entry cannot be edited or deleted");
+        assertEquals(List.of("join", "copy", "refresh", "version"), ids(ServerListEntryUi.serverMenu(true, true)), "same as its row's button");
+        assertEquals(128, ServerListEntryUi.clip("x".repeat(30000), 130, String::length).length(), "a server's long version is cut before it is measured");
         List<ListContextMenu.Item> world = ServerListEntryUi.worldMenu(false, false, true, false);
         assertEquals(List.of("play", "edit", "delete", "recreate", "folder", "copy"), ids(world));
         assertFalse(world.get(0).enabled(), "a locked world cannot be played");
