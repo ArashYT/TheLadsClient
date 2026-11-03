@@ -86,7 +86,9 @@ public class ModpackEarlyWindowTests
         Assert.Contains(ModpackLauncher.EarlyWindowJar + "\" Main --accessToken " + LaunchToken.Placeholder, echo.StartInfo.Arguments);
         echo.Start();
         LaunchToken.Send(echo);
-        Assert.Equal(token, echo.StandardOutput.ReadToEnd().Trim());
+        var stdin = echo.StandardOutput.ReadToEnd().Split((char)10);
+        Assert.Equal(token, stdin[0].Trim()); // Core reads the token off the first line; the second is the account switch hand-off
+        Assert.StartsWith("TheLadsClient-Account-", stdin[1]);
         echo.WaitForExit();
     }
 
