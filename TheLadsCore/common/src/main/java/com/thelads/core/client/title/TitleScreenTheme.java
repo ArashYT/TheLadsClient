@@ -8,7 +8,7 @@ import com.thelads.core.modules.TitleScaleModule;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Shared, texture-free title artwork. Geometry is prepared once per resize. */
+/** Shared title artwork, texture-free but for the logo. Geometry is prepared once per resize. */
 public final class TitleScreenTheme {
     private static final int TEXT = LadsPalette.TEXT;
     private static final int MUTED = LadsPalette.MUTED;
@@ -73,6 +73,12 @@ public final class TitleScreenTheme {
     public static final String SWITCH = "Switch";
     public static final String PAUSE_SWITCH = "Switch Account";
 
+    /** The two-line Blockbench logo (its model and PNG: docs/art/logo) and the line under it. */
+    public static final String LOGO = "/assets/theladscore/logo/lads_client_2line.png", TAGLINE = "Built for the lads.";
+    private static final int LOGO_WIDTH = 934, LOGO_HEIGHT = 584;
+    static int logoWidth(int maxWidth, int maxHeight) { return Math.max(1, Math.min(maxWidth, maxHeight * LOGO_WIDTH / LOGO_HEIGHT)); }
+    static int logoHeight(int width) { return Math.max(1, width * LOGO_HEIGHT / LOGO_WIDTH); }
+
     /**
      * {@code withSwitch}: the account card keeps room after the name for its Switch button, whose place this returns (null
      * without it): labelled, or its icon alone when the bottom line is too narrow for the label.
@@ -109,28 +115,28 @@ public final class TitleScreenTheme {
         int brandX = l.wide() ? 32 : l.menuX();
         int brandY = l.wide() ? Math.max(55, h / 2 - 70) : 16;
         if (l.wide()) {
-            float brandScale = Math.min(TitleScaleModule.getScale(), Math.min(
-                (l.menuX() - brandX - 28f) / Math.max(1, g.textWidth("LADS") * 4.6f),
-                (h - 48f - brandY) / 125f));
-            g.pushPose(); g.translate(brandX, brandY); g.scale(brandScale, brandScale); g.translate(-brandX, -brandY);
-            g.fill(brandX, brandY - 18, brandX + 21, brandY - 16, ACCENT);
-            g.drawText("BUILT FOR THE LADS", brandX + 29, brandY - 21, MUTED);
-            scaledText(g, "THE", brandX, brandY, 2.4f, TEXT);
-            scaledText(g, "LADS", brandX - 1, brandY + 27, 4.6f, TEXT);
-            g.drawText("C L I E N T", brandX + 2, brandY + 76, ACCENT);
-            g.drawText("Is the sever up?", brandX + 2, brandY + 101, MUTED);
-            g.popPose();
+            if (!wideLogo(g, l, brandX)) {
+                float brandScale = Math.min(TitleScaleModule.getScale(), Math.min(
+                    (l.menuX() - brandX - 28f) / Math.max(1, g.textWidth("LADS") * 4.6f),
+                    (h - 48f - brandY) / 125f));
+                g.pushPose(); g.translate(brandX, brandY); g.scale(brandScale, brandScale); g.translate(-brandX, -brandY);
+                scaledText(g, "THE", brandX, brandY, 2.4f, TEXT);
+                scaledText(g, "LADS", brandX - 1, brandY + 27, 4.6f, TEXT);
+                g.drawText("C L I E N T", brandX + 2, brandY + 76, ACCENT);
+                g.drawText(TAGLINE, brandX + 2, brandY + 101, MUTED);
+                g.popPose();
+            }
             int panelBottom = l.buttons().isEmpty() ? l.menuY() + 40 : l.buttons().get(l.buttons().size() - 1).y() + l.buttons().get(l.buttons().size() - 1).height();
             roundRect(g, l.menuX() - 12, l.menuY() - 30, l.menuWidth() + 24, panelBottom - l.menuY() + 42, 9, 0xCC130B10);
             g.drawText("LET'S PLAY", l.menuX(), l.menuY() - 18, MUTED);
             g.fill(l.menuX() + l.menuWidth() - 22, l.menuY() - 16, l.menuX() + l.menuWidth(), l.menuY() - 15, ACCENT);
-        } else {
+        } else if (!narrowLogo(g, l)) {
             mark(g, brandX, brandY, ACCENT);
             float brandScale = Math.min(2.05f * TitleScaleModule.getScale(), Math.min(
                 (l.menuWidth() - 28f) / Math.max(1, g.textWidth("THE LADS")),
                 (h < 220 ? 21f : 23f) / g.fontHeight()));
             scaledText(g, "THE LADS", brandX + 27, brandY - 1, brandScale, TEXT);
-            if (h >= 220) g.drawText(fit(g, "C L I E N T  /  IS THE SEVER UP?", l.menuWidth() - 28), brandX + 28, brandY + 23, MUTED);
+            if (h >= 220) g.drawText(fit(g, "C L I E N T  /  " + TAGLINE.toUpperCase(java.util.Locale.ROOT), l.menuWidth() - 28), brandX + 28, brandY + 23, MUTED);
         }
         g.fill(16, h - 29, w - 16, h - 28, 0x2944202A);
         String build = com.thelads.core.LadsVersion.clientName() + " (" + version + ")";
@@ -140,6 +146,29 @@ public final class TitleScreenTheme {
         g.drawText(build, w - 18 - g.textWidth(build), h - 21, MUTED);
         int switchX = Math.max(right, Math.min(right + 6, w - 18 - g.textWidth(build) - switchWidth));
         return withSwitch ? new Rect(switchX, h - 25, switchWidth, 16) : null;
+    }
+
+    /** The logo left of the legacy layout's menu panel, its width from Title Scale within the room. False: the version could not draw it (the text artwork instead). */
+    private static boolean wideLogo(LadsGraphics g, Layout l, int left) {
+        int roomWidth = l.menuX() - 28 - left, top = 30, roomHeight = l.height() - 34 - top; // the panel; the header; the account line
+        int width = Math.min(logoWidth(roomWidth, roomHeight - 14), Math.round(260 * TitleScaleModule.getScale())), height = logoHeight(width);
+        int x = left + (roomWidth - width) / 2, y = top + (roomHeight - height - 14) / 2;
+        if (!g.drawImage(LOGO, x, y, width, height)) return false;
+        g.drawCenteredText(TAGLINE, x + width / 2, y + height + 5, MUTED);
+        return true;
+    }
+
+    /** The logo over the legacy layout's narrow menu, the tagline under it or, where only a row fits, beside it. False: the version could not draw it. */
+    private static boolean narrowLogo(LadsGraphics g, Layout l) {
+        int room = l.menuY() - 8;
+        int width = Math.max(1, Math.round(logoWidth(l.menuWidth(), room) * Math.min(1f, TitleScaleModule.getScale()))), height = logoHeight(width);
+        int text = g.textWidth(TAGLINE);
+        boolean under = room - height >= 14, beside = !under && l.height() >= 220 && width + 8 + text <= l.menuWidth();
+        int x = (l.width() - width - (beside ? 8 + text : 0)) / 2, y = 4 + (room - height - (under ? 14 : 0)) / 2;
+        if (!g.drawImage(LOGO, x, y, width, height)) return false;
+        if (under) g.drawCenteredText(TAGLINE, x + width / 2, y + height + 5, MUTED);
+        if (beside) g.drawText(TAGLINE, x + width + 8, y + (height - g.fontHeight()) / 2, MUTED);
+        return true;
     }
 
     private static int tooltipWidth, tooltipHeight;

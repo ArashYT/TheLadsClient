@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * The default title layout, in the site's Voxel Noir: the real panorama as the backdrop, a hard dark slab down the left whose edge
- * breaks into blocks, a voxel wordmark, Singleplayer and Multiplayer as the two loud buttons, everything else as quiet text, and one
+ * breaks into blocks, the Blockbench logo, Singleplayer and Multiplayer as the two loud buttons, everything else as quiet text, and one
  * status strip. All versions share this layout and drawing; TitleScreenTheme keeps the legacy layout.
  *
  * <p>While a version draws this layout's frame (beginFrame to endFrame, render thread), TitleScreenTheme.renderButton and
@@ -43,8 +43,8 @@ public final class TitleNoir {
 
     public enum Tier { PRIMARY, HERO, NETWORK, LINK }
 
-    /** Canvas size, the slab, the status strip's top, the wordmark's block sizes and top, and each button's place and tier. */
-    public record Layout(int width, int height, int railWidth, int stripTop, int block, int clientBlock, int wordY,
+    /** Canvas size, the slab, the status strip's top, the voxel wordmark's block sizes and top, the height above the buttons, and each button's place and tier. */
+    public record Layout(int width, int height, int railWidth, int stripTop, int block, int clientBlock, int wordY, int wordRoom,
                          boolean tagline, List<Rect> buttons, List<Tier> tiers) {}
 
     private static Layout frame;
@@ -127,7 +127,7 @@ public final class TitleNoir {
                 break;
             }
         }
-        return new Layout(width, height, rail, stripTop, block, clientBlock(block), wordY, room >= wordHeight(block) + 14,
+        return new Layout(width, height, rail, stripTop, block, clientBlock(block), wordY, Math.max(1, room), room >= wordHeight(block) + 14,
             List.copyOf(buttons), List.copyOf(tiers));
     }
 
@@ -182,7 +182,25 @@ public final class TitleNoir {
         g.fill(0, 0, 3, bottom, RED);
     }
 
+    /**
+     * Where the logo goes: at Title Scale 1 it fills the rail or the height above the buttons, centred over them with room for the
+     * tagline when it fits; more may leave the rail, as far as the header and the buttons allow.
+     */
+    public static Rect logoBox(Layout l, float titleScale) {
+        int x = 12, inner = l.railWidth() - x - 10, room = l.wordRoom();
+        int width = Math.round(Math.min(TitleScreenTheme.logoWidth(inner, room) * titleScale, TitleScreenTheme.logoWidth(Math.max(inner, l.width() - 150 - x), room)));
+        int height = TitleScreenTheme.logoHeight(width), text = room - height >= 14 ? 14 : 0;
+        return new Rect(x + Math.max(0, (inner - width) / 2), l.wordY() + (room - height - text) / 2, width, height);
+    }
+
     private static void renderWordmark(LadsGraphics g, Layout l) {
+        Rect logo = logoBox(l, TitleScaleModule.getScale());
+        if (g.drawImage(TitleScreenTheme.LOGO, logo.x(), logo.y(), logo.width(), logo.height())) {
+            if (logo.y() + logo.height() + 14 <= l.wordY() + l.wordRoom())
+                g.drawCenteredText(TitleScreenTheme.TAGLINE, logo.x() + logo.width() / 2, logo.y() + logo.height() + 4, RED_TEXT, false);
+            return;
+        }
+        // The version cannot draw pictures or the logo cannot be read: the voxel wordmark.
         int x = 13, y = l.wordY(), height = wordHeight(l.block()) + (l.tagline() ? 14 : 0);
         int below = l.buttons().isEmpty() ? l.stripTop() : l.buttons().get(0).y();
         float scale = Math.max(1f, Math.min(TitleScaleModule.getScale(), Math.min(
@@ -192,7 +210,7 @@ public final class TitleNoir {
         g.scale(scale, scale);
         voxelWord(g, LADS, 0, 0, l.block());
         voxelWord(g, CLIENT, 0, 7 * l.block() + depth(l.block()) + 4, l.clientBlock());
-        if (l.tagline()) g.drawText("Is the sever up?", 1, wordHeight(l.block()) + 5, RED_TEXT, false);
+        if (l.tagline()) g.drawText(TitleScreenTheme.TAGLINE, 1, wordHeight(l.block()) + 5, RED_TEXT, false);
         g.popPose();
     }
 

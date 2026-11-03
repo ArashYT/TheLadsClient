@@ -134,6 +134,45 @@ class TitleScreenThemeTest {
               }
     }
 
+    /** The logo keeps its shape and stays clear of the buttons and the header at every Title Scale, in both layouts; without pictures the old artwork draws. */
+    @Test void theLogoStaysClearOfTheMenus() {
+        for (int w = 320; w <= 1000; w += 20)
+          for (int h = 240; h <= 560; h += 20)
+            for (int count : new int[] {2, 8, 13, 20})
+              for (float scale : new float[] {.6f, 1f, 1.6f}) {
+                String at = count + " buttons, scale " + scale + " at " + w + "x" + h;
+                var l = TitleNoir.layout(w, h, count, -1);
+                var logo = TitleNoir.logoBox(l, scale);
+                if (logo.width() >= 50) assertEquals(934 / 584d, (double) logo.width() / logo.height(), .05, at);
+                assertTrue(logo.x() >= 0 && logo.y() >= 0 && logo.x() + logo.width() <= w, at);
+                assertTrue(logo.y() + logo.height() <= l.buttons().get(0).y(), "above the buttons, " + at);
+                if (scale <= 1) assertTrue(logo.x() + logo.width() <= l.railWidth(), "inside the slab, " + at);
+                assertTrue(logo.x() + logo.width() <= Math.max(l.railWidth() - 10, w - 138), "clear of the header, " + at);
+              }
+        var images = new java.util.ArrayList<TitleScreenTheme.Rect>();
+        var pictures = new LadsGraphicsTest.MockGraphics() {
+            @Override public boolean drawImage(String source, int x, int y, int width, int height) {
+                assertEquals(TitleScreenTheme.LOGO, source);
+                images.add(new TitleScreenTheme.Rect(x, y, width, height));
+                return true;
+            }
+        };
+        for (int w = 240; w <= 1000; w += 20)
+          for (int h = 180; h <= 560; h += 20) {
+            var layout = TitleScreenTheme.layout(w, h, 9);
+            TitleScreenTheme.renderBackground(pictures, layout, "LadsQA", "26.3", false, 0, true);
+            var logo = images.get(images.size() - 1);
+            String at = w + "x" + h;
+            assertTrue(logo.x() >= 0 && logo.y() >= 0 && logo.x() + logo.width() <= w && logo.y() + logo.height() <= h - 29, at);
+            for (var b : layout.buttons())
+                assertTrue(logo.x() + logo.width() <= b.x() || logo.y() + logo.height() <= b.y(), "logo clear of the menu, " + at);
+          }
+        assertFalse(pictures.drawCalls.stream().anyMatch(c -> c.contains("LADS")));
+        var noPictures = new LadsGraphicsTest.MockGraphics();
+        TitleScreenTheme.renderBackground(noPictures, TitleScreenTheme.layout(640, 360, 9), "LadsQA", "26.3", false, 0, true);
+        assertTrue(noPictures.drawCalls.stream().anyMatch(c -> c.contains("LADS")));
+    }
+
     @Test void newLayoutRanksSingleplayerAndMultiplayerOverTheRest() {
         var l = TitleNoir.layout(640, 360, 13, 2);
         assertEquals(TitleNoir.Tier.PRIMARY, l.tiers().get(0));
