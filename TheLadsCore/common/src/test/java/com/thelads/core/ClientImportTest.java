@@ -75,6 +75,9 @@ class ClientImportTest {
             assertEquals(12, anchor.v().off());
             assertEquals(-65536, ((com.thelads.core.modules.HudModule) fps).getCustomColor());
         } finally {
+            // The module is shared with every later test: its colours go back to following the global colour.
+            ConfigManager.applyJson(JsonParser.parseString("""
+                {"modules":{"FPS":{"useGlobalColor":true,"options":{"Text Color":{"useGlobal":true,"color":-1},"Size":100.0,"Background":{"useGlobal":true,"color":0}}}}}""").getAsJsonObject());
             fps.setEnabled(wasOn);
             HudSettings.getInstance().resetToDefaults();
         }
