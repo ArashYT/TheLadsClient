@@ -64,8 +64,9 @@ public final class KillDetector {
     // Hypixel's reward lines, sent to the killer alone: "+10 coins! (Kill)", "+20 coins! (Bob's Network Booster) (Final Kill)",
     // "+25 Bed Wars Experience (Final Kill)"; group 1 names the reward, as one kill may bring a line of each.
     private static final Pattern REWARD = Pattern.compile("^\\s*\\+\\s?[\\d,.]+\\s+([a-z]+)[^:]*\\((?:[a-z]+ )?kill\\)");
-    // "+5 coins! (Assist)", "+10 Bed Wars Experience (Final Assist)": someone else got the kill.
-    private static final Pattern ASSIST_REWARD = Pattern.compile("^\\s*\\+\\s?[\\d,.]+\\s+[a-z]+[^:]*\\([^)]*assist[^)]*\\)");
+    // "+5 coins! (Assist)", "+10 Bed Wars Experience (Final Assist)", "+15XP (Assist)", "ASSIST! 50% on [80] Bob": someone else got the kill.
+    private static final Pattern ASSIST_REWARD = Pattern.compile("^\\s*\\+\\s?[\\d,.]+\\s*[a-z]+[^:]*\\([^)]*assist[^)]*\\)");
+    private static final Pattern ASSIST_TAG = Pattern.compile("^\\W*assist!\\b");
     // "Bob was killed by Steve", "Bob was knocked into the void by Steve"; only vanilla's "by magic / lightning / a ..." name no one.
     private static final Pattern KILLER_BY = Pattern.compile("\\bby (?!(a|an|the|magic|lightning)\\b)[a-z0-9_]{3,16}\\b");
     // A kill message about a player the client saw no hit on must say so in plain words.
@@ -73,19 +74,20 @@ public final class KillDetector {
         + "|finished|eliminated|murdered|impaled|smashed|whilst|escape|fighting)\\b");
     // The local player's own death, after their name at the line's start: "Me was killed by Bob.", "Me fell into the void.",
     // "You died!", and The Pit's "DEATH! by Bob".
-    private static final Pattern DIED = Pattern.compile("^\\s+(((was|were|has been|got)\\b.{0,60}\\b(by|whilst|fighting|escape|escaping|against|due to|world as|from)\\b)"
-        + "|((was|were|has been|got) (killed|slain|shot|squashed|squished|blown up|pricked|poked|impaled|struck|roasted|obliterated|frozen"
-        + "|stung|skewered|doomed|fireballed|pummeled|eliminated|burnt|burned)\\b)"
-        + "|((died|fell|lost|drowned|burned|burnt|blew up|hit the ground|tried to swim|walked into|went up in flames|went off|starved"
+    private static final Pattern DIED = Pattern.compile("^\\s+(((was|were|has been|have been|got)\\b.{0,60}\\b(by|whilst|fighting|escape|escaping|against|due to|world as|from)\\b)"
+        + "|((was|were|has been|have been|got) (killed|slain|shot|squashed|squished|blown up|pricked|poked|impaled|struck|roasted|obliterated|frozen"
+        + "|stung|skewered|doomed|fireballed|pummeled|eliminated|defeated|burnt|burned)\\b)"
+        + "|(((has|have) )?(died|slain yourself|killed yourself)\\b)"
+        + "|((fell|lost|drowned|burned|burnt|blew up|hit the ground|tried to swim|walked into|went up in flames|went off|starved"
         + "|suffocated|froze|withered|experienced|discovered|didn't want|left the confines)\\b))");
-    private static final Pattern DEATH_TAG = Pattern.compile("^\\W*death!");
+    private static final Pattern DEATH_TAG = Pattern.compile("^\\W*death!(\\s*$|\\s+(by|in|from|to)\\b)");
     // Symbols and bracketed tags before the first name of a line: "[MVP+] ", "» ", "(Lv 3) ".
-    private static final Pattern LEAD = Pattern.compile("^([^a-z0-9_\\[(]*(\\[[^\\]]*\\]|\\([^)]*\\)))*[^a-z0-9_]*");
+    private static final Pattern LEAD = Pattern.compile("^([^a-z0-9_\\[(]*(\\[[^\\]]*\\]|\\([^)]*\\)|death!))*[^a-z0-9_]*");
 
     private static final class Victim {
         final Set<String> names = new LinkedHashSet<>();
         Kind kind;
-        long mine = Long.MIN_VALUE, other = Long.MIN_VALUE, killed = Long.MIN_VALUE, held = Long.MIN_VALUE;
+        long mine = Long.MIN_VALUE, other = Long.MIN_VALUE, killed = Long.MIN_VALUE, held = Long.MIN_VALUE, rewarded = Long.MIN_VALUE;
         boolean head;
     }
     private final Map<Integer, Victim> byId = new HashMap<>();
@@ -270,6 +272,14 @@ public final class KillDetector {
             if (held != null) lostTo(held, now);
             return null;
         }
+        if (!assists && ASSIST_TAG.matcher(text).find()) {
+            if (!lostToOthers(text, lower(myNames), players, now)) {
+                assistAt = now;
+                Victim held = oldestHeld();
+                if (held != null) lostTo(held, now);
+            }
+            return null;
+        }
         var reward = REWARD.matcher(text);
         if (reward.find()) {
             // The kill a death held, with its name and head hit, instead of a nameless one.
@@ -299,7 +309,8 @@ public final class KillDetector {
     }
 
     /** A line reporting a player the local player hit as someone else's kill takes the credit, as a damage event naming them does. */
-    private void lostToOthers(String text, Set<String> me, Supplier<? extends Map<Integer, ? extends Collection<String>>> players, long now) {
+    private boolean lostToOthers(String text, Set<String> me, Supplier<? extends Map<Integer, ? extends Collection<String>>> players, long now) {
+        boolean matched = false;
         Set<String> others = null;
         for (Victim victim : byId.values()) {
             if (victim.kind != Kind.PLAYER || since(now, victim.mine) > CREDIT || victim.other > victim.mine || named(text, victim.names, me)) continue;
@@ -312,10 +323,12 @@ public final class KillDetector {
                 }
                 if (otherKill(text, name, others) && !social(text, victim.names, me)) {
                     lostTo(victim, now);
+                    matched = true;
                     break;
                 }
             }
         }
+        return matched;
     }
 
     /** Lower-case {@code text}, no kill of the local player's: does it report {@code victim} killed by someone else, known or not? */
@@ -412,7 +425,12 @@ public final class KillDetector {
         prune(now);
         if (unrewarded.pollFirst() != null) return null;
         unnamed.addLast(now);
-        return new Kill(Kind.PLAYER, "", false);
+        Victim best = null;
+        for (Victim v : byId.values())
+            if (v.kind == Kind.PLAYER && since(now, v.mine) <= CREDIT && v.other <= v.mine && v.killed < v.mine && v.rewarded < v.mine
+                && (best == null || v.mine > best.mine)) best = v;
+        if (best != null) best.rewarded = now;
+        return new Kill(Kind.PLAYER, best != null && !best.names.isEmpty() ? best.names.iterator().next() : "", best != null && best.head);
     }
 
     private void prune(long now) {

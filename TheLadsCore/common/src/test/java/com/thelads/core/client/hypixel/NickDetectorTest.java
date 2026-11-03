@@ -60,11 +60,20 @@ class NickDetectorTest {
         assertTrue(NickDetector.nicked(NICK, "Bobby", null), "version 1");
         assertTrue(NickDetector.nicked(NICK, "Bobby", skin(NICK)), "version 1, its skin or not");
         assertTrue(NickDetector.nicked(REAL, "Bobby", skin(OTHER)), "another account's skin");
+        String urlSafeUnpadded = Base64.getUrlEncoder().withoutPadding().encodeToString(
+            ("{\"timestamp\":1,\"profileId\":\"" + OTHER + "\",\"profileName\":\"pad???>>>\",\"textures\":{}}")
+                .getBytes(StandardCharsets.UTF_8));
+        assertTrue(NickDetector.nicked(REAL, "Bobby", "  " + urlSafeUnpadded + "  "), "URL-safe unpadded Base64 and hyphenated UUID");
         assertFalse(NickDetector.nicked(REAL, "Carl", skin(REAL)), "their own skin");
         assertFalse(NickDetector.nicked(REAL, "Carl", null), "no property: no signal");
         assertFalse(NickDetector.nicked(REAL, "Carl", "not base64!"), "garbage: no signal");
+        assertFalse(NickDetector.nicked(REAL, "Carl", "abcde"), "invalid Base64 length mod 4 == 1");
         assertFalse(NickDetector.nicked(NPC, "Bobby", skin(OTHER)), "version 2: an NPC, whatever its skin");
         assertFalse(NickDetector.nicked(NICK, "\u00a7cFake Name", null), "no player's name");
+        assertFalse(NickDetector.nicked(NICK, "\u00a7aSlot1", null), "formatted fake tab slot");
+        assertFalse(NickDetector.nicked(NICK, "NPC_Shop", null), "NPC prefix");
+        assertFalse(NickDetector.nicked(NICK, "BOT_Watchdog", null), "BOT prefix");
+        assertFalse(NickDetector.nicked(NICK, "CIT-42a9", null), "Citizens NPC prefix");
         assertFalse(NickDetector.nicked(null, "Bobby", null));
     }
 
@@ -101,5 +110,47 @@ class NickDetectorTest {
         module.setEnabled(false);
         NickDetector.tick(game, clock += 2 * S);
         assertEquals("Bobby: hi", Nicknames.rename("Bobby: hi", Nicknames.active("Me")), "off: no marker");
+    }
+
+    @Test void clearsImmediatelyWithinPollWindowAndSkipsSelfBySessionUuid() {
+        UUID selfId = UUID.fromString("1f1b6c2e-8f3e-11ef-b864-0242ac120002");
+        LadsGameBridge sessionGame = new DefaultGameBridge() {
+            @Override public String getServerAddress() { return address; }
+            @Override public boolean isIngame() { return true; }
+            @Override public String getPlayerName() { return "DisguisedSelf"; }
+            @Override public Session session() { return new Session(selfId, "RealSelf", "tok"); }
+            @Override public List<NickDetector.Profile> getTabProfiles() {
+                return List.of(
+                    new NickDetector.Profile(selfId, "OtherTabName", null),
+                    new NickDetector.Profile(NICK, "RealSelf", null),
+                    new NickDetector.Profile(NICK, "Bobby", null)
+                );
+            }
+        };
+        LadsGameBridge.set(sessionGame);
+        HypixelSafetyManager.bypass(NickDetectorModule.NAME);
+        module.setEnabled(true);
+
+        NickDetector.tick(sessionGame, clock += 2 * S);
+        assertEquals("Bobby \u00a7c[Nick]\u00a7r", NickDetector.markers().get("bobby"));
+        assertNull(NickDetector.markers().get("othertabname"), "self excluded by session UUID");
+        assertNull(NickDetector.markers().get("realself"), "self excluded by session name");
+        assertEquals("\u00a7a[VIP] \u00a7bBobby \u00a7c[Nick]\u00a7r\u00a7r: hi",
+            Nicknames.rename("\u00a7a[VIP] \u00a7bBobby\u00a7r: hi", Nicknames.active("DisguisedSelf")));
+
+        // Disabling the module clears markers on the very next tick (< 1 s poll interval).
+        module.setEnabled(false);
+        NickDetector.tick(sessionGame, clock += 1);
+        assertTrue(NickDetector.markers().isEmpty(), "cleared immediately without waiting 1 s");
+        assertEquals("Bobby: hi", Nicknames.rename("Bobby: hi", Nicknames.active("DisguisedSelf")));
+
+        // Re-enabling polls immediately and leaving Hypixel clears on the very next tick.
+        module.setEnabled(true);
+        NickDetector.tick(sessionGame, clock += 1);
+        assertEquals("Bobby \u00a7c[Nick]\u00a7r", NickDetector.markers().get("bobby"));
+
+        address = "play.some-unknown-server.net";
+        NickDetector.tick(sessionGame, clock += 1);
+        assertTrue(NickDetector.markers().isEmpty(), "cleared immediately when leaving Hypixel");
     }
 }
