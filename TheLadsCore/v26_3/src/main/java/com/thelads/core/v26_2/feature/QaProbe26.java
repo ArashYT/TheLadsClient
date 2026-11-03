@@ -245,6 +245,12 @@ public final class QaProbe26 {
                 com.thelads.core.client.qa.QaProgress.hide(down);
             }
             case "log" -> LOGGER.info("Lads 26.3 qa log: {}", rest(s, 1));
+            case "textui" -> textUi(mc, s);
+            case "gui" -> { mc.options.guiScale().set(Integer.parseInt(arg(s, 1))); mc.resizeGui(); } // the GUI scale, 0 = auto
+            case "pointer" -> { // where a real mouse would be, in window pixels: hover states and tooltips render for a shot
+                pointer("xpos", Double.parseDouble(arg(s, 1)));
+                pointer("ypos", Double.parseDouble(arg(s, 2)));
+            }
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout(); // what the title's layout toggle does
             case "press" -> mc.gui.screen().children().stream().filter(c -> c instanceof net.minecraft.client.gui.components.Button b && b.getMessage().getString().equals(rest(s, 1)))
                 .map(c -> (net.minecraft.client.gui.components.Button) c).findFirst().orElseThrow(() -> new IllegalArgumentException("press: no button " + rest(s, 1)))
@@ -266,6 +272,48 @@ public final class QaProbe26 {
                 mc.stop();
             }
             default -> LOGGER.warn("Lads 26.3 qa: unknown step '{}'", verb);
+        }
+    }
+
+    private static void pointer(String field, double value) throws ReflectiveOperationException {
+        var f = net.minecraft.client.MouseHandler.class.getDeclaredField(field);
+        f.setAccessible(true);
+        f.setDouble(Minecraft.getInstance().mouseHandler, value);
+    }
+
+    /**
+     * The custom text boxes on SDL: textui open friends|host|quickplay|hud, textui tab add, textui flag <the screen logic's private boolean> true|false,
+     * textui type <text> (keyboardHandler.charTyped, which SDL's gate does not stop, so also) textui expect on|off: the game's text input state and SDL's own.
+     */
+    private static void textUi(Minecraft mc, String[] s) throws ReflectiveOperationException {
+        switch (arg(s, 1)) {
+            case "open" -> mc.setScreenAndShow(switch (arg(s, 2)) {
+                case "friends" -> new com.thelads.core.v26_2.social.FriendsScreen26(mc.gui.screen());
+                case "host" -> new com.thelads.core.v26_2.social.HostScreen26(mc.gui.screen());
+                case "quickplay" -> new com.thelads.core.v26_2.gui.QuickplayScreen26(mc.gui.screen());
+                case "hud" -> new com.thelads.core.v26_2.gui.DraggableHudScreen26(mc.gui.screen());
+                default -> throw new IllegalArgumentException("textui open: " + s[2]);
+            });
+            case "tab" -> ((com.thelads.core.v26_2.social.FriendsScreen26) mc.gui.screen()).ui().setTab(com.thelads.core.client.social.ui.FriendsScreenLogic.Tab.valueOf(arg(s, 2).toUpperCase(Locale.ROOT)));
+            case "flag" -> {
+                var screen = mc.gui.screen();
+                var uiField = screen.getClass().getDeclaredField("ui");
+                uiField.setAccessible(true);
+                Object ui = uiField.get(screen);
+                var flag = ui.getClass().getDeclaredField(arg(s, 2));
+                flag.setAccessible(true);
+                flag.setBoolean(ui, Boolean.parseBoolean(arg(s, 3)));
+            }
+            case "type" -> rest(s, 2).codePoints().forEach(c -> mc.keyboardHandler.charTyped(mc.getWindow().handle(), new net.minecraft.client.input.CharacterEvent(c)));
+            case "expect" -> {
+                var enabled = com.mojang.blaze3d.platform.TextInputManager.class.getDeclaredField("textInputEnabled");
+                enabled.setAccessible(true);
+                boolean game = enabled.getBoolean(mc.textInputManager()), sdl = org.lwjgl.sdl.SDLKeyboard.SDL_TextInputActive(mc.getWindow().handle());
+                LOGGER.info("Lads 26.3 qa textinput: screen={} textInputEnabled={} SDL_TextInputActive={}", mc.gui.screen().getClass().getSimpleName(), game, sdl);
+                boolean want = "on".equals(arg(s, 2));
+                if (game != want || sdl != want) throw new IllegalStateException("text input should be " + s[2] + ": game " + game + ", SDL " + sdl);
+            }
+            default -> throw new IllegalArgumentException("textui: " + s[1]);
         }
     }
 

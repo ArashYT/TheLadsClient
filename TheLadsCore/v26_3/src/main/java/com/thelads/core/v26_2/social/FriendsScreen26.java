@@ -41,6 +41,9 @@ public final class FriendsScreen26 extends Screen {
         this.ui = FriendsScreenLogic.social(() -> Minecraft.getInstance().setScreenAndShow(parent));
     }
 
+    /** The shared screen this one draws and routes input to (QA drives it). */
+    public FriendsScreenLogic ui() { return ui; }
+
     private void refreshMojangFriends() {
         mojangFriends.clear();
         Minecraft mc = Minecraft.getInstance();
@@ -120,6 +123,7 @@ public final class FriendsScreen26 extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+        minecraft.textInputManager().onTextInputFocusChange(this, !mojangView && ui.isEditingText());
         if (!mojangView) {
             ui.render(new GuiGraphicsExtractorLadsAdapter(g, font), mx, my);
             super.extractRenderState(g, mx, my, delta);
@@ -172,6 +176,8 @@ public final class FriendsScreen26 extends Screen {
         if (!mojangView && ui.charTyped((char) event.codepoint())) return true;
         return super.charTyped(event);
     }
+
+    @Override public void removed() { minecraft.textInputManager().stopTextInput(this); super.removed(); }
 
     @Override
     public void onClose() {

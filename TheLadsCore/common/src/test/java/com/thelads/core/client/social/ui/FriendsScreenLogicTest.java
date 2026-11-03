@@ -17,6 +17,22 @@ import static org.junit.jupiter.api.Assertions.*;
 class FriendsScreenLogicTest {
 
     @Test
+    void addFriendTabTakesTypingStraightAway() {
+        FriendsScreenLogic logic = new FriendsScreenLogic(new FakeCallbacks());
+        assertFalse(logic.isEditingText());
+        assertFalse(logic.charTyped('x'));
+        logic.setTab(FriendsScreenLogic.Tab.ADD);
+        assertTrue(logic.isEditingText());
+        assertTrue(logic.charTyped('x'));
+        logic.setTab(FriendsScreenLogic.Tab.FRIENDS);
+        assertFalse(logic.isEditingText());
+        logic.openDm(new FriendEntry(UUID.randomUUID(), "Zara", null, Presence.OFFLINE, 100));
+        assertTrue(logic.isEditingText(), "the DM box asks for typing too");
+        logic.closeDm();
+        assertFalse(logic.isEditingText());
+    }
+
+    @Test
     void onlineFriendsSortedFirstThenByName() {
         UUID u1 = UUID.randomUUID();
         UUID u2 = UUID.randomUUID();

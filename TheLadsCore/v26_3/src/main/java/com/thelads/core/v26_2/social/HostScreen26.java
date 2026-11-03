@@ -31,6 +31,7 @@ public final class HostScreen26 extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+        minecraft.textInputManager().onTextInputFocusChange(this, ui.isEditingText());
         ui.render(new GuiGraphicsExtractorLadsAdapter(g, font), mx, my);
         super.extractRenderState(g, mx, my, delta);
     }
@@ -58,6 +59,8 @@ public final class HostScreen26 extends Screen {
         if (ui.charTyped((char) event.codepoint())) return true;
         return super.charTyped(event);
     }
+
+    @Override public void removed() { minecraft.textInputManager().stopTextInput(this); super.removed(); }
 
     @Override
     public void onClose() {

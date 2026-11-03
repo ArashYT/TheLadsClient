@@ -36,6 +36,7 @@ public class DraggableHudScreen26 extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+        minecraft.textInputManager().onTextInputFocusChange(this, ui.isEditingText());
         ui.render(new GuiGraphicsExtractorLadsAdapter(g, this.font) {
             @Override public boolean drawGameView(int x, int y, int width, int height) {
                 return com.thelads.core.v26_2.feature.HudEditorView.draw(g, x, y, width, height);
@@ -89,5 +90,5 @@ public class DraggableHudScreen26 extends Screen {
 
     @Override public boolean charTyped(net.minecraft.client.input.CharacterEvent event){return ui.charTyped(event.codepoint())||super.charTyped(event);}
 
-    @Override public void removed() { ui.close(); com.thelads.core.v26_2.feature.HudEditorView.release(); super.removed(); }
+    @Override public void removed() { minecraft.textInputManager().stopTextInput(this); ui.close(); com.thelads.core.v26_2.feature.HudEditorView.release(); super.removed(); }
 }

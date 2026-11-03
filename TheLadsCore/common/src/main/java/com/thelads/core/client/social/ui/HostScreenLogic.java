@@ -752,6 +752,9 @@ public final class HostScreenLogic {
         }
     }
 
+    /** The welcome box has the keyboard: 26.3 delivers typed characters only while the screen asks for them. */
+    public boolean isEditingText() { return typingWelcome; }
+
     public boolean charTyped(char c) {
         if (typingWelcome) {
             if (c >= 32 && c != 127 && welcome.length() < 256) {

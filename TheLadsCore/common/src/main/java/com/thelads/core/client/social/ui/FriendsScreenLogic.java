@@ -209,8 +209,12 @@ public final class FriendsScreenLogic {
         this.popupFriendId = null;
         this.editingNickId = null;
         this.typingNickInput = false;
+        this.typingAddInput = currentTab == Tab.ADD; // its box takes typing straight away
         this.scrollOffset = 0;
     }
+
+    /** A box has the keyboard: 26.3 delivers typed characters only while the screen asks for them. */
+    public boolean isEditingText() { return typingNickInput || typingDmInput || typingAddInput; }
 
     public FriendEntry activeDmFriend() { return activeDmFriend; }
     public void openDm(FriendEntry friend) {

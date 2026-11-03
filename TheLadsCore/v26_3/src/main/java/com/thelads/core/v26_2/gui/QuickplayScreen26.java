@@ -23,6 +23,7 @@ public class QuickplayScreen26 extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
+        minecraft.textInputManager().startTextInput(this); // its search takes every character typed
         ui.render(new GuiGraphicsExtractorLadsAdapter(g, this.font), mouseX, mouseY);
         super.extractRenderState(g, mouseX, mouseY, delta);
     }
@@ -50,6 +51,8 @@ public class QuickplayScreen26 extends Screen {
         if (ui.charTyped((char) event.codepoint())) return true;
         return super.charTyped(event);
     }
+
+    @Override public void removed() { minecraft.textInputManager().stopTextInput(this); super.removed(); }
 
     @Override
     public void onClose() {

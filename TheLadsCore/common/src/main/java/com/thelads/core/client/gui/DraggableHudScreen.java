@@ -594,6 +594,8 @@ public class DraggableHudScreen {
         if(isDragging()&&dragStart.keySet().stream().noneMatch(this::isVisible))finishDrag(false);
         selected.removeIf(element->!elements.contains(element)||!element.isAvailable());
     }
+    /** A box has the keyboard: 26.3 delivers typed characters only while the screen asks for them. */
+    public boolean isEditingText(){return editingSearch||profilesDialog.isOpen()||colorPicker.isOpen();}
     public boolean charTyped(int codePoint){
         if(confirm.isOpen())return true;
         if(profilesDialog.isOpen())return profilesDialog.type(codePoint);
