@@ -44,6 +44,7 @@ public class AccountSwitcherTest {
         String name, uuid;
         boolean world;
         Exception prepareFails;
+        RuntimeException swapFailsBefore, swapFailsAfter; // the prepared step throws before / after the session changed
         final List<String> tokensSeen = new ArrayList<>();
         int commits;
 
@@ -67,8 +68,10 @@ public class AccountSwitcherTest {
             return () -> {
                 commits++;
                 world = false;
+                if (swapFailsBefore != null) throw swapFailsBefore;
                 name = target.getUsername();
                 uuid = target.sessionUuid().toString();
+                if (swapFailsAfter != null) throw swapFailsAfter;
             };
         }
     }
@@ -186,6 +189,74 @@ public class AccountSwitcherTest {
             assertFalse(Files.exists(tempDir.resolve("lads_next_account.json")), c.says());
             assertTrue(screen.getStatusMessage().contains(c.says()), screen.getStatusMessage());
             assertFalse(screen.getStatusMessage().contains(SECRET), c.says());
+        }
+    }
+
+    @Test
+    public void aSwapThatFailsBeforeTheSessionChangedLeavesTheOldAccount(@TempDir Path tempDir) throws Exception {
+        ClientPaths.setBaseDir(tempDir);
+        FakeGame game = FakeGame.offline("First");
+        game.swapFailsBefore = new IllegalStateException(SECRET);
+        FakeLauncher launcher = new FakeLauncher("");
+        AccountSwitcherScreen screen = new AccountSwitcherScreen(game, launcher);
+        LadsAccount before = screen.getSelectedAccount();
+
+        screen.addOfflineAccount("Second");
+        finish(screen);
+
+        assertEquals("First", game.name);
+        assertSame(before, screen.getSelectedAccount());
+        assertTrue(screen.getAccounts().stream().noneMatch(a -> a.getUsername().equals("Second")), "the row added for this switch goes");
+        assertEquals(0, launcher.switched);
+        assertFalse(Files.exists(tempDir.resolve("lads_next_account.json")));
+        assertEquals("Could not switch to Second. Still playing as First.", screen.getStatusMessage());
+    }
+
+    @Test
+    public void aSwapThatFailsAfterTheSessionChangedSaysSoAndKeepsTheLauncherInStep(@TempDir Path tempDir) throws Exception {
+        ClientPaths.setBaseDir(tempDir);
+        FakeGame game = FakeGame.offline("First");
+        game.swapFailsAfter = new IllegalStateException(SECRET);
+        FakeLauncher launcher = new FakeLauncher("");
+        AccountSwitcherScreen screen = new AccountSwitcherScreen(game, launcher);
+
+        screen.addOfflineAccount("Second");
+        finish(screen);
+
+        assertEquals("Second", game.name);
+        assertEquals("Second", screen.getSelectedAccount().getUsername());
+        assertEquals(1, launcher.switched, "the launcher hears of it");
+        assertTrue(Files.readString(tempDir.resolve("lads_next_account.json")).contains("Second"));
+        assertTrue(Files.readString(ClientPaths.getAccountsFile().toPath()).contains("Second"));
+        assertTrue(screen.getStatusMessage().startsWith("Now playing as Second."), screen.getStatusMessage());
+        assertTrue(screen.getStatusMessage().contains("Restart the game"), screen.getStatusMessage());
+        assertFalse(screen.getStatusMessage().contains("refused"));
+        assertFalse(screen.getStatusMessage().contains(SECRET));
+    }
+
+    @Test
+    public void aThirdPartyModpackGameOnlyRecordsTheNextLaunch(@TempDir Path tempDir) throws Exception {
+        ClientPaths.setBaseDir(tempDir);
+        FakeGame game = FakeGame.offline("First");
+        FakeLauncher launcher = new FakeLauncher("");
+        launcher.handOff = "";
+        System.setProperty("lads.modpack", "true");
+        try {
+            AccountSwitcherScreen screen = new AccountSwitcherScreen(game, launcher);
+            LadsAccount target = microsoft(screen);
+
+            screen.selectAccount(target);
+
+            assertFalse(screen.isSwitching());
+            assertEquals("First", game.name);
+            assertTrue(launcher.asked.isEmpty());
+            assertEquals("Next launch: Notch. Restart from the launcher.", screen.getStatusMessage());
+            assertTrue(Files.readString(tempDir.resolve("lads_next_account.json")).contains("Notch"));
+
+            launcher.handOff = "pipe-name 0123456789abcdef0123456789abcdef"; // Zero SMP: a modpack the launcher does hand off to
+            assertFalse(launcher.nextLaunchOnly());
+        } finally {
+            System.clearProperty("lads.modpack");
         }
     }
 

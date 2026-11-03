@@ -44,6 +44,14 @@ public class AccountTokens {
         }
     }
 
+    /**
+     * A modpack the launcher withholds its pipe from (third-party mods could ask it for every saved account's token): nothing can
+     * switch in place there, the launcher applies the choice at the next launch. Outside a modpack, no hand-off is another launcher's game.
+     */
+    public boolean nextLaunchOnly() {
+        return Boolean.getBoolean("lads.modpack") && !HAND_OFF.matcher(handOff()).matches();
+    }
+
     /** Tells the launcher to pick up the request the switcher just wrote, so its selected account follows now and not at the game's exit. */
     public void switched() {
         Matcher handOff = HAND_OFF.matcher(handOff());

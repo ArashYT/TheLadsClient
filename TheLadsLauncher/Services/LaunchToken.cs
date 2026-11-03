@@ -23,8 +23,8 @@ public static class LaunchToken
     private static readonly ConditionalWeakTable<ProcessStartInfo, string> Pending = new();
 
     /// <summary>Call on the built game process before Start; <see cref="Send"/> after Start. The token stays on the command
-    /// line when no Core in the game's mods reads stdin.</summary>
-    public static void Hide(Process process, string gameDirectory, string? accessToken)
+    /// line when no Core in the game's mods reads stdin. <paramref name="accountHandOff"/> false: the game gets no way to ask for other accounts' tokens.</summary>
+    public static void Hide(Process process, string gameDirectory, string? accessToken, bool accountHandOff = true)
     {
         var start = process.StartInfo;
         if (string.IsNullOrEmpty(accessToken) || !CoreReadsStdin(Path.Combine(gameDirectory, "mods"))) return;
@@ -34,7 +34,7 @@ public static class LaunchToken
         start.Arguments = arguments;
         start.RedirectStandardInput = true;
         start.StandardInputEncoding = new UTF8Encoding(false);
-        Pending.AddOrUpdate(start, accessToken + "\n" + AccountSwitchPipe.HandOff(gameDirectory));
+        Pending.AddOrUpdate(start, accountHandOff ? accessToken + "\n" + AccountSwitchPipe.HandOff(gameDirectory) : accessToken);
     }
 
     /// <summary>Writes the token <see cref="Hide"/> took off the command line to the started game, off the caller's thread.</summary>

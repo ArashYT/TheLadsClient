@@ -34,7 +34,7 @@ public final class LaunchToken {
         return token;
     }
 
-    /** "pipe key" from the launcher that started this game; "" when it was another launcher or an older one. */
+    /** "pipe key" from the launcher that started this game; "" when it was another launcher, an older one, or a third-party modpack (the launcher withholds it there). */
     public static synchronized String handOff() {
         return handOff;
     }

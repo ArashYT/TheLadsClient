@@ -47,10 +47,11 @@ public class AccountSwitcherScreen {
     }
 
     public AccountSwitcherScreen(LiveSession live, AccountTokens tokens) {
-        this.live = live;
+        // A game the launcher gave no way back to it (a third-party modpack) only records the choice, as a version without live switching.
+        this.live = tokens.nextLaunchOnly() ? null : live;
         this.tokens = tokens;
         loadAccounts();
-        if (live != null) for (LadsAccount account : accounts) if (isLive(account)) { markSelected(account); break; }
+        if (this.live != null) for (LadsAccount account : accounts) if (isLive(account)) { markSelected(account); break; }
     }
 
     public void setOnClose(Runnable onClose) {
@@ -181,8 +182,9 @@ public class AccountSwitcherScreen {
         LadsAccount target = switchTarget;
         switching = null;
         switchTarget = null;
+        Runnable swap;
         try {
-            work.join().run();
+            swap = work.join();
         } catch (RuntimeException | Error e) {
             Throwable cause = e.getCause() != null ? e.getCause() : e;
             statusMessage = cause instanceof AccountTokens.Refused ? cause.getMessage()
@@ -192,13 +194,28 @@ public class AccountSwitcherScreen {
             dropAddedRow();
             return;
         }
+        boolean finished = true;
+        try {
+            swap.run();
+        } catch (RuntimeException | Error e) {
+            LOGGER.warn("[Lads] Account switch to {} failed partway: {}", target.getUsername(), e.getClass().getSimpleName());
+            // The step can fail on either side of the session change: the game's own session says which.
+            if (!target.sessionUuid().toString().replace("-", "").equalsIgnoreCase(live.uuid().replace("-", ""))) {
+                statusMessage = "Could not switch to " + target.getUsername() + ". Still playing as " + live.username() + ".";
+                statusIsError = true;
+                dropAddedRow();
+                return;
+            }
+            finished = false;
+        }
         addedRow = null;
         markSelected(target);
         saveAccounts();
         writeNextLaunchRequest(target);
         tokens.switched();
         SocialState.get().onAccountChanged();
-        statusMessage = "Now playing as " + target.getUsername() + ".";
+        statusMessage = "Now playing as " + target.getUsername() + "." + (finished ? "" : " Restart the game from the launcher to finish the switch.");
+        statusIsError = !finished;
         LOGGER.info("[Lads] Account switched without a restart: now {}", target.getUsername());
     }
 
