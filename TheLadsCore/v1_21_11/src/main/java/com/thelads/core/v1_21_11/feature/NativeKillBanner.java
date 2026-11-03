@@ -11,6 +11,7 @@ import com.thelads.core.modules.KillBannerModule;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -39,6 +40,7 @@ public final class NativeKillBanner {
     private static final Identifier BASE = Identifier.fromNamespaceAndPath("theladscore", "textures/gui/base_kill_banner.png");
     private static final KillBannerTimeline BANNER = KillBanners.TIMELINE;
     private static ClientPacketListener trackedConnection;
+    private static ClientLevel trackedLevel;
     private static int lastLabelDelta;
     private static boolean lastLabelPreview;
     private static String label = "";
@@ -48,7 +50,11 @@ public final class NativeKillBanner {
         if (NativeKillBannerPreview.tick()) return;
         Minecraft minecraft = Minecraft.getInstance();
         if (!eligible()) { reset(); return; }
-        if (trackedConnection != minecraft.getConnection()) { reset(); trackedConnection = minecraft.getConnection(); }
+        if (trackedConnection != minecraft.getConnection() || trackedLevel != minecraft.level) {
+            reset();
+            trackedConnection = minecraft.getConnection();
+            trackedLevel = minecraft.level;
+        }
         if (!minecraft.player.isAlive()) BANNER.clear();
         // Kills queue their banners (KillBannerTimeline): the next one starts when its turn comes.
         if (NativeQualityOfLife.module("KillBanner") instanceof KillBannerModule module) play(module, KillBanners.poll(module, System.nanoTime()));
@@ -120,11 +126,14 @@ public final class NativeKillBanner {
 
     /** QA: binds the current connection now, so the next tick does not reset a banner fired on purpose. */
     static void bindCurrent() {
-        if (eligible()) trackedConnection = Minecraft.getInstance().getConnection();
+        if (!eligible()) return;
+        trackedConnection = Minecraft.getInstance().getConnection();
+        trackedLevel = Minecraft.getInstance().level;
     }
 
     static void reset() {
         trackedConnection = null;
+        trackedLevel = null;
         KillBanners.reset();
     }
 
