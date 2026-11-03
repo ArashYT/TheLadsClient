@@ -35,17 +35,40 @@ public class AccountTokens {
         if (target.isOffline() && sessionIsOffline) return "0";
         Matcher handOff = HAND_OFF.matcher(safeHandOff());
         if (!handOff.matches()) throw new Refused("Start the game from The Lads Launcher to switch to " + target.getUsername() + ".");
-        JsonObject request = new JsonObject();
-        request.addProperty("key", handOff.group(2));
-        request.addProperty("op", "token");
-        request.addProperty("username", target.getUsername());
-        request.addProperty("uuid", target.isOffline() ? target.sessionUuid().toString() : target.getUuid());
-        request.addProperty("type", target.isOffline() ? "offline" : "microsoft");
         try {
-            return parseReply(ask(handOff.group(1), request.toString()));
+            return parseReply(ask(handOff.group(1), request(handOff.group(2), "token", target)));
         } catch (IOException e) {
             throw new Refused("The launcher that started this game is closed.");
         }
+    }
+
+    /** Off the render thread: the launcher removes a saved account (and its tokens) and republishes its list before it answers. */
+    public void remove(LadsAccount target) throws Refused {
+        Matcher handOff = HAND_OFF.matcher(safeHandOff());
+        if (!handOff.matches()) throw new Refused("Start the game from The Lads Launcher to remove " + target.getUsername() + ".");
+        String reply;
+        try {
+            reply = ask(handOff.group(1), request(handOff.group(2), "remove", target));
+        } catch (IOException e) {
+            throw new Refused("The launcher that started this game is closed.");
+        }
+        String error;
+        try {
+            error = JsonParser.parseString(reply).getAsJsonObject().get("error").getAsString();
+        } catch (RuntimeException e) {
+            throw new Refused("The launcher did not answer. Try again.");
+        }
+        if (!error.isEmpty()) throw new Refused(error);
+    }
+
+    private static String request(String key, String op, LadsAccount target) {
+        JsonObject request = new JsonObject();
+        request.addProperty("key", key);
+        request.addProperty("op", op);
+        request.addProperty("username", target.getUsername());
+        request.addProperty("uuid", target.isOffline() ? target.sessionUuid().toString() : target.getUuid());
+        request.addProperty("type", target.isOffline() ? "offline" : "microsoft");
+        return request.toString();
     }
 
     /**

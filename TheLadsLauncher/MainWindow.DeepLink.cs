@@ -20,7 +20,9 @@ public partial class MainWindow : Window
         });
         AccountSwitchPipe.StartListener(
             (request, token) => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => ResolveSwitchTokenAsync(request, token)),
-            gameDirectory => Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyNextAccountRequest(gameDirectory)));
+            // A game saves its list for when the launcher is closed: with the launcher here, the launcher's own list replaces that at once.
+            gameDirectory => Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (!ApplyNextAccountRequest(gameDirectory)) LoadAccounts(); }),
+            remove: (request, token) => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => RemoveAccountForGameAsync(request)));
     }
 
     /// <summary>Any web page can send a link: it is logged when it fails, never left to crash the launcher (the pipe runs it async void).</summary>

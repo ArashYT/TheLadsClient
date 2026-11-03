@@ -93,6 +93,31 @@ public class AccountSwitchPipeTests
     public void AReplyDoesNotPrintItsToken() => Assert.DoesNotContain(Secret, AccountTokenReply.Of(Secret).ToString());
 
     [Fact]
+    public async Task OnlyAKnownKeyCanRemoveAnAccountAndNeverGetsAToken()
+    {
+        var removed = new List<AccountSwitchRequest>();
+        Task<AccountTokenReply> Remove(AccountSwitchRequest request, CancellationToken _)
+        {
+            removed.Add(request);
+            return Task.FromResult(AccountTokenReply.Refuse(""));
+        }
+        Task<string> Ask(string? line) => AccountSwitchPipe.AnswerAsync(line, (_, _) => Task.FromResult(AccountTokenReply.Of(Secret)), _ => { }, CancellationToken.None, Remove);
+
+        string done = await Ask(Request(KeyOf(AccountSwitchPipe.HandOff("game")), "remove", "MICROSOFT"));
+        Assert.Equal("", JsonDocument.Parse(done).RootElement.GetProperty("error").GetString());
+        Assert.Equal(new AccountSwitchRequest("Steve", "11111111111111111111111111111111", "microsoft"), Assert.Single(removed));
+        Assert.DoesNotContain(Secret, done);
+
+        string stranger = await Ask(Request("wrong-key", "remove"));
+        Assert.Single(removed);
+        Assert.NotEqual("", JsonDocument.Parse(stranger).RootElement.GetProperty("error").GetString());
+
+        string withoutHandler = await Answer(Request(KeyOf(AccountSwitchPipe.HandOff("game")), "remove"));
+        Assert.DoesNotContain(Secret, withoutHandler);
+        Assert.NotEqual("", JsonDocument.Parse(withoutHandler).RootElement.GetProperty("error").GetString());
+    }
+
+    [Fact]
     public async Task TheRealPipeAnswersTheGame()
     {
         string pipe = "TheLadsClient-AccountTest-" + Guid.NewGuid().ToString("N");

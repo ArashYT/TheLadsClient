@@ -6,6 +6,7 @@ import com.google.gson.JsonParser;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.client.social.SocialState;
+import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.client.util.ClientPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,10 @@ public class AccountSwitcherScreen {
     private CompletableFuture<Runnable> switching;
     private LadsAccount switchTarget, confirming;
     private LadsAccount addedRow; // an offline row added for a live switch: it stays only if the switch succeeds
+    /** The removal under way: the launcher does it off the render thread, and tick() reloads the list after it. */
+    private CompletableFuture<Void> removing;
+    private LadsAccount removeTarget, confirmingRemoval;
+    private boolean fromLauncher; // the list is the launcher's published one, not this game folder's own file
     private boolean statusIsError;
     private final List<LadsAccount> accounts = new ArrayList<>();
     private LadsAccount selectedAccount = null;
@@ -51,41 +56,20 @@ public class AccountSwitcherScreen {
         this.live = tokens.nextLaunchOnly() ? null : live;
         this.tokens = tokens;
         loadAccounts();
-        if (this.live != null) for (LadsAccount account : accounts) if (isLive(account)) { markSelected(account); break; }
     }
 
     public void setOnClose(Runnable onClose) {
         this.onClose = onClose;
     }
 
+    /** Reads the list afresh (each opening of the switcher): the launcher's published one when there is one, else this game folder's own file. */
     public void loadAccounts() {
         accounts.clear();
         selectedAccount = null;
-        File f = ClientPaths.getAccountsFile();
-        if (f.exists()) {
-            try {
-                String content = Files.readString(f.toPath());
-                JsonArray arr = JsonParser.parseString(content).getAsJsonArray();
-                for (int i = 0; i < arr.size(); i++) {
-                    JsonObject obj = arr.get(i).getAsJsonObject();
-                    String username = obj.has("username") ? obj.get("username").getAsString() : "";
-                    String uuid = obj.has("uuid") ? obj.get("uuid").getAsString() : "";
-                    String type = obj.has("type") ? obj.get("type").getAsString() : "offline";
-                    String token = obj.has("accessToken") ? obj.get("accessToken").getAsString() : "0";
-                    boolean sel = obj.has("selected") && obj.get("selected").getAsBoolean();
-                    if (!username.isEmpty()) {
-                        LadsAccount acc = new LadsAccount(username, uuid, type, token);
-                        acc.setSelected(sel);
-                        if (sel && selectedAccount == null) {
-                            selectedAccount = acc;
-                        }
-                        accounts.add(acc);
-                    }
-                }
-            } catch (Exception ignored) {}
-        }
+        fromLauncher = readAccounts(ClientPaths.getLauncherAccountsFile());
+        if (!fromLauncher) readAccounts(ClientPaths.getAccountsFile());
 
-        if (accounts.isEmpty()) {
+        if (accounts.isEmpty() && !fromLauncher) { // a game no Lads launcher manages
             LadsAccount defaultAcc = new LadsAccount("LadsPlayer", UUID.nameUUIDFromBytes("OfflinePlayer:LadsPlayer".getBytes(StandardCharsets.UTF_8)).toString(), "offline", "0");
             defaultAcc.setSelected(true);
             selectedAccount = defaultAcc;
@@ -93,12 +77,55 @@ public class AccountSwitcherScreen {
             saveAccounts();
         }
 
-        if (selectedAccount == null && !accounts.isEmpty()) {
+        if (live != null) {
+            // PLAYING is what the game really plays as, never a file's word for it.
+            LadsAccount playing = null;
+            for (LadsAccount account : accounts) if (isLive(account)) { playing = account; break; }
+            markSelected(playing);
+            if (playing == null && fromLauncher) statusMessage = "Playing as " + live.username() + ", who is not saved in the launcher.";
+        } else if (selectedAccount == null && !accounts.isEmpty()) {
             selectedAccount = accounts.get(0);
             selectedAccount.setSelected(true);
         }
     }
 
+    /** Fills the list from one file, the same account twice (by name or id) as one row. False when the file is missing or unreadable. */
+    private boolean readAccounts(File file) {
+        if (!file.exists()) return false;
+        try {
+            JsonArray arr = JsonParser.parseString(Files.readString(file.toPath())).getAsJsonArray();
+            for (int i = 0; i < arr.size(); i++) {
+                JsonObject obj = arr.get(i).getAsJsonObject();
+                String username = obj.has("username") ? obj.get("username").getAsString() : "";
+                String uuid = obj.has("uuid") ? obj.get("uuid").getAsString() : "";
+                String type = obj.has("type") ? obj.get("type").getAsString() : "offline";
+                boolean sel = obj.has("selected") && obj.get("selected").getAsBoolean();
+                if (username.isEmpty() || isListed(username, uuid)) continue;
+                LadsAccount acc = new LadsAccount(username, uuid, type, "0"); // never a token from a file: old launchers' files can hold one
+                acc.setSelected(sel);
+                if (sel && selectedAccount == null) {
+                    selectedAccount = acc;
+                }
+                accounts.add(acc);
+            }
+            return true;
+        } catch (Exception e) {
+            accounts.clear();
+            selectedAccount = null;
+            return false;
+        }
+    }
+
+    private boolean isListed(String username, String uuid) {
+        String id = uuid.replace("-", "").trim();
+        for (LadsAccount account : accounts) {
+            if (account.getUsername().equalsIgnoreCase(username)) return true;
+            if (!id.isEmpty() && account.getUuid().replace("-", "").equalsIgnoreCase(id)) return true;
+        }
+        return false;
+    }
+
+    /** The launcher's list stays the launcher's (it rewrites it from its own store): this only keeps a choice made while it is closed, until it is back. */
     public void saveAccounts() {
         try {
             JsonArray arr = new JsonArray();
@@ -110,14 +137,15 @@ public class AccountSwitcherScreen {
                 obj.addProperty("selected", acc.isSelected());
                 arr.add(obj);
             }
-            File f = ClientPaths.getAccountsFile();
+            File f = fromLauncher ? ClientPaths.getLauncherAccountsFile() : ClientPaths.getAccountsFile();
             if (f.getParentFile() != null) f.getParentFile().mkdirs();
-            Files.writeString(f.toPath(), arr.toString());
+            writeAtomically(f.toPath(), "accounts-", arr.toString());
         } catch (Exception ignored) {}
     }
 
     public void selectAccount(LadsAccount account) {
         if (account == null) return;
+        confirmingRemoval = null;
         if (live != null) {
             switchTo(account);
             return;
@@ -141,7 +169,6 @@ public class AccountSwitcherScreen {
     }
 
     private boolean isLive(LadsAccount account) {
-        if (!account.getUsername().equalsIgnoreCase(live.username())) return false;
         String accountUuid = account.isOffline()
             ? account.sessionUuid().toString().replace("-", "")
             : account.getUuid().replace("-", "").trim();
@@ -149,7 +176,7 @@ public class AccountSwitcherScreen {
     }
 
     private void switchTo(LadsAccount target) {
-        if (switching != null) return;
+        if (switching != null || removing != null) return;
         statusIsError = false;
         if (isLive(target)) {
             confirming = null;
@@ -180,6 +207,7 @@ public class AccountSwitcherScreen {
 
     /** Render thread, between frames (each version's screen tick): finishes a switch whose token and preparation are done. */
     public void tick() {
+        if (removing != null && removing.isDone()) finishRemoval();
         if (switching == null || !switching.isDone()) return;
         CompletableFuture<Runnable> work = switching;
         LadsAccount target = switchTarget;
@@ -226,11 +254,60 @@ public class AccountSwitcherScreen {
     public void cancel() {
         switching = null;
         switchTarget = null;
+        removing = null;
+        removeTarget = null;
         dropAddedRow();
     }
 
     public boolean isSwitching() {
-        return switching != null;
+        return switching != null || removing != null;
+    }
+
+    /** Asked twice, as leaving a world is. The launcher owns the accounts, so it removes them; the account being played stays until another is. */
+    public void removeAccount(LadsAccount account) {
+        if (account == null || switching != null || removing != null) return;
+        statusIsError = false;
+        if (live != null && isLive(account)) {
+            statusMessage = "You are playing as " + account.getUsername() + ". Switch to another account first.";
+            return;
+        }
+        confirming = null;
+        if (confirmingRemoval != account) {
+            confirmingRemoval = account;
+            statusMessage = "Click again to remove " + account.getUsername() + ".";
+            return;
+        }
+        confirmingRemoval = null;
+        removeTarget = account;
+        statusMessage = "Removing " + account.getUsername() + "...";
+        CompletableFuture<Void> work = removing = new CompletableFuture<>();
+        Thread thread = new Thread(() -> {
+            try {
+                tokens.remove(account);
+                work.complete(null);
+            } catch (Throwable e) {
+                work.completeExceptionally(e);
+            }
+        }, "Lads Account Remove");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void finishRemoval() {
+        CompletableFuture<Void> work = removing;
+        String name = removeTarget.getUsername();
+        removing = null;
+        removeTarget = null;
+        try {
+            work.join();
+            loadAccounts();
+            statusMessage = "Removed " + name + ".";
+            statusIsError = false;
+        } catch (RuntimeException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            statusMessage = cause instanceof AccountTokens.Refused ? cause.getMessage() : "The launcher could not remove " + name + ".";
+            statusIsError = true;
+        }
     }
 
     public String getStatusMessage() {
@@ -268,12 +345,16 @@ public class AccountSwitcherScreen {
 
             File profileFile = ClientPaths.getBaseDir().resolve("lads_next_account.json").toFile();
             if (profileFile.getParentFile() != null) profileFile.getParentFile().mkdirs();
-            Path temporary = Files.createTempFile(profileFile.toPath().getParent(), "next-account-", ".tmp");
-            try {
-                Files.writeString(temporary, obj.toString());
-                Files.move(temporary, profileFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            } finally { Files.deleteIfExists(temporary); }
+            writeAtomically(profileFile.toPath(), "next-account-", obj.toString());
         } catch (Exception ignored) {}
+    }
+
+    private static void writeAtomically(Path file, String prefix, String content) throws java.io.IOException {
+        Path temporary = Files.createTempFile(file.getParent(), prefix, ".tmp");
+        try {
+            Files.writeString(temporary, content);
+            Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
+        } finally { Files.deleteIfExists(temporary); }
     }
 
     public void render(LadsGraphics g, int mouseX, int mouseY) {
@@ -329,7 +410,18 @@ public class AccountSwitcherScreen {
 
             if (isSel) {
                 g.drawText(live != null ? "PLAYING" : "NEXT", cardX + cardW - 65, itemY + 10, LadsPalette.TEXT, false);
+            } else {
+                boolean hot = acc == confirmingRemoval || overBin(mouseX, mouseY, cardX, cardW, itemY, itemH);
+                TitleScreenTheme.icon(g, "delete", cardX + cardW - BIN_INSET, itemY + 11, 10, hot ? 0xFFFF6666 : LadsPalette.MUTED);
             }
+        }
+
+        // More accounts than fit: how far down the list is, beside it
+        if (maxScroll > 0) {
+            int trackH = maxVisible * itemH - 4, barH = Math.max(8, trackH * maxVisible / accounts.size());
+            int barY = listY + (trackH - barH) * scrollOffset / maxScroll;
+            g.fill(cardX + cardW - 12, listY, cardX + cardW - 10, listY + trackH, LadsPalette.PANEL);
+            g.fill(cardX + cardW - 12, barY, cardX + cardW - 10, barY + barH, LadsPalette.MUTED);
         }
 
         // Bottom action buttons
@@ -343,6 +435,13 @@ public class AccountSwitcherScreen {
         boolean hoverDone = mouseX >= cardX + cardW - 120 && mouseX <= cardX + cardW - 16 && mouseY >= btnY && mouseY <= btnY + 24;
         g.fill(cardX + cardW - 120, btnY, cardX + cardW - 16, btnY + 24, hoverDone ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY);
         g.drawCenteredText("Done", cardX + cardW - 68, btnY + 7, LadsPalette.TEXT, false);
+    }
+
+    private static final int BIN_INSET = 32; // the row's bin: this far left of the card's right edge, 10 wide
+
+    private static boolean overBin(double mouseX, double mouseY, int cardX, int cardW, int itemY, int itemH) {
+        int binX = cardX + cardW - BIN_INSET;
+        return mouseX >= binX - 4 && mouseX <= binX + 14 && mouseY >= itemY && mouseY <= itemY + itemH - 4;
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
@@ -376,7 +475,8 @@ public class AccountSwitcherScreen {
             int itemY = listY + ((i - scrollOffset) * itemH);
             if (itemY + itemH > cardY + cardH - 50) break;
             if (mouseX >= cardX + 16 && mouseX <= cardX + cardW - 16 && mouseY >= itemY && mouseY <= itemY + itemH - 4) {
-                selectAccount(accounts.get(i));
+                if (!accounts.get(i).isSelected() && overBin(mouseX, mouseY, cardX, cardW, itemY, itemH)) removeAccount(accounts.get(i));
+                else selectAccount(accounts.get(i));
                 return true;
             }
         }

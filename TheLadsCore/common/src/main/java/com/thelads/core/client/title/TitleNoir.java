@@ -259,7 +259,7 @@ public final class TitleNoir {
         int room = networkX - nameX - 6;
         int switchWidth = !withSwitch ? 0 : room - labelled >= 48 ? labelled : square;
         String shown = TitleScreenTheme.fit(g, name, room - (withSwitch ? switchWidth + 4 : 0));
-        TitleScreenTheme.icon(g, "user", iconX, top + (strip - 10) / 2 + 1, 9, RED_TEXT);
+        g.drawHead(name, null, iconX, top + (strip - 8) / 2, 8);
         g.drawText(shown, nameX, textY, TEXT, false);
         Rect switchRect = withSwitch ? new Rect(nameX + g.textWidth(shown) + 4, top + 1, switchWidth, square) : null;
         if (network != null) {

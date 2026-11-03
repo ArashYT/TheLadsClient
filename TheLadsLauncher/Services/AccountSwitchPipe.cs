@@ -44,8 +44,10 @@ public static class AccountSwitchPipe
         return PipeName + " " + key;
     }
 
-    /// <summary>One request line to one reply line. <paramref name="resolve"/> gets the token; <paramref name="switched"/> is told a game switched (its directory).</summary>
-    public static async Task<string> AnswerAsync(string? line, Func<AccountSwitchRequest, CancellationToken, Task<AccountTokenReply>> resolve, Action<string> switched, CancellationToken token)
+    /// <summary>One request line to one reply line. <paramref name="resolve"/> gets the token; <paramref name="switched"/> is told a game switched (its directory);
+    /// <paramref name="remove"/> removes a saved account for a game's switcher (an empty error means done).</summary>
+    public static async Task<string> AnswerAsync(string? line, Func<AccountSwitchRequest, CancellationToken, Task<AccountTokenReply>> resolve, Action<string> switched, CancellationToken token,
+        Func<AccountSwitchRequest, CancellationToken, Task<AccountTokenReply>>? remove = null)
     {
         AccountTokenReply reply;
         try
@@ -69,7 +71,7 @@ public static class AccountSwitchPipe
                     switched(gameDirectory);
                     reply = AccountTokenReply.Refuse("");
                 }
-                else if (op == "token")
+                else if (op == "token" || (op == "remove" && remove != null))
                 {
                     string username = root.GetProperty("username").GetString()?.Trim() ?? "";
                     string uuid = root.GetProperty("uuid").GetString()?.Trim() ?? "";
@@ -79,7 +81,7 @@ public static class AccountSwitchPipe
                         : rawType.ToLowerInvariant();
                     reply = string.IsNullOrWhiteSpace(username)
                         ? AccountTokenReply.Refuse("The launcher did not understand this game.")
-                        : await resolve(new AccountSwitchRequest(username, uuid, type), token);
+                        : await (op == "token" ? resolve : remove!)(new AccountSwitchRequest(username, uuid, type), token);
                 }
                 else
                 {
@@ -95,16 +97,18 @@ public static class AccountSwitchPipe
     }
 
     /// <summary>Serves the pipe for as long as the launcher runs. A request that takes long does not hold up another game's.</summary>
-    public static void StartListener(Func<AccountSwitchRequest, CancellationToken, Task<AccountTokenReply>> resolve, Action<string> switched, string? pipeName = null, CancellationToken cancellationToken = default)
+    public static void StartListener(Func<AccountSwitchRequest, CancellationToken, Task<AccountTokenReply>> resolve, Action<string> switched, string? pipeName = null, CancellationToken cancellationToken = default,
+        Func<AccountSwitchRequest, CancellationToken, Task<AccountTokenReply>>? remove = null)
     {
         string targetPipe = pipeName ?? PipeName;
         for (int i = 0; i < AcceptConcurrency; i++)
         {
-            _ = AcceptLoopAsync(targetPipe, resolve, switched, cancellationToken);
+            _ = AcceptLoopAsync(targetPipe, resolve, switched, cancellationToken, remove);
         }
     }
 
-    private static Task AcceptLoopAsync(string pipeName, Func<AccountSwitchRequest, CancellationToken, Task<AccountTokenReply>> resolve, Action<string> switched, CancellationToken cancellationToken) =>
+    private static Task AcceptLoopAsync(string pipeName, Func<AccountSwitchRequest, CancellationToken, Task<AccountTokenReply>> resolve, Action<string> switched, CancellationToken cancellationToken,
+        Func<AccountSwitchRequest, CancellationToken, Task<AccountTokenReply>>? remove) =>
         Task.Run(async () =>
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -117,7 +121,7 @@ public static class AccountSwitchPipe
                     await server.WaitForConnectionAsync(cancellationToken);
                     var connected = server;
                     server = null;
-                    _ = ServeAsync(connected, resolve, switched, cancellationToken);
+                    _ = ServeAsync(connected, resolve, switched, cancellationToken, remove);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { server?.Dispose(); break; }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -129,7 +133,8 @@ public static class AccountSwitchPipe
             }
         });
 
-    private static async Task ServeAsync(NamedPipeServerStream pipe, Func<AccountSwitchRequest, CancellationToken, Task<AccountTokenReply>> resolve, Action<string> switched, CancellationToken listenerToken)
+    private static async Task ServeAsync(NamedPipeServerStream pipe, Func<AccountSwitchRequest, CancellationToken, Task<AccountTokenReply>> resolve, Action<string> switched, CancellationToken listenerToken,
+        Func<AccountSwitchRequest, CancellationToken, Task<AccountTokenReply>>? remove)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(listenerToken);
         timeout.CancelAfter(ResolveTimeout);
@@ -139,7 +144,7 @@ public static class AccountSwitchPipe
             {
                 string? line = await ReadLineAsync(pipe, timeout.Token);
                 string reply;
-                try { reply = await AnswerAsync(line, resolve, switched, timeout.Token); }
+                try { reply = await AnswerAsync(line, resolve, switched, timeout.Token, remove); }
                 catch (OperationCanceledException) when (!listenerToken.IsCancellationRequested)
                 {
                     reply = JsonSerializer.Serialize(new { error = "The launcher took too long. Try again." });

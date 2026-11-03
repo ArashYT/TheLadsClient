@@ -46,6 +46,14 @@ public class AccountSwitcherScreen26 extends Screen {
     }
 
     @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (ui.mouseScrolled(mouseX, mouseY, verticalAmount)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+    }
+
+    @Override
     public void onClose() {
         ui.cancel();
         Minecraft.getInstance().setScreenAndShow(parent);
