@@ -18,6 +18,7 @@ import java.util.List;
 @Mixin(JoinMultiplayerScreen.class)
 public abstract class JoinMultiplayerScreenMixin extends Screen {
     @Unique private Button ladsDiscoverButton;
+    @Unique private Button ladsNetworkButton;
 
     protected JoinMultiplayerScreenMixin() {
         super(Component.empty());
@@ -31,6 +32,9 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
                 minecraft.setScreenAndShow(new ServerDiscoveryScreen(this));
             }
         }).bounds(width - 124, 8, 116, 20).build());
+        ladsNetworkButton = !com.thelads.core.client.LadsNetwork.titleButton() || com.thelads.core.client.LadsNetwork.connected() ? null
+            : addRenderableWidget(Button.builder(Component.literal(com.thelads.core.client.LadsNetwork.TITLE_LABEL), b -> com.thelads.core.v26_2.gui.PauseMultiplayer.joinNetwork(this))
+                .tooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal(com.thelads.core.client.LadsNetwork.TOOLTIP))).bounds(8, 8, 64, 20).build());
     }
 
     @Inject(method = "extractRenderState", at = @At("HEAD"))

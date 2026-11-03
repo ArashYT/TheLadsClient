@@ -12,6 +12,7 @@
     "GuiRenderStateCaptureMixin",
     "TitleScreenMixin",
     "TitleWidgetMixin",
+    "JoinMultiplayerScreenMixin",
     "PauseScreenMixin",
     "ClientTickMixin",
     "OptionsMixin",

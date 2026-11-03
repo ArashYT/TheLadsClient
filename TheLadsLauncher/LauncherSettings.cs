@@ -52,6 +52,7 @@ public class LauncherSettings
     /// <summary>Distinct client Minecraft versions used or played by this installation.</summary>
     public List<string> ClientVersionsUsed { get; set; } = new();
     public bool AutoRejoinServer { get; set; } = false;
+    public bool AutoJoinNetwork { get; set; } = false;   // Play joins The Lads Network as soon as the game has loaded
     public bool ZeroSmpAutoJoin { get; set; } = true;    // Experiences tab: Zero SMP joins its server as soon as the game has loaded
     public string LastServerIp { get; set; } = "";
     public int LastServerPort { get; set; } = 25565;

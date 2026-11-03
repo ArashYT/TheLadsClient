@@ -259,7 +259,7 @@ public class SocialState {
 
     /** What to ask before leaving for this friend's world (Join), or null when we are in no world or server: nothing to leave. */
     public String joinQuestion(UUID friend) {
-        return switchQuestion(nameOf(friend) + "'s world");
+        return switchQuestion(onNetwork(friend) ? com.thelads.core.client.LadsNetwork.NAME : nameOf(friend) + "'s world");
     }
 
     private String switchQuestion(String target) {
@@ -519,13 +519,7 @@ public class SocialState {
         if (invite != null && invite.isServer() && invite.serverAddress() != null) {
             String address = invite.serverAddress();
             send(SocialProtocol.INVITE_ACCEPT, "inviteId", inviteId);
-            SocialBridge bridge = bridge();
-            if (bridge.inWorldOrServer() || guestSession.isActive()) {
-                guestSession.close("Switching to server");
-                bridge.leaveWorld(() -> bridge.connectToServer(address));
-            } else {
-                bridge.connectToServer(address);
-            }
+            switchToServer(address);
             return;
         }
 
@@ -539,8 +533,28 @@ public class SocialState {
         activeInvites.remove(inviteId);
     }
 
+    private void switchToServer(String address) {
+        SocialBridge bridge = bridge();
+        if (bridge.inWorldOrServer() || guestSession.isActive()) {
+            guestSession.close("Switching to server");
+            bridge.leaveWorld(() -> bridge.connectToServer(address));
+        } else {
+            bridge.connectToServer(address);
+        }
+    }
+
+    /** This friend shares that they are on The Lads Network: Join goes there, with no host to ask. */
+    private boolean onNetwork(UUID friend) {
+        FriendEntry f = friend == null ? null : friendsMap.get(friend);
+        return f != null && f.presence() != null && com.thelads.core.client.LadsNetwork.isAddress(f.presence().server());
+    }
+
     public void requestJoin(UUID host) {
         if (host == null) return;
+        if (onNetwork(host)) { // never the friend's own text: the network's address
+            switchToServer(com.thelads.core.client.LadsNetwork.ADDRESS);
+            return;
+        }
         joinIntents.put(host, new Intent(System.currentTimeMillis(), here()));
         send(SocialProtocol.JOIN_REQUEST, "host", host.toString());
     }
@@ -617,6 +631,9 @@ public class SocialState {
         if (friend == null) return new JoinCheck(false, "Unknown player");
         Presence p = friend.presence();
         if (p == null || !p.online()) return new JoinCheck(false, "Offline");
+        if (com.thelads.core.client.LadsNetwork.isAddress(p.server())) {
+            return com.thelads.core.client.LadsNetwork.connected() ? new JoinCheck(false, "You are on the network too") : new JoinCheck(true, null);
+        }
         Presence.WorldAd ad = p.world();
         if (ad == null) return new JoinCheck(false, "Not hosting a world");
         if (ad.slots() > 0 && ad.used() >= ad.slots()) return new JoinCheck(false, "World is full");

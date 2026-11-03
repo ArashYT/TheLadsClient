@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
+using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
@@ -75,6 +78,68 @@ public static class ServerStatusService
         }
         catch (Exception e) when (e is SocketException or OperationCanceledException or ArgumentException) { return null; }
     });
+
+    /// <summary>
+    /// The game's own status ping (Server List Ping) from here to the server, no API between and no cache. Null when it does not answer.
+    /// Only players and version are read; no SRV lookup, so for addresses with a known port.
+    /// </summary>
+    public static async Task<ServerStatus?> SlpAsync(string host, int port = 25565, int timeoutMs = 4000)
+    {
+        try
+        {
+            using var timeout = new CancellationTokenSource(timeoutMs);
+            using var tcp = new TcpClient();
+            await tcp.ConnectAsync(host, port, timeout.Token);
+            var stream = tcp.GetStream();
+            var handshake = new List<byte> { 0 }; // packet 0: protocol -1 ("just asking"), host, port, next state 1 (status)
+            WriteVarInt(handshake, -1);
+            var hostBytes = Encoding.UTF8.GetBytes(host);
+            WriteVarInt(handshake, hostBytes.Length);
+            handshake.AddRange(hostBytes);
+            handshake.Add((byte)(port >> 8));
+            handshake.Add((byte)port);
+            WriteVarInt(handshake, 1);
+            var frame = new List<byte>();
+            WriteVarInt(frame, handshake.Count);
+            frame.AddRange(handshake);
+            frame.AddRange(new byte[] { 1, 0 }); // status request
+            await stream.WriteAsync(frame.ToArray(), timeout.Token);
+
+            await ReadVarIntAsync(stream, timeout.Token); // packet length
+            if (await ReadVarIntAsync(stream, timeout.Token) != 0) return null;
+            var length = await ReadVarIntAsync(stream, timeout.Token);
+            if (length is <= 0 or > 1 << 21) return null; // the protocol's own limit for a string
+            var json = new byte[length];
+            await stream.ReadExactlyAsync(json, timeout.Token);
+            var root = JsonNode.Parse(json)!;
+            return new ServerStatus(true, root["players"]?["online"]?.GetValue<int>() ?? 0, root["players"]?["max"]?.GetValue<int>() ?? 0, "", null)
+            {
+                Version = root["version"]?["name"]?.GetValue<string>() ?? ""
+            };
+        }
+        catch (Exception e) when (e is SocketException or IOException or OperationCanceledException or ArgumentException
+            or System.Text.Json.JsonException or InvalidOperationException or FormatException) { return null; }
+    }
+
+    private static void WriteVarInt(List<byte> to, int value)
+    {
+        var rest = (uint)value;
+        while (rest >= 0x80) { to.Add((byte)(rest | 0x80)); rest >>= 7; }
+        to.Add((byte)rest);
+    }
+
+    private static async Task<int> ReadVarIntAsync(NetworkStream stream, CancellationToken token)
+    {
+        int value = 0;
+        var one = new byte[1];
+        for (int shift = 0; shift < 35; shift += 7)
+        {
+            await stream.ReadExactlyAsync(one, token);
+            value |= (one[0] & 0x7F) << shift;
+            if ((one[0] & 0x80) == 0) return value;
+        }
+        throw new FormatException("VarInt too long");
+    }
 
     private static async Task<ServerStatus?> FetchAsync(string address)
     {

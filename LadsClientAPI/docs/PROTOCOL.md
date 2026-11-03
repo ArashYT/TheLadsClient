@@ -23,6 +23,9 @@ Lanes implement exactly this. Changing it requires Claude's sign-off. Design rea
 - Sent 1 tick after join (Paper `PlayerJoinEvent` + 1 tick, Fabric `ServerPlayConnectionEvents.JOIN`, Forge `PlayerLoggedInEvent`),
   again after 60 ticks if no client `hello` came back, then never again for that connection. Every new backend (proxy switch)
   starts over.
+- Optional additions (client 1.13.0; older clients ignore them, a hello may leave them out): `game`: the game or lobby the player
+  is in, <= 32 chars. `hub`: the command that goes to the hub, e.g. `/hub` (one word plus at most one argument). The client acts
+  on both only on The Lads Network (`arashyt.ca`), and drops `game` on a server switch or reset until the next hello.
 
 ### policy
 Full snapshot. Replaces the previous one entirely (never a diff). Sent after the client's `hello`, then on every change
@@ -65,6 +68,12 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
 ```
 - UUIDs (dashed or 32 hex) of Lads players on this server, for the badge. `full:true` replaces the set, else add/remove.
   Max 1,000 entries per message.
+
+### toast
+```json
+{"t":"toast","title":"The Lads Network","message":"Bedwars event in 5 minutes"}
+```
+- A toast on the player's client (title <= 64, message <= 256 chars), sent by `/ladsapi announce`. Unless "Show server notice" is off.
 
 ### reset
 ```json

@@ -47,6 +47,35 @@ public class LadsCommandTest {
     }
 
     @Test
+    public void testAnnounceToastsLadsPlayersOnly() {
+        FakePlayerHandle vanilla = new FakePlayerHandle(UUID.randomUUID(), "Vanilla", "world");
+        platform.addPlayer(vanilla);
+        core.join(vanilla);
+        int before = vanilla.getSentStrings().size();
+
+        List<String> res = core.command(new String[]{"announce", "Bedwars", "in", "5", "minutes"}, true);
+        assertTrue(res.get(0).contains("Announced to 1"), res.get(0));
+        String toast = player.getSentStrings().get(player.getSentStrings().size() - 1);
+        assertTrue(toast.contains("\"t\":\"toast\"") && toast.contains("Bedwars in 5 minutes"), toast);
+        assertEquals(before, vanilla.getSentStrings().size(), "a player without the Lads Client gets no toast");
+
+        assertTrue(core.command(new String[]{"announce"}, true).get(0).contains("Usage"));
+    }
+
+    @Test
+    public void testHelloAddsGameAndHubOnlyWhenConfigured() {
+        LadsSession session = core.sessionManager().getSessions().get(player.uuid());
+        session.sendHello();
+        String plain = player.getSentStrings().get(player.getSentStrings().size() - 1);
+        assertFalse(plain.contains("\"game\"") || plain.contains("\"hub\""), plain);
+
+        core.sessionManager().getConfig().applyMap(java.util.Map.of("game-name", "SMP: %world%", "hub-command", "/hub"));
+        session.sendHello();
+        String named = player.getSentStrings().get(player.getSentStrings().size() - 1);
+        assertTrue(named.contains("\"game\":\"SMP: world\"") && named.contains("\"hub\":\"/hub\""), named);
+    }
+
+    @Test
     public void testSetMultiWordModule() {
         List<String> res = core.command(new String[]{"set", "Steve", "Crosshair", "Tweaks", "block"}, true);
         assertEquals(1, res.size());

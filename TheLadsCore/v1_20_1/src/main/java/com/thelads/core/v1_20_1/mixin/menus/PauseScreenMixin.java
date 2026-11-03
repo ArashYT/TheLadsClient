@@ -107,6 +107,7 @@ public abstract class PauseScreenMixin extends Screen {
         if (text.equals("Lads Client")) return PauseMenuLayout.Slot.LADS;
         if (text.equals("Cosmetics")) return PauseMenuLayout.Slot.COSMETICS;
         if (text.equals("Screenshots")) return PauseMenuLayout.Slot.SCREENSHOTS;
+        if (text.equals(com.thelads.core.client.LadsNetwork.TITLE_LABEL) || text.equals(com.thelads.core.client.LadsNetwork.HUB_LABEL)) return PauseMenuLayout.Slot.NETWORK;
         if (text.equals("Replays")) return PauseMenuLayout.Slot.REPLAYS;
         if (text.contains("Host") || text.contains("Invite") || text.equals("Multiplayer Options")) return PauseMenuLayout.Slot.WORLD;
         String[][] keys = {{"menu.returnToGame", "BACK"}, {"gui.advancements", "ADVANCEMENTS"}, {"gui.stats", "STATS"}, {"menu.options", "OPTIONS"},
@@ -189,6 +190,10 @@ public abstract class PauseScreenMixin extends Screen {
             button -> minecraft.setScreen(new LadsSettingsScreen1201(this))).width(204).build(), 2);
         ladsPauseRows.addChild(Button.builder(Component.translatable("menu.multiplayer"),
             button -> PauseMultiplayer1201.open(this)).width(204).build(), 2);
+        String ladsNetwork = com.thelads.core.client.LadsNetwork.pauseLabel(PauseMultiplayer1201::serverHas);
+        if (ladsNetwork != null)
+            ladsPauseRows.addChild(Button.builder(Component.literal(ladsNetwork),
+                button -> PauseMultiplayer1201.network(this)).width(204).build(), 2);
         ladsPauseRows.addChild(Button.builder(Component.literal("Screenshots"),
             button -> com.thelads.core.v1_20_1.feature.screenshots.ScreenshotViewer1201.openFromMenu(this)).width(204).build(), 2);
         ladsPauseRows.addChild(Button.builder(Component.literal("Cosmetics"),

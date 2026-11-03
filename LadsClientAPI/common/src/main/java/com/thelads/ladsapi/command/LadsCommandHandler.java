@@ -34,6 +34,7 @@ public final class LadsCommandHandler {
             lines.add("§e/ladsapi set <player> <Module> <state> §7- Set module state (allow|block|on)");
             lines.add("§e/ladsapi set <player> <Module.Option> <rule> §7- Set option rule (max=10, min=0, value=...)");
             lines.add("§e/ladsapi clear <player> §7- Clear all API overrides for a player");
+            lines.add("§e/ladsapi announce <text> §7- Show a toast on every connected Lads client");
             return lines;
         }
 
@@ -44,8 +45,23 @@ public final class LadsCommandHandler {
             case "inspect" -> handleInspect(core, args);
             case "set" -> handleSet(core, args);
             case "clear" -> handleClear(core, args);
+            case "announce" -> handleAnnounce(core, args);
             default -> List.of("§cUnknown subcommand: " + args[0] + ". Use /ladsapi help for commands.");
         };
+    }
+
+    private static List<String> handleAnnounce(LadsCore core, String[] args) {
+        if (args.length < 2) return List.of("§cUsage: /ladsapi announce <text>");
+        String text = String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length));
+        String title = core.sessionManager().getConfig().getServerName();
+        int sent = 0;
+        for (var session : core.sessionManager().getSessions().values()) {
+            if (session.isLads()) {
+                session.sendToast(title, text);
+                sent++;
+            }
+        }
+        return List.of("§a[LadsClientAPI] Announced to " + sent + " Lads player(s).");
     }
 
     private static List<String> handleReload(LadsCore core) {

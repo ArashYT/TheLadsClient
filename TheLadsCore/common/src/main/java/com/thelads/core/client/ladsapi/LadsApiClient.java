@@ -40,6 +40,8 @@ public final class LadsApiClient {
     private static volatile String minecraftVersion = "";
     private static volatile boolean sessionOk = false;
     private static volatile String serverName = "";
+    private static volatile String networkGame = "";
+    private static volatile String networkHub = "";
     private static int helloReplies = 0;
     private static int connectionHelloReplies = 0;
     static final int MAX_HELLO_REPLIES = 2;
@@ -131,6 +133,9 @@ public final class LadsApiClient {
         }
         serverName = name;
         sessionOk = true;
+        // Optional (PROTOCOL.md): a backend behind a proxy that named them may not, so a hello without them leaves them as they are.
+        if (json.has("game") && json.get("game").isJsonPrimitive()) networkGame = cap(json.get("game").getAsString().trim(), 32);
+        if (json.has("hub") && json.get("hub").isJsonPrimitive()) networkHub = hubCommand(json.get("hub").getAsString());
 
         if (helloReplies < MAX_HELLO_REPLIES && connectionHelloReplies < MAX_CONNECTION_HELLO_REPLIES) {
             helloReplies++;
@@ -142,6 +147,13 @@ public final class LadsApiClient {
             reply.addProperty("mc", minecraftVersion != null ? minecraftVersion : "");
             sendPayload(reply.toString().getBytes(StandardCharsets.UTF_8));
         }
+    }
+
+    /** "/hub" or "/server lobby" with its slash, or "" when it is not a plain command: this text gets sent as the player. */
+    static String hubCommand(String hub) {
+        String command = hub.trim();
+        if (command.startsWith("/")) command = command.substring(1);
+        return command.matches("[A-Za-z0-9_:-]{1,32}( [A-Za-z0-9_-]{1,32})?") ? "/" + command : "";
     }
 
     private static void handlePolicy(JsonObject json) {
@@ -245,6 +257,7 @@ public final class LadsApiClient {
         ServerPolicy.set(null);
         LadsPresence.serverClear();
         LadsApiUi.policyCleared();
+        networkGame = "";
         helloReplies = 0;
     }
 
@@ -253,6 +266,7 @@ public final class LadsApiClient {
         handleReset();
         sessionOk = false;
         serverName = "";
+        networkHub = "";
         rateTokens = RATE_BURST;
         rateLast = 0;
         lastHashedSeed = null;
@@ -302,6 +316,12 @@ public final class LadsApiClient {
     static boolean isSessionOk() { return sessionOk; }
 
     public static String serverName() { return serverName; }
+
+    /** The game or lobby the server's hello named, or "". Only for the network: use {@link com.thelads.core.client.LadsNetwork#game}. */
+    public static String networkGame() { return networkGame; }
+
+    /** The hub command the server's hello named, or "". Only for the network: use {@link com.thelads.core.client.LadsNetwork#hubCommand}. */
+    public static String networkHub() { return networkHub; }
 
     /** QA check: whether any lads:api packet was ever sent before a valid server hello. */
     public static int sentBeforeHello() { return sentBeforeHelloCount; }

@@ -233,6 +233,28 @@ public class SocialStateTest {
     }
 
     @Test
+    public void joiningAFriendOnTheNetworkLeavesTheWorldAndConnectsToTheNetworksAddress() {
+        UUID friend = UUID.randomUUID();
+        state.addFriendLocally(new FriendEntry(friend, "Arash", null, new Presence("server", bridge.gameInfo(), "Lobby.ArashYT.ca:25565", null), 0));
+        assertNull(state.joinQuestion(friend), "in the menus: nothing to leave");
+        state.requestJoin(friend);
+        assertEquals("mc.arashyt.ca", bridge.connectedServerAddress, "the network's address, not the friend's text");
+        assertTrue(sentMessages.stream().noneMatch(m -> "join_request".equals(m.get("t").getAsString())), "no host to ask");
+
+        bridge.connectedServerAddress = null;
+        bridge.inWorld = true;
+        state.requestJoin(friend);
+        assertEquals(1, bridge.leftWorldCount);
+        assertEquals("mc.arashyt.ca", bridge.connectedServerAddress);
+
+        UUID elsewhere = UUID.randomUUID();
+        state.addFriendLocally(new FriendEntry(elsewhere, "Sam", null, new Presence("server", bridge.gameInfo(), "mc.hypixel.net", null), 0));
+        bridge.connectedServerAddress = null;
+        state.requestJoin(elsewhere);
+        assertNull(bridge.connectedServerAddress, "another server is never joined from here");
+    }
+
+    @Test
     public void autoAcceptOnlyFriendsInFriendsScope() {
         HostOptions options = new HostOptions();
         options.scope = HostOptions.Scope.FRIENDS;
