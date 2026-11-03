@@ -792,4 +792,84 @@ class KillDetectorTest {
         assertTrue(KillBanners.TIMELINE.headshot(), "every kill in Every kill mode");
         KillBanners.reset();
     }
+
+    @Test void pvpArenaStreakProgressesOneToFive() {
+        KillBannerModule module = new KillBannerModule();
+        KillBanners.reset();
+        String[] victims = {"Bob", "Carl", "Dave", "Erin", "Finn"};
+        long now = 10 * S;
+        for (int i = 0; i < 5; i++) {
+            String v = victims[i];
+            boolean hs = (i % 2 == 0);
+            KillBanners.DETECTOR.hitByMe(100 + i, List.of(v), Kind.PLAYER, hs, now);
+            now += S / 10;
+            String[] chatLines = {
+                "§5+5 Karma (Kill)",
+                "§c§lDEATH! §e" + v + "§7 was killed by §eArash§7!",
+                "§8[§c☠§8] §cArash §7(§ePvP§7) has killed §c" + v + " §7(§ePvP§7) §8[§c❤ 10.0§8]"
+            };
+            int fired = 0;
+            for (String line : chatLines) {
+                assertFalse(KillDetector.myDeath(line, ME), "broadcast kill line must not be treated as myDeath: " + line);
+                var kill = KillBanners.DETECTOR.chat(line, ME, now);
+                if (kill != null) {
+                    fired++;
+                    assertEquals(hs, kill.headshot(), "headshot preserved on kill " + (i + 1));
+                    KillBanners.fire(module, kill, now);
+                }
+            }
+            assertEquals(1, fired, "exactly one banner fired on kill " + (i + 1));
+            KillBanners.poll(module, now);
+            assertEquals(i + 1, KillBanners.TIMELINE.sequence(), "kill " + (i + 1) + " plays banner " + (i + 1));
+            now += 3 * S;
+        }
+        // Bystander death does not reset streak
+        assertFalse(KillDetector.myDeath("§c§lDEATH! §eBob§7 was killed by §eSteve§7!", ME));
+        assertFalse(KillDetector.myDeath("§8[§c☠§8] §cBob §7(§ePvP§7) has died.", ME));
+        // Local player's own deaths in PvP Arena properly match myDeath
+        assertTrue(KillDetector.myDeath("§c§lDEATH! §eArash§7 was killed by §eBob§7!", ME));
+        assertTrue(KillDetector.myDeath("§cYou were slain by Bob! §7Use your hotbar items to spectate or play again.", ME));
+        assertTrue(KillDetector.myDeath("§cYou have been slain! §7Use your hotbar items to spectate or play again.", ME));
+        assertTrue(KillDetector.myDeath("§cYou have slain yourself! §aAuto Play Again active...", ME));
+        assertTrue(KillDetector.myDeath("§8[§c☠§8] §cArash §7(§ePvP§7) has died.", ME));
+        KillBanners.reset();
+    }
+
+    @Test void assistsOffAFatalDamageEventNamingMeNeedsNoWait() {
+        var d = new KillDetector();
+        d.assists(false);
+        d.hitByMe(5, List.of("Dave"), Kind.PLAYER, true, 10 * S);
+        d.damagedByMe(5, List.of("Dave"), Kind.PLAYER, 10 * S + 20_000_000L);
+        var kill = d.died(5, 10 * S + 50_000_000L);
+        assertNotNull(kill, "the fatal tick's own packet names me");
+        assertTrue(kill.headshot());
+        assertNull(d.due(12 * S), "once");
+
+        d.hitByMe(6, List.of("Erin"), Kind.PLAYER, false, 20 * S);
+        d.damagedByMe(6, List.of("Erin"), Kind.PLAYER, 20 * S);
+        assertNull(d.died(6, 21 * S), "a damage event long before the death says nothing of who finished them");
+        d.hitByMe(7, List.of("Finn"), Kind.PLAYER, false, 30 * S);
+        d.damagedByMe(7, List.of("Finn"), Kind.PLAYER, 30 * S);
+        d.hitByOther(7, 30 * S + 10);
+        assertNull(d.died(7, 30 * S + 20), "another player's hit came after it");
+    }
+
+    @Test void assistsOnTheServersAssistLinesCount() {
+        for (String line : List.of("+5 coins! (Assist)", "+10 Bed Wars Experience (Final Assist)", "ASSIST! 50% on [80] Bob +5.00XP")) {
+            var d = new KillDetector();
+            d.assists(true);
+            assertNotNull(d.chat(line, ME, S), "out of the client's sight, or hit over 5s ago: " + line);
+            d = new KillDetector();
+            d.assists(false);
+            assertNull(d.chat(line, ME, S), "assists off: " + line);
+        }
+        var d = new KillDetector();
+        d.assists(true);
+        assertNull(d.chat("Steve: ASSIST! on Bob", ME, S), "a player's chat line");
+        d.hitByMe(3, List.of("Bob"), Kind.PLAYER, true, S);
+        var kill = d.died(3, 2 * S);
+        assertNotNull(kill);
+        assertNull(d.chat("+5 coins! (Assist)", ME, 2 * S + 10), "the death's own line: no second banner");
+        assertNull(d.chat("+5 Bed Wars Experience (Assist)", ME, 2 * S + 20), "nor from its other reward");
+    }
 }
