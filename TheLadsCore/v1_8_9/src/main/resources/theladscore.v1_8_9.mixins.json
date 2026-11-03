@@ -105,6 +105,7 @@
     "WorldCullMixin",
     "WorldSwitchMixin",
     "WorldEntitiesMixin",
+    "ServerDataPacksMixin",
     "ServerListEntryNormalMixin",
     "OldServerPingerMixin",
     "GuiMultiplayerMixin189",

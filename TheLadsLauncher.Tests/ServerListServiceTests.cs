@@ -249,6 +249,30 @@ public class ServerListServiceTests
     }
 
     [Fact]
+    public async Task PinnedAndAddedEntriesAcceptServerPacksButAStoredNoStays()
+    {
+        using var dir = new TestDirectory();
+        var target = new ServerListTarget("Test", Path.Combine(dir.Path, "servers.dat"), null);
+        Assert.True(await ServerListService.PinLadsNetworkAsync(target));
+        Assert.Equal(1, ((NbtNumber)ServerListFile.Read(target.File).Entries[0].Raw["acceptTextures"]!).RawValue);
+        Assert.True(await ServerListService.AddAsync(target, "New", "new.example.net"));
+        Assert.Equal(1, ((NbtNumber)ServerListFile.Read(target.File).Entries[1].Raw["acceptTextures"]!).RawValue);
+
+        // An old pinned entry with no choice gets it; one the player set to Disabled keeps it.
+        var noKey = ServerListFile.CreateEmpty();
+        noKey.Add(new NbtCompound { ["name"] = new NbtString("The Lads Network"), ["ip"] = new NbtString("mc.arashyt.ca") });
+        await File.WriteAllBytesAsync(target.File, noKey.ToBytes());
+        Assert.True(await ServerListService.PinLadsNetworkAsync(target));
+        Assert.Equal(1, ((NbtNumber)ServerListFile.Read(target.File).Entries[0].Raw["acceptTextures"]!).RawValue);
+
+        var disabled = ServerListFile.CreateEmpty();
+        disabled.Add(new NbtCompound { ["name"] = new NbtString("The Lads Network"), ["ip"] = new NbtString("mc.arashyt.ca"), ["acceptTextures"] = new NbtNumber(NbtTagType.Byte, 0) });
+        await File.WriteAllBytesAsync(target.File, disabled.ToBytes());
+        Assert.False(await ServerListService.PinLadsNetworkAsync(target));
+        Assert.Equal(0, ((NbtNumber)ServerListFile.Read(target.File).Entries[0].Raw["acceptTextures"]!).RawValue);
+    }
+
+    [Fact]
     public async Task PinningCreatesAMissingSharedList()
     {
         using var dir = new TestDirectory();
