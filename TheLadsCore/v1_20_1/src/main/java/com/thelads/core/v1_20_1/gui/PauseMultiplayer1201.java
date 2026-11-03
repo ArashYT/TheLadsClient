@@ -1,15 +1,19 @@
 package com.thelads.core.v1_20_1.gui;
 
 import com.thelads.core.v1_20_1.feature.fastquit.FastQuit1201;
+import com.thelads.core.client.LadsNetwork;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.AlertScreen;
 import net.minecraft.client.gui.screens.ConfirmScreen;
+import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.GenericDirtMessageScreen;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.multiplayer.SafetyScreen;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.network.chat.Component;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +51,31 @@ public final class PauseMultiplayer1201 {
         else mc.clearLevel();
         FastQuit1201.awaitSaves(false);
         return parent instanceof JoinMultiplayerScreen ? new JoinMultiplayerScreen(new TitleScreen()) : parent instanceof PauseScreen ? new TitleScreen() : parent;
+    }
+
+    /**
+     * The pause menu's Network button (LadsNetwork.pauseLabel names it): on the network the hub command, else asks, leaves this world
+     * or server and joins the network.
+     */
+    public static void network(Screen pause) {
+        Minecraft mc = Minecraft.getInstance();
+        String hub = LadsNetwork.hubCommand(PauseMultiplayer1201::serverHas);
+        if (hub != null) {
+            com.thelads.core.client.bridge.LadsGameBridge.get().sendChatLine(hub);
+            mc.setScreen(null);
+            return;
+        }
+        leaveAndOpen(pause, LadsNetwork.NAME, () -> joinNetwork(new JoinMultiplayerScreen(new TitleScreen())));
+    }
+
+    public static void joinNetwork(Screen parent) {
+        ConnectScreen.startConnecting(parent, Minecraft.getInstance(), ServerAddress.parseString(LadsNetwork.ADDRESS),
+            new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, false), false);
+    }
+
+    public static boolean serverHas(String command) {
+        var connection = Minecraft.getInstance().getConnection();
+        return connection != null && connection.getCommands().getRoot().getChild(command) != null;
     }
 
     public static void leaveAndOpen(Screen pause, String destination, Runnable next) {

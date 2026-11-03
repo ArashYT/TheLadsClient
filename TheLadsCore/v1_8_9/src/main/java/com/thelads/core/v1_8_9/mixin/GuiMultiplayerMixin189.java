@@ -13,13 +13,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(GuiMultiplayer.class)
 public abstract class GuiMultiplayerMixin189 extends GuiScreen {
-    @Unique private GuiButton ladsDiscoverButton;
+    @Unique private GuiButton ladsDiscoverButton, ladsNetworkButton;
 
     @Inject(method = "initGui", at = @At("TAIL"))
     private void ladsAddDiscoverButton(CallbackInfo ci) {
         ladsPurgeEssential();
         ladsDiscoverButton = new GuiButton(0x4C414453 + 20, width - 124, 8, 116, 20, "Discover Servers");
         buttonList.add(ladsDiscoverButton);
+        ladsNetworkButton = null;
+        if (com.thelads.core.client.LadsNetwork.titleButton() && !com.thelads.core.client.LadsNetwork.connected()) {
+            ladsNetworkButton = new GuiButton(0x4C414453 + 21, 8, 8, 64, 20, com.thelads.core.client.LadsNetwork.TITLE_LABEL);
+            buttonList.add(ladsNetworkButton);
+        }
     }
 
     @Inject(method = "drawScreen", at = @At("HEAD"))
@@ -31,6 +36,9 @@ public abstract class GuiMultiplayerMixin189 extends GuiScreen {
     private void ladsDiscoverAction(GuiButton button, CallbackInfo ci) {
         if (button == ladsDiscoverButton) {
             mc.displayGuiScreen(new ServerDiscoveryScreen189(this));
+            ci.cancel();
+        } else if (button != null && button == ladsNetworkButton) {
+            com.thelads.core.v1_8_9.gui.PauseMultiplayer189.joinNetwork(this);
             ci.cancel();
         }
     }

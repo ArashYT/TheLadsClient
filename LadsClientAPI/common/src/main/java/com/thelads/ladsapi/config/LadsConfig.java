@@ -23,6 +23,8 @@ min-client-version: ""         # e.g. "1.9.13"
 min-client-version-message: "Your Lads Client is outdated (%client% < %min%). Please update."
 server-name: "Lads Server"
 notice: ""
+game-name: ""                  # the game or lobby Lads clients show (HUD, Discord), %world% = world or proxy backend; empty = none
+hub-command: ""                # e.g. "/hub": the pause menu's Hub button on The Lads Network; empty = none
 proxy-rules: false             # proxy mode: run rules on proxy (only when on Velocity)
 badge:
   presence: true               # tell Lads clients who else runs Lads (badge)
@@ -37,6 +39,8 @@ debug: false
     private String minClientVersion = "";
     private String minClientVersionMessage = "Your Lads Client is outdated (%client% < %min%). Please update.";
     private String serverName = "Lads Server";
+    private String gameName = "";
+    private String hubCommand = "";
     private String notice = "";
     private boolean proxyRules = false;
     private boolean badgePresence = true;
@@ -86,6 +90,8 @@ debug: false
         this.minClientVersion = "";
         this.minClientVersionMessage = "Your Lads Client is outdated (%client% < %min%). Please update.";
         this.serverName = "Lads Server";
+        this.gameName = "";
+        this.hubCommand = "";
         this.notice = "";
         this.proxyRules = false;
         this.badgePresence = true;
@@ -116,6 +122,14 @@ debug: false
         if (map.containsKey("server-name")) {
             this.serverName = String.valueOf(map.get("server-name"));
         }
+        if (map.containsKey("game-name")) {
+            Object g = map.get("game-name");
+            this.gameName = g == null ? "" : String.valueOf(g);
+        }
+        if (map.containsKey("hub-command")) {
+            Object h = map.get("hub-command");
+            this.hubCommand = h == null ? "" : String.valueOf(h);
+        }
         if (map.containsKey("notice")) {
             Object n = map.get("notice");
             this.notice = n == null ? "" : String.valueOf(n);
@@ -144,6 +158,8 @@ debug: false
     public String getMinClientVersion() { return minClientVersion; }
     public String getMinClientVersionMessage() { return minClientVersionMessage; }
     public String getServerName() { return serverName; }
+    public String getGameName() { return gameName; }
+    public String getHubCommand() { return hubCommand; }
     public String getNotice() { return notice; }
     public boolean isProxyRules() { return proxyRules; }
     public boolean isBadgePresence() { return badgePresence; }

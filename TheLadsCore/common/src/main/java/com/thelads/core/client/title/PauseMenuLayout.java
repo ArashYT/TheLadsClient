@@ -11,11 +11,11 @@ import java.util.List;
  * and Save and Quit (or Disconnect) alone at the bottom, set apart. A narrow screen gets one column.
  */
 public final class PauseMenuLayout {
-    public enum Slot { BACK, ADVANCEMENTS, STATS, OPTIONS, LADS, MULTIPLAYER, WORLD, FRIENDS, COSMETICS, SCREENSHOTS, REPLAYS, EXTRAS, OTHER, QUIT }
+    public enum Slot { BACK, ADVANCEMENTS, STATS, OPTIONS, LADS, MULTIPLAYER, WORLD, FRIENDS, NETWORK, COSMETICS, SCREENSHOTS, REPLAYS, EXTRAS, OTHER, QUIT }
     public record Box(int x, int y, int width, int height) {}
 
     private static final Slot[][] PAIRS = {{Slot.ADVANCEMENTS, Slot.STATS}, {Slot.OPTIONS, Slot.LADS}, {Slot.MULTIPLAYER, Slot.WORLD}};
-    private static final Slot[] SECONDARY = {Slot.FRIENDS, Slot.COSMETICS, Slot.SCREENSHOTS, Slot.REPLAYS, Slot.EXTRAS};
+    private static final Slot[] SECONDARY = {Slot.FRIENDS, Slot.NETWORK, Slot.COSMETICS, Slot.SCREENSHOTS, Slot.REPLAYS, Slot.EXTRAS};
     static final int GAP = 4, APART = 10, MAX_WIDTH = 320;
 
     private PauseMenuLayout() {}
@@ -29,6 +29,7 @@ public final class PauseMenuLayout {
             case OPTIONS -> "settings";
             case LADS -> "lads";
             case MULTIPLAYER -> "server";
+            case NETWORK -> "globe";
             case WORLD -> "host";
             case FRIENDS -> "friends";
             case COSMETICS -> "wardrobe";

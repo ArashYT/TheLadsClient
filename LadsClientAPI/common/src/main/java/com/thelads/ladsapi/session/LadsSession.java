@@ -84,6 +84,12 @@ public final class LadsSession {
             serverName = serverName.substring(0, 32);
         }
         obj.addProperty("server", serverName);
+        if (manager.getConfig() != null) { // optional additions: left out when unset, as an older plugin sends
+            String game = manager.getConfig().getGameName().replace("%world%", handle.world() == null ? "" : handle.world()).trim();
+            if (!game.isEmpty()) obj.addProperty("game", game.length() > 32 ? game.substring(0, 32) : game);
+            String hub = manager.getConfig().getHubCommand().trim();
+            if (!hub.isEmpty()) obj.addProperty("hub", hub);
+        }
         JsonArray caps = new JsonArray();
         caps.add("policy");
         caps.add("presence");
@@ -92,6 +98,16 @@ public final class LadsSession {
 
         handle.send(obj.toString().getBytes(StandardCharsets.UTF_8));
         this.helloSent = true;
+    }
+
+    /** A toast on this player's client (PROTOCOL.md "toast"). Nothing to a player without the Lads Client. */
+    public void sendToast(String title, String message) {
+        if (!lads) return;
+        JsonObject obj = new JsonObject();
+        obj.addProperty("t", "toast");
+        obj.addProperty("title", title);
+        obj.addProperty("message", message);
+        handle.send(obj.toString().getBytes(StandardCharsets.UTF_8));
     }
 
     public void sendPolicy() {

@@ -447,6 +447,7 @@ public partial class MainWindow : Window
         LogSearchBox.TextChanged += (_, _) => { _logDirty = true; UpdateLogDisplay(); };
         Closed += (_, _) => { _windowClosed = true; _updateCheckTimer?.Stop(); _usageHeartbeatTimer?.Stop(); _updateNowPulse?.Stop(); _particleTimer?.Stop(); _statSmoothTimer?.Stop(); _modSearchDebounce?.Stop(); _filesMeasureCts?.Cancel(); logTimer.Stop(); _authCts?.Cancel(); _galleryScanCancellation?.Cancel(); ++_galleryGeneration; };
         // Stats timer (1 second)
+        StartNetworkStatus();
         _statsTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statsTimer.Tick += UpdateSystemStats;
         _statsTimer.Tick += WatchModFiles;
@@ -2877,6 +2878,7 @@ public partial class MainWindow : Window
         AutoRelaunchOnCrashCheckbox.IsChecked = settings.AutoRelaunchOnCrash;
         SendCrashReportsCheckbox.IsChecked = settings.SendCrashReports;
         SendUsageStatsCheckbox.IsChecked = settings.SendAnonymousUsageStats;
+        AutoJoinNetworkCheckbox.IsChecked = settings.AutoJoinNetwork;
         AutoRejoinServerCheckbox.IsChecked = settings.AutoRejoinServer;
         MultiInstanceCheckbox.IsChecked = settings.AllowMultiInstance;
         ParticleCheckbox.IsChecked = settings.ShowParticles;
@@ -3522,6 +3524,7 @@ public partial class MainWindow : Window
         settings.AutoRelaunchOnCrash = AutoRelaunchOnCrashCheckbox.IsChecked ?? false;
         settings.SendCrashReports = SendCrashReportsCheckbox.IsChecked ?? true;
         settings.SendAnonymousUsageStats = SendUsageStatsCheckbox.IsChecked ?? true;
+        settings.AutoJoinNetwork = AutoJoinNetworkCheckbox.IsChecked ?? false;
         settings.AutoRejoinServer = AutoRejoinServerCheckbox.IsChecked ?? false;
         if (QuickLaunchServerComboBox.SelectedItem is ServerListItem sli && sli.Ip != null)
             settings.QuickLaunchServerIp = sli.Ip;
@@ -5315,6 +5318,7 @@ public partial class MainWindow : Window
             // A renderer relaunch goes back where the player was (a world, a server or the title screen) instead.
             if (relaunch?.World is { } world) ModpackLauncher.JoinWorld(launchOpt, world);
             else if (relaunch?.Server is { } server) ModpackLauncher.JoinServer(launchOpt, server);
+            else if (relaunch == null && !isCrashRelaunch && settings.AutoJoinNetwork) ModpackLauncher.JoinServer(launchOpt, ServerListService.PinnedAddress);
             else if (relaunch == null && !isCrashRelaunch && settings.AutoRejoinServer)
             {
                 // Prefer a manually-picked server; fall back to the last log-detected one

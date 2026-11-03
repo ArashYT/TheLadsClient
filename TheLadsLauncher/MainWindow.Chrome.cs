@@ -148,7 +148,7 @@ public partial class MainWindow
     {
         _settingsSaveTimer.Tick += (_, _) => { _settingsSaveTimer.Stop(); SaveSettingsFromUi(); };
         foreach (var box in new[] { CloseToTrayCheckbox, KeepLauncherOpenCheckbox, KeepClosedOnExitCheckbox, AutoLaunchCheckbox, AutoFixCrashesCheckbox,
-                     AutoRelaunchOnCrashCheckbox, AutoRejoinServerCheckbox, MultiInstanceCheckbox, FullscreenOnLaunchCheckbox, QuickLaunchCheckbox,
+                     AutoRelaunchOnCrashCheckbox, AutoJoinNetworkCheckbox, AutoRejoinServerCheckbox, MultiInstanceCheckbox, FullscreenOnLaunchCheckbox, QuickLaunchCheckbox,
                      SyncScreenshotsCheckbox, ParticleCheckbox, DiscordPresenceCheckbox, SendCrashReportsCheckbox, SendUsageStatsCheckbox })
             box.IsCheckedChanged += (_, _) => ScheduleSettingsSave();
         HorizonCheckbox.IsCheckedChanged += async (_, _) =>

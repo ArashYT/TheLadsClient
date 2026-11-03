@@ -180,6 +180,7 @@ public final class QaProbe26 {
                 if ("none".equals(target) || "close".equals(target)) mc.gui.setScreen(null);
                 else if ("title".equals(target)) mc.setScreenAndShow(new TitleScreen());
                 else if ("pause".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(true));
+                else if ("multiplayer".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(mc.gui.screen()));
                 else if ("lads".equals(target) || "settings".equals(target)) {
                     var screen = new LadsSettingsScreen26(mc.gui.screen());
                     mc.setScreenAndShow(screen);

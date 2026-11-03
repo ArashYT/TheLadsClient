@@ -215,6 +215,18 @@
                                         </Border.Background>
                                     </Border>
                                     <Canvas x:Name="ParticleCanvas" Grid.ColumnSpan="2" IsHitTestVisible="False" Opacity="0.10" />
+                                    <!-- One click into the network from the first page, with its live status (MainWindow.Network.cs). -->
+                                    <Border Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0" Padding="12,10" CornerRadius="6" Background="#D91D1E22">
+                                        <StackPanel Spacing="7">
+                                            <Button x:Name="NetworkPlayButton" Classes="launch" Height="44" MinWidth="200" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Foreground="White" ToolTip.Tip="Launch and join The Lads Network (mc.arashyt.ca)" IsEnabled="{Binding #LaunchButton.IsEnabled}" Click="NetworkPlay_Click">
+                                                <TextBlock Text="Play The Lads Network" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" />
+                                            </Button>
+                                            <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                                                <Ellipse x:Name="NetworkStatusDot" Width="8" Height="8" Fill="#6B6D76" VerticalAlignment="Center" />
+                                                <TextBlock x:Name="NetworkStatusText" Text="Checking..." Foreground="#B8B9C2" FontSize="11" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
                                 </Grid>
                             </Border>
                             <Grid Grid.Row="1" ColumnDefinitions="*,*,*" Margin="0,10,0,8">
@@ -427,6 +439,7 @@
                                                         <CheckBox x:Name="AutoRelaunchOnCrashCheckbox" Content="Auto-relaunch game on crash" IsChecked="False" />
                                                         <CheckBox x:Name="SendCrashReportsCheckbox" Content="Send crash reports to the Lads team (client only)" IsChecked="True" ToolTip.Tip="When the Lads Client crashes, its crash report and game log go to the Lads team so we can fix it. Your Windows user name and login tokens are removed first. Modpacks and Experiences are never sent." />
                                                         <CheckBox x:Name="SendUsageStatsCheckbox" Content="Send anonymous usage stats" IsChecked="True" ToolTip.Tip="Shares anonymous client version and heartbeat stats with the Lads team to help us prioritize updates and see active player counts. No names, UUIDs, or IP addresses are stored." />
+                                                        <CheckBox x:Name="AutoJoinNetworkCheckbox" Content="Auto-join The Lads Network on launch" IsChecked="False" />
                                                         <CheckBox x:Name="AutoRejoinServerCheckbox" Content="Auto-rejoin server on launch" IsChecked="False" />
                                                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="28,0,0,0">
                                                             <TextBlock Text="Server:" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" />

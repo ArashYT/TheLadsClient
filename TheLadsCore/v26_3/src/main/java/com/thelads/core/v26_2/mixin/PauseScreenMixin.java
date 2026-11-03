@@ -56,6 +56,7 @@ public abstract class PauseScreenMixin extends Screen {
         if(button==ladsExtrasButton)return com.thelads.core.client.title.PauseMenuLayout.Slot.EXTRAS;
         if(text.equals("Lads Client"))return com.thelads.core.client.title.PauseMenuLayout.Slot.LADS;
         if(text.equals("Screenshots"))return com.thelads.core.client.title.PauseMenuLayout.Slot.SCREENSHOTS;
+        if(text.equals(com.thelads.core.client.LadsNetwork.TITLE_LABEL)||text.equals(com.thelads.core.client.LadsNetwork.HUB_LABEL))return com.thelads.core.client.title.PauseMenuLayout.Slot.NETWORK;
         if(text.startsWith("Friends"))return com.thelads.core.client.title.PauseMenuLayout.Slot.COSMETICS;
         if(text.equals("Cosmetics"))return com.thelads.core.client.title.PauseMenuLayout.Slot.COSMETICS;
         if(text.equals("Replays"))return com.thelads.core.client.title.PauseMenuLayout.Slot.REPLAYS;
@@ -150,6 +151,10 @@ public abstract class PauseScreenMixin extends Screen {
             button -> minecraft.gui.setScreen(new LadsSettingsScreen26(this))).width(204).build(), 2);
         ladsPauseRows.addChild(Button.builder(Component.translatable("menu.multiplayer"),
             button -> com.thelads.core.v26_2.gui.PauseMultiplayer.open(this)).width(204).build(), 2);
+        String ladsNetwork=com.thelads.core.client.LadsNetwork.pauseLabel(com.thelads.core.v26_2.gui.PauseMultiplayer::serverHas);
+        if(ladsNetwork!=null)
+            ladsPauseRows.addChild(Button.builder(Component.literal(ladsNetwork),
+                button -> com.thelads.core.v26_2.gui.PauseMultiplayer.network(this)).width(204).build(),2);
         ladsPauseRows.addChild(Button.builder(Component.literal("Screenshots"),
             button -> com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.openFromMenu(this)).width(204).build(), 2);
         ladsPauseRows.addChild(Button.builder(com.thelads.core.v26_2.social.SocialBridge26.friendsButtonText(),

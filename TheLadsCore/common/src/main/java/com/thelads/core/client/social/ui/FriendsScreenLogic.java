@@ -554,7 +554,8 @@ public final class FriendsScreenLogic {
 
                 // Online indicator dot
                 boolean online = friend.presence() != null && friend.presence().online();
-                int dotColor = online ? LadsPalette.CARD_ON_GLOW : LadsPalette.DISABLED;
+                boolean network = online && com.thelads.core.client.LadsNetwork.isAddress(friend.presence().server());
+                int dotColor = network ? LadsPalette.ACCENT : online ? LadsPalette.CARD_ON_GLOW : LadsPalette.DISABLED;
                 g.fill(rowBox.x + 8, rowTop + 14, rowBox.x + 14, rowTop + 20, dotColor);
 
                 // Name or inline nickname input
@@ -918,6 +919,7 @@ public final class FriendsScreenLogic {
             return "Hosting a world";
         }
         if ("server".equals(st)) {
+            if (com.thelads.core.client.LadsNetwork.isAddress(p.server())) return "On " + com.thelads.core.client.LadsNetwork.NAME;
             return p.server() != null ? "Playing on " + p.server() : "On a server";
         }
         return st != null ? st : "";

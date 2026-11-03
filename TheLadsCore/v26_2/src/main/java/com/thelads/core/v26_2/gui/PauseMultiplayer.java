@@ -1,6 +1,10 @@
 package com.thelads.core.v26_2.gui;
 
+import com.thelads.core.client.LadsNetwork;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -24,6 +28,28 @@ public final class PauseMultiplayer {
             mc.setScreenAndShow(mc.options.skipMultiplayerWarning ? new JoinMultiplayerScreen(title) : new SafetyScreen(title));
         };
         leaveAndOpen(pause,"Multiplayer",showServers);
+    }
+    /**
+     * The pause menu's Network button (LadsNetwork.pauseLabel names it): on the network the hub command, else asks, leaves this world
+     * or server and joins the network.
+     */
+    public static void network(Screen pause) {
+        Minecraft mc=Minecraft.getInstance();
+        String hub=LadsNetwork.hubCommand(PauseMultiplayer::serverHas);
+        if(hub!=null){
+            com.thelads.core.client.bridge.LadsGameBridge.get().sendChatLine(hub);
+            mc.gui.setScreen(null);
+            return;
+        }
+        leaveAndOpen(pause,LadsNetwork.NAME,()->joinNetwork(new JoinMultiplayerScreen(new TitleScreen())));
+    }
+    public static void joinNetwork(Screen parent) {
+        ConnectScreen.startConnecting(parent,Minecraft.getInstance(),ServerAddress.parseString(LadsNetwork.ADDRESS),
+            new ServerData(LadsNetwork.NAME,LadsNetwork.ADDRESS,ServerData.Type.OTHER),false,null);
+    }
+    public static boolean serverHas(String command) {
+        var connection=Minecraft.getInstance().getConnection();
+        return connection!=null&&connection.getCommands().getRoot().getChild(command)!=null;
     }
     public static void leaveAndOpen(Screen pause,String destination,Runnable next) {
         Minecraft mc=Minecraft.getInstance();

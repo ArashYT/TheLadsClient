@@ -18,6 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(JoinMultiplayerScreen.class)
 public abstract class JoinMultiplayerScreenMixin extends Screen {
     @Unique private Button ladsDiscoverButton;
+    @Unique private Button ladsNetworkButton;
 
     protected JoinMultiplayerScreenMixin() {
         super(Component.empty());
@@ -31,6 +32,9 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
                 minecraft.setScreen(new ServerDiscoveryScreen1201(this));
             }
         }).bounds(width - 124, 8, 116, 20).build());
+        ladsNetworkButton = !com.thelads.core.client.LadsNetwork.titleButton() || com.thelads.core.client.LadsNetwork.connected() ? null
+            : addRenderableWidget(Button.builder(Component.literal(com.thelads.core.client.LadsNetwork.TITLE_LABEL), b -> com.thelads.core.v1_20_1.gui.PauseMultiplayer1201.joinNetwork(this))
+                .tooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal(com.thelads.core.client.LadsNetwork.TOOLTIP))).bounds(8, 8, 64, 20).build());
         org.slf4j.LoggerFactory.getLogger("TheLadsCore-1.20.1").info("Discover Servers button added to the multiplayer screen at {},{}", width - 124, 8);
     }
 
@@ -45,7 +49,10 @@ public abstract class JoinMultiplayerScreenMixin extends Screen {
     private void ladsPlaceDiscover() {
         if (ladsDiscoverButton == null) return;
         ladsDiscoverButton.setPosition(width - 124, 8);
-        if (ladsDiscoverCovered()) ladsDiscoverButton.setPosition(8, 8);
+        if (ladsDiscoverCovered()) {
+            ladsDiscoverButton.setPosition(8, 8);
+            if (ladsNetworkButton != null) ladsNetworkButton.setPosition(128, 8);
+        }
     }
 
     @Unique

@@ -60,6 +60,7 @@ public abstract class PauseScreenMixin extends Screen {
         if(button==ladsExtrasButton)return com.thelads.core.client.title.PauseMenuLayout.Slot.EXTRAS;
         if(text.equals("Lads Client"))return com.thelads.core.client.title.PauseMenuLayout.Slot.LADS;
         if(text.equals("Screenshots"))return com.thelads.core.client.title.PauseMenuLayout.Slot.SCREENSHOTS;
+        if(text.equals(com.thelads.core.client.LadsNetwork.TITLE_LABEL)||text.equals(com.thelads.core.client.LadsNetwork.HUB_LABEL))return com.thelads.core.client.title.PauseMenuLayout.Slot.NETWORK;
         if(text.equals("Replays"))return com.thelads.core.client.title.PauseMenuLayout.Slot.REPLAYS;
         String[][] keys={{"menu.returnToGame","BACK"},{"gui.advancements","ADVANCEMENTS"},{"gui.stats","STATS"},{"menu.options","OPTIONS"},
             {"menu.multiplayer","MULTIPLAYER"},{"menu.multiplayerOptions.button","WORLD"},{"options.worldOptions.button","WORLD"},{"menu.worldOptions","WORLD"},{"menu.shareToLan","WORLD"},{"menu.returnToMenu","QUIT"},{"menu.disconnect","QUIT"}};
@@ -117,6 +118,10 @@ public abstract class PauseScreenMixin extends Screen {
             button -> minecraft.setScreen(new LadsSettingsScreen12111(this))).width(204).build(), 2);
         ladsPauseRows.addChild(Button.builder(Component.translatable("menu.multiplayer"),
             button -> com.thelads.core.v1_21_11.gui.PauseMultiplayer.open(this)).width(204).build(), 2);
+        String ladsNetwork=com.thelads.core.client.LadsNetwork.pauseLabel(com.thelads.core.v1_21_11.gui.PauseMultiplayer::serverHas);
+        if(ladsNetwork!=null)
+            ladsPauseRows.addChild(Button.builder(Component.literal(ladsNetwork),
+                button -> com.thelads.core.v1_21_11.gui.PauseMultiplayer.network(this)).width(204).build(),2);
         ladsPauseRows.addChild(Button.builder(Component.literal("Screenshots"),
             button -> com.thelads.core.v1_21_11.gui.Screenshots12111.open(this)).width(204).build(), 2);
         if(com.thelads.core.v1_21_11.gui.FlashbackScreens.available())
