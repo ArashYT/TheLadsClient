@@ -22,7 +22,7 @@ public abstract class PauseScreenMixin extends Screen {
     @Unique private GridLayout.RowHelper ladsPauseRows;
     @Unique private final java.util.List<AbstractWidget> ladsExtras=new java.util.ArrayList<>();
     @Unique private Button ladsExtrasButton;
-    @Unique private Button ladsFullscreenButton;
+    @Unique private Button ladsFullscreenButton,ladsSwitchButton;
     @Unique private boolean ladsLayoutReady;
 
     protected PauseScreenMixin() {
@@ -33,7 +33,7 @@ public abstract class PauseScreenMixin extends Screen {
         if(!((PauseScreen)(Object)this).showsPauseMenu())return;
         boolean changed=!ladsLayoutReady;
         for(var child:java.util.List.copyOf(children()))if(child instanceof AbstractWidget widget
-            &&widget!=ladsFullscreenButton) {
+            &&widget!=ladsFullscreenButton&&widget!=ladsSwitchButton) {
             if(widget.getClass().getName().startsWith("gg.essential.")
                 ||widget.getClass().getName().startsWith("io.github.lgatodu47.screenshot_viewer.")) {
                 widget.visible=false;removeWidget(widget);changed=true;
@@ -44,7 +44,7 @@ public abstract class PauseScreenMixin extends Screen {
         if(!changed)return;
         ladsLayoutReady=true;
         if(!ladsExtras.isEmpty()&&ladsExtrasButton==null)ladsExtrasButton=addRenderableWidget(Button.builder(Component.literal("Extras..."),b->minecraft.setScreen(new com.thelads.core.v1_21_11.gui.TitleExtrasScreen12111(this,ladsExtras))).bounds(0,0,204,20).build());
-        var buttons=children().stream().filter(c->c instanceof Button&&c!=ladsFullscreenButton).map(c->(Button)c).toList();
+        var buttons=children().stream().filter(c->c instanceof Button&&c!=ladsFullscreenButton&&c!=ladsSwitchButton).map(c->(Button)c).toList();
         // In groups: Back to Game, then Advancements/Statistics, Options/Lads Client, Multiplayer/world options, Screenshots/Replays/Extras, Save and Quit apart.
         int bottom=height-32;
         int top=Math.max(62,12+Math.min(64,height/6)+18);
@@ -78,6 +78,8 @@ public abstract class PauseScreenMixin extends Screen {
         com.thelads.core.client.title.TitleScreenTheme.renderLogo(adapter,width/2,12,Math.min(64,height/6));
         g.fill(16,height-29,width-16,height-28,0x2944202A);
         com.thelads.core.client.title.TitleScreenTheme.renderAccount(adapter,height,minecraft.getUser().getName(),Math.min(170,width-32));
+        var switchBox=com.thelads.core.client.title.TitleScreenTheme.pauseSwitch(adapter,ladsFullscreenButton.getX());
+        ladsSwitchButton.setRectangle(switchBox.width(),switchBox.height(),switchBox.x(),switchBox.y());
         super.render(g,mx,my,dt);
         ci.cancel();
     }
@@ -85,10 +87,13 @@ public abstract class PauseScreenMixin extends Screen {
     @Inject(method="init",at=@At("TAIL"),require=1)
     private void ladsRemoveReportButtons(CallbackInfo ci){
         ladsLayoutReady=false;ladsExtras.clear();ladsExtrasButton=null;
-        ladsFullscreenButton=null;
-        if(((PauseScreen)(Object)this).showsPauseMenu())
+        ladsFullscreenButton=null;ladsSwitchButton=null;
+        if(((PauseScreen)(Object)this).showsPauseMenu()){
             ladsFullscreenButton=addRenderableWidget(new com.thelads.core.v1_21_11.gui.CompactButton12111(width-26,6,20,20,Component.translatable("options.fullscreen"),
                 ()->minecraft.options.fullscreen().get()?"windowed":"fullscreen",com.thelads.core.v1_21_11.gui.CompactButton12111::toggleFullscreen));
+            ladsSwitchButton=addRenderableWidget(new com.thelads.core.v1_21_11.gui.CompactButton12111(0,0,1,1,Component.literal(com.thelads.core.client.title.TitleScreenTheme.PAUSE_SWITCH),
+                ()->"switch",b->minecraft.setScreen(new com.thelads.core.v1_21_11.gui.AccountSwitcherScreen12111(this))));
+        }
         for(var child:java.util.List.copyOf(children()))if(child instanceof AbstractWidget widget){
             String text=widget.getMessage().getString();
             // The "Game Menu" title, and any mod caption (Flashback's), would sit at vanilla grid positions under the Lads grid.

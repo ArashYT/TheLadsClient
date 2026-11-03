@@ -15,8 +15,17 @@ public class AccountSwitcherScreen26 extends Screen {
     public AccountSwitcherScreen26(Screen parent) {
         super(Component.literal("Account Switcher"));
         this.parent = parent;
-        this.ui = new AccountSwitcherScreen();
+        this.ui = new AccountSwitcherScreen(new LiveSession26());
         this.ui.setOnClose(this::onClose);
+    }
+
+    public AccountSwitcherScreen ui() {
+        return ui;
+    }
+
+    @Override
+    public void tick() {
+        Minecraft.getInstance().schedule(ui::tick); // queued: leaving a world runs game ticks of its own, so not from inside one
     }
 
     @Override
@@ -37,7 +46,16 @@ public class AccountSwitcherScreen26 extends Screen {
     }
 
     @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (ui.mouseScrolled(mouseX, mouseY, verticalAmount)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
+    }
+
+    @Override
     public void onClose() {
+        ui.cancel();
         Minecraft.getInstance().setScreenAndShow(parent);
     }
 }
