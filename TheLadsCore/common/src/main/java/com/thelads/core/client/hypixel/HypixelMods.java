@@ -457,13 +457,13 @@ public final class HypixelMods {
 
         // Elimination / death checks for Auto Play Again
         if (!gameOver && !replayed && on(PLAY_AGAIN)) {
-            String gametype = location != null ? location[0] : null;
-            if (!selfOut && HypixelChat.isSelfOut(gametype, message, me)) {
+            String gametype = location != null ? location[0] : null, mode = location != null ? location[1] : null;
+            if (!selfOut && HypixelChat.isSelfOut(gametype, mode, message, me)) {
                 selfOut = true;
                 selfDiedAt = now;
                 triggerReplayIfEligible(now);
             }
-            String victim = HypixelChat.eliminatedPlayer(gametype, message);
+            String victim = HypixelChat.eliminatedPlayer(gametype, mode, message);
             if (victim != null) {
                 String vLower = victim.toLowerCase(Locale.ROOT);
                 if (me != null && me.equalsIgnoreCase(victim)) {

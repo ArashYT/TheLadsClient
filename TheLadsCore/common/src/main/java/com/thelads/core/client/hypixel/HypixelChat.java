@@ -57,6 +57,12 @@ public final class HypixelChat {
     /** Hypixel notices that only a party member gets ("Your party was split...", "...dueled someone in your party!"). */
     private static final Pattern PARTY_NOTICE = Pattern.compile("(?i)Your party\\b.*|.*\\bin your party\\b.*");
     private static final Pattern SELF_OUT_LINE = Pattern.compile("(?i).*(?:You have been eliminated!|You are now a spectator!?|Click here to play again!).*");
+    /**
+     * Duels modes that are over at your first death (/locraw's mode, with or without "DUELS_"). Bridge and Capture respawn, and any
+     * mode not listed may too: there a death is never "out", only the game's end is.
+     */
+    private static final Pattern ONE_LIFE_DUEL = Pattern.compile("(?i)(?:DUELS_)?(?:CLASSIC|BOW|OP|UHC|POTION|SW|COMBO|SUMO|BLITZ|MW|BOWSPLEEF|SPLEEF|BOXING)_(?:DUEL|DOUBLES|FOUR|MEETUP)");
+    private static final Pattern SPECTATOR_LINE = Pattern.compile("(?i).*You are now a spectator!?.*");
     /** The end-of-game summary every mode prints, centered (leading spaces): its ranking or winner line. */
     private static final Pattern GAME_END = Pattern.compile("\\s+(?:"
         + "1st\\b(?: Killer| Place)?\\s*[-:].*"        // 1st Killer - [MVP+] Name - 7 / 1st Place - Name / 1st - Name
@@ -290,8 +296,31 @@ public final class HypixelChat {
         return false;
     }
 
-    /** Who was eliminated or killed in this line for {@code gametype}, or null. */
-    public static String eliminatedPlayer(String gametype, String message) {
+    /** A plain death ends the game for you here: SkyWars and the Duels modes in {@link #ONE_LIFE_DUEL}. */
+    private static boolean oneLife(String gametype, String mode) {
+        return "SKYWARS".equalsIgnoreCase(gametype)
+            || "DUELS".equalsIgnoreCase(gametype) && mode != null && ONE_LIFE_DUEL.matcher(mode).matches();
+    }
+
+    /**
+     * You respawn or sit out a round here, so "You are now a spectator!" is no end: any Duels mode not known to be one life, Cops and
+     * Crims, Warlords, Arcade (Zombies, Party Games...), TNT Wizards. Other games send it only for good (Bed Wars after its final kill).
+     */
+    private static boolean comesBack(String gametype, String mode) {
+        if (gametype == null) return false;
+        return switch (gametype.toUpperCase(Locale.ROOT)) {
+            case "DUELS" -> !oneLife(gametype, mode);
+            case "MCGO", "BATTLEGROUND", "ARCADE" -> true;
+            case "TNTGAMES" -> "CAPTURE".equalsIgnoreCase(mode);
+            default -> false;
+        };
+    }
+
+    /**
+     * Who was eliminated or killed in this line for {@code gametype} and its {@code mode} (/locraw's), or null. A plain kill line
+     * counts only where one death is the end ({@link #oneLife}); where players respawn, only a real elimination line does.
+     */
+    public static String eliminatedPlayer(String gametype, String mode, String message) {
         for (String line : lines(message)) {
             if (isPlayerChat(line)) continue;
             String p = line.trim();
@@ -301,7 +330,7 @@ public final class HypixelChat {
             if (el.matches()) return el.group(1);
             Matcher dc = DISCONNECT_LINE.matcher(p);
             if (dc.matches()) return dc.group(1);
-            if (gametype != null && (gametype.equalsIgnoreCase("SKYWARS") || gametype.equalsIgnoreCase("DUELS"))) {
+            if (oneLife(gametype, mode)) {
                 Matcher gk = GENERAL_KILL_LINE.matcher(p);
                 if (gk.matches()) return gk.group(1);
                 Matcher tk = THEMED_KILL_LINE.matcher(p);
@@ -327,14 +356,14 @@ public final class HypixelChat {
     }
 
     /** True when this line indicates the local player died or was eliminated (not a temporary respawn death). */
-    public static boolean isSelfOut(String gametype, String message, String myName) {
+    public static boolean isSelfOut(String gametype, String mode, String message, String myName) {
         for (String line : lines(message)) {
             if (isPlayerChat(line)) continue;
             String p = line.trim();
             if (p.toLowerCase(Locale.ROOT).contains("respawn")) continue;
-            if (SELF_OUT_LINE.matcher(p).matches()) return true;
+            if (SELF_OUT_LINE.matcher(p).matches() && !(comesBack(gametype, mode) && SPECTATOR_LINE.matcher(p).matches())) return true;
             if (myName != null && !myName.isEmpty()) {
-                String victim = eliminatedPlayer(gametype, line);
+                String victim = eliminatedPlayer(gametype, mode, line);
                 if (victim != null && victim.equalsIgnoreCase(myName)) return true;
             }
         }
