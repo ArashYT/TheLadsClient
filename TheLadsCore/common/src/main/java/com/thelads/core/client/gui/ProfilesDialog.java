@@ -55,6 +55,7 @@ public final class ProfilesDialog {
     private Rect saveBtn = new Rect(0, 0, 0, 0);
     private Rect renameBtn = new Rect(0, 0, 0, 0);
     private Rect deleteBtn = new Rect(0, 0, 0, 0);
+    private Rect importClientBtn = new Rect(0, 0, 0, 0);
     private Rect copyBtn = new Rect(0, 0, 0, 0);
     private Rect importBtn = new Rect(0, 0, 0, 0);
     private Rect choiceMods = new Rect(0, 0, 0, 0);
@@ -65,9 +66,23 @@ public final class ProfilesDialog {
     private Rect promptCancel = new Rect(0, 0, 0, 0);
     private Rect listArea = new Rect(0, 0, 0, 0);
     private final Map<String, Rect> profileRows = new LinkedHashMap<>();
+    private final ClientImportDialog clientImport;
 
     private static java.util.concurrent.Executor asyncExecutor = java.util.concurrent.Executors.newCachedThreadPool();
     private final java.util.Queue<Runnable> mainThreadTasks = new java.util.concurrent.ConcurrentLinkedQueue<>();
+
+    public ProfilesDialog() {
+        this.clientImport = new ClientImportDialog(
+            ClientImportDialog.launcherCommand(ClientImportDialog.resolveLauncherExe()),
+            () -> {
+                ConfigManager.load();
+                onSave.run();
+            });
+    }
+
+    ProfilesDialog(ClientImportDialog clientImport) {
+        this.clientImport = clientImport;
+    }
 
     public static void setAsyncExecutor(java.util.concurrent.Executor executor) {
         asyncExecutor = executor != null ? executor : java.util.concurrent.Executors.newCachedThreadPool();
@@ -92,6 +107,7 @@ public final class ProfilesDialog {
 
     public void tick() {
         processMainThreadTasks();
+        clientImport.pump();
     }
 
     public void setClipboardReader(Supplier<String> reader) {
@@ -123,6 +139,7 @@ public final class ProfilesDialog {
         this.mode = Mode.LIST;
         this.errorText = "";
         this.importedPayload = null;
+        this.clientImport.close();
     }
 
     public boolean isOpen() {
@@ -163,7 +180,9 @@ public final class ProfilesDialog {
     public Rect saveAsBounds() { return saveBtn; }
     public Rect renameBounds() { return renameBtn; }
     public Rect deleteBounds() { return deleteBtn; }
+    public Rect importClientBounds() { return importClientBtn; }
     public Rect copyBounds() { return copyBtn; }
+    ClientImportDialog clientImportDialog() { return clientImport; }
     public Rect importBounds() { return importBtn; }
     public Rect choiceModsBounds() { return choiceMods; }
     public Rect choiceSettingsBounds() { return choiceSettings; }
@@ -185,6 +204,10 @@ public final class ProfilesDialog {
     public void render(LadsGraphics g, int mx, int my) {
         processMainThreadTasks();
         if (!open) return;
+        if (clientImport.isOpen()) {
+            clientImport.render(g, mx, my);
+            return;
+        }
         int width = g.getScaledWidth(), height = g.getScaledHeight();
         int dw = Math.min(380, width - 20);
         int dh = Math.min(230, height - 20);
@@ -276,6 +299,10 @@ public final class ProfilesDialog {
         deleteBtn = new Rect(bx, by, bw, bh);
         drawButton(g, deleteBtn, "Delete", hasSelection, mx, my);
 
+        by += 26;
+        importClientBtn = new Rect(bx, by, bw, bh);
+        drawButton(g, importClientBtn, "Import Client...", true, mx, my);
+
         // Bottom toolbar
         int bty = dy + dh - 26;
         copyBtn = new Rect(dx + 12, bty, 114, 18);
@@ -362,6 +389,7 @@ public final class ProfilesDialog {
 
     public boolean click(double x, double y, int button) {
         if (!open) return false;
+        if (clientImport.isOpen()) return clientImport.click(x, y, button);
         if (button != 0) return true;
 
         if (closeBtn.contains(x, y)) {
@@ -394,6 +422,10 @@ public final class ProfilesDialog {
                 }
                 if (deleteBtn.contains(x, y) && selectedProfile != null) {
                     mode = Mode.CONFIRM_DELETE;
+                    return true;
+                }
+                if (importClientBtn.contains(x, y)) {
+                    clientImport.open();
                     return true;
                 }
                 if (copyBtn.contains(x, y)) {
@@ -618,6 +650,7 @@ public final class ProfilesDialog {
 
     public boolean scroll(double x, double y, double amount) {
         if (!open) return false;
+        if (clientImport.isOpen()) return clientImport.wheel(amount);
         if (mode == Mode.LIST && listArea.contains(x, y)) {
             listScroll = Math.max(0, Math.min(maxListScroll, listScroll - (int) Math.round(amount * 18)));
             return true;
@@ -627,6 +660,7 @@ public final class ProfilesDialog {
 
     public boolean key(int key, int modifiers) {
         if (!open) return false;
+        if (clientImport.isOpen()) return clientImport.key(key);
         if (key == 256) { // Esc
             if (mode == Mode.LIST) {
                 close();
@@ -659,6 +693,7 @@ public final class ProfilesDialog {
 
     public boolean type(int codePoint) {
         if (!open) return false;
+        if (clientImport.isOpen()) return true;
         if (mode == Mode.PROMPT_SAVE || mode == Mode.PROMPT_RENAME) {
             if (codePoint >= 32 && codePoint != 127 && nameBuffer.length() < 32) {
                 nameBuffer += new String(Character.toChars(codePoint));
