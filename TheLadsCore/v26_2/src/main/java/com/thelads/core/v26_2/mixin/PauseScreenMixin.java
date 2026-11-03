@@ -19,7 +19,7 @@ public abstract class PauseScreenMixin extends Screen {
     @Unique private GridLayout.RowHelper ladsPauseRows;
     @Unique private final java.util.List<net.minecraft.client.gui.components.AbstractWidget> ladsExtras=new java.util.ArrayList<>();
     @Unique private Button ladsExtrasButton;
-    @Unique private Button ladsFullscreenButton;
+    @Unique private Button ladsFullscreenButton,ladsSwitchButton;
     @Unique private boolean ladsLayoutReady;
 
     @Unique private void ladsLayout() {
@@ -27,7 +27,7 @@ public abstract class PauseScreenMixin extends Screen {
         boolean changed=!ladsLayoutReady;
 
         for(var child:java.util.List.copyOf(children()))if(child instanceof net.minecraft.client.gui.components.AbstractWidget widget
-            &&widget!=ladsFullscreenButton) {
+            &&widget!=ladsFullscreenButton&&widget!=ladsSwitchButton) {
             if(widget.getClass().getName().startsWith("gg.essential.")) {
                 widget.visible=false;removeWidget(widget);changed=true;
             } else if(widget instanceof Button&&widget!=ladsExtrasButton&&widget.getWidth()<=30) {
@@ -38,7 +38,7 @@ public abstract class PauseScreenMixin extends Screen {
         if(!changed)return;
         ladsLayoutReady=true;
         if(!ladsExtras.isEmpty()&&ladsExtrasButton==null)ladsExtrasButton=addRenderableWidget(Button.builder(Component.literal("Extras..."),b->minecraft.setScreenAndShow(new com.thelads.core.v26_2.gui.TitleExtrasScreen26(this,ladsExtras))).bounds(0,0,204,20).build());
-        var buttons=children().stream().filter(c->c instanceof Button&&c!=ladsFullscreenButton).map(c->(Button)c).toList();
+        var buttons=children().stream().filter(c->c instanceof Button&&c!=ladsFullscreenButton&&c!=ladsSwitchButton).map(c->(Button)c).toList();
         int bottom=height-32;
         int top=Math.max(62,12+Math.min(64,height/6)+18);
         var slots=buttons.stream().map(this::ladsSlot).toList();
@@ -75,6 +75,8 @@ public abstract class PauseScreenMixin extends Screen {
         com.thelads.core.client.title.TitleScreenTheme.renderLogo(adapter,width/2,12,Math.min(64,height/6));
         g.fill(16,height-29,width-16,height-28,0x2944202A);
         com.thelads.core.client.title.TitleScreenTheme.renderAccount(adapter,height,minecraft.getUser().getName(),Math.min(170,width-32));
+        var switchBox=com.thelads.core.client.title.TitleScreenTheme.pauseSwitch(adapter,ladsFullscreenButton.getX());
+        ladsSwitchButton.setRectangle(switchBox.width(),switchBox.height(),switchBox.x(),switchBox.y());
         super.extractRenderState(g,mx,my,dt);
         ci.cancel();
     }
@@ -86,9 +88,12 @@ public abstract class PauseScreenMixin extends Screen {
     @Inject(method="init",at=@At("TAIL"),require=1)
     private void ladsRemoveReportButtons(CallbackInfo ci){
         ladsLayoutReady=false;ladsExtras.clear();ladsExtrasButton=null;ladsFullscreenButton=null;
-        if(((PauseScreen)(Object)this).showsPauseMenu())
+        if(((PauseScreen)(Object)this).showsPauseMenu()){
             ladsFullscreenButton=addRenderableWidget(new com.thelads.core.v26_2.gui.CompactButton26(width-26,6,20,20,Component.translatable("options.fullscreen"),
                 ()->minecraft.options.fullscreen().get()?"windowed":"fullscreen",com.thelads.core.v26_2.gui.CompactButton26::toggleFullscreen));
+            ladsSwitchButton=addRenderableWidget(new com.thelads.core.v26_2.gui.CompactButton26(0,0,1,1,Component.literal(com.thelads.core.client.title.TitleScreenTheme.PAUSE_SWITCH),
+                ()->"switch",b->minecraft.setScreenAndShow(new com.thelads.core.v26_2.gui.AccountSwitcherScreen26(this))));
+        }
         for(var child:java.util.List.copyOf(children()))if(child instanceof net.minecraft.client.gui.components.AbstractWidget widget){
             String text=widget.getMessage().getString();
             if(widget instanceof net.minecraft.client.gui.components.StringWidget){removeWidget(widget);continue;}

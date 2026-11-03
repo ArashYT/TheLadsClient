@@ -282,6 +282,13 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         return connection != null && connection.getConnection().getRemoteAddress() instanceof java.net.InetSocketAddress address ? address : null;
     }
 
+    @Override public void displayChatMessage(String text) {
+        var mc = Minecraft.getInstance();
+        Runnable line = () -> { if (mc.gui != null) mc.gui.hud.getChat().addClientSystemMessage(net.minecraft.network.chat.Component.literal(text)); };
+        if (mc.isSameThread()) line.run();
+        else mc.execute(line);
+    }
+
     @Override public void sendChatLine(String text) {
         var connection = Minecraft.getInstance().getConnection();
         if (connection == null) return;

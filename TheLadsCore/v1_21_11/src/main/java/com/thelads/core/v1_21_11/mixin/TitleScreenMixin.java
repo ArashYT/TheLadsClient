@@ -1,5 +1,6 @@
 package com.thelads.core.v1_21_11.mixin;
 
+import com.thelads.core.client.LadsNetwork;
 import com.thelads.core.client.title.TitleNoir;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.modules.TitleScreenModule;
@@ -16,6 +17,10 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -43,6 +48,8 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private int ladsLayoutHeight;
     @Unique private Button ladsSettingsButton;
     @Unique private Button ladsAccountsButton;
+    @Unique private Button ladsNetworkButton;
+    @Unique private Button ladsSwitchButton;
     @Unique private Button ladsMoreButton;
     @Unique private List<AbstractWidget> ladsExtraWidgets = new ArrayList<>();
     @Unique private long ladsLastFrameNanos;
@@ -69,6 +76,14 @@ public abstract class TitleScreenMixin extends Screen {
             button -> minecraft.setScreen(new AccountSwitcherScreen12111(this))).bounds(0, 0, 1, 1).build());
         ladsMoreButton = addRenderableWidget(Button.builder(Component.literal("More..."),
             button -> minecraft.setScreen(new TitleExtrasScreen12111(this, ladsExtraWidgets))).bounds(0, 0, 1, 1).build());
+        ladsNetworkButton = !LadsNetwork.titleButton() ? null : addRenderableWidget(Button.builder(Component.literal(LadsNetwork.TITLE_LABEL),
+            button -> ConnectScreen.startConnecting(new JoinMultiplayerScreen(this), minecraft, ServerAddress.parseString(LadsNetwork.ADDRESS),
+                new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, ServerData.Type.OTHER), false, null)).tooltip(Tooltip.create(Component.literal(LadsNetwork.TOOLTIP))).bounds(0, 0, 1, 1).build());
+        // Beside the account name (placed each frame after it)
+        ladsSwitchButton = addRenderableWidget(new CompactButton12111(0, 0, 1, 1, Component.literal(TitleScreenTheme.SWITCH),
+            () -> "switch", button -> minecraft.setScreen(new AccountSwitcherScreen12111(this))));
+        ladsSwitchButton.setTooltip(Tooltip.create(Component.literal("Switch account")));
+        ladsSwitchButton.setTabOrderGroup(200);
         ladsLayoutToggle = addRenderableWidget(new CompactButton12111(0, 6, 20, 20, Component.literal(TitleScreenTheme.layoutToggleLabel()),
             () -> "layout", button -> TitleScreenModule.toggleLayout()));
         ladsLayoutToggle.setTabOrderGroup(203);
@@ -107,7 +122,7 @@ public abstract class TitleScreenMixin extends Screen {
         if (!changed) {
             int index = 0;
             for (GuiEventListener child : children()) {
-                if (!(child instanceof AbstractWidget widget) || ladsOverlayTool(widget) || widget == ladsLayoutToggle) continue;
+                if (!(child instanceof AbstractWidget widget) || ladsOverlayTool(widget) || widget == ladsLayoutToggle || widget == ladsSwitchButton) continue;
                 if (index >= ladsTitleWidgets.size() || ladsTitleWidgets.get(index) != widget) {
                     changed = true;
                     break;
@@ -121,12 +136,12 @@ public abstract class TitleScreenMixin extends Screen {
         ladsTitleWidgets = new ArrayList<>();
         // Reuse every original widget, including restricted multiplayer, demo and late mod actions.
         for (GuiEventListener child : children()) {
-            if (child instanceof AbstractWidget widget && !ladsOverlayTool(widget) && widget != ladsLayoutToggle) ladsTitleWidgets.add(widget);
+            if (child instanceof AbstractWidget widget && !ladsOverlayTool(widget) && widget != ladsLayoutToggle && widget != ladsSwitchButton) ladsTitleWidgets.add(widget);
         }
         // Keep the home screen focused. All secondary native/mod actions remain in More.
         for (AbstractWidget widget : List.copyOf(ladsTitleWidgets)) {
             String key = ladsMessageKey(widget);
-            boolean main = widget == ladsSettingsButton || widget == ladsMoreButton
+            boolean main = widget == ladsSettingsButton || widget == ladsMoreButton || widget == ladsNetworkButton
                 || key.equals("menu.singleplayer") || key.equals("menu.playdemo")
                 || key.equals("menu.multiplayer") || key.equals("menu.options") || key.equals("menu.quit");
             if (!main) {
@@ -141,7 +156,7 @@ public abstract class TitleScreenMixin extends Screen {
         }
         ladsTitleWidgets.sort(Comparator.comparingInt(this::ladsButtonOrder));
         ladsTitleLayout = TitleScreenTheme.layout(targetW, targetH, ladsTitleWidgets.size(), false);
-        ladsNoirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, ladsTitleWidgets.size(), -1);
+        ladsNoirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, ladsTitleWidgets.size(), ladsTitleWidgets.indexOf(ladsNetworkButton));
         ladsLayoutWidth = targetW;
         ladsLayoutHeight = targetH;
         Component toggleLabel = Component.literal(TitleScreenTheme.layoutToggleLabel());
@@ -177,6 +192,7 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private int ladsButtonOrder(AbstractWidget widget) {
+        if (widget == ladsNetworkButton) return 1; // after Multiplayer: the stable sort keeps the vanilla button (added first) ahead
         if (widget == ladsSettingsButton) return 3;
         if (widget == ladsMoreButton) return 7;
         if (widget == ladsAccountsButton) return 4;
@@ -198,6 +214,7 @@ public abstract class TitleScreenMixin extends Screen {
     private String ladsButtonIcon(AbstractWidget widget) {
         if (widget == ladsSettingsButton) return "mods";
         if (widget == ladsAccountsButton) return "user";
+        if (widget == ladsNetworkButton) return "server";
         if (ladsIsModMenuWidget(widget)) return "mods";
         return switch (ladsMessageKey(widget)) {
             case "menu.singleplayer", "menu.playdemo" -> "play";
@@ -248,14 +265,16 @@ public abstract class TitleScreenMixin extends Screen {
         var adapter = new GuiGraphicsLadsAdapter(graphics, font);
         String version = "1.21.11" + (minecraft.isDemo() ? " Demo" : "");
         float matrixScale = ladsMatrixScale();
+        TitleScreenTheme.Rect switchBox;
         if (ladsNoirLayout != null) {
             renderPanorama(graphics, partialTick);
             graphics.pose().pushMatrix();
             graphics.pose().scale(matrixScale, matrixScale);
-            TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, false);
+            switchBox = TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, true);
         } else {
-            TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds);
+            switchBox = TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds, true);
         }
+        if (switchBox != null) ladsSwitchButton.setRectangle(switchBox.width(), switchBox.height(), switchBox.x(), switchBox.y());
         TitleWidgetRegistry.beginFrame(this, adapter, elapsed, reducedMotion);
         TitleNoir.beginFrame(ladsNoirLayout);
         try {
