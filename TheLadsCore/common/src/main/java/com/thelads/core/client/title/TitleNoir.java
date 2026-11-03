@@ -72,7 +72,7 @@ public final class TitleNoir {
         int rail = Math.max(200, Math.min(280, width * 38 / 100));
         int x = 12, inner = rail - x - 10;
         int strip = height >= 280 ? 18 : 16, stripTop = height - strip;
-        int heroHeight = height >= 330 ? 28 : height >= 280 ? 24 : 20, gap = height >= 280 ? 4 : 3;
+        int heroHeight = height >= 330 ? 28 : height >= 280 ? 24 : 22, gap = height >= 280 ? 4 : 2;
         int networkHeight = height >= 280 ? 18 : 16, rowHeight = height >= 330 ? 14 : 12;
         int heroes = Math.min(count, networkIndex >= 0 ? Math.min(2, networkIndex) : 2);
         boolean network = networkIndex >= 0 && networkIndex == heroes && networkIndex < count;
