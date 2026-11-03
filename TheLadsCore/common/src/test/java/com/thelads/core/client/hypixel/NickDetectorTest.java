@@ -102,4 +102,19 @@ class NickDetectorTest {
         NickDetector.tick(game, clock += 2 * S);
         assertEquals("Bobby: hi", Nicknames.rename("Bobby: hi", Nicknames.active("Me")), "off: no marker");
     }
+
+    @Test void neverMarksTheLocalPlayerNickedThemselves() {
+        HypixelSafetyManager.bypass(NickDetectorModule.NAME);
+        module.setEnabled(true);
+        LadsGameBridge nickedMe = new DefaultGameBridge() {
+            @Override public String getServerAddress() { return address; }
+            @Override public boolean isIngame() { return true; }
+            @Override public String getPlayerName() { return "Me"; }
+            @Override public Session session() { return new Session(REAL, "Me", "0"); }
+            @Override public List<NickDetector.Profile> getTabProfiles() { return List.of(new NickDetector.Profile(REAL, "Nicky", skin(OTHER))); }
+        };
+        LadsGameBridge.set(nickedMe);
+        NickDetector.tick(nickedMe, clock += 2 * S);
+        assertTrue(NickDetector.markers().isEmpty());
+    }
 }

@@ -179,6 +179,8 @@ public partial class MainWindow
                 };
             commands["Check active profile"] = () => InspectProfileAsync(_profileService.GetActiveProfile());
             commands["Import profile settings preset"] = ImportProfilePresetAsync;
+            commands["Import settings from another client"] = () => { OpenClientImport(); return Task.CompletedTask; };
+            commands["Join The Lads Network (" + ServerListService.PinnedAddress + ")"] = () => StartLaunchAsync(false, new GraphicsRenderer.Relaunch("Network", null, ServerListService.PinnedAddress));
             commands["Toggle reduced motion"] = () => { ReducedMotionCheck.IsChecked = !settings.ReducedMotion; ShowActionNotice(settings.ReducedMotion ? "Reduced motion enabled." : "Animations enabled."); return Task.CompletedTask; };
             var search = new TextBox { PlaceholderText = "Type a page or action…", Margin = new Thickness(0, 0, 0, 12) };
             var list = new ListBox { ItemsSource = commands.Keys.ToArray(), SelectedIndex = 0 };

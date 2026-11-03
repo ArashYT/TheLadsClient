@@ -47,6 +47,8 @@ class LadsNetworkTest {
     void addressesWithPortsAndOtherHosts() {
         assertTrue(LadsNetwork.isAddress("mc.arashyt.ca"));
         assertTrue(LadsNetwork.isAddress(" Lobby.ArashYT.ca:25565 "));
+        assertTrue(LadsNetwork.isAddress("mc.arashyt.ca."));
+        assertTrue(LadsNetwork.isAddress("mc.arashyt.ca.:25565"));
         assertFalse(LadsNetwork.isAddress(null));
         assertFalse(LadsNetwork.isAddress("mc.hypixel.net"));
         assertFalse(LadsNetwork.isAddress("arashyt.ca.evil.net:25565"));
