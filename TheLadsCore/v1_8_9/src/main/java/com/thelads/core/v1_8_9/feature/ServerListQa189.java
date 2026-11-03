@@ -106,6 +106,15 @@ final class ServerListQa189 {
                 input.ladsMouseClicked(rows.lads$rowLeft(row) + 8, rows.lads$rowTop(row) + (s[3].equals("up") ? 8 : 24), 0);
                 break;
             }
+            case "wheel": // negative scrolls down, as elsewhere
+                list(screen).scrollBy((int) (-Double.parseDouble(s[2]) * 18));
+                break;
+            case "dbl": {
+                int[] at = at(mc, s, 2);
+                input.ladsMouseClicked(at[0], at[1], 0);
+                input.ladsMouseClicked(at[0], at[1], 0);
+                break;
+            }
             case "worlds":
                 mc.displayGuiScreen(new GuiSelectWorld(screen));
                 break;

@@ -102,6 +102,14 @@ final class ServerListQa12111 {
                 ServerSelectionList.Entry row = servers(mc).children().get(Integer.parseInt(s[2]));
                 click(mc, row.getContentRight() - 12, row.getContentY() + 26, InputConstants.MOUSE_BUTTON_LEFT);
             }
+            case "wheel" -> { // wheel steps over the list: negative scrolls down
+                int[] at = at(mc, new String[] {"row", "0"}, 0);
+                screen(mc).mouseScrolled(at[0], list(mc).getY() + 20, 0, Double.parseDouble(s[2]));
+            }
+            case "dbl" -> {
+                int[] at = at(mc, s, 2);
+                screen(mc).mouseClicked(event(at[0], at[1], InputConstants.MOUSE_BUTTON_LEFT), true);
+            }
             case "hoverbutton" -> {
                 ServerSelectionList.Entry row = servers(mc).children().get(Integer.parseInt(s[2]));
                 ServerListDrag.qaMouseX = row.getContentRight() - 12;

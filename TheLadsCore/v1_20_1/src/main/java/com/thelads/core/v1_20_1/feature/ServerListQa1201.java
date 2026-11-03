@@ -94,6 +94,12 @@ final class ServerListQa1201 {
                 int row = Integer.parseInt(s[2]);
                 click(mc, rows.lads$rowLeft(row) + ServerListColumns.width(ServerListColumns.fit(ServerListColumns.wanted(), mc.screen.width), mc.screen.width) - 12, rows.lads$rowTop(row) + 26, 0);
             }
+            case "wheel" -> mc.screen.mouseScrolled(mc.screen.width / 2, 50, Double.parseDouble(s[2])); // negative scrolls down
+            case "dbl" -> {
+                int[] at = at(mc, s, 2);
+                mc.screen.mouseClicked(at[0], at[1], 0);
+                if (mc.screen != null) mc.screen.mouseClicked(at[0], at[1], 0);
+            }
             case "hoverbutton" -> {
                 ServerListColumns.Rows rows = rows(mc);
                 int row = Integer.parseInt(s[2]);
