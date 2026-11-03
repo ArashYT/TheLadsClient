@@ -299,7 +299,7 @@ final class NativeMenuAccessProbe {
 
     // ---- U4: title, pause and GUI chrome (the 26.x NativeRequestProbe and Version133Probe checks, driven through real frames) ----
 
-    /** On the real title screen: the Lads layout keeps six main actions, More holds the rest, Replays opens Flashback's browser. */
+    /** On the real title screen: the Lads layout keeps six main actions with Network, Switch and the layout toggle, More holds the rest, Replays opens Flashback's browser. */
     private static void titleChrome(Minecraft mc, Screen title) {
         // The layout is arranged on the first draw or click; a click on no widget arranges the re-opened title.
         title.mouseClicked(new MouseButtonEvent(-1, -1, new MouseButtonInfo(0, 0)), false);
@@ -308,11 +308,11 @@ final class NativeMenuAccessProbe {
         var main = visible(title).stream().filter(widget -> !overlayTool(widget)).toList();
         var labels = main.stream().map(widget -> widget.getMessage().getString()).toList();
         LOGGER.info("Lads menu access probe: the Lads title shows {} and leaves {} FancyMenu overlay tool(s) in place", labels, tools.size());
-        for (String label : List.of("Lads Mods", "More...", Component.translatable("menu.singleplayer").getString(),
+        for (String label : List.of("Lads Mods", "More...", "Network", "Switch", Component.translatable("menu.singleplayer").getString(),
                 Component.translatable("menu.multiplayer").getString(), Component.translatable("menu.options").getString(),
                 Component.translatable("menu.quit").getString()))
             check(labels.contains(label), "the Lads title shows " + label + " " + labels);
-        check(labels.size() == 6, "only the six main actions stay on the Lads title, found " + labels);
+        check(labels.size() == 9, "only the six main actions, Network, Switch and the layout toggle stay on the Lads title, found " + labels);
         check(title.children().stream().noneMatch(child -> child.getClass().getName().startsWith("gg.essential.")),
             "no Essential widget is left on the Lads title (Essential overlap fix)");
         apart(main, title, "title");
