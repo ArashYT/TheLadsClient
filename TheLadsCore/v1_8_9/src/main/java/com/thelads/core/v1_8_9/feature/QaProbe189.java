@@ -177,7 +177,7 @@ public final class QaProbe189 {
 
     /** QA: a servers.dat with no stored choice, Disabled and Enabled, read by the game's own list; the title Network button's entry. The file is put back. */
     private static void packs113(Minecraft mc) throws IOException {
-        File file = com.thelads.core.shared.SharedContentPaths.serversFile().toFile();
+        File file = new File(mc.mcDataDir, "servers.dat");
         byte[] before = file.exists() ? Files.readAllBytes(file.toPath()) : null;
         net.minecraft.nbt.NBTTagList servers = new net.minecraft.nbt.NBTTagList();
         for (String kind : new String[] {"none", "false", "true"}) {

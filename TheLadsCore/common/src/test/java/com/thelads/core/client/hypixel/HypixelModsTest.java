@@ -1029,6 +1029,28 @@ class HypixelModsTest {
         assertTrue(sent.contains("/play duels_bridge_duel"), "its end: " + sent);
     }
 
+    /** The research lines (no real capture is in the repo) through Bridge's whole path: only a game end line replays. */
+    @Test void bridgeReplaysOnlyOnAGameEndLineOfTheFixtures() throws Exception {
+        com.google.gson.JsonArray fixtures;
+        try (var in = getClass().getResourceAsStream("/hypixel/chat-fixtures.json")) {
+            fixtures = com.google.gson.JsonParser.parseString(new String(in.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonArray();
+        }
+        int ends = 0, others = 0;
+        for (var element : fixtures) {
+            var fixture = element.getAsJsonObject();
+            String raw = fixture.get("raw").getAsString().replace("Arash", "Me"), kind = fixture.get("kind").getAsString();
+            if (kind.equals("friend_request")) continue;
+            HypixelMods.resetForTest();
+            sent.clear();
+            inDuel("DUELS_BRIDGE_DUEL");
+            HypixelMods.chat(raw, 10 * S);
+            for (long t = 10 * S; t <= 25 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+            assertEquals(kind.equals("game_end"), sent.contains("/play duels_bridge_duel"), kind + ": " + raw + " -> " + sent);
+            if (kind.equals("game_end")) ends++; else others++;
+        }
+        assertTrue(ends > 10 && others > 20, ends + " ends, " + others + " others");
+    }
+
     @Test void classicDuelDeathStillReplays() {
         inDuel("DUELS_CLASSIC_DUEL");
         HypixelMods.chat("Me was killed by Enemy.", 10 * S);
