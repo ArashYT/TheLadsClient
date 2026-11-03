@@ -59,6 +59,8 @@ public abstract class ServerListEntryNormalMixin {
 
     @Redirect(method = "drawEntry", at = @At(value = "INVOKE", target = "Ljava/util/concurrent/ThreadPoolExecutor;submit(Ljava/lang/Runnable;)Ljava/util/concurrent/Future;"))
     private Future<?> ladsParallelPing(ThreadPoolExecutor executor, Runnable task) {
+        // Vanilla's LazyLoadBase has no lock: pings starting together on the first open would see it "loaded" with no event loop yet, an NPE that reads as "Can't connect to server."
+        net.minecraft.network.NetworkManager.CLIENT_NIO_EVENTLOOP.getValue();
         if (this.field_148301_e != null) {
             // Restore previous MOTD and population while the refresh ping is running so the entry does not blank out or flicker
             if ((this.field_148301_e.serverMOTD == null || this.field_148301_e.serverMOTD.isEmpty()) && this.ladsPreviousMOTD != null) {
