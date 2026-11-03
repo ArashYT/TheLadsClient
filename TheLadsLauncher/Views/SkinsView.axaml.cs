@@ -1,3 +1,4 @@
+using TheLadsLauncher.Controls;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -335,10 +336,12 @@ public partial class SkinsView : UserControl
             Grid.SetColumn(text, 1);
             row.Children.Add(text);
             var apply = new Button { Content = "Apply", Classes = { "action" }, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+            Ico.SetName(apply, "check");
             apply.Click += async (_, _) => await ApplyComboAsync(combo);
             Grid.SetColumn(apply, 2);
             row.Children.Add(apply);
             var delete = new Button { Content = "Delete", Classes = { "danger" }, VerticalAlignment = VerticalAlignment.Center };
+            Ico.SetName(delete, "trash");
             delete.Click += async (_, _) => await RunAsync("Deleting…", () => { Library.RemoveCombo(combo.Id); RenderCombos(); return Task.FromResult($"Deleted combo {combo.Name}."); });
             Grid.SetColumn(delete, 3);
             row.Children.Add(delete);

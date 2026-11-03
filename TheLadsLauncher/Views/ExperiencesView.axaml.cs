@@ -1,3 +1,4 @@
+using TheLadsLauncher.Controls;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -242,6 +243,7 @@ public partial class ExperiencesView : UserControl
 
         var btnState = ExperiencesService.GetExperienceButtonState(exp, installed, running, busy, allowMultiInstance);
         playBtn.Content = btnState.Text;
+        Ico.SetName(playBtn, installed ? "play" : "download");
         playBtn.IsEnabled = btnState.IsEnabled;
 
         if (running)
@@ -430,12 +432,13 @@ public partial class ExperiencesView : UserControl
             var quickBtn = new Button
             {
                 Classes = { "action" },
-                Content = $"✕ Close Instance {captured.Number} ({captured.Username})",
+                Content = $"Close Instance {captured.Number} ({captured.Username})",
                 Height = 28,
                 FontSize = 11,
                 Padding = new Thickness(10, 0),
                 Margin = new Thickness(0, 2, 8, 2)
             };
+            Ico.SetName(quickBtn, "cross-small");
             quickBtn.Click += (_, _) => CloseInstance(exp, runningList, busy, statusText, progressBar, captured);
             quickButtons.Children.Add(quickBtn);
         }
@@ -455,13 +458,14 @@ public partial class ExperiencesView : UserControl
         var closeAllBtn = new Button
         {
             Classes = { "action" },
-            Content = ordered.Count > 1 ? $"✕ Close All ({ordered.Count})" : "✕ Close All",
+            Content = ordered.Count > 1 ? $"Close All ({ordered.Count})" : "Close All",
             Height = 28,
             FontSize = 11,
             Foreground = Brush.Parse("#FF8A8A"),
             Padding = new Thickness(10, 0),
             Margin = new Thickness(0, 2, 0, 2)
         };
+        Ico.SetName(closeAllBtn, "cross-small");
         closeAllBtn.Click += (_, _) => CloseAllInstances(exp, runningList, busy, statusText, progressBar);
         quickButtons.Children.Add(closeAllBtn);
     }

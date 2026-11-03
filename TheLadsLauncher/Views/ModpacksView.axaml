@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.Views.ModpacksView">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:c="using:TheLadsLauncher.Controls" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.Views.ModpacksView">
   <UserControl.Styles>
     <Style Selector="Button.card">
       <Setter Property="Background" Value="#1B1C20" />
@@ -28,15 +28,15 @@
       </TabControl>
       <Grid Grid.Row="2" Margin="0,4,0,14">
         <Grid x:Name="MineToolbar" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto">
-          <Button Classes="launch" Content="+ Create" Height="34" Padding="16,0" Click="Create_Click" />
-          <Button Grid.Column="1" Classes="action" Content="Import .mrpack / .zip" Height="34" Margin="8,0,0,0" Click="Import_Click" />
+          <Button c:Ico.Name="plus" Classes="launch" Content="Create" Height="34" Padding="16,0" Click="Create_Click" />
+          <Button c:Ico.Name="file-import" Grid.Column="1" Classes="action" Content="Import .mrpack / .zip" Height="34" Margin="8,0,0,0" Click="Import_Click" />
           <TextBox x:Name="MineSearch" Grid.Column="3" Width="210" PlaceholderText="Search my modpacks…" TextChanged="MineFilter_Changed" />
           <ComboBox x:Name="MineSort" Grid.Column="4" Width="160" Margin="8,0,0,0" SelectionChanged="MineFilter_Changed" />
           <ComboBox x:Name="MineLoader" Grid.Column="5" Width="140" Margin="8,0,0,0" SelectionChanged="MineFilter_Changed" />
         </Grid>
         <Grid x:Name="ExternalToolbar" ColumnDefinitions="Auto,Auto,*,Auto,Auto" IsVisible="False">
-          <Button Classes="action" Content="+ Add folder" Height="34" Click="AddExternalFolder_Click" />
-          <Button Grid.Column="1" Classes="action" Content="Rescan" Height="34" Margin="8,0,0,0" Click="RescanExternal_Click" />
+          <Button c:Ico.Name="add-folder" Classes="action" Content="Add folder" Height="34" Click="AddExternalFolder_Click" />
+          <Button c:Ico.Name="refresh" Grid.Column="1" Classes="action" Content="Rescan" Height="34" Margin="8,0,0,0" Click="RescanExternal_Click" />
           <TextBox x:Name="ExternalSearch" Grid.Column="2" Width="210" HorizontalAlignment="Right" PlaceholderText="Search external instances…" TextChanged="ExternalFilter_Changed" />
           <ComboBox x:Name="ExternalLauncherFilter" Grid.Column="3" Width="160" Margin="8,0,0,0" SelectionChanged="ExternalFilter_Changed" />
           <ComboBox x:Name="ExternalSort" Grid.Column="4" Width="160" Margin="8,0,0,0" SelectionChanged="ExternalFilter_Changed" />
@@ -46,7 +46,7 @@
           <ComboBox x:Name="BrowseVersion" Grid.Column="1" Width="130" Margin="8,0,0,0" SelectionChanged="BrowseFilter_Changed" />
           <ComboBox x:Name="BrowseLoader" Grid.Column="2" Width="130" Margin="8,0,0,0" SelectionChanged="BrowseFilter_Changed" />
           <ComboBox x:Name="BrowseSort" Grid.Column="3" Width="150" Margin="8,0,0,0" SelectionChanged="BrowseFilter_Changed" />
-          <Button Grid.Column="4" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="BrowseSearch_Click" />
+          <Button c:Ico.Name="search" Grid.Column="4" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="BrowseSearch_Click" />
         </Grid>
       </Grid>
       <Grid Grid.Row="3" RowDefinitions="Auto,*">
@@ -58,7 +58,7 @@
         <ScrollViewer x:Name="BrowseScroll" Grid.Row="1" IsVisible="False">
           <StackPanel>
             <StackPanel x:Name="Results" Spacing="8" />
-            <Button x:Name="MoreButton" Classes="action" Content="Load more" HorizontalAlignment="Center" Margin="0,10" IsVisible="False" Click="More_Click" />
+            <Button c:Ico.Name="arrow-small-down" x:Name="MoreButton" Classes="action" Content="Load more" HorizontalAlignment="Center" Margin="0,10" IsVisible="False" Click="More_Click" />
           </StackPanel>
         </ScrollViewer>
       </Grid>
@@ -70,17 +70,11 @@
       <Grid RowDefinitions="Auto,Auto" Margin="0,0,0,14">
         <!-- Top bar: Back button + Title actions -->
         <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
-          <Button Classes="action" Content="&#8592; Modpacks" Height="32" Padding="12,0" VerticalAlignment="Center" Click="Back_Click" />
+          <Button c:Ico.Name="arrow-small-left" Classes="action" Content="Modpacks" Height="32" Padding="12,0" VerticalAlignment="Center" Click="Back_Click" />
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-            <Button Classes="icon" ToolTip.Tip="Open modpack folder" Width="34" Height="34" Click="OpenFolder_Click">
-              <TextBlock Text="📁" FontSize="13" />
-            </Button>
-            <Button Classes="icon" ToolTip.Tip="Instance RAM &amp; Settings" Width="34" Height="34" Click="OpenSettings_Click">
-              <TextBlock Text="⚙" FontSize="13" />
-            </Button>
-            <Button x:Name="DeleteButton" Classes="icon danger" ToolTip.Tip="Delete Modpack" Width="34" Height="34" Click="Delete_Click">
-              <TextBlock Text="🗑" FontSize="13" />
-            </Button>
+            <Button Classes="icon" ToolTip.Tip="Open modpack folder" Width="34" Height="34" Click="OpenFolder_Click" c:Ico.Name="folder-open" />
+            <Button Classes="icon" ToolTip.Tip="Instance RAM &amp; Settings" Width="34" Height="34" Click="OpenSettings_Click" c:Ico.Name="settings" />
+            <Button x:Name="DeleteButton" Classes="icon danger" ToolTip.Tip="Delete Modpack" Width="34" Height="34" Click="Delete_Click" c:Ico.Name="trash" />
           </StackPanel>
         </Grid>
 
@@ -116,7 +110,7 @@
 
           <!-- Big CurseForge Play Button -->
           <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="6" HorizontalAlignment="Right">
-            <Button x:Name="PlayButton" Classes="cfPlay" Content="Play" MinWidth="130" Height="40" HorizontalContentAlignment="Center" Click="Play_Click" />
+            <Button c:Ico.Name="play" x:Name="PlayButton" Classes="cfPlay" Content="Play" MinWidth="130" Height="40" HorizontalContentAlignment="Center" Click="Play_Click" />
           </StackPanel>
         </Grid>
       </Grid>
@@ -132,7 +126,7 @@
             <TabItem x:Name="TabLogs" Header="Logs" />
             <TabItem x:Name="TabScreenshots" Header="Screenshots" />
           </TabControl>
-          <Button x:Name="HeaderAddContentButton" Grid.Column="1" Classes="action" Content="+ Add Content" Height="34" Padding="16,0" FontWeight="SemiBold" VerticalAlignment="Center" Click="AddMods_Click" />
+          <Button c:Ico.Name="plus" x:Name="HeaderAddContentButton" Grid.Column="1" Classes="action" Content="Add Content" Height="34" Padding="16,0" FontWeight="SemiBold" VerticalAlignment="Center" Click="AddMods_Click" />
         </Grid>
 
         <!-- Main Tab Contents -->
@@ -161,12 +155,12 @@
                   </Grid>
 
                   <WrapPanel Margin="0,2,0,0">
-                    <Button Classes="action" Content="Default (0)" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="0" />
-                    <Button Classes="action" Content="4 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="4096" />
-                    <Button Classes="action" Content="6 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="6144" />
-                    <Button Classes="action" Content="8 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="8192" />
-                    <Button Classes="action" Content="12 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="12288" />
-                    <Button Classes="action" Content="16 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="16384" />
+                    <Button c:Ico.Name="memory" Classes="action" Content="Default (0)" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="0" />
+                    <Button c:Ico.Name="memory" Classes="action" Content="4 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="4096" />
+                    <Button c:Ico.Name="memory" Classes="action" Content="6 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="6144" />
+                    <Button c:Ico.Name="memory" Classes="action" Content="8 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="8192" />
+                    <Button c:Ico.Name="memory" Classes="action" Content="12 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="12288" />
+                    <Button c:Ico.Name="memory" Classes="action" Content="16 GB" FontSize="11" Padding="8,4" Margin="0,0,6,6" Click="RamPreset_Click" Tag="16384" />
                   </WrapPanel>
                 </StackPanel>
               </Border>
@@ -177,7 +171,7 @@
                   <TextBlock Classes="sectionTitle" Text="INSTANCE SETTINGS" />
                   <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
                     <TextBox x:Name="NameBox" PlaceholderText="Instance Name" Height="34" VerticalContentAlignment="Center" />
-                    <Button Grid.Column="1" Classes="action" Content="Change icon" Height="34" Margin="8,0,0,0" Click="Icon_Click" />
+                    <Button c:Ico.Name="picture" Grid.Column="1" Classes="action" Content="Change icon" Height="34" Margin="8,0,0,0" Click="Icon_Click" />
                   </Grid>
 
                   <Border Height="1" Background="#2A2B31" Margin="0,2" />
@@ -201,14 +195,14 @@
                   <TextBlock Classes="muted" Text="Updating keeps your worlds, custom options, and manually added mods." />
                   <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
                     <ComboBox x:Name="VersionBox" HorizontalAlignment="Stretch" Margin="0,0,8,0" />
-                    <Button x:Name="UpdateButton" Grid.Column="1" Classes="action" Content="Install this version" Click="Update_Click" />
+                    <Button c:Ico.Name="download" x:Name="UpdateButton" Grid.Column="1" Classes="action" Content="Install this version" Click="Update_Click" />
                   </Grid>
                 </StackPanel>
               </Border>
 
               <!-- Save Actions -->
               <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,20">
-                <Button Classes="launch" Content="Save changes" Height="36" Padding="20,0" Click="Save_Click" />
+                <Button c:Ico.Name="disk" Classes="launch" Content="Save changes" Height="36" Padding="20,0" Click="Save_Click" />
               </StackPanel>
             </StackPanel>
           </ScrollViewer>
@@ -217,11 +211,11 @@
           <Grid x:Name="ContentPanel" IsVisible="False" RowDefinitions="Auto,Auto,*" Margin="0,6,0,0">
             <!-- Secondary Subtabs (Mods, Data Packs, Resource Packs, Shaders, Worlds) -->
             <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,10">
-              <Button x:Name="SubTabModsBtn" Classes="action" Content="Mods (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="mods" />
-              <Button x:Name="SubTabDatapacksBtn" Classes="action" Content="Data Packs (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="datapacks" />
-              <Button x:Name="SubTabResourcePacksBtn" Classes="action" Content="Resource Packs (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="resourcepacks" />
-              <Button x:Name="SubTabShadersBtn" Classes="action" Content="Shaders (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="shaderpacks" />
-              <Button x:Name="SubTabWorldsBtn" Classes="action" Content="Worlds (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="worlds" />
+              <Button c:Ico.Name="puzzle-piece" x:Name="SubTabModsBtn" Classes="action" Content="Mods (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="mods" />
+              <Button c:Ico.Name="box" x:Name="SubTabDatapacksBtn" Classes="action" Content="Data Packs (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="datapacks" />
+              <Button c:Ico.Name="layers" x:Name="SubTabResourcePacksBtn" Classes="action" Content="Resource Packs (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="resourcepacks" />
+              <Button c:Ico.Name="sparkles" x:Name="SubTabShadersBtn" Classes="action" Content="Shaders (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="shaderpacks" />
+              <Button c:Ico.Name="globe" x:Name="SubTabWorldsBtn" Classes="action" Content="Worlds (0)" Height="30" Padding="12,0" FontWeight="SemiBold" Click="SubTab_Click" Tag="worlds" />
             </StackPanel>
 
             <!-- Content Toolbar (Update all, search, filter, refresh, from file) -->
@@ -229,7 +223,7 @@
               <!-- Update All Button with Count Badge -->
               <Button x:Name="UpdateAllButton" Classes="action" Height="32" Padding="10,0" VerticalAlignment="Center" Click="UpdateAll_Click">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                  <TextBlock Text="🔄 Update all" VerticalAlignment="Center" />
+                  <c:Glyph Kind="refresh" Size="13" VerticalAlignment="Center" /><TextBlock Text="Update all" VerticalAlignment="Center" />
                   <Border x:Name="UpdateAllBadge" Background="#F16436" CornerRadius="10" MinWidth="18" Height="18" Padding="5,0" VerticalAlignment="Center" IsVisible="False">
                     <TextBlock x:Name="UpdateAllBadgeText" Text="1" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
                   </Border>
@@ -239,13 +233,9 @@
               <TextBlock x:Name="ContentUpdateStatus" Grid.Column="1" Foreground="#8F919C" FontSize="11.5" VerticalAlignment="Center" Margin="14,0,0,0" TextTrimming="CharacterEllipsis" />
 
               <TextBox x:Name="ContentFilterSearch" Grid.Column="2" Width="200" Height="32" PlaceholderText="Search installed..." TextChanged="ContentFilter_Changed" Margin="8,0,0,0" />
-              <Button x:Name="AddFromFileButton" Grid.Column="3" Classes="action" Content="+ From file" Height="32" Margin="8,0,0,0" Click="AddCurrentFromFile_Click" />
-              <Button Classes="icon" Grid.Column="4" ToolTip.Tip="Refresh list and check for updates" Width="32" Height="32" Margin="8,0,0,0" Click="RefreshCurrentContent_Click">
-                <TextBlock Text="🔄" FontSize="12" />
-              </Button>
-              <Button Classes="icon" Grid.Column="5" ToolTip.Tip="Open current folder in File Explorer" Width="32" Height="32" Margin="8,0,0,0" Click="OpenCurrentFolder_Click">
-                <TextBlock Text="📁" FontSize="12" />
-              </Button>
+              <Button c:Ico.Name="add-document" x:Name="AddFromFileButton" Grid.Column="3" Classes="action" Content="From file" Height="32" Margin="8,0,0,0" Click="AddCurrentFromFile_Click" />
+              <Button Classes="icon" Grid.Column="4" ToolTip.Tip="Refresh list and check for updates" Width="32" Height="32" Margin="8,0,0,0" Click="RefreshCurrentContent_Click" c:Ico.Name="refresh" />
+              <Button Classes="icon" Grid.Column="5" ToolTip.Tip="Open current folder in File Explorer" Width="32" Height="32" Margin="8,0,0,0" Click="OpenCurrentFolder_Click" c:Ico.Name="folder-open" />
             </Grid>
 
             <!-- Table Area -->
@@ -314,8 +304,8 @@
             <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="0,0,0,10">
               <TextBlock Text="latest.log" FontWeight="SemiBold" FontSize="13" Foreground="#C5C7D0" VerticalAlignment="Center" />
               <TextBox x:Name="LogsFilterBox" Grid.Column="1" Width="200" Height="30" PlaceholderText="Filter log..." Margin="8,0,0,0" TextChanged="LogsFilter_Changed" />
-              <Button Grid.Column="2" Classes="action" Content="Copy all" Height="30" Margin="8,0,0,0" Click="CopyLog_Click" />
-              <Button Grid.Column="3" Classes="action" Content="Open in Editor" Height="30" Margin="8,0,0,0" Click="OpenLogFile_Click" />
+              <Button c:Ico.Name="copy" Grid.Column="2" Classes="action" Content="Copy all" Height="30" Margin="8,0,0,0" Click="CopyLog_Click" />
+              <Button c:Ico.Name="edit" Grid.Column="3" Classes="action" Content="Open in Editor" Height="30" Margin="8,0,0,0" Click="OpenLogFile_Click" />
             </Grid>
             <Border Grid.Row="1" Background="#111215" BorderBrush="#26272E" BorderThickness="1" CornerRadius="6" Padding="12">
               <ScrollViewer x:Name="LogsScroll">
@@ -328,7 +318,7 @@
           <Grid x:Name="ScreenshotsPanel" IsVisible="False" RowDefinitions="Auto,*" Margin="0,8,0,0">
             <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
               <TextBlock x:Name="ScreenshotsHeader" Text="SCREENSHOTS" FontWeight="SemiBold" FontSize="13" Foreground="#C5C7D0" VerticalAlignment="Center" />
-              <Button Grid.Column="1" Classes="action" Content="Open screenshots folder" Height="30" Click="OpenScreenshotsFolder_Click" />
+              <Button c:Ico.Name="folder-open" Grid.Column="1" Classes="action" Content="Open screenshots folder" Height="30" Click="OpenScreenshotsFolder_Click" />
             </Grid>
             <ScrollViewer Grid.Row="1">
               <WrapPanel x:Name="ScreenshotsGallery" />
@@ -352,8 +342,8 @@
           <TextBlock Text="The newest loader version for that Minecraft version is used. Add mods to its mods folder (Open folder)." Foreground="#A0A1AA" FontSize="11" TextWrapping="Wrap" />
           <TextBlock x:Name="CreateStatus" Foreground="#FFC07D" TextWrapping="Wrap" />
           <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-            <Button Content="Cancel" Click="CreateCancel_Click" />
-            <Button x:Name="CreateConfirm" Classes="launch" Content="Create" Padding="18,8" Click="CreateConfirm_Click" />
+            <Button c:Ico.Name="cross" Content="Cancel" Click="CreateCancel_Click" />
+            <Button c:Ico.Name="check" x:Name="CreateConfirm" Classes="launch" Content="Create" Padding="18,8" Click="CreateConfirm_Click" />
           </StackPanel>
         </StackPanel>
       </Border>
@@ -369,9 +359,7 @@
             <TextBlock x:Name="AddContentTitle" FontSize="18" FontWeight="Bold" Foreground="White" />
             <TextBlock x:Name="AddContentSubtitle" FontSize="11.5" Foreground="#A0A1AA" />
           </StackPanel>
-          <Button Grid.Column="2" Classes="icon" Width="36" Height="36" Click="AddContentBack_Click" ToolTip.Tip="Close browser">
-            <TextBlock Text="✕" FontSize="14" FontWeight="Bold" />
-          </Button>
+          <Button Grid.Column="2" Classes="icon" Width="36" Height="36" Click="AddContentBack_Click" ToolTip.Tip="Close browser" c:Ico.Name="cross-small" />
         </Grid>
 
         <!-- Search input box -->
@@ -386,13 +374,13 @@
             <Border x:Name="AddContentLoaderPill" Classes="chip" Padding="10,4" Background="#24252C">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <TextBlock x:Name="AddContentLoaderPillText" Text="Fabric" FontSize="11" Foreground="#C5C7D0" FontWeight="SemiBold" />
-                <TextBlock Text="✕" FontSize="10" Foreground="#8F919C" Cursor="Hand" PointerPressed="ClearLoaderFilter_Click" />
+                <c:Glyph Kind="cross-small" Size="12" Foreground="#8F919C" Cursor="Hand" PointerPressed="ClearLoaderFilter_Click" ToolTip.Tip="Clear filter" />
               </StackPanel>
             </Border>
             <Border x:Name="AddContentVersionPill" Classes="chip" Padding="10,4" Background="#24252C">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <TextBlock x:Name="AddContentVersionPillText" Text="26.3" FontSize="11" Foreground="#C5C7D0" FontWeight="SemiBold" />
-                <TextBlock Text="✕" FontSize="10" Foreground="#8F919C" Cursor="Hand" PointerPressed="ClearVersionFilter_Click" />
+                <c:Glyph Kind="cross-small" Size="12" Foreground="#8F919C" Cursor="Hand" PointerPressed="ClearVersionFilter_Click" ToolTip.Tip="Clear filter" />
               </StackPanel>
             </Border>
           </StackPanel>
@@ -420,7 +408,7 @@
               <ComboBoxItem Content="Recently updated" />
             </ComboBox>
             <ComboBox x:Name="AddContentCategory" Grid.Column="4" Width="130" Height="34" Margin="8,0,0,0" SelectionChanged="AddContentFilter_Changed" />
-            <Button Grid.Column="5" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="AddContentSearch_Click" />
+            <Button c:Ico.Name="search" Grid.Column="5" Classes="action" Content="Search" Height="34" Margin="8,0,0,0" Click="AddContentSearch_Click" />
           </Grid>
         </Grid>
 
@@ -439,11 +427,9 @@
       <Grid RowDefinitions="Auto,Auto,*" Margin="32,20,32,18">
         <!-- Top breadcrumb bar -->
         <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,14">
-          <Button Classes="action" Content="&#8592; Back" Height="32" Padding="12,0" Click="ModDetailsBack_Click" />
+          <Button c:Ico.Name="arrow-small-left" Classes="action" Content="Back" Height="32" Padding="12,0" Click="ModDetailsBack_Click" />
           <TextBlock x:Name="ModDetailsBreadcrumb" Grid.Column="1" Foreground="#8F919C" FontSize="12.5" VerticalAlignment="Center" Margin="14,0,0,0" />
-          <Button Grid.Column="2" Classes="icon" Width="34" Height="34" Click="ModDetailsBack_Click">
-            <TextBlock Text="✕" FontSize="13" FontWeight="Bold" />
-          </Button>
+          <Button Grid.Column="2" Classes="icon" Width="34" Height="34" Click="ModDetailsBack_Click" c:Ico.Name="cross-small" />
         </Grid>
 
         <!-- Mod Details Header (Icon, Title, Byline, Summary, Tags, Action Button) -->
@@ -459,7 +445,7 @@
               <WrapPanel x:Name="ModDetailsTags" Margin="0,4,0,0" />
             </StackPanel>
             <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="16,0,0,0">
-              <Button x:Name="ModDetailsActionBtn" Classes="cfInstall" Content="Install" MinWidth="110" Height="38" HorizontalContentAlignment="Center" Click="ModDetailsAction_Click" />
+              <Button c:Ico.Name="download" x:Name="ModDetailsActionBtn" Classes="cfInstall" Content="Install" MinWidth="110" Height="38" HorizontalContentAlignment="Center" Click="ModDetailsAction_Click" />
             </StackPanel>
           </Grid>
         </Border>

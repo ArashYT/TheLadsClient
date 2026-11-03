@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns="https://github.com/avaloniaui" xmlns:c="using:TheLadsLauncher.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -34,7 +34,7 @@
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                        LetterSpacing="1"/>
                         </Border>
-                        <Button Grid.Column="1" x:Name="CopyCodeBtn" Content="Copy code" Margin="8,0,0,0" VerticalAlignment="Center" Click="CopyCode_Click"/>
+                        <Button c:Ico.Name="copy" Grid.Column="1" x:Name="CopyCodeBtn" Content="Copy code" Margin="8,0,0,0" VerticalAlignment="Center" Click="CopyCode_Click"/>
                     </Grid>
 
                     <TextBlock Text="2. Go to the Microsoft verification link:" Foreground="#CCCCCC" FontSize="13"/>
@@ -43,11 +43,11 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <SelectableTextBlock x:Name="VerificationUrlText" Classes="notranslate" Text="https://microsoft.com/link"
                                              Foreground="#8AB4F8" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                        <Button Grid.Column="1" x:Name="CopyLinkBtn" Content="Copy link" Margin="8,0,0,0" VerticalAlignment="Center" Click="CopyLink_Click"/>
+                        <Button c:Ico.Name="copy" Grid.Column="1" x:Name="CopyLinkBtn" Content="Copy link" Margin="8,0,0,0" VerticalAlignment="Center" Click="CopyLink_Click"/>
                     </Grid>
 
                     <!-- Open Browser Button -->
-                    <Button x:Name="OpenBrowserBtn" Classes="launch" Content="Open Link &amp; Copy Code to Browser"
+                    <Button c:Ico.Name="link" x:Name="OpenBrowserBtn" Classes="launch" Content="Open Link &amp; Copy Code to Browser"
                             Height="40" FontSize="13" Click="OpenBrowser_Click"/>
 
                     <TextBlock x:Name="StatusLabel" Text="⏳ Waiting for you to complete sign-in in browser..."
@@ -58,7 +58,7 @@
             <!-- Bottom Actions -->
             <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,16,0,0">
                 <TextBlock Text="This window closes automatically once signed in." Foreground="#90929D" FontSize="11" VerticalAlignment="Center"/>
-                <Button Grid.Column="1" x:Name="CancelBtn" Classes="danger" Content="Cancel" Width="90" Height="34" Click="Cancel_Click"/>
+                <Button c:Ico.Name="cross" Grid.Column="1" x:Name="CancelBtn" Classes="danger" Content="Cancel" Width="90" Height="34" Click="Cancel_Click"/>
             </Grid>
         </Grid>
     </Border>

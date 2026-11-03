@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:c="using:TheLadsLauncher.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:models="using:TheLadsLauncher.Models"
              x:Class="TheLadsLauncher.Views.ExperiencesView">
@@ -83,14 +83,14 @@
             </ComboBox>
 
             <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
-              <Button x:Name="LadsSmpRebornPlayBtn" Classes="launch" Content="Play" Height="46" MinWidth="136" Padding="28,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" FontWeight="Bold" Click="LadsSmpRebornPlay_Click" />
-              <Button x:Name="LadsSmpRebornCancelBtn" Classes="action" Content="Cancel" Height="46" Padding="20,0" IsVisible="False" Click="LadsSmpRebornCancel_Click" />
+              <Button c:Ico.Name="play" x:Name="LadsSmpRebornPlayBtn" Classes="launch" Content="Play" Height="46" MinWidth="136" Padding="28,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" FontWeight="Bold" Click="LadsSmpRebornPlay_Click" />
+              <Button c:Ico.Name="cross" x:Name="LadsSmpRebornCancelBtn" Classes="action" Content="Cancel" Height="46" Padding="20,0" IsVisible="False" Click="LadsSmpRebornCancel_Click" />
 
               <Button x:Name="LadsSmpRebornInstancesDropdownBtn" Classes="action" Height="46" Padding="14,0" IsVisible="False" ToolTip.Tip="Manage running The Lads SMP Reborn instances">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                   <Ellipse Width="8" Height="8" Fill="#85E89D" VerticalAlignment="Center" />
                   <TextBlock x:Name="LadsSmpRebornInstancesDropdownText" Text="Instances Open (1)" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" />
-                  <Path Data="M 1,3 L 5,7 L 9,3" Stroke="#B0B2BD" StrokeThickness="1.6" Width="10" Height="10" Stretch="Uniform" VerticalAlignment="Center" />
+                  <c:Glyph Kind="angle-small-down" Size="14" Foreground="#B0B2BD" VerticalAlignment="Center" />
                 </StackPanel>
                 <Button.Flyout>
                   <MenuFlyout Placement="BottomEdgeAlignedLeft" />
@@ -99,8 +99,8 @@
             </StackPanel>
 
             <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <Button x:Name="LadsSmpRebornFolderBtn" Classes="action" Content="Open folder" Height="36" Click="LadsSmpRebornFolder_Click" />
-              <Button x:Name="LadsSmpRebornReinstallBtn" Classes="action" Content="Reinstall" Height="36" Click="LadsSmpRebornReinstall_Click" />
+              <Button c:Ico.Name="folder-open" x:Name="LadsSmpRebornFolderBtn" Classes="action" Content="Open folder" Height="36" Click="LadsSmpRebornFolder_Click" />
+              <Button c:Ico.Name="refresh" x:Name="LadsSmpRebornReinstallBtn" Classes="action" Content="Reinstall" Height="36" Click="LadsSmpRebornReinstall_Click" />
             </StackPanel>
           </Grid>
 
@@ -199,14 +199,14 @@
             </ComboBox>
 
             <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
-              <Button x:Name="ZeroSmpPlayBtn" Classes="launch" Content="Play" Height="46" MinWidth="136" Padding="28,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" FontWeight="Bold" Click="ZeroSmpPlay_Click" />
-              <Button x:Name="ZeroSmpCancelBtn" Classes="action" Content="Cancel" Height="46" Padding="20,0" IsVisible="False" Click="ZeroSmpCancel_Click" />
+              <Button c:Ico.Name="play" x:Name="ZeroSmpPlayBtn" Classes="launch" Content="Play" Height="46" MinWidth="136" Padding="28,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" FontWeight="Bold" Click="ZeroSmpPlay_Click" />
+              <Button c:Ico.Name="cross" x:Name="ZeroSmpCancelBtn" Classes="action" Content="Cancel" Height="46" Padding="20,0" IsVisible="False" Click="ZeroSmpCancel_Click" />
 
               <Button x:Name="ZeroSmpInstancesDropdownBtn" Classes="action" Height="46" Padding="14,0" IsVisible="False" ToolTip.Tip="Manage running Zero SMP instances">
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                   <Ellipse Width="8" Height="8" Fill="#85E89D" VerticalAlignment="Center" />
                   <TextBlock x:Name="ZeroSmpInstancesDropdownText" Text="Instances Open (1)" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" />
-                  <Path Data="M 1,3 L 5,7 L 9,3" Stroke="#B0B2BD" StrokeThickness="1.6" Width="10" Height="10" Stretch="Uniform" VerticalAlignment="Center" />
+                  <c:Glyph Kind="angle-small-down" Size="14" Foreground="#B0B2BD" VerticalAlignment="Center" />
                 </StackPanel>
                 <Button.Flyout>
                   <MenuFlyout Placement="BottomEdgeAlignedLeft" />
@@ -219,8 +219,8 @@
             </StackPanel>
 
             <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <Button x:Name="ZeroSmpFolderBtn" Classes="action" Content="Open folder" Height="36" Click="ZeroSmpFolder_Click" />
-              <Button x:Name="ZeroSmpReinstallBtn" Classes="action" Content="Reinstall" Height="36" Click="ZeroSmpReinstall_Click" />
+              <Button c:Ico.Name="folder-open" x:Name="ZeroSmpFolderBtn" Classes="action" Content="Open folder" Height="36" Click="ZeroSmpFolder_Click" />
+              <Button c:Ico.Name="refresh" x:Name="ZeroSmpReinstallBtn" Classes="action" Content="Reinstall" Height="36" Click="ZeroSmpReinstall_Click" />
             </StackPanel>
           </Grid>
 

@@ -1,3 +1,4 @@
+using TheLadsLauncher.Controls;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -546,6 +547,7 @@ public partial class ModpacksView : UserControl
             HorizontalContentAlignment = HorizontalAlignment.Center,
             IsEnabled = direct != null ? !running || Host?.ModpackSettings.AllowMultiInstance == true : canOpen
         };
+        Ico.SetName(playBtn, launching ? "cross" : direct != null || running ? "play" : "folder-open");
         ToolTip.SetShowOnDisabled(playBtn, true);
         if (direct != null)
         {
@@ -566,7 +568,8 @@ public partial class ModpacksView : UserControl
 
         if (direct != null && canOpen)
         {
-            var openBtn = new Button { Classes = { "icon" }, Content = "↗", Margin = new Thickness(8, 0, 0, 0), Height = 32, Width = 32 };
+            var openBtn = new Button { Classes = { "icon" }, Margin = new Thickness(8, 0, 0, 0), Height = 32, Width = 32 };
+            Ico.SetName(openBtn, "external-link");
             ToolTip.SetTip(openBtn, openLabel);
             AutomationProperties.SetName(openBtn, openLabel);
             Grid.SetColumn(openBtn, 1);
@@ -577,11 +580,11 @@ public partial class ModpacksView : UserControl
         var folderBtn = new Button
         {
             Classes = { "icon" },
-            Content = "📁",
             Margin = new Thickness(8, 0, 0, 0),
             Height = 32,
             Width = 32
         };
+        Ico.SetName(folderBtn, "folder-open");
         ToolTip.SetTip(folderBtn, "Open instance directory in File Explorer");
         Grid.SetColumn(folderBtn, 2);
         folderBtn.Click += (_, _) =>
@@ -689,6 +692,7 @@ public partial class ModpacksView : UserControl
         grid.Children.Add(text);
 
         var install = new Button { Classes = { "launch" }, Content = "Install", Width = 110, Height = 34, HorizontalContentAlignment = HorizontalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+        Ico.SetName(install, "download");
         var progress = new ProgressBar { IsIndeterminate = true, IsVisible = false, Width = 200, Margin = new Thickness(0, 8, 0, 0) };
         var status = new TextBlock { Width = 200, FontSize = 11, Foreground = new SolidColorBrush(Color.Parse("#A0A1AA")), TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Right, Margin = new Thickness(0, 6, 0, 0) };
         if (_instances.Any(i => i.Source?.ProjectId == hit.ProjectId)) status.Text = "Already in My Modpacks.";
@@ -936,6 +940,7 @@ public partial class ModpacksView : UserControl
         bool running = _running.ContainsKey(i.Id), launching = _launching.ContainsKey(i.Id);
         bool allowMulti = Host?.ModpackSettings.AllowMultiInstance == true;
         PlayButton.Content = launching ? "Cancel" : (running && !allowMulti) ? "Running" : "Play";
+        Ico.SetName(PlayButton, launching ? "cross" : "play");
         PlayButton.IsEnabled = (!running || allowMulti) && !_busy.Contains(i.Id);
         DeleteButton.IsEnabled = UpdateButton.IsEnabled = Idle(i);
     }
@@ -1010,8 +1015,8 @@ public partial class ModpacksView : UserControl
         AddFromFileButton.IsVisible = !isWorlds;
         AddFromFileButton.Content = _currentSubTab switch
         {
-            "mods" => "+ From file (.jar)",
-            _ => "+ From file (.zip)"
+            "mods" => "From file (.jar)",
+            _ => "From file (.zip)"
         };
     }
 
@@ -1327,6 +1332,7 @@ public partial class ModpacksView : UserControl
                 Padding = new Thickness(12, 0),
                 VerticalContentAlignment = VerticalAlignment.Center
             };
+            Ico.SetName(updateBtn, "cloud-download");
             updateBtn.Click += async (_, _) => await UpdateModAsync(item, updateBtn);
             actionPanel.Children.Add(updateBtn);
         }
@@ -1428,11 +1434,11 @@ public partial class ModpacksView : UserControl
         var delBtn = new Button
         {
             Classes = { "icon", "danger" },
-            Content = "🗑",
             Width = 30, Height = 30,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
         };
+        Ico.SetName(delBtn, "trash");
         delBtn.Click += async (_, _) =>
         {
             if (Host is { } host && !await host.ConfirmModpackAsync("Delete mod", $"Delete '{item.DisplayName}' from this modpack?", "Delete")) return;
@@ -1490,7 +1496,7 @@ public partial class ModpacksView : UserControl
         catch (Exception ex)
         {
             ManageStatus.Text = $"Update failed for {item.DisplayName}: {ex.Message}";
-            if (updateBtn != null) { updateBtn.IsEnabled = true; updateBtn.Content = "Retry"; }
+            if (updateBtn != null) { updateBtn.IsEnabled = true; updateBtn.Content = "Retry"; Ico.SetName(updateBtn, "refresh"); }
         }
         finally
         {
@@ -1697,11 +1703,11 @@ public partial class ModpacksView : UserControl
             var delBtn = new Button
             {
                 Classes = { "icon", "danger" },
-                Content = "🗑",
                 Width = 28, Height = 28,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
+            Ico.SetName(delBtn, "trash");
             delBtn.Click += async (_, _) =>
             {
                 if (Host is { } host && !await host.ConfirmModpackAsync("Delete item", $"Delete '{item.Name}' from this modpack?", "Delete")) return;
@@ -1937,6 +1943,7 @@ public partial class ModpacksView : UserControl
                 VerticalAlignment = VerticalAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center
             };
+            Ico.SetName(openBtn, "folder-open");
             string folderPath = Directory.Exists(world.Folder) ? world.Folder : Path.Combine(savesDir, world.Folder);
             openBtn.Click += (_, _) =>
             {
@@ -1948,12 +1955,12 @@ public partial class ModpacksView : UserControl
             var delBtn = new Button
             {
                 Classes = { "icon", "danger" },
-                Content = "🗑",
                 Width = 28,
                 Height = 28,
                 VerticalAlignment = VerticalAlignment.Center,
                 HorizontalAlignment = HorizontalAlignment.Center
             };
+            Ico.SetName(delBtn, "trash");
             delBtn.Click += async (_, _) =>
             {
                 if (Host is { } host && !await host.ConfirmModpackAsync("Delete world", $"Move world '{world.Name}' to the Recycle Bin?", "Delete")) return;
@@ -2686,25 +2693,29 @@ public partial class ModpacksView : UserControl
             {
                 actionBtn.Classes.Add("cfInstall");
                 actionBtn.Content = "Update";
+                Ico.SetName(actionBtn, "cloud-download");
                 actionBtn.Click += async (_, _) =>
                 {
                     actionBtn.IsEnabled = false;
                     actionBtn.Content = "Updating...";
                     await UpdateModAsync(matchedInstalled);
-                    actionBtn.Content = "✓ Installed";
+                    actionBtn.Content = "Installed";
+                    Ico.SetName(actionBtn, "check");
                 };
             }
             else
             {
                 actionBtn.Classes.Add("action");
                 actionBtn.IsEnabled = false;
-                actionBtn.Content = "✓ Installed";
+                actionBtn.Content = "Installed";
+                Ico.SetName(actionBtn, "check");
             }
         }
         else
         {
             actionBtn.Classes.Add("cfInstall");
             actionBtn.Content = "Install";
+            Ico.SetName(actionBtn, "download");
             actionBtn.Click += async (_, _) =>
             {
                 if (_selected is not { } instance) return;
@@ -2730,7 +2741,8 @@ public partial class ModpacksView : UserControl
                             }
                         }
                         catch { }
-                        actionBtn.Content = "✓ Installed";
+                        actionBtn.Content = "Installed";
+                        Ico.SetName(actionBtn, "check");
                         actionBtn.Classes.Clear();
                         actionBtn.Classes.Add("action");
                         ManageStatus.Text = "The Lads Core installed!";
@@ -2755,7 +2767,8 @@ public partial class ModpacksView : UserControl
                             catch { }
                         });
                     }
-                    actionBtn.Content = "✓ Installed";
+                    actionBtn.Content = "Installed";
+                    Ico.SetName(actionBtn, "check");
                     actionBtn.Classes.Clear();
                     actionBtn.Classes.Add("action");
                     ManageStatus.Text = $"Installed {Path.GetFileName(savedFile)}!";
@@ -2766,6 +2779,7 @@ public partial class ModpacksView : UserControl
                 {
                     actionBtn.IsEnabled = true;
                     actionBtn.Content = "Retry";
+                    Ico.SetName(actionBtn, "refresh");
                     AddContentStatus.Text = $"Installation failed: {ex.Message}";
                 }
                 finally
@@ -2886,13 +2900,15 @@ public partial class ModpacksView : UserControl
                 ModDetailsActionBtn.Classes.Clear();
                 ModDetailsActionBtn.Classes.Add("cfInstall");
                 ModDetailsActionBtn.Content = "Update";
+                Ico.SetName(ModDetailsActionBtn, "cloud-download");
                 ModDetailsActionBtn.IsEnabled = true;
             }
             else
             {
                 ModDetailsActionBtn.Classes.Clear();
                 ModDetailsActionBtn.Classes.Add("action");
-                ModDetailsActionBtn.Content = "✓ Installed";
+                ModDetailsActionBtn.Content = "Installed";
+                Ico.SetName(ModDetailsActionBtn, "check");
                 ModDetailsActionBtn.IsEnabled = false;
             }
         }
@@ -2901,6 +2917,7 @@ public partial class ModpacksView : UserControl
             ModDetailsActionBtn.Classes.Clear();
             ModDetailsActionBtn.Classes.Add("cfInstall");
             ModDetailsActionBtn.Content = "Install";
+            Ico.SetName(ModDetailsActionBtn, "download");
             ModDetailsActionBtn.IsEnabled = true;
         }
 
@@ -3003,7 +3020,8 @@ public partial class ModpacksView : UserControl
                     }
                 }
                 catch { }
-                ModDetailsActionBtn.Content = "✓ Installed";
+                ModDetailsActionBtn.Content = "Installed";
+                Ico.SetName(ModDetailsActionBtn, "check");
                 ModDetailsActionBtn.Classes.Clear();
                 ModDetailsActionBtn.Classes.Add("action");
                 ManageStatus.Text = "The Lads Core installed!";
@@ -3026,7 +3044,8 @@ public partial class ModpacksView : UserControl
                     catch { }
                 });
             }
-            ModDetailsActionBtn.Content = "✓ Installed";
+            ModDetailsActionBtn.Content = "Installed";
+            Ico.SetName(ModDetailsActionBtn, "check");
             ModDetailsActionBtn.Classes.Clear();
             ModDetailsActionBtn.Classes.Add("action");
             ManageStatus.Text = $"Installed {Path.GetFileName(savedFile)}!";
@@ -3037,6 +3056,7 @@ public partial class ModpacksView : UserControl
         {
             ModDetailsActionBtn.IsEnabled = true;
             ModDetailsActionBtn.Content = "Retry";
+            Ico.SetName(ModDetailsActionBtn, "refresh");
             ManageStatus.Text = "Installation failed: " + ex.Message;
         }
         finally
@@ -3166,11 +3186,12 @@ public partial class ModpacksView : UserControl
             var actionBtn = new Button
             {
                 Classes = { isInstalled ? "action" : "cfUpdate" },
-                Content = isInstalled ? "✓ Installed" : "Install",
+                Content = isInstalled ? "Installed" : "Install",
                 IsEnabled = !isInstalled && (isLadsCore || ver.PrimaryFile != null),
                 Height = 28, Padding = new Thickness(12, 0),
                 HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center
             };
+            Ico.SetName(actionBtn, isInstalled ? "check" : "download");
             if (!isInstalled && (isLadsCore || ver.PrimaryFile != null))
             {
                 actionBtn.Click += async (_, _) =>
@@ -3216,7 +3237,8 @@ public partial class ModpacksView : UserControl
                                 });
                             }
                         }
-                        actionBtn.Content = "✓ Installed";
+                        actionBtn.Content = "Installed";
+                        Ico.SetName(actionBtn, "check");
                         actionBtn.Classes.Clear();
                         actionBtn.Classes.Add("action");
                         ManageStatus.Text = isLadsCore ? "The Lads Core installed!" : $"Installed {ver.PrimaryFile?.FileName ?? ver.Name}!";
@@ -3227,6 +3249,7 @@ public partial class ModpacksView : UserControl
                     {
                         actionBtn.IsEnabled = true;
                         actionBtn.Content = "Retry";
+                        Ico.SetName(actionBtn, "refresh");
                         ManageStatus.Text = $"Install failed: {ex.Message}";
                     }
                     finally

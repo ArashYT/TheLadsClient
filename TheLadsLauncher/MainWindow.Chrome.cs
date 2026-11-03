@@ -1,3 +1,4 @@
+using TheLadsLauncher.Controls;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -77,7 +78,7 @@ public partial class MainWindow
 
     private void ShowMaximizeState()
     {
-        MaximizeBtn.Content = _restoreBounds != null ? "❐" : "□";
+        Ico.SetName(MaximizeBtn, _restoreBounds != null ? "window-restore" : "window-maximize");
         ToolTip.SetTip(MaximizeBtn, _restoreBounds != null ? "Restore" : "Maximize");
     }
 
@@ -482,8 +483,8 @@ public partial class MainWindow
             await Task.Delay(500);
             ResetSizeBtn_Click(null, new Avalonia.Interactivity.RoutedEventArgs());
             await Task.Delay(100);
-            Check("resetSize", (string?)MaximizeBtn.Content == "□" && Math.Abs(Width - DEFAULT_WIDTH) < 1 && Math.Abs(Height - DEFAULT_HEIGHT) < 1,
-                $"maximize button '{MaximizeBtn.Content}', size {Width}x{Height}");
+            Check("resetSize", Ico.GetName(MaximizeBtn) == "window-maximize" && Math.Abs(Width - DEFAULT_WIDTH) < 1 && Math.Abs(Height - DEFAULT_HEIGHT) < 1,
+                $"maximize button '{Ico.GetName(MaximizeBtn)}', size {Width}x{Height}");
 
             // Controls: one shared set; a change reaches the modern and the 1.8.9 profile, each in its own format (unknown lines kept).
             NavigateTo("Settings");

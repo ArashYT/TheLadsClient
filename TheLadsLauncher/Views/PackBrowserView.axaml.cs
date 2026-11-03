@@ -1,3 +1,4 @@
+using TheLadsLauncher.Controls;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -125,6 +126,7 @@ public partial class PackBrowserView : UserControl
             long bytes = Directory.Exists(path) ? -1 : new FileInfo(path).Length;
             text.Children.Add(new TextBlock { Text = bytes < 0 ? "Folder" : bytes >= 1 << 20 ? $"{bytes / 1048576.0:0.0} MB" : $"{Math.Max(1, bytes / 1024)} KB", Foreground = new SolidColorBrush(Color.Parse("#868994")), FontSize = 11 });
             var remove = new Button { Content = "Remove", Height = 28, Padding = new Thickness(10, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Classes = { "danger" } };
+            Ico.SetName(remove, "trash");
             ToolTip.SetTip(remove, "Move it to the Recycle Bin");
             remove.Click += async (_, _) => await RemoveAsync(path);
             InstalledList.Children.Add(Card(text, remove));
@@ -188,6 +190,7 @@ public partial class PackBrowserView : UserControl
         Grid.SetColumn(text, 1);
         body.Children.Add(text);
         var install = new Button { Content = "Install", Height = 30, Padding = new Thickness(12, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Classes = { "launch" } };
+        Ico.SetName(install, "download");
         install.Click += async (_, _) => await InstallAsync(item, install);
         if (item.IconUrl.Length > 0) _ = LoadIconAsync(icon, item.IconUrl);
         return Card(body, install);

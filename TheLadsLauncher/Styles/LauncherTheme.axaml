@@ -31,6 +31,20 @@
       </DataTemplate>
     </Setter>
   </Style>
+  <!-- The Flaticon credit under the sidebar's version: muted small text that lights up on hover. -->
+  <Style Selector="Button.credit">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="#767984"/>
+    <Setter Property="FontSize" Value="9"/>
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="MinHeight" Value="0"/>
+    <Setter Property="HorizontalAlignment" Value="Left"/>
+    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+  </Style>
+  <Style Selector="Button.credit:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="#B5B7C0"/>
+  </Style>
   <Style Selector="Button.action">
     <Setter Property="Background" Value="#25262A"/>
     <Setter Property="Foreground" Value="#D6D6D9"/>
@@ -449,6 +463,7 @@
     <Setter Property="Width" Value="32"/>
     <Setter Property="Height" Value="32"/>
     <Setter Property="Padding" Value="0"/>
+    <Setter Property="FontSize" Value="16"/>
     <Setter Property="CornerRadius" Value="7"/>
     <Setter Property="HorizontalContentAlignment" Value="Center"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>

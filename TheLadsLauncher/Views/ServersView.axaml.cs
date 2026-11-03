@@ -31,14 +31,8 @@ public partial class ServersView : UserControl
         OnlineDot = Hex("#4CC38A"), OfflineDot = Hex("#E5484D"), IdleDot = Hex("#4A4B55"), Tile = Hex("#24252B"), Skeleton = Hex("#25262C");
 
     // Material Design icons (Apache 2.0), 24x24 viewbox.
-    private static readonly Geometry CopyIcon = Geometry.Parse("M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"),
-        TrashIcon = Geometry.Parse("M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM8 9h8v10H8V9zm7.5-5l-1-1h-5l-1 1H5v2h14V4z"),
-        UpIcon = Geometry.Parse("M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"),
-        DownIcon = Geometry.Parse("M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"),
-        RefreshIcon = Geometry.Parse("M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"),
-        PlusIcon = Geometry.Parse("M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"),
-        CheckIcon = Geometry.Parse("M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"),
-        CloseIcon = Geometry.Parse("M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z");
+    private const string CopyIcon = "copy", TrashIcon = "trash", UpIcon = "angle-small-up", DownIcon = "angle-small-down", PlusIcon = "plus",
+        CheckIcon = "check", CloseIcon = "cross-small";
 
     private const double TileMinWidth = 400, Gap = 12;
     private static readonly string[] SortNames = { "Most popular", "Most players", "Name" };
@@ -74,8 +68,6 @@ public partial class ServersView : UserControl
     public ServersView()
     {
         InitializeComponent();
-        RefreshGlyph.Data = RefreshGlyph2.Data = RefreshIcon;
-        AddGlyph.Data = PlusIcon;
         CloseAddButton.Content = Glyph(CloseIcon, 13);
         Sort.ItemsSource = SortNames;
         Sort.SelectedIndex = 0;
@@ -294,9 +286,9 @@ public partial class ServersView : UserControl
         return chip;
     }
 
-    private static PathIcon Glyph(Geometry data, double size) => new() { Data = data, Width = size, Height = size };
+    private static TheLadsLauncher.Controls.Glyph Glyph(string kind, double size) => new() { Kind = kind, Size = size, VerticalAlignment = VerticalAlignment.Center };
 
-    private static Button IconButton(Geometry glyph, string tip)
+    private static Button IconButton(string glyph, string tip)
     {
         var button = new Button { Content = Glyph(glyph, 14) };
         button.Classes.AddRange(new[] { "icon", "small" });
@@ -305,7 +297,7 @@ public partial class ServersView : UserControl
         return button;
     }
 
-    private static StackPanel Labeled(Geometry glyph, string text)
+    private static StackPanel Labeled(string glyph, string text)
     {
         var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
         panel.Children.Add(Glyph(glyph, 12));

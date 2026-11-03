@@ -13,7 +13,12 @@ public static class Ico
 
     static Ico()
     {
-        NameProperty.Changed.AddClassHandler<Button>((button, e) => ((IPseudoClasses)button.Classes).Set(":ico", e.NewValue != null));
+        NameProperty.Changed.AddClassHandler<Button>((button, e) =>
+        {
+            ((IPseudoClasses)button.Classes).Set(":ico", e.NewValue != null);
+            // A ContentPresenter builds nothing from its template without content: an icon-only button gets empty text.
+            if (e.NewValue != null && button.Content == null) button.Content = string.Empty;
+        });
     }
 
     public static string? GetName(Button button) => button.GetValue(NameProperty);

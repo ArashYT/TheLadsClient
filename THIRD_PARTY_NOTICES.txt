@@ -127,7 +127,16 @@ Copyright (c) comp500 and Contributors.
 Licensed under the MIT License (https://github.com/packwiz/packwiz-installer-bootstrap/blob/main/LICENSE).
 
 --------------------------------------------------------------------------------
-7. The Lads Core (`theladscore.jar`) & Embedded Mods
+7. Uicons by Flaticon (Flaticon licence, free with attribution)
+--------------------------------------------------------------------------------
+* Uicons by Flaticon (https://www.flaticon.com/uicons), `@flaticon/flaticon-uicons` 3.3.1, solid rounded style.
+  Only the glyphs used are included (as vector outlines in `Styles/Icons.axaml`); the rest of the font package is not shipped.
+
+Icons by Flaticon (flaticon.com). Licensed under the Flaticon licence: free to use with attribution
+(https://www.freepikcompany.com/legal#nav-flaticon). The credit is shown in the launcher (sidebar) and in the game's Lads Mods screen.
+
+--------------------------------------------------------------------------------
+8. The Lads Core (`theladscore.jar`) & Embedded Mods
 --------------------------------------------------------------------------------
 For third-party open-source attributions, license texts (LGPL-3.0, LGPL-2.1, MPL-2.0, MIT,
 Apache-2.0, BSD-3-Clause, Unlicense, CC-BY-NC-SA-4.0), and complete modified source code of

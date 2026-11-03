@@ -42,7 +42,7 @@
                             <!-- Shown when a verified update is ready while the launcher is open: glow behind, glossy pill, shine sweep on top. -->
                             <Grid x:Name="UpdateNowHost" IsVisible="False" VerticalAlignment="Center" Margin="0,0,12,0">
                                 <Border x:Name="UpdateNowGlow" CornerRadius="15" Background="#E0525B" BoxShadow="0 0 18 3 #E0525B" Opacity="0.6" IsHitTestVisible="False" />
-                                <Button x:Name="UpdateNowBtn" Classes="updateNow" Content="&#8679;  Update" Click="UpdateNow_Click" />
+                                <Button x:Name="UpdateNowBtn" Classes="updateNow" c:Ico.Name="cloud-download" Content="Update" Click="UpdateNow_Click" />
                                 <Border CornerRadius="15" ClipToBounds="True" IsHitTestVisible="False">
                                     <Border x:Name="UpdateNowShine" Width="18" HorizontalAlignment="Left">
                                         <Border.Background>
@@ -61,17 +61,12 @@
                                     </Border>
                                 </Border>
                             </Grid>
-                            <Button x:Name="AspectLockBtn" Classes="window" Content="Aspect Ratio: Free" ToolTip.Tip="Toggle 16:9 aspect lock" Click="AspectLockBtn_Click" />
-                            <Button x:Name="ResetSizeBtn" Classes="window" Content="Reset Size" ToolTip.Tip="Reset window size" Click="ResetSizeBtn_Click" />
-                            <Button x:Name="CheckUpdateBtn" Classes="window" ToolTip.Tip="Check for launcher updates" Click="CheckUpdateBtn_Click" Padding="7,0">
-                                <StackPanel Orientation="Horizontal" Spacing="5">
-                                    <Path Data="M 12,4 V 1 M 12,4 A 8,8 0 1 1 5,7 L 3,5" Width="11" Height="11" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.4" StrokeLineCap="Round" VerticalAlignment="Center" />
-                                    <TextBlock Text="Update" FontSize="11" VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
-                            <Button x:Name="MinimizeBtn" Classes="window" Content="&#9472;" ToolTip.Tip="Minimize" Click="MinimizeBtn_Click" />
-                            <Button x:Name="MaximizeBtn" Classes="window" Content="&#9633;" ToolTip.Tip="Maximize" Click="MaximizeBtn_Click" />
-                            <Button x:Name="CloseBtn" Classes="window close" Content="&#215;" ToolTip.Tip="Close" Click="CloseBtn_Click" />
+                            <Button x:Name="AspectLockBtn" Classes="window" c:Ico.Name="expand" Content="Aspect Ratio: Free" ToolTip.Tip="Toggle 16:9 aspect lock" Click="AspectLockBtn_Click" />
+                            <Button x:Name="ResetSizeBtn" Classes="window" c:Ico.Name="undo" Content="Reset Size" ToolTip.Tip="Reset window size" Click="ResetSizeBtn_Click" />
+                            <Button x:Name="CheckUpdateBtn" Classes="window" c:Ico.Name="refresh" Content="Update" ToolTip.Tip="Check for launcher updates" Click="CheckUpdateBtn_Click" Padding="7,0" />
+                            <Button x:Name="MinimizeBtn" Classes="window" c:Ico.Name="window-minimize" ToolTip.Tip="Minimize" Click="MinimizeBtn_Click" />
+                            <Button x:Name="MaximizeBtn" Classes="window" c:Ico.Name="window-maximize" ToolTip.Tip="Maximize" Click="MaximizeBtn_Click" />
+                            <Button x:Name="CloseBtn" Classes="window close" c:Ico.Name="cross-small" ToolTip.Tip="Close" Click="CloseBtn_Click" />
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -81,81 +76,81 @@
                             <StackPanel Spacing="3" Margin="10,20,10,0">
                                 <Button x:Name="NavHome" AutomationProperties.Name="Play" Classes="nav active" Click="NavHome_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 3,2 L 15,9 3,16 Z" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <c:Glyph Kind="play" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Play" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="NavAccounts" AutomationProperties.Name="Accounts" Classes="nav" Click="NavAccounts_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 9,2 A 3,3 0 1 1 8.99,2 M 2,17 V 14 C 2,9 16,9 16,14 V 17" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <c:Glyph Kind="user" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Accounts" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="NavSkins" AutomationProperties.Name="Skins" Classes="nav" Click="NavSkins_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 6,2 L 2,5 4,8 6,7 V 16 H 12 V 7 L 14,8 16,5 12,2 C 11,4 7,4 6,2 Z" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" StrokeJoin="Round" VerticalAlignment="Center" />
+                                        <c:Glyph Kind="shirt" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Skins" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="NavProfiles" AutomationProperties.Name="Profiles" Classes="nav" Click="NavProfiles_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 2,3 H 16 V 13 H 2 Z M 6,16 H 12 M 9,13 V 16" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <c:Glyph Kind="computer" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Profiles" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="NavModpacks" AutomationProperties.Name="Modpacks" Classes="nav" Click="NavModpacks_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 9,1 L 16,5 V 13 L 9,17 L 2,13 V 5 Z M 2,5 L 9,9 L 16,5 M 9,9 V 17" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" StrokeJoin="Round" VerticalAlignment="Center" />
+                                        <c:Glyph Kind="box-open" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Modpacks" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Border Height="1" Background="#28292E" Margin="12,12" />
                                 <Button x:Name="NavWorlds" AutomationProperties.Name="Worlds" Classes="nav" Click="NavWorlds_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 9,1 A 8,8 0 1 1 8.99,1 Z M 1,9 H 17 M 9,1 C 5,4 5,14 9,17 M 9,1 C 13,4 13,14 9,17" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <c:Glyph Kind="globe" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Worlds" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="NavServers" AutomationProperties.Name="Servers" Classes="nav" Click="NavServers_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 2,2 H 16 V 7 H 2 Z M 2,11 H 16 V 16 H 2 Z M 5,4.5 H 6 M 5,13.5 H 6" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <c:Glyph Kind="database" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Servers" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="NavMods" AutomationProperties.Name="Mods" Classes="nav" Click="NavMods_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 2,2 H 7 V 7 H 2 Z M 11,2 H 16 V 7 H 11 Z M 2,11 H 7 V 16 H 2 Z M 11,11 H 16 V 16 H 11 Z" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <c:Glyph Kind="puzzle-piece" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Mods" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="NavPacks" AutomationProperties.Name="Packs" Classes="nav" Click="NavPacks_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 2,7 L 9,3 L 16,7 L 9,11 Z M 2,10.5 L 9,14.5 L 16,10.5" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" StrokeLineCap="Round" VerticalAlignment="Center" />
+                                        <c:Glyph Kind="layers" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Packs" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="NavGallery" AutomationProperties.Name="Gallery" Classes="nav" Click="NavGallery_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 2,2 H 16 V 16 H 2 Z M 2,13 L 7,8 11,12 13,10 16,13 M 12,5 H 13" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <c:Glyph Kind="picture" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Gallery" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="NavFiles" AutomationProperties.Name="Files" Classes="nav" Click="NavFiles_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 1,5 V 3 H 7 L 9,5 H 17 V 15 H 1 Z" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <c:Glyph Kind="folder" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Files" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Border Height="1" Background="#28292E" Margin="12,12" />
                                 <Button x:Name="NavSettings" AutomationProperties.Name="Settings" Classes="nav" Click="NavSettings_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 2,4 H 16 M 2,9 H 16 M 2,14 H 16 M 6,2 V 6 M 12,7 V 11 M 6,12 V 16" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <c:Glyph Kind="settings" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Settings" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                                 <Button x:Name="NavLogs" AutomationProperties.Name="Logs" Classes="nav" Click="NavLogs_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="13">
-                                        <Path Data="M 2,3 L 6,7 2,11 M 9,12 H 16" Width="17" Height="17" Stretch="Uniform" Stroke="{Binding $parent[Button].Foreground}" StrokeThickness="1.3" VerticalAlignment="Center" />
+                                        <c:Glyph Kind="terminal" Size="17" VerticalAlignment="Center" />
                                         <TextBlock Text="Logs" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
@@ -170,8 +165,11 @@
                                         <TextBlock Text="PLAYER ACCOUNT" Classes="caption" FontSize="8" LetterSpacing="0.7" />
                                     </StackPanel>
                                 </Grid>
-                                <Button Content="Release notes" Click="ReleaseNotes_Click" Background="Transparent" FontSize="11" />
+                                <Button c:Ico.Name="document" Content="Release notes" Click="ReleaseNotes_Click" Background="Transparent" FontSize="11" />
                                 <TextBlock x:Name="VersionText" Foreground="#767984" FontSize="10" />
+                                <Button Classes="credit" ToolTip.Tip="Uicons by Flaticon, https://www.flaticon.com/uicons" Click="IconCredit_Click">
+                                    <TextBlock Text="Icons by Flaticon (flaticon.com)" TextWrapping="Wrap" />
+                                </Button>
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -219,7 +217,7 @@
                                     <Border Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0" Padding="12,10" CornerRadius="6" Background="#D91D1E22">
                                         <StackPanel Spacing="7">
                                             <Button x:Name="NetworkPlayButton" Classes="launch" Height="44" MinWidth="200" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Foreground="White" ToolTip.Tip="Launch and join The Lads Network (mc.arashyt.ca)" IsEnabled="{Binding #LaunchButton.IsEnabled}" Click="NetworkPlay_Click">
-                                                <TextBlock Text="Play The Lads Network" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" />
+                                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><c:Glyph Kind="play" Size="14" VerticalAlignment="Center" /><TextBlock Text="Play The Lads Network" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" /></StackPanel>
                                             </Button>
                                             <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                                                 <Ellipse x:Name="NetworkStatusDot" Width="8" Height="8" Fill="#6B6D76" VerticalAlignment="Center" />
@@ -232,7 +230,7 @@
                             <Grid Grid.Row="1" ColumnDefinitions="*,*,*" Margin="0,10,0,8">
                                 <Button Classes="shortcut" Click="NavProfiles_Click" Margin="0,0,18,0">
                                     <Grid ColumnDefinitions="Auto,*,Auto">
-                                        <Path Data="M 2,7 L 10,2 L 18,7 L 10,12 Z M 2,11 L 10,16 L 18,11 M 2,15 L 10,20 L 18,15" Width="17" Height="17" Stretch="Uniform" Stroke="#E0525E" StrokeThickness="1.5" StrokeLineCap="Round" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                        <c:Glyph Kind="computer" Size="17" Foreground="#E0525E" VerticalAlignment="Center" Margin="0,0,12,0" />
                                         <StackPanel Grid.Column="1" Spacing="4">
                                             <TextBlock Text="Version profiles" FontWeight="Medium" />
                                             <TextBlock Text="Switch up your setup" FontSize="11" Foreground="#8F919B" />
@@ -242,7 +240,7 @@
                                 </Button>
                                 <Button Grid.Column="1" Classes="shortcut" Click="NavMods_Click" Margin="0,0,18,0">
                                     <Grid ColumnDefinitions="Auto,*,Auto">
-                                        <Path Data="M 4,4 H 8 A 2,2 0 0 1 12,4 H 16 V 8 A 2,2 0 0 1 16,12 V 16 H 12 A 2,2 0 0 0 8,16 H 4 V 12 A 2,2 0 0 0 4,8 Z" Width="17" Height="17" Stretch="Uniform" Stroke="#52A5E0" StrokeThickness="1.5" StrokeLineCap="Round" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                        <c:Glyph Kind="puzzle-piece" Size="17" Foreground="#52A5E0" VerticalAlignment="Center" Margin="0,0,12,0" />
                                         <StackPanel Grid.Column="1" Spacing="4">
                                             <TextBlock Text="Mods" FontWeight="Medium" />
                                             <TextBlock Text="Find your next addition" FontSize="11" Foreground="#8F919B" />
@@ -252,7 +250,7 @@
                                 </Button>
                                 <Button Grid.Column="2" Classes="shortcut" Click="NavGallery_Click">
                                     <Grid ColumnDefinitions="Auto,*,Auto">
-                                        <Path Data="M 3,6 H 6 L 8,3 H 12 L 14,6 H 17 A 2,2 0 0 1 19,8 V 17 A 2,2 0 0 1 17,19 H 3 A 2,2 0 0 1 1,17 V 8 A 2,2 0 0 1 3,6 Z M 10,15 A 3.5,3.5 0 1 0 10,8 A 3.5,3.5 0 1 0 10,15 Z" Width="17" Height="17" Stretch="Uniform" Stroke="#50C878" StrokeThickness="1.5" StrokeLineCap="Round" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                        <c:Glyph Kind="picture" Size="17" Foreground="#50C878" VerticalAlignment="Center" Margin="0,0,12,0" />
                                         <StackPanel Grid.Column="1" Spacing="4">
                                             <TextBlock Text="Screenshots" FontWeight="Medium" />
                                             <TextBlock Text="The moments you kept" FontSize="11" Foreground="#8F919B" />
@@ -281,7 +279,7 @@
                                         </ComboBox>
                                         <Button x:Name="LaunchButton" Classes="launch" FontSize="22" FontWeight="Bold" Foreground="White" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Right-click to launch with a different account" Click="LaunchButton_Click" Height="69" Grid.Column="2" MinWidth="220" Margin="0">
                                             <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                <Path Data="M 4,2 L 16,10 L 4,18 Z" Fill="White" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center" />
+                                                <c:Glyph Kind="play" Size="18" Foreground="White" VerticalAlignment="Center" />
                                                 <TextBlock Text="Play" FontWeight="Bold" FontSize="22" VerticalAlignment="Center" />
                                             </StackPanel>
                                             <Button.ContextMenu>
@@ -308,7 +306,7 @@
                                                 <TextBlock x:Name="HomeNewsVersionText" Text="" Foreground="#F5B8BE" FontSize="11" FontWeight="SemiBold" />
                                             </Border>
                                         </StackPanel>
-                                        <Button Grid.Column="2" Content="View all updates &#8594;" Background="Transparent" Foreground="#8F919B" FontSize="11" Click="ReleaseNotes_Click" Cursor="Hand" />
+                                        <Button Grid.Column="2" c:Ico.Name="time-past" Content="View all updates" Background="Transparent" Foreground="#8F919B" FontSize="11" Click="ReleaseNotes_Click" Cursor="Hand" />
                                     </Grid>
                                     <StackPanel x:Name="HomeNewsHighlightsPanel" Grid.Row="1" Spacing="5" />
                                 </Grid>
@@ -325,12 +323,12 @@
                                     <TextBlock Text="Add Microsoft or local accounts, switch logins, or sign out." Foreground="#9AA7B8" FontSize="12" TextWrapping="Wrap" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Spacing="10" VerticalAlignment="Top">
-                                    <Button x:Name="AddMicrosoftAccountBtn" Classes="launch" Content="Add Microsoft account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="40" Foreground="White" FontWeight="Bold" FontSize="13" Click="AddMicrosoftAccount_Click" />
-                                    <Button x:Name="AddOfflineAccountBtn" IsVisible="False" Classes="action" Content="Add local development account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" FontSize="12" Click="AddOfflineAccount_Click" />
+                                    <Button x:Name="AddMicrosoftAccountBtn" Classes="launch" c:Ico.Name="user-add" Content="Add Microsoft account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="40" Foreground="White" FontWeight="Bold" FontSize="13" Click="AddMicrosoftAccount_Click" />
+                                    <Button x:Name="AddOfflineAccountBtn" IsVisible="False" Classes="action" c:Ico.Name="user-gear" Content="Add local development account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" FontSize="12" Click="AddOfflineAccount_Click" />
                                     <TextBlock x:Name="AddOfflineAccountHint" IsVisible="False" Text="Local accounts support offline development and singleplayer." Foreground="#7E8B9D" FontSize="11" TextWrapping="Wrap" Margin="2,4,2,8" />
                                     <Separator Background="#2A2B32" Height="1" Margin="0,4,0,4" />
-                                    <Button x:Name="RemoveAccountBtn" Classes="action" Content="Remove Account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Click="RemoveAccount_Click" />
-                                    <Button x:Name="ClearCacheBtn" Classes="danger" Content="Sign out Microsoft" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Click="ClearCache_Click" />
+                                    <Button x:Name="RemoveAccountBtn" Classes="action" c:Ico.Name="user-minus" Content="Remove Account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Click="RemoveAccount_Click" />
+                                    <Button x:Name="ClearCacheBtn" Classes="danger" c:Ico.Name="sign-out" Content="Sign out Microsoft" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Click="ClearCache_Click" />
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -362,9 +360,9 @@
                         <Grid Grid.Row="1" ColumnDefinitions="*,160,Auto,Auto,Auto" Margin="0,0,0,14">
                             <TextBox x:Name="ProfileSearch" Height="34" PlaceholderText="Search profiles…" VerticalContentAlignment="Center" Margin="0,0,8,0" />
                             <ComboBox x:Name="ProfileVersionFilter" Grid.Column="1" Height="34" HorizontalAlignment="Stretch" Margin="0,0,8,0" />
-                            <Button x:Name="SyncSharedBtn" Grid.Column="2" Classes="action" Content="Sync Settings" ToolTip.Tip="Syncs game settings and shared folder links" Height="34" Margin="0,0,8,0" Click="SyncSharedSettings_Click" />
-                            <Button Grid.Column="3" Content="Import…" Classes="action" Height="34" ToolTip.Tip="Import settings from another profile or launcher" Margin="0,0,8,0" Click="ImportProfilePreset_Click" />
-                            <Button x:Name="AddProfileBtn" Grid.Column="4" Classes="launch" Content="+ New Profile" Height="34" Padding="16,0" Foreground="White" FontWeight="Bold" Click="AddProfile_Click" />
+                            <Button x:Name="SyncSharedBtn" Grid.Column="2" Classes="action" c:Ico.Name="exchange" Content="Sync Settings" ToolTip.Tip="Syncs game settings and shared folder links" Height="34" Margin="0,0,8,0" Click="SyncSharedSettings_Click" />
+                            <Button Grid.Column="3" c:Ico.Name="file-import" Content="Import…" Classes="action" Height="34" ToolTip.Tip="Import settings from another profile or launcher" Margin="0,0,8,0" Click="ImportProfilePreset_Click" />
+                            <Button x:Name="AddProfileBtn" Grid.Column="4" Classes="launch" c:Ico.Name="plus" Content="New Profile" Height="34" Padding="16,0" Foreground="White" FontWeight="Bold" Click="AddProfile_Click" />
                         </Grid>
                         <Grid Grid.Row="2" RowDefinitions="Auto,*">
                             <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,0,10">
@@ -386,7 +384,7 @@
                                             <StackPanel Spacing="12">
                                                 <TextBlock Text="IMPORT" Foreground="{DynamicResource LadsAccent}" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
                                                 <TextBlock Text="Bring keybinds, video and audio settings, servers, resource packs, mods and HUD, and launcher settings over from Lunar, Badlion, Feather and others. You see what changes first, and can undo it." Foreground="#A0A1AA" FontSize="12" TextWrapping="Wrap" />
-                                                <Button Content="Import from another client&#8230;" Classes="action" Height="34" HorizontalAlignment="Left" Click="ClientImport_Click" />
+                                                <Button c:Ico.Name="file-import" Content="Import from another client&#8230;" Classes="action" Height="34" HorizontalAlignment="Left" Click="ClientImport_Click" />
                                             </StackPanel>
                                         </Border>
                                         <Border Background="#1D1E22" CornerRadius="4" Padding="20" BorderBrush="#303137" BorderThickness="1">
@@ -451,7 +449,7 @@
                                                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="28,0,0,0">
                                                             <TextBlock Text="Server:" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" />
                                                             <ComboBox x:Name="QuickLaunchServerComboBox" Classes="notranslate" Width="240" Height="28" FontSize="12" ToolTip.Tip="Pick a server from the shared Minecraft server list, or use Auto to detect from game logs" />
-                                                            <Button x:Name="RefreshServerListBtn" Content="&#8635;" Width="28" Height="28" Padding="0" FontSize="14" HorizontalContentAlignment="Center" ToolTip.Tip="Reload the shared server list (servers.dat in the global .minecraft folder)" Click="RefreshServerList_Click" />
+                                                            <Button x:Name="RefreshServerListBtn" c:Ico.Name="refresh" Width="28" Height="28" Padding="0" FontSize="14" HorizontalContentAlignment="Center" ToolTip.Tip="Reload the shared server list (servers.dat in the global .minecraft folder)" Click="RefreshServerList_Click" />
                                                         </StackPanel>
                                                     </StackPanel>
                                                 </Grid>
@@ -503,8 +501,8 @@
                                                 <TextBlock Text="JAVA RUNTIME" Foreground="{DynamicResource LadsAccent}" FontSize="12" FontWeight="Bold" LetterSpacing="1" />
                                                 <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,4">
                                                     <TextBlock Text="Java Installation" Foreground="#CCCCCC" FontSize="14" VerticalAlignment="Center" />
-                                                    <Button Grid.Column="1" x:Name="DownloadJavaBtn" Classes="action" Content="&#9889; Download Adoptium JDK" Height="32" Margin="0,0,8,0" Padding="12,0" FontSize="12" HorizontalContentAlignment="Center" Click="DownloadJava_Click" />
-                                                    <Button Grid.Column="2" Classes="action" Content="Detect" Height="32" Width="80" FontSize="12" HorizontalContentAlignment="Center" Click="DetectJava_Click" />
+                                                    <Button Grid.Column="1" x:Name="DownloadJavaBtn" Classes="action" c:Ico.Name="download" Content="Download Adoptium JDK" Height="32" Margin="0,0,8,0" Padding="12,0" FontSize="12" HorizontalContentAlignment="Center" Click="DownloadJava_Click" />
+                                                    <Button Grid.Column="2" Classes="action" c:Ico.Name="search" Content="Detect" Height="32" Width="80" FontSize="12" HorizontalContentAlignment="Center" Click="DetectJava_Click" />
                                                 </Grid>
                                                 <ComboBox x:Name="JavaSelector" Classes="notranslate" HorizontalAlignment="Stretch" Height="36" FontSize="12" />
                                                 <ProgressBar x:Name="JavaDownloadProgress" Minimum="0" Maximum="100" Value="0" Height="6" IsVisible="False" Foreground="{DynamicResource LadsAccent}" HorizontalAlignment="Stretch" />
@@ -596,8 +594,9 @@
                                             <ComboBoxItem>Disabled</ComboBoxItem>
                                             <ComboBoxItem>Libraries &amp; dependencies</ComboBoxItem>
                                         </ComboBox>
-                                        <Button Classes="action" Content="Reset filters" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,16,8" ToolTip.Tip="Show the whole inventory (All, no search)" Click="ResetModFilters_Click" />
-                                        <Button x:Name="AddModBtn" Classes="action" Content="Add &#9662;" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Add a mod from a .jar file or a folder of jars (existing files are never overwritten)">
+                                        <Button Classes="action" c:Ico.Name="filter-slash" Content="Reset filters" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,16,8" ToolTip.Tip="Show the whole inventory (All, no search)" Click="ResetModFilters_Click" />
+                                        <Button x:Name="AddModBtn" Classes="action" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Add a mod from a .jar file or a folder of jars (existing files are never overwritten)">
+                                            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center"><c:Glyph Kind="plus" Size="13" VerticalAlignment="Center" /><TextBlock Text="Add" VerticalAlignment="Center" /><c:Glyph Kind="angle-small-down" Size="13" VerticalAlignment="Center" /></StackPanel>
                                             <Button.Flyout>
                                                 <MenuFlyout>
                                                     <MenuItem Header="Add from file&#8230;" Click="AddModFromFile_Click" />
@@ -605,20 +604,20 @@
                                                 </MenuFlyout>
                                             </Button.Flyout>
                                         </Button>
-                                        <Button x:Name="UpdateAllModsBtn" Classes="action" Content="Update my mods" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Update the mods you added yourself from Modrinth; the launcher keeps the pack mods and LadsCore up to date" Click="UpdateAllMods_Click" />
-                                        <Button Classes="danger" Content="Restore default mod set" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Clear this profile's saved enable/disable choices and switch the pack mods and LadsCore back on" Click="RestoreDefaultMods_Click" />
-                                        <Button Classes="action" Content="Repair game files" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Verify hashes of game files, client jars and core mods, restoring missing or corrupted files" Click="RepairGameFiles_Click" />
-                                        <Button x:Name="BisectModsBtn" Classes="action" Content="Bisect mods" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Find crash or low-FPS culprit mod using binary search isolation" Click="BisectMods_Click" />
-                                        <Button Classes="danger" Content="Reset mods folder" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Move every mod file of this profile to the Recycle Bin (yours too), clear its saved enable/disable choices and reinstall LadsCore and the Lads pack fresh" Click="ResetModsFolder_Click" />
+                                        <Button x:Name="UpdateAllModsBtn" Classes="action" c:Ico.Name="cloud-download" Content="Update my mods" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Update the mods you added yourself from Modrinth; the launcher keeps the pack mods and LadsCore up to date" Click="UpdateAllMods_Click" />
+                                        <Button Classes="danger" c:Ico.Name="undo" Content="Restore default mod set" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Clear this profile's saved enable/disable choices and switch the pack mods and LadsCore back on" Click="RestoreDefaultMods_Click" />
+                                        <Button Classes="action" c:Ico.Name="tools" Content="Repair game files" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Verify hashes of game files, client jars and core mods, restoring missing or corrupted files" Click="RepairGameFiles_Click" />
+                                        <Button x:Name="BisectModsBtn" Classes="action" c:Ico.Name="code-branch" Content="Bisect mods" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Find crash or low-FPS culprit mod using binary search isolation" Click="BisectMods_Click" />
+                                        <Button Classes="danger" c:Ico.Name="trash" Content="Reset mods folder" Height="36" FontSize="13" Padding="12,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,8,8" ToolTip.Tip="Move every mod file of this profile to the Recycle Bin (yours too), clear its saved enable/disable choices and reinstall LadsCore and the Lads pack fresh" Click="ResetModsFolder_Click" />
                                         <Button Classes="action" c:Ico.Name="refresh" Content="Refresh" Height="36" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Click="RefreshMods_Click" Margin="0,0,8,8" />
                                     </WrapPanel>
                                     <Border Grid.Row="2" x:Name="ModsMassActionBar" IsVisible="False" Background="#202125" CornerRadius="4" Padding="12,7" Margin="0,0,0,8" BorderBrush="#3A3B42" BorderThickness="1">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <TextBlock x:Name="ModsSelectionCount" Text="0 selected" Foreground="#A0A1AA" FontSize="13" VerticalAlignment="Center" Margin="0,0,4,0" />
-                                            <Button Classes="action" Content="Enable" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" Click="EnableSelectedMods_Click" />
-                                            <Button Classes="danger" Content="Disable" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" Click="DisableSelectedMods_Click" />
-                                            <Button Classes="danger" Content="Delete" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" ToolTip.Tip="Only mods you added yourself (to the Recycle Bin)" Click="DeleteSelectedMods_Click" />
-                                            <Button Classes="action" Content="Update" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" ToolTip.Tip="Only mods you added yourself" Click="UpdateSelectedMods_Click" />
+                                            <Button Classes="action" c:Ico.Name="check" Content="Enable" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" Click="EnableSelectedMods_Click" />
+                                            <Button Classes="danger" c:Ico.Name="ban" Content="Disable" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" Click="DisableSelectedMods_Click" />
+                                            <Button Classes="danger" c:Ico.Name="trash" Content="Delete" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" ToolTip.Tip="Only mods you added yourself (to the Recycle Bin)" Click="DeleteSelectedMods_Click" />
+                                            <Button Classes="action" c:Ico.Name="cloud-download" Content="Update" Height="30" FontSize="12" Padding="10,0" HorizontalContentAlignment="Center" ToolTip.Tip="Only mods you added yourself" Click="UpdateSelectedMods_Click" />
                                         </StackPanel>
                                     </Border>
                                     <ScrollViewer Grid.Row="3" SizeChanged="ModsListScroller_SizeChanged">
@@ -659,9 +658,9 @@
                             <TabItem x:Name="PacksBrowseTab" Header="Resource Packs" IsVisible="False">
                                 <Grid RowDefinitions="Auto,Auto,*" Margin="0,12,0,0">
                                     <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
-                                        <Button Classes="action" Content="Open resource packs folder" Tag="resourcepacks" Height="34" Padding="12,0" HorizontalContentAlignment="Center" ToolTip.Tip="The shared resource packs folder (every version)" Click="OpenSharedFolder_Click" />
-                                        <Button Classes="action" Content="Open shader packs folder" Tag="shaderpacks" Height="34" Padding="12,0" HorizontalContentAlignment="Center" ToolTip.Tip="The shared shader packs folder (every version)" Click="OpenSharedFolder_Click" />
-                                        <Button x:Name="UpdateResourcePacksBtn" Classes="launch" Content="Update resource packs" Height="34" Padding="12,0" HorizontalContentAlignment="Center" ToolTip.Tip="Replace the packs in the shared folder with their newest release for the Minecraft version chosen below (Modrinth, and CurseForge when a key is set); enabled packs stay enabled" Click="UpdateResourcePacks_Click" />
+                                        <Button Classes="action" c:Ico.Name="folder-open" Content="Open resource packs folder" Tag="resourcepacks" Height="34" Padding="12,0" HorizontalContentAlignment="Center" ToolTip.Tip="The shared resource packs folder (every version)" Click="OpenSharedFolder_Click" />
+                                        <Button Classes="action" c:Ico.Name="folder-open" Content="Open shader packs folder" Tag="shaderpacks" Height="34" Padding="12,0" HorizontalContentAlignment="Center" ToolTip.Tip="The shared shader packs folder (every version)" Click="OpenSharedFolder_Click" />
+                                        <Button x:Name="UpdateResourcePacksBtn" Classes="launch" c:Ico.Name="cloud-download" Content="Update resource packs" Height="34" Padding="12,0" HorizontalContentAlignment="Center" ToolTip.Tip="Replace the packs in the shared folder with their newest release for the Minecraft version chosen below (Modrinth, and CurseForge when a key is set); enabled packs stay enabled" Click="UpdateResourcePacks_Click" />
                                     </StackPanel>
                                     <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="0,0,0,16">
                                         <TextBox x:Name="RpSearchBox" PlaceholderText="Search resource packs &#8212; searches as you type" Height="36" FontSize="13" Margin="0,0,8,0" TextChanged="RpSearchBox_TextChanged" />
@@ -724,9 +723,9 @@
                         <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="0,0,0,12">
                             <TextBlock Text="Logs" Foreground="White" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" />
                             <TextBox x:Name="LogSearchBox" Grid.Column="1" PlaceholderText="Search logs..." Height="36" FontSize="13" Margin="16,0" />
-                            <Button Grid.Column="2" Classes="action" Content="Share Log" Height="36" FontSize="13" Padding="16,0" Margin="0,0,8,0" HorizontalContentAlignment="Center" Click="ShareLogs_Click" ToolTip.Tip="Upload sanitized log and copy shareable link" />
-                            <Button Grid.Column="3" Classes="action" Content="Copy All" Height="36" FontSize="13" Padding="16,0" Margin="0,0,8,0" HorizontalContentAlignment="Center" Click="CopyLogs_Click" />
-                            <Button Grid.Column="4" Classes="danger" Content="Clear" Height="36" FontSize="13" Padding="16,0" HorizontalContentAlignment="Center" Click="ClearLogs_Click" />
+                            <Button Grid.Column="2" Classes="action" c:Ico.Name="share" Content="Share Log" Height="36" FontSize="13" Padding="16,0" Margin="0,0,8,0" HorizontalContentAlignment="Center" Click="ShareLogs_Click" ToolTip.Tip="Upload sanitized log and copy shareable link" />
+                            <Button Grid.Column="3" Classes="action" c:Ico.Name="copy" Content="Copy All" Height="36" FontSize="13" Padding="16,0" Margin="0,0,8,0" HorizontalContentAlignment="Center" Click="CopyLogs_Click" />
+                            <Button Grid.Column="4" Classes="danger" c:Ico.Name="broom" Content="Clear" Height="36" FontSize="13" Padding="16,0" HorizontalContentAlignment="Center" Click="ClearLogs_Click" />
                         </Grid>
                         <TextBox x:Name="LogBox" VerticalContentAlignment="Top" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" Background="#121315" Foreground="#88AA88" FontFamily="Consolas,Courier New" FontSize="12" BorderBrush="#303137" BorderThickness="1" CornerRadius="4" Padding="12" ScrollViewer.VerticalScrollBarVisibility="Auto" />
                     </Grid>
@@ -740,7 +739,7 @@
                                     <TextBlock x:Name="FilesSharedChipText" />
                                 </Border>
                                 <TextBlock x:Name="FilesPathText" Classes="notranslate" Grid.Column="2" Text="" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" Margin="16,0,16,0" TextTrimming="CharacterEllipsis" />
-                                <Button Grid.Column="3" Classes="launch" Content="Open in Explorer" Height="36" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold" Click="FilesOpenExplorer_Click" />
+                                <Button Grid.Column="3" Classes="launch" c:Ico.Name="folder-open" Content="Open in Explorer" Height="36" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold" Click="FilesOpenExplorer_Click" />
                             </Grid>
                             <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*" Margin="0,0,0,10">
                                 <Button Grid.Column="0" x:Name="FilesUpBtn" Classes="icon" Margin="0,0,6,0" Click="FilesUp_Click" ToolTip.Tip="Parent folder" />
@@ -768,14 +767,14 @@
                                     <ComboBoxItem>Name</ComboBoxItem>
                                     <ComboBoxItem>Favorites</ComboBoxItem>
                                 </ComboBox>
-                                <Button x:Name="GallerySourcesBtn" Grid.Column="4" Classes="action" Content="Sources" Height="34" Margin="0,0,8,0">
+                                <Button x:Name="GallerySourcesBtn" Grid.Column="4" Classes="action" c:Ico.Name="folders" Content="Sources" Height="34" Margin="0,0,8,0">
                                     <Button.Flyout>
                                         <Flyout Placement="BottomEdgeAlignedLeft" Opening="GallerySources_Opening">
                                             <StackPanel Width="320" Spacing="8">
                                                 <TextBlock x:Name="GallerySourcesSummary" Classes="muted" TextWrapping="Wrap" />
                                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                                    <Button Classes="action" Content="+ Add folder" Click="GalleryAddFolder_Click" />
-                                                    <Button Classes="action" Content="Rescan" Click="GalleryRescan_Click" />
+                                                    <Button Classes="action" c:Ico.Name="add-folder" Content="Add folder" Click="GalleryAddFolder_Click" />
+                                                    <Button Classes="action" c:Ico.Name="refresh" Content="Rescan" Click="GalleryRescan_Click" />
                                                 </StackPanel>
                                                 <TextBlock Text="CUSTOM FOLDERS" Classes="sectionTitle" Margin="0,6,0,0" />
                                                 <StackPanel x:Name="GalleryCustomFoldersList" Spacing="4" />
@@ -787,7 +786,7 @@
                                     </Button.Flyout>
                                 </Button>
                                 <TextBlock x:Name="GalleryStatusText" Grid.Column="5" Foreground="#A0A1AA" FontSize="12" VerticalAlignment="Center" Margin="8,0,12,0" TextTrimming="CharacterEllipsis" />
-                                <Button Grid.Column="6" Classes="launch" Content="Open Folder" ToolTip.Tip="Open the shared screenshots folder" Height="34" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold" Click="GalleryOpenFolder_Click" />
+                                <Button Grid.Column="6" Classes="launch" c:Ico.Name="folder-open" Content="Open Folder" ToolTip.Tip="Open the shared screenshots folder" Height="34" FontSize="13" Padding="14,0" HorizontalContentAlignment="Center" Foreground="White" FontWeight="Bold" Click="GalleryOpenFolder_Click" />
                             </Grid>
 
                             <!-- Empty state -->
@@ -802,7 +801,7 @@
                             <ScrollViewer x:Name="GalleryScroller" Grid.Row="2" SizeChanged="GalleryScroller_SizeChanged" HorizontalScrollBarVisibility="Disabled">
                                 <StackPanel>
                                     <WrapPanel x:Name="GalleryList" Margin="-6,0,-6,0" />
-                                    <Button x:Name="GalleryLoadMoreBtn" Classes="action" Content="Load more" IsVisible="False" Height="34" FontSize="13" Padding="14,0" Margin="6,12,6,6" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Click="GalleryLoadMore_Click" />
+                                    <Button x:Name="GalleryLoadMoreBtn" Classes="action" c:Ico.Name="arrow-small-down" Content="Load more" IsVisible="False" Height="34" FontSize="13" Padding="14,0" Margin="6,12,6,6" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Click="GalleryLoadMore_Click" />
                                 </StackPanel>
                             </ScrollViewer>
                         </Grid>
@@ -821,8 +820,8 @@
                                         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                             <Button x:Name="GalleryViewerCopyBtn" Classes="icon" ToolTip.Tip="Copy image to clipboard" Click="GalleryViewerCopy_Click" />
                                             <Button x:Name="GalleryViewerFolderBtn" Classes="icon" ToolTip.Tip="Show file in Explorer" Click="GalleryViewerFolder_Click" />
-                                            <Button Classes="icon" Content="⛶" ToolTip.Tip="Toggle full screen" Click="GalleryViewerFullscreen_Click" />
-                                            <Button Classes="icon" Content="✕" ToolTip.Tip="Close (Esc)" Click="GalleryViewerClose_Click" />
+                                            <Button Classes="icon" c:Ico.Name="expand" ToolTip.Tip="Toggle full screen" Click="GalleryViewerFullscreen_Click" />
+                                            <Button Classes="icon" c:Ico.Name="cross-small" ToolTip.Tip="Close (Esc)" Click="GalleryViewerClose_Click" />
                                         </StackPanel>
                                     </Grid>
                                 </Border>
@@ -917,7 +916,7 @@
                     <TextBlock x:Name="GameLaunchVersionText" Text="Minecraft" Foreground="#E27676" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" />
                     <TextBlock x:Name="GameLaunchStatusText" Text="Initializing launch environment..." Foreground="#A0A1AA" FontSize="14" HorizontalAlignment="Center" />
                     <ProgressBar x:Name="GameLaunchProgressBar" Width="350" Height="8" Minimum="0" Maximum="100" Value="0" Foreground="{DynamicResource LadsAccent}" Background="#303137" CornerRadius="4" />
-                    <Button x:Name="CancelLaunchButton" Classes="action" Content="Cancel" MinWidth="120" Height="34" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Click="CancelLaunch_Click" />
+                    <Button x:Name="CancelLaunchButton" Classes="action" c:Ico.Name="cross" Content="Cancel" MinWidth="120" Height="34" HorizontalAlignment="Center" HorizontalContentAlignment="Center" Click="CancelLaunch_Click" />
                 </StackPanel>
             </Grid>
             <Grid x:Name="ManualLoginOverlay" Background="#F5121315" IsVisible="False" ZIndex="100">
@@ -927,8 +926,8 @@
                     <TextBlock Text="When you finish, you'll see a blank white page. COPY the URL of that page and PASTE it below:" Foreground="{DynamicResource LadsAccent}" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" TextWrapping="Wrap" MaxWidth="500" TextAlignment="Center" />
                     <TextBox x:Name="ManualUrlTextBox" Width="500" Height="30" PlaceholderText="https://login.live.com/oauth20_desktop.srf?code=..." Background="#303137" Foreground="White" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
-                        <Button Content="Submit URL" Classes="action" Click="ManualLoginSubmit_Click" Width="150" HorizontalContentAlignment="Center" />
-                        <Button Content="Cancel" Classes="danger" Click="ManualLoginCancel_Click" Width="100" HorizontalContentAlignment="Center" />
+                        <Button c:Ico.Name="check" Content="Submit URL" Classes="action" Click="ManualLoginSubmit_Click" Width="150" HorizontalContentAlignment="Center" />
+                        <Button c:Ico.Name="cross" Content="Cancel" Classes="danger" Click="ManualLoginCancel_Click" Width="100" HorizontalContentAlignment="Center" />
                     </StackPanel>
                 </StackPanel>
             </Grid>
