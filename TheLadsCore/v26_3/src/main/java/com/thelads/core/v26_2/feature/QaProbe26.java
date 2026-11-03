@@ -32,7 +32,7 @@ public final class QaProbe26 {
 
     private enum Phase { TITLE, SCRIPT, DONE }
 
-    private static boolean registered, active, failed, scriptStarted, scriptDone;
+    private static boolean registered, active, failed, scriptStarted, scriptDone, holdPause;
     private static Phase phase = Phase.TITLE;
     private static Path gameDir;
     private static List<String[]> steps = new ArrayList<>();
@@ -50,6 +50,9 @@ public final class QaProbe26 {
         ClientLifecycleEvents.CLIENT_STARTED.register(QaProbe26::begin);
         ClientTickEvents.START_CLIENT_TICK.register(QaProbe26::tick);
     }
+
+    /** A script's "screen pause": NativeWorldVerification, which closes stray pause menus in the QA world, leaves that one open. */
+    static boolean holdsPause() { return holdPause; }
 
     private static void begin(Minecraft mc) {
         try {
@@ -177,9 +180,9 @@ public final class QaProbe26 {
             }
             case "screen" -> {
                 String target = arg(s, 1).toLowerCase(Locale.ROOT);
-                if ("none".equals(target) || "close".equals(target)) mc.gui.setScreen(null);
+                if ("none".equals(target) || "close".equals(target)) { holdPause = false; mc.gui.setScreen(null); }
                 else if ("title".equals(target)) mc.setScreenAndShow(new TitleScreen());
-                else if ("pause".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(true));
+                else if ("pause".equals(target)) { holdPause = true; mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(true)); }
                 else if ("multiplayer".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(mc.gui.screen()));
                 else if ("lads".equals(target) || "settings".equals(target)) {
                     var screen = new LadsSettingsScreen26(mc.gui.screen());
