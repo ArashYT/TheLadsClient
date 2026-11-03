@@ -229,6 +229,7 @@ public sealed class ClientImportTests : IDisposable
         Assert.Equal("key.keyboard.unknown", options.Options["key_key.drop"]);
         Assert.Equal("true", options.Options["ao"]); // 1.8.9's 2
         Assert.False(options.Options.ContainsKey("fancyGraphics"));
+        Assert.Contains(options.Skipped, s => s.Contains("left as they are", StringComparison.Ordinal));
 
         var result = ClientImport.Apply(plan, new[] { ImportCategory.Options }, _targets);
         Assert.Empty(result.Errors);

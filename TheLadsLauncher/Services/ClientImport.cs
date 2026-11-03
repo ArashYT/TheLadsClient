@@ -225,6 +225,7 @@ public static class ClientImport
 
         var vanilla = GameControls.VanillaKeys("1.8.9").Concat(GameControls.VanillaKeys("26.3")).Select(k => "key_" + k.Id).ToHashSet(StringComparer.Ordinal);
         var current = GameOptionsFile.Parse(File.Exists(targets.Paths.SharedOptionsFile) ? File.ReadAllText(targets.Paths.SharedOptionsFile) : null);
+        int leftAlone = 0;
         foreach (var (stored, value) in raw)
         {
             string key = legacy ? SharedControls.OptionKey(stored, false) : stored;
@@ -235,7 +236,7 @@ public static class ClientImport
                 converted = SharedControls.FromVersion(key, value);
                 if (converted == null) { Skip(plan, $"{key[4..]}: no matching key"); continue; }
             }
-            else if (!ImportedOptions.TryGetValue(key, out var range)) continue;
+            else if (!ImportedOptions.TryGetValue(key, out var range)) { leftAlone++; continue; }
             else
             {
                 converted = ConvertOption(key, value, range, degrees);
@@ -244,6 +245,7 @@ public static class ClientImport
             plan.Options[key] = converted;
             if (current.Get(key) != converted) plan.Changes.Add($"{key} = {converted}");
         }
+        if (leftAlone > 0) Skip(plan, $"{leftAlone} other settings (language, last server, version-specific graphics...) are left as they are");
         // Unchanged values need no write; only what differs goes to the profiles.
         foreach (var key in plan.Options.Keys.Where(k => current.Get(k) == plan.Options[k]).ToList()) plan.Options.Remove(key);
     }
@@ -349,11 +351,14 @@ public static class ClientImport
         }
     }
 
+    /// <summary>A pack folder's content; links and junctions in it, which could reach outside it, are not.</summary>
+    private static readonly EnumerationOptions PackEntries = new() { RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint };
+
     private static bool TooLarge(string path)
     {
         if (File.Exists(path)) return new FileInfo(path).Length > MaxPackBytes;
         long total = 0; int count = 0;
-        foreach (var file in new DirectoryInfo(path).EnumerateFiles("*", SearchOption.AllDirectories))
+        foreach (var file in new DirectoryInfo(path).EnumerateFiles("*", PackEntries))
         {
             total += file.Length;
             if (++count > MaxPackFiles || total > MaxPackBytes) return true;
@@ -938,9 +943,8 @@ public static class ClientImport
     {
         if (File.Exists(source)) { SafeFileOps.CopyVerified(source, destination); return; }
         Directory.CreateDirectory(destination);
-        foreach (var entry in new DirectoryInfo(source).EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
+        foreach (var entry in new DirectoryInfo(source).EnumerateFileSystemInfos("*", PackEntries))
         {
-            if (entry.LinkTarget != null) continue; // links in a pack would reach outside it
             string relative = Path.GetRelativePath(source, entry.FullName), target = Path.Combine(destination, relative);
             if (entry is DirectoryInfo) Directory.CreateDirectory(target);
             else { Directory.CreateDirectory(Path.GetDirectoryName(target)!); File.Copy(entry.FullName, target, false); }
