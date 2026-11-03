@@ -200,6 +200,10 @@ public final class QaProbe189 {
                     mc.displayGuiScreen(null);
                 } else if ("title".equals(target)) {
                     mc.displayGuiScreen(new GuiMainMenu());
+                } else if ("pause".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiIngameMenu());
+                } else if ("multiplayer".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiMultiplayer(mc.currentScreen));
                 } else if ("lads".equals(target) || "settings".equals(target)) {
                     LadsSettingsScreen189 ladsScreen = new LadsSettingsScreen189(mc.currentScreen);
                     mc.displayGuiScreen(ladsScreen);
