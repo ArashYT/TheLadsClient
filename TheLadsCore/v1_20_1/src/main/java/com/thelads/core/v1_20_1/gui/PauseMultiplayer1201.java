@@ -12,8 +12,9 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.multiplayer.SafetyScreen;
-import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.ServerList;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.network.chat.Component;
 import org.slf4j.LoggerFactory;
 
@@ -69,8 +70,42 @@ public final class PauseMultiplayer1201 {
     }
 
     public static void joinNetwork(Screen parent) {
-        ConnectScreen.startConnecting(parent, Minecraft.getInstance(), ServerAddress.parseString(LadsNetwork.ADDRESS),
-            new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, false), false);
+        connectToServer(parent, LadsNetwork.NAME, LadsNetwork.ADDRESS);
+    }
+
+    public static void connectToServer(Screen parent, String name, String address) {
+        Minecraft mc = Minecraft.getInstance();
+        ServerData data = ensureServerEntry(mc, name, address);
+        ConnectScreen.startConnecting(parent, mc, ServerAddress.parseString(data.ip), data, false);
+    }
+
+    /** Reuses an existing saved server entry (preserving Disabled if chosen) or registers a new one with server packs Enabled. */
+    public static ServerData ensureServerEntry(Minecraft mc, String name, String address) {
+        String targetIp = address == null ? LadsNetwork.ADDRESS : address.trim();
+        String display = (name != null && !name.isEmpty()) ? name : targetIp;
+        try {
+            ServerList list = new ServerList(mc);
+            list.load();
+            for (int i = 0; i < list.size(); i++) {
+                ServerData existing = list.get(i);
+                if (existing != null && existing.ip != null && existing.ip.trim().equalsIgnoreCase(targetIp)) {
+                    if (existing.getResourcePackStatus() == ServerData.ServerPackStatus.PROMPT) {
+                        existing.setResourcePackStatus(ServerData.ServerPackStatus.ENABLED);
+                        list.save();
+                    }
+                    return existing;
+                }
+            }
+            ServerData created = new ServerData(display, targetIp, false);
+            created.setResourcePackStatus(ServerData.ServerPackStatus.ENABLED);
+            list.add(created, false);
+            list.save();
+            return created;
+        } catch (Exception ignored) {
+            ServerData fallback = new ServerData(display, targetIp, false);
+            fallback.setResourcePackStatus(ServerData.ServerPackStatus.ENABLED);
+            return fallback;
+        }
     }
 
     public static boolean serverHas(String command) {

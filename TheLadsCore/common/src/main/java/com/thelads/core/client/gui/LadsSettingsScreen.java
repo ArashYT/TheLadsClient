@@ -58,6 +58,20 @@ public final class LadsSettingsScreen {
     private final ParticleRatesDialog particleRates = new ParticleRatesDialog();
     private final ConfirmDialog confirm = new ConfirmDialog();
     private final ClientImportDialog clientImport = new ClientImportDialog();
+    private static volatile boolean openNetworkHubRequested;
+    private final LadsNetworkHubDialog networkHub = new LadsNetworkHubDialog();
+    {
+        networkHub.setOnAfterJoin(this::close);
+        if (consumeOpenNetworkHubRequest()) networkHub.open();
+    }
+    public static void requestOpenNetworkHub() { openNetworkHubRequested = true; }
+    private static boolean consumeOpenNetworkHubRequest() {
+        if (!openNetworkHubRequested) return false;
+        openNetworkHubRequested = false;
+        return true;
+    }
+    public void openNetworkHub() { networkHub.open(); }
+    public LadsNetworkHubDialog networkHub() { return networkHub; }
     /** The sound library and trimmer every uploaded-sound slot opens (Choose, Add). */
     private final SoundLibraryDialog library = new SoundLibraryDialog(confirm, () -> changed(ModuleManager.getInstance().getModule(ComboSoundsModule.NAME)));
     private double displayedScroll;
@@ -128,7 +142,7 @@ public final class LadsSettingsScreen {
     public Consumer<String> getClipboardWriter() { return clipboardWriter; }
     public void setSearchQuery(String value) { searchQuery = value == null ? "" : value; filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; catalogScrollOffset = 0; catalogDisplayedScroll = 0; catalogRenderScroll = 0; }
     public String getSearchQuery() { return searchQuery; }
-    public boolean isEditingText() { return editingSearch || editingOption != null || editingFps || actions.isOpen() || particleRates.isOpen() || clientImport.isOpen() || colorPicker.isOpen() || fpsDialogOpen || library.isOpen(); }
+    public boolean isEditingText() { return editingSearch || editingOption != null || editingFps || actions.isOpen() || particleRates.isOpen() || clientImport.isOpen() || networkHub.isOpen() || colorPicker.isOpen() || fpsDialogOpen || library.isOpen(); }
     public String getCurrentCategory() { return currentCategory; }
     public String getCurrentTab() { return "MODS"; }
     public List<Rect> getControlBounds() { return controls.stream().map(Control::rect).toList(); }
@@ -212,8 +226,9 @@ public final class LadsSettingsScreen {
 
     public void render(LadsGraphics g, int pointerX, int pointerY) {
         refreshCapabilities();
+        if (consumeOpenNetworkHubRequest()) openNetworkHub();
         // A popup is modal: the screen under it neither highlights nor reacts to the pointer.
-        boolean modal = colorPicker.isOpen() || actions.isOpen() || particleRates.isOpen() || clientImport.isOpen() || fpsDialogOpen || confirm.isOpen() || library.isOpen();
+        boolean modal = colorPicker.isOpen() || actions.isOpen() || particleRates.isOpen() || clientImport.isOpen() || networkHub.isOpen() || fpsDialogOpen || confirm.isOpen() || library.isOpen();
         int mouseX = modal ? -100000 : pointerX, mouseY = modal ? -100000 : pointerY;
         long now = System.nanoTime();
         double elapsed = previousFrameNanos == 0 ? 0 : Math.min(.1, (now - previousFrameNanos) / 1e9);
@@ -272,6 +287,7 @@ public final class LadsSettingsScreen {
         g.overlay(() -> actions.render(g, pointerX, pointerY));
         g.overlay(() -> particleRates.render(g, pointerX, pointerY));
         g.overlay(() -> clientImport.render(g, pointerX, pointerY));
+        g.overlay(() -> networkHub.render(g, pointerX, pointerY));
         g.overlay(() -> renderHudFpsDialog(g, pointerX, pointerY));
         g.overlay(() -> library.render(g, pointerX, pointerY));
         g.overlay(() -> confirm.render(g, pointerX, pointerY));
@@ -349,7 +365,15 @@ public final class LadsSettingsScreen {
         g.drawText(modules.size() + " MODULES", x, top, MUTED);
         // Where every layout has room; the side bar's buttons are gone in the compact one.
         int importX = x + g.textWidth(modules.size() + " MODULES") + 8;
-        if (importX + 110 < x + w - (compact ? 223 : 164)) button(g, "client-import", "Import from client", new Rect(importX, top - 4, 110, 18), clientImport::open, true, mx, my, false);
+        int actionX = importX;
+        if (importX + 110 < x + w - (compact ? 223 : 164)) {
+            button(g, "client-import", "Import from client", new Rect(importX, top - 4, 110, 18), clientImport::open, true, mx, my, false);
+            actionX += 116;
+        }
+        int rightLimit = x + w - (compact ? 223 : (currentCategory.equals("HUD") && !modsView ? (w >= 400 ? 278 : (w >= 280 ? 164 : 4)) : 4));
+        if (com.thelads.core.client.LadsNetwork.titleButton() && actionX + 86 <= rightLimit) {
+            button(g, "lads-network", "Lads Network", new Rect(actionX, top - 4, 86, 18), this::openNetworkHub, true, mx, my, networkHub.isOpen());
+        }
         if (compact) {
             button(g, "installed-mods", "Installed mods", new Rect(x + w - 219, top - 4, 84, 18), this::openMods, true, mx, my, false);
             button(g, "hud", "HUD", new Rect(x + w - 131, top - 4, 39, 18), () -> leave(onOpenHudEditor), true, mx, my, false);
@@ -1707,6 +1731,7 @@ public final class LadsSettingsScreen {
         if (actions.click(x,y,button)) return true;
         if (particleRates.click(x, y, button)) return true;
         if (clientImport.click(x, y, button)) return true;
+        if (networkHub.click(x, y, button)) return true;
         if (colorPicker.click(x, y, button)) return true;
         if (fpsDialogOpen) {
             if (fpsBox == null) return true; // opened, not drawn yet
@@ -1806,6 +1831,7 @@ public final class LadsSettingsScreen {
     }
     public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
         if (confirm.isOpen()) return true;
+        if (networkHub.isOpen()) return true;
         if (library.drag(x)) return true;
         if (particleRates.drag(x, y)) return true;
         if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); return true; }
@@ -1827,6 +1853,7 @@ public final class LadsSettingsScreen {
     }
     public boolean mouseReleased(double x, double y, int button) {
         if (confirm.isOpen()) return true;
+        if (networkHub.isOpen()) return true;
         if (library.release()) return true;
         if (particleRates.release()) return true;
         if (fpsDialogOpen && draggingFpsSlider) { updateFpsSlider(x); draggingFpsSlider = false; return true; }
@@ -1856,6 +1883,7 @@ public final class LadsSettingsScreen {
         if (actions.wheel(amount)) return true;
         if (particleRates.wheel(amount)) return true;
         if (clientImport.wheel(amount)) return true;
+        if (networkHub.isOpen()) return true;
         if (colorPicker.isOpen() || fpsDialogOpen) return true;
         if (!viewport.contains(x, y)) return false;
         tip.dismiss(); scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - (int)(amount * 28 * (reducedMotion ? 1.0 : SmoothScroll.FACTOR)))); return true;
@@ -1866,6 +1894,7 @@ public final class LadsSettingsScreen {
         if (actions.key(key,modifiers)) return true;
         if (particleRates.key(key, modifiers)) return true;
         if (clientImport.key(key)) return true;
+        if (networkHub.key(key)) return true;
         if (colorPicker.key(key)) return true;
         if (fpsDialogOpen) {
             if (key == 256) { closeHudFpsDialog(); return true; }
@@ -1964,6 +1993,7 @@ public final class LadsSettingsScreen {
         if (actions.type(codePoint)) return true;
         if (particleRates.type(codePoint)) return true;
         if (clientImport.isOpen()) return true;
+        if (networkHub.isOpen()) return true;
         if (colorPicker.type(codePoint)) return true;
         if (fpsDialogOpen) {
             if (editingFps && codePoint >= '0' && codePoint <= '9' && fpsBuffer.length() < 4) {

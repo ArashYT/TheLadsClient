@@ -114,8 +114,7 @@ public abstract class TitleScreenMixin extends Screen {
         ladsSwitchVersionButton = addRenderableWidget(Button.builder(Component.literal("Switch Versions"),
             button -> minecraft.setScreen(new VersionSwitchScreen1201(this))).bounds(0, 0, 1, 1).build());
         ladsNetworkButton = !LadsNetwork.titleButton() ? null : addRenderableWidget(Button.builder(Component.literal(LadsNetwork.TITLE_LABEL),
-            button -> ConnectScreen.startConnecting(new JoinMultiplayerScreen(this), minecraft, ServerAddress.parseString(LadsNetwork.ADDRESS),
-                new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, false), false)).tooltip(Tooltip.create(Component.literal(LadsNetwork.TOOLTIP))).bounds(0, 0, 1, 1).build());
+            button -> com.thelads.core.v1_20_1.gui.PauseMultiplayer1201.joinNetwork(new JoinMultiplayerScreen(this))).tooltip(Tooltip.create(Component.literal(LadsNetwork.TOOLTIP))).bounds(0, 0, 1, 1).build());
 
         // Beside the account name (placed each frame after it)
         ladsSwitchButton = addRenderableWidget(new CompactButton1201(0, 0, 1, 1, Component.literal(TitleScreenTheme.SWITCH),
@@ -318,30 +317,33 @@ public abstract class TitleScreenMixin extends Screen {
         int scaledMouseX = (int) Math.round(mouseX / matrixScale);
         int scaledMouseY = (int) Math.round(mouseY / matrixScale);
 
-        if (ladsNoirLayout != null) panorama.render(partialTick, 1.0f);
+        if (ladsNoirLayout != null) panorama.render(reducedMotion ? 0.0f : minecraft.getDeltaFrameTime(), 1.0f);
         graphics.pose().pushPose();
-        graphics.pose().scale(matrixScale, matrixScale, 1.0f);
-
-        var adapter = new GuiGraphicsLadsAdapter1201(graphics, font);
-        TitleScreenTheme.Rect[] box = new TitleScreenTheme.Rect[1];
-        String version = SharedConstants.getCurrentVersion().getName() + (minecraft.isDemo() ? " Demo" : "");
-        adapter.managed(() -> box[0] = ladsNoirLayout != null
-            ? TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, true)
-            : TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds, true));
-        TitleScreenTheme.Rect switchBox = box[0];
-        if (switchBox != null) {
-            ((CompactButton1201) ladsSwitchButton).setBounds(switchBox.x(), switchBox.y(), switchBox.width(), switchBox.height());
-        }
-
-        TitleWidgetRegistry1201.beginFrame(this, adapter, elapsed, reducedMotion);
-        TitleNoir.beginFrame(ladsNoirLayout);
         try {
-            super.render(graphics, scaledMouseX, scaledMouseY, partialTick);
+            graphics.pose().scale(matrixScale, matrixScale, 1.0f);
+
+            var adapter = new GuiGraphicsLadsAdapter1201(graphics, font);
+            TitleScreenTheme.Rect[] box = new TitleScreenTheme.Rect[1];
+            String version = SharedConstants.getCurrentVersion().getName() + (minecraft.isDemo() ? " Demo" : "");
+            adapter.managed(() -> box[0] = ladsNoirLayout != null
+                ? TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, true)
+                : TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds, true));
+            TitleScreenTheme.Rect switchBox = box[0];
+            if (switchBox != null) {
+                ((CompactButton1201) ladsSwitchButton).setBounds(switchBox.x(), switchBox.y(), switchBox.width(), switchBox.height());
+            }
+
+            TitleWidgetRegistry1201.beginFrame(this, adapter, elapsed, reducedMotion);
+            TitleNoir.beginFrame(ladsNoirLayout);
+            try {
+                super.render(graphics, scaledMouseX, scaledMouseY, partialTick);
+            } finally {
+                TitleNoir.endFrame();
+                TitleWidgetRegistry1201.endFrame();
+            }
         } finally {
-            TitleNoir.endFrame();
-            TitleWidgetRegistry1201.endFrame();
+            graphics.pose().popPose();
         }
-        graphics.pose().popPose();
         ci.cancel();
     }
 
@@ -350,7 +352,14 @@ public abstract class TitleScreenMixin extends Screen {
         if (ladsCustomTitle) {
             ladsEnsureTitleLayout();
             float matrixScale = ladsMatrixScale();
-            cir.setReturnValue(super.mouseClicked(mouseX / matrixScale, mouseY / matrixScale, button));
+            double sx = mouseX / matrixScale, sy = mouseY / matrixScale;
+            if (button == 0 && ladsNoirLayout != null && TitleNoir.clickNetworkPill(sx, sy)) {
+                com.thelads.core.client.gui.LadsSettingsScreen.requestOpenNetworkHub();
+                minecraft.setScreen(new LadsSettingsScreen1201(this));
+                cir.setReturnValue(true);
+                return;
+            }
+            cir.setReturnValue(super.mouseClicked(sx, sy, button));
         }
     }
 }

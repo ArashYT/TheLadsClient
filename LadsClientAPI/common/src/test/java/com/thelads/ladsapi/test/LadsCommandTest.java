@@ -165,4 +165,27 @@ public class LadsCommandTest {
         List<String> res2 = com.thelads.ladsapi.command.LadsCommandHandler.suggest(core, new String[]{"set", "Steve", "Crosshair", "Tweaks", ""}, List.of("Steve"));
         assertEquals(List.of("allow", "block", "on"), res2);
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testSchemaProtocolCommandsAllHandledAtRuntime() throws Exception {
+        try (var in = com.thelads.ladsapi.schema.LadsSchema.class.getResourceAsStream("/ladsapi-schema.json")) {
+            assertNotNull(in);
+            java.util.Map<String, Object> root = new org.yaml.snakeyaml.Yaml().load(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+            var protocol = (java.util.Map<String, Object>) root.get("protocol");
+            var commands = (List<String>) protocol.get("commands");
+            assertTrue(commands.contains("announce"));
+            for (String sub : commands) {
+                String[] args = switch (sub) {
+                    case "inspect", "clear" -> new String[]{sub, "Steve"};
+                    case "set" -> new String[]{sub, "Steve", "Fullbright", "allow"};
+                    case "announce" -> new String[]{sub, "Schema", "check"};
+                    default -> new String[]{sub};
+                };
+                List<String> reply = core.command(args, true);
+                assertFalse(reply.isEmpty(), "Expected output for subcommand " + sub);
+                assertFalse(reply.get(0).toLowerCase().contains("unknown"), "Subcommand " + sub + " must be recognized: " + reply);
+            }
+        }
+    }
 }

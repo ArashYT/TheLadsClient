@@ -44,6 +44,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private Button ladsSettingsButton;
     @Unique private Button ladsAccountsButton;
     @Unique private Button ladsMoreButton;
+    @Unique private Button ladsNetworkButton;
     @Unique private List<AbstractWidget> ladsExtraWidgets = new ArrayList<>();
     @Unique private long ladsLastFrameNanos;
     @Unique private double ladsAnimationSeconds;
@@ -69,6 +70,12 @@ public abstract class TitleScreenMixin extends Screen {
             button -> minecraft.setScreen(new AccountSwitcherScreen12111(this))).bounds(0, 0, 1, 1).build());
         ladsMoreButton = addRenderableWidget(Button.builder(Component.literal("More..."),
             button -> minecraft.setScreen(new TitleExtrasScreen12111(this, ladsExtraWidgets))).bounds(0, 0, 1, 1).build());
+        ladsNetworkButton = !com.thelads.core.client.LadsNetwork.titleButton() ? null
+            : addRenderableWidget(Button.builder(Component.literal(com.thelads.core.client.LadsNetwork.TITLE_LABEL),
+                button -> com.thelads.core.v1_21_11.gui.PauseMultiplayer.joinNetwork(
+                    new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(this)))
+                .tooltip(Tooltip.create(Component.literal(com.thelads.core.client.LadsNetwork.TOOLTIP)))
+                .bounds(0, 0, 1, 1).build());
         ladsLayoutToggle = addRenderableWidget(new CompactButton12111(0, 6, 20, 20, Component.literal(TitleScreenTheme.layoutToggleLabel()),
             () -> "layout", button -> TitleScreenModule.toggleLayout()));
         ladsLayoutToggle.setTabOrderGroup(203);
@@ -177,6 +184,7 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private int ladsButtonOrder(AbstractWidget widget) {
+        if (widget == ladsNetworkButton) return 2;
         if (widget == ladsSettingsButton) return 3;
         if (widget == ladsMoreButton) return 7;
         if (widget == ladsAccountsButton) return 4;
@@ -196,6 +204,7 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private String ladsButtonIcon(AbstractWidget widget) {
+        if (widget == ladsNetworkButton) return "server";
         if (widget == ladsSettingsButton) return "mods";
         if (widget == ladsAccountsButton) return "user";
         if (ladsIsModMenuWidget(widget)) return "mods";
@@ -248,24 +257,28 @@ public abstract class TitleScreenMixin extends Screen {
         var adapter = new GuiGraphicsLadsAdapter(graphics, font);
         String version = "1.21.11" + (minecraft.isDemo() ? " Demo" : "");
         float matrixScale = ladsMatrixScale();
-        if (ladsNoirLayout != null) {
-            renderPanorama(graphics, partialTick);
-            graphics.pose().pushMatrix();
-            graphics.pose().scale(matrixScale, matrixScale);
-            TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, false);
-        } else {
-            TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds);
-        }
-        TitleWidgetRegistry.beginFrame(this, adapter, elapsed, reducedMotion);
-        TitleNoir.beginFrame(ladsNoirLayout);
+        if (ladsNoirLayout != null) renderPanorama(graphics, partialTick);
+        boolean pushed = ladsNoirLayout != null;
+        if (pushed) graphics.pose().pushMatrix();
         try {
-            // Calls Screen, not TitleScreen: only native widgets and extra renderables, never vanilla artwork.
-            super.render(graphics, Math.round(mouseX / matrixScale), Math.round(mouseY / matrixScale), partialTick);
+            if (pushed) {
+                graphics.pose().scale(matrixScale, matrixScale);
+                TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, false);
+            } else {
+                TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds);
+            }
+            TitleWidgetRegistry.beginFrame(this, adapter, elapsed, reducedMotion);
+            TitleNoir.beginFrame(ladsNoirLayout);
+            try {
+                // Calls Screen, not TitleScreen: only native widgets and extra renderables, never vanilla artwork.
+                super.render(graphics, Math.round(mouseX / matrixScale), Math.round(mouseY / matrixScale), partialTick);
+            } finally {
+                TitleNoir.endFrame();
+                TitleWidgetRegistry.endFrame();
+            }
         } finally {
-            TitleNoir.endFrame();
-            TitleWidgetRegistry.endFrame();
+            if (pushed) graphics.pose().popMatrix();
         }
-        if (ladsNoirLayout != null) graphics.pose().popMatrix();
         ci.cancel();
     }
 
@@ -276,8 +289,15 @@ public abstract class TitleScreenMixin extends Screen {
             ladsEnsureTitleLayout();
             // Vanilla also forwards clicks to its separate, now hidden Realms notification overlay.
             float matrixScale = ladsMatrixScale();
+            double sx = event.x() / matrixScale, sy = event.y() / matrixScale;
+            if (event.button() == 0 && ladsNoirLayout != null && TitleNoir.clickNetworkPill(sx, sy)) {
+                com.thelads.core.client.gui.LadsSettingsScreen.requestOpenNetworkHub();
+                minecraft.setScreen(new LadsSettingsScreen12111(this));
+                cir.setReturnValue(true);
+                return;
+            }
             cir.setReturnValue(super.mouseClicked(matrixScale != 1.0f
-                ? new MouseButtonEvent(event.x() / matrixScale, event.y() / matrixScale, event.buttonInfo()) : event, doubleClick));
+                ? new MouseButtonEvent(sx, sy, event.buttonInfo()) : event, doubleClick));
         }
     }
 }
