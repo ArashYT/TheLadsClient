@@ -176,6 +176,7 @@ public final class TitleScreenTheme {
                                      String label, String icon, boolean primary, boolean hovered,
                                      boolean focused, boolean active, float hoverProgress) {
         float hover = active ? Math.max(0, Math.min(1, hoverProgress)) : 0;
+        if (TitleNoir.renderButton(g, x, y, width, height, label, focused, active, hover)) return;
         float lift = hover * hover * (3 - 2 * hover);
         // Hover: the button grows a little about its centre and glows.
         g.pushPose();
@@ -223,6 +224,7 @@ public final class TitleScreenTheme {
     public static void renderCompactButton(LadsGraphics g, int x, int y, int width, int height, String icon, String label,
                                            boolean focused, boolean active, float hoverProgress) {
         float hover = active ? Math.max(0, Math.min(1, hoverProgress)) : 0;
+        if (TitleNoir.renderCompact(g, x, y, width, height, icon, label, focused, active, hover)) return;
         float lift = hover * hover * (3 - 2 * hover), scale = 1 + 2 * LIFT * lift;
         g.pushPose();
         g.translate(x + width / 2f, y + height / 2f);
@@ -262,6 +264,18 @@ public final class TitleScreenTheme {
     /** The language globe's left edge, a gap left of the fullscreen toggle. */
     public static int languageX(int screenWidth, int fullscreenWidth) {
         return fullscreenX(screenWidth, fullscreenWidth) - HEADER_GAP - HEADER_SIZE;
+    }
+
+    /** The title's layout toggle, labelled by what pressing it does; below TOGGLE_LABEL_MIN wide a square icon, left of the language globe. */
+    public static final String NEW_LAYOUT = "New layout", LEGACY_LAYOUT = "Legacy layout";
+    public static final int TOGGLE_LABEL_MIN = 400;
+
+    public static String layoutToggleLabel() {
+        return com.thelads.core.modules.TitleScreenModule.legacyLayout() ? NEW_LAYOUT : LEGACY_LAYOUT;
+    }
+
+    public static int layoutToggleWidth(int screenWidth, int widestLabel) {
+        return screenWidth >= TOGGLE_LABEL_MIN ? widestLabel + COMPACT_PADDING : HEADER_SIZE;
     }
 
     /** The pause menu's button icons: their size and gap to the label, centred together with it. */
@@ -328,7 +342,7 @@ public final class TitleScreenTheme {
         "globe", new String[] {"...####...", ".##.##.##.", "#...##...#", "##########", "##########",
                                "#...##...#", ".##.##.##.", "...####...", "..........", ".........."});
 
-    private static void icon(LadsGraphics g, String kind, int x, int y, int size, int c) {
+    static void icon(LadsGraphics g, String kind, int x, int y, int size, int c) {
         String[] rows = PIXEL_ICONS.get(kind);
         if (rows != null) {
             for (int row = 0; row < rows.length; row++)
@@ -342,6 +356,12 @@ public final class TitleScreenTheme {
         switch (kind) {
             case "play" -> {
                 for (int i = 0; i < size / 2; i++) g.fill(x + i, y + i, x + i + 1, y + size - i, c);
+            }
+            case "layout" -> {
+                g.fill(x, y + 1, x + 10, y + 2, c);
+                g.fill(x, y + 8, x + 10, y + 9, c);
+                g.fill(x + 9, y + 2, x + 10, y + 8, c);
+                g.fill(x, y + 2, x + 4, y + 8, c);
             }
             case "user" -> {
                 g.fill(x + 3, y, x + size - 3, y + 4, c);
@@ -431,7 +451,7 @@ public final class TitleScreenTheme {
         }
     }
 
-    private static String fit(LadsGraphics g, String value, int width) {
+    static String fit(LadsGraphics g, String value, int width) {
         if (value == null) return "";
         if (g.textWidth(value) <= width) return value;
         int end = value.length();

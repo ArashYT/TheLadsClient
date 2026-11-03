@@ -1,7 +1,9 @@
 package com.thelads.core.v26_2.mixin;
 
 import com.thelads.core.client.LadsNetwork;
+import com.thelads.core.client.title.TitleNoir;
 import com.thelads.core.client.title.TitleScreenTheme;
+import com.thelads.core.modules.TitleScreenModule;
 import com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter;
 import com.thelads.core.v26_2.gui.AccountSwitcherScreen26;
 import com.thelads.core.v26_2.gui.CompactButton26;
@@ -37,6 +39,9 @@ import java.util.List;
 @Mixin(TitleScreen.class)
 public abstract class TitleScreenMixin extends Screen {
     @Unique private List<AbstractWidget> ladsTitleWidgets = new ArrayList<>();
+    @Unique private TitleNoir.Layout ladsNoirLayout;
+    @Unique private boolean ladsLegacy;
+    @Unique private Button ladsLayoutToggle;
     @Unique private TitleScreenTheme.Layout ladsTitleLayout;
     @Unique private boolean ladsCustomTitle;
     @Unique private int ladsLayoutWidth;
@@ -105,15 +110,25 @@ public abstract class TitleScreenMixin extends Screen {
         ladsLanguageButton.setTooltip(Tooltip.create(Component.translatable("options.language")));
         ladsLanguageButton.setTabOrderGroup(202);
 
+        ladsLayoutToggle = addRenderableWidget(new CompactButton26(0, 6, 20, 20, Component.literal(TitleScreenTheme.layoutToggleLabel()),
+            () -> "layout", button -> TitleScreenModule.toggleLayout()));
+        ladsLayoutToggle.setTabOrderGroup(203);
+
         ladsLastFrameNanos = 0;
         com.thelads.core.config.BuiltInIntegrations.verifyLoadedAdapters();
         com.thelads.core.config.IntegrationRuntimeProbe.run();
     }
 
+    /** Legacy: GUI scale 3 everywhere; the new layout picks its own. */
+    @Unique
+    private double ladsWindowPerPixel() {
+        return ladsLegacy ? 3.0 : TitleNoir.windowPerCanvasPixel(minecraft.getWindow().getWidth(), minecraft.getWindow().getHeight());
+    }
+
     @Unique
     private int ladsTargetWidth() {
         if (minecraft != null && minecraft.getWindow() != null && minecraft.getWindow().getWidth() > 0) {
-            return (int) Math.round(minecraft.getWindow().getWidth() / 3.0);
+            return (int) Math.round(minecraft.getWindow().getWidth() / ladsWindowPerPixel());
         }
         return width;
     }
@@ -121,7 +136,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique
     private int ladsTargetHeight() {
         if (minecraft != null && minecraft.getWindow() != null && minecraft.getWindow().getHeight() > 0) {
-            return (int) Math.round(minecraft.getWindow().getHeight() / 3.0);
+            return (int) Math.round(minecraft.getWindow().getHeight() / ladsWindowPerPixel());
         }
         return height;
     }
@@ -134,9 +149,11 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private void ladsEnsureTitleLayout() {
+        boolean legacy = TitleScreenModule.legacyLayout(), switched = legacy != ladsLegacy;
+        ladsLegacy = legacy;
         int targetW = ladsTargetWidth();
         int targetH = ladsTargetHeight();
-        boolean changed = ladsTitleLayout == null || ladsLayoutWidth != targetW || ladsLayoutHeight != targetH;
+        boolean changed = ladsTitleLayout == null || switched || ladsLayoutWidth != targetW || ladsLayoutHeight != targetH;
         if (!changed) {
             int index = 0;
             for (GuiEventListener child : children()) {
@@ -175,17 +192,23 @@ public abstract class TitleScreenMixin extends Screen {
         }
         ladsTitleWidgets.sort(Comparator.comparingInt(this::ladsButtonOrder));
         ladsTitleLayout = TitleScreenTheme.layout(targetW, targetH, ladsTitleWidgets.size(), false);
+        ladsNoirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, ladsTitleWidgets.size(), ladsTitleWidgets.indexOf(ladsNetworkButton));
         ladsLayoutWidth = targetW;
         ladsLayoutHeight = targetH;
 
         ladsFullscreenButton.setRectangle(20, 20, targetW - 26, 6);
         ladsLanguageButton.setRectangle(20, 20, targetW - 50, 6);
+        Component toggleLabel = Component.literal(TitleScreenTheme.layoutToggleLabel());
+        int toggleWidth = TitleScreenTheme.layoutToggleWidth(targetW, Math.max(font.width(TitleScreenTheme.NEW_LAYOUT), font.width(TitleScreenTheme.LEGACY_LAYOUT)));
+        ladsLayoutToggle.setMessage(toggleLabel);
+        ladsLayoutToggle.setRectangle(toggleWidth, 20, targetW - 50 - TitleScreenTheme.HEADER_GAP - toggleWidth, 6);
+        ladsLayoutToggle.setTooltip(toggleWidth <= 20 ? Tooltip.create(toggleLabel) : null);
 
         boolean primaryAssigned = false;
         for (AbstractWidget widget : ladsTitleWidgets) removeWidget(widget);
         for (int i = 0; i < ladsTitleWidgets.size(); i++) {
             AbstractWidget widget = ladsTitleWidgets.get(i);
-            TitleScreenTheme.Rect rect = ladsTitleLayout.buttons().get(i);
+            TitleScreenTheme.Rect rect = (ladsNoirLayout != null ? ladsNoirLayout.buttons() : ladsTitleLayout.buttons()).get(i);
             widget.setX(rect.x());
             widget.setY(rect.y());
             widget.setWidth(rect.width());
@@ -203,7 +226,7 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private boolean ladsOwnControl(AbstractWidget widget) {
-        return widget == ladsSwitchButton || widget == ladsFullscreenButton || widget == ladsLanguageButton;
+        return widget == ladsSwitchButton || widget == ladsFullscreenButton || widget == ladsLanguageButton || widget == ladsLayoutToggle;
     }
 
     @Unique
@@ -276,20 +299,25 @@ public abstract class TitleScreenMixin extends Screen {
         int scaledMouseX = (int) Math.round(mouseX / matrixScale);
         int scaledMouseY = (int) Math.round(mouseY / matrixScale);
 
+        if (ladsNoirLayout != null) extractPanorama(graphics, partialTick);
         graphics.pose().pushMatrix();
         graphics.pose().scale(matrixScale, matrixScale);
 
         var adapter = new GuiGraphicsExtractorLadsAdapter(graphics, font);
-        TitleScreenTheme.Rect switchBox = TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(),
-            "26.3" + (minecraft.isDemo() ? " Demo" : ""), false, ladsAnimationSeconds, true);
+        String version = "26.3" + (minecraft.isDemo() ? " Demo" : "");
+        TitleScreenTheme.Rect switchBox = ladsNoirLayout != null
+            ? TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, true)
+            : TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds, true);
         if (switchBox != null) {
             ladsSwitchButton.setRectangle(switchBox.width(), switchBox.height(), switchBox.x(), switchBox.y());
         }
 
         TitleWidgetRegistry.beginFrame(this, adapter, elapsed, reducedMotion);
+        TitleNoir.beginFrame(ladsNoirLayout);
         try {
             super.extractRenderState(graphics, scaledMouseX, scaledMouseY, partialTick);
         } finally {
+            TitleNoir.endFrame();
             TitleWidgetRegistry.endFrame();
         }
         graphics.pose().popMatrix();
