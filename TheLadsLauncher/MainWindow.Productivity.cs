@@ -1,3 +1,4 @@
+using TheLadsLauncher.Controls;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -75,7 +76,8 @@ public partial class MainWindow
         _noticeTimer.Stop();
         if (_actionNotice != null) RootGrid.Children.Remove(_actionNotice);
         var row = new DockPanel { LastChildFill = true };
-        var close = new Button { Content = "×", Margin = new Thickness(12, 0, 0, 0), Padding = new Thickness(8, 4) };
+        var close = new Button { Margin = new Thickness(12, 0, 0, 0), Padding = new Thickness(8, 4) };
+        Ico.SetName(close, "cross-small");
         DockPanel.SetDock(close, Dock.Right);
         row.Children.Add(close);
         row.Children.Add(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center });
@@ -94,7 +96,8 @@ public partial class MainWindow
 
     private Button ProfileActions(LauncherProfile profile)
     {
-        var button = new Button { Content = "More ▾", Classes = { "action" }, Height = 34, FontSize = 12 };
+        var button = new Button { Content = "More", Classes = { "action" }, Height = 34, FontSize = 12 };
+        Ico.SetName(button, "menu-dots");
         var favorite = new MenuItem { Header = profile.IsFavorite ? "★ Remove favorite" : "☆ Favorite profile" };
         favorite.Click += (_, _) => { profile.IsFavorite = !profile.IsFavorite; _profileService.SaveProfiles(); PopulateLaunchProfileSelector(); LoadProfilesUI(); };
         var duplicate = new MenuItem { Header = "Duplicate settings…" };
@@ -361,12 +364,13 @@ public partial class MainWindow
 
         var randomBtn = new Button
         {
-            Content = "🎲 Randomize Icon & Colors",
+            Content = "Randomize Icon & Colors",
             Classes = { "action" },
             Height = 34,
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
             HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center
         };
+        Ico.SetName(randomBtn, "dice");
         randomBtn.Click += (_, _) =>
         {
             var temp = new LauncherProfile();
@@ -398,6 +402,7 @@ public partial class MainWindow
             HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
             FontWeight = FontWeight.Bold
         };
+        Ico.SetName(saveBtn, "disk");
         saveBtn.Click += (_, _) =>
         {
             if (!TryNormalizeColor(primaryBox.Text, out string primaryNorm, out _))
@@ -436,6 +441,7 @@ public partial class MainWindow
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
             HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center
         };
+        Ico.SetName(cancelBtn, "cross");
         cancelBtn.Click += (_, _) => window.Close();
         btnGrid.Children.Add(cancelBtn);
         Grid.SetColumn(cancelBtn, 2);

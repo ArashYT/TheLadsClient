@@ -69,6 +69,7 @@ public final class HudScale {
         @Override public void blit(String texture, int x, int y, int u, int v, int width, int height) { target.blit(texture, x, y, u, v, width, height); }
         @Override public void drawModIcon(String id, int x, int y, int size) { target.drawModIcon(id, x, y, size); }
         @Override public void drawHead(String username, String uuid, int x, int y, int size) { target.drawHead(username, uuid, x, y, size); }
+        @Override public boolean drawIcon(int cell, int x, int y, int size, int color) { return target.drawIcon(cell, x, y, size, color); }
         @Override public boolean drawKillBanner(String skin, int variant, int x, int y, int width, int height) { return target.drawKillBanner(skin, variant, x, y, width, height); }
         @Override public boolean drawKillBannerPreview(String skin, int variant, int x, int y, int width, int height, double clock) { return target.drawKillBannerPreview(skin, variant, x, y, width, height, clock); }
         @Override public void drawPlayerModel(int x, int y, int width, int height, boolean editor) { target.drawPlayerModel(x, y, width, height, editor); }

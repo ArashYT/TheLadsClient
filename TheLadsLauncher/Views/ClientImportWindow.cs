@@ -1,3 +1,4 @@
+using TheLadsLauncher.Controls;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -45,6 +46,7 @@ public sealed class ClientImportWindow : Window
         Background = Brush("#1D1E22");
 
         var chooseFolder = new Button { Content = "Choose Folder...", Classes = { "action" }, HorizontalAlignment = HorizontalAlignment.Stretch };
+        Ico.SetName(chooseFolder, "folder-open");
         ToolTip.SetTip(chooseFolder, "Pick a .minecraft, Lunar, Badlion, Feather, LabyMod, Modrinth, CurseForge, Prism, MultiMC or custom instance folder.");
         chooseFolder.Click += async (_, _) => await PickFolder();
         var left = new StackPanel { Spacing = 10, Width = 210, Children =
@@ -67,6 +69,7 @@ public sealed class ClientImportWindow : Window
         body.Children.Add(right);
 
         var close = new Button { Content = "Close", Classes = { "action" } };
+        Ico.SetName(close, "cross");
         close.Click += (_, _) => Close();
         _import.Click += async (_, _) => await ImportChosen();
         _undo.Click += async (_, _) => await UndoLast();

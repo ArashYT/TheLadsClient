@@ -1,3 +1,4 @@
+using TheLadsLauncher.Controls;
 using System;
 using System.Net.Http;
 using System.Collections.Generic;
@@ -844,6 +845,13 @@ public partial class MainWindow : Window
         _runningProcesses.Any(p => SafeFileOps.PathsEqual(p.Value, gameDirectory) && IsGameRunning(p.Key)) || GameRunningByMarker(gameDirectory);
 
     private async void ReleaseNotes_Click(object? sender, RoutedEventArgs e) => await ShowReleaseNotesAsync();
+
+    /// <summary>The Flaticon credit (the icons are Flaticon Uicons): its page.</summary>
+    private void IconCredit_Click(object? sender, RoutedEventArgs e)
+    {
+        try { Process.Start(new ProcessStartInfo("https://www.flaticon.com/uicons") { UseShellExecute = true }); }
+        catch (Exception) { /* no browser to open: the credit stays on screen */ }
+    }
 
 
     private void LoadHomeNewsFeed()
@@ -1922,6 +1930,7 @@ public partial class MainWindow : Window
                     Margin = new Thickness(4, 0),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
+                Ico.SetName(activeBtn, "check");
                 activeBtn.Click += async (s, e) => {
                     if (_addingAccount || _launching) return;
                     _selectedAccount = username;
@@ -1966,6 +1975,7 @@ public partial class MainWindow : Window
                     Margin = new Thickness(2, 0),
                     VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
                 };
+                Ico.SetName(signInAgainBtn, "sign-in");
                 ToolTip.SetTip(signInAgainBtn, "Sign in again with Microsoft");
                 Avalonia.Automation.AutomationProperties.SetName(signInAgainBtn, "Sign in again with Microsoft");
                 signInAgainBtn.Click += async (s, e) => await RefreshSavedAccountAsync(username, true);
@@ -1974,8 +1984,10 @@ public partial class MainWindow : Window
             actions.Children.Add(refreshBtn);
 
             // Reorder buttons (Up/Down)
-            var upBtn = new Button { Content = "▲", Classes = { "action" }, Height = 28, Width = 28, FontSize = 10, Margin = new Thickness(2, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
-            var downBtn = new Button { Content = "▼", Classes = { "action" }, Height = 28, Width = 28, FontSize = 10, Margin = new Thickness(2, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+            var upBtn = new Button { Classes = { "action" }, Height = 28, Width = 28, FontSize = 14, Margin = new Thickness(2, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+            Ico.SetName(upBtn, "angle-small-up");
+            var downBtn = new Button { Classes = { "action" }, Height = 28, Width = 28, FontSize = 14, Margin = new Thickness(2, 0), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+            Ico.SetName(downBtn, "angle-small-down");
             ToolTip.SetTip(upBtn, "Move account up");
             ToolTip.SetTip(downBtn, "Move account down");
             upBtn.IsEnabled = i > 0;
@@ -2013,13 +2025,13 @@ public partial class MainWindow : Window
             // Delete Button
             var delBtn = new Button
             {
-                Content = "✕",
                 Classes = { "danger" },
                 Height = 28, Width = 28,
-                FontSize = 10,
+                FontSize = 14,
                 Margin = new Thickness(4, 0),
                 VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
             };
+            Ico.SetName(delBtn, "cross-small");
             ToolTip.SetTip(delBtn, "Remove this account");
             delBtn.Click += async (s, e) => {
                 await RemoveSpecificAccount(username);
@@ -2243,6 +2255,7 @@ public partial class MainWindow : Window
             buttons.Children.Add(confirm);
         }
         var cancel = new Button { Content = cancelText, MinWidth = 80, Height = 32, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
+        Ico.SetName(cancel, "cross");
         cancel.Click += (_, _) => dialog.Close(-1);
         buttons.Children.Add(cancel);
         panel.Children.Add(buttons);
@@ -2353,6 +2366,7 @@ public partial class MainWindow : Window
     private static Button NoticeButton(string text, Action onClick)
     {
         var button = new Button { Content = text, Classes = { "action" }, Height = 26, FontSize = 11, Padding = new Thickness(10, 0), HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center };
+        Ico.SetName(button, text == "Dismiss" ? "cross" : text == "Open report" ? "document" : "folder-open");
         button.Click += (_, _) => onClick();
         return button;
     }
@@ -3302,6 +3316,7 @@ public partial class MainWindow : Window
                     Padding = new Thickness(16, 0),
                     FontSize = 12.5
                 };
+                Ico.SetName(selectBtn, "exchange");
                 if (GameVersionPolicy.IsPaused(profile.MinecraftVersion) || GameVersionPolicy.IsComingNever(profile.MinecraftVersion))
                 {
                     selectBtn.IsEnabled = false;
@@ -3328,6 +3343,7 @@ public partial class MainWindow : Window
                     Padding = new Thickness(12, 0),
                     FontSize = 12
                 };
+                Ico.SetName(deleteBtn, "trash");
                 deleteBtn.Click += async (s, e) =>
                 {
                     if (_launching) return;
@@ -3421,6 +3437,7 @@ public partial class MainWindow : Window
             Foreground = Brushes.White,
             FontWeight = FontWeight.Bold
         };
+        Ico.SetName(createBtn, "plus");
         createBtn.Click += (s, ev) =>
         {
             string name = nameBox.Text?.Trim() ?? "";
@@ -3949,6 +3966,7 @@ public partial class MainWindow : Window
             Content = text, Classes = { style }, Height = 30, FontSize = 11, Padding = new Thickness(10, 0),
             HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
         };
+        Ico.SetName(button, text switch { "Project" => "external-link", "Update" => "cloud-download", "Enable" => "check", "Delete" => "trash", _ => style == "danger" ? "ban" : "puzzle-piece" });
         if (tip != null) ToolTip.SetTip(button, tip);
         button.Click += (_, _) => onClick();
         return button;
@@ -4010,12 +4028,14 @@ public partial class MainWindow : Window
                 HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, Margin = new Thickness(0, 4, 0, 0),
                 VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
             };
+            Ico.SetName(expander, expanded ? "angle-small-up" : "angle-small-down");
             var toggleList = expander;
             toggleList.Click += (_, _) =>
             {
                 Fill();
                 list.IsVisible = !list.IsVisible;
                 toggleList.Content = ModExpanderText(count, list.IsVisible);
+                Ico.SetName(toggleList, list.IsVisible ? "angle-small-up" : "angle-small-down");
             };
         }
 
@@ -4998,13 +5018,16 @@ public partial class MainWindow : Window
             }
             var buttons = new Grid { ColumnDefinitions = ColumnDefinitions.Parse(IsDevOfflineAllowed ? "*,*,Auto" : "*,Auto") };
             var setup = new Button { Content = "Set up Microsoft login", Height = 38, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+            Ico.SetName(setup, "settings");
             var cancel = new Button { Content = "Cancel", Height = 38, Width = 80, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center };
+            Ico.SetName(cancel, "cross");
             setup.Click += (_, _) => dialog.Close("setup");
             cancel.Click += (_, _) => dialog.Close("cancel");
             buttons.Children.Add(setup);
             if (IsDevOfflineAllowed)
             {
                 var offline = new Button { Content = "Add offline account", Height = 38, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch, HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+                Ico.SetName(offline, "user-gear");
                 offline.Click += (_, _) => dialog.Close("offline");
                 Grid.SetColumn(offline, 1);
                 Grid.SetColumn(cancel, 2);
@@ -6076,6 +6099,7 @@ public partial class MainWindow : Window
             HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
             CornerRadius = new CornerRadius(8)
         };
+        Ico.SetName(relaunchBtn, "refresh");
         relaunchBtn.Click += async (s, e) =>
         {
             try
@@ -6102,6 +6126,7 @@ public partial class MainWindow : Window
                 HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
                 CornerRadius = new CornerRadius(8)
             };
+            Ico.SetName(openBtn, "document");
             openBtn.Click += (s, e) =>
             {
                 try { Process.Start(new ProcessStartInfo(crashFile) { UseShellExecute = true }); }
@@ -6123,6 +6148,7 @@ public partial class MainWindow : Window
             HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
             CornerRadius = new CornerRadius(8)
         };
+        Ico.SetName(modsBtn, "puzzle-piece");
         modsBtn.Click += (s, e) => { window.Close(); ReloadModsInventory(); NavigateTo("Mods"); };
         buttonRow.Children.Add(modsBtn);
 
@@ -6548,6 +6574,7 @@ public partial class MainWindow : Window
     {
         bool isInstalled = IsItemInstalled(item, mcVersion, isResourcePack);
         installBtn.Content = isInstalled ? "Installed" : "Install";
+        Ico.SetName(installBtn, isInstalled ? "check" : "download");
         installBtn.IsEnabled = !isInstalled;
         installBtn.Classes.Remove(isInstalled ? "launch" : "action");
         if (!installBtn.Classes.Contains(isInstalled ? "action" : "launch"))
@@ -6790,6 +6817,7 @@ public partial class MainWindow : Window
                 VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center,
                 Tag = item
             };
+            Ico.SetName(installBtn, isInstalled ? "check" : "download");
             var progressBar = new ProgressBar { Minimum = 0, Maximum = 100, Value = 0, Height = 6, Width = 80, IsVisible = false, Foreground = new SolidColorBrush(Color.Parse("#C44343")) };
             
             if (actionPanel != null)
@@ -6816,6 +6844,7 @@ public partial class MainWindow : Window
                 if (failure == null)
                 {
                     installBtn.Content = "Installed";
+                    Ico.SetName(installBtn, "check");
                     installBtn.Classes.Remove("launch");
                     installBtn.Classes.Add("action");
                     installBtn.IsEnabled = false;
@@ -6830,6 +6859,7 @@ public partial class MainWindow : Window
                 {
                     installBtn.IsEnabled = true;
                     installBtn.Content = "Failed";
+                    Ico.SetName(installBtn, "cross");
                     progressBar.IsVisible = false;
                     ModsStatus($"{item.Name}: {failure}", true);
                 }

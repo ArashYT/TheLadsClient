@@ -1,3 +1,4 @@
+using TheLadsLauncher.Controls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -59,6 +60,7 @@ public sealed class ReleaseNotesWindow : Window
         content.Children.Add(History);
         var done = new Button { Content = "Let's play", HorizontalAlignment = HorizontalAlignment.Right, HorizontalContentAlignment = HorizontalAlignment.Center,
             Background = Brush("#AB2637"), Foreground = Brushes.White, FontWeight = FontWeight.SemiBold, Padding = new Thickness(24, 10), CornerRadius = new CornerRadius(6) };
+        Ico.SetName(done, "play");
         done.Click += (_, _) => Close();
         var footer = new Border { BorderBrush = Brush("#272931"), BorderThickness = new Thickness(0, 1, 0, 0), Padding = new Thickness(30, 16), Child = done };
         var panel = new DockPanel();

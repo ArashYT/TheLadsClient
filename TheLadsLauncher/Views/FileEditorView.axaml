@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:c="using:TheLadsLauncher.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TheLadsLauncher.Views.FileEditorView">
     <UserControl.Styles>
@@ -63,8 +63,8 @@
                             <ToggleButton x:Name="WrapToggle" Classes="icon" ToolTip.Tip="Word wrap" IsCheckedChanged="WrapToggle_Changed" />
                             <Button x:Name="FindButton" Classes="icon" ToolTip.Tip="Find (Ctrl+F)" Click="Find_Click" />
                             <Rectangle Width="1" Height="20" Fill="#34353B" Margin="2,0" VerticalAlignment="Center" />
-                            <Button x:Name="RevertButton" Classes="action" Content="Revert" Height="32" Padding="12,0" ToolTip.Tip="Discard your changes and reload the file from disk" Click="Revert_Click" />
-                            <Button x:Name="SaveButton" Classes="launch" Content="Save" Height="32" Padding="16,0" ToolTip.Tip="Save (Ctrl+S)" Click="Save_Click" />
+                            <Button c:Ico.Name="undo" x:Name="RevertButton" Classes="action" Content="Revert" Height="32" Padding="12,0" ToolTip.Tip="Discard your changes and reload the file from disk" Click="Revert_Click" />
+                            <Button c:Ico.Name="disk" x:Name="SaveButton" Classes="launch" Content="Save" Height="32" Padding="16,0" ToolTip.Tip="Save (Ctrl+S)" Click="Save_Click" />
                         </StackPanel>
                         <StackPanel x:Name="ImageTools" Orientation="Horizontal" Spacing="6" IsVisible="False">
                             <Button x:Name="ZoomOutButton" Classes="icon" ToolTip.Tip="Zoom out" Click="ZoomOut_Click" />
@@ -115,7 +115,7 @@
                     <Border x:Name="MessageIconHost" HorizontalAlignment="Center" Width="56" Height="56" CornerRadius="14" Background="#202127" />
                     <TextBlock x:Name="MessageTitle" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" />
                     <TextBlock x:Name="MessageText" Classes="pageSubtitle" TextAlignment="Center" HorizontalAlignment="Center" />
-                    <Button Classes="action" Content="Open externally" Height="34" Padding="16,0" HorizontalAlignment="Center" Margin="0,6,0,0" Click="OpenExternal_Click" />
+                    <Button c:Ico.Name="external-link" Classes="action" Content="Open externally" Height="34" Padding="16,0" HorizontalAlignment="Center" Margin="0,6,0,0" Click="OpenExternal_Click" />
                 </StackPanel>
             </Panel>
             <Border Grid.Row="4" Padding="14,6" Background="#17181B" BorderBrush="#2A2B31" BorderThickness="0,1,0,0">

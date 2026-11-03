@@ -75,9 +75,9 @@ public final class ConfirmDialog {
         boolean hoverConfirm = confirm.contains(mx, my), hoverCancel = cancel.contains(mx, my);
         round(g, confirm.x() - 1, confirm.y() - 1, confirm.width() + 2, confirm.height() + 2, ACCENT); // Enter's button
         round(g, confirm.x(), confirm.y(), confirm.width(), confirm.height(), hoverConfirm ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY);
-        g.drawCenteredText("Confirm", confirm.x() + confirm.width() / 2, confirm.y() + (confirm.height() - g.fontHeight()) / 2 + 1, TEXT);
+        iconLabel(g, "Confirm", null, confirm.x() + confirm.width() / 2, confirm.y() + (confirm.height() - g.fontHeight()) / 2 + 1, confirm.width(), TEXT);
         round(g, cancel.x(), cancel.y(), cancel.width(), cancel.height(), hoverCancel ? LadsPalette.HOVER : CARD);
-        g.drawCenteredText("Cancel", cancel.x() + cancel.width() / 2, cancel.y() + (cancel.height() - g.fontHeight()) / 2 + 1, TEXT);
+        iconLabel(g, "Cancel", null, cancel.x() + cancel.width() / 2, cancel.y() + (cancel.height() - g.fontHeight()) / 2 + 1, cancel.width(), TEXT);
         g.drawCenteredText(fit(g, "Enter confirms, Esc cancels", dw - 24), dx + dw / 2, by + 22 + 8, MUTED);
     }
 
@@ -104,10 +104,10 @@ public final class ConfirmDialog {
         boolean armed = armed(), hoverConfirm = armed && confirm.contains(mx, my), hoverCancel = cancel.contains(mx, my);
         round(g, cancel.x() - 1, cancel.y() - 1, cancel.width() + 2, cancel.height() + 2, TEXT);
         round(g, cancel.x(), cancel.y(), cancel.width(), cancel.height(), hoverCancel ? LadsPalette.HOVER : CARD);
-        g.drawCenteredText("Cancel (safe)", cancel.x() + cancel.width() / 2, cancel.y() + (cancel.height() - g.fontHeight()) / 2 + 1, TEXT);
+        iconLabel(g, "Cancel (safe)", null, cancel.x() + cancel.width() / 2, cancel.y() + (cancel.height() - g.fontHeight()) / 2 + 1, cancel.width(), TEXT);
         round(g, confirm.x(), confirm.y(), confirm.width(), confirm.height(), !armed ? LadsPalette.DISABLED : hoverConfirm ? 0xFFFF2A2A : DANGER_RED);
         String label = armed ? confirmLabel : confirmLabel + " (" + ((armedAt - System.currentTimeMillis()) / 1000 + 1) + ")";
-        g.drawCenteredText(fit(g, label, confirm.width() - 6), confirm.x() + confirm.width() / 2, confirm.y() + (confirm.height() - g.fontHeight()) / 2 + 1, TEXT);
+        iconLabel(g, fit(g, label, confirm.width() - 6), null, confirm.x() + confirm.width() / 2, confirm.y() + (confirm.height() - g.fontHeight()) / 2 + 1, confirm.width(), TEXT);
         g.drawCenteredText(fit(g, "Esc cancels", dw - 24), dx + dw / 2, by + 24 + 8, MUTED);
     }
 

@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:c="using:TheLadsLauncher.Controls" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:views="clr-namespace:TheLadsLauncher.Views"
              xmlns:controls="clr-namespace:TheLadsLauncher.Controls"
              x:Class="TheLadsLauncher.Views.SkinsView">
@@ -26,9 +26,9 @@
           <TextBlock Text="LIBRARY" Classes="caption" Margin="0,0,0,8" />
           <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
             <TextBox x:Name="ImportText" PlaceholderText="Username or https:// link" KeyDown="ImportText_KeyDown" />
-            <Button Grid.Column="1" Classes="action" Content="Import" Margin="6,0,0,0" Click="ImportText_Click" />
+            <Button c:Ico.Name="file-import" Grid.Column="1" Classes="action" Content="Import" Margin="6,0,0,0" Click="ImportText_Click" />
           </Grid>
-          <Button Grid.Row="2" Classes="action" Content="Import PNG file…" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,6,0,10" Click="ImportFile_Click" />
+          <Button c:Ico.Name="file-import" Grid.Row="2" Classes="action" Content="Import PNG file…" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,6,0,10" Click="ImportFile_Click" />
           <ListBox x:Name="SkinList" Grid.Row="3" Background="Transparent" SelectionChanged="SkinList_SelectionChanged" />
         </Grid>
       </Border>
@@ -44,7 +44,7 @@
                 <Border x:Name="SelectedPreview" IsVisible="False" />
                 <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
                   <CheckBox x:Name="Layers3DCheck" Content="3D Skin Layers" IsChecked="True" FontSize="11" VerticalAlignment="Center" />
-                  <Button Grid.Column="2" Classes="action" Content="Reset View" FontSize="11" Padding="8,4" Click="ResetView_Click" />
+                  <Button c:Ico.Name="undo" Grid.Column="2" Classes="action" Content="Reset View" FontSize="11" Padding="8,4" Click="ResetView_Click" />
                 </Grid>
                 <TextBlock Text="Drag to rotate · Scroll to zoom" Foreground="#767884" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0" />
               </StackPanel>
@@ -56,9 +56,9 @@
                   <RadioButton x:Name="SlimModel" GroupName="SkinModel" Content="Slim (thin arms)" IsCheckedChanged="Model_Changed" />
                 </StackPanel>
                 <WrapPanel Margin="0,4,0,0">
-                  <Button x:Name="ApplySkinBtn" Classes="launch" Content="Apply skin" Foreground="White" FontWeight="Bold" Padding="18,8" Margin="0,0,8,8" Click="ApplySkin_Click" />
-                  <Button x:Name="EditSkinBtn" Classes="action" Content="Open in editor" Padding="12,8" Margin="0,0,8,8" Click="EditSkin_Click" />
-                  <Button x:Name="DeleteSkinBtn" Classes="danger" Content="Delete" Padding="12,8" Margin="0,0,8,8" Click="DeleteSkin_Click" />
+                  <Button c:Ico.Name="check" x:Name="ApplySkinBtn" Classes="launch" Content="Apply skin" Foreground="White" FontWeight="Bold" Padding="18,8" Margin="0,0,8,8" Click="ApplySkin_Click" />
+                  <Button c:Ico.Name="edit" x:Name="EditSkinBtn" Classes="action" Content="Open in editor" Padding="12,8" Margin="0,0,8,8" Click="EditSkin_Click" />
+                  <Button c:Ico.Name="trash" x:Name="DeleteSkinBtn" Classes="danger" Content="Delete" Padding="12,8" Margin="0,0,8,8" Click="DeleteSkin_Click" />
                 </WrapPanel>
                 <TextBlock Text="Nothing is uploaded until you click Apply." Classes="caption" TextWrapping="Wrap" />
               </StackPanel>
@@ -68,7 +68,7 @@
             <StackPanel Spacing="8">
               <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Text="CAPE" Classes="caption" VerticalAlignment="Center" />
-                <Button Grid.Column="1" Classes="action" Content="Refresh" Click="Refresh_Click" />
+                <Button c:Ico.Name="refresh" Grid.Column="1" Classes="action" Content="Refresh" Click="Refresh_Click" />
               </Grid>
               <TextBlock x:Name="CapeHint" Foreground="#A0A1AA" TextWrapping="Wrap" />
               <ListBox x:Name="CapeList" Background="Transparent">
@@ -76,7 +76,7 @@
                   <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
                 </ListBox.ItemsPanel>
               </ListBox>
-              <Button x:Name="ApplyCapeBtn" Classes="action" Content="Apply cape" HorizontalAlignment="Left" Padding="14,8" Click="ApplyCape_Click" />
+              <Button c:Ico.Name="check" x:Name="ApplyCapeBtn" Classes="action" Content="Apply cape" HorizontalAlignment="Left" Padding="14,8" Click="ApplyCape_Click" />
             </StackPanel>
           </Border>
           <Border Classes="card">
@@ -84,7 +84,7 @@
               <TextBlock Text="COMBOS" Classes="caption" />
               <Grid ColumnDefinitions="*,Auto">
                 <TextBox x:Name="ComboName" PlaceholderText="Combo name" />
-                <Button Grid.Column="1" Classes="action" Content="Save combo" Margin="6,0,0,0" Click="SaveCombo_Click" />
+                <Button c:Ico.Name="disk" Grid.Column="1" Classes="action" Content="Save combo" Margin="6,0,0,0" Click="SaveCombo_Click" />
               </Grid>
               <TextBlock Text="A combo is the selected skin and model plus the selected cape, applied in one click." Foreground="#A0A1AA" FontSize="11" TextWrapping="Wrap" />
               <StackPanel x:Name="ComboRows" Spacing="6" />

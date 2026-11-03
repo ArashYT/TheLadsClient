@@ -1,3 +1,4 @@
+using TheLadsLauncher.Controls;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -116,6 +117,7 @@ public partial class WorldsView : UserControl
             EmptyHint.Text = hint;
             EmptyHint.IsVisible = hint.Length > 0;
             EmptyAction.Content = action;
+            Ico.SetName(EmptyAction, total == 0 ? "add-folder" : "filter-slash");
             EmptyAction.IsVisible = action != null;
         }
         _ = MeasureSizesAsync(visible);
@@ -163,12 +165,9 @@ public partial class WorldsView : UserControl
         meta.Margin = new Thickness(0, 2, 0, 0);
         chips.Margin = new Thickness(0, 6, 0, 0);
 
-        var open = IconButton("M3,6.5 L9,6.5 L11,8.5 L21,8.5 L21,19 L3,19 Z", "Open world folder");
+        var open = IconButton("folder-open", "Open world folder");
         open.Click += (_, _) => OpenFolder(world.Folder);
-        var more = IconButton("M6,10.5 A1.5,1.5 0 1 0 6,13.5 A1.5,1.5 0 1 0 6,10.5 Z M12,10.5 A1.5,1.5 0 1 0 12,13.5 A1.5,1.5 0 1 0 12,10.5 Z M18,10.5 A1.5,1.5 0 1 0 18,13.5 A1.5,1.5 0 1 0 18,10.5 Z", "More");
-        var dots = (Path)more.Content!;
-        dots.Classes.Add("filled");
-        dots.Height = 3;
+        var more = IconButton("menu-dots", "More");
         var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
         menu.Items.Add(MenuItem("Open folder", () => OpenFolder(world.Folder)));
         menu.Items.Add(MenuItem("Copy folder path", () => Copy(world.Folder)));
@@ -208,12 +207,12 @@ public partial class WorldsView : UserControl
         return chip;
     }
 
-    private static Button IconButton(string geometry, string tip)
+    private static Button IconButton(string kind, string tip)
     {
         var button = new Button
         {
             Classes = { "icon" },
-            Content = new Path { Classes = { "glyph" }, Data = Geometry.Parse(geometry) }
+            Content = LadsIcons.Glyph(kind, 16)
         };
         ToolTip.SetTip(button, tip);
         return button;

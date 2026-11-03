@@ -429,12 +429,12 @@ public class AccountSwitcherScreen {
         // Add Offline button
         boolean hoverAdd = mouseX >= cardX + 16 && mouseX <= cardX + 180 && mouseY >= btnY && mouseY <= btnY + 24;
         g.fill(cardX + 16, btnY, cardX + 180, btnY + 24, hoverAdd ? LadsPalette.HOVER : LadsPalette.BORDER);
-        g.drawCenteredText("+ Add Offline Account", cardX + 98, btnY + 7, LadsPalette.TEXT, false);
+        com.thelads.core.client.gui.MenuGraphics.iconLabel(g, "Add Offline Account", null, cardX + 98, btnY + 7, 164, LadsPalette.TEXT, false);
 
         // Done button
         boolean hoverDone = mouseX >= cardX + cardW - 120 && mouseX <= cardX + cardW - 16 && mouseY >= btnY && mouseY <= btnY + 24;
         g.fill(cardX + cardW - 120, btnY, cardX + cardW - 16, btnY + 24, hoverDone ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY);
-        g.drawCenteredText("Done", cardX + cardW - 68, btnY + 7, LadsPalette.TEXT, false);
+        com.thelads.core.client.gui.MenuGraphics.iconLabel(g, "Done", null, cardX + cardW - 68, btnY + 7, 104, LadsPalette.TEXT, false);
     }
 
     private static final int BIN_INSET = 32; // the row's bin: this far left of the card's right edge, 10 wide

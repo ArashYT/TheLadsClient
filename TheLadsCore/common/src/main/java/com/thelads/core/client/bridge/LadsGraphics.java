@@ -55,6 +55,12 @@ public interface LadsGraphics {
     void drawHead(String username, String uuid, int x, int y, int size);
 
     /**
+     * A Flaticon glyph of the atlas {@link IconAtlas} (its cell, from {@link IconAtlas#cell}) size by size at x, y, tinted by {@code color}
+     * (ARGB: its alpha too). Visual only. False where the version cannot draw it; TitleScreenTheme.icon then draws its pixel icon.
+     */
+    default boolean drawIcon(int cell, int x, int y, int size, int color) { return false; }
+
+    /**
      * Kill Banner picker art: a skin's settled one-kill banner ("base", "reaver" or "rogue") in one of its variants, fitted
      * and centred in the box. False where the version cannot draw it (the picker then shows the name only).
      */

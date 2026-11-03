@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:c="using:TheLadsLauncher.Controls"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -8,8 +8,8 @@
             <StackPanel Spacing="16">
                 <!-- Editors Toggle & Editor Canvas -->
                 <Grid ColumnDefinitions="*,*">
-                    <Button x:Name="ToggleSkinEditorBtn" Classes="action" Content="Skin Editor" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="ToggleSkinEditor_Click"/>
-                    <Button Grid.Column="1" x:Name="ToggleCapeEditorBtn" Classes="action" Content="Cape Maker" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="ToggleCapeEditor_Click"/>
+                    <Button c:Ico.Name="edit" x:Name="ToggleSkinEditorBtn" Classes="action" Content="Skin Editor" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="ToggleSkinEditor_Click"/>
+                    <Button c:Ico.Name="palette" Grid.Column="1" x:Name="ToggleCapeEditorBtn" Classes="action" Content="Cape Maker" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Click="ToggleCapeEditor_Click"/>
                 </Grid>
                 
                 <!-- Editor Area Container -->
@@ -69,8 +69,8 @@
 
                         <!-- Editor Actions -->
                         <Grid ColumnDefinitions="*,*">
-                            <Button Classes="danger" Content="Clear Canvas" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Click="ClearEditorCanvas_Click"/>
-                            <Button Grid.Column="1" Classes="launch" x:Name="SaveEditorBtn" Content="Save to library" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Foreground="White" FontWeight="Bold" Click="SaveEditorDrawing_Click"/>
+                            <Button c:Ico.Name="eraser" Classes="danger" Content="Clear Canvas" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Click="ClearEditorCanvas_Click"/>
+                            <Button c:Ico.Name="disk" Grid.Column="1" Classes="launch" x:Name="SaveEditorBtn" Content="Save to library" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Foreground="White" FontWeight="Bold" Click="SaveEditorDrawing_Click"/>
                         </Grid>
                     </StackPanel>
                 </Border>

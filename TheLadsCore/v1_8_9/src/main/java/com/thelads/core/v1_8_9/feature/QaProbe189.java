@@ -231,6 +231,12 @@ public final class QaProbe189 {
                     mc.displayGuiScreen(new net.minecraft.client.gui.GuiIngameMenu());
                 } else if ("multiplayer".equals(target)) {
                     mc.displayGuiScreen(new net.minecraft.client.gui.GuiMultiplayer(mc.currentScreen));
+                } else if ("options".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiOptions(mc.currentScreen, mc.gameSettings));
+                } else if ("video".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiVideoSettings(mc.currentScreen, mc.gameSettings));
+                } else if ("friends".equals(target)) {
+                    mc.displayGuiScreen(new com.thelads.core.v1_8_9.social.FriendsScreen189(mc.currentScreen));
                 } else if ("lads".equals(target) || "settings".equals(target)) {
                     LadsSettingsScreen189 ladsScreen = new LadsSettingsScreen189(mc.currentScreen);
                     mc.displayGuiScreen(ladsScreen);

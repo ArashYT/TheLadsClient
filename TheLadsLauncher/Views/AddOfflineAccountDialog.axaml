@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns="https://github.com/avaloniaui" xmlns:c="using:TheLadsLauncher.Controls"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -31,8 +31,8 @@
 
             <!-- Buttons -->
             <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,16,0,0">
-                <Button Grid.Column="1" x:Name="CancelBtn" Classes="action" Content="Cancel" Width="80" Height="34" Margin="0,0,8,0" Click="Cancel_Click"/>
-                <Button Grid.Column="2" x:Name="AddBtn" Classes="launch" Content="Add Account" Width="120" Height="34" Click="Add_Click"/>
+                <Button c:Ico.Name="cross" Grid.Column="1" x:Name="CancelBtn" Classes="action" Content="Cancel" Width="80" Height="34" Margin="0,0,8,0" Click="Cancel_Click"/>
+                <Button c:Ico.Name="user-add" Grid.Column="2" x:Name="AddBtn" Classes="launch" Content="Add Account" Width="120" Height="34" Click="Add_Click"/>
             </Grid>
         </Grid>
     </Border>

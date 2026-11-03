@@ -375,7 +375,7 @@ public final class ProfilesDialog {
         round(g, r.x(), r.y(), r.width(), r.height(), fill);
         if (hover) round(g, r.x() - 1, r.y() - 1, r.width() + 2, r.height() + 2, LadsPalette.BORDER);
         int textCol = enabled ? LadsPalette.TEXT : LadsPalette.DISABLED;
-        g.drawCenteredText(label, r.x() + r.width() / 2, r.y() + (r.height() - g.fontHeight()) / 2 + 1, textCol);
+        iconLabel(g, label, null, r.x() + r.width() / 2, r.y() + (r.height() - g.fontHeight()) / 2 + 1, r.width(), textCol);
     }
 
     private void drawChoiceCard(LadsGraphics g, Rect r, String title, String subtitle, int mx, int my) {

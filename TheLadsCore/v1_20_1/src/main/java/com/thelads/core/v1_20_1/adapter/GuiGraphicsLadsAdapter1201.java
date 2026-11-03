@@ -2,6 +2,7 @@ package com.thelads.core.v1_20_1.adapter;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.thelads.core.client.bridge.IconAtlas;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.v1_20_1.feature.NativeAutohide1201;
 import com.thelads.core.v1_20_1.hud.Raised1201;
@@ -551,6 +552,25 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
         } finally {
             endFade();
         }
+    }
+
+    private static final ResourceLocation ICONS = new ResourceLocation(IconAtlas.NAMESPACE, IconAtlas.PATH);
+
+    /**
+     * A glyph of the Flaticon atlas, its white tinted by {@code color} through the shader colour (fills batched before it go first):
+     * the cell's square scaled to size by size (linear filter: lads_icons.png.mcmeta).
+     */
+    @Override
+    public boolean drawIcon(int cell, int x, int y, int size, int color) {
+        guiGraphics.flush();
+        guiGraphics.setColor((color >> 16 & 255) / 255f, (color >> 8 & 255) / 255f, (color & 255) / 255f, (color >>> 24) / 255f * alpha());
+        RenderSystem.enableBlend();
+        try {
+            guiGraphics.blit(ICONS, x, y, size, size, IconAtlas.u(cell), IconAtlas.v(cell), IconAtlas.CELL, IconAtlas.CELL, IconAtlas.SIZE, IconAtlas.SIZE);
+        } finally {
+            endFade();
+        }
+        return true;
     }
 
     @Override

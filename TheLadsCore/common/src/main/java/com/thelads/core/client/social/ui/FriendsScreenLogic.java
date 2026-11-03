@@ -432,14 +432,14 @@ public final class FriendsScreenLogic {
         MenuGraphics.round(g, showServerBtn.x, showServerBtn.y, showServerBtn.w, showServerBtn.h,
                 ssHover ? LadsPalette.HOVER : LadsPalette.PANEL);
         String ssLabel = "Server: " + (callbacks.showServer() ? "Shown" : "Hidden");
-        g.drawCenteredText(ssLabel, showServerBtn.x + showServerBtn.w / 2, showServerBtn.y + 5,
+        MenuGraphics.iconLabel(g, ssLabel, callbacks.showServer() ? "eye" : "eye-off", showServerBtn.x + showServerBtn.w / 2, showServerBtn.y + 5, showServerBtn.w,
                 callbacks.showServer() ? LadsPalette.TEXT : LadsPalette.MUTED, false);
 
         boolean aoHover = appearOfflineBtn.has(mouseX, mouseY);
         MenuGraphics.round(g, appearOfflineBtn.x, appearOfflineBtn.y, appearOfflineBtn.w, appearOfflineBtn.h,
                 aoHover ? LadsPalette.HOVER : LadsPalette.PANEL);
         String aoLabel = callbacks.appearOffline() ? "Appear Offline" : "Online";
-        g.drawCenteredText(aoLabel, appearOfflineBtn.x + appearOfflineBtn.w / 2, appearOfflineBtn.y + 5,
+        MenuGraphics.iconLabel(g, aoLabel, callbacks.appearOffline() ? "eye-off" : "wifi", appearOfflineBtn.x + appearOfflineBtn.w / 2, appearOfflineBtn.y + 5, appearOfflineBtn.w,
                 callbacks.appearOffline() ? LadsPalette.ACCENT : LadsPalette.TEXT, false);
 
         // Tab bar
@@ -456,12 +456,12 @@ public final class FriendsScreenLogic {
             int tabBg = active ? LadsPalette.PRIMARY : (hover ? LadsPalette.HOVER : LadsPalette.CARD);
             MenuGraphics.round(g, b.x, b.y, b.w, b.h, tabBg);
 
-            String title = t.title;
+            String title = t.title, tabIcon = com.thelads.core.client.title.ButtonIcons.of(null, title);
             if (t == Tab.REQUESTS) {
                 int reqCount = safeIncoming().size();
                 if (reqCount > 0) title += " (" + reqCount + ")";
             }
-            g.drawCenteredText(title, b.x + b.w / 2, b.y + (b.h - g.fontHeight()) / 2 + 1,
+            MenuGraphics.iconLabel(g, title, tabIcon, b.x + b.w / 2, b.y + (b.h - g.fontHeight()) / 2 + 1, b.w,
                     active ? LadsPalette.TEXT : LadsPalette.MUTED, active);
         }
 
@@ -488,7 +488,7 @@ public final class FriendsScreenLogic {
         doneBtn = new Box(panelX + panelW - doneW, height - 28, doneW, doneH);
         boolean doneHover = doneBtn.has(mouseX, mouseY);
         MenuGraphics.round(g, doneBtn.x, doneBtn.y, doneBtn.w, doneBtn.h, doneHover ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY);
-        g.drawCenteredText("Done", doneBtn.x + doneBtn.w / 2, doneBtn.y + 6, LadsPalette.TEXT, false);
+        MenuGraphics.iconLabel(g, "Done", null, doneBtn.x + doneBtn.w / 2, doneBtn.y + 6, doneBtn.w, LadsPalette.TEXT, false);
 
         // Render popup menu if open
         if (popupFriendId != null) {
@@ -516,7 +516,7 @@ public final class FriendsScreenLogic {
         g.drawCenteredText(MenuGraphics.fit(g, "Finding a direct or relayed path", dw - 20), dx + dw / 2, dy + 28, LadsPalette.MUTED, false);
         Box cancel = new Box(dx + (dw - 100) / 2, dy + dh - 30, 100, 20);
         MenuGraphics.round(g, cancel.x, cancel.y, cancel.w, cancel.h, cancel.has(mouseX, mouseY) ? LadsPalette.HOVER : LadsPalette.CARD);
-        g.drawCenteredText("Cancel", cancel.x + cancel.w / 2, cancel.y + (cancel.h - g.fontHeight()) / 2 + 1, LadsPalette.TEXT, false);
+        MenuGraphics.iconLabel(g, "Cancel", null, cancel.x + cancel.w / 2, cancel.y + (cancel.h - g.fontHeight()) / 2 + 1, cancel.w, LadsPalette.TEXT, false);
         return cancel;
     }
 
@@ -577,7 +577,7 @@ public final class FriendsScreenLogic {
 
                     MenuGraphics.round(g, nickSaveBtn.x, nickSaveBtn.y, nickSaveBtn.w, nickSaveBtn.h,
                             nickSaveBtn.has(mx, my) ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY);
-                    g.drawCenteredText("Save", nickSaveBtn.x + nickSaveBtn.w / 2, nickSaveBtn.y + 4, LadsPalette.TEXT, false);
+                    MenuGraphics.iconLabel(g, "Save", null, nickSaveBtn.x + nickSaveBtn.w / 2, nickSaveBtn.y + 4, nickSaveBtn.w, LadsPalette.TEXT, false);
 
                     MenuGraphics.round(g, nickCancelBtn.x, nickCancelBtn.y, nickCancelBtn.w, nickCancelBtn.h,
                             nickCancelBtn.has(mx, my) ? LadsPalette.HOVER : LadsPalette.PANEL);
@@ -620,7 +620,7 @@ public final class FriendsScreenLogic {
                 messageBoxes.put(friend.id(), msgB);
                 boolean msgHov = msgB.has(mx, my) && my >= scissorY && my <= scissorY + scissorH;
                 MenuGraphics.round(g, msgB.x, msgB.y, msgB.w, msgB.h, msgHov ? LadsPalette.PRIMARY_HOVER : LadsPalette.PANEL);
-                g.drawCenteredText("Chat", msgB.x + msgB.w / 2, msgB.y + 5, LadsPalette.TEXT, false);
+                MenuGraphics.iconLabel(g, "Chat", null, msgB.x + msgB.w / 2, msgB.y + 5, msgB.w, LadsPalette.TEXT, false);
 
                 // Invite button
                 currX -= 54;
@@ -628,7 +628,7 @@ public final class FriendsScreenLogic {
                 inviteBoxes.put(friend.id(), invB);
                 boolean invHov = invB.has(mx, my) && my >= scissorY && my <= scissorY + scissorH;
                 MenuGraphics.round(g, invB.x, invB.y, invB.w, invB.h, invHov ? LadsPalette.PRIMARY_HOVER : LadsPalette.PANEL);
-                g.drawCenteredText("Invite", invB.x + invB.w / 2, invB.y + 5, LadsPalette.TEXT, false);
+                MenuGraphics.iconLabel(g, "Invite", null, invB.x + invB.w / 2, invB.y + 5, invB.w, LadsPalette.TEXT, false);
 
                 // Join button
                 JoinCheck check = callbacks.canJoin(friend);
@@ -642,7 +642,7 @@ public final class FriendsScreenLogic {
 
                 int joinColor = !check.ok() ? LadsPalette.DISABLED : (jnHov ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY);
                 MenuGraphics.round(g, jnB.x, jnB.y, jnB.w, jnB.h, joinColor);
-                g.drawCenteredText("Join", jnB.x + jnB.w / 2, jnB.y + 5, check.ok() ? LadsPalette.TEXT : LadsPalette.MUTED, false);
+                MenuGraphics.iconLabel(g, "Join", null, jnB.x + jnB.w / 2, jnB.y + 5, jnB.w, check.ok() ? LadsPalette.TEXT : LadsPalette.MUTED, false);
 
                 // Finding 4: Incompatible reason only as a hover tooltip on the disabled Join button!
                 if (!check.ok() && jnHov && check.reason() != null && !check.reason().isEmpty()) {
@@ -705,10 +705,10 @@ public final class FriendsScreenLogic {
                     boolean accHov = accB.has(mx, my);
                     boolean decHov = decB.has(mx, my);
                     MenuGraphics.round(g, accB.x, accB.y, accB.w, accB.h, accHov ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY);
-                    g.drawCenteredText("Accept", accB.x + accB.w / 2, accB.y + 5, LadsPalette.TEXT, false);
+                    MenuGraphics.iconLabel(g, "Accept", null, accB.x + accB.w / 2, accB.y + 5, accB.w, LadsPalette.TEXT, false);
 
                     MenuGraphics.round(g, decB.x, decB.y, decB.w, decB.h, decHov ? LadsPalette.HOVER : LadsPalette.PANEL);
-                    g.drawCenteredText("Decline", decB.x + decB.w / 2, decB.y + 5, LadsPalette.MUTED, false);
+                    MenuGraphics.iconLabel(g, "Decline", null, decB.x + decB.w / 2, decB.y + 5, decB.w, LadsPalette.MUTED, false);
                 }
                 itemY += 30;
             }
@@ -767,7 +767,7 @@ public final class FriendsScreenLogic {
 
                     boolean unbHov = unbB.has(mx, my);
                     MenuGraphics.round(g, unbB.x, unbB.y, unbB.w, unbB.h, unbHov ? LadsPalette.HOVER : LadsPalette.PANEL);
-                    g.drawCenteredText("Unblock", unbB.x + unbB.w / 2, unbB.y + 5, LadsPalette.TEXT, false);
+                    MenuGraphics.iconLabel(g, "Unblock", null, unbB.x + unbB.w / 2, unbB.y + 5, unbB.w, LadsPalette.TEXT, false);
                 }
                 itemY += 30;
             }
@@ -801,7 +801,7 @@ public final class FriendsScreenLogic {
         boolean btnHov = addSendBtn.has(mx, my);
         MenuGraphics.round(g, addSendBtn.x, addSendBtn.y, addSendBtn.w, addSendBtn.h,
                 btnHov ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY);
-        g.drawCenteredText("Send Request", centerX, addSendBtn.y + 6, LadsPalette.TEXT, false);
+        MenuGraphics.iconLabel(g, "Send Request", null, centerX, addSendBtn.y + 6, addSendBtn.w, LadsPalette.TEXT, false);
 
         if (!addNotice.isEmpty()) {
             String result = callbacks.addFriendResult(); // sent, or why not: the backend's answer replaces "Sending..."
@@ -821,7 +821,7 @@ public final class FriendsScreenLogic {
         boolean backHov = dmBackBtn.has(mx, my);
         MenuGraphics.round(g, dmBackBtn.x, dmBackBtn.y, dmBackBtn.w, dmBackBtn.h,
                 backHov ? LadsPalette.HOVER : LadsPalette.PANEL);
-        g.drawCenteredText("Back", dmBackBtn.x + dmBackBtn.w / 2, dmBackBtn.y + 5, LadsPalette.TEXT, false);
+        MenuGraphics.iconLabel(g, "Back", null, dmBackBtn.x + dmBackBtn.w / 2, dmBackBtn.y + 5, dmBackBtn.w, LadsPalette.TEXT, false);
 
         // Messages scroll area
         int msgAreaY = y + headerH + 4;
@@ -877,7 +877,7 @@ public final class FriendsScreenLogic {
         boolean sendHov = dmSendBtn.has(mx, my);
         MenuGraphics.round(g, dmSendBtn.x, dmSendBtn.y, dmSendBtn.w, dmSendBtn.h,
                 sendHov ? LadsPalette.PRIMARY_HOVER : LadsPalette.PRIMARY);
-        g.drawCenteredText("Send", dmSendBtn.x + dmSendBtn.w / 2, dmSendBtn.y + 6, LadsPalette.TEXT, false);
+        MenuGraphics.iconLabel(g, "Send", null, dmSendBtn.x + dmSendBtn.w / 2, dmSendBtn.y + 6, dmSendBtn.w, LadsPalette.TEXT, false);
     }
 
     private void renderMorePopup(LadsGraphics g, int mx, int my) {
@@ -901,13 +901,13 @@ public final class FriendsScreenLogic {
         boolean bHov = popupBlockBtn.has(mx, my);
 
         MenuGraphics.round(g, popupNickBtn.x, popupNickBtn.y, popupNickBtn.w, popupNickBtn.h, nHov ? LadsPalette.HOVER : LadsPalette.CARD);
-        g.drawCenteredText("Set Nickname", popupNickBtn.x + popupNickBtn.w / 2, popupNickBtn.y + 5, LadsPalette.TEXT, false);
+        MenuGraphics.iconLabel(g, "Set Nickname", null, popupNickBtn.x + popupNickBtn.w / 2, popupNickBtn.y + 5, popupNickBtn.w, LadsPalette.TEXT, false);
 
         MenuGraphics.round(g, popupRemoveBtn.x, popupRemoveBtn.y, popupRemoveBtn.w, popupRemoveBtn.h, rHov ? LadsPalette.HOVER : LadsPalette.CARD);
-        g.drawCenteredText("Remove", popupRemoveBtn.x + popupRemoveBtn.w / 2, popupRemoveBtn.y + 5, LadsPalette.TEXT, false);
+        MenuGraphics.iconLabel(g, "Remove", null, popupRemoveBtn.x + popupRemoveBtn.w / 2, popupRemoveBtn.y + 5, popupRemoveBtn.w, LadsPalette.TEXT, false);
 
         MenuGraphics.round(g, popupBlockBtn.x, popupBlockBtn.y, popupBlockBtn.w, popupBlockBtn.h, bHov ? LadsPalette.HOVER : LadsPalette.CARD);
-        g.drawCenteredText("Block", popupBlockBtn.x + popupBlockBtn.w / 2, popupBlockBtn.y + 5, LadsPalette.ACCENT, false);
+        MenuGraphics.iconLabel(g, "Block", null, popupBlockBtn.x + popupBlockBtn.w / 2, popupBlockBtn.y + 5, popupBlockBtn.w, LadsPalette.ACCENT, false);
     }
 
     private String formatPresence(Presence p) {

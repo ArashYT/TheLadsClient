@@ -1,5 +1,6 @@
 package com.thelads.core.v1_8_9.adapter;
 
+import com.thelads.core.client.bridge.IconAtlas;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.hud.BossBarColor;
 import java.util.ArrayDeque;
@@ -399,6 +400,20 @@ public class GuiLadsAdapter implements LadsGraphics {
         Minecraft.getMinecraft().getTextureManager().bindTexture(location);
         GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
         Gui.drawModalRectWithCustomSizedTexture(x, y, u, v, width, height, 256.0f, 256.0f);
+    }
+
+    private static final ResourceLocation ICONS = new ResourceLocation(IconAtlas.NAMESPACE, IconAtlas.PATH);
+
+    /** A glyph of the Flaticon atlas, its white tinted by {@code color}: the cell's square scaled to size by size (linear filter: lads_icons.png.mcmeta). */
+    @Override
+    public boolean drawIcon(int cell, int x, int y, int size, int color) {
+        Minecraft.getMinecraft().getTextureManager().bindTexture(ICONS);
+        GlStateManager.enableBlend();
+        GlStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GlStateManager.color((color >> 16 & 255) / 255f, (color >> 8 & 255) / 255f, (color & 255) / 255f, (color >>> 24) / 255f);
+        Gui.drawScaledCustomSizeModalRect(x, y, IconAtlas.u(cell), IconAtlas.v(cell), IconAtlas.CELL, IconAtlas.CELL, size, size, IconAtlas.SIZE, IconAtlas.SIZE);
+        GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
+        return true;
     }
 
     @Override

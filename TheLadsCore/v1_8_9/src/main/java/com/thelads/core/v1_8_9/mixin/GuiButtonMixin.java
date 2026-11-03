@@ -52,8 +52,13 @@ public abstract class GuiButtonMixin extends Gui {
         mouseDragged(mc, mouseX, mouseY); // sliders draw their knob here
         int color = packedFGColour != 0 ? packedFGColour : !enabled ? 10526880 : hovered ? 16777120 : 14737632;
         String icon = ButtonLift.icon(this);
+        if (icon == null) {
+            // The label's own icon (ButtonIcons), when it fits beside it
+            icon = com.thelads.core.v1_8_9.gui.ButtonIcons189.of(displayString);
+            if (icon != null && !TitleScreenTheme.iconFits(width, font.getStringWidth(displayString))) icon = null;
+        }
         if (icon == null) drawCenteredString(font, displayString, xPosition + width / 2, yPosition + (height - 8) / 2, color);
-        else { // the pause menu's buttons: an icon before the label, the two centred together
+        else { // an icon before the label, the two centred together
             int textWidth = font.getStringWidth(displayString);
             TitleScreenTheme.renderLabelIcon(new GuiLadsAdapter(font, 0, 0), icon, xPosition, yPosition, width, height, textWidth, 0xFF000000 | color);
             GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);

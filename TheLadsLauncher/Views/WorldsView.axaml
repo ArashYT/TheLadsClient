@@ -1,4 +1,4 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.Views.WorldsView">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:c="using:TheLadsLauncher.Controls" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="TheLadsLauncher.Views.WorldsView">
   <UserControl.Styles>
     <!-- Every toolbar control shares one 36 px line. -->
     <Style Selector="Grid#Toolbar > :is(Control)">
@@ -14,25 +14,6 @@
       <Setter Property="Background" Value="#202125"/>
       <Setter Property="BorderBrush" Value="#3A3B42"/>
     </Style>
-    <Style Selector="Path.glyph">
-      <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}"/>
-      <Setter Property="StrokeThickness" Value="1.7"/>
-      <Setter Property="StrokeLineCap" Value="Round"/>
-      <Setter Property="StrokeJoin" Value="Round"/>
-      <Setter Property="Stretch" Value="Uniform"/>
-      <Setter Property="Width" Value="15"/>
-      <Setter Property="Height" Value="15"/>
-    </Style>
-    <Style Selector="Path.glyph.filled">
-      <Setter Property="Fill" Value="{Binding $parent[Button].Foreground}"/>
-      <Setter Property="StrokeThickness" Value="0"/>
-    </Style>
-    <Style Selector="Button:pointerover Path.glyph">
-      <Setter Property="Stroke" Value="White"/>
-    </Style>
-    <Style Selector="Button:pointerover Path.glyph.filled">
-      <Setter Property="Fill" Value="White"/>
-    </Style>
   </UserControl.Styles>
   <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="28,24">
     <StackPanel Spacing="4">
@@ -46,8 +27,7 @@
     <Grid x:Name="Toolbar" Grid.Row="1" Margin="0,18,0,0" ColumnDefinitions="*,8,150,8,130,8,160,8,Auto,8,Auto">
       <TextBox x:Name="Search" PlaceholderText="Search worlds, versions or instances…" MinWidth="160" TextChanged="FilterChanged">
         <TextBox.InnerLeftContent>
-          <Path Data="M10.5,4 A6.5,6.5 0 1 1 10.49,4 Z M15.2,15.2 L20,20" Stroke="#8F919C" StrokeThickness="1.7" StrokeLineCap="Round"
-                Stretch="Uniform" Width="14" Height="14" Margin="11,0,2,0" />
+          <c:Glyph Kind="search" Size="14" Foreground="#8F919C" Margin="11,0,2,0" VerticalAlignment="Center" />
         </TextBox.InnerLeftContent>
       </TextBox>
       <ComboBox x:Name="Location" Grid.Column="2" Classes="notranslate" SelectionChanged="SelectionChanged" ToolTip.Tip="Location" />
@@ -55,13 +35,11 @@
       <ComboBox x:Name="Sort" Grid.Column="6" SelectionChanged="SortChanged" ToolTip.Tip="Sort worlds" />
       <Button x:Name="AddButton" Grid.Column="8" Classes="action" Click="AddInstance" Padding="12,0" ToolTip.Tip="Add another launcher's instance folder (one that contains a saves folder)">
         <StackPanel Orientation="Horizontal" Spacing="7">
-          <Path Classes="glyph" Data="M12,5 L12,19 M5,12 L19,12" Width="12" Height="12" />
+          <c:Glyph Kind="plus" Size="12" VerticalAlignment="Center" />
           <TextBlock x:Name="AddLabel" Text="Add instance folder" VerticalAlignment="Center" />
         </StackPanel>
       </Button>
-      <Button Grid.Column="10" Classes="icon tool" Click="Refresh" ToolTip.Tip="Refresh">
-        <Path Classes="glyph" Data="M19,12 A7,7 0 1 1 16.95,7.05 M17,3 L17,7.2 L12.8,7.2" />
-      </Button>
+      <Button Grid.Column="10" Classes="icon tool" Click="Refresh" ToolTip.Tip="Refresh" c:Ico.Name="refresh" />
     </Grid>
 
     <TextBlock x:Name="Status" Grid.Row="2" Classes="muted" Foreground="#D9A35C" TextWrapping="Wrap" Margin="0,10,0,0" IsVisible="False" />
@@ -72,8 +50,7 @@
       </ScrollViewer>
       <StackPanel x:Name="Empty" IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" MaxWidth="420" Margin="0,0,0,40">
         <Border Width="56" Height="56" CornerRadius="14" Background="#1B1C20" BorderBrush="#2A2B31" BorderThickness="1" HorizontalAlignment="Center">
-          <Path Data="M12,3 A9,9 0 1 1 11.99,3 Z M3,12 L21,12 M12,3 C8.5,7 8.5,17 12,21 M12,3 C15.5,7 15.5,17 12,21" Stroke="#8F919C" StrokeThickness="1.5"
-                Stretch="Uniform" Width="26" Height="26" />
+          <c:Glyph Kind="globe" Size="26" Foreground="#8F919C" HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
         <TextBlock x:Name="EmptyTitle" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
         <TextBlock x:Name="EmptyHint" Classes="muted" TextAlignment="Center" TextWrapping="Wrap" HorizontalAlignment="Center" />

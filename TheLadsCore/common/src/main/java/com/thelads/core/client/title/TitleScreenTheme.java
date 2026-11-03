@@ -1,5 +1,6 @@
 package com.thelads.core.client.title;
 
+import com.thelads.core.client.bridge.IconAtlas;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.config.ModuleManager;
@@ -229,7 +230,7 @@ public final class TitleScreenTheme {
                                      String label, String icon, boolean primary, boolean hovered,
                                      boolean focused, boolean active, float hoverProgress) {
         float hover = active ? Math.max(0, Math.min(1, hoverProgress)) : 0;
-        if (TitleNoir.renderButton(g, x, y, width, height, label, focused, active, hover)) return;
+        if (TitleNoir.renderButton(g, x, y, width, height, label, icon, focused, active, hover)) return;
         float lift = hover * hover * (3 - 2 * hover);
         // Hover: the button grows a little about its centre and glows.
         g.pushPose();
@@ -334,6 +335,11 @@ public final class TitleScreenTheme {
     /** The pause menu's button icons: their size and gap to the label, centred together with it. */
     public static final int LABEL_ICON = 10, LABEL_ICON_GAP = 4;
 
+    /** Whether a label textWidth wide and its icon fit a button width wide, 4 clear at each edge: a narrower button keeps its label alone. */
+    public static boolean iconFits(int width, int textWidth) {
+        return LABEL_ICON + LABEL_ICON_GAP + textWidth + 8 <= width;
+    }
+
     /** Where a label textWidth wide starts when centred together with its icon in a button at x, width wide. */
     public static int iconLabelX(int x, int width, int textWidth) {
         return Math.max(x + 4, x + (width - LABEL_ICON - LABEL_ICON_GAP - textWidth) / 2) + LABEL_ICON + LABEL_ICON_GAP;
@@ -395,7 +401,14 @@ public final class TitleScreenTheme {
         "globe", new String[] {"...####...", ".##.##.##.", "#...##...#", "##########", "##########",
                                "#...##...#", ".##.##.##.", "...####...", "..........", ".........."});
 
+    /**
+     * The icon of this kind (lowercase: "copy", "edit", "delete", "refresh", "folder", "play"...; the names of tools/icons/icons.json)
+     * size by size at x, y, tinted by {@code c} (ARGB). The Flaticon glyph where the version draws it (LadsGraphics.drawIcon), else
+     * the pixel icon, or for a name without either the plain squares.
+     */
     public static void icon(LadsGraphics g, String kind, int x, int y, int size, int c) {
+        int cell = IconAtlas.cell(kind);
+        if (cell >= 0 && g.drawIcon(cell, x, y, size, c)) return;
         String[] rows = PIXEL_ICONS.get(kind);
         if (rows != null) {
             for (int row = 0; row < rows.length; row++)
