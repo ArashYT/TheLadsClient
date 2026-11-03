@@ -70,6 +70,7 @@ public static class SharedControls
         return key switch
         {
             "simulationDistance" => null,
+            "ao" => value == "false" ? "0" : "2", // a boolean in the newer versions; 1.8.9: 0 off, 2 maximum
             // 1.8.9: 0 Auto, 1 Small, 2 Normal, 3 Large; anything larger reads as Large there.
             "guiScale" => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int scale)
                 ? Math.Clamp(scale, 0, 3).ToString(CultureInfo.InvariantCulture) : value,
@@ -227,7 +228,10 @@ public static class SharedControls
     {
         var pending = Path.Combine(gameDirectory, PendingFile);
         if (!File.Exists(pending)) return;
-        var values = Read(ReadText(pending));
+        // Everything in the file: besides the controls an import's video and audio settings wait here too.
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (key, stored) in GameOptionsService.ParseOptions(ReadText(pending)))
+            if (FromVersion(key, stored) is { } value) values[key] = value;
         var file = Path.Combine(gameDirectory, "options.txt");
         if (!SafeFileOps.IsLink(file))
         {

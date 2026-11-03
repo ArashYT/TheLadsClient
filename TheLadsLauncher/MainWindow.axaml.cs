@@ -262,6 +262,7 @@ public partial class MainWindow : Window
         PopulateLaunchProfileSelector();
         LoadProfilesUI();
         LoadAccounts();
+        InitClientImport(args);
         if (args.Contains("--preview-accounts")) Dispatcher.UIThread.Post(() => NavigateTo("Accounts"));
         // Program.Main already refused this switch unless THELADS_DIR and LADS_GLOBAL_MINECRAFT_DIR point at a sandbox.
         int previewShared = Array.IndexOf(args, "--preview-shared");

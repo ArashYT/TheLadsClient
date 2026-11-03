@@ -11,6 +11,9 @@ namespace TheLadsLauncher.Services;
 /// <summary>A servers.dat the Servers tab edits. <see cref="LockFile"/>: held around each write (the shared list's, which LadsCore also takes).</summary>
 public sealed record ServerListTarget(string Label, string File, string? LockFile);
 
+/// <summary>A server another client's list has: only what a list entry needs, nothing else of the source's.</summary>
+public sealed record ImportedServer(string Name, string Address, string? Icon);
+
 /// <summary>Adds and removes servers in a server list without touching any other entry or field (atomic write, NBT round trip).</summary>
 public static class ServerListService
 {
@@ -53,6 +56,21 @@ public static class ServerListService
         list.Write(file);
         return true;
     }
+
+    /// <summary>The servers the list does not have yet (same matching as <see cref="AddAsync"/>) after its own, The Lads Network first.</summary>
+    public static Task<bool> MergeAsync(ServerListTarget target, IEnumerable<ImportedServer> servers) => EditAsync(target, list =>
+    {
+        var known = list.Entries.Where(e => !e.Hidden).Select(e => Key(e.Ip)).ToHashSet();
+        foreach (var server in servers)
+        {
+            if (!known.Add(Key(server.Address))) continue;
+            var entry = new NbtCompound { ["name"] = new NbtString(server.Name), ["ip"] = new NbtString(server.Address.Trim()) };
+            if (server.Icon != null) entry["icon"] = new NbtString(server.Icon);
+            list.Add(entry);
+        }
+        list.PinFirst(PinnedName, PinnedAddress);
+        return true;
+    });
 
     public const string PinnedName = "The Lads Network", PinnedAddress = "mc.arashyt.ca";
 

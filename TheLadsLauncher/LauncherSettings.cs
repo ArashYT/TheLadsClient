@@ -59,6 +59,8 @@ public class LauncherSettings
     public bool AllowMultiInstance { get; set; } = false;
     public bool KeepLauncherOpen { get; set; } = false;   // don't hide/close after launching the game
     public bool DiscordRichPresence { get; set; } = true;  // launcher activity on Discord; the game has its own DiscordRPC module
+    /// <summary>The first-launch offer to import from another client was made (or nothing was found): it never comes again.</summary>
+    public bool ClientImportOfferShown { get; set; }
     public bool KeepClosedOnExit { get; set; } = false;   // don't re-open the launcher when the game closes
     public bool UseHorizon { get; set; } = false;     // experimental, at own risk: 26.3 Play starts Horizon (Dev Launcher or /experimental_invite only)
     public bool HorizonRiskAccepted { get; set; } = false; // the player pressed "I accept the risk" (UseHorizon needs it: LoadFrom)

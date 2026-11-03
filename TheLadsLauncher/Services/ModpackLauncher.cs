@@ -322,6 +322,7 @@ public static class ModpackLauncher
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.CreateNoWindow = true;
         process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = dataDirectory;
+        process.StartInfo.Environment[GameSession.LauncherExeVariable] = Environment.ProcessPath ?? "";
         process.StartInfo.Environment["THELADS_DIR"] = instance.GameDirectory;
         GameSession.RemoveJavaOptionVariables(process.StartInfo);
         LaunchToken.Hide(process, instance.GameDirectory, session.AccessToken); // the caller sends it after Start

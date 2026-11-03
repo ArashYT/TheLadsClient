@@ -62,6 +62,19 @@ public partial class MainWindow
                     dialog.Close();
                 }
                 break;
+            case "ClientImport": // the import window over a synthetic home (LADS_PREVIEW_IMPORT_HOME: its .lunarclient and AppData): client-import.png
+                NavSettings_Click(null, none);
+                var previewHome = Environment.GetEnvironmentVariable("LADS_PREVIEW_IMPORT_HOME") ?? "";
+                var importWindow = new Views.ClientImportWindow(ClientImportTargets(), settings, RefreshImportedSettings, new Services.ImportEnvironment(previewHome, Path.Combine(previewHome, "AppData")));
+                importWindow.Show(this);
+                await Task.Delay(delay);
+                using (var bitmap = new RenderTargetBitmap(new PixelSize((int)importWindow.Bounds.Width, (int)importWindow.Bounds.Height), new Vector(96, 96)))
+                {
+                    bitmap.Render(importWindow);
+                    bitmap.Save(Path.Combine(output, "client-import.png"));
+                }
+                importWindow.Close();
+                break;
             case "Logs": NavLogs_Click(null, none); break;
             default: Log($"[Preview] Unknown page '{page}'."); break;
         }

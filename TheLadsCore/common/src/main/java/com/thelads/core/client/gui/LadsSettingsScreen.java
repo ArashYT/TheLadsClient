@@ -57,6 +57,7 @@ public final class LadsSettingsScreen {
     private final ActionDropdown actions = new ActionDropdown();
     private final ParticleRatesDialog particleRates = new ParticleRatesDialog();
     private final ConfirmDialog confirm = new ConfirmDialog();
+    private final ClientImportDialog clientImport = new ClientImportDialog();
     /** The sound library and trimmer every uploaded-sound slot opens (Choose, Add). */
     private final SoundLibraryDialog library = new SoundLibraryDialog(confirm, () -> changed(ModuleManager.getInstance().getModule(ComboSoundsModule.NAME)));
     private double displayedScroll;
@@ -127,7 +128,7 @@ public final class LadsSettingsScreen {
     public Consumer<String> getClipboardWriter() { return clipboardWriter; }
     public void setSearchQuery(String value) { searchQuery = value == null ? "" : value; filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; catalogScrollOffset = 0; catalogDisplayedScroll = 0; catalogRenderScroll = 0; }
     public String getSearchQuery() { return searchQuery; }
-    public boolean isEditingText() { return editingSearch || editingOption != null || editingFps || actions.isOpen() || particleRates.isOpen() || colorPicker.isOpen() || fpsDialogOpen || library.isOpen(); }
+    public boolean isEditingText() { return editingSearch || editingOption != null || editingFps || actions.isOpen() || particleRates.isOpen() || clientImport.isOpen() || colorPicker.isOpen() || fpsDialogOpen || library.isOpen(); }
     public String getCurrentCategory() { return currentCategory; }
     public String getCurrentTab() { return "MODS"; }
     public List<Rect> getControlBounds() { return controls.stream().map(Control::rect).toList(); }
@@ -212,7 +213,7 @@ public final class LadsSettingsScreen {
     public void render(LadsGraphics g, int pointerX, int pointerY) {
         refreshCapabilities();
         // A popup is modal: the screen under it neither highlights nor reacts to the pointer.
-        boolean modal = colorPicker.isOpen() || actions.isOpen() || particleRates.isOpen() || fpsDialogOpen || confirm.isOpen() || library.isOpen();
+        boolean modal = colorPicker.isOpen() || actions.isOpen() || particleRates.isOpen() || clientImport.isOpen() || fpsDialogOpen || confirm.isOpen() || library.isOpen();
         int mouseX = modal ? -100000 : pointerX, mouseY = modal ? -100000 : pointerY;
         long now = System.nanoTime();
         double elapsed = previousFrameNanos == 0 ? 0 : Math.min(.1, (now - previousFrameNanos) / 1e9);
@@ -270,6 +271,7 @@ public final class LadsSettingsScreen {
         g.overlay(() -> colorPicker.render(g, pointerX, pointerY));
         g.overlay(() -> actions.render(g, pointerX, pointerY));
         g.overlay(() -> particleRates.render(g, pointerX, pointerY));
+        g.overlay(() -> clientImport.render(g, pointerX, pointerY));
         g.overlay(() -> renderHudFpsDialog(g, pointerX, pointerY));
         g.overlay(() -> library.render(g, pointerX, pointerY));
         g.overlay(() -> confirm.render(g, pointerX, pointerY));
@@ -345,6 +347,9 @@ public final class LadsSettingsScreen {
         top += dense ? 27 : 33;
         List<Module> modules = getFilteredModules();
         g.drawText(modules.size() + " MODULES", x, top, MUTED);
+        // Where every layout has room; the side bar's buttons are gone in the compact one.
+        int importX = x + g.textWidth(modules.size() + " MODULES") + 8;
+        if (importX + 110 < x + w - (compact ? 223 : 164)) button(g, "client-import", "Import from client", new Rect(importX, top - 4, 110, 18), clientImport::open, true, mx, my, false);
         if (compact) {
             button(g, "installed-mods", "Installed mods", new Rect(x + w - 219, top - 4, 84, 18), this::openMods, true, mx, my, false);
             button(g, "hud", "HUD", new Rect(x + w - 131, top - 4, 39, 18), () -> leave(onOpenHudEditor), true, mx, my, false);
@@ -1701,6 +1706,7 @@ public final class LadsSettingsScreen {
         if (library.click(x, y, button)) return true;
         if (actions.click(x,y,button)) return true;
         if (particleRates.click(x, y, button)) return true;
+        if (clientImport.click(x, y, button)) return true;
         if (colorPicker.click(x, y, button)) return true;
         if (fpsDialogOpen) {
             if (fpsBox == null) return true; // opened, not drawn yet
@@ -1849,6 +1855,7 @@ public final class LadsSettingsScreen {
         if (library.wheel(x, amount)) return true;
         if (actions.wheel(amount)) return true;
         if (particleRates.wheel(amount)) return true;
+        if (clientImport.wheel(amount)) return true;
         if (colorPicker.isOpen() || fpsDialogOpen) return true;
         if (!viewport.contains(x, y)) return false;
         tip.dismiss(); scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - (int)(amount * 28 * (reducedMotion ? 1.0 : SmoothScroll.FACTOR)))); return true;
@@ -1858,6 +1865,7 @@ public final class LadsSettingsScreen {
         if (library.key(key, modifiers)) return true;
         if (actions.key(key,modifiers)) return true;
         if (particleRates.key(key, modifiers)) return true;
+        if (clientImport.key(key)) return true;
         if (colorPicker.key(key)) return true;
         if (fpsDialogOpen) {
             if (key == 256) { closeHudFpsDialog(); return true; }
@@ -1955,6 +1963,7 @@ public final class LadsSettingsScreen {
         if (library.type(codePoint)) return true;
         if (actions.type(codePoint)) return true;
         if (particleRates.type(codePoint)) return true;
+        if (clientImport.isOpen()) return true;
         if (colorPicker.type(codePoint)) return true;
         if (fpsDialogOpen) {
             if (editingFps && codePoint >= '0' && codePoint <= '9' && fpsBuffer.length() < 4) {

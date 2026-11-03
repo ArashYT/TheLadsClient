@@ -43,6 +43,9 @@ public static class GameSession
 
     public static bool WasCancelled(Process process) => Cancelled.TryGetValue(process, out _);
 
+    /// <summary>The launcher's exe, for the in-game import dialog (<see cref="ClientImportCli"/>).</summary>
+    public const string LauncherExeVariable = "LADS_LAUNCHER_EXE";
+
     /// <summary>Call before Start: Core reads its profile folder from THELADS_DIR, the shared root from LADS_GLOBAL_MINECRAFT_DIR
     /// and (1.8.9) Lunar Client's folder, for its 1.8 resource packs, from LADS_LUNAR_DIR. Also copies in the pack's missing
     /// default files (<see cref="PackDefaults"/>), after giving an options.txt without a data version <paramref name="minecraftVersion"/>'s
@@ -52,6 +55,7 @@ public static class GameSession
         startInfo.Environment["THELADS_DIR"] = gameDirectory;
         startInfo.Environment["THELADS_GLOBAL_DIR"] = SharedContentService.TryResolveLauncherDataDirectory(gameDirectory) ?? PathService.Instance.BaseDirectory;
         startInfo.Environment[SharedContentService.RootEnvironmentVariable] = sharedRoot;
+        startInfo.Environment[LauncherExeVariable] = Environment.ProcessPath ?? "";
         startInfo.Environment[GameOptionsService.LunarEnvironmentVariable] = GameOptionsService.LunarRoot();
         RemoveJavaOptionVariables(startInfo);
         if (minecraftVersion != null)
