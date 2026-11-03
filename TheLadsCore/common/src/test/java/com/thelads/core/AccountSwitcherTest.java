@@ -368,6 +368,123 @@ public class AccountSwitcherTest {
         assertTrue(screen.getStatusMessage().contains("Already playing"));
     }
 
+    private static void publish(Path base, String json) throws IOException {
+        Files.createDirectories(base.resolve("shared"));
+        Files.writeString(base.resolve("shared").resolve("lads_accounts.json"), json);
+    }
+
+    private static String row(String name, String uuid, String type) {
+        return "{\"username\":\"" + name + "\",\"uuid\":\"" + uuid + "\",\"type\":\"" + type + "\",\"selected\":false}";
+    }
+
+    private static List<String> names(AccountSwitcherScreen screen) {
+        return screen.getAccounts().stream().map(LadsAccount::getUsername).toList();
+    }
+
+    @Test
+    public void theLaunchersPublishedListIsTheOneShownAndReadAtEachOpening(@TempDir Path tempDir) throws Exception {
+        ClientPaths.setBaseDir(tempDir);
+        // This game folder's own file, written at launch, is out of date: a row the launcher has removed since, and a token an old launcher left.
+        Files.writeString(ClientPaths.getAccountsFile().toPath(), "[{\"username\":\"Gone\",\"uuid\":\"" + MS_UUID_2 + "\",\"type\":\"microsoft\",\"accessToken\":\"" + SECRET + "\"}]");
+        String first = LadsAccount.offlineUuid("First").toString();
+        publish(tempDir, "[" + row("Notch", MS_UUID, "microsoft") + "," + row("First", first, "offline") + "]");
+        FakeGame game = FakeGame.offline("First");
+
+        AccountSwitcherScreen screen = new AccountSwitcherScreen(game, new FakeLauncher(""));
+        assertEquals(List.of("Notch", "First"), names(screen));
+        assertEquals("First", screen.getSelectedAccount().getUsername(), "PLAYING follows the session, not the file");
+        assertFalse(screen.getAccounts().get(0).isSelected());
+
+        // Added in the launcher while the game runs, the same account listed twice, and a removal: the next opening shows them, once each.
+        publish(tempDir, "[" + row("First", first, "offline") + "," + row("Jeb", MS_UUID_2, "microsoft") + "," + row("JEB", MS_UUID_2, "microsoft") + "," + row("Renamed", MS_UUID_2.toUpperCase(), "microsoft") + "]");
+        AccountSwitcherScreen reopened = new AccountSwitcherScreen(game, new FakeLauncher(""));
+        assertEquals(List.of("First", "Jeb"), names(reopened));
+        for (LadsAccount account : reopened.getAccounts()) assertEquals("0", account.getAccessToken());
+    }
+
+    @Test
+    public void anAccountAddedInGameJoinsThePublishedListAndNoTokenIsWritten(@TempDir Path tempDir) throws Exception {
+        ClientPaths.setBaseDir(tempDir);
+        publish(tempDir, "[" + row("First", LadsAccount.offlineUuid("First").toString(), "offline") + "," + row("Notch", MS_UUID, "microsoft") + "]");
+        FakeGame game = FakeGame.offline("First");
+        FakeLauncher launcher = new FakeLauncher("");
+        AccountSwitcherScreen screen = new AccountSwitcherScreen(game, launcher);
+
+        screen.addOfflineAccount("second"); // case differs from nothing yet
+        finish(screen);
+        screen.addOfflineAccount("NOTCH"); // already there as Microsoft: never a second row, it is that account
+        assertEquals(List.of("First", "Notch", "second"), names(screen));
+        assertEquals(1, launcher.switched, "the launcher takes the new account into its own store");
+        assertEquals(List.of("First", "Notch", "second"), names(new AccountSwitcherScreen(game, new FakeLauncher(""))));
+        assertFalse(Files.readString(ClientPaths.getLauncherAccountsFile().toPath()).contains("accessToken"));
+        assertFalse(Files.exists(ClientPaths.getAccountsFile().toPath()), "one list: no second copy to go stale");
+        for (LadsAccount a : screen.getAccounts()) assertFalse(a.isOffline() && a.getUsername().equals("Notch"));
+    }
+
+    @Test
+    public void aFailedReadOfThePublishedListFallsBackAndNeverOverwritesIt(@TempDir Path tempDir) throws Exception {
+        ClientPaths.setBaseDir(tempDir);
+        publish(tempDir, "[{\"username\":");
+        Files.writeString(ClientPaths.getAccountsFile().toPath(), "[" + row("Local", LadsAccount.offlineUuid("Local").toString(), "offline") + "]");
+        assertEquals(List.of("Local"), names(new AccountSwitcherScreen()));
+        assertEquals("[{\"username\":", Files.readString(ClientPaths.getLauncherAccountsFile().toPath()));
+
+        publish(tempDir, "[]"); // the launcher has no accounts: no made-up row, and the launcher's word stays as it was
+        AccountSwitcherScreen empty = new AccountSwitcherScreen();
+        assertTrue(empty.getAccounts().isEmpty());
+        assertEquals("[]", Files.readString(ClientPaths.getLauncherAccountsFile().toPath()));
+    }
+
+    @Test
+    public void removingAsksTwiceThenTheLauncherDoesItAndTheListFollows(@TempDir Path tempDir) throws Exception {
+        ClientPaths.setBaseDir(tempDir);
+        String first = LadsAccount.offlineUuid("First").toString();
+        publish(tempDir, "[" + row("First", first, "offline") + "," + row("Notch", MS_UUID, "microsoft") + "]");
+        FakeGame game = FakeGame.offline("First");
+        FakeLauncher launcher = new FakeLauncher("{\"error\":\"\"}") {
+            @Override protected String ask(String pipe, String request) throws IOException {
+                publish(tempDir, "[" + row("First", first, "offline") + "]");
+                return super.ask(pipe, request);
+            }
+        };
+        AccountSwitcherScreen screen = new AccountSwitcherScreen(game, launcher);
+        LadsAccount notch = screen.getAccounts().get(1);
+
+        screen.removeAccount(screen.getSelectedAccount());
+        assertTrue(screen.getStatusMessage().contains("Switch to another account first"));
+        screen.removeAccount(notch);
+        assertFalse(screen.isSwitching());
+        assertTrue(launcher.asked.isEmpty(), "the first click only asks");
+
+        screen.removeAccount(notch);
+        finish(screen);
+        assertTrue(launcher.asked.get(0).contains("\"op\":\"remove\"") && launcher.asked.get(0).contains(MS_UUID));
+        assertEquals(List.of("First"), names(screen));
+        assertEquals("Removed Notch.", screen.getStatusMessage());
+    }
+
+    @Test
+    public void aRefusedRemovalSaysWhyAndKeepsTheRow(@TempDir Path tempDir) throws Exception {
+        ClientPaths.setBaseDir(tempDir);
+        publish(tempDir, "[" + row("First", LadsAccount.offlineUuid("First").toString(), "offline") + "," + row("Notch", MS_UUID, "microsoft") + "]");
+        for (String[] c : new String[][] {{"{\"error\":\"The launcher is busy.\"}", "busy"}, {"garbage", "did not answer"}, {"{}", "did not answer"}}) {
+            AccountSwitcherScreen screen = new AccountSwitcherScreen(FakeGame.offline("First"), new FakeLauncher(c[0]));
+            LadsAccount notch = screen.getAccounts().get(1);
+            screen.removeAccount(notch);
+            screen.removeAccount(notch);
+            finish(screen);
+            assertEquals(List.of("First", "Notch"), names(screen));
+            assertTrue(screen.getStatusMessage().contains(c[1]), screen.getStatusMessage());
+        }
+        FakeLauncher noPipe = new FakeLauncher("");
+        noPipe.handOff = "";
+        AccountSwitcherScreen screen = new AccountSwitcherScreen(FakeGame.offline("First"), noPipe);
+        screen.removeAccount(screen.getAccounts().get(1));
+        screen.removeAccount(screen.getAccounts().get(1));
+        finish(screen);
+        assertTrue(screen.getStatusMessage().contains("Start the game from The Lads Launcher"), screen.getStatusMessage());
+    }
+
     @Test
     public void scrollingRevealsAccountsBeyondSixRows(@TempDir Path tempDir) {
         ClientPaths.setBaseDir(tempDir);

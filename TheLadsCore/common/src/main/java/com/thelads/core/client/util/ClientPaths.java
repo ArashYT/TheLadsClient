@@ -135,6 +135,11 @@ public class ClientPaths {
         return getBaseDir().resolve("lads_accounts.json").toFile();
     }
 
+    /** The launcher's account list (names and ids, never tokens), one for all its games: it rewrites this at every account change. */
+    public static File getLauncherAccountsFile() {
+        return getGlobalBaseDir().resolve("shared").resolve("lads_accounts.json").toFile();
+    }
+
     public static File getProfileFile() {
         return getBaseDir().resolve("lads_profile.json").toFile();
     }

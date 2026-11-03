@@ -35,6 +35,13 @@ public class AccountSwitcherScreen189 extends GuiScreen {
     }
 
     @Override
+    public void handleMouseInput() throws IOException {
+        super.handleMouseInput();
+        int wheel = org.lwjgl.input.Mouse.getEventDWheel();
+        if (wheel != 0) ui.mouseScrolled(0, 0, Integer.signum(wheel)); // the whole screen scrolls the list: where the pointer is does not matter
+    }
+
+    @Override
     protected void keyTyped(char typedChar, int keyCode) {
         if (keyCode == 1) {
             ui.cancel();

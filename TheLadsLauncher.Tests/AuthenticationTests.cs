@@ -117,6 +117,32 @@ public class AuthenticationTests
     }
 
     [Fact]
+    public void ThePublishedListHasEachAccountOnceInTheLaunchersOrderWithNoCredentials()
+    {
+        using var dir = new TestDirectory();
+        string jeb = Guid.NewGuid().ToString(), notch = Guid.NewGuid().ToString();
+        var list = AccountExportService.PublishedList(new[]
+        {
+            new AccountSummary("Notch", notch, "microsoft"),
+            new AccountSummary("jeb_", jeb, "microsoft"),
+            new AccountSummary("JEB_", jeb.Replace("-", "").ToUpperInvariant(), "microsoft"), // the same account twice
+            new AccountSummary("NOTCH", AccountIdentity.OfflineUuid("NOTCH"), "offline"), // an offline row can't take a Microsoft name
+            new AccountSummary("Local", AccountIdentity.OfflineUuid("Local"), "offline")
+        }, new List<string> { "Local", "JEB_" }, "jeb_");
+        Assert.Equal(new[] { "Local", "jeb_", "Notch" }, list.Select(a => a.username));
+        Assert.Equal("jeb_", list.Single(a => a.selected).username);
+
+        string path = System.IO.Path.Combine(dir.Path, "shared", "lads_accounts.json");
+        AccountExportService.Publish(path, list, _ => { });
+        File.WriteAllText(path, "old contents, replaced whole");
+        AccountExportService.Publish(path, list, _ => { });
+        var read = JsonSerializer.Deserialize<AccountSummary[]>(File.ReadAllText(path))!;
+        Assert.Equal(list, read);
+        Assert.DoesNotContain("accessToken", File.ReadAllText(path), StringComparison.OrdinalIgnoreCase);
+        Assert.Single(Directory.GetFiles(System.IO.Path.GetDirectoryName(path)!));
+    }
+
+    [Fact]
     public void PlainTextTokensFromOldLaunchersAreScrubbedOnLoad()
     {
         using var dir = new TestDirectory();

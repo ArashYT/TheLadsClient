@@ -1621,6 +1621,8 @@ public partial class MainWindow : Window
         // Listing accounts is local. Only launch or explicit refresh authenticates.
         RenderAccountsList(allAccountNames);
         PopulateLaunchSelector(allAccountNames);
+        // Every account change comes through here: the games' switchers read this list.
+        AccountExportService.Publish(_pathService.SharedAccountsFile, AccountExportService.PublishedList(GetAccountSummaries(), allAccountNames, ResolveLaunchAccountName()), Log);
 
         // Update Launch button context menu
         var launchMenu = this.FindControl<ContextMenu>("LaunchContextMenu") ?? LaunchContextMenu;
@@ -2096,6 +2098,12 @@ public partial class MainWindow : Window
             : $"Remove '{username}'? You'll need to sign in with Microsoft again.";
         if (!await ShowLadsDialogAsync("Remove Account", message, "Remove", "Cancel", danger: true))
             return;
+        await RemoveAccountAsync(username, isOffline);
+    }
+
+    /// <summary>False when signing out failed, and the account stays.</summary>
+    private async Task<bool> RemoveAccountAsync(string username, bool isOffline)
+    {
         if (isOffline)
         {
             settings.OfflineAccounts.Remove(username);
@@ -2115,7 +2123,7 @@ public partial class MainWindow : Window
             {
                 StatusText.Text = "The account could not be removed. Try again.";
                 Log($"[Auth] Account removal failed: {MicrosoftAccountService.DescribeError(ex)}");
-                return;
+                return false;
             }
         }
 
@@ -2130,6 +2138,7 @@ public partial class MainWindow : Window
         LoadAccounts();
         StatusText.Text = $"Account removed: {username}";
         Log($"[Auth] Removed account: {username}");
+        return true;
     }
 
     // ═══════════════════════════════════════

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using CmlLib.Core.Auth;
 
@@ -26,6 +27,51 @@ public static class AccountExportService
             username = session.Username, uuid = session.UUID, type = offline ? "offline" : "microsoft",
             lastUpdated = DateTimeOffset.UtcNow
         });
+    }
+
+    /// <summary>What every game's account switcher lists: the launcher's accounts, once each, in the launcher's order, its chosen one marked.</summary>
+    public static AccountSummary[] PublishedList(IEnumerable<AccountSummary> accounts, List<string> order, string? chosen) => accounts
+        .DistinctBy(a => a.uuid.Replace("-", "") is { Length: > 0 } id ? id.ToLowerInvariant() : a.username.ToLowerInvariant())
+        .DistinctBy(a => a.username, StringComparer.OrdinalIgnoreCase)
+        .OrderBy(a =>
+        {
+            int index = order.FindIndex(name => string.Equals(name, a.username, StringComparison.OrdinalIgnoreCase));
+            return index < 0 ? int.MaxValue : index;
+        })
+        .Select(a => a with { selected = string.Equals(a.username, chosen, StringComparison.OrdinalIgnoreCase) })
+        .ToArray();
+
+    /// <summary>Rewrites the published list (<see cref="IPathService.SharedAccountsFile"/>), which a game reads each time its switcher opens: names and ids only,
+    /// the tokens stay in the DPAPI store. A game reading the file at that moment can hold it up, so a few tries; the next account change writes it again anyway.</summary>
+    public static void Publish(string path, IReadOnlyCollection<AccountSummary> list, Action<string> log)
+    {
+        string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(temporary, JsonSerializer.Serialize(list));
+            for (int attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    File.Move(temporary, path, true);
+                    return;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException && attempt < 3)
+                {
+                    Thread.Sleep(30);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            log($"[Accounts] Could not publish the account list for the game: {ex.Message}");
+        }
+        finally
+        {
+            try { File.Delete(temporary); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        }
     }
 
     public static async Task WriteJsonAsync<T>(string path, T value)

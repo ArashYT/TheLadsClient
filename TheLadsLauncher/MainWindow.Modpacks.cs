@@ -100,6 +100,24 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>A running game's switcher removes a saved account (AccountSwitchPipe): the Accounts page's removal, the game asked its player first.
+    /// An account already gone counts as done. An empty error means done.</summary>
+    private async Task<AccountTokenReply> RemoveAccountForGameAsync(AccountSwitchRequest request)
+    {
+        if (_addingAccount || _launching) return AccountTokenReply.Refuse("The launcher is busy. Try again in a moment.");
+        var saved = GetAccountSummaries().FirstOrDefault(a => a.type == request.Type
+            && string.Equals(a.username, request.Username, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(a.uuid.Replace("-", ""), request.Uuid.Replace("-", ""), StringComparison.OrdinalIgnoreCase));
+        if (saved == null)
+        {
+            LoadAccounts();
+            return AccountTokenReply.Refuse("");
+        }
+        return await RemoveAccountAsync(saved.username, saved.type == "offline")
+            ? AccountTokenReply.Refuse("")
+            : AccountTokenReply.Refuse($"The launcher could not remove {saved.username}. Try again.");
+    }
+
     private async Task<MSession> SignInModpackAccountAsync(CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(_selectedAccount)) throw new InvalidOperationException("Add or select an account on the Accounts page first.");
