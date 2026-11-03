@@ -34,6 +34,13 @@ class Program
         }
         catch (Exception) { } // never stops the launcher from starting
 
+        // The in-game import dialog's command: no window, one JSON answer on stdout.
+        if (System.Linq.Enumerable.Contains(args, TheLadsLauncher.Services.ClientImportCli.Flag))
+        {
+            Environment.Exit(TheLadsLauncher.Services.ClientImportCli.Run(args));
+            return;
+        }
+
         if (System.Linq.Enumerable.Contains(args, "--test-services"))
         {
             int exitCode = TheLadsLauncher.Services.ServiceTestSuite.RunAllTestsAsync().GetAwaiter().GetResult();

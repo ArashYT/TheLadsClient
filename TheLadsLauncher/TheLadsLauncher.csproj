@@ -28,6 +28,7 @@
     <Content Include="..\tools\modpack-manager\patches\update-*.json" Link="modpack-patches\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <!-- One list of known servers for LadsCore and the launcher (ServerNameResolver, Servers tab). -->
     <EmbeddedResource Include="..\TheLadsCore\common\src\main\resources\thelads\known_servers.json" Link="Services\known_servers.json" LogicalName="known_servers.json" />
+    <EmbeddedResource Include="..\TheLadsCore\common\src\main\resources\thelads\client_import_map.json" Link="Services\client_import_map.json" LogicalName="client_import_map.json" />
   </ItemGroup>
 
   <!-- The CurseForge API key built into the launcher: LADS_CURSEFORGE_API_KEY (environment variable or CI secret) at build time.
