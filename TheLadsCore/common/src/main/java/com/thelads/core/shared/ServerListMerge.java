@@ -3,12 +3,15 @@ package com.thelads.core.shared;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * Merge rules for the shared servers.dat when several games (versions) run at once. Each game remembers every server it
@@ -90,6 +93,33 @@ public final class ServerListMerge {
             }
         }
         return new Plan<>(toAdd, List.copyOf(toRemove), List.copyOf(toAdopt));
+    }
+
+    /**
+     * Keeps the pinned entry (The Lads Network) first, whatever a hand edit or an older save did to the list: moved back to the top, added when
+     * missing, later copies of it removed (of several entries with one address the first counts). True when the list changed.
+     */
+    public static <T> boolean pinFirst(List<T> list, Predicate<T> pinned, Supplier<T> create) {
+        T found = null;
+        boolean changed = false;
+        for (Iterator<T> it = list.iterator(); it.hasNext(); ) {
+            T entry = it.next();
+            if (!pinned.test(entry)) continue;
+            if (found == null) {
+                found = entry;
+            } else {
+                it.remove();
+                changed = true;
+            }
+        }
+        if (found == null) {
+            list.add(0, create.get());
+            return true;
+        }
+        if (list.get(0) == found) return changed;
+        list.remove(found);
+        list.add(0, found);
+        return true;
     }
 
     /** The snapshot after a save is what a re-read finds on disk; when that re-read fails the previous one is kept. */

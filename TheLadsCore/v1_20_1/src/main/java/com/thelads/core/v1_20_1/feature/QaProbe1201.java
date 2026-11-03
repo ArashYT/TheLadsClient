@@ -392,6 +392,7 @@ public final class QaProbe1201 {
                 net.minecraft.client.multiplayer.ServerData data = new net.minecraft.client.multiplayer.ServerData("QA", address, false);
                 net.minecraft.client.gui.screens.ConnectScreen.startConnecting(new TitleScreen(), mc, net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(address), data, false);
             }
+            case "srv" -> ServerListQa1201.step(mc, s);
             case "log" -> LOGGER.info("Lads qa log: {}", rest(s, 1));
             case "account" -> { // account <offline name> | account ms <name>: the switcher open and that account clicked
                 if (!(mc.screen instanceof com.thelads.core.v1_20_1.gui.AccountSwitcherScreen1201)) mc.setScreen(new com.thelads.core.v1_20_1.gui.AccountSwitcherScreen1201(mc.screen));

@@ -238,6 +238,9 @@ public final class QaProbe189 {
                 }
                 break;
             }
+            case "srv":
+                ServerListQa189.step(mc, s);
+                break;
             case "titlelayout": // what the title's layout toggle does
                 com.thelads.core.modules.TitleScreenModule.toggleLayout();
                 break;

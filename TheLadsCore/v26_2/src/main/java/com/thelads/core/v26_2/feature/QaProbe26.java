@@ -111,6 +111,7 @@ public final class QaProbe26 {
             case "session" -> LOGGER.info("Lads qa session: name={} uuid={} profile={} keys={} screen={} status={}", mc.getUser().getName(), mc.getUser().getProfileId(), mc.getGameProfile().name(),
                 mc.getProfileKeyPairManager().getClass().getSimpleName(), mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getSimpleName(),
                 mc.gui.screen() instanceof AccountSwitcherScreen26 a ? a.ui().getStatusMessage() : "");
+            case "srv" -> ServerListQa26.step(mc, step.split("\\s+"));
             case "quit" -> { end(); mc.stop(); }
             default -> throw new IllegalArgumentException("unknown step " + s[0]);
         }

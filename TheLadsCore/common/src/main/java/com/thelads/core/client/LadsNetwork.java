@@ -61,6 +61,14 @@ public final class LadsNetwork {
         return !Boolean.getBoolean("lads.modpack");
     }
 
+    /**
+     * The entry kept first in the server list, as the launcher pins it (ServerListService.PinLadsNetworkAsync, ServerListMerge.pinFirst here):
+     * in the client profiles, like the title button, not in a modpack's own list.
+     */
+    public static boolean isPinned(String address) {
+        return titleButton() && com.thelads.core.shared.ServerListMerge.key(address).equals(ADDRESS);
+    }
+
     /** {@code host} (no port) is arashyt.ca or one of its subdomains: every server of the network goes through it. */
     public static boolean isHost(String host) {
         if (host == null) return false;

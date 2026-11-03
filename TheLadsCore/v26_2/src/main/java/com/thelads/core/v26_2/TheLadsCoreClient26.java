@@ -20,6 +20,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         ConfigManager.load();
         com.thelads.core.v26_2.feature.LocalSkins.initialize();
         com.thelads.core.config.ModuleSupport.registerBuiltIn("Threads");
+        ModuleSupport.registerBuiltIn(com.thelads.core.client.ServerListDrag.NAME);
         ModuleSupport.registerBuiltInRestart("Jasione");
         // These HUD controls are consumed by HudManager through the required native HUD mixin.
         // Other modules remain unavailable until their native behavior and options are connected.

@@ -3,6 +3,7 @@ package com.thelads.core.v1_20_1.mixin.menus;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.thelads.core.client.LadsNetwork;
 import com.thelads.core.shared.ServerListMerge;
 import com.thelads.core.shared.SharedContentPaths;
 import java.io.File;
@@ -32,7 +33,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * servers.dat lives in the shared Minecraft folder (LADS_GLOBAL_MINECRAFT_DIR) for every Lads version. Each save holds the
  * lock the launcher also takes, re-reads the file and keeps servers another running game added, edited or removed meanwhile.
- * Without the environment variable every handler leaves vanilla behaviour untouched.
+ * Without the environment variable those handlers leave vanilla behaviour untouched. The Lads Network is kept first in any case (not in a
+ * modpack: LadsNetwork.isPinned), so a hand-edited or re-saved servers.dat heals itself on the next load or save.
  */
 @Mixin(ServerList.class)
 public abstract class ServerListSharedMixin {
@@ -53,6 +55,7 @@ public abstract class ServerListSharedMixin {
 
     @Inject(method = "load", at = @At("RETURN"), require = 1)
     private void ladsRememberLoadedServers(CallbackInfo ci) {
+        ladsPinNetwork();
         if (!SharedContentPaths.redirectEnabled()) return;
         try {
             ladsLoaded = ladsSnapshot(serverList, hiddenServerList);
@@ -65,6 +68,7 @@ public abstract class ServerListSharedMixin {
     @WrapMethod(method = "save", require = 1)
     private void ladsSaveSharedServers(Operation<Void> original) {
         if (!SharedContentPaths.redirectEnabled()) {
+            ladsPinNetwork();
             original.call();
             return;
         }
@@ -72,6 +76,7 @@ public abstract class ServerListSharedMixin {
         try {
             SharedContentPaths.withServersLock(() -> {
                 ladsMergeFromDisk();
+                if (ladsPinNetwork()) ladsRefreshOpenScreen();
                 saving[0] = true;
                 original.call();
                 ladsRefreshSnapshot();
@@ -82,6 +87,24 @@ public abstract class ServerListSharedMixin {
                 : "Shared server list lock failed; saving without it", lockFailure);
             if (!saving[0]) original.call();
         }
+    }
+
+    /** As the launcher's pin: first, the network's own name, server packs on unless the player chose. A direct connect to it may have hidden it. True when it moved. */
+    @Unique
+    private boolean ladsPinNetwork() {
+        if (!LadsNetwork.titleButton()) return false;
+        for (ServerData hidden : hiddenServerList) {
+            if (LadsNetwork.isPinned(hidden.ip)) {
+                hiddenServerList.remove(hidden);
+                serverList.add(hidden);
+                break;
+            }
+        }
+        boolean moved = ServerListMerge.pinFirst(serverList, data -> LadsNetwork.isPinned(data.ip), () -> new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, false));
+        ServerData pinned = serverList.get(0);
+        pinned.name = LadsNetwork.NAME;
+        pinned.ip = LadsNetwork.ADDRESS;
+        return moved;
     }
 
     @Unique

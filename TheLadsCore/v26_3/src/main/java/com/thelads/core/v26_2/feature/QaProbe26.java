@@ -244,6 +244,7 @@ public final class QaProbe26 {
                 mc.options.keyPlayerList.setDown(down);
                 com.thelads.core.client.qa.QaProgress.hide(down);
             }
+            case "srv" -> ServerListQa26.step(mc, s);
             case "log" -> LOGGER.info("Lads 26.3 qa log: {}", rest(s, 1));
             case "textui" -> textUi(mc, s);
             case "gui" -> { mc.options.guiScale().set(Integer.parseInt(arg(s, 1))); mc.resizeGui(); } // the GUI scale, 0 = auto
