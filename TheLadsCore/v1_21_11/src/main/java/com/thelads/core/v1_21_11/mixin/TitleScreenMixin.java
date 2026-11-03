@@ -17,10 +17,7 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
-import net.minecraft.client.multiplayer.ServerData;
-import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -77,8 +74,8 @@ public abstract class TitleScreenMixin extends Screen {
         ladsMoreButton = addRenderableWidget(Button.builder(Component.literal("More..."),
             button -> minecraft.setScreen(new TitleExtrasScreen12111(this, ladsExtraWidgets))).bounds(0, 0, 1, 1).build());
         ladsNetworkButton = !LadsNetwork.titleButton() ? null : addRenderableWidget(Button.builder(Component.literal(LadsNetwork.TITLE_LABEL),
-            button -> ConnectScreen.startConnecting(new JoinMultiplayerScreen(this), minecraft, ServerAddress.parseString(LadsNetwork.ADDRESS),
-                new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, ServerData.Type.OTHER), false, null)).tooltip(Tooltip.create(Component.literal(LadsNetwork.TOOLTIP))).bounds(0, 0, 1, 1).build());
+            button -> com.thelads.core.v1_21_11.gui.PauseMultiplayer.joinNetwork(new JoinMultiplayerScreen(this)))
+            .tooltip(Tooltip.create(Component.literal(LadsNetwork.TOOLTIP))).bounds(0, 0, 1, 1).build());
         // Beside the account name (placed each frame after it)
         ladsSwitchButton = addRenderableWidget(new CompactButton12111(0, 0, 1, 1, Component.literal(TitleScreenTheme.SWITCH),
             () -> "switch", button -> minecraft.setScreen(new AccountSwitcherScreen12111(this))));
@@ -212,6 +209,7 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private String ladsButtonIcon(AbstractWidget widget) {
+        if (widget == ladsNetworkButton) return "server";
         if (widget == ladsSettingsButton) return "mods";
         if (widget == ladsAccountsButton) return "user";
         if (widget == ladsNetworkButton) return "server";
@@ -265,26 +263,30 @@ public abstract class TitleScreenMixin extends Screen {
         var adapter = new GuiGraphicsLadsAdapter(graphics, font);
         String version = "1.21.11" + (minecraft.isDemo() ? " Demo" : "");
         float matrixScale = ladsMatrixScale();
-        TitleScreenTheme.Rect switchBox;
-        if (ladsNoirLayout != null) {
-            renderPanorama(graphics, partialTick);
-            graphics.pose().pushMatrix();
-            graphics.pose().scale(matrixScale, matrixScale);
-            switchBox = TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, true);
-        } else {
-            switchBox = TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds, true);
-        }
-        if (switchBox != null) ladsSwitchButton.setRectangle(switchBox.width(), switchBox.height(), switchBox.x(), switchBox.y());
-        TitleWidgetRegistry.beginFrame(this, adapter, elapsed, reducedMotion);
-        TitleNoir.beginFrame(ladsNoirLayout);
+        if (ladsNoirLayout != null) renderPanorama(graphics, partialTick);
+        boolean pushed = ladsNoirLayout != null;
+        if (pushed) graphics.pose().pushMatrix();
         try {
-            // Calls Screen, not TitleScreen: only native widgets and extra renderables, never vanilla artwork.
-            super.render(graphics, Math.round(mouseX / matrixScale), Math.round(mouseY / matrixScale), partialTick);
+            TitleScreenTheme.Rect switchBox;
+            if (pushed) {
+                graphics.pose().scale(matrixScale, matrixScale);
+                switchBox = TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, true);
+            } else {
+                switchBox = TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds, true);
+            }
+            if (switchBox != null) ladsSwitchButton.setRectangle(switchBox.width(), switchBox.height(), switchBox.x(), switchBox.y());
+            TitleWidgetRegistry.beginFrame(this, adapter, elapsed, reducedMotion);
+            TitleNoir.beginFrame(ladsNoirLayout);
+            try {
+                // Calls Screen, not TitleScreen: only native widgets and extra renderables, never vanilla artwork.
+                super.render(graphics, Math.round(mouseX / matrixScale), Math.round(mouseY / matrixScale), partialTick);
+            } finally {
+                TitleNoir.endFrame();
+                TitleWidgetRegistry.endFrame();
+            }
         } finally {
-            TitleNoir.endFrame();
-            TitleWidgetRegistry.endFrame();
+            if (pushed) graphics.pose().popMatrix();
         }
-        if (ladsNoirLayout != null) graphics.pose().popMatrix();
         ci.cancel();
     }
 
@@ -295,8 +297,15 @@ public abstract class TitleScreenMixin extends Screen {
             ladsEnsureTitleLayout();
             // Vanilla also forwards clicks to its separate, now hidden Realms notification overlay.
             float matrixScale = ladsMatrixScale();
+            double sx = event.x() / matrixScale, sy = event.y() / matrixScale;
+            if (event.button() == 0 && ladsNoirLayout != null && TitleNoir.clickNetworkPill(sx, sy)) {
+                com.thelads.core.client.gui.LadsSettingsScreen.requestOpenNetworkHub();
+                minecraft.setScreen(new LadsSettingsScreen12111(this));
+                cir.setReturnValue(true);
+                return;
+            }
             cir.setReturnValue(super.mouseClicked(matrixScale != 1.0f
-                ? new MouseButtonEvent(event.x() / matrixScale, event.y() / matrixScale, event.buttonInfo()) : event, doubleClick));
+                ? new MouseButtonEvent(sx, sy, event.buttonInfo()) : event, doubleClick));
         }
     }
 }

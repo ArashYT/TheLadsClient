@@ -8,6 +8,7 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiYesNo;
 import net.minecraft.client.multiplayer.GuiConnecting;
 import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.ServerList;
 import org.apache.logging.log4j.LogManager;
 
 /**
@@ -43,8 +44,42 @@ public final class PauseMultiplayer189 {
     }
 
     public static void joinNetwork(GuiScreen parent) {
+        connectToServer(parent, LadsNetwork.NAME, LadsNetwork.ADDRESS);
+    }
+
+    public static void connectToServer(GuiScreen parent, String name, String address) {
         Minecraft mc = Minecraft.getMinecraft();
-        mc.displayGuiScreen(new GuiConnecting(parent, mc, new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, false)));
+        ServerData data = ensureServerEntry(mc, name, address);
+        mc.displayGuiScreen(new GuiConnecting(parent, mc, data));
+    }
+
+    /** Reuses an existing saved server entry (preserving Disabled if chosen) or registers a new one with server packs Enabled. */
+    public static ServerData ensureServerEntry(Minecraft mc, String name, String address) {
+        String targetIp = address == null ? LadsNetwork.ADDRESS : address.trim();
+        String display = (name != null && !name.isEmpty()) ? name : targetIp;
+        try {
+            ServerList list = new ServerList(mc);
+            list.loadServerList();
+            for (int i = 0; i < list.countServers(); i++) {
+                ServerData existing = list.getServerData(i);
+                if (existing != null && existing.serverIP != null && existing.serverIP.trim().equalsIgnoreCase(targetIp)) {
+                    if (existing.getResourceMode() == ServerData.ServerResourceMode.PROMPT) {
+                        existing.setResourceMode(ServerData.ServerResourceMode.ENABLED);
+                        list.saveServerList();
+                    }
+                    return existing;
+                }
+            }
+            ServerData created = new ServerData(display, targetIp, false);
+            created.setResourceMode(ServerData.ServerResourceMode.ENABLED);
+            list.addServerData(created);
+            list.saveServerList();
+            return created;
+        } catch (Exception ignored) {
+            ServerData fallback = new ServerData(display, targetIp, false);
+            fallback.setResourceMode(ServerData.ServerResourceMode.ENABLED);
+            return fallback;
+        }
     }
 
     /**

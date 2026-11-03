@@ -294,35 +294,41 @@ public final class LadsTitleScreen189 {
         int targetH = targetHeight();
         float ms = matrixScale();
 
-        GlStateManager.pushMatrix();
-        GlStateManager.scale(ms, ms, 1.0f);
-
-        GuiLadsAdapter g = new GuiLadsAdapter(mc.fontRendererObj, targetW, targetH);
-        String version = "1.8.9" + (mc.isDemo() ? " Demo" : "");
         TitleNoir.beginFrame(noirLayout);
-        TitleScreenTheme.Rect switchBox = noirLayout != null
-            ? TitleNoir.renderBackdrop(g, noirLayout, mc.getSession().getUsername(), version, true)
-            : TitleScreenTheme.renderBackground(g, layout, mc.getSession().getUsername(), version, false, seconds, true);
+        try {
+            TitleScreenTheme.Rect switchBox;
+            GlStateManager.pushMatrix();
+            try {
+                GlStateManager.scale(ms, ms, 1.0f);
 
-        int scaledMouseX = (int) Math.round(event.mouseX / ms);
-        int scaledMouseY = (int) Math.round(event.mouseY / ms);
+                GuiLadsAdapter g = new GuiLadsAdapter(mc.fontRendererObj, targetW, targetH);
+                String version = "1.8.9" + (mc.isDemo() ? " Demo" : "");
+                switchBox = noirLayout != null
+                    ? TitleNoir.renderBackdrop(g, noirLayout, mc.getSession().getUsername(), version, true)
+                    : TitleScreenTheme.renderBackground(g, layout, mc.getSession().getUsername(), version, false, seconds, true);
 
-        for (int i = 0; i < main.size(); i++) {
-            GuiButton button = main.get(i);
-            TitleScreenTheme.Rect rect = rects().get(i);
-            TitleExtrasScreen189.drawButtonAt(g, button, rect.x(), rect.y(), rect.width(), rect.height(),
-                label(button), icon(button), vanilla(button, 1), scaledMouseX, scaledMouseY, elapsed);
+                int scaledMouseX = (int) Math.round(event.mouseX / ms);
+                int scaledMouseY = (int) Math.round(event.mouseY / ms);
+
+                for (int i = 0; i < main.size(); i++) {
+                    GuiButton button = main.get(i);
+                    TitleScreenTheme.Rect rect = rects().get(i);
+                    TitleExtrasScreen189.drawButtonAt(g, button, rect.x(), rect.y(), rect.width(), rect.height(),
+                        label(button), icon(button), vanilla(button, 1), scaledMouseX, scaledMouseY, elapsed);
+                }
+            } finally {
+                GlStateManager.popMatrix();
+            }
+
+            if (switchBox != null) place(switchButton, switchBox.x(), switchBox.y(), switchBox.width(), switchBox.height(), ms);
+
+            switchButton.drawButton(mc, event.mouseX, event.mouseY, ms);
+            fullscreenButton.drawButton(mc, event.mouseX, event.mouseY, ms);
+            if (languageButton != null) languageButton.drawButton(mc, event.mouseX, event.mouseY, ms);
+            layoutToggle.drawButton(mc, event.mouseX, event.mouseY, ms);
+        } finally {
+            TitleNoir.endFrame();
         }
-
-        GlStateManager.popMatrix();
-
-        if (switchBox != null) place(switchButton, switchBox.x(), switchBox.y(), switchBox.width(), switchBox.height(), ms);
-
-        switchButton.drawButton(mc, event.mouseX, event.mouseY, ms);
-        fullscreenButton.drawButton(mc, event.mouseX, event.mouseY, ms);
-        if (languageButton != null) languageButton.drawButton(mc, event.mouseX, event.mouseY, ms);
-        layoutToggle.drawButton(mc, event.mouseX, event.mouseY, ms);
-        TitleNoir.endFrame();
     }
 
     /** Layout pixels to screen pixels; edges rounded, so neighbours that touch in the layout never overlap on the screen. */
@@ -360,11 +366,27 @@ public final class LadsTitleScreen189 {
         else if (event.button == switchVersionButton) mc.displayGuiScreen(new VersionSwitchScreen189(screen));
         else if (event.button == replaysButton) openReplays();
         else if (event.button == networkButton)
-            mc.displayGuiScreen(new GuiConnecting(new GuiMultiplayer(screen), mc, new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, false)));
+            PauseMultiplayer189.joinNetwork(new GuiMultiplayer(screen));
         else if (event.button.id == 4) mc.displayGuiScreen(new QuitConfirmScreen189(screen));
         else if (event.button == switchButton || event.button == fullscreenButton || event.button == languageButton || event.button == layoutToggle) ((CompactButton189) event.button).press();
         else return;
         if (clicked) event.button.playPressSound(mc.getSoundHandler());
         event.setCanceled(true);
+    }
+
+    @SubscribeEvent
+    public void mouse(GuiScreenEvent.MouseInputEvent.Pre event) {
+        if (screen == null || event.gui != screen || noirLayout == null) return;
+        if (!org.lwjgl.input.Mouse.getEventButtonState() || org.lwjgl.input.Mouse.getEventButton() != 0) return;
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.displayWidth <= 0 || mc.displayHeight <= 0) return;
+        double guiX = (double) org.lwjgl.input.Mouse.getEventX() * screen.width / mc.displayWidth;
+        double guiY = screen.height - (double) org.lwjgl.input.Mouse.getEventY() * screen.height / mc.displayHeight - 1.0;
+        float ms = matrixScale();
+        if (TitleNoir.clickNetworkPill(guiX / ms, guiY / ms)) {
+            com.thelads.core.client.gui.LadsSettingsScreen.requestOpenNetworkHub();
+            mc.displayGuiScreen(new LadsSettingsScreen189(screen));
+            event.setCanceled(true);
+        }
     }
 }

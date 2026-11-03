@@ -61,6 +61,7 @@ final class LiveSession26 implements LiveSession {
             }
             MinecraftSessionAccessor26 game = (MinecraftSessionAccessor26) mc;
             game.lads$setUser(user);
+            if (mc.gui != null) ((MinecraftSessionAccessor26.Splash) mc.gui.splashManager()).lads$setUser(user);
             game.lads$setProfileFuture(profile);
             game.lads$setUserApiService(api);
             game.lads$setUserPropertiesFuture(CompletableFuture.completedFuture(properties));

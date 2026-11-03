@@ -7,17 +7,21 @@ import com.google.gson.JsonParser;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.gui.LadsSettingsScreen.Rect;
 import com.thelads.core.client.util.ClientPaths;
+import com.thelads.core.client.util.FileDialogs;
 import com.thelads.core.config.ConfigManager;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import static com.thelads.core.client.gui.MenuGraphics.*;
 
 /**
@@ -26,6 +30,8 @@ import static com.thelads.core.client.gui.MenuGraphics.*;
  * changed config into the live modules afterwards. Options the running game holds apply at its next start; the launcher tells it.
  */
 public final class ClientImportDialog {
+    /** Optional JVM property pointing directly to TheLadsLauncher.exe. */
+    public static final String LAUNCHER_PROP = "lads.launcher.exe";
     /** Set by the launcher for every game it starts: its own exe. */
     public static final String LAUNCHER_ENV = "LADS_LAUNCHER_EXE";
     private static final int ROW = 13;
@@ -38,6 +44,7 @@ public final class ClientImportDialog {
 
     private final Importer importer;
     private final Runnable reloadConfig;
+    private final Supplier<CompletableFuture<Path>> folderPicker;
     private final Queue<Runnable> finished = new ConcurrentLinkedQueue<>();
     private final List<Hit> hits = new ArrayList<>();
     private final Set<String> chosen = new LinkedHashSet<>();
@@ -47,11 +54,16 @@ public final class ClientImportDialog {
     private JsonObject selected;
     private int offset, x, y, w, h;
 
-    ClientImportDialog() { this(launcherCommand(System.getenv(LAUNCHER_ENV)), ConfigManager::load); }
+    ClientImportDialog() { this(launcherCommand(resolveLauncherExe()), ConfigManager::load); }
 
     ClientImportDialog(Importer importer, Runnable reloadConfig) {
+        this(importer, reloadConfig, () -> FileDialogs.openFolder("Choose client or .minecraft folder"));
+    }
+
+    ClientImportDialog(Importer importer, Runnable reloadConfig, Supplier<CompletableFuture<Path>> folderPicker) {
         this.importer = importer;
         this.reloadConfig = reloadConfig;
+        this.folderPicker = folderPicker;
     }
 
     boolean isOpen() { return open; }
@@ -67,6 +79,13 @@ public final class ClientImportDialog {
         List<String> log = new ArrayList<>(List.of("panel " + x + "," + y + " " + w + "x" + h));
         for (Hit hit : hits) log.add(hit.label() + " " + hit.rect().x() + "," + hit.rect().y() + " " + hit.rect().width() + "x" + hit.rect().height());
         return log;
+    }
+
+    void close() {
+        if (!busy) {
+            open = false;
+            selected = null;
+        }
     }
 
     /** Finished background work, applied on the game thread (each frame; tests call it). */
@@ -92,6 +111,32 @@ public final class ClientImportDialog {
         });
     }
 
+    void pickFolder() {
+        if (busy) return;
+        folderPicker.get().whenComplete((picked, error) -> finished.add(() -> {
+            if (error != null) status = error.getCause() != null ? error.getCause().getMessage() : error.getMessage();
+            else if (picked != null) chooseFolder(picked);
+        }));
+    }
+
+    void chooseFolder(Path folder) {
+        if (folder == null || busy) return;
+        String dir = folder.toAbsolutePath().toString();
+        Path leaf = folder.getFileName();
+        status = "Reading " + (leaf != null ? leaf : dir) + "...";
+        background(new String[] {"scan", "--custom-dir", dir}, answer -> {
+            clients = answer.get("clients") instanceof JsonArray list ? list : new JsonArray();
+            canUndo = answer.has("canUndo") && answer.get("canUndo").getAsBoolean();
+            if (!clients.isEmpty() && clients.get(0).isJsonObject()) {
+                JsonObject custom = clients.get(0).getAsJsonObject();
+                if (!custom.has("customDir")) custom.addProperty("customDir", dir);
+                select(custom);
+            } else {
+                status = "No client settings were found in that folder.";
+            }
+        });
+    }
+
     void select(JsonObject client) {
         selected = client;
         undoArmed = false;
@@ -108,7 +153,10 @@ public final class ClientImportDialog {
         if (selected == null || chosen.isEmpty() || busy) return;
         status = "Importing...";
         ConfigManager.flush(); // the importer reads the config: everything changed in this session first
-        background(new String[] {"apply", selected.get("id").getAsString(), String.join(",", chosen), "--in-game"}, answer -> {
+        String[] args = selected.has("customDir") && !selected.get("customDir").isJsonNull()
+            ? new String[] {"apply", selected.get("id").getAsString(), String.join(",", chosen), "--custom-dir", selected.get("customDir").getAsString(), "--in-game"}
+            : new String[] {"apply", selected.get("id").getAsString(), String.join(",", chosen), "--in-game"};
+        background(args, answer -> {
             finishChange(answer, summary(answer));
             selected = null;
             scan(false);
@@ -180,6 +228,21 @@ public final class ClientImportDialog {
         worker.start();
     }
 
+    /** Resolves TheLadsLauncher.exe: lads.launcher.exe system property -> LADS_LAUNCHER_EXE env -> %LOCALAPPDATA%\TheLadsClient\current\TheLadsLauncher.exe. */
+    static String resolveLauncherExe() {
+        return resolveLauncherExe(System.getProperty(LAUNCHER_PROP), System.getenv(LAUNCHER_ENV), System.getenv("LOCALAPPDATA"));
+    }
+
+    static String resolveLauncherExe(String sysProp, String envExe, String localAppData) {
+        if (sysProp != null && !sysProp.isBlank() && new File(sysProp.trim()).isFile()) return sysProp.trim();
+        if (envExe != null && !envExe.isBlank() && new File(envExe.trim()).isFile()) return envExe.trim();
+        String localRoot = (localAppData != null && !localAppData.isBlank())
+            ? localAppData.trim()
+            : new File(new File(System.getProperty("user.home", "."), "AppData"), "Local").getPath();
+        File installed = new File(new File(new File(localRoot, "TheLadsClient"), "current"), "TheLadsLauncher.exe");
+        return installed.isFile() ? installed.getAbsolutePath() : null;
+    }
+
     /** Runs the launcher that started this game. Its data folder is THELADS_GLOBAL_DIR; THELADS_DIR, as the game has it, is the profile's. */
     static Importer launcherCommand(String exe) {
         return args -> {
@@ -221,6 +284,7 @@ public final class ClientImportDialog {
         if (selected == null) renderClients(g, top, mx, my);
         else renderPreview(g, top, mx, my);
         if (canUndo && !busy) link(g, "Undo last import", x + 12, y + h - 16, this::undo, mx, my);
+        if (selected == null && !busy) link(g, "Choose folder...", x + w - 108, y + h - 16, this::pickFolder, mx, my);
     }
 
     private void renderClients(LadsGraphics g, int top, int mx, int my) {

@@ -57,6 +57,7 @@ final class LiveSession12111 implements LiveSession {
             }
             MinecraftSessionAccessor12111 game = (MinecraftSessionAccessor12111) mc;
             game.lads$setUser(user);
+            ((MinecraftSessionAccessor12111.Splash) mc.getSplashManager()).lads$setUser(user);
             game.lads$setProfileFuture(profile);
             game.lads$setUserApiService(api);
             game.lads$setUserPropertiesFuture(CompletableFuture.completedFuture(properties));

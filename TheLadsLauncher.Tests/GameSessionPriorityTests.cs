@@ -7,8 +7,19 @@ namespace TheLadsLauncher.Tests;
 [Collection(TimingSensitive.Name)]
 public class GameSessionPriorityTests
 {
+    // Normalize the test runner to Normal first (as AutoUpdaterTests does): CI runs the job BelowNormal, and an external priority manager
+    // like Process Lasso can promote a BelowNormal child mid-test while leaving testhost BelowNormal.
+    private static async Task WithNormalPriority(Func<Task> test)
+    {
+        using var launcher = Process.GetCurrentProcess();
+        var original = launcher.PriorityClass;
+        ProcessPriority.TrySet(launcher, ProcessPriorityClass.Normal);
+        try { await test(); }
+        finally { ProcessPriority.TrySet(launcher, original); }
+    }
+
     [Fact]
-    public async Task GameRunsAtNormalPriorityWhileLoadingAndPlaying()
+    public Task GameRunsAtNormalPriorityWhileLoadingAndPlaying() => WithNormalPriority(async () =>
     {
         Assert.False(GameSession.StartupFinished(null));
         Assert.True(GameSession.StartupFinished("[12:00:00] [Sound Library Loader/INFO]: Sound engine started"));
@@ -23,42 +34,35 @@ public class GameSessionPriorityTests
         process.BeginOutputReadLine();
         process.Refresh();
         // Owner, 2026-10-10: "just make it normal priority" (Realtime/High while loading froze Discord). The launcher never changes it, so
-        // the game keeps the priority it inherits: Normal for players, BelowNormal on GitHub's CI runner, where the whole job runs lower.
+        // the game keeps the priority it inherits during both loading and play.
         var inherited = Process.GetCurrentProcess().PriorityClass;
         Assert.Equal(inherited, process.PriorityClass);
         await Task.Delay(4500);
         process.Refresh();
         Assert.Equal(inherited, process.PriorityClass);
         await process.WaitForExitAsync();
-    }
+    });
 
     [Fact]
-    public async Task AGameStartedWhileAnUpdateDownloadsKeepsThePriorityTheLauncherHadBefore()
+    public Task AGameStartedWhileAnUpdateDownloadsKeepsThePriorityTheLauncherHadBefore() => WithNormalPriority(async () =>
     {
         using var dir = new TestDirectory();
         var game = Path.Combine(dir.Path, "profile");
         Directory.CreateDirectory(game);
         var shared = new SharedContentService(Path.Combine(dir.Path, "global"), Path.Combine(dir.Path, "backups"));
-        var launcher = Process.GetCurrentProcess();
-        var original = launcher.PriorityClass;
-        launcher.PriorityClass = ProcessPriorityClass.Normal;
-        try
+        Process process;
+        using (ProcessPriority.Scope(ProcessPriorityClass.BelowNormal))   // the background update download
         {
-            Process process;
-            using (ProcessPriority.Scope(ProcessPriorityClass.BelowNormal))   // the background update download
-            {
-                process = Process.Start(new ProcessStartInfo("cmd.exe", "/c ping -n 3 127.0.0.1 >nul")
-                    { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true })!;
-                Assert.Equal(ProcessPriorityClass.BelowNormal, process.PriorityClass);   // Windows hands a child the lowered class
-                GameSession.Attach(process, game, Array.Empty<string>(), _ => { }, shared);
-                process.Refresh();
-                Assert.Equal(ProcessPriorityClass.Normal, process.PriorityClass);
-            }
-            Assert.Null(ProcessPriority.ScopedFrom);
-            using (process) await process.WaitForExitAsync();
+            process = Process.Start(new ProcessStartInfo("cmd.exe", "/c ping -n 3 127.0.0.1 >nul")
+                { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true })!;
+            Assert.Equal(ProcessPriorityClass.BelowNormal, process.PriorityClass);   // Windows hands a child the lowered class
+            GameSession.Attach(process, game, Array.Empty<string>(), _ => { }, shared);
+            process.Refresh();
+            Assert.Equal(ProcessPriorityClass.Normal, process.PriorityClass);
         }
-        finally { launcher.PriorityClass = original; }
-    }
+        Assert.Null(ProcessPriority.ScopedFrom);
+        using (process) await process.WaitForExitAsync();
+    });
 
     [Fact]
     public async Task CancelStopsTheWholeGameTreeAndItsExitIsNotACrash()

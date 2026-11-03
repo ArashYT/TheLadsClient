@@ -26,6 +26,19 @@ import net.minecraftforge.fml.common.versioning.ArtifactVersion;
 /** Game state for the HUD modules, read from 1.8.9's client; values 1.8.9 cannot provide keep the interface defaults. */
 public class VanillaGameBridge189 implements LadsGameBridge {
     private static Minecraft mc() { return Minecraft.getMinecraft(); }
+
+    public VanillaGameBridge189() {
+        com.thelads.core.client.LadsNetwork.installCommandLookup(command -> false);
+        com.thelads.core.client.LadsNetwork.installConnector(this::connectToServer);
+    }
+
+    public void connectToServer(String name, String address) {
+        Minecraft mc = mc();
+        Runnable run = () -> com.thelads.core.v1_8_9.gui.PauseMultiplayer189.connectToServer(
+            new net.minecraft.client.gui.GuiMultiplayer(new net.minecraft.client.gui.GuiMainMenu()), name, address);
+        if (mc.isCallingFromMinecraftThread()) run.run();
+        else mc.addScheduledTask(run);
+    }
     /** HUD texts rebuilt only when their numbers change, and potion names translated once (I18n.format runs String.format). */
     private long reachCents = -1, clockTicks = -1;
     private String reachText, clockText;
@@ -271,6 +284,7 @@ public class VanillaGameBridge189 implements LadsGameBridge {
 
     @Override
     public void tickClient() {
+        com.thelads.core.client.LadsNetwork.tick(this);
         Minecraft mc = mc();
         if (mc.thePlayer == null || mc.theWorld == null) return;
         int currentTick = mc.thePlayer.ticksExisted;

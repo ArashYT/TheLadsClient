@@ -106,7 +106,7 @@ public class AccountSwitcherScreen {
                 JsonObject obj = new JsonObject();
                 obj.addProperty("username", acc.getUsername());
                 obj.addProperty("uuid", acc.getUuid());
-                obj.addProperty("type", acc.getType());
+                obj.addProperty("type", acc.isOffline() ? "offline" : "microsoft");
                 obj.addProperty("selected", acc.isSelected());
                 arr.add(obj);
             }
@@ -141,8 +141,11 @@ public class AccountSwitcherScreen {
     }
 
     private boolean isLive(LadsAccount account) {
-        return account.getUsername().equalsIgnoreCase(live.username())
-            && account.getUuid().replace("-", "").equalsIgnoreCase(live.uuid().replace("-", ""));
+        if (!account.getUsername().equalsIgnoreCase(live.username())) return false;
+        String accountUuid = account.isOffline()
+            ? account.sessionUuid().toString().replace("-", "")
+            : account.getUuid().replace("-", "").trim();
+        return accountUuid.equalsIgnoreCase(live.uuid().replace("-", "").trim());
     }
 
     private void switchTo(LadsAccount target) {
@@ -163,7 +166,7 @@ public class AccountSwitcherScreen {
         switchTarget = target;
         statusMessage = "Switching to " + target.getUsername() + "...";
         CompletableFuture<Runnable> work = switching = new CompletableFuture<>();
-        boolean sessionIsOffline = LadsAccount.offlineUuid(live.username()).toString().replace("-", "").equalsIgnoreCase(live.uuid().replace("-", ""));
+        boolean sessionIsOffline = LadsAccount.offlineUuid(live.username()).toString().replace("-", "").equalsIgnoreCase(live.uuid().replace("-", "").trim());
         Thread thread = new Thread(() -> {
             try {
                 work.complete(live.prepare(target, tokens.fetch(target, sessionIsOffline)));
@@ -259,8 +262,8 @@ public class AccountSwitcherScreen {
         try {
             JsonObject obj = new JsonObject();
             obj.addProperty("username", acc.getUsername());
-            obj.addProperty("uuid", acc.getUuid());
-            obj.addProperty("type", acc.getType());
+            obj.addProperty("uuid", acc.isOffline() ? acc.sessionUuid().toString() : acc.getUuid());
+            obj.addProperty("type", acc.isOffline() ? "offline" : "microsoft");
             obj.addProperty("lastUpdated", Instant.now().toString());
 
             File profileFile = ClientPaths.getBaseDir().resolve("lads_next_account.json").toFile();
@@ -301,9 +304,12 @@ public class AccountSwitcherScreen {
         // Account list
         int listY = cardY + 32;
         int itemH = 36;
-        for (int i = 0; i < accounts.size(); i++) {
+        int maxVisible = Math.max(1, (cardH - 82) / itemH);
+        int maxScroll = Math.max(0, accounts.size() - maxVisible);
+        scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
+        for (int i = scrollOffset; i < accounts.size(); i++) {
             LadsAccount acc = accounts.get(i);
-            int itemY = listY + (i * itemH);
+            int itemY = listY + ((i - scrollOffset) * itemH);
             if (itemY + itemH > cardY + cardH - 50) break;
 
             boolean isHover = mouseX >= cardX + 16 && mouseX <= cardX + cardW - 16 && mouseY >= itemY && mouseY <= itemY + itemH - 4;
@@ -339,6 +345,19 @@ public class AccountSwitcherScreen {
         g.drawCenteredText("Done", cardX + cardW - 68, btnY + 7, LadsPalette.TEXT, false);
     }
 
+    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+        if (amount == 0) return false;
+        int height = (lastHeight > 0) ? lastHeight : 600;
+        int cardH = Math.min(320, height - 80);
+        int maxVisible = Math.max(1, (cardH - 82) / 36);
+        int maxScroll = Math.max(0, accounts.size() - maxVisible);
+        if (maxScroll == 0) return false;
+        int next = Math.max(0, Math.min(maxScroll, scrollOffset - (amount > 0 ? 1 : -1)));
+        if (next == scrollOffset) return false;
+        scrollOffset = next;
+        return true;
+    }
+
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         int width = (lastWidth > 0) ? lastWidth : 800;
         int height = (lastHeight > 0) ? lastHeight : 600;
@@ -350,8 +369,11 @@ public class AccountSwitcherScreen {
         // Check account selection
         int listY = cardY + 32;
         int itemH = 36;
-        for (int i = 0; i < accounts.size(); i++) {
-            int itemY = listY + (i * itemH);
+        int maxVisible = Math.max(1, (cardH - 82) / itemH);
+        int maxScroll = Math.max(0, accounts.size() - maxVisible);
+        scrollOffset = Math.max(0, Math.min(scrollOffset, maxScroll));
+        for (int i = scrollOffset; i < accounts.size(); i++) {
+            int itemY = listY + ((i - scrollOffset) * itemH);
             if (itemY + itemH > cardY + cardH - 50) break;
             if (mouseX >= cardX + 16 && mouseX <= cardX + cardW - 16 && mouseY >= itemY && mouseY <= itemY + itemH - 4) {
                 selectAccount(accounts.get(i));

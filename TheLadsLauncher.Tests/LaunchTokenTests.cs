@@ -9,12 +9,12 @@ namespace TheLadsLauncher.Tests;
 /// <summary>The access token goes to the game on stdin, not its command line, when the game's Core can read it there.</summary>
 public class LaunchTokenTests
 {
-    private static void Core(string gameDirectory, bool readsStdin)
+    private static void Core(string gameDirectory, bool readsStdin, string versionPackage = "v1_20_1")
     {
         Directory.CreateDirectory(Path.Combine(gameDirectory, "mods"));
         using var zip = ZipFile.Open(Path.Combine(gameDirectory, "mods", "theladscore.jar"), ZipArchiveMode.Create);
         zip.CreateEntry("fabric.mod.json");
-        if (readsStdin) zip.CreateEntry("com/thelads/core/v1_20_1/mixin/SessionTokenMixin.class");
+        if (readsStdin) zip.CreateEntry($"com/thelads/core/{versionPackage}/mixin/SessionTokenMixin.class");
     }
 
     // cmd echoes its stdin; everything after rem is only there to be the game's command line.
@@ -41,6 +41,19 @@ public class LaunchTokenTests
         Assert.Equal("eyJ.secret-token_1", lines[0]);
         Assert.StartsWith(AccountSwitchPipe.PipeName + " ", lines[1]);
         game.WaitForExit();
+    }
+
+    [Theory]
+    [InlineData("v1_8_9")]
+    [InlineData("v1_20_1")]
+    [InlineData("v1_21_11")]
+    [InlineData("v26_2")]
+    public void EverySupportedCoreVersionPackageIsRecognisedForStdinHandoff(string versionPackage)
+    {
+        using var dir = new TestDirectory();
+        Core(dir.Path, readsStdin: true, versionPackage);
+
+        Assert.True(LaunchToken.CoreReadsStdin(Path.Combine(dir.Path, "mods")));
     }
 
     [Fact]

@@ -63,6 +63,8 @@ public final class HypixelChat {
      */
     private static final Pattern ONE_LIFE_DUEL = Pattern.compile("(?i)(?:DUELS_)?(?:CLASSIC|BOW|OP|UHC|POTION|SW|COMBO|SUMO|BLITZ|MW|BOWSPLEEF|SPLEEF|BOXING)_(?:DUEL|DOUBLES|FOUR|MEETUP)");
     private static final Pattern SPECTATOR_LINE = Pattern.compile("(?i).*You are now a spectator!?.*");
+    private static final Pattern RESPAWN_NOTICE = Pattern.compile("(?i).*\\b(?:will respawn|respawn in|respawning in|until respawn)\\b.*");
+    private static final Pattern BRIDGE_CUE = Pattern.compile("(?i)(?:Cages open in: \\d+ seconds?!?|.*\\bscored!\\s*\\([^)]+\\).*)");
     /** The end-of-game summary every mode prints, centered (leading spaces): its ranking or winner line. */
     private static final Pattern GAME_END = Pattern.compile("\\s+(?:"
         + "1st\\b(?: Killer| Place)?\\s*[-:].*"        // 1st Killer - [MVP+] Name - 7 / 1st Place - Name / 1st - Name
@@ -75,7 +77,7 @@ public final class HypixelChat {
         + "|Alpha Infected: .+"
         + "|You survived \\d+ rounds!|Zombies - .+"    // Zombies
         + "|(?:Survivors \\(\\d+\\):|Nobody survived!|Survivor:).*"
-        + "|[A-Za-z]+(?: [A-Za-z0-9]+){0,3} - \\d{1,2}:\\d\\d" // Duels: Classic Duel - 2:13 / Bridge CTF Duel - 12:34
+        + "|[A-Za-z]+(?: [A-Za-z0-9]+){0,5} - \\d{1,2}:\\d\\d" // Duels: Classic Duel - 2:13 / The Bridge CTF Threes - 12:34
         + "|They captured all wools!"                  // Capture the Wool
         + "|(?:\\[[^\\]]+\\] )?\\w{1,16} - \\d+ Final Kills" // Mega Walls
         + "|[\\d.]+k?/[\\d.]+k? \\w+|. YOUR STATISTICS ." // Warlords
@@ -303,17 +305,48 @@ public final class HypixelChat {
     }
 
     /**
-     * You respawn or sit out a round here, so "You are now a spectator!" is no end: any Duels mode not known to be one life, Cops and
-     * Crims, Warlords, Arcade (Zombies, Party Games...), TNT Wizards. Other games send it only for good (Bed Wars after its final kill).
+     * You respawn or sit out a round here, so "You are now a spectator!" is no end: any Duels mode not known to be one life, Wool Wars,
+     * Cops and Crims, Warlords, Arcade (Capture the Wool, Galaxy Wars, Zombies...), Paintball, Quakecraft, Pit, TNT Wizards.
+     * Other games send it only for good (Bed Wars and Mega Walls after a final kill).
      */
-    private static boolean comesBack(String gametype, String mode) {
+    static boolean comesBack(String gametype, String mode) {
         if (gametype == null) return false;
         return switch (gametype.toUpperCase(Locale.ROOT)) {
             case "DUELS" -> !oneLife(gametype, mode);
-            case "MCGO", "BATTLEGROUND", "ARCADE" -> true;
+            case "WOOL_GAMES", "MCGO", "BATTLEGROUND", "ARCADE", "PAINTBALL", "QUAKECRAFT", "PIT" -> true;
             case "TNTGAMES" -> "CAPTURE".equalsIgnoreCase(mode);
             default -> false;
         };
+    }
+
+    /** True when a server notice reveals a Bridge duel (cage countdown or goal scored) before /locraw has answered. */
+    public static boolean isBridgeCue(String message) {
+        if (message == null) return false;
+        for (String line : lines(message)) {
+            if (!isPlayerChat(line) && BRIDGE_CUE.matcher(line.trim()).matches()) return true;
+        }
+        return false;
+    }
+
+    /** True when {@code message} only matched {@link #SPECTATOR_LINE} without a permanent elimination or play-again prompt. */
+    static boolean isSpectatorOnly(String message) {
+        boolean spec = false;
+        for (String line : lines(message)) {
+            if (isPlayerChat(line)) continue;
+            String p = line.trim();
+            String lower = p.toLowerCase(Locale.ROOT);
+            if (SPECTATOR_LINE.matcher(p).matches() && !lower.contains("click here to play again") && !lower.contains("eliminated")) {
+                spec = true;
+            } else if (SELF_OUT_LINE.matcher(p).matches() || FINAL_KILL_LINE.matcher(p).matches() || ELIMINATED_LINE.matcher(p).matches()) {
+                return false;
+            }
+        }
+        return spec;
+    }
+
+    /** Who was eliminated or killed in this line for {@code gametype}, or null. */
+    public static String eliminatedPlayer(String gametype, String message) {
+        return eliminatedPlayer(gametype, null, message);
     }
 
     /**
@@ -356,11 +389,19 @@ public final class HypixelChat {
     }
 
     /** True when this line indicates the local player died or was eliminated (not a temporary respawn death). */
+    public static boolean isSelfOut(String gametype, String message, String myName) {
+        return isSelfOut(gametype, null, message, myName);
+    }
+
+    /** True when this line indicates the local player died or was eliminated (not a temporary respawn death). */
     public static boolean isSelfOut(String gametype, String mode, String message, String myName) {
-        for (String line : lines(message)) {
+        String[] split = lines(message);
+        for (String raw : split) {
+            if (!isPlayerChat(raw) && RESPAWN_NOTICE.matcher(raw.trim()).matches()) return false;
+        }
+        for (String line : split) {
             if (isPlayerChat(line)) continue;
             String p = line.trim();
-            if (p.toLowerCase(Locale.ROOT).contains("respawn")) continue;
             if (SELF_OUT_LINE.matcher(p).matches() && !(comesBack(gametype, mode) && SPECTATOR_LINE.matcher(p).matches())) return true;
             if (myName != null && !myName.isEmpty()) {
                 String victim = eliminatedPlayer(gametype, mode, line);

@@ -44,12 +44,12 @@ public sealed class ClientImportWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         Background = Brush("#1D1E22");
 
-        var other = new Button { Content = "Other client's folder…", Classes = { "action" }, HorizontalAlignment = HorizontalAlignment.Stretch };
-        ToolTip.SetTip(other, "Salwyrr, PvP Lounge, MultiMC and others: pick their game folder. Basic import only: options.txt, servers.dat and resource packs.");
-        other.Click += async (_, _) => await PickFolder();
+        var chooseFolder = new Button { Content = "Choose Folder...", Classes = { "action" }, HorizontalAlignment = HorizontalAlignment.Stretch };
+        ToolTip.SetTip(chooseFolder, "Pick a .minecraft, Lunar, Badlion, Feather, LabyMod, Modrinth, CurseForge, Prism, MultiMC or custom instance folder.");
+        chooseFolder.Click += async (_, _) => await PickFolder();
         var left = new StackPanel { Spacing = 10, Width = 210, Children =
         {
-            Label("CLIENTS FOUND"), _clients, other,
+            Label("CLIENTS FOUND"), _clients, chooseFolder,
             new TextBlock { Text = "Other clients' folders are only read. Accounts and logins are never touched.", Foreground = Brush("#868994"), FontSize = 11, TextWrapping = TextWrapping.Wrap }
         } };
 
@@ -93,21 +93,35 @@ public sealed class ClientImportWindow : Window
         _undo.IsEnabled = ClientImport.LatestBackup(_targets) != null;
         var found = ClientImport.Detect(_environment);
         if (found.Count == 0) _clients.Children.Add(new TextBlock { Text = "No other client was found.", Foreground = Brush("#A0A1AA"), FontSize = 12, TextWrapping = TextWrapping.Wrap });
-        foreach (var source in found)
-        {
-            var row = new RadioButton { GroupName = "client", Content = source.Basic ? source.Name + " (basic)" : source.Name, Foreground = Brushes.White };
-            row.IsCheckedChanged += async (_, _) => { if (row.IsChecked == true) await Select(source); };
-            _clients.Children.Add(row);
-        }
+        foreach (var source in found) _clients.Children.Add(MakeClientRow(source));
         if (_clients.Children.OfType<RadioButton>().FirstOrDefault() is { } first) first.IsChecked = true;
+    }
+
+    private RadioButton MakeClientRow(ImportSource source)
+    {
+        var row = new RadioButton { GroupName = "client", Content = source.Basic ? source.Name + " (basic)" : source.Name, Foreground = Brushes.White };
+        row.IsCheckedChanged += async (_, _) => { if (row.IsChecked == true) await Select(source); };
+        return row;
     }
 
     private async Task PickFolder()
     {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "The other client's game folder", AllowMultiple = false });
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Choose client or .minecraft folder", AllowMultiple = false });
         if (folders.Count == 0 || folders[0].TryGetLocalPath() is not { } path) return;
+        await ChooseCustomFolder(path);
+    }
+
+    public async Task ChooseCustomFolder(string path)
+    {
+        ImportSource source;
+        try { source = ClientImport.DetectCustomFolder(path); }
+        catch (ArgumentException e) { _status.Text = e.Message; return; } // a network path
+        foreach (var existing in _clients.Children.OfType<TextBlock>().ToList()) _clients.Children.Remove(existing);
         foreach (var row in _clients.Children.OfType<RadioButton>()) row.IsChecked = false;
-        await Select(ClientImport.FromFolder(path));
+        var customRow = MakeClientRow(source);
+        _clients.Children.Insert(0, customRow);
+        customRow.IsChecked = true;
+        await Task.CompletedTask;
     }
 
     private async Task Select(ImportSource source)

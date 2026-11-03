@@ -29,6 +29,7 @@ class ClientImportTest {
         int checked = 0;
         for (String client : new String[] {"lunar", "badlion", "feather"}) {
             JsonObject source = table.getAsJsonObject(client);
+            assertNotNull(source, "missing client mapping table: " + client);
             for (JsonElement entry : source.getAsJsonArray("mods")) {
                 JsonObject mod = entry.getAsJsonObject();
                 String to = mod.get("to").getAsString();

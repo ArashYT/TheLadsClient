@@ -87,7 +87,7 @@ public abstract class PauseScreenMixin extends Screen {
     @Inject(method="init",at=@At("TAIL"),require=1)
     private void ladsRemoveReportButtons(CallbackInfo ci){
         ladsLayoutReady=false;ladsExtras.clear();ladsExtrasButton=null;
-        ladsFullscreenButton=null;
+        ladsFullscreenButton=null;ladsSwitchButton=null;
         if(((PauseScreen)(Object)this).showsPauseMenu()){
             ladsFullscreenButton=addRenderableWidget(new com.thelads.core.v1_21_11.gui.CompactButton12111(width-26,6,20,20,Component.translatable("options.fullscreen"),
                 ()->minecraft.options.fullscreen().get()?"windowed":"fullscreen",com.thelads.core.v1_21_11.gui.CompactButton12111::toggleFullscreen));

@@ -9,6 +9,7 @@ import net.minecraft.client.User;
 import net.minecraft.client.gui.screens.social.PlayerSocialManager;
 import net.minecraft.client.multiplayer.ProfileKeyPairManager;
 import net.minecraft.client.multiplayer.chat.report.ReportingContext;
+import net.minecraft.client.resources.SplashManager;
 import net.minecraft.client.telemetry.ClientTelemetryManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
@@ -26,4 +27,10 @@ public interface MinecraftSessionAccessor12111 {
     @Mutable @Accessor("profileKeyPairManager") void lads$setProfileKeyPairManager(ProfileKeyPairManager manager);
     @Mutable @Accessor("realmsDataFetcher") void lads$setRealmsDataFetcher(RealmsDataFetcher fetcher);
     @Accessor("reportingContext") void lads$setReportingContext(ReportingContext context);
+
+    /** Its splash text names the player. */
+    @Mixin(SplashManager.class)
+    interface Splash {
+        @Mutable @Accessor("user") void lads$setUser(User user);
+    }
 }

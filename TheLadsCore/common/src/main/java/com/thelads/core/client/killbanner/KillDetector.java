@@ -66,8 +66,8 @@ public final class KillDetector {
     // Hypixel's reward lines, sent to the killer alone: "+10 coins! (Kill)", "+20 coins! (Bob's Network Booster) (Final Kill)",
     // "+25 Bed Wars Experience (Final Kill)"; group 1 names the reward, as one kill may bring a line of each.
     private static final Pattern REWARD = Pattern.compile("^\\s*\\+\\s?[\\d,.]+\\s+([a-z]+)[^:]*\\((?:[a-z]+ )?kill\\)");
-    // "+5 coins! (Assist)", "+10 Bed Wars Experience (Final Assist)": someone else got the kill.
-    private static final Pattern ASSIST_REWARD = Pattern.compile("^\\s*\\+\\s?[\\d,.]+\\s+([a-z]+)[^:]*\\([^)]*assist[^)]*\\)");
+    // "+5 coins! (Assist)", "+10 Bed Wars Experience (Final Assist)", "+15XP (Assist)": someone else got the kill.
+    private static final Pattern ASSIST_REWARD = Pattern.compile("^\\s*\\+\\s?[\\d,.]+\\s*([a-z]+)[^:]*\\([^)]*assist[^)]*\\)");
     // The Pit: "ASSIST! 50% on [80] Bob +5.00XP".
     private static final Pattern ASSIST_TAG = Pattern.compile("^\\W*assist!?\\b[^:]*\\bon\\s");
     // "Bob was killed by Steve", "Bob was knocked into the void by Steve"; only vanilla's "by magic / lightning / a ..." name no one.
@@ -281,7 +281,15 @@ public final class KillDetector {
             if (held != null) lostTo(held, now);
             return null;
         }
-        if (assistLines && ASSIST_TAG.matcher(text).find()) return reward("assist", now);
+        if (ASSIST_TAG.matcher(text).find()) {
+            if (assistLines) return reward("assist", now);
+            if (!assists && !lostToOthers(text, lower(myNames), players, now)) {
+                assistAt = now;
+                Victim held = oldestHeld();
+                if (held != null) lostTo(held, now);
+            }
+            return null;
+        }
         var reward = REWARD.matcher(text);
         if (reward.find()) {
             // The kill a death held, with its name and head hit, instead of a nameless one.
@@ -311,7 +319,8 @@ public final class KillDetector {
     }
 
     /** A line reporting a player the local player hit as someone else's kill takes the credit, as a damage event naming them does. */
-    private void lostToOthers(String text, Set<String> me, Supplier<? extends Map<Integer, ? extends Collection<String>>> players, long now) {
+    private boolean lostToOthers(String text, Set<String> me, Supplier<? extends Map<Integer, ? extends Collection<String>>> players, long now) {
+        boolean matched = false;
         Set<String> others = null;
         for (Victim victim : byId.values()) {
             if (victim.kind != Kind.PLAYER || since(now, victim.mine) > CREDIT || victim.other > victim.mine || named(text, victim.names, me)) continue;
@@ -324,10 +333,12 @@ public final class KillDetector {
                 }
                 if (otherKill(text, name, others) && !social(text, victim.names, me)) {
                     lostTo(victim, now);
+                    matched = true;
                     break;
                 }
             }
         }
+        return matched;
     }
 
     /** Lower-case {@code text}, no kill of the local player's: does it report {@code victim} killed by someone else, known or not? */

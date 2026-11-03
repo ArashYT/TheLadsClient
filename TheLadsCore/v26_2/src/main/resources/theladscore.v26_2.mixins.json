@@ -16,6 +16,7 @@
     "ClientTickMixin",
     "SessionTokenMixin",
     "MinecraftSessionAccessor26",
+    "MinecraftSessionAccessor26$Splash",
     "RealmsClientAccessor26",
     "OptionsMixin",
     "KeyboardHandlerMixin",

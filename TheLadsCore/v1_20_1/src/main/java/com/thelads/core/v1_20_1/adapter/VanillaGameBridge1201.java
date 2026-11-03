@@ -12,6 +12,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class VanillaGameBridge1201 implements LadsGameBridge {
+    public VanillaGameBridge1201() {
+        com.thelads.core.client.LadsNetwork.installCommandLookup(com.thelads.core.v1_20_1.gui.PauseMultiplayer1201::serverHas);
+        com.thelads.core.client.LadsNetwork.installConnector(this::connectToServer);
+    }
+
+    public void connectToServer(String name, String address) {
+        Minecraft mc = Minecraft.getInstance();
+        Runnable run = () -> com.thelads.core.v1_20_1.gui.PauseMultiplayer1201.connectToServer(
+            new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new net.minecraft.client.gui.screens.TitleScreen()), name, address);
+        if (mc.isSameThread()) run.run();
+        else mc.execute(run);
+    }
+
     private final GameTimeText gameTimeText = new GameTimeText();
     private static final net.minecraft.world.entity.EquipmentSlot[] ARMOR_SLOTS = {
         net.minecraft.world.entity.EquipmentSlot.FEET, net.minecraft.world.entity.EquipmentSlot.LEGS,
@@ -813,6 +826,7 @@ public class VanillaGameBridge1201 implements LadsGameBridge {
 
     @Override
     public void tickClient() {
+        com.thelads.core.client.LadsNetwork.tick(this);
         var mc = Minecraft.getInstance();
         var player = mc.player;
         if (player == null || mc.level == null) return;

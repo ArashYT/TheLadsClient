@@ -6,13 +6,21 @@ import com.thelads.core.client.auth.LadsAccount;
 import com.thelads.core.client.auth.LiveSession;
 import com.thelads.core.client.util.ClientPaths;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -38,6 +46,7 @@ public class AccountSwitcherTest {
 
     private static final String SECRET = "eyJ.secret-token_4";
     private static final String MS_UUID = "069a79f444e94726a5befca90e38aaf5";
+    private static final String MS_UUID_2 = "853c80ef3c3749fdaa49938b674adae6";
 
     /** The game: a session that changes only when the prepared step runs. */
     private static class FakeGame implements LiveSession {
@@ -45,6 +54,7 @@ public class AccountSwitcherTest {
         boolean world;
         Exception prepareFails;
         RuntimeException swapFailsBefore, swapFailsAfter; // the prepared step throws before / after the session changed
+        RuntimeException commitFails;
         final List<String> tokensSeen = new ArrayList<>();
         int commits;
 
@@ -63,14 +73,16 @@ public class AccountSwitcherTest {
 
         @Override
         public Runnable prepare(LadsAccount target, String accessToken) throws Exception {
+            UUID targetUuid = target.sessionUuid();
             tokensSeen.add(accessToken);
             if (prepareFails != null) throw prepareFails;
             return () -> {
+                if (commitFails != null) throw commitFails;
                 commits++;
                 world = false;
                 if (swapFailsBefore != null) throw swapFailsBefore;
                 name = target.getUsername();
-                uuid = target.sessionUuid().toString();
+                uuid = targetUuid.toString();
                 if (swapFailsAfter != null) throw swapFailsAfter;
             };
         }
@@ -158,28 +170,60 @@ public class AccountSwitcherTest {
     }
 
     @Test
+    public void microsoftToMicrosoftSwapNormalisesTypeAndUpdatesSession(@TempDir Path tempDir) throws Exception {
+        ClientPaths.setBaseDir(tempDir);
+        Files.writeString(ClientPaths.getAccountsFile().toPath(),
+            "[{\"username\":\"Notch\",\"uuid\":\"" + MS_UUID + "\",\"type\":\"Microsoft\",\"selected\":true},"
+            + "{\"username\":\"jeb_\",\"uuid\":\"853c80ef-3c37-49fd-aa49-938b674adae6\",\"type\":\"Microsoft\",\"selected\":false}]");
+        FakeGame game = new FakeGame("Notch", "069a79f4-44e9-4726-a5be-fca90e38aaf5");
+        FakeLauncher launcher = new FakeLauncher("{\"token\":\"" + SECRET + "\"}");
+        AccountSwitcherScreen screen = new AccountSwitcherScreen(game, launcher);
+        assertEquals("Notch", screen.getSelectedAccount().getUsername());
+
+        LadsAccount jeb = screen.getAccounts().get(1);
+        screen.selectAccount(jeb);
+        finish(screen);
+
+        assertEquals("jeb_", game.name);
+        assertEquals("853c80ef-3c37-49fd-aa49-938b674adae6", game.uuid);
+        assertTrue(launcher.asked.get(0).contains("\"type\":\"microsoft\""), "request type must be lowercase microsoft");
+        assertEquals(1, launcher.switched);
+        assertEquals("jeb_", screen.getSelectedAccount().getUsername());
+        String nextJson = Files.readString(tempDir.resolve("lads_next_account.json"));
+        assertTrue(nextJson.contains("\"type\":\"microsoft\""));
+        assertFalse(nextJson.contains(SECRET));
+    }
+
+    @Test
     public void aFailedSwitchLeavesEverythingAsItWas(@TempDir Path tempDir) throws Exception {
         ClientPaths.setBaseDir(tempDir);
-        record Case(String reply, boolean closed, String handOff, Exception prepareFails, String says) {}
+        record Case(String reply, boolean closed, String handOff, Exception prepareFails, RuntimeException commitFails, String targetUuid, String says) {}
         List<Case> cases = List.of(
-            new Case("{\"error\":\"Sign in to Notch again in the launcher.\"}", false, null, null, "Sign in to Notch again"),
-            new Case("garbage", false, null, null, "did not answer"),
-            new Case("", false, null, null, "did not answer"),
-            new Case("{}", false, null, null, "did not answer"),
-            new Case("", true, null, null, "launcher that started this game is closed"),
-            new Case("", false, "", null, "Start the game from The Lads Launcher"),
-            new Case("", false, "bad hand off line", null, "Start the game from The Lads Launcher"),
-            new Case("{\"token\":\"" + SECRET + "\"}", false, null, new IllegalStateException(SECRET), "refused Notch"));
+            new Case("{\"error\":\"Sign in to Notch again in the launcher.\"}", false, null, null, null, MS_UUID, "Sign in to Notch again"),
+            new Case("garbage", false, null, null, null, MS_UUID, "did not answer"),
+            new Case("null", false, null, null, null, MS_UUID, "did not answer"),
+            new Case("{\"error\":null}", false, null, null, null, MS_UUID, "did not answer"),
+            new Case("", false, null, null, null, MS_UUID, "did not answer"),
+            new Case("{}", false, null, null, null, MS_UUID, "did not answer"),
+            new Case("", true, null, null, null, MS_UUID, "launcher that started this game is closed"),
+            new Case("", false, "", null, null, MS_UUID, "Start the game from The Lads Launcher"),
+            new Case("", false, "bad hand off line", null, null, MS_UUID, "Start the game from The Lads Launcher"),
+            new Case("{\"token\":\"" + SECRET + "\"}", false, null, new IllegalStateException(SECRET), null, MS_UUID, "refused Notch"),
+            new Case("{\"token\":\"" + SECRET + "\"}", false, null, null, new IllegalStateException(SECRET), MS_UUID, "Could not switch to Notch"),
+            new Case("{\"token\":\"" + SECRET + "\"}", false, null, null, null, "not-a-valid-uuid", "refused Notch"));
         for (Case c : cases) {
             Files.deleteIfExists(tempDir.resolve("lads_next_account.json"));
             FakeGame game = FakeGame.offline("First");
             game.prepareFails = c.prepareFails();
+            game.commitFails = c.commitFails();
             FakeLauncher launcher = new FakeLauncher(c.reply());
             launcher.closed = c.closed();
             if (c.handOff() != null) launcher.handOff = c.handOff();
             AccountSwitcherScreen screen = new AccountSwitcherScreen(game, launcher);
             LadsAccount before = screen.getSelectedAccount();
-            screen.selectAccount(microsoft(screen));
+            LadsAccount target = new LadsAccount("Notch", c.targetUuid(), "microsoft", "0");
+            screen.getAccounts().add(target);
+            screen.selectAccount(target);
             finish(screen);
 
             assertEquals("First", game.name, c.says());
@@ -322,5 +366,93 @@ public class AccountSwitcherTest {
         screen.selectAccount(screen.getSelectedAccount());
         assertFalse(screen.isSwitching(), "the account in use is not switched to");
         assertTrue(screen.getStatusMessage().contains("Already playing"));
+    }
+
+    @Test
+    public void scrollingRevealsAccountsBeyondSixRows(@TempDir Path tempDir) {
+        ClientPaths.setBaseDir(tempDir);
+        AccountSwitcherScreen screen = new AccountSwitcherScreen();
+        for (int i = 1; i <= 8; i++) {
+            String name = "AltAcct" + i;
+            screen.getAccounts().add(new LadsAccount(name, LadsAccount.offlineUuid(name).toString(), "offline", "0"));
+        }
+        assertEquals(9, screen.getAccounts().size()); // LadsPlayer + 8 alts
+        for (int s = 0; s < 5; s++) {
+            assertTrue(screen.mouseScrolled(400, 200, -1.0) || s >= 3);
+        }
+        // Bottom visible row (index 5 of 6 visible rows at scrollOffset 3 -> account index 8: AltAcct8)
+        int cardX = (800 - 500) / 2;
+        int fifthRowY = 50 + 32 + (5 * 36) + 10;
+        assertTrue(screen.mouseClicked(cardX + 100, fifthRowY, 0));
+        assertEquals("AltAcct8", screen.getSelectedAccount().getUsername());
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    public void realWindowsNamedPipeExchangesLongMicrosoftTokenAndSwitchedNotice(@TempDir Path tempDir) throws Exception {
+        ClientPaths.setBaseDir(tempDir);
+        String pipeName = "TheLadsClient-JavaPipeTest-" + UUID.randomUUID().toString().replace("-", "");
+        String key = "0123456789abcdef0123456789abcdef";
+        String longJwt = "eyJhbGciOiJIUzI1NiJ9." + "M".repeat(1500) + ".signature_ok";
+
+        String psScript =
+            "$ProgressPreference = 'SilentlyContinue'\n" +
+            "$pipeName = '" + pipeName + "'\n" +
+            "$jwt = '" + longJwt + "'\n" +
+            "$pipes = @(0, 1) | ForEach-Object { [System.IO.Pipes.NamedPipeServerStream]::new($pipeName, [System.IO.Pipes.PipeDirection]::InOut, 4, [System.IO.Pipes.PipeTransmissionMode]::Byte, [System.IO.Pipes.PipeOptions]::Asynchronous -bor [System.IO.Pipes.PipeOptions]::CurrentUserOnly) }\n" +
+            "try {\n" +
+            "  [Console]::Out.WriteLine('READY'); [Console]::Out.Flush()\n" +
+            "  for ($i = 0; $i -lt 2; $i++) {\n" +
+            "    $srv = $pipes[$i]\n" +
+            "    $srv.WaitForConnection()\n" +
+            "    $sr = [System.IO.StreamReader]::new($srv, [System.Text.Encoding]::UTF8, $false, 1024, $true)\n" +
+            "    $req = $sr.ReadLine()\n" +
+            "    [Console]::Out.WriteLine('REQ:' + $req); [Console]::Out.Flush()\n" +
+            "    $reply = if ($i -eq 0) { '{\"token\":\"' + $jwt + '\"}' + [char]10 } else { '{\"error\":\"\"}' + [char]10 }\n" +
+            "    $bytes = [System.Text.Encoding]::UTF8.GetBytes($reply)\n" +
+            "    $srv.Write($bytes, 0, $bytes.Length)\n" +
+            "    $srv.Flush()\n" +
+            "    $buf = New-Object byte[] 1\n" +
+            "    try { [void]$srv.Read($buf, 0, 1) } catch {}\n" +
+            "    $srv.Dispose()\n" +
+            "  }\n" +
+            "} finally { foreach ($p in $pipes) { try { $p.Dispose() } catch {} } }\n";
+
+        String encoded = Base64.getEncoder().encodeToString(psScript.getBytes(StandardCharsets.UTF_16LE));
+        Process server = new ProcessBuilder("powershell.exe", "-NoProfile", "-NonInteractive", "-InputFormat", "None", "-EncodedCommand", encoded)
+            .start();
+        server.getOutputStream().close();
+        try (BufferedReader stdout = new BufferedReader(new InputStreamReader(server.getInputStream(), StandardCharsets.UTF_8))) {
+            String ready = stdout.readLine();
+            assertEquals("READY", ready);
+
+            AccountTokens realTokens = new AccountTokens() {
+                @Override
+                protected String handOff() {
+                    return "  " + pipeName + " " + key + "  ";
+                }
+            };
+
+            FakeGame game = FakeGame.offline("First");
+            AccountSwitcherScreen screen = new AccountSwitcherScreen(game, realTokens);
+            LadsAccount msTarget = new LadsAccount("Notch", MS_UUID_2, "Microsoft", "0");
+            screen.getAccounts().add(msTarget);
+
+            screen.selectAccount(msTarget);
+            finish(screen);
+
+            assertEquals("Notch", game.name);
+            assertEquals(List.of(longJwt), game.tokensSeen);
+
+            String req1 = stdout.readLine();
+            String req2 = stdout.readLine();
+            assertTrue(server.waitFor(10, TimeUnit.SECONDS));
+            assertNotNull(req1);
+            assertTrue(req1.contains("\"op\":\"token\"") && req1.contains("\"type\":\"microsoft\""));
+            assertNotNull(req2);
+            assertTrue(req2.contains("\"op\":\"switched\""));
+        } finally {
+            server.destroyForcibly();
+        }
     }
 }

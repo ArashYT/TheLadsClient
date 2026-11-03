@@ -697,7 +697,9 @@ class KillDetectorTest {
 
     @Test void assistsOffAnotherKillerTakesIt() {
         for (String line : List.of("Bob was killed by Steve.", "\u00a7cBob \u00a77was spooked by \u00a7aSteve\u00a77.", "Bob was killed by Steve, assisted by Arash.",
-                "Steve killed Bob!", "[RED] Bob was knocked into the void by [BLUE] Steve. FINAL KILL!", "Bob lost the draw to Steve.", "+5 coins! (Assist)")) {
+                "Bob was killed by Steve (Assist: Arash)", "Steve killed Bob!", "[RED] Bob was knocked into the void by [BLUE] Steve. FINAL KILL!",
+                "Bob lost the draw to Steve.", "+5 coins! (Assist)", "+10 coins! (Final Kill Assist)", "+10 Bed Wars Experience (Final Assist)",
+                "+15XP (Assist)", "ASSIST! 50% on [80] Bob +5.00XP")) {
             var after = heldBob();
             assertNull(after.chat(line, ME, () -> Map.of(9, Set.of("Steve")), 2 * S + S / 10), line);
             assertNull(after.due(4 * S), "the line after the death: " + line);
@@ -709,6 +711,20 @@ class KillDetectorTest {
             assertNull(before.died(3, 2 * S + S / 10));
             assertNull(before.due(4 * S), "the line before the death: " + line);
         }
+
+        // Named ASSIST! cancels only the named victim, keeping another held kill intact.
+        var multi = new KillDetector();
+        multi.assists(false);
+        multi.hitByMe(3, List.of("Bob"), Kind.PLAYER, false, S);
+        multi.hitByMe(4, List.of("Carl"), Kind.PLAYER, true, S + 10);
+        assertNull(multi.died(4, 2 * S));
+        assertNull(multi.died(3, 2 * S + 10));
+        assertNull(multi.chat("ASSIST! 50% on [80] Bob +5.00XP", ME, 2 * S + S / 10));
+        var carlKill = multi.due(4 * S);
+        assertNotNull(carlKill, "Carl's uncontested death still counts");
+        assertEquals("carl", carlKill.victim());
+        assertTrue(carlKill.headshot());
+        assertNull(multi.due(4 * S), "Bob's death was cancelled");
     }
 
     @Test void assistsOffLinesThatSayNoOneElseKilledKeepIt() {
@@ -790,6 +806,20 @@ class KillDetectorTest {
         KillBanners.fire(module, new KillDetector.Kill(KillDetector.Kind.PLAYER, "bob", false), now);
         assertEquals(1, KillBanners.TIMELINE.sequence());
         assertTrue(KillBanners.TIMELINE.headshot(), "every kill in Every kill mode");
+        KillBanners.reset();
+    }
+
+    @Test void resetClearsHeldDeathsOnWorldOrLobbyChange() {
+        KillBannerModule module = new KillBannerModule();
+        KillBanners.reset();
+        KillBanners.poll(module, S); // syncs assists=false
+        KillBanners.DETECTOR.hitByMe(3, List.of("Bob"), Kind.PLAYER, true, S);
+        assertNull(KillBanners.DETECTOR.died(3, 2 * S), "held for grace window");
+        // World/lobby change calls KillBanners.reset() before the 750ms grace expires
+        KillBanners.reset();
+        assertNull(KillBanners.poll(module, 4 * S), "no ghost banner fires in the lobby");
+        assertEquals(0, KillBanners.TIMELINE.sequence());
+        KillBanners.DETECTOR.assists(true);
         KillBanners.reset();
     }
 

@@ -48,8 +48,21 @@ public final class TitleNoir {
                          boolean tagline, List<Rect> buttons, List<Tier> tiers) {}
 
     private static Layout frame;
+    private static volatile Rect lastNetworkPill;
 
     private TitleNoir() {}
+
+    /** Bounds of the live network status pill drawn in the bottom strip on the most recent frame, or null when hidden. */
+    public static Rect lastNetworkPill() {
+        return lastNetworkPill;
+    }
+
+    /** True when the given canvas coordinate hits the bottom strip's live network status pill (and not in modpack mode). */
+    public static boolean clickNetworkPill(double x, double y) {
+        Rect pill = lastNetworkPill;
+        return LadsNetwork.titleButton() && pill != null
+            && x >= pill.x() && y >= pill.y() && x < pill.x() + pill.width() && y < pill.y() + pill.height();
+    }
 
     /**
      * Window pixels per canvas pixel: a whole number whenever the window allows (so the voxels and the font stay pixel-true),
@@ -230,13 +243,18 @@ public final class TitleNoir {
         String shown = TitleScreenTheme.fit(g, name, room - (withSwitch ? switchWidth + 4 : 0));
         TitleScreenTheme.icon(g, "user", iconX, top + (strip - 10) / 2 + 1, 9, RED_TEXT);
         g.drawText(shown, nameX, textY, TEXT, false);
+        Rect switchRect = withSwitch ? new Rect(nameX + g.textWidth(shown) + 4, top + 1, switchWidth, square) : null;
         if (network != null) {
             boolean up = !"offline".equals(network);
             g.fill(networkX, textY + 1, networkX + 5, textY + 6, up ? GREEN : DISABLED);
             g.drawText(network, networkX + 8, textY, up ? TEXT : MUTED, false);
+            int pillW = Math.max(8, networkWidth - 4);
+            lastNetworkPill = networkX >= 0 && networkX + pillW <= w ? new Rect(networkX, top + 1, pillW, square) : null;
+        } else {
+            lastNetworkPill = null;
         }
         g.drawText(build, buildX, textY, MUTED, false);
-        return withSwitch ? new Rect(nameX + g.textWidth(shown) + 4, top + 1, switchWidth, square) : null;
+        return switchRect;
     }
 
     /** During this layout's frame: draws a title button by the tier of its place. False: not this layout's button, or no frame. */

@@ -2,16 +2,17 @@ package com.thelads.core.v1_21_11.gui;
 
 import com.thelads.core.client.LadsNetwork;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.ConnectScreen;
-import net.minecraft.client.multiplayer.resolver.ServerAddress;
-import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.gui.screens.AlertScreen;
 import net.minecraft.client.gui.screens.ConfirmScreen;
+import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.multiplayer.SafetyScreen;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.ServerList;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.network.chat.Component;
 
 /** Leave through Minecraft's saving/disconnect path only after the player confirms (the 26.x pause Multiplayer flow). */
@@ -46,8 +47,43 @@ public final class PauseMultiplayer {
         leaveAndOpen(pause,LadsNetwork.NAME,()->joinNetwork(new JoinMultiplayerScreen(new TitleScreen())));
     }
     public static void joinNetwork(Screen parent) {
-        ConnectScreen.startConnecting(parent,Minecraft.getInstance(),ServerAddress.parseString(LadsNetwork.ADDRESS),
-            new ServerData(LadsNetwork.NAME,LadsNetwork.ADDRESS,ServerData.Type.OTHER),false,null);
+        connectToServer(parent, LadsNetwork.NAME, LadsNetwork.ADDRESS);
+    }
+    public static void connectToServer(Screen parent, String name, String address) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null) {
+            mc.disconnectFromWorld(ClientLevel.DEFAULT_QUIT_MESSAGE);
+        }
+        ServerData data = ensureServerEntry(mc, name, address);
+        ConnectScreen.startConnecting(parent, mc, ServerAddress.parseString(data.ip), data, false, null);
+    }
+    /** Reuses an existing saved server entry (preserving Disabled if chosen) or registers a new one with server packs Enabled. */
+    public static ServerData ensureServerEntry(Minecraft mc, String name, String address) {
+        String targetIp = address == null ? LadsNetwork.ADDRESS : address.trim();
+        String display = (name != null && !name.isEmpty()) ? name : targetIp;
+        try {
+            ServerList list = new ServerList(mc);
+            list.load();
+            for (int i = 0; i < list.size(); i++) {
+                ServerData existing = list.get(i);
+                if (existing != null && existing.ip != null && existing.ip.trim().equalsIgnoreCase(targetIp)) {
+                    if (existing.getResourcePackStatus() == ServerData.ServerPackStatus.PROMPT) {
+                        existing.setResourcePackStatus(ServerData.ServerPackStatus.ENABLED);
+                        list.save();
+                    }
+                    return existing;
+                }
+            }
+            ServerData created = new ServerData(display, targetIp, ServerData.Type.OTHER);
+            created.setResourcePackStatus(ServerData.ServerPackStatus.ENABLED);
+            list.add(created, false);
+            list.save();
+            return created;
+        } catch (Exception ignored) {
+            ServerData fallback = new ServerData(display, targetIp, ServerData.Type.OTHER);
+            fallback.setResourcePackStatus(ServerData.ServerPackStatus.ENABLED);
+            return fallback;
+        }
     }
     public static boolean serverHas(String command) {
         var connection=Minecraft.getInstance().getConnection();
