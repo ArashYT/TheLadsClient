@@ -1,7 +1,9 @@
 package com.thelads.core.v1_20_1.mixin.menus;
 
 import com.thelads.core.client.LadsNetwork;
+import com.thelads.core.client.title.TitleNoir;
 import com.thelads.core.client.title.TitleScreenTheme;
+import com.thelads.core.modules.TitleScreenModule;
 import com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201;
 import com.thelads.core.v1_20_1.cosmetics.anim.CosmeticsScreen1201;
 import com.thelads.core.v1_20_1.feature.NativeFeatures1201;
@@ -33,9 +35,12 @@ import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.client.renderer.PanoramaRenderer;
 import net.minecraft.network.chat.Component;
 import org.slf4j.LoggerFactory;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -49,7 +54,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(TitleScreen.class)
 public abstract class TitleScreenMixin extends Screen {
+    @Shadow @Final private PanoramaRenderer panorama;
     @Unique private List<AbstractWidget> ladsTitleWidgets = new ArrayList<>();
+    @Unique private TitleNoir.Layout ladsNoirLayout;
+    @Unique private boolean ladsLegacy;
+    @Unique private CompactButton1201 ladsLayoutToggle;
     @Unique private TitleScreenTheme.Layout ladsTitleLayout;
     @Unique private boolean ladsCustomTitle;
     @Unique private int ladsLayoutWidth;
@@ -124,15 +133,25 @@ public abstract class TitleScreenMixin extends Screen {
         ladsLanguageButton.setTooltip(Tooltip.create(Component.translatable("options.language")));
         ladsLanguageButton.setTabOrderGroup(202);
 
+        ladsLayoutToggle = addRenderableWidget(new CompactButton1201(0, 6, 20, 20, Component.literal(TitleScreenTheme.layoutToggleLabel()),
+            () -> "layout", button -> TitleScreenModule.toggleLayout()));
+        ladsLayoutToggle.setTabOrderGroup(203);
+
         ladsLastFrameNanos = 0;
         com.thelads.core.config.BuiltInIntegrations.verifyLoadedAdapters();
         com.thelads.core.config.IntegrationRuntimeProbe.run();
     }
 
+    /** Legacy: GUI scale 3 everywhere; the new layout picks its own. */
+    @Unique
+    private double ladsWindowPerPixel() {
+        return ladsLegacy ? 3.0 : TitleNoir.windowPerCanvasPixel(minecraft.getWindow().getWidth(), minecraft.getWindow().getHeight());
+    }
+
     @Unique
     private int ladsTargetWidth() {
         if (minecraft != null && minecraft.getWindow() != null && minecraft.getWindow().getWidth() > 0) {
-            return (int) Math.round(minecraft.getWindow().getWidth() / 3.0);
+            return (int) Math.round(minecraft.getWindow().getWidth() / ladsWindowPerPixel());
         }
         return width;
     }
@@ -140,7 +159,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique
     private int ladsTargetHeight() {
         if (minecraft != null && minecraft.getWindow() != null && minecraft.getWindow().getHeight() > 0) {
-            return (int) Math.round(minecraft.getWindow().getHeight() / 3.0);
+            return (int) Math.round(minecraft.getWindow().getHeight() / ladsWindowPerPixel());
         }
         return height;
     }
@@ -153,9 +172,11 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private void ladsEnsureTitleLayout() {
+        boolean legacy = TitleScreenModule.legacyLayout(), switched = legacy != ladsLegacy;
+        ladsLegacy = legacy;
         int targetW = ladsTargetWidth();
         int targetH = ladsTargetHeight();
-        boolean changed = ladsTitleLayout == null || ladsLayoutWidth != targetW || ladsLayoutHeight != targetH;
+        boolean changed = ladsTitleLayout == null || switched || ladsLayoutWidth != targetW || ladsLayoutHeight != targetH;
         if (!changed) {
             int index = 0;
             for (GuiEventListener child : children()) {
@@ -194,17 +215,24 @@ public abstract class TitleScreenMixin extends Screen {
         }
         ladsTitleWidgets.sort(Comparator.comparingInt(this::ladsButtonOrder));
         ladsTitleLayout = TitleScreenTheme.layout(targetW, targetH, ladsTitleWidgets.size(), false);
+        ladsNoirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, ladsTitleWidgets.size(), ladsTitleWidgets.indexOf(ladsNetworkButton));
         ladsLayoutWidth = targetW;
         ladsLayoutHeight = targetH;
 
         int fullscreenWidth = ladsFullscreenButton.placeFullscreen(font, targetW);
-        ((CompactButton1201) ladsLanguageButton).setBounds(TitleScreenTheme.languageX(targetW, fullscreenWidth), 6, 20, 20);
+        int languageX = TitleScreenTheme.languageX(targetW, fullscreenWidth);
+        ((CompactButton1201) ladsLanguageButton).setBounds(languageX, 6, 20, 20);
+        Component toggleLabel = Component.literal(TitleScreenTheme.layoutToggleLabel());
+        int toggleWidth = TitleScreenTheme.layoutToggleWidth(targetW, Math.max(font.width(TitleScreenTheme.NEW_LAYOUT), font.width(TitleScreenTheme.LEGACY_LAYOUT)));
+        ladsLayoutToggle.setMessage(toggleLabel);
+        ladsLayoutToggle.setBounds(languageX - TitleScreenTheme.HEADER_GAP - toggleWidth, 6, toggleWidth, 20);
+        ladsLayoutToggle.setTooltip(toggleWidth <= 20 ? Tooltip.create(toggleLabel) : null);
 
         boolean primaryAssigned = false;
         for (AbstractWidget widget : ladsTitleWidgets) removeWidget(widget);
         for (int i = 0; i < ladsTitleWidgets.size(); i++) {
             AbstractWidget widget = ladsTitleWidgets.get(i);
-            TitleScreenTheme.Rect rect = ladsTitleLayout.buttons().get(i);
+            TitleScreenTheme.Rect rect = (ladsNoirLayout != null ? ladsNoirLayout.buttons() : ladsTitleLayout.buttons()).get(i);
             Widgets1201.setBounds(widget, rect.x(), rect.y(), rect.width(), rect.height());
             widget.setTabOrderGroup(i);
             addRenderableWidget(widget);
@@ -219,7 +247,7 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private boolean ladsOwnControl(AbstractWidget widget) {
-        return widget == ladsSwitchButton || widget == ladsFullscreenButton || widget == ladsLanguageButton;
+        return widget == ladsSwitchButton || widget == ladsFullscreenButton || widget == ladsLanguageButton || widget == ladsLayoutToggle;
     }
 
     @Unique
@@ -290,22 +318,27 @@ public abstract class TitleScreenMixin extends Screen {
         int scaledMouseX = (int) Math.round(mouseX / matrixScale);
         int scaledMouseY = (int) Math.round(mouseY / matrixScale);
 
+        if (ladsNoirLayout != null) panorama.render(partialTick, 1.0f);
         graphics.pose().pushPose();
         graphics.pose().scale(matrixScale, matrixScale, 1.0f);
 
         var adapter = new GuiGraphicsLadsAdapter1201(graphics, font);
         TitleScreenTheme.Rect[] box = new TitleScreenTheme.Rect[1];
-        adapter.managed(() -> box[0] = TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(),
-            SharedConstants.getCurrentVersion().getName() + (minecraft.isDemo() ? " Demo" : ""), false, ladsAnimationSeconds, true));
+        String version = SharedConstants.getCurrentVersion().getName() + (minecraft.isDemo() ? " Demo" : "");
+        adapter.managed(() -> box[0] = ladsNoirLayout != null
+            ? TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, true)
+            : TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds, true));
         TitleScreenTheme.Rect switchBox = box[0];
         if (switchBox != null) {
             ((CompactButton1201) ladsSwitchButton).setBounds(switchBox.x(), switchBox.y(), switchBox.width(), switchBox.height());
         }
 
         TitleWidgetRegistry1201.beginFrame(this, adapter, elapsed, reducedMotion);
+        TitleNoir.beginFrame(ladsNoirLayout);
         try {
             super.render(graphics, scaledMouseX, scaledMouseY, partialTick);
         } finally {
+            TitleNoir.endFrame();
             TitleWidgetRegistry1201.endFrame();
         }
         graphics.pose().popPose();

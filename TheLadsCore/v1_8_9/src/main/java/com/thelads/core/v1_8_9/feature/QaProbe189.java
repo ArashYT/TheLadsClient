@@ -207,6 +207,9 @@ public final class QaProbe189 {
                 }
                 break;
             }
+            case "titlelayout": // what the title's layout toggle does
+                com.thelads.core.modules.TitleScreenModule.toggleLayout();
+                break;
             case "disconnect":
                 if (mc.theWorld != null) {
                     mc.theWorld.sendQuittingDisconnectingPacket();

@@ -2,9 +2,11 @@ package com.thelads.core.v1_8_9.gui;
 
 import com.thelads.core.client.LadsNetwork;
 import com.thelads.core.client.bridge.LadsGraphics;
+import com.thelads.core.client.title.TitleNoir;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
+import com.thelads.core.modules.TitleScreenModule;
 import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import com.thelads.core.v1_8_9.cosmetics.anim.CosmeticsScreen189;
 import com.thelads.core.v1_8_9.feature.Screenshots189;
@@ -23,6 +25,7 @@ import net.minecraft.client.renderer.GlStateManager;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import org.apache.logging.log4j.LogManager;
 
 /**
@@ -38,7 +41,11 @@ public final class LadsTitleScreen189 {
     private GuiMainMenu screen;
     private List<GuiButton> buttons;
     private GuiButton ladsButton, cosmeticsButton, friendsButton, moreButton, screenshotsButton, switchVersionButton, replaysButton, networkButton;
-    private CompactButton189 switchButton, fullscreenButton, languageButton;
+    private CompactButton189 switchButton, fullscreenButton, languageButton, layoutToggle;
+    private TitleNoir.Layout noirLayout;
+    private boolean legacyMode;
+    private java.lang.reflect.Method skybox;
+    private boolean skyboxFailed;
     private final List<GuiButton> seen = new ArrayList<>(), main = new ArrayList<>(), extras = new ArrayList<>();
     private long initNanos;
     private TitleScreenTheme.Layout layout;
@@ -68,6 +75,7 @@ public final class LadsTitleScreen189 {
         placed.add(switchButton);
         placed.add(fullscreenButton);
         placed.add(languageButton);
+        placed.add(layoutToggle);
         return placed;
     }
 
@@ -75,7 +83,8 @@ public final class LadsTitleScreen189 {
      * Window pixels per layout pixel: 3 (GUI scale 3 everywhere), less on windows under 720x540, so the layout never gets
      * below its 240x180 minimum (TitleScreenTheme.layout), which would put its bottom (the account card) off the screen.
      */
-    private static double windowPerLayoutPixel(Minecraft mc) {
+    private double windowPerLayoutPixel(Minecraft mc) {
+        if (!legacyMode) return TitleNoir.windowPerCanvasPixel(mc.displayWidth, mc.displayHeight);
         return Math.min(3.0, Math.min(mc.displayWidth / 240.0, mc.displayHeight / 180.0));
     }
 
@@ -132,20 +141,23 @@ public final class LadsTitleScreen189 {
         buttons.add(fullscreenButton = CompactButton189.fullscreen(LADS_ID + 3, screen.width));
         buttons.add(languageButton = new CompactButton189(LADS_ID + 5, screen.width - 50, 6, 20, 20, "Language", () -> "globe",
             () -> Minecraft.getMinecraft().displayGuiScreen(new GuiLanguage(title, Minecraft.getMinecraft().gameSettings, Minecraft.getMinecraft().getLanguageManager()))));
+        buttons.add(layoutToggle = new CompactButton189(LADS_ID + 7, 0, 6, 20, 20, TitleScreenTheme.layoutToggleLabel(), () -> "layout", TitleScreenModule::toggleLayout));
 
         lastFrame = 0;
     }
 
     /** Lays the buttons out on the first frame, and again when they change. */
     private void ensureLayout() {
+        boolean legacy = TitleScreenModule.legacyLayout(), switched = legacy != legacyMode;
+        legacyMode = legacy;
         int targetW = targetWidth();
         int targetH = targetHeight();
         float ms = matrixScale();
 
-        if (layout != null && layoutWidth == targetW && layoutHeight == targetH && seen.equals(buttons)) return;
+        if (!switched && layout != null && layoutWidth == targetW && layoutHeight == targetH && seen.equals(buttons)) return;
         main.clear();
         for (GuiButton button : new ArrayList<>(buttons)) {
-            if (button == switchButton || button == fullscreenButton || button == languageButton) continue;
+            if (button == switchButton || button == fullscreenButton || button == languageButton || button == layoutToggle) continue;
             if (button == ladsButton || button == cosmeticsButton || button == friendsButton || button == moreButton || button == screenshotsButton
                 || button == switchVersionButton || button == replaysButton || button == networkButton
                 || vanilla(button, 1, 11, 2, 0, 4, 6)) main.add(button);
@@ -159,19 +171,25 @@ public final class LadsTitleScreen189 {
         }
         main.sort(Comparator.comparingInt(this::order));
         layout = TitleScreenTheme.layout(targetW, targetH, main.size(), false);
+        noirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, main.size(), main.indexOf(networkButton));
         layoutWidth = targetW;
         layoutHeight = targetH;
 
         for (int i = 0; i < main.size(); i++) {
             GuiButton button = main.get(i);
-            TitleScreenTheme.Rect rect = layout.buttons().get(i);
+            TitleScreenTheme.Rect rect = rects().get(i);
             place(button, rect.x(), rect.y(), rect.width(), rect.height(), ms);
             button.visible = true;
         }
 
         int fullscreenWidth = CompactButton189.fullscreenWidth(targetW);
         place(fullscreenButton, TitleScreenTheme.fullscreenX(targetW, fullscreenWidth), 6, fullscreenWidth, 20, ms);
-        place(languageButton, TitleScreenTheme.languageX(targetW, fullscreenWidth), 6, 20, 20, ms);
+        int languageX = TitleScreenTheme.languageX(targetW, fullscreenWidth);
+        place(languageButton, languageX, 6, 20, 20, ms);
+        net.minecraft.client.gui.FontRenderer font = Minecraft.getMinecraft().fontRendererObj;
+        int toggleWidth = TitleScreenTheme.layoutToggleWidth(targetW, Math.max(font.getStringWidth(TitleScreenTheme.NEW_LAYOUT), font.getStringWidth(TitleScreenTheme.LEGACY_LAYOUT)));
+        layoutToggle.displayString = TitleScreenTheme.layoutToggleLabel();
+        place(layoutToggle, languageX - TitleScreenTheme.HEADER_GAP - toggleWidth, 6, toggleWidth, 20, ms);
 
         seen.clear();
         seen.addAll(buttons);
@@ -180,6 +198,10 @@ public final class LadsTitleScreen189 {
             LogManager.getLogger("TheLadsCore-1.8.9").info("custom title initialized for Minecraft 1.8.9: {} native widgets, {} more", main.size(), extras.size());
             com.thelads.core.v1_8_9.TheLadsCore189.wipeLaunchClassLoader();
         }
+    }
+
+    private List<TitleScreenTheme.Rect> rects() {
+        return noirLayout != null ? noirLayout.buttons() : layout.buttons();
     }
 
     private int order(GuiButton button) {
@@ -236,7 +258,27 @@ public final class LadsTitleScreen189 {
 
     @SubscribeEvent
     public void layout(GuiScreenEvent.DrawScreenEvent.Pre event) {
-        if (screen != null && event.gui == screen) ensureLayout();
+        if (screen == null || event.gui != screen) return;
+        ensureLayout();
+        if (noirLayout != null) {
+            // Vanilla's frame would draw its logo and buttons over the panorama: only the panorama, Lads draws the rest in draw().
+            event.setCanceled(true);
+            drawPanorama(event.mouseX, event.mouseY, event.renderPartialTicks);
+        }
+    }
+
+    /** GuiMainMenu's private panorama (private in vanilla and OptiFine); a failure leaves the plain dark backdrop. */
+    private void drawPanorama(int mouseX, int mouseY, float partialTicks) {
+        if (skyboxFailed) return;
+        try {
+            if (skybox == null) skybox = ReflectionHelper.findMethod(GuiMainMenu.class, screen, new String[] {"renderSkybox", "func_73971_c"}, int.class, int.class, float.class);
+            GlStateManager.disableAlpha();
+            skybox.invoke(screen, mouseX, mouseY, partialTicks);
+            GlStateManager.enableAlpha();
+        } catch (ReflectiveOperationException | RuntimeException failure) {
+            skyboxFailed = true;
+            LogManager.getLogger("TheLadsCore-1.8.9").warn("The title panorama could not draw", failure);
+        }
     }
 
     @SubscribeEvent
@@ -256,15 +298,18 @@ public final class LadsTitleScreen189 {
         GlStateManager.scale(ms, ms, 1.0f);
 
         GuiLadsAdapter g = new GuiLadsAdapter(mc.fontRendererObj, targetW, targetH);
-        TitleScreenTheme.Rect switchBox = TitleScreenTheme.renderBackground(g, layout, mc.getSession().getUsername(),
-            "1.8.9" + (mc.isDemo() ? " Demo" : ""), false, seconds, true);
+        String version = "1.8.9" + (mc.isDemo() ? " Demo" : "");
+        TitleNoir.beginFrame(noirLayout);
+        TitleScreenTheme.Rect switchBox = noirLayout != null
+            ? TitleNoir.renderBackdrop(g, noirLayout, mc.getSession().getUsername(), version, true)
+            : TitleScreenTheme.renderBackground(g, layout, mc.getSession().getUsername(), version, false, seconds, true);
 
         int scaledMouseX = (int) Math.round(event.mouseX / ms);
         int scaledMouseY = (int) Math.round(event.mouseY / ms);
 
         for (int i = 0; i < main.size(); i++) {
             GuiButton button = main.get(i);
-            TitleScreenTheme.Rect rect = layout.buttons().get(i);
+            TitleScreenTheme.Rect rect = rects().get(i);
             TitleExtrasScreen189.drawButtonAt(g, button, rect.x(), rect.y(), rect.width(), rect.height(),
                 label(button), icon(button), vanilla(button, 1), scaledMouseX, scaledMouseY, elapsed);
         }
@@ -276,6 +321,8 @@ public final class LadsTitleScreen189 {
         switchButton.drawButton(mc, event.mouseX, event.mouseY, ms);
         fullscreenButton.drawButton(mc, event.mouseX, event.mouseY, ms);
         if (languageButton != null) languageButton.drawButton(mc, event.mouseX, event.mouseY, ms);
+        layoutToggle.drawButton(mc, event.mouseX, event.mouseY, ms);
+        TitleNoir.endFrame();
     }
 
     /** Layout pixels to screen pixels; edges rounded, so neighbours that touch in the layout never overlap on the screen. */
@@ -315,7 +362,7 @@ public final class LadsTitleScreen189 {
         else if (event.button == networkButton)
             mc.displayGuiScreen(new GuiConnecting(new GuiMultiplayer(screen), mc, new ServerData(LadsNetwork.NAME, LadsNetwork.ADDRESS, false)));
         else if (event.button.id == 4) mc.displayGuiScreen(new QuitConfirmScreen189(screen));
-        else if (event.button == switchButton || event.button == fullscreenButton || event.button == languageButton) ((CompactButton189) event.button).press();
+        else if (event.button == switchButton || event.button == fullscreenButton || event.button == languageButton || event.button == layoutToggle) ((CompactButton189) event.button).press();
         else return;
         if (clicked) event.button.playPressSound(mc.getSoundHandler());
         event.setCanceled(true);

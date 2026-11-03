@@ -216,6 +216,7 @@ public final class QaProbe26 {
                 com.thelads.core.client.qa.QaProgress.hide(down);
             }
             case "log" -> LOGGER.info("Lads 26.3 qa log: {}", rest(s, 1));
+            case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout(); // what the title's layout toggle does
             case "quit" -> {
                 LOGGER.info("Lads 26.3 qa quit requested");
                 scriptDone = true;

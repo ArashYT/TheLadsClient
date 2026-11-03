@@ -1,14 +1,18 @@
 package com.thelads.core.v1_21_11.mixin;
 
+import com.thelads.core.client.title.TitleNoir;
 import com.thelads.core.client.title.TitleScreenTheme;
+import com.thelads.core.modules.TitleScreenModule;
 import com.thelads.core.v1_21_11.adapter.GuiGraphicsLadsAdapter;
 import com.thelads.core.v1_21_11.gui.AccountSwitcherScreen12111;
+import com.thelads.core.v1_21_11.gui.CompactButton12111;
 import com.thelads.core.v1_21_11.gui.LadsSettingsScreen12111;
 import com.thelads.core.v1_21_11.gui.TitleExtrasScreen12111;
 import com.thelads.core.v1_21_11.gui.TitleWidgetRegistry;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -30,6 +34,9 @@ import java.util.List;
 @Mixin(TitleScreen.class)
 public abstract class TitleScreenMixin extends Screen {
     @Unique private List<AbstractWidget> ladsTitleWidgets = new ArrayList<>();
+    @Unique private TitleNoir.Layout ladsNoirLayout;
+    @Unique private boolean ladsLegacy;
+    @Unique private Button ladsLayoutToggle;
     @Unique private TitleScreenTheme.Layout ladsTitleLayout;
     @Unique private boolean ladsCustomTitle;
     @Unique private int ladsLayoutWidth;
@@ -62,6 +69,9 @@ public abstract class TitleScreenMixin extends Screen {
             button -> minecraft.setScreen(new AccountSwitcherScreen12111(this))).bounds(0, 0, 1, 1).build());
         ladsMoreButton = addRenderableWidget(Button.builder(Component.literal("More..."),
             button -> minecraft.setScreen(new TitleExtrasScreen12111(this, ladsExtraWidgets))).bounds(0, 0, 1, 1).build());
+        ladsLayoutToggle = addRenderableWidget(new CompactButton12111(0, 6, 20, 20, Component.literal(TitleScreenTheme.layoutToggleLabel()),
+            () -> "layout", button -> TitleScreenModule.toggleLayout()));
+        ladsLayoutToggle.setTabOrderGroup(203);
 
         // Fabric screen events and other init mixins may still add or move widgets after this callback.
         // Leave their native geometry intact until the first draw has the complete widget set.
@@ -70,13 +80,34 @@ public abstract class TitleScreenMixin extends Screen {
         com.thelads.core.config.IntegrationRuntimeProbe.run();
     }
 
+    /** Legacy: the GUI's own coordinates; the new layout picks its own canvas. */
+    @Unique
+    private int ladsTargetWidth() {
+        if (ladsLegacy || minecraft.getWindow().getWidth() <= 0) return width;
+        return (int) Math.round(minecraft.getWindow().getWidth() / TitleNoir.windowPerCanvasPixel(minecraft.getWindow().getWidth(), minecraft.getWindow().getHeight()));
+    }
+
+    @Unique
+    private int ladsTargetHeight() {
+        if (ladsLegacy || minecraft.getWindow().getHeight() <= 0) return height;
+        return (int) Math.round(minecraft.getWindow().getHeight() / TitleNoir.windowPerCanvasPixel(minecraft.getWindow().getWidth(), minecraft.getWindow().getHeight()));
+    }
+
+    @Unique
+    private float ladsMatrixScale() {
+        return ladsLegacy ? 1.0f : (float) height / (float) Math.max(1, ladsTargetHeight());
+    }
+
     @Unique
     private void ladsEnsureTitleLayout() {
-        boolean changed = ladsTitleLayout == null || ladsLayoutWidth != width || ladsLayoutHeight != height;
+        boolean legacy = TitleScreenModule.legacyLayout(), switched = legacy != ladsLegacy;
+        ladsLegacy = legacy;
+        int targetW = ladsTargetWidth(), targetH = ladsTargetHeight();
+        boolean changed = ladsTitleLayout == null || switched || ladsLayoutWidth != targetW || ladsLayoutHeight != targetH;
         if (!changed) {
             int index = 0;
             for (GuiEventListener child : children()) {
-                if (!(child instanceof AbstractWidget widget) || ladsOverlayTool(widget)) continue;
+                if (!(child instanceof AbstractWidget widget) || ladsOverlayTool(widget) || widget == ladsLayoutToggle) continue;
                 if (index >= ladsTitleWidgets.size() || ladsTitleWidgets.get(index) != widget) {
                     changed = true;
                     break;
@@ -90,7 +121,7 @@ public abstract class TitleScreenMixin extends Screen {
         ladsTitleWidgets = new ArrayList<>();
         // Reuse every original widget, including restricted multiplayer, demo and late mod actions.
         for (GuiEventListener child : children()) {
-            if (child instanceof AbstractWidget widget && !ladsOverlayTool(widget)) ladsTitleWidgets.add(widget);
+            if (child instanceof AbstractWidget widget && !ladsOverlayTool(widget) && widget != ladsLayoutToggle) ladsTitleWidgets.add(widget);
         }
         // Keep the home screen focused. All secondary native/mod actions remain in More.
         for (AbstractWidget widget : List.copyOf(ladsTitleWidgets)) {
@@ -109,14 +140,20 @@ public abstract class TitleScreenMixin extends Screen {
             }
         }
         ladsTitleWidgets.sort(Comparator.comparingInt(this::ladsButtonOrder));
-        ladsTitleLayout = TitleScreenTheme.layout(width, height, ladsTitleWidgets.size(), false);
-        ladsLayoutWidth = width;
-        ladsLayoutHeight = height;
+        ladsTitleLayout = TitleScreenTheme.layout(targetW, targetH, ladsTitleWidgets.size(), false);
+        ladsNoirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, ladsTitleWidgets.size(), -1);
+        ladsLayoutWidth = targetW;
+        ladsLayoutHeight = targetH;
+        Component toggleLabel = Component.literal(TitleScreenTheme.layoutToggleLabel());
+        int toggleWidth = TitleScreenTheme.layoutToggleWidth(targetW, Math.max(font.width(TitleScreenTheme.NEW_LAYOUT), font.width(TitleScreenTheme.LEGACY_LAYOUT)));
+        ladsLayoutToggle.setMessage(toggleLabel);
+        ladsLayoutToggle.setRectangle(toggleWidth, 20, targetW - 6 - toggleWidth, 6);
+        ladsLayoutToggle.setTooltip(toggleWidth <= 20 ? Tooltip.create(toggleLabel) : null);
         boolean primaryAssigned = false;
         for (AbstractWidget widget : ladsTitleWidgets) removeWidget(widget);
         for (int i = 0; i < ladsTitleWidgets.size(); i++) {
             AbstractWidget widget = ladsTitleWidgets.get(i);
-            TitleScreenTheme.Rect rect = ladsTitleLayout.buttons().get(i);
+            TitleScreenTheme.Rect rect = (ladsNoirLayout != null ? ladsNoirLayout.buttons() : ladsTitleLayout.buttons()).get(i);
             widget.setX(rect.x());
             widget.setY(rect.y());
             widget.setWidth(rect.width());
@@ -209,15 +246,26 @@ public abstract class TitleScreenMixin extends Screen {
         boolean reducedMotion = panoramaSpeed <= 0 || minecraft.options.screenEffectScale().get() <= 0;
         if (!reducedMotion) ladsAnimationSeconds += elapsed * panoramaSpeed;
         var adapter = new GuiGraphicsLadsAdapter(graphics, font);
-        TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(),
-            "1.21.11" + (minecraft.isDemo() ? " Demo" : ""), false, ladsAnimationSeconds);
+        String version = "1.21.11" + (minecraft.isDemo() ? " Demo" : "");
+        float matrixScale = ladsMatrixScale();
+        if (ladsNoirLayout != null) {
+            renderPanorama(graphics, partialTick);
+            graphics.pose().pushMatrix();
+            graphics.pose().scale(matrixScale, matrixScale);
+            TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, false);
+        } else {
+            TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds);
+        }
         TitleWidgetRegistry.beginFrame(this, adapter, elapsed, reducedMotion);
+        TitleNoir.beginFrame(ladsNoirLayout);
         try {
             // Calls Screen, not TitleScreen: only native widgets and extra renderables, never vanilla artwork.
-            super.render(graphics, mouseX, mouseY, partialTick);
+            super.render(graphics, Math.round(mouseX / matrixScale), Math.round(mouseY / matrixScale), partialTick);
         } finally {
+            TitleNoir.endFrame();
             TitleWidgetRegistry.endFrame();
         }
+        if (ladsNoirLayout != null) graphics.pose().popMatrix();
         ci.cancel();
     }
 
@@ -227,7 +275,9 @@ public abstract class TitleScreenMixin extends Screen {
         if (ladsCustomTitle) {
             ladsEnsureTitleLayout();
             // Vanilla also forwards clicks to its separate, now hidden Realms notification overlay.
-            cir.setReturnValue(super.mouseClicked(event, doubleClick));
+            float matrixScale = ladsMatrixScale();
+            cir.setReturnValue(super.mouseClicked(matrixScale != 1.0f
+                ? new MouseButtonEvent(event.x() / matrixScale, event.y() / matrixScale, event.buttonInfo()) : event, doubleClick));
         }
     }
 }
