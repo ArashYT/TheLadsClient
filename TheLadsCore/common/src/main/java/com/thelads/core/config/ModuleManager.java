@@ -669,6 +669,7 @@ public class ModuleManager {
         Module drag = new Module(com.thelads.core.client.ServerListDrag.NAME,
             "Drag saved servers up and down the multiplayer list to reorder them; the new order is saved.");
         drag.setEnabled(true);
+        drag.addOption(new SliderOption(com.thelads.core.client.ServerListColumns.OPTION, 1, 1, com.thelads.core.client.ServerListColumns.MAX_COLUMNS, 1));
         register(drag, Module.Category.MECHANIC);
         // Parity 1.9.19 chat lane rows 20, 25, 28, 29, 33, 35, 36 (common client TooltipScroll, CrashCatcher, QuickReconnect, KeepCursor,
         // SoundVolumes, GuiScaleOverride, ChunkBorders; each version's Qol class hooks them). All visual only.

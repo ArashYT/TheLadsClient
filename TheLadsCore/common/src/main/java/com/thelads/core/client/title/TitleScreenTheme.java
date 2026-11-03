@@ -349,7 +349,7 @@ public final class TitleScreenTheme {
         "globe", new String[] {"...####...", ".##.##.##.", "#...##...#", "##########", "##########",
                                "#...##...#", ".##.##.##.", "...####...", "..........", ".........."});
 
-    static void icon(LadsGraphics g, String kind, int x, int y, int size, int c) {
+    public static void icon(LadsGraphics g, String kind, int x, int y, int size, int c) {
         String[] rows = PIXEL_ICONS.get(kind);
         if (rows != null) {
             for (int row = 0; row < rows.length; row++)
