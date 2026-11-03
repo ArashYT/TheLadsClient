@@ -254,6 +254,7 @@ public final class HypixelMods {
      */
     public static void tick(LadsGameBridge game, Object currentWorld, Object current, long now) {
         RealPing.tick(game, current, now);
+        NickDetector.tick(game, now);
         if (current != connection) {
             connection = current;
             QUEUE.clear();

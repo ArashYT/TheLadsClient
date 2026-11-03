@@ -19,7 +19,7 @@ public final class Nicknames {
     private static String lastNicknames, lastDisplay, lastOwn, lastOthersNick;
     private static boolean lastHideOthers;
     private static long playersVersion = 0;
-    private static long lastPlayersVersion = -1;
+    private static long lastPlayersVersion = -1, lastNickVersion;
     private static Set<String> cachedPlayerSet = Collections.emptySet();
     private static List<String> cachedOnlinePlayers = Collections.emptyList();
     private static Map<String, String> active = Collections.emptyMap();
@@ -77,7 +77,8 @@ public final class Nicknames {
         }
         boolean tagsOn = tags.isEnabled();
         boolean hiderOn = NickHider.isEnabled();
-        if (!tagsOn && !hiderOn)
+        Map<String, String> nickMarkers = com.thelads.core.client.hypixel.NickDetector.markers();
+        if (!tagsOn && !hiderOn && nickMarkers.isEmpty())
             return Collections.emptyMap();
         String nicks = tagsOn ? tags.nicknames.getValue() : "";
         String display = tagsOn ? tags.displayName.getValue().trim() : "";
@@ -90,7 +91,8 @@ public final class Nicknames {
             tick();
         }
         if (!nicks.equals(lastNicknames) || !display.equals(lastDisplay) || !String.valueOf(ownName).equals(lastOwn)
-            || hideOthers != lastHideOthers || !othersNick.equals(lastOthersNick) || (hideOthers && playersVersion != lastPlayersVersion)) {
+            || hideOthers != lastHideOthers || !othersNick.equals(lastOthersNick) || (hideOthers && playersVersion != lastPlayersVersion)
+            || com.thelads.core.client.hypixel.NickDetector.version() != lastNickVersion) {
             Map<String, String> names = parse(nicks);
             if (hideOthers && !othersNick.isEmpty()) {
                 String ownLower = ownName != null ? ownName.toLowerCase(Locale.ROOT) : "";
@@ -104,9 +106,11 @@ public final class Nicknames {
                 }
             }
             if (!display.isEmpty() && ownName != null && !ownName.isEmpty()) names.put(ownName.toLowerCase(Locale.ROOT), display);
+            for (Map.Entry<String, String> marked : nickMarkers.entrySet()) names.putIfAbsent(marked.getKey(), marked.getValue());
             active = names;
             lastNicknames = nicks; lastDisplay = display; lastOwn = String.valueOf(ownName);
             lastHideOthers = hideOthers; lastOthersNick = othersNick; lastPlayersVersion = playersVersion;
+            lastNickVersion = com.thelads.core.client.hypixel.NickDetector.version();
         }
         return active;
     }

@@ -379,6 +379,19 @@ public class VanillaGameBridge26 implements LadsGameBridge {
         var level = Minecraft.getInstance().level;
         return level == null ? "" : level.dimension().identifier().toString();
     }
+    @Override public List<com.thelads.core.client.hypixel.NickDetector.Profile> getTabProfiles() {
+        var mc = Minecraft.getInstance();
+        if (mc.getConnection() == null || mc.player == null) return List.of();
+        List<com.thelads.core.client.hypixel.NickDetector.Profile> profiles = new ArrayList<>();
+        for (var info : mc.getConnection().getOnlinePlayers()) {
+            var profile = info.getProfile();
+            if (profile == null || profile.id() == null || profile.id().equals(mc.player.getUUID())) continue;
+            var textures = profile.properties().get("textures");
+            profiles.add(new com.thelads.core.client.hypixel.NickDetector.Profile(profile.id(), profile.name(), textures.isEmpty() ? null : textures.iterator().next().value()));
+        }
+        return profiles;
+    }
+
     @Override public String getServerAddress() {
         var server = Minecraft.getInstance().getCurrentServer();
         return server == null ? "Singleplayer" : server.ip;

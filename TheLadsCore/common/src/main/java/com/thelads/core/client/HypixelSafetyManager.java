@@ -41,6 +41,9 @@ public final class HypixelSafetyManager {
         // - Combat hit distance / reach measurement HUDs (ReachDisplay).
         // - Tile entity, container, and NBT data inspection HUDs (Jade).
         // - In-world container item previews and ESP-like badges (ShulkerBoxUtils).
+        // - Marking nicked players (NickDetector): "If a modification does not fit clearly into any of the allowed modification
+        //   categories, it should be assumed to be disallowed." Its Cosmetic HUD category excludes "extra information which would
+        //   normally be unavailable to the player" (support.hypixel.net/hc/en-us/articles/6472550754962).
         DISALLOWED_MODULES.add("Minimap");
         DISALLOWED_MODULES.add("XaeroMinimap");
         DISALLOWED_MODULES.add("XaeroWorldMap");
@@ -49,6 +52,7 @@ public final class HypixelSafetyManager {
         DISALLOWED_MODULES.add("ReachDisplay");
         DISALLOWED_MODULES.add("Jade");
         DISALLOWED_MODULES.add("ShulkerBoxUtils");
+        DISALLOWED_MODULES.add(com.thelads.core.modules.NickDetectorModule.NAME);
     }
     /** The same names for the per-frame check: an array loop allocates no iterator. */
     private static final String[] DISALLOWED = DISALLOWED_MODULES.toArray(new String[0]);
@@ -311,6 +315,7 @@ public final class HypixelSafetyManager {
             || "ReachDisplay".equalsIgnoreCase(moduleName)
             || "Jade".equalsIgnoreCase(moduleName)
             || "ShulkerBoxUtils".equalsIgnoreCase(moduleName)
+            || com.thelads.core.modules.NickDetectorModule.NAME.equalsIgnoreCase(moduleName)
             || "Freelook".equalsIgnoreCase(moduleName) || "FogClearView".equalsIgnoreCase(moduleName)
             || com.thelads.core.modules.HitboxesModule.THROUGH_WALLS.equalsIgnoreCase(moduleName) // FreelookModule, FogCustomizerModule.CLEAR_VIEW
             || PvpVisuals.NAMETAG_HEALTH.equalsIgnoreCase(moduleName)

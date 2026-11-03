@@ -564,6 +564,18 @@ public class VanillaGameBridge189 implements LadsGameBridge {
         });
     }
 
+    public List<com.thelads.core.client.hypixel.NickDetector.Profile> getTabProfiles() {
+        if (mc().getNetHandler() == null || mc().thePlayer == null) return Collections.emptyList();
+        List<com.thelads.core.client.hypixel.NickDetector.Profile> profiles = new ArrayList<>();
+        for (net.minecraft.client.network.NetworkPlayerInfo info : mc().getNetHandler().getPlayerInfoMap()) {
+            com.mojang.authlib.GameProfile profile = info.getGameProfile();
+            if (profile == null || profile.getId() == null || profile.getId().equals(mc().thePlayer.getUniqueID())) continue;
+            Collection<com.mojang.authlib.properties.Property> textures = profile.getProperties().get("textures");
+            profiles.add(new com.thelads.core.client.hypixel.NickDetector.Profile(profile.getId(), profile.getName(), textures.isEmpty() ? null : textures.iterator().next().getValue()));
+        }
+        return profiles;
+    }
+
     public List<String> getOnlinePlayerNames() {
         if (mc().getNetHandler() == null) return Collections.emptyList();
         Collection<net.minecraft.client.network.NetworkPlayerInfo> playerInfoMap = mc().getNetHandler().getPlayerInfoMap();
