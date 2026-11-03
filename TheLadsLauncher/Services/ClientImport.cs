@@ -20,8 +20,10 @@ public sealed record ImportSource(string Id, string Name, bool Basic, string Not
 /// <summary>Where the importer reads other clients from. Tests and the dry run point it at their own folders.</summary>
 public sealed record ImportEnvironment(string Home, string AppData)
 {
-    public static ImportEnvironment Current => new(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
+    /// <summary>LADS_PREVIEW_IMPORT_HOME (sandbox QA only: a synthetic home) in place of the real one.</summary>
+    public static ImportEnvironment Current => Environment.GetEnvironmentVariable("LADS_PREVIEW_IMPORT_HOME") is { Length: > 0 } qa
+        ? new(qa, Path.Combine(qa, "AppData"))
+        : new(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
     public string Minecraft => Path.Combine(AppData, ".minecraft");
 }
 

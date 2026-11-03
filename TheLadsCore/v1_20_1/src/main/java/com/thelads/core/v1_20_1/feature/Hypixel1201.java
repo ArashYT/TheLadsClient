@@ -45,7 +45,7 @@ public final class Hypixel1201 {
 
     public static void register() {
         // Quickplay: QuickplayScreen and its key (NativeFeatures), as 1.8.9 Hypixel189.
-        ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS, "Session Stats", "Bed Wars Height Limit", com.thelads.core.client.hypixel.quickplay.QuickplayModule.NAME);
+        ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS, "Session Stats", "Bed Wars Height Limit", com.thelads.core.client.hypixel.quickplay.QuickplayModule.NAME, com.thelads.core.modules.NickDetectorModule.NAME);
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> overlay || !HypixelMods.chat(message.getString(), System.nanoTime()));
         ClientReceiveMessageEvents.MODIFY_GAME.register((message, overlay) -> {
             if (!overlay && HypixelMods.isStreamerMode()) {

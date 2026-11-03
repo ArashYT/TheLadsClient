@@ -34,7 +34,7 @@ public final class ClientImportDialog {
     /** The launcher's command; replaced by tests. */
     public interface Importer { JsonObject run(String... args) throws IOException, InterruptedException; }
 
-    private record Hit(Rect rect, Runnable action) {}
+    private record Hit(String label, Rect rect, Runnable action) {}
 
     private final Importer importer;
     private final Runnable reloadConfig;
@@ -59,26 +59,42 @@ public final class ClientImportDialog {
     JsonObject selected() { return selected; }
     Set<String> chosen() { return chosen; }
     boolean canUndo() { return canUndo; }
+    boolean busy() { return busy; }
+    /** QA: where the last frame drew this row, category or link, by its label, or null. */
+    Rect hitBounds(String label) { return hits.stream().filter(h -> h.label().equals(label)).map(Hit::rect).findFirst().orElse(null); }
+    /** QA: every click target of the last frame as "label x,y wxh"; the panel's own box first. */
+    List<String> hitLog() {
+        List<String> log = new ArrayList<>(List.of("panel " + x + "," + y + " " + w + "x" + h));
+        for (Hit hit : hits) log.add(hit.label() + " " + hit.rect().x() + "," + hit.rect().y() + " " + hit.rect().width() + "x" + hit.rect().height());
+        return log;
+    }
 
     /** Finished background work, applied on the game thread (each frame; tests call it). */
     void pump() { for (Runnable done; (done = finished.poll()) != null; ) done.run(); }
 
     void open() {
         open = true;
+        undoArmed = false; // the warning must be on screen for the second click to count
         selected = null;
         offset = 0;
         chosen.clear();
         clients = new JsonArray();
         status = "Looking for other clients...";
+        scan(true);
+    }
+
+    /** The clients and each one's preview, as they are now: an import or undo changes what each would change. */
+    private void scan(boolean newStatus) {
         background(new String[] {"scan"}, answer -> {
             clients = answer.get("clients") instanceof JsonArray list ? list : new JsonArray();
             canUndo = answer.has("canUndo") && answer.get("canUndo").getAsBoolean();
-            status = clients.isEmpty() ? "No other client was found." : "Pick the client to import from.";
+            if (newStatus) status = clients.isEmpty() ? "No other client was found." : "Pick the client to import from.";
         });
     }
 
     void select(JsonObject client) {
         selected = client;
+        undoArmed = false;
         offset = 0;
         chosen.clear();
         for (JsonElement category : client.getAsJsonArray("categories")) {
@@ -95,7 +111,7 @@ public final class ClientImportDialog {
         background(new String[] {"apply", selected.get("id").getAsString(), String.join(",", chosen), "--in-game"}, answer -> {
             finishChange(answer, summary(answer));
             selected = null;
-            canUndo = canUndo || answer.getAsJsonObject("applied").size() > 0;
+            scan(false);
         });
     }
 
@@ -112,7 +128,7 @@ public final class ClientImportDialog {
         background(new String[] {"undo", "--in-game"}, answer -> {
             finishChange(answer, "The last import was undone.");
             selected = null;
-            canUndo = false;
+            scan(false);
         });
     }
 
@@ -182,6 +198,7 @@ public final class ClientImportDialog {
                 byte[] chunk = new byte[65536];
                 for (int read; (read = process.getInputStream().read(chunk)) > 0 && output.size() < 16 * 1024 * 1024; ) output.write(chunk, 0, read);
                 if (!process.waitFor(TIMEOUT_MINUTES, TimeUnit.MINUTES)) throw new IOException("The launcher did not answer in time.");
+                if (output.size() == 0) throw new IOException("The launcher did not answer. Update it, or use the launcher: Settings, General, Import from another client.");
                 return JsonParser.parseString(new String(output.toByteArray(), StandardCharsets.UTF_8)).getAsJsonObject();
             } finally {
                 process.destroy();
@@ -207,15 +224,15 @@ public final class ClientImportDialog {
     }
 
     private void renderClients(LadsGraphics g, int top, int mx, int my) {
-        int row = 0;
+        int row = 0, pitch = clients.isEmpty() ? 26 : Math.max(14, Math.min(26, (y + h - 20 - top) / clients.size())); // above the Undo link in a small window
         for (JsonElement element : clients) {
             JsonObject client = element.getAsJsonObject();
-            int ry = top + row++ * 26;
-            Rect rect = new Rect(x + 10, ry, w - 20, 23);
+            int ry = top + row++ * pitch;
+            Rect rect = new Rect(x + 10, ry, w - 20, pitch - 3);
             g.fill(rect.x(), rect.y(), rect.x() + rect.width(), rect.y() + rect.height(), rect.contains(mx, my) ? LadsPalette.BORDER : CARD);
             String name = client.get("name").getAsString() + (client.get("basic").getAsBoolean() ? " (basic import)" : "");
-            g.drawText(fit(g, name, w - 40), x + 16, ry + 7, TEXT);
-            if (!busy) hits.add(new Hit(rect, () -> select(client)));
+            g.drawText(fit(g, name, w - 40), x + 16, ry + (pitch - 11) / 2, TEXT);
+            if (!busy) hits.add(new Hit(client.get("name").getAsString(), rect, () -> select(client)));
         }
     }
 
@@ -232,7 +249,7 @@ public final class ClientImportDialog {
             Rect rect = new Rect(x + 10, top, w - 20, 16);
             if (usable && rect.contains(mx, my)) g.fill(rect.x(), rect.y(), rect.x() + rect.width(), rect.y() + rect.height(), CARD);
             g.drawText(fit(g, label, w - 28), x + 14, top + 4, usable ? TEXT : MUTED);
-            if (usable) hits.add(new Hit(rect, () -> { if (!chosen.remove(id)) chosen.add(id); }));
+            if (usable) hits.add(new Hit(id, rect, () -> { if (!chosen.remove(id)) chosen.add(id); }));
             top += 17;
             for (JsonElement line : category.getAsJsonArray("changeLines")) lines.add("+ " + line.getAsString());
             for (JsonElement line : category.getAsJsonArray("skippedLines")) lines.add("skipped: " + line.getAsString());
@@ -254,7 +271,7 @@ public final class ClientImportDialog {
     private void link(LadsGraphics g, String text, int tx, int ty, Runnable action, int mx, int my) {
         Rect rect = new Rect(tx - 2, ty - 3, g.textWidth(text) + 4, 14);
         g.drawText(text, tx, ty, rect.contains(mx, my) ? TEXT : ACCENT);
-        hits.add(new Hit(rect, action));
+        hits.add(new Hit(text, rect, action));
     }
 
     boolean click(double mx, double my, int button) {
