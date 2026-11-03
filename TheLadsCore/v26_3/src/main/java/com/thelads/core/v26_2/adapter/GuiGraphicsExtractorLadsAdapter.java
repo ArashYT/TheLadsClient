@@ -324,6 +324,11 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
         }
     }
 
+    private static final com.thelads.core.client.auth.SkinProfiles<com.mojang.authlib.GameProfile> SKIN_PROFILES = new com.thelads.core.client.auth.SkinProfiles<>(id -> {
+        var result = Minecraft.getInstance().services().sessionService().fetchProfile(id, false);
+        return result == null ? null : result.profile();
+    });
+
     private static com.mojang.authlib.GameProfile resolveHeadProfile(String username, String uuid) {
         String safeName = username != null ? username : "Player";
         String cacheKey = safeName + "|" + (uuid != null ? uuid : "");
@@ -361,8 +366,9 @@ public class GuiGraphicsExtractorLadsAdapter implements LadsGraphics {
     public void drawHead(String username, String uuid, int x, int y, int size) {
         try {
             Minecraft mc = Minecraft.getInstance();
-            com.mojang.authlib.GameProfile profile = resolveHeadProfile(username, uuid);
-            java.util.function.Supplier<PlayerSkin> lookup = mc.getSkinManager().createLookup(profile, false);
+            com.mojang.authlib.GameProfile profile = resolveHeadProfile(username, com.thelads.core.client.auth.SkinProfiles.orSession(username, uuid, mc.getUser().getName(), mc.getUser().getProfileId()));
+            com.mojang.authlib.GameProfile real = SKIN_PROFILES.get(profile.id());
+            java.util.function.Supplier<PlayerSkin> lookup = mc.getSkinManager().createLookup(real != null ? real : profile, false);
             PlayerSkin skin = lookup != null ? lookup.get() : null;
             if (skin == null) {
                 skin = net.minecraft.client.resources.DefaultPlayerSkin.get(profile);

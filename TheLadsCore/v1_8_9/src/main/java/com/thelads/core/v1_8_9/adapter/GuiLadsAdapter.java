@@ -374,7 +374,9 @@ public class GuiLadsAdapter implements LadsGraphics {
         UUID id = cache.get(key);
         if (id == null) {
             if (cache.size() > 256) cache.clear();
-            id = real ? UUID.fromString(uuid) : UUID.nameUUIDFromBytes(key.getBytes("UTF-8"));
+            // Microsoft ids come with or without dashes.
+            id = real ? UUID.fromString(uuid.trim().replaceFirst("^(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{12})$", "$1-$2-$3-$4-$5"))
+                : UUID.nameUUIDFromBytes(key.getBytes("UTF-8"));
             cache.put(key, id);
         }
         return id;
@@ -447,9 +449,9 @@ public class GuiLadsAdapter implements LadsGraphics {
     public void drawHead(String username, String uuid, int x, int y, int size) {
         try {
             Minecraft mc = Minecraft.getMinecraft();
-            UUID id = parseId(username, uuid);
+            UUID id = parseId(username, com.thelads.core.client.auth.SkinProfiles.orSession(username, uuid, mc.getSession().getUsername(), mc.getSession().getProfile().getId()));
             ResourceLocation skin = mc.thePlayer != null && id.equals(mc.thePlayer.getUniqueID())
-                ? mc.thePlayer.getLocationSkin() : DefaultPlayerSkin.getDefaultSkin(id);
+                ? mc.thePlayer.getLocationSkin() : accountSkin(mc, id);
             mc.getTextureManager().bindTexture(skin);
             GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f);
             GlStateManager.enableBlend();
@@ -458,6 +460,26 @@ public class GuiLadsAdapter implements LadsGraphics {
         } catch (Exception e) {
             fill(x, y, x + size, y + size, 0xFF6C63FF);
         }
+    }
+
+    private static final com.thelads.core.client.auth.SkinProfiles<com.mojang.authlib.GameProfile> SKIN_PROFILES = new com.thelads.core.client.auth.SkinProfiles<>(id -> {
+        com.mojang.authlib.GameProfile filled = Minecraft.getMinecraft().getSessionService().fillProfileProperties(new com.mojang.authlib.GameProfile(id, null), false);
+        return filled.getProperties().containsKey("textures") ? filled : null;
+    });
+    private static final java.util.Map<UUID, com.mojang.authlib.GameProfile> SKIN_ASKED = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.Map<UUID, ResourceLocation> ACCOUNT_SKINS = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** An account's real skin once its profile and texture have arrived, the default skin of its id until then. */
+    private static ResourceLocation accountSkin(Minecraft mc, UUID id) {
+        com.mojang.authlib.GameProfile profile = SKIN_PROFILES.get(id);
+        if (profile != null && SKIN_ASKED.put(id, profile) != profile) {
+            // Vanilla loads it (from its disk cache or the network) off this thread and calls back on the game thread.
+            mc.getSkinManager().loadProfileTextures(profile, (type, location, texture) -> {
+                if (type == com.mojang.authlib.minecraft.MinecraftProfileTexture.Type.SKIN) ACCOUNT_SKINS.put(id, location);
+            }, false);
+        }
+        ResourceLocation known = ACCOUNT_SKINS.get(id);
+        return known != null ? known : DefaultPlayerSkin.getDefaultSkin(id);
     }
 
     /** Kill Banner picker art, as 26.x NativeKillBanner.drawThumb. */

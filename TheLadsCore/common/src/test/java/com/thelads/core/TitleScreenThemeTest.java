@@ -79,13 +79,14 @@ class TitleScreenThemeTest {
         assertEquals(16, TitleScreenTheme.layout(960, 540, 16).buttons().size());
     }
 
-    @Test void renderingUsesNoNetworkOrSkinLookups() {
+    /** The account's head is the one skin here: LadsGraphics.drawHead never waits for it (SkinProfilesTest). */
+    @Test void renderingDrawsOnlyTheAccountsHead() {
         var g = new LadsGraphicsTest.MockGraphics();
         var layout = TitleScreenTheme.layout(640, 360, 9);
         TitleScreenTheme.renderBackground(g, layout, "LadsQA", "26.2", false, 1);
         var button = layout.buttons().getFirst();
         TitleScreenTheme.renderButton(g, button.x(), button.y(), button.width(), button.height(), "Singleplayer", "play", true, true, true, true, 1);
-        assertFalse(g.drawCalls.stream().anyMatch(c -> c.startsWith("head:") || c.startsWith("blit:")));
+        assertEquals(java.util.List.of("head:LadsQA"), g.drawCalls.stream().filter(c -> c.startsWith("head:") || c.startsWith("blit:")).toList());
         assertEquals(g.drawCalls.stream().filter(c -> c.equals("pushPose")).count(), g.drawCalls.stream().filter(c -> c.equals("popPose")).count());
         assertTrue(g.drawCalls.stream().anyMatch(c -> c.contains("LadsQA")));
     }

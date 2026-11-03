@@ -149,10 +149,16 @@ public class GuiGraphicsLadsAdapter implements LadsGraphics {
         }
     }
 
+    private static final com.thelads.core.client.auth.SkinProfiles<com.mojang.authlib.GameProfile> SKIN_PROFILES = new com.thelads.core.client.auth.SkinProfiles<>(id -> {
+        var result = Minecraft.getInstance().services().sessionService().fetchProfile(id, false);
+        return result == null ? null : result.profile();
+    });
+
     @Override
     public void drawHead(String username, String uuid, int x, int y, int size) {
         try {
             Minecraft mc = Minecraft.getInstance();
+            uuid = com.thelads.core.client.auth.SkinProfiles.orSession(username, uuid, mc.getUser().getName(), mc.getUser().getProfileId());
             java.util.UUID parsedUuid = null;
             if (uuid != null && !uuid.isBlank()) {
                 String clean = uuid.replace("-", "").trim();
@@ -170,7 +176,8 @@ public class GuiGraphicsLadsAdapter implements LadsGraphics {
                 parsedUuid = java.util.UUID.nameUUIDFromBytes(("OfflinePlayer:" + (username != null ? username : "Player")).getBytes(java.nio.charset.StandardCharsets.UTF_8));
             }
             com.mojang.authlib.GameProfile profile = new com.mojang.authlib.GameProfile(parsedUuid, username != null ? username : "Player");
-            java.util.function.Supplier<PlayerSkin> lookup = mc.getSkinManager().createLookup(profile, false);
+            com.mojang.authlib.GameProfile real = SKIN_PROFILES.get(parsedUuid);
+            java.util.function.Supplier<PlayerSkin> lookup = mc.getSkinManager().createLookup(real != null ? real : profile, false);
             PlayerSkin skin = lookup != null ? lookup.get() : null;
             if (skin == null) {
                 skin = net.minecraft.client.resources.DefaultPlayerSkin.get(profile);

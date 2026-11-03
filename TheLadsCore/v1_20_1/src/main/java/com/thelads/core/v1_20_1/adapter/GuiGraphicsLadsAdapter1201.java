@@ -596,11 +596,17 @@ public class GuiGraphicsLadsAdapter1201 implements LadsGraphics {
         return profile;
     }
 
+    private static final com.thelads.core.client.auth.SkinProfiles<GameProfile> SKIN_PROFILES = new com.thelads.core.client.auth.SkinProfiles<>(id -> {
+        GameProfile filled = Minecraft.getInstance().getMinecraftSessionService().fillProfileProperties(new GameProfile(id, null), false);
+        return filled.getProperties().containsKey("textures") ? filled : null;
+    });
+
     private void drawHeadFaded(String username, String uuid, int x, int y, int size) {
         try {
             Minecraft mc = Minecraft.getInstance();
-            GameProfile profile = resolveHeadProfile(username, uuid);
-            ResourceLocation skinLocation = mc.getSkinManager().getInsecureSkinLocation(profile);
+            GameProfile profile = resolveHeadProfile(username, com.thelads.core.client.auth.SkinProfiles.orSession(username, uuid, mc.getUser().getName(), mc.getUser().getProfileId()));
+            GameProfile real = SKIN_PROFILES.get(profile.getId());
+            ResourceLocation skinLocation = mc.getSkinManager().getInsecureSkinLocation(real != null ? real : profile);
             if (skinLocation == null) {
                 skinLocation = DefaultPlayerSkin.getDefaultSkin(profile.getId());
             }

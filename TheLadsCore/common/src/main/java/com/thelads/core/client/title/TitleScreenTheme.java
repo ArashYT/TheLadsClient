@@ -155,7 +155,7 @@ public final class TitleScreenTheme {
             ? (float)value.getValue() / 100f : 1f;
         String name = fit(g, username == null ? "Player" : username, (int)(maxWidth / accountScale) - 15);
         g.pushPose(); g.translate(18, height - 21); g.scale(accountScale, accountScale);
-        icon(g, "user", 0, 1, 9, ACCENT); g.drawText(name, 15, 0, TEXT); g.popPose();
+        g.drawHead(username == null ? "Player" : username, null, 0, 0, 8); g.drawText(name, 15, 0, TEXT); g.popPose();
         return 18 + Math.round((name.isEmpty() ? 9 : 15 + g.textWidth(name)) * accountScale);
     }
 
@@ -349,7 +349,7 @@ public final class TitleScreenTheme {
         "globe", new String[] {"...####...", ".##.##.##.", "#...##...#", "##########", "##########",
                                "#...##...#", ".##.##.##.", "...####...", "..........", ".........."});
 
-    static void icon(LadsGraphics g, String kind, int x, int y, int size, int c) {
+    public static void icon(LadsGraphics g, String kind, int x, int y, int size, int c) {
         String[] rows = PIXEL_ICONS.get(kind);
         if (rows != null) {
             for (int row = 0; row < rows.length; row++)
