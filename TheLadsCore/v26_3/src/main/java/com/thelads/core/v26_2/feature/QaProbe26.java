@@ -179,6 +179,7 @@ public final class QaProbe26 {
                 String target = arg(s, 1).toLowerCase(Locale.ROOT);
                 if ("none".equals(target) || "close".equals(target)) mc.gui.setScreen(null);
                 else if ("title".equals(target)) mc.setScreenAndShow(new TitleScreen());
+                else if ("pause".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(true));
                 else if ("lads".equals(target) || "settings".equals(target)) {
                     var screen = new LadsSettingsScreen26(mc.gui.screen());
                     mc.setScreenAndShow(screen);
@@ -216,6 +217,18 @@ public final class QaProbe26 {
                 com.thelads.core.client.qa.QaProgress.hide(down);
             }
             case "log" -> LOGGER.info("Lads 26.3 qa log: {}", rest(s, 1));
+            case "press" -> mc.gui.screen().children().stream().filter(c -> c instanceof net.minecraft.client.gui.components.Button b && b.getMessage().getString().equals(rest(s, 1)))
+                .map(c -> (net.minecraft.client.gui.components.Button) c).findFirst().orElseThrow(() -> new IllegalArgumentException("press: no button " + rest(s, 1)))
+                .onPress(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));
+            case "account" -> { // account <offline name> | account ms <name>: the switcher open and that account clicked
+                if (!(mc.gui.screen() instanceof com.thelads.core.v26_2.gui.AccountSwitcherScreen26)) mc.setScreenAndShow(new com.thelads.core.v26_2.gui.AccountSwitcherScreen26(mc.gui.screen()));
+                com.thelads.core.client.auth.AccountSwitcherScreen ui = ((com.thelads.core.v26_2.gui.AccountSwitcherScreen26) mc.gui.screen()).ui();
+                if (arg(s, 1).equals("ms")) { var ms = new com.thelads.core.client.auth.LadsAccount(arg(s, 2), "069a79f444e94726a5befca90e38aaf5", "microsoft", "0"); ui.getAccounts().add(ms); ui.selectAccount(ms); }
+                else ui.addOfflineAccount(arg(s, 1));
+            }
+            case "session" -> LOGGER.info("Lads 26.3 qa session: name={} uuid={} profile={} keys={} screen={} status={}", mc.getUser().getName(), mc.getUser().getProfileId(), mc.getGameProfile().name(),
+                mc.getProfileKeyPairManager().getClass().getSimpleName(), mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getSimpleName(),
+                mc.gui.screen() instanceof com.thelads.core.v26_2.gui.AccountSwitcherScreen26 a ? a.ui().getStatusMessage() : "");
             case "quit" -> {
                 LOGGER.info("Lads 26.3 qa quit requested");
                 scriptDone = true;

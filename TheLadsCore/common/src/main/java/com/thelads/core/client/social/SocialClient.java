@@ -46,6 +46,7 @@ public class SocialClient {
 
     private volatile WebSocket currentWs;
     private volatile boolean running;
+    private volatile boolean reconnecting;
     private volatile boolean fastBackoff;
     private volatile Presence currentPresence;
     private volatile String status = "Disconnected";
@@ -100,6 +101,15 @@ public class SocialClient {
 
     public synchronized void stop() {
         close();
+    }
+
+    /** The session changed: the link drops and comes back as the new account. */
+    public void reconnect() {
+        reconnecting = true;
+        WebSocket ws = currentWs;
+        if (ws != null) {
+            try { ws.close(); } catch (Exception ignored) {}
+        }
     }
 
     public void setFastBackoff(boolean fast) {
@@ -172,6 +182,7 @@ public class SocialClient {
     private void runLoop() {
         int failures = 0;
         while (running) {
+            reconnecting = false; // before reading the session: a reconnect() after this ends a link made with the old one
             LadsGameBridge.Session session = state.session();
             if (session == null || session.uuid() == null) {
                 status = "Awaiting login";
@@ -247,7 +258,7 @@ public class SocialClient {
             long nextPing = System.currentTimeMillis() + 30_000;
             long nextPresence = System.currentTimeMillis() + 60_000;
 
-            while (ws.isOpen() && running) {
+            while (ws.isOpen() && running && !reconnecting) {
                 long now = System.currentTimeMillis();
 
                 // Send pending queued messages

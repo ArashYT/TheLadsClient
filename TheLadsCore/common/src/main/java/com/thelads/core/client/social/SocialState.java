@@ -131,6 +131,19 @@ public class SocialState {
         return client;
     }
 
+    /** The game's session is now another account (AccountSwitcherScreen): nothing of the old one's stays, and the link logs in again. */
+    public void onAccountChanged() {
+        friendsMap.clear();
+        incomingMap.clear();
+        outgoingMap.clear();
+        blockedMap.clear();
+        blockedUuids.clear();
+        dmsMap.clear();
+        activeInvites.clear();
+        activeJoinRequests.clear();
+        client.reconnect();
+    }
+
     SocialBridge bridge() {
         return bridges.get();
     }

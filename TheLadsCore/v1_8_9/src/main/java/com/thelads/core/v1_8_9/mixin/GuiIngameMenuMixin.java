@@ -35,7 +35,7 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
     @Unique private GuiButton ladsButton, ladsMultiplayerButton, ladsScreenshotsButton, ladsCosmeticsButton, ladsFriendsButton, ladsExtrasButton;
     @Unique private List<GuiButton> ladsExtras;
     @Unique private int ladsLaidOut;
-    @Unique private GuiButton ladsFullscreenButton;
+    @Unique private GuiButton ladsFullscreenButton, ladsSwitchButton;
 
     @Inject(method = "initGui", at = @At("TAIL"), require = 1)
     private void ladsAddPauseButtons(CallbackInfo ci) {
@@ -54,6 +54,9 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
         ladsLaidOut = -1;
         ladsFullscreenButton = CompactButton189.fullscreen(LADS_BUTTON_ID + 6, width);
         buttonList.add(ladsFullscreenButton);
+        ladsSwitchButton = new CompactButton189(LADS_BUTTON_ID + 10, 0, 0, 1, 1, TitleScreenTheme.PAUSE_SWITCH, () -> "switch",
+            () -> mc.displayGuiScreen(new com.thelads.core.v1_8_9.gui.AccountSwitcherScreen189(this)));
+        buttonList.add(ladsSwitchButton);
         if (!ladsLogged) {
             ladsLogged = true;
             LogManager.getLogger("TheLadsCore").info("Lads Client pause-menu button initialized");
@@ -82,7 +85,7 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
         }
         boolean changed = ladsLaidOut != buttonList.size();
         for (GuiButton button : new ArrayList<>(buttonList)) {
-            if (button == ladsExtrasButton || button == ladsFullscreenButton) continue;
+            if (button == ladsExtrasButton || button == ladsFullscreenButton || button == ladsSwitchButton) continue;
             if (button.getClass().getName().startsWith("gg.essential.")) {
                 buttonList.remove(button);
                 button.visible = false;
@@ -101,7 +104,7 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
         List<GuiButton> grid = new ArrayList<>();
         List<PauseMenuLayout.Slot> slots = new ArrayList<>();
         for (GuiButton button : buttonList)
-            if (button != ladsFullscreenButton) { grid.add(button); slots.add(ladsSlot(button)); }
+            if (button != ladsFullscreenButton && button != ladsSwitchButton) { grid.add(button); slots.add(ladsSlot(button)); }
         // In groups: Back to Game, then Achievements/Statistics, Options/Lads Client, Multiplayer/LAN, Screenshots/Extras, Save and Quit apart.
         int bottom = height - 32;
         int top = Math.max(62, 12 + Math.min(64, height / 6) + 18);
@@ -148,6 +151,11 @@ public abstract class GuiIngameMenuMixin extends GuiScreen implements LadsPauseB
         TitleScreenTheme.renderLogo(g, width / 2, 12, Math.min(64, height / 6));
         drawRect(16, height - 29, width - 16, height - 28, 0x2944202A);
         TitleScreenTheme.renderAccount(g, height, mc.getSession().getUsername(), Math.min(170, width - 32));
+        TitleScreenTheme.Rect switchBox = TitleScreenTheme.pauseSwitch(g, ladsFullscreenButton.xPosition);
+        ladsSwitchButton.xPosition = switchBox.x();
+        ladsSwitchButton.yPosition = switchBox.y();
+        ladsSwitchButton.width = switchBox.width();
+        ladsSwitchButton.height = switchBox.height();
         if (!com.thelads.core.client.ConfirmDisconnectHelper.isConfirming(System.currentTimeMillis())) {
             for (GuiButton b : buttonList) {
                 if (b != null && b.id == 1 && b.displayString.equals("\u00a7cConfirm Disconnect?")) {

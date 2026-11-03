@@ -8,6 +8,8 @@
   },
   "client": [
     "SessionTokenMixin",
+    "MinecraftSessionAccessor26",
+    "RealmsClientAccessor26",
     "GuiMixin",
     "EuphoriaClipboardMixin",
     "GuiHudCapMixin",

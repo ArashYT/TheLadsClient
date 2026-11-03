@@ -18,6 +18,9 @@ public partial class MainWindow : Window
                 await HandleDeepLinkAsync(action);
             });
         });
+        AccountSwitchPipe.StartListener(
+            (request, token) => Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => ResolveSwitchTokenAsync(request, token)),
+            gameDirectory => Avalonia.Threading.Dispatcher.UIThread.Post(() => ApplyNextAccountRequest(gameDirectory)));
     }
 
     /// <summary>Any web page can send a link: it is logged when it fails, never left to crash the launcher (the pipe runs it async void).</summary>

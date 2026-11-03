@@ -392,6 +392,15 @@ public final class QaProbe1201 {
                 net.minecraft.client.gui.screens.ConnectScreen.startConnecting(new TitleScreen(), mc, net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(address), data, false);
             }
             case "log" -> LOGGER.info("Lads qa log: {}", rest(s, 1));
+            case "account" -> { // account <offline name> | account ms <name>: the switcher open and that account clicked
+                if (!(mc.screen instanceof com.thelads.core.v1_20_1.gui.AccountSwitcherScreen1201)) mc.setScreen(new com.thelads.core.v1_20_1.gui.AccountSwitcherScreen1201(mc.screen));
+                com.thelads.core.client.auth.AccountSwitcherScreen ui = ((com.thelads.core.v1_20_1.gui.AccountSwitcherScreen1201) mc.screen).ui();
+                if (arg(s, 1).equals("ms")) { var ms = new com.thelads.core.client.auth.LadsAccount(arg(s, 2), "069a79f444e94726a5befca90e38aaf5", "microsoft", "0"); ui.getAccounts().add(ms); ui.selectAccount(ms); }
+                else ui.addOfflineAccount(arg(s, 1));
+            }
+            case "session" -> LOGGER.info("Lads qa session: name={} uuid={} api={} keys={} screen={} status={}", mc.getUser().getName(), mc.getUser().getProfileId(), mc.getProfileKeyPairManager().getClass().getSimpleName(),
+                mc.getReportingContext().getClass().getSimpleName(), mc.screen == null ? "none" : mc.screen.getClass().getSimpleName(),
+                mc.screen instanceof com.thelads.core.v1_20_1.gui.AccountSwitcherScreen1201 a ? a.ui().getStatusMessage() : "");
             case "static" -> { // a public static field of another mod (Quark's Hotbar Changer only opens in a focused window; QA windows never are)
                 var field = Class.forName(arg(s, 1), true, Thread.currentThread().getContextClassLoader()).getField(arg(s, 2));
                 Class<?> type = field.getType();

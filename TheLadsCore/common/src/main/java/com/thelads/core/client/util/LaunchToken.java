@@ -11,11 +11,12 @@ import org.slf4j.LoggerFactory;
  * The launcher keeps the account's access token off the game's command line (where Task Manager and crash dumps show it):
  * it passes {@link #PLACEHOLDER} as --accessToken and writes the real token as the first line of the game's stdin.
  * The session mixins swap it in through {@link #resolve}. The launcher only does this when this class is in the Core jar.
+ * The second line, when there is one, is how to reach the launcher for a live account switch (AccountTokens).
  */
 public final class LaunchToken {
     public static final String PLACEHOLDER = "lads-stdin-token";
     private static final Logger LOGGER = LoggerFactory.getLogger(LaunchToken.class);
-    private static String token;
+    private static String token, handOff = "";
 
     private LaunchToken() {}
 
@@ -24,6 +25,7 @@ public final class LaunchToken {
         if (!PLACEHOLDER.equals(given)) return given;
         if (token == null) {
             token = readLine(System.in);
+            handOff = readLine(System.in);
             if (token.isEmpty()) {
                 LOGGER.warn("[Lads] The launcher did not send the session token; online features need a relaunch from The Lads Launcher.");
                 token = "0";
@@ -32,8 +34,13 @@ public final class LaunchToken {
         return token;
     }
 
-    /** The first line of {@code in} (without the line break), or "" on end of stream or error. */
-    static String readLine(InputStream in) {
+    /** "pipe key" from the launcher that started this game; "" when it was another launcher or an older one. */
+    public static synchronized String handOff() {
+        return handOff;
+    }
+
+    /** The next line of {@code in} (without the line break), or "" on end of stream or error. */
+    public static String readLine(InputStream in) {
         ByteArrayOutputStream line = new ByteArrayOutputStream();
         try {
             for (int b; (b = in.read()) != -1 && b != '\n'; ) if (b != '\r') line.write(b);

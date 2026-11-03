@@ -12,6 +12,7 @@ public record AccountSwitchRequest(string Username, string Uuid, string Type);
 /// The in-game account switcher hand-off, shared by every way the launcher starts a game (a profile, Zero SMP, a modpack):
 /// the game writes <see cref="RequestFile"/> (lads_next_account.json) into its game directory (THELADS_DIR);
 /// when it has exited the launcher takes the request and applies it so the next launch uses the chosen account.
+/// A game that switched in place (<see cref="AccountSwitchPipe"/>) says so at once, and the launcher takes the request then.
 /// </summary>
 public static class AccountSwitch
 {

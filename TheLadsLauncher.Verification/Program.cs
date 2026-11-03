@@ -35,6 +35,11 @@ if (args.Length >= 2 && args[0] == "--external") return await ExternalQa.RunAsyn
 // "The Lads Client 1.20.1" profile as a --title run with the QA world (Mc1201Qa.cs); both are described in README-1201.md.
 if (args.Length >= 1 && args[0] == "--zero-smp") return await ZeroSmpQa.RunAsync(args[1..]);
 if (args.Length >= 1 && args[0] == "--mc1201") args = Mc1201Qa.Prepare(args[1..]);
+// LADS_VERIFY_ACCOUNT_PIPE=1: stands in for the launcher on the account switch pipe (a fake Microsoft token, which Mojang refuses; "account ms <name>").
+if (Environment.GetEnvironmentVariable("LADS_VERIFY_ACCOUNT_PIPE") == "1")
+    AccountSwitchPipe.StartListener(
+        (request, _) => { Console.WriteLine($"[QA] account pipe: token asked for {request.Username} ({request.Type})"); return Task.FromResult(AccountTokenReply.Of(request.Type == "microsoft" ? "qa-fake-token" : "0")); },
+        directory => Console.WriteLine($"[QA] account pipe: game switched in {directory}"));
 
 // Explicit maintenance mode: prepare a profile's pinned pack without starting a game or reading accounts.
 if (args.Length == 4 && args[0] == "--install-pack")

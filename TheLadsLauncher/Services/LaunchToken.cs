@@ -12,7 +12,8 @@ namespace TheLadsLauncher.Services;
 
 /// <summary>Keeps the account's access token off the game's command line, where Task Manager, other programs and JVM crash
 /// dumps can read it: the game gets <see cref="Placeholder"/> as --accessToken and the real token as the first line of its
-/// stdin, which TheLadsCore's session mixin swaps in. A game without that Core keeps the token on the command line.</summary>
+/// stdin, which TheLadsCore's session mixin swaps in. A game without that Core keeps the token on the command line.
+/// The second line of stdin is <see cref="AccountSwitchPipe.HandOff"/>: how that game reaches this launcher for an in-place account switch.</summary>
 public static class LaunchToken
 {
     public const string Placeholder = "lads-stdin-token";
@@ -33,17 +34,17 @@ public static class LaunchToken
         start.Arguments = arguments;
         start.RedirectStandardInput = true;
         start.StandardInputEncoding = new UTF8Encoding(false);
-        Pending.AddOrUpdate(start, accessToken);
+        Pending.AddOrUpdate(start, accessToken + "\n" + AccountSwitchPipe.HandOff(gameDirectory));
     }
 
     /// <summary>Writes the token <see cref="Hide"/> took off the command line to the started game, off the caller's thread.</summary>
     public static void Send(Process process)
     {
-        if (!Pending.TryGetValue(process.StartInfo, out var token)) return;
+        if (!Pending.TryGetValue(process.StartInfo, out var lines)) return;
         var input = process.StandardInput;
         _ = Task.Run(async () =>
         {
-            try { await input.WriteAsync(token + "\n"); }
+            try { await input.WriteAsync(lines + "\n"); }
             catch (IOException) { } // the game exited first
             finally { try { input.Close(); } catch (IOException) { } }
         });

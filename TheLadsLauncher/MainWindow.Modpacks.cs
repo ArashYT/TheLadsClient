@@ -72,6 +72,34 @@ public partial class MainWindow
         return null;
     }
 
+    /// <summary>A running game asks to switch to another account in place (AccountSwitchPipe): a fresh token, silently (no sign-in window
+    /// pops up over the game), or why not. The refresh token never leaves the launcher.</summary>
+    private async Task<AccountTokenReply> ResolveSwitchTokenAsync(AccountSwitchRequest request, CancellationToken token)
+    {
+        if (request.Type != "microsoft")
+            return IsDevOfflineAllowed ? AccountTokenReply.Of("0") : AccountTokenReply.Refuse("Offline accounts are only available in debug builds.");
+        var account = loginHandler.AccountManager.GetAccounts().OfType<CmlLib.Core.Auth.Microsoft.Sessions.JEGameAccount>()
+            .FirstOrDefault(a => string.Equals(a.Profile?.Username, request.Username, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(a.Profile?.UUID?.Replace("-", ""), request.Uuid.Replace("-", ""), StringComparison.OrdinalIgnoreCase));
+        if (account == null) return AccountTokenReply.Refuse($"{request.Username} is no longer saved in the launcher.");
+        try
+        {
+            var session = await loginHandler.AuthenticateSilently(account, token);
+            return string.IsNullOrEmpty(session.AccessToken)
+                ? AccountTokenReply.Refuse($"The launcher could not sign in {request.Username}.")
+                : AccountTokenReply.Of(session.AccessToken);
+        }
+        catch (Exception error) when (MicrosoftAccountService.NeedsInteractiveLogin(error))
+        {
+            return AccountTokenReply.Refuse($"Sign in to {request.Username} again in the launcher.");
+        }
+        catch (Exception error)
+        {
+            Log($"[Accounts] Could not refresh {request.Username} for the running game: {MicrosoftAccountService.DescribeError(error)}");
+            return AccountTokenReply.Refuse($"The launcher could not refresh {request.Username}. Check your connection.");
+        }
+    }
+
     private async Task<MSession> SignInModpackAccountAsync(CancellationToken token)
     {
         if (string.IsNullOrWhiteSpace(_selectedAccount)) throw new InvalidOperationException("Add or select an account on the Accounts page first.");
