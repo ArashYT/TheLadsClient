@@ -66,6 +66,8 @@ public class KillBannerModule extends Module {
     public final BoolOption players = new BoolOption("Players", true);
     public final BoolOption mobs = new BoolOption("Mobs", true);
     public final BoolOption bosses = new BoolOption("Bosses", true);
+    /** Off: a player you hit who dies counts only as your kill, not when someone else finished them (KillDetector). */
+    public final BoolOption assistBanners = new BoolOption("Assists give banners", false);
     /** Headshots: "Head hits" (an arrow in the head that kills, or the crosshair on the head at the last hit) or every kill. */
     public final DropdownOption headshots = new DropdownOption("Headshots", HEADSHOTS_HEAD_HITS, "Head hits", "Every kill");
     /** The HEADSHOT banner on a headshot kill: the skin's box under the banner (a new name, so it starts on for everyone). */
@@ -110,6 +112,7 @@ public class KillBannerModule extends Module {
         addOption(players);
         addOption(mobs);
         addOption(bosses);
+        addOption(assistBanners);
         addOption(headshots);
         addOption(headshotBanner);
         addOption(killMark);

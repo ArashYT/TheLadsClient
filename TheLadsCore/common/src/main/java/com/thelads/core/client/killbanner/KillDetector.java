@@ -30,13 +30,16 @@ import java.util.regex.Pattern;
  * Each death counts once, whichever signal arrives first: the same player's death again (another record of the same name
  * included) needs a new hit first (respawned, or the same entity on minigame servers), and a reward line within 3 seconds of
  * a player kill is that kill's, as the kill is a reward line's that came first.
+ * <p>With {@link #assists} off, a player's death does not count at once, as the entity's death says nothing of who finished them
+ * (1.8.9 and plugin servers send no damage events): it waits {@link #GRACE} for chat ({@link #due}). A line naming the local player
+ * or a kill reward counts it now, a line naming another killer or an assist reward drops it, silence counts it (death messages off).
  */
 public final class KillDetector {
     public enum Kind { PLAYER, MOB, BOSS }
     public record Kill(Kind kind, String victim, boolean headshot) {}
 
     static final long CREDIT = 5_000_000_000L, CHAT = 10_000_000_000L, ONCE = 5_000_000_000L, FORGET = 30_000_000_000L;
-    static final long PAIR = 3_000_000_000L, BURST = 1_000_000_000L;
+    static final long PAIR = 3_000_000_000L, BURST = 1_000_000_000L, GRACE = 750_000_000L;
     private static final Pattern FORMAT = Pattern.compile("§.");
     private static final Pattern BRACKETS = Pattern.compile("\\[[^\\]]*\\]|\\([^)]*\\)");
     private static final Pattern NAME = Pattern.compile("[A-Za-z0-9_]{1,16}");
@@ -61,6 +64,10 @@ public final class KillDetector {
     // Hypixel's reward lines, sent to the killer alone: "+10 coins! (Kill)", "+20 coins! (Bob's Network Booster) (Final Kill)",
     // "+25 Bed Wars Experience (Final Kill)"; group 1 names the reward, as one kill may bring a line of each.
     private static final Pattern REWARD = Pattern.compile("^\\s*\\+\\s?[\\d,.]+\\s+([a-z]+)[^:]*\\((?:[a-z]+ )?kill\\)");
+    // "+5 coins! (Assist)", "+10 Bed Wars Experience (Final Assist)": someone else got the kill.
+    private static final Pattern ASSIST_REWARD = Pattern.compile("^\\s*\\+\\s?[\\d,.]+\\s+[a-z]+[^:]*\\([^)]*assist[^)]*\\)");
+    // "Bob was killed by Steve", "Bob was knocked into the void by Steve"; only vanilla's "by magic / lightning / a ..." name no one.
+    private static final Pattern KILLER_BY = Pattern.compile("\\bby (?!(a|an|the|magic|lightning)\\b)[a-z0-9_]{3,16}\\b");
     // A kill message about a player the client saw no hit on must say so in plain words.
     private static final Pattern PLAIN_KILL = Pattern.compile("\\b(kill|killed|slain|slew|shot|knocked|thrown|void|fireballed|pummeled|blown|doomed"
         + "|finished|eliminated|murdered|impaled|smashed|whilst|escape|fighting)\\b");
@@ -78,7 +85,7 @@ public final class KillDetector {
     private static final class Victim {
         final Set<String> names = new LinkedHashSet<>();
         Kind kind;
-        long mine = Long.MIN_VALUE, other = Long.MIN_VALUE, killed = Long.MIN_VALUE;
+        long mine = Long.MIN_VALUE, other = Long.MIN_VALUE, killed = Long.MIN_VALUE, held = Long.MIN_VALUE;
         boolean head;
     }
     private final Map<Integer, Victim> byId = new HashMap<>();
@@ -88,6 +95,11 @@ public final class KillDetector {
     private final Map<String, Integer> burst = new HashMap<>();
     private long burstAt = Long.MIN_VALUE;
     private int burstKills;
+    /** Player deaths without a word on who finished them count at once (true), or wait for chat. KillBanners sets it from the module. */
+    private boolean assists = true;
+    private long assistAt = Long.MIN_VALUE;
+
+    public void assists(boolean count) { assists = count; }
 
     public void reset() {
         byId.clear();
@@ -95,7 +107,7 @@ public final class KillDetector {
         unnamed.clear();
         burst.clear();
         burstKills = 0;
-        burstAt = Long.MIN_VALUE;
+        burstAt = assistAt = Long.MIN_VALUE;
     }
 
     /**
@@ -204,14 +216,39 @@ public final class KillDetector {
     /** A damage event on {@code id} named someone else as its cause: they now get the credit. */
     public void hitByOther(int id, long now) {
         Victim victim = byId.get(id);
-        if (victim != null) victim.other = now;
+        if (victim != null) lostTo(victim, now);
+    }
+
+    private static void lostTo(Victim victim, long now) {
+        victim.other = now;
+        victim.held = Long.MIN_VALUE;
     }
 
     /** {@code id} died on the client (death event or zero health). */
     public Kill died(int id, long now) {
         Victim victim = byId.get(id);
         if (victim == null || since(now, victim.mine) > CREDIT || victim.other > victim.mine) return null;
-        return claim(victim, now);
+        if (assists || victim.kind != Kind.PLAYER) return claim(victim, now);
+        if (since(now, assistAt) > GRACE && victim.held == Long.MIN_VALUE) victim.held = now;
+        return null;
+    }
+
+    /** Each tick: a held player death whose {@link #GRACE} ran out with no line against it, as a kill (one per call), or null. */
+    public Kill due(long now) {
+        for (Victim victim : byId.values()) {
+            if (victim.held == Long.MIN_VALUE || now - victim.held < GRACE) continue;
+            victim.held = Long.MIN_VALUE;
+            Kill kill = claim(victim, now);
+            if (kill != null) return kill;
+        }
+        return null;
+    }
+
+    private Victim oldestHeld() {
+        Victim oldest = null;
+        for (Victim victim : byId.values())
+            if (victim.held != Long.MIN_VALUE && (oldest == null || victim.held < oldest.held)) oldest = victim;
+        return oldest;
     }
 
     /** A server (system) chat line, with no other players known; player chat never counts. */
@@ -226,14 +263,28 @@ public final class KillDetector {
     public Kill chat(String message, Collection<String> myNames, Supplier<? extends Map<Integer, ? extends Collection<String>>> players, long now) {
         if (message == null || message.isBlank()) return null;
         String text = strip(message);
+        if (!assists && ASSIST_REWARD.matcher(text).find()) {
+            // Before the death event too: then it never gets held.
+            assistAt = now;
+            Victim held = oldestHeld();
+            if (held != null) lostTo(held, now);
+            return null;
+        }
         var reward = REWARD.matcher(text);
-        if (reward.find()) return reward(reward.group(1), now);
+        if (reward.find()) {
+            // The kill a death held, with its name and head hit, instead of a nameless one.
+            Victim held = oldestHeld();
+            Kill kill = held != null ? claim(held, now) : null;
+            Kill rewarded = reward(reward.group(1), now);
+            return kill != null ? kill : rewarded;
+        }
         Set<String> me = lower(myNames);
         for (Victim victim : byId.values()) {
             if (victim.kind != Kind.PLAYER || since(now, victim.mine) > CHAT || !named(text, victim.names, me)) continue;
             Kill kill = claim(victim, now); // null: this death was already counted; another record may share the name
             if (kill != null) return kill;
         }
+        if (!assists) lostToOthers(text, me, players, now);
         boolean plain = PLAIN_KILL.matcher(text).find();
         for (Map.Entry<Integer, ? extends Collection<String>> player : players.get().entrySet()) {
             Set<String> names = lower(player.getValue());
@@ -245,6 +296,42 @@ public final class KillDetector {
             if (kill != null) return kill;
         }
         return null;
+    }
+
+    /** A line reporting a player the local player hit as someone else's kill takes the credit, as a damage event naming them does. */
+    private void lostToOthers(String text, Set<String> me, Supplier<? extends Map<Integer, ? extends Collection<String>>> players, long now) {
+        Set<String> others = null;
+        for (Victim victim : byId.values()) {
+            if (victim.kind != Kind.PLAYER || since(now, victim.mine) > CREDIT || victim.other > victim.mine || named(text, victim.names, me)) continue;
+            for (String name : victim.names) {
+                if (me.contains(name) || word(text, name, 0) < 0) continue;
+                if (others == null) {
+                    others = new LinkedHashSet<>();
+                    for (Collection<String> names : players.get().values()) others.addAll(lower(names));
+                    others.removeAll(me);
+                }
+                if (otherKill(text, name, others) && !social(text, victim.names, me)) {
+                    lostTo(victim, now);
+                    break;
+                }
+            }
+        }
+    }
+
+    /** Lower-case {@code text}, no kill of the local player's: does it report {@code victim} killed by someone else, known or not? */
+    private static boolean otherKill(String text, String victim, Set<String> others) {
+        int v = word(text, victim, 0);
+        String before = text.substring(0, v);
+        if (chatLine(before)) return false;
+        Set<String> killers = new LinkedHashSet<>(others);
+        killers.remove(victim);
+        return text.contains("assist") || KILLER_BY.matcher(text.substring(v + victim.length())).find()
+            || VERB.matcher(before).find() && !PASSIVE.matcher(before).find() || killMessage(text, victim, killers);
+    }
+
+    /** "Name: ..." and "<Name> ..." are chat lines, whatever they say. */
+    private static boolean chatLine(String before) {
+        return before.contains(":") || before.contains("<") || CHATTER.matcher(before).find();
     }
 
     /** A server chat line reporting the local player's own death (servers that never really kill anyone send only this). */
@@ -297,6 +384,7 @@ public final class KillDetector {
     }
 
     private Kill claim(Victim victim, long now) {
+        victim.held = Long.MIN_VALUE;
         // The death event, a zero health update and the kill message all report one death, with no hit in between; a record of
         // the same name (the player's entity and their tab-list entry, a respawned entity) too.
         for (Victim other : byId.values())
@@ -347,8 +435,7 @@ public final class KillDetector {
         int v = word(text, victim, 0);
         if (v < 0) return false;
         String before = text.substring(0, v);
-        // "Name: ..." and "<Name> ..." are chat lines, whatever they say.
-        if (before.contains(":") || before.contains("<") || CHATTER.matcher(before).find()) return false;
+        if (chatLine(before)) return false;
         if (KILL_TAG.matcher(before).find()) return true;
         Set<String> subjects = new LinkedHashSet<>(me);
         subjects.add("you");
@@ -361,7 +448,7 @@ public final class KillDetector {
             if (m < 0) continue;
             String between = before.substring(m + name.length());
             // "You killed Bob", "Me eliminated Bob"; never "You were killed by Bob".
-            if (between.length() <= 32 && VERB.matcher(between).find() && !PASSIVE.matcher(between).find()) return true;
+            if (between.length() <= 32 && VERB.matcher(between).find() && !PASSIVE.matcher(between).find() && !between.contains("assist")) return true;
         }
         return false;
     }
