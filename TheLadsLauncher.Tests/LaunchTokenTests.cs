@@ -57,6 +57,31 @@ public class LaunchTokenTests
     }
 
     [Fact]
+    public void AGameDeniedTheHandOffGetsItsTokenOnly()
+    {
+        using var dir = new TestDirectory();
+        Core(dir.Path, readsStdin: true);
+        using var game = Game("eyJ.secret-token_3");
+
+        LaunchToken.Hide(game, dir.Path, "eyJ.secret-token_3", accountHandOff: false);
+
+        Assert.DoesNotContain("secret", game.StartInfo.Arguments);
+        game.Start();
+        LaunchToken.Send(game);
+        Assert.Equal("eyJ.secret-token_3", game.StandardOutput.ReadToEnd().Trim());
+        game.WaitForExit();
+    }
+
+    [Fact]
+    public void OnlyOurOwnPacksMaySwitchAccounts()
+    {
+        Assert.True(ModpackLauncher.MaySwitchAccounts(new ModpackInstance { Id = ExperiencesService.ZeroSmp.Id }));
+        Assert.True(ModpackLauncher.MaySwitchAccounts(new ModpackInstance { Id = ExperiencesService.ZeroSmpDevId }));
+        Assert.False(ModpackLauncher.MaySwitchAccounts(new ModpackInstance { Id = "some-curseforge-pack" }));
+        Assert.False(ModpackLauncher.MaySwitchAccounts(new ModpackInstance { Id = ExperiencesService.ZeroSmp.Id, ExternalGameDirectory = "C:\\elsewhere" }), "another launcher's folder is never ours, whatever it is called");
+    }
+
+    [Fact]
     public void ARelaunchWithTheSameStartInfoGetsTheTokenToo()
     {
         // The QA harness retries a mod-loading race with new Process { StartInfo = game.StartInfo }; without the token the game

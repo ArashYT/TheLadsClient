@@ -325,7 +325,7 @@ public static class ModpackLauncher
         process.StartInfo.Environment[GameSession.LauncherExeVariable] = Environment.ProcessPath ?? "";
         process.StartInfo.Environment["THELADS_DIR"] = instance.GameDirectory;
         GameSession.RemoveJavaOptionVariables(process.StartInfo);
-        LaunchToken.Hide(process, instance.GameDirectory, session.AccessToken); // the caller sends it after Start
+        LaunchToken.Hide(process, instance.GameDirectory, session.AccessToken, MaySwitchAccounts(instance)); // the caller sends it after Start
         if (!own) return process;
         if (instance.Loader == "forge" && instance.McVersion == "1.20.1")
             UseEarlyWindow(process, dataDirectory, instance.GameDirectory,
@@ -336,6 +336,10 @@ public static class ModpackLauncher
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { status?.Invoke($"Could not prepare {AccountSwitch.RequestFile}: {ex.Message}"); }
         return process;
     }
+
+    /// <summary>The account switch pipe hands out a token for every saved account with no prompt, so only our own packs (the Experiences)
+    /// get it. Any mod in another pack could use it: those games record the choice for the next launch instead.</summary>
+    public static bool MaySwitchAccounts(ModpackInstance instance) => !instance.IsExternal && ExperiencesService.IsExperienceInstance(instance.Id);
 
     private static async Task<Process> FullInstallAndBuildAsync(MinecraftLauncher launcher, string versionId, MLaunchOption options, string verifiedMarker, CancellationToken token)
     {

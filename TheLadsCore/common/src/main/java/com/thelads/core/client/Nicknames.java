@@ -136,6 +136,10 @@ public final class Nicknames {
             for (Map.Entry<String, String> name : names.entrySet()) {
                 int end = i + name.getKey().length();
                 if (text.regionMatches(true, i, name.getKey(), 0, name.getKey().length()) && (end == text.length() || !word(text.charAt(end)))) {
+                    if (text.startsWith(name.getValue(), i)) { // already renamed (a tab row passes through two hooks), as a marked name starts with the name
+                        i += name.getValue().length() - 1;
+                        break;
+                    }
                     hits.add(new int[] {i, end});
                     nicks.add(name.getValue());
                     i = end - 1;

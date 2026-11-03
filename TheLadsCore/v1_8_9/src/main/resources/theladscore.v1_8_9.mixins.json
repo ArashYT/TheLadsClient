@@ -97,6 +97,7 @@
     "ScreenShotHelperMixin",
     "ServerNameMixin",
     "SkinLayersGateMixin189",
+    "ReplayTitleButtonMixin189",
     "OptiFineShadersMixin",
     "OptiFineDynamicLightsMixin",
     "SplashProgressMixin",
