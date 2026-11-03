@@ -35,7 +35,7 @@ public final class NativeHypixel {
     private NativeHypixel() {}
 
     public static void initialize() {
-        ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS);
+        ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS, com.thelads.core.modules.NickDetectorModule.NAME);
         ClientReceiveMessageEvents.ALLOW_GAME.register((message, overlay) -> overlay || !HypixelMods.chat(message.getString(), System.nanoTime()));
         ClientTickEvents.END_CLIENT_TICK.register(client -> HypixelMods.tick(LadsGameBridge.get(), client.level, client.getConnection(), System.nanoTime()));
         if (FabricLoader.getInstance().isModLoaded("hypixel_mod_api")) return;

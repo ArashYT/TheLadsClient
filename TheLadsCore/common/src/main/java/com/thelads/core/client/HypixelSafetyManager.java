@@ -148,7 +148,7 @@ public final class HypixelSafetyManager {
      * Checks if the currently active game connection is on Hypixel.
      */
     public static boolean isHypixel() {
-        return qaOverride || isHypixelAddress(LadsGameBridge.get().getServerAddress());
+        return qaOverride || isHypixelAddress(address(LadsGameBridge.get()));
     }
 
     /**

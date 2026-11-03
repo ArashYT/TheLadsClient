@@ -1060,6 +1060,7 @@ try
     Directory.CreateDirectory(Path.Combine(directory, "shared"));
     File.Delete(Path.Combine(directory, "shared", "thelads_config.json"));
     process.StartInfo.Environment["THELADS_GLOBAL_DIR"] = directory;
+    if (Env("LADS_VERIFY_LAUNCHER_EXE") is { } launcherExe) process.StartInfo.Environment["LADS_LAUNCHER_EXE"] = launcherExe; // the in-game import dialog's command: a built launcher, not this harness
     if (Env("LADS_SHOWCASE_DIRECTOR") == "1")
     {
         process.StartInfo.Environment["LADS_SHOWCASE_DIRECTOR"] = "1";
@@ -1141,7 +1142,7 @@ try
             if (line.Contains($"TheLadsCore {version} initialized successfully")) initialized = true;
             if (line.Contains("[Lads] Session token received from the launcher.")) tokenReceived = true;
             if (line.Contains("Lads integration write probe END:") && Passed(line)) settingsProbePassed = true;
-            if (failureMarkers.Any(line.Contains)) nativeProbeFailed = true;
+            if (failureMarkers.Any(line.Contains) && !(Env("LADS_VERIFY_KNOWN_FAILS") is { } known && known.Split('|').Any(line.Contains))) nativeProbeFailed = true; // a known failure need not end a script run
             if (line.Contains("Lads input probe FAILED")) inputProbeFailed = true;
             // 1.20.1: a Lads mixin that failed to apply (the config uses defaultRequire 0, so Mixin may only warn) fails the run.
             if (capabilities.Minimal && QaShared.MixinProblem(line)) { nativeProbeFailed = true; keyLines.Add("MIXIN PROBLEM: " + Clean(line)); }

@@ -117,4 +117,12 @@ class NickDetectorTest {
         NickDetector.tick(nickedMe, clock += 2 * S);
         assertTrue(NickDetector.markers().isEmpty());
     }
+
+    @Test
+    void aMarkedNameIsNotMarkedAgain() {
+        java.util.Map<String, String> names = java.util.Map.of("qanicked", "QaNicked §c[Nick]§r");
+        String once = com.thelads.core.client.Nicknames.rename("QaNicked", names);
+        assertEquals("QaNicked §c[Nick]§r", once);
+        assertEquals(once, com.thelads.core.client.Nicknames.rename(once, names));
+    }
 }

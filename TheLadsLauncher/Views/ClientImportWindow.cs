@@ -112,6 +112,7 @@ public sealed class ClientImportWindow : Window
 
     private async Task Select(ImportSource source)
     {
+        _undoArmed = false; // the warning must be on screen for the second click to count
         _import.IsEnabled = false;
         _status.Text = $"Reading {source.Name}…";
         var targets = _targets;

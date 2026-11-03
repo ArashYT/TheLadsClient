@@ -166,12 +166,36 @@ public final class QaProbe26 {
         LOGGER.error("Lads 26.3 qa step FAILED: {}: {}", what, e.toString());
     }
 
+    /** QA: a servers.dat with no stored choice, Disabled and Enabled, read by the game's own list; the title Network button's entry. The file is put back. */
+    private static void packs113(Minecraft mc) throws IOException {
+        Path file = com.thelads.core.shared.SharedContentPaths.serversFile();
+        byte[] before = Files.exists(file) ? Files.readAllBytes(file) : null;
+        net.minecraft.nbt.ListTag servers = new net.minecraft.nbt.ListTag();
+        for (String kind : List.of("none", "false", "true")) {
+            net.minecraft.nbt.CompoundTag entry = new net.minecraft.nbt.CompoundTag();
+            entry.putString("name", "QA " + kind);
+            entry.putString("ip", "qa-" + kind + ".invalid");
+            if (!kind.equals("none")) entry.putBoolean("acceptTextures", kind.equals("true"));
+            servers.add(entry);
+        }
+        net.minecraft.nbt.CompoundTag root = new net.minecraft.nbt.CompoundTag();
+        root.put("servers", servers);
+        net.minecraft.nbt.NbtIo.write(root, file);
+        net.minecraft.client.multiplayer.ServerList list = new net.minecraft.client.multiplayer.ServerList(mc);
+        list.load();
+        for (int i = 0; i < list.size(); i++) LOGGER.info("Lads qa packs113: {} = {}", list.get(i).ip, list.get(i).getResourcePackStatus());
+        LOGGER.info("Lads qa packs113: Network button entry = {}", new ServerData(com.thelads.core.client.LadsNetwork.NAME, com.thelads.core.client.LadsNetwork.ADDRESS, ServerData.Type.OTHER).getResourcePackStatus());
+        if (before != null) Files.write(file, before); else Files.delete(file);
+    }
+
     private static void run(Minecraft mc, String[] s) throws Exception {
         String verb = s[0];
         switch (verb) {
             case "wait" -> waitTicks = duration(arg(s, 1));
             case "shot" -> { pendingShot = arg(s, 1); waitTicks = 3; }
             case "ladsapi" -> LadsApiQa.recordProbe(s.length > 1 ? rest(s, 1) : ("step-" + index));
+            case "import113" -> com.thelads.core.client.gui.ClientImportQa.step(((LadsSettingsScreen26) mc.gui.screen()).ui(), s);
+            case "packs113" -> packs113(mc);
             case "settings" -> {
                 var current = mc.gui.screen();
                 var screen = new LadsSettingsScreen26(current);

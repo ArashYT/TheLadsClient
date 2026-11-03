@@ -32,7 +32,7 @@ public final class Hypixel189 {
 
     public static void register() {
         ModuleSupport.registerBuiltIn(HypixelMods.HYPIXEL_MODS, "Session Stats", "Bed Wars Height Limit");
-        ModuleSupport.registerBuiltIn(QuickplayModule.NAME);
+        ModuleSupport.registerBuiltIn(QuickplayModule.NAME, com.thelads.core.modules.NickDetectorModule.NAME);
         net.minecraftforge.fml.client.registry.ClientRegistry.registerKeyBinding(QUICKPLAY);
         net.minecraftforge.fml.client.registry.ClientRegistry.registerKeyBinding(PLAY_AGAIN);
         MinecraftForge.EVENT_BUS.register(new Hypixel189());

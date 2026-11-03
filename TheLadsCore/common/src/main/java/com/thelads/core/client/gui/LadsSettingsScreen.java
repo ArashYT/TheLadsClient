@@ -206,6 +206,8 @@ public final class LadsSettingsScreen {
     }
     /** The reset confirmation (QA reads its bounds and clicks them). */
     public ConfirmDialog confirmDialog() { return confirm; }
+    /** The import dialog (QA reads its click targets and clicks them). */
+    ClientImportDialog clientImportDialog() { return clientImport; }
     /** The sound library (QA reads its bounds and clicks them). */
     public SoundLibraryDialog soundLibrary() { return library; }
     public List<String> visibleModuleNames() { return getFilteredModules().stream().map(Module::getName).toList(); }
@@ -346,10 +348,12 @@ public final class LadsSettingsScreen {
         button(g, "favorites", "Favorites", new Rect(x + w - filterW, top, filterW, 24), () -> { favoritesOnly = !favoritesOnly; invalidate(); }, true, mx, my, favoritesOnly);
         top += dense ? 27 : 33;
         List<Module> modules = getFilteredModules();
-        g.drawText(modules.size() + " MODULES", x, top, MUTED);
-        // Where every layout has room; the side bar's buttons are gone in the compact one.
+        // Reachable in every layout: the side bar's buttons are gone in the compact one, and at the narrowest the short label takes the count's place.
         int importX = x + g.textWidth(modules.size() + " MODULES") + 8;
-        if (importX + 110 < x + w - (compact ? 223 : 164)) button(g, "client-import", "Import from client", new Rect(importX, top - 4, 110, 18), clientImport::open, true, mx, my, false);
+        if (importX + 110 < x + w - (compact ? 223 : 164)) {
+            g.drawText(modules.size() + " MODULES", x, top, MUTED);
+            button(g, "client-import", "Import from client", new Rect(importX, top - 4, 110, 18), clientImport::open, true, mx, my, false);
+        } else button(g, "client-import", "Import", new Rect(x, top - 4, 48, 18), clientImport::open, true, mx, my, false);
         if (compact) {
             button(g, "installed-mods", "Installed mods", new Rect(x + w - 219, top - 4, 84, 18), this::openMods, true, mx, my, false);
             button(g, "hud", "HUD", new Rect(x + w - 131, top - 4, 39, 18), () -> leave(onOpenHudEditor), true, mx, my, false);

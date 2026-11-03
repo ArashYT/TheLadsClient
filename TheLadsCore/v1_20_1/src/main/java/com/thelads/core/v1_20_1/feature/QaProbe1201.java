@@ -117,6 +117,7 @@ public final class QaProbe1201 {
         String script = System.getProperty("thelads.qaScript");
         if (!autoWorld && (script == null || script.isBlank())) return;
         registered = true;
+        Release113Qa1201.register();
         ClientLifecycleEvents.CLIENT_STARTED.register(QaProbe1201::begin);
         ClientTickEvents.START_CLIENT_TICK.register(QaProbe1201::tick);
         ClientTickEvents.END_CLIENT_TICK.register(mc -> { if (holdTab) mc.options.keyPlayerList.setDown(true); });

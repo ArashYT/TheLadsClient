@@ -24,12 +24,12 @@ class ClientImportDialogTest {
     private ClientImportDialog dialog(String apply) {
         return new ClientImportDialog(args -> {
             calls.add(String.join(" ", args));
-            return JsonParser.parseString(args[0].equals("scan") ? SCAN : apply).getAsJsonObject();
+            return JsonParser.parseString(args[0].equals("scan") ? SCAN.replace("\"canUndo\":false", "\"canUndo\":" + calls.stream().anyMatch(c -> c.startsWith("apply"))) : apply).getAsJsonObject();
         }, () -> reloads++);
     }
 
     private static void await(ClientImportDialog dialog, String settledFrom) throws Exception {
-        for (int i = 0; i < 500 && dialog.status().equals(settledFrom); i++) {
+        for (int i = 0; i < 500 && (dialog.status().equals(settledFrom) || dialog.busy()); i++) {
             Thread.sleep(5);
             dialog.pump();
         }
@@ -58,7 +58,7 @@ class ClientImportDialogTest {
         dialog.undo(); // the warning
         dialog.undo();
         await(dialog, "Undoing the last import...");
-        assertEquals("undo --in-game", calls.get(2));
+        assertEquals("undo --in-game", calls.get(3));
         assertEquals(2, reloads);
     }
 
@@ -100,6 +100,29 @@ class ClientImportDialogTest {
         assertTrue(dialog.key(256));
         assertFalse(dialog.isOpen());
         dialog.render(g, 0, 0); // closed: draws nothing, does not throw
+    }
+
+    @Test
+    void anImportAndAnUndoScanAgainSoThePreviewIsNotStale() throws Exception {
+        ClientImportDialog dialog = dialog("""
+            {"applied":{"Mods":3},"errors":[],"configChanged":false,"restartNeeded":false,"launcherPending":false,"backup":"b"}""");
+        dialog.open();
+        await(dialog, "Looking for other clients...");
+        dialog.select(JsonParser.parseString(SCAN).getAsJsonObject().getAsJsonArray("clients").get(0).getAsJsonObject());
+        dialog.apply();
+        await(dialog, "Importing...");
+        assertEquals("scan", calls.get(2), "scanned again after the import: " + calls);
+    }
+
+    @Test
+    void reopeningAsksForTheUndoWarningAgain() throws Exception {
+        ClientImportDialog dialog = dialog("{\"errors\":[]}");
+        dialog.undo(); // the warning, then the dialog is closed and opened again
+        dialog.open();
+        await(dialog, "Looking for other clients...");
+        dialog.undo();
+        assertTrue(dialog.status().startsWith("Undo puts"), dialog.status());
+        assertEquals(List.of("scan"), calls, "no undo ran");
     }
 
     @Test
