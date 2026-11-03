@@ -18,6 +18,7 @@ public class TheLadsCoreClient12111 implements ClientModInitializer {
         com.thelads.core.security.AntiInjectDetector.init();
         ConfigManager.load();
         com.thelads.core.config.ModuleSupport.registerBuiltIn("Threads");
+        ModuleSupport.registerBuiltIn(com.thelads.core.client.ServerListDrag.NAME);
         // These HUD controls are consumed by HudManager through the required native HUD mixin.
         // Other modules remain unavailable until their native behavior and options are connected.
         ModuleSupport.registerBuiltIn("FPS", "Coordinates", "PingHUD", "Memory", "Speed",
