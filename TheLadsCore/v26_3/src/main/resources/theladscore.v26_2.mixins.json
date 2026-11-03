@@ -21,6 +21,7 @@
     "XaeroConfigMemoMixin",
     "GuiRenderStateCaptureMixin",
     "TitleScreenMixin",
+    "TitleTooltipBoundsMixin",
     "TitleWidgetMixin",
     "PauseScreenMixin",
     "ClientTickMixin",

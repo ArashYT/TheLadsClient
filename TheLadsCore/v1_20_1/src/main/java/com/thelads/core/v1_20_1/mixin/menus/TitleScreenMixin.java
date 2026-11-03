@@ -57,6 +57,8 @@ public abstract class TitleScreenMixin extends Screen {
     @Shadow @Final private PanoramaRenderer panorama;
     @Unique private List<AbstractWidget> ladsTitleWidgets = new ArrayList<>();
     @Unique private TitleNoir.Layout ladsNoirLayout;
+    @Unique private List<net.minecraft.util.FormattedCharSequence> ladsTooltip;
+    @Unique private net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipPositioner ladsTooltipPositioner;
     @Unique private boolean ladsLegacy;
     @Unique private CompactButton1201 ladsLayoutToggle;
     @Unique private TitleScreenTheme.Layout ladsTitleLayout;
@@ -341,10 +343,26 @@ public abstract class TitleScreenMixin extends Screen {
                 TitleNoir.endFrame();
                 TitleWidgetRegistry1201.endFrame();
             }
+            if (ladsTooltip != null) { // inside the canvas pose, at the canvas pointer, kept on the canvas (TitleScreenTheme.flushTooltips)
+                var positioner = ladsTooltipPositioner;
+                graphics.renderTooltip(font, ladsTooltip, (screenWidth, screenHeight, x, y, w, h) -> positioner.positionTooltip(ladsLayoutWidth, ladsLayoutHeight, x, y, w, h), scaledMouseX, scaledMouseY);
+                ladsTooltip = null;
+            }
         } finally {
             graphics.pose().popPose();
         }
         ci.cancel();
+    }
+
+    /** The title's tooltips wait for ladsRenderTitle: Screen would draw them after its pose. */
+    @Override
+    public void setTooltipForNextRenderPass(List<net.minecraft.util.FormattedCharSequence> lines, net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipPositioner positioner, boolean replace) {
+        if (!ladsCustomTitle) {
+            super.setTooltipForNextRenderPass(lines, positioner, replace);
+        } else if (ladsTooltip == null || replace) {
+            ladsTooltip = lines;
+            ladsTooltipPositioner = positioner;
+        }
     }
 
     @Inject(method = "mouseClicked(DDI)Z", at = @At("HEAD"), cancellable = true, require = 1)

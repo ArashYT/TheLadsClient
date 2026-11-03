@@ -142,6 +142,23 @@ public final class TitleScreenTheme {
         return withSwitch ? new Rect(switchX, h - 25, switchWidth, 16) : null;
     }
 
+    private static int tooltipWidth, tooltipHeight;
+
+    /**
+     * A version's title draws in a canvas pose, but its tooltips wait for the game's flush outside that pose, where canvas coordinates land
+     * wrongly unless GUI scale and canvas agree. So it flushes them through here, inside the pose with the canvas pointer; meanwhile the graphics
+     * report the canvas as the screen (each version's GUI graphics mixin reads these), so tooltips stay on it.
+     */
+    public static void flushTooltips(int canvasWidth, int canvasHeight, Runnable flush) {
+        tooltipWidth = canvasWidth;
+        tooltipHeight = canvasHeight;
+        try { flush.run(); } finally { tooltipWidth = tooltipHeight = 0; }
+    }
+
+    /** The canvas while a title flushes its tooltips, else 0. */
+    public static int tooltipWidth() { return tooltipWidth; }
+    public static int tooltipHeight() { return tooltipHeight; }
+
     /** The signed-in account at the bottom left, as on the title screen (the pause menu shows it too); returns its right edge. */
     /** The pause menu's way to the account switcher: left of Fullscreen, as beside the account name it would sit on Save and Quit in a small window. */
     public static Rect pauseSwitch(LadsGraphics g, int fullscreenX) {

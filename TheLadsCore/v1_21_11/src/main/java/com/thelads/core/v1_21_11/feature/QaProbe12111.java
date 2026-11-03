@@ -94,6 +94,13 @@ public final class QaProbe12111 {
             case "world" -> {} // tick() held the script until the QA world was up
             case "notice" -> com.thelads.core.client.bridge.LadsGameBridge.get().displayChatMessage(arg);
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout();
+            case "gui" -> { mc.options.guiScale().set(Integer.parseInt(arg)); mc.resizeDisplay(); } // the GUI scale, 0 = auto
+            case "pointer" -> { // where a real mouse would be, in window pixels: hover states and tooltips render for a shot
+                String[] xy = arg.split(" ");
+                var mouse = (com.thelads.core.v1_21_11.feature.qa.mixin.MouseHandlerQaInvoker) mc.mouseHandler;
+                mouse.ladsQaXpos(Double.parseDouble(xy[0]));
+                mouse.ladsQaYpos(Double.parseDouble(xy[1]));
+            }
             case "account" -> { // the switcher open and this offline account added and clicked
                 if (!(mc.screen instanceof AccountSwitcherScreen12111)) mc.setScreen(new AccountSwitcherScreen12111(mc.screen));
                 ((AccountSwitcherScreen12111) mc.screen).ui().addOfflineAccount(arg);

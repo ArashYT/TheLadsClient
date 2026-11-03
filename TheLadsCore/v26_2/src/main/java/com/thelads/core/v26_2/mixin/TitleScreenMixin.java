@@ -314,6 +314,7 @@ public abstract class TitleScreenMixin extends Screen {
                 TitleNoir.endFrame();
                 TitleWidgetRegistry.endFrame();
             }
+            TitleScreenTheme.flushTooltips(ladsLayoutWidth, ladsLayoutHeight, () -> graphics.extractDeferredElements(scaledMouseX, scaledMouseY, partialTick));
         } finally {
             graphics.pose().popMatrix();
         }

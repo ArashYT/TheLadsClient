@@ -94,6 +94,16 @@ public final class QaProbe26 {
             case "world" -> {} // tick() held the script until the QA world was up
             case "notice" -> com.thelads.core.client.bridge.LadsGameBridge.get().displayChatMessage(arg);
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout();
+            case "gui" -> { mc.options.guiScale().set(Integer.parseInt(arg)); mc.resizeGui(); } // the GUI scale, 0 = auto
+            case "pointer" -> { // where a real mouse would be, in window pixels: hover states and tooltips render for a shot
+                String[] xy = arg.split(" ");
+                var x = net.minecraft.client.MouseHandler.class.getDeclaredField("xpos");
+                var y = net.minecraft.client.MouseHandler.class.getDeclaredField("ypos");
+                x.setAccessible(true);
+                y.setAccessible(true);
+                x.setDouble(mc.mouseHandler, Double.parseDouble(xy[0]));
+                y.setDouble(mc.mouseHandler, Double.parseDouble(xy[1]));
+            }
             case "account" -> { // the switcher open and this offline account added and clicked
                 if (!(mc.gui.screen() instanceof AccountSwitcherScreen26)) mc.setScreenAndShow(new AccountSwitcherScreen26(mc.gui.screen()));
                 ((AccountSwitcherScreen26) mc.gui.screen()).ui().addOfflineAccount(arg);

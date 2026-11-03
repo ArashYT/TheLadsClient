@@ -11,6 +11,7 @@
     "GuiHudCapMixin",
     "GuiRenderStateCaptureMixin",
     "TitleScreenMixin",
+    "TitleTooltipBoundsMixin",
     "TitleWidgetMixin",
     "PauseScreenMixin",
     "ClientTickMixin",

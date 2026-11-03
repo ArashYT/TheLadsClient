@@ -11,6 +11,7 @@
     "GameRendererHudCapMixin",
     "GuiRenderStateCaptureMixin",
     "TitleScreenMixin",
+    "TitleTooltipBoundsMixin",
     "TitleWidgetMixin",
     "JoinMultiplayerScreenMixin",
     "PauseScreenMixin",
