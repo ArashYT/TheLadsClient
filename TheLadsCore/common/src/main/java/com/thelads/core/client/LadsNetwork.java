@@ -27,7 +27,7 @@ public final class LadsNetwork {
     /** {@code host} (no port) is arashyt.ca or one of its subdomains: every server of the network goes through it. */
     public static boolean isHost(String host) {
         if (host == null) return false;
-        String h = host.trim().toLowerCase(Locale.ROOT);
+        String h = host.trim().toLowerCase(Locale.ROOT).replaceAll("\\.+$", ""); // "mc.arashyt.ca." is the same host
         return h.equals("arashyt.ca") || h.endsWith(".arashyt.ca");
     }
 

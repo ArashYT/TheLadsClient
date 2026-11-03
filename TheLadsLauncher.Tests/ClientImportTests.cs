@@ -473,6 +473,36 @@ public sealed class ClientImportTests : IDisposable
     }
 
     [Fact]
+    public void FromFolderFindsTheGameInsideALaunchersInstance()
+    {
+        var instance = Path.Combine(_root, "MultiMC", "instances", "PvP");
+        Write(Path.Combine(instance, ".minecraft", "options.txt"), Modern);
+        Assert.Equal(Path.Combine(instance, ".minecraft"), ClientImport.FromFolder(instance).GameFolder);
+        Assert.NotEmpty(ClientImport.Plan(ClientImport.FromFolder(instance), _targets).Categories[ImportCategory.Options].Changes);
+        Write(Path.Combine(instance, "options.txt"), Modern);
+        Assert.Equal(instance, ClientImport.FromFolder(instance).GameFolder);
+    }
+
+    [Fact]
+    public void DetectFindsTheLastPlayedInstanceOfModrinthAndCurseForge()
+    {
+        var profiles = Path.Combine(_env.AppData, "ModrinthApp", "profiles");
+        Write(Path.Combine(profiles, "Old", "options.txt"), Modern);
+        File.SetLastWriteTimeUtc(Path.Combine(profiles, "Old", "options.txt"), DateTime.UtcNow.AddDays(-1));
+        Write(Path.Combine(profiles, "New", "options.txt"), Modern);
+        Write(Path.Combine(profiles, "NeverPlayed", "mods", "a.jar"), "");
+        var modrinth = Client("modrinth");
+        Assert.True(modrinth.Basic);
+        Assert.Equal(Path.Combine(profiles, "New"), modrinth.GameFolder);
+        Assert.NotEmpty(ClientImport.Plan(modrinth, _targets).Categories[ImportCategory.Options].Changes);
+
+        Assert.DoesNotContain(ClientImport.Detect(_env), s => s.Id == "curseforge");
+        var curse = Path.Combine(_env.Home, "curseforge", "minecraft", "Instances", "Pack");
+        Write(Path.Combine(curse, "options.txt"), Modern);
+        Assert.Equal(curse, Client("curseforge").GameFolder);
+    }
+
+    [Fact]
     public void SameTreatsTheGamesFloatsAsEqual()
     {
         Assert.True(ClientImport.Same(JsonNode.Parse("100.0"), JsonValue.Create(100)));

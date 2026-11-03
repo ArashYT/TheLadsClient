@@ -94,8 +94,18 @@ public static class ClientImport
             found.Add(new("badlion", "Badlion Client", false, "Keybinds, video and audio, servers, packs, mods and HUD. Badlion's launcher settings have no readable file.", mc, mc));
         if (Directory.Exists(Path.Combine(mc, "feather", "configuration")))
             found.Add(new("feather", "Feather Client", false, "Keybinds, video and audio, servers, packs, mods and HUD. Feather's launcher settings were not verified.", mc, mc));
-        if (Directory.Exists(prism) && PrismInstance(prism) is { } instance)
+        if (Directory.Exists(prism) && LastInstance(Path.Combine(prism, "instances")) is { } instance)
             found.Add(new("prism", "Prism Launcher", true, "Basic import from the last played instance, plus RAM and close-on-launch.", prism, instance));
+        // The folders ExternalInstances knows them by.
+        var instanceFolders = new[]
+        {
+            ("modrinth", "Modrinth App", Path.Combine(env.AppData, "ModrinthApp", "profiles")),
+            ("modrinth", "Modrinth App", Path.Combine(env.AppData, "com.modrinth.theseus", "profiles")),
+            ("curseforge", "CurseForge", Path.Combine(ExternalInstances.CurseForgeMinecraftRoot(env.AppData) ?? Path.Combine(env.Home, "curseforge", "minecraft"), "Instances")),
+        };
+        foreach (var (id, name, folder) in instanceFolders)
+            if (found.All(s => s.Id != id) && LastInstance(folder) is { } game)
+                found.Add(new(id, name, true, "Basic import from the last played instance.", folder, game));
         if (Directory.Exists(Path.Combine(mc, "labymod-neo")))
             found.Add(new("labymod", "LabyMod", true, "Basic import only: LabyMod's module settings could not be verified.", mc, mc));
         if (File.Exists(Path.Combine(mc, "options.txt")))
@@ -106,7 +116,10 @@ public static class ClientImport
     /// <summary>Any other client (Salwyrr, PvP Lounge, MultiMC...): the vanilla files of a game folder the player picks.</summary>
     public static ImportSource FromFolder(string folder) =>
         new("folder", Path.GetFileName(Path.TrimEndingDirectorySeparator(folder)), true,
-            "Basic import only: options.txt, servers.dat and the resourcepacks folder. This client's own settings format is not read.", folder, folder);
+            "Basic import only: options.txt, servers.dat and the resourcepacks folder. This client's own settings format is not read.", folder,
+            // A launcher's instance folder keeps the game one level down.
+            new[] { folder, Path.Combine(folder, ".minecraft"), Path.Combine(folder, "minecraft") }
+                .FirstOrDefault(d => File.Exists(Path.Combine(d, "options.txt")) || File.Exists(Path.Combine(d, "servers.dat"))) ?? folder);
 
     private static string LunarGameFolder(string lunar, string fallback)
     {
@@ -116,12 +129,13 @@ public static class ClientImport
         return dir != null && Path.IsPathFullyQualified(dir) && !dir.StartsWith(@"\\", StringComparison.Ordinal) && Directory.Exists(dir) ? dir : fallback;
     }
 
-    private static string? PrismInstance(string prism)
+    /// <summary>The game folder played last of a launcher's instances: the instance itself (Modrinth, CurseForge) or its minecraft subfolder (Prism).</summary>
+    private static string? LastInstance(string instances)
     {
         try
         {
-            return Directory.EnumerateDirectories(Path.Combine(prism, "instances")).Take(256)
-                .SelectMany(i => new[] { Path.Combine(i, "minecraft"), Path.Combine(i, ".minecraft") })
+            return Directory.EnumerateDirectories(instances).Take(256)
+                .SelectMany(i => new[] { i, Path.Combine(i, "minecraft"), Path.Combine(i, ".minecraft") })
                 .Where(d => File.Exists(Path.Combine(d, "options.txt")))
                 .OrderByDescending(d => File.GetLastWriteTimeUtc(Path.Combine(d, "options.txt"))).FirstOrDefault();
         }

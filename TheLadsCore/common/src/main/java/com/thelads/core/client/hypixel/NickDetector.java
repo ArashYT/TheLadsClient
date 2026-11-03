@@ -68,7 +68,9 @@ public final class NickDetector {
         // isEnabled: off while server rules block it. Hypixel only: elsewhere these signals mean nothing (offline-mode UUIDs, skin plugins).
         if (ModuleManager.getInstance().getModule(NickDetectorModule.NAME) instanceof NickDetectorModule module && module.isEnabled() && HypixelSafetyManager.isHypixel()) {
             for (Profile player : game.getTabProfiles()) {
-                if (!nicked(player.id(), player.name(), player.textures()) || player.name().equalsIgnoreCase(game.getPlayerName())) continue;
+                // The local player too when nicked themselves: their entry has the nick's name but their own id.
+                if (!nicked(player.id(), player.name(), player.textures()) || player.name().equalsIgnoreCase(game.getPlayerName())
+                    || game.session() != null && player.id().equals(game.session().uuid())) continue;
                 String key = player.name().toLowerCase(Locale.ROOT);
                 found.put(key, player.name() + MARKER);
                 if (module.chatNotice.get() && noticed.add(key)) game.displayChatMessage("\u00a7c[Lads] \u00a7f" + player.name() + " \u00a77is probably nicked.");
