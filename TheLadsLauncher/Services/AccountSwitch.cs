@@ -73,22 +73,31 @@ public static class AccountSwitch
         string name = request.Username;
         string uuid = request.Uuid;
         string type = request.Type;
+        bool isMicrosoft = string.Equals(type, "microsoft", StringComparison.OrdinalIgnoreCase);
+        bool isOffline = string.Equals(type, "offline", StringComparison.OrdinalIgnoreCase);
+        string cleanUuid = uuid.Replace("-", "");
 
         var accountList = accounts.ToList();
         var existing = accountList.FirstOrDefault(a =>
             string.Equals(a.username, name, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(a.uuid.Replace("-", ""), uuid.Replace("-", ""), StringComparison.OrdinalIgnoreCase));
+            string.Equals(a.uuid.Replace("-", ""), cleanUuid, StringComparison.OrdinalIgnoreCase));
+        if (existing == null && isMicrosoft && !string.IsNullOrEmpty(cleanUuid))
+        {
+            existing = accountList.FirstOrDefault(a =>
+                string.Equals(a.type, "microsoft", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(a.uuid.Replace("-", ""), cleanUuid, StringComparison.OrdinalIgnoreCase));
+        }
 
-        if (existing == null && type == "offline" && !offlineAllowed)
+        if (existing == null && isOffline && !offlineAllowed)
         {
             log($"[Accounts] Offline account {name} was not added: offline accounts are only available in debug builds.");
             return null;
         }
-        if (existing == null && type == "offline")
+        if (existing == null && isOffline)
         {
             try
             {
-                if (string.Equals(AccountIdentity.OfflineUuid(name).Replace("-", ""), uuid.Replace("-", ""), StringComparison.OrdinalIgnoreCase) &&
+                if (string.Equals(AccountIdentity.OfflineUuid(name).Replace("-", ""), cleanUuid, StringComparison.OrdinalIgnoreCase) &&
                     !accountList.Any(a => string.Equals(a.username, name, StringComparison.OrdinalIgnoreCase)))
                 {
                     string normalized = AccountIdentity.NormalizeOfflineName(name);

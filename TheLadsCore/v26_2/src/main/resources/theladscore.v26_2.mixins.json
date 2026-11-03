@@ -7,6 +7,10 @@
     "defaultRequire": 0
   },
   "client": [
+    "SessionTokenMixin",
+    "MinecraftSessionAccessor26",
+    "MinecraftSessionAccessor26$Splash",
+    "RealmsClientAccessor26",
     "GuiMixin",
     "GuiHudCapMixin",
     "GuiRenderStateCaptureMixin",

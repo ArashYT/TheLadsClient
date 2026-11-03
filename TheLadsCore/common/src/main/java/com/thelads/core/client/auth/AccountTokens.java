@@ -4,7 +4,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.thelads.core.client.util.LaunchToken;
 
-import java.io.FileInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
@@ -25,18 +26,21 @@ public class AccountTokens {
         }
     }
 
-    private static final Pattern HAND_OFF = Pattern.compile("([A-Za-z0-9-]{1,128}) ([A-Za-z0-9]{16,128})");
+    private static final Pattern HAND_OFF = Pattern.compile("([A-Za-z0-9_-]{1,128}) ([A-Za-z0-9_-]{16,128})");
+    private static final int MAX_REPLY_BYTES = 65536;
+    private static final int PIPE_OPEN_ATTEMPTS = 5;
+    private static final long PIPE_RETRY_DELAY_MS = 20L;
 
     public String fetch(LadsAccount target, boolean sessionIsOffline) throws Refused {
         if (target.isOffline() && sessionIsOffline) return "0";
-        Matcher handOff = HAND_OFF.matcher(handOff());
+        Matcher handOff = HAND_OFF.matcher(safeHandOff());
         if (!handOff.matches()) throw new Refused("Start the game from The Lads Launcher to switch to " + target.getUsername() + ".");
         JsonObject request = new JsonObject();
         request.addProperty("key", handOff.group(2));
         request.addProperty("op", "token");
         request.addProperty("username", target.getUsername());
-        request.addProperty("uuid", target.getUuid());
-        request.addProperty("type", target.getType());
+        request.addProperty("uuid", target.isOffline() ? target.sessionUuid().toString() : target.getUuid());
+        request.addProperty("type", target.isOffline() ? "offline" : "microsoft");
         try {
             return parseReply(ask(handOff.group(1), request.toString()));
         } catch (IOException e) {
@@ -46,7 +50,7 @@ public class AccountTokens {
 
     /** Tells the launcher to pick up the request the switcher just wrote, so its selected account follows now and not at the game's exit. */
     public void switched() {
-        Matcher handOff = HAND_OFF.matcher(handOff());
+        Matcher handOff = HAND_OFF.matcher(safeHandOff());
         if (!handOff.matches()) return;
         JsonObject request = new JsonObject();
         request.addProperty("key", handOff.group(2));
@@ -59,16 +63,29 @@ public class AccountTokens {
         thread.start();
     }
 
+    private String safeHandOff() {
+        String raw = handOff();
+        return raw == null ? "" : raw.trim();
+    }
+
     /** The launcher's answer: its token, or {@link Refused} with its reason. */
     private static String parseReply(String reply) throws Refused {
-        JsonObject answer;
         try {
-            answer = JsonParser.parseString(reply).getAsJsonObject();
+            JsonObject answer = JsonParser.parseString(reply).getAsJsonObject();
+            if (answer.has("token") && !answer.get("token").isJsonNull()) {
+                String token = answer.get("token").getAsString();
+                if (!token.isEmpty()) return token;
+            }
+            if (answer.has("error") && !answer.get("error").isJsonNull()) {
+                String error = answer.get("error").getAsString();
+                if (!error.isEmpty()) throw new Refused(error);
+            }
+        } catch (Refused e) {
+            throw e;
         } catch (RuntimeException e) {
             throw new Refused("The launcher did not answer. Try again.");
         }
-        if (answer.has("token") && !answer.get("token").getAsString().isEmpty()) return answer.get("token").getAsString();
-        throw new Refused(answer.has("error") ? answer.get("error").getAsString() : "The launcher did not answer. Try again.");
+        throw new Refused("The launcher did not answer. Try again.");
     }
 
     protected String handOff() {
@@ -76,9 +93,56 @@ public class AccountTokens {
     }
 
     protected String ask(String pipe, String request) throws IOException {
-        try (RandomAccessFile file = new RandomAccessFile("\\\\.\\pipe\\" + pipe, "rw")) {
-            file.write((request + "\n").getBytes(StandardCharsets.UTF_8));
-            return LaunchToken.readLine(new FileInputStream(file.getFD()));
+        byte[] payload = (request + "\n").getBytes(StandardCharsets.UTF_8);
+        try (RandomAccessFile file = openPipe(pipe)) {
+            file.write(payload);
+            return readReplyLine(file);
         }
+    }
+
+    private static RandomAccessFile openPipe(String pipe) throws IOException {
+        String path = "\\\\.\\pipe\\" + pipe;
+        FileNotFoundException last = null;
+        for (int attempt = 0; attempt < PIPE_OPEN_ATTEMPTS; attempt++) {
+            try {
+                return new RandomAccessFile(path, "rw");
+            } catch (FileNotFoundException e) {
+                last = e;
+                if (attempt + 1 < PIPE_OPEN_ATTEMPTS) {
+                    try {
+                        Thread.sleep(PIPE_RETRY_DELAY_MS);
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        throw e;
+                    }
+                }
+            }
+        }
+        throw last;
+    }
+
+    private static String readReplyLine(RandomAccessFile file) throws IOException {
+        ByteArrayOutputStream line = new ByteArrayOutputStream(256);
+        byte[] buffer = new byte[1024];
+        while (line.size() < MAX_REPLY_BYTES) {
+            int read;
+            try {
+                read = file.read(buffer);
+            } catch (IOException e) {
+                // On Windows named pipes, a server closing after writing may surface as broken-pipe once buffered bytes are drained.
+                break;
+            }
+            if (read <= 0) break;
+            for (int i = 0; i < read; i++) {
+                byte b = buffer[i];
+                if (b == '\n') {
+                    return new String(line.toByteArray(), StandardCharsets.UTF_8).trim();
+                }
+                if (b != '\r' && line.size() < MAX_REPLY_BYTES) {
+                    line.write(b);
+                }
+            }
+        }
+        return new String(line.toByteArray(), StandardCharsets.UTF_8).trim();
     }
 }
