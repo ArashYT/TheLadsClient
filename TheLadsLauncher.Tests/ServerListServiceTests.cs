@@ -280,4 +280,45 @@ public class ServerListServiceTests
         Assert.True(await ServerListService.PinLadsNetworkAsync(target));
         Assert.Equal("mc.arashyt.ca", Assert.Single(ServerListFile.Read(target.File).Entries).Ip);
     }
+
+    [Fact]
+    public async Task EnsureServerAndMergeDefaultPacksToEnabledWhilePreservingDisabled()
+    {
+        using var dir = new TestDirectory();
+        var path = Path.Combine(dir.Path, "servers.dat");
+
+        // EnsureServer sets acceptTextures = 1 on new entry
+        Assert.True(ServerListService.EnsureServer(path, "Zero SMP", "nikzerosmp.my.pebble.host"));
+        Assert.Equal(1, ((NbtNumber)ServerListFile.Read(path).Entries[0].Raw["acceptTextures"]!).RawValue);
+
+        // Existing entry missing acceptTextures gets upgraded to 1
+        var missingPackPref = ServerListFile.CreateEmpty();
+        missingPackPref.Add(new NbtCompound { ["name"] = new NbtString("Zero SMP"), ["ip"] = new NbtString("nikzerosmp.my.pebble.host") });
+        await File.WriteAllBytesAsync(path, missingPackPref.ToBytes());
+        Assert.True(ServerListService.EnsureServer(path, "Zero SMP", "nikzerosmp.my.pebble.host"));
+        Assert.Equal(1, ((NbtNumber)ServerListFile.Read(path).Entries[0].Raw["acceptTextures"]!).RawValue);
+
+        // Existing entry with explicit Disabled (0) keeps Disabled (0)
+        var disabledPackPref = ServerListFile.CreateEmpty();
+        disabledPackPref.Add(new NbtCompound
+        {
+            ["name"] = new NbtString("Zero SMP"),
+            ["ip"] = new NbtString("nikzerosmp.my.pebble.host"),
+            ["acceptTextures"] = new NbtNumber(NbtTagType.Byte, 0)
+        });
+        await File.WriteAllBytesAsync(path, disabledPackPref.ToBytes());
+        Assert.False(ServerListService.EnsureServer(path, "Zero SMP", "nikzerosmp.my.pebble.host"));
+        Assert.Equal(0, ((NbtNumber)ServerListFile.Read(path).Entries[0].Raw["acceptTextures"]!).RawValue);
+
+        // MergeAsync defaults imported servers to Enabled (1) unless PacksDisabled is true (0)
+        var mergeTarget = new ServerListTarget("Merge", Path.Combine(dir.Path, "merged.dat"), null);
+        Assert.True(await ServerListService.MergeAsync(mergeTarget, new[]
+        {
+            new ImportedServer("PromptServer", "prompt.example.net", null, PacksDisabled: false),
+            new ImportedServer("DisabledServer", "disabled.example.net", null, PacksDisabled: true)
+        }));
+        var merged = ServerListFile.Read(mergeTarget.File).Entries;
+        Assert.Equal(1, ((NbtNumber)merged.Single(e => e.Ip == "prompt.example.net").Raw["acceptTextures"]!).RawValue);
+        Assert.Equal(0, ((NbtNumber)merged.Single(e => e.Ip == "disabled.example.net").Raw["acceptTextures"]!).RawValue);
+    }
 }

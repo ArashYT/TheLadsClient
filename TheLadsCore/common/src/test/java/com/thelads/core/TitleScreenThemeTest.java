@@ -227,4 +227,39 @@ class TitleScreenThemeTest {
         TitleScreenTheme.renderBackground(g, TitleScreenTheme.layout(3840, 2160, 9), "LadsQA", "26.2", false, 1);
         assertTrue(g.drawCalls.size() < 1100, "Large windows must not create thousands of background fills");
     }
+
+    @Test void noirNetworkStatusPillIsClickableAndClearOfSwitchAndBuild() {
+        var g = new LadsGraphicsTest.MockGraphics();
+        var l = TitleNoir.layout(640, 360, 12, 2);
+        var switchBox = TitleNoir.renderStrip(g, l, "Arash", "26.3", true, "18 online");
+        var pill = TitleNoir.lastNetworkPill();
+        assertNotNull(pill);
+        assertTrue(pill.x() >= switchBox.x() + switchBox.width(), "Network pill stays right of Switch");
+        assertTrue(TitleNoir.clickNetworkPill(pill.x() + pill.width() / 2.0, pill.y() + pill.height() / 2.0));
+        assertFalse(TitleNoir.clickNetworkPill(switchBox.x() + 2, switchBox.y() + 2));
+
+        TitleNoir.renderStrip(g, l, "Arash", "26.3", true, null);
+        assertNull(TitleNoir.lastNetworkPill());
+        assertFalse(TitleNoir.clickNetworkPill(pill.x() + 2, pill.y() + 2));
+    }
+
+    @Test void settingsScreenKeepsImportClientAlongsideLadsNetworkButton() {
+        com.thelads.core.client.gui.LadsSettingsScreen.requestOpenNetworkHub();
+        var requested = new com.thelads.core.client.gui.LadsSettingsScreen();
+        assertTrue(requested.networkHub().isOpen(), "requestOpenNetworkHub opens the hub modal on construction");
+        requested.keyPressed(256, 0);
+        assertFalse(requested.networkHub().isOpen(), "Esc closes the hub modal first");
+
+        var screen = new com.thelads.core.client.gui.LadsSettingsScreen();
+        var g = new LadsGraphicsTest.MockGraphics();
+        screen.render(g, 0, 0);
+        var importBtn = screen.controlBounds("client-import");
+        var networkBtn = screen.controlBounds("lads-network");
+        assertNotNull(importBtn, "Import from client button must remain visible");
+        assertNotNull(networkBtn, "Lads Network button must render beside Import from client");
+        assertTrue(importBtn.x() + importBtn.width() <= networkBtn.x(), "Import and Lads Network buttons must not overlap");
+
+        screen.mouseClicked(networkBtn.x() + 4, networkBtn.y() + 4, 0);
+        assertTrue(screen.networkHub().isOpen());
+    }
 }

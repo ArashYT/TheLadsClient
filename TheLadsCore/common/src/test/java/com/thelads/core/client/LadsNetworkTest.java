@@ -143,4 +143,107 @@ class LadsNetworkTest {
             new Presence("server", other, "mc.hypixel.net", null), 0);
         assertFalse(state.canJoin(elsewhere).ok(), "another server stays not joinable");
     }
+
+    @Test
+    void subServerQuickWarpConnectsAwayAndNeverFiresOffNetwork() {
+        var sent = new java.util.ArrayList<String>();
+        var connected = new java.util.ArrayList<String>();
+        boolean[] inGame = {false};
+        var bridge = new DefaultGameBridge() {
+            @Override public String getServerAddress() { return address; }
+            @Override public boolean isIngame() { return inGame[0]; }
+            @Override public boolean hasPlayer() { return inGame[0]; }
+            @Override public void sendChatLine(String text) { sent.add(text); }
+            public void connectToServer(String name, String addr) { connected.add(name + "@" + addr); }
+        };
+        LadsGameBridge.set(bridge);
+        LadsNetwork.clearPendingCommand();
+
+        // Away from network: connects first and queues /server parkour
+        address = "Singleplayer";
+        LadsNetwork.joinSubServer(bridge, LadsNetwork.findSubServer("parkour"));
+        assertEquals(java.util.List.of("The Lads Network@mc.arashyt.ca"), connected);
+        assertEquals("/server parkour", LadsNetwork.pendingCommand());
+        assertTrue(sent.isEmpty());
+
+        // Anti-Ban guarantee: if player lands on Hypixel or Singleplayer, pending command is immediately wiped without sending!
+        address = "mc.hypixel.net";
+        inGame[0] = true;
+        LadsNetwork.tick(bridge);
+        assertNull(LadsNetwork.pendingCommand(), "Queued warp must immediately cancel on non-Lads servers");
+        assertTrue(sent.isEmpty(), "Never send /server on another server");
+
+        // Now queue again and complete login onto mc.arashyt.ca
+        inGame[0] = false;
+        address = "Unknown";
+        LadsNetwork.joinSubServer(bridge, LadsNetwork.findSubServer("pvparena"));
+        address = "mc.arashyt.ca";
+        inGame[0] = true;
+        for (int i = 0; i < 30; i++) LadsNetwork.tick(bridge);
+        assertEquals(java.util.List.of("/server pvparena"), sent);
+        assertNull(LadsNetwork.pendingCommand());
+
+        // Already connected on mc.arashyt.ca: immediate switch without reconnecting
+        LadsNetwork.joinSubServer(bridge, LadsNetwork.findSubServer("smp"));
+        assertEquals(java.util.List.of("/server pvparena", "/server smp"), sent);
+        assertEquals(2, connected.size(), "Already on network: switches via /server without reconnecting");
+    }
+
+    @Test
+    void hubDialogRendersModesAndDispatchesHubOrSubServer() {
+        var sent = new java.util.ArrayList<String>();
+        var connected = new java.util.ArrayList<String>();
+        var bridge = new DefaultGameBridge() {
+            @Override public String getServerAddress() { return address; }
+            @Override public boolean isIngame() { return "mc.arashyt.ca".equals(address); }
+            @Override public boolean hasPlayer() { return "mc.arashyt.ca".equals(address); }
+            @Override public void sendChatLine(String text) { sent.add(text); }
+            public void connectToServer(String name, String addr) { connected.add(addr); }
+        };
+        LadsGameBridge.set(bridge);
+        var dialog = new com.thelads.core.client.gui.LadsNetworkHubDialog();
+        var drawCalls = new java.util.ArrayList<String>();
+        var g = new com.thelads.core.client.bridge.LadsGraphics() {
+            @Override public void fill(int minX, int minY, int maxX, int maxY, int color) { drawCalls.add("fill"); }
+            @Override public void drawText(String text, int x, int y, int color, boolean shadow) { drawCalls.add("text:" + text); }
+            @Override public void drawCenteredText(String text, int centerX, int y, int color, boolean shadow) { drawCalls.add("center:" + text); }
+            @Override public int textWidth(String text) { return text != null ? text.length() * 6 : 0; }
+            @Override public int fontHeight() { return 9; }
+            @Override public void pushPose() {}
+            @Override public void popPose() {}
+            @Override public void translate(float x, float y) {}
+            @Override public void scale(float sx, float sy) {}
+            @Override public void enableScissor(int minX, int minY, int maxX, int maxY) {}
+            @Override public void disableScissor() {}
+            @Override public void blit(String texture, int x, int y, int u, int v, int width, int height) {}
+            @Override public void drawHead(String username, String uuid, int x, int y, int size) {}
+            @Override public int getScaledWidth() { return 640; }
+            @Override public int getScaledHeight() { return 360; }
+        };
+
+        // Offline / away: clicking main banner connects to mc.arashyt.ca
+        address = "Singleplayer";
+        dialog.open();
+        dialog.render(g, 0, 0);
+        var mainBtn = dialog.joinMainBounds();
+        dialog.click(mainBtn.x() + 5, mainBtn.y() + 5, 0);
+        assertFalse(dialog.isOpen());
+        assertEquals(java.util.List.of("mc.arashyt.ca"), connected);
+
+        // Connected on mc.arashyt.ca with hello game & hub: main banner sends /hub, sub-card sends /server pvpduels
+        address = "mc.arashyt.ca";
+        hello(",\"game\":\"Lobby\",\"hub\":\"/hub\"");
+        drawCalls.clear();
+        dialog.open();
+        dialog.render(g, 0, 0);
+        assertTrue(drawCalls.stream().anyMatch(c -> c.contains("Active Mode: Lobby")));
+        dialog.click(dialog.joinMainBounds().x() + 5, dialog.joinMainBounds().y() + 5, 0);
+        assertEquals(java.util.List.of("/hub"), sent);
+
+        dialog.open();
+        dialog.render(g, 0, 0);
+        var duels = dialog.subServerBounds("pvpduels");
+        dialog.click(duels.x() + 5, duels.y() + 5, 0);
+        assertEquals(java.util.List.of("/hub", "/server pvpduels"), sent);
+    }
 }

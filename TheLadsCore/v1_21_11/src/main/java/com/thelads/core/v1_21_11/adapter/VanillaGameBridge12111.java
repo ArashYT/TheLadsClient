@@ -11,6 +11,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class VanillaGameBridge12111 implements LadsGameBridge {
+    public VanillaGameBridge12111() {
+        com.thelads.core.client.LadsNetwork.installCommandLookup(com.thelads.core.v1_21_11.gui.PauseMultiplayer::serverHas);
+        com.thelads.core.client.LadsNetwork.installConnector(this::connectToServer);
+    }
+
+    public void connectToServer(String name, String address) {
+        Minecraft mc = Minecraft.getInstance();
+        Runnable run = () -> com.thelads.core.v1_21_11.gui.PauseMultiplayer.connectToServer(
+            new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new net.minecraft.client.gui.screens.TitleScreen()), name, address);
+        if (mc.isSameThread()) run.run();
+        else mc.execute(run);
+    }
+
+    @Override
+    public void tickClient() {
+        LadsGameBridge.super.tickClient();
+        com.thelads.core.client.LadsNetwork.tick(this);
+    }
     @Override public boolean hasMinimap() { return com.thelads.core.v1_21_11.feature.MinimapIntegration.available(); }
     @Override public int[] minimapSize() { return com.thelads.core.v1_21_11.feature.MinimapIntegration.size(); }
     @Override public void positionMinimap(int x, int y) { com.thelads.core.v1_21_11.feature.MinimapIntegration.position(x, y); }

@@ -1,6 +1,106 @@
 {
   "schema": 1,
-  "lads": "1.11.2",
+  "lads": "1.13.0",
+  "protocol": {
+    "channel": "lads:api",
+    "version": 1,
+    "clientSendsFirst": false,
+    "limits": {
+      "clientToServerBytes": 32000,
+      "serverToClientBytes": 524288,
+      "ratePerSecond": 8,
+      "rateBurst": 16,
+      "maxHelloRepliesPerReset": 2,
+      "maxHelloRepliesPerConnection": 10,
+      "maxPresenceEntries": 1000,
+      "maxAckListEntries": 64
+    },
+    "serverPackets": {
+      "hello": {
+        "t": "hello",
+        "required": [
+          "v",
+          "server"
+        ],
+        "optional": [
+          "caps",
+          "game",
+          "hub"
+        ]
+      },
+      "policy": {
+        "t": "policy",
+        "required": [
+          "rev"
+        ],
+        "optional": [
+          "unlisted",
+          "modules",
+          "options",
+          "notice"
+        ],
+        "moduleStates": [
+          "allow",
+          "block",
+          "on"
+        ],
+        "unlistedStates": [
+          "inherit",
+          "allow",
+          "block"
+        ]
+      },
+      "presence": {
+        "t": "presence",
+        "required": [
+          "full"
+        ],
+        "optional": [
+          "add",
+          "remove"
+        ]
+      },
+      "toast": {
+        "t": "toast",
+        "required": [
+          "title",
+          "message"
+        ]
+      },
+      "reset": {
+        "t": "reset",
+        "required": []
+      }
+    },
+    "clientPackets": {
+      "hello": {
+        "t": "hello",
+        "required": [
+          "v",
+          "lads",
+          "mc"
+        ]
+      },
+      "ack": {
+        "t": "ack",
+        "required": [
+          "rev"
+        ],
+        "optional": [
+          "ignored",
+          "refused"
+        ]
+      }
+    },
+    "commands": [
+      "reload",
+      "status",
+      "inspect",
+      "set",
+      "clear",
+      "announce"
+    ]
+  },
   "modules": [
     {
       "name": "Autohide",
@@ -3668,6 +3768,16 @@
           "max": 150,
           "step": 5,
           "control": "FULL"
+        },
+        {
+          "name": "Layout",
+          "type": "dropdown",
+          "default": "New",
+          "choices": [
+            "New",
+            "Legacy"
+          ],
+          "control": "FULL"
         }
       ]
     },
@@ -4305,6 +4415,12 @@
           "name": "Bosses",
           "type": "bool",
           "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Assists give banners",
+          "type": "bool",
+          "default": false,
           "control": "FULL"
         },
         {
@@ -5730,6 +5846,20 @@
           "name": "Favorites",
           "type": "text",
           "control": "NEVER"
+        }
+      ]
+    },
+    {
+      "name": "Nick Detector",
+      "category": "HYPIXEL",
+      "neverForced": true,
+      "automation": false,
+      "options": [
+        {
+          "name": "Chat notice",
+          "type": "bool",
+          "default": false,
+          "control": "FULL"
         }
       ]
     },

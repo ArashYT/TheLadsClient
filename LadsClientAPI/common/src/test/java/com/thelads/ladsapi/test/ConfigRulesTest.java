@@ -413,4 +413,37 @@ public class ConfigRulesTest {
         assertEquals("Off", rules.getModules().get("KillBanner").getOption("Randomize").getValue());
         assertEquals("Off", rules.getModules().get("ArmorHUD").getOption("Durability").getValue());
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testBundledSchemaIncludesProtocol1130HelloGameHubAndToast() throws IOException {
+        LadsSchema schema = LadsSchema.loadDefault();
+        assertNotNull(schema);
+        assertTrue(schema.getModules().size() >= 200, "Bundled schema should include exported client modules");
+        assertTrue(schema.getModules().stream().anyMatch(m -> "Fullbright".equals(m.getName())));
+
+        try (var in = LadsSchema.class.getResourceAsStream("/ladsapi-schema.json")) {
+            assertNotNull(in, "ladsapi-schema.json must be on classpath");
+            String raw = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            java.util.Map<String, Object> root = new org.yaml.snakeyaml.Yaml().load(raw);
+            assertEquals(1, root.get("schema"));
+            assertTrue(String.valueOf(root.get("lads")).startsWith("1.13"));
+
+            var protocol = (java.util.Map<String, Object>) root.get("protocol");
+            assertNotNull(protocol, "protocol metadata section must exist");
+            assertEquals("lads:api", protocol.get("channel"));
+            assertEquals(1, protocol.get("version"));
+            assertEquals(false, protocol.get("clientSendsFirst"));
+
+            var serverPackets = (java.util.Map<String, Object>) protocol.get("serverPackets");
+            var hello = (java.util.Map<String, Object>) serverPackets.get("hello");
+            assertEquals(List.of("v", "server"), hello.get("required"));
+            assertEquals(List.of("caps", "game", "hub"), hello.get("optional"));
+
+            var toast = (java.util.Map<String, Object>) serverPackets.get("toast");
+            assertEquals(List.of("title", "message"), toast.get("required"));
+
+            assertEquals(List.of("reload", "status", "inspect", "set", "clear", "announce"), protocol.get("commands"));
+        }
+    }
 }

@@ -46,13 +46,21 @@ public static class ServerListService
 
     /// <summary>
     /// Ensures a server with <paramref name="name"/> and <paramref name="address"/> is in the server list at <paramref name="file"/>.
-    /// Existing entries with matching address or name are updated; all other servers are preserved.
-    /// Creates the file if missing or empty. Idempotent.
+    /// Existing entries with matching address or name are updated; server resource packs default to Enabled (acceptTextures = 1) when
+    /// no choice was stored, preserving Disabled (0) when explicitly set; all other servers are preserved. Creates the file if missing or empty. Idempotent.
     /// </summary>
     public static bool EnsureServer(string file, string name, string address)
     {
         var list = ReadList(file);
-        if (!list.EnsureEntry(name, address) && File.Exists(file)) return false;
+        var changed = list.EnsureEntry(name, address);
+        var target = list.Entries.FirstOrDefault(e => !e.Hidden
+            && (Key(e.Ip) == Key(address) || string.Equals(e.Name.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase)));
+        if (target is not null && target.Raw["acceptTextures"] is null)
+        {
+            target.Raw["acceptTextures"] = new NbtNumber(NbtTagType.Byte, 1);
+            changed = true;
+        }
+        if (!changed && File.Exists(file)) return false;
         list.Write(file);
         return true;
     }
@@ -66,7 +74,7 @@ public static class ServerListService
             if (!known.Add(Key(server.Address))) continue;
             var entry = new NbtCompound { ["name"] = new NbtString(server.Name), ["ip"] = new NbtString(server.Address.Trim()) };
             if (server.Icon != null) entry["icon"] = new NbtString(server.Icon);
-            if (server.PacksDisabled) entry["acceptTextures"] = new NbtNumber(NbtTagType.Byte, 0); // the player's choice, not the Enabled default
+            entry["acceptTextures"] = new NbtNumber(NbtTagType.Byte, server.PacksDisabled ? 0 : 1); // Enabled default unless the player explicitly disabled packs
             list.Add(entry);
         }
         list.PinFirst(PinnedName, PinnedAddress);
