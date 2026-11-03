@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Text.Json.Nodes;
+using Microsoft.Data.Sqlite;
 using TheLadsLauncher.Models;
 using TheLadsLauncher.Services;
 using Xunit;
@@ -479,5 +480,304 @@ public sealed class ClientImportTests : IDisposable
         Assert.True(ClientImport.Same(JsonNode.Parse("""{"useGlobal":false,"color":-1}"""), new JsonObject { ["color"] = -1, ["useGlobal"] = false }));
         Assert.False(ClientImport.Same(JsonNode.Parse("[1,2]"), JsonNode.Parse("[1,3]")));
         Assert.False(ClientImport.Same(null, JsonValue.Create(true)));
+    }
+
+    private static void CreateModrinthDb(string dbPath, int globalRamMb, (string Path, int? OverrideRamMb, string? ExtraArgs)[] profiles)
+    {
+        SQLitePCL.Batteries_V2.Init();
+        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+        using var conn = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = dbPath, Mode = SqliteOpenMode.ReadWriteCreate, Pooling = false }.ToString());
+        conn.Open();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            CREATE TABLE settings (mc_memory_max INTEGER, extra_launch_args TEXT, custom_dir TEXT);
+            CREATE TABLE instances (path TEXT PRIMARY KEY, name TEXT, override_mc_memory_max INTEGER, override_extra_launch_args TEXT);
+            CREATE TABLE minecraft_users (uuid TEXT PRIMARY KEY, access_token TEXT);
+            INSERT INTO minecraft_users (uuid, access_token) VALUES ('u1', 'SECRET-MODRINTH-TOKEN');
+            """;
+        cmd.ExecuteNonQuery();
+        cmd.CommandText = "INSERT INTO settings (mc_memory_max, extra_launch_args, custom_dir) VALUES ($m, '[]', NULL)";
+        cmd.Parameters.AddWithValue("$m", globalRamMb);
+        cmd.ExecuteNonQuery();
+        foreach (var (p, ram, args) in profiles)
+        {
+            using var ins = conn.CreateCommand();
+            ins.CommandText = "INSERT INTO instances (path, name, override_mc_memory_max, override_extra_launch_args) VALUES ($p, $p, $r, $a)";
+            ins.Parameters.AddWithValue("$p", p);
+            ins.Parameters.AddWithValue("$r", ram.HasValue ? ram.Value : DBNull.Value);
+            ins.Parameters.AddWithValue("$a", args != null ? args : DBNull.Value);
+            ins.ExecuteNonQuery();
+        }
+        SqliteConnection.ClearAllPools();
+    }
+
+    [Fact]
+    public void ModrinthDetectsLatestProfileAcrossBothPathsAndReadsDatabaseMemory()
+    {
+        string theseusOld = Path.Combine(_env.AppData, "com.modrinth.theseus", "profiles", "OlderPack");
+        Write(Path.Combine(theseusOld, "options.txt"), "version:5023\nfov:0.1\n");
+        File.SetLastWriteTimeUtc(Path.Combine(theseusOld, "options.txt"), new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        string appRoot = Path.Combine(_env.AppData, "ModrinthApp");
+        string newerProf = Path.Combine(appRoot, "profiles", "SodiumPvP");
+        Write(Path.Combine(newerProf, "options.txt"), Modern);
+        File.SetLastWriteTimeUtc(Path.Combine(newerProf, "options.txt"), new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.WriteAllBytes(Path.Combine(newerProf, "servers.dat"), Servers(("ModrinthSrv", "modrinth.example.net")));
+        Write(Path.Combine(newerProf, "resourcepacks", "ModrinthPack.zip"), "pk");
+        string dbPath = Path.Combine(appRoot, "app.db");
+        CreateModrinthDb(dbPath, 4096, new (string Path, int? OverrideRamMb, string? ExtraArgs)[] { ("SodiumPvP", 7168, "[\"-XX:+UseZGC\"]") });
+        DateTime dbBefore = File.GetLastWriteTimeUtc(dbPath);
+
+        var modrinth = Client("modrinth");
+        Assert.Equal(newerProf, modrinth.GameFolder);
+        var plan = ClientImport.Plan(modrinth, _targets);
+        Assert.Equal("0.5", plan.Categories[ImportCategory.Options].Options["fov"]);
+        Assert.Single(plan.Categories[ImportCategory.Servers].Servers);
+        Assert.Single(plan.Categories[ImportCategory.Packs].Packs);
+        Assert.Equal(7168, plan.Categories[ImportCategory.Launcher].Launcher["MaxRamMb"].GetValue<int>());
+        Assert.Contains(plan.Categories[ImportCategory.Launcher].Skipped, s => s.StartsWith("JVM arguments", StringComparison.Ordinal));
+        Assert.Equal(dbBefore, File.GetLastWriteTimeUtc(dbPath));
+        Assert.False(File.Exists(dbPath + "-shm"));
+
+        // Older Theseus profile.json memory fallback works when app.db is absent.
+        Write(Path.Combine(theseusOld, "profile.json"), """{"metadata":{"name":"OlderPack"},"memory":{"maximum":5120}}""");
+        var fromProfileJson = ClientImport.Plan(ClientImport.DetectCustomFolder(theseusOld), _targets);
+        Assert.Equal(5120, fromProfileJson.Categories[ImportCategory.Launcher].Launcher["MaxRamMb"].GetValue<int>());
+    }
+
+    [Fact]
+    public void CurseForgeDetectsLatestInstanceAndReadsAllocatedMemory()
+    {
+        string instances = Path.Combine(_env.Home, "curseforge", "minecraft", "Instances");
+        string older = Path.Combine(instances, "OldPack");
+        Write(Path.Combine(older, "options.txt"), "version:5023\nfov:0.1\n");
+        Write(Path.Combine(older, "minecraftinstance.json"), """{"allocatedMemory":3072,"isMemoryOverride":true}""");
+        File.SetLastWriteTimeUtc(Path.Combine(older, "options.txt"), new DateTime(2025, 2, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        string newer = Path.Combine(instances, "BetterMC");
+        Write(Path.Combine(newer, "options.txt"), Modern);
+        File.SetLastWriteTimeUtc(Path.Combine(newer, "options.txt"), new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.WriteAllBytes(Path.Combine(newer, "servers.dat"), Servers(("CFSrv", "cf.example.net")));
+        Write(Path.Combine(newer, "resourcepacks", "CFPack.zip"), "pk");
+        Write(Path.Combine(newer, "minecraftinstance.json"), """{"allocatedMemory":8192,"isMemoryOverride":true,"javaArgsOverride":"-XX:+UseG1GC"}""");
+
+        var cf = Client("curseforge");
+        Assert.Equal(newer, cf.GameFolder);
+        var plan = ClientImport.Plan(cf, _targets);
+        Assert.Equal("0.5", plan.Categories[ImportCategory.Options].Options["fov"]);
+        Assert.Single(plan.Categories[ImportCategory.Servers].Servers);
+        Assert.Single(plan.Categories[ImportCategory.Packs].Packs);
+        Assert.Equal(8192, plan.Categories[ImportCategory.Launcher].Launcher["MaxRamMb"].GetValue<int>());
+        Assert.Contains(plan.Categories[ImportCategory.Launcher].Skipped, s => s.StartsWith("JVM arguments", StringComparison.Ordinal));
+
+        // When isMemoryOverride is false, manifest.minecraft.recommendedRam is used.
+        Write(Path.Combine(older, "minecraftinstance.json"), """{"allocatedMemory":4096,"isMemoryOverride":false,"manifest":{"minecraft":{"recommendedRam":6144}}}""");
+        var recPlan = ClientImport.Plan(ClientImport.DetectCustomFolder(older), _targets);
+        Assert.Equal(6144, recPlan.Categories[ImportCategory.Launcher].Launcher["MaxRamMb"].GetValue<int>());
+    }
+
+    [Fact]
+    public void LabyMod4MapsAddonConfigsOptionsColorsAndHudWidgets()
+    {
+        Write(Path.Combine(_env.Minecraft, "options.txt"), Modern);
+        string laby = Path.Combine(_env.Minecraft, "labymod-neo");
+        Write(Path.Combine(laby, "configs", "labymod", "settings.json"), """
+            {"ingame":{"fps":{"enabled":true,"scale":1.25,"textColor":-65536,"backgroundColor":0},
+                       "clock":{"enabled":true,"format24Hour":false},
+                       "crosshair":{"enabled":true,"dot":true,"outline":false,"color":-16711936}},
+             "hotkeys":{"zoom":{"enabled":true,"smoothZoom":false,"scrollToZoom":true}}}
+            """);
+        Write(Path.Combine(laby, "configs", "keystrokes", "settings.json"), """{"enabled":true,"showCps":true,"textShadow":false,"customKeyBorder":true}""");
+        Write(Path.Combine(laby, "configs", "fullbright", "settings.json"), """{"enabled":true,"brightness":10.0}""");
+        Write(Path.Combine(laby, "configs", "classicpvp", "settings.json"), """{"enabled":true}""");
+        Write(Path.Combine(laby, "configs", "autogg", "settings.json"), """{"enabled":true}""");
+        Write(Path.Combine(laby, "configs", "voicechat", "settings.json"), """{"enabled":true}""");
+        Write(Path.Combine(laby, "configs", "mysteryaddon", "settings.json"), """{"enabled":true}""");
+        Write(Path.Combine(laby, "configs", "labymod", "hud", "widgets.json"), """
+            {"widgets":[
+              {"id":"labymod:fps","enabled":true,"anchor":{"x":"right","y":"top"},"x":-8.0,"y":12.0,"scale":1.25},
+              {"id":"keystrokes:keystrokes","enabled":true,"alignment":"TOP_LEFT","offsetX":6.0,"offsetY":18.0}]}
+            """);
+
+        var source = Client("labymod");
+        Assert.False(source.Basic);
+        var plan = ClientImport.Plan(source, _targets);
+        var mods = plan.Categories[ImportCategory.Mods];
+        Assert.Null(mods.Problem);
+        var result = ClientImport.Apply(plan, new[] { ImportCategory.Mods }, _targets);
+        Assert.Empty(result.Errors);
+
+        var config = JsonNode.Parse(File.ReadAllText(_targets.ConfigFile))!;
+        var fps = config["modules"]!["FPS"]!;
+        Assert.True(fps["enabled"]!.GetValue<bool>());
+        Assert.Equal(125, fps["options"]!["Size"]!.GetValue<double>());
+        Assert.Equal(-65536, fps["options"]!["Text Color"]!["color"]!.GetValue<int>());
+        Assert.Equal(0, fps["options"]!["Background"]!["color"]!.GetValue<int>());
+        Assert.Equal("[2,2,-8,0]", config["hud"]!["anchors"]!["FPS"]!["x"]!.ToJsonString());
+        Assert.Equal("[0,0,12,0]", config["hud"]!["anchors"]!["FPS"]!["y"]!.ToJsonString());
+
+        Assert.True(config["modules"]!["Keystrokes"]!["options"]!["Show CPS"]!.GetValue<bool>());
+        Assert.Equal("[0,0,6,0]", config["hud"]!["anchors"]!["Keystrokes"]!["x"]!.ToJsonString());
+        Assert.Equal("[0,0,18,0]", config["hud"]!["anchors"]!["Keystrokes"]!["y"]!.ToJsonString());
+        Assert.True(config["modules"]!["Clock"]!["options"]!["12-hour clock"]!.GetValue<bool>());
+        Assert.False(config["modules"]!["Zoom"]!["options"]!["Smooth Zoom"]!.GetValue<bool>());
+        Assert.True(config["modules"]!["1.7 Animations"]!["enabled"]!.GetValue<bool>());
+        Assert.True(config["modules"]!["HYPIXEL Mods"]!["options"]!["Auto GG"]!.GetValue<bool>());
+        Assert.Contains(mods.Skipped, s => s.Contains("mysteryaddon", StringComparison.Ordinal));
+        Assert.Contains(mods.Skipped, s => s.Contains("customKeyBorder", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void MultiMcReadsGlobalAndInstanceMemoryCloseAfterLaunchAndGameFiles()
+    {
+        new LauncherSettings { KeepLauncherOpen = true }.SaveTo(_targets.SettingsFile);
+        string mmcRoot = Path.Combine(_env.AppData, "MultiMC");
+        Write(Path.Combine(mmcRoot, "multimc.cfg"), "MaxMemAlloc=6144\nMinMemAlloc=1024\nCloseAfterLaunch=true\nJvmArgs=\"-Xmx2G\"\n");
+        string older = Path.Combine(mmcRoot, "instances", "1.8.9", "minecraft");
+        Write(Path.Combine(older, "options.txt"), Legacy189);
+        File.SetLastWriteTimeUtc(Path.Combine(older, "options.txt"), new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+
+        string newerInst = Path.Combine(mmcRoot, "instances", "1.21.4");
+        string newerGame = Path.Combine(newerInst, ".minecraft");
+        Write(Path.Combine(newerInst, "instance.cfg"), "OverrideMemory=true\nMaxMemAlloc=10240\n");
+        Write(Path.Combine(newerGame, "options.txt"), Modern);
+        File.SetLastWriteTimeUtc(Path.Combine(newerGame, "options.txt"), new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.WriteAllBytes(Path.Combine(newerGame, "servers.dat"), Servers(("MmcSrv", "mmc.example.net")));
+        Write(Path.Combine(newerGame, "resourcepacks", "MmcPack.zip"), "pk");
+
+        var mmc = Client("multimc");
+        Assert.Equal(newerGame, mmc.GameFolder);
+        var plan = ClientImport.Plan(mmc, _targets);
+        Assert.Equal("0.5", plan.Categories[ImportCategory.Options].Options["fov"]);
+        Assert.Single(plan.Categories[ImportCategory.Servers].Servers);
+        Assert.Single(plan.Categories[ImportCategory.Packs].Packs);
+        var launcher = plan.Categories[ImportCategory.Launcher];
+        Assert.Equal(10240, launcher.Launcher["MaxRamMb"].GetValue<int>());
+        Assert.Equal(1024, launcher.Launcher["MinRamMb"].GetValue<int>());
+        Assert.False(launcher.Launcher["KeepLauncherOpen"].GetValue<bool>());
+    }
+
+    [Fact]
+    public void CustomFolderAutoDetectsKnownClientsAndCliSupportsCustomAndFromDirFlags()
+    {
+        LunarFixture();
+        BadlionFixture();
+        FeatherFixture();
+
+        string customMc = Path.Combine(_root, "CustomDotMinecraft");
+        Write(Path.Combine(customMc, "options.txt"), Modern);
+        File.WriteAllBytes(Path.Combine(customMc, "servers.dat"), Servers(("CustomSrv", "custom.example.net")));
+
+        string customLaby = Path.Combine(_root, "PortableLaby");
+        Write(Path.Combine(customLaby, "laby-neo", "configs", "fullbright", "settings.json"), """{"enabled":true}""");
+
+        string customPrism = Path.Combine(_root, "PortablePrism");
+        Write(Path.Combine(customPrism, "prismlauncher.cfg"), "MaxMemAlloc=4096\n");
+        Write(Path.Combine(customPrism, "instances", "A", ".minecraft", "options.txt"), Modern);
+
+        string customMmc = Path.Combine(_root, "PortableMultiMC");
+        Write(Path.Combine(customMmc, "multimc.cfg"), "MaxMemAlloc=4096\n");
+        Write(Path.Combine(customMmc, "instances", "B", "minecraft", "options.txt"), Modern);
+
+        string customModrinth = Path.Combine(_root, "PortableModrinthProfile");
+        Write(Path.Combine(customModrinth, "profile.json"), """{"metadata":{"name":"Pack"},"memory":{"maximum":4096}}""");
+
+        string customCf = Path.Combine(_root, "PortableCurseForgeInstance");
+        Write(Path.Combine(customCf, "minecraftinstance.json"), """{"allocatedMemory":4096}""");
+
+        Assert.Equal("custom", ClientImport.DetectCustomFolder(customMc).Id);
+        Assert.Equal("lunar", ClientImport.DetectCustomFolder(LunarRoot).Id);
+        Assert.Equal("badlion", ClientImport.DetectCustomFolder(Path.Combine(_env.Minecraft, "BLClient-Mod-Profiles")).Id);
+        Assert.Equal("feather", ClientImport.DetectCustomFolder(Path.Combine(_env.Minecraft, "feather")).Id);
+        Assert.Equal("labymod", ClientImport.DetectCustomFolder(customLaby).Id);
+        Assert.Equal("prism", ClientImport.DetectCustomFolder(customPrism).Id);
+        Assert.Equal("multimc", ClientImport.DetectCustomFolder(customMmc).Id);
+        Assert.Equal("modrinth", ClientImport.DetectCustomFolder(customModrinth).Id);
+        Assert.Equal("curseforge", ClientImport.DetectCustomFolder(customCf).Id);
+
+        // CLI scan & apply with --custom-dir and --from-dir.
+        var scan = ClientImportCli.Answer(new[] { "scan", "--custom-dir", customMc }, _env, _targets);
+        var first = scan["clients"]!.AsArray()[0]!.AsObject();
+        Assert.Equal("custom", first["id"]!.GetValue<string>());
+        Assert.Equal(Path.GetFullPath(customMc), first["customDir"]!.GetValue<string>());
+
+        var fromDirScan = ClientImportCli.Answer(new[] { "scan", "--from-dir", customLaby }, _env, _targets);
+        Assert.Equal("labymod", fromDirScan["clients"]!.AsArray()[0]!["id"]!.GetValue<string>());
+
+        var applied = ClientImportCli.Answer(new[] { "apply", "custom", "Options,Servers", "--custom-dir", customMc, "--in-game" }, _env, _targets with { InGame = true });
+        Assert.True(applied["applied"]!["Options"]!.GetValue<int>() > 0);
+        Assert.Equal(1, applied["applied"]!["Servers"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public void CredentialTokenAndCookieFilesAreNeverOpenedOrReadAcrossAllClients()
+    {
+        LunarFixture();
+        BadlionFixture();
+        FeatherFixture();
+        Write(Path.Combine(_env.Minecraft, "labymod-neo", "configs", "fullbright", "settings.json"), """{"enabled":true}""");
+        Write(Path.Combine(_env.AppData, "ModrinthApp", "profiles", "P", "options.txt"), Modern);
+        CreateModrinthDb(Path.Combine(_env.AppData, "ModrinthApp", "app.db"), 4096, new[] { ("P", (int?)4096, (string?)null) });
+        Write(Path.Combine(_env.AppData, "PrismLauncher", "prismlauncher.cfg"), "MaxMemAlloc=4096\n");
+        Write(Path.Combine(_env.AppData, "PrismLauncher", "instances", "P", "minecraft", "options.txt"), Modern);
+        Write(Path.Combine(_env.AppData, "MultiMC", "multimc.cfg"), "MaxMemAlloc=4096\n");
+        Write(Path.Combine(_env.AppData, "MultiMC", "instances", "M", ".minecraft", "options.txt"), Modern);
+        Write(Path.Combine(_env.Home, "curseforge", "minecraft", "Instances", "CF", "options.txt"), Modern);
+        Write(Path.Combine(_env.Home, "curseforge", "minecraft", "Instances", "CF", "minecraftinstance.json"), """{"allocatedMemory":4096}""");
+
+        string customFolder = Path.Combine(_root, "CustomWithSecrets");
+        Write(Path.Combine(customFolder, "options.txt"), Modern);
+
+        var secretFiles = new[]
+        {
+            Path.Combine(LunarRoot, "settings", "game", "accounts.json"),
+            Path.Combine(_env.AppData, "Badlion Client", "accounts.dat"),
+            Path.Combine(_env.Minecraft, "launcher_accounts.json"),
+            Path.Combine(_env.Minecraft, "launcher_accounts_microsoft_store.json"),
+            Path.Combine(_env.Minecraft, "launcher_msa_credentials.json"),
+            Path.Combine(_env.Minecraft, "essential", "config.json"),
+            Path.Combine(_env.Minecraft, "feather", "accounts.json"),
+            Path.Combine(_env.Minecraft, "labymod-neo", "accounts.json"),
+            Path.Combine(_env.Minecraft, "labymod-neo", "configs", "accounts", "settings.json"),
+            Path.Combine(_env.AppData, "PrismLauncher", "accounts.json"),
+            Path.Combine(_env.AppData, "MultiMC", "accounts.json"),
+            Path.Combine(_env.AppData, "ModrinthApp", "Cookies"),
+            Path.Combine(_env.Home, "curseforge", "minecraft", "Install", "launcher_accounts.json"),
+            Path.Combine(customFolder, "launcher_accounts.json"),
+            Path.Combine(customFolder, "Cookies")
+        };
+
+        var locks = new List<FileStream>();
+        try
+        {
+            foreach (var secret in secretFiles)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(secret)!);
+                var fs = new FileStream(secret, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+                fs.Write(Encoding.UTF8.GetBytes("{\"token\":\"SECRET-DO-NOT-OPEN\"}"));
+                fs.Flush();
+                locks.Add(fs);
+            }
+
+            var sources = ClientImport.Detect(_env).Append(ClientImport.DetectCustomFolder(customFolder)).ToList();
+            Assert.Equal(new[] { "lunar", "badlion", "feather", "labymod", "modrinth", "prism", "multimc", "curseforge", "vanilla", "custom" },
+                sources.Select(s => s.Id));
+
+            foreach (var source in sources)
+            {
+                var plan = ClientImport.Plan(source, _targets);
+                foreach (var cat in plan.Categories.Values)
+                {
+                    Assert.Null(cat.Problem);
+                    Assert.DoesNotContain(cat.Changes.Concat(cat.Skipped), l => l.Contains("SECRET-", StringComparison.Ordinal));
+                }
+                var res = ClientImport.Apply(plan, Enum.GetValues<ImportCategory>(), _targets);
+                Assert.Empty(res.Errors);
+            }
+        }
+        finally
+        {
+            foreach (var fs in locks) fs.Dispose();
+        }
     }
 }

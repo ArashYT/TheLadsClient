@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using Microsoft.Data.Sqlite;
 using TheLadsLauncher.Models;
 
 namespace TheLadsLauncher.Services;
@@ -69,11 +70,17 @@ public static class ClientImport
     public const string PendingLauncherFile = "lads-import-launcher-pending.json";
     internal const string ManifestFile = "manifest.json";
     private const long MaxSettingsBytes = 16 * 1024 * 1024;
-    private const int MaxListed = 500, MaxProfiles = 32;
+    private const long MaxDbBytes = 64 * 1024 * 1024;
+    private const int MaxListed = 500, MaxProfiles = 64;
     private const long MaxPackBytes = 1L << 30;
     private const int MaxPackFiles = 20000;
     private static readonly JsonSerializerOptions Indented = new(JsonSerializerOptions.Default) { WriteIndented = true };
     private static readonly JsonDocumentOptions JsonLimits = new() { MaxDepth = 64 };
+    private static readonly HashSet<string> SensitiveNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "accounts", "account", "auth", "authentication", "credentials", "tokens", "token",
+        "session", "sessions", "cookies", "cookie", "essential", "oauth", "msa", "minecraft_users", "users"
+    };
     private static readonly Lazy<JsonObject> Map = new(() =>
     {
         using var stream = typeof(ClientImport).Assembly.GetManifestResourceStream("client_import_map.json")
@@ -90,23 +97,131 @@ public static class ClientImport
         string lunar = Path.Combine(env.Home, ".lunarclient"), mc = env.Minecraft, prism = Path.Combine(env.AppData, "PrismLauncher");
         if (Directory.Exists(Path.Combine(lunar, "settings")))
             found.Add(new("lunar", "Lunar Client", false, "Keybinds, video and audio, servers, packs, mods and HUD, launcher settings.", lunar, LunarGameFolder(lunar, mc)));
-        if (Directory.Exists(Path.Combine(env.AppData, "Badlion Client")) || File.Exists(Path.Combine(mc, "badlion_settings.json")))
+        if (Directory.Exists(Path.Combine(env.AppData, "Badlion Client")) || File.Exists(Path.Combine(mc, "badlion_settings.json"))
+            || Directory.Exists(Path.Combine(mc, "BLClient-Mod-Profiles")))
             found.Add(new("badlion", "Badlion Client", false, "Keybinds, video and audio, servers, packs, mods and HUD. Badlion's launcher settings have no readable file.", mc, mc));
         if (Directory.Exists(Path.Combine(mc, "feather", "configuration")))
             found.Add(new("feather", "Feather Client", false, "Keybinds, video and audio, servers, packs, mods and HUD. Feather's launcher settings were not verified.", mc, mc));
-        if (Directory.Exists(prism) && PrismInstance(prism) is { } instance)
-            found.Add(new("prism", "Prism Launcher", true, "Basic import from the last played instance, plus RAM and close-on-launch.", prism, instance));
-        if (Directory.Exists(Path.Combine(mc, "labymod-neo")))
-            found.Add(new("labymod", "LabyMod", true, "Basic import only: LabyMod's module settings could not be verified.", mc, mc));
+        if (Directory.Exists(Path.Combine(mc, "labymod-neo")) || Directory.Exists(Path.Combine(mc, "laby-neo")))
+            found.Add(new("labymod", "LabyMod 4", false, "Keybinds, video and audio, servers, packs, mods and HUD. LabyMod's launcher settings have no readable file.", mc, mc));
+        if (DetectModrinth(env) is { } modrinth)
+            found.Add(new("modrinth", "Modrinth App", true, "Basic import from the most recently modified profile, plus custom memory settings.", modrinth.Root, modrinth.Profile));
+        if (Directory.Exists(prism) && MmcInstance(prism, "prismlauncher.cfg") is { } prismInst)
+            found.Add(new("prism", "Prism Launcher", true, "Basic import from the last played instance, plus RAM and close-on-launch.", prism, prismInst));
+        if (DetectMultiMc(env) is { } mmc)
+            found.Add(new("multimc", "MultiMC", true, "Basic import from the last played instance, plus RAM and close-on-launch.", mmc.Root, mmc.Instance));
+        if (DetectCurseForge(env) is { } cf)
+            found.Add(new("curseforge", "CurseForge", true, "Basic import from the most recently modified instance, plus allocated RAM.", cf.Root, cf.Instance));
         if (File.Exists(Path.Combine(mc, "options.txt")))
             found.Add(new("vanilla", "Minecraft Launcher", true, "Basic import, plus RAM and keep-launcher-open.", mc, mc));
         return found;
     }
 
-    /// <summary>Any other client (Salwyrr, PvP Lounge, MultiMC...): the vanilla files of a game folder the player picks.</summary>
-    public static ImportSource FromFolder(string folder) =>
-        new("folder", Path.GetFileName(Path.TrimEndingDirectorySeparator(folder)), true,
-            "Basic import only: options.txt, servers.dat and the resourcepacks folder. This client's own settings format is not read.", folder, folder);
+    /// <summary>Auto-detects what client, launcher root or game/instance folder <paramref name="path"/> is.</summary>
+    public static ImportSource DetectCustomFolder(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Choose a folder to import from.");
+        string full = Path.GetFullPath(path);
+        if (full.StartsWith(@"\\", StringComparison.Ordinal)) throw new ArgumentException("Network paths are not supported.");
+        string trimmed = Path.TrimEndingDirectorySeparator(full);
+        string leaf = Path.GetFileName(trimmed);
+        if (string.IsNullOrEmpty(leaf)) leaf = trimmed;
+
+        if (Directory.Exists(Path.Combine(full, "settings", "game")) || File.Exists(Path.Combine(full, "settings", "launcher.json"))
+            || leaf.Equals(".lunarclient", StringComparison.OrdinalIgnoreCase))
+        {
+            string multiver = Path.Combine(full, "offline", "multiver");
+            string fallback = HasGameFiles(multiver) ? multiver : ProfileFoldersFrom(Path.Combine(full, "profiles")).FirstOrDefault(HasGameFiles) ?? full;
+            return new("lunar", $"Lunar Client ({leaf})", false, "Keybinds, video and audio, servers, packs, mods and HUD, launcher settings.",
+                full, LunarGameFolder(full, fallback));
+        }
+
+        if (leaf.Equals("BLClient-Mod-Profiles", StringComparison.OrdinalIgnoreCase) || leaf.Equals("BLClient", StringComparison.OrdinalIgnoreCase))
+        {
+            string mc = Directory.GetParent(trimmed)?.FullName ?? full;
+            return new("badlion", $"Badlion Client ({leaf})", false, "Keybinds, video and audio, servers, packs, mods and HUD. Badlion's launcher settings have no readable file.", mc, mc);
+        }
+        if (Directory.Exists(Path.Combine(full, "BLClient-Mod-Profiles")) || File.Exists(Path.Combine(full, "badlion_settings.json")))
+            return new("badlion", $"Badlion Client ({leaf})", false, "Keybinds, video and audio, servers, packs, mods and HUD. Badlion's launcher settings have no readable file.", full, full);
+
+        if (Directory.Exists(Path.Combine(full, "feather", "configuration")))
+            return new("feather", $"Feather Client ({leaf})", false, "Keybinds, video and audio, servers, packs, mods and HUD. Feather's launcher settings were not verified.", full, full);
+        if (Directory.Exists(Path.Combine(full, "configuration", "profiles")) || File.Exists(Path.Combine(full, "configuration", "current.profile")))
+        {
+            string mc = Directory.GetParent(trimmed)?.FullName ?? full;
+            string game = HasGameFiles(full) ? full : HasGameFiles(mc) ? mc : full;
+            return new("feather", $"Feather Client ({leaf})", false, "Keybinds, video and audio, servers, packs, mods and HUD. Feather's launcher settings were not verified.", full, game);
+        }
+
+        if (Directory.Exists(Path.Combine(full, "labymod-neo")) || Directory.Exists(Path.Combine(full, "laby-neo")))
+            return new("labymod", $"LabyMod 4 ({leaf})", false, "Keybinds, video and audio, servers, packs, mods and HUD. LabyMod's launcher settings have no readable file.", full, full);
+        if (leaf.Equals("labymod-neo", StringComparison.OrdinalIgnoreCase) || leaf.Equals("laby-neo", StringComparison.OrdinalIgnoreCase)
+            || Directory.Exists(Path.Combine(full, "configs", "labymod")) || File.Exists(Path.Combine(full, "hud", "widgets.json")))
+        {
+            string mc = Directory.GetParent(trimmed)?.FullName ?? full;
+            string game = HasGameFiles(full) ? full : HasGameFiles(mc) ? mc : full;
+            return new("labymod", $"LabyMod 4 ({leaf})", false, "Keybinds, video and audio, servers, packs, mods and HUD. LabyMod's launcher settings have no readable file.", full, game);
+        }
+
+        if (File.Exists(Path.Combine(full, "prismlauncher.cfg")))
+            return new("prism", $"Prism Launcher ({leaf})", true, "Basic import from the last played instance, plus RAM and close-on-launch.", full, MmcInstance(full, "prismlauncher.cfg"));
+        if (File.Exists(Path.Combine(full, "multimc.cfg")))
+            return new("multimc", $"MultiMC ({leaf})", true, "Basic import from the last played instance, plus RAM and close-on-launch.", full, MmcInstance(full, "multimc.cfg"));
+        if (File.Exists(Path.Combine(full, "instance.cfg")))
+        {
+            string? parent = Directory.GetParent(trimmed)?.FullName;
+            string? grand = parent != null ? Directory.GetParent(parent)?.FullName : null;
+            bool isMmc = (grand != null && File.Exists(Path.Combine(grand, "multimc.cfg"))) || (parent != null && File.Exists(Path.Combine(parent, "multimc.cfg")));
+            string root = grand != null && (File.Exists(Path.Combine(grand, "multimc.cfg")) || File.Exists(Path.Combine(grand, "prismlauncher.cfg"))) ? grand : full;
+            string game = new[] { Path.Combine(full, "minecraft"), Path.Combine(full, ".minecraft") }.FirstOrDefault(Directory.Exists) ?? full;
+            return new(isMmc ? "multimc" : "prism", $"{(isMmc ? "MultiMC" : "Prism Launcher")} ({leaf})", true,
+                "Basic import from this instance, plus RAM and close-on-launch.", root, game);
+        }
+
+        if (File.Exists(Path.Combine(full, "app.db"))
+            || ((leaf.Equals("ModrinthApp", StringComparison.OrdinalIgnoreCase) || leaf.Equals("com.modrinth.theseus", StringComparison.OrdinalIgnoreCase))
+                && Directory.Exists(Path.Combine(full, "profiles"))))
+            return new("modrinth", $"Modrinth App ({leaf})", true, "Basic import from the most recently modified profile, plus custom memory settings.", full, LatestModrinthProfile(full));
+        if (File.Exists(Path.Combine(full, "profile.json")) || IsModrinthProfileSubfolder(trimmed, out var detectedModrinthRoot))
+        {
+            string mRoot = IsModrinthProfileSubfolder(trimmed, out detectedModrinthRoot) && detectedModrinthRoot != null ? detectedModrinthRoot : full;
+            return new("modrinth", $"Modrinth ({leaf})", true, "Basic import from this Modrinth profile, plus custom memory settings.", mRoot, full);
+        }
+
+        if (File.Exists(Path.Combine(full, "minecraftinstance.json")))
+            return new("curseforge", $"CurseForge ({leaf})", true, "Basic import from this CurseForge instance, plus allocated RAM.", full, full);
+        if (LatestCurseForgeInstance(Path.Combine(full, "Instances")) is { } cfSub)
+            return new("curseforge", $"CurseForge ({Path.GetFileName(cfSub)})", true, "Basic import from the most recently modified instance, plus allocated RAM.", full, cfSub);
+        if (Directory.Exists(full) && SafeSubdirectories(full, 64).Any(d => File.Exists(Path.Combine(d, "minecraftinstance.json")))
+            && LatestCurseForgeInstance(full) is { } cfDirect)
+            return new("curseforge", $"CurseForge ({Path.GetFileName(cfDirect)})", true, "Basic import from the most recently modified instance, plus allocated RAM.", full, cfDirect);
+
+        string gameFolder = !HasGameFiles(full)
+            ? new[] { Path.Combine(full, ".minecraft"), Path.Combine(full, "minecraft") }.FirstOrDefault(HasGameFiles) ?? full
+            : full;
+        if (File.Exists(Path.Combine(gameFolder, "launcher_profiles.json")))
+            return new("vanilla", $"Minecraft ({leaf})", true, "Basic import, plus RAM and keep-launcher-open.", gameFolder, gameFolder);
+
+        return new("custom", leaf, true,
+            "Basic import only: options.txt, servers.dat and the resourcepacks folder. This client's own settings format is not read.", full, gameFolder);
+    }
+
+    /// <summary>Any client or game folder the player picks (auto-detects known clients; otherwise reads the vanilla files).</summary>
+    public static ImportSource FromFolder(string folder) => DetectCustomFolder(folder);
+
+    private static bool IsModrinthProfileSubfolder(string trimmed, out string? appRoot)
+    {
+        appRoot = null;
+        if (Directory.GetParent(trimmed) is not { } profilesDir || !profilesDir.Name.Equals("profiles", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (Directory.GetParent(profilesDir.FullName) is not { } parent) return false;
+        if (!File.Exists(Path.Combine(parent.FullName, "app.db"))
+            && !parent.Name.Equals("ModrinthApp", StringComparison.OrdinalIgnoreCase)
+            && !parent.Name.Equals("com.modrinth.theseus", StringComparison.OrdinalIgnoreCase))
+            return false;
+        appRoot = parent.FullName;
+        return true;
+    }
 
     private static string LunarGameFolder(string lunar, string fallback)
     {
@@ -116,16 +231,127 @@ public static class ClientImport
         return dir != null && Path.IsPathFullyQualified(dir) && !dir.StartsWith(@"\\", StringComparison.Ordinal) && Directory.Exists(dir) ? dir : fallback;
     }
 
-    private static string? PrismInstance(string prism)
+    private static IEnumerable<string> SafeSubdirectories(string folder, int max = 256)
+    {
+        if (!Directory.Exists(folder)) return Array.Empty<string>();
+        try { return Directory.EnumerateDirectories(folder).Where(d => !SafeFileOps.IsLink(d)).Take(max).ToList(); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return Array.Empty<string>(); }
+    }
+
+    private static bool HasGameFiles(string dir) =>
+        Directory.Exists(dir) && (File.Exists(Path.Combine(dir, "options.txt")) || File.Exists(Path.Combine(dir, "servers.dat"))
+            || Directory.Exists(Path.Combine(dir, "resourcepacks")));
+
+    private static bool HasInstanceContent(string dir, string? markerFile = null) =>
+        HasGameFiles(dir) || (markerFile != null && File.Exists(Path.Combine(dir, markerFile)));
+
+    private static DateTime InstanceTimestamp(string gameDir, string? instanceDir = null)
+    {
+        string opt = Path.Combine(gameDir, "options.txt");
+        if (File.Exists(opt)) return File.GetLastWriteTimeUtc(opt);
+        string srv = Path.Combine(gameDir, "servers.dat");
+        if (File.Exists(srv)) return File.GetLastWriteTimeUtc(srv);
+        string metaDir = instanceDir ?? gameDir;
+        foreach (var meta in new[] { "minecraftinstance.json", "profile.json", "instance.cfg" })
+        {
+            string file = Path.Combine(metaDir, meta);
+            if (File.Exists(file)) return File.GetLastWriteTimeUtc(file);
+        }
+        return Directory.GetLastWriteTimeUtc(metaDir);
+    }
+
+    private static string? MmcInstance(string root, string cfgName)
     {
         try
         {
-            return Directory.EnumerateDirectories(Path.Combine(prism, "instances")).Take(256)
-                .SelectMany(i => new[] { Path.Combine(i, "minecraft"), Path.Combine(i, ".minecraft") })
-                .Where(d => File.Exists(Path.Combine(d, "options.txt")))
-                .OrderByDescending(d => File.GetLastWriteTimeUtc(Path.Combine(d, "options.txt"))).FirstOrDefault();
+            string instancesDir = Path.Combine(root, "instances");
+            string cfgFile = Path.Combine(root, cfgName);
+            if (File.Exists(cfgFile))
+            {
+                var cfg = ParseIni(Encoding.UTF8.GetString(ReadBounded(cfgFile, 1024 * 1024)));
+                if (cfg.TryGetValue("InstanceDir", out var customDir) && customDir.Length > 0 && !customDir.StartsWith(@"\\", StringComparison.Ordinal))
+                {
+                    string resolved = Path.IsPathFullyQualified(customDir) ? customDir : Path.GetFullPath(Path.Combine(root, customDir));
+                    if (Directory.Exists(resolved)) instancesDir = resolved;
+                }
+            }
+            return SafeSubdirectories(instancesDir)
+                .SelectMany(i => new[] { (Instance: i, Game: Path.Combine(i, "minecraft")), (Instance: i, Game: Path.Combine(i, ".minecraft")) })
+                .Where(x => HasGameFiles(x.Game))
+                .OrderByDescending(x => File.Exists(Path.Combine(x.Game, "options.txt")) ? 1 : 0)
+                .ThenByDescending(x => InstanceTimestamp(x.Game, x.Instance))
+                .Select(x => x.Game)
+                .FirstOrDefault();
         }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return null; }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException) { return null; }
+    }
+
+    private static (string Root, string Instance)? DetectMultiMc(ImportEnvironment env)
+    {
+        foreach (var root in new[] { Path.Combine(env.AppData, "MultiMC"), Path.Combine(env.Home, "MultiMC"), Path.Combine(env.Home, "scoop", "apps", "multimc", "current") })
+            if (Directory.Exists(root) && MmcInstance(root, "multimc.cfg") is { } instance)
+                return (root, instance);
+        return null;
+    }
+
+    private static (string Root, string Profile)? DetectModrinth(ImportEnvironment env)
+    {
+        (string Root, string Profile, DateTime When)? best = null;
+        foreach (var root in new[] { Path.Combine(env.AppData, "ModrinthApp"), Path.Combine(env.AppData, "com.modrinth.theseus") })
+        {
+            if (!Directory.Exists(root)) continue;
+            if (LatestModrinthProfile(root) is not { } profile) continue;
+            var when = InstanceTimestamp(profile);
+            if (best == null || when > best.Value.When) best = (root, profile, when);
+        }
+        return best is { } b ? (b.Root, b.Profile) : null;
+    }
+
+    private static string? LatestModrinthProfile(string root)
+    {
+        var profileRoots = new List<string> { Path.Combine(root, "profiles") };
+        if (TryModrinthCustomDir(Path.Combine(root, "app.db")) is { } custom && !custom.StartsWith(@"\\", StringComparison.Ordinal))
+            profileRoots.Add(Path.Combine(custom, "profiles"));
+        return profileRoots.Distinct(StringComparer.OrdinalIgnoreCase)
+            .SelectMany(r => SafeSubdirectories(r))
+            .Where(d => HasInstanceContent(d, "profile.json"))
+            .OrderByDescending(d => InstanceTimestamp(d))
+            .FirstOrDefault();
+    }
+
+    private static (string Root, string Instance)? DetectCurseForge(ImportEnvironment env)
+    {
+        var roots = new List<string>();
+        if (CurseForgeStorageRoot(env.AppData) is { } custom && !custom.StartsWith(@"\\", StringComparison.Ordinal) && Directory.Exists(custom))
+            roots.Add(custom);
+        roots.Add(Path.Combine(env.Home, "curseforge", "minecraft"));
+        foreach (var root in roots.Distinct(StringComparer.OrdinalIgnoreCase))
+            if (LatestCurseForgeInstance(Path.Combine(root, "Instances")) is { } instance)
+                return (root, instance);
+        return null;
+    }
+
+    private static string? LatestCurseForgeInstance(string instancesDir) =>
+        SafeSubdirectories(instancesDir)
+            .Where(d => HasInstanceContent(d, "minecraftinstance.json"))
+            .OrderByDescending(d => InstanceTimestamp(d))
+            .FirstOrDefault();
+
+    private static string? CurseForgeStorageRoot(string appData)
+    {
+        var file = Path.Combine(appData, "CurseForge", "storage.json");
+        if (TryParseObject(file)?["minecraft-settings"] is not { } node) return null;
+        try
+        {
+            JsonObject? inner = node switch
+            {
+                JsonObject o => o,
+                JsonValue v when v.TryGetValue<string>(out var s) => JsonNode.Parse(s, null, JsonLimits) as JsonObject,
+                _ => null
+            };
+            return inner?["minecraftRoot"] is JsonValue r && r.TryGetValue<string>(out var path) && Path.IsPathFullyQualified(path) ? path : null;
+        }
+        catch (JsonException) { return null; }
     }
 
     // --- Plan (reads only) ---
@@ -316,12 +542,11 @@ public static class ClientImport
     }
 
     /// <summary>Lunar's per-version game folders (.lunarclient/profiles/*); no other client has them.</summary>
-    private static IEnumerable<string> ProfileFolders(ImportSource source)
-    {
-        var profiles = Path.Combine(source.Root, "profiles");
-        return source.Id == "lunar" && Directory.Exists(profiles)
-            ? Directory.EnumerateDirectories(profiles).Where(d => !SafeFileOps.IsLink(d)).Take(MaxProfiles).ToList() : Array.Empty<string>();
-    }
+    private static IEnumerable<string> ProfileFolders(ImportSource source) =>
+        source.Id == "lunar" ? ProfileFoldersFrom(Path.Combine(source.Root, "profiles")) : Array.Empty<string>();
+
+    private static IEnumerable<string> ProfileFoldersFrom(string profiles) =>
+        Directory.Exists(profiles) ? SafeSubdirectories(profiles, MaxProfiles) : Array.Empty<string>();
 
     // --- Packs ---
 
@@ -375,6 +600,7 @@ public static class ClientImport
             "lunar" => LunarMods(source),
             "badlion" => BadlionMods(source),
             "feather" => FeatherMods(source),
+            "labymod" => LabyModMods(source),
             _ => null
         };
         if (data == null)
@@ -489,7 +715,9 @@ public static class ClientImport
 
     private static JsonObject? FeatherMods(ImportSource source)
     {
-        var folder = Path.Combine(source.Root, "feather", "configuration");
+        var folder = Directory.Exists(Path.Combine(source.Root, "feather", "configuration"))
+            ? Path.Combine(source.Root, "feather", "configuration")
+            : Path.Combine(source.Root, "configuration");
         string name = "default";
         var current = Path.Combine(folder, "current.profile");
         if (File.Exists(current))
@@ -499,6 +727,123 @@ public static class ClientImport
         }
         var file = Path.Combine(folder, "profiles", name + ".json");
         return File.Exists(file) ? ParseObject(ReadBounded(file), file) : null;
+    }
+
+    private static JsonObject? LabyModMods(ImportSource source)
+    {
+        var laby = new[] { Path.Combine(source.Root, "labymod-neo"), Path.Combine(source.Root, "laby-neo"), source.Root }
+            .FirstOrDefault(d => Directory.Exists(Path.Combine(d, "configs")) || Directory.Exists(Path.Combine(d, "hud")));
+        if (laby == null) return null;
+
+        var known = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var compact = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in Map.Value["labymod"]!["mods"]!.AsArray().Select(n => n!.AsObject()))
+        {
+            string from = entry["from"]!.GetValue<string>();
+            known.TryAdd(from, from);
+            compact.TryAdd(from.Replace("_", "").Replace("-", ""), from);
+        }
+
+        string Canonical(string raw)
+        {
+            string stripped = raw.StartsWith("labymod:", StringComparison.OrdinalIgnoreCase) ? raw[8..] : raw;
+            if (stripped.IndexOf(':') is > 0 and var colon)
+            {
+                string ns = stripped[..colon], local = stripped[(colon + 1)..];
+                if (ns.Equals(local, StringComparison.OrdinalIgnoreCase) || known.ContainsKey(local) || compact.ContainsKey(local.Replace("_", "").Replace("-", "")))
+                    stripped = local;
+                else if (known.ContainsKey(ns) || compact.ContainsKey(ns.Replace("_", "").Replace("-", "")))
+                    stripped = ns;
+            }
+            if (known.TryGetValue(stripped, out var exact)) return exact;
+            if (compact.TryGetValue(stripped.Replace("_", "").Replace("-", ""), out var norm)) return norm;
+            return stripped;
+        }
+
+        var result = new JsonObject();
+        string configsDir = Path.Combine(laby, "configs");
+        if (Directory.Exists(configsDir))
+        {
+            foreach (var dir in SafeSubdirectories(configsDir, MaxProfiles))
+            {
+                string ns = Path.GetFileName(dir);
+                if (!SafeFileOps.IsPlainFileName(ns) || SensitiveNames.Contains(ns)) continue;
+                string settingsFile = Path.Combine(dir, "settings.json");
+                if (!File.Exists(settingsFile)) continue;
+                var parsed = ParseObject(ReadBounded(settingsFile), settingsFile);
+                if (ns.Equals("labymod", StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var (key, node) in parsed)
+                    {
+                        if (SensitiveNames.Contains(key) || node is not JsonObject child) continue;
+                        if (key is "ingame" or "appearance" or "multiplayer" or "other" or "hotkeys" && child["enabled"] is not JsonValue)
+                        {
+                            foreach (var (subKey, subNode) in child)
+                                if (!SensitiveNames.Contains(subKey) && subNode is JsonObject subObj)
+                                    MergeLabyEntry(result, Canonical(subKey), subObj);
+                        }
+                        else MergeLabyEntry(result, Canonical(key), child);
+                    }
+                }
+                else MergeLabyEntry(result, Canonical(ns), parsed);
+            }
+        }
+
+        var widgetFiles = new[]
+        {
+            Path.Combine(laby, "configs", "labymod", "hud", "widgets.json"),
+            Path.Combine(laby, "configs", "hud", "widgets.json"),
+            Path.Combine(laby, "hud", "widgets.json"),
+            Path.Combine(laby, "configs", "widgets.json")
+        };
+        foreach (var wFile in widgetFiles.Where(File.Exists).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var wRoot = ParseObject(ReadBounded(wFile), wFile);
+            if (wRoot["widgets"] is JsonArray wArr)
+            {
+                foreach (var wObj in wArr.Take(256).OfType<JsonObject>())
+                {
+                    string? id = (wObj["id"] ?? wObj["identifier"] ?? wObj["type"]) is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
+                    if (!string.IsNullOrWhiteSpace(id) && !SensitiveNames.Contains(id)) MergeLabyEntry(result, Canonical(id), wObj);
+                }
+            }
+            else
+            {
+                var container = wRoot["widgets"] as JsonObject ?? wRoot;
+                foreach (var (rawId, wNode) in container.Take(256))
+                    if (!SensitiveNames.Contains(rawId) && wNode is JsonObject wObj)
+                        MergeLabyEntry(result, Canonical(rawId), wObj);
+            }
+        }
+
+        return result.Count > 0 ? result : null;
+    }
+
+    private static void MergeLabyEntry(JsonObject result, string key, JsonObject src)
+    {
+        var dst = EnsureObject(result, key);
+        var opts = EnsureObject(dst, "options");
+        foreach (var (k, v) in src)
+        {
+            if (v == null || SensitiveNames.Contains(k)) continue;
+            if (k is "id" or "identifier" or "type" or "bounds" or "parentId") continue;
+            if (k == "enabled") dst["enabled"] = v.DeepClone();
+            else if (k is "options" or "settings" or "properties" && v is JsonObject nested)
+            {
+                foreach (var (nk, nv) in nested)
+                {
+                    if (nv == null || SensitiveNames.Contains(nk) || nk is "id" or "identifier" or "type" or "bounds" or "parentId") continue;
+                    if (nk == "enabled") dst["enabled"] ??= nv.DeepClone();
+                    else opts[nk] = nv.DeepClone();
+                }
+            }
+            else if (k is "x" or "y" or "offsetX" or "offsetY" or "relativeX" or "relativeY" or "anchor" or "alignment" or "area" or "areaIdentifier")
+                dst[k] = v.DeepClone();
+            else if (k == "scale")
+                opts["scale"] = v.DeepClone();
+            else
+                opts[k] = v.DeepClone();
+        }
     }
 
     private static JsonObject ReadConfig(string file)
@@ -594,12 +939,14 @@ public static class ClientImport
         return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var d) && double.IsFinite(d) ? d : null;
     }
 
-    /// <summary>ARGB from Lunar's {"value":argb}, Badlion's {"set","enabled","color":{red,green,blue,alpha}} (signed bytes) or Feather's
-    /// "[chroma/]r/g/b/a". An unset Badlion colour is null: the client's default, nothing to carry over.</summary>
+    /// <summary>ARGB from Lunar's {"value":argb}, LabyMod's integer/{"color":argb}, Badlion's {"set","enabled","color":{red,green,blue,alpha}}
+    /// (signed bytes) or Feather's "[chroma/]r/g/b/a". An unset Badlion colour is null: the client's default, nothing to carry over.</summary>
     internal static int? ToColor(JsonNode? node)
     {
-        if (node is JsonValue text && text.TryGetValue<string>(out var s))
+        if (node is JsonValue val)
         {
+            if (val.TryGetValue<long>(out var directArgb)) return unchecked((int)directArgb);
+            if (!val.TryGetValue<string>(out var s)) return null;
             var parts = s.Split('/');
             if (parts.Length == 5 && bool.TryParse(parts[0], out _)) parts = parts[1..];
             if (parts.Length != 4) return null;
@@ -615,6 +962,7 @@ public static class ClientImport
             if (ToNumber(rgba["red"]) is not { } r || ToNumber(rgba["green"]) is not { } g || ToNumber(rgba["blue"]) is not { } b || ToNumber(rgba["alpha"]) is not { } a) return null;
             return ToBool(obj["enabled"]) == false ? 0 : Argb((int)a & 255, (int)r & 255, (int)g & 255, (int)b & 255);
         }
+        if (obj["color"] is JsonValue colVal && colVal.TryGetValue<long>(out var colArgb)) return unchecked((int)colArgb);
         return obj["value"] is JsonValue value && value.TryGetValue<long>(out var argb) ? unchecked((int)argb) : null;
     }
 
@@ -627,6 +975,7 @@ public static class ClientImport
 
     private static HudPlace? ReadAnchor(string client, JsonObject mod)
     {
+        if (client == "labymod") return LabyModAnchor(mod);
         if (mod[client == "lunar" ? "position" : "hudAnchor"] is not JsonValue anchorName || !anchorName.TryGetValue<string>(out var name)) return null;
         double? x = client == "lunar" ? ToNumber(mod["x"]) ?? 0 : ToNumber(mod["hudRelativeX"]);
         double? y = client == "lunar" ? ToNumber(mod["y"]) ?? 0 : ToNumber(mod["hudRelativeY"]);
@@ -641,6 +990,59 @@ public static class ClientImport
         int? vertical = key.StartsWith("top", StringComparison.Ordinal) ? 0 : key.StartsWith("middle", StringComparison.Ordinal) ? 1 : key.StartsWith("bottom", StringComparison.Ordinal) ? 2 : null;
         if (horizontal == null || vertical == null) return null;
         return new HudPlace(horizontal.Value.Ref, horizontal.Value.Pin, (int)Math.Round(x.Value), vertical.Value, vertical.Value, (int)Math.Round(y.Value));
+    }
+
+    private static HudPlace? LabyModAnchor(JsonObject mod)
+    {
+        int? rx = null, ry = null;
+        if ((mod["anchor"] as JsonObject ?? mod["alignment"] as JsonObject) is { } obj)
+        {
+            string? hx = (obj["x"] ?? obj["horizontal"]) is JsonValue vx && vx.TryGetValue<string>(out var sx) ? sx.ToLowerInvariant() : null;
+            string? vy = (obj["y"] ?? obj["vertical"]) is JsonValue vyv && vyv.TryGetValue<string>(out var sy) ? sy.ToLowerInvariant() : null;
+            rx = hx switch { "left" => 0, "center" or "middle" => 1, "right" => 2, _ => null };
+            ry = vy switch { "top" => 0, "center" or "middle" => 1, "bottom" => 2, _ => null };
+        }
+        else if ((mod["anchor"] ?? mod["alignment"] ?? mod["area"] ?? mod["areaIdentifier"]) is JsonValue v && v.TryGetValue<string>(out var s))
+        {
+            string key = s.Replace("_", "").Replace("-", "").ToLowerInvariant();
+            rx = key.Contains("left", StringComparison.Ordinal) ? 0 : key.Contains("right", StringComparison.Ordinal) ? 2 : key.Contains("center", StringComparison.Ordinal) || key.Contains("middle", StringComparison.Ordinal) ? 1 : null;
+            ry = key.StartsWith("top", StringComparison.Ordinal) ? 0 : key.StartsWith("bottom", StringComparison.Ordinal) ? 2 : key.StartsWith("middle", StringComparison.Ordinal) || key.StartsWith("center", StringComparison.Ordinal) ? 1 : null;
+        }
+
+        double? xNode = ToNumber(mod["x"] ?? mod["offsetX"] ?? mod["relativeX"]);
+        double? yNode = ToNumber(mod["y"] ?? mod["offsetY"] ?? mod["relativeY"]);
+        if (rx == null || ry == null)
+        {
+            if (xNode is >= 0 and <= 1 && yNode is >= 0 and <= 1)
+            {
+                rx = xNode < 0.34 ? 0 : xNode > 0.66 ? 2 : 1;
+                ry = yNode < 0.34 ? 0 : yNode > 0.66 ? 2 : 1;
+            }
+            else return null;
+        }
+
+        double x = xNode ?? 0, y = yNode ?? 0;
+        if (x is > 8000 or < -8000 || y is > 8000 or < -8000) return null;
+        int offX, offY;
+        if (x is >= 0 and <= 1 && y is >= 0 and <= 1 && ((x > 0 && x < 1) || (y > 0 && y < 1)))
+        {
+            if (x > 0.5 || y > 0.5)
+            {
+                offX = (int)Math.Round((x - rx.Value / 2.0) * 960);
+                offY = (int)Math.Round((y - ry.Value / 2.0) * 540);
+            }
+            else
+            {
+                offX = (int)Math.Round((rx.Value == 2 ? -x : x) * 960);
+                offY = (int)Math.Round((ry.Value == 2 ? -y : y) * 540);
+            }
+        }
+        else
+        {
+            offX = (int)Math.Round(x);
+            offY = (int)Math.Round(y);
+        }
+        return new HudPlace(rx.Value, rx.Value, offX, ry.Value, ry.Value, offY);
     }
 
     /// <summary>Badlion: the box's corner at (xPosition, yPosition) of a screenWidth wide screen, in fractions; its sizes are at GUI scale 2.</summary>
@@ -709,15 +1111,68 @@ public static class ClientImport
                 break;
             }
             case "prism":
+            case "multimc":
             {
-                var file = Path.Combine(source.Root, "prismlauncher.cfg");
+                var cfgName = source.Id == "multimc" ? "multimc.cfg" : "prismlauncher.cfg";
+                var file = Path.Combine(source.Root, cfgName);
+                var cfg = File.Exists(file) ? ParseIni(Encoding.UTF8.GetString(ReadBounded(file, 1024 * 1024))) : new Dictionary<string, string>(StringComparer.Ordinal);
+                string? instanceDir = source.GameFolder != null && Path.GetFileName(source.GameFolder) is "minecraft" or ".minecraft"
+                    ? Directory.GetParent(source.GameFolder)?.FullName : source.GameFolder;
+                string? instCfgFile = instanceDir != null ? Path.Combine(instanceDir, "instance.cfg") : null;
+                var instCfg = instCfgFile != null && File.Exists(instCfgFile)
+                    ? ParseIni(Encoding.UTF8.GetString(ReadBounded(instCfgFile, 1024 * 1024)))
+                    : new Dictionary<string, string>(StringComparer.Ordinal);
+                if (cfg.Count == 0 && instCfg.Count == 0) return;
+
+                bool overrideMem = instCfg.TryGetValue("OverrideMemory", out var om) && bool.TryParse(om, out var omb) && omb;
+                string? max = overrideMem && instCfg.TryGetValue("MaxMemAlloc", out var imax) ? imax : cfg.GetValueOrDefault("MaxMemAlloc") ?? instCfg.GetValueOrDefault("MaxMemAlloc");
+                string? min = overrideMem && instCfg.TryGetValue("MinMemAlloc", out var imin) ? imin : cfg.GetValueOrDefault("MinMemAlloc") ?? instCfg.GetValueOrDefault("MinMemAlloc");
+                if (max != null) Memory(ToNumber(JsonValue.Create(max)), "MaxRamMb", "Maximum RAM");
+                if (min != null) Memory(ToNumber(JsonValue.Create(min)), "MinRamMb", "Minimum RAM");
+
+                string? close = instCfg.TryGetValue("OverrideWindow", out var ow) && ow == "true" && instCfg.TryGetValue("CloseAfterLaunch", out var ic) ? ic : cfg.GetValueOrDefault("CloseAfterLaunch") ?? instCfg.GetValueOrDefault("CloseAfterLaunch");
+                if (close != null && bool.TryParse(close, out var closes)) Set("KeepLauncherOpen", JsonValue.Create(!closes), $"Keep the launcher open: {!closes}");
+                if (cfg.ContainsKey("JvmArgs") || instCfg.ContainsKey("JvmArgs")) Skip(plan, "JVM arguments: the Lads launcher chooses its own for each version");
+                if (cfg.ContainsKey("MinecraftWinWidth") || instCfg.ContainsKey("MinecraftWinWidth")) Skip(plan, "Game window size: the Lads launcher has no such setting");
+                break;
+            }
+            case "modrinth":
+            {
+                double? ramMb = null;
+                bool hasJvmArgs = false;
+                if (source.GameFolder != null && File.Exists(Path.Combine(source.GameFolder, "profile.json")))
+                {
+                    var profileFile = Path.Combine(source.GameFolder, "profile.json");
+                    var obj = ParseObject(ReadBounded(profileFile), profileFile);
+                    if (ToNumber(Walk(obj, "memory/maximum") ?? obj["override_mc_memory_max"]) is > 0 and var profRam) ramMb = profRam;
+                    if (Walk(obj, "java/extra_arguments") is JsonArray { Count: > 0 } || (Walk(obj, "java/extra_arguments") is JsonValue s && s.ToString().Length > 0))
+                        hasJvmArgs = true;
+                }
+                var dbFile = Path.Combine(source.Root, "app.db");
+                if (File.Exists(dbFile))
+                {
+                    var (dbRam, dbArgs) = ReadModrinthMemory(dbFile, source.GameFolder);
+                    ramMb ??= dbRam;
+                    hasJvmArgs |= dbArgs;
+                }
+                Memory(ramMb, "MaxRamMb", "Maximum RAM");
+                if (hasJvmArgs) Skip(plan, "JVM arguments: the Lads launcher chooses its own for each version");
+                break;
+            }
+            case "curseforge":
+            {
+                string? folder = source.GameFolder ?? source.Root;
+                var file = Path.Combine(folder, "minecraftinstance.json");
                 if (!File.Exists(file)) return;
-                var cfg = ParseIni(Encoding.UTF8.GetString(ReadBounded(file, 1024 * 1024)));
-                if (cfg.TryGetValue("MaxMemAlloc", out var max)) Memory(ToNumber(JsonValue.Create(max)), "MaxRamMb", "Maximum RAM");
-                if (cfg.TryGetValue("MinMemAlloc", out var min)) Memory(ToNumber(JsonValue.Create(min)), "MinRamMb", "Minimum RAM");
-                if (cfg.TryGetValue("CloseAfterLaunch", out var close) && bool.TryParse(close, out var closes)) Set("KeepLauncherOpen", JsonValue.Create(!closes), $"Keep the launcher open: {!closes}");
-                if (cfg.ContainsKey("JvmArgs")) Skip(plan, "JVM arguments: the Lads launcher chooses its own for each version");
-                if (cfg.ContainsKey("MinecraftWinWidth")) Skip(plan, "Game window size: the Lads launcher has no such setting");
+                var inst = ParseObject(ReadBounded(file), file);
+                bool overrideOff = ToBool(inst["isMemoryOverride"]) == false;
+                double? alloc = ToNumber(inst["allocatedMemory"]);
+                double? rec = Walk(inst, "manifest/minecraft/recommendedRam") is { } r ? ToNumber(r) : null;
+                double? chosen = !overrideOff && alloc is > 0 ? alloc : rec is > 0 ? rec : alloc is > 0 ? alloc : null;
+                Memory(chosen, "MaxRamMb", "Maximum RAM");
+                if ((inst["javaArgsOverride"] is JsonValue ja && ja.TryGetValue<string>(out var jas) && jas.Trim().Length > 0)
+                    || (Walk(inst, "manifest/minecraft/additionalJavaArgs") is JsonValue ma && ma.TryGetValue<string>(out var mas) && mas.Trim().Length > 0))
+                    Skip(plan, "JVM arguments: the Lads launcher chooses its own for each version");
                 break;
             }
             case "vanilla":
@@ -737,18 +1192,134 @@ public static class ClientImport
                 }
                 break;
             }
-            case "folder" or "labymod" or "badlion" or "feather":
+            case "custom" or "folder" or "labymod" or "badlion" or "feather":
                 Skip(plan, $"{source.Name}: no verified launcher settings to read");
                 break;
         }
+    }
+
+    /// <summary>Reads only custom_dir from Modrinth's settings table on a temp copy; never touches user/credential tables.</summary>
+    private static string? TryModrinthCustomDir(string dbFile)
+    {
+        if (!File.Exists(dbFile)) return null;
+        try { return WithModrinthDb(dbFile, (conn, tables) => QueryModrinthCustomDir(conn, tables)); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or SqliteException) { return null; }
+    }
+
+    /// <summary>Reads only memory and extra_launch_args from Modrinth's instances/profiles and settings tables; never touches auth tables.</summary>
+    private static (double? RamMb, bool HasJvmArgs) ReadModrinthMemory(string dbFile, string? profileFolder)
+    {
+        try
+        {
+            return WithModrinthDb(dbFile, (conn, tables) =>
+            {
+                double? ram = null;
+                bool hasArgs = false;
+                string? profileName = profileFolder != null ? Path.GetFileName(Path.TrimEndingDirectorySeparator(profileFolder)) : null;
+                string? profileTable = tables.Contains("instances") ? "instances" : tables.Contains("profiles") ? "profiles" : null;
+                if (profileTable != null && !string.IsNullOrEmpty(profileName))
+                {
+                    var cols = QueryStrings(conn, $"SELECT name FROM pragma_table_info('{profileTable}')");
+                    if (cols.Contains("path") && (cols.Contains("override_mc_memory_max") || cols.Contains("override_extra_launch_args")))
+                    {
+                        string memCol = cols.Contains("override_mc_memory_max") ? "override_mc_memory_max" : "NULL";
+                        string argCol = cols.Contains("override_extra_launch_args") ? "override_extra_launch_args" : "NULL";
+                        using var cmd = conn.CreateCommand();
+                        cmd.CommandText = $"SELECT {memCol}, {argCol} FROM {profileTable} WHERE path = $p LIMIT 1";
+                        cmd.Parameters.AddWithValue("$p", profileName);
+                        using var reader = cmd.ExecuteReader();
+                        if (reader.Read())
+                        {
+                            if (!reader.IsDBNull(0) && reader.GetValue(0) is long m && m > 0) ram = m;
+                            if (!reader.IsDBNull(1) && reader.GetValue(1) is string a && HasNonEmptyArgs(a)) hasArgs = true;
+                        }
+                    }
+                }
+                if (tables.Contains("settings"))
+                {
+                    var sCols = QueryStrings(conn, "SELECT name FROM pragma_table_info('settings')");
+                    if (ram == null && sCols.Contains("mc_memory_max"))
+                    {
+                        using var cmd = conn.CreateCommand();
+                        cmd.CommandText = "SELECT mc_memory_max FROM settings LIMIT 1";
+                        if (cmd.ExecuteScalar() is long gm && gm > 0) ram = gm;
+                    }
+                    if (!hasArgs && sCols.Contains("extra_launch_args"))
+                    {
+                        using var cmd = conn.CreateCommand();
+                        cmd.CommandText = "SELECT extra_launch_args FROM settings LIMIT 1";
+                        if (cmd.ExecuteScalar() is string ga && HasNonEmptyArgs(ga)) hasArgs = true;
+                    }
+                }
+                return (ram, hasArgs);
+            });
+        }
+        catch (SqliteException) { throw new InvalidDataException($"{Quote(dbFile)} is damaged or in an unknown format."); }
+    }
+
+    private static bool HasNonEmptyArgs(string raw)
+    {
+        raw = raw.Trim();
+        return raw.Length > 0 && raw != "[]" && raw != "\"\"";
+    }
+
+    private static T WithModrinthDb<T>(string dbFile, Func<SqliteConnection, HashSet<string>, T> work)
+    {
+        SQLitePCL.Batteries_V2.Init();
+        string temp = Path.Combine(Path.GetTempPath(), "lads-import-modrinth-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temp);
+        try
+        {
+            var copy = Path.Combine(temp, "app.db");
+            File.WriteAllBytes(copy, ReadBounded(dbFile, MaxDbBytes));
+            if (File.Exists(dbFile + "-wal")) File.WriteAllBytes(copy + "-wal", ReadBounded(dbFile + "-wal", MaxDbBytes));
+            using var conn = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = copy, Mode = SqliteOpenMode.ReadWrite, Pooling = false }.ToString());
+            conn.Open();
+            var tables = QueryStrings(conn, "SELECT name FROM sqlite_master WHERE type = 'table'");
+            return work(conn, tables);
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            try { Directory.Delete(temp, true); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        }
+    }
+
+    private static string? QueryModrinthCustomDir(SqliteConnection conn, HashSet<string> tables)
+    {
+        if (!tables.Contains("settings")) return null;
+        var cols = QueryStrings(conn, "SELECT name FROM pragma_table_info('settings')");
+        if (!cols.Contains("custom_dir")) return null;
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT custom_dir FROM settings LIMIT 1";
+        return cmd.ExecuteScalar() is string dir && Path.IsPathFullyQualified(dir) && Directory.Exists(dir) ? dir : null;
+    }
+
+    private static HashSet<string> QueryStrings(SqliteConnection conn, string sql)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        using var reader = cmd.ExecuteReader();
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        while (reader.Read()) if (!reader.IsDBNull(0)) set.Add(reader.GetString(0));
+        return set;
     }
 
     /// <summary>key=value lines of a Prism or MultiMC .cfg; only the keys asked for above are looked at.</summary>
     private static Dictionary<string, string> ParseIni(string text)
     {
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var line in text.Split('\n'))
-            if (line.IndexOf('=') is > 0 and var at) values[line[..at].Trim()] = line[(at + 1)..].Trim();
+        foreach (var raw in text.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line[0] is '[' or ';' or '#') continue;
+            if (line.IndexOf('=') is > 0 and var at)
+            {
+                var val = line[(at + 1)..].Trim();
+                if (val.Length >= 2 && val[0] == '"' && val[^1] == '"') val = val[1..^1];
+                values[line[..at].Trim()] = val;
+            }
+        }
         return values;
     }
 
