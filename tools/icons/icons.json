@@ -1,0 +1,15 @@
+{
+  "about": "Icon name (as used in code and Ico.Name) -> Flaticon UIcons class, solid rounded (fi-sr-*). Edit, then run tools/icons/gen_icons.py (see its docstring). Credit: Uicons by Flaticon, https://www.flaticon.com/uicons",
+  "icons": {
+    "play": "fi-sr-play",
+    "refresh": "fi-sr-refresh",
+    "trash": "fi-sr-trash",
+    "edit": "fi-sr-pencil",
+    "copy": "fi-sr-copy",
+    "folder": "fi-sr-folder",
+    "settings": "fi-sr-settings",
+    "check": "fi-sr-check",
+    "cross": "fi-sr-cross",
+    "user": "fi-sr-user"
+  }
+}

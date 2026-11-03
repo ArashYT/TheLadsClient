@@ -1,4 +1,4 @@
-<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:c="using:TheLadsLauncher.Controls">
   <Styles.Resources>
     <SolidColorBrush x:Key="LadsAccent">#C44343</SolidColorBrush>
     <SolidColorBrush x:Key="LadsAccentHover">#D65353</SolidColorBrush>
@@ -18,6 +18,18 @@
     <Setter Property="CornerRadius" Value="4"/>
     <Setter Property="Padding" Value="12,8"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+  <!-- An icon before a button's text: c:Ico.Name="refresh" (Controls/Ico.cs, glyphs in Icons.axaml). The glyph takes the label's colour (hover and
+       disabled included) and its font size; without text the icon is centred alone. -->
+  <Style Selector="Button:ico">
+    <Setter Property="ContentTemplate">
+      <DataTemplate x:DataType="x:Object">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <c:Glyph Kind="{Binding $parent[Button].(c:Ico.Name)}" Size="{Binding $parent[ContentPresenter].FontSize}" VerticalAlignment="Center"/>
+          <TextBlock Text="{Binding}" Margin="7,0,0,0" VerticalAlignment="Center" IsVisible="{Binding Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+        </StackPanel>
+      </DataTemplate>
+    </Setter>
   </Style>
   <Style Selector="Button.action">
     <Setter Property="Background" Value="#25262A"/>
