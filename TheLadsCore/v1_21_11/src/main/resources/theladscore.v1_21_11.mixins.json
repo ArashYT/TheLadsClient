@@ -23,6 +23,7 @@
     "ScoreboardMixin",
     "ServerListAccessor",
     "ServerDataAccessor",
+    "ServerDataPacksMixin",
     "ServerListSharedMixin",
     "ServerNameMixin",
     "WindowIconMixin",

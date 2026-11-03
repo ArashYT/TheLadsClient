@@ -325,6 +325,7 @@ public class ModuleManager {
         // 1.9.2: the Hypixel mods grouped into one.
         register(com.thelads.core.client.hypixel.HypixelMods.module(), Module.Category.HYPIXEL);
         register(com.thelads.core.client.hypixel.quickplay.QuickplayModule.module(), Module.Category.HYPIXEL);
+        register(new com.thelads.core.modules.NickDetectorModule(), Module.Category.HYPIXEL);
 
         HudModule sessionStats = hud("Session Stats", "Hypixel only. Track games, wins, losses, kills, deaths, win streaks, and beds broken during this session.");
         sessionStats.setEnabled(false);

@@ -394,7 +394,8 @@ public sealed class ServerListFile
         var entry = new NbtCompound
         {
             ["name"] = new NbtString(cleanName),
-            ["ip"] = new NbtString(cleanAddress)
+            ["ip"] = new NbtString(cleanAddress),
+            ["acceptTextures"] = new NbtNumber(NbtTagType.Byte, 1)
         };
         Add(entry);
         return true;
@@ -406,6 +407,12 @@ public sealed class ServerListFile
         bool modified = EnsureEntry(name, address);
         var list = (NbtList)Root["servers"]!;
         var pinned = list.Items.OfType<NbtCompound>().First(c => Text(c, "ip").Trim().Equals(address.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (pinned["acceptTextures"] == null)
+        {
+            // Server resource packs on with no prompt, unless the player chose (a stored 0 stays).
+            pinned["acceptTextures"] = new NbtNumber(NbtTagType.Byte, 1);
+            modified = true;
+        }
         if (list.Items.IndexOf(pinned) == 0) return modified;
         list.Items.Remove(pinned);
         list.Items.Insert(0, pinned);

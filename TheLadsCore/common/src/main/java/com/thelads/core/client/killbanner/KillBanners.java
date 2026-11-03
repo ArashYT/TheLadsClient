@@ -27,18 +27,25 @@ public final class KillBanners {
      */
     public static String fire(KillBannerModule module, KillDetector.Kill kill, long now) {
         if (kill == null || !module.counts(kill.kind())) return null;
+        queue(module, kill, now);
+        return poll(module, now);
+    }
+
+    private static void queue(KillBannerModule module, KillDetector.Kill kill, long now) {
         boolean headshot = kill.headshot() || module.headshots.getIndex() == KillBannerModule.HEADSHOTS_EVERY_KILL;
         if (!TIMELINE.continuing(now, module.streakWindow())) module.resetStreak();
         TIMELINE.kill(now, module.streakWindow(), headshot, module.next(now));
-        return poll(module, now);
     }
 
     /**
      * Each client tick (and right after a kill): starts the next queued banner when its turn has come. Returns its sound (each
      * banner plays its own): "theladscore:&lt;skin&gt;_kill_&lt;n&gt;", "" for the plain chime, or null when nothing (more) plays:
-     * the player's own uploaded sound has already started.
+     * the player's own uploaded sound has already started. Also where a player death the detector held for chat becomes its kill.
      */
     public static String poll(KillBannerModule module, long now) {
+        DETECTOR.assists(module.assistBanners.get());
+        for (KillDetector.Kill due = DETECTOR.due(now); due != null; due = DETECTOR.due(now))
+            if (module.counts(due.kind())) queue(module, due, now);
         if (!TIMELINE.next(now)) return null;
         // A capped HUD rebuilds on the next frame instead of its next due one, so the banner is not late.
         HudFrameCap.reset();

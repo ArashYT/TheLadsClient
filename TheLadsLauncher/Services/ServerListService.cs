@@ -37,7 +37,7 @@ public static class ServerListService
     public static Task<bool> AddAsync(ServerListTarget target, string name, string address) => EditAsync(target, list =>
     {
         if (list.Entries.Any(e => !e.Hidden && Key(e.Ip) == Key(address))) return false;
-        list.Add(new NbtCompound { ["name"] = new NbtString(name), ["ip"] = new NbtString(address.Trim()) });
+        list.Add(new NbtCompound { ["name"] = new NbtString(name), ["ip"] = new NbtString(address.Trim()), ["acceptTextures"] = new NbtNumber(NbtTagType.Byte, 1) });
         return true;
     });
 

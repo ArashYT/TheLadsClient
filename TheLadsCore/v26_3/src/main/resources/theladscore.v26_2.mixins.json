@@ -85,6 +85,7 @@
     "GlobalScreenshotMixin",
     "ServerListAccessor",
     "ServerDataAccessor",
+    "ServerDataPacksMixin",
     "ServerListSharedMixin",
     "ServerNameMixin",
     "InactivityOptionMixin",

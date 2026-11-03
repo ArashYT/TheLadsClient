@@ -665,6 +665,119 @@ class KillDetectorTest {
         assertFalse(d.died(4, 3 * S).headshot(), "nor does one long after the last head hit (fire, an unseen arrow)");
     }
 
+    /** Assists off: Bob, hit by Arash, dies at 2s. */
+    private static KillDetector heldBob() {
+        var d = new KillDetector();
+        d.assists(false);
+        d.hitByMe(3, List.of("Bob"), Kind.PLAYER, true, S);
+        assertNull(d.died(3, 2 * S), "a player's death waits for chat");
+        return d;
+    }
+
+    @Test void assistsOffSilenceCountsTheDeathAfterTheGrace() {
+        var d = heldBob();
+        assertNull(d.due(2 * S + S / 2), "still in its grace");
+        var kill = d.due(2 * S + S);
+        assertNotNull(kill, "death messages off: the kill still counts");
+        assertEquals("bob", kill.victim());
+        assertTrue(kill.headshot());
+        assertNull(d.due(4 * S), "once");
+        assertNull(d.died(3, 4 * S));
+        assertNull(d.due(5 * S), "nor again from the same death's second event");
+    }
+
+    @Test void assistsOffMobsAndBossesCountAtOnce() {
+        var d = new KillDetector();
+        d.assists(false);
+        d.hitByMe(7, List.of(), Kind.MOB, false, S);
+        assertNotNull(d.died(7, 2 * S));
+        d.hitByMe(8, List.of(), Kind.BOSS, false, S);
+        assertNotNull(d.died(8, 2 * S));
+    }
+
+    @Test void assistsOffAnotherKillerTakesIt() {
+        for (String line : List.of("Bob was killed by Steve.", "\u00a7cBob \u00a77was spooked by \u00a7aSteve\u00a77.", "Bob was killed by Steve, assisted by Arash.",
+                "Steve killed Bob!", "[RED] Bob was knocked into the void by [BLUE] Steve. FINAL KILL!", "Bob lost the draw to Steve.", "+5 coins! (Assist)")) {
+            var after = heldBob();
+            assertNull(after.chat(line, ME, () -> Map.of(9, Set.of("Steve")), 2 * S + S / 10), line);
+            assertNull(after.due(4 * S), "the line after the death: " + line);
+
+            var before = new KillDetector();
+            before.assists(false);
+            before.hitByMe(3, List.of("Bob"), Kind.PLAYER, false, S);
+            assertNull(before.chat(line, ME, () -> Map.of(9, Set.of("Steve")), 2 * S), line);
+            assertNull(before.died(3, 2 * S + S / 10));
+            assertNull(before.due(4 * S), "the line before the death: " + line);
+        }
+    }
+
+    @Test void assistsOffLinesThatSayNoOneElseKilledKeepIt() {
+        for (String line : List.of("[MVP+] Steve: Bob was killed by Steve", "<Steve> Bob was killed by Steve", "Bob fell into the void.", "Bob died",
+                "Bob was killed by a Zombie's lightning", "Steve was killed by Carl.", "Bob joined the party.", "+10 coins! (Tip)")) {
+            var d = heldBob();
+            assertNull(d.chat(line, ME, () -> Map.of(9, Set.of("Steve")), 2 * S + S / 10), line);
+            assertNotNull(d.due(4 * S), "still mine after: " + line);
+        }
+    }
+
+    @Test void assistsOffMyLineOrRewardCountsItNow() {
+        var d = heldBob();
+        var kill = d.chat("Bob was killed by Arash.", ME, 2 * S + S / 10);
+        assertNotNull(kill, "named as the killer: no need to wait");
+        assertTrue(kill.headshot());
+        assertNull(d.due(4 * S), "once");
+
+        d = heldBob();
+        kill = d.chat("+10 coins! (Kill)", ME, 2 * S + S / 10);
+        assertNotNull(kill, "a kill reward");
+        assertEquals("bob", kill.victim(), "the held death's kill, name and all");
+        assertNull(d.chat("+25 Bed Wars Experience (Kill)", ME, 2 * S + S / 10), "the same kill's other reward");
+        assertNull(d.due(4 * S), "once");
+
+        d = new KillDetector();
+        d.assists(false);
+        d.hitByMe(3, List.of("Bob"), Kind.PLAYER, false, S);
+        assertNotNull(d.chat("Bob was killed by Arash.", ME, 2 * S), "the line before the death");
+        assertNull(d.died(3, 2 * S + S / 10));
+        assertNull(d.due(4 * S), "once");
+
+        d = new KillDetector();
+        d.assists(false);
+        d.hitByMe(3, List.of("Bob"), Kind.PLAYER, false, S);
+        assertNotNull(d.chat("+10 coins! (Kill)", ME, 2 * S), "the reward before the death");
+        assertNull(d.died(3, 2 * S + S / 10));
+        assertNull(d.due(4 * S), "once");
+    }
+
+    @Test void assistsOnADeathCountsAtOnceAsBefore() {
+        var d = new KillDetector();
+        d.hitByMe(3, List.of("Bob"), Kind.PLAYER, false, S);
+        assertNull(d.chat("Bob was killed by Steve.", ME, 2 * S), "not my kill, by chat");
+        assertNotNull(d.died(3, 2 * S), "but my hit, by the death");
+        assertNull(d.due(4 * S), "nothing held");
+    }
+
+    @Test void heldDeathShowsItsBannerFromThePoll() {
+        KillBannerModule module = new KillBannerModule();
+        assertFalse(module.assistBanners.get(), "off by default");
+        KillBanners.reset();
+        KillBanners.poll(module, S);
+        KillBanners.DETECTOR.hitByMe(3, List.of("Bob"), Kind.PLAYER, false, S);
+        assertNull(KillBanners.DETECTOR.died(3, 2 * S));
+        KillBanners.poll(module, 2 * S + S / 10);
+        assertEquals(0, KillBanners.TIMELINE.sequence(), "in its grace");
+        KillBanners.poll(module, 3 * S);
+        assertEquals(1, KillBanners.TIMELINE.sequence(), "its grace over: the banner");
+
+        KillBanners.reset();
+        module.assistBanners.set(true);
+        KillBanners.poll(module, S);
+        KillBanners.DETECTOR.hitByMe(3, List.of("Bob"), Kind.PLAYER, false, S);
+        assertNotNull(KillBanners.DETECTOR.died(3, 2 * S), "toggle on: at once");
+        KillBanners.DETECTOR.assists(true);
+        KillBanners.reset();
+    }
+
     @Test void everyKillCanBeAHeadshot() {
         KillBannerModule module = new KillBannerModule();
         KillBanners.reset();

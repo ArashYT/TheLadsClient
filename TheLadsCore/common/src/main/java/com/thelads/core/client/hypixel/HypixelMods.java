@@ -254,6 +254,7 @@ public final class HypixelMods {
      */
     public static void tick(LadsGameBridge game, Object currentWorld, Object current, long now) {
         RealPing.tick(game, current, now);
+        NickDetector.tick(game, now);
         if (current != connection) {
             connection = current;
             QUEUE.clear();
@@ -457,13 +458,13 @@ public final class HypixelMods {
 
         // Elimination / death checks for Auto Play Again
         if (!gameOver && !replayed && on(PLAY_AGAIN)) {
-            String gametype = location != null ? location[0] : null;
-            if (!selfOut && HypixelChat.isSelfOut(gametype, message, me)) {
+            String gametype = location != null ? location[0] : null, mode = location != null ? location[1] : null;
+            if (!selfOut && HypixelChat.isSelfOut(gametype, mode, message, me)) {
                 selfOut = true;
                 selfDiedAt = now;
                 triggerReplayIfEligible(now);
             }
-            String victim = HypixelChat.eliminatedPlayer(gametype, message);
+            String victim = HypixelChat.eliminatedPlayer(gametype, mode, message);
             if (victim != null) {
                 String vLower = victim.toLowerCase(Locale.ROOT);
                 if (me != null && me.equalsIgnoreCase(victim)) {

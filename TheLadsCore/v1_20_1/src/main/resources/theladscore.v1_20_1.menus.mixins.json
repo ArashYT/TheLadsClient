@@ -27,6 +27,7 @@
     "ReplayRecordCheckboxMixin",
     "ServerNameMixin",
     "ServerListAccessor",
+    "ServerDataPacksMixin",
     "ServerListSharedMixin",
     "WorldStorageAccessor",
     "WorldFoldersMixin",

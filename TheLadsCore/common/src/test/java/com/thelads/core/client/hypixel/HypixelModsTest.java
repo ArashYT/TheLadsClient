@@ -546,32 +546,32 @@ class HypixelModsTest {
 
     @Test void eliminationAndDeathDetectionPerMode() {
         // Bed Wars: only FINAL KILL, eliminated, or disconnected count
-        assertEquals("victim", HypixelChat.eliminatedPlayer("BEDWARS", "victim was killed by killer. FINAL KILL!"));
-        assertEquals("victim", HypixelChat.eliminatedPlayer("BEDWARS", "[RED] victim was knocked into the void by [BLUE] killer. FINAL KILL!"));
-        assertEquals("victim", HypixelChat.eliminatedPlayer("BEDWARS", "victim has been eliminated!"));
-        assertEquals("victim", HypixelChat.eliminatedPlayer("BEDWARS", "victim disconnected."));
+        assertEquals("victim", HypixelChat.eliminatedPlayer("BEDWARS", null, "victim was killed by killer. FINAL KILL!"));
+        assertEquals("victim", HypixelChat.eliminatedPlayer("BEDWARS", null, "[RED] victim was knocked into the void by [BLUE] killer. FINAL KILL!"));
+        assertEquals("victim", HypixelChat.eliminatedPlayer("BEDWARS", null, "victim has been eliminated!"));
+        assertEquals("victim", HypixelChat.eliminatedPlayer("BEDWARS", null, "victim disconnected."));
         // Regular Bed Wars kill does NOT eliminate
-        assertNull(HypixelChat.eliminatedPlayer("BEDWARS", "victim was killed by killer."));
+        assertNull(HypixelChat.eliminatedPlayer("BEDWARS", null, "victim was killed by killer."));
 
         // Sky Wars: regular kill counts
-        assertEquals("victim", HypixelChat.eliminatedPlayer("SKYWARS", "victim was killed by killer."));
-        assertEquals("victim", HypixelChat.eliminatedPlayer("SKYWARS", "victim fell into the void."));
-        assertEquals("victim", HypixelChat.eliminatedPlayer("SKYWARS", "victim disconnected."));
+        assertEquals("victim", HypixelChat.eliminatedPlayer("SKYWARS", null, "victim was killed by killer."));
+        assertEquals("victim", HypixelChat.eliminatedPlayer("SKYWARS", null, "victim fell into the void."));
+        assertEquals("victim", HypixelChat.eliminatedPlayer("SKYWARS", null, "victim disconnected."));
 
         // Duels: kill counts
-        assertEquals("victim", HypixelChat.eliminatedPlayer("DUELS", "victim was slain by killer."));
+        assertEquals("victim", HypixelChat.eliminatedPlayer("DUELS", "DUELS_CLASSIC_DUEL", "victim was slain by killer."));
 
         // Player chat negative: player chat with death line does not match
-        assertNull(HypixelChat.eliminatedPlayer("BEDWARS", "[MVP+] Troll: victim was killed by killer. FINAL KILL!"));
-        assertNull(HypixelChat.eliminatedPlayer("SKYWARS", "Party > Troll: victim died."));
+        assertNull(HypixelChat.eliminatedPlayer("BEDWARS", null, "[MVP+] Troll: victim was killed by killer. FINAL KILL!"));
+        assertNull(HypixelChat.eliminatedPlayer("SKYWARS", null, "Party > Troll: victim died."));
 
         // Self out checks
-        assertTrue(HypixelChat.isSelfOut("BEDWARS", "You died! Want to play again? Click here to play again!", "Me"));
-        assertTrue(HypixelChat.isSelfOut("BEDWARS", "You have been eliminated!", "Me"));
-        assertTrue(HypixelChat.isSelfOut("BEDWARS", "You are now a spectator!", "Me"));
-        assertTrue(HypixelChat.isSelfOut("BEDWARS", "Me was killed by killer. FINAL KILL!", "Me"));
-        assertFalse(HypixelChat.isSelfOut("BEDWARS", "Teammate was killed by killer. FINAL KILL!", "Me"));
-        assertFalse(HypixelChat.isSelfOut("BEDWARS", "[MVP+] Troll: You died!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", null, "You died! Want to play again? Click here to play again!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", null, "You have been eliminated!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", null, "You are now a spectator!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", null, "Me was killed by killer. FINAL KILL!", "Me"));
+        assertFalse(HypixelChat.isSelfOut("BEDWARS", null, "Teammate was killed by killer. FINAL KILL!", "Me"));
+        assertFalse(HypixelChat.isSelfOut("BEDWARS", null, "[MVP+] Troll: You died!", "Me"));
     }
 
     @Test void autoPlayAgainWaitsForPartyBeforeReplaying() {
@@ -703,16 +703,16 @@ class HypixelModsTest {
 
     @Test void bedWarsRespawningDeathDoesNotCountAsSelfOut() {
         // Pure chat logic checks
-        assertFalse(HypixelChat.isSelfOut("BEDWARS", "You died!", "Me"));
-        assertFalse(HypixelChat.isSelfOut("BEDWARS", "You will respawn in 5 seconds!", "Me"));
-        assertFalse(HypixelChat.isSelfOut("BEDWARS", "You died!\nYou will respawn in 5 seconds!", "Me"));
-        assertFalse(HypixelChat.isSelfOut("BEDWARS", "Me was knocked into the void by Enemy.", "Me"));
+        assertFalse(HypixelChat.isSelfOut("BEDWARS", null, "You died!", "Me"));
+        assertFalse(HypixelChat.isSelfOut("BEDWARS", null, "You will respawn in 5 seconds!", "Me"));
+        assertFalse(HypixelChat.isSelfOut("BEDWARS", null, "You died!\nYou will respawn in 5 seconds!", "Me"));
+        assertFalse(HypixelChat.isSelfOut("BEDWARS", null, "Me was knocked into the void by Enemy.", "Me"));
 
         // Final death lines DO count
-        assertTrue(HypixelChat.isSelfOut("BEDWARS", "You died! Want to play again? Click here to play again!", "Me"));
-        assertTrue(HypixelChat.isSelfOut("BEDWARS", "You have been eliminated!", "Me"));
-        assertTrue(HypixelChat.isSelfOut("BEDWARS", "You are now a spectator!", "Me"));
-        assertTrue(HypixelChat.isSelfOut("BEDWARS", "Me was killed by Enemy. FINAL KILL!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", null, "You died! Want to play again? Click here to play again!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", null, "You have been eliminated!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", null, "You are now a spectator!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", null, "Me was killed by Enemy. FINAL KILL!", "Me"));
 
         // Module end-to-end check in solo Bed Wars
         Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
@@ -819,15 +819,15 @@ class HypixelModsTest {
 
     @Test void cosmeticKillMessagesPartyNoticesAndNewGameDropTheGg() {
         // Real lines from a 2026-10-15 log: kill-message cosmetics, not "was killed by".
-        assertEquals("Arash_YT", HypixelChat.eliminatedPlayer("SKYWARS", "Arash_YT took the L to m310n_."));
-        assertEquals("UnofficiallyRed", HypixelChat.eliminatedPlayer("SKYWARS", "UnofficiallyRed got rekt by m310n_."));
-        assertEquals("UnofficiallyRed", HypixelChat.eliminatedPlayer("DUELS", "UnofficiallyRed was given the cold shoulder by Arash_YT using Baton."));
-        assertEquals("Bob", HypixelChat.eliminatedPlayer("DUELS", "[RED] Bob lost the draw to [BLUE] Me. FINAL KILL!"));
-        assertNull(HypixelChat.eliminatedPlayer("DUELS", "You summoned [MVP+] UnofficiallyRed to your server."));
-        assertNull(HypixelChat.eliminatedPlayer("DUELS", "[MVP+] Arash_YT invited [MVP+] UnofficiallyRed to the party! They have 60 seconds to accept."));
-        assertNull(HypixelChat.eliminatedPlayer("DUELS", "[MVP+] UnofficiallyRed has invited you to UHC Duels!"));
-        assertNull(HypixelChat.eliminatedPlayer("DUELS", "[MVP+] Steve: Bob got rekt by Me"), "player chat");
-        assertNull(HypixelChat.eliminatedPlayer("BEDWARS", "Bob got rekt by Me."), "Bed Wars: only final kills count");
+        assertEquals("Arash_YT", HypixelChat.eliminatedPlayer("SKYWARS", null, "Arash_YT took the L to m310n_."));
+        assertEquals("UnofficiallyRed", HypixelChat.eliminatedPlayer("SKYWARS", null, "UnofficiallyRed got rekt by m310n_."));
+        assertEquals("UnofficiallyRed", HypixelChat.eliminatedPlayer("DUELS", "DUELS_CLASSIC_DUEL", "UnofficiallyRed was given the cold shoulder by Arash_YT using Baton."));
+        assertEquals("Bob", HypixelChat.eliminatedPlayer("DUELS", "DUELS_CLASSIC_DUEL", "[RED] Bob lost the draw to [BLUE] Me. FINAL KILL!"));
+        assertNull(HypixelChat.eliminatedPlayer("DUELS", "DUELS_CLASSIC_DUEL", "You summoned [MVP+] UnofficiallyRed to your server."));
+        assertNull(HypixelChat.eliminatedPlayer("DUELS", "DUELS_CLASSIC_DUEL", "[MVP+] Arash_YT invited [MVP+] UnofficiallyRed to the party! They have 60 seconds to accept."));
+        assertNull(HypixelChat.eliminatedPlayer("DUELS", "DUELS_CLASSIC_DUEL", "[MVP+] UnofficiallyRed has invited you to UHC Duels!"));
+        assertNull(HypixelChat.eliminatedPlayer("DUELS", "DUELS_CLASSIC_DUEL", "[MVP+] Steve: Bob got rekt by Me"), "player chat");
+        assertNull(HypixelChat.eliminatedPlayer("BEDWARS", null, "Bob got rekt by Me."), "Bed Wars: only final kills count");
         assertTrue(HypixelChat.isPartyChat("Your party was split for balancing purposes."));
         assertTrue(HypixelChat.isPartyChat("Your stats did not change because you dueled someone in your party!"));
         assertFalse(HypixelChat.isPartyChat("[MVP+] Steve: in your party"));
@@ -1002,5 +1002,64 @@ class HypixelModsTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         assertThrows(IOException.class, () -> RealPing.statusPing(in, out, "mc.hypixel.net", 25565));
+    }
+
+    /** Auto Play Again on (no delay), in this Duels mode's game, its countdown over. */
+    private void inDuel(String mode) {
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN)).set(true);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_TIP)).set(false);
+        ((SliderOption) m.getOption(HypixelMods.PLAY_AGAIN + ": Delay seconds")).setValue(0);
+        HypixelMods.setPlayerNameForTest("Me");
+        HypixelMods.tick(game, world, connection, 0);
+        HypixelMods.tick(game, world, connection, 2 * S);
+        HypixelMods.chat("{\"server\":\"mini1A\",\"gametype\":\"DUELS\",\"mode\":\"" + mode + "\",\"map\":\"Urban\"}", 3 * S);
+        HypixelMods.chat("Cages open in: 1 second!", 4 * S);
+    }
+
+    @Test void bridgeDeathDoesNotReplayButItsGameEndDoes() {
+        inDuel("DUELS_BRIDGE_DUEL");
+        for (String death : List.of("Me was killed by Enemy.", "Me fell into the void.", "Me was knocked into the void by Enemy.", "Me took the L to Enemy."))
+            HypixelMods.chat(death, 10 * S);
+        assertFalse(HypixelMods.isSelfOut(), "Bridge respawns");
+        for (long t = 10 * S; t <= 20 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertFalse(sent.contains("/play duels_bridge_duel"), "the game goes on: " + sent);
+        HypixelMods.chat("         [MVP+] Me   [MVP+] Enemy WINNER!", 30 * S);
+        for (long t = 30 * S; t <= 40 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertTrue(sent.contains("/play duels_bridge_duel"), "its end: " + sent);
+    }
+
+    @Test void classicDuelDeathStillReplays() {
+        inDuel("DUELS_CLASSIC_DUEL");
+        HypixelMods.chat("Me was killed by Enemy.", 10 * S);
+        assertTrue(HypixelMods.isSelfOut());
+        for (long t = 10 * S; t <= 20 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertTrue(sent.contains("/play duels_classic_duel"), "one life: " + sent);
+    }
+
+    @Test void aKillLineIsOutOnlyWhereOneDeathIsTheEnd() {
+        String kill = "Me was killed by Enemy.";
+        for (String mode : List.of("BRIDGE_DUEL", "BRIDGE_DOUBLES", "BRIDGE_THREES", "BRIDGE_FOUR", "BRIDGE_2V2V2V2", "BRIDGE_3V3V3V3", "CAPTURE_THREES",
+                "DUELS_BRIDGE_DUEL", "DUELS_CAPTURE_THREES", "DUELS_SOME_NEW_MODE", "lobby")) {
+            assertNull(HypixelChat.eliminatedPlayer("DUELS", mode, kill), mode);
+            assertFalse(HypixelChat.isSelfOut("DUELS", mode, kill, "Me"), mode);
+            assertFalse(HypixelChat.isSelfOut("DUELS", mode, "You are now a spectator!", "Me"), mode);
+        }
+        assertNull(HypixelChat.eliminatedPlayer("DUELS", null, kill), "no mode known yet: wait for the end");
+        for (String mode : List.of("DUELS_CLASSIC_DUEL", "CLASSIC_DUEL", "DUELS_UHC_MEETUP", "DUELS_SW_DOUBLES", "DUELS_SUMO_DUEL", "DUELS_OP_DOUBLES", "DUELS_UHC_FOUR"))
+            assertEquals("Me", HypixelChat.eliminatedPlayer("DUELS", mode, kill), mode);
+        assertEquals("Me", HypixelChat.eliminatedPlayer("SKYWARS", "solo_insane", kill));
+        // Respawning games: a kill line is nothing, a real elimination still counts.
+        String[][] respawning = {{"ARCADE", "PVP_CTW"}, {"WALLS3", "standard"}, {"TNTGAMES", "CAPTURE"}, {"BATTLEGROUND", "domination"}, {"MCGO", "normal"}, {"BEDWARS", "BEDWARS_EIGHT_ONE"}};
+        for (String[] game : respawning) {
+            assertNull(HypixelChat.eliminatedPlayer(game[0], game[1], kill), game[0]);
+            assertTrue(HypixelChat.isSelfOut(game[0], game[1], "Me was killed by Enemy. FINAL KILL!", "Me"), game[0]);
+            assertTrue(HypixelChat.isSelfOut(game[0], game[1], "You have been eliminated!", "Me"), game[0]);
+        }
+        assertFalse(HypixelChat.isSelfOut("MCGO", "normal", "You are now a spectator!", "Me"), "the round's end brings you back");
+        assertFalse(HypixelChat.isSelfOut("TNTGAMES", "CAPTURE", "You are now a spectator!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("TNTGAMES", "TNTRUN", "You are now a spectator!", "Me"), "TNT Run: out for good");
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", "BEDWARS_EIGHT_ONE", "You are now a spectator!", "Me"));
+        assertTrue(HypixelChat.isSelfOut("DUELS", "DUELS_BRIDGE_DUEL", "You have been eliminated!", "Me"), "a real elimination line");
     }
 }
