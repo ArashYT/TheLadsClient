@@ -28,6 +28,7 @@ public class AccountSwitcherScreen {
     /** The switch under way: its token and preparation run off the render thread, and tick() finishes it on the render thread. */
     private CompletableFuture<Runnable> switching;
     private LadsAccount switchTarget, confirming;
+    private LadsAccount addedRow; // an offline row added for a live switch: it stays only if the switch succeeds
     private boolean statusIsError;
     private final List<LadsAccount> accounts = new ArrayList<>();
     private LadsAccount selectedAccount = null;
@@ -126,6 +127,11 @@ public class AccountSwitcherScreen {
         statusMessage = "Next launch: " + account.getUsername() + ". Restart from the launcher.";
     }
 
+    private void dropAddedRow() {
+        if (addedRow != null) accounts.remove(addedRow);
+        addedRow = null;
+    }
+
     private void markSelected(LadsAccount account) {
         for (LadsAccount acc : accounts) {
             acc.setSelected(acc == account);
@@ -183,8 +189,10 @@ public class AccountSwitcherScreen {
                 : "Minecraft's services refused " + target.getUsername() + ". Try again from the launcher.";
             statusIsError = true;
             LOGGER.warn("[Lads] Account switch to {} failed: {}", target.getUsername(), cause.getClass().getSimpleName());
+            dropAddedRow();
             return;
         }
+        addedRow = null;
         markSelected(target);
         saveAccounts();
         writeNextLaunchRequest(target);
@@ -198,6 +206,7 @@ public class AccountSwitcherScreen {
     public void cancel() {
         switching = null;
         switchTarget = null;
+        dropAddedRow();
     }
 
     public boolean isSwitching() {
@@ -223,6 +232,8 @@ public class AccountSwitcherScreen {
         }
         String uuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + name).getBytes(StandardCharsets.UTF_8)).toString();
         LadsAccount newAcc = new LadsAccount(name, uuid, "offline", "0");
+        dropAddedRow();
+        if (live != null) addedRow = newAcc;
         accounts.add(newAcc);
         selectAccount(newAcc);
     }

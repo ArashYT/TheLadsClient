@@ -319,6 +319,17 @@ public sealed class ClientImportTests : IDisposable
     }
 
     [Fact]
+    public void AnOldBackupIsNoLongerOffered()
+    {
+        LunarFixture();
+        File.WriteAllBytes(Path.Combine(_env.Minecraft, "servers.dat"), Servers(("New", "new.example.net")));
+        var result = ClientImport.Apply(ClientImport.Plan(Client("lunar"), _targets), Enum.GetValues<ImportCategory>(), _targets);
+        Assert.Equal(result.BackupDirectory, ClientImport.LatestBackup(_targets));
+        Directory.SetCreationTimeUtc(result.BackupDirectory!, DateTime.UtcNow.AddDays(-8));
+        Assert.Null(ClientImport.LatestBackup(_targets));
+    }
+
+    [Fact]
     public void ImportingTwiceChangesNothingAndUndoRestoresEverything()
     {
         LunarFixture();

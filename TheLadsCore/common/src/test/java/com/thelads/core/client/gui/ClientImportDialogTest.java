@@ -55,6 +55,7 @@ class ClientImportDialogTest {
         assertTrue(dialog.status().contains("restart"), dialog.status());
         assertTrue(dialog.canUndo());
 
+        dialog.undo(); // the warning
         dialog.undo();
         await(dialog, "Undoing the last import...");
         assertEquals("undo --in-game", calls.get(2));

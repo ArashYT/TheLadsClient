@@ -12,7 +12,7 @@ namespace TheLadsLauncher.Services;
 public sealed record ServerListTarget(string Label, string File, string? LockFile);
 
 /// <summary>A server another client's list has: only what a list entry needs, nothing else of the source's.</summary>
-public sealed record ImportedServer(string Name, string Address, string? Icon);
+public sealed record ImportedServer(string Name, string Address, string? Icon, bool PacksDisabled = false);
 
 /// <summary>Adds and removes servers in a server list without touching any other entry or field (atomic write, NBT round trip).</summary>
 public static class ServerListService
@@ -66,6 +66,7 @@ public static class ServerListService
             if (!known.Add(Key(server.Address))) continue;
             var entry = new NbtCompound { ["name"] = new NbtString(server.Name), ["ip"] = new NbtString(server.Address.Trim()) };
             if (server.Icon != null) entry["icon"] = new NbtString(server.Icon);
+            if (server.PacksDisabled) entry["acceptTextures"] = new NbtNumber(NbtTagType.Byte, 0); // the player's choice, not the Enabled default
             list.Add(entry);
         }
         list.PinFirst(PinnedName, PinnedAddress);

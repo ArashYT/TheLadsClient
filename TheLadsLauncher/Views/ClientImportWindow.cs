@@ -24,6 +24,7 @@ public sealed class ClientImportWindow : Window
     private readonly TextBlock _note = new() { Foreground = Brush("#A0A1AA"), FontSize = 12, TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _status = new() { Foreground = Brush("#A4BAA7"), FontSize = 12, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
     private readonly Button _import = new() { Content = "Import", Classes = { "action" }, IsEnabled = false };
+    private bool _undoArmed;
     private readonly Button _undo = new() { Content = "Undo last import", Classes = { "action" }, IsEnabled = false };
     private readonly List<(ImportCategory Category, CheckBox Box)> _boxes = new();
     private readonly ImportEnvironment _environment;
@@ -170,6 +171,13 @@ public sealed class ClientImportWindow : Window
     private async Task UndoLast()
     {
         if (ClientImport.LatestBackup(_targets) is not { } backup) return;
+        if (!_undoArmed)
+        {
+            _undoArmed = true;
+            _status.Text = "Undo puts your servers, options and settings back as they were before the import. Anything you changed since is lost. Click Undo again to go ahead.";
+            return;
+        }
+        _undoArmed = false;
         var settings = _settings;
         var result = await Task.Run(() => ClientImport.Undo(backup, _targets, settings));
         _settingsChanged();

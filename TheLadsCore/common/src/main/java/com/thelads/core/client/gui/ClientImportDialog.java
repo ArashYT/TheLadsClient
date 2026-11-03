@@ -41,7 +41,7 @@ public final class ClientImportDialog {
     private final Queue<Runnable> finished = new ConcurrentLinkedQueue<>();
     private final List<Hit> hits = new ArrayList<>();
     private final Set<String> chosen = new LinkedHashSet<>();
-    private boolean open, busy, canUndo;
+    private boolean open, busy, canUndo, undoArmed;
     private String status = "";
     private JsonArray clients = new JsonArray();
     private JsonObject selected;
@@ -101,6 +101,12 @@ public final class ClientImportDialog {
 
     void undo() {
         if (busy) return;
+        if (!undoArmed) {
+            undoArmed = true;
+            status = "Undo puts servers, options and settings back as they were before the import; later changes are lost. Click again to go ahead.";
+            return;
+        }
+        undoArmed = false;
         status = "Undoing the last import...";
         ConfigManager.flush();
         background(new String[] {"undo", "--in-game"}, answer -> {

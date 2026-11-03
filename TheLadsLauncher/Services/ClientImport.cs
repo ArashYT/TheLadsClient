@@ -303,7 +303,7 @@ public static class ClientImport
                 if (!known.Add(ip.ToLowerInvariant())) continue;
                 string name = new string(entry.Name.Where(c => !char.IsControl(c)).Take(128).ToArray());
                 string? icon = entry.Raw["icon"] is NbtString { Value.Length: > 0 and <= 256 * 1024 } i ? i.Value : null;
-                plan.Servers.Add(new ImportedServer(name.Length > 0 ? name : ip, ip, icon));
+                plan.Servers.Add(new ImportedServer(name.Length > 0 ? name : ip, ip, icon, entry.Raw["acceptTextures"] is NbtNumber { RawValue: 0 }));
                 plan.Changes.Add($"Add server {(name.Length > 0 ? name : ip)}");
             }
         }
@@ -953,11 +953,15 @@ public static class ClientImport
 
     // --- Undo ---
 
-    /// <summary>The newest backup not yet undone, or null.</summary>
+    // A snapshot goes stale as the player changes settings: past this it is no longer offered.
+    private static readonly TimeSpan UndoWindow = TimeSpan.FromDays(7);
+
+    /// <summary>The newest backup not yet undone and young enough to restore, or null.</summary>
     public static string? LatestBackup(ImportTargets targets)
     {
         if (!Directory.Exists(targets.BackupsDirectory)) return null;
-        return Directory.GetDirectories(targets.BackupsDirectory).OrderByDescending(Path.GetFileName, StringComparer.Ordinal)
+        return Directory.GetDirectories(targets.BackupsDirectory).Where(d => DateTime.UtcNow - Directory.GetCreationTimeUtc(d) < UndoWindow)
+            .OrderByDescending(Path.GetFileName, StringComparer.Ordinal)
             .FirstOrDefault(d => TryParseObject(Path.Combine(d, ManifestFile)) is { } m && ToBool(m["undone"]) == false);
     }
 
@@ -965,6 +969,11 @@ public static class ClientImport
     public static ImportResult Undo(string backup, ImportTargets targets, LauncherSettings? live = null)
     {
         var errors = new List<string>();
+        if (!targets.InGame && targets.Profiles.Any(p => RunningGameMarker.IsRunning(targets.Paths.GetProfileDirectory(p))))
+        {
+            errors.Add("Close the game first: it would write its own settings back over the undo.");
+            return new(backup, new Dictionary<ImportCategory, int>(), errors, false, false, false);
+        }
         var manifest = ParseObject(ReadBounded(Path.Combine(backup, ManifestFile)), ManifestFile);
         bool configChanged = false, options = false, pending = false;
         foreach (var entry in (manifest["files"] as JsonArray ?? new()).OfType<JsonObject>())
@@ -981,7 +990,9 @@ public static class ClientImport
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { errors.Add($"{Quote(path)}: {e.Message}"); }
         }
         foreach (var pack in (manifest["packs"] as JsonArray ?? new()).OfType<JsonValue>())
-            if (pack.TryGetValue<string>(out var path)) DeletePack(path, targets);
+            if (pack.TryGetValue<string>(out var path))
+                try { DeletePack(path, targets); }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException) { errors.Add($"{Quote(path)}: {e.Message}"); }
         if (manifest["launcher"] is JsonObject launcher)
         {
             if (targets.InGame)
@@ -998,7 +1009,7 @@ public static class ClientImport
         }
         if (configChanged && File.Exists(targets.ConfigFile)) File.SetLastWriteTimeUtc(targets.ConfigFile, DateTime.UtcNow);
         if (configChanged) SharedContentService.SyncLadsSettingsAcrossAllInstances(targets.Paths.BaseDirectory);
-        manifest["undone"] = true;
+        manifest["undone"] = errors.Count == 0; // a failed part stays offered, to try again
         SaveManifest(backup, manifest);
         return new(backup, new Dictionary<ImportCategory, int>(), errors, configChanged, options && targets.InGame, pending);
     }

@@ -69,7 +69,7 @@ public final class PauseMenuLayout {
             rows = single;
         }
         int apart = quitRows < rows.size() && quitRows > 0 ? APART : 0;
-        int height = Math.max(17, Math.min(22, (bottom - top - apart - GAP * (rows.size() - 1)) / Math.max(1, rows.size())));
+        int height = Math.max(14, Math.min(22, (bottom - top - apart - GAP * (rows.size() - 1)) / Math.max(1, rows.size())));
         int block = rows.size() * height + GAP * (rows.size() - 1) + apart;
         int total = Math.min(width - 32, MAX_WIDTH), left = (width - total) / 2, half = (total - GAP) / 2;
         int y = top + Math.max(0, (bottom - top - block) / 2);
