@@ -697,7 +697,9 @@ class KillDetectorTest {
 
     @Test void assistsOffAnotherKillerTakesIt() {
         for (String line : List.of("Bob was killed by Steve.", "\u00a7cBob \u00a77was spooked by \u00a7aSteve\u00a77.", "Bob was killed by Steve, assisted by Arash.",
-                "Steve killed Bob!", "[RED] Bob was knocked into the void by [BLUE] Steve. FINAL KILL!", "Bob lost the draw to Steve.", "+5 coins! (Assist)")) {
+                "Bob was killed by Steve (Assist: Arash)", "Steve killed Bob!", "[RED] Bob was knocked into the void by [BLUE] Steve. FINAL KILL!",
+                "Bob lost the draw to Steve.", "+5 coins! (Assist)", "+10 coins! (Final Kill Assist)", "+10 Bed Wars Experience (Final Assist)",
+                "+15XP (Assist)", "ASSIST! 50% on [80] Bob +5.00XP")) {
             var after = heldBob();
             assertNull(after.chat(line, ME, () -> Map.of(9, Set.of("Steve")), 2 * S + S / 10), line);
             assertNull(after.due(4 * S), "the line after the death: " + line);
@@ -709,6 +711,20 @@ class KillDetectorTest {
             assertNull(before.died(3, 2 * S + S / 10));
             assertNull(before.due(4 * S), "the line before the death: " + line);
         }
+
+        // Named ASSIST! cancels only the named victim, keeping another held kill intact.
+        var multi = new KillDetector();
+        multi.assists(false);
+        multi.hitByMe(3, List.of("Bob"), Kind.PLAYER, false, S);
+        multi.hitByMe(4, List.of("Carl"), Kind.PLAYER, true, S + 10);
+        assertNull(multi.died(4, 2 * S));
+        assertNull(multi.died(3, 2 * S + 10));
+        assertNull(multi.chat("ASSIST! 50% on [80] Bob +5.00XP", ME, 2 * S + S / 10));
+        var carlKill = multi.due(4 * S);
+        assertNotNull(carlKill, "Carl's uncontested death still counts");
+        assertEquals("carl", carlKill.victim());
+        assertTrue(carlKill.headshot());
+        assertNull(multi.due(4 * S), "Bob's death was cancelled");
     }
 
     @Test void assistsOffLinesThatSayNoOneElseKilledKeepIt() {
@@ -790,6 +806,62 @@ class KillDetectorTest {
         KillBanners.fire(module, new KillDetector.Kill(KillDetector.Kind.PLAYER, "bob", false), now);
         assertEquals(1, KillBanners.TIMELINE.sequence());
         assertTrue(KillBanners.TIMELINE.headshot(), "every kill in Every kill mode");
+        KillBanners.reset();
+    }
+
+    @Test void resetClearsHeldDeathsOnWorldOrLobbyChange() {
+        KillBannerModule module = new KillBannerModule();
+        KillBanners.reset();
+        KillBanners.poll(module, S); // syncs assists=false
+        KillBanners.DETECTOR.hitByMe(3, List.of("Bob"), Kind.PLAYER, true, S);
+        assertNull(KillBanners.DETECTOR.died(3, 2 * S), "held for grace window");
+        // World/lobby change calls KillBanners.reset() before the 750ms grace expires
+        KillBanners.reset();
+        assertNull(KillBanners.poll(module, 4 * S), "no ghost banner fires in the lobby");
+        assertEquals(0, KillBanners.TIMELINE.sequence());
+        KillBanners.DETECTOR.assists(true);
+        KillBanners.reset();
+    }
+
+    @Test void pvpArenaStreakProgressesOneToFive() {
+        KillBannerModule module = new KillBannerModule();
+        KillBanners.reset();
+        String[] victims = {"Bob", "Carl", "Dave", "Erin", "Finn"};
+        long now = 10 * S;
+        for (int i = 0; i < 5; i++) {
+            String v = victims[i];
+            boolean hs = (i % 2 == 0);
+            KillBanners.DETECTOR.hitByMe(100 + i, List.of(v), Kind.PLAYER, hs, now);
+            now += S / 10;
+            String[] chatLines = {
+                "\u00a75+5 Karma (Kill)",
+                "\u00a7c\u00a7lDEATH! \u00a7e" + v + "\u00a77 was killed by \u00a7eArash\u00a77!",
+                "\u00a78[\u00a7c\u2620\u00a78] \u00a7cArash \u00a77(\u00a7ePvP\u00a77) has killed \u00a7c" + v + " \u00a77(\u00a7ePvP\u00a77) \u00a78[\u00a7c\u2764 10.0\u00a78]"
+            };
+            int fired = 0;
+            for (String line : chatLines) {
+                assertFalse(KillDetector.myDeath(line, ME), "broadcast kill line must not be treated as myDeath: " + line);
+                var kill = KillBanners.DETECTOR.chat(line, ME, now);
+                if (kill != null) {
+                    fired++;
+                    assertEquals(hs, kill.headshot(), "headshot preserved on kill " + (i + 1));
+                    KillBanners.fire(module, kill, now);
+                }
+            }
+            assertEquals(1, fired, "exactly one banner fired on kill " + (i + 1));
+            KillBanners.poll(module, now);
+            assertEquals(i + 1, KillBanners.TIMELINE.sequence(), "kill " + (i + 1) + " plays banner " + (i + 1));
+            now += 3 * S;
+        }
+        // Bystander death does not reset streak
+        assertFalse(KillDetector.myDeath("\u00a7c\u00a7lDEATH! \u00a7eBob\u00a77 was killed by \u00a7eSteve\u00a77!", ME));
+        assertFalse(KillDetector.myDeath("\u00a78[\u00a7c\u2620\u00a78] \u00a7cBob \u00a77(\u00a7ePvP\u00a77) has died.", ME));
+        // Local player's own deaths in PvP Arena properly match myDeath
+        assertTrue(KillDetector.myDeath("\u00a7c\u00a7lDEATH! \u00a7eArash\u00a77 was killed by \u00a7eBob\u00a77!", ME));
+        assertTrue(KillDetector.myDeath("\u00a7cYou were slain by Bob! \u00a77Use your hotbar items to spectate or play again.", ME));
+        assertTrue(KillDetector.myDeath("\u00a7cYou have been slain! \u00a77Use your hotbar items to spectate or play again.", ME));
+        assertTrue(KillDetector.myDeath("\u00a7cYou have slain yourself! \u00a7aAuto Play Again active...", ME));
+        assertTrue(KillDetector.myDeath("\u00a78[\u00a7c\u2620\u00a78] \u00a7cArash \u00a77(\u00a7ePvP\u00a77) has died.", ME));
         KillBanners.reset();
     }
 }

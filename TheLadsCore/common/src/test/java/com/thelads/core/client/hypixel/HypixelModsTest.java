@@ -1057,9 +1057,59 @@ class HypixelModsTest {
             assertTrue(HypixelChat.isSelfOut(game[0], game[1], "You have been eliminated!", "Me"), game[0]);
         }
         assertFalse(HypixelChat.isSelfOut("MCGO", "normal", "You are now a spectator!", "Me"), "the round's end brings you back");
+        assertFalse(HypixelChat.isSelfOut("WOOL_GAMES", "wool_wars_two_four", "You are now a spectator!", "Me"), "Wool Wars next round");
+        assertFalse(HypixelChat.isSelfOut("BATTLEGROUND", "domination", "You are now a spectator!", "Me"), "Warlords respawn");
+        assertFalse(HypixelChat.isSelfOut("ARCADE", "STARWARS", "You are now a spectator!", "Me"), "Galaxy Wars respawn");
+        assertFalse(HypixelChat.isSelfOut("ARCADE", "PVP_CTW", "You are now a spectator!", "Me"), "Capture the Wool respawn");
+        assertFalse(HypixelChat.isSelfOut("PAINTBALL", "normal", "You are now a spectator!", "Me"));
+        assertFalse(HypixelChat.isSelfOut("QUAKECRAFT", "teams", "You are now a spectator!", "Me"));
+        assertFalse(HypixelChat.isSelfOut("PIT", "PIT", "You are now a spectator!", "Me"));
         assertFalse(HypixelChat.isSelfOut("TNTGAMES", "CAPTURE", "You are now a spectator!", "Me"));
         assertTrue(HypixelChat.isSelfOut("TNTGAMES", "TNTRUN", "You are now a spectator!", "Me"), "TNT Run: out for good");
         assertTrue(HypixelChat.isSelfOut("BEDWARS", "BEDWARS_EIGHT_ONE", "You are now a spectator!", "Me"));
+        assertFalse(HypixelChat.isSelfOut("BEDWARS", "BEDWARS_EIGHT_ONE", "You are now a spectator!\nYou will respawn in 5 seconds!", "Me"),
+            "companion respawn countdown overrides spectator notice");
+        assertTrue(HypixelChat.isSelfOut("BEDWARS", "BEDWARS_EIGHT_ONE", "Me was killed by Respawn. FINAL KILL!", "Me"),
+            "a killer named Respawn does not suppress FINAL KILL");
         assertTrue(HypixelChat.isSelfOut("DUELS", "DUELS_BRIDGE_DUEL", "You have been eliminated!", "Me"), "a real elimination line");
+        assertEquals("Me", HypixelChat.eliminatedPlayer("SKYWARS", kill));
+        assertTrue(HypixelChat.isSelfOut("SKYWARS", kill, "Me"));
+        assertTrue(HypixelChat.gameEnd("                 The Bridge 3v3v3v3 Duel - 4:12"));
+    }
+
+    @Test void bridgeCueAndDelayedLocrawNeverReplayMidMatch() {
+        Module m = ModuleManager.getInstance().getModule(HypixelMods.HYPIXEL_MODS);
+        ((BoolOption) m.getOption(HypixelMods.PLAY_AGAIN)).set(true);
+        ((BoolOption) m.getOption(HypixelMods.AUTO_TIP)).set(false);
+        ((SliderOption) m.getOption(HypixelMods.PLAY_AGAIN + ": Delay seconds")).setValue(0);
+        HypixelMods.setPlayerNameForTest("Me");
+        HypixelMods.tick(game, world, connection, 0);
+
+        // Before /locraw has even gone out or answered, Bridge prints cage countdown / goal scored + spectator / void death.
+        HypixelMods.chat("Cages open in: 5 seconds!", S / 2);
+        HypixelMods.chat("[MVP+] Enemy scored! (1st Goal)", S);
+        HypixelMods.chat("Me fell into the void.", S + 100);
+        HypixelMods.chat("You are now a spectator!", S + 200);
+        assertFalse(HypixelMods.isSelfOut(), "Bridge cue suppresses spectator self-out before /locraw");
+
+        HypixelMods.tick(game, world, connection, 2 * S);
+        HypixelMods.chat("{\"server\":\"mini1A\",\"gametype\":\"DUELS\",\"mode\":\"DUELS_BRIDGE_DUEL\",\"map\":\"Urban\"}", 3 * S);
+        for (long t = 3 * S; t <= 8 * S; t += S / 20) HypixelMods.tick(game, world, connection, t);
+        assertFalse(sent.contains("/play duels_bridge_duel"), "must not queue /play mid-Bridge: " + sent);
+
+        // Next world: Wool Wars sends "You are now a spectator!" before any cue or /locraw arrives.
+        Object woolWorld = new Object();
+        sent.clear();
+        HypixelMods.tick(game, woolWorld, connection, 10 * S);
+        HypixelMods.chat("You are now a spectator!", 11 * S);
+        HypixelMods.tick(game, woolWorld, connection, 12 * S);
+        HypixelMods.chat("{\"server\":\"mini2B\",\"gametype\":\"WOOL_GAMES\",\"mode\":\"wool_wars_two_four\",\"map\":\"Factory\"}", 13 * S);
+        assertFalse(HypixelMods.isSelfOut(), "provisional spectator flag cleared once /locraw reveals Wool Wars");
+        for (long t = 13 * S; t <= 18 * S; t += S / 20) HypixelMods.tick(game, woolWorld, connection, t);
+        assertFalse(sent.contains("/play wool_wars_two_four"), "must not replay between Wool Wars rounds: " + sent);
+
+        HypixelMods.chat("                      Winning Team - Red", 20 * S);
+        for (long t = 20 * S; t <= 26 * S; t += S / 20) HypixelMods.tick(game, woolWorld, connection, t);
+        assertTrue(sent.contains("/play wool_wars_two_four"), "match end replays Wool Wars: " + sent);
     }
 }

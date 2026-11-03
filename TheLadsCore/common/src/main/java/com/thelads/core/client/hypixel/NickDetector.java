@@ -38,21 +38,39 @@ public final class NickDetector {
     private static Map<String, String> markers = Map.of();
     private static final Set<String> noticed = new HashSet<>();
     private static long version, lastPoll = Long.MIN_VALUE;
+    private static String lastServer = "";
 
     private NickDetector() {}
 
+    private static boolean isNpcPrefix(String name) {
+        String upper = name.toUpperCase(Locale.ROOT);
+        return upper.startsWith("NPC_") || upper.startsWith("BOT_") || upper.startsWith("CIT-");
+    }
+
     public static boolean nicked(UUID id, String name, String textures) {
-        if (id == null || name == null || !NAME.matcher(name).matches() || id.version() == 2) return false;
+        if (id == null || name == null || !NAME.matcher(name).matches() || isNpcPrefix(name) || id.version() == 2) return false;
         return id.version() == 1 || borrowedSkin(id, textures);
     }
 
     private static boolean borrowedSkin(UUID id, String textures) {
-        if (textures == null) return false;
+        String json = decodeTextures(textures);
+        if (json == null) return false;
+        Matcher owner = PROFILE_ID.matcher(json);
+        return owner.find() && !owner.group(1).replace("-", "").equalsIgnoreCase(id.toString().replace("-", ""));
+    }
+
+    private static String decodeTextures(String textures) {
+        if (textures == null) return null;
+        String s = textures.trim();
+        if (s.isEmpty()) return null;
+        s = s.replace('-', '+').replace('_', '/');
+        int rem = s.length() & 3;
+        if (rem == 1) return null;
+        if (rem > 0) s = s + "====".substring(rem);
         try {
-            Matcher owner = PROFILE_ID.matcher(new String(Base64.getDecoder().decode(textures), StandardCharsets.UTF_8));
-            return owner.find() && !owner.group(1).replace("-", "").equalsIgnoreCase(id.toString().replace("-", ""));
+            return new String(Base64.getDecoder().decode(s), StandardCharsets.UTF_8);
         } catch (IllegalArgumentException notBase64) {
-            return false;
+            return null;
         }
     }
 
@@ -60,23 +78,46 @@ public final class NickDetector {
     public static Map<String, String> markers() { return markers; }
     public static long version() { return version; }
 
-    /** Each client tick (HypixelMods); looks at the tab list once a second. */
+    /** Each client tick (HypixelMods); looks at the tab list once a second, and clears markers immediately when disabled or off Hypixel. */
     public static void tick(LadsGameBridge game, long now) {
+        // isEnabled: off while server rules block it. Hypixel only: elsewhere these signals mean nothing (offline-mode UUIDs, skin plugins).
+        if (game == null || !game.isIngame()
+                || !(ModuleManager.getInstance().getModule(NickDetectorModule.NAME) instanceof NickDetectorModule module)
+                || !module.isEnabled() || !HypixelSafetyManager.isHypixel()) {
+            noticed.clear();
+            lastPoll = Long.MIN_VALUE;
+            lastServer = "";
+            if (!markers.isEmpty()) {
+                markers = Map.of();
+                version++;
+            }
+            return;
+        }
+        String server = String.valueOf(game.getServerAddress());
+        if (!server.equals(lastServer)) {
+            lastServer = server;
+            noticed.clear();
+            lastPoll = Long.MIN_VALUE;
+        }
         if (lastPoll != Long.MIN_VALUE && now >= lastPoll && now - lastPoll < POLL) return;
         lastPoll = now;
         Map<String, String> found = new HashMap<>();
-        // isEnabled: off while server rules block it. Hypixel only: elsewhere these signals mean nothing (offline-mode UUIDs, skin plugins).
-        if (ModuleManager.getInstance().getModule(NickDetectorModule.NAME) instanceof NickDetectorModule module && module.isEnabled() && HypixelSafetyManager.isHypixel()) {
-            for (Profile player : game.getTabProfiles()) {
-                if (!nicked(player.id(), player.name(), player.textures()) || player.name().equalsIgnoreCase(game.getPlayerName())) continue;
-                String key = player.name().toLowerCase(Locale.ROOT);
-                found.put(key, player.name() + MARKER);
-                if (module.chatNotice.get() && noticed.add(key)) game.displayChatMessage("\u00a7c[Lads] \u00a7f" + player.name() + " \u00a77is probably nicked.");
-            }
+        String ownName = game.getPlayerName();
+        LadsGameBridge.Session session = game.session();
+        UUID ownId = session != null ? session.uuid() : null;
+        String sessionName = session != null ? session.name() : null;
+        for (Profile player : game.getTabProfiles()) {
+            if (player == null || !nicked(player.id(), player.name(), player.textures())) continue;
+            if (ownId != null && ownId.equals(player.id())) continue;
+            if (ownName != null && !ownName.isEmpty() && player.name().equalsIgnoreCase(ownName)) continue;
+            if (sessionName != null && !sessionName.isEmpty() && player.name().equalsIgnoreCase(sessionName)) continue;
+            String key = player.name().toLowerCase(Locale.ROOT);
+            found.put(key, player.name() + MARKER);
+            if (module.chatNotice.get() && noticed.add(key)) game.displayChatMessage("\u00a7c[Lads] \u00a7f" + player.name() + " \u00a77is probably nicked.");
         }
         noticed.retainAll(found.keySet());
         if (!found.equals(markers)) {
-            markers = found;
+            markers = Map.copyOf(found);
             version++;
         }
     }

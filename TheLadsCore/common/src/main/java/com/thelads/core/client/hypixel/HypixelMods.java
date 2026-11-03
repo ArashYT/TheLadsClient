@@ -51,7 +51,7 @@ public final class HypixelMods {
     private static final Set<String> PARTY_ALIVE = new LinkedHashSet<>();
     private static final Set<String> PARTY_ELIMINATED = new LinkedHashSet<>();
     private static Object connection, world;
-    private static boolean gameOver, started, tipOff, selfOut, replayed, partyListRequestedThisGame, inParty;
+    private static boolean gameOver, started, tipOff, selfOut, selfOutSpectatorOnly, replayed, partyListRequestedThisGame, inParty, bridgeCueSeen;
     private static long lastSent, tipAt, tipSent, locrawSent, selfDiedAt, partyListSent, ggDue;
     private static String lastCommand = "";
     private static String[] location;
@@ -262,7 +262,7 @@ public final class HypixelMods {
             PARTY_MEMBERS.clear();
             PARTY_ALIVE.clear();
             PARTY_ELIMINATED.clear();
-            selfOut = replayed = partyListRequestedThisGame = inParty = false;
+            selfOut = selfOutSpectatorOnly = replayed = partyListRequestedThisGame = inParty = bridgeCueSeen = false;
             selfDiedAt = partyListSent = 0;
             tipOff = false;
             world = null;
@@ -278,7 +278,7 @@ public final class HypixelMods {
         }
         if (currentWorld != world) {
             world = currentWorld;
-            gameOver = started = selfOut = replayed = partyListRequestedThisGame = false;
+            gameOver = started = selfOut = selfOutSpectatorOnly = replayed = partyListRequestedThisGame = bridgeCueSeen = false;
             selfDiedAt = partyListSent = ggDue = 0;
             location = null;
             mapName = serverName = null;
@@ -349,6 +349,10 @@ public final class HypixelMods {
             location = new String[] { loc.gametype(), loc.mode() };
             mapName = loc.map();
             serverName = loc.server();
+            if (selfOut && selfOutSpectatorOnly && HypixelChat.comesBack(loc.gametype(), loc.mode())) {
+                selfOut = selfOutSpectatorOnly = false;
+                selfDiedAt = 0;
+            }
             if (locrawSent != 0 && now - locrawSent < 5 * SECOND) {
                 locrawSent = 0;
                 hidden++;
@@ -432,7 +436,7 @@ public final class HypixelMods {
         if (HypixelChat.gameStart(message)) {
             gameOver = false;
             started = true;
-            selfOut = false;
+            selfOut = selfOutSpectatorOnly = false;
             selfDiedAt = ggDue = 0;
             replayed = false;
             PARTY_ALIVE.clear();
@@ -456,18 +460,29 @@ public final class HypixelMods {
             if (FRIENDS.putIfAbsent(friend.toLowerCase(java.util.Locale.ROOT), now) == null) queue("/friend accept " + friend, now, false);
         }
 
+        if (HypixelChat.isBridgeCue(message)) {
+            bridgeCueSeen = true;
+        }
+
         // Elimination / death checks for Auto Play Again
         if (!gameOver && !replayed && on(PLAY_AGAIN)) {
-            String gametype = location != null ? location[0] : null, mode = location != null ? location[1] : null;
-            if (!selfOut && HypixelChat.isSelfOut(gametype, mode, message, me)) {
-                selfOut = true;
-                selfDiedAt = now;
-                triggerReplayIfEligible(now);
+            String gametype = location != null ? location[0] : (bridgeCueSeen ? "DUELS" : null);
+            String mode = location != null && location[1] != null ? location[1] : (bridgeCueSeen ? "DUELS_BRIDGE_DUEL" : null);
+            if (HypixelChat.isSelfOut(gametype, mode, message, me)) {
+                if (!selfOut) {
+                    selfOut = true;
+                    selfOutSpectatorOnly = location == null && HypixelChat.isSpectatorOnly(message);
+                    selfDiedAt = now;
+                    triggerReplayIfEligible(now);
+                } else if (!HypixelChat.isSpectatorOnly(message)) {
+                    selfOutSpectatorOnly = false;
+                }
             }
             String victim = HypixelChat.eliminatedPlayer(gametype, mode, message);
             if (victim != null) {
                 String vLower = victim.toLowerCase(Locale.ROOT);
                 if (me != null && me.equalsIgnoreCase(victim)) {
+                    selfOutSpectatorOnly = false;
                     if (!selfOut) {
                         selfOut = true;
                         selfDiedAt = now;
@@ -549,7 +564,7 @@ public final class HypixelMods {
         QUEUE.clear();
         gameOver = false;
         started = false;
-        selfOut = false;
+        selfOut = selfOutSpectatorOnly = false;
         selfDiedAt = 0;
         replayed = false;
         partyListRequestedThisGame = false;
@@ -561,7 +576,7 @@ public final class HypixelMods {
     }
     static void resetForTest() {
         QUEUE.clear(); FRIENDS.clear(); SENT.clear(); PARTY_MEMBERS.clear(); PARTY_ALIVE.clear(); PARTY_ELIMINATED.clear();
-        connection = world = null; gameOver = started = tipOff = selfOut = replayed = partyListRequestedThisGame = inParty = false;
+        connection = world = null; gameOver = started = tipOff = selfOut = selfOutSpectatorOnly = replayed = partyListRequestedThisGame = inParty = bridgeCueSeen = false;
         lastSent = tipSent = locrawSent = selfDiedAt = partyListSent = ggDue = 0; lastCommand = ""; location = null;
         mapName = serverName = null; mvpPlusPlus = false;
         qaPlayerName = null;
