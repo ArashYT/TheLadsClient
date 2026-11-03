@@ -71,6 +71,7 @@ public final class TitleScreenTheme {
 
     /** The account card's account-switcher button. */
     public static final String SWITCH = "Switch";
+    public static final String PAUSE_SWITCH = "Switch Account";
 
     /**
      * {@code withSwitch}: the account card keeps room after the name for its Switch button, whose place this returns (null
@@ -142,6 +143,12 @@ public final class TitleScreenTheme {
     }
 
     /** The signed-in account at the bottom left, as on the title screen (the pause menu shows it too); returns its right edge. */
+    /** The pause menu's way to the account switcher: left of Fullscreen, as beside the account name it would sit on Save and Quit in a small window. */
+    public static Rect pauseSwitch(LadsGraphics g, int fullscreenX) {
+        int width = g.textWidth(PAUSE_SWITCH) + COMPACT_PADDING;
+        return new Rect(fullscreenX - 6 - width, 6, width, 20);
+    }
+
     public static int renderAccount(LadsGraphics g, int height, String username, int maxWidth) {
         var titleModule = ModuleManager.getInstance().getModule("TitleScreen");
         float accountScale = titleModule != null && titleModule.getOption("Account Card Scale") instanceof SliderOption value

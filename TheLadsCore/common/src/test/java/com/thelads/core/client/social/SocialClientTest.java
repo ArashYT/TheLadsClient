@@ -147,8 +147,35 @@ public class SocialClientTest {
         }
     }
 
+    @Test
+    public void testReconnectLogsInAgainAsTheNewAccount() throws Exception {
+        try (FakeWsServer server = new FakeWsServer()) {
+            UUID first = UUID.randomUUID(), second = UUID.randomUUID();
+            java.util.concurrent.atomic.AtomicReference<LadsGameBridge.Session> session =
+                new java.util.concurrent.atomic.AtomicReference<>(new LadsGameBridge.Session(first, "First", "fake-token"));
+            SocialClient client = new SocialState(SocialBridge::get, session::get, "ws://127.0.0.1:" + server.port() + "/social/ws").client();
+            client.setFastBackoff(true);
+            client.setPresence(new Presence("singleplayer", new SocialBridge.GameInfo("1.20.1", "fabric", "plain", "", "", "", "1.9.18"), null, null));
+            client.start();
+            try {
+                assertTrue(server.secondPresenceLatch.await(5, TimeUnit.SECONDS), "connected and steady on the second connection");
+
+                session.set(new LadsGameBridge.Session(second, "Second", "fake-token"));
+                client.reconnect();
+
+                long deadline = System.currentTimeMillis() + 5000;
+                while (server.receivedAuths.size() < 3 && System.currentTimeMillis() < deadline) Thread.sleep(20);
+                assertEquals(3, server.receivedAuths.size(), "the link came back");
+                assertTrue(server.receivedAuths.get(2).contains(second.toString().replace("-", "")), server.receivedAuths.get(2));
+            } finally {
+                client.close();
+            }
+        }
+    }
+
     private static class FakeWsServer implements AutoCloseable {
         private final ServerSocket serverSocket;
+        private final List<String> receivedAuths = new CopyOnWriteArrayList<>();
         private final List<String> receivedPresences = new CopyOnWriteArrayList<>();
         private final CountDownLatch firstPresenceLatch = new CountDownLatch(1);
         private final CountDownLatch secondPresenceLatch = new CountDownLatch(1);
@@ -212,6 +239,7 @@ public class SocialClientTest {
 
                 // Read auth message from client
                 String authJson = readClientText(in);
+                receivedAuths.add(authJson);
 
                 // Send hello
                 sendServerText(out, "{\"t\":\"hello\",\"friends\":[],\"requests\":{\"in\":[],\"out\":[]},\"blocked\":[],\"dms\":[]}");

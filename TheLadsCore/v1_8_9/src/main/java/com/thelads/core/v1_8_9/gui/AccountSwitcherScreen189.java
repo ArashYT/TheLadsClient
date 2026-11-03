@@ -8,11 +8,20 @@ import net.minecraft.client.gui.GuiScreen;
 /** The shared account switcher on 1.8.9 (AccountSwitcherScreen121 on the other versions). */
 public class AccountSwitcherScreen189 extends GuiScreen {
     private final GuiScreen parent;
-    private final AccountSwitcherScreen ui = new AccountSwitcherScreen();
+    private final AccountSwitcherScreen ui = new AccountSwitcherScreen(new LiveSession189());
 
     public AccountSwitcherScreen189(GuiScreen parent) {
         this.parent = parent;
         ui.setOnClose(() -> mc.displayGuiScreen(parent));
+    }
+
+    public AccountSwitcherScreen ui() {
+        return ui;
+    }
+
+    @Override
+    public void updateScreen() {
+        ui.tick();
     }
 
     @Override
@@ -27,6 +36,9 @@ public class AccountSwitcherScreen189 extends GuiScreen {
 
     @Override
     protected void keyTyped(char typedChar, int keyCode) {
-        if (keyCode == 1) mc.displayGuiScreen(parent);
+        if (keyCode == 1) {
+            ui.cancel();
+            mc.displayGuiScreen(parent);
+        }
     }
 }

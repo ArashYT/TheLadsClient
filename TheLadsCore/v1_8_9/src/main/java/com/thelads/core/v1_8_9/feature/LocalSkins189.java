@@ -198,6 +198,12 @@ public final class LocalSkins189 {
         return accountSkin != null ? accountSlim : "slim".equals(DefaultPlayerSkin.getSkinType(accountId()));
     }
 
+    /** The session is now another account: its skin gets asked for afresh. */
+    public static void forgetAccount() {
+        accountAsked = false;
+        accountSkin = null;
+    }
+
     private static java.util.UUID accountId() {
         return EntityPlayer.getUUID(Minecraft.getMinecraft().getSession().getProfile());
     }

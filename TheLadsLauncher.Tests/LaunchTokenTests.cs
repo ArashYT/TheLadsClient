@@ -37,7 +37,9 @@ public class LaunchTokenTests
         Assert.Contains("--accessToken " + LaunchToken.Placeholder + " --userType", game.StartInfo.Arguments);
         game.Start();
         LaunchToken.Send(game);
-        Assert.Equal("eyJ.secret-token_1", game.StandardOutput.ReadToEnd().Trim());
+        var lines = game.StandardOutput.ReadToEnd().Trim().Split('\n', StringSplitOptions.TrimEntries);
+        Assert.Equal("eyJ.secret-token_1", lines[0]);
+        Assert.StartsWith(AccountSwitchPipe.PipeName + " ", lines[1]);
         game.WaitForExit();
     }
 
@@ -52,13 +54,13 @@ public class LaunchTokenTests
         LaunchToken.Hide(first, dir.Path, "eyJ.secret-token_2");
         first.Start();
         LaunchToken.Send(first);
-        first.StandardOutput.ReadToEnd();
+        Assert.StartsWith("eyJ.secret-token_2", first.StandardOutput.ReadToEnd());
         first.WaitForExit();
 
         using var retry = new Process { StartInfo = first.StartInfo };
         retry.Start();
         LaunchToken.Send(retry);
-        Assert.Equal("eyJ.secret-token_2", retry.StandardOutput.ReadToEnd().Trim());
+        Assert.StartsWith("eyJ.secret-token_2", retry.StandardOutput.ReadToEnd());
         retry.WaitForExit();
     }
 

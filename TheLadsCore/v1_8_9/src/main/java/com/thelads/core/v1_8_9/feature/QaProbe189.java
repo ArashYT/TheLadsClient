@@ -200,6 +200,8 @@ public final class QaProbe189 {
                     mc.displayGuiScreen(null);
                 } else if ("title".equals(target)) {
                     mc.displayGuiScreen(new GuiMainMenu());
+                } else if ("pause".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiIngameMenu());
                 } else if ("lads".equals(target) || "settings".equals(target)) {
                     LadsSettingsScreen189 ladsScreen = new LadsSettingsScreen189(mc.currentScreen);
                     mc.displayGuiScreen(ladsScreen);
@@ -254,6 +256,18 @@ public final class QaProbe189 {
             }
             case "log":
                 LOGGER.info("Lads 1.8.9 qa log: {}", rest(s, 1));
+                break;
+            case "account": { // account <offline name> | account ms <name>: the switcher open and that account clicked
+                if (!(mc.currentScreen instanceof com.thelads.core.v1_8_9.gui.AccountSwitcherScreen189)) mc.displayGuiScreen(new com.thelads.core.v1_8_9.gui.AccountSwitcherScreen189(mc.currentScreen));
+                com.thelads.core.client.auth.AccountSwitcherScreen ui = ((com.thelads.core.v1_8_9.gui.AccountSwitcherScreen189) mc.currentScreen).ui();
+                if (arg(s, 1).equals("ms")) { com.thelads.core.client.auth.LadsAccount ms = new com.thelads.core.client.auth.LadsAccount(arg(s, 2), "069a79f444e94726a5befca90e38aaf5", "microsoft", "0"); ui.getAccounts().add(ms); ui.selectAccount(ms); }
+                else ui.addOfflineAccount(arg(s, 1));
+                break;
+            }
+            case "session":
+                LOGGER.info("Lads 1.8.9 qa session: name={} uuid={} screen={} status={}", mc.getSession().getUsername(), mc.getSession().getPlayerID(),
+                    mc.currentScreen == null ? "none" : mc.currentScreen.getClass().getSimpleName(),
+                    mc.currentScreen instanceof com.thelads.core.v1_8_9.gui.AccountSwitcherScreen189 ? ((com.thelads.core.v1_8_9.gui.AccountSwitcherScreen189) mc.currentScreen).ui().getStatusMessage() : "");
                 break;
             case "quit":
                 LOGGER.info("Lads 1.8.9 qa quit requested");

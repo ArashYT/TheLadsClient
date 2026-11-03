@@ -5,7 +5,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.gui.LadsPalette;
+import com.thelads.core.client.social.SocialState;
 import com.thelads.core.client.util.ClientPaths;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -16,8 +19,16 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public class AccountSwitcherScreen {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AccountSwitcherScreen.class);
+    private final LiveSession live; // null: this version only records the choice for the next launch
+    private final AccountTokens tokens;
+    /** The switch under way: its token and preparation run off the render thread, and tick() finishes it on the render thread. */
+    private CompletableFuture<Runnable> switching;
+    private LadsAccount switchTarget, confirming;
+    private boolean statusIsError;
     private final List<LadsAccount> accounts = new ArrayList<>();
     private LadsAccount selectedAccount = null;
     private String statusMessage = "Select an account or add a new one";
@@ -27,7 +38,18 @@ public class AccountSwitcherScreen {
     private int lastHeight = 600;
 
     public AccountSwitcherScreen() {
+        this(null, new AccountTokens());
+    }
+
+    public AccountSwitcherScreen(LiveSession live) {
+        this(live, new AccountTokens());
+    }
+
+    public AccountSwitcherScreen(LiveSession live, AccountTokens tokens) {
+        this.live = live;
+        this.tokens = tokens;
         loadAccounts();
+        if (live != null) for (LadsAccount account : accounts) if (isLive(account)) { markSelected(account); break; }
     }
 
     public void setOnClose(Runnable onClose) {
@@ -94,13 +116,96 @@ public class AccountSwitcherScreen {
 
     public void selectAccount(LadsAccount account) {
         if (account == null) return;
+        if (live != null) {
+            switchTo(account);
+            return;
+        }
+        markSelected(account);
+        saveAccounts();
+        writeNextLaunchRequest(account);
+        statusMessage = "Next launch: " + account.getUsername() + ". Restart from the launcher.";
+    }
+
+    private void markSelected(LadsAccount account) {
         for (LadsAccount acc : accounts) {
             acc.setSelected(acc == account);
         }
         selectedAccount = account;
+    }
+
+    private boolean isLive(LadsAccount account) {
+        return account.getUsername().equalsIgnoreCase(live.username())
+            && account.getUuid().replace("-", "").equalsIgnoreCase(live.uuid().replace("-", ""));
+    }
+
+    private void switchTo(LadsAccount target) {
+        if (switching != null) return;
+        statusIsError = false;
+        if (isLive(target)) {
+            confirming = null;
+            markSelected(target);
+            statusMessage = "Already playing as " + target.getUsername() + ".";
+            return;
+        }
+        if (live.inWorld() && confirming != target) {
+            confirming = target;
+            statusMessage = "This leaves the world. Click " + target.getUsername() + " again to switch.";
+            return;
+        }
+        confirming = null;
+        switchTarget = target;
+        statusMessage = "Switching to " + target.getUsername() + "...";
+        CompletableFuture<Runnable> work = switching = new CompletableFuture<>();
+        boolean sessionIsOffline = LadsAccount.offlineUuid(live.username()).toString().replace("-", "").equalsIgnoreCase(live.uuid().replace("-", ""));
+        Thread thread = new Thread(() -> {
+            try {
+                work.complete(live.prepare(target, tokens.fetch(target, sessionIsOffline)));
+            } catch (Throwable e) {
+                work.completeExceptionally(e);
+            }
+        }, "Lads Account Switch");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    /** Render thread, between frames (each version's screen tick): finishes a switch whose token and preparation are done. */
+    public void tick() {
+        if (switching == null || !switching.isDone()) return;
+        CompletableFuture<Runnable> work = switching;
+        LadsAccount target = switchTarget;
+        switching = null;
+        switchTarget = null;
+        try {
+            work.join().run();
+        } catch (RuntimeException | Error e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            statusMessage = cause instanceof AccountTokens.Refused ? cause.getMessage()
+                : "Minecraft's services refused " + target.getUsername() + ". Try again from the launcher.";
+            statusIsError = true;
+            LOGGER.warn("[Lads] Account switch to {} failed: {}", target.getUsername(), cause.getClass().getSimpleName());
+            return;
+        }
+        markSelected(target);
         saveAccounts();
-        writeNextLaunchRequest(account);
-        statusMessage = "Next launch: " + account.getUsername() + ". Restart from the launcher.";
+        writeNextLaunchRequest(target);
+        tokens.switched();
+        SocialState.get().onAccountChanged();
+        statusMessage = "Now playing as " + target.getUsername() + ".";
+        LOGGER.info("[Lads] Account switched without a restart: now {}", target.getUsername());
+    }
+
+    /** Forgets a switch under way: what it fetched is dropped and the current account stays. */
+    public void cancel() {
+        switching = null;
+        switchTarget = null;
+    }
+
+    public boolean isSwitching() {
+        return switching != null;
+    }
+
+    public String getStatusMessage() {
+        return statusMessage;
     }
 
     public void addOfflineAccount(String username) {
@@ -163,7 +268,7 @@ public class AccountSwitcherScreen {
         g.fill(cardX, cardY, cardX + cardW, cardY + 2, LadsPalette.ACCENT);
 
         // Status bar
-        g.drawText(statusMessage, cardX + 16, cardY + 12, LadsPalette.MUTED, false);
+        g.drawText(statusMessage, cardX + 16, cardY + 12, statusIsError ? 0xFFFF6666 : LadsPalette.MUTED, false);
 
         // Account list
         int listY = cardY + 32;
@@ -189,7 +294,7 @@ public class AccountSwitcherScreen {
             g.drawText(badge, cardX + 54, itemY + 18, badgeCol, false);
 
             if (isSel) {
-                g.drawText("NEXT", cardX + cardW - 65, itemY + 10, LadsPalette.TEXT, false);
+                g.drawText(live != null ? "PLAYING" : "NEXT", cardX + cardW - 65, itemY + 10, LadsPalette.TEXT, false);
             }
         }
 
@@ -236,6 +341,7 @@ public class AccountSwitcherScreen {
 
         // Check Done
         if (mouseX >= cardX + cardW - 120 && mouseX <= cardX + cardW - 16 && mouseY >= btnY && mouseY <= btnY + 24) {
+            cancel();
             if (onClose != null) onClose.run();
             return true;
         }

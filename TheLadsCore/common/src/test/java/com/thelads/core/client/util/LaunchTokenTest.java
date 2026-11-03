@@ -22,5 +22,6 @@ class LaunchTokenTest {
     void realTokensPassThrough() {
         assertEquals("0", LaunchToken.resolve("0"));
         assertEquals("eyJ.real", LaunchToken.resolve("eyJ.real"));
+        assertEquals("", LaunchToken.handOff(), "no launcher hand-off without its token line");
     }
 }
