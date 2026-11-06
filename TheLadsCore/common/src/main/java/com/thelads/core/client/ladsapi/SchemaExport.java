@@ -3,7 +3,9 @@ package com.thelads.core.client.ladsapi;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 import com.thelads.core.LadsVersion;
 import com.thelads.core.config.BoolOption;
@@ -146,7 +148,20 @@ public final class SchemaExport {
         if (targetPath.getParent() != null) {
             Files.createDirectories(targetPath.getParent());
         }
-        Files.writeString(targetPath, generateSchemaJson(), StandardCharsets.UTF_8);
+        JsonObject schema = generateSchema();
+        if (Files.isRegularFile(targetPath)) {
+            // "protocol" is written by hand, not generated (LadsClientAPI's ConfigRulesTest checks it): carry it over, after "lads".
+            JsonElement old = JsonParser.parseString(Files.readString(targetPath, StandardCharsets.UTF_8));
+            if (old.isJsonObject() && old.getAsJsonObject().get("protocol") instanceof JsonObject protocol) {
+                JsonObject merged = new JsonObject();
+                for (var entry : schema.entrySet()) {
+                    merged.add(entry.getKey(), entry.getValue());
+                    if (entry.getKey().equals("lads")) merged.add("protocol", protocol);
+                }
+                schema = merged;
+            }
+        }
+        Files.writeString(targetPath, GSON.toJson(schema) + "\n", StandardCharsets.UTF_8);
     }
 
     public static void main(String[] args) throws IOException {
