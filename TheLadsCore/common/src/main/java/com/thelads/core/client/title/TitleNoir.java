@@ -162,6 +162,8 @@ public final class TitleNoir {
     public static Rect renderBackdrop(LadsGraphics g, Layout l, String username, String version, boolean withSwitch, double seconds) {
         renderSlab(g, l, seconds);
         renderWordmark(g, l);
+        String note = PanoramaPicker.message(); // a picked panorama that failed or does not exist: the current one stays
+        if (note != null) g.drawText(note, l.width() - g.textWidth(note) - 6, 6, TEXT, true);
         return renderStrip(g, l, username, version, withSwitch, LadsNetwork.titleButton() ? networkText() : null);
     }
 

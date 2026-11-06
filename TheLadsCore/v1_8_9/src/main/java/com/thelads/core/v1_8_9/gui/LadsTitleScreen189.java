@@ -261,10 +261,28 @@ public final class LadsTitleScreen189 {
     public void layout(GuiScreenEvent.DrawScreenEvent.Pre event) {
         if (screen == null || event.gui != screen) return;
         ensureLayout();
+        if (com.thelads.core.client.title.PanoramaPicker.update()) applyPanorama();
         if (noirLayout != null) {
             // Vanilla's frame would draw its logo and buttons over the panorama: only the panorama (when enabled), Lads draws the rest in draw().
             event.setCanceled(true);
             if (TitleScreenModule.panorama()) drawPanorama(event.mouseX, event.mouseY, event.renderPartialTicks);
+        }
+    }
+
+    /** Panorama Version: the picked release's six images under the panorama's own names (they outlive a resource reload), or the normal ones back. */
+    private static void applyPanorama() {
+        net.minecraft.client.renderer.texture.TextureManager textures = Minecraft.getMinecraft().getTextureManager();
+        byte[][] images = com.thelads.core.client.title.PanoramaPicker.images();
+        for (int i = 0; i < 6; i++) {
+            net.minecraft.util.ResourceLocation location = new net.minecraft.util.ResourceLocation("textures/gui/title/background/panorama_" + i + ".png");
+            net.minecraft.client.renderer.texture.ITextureObject old = textures.getTexture(location), next = new net.minecraft.client.renderer.texture.SimpleTexture(location);
+            try {
+                if (images != null) next = new net.minecraft.client.renderer.texture.DynamicTexture(javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(images[i])));
+            } catch (java.io.IOException | RuntimeException failure) {
+                LogManager.getLogger("TheLadsCore-1.8.9").warn("The picked panorama could not load", failure);
+            }
+            textures.loadTexture(location, next);
+            if (old instanceof net.minecraft.client.renderer.texture.AbstractTexture && old != next) ((net.minecraft.client.renderer.texture.AbstractTexture) old).deleteGlTexture();
         }
     }
 

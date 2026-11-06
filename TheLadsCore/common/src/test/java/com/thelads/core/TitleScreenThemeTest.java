@@ -231,7 +231,7 @@ class TitleScreenThemeTest {
         var module = ModuleManager.getInstance().getModule("TitleScreen");
         var option = (com.thelads.core.config.BoolOption) module.getOption(TitleScreenModule.PANORAMA);
         assertNotNull(option, "Panorama option must exist on TitleScreenModule");
-        boolean own = option.getOwnValue();
+        boolean own = option.getOwn();
         try {
             option.reset();
             assertTrue(TitleScreenModule.panorama(), "Panorama is on by default");
@@ -249,7 +249,7 @@ class TitleScreenThemeTest {
     @Test void noirDrawsSimpleProceduralBackdropWhenPanoramaIsOff() {
         var module = ModuleManager.getInstance().getModule("TitleScreen");
         var option = (com.thelads.core.config.BoolOption) module.getOption(TitleScreenModule.PANORAMA);
-        boolean own = option.getOwnValue();
+        boolean own = option.getOwn();
         try {
             var layout = TitleNoir.layout(640, 360, 12, 2);
             option.set(true);
