@@ -135,6 +135,7 @@
     "VoiceChatHudMixin$Group",
     "WindowIconMixin",
     "WindowTitleMixin",
+    "WindowSetTitleMixin",
     "WindowTitleGuiMixin",
     "LoadingOverlayMixin",
     "CheatsMixin",

@@ -293,6 +293,9 @@ public final class QaProbe189 {
             case "titlelayout": // what the title's layout toggle does
                 com.thelads.core.modules.TitleScreenModule.toggleLayout();
                 break;
+            case "titlepanorama": // the title Panorama setting: titlepanorama on | off
+                com.thelads.core.modules.TitleScreenModule.setPanorama(!"off".equals(arg(s, 1)));
+                break;
             case "disconnect":
                 if (mc.theWorld != null) {
                     mc.theWorld.sendQuittingDisconnectingPacket();

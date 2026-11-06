@@ -52,14 +52,14 @@ public final class QaProbe26 {
             passed++;
         } catch (Exception e) {
             failed++;
-            LOGGER.error("Lads qa step FAILED: {}: {}", step, e.toString());
+            LOGGER.error("Lads qa step FAILED: {}: {}", step, e.toString(), e);
         }
         if (waitTicks == 0) waitTicks = 1;
     }
 
     private static void friendso(Minecraft mc) throws Exception {
         var screen = new net.minecraft.client.gui.screens.friends.FriendsOverlayScreen(mc.gui.screen());
-        mc.setScreenAndShow(screen);
+        mc.gui.setScreen(screen); // not setScreenAndShow: its extra frame blurs twice over the screen this opens from
         var tabField = net.minecraft.client.gui.screens.friends.FriendsOverlayScreen.class.getDeclaredField("friendsTab");
         tabField.setAccessible(true);
         Object friendsTab = tabField.get(screen);
@@ -137,6 +137,12 @@ public final class QaProbe26 {
             case "world" -> {} // tick() held the script until the QA world was up
             case "notice" -> com.thelads.core.client.bridge.LadsGameBridge.get().displayChatMessage(arg);
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout();
+            case "titlepanorama" -> com.thelads.core.modules.TitleScreenModule.setPanorama(!"off".equals(arg)); // the title Panorama setting: titlepanorama on | off
+            case "settings" -> { // the modules menu, optionally opened on a page or module: settings page:HUD | open:HUD/PvP | search:color | Hit Color
+                var screen = new com.thelads.core.v26_2.gui.LadsSettingsScreen26(mc.gui.screen());
+                mc.setScreenAndShow(screen);
+                if (!arg.isEmpty()) screen.openModule(arg);
+            }
             case "gui" -> { mc.options.guiScale().set(Integer.parseInt(arg)); mc.resizeGui(); } // the GUI scale, 0 = auto
             case "pointer" -> { // where a real mouse would be, in window pixels: hover states and tooltips render for a shot
                 String[] xy = arg.split(" ");

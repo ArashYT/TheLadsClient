@@ -19,7 +19,15 @@ public final class WindowTitle {
         OTHER
     }
 
+    private static volatile boolean claimed, applying;
+
     private WindowTitle() {}
+
+    /**
+     * Whether a window title call is another mod's: once the first title is applied the window is The Lads Client's, and its game versions drop
+     * every other setTitle (Modpack Core Essentials sets its own on every tick, which would hide this one).
+     */
+    public static boolean foreign() { return claimed && !applying; }
 
     public static String activity(boolean inWorld, boolean localWorld, String serverAddress, String ladsApiServerName, Menu menu) {
         if (inWorld) {
@@ -67,7 +75,9 @@ public final class WindowTitle {
         public boolean apply(String next) {
             if (next == null || next.equals(lastTitle)) return false;
             lastTitle = next;
-            sink.accept(next);
+            claimed = true;
+            applying = true;
+            try { sink.accept(next); } finally { applying = false; }
             return true;
         }
 
