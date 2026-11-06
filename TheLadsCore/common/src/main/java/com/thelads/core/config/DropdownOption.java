@@ -4,7 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 
 public class DropdownOption extends Option {
-    private final String[] choices;
+    private String[] choices;
     private int index;
     private final int defaultIndex;
 
@@ -48,6 +48,25 @@ public class DropdownOption extends Option {
 
     public String[] getChoices() {
         return choices;
+    }
+
+    /** Picks a choice by name; one the list lacks (a saved pick from a list that loads later) is kept as an extra last choice. */
+    public void select(String value) {
+        int at = java.util.Arrays.asList(choices).indexOf(value);
+        if (at < 0) {
+            choices = java.util.Arrays.copyOf(choices, choices.length + 1);
+            at = choices.length - 1;
+            choices[at] = value;
+        }
+        index = at;
+    }
+
+    /** Replaces the choices (a list that loads later), keeping the player's pick. */
+    public void setChoices(String... next) {
+        String keep = choices.length == 0 ? null : choices[index];
+        choices = next.clone();
+        index = 0;
+        if (keep != null) select(keep);
     }
 
     @Override

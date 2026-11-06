@@ -10,6 +10,7 @@
     "GuiMixin",
     "GameRendererHudCapMixin",
     "GuiRenderStateCaptureMixin",
+    "CubeMapTextureMixin",
     "TitleScreenMixin",
     "TitleTooltipBoundsMixin",
     "TitleWidgetMixin",

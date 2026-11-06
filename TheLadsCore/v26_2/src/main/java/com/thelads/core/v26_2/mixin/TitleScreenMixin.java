@@ -271,12 +271,24 @@ public abstract class TitleScreenMixin extends Screen {
         return widget.getClass().getName().startsWith("com.terraformersmc.modmenu.") || ladsMessageKey(widget).equals("modmenu.title");
     }
 
+    /** Panorama Version: the cube map reloads, and CubeMapTextureMixin hands it the picked release's images (or the normal ones). */
+    @Unique
+    private static void ladsApplyPanorama() {
+        var location = net.minecraft.resources.Identifier.withDefaultNamespace("textures/gui/title/background/panorama");
+        try {
+            net.minecraft.client.Minecraft.getInstance().getTextureManager().registerAndLoad(location, new net.minecraft.client.renderer.texture.CubeMapTexture(location));
+        } catch (RuntimeException failure) {
+            org.slf4j.LoggerFactory.getLogger("TheLadsCore").warn("The picked panorama could not load", failure);
+        }
+    }
+
     @Inject(method = "extractRenderState(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IIF)V",
         at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsRenderTitle(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         if (!ladsCustomTitle) return;
         long now = System.nanoTime();
         ladsEnsureTitleLayout();
+        if (com.thelads.core.client.title.PanoramaPicker.update()) ladsApplyPanorama();
         float elapsed = ladsLastFrameNanos == 0 ? 0 : (float) Math.clamp((now - ladsLastFrameNanos) / 1.0e9, 0.0, 0.1);
         ladsLastFrameNanos = now;
         double panoramaSpeed = minecraft.options.panoramaSpeed().get();
