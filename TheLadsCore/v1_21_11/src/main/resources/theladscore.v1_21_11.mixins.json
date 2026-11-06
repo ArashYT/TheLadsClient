@@ -42,6 +42,7 @@
     "ServerNameMixin",
     "WindowIconMixin",
     "WindowTitleMixin",
+    "WindowSetTitleMixin",
     "LoadingOverlayMixin",
     "ChatMixin",
     "ChatIndicatorMixin",

@@ -160,6 +160,7 @@
     "BorderlessWindowMixin",
     "WindowIconMixin",
     "WindowTitleMixin",
+    "WindowSetTitleMixin",
     "WindowTitleGuiMixin",
     "LoadingOverlayMixin",
     "CheatsMixin",
