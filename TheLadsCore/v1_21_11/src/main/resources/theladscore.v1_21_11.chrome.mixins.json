@@ -8,6 +8,8 @@
   },
   "client": [
     "GlobalButtonMixin",
+    "GlobalSliderMixin",
+    "GlobalTabMixin",
     "SmoothScrollMixin",
     "KeyEntryAccessor",
     "KeySearchMixin",

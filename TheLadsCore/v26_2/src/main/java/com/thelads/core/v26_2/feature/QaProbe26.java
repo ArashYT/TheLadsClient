@@ -120,6 +120,10 @@ public final class QaProbe26 {
                 mc.setScreenAndShow(switch (arg) {
                     case "title" -> new TitleScreen();
                     case "pause" -> new PauseScreen(true);
+                    case "options" -> new net.minecraft.client.gui.screens.options.OptionsScreen(mc.gui.screen(), mc.options, false);
+                    case "video" -> new net.minecraft.client.gui.screens.options.VideoSettingsScreen(mc.gui.screen(), mc, mc.options);
+                    case "controls" -> new net.minecraft.client.gui.screens.options.controls.ControlsScreen(mc.gui.screen(), mc.options);
+                    case "multiplayer" -> new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(mc.gui.screen());
                     case "friends" -> new net.minecraft.client.gui.screens.friends.FriendsOverlayScreen(mc.gui.screen());
                     case "screenshots" -> {
                         var sv = com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.getInstance();

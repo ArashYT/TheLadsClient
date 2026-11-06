@@ -2,6 +2,7 @@ package com.thelads.core.v26_2.mixin;
 
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter;
+import com.thelads.core.v26_2.gui.MessageIcons;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
@@ -35,7 +36,7 @@ public abstract class GlobalSliderMixin {
         // 2. Render slider handle knob
         int handleWidth = 8;
         int handleX = x + (int)(this.value * (double)(w - handleWidth));
-        int handleColor = active ? (hovered ? 0xFFFFFFFF : 0xFFE0E0E0) : 0xFFA0A0A0;
+        int handleColor = active ? (hovered ? 0xFFC4C4C4 : 0xFF9C9C9C) : 0xFF707070; // dark enough that the white label and icon stay readable over it
         adapter.fill(handleX, y + 2, handleX + handleWidth, y + h - 2, handleColor);
         adapter.fill(handleX, y + 1, handleX + handleWidth, y + 2, 0x80000000);
         adapter.fill(handleX, y + h - 2, handleX + handleWidth, y + h - 1, 0x80000000);
@@ -48,6 +49,12 @@ public abstract class GlobalSliderMixin {
             int textX = x + (w - textW) / 2;
             int textY = y + (h - adapter.fontHeight()) / 2 + 1;
             int textColor = active ? 0xFFFFFFFF : 0xFFA0A0A0;
+            // An icon before the label, the two centred together, when the slider is wide enough for both.
+            String icon = MessageIcons.of(msg);
+            if (icon != null && TitleScreenTheme.iconFits(w, textW)) {
+                TitleScreenTheme.renderLabelIcon(adapter, icon, x, y, w, h, textW, textColor);
+                textX = TitleScreenTheme.iconLabelX(x, w, textW);
+            }
             adapter.drawText(text, textX, textY, textColor);
         }
 

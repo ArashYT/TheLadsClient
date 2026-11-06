@@ -12,6 +12,7 @@
     "TitleWidgetMixin",
     "PauseScreenMixin",
     "GlobalButtonMixin",
+    "GlobalTabMixin",
     "GlobalSliderMixin",
     "LoadingOverlayMixin",
     "WindowIconMixin",

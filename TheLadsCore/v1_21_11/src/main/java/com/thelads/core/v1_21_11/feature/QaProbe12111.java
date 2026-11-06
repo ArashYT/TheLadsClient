@@ -84,11 +84,15 @@ public final class QaProbe12111 {
                 mc.setScreen(switch (arg) {
                     case "title" -> new TitleScreen();
                     case "pause" -> new PauseScreen(true);
+                    case "options" -> new net.minecraft.client.gui.screens.options.OptionsScreen(mc.screen, mc.options);
+                    case "video" -> new net.minecraft.client.gui.screens.options.VideoSettingsScreen(mc.screen, mc, mc.options);
+                    case "controls" -> new net.minecraft.client.gui.screens.options.controls.ControlsScreen(mc.screen, mc.options);
+                    case "multiplayer" -> new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(mc.screen);
                     case "screenshots" -> (net.minecraft.client.gui.screens.Screen) Class.forName(
                         "io.github.lgatodu47.screenshot_viewer.screen.manage_screenshots.ManageScreenshotsScreen")
                         .getConstructor(net.minecraft.client.gui.screens.Screen.class)
                         .newInstance(mc.screen);
-                    default -> throw new IllegalArgumentException("screen: title, pause or screenshots");
+                    default -> throw new IllegalArgumentException("screen: title, pause, options, video, controls, multiplayer or screenshots");
                 });
                 LOGGER.info("Lads qa screen: {}", mc.screen.children().stream().filter(Button.class::isInstance).map(c -> ((Button) c).getMessage().getString()).toList());
             }
@@ -99,6 +103,13 @@ public final class QaProbe12111 {
             case "notice" -> com.thelads.core.client.bridge.LadsGameBridge.get().displayChatMessage(arg);
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout();
             case "titlepanorama" -> com.thelads.core.modules.TitleScreenModule.setPanorama(!"off".equals(arg)); // the title Panorama setting: titlepanorama on | off
+            case "panoramaversion" -> {
+                var mod = com.thelads.core.config.ModuleManager.getInstance().getModule("TitleScreen");
+                if (mod != null && mod.getOption(com.thelads.core.modules.TitleScreenModule.PANORAMA_VERSION) instanceof com.thelads.core.config.DropdownOption opt) {
+                    opt.select(arg);
+                    com.thelads.core.config.ConfigManager.save();
+                }
+            }
             case "settings" -> { // the modules menu, optionally opened on a page or module: settings page:HUD | open:HUD/PvP | search:color | Hit Color
                 var screen = new com.thelads.core.v1_21_11.gui.LadsSettingsScreen12111(mc.screen);
                 mc.setScreen(screen);

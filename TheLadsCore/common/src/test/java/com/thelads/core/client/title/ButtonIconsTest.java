@@ -44,6 +44,24 @@ class ButtonIconsTest {
         assertNull(ButtonIcons.ofText("gui.done", "de_de", german)); // an untranslated key is not a label
     }
 
+    @Test void optionButtonsMapThroughTheirCaption() {
+        assertTrue(ButtonIcons.wraps("options.generic_value"));
+        assertTrue(ButtonIcons.wraps("options.on.composed"));
+        assertFalse(ButtonIcons.wraps("gui.done"));
+        assertEquals("picture", ButtonIcons.of("options.graphics", null)); // the caption inside the wrapper
+        assertEquals("volume", ButtonIcons.of("soundCategory.master", null));
+        assertNull(ButtonIcons.of("key.keyboard.home", null)); // a bound key's name stays plain
+        assertNull(ButtonIcons.of(null, "[ Home ]"));
+        java.util.function.Function<String, String> english = key -> key.equals("options.graphics") ? "Graphics" : key.equals("options.fov") ? "FOV" : key.equals("selectWorld.mapFeatures") ? "Generate Structures:" : key;
+        assertEquals("picture", ButtonIcons.ofCaptioned("Graphics: Fancy", "xx_captions", english)); // 1.8.9 draws one string
+        assertEquals("eye", ButtonIcons.ofCaptioned("FOV : 70", "xx_captions", english)); // French puts a space before the colon
+        assertEquals("home", ButtonIcons.ofCaptioned("Generate Structures: ON", "xx_captions", english)); // 1.8.9 caption ends with a colon
+        assertEquals("target", ButtonIcons.of("key.attack", null));
+        assertEquals("hand", ButtonIcons.of("key.use", null));
+        assertNull(ButtonIcons.ofCaptioned("Search: All", "xx_captions", english));
+        assertNull(ButtonIcons.ofCaptioned(null, "xx_captions", english));
+    }
+
     @Test void iconNeedsRoomBesideItsLabel() {
         assertTrue(TitleScreenTheme.iconFits(100, 40));
         assertFalse(TitleScreenTheme.iconFits(60, 40));

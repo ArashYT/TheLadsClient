@@ -1,17 +1,16 @@
 package com.thelads.core.v1_20_1.mixin.menus;
 
-import com.thelads.core.client.title.ButtonIcons;
 import com.thelads.core.client.title.ButtonLift;
 import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201;
+import com.thelads.core.v1_20_1.gui.MessageIcons;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.TextAndImageButton;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.contents.LiteralContents;
-import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.util.Mth;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -32,13 +31,9 @@ public abstract class GlobalButtonMixin extends AbstractWidget {
      */
     @Unique
     private String ladsIcon(Font font) {
+        if ((Object) this instanceof TextAndImageButton) return null; // already draws its own sprite beside its label
         String icon = ButtonLift.icon(this);
-        if (icon == null) {
-            Component message = getMessage();
-            if (message == null || !message.getSiblings().isEmpty()) return null;
-            icon = ButtonIcons.of(message.getContents() instanceof TranslatableContents t ? t.getKey() : null,
-                message.getContents() instanceof LiteralContents l ? l.text() : null);
-        }
+        if (icon == null) icon = MessageIcons.of(getMessage());
         return icon != null && TitleScreenTheme.iconFits(getWidth(), font.width(getMessage())) ? icon : null;
     }
 

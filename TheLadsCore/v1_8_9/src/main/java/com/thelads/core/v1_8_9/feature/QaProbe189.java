@@ -276,6 +276,16 @@ public final class QaProbe189 {
                     mc.displayGuiScreen(new net.minecraft.client.gui.GuiOptions(mc.currentScreen, mc.gameSettings));
                 } else if ("video".equals(target)) {
                     mc.displayGuiScreen(new net.minecraft.client.gui.GuiVideoSettings(mc.currentScreen, mc.gameSettings));
+                } else if ("controls".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiControls(mc.currentScreen, mc.gameSettings));
+                } else if ("sounds".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiScreenOptionsSounds(mc.currentScreen, mc.gameSettings));
+                } else if ("language".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiLanguage(mc.currentScreen, mc.gameSettings, mc.getLanguageManager()));
+                } else if ("skin".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiCustomizeSkin(mc.currentScreen));
+                } else if ("packs".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiScreenResourcePacks(mc.currentScreen));
                 } else if ("friends".equals(target)) {
                     mc.displayGuiScreen(new com.thelads.core.v1_8_9.social.FriendsScreen189(mc.currentScreen));
                 } else if ("screenshots".equals(target)) {

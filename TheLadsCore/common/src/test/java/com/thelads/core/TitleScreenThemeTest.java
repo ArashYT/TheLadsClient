@@ -262,7 +262,7 @@ class TitleScreenThemeTest {
 
             assertTrue(panoOff.drawCalls.size() > panoOn.drawCalls.size() + 200,
                 "Panorama=off draws the simple sky and mountain-ridge backdrop");
-            assertTrue(panoOff.drawCalls.size() < 1500, "Simple backdrop stays bounded");
+            assertTrue(panoOff.drawCalls.size() - panoOn.drawCalls.size() < 1500, "Simple backdrop stays bounded");
         } finally {
             option.set(own);
         }

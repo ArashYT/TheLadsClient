@@ -227,6 +227,9 @@ public final class QaProbe26 {
                 if ("none".equals(target) || "close".equals(target)) { holdPause = false; mc.gui.setScreen(null); }
                 else if ("title".equals(target)) mc.setScreenAndShow(new TitleScreen());
                 else if ("pause".equals(target)) { holdPause = true; mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(true)); }
+                else if ("options".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.options.OptionsScreen(mc.gui.screen(), mc.options));
+                else if ("video".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.options.VideoSettingsScreen(mc.gui.screen(), mc, mc.options));
+                else if ("controls".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.options.controls.ControlsScreen(mc.gui.screen(), mc.options));
                 else if ("multiplayer".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(mc.gui.screen()));
                 else if ("friends".equals(target)) mc.setScreenAndShow(new com.thelads.core.v26_2.social.FriendsScreen26(mc.gui.screen()));
                 else if ("screenshots".equals(target)) {
