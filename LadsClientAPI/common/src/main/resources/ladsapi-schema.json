@@ -1,106 +1,6 @@
 {
   "schema": 1,
-  "lads": "1.13.3",
-  "protocol": {
-    "channel": "lads:api",
-    "version": 1,
-    "clientSendsFirst": false,
-    "limits": {
-      "clientToServerBytes": 32000,
-      "serverToClientBytes": 524288,
-      "ratePerSecond": 8,
-      "rateBurst": 16,
-      "maxHelloRepliesPerReset": 2,
-      "maxHelloRepliesPerConnection": 10,
-      "maxPresenceEntries": 1000,
-      "maxAckListEntries": 64
-    },
-    "serverPackets": {
-      "hello": {
-        "t": "hello",
-        "required": [
-          "v",
-          "server"
-        ],
-        "optional": [
-          "caps",
-          "game",
-          "hub"
-        ]
-      },
-      "policy": {
-        "t": "policy",
-        "required": [
-          "rev"
-        ],
-        "optional": [
-          "unlisted",
-          "modules",
-          "options",
-          "notice"
-        ],
-        "moduleStates": [
-          "allow",
-          "block",
-          "on"
-        ],
-        "unlistedStates": [
-          "inherit",
-          "allow",
-          "block"
-        ]
-      },
-      "presence": {
-        "t": "presence",
-        "required": [
-          "full"
-        ],
-        "optional": [
-          "add",
-          "remove"
-        ]
-      },
-      "toast": {
-        "t": "toast",
-        "required": [
-          "title",
-          "message"
-        ]
-      },
-      "reset": {
-        "t": "reset",
-        "required": []
-      }
-    },
-    "clientPackets": {
-      "hello": {
-        "t": "hello",
-        "required": [
-          "v",
-          "lads",
-          "mc"
-        ]
-      },
-      "ack": {
-        "t": "ack",
-        "required": [
-          "rev"
-        ],
-        "optional": [
-          "ignored",
-          "refused"
-        ]
-      }
-    },
-    "commands": [
-      "reload",
-      "status",
-      "inspect",
-      "set",
-      "clear",
-      "announce"
-    ]
-  },
+  "lads": "1.13.4",
   "modules": [
     {
       "name": "Autohide",
@@ -2761,19 +2661,6 @@
       ]
     },
     {
-      "name": "Title Scale",
-      "category": "ALL",
-      "neverForced": false,
-      "automation": false,
-      "options": [
-        {
-          "name": "Scale",
-          "type": "other",
-          "control": "NEVER"
-        }
-      ]
-    },
-    {
       "name": "Exordium",
       "category": "MECHANIC",
       "neverForced": false,
@@ -3761,6 +3648,11 @@
       "automation": false,
       "options": [
         {
+          "name": "Logo Scale",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
           "name": "Account Card Scale",
           "type": "slider",
           "default": 100,
@@ -3776,6 +3668,21 @@
           "choices": [
             "New",
             "Legacy"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Panorama",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Panorama Version",
+          "type": "dropdown",
+          "default": "Default",
+          "choices": [
+            "Default"
           ],
           "control": "FULL"
         }
