@@ -17,6 +17,6 @@ public abstract class CubeMapTextureMixin {
     @Redirect(method = "loadContents", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/texture/TextureContents;load(Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/resources/Identifier;)Lnet/minecraft/client/renderer/texture/TextureContents;"), require = 1)
     private TextureContents ladsPickedPanorama(ResourceManager resources, Identifier id) throws IOException {
         byte[] picked = "minecraft".equals(id.getNamespace()) ? PanoramaPicker.image(id.getPath()) : null;
-        return picked != null ? new TextureContents(NativeImage.read(picked), null) : TextureContents.load(resources, id);
+        return picked != null ? new TextureContents(NativeImage.read(new java.io.ByteArrayInputStream(picked)), null) : TextureContents.load(resources, id);
     }
 }

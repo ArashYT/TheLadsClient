@@ -306,7 +306,7 @@ public abstract class TitleScreenMixin extends Screen {
             var location = new net.minecraft.resources.ResourceLocation("textures/gui/title/background/panorama_" + i + ".png");
             try {
                 textures.register(location, images == null ? new net.minecraft.client.renderer.texture.SimpleTexture(location)
-                    : new net.minecraft.client.renderer.texture.DynamicTexture(com.mojang.blaze3d.platform.NativeImage.read(images[i])));
+                    : new net.minecraft.client.renderer.texture.DynamicTexture(com.mojang.blaze3d.platform.NativeImage.read(new java.io.ByteArrayInputStream(images[i]))));
             } catch (java.io.IOException | RuntimeException failure) {
                 textures.register(location, new net.minecraft.client.renderer.texture.SimpleTexture(location));
             }
