@@ -183,7 +183,7 @@ public final class QaProbe26 {
     private static void stepFailed(String what, Exception e) {
         failedSteps++;
         QaProgress.result(QaProgress.Result.FAIL);
-        LOGGER.error("Lads 26.3 qa step FAILED: {}: {}", what, e.toString());
+        LOGGER.error("Lads 26.3 qa step FAILED: {}: {}", what, e.toString(), e);
     }
 
     /** QA: a servers.dat with no stored choice, Disabled and Enabled, read by the game's own list; the title Network button's entry. The file is put back. */
@@ -294,6 +294,7 @@ public final class QaProbe26 {
                 pointer("ypos", Double.parseDouble(arg(s, 2)));
             }
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout(); // what the title's layout toggle does
+            case "titlepanorama" -> com.thelads.core.modules.TitleScreenModule.setPanorama(!"off".equals(arg(s, 1))); // the title Panorama setting: titlepanorama on | off
             case "press" -> mc.gui.screen().children().stream().filter(c -> c instanceof net.minecraft.client.gui.components.Button b && b.getMessage().getString().equals(rest(s, 1)))
                 .map(c -> (net.minecraft.client.gui.components.Button) c).findFirst().orElseThrow(() -> new IllegalArgumentException("press: no button " + rest(s, 1)))
                 .onPress(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));

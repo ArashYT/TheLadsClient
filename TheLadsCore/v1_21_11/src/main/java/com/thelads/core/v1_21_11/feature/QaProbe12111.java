@@ -52,7 +52,7 @@ public final class QaProbe12111 {
             passed++;
         } catch (Exception e) {
             failed++;
-            LOGGER.error("Lads qa step FAILED: {}: {}", step, e.toString());
+            LOGGER.error("Lads qa step FAILED: {}: {}", step, e.toString(), e);
         }
         if (waitTicks == 0) waitTicks = 1;
     }
@@ -98,6 +98,7 @@ public final class QaProbe12111 {
             case "world" -> {} // tick() held the script until the QA world was up
             case "notice" -> com.thelads.core.client.bridge.LadsGameBridge.get().displayChatMessage(arg);
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout();
+            case "titlepanorama" -> com.thelads.core.modules.TitleScreenModule.setPanorama(!"off".equals(arg)); // the title Panorama setting: titlepanorama on | off
             case "settings" -> { // the modules menu, optionally opened on a page or module: settings page:HUD | open:HUD/PvP | search:color | Hit Color
                 var screen = new com.thelads.core.v1_21_11.gui.LadsSettingsScreen12111(mc.screen);
                 mc.setScreen(screen);
