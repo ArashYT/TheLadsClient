@@ -56,7 +56,9 @@ public abstract class GlobalSliderMixin {
                 TitleScreenTheme.renderLabelIcon(adapter, icon, x, y, w, h, textW, textColor);
                 textX = TitleScreenTheme.iconLabelX(x, w, textW);
             }
+            adapter.enableScissor(x + 2, y, x + w - 2, y + h);
             adapter.drawText(text, textX, textY, textColor);
+            adapter.disableScissor();
         }
 
         ci.cancel();
