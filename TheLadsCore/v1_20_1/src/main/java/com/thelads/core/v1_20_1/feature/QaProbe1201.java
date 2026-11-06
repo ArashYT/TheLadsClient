@@ -341,11 +341,15 @@ public final class QaProbe1201 {
         screen.ui().setTab(com.thelads.core.client.social.ui.FriendsScreenLogic.Tab.ADD);
         screen.ui().setAddFriendInput("");
         long win = mc.getWindow().getWindow();
-        mc.keyboardHandler.keyPress(win, org.lwjgl.glfw.GLFW.GLFW_KEY_O, 0, org.lwjgl.glfw.GLFW.GLFW_PRESS, 0);
-        ((com.thelads.core.v1_20_1.mixin.KeyboardHandlerQaInvoker) mc.keyboardHandler).ladsQaCharTyped(win, 'o', 0);
-        mc.keyboardHandler.keyPress(win, org.lwjgl.glfw.GLFW.GLFW_KEY_O, 0, org.lwjgl.glfw.GLFW.GLFW_RELEASE, 0);
+        int[] keys = new int[] { org.lwjgl.glfw.GLFW.GLFW_KEY_B, org.lwjgl.glfw.GLFW.GLFW_KEY_O, org.lwjgl.glfw.GLFW.GLFW_KEY_B, org.lwjgl.glfw.GLFW.GLFW_KEY_O };
+        char[] chars = new char[] { 'B', 'o', 'b', 'o' };
+        for (int i = 0; i < keys.length; i++) {
+            mc.keyboardHandler.keyPress(win, keys[i], 0, org.lwjgl.glfw.GLFW.GLFW_PRESS, 0);
+            ((com.thelads.core.v1_20_1.mixin.KeyboardHandlerQaInvoker) mc.keyboardHandler).ladsQaCharTyped(win, chars[i], 0);
+            mc.keyboardHandler.keyPress(win, keys[i], 0, org.lwjgl.glfw.GLFW.GLFW_RELEASE, 0);
+        }
         String val = screen.ui().addFriendInput();
-        if (mc.screen != screen || !"o".equals(val)) {
+        if (mc.screen != screen || !"Bobo".equals(val)) {
             throw new IllegalStateException("friendso failed: screen=" + mc.screen + " input='" + val + "'");
         }
         LOGGER.info("Lads 1.20.1 qa friendso: screen={} input='{}' open=true", mc.screen.getClass().getSimpleName(), val);
@@ -410,6 +414,29 @@ public final class QaProbe1201 {
             }
             case "srv" -> ServerListQa1201.step(mc, s);
             case "friendso" -> friendso(mc);
+            case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout();
+            case "titlepanorama" -> com.thelads.core.modules.TitleScreenModule.setPanorama(!"off".equals(arg(s, 1)));
+            case "panoramaversion" -> {
+                var mod = ModuleManager.getInstance().getModule("TitleScreen");
+                if (mod != null && mod.getOption(com.thelads.core.modules.TitleScreenModule.PANORAMA_VERSION) instanceof com.thelads.core.config.DropdownOption opt) {
+                    opt.select(arg(s, 1));
+                    com.thelads.core.config.ConfigManager.save();
+                }
+            }
+            case "wintitle" -> {
+                new Thread(() -> {
+                    try {
+                        Process p = new ProcessBuilder("powershell", "-NoProfile", "-Command",
+                            "Get-Process java* | Select MainWindowTitle | ForEach-Object { $_.MainWindowTitle } | Where-Object { $_ }").redirectErrorStream(true).start();
+                        String out = new String(p.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim();
+                        p.waitFor();
+                        LOGGER.info("Lads qa wintitle: {}", out);
+                    } catch (Exception e) {
+                        LOGGER.error("Lads qa wintitle err: {}", e.toString());
+                    }
+                }, "LadsQaWinTitle").start();
+                waitTicks = 25;
+            }
             case "seedshots" -> {
                 com.thelads.core.client.qa.QaScreenshotFixtures.seed(gameDir);
                 var sv = com.thelads.core.v1_20_1.feature.screenshots.ScreenshotViewer1201.getInstance();

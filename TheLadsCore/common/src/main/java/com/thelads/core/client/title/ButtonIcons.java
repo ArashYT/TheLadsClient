@@ -37,7 +37,127 @@ public final class ButtonIcons {
         Map.entry("options.telemetry", "stats"), Map.entry("options.telemetry.button", "stats"), Map.entry("options.credits_and_attribution", "info"),
         Map.entry("options.worldOptions.button", "settings"), Map.entry("controls.reset", "reset"), Map.entry("controls.resetAll", "reset"),
         Map.entry("pack.openFolder", "folder-open"), Map.entry("deathScreen.respawn", "refresh"), Map.entry("deathScreen.titleScreen", "exit"),
-        Map.entry("deathScreen.spectate", "eye"), Map.entry("modmenu.title", "mods"), Map.entry("fml.menu.mods", "mods"));
+        Map.entry("deathScreen.spectate", "eye"), Map.entry("modmenu.title", "mods"), Map.entry("fml.menu.mods", "mods"),
+        // 26.x's pause and options menus, world selection and creation, the report and friends screens
+        Map.entry("options.stream", "megaphone"), Map.entry("options.snooper.view", "stats"), Map.entry("menu.custom_options", "settings"), Map.entry("menu.quick_actions", "bolt"), Map.entry("menu.feedback", "chat"),
+        Map.entry("options.realmsNotifications.button", "bell"), Map.entry("gui.report_to_server", "flag"),
+        Map.entry("selectWorld.createDemo", "play"), Map.entry("selectWorld.upgrade_and_play", "play"), Map.entry("selectWorld.versionJoinButton", "play"),
+        Map.entry("selectWorld.backupJoinConfirmButton", "save"), Map.entry("selectWorld.backupJoinSkipButton", "arrow-right"),
+        Map.entry("selectWorld.backupEraseCache", "delete"), Map.entry("selectWorld.edit.resetIcon", "reset"),
+        Map.entry("selectWorld.edit.export_worldgen_settings", "upload"),
+        Map.entry("createWorld.tab.game.title", "controls"), Map.entry("createWorld.tab.world.title", "globe"), Map.entry("createWorld.tab.more.title", "more"),
+        Map.entry("createWorld.customize.presets", "layers"), Map.entry("createWorld.customize.presets.select", "check"),
+        Map.entry("createWorld.customize.flat.removeLayer", "delete"), Map.entry("createWorld.customize.custom.presets", "layers"),
+        Map.entry("createWorld.customize.custom.randomize", "dice"), Map.entry("createWorld.customize.custom.defaults", "reset"),
+        Map.entry("createWorld.customize.custom.prev", "arrow-left"), Map.entry("createWorld.customize.custom.next", "arrow-right"),
+        Map.entry("dataPack.validation.back", "arrow-left"), Map.entry("dataPack.validation.reset", "reset"),
+        Map.entry("gui.friends.accept", "check"), Map.entry("gui.friends.decline", "cross"), Map.entry("gui.friends.join", "enter"),
+        Map.entry("gui.friends.cancel_request", "cross"), Map.entry("gui.friends.send_request", "user-add"), Map.entry("gui.friends.unfriend", "delete"),
+        Map.entry("gui.friends.copy_to_clipboard", "copy"), Map.entry("gui.friends.open", "friends"),
+        Map.entry("gui.friends.multiplayer.invite", "user-add"), Map.entry("gui.friends.multiplayer.invite_accept", "check"),
+        Map.entry("gui.friends.multiplayer.invite_reject", "cross"), Map.entry("gui.friends.multiplayer.join_request", "enter"),
+        Map.entry("gui.friends.multiplayer.join_request_accept", "check"), Map.entry("gui.friends.multiplayer.join_request_reject", "cross"),
+        Map.entry("gui.socialInteractions.report", "flag"), Map.entry("gui.socialInteractions.hide", "eye-off"), Map.entry("gui.socialInteractions.show", "eye"),
+        Map.entry("gui.abuseReport.send", "send"), Map.entry("gui.chatReport.send", "send"), Map.entry("gui.abuseReport.read_info", "info"),
+        Map.entry("gui.chatReport.read_info", "info"), Map.entry("gui.abuseReport.discard.discard", "delete"), Map.entry("gui.chatReport.discard.discard", "delete"),
+        Map.entry("gui.abuseReport.discard.draft", "save"), Map.entry("gui.chatReport.discard.draft", "save"),
+        Map.entry("gui.abuseReport.discard.return", "edit"), Map.entry("gui.chatReport.discard.return", "edit"),
+        Map.entry("mco.selectServer.play", "play"), Map.entry("mco.selectServer.configure", "settings"), Map.entry("mco.selectServer.leave", "exit"),
+        Map.entry("mco.selectServer.purchase", "add"), Map.entry("mco.selectServer.create", "add"),
+        Map.entry("mco.configure.world.buttons.invite", "user-add"), Map.entry("mco.configure.world.buttons.players", "users"),
+        Map.entry("mco.configure.world.buttons.settings", "settings"), Map.entry("mco.configure.world.buttons.options", "settings"),
+        Map.entry("mco.configure.world.buttons.resetworld", "reset"), Map.entry("mco.configure.world.buttons.delete", "delete"),
+        Map.entry("mco.backup.button.download", "download"), Map.entry("mco.backup.button.upload", "upload"), Map.entry("mco.backup.button.restore", "refresh"),
+        Map.entry("mco.brokenworld.download", "download"), Map.entry("mco.brokenworld.play", "play"), Map.entry("mco.brokenworld.reset", "reset"),
+        Map.entry("mco.invites.button.accept", "check"), Map.entry("mco.invites.button.reject", "cross"),
+        Map.entry("mco.terms.buttons.agree", "check"), Map.entry("mco.terms.buttons.disagree", "cross"), Map.entry("mco.upload.button.name", "upload"),
+        Map.entry("resourcePack.openFolder", "folder-open"), Map.entry("selectWorld.rename", "edit"), Map.entry("selectWorld.renameButton", "edit"),
+        Map.entry("multiplayer.connect", "enter"), Map.entry("multiplayer.stopSleeping", "exit"), Map.entry("lanServer.otherPlayers", "users"),
+        Map.entry("options.multiplayer.title", "multiplayer"), Map.entry("options.qualityButton", "video"),
+        Map.entry("options.performanceButton", "speed"), Map.entry("options.advancedButton", "sliders"), Map.entry("options.postButton", "sparkles"),
+        Map.entry("options.showAll", "eye"), Map.entry("options.showConflicts", "warning"), Map.entry("options.showNone", "eye"),
+        Map.entry("options.toggleFree", "keyboard"), Map.entry("options.sort", "filter"), Map.entry("options.confirmReset", "warning"),
+        Map.entry("options.availableKeys", "keyboard"), Map.entry("editGamerule.inGame.button", "list-check"),
+        Map.entry("restrictions_screen.button", "shield"), Map.entry("menu.multiplayerOptions.applyChanges", "check"),
+        Map.entry("menu.multiplayerOptions.lan", "host"), Map.entry("menu.multiplayerOptions.publish.stopped", "stop"),
+        Map.entry("options.graphics.warning.accept", "arrow-right"), Map.entry("options.graphics.warning.cancel", "arrow-left"),
+        Map.entry("options.friendsList.confirm.turnOn", "check"), Map.entry("options.friendsList.confirm.turnOff", "cross"));
+
+    /**
+     * Option buttons ("Graphics: Fancy", "FOV: 70", a toggle's "Auto-Jump: ON") by their caption's translation key: vanilla builds the
+     * message as one of the {@link #wraps} keys around the caption, so the version hooks look the caption up here. Also the captions
+     * 1.8.9 shows before the colon.
+     */
+    private static final Map<String, String> CAPTIONS = Map.ofEntries(
+        Map.entry("options.graphics", "picture"), Map.entry("options.graphics.preset", "sliders"), Map.entry("options.graphicsApi", "computer"),
+        Map.entry("options.fov", "eye"), Map.entry("options.fovEffectScale", "eye"), Map.entry("options.vignette", "eye"),
+        Map.entry("options.screenEffectScale", "sparkles"), Map.entry("options.damageTiltStrength", "heart"), Map.entry("options.darknessEffectScale", "moon"),
+        Map.entry("options.renderDistance", "mountain"), Map.entry("options.simulationDistance", "cubes"), Map.entry("options.entityDistanceScaling", "resize"),
+        Map.entry("options.framerateLimit", "speed"), Map.entry("options.framerate", "speed"), Map.entry("options.inactivityFpsLimit", "speed"),
+        Map.entry("options.vsync", "refresh"), Map.entry("options.viewBobbing", "walking"), Map.entry("options.guiScale", "layout"),
+        Map.entry("options.gamma", "brightness"), Map.entry("options.renderClouds", "cloud"), Map.entry("options.clouds", "cloud"),
+        Map.entry("options.renderCloudsDistance", "cloud"), Map.entry("options.weatherRadius", "cloud"),
+        Map.entry("options.fullscreen", "fullscreen"), Map.entry("options.exclusiveFullscreen", "fullscreen"), Map.entry("options.fullscreen.resolution", "computer"),
+        Map.entry("options.particles", "sparkles"), Map.entry("options.glintSpeed", "sparkles"), Map.entry("options.glintStrength", "sparkles"),
+        Map.entry("options.mipmapLevels", "layers"), Map.entry("options.maxAnisotropy", "grid"), Map.entry("options.textureFiltering", "grid"),
+        Map.entry("options.entityShadows", "moon"), Map.entry("options.biomeBlendRadius", "colors"), Map.entry("options.ao", "sun"),
+        Map.entry("options.attackIndicator", "target"), Map.entry("options.autosaveIndicator", "save"), Map.entry("options.prioritizeChunkUpdates", "cubes"),
+        Map.entry("options.chunkFade", "clock"), Map.entry("options.cutoutLeaves", "leaf"), Map.entry("options.improvedTransparency", "picture"),
+        Map.entry("options.sensitivity", "mouse"), Map.entry("options.rawMouseInput", "mouse"), Map.entry("options.allowCursorChanges", "mouse"),
+        Map.entry("options.ctrlClickEmulatesRightClick", "mouse"), Map.entry("options.invertMouse", "exchange"), Map.entry("options.invertMouseX", "exchange"),
+        Map.entry("options.invertMouseY", "exchange"), Map.entry("options.discrete_mouse_scroll", "scroll"), Map.entry("options.mouseWheelSensitivity", "scroll"),
+        Map.entry("options.touchscreen", "touch"), Map.entry("options.autoJump", "arrow-up"), Map.entry("key.sneak", "arrow-small-down"),
+        Map.entry("key.sprint", "running"), Map.entry("options.sprintWindow", "running"), Map.entry("options.quitShortcuts", "power"),
+        Map.entry("options.operatorItemsTab", "box"), Map.entry("options.difficulty", "shield"), Map.entry("options.difficulty.online", "shield"),
+        Map.entry("options.showSubtitles", "subtitles"), Map.entry("options.directionalAudio", "headphones"), Map.entry("options.audioDevice", "speaker"),
+        Map.entry("options.music_frequency", "music"), Map.entry("options.musicToast", "music"), Map.entry("options.showNowPlayingToast", "music"),
+        Map.entry("options.narrator", "megaphone"), Map.entry("options.accessibility.narrator_hotkey", "keyboard"),
+        Map.entry("options.accessibility.high_contrast", "brightness"), Map.entry("options.accessibility.high_contrast_block_outline", "cube"),
+        Map.entry("options.accessibility.menu_background_blurriness", "eye"), Map.entry("options.accessibility.panorama_speed", "speed"),
+        Map.entry("options.accessibility.text_background", "text-box"), Map.entry("options.accessibility.text_background_opacity", "text-box"),
+        Map.entry("options.accessibility.link", "link"), Map.entry("options.hideLightningFlashes", "bolt"), Map.entry("options.darkMojangStudiosBackgroundColor", "moon"),
+        Map.entry("options.hideSplashTexts", "text"), Map.entry("options.font", "text"), Map.entry("options.forceUnicodeFont", "text"),
+        Map.entry("options.japaneseGlyphVariants", "language"), Map.entry("options.chat.visibility", "chat"), Map.entry("options.chat.color", "colors"),
+        Map.entry("options.chat.links", "link"), Map.entry("options.chat.links.prompt", "link"), Map.entry("options.chat.opacity", "eye"),
+        Map.entry("options.chat.scale", "text-size"), Map.entry("options.chat.line_spacing", "text-align"), Map.entry("options.chat.delay", "clock"),
+        Map.entry("options.chat.width", "resize"), Map.entry("options.chat.height.focused", "resize"), Map.entry("options.chat.height.unfocused", "resize"),
+        Map.entry("options.chat.drafts", "save"), Map.entry("options.autoSuggestCommands", "terminal"), Map.entry("options.hideMatchedNames", "eye-off"),
+        Map.entry("options.reducedDebugInfo", "bug"), Map.entry("options.onlyShowSecureChat", "shield"), Map.entry("options.inGameNotification", "bell"),
+        Map.entry("options.modelPart.cape", "shirt"), Map.entry("options.modelPart.hat", "shirt"), Map.entry("options.modelPart.jacket", "shirt"),
+        Map.entry("options.modelPart.left_sleeve", "shirt"), Map.entry("options.modelPart.right_sleeve", "shirt"),
+        Map.entry("options.modelPart.left_pants_leg", "shirt"), Map.entry("options.modelPart.right_pants_leg", "shirt"),
+        Map.entry("options.showCape", "shirt"), Map.entry("options.mainHand", "hand"),
+        Map.entry("options.realmsNotifications", "bell"), Map.entry("options.allowServerListing", "server"), Map.entry("options.allowFriendRequests", "friends"),
+        Map.entry("options.friendsList", "friends"), Map.entry("options.sharePresence", "eye"), Map.entry("options.notifications.display_time", "clock"),
+        Map.entry("options.rotateWithMinecart", "refresh"), Map.entry("options.online.xboxSettings", "user"),
+        Map.entry("options.worldOptions.game_mode", "dice"), Map.entry("options.worldOptions.guest.command_access", "terminal"),
+        Map.entry("options.worldOptions.personal_game_mode", "dice"), Map.entry("options.snooper", "stats"), Map.entry("options.anaglyph", "eye"),
+        Map.entry("options.fboEnable", "layers"), Map.entry("options.useVbo", "bolt"), Map.entry("options.vbo", "bolt"), Map.entry("options.blockAlternatives", "cube"),
+        Map.entry("soundCategory.master", "volume"), Map.entry("soundCategory.music", "music"), Map.entry("soundCategory.record", "disk"),
+        Map.entry("soundCategory.weather", "cloud"), Map.entry("soundCategory.block", "cube"), Map.entry("soundCategory.hostile", "warning"),
+        Map.entry("soundCategory.neutral", "heart"), Map.entry("soundCategory.player", "user"), Map.entry("soundCategory.ambient", "leaf"),
+        Map.entry("soundCategory.voice", "microphone"), Map.entry("soundCategory.ui", "mouse"),
+        Map.entry("selectWorld.gameMode", "dice"), Map.entry("selectWorld.moreWorldOptions", "dots"), Map.entry("selectWorld.allowCommands", "terminal"),
+        Map.entry("selectWorld.allowCommands.new", "terminal"), Map.entry("selectWorld.bonusItems", "box"), Map.entry("selectWorld.mapFeatures", "home"),
+        Map.entry("selectWorld.mapType", "world"), Map.entry("selectWorld.import_worldgen_settings", "download"), Map.entry("selectWorld.customizeType", "settings"),
+        Map.entry("selectWorld.gameRules", "list-check"), Map.entry("selectWorld.dataPacks", "box-open"), Map.entry("selectWorld.experiments", "bolt"),
+        Map.entry("addServer.resourcePack", "layers"), Map.entry("addServer.hideAddress", "eye-off"),
+        Map.entry("key.attack", "target"), Map.entry("key.use", "hand"),
+        Map.entry("options.chat.delay_none", "clock"), Map.entry("options.chat.delay_instant", "clock"),
+        Map.entry("options.chunkFade.none", "clock"), Map.entry("options.chunkFade.seconds", "clock"),
+        Map.entry("options.fullscreen.exclusive.mode", "computer"), Map.entry("options.macFullscreenMenuVisibility", "layout"),
+        Map.entry("options.worldOptions.guest.force_game_mode", "dice"), Map.entry("options.saturation", "colors"),
+        Map.entry("options.advancedOpengl", "computer"), Map.entry("options.postProcessEnable", "sparkles"),
+        Map.entry("options.music", "music"), Map.entry("options.sound", "volume"));
+
+    /** The message keys vanilla builds an option button's text with, around its caption ("%s: %s", "%s: ON", "%s: %s%%" ...). */
+    private static final java.util.Set<String> WRAPPERS = java.util.Set.of("options.generic_value", "options.on.composed", "options.off.composed",
+        "options.percent_value", "options.percent_add_value", "options.pixel_value");
+
+    /** Whether a message with this translation key is an option button's text, its first argument the caption (look that up instead). */
+    public static boolean wraps(String key) {
+        return WRAPPERS.contains(key);
+    }
 
     private static final Map<String, String> LITERALS = Map.ofEntries(
         Map.entry("Done", "check"), Map.entry("Cancel", "cross"), Map.entry("Back", "arrow-left"), Map.entry("Apply", "check"), Map.entry("Confirm", "check"),
@@ -65,7 +185,16 @@ public final class ButtonIcons {
         Map.entry("Chat", "chat"), Map.entry("Invite", "user-add"), Map.entry("Accept", "check"), Map.entry("Decline", "cross"),
         Map.entry("Unblock", "unlock"), Map.entry("Send Request", "user-add"), Map.entry("Add Friend", "user-add"), Map.entry("Send", "send"),
         Map.entry("Set Nickname", "edit"), Map.entry("Block", "block"), Map.entry("Kick", "exit"), Map.entry("Ban", "block"),
-        Map.entry("Mute", "mute"), Map.entry("Unban", "unlock"), Map.entry("Add Offline Account", "user-add"));
+        Map.entry("Mute", "mute"), Map.entry("Unban", "unlock"), Map.entry("Add Offline Account", "user-add"),
+        // Mods' and other plain-text buttons
+        Map.entry("Options", "settings"), Map.entry("Config", "settings"), Map.entry("Configure", "settings"), Map.entry("Edit", "edit"),
+        Map.entry("Create", "add"), Map.entry("New", "add"), Map.entry("Open Folder", "folder-open"), Map.entry("Open folder", "folder-open"),
+        Map.entry("Open Mods Folder", "folder-open"), Map.entry("Reload", "refresh"), Map.entry("Retry", "refresh"), Map.entry("Continue", "arrow-right"),
+        Map.entry("Reset to Default", "reset"), Map.entry("Reset All", "reset"), Map.entry("Defaults", "reset"), Map.entry("Help", "help"), Map.entry("Info", "info"),
+        Map.entry("Super Secret Settings...", "sparkles"), Map.entry("Show Conflicts", "warning"), Map.entry("Show Unbound", "eye"),
+        Map.entry("Show All", "eye"), Map.entry("Confirm?", "warning"),
+        Map.entry("OptiFine Settings...", "settings"), Map.entry("Kill Banners", "trophy"), Map.entry("Combo Sounds", "music"),
+        Map.entry("Export", "upload"), Map.entry("Upload", "upload"), Map.entry("Download", "download"), Map.entry("Exit", "exit"), Map.entry("Select", "check"));
 
     /**
      * The icon of a button with this message: its translation key (null for plain text) and its plain text (null when the message is
@@ -73,6 +202,7 @@ public final class ButtonIcons {
      */
     public static String of(String key, String text) {
         String icon = key == null ? null : KEYS.get(key);
+        if (icon == null && key != null) icon = CAPTIONS.get(key);
         return icon != null || text == null ? icon : LITERALS.get(text);
     }
 
@@ -85,14 +215,28 @@ public final class ButtonIcons {
         if (icon != null || text == null || text.isEmpty()) return icon;
         if (translated == null || !language.equals(translatedLanguage)) {
             Map<String, String> built = new java.util.HashMap<>();
-            for (Map.Entry<String, String> e : KEYS.entrySet()) {
-                String label = translate.apply(e.getKey());
-                if (label != null && !label.equals(e.getKey())) built.putIfAbsent(label, e.getValue());
-            }
+            for (Map<String, String> table : java.util.List.of(KEYS, CAPTIONS))
+                for (Map.Entry<String, String> e : table.entrySet()) {
+                    String label = translate.apply(e.getKey());
+                    if (label != null && !label.equals(e.getKey())) {
+                        built.putIfAbsent(label, e.getValue());
+                        if (label.endsWith(":")) built.putIfAbsent(label.substring(0, label.length() - 1).trim(), e.getValue());
+                    }
+                }
             translated = built;
             translatedLanguage = language;
         }
         return translated.get(text);
+    }
+
+    /**
+     * 1.8.9's option buttons draw "Caption: value" as one string: the icon of the text, else of the text before its first colon.
+     * Allocates that caption, so ask once per text, not per frame.
+     */
+    public static String ofCaptioned(String text, String language, java.util.function.Function<String, String> translate) {
+        String icon = ofText(text, language, translate);
+        int colon = icon != null || text == null ? -1 : text.indexOf(':');
+        return colon > 0 ? ofText(text.substring(0, colon).trim(), language, translate) : icon; // .trim(): French writes "Caption : value"
     }
 
     private static Map<String, String> translated;
@@ -100,6 +244,6 @@ public final class ButtonIcons {
 
     /** All icon names the maps use, for the check that each has a glyph. */
     static java.util.stream.Stream<String> icons() {
-        return java.util.stream.Stream.concat(KEYS.values().stream(), LITERALS.values().stream());
+        return java.util.stream.Stream.of(KEYS, CAPTIONS, LITERALS).flatMap(m -> m.values().stream());
     }
 }

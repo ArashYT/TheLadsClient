@@ -169,10 +169,23 @@ abstract class WorldListDragMixin12111 extends ObjectSelectionList<WorldSelectio
         lads$layout();
     }
 
-    @Override
-    public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    @Inject(method = "renderWidget", at = @At("HEAD"))
+    private void lads$beforeRender(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         if (lads$from >= 0) lads$dragFrame();
-        super.renderWidget(graphics, lads$from < 0 ? mouseX : -1, lads$from < 0 ? mouseY : -1, partialTick);
+    }
+
+    @ModifyVariable(method = "renderWidget", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    private int lads$dragMouseX(int mouseX) {
+        return lads$from < 0 ? mouseX : -1;
+    }
+
+    @ModifyVariable(method = "renderWidget", at = @At("HEAD"), argsOnly = true, ordinal = 1)
+    private int lads$dragMouseY(int mouseY) {
+        return lads$from < 0 ? mouseY : -1;
+    }
+
+    @Inject(method = "renderWidget", at = @At("RETURN"))
+    private void lads$afterRender(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         if (lads$from < 0 || lads$from >= children().size()) return;
         WorldSelectionList.Entry row = children().get(lads$from);
         enableScissor(graphics);

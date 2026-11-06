@@ -170,11 +170,15 @@ public final class QaProbe26 {
         screen.ui().setTab(com.thelads.core.client.social.ui.FriendsScreenLogic.Tab.ADD);
         screen.ui().setAddFriendInput("");
         long win = mc.getWindow().handle();
-        mc.keyboardHandler.keyPress(win, 1, new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_O, 0, 0));
-        mc.keyboardHandler.charTyped(win, new net.minecraft.client.input.CharacterEvent('o'));
-        mc.keyboardHandler.keyPress(win, 0, new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_O, 0, 0));
+        int[] keys = new int[] { com.mojang.blaze3d.platform.InputConstants.KEY_B, com.mojang.blaze3d.platform.InputConstants.KEY_O, com.mojang.blaze3d.platform.InputConstants.KEY_B, com.mojang.blaze3d.platform.InputConstants.KEY_O };
+        char[] chars = new char[] { 'B', 'o', 'b', 'o' };
+        for (int i = 0; i < keys.length; i++) {
+            mc.keyboardHandler.keyPress(win, 1, new net.minecraft.client.input.KeyEvent(keys[i], 0, 0));
+            mc.keyboardHandler.charTyped(win, new net.minecraft.client.input.CharacterEvent(chars[i]));
+            mc.keyboardHandler.keyPress(win, 0, new net.minecraft.client.input.KeyEvent(keys[i], 0, 0));
+        }
         String val = screen.ui().addFriendInput();
-        if (mc.gui.screen() != screen || !"o".equals(val)) {
+        if (mc.gui.screen() != screen || !"Bobo".equals(val)) {
             throw new IllegalStateException("friendso failed: screen=" + mc.gui.screen() + " input='" + val + "'");
         }
         LOGGER.info("Lads 26.3 qa friendso: screen={} input='{}' open=true", mc.gui.screen().getClass().getSimpleName(), val);
@@ -183,7 +187,7 @@ public final class QaProbe26 {
     private static void stepFailed(String what, Exception e) {
         failedSteps++;
         QaProgress.result(QaProgress.Result.FAIL);
-        LOGGER.error("Lads 26.3 qa step FAILED: {}: {}", what, e.toString());
+        LOGGER.error("Lads 26.3 qa step FAILED: {}: {}", what, e.toString(), e);
     }
 
     /** QA: a servers.dat with no stored choice, Disabled and Enabled, read by the game's own list; the title Network button's entry. The file is put back. */
@@ -227,6 +231,9 @@ public final class QaProbe26 {
                 if ("none".equals(target) || "close".equals(target)) { holdPause = false; mc.gui.setScreen(null); }
                 else if ("title".equals(target)) mc.setScreenAndShow(new TitleScreen());
                 else if ("pause".equals(target)) { holdPause = true; mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(true)); }
+                else if ("options".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.options.OptionsScreen(mc.gui.screen(), mc.options));
+                else if ("video".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.options.VideoSettingsScreen(mc.gui.screen(), mc, mc.options));
+                else if ("controls".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.options.controls.ControlsScreen(mc.gui.screen(), mc.options));
                 else if ("multiplayer".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(mc.gui.screen()));
                 else if ("friends".equals(target)) mc.setScreenAndShow(new com.thelads.core.v26_2.social.FriendsScreen26(mc.gui.screen()));
                 else if ("screenshots".equals(target)) {
@@ -294,6 +301,48 @@ public final class QaProbe26 {
                 pointer("ypos", Double.parseDouble(arg(s, 2)));
             }
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout(); // what the title's layout toggle does
+            case "titlepanorama" -> com.thelads.core.modules.TitleScreenModule.setPanorama(!"off".equals(arg(s, 1))); // the title Panorama setting: titlepanorama on | off
+            case "panoramaversion" -> {
+                var mod = com.thelads.core.config.ModuleManager.getInstance().getModule("TitleScreen");
+                if (mod != null && mod.getOption(com.thelads.core.modules.TitleScreenModule.PANORAMA_VERSION) instanceof com.thelads.core.config.DropdownOption opt) {
+                    opt.select(arg(s, 1));
+                    com.thelads.core.config.ConfigManager.save();
+                }
+            }
+            case "settingsclick" -> {
+                var screen = (LadsSettingsScreen26) mc.gui.screen();
+                String id = rest(s, 1);
+                var rect = screen.ui().controlBounds(id);
+                if (rect == null) {
+                    for (String cid : screen.ui().controlIds()) if (cid.startsWith(id)) { id = cid; rect = screen.ui().controlBounds(cid); break; }
+                }
+                if (rect == null) throw new IllegalStateException("settingsclick: no control " + id + " in " + screen.ui().controlIds());
+                var ev = new net.minecraft.client.input.MouseButtonEvent(rect.x() + rect.width() / 2.0, rect.y() + rect.height() / 2.0,
+                    new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0));
+                screen.mouseClicked(ev, false);
+                screen.mouseReleased(ev);
+                LOGGER.info("Lads qa settingsclick: {} at {},{}", id, rect.x() + rect.width() / 2, rect.y() + rect.height() / 2);
+            }
+            case "settingstype" -> {
+                var screen = (LadsSettingsScreen26) mc.gui.screen();
+                String text = rest(s, 1);
+                text.codePoints().forEach(c -> screen.charTyped(new net.minecraft.client.input.CharacterEvent(c)));
+                LOGGER.info("Lads qa settingstype: '{}' query='{}'", text, screen.ui().getSearchQuery());
+            }
+            case "wintitle" -> {
+                new Thread(() -> {
+                    try {
+                        Process p = new ProcessBuilder("powershell", "-NoProfile", "-Command",
+                            "Get-Process java* | Select MainWindowTitle | ForEach-Object { $_.MainWindowTitle } | Where-Object { $_ }").redirectErrorStream(true).start();
+                        String out = new String(p.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim();
+                        p.waitFor();
+                        LOGGER.info("Lads qa wintitle: {}", out);
+                    } catch (Exception e) {
+                        LOGGER.error("Lads qa wintitle err: {}", e.toString());
+                    }
+                }, "LadsQaWinTitle").start();
+                waitTicks = 25;
+            }
             case "press" -> mc.gui.screen().children().stream().filter(c -> c instanceof net.minecraft.client.gui.components.Button b && b.getMessage().getString().equals(rest(s, 1)))
                 .map(c -> (net.minecraft.client.gui.components.Button) c).findFirst().orElseThrow(() -> new IllegalArgumentException("press: no button " + rest(s, 1)))
                 .onPress(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));

@@ -12,6 +12,7 @@ import com.thelads.core.config.SliderOption;
 public class TitleScreenModule extends Module {
     public static final String LOGO_SCALE = "Logo Scale";
     public static final String PANORAMA = "Panorama";
+    public static final String PANORAMA_VERSION = "Panorama Version";
 
     public TitleScreenModule() {
         super("TitleScreen", "The title screen's layout, logo and account card. It is always on.");
@@ -19,6 +20,22 @@ public class TitleScreenModule extends Module {
         addOption(new SliderOption("Account Card Scale", 100, 50, 150, 5));
         addOption(new DropdownOption("Layout", 0, "New", "Legacy"));
         addOption(new BoolOption(PANORAMA, true));
+        // Default: the normal panorama (resource packs included); a release's own panorama overrides any pack. The list of
+        // releases loads from Mojang later (PanoramaPicker), so the pick is saved by name and kept until the list has it.
+        addOption(new DropdownOption(PANORAMA_VERSION, 0, com.thelads.core.client.title.PanoramaPicker.DEFAULT) {
+            @Override
+            public com.google.gson.JsonElement save() {
+                return new com.google.gson.JsonPrimitive(getChoices()[getOwnIndex()]);
+            }
+
+            @Override
+            public void load(com.google.gson.JsonElement element) {
+                try {
+                    select(element.getAsString());
+                } catch (RuntimeException ignored) {
+                }
+            }
+        });
         setEnabled(true);
     }
 

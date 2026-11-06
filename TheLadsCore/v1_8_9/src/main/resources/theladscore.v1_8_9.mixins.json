@@ -27,6 +27,7 @@
     "GlStateManagerMixin",
     "GameSettingsMixin",
     "GuiButtonMixin",
+    "GuiButtonExtMixin",
     "GuiContainerMouseTweaksMixin",
     "GuiControlsAccessor",
     "GuiCustomizeSkinAccessor",

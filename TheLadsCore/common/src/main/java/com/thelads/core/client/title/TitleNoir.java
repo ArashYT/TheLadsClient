@@ -162,6 +162,8 @@ public final class TitleNoir {
     public static Rect renderBackdrop(LadsGraphics g, Layout l, String username, String version, boolean withSwitch, double seconds) {
         renderSlab(g, l, seconds);
         renderWordmark(g, l);
+        String note = PanoramaPicker.message(); // a picked panorama that failed or does not exist: the current one stays
+        if (note != null) g.drawText(note, l.width() - g.textWidth(note) - 6, 6, TEXT, true);
         return renderStrip(g, l, username, version, withSwitch, LadsNetwork.titleButton() ? networkText() : null);
     }
 
@@ -391,6 +393,8 @@ public final class TitleNoir {
         int color = !active ? DISABLED : hover > .5f || focused ? TEXT : MUTED;
         int lead = icon == null ? 0 : 13; // the icons share one column, the labels start after it
         if (icon != null) TitleScreenTheme.icon(g, icon, x + 5, y + (h - 9) / 2, 9, color);
+        // A narrow column (the 854x480 window) cuts "Switch Versions" to "Switch Versi...": the icon already says switch.
+        if (label != null && label.equals("Switch Versions") && g.textWidth(label) > w - 5 - lead) label = "Versions";
         g.drawText(TitleScreenTheme.fit(g, label, w - 5 - lead), x + 4 + lead, y + (h - g.fontHeight()) / 2 + 1, color, false);
     }
 

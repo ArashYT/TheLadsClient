@@ -297,6 +297,22 @@ public abstract class TitleScreenMixin extends Screen {
     }
 
     /** Mod Menu's button, and Forge's own Mods button (Zero SMP): the entry point of the installed mods stays on the main list. */
+    /** Panorama Version: the picked release's six images under the panorama's own names (they outlive a resource reload), or the normal ones back. */
+    @Unique
+    private static void ladsApplyPanorama() {
+        var textures = net.minecraft.client.Minecraft.getInstance().getTextureManager();
+        byte[][] images = com.thelads.core.client.title.PanoramaPicker.images();
+        for (int i = 0; i < 6; i++) {
+            var location = new net.minecraft.resources.ResourceLocation("textures/gui/title/background/panorama_" + i + ".png");
+            try {
+                textures.register(location, images == null ? new net.minecraft.client.renderer.texture.SimpleTexture(location)
+                    : new net.minecraft.client.renderer.texture.DynamicTexture(com.mojang.blaze3d.platform.NativeImage.read(new java.io.ByteArrayInputStream(images[i]))));
+            } catch (java.io.IOException | RuntimeException failure) {
+                textures.register(location, new net.minecraft.client.renderer.texture.SimpleTexture(location));
+            }
+        }
+    }
+
     @Unique
     private static boolean ladsIsModsEntry(AbstractWidget widget) {
         String key = TitleWidgetRegistry1201.messageKey(widget);
@@ -310,6 +326,7 @@ public abstract class TitleScreenMixin extends Screen {
         if (!ladsCustomTitle) return;
         long now = System.nanoTime();
         ladsEnsureTitleLayout();
+        if (com.thelads.core.client.title.PanoramaPicker.update()) ladsApplyPanorama();
         float elapsed = ladsLastFrameNanos == 0 ? 0 : (float) Math.max(0.0, Math.min((now - ladsLastFrameNanos) / 1.0e9, 0.1));
         ladsLastFrameNanos = now;
         double panoramaSpeed = minecraft.options.panoramaSpeed().get();

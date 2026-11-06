@@ -178,10 +178,14 @@ public final class QaProbe189 {
         mc.displayGuiScreen(screen);
         screen.ui().setTab(com.thelads.core.client.social.ui.FriendsScreenLogic.Tab.ADD);
         screen.ui().setAddFriendInput("");
-        CoreProbe.tap(org.lwjgl.input.Keyboard.KEY_O, 'o');
-        mc.currentScreen.handleInput();
+        int[] keys = new int[] { org.lwjgl.input.Keyboard.KEY_B, org.lwjgl.input.Keyboard.KEY_O, org.lwjgl.input.Keyboard.KEY_B, org.lwjgl.input.Keyboard.KEY_O };
+        char[] chars = new char[] { 'B', 'o', 'b', 'o' };
+        for (int i = 0; i < keys.length; i++) {
+            CoreProbe.tap(keys[i], chars[i]);
+            mc.currentScreen.handleInput();
+        }
         String val = screen.ui().addFriendInput();
-        if (mc.currentScreen != screen || !"o".equals(val)) {
+        if (mc.currentScreen != screen || !"Bobo".equals(val)) {
             throw new IllegalStateException("friendso failed: currentScreen=" + mc.currentScreen + " input='" + val + "'");
         }
         LOGGER.info("Lads 1.8.9 qa friendso: screen={} input='{}' open=true", mc.currentScreen.getClass().getSimpleName(), val);
@@ -276,6 +280,16 @@ public final class QaProbe189 {
                     mc.displayGuiScreen(new net.minecraft.client.gui.GuiOptions(mc.currentScreen, mc.gameSettings));
                 } else if ("video".equals(target)) {
                     mc.displayGuiScreen(new net.minecraft.client.gui.GuiVideoSettings(mc.currentScreen, mc.gameSettings));
+                } else if ("controls".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiControls(mc.currentScreen, mc.gameSettings));
+                } else if ("sounds".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiScreenOptionsSounds(mc.currentScreen, mc.gameSettings));
+                } else if ("language".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiLanguage(mc.currentScreen, mc.gameSettings, mc.getLanguageManager()));
+                } else if ("skin".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiCustomizeSkin(mc.currentScreen));
+                } else if ("packs".equals(target)) {
+                    mc.displayGuiScreen(new net.minecraft.client.gui.GuiScreenResourcePacks(mc.currentScreen));
                 } else if ("friends".equals(target)) {
                     mc.displayGuiScreen(new com.thelads.core.v1_8_9.social.FriendsScreen189(mc.currentScreen));
                 } else if ("screenshots".equals(target)) {
@@ -293,6 +307,37 @@ public final class QaProbe189 {
             case "titlelayout": // what the title's layout toggle does
                 com.thelads.core.modules.TitleScreenModule.toggleLayout();
                 break;
+            case "titlepanorama": // the title Panorama setting: titlepanorama on | off
+                com.thelads.core.modules.TitleScreenModule.setPanorama(!"off".equals(arg(s, 1)));
+                break;
+            case "panoramaversion": {
+                com.thelads.core.config.Module mod = com.thelads.core.config.ModuleManager.getInstance().getModule("TitleScreen");
+                if (mod != null && mod.getOption(com.thelads.core.modules.TitleScreenModule.PANORAMA_VERSION) instanceof com.thelads.core.config.DropdownOption) {
+                    ((com.thelads.core.config.DropdownOption) mod.getOption(com.thelads.core.modules.TitleScreenModule.PANORAMA_VERSION)).select(arg(s, 1));
+                    com.thelads.core.config.ConfigManager.save();
+                }
+                break;
+            }
+            case "wintitle": {
+                final String disp = org.lwjgl.opengl.Display.getTitle();
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            Process p = new ProcessBuilder("powershell", "-NoProfile", "-Command",
+                                "Get-Process java* | Select MainWindowTitle | ForEach-Object { $_.MainWindowTitle } | Where-Object { $_ }").redirectErrorStream(true).start();
+                            java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream(), java.nio.charset.StandardCharsets.UTF_8));
+                            String line = br.readLine();
+                            p.waitFor();
+                            LOGGER.info("Lads qa wintitle: {} (Display={})", line == null ? "" : line.trim(), disp);
+                        } catch (Exception e) {
+                            LOGGER.error("Lads qa wintitle err: {}", e.toString());
+                        }
+                    }
+                }, "LadsQaWinTitle").start();
+                waitTicks = 25;
+                break;
+            }
             case "disconnect":
                 if (mc.theWorld != null) {
                     mc.theWorld.sendQuittingDisconnectingPacket();

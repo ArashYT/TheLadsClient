@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "lads": "1.13.3",
+  "lads": "1.13.4",
   "protocol": {
     "channel": "lads:api",
     "version": 1,
@@ -2761,19 +2761,6 @@
       ]
     },
     {
-      "name": "Title Scale",
-      "category": "ALL",
-      "neverForced": false,
-      "automation": false,
-      "options": [
-        {
-          "name": "Scale",
-          "type": "other",
-          "control": "NEVER"
-        }
-      ]
-    },
-    {
       "name": "Exordium",
       "category": "MECHANIC",
       "neverForced": false,
@@ -3761,6 +3748,11 @@
       "automation": false,
       "options": [
         {
+          "name": "Logo Scale",
+          "type": "other",
+          "control": "NEVER"
+        },
+        {
           "name": "Account Card Scale",
           "type": "slider",
           "default": 100,
@@ -3776,6 +3768,21 @@
           "choices": [
             "New",
             "Legacy"
+          ],
+          "control": "FULL"
+        },
+        {
+          "name": "Panorama",
+          "type": "bool",
+          "default": true,
+          "control": "FULL"
+        },
+        {
+          "name": "Panorama Version",
+          "type": "dropdown",
+          "default": "Default",
+          "choices": [
+            "Default"
           ],
           "control": "FULL"
         }

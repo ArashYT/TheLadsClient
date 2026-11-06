@@ -20,6 +20,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(WorldSelectionList.class)
@@ -185,11 +186,24 @@ abstract class WorldListDragMixin1201 extends ObjectSelectionList<WorldSelection
         lads$to = ServerListDrag.target(slot, lads$to, getItemCount());
     }
 
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+    @Inject(method = "render", at = @At("HEAD"))
+    private void lads$beforeRender(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         if (lads$from >= 0 && !ServerListDrag.heldForQa && GLFW.glfwGetMouseButton(minecraft.getWindow().getWindow(), GLFW.GLFW_MOUSE_BUTTON_LEFT) != GLFW.GLFW_PRESS) lads$drop();
         if (lads$from >= 0) lads$dragFrame();
-        super.render(graphics, lads$from < 0 ? mouseX : -1, lads$from < 0 ? mouseY : -1, partialTick);
+    }
+
+    @ModifyVariable(method = "render", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    private int lads$dragMouseX(int mouseX) {
+        return lads$from < 0 ? mouseX : -1;
+    }
+
+    @ModifyVariable(method = "render", at = @At("HEAD"), argsOnly = true, ordinal = 1)
+    private int lads$dragMouseY(int mouseY) {
+        return lads$from < 0 ? mouseY : -1;
+    }
+
+    @Inject(method = "render", at = @At("RETURN"))
+    private void lads$afterRender(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
         if (lads$from < 0 || lads$from >= children().size()) return;
         int columns = lads$columns(), rowWidth = columns == 1 ? getRowWidth() : ServerListColumns.width(columns, width);
         int gapX = lads$boxLeft(lads$from), gapY = getRowTop(lads$from);

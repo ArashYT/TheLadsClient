@@ -52,7 +52,7 @@ public final class QaProbe12111 {
             passed++;
         } catch (Exception e) {
             failed++;
-            LOGGER.error("Lads qa step FAILED: {}: {}", step, e.toString());
+            LOGGER.error("Lads qa step FAILED: {}: {}", step, e.toString(), e);
         }
         if (waitTicks == 0) waitTicks = 1;
     }
@@ -84,11 +84,15 @@ public final class QaProbe12111 {
                 mc.setScreen(switch (arg) {
                     case "title" -> new TitleScreen();
                     case "pause" -> new PauseScreen(true);
+                    case "options" -> new net.minecraft.client.gui.screens.options.OptionsScreen(mc.screen, mc.options);
+                    case "video" -> new net.minecraft.client.gui.screens.options.VideoSettingsScreen(mc.screen, mc, mc.options);
+                    case "controls" -> new net.minecraft.client.gui.screens.options.controls.ControlsScreen(mc.screen, mc.options);
+                    case "multiplayer" -> new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(mc.screen);
                     case "screenshots" -> (net.minecraft.client.gui.screens.Screen) Class.forName(
                         "io.github.lgatodu47.screenshot_viewer.screen.manage_screenshots.ManageScreenshotsScreen")
                         .getConstructor(net.minecraft.client.gui.screens.Screen.class)
                         .newInstance(mc.screen);
-                    default -> throw new IllegalArgumentException("screen: title, pause or screenshots");
+                    default -> throw new IllegalArgumentException("screen: title, pause, options, video, controls, multiplayer or screenshots");
                 });
                 LOGGER.info("Lads qa screen: {}", mc.screen.children().stream().filter(Button.class::isInstance).map(c -> ((Button) c).getMessage().getString()).toList());
             }
@@ -98,6 +102,52 @@ public final class QaProbe12111 {
             case "world" -> {} // tick() held the script until the QA world was up
             case "notice" -> com.thelads.core.client.bridge.LadsGameBridge.get().displayChatMessage(arg);
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout();
+            case "titlepanorama" -> com.thelads.core.modules.TitleScreenModule.setPanorama(!"off".equals(arg)); // the title Panorama setting: titlepanorama on | off
+            case "panoramaversion" -> {
+                var mod = com.thelads.core.config.ModuleManager.getInstance().getModule("TitleScreen");
+                if (mod != null && mod.getOption(com.thelads.core.modules.TitleScreenModule.PANORAMA_VERSION) instanceof com.thelads.core.config.DropdownOption opt) {
+                    opt.select(arg);
+                    com.thelads.core.config.ConfigManager.save();
+                }
+            }
+            case "settings" -> { // the modules menu, optionally opened on a page or module: settings page:HUD | open:HUD/PvP | search:color | Hit Color
+                var screen = new com.thelads.core.v1_21_11.gui.LadsSettingsScreen12111(mc.screen);
+                mc.setScreen(screen);
+                if (!arg.isEmpty()) screen.openModule(arg);
+            }
+            case "settingsclick" -> {
+                var screen = (com.thelads.core.v1_21_11.gui.LadsSettingsScreen12111) mc.screen;
+                String id = arg;
+                var rect = screen.ui().controlBounds(id);
+                if (rect == null) {
+                    for (String cid : screen.ui().controlIds()) if (cid.startsWith(id)) { id = cid; rect = screen.ui().controlBounds(cid); break; }
+                }
+                if (rect == null) throw new IllegalStateException("settingsclick: no control " + arg + " in " + screen.ui().controlIds());
+                var ev = new net.minecraft.client.input.MouseButtonEvent(rect.x() + rect.width() / 2.0, rect.y() + rect.height() / 2.0,
+                    new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0));
+                screen.mouseClicked(ev, false);
+                screen.mouseReleased(ev);
+                LOGGER.info("Lads qa settingsclick: {} at {},{}", id, rect.x() + rect.width() / 2, rect.y() + rect.height() / 2);
+            }
+            case "settingstype" -> {
+                var screen = (com.thelads.core.v1_21_11.gui.LadsSettingsScreen12111) mc.screen;
+                arg.codePoints().forEach(c -> screen.charTyped(new net.minecraft.client.input.CharacterEvent(c, 0)));
+                LOGGER.info("Lads qa settingstype: '{}' query='{}'", arg, screen.ui().getSearchQuery());
+            }
+            case "wintitle" -> {
+                new Thread(() -> {
+                    try {
+                        Process p = new ProcessBuilder("powershell", "-NoProfile", "-Command",
+                            "Get-Process java* | Select MainWindowTitle | ForEach-Object { $_.MainWindowTitle } | Where-Object { $_ }").redirectErrorStream(true).start();
+                        String out = new String(p.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim();
+                        p.waitFor();
+                        LOGGER.info("Lads qa wintitle: {}", out);
+                    } catch (Exception e) {
+                        LOGGER.error("Lads qa wintitle err: {}", e.toString());
+                    }
+                }, "LadsQaWinTitle").start();
+                waitTicks = 25;
+            }
             case "gui" -> { mc.options.guiScale().set(Integer.parseInt(arg)); mc.resizeDisplay(); } // the GUI scale, 0 = auto
             case "pointer" -> { // where a real mouse would be, in window pixels: hover states and tooltips render for a shot
                 String[] xy = arg.split(" ");

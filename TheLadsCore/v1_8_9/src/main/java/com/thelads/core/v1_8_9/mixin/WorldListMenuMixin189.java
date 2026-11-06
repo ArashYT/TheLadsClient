@@ -29,7 +29,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -74,14 +73,13 @@ public abstract class WorldListMenuMixin189 extends GuiScreen {
     }
 
     /** While a world row is actively dragged, suppress GuiSlot's click-drag scrolling while keeping mouse wheel scrolling. */
-    @Redirect(method = "handleMouseInput", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiSelectWorld$List;handleMouseInput()V"))
-    private void lads$worldListMouseInput(GuiSlot list) {
-        if (lads$from < 0) {
-            list.handleMouseInput();
-            return;
-        }
+    @Inject(method = "handleMouseInput", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiSelectWorld$List;handleMouseInput()V"), cancellable = true) // GuiSelectWorld$List is package-private: a @Redirect handler could not name it
+    private void lads$worldListMouseInput(CallbackInfo ci) {
+        if (lads$from < 0) return;
+        GuiSlot list = lads$list();
         int wheel = Mouse.getEventDWheel();
         if (wheel != 0) list.scrollBy(wheel > 0 ? -list.slotHeight / 2 : list.slotHeight / 2);
+        ci.cancel();
     }
 
     @Unique

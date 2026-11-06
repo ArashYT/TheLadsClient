@@ -96,4 +96,13 @@ class WindowTitleTest {
         assertFalse(updater.update(true, true, null, Menu.OTHER)); // pause menu in local world keeps Singleplayer
         assertEquals(3, applied.size());
     }
+
+    @Test
+    void otherModsTitleCallsAreForeignOnlyOutsideTheUpdatersOwn() {
+        boolean[] foreignInside = {true};
+        WindowTitle.Updater updater = new WindowTitle.Updater("1.21.11", title -> foreignInside[0] = WindowTitle.foreign());
+        assertTrue(updater.update(false, false, null, Menu.TITLE));
+        assertFalse(foreignInside[0]);
+        assertTrue(WindowTitle.foreign());
+    }
 }

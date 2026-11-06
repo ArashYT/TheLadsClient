@@ -13,4 +13,9 @@ public final class ButtonIcons189 {
     public static String of(String text) {
         return ButtonIcons.ofText(text, Minecraft.getMinecraft().getLanguageManager().getCurrentLanguage().getLanguageCode(), TRANSLATE);
     }
+
+    /** The icon of a "Caption: value" option button's text too (allocates the caption: ask once per text, not per frame). */
+    public static String captioned(String text) {
+        return ButtonIcons.ofCaptioned(text, Minecraft.getMinecraft().getLanguageManager().getCurrentLanguage().getLanguageCode(), TRANSLATE);
+    }
 }

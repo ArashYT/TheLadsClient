@@ -188,7 +188,8 @@ class ServerListUiTest {
 
     @Test
     void pinnedStarReservesRoomAndDrawsYellowFlaticonStar() {
-        assertEquals(96, com.thelads.core.client.bridge.IconAtlas.cell("star"), "Flaticon fi-sr-star is cell 96");
+        int star = com.thelads.core.client.bridge.IconAtlas.cell("star"); // the star's cell moves whenever a glyph is added to the atlas
+        assertTrue(star >= 0, "Flaticon fi-sr-star has an atlas cell");
         assertArrayEquals(ServerListEntryUi.firstLine(196, 80, 60, 30), ServerListEntryUi.firstLine(196, 80, 60, 30, false));
         // Content 196, count 30, pinned: room = 99 - PIN_STAR_ADVANCE = 86, so clippedName + star + version never exceeds 99.
         int[] pinned = ServerListEntryUi.firstLine(196, 120, 60, 30, true);
@@ -214,8 +215,8 @@ class ServerListUiTest {
         ServerListEntryUi.drawPinStar(g, starX, 20);
         ServerListEntryUi.drawPinStar(g, starX, 20, ServerListDrag.GHOST_ALPHA);
         assertEquals(2, drawn.size());
-        assertArrayEquals(new int[] {96, starX, 20, ServerListEntryUi.PIN_STAR_SIZE, ServerListEntryUi.PIN_STAR_COLOR}, drawn.get(0));
-        assertArrayEquals(new int[] {96, starX, 20, ServerListEntryUi.PIN_STAR_SIZE,
+        assertArrayEquals(new int[] {star, starX, 20, ServerListEntryUi.PIN_STAR_SIZE, ServerListEntryUi.PIN_STAR_COLOR}, drawn.get(0));
+        assertArrayEquals(new int[] {star, starX, 20, ServerListEntryUi.PIN_STAR_SIZE,
             (ServerListDrag.GHOST_ALPHA << 24) | (ServerListEntryUi.PIN_STAR_COLOR & 0xFFFFFF)}, drawn.get(1));
     }
 }

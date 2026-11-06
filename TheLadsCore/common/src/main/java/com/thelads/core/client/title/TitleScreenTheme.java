@@ -107,7 +107,7 @@ public final class TitleScreenTheme {
         LEGACY_LOGO = "/assets/theladscore/logo/lads_client_1line.png",
         TAGLINE = "Built for the lads.";
     private static final int LOGO_WIDTH = 934, LOGO_HEIGHT = 584;
-    private static final int LEGACY_LOGO_WIDTH = 2231, LEGACY_LOGO_HEIGHT = 420;
+    private static final int LEGACY_LOGO_WIDTH = 2006, LEGACY_LOGO_HEIGHT = 320;
     static int logoWidth(int maxWidth, int maxHeight) { return Math.max(1, Math.min(maxWidth, maxHeight * LOGO_WIDTH / LOGO_HEIGHT)); }
     static int logoHeight(int width) { return Math.max(1, width * LOGO_HEIGHT / LOGO_WIDTH); }
     static int legacyLogoWidth(int maxWidth, int maxHeight) { return Math.max(1, Math.min(maxWidth, maxHeight * LEGACY_LOGO_WIDTH / LEGACY_LOGO_HEIGHT)); }
