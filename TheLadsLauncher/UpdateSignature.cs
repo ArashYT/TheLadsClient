@@ -23,6 +23,8 @@ public static class UpdateSignature
     public static IReadOnlyList<string> ReleasePublicKeys { get; } = new[]
     {
         "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEfmUJlYtOxImIQnK6gxSsgElWPH5kL49R3gOrj/uq3VPb6ZumFo2HmVYyPJ2cIW/54VYoBjxE4RzQvTnT2ZFqxA==",
+        // Successor, added in 1.13.4 because the first key's PC was compromised on 2026-11-04. Sign with it, and drop the first key, from the next release on.
+        "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjKkIjHTWuMiWGwIilXwj/sb+ULo+2RittG0veMTzVUOAqKOsVY/t0+V8N1eqD/UL0PzgVA33+M7Gj/VUkuJrhg==",
     };
 
     /// <summary><c>sha256</c> is the package file's hash; <c>contentSha256</c> (see <see cref="ContentHash"/>) is the hash of what is
