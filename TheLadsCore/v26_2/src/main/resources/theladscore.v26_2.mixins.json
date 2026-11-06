@@ -21,6 +21,7 @@
     "RealmsClientAccessor26",
     "OptionsMixin",
     "KeyboardHandlerMixin",
+    "KeyboardHandlerQaInvoker",
     "KeyboardInputMixin",
     "MouseHandlerMixin",
     "MouseTweaksMixin",
@@ -132,6 +133,8 @@
     "VoiceChatHudMixin",
     "VoiceChatHudMixin$Group",
     "WindowIconMixin",
+    "WindowTitleMixin",
+    "WindowTitleGuiMixin",
     "LoadingOverlayMixin",
     "CheatsMixin",
     "ItemModelGapsMixin",
@@ -150,12 +153,15 @@
     "GhostGraphicsMixin",
     "ServerEntryMixin",
     "ServerDataForceMixin",
+    "WorldListEntryWidgetsAccessor",
+    "WorldListDragMixin26",
     "WorldListMenuMixin",
     "NoResourcePackWarningsMixin",
     "CartCamGameRendererMixin",
     "FadelessAccessibilityScreenMixin",
     "SurvivalLightmapBrightnessMixin",
-    "SurvivalKeepBarsMixin"
+    "SurvivalKeepBarsMixin",
+    "FriendsOverlayScreenMixin"
   ],
   "mixins": [
     "DisplayEntityAccessor",

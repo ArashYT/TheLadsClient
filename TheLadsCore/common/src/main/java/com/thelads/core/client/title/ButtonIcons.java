@@ -57,7 +57,7 @@ public final class ButtonIcons {
         Map.entry("Packs", "layers"), Map.entry("Video settings", "video"), Map.entry("Video", "video"), Map.entry("Installed mods", "mods"),
         Map.entry("Reset options", "reset"), Map.entry("Reset", "reset"), Map.entry("Favorites", "favorite"), Map.entry("Import", "download"),
         Map.entry("Import from client", "download"), Map.entry("Import Client...", "download"), Map.entry("Import code", "download"),
-        Map.entry("Lads Network", "network"), Map.entry("Network", "network"), Map.entry("< Modules", "arrow-left"), Map.entry("Undo bypass", "reset"), Map.entry("Bypass...", "warning"),
+        Map.entry("The Lads Network", "server"), Map.entry("Lads Network", "network"), Map.entry("Network", "network"), Map.entry("Modules", "arrow-left"), Map.entry("Undo bypass", "reset"), Map.entry("Bypass...", "warning"),
         Map.entry("Close", "cross"), Map.entry("Cancel (safe)", "cross"), Map.entry("Upload new...", "upload"), Map.entry("Play", "play"),
         Map.entry("Play selection", "play"), Map.entry("Use whole file", "check"), Map.entry("Load", "download"), Map.entry("Save as...", "save"),
         Map.entry("Rename", "edit"), Map.entry("Copy share code", "copy"), Map.entry("Clear slot", "delete"), Map.entry("Reset wheel", "reset"),

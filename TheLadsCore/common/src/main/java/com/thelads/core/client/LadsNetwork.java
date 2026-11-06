@@ -12,8 +12,8 @@ import java.util.function.Predicate;
 public final class LadsNetwork {
     public static final String NAME = "The Lads Network";
     public static final String ADDRESS = "mc.arashyt.ca";
-    /** The title screen's grid cells fit about 9 characters ("The Lads Network" showed as "The Lad..."). */
-    public static final String TITLE_LABEL = "Network";
+    /** Full title and pause menu button label; spans its own row in both title layouts so it never truncates. */
+    public static final String TITLE_LABEL = "The Lads Network";
     public static final String TOOLTIP = "Join " + NAME + " (" + ADDRESS + ")";
     public static final String HUB_LABEL = "Hub";
     /** Hub commands to look for in the server's command tree when its hello names none (a plugin not updated yet). */

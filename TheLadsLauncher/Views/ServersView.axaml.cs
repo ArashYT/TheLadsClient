@@ -28,11 +28,12 @@ public partial class ServersView : UserControl
     private static readonly Dictionary<string, IBrush> BrushCache = new(StringComparer.OrdinalIgnoreCase);
     private static IBrush Hex(string hex) => BrushCache.TryGetValue(hex, out var brush) ? brush : BrushCache[hex] = new SolidColorBrush(Color.Parse(hex));
     private static readonly IBrush TextBrush = Hex("#E9E9EA"), Muted = Hex("#8F919C"), Faint = Hex("#62646E"), MotdBase = Hex("#B5B7C0"),
-        OnlineDot = Hex("#4CC38A"), OfflineDot = Hex("#E5484D"), IdleDot = Hex("#4A4B55"), Tile = Hex("#24252B"), Skeleton = Hex("#25262C");
+        OnlineDot = Hex("#4CC38A"), OfflineDot = Hex("#E5484D"), IdleDot = Hex("#4A4B55"), Tile = Hex("#24252B"), Skeleton = Hex("#25262C"),
+        PinStarBrush = Hex("#FFD43B");
 
-    // Material Design icons (Apache 2.0), 24x24 viewbox.
+    // Flaticon UIcons solid-rounded (Styles/Icons.axaml).
     private const string CopyIcon = "copy", TrashIcon = "trash", UpIcon = "angle-small-up", DownIcon = "angle-small-down", PlusIcon = "plus",
-        CheckIcon = "check", CloseIcon = "cross-small";
+        CheckIcon = "check", CloseIcon = "cross-small", StarIcon = "star";
 
     private const double TileMinWidth = 400, Gap = 12;
     private static readonly string[] SortNames = { "Most popular", "Most players", "Name" };
@@ -222,11 +223,27 @@ public partial class ServersView : UserControl
         return card;
     }
 
-    /// <summary>Name and address; Browse tiles add their category chip elsewhere.</summary>
+    /// <summary>Name (with a flat yellow star when pinned) and address; Browse tiles add their category chip elsewhere.</summary>
     private static StackPanel Info(ServerCard card, Control? extra)
     {
         var info = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-        info.Children.Add(new TextBlock { Text = card.Name, FontSize = 14.5, FontWeight = FontWeight.SemiBold, Foreground = TextBrush, TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated());
+        var nameBlock = new TextBlock { Text = card.Name, FontSize = 14.5, FontWeight = FontWeight.SemiBold, Foreground = TextBrush, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center }.Untranslated();
+        if (card.Pinned)
+        {
+            var star = Glyph(StarIcon, 13);
+            star.Foreground = PinStarBrush;
+            star.Margin = new Thickness(6, 0, 0, 0);
+            ToolTip.SetTip(star, "Pinned server");
+            var nameRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), HorizontalAlignment = HorizontalAlignment.Left };
+            nameRow.Children.Add(nameBlock);
+            Grid.SetColumn(star, 1);
+            nameRow.Children.Add(star);
+            info.Children.Add(nameRow);
+        }
+        else
+        {
+            info.Children.Add(nameBlock);
+        }
         info.Children.Add(new TextBlock { Text = card.Address, FontSize = 12, Foreground = Muted, TextTrimming = TextTrimming.CharacterEllipsis }.Untranslated());
         if (extra != null) info.Children.Add(extra);
         return info;

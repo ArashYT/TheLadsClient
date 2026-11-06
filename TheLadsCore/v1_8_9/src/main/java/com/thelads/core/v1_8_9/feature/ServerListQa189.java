@@ -17,6 +17,7 @@ import net.minecraft.client.gui.GuiSelectWorld;
 import net.minecraft.client.gui.ServerSelectionList;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.nbt.CompressedStreamTools;
+import net.minecraft.world.storage.SaveFormatComparator;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import org.apache.logging.log4j.LogManager;
@@ -118,6 +119,36 @@ final class ServerListQa189 {
             case "worlds":
                 mc.displayGuiScreen(new GuiSelectWorld(screen));
                 break;
+            case "seedworlds":
+                com.thelads.core.client.qa.QaWorldFixtures.seed(new File(mc.mcDataDir, "saves").toPath(), 0, "1.8.9");
+                break;
+            case "addnewworld":
+                com.thelads.core.client.qa.QaWorldFixtures.addExtraUnsavedWorld(new File(mc.mcDataDir, "saves").toPath(), 0, "1.8.9");
+                break;
+            case "rmnewworld":
+                com.thelads.core.client.qa.QaWorldFixtures.removeExtraUnsavedWorld(new File(mc.mcDataDir, "saves").toPath());
+                break;
+            case "restoreworlds":
+                com.thelads.core.client.qa.QaWorldFixtures.restore(new File(mc.mcDataDir, "saves").toPath());
+                break;
+            case "assertcols": {
+                int shown = ServerListColumns.fit(ServerListColumns.wanted(), screen.width);
+                int expected = Integer.parseInt(s[2]);
+                if (shown != expected) throw new IllegalStateException("Expected columns=" + expected + " got " + shown);
+                break;
+            }
+            case "assertworlds": {
+                List<SaveFormatComparator> worlds = com.thelads.core.v1_8_9.feature.fastquit.WorldListSaves.of((GuiSelectWorld) screen);
+                List<String> ids = new ArrayList<String>();
+                for (SaveFormatComparator w : worlds) ids.add(w.getFileName());
+                String[] exp = java.util.Arrays.copyOfRange(s, 2, s.length);
+                com.thelads.core.client.qa.QaWorldFixtures.assertOrder(ids, exp, new File(mc.mcDataDir, "saves").toPath());
+                LOGGER.info("Lads 1.8.9 qa worlds order verified: {}", ids);
+                break;
+            }
+            case "assertsavedworlds":
+                com.thelads.core.client.qa.QaWorldFixtures.assertSavedFileEquals(java.util.Arrays.copyOfRange(s, 2, s.length));
+                break;
             case "log":
                 log(mc);
                 break;
@@ -168,17 +199,28 @@ final class ServerListQa189 {
         return ((com.thelads.core.v1_8_9.mixin.GuiMultiplayerListAccessor) screen).ladsList();
     }
 
+    private static net.minecraft.client.gui.GuiSlot anySlot(GuiScreen screen) throws Exception {
+        if (screen instanceof GuiMultiplayer) return list(screen);
+        for (java.lang.reflect.Field field : GuiSelectWorld.class.getDeclaredFields()) {
+            if (net.minecraft.client.gui.GuiSlot.class.isAssignableFrom(field.getType())) {
+                field.setAccessible(true);
+                return (net.minecraft.client.gui.GuiSlot) field.get(screen);
+            }
+        }
+        throw new IllegalStateException("no slot list on " + screen);
+    }
+
     /** "x y" in GUI units, "row i" for a row, or "slot i" for a slot of the current columns; "wrow i" a world row. */
-    private static int[] at(Minecraft mc, String[] s, int from) {
+    private static int[] at(Minecraft mc, String[] s, int from) throws Exception {
         GuiScreen screen = mc.currentScreen;
         if (s[from].equals("wrow")) return new int[] {screen.width / 2, 32 + 4 + Integer.parseInt(s[from + 1]) * 36 + 16};
         if (s[from].equals("row")) {
-            ServerListColumns.Rows rows = (ServerListColumns.Rows) list(screen);
+            ServerListColumns.Rows rows = (ServerListColumns.Rows) anySlot(screen);
             int row = Integer.parseInt(s[from + 1]);
             return new int[] {rows.lads$rowLeft(row) + 90, rows.lads$rowTop(row) + 16};
         }
         if (s[from].equals("slot")) {
-            ServerSelectionList list = list(screen);
+            net.minecraft.client.gui.GuiSlot list = anySlot(screen);
             int columns = ServerListColumns.fit(ServerListColumns.wanted(), screen.width), slot = Integer.parseInt(s[from + 1]);
             int left = screen.width / 2 - (columns == 1 ? list.getListWidth() : ServerListColumns.total(columns, screen.width)) / 2;
             return new int[] {ServerListColumns.x(slot, columns, left, list.getListWidth()) + 90, ServerListColumns.y(slot, columns, list.top + 4 - list.getAmountScrolled(), list.slotHeight) + 16};

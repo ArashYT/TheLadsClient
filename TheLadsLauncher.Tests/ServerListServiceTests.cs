@@ -321,4 +321,32 @@ public class ServerListServiceTests
         Assert.Equal(1, ((NbtNumber)merged.Single(e => e.Ip == "prompt.example.net").Raw["acceptTextures"]!).RawValue);
         Assert.Equal(0, ((NbtNumber)merged.Single(e => e.Ip == "disabled.example.net").Raw["acceptTextures"]!).RawValue);
     }
+
+    [Fact]
+    public void PinnedServerStarIconAndFlaticonAttributionArePresent()
+    {
+        Assert.Equal("The Lads Network", ServerListService.PinnedName);
+        Assert.True(ServerListService.IsPinned("mc.arashyt.ca"));
+        Assert.False(ServerListService.IsPinned("mc.hypixel.net"));
+
+        var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+        var icons = File.ReadAllText(Path.Combine(repoRoot, "TheLadsLauncher", "Styles", "Icons.axaml"));
+        Assert.Contains("x:Key=\"Ico.star\"", icons);
+
+        var serversView = File.ReadAllText(Path.Combine(repoRoot, "TheLadsLauncher", "Views", "ServersView.axaml.cs"));
+        Assert.Contains("StarIcon = \"star\"", serversView);
+        Assert.Contains("card.Pinned", serversView);
+
+        foreach (var noticePath in new[]
+        {
+            Path.Combine(repoRoot, "THIRD_PARTY_NOTICES.txt"),
+            Path.Combine(repoRoot, "TheLadsCore", "THIRD_PARTY_NOTICES.txt"),
+            Path.Combine(repoRoot, "TheLadsCore", "common", "src", "main", "resources", "assets", "theladscore", "licenses", "THIRD_PARTY_NOTICES.txt")
+        })
+        {
+            var notices = File.ReadAllText(noticePath);
+            Assert.Contains("Uicons by Flaticon", notices);
+            Assert.Contains("https://www.flaticon.com/uicons", notices);
+        }
+    }
 }

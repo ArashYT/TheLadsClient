@@ -12,6 +12,7 @@
     "GuardsMixin1201",
     "PackModelAccessor1201",
     "PackScreenMixin1201",
-    "ServerListDragMixin1201"
+    "ServerListDragMixin1201",
+    "WorldListDragMixin1201"
   ]
 }

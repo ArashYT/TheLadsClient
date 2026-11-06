@@ -185,6 +185,23 @@ public final class ScreenshotSources {
         }
         return copies;
     }
+    /** Sorts screenshot files by lastModified (reading each timestamp once), newest-first when newestFirst is true. */
+    public static List<java.io.File> sortByModifiedTime(List<java.io.File> files, boolean newestFirst) {
+        return sortByModifiedTime(files, newestFirst, new HashMap<>());
+    }
+
+    public static List<java.io.File> sortByModifiedTime(List<java.io.File> files, boolean newestFirst, Map<java.io.File, Long> times) {
+        for (java.io.File file : files) {
+            times.computeIfAbsent(file, java.io.File::lastModified);
+        }
+        List<java.io.File> sorted = new ArrayList<>(files);
+        Comparator<java.io.File> oldestFirst = Comparator
+            .comparingLong((java.io.File file) -> times.get(file))
+            .thenComparing(java.io.File::getAbsolutePath);
+        sorted.sort(newestFirst ? oldestFirst.reversed() : oldestFirst);
+        return sorted;
+    }
+
     public static boolean isImage(Path path) {
         String name=path.getFileName().toString().toLowerCase(Locale.ROOT);
         return (name.endsWith(".png")||name.endsWith(".jpg")||name.endsWith(".jpeg"))&&Files.isRegularFile(path);

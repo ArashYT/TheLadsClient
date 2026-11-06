@@ -20,6 +20,10 @@ public final class HostScreen1201 extends Screen {
             () -> Minecraft.getInstance().setScreen(parent));
     }
 
+    public boolean isEditingText() {
+        return ui.isEditingText();
+    }
+
     @Override
     public void render(GuiGraphics g, int mx, int my, float delta) {
         ui.render(new GuiGraphicsLadsAdapter1201(g, font), mx, my);

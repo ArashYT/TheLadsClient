@@ -36,12 +36,4 @@ public abstract class BorderlessWindowMixin {
         }
     }
 
-    @ModifyVariable(method = "setTitle", at = @At("HEAD"), argsOnly = true)
-    private String ladsWindowTitle(String title) {
-        if (title == null || title.isEmpty()) return com.thelads.core.LadsVersion.clientName();
-        if (title.contains(" - ")) {
-            return com.thelads.core.LadsVersion.clientName() + title.substring(title.indexOf(" - "));
-        }
-        return com.thelads.core.LadsVersion.clientName();
-    }
 }

@@ -84,7 +84,11 @@ public final class QaProbe12111 {
                 mc.setScreen(switch (arg) {
                     case "title" -> new TitleScreen();
                     case "pause" -> new PauseScreen(true);
-                    default -> throw new IllegalArgumentException("screen: title or pause");
+                    case "screenshots" -> (net.minecraft.client.gui.screens.Screen) Class.forName(
+                        "io.github.lgatodu47.screenshot_viewer.screen.manage_screenshots.ManageScreenshotsScreen")
+                        .getConstructor(net.minecraft.client.gui.screens.Screen.class)
+                        .newInstance(mc.screen);
+                    default -> throw new IllegalArgumentException("screen: title, pause or screenshots");
                 });
                 LOGGER.info("Lads qa screen: {}", mc.screen.children().stream().filter(Button.class::isInstance).map(c -> ((Button) c).getMessage().getString()).toList());
             }
@@ -109,6 +113,35 @@ public final class QaProbe12111 {
                 mc.getProfileKeyPairManager().getClass().getSimpleName(), mc.screen == null ? "none" : mc.screen.getClass().getSimpleName(),
                 mc.screen instanceof AccountSwitcherScreen12111 a ? a.ui().getStatusMessage() : "");
             case "srv" -> ServerListQa12111.step(mc, step.split("\\s+"));
+            case "seedshots" -> com.thelads.core.client.qa.QaScreenshotFixtures.seed(FabricLoader.getInstance().getGameDir());
+            case "restoreshots" -> com.thelads.core.client.qa.QaScreenshotFixtures.restore(FabricLoader.getInstance().getGameDir());
+            case "assertshots" -> {
+                List<String> names = com.thelads.core.client.qa.QaScreenshotFixtures.extractManageScreenNames(mc.screen);
+                com.thelads.core.client.qa.QaScreenshotFixtures.assertNewestFirst(names);
+                LOGGER.info("Lads 1.21.11 qa newest-first: {}", names);
+            }
+            case "spworld" -> {
+                String w = "qa_b1_sp";
+                if (Files.exists(FabricLoader.getInstance().getGameDir().resolve("saves").resolve(w).resolve("level.dat"))) {
+                    mc.createWorldOpenFlows().openWorld(w, () -> {});
+                } else {
+                    var settings = new net.minecraft.world.level.LevelSettings(w, net.minecraft.world.level.GameType.CREATIVE, false,
+                        net.minecraft.world.Difficulty.PEACEFUL, true,
+                        new net.minecraft.world.level.gamerules.GameRules(net.minecraft.world.level.WorldDataConfiguration.DEFAULT.enabledFeatures()),
+                        net.minecraft.world.level.WorldDataConfiguration.DEFAULT);
+                    mc.createWorldOpenFlows().createFreshLevel(w, settings, new net.minecraft.world.level.levelgen.WorldOptions(135L, false, false),
+                        registries -> registries.lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_PRESET)
+                            .getOrThrow(net.minecraft.world.level.levelgen.presets.WorldPresets.FLAT).value().createWorldDimensions(), mc.screen);
+                }
+            }
+            case "rmspworld" -> {
+                Path sp = FabricLoader.getInstance().getGameDir().resolve("saves").resolve("qa_b1_sp");
+                if (Files.exists(sp)) {
+                    try (var stream = Files.walk(sp)) {
+                        for (Path p : stream.sorted(java.util.Comparator.reverseOrder()).toList()) Files.deleteIfExists(p);
+                    }
+                }
+            }
             case "quit" -> { end(); mc.stop(); }
             default -> throw new IllegalArgumentException("unknown step " + s[0]);
         }

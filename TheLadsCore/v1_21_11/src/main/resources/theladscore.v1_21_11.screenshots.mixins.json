@@ -1,0 +1,14 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.thelads.core.v1_21_11.feature.screenshots.mixin",
+  "plugin": "com.thelads.core.v1_21_11.feature.screenshots.ScreenshotsMixinPlugin12111",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ScreenshotViewerOptionsMixin",
+    "ScreenshotListMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

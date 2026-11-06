@@ -42,6 +42,19 @@ class ServerNamesTest {
     }
 
     @Test
+    void resolveKnownMatchesOnlyListedDomainsAndNeverUnknownHosts() {
+        assertEquals("Hypixel", ServerNames.resolveKnown("mc.hypixel.net"));
+        assertEquals("Hypixel", ServerNames.resolveKnown("MC.Hypixel.NET:25565"));
+        assertEquals("CubeCraft", ServerNames.resolveKnown("play.cubecraft.net."));
+        assertNull(ServerNames.resolveKnown("play.funnyservername.com"));
+        assertNull(ServerNames.resolveKnown("funny.minehut.gg"));
+        assertNull(ServerNames.resolveKnown("coolsmp.aternos.me"));
+        assertNull(ServerNames.resolveKnown("notahypixel.net"));
+        assertNull(ServerNames.resolveKnown("hypixel.net.evil.com"));
+        assertNull(ServerNames.resolveKnown("192.168.1.20:25565"));
+    }
+
+    @Test
     void ipsAndIncompleteAddressesGetNoName() {
         for (String address : new String[] {null, "", "   ", "127.0.0.1", "192.168.1.20:25565", "192.168", "[::1]:25565", "::1", "localhost",
             "localhost:25565", "play.com", "mc.", "bad host.com", "a..b", "play.mc.net"}) assertNull(ServerNames.resolve(address), address);

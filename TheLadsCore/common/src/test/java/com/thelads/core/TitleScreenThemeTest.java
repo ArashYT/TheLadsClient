@@ -150,10 +150,20 @@ class TitleScreenThemeTest {
                 if (scale <= 1) assertTrue(logo.x() + logo.width() <= l.railWidth(), "inside the slab, " + at);
                 assertTrue(logo.x() + logo.width() <= Math.max(l.railWidth() - 10, w - 138), "clear of the header, " + at);
               }
+        var noirLogos = new java.util.ArrayList<String>();
+        var noirPictures = new LadsGraphicsTest.MockGraphics() {
+            @Override public boolean drawImage(String source, int x, int y, int width, int height) {
+                noirLogos.add(source);
+                return true;
+            }
+        };
+        TitleNoir.renderBackdrop(noirPictures, TitleNoir.layout(640, 360, 12, 2), "LadsQA", "26.3", true);
+        assertEquals(java.util.List.of(TitleScreenTheme.LOGO), noirLogos, "New layout keeps two-line Blockbench logo");
+
         var images = new java.util.ArrayList<TitleScreenTheme.Rect>();
         var pictures = new LadsGraphicsTest.MockGraphics() {
             @Override public boolean drawImage(String source, int x, int y, int width, int height) {
-                assertEquals(TitleScreenTheme.LOGO, source);
+                assertEquals(TitleScreenTheme.LEGACY_LOGO, source, "Legacy layout draws pre-1.13.3 one-line logo");
                 images.add(new TitleScreenTheme.Rect(x, y, width, height));
                 return true;
             }
@@ -214,6 +224,70 @@ class TitleScreenThemeTest {
             assertTrue(TitleScreenModule.legacyLayout(), "the saved choice comes back");
         } finally {
             option.setIndex(own);
+        }
+    }
+
+    @Test void panoramaOptionDefaultsToOnAndSurvivesSaveAndLoad() {
+        var module = ModuleManager.getInstance().getModule("TitleScreen");
+        var option = (com.thelads.core.config.BoolOption) module.getOption(TitleScreenModule.PANORAMA);
+        assertNotNull(option, "Panorama option must exist on TitleScreenModule");
+        boolean own = option.getOwnValue();
+        try {
+            option.reset();
+            assertTrue(TitleScreenModule.panorama(), "Panorama is on by default");
+            option.set(false);
+            assertFalse(TitleScreenModule.panorama());
+            var saved = option.save();
+            option.reset();
+            option.load(saved);
+            assertFalse(TitleScreenModule.panorama(), "Saved Panorama=off survives save and load");
+        } finally {
+            option.set(own);
+        }
+    }
+
+    @Test void noirDrawsSimpleProceduralBackdropWhenPanoramaIsOff() {
+        var module = ModuleManager.getInstance().getModule("TitleScreen");
+        var option = (com.thelads.core.config.BoolOption) module.getOption(TitleScreenModule.PANORAMA);
+        boolean own = option.getOwnValue();
+        try {
+            var layout = TitleNoir.layout(640, 360, 12, 2);
+            option.set(true);
+            var panoOn = new LadsGraphicsTest.MockGraphics();
+            TitleNoir.renderBackdrop(panoOn, layout, "LadsQA", "26.3", true, 1.5);
+
+            option.set(false);
+            var panoOff = new LadsGraphicsTest.MockGraphics();
+            TitleNoir.renderBackdrop(panoOff, layout, "LadsQA", "26.3", true, 1.5);
+
+            assertTrue(panoOff.drawCalls.size() > panoOn.drawCalls.size() + 200,
+                "Panorama=off draws the simple sky and mountain-ridge backdrop");
+            assertTrue(panoOff.drawCalls.size() < 1500, "Simple backdrop stays bounded");
+        } finally {
+            option.set(own);
+        }
+    }
+
+    @Test void noirBurgundyWaveMovesTopToBottomWithBoundedFills() {
+        boolean before = TitleNoir.waveEnabled();
+        try {
+            var layout = TitleNoir.layout(640, 360, 12, 2);
+            TitleNoir.setWaveEnabled(true);
+            var t0 = new LadsGraphicsTest.MockGraphics();
+            var t1 = new LadsGraphicsTest.MockGraphics();
+            TitleNoir.renderBackdrop(t0, layout, "LadsQA", "26.3", true, 0.5);
+            TitleNoir.renderBackdrop(t1, layout, "LadsQA", "26.3", true, 2.0);
+            assertNotEquals(t0.drawCalls, t1.drawCalls, "Burgundy wave shifts position as elapsed seconds advance");
+
+            TitleNoir.setWaveEnabled(false);
+            var off0 = new LadsGraphicsTest.MockGraphics();
+            var off1 = new LadsGraphicsTest.MockGraphics();
+            TitleNoir.renderBackdrop(off0, layout, "LadsQA", "26.3", true, 0.5);
+            TitleNoir.renderBackdrop(off1, layout, "LadsQA", "26.3", true, 2.0);
+            assertEquals(off0.drawCalls, off1.drawCalls, "Disabling wave stops slab wave fills");
+            assertTrue(t0.drawCalls.size() - off0.drawCalls.size() <= 64, "Wave uses at most 64 cheap g.fill bands");
+        } finally {
+            TitleNoir.setWaveEnabled(before);
         }
     }
 
@@ -301,5 +375,79 @@ class TitleScreenThemeTest {
 
         screen.mouseClicked(networkBtn.x() + 4, networkBtn.y() + 4, 0);
         assertTrue(screen.networkHub().isOpen());
+    }
+
+    @Test void networkButtonDisplaysFullLabelAndServerIconWithoutTruncationInBothLayouts() {
+        int serverCell = com.thelads.core.client.bridge.IconAtlas.cell("server");
+        assertTrue(serverCell >= 0);
+        var beforeSnap = LadsNetworkStatus.Snapshot.IDLE;
+        try {
+            for (var snap : new LadsNetworkStatus.Snapshot[] {
+                LadsNetworkStatus.Snapshot.IDLE,
+                new LadsNetworkStatus.Snapshot(true, false, 0, 100, 12L, "", System.currentTimeMillis()),
+                new LadsNetworkStatus.Snapshot(true, false, 1234, 2000, 18L, "", System.currentTimeMillis())
+            }) {
+                LadsNetworkStatus.setCachedForTest(snap);
+                // 1. Voxel Noir (default) layout across all supported canvas sizes
+                for (int[] size : new int[][] {{320, 240}, {427, 240}, {480, 270}, {640, 360}, {960, 540}}) {
+                    for (int count : new int[] {5, 7, 12, 13}) {
+                        int netIdx = count == 5 ? 1 : 2;
+                        var noir = TitleNoir.layout(size[0], size[1], count, netIdx);
+                        var rect = noir.buttons().get(netIdx);
+                        var icons = new java.util.ArrayList<Integer>();
+                        var g = new LadsGraphicsTest.MockGraphics() {
+                            @Override public boolean drawIcon(int cell, int x, int y, int s, int color) {
+                                icons.add(cell);
+                                return true;
+                            }
+                        };
+                        TitleNoir.beginFrame(noir);
+                        try {
+                            TitleScreenTheme.renderButton(g, rect.x(), rect.y(), rect.width(), rect.height(),
+                                com.thelads.core.client.LadsNetwork.TITLE_LABEL, "server", false, false, false, true, 0);
+                        } finally {
+                            TitleNoir.endFrame();
+                        }
+                        assertEquals(java.util.List.of(serverCell), icons, "Noir network button draws servers icon at " + size[0] + "x" + size[1]);
+                        assertTrue(g.drawCalls.stream().anyMatch(c -> c.contains("The Lads Network") && !c.contains("...")),
+                            "Noir network button shows full 'The Lads Network' without '...' at " + size[0] + "x" + size[1] + ": " + g.drawCalls);
+                        assertFalse(g.drawCalls.stream().anyMatch(c -> c.contains("...")),
+                            "Noir network button has zero ellipsis at " + size[0] + "x" + size[1] + ": " + g.drawCalls);
+                    }
+                }
+                // 2. Legacy layout across all supported canvas sizes (including minimum 240x180 and 320x180)
+                for (int[] size : new int[][] {{240, 180}, {320, 180}, {320, 240}, {480, 270}, {530, 300}, {640, 360}, {960, 540}}) {
+                    for (int count : new int[] {5, 7, 12, 13, 16}) {
+                        int netIdx = count == 5 ? 1 : 2;
+                        var legacy = TitleScreenTheme.layout(size[0], size[1], count, netIdx);
+                        assertEquals(count, legacy.buttons().size());
+                        for (int i = 0; i < legacy.buttons().size(); i++) {
+                            var a = legacy.buttons().get(i);
+                            assertTrue(a.y() + a.height() <= size[1] - 29,
+                                "Legacy button " + i + " of " + count + " stays above account footer at " + size[0] + "x" + size[1]);
+                        }
+                        assertApart(legacy.buttons(), size[0], size[1], "legacy " + count + " at " + size[0] + "x" + size[1]);
+                        var rect = legacy.buttons().get(netIdx);
+                        assertEquals(legacy.menuWidth(), rect.width(), "Legacy network button spans full menuWidth");
+                        var icons = new java.util.ArrayList<Integer>();
+                        var g = new LadsGraphicsTest.MockGraphics() {
+                            @Override public boolean drawIcon(int cell, int x, int y, int s, int color) {
+                                icons.add(cell);
+                                return true;
+                            }
+                        };
+                        TitleScreenTheme.renderButton(g, rect.x(), rect.y(), rect.width(), rect.height(),
+                            com.thelads.core.client.LadsNetwork.TITLE_LABEL, "server", false, false, false, true, 0);
+                        assertEquals(java.util.List.of(serverCell), icons, "Legacy network button draws servers icon at " + size[0] + "x" + size[1]);
+                        assertTrue(g.drawCalls.stream().anyMatch(c -> c.contains("The Lads Network") && !c.contains("...")),
+                            "Legacy network button shows full 'The Lads Network' without '...' at " + size[0] + "x" + size[1] + ": " + g.drawCalls);
+                        assertFalse(g.drawCalls.stream().anyMatch(c -> c.contains("...")),
+                            "Legacy network button has zero ellipsis at " + size[0] + "x" + size[1] + ": " + g.drawCalls);
+                    }
+                }
+            }
+        } finally {
+            LadsNetworkStatus.setCachedForTest(beforeSnap);
+        }
     }
 }

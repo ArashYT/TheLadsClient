@@ -145,6 +145,9 @@ public final class QaProbe189 {
             }
         }
         while (waitTicks == 0 && pendingShot == null && index < steps.size()) {
+            if ("world".equalsIgnoreCase(steps.get(index)[0]) && (mc.theWorld == null || mc.thePlayer == null || mc.thePlayer.ticksExisted < 20)) {
+                return;
+            }
             String[] step = steps.get(index++);
             String label = String.join(" ", step);
             LOGGER.info("Lads 1.8.9 qa step {}/{}: {}", index, steps.size(), label);
@@ -166,7 +169,22 @@ public final class QaProbe189 {
             phase = Phase.DONE;
             QaProgress.done();
             LOGGER.info("Lads 1.8.9 qa script END: {} passed, {} failed", passed, failedSteps);
+            LOGGER.info("Lads qa script END: {} passed, {} failed", passed, failedSteps);
         }
+    }
+
+    private static void friendso(Minecraft mc) throws Exception {
+        com.thelads.core.v1_8_9.social.FriendsScreen189 screen = new com.thelads.core.v1_8_9.social.FriendsScreen189(mc.currentScreen);
+        mc.displayGuiScreen(screen);
+        screen.ui().setTab(com.thelads.core.client.social.ui.FriendsScreenLogic.Tab.ADD);
+        screen.ui().setAddFriendInput("");
+        CoreProbe.tap(org.lwjgl.input.Keyboard.KEY_O, 'o');
+        mc.currentScreen.handleInput();
+        String val = screen.ui().addFriendInput();
+        if (mc.currentScreen != screen || !"o".equals(val)) {
+            throw new IllegalStateException("friendso failed: currentScreen=" + mc.currentScreen + " input='" + val + "'");
+        }
+        LOGGER.info("Lads 1.8.9 qa friendso: screen={} input='{}' open=true", mc.currentScreen.getClass().getSimpleName(), val);
     }
 
     private static void stepFailed(String what, Exception e) {
@@ -215,6 +233,29 @@ public final class QaProbe189 {
             case "packs113":
                 packs113(mc);
                 break;
+            case "friendso":
+                friendso(mc);
+                break;
+            case "seedshots":
+                com.thelads.core.client.qa.QaScreenshotFixtures.seed(gameDir);
+                com.thelads.core.v1_8_9.gui.ScreenshotsScreen189.setQaFolder(gameDir.resolve("screenshots").toFile());
+                break;
+            case "restoreshots":
+                com.thelads.core.v1_8_9.gui.ScreenshotsScreen189.setQaFolder(null);
+                com.thelads.core.client.qa.QaScreenshotFixtures.restore(gameDir);
+                break;
+            case "assertshots": {
+                if (!(mc.currentScreen instanceof com.thelads.core.v1_8_9.gui.ScreenshotsScreen189)) {
+                    throw new IllegalStateException("assertshots: not on ScreenshotsScreen189: " + mc.currentScreen);
+                }
+                List<String> names = new ArrayList<String>();
+                for (File f : ((com.thelads.core.v1_8_9.gui.ScreenshotsScreen189) mc.currentScreen).files()) {
+                    names.add(f.getName());
+                }
+                com.thelads.core.client.qa.QaScreenshotFixtures.assertNewestFirst(names);
+                LOGGER.info("Lads 1.8.9 qa newest-first: {}", names);
+                break;
+            }
             case "settings": {
                 LadsSettingsScreen189 screen = new LadsSettingsScreen189(mc.currentScreen);
                 mc.displayGuiScreen(screen);
@@ -237,6 +278,8 @@ public final class QaProbe189 {
                     mc.displayGuiScreen(new net.minecraft.client.gui.GuiVideoSettings(mc.currentScreen, mc.gameSettings));
                 } else if ("friends".equals(target)) {
                     mc.displayGuiScreen(new com.thelads.core.v1_8_9.social.FriendsScreen189(mc.currentScreen));
+                } else if ("screenshots".equals(target)) {
+                    mc.displayGuiScreen(new com.thelads.core.v1_8_9.gui.ScreenshotsScreen189(mc.currentScreen));
                 } else if ("lads".equals(target) || "settings".equals(target)) {
                     LadsSettingsScreen189 ladsScreen = new LadsSettingsScreen189(mc.currentScreen);
                     mc.displayGuiScreen(ladsScreen);
@@ -307,11 +350,27 @@ public final class QaProbe189 {
                     mc.currentScreen == null ? "none" : mc.currentScreen.getClass().getSimpleName(),
                     mc.currentScreen instanceof com.thelads.core.v1_8_9.gui.AccountSwitcherScreen189 ? ((com.thelads.core.v1_8_9.gui.AccountSwitcherScreen189) mc.currentScreen).ui().getStatusMessage() : "");
                 break;
+            case "spworld":
+                mc.launchIntegratedServer("qa_b1_sp", "QA Singleplayer",
+                    new net.minecraft.world.WorldSettings(135L, net.minecraft.world.WorldSettings.GameType.CREATIVE, false, false, net.minecraft.world.WorldType.FLAT));
+                break;
+            case "world":
+                break;
+            case "rmspworld": {
+                Path sp = gameDir.resolve("saves").resolve("qa_b1_sp");
+                if (Files.exists(sp)) {
+                    java.util.Comparator<Path> rev = java.util.Comparator.reverseOrder();
+                    for (Path p : Files.walk(sp).sorted(rev).toArray(Path[]::new)) Files.deleteIfExists(p);
+                }
+                break;
+            }
             case "quit":
                 LOGGER.info("Lads 1.8.9 qa quit requested");
                 scriptDone = true;
                 phase = Phase.DONE;
                 QaProgress.done();
+                LOGGER.info("Lads 1.8.9 qa script END: {} passed, {} failed", passed + 1, failedSteps);
+                LOGGER.info("Lads qa script END: {} passed, {} failed", passed + 1, failedSteps);
                 mc.shutdown();
                 break;
             default:

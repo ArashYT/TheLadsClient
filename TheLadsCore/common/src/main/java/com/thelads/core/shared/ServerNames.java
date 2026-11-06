@@ -45,8 +45,18 @@ public final class ServerNames {
     private ServerNames() {
     }
 
-    /** The friendly name for a server address (port and case ignored), or null for a bare IP, a single label or no address. */
-    public static String resolve(String address) {
+    /** Known server name from thelads/known_servers.json (port and case ignored), or null when the host is not listed there. */
+    public static String resolveKnown(String address) {
+        String[] labels = hostLabels(address);
+        if (labels == null) return null;
+        for (int i = 0; i < labels.length; i++) {
+            String known = NAMES.get(join(labels, i));
+            if (known != null) return known;
+        }
+        return null;
+    }
+
+    private static String[] hostLabels(String address) {
         if (address == null) return null;
         String host = address.trim().toLowerCase(Locale.ROOT);
         int colon = host.indexOf(':');
@@ -59,6 +69,13 @@ public final class ServerNames {
         String[] labels = host.split("\\.");
         // Top-level domains are never numeric: "192.168" (an IP being typed) and IPv4 addresses get no name.
         if (labels.length < 2 || labels[labels.length - 1].chars().allMatch(Character::isDigit)) return null;
+        return labels;
+    }
+
+    /** The friendly name for a server address (port and case ignored), or null for a bare IP, a single label or no address. */
+    public static String resolve(String address) {
+        String[] labels = hostLabels(address);
+        if (labels == null) return null;
         for (int i = 0; i < labels.length; i++) {
             String known = NAMES.get(join(labels, i));
             if (known != null) return known;

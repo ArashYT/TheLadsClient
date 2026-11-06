@@ -152,8 +152,9 @@ public abstract class TitleScreenMixin extends Screen {
             }
         }
         ladsTitleWidgets.sort(Comparator.comparingInt(this::ladsButtonOrder));
-        ladsTitleLayout = TitleScreenTheme.layout(targetW, targetH, ladsTitleWidgets.size(), false);
-        ladsNoirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, ladsTitleWidgets.size(), ladsTitleWidgets.indexOf(ladsNetworkButton));
+        int networkIndex = ladsTitleWidgets.indexOf(ladsNetworkButton);
+        ladsTitleLayout = TitleScreenTheme.layout(targetW, targetH, ladsTitleWidgets.size(), networkIndex);
+        ladsNoirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, ladsTitleWidgets.size(), networkIndex);
         ladsLayoutWidth = targetW;
         ladsLayoutHeight = targetH;
         Component toggleLabel = Component.literal(TitleScreenTheme.layoutToggleLabel());
@@ -263,14 +264,14 @@ public abstract class TitleScreenMixin extends Screen {
         var adapter = new GuiGraphicsLadsAdapter(graphics, font);
         String version = "1.21.11" + (minecraft.isDemo() ? " Demo" : "");
         float matrixScale = ladsMatrixScale();
-        if (ladsNoirLayout != null) renderPanorama(graphics, partialTick);
+        if (ladsNoirLayout != null && TitleScreenModule.panorama()) renderPanorama(graphics, partialTick);
         boolean pushed = ladsNoirLayout != null;
         if (pushed) graphics.pose().pushMatrix();
         try {
             TitleScreenTheme.Rect switchBox;
             if (pushed) {
                 graphics.pose().scale(matrixScale, matrixScale);
-                switchBox = TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, true);
+                switchBox = TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, true, ladsAnimationSeconds);
             } else {
                 switchBox = TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds, true);
             }

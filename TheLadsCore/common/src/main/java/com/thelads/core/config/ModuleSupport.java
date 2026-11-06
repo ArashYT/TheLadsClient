@@ -10,7 +10,8 @@ public final class ModuleSupport {
     private static final Map<String, String> EXTERNAL_IDS = new HashMap<>();
     /** Upstream mod id each module wraps or replaces, kept whether or not that mod is installed (launcher catalog). */
     private static final Map<String, String> EXTERNAL_MOD_IDS = new HashMap<>();
-    private static final java.util.Set<String> BUILT_IN = new java.util.HashSet<>(), SETTINGS_ONLY = new java.util.HashSet<>();
+    /** The title screen is always on, so it starts settings-only on every game version. */
+    private static final java.util.Set<String> BUILT_IN = new java.util.HashSet<>(), SETTINGS_ONLY = new java.util.HashSet<>(java.util.Set.of("TitleScreen"));
     private static long revision;
     private static final Status PENDING = new Status(false, "Unavailable", "This feature is not connected to this game version yet.");
     private ModuleSupport() {}

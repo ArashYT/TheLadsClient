@@ -6,6 +6,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.thelads.core.client.LadsNetwork;
 import com.thelads.core.client.ServerListDrag;
 import com.thelads.core.client.ServerListEntryUi;
 import com.thelads.core.client.ViaForce;
@@ -42,6 +43,12 @@ abstract class ServerEntryMixin {
     @Shadow @Final private JoinMultiplayerScreen screen;
     @Shadow @Final private Minecraft minecraft;
     @Shadow @Final private ServerData serverData;
+    @Unique private int ladsNameRight = -1, ladsNameY = -1;
+
+    @Unique
+    private boolean lads$pinned() {
+        return serverData != null && LadsNetwork.isPinned(serverData.ip);
+    }
 
     @Unique
     private ServerSelectionList.OnlineServerEntry lads$self() {
@@ -65,7 +72,7 @@ abstract class ServerEntryMixin {
     @Unique
     private int[] lads$firstLine() {
         Font font = minecraft.font;
-        return ServerListEntryUi.firstLine(lads$self().getContentWidth(), font.width(serverData.name), font.width(lads$versionText()), font.width(serverData.status));
+        return ServerListEntryUi.firstLine(lads$self().getContentWidth(), font.width(serverData.name), font.width(lads$versionText()), font.width(serverData.status), lads$pinned());
     }
 
     /** The button's label on this row, null when it shows none. */
@@ -92,9 +99,18 @@ abstract class ServerEntryMixin {
         return serverData.status.copy();
     }
 
+    @Inject(require = 0, method = "renderContent", at = @At("HEAD"))
+    private void ladsResetNamePos(GuiGraphics graphics, int mouseX, int mouseY, boolean hovered, float partialTick, CallbackInfo ci) {
+        ladsNameRight = -1;
+        ladsNameY = -1;
+    }
+
     @WrapOperation(require = 0, method = "renderContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Ljava/lang/String;III)V"))
     private void ladsClipName(GuiGraphics graphics, Font font, String name, int x, int y, int color, Operation<Void> original) {
-        original.call(graphics, font, ServerListEntryUi.clip(name, lads$firstLine()[0], font::width), x, y, color);
+        String clipped = ServerListEntryUi.clip(name, lads$firstLine()[0], font::width);
+        ladsNameRight = x + font.width(clipped);
+        ladsNameY = y;
+        original.call(graphics, font, clipped, x, y, color);
     }
 
     /** The button takes the MOTD's second line. */
@@ -105,10 +121,18 @@ abstract class ServerEntryMixin {
 
     @Inject(require = 0, method = "renderContent", at = @At("TAIL"))
     private void ladsVersionAndButton(GuiGraphics graphics, int mouseX, int mouseY, boolean hovered, float partialTick, CallbackInfo ci) {
-        ServerListEntryUi.Version version = lads$version();
-        if (version == ServerListEntryUi.Version.NONE) return;
         Font font = minecraft.font;
         ServerSelectionList.OnlineServerEntry self = lads$self();
+        GuiGraphicsLadsAdapter adapter = null;
+        if (lads$pinned()) {
+            String clipped = ServerListEntryUi.clip(serverData.name, lads$firstLine()[0], font::width);
+            int starX = ladsNameRight >= 0 ? ladsNameRight + ServerListEntryUi.PIN_STAR_GAP : ServerListEntryUi.pinStarX(self.getContentX(), font.width(clipped));
+            int starY = ladsNameY >= 0 ? ladsNameY - 1 : self.getContentY();
+            adapter = new GuiGraphicsLadsAdapter(graphics, font);
+            ServerListEntryUi.drawPinStar(adapter, starX, starY, ServerListDrag.ghost() ? ServerListDrag.GHOST_ALPHA : 0xFF);
+        }
+        ServerListEntryUi.Version version = lads$version();
+        if (version == ServerListEntryUi.Version.NONE) return;
         String full = lads$versionText(), shown = ServerListEntryUi.clip(full, lads$firstLine()[1], font::width);
         int right = self.getContentX() + ServerListEntryUi.versionRight(self.getContentWidth(), font.width(serverData.status)), x = right - font.width(shown), y = self.getContentY() + 1;
         graphics.drawString(font, shown, x, y, version == ServerListEntryUi.Version.MUTED ? ServerListEntryUi.VERSION_MUTED : ServerListEntryUi.VERSION_RED);
@@ -117,7 +141,7 @@ abstract class ServerEntryMixin {
         if (label == null) return;
         boolean over = lads$overButton(label, mouseX, mouseY);
         int width = ServerListEntryUi.buttonWidth(label, font::width);
-        ServerListEntryUi.drawButton(new GuiGraphicsLadsAdapter(graphics, font), lads$buttonX(width), self.getContentY() + ServerListEntryUi.BUTTON_Y, width, label, over);
+        ServerListEntryUi.drawButton(adapter != null ? adapter : new GuiGraphicsLadsAdapter(graphics, font), lads$buttonX(width), self.getContentY() + ServerListEntryUi.BUTTON_Y, width, label, over);
         if (over) graphics.setTooltipForNextFrame(Component.literal(ServerListEntryUi.CHANGE_VERSION), mouseX, mouseY);
     }
 

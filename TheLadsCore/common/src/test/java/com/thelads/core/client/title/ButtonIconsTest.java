@@ -27,6 +27,8 @@ class ButtonIconsTest {
     @Test void keysWinAndUnmappedLabelsStayWithoutAnIcon() {
         assertEquals("check", ButtonIcons.of("gui.done", "anything"));
         assertEquals("cross", ButtonIcons.of(null, "Cancel"));
+        assertEquals("server", ButtonIcons.of(null, com.thelads.core.client.LadsNetwork.TITLE_LABEL));
+        assertEquals(IconAtlas.cell("server"), IconAtlas.cell(PauseMenuLayout.icon(PauseMenuLayout.Slot.NETWORK)));
         assertEquals("settings", ButtonIcons.of("menu.options", null));
         assertNull(ButtonIcons.of("options.generic_value", null));
         assertNull(ButtonIcons.of(null, "Fullscreen: ON"));

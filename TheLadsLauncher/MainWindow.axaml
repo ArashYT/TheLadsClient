@@ -188,9 +188,10 @@
                         </Grid>
                         <Grid x:Name="PlayStandardPanel" Grid.Row="1" RowDefinitions="Auto,Auto,Auto,Auto">
                             <Border Grid.Row="0" Background="#1D1E22" BorderBrush="#34353B" BorderThickness="1" CornerRadius="5" ClipToBounds="True" Height="140">
-                                <!-- The art column is twice the banner height: the 2:1 artwork shows whole instead of being cropped to a strip. -->
-                                <Grid ColumnDefinitions="*,280">
-                                    <StackPanel Margin="24,8,0,8" VerticalAlignment="Center" Spacing="4">
+                                <!-- Hero title on the left; two-column network card on the right (fixed-width artwork left, button + status right, zero overlap). -->
+                                <Grid ColumnDefinitions="*,196,Auto">
+                                    <Canvas x:Name="ParticleCanvas" Grid.Column="0" IsHitTestVisible="False" Opacity="0.10" />
+                                    <StackPanel Grid.Column="0" Margin="18,8,12,8" VerticalAlignment="Center" Spacing="4">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <Border Width="14" Height="2" Background="{DynamicResource LadsAccent}" VerticalAlignment="Center" />
                                             <TextBlock Text="BUILT FOR YOUR GAME" Classes="caption" FontSize="9" />
@@ -198,25 +199,16 @@
                                         <TextBlock Text="THE LADS CLIENT." FontFamily="Bahnschrift SemiCondensed,Inter" FontSize="30" FontWeight="Bold" LetterSpacing="-0.5" />
                                         <TextBlock Text="Your worlds. Your mods. Your people." Foreground="#999BA5" FontSize="13" />
                                     </StackPanel>
-                                    <!-- The Lads artwork fills the right column and fades into the card behind the title. -->
-                                    <Border Grid.Column="1" IsHitTestVisible="False">
+                                    <!-- Fixed-width artwork column with nothing overlapping the image. -->
+                                    <Border Grid.Column="1" Width="196" BorderBrush="#303137" BorderThickness="1,0,1,0" ClipToBounds="True" IsHitTestVisible="False">
                                         <Border.Background>
                                             <ImageBrush Source="avares://TheLadsLauncher/Assets/artwork.jpg" Stretch="UniformToFill" />
                                         </Border.Background>
                                     </Border>
-                                    <Border Grid.Column="1" IsHitTestVisible="False">
-                                        <Border.Background>
-                                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                                                <GradientStop Color="#FF1D1E22" Offset="0" />
-                                                <GradientStop Color="#001D1E22" Offset="0.42" />
-                                            </LinearGradientBrush>
-                                        </Border.Background>
-                                    </Border>
-                                    <Canvas x:Name="ParticleCanvas" Grid.ColumnSpan="2" IsHitTestVisible="False" Opacity="0.10" />
-                                    <!-- One click into the network from the first page, with its live status (MainWindow.Network.cs). -->
-                                    <Border Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0" Padding="12,10" CornerRadius="6" Background="#D91D1E22">
-                                        <StackPanel Spacing="7">
-                                            <Button x:Name="NetworkPlayButton" Classes="launch" Height="44" MinWidth="200" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Foreground="White" ToolTip.Tip="Launch and join The Lads Network (mc.arashyt.ca)" IsEnabled="{Binding #LaunchButton.IsEnabled}" Click="NetworkPlay_Click">
+                                    <!-- One click into the network from the first page, with its live status vertically centred beside the artwork (MainWindow.Network.cs). -->
+                                    <Border Grid.Column="2" Background="#191A1E" Padding="14,0">
+                                        <StackPanel VerticalAlignment="Center" Spacing="8">
+                                            <Button x:Name="NetworkPlayButton" Classes="launch" Height="44" MinWidth="184" Padding="12,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Foreground="White" ToolTip.Tip="Launch and join The Lads Network (mc.arashyt.ca)" IsEnabled="{Binding #LaunchButton.IsEnabled}" Click="NetworkPlay_Click">
                                                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><c:Glyph Kind="play" Size="14" VerticalAlignment="Center" /><TextBlock Text="Play The Lads Network" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" /></StackPanel>
                                             </Button>
                                             <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">

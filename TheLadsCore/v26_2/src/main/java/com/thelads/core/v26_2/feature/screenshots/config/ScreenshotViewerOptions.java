@@ -28,7 +28,7 @@ public class ScreenshotViewerOptions {
       new FileOption("screenshots_folder", ScreenshotViewerUtils::getVanillaScreenshotsFolder, "ingui")
    );
    public static final ConfigOption<ScreenshotListOrder> DEFAULT_LIST_ORDER = BUILDER.createEnum(
-      "default_list_order", ScreenshotListOrder.class, ScreenshotListOrder.ASCENDING
+      "default_list_order", ScreenshotListOrder.class, ScreenshotListOrder.DESCENDING
    );
    public static final ConfigOption<Boolean> PROMPT_WHEN_DELETING_SCREENSHOT = BUILDER.createBool("prompt_when_deleting_screenshot", true);
    public static final ConfigOption<Boolean> ENABLE_SCREENSHOT_ENLARGEMENT_ANIMATION = BUILDER.createBool("enable_screenshot_enlargement_animation", true);

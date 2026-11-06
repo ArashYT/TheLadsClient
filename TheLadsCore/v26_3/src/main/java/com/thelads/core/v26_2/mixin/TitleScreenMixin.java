@@ -190,8 +190,9 @@ public abstract class TitleScreenMixin extends Screen {
             }
         }
         ladsTitleWidgets.sort(Comparator.comparingInt(this::ladsButtonOrder));
-        ladsTitleLayout = TitleScreenTheme.layout(targetW, targetH, ladsTitleWidgets.size(), false);
-        ladsNoirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, ladsTitleWidgets.size(), ladsTitleWidgets.indexOf(ladsNetworkButton));
+        int networkIndex = ladsTitleWidgets.indexOf(ladsNetworkButton);
+        ladsTitleLayout = TitleScreenTheme.layout(targetW, targetH, ladsTitleWidgets.size(), networkIndex);
+        ladsNoirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, ladsTitleWidgets.size(), networkIndex);
         ladsLayoutWidth = targetW;
         ladsLayoutHeight = targetH;
 
@@ -298,7 +299,7 @@ public abstract class TitleScreenMixin extends Screen {
         int scaledMouseX = (int) Math.round(mouseX / matrixScale);
         int scaledMouseY = (int) Math.round(mouseY / matrixScale);
 
-        if (ladsNoirLayout != null) {
+        if (ladsNoirLayout != null && TitleScreenModule.panorama()) {
             if (minecraft.gameRenderer != null) {
                 if (reducedMotion) minecraft.gameRenderer.panorama().holdSpin();
                 else minecraft.gameRenderer.panorama().startSpin();
@@ -312,7 +313,7 @@ public abstract class TitleScreenMixin extends Screen {
             var adapter = new GuiGraphicsExtractorLadsAdapter(graphics, font);
             String version = "26.3" + (minecraft.isDemo() ? " Demo" : "");
             TitleScreenTheme.Rect switchBox = ladsNoirLayout != null
-                ? TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, true)
+                ? TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, true, ladsAnimationSeconds)
                 : TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds, true);
             if (switchBox != null) {
                 ladsSwitchButton.setRectangle(switchBox.width(), switchBox.height(), switchBox.x(), switchBox.y());

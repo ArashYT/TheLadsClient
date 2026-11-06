@@ -31,6 +31,7 @@ public abstract class WorldListFastQuitMixin {
         if (!FastQuit.saving(dir.toPath())) return;
         FontRenderer font = mc.fontRendererObj;
         String text = "Saving...";
-        font.drawString(text, x + 215 - font.getStringWidth(text), y + 1, 0xFFFF55);
+        int right = ((net.minecraft.client.gui.GuiSlot) (Object) this).getListWidth() - 5;
+        font.drawString(text, x + right - font.getStringWidth(text), y + 1, com.thelads.core.client.ServerListDrag.ghostColor(0xFFFFFF55));
     }
 }

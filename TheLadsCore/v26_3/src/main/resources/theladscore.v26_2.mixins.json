@@ -159,6 +159,8 @@
     "LegacyEquipMixin",
     "BorderlessWindowMixin",
     "WindowIconMixin",
+    "WindowTitleMixin",
+    "WindowTitleGuiMixin",
     "LoadingOverlayMixin",
     "CheatsMixin",
     "ItemModelGapsMixin",

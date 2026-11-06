@@ -29,7 +29,7 @@ public final class PauseMenuLayout {
             case OPTIONS -> "settings";
             case LADS -> "lads";
             case MULTIPLAYER -> "server";
-            case NETWORK -> "globe";
+            case NETWORK -> "network";
             case WORLD -> "host";
             case FRIENDS -> "friends";
             case COSMETICS -> "wardrobe";

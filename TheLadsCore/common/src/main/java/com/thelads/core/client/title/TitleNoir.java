@@ -5,7 +5,7 @@ import com.thelads.core.client.LadsNetwork;
 import com.thelads.core.client.LadsNetworkStatus;
 import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.title.TitleScreenTheme.Rect;
-import com.thelads.core.modules.TitleScaleModule;
+import com.thelads.core.modules.TitleScreenModule;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,10 +47,17 @@ public final class TitleNoir {
     public record Layout(int width, int height, int railWidth, int stripTop, int block, int clientBlock, int wordY, int wordRoom,
                          boolean tagline, List<Rect> buttons, List<Tier> tiers) {}
 
+    private static final long START_NANOS = System.nanoTime();
     private static Layout frame;
     private static volatile Rect lastNetworkPill;
+    private static volatile boolean waveEnabled = true;
+    private static int cachedRidgeHeight = -1;
+    private static int[] cachedFarRidge, cachedNearRidge;
 
     private TitleNoir() {}
+
+    public static boolean waveEnabled() { return waveEnabled; }
+    public static void setWaveEnabled(boolean enabled) { waveEnabled = enabled; }
 
     /** Bounds of the live network status pill drawn in the bottom strip on the most recent frame, or null when hidden. */
     public static Rect lastNetworkPill() {
@@ -147,9 +154,13 @@ public final class TitleNoir {
     public static void beginFrame(Layout layout) { frame = layout; }
     public static void endFrame() { frame = null; }
 
-    /** The panorama, drawn by the version before this, stays visible: the slab, the wordmark, the strip. Returns Switch's place (null without it). */
+    /** The panorama (or simple night-sky backdrop when Panorama is off), the slab, the wordmark, and the strip. Returns Switch's place (null without it). */
     public static Rect renderBackdrop(LadsGraphics g, Layout l, String username, String version, boolean withSwitch) {
-        renderSlab(g, l);
+        return renderBackdrop(g, l, username, version, withSwitch, (System.nanoTime() - START_NANOS) / 1.0e9);
+    }
+
+    public static Rect renderBackdrop(LadsGraphics g, Layout l, String username, String version, boolean withSwitch, double seconds) {
+        renderSlab(g, l, seconds);
         renderWordmark(g, l);
         return renderStrip(g, l, username, version, withSwitch, LadsNetwork.titleButton() ? networkText() : null);
     }
@@ -161,10 +172,35 @@ public final class TitleNoir {
         return players >= 0 ? players + " online" : "online";
     }
 
-    private static void renderSlab(LadsGraphics g, Layout l) {
+    private static void renderSlab(LadsGraphics g, Layout l, double seconds) {
         int w = l.width(), bottom = l.stripTop(), rail = l.railWidth();
-        g.fill(0, 0, w, bottom, 0x330B0708);
+        if (TitleScreenModule.panorama()) {
+            g.fill(0, 0, w, bottom, 0x330B0708);
+        } else {
+            if (cachedRidgeHeight != bottom || cachedFarRidge == null || cachedNearRidge == null) {
+                int[][] ridges = TitleScreenTheme.computeRidges(bottom);
+                cachedFarRidge = ridges[0];
+                cachedNearRidge = ridges[1];
+                cachedRidgeHeight = bottom;
+            }
+            TitleScreenTheme.renderBackdropScene(g, w, bottom, false, cachedFarRidge, cachedNearRidge, seconds);
+        }
         g.fill(0, 0, rail, bottom, SLAB);
+        // Subtle burgundy wave moving top-to-bottom across the slab (bounded g.fill bands, zero allocations).
+        if (waveEnabled && bottom > 0) {
+            int band = Math.max(5, bottom / 56);
+            double invLen = (Math.PI * 2.0) / Math.max(140.0, bottom * 0.85);
+            double timePhase = seconds * 1.45;
+            for (int y = 0; y < bottom; y += band) {
+                int endY = Math.min(bottom, y + band);
+                double wave = 0.5 + 0.5 * Math.sin((y + (endY - y) * 0.5) * invLen - timePhase);
+                double crest = wave * wave * wave;
+                int alpha = (int) (54.0 * crest);
+                if (alpha >= 2) {
+                    g.fill(3, y, rail, endY, (alpha << 24) | 0x8A1024);
+                }
+            }
+        }
         // The site's faint dot grid.
         int step = Math.max(16, bottom / 24);
         for (int y = 8; y < bottom; y += step)
@@ -194,7 +230,7 @@ public final class TitleNoir {
     }
 
     private static void renderWordmark(LadsGraphics g, Layout l) {
-        Rect logo = logoBox(l, TitleScaleModule.getScale());
+        Rect logo = logoBox(l, TitleScreenModule.logoScale());
         if (g.drawImage(TitleScreenTheme.LOGO, logo.x(), logo.y(), logo.width(), logo.height())) {
             if (logo.y() + logo.height() + 14 <= l.wordY() + l.wordRoom())
                 g.drawCenteredText(TitleScreenTheme.TAGLINE, logo.x() + logo.width() / 2, logo.y() + logo.height() + 4, RED_TEXT, false);
@@ -203,7 +239,7 @@ public final class TitleNoir {
         // The version cannot draw pictures or the logo cannot be read: the voxel wordmark.
         int x = 13, y = l.wordY(), height = wordHeight(l.block()) + (l.tagline() ? 14 : 0);
         int below = l.buttons().isEmpty() ? l.stripTop() : l.buttons().get(0).y();
-        float scale = Math.max(1f, Math.min(TitleScaleModule.getScale(), Math.min(
+        float scale = Math.max(1f, Math.min(TitleScreenModule.logoScale(), Math.min(
             (l.railWidth() - 10f - x) / Math.max(1, wordWidth(LADS, l.block())), (below - 4f - y) / height)));
         g.pushPose();
         g.translate(x, y);
@@ -330,14 +366,20 @@ public final class TitleNoir {
         g.fill(x, y, x + w, y + h, mix(PANEL, PANEL_ALT, hover));
         outline(g, x, y, w, h, focused && active ? FOCUS : hover > .5f ? LINE_ACCENT : LINE);
         int textY = y + (h - g.fontHeight()) / 2 + 1;
+        int lead = icon == null ? 0 : 13;
+        int labelWidth = g.textWidth(label);
         String status = networkText();
         boolean up = !"offline".equals(status);
-        String shown = 8 + g.textWidth(label) + 8 + 8 + g.textWidth(status) + 6 <= w ? status : up ? status.replace(" online", "") : "";
+        int maxStatusWidth = w - 8 - lead - labelWidth - 10 - 6;
+        String shown = g.textWidth(status) <= maxStatusWidth ? status : "";
+        if (shown.isEmpty() && up) {
+            String compact = status.replace(" online", "");
+            if (!compact.equals(status) && g.textWidth(compact) <= maxStatusWidth) shown = compact;
+        }
         int statusX = x + w - 6 - g.textWidth(shown);
         g.fill(statusX - 8, textY + 1, statusX - 3, textY + 6, up ? GREEN : DISABLED);
-        g.drawText(shown, statusX, textY, up ? TEXT : MUTED, false);
-        int lead = icon == null ? 0 : 13;
-        if (icon != null) TitleScreenTheme.icon(g, icon, x + 8, textY, 9, active ? TEXT : DISABLED);
+        if (!shown.isEmpty()) g.drawText(shown, statusX, textY, up ? TEXT : MUTED, false);
+        if (icon != null) TitleScreenTheme.icon(g, icon, x + 8, y + (h - 9) / 2, 9, active ? TEXT : DISABLED);
         g.drawText(TitleScreenTheme.fit(g, label, statusX - 10 - x - 8 - lead), x + 8 + lead, textY, active ? TEXT : DISABLED, false);
     }
 

@@ -136,6 +136,9 @@ public final class QaProbe26 {
             }
         }
         while (waitTicks == 0 && pendingShot == null && index < steps.size()) {
+            if ("world".equalsIgnoreCase(steps.get(index)[0]) && (mc.level == null || mc.player == null || mc.player.tickCount < 20)) {
+                return;
+            }
             String[] step = steps.get(index++);
             String label = String.join(" ", step);
             LOGGER.info("Lads 26.3 qa step {}/{}: {}", index, steps.size(), label);
@@ -157,7 +160,24 @@ public final class QaProbe26 {
             phase = Phase.DONE;
             QaProgress.done();
             LOGGER.info("Lads 26.3 qa script END: {} passed, {} failed", passed, failedSteps);
+            LOGGER.info("Lads qa script END: {} passed, {} failed", passed, failedSteps);
         }
+    }
+
+    private static void friendso(Minecraft mc) {
+        var screen = new com.thelads.core.v26_2.social.FriendsScreen26(mc.gui.screen());
+        mc.setScreenAndShow(screen);
+        screen.ui().setTab(com.thelads.core.client.social.ui.FriendsScreenLogic.Tab.ADD);
+        screen.ui().setAddFriendInput("");
+        long win = mc.getWindow().handle();
+        mc.keyboardHandler.keyPress(win, 1, new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_O, 0, 0));
+        mc.keyboardHandler.charTyped(win, new net.minecraft.client.input.CharacterEvent('o'));
+        mc.keyboardHandler.keyPress(win, 0, new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_O, 0, 0));
+        String val = screen.ui().addFriendInput();
+        if (mc.gui.screen() != screen || !"o".equals(val)) {
+            throw new IllegalStateException("friendso failed: screen=" + mc.gui.screen() + " input='" + val + "'");
+        }
+        LOGGER.info("Lads 26.3 qa friendso: screen={} input='{}' open=true", mc.gui.screen().getClass().getSimpleName(), val);
     }
 
     private static void stepFailed(String what, Exception e) {
@@ -208,6 +228,13 @@ public final class QaProbe26 {
                 else if ("title".equals(target)) mc.setScreenAndShow(new TitleScreen());
                 else if ("pause".equals(target)) { holdPause = true; mc.setScreenAndShow(new net.minecraft.client.gui.screens.PauseScreen(true)); }
                 else if ("multiplayer".equals(target)) mc.setScreenAndShow(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(mc.gui.screen()));
+                else if ("friends".equals(target)) mc.setScreenAndShow(new com.thelads.core.v26_2.social.FriendsScreen26(mc.gui.screen()));
+                else if ("screenshots".equals(target)) {
+                    var sv = com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.getInstance();
+                    if (sv == null) throw new IllegalStateException("ScreenshotViewer unavailable");
+                    sv.getThumbnailManager().configUpdated();
+                    mc.setScreenAndShow(new com.thelads.core.v26_2.feature.screenshots.screen.manage_screenshots.ManageScreenshotsScreen(mc.gui.screen()));
+                }
                 else if ("lads".equals(target) || "settings".equals(target)) {
                     var screen = new LadsSettingsScreen26(mc.gui.screen());
                     mc.setScreenAndShow(screen);
@@ -245,6 +272,20 @@ public final class QaProbe26 {
                 com.thelads.core.client.qa.QaProgress.hide(down);
             }
             case "srv" -> ServerListQa26.step(mc, s);
+            case "friendso" -> friendso(mc);
+            case "seedshots" -> {
+                com.thelads.core.client.qa.QaScreenshotFixtures.seed(gameDir);
+                var sv = com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.getInstance();
+                if (sv != null) {
+                    sv.getConfig().put(com.thelads.core.v26_2.feature.screenshots.config.ScreenshotViewerOptions.SCREENSHOTS_FOLDER, gameDir.resolve("screenshots").toFile());
+                }
+            }
+            case "restoreshots" -> com.thelads.core.client.qa.QaScreenshotFixtures.restore(gameDir);
+            case "assertshots" -> {
+                List<String> names = com.thelads.core.client.qa.QaScreenshotFixtures.extractManageScreenNames(mc.gui.screen());
+                com.thelads.core.client.qa.QaScreenshotFixtures.assertNewestFirst(names);
+                LOGGER.info("Lads 26.3 qa newest-first: {}", names);
+            }
             case "log" -> LOGGER.info("Lads 26.3 qa log: {}", rest(s, 1));
             case "textui" -> textUi(mc, s);
             case "gui" -> { mc.options.guiScale().set(Integer.parseInt(arg(s, 1))); mc.resizeGui(); } // the GUI scale, 0 = auto
@@ -265,11 +306,35 @@ public final class QaProbe26 {
             case "session" -> LOGGER.info("Lads 26.3 qa session: name={} uuid={} profile={} keys={} screen={} status={}", mc.getUser().getName(), mc.getUser().getProfileId(), mc.getGameProfile().name(),
                 mc.getProfileKeyPairManager().getClass().getSimpleName(), mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getSimpleName(),
                 mc.gui.screen() instanceof com.thelads.core.v26_2.gui.AccountSwitcherScreen26 a ? a.ui().getStatusMessage() : "");
+            case "spworld" -> {
+                String w = "qa_b1_sp";
+                if (Files.exists(gameDir.resolve("saves").resolve(w).resolve("level.dat"))) {
+                    mc.createWorldOpenFlows().openWorld(w, () -> {});
+                } else {
+                    var settings = new net.minecraft.world.level.LevelSettings(w, net.minecraft.world.level.GameType.CREATIVE,
+                        new net.minecraft.world.level.LevelSettings.DifficultySettings(net.minecraft.world.Difficulty.PEACEFUL, false, true), true,
+                        net.minecraft.world.level.WorldDataConfiguration.DEFAULT);
+                    mc.createWorldOpenFlows().createFreshLevel(w, settings, new net.minecraft.world.level.levelgen.WorldOptions(135L, false, false),
+                        registries -> registries.lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_PRESET)
+                            .getOrThrow(net.minecraft.world.level.levelgen.presets.WorldPresets.FLAT).value().createWorldDimensions(), mc.gui.screen());
+                }
+            }
+            case "world" -> {}
+            case "rmspworld" -> {
+                Path sp = gameDir.resolve("saves").resolve("qa_b1_sp");
+                if (Files.exists(sp)) {
+                    try (var stream = Files.walk(sp)) {
+                        for (Path p : stream.sorted(java.util.Comparator.reverseOrder()).toList()) Files.deleteIfExists(p);
+                    }
+                }
+            }
             case "quit" -> {
                 LOGGER.info("Lads 26.3 qa quit requested");
                 scriptDone = true;
                 phase = Phase.DONE;
                 QaProgress.done();
+                LOGGER.info("Lads 26.3 qa script END: {} passed, {} failed", passed + 1, failedSteps);
+                LOGGER.info("Lads qa script END: {} passed, {} failed", passed + 1, failedSteps);
                 mc.stop();
             }
             default -> LOGGER.warn("Lads 26.3 qa: unknown step '{}'", verb);

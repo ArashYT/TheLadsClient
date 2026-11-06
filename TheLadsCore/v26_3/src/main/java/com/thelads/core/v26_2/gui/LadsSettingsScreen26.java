@@ -47,6 +47,11 @@ public class LadsSettingsScreen26 extends Screen {
     public boolean isModsViewOpen() { return ui.isModsViewOpen(); }
 
     @Override
+    public boolean isInputCaptured() {
+        return ui.isEditingText() || super.isInputCaptured();
+    }
+
+    @Override
     protected void init() {
         super.init();
         ui.refreshCatalog();

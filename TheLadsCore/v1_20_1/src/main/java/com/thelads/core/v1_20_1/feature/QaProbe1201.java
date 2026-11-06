@@ -335,6 +335,22 @@ public final class QaProbe1201 {
         }
     }
 
+    private static void friendso(Minecraft mc) {
+        var screen = new com.thelads.core.v1_20_1.social.FriendsScreen1201(mc.screen);
+        mc.setScreen(screen);
+        screen.ui().setTab(com.thelads.core.client.social.ui.FriendsScreenLogic.Tab.ADD);
+        screen.ui().setAddFriendInput("");
+        long win = mc.getWindow().getWindow();
+        mc.keyboardHandler.keyPress(win, org.lwjgl.glfw.GLFW.GLFW_KEY_O, 0, org.lwjgl.glfw.GLFW.GLFW_PRESS, 0);
+        ((com.thelads.core.v1_20_1.mixin.KeyboardHandlerQaInvoker) mc.keyboardHandler).ladsQaCharTyped(win, 'o', 0);
+        mc.keyboardHandler.keyPress(win, org.lwjgl.glfw.GLFW.GLFW_KEY_O, 0, org.lwjgl.glfw.GLFW.GLFW_RELEASE, 0);
+        String val = screen.ui().addFriendInput();
+        if (mc.screen != screen || !"o".equals(val)) {
+            throw new IllegalStateException("friendso failed: screen=" + mc.screen + " input='" + val + "'");
+        }
+        LOGGER.info("Lads 1.20.1 qa friendso: screen={} input='{}' open=true", mc.screen.getClass().getSimpleName(), val);
+    }
+
     private static void stepFailed(String what, Exception e) {
         failedSteps++;
         com.thelads.core.client.qa.QaProgress.result(com.thelads.core.client.qa.QaProgress.Result.FAIL);
@@ -393,6 +409,20 @@ public final class QaProbe1201 {
                 net.minecraft.client.gui.screens.ConnectScreen.startConnecting(new TitleScreen(), mc, net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(address), data, false);
             }
             case "srv" -> ServerListQa1201.step(mc, s);
+            case "friendso" -> friendso(mc);
+            case "seedshots" -> {
+                com.thelads.core.client.qa.QaScreenshotFixtures.seed(gameDir);
+                var sv = com.thelads.core.v1_20_1.feature.screenshots.ScreenshotViewer1201.getInstance();
+                if (sv != null) {
+                    sv.getConfig().put(com.thelads.core.v1_20_1.feature.screenshots.config.ScreenshotViewerOptions.SCREENSHOTS_FOLDER, gameDir.resolve("screenshots").toFile());
+                }
+            }
+            case "restoreshots" -> com.thelads.core.client.qa.QaScreenshotFixtures.restore(gameDir);
+            case "assertshots" -> {
+                List<String> names = com.thelads.core.client.qa.QaScreenshotFixtures.extractManageScreenNames(mc.screen);
+                com.thelads.core.client.qa.QaScreenshotFixtures.assertNewestFirst(names);
+                LOGGER.info("Lads 1.20.1 qa newest-first: {}", names);
+            }
             case "log" -> LOGGER.info("Lads qa log: {}", rest(s, 1));
             case "account" -> { // account <offline name> | account ms <name>: the switcher open and that account clicked
                 if (!(mc.screen instanceof com.thelads.core.v1_20_1.gui.AccountSwitcherScreen1201)) mc.setScreen(new com.thelads.core.v1_20_1.gui.AccountSwitcherScreen1201(mc.screen));
@@ -423,6 +453,19 @@ public final class QaProbe1201 {
             case "keylog" -> { // a binding as the game shows it (Forge: "Shift + K")
                 KeyMapping mapping = java.util.Arrays.stream(mc.options.keyMappings).filter(m -> m.getName().equals(arg(s, 1))).findFirst().orElseThrow();
                 LOGGER.info("Lads qa keylog: {} = {}", mapping.getName(), mapping.getTranslatedKeyMessage().getString());
+            }
+            case "spworld" -> {
+                save = "qa_b1_sp";
+                openOrCreate(mc);
+            }
+            case "world" -> routine = stepArgs -> mc.level != null && mc.player != null && mc.player.tickCount >= 20;
+            case "rmspworld" -> {
+                Path sp = gameDir.resolve("saves").resolve("qa_b1_sp");
+                if (Files.exists(sp)) {
+                    try (var stream = Files.walk(sp)) {
+                        for (Path p : stream.sorted(java.util.Comparator.reverseOrder()).toList()) Files.deleteIfExists(p);
+                    }
+                }
             }
             case "quit" -> {
                 LOGGER.info("Lads qa quit requested");
@@ -512,6 +555,8 @@ public final class QaProbe1201 {
             case "video" -> mc.setScreen(new VideoSettingsScreen(current, mc.options));
             case "controls" -> mc.setScreen(new ControlsScreen(current, mc.options));
             case "lads", "settings" -> mc.setScreen(new LadsSettingsScreen1201(current));
+            case "friends" -> mc.setScreen(new com.thelads.core.v1_20_1.social.FriendsScreen1201(current));
+            case "screenshots" -> com.thelads.core.v1_20_1.feature.screenshots.ScreenshotViewer1201.openFromMenu(current);
             case "hud", "hudeditor" -> mc.setScreen(new DraggableHudScreen1201(current));
             case "inventory" -> { needWorld(mc); mc.setScreen(new InventoryScreen(mc.player)); }
             case "chat" -> mc.setScreen(new ChatScreen(""));

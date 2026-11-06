@@ -77,7 +77,7 @@ final class ScreenshotList
       this.scrollSpeedFactor = (Integer)ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.SCREEN_SCROLL_SPEED, 10);
       this.screenshotsPerRow = (Integer)ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.INITIAL_SCREENSHOT_AMOUNT_PER_ROW, 4);
       this.invertedOrder = ((ScreenshotListOrder)ManageScreenshotsScreen.CONFIG
-            .getOrFallback(ScreenshotViewerOptions.DEFAULT_LIST_ORDER, ScreenshotListOrder.ASCENDING))
+            .getOrFallback(ScreenshotViewerOptions.DEFAULT_LIST_ORDER, ScreenshotListOrder.DESCENDING))
          .isInverted();
       this.screenshotsFolder = (File)ManageScreenshotsScreen.CONFIG
          .getOrFallback(ScreenshotViewerOptions.SCREENSHOTS_FOLDER, (java.util.function.Supplier<? extends File>) ScreenshotViewerUtils::getVanillaScreenshotsFolder);
@@ -108,7 +108,7 @@ final class ScreenshotList
          this.screenshotsFolder = currentScreenshotsFolder;
          this.init();
       } else if (this.invertedOrder
-         != ((ScreenshotListOrder)ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.DEFAULT_LIST_ORDER, ScreenshotListOrder.ASCENDING))
+         != ((ScreenshotListOrder)ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.DEFAULT_LIST_ORDER, ScreenshotListOrder.DESCENDING))
             .isInverted()) {
          this.invertOrder();
       } else {

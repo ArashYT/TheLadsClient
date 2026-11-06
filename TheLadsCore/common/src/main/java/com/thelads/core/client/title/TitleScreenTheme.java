@@ -5,7 +5,6 @@ import com.thelads.core.client.bridge.LadsGraphics;
 import com.thelads.core.client.gui.LadsPalette;
 import com.thelads.core.config.ModuleManager;
 import com.thelads.core.config.SliderOption;
-import com.thelads.core.modules.TitleScaleModule;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,9 +19,13 @@ public final class TitleScreenTheme {
     public record Layout(int width, int height, boolean wide, int menuX, int menuY,
                          int menuWidth, List<Rect> buttons, int[] farRidge, int[] nearRidge) {}
 
-    public static Layout layout(int width, int height, int buttonCount) { return layout(width, height, buttonCount, false); }
+    public static Layout layout(int width, int height, int buttonCount) { return layout(width, height, buttonCount, false, -1); }
 
-    public static Layout layout(int width, int height, int buttonCount, boolean bottomRow) {
+    public static Layout layout(int width, int height, int buttonCount, boolean bottomRow) { return layout(width, height, buttonCount, bottomRow, -1); }
+
+    public static Layout layout(int width, int height, int buttonCount, int networkIndex) { return layout(width, height, buttonCount, false, networkIndex); }
+
+    public static Layout layout(int width, int height, int buttonCount, boolean bottomRow, int networkIndex) {
         width = Math.max(240, width);
         height = Math.max(180, height);
         buttonCount = Math.max(0, buttonCount);
@@ -30,31 +33,56 @@ public final class TitleScreenTheme {
         int menuWidth = wide ? Math.min(248, width * 43 / 100) : Math.min(300, width - 32);
         int menuX = wide ? width - menuWidth - 28 : (width - menuWidth) / 2;
         int columns = buttonCount > 14 ? 3 : 2;
-        int heroCount = Math.min(2, buttonCount);
+        int heroCount = Math.min(buttonCount, networkIndex >= 0 ? Math.min(2, networkIndex) : 2);
+        boolean hasNetwork = networkIndex >= 0 && networkIndex < buttonCount;
+        int beforeNet = hasNetwork ? Math.max(0, networkIndex - heroCount) : Math.max(0, buttonCount - heroCount);
+        int afterNet = hasNetwork ? Math.max(0, buttonCount - Math.max(heroCount, networkIndex + 1)) : 0;
         int gap = height < 220 ? 3 : height < 260 ? 5 : 6;
         int available = height - (wide ? 78 : height < 220 ? 71 : 104);
-        int smallRows = (Math.max(0, buttonCount - heroCount) + columns - 1) / columns;
-        while (columns < 4 && heroCount * 18 + smallRows * 14 + Math.max(0, heroCount + smallRows - 1) * gap > available) {
+        int smallRows = (hasNetwork ? 1 : 0) + (beforeNet + columns - 1) / columns + (afterNet + columns - 1) / columns;
+        int maxColumns = hasNetwork ? 5 : 4;
+        while (columns < maxColumns && heroCount * 18 + smallRows * 14 + Math.max(0, heroCount + smallRows - 1) * gap > available) {
             columns++;
-            smallRows = (Math.max(0, buttonCount - heroCount) + columns - 1) / columns;
+            smallRows = (hasNetwork ? 1 : 0) + (beforeNet + columns - 1) / columns + (afterNet + columns - 1) / columns;
         }
         int smallHeight = Math.max(14, Math.min(27, (available - heroCount * 32 - gap * (heroCount + smallRows - 1)) / Math.max(1, smallRows)));
         int heroHeight = Math.max(18, Math.min(36, (available - smallRows * smallHeight - gap * (heroCount + smallRows - 1)) / Math.max(1, heroCount)));
         int menuHeight = heroCount * heroHeight + smallRows * smallHeight + Math.max(0, heroCount + smallRows - 1) * gap;
         int menuY = wide ? (height - menuHeight) / 2 + 4 : height < 220 ? 42 : Math.max(66, (height - menuHeight) / 2 + 14);
         List<Rect> buttons = new ArrayList<>(buttonCount);
+        int y = menuY;
+        int slot = 0;
+        int cellWidth = (menuWidth - (columns - 1) * gap) / columns;
         for (int i = 0; i < buttonCount; i++) {
-            if (i < heroCount) buttons.add(new Rect(menuX, menuY + i * (heroHeight + gap), menuWidth, heroHeight));
-            else {
-                int slot = i - heroCount;
-                int cellWidth = (menuWidth - (columns - 1) * gap) / columns;
-                int rowCount = Math.min(columns, buttonCount - heroCount - (slot / columns) * columns);
+            if (i < heroCount) {
+                buttons.add(new Rect(menuX, y, menuWidth, heroHeight));
+                y += heroHeight + gap;
+            } else if (i == networkIndex) {
+                if (slot % columns != 0) {
+                    y += smallHeight + gap;
+                    slot = 0;
+                }
+                buttons.add(new Rect(menuX, y, menuWidth, smallHeight));
+                y += smallHeight + gap;
+            } else {
+                int remainingBeforeBreak = hasNetwork && i < networkIndex ? networkIndex - i : buttonCount - i;
+                int col = slot % columns;
                 // The last odd action spans the row, keeping every native control reachable.
-                int cellActualWidth = rowCount == 1 ? menuWidth : cellWidth;
-                buttons.add(new Rect(menuX + (slot % columns) * (cellWidth + gap),
-                    menuY + heroCount * (heroHeight + gap) + (slot / columns) * (smallHeight + gap), cellActualWidth, smallHeight));
+                boolean aloneInRow = col == 0 && remainingBeforeBreak == 1;
+                int cellActualWidth = aloneInRow ? menuWidth : cellWidth;
+                buttons.add(new Rect(menuX + col * (cellWidth + gap), y, cellActualWidth, smallHeight));
+                slot++;
+                if (col + 1 == columns || aloneInRow) {
+                    y += smallHeight + gap;
+                    slot = 0;
+                }
             }
         }
+        int[][] ridges = computeRidges(height);
+        return new Layout(width, height, wide, menuX, menuY, menuWidth, List.copyOf(buttons), ridges[0], ridges[1]);
+    }
+
+    static int[][] computeRidges(int height) {
         int samples = 96;
         int[] far = new int[samples + 1], near = new int[samples + 1];
         for (int i = 0; i <= samples; i++) {
@@ -62,7 +90,7 @@ public final class TitleScreenTheme {
             far[i] = (int)(height * (.56 + .10 * Math.sin(x * 13 + .8) + .045 * Math.cos(x * 31)));
             near[i] = (int)(height * (.74 + .08 * Math.sin(x * 11 + 2.1) + .035 * Math.cos(x * 43)));
         }
-        return new Layout(width, height, wide, menuX, menuY, menuWidth, List.copyOf(buttons), far, near);
+        return new int[][] {far, near};
     }
 
     public static void renderBackground(LadsGraphics g, Layout l, String username,
@@ -74,25 +102,28 @@ public final class TitleScreenTheme {
     public static final String SWITCH = "Switch";
     public static final String PAUSE_SWITCH = "Switch Account";
 
-    /** The two-line Blockbench logo (its model and PNG: docs/art/logo) and the line under it. */
-    public static final String LOGO = "/assets/theladscore/logo/lads_client_2line.png", TAGLINE = "Built for the lads.";
+    /** The two-line Blockbench logo for TitleNoir (docs/art/logo), the pre-1.13.3 one-line logo for the legacy layout, and the line under it. */
+    public static final String LOGO = "/assets/theladscore/logo/lads_client_2line.png",
+        LEGACY_LOGO = "/assets/theladscore/logo/lads_client_1line.png",
+        TAGLINE = "Built for the lads.";
     private static final int LOGO_WIDTH = 934, LOGO_HEIGHT = 584;
+    private static final int LEGACY_LOGO_WIDTH = 2231, LEGACY_LOGO_HEIGHT = 420;
     static int logoWidth(int maxWidth, int maxHeight) { return Math.max(1, Math.min(maxWidth, maxHeight * LOGO_WIDTH / LOGO_HEIGHT)); }
     static int logoHeight(int width) { return Math.max(1, width * LOGO_HEIGHT / LOGO_WIDTH); }
+    static int legacyLogoWidth(int maxWidth, int maxHeight) { return Math.max(1, Math.min(maxWidth, maxHeight * LEGACY_LOGO_WIDTH / LEGACY_LOGO_HEIGHT)); }
+    static int legacyLogoHeight(int width) { return Math.max(1, width * LEGACY_LOGO_HEIGHT / LEGACY_LOGO_WIDTH); }
 
     /**
      * {@code withSwitch}: the account card keeps room after the name for its Switch button, whose place this returns (null
      * without it): labelled, or its icon alone when the bottom line is too narrow for the label.
      */
-    public static Rect renderBackground(LadsGraphics g, Layout l, String username,
-                                        String version, boolean online, double seconds, boolean withSwitch) {
-        int w = l.width(), h = l.height();
+    static void renderBackdropScene(LadsGraphics g, int w, int h, boolean wide, int[] farRidge, int[] nearRidge, double seconds) {
         for (int i = 0; i < 32; i++) {
             int top = i * h / 32, bottom = (i + 1) * h / 32;
             g.fill(0, top, w, bottom, mix(LadsPalette.BACKGROUND, 0xFF30111C, i / 31f));
         }
         // A restrained moving light ribbon: 20 translucent quads, no shaders or textures.
-        int glowX = l.wide() ? w / 3 : w * 3 / 4;
+        int glowX = wide ? w / 3 : w * 3 / 4;
         for (int i = 0; i < 20; i++) {
             int x = glowX - w / 4 + i * w / 38;
             int y = (int)(h * .22 + Math.sin(i * .18 + seconds * .12) * h * .045);
@@ -105,19 +136,25 @@ public final class TitleScreenTheme {
             int strength = 60 + (int)(28 * (1 + Math.sin(seconds * .35 + i)));
             g.fill(x, y, x + 1, y + 1, alpha(0x00FFF1F1, strength));
         }
-        int moonX = l.wide() ? w / 3 : w * 4 / 5, moonY = h / 5;
+        int moonX = wide ? w / 3 : w * 4 / 5, moonY = h / 5;
         disk(g, moonX, moonY, Math.max(13, h / 17), 0x14FF6666);
         disk(g, moonX, moonY, Math.max(10, h / 23), 0xFFEDC9C9);
-        ridge(g, l.farRidge(), w, h, 0xFF200C15);
-        ridge(g, l.nearRidge(), w, h, 0xFF10080C);
+        ridge(g, farRidge, w, h, 0xFF200C15);
+        ridge(g, nearRidge, w, h, 0xFF10080C);
         for (int y = h * 4 / 5; y < h; y += Math.max(1, h / 30))
             g.fill(0, y, w, Math.min(h, y + Math.max(1, h / 30)), alpha(0x00070005, Math.min(160, (y - h * 4 / 5) * 400 / h)));
+    }
+
+    public static Rect renderBackground(LadsGraphics g, Layout l, String username,
+                                        String version, boolean online, double seconds, boolean withSwitch) {
+        int w = l.width(), h = l.height();
+        renderBackdropScene(g, w, h, l.wide(), l.farRidge(), l.nearRidge(), seconds);
 
         int brandX = l.wide() ? 32 : l.menuX();
         int brandY = l.wide() ? Math.max(55, h / 2 - 70) : 16;
         if (l.wide()) {
             if (!wideLogo(g, l, brandX)) {
-                float brandScale = Math.min(TitleScaleModule.getScale(), Math.min(
+                float brandScale = Math.min(com.thelads.core.modules.TitleScreenModule.logoScale(), Math.min(
                     (l.menuX() - brandX - 28f) / Math.max(1, g.textWidth("LADS") * 4.6f),
                     (h - 48f - brandY) / 125f));
                 g.pushPose(); g.translate(brandX, brandY); g.scale(brandScale, brandScale); g.translate(-brandX, -brandY);
@@ -133,7 +170,7 @@ public final class TitleScreenTheme {
             g.fill(l.menuX() + l.menuWidth() - 22, l.menuY() - 16, l.menuX() + l.menuWidth(), l.menuY() - 15, ACCENT);
         } else if (!narrowLogo(g, l)) {
             mark(g, brandX, brandY, ACCENT);
-            float brandScale = Math.min(2.05f * TitleScaleModule.getScale(), Math.min(
+            float brandScale = Math.min(2.05f * com.thelads.core.modules.TitleScreenModule.logoScale(), Math.min(
                 (l.menuWidth() - 28f) / Math.max(1, g.textWidth("THE LADS")),
                 (h < 220 ? 21f : 23f) / g.fontHeight()));
             scaledText(g, "THE LADS", brandX + 27, brandY - 1, brandScale, TEXT);
@@ -149,24 +186,24 @@ public final class TitleScreenTheme {
         return withSwitch ? new Rect(switchX, h - 25, switchWidth, 16) : null;
     }
 
-    /** The logo left of the legacy layout's menu panel, its width from Title Scale within the room. False: the version could not draw it (the text artwork instead). */
+    /** The pre-1.13.3 one-line logo left of the legacy layout's menu panel, its width from Logo Scale within the room. False: the version could not draw it (the text artwork instead). */
     private static boolean wideLogo(LadsGraphics g, Layout l, int left) {
         int roomWidth = l.menuX() - 28 - left, top = 30, roomHeight = l.height() - 34 - top; // the panel; the header; the account line
-        int width = Math.min(logoWidth(roomWidth, roomHeight - 14), Math.round(260 * TitleScaleModule.getScale())), height = logoHeight(width);
+        int width = Math.min(legacyLogoWidth(roomWidth, roomHeight - 14), Math.round(260 * com.thelads.core.modules.TitleScreenModule.logoScale())), height = legacyLogoHeight(width);
         int x = left + (roomWidth - width) / 2, y = top + (roomHeight - height - 14) / 2;
-        if (!g.drawImage(LOGO, x, y, width, height)) return false;
+        if (!g.drawImage(LEGACY_LOGO, x, y, width, height)) return false;
         g.drawCenteredText(TAGLINE, x + width / 2, y + height + 5, MUTED);
         return true;
     }
 
-    /** The logo over the legacy layout's narrow menu, the tagline under it or, where only a row fits, beside it. False: the version could not draw it. */
+    /** The pre-1.13.3 one-line logo over the legacy layout's narrow menu, the tagline under it or, where only a row fits, beside it. False: the version could not draw it. */
     private static boolean narrowLogo(LadsGraphics g, Layout l) {
-        int room = l.menuY() - 8;
-        int width = Math.max(1, Math.round(logoWidth(l.menuWidth(), room) * Math.min(1f, TitleScaleModule.getScale()))), height = logoHeight(width);
+        int room = l.menuY() - 8, logoRoom = room >= 36 ? room - 14 : room;
+        int width = Math.max(1, Math.round(legacyLogoWidth(l.menuWidth(), logoRoom) * Math.min(1f, com.thelads.core.modules.TitleScreenModule.logoScale()))), height = legacyLogoHeight(width);
         int text = g.textWidth(TAGLINE);
         boolean under = room - height >= 14, beside = !under && l.height() >= 220 && width + 8 + text <= l.menuWidth();
         int x = (l.width() - width - (beside ? 8 + text : 0)) / 2, y = 4 + (room - height - (under ? 14 : 0)) / 2;
-        if (!g.drawImage(LOGO, x, y, width, height)) return false;
+        if (!g.drawImage(LEGACY_LOGO, x, y, width, height)) return false;
         if (under) g.drawCenteredText(TAGLINE, x + width / 2, y + height + 5, MUTED);
         if (beside) g.drawText(TAGLINE, x + width + 8, y + (height - g.fontHeight()) / 2, MUTED);
         return true;
@@ -433,7 +470,7 @@ public final class TitleScreenTheme {
                 g.fill(x + 3, y, x + size - 3, y + 4, c);
                 g.fill(x + 1, y + 6, x + size - 1, y + size, c);
             }
-            case "server", "realms" -> {
+            case "server", "network", "realms" -> {
                 for (int i = 0; i < 3; i++) {
                     g.fill(x, y + i * 4, x + size, y + i * 4 + 2, c);
                     g.fill(x + size - 2, y + i * 4, x + size - 1, y + i * 4 + 1, LadsPalette.PRIMARY_PRESSED);
@@ -488,6 +525,13 @@ public final class TitleScreenTheme {
             case "host" -> {
                 for (int i = 0; i < 5; i++) g.fill(x + 4 - i, y + i, x + 6 + i, y + i + 1, c);
                 g.fill(x + 1, y + 5, x + 9, y + 10, c);
+            }
+            case "star" -> {
+                g.fill(x + 4, y, x + 5, y + 3, c);
+                g.fill(x, y + 3, x + 9, y + 5, c);
+                g.fill(x + 2, y + 5, x + 7, y + 7, c);
+                g.fill(x + 1, y + 7, x + 3, y + 9, c);
+                g.fill(x + 6, y + 7, x + 8, y + 9, c);
             }
             default -> {
                 for (int row = 0; row < 2; row++) for (int col = 0; col < 2; col++)

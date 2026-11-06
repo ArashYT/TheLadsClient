@@ -30,7 +30,7 @@ public final class ScreenshotViewerOptions {
       FileOption.option("screenshots_folder", ScreenshotViewerUtils::getVanillaScreenshotsFolder, "ingui")
    );
    public static final ConfigOption<ScreenshotListOrder> DEFAULT_LIST_ORDER = add(
-      ConfigOption.enumeration("default_list_order", "ingui", ScreenshotListOrder.class, ScreenshotListOrder.ASCENDING)
+      ConfigOption.enumeration("default_list_order", "ingui", ScreenshotListOrder.class, ScreenshotListOrder.DESCENDING)
    );
    public static final ConfigOption<Boolean> PROMPT_WHEN_DELETING_SCREENSHOT = add(ConfigOption.bool("prompt_when_deleting_screenshot", "ingui", true));
    public static final ConfigOption<Boolean> ENABLE_SCREENSHOT_ENLARGEMENT_ANIMATION = add(ConfigOption.bool("enable_screenshot_enlargement_animation", "ingui", true));

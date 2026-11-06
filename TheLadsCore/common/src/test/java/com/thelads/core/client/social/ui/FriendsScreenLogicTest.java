@@ -33,6 +33,64 @@ class FriendsScreenLogicTest {
     }
 
     @Test
+    void oKeyAndOtherBoundHotkeysTypeNormallyIntoAllFocusedBoxes() {
+        FakeCallbacks callbacks = new FakeCallbacks();
+        UUID friendId = UUID.randomUUID();
+        FriendEntry friend = new FriendEntry(friendId, "Alex", null, Presence.OFFLINE, 100);
+        callbacks.friends.add(friend);
+        FriendsScreenLogic logic = new FriendsScreenLogic(callbacks);
+
+        int[] hotkeyCodes = {79, 24, 80, 25, 32, 57, 258, 15, 291, 60, 300, 87};
+
+        // 1. Add Friend username box
+        logic.setTab(FriendsScreenLogic.Tab.ADD);
+        assertTrue(logic.isEditingText());
+        for (int code : hotkeyCodes) {
+            assertTrue(logic.keyPressed(code, 0, 0), "Focused Add Friend box must consume key code " + code);
+            assertFalse(callbacks.closed, "Pressing key code " + code + " must not close Friends menu");
+        }
+        for (char c : "Orion_oO".toCharArray()) {
+            assertTrue(logic.keyPressed(Character.toUpperCase(c), 0, 0));
+            assertTrue(logic.charTyped(c));
+        }
+        assertEquals("Orion_oO", logic.addFriendInput());
+        assertFalse(callbacks.closed);
+
+        // 2. DM message box (including full alphabet and spaces)
+        logic.setTab(FriendsScreenLogic.Tab.FRIENDS);
+        logic.openDm(friend);
+        assertTrue(logic.isEditingText());
+        for (int code : hotkeyCodes) {
+            assertTrue(logic.keyPressed(code, 0, 0), "Focused DM box must consume key code " + code);
+            assertFalse(callbacks.closed);
+            assertEquals(friend, logic.activeDmFriend(), "Pressing key code " + code + " must not leave DM pane");
+        }
+        String sample = "Hello Orion! abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        for (char c : sample.toCharArray()) {
+            assertTrue(logic.keyPressed(Character.toUpperCase(c), 0, 0));
+            assertTrue(logic.charTyped(c));
+        }
+        assertEquals(sample, logic.dmInput());
+        assertFalse(callbacks.closed);
+        logic.closeDm();
+
+        // 3. Inline Set Nickname box
+        logic.startEditingNick(friendId);
+        assertTrue(logic.isEditingText());
+        for (int code : hotkeyCodes) {
+            assertTrue(logic.keyPressed(code, 0, 0), "Focused Nickname box must consume key code " + code);
+            assertFalse(callbacks.closed);
+            assertEquals(friendId, logic.editingNickId());
+        }
+        for (char c : "Cool Bro".toCharArray()) {
+            assertTrue(logic.keyPressed(Character.toUpperCase(c), 0, 0));
+            assertTrue(logic.charTyped(c));
+        }
+        assertEquals("Cool Bro", logic.nickInput());
+        assertFalse(callbacks.closed);
+    }
+
+    @Test
     void onlineFriendsSortedFirstThenByName() {
         UUID u1 = UUID.randomUUID();
         UUID u2 = UUID.randomUUID();

@@ -185,4 +185,37 @@ class ServerListUiTest {
         assertFalse(ViaForce.force(new Object(), 47));
         assertNull(ViaForce.forced(new Object()));
     }
+
+    @Test
+    void pinnedStarReservesRoomAndDrawsYellowFlaticonStar() {
+        assertEquals(96, com.thelads.core.client.bridge.IconAtlas.cell("star"), "Flaticon fi-sr-star is cell 96");
+        assertArrayEquals(ServerListEntryUi.firstLine(196, 80, 60, 30), ServerListEntryUi.firstLine(196, 80, 60, 30, false));
+        // Content 196, count 30, pinned: room = 99 - PIN_STAR_ADVANCE = 86, so clippedName + star + version never exceeds 99.
+        int[] pinned = ServerListEntryUi.firstLine(196, 120, 60, 30, true);
+        assertEquals(99 - ServerListEntryUi.PIN_STAR_ADVANCE, pinned[0] + pinned[1], "pinned star space is reserved from first-line room");
+        assertTrue(pinned[0] + ServerListEntryUi.PIN_STAR_ADVANCE + pinned[1] <= 99, "name + star + version never overlaps player count");
+
+        List<int[]> drawn = new ArrayList<>();
+        var g = (com.thelads.core.client.bridge.LadsGraphics) java.lang.reflect.Proxy.newProxyInstance(
+            com.thelads.core.client.bridge.LadsGraphics.class.getClassLoader(),
+            new Class<?>[] {com.thelads.core.client.bridge.LadsGraphics.class},
+            (proxy, method, args) -> {
+                if ("drawIcon".equals(method.getName())) {
+                    drawn.add(new int[] {(int) args[0], (int) args[1], (int) args[2], (int) args[3], (int) args[4]});
+                    return true;
+                }
+                Class<?> ret = method.getReturnType();
+                if (ret == boolean.class) return false;
+                if (ret == int.class) return 0;
+                return null;
+            });
+        int starX = ServerListEntryUi.pinStarX(10, 96);
+        assertEquals(10 + ServerListEntryUi.TEXT_X + 96 + ServerListEntryUi.PIN_STAR_GAP, starX);
+        ServerListEntryUi.drawPinStar(g, starX, 20);
+        ServerListEntryUi.drawPinStar(g, starX, 20, ServerListDrag.GHOST_ALPHA);
+        assertEquals(2, drawn.size());
+        assertArrayEquals(new int[] {96, starX, 20, ServerListEntryUi.PIN_STAR_SIZE, ServerListEntryUi.PIN_STAR_COLOR}, drawn.get(0));
+        assertArrayEquals(new int[] {96, starX, 20, ServerListEntryUi.PIN_STAR_SIZE,
+            (ServerListDrag.GHOST_ALPHA << 24) | (ServerListEntryUi.PIN_STAR_COLOR & 0xFFFFFF)}, drawn.get(1));
+    }
 }

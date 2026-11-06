@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
+import com.thelads.core.client.gui.ModuleGroups;
 import com.thelads.core.modules.BetterResolutionModule;
 import com.thelads.core.modules.HudModule;
 import com.thelads.core.modules.ToggleSprintModule;
@@ -34,6 +35,7 @@ public class ConfigManager {
     /** Marks the 1.9.11 one-time Better F3 override (apply1911BetterF3Override). */
     public static final String F3_1911_FLAG = "betterF31911Applied";
     /** Marks the 1.9.12 one-time Keystrokes Clean look override (apply1912KeystrokesOverride). */
+    private static final String MENU_FOLDS = "menuFolds";
     public static final String KEYSTROKES_1912_FLAG = "keystrokesStyleMigrated";
     /** Marks the 1.9.14 one-time Keystrokes Clean follow global override (apply1914KeystrokesOverride). */
     public static final String KEYSTROKES_1914_FLAG = "keystrokesCleanGlobalMigrated";
@@ -94,6 +96,7 @@ public class ConfigManager {
             }
             moduleJson.addProperty("favorite", module.isFavorite());
             moduleJson.addProperty("lastModified", module.getLastModified());
+            moduleJson.addProperty("lastOpened", module.getLastOpenedTime());
             modulesJson.add(module.getName(), moduleJson);
         }
         json.add("modules", modulesJson);
@@ -166,6 +169,9 @@ public class ConfigManager {
         hud.add("excludedExternalMods", excExt);
 
         json.add("hud", hud);
+        JsonArray folds = new JsonArray();
+        ModuleGroups.flipped().stream().sorted().forEach(folds::add);
+        json.add(MENU_FOLDS, folds);
         json.addProperty(SkinLayersLodMigration.FLAG, true); // marks the 1.9.2 migration of 3D Skin Layers LOD 14 -> 8
         json.addProperty(PRESET_197_FLAG, true); // marks the 1.9.7 one-time preset override
         JsonArray emoteKeys = new JsonArray();
@@ -202,6 +208,11 @@ public class ConfigManager {
             return;
         }
         migrateToggles(json);
+        if (json.get(MENU_FOLDS) instanceof JsonArray folds) {
+            java.util.List<String> keys = new java.util.ArrayList<>();
+            folds.forEach(key -> { if (key.isJsonPrimitive()) keys.add(key.getAsString()); });
+            ModuleGroups.setFlipped(keys);
+        }
         if (json.get(EMOTE_KEYS_FLAG) instanceof JsonArray emoteKeys) emoteKeys.forEach(version -> { if (version.isJsonPrimitive()) emoteKeysResolved.add(version.getAsString()); });
         if (!bool(json.get(SkinLayersLodMigration.FLAG))) {
             SkinLayersLodMigration.migrate(null);
@@ -217,6 +228,7 @@ public class ConfigManager {
             migrateHypixelMods(modulesJson);
             migrateUnfocusedCap(modulesJson);
             migrateHitIndicatorSize(modulesJson);
+            migrateTitleScale(modulesJson);
             java.util.Set<String> known = new java.util.HashSet<>();
             for (Module m : ModuleManager.getInstance().getModules()) {
                 known.add(m.getName());
@@ -270,6 +282,9 @@ public class ConfigManager {
                     }
                     if (moduleJson.has("lastModified")) {
                         module.setLastModified(moduleJson.get("lastModified").getAsLong());
+                    }
+                    if (moduleJson.has("lastOpened")) {
+                        module.setLastOpenedTime(moduleJson.get("lastOpened").getAsLong());
                     }
                 } catch (Exception ex) {
                     System.err.println("Failed to apply config for module: " + module.getName());
@@ -554,6 +569,16 @@ public class ConfigManager {
      * 1.10.0 renamed the hit indicator's own "Size" to "Arc Size": it shared its name with the HUD Size every HUD module has, so the
      * one "Size" saved was the arc's (written last). It moves to Arc Size, and the HUD Size goes back to its default.
      */
+    /** 1.13.4: the title screen is no module, so Title Scale's slider moved to its settings. A Title Scale that was off drew at the default scale. */
+    static void migrateTitleScale(JsonObject modules) {
+        if (!(modules.remove("Title Scale") instanceof JsonObject old) || old.has("enabled") && !old.get("enabled").getAsBoolean()) return;
+        if (!(old.get("options") instanceof JsonObject options) || !options.has("Scale")) return;
+        JsonObject title = modules.get(ModuleGroups.TITLE_SCREEN) instanceof JsonObject saved ? saved : new JsonObject();
+        JsonObject titleOptions = title.get("options") instanceof JsonObject saved ? saved : new JsonObject();
+        titleOptions.add(com.thelads.core.modules.TitleScreenModule.LOGO_SCALE, options.get("Scale"));
+        title.add("options", titleOptions);
+        modules.add(ModuleGroups.TITLE_SCREEN, title);
+    }
     static void migrateHitIndicatorSize(JsonObject modules) {
         if (modules.get("HitIndicator") instanceof JsonObject hit && hit.get("options") instanceof JsonObject options
                 && !options.has("Arc Size") && options.has("Size")) options.add("Arc Size", options.remove("Size"));

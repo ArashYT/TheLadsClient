@@ -25,6 +25,11 @@ public final class HostScreen26 extends Screen {
     }
 
     @Override
+    public boolean isInputCaptured() {
+        return ui.isEditingText() || super.isInputCaptured();
+    }
+
+    @Override
     public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
         // HostScreenLogic paints the full background.
     }

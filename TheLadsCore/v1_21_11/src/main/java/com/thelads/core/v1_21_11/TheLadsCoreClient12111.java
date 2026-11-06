@@ -23,7 +23,7 @@ public class TheLadsCoreClient12111 implements ClientModInitializer {
         // Other modules remain unavailable until their native behavior and options are connected.
         ModuleSupport.registerBuiltIn("FPS", "Coordinates", "PingHUD", "Memory", "Speed",
             "Day", "Time", "XP", "Potion Effects", "Zoom", com.thelads.core.modules.ToggleSprintModule.NAME,
-            "Fullbright", "TitleScreen", "Title Scale", "CPS", "Keystrokes",
+            "Fullbright", "TitleScreen", "CPS", "Keystrokes",
             "Biome", "ArmorHUD", "Direction", "Health", "Hunger", "Scoreboard", "TexturePacks");
         com.thelads.core.v1_21_11.gui.ExternalModSettings.register();
         com.thelads.core.v1_21_11.feature.NativeQualityOfLife.register();

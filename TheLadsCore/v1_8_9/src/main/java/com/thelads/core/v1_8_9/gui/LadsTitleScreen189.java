@@ -170,8 +170,9 @@ public final class LadsTitleScreen189 {
             }
         }
         main.sort(Comparator.comparingInt(this::order));
-        layout = TitleScreenTheme.layout(targetW, targetH, main.size(), false);
-        noirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, main.size(), main.indexOf(networkButton));
+        int networkIndex = main.indexOf(networkButton);
+        layout = TitleScreenTheme.layout(targetW, targetH, main.size(), networkIndex);
+        noirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, main.size(), networkIndex);
         layoutWidth = targetW;
         layoutHeight = targetH;
 
@@ -261,9 +262,9 @@ public final class LadsTitleScreen189 {
         if (screen == null || event.gui != screen) return;
         ensureLayout();
         if (noirLayout != null) {
-            // Vanilla's frame would draw its logo and buttons over the panorama: only the panorama, Lads draws the rest in draw().
+            // Vanilla's frame would draw its logo and buttons over the panorama: only the panorama (when enabled), Lads draws the rest in draw().
             event.setCanceled(true);
-            drawPanorama(event.mouseX, event.mouseY, event.renderPartialTicks);
+            if (TitleScreenModule.panorama()) drawPanorama(event.mouseX, event.mouseY, event.renderPartialTicks);
         }
     }
 
@@ -304,7 +305,7 @@ public final class LadsTitleScreen189 {
                 GuiLadsAdapter g = new GuiLadsAdapter(mc.fontRendererObj, targetW, targetH);
                 String version = "1.8.9" + (mc.isDemo() ? " Demo" : "");
                 switchBox = noirLayout != null
-                    ? TitleNoir.renderBackdrop(g, noirLayout, mc.getSession().getUsername(), version, true)
+                    ? TitleNoir.renderBackdrop(g, noirLayout, mc.getSession().getUsername(), version, true, seconds)
                     : TitleScreenTheme.renderBackground(g, layout, mc.getSession().getUsername(), version, false, seconds, true);
 
                 int scaledMouseX = (int) Math.round(event.mouseX / ms);

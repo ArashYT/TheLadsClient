@@ -22,6 +22,11 @@ public class QuickplayScreen26 extends Screen {
     }
 
     @Override
+    public boolean isInputCaptured() {
+        return true;
+    }
+
+    @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {
         minecraft.textInputManager().startTextInput(this); // its search takes every character typed
         ui.render(new GuiGraphicsExtractorLadsAdapter(g, this.font), mouseX, mouseY);

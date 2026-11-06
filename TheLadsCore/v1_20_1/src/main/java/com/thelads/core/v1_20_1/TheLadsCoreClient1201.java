@@ -57,7 +57,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             // HUD Modules
             "FPS", "Coordinates", "PingHUD", "Memory", "Speed",
             "Day", "Time", "XP", "Potion Effects", "Zoom", com.thelads.core.modules.ToggleSprintModule.NAME,
-            "Fullbright", "TitleScreen", "Title Scale", "CPS", "Keystrokes",
+            "Fullbright", "TitleScreen", "CPS", "Keystrokes",
             "Biome", "ArmorHUD", "Direction", "Health", "Hunger", "Scoreboard", "TexturePacks",
             "Autohide", "BossBar", "RawInput", "LegacySwing", "DiscordRPC", SocialState.MODULE,
             "Clock", "Stopwatch", "ItemCounter", "ReachDisplay", "ServerAddress", "PortalCoordinates",
@@ -114,6 +114,7 @@ public class TheLadsCoreClient1201 implements ClientModInitializer {
             }
             com.thelads.core.client.Nicknames.tick();
             NativeFeatures1201.tick();
+            com.thelads.core.v1_20_1.feature.WindowTitle1201.refresh(client);
             NativeDiscordPresence1201.tick();
             com.thelads.core.client.cosmetics.net.CosmeticsLink.tick();
             SocialState.tick();

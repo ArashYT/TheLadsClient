@@ -92,6 +92,7 @@ public final class CoreCatalogExporter {
         JsonArray array = new JsonArray();
         for (Module module : modules) {
             String name = module.getName();
+            if (com.thelads.core.client.gui.ModuleGroups.TITLE_SCREEN.equals(name)) continue; // no module: always on, and its settings are in the game's menu
             var status = ModuleSupport.get(name);
             JsonObject o = new JsonObject();
             o.addProperty("name", name);

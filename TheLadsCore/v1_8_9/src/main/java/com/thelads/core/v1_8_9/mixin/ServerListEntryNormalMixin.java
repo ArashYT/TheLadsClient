@@ -1,8 +1,10 @@
 package com.thelads.core.v1_8_9.mixin;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.thelads.core.client.LadsNetwork;
 import com.thelads.core.client.ServerListDrag;
 import com.thelads.core.client.ServerListEntryUi;
+import com.thelads.core.v1_8_9.adapter.GuiLadsAdapter;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -43,6 +45,7 @@ public abstract class ServerListEntryNormalMixin {
     @Unique private String ladsPreviousPop;
     /** The width vanilla gave this row in the frame being drawn. */
     @Unique private int ladsWidth;
+    @Unique private final GuiLadsAdapter ladsAdapter = new GuiLadsAdapter(null, 0, 0);
 
     @Inject(method = "drawEntry", at = @At("HEAD"))
     private void ladsPreserveBeforeDraw(int slotIndex, int x, int y, int listWidth, int slotHeight, int mouseX, int mouseY, boolean isSelected, CallbackInfo ci) {
@@ -91,9 +94,14 @@ public abstract class ServerListEntryNormalMixin {
     }
 
     @Unique
+    private boolean lads$pinned() {
+        return field_148301_e != null && LadsNetwork.isPinned(field_148301_e.serverIP);
+    }
+
+    @Unique
     private int[] lads$firstLine() {
         ServerData data = field_148301_e;
-        return ServerListEntryUi.firstLine(ladsWidth, lads$font().getStringWidth(data.serverName), lads$font().getStringWidth(lads$versionText()), lads$font().getStringWidth(data.populationInfo));
+        return ServerListEntryUi.firstLine(ladsWidth, lads$font().getStringWidth(data.serverName), lads$font().getStringWidth(lads$versionText()), lads$font().getStringWidth(data.populationInfo), lads$pinned());
     }
 
     @ModifyArg(method = "drawEntry", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/FontRenderer;drawString(Ljava/lang/String;III)I", ordinal = 0), index = 0)
@@ -124,9 +132,15 @@ public abstract class ServerListEntryNormalMixin {
 
     @Inject(method = "drawEntry", at = @At("RETURN"))
     private void ladsVersion(int slotIndex, int x, int y, int listWidth, int slotHeight, int mouseX, int mouseY, boolean isSelected, CallbackInfo ci) {
+        FontRenderer font = lads$font();
+        if (lads$pinned()) {
+            String clippedName = ServerListEntryUi.clip(field_148301_e.serverName, lads$firstLine()[0], font::getStringWidth);
+            ladsAdapter.reset(font, owner.width, owner.height);
+            ServerListEntryUi.drawPinStar(ladsAdapter, ServerListEntryUi.pinStarX(x, font.getStringWidth(clippedName)), y,
+                ServerListDrag.ghost() ? ServerListDrag.GHOST_ALPHA : 0xFF);
+        }
         ServerListEntryUi.Version version = lads$version();
         if (version == ServerListEntryUi.Version.NONE) return;
-        FontRenderer font = lads$font();
         String full = lads$versionText(), shown = ServerListEntryUi.clip(full, lads$firstLine()[1], font::getStringWidth);
         int right = x + ServerListEntryUi.versionRight(listWidth, font.getStringWidth(field_148301_e.populationInfo)), left = right - font.getStringWidth(shown);
         int color = version == ServerListEntryUi.Version.MUTED ? ServerListEntryUi.VERSION_MUTED : ServerListEntryUi.VERSION_RED;

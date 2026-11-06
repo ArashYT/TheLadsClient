@@ -37,7 +37,7 @@ public final class LadsSettingsScreen {
         public boolean contains(double px, double py) { return px >= x && py >= y && px < x + width && py < y + height; }
     }
     private record Control(String id, String label, Rect rect, Runnable action, boolean enabled) {}
-    private String currentCategory = "All", searchQuery = "", focusId = "", notice = "";
+    private String currentCategory = ModuleGroups.HOME, searchQuery = "", focusId = "", notice = "";
     private boolean enabledOnly, favoritesOnly, filterDirty = true, dirty;
     private boolean fpsDialogOpen, editingFps, draggingFpsSlider;
     private Rect fpsSliderTrack;
@@ -92,8 +92,19 @@ public final class LadsSettingsScreen {
     private Consumer<String> clipboardWriter = text -> {};
     /** Credit for the Flaticon icons (THIRD_PARTY_NOTICES.txt). */
     private static final String ICON_CREDIT = "Icons by Flaticon (flaticon.com)";
-    private static final String[] CATEGORIES = {"All", "HUD", "Gameplay", "Performance", "Server", "Hypixel"};
-    private static final Set<String> PERFORMANCE = Set.of("Performance", "DynamicFPS", "UnfocusedFpsCap", "Exordium", "BetterResolution", "ScalableLux", "Clumps", "FarBlockEntities", "EntityCulling", "Lithium", "FerriteCore", "Async", com.thelads.core.client.ParticleCore.MODULE);
+    private static final List<String> CATEGORIES = ModuleGroups.CATEGORIES;
+    /** One line of the catalog page: a heading, a hint, a fold-out group, a row (one module, or a bundle's), or a setting search found. */
+    private interface Line {}
+    private record Heading(String text) implements Line {}
+    private record Hint(String text) implements Line {}
+    private record Fold(String key, String title, boolean open, int on, int total) implements Line {}
+    private record Row(String title, List<Module> members) implements Line {}
+    private record Hit(Module module, Option option) implements Line {}
+    private static final int MAX_OPTION_HITS = 60, RECENT_ROWS = 6;
+    private List<Line> optionHits = List.of();
+    /** The setting a search result opens: its page scrolls to it on the next frame. */
+    private Option revealOption;
+    private Row tipRow;
     // Installed mods view: its own state, search and "mods:" row ids, so the native catalog above stays native-only.
     private record ModLine(ModInventoryModel.Row row, int depth) {}
     private boolean modsView, detailFromMods;
@@ -114,8 +125,10 @@ public final class LadsSettingsScreen {
 
     /** Menu category of a Lads module, shared with the launcher catalog. */
     public static String categoryOf(Module m) {
-        return m.getCategory() == Module.Category.HUD ? "HUD" : m.getCategory() == Module.Category.SERVER ? "Server"
-            : m.getCategory() == Module.Category.HYPIXEL ? "Hypixel" : PERFORMANCE.contains(m.getName()) ? "Performance" : "Gameplay";
+        String grouped = ModuleGroups.categoryOf(m.getName());
+        if (grouped != null) return grouped;
+        return m.getCategory() == Module.Category.HUD ? ModuleGroups.HUD : m.getCategory() == Module.Category.SERVER ? ModuleGroups.SERVER
+            : m.getCategory() == Module.Category.HYPIXEL ? ModuleGroups.HYPIXEL : ModuleGroups.CLIENT;
     }
 
     public void setOnOpenHudEditor(Runnable action) { onOpenHudEditor = action; }
@@ -242,9 +255,9 @@ public final class LadsSettingsScreen {
         if (Math.abs(scrollOffset - displayedScroll) < .2) displayedScroll = scrollOffset;
         renderScroll = (int)Math.round(displayedScroll);
         if (hoverStates.size() > 1024) hoverStates.clear();
-        width = g.getScaledWidth(); height = g.getScaledHeight(); controls.clear(); tipModule = null; tipOption = null; tipOptionRule = null; gameView = null;
+        width = g.getScaledWidth(); height = g.getScaledHeight(); controls.clear(); tipModule = null; tipRow = null; tipOption = null; tipOptionRule = null; gameView = null;
         g.fill(0, 0, width, height, BG);
-        // The side bar needs room for six categories and Installed mods above Edit HUD (1.9.1 added Hypixel): 356 GUI px.
+        // The side bar's rows shrink to 18 px to fit twelve categories and four shortcuts in 356 GUI px.
         int pad = width < 450 ? 10 : 20, side = width >= 530 && height >= 356 ? 118 : 0;
         g.fill(0, 0, width, 2, ACCENT);
         String fpsBtnLabel = "HUD FPS: " + (HudSettings.getInstance().isHudFpsCapEnabled() ? HudSettings.formatFpsLimit(HudSettings.getInstance().getHudFpsLimit()) : "Off");
@@ -273,14 +286,15 @@ public final class LadsSettingsScreen {
         int x = side == 0 ? pad : side + 16, w = width - x - pad;
         if (side > 0) {
             g.fill(0, 40, side, height, PANEL);
-            for (int i = 0; i < CATEGORIES.length; i++) {
-                String category = CATEGORIES[i];
-                button(g, "category:" + category, category, new Rect(8, 53 + i * 29, side - 16, 24), () -> category(category), true, mouseX, mouseY, !modsView && category.equals(currentCategory));
+            int step = Math.max(18, Math.min(29, (height - 60) / (CATEGORIES.size() + 4))), rowH = step - (step >= 24 ? 5 : 1);
+            for (int i = 0; i < CATEGORIES.size(); i++) {
+                String category = CATEGORIES.get(i);
+                button(g, "category:" + category, category, new Rect(8, 46 + i * step, side - 16, rowH), () -> category(category), true, mouseX, mouseY, !modsView && category.equals(currentCategory));
             }
-            button(g, "installed-mods", "Installed mods", new Rect(8, 59 + CATEGORIES.length * 29, side - 16, 24), this::openMods, true, mouseX, mouseY, modsView);
-            button(g, "hud", "Edit HUD", new Rect(8, height - 93, side - 16, 23), () -> leave(onOpenHudEditor), true, mouseX, mouseY, false);
-            button(g, "packs", "Resource packs", new Rect(8, height - 65, side - 16, 23), () -> leave(onOpenResourcePacks), true, mouseX, mouseY, false);
-            button(g, "video", "Video settings", new Rect(8, height - 37, side - 16, 23), () -> leave(onOpenVideoSettings), true, mouseX, mouseY, false);
+            button(g, "installed-mods", "Installed mods", new Rect(8, height - 6 - 4 * step, side - 16, rowH), this::openMods, true, mouseX, mouseY, modsView);
+            button(g, "hud", "Edit HUD", new Rect(8, height - 6 - 3 * step, side - 16, rowH), () -> leave(onOpenHudEditor), true, mouseX, mouseY, false);
+            button(g, "packs", "Resource packs", new Rect(8, height - 6 - 2 * step, side - 16, rowH), () -> leave(onOpenResourcePacks), true, mouseX, mouseY, false);
+            button(g, "video", "Video settings", new Rect(8, height - 6 - step, side - 16, rowH), () -> leave(onOpenVideoSettings), true, mouseX, mouseY, false);
         }
         if (modsView) renderMods(g, x, w, mouseX, mouseY);
         else if (detail == null) renderCatalog(g, x, w, side == 0, mouseX, mouseY);
@@ -297,7 +311,7 @@ public final class LadsSettingsScreen {
         g.overlay(() -> renderHudFpsDialog(g, pointerX, pointerY));
         g.overlay(() -> library.render(g, pointerX, pointerY));
         g.overlay(() -> confirm.render(g, pointerX, pointerY));
-        String tipKey = modal ? null : tipOption != null ? ("option:" + (detail != null ? detail.getName() : "") + ":" + tipOption.getName()) : tipModule != null ? tipModule.getName() : null;
+        String tipKey = modal ? null : tipOption != null ? ("option:" + (detail != null ? detail.getName() : "") + ":" + tipOption.getName()) : tipModule != null ? tipModule.getName() : tipRow != null ? tipRow.title() : null;
         if (tip.update(tipKey, now)) {
             if (tipOption != null && tipOptionRule != null) {
                 String serverName = ServerPolicy.active() != null ? ServerPolicy.active().serverName() : "";
@@ -325,6 +339,9 @@ public final class LadsSettingsScreen {
                     desc += " [Inactive - Only activates on Hypixel]";
                 }
                 String text = desc;
+                g.overlay(() -> tooltip(g, text, pointerX, pointerY));
+            } else if (tipRow != null) {
+                String text = tipRow.members().stream().map(Module::getName).collect(java.util.stream.Collectors.joining(", ")) + " in one row. Settings has a tab for each.";
                 g.overlay(() -> tooltip(g, text, pointerX, pointerY));
             }
         }
@@ -354,16 +371,17 @@ public final class LadsSettingsScreen {
         boolean dense = height < 230;
         int top = 42;
         if (compact) {
-            int cell = (w - (CATEGORIES.length - 1) * 4) / CATEGORIES.length;
-            for (int i = 0; i < CATEGORIES.length; i++) {
-                String cat = CATEGORIES[i];
-                button(g, "category:" + cat, cat, new Rect(x + i * (cell + 4), top, cell, 20), () -> category(cat), true, mx, my, cat.equals(currentCategory));
+            // Two rows of six, with short labels.
+            int perRow = CATEGORIES.size() / 2, cell = (w - (perRow - 1) * 4) / perRow, cellH = dense ? 16 : 18;
+            for (int i = 0; i < CATEGORIES.size(); i++) {
+                String cat = CATEGORIES.get(i);
+                button(g, "category:" + cat, ModuleGroups.shortLabel(cat), new Rect(x + (i % perRow) * (cell + 4), top + (i / perRow) * (cellH + 2), cell, cellH), () -> category(cat), true, mx, my, cat.equals(currentCategory));
             }
-            top += dense ? 22 : 26;
+            top += 2 * (cellH + 2) + (dense ? 2 : 4);
         }
         int filterW = w >= 360 ? 78 : 54;
         Rect search = new Rect(x, top, w - filterW * 2 - 12, 24);
-        button(g, "search", editingSearch ? inputDisplay() : searchQuery.isEmpty() ? "Search modules..." : searchQuery, search, this::startSearch, true, mx, my, editingSearch);
+        button(g, "search", editingSearch ? inputDisplay() : searchQuery.isEmpty() ? "Search modules and settings..." : searchQuery, search, this::startSearch, true, mx, my, editingSearch);
         button(g, "enabled", "Enabled", new Rect(search.x + search.width + 6, top, filterW, 24), () -> { enabledOnly = !enabledOnly; invalidate(); }, true, mx, my, enabledOnly);
         button(g, "favorites", "Favorites", new Rect(x + w - filterW, top, filterW, 24), () -> { favoritesOnly = !favoritesOnly; invalidate(); }, true, mx, my, favoritesOnly);
         top += dense ? 27 : 33;
@@ -404,81 +422,222 @@ public final class LadsSettingsScreen {
         }
         top += dense ? 17 : 22;
         viewport = new Rect(x, top, w, Math.max(20, height - top - 28));
-        int cols = w >= 450 ? 3 : w >= 305 ? 2 : 1, gap = 8;
-        // Cards: name row + a full-width 23 px Settings bar; the description is the hover tooltip and the card itself toggles.
-        int cardW = (w - (cols - 1) * gap - 6) / cols, cardH = dense ? 52 : 58, pad = dense ? 4 : 5;
-        maxScroll = Math.max(0, ((modules.size() + cols - 1) / cols) * (cardH + gap) - gap - viewport.height);
-        scrollOffset = Math.min(scrollOffset, maxScroll);
+        List<Line> lines = catalogLines(modules);
+        int cols = w >= 640 ? 3 : w >= 300 ? 2 : 1, gap = 4;
+        // Rows: state pip, name, star and gear; the description is the hover tooltip and the row itself toggles.
+        int rowH = dense ? 20 : 22, foldH = dense ? 18 : 20, rowW = (w - (cols - 1) * gap - 6) / cols;
+        int y = top - renderScroll, col = 0;
         g.enableScissor(x - 2, top - 2, x + w, top + viewport.height + 2); // 2 px for the hover halo
-        for (int i = 0; i < modules.size(); i++) {
-            Module m = modules.get(i);
-            int cx = x + (i % cols) * (cardW + gap), cy = top + (i / cols) * (cardH + gap) - renderScroll;
-            if (cy + cardH <= top || cy >= top + viewport.height) continue;
-            String id = "card:" + m.getName();
-            ServerPolicy policy = ServerPolicy.active();
-            ModuleState serverState = policy != null ? policy.module(m.getName()) : ModuleState.INHERIT;
-            String serverName = (policy != null && !policy.serverName().isEmpty()) ? policy.serverName() : "server";
-            boolean refuses = policy != null && policy.refusesChanges();
-
-            boolean serverBlocked = serverState == ModuleState.BLOCK;
-            boolean serverForcedOn = serverState == ModuleState.ON && !refuses;
-            boolean blocked = serverBlocked || m.isBlockedByServer();
-            boolean toggleable = !serverBlocked && !serverForcedOn && !blocked && ModuleSupport.isToggleable(m.getName());
-            boolean on = serverForcedOn || (toggleable && m.isEnabled());
-            boolean focused = focusId.equals(id);
-            boolean cardHovered = new Rect(cx, cy, cardW, cardH).contains(mx, my) && viewport.contains(mx, my);
-            if (cardHovered) tipModule = m;
-            float hover = animate(id, cardHovered);
-            int base = blocked ? LadsPalette.CARD_OFF : (!toggleable && !serverForcedOn ? CARD : on ? LadsPalette.CARD_ON : LadsPalette.CARD_OFF);
-            int glow = blocked ? LadsPalette.DISABLED : (!toggleable && !serverForcedOn ? LadsPalette.DISABLED : on ? LadsPalette.CARD_ON_GLOW : LadsPalette.CARD_OFF_GLOW), fill = mix(base, glow, .14f * hover);
-            round(g, cx - 1, cy + 2, cardW + 2, cardH + 2, 0x14000000);
-            round(g, cx, cy + 1, cardW, cardH + 1, 0x24000000);
-            if (toggleable && hover > 0) { // glow: a two-step halo outside the edge
-                round(g, cx - 2, cy - 2, cardW + 4, cardH + 4, (int)(0x50 * hover) << 24 | glow & 0xFFFFFF);
-                round(g, cx - 1, cy - 1, cardW + 2, cardH + 2, (int)(0x90 * hover) << 24 | glow & 0xFFFFFF);
-            }
-            if (focused) round(g, cx - 1, cy - 1, cardW + 2, cardH + 2, TEXT);
-            round(g, cx, cy, cardW, cardH, mix(base, glow, .35f + .65f * hover));
-            round(g, cx + 1, cy + 1, cardW - 2, cardH - 2, fill);
-            boolean settingsOnly = ModuleSupport.isSettingsOnly(m.getName());
-            boolean unknownRules = blocked && !serverBlocked && com.thelads.core.client.HypixelSafetyManager.blockOf(m.getName()) == com.thelads.core.client.HypixelSafetyManager.Block.UNKNOWN;
-            String soon = serverBlocked ? ("Blocked by " + serverName)
-                : serverForcedOn ? ("Turned on by " + serverName)
-                : blocked ? (unknownRules ? "Unknown Rules" : "Server Block")
-                : (toggleable || settingsOnly ? "" : "Soon");
-            if (toggleable) { // state pip, filled when on, so the state is not colour alone
-                round(g, cx + 8, cy + pad + 6, 7, 7, TEXT);
-                if (!on) round(g, cx + 9, cy + pad + 7, 5, 5, fill);
-            } else g.drawText(soon, cx + cardW - 29 - g.textWidth(soon), cy + pad + 6, blocked ? ACCENT : serverForcedOn ? 0xFF5DF08A : MUTED);
-            g.drawText(fit(g, m.getName(), cardW - 49 - (toggleable ? 0 : g.textWidth(soon) + 4)), cx + 20, cy + pad + 6, toggleable || settingsOnly || serverForcedOn ? TEXT : MUTED);
-            chip(g, "favorite:" + m.getName(), m.isFavorite() ? "*" : "+", new Rect(cx + cardW - 25, cy + pad, 20, 20),
-                () -> { m.setFavorite(!m.isFavorite()); changed(m); }, mx, my, m.isFavorite() ? TEXT : MUTED, false);
-            chip(g, "detail:" + m.getName(), "Settings", new Rect(cx + pad, cy + cardH - pad - 23, cardW - 2 * pad, 23), () -> openDetails(m), mx, my, TEXT, true);
-            // Added after the star and Settings so those win the click.
-            String accessibilityLabel = m.getName() + (serverBlocked ? (", Blocked by " + serverName) : serverForcedOn ? (", Turned on by " + serverName) : blocked ? (unknownRules ? ", Off, unknown server rules" : ", Blocked on this server") : (on ? ", On" : toggleable ? ", Off" : settingsOnly ? ", Settings" : ", Soon"));
-            controls.add(new Control(id, accessibilityLabel, new Rect(cx, cy, cardW, cardH), () -> {
-                if (serverBlocked) {
-                    notice = m.getName() + " is blocked by " + serverName + ".";
-                    onNarrate.accept(notice);
-                    openDetails(m);
-                } else if (serverForcedOn) {
-                    notice = m.getName() + " is turned on by " + serverName + ".";
-                    onNarrate.accept(notice);
-                    openDetails(m);
-                } else if (m.isBlockedByServer()) { // its details hold the notice and the Bypass button
-                    notice = com.thelads.core.client.HypixelSafetyManager.getBlockedNotice(m.getName());
-                    onNarrate.accept(notice);
-                    openDetails(m);
+        for (Line line : lines) {
+            if (line instanceof Row row) {
+                if (y + rowH > top && y < top + viewport.height) {
+                    if (row.members().size() > 1) bundleRow(g, row, x + col * (rowW + gap), y, rowW, rowH, mx, my);
+                    else moduleRow(g, row.members().get(0), x + col * (rowW + gap), y, rowW, rowH, mx, my);
                 }
-                else if (ModuleSupport.isToggleable(m.getName())) { m.toggle(); changed(m); onNarrate.accept(m.getName() + (m.isEnabled() ? ", On" : ", Off")); }
-                else if (ModuleSupport.isSettingsOnly(m.getName())) openDetails(m);
-            }, true));
+                if (++col == cols) { col = 0; y += rowH + gap; }
+                continue;
+            }
+            if (col > 0) { col = 0; y += rowH + gap; }
+            int lineH = line instanceof Fold ? foldH : line instanceof Hit ? rowH : 13;
+            if (y + lineH > top && y < top + viewport.height) {
+                if (line instanceof Fold fold) foldRow(g, fold, x, y, w - 6, lineH, mx, my);
+                else if (line instanceof Hit hit) hitRow(g, hit, x, y, w - 6, lineH, mx, my);
+                else g.drawText(fit(g, line instanceof Heading heading ? heading.text() : ((Hint)line).text(), w - 6), x, y + 3, MUTED);
+            }
+            y += lineH + gap;
         }
-        if (modules.isEmpty()) {
+        if (col > 0) y += rowH + gap;
+        maxScroll = Math.max(0, y + renderScroll - gap - top - viewport.height);
+        scrollOffset = Math.min(scrollOffset, maxScroll);
+        if (lines.isEmpty()) {
             g.drawText("No matching modules", x + 12, top + 18, TEXT);
             g.drawText("Try another search or filter.", x + 12, top + 34, MUTED);
         }
         g.disableScissor(); scrollbar(g);
+    }
+    /** What the page lists: filtering shows flat rows and the settings it found; otherwise Home, or the category's fold-out groups. */
+    private List<Line> catalogLines(List<Module> modules) {
+        List<Line> lines = new ArrayList<>();
+        if (!searchQuery.isEmpty() || enabledOnly || favoritesOnly) {
+            lines.addAll(rows(modules, true));
+            if (!optionHits.isEmpty()) { lines.add(new Heading("SETTINGS")); lines.addAll(optionHits); }
+        } else if (currentCategory.equals(ModuleGroups.HOME)) {
+            homeLines(lines, modules);
+        } else if (currentCategory.equals(ModuleGroups.ALL)) {
+            for (String category : CATEGORIES) fold(lines, "all/" + category, category, modules.stream().filter(m -> categoryOf(m).equals(category)).toList(), false);
+        } else {
+            List<ModuleGroups.Group> groups = ModuleGroups.groupsIn(currentCategory);
+            List<Module> other = modules.stream().filter(m -> !groups.contains(ModuleGroups.groupOf(m.getName()))).toList();
+            long used = groups.stream().filter(group -> modules.stream().anyMatch(m -> group.members().contains(m.getName()))).count() + (other.isEmpty() ? 0 : 1);
+            if (used <= 1) lines.addAll(rows(modules, true));
+            else {
+                // A category short enough to read at a glance starts open.
+                boolean open = modules.size() <= 14;
+                for (ModuleGroups.Group group : groups) fold(lines, group.key(), group.title(), modules.stream().filter(m -> group.members().contains(m.getName())).toList(), open);
+                fold(lines, currentCategory + "/" + ModuleGroups.OTHER, ModuleGroups.OTHER, other, open);
+            }
+        }
+        return lines;
+    }
+    private void homeLines(List<Line> lines, List<Module> modules) {
+        List<Module> favorites = modules.stream().filter(Module::isFavorite).toList();
+        List<Module> recent = modules.stream().filter(m -> !m.isFavorite() && m.getLastOpenedTime() > 0)
+            .sorted(Comparator.comparingLong(Module::getLastOpenedTime).reversed()).limit(RECENT_ROWS).toList();
+        if (!favorites.isEmpty()) { lines.add(new Heading("FAVORITES")); lines.addAll(rows(favorites, true)); }
+        if (!recent.isEmpty()) { lines.add(new Heading("RECENTLY USED")); lines.addAll(rows(recent, false)); }
+        if (favorites.isEmpty() && recent.isEmpty()) {
+            lines.add(new Hint("Star a module to keep it here. The ones you use most show up by themselves."));
+            lines.add(new Heading("POPULAR"));
+            lines.addAll(rows(ModuleGroups.POPULAR.stream().flatMap(name -> modules.stream().filter(m -> m.getName().equals(name))).toList(), false));
+        }
+        fold(lines, "home/on", "Turned on", modules.stream().filter(m -> ModuleSupport.isToggleable(m.getName()) && m.isEnabled()).toList(), false);
+    }
+    private void fold(List<Line> lines, String key, String title, List<Module> members, boolean byDefault) {
+        if (members.isEmpty()) return;
+        List<Module> switches = members.stream().filter(m -> ModuleSupport.isToggleable(m.getName())).toList();
+        boolean open = ModuleGroups.isOpen(key, byDefault);
+        lines.add(new Fold(key, title, open, (int)switches.stream().filter(Module::isEnabled).count(), switches.size()));
+        if (open) lines.addAll(rows(members, true));
+    }
+    /** A row per module; a bundle's modules share one when everything this game version has of the bundle is listed. */
+    private static List<Row> rows(List<Module> modules, boolean sorted) {
+        List<Row> rows = new ArrayList<>();
+        Set<ModuleGroups.Bundle> done = new HashSet<>();
+        for (Module m : modules) {
+            ModuleGroups.Bundle bundle = ModuleGroups.bundleOf(m.getName());
+            List<Module> members = bundle == null ? List.of() : bundleMembers(bundle);
+            if (members.size() > 1 && modules.containsAll(members)) {
+                if (done.add(bundle)) rows.add(new Row(bundle.title(), members));
+            } else rows.add(new Row(ModuleGroups.label(m.getName()), List.of(m)));
+        }
+        if (sorted) rows.sort(Comparator.comparing(Row::title, String.CASE_INSENSITIVE_ORDER));
+        return rows;
+    }
+    private static List<Module> bundleMembers(ModuleGroups.Bundle bundle) {
+        return bundle.members().stream().map(ModuleManager.getInstance()::getModule)
+            .filter(m -> m != null && ModuleSupport.isBuiltIn(m.getName()) && !ModuleManager.getInstance().isHiddenModule(m.getName())).toList();
+    }
+    /** The player can switch it here: no server rule holds it on or off. */
+    private static boolean switchable(Module m) {
+        ServerPolicy policy = ServerPolicy.active();
+        ModuleState state = policy != null ? policy.module(m.getName()) : ModuleState.INHERIT;
+        return state != ModuleState.BLOCK && !(state == ModuleState.ON && !policy.refusesChanges()) && !m.isBlockedByServer() && ModuleSupport.isToggleable(m.getName());
+    }
+    private void foldRow(LadsGraphics g, Fold fold, int x, int y, int w, int h, int mx, int my) {
+        String id = "group:" + fold.key();
+        boolean focused = focusId.equals(id);
+        float hover = animate(id, new Rect(x, y, w, h).contains(mx, my) && viewport.contains(mx, my) || focused);
+        if (focused) round(g, x - 1, y - 1, w + 2, h + 2, TEXT);
+        round(g, x, y, w, h, mix(PANEL, LadsPalette.HOVER, hover));
+        int textY = y + (h - g.fontHeight()) / 2 + 1;
+        com.thelads.core.client.title.TitleScreenTheme.icon(g, fold.open() ? "angle-small-down" : "angle-right", x + 5, y + (h - 9) / 2, 9, MUTED);
+        String count = fold.total() == 0 ? "" : fold.on() == fold.total() ? fold.on() + " on" : fold.on() + " of " + fold.total() + " on";
+        g.drawText(count, x + w - 8 - g.textWidth(count), textY, fold.on() > 0 ? TEXT : MUTED);
+        g.drawText(fit(g, fold.title(), w - 34 - g.textWidth(count)), x + 18, textY, TEXT);
+        controls.add(new Control(id, fold.title() + (fold.open() ? ", open" : ", closed"), new Rect(x, y, w, h), () -> { ModuleGroups.toggle(fold.key()); dirty = true; }, true));
+    }
+    private void hitRow(LadsGraphics g, Hit hit, int x, int y, int w, int h, int mx, int my) {
+        String id = "result:" + hit.module().getName() + "/" + hit.option().getName();
+        String where = ModuleGroups.label(hit.module().getName());
+        boolean focused = focusId.equals(id);
+        float hover = animate(id, new Rect(x, y, w, h).contains(mx, my) && viewport.contains(mx, my) || focused);
+        if (focused) round(g, x - 1, y - 1, w + 2, h + 2, TEXT);
+        round(g, x, y, w, h, mix(CARD, LadsPalette.HOVER, hover));
+        int textY = y + (h - g.fontHeight()) / 2 + 1, whereW = Math.min(g.textWidth(where), w / 2);
+        g.drawText(fit(g, where, whereW), x + w - 8 - whereW, textY, MUTED);
+        g.drawText(fit(g, hit.option().getName(), w - 24 - whereW), x + 8, textY, TEXT);
+        controls.add(new Control(id, hit.option().getName() + " in " + where, new Rect(x, y, w, h), () -> { revealOption = hit.option(); openDetails(hit.module()); }, true));
+    }
+    /** The row's card: its state colour, a glow when hovered and an outline when focused. Returns the fill for what sits on it. */
+    private int rowCard(LadsGraphics g, String id, int cx, int cy, int rowW, int rowH, boolean on, boolean live, boolean blocked, int mx, int my) {
+        boolean hovered = new Rect(cx, cy, rowW, rowH).contains(mx, my) && viewport.contains(mx, my);
+        float hover = animate(id, hovered);
+        int base = blocked ? LadsPalette.CARD_OFF : !live ? CARD : on ? LadsPalette.CARD_ON : LadsPalette.CARD_OFF;
+        int glow = blocked || !live ? LadsPalette.DISABLED : on ? LadsPalette.CARD_ON_GLOW : LadsPalette.CARD_OFF_GLOW, fill = mix(base, glow, .14f * hover);
+        if (live && hover > 0) round(g, cx - 1, cy - 1, rowW + 2, rowH + 2, (int)(0x90 * hover) << 24 | glow & 0xFFFFFF);
+        if (focusId.equals(id)) round(g, cx - 1, cy - 1, rowW + 2, rowH + 2, TEXT);
+        round(g, cx, cy, rowW, rowH, mix(base, glow, .35f + .65f * hover));
+        round(g, cx + 1, cy + 1, rowW - 2, rowH - 2, fill);
+        return fill;
+    }
+    private void rowPip(LadsGraphics g, int cx, int cy, int rowH, boolean on, int fill) { // filled when on, so the state is not colour alone
+        round(g, cx + 7, cy + (rowH - 7) / 2, 7, 7, TEXT);
+        if (!on) round(g, cx + 8, cy + (rowH - 5) / 2, 5, 5, fill);
+    }
+    /** The star and gear at a row's right end. Returns where the name must stop. */
+    private int rowChips(LadsGraphics g, String key, String label, int cx, int cy, int rowW, int rowH, boolean favorite, Runnable star, Runnable settings, int mx, int my) {
+        int chipW = rowH - 2, chipH = rowH - 4, gearX = cx + rowW - chipW - 2, starX = gearX - chipW - 2;
+        iconChip(g, "favorite:" + key, "Favorite " + label, "star", new Rect(starX, cy + 2, chipW, chipH), star, mx, my, favorite ? com.thelads.core.client.ServerListEntryUi.PIN_STAR_COLOR : MUTED);
+        iconChip(g, "detail:" + key, "Settings for " + label, "settings", new Rect(gearX, cy + 2, chipW, chipH), settings, mx, my, TEXT);
+        return starX - 4;
+    }
+    private void bundleRow(LadsGraphics g, Row row, int cx, int cy, int rowW, int rowH, int mx, int my) {
+        String id = "card:" + row.title();
+        List<Module> members = row.members(), switches = members.stream().filter(LadsSettingsScreen::switchable).toList();
+        long on = members.stream().filter(Module::isEnabled).count();
+        if (new Rect(cx, cy, rowW, rowH).contains(mx, my) && viewport.contains(mx, my)) tipRow = row;
+        int fill = rowCard(g, id, cx, cy, rowW, rowH, on > 0, !switches.isEmpty(), switches.isEmpty(), mx, my);
+        rowPip(g, cx, cy, rowH, on > 0, fill);
+        boolean favorite = members.stream().allMatch(Module::isFavorite);
+        int nameEnd = rowChips(g, row.title(), row.title(), cx, cy, rowW, rowH, favorite,
+            () -> { for (Module m : members) { m.setFavorite(!favorite); changed(m); } }, () -> openDetails(members.get(0)), mx, my);
+        String count = on + "/" + members.size();
+        int textY = cy + (rowH - g.fontHeight()) / 2 + 1;
+        g.drawText(count, nameEnd - g.textWidth(count), textY, MUTED);
+        g.drawText(fit(g, row.title(), nameEnd - g.textWidth(count) - 4 - (cx + 20)), cx + 20, textY, TEXT);
+        // Added after the star and gear so those win the click.
+        controls.add(new Control(id, row.title() + ", " + on + " of " + members.size() + " on", new Rect(cx, cy, rowW, rowH), () -> {
+            if (switches.isEmpty()) { openDetails(members.get(0)); return; }
+            boolean anyOn = switches.stream().anyMatch(Module::isEnabled);
+            for (Module m : switches) if (m.isEnabled() == anyOn) { m.toggle(); changed(m); }
+            onNarrate.accept(row.title() + (anyOn ? ", Off" : ", On"));
+        }, true));
+    }
+    private void moduleRow(LadsGraphics g, Module m, int cx, int cy, int cardW, int cardH, int mx, int my) {
+        String id = "card:" + m.getName();
+        ServerPolicy policy = ServerPolicy.active();
+        ModuleState serverState = policy != null ? policy.module(m.getName()) : ModuleState.INHERIT;
+        String serverName = (policy != null && !policy.serverName().isEmpty()) ? policy.serverName() : "server";
+        boolean refuses = policy != null && policy.refusesChanges();
+
+        boolean serverBlocked = serverState == ModuleState.BLOCK;
+        boolean serverForcedOn = serverState == ModuleState.ON && !refuses;
+        boolean blocked = serverBlocked || m.isBlockedByServer();
+        boolean toggleable = !serverBlocked && !serverForcedOn && !blocked && ModuleSupport.isToggleable(m.getName());
+        boolean on = serverForcedOn || (toggleable && m.isEnabled());
+        if (new Rect(cx, cy, cardW, cardH).contains(mx, my) && viewport.contains(mx, my)) tipModule = m;
+        int fill = rowCard(g, id, cx, cy, cardW, cardH, on, toggleable || serverForcedOn, blocked, mx, my);
+        boolean settingsOnly = ModuleSupport.isSettingsOnly(m.getName());
+        boolean unknownRules = blocked && !serverBlocked && com.thelads.core.client.HypixelSafetyManager.blockOf(m.getName()) == com.thelads.core.client.HypixelSafetyManager.Block.UNKNOWN;
+        String soon = serverBlocked ? ("Blocked by " + serverName)
+            : serverForcedOn ? ("Turned on by " + serverName)
+            : blocked ? (unknownRules ? "Unknown Rules" : "Server Block")
+            : (toggleable || settingsOnly ? "" : "Soon");
+        if (toggleable) rowPip(g, cx, cy, cardH, on, fill);
+        String title = ModuleGroups.label(m.getName());
+        int nameEnd = rowChips(g, m.getName(), title, cx, cy, cardW, cardH, m.isFavorite(), () -> { m.setFavorite(!m.isFavorite()); changed(m); }, () -> openDetails(m), mx, my);
+        int textY = cy + (cardH - g.fontHeight()) / 2 + 1, soonW = Math.min(g.textWidth(soon), (nameEnd - cx) / 2);
+        if (!toggleable) g.drawText(fit(g, soon, soonW), nameEnd - soonW, textY, blocked ? ACCENT : serverForcedOn ? 0xFF5DF08A : MUTED);
+        g.drawText(fit(g, title, nameEnd - (cx + 20) - (toggleable ? 0 : soonW + 4)), cx + 20, textY, toggleable || settingsOnly || serverForcedOn ? TEXT : MUTED);
+        // Added after the star and gear so those win the click.
+        String accessibilityLabel = m.getName() + (serverBlocked ? (", Blocked by " + serverName) : serverForcedOn ? (", Turned on by " + serverName) : blocked ? (unknownRules ? ", Off, unknown server rules" : ", Blocked on this server") : (on ? ", On" : toggleable ? ", Off" : settingsOnly ? ", Settings" : ", Soon"));
+        controls.add(new Control(id, accessibilityLabel, new Rect(cx, cy, cardW, cardH), () -> {
+            if (serverBlocked) {
+                notice = m.getName() + " is blocked by " + serverName + ".";
+                onNarrate.accept(notice);
+                openDetails(m);
+            } else if (serverForcedOn) {
+                notice = m.getName() + " is turned on by " + serverName + ".";
+                onNarrate.accept(notice);
+                openDetails(m);
+            } else if (m.isBlockedByServer()) { // its details hold the notice and the Bypass button
+                notice = com.thelads.core.client.HypixelSafetyManager.getBlockedNotice(m.getName());
+                onNarrate.accept(notice);
+                openDetails(m);
+            }
+            else if (ModuleSupport.isToggleable(m.getName())) { m.toggle(); changed(m); onNarrate.accept(m.getName() + (m.isEnabled() ? ", On" : ", Off")); }
+            else if (ModuleSupport.isSettingsOnly(m.getName())) openDetails(m);
+        }, true));
     }
     /** The big red at-your-own-risk warning; confirming keeps the module on for this server only. */
     private void openBypassWarning(Module m) {
@@ -508,13 +667,23 @@ public final class LadsSettingsScreen {
         boolean showPreview = wide && preview && previewW >= 80;
 
         int headerW = showPreview ? leftW : (w - 8);
-        button(g, "back", "< Modules", new Rect(x, 43, 86, 22), this::back, true, mx, my, false);
-        g.drawText(fit(g, detail.getName(), headerW - 102), x + 96, 51, TEXT);
+        button(g, "back", "Modules", new Rect(x, 43, 86, 22), this::back, true, mx, my, false);
+        ModuleGroups.Bundle bundle = ModuleGroups.bundleOf(detail.getName());
+        List<Module> tabs = bundle == null ? List.of() : bundleMembers(bundle);
+        g.drawText(fit(g, tabs.size() > 1 ? bundle.title() : ModuleGroups.label(detail.getName()), headerW - 102), x + 96, 51, TEXT);
         int descriptionH = height < 230 ? 0 : MenuGraphics.wrap(g, detail.getDescription(), x, 76, headerW, 2, MUTED);
         int stateY = height < 230 ? 68 : 81 + descriptionH;
+        if (tabs.size() > 1) {
+            int tabW = Math.min(110, (headerW - (tabs.size() - 1) * 4) / tabs.size());
+            for (int i = 0; i < tabs.size(); i++) {
+                Module tab = tabs.get(i);
+                button(g, "tab:" + tab.getName(), tab.getName(), new Rect(x + i * (tabW + 4), stateY, tabW, 20), () -> { if (finish()) openDetails(tab); }, true, mx, my, tab == detail);
+            }
+            stateY += 26;
+        }
         boolean hypixelInactive = com.thelads.core.client.hypixel.HypixelMods.HYPIXEL_MODS.equals(detail.getName())
             && !com.thelads.core.client.HypixelSafetyManager.isHypixel();
-        g.drawText(hypixelInactive ? "LADS MODULE (INACTIVE OFF HYPIXEL)" : "LADS MODULE", x, stateY + 6, ACCENT);
+        g.drawText(hypixelInactive ? "LADS MODULE (INACTIVE OFF HYPIXEL)" : ModuleSupport.isSettingsOnly(detail.getName()) ? "SETTINGS" : "LADS MODULE", x, stateY + 6, ACCENT);
         ServerPolicy policy = ServerPolicy.active();
         ModuleState serverState = policy != null ? policy.module(detail.getName()) : ModuleState.INHERIT;
         String serverName = (policy != null && !policy.serverName().isEmpty()) ? policy.serverName() : "server";
@@ -578,6 +747,17 @@ public final class LadsSettingsScreen {
 
         maxScroll = Math.max(0, picker + rows + 32 - viewport.height);
         scrollOffset = Math.min(scrollOffset, maxScroll);
+        if (revealOption != null) {
+            int above = picker;
+            for (int r = 0; r < rowCount && !options.subList(r * cols, Math.min(options.size(), (r + 1) * cols)).contains(revealOption); r++) {
+                int rh = rowHeight(options.get(r * cols));
+                if (cols == 2 && r * cols + 1 < options.size()) rh = Math.max(rh, rowHeight(options.get(r * cols + 1)));
+                above += rh;
+            }
+            scrollOffset = Math.min(above, maxScroll); displayedScroll = scrollOffset; renderScroll = scrollOffset;
+            focusId = "option:" + revealOption.getName();
+            revealOption = null;
+        }
         int resetY = top + picker - renderScroll;
 
         for (int r = 0; r < rowCount; r++) {
@@ -1206,7 +1386,7 @@ public final class LadsSettingsScreen {
     private void renderMods(LadsGraphics g, int x, int w, int mx, int my) {
         pollModState();
         int top = 42, resetW = 56;
-        button(g, "mods-back", "< Modules", new Rect(x, top, 86, 22), this::closeMods, true, mx, my, false);
+        button(g, "mods-back", "Modules", new Rect(x, top, 86, 22), this::closeMods, true, mx, my, false);
         button(g, "mods-search", editingSearch ? inputDisplay() : modsSearch.isEmpty() ? "Search name or mod id..." : modsSearch,
             new Rect(x + 92, top, w - 98 - resetW, 22), this::startSearch, true, mx, my, editingSearch);
         button(g, "mods-reset", "Reset", new Rect(x + w - resetW, top, resetW, 22), this::resetModsFilters, true, mx, my, false);
@@ -1690,21 +1870,19 @@ public final class LadsSettingsScreen {
         if (focusId.equals(id)) round(g, r.x - 1, r.y - 1, r.width + 2, r.height + 2, ACCENT);
         int color = !enabled ? PANEL : selected ? mix(LadsPalette.PRIMARY, LadsPalette.PRIMARY_HOVER, progress) : mix(CARD, LadsPalette.HOVER, progress);
         round(g, r.x, r.y, r.width, r.height, color);
-        iconLabel(g, fit(g, label, r.width - 10), id.equals("hud") ? "edit" : null, r.x + r.width / 2, r.y + (r.height - g.fontHeight()) / 2 + 1, r.width, enabled ? TEXT : LadsPalette.DISABLED);
+        iconLabel(g, fit(g, label, r.width - 10), id.equals("hud") ? "edit" : id.startsWith("category:") ? ModuleGroups.icon(id.substring(9)) : null, r.x + r.width / 2, r.y + (r.height - g.fontHeight()) / 2 + 1, r.width, enabled ? TEXT : LadsPalette.DISABLED);
         controls.add(new Control(id, label, r, action, enabled));
     }
-    /** Card sub-button: dark glass that reads on green, red and neutral cards; the Settings bar puts a gear before its label. */
-    private void chip(LadsGraphics g, String id, String label, Rect r, Runnable action, int mx, int my, int color, boolean gear) {
+    /** Row sub-button: an icon on dark glass that reads on green, red and neutral rows; the label is for narration. */
+    private void iconChip(LadsGraphics g, String id, String label, String icon, Rect r, Runnable action, int mx, int my, int color) {
         boolean focused = focusId.equals(id);
         float progress = animate(id, r.contains(mx, my) && viewport.contains(mx, my) || focused);
         if (focused) round(g, r.x - 1, r.y - 1, r.width + 2, r.height + 2, TEXT);
         round(g, r.x, r.y, r.width, r.height, mix(0x59000000, 0x30FFFFFF, progress));
-        int textY = r.y + (r.height - g.fontHeight()) / 2 + 1, center = r.x + r.width / 2 + (gear ? 6 : 0);
-        if (gear) gear(g, center - g.textWidth(label) / 2 - 13, textY - 1, color);
-        g.drawCenteredText(label, center, textY, color);
+        com.thelads.core.client.title.TitleScreenTheme.icon(g, icon, r.x + (r.width - 9) / 2, r.y + (r.height - 9) / 2, 9, color);
         controls.add(new Control(id, label, r, action, true));
     }
-    /** The 9x9 cog before the Settings label. */
+    /** The 9x9 cog. */
     private static void gear(LadsGraphics g, int x, int y, int color) {
         com.thelads.core.client.title.TitleScreenTheme.icon(g, "settings", x, y, 9, color);
     }
@@ -1718,7 +1896,7 @@ public final class LadsSettingsScreen {
     }
     private boolean contentControl(String id) {
         return id.startsWith("option:") || id.startsWith("detail:") || id.startsWith("favorite:")
-            || id.startsWith("card:") || id.equals("reset") || id.startsWith("mods:") || id.startsWith("kb:");
+            || id.startsWith("card:") || id.startsWith("group:") || id.startsWith("result:") || id.equals("reset") || id.startsWith("mods:") || id.startsWith("kb:");
     }
     private void scrollbar(LadsGraphics g) {
         if (maxScroll == 0) return;
@@ -2069,10 +2247,10 @@ public final class LadsSettingsScreen {
         if (editingOption != null) changed(detail);
         editingOption = null; editingSearch = false; selectAll = false; notice = rejected; return true;
     }
-    private void category(String cat) { if (!finish()) return; currentCategory = cat; detail = null; modsView = detailFromMods = false; modsPlan = null; catalogScrollOffset = 0; catalogDisplayedScroll = 0; catalogRenderScroll = 0; invalidate(); }
+    private void category(String cat) { if (!finish()) return; currentCategory = cat; searchQuery = ""; detail = null; modsView = detailFromMods = false; modsPlan = null; catalogScrollOffset = 0; catalogDisplayedScroll = 0; catalogRenderScroll = 0; invalidate(); }
     private void invalidate() { filterDirty = true; scrollOffset = 0; displayedScroll = 0; renderScroll = 0; focusId = ""; }
     private void changed(Module m) {
-        if (m != null) m.touch(); dirty = true; filterDirty = true; persist();
+        if (m != null) { m.touch(); m.setLastOpenedTime(System.currentTimeMillis()); } dirty = true; filterDirty = true; persist();
     }
     /** Sound Volumes has a slider per kind of sound: searching "rain" finds it. */
     private static boolean soundMatch(Module m, String query) {
@@ -2084,21 +2262,24 @@ public final class LadsSettingsScreen {
         if (detail == null) return List.of();
         String query = searchQuery.toLowerCase(Locale.ROOT); // Sound Volumes found through a sound's name: only the matching sliders
         boolean sounds = soundMatch(detail, query) && !detail.getName().toLowerCase(Locale.ROOT).contains(query);
-        return detail.getOptions().stream().filter(o -> !(o instanceof PlayerActionOption))
-            .filter(o -> !sounds || o.getName().toLowerCase(Locale.ROOT).contains(query))
-            .filter(o -> !(detail instanceof KillBannerModule banner && banner.pickerOption(o)))
-            .filter(o -> !(detail instanceof OldAnimationsModule animations && animations.hidden(o)))
-            .filter(o -> !(detail instanceof ToggleSprintModule toggles && toggles.hidden(o)))
-            .filter(o -> !(detail instanceof com.thelads.core.modules.ChatModule chat && chat.hidden(o)))
-            .filter(o -> !(detail instanceof com.thelads.core.modules.DynamicLightsModule lights && lights.hidden(o)))
-            .filter(o -> !(detail instanceof ComboSoundsModule combo && combo.hidden(o)))
-            .filter(o -> !(detail instanceof CrosshairModule crosshair && crosshair.hidden(o)))
-            .filter(o -> !(detail instanceof com.thelads.core.modules.SurvivalTweaksModule tweaks && tweaks.hidden(o)))
-            .filter(o -> !(detail instanceof com.thelads.core.modules.SurvivalGuardsModule guards && guards.hidden(o)))
-            .filter(o -> !(detail instanceof com.thelads.core.modules.StackRefillModule refill && refill.hidden(o)))
-            .filter(o -> !(detail instanceof com.thelads.core.modules.BetterF3Module f3 && f3.hidden(o)))
-            .filter(o -> !(detail instanceof com.thelads.core.modules.KeystrokesModule keys && keys.hidden(o)))
-            .filter(o -> !(detail instanceof com.thelads.core.modules.CosmeticsModule cosm && cosm.hidden(o)))
+        return optionsOf(detail).stream().filter(o -> !sounds || o.getName().toLowerCase(Locale.ROOT).contains(query)).toList();
+    }
+    /** The options a module's page shows, whichever page is open (search looks through them too). */
+    private static List<Option> optionsOf(Module module) {
+        return module.getOptions().stream().filter(o -> !(o instanceof PlayerActionOption))
+            .filter(o -> !(module instanceof KillBannerModule banner && banner.pickerOption(o)))
+            .filter(o -> !(module instanceof OldAnimationsModule animations && animations.hidden(o)))
+            .filter(o -> !(module instanceof ToggleSprintModule toggles && toggles.hidden(o)))
+            .filter(o -> !(module instanceof com.thelads.core.modules.ChatModule chat && chat.hidden(o)))
+            .filter(o -> !(module instanceof com.thelads.core.modules.DynamicLightsModule lights && lights.hidden(o)))
+            .filter(o -> !(module instanceof ComboSoundsModule combo && combo.hidden(o)))
+            .filter(o -> !(module instanceof CrosshairModule crosshair && crosshair.hidden(o)))
+            .filter(o -> !(module instanceof com.thelads.core.modules.SurvivalTweaksModule tweaks && tweaks.hidden(o)))
+            .filter(o -> !(module instanceof com.thelads.core.modules.SurvivalGuardsModule guards && guards.hidden(o)))
+            .filter(o -> !(module instanceof com.thelads.core.modules.StackRefillModule refill && refill.hidden(o)))
+            .filter(o -> !(module instanceof com.thelads.core.modules.BetterF3Module f3 && f3.hidden(o)))
+            .filter(o -> !(module instanceof com.thelads.core.modules.KeystrokesModule keys && keys.hidden(o)))
+            .filter(o -> !(module instanceof com.thelads.core.modules.CosmeticsModule cosm && cosm.hidden(o)))
             .sorted((a, b) -> {
                 if ("Ignore HUD FPS Cap".equals(a.getName())) return 1;
                 if ("Ignore HUD FPS Cap".equals(b.getName())) return -1;
@@ -2110,6 +2291,14 @@ public final class LadsSettingsScreen {
     public void openGlobalColors(){colorPicker.openGlobal();}
     public void openDisplayActions(){if(detail!=null)actions.open(detail.getOptions().stream().filter(o->o instanceof PlayerActionOption).map(o->(PlayerActionOption)o).toList(),()->changed(detail));}
     public void openModule(String name) {
+        // QA scripts reach the catalog's pages with "settings page:HUD", "settings open:HUD/PvP" and "settings search:chroma".
+        if (name.startsWith("page:")) { category(name.substring(5)); return; }
+        if (name.startsWith("search:")) { setSearchQuery(name.substring(7)); return; }
+        if (name.startsWith("open:")) {
+            category(name.substring(5, name.indexOf('/')));
+            if (!ModuleGroups.isOpen(name.substring(5), false)) ModuleGroups.toggle(name.substring(5));
+            return;
+        }
         Module m = ModuleManager.getInstance().getModule(name);
         if (m == null) {
             for (Module mod : ModuleManager.getInstance().getModules()) {
@@ -2168,16 +2357,22 @@ public final class LadsSettingsScreen {
         filtered = ModuleManager.getInstance().getModules().stream()
             .filter(m -> !ModuleManager.getInstance().isHiddenModule(m.getName()))
             .filter(m -> ModuleSupport.isBuiltIn(m.getName()))
-            .filter(m -> currentCategory.equals("All") || currentCategory.equals("HUD") && m.getCategory() == Module.Category.HUD
-                || currentCategory.equals("Server") && m.getCategory() == Module.Category.SERVER
-                || currentCategory.equals("Hypixel") && m.getCategory() == Module.Category.HYPIXEL
-                || currentCategory.equals("Performance") && PERFORMANCE.contains(m.getName())
-                || currentCategory.equals("Gameplay") && m.getCategory() != Module.Category.HUD && m.getCategory() != Module.Category.SERVER
-                    && m.getCategory() != Module.Category.HYPIXEL && !PERFORMANCE.contains(m.getName()))
+            // Search looks everywhere: a player who types a name means that module, whatever page they are on.
+            .filter(m -> !query.isEmpty() || currentCategory.equals(ModuleGroups.HOME) || currentCategory.equals(ModuleGroups.ALL) || categoryOf(m).equals(currentCategory))
             .filter(m -> !enabledOnly || m.isEnabled())
             .filter(m -> !favoritesOnly || m.isFavorite())
             .filter(m -> (m.getName() + " " + m.getDescription()).toLowerCase(Locale.ROOT).contains(query) || soundMatch(m, query))
             .sorted(Comparator.comparing(Module::getName, String.CASE_INSENSITIVE_ORDER)).toList();
+        optionHits = query.length() < 2 ? List.of() : findOptions(query);
         ownershipRevision = ModuleSupport.revision(); filterDirty = false; return filtered;
+    }
+    /** The settings whose name holds the query, each opening its module's page there. Sound Volumes is left out: its row shows just the matching sliders. */
+    private List<Line> findOptions(String query) {
+        return ModuleManager.getInstance().getModules().stream()
+            .filter(m -> !ModuleManager.getInstance().isHiddenModule(m.getName()) && ModuleSupport.isBuiltIn(m.getName()) && !com.thelads.core.client.SoundVolumes.NAME.equals(m.getName()))
+            .filter(m -> (!enabledOnly || m.isEnabled()) && (!favoritesOnly || m.isFavorite()))
+            .flatMap(m -> optionsOf(m).stream().filter(o -> o.getName().toLowerCase(Locale.ROOT).contains(query)).map(o -> new Hit(m, o)))
+            .sorted(Comparator.comparing((Hit hit) -> hit.option().getName(), String.CASE_INSENSITIVE_ORDER).thenComparing(hit -> hit.module().getName(), String.CASE_INSENSITIVE_ORDER))
+            .limit(MAX_OPTION_HITS).map(hit -> (Line)hit).toList();
     }
 }

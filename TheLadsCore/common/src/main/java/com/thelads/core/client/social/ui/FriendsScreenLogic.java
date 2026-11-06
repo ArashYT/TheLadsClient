@@ -1173,11 +1173,13 @@ public final class FriendsScreenLogic {
                 commitNick();
                 return true;
             }
-            if ((keyCode == 259 || keyCode == 14) && !nickInput.isEmpty()) { // Backspace
-                nickInput = nickInput.substring(0, nickInput.length() - 1);
+            if (keyCode == 259 || keyCode == 14) { // Backspace
+                if (!nickInput.isEmpty()) {
+                    nickInput = nickInput.substring(0, nickInput.length() - 1);
+                }
                 return true;
             }
-            return false;
+            return true;
         }
 
         // Escape
@@ -1200,24 +1202,34 @@ public final class FriendsScreenLogic {
                 sendDm();
                 return true;
             }
-            if (typingAddInput && !addFriendInput.trim().isEmpty()) {
-                callbacks.addFriend(addFriendInput.trim());
-                addNotice = "Sending a request to " + addFriendInput.trim() + "...";
-                addFriendInput = "";
+            if (typingAddInput) {
+                if (!addFriendInput.trim().isEmpty()) {
+                    callbacks.addFriend(addFriendInput.trim());
+                    addNotice = "Sending a request to " + addFriendInput.trim() + "...";
+                    addFriendInput = "";
+                }
                 return true;
             }
         }
 
         // Backspace
         if (keyCode == 259 || keyCode == 14) { // GLFW_KEY_BACKSPACE or 1.8.9 backspace
-            if (typingDmInput && !dmInput.isEmpty()) {
-                dmInput = dmInput.substring(0, dmInput.length() - 1);
+            if (typingDmInput) {
+                if (!dmInput.isEmpty()) {
+                    dmInput = dmInput.substring(0, dmInput.length() - 1);
+                }
                 return true;
             }
-            if (typingAddInput && !addFriendInput.isEmpty()) {
-                addFriendInput = addFriendInput.substring(0, addFriendInput.length() - 1);
+            if (typingAddInput) {
+                if (!addFriendInput.isEmpty()) {
+                    addFriendInput = addFriendInput.substring(0, addFriendInput.length() - 1);
+                }
                 return true;
             }
+        }
+
+        if (isEditingText()) {
+            return true;
         }
 
         return false;

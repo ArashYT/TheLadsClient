@@ -1,12 +1,15 @@
 package com.thelads.core.v26_2.mixin;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.thelads.core.client.ServerListColumns;
 import com.thelads.core.client.ServerListDrag;
 import com.thelads.core.client.ServerListEntryUi;
 import com.thelads.core.client.gui.ListContextMenu;
+import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v26_2.adapter.GuiGraphicsExtractorLadsAdapter;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
 import net.minecraft.client.gui.screens.worldselection.WorldSelectionList;
@@ -31,6 +34,7 @@ public abstract class WorldListMenuMixin extends Screen {
     @Shadow private Button editButton;
     @Shadow private Button recreateButton;
     @Shadow private WorldSelectionList list;
+    @Unique private Button ladsColumnsButton;
     @Unique private final ListContextMenu ladsMenu = new ListContextMenu();
 
     protected WorldListMenuMixin() {
@@ -41,6 +45,27 @@ public abstract class WorldListMenuMixin extends Screen {
     @Inject(method = "init", at = @At("TAIL"))
     private void ladsCloseMenu(CallbackInfo ci) {
         ladsMenu.close();
+        ladsColumnsButton = addRenderableWidget(Button.builder(Component.empty(), b -> {
+            ServerListColumns.cycle(width);
+            if (list != null) list.setScrollAmount(list.scrollAmount());
+            repositionElements();
+            ladsUpdateColumns();
+        }).bounds(8, 8, 36, 20).build());
+        ladsUpdateColumns();
+    }
+
+    @Inject(method = "repositionElements", at = @At("RETURN"))
+    private void ladsAfterLayout(CallbackInfo ci) {
+        ladsUpdateColumns();
+    }
+
+    @Unique
+    private void ladsUpdateColumns() {
+        if (ladsColumnsButton == null) return;
+        int columns = ServerListColumns.fit(ServerListColumns.wanted(), width);
+        ladsColumnsButton.visible = ServerListColumns.most(width) > 1;
+        ladsColumnsButton.setMessage(Component.literal("    " + columns));
+        ladsColumnsButton.setTooltip(Tooltip.create(Component.literal("World list columns: " + columns + ". Click to change.")));
     }
 
     @Override
@@ -93,6 +118,10 @@ public abstract class WorldListMenuMixin extends Screen {
         }
         boolean open = ladsMenu.isOpen();
         super.extractRenderState(graphics, open ? -1 : mouseX, open ? -1 : mouseY, partialTick);
-        ladsMenu.render(new GuiGraphicsExtractorLadsAdapter(graphics, font), mouseX, mouseY);
+        var adapter = new GuiGraphicsExtractorLadsAdapter(graphics, font);
+        if (ladsColumnsButton != null && ladsColumnsButton.visible) {
+            TitleScreenTheme.icon(adapter, "columns", ladsColumnsButton.getX() + 6, ladsColumnsButton.getY() + 5, 10, 0xFFFFFFFF);
+        }
+        ladsMenu.render(adapter, mouseX, mouseY);
     }
 }

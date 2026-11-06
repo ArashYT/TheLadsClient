@@ -1,12 +1,15 @@
 package com.thelads.core.v1_20_1.mixin.menus;
 
+import com.thelads.core.client.ServerListColumns;
 import com.thelads.core.client.ServerListDrag;
 import com.thelads.core.client.ServerListEntryUi;
 import com.thelads.core.client.gui.ListContextMenu;
+import com.thelads.core.client.title.TitleScreenTheme;
 import com.thelads.core.v1_20_1.adapter.GuiGraphicsLadsAdapter1201;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
 import net.minecraft.client.gui.screens.worldselection.WorldSelectionList;
@@ -32,6 +35,7 @@ public abstract class WorldListMenuMixin extends Screen {
     @Shadow private Button renameButton;
     @Shadow private Button copyButton;
     @Shadow private WorldSelectionList list;
+    @Unique private Button ladsColumnsButton;
     @Unique private final ListContextMenu ladsMenu = new ListContextMenu();
 
     protected WorldListMenuMixin() {
@@ -42,6 +46,21 @@ public abstract class WorldListMenuMixin extends Screen {
     @Inject(method = "init()V", at = @At("TAIL"))
     private void ladsCloseMenu(CallbackInfo ci) {
         ladsMenu.close();
+        ladsColumnsButton = addRenderableWidget(Button.builder(Component.empty(), b -> {
+            ServerListColumns.cycle(width);
+            if (list != null) list.setScrollAmount(list.getScrollAmount());
+            ladsUpdateColumns();
+        }).bounds(8, 8, 36, 20).build());
+        ladsUpdateColumns();
+    }
+
+    @Unique
+    private void ladsUpdateColumns() {
+        if (ladsColumnsButton == null) return;
+        int columns = ServerListColumns.fit(ServerListColumns.wanted(), width);
+        ladsColumnsButton.visible = ServerListColumns.most(width) > 1;
+        ladsColumnsButton.setMessage(Component.literal("    " + columns));
+        ladsColumnsButton.setTooltip(Tooltip.create(Component.literal("World list columns: " + columns + ". Click to change.")));
     }
 
     @Override
@@ -95,10 +114,17 @@ public abstract class WorldListMenuMixin extends Screen {
 
     @Inject(method = "render", at = @At("RETURN"))
     private void ladsDrawMenu(GuiGraphics graphics, int mouseX, int mouseY, float partialTick, CallbackInfo ci) {
+        var adapter = new GuiGraphicsLadsAdapter1201(graphics, font);
+        if (ladsColumnsButton != null && ladsColumnsButton.visible) {
+            graphics.pose().pushPose();
+            graphics.pose().translate(0, 0, 1);
+            TitleScreenTheme.icon(adapter, "columns", ladsColumnsButton.getX() + 6, ladsColumnsButton.getY() + 5, 10, 0xFFFFFFFF);
+            graphics.pose().popPose();
+        }
         // The handlers above hid the mouse from the rows; the menu reads the real one.
         double scale = minecraft.getWindow().getGuiScale();
         int x = ServerListDrag.qaMouseX >= 0 ? ServerListDrag.qaMouseX : (int) (minecraft.mouseHandler.xpos() / scale);
         int y = ServerListDrag.qaMouseX >= 0 ? ServerListDrag.qaMouseY : (int) (minecraft.mouseHandler.ypos() / scale);
-        ladsMenu.render(new GuiGraphicsLadsAdapter1201(graphics, font), x, y);
+        ladsMenu.render(adapter, x, y);
     }
 }

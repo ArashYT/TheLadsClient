@@ -44,6 +44,11 @@ public final class FriendsScreen26 extends Screen {
     /** The shared screen this one draws and routes input to (QA drives it). */
     public FriendsScreenLogic ui() { return ui; }
 
+    @Override
+    public boolean isInputCaptured() {
+        return (!mojangView && ui.isEditingText()) || super.isInputCaptured();
+    }
+
     private void refreshMojangFriends() {
         mojangFriends.clear();
         Minecraft mc = Minecraft.getInstance();
@@ -150,7 +155,10 @@ public final class FriendsScreen26 extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (!mojangView && ui.mouseClicked(event.x(), event.y(), CommonInput.button(event.button()))) return true;
+        if (!mojangView && ui.mouseClicked(event.x(), event.y(), CommonInput.button(event.button()))) {
+            if (ui.isEditingText() && getFocused() != null) setFocused(null);
+            return true;
+        }
         return super.mouseClicked(event, doubleClick);
     }
 

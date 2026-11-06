@@ -29,7 +29,7 @@ class OldAnimationsModuleTest {
     @Test void registeredOffAsAGameplayModuleWithEveryOptionOn() {
         Module registered = ModuleManager.getInstance().getModule(OldAnimationsModule.NAME);
         assertInstanceOf(OldAnimationsModule.class, registered);
-        assertEquals("Gameplay", LadsSettingsScreen.categoryOf(registered));
+        assertEquals("Combat", LadsSettingsScreen.categoryOf(registered));
         var module = new OldAnimationsModule();
         assertFalse(module.isEnabled(), "visual modules start off, like LegacySwing");
         assertEquals(Feature.values().length + 1, module.getOptions().size(), "one toggle per option plus swing slider");
@@ -188,7 +188,7 @@ class OldAnimationsModuleTest {
             assertEquals("Unavailable", row.get("label").getAsString());
             assertFalse(row.get("detail").getAsString().isBlank(), "the launcher shows why");
             assertFalse(row.get("toggleable").getAsBoolean());
-            assertEquals("Gameplay", row.get("category").getAsString());
+            assertEquals("Combat", row.get("category").getAsString());
             ModuleSupport.registerBuiltIn(OldAnimationsModule.NAME); // what A2 to A4 do once their hooks work
             row = CoreCatalogExporter.toJson("1.4.0", "26.3", List.of(module)).getAsJsonArray("modules").get(0).getAsJsonObject();
             assertEquals("builtIn", row.get("support").getAsString());

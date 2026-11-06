@@ -100,30 +100,30 @@ class ModsMenuTest {
         var menu = new LadsSettingsScreen(); menu.setSearchQuery("Show your current FPS");
         var g = new Graphics(); g.render(menu); assertEquals(List.of("FPS"), menu.visibleModuleNames());
         var module = ModuleManager.getInstance().getModule("FPS"); var state = new ModuleState(module);
-        int[] settings = g.buttons.get("Settings");
+        var settings = menu.controlBounds("detail:FPS");
         ModuleSupport.registerExternal("FPS", "External FPS", "externalfps", true);
-        menu.mouseClicked(settings[0], settings[1], 0); g.render(menu);
-        assertTrue(menu.visibleModuleNames().isEmpty()); assertFalse(g.buttons.containsKey("Settings"));
+        menu.mouseClicked(settings.x() + 1, settings.y() + 1, 0); g.render(menu);
+        assertTrue(menu.visibleModuleNames().isEmpty()); assertNull(menu.controlBounds("detail:FPS"));
         assertEquals(state.enabled(), module.isEnabled()); assertEquals(state.opened(), module.getLastOpenedTime());
         ModuleSupport.registerBuiltIn("FPS");
         assertEquals(List.of("FPS"), menu.visibleModuleNames()); assertNull(ModuleSupport.getExternalId("FPS"));
     }
     @Test void openDetailsDismissesIfOwnershipChangesButUnrelatedRegistrationKeepsControlsWorking() {
         var menu = new LadsSettingsScreen(); menu.setSearchQuery("Show your current FPS");
-        var g = new Graphics(); g.render(menu); g.click(menu,"Settings"); g.render(menu);
+        var g = new Graphics(); g.render(menu); clickControl(menu,"detail:FPS"); g.render(menu);
         ModuleSupport.registerExternal("AppleSkin", "AppleSkin", "appleskin", true);
         g.render(menu); boolean before = ModuleManager.getInstance().getModule("FPS").isEnabled();
         g.click(menu,before ? "ON" : "OFF");
         assertEquals(!before,ModuleManager.getInstance().getModule("FPS").isEnabled());
         ModuleSupport.registerUnavailable("FPS", "Native hook is no longer active"); g.render(menu);
-        assertTrue(menu.visibleModuleNames().isEmpty()); assertFalse(g.buttons.containsKey("< Modules"));
+        assertTrue(menu.visibleModuleNames().isEmpty()); assertFalse(g.buttons.containsKey("Modules"));
     }
     @Test void tinyWindowsKeepSettingsAndOptionsUsable() {
         ModuleSupport.registerBuiltIn("FPS");
         for (int[] size:new int[][]{{320,180},{427,240},{640,360},{960,540}}) {
             var menu=new LadsSettingsScreen(); menu.setSearchQuery("Show your current FPS");
             var g=new Graphics(); g.width=size[0]; g.height=size[1]; g.render(menu);
-            g.click(menu,"Settings"); g.render(menu);
+            clickControl(menu,"detail:FPS"); g.render(menu);
             assertTrue(g.drawCalls.stream().anyMatch(s->s.contains("FPS")));
             assertTrue(g.buttons.containsKey("ON")||g.buttons.containsKey("OFF"));
             assertTrue(g.buttons.containsKey("100"),"Size slider is reachable at "+Arrays.toString(size));
@@ -145,12 +145,12 @@ class ModsMenuTest {
         }
         var menu = new LadsSettingsScreen(); var g = new Graphics(); g.render(menu);
         g.click(menu,"Favorites"); g.render(menu); g.click(menu,"Enabled");
-        for (String category : List.of("All", "HUD", "Gameplay", "Performance", "Server")) {
+        for (String category : List.of("All", "HUD", "Combat", "Performance", "Server")) {
             g.render(menu); g.click(menu,category);
             for (String name : names) {
                 menu.setSearchQuery(name); g.render(menu);
                 assertTrue(menu.visibleModuleNames().isEmpty(),category+" / "+name);
-                assertFalse(g.buttons.containsKey("Settings"));
+                assertNull(menu.controlBounds("detail:"+name));
             }
             menu.setSearchQuery("");
             assertTrue(menu.getFilteredModules().stream().allMatch(m -> ModuleSupport.isBuiltIn(m.getName())));
@@ -164,11 +164,90 @@ class ModsMenuTest {
         }
     }
     @Test void scrollingStaysBoundedAndCategoryChangeResetsIt() {
-        var menu=new LadsSettingsScreen(); var g=new Graphics();g.height=240;g.render(menu);
+        var menu=new LadsSettingsScreen(); var g=new Graphics();g.height=240;menu.setSearchQuery("e");g.render(menu);
         for(int i=0;i<100;i++)menu.keyPressed(267,0);
         int end=menu.getScrollOffset(); assertTrue(end>0);menu.keyPressed(267,0);assertEquals(end,menu.getScrollOffset());
         g.render(menu);g.click(menu,"HUD");assertEquals(0,menu.getScrollOffset());
         assertTrue(menu.getFilteredModules().stream().allMatch(m->m.getCategory()==com.thelads.core.config.Module.Category.HUD));
+    }
+    private static void clickControl(LadsSettingsScreen menu,String id) {
+        var r=menu.controlBounds(id); assertNotNull(r,"Missing control: "+id);
+        assertTrue(menu.mouseClicked(r.x()+r.width()/2.0,r.y()+r.height()/2.0,0));
+    }
+    @Test void homeOpensFirstWithFavoritesThenRecentThenPopular() {
+        for (Module m:ModuleManager.getInstance().getModules()) { m.setFavorite(false); m.setLastOpenedTime(0); }
+        var menu=new LadsSettingsScreen(); var g=new Graphics(); g.render(menu);
+        assertEquals("Home",menu.getCurrentCategory());
+        assertTrue(g.drawCalls.stream().anyMatch(s->s.contains("POPULAR")),"nothing starred or used yet");
+        assertNotNull(menu.controlBounds("card:FPS"),"a popular module");
+        assertNull(menu.controlBounds("card:Memory"),"Home is not the whole list");
+        ModuleManager.getInstance().getModule("Memory").setFavorite(true);
+        ModuleManager.getInstance().getModule("Speed").setLastOpenedTime(5);
+        menu.refreshCatalog(); g.render(menu);
+        assertTrue(g.drawCalls.stream().anyMatch(s->s.contains("FAVORITES"))); assertTrue(g.drawCalls.stream().anyMatch(s->s.contains("RECENTLY USED")));
+        assertFalse(g.drawCalls.stream().anyMatch(s->s.contains("POPULAR")));
+        assertNotNull(menu.controlBounds("card:Memory")); assertNotNull(menu.controlBounds("card:Speed"));
+    }
+    @Test void aLongCategoryStartsFoldedAndAGroupOpensOnClick() {
+        var menu=new LadsSettingsScreen(); var g=new Graphics(); g.render(menu);
+        clickControl(menu,"category:HUD"); g.render(menu);
+        assertNull(menu.controlBounds("card:FPS"),"16 modules start closed");
+        String key="HUD/System & Server";
+        try {
+            clickControl(menu,"group:"+key); g.render(menu);
+            assertNotNull(menu.controlBounds("card:FPS"));
+            assertTrue(g.drawCalls.stream().anyMatch(s->s.contains(" on")),"the group header counts what is on");
+            menu.close();
+            assertTrue(Files.exists(temporary.resolve("config.json")),"the fold is saved");
+            assertTrue(com.thelads.core.client.gui.ModuleGroups.flipped().contains(key));
+        } finally { com.thelads.core.client.gui.ModuleGroups.setFlipped(List.of()); }
+    }
+    @Test void searchFindsASettingAcrossCategoriesAndOpensItsPageThere() {
+        var menu=new LadsSettingsScreen(); var g=new Graphics(); g.render(menu);
+        clickControl(menu,"category:Server"); g.render(menu);
+        menu.setSearchQuery("Format"); g.render(menu);
+        assertTrue(menu.visibleModuleNames().isEmpty()||!menu.visibleModuleNames().contains("Speed"));
+        assertTrue(g.drawCalls.stream().anyMatch(s->s.contains("SETTINGS")));
+        clickControl(menu,"result:Coordinates/Format"); g.render(menu); g.render(menu);
+        assertEquals("option:Format",menu.getFocusId());
+        assertTrue(menu.revealed("option:Format"),"the page scrolled to the setting");
+        assertTrue(g.drawCalls.stream().anyMatch(s->s.contains("Coordinates")));
+    }
+    @Test void aCategoryClickLeavesTheSearch() {
+        var menu=new LadsSettingsScreen(); var g=new Graphics(); menu.setSearchQuery("Coordinates"); g.render(menu);
+        clickControl(menu,"category:HUD");
+        assertEquals("",menu.getSearchQuery());
+    }
+    @Test void aBundleSharesOneRowSwitchesTogetherAndHasATabForEachModule() {
+        ModuleSupport.registerBuiltIn("Hit Color","Damage Tint","Damage Tilt");
+        var names=List.of("Hit Color","Damage Tint","Damage Tilt");
+        var snapshots=names.stream().map(n->new ModuleState(ModuleManager.getInstance().getModule(n))).toList();
+        try {
+            for(String n:names) ModuleManager.getInstance().getModule(n).setEnabled(false);
+            var menu=new LadsSettingsScreen(); var g=new Graphics(); g.render(menu);
+            clickControl(menu,"category:Combat"); g.render(menu);
+            assertNotNull(menu.controlBounds("card:Damage Effects")); assertNull(menu.controlBounds("card:Hit Color"));
+            clickControl(menu,"card:Damage Effects");
+            for(String n:names) assertTrue(ModuleManager.getInstance().getModule(n).isEnabled(),n);
+            g.render(menu); clickControl(menu,"card:Damage Effects");
+            for(String n:names) assertFalse(ModuleManager.getInstance().getModule(n).isEnabled(),n);
+            g.render(menu); clickControl(menu,"detail:Damage Effects"); g.render(menu);
+            for(String n:names) assertNotNull(menu.controlBounds("tab:"+n),n);
+            clickControl(menu,"tab:Damage Tint"); g.render(menu);
+            assertTrue(g.drawCalls.stream().anyMatch(s->s.contains("heartbeat")),"the tab opens that module's page");
+            menu.setSearchQuery("Hit Color"); assertEquals(List.of("Hit Color"),menu.visibleModuleNames());
+        } finally { snapshots.forEach(ModuleState::restore); }
+    }
+    @Test void theTitleScreenHasSettingsButNoSwitch() {
+        ModuleSupport.registerBuiltIn("TitleScreen");
+        var menu=new LadsSettingsScreen(); var g=new Graphics(); g.render(menu);
+        clickControl(menu,"category:Client"); g.render(menu);
+        assertTrue(g.drawCalls.stream().anyMatch(s->s.contains("Title Screen")));
+        clickControl(menu,"card:TitleScreen"); g.render(menu);
+        assertNull(menu.controlBounds("toggle:detail"),"it cannot be switched off");
+        assertNotNull(menu.controlBounds("option:Logo Scale"));
+        assertTrue(ModuleManager.getInstance().getModule("TitleScreen").isEnabled());
+        assertNull(ModuleManager.getInstance().getModule("Title Scale"),"Title Scale moved into its settings");
     }
     @Test void numericConfigurationCannotInjectNaNOrOutOfBounds() {
         var d=new DoubleOption("Size",1,0,2); d.set(Double.NaN); assertEquals(1,d.get());

@@ -114,6 +114,7 @@
     "GuiMultiplayerMixin189",
     "ServerListColumnsMixin189",
     "ServerListPinMixin189",
+    "WorldListColumnsMixin189",
     "WorldListMenuMixin189",
     "GuiScreenInputInvoker189",
     "GuiScreenButtonsAccessor",

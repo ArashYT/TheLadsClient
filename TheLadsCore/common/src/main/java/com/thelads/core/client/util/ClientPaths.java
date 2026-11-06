@@ -20,11 +20,13 @@ public class ClientPaths {
     private static Path testWorkerFallbackDir = null;
     private static volatile Path cachedConfigFile = null;
     private static volatile Path cachedProfilesFile = null;
+    private static volatile Path cachedWorldOrderFile = null;
 
     public static synchronized void setBaseDir(Path path) {
         customBaseDir = path;
         cachedConfigFile = null;
         cachedProfilesFile = null;
+        cachedWorldOrderFile = null;
     }
 
     private static boolean isGradleTestWorker() {
@@ -327,6 +329,16 @@ public class ClientPaths {
         }
         File resolved = resolveAndSeedSharedFile("thelads_profiles.json");
         cachedProfilesFile = resolved.toPath();
+        return resolved;
+    }
+
+    public static File getWorldOrderFile() {
+        Path cached = cachedWorldOrderFile;
+        if (cached != null) {
+            return cached.toFile();
+        }
+        File resolved = resolveAndSeedSharedFile("thelads_world_order.json");
+        cachedWorldOrderFile = resolved.toPath();
         return resolved;
     }
 

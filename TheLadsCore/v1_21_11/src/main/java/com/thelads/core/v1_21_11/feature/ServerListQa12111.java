@@ -120,6 +120,38 @@ final class ServerListQa12111 {
                 click(mc, row.getContentX() + 8, row.getContentY() + (s[3].equals("up") ? 8 : 24), InputConstants.MOUSE_BUTTON_LEFT);
             }
             case "worlds" -> mc.setScreen(new SelectWorldScreen(screen(mc)));
+            case "seedworlds" -> com.thelads.core.client.qa.QaWorldFixtures.seed(
+                mc.getLevelSource().getBaseDir(), SharedConstants.getCurrentVersion().dataVersion().version(), SharedConstants.getCurrentVersion().name());
+            case "addnewworld" -> com.thelads.core.client.qa.QaWorldFixtures.addExtraUnsavedWorld(
+                mc.getLevelSource().getBaseDir(), SharedConstants.getCurrentVersion().dataVersion().version(), SharedConstants.getCurrentVersion().name());
+            case "rmnewworld" -> com.thelads.core.client.qa.QaWorldFixtures.removeExtraUnsavedWorld(mc.getLevelSource().getBaseDir());
+            case "restoreworlds" -> com.thelads.core.client.qa.QaWorldFixtures.restore(mc.getLevelSource().getBaseDir());
+            case "assertcols" -> {
+                int shown = ServerListColumns.fit(ServerListColumns.wanted(), screen(mc).width);
+                int expected = Integer.parseInt(s[2]);
+                if (shown != expected) throw new IllegalStateException("Expected columns=" + expected + " got " + shown);
+            }
+            case "assertworlds" -> {
+                WorldSelectionList wlist = (WorldSelectionList) list(mc);
+                List<String> ids = new ArrayList<>();
+                for (var row : wlist.children()) {
+                    if (row instanceof WorldSelectionList.WorldListEntry we) {
+                        ids.add(we.getLevelSummary().getLevelId());
+                    }
+                }
+                com.thelads.core.client.qa.QaWorldFixtures.assertOrder(ids, java.util.Arrays.copyOfRange(s, 2, s.length), mc.getLevelSource().getBaseDir());
+                LOGGER.info("Lads 1.21.11 qa worlds order verified: {}", ids);
+            }
+            case "assertsavedworlds" -> com.thelads.core.client.qa.QaWorldFixtures.assertSavedFileEquals(java.util.Arrays.copyOfRange(s, 2, s.length));
+            case "worldfilter" -> {
+                String q = s.length > 2 ? s[2] : "";
+                for (var child : screen(mc).children()) {
+                    if (child instanceof net.minecraft.client.gui.components.EditBox box) {
+                        box.setValue(q);
+                        break;
+                    }
+                }
+            }
             case "badworld" -> { // a world vanilla disables: its level.dat can't be read; and a good copy of the QA world's beside it
                 Path base = mc.getLevelSource().getBaseDir();
                 Files.createDirectories(base.resolve("QA Broken"));

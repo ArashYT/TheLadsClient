@@ -215,8 +215,9 @@ public abstract class TitleScreenMixin extends Screen {
             }
         }
         ladsTitleWidgets.sort(Comparator.comparingInt(this::ladsButtonOrder));
-        ladsTitleLayout = TitleScreenTheme.layout(targetW, targetH, ladsTitleWidgets.size(), false);
-        ladsNoirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, ladsTitleWidgets.size(), ladsTitleWidgets.indexOf(ladsNetworkButton));
+        int networkIndex = ladsTitleWidgets.indexOf(ladsNetworkButton);
+        ladsTitleLayout = TitleScreenTheme.layout(targetW, targetH, ladsTitleWidgets.size(), networkIndex);
+        ladsNoirLayout = legacy ? null : TitleNoir.layout(targetW, targetH, ladsTitleWidgets.size(), networkIndex);
         ladsLayoutWidth = targetW;
         ladsLayoutHeight = targetH;
 
@@ -319,7 +320,7 @@ public abstract class TitleScreenMixin extends Screen {
         int scaledMouseX = (int) Math.round(mouseX / matrixScale);
         int scaledMouseY = (int) Math.round(mouseY / matrixScale);
 
-        if (ladsNoirLayout != null) panorama.render(reducedMotion ? 0.0f : minecraft.getDeltaFrameTime(), 1.0f);
+        if (ladsNoirLayout != null && TitleScreenModule.panorama()) panorama.render(reducedMotion ? 0.0f : minecraft.getDeltaFrameTime(), 1.0f);
         graphics.pose().pushPose();
         try {
             graphics.pose().scale(matrixScale, matrixScale, 1.0f);
@@ -328,7 +329,7 @@ public abstract class TitleScreenMixin extends Screen {
             TitleScreenTheme.Rect[] box = new TitleScreenTheme.Rect[1];
             String version = SharedConstants.getCurrentVersion().getName() + (minecraft.isDemo() ? " Demo" : "");
             adapter.managed(() -> box[0] = ladsNoirLayout != null
-                ? TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, true)
+                ? TitleNoir.renderBackdrop(adapter, ladsNoirLayout, minecraft.getUser().getName(), version, true, ladsAnimationSeconds)
                 : TitleScreenTheme.renderBackground(adapter, ladsTitleLayout, minecraft.getUser().getName(), version, false, ladsAnimationSeconds, true));
             TitleScreenTheme.Rect switchBox = box[0];
             if (switchBox != null) {

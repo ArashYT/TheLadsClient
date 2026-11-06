@@ -32,6 +32,11 @@ public class DraggableHudScreen26 extends Screen {
     }
 
     @Override
+    public boolean isInputCaptured() {
+        return ui.isEditingText() || super.isInputCaptured();
+    }
+
+    @Override
     public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta) {}
 
     @Override

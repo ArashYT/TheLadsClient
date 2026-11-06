@@ -53,8 +53,12 @@ public class TheLadsCore189 {
 
     private static final boolean VERIFY_189_CORE = Boolean.getBoolean("thelads.verify189Core");
     private static final boolean VERIFY_ADD_SERVER = Boolean.getBoolean("thelads.verifyAddServer");
-    private static String windowTitle = "The Lads Client";
-    private static int titleTicks;
+    private static final com.thelads.core.client.WindowTitle.Updater WINDOW_TITLE =
+        new com.thelads.core.client.WindowTitle.Updater("1.8.9", title -> {
+            try {
+                org.lwjgl.opengl.Display.setTitle(title);
+            } catch (Throwable ignored) {}
+        });
 
     public TheLadsCore189() {
         // JInput's jar is sealed: LaunchClassLoader defining its classes logs "has a security seal ... not secure" once per
@@ -75,8 +79,8 @@ public class TheLadsCore189 {
         LOGGER.info("Initializing TheLadsCore for Minecraft 1.8.9...");
         try {
             net.minecraftforge.common.ForgeModContainer.disableVersionCheck = true;
-            windowTitle = com.thelads.core.LadsVersion.clientName();
-            org.lwjgl.opengl.Display.setTitle(windowTitle);
+            Minecraft mc = Minecraft.getMinecraft();
+            refreshWindowTitle(mc, mc == null ? null : mc.currentScreen);
         } catch (Throwable ignored) {}
         MinecraftForge.EVENT_BUS.register(new com.thelads.core.v1_8_9.feature.PylonWindow189.OptiFineDesktopMode());
         LadsGameBridge.set(new VanillaGameBridge189());
@@ -173,7 +177,7 @@ public class TheLadsCore189 {
     public static final String[] GAMEPLAY_MODULES = {
         "FarBlockEntities", "EnhancedTooltips", "Clumps", "SignalLoss", "AppleSkin", BetterResolutionModule.NAME, "BetterScreenshots", "EnhancedToolbars",
         "Fullbright", com.thelads.core.modules.ToggleSprintModule.NAME, "Zoom", "LegacySwing",
-        "VerticalBobbing", com.thelads.core.client.DamageTilt.MODULE, "ClientTools", "SmoothHotbar", "TitleScreen", "Title Scale", "ResourcePacks",
+        "VerticalBobbing", com.thelads.core.client.DamageTilt.MODULE, "ClientTools", "SmoothHotbar", "TitleScreen", "ResourcePacks",
         "RawInput", "BorderlessFullscreen",
         // DynamicFPS189 through MinecraftMixin's frame limit and render skip and SoundHandlerAccessor189 (1.9.11; was UnfocusedFpsCap).
         com.thelads.core.v1_8_9.feature.DynamicFPS189.NAME,
@@ -303,14 +307,7 @@ public class TheLadsCore189 {
         com.thelads.core.v1_8_9.feature.DynamicFPS189.tick(mc);
         com.thelads.core.v1_8_9.feature.Minimap189.tick();
 
-        if (titleTicks++ % 40 == 0) {
-            try {
-                String title = org.lwjgl.opengl.Display.getTitle();
-                if (title == null || !title.startsWith(windowTitle)) {
-                    org.lwjgl.opengl.Display.setTitle(windowTitle);
-                }
-            } catch (Throwable ignored) {}
-        }
+        refreshWindowTitle(mc, mc.currentScreen);
 
         RawMouse189.install(mc);
         TabTweaks189.refresh();
@@ -338,5 +335,27 @@ public class TheLadsCore189 {
     public void open(net.minecraftforge.client.event.GuiOpenEvent event) {
         event.gui = com.thelads.core.v1_8_9.gui.ControlsScreen189.replace(event.gui);
         event.gui = com.thelads.core.v1_8_9.gui.SkinCustomizationScreen189.replace(event.gui);
+        if (!event.isCanceled()) {
+            refreshWindowTitle(Minecraft.getMinecraft(), event.gui);
+        }
+    }
+
+    private static void refreshWindowTitle(Minecraft mc, net.minecraft.client.gui.GuiScreen screen) {
+        boolean inWorld = mc != null && mc.theWorld != null;
+        boolean localWorld = inWorld && (mc.getIntegratedServer() != null || mc.isSingleplayer());
+        net.minecraft.client.multiplayer.ServerData remote = mc == null ? null : mc.getCurrentServerData();
+        com.thelads.core.client.WindowTitle.Menu menu;
+        if (screen == null) {
+            menu = com.thelads.core.client.WindowTitle.Menu.NONE;
+        } else if (screen instanceof net.minecraft.client.gui.GuiMainMenu) {
+            menu = com.thelads.core.client.WindowTitle.Menu.TITLE;
+        } else if (screen instanceof net.minecraft.client.gui.GuiSelectWorld) {
+            menu = com.thelads.core.client.WindowTitle.Menu.WORLD_SELECT;
+        } else if (screen instanceof net.minecraft.client.gui.GuiMultiplayer) {
+            menu = com.thelads.core.client.WindowTitle.Menu.SERVER_LIST;
+        } else {
+            menu = com.thelads.core.client.WindowTitle.Menu.OTHER;
+        }
+        WINDOW_TITLE.update(inWorld, localWorld, remote == null ? null : remote.serverIP, menu);
     }
 }

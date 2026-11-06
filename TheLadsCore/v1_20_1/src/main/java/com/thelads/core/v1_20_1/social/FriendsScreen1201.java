@@ -18,6 +18,14 @@ public final class FriendsScreen1201 extends Screen {
         this.ui = FriendsScreenLogic.social(() -> Minecraft.getInstance().setScreen(parent));
     }
 
+    public FriendsScreenLogic ui() {
+        return ui;
+    }
+
+    public boolean isEditingText() {
+        return ui.isEditingText();
+    }
+
     @Override
     public void render(GuiGraphics g, int mx, int my, float delta) {
         ui.render(new GuiGraphicsLadsAdapter1201(g, font), mx, my);

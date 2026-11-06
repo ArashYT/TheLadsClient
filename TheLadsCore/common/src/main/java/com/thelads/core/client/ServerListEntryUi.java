@@ -15,6 +15,9 @@ public final class ServerListEntryUi {
     public static final String CHANGE_VERSION = "Change version for this server and reconnect";
     private static final String[] BUTTON_LABELS = {CHANGE_VERSION, "Change version & reconnect", "Change version"};
     public static final int VERSION_MUTED = 0xFF8A8A8A, VERSION_RED = 0xFFFF5555;
+    /** Flat yellow star icon shown beside the pinned server's name. */
+    public static final int PIN_STAR_COLOR = 0xFFFFD43B;
+    public static final int PIN_STAR_SIZE = 9, PIN_STAR_GAP = 4, PIN_STAR_ADVANCE = PIN_STAR_SIZE + PIN_STAR_GAP;
     /** A row's icon and the space after it. */
     public static final int TEXT_X = 35;
     /** Ping bars: the icon and the space around it, at the row's right edge. */
@@ -41,10 +44,31 @@ public final class ServerListEntryUi {
      * and ping. When both do not fit the version gets what the name leaves, at least 2/5 of the room, so a long name cannot hide it.
      */
     public static int[] firstLine(int contentWidth, int nameWidth, int versionWidth, int statusWidth) {
-        int room = Math.max(0, contentWidth - TEXT_X - PING - statusWidth - 2 * SPACE);
+        return firstLine(contentWidth, nameWidth, versionWidth, statusWidth, false);
+    }
+
+    /** Same as {@link #firstLine(int, int, int, int)}, reserving {@link #PIN_STAR_ADVANCE} beside the name when {@code pinned} is true. */
+    public static int[] firstLine(int contentWidth, int nameWidth, int versionWidth, int statusWidth, boolean pinned) {
+        int star = pinned ? PIN_STAR_ADVANCE : 0;
+        int room = Math.max(0, contentWidth - TEXT_X - PING - statusWidth - 2 * SPACE - star);
         if (nameWidth + versionWidth <= room) return new int[] {nameWidth, versionWidth};
-        int version = Math.min(versionWidth, Math.max(room - nameWidth, room * 2 / 5));
-        return new int[] {room - version, version};
+        int version = Math.min(room, Math.min(versionWidth, Math.max(room - nameWidth, (room + star) * 2 / 5)));
+        return new int[] {Math.max(0, room - version), version};
+    }
+
+    /** Left X of the pinned server's star icon right after the drawn name. */
+    public static int pinStarX(int rowLeft, int clippedNameWidth) {
+        return rowLeft + TEXT_X + clippedNameWidth + PIN_STAR_GAP;
+    }
+
+    /** Draws the flat yellow Flaticon star beside a pinned server's name. */
+    public static void drawPinStar(LadsGraphics g, int x, int y) {
+        drawPinStar(g, x, y, 0xFF);
+    }
+
+    public static void drawPinStar(LadsGraphics g, int x, int y, int alpha) {
+        int color = ((alpha & 0xFF) << 24) | (PIN_STAR_COLOR & 0xFFFFFF);
+        TitleScreenTheme.icon(g, "star", x, y, PIN_STAR_SIZE, color);
     }
 
     /** The right edge of the version, relative to the row's content: left of the player count. */

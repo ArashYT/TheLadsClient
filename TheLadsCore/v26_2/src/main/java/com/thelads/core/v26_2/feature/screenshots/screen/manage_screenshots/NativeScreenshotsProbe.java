@@ -85,7 +85,7 @@ public final class NativeScreenshotsProbe {
         config.put(ScreenshotViewerOptions.THUMBNAIL_FOLDER, fixtures.toFile());
         config.put(ScreenshotViewerOptions.COMPRESSION_RATIO, CompressionRatio.QUARTER);
         config.put(ScreenshotViewerOptions.PROMPT_WHEN_DELETING_SCREENSHOT, true);
-        config.put(ScreenshotViewerOptions.DEFAULT_LIST_ORDER, ScreenshotListOrder.ASCENDING);
+        check(ScreenshotViewerOptions.DEFAULT_LIST_ORDER.defaultValue() == ScreenshotListOrder.DESCENDING, "default screenshot list order is newest first"); config.put(ScreenshotViewerOptions.DEFAULT_LIST_ORDER, ScreenshotListOrder.ASCENDING);
         config.put(ScreenshotViewerOptions.INITIAL_SCREENSHOT_AMOUNT_PER_ROW, 4);
         check(ScreenshotViewer.getInstance().getOpenScreenshotsScreenKey().getDefaultKey().getValue() == 299, "default F10 key mapping");
         var keyPress = net.minecraft.client.KeyboardHandler.class.getDeclaredMethod("keyPress", long.class, int.class, KeyEvent.class);

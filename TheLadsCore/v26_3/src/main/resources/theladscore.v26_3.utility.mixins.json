@@ -13,6 +13,8 @@
     "GuardsMixin26",
     "PackModelAccessor26",
     "PackScreenMixin26",
-    "ServerListDragMixin26"
+    "ServerListDragMixin26",
+    "WorldListEntryWidgetsAccessor",
+    "WorldListDragMixin26"
   ]
 }

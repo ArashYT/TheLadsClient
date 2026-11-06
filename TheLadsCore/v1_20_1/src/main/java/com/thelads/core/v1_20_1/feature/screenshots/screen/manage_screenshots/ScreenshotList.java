@@ -74,7 +74,7 @@ final class ScreenshotList
       this.height = height;
       this.scrollSpeedFactor = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.SCREEN_SCROLL_SPEED, 10);
       this.screenshotsPerRow = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.INITIAL_SCREENSHOT_AMOUNT_PER_ROW, 4);
-      this.invertedOrder = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.DEFAULT_LIST_ORDER, ScreenshotListOrder.ASCENDING).isInverted();
+      this.invertedOrder = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.DEFAULT_LIST_ORDER, ScreenshotListOrder.DESCENDING).isInverted();
       this.screenshotsFolder = ManageScreenshotsScreen.CONFIG.getOrElseGet(ScreenshotViewerOptions.SCREENSHOTS_FOLDER, ScreenshotViewerUtils::getVanillaScreenshotsFolder);
       this.invertedScroll = ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.INVERT_ZOOM_DIRECTION, false);
       this.namesHidden = ManageScreenshotsScreen.CONFIG
@@ -102,7 +102,7 @@ final class ScreenshotList
          this.screenshotsFolder = currentScreenshotsFolder;
          this.init();
       } else if (this.invertedOrder
-         != ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.DEFAULT_LIST_ORDER, ScreenshotListOrder.ASCENDING).isInverted()) {
+         != ManageScreenshotsScreen.CONFIG.getOrFallback(ScreenshotViewerOptions.DEFAULT_LIST_ORDER, ScreenshotListOrder.DESCENDING).isInverted()) {
          this.invertOrder();
       } else {
          this.updateChildren(true);

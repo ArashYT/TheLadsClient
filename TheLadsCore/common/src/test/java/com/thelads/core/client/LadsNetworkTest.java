@@ -57,9 +57,10 @@ class LadsNetworkTest {
 
     @Test
     void pauseButtonIsNetworkAwayAndHubOnlyOnTheNetworkWithAHub() {
-        assertEquals("Network", LadsNetwork.pauseLabel(NO_TREE), "in singleplayer");
+        assertEquals("The Lads Network", LadsNetwork.TITLE_LABEL);
+        assertEquals("The Lads Network", LadsNetwork.pauseLabel(NO_TREE), "in singleplayer");
         address = "mc.hypixel.net";
-        assertEquals("Network", LadsNetwork.pauseLabel(NO_TREE), "on another server");
+        assertEquals("The Lads Network", LadsNetwork.pauseLabel(NO_TREE), "on another server");
         address = "mc.arashyt.ca";
         assertNull(LadsNetwork.pauseLabel(NO_TREE), "nothing to hop to: no hello field, no tree command");
         assertEquals("Hub", LadsNetwork.pauseLabel("lobby"::equals), "the plugin not updated yet: the command tree still knows");

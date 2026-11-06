@@ -171,9 +171,6 @@ public class ModuleManager {
         cps.addOption(new DropdownOption("Show", 0, "Both", "Left only", "Right only"));
         cps.addOption(new BoolOption("Show label", true));
 
-        Module titleScale = new TitleScaleModule();
-        titleScale.setEnabled(true);
-        register(titleScale);
         registerHidden(new ExordiumModule(), Module.Category.MECHANIC);
 
         TexturePacksModule tp = new TexturePacksModule();
@@ -254,7 +251,7 @@ public class ModuleManager {
         dynamicFps.setEnabled(true);
         register(dynamicFps, Module.Category.MECHANIC);
         register(new ToggleNametagsModule(), Module.Category.MECHANIC);
-        registerHidden(new TitleScreenModule());
+        register(new TitleScreenModule());
         register(new PaperdollModule());
         register(new KillBannerModule(), Module.Category.MECHANIC);
         register(new ComboSoundsModule(), Module.Category.MECHANIC);
@@ -667,7 +664,7 @@ public class ModuleManager {
         register(new Module(com.thelads.core.client.EnderChestPeek.NAME,
             "Hover an ender chest item to see what your ender chest held when you last closed it on this server."), Module.Category.MECHANIC);
         Module drag = new Module(com.thelads.core.client.ServerListDrag.NAME,
-            "Drag saved servers up and down the multiplayer list to reorder them; the new order is saved.");
+            "Drag saved servers and singleplayer worlds to reorder them, or arrange both lists into side-by-side columns; the new order is saved.");
         drag.setEnabled(true);
         drag.addOption(new SliderOption(com.thelads.core.client.ServerListColumns.OPTION, 1, 1, com.thelads.core.client.ServerListColumns.MAX_COLUMNS, 1));
         register(drag, Module.Category.MECHANIC);

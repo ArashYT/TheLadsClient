@@ -136,6 +136,25 @@ class ScreenshotSourcesTest {
         var roots=assertDoesNotThrow(()->ScreenshotSources.discover(temp.resolve("shared"),temp.resolve("game"),Map.of("APPDATA","bad\0path","LOCALAPPDATA","also\0bad"),temp.resolve("home")));
         assertEquals(temp.resolve("shared/screenshots"),roots.getFirst().path());
     }
+    @Test void sortsScreenshotsByModifiedTimeNewestFirstByDefaultAndPreservesInvertedOrder() throws Exception {
+        Path olderNamedLater = image("sort/zzz_older.png");
+        Path newerNamedEarlier = image("sort/aaa_newer.png");
+        Path middle = image("sort/mmm_middle.png");
+        Files.setLastModifiedTime(olderNamedLater, java.nio.file.attribute.FileTime.fromMillis(1_700_000_001_000L));
+        Files.setLastModifiedTime(middle, java.nio.file.attribute.FileTime.fromMillis(1_700_000_002_000L));
+        Files.setLastModifiedTime(newerNamedEarlier, java.nio.file.attribute.FileTime.fromMillis(1_700_000_003_000L));
+
+        List<java.io.File> input = List.of(olderNamedLater.toFile(), newerNamedEarlier.toFile(), middle.toFile());
+        assertEquals(
+            List.of(newerNamedEarlier.toFile(), middle.toFile(), olderNamedLater.toFile()),
+            ScreenshotSources.sortByModifiedTime(input, true)
+        );
+        assertEquals(
+            List.of(olderNamedLater.toFile(), middle.toFile(), newerNamedEarlier.toFile()),
+            ScreenshotSources.sortByModifiedTime(input, false)
+        );
+    }
+
     @Test void addingFolderPreservesMalformedExistingConfig() throws Exception {
         Path shared=temp.resolve("shared"),folder=temp.resolve("captures");Files.createDirectories(folder);Files.createDirectories(shared.resolve("config"));
         Path config=ScreenshotSources.configFile(shared);

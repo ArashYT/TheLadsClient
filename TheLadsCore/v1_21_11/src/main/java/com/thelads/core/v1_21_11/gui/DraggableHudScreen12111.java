@@ -30,6 +30,10 @@ public class DraggableHudScreen12111 extends Screen {
         });
     }
 
+    public DraggableHudScreen ui() {
+        return ui;
+    }
+
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float delta) {}
 

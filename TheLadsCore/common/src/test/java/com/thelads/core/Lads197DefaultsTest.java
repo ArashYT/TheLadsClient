@@ -24,7 +24,7 @@ class Lads197DefaultsTest {
         "Async", "BetterStats", "Cosmetics", "DisableNarrator", "EntityCulling", "Exordium", "FerriteCore",
         "Flashback Settings", "Jade", "Jasione", "JEI (Just Enough Items)", "Lithium",
         "ModernAdvancements", "NotEnoughAnimations", "Resourcify", "ScalableLux",
-        "TitleScreen", "XaeroMinimap", "XaeroWorldmap"
+        "XaeroMinimap", "XaeroWorldmap"
     );
 
     private static final Set<String> DEFAULT_ENABLED_VISIBLE = Set.of(
@@ -37,7 +37,7 @@ class Lads197DefaultsTest {
         "Minimap", "MouseTweaks", "Nametags", com.thelads.core.client.DamageTilt.MODULE, "Particle Core",
         "PingView", "PingHUD", "Potion Effects", "Raised", "RawInput", "Server Control",
         com.thelads.core.client.pack.PackMenuSettings.MODULE_NAME, "Scoreboard", "ShulkerBoxUtils", "SignalLoss", "SkinLayers",
-        "SmoothHotbar", com.thelads.core.modules.StackRefillModule.NAME, com.thelads.core.modules.SurvivalTweaksModule.NAME, "TabList", "Threads", "Title Scale", "TNT Timer",
+        "SmoothHotbar", com.thelads.core.modules.StackRefillModule.NAME, com.thelads.core.modules.SurvivalTweaksModule.NAME, "TabList", "Threads", "TitleScreen", "TNT Timer",
         "Toggle Sprint & Sneak", "VerticalBobbing", "Render Tweaks", "Overlays", "Totem Animation", "Voice Chat", "Voice Chat Group", com.thelads.core.modules.WavyCapesModule.NAME,
         "Zoom", com.thelads.core.client.ServerListDrag.NAME,
         com.thelads.core.client.TooltipScroll.NAME, com.thelads.core.client.CrashCatcher.NAME, com.thelads.core.client.QuickReconnect.NAME,

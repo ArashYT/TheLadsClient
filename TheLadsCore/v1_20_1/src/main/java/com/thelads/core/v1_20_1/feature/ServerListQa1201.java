@@ -112,6 +112,38 @@ final class ServerListQa1201 {
                 click(mc, rows.lads$rowLeft(row) + 8, rows.lads$rowTop(row) + (s[3].equals("up") ? 8 : 24), 0);
             }
             case "worlds" -> mc.setScreen(new SelectWorldScreen(mc.screen));
+            case "seedworlds" -> com.thelads.core.client.qa.QaWorldFixtures.seed(
+                mc.getLevelSource().getBaseDir(), SharedConstants.getCurrentVersion().getDataVersion().getVersion(), SharedConstants.getCurrentVersion().getName());
+            case "addnewworld" -> com.thelads.core.client.qa.QaWorldFixtures.addExtraUnsavedWorld(
+                mc.getLevelSource().getBaseDir(), SharedConstants.getCurrentVersion().getDataVersion().getVersion(), SharedConstants.getCurrentVersion().getName());
+            case "rmnewworld" -> com.thelads.core.client.qa.QaWorldFixtures.removeExtraUnsavedWorld(mc.getLevelSource().getBaseDir());
+            case "restoreworlds" -> com.thelads.core.client.qa.QaWorldFixtures.restore(mc.getLevelSource().getBaseDir());
+            case "assertcols" -> {
+                int shown = ServerListColumns.fit(ServerListColumns.wanted(), mc.screen.width);
+                int expected = Integer.parseInt(s[2]);
+                if (shown != expected) throw new IllegalStateException("Expected columns=" + expected + " got " + shown);
+            }
+            case "assertworlds" -> {
+                WorldSelectionList wlist = (WorldSelectionList) anyList(mc.screen);
+                List<String> ids = new ArrayList<>();
+                for (var row : wlist.children()) {
+                    if (row instanceof WorldSelectionList.WorldListEntry we) {
+                        ids.add(((com.thelads.core.v1_20_1.mixin.menus.WorldListEntryAccessor) (Object) we).ladsSummary().getLevelId());
+                    }
+                }
+                com.thelads.core.client.qa.QaWorldFixtures.assertOrder(ids, java.util.Arrays.copyOfRange(s, 2, s.length), mc.getLevelSource().getBaseDir());
+                LOGGER.info("Lads 1.20.1 qa worlds order verified: {}", ids);
+            }
+            case "assertsavedworlds" -> com.thelads.core.client.qa.QaWorldFixtures.assertSavedFileEquals(java.util.Arrays.copyOfRange(s, 2, s.length));
+            case "worldfilter" -> {
+                String q = s.length > 2 ? s[2] : "";
+                for (var child : mc.screen.children()) {
+                    if (child instanceof net.minecraft.client.gui.components.EditBox box) {
+                        box.setValue(q);
+                        break;
+                    }
+                }
+            }
             case "badworld" -> { // a world vanilla disables: its level.dat can't be read; and a good copy of the QA world's beside it
                 Path base = mc.getLevelSource().getBaseDir();
                 Files.createDirectories(base.resolve("QA Broken"));
@@ -177,8 +209,13 @@ final class ServerListQa1201 {
         throw new IllegalStateException("no server list on " + screen);
     }
 
+    private static net.minecraft.client.gui.components.AbstractSelectionList<?> anyList(Screen screen) {
+        for (var child : screen.children()) if (child instanceof net.minecraft.client.gui.components.AbstractSelectionList<?> list) return list;
+        throw new IllegalStateException("no selection list on " + screen);
+    }
+
     private static ServerListColumns.Rows rows(Minecraft mc) {
-        return (ServerListColumns.Rows) list(mc.screen);
+        return (ServerListColumns.Rows) anyList(mc.screen);
     }
 
     /** "x y" in GUI units, "row i" for the centre of a row, or "slot i" for a slot of the current columns; world rows by "wrow i" (one column). */

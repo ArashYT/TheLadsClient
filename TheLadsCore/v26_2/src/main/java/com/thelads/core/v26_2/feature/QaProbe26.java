@@ -57,6 +57,42 @@ public final class QaProbe26 {
         if (waitTicks == 0) waitTicks = 1;
     }
 
+    private static void friendso(Minecraft mc) throws Exception {
+        var screen = new net.minecraft.client.gui.screens.friends.FriendsOverlayScreen(mc.gui.screen());
+        mc.setScreenAndShow(screen);
+        var tabField = net.minecraft.client.gui.screens.friends.FriendsOverlayScreen.class.getDeclaredField("friendsTab");
+        tabField.setAccessible(true);
+        Object friendsTab = tabField.get(screen);
+        var showEmpty = friendsTab.getClass().getDeclaredMethod("showEmpty");
+        showEmpty.setAccessible(true);
+        showEmpty.invoke(friendsTab);
+        var widgetField = friendsTab.getClass().getDeclaredField("addFriendWidget");
+        widgetField.setAccessible(true);
+        Object addWidget = widgetField.get(friendsTab);
+        var getEditBox = addWidget.getClass().getDeclaredMethod("getEditBox");
+        getEditBox.setAccessible(true);
+        var editBox = (net.minecraft.client.gui.components.EditBox) getEditBox.invoke(addWidget);
+        editBox.setValue("");
+        screen.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(
+            editBox.getX() + 4, editBox.getY() + 4,
+            new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0)), false);
+        if (!editBox.isFocused()) {
+            screen.setFocused((net.minecraft.client.gui.components.events.GuiEventListener) addWidget);
+            ((net.minecraft.client.gui.components.events.ContainerEventHandler) addWidget).setFocused(editBox);
+            editBox.setFocused(true);
+        }
+        long win = mc.getWindow().handle();
+        var inv = (com.thelads.core.v26_2.mixin.KeyboardHandlerQaInvoker) mc.keyboardHandler;
+        inv.ladsQaKeyPress(win, org.lwjgl.glfw.GLFW.GLFW_PRESS, new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_O, 0, 0));
+        inv.ladsQaCharTyped(win, new net.minecraft.client.input.CharacterEvent('o'));
+        inv.ladsQaKeyPress(win, org.lwjgl.glfw.GLFW.GLFW_RELEASE, new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_O, 0, 0));
+        String val = editBox.getValue();
+        if (mc.gui.screen() != screen || !"o".equals(val)) {
+            throw new IllegalStateException("friendso failed: screen=" + mc.gui.screen() + " input='" + val + "'");
+        }
+        LOGGER.info("Lads 26.2 qa friendso: screen={} input='{}' open=true", mc.gui.screen().getClass().getSimpleName(), val);
+    }
+
     private static void end() {
         done = true;
         LOGGER.info("Lads qa script END: {} passed, {} failed", passed, failed);
@@ -84,7 +120,14 @@ public final class QaProbe26 {
                 mc.setScreenAndShow(switch (arg) {
                     case "title" -> new TitleScreen();
                     case "pause" -> new PauseScreen(true);
-                    default -> throw new IllegalArgumentException("screen: title or pause");
+                    case "friends" -> new net.minecraft.client.gui.screens.friends.FriendsOverlayScreen(mc.gui.screen());
+                    case "screenshots" -> {
+                        var sv = com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.getInstance();
+                        if (sv == null) throw new IllegalStateException("ScreenshotViewer unavailable");
+                        sv.getThumbnailManager().configUpdated();
+                        yield new com.thelads.core.v26_2.feature.screenshots.screen.manage_screenshots.ManageScreenshotsScreen(mc.gui.screen());
+                    }
+                    default -> throw new IllegalArgumentException("screen: title, pause, friends or screenshots");
                 });
                 LOGGER.info("Lads qa screen: {}", mc.gui.screen().children().stream().filter(Button.class::isInstance).map(c -> ((Button) c).getMessage().getString()).toList());
             }
@@ -112,6 +155,42 @@ public final class QaProbe26 {
                 mc.getProfileKeyPairManager().getClass().getSimpleName(), mc.gui.screen() == null ? "none" : mc.gui.screen().getClass().getSimpleName(),
                 mc.gui.screen() instanceof AccountSwitcherScreen26 a ? a.ui().getStatusMessage() : "");
             case "srv" -> ServerListQa26.step(mc, step.split("\\s+"));
+            case "friendso" -> friendso(mc);
+            case "seedshots" -> {
+                Path gd = FabricLoader.getInstance().getGameDir();
+                com.thelads.core.client.qa.QaScreenshotFixtures.seed(gd);
+                var sv = com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.getInstance();
+                if (sv != null) {
+                    sv.getConfig().put(com.thelads.core.v26_2.feature.screenshots.config.ScreenshotViewerOptions.SCREENSHOTS_FOLDER, gd.resolve("screenshots").toFile());
+                }
+            }
+            case "restoreshots" -> com.thelads.core.client.qa.QaScreenshotFixtures.restore(FabricLoader.getInstance().getGameDir());
+            case "assertshots" -> {
+                List<String> names = com.thelads.core.client.qa.QaScreenshotFixtures.extractManageScreenNames(mc.gui.screen());
+                com.thelads.core.client.qa.QaScreenshotFixtures.assertNewestFirst(names);
+                LOGGER.info("Lads 26.2 qa newest-first: {}", names);
+            }
+            case "spworld" -> {
+                String w = "qa_b1_sp";
+                if (Files.exists(FabricLoader.getInstance().getGameDir().resolve("saves").resolve(w).resolve("level.dat"))) {
+                    mc.createWorldOpenFlows().openWorld(w, () -> {});
+                } else {
+                    var settings = new net.minecraft.world.level.LevelSettings(w, net.minecraft.world.level.GameType.CREATIVE,
+                        new net.minecraft.world.level.LevelSettings.DifficultySettings(net.minecraft.world.Difficulty.PEACEFUL, false, true), true,
+                        net.minecraft.world.level.WorldDataConfiguration.DEFAULT);
+                    mc.createWorldOpenFlows().createFreshLevel(w, settings, new net.minecraft.world.level.levelgen.WorldOptions(135L, false, false),
+                        registries -> registries.lookupOrThrow(net.minecraft.core.registries.Registries.WORLD_PRESET)
+                            .getOrThrow(net.minecraft.world.level.levelgen.presets.WorldPresets.FLAT).value().createWorldDimensions(), mc.gui.screen());
+                }
+            }
+            case "rmspworld" -> {
+                Path sp = FabricLoader.getInstance().getGameDir().resolve("saves").resolve("qa_b1_sp");
+                if (Files.exists(sp)) {
+                    try (var stream = Files.walk(sp)) {
+                        for (Path p : stream.sorted(java.util.Comparator.reverseOrder()).toList()) Files.deleteIfExists(p);
+                    }
+                }
+            }
             case "quit" -> { end(); mc.stop(); }
             default -> throw new IllegalArgumentException("unknown step " + s[0]);
         }
