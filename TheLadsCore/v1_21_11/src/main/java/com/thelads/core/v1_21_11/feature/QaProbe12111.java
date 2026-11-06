@@ -115,6 +115,39 @@ public final class QaProbe12111 {
                 mc.setScreen(screen);
                 if (!arg.isEmpty()) screen.openModule(arg);
             }
+            case "settingsclick" -> {
+                var screen = (com.thelads.core.v1_21_11.gui.LadsSettingsScreen12111) mc.screen;
+                String id = arg;
+                var rect = screen.ui().controlBounds(id);
+                if (rect == null) {
+                    for (String cid : screen.ui().controlIds()) if (cid.startsWith(id)) { id = cid; rect = screen.ui().controlBounds(cid); break; }
+                }
+                if (rect == null) throw new IllegalStateException("settingsclick: no control " + arg + " in " + screen.ui().controlIds());
+                var ev = new net.minecraft.client.input.MouseButtonEvent(rect.x() + rect.width() / 2.0, rect.y() + rect.height() / 2.0,
+                    new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0));
+                screen.mouseClicked(ev, false);
+                screen.mouseReleased(ev);
+                LOGGER.info("Lads qa settingsclick: {} at {},{}", id, rect.x() + rect.width() / 2, rect.y() + rect.height() / 2);
+            }
+            case "settingstype" -> {
+                var screen = (com.thelads.core.v1_21_11.gui.LadsSettingsScreen12111) mc.screen;
+                arg.codePoints().forEach(c -> screen.charTyped(new net.minecraft.client.input.CharacterEvent(c, 0)));
+                LOGGER.info("Lads qa settingstype: '{}' query='{}'", arg, screen.ui().getSearchQuery());
+            }
+            case "wintitle" -> {
+                new Thread(() -> {
+                    try {
+                        Process p = new ProcessBuilder("powershell", "-NoProfile", "-Command",
+                            "Get-Process java* | Select MainWindowTitle | ForEach-Object { $_.MainWindowTitle } | Where-Object { $_ }").redirectErrorStream(true).start();
+                        String out = new String(p.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).trim();
+                        p.waitFor();
+                        LOGGER.info("Lads qa wintitle: {}", out);
+                    } catch (Exception e) {
+                        LOGGER.error("Lads qa wintitle err: {}", e.toString());
+                    }
+                }, "LadsQaWinTitle").start();
+                waitTicks = 25;
+            }
             case "gui" -> { mc.options.guiScale().set(Integer.parseInt(arg)); mc.resizeDisplay(); } // the GUI scale, 0 = auto
             case "pointer" -> { // where a real mouse would be, in window pixels: hover states and tooltips render for a shot
                 String[] xy = arg.split(" ");
