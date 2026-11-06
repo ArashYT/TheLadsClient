@@ -137,6 +137,11 @@ public final class QaProbe26 {
             case "world" -> {} // tick() held the script until the QA world was up
             case "notice" -> com.thelads.core.client.bridge.LadsGameBridge.get().displayChatMessage(arg);
             case "titlelayout" -> com.thelads.core.modules.TitleScreenModule.toggleLayout();
+            case "settings" -> { // the modules menu, optionally opened on a page or module: settings page:HUD | open:HUD/PvP | search:color | Hit Color
+                var screen = new com.thelads.core.v26_2.gui.LadsSettingsScreen26(mc.gui.screen());
+                mc.setScreenAndShow(screen);
+                if (!arg.isEmpty()) screen.openModule(arg);
+            }
             case "gui" -> { mc.options.guiScale().set(Integer.parseInt(arg)); mc.resizeGui(); } // the GUI scale, 0 = auto
             case "pointer" -> { // where a real mouse would be, in window pixels: hover states and tooltips render for a shot
                 String[] xy = arg.split(" ");
