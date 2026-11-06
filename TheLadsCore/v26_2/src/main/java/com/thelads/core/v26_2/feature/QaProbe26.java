@@ -59,7 +59,7 @@ public final class QaProbe26 {
 
     private static void friendso(Minecraft mc) throws Exception {
         var screen = new net.minecraft.client.gui.screens.friends.FriendsOverlayScreen(mc.gui.screen());
-        mc.setScreenAndShow(screen);
+        mc.gui.setScreen(screen); // not setScreenAndShow: its extra frame blurs twice over the screen this opens from
         var tabField = net.minecraft.client.gui.screens.friends.FriendsOverlayScreen.class.getDeclaredField("friendsTab");
         tabField.setAccessible(true);
         Object friendsTab = tabField.get(screen);
