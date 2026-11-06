@@ -45,7 +45,7 @@ public final class PanoramaPicker {
     private static volatile Object[] finished;                 // {version, byte[][] images | String message}
     private static boolean started;
     private static String applied = DEFAULT, failed, loading;  // render thread only
-    private static byte[][] images;
+    private static volatile byte[][] images;                  // read by the cube map's loader during resource reloads too
     private static volatile String message;
     private static volatile long messageUntil;
 
