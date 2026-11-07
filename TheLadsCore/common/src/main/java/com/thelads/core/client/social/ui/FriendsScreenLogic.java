@@ -560,12 +560,13 @@ public final class FriendsScreenLogic {
                 boolean online = friend.presence() != null && friend.presence().online();
                 boolean network = online && com.thelads.core.client.LadsNetwork.isAddress(friend.presence().server());
                 int dotColor = network ? LadsPalette.ACCENT : online ? LadsPalette.CARD_ON_GLOW : LadsPalette.DISABLED;
-                g.fill(rowBox.x + 8, rowTop + 14, rowBox.x + 14, rowTop + 20, dotColor);
+                g.drawHead(friend.name(), friend.id() != null ? friend.id().toString() : null, rowBox.x + 8, rowTop + 7, 20);
+                g.fill(rowBox.x + 24, rowTop + 23, rowBox.x + 30, rowTop + 29, dotColor);
 
                 // Name or inline nickname input
                 if (friend.id().equals(editingNickId)) {
                     int nickW = 120, nickH = 16;
-                    nickInputBox = new Box(rowBox.x + 20, rowTop + 4, nickW, nickH);
+                    nickInputBox = new Box(rowBox.x + 36, rowTop + 4, nickW, nickH);
                     MenuGraphics.round(g, nickInputBox.x, nickInputBox.y, nickInputBox.w, nickInputBox.h, LadsPalette.PANEL);
                     g.fill(nickInputBox.x, nickInputBox.y + nickH - 1, nickInputBox.x + nickW, nickInputBox.y + nickH, LadsPalette.ACCENT);
 
@@ -587,7 +588,7 @@ public final class FriendsScreenLogic {
                     if (friend.nick() != null && !friend.nick().isEmpty() && !friend.nick().equals(friend.name())) {
                         nameStr = friend.nick() + " (" + friend.name() + ")";
                     }
-                    g.drawText(MenuGraphics.fit(g, nameStr, 160), rowBox.x + 20, rowTop + 6, LadsPalette.TEXT, false);
+                    g.drawText(MenuGraphics.fit(g, nameStr, 160), rowBox.x + 36, rowTop + 6, LadsPalette.TEXT, false);
                 }
 
                 // Status string including loader and pack if present (Finding 2)
@@ -596,9 +597,9 @@ public final class FriendsScreenLogic {
                 int maxStatusW = Math.max(120, rowBox.w - 200);
                 if (!gameInfo.isEmpty()) {
                     String fullStatus = status + " • " + gameInfo;
-                    g.drawText(MenuGraphics.fit(g, fullStatus, maxStatusW), rowBox.x + 20, rowTop + 18, LadsPalette.MUTED, false);
+                    g.drawText(MenuGraphics.fit(g, fullStatus, maxStatusW), rowBox.x + 36, rowTop + 18, LadsPalette.MUTED, false);
                 } else {
-                    g.drawText(MenuGraphics.fit(g, status, maxStatusW), rowBox.x + 20, rowTop + 18, LadsPalette.MUTED, false);
+                    g.drawText(MenuGraphics.fit(g, status, maxStatusW), rowBox.x + 36, rowTop + 18, LadsPalette.MUTED, false);
                 }
 
                 // Action buttons on right
