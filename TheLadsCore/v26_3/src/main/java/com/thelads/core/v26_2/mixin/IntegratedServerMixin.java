@@ -27,7 +27,7 @@ public abstract class IntegratedServerMixin {
     }
 
     @Redirect(
-        method = "publishServer(Lnet/minecraft/server/MinecraftServer$MultiplayerScope;ZI)Z",
+        method = "publishServer(Lnet/minecraft/server/MinecraftServer$MultiplayerScope;I)Z",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/server/LanServerPinger;start()V"),
         require = 1
     )
