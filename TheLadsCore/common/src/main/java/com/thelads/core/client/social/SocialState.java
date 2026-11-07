@@ -618,7 +618,8 @@ public class SocialState {
     }
 
     private void openHosting(HostOptions options) {
-        hostSession.start(options);
+        if (!hostSession.start(options) && options != null && options.scope != HostOptions.Scope.OFF) // it used to fail without a word
+            bridge().toast("Hosting", bridge().canHost() ? "Could not open the world, try again" : "Open a singleplayer world that is not already open to LAN", null, null);
         refreshPresence();
         notifyListeners();
     }
