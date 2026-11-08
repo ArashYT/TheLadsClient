@@ -1285,7 +1285,8 @@ async def handle_status_page(request):
     hours, rem = divmod(uptime_sec, 3600)
     minutes, seconds = divmod(rem, 60)
     uptime_str = f"{hours}h {minutes}m {seconds}s"
-    ping_ms = round(bot.latency * 1000) if bot.latency and math.isfinite(bot.latency) and bot.latency > 0 else 12
+    ping_ms = round(bot.latency * 1000) if bot.latency and math.isfinite(bot.latency) and bot.latency > 0 else None
+    ping_str = f"{ping_ms} ms" if ping_ms is not None else "—"
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1294,24 +1295,24 @@ async def handle_status_page(request):
     <title>The Lads Bot — Status</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b0f19; color: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }}
-        .card {{ background: #131b2e; border: 1px solid #1e293b; border-radius: 20px; padding: 36px; max-width: 460px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.6); text-align: center; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b0708; color: #fff8f8; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }}
+        .card {{ background: #160d10; border: 1px solid #422029; border-radius: 16px; padding: 36px; max-width: 460px; width: 100%; text-align: center; }}
         .badge {{ display: inline-flex; align-items: center; gap: 8px; background: rgba(34, 197, 94, 0.15); color: #4ade80; padding: 6px 16px; border-radius: 9999px; font-weight: 600; font-size: 13px; margin-bottom: 20px; border: 1px solid rgba(34, 197, 94, 0.3); }}
-        .pulse {{ width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 12px #22c55e; }}
-        h1 {{ margin: 0 0 6px 0; font-size: 26px; color: #38bdf8; font-weight: 800; letter-spacing: -0.5px; }}
-        p.subtitle {{ color: #94a3b8; margin: 0 0 24px 0; font-size: 14px; }}
+        .pulse {{ width: 8px; height: 8px; background: #22c55e; border-radius: 50%; }}
+        h1 {{ margin: 0 0 6px 0; font-size: 26px; color: #fff8f8; font-weight: 800; letter-spacing: -0.5px; text-wrap: balance; }}
+        p.subtitle {{ color: #c6b2b8; margin: 0 0 24px 0; font-size: 14px; }}
         .grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: left; }}
-        .box {{ background: #0b0f19; padding: 16px; border-radius: 12px; border: 1px solid #1e293b; }}
-        .box-title {{ font-size: 11px; color: #64748b; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }}
-        .box-value {{ font-size: 17px; font-weight: 700; color: #f1f5f9; margin-top: 4px; }}
-        .footer {{ margin-top: 24px; font-size: 12px; color: #475569; }}
+        .box {{ background: #0b0708; padding: 16px; border-radius: 8px; border: 1px solid #422029; }}
+        .box-title {{ font-size: 11px; color: #c6b2b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }}
+        .box-value {{ font-size: 17px; font-weight: 700; color: #fff8f8; margin-top: 4px; font-variant-numeric: tabular-nums; }}
+        .footer {{ margin-top: 24px; font-size: 12px; color: #c6b2b8; }}
     </style>
 </head>
 <body>
     <div class="card">
-        <div class="badge"><div class="pulse"></div> 24/7 Cloud Node Active</div>
+        <div class="badge"><div class="pulse"></div> Online</div>
         <h1>The Lads Discord Bot</h1>
-        <p class="subtitle">Official Community & Client Assistant</p>
+        <p class="subtitle">Live status of the bot on The Lads Discord server</p>
         <div class="grid">
             <div class="box">
                 <div class="box-title">Community</div>
@@ -1323,7 +1324,7 @@ async def handle_status_page(request):
             </div>
             <div class="box">
                 <div class="box-title">Latency</div>
-                <div class="box-value">{ping_ms} ms</div>
+                <div class="box-value">{ping_str}</div>
             </div>
             <div class="box">
                 <div class="box-title">Uptime</div>
