@@ -34,7 +34,7 @@
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <Border x:Name="ActivityDot" Width="6" Height="6" CornerRadius="3" Background="{DynamicResource LadsAccent}" VerticalAlignment="Center" Margin="0,0,9,0" />
                         <TextBlock Grid.Column="1" x:Name="SplashStatusText" Text="Starting Java Virtual Machine..." Foreground="#D6DCE8" FontSize="12" FontWeight="Medium" TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
-                        <TextBlock Grid.Column="2" x:Name="ElapsedText" Text="0:00" Foreground="#737D92" FontSize="11" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" x:Name="ElapsedText" Text="0:00" Foreground="#8F919C" FontSize="11" VerticalAlignment="Center" />
                     </Grid>
                     <Border x:Name="ProgressTrack" Height="4" CornerRadius="2" Background="#252A37" ClipToBounds="True">
                         <Border x:Name="SweepFill" Width="164" Height="4" CornerRadius="2" HorizontalAlignment="Left">
@@ -57,7 +57,7 @@
                         <TextBlock Text="RSHIFT" FontSize="9" FontWeight="SemiBold" Foreground="#B6BED0" LetterSpacing="0.5" />
                     </Border>
                     <TextBlock Grid.Column="1" Text="Your mods, one menu" Foreground="#8E98AD" FontSize="10" VerticalAlignment="Center" Margin="8,0,0,0" />
-                    <TextBlock Grid.Column="2" Text="The game opens automatically" Foreground="#657086" FontSize="10" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="The game opens automatically" Foreground="#8F919C" FontSize="10" VerticalAlignment="Center" />
                     <Button c:Ico.Name="cross" Grid.Column="3" x:Name="CancelLaunchButton" Classes="action" Content="Cancel" FontSize="11" Padding="12,4" Margin="12,0,0,0" VerticalAlignment="Center" Click="CancelLaunch_Click" />
                 </Grid>
             </Grid>

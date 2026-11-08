@@ -46,7 +46,7 @@
                   <CheckBox x:Name="Layers3DCheck" Content="3D Skin Layers" IsChecked="True" FontSize="11" VerticalAlignment="Center" />
                   <Button c:Ico.Name="undo" Grid.Column="2" Classes="action" Content="Reset View" FontSize="11" Padding="8,4" Click="ResetView_Click" />
                 </Grid>
-                <TextBlock Text="Drag to rotate · Scroll to zoom" Foreground="#767884" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                <TextBlock Text="Drag to rotate · Scroll to zoom" Foreground="#8F919C" FontSize="10" HorizontalAlignment="Center" Margin="0,4,0,0" />
               </StackPanel>
               <StackPanel Grid.Column="1" Margin="20,0,0,0" Spacing="8">
                 <TextBlock Text="SELECTED SKIN" Classes="caption" />
