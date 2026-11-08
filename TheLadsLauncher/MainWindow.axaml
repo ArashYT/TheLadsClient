@@ -166,7 +166,7 @@
                                     </StackPanel>
                                 </Grid>
                                 <Button c:Ico.Name="document" Content="Release notes" Click="ReleaseNotes_Click" Background="Transparent" FontSize="11" />
-                                <TextBlock x:Name="VersionText" Foreground="#767984" FontSize="10" />
+                                <TextBlock x:Name="VersionText" Foreground="#8F919C" FontSize="10" />
                                 <Button Classes="credit" ToolTip.Tip="Uicons by Flaticon, https://www.flaticon.com/uicons" Click="IconCredit_Click">
                                     <TextBlock Text="Icons by Flaticon (flaticon.com)" TextWrapping="Wrap" />
                                 </Button>
@@ -317,7 +317,7 @@
                                 <StackPanel Grid.Row="1" Spacing="10" VerticalAlignment="Top">
                                     <Button x:Name="AddMicrosoftAccountBtn" Classes="launch" c:Ico.Name="user-add" Content="Add Microsoft account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="40" Foreground="White" FontWeight="Bold" FontSize="13" Click="AddMicrosoftAccount_Click" />
                                     <Button x:Name="AddOfflineAccountBtn" IsVisible="False" Classes="action" c:Ico.Name="user-gear" Content="Add local development account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" FontSize="12" Click="AddOfflineAccount_Click" />
-                                    <TextBlock x:Name="AddOfflineAccountHint" IsVisible="False" Text="Local accounts support offline development and singleplayer." Foreground="#7E8B9D" FontSize="11" TextWrapping="Wrap" Margin="2,4,2,8" />
+                                    <TextBlock x:Name="AddOfflineAccountHint" IsVisible="False" Text="Local accounts support offline development and singleplayer." Foreground="#9AA7B8" FontSize="11" TextWrapping="Wrap" Margin="2,4,2,8" />
                                     <Separator Background="#2A2B32" Height="1" Margin="0,4,0,4" />
                                     <Button x:Name="RemoveAccountBtn" Classes="action" c:Ico.Name="user-minus" Content="Remove Account" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Click="RemoveAccount_Click" />
                                     <Button x:Name="ClearCacheBtn" Classes="danger" c:Ico.Name="sign-out" Content="Sign out Microsoft" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="36" Click="ClearCache_Click" />
@@ -564,7 +564,7 @@
                         </TabControl>
                         <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
                             <TextBlock x:Name="SettingsSaveStatus" Grid.Column="0" VerticalAlignment="Center" Foreground="#A4BAA7" FontSize="12" Text="Changes save automatically" />
-                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Foreground="#7E8B9D" FontSize="10" Text="NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT." />
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Foreground="#9AA7B8" FontSize="10" Text="NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT." />
                         </Grid>
                     </Grid>
                     <Grid x:Name="ModsPage" IsVisible="False" Margin="28,24,28,24" DragDrop.AllowDrop="True" RowDefinitions="*,Auto">
