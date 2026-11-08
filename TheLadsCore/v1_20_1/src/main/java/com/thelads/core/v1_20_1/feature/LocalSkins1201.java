@@ -64,7 +64,8 @@ public final class LocalSkins1201 {
             try {
                 LocalSkinSource.Skin source = LocalSkinSource.resolve(input, slim);
                 byte[] data = source.png();
-                boolean model = source.slim();
+                // The saved skin.png is normalised (vanilla makes the unused slim-arm pixels opaque), so detection always says classic: model.txt decides.
+                boolean model = input.equals(folder().resolve("skin.png").toString()) ? slim : source.slim();
                 validate(data);
                 NativeImage image = normalize(NativeImage.read(new java.io.ByteArrayInputStream(data)));
                 if (image == null) throw new java.io.IOException("Skin must be 64 x 64 or 64 x 32 pixels");

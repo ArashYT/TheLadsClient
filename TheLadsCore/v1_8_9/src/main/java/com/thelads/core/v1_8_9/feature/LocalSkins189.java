@@ -86,7 +86,8 @@ public final class LocalSkins189 {
                 BufferedImage read = ImageIO.read(new ByteArrayInputStream(source.png()));
                 if (read == null) throw new IOException("Select a PNG skin");
                 BufferedImage image = new ImageBufferDownload().parseUserSkin(read); // vanilla's: the old 64 x 32 layout becomes 64 x 64
-                boolean model = source.slim();
+                // The saved skin.png is normalised (vanilla makes the unused slim-arm pixels opaque), so detection always says classic: model.txt decides.
+                boolean model = input.equals(new File(folder(), "skin.png").getPath()) ? slim : source.slim();
                 synchronized (STATE) {
                     if (request != revision) {
                         result.complete("A newer skin was selected");

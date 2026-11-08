@@ -33,7 +33,8 @@ public final class LocalSkins {
             try{
                 var resolved=com.thelads.core.client.util.LocalSkinSource.resolve(input,slim);
                 byte[] data=resolved.png();
-                boolean model=resolved.slim();
+                // The saved skin.png is normalised (vanilla makes the unused slim-arm pixels opaque), so detection always says classic: model.txt decides.
+                boolean model=input.equals(folder().resolve("skin.png").toString())?slim:resolved.slim();
                 validate(data);
                 NativeImage image=com.thelads.core.v26_2.mixin.SkinTextureAccessor.ladsNormalizeSkin(NativeImage.read(data),"Lads local skin");
                 boolean finalModel=model;
