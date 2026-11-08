@@ -208,7 +208,7 @@
                                     <!-- One click into the network from the first page, with its live status vertically centred beside the artwork (MainWindow.Network.cs). -->
                                     <Border Grid.Column="2" Background="#191A1E" Padding="14,0">
                                         <StackPanel VerticalAlignment="Center" Spacing="8">
-                                            <Button x:Name="NetworkPlayButton" Classes="launch" Height="44" MinWidth="184" Padding="12,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Foreground="White" ToolTip.Tip="Launch and join The Lads Network (mc.arashyt.ca)" IsEnabled="{Binding #LaunchButton.IsEnabled}" Click="NetworkPlay_Click">
+                                            <Button x:Name="NetworkPlayButton" Classes="action" Height="44" MinWidth="184" Padding="12,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Launch and join The Lads Network (mc.arashyt.ca)" IsEnabled="{Binding #LaunchButton.IsEnabled}" Click="NetworkPlay_Click">
                                                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"><c:Glyph Kind="play" Size="14" VerticalAlignment="Center" /><TextBlock Text="Play The Lads Network" FontWeight="Bold" FontSize="14" VerticalAlignment="Center" /></StackPanel>
                                             </Button>
                                             <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
@@ -839,15 +839,15 @@
                         <Grid ColumnDefinitions="*,*,*,*,Auto">
                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
                                 <TextBlock Classes="caption" Text="CPU" VerticalAlignment="Center" />
-                                <TextBlock x:Name="CpuText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                                <TextBlock x:Name="CpuText" Text="&#8212;" FontFeatures="+tnum" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                                 <TextBlock Classes="caption" Text="MEMORY" VerticalAlignment="Center" />
-                                <TextBlock x:Name="RamText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                                <TextBlock x:Name="RamText" Text="&#8212;" FontFeatures="+tnum" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
                             </StackPanel>
                             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8">
                                 <TextBlock Classes="caption" Text="MODS" VerticalAlignment="Center" />
-                                <TextBlock x:Name="ModCountText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                                <TextBlock x:Name="ModCountText" Text="&#8212;" FontFeatures="+tnum" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
                             </StackPanel>
                             <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8">
                                 <TextBlock Classes="caption" Text="GAME" VerticalAlignment="Center" />
@@ -855,7 +855,7 @@
                             </StackPanel>
                             <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="8">
                                 <TextBlock Classes="caption" Text="DOWNLOAD" VerticalAlignment="Center" />
-                                <TextBlock x:Name="DownloadSpeedText" Text="&#8212;" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
+                                <TextBlock x:Name="DownloadSpeedText" Text="&#8212;" FontFeatures="+tnum" FontSize="11" Foreground="#BEC0C8" VerticalAlignment="Center" />
                             </StackPanel>
                         </Grid>
                     </Border>
