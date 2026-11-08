@@ -31,12 +31,16 @@ final class SkinLoadProbe {
             result=LocalSkins.load(fixture.toString(),false,true).thenCompose(message->{
                 require(LocalSkins.current()!=null&&LocalSkins.current().model()==PlayerModelType.WIDE,"file skin and classic model");
                 require(Files.isRegularFile(root.resolve("config/lads-skin/skin.png")),"file skin persisted");
+                // What a restart does: the saved, normalised skin.png comes back with model.txt's model (it came back classic before 1.13.6).
+                return LocalSkins.load(mc.gameDirectory.toPath().resolve("config/lads-skin").resolve("skin.png").toString(),true,false);
+            }).thenCompose(message->{
+                require(LocalSkins.current()!=null&&LocalSkins.current().model()==PlayerModelType.SLIM,"saved skin keeps its saved slim model");
                 return LocalSkins.load(url,true,false);
             }).thenAccept(message->{
                 require(LocalSkins.current()!=null&&LocalSkins.current().model()==PlayerModelType.SLIM,"HTTP skin and slim model");
                 var texture=mc.getTextureManager().getTexture(LocalSkins.current().body().texturePath());
                 require(texture instanceof net.minecraft.client.renderer.texture.DynamicTexture,"skin uploaded to the real texture manager");
-                org.slf4j.LoggerFactory.getLogger("TheLadsCore").info("Lads skin loader probe END: 4 passed, 0 failed; real file, HTTP, persistence and texture upload");
+                org.slf4j.LoggerFactory.getLogger("TheLadsCore").info("Lads skin loader probe END: 5 passed, 0 failed; real file, HTTP, persistence, saved model and texture upload");
             }).thenCompose(unused->{
                 if(!Boolean.getBoolean("thelads.verifySkinNetwork"))return CompletableFuture.completedFuture(null);
                 return CompletableFuture.supplyAsync(()->{
