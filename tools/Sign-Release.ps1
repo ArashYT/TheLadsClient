@@ -2,11 +2,15 @@
 # verifying the draft and before publishing it: the private key never goes to GitHub, so a release made by anyone else
 # (a stolen GitHub login, a compromised CI action) has no valid signature and every launcher refuses it.
 # Also refuses to sign a draft whose -delta.nupkg does not rebuild (from the previous release) into the signed full package.
-#   ./tools/Sign-Release.ps1 -Version 1.9.10 [-Key $HOME\Documents\TheLads-release-signing-key.pem]
+#   ./tools/Sign-Release.ps1 -Version 1.9.10 [-Key $HOME\Documents\TheLads-release-signing-key-2.pem]
 [CmdletBinding(SupportsShouldProcess)]
 param(
     [Parameter(Mandatory)] [string] $Version,
-    [string] $Key = $(if ($env:LADS_SIGNING_KEY_PATH) { $env:LADS_SIGNING_KEY_PATH } else { Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'TheLads-release-signing-key.pem' }),
+    # Until 2026-11-23 releases are signed with the first key, which every launcher trusts (1.13.4+ also trust the successor),
+    # so launchers older than 1.13.4 can still update themselves. From 2026-11-24 on, the successor key only.
+    [string] $Key = $(if ($env:LADS_SIGNING_KEY_PATH) { $env:LADS_SIGNING_KEY_PATH }
+        elseif ((Get-Date) -lt [datetime]'2026-11-24') { 'G:\My Drive\TheLads-release-signing-key.pem' }
+        else { Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'TheLads-release-signing-key-2.pem' }),
     [string] $Repo = 'ArashYT/TheLadsClient'
 )
 $ErrorActionPreference = 'Stop'
