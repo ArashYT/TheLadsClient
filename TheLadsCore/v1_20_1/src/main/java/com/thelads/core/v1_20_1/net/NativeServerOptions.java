@@ -17,7 +17,10 @@ public final class NativeServerOptions {
         Options o = mc == null ? null : mc.options;
         if (o == null || saving) return null;
         if (option == o.fov()) return (int) Math.round(ServerSettings.vanilla("FOV", (Integer) own));
-        if (option == o.gamma()) return ServerSettings.vanilla("Brightness", (Double) own * 100.0) / 100.0;
+        if (option == o.gamma()) {
+            double percent = (Double) own * 100.0, effective = ServerSettings.vanilla("Brightness", percent);
+            return effective == percent ? null : effective / 100.0; // untouched: the exact own value, not one the maths rounded
+        }
         if (option == o.renderDistance()) return (int) Math.round(ServerSettings.vanilla("Render Distance", (Integer) own));
         if (option == o.bobView()) return ServerSettings.vanilla("View Bobbing", (Boolean) own);
         if (option == o.entityShadows()) return ServerSettings.vanilla("Entity Shadows", (Boolean) own);
