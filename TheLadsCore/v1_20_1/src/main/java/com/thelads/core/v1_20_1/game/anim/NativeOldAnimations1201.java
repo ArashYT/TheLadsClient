@@ -94,6 +94,8 @@ public final class NativeOldAnimations1201 {
         if (block && hand == InteractionHand.OFF_HAND) return null;
         Use use = block ? Use.BLOCK : use(player, hand, item);
         Held held = held(item);
+        HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
+        int side = arm == HumanoidArm.RIGHT ? 1 : -1;
         if (use == null || !module.iconPlacement(MODERN, use, held) || kept(player, item)
             || OldAnimations.legacySwingPlaces(legacySwing(), use, item.getItem() instanceof BlockItem)
             || !ModelShape1201.flat(model(player, item))) {
@@ -101,10 +103,32 @@ public final class NativeOldAnimations1201 {
                 pose.translate(0, -0.25f, 0);
                 APPLIED.add(Feature.LOW_SHIELD);
             }
+            if (use == Use.BLOCK && module.iconPlacement(MODERN, use, held) && !kept(player, item)) {
+                // A block or a 3D model (a pack's, a mod's) blocks: the 1.7 block and its swing move it from where vanilla holds it.
+                pose.popPose();
+                pose.pushPose();
+                float shown = module.swingShown(MODERN, use, swingNow, attacked);
+                OldAnimations.hand(sink(pose), side, equipNow, shown, use, player.getUseItemRemainingTicks(), partialNow, item.getUseDuration());
+                OldAnimations.toModernHand(sink(pose), side);
+                if (shown > 0) APPLIED.add(Feature.BLOCKHIT);
+                APPLIED.add(Feature.BLOCK_POSE);
+            } else if (attacked && swingNow > 0 && player.isUsingItem() && player.getUsedItemHand() == hand
+                && module.active(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING, MODERN)) {
+                // Any other use vanilla or a mod draws (a spyglass, a trident, a shield, a 3D bow): the attack swing turns the whole
+                // use pose about the hand.
+                org.joml.Matrix4f drawn = new org.joml.Matrix4f(pose.last().pose());
+                org.joml.Matrix3f drawnNormal = new org.joml.Matrix3f(pose.last().normal());
+                pose.popPose();
+                pose.pushPose();
+                org.joml.Matrix4f usePose = new org.joml.Matrix4f(pose.last().pose()).invert().mul(drawn); // from the arm origin
+                org.joml.Matrix3f useNormal = new org.joml.Matrix3f(pose.last().normal()).invert().mul(drawnNormal);
+                OldAnimations.swingOverUse(sink(pose), side, swingNow);
+                pose.last().pose().mul(usePose);
+                pose.last().normal().mul(useNormal);
+                APPLIED.add(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING);
+            }
             return vanilla;
         }
-        HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
-        int side = arm == HumanoidArm.RIGHT ? 1 : -1;
         OldAnimations.Sink out = sink(pose);
         // Held (idle, or a use 1.7 just held the item through): over vanilla's arm and swing, LegacySwing's when it is on (a block
         // item stays vanilla's then: legacySwingPlaces), and whatever the item or another mod (Forge's hand transform) placed there.
@@ -155,7 +179,10 @@ public final class NativeOldAnimations1201 {
      */
     public static void attackClicked(LocalPlayer player) {
         OldAnimationsModule module = module();
-        if (module == null || !player.isUsingItem() || !module.swingOnAttack(MODERN, action(player.getUseItem()))) return;
+        if (module == null || !player.isUsingItem()) return;
+        Use use = action(player.getUseItem());
+        // A use with no 1.7 pose (a spyglass, a trident, a mod's own animation) swings too, over the pose vanilla draws.
+        if (use == null || use == Use.NONE ? !module.active(Feature.SWING_WHILE_USING, MODERN) : !module.swingOnAttack(MODERN, use)) return;
         attacked = true;
         player.swing(InteractionHand.MAIN_HAND, false);
     }
@@ -179,11 +206,14 @@ public final class NativeOldAnimations1201 {
         return item.getItem() instanceof CrossbowItem && CrossbowItem.isCharged(item) || entity.isAutoSpinAttack();
     }
 
-    /** The trigger for the 1.7 sword block: a sword in the main hand while the off hand blocks with a shield. */
+    /**
+     * The trigger for the 1.7 sword block: any item in the main hand (a sword, a tool, a block, a mod's item) while the off hand
+     * blocks with a shield. An empty main hand has nothing to block with: the shield stays.
+     */
     public static boolean swordBlocking(LivingEntity entity) {
         return (active(Feature.BLOCK_POSE) || active(Feature.BLOCKHIT)) && entity.isUsingItem()
             && entity.getUsedItemHand() == InteractionHand.OFF_HAND && entity.getOffhandItem().getUseAnimation() == UseAnim.BLOCK
-            && entity.getMainHandItem().is(ItemTags.SWORDS);
+            && !entity.getMainHandItem().isEmpty() && !kept(entity, entity.getMainHandItem());
     }
 
     /** 1.7's EnumAction for this hand: NONE when idle; null for a shield's block (the sword block above draws it, else vanilla). */

@@ -53,6 +53,8 @@ public abstract class ItemRendererMixin {
     @Unique private boolean ladsReplay;
     /** The item goes where 1.7 drew it, with TransformType.NONE instead of the 1.8 first-person transform. */
     @Unique private boolean ladsIcon;
+    /** An attack click during a use with no 1.7 pose: 1.8.9's hand takes the swing it otherwise drops while using. */
+    @Unique private boolean ladsSwingOver;
 
     @Inject(method = "transformFirstPersonItem", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsSwing(float equipProgress, float swingProgress, CallbackInfo ci) {
@@ -72,12 +74,13 @@ public abstract class ItemRendererMixin {
     @Inject(method = "renderItemInFirstPerson", at = @At("HEAD"), require = 1)
     private void ladsFrame(float partialTicks, CallbackInfo ci) {
         ladsUse = null;
-        ladsReplay = ladsIcon = false;
+        ladsReplay = ladsIcon = ladsSwingOver = false;
         if (!OldAnimations189.MODULE.isEnabled() || itemToRender == null || mc.thePlayer == null) return;
         ladsHeld = OldAnimations189.held(itemToRender);
-        if (ladsHeld == null) return;
         ladsUse = OldAnimations189.use(mc.thePlayer, itemToRender);
-        if (ladsUse == null) return;
+        ladsSwingOver = ladsUse == null && OldAnimations189.swingOverUse();
+        // A block or a 3D model (a pack's, a mod's) in use: 1.8.9 draws it, with 1.7's swing kept (ladsHand): it blockhits too.
+        if (ladsHeld == null || ladsUse == null) return;
         ladsReplay = ladsUse != Use.NONE && (ladsUse != Use.BOW || OldAnimations189.active(Feature.BOW));
         ladsIcon = OldAnimations189.MODULE.iconPlacement(OldAnimations189.PLATFORM, ladsUse, ladsHeld)
             && !OldAnimations.legacySwingPlaces(LegacySwing189.enabled(), ladsUse, OldAnimations189.placesBlock(itemToRender.getItem()));
@@ -88,7 +91,8 @@ public abstract class ItemRendererMixin {
         target = "Lnet/minecraft/client/renderer/ItemRenderer;transformFirstPersonItem(FF)V"), require = 5, allow = 5)
     private void ladsHand(ItemRenderer self, float equip, float swing, float partialTicks) {
         if (ladsUse == null || ladsUse == Use.NONE) {
-            transformFirstPersonItem(equip, swing);
+            // A use 1.7 had no pose for (a mod's item used with no action): the attack swing still shows over it.
+            transformFirstPersonItem(equip, ladsSwingOver ? mc.thePlayer.getSwingProgress(partialTicks) : swing);
             return;
         }
         EntityPlayerSP player = mc.thePlayer;

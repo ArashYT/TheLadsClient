@@ -20,10 +20,11 @@ public final class OldAnimationsModule extends Module {
 
     /** One toggle each; the option name is the saved key. */
     public enum Feature {
-        BLOCKHIT("Blockhitting", "Swinging while blocking shows the 1.7 swing on the blocking sword. On 1.21 and 26.x "
-            + "this works while you block with a shield: the shield is hidden and the sword blocks.", null),
-        BLOCK_POSE("1.7 sword block pose", "In first person the blocking sword sits where 1.7 held it. "
-            + "On 1.21 and 26.x it uses the same shield trigger as Blockhitting.", null),
+        BLOCKHIT("Blockhitting", "Swinging while blocking shows the 1.7 swing on whatever you block with: a sword, a tool, a block, "
+            + "any item. On 1.20 and later this works while you block with an off-hand shield: the shield is hidden and the item in "
+            + "your main hand blocks.", null),
+        BLOCK_POSE("1.7 sword block pose", "In first person the item you block with sits where 1.7 held a blocking sword: a sword, "
+            + "a tool, a block, any item. On 1.20 and later it uses the same shield trigger as Blockhitting.", null),
         BOW("1.7 bow position", "In first person the bow is held and drawn as in 1.7.", null),
         ROD("1.7 fishing rod position", "In first person fishing rods are held as in 1.7.", null),
         HELD_ITEMS("1.7 held item positions", "In first person swords, tools and other flat items are held where 1.7 held them, "
