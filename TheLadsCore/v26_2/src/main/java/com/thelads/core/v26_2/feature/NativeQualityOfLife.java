@@ -59,6 +59,7 @@ public final class NativeQualityOfLife {
         rawInput();
         ShulkerContents.tick();
         NativeDiscordPresence.tick();
+        com.thelads.core.client.cosmetics.net.CosmeticsLink.tickProofOnly();
         NativeQualityProbe.tick();
         NativeSharedContentProbe.tick();
     }

@@ -1,5 +1,7 @@
 package com.thelads.core.client.cosmetics.net;
 
+import com.thelads.core.client.bridge.DefaultGameBridge;
+import com.thelads.core.client.bridge.LadsGameBridge;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -54,5 +56,29 @@ class CosmeticsLinkAttestTest {
         assertNull(link.takeAttested());
         link.handle("{\"t\":\"attest\",\"nonce\":\"" + SID + "\",\"token\":\"new\"}", SELF);
         assertArrayEquals(new String[] {SID, "new"}, link.takeAttested());
+    }
+
+    /** 1.21.11 and 26.2 draw no relay cosmetics: their tick brings the link up without a room, and only while a server waits. */
+    @Test
+    void proofOnlyTickIsUpOnlyWhileAServerWaits() {
+        LadsGameBridge before = LadsGameBridge.get();
+        LadsGameBridge.set(new DefaultGameBridge() {
+            @Override public boolean isIngame() { return true; }
+            @Override public String getServerAddress() { return "lobby.example.org"; }
+            @Override public Session session() { return new Session(SELF, "Lad", "token"); }
+        });
+        try {
+            CosmeticsLink link = link();
+            for (int i = 0; i < 20; i++) link.sample(false);
+            assertNull(link.want());
+            link.requestAttest(NONCE, SID);
+            for (int i = 0; i < 20; i++) link.sample(false);
+            assertEquals(new CosmeticsLink.Want(SELF, null), link.want());
+            link.handle("{\"t\":\"attest\",\"nonce\":\"" + NONCE + "\",\"token\":\"v1.1.sig\"}", SELF);
+            for (int i = 0; i < 20; i++) link.sample(false);
+            assertNull(link.want());
+        } finally {
+            LadsGameBridge.set(before);
+        }
     }
 }

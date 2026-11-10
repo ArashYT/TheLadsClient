@@ -420,7 +420,14 @@ public partial class MainWindow : Window
             _updateCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
             _updateCheckTimer.Tick += async (_, _) => await PollForUpdatesAsync();
             _updateCheckTimer.Start();
-            if (settings.LastSeenReleaseNotesVersion != Program.Version)
+            if (InGameUpdate.PlayProfile(args) is { } playProfile)
+            {
+                // The game's own Update button restarted the launcher: the player waits for the game, so it starts at once and the
+                // release notes wait for the next time the launcher opens.
+                Log("[Launcher] Updated from the game's Update button; starting that profile again.");
+                _ = StartLaunchAsync(afterVersionSwitch: true, profileId: playProfile);
+            }
+            else if (settings.LastSeenReleaseNotesVersion != Program.Version)
             {
                 // After an update restart the bridge's snapshot still covers only this window's client area: a taller dialog would peek out
                 // around it, so wait for the bridge's signal plus its hold and fade (HoldMs 350 + FadeMs 150 in BridgeForm.cs) and a margin.
@@ -586,7 +593,8 @@ public partial class MainWindow : Window
     private string[] PrepareUpdateRestart(string version)
     {
         FlushSettingsSave();
-        if (WindowState == WindowState.Minimized) return Array.Empty<string>();   // nothing on screen to hold; the new launcher opens centred
+        string[] play = _playAfterUpdate is { } profileId ? new[] { InGameUpdate.PlayArg, profileId } : Array.Empty<string>();
+        if (WindowState == WindowState.Minimized) return play;   // nothing on screen to hold; the new launcher opens centred
         try
         {
             string snapshot = Path.Combine(UpdateBridge.Folder, "snapshot.png");
@@ -603,7 +611,7 @@ public partial class MainWindow : Window
         {
             Log($"[Updater] Could not snapshot the installing screen ({ex.Message}); updating without the bridge.");
         }
-        return new[] { UpdateBridge.RestoreWindowArg, UpdateBridge.FormatRestoreWindow(Position, ClientSize.Width, ClientSize.Height, WindowState) };
+        return new[] { UpdateBridge.RestoreWindowArg, UpdateBridge.FormatRestoreWindow(Position, ClientSize.Width, ClientSize.Height, WindowState) }.Concat(play).ToArray();
     }
 
     /// <summary>Puts the installing screen up, fully laid out, and saves it to <paramref name="path"/> in physical pixels
@@ -708,6 +716,7 @@ public partial class MainWindow : Window
 
     private DispatcherTimer? _updateNowPulse;
     private string? _readyUpdateVersion; // a verified update waits for the Update button (offered again at Play)
+    private string? _playAfterUpdate; // the profile whose game closed through its own Update button: the updated launcher starts it again
     private double _updateNowPulseElapsed;
 
     private DateTime _lastMarkerCheckUtc;
@@ -774,7 +783,12 @@ public partial class MainWindow : Window
     private void ShowUpdateButton(string version)
     {
         if (_windowClosed) return;
-        _readyUpdateVersion = version;
+        if (_readyUpdateVersion != version)
+        {
+            _readyUpdateVersion = version;
+            // Games that are already running show their title screen's Update button for it.
+            foreach (string game in _runningProcesses.Where(p => IsGameRunning(p.Key)).Select(p => p.Value).ToList()) WriteInGameUpdate(game, starting: false);
+        }
         ToolTip.SetTip(UpdateNowBtn, $"Version {version} is ready. Click to install it and restart the launcher.");
         if (UpdateNowHost.IsVisible) return;
         UpdateNowHost.IsVisible = true;
@@ -4941,7 +4955,8 @@ public partial class MainWindow : Window
     /// <param name="afterVersionSwitch">The game closed to switch versions (or renderer) from its own screen: the player wants to play
     /// at once, so nothing optional (the update prompt) holds the launch up.</param>
     /// <param name="relaunch">The game closed to switch renderer: it starts in the world or on the server it was in.</param>
-    private async Task StartLaunchAsync(bool afterVersionSwitch = false, GraphicsRenderer.Relaunch? relaunch = null, ModSyncService.Relaunch? modSync = null)
+    /// <param name="profileId">The profile to start when it is not the active one (a game that closed itself to update).</param>
+    private async Task StartLaunchAsync(bool afterVersionSwitch = false, GraphicsRenderer.Relaunch? relaunch = null, ModSyncService.Relaunch? modSync = null, string? profileId = null)
     {
         try {
             LaunchButton.IsEnabled = false;
@@ -4955,7 +4970,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            await LaunchGame(afterVersionSwitch, relaunch, modSync: modSync);
+            await LaunchGame(afterVersionSwitch, relaunch, relaunchProfileId: profileId, modSync: modSync);
         } catch (Exception ex) {
             try {
                 var crashFile = Path.Combine(TheLadsLauncher.Services.PathService.Instance.LogsDirectory, "crash_launchbtn.txt");
@@ -5507,6 +5522,7 @@ public partial class MainWindow : Window
             Log("[Launcher] Starting game process...");
             PrepareVersionSwitch(gameDirectory, activeProfile.MinecraftVersion);
             PrepareAccountSwitch(gameDirectory);
+            WriteInGameUpdate(gameDirectory, starting: true);
             process.Start();
             LaunchToken.Send(process);
             _runningProcesses[process] = gameDirectory; UpdateAnimationTimers();
@@ -5690,6 +5706,8 @@ public partial class MainWindow : Window
             relaunchRequested |= rendererRelaunch;
             bool modSyncRelaunch = !relaunchRequested && !cancelled && ApplyModSyncRelaunch(gameDirectory, profile);
             relaunchRequested |= modSyncRelaunch;
+            bool updateRelaunch = !relaunchRequested && !cancelled && ApplyUpdateRelaunch(gameDirectory, profile);
+            relaunchRequested |= updateRelaunch;
             int exitCode = 0;
             try { exitCode = process.ExitCode; }
             catch (InvalidOperationException ex) { Log($"[Launcher] Could not read the game's exit code: {ex.Message}"); }
@@ -5718,7 +5736,8 @@ public partial class MainWindow : Window
             else if (relaunchRequested)
             {
                 // The player closed it from the Switch Versions screen or the shader toggle: the new launch reports from here.
-                Log(rendererRelaunch ? "[Launcher] The game closed to switch renderer." : modSyncRelaunch ? "[Launcher] The game closed to start again with a friend's mods." : "[Launcher] The game closed to switch versions.");
+                Log(rendererRelaunch ? "[Launcher] The game closed to switch renderer." : modSyncRelaunch ? "[Launcher] The game closed to start again with a friend's mods."
+                    : updateRelaunch ? "[Launcher] The game closed through its Update button." : "[Launcher] The game closed to switch versions.");
             }
             else if (exitCode != 0)
             {
@@ -5781,6 +5800,49 @@ public partial class MainWindow : Window
         {
             Log($"[Launcher] Could not prepare {AccountSwitch.RequestFile}: {ex.Message}");
         }
+    }
+
+    /// <summary>Tells the game in <paramref name="gameDirectory"/> which update is ready (none: no Update button on its title screen).</summary>
+    private void WriteInGameUpdate(string gameDirectory, bool starting)
+    {
+        try
+        {
+            if (starting) InGameUpdate.Prepare(gameDirectory, _readyUpdateVersion);
+            else InGameUpdate.Notify(gameDirectory, _readyUpdateVersion);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log($"[Launcher] Could not write {InGameUpdate.NoticeFile}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// After a profile's game has exited from <paramref name="gameDirectory"/>: when it closed through its title screen's Update
+    /// button, installs the waiting update, and the updated launcher starts that profile again (<see cref="InGameUpdate.PlayArg"/>).
+    /// When the update cannot be installed (another game still runs, or it is no longer ready) the profile starts again without it.
+    /// Runs on the UI thread. True: the update or a launch is on its way.
+    /// </summary>
+    private bool ApplyUpdateRelaunch(string gameDirectory, TheLadsLauncher.Models.LauncherProfile profile)
+    {
+        if (!InGameUpdate.TakeRequest(gameDirectory)) return false;
+        StatusText.Text = "Updating The Lads Client...";
+        _ = Dispatcher.UIThread.InvokeAsync(async () =>
+        {
+            await Task.Delay(500);
+            // What the launcher does at every game exit (settings and shared content sync) finishes first; another running game never does.
+            for (int i = 0; i < 60 && UpdateBlocked() && !GameProcesses().Any(IsGameRunning); i++) await Task.Delay(500);
+            if (_windowClosed) return;
+            this.Show();   // the installing screen, which the update bridge then holds until the new launcher is up
+            this.WindowState = WindowState.Normal;
+            _playAfterUpdate = profile.Id;
+            if (_autoUpdater.InstallNow(UpdateBlocked, ReportUpdate)) return;
+            _playAfterUpdate = null;
+            LauncherStartupOverlay.IsVisible = false;
+            UpdateBridge.SignalLauncherShown();
+            Log("[Launcher] The update could not be installed now; starting the game again without it.");
+            await StartLaunchAsync(afterVersionSwitch: true, profileId: profile.Id);
+        });
+        return true;
     }
 
     private void PrepareVersionSwitch(string gameDirectory, string currentVersion)
