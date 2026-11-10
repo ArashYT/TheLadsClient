@@ -206,6 +206,8 @@
     "CloudRendererMixin",
     "LadsApiPacketListenerMixin",
     "LadsApiDisconnectMixin",
+    "ServerOptionMixin",
+    "ServerOptionsSaveMixin",
     "MinecraftFriendsMixin",
     "ScreenChatClickMixin",
     "ClientPacketListenerChatMixin"

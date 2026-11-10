@@ -68,6 +68,8 @@
     "OldAnimationsCameraMixin",
     "OldAnimationsFireMixin",
     "LadsApiPacketListenerMixin",
-    "LadsApiDisconnectMixin"
+    "LadsApiDisconnectMixin",
+    "ServerOptionMixin",
+    "ServerOptionsSaveMixin"
   ]
 }
