@@ -577,12 +577,12 @@
       "projectSlug": "viafabricplus",
       "name": "ViaFabricPlus",
       "modId": "viafabricplus",
-      "versionId": "vV9NPd0U",
-      "version": "5.1.1",
-      "fileName": "ViaFabricPlus-5.1.1.jar",
-      "url": "https://cdn.modrinth.com/data/rIC2XJV4/versions/vV9NPd0U/ViaFabricPlus-5.1.1.jar",
-      "sha512": "6d17337a833ebd6ab8dba31820196569fdda7ac2164f60bd1d05072c858a2840355d08d524decffe7d50bb4f95f489bcf4b0a114fb00fb0bc0d1be455f2c2afa",
-      "size": 10331914,
+      "versionId": "DACOoCin",
+      "version": "5.1.3",
+      "fileName": "ViaFabricPlus-5.1.3.jar",
+      "url": "https://cdn.modrinth.com/data/rIC2XJV4/versions/DACOoCin/ViaFabricPlus-5.1.3.jar",
+      "sha512": "91e60db5183948f88a0cacb65a7492d8dd0c7afc78eb0225f55c0efeb0a5275ac54091863d67f9f8600655b1e47de377f0ed32da93e61d862128c6d4c75743a0",
+      "size": 10370276,
       "license": "GPL-3.0-only",
       "sourceUrl": "https://github.com/ViaVersion/ViaFabricPlus",
       "projectUrl": "https://modrinth.com/mod/viafabricplus"
@@ -716,6 +716,9 @@
     ],
     "tcdcommons": [
       "39adb15641f7ac8e6d54bcb2c1ee135e403266f3942f51d030949b612f1f6c5a56052d30f9c30ae33c091471fe4c94d7ae8d8613d61a986417259a9a5029854d"
+    ],
+    "viafabricplus": [
+      "6d17337a833ebd6ab8dba31820196569fdda7ac2164f60bd1d05072c858a2840355d08d524decffe7d50bb4f95f489bcf4b0a114fb00fb0bc0d1be455f2c2afa"
     ],
     "xaerominimap": [
       "86de35d7c6ae10441d9a1e7f14656a87dc3cfa17487b122ea5bfa6f322b56bfa1b96662903a36f2ff0e0d579644474510c4463ea21dea8223b8931d6dbf64e61"
