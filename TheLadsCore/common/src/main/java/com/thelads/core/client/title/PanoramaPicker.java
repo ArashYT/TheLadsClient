@@ -147,6 +147,39 @@ public final class PanoramaPicker {
         return false;
     }
 
+    /** The title screen's Change panorama button: the next release family's panorama, the choice kept like the setting's. */
+    public static void next() {
+        DropdownOption option = option();
+        if (option == null) return;
+        String picked = nextChoice(option.getChoices(), option.getValue());
+        option.select(picked);
+        com.thelads.core.config.ConfigManager.save();
+        message = option.getChoices().length < 2 ? "The panorama list is still loading" : "Panorama: " + picked;
+        messageUntil = System.currentTimeMillis() + 4000;
+    }
+
+    /**
+     * The choice after current, one per release family (1.21.4 and 1.21.11 are both 1.21: hotfixes share a panorama).
+     * Default, then the second family on: the newest family comes last, as on its own release it is what Default shows.
+     */
+    static String nextChoice(String[] choices, String current) {
+        List<String> firsts = new ArrayList<>();
+        for (int i = 1; i < choices.length; i++) {
+            if (firsts.isEmpty() || !family(firsts.get(firsts.size() - 1)).equals(family(choices[i]))) firsts.add(choices[i]);
+        }
+        if (firsts.isEmpty()) return DEFAULT;
+        if (DEFAULT.equals(current)) return firsts.get(firsts.size() > 1 ? 1 : 0);
+        int at = 0;
+        while (at < firsts.size() && !family(firsts.get(at)).equals(family(current))) at++;
+        if (at == 0 || at >= firsts.size()) return DEFAULT;
+        return firsts.get(at + 1 < firsts.size() ? at + 1 : 0);
+    }
+
+    private static String family(String release) {
+        String[] parts = release.split("\\.");
+        return parts.length < 2 ? release : parts[0] + "." + parts[1];
+    }
+
     private static DropdownOption option() {
         Module module = ModuleManager.getInstance().getModule("TitleScreen");
         return module != null && module.getOption(TitleScreenModule.PANORAMA_VERSION) instanceof DropdownOption d ? d : null;

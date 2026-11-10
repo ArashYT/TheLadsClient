@@ -369,6 +369,14 @@ public final class TitleScreenTheme {
         return screenWidth >= TOGGLE_LABEL_MIN ? widestLabel + COMPACT_PADDING : HEADER_SIZE;
     }
 
+    /** The Change panorama button, left of the layout toggle: a square icon in the legacy layout (its logo is centred) and below PANORAMA_LABEL_MIN wide. */
+    public static final String CHANGE_PANORAMA = "Change panorama";
+    public static final int PANORAMA_LABEL_MIN = 560;
+
+    public static int panoramaButtonWidth(int screenWidth, int labelWidth, boolean legacy) {
+        return !legacy && screenWidth >= PANORAMA_LABEL_MIN ? labelWidth + COMPACT_PADDING : HEADER_SIZE;
+    }
+
     /** The pause menu's button icons: their size and gap to the label, centred together with it. */
     public static final int LABEL_ICON = 10, LABEL_ICON_GAP = 4;
 
