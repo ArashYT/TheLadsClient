@@ -150,6 +150,11 @@ Minecraft account is proven the way a server proves it (Mojang `join` / `hasJoin
    allowed), and marks the session verified. A token for another player, hello or server fails the signature. Only the first
    8 tokens of a session are checked.
 
+The relay link can come up late (a relay restart, a slow network). The client keeps its request until the relay answers and
+gives up only on a relay that was asked and stayed silent for 30 s, so the token may follow the first hello by minutes; the
+plugin takes it at any time in the session. A world change on the same server keeps the wait. Another backend, a proxy
+`reset` or a disconnect ends it: a token that arrives later is dropped, never sent to a server that did not ask.
+
 - For servers: `LadsPlayer.verified()`, `LadsClientAPI.verified(uuid)`, `%ladsapi_verified%`, Paper `LadsPlayerVerifiedEvent`,
   `/ladsapi status` and `inspect`. Perks belong to verified players: a perk plugin asks `LadsClientAPI.perks(uuid)`, which is
   `verified(uuid)` unless the server sets `perks-need-verified: false` (then any client that answered the hello, for the time
