@@ -194,7 +194,8 @@ public final class GuestSession {
 
     /**
      * ModSync before the game connects: nothing missing connects as usual; fetched jars end in a restart through the launcher (the
-     * host lets us back in, SocialState rejoins); Cancel, a refused trust question or a failed fetch ends the session.
+     * host lets us back in, SocialState rejoins); Cancel or a refused trust question ends the session. A sync that fails joins
+     * without the host's mods, as before ModSync: a world that needs them refuses the login and says which are missing.
      */
     private void modSync(String sid, UUID host, String hostName, P2PSession session, Runnable connect) {
         SocialBridge bridge = owner.bridge();
@@ -229,34 +230,36 @@ public final class GuestSession {
                 return !isSession(sid);
             }
         };
+        ModSyncFlow.Result result;
         try {
-            ModSyncFlow.Result result = ModSyncFlow.guest(gameDir, host, session.in(P2PSession.MODSYNC), session.out(P2PSession.MODSYNC),
+            result = ModSyncFlow.guest(gameDir, host, session.in(P2PSession.MODSYNC), session.out(P2PSession.MODSYNC),
                     owner.loadedMods(), ModSyncDownloader.http(), ModSyncFlow.relaunchedFor(host), ui);
-            if (!isSession(sid)) { // cancelled while it ran
-                if (result == ModSyncFlow.Result.RELAUNCH) ModSyncFlow.dropRelaunch(gameDir);
-                return;
-            }
-            switch (result) {
-                case CONNECT -> connect.run();
-                case CANCELLED -> close(sid, "Cancelled");
-                case RELAUNCH -> {
-                    try {
-                        Thread.sleep(1500); // the player reads "Restarting the game with N mods"
-                    } catch (InterruptedException ignored) {
-                    }
-                    if (!isSession(sid)) {
-                        ModSyncFlow.dropRelaunch(gameDir);
-                        return;
-                    }
-                    LOGGER.info("GuestSession: restarting with {}'s mods", host);
-                    close(sid, "Restarting with the host's mods"); // after "bye relaunch": close delivers what was written
-                    bridge.quitGame();
-                }
-            }
         } catch (IOException | RuntimeException e) {
             LOGGER.warn("GuestSession: ModSync failed: {}", e.toString());
-            if (isSession(sid)) bridge.toast("Friend's world", "Could not get " + hostName + "'s mods", null, null);
-            close(sid, "ModSync failed");
+            ModSyncFlow.dropRelaunch(gameDir); // never a restart the player was not told about
+            if (isSession(sid)) bridge.toast("Friend's world", "Could not get " + hostName + "'s mods: joining without them", null, null);
+            result = ModSyncFlow.Result.CONNECT;
+        }
+        if (!isSession(sid)) { // cancelled, or the link ended, while it ran
+            if (result == ModSyncFlow.Result.RELAUNCH) ModSyncFlow.dropRelaunch(gameDir);
+            return;
+        }
+        switch (result) {
+            case CONNECT -> connect.run();
+            case CANCELLED -> close(sid, "Cancelled");
+            case RELAUNCH -> {
+                try {
+                    Thread.sleep(1500); // the player reads "Restarting the game with N mods"
+                } catch (InterruptedException ignored) {
+                }
+                if (!isSession(sid)) {
+                    ModSyncFlow.dropRelaunch(gameDir);
+                    return;
+                }
+                LOGGER.info("GuestSession: restarting with {}'s mods", host);
+                close(sid, "Restarting with the host's mods"); // after "bye relaunch": close delivers what was written
+                bridge.quitGame();
+            }
         }
     }
 

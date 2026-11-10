@@ -196,7 +196,7 @@ public class SocialState {
         FriendEntry f = host == null ? null : friendsMap.get(host);
         SocialBridge.GameInfo theirs = f == null || f.presence() == null ? null : f.presence().game(), ours = gameInfo();
         String hash = theirs == null || theirs.modsHash() == null ? "" : theirs.modsHash();
-        return MODS_HASH.matcher(hash).matches() && !hash.equals(ours.modsHash()) && bridge().gameDir() != null
+        return MODS_HASH.matcher(hash).matches() && !hash.equals(ours.modsHash()) && ModSyncFlow.launcherReady(bridge().gameDir())
                 && "plain".equals(ours.profileKind()) && "fabric".equals(ours.loader());
     }
 
