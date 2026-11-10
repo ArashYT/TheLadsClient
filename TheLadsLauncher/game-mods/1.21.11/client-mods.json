@@ -322,12 +322,12 @@
       "projectSlug": "durability-tooltip",
       "name": "Durability Tooltip",
       "modId": "durabilitytooltip",
-      "versionId": "dCPa5AFM",
-      "version": "1.1.6-fabric-mc1.21.11",
-      "fileName": "durabilitytooltip-1.1.6-fabric-mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/smUP7V3r/versions/dCPa5AFM/durabilitytooltip-1.1.6-fabric-mc1.21.11.jar",
-      "sha512": "4472d904e60e04dfcc2252fabe089343bb4b684607ff279ca3a8976a8624f8d4c2d3c7c94f25405f8151902378bedacf1708eb1ae4489071528dba106060f800",
-      "size": 20261,
+      "versionId": "INq5cBnm",
+      "version": "1.2.0-fabric-mc1.21.11",
+      "fileName": "durabilitytooltip-1.2.0-fabric-mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/smUP7V3r/versions/INq5cBnm/durabilitytooltip-1.2.0-fabric-mc1.21.11.jar",
+      "sha512": "fe18983b96b86bcf2a8e0f9e4016243230f9835ac81556ed8fbd671b93effc0caec828585134910052eb83ceb05facff79a6a5df20df34bf769f53e234264026",
+      "size": 20846,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/SuperMartijn642/DurabilityTooltip",
       "projectUrl": "https://modrinth.com/mod/durability-tooltip"
@@ -832,12 +832,12 @@
       "projectSlug": "obe",
       "name": "Optimized Block Entities [OBE]",
       "modId": "obe",
-      "versionId": "XDnvxkzQ",
-      "version": "1.1.46",
-      "fileName": "obe+1.21.11-1.1.46.jar",
-      "url": "https://cdn.modrinth.com/data/AtOSAunf/versions/XDnvxkzQ/obe%2B1.21.11-1.1.46.jar",
-      "sha512": "56597c030b5ae9b1a804addc9f76181013d770e97bf636364a4d319aa0eb56136048cef902b855df4be3c1c626a8c80473a6f4ddc7e294d05c928c3e51818cb6",
-      "size": 199440,
+      "versionId": "K0N0A6aD",
+      "version": "1.2.0",
+      "fileName": "obe+1.21.11-1.2.0.jar",
+      "url": "https://cdn.modrinth.com/data/AtOSAunf/versions/K0N0A6aD/obe%2B1.21.11-1.2.0.jar",
+      "sha512": "776a5089f6b03242eb712dd7a5df53095d1c088886d6bde013239e0c5d617258090f88c2b9ba9068418a1d7cf2b547f69e255a23fbaa9d6287842675b24ce36c",
+      "size": 252192,
       "license": "LGPL-3.0-or-later",
       "sourceUrl": "https://github.com/maDU59/OptimisedBlockEntities",
       "projectUrl": "https://modrinth.com/mod/obe"
@@ -892,12 +892,12 @@
       "projectSlug": "raised",
       "name": "Raised",
       "modId": "raised",
-      "versionId": "lgLBYQO3",
-      "version": "Fabric-1.21.11-5.1.2",
-      "fileName": "raised-fabric-1.21.11-5.1.2.jar",
-      "url": "https://cdn.modrinth.com/data/nCQRBEiR/versions/lgLBYQO3/raised-fabric-1.21.11-5.1.2.jar",
-      "sha512": "77e696f667896dc1036cb4e42ef7201035e809de3c4e27ae0eee4d57143065ccd99962019563bff97915f4f5a9373b5c8c025ba554b4ea65ec32c6f7f8cf5241",
-      "size": 85205,
+      "versionId": "qI5fwV9q",
+      "version": "Fabric-1.21.11-6.0.2",
+      "fileName": "raised-fabric-1.21.11-6.0.2.jar",
+      "url": "https://cdn.modrinth.com/data/nCQRBEiR/versions/qI5fwV9q/raised-fabric-1.21.11-6.0.2.jar",
+      "sha512": "6cdbfc20cf16b6f39bf01cd3cd8d2d86487f34bd94f75d3cef39526add910eb7fd43f625f051a0ddcbdf469f0168942113527f74f69c49d011965352906c61b8",
+      "size": 131841,
       "license": "LGPL-3.0-or-later",
       "sourceUrl": "https://github.com/yurisuika/Raised",
       "projectUrl": "https://modrinth.com/mod/raised"
@@ -1153,6 +1153,9 @@
     "chat_heads": [
       "6a5bdb79c62c66e6273614ab75c673c88a3fdfd840d1afdbf8b10d952e4251786887dd6097c6ccae4e11e9efe8b1dc89ffcd0599058af7d756c64b299eddf9d0"
     ],
+    "durabilitytooltip": [
+      "4472d904e60e04dfcc2252fabe089343bb4b684607ff279ca3a8976a8624f8d4c2d3c7c94f25405f8151902378bedacf1708eb1ae4489071528dba106060f800"
+    ],
     "fabric-language-kotlin": [
       "9a63c35a550b0362b7b25ff045d93709c7b0dae08c89076cba422813fdfb9e5f5dd021ed3afac9f82e74e95b88c249e8f68b240717151540ca3e88cc27fb9c77",
       "91404f87774466ce8604aafea791d8cc97b603bc310dce17c8188f94f7783cca6dc14fc726ce871ca317bfe9033c199d8d858d51284106a00754e952147703b8"
@@ -1169,6 +1172,12 @@
     "notenoughanimations": [
       "32a75704d907c3a6c63d3068971b8d10f2ea666589b14d9de1534d8623cff87a15cd86d999fc1ca4c054b434c104028b6d0fc522dd75af638cc5aebe42621a73",
       "32feb22fcfbd7df2669a5d2405c00f9a6febf08af470855dcd84c5741e3e6d91ca0186a18c2e780b60c5010320843a8fddd5742003c00f3b76e18269283fd1dd"
+    ],
+    "obe": [
+      "56597c030b5ae9b1a804addc9f76181013d770e97bf636364a4d319aa0eb56136048cef902b855df4be3c1c626a8c80473a6f4ddc7e294d05c928c3e51818cb6"
+    ],
+    "raised": [
+      "77e696f667896dc1036cb4e42ef7201035e809de3c4e27ae0eee4d57143065ccd99962019563bff97915f4f5a9373b5c8c025ba554b4ea65ec32c6f7f8cf5241"
     ],
     "sodium": [
       "04c43f9e8534b87a52c42ffd51b0e344d4ef92dc9cc52da33d13af6a18bf74b05380d2027f1e0db982698d0aff274c42741c1e21b313b0cd75ed3af005fc98d9"
