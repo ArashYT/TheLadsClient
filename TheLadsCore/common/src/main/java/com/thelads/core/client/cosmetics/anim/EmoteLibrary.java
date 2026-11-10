@@ -21,6 +21,7 @@ public final class EmoteLibrary {
     public static final String SHRUG = "lads:shrug";
     public static final String DAB = "lads:dab";
     public static final String TAUNT = "lads:taunt";
+    public static final String TWERK = "lads:twerk";
     /** The emote wheel's slot count (the player fills them in the Cosmetics screen: CosmeticsModule.slots). */
     public static final int SLOTS = 8;
     private static final Map<String, Emote> BY_ID = new LinkedHashMap<>();
@@ -37,6 +38,7 @@ public final class EmoteLibrary {
         add(shrug());
         add(dab());
         add(taunt());
+        add(twerk());
     }
 
     private EmoteLibrary() {}
@@ -288,6 +290,83 @@ public final class EmoteLibrary {
         return b.build();
     }
 
+    /**
+     * Twerking: 8 beats at 140 BPM, bent over in a wide squat with the hands on the knees. Three pops (down and tail up on the beat),
+     * three fast hip wags, a hop, then a slam that holds for two beats while the head turns to look back at it.
+     * The jiggle is springs (Emote.Builder.jiggle), kicked by every pop, wag and the slam: each "cheek" (a leg swinging about its
+     * planted sole, so its top moves and its foot does not) is thrown down and back, overshoots and rings down, the two a little
+     * apart so they wobble against each other; the hips shimmy sideways and the torso rocks the same way. In the hold it is all that
+     * moves, until it settles.
+     */
+    static Emote twerk() {
+        Emote.Builder b = new Emote.Builder(TWERK, "Twerking", 140, 8).groundLock().plant();
+        for (int k = 0; k < 3; k++) {
+            squat(b, k, 64, -44, 0, Ease.EASE);       // the pop: arrives at full speed and stops dead (IN before it), so the springs fire
+            squat(b, k + .5f, 46, -34, 0, Ease.IN);
+        }
+        squat(b, 3, 58, -42, 11, Ease.IN);            // the wags stay low
+        squat(b, 3.5f, 56, -40, -11, Ease.IN);
+        squat(b, 4, 58, -42, 11, Ease.EASE);
+        squat(b, 4.5f, 36, -24, 0, Ease.IN);          // the hop
+        squat(b, 5, 68, -52, 0, Ease.LINEAR);         // the slam, held
+        squat(b, 7.25f, 68, -52, 0, Ease.EASE);
+        squat(b, 7.5f, 46, -34, 0, Ease.IN);
+        b.track(ch(RIGHT_ARM, RZ), 0, -6).track(ch(LEFT_ARM, RZ), 0, 6);
+        // The look back over the shoulder, through the hold.
+        b.track(ch(HEAD, RY), Ease.EASE, 4.5f, 0, 5.3f, 70, 7.2f, 70, 7.6f, 0);
+
+        // The springs. Per hit: how far both cheeks are thrown (pixels), how much more the right one than the left, the sideways
+        // shimmy and the torso's rock (degrees), and the angle between torso and legs there (the squat keys above).
+        float[] hits = {0, 1, 2, 3, 3.5f, 4, 5};
+        float[] both = {1.6f, 1.6f, 1.6f, .5f, .5f, .5f, 3.6f}, apart = {1.6f, -1.6f, 1.6f, 1.5f, -1.5f, 1.5f, 1.4f};
+        float[] shimmy = {6, -6, 6, 9, -9, 9, 12}, rock = {5, 5, 5, 2, 2, 2, 9}, bend = {108, 108, 108, 100, 96, 100, 120};
+        for (int side = 0; side < 2; side++) {
+            int leg = RIGHT_LEG + side, n = hits.length;
+            // A cheek: the leg turns about its planted sole, 1 radian per 12 px that its top travels across the leg. The top is the
+            // pivot, which hangs off the torso: its offsets are in the torso's frame, "down" being along the torso.
+            float[] px = new float[n], down = new float[n], back = new float[n];
+            for (int i = 0; i < n; i++) {
+                px[i] = both[i] + (side == 0 ? apart[i] : -apart[i]);
+                down[i] = px[i] * (float) Math.sin(Math.toRadians(bend[i]));
+                back[i] = px[i] * (float) Math.cos(Math.toRadians(bend[i]));
+            }
+            b.jiggle(ch(leg, RX), 5, .1f, kicks(hits, px, (float) -Math.toDegrees(1 / 12.0)));
+            b.jiggle(ch(leg, Y), 5, .1f, kicks(hits, down, 1)).jiggle(ch(leg, Z), 5, .1f, kicks(hits, back, 1));
+            // Sideways about the soles as well: 8.9 px of hip per radian.
+            b.jiggle(ch(leg, RZ), 4.2f, .12f, kicks(hits, shimmy, 1)).jiggle(ch(leg, X), 4.2f, .12f, kicks(hits, shimmy, (float) Math.toRadians(8.9)));
+        }
+        b.jiggle(ch(BODY, RX), 4.6f, .13f, kicks(hits, rock, 1));
+        b.jiggle(ch(HEAD, RX), 4.6f, .13f, kicks(hits, rock, -1)); // the head stays level
+        return b.build();
+    }
+
+    /**
+     * One key of the twerk's squat (degrees): the torso tipped forward, the legs leaning back from the feet, the head level, hands on
+     * the knees. {@code wag} leans both legs one way (planted feet: the hips go the other) and rolls the torso against it.
+     */
+    private static void squat(Emote.Builder b, float beat, float torso, float legs, float wag, Ease ease) {
+        double t = Math.toRadians(torso), l = Math.toRadians(legs);
+        // From the shoulder (2 px down the torso) to the knee (6 px down the leg from the hip), as an arm angle against the torso.
+        float arms = (float) Math.toDegrees(Math.atan2(10 * Math.sin(t) + 6 * Math.sin(l), 10 * Math.cos(t) + 6 * Math.cos(l))) - torso;
+        // A wide stance: each sole 2.2 px out from its hip, however deep the squat.
+        float splay = (float) Math.toDegrees(Math.asin(2.2 / (12 * Math.cos(l))));
+        b.key(ch(BODY, RX), beat, torso, ease).key(ch(HEAD, RX), beat, -torso, ease);
+        b.key(ch(BODY, RZ), beat, -.65f * wag, ease).key(ch(HEAD, RZ), beat, .65f * wag, ease);
+        for (int side = 0; side < 2; side++) {
+            b.key(ch(RIGHT_LEG + side, RX), beat, legs, ease).key(ch(RIGHT_ARM + side, RX), beat, arms, ease);
+            b.key(ch(RIGHT_LEG + side, RZ), beat, (side == 0 ? splay : -splay) + wag, ease);
+        }
+    }
+
+    /** For Builder.jiggle: beat, kick, beat, kick... with kick = values[i] * scale. */
+    private static float[] kicks(float[] beats, float[] values, float scale) {
+        float[] out = new float[beats.length * 2];
+        for (int i = 0; i < beats.length; i++) {
+            out[2 * i] = beats[i];
+            out[2 * i + 1] = values[i] * scale;
+        }
+        return out;
+    }
 
     /** An arm up at {@code upBeat} and {@code upBeat} + 2, down between; {@code side} -1 right, 1 left (mirrors yaw and roll). */
     private static void pump(Emote.Builder b, int arm, float upBeat, int side) {
