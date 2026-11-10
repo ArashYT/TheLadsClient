@@ -49,6 +49,7 @@ public class MouseHandlerMixin {
     /** Zoom: the camera turns slower while zoomed (ZoomModule.sensitivity), smooth camera included. */
     @WrapOperation(method = "turnPlayer(D)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;turn(DD)V"), require = 1)
     private void ladsZoomTurn(LocalPlayer player, double yaw, double pitch, Operation<Void> original) {
+        if (com.thelads.core.v26_2.feature.PovCamera.active()) return; // POV spectating: our view is locked to the target, the mouse would only sway the hand
         double scale = NativeFeatures.zoomSensitivity();
         if (com.thelads.core.v26_2.feature.PvpView26.turn(yaw * scale, pitch * scale)) return; // Freelook turns its camera, not the player
         original.call(player, yaw * scale, pitch * scale);

@@ -11,6 +11,7 @@
     "MinecraftSessionAccessor26",
     "RealmsClientAccessor26",
     "GuiMixin",
+    "PovHudMixin",
     "EuphoriaClipboardMixin",
     "GuiHudCapMixin",
     "WindowMinimizedPollMixin",
