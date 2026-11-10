@@ -17,6 +17,14 @@ API = LadsClientAPI/common/src/main/java/com/thelads/ladsapi. Core = TheLadsCore
 - After a game crash the launcher shows a "Game Crashed" window over Play: Relaunch is `click 0.358 0.625`.
 - A mixin that compiles can still fail when the game starts (MixinExtras checks handler signatures at apply time): a @WrapOperation on a `super.method()` call takes the mixin's target class as the receiver. Start the game after every mixin change.
 
+- Fallback PC (11-10 13:45, arash-pc and desktop-57kj0bp offline: connector not running): cyrax-pc is reachable. User PC, screen 1024x768, Intel HD 630. Launcher 1.13.7 in C:\Users\PC\AppData\Local\TheLadsClient (start `The Lads Client.exe` with explorer.exe), account TTVArashLIVE, profiles 1.21.11, 1.8.9, 26.2, 26.3 (no 1.20.1); only 26.3 was ever started there (world New World), the others download on first Play. The launcher opens with a What's new and an Import dialog over Play. tools/ingame-drive.ps1 is at C:\Users\PC\ingame-drive.ps1. Same rules: someone used the PC that day, so check GetLastInputInfo first; lock file C:\Users\PC\lads-ingame.lock.
+
+## Block-hit ports (task 4)
+- Shared recipe: OldAnimations.toModernHand (1.7 block pose for a block or 3D model, from where vanilla holds it) and swingOverUse (attack swing over a use pose vanilla draws). Trigger on 1.20.1, 1.21.11, 26.x: any non-empty main-hand item while the off-hand shield blocks (swordBlocking / swordBlock); spears, a loaded crossbow and the riptide spin stay vanilla.
+- 1.21.11 hooks renderArmWithItem right after its push, so it applies swingOverUse before vanilla's use transforms and draws a blocking block or 3D item itself with the first-person context; 26.2 and 1.20.1 hook the item draw and pop back to the arm origin, as 26.3.
+- 1.8.9 blocks for real (EnumAction.BLOCK, any item a mod gives it): ItemRendererMixin now keeps 1.7's swing on a block or 3D model in use, and on a use with EnumAction.NONE after an attack click.
+- In-game check per version: shield in the off hand, hold use with a sword, then with a block while looking at the sky (else the block is placed), and click attack while holding use. Jars of the 13:40 build are staged on cyrax-pc in C:\Users\PC\lads-jars-tc95 (1.21.11.jar, 26.2.jar, 1.8.9.jar); they go into current\game-mods\<version>\theladscore.jar (keep the original).
+
 ## Start Hosting (task 2, fixed 11-10)
 - Evidence: arash-pc's New World\lads-host.json had "scope": "OFF"; the 11-08 15:22 log shows 46 s in the Host screen with no backup, "Started serving" or HostSession line, and no lads-backups folder exists.
 - Cause: the scope row offered OFF. Start Hosting then called HostSession.start with OFF, which means stop and shows no toast.
