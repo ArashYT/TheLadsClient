@@ -38,6 +38,7 @@ public final class NativeQualityOfLife {
         MinimapIntegration.tick();
         NativeKillBanner.tick();
         rawInput();
+        com.thelads.core.client.cosmetics.net.CosmeticsLink.tickProofOnly();
         NativeQualityProbe.tick();
         NativeMenuAccessProbe.tick();
         NativeHudProbe.tick();

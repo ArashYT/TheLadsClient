@@ -94,7 +94,12 @@ public final class CosmeticsLink {
     }
 
     /** Game thread, every client tick; samples once a second. */
-    public static void tick() { LINK.sample(); }
+    public static void tick() { LINK.sample(true); }
+
+    /** The same for a version that draws no relay cosmetics: the link is up only while a server waits for proof of the client. */
+    public static void tickProofOnly() { LINK.sample(false); }
+
+    Want want() { return want; }
 
     public void sendEquip(String slot, String itemId) {
         synchronized (lock) {
@@ -134,14 +139,14 @@ public final class CosmeticsLink {
         return ask != null && !ask.sent;
     }
 
-    private void sample() {
+    void sample(boolean cosmeticsHere) {
         String[] done = takeAttested();
         if (done != null) LadsApiClient.attested(done[0], done[1]);
         if (++ticks % 20 != 0 || endpoint == null) return;
         Attest ask = attest;
         if (ask != null && System.currentTimeMillis() > ask.until) attest = ask = null; // the relay never answered
         CosmeticsModule cosmetics = CosmeticsModule.get();
-        boolean show = cosmetics.showOthers.get(), share = cosmetics.shareMine.get();
+        boolean show = cosmeticsHere && cosmetics.showOthers.get(), share = cosmeticsHere && cosmetics.shareMine.get();
         LadsGameBridge game = LadsGameBridge.get();
         String address = qaServer != null ? qaServer : game.getServerAddress();
         if (!Objects.equals(address, lastAddress)) {
