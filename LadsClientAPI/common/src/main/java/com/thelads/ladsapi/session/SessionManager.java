@@ -21,6 +21,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.LongSupplier;
 
 /**
  * Manages player sessions, protocol messages, presence, and implements LadsClientAPI.
@@ -34,7 +35,13 @@ public final class SessionManager implements LadsClientAPI {
     private final LadsRules rules;
     private final Map<UUID, LadsSession> sessions = new ConcurrentHashMap<>();
     private final List<Consumer<LadsPlayer>> readyListeners = new ArrayList<>();
+    private final List<Consumer<LadsPlayer>> verifiedListeners = new ArrayList<>();
     private final Object lock = new Object();
+    /** Names this server in every hello and in the relay's token; new on every start, it says nothing about the server. */
+    private final String serverId = LadsSession.randomId();
+    private AttestVerifier verifier;
+    private List<String> verifierKeys;
+    private LongSupplier clock = () -> System.currentTimeMillis() / 1000;
 
     public SessionManager(LadsPlatform platform, LadsConfig config, LadsRules rules) {
         this.platform = platform;
@@ -51,6 +58,38 @@ public final class SessionManager implements LadsClientAPI {
         synchronized (lock) {
             readyListeners.add(listener);
         }
+    }
+
+    /** Called once per session, when the client's relay token checked out (PROTOCOL.md section 6). */
+    public void addVerifiedListener(Consumer<LadsPlayer> listener) {
+        synchronized (lock) {
+            verifiedListeners.add(listener);
+        }
+    }
+
+    public String getServerId() { return serverId; }
+
+    /** Unix seconds; tests set it. */
+    public void setClock(LongSupplier clock) { this.clock = clock; }
+
+    /** The token check, or null when verify-client is off or no key loads (then no hello asks for proof and nobody is verified). */
+    public AttestVerifier attest() {
+        synchronized (lock) {
+            if (config == null || !config.isVerifyClient()) return null;
+            List<String> keys = config.getRelayPublicKeys().isEmpty() ? AttestVerifier.RELAY_KEYS : config.getRelayPublicKeys();
+            if (verifier == null || !keys.equals(verifierKeys)) { // first use, or config.yml was reloaded with other keys
+                verifier = new AttestVerifier(keys);
+                verifierKeys = List.copyOf(keys);
+            }
+            return verifier.ready() ? verifier : null;
+        }
+    }
+
+    /** Whether this player's client proved itself through the Lads relay. Old clients and players without the client: false. */
+    @Override
+    public boolean verified(UUID uuid) {
+        LadsSession s = uuid == null ? null : sessions.get(uuid);
+        return s != null && s.isLads() && s.isVerified();
     }
 
     @Override
@@ -103,19 +142,24 @@ public final class SessionManager implements LadsClientAPI {
         }, 60);
 
         // require-lads-client: kick 5 s (100 ticks) after hello if no reply (kick executed outside lock)
-        platform.runLater(() -> {
-            boolean shouldKick = false;
-            String kickMsg = null;
-            synchronized (lock) {
-                if (sessions.get(uuid) == session && config.isRequireLadsClient() && !session.isLads()) {
-                    shouldKick = true;
-                    kickMsg = config.getRequireLadsClientMessage();
-                }
+        platform.runLater(() -> kickUnless(uuid, session, false), 100);
+        // ... and after verify-timeout when it did reply, but never showed the relay's token: anyone can send that reply
+        platform.runLater(() -> kickUnless(uuid, session, true), Math.max(100, config.getVerifyTimeout() * 20));
+    }
+
+    private void kickUnless(UUID uuid, LadsSession session, boolean verified) {
+        String kickMsg = null;
+        synchronized (lock) {
+            if (sessions.get(uuid) != session || !config.isRequireLadsClient()) return;
+            if (!verified && !session.isLads()) {
+                kickMsg = config.getRequireLadsClientMessage();
+            } else if (verified && session.isLads() && !session.isVerified() && attest() != null) {
+                kickMsg = config.getRequireVerifiedMessage();
             }
-            if (shouldKick) {
-                session.getHandle().kick(kickMsg);
-            }
-        }, 100);
+        }
+        if (kickMsg != null) {
+            session.getHandle().kick(kickMsg);
+        }
     }
 
     public void quit(UUID uuid) {
@@ -243,32 +287,38 @@ public final class SessionManager implements LadsClientAPI {
         List<Consumer<LadsPlayer>> listeners = null;
         List<UUID> allLads = null;
         List<LadsSession> otherSessions = null;
+        List<Consumer<LadsPlayer>> verifiedNow = null;
 
         synchronized (lock) {
-            if (session.isHelloAcked()) return;
-
             // PROTOCOL.md section 5: a server receiving a `v` it does not know treats the player as non-Lads.
             int v = whole(root, "v", 0);
             if (v < 1 || v > LadsCore.PROTOCOL) return;
 
-            // Both strings reach commands, PlaceholderAPI and the kick text: only plain version text gets through.
-            String ladsVersion = VersionUtil.clean(text(root, "lads"));
-            String mcVersion = VersionUtil.clean(text(root, "mc"));
+            if (!session.isHelloAcked()) {
+                // Both strings reach commands, PlaceholderAPI and the kick text: only plain version text gets through.
+                String ladsVersion = VersionUtil.clean(text(root, "lads"));
+                String mcVersion = VersionUtil.clean(text(root, "mc"));
 
-            // min-client-version check
-            if (!config.getMinClientVersion().isBlank() && VersionUtil.isOlder(ladsVersion, config.getMinClientVersion())) {
-                kickMsg = config.getMinClientVersionMessage()
-                        .replace("%client%", ladsVersion)
-                        .replace("%min%", config.getMinClientVersion());
-            } else {
-                session.setHelloAcked(true);
-                session.setLads(true, ladsVersion, mcVersion);
-                sendFull = true;
-                listeners = new ArrayList<>(readyListeners);
-                if (config.isBadgePresence()) {
-                    allLads = getAllLadsPlayerUuids();
-                    otherSessions = new ArrayList<>(sessions.values());
+                // min-client-version check
+                if (!config.getMinClientVersion().isBlank() && VersionUtil.isOlder(ladsVersion, config.getMinClientVersion())) {
+                    kickMsg = config.getMinClientVersionMessage()
+                            .replace("%client%", ladsVersion)
+                            .replace("%min%", config.getMinClientVersion());
+                } else {
+                    session.setHelloAcked(true);
+                    session.setLads(true, ladsVersion, mcVersion);
+                    sendFull = true;
+                    listeners = new ArrayList<>(readyListeners);
+                    if (config.isBadgePresence()) {
+                        allLads = getAllLadsPlayerUuids();
+                        otherSessions = new ArrayList<>(sessions.values());
+                    }
                 }
+            }
+
+            // PROTOCOL.md section 6: the relay's token comes in a second hello (the first one cannot wait for the relay).
+            if (session.isLads() && checkToken(session, handle, text(root, "token"))) {
+                verifiedNow = new ArrayList<>(verifiedListeners);
             }
         }
 
@@ -303,6 +353,37 @@ public final class SessionManager implements LadsClientAPI {
                 }
             }
         }
+
+        if (verifiedNow != null) {
+            for (Consumer<LadsPlayer> listener : verifiedNow) {
+                try {
+                    listener.accept(session.getLadsPlayer());
+                } catch (Throwable t) {
+                    if (platform.logger() != null) {
+                        platform.logger().warning("[LadsClientAPI] Error in verified listener: " + t.getMessage());
+                    }
+                }
+            }
+        }
+    }
+
+    /** Caller holds the lock. True when this token just made the session verified. */
+    private boolean checkToken(LadsSession session, LadsPlayerHandle handle, String token) {
+        AttestVerifier attest = attest();
+        if (token == null || attest == null || session.isVerified() || !session.takeAttestTry()) return false;
+        AttestVerifier.Result result = attest.check(token, handle.uuid(), session.getNonce(), serverId, clock.getAsLong());
+        if (result == AttestVerifier.Result.OK) {
+            session.setVerified(true);
+            return true;
+        }
+        if (platform.logger() != null) {
+            if (result == AttestVerifier.Result.EXPIRED) {
+                platform.logger().warning("[LadsClientAPI] " + handle.name() + ": the relay's token is real but out of date. Check this server's clock.");
+            } else if (config.isDebug()) {
+                platform.logger().info("[LadsClientAPI] " + handle.name() + ": token refused (" + result + ")");
+            }
+        }
+        return false;
     }
 
     private void handleAck(LadsSession session, LadsPlayerHandle handle, JsonObject root) {

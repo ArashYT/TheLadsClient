@@ -2,6 +2,7 @@ package com.thelads.ladsapi.paper;
 
 import com.thelads.ladsapi.LadsCore;
 import com.thelads.ladsapi.paper.event.LadsPlayerReadyEvent;
+import com.thelads.ladsapi.paper.event.LadsPlayerVerifiedEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
@@ -30,6 +31,13 @@ public final class LadsPaperPlugin extends JavaPlugin implements PluginMessageLi
             Player p = Bukkit.getPlayer(ladsPlayer.uuid());
             if (p != null) {
                 Bukkit.getPluginManager().callEvent(new LadsPlayerReadyEvent(p, ladsPlayer));
+            }
+        });
+
+        core.sessionManager().addVerifiedListener(ladsPlayer -> {
+            Player p = Bukkit.getPlayer(ladsPlayer.uuid());
+            if (p != null) {
+                Bukkit.getPluginManager().callEvent(new LadsPlayerVerifiedEvent(p, ladsPlayer));
             }
         });
 

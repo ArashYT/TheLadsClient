@@ -16,6 +16,12 @@ public interface LadsPlayer {
     /** "26.3", "1.20.1", "1.8.9". */
     String minecraftVersion();
 
+    /**
+     * Whether the client proved itself through the Lads relay (PROTOCOL.md section 6). The client's hello alone can be sent by
+     * any program: give perks to verified players only. False for clients older than 1.13.9, and for a few seconds after the join.
+     */
+    boolean verified();
+
     void block(String module);
 
     void allow(String module);

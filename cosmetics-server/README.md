@@ -37,6 +37,12 @@ The client side connects via `TheLadsCore/common/.../client/cosmetics/net/Cosmet
    - Client sends: `{"t":"link"}` (or `{"t":"link_start"}`)
    - Server responds: `{"t":"link_code","code":"ABC123","uuid":"...","expires_in":600}`.
    - Max one active link code per UUID (new code replaces previous code).
+6. **Attest (anti-spoof handshake, `LadsClientAPI/docs/PROTOCOL.md` section 6):**
+   - The challenge carries `"attest":true` when this relay signs tokens; a client sends `attest` only then.
+   - Client sends: `{"t":"attest","nonce":"<16-64 hex>","sid":"<16-64 hex>"}`, both taken from a game server's `lads:api` hello.
+   - Server responds: `{"t":"attest","nonce":"...","token":"v1.<expiry>.<signature>"}`, or `"error":"unavailable"` (no key) / `"rate"` (6 a minute per socket).
+   - The token is an Ed25519 signature over `lads-attest-v1|<uuid>|<nonce>|<sid>|<expiry>`: the uuid is the one Mojang proved on this socket, the expiry is 120 s ahead. Nonce and sid are not stored or logged.
+   - It says "a Mojang-proven session of this account is connected to the Lads relay", not which program runs on the player's PC.
 
 ## SQLite Store
 
@@ -57,6 +63,13 @@ Configured with `TEBEX_WEBHOOK_SECRET` environment variable or `--tebex-secret`.
 - `validation.webhook`: echoes `{ "id": ... }` to pass endpoint validation tests.
 - `payment.completed`: extracts buyer UUID and items, atomically consumes single-use link codes, grants entitlements idempotently (re-deliveries return `already_processed`).
 - `payment.refunded` / `payment.dispute.opened` / `payment.chargeback`: revokes entitlements, clears `equipped`, and broadcasts unequip to connected peers in room.
+
+## Attest key
+
+`python cosmetics.py attest-key <file>` creates the Ed25519 signing key (PEM) if the file is not there yet and prints its public key.
+The relay reads the file named by `LADS_ATTEST_KEY` (or `--attest-key`); without it, without the `cryptography` package, or in
+`--dev-insecure-auth` mode it signs nothing and says so. The file stays on the relay host: never in git, a jar or a plugin. The
+public key goes into the plugin (`AttestVerifier.RELAY_KEYS`) or a server's `config.yml` (`relay-public-keys`).
 
 ## Staff Admin CLI
 

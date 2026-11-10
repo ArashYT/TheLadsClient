@@ -16,6 +16,11 @@ public interface LadsClientAPI {
     /** A connected player who answered the hello (runs the Lads Client), or empty. */
     Optional<LadsPlayer> player(UUID uuid);
 
+    /** Whether this player's client proved itself through the Lads relay: what perks and gates should ask ({@link LadsPlayer#verified}). */
+    default boolean verified(UUID uuid) {
+        return player(uuid).map(LadsPlayer::verified).orElse(false);
+    }
+
     /** Lane SRV-A sets this when the core starts. */
     final class Holder {
         static volatile LadsClientAPI api;

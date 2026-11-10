@@ -82,7 +82,7 @@ public final class LadsCommandHandler {
             List<String> names = new ArrayList<>();
             for (UUID u : ladsUuids) {
                 LadsSession s = core.sessionManager().getSessions().get(u);
-                if (s != null) names.add(s.getHandle().name());
+                if (s != null) names.add(s.getHandle().name() + (s.isVerified() ? " §a(verified)§f" : " §e(unverified)§f"));
             }
             lines.add("§7Lads players: §f" + String.join(", ", names));
         }
@@ -106,6 +106,7 @@ public final class LadsCommandHandler {
         lines.add("§6--- LadsClientAPI Inspect: " + handle.name() + " ---");
         lines.add("§7UUID: §f" + handle.uuid());
         lines.add("§7Client: §fLads v" + s.getLadsVersion() + " §7(MC: §f" + s.getMcVersion() + "§7)");
+        lines.add("§7Verified by the Lads relay: " + (s.isVerified() ? "§ayes" : "§eno"));
         lines.add("§7World: §f" + handle.world());
         lines.add("§7Active policy rev: §f" + s.getRev());
         if (!s.getApiOverrides().isEmpty()) {
