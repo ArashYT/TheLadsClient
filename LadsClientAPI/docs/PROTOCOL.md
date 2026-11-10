@@ -151,7 +151,9 @@ Minecraft account is proven the way a server proves it (Mojang `join` / `hasJoin
    8 tokens of a session are checked.
 
 - For servers: `LadsPlayer.verified()`, `LadsClientAPI.verified(uuid)`, `%ladsapi_verified%`, Paper `LadsPlayerVerifiedEvent`,
-  `/ladsapi status` and `inspect`. Perks belong to verified players. `require-lads-client: true` kicks a client that is still
+  `/ladsapi status` and `inspect`. Perks belong to verified players: a perk plugin asks `LadsClientAPI.perks(uuid)`, which is
+  `verified(uuid)` unless the server sets `perks-need-verified: false` (then any client that answered the hello, for the time
+  before every player has a client that can prove itself) or does not check at all. `require-lads-client: true` kicks a client that is still
   unverified `verify-timeout` (15) seconds after it joined, with `require-verified-message`. `verify-client: false` turns all
   of it off: no nonce is sent and the hello is all there is, as before 1.2.0.
 - Unverified, never kicked for it unless `require-lads-client` is on: a client before 1.13.9, a client that cannot reach the

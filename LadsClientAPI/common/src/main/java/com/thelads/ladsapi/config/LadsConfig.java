@@ -30,6 +30,7 @@ hub-command: ""                # e.g. "/hub": the pause menu's Hub button on The
 proxy-rules: false             # proxy mode: run rules on proxy (only when on Velocity)
 verify-client: true            # ask Lads clients to prove themselves through the Lads relay; perks and require-lads-client then need it
 verify-timeout: 15             # require-lads-client: seconds a client gets to prove itself before the kick
+perks-need-verified: true      # false: perks for every client that answers the hello, also one that cannot prove itself (before 1.13.9)
 require-verified-message: "This server could not verify your Lads Client. Update it, sign in with your Minecraft account and join again."
 relay-public-keys: []          # empty = the Lads relay keys built into this plugin
 badge:
@@ -51,6 +52,7 @@ debug: false
     private boolean proxyRules = false;
     private boolean verifyClient = true;
     private int verifyTimeout = 15;
+    private boolean perksNeedVerified = true;
     private String requireVerifiedMessage = "This server could not verify your Lads Client. Update it, sign in with your Minecraft account and join again.";
     private List<String> relayPublicKeys = List.of();
     private boolean badgePresence = true;
@@ -106,6 +108,7 @@ debug: false
         this.proxyRules = false;
         this.verifyClient = true;
         this.verifyTimeout = 15;
+        this.perksNeedVerified = true;
         this.requireVerifiedMessage = "This server could not verify your Lads Client. Update it, sign in with your Minecraft account and join again.";
         this.relayPublicKeys = List.of();
         this.badgePresence = true;
@@ -154,6 +157,9 @@ debug: false
         if (map.containsKey("verify-client")) {
             this.verifyClient = Boolean.parseBoolean(String.valueOf(map.get("verify-client")));
         }
+        if (map.containsKey("perks-need-verified")) {
+            this.perksNeedVerified = Boolean.parseBoolean(String.valueOf(map.get("perks-need-verified")));
+        }
         if (map.get("verify-timeout") instanceof Number seconds) {
             this.verifyTimeout = Math.max(5, Math.min(120, seconds.intValue()));
         }
@@ -194,6 +200,7 @@ debug: false
     public boolean isProxyRules() { return proxyRules; }
     public boolean isVerifyClient() { return verifyClient; }
     public int getVerifyTimeout() { return verifyTimeout; }
+    public boolean isPerksNeedVerified() { return perksNeedVerified; }
     public String getRequireVerifiedMessage() { return requireVerifiedMessage; }
     public List<String> getRelayPublicKeys() { return relayPublicKeys; }
     public boolean isBadgePresence() { return badgePresence; }
@@ -208,6 +215,7 @@ debug: false
     public void setNotice(String notice) { this.notice = notice; }
     public void setProxyRules(boolean proxyRules) { this.proxyRules = proxyRules; }
     public void setVerifyClient(boolean verifyClient) { this.verifyClient = verifyClient; }
+    public void setPerksNeedVerified(boolean perksNeedVerified) { this.perksNeedVerified = perksNeedVerified; }
     public void setRelayPublicKeys(List<String> relayPublicKeys) { this.relayPublicKeys = List.copyOf(relayPublicKeys); }
     public void setBadgePresence(boolean badgePresence) { this.badgePresence = badgePresence; }
     public void setBadgePlaceholder(String badgePlaceholder) { this.badgePlaceholder = badgePlaceholder; }

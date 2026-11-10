@@ -93,6 +93,12 @@ public final class SessionManager implements LadsClientAPI {
     }
 
     @Override
+    public boolean perks(UUID uuid) {
+        boolean strict = config != null && config.isPerksNeedVerified() && attest() != null;
+        return strict ? verified(uuid) : player(uuid).isPresent();
+    }
+
+    @Override
     public Optional<LadsPlayer> player(UUID uuid) {
         if (uuid == null) return Optional.empty();
         LadsSession s = sessions.get(uuid);
