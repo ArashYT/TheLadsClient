@@ -32,7 +32,7 @@ public final class LadsPlaceholderExpansion extends PlaceholderExpansion {
 
     @Override
     public @NotNull String getVersion() {
-        return "1.3.0";
+        return "1.3.1";
     }
 
     @Override

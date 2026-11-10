@@ -43,6 +43,26 @@ class LadsApiSpectateTest {
         server("{\"t\":\"spectate\",\"mode\":\"pov\",\"target\":\"" + TARGET + "\"" + extra + "}");
     }
 
+    /** Only a version with the camera code says so; the server picks its camera mode by it (PROTOCOL.md section 7). */
+    @Test
+    void theHelloReplyNamesTheCameraOnlyWhenTheVersionHasIt() {
+        server("{\"t\":\"hello\",\"v\":1,\"server\":\"The Lads Network\"}");
+        assertEquals(1, sent.size());
+        assertFalse(sent.get(0).contains("caps"), sent.get(0));
+
+        sent.clear();
+        LadsApiClient.reset();
+        LadsApiClient.capability("spectate");
+        LadsApiClient.capability("Not Plain");
+        try {
+            server("{\"t\":\"hello\",\"v\":1,\"server\":\"The Lads Network\"}");
+            assertEquals(1, sent.size());
+            assertTrue(sent.get(0).endsWith(",\"caps\":[\"spectate\"]}"), sent.get(0));
+        } finally {
+            LadsApiClient.capabilities.clear();
+        }
+    }
+
     @Test
     void nothingFromAServerThatNeverSaidHello() {
         pov(",\"switch\":true");

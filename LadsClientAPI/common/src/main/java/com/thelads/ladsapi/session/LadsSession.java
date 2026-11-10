@@ -50,6 +50,8 @@ public final class LadsSession {
     /** The spectate message this client has now, or null while it is not spectating (PROTOCOL.md section 7). */
     private volatile String spectate;
     private volatile boolean spectateSwitch;
+    /** What the client's hello said it does itself ({@code caps}). Said, not proven. */
+    private volatile java.util.Set<String> clientCaps = java.util.Set.of();
 
     public LadsSession(LadsPlayerHandle handle, SessionManager manager) {
         this.handle = handle;
@@ -98,6 +100,9 @@ public final class LadsSession {
         this.ladsVersion = VersionUtil.clean(ladsVersion);
         this.mcVersion = VersionUtil.clean(mcVersion);
     }
+
+    public boolean hasCap(String cap) { return cap != null && clientCaps.contains(cap); }
+    public void setClientCaps(java.util.Set<String> caps) { this.clientCaps = caps == null ? java.util.Set.of() : caps; }
 
     public boolean checkRateLimit() {
         return rateLimiter.tryAcquire();

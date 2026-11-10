@@ -1,5 +1,5 @@
 name: LadsClientAPI
-version: '1.3.0'
+version: '1.3.1'
 main: com.thelads.ladsapi.paper.LadsPaperPlugin
 api-version: '1.20'
 softdepend: [PlaceholderAPI]

@@ -22,6 +22,14 @@ public interface LadsPlayer {
      */
     boolean verified();
 
+    /**
+     * Whether the client's hello named this ability in {@code caps} (PROTOCOL.md section 3). "spectate": the client holds the
+     * camera on a spectate target and draws the mirrored hotbar itself, so the game plugin can send it the camera packet
+     * instead of moving the spectator into the target's eyes. Said by the client, not proven: pick how to show something with
+     * it, never grant anything. False for clients older than 1.13.9.
+     */
+    boolean can(String capability);
+
     void block(String module);
 
     void allow(String module);

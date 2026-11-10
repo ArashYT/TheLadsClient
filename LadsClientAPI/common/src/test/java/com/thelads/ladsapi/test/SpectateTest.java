@@ -134,6 +134,31 @@ public class SpectateTest {
         assertEquals(2, asked.size(), "ended");
     }
 
+    /** The hello's caps say what the client does itself; a plugin picks the camera mode by it (PvPArena). */
+    @Test
+    void theHelloNamesWhatTheClientCanDo() {
+        assertFalse(lads().can("spectate"), "a hello without caps: an older client");
+
+        FakePlayerHandle other = new FakePlayerHandle(UUID.randomUUID(), "Camera", "pvp");
+        platform.addPlayer(other);
+        manager.join(other);
+        platform.advanceTicks(1);
+        manager.receive(other, ("{\"t\":\"hello\",\"v\":1,\"lads\":\"1.13.9\",\"mc\":\"26.3\",\"caps\":[\"spectate\",7,null,"
+            + "[\"x\"],\"Not Plain\",\"" + "a".repeat(25) + "\"]}").getBytes(StandardCharsets.UTF_8));
+        LadsPlayer p = manager.player(other.uuid()).orElseThrow();
+        assertTrue(p.can("spectate"));
+        assertFalse(p.can("Not Plain"));
+        assertFalse(p.can("a".repeat(25)));
+        assertFalse(p.can(null));
+
+        FakePlayerHandle junk = new FakePlayerHandle(UUID.randomUUID(), "Junk", "pvp");
+        platform.addPlayer(junk);
+        manager.join(junk);
+        platform.advanceTicks(1);
+        manager.receive(junk, "{\"t\":\"hello\",\"v\":1,\"lads\":\"1.13.9\",\"mc\":\"26.3\",\"caps\":\"spectate\"}".getBytes(StandardCharsets.UTF_8));
+        assertFalse(manager.player(junk.uuid()).orElseThrow().can("spectate"), "caps must be an array");
+    }
+
     @Test
     void aBrokenListenerDoesNotStopTheOthers() {
         SessionManager m = new SessionManager(platform, new LadsConfig(), new LadsRules());

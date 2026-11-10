@@ -39,6 +39,7 @@ public final class Spectate26 {
         KeyMappingHelper.registerKeyMapping(PREVIOUS);
         ClientTickEvents.START_CLIENT_TICK.register(Spectate26::input);
         ClientTickEvents.END_CLIENT_TICK.register(Spectate26::camera);
+        LadsApiClient.capability("spectate"); // the server may now send the camera packet and leave the camera to us
     }
 
     /** POV with the camera on the target: our clicks, hotbar keys and wheel would only disturb the mirrored hotbar. */
@@ -97,7 +98,20 @@ public final class Spectate26 {
         }
     }
 
-    /** Who is watched and the keys that switch, above the hotbar. Drawn only while the server says we spectate. */
+    /** The boss bars drawn at the top (a spectator gets the watched player's cooldown bars there). */
+    private static int bossBars(Minecraft mc) {
+        try {
+            var events = ((com.thelads.core.v26_2.mixin.BossBarAccessor) mc.gui.hud.getBossOverlay()).ladsEvents();
+            return events == null ? 0 : events.size();
+        } catch (Throwable ignored) {
+            return 0;
+        }
+    }
+
+    /**
+     * Who is watched and the keys that switch, at the top under the boss bars: above the hotbar it sat on the chat lines.
+     * Drawn only while the server says we spectate.
+     */
     public static void render(GuiGraphicsExtractor graphics) {
         Minecraft mc = Minecraft.getInstance();
         SpectateState state = SpectateState.active();
@@ -112,7 +126,8 @@ public final class Spectate26 {
             name = target == null ? "..." : target.getName().getString();
         }
         int labelWidth = mc.font.width(label), width = labelWidth + 6 + mc.font.width(name) + 16;
-        int x = (graphics.guiWidth() - width) / 2, y = graphics.guiHeight() - 96;
+        // Vanilla draws a boss bar every 19 px from y 12, its name 9 px above it, until a third of the screen is used.
+        int x = (graphics.guiWidth() - width) / 2, y = Math.min(4 + 19 * bossBars(mc), graphics.guiHeight() / 3 + 4);
         graphics.fill(x, y, x + width, y + 14, 0x99000000);
         graphics.fill(x, y, x + 2, y + 14, 0xFFE0443C);
         graphics.text(mc.font, label, x + 8, y + 3, 0xFFB8B8B8, false);

@@ -34,6 +34,11 @@ public final class LadsPlayerImpl implements LadsPlayer {
     }
 
     @Override
+    public boolean can(String capability) {
+        return session.hasCap(capability);
+    }
+
+    @Override
     public void block(String module) {
         session.setApiOverrideModuleState(module, "block");
         resend();
