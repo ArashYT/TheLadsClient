@@ -32,10 +32,12 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.item.SwingAnimationType;
 import org.joml.Matrix4f;
 
@@ -61,6 +63,8 @@ public final class NativeOldAnimations {
     static final Matrix4f LAST = new Matrix4f();
     /** QA: the pitch blockingArm last gave an arm, before other mods (NotEnoughAnimations smooths arms afterwards). */
     static float armPitch;
+    /** Swing while using items: the attack key was pressed during the current use (cleared once no item is in use). */
+    private static boolean attacked;
 
     private NativeOldAnimations() {}
 
@@ -104,10 +108,19 @@ public final class NativeOldAnimations {
         return flat(SCRATCH) ? kind(stack) : null;
     }
 
-    /** The shield-triggered sword block: a sword in the main hand while an off-hand shield blocks. */
+    /**
+     * The shield-triggered sword block: any item in the main hand (a sword, a tool, a block, a mod's item) while an off-hand shield
+     * blocks. An empty main hand has nothing to block with: the shield stays.
+     */
     static boolean swordBlock(LivingEntity entity) {
         return entity.isUsingItem() && entity.getUsedItemHand() == InteractionHand.OFF_HAND && entity.getUseItemRemainingTicks() > 0
-            && entity.getUseItem().getUseAnimation() == ItemUseAnimation.BLOCK && entity.getMainHandItem().is(ItemTags.SWORDS);
+            && entity.getUseItem().getUseAnimation() == ItemUseAnimation.BLOCK && !entity.getMainHandItem().isEmpty()
+            && !kept(entity, entity.getMainHandItem());
+    }
+
+    /** Always vanilla's placement: spears thrust (1.7 never had that attack), vanilla aims a loaded crossbow, and the riptide spin. */
+    private static boolean kept(LivingEntity entity, ItemStack stack) {
+        return stack.is(ItemTags.SPEARS) || stack.getItem() instanceof CrossbowItem && CrossbowItem.isCharged(stack) || entity.isAutoSpinAttack();
     }
 
     /** A hand's use as 1.7 saw it: NONE while idle, null for uses 1.7 did not have (vanilla keeps them). */
@@ -116,7 +129,7 @@ public final class NativeOldAnimations {
         return switch (stack.getUseAnimation()) {
             case EAT, DRINK -> Use.EAT_DRINK;
             case BOW -> stack.is(Items.BOW) ? Use.BOW : null;
-            case BLOCK -> stack.is(ItemTags.SWORDS) ? Use.BLOCK : null;
+            case BLOCK -> stack.getItem() instanceof ShieldItem ? null : Use.BLOCK; // any item that blocks by itself (a server's, a mod's)
             default -> null;
         };
     }
@@ -127,6 +140,7 @@ public final class NativeOldAnimations {
      */
     public static boolean firstPerson(ItemInHandRenderer renderer, AbstractClientPlayer player, float partial, InteractionHand hand,
                                       float swing, ItemStack stack, float equip, PoseStack pose, SubmitNodeCollector collector, int light) {
+        if (!player.isUsingItem()) attacked = false; // a new use starts without an attack
         if (!MODULE.isEnabled() || stack.isEmpty()) return false;
         boolean main = hand == InteractionHand.MAIN_HAND;
         boolean block = swordBlock(player) && (active(Feature.BLOCKHIT) || active(Feature.BLOCK_POSE));
@@ -137,9 +151,25 @@ public final class NativeOldAnimations {
         // Blockhitting without the block pose: the sword stays in its idle (1.7 held item) place, swinging.
         Use use = block ? active(Feature.BLOCK_POSE) ? Use.BLOCK : Use.NONE : use(player, hand, stack);
         Held held = use == null ? null : held(stack, player);
-        if (held == null || !MODULE.iconPlacement(PLATFORM, use, held)) return false;
         int side = (main ? player.getMainArm() : player.getMainArm().getOpposite()) == HumanoidArm.RIGHT ? 1 : -1;
         OldAnimations.Sink sink = sink(pose);
+        if (held == null && use == Use.BLOCK && active(Feature.BLOCK_POSE) && !kept(player, stack)) {
+            // A block or a 3D model (a pack's, a mod's) blocks: the 1.7 block and its swing move it from where vanilla holds it.
+            OldAnimations.hand(sink, side, equip, MODULE.swingShown(PLATFORM, use, swing), use, player.getUseItemRemainingTicks(), partial,
+                stack.getUseDuration(player));
+            OldAnimations.toModernHand(sink, side);
+            renderer.renderItem(player, stack, side == 1 ? ItemDisplayContext.FIRST_PERSON_RIGHT_HAND : ItemDisplayContext.FIRST_PERSON_LEFT_HAND,
+                pose, collector, light);
+            hit(Hook.FP_HAND);
+            return true;
+        }
+        if (held == null || !MODULE.iconPlacement(PLATFORM, use, held)) {
+            // Any other use vanilla or a mod draws (a spyglass, a trident, a shield, a 3D bow): the attack swing turns the whole use
+            // pose, which vanilla puts on the arm origin right after this, about the hand.
+            if (attacked && swing > 0 && player.isUsingItem() && player.getUsedItemHand() == hand
+                && active(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING)) OldAnimations.swingOverUse(sink, side, swing);
+            return false;
+        }
         if (OldAnimations.legacySwingShown(NativeQualityOfLife.enabled("LegacySwing"), use))
             OldAnimations.legacySwingHand(sink, side, equip, swing); // Legacy Swing swings the idle hand (placing blocks too)
         else OldAnimations.hand(sink, side, equip, MODULE.swingShown(PLATFORM, use, swing), use, player.getUseItemRemainingTicks(), partial,
@@ -175,6 +205,7 @@ public final class NativeOldAnimations {
     /** Minecraft.handleKeybinds consumed an attack click while an item is in use: 1.7 still swung (shown locally, nothing is sent). */
     public static void attackWhileUsing(LocalPlayer player) {
         if (!(swordBlock(player) ? active(Feature.BLOCKHIT) : active(Feature.SWING_WHILE_USING))) return;
+        attacked = true;
         player.swing(InteractionHand.MAIN_HAND, false);
         hit(Hook.SWING_USING);
     }
@@ -231,8 +262,13 @@ public final class NativeOldAnimations {
     /** HumanoidModel.setupAnim: the arm a player's render state poses as 1.7's sword block, or null. */
     public static HumanoidArm swordArm(HumanoidRenderState state) {
         if (!(state instanceof AvatarRenderState) || !active(Feature.THIRD_PERSON)) return null;
-        if (state.rightArmPose == ArmPose.BLOCK && state.rightHandItemStack.is(ItemTags.SWORDS)) return HumanoidArm.RIGHT;
-        return state.leftArmPose == ArmPose.BLOCK && state.leftHandItemStack.is(ItemTags.SWORDS) ? HumanoidArm.LEFT : null;
+        if (state.rightArmPose == ArmPose.BLOCK && blocksAsSword(state.rightHandItemStack)) return HumanoidArm.RIGHT;
+        return state.leftArmPose == ArmPose.BLOCK && blocksAsSword(state.leftHandItemStack) ? HumanoidArm.LEFT : null;
+    }
+
+    /** A blocking arm holds this as 1.7 held a blocking sword: any item but a shield, whose arm stays vanilla's. */
+    private static boolean blocksAsSword(ItemStack stack) {
+        return !stack.isEmpty() && !(stack.getItem() instanceof ShieldItem);
     }
 
     /** 1.7.10 ModelBiped blocking arm: only pitched (x * 0.5 - 3π/10); 1.8+ also turns it 30° inward and follows the head. */
