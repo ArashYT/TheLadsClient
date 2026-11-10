@@ -757,12 +757,12 @@
       "projectSlug": "xaeros-minimap",
       "name": "Xaero's Minimap",
       "modId": "xaerominimap",
-      "versionId": "VlMbRW2O",
-      "version": "fabric-26.2-26.5.1",
-      "fileName": "xaerominimap-fabric-26.2-26.5.1.jar",
-      "url": "https://cdn.modrinth.com/data/1bokaNcj/versions/VlMbRW2O/xaerominimap-fabric-26.2-26.5.1.jar",
-      "sha512": "ceee38ce9f7dac967b7ff42eb940c00cc50596b0d9da8401a59b55be904fee703d91a72ea00d0e235f33c7fe5d75f7804ac055de92d34b0873cbc1043a101c0d",
-      "size": 2221890,
+      "versionId": "kYWdcLLn",
+      "version": "fabric-26.2-26.6.2",
+      "fileName": "xaerominimap-fabric-26.2-26.6.2.jar",
+      "url": "https://cdn.modrinth.com/data/1bokaNcj/versions/kYWdcLLn/xaerominimap-fabric-26.2-26.6.2.jar",
+      "sha512": "2833304ed48fa7e44d3cb7ad4e95b94aeda638332aff38e8476393b78eb676d898130edae2bd1a45984393ed426d2fa44ebe04f8959571c2c9cdc965d70e2489",
+      "size": 2225160,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": null,
       "projectUrl": "https://modrinth.com/mod/xaeros-minimap"
@@ -772,12 +772,12 @@
       "projectSlug": "xaeros-world-map",
       "name": "Xaero's World Map",
       "modId": "xaeroworldmap",
-      "versionId": "q0Wvp46X",
-      "version": "fabric-26.2-1.46.1",
-      "fileName": "xaeroworldmap-fabric-26.2-1.46.1.jar",
-      "url": "https://cdn.modrinth.com/data/NcUtCpym/versions/q0Wvp46X/xaeroworldmap-fabric-26.2-1.46.1.jar",
-      "sha512": "9e9747a3a7ee4ad1c00944c3c922895044a77f5a5d9a8a12eb012676dae66e3800440d7f4a1603e788bfdc2cef8a42be74e42dd01985c94f9073c80b00309775",
-      "size": 1477484,
+      "versionId": "W8qSt5Gs",
+      "version": "fabric-26.2-1.47.2",
+      "fileName": "xaeroworldmap-fabric-26.2-1.47.2.jar",
+      "url": "https://cdn.modrinth.com/data/NcUtCpym/versions/W8qSt5Gs/xaeroworldmap-fabric-26.2-1.47.2.jar",
+      "sha512": "0ea2501a0cc1085a4540c5af49674ce420314f3e725acd1b8f458be71526ac331c04c3eb65c443cd3c1ef24a397856b33b8a567f8eecf4c80bbfbff03258eb70",
+      "size": 1484601,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": null,
       "projectUrl": "https://modrinth.com/mod/xaeros-world-map"
@@ -859,10 +859,12 @@
       "d027d800275efe2c34a6f5dd90724ac3035bcdb2a952625ac4958f8dbac27ad826515a34098ea42c5dde5bcd0e4a76b38bd51b8225a02e6e743ffed1cb1ba597"
     ],
     "xaerominimap": [
-      "dba00f85308524d9d65c559bc48456c8b65cef58eb54891e069cbaacb6e2f633d279b0d65325f510e3d9e590b67e6f5bdb7c816ada484a0d018850267fbc9131"
+      "dba00f85308524d9d65c559bc48456c8b65cef58eb54891e069cbaacb6e2f633d279b0d65325f510e3d9e590b67e6f5bdb7c816ada484a0d018850267fbc9131",
+      "ceee38ce9f7dac967b7ff42eb940c00cc50596b0d9da8401a59b55be904fee703d91a72ea00d0e235f33c7fe5d75f7804ac055de92d34b0873cbc1043a101c0d"
     ],
     "xaeroworldmap": [
-      "3667833b8e80572398c57b501a5750547a5fbe46283e4b7bba6c3fbba570ecfe1dc31d6e430828c182d8871a37820b5a24b88978bfeba7da5ee85107aa271db3"
+      "3667833b8e80572398c57b501a5750547a5fbe46283e4b7bba6c3fbba570ecfe1dc31d6e430828c182d8871a37820b5a24b88978bfeba7da5ee85107aa271db3",
+      "9e9747a3a7ee4ad1c00944c3c922895044a77f5a5d9a8a12eb012676dae66e3800440d7f4a1603e788bfdc2cef8a42be74e42dd01985c94f9073c80b00309775"
     ],
     "yet_another_config_lib_v3": [
       "b3a58e4a5ef54647569282b8b2e9630389b3568f0abecb9c168daaa815477cbf961e79de28081cac551b69b810f561f043d669d1034aec80f12153a53dff53ef"
