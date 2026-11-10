@@ -42,6 +42,8 @@
     "XaeroWorldMapGateMixin",
     "NoResourcePackWarningsMixin",
     "DimensionSpecialEffectsMixin",
-    "LadsApiPacketListenerMixin"
+    "LadsApiPacketListenerMixin",
+    "ServerOptionMixin",
+    "ServerOptionsSaveMixin"
   ]
 }

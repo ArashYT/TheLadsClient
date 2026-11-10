@@ -67,6 +67,13 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
   overrides. A scope is switched on and off per player by a plugin (`LadsPlayer.scope("duel")`, `.expireIn(seconds)`, `.end()`)
   or by `/ladsapi scope <player> <name> [seconds|off]`. When a world, game mode or scope changes or a timer runs out, the server
   sends the new full snapshot, so every client version follows scopes and the client keeps no timers.
+- Settings that are no module's (client 1.13.9, no wire change): two names are accepted in `options` only, never in `modules`.
+  An older client reports them as unknown (ignored), like any other name.
+  - `HUD`: `Scale` (slider 0-16, 0 = follow the GUI scale), `Text Shadow`, `Soft Shadow`, `Backgrounds` (bools).
+  - `Minecraft` (1.20.1, 1.21.11, 26.x; ignored + reported on 1.8.9): `FOV` (30-110), `Brightness` (0-100 %, so `max: 100` also
+    caps a gamma above 100 %), `Render Distance` (2-32), `View Bobbing`, `Entity Shadows`.
+  Example: `"options":{"Minecraft":{"Brightness":{"max":100}},"HUD":{"Backgrounds":{"value":false}}}`.
+  As with module options the value only lives in the snapshot: options.txt and the Lads config keep the player's own value.
 
 ### presence
 ```json

@@ -60,6 +60,10 @@ public final class SchemaExport {
         for (Module module : registeredModules) {
             modulesArray.add(serializeModule(module));
         }
+        // Not modules: the HUD's global look and vanilla's options, addressed the same way in "options" (ServerSettings)
+        for (Module module : ServerSettings.modules()) {
+            modulesArray.add(serializeModule(module));
+        }
 
         // Pseudo-module UseWhileMining (automation module without standalone options)
         JsonObject uwm = new JsonObject();

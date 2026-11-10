@@ -1,5 +1,6 @@
 package com.thelads.core.config;
 
+import com.thelads.core.client.ladsapi.ServerSettings;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -55,12 +56,17 @@ public class HudSettings {
         return HUD_FPS_LEVELS[next];
     }
     /** The Lads HUD's GUI scale: 0 (Auto) follows vanilla's GUI scale, 1 and up is fixed (HudScale caps it at the window size). */
-    public int getHudScale() { return hudScale; }
+    public int getHudScale() { return ServerSettings.hud("Scale", hudScale); }
     public void setHudScale(int scale) { hudScale = Math.max(0, Math.min(16, scale)); }
-    public boolean isSoftShadow() { return softShadow; }
+    public boolean isSoftShadow() { return ServerSettings.hud("Soft Shadow", softShadow); }
     public void setSoftShadow(boolean value) { softShadow = value; }
-    public boolean isBackgrounds() { return backgrounds; }
+    public boolean isBackgrounds() { return ServerSettings.hud("Backgrounds", backgrounds); }
     public void setBackgrounds(boolean value) { backgrounds = value; }
+    /** The player's own values, whatever a LadsClientAPI server sets for the session (ServerSettings): what configs save. */
+    public int getHudScaleOwn() { return hudScale; }
+    public boolean isSoftShadowOwn() { return softShadow; }
+    public boolean isBackgroundsOwn() { return backgrounds; }
+    public boolean isTextShadowOwn() { return textShadow; }
     public List<Integer> getFavoriteColors() { return favoriteColors; }
     private final Map<String, int[]> positions = new HashMap<>();
     private final Map<String, Anchor> anchors = new HashMap<>();
@@ -166,7 +172,7 @@ public class HudSettings {
     public int getGlobalBackground() { return globalBackground; }
     public void setGlobalBackground(int globalBackground) { this.globalBackground = globalBackground; }
 
-    public boolean isTextShadow() { return textShadow; }
+    public boolean isTextShadow() { return ServerSettings.hud("Text Shadow", textShadow); }
     public void setTextShadow(boolean textShadow) { this.textShadow = textShadow; }
 
     public void clearPositions() { positions.clear(); anchors.clear(); groups.clear(); locked.clear(); }
