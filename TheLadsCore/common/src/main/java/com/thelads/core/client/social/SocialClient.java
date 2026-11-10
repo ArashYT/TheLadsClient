@@ -59,6 +59,11 @@ public class SocialClient {
         this.local = endpoint != null && "ws".equals(endpoint.getScheme());
     }
 
+    /** A local dev backend (ws:// to localhost), which only QA runs use. */
+    public boolean local() {
+        return local;
+    }
+
     public static URI resolveEndpoint(String override) {
         String url = override == null || override.trim().isEmpty() ? SocialProtocol.URL_DEFAULT : override.trim();
         try {
