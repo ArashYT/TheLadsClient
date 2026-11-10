@@ -53,4 +53,16 @@ class PanoramaPickerTest {
     @Test void imageLookupIsOnlyForTheSixPanoramaPaths() {
         assertNull(PanoramaPicker.image("textures/gui/title/background/panorama_0.png"), "nothing picked: the normal panorama");
     }
+
+    @Test void changePanoramaStepsOneReleaseFamilyAtATime() {
+        String[] choices = {PanoramaPicker.DEFAULT, "26.3", "26.2.1", "26.2", "1.21.11", "1.21.4", "1.20.6"};
+        assertEquals("26.2.1", PanoramaPicker.nextChoice(choices, PanoramaPicker.DEFAULT), "the newest family is what Default shows: it comes last");
+        assertEquals("1.21.11", PanoramaPicker.nextChoice(choices, "26.2.1"));
+        assertEquals("1.21.11", PanoramaPicker.nextChoice(choices, "26.2"), "a hotfix picked in the settings steps like its family");
+        assertEquals("1.20.6", PanoramaPicker.nextChoice(choices, "1.21.4"));
+        assertEquals("26.3", PanoramaPicker.nextChoice(choices, "1.20.6"));
+        assertEquals(PanoramaPicker.DEFAULT, PanoramaPicker.nextChoice(choices, "26.3"));
+        assertEquals(PanoramaPicker.DEFAULT, PanoramaPicker.nextChoice(new String[] {PanoramaPicker.DEFAULT}, PanoramaPicker.DEFAULT), "no list yet");
+        assertEquals(PanoramaPicker.DEFAULT, PanoramaPicker.nextChoice(choices, "1.2.5"), "a pick the list lost goes back to Default");
+    }
 }
