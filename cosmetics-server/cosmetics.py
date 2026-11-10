@@ -1243,7 +1243,8 @@ async def handle_ws(request: web.Request) -> web.StreamResponse:
                 del hub.peers[peer.uuid]
                 log.info("closed %s", peer.uuid)
             await hub.leave(peer)
-        await ws.close()
+        if ws.prepared:  # a plain HTTP GET fails the handshake before prepare()
+            await ws.close()
     return ws
 
 

@@ -11,7 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Optional;
 
 /**
- * PlaceholderAPI expansion for %ladsapi_badge%, %ladsapi_is_lads%, %ladsapi_version%.
+ * PlaceholderAPI expansion for %ladsapi_badge%, %ladsapi_is_lads%, %ladsapi_verified%, %ladsapi_version%.
  */
 public final class LadsPlaceholderExpansion extends PlaceholderExpansion {
     private final LadsCore core;
@@ -32,7 +32,7 @@ public final class LadsPlaceholderExpansion extends PlaceholderExpansion {
 
     @Override
     public @NotNull String getVersion() {
-        return "1.1.0";
+        return "1.2.0";
     }
 
     @Override
@@ -55,6 +55,9 @@ public final class LadsPlaceholderExpansion extends PlaceholderExpansion {
         }
         if ("is_lads".equalsIgnoreCase(params)) {
             return isLads ? "true" : "false";
+        }
+        if ("verified".equalsIgnoreCase(params)) {
+            return isLads && optLp.get().verified() ? "true" : "false";
         }
         if ("version".equalsIgnoreCase(params)) {
             return isLads ? optLp.get().clientVersion() : "";

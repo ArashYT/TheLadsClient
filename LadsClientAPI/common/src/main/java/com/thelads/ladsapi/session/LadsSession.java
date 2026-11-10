@@ -20,6 +20,8 @@ import java.util.UUID;
  * Manages protocol state and policy for one connected player handle.
  */
 public final class LadsSession {
+    static final int MAX_ATTEST_TRIES = 8;
+    private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
     /** Fabric/Forge create a new ServerPlayer on respawn, so the handle is replaced when the platform hands over a fresh one. */
     private volatile LadsPlayerHandle handle;
     private final SessionManager manager;
@@ -38,6 +40,10 @@ public final class LadsSession {
     private volatile boolean helloSent = false;
     private volatile boolean helloResent = false;
     private volatile boolean helloAcked = false;
+    /** In every hello of this session; the relay's token must be made for it (PROTOCOL.md section 6). */
+    private final String nonce = randomId();
+    private volatile boolean verified = false;
+    private int attestTries = 0;
     /** World/backend the last policy was built for; a respawn into another world needs a new policy. */
     private volatile String syncedWorld = "";
 
@@ -60,6 +66,24 @@ public final class LadsSession {
     public boolean isHelloResent() { return helloResent; }
     public boolean isHelloAcked() { return helloAcked; }
     public Map<String, ModuleRule> getApiOverrides() { return apiOverrides; }
+    public String getNonce() { return nonce; }
+    /** The client showed a relay token for this session's nonce: the only proof that it is a Lads Client. */
+    public boolean isVerified() { return verified; }
+    public void setVerified(boolean verified) { this.verified = verified; }
+
+    /** A hostile client may send hellos all day: only the first few tokens of a session are checked. Caller holds the manager's lock. */
+    boolean takeAttestTry() {
+        return attestTries++ < MAX_ATTEST_TRIES;
+    }
+
+    /** 32 hex characters from a secure random source: a hello nonce or a server id. */
+    static String randomId() {
+        byte[] bytes = new byte[16];
+        RANDOM.nextBytes(bytes);
+        StringBuilder out = new StringBuilder(32);
+        for (byte b : bytes) out.append(Character.forDigit((b >> 4) & 15, 16)).append(Character.forDigit(b & 15, 16));
+        return out.toString();
+    }
 
     public void setHelloSent(boolean helloSent) { this.helloSent = helloSent; }
     public void setHelloResent(boolean helloResent) { this.helloResent = helloResent; }
@@ -93,6 +117,10 @@ public final class LadsSession {
             if (!game.isEmpty()) obj.addProperty("game", game.length() > 32 ? game.substring(0, 32) : game);
             String hub = manager.getConfig().getHubCommand().trim();
             if (!hub.isEmpty()) obj.addProperty("hub", hub);
+        }
+        if (manager.attest() != null) { // optional additions: an older client ignores them and stays unverified
+            obj.addProperty("nonce", nonce);
+            obj.addProperty("sid", manager.getServerId());
         }
         JsonArray caps = new JsonArray();
         caps.add("policy");
