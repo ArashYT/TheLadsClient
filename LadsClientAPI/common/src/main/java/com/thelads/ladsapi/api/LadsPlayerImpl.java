@@ -29,6 +29,11 @@ public final class LadsPlayerImpl implements LadsPlayer {
     }
 
     @Override
+    public boolean verified() {
+        return session.isVerified();
+    }
+
+    @Override
     public void block(String module) {
         session.setApiOverrideModuleState(module, "block");
         resend();

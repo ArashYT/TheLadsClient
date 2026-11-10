@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
 import hashlib
 import hmac
 import json
@@ -46,6 +47,9 @@ ALLOWED_SLOTS: frozenset[str] = frozenset({"emote", "cape", "hat", "glasses"})
 ITEM_ID_RE = re.compile(r"^[a-z0-9_]{1,32}:[a-z0-9_]{1,32}$")
 LINK_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
 LINK_CODE_TTL = 600  # 10 minutes
+ATTEST_TTL = 120  # seconds an attest token lives
+MAX_ATTESTS = 6  # per socket per minute
+ATTEST_ID_RE = re.compile(r"[0-9a-f]{16,64}")  # a game server's hello nonce and its server id
 MAX_AUTH_DICT_ENTRIES = 10_000
 
 def load_catalog_from_file(path: str | Path | None) -> dict[int | str, str] | None:
@@ -165,6 +169,38 @@ def server_id(nonce: str) -> str:
     """Minecraft-style signed hex SHA-1 of the nonce: the serverId the client joins with on Mojang's session server."""
     digest = hashlib.sha1(("lads-cosmetics:" + nonce).encode()).digest()
     return format(int.from_bytes(digest, "big", signed=True), "x")
+
+
+def attest_message(uuid: str, nonce: str, sid: str, exp: int) -> bytes:
+    """What an attest token signs (LadsClientAPI PROTOCOL.md section 6); the plugin builds the same bytes from what it knows."""
+    return f"lads-attest-v1|{uuid}|{nonce}|{sid}|{exp}".encode()
+
+
+def attest_token(key, uuid: str, nonce: str, sid: str, now: float | None = None) -> str:
+    """v1.<expiry, unix seconds>.<base64url Ed25519 signature>: this relay saw a Mojang-proven session of `uuid` just now."""
+    exp = int(time.time() if now is None else now) + ATTEST_TTL
+    signature = key.sign(attest_message(uuid, nonce, sid, exp))
+    return f"v1.{exp}.{base64.urlsafe_b64encode(signature).rstrip(b'=').decode()}"
+
+
+def load_attest_key(path: str | Path | None):
+    """The relay's Ed25519 signing key from a PEM file, or None (no path, no file, no cryptography package): attest stays off."""
+    if not path:
+        return None
+    try:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from cryptography.hazmat.primitives.serialization import load_pem_private_key
+        key = load_pem_private_key(Path(path).read_bytes(), password=None)
+    except Exception as e:  # never the key or its path's content in the log
+        log.warning("attest key not loaded: %s", type(e).__name__)
+        return None
+    return key if isinstance(key, Ed25519PrivateKey) else None
+
+
+def attest_public_key(key) -> str:
+    """Base64 of the raw 32-byte public key: the form the plugin ships and its config takes."""
+    from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+    return base64.b64encode(key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw)).decode()
 
 
 def plain_uuid(value) -> str | None:
@@ -893,12 +929,13 @@ class CosmeticsStore:
 # ---------------------------------------------------------------------------
 
 class Peer:
-    __slots__ = ("ws", "uuid", "room", "emote", "since", "window", "sent", "gone", "room_history")
+    __slots__ = ("ws", "uuid", "room", "emote", "since", "window", "sent", "gone", "room_history", "attest_history")
 
     def __init__(self, ws, uuid):
         self.ws, self.uuid, self.room, self.emote, self.since = ws, uuid, None, None, 0.0
         self.window, self.sent, self.gone = 0.0, 0, False
         self.room_history = []
+        self.attest_history = []
 
     def view(self, now: float) -> dict:
         return {"uuid": self.uuid, "emote": self.emote, "age": int((now - self.since) * 1000) if self.emote else 0}
@@ -920,6 +957,7 @@ class Hub:
     def __init__(self, insecure: bool = False, store: CosmeticsStore | None = None):
         self.insecure = insecure
         self.store = store
+        self.attest_key = None  # Ed25519 signing key; None = no attest tokens (always None without Mojang proof)
         self.peers: dict[str, Peer] = {}  # uuid -> its one socket
         self.rooms: dict[str, set[Peer]] = {}
         self.ips: dict[str, int] = {}
@@ -1070,7 +1108,10 @@ async def authenticate(hub: Hub, ws, ip: str = "127.0.0.1") -> Peer | None:
         await ws.close(code=4003, message=b"auth throttled")
         return None
     nonce = secrets.token_hex(16)
-    await ws.send_str(json.dumps({"t": "challenge", "nonce": nonce}))
+    challenge = {"t": "challenge", "nonce": nonce}
+    if hub.attest_key is not None:
+        challenge["attest"] = True  # a client sends "attest" only to a relay that says so: an older relay closes on it
+    await ws.send_str(json.dumps(challenge))
     msg = await read(ws)
     if not msg:
         return None
@@ -1153,6 +1194,20 @@ async def serve(hub: Hub, peer: Peer) -> None:
                 await hub.link_start(peer)
             else:
                 await send(peer, {"t": "error", "error": "store unavailable"})
+        elif kind == "attest":
+            # A game server asked this player's client to prove it runs the Lads Client. Nothing of it is kept or logged.
+            nonce, sid = msg.get("nonce"), msg.get("sid")
+            if not (isinstance(nonce, str) and ATTEST_ID_RE.fullmatch(nonce) and isinstance(sid, str) and ATTEST_ID_RE.fullmatch(sid)):
+                return
+            now_mono = time.monotonic()
+            peer.attest_history = [t for t in peer.attest_history if t > now_mono - 60.0]
+            if hub.attest_key is None:
+                await send(peer, {"t": "attest", "nonce": nonce, "error": "unavailable"})
+            elif len(peer.attest_history) >= MAX_ATTESTS:
+                await send(peer, {"t": "attest", "nonce": nonce, "error": "rate"})
+            else:
+                peer.attest_history.append(now_mono)
+                await send(peer, {"t": "attest", "nonce": nonce, "token": attest_token(hub.attest_key, peer.uuid, nonce, sid)})
         else:
             return  # protocol error: close
 
@@ -1188,7 +1243,8 @@ async def handle_ws(request: web.Request) -> web.StreamResponse:
                 del hub.peers[peer.uuid]
                 log.info("closed %s", peer.uuid)
             await hub.leave(peer)
-        await ws.close()
+        if ws.prepared:  # a plain HTTP GET fails the handshake before prepare()
+            await ws.close()
     return ws
 
 
@@ -1442,7 +1498,8 @@ def setup(
     db_path: Path | str | None = None,
     tebex_secret: str | None = None,
     auth_secret: str | None = None,
-    catalog: dict[int | str, str] | None = None
+    catalog: dict[int | str, str] | None = None,
+    attest_key: str | Path | None = None
 ) -> None:
     store = CosmeticsStore(db_path)
     global _DEFAULT_STORE
@@ -1463,6 +1520,8 @@ def setup(
     _DEFAULT_CATALOG = app[CATALOG]
 
     hub = Hub(insecure, store=store)
+    if not insecure:  # a token says "Mojang proved this account": never without that proof
+        hub.attest_key = load_attest_key(attest_key or os.getenv("LADS_ATTEST_KEY"))
     app[HUB] = hub
 
     app.router.add_get("/cosmetics/health", handle_health)
@@ -1552,8 +1611,27 @@ def cli_list(uuid_raw: str, db_path: Path | str | None = None) -> int:
     return 0
 
 
+def cli_attest_key(path: str) -> int:
+    """Creates the relay's Ed25519 signing key at `path` unless it is there already, and prints its public key."""
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat
+    if not Path(path).exists():
+        pem = Ed25519PrivateKey.generate().private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption())
+        with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as f:
+            f.write(pem)
+        print(f"created {path} (keep it on the relay host only: never in git, a jar or a plugin)")
+    key = load_attest_key(path)
+    if key is None:
+        print(f"{path} is not an Ed25519 PEM key")
+        return 1
+    print(f"public key: {attest_public_key(key)}")
+    return 0
+
+
 def main(argv=None) -> None:
     raw_args = list(argv if argv is not None else sys.argv[1:])
+    if len(raw_args) == 2 and raw_args[0].lower() == "attest-key":
+        sys.exit(cli_attest_key(raw_args[1]))
 
     # Check for direct Admin subcommands or flags
     if raw_args:
@@ -1620,6 +1698,7 @@ def main(argv=None) -> None:
     parser.add_argument("--db", default=None, help="Path to cosmetics.db SQLite file")
     parser.add_argument("--tebex-secret", default=None, help="Tebex webhook secret")
     parser.add_argument("--auth-secret", default=None, help="Cosmetics HTTP management auth token")
+    parser.add_argument("--attest-key", default=None, help="PEM file with the Ed25519 key that signs attest tokens (or LADS_ATTEST_KEY)")
     parser.add_argument("--dev-insecure-auth", action="store_true",
                         help="QA only: trust the client's name and uuid without asking Mojang (offline QA accounts); 127.0.0.1 only")
     args = parser.parse_args(raw_args)
@@ -1629,7 +1708,8 @@ def main(argv=None) -> None:
         os.environ.setdefault("LADS_SOCIAL_DEV", "1")
     logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     app = web.Application()
-    setup(app, insecure=args.dev_insecure_auth, db_path=args.db, tebex_secret=args.tebex_secret, auth_secret=args.auth_secret)
+    setup(app, insecure=args.dev_insecure_auth, db_path=args.db, tebex_secret=args.tebex_secret, auth_secret=args.auth_secret,
+          attest_key=args.attest_key)
     if args.dev_insecure_auth:
         log.warning("dev mode: Mojang verification is OFF (127.0.0.1 only)")
     web.run_app(app, host=args.host, port=args.port)

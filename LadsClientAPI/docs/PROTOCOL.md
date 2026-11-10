@@ -26,6 +26,9 @@ Lanes implement exactly this. Changing it requires Claude's sign-off. Design rea
 - Optional additions (client 1.13.0; older clients ignore them, a hello may leave them out): `game`: the game or lobby the player
   is in, <= 32 chars. `hub`: the command that goes to the hub, e.g. `/hub` (one word plus at most one argument). The client acts
   on both only on The Lads Network (`arashyt.ca`), and drops `game` on a server switch or reset until the next hello.
+- Optional additions (plugin 1.2.0, client 1.13.9; section 6): `nonce` and `sid`, 32 hex characters each (a client takes 16-64).
+  `nonce` is a random number for this player's session on this server, `sid` a random id of this server run. Older clients
+  ignore both and stay unverified.
 
 ### policy
 Full snapshot. Replaces the previous one entirely (never a diff). Sent after the client's `hello`, then on every change
@@ -101,6 +104,9 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
 {"t":"hello","v":1,"lads":"1.9.13","mc":"26.3"}
 ```
 - Sent once per server `hello` received (max 2 per backend/reset, max 10 per connection). Nothing else about the player: no mods, settings, hardware.
+- Client 1.13.9: when the server hello carried `nonce` and `sid`, one more hello follows once the relay answered, the same
+  fields plus `"token":"v1.<exp>.<sig>"` (section 6). At most one per answered server hello. An older plugin ignores it: its
+  session is acked already.
 
 ### ack
 ```json
@@ -126,3 +132,36 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
 
 - `v` = protocol major. Client speaks v1. If the server's `v` is higher, the client still replies with `v:1`; the server must
   then speak v1 to it. A server receiving `v` it doesn't know treats the player as non-Lads.
+
+## 6. Client verification (plugin 1.2.0, client 1.13.9)
+
+Any program can send the client's `hello`, fake `minecraft:brand` or register `lads:api`, so none of them proves the Lads Client.
+A verified session adds a proof from the Lads relay (`bot.arashyt.ca`, cosmetics-server/cosmetics.py), where the client's
+Minecraft account is proven the way a server proves it (Mojang `join` / `hasJoined`). Only optional fields were added: v stays 1.
+
+1. The server hello carries `nonce` (one per session) and `sid` (one per server start).
+2. The client replies with its normal hello at once, so policy and presence do not wait. Then it asks the relay over its
+   cosmetics socket: `{"t":"attest","nonce":"...","sid":"..."}`.
+3. The relay answers `{"t":"attest","nonce":"...","token":"v1.<exp>.<sig>"}`. `exp` is unix seconds, 120 s ahead. `sig` is the
+   base64url (no padding) Ed25519 signature over the UTF-8 text `lads-attest-v1|<uuid, 32 hex>|<nonce>|<sid>|<exp>`, where the
+   uuid is the account Mojang proved to the relay on that socket, never one the client names.
+4. The client sends the second hello with `token`. The plugin builds the same text from the player's uuid, its own nonce and
+   sid and the token's `exp`, checks the signature with the relay's public key, then the expiry (60 s of clock difference
+   allowed), and marks the session verified. A token for another player, hello or server fails the signature. Only the first
+   8 tokens of a session are checked.
+
+- For servers: `LadsPlayer.verified()`, `LadsClientAPI.verified(uuid)`, `%ladsapi_verified%`, Paper `LadsPlayerVerifiedEvent`,
+  `/ladsapi status` and `inspect`. Perks belong to verified players. `require-lads-client: true` kicks a client that is still
+  unverified `verify-timeout` (15) seconds after it joined, with `require-verified-message`. `verify-client: false` turns all
+  of it off: no nonce is sent and the hello is all there is, as before 1.2.0.
+- Unverified, never kicked for it unless `require-lads-client` is on: a client before 1.13.9, a client that cannot reach the
+  relay, an account Mojang cannot prove (offline accounts; a server or proxy in offline mode, whose uuids are not Mojang's),
+  a server on Java below 15 (no Ed25519: it sends no nonce).
+- Kept: the client never sends first. It asks the relay only after a server hello with a nonce, as often as it replies to
+  hellos at most, and tells it two random strings: nothing about the server, and the relay stores and logs neither. The game
+  server learns nothing it did not know. No new message type on `lads:api`.
+- Keys: the relay's private key is one file on the relay host, never in git, a jar or a plugin. The public key is in the plugin
+  (`AttestVerifier.RELAY_KEYS`); `relay-public-keys` in config.yml replaces it, for a key change without a plugin update.
+- The limit: a token proves that a Mojang-proven session of this account is connected to the Lads relay right now. It does not
+  prove which program runs on the player's PC, and nothing can on a PC the player owns: someone who rebuilds the relay
+  protocol with their own account gets a token too. It stops the cheap fakes (a copied hello, a brand, a channel).

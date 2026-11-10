@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 import org.yaml.snakeyaml.Yaml;
@@ -26,6 +28,10 @@ notice: ""
 game-name: ""                  # the game or lobby Lads clients show (HUD, Discord), %world% = world or proxy backend; empty = none
 hub-command: ""                # e.g. "/hub": the pause menu's Hub button on The Lads Network; empty = none
 proxy-rules: false             # proxy mode: run rules on proxy (only when on Velocity)
+verify-client: true            # ask Lads clients to prove themselves through the Lads relay; perks and require-lads-client then need it
+verify-timeout: 15             # require-lads-client: seconds a client gets to prove itself before the kick
+require-verified-message: "This server could not verify your Lads Client. Update it, sign in with your Minecraft account and join again."
+relay-public-keys: []          # empty = the Lads relay keys built into this plugin
 badge:
   presence: true               # tell Lads clients who else runs Lads (badge)
   placeholder: "&c✿ "          # %ladsapi_badge% for TAB/LuckPerms (vanilla viewers); empty = off
@@ -43,6 +49,10 @@ debug: false
     private String hubCommand = "";
     private String notice = "";
     private boolean proxyRules = false;
+    private boolean verifyClient = true;
+    private int verifyTimeout = 15;
+    private String requireVerifiedMessage = "This server could not verify your Lads Client. Update it, sign in with your Minecraft account and join again.";
+    private List<String> relayPublicKeys = List.of();
     private boolean badgePresence = true;
     private String badgePlaceholder = "&c✿ ";
     private boolean debug = false;
@@ -94,6 +104,10 @@ debug: false
         this.hubCommand = "";
         this.notice = "";
         this.proxyRules = false;
+        this.verifyClient = true;
+        this.verifyTimeout = 15;
+        this.requireVerifiedMessage = "This server could not verify your Lads Client. Update it, sign in with your Minecraft account and join again.";
+        this.relayPublicKeys = List.of();
         this.badgePresence = true;
         this.badgePlaceholder = "&c✿ ";
         this.debug = false;
@@ -137,6 +151,22 @@ debug: false
         if (map.containsKey("proxy-rules")) {
             this.proxyRules = Boolean.parseBoolean(String.valueOf(map.get("proxy-rules")));
         }
+        if (map.containsKey("verify-client")) {
+            this.verifyClient = Boolean.parseBoolean(String.valueOf(map.get("verify-client")));
+        }
+        if (map.get("verify-timeout") instanceof Number seconds) {
+            this.verifyTimeout = Math.max(5, Math.min(120, seconds.intValue()));
+        }
+        if (map.containsKey("require-verified-message")) {
+            this.requireVerifiedMessage = String.valueOf(map.get("require-verified-message"));
+        }
+        if (map.get("relay-public-keys") instanceof List<?> keys) {
+            List<String> list = new ArrayList<>();
+            for (Object key : keys) {
+                if (key != null && !String.valueOf(key).isBlank()) list.add(String.valueOf(key).trim());
+            }
+            this.relayPublicKeys = List.copyOf(list);
+        }
         if (map.get("badge") instanceof Map<?, ?> badgeMap) {
             if (badgeMap.containsKey("presence")) {
                 this.badgePresence = Boolean.parseBoolean(String.valueOf(badgeMap.get("presence")));
@@ -162,6 +192,10 @@ debug: false
     public String getHubCommand() { return hubCommand; }
     public String getNotice() { return notice; }
     public boolean isProxyRules() { return proxyRules; }
+    public boolean isVerifyClient() { return verifyClient; }
+    public int getVerifyTimeout() { return verifyTimeout; }
+    public String getRequireVerifiedMessage() { return requireVerifiedMessage; }
+    public List<String> getRelayPublicKeys() { return relayPublicKeys; }
     public boolean isBadgePresence() { return badgePresence; }
     public String getBadgePlaceholder() { return badgePlaceholder; }
     public boolean isDebug() { return debug; }
@@ -173,6 +207,8 @@ debug: false
     public void setServerName(String serverName) { this.serverName = serverName; }
     public void setNotice(String notice) { this.notice = notice; }
     public void setProxyRules(boolean proxyRules) { this.proxyRules = proxyRules; }
+    public void setVerifyClient(boolean verifyClient) { this.verifyClient = verifyClient; }
+    public void setRelayPublicKeys(List<String> relayPublicKeys) { this.relayPublicKeys = List.copyOf(relayPublicKeys); }
     public void setBadgePresence(boolean badgePresence) { this.badgePresence = badgePresence; }
     public void setBadgePlaceholder(String badgePlaceholder) { this.badgePlaceholder = badgePlaceholder; }
     public void setDebug(boolean debug) { this.debug = debug; }
