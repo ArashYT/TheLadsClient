@@ -3,7 +3,7 @@
 Mod: `gradlew build deploy -x test` passes on arash-hp.
 
 1. [x] Chat: Up/Down/Tab stay in the chat input (26.3, 1.20.1). Compiles; needs an in-game check
-2. [ ] Start Hosting button does nothing
+2. [x] Start Hosting button does nothing. Cause: lads-host.json had scope OFF (picked on the screen), and Start Hosting with OFF means "stop", without a word. The screen no longer offers OFF and reads a saved OFF as Friends. Unit test; needs an in-game check
 3. [x] Game window icon: 7 sizes (16-256) from the temporary logo (draft E); launcher icon.ico too
 4. [ ] Block-hit / 1.7 animations with any item or block, any mod or pack
 5. [x] Read leftover server-integration notes (digest in the notes doc)
