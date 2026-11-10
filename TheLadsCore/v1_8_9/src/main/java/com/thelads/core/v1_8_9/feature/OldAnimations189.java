@@ -93,10 +93,18 @@ public final class OldAnimations189 {
     /** An attack press while an item is in use: the arm swings over the use, drawn only (no packet, no attack), as in 1.7. */
     static void attackPressed(Minecraft mc) {
         EntityPlayerSP player = mc.thePlayer;
-        if (player == null || mc.currentScreen != null || !player.isUsingItem() || !MODULE.swingOnAttack(PLATFORM, use(player, player.getItemInUse())))
-            return;
+        if (player == null || mc.currentScreen != null || !player.isUsingItem()) return;
+        Use use = use(player, player.getItemInUse());
+        // A use with no 1.7 pose (a mod's item used with no action) swings too, over the hand 1.8.9 draws.
+        if (use == null ? !active(Feature.SWING_WHILE_USING) : !MODULE.swingOnAttack(PLATFORM, use)) return;
         attacked = true;
         if (swingAnyway(player)) hit(Hook.SWING);
+    }
+
+    /** ItemRendererMixin, for a use with no 1.7 pose: the attack swing shows over the use once the player attacked during it. */
+    public static boolean swingOverUse() {
+        EntityPlayerSP player = Minecraft.getMinecraft().thePlayer;
+        return attacked && player != null && player.getItemInUseCount() > 0 && active(Feature.SWING_WHILE_USING);
     }
 
     /** QA only (Probe191Fixes): clicks swing as vanilla decides, to count the swings it skips. */

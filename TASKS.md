@@ -10,7 +10,7 @@ Each open item has its own hub chat ("1.13.9 #<n>: ..."), at most 3 working at o
 
 3. [x] Game window icon: 7 sizes (16-256) from the temporary logo (draft E); launcher icon.ico too
 
-4. [~] Block-hit / 1.7 animations with any item or block, any mod or pack. 26.3 done: any main-hand item blocks while the off-hand shield blocks; blocks and 3D models take the 1.7 block pose and blockhit; an attack click swings over every other use pose (spyglass, trident, shield, modded). Seen in game on 26.3 (11-10) with a diamond sword and oak planks: block pose and a swing while blocking; Arash still judges the look. Left: 1.8.9, 1.20.1, 1.21.11, 26.2; the Blockhitting tooltip still says "sword"
+4. [~] Block-hit / 1.7 animations with any item or block, any mod or pack. Rule on 1.20.1, 1.21.11, 26.2 and 26.3: any main-hand item blocks while the off-hand shield blocks; blocks and 3D models take the 1.7 block pose and blockhit; an attack click swings over every other use pose (spyglass, trident, shield, modded). 1.8.9 (real sword blocking, no shields): a block or a 3D model in use keeps 1.7's swing. Drawn only, no packets. Seen in game: 26.3 only (11-10, diamond sword and oak planks: block pose and a swing while blocking; Arash still judges the look). The ports to 1.8.9, 1.20.1, 1.21.11 and 26.2 are merged (11-10 13:42): they compile and OldAnimationsTest passes (23 tests), none was started in game. The Blockhitting and block pose tooltips now say any item. Left: start the four ported versions in game with a shield in the off hand. arash-pc and desktop-57kj0bp were offline at 13:50; cyrax-pc is online but has launcher 1.8.4 and only 26.3 downloaded
 
 5. [x] Read leftover server-integration notes (digest in the notes doc)
 

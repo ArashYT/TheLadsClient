@@ -9,11 +9,11 @@ import java.util.function.Consumer;
 
 /**
  * One peer-to-peer link between a host and one guest (contract): ICE over UDP (direct or Cloudflare TURN relay), a reliable
- * stream on top, multiplexed: stream 0 = the Minecraft connection, 1 = control, 2+ = later (pack transfers).
+ * stream on top, multiplexed: stream 0 = the Minecraft connection, 1 = control, 2 = ModSync (see Mux for who may write it).
  * The implementation (P2PSessionImpl, lane S2) has no library dependencies.
  */
 public interface P2PSession {
-    int MINECRAFT = 0, CONTROL = 1;
+    int MINECRAFT = 0, CONTROL = 1, MODSYNC = 2;
 
     record TurnServer(String url, String user, String credential) {}
 
