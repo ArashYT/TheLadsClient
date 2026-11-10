@@ -24,7 +24,7 @@ Each open item has its own hub chat ("1.13.9 #<n>: ..."), at most 3 working at o
 
 10. [ ] True spectator system in the client (PvPArena and others)
 
-11. [ ] External mods: check for updates, update safely
+11. [~] External mods: check for updates, update safely. How the pack reaches players: TheLadsLauncher/game-mods/<version>/client-mods.json ships inside the launcher, so a re-pin reaches players only with a launcher release; Packwiz/ is the dead pre-1.2 pack (the launcher clears that URL), left alone. Check with `py tools/mod_updates.py check` (11-10: 26.3 13 of 43 newer, 26.2 19 of 53, 1.21.11 21 of 76, 1.20.1 2 of 39, 1.8.9 1 of 6). Updated on main, each group started on arash-hp with the full pack on Fabric Loader 0.19.5 (world joined, no new log errors): 26.3 MRU, More Culling, Not Enough Animations, Xaero Minimap 26.6.2 + World Map 1.47.2 (Core's mixin targets still there), ViaFabricPlus 5.1.3, Simple Voice Chat 2.6.27; 26.2 Architectury, Collective, Fabric Language Kotlin, MRU, Not Enough Animations, 3D Skin Layers, Wavey Capes, More Culling, OBE, Ixeris, Xaero pair, ViaFabricPlus 5.0.3, Simple Voice Chat 2.6.27, JEI 30.42. Held back: Sodium Extra 0.9.5 (needs Fabric Loader 0.20.1, the launcher ships 0.19.5), C2ME (alpha chunk engine, a short test proves nothing about saves), Modpack Core Essentials 2.0.0 (new config file, resets its settings), FancyMenu 3.10.0, Collective 8.85, Fabric API 0.166 and mezz_config 0.7.1 (one day old or less). Sodium, Iris and Reese's have no newer build on 26.x. Not tested: a server join (offline account), an older-version server through ViaFabricPlus, a voice connection. Left: 1.8.9 Pylon 0.2.7, the frozen 1.21.11 pack, the Fabric Loader 0.20.1 question
 
 12. [ ] Emote "Twerking" with jiggle physics
 
