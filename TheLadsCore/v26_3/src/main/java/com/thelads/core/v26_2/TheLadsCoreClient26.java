@@ -72,6 +72,7 @@ public class TheLadsCoreClient26 implements ClientModInitializer {
         com.thelads.core.v26_2.feature.tabtweaks.NativeTabTweaks.initialize();
         com.thelads.core.v26_2.feature.NativeHypixel.initialize();
         com.thelads.core.v26_2.feature.NativeLadsApi.initialize();
+        com.thelads.core.v26_2.feature.Spectate26.register(); // a server's spectator mode: camera hold, HUD, next/previous keys
         com.thelads.core.v26_2.feature.QaProbe26.register();
         com.thelads.core.v26_2.feature.screenshots.ScreenshotViewer.register();
         com.thelads.core.v26_2.feature.clumps.NativeClumps.initialize();

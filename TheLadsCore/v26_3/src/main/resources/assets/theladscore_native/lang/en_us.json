@@ -29,5 +29,7 @@
   "key.theladscore.auto_text.6": "Auto Text 6",
   "key.theladscore.freelook": "Freelook",
   "key.theladscore.snaplook": "Snaplook (Look Behind)",
-  "key.theladscore.elytra_swap": "Elytra Swap"
+  "key.theladscore.elytra_swap": "Elytra Swap",
+  "key.theladscore.spectate_next": "Spectate: Next Player",
+  "key.theladscore.spectate_previous": "Spectate: Previous Player"
 }
