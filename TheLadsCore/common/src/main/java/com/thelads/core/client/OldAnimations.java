@@ -108,6 +108,31 @@ public final class OldAnimations {
     }
 
     /**
+     * The inverse of {@link #fromModernHand}, after {@link #hand}: back to the modern frame, where an item is drawn with its own
+     * display transform. For what the flat-icon recipe cannot draw (a block, a 3D model from a pack or a mod): the 1.7 use pose
+     * then moves the item from where vanilla holds it exactly as it moves a flat icon.
+     */
+    public static void toModernHand(Sink out, int side) {
+        out.scale(2.5f, 2.5f, 2.5f);
+        rotate(out, side, -45, 0, 1, 0);
+    }
+
+    /**
+     * A swing over a use pose this class does not draw (vanilla's or a mod's: a spyglass, a trident, a shield, a 3D-model bow).
+     * Call at the arm origin, then put the use pose back: the whole pose turns about the hand with vanilla's attack swing (nothing
+     * at 0), where 1.7 kept its own swing turn.
+     */
+    public static void swingOverUse(Sink out, int side, float swing) {
+        float quick = sin(swing * swing * PI), arc = sin(sqrt(swing) * PI);
+        translate(out, side, 0.56f, -0.52f, -0.72f);
+        rotate(out, side, 45 + quick * -20, 0, 1, 0);
+        rotate(out, side, arc * -20, 0, 0, 1);
+        rotate(out, side, arc * -80, 1, 0, 0);
+        rotate(out, side, -45, 0, 1, 0);
+        translate(out, side, -0.56f, 0.52f, 0.72f);
+    }
+
+    /**
      * Which swing a first-person hand shows when both modules are on: Legacy Swing's for every hand outside a 1.7 use pose
      * (attacking, placing blocks, idle items, whether 1.7 or vanilla places the item); 1.7's while the hand blocks, draws a
      * bow or eats, where 1.7's own swing is the point (blockhitting).
