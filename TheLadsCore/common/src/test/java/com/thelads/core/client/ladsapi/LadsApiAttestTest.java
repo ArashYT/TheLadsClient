@@ -18,12 +18,16 @@ class LadsApiAttestTest {
 
     private final List<byte[]> sent = new ArrayList<>();
     private final List<String> asked = new ArrayList<>();
+    private int takenBack;
 
     @BeforeEach
     void setUp() {
         LadsApiClient.install(sent::add, "26.3");
         LadsApiClient.reset();
-        LadsApiClient.setAttestor((nonce, sid) -> asked.add(nonce + "/" + sid));
+        LadsApiClient.setAttestor((nonce, sid) -> {
+            if (nonce == null) takenBack++;
+            else asked.add(nonce + "/" + sid);
+        });
     }
 
     @AfterEach
@@ -98,6 +102,46 @@ class LadsApiAttestTest {
         LadsApiClient.reset(); // disconnect
         LadsApiClient.attested(NONCE, TOKEN);
         assertEquals(2, sent.size(), "only the two first replies");
+    }
+
+    /** A slow relay link: the token may come after the lobby moved the player to another world. Same server, same nonce. */
+    @Test
+    void worldChangeOnTheSameServerKeepsTheWait() {
+        LadsApiClient.joinGame(1L);
+        serverHello(proof(NONCE));
+        LadsApiClient.respawn(2L); // another world: the policy goes, the wait for the token stays
+        LadsApiClient.dimension(7);
+        LadsApiClient.dimension(8);
+        assertEquals(0, takenBack);
+        LadsApiClient.attested(NONCE, TOKEN);
+        assertEquals(2, sent.size());
+        assertEquals(TOKEN, sent(1).get("token").getAsString());
+    }
+
+    @Test
+    void goneServerTakesTheRequestBack() {
+        serverHello(proof(NONCE));
+        LadsApiClient.serverSwitch();
+        assertEquals(1, takenBack);
+        LadsApiClient.serverSwitch(); // nothing waits any more
+        assertEquals(1, takenBack);
+
+        serverHello(proof(NONCE));
+        LadsApiClient.receive("{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8)); // the proxy plugin's server switch
+        assertEquals(2, takenBack);
+
+        serverHello(proof(NONCE));
+        LadsApiClient.reset();
+        assertEquals(3, takenBack);
+
+        // 1.8.9 has no seed in its Respawn: a dimension change is how BungeeCord switches its backends
+        LadsApiClient.joinGame(0L);
+        LadsApiClient.dimension(0);
+        serverHello(proof(NONCE));
+        LadsApiClient.dimension(-1);
+        assertEquals(4, takenBack);
+        LadsApiClient.attested(NONCE, TOKEN);
+        assertEquals(4, sent.size(), "only the four first replies");
     }
 
     @Test

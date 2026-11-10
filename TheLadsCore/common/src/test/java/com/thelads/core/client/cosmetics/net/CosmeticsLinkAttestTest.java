@@ -58,6 +58,45 @@ class CosmeticsLinkAttestTest {
         assertArrayEquals(new String[] {SID, "new"}, link.takeAttested());
     }
 
+    /** In game the link took 65 s to come up (11-10): the request waits for it, and only a relay that was asked can time out. */
+    @Test
+    void unsentRequestWaitsForASlowLink() {
+        LadsGameBridge before = LadsGameBridge.get();
+        LadsGameBridge.set(new DefaultGameBridge() {
+            @Override public boolean isIngame() { return true; }
+            @Override public String getServerAddress() { return "lobby.example.org"; }
+            @Override public Session session() { return null; } // keeps the link thread from starting
+        });
+        try {
+            CosmeticsLink link = link();
+            link.requestAttest(NONCE, SID);
+            CosmeticsLink.Attest ask = link.attest();
+            assertEquals(0, ask.sentAt);
+            for (int i = 0; i < 20; i++) link.sample(false);
+            assertSame(ask, link.attest(), "not asked yet: nothing to time out");
+
+            ask.sentAt = System.currentTimeMillis() - CosmeticsLink.ATTEST_WAIT_MS + 5_000;
+            for (int i = 0; i < 20; i++) link.sample(false);
+            assertSame(ask, link.attest());
+
+            ask.sentAt = System.currentTimeMillis() - CosmeticsLink.ATTEST_WAIT_MS - 1;
+            for (int i = 0; i < 20; i++) link.sample(false);
+            assertNull(link.attest(), "the relay was asked and never answered");
+        } finally {
+            LadsGameBridge.set(before);
+        }
+    }
+
+    @Test
+    void goneServerTakesTheRequestBack() {
+        CosmeticsLink link = link();
+        link.requestAttest(NONCE, SID);
+        link.requestAttest(null, null);
+        assertNull(link.attest());
+        link.handle("{\"t\":\"attest\",\"nonce\":\"" + NONCE + "\",\"token\":\"v1.1.sig\"}", SELF);
+        assertNull(link.takeAttested());
+    }
+
     /** 1.21.11 and 26.2 draw no relay cosmetics: their tick brings the link up without a room, and only while a server waits. */
     @Test
     void proofOnlyTickIsUpOnlyWhileAServerWaits() {
