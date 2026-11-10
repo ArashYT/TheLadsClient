@@ -14,7 +14,7 @@ Each open item has its own hub chat ("1.13.9 #<n>: ..."), at most 3 working at o
 
 5. [x] Read leftover server-integration notes (digest in the notes doc)
 
-6. [ ] ModSync: on invite join, fetch host mods (Modrinth/CurseForge direct, else P2P)
+6. [~] ModSync: on invite join, fetch host mods (Modrinth/CurseForge direct, else P2P). Built and merged, not joined together yet: the mod list, diff, hash check and source choice; jar transfer from host to guest on P2P stream 2 and the site download (14 unit tests pass: ModSyncCoreTest, ModSyncTransferTest); the launcher part (list of the player's own jars with a Modrinth/CurseForge lookup by hash, checked restart that adds the host's jars from their own folder; dotnet build and 4 tests pass). Left: the in-game flow (host serves, guest syncs, "trust this host's mods?" question, restart), the rejoin after the restart, starting the game, a real invite between two PCs. Nothing was run in game yet
 
 7. [~] Title screen: Change panorama + Update (update launcher and game, relaunch) next to Legacy layout. Change panorama is on every version (PanoramaPicker.next: the next release family of the Panorama Version setting; unit test). Seen in game on 26.3 (11-10): two presses gave 26.2 (a dark cave, Mojang's own image) and 26.1.2 (cherry grove). The flat grey came from the Panorama Version setting itself: newer client jars (1.21.11, 26.2, 26.3 checked) hold 1x1 placeholder panoramas and the real images are in the release's asset index. PanoramaPicker now reads them there (sha1-checked), uses the jar for older releases and replaces a cached placeholder set. The button on 26.2, 1.21.11, 1.20.1 and 1.8.9 compiles; none of those was started in game. Left: the whole Update button
 
