@@ -69,6 +69,10 @@ public final class FriendsScreenLogic {
         default String joinQuestion(UUID id) { return null; }
         /** The friend whose world is being connected to (P2P link not up yet), else null: shown as progress with Cancel. */
         default String connectingTo() { return null; }
+        /** What that connection is doing once the link is up (ModSync), else null. */
+        default String connectingStatus() { return null; }
+        /** ModSync's "trust this host's mods?" while it waits for an answer, else null. */
+        default SocialState.TrustQuestion trustQuestion() { return null; }
         default void cancelConnecting() {}
         default String connectionStatus() { return "Connected"; }
         default boolean showServer() { return true; }
@@ -81,6 +85,7 @@ public final class FriendsScreenLogic {
     private final Callbacks callbacks;
     private final ConfirmDialog confirm = new ConfirmDialog();
     private Box cancelConnectingBtn;
+    private SocialState.TrustQuestion trustAsked; // the ModSync question the confirm dialog shows now
     private Tab currentTab = Tab.FRIENDS;
 
     // DM pane state
@@ -183,6 +188,8 @@ public final class FriendsScreenLogic {
             @Override public void requestJoin(UUID id) { s.requestJoin(id); }
             @Override public String joinQuestion(UUID id) { return s.joinQuestion(id); }
             @Override public String connectingTo() { return s.connectingTo(); }
+            @Override public String connectingStatus() { return s.connectingStatus(); }
+            @Override public SocialState.TrustQuestion trustQuestion() { return s.trustQuestion(); }
             @Override public void cancelConnecting() { s.cancelConnecting(); }
             @Override public String connectionStatus() { return s.connectionStatus(); }
             @Override public boolean showServer() { return s.showServer(); }
@@ -499,9 +506,24 @@ public final class FriendsScreenLogic {
         if (deferredTooltip != null) {
             deferredTooltip.run();
         }
-        confirm.render(g, mouseX, mouseY); // modal, over everything
         String connecting = callbacks.connectingTo();
         cancelConnectingBtn = connecting == null ? null : renderConnecting(g, connecting, mouseX, mouseY);
+        askTrust();
+        confirm.render(g, mouseX, mouseY); // modal, over everything
+    }
+
+    /** ModSync: jars that only the host has are fetched after this one red question; Cancel (or Esc) ends the join. */
+    private void askTrust() {
+        SocialState.TrustQuestion question = callbacks.trustQuestion();
+        if (trustAsked != null && (question != trustAsked || !confirm.isOpen())) { // answered, cancelled, or the join ended
+            if (question != trustAsked && confirm.isOpen()) confirm.close();
+            trustAsked.answer().complete(false); // nothing happens after "Trust and download" completed it
+            trustAsked = null;
+        }
+        if (question != null && trustAsked == null && !question.answer().isDone() && !confirm.isOpen()) {
+            trustAsked = question;
+            confirm.openDanger(question.title(), question.message(), "Trust and download", () -> question.answer().complete(true));
+        }
     }
 
     /** Modal progress while the P2P link to a friend's world comes up (direct or relayed shows on the connect screen next). */
@@ -513,7 +535,8 @@ public final class FriendsScreenLogic {
         g.fill(dx + 1, dy, dx + dw - 1, dy + 2, LadsPalette.ACCENT);
         String dots = ".".repeat((int) (System.currentTimeMillis() / 400 % 3) + 1);
         g.drawCenteredText(MenuGraphics.fit(g, "Connecting to " + friend + "'s world" + dots, dw - 20), dx + dw / 2, dy + 14, LadsPalette.TEXT, true);
-        g.drawCenteredText(MenuGraphics.fit(g, "Finding a direct or relayed path", dw - 20), dx + dw / 2, dy + 28, LadsPalette.MUTED, false);
+        String status = callbacks.connectingStatus();
+        g.drawCenteredText(MenuGraphics.fit(g, status != null ? status : "Finding a direct or relayed path", dw - 20), dx + dw / 2, dy + 28, LadsPalette.MUTED, false);
         Box cancel = new Box(dx + (dw - 100) / 2, dy + dh - 30, 100, 20);
         MenuGraphics.round(g, cancel.x, cancel.y, cancel.w, cancel.h, cancel.has(mouseX, mouseY) ? LadsPalette.HOVER : LadsPalette.CARD);
         MenuGraphics.iconLabel(g, "Cancel", null, cancel.x + cancel.w / 2, cancel.y + (cancel.h - g.fontHeight()) / 2 + 1, cancel.w, LadsPalette.TEXT, false);

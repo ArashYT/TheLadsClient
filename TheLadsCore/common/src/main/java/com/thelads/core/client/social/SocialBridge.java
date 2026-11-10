@@ -90,4 +90,10 @@ public interface SocialBridge {
 
     /** Runs task on the game (render) thread. */
     default void runOnGameThread(Runnable task) { task.run(); }
+
+    /** The game's folder (ModSync reads the launcher's mod list there and keeps a host's jars in their own folder), or null. */
+    default Path gameDir() { return null; }
+
+    /** Closes the game the normal way (ModSync: the launcher starts it again with the host's mods). */
+    default void quitGame() {}
 }

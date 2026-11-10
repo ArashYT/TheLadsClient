@@ -4,7 +4,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import com.thelads.core.client.HypixelSafetyManager;
 import com.thelads.core.client.bridge.LadsGameBridge;
+import com.thelads.core.client.social.modsync.ModSyncFlow;
+import com.thelads.core.client.social.modsync.ModSyncServer;
 import com.thelads.core.client.social.p2p.P2PSession;
 import com.thelads.core.config.Module;
 import com.thelads.core.config.ModuleManager;
@@ -50,6 +53,8 @@ public class SocialState {
     public record JoinRequest(String reqId, UUID from, SocialBridge.GameInfo game) {}
     /** "Leave X and join Y?" and what Confirm does. */
     public record SwitchConfirm(String question, Runnable go) {}
+    /** ModSync's "trust this host's mods?": the Friends screen asks it and completes answer (false = cancel the join). */
+    public record TrustQuestion(String title, String message, java.util.concurrent.CompletableFuture<Boolean> answer) {}
 
     private static volatile SocialState instance;
 
@@ -97,6 +102,16 @@ public class SocialState {
     static long reconfirmMs = 20_000;
     /** A late p2p_start waiting for the player's "Join" (toast or chat link). */
     private record PendingJoin(String sid, Runnable go) {}
+    /** ModSync: this profile's own jars as the launcher listed them, read once (the hash in our presence, what a guest may fetch). */
+    private volatile List<ModSyncServer.Shared> modSyncShared;
+    /** ModSync, host: guests that left to restart with our mods and whether they went offline since; back online they get a new invite. */
+    private final Map<UUID, Relaunching> relaunching = new ConcurrentHashMap<>();
+    private record Relaunching(long at, boolean wentOffline) {}
+    static final long RELAUNCH_MS = 10 * 60_000;
+    /** ModSync, guest: the launcher started this game with that host's mods: its next invite within RELAUNCH_MS is accepted, once. */
+    private volatile UUID rejoinHost = parseUuid(System.getProperty(ModSyncFlow.HOST_PROPERTY));
+    private final long startedAt = System.currentTimeMillis();
+    private boolean leavingServer; // game thread only
     private volatile PendingJoin pendingJoin;
     /** The last Add Friend: its name and the backend's answer for the Friends screen (null while waiting). */
     private volatile String addingName, addResult;
@@ -155,8 +170,63 @@ public class SocialState {
     /** Ours, read once: it does not change while the game runs (1.20.1 reads pack.json for it). */
     SocialBridge.GameInfo gameInfo() {
         SocialBridge.GameInfo g = game;
-        if (g == null) game = g = bridge().gameInfo();
+        if (g == null) {
+            g = bridge().gameInfo();
+            // ModSync: a plain Fabric profile says which jars it runs; packs and 1.8.9 publish nothing and sync nothing
+            if ("plain".equals(g.profileKind()) && "fabric".equals(g.loader()) && (g.modsHash() == null || g.modsHash().isEmpty())) {
+                String hash = ModSyncFlow.hash(modSyncShared());
+                if (!hash.isEmpty()) g = new SocialBridge.GameInfo(g.mc(), g.loader(), g.profileKind(), g.packId(), g.packVersion(), hash, g.lads());
+            }
+            game = g;
+        }
         return g;
+    }
+
+    List<ModSyncServer.Shared> modSyncShared() {
+        List<ModSyncServer.Shared> shared = modSyncShared;
+        if (shared == null) modSyncShared = shared = List.copyOf(ModSyncFlow.shared(bridge().gameDir()));
+        return shared;
+    }
+
+    /**
+     * The host runs jars this game does not: before the game connects, its list is asked for on stream 2. Never from a host that
+     * published no modsHash (nothing to sync, or an old client whose Mux ends the session on a stream-2 frame).
+     */
+    boolean needsModSync(UUID host) {
+        FriendEntry f = host == null ? null : friendsMap.get(host);
+        SocialBridge.GameInfo theirs = f == null || f.presence() == null ? null : f.presence().game(), ours = gameInfo();
+        String hash = theirs == null || theirs.modsHash() == null ? "" : theirs.modsHash();
+        return MODS_HASH.matcher(hash).matches() && !hash.equals(ours.modsHash()) && ModSyncFlow.launcherReady(bridge().gameDir())
+                && "plain".equals(ours.profileKind()) && "fabric".equals(ours.loader());
+    }
+
+    private static final java.util.regex.Pattern MODS_HASH = java.util.regex.Pattern.compile("[0-9a-f]{32}");
+
+    /** Mod id to version of everything this game loaded (ModSync: such a mod is not fetched again). */
+    Map<String, String> loadedMods() {
+        Map<String, String> loaded = new java.util.HashMap<>();
+        LadsGameBridge game = LadsGameBridge.get();
+        if (game != null) for (com.thelads.core.mods.LoadedMod m : game.loadedMods()) loaded.put(m.id(), m.version());
+        return loaded;
+    }
+
+    /** HostSession: this guest fetched our mods and restarts its game; it is let back in without a new question. */
+    void guestRelaunches(UUID guest) {
+        relaunching.put(guest, new Relaunching(System.currentTimeMillis(), false));
+    }
+
+    /** The restarted guest is back (offline, then online again) while we still host: the invite it accepted before is sent again. */
+    private void relaunchPresence(UUID id, Presence p) {
+        Relaunching r = relaunching.get(id);
+        if (r == null) return;
+        if (System.currentTimeMillis() - r.at() > RELAUNCH_MS || !hostSession.isHosting()) {
+            relaunching.remove(id);
+        } else if (!p.online()) {
+            relaunching.put(id, new Relaunching(r.at(), true));
+        } else if (r.wentOffline()) {
+            relaunching.remove(id);
+            invite(id);
+        }
     }
 
     void sendRaw(JsonObject message) {
@@ -299,6 +369,16 @@ public class SocialState {
         return guestSession.connectingTo();
     }
 
+    /** What that connection is doing once the link is up (ModSync: "Downloading mod 2 of 5: ..."), else null. */
+    public String connectingStatus() {
+        return guestSession.connectingStatus();
+    }
+
+    /** ModSync's "trust this host's mods?" while it waits for the player, else null. */
+    public TrustQuestion trustQuestion() {
+        return guestSession.trustQuestion();
+    }
+
     /** Cancel on that progress: the P2P session ends, nothing connects. */
     public void cancelConnecting() {
         guestSession.close("Cancelled");
@@ -323,6 +403,16 @@ public class SocialState {
         // Anti-ban: the P2P key (an unknown server for HypixelSafetyManager) never outlives the tunnel: any other connection ends it.
         if (guestSession.isActive() && bridge.inWorldOrServer() && !guestSession.isProxy(LadsGameBridge.get().getServerAddress())) {
             guestSession.close("Left the friend's world");
+        }
+        // Anti-ban: a game the launcher started with a host's mods (ModSync) plays that host's world, singleplayer, LAN and our own
+        // servers only. On any other server those mods could get the player banned: it leaves at once and says why.
+        String address = System.getProperty(ModSyncFlow.HOST_PROPERTY) == null || !bridge.inWorldOrServer() ? null : LadsGameBridge.get().getServerAddress();
+        if (address == null || guestSession.isActive() || address.startsWith("127.0.0.1:") || !HypixelSafetyManager.isMultiplayer()
+                || HypixelSafetyManager.isTrustedServer()) {
+            leavingServer = false;
+        } else if (!leavingServer) {
+            leavingServer = true;
+            bridge.leaveWorld(() -> bridge.toast("Restart to play here", "This game runs your friend's mods. Start it again from the launcher to join servers.", null, null));
         }
         if (++ticks % 20 != 0) return;
         if (!enabled()) {
@@ -626,6 +716,7 @@ public class SocialState {
 
     public void stopHosting() {
         hostSession.stop("Host closed the world");
+        relaunching.clear();
         refreshPresence();
         notifyListeners();
     }
@@ -888,6 +979,7 @@ public class SocialState {
                     if (existing != null) {
                         Presence p = parsePresence(msg);
                         friendsMap.put(id, new FriendEntry(id, existing.name(), existing.nick(), p, existing.since()));
+                        relaunchPresence(id, p);
                         notifyListeners();
                     }
                 }
@@ -957,6 +1049,11 @@ public class SocialState {
                             "invite_accept:" + inviteId, "invite_decline:" + inviteId);
                     chatAction(name + " invited you to " + server + " [Accept]",
                             "invite_accept:" + inviteId);
+                } else if (from.equals(rejoinHost) && System.currentTimeMillis() - startedAt < RELAUNCH_MS) {
+                    // ModSync: the player accepted this host before the restart with its mods; the host's new invite continues that join
+                    rejoinHost = null;
+                    activeInvites.put(inviteId, new Invite(inviteId, from, worldName, false, null));
+                    acceptInvite(inviteId);
                 } else {
                     activeInvites.put(inviteId, new Invite(inviteId, from, worldName, false, null));
                     bridge().toast("Game Invite", name + " invited you to " + worldName,

@@ -381,6 +381,17 @@ public class SocialBridge26 implements SocialBridge {
     }
 
     @Override
+    public Path gameDir() {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir();
+    }
+
+    @Override
+    public void quitGame() {
+        Minecraft mc = Minecraft.getInstance();
+        mc.execute(mc::stop);
+    }
+
+    @Override
     public String worldName() {
         IntegratedServer server = Minecraft.getInstance().getSingleplayerServer();
         return server != null ? server.getWorldData().getLevelName() : null;
