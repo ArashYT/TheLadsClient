@@ -214,6 +214,22 @@ class ModSyncWiringTest {
     }
 
     @Test
+    void aGameThatRunsAHostsModsRefusesOtherServersBeforeItConnects() {
+        Bridge bridge = new Bridge(dir);
+        SocialState game = new SocialState(() -> bridge, () -> null, null);
+        assertFalse(game.refusesJoin("mc.hypixel.net"), "a normal game joins anything");
+        System.setProperty(ModSyncFlow.HOST_PROPERTY, HOST.toString());
+        assertTrue(game.refusesJoin("mc.hypixel.net"));
+        assertTrue(game.refusesJoin("play.example.org:25565"));
+        assertEquals(2, bridge.toasts.size());
+        assertTrue(bridge.toasts.get(0).startsWith("Restart to play here: This game runs your friend's mods."), bridge.toasts.get(0));
+        assertFalse(game.refusesJoin("127.0.0.1"), "the friend's world (our proxy) or a server on this PC");
+        assertFalse(game.refusesJoin("192.168.2.10:25565"), "the local network");
+        assertFalse(game.refusesJoin("mc.arashyt.ca"), "our own server");
+        assertEquals(2, bridge.toasts.size());
+    }
+
+    @Test
     void aGameRestartedForAHostAcceptsThatHostsNextInviteOnce() {
         System.setProperty(ModSyncFlow.HOST_PROPERTY, HOST.toString());
         Bridge bridge = new Bridge(dir);

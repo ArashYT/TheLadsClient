@@ -1,5 +1,6 @@
 package com.thelads.core.v1_20_1.mixin.menus;
 
+import com.thelads.core.client.social.SocialState;
 import com.thelads.core.v1_20_1.feature.NativeReconnect1201;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConnectScreen;
@@ -14,9 +15,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Every server join (server list, direct connect, quick play) starts here: AutoReconnect remembers it. */
 @Mixin(ConnectScreen.class)
 abstract class ReconnectTargetMixin {
-    @Inject(method = "startConnecting", at = @At("HEAD"), require = 1)
+    @Inject(method = "startConnecting", at = @At("HEAD"), require = 1, cancellable = true)
     private static void lads$rememberServer(Screen parent, Minecraft minecraft, ServerAddress address, ServerData server,
                                             boolean quickPlay, CallbackInfo ci) {
+        // Anti-ban: a game that runs a friend's mods (ModSync) never logs in where those mods could get the player banned
+        if (SocialState.get().refusesJoin(address.getHost())) {
+            minecraft.setScreen(parent);
+            ci.cancel();
+            return;
+        }
         NativeReconnect1201.connecting(address, server);
     }
 }

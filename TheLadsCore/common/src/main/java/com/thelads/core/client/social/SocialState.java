@@ -399,6 +399,17 @@ public class SocialState {
         get().sample();
     }
 
+    /**
+     * Anti-ban, before the game connects: a game the launcher started with a host's mods (ModSync) joins only that host's world
+     * (our proxy on this PC), the local network and our own servers. It says why when it refuses. sample() still leaves any other
+     * server (Realms do not connect through here).
+     */
+    public boolean refusesJoin(String address) {
+        if (System.getProperty(ModSyncFlow.HOST_PROPERTY) == null || HypixelSafetyManager.isOwnOrLocal(address)) return false;
+        bridge().toast("Restart to play here", "This game runs your friend's mods. Start it again from the launcher to join servers.", null, null);
+        return true;
+    }
+
     private void sample() {
         SocialBridge bridge = bridge();
         // Anti-ban: the P2P key (an unknown server for HypixelSafetyManager) never outlives the tunnel: any other connection ends it.
