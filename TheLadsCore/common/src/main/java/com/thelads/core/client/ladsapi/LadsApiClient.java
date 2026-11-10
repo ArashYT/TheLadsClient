@@ -36,7 +36,18 @@ public final class LadsApiClient {
         void send(byte[] payload);
     }
 
+    /**
+     * Asks the Lads relay for the token that proves this client to a server (PROTOCOL.md section 6); the answer comes back through
+     * {@link #attested}. Set by CosmeticsLink. Without one the session just stays unverified.
+     */
+    public interface Attestor {
+        void request(String nonce, String sid);
+    }
+
     private static volatile Transport transport;
+    private static volatile Attestor attestor;
+    /** The nonce of the server hello that waits for the relay's token, and the one a token was already sent for. */
+    private static String attestNonce, provenNonce;
     private static volatile String minecraftVersion = "";
     private static volatile boolean sessionOk = false;
     private static volatile String serverName = "";
@@ -72,6 +83,10 @@ public final class LadsApiClient {
     public static void install(Transport sender, String mcVersion) {
         transport = sender;
         minecraftVersion = mcVersion == null ? "" : mcVersion;
+    }
+
+    public static void setAttestor(Attestor relay) {
+        attestor = relay;
     }
 
     /** One lads:api payload from the server (already on the game thread). Oversized, malformed or rate-limited payloads are dropped. */
@@ -140,13 +155,46 @@ public final class LadsApiClient {
         if (helloReplies < MAX_HELLO_REPLIES && connectionHelloReplies < MAX_CONNECTION_HELLO_REPLIES) {
             helloReplies++;
             connectionHelloReplies++;
-            JsonObject reply = new JsonObject();
-            reply.addProperty("t", "hello");
-            reply.addProperty("v", 1);
-            reply.addProperty("lads", LadsVersion.VERSION);
-            reply.addProperty("mc", minecraftVersion != null ? minecraftVersion : "");
-            sendPayload(reply.toString().getBytes(StandardCharsets.UTF_8));
+            sendPayload(helloReply().toString().getBytes(StandardCharsets.UTF_8));
+
+            // The server asks for proof (plugin 1.2.0): this reply does not wait for the relay, the token follows in a second hello.
+            String nonce = attestId(json, "nonce"), sid = attestId(json, "sid");
+            Attestor relay = attestor;
+            if (nonce != null && sid != null && relay != null && !nonce.equals(provenNonce)) {
+                attestNonce = nonce;
+                relay.request(nonce, sid);
+            }
         }
+    }
+
+    private static JsonObject helloReply() {
+        JsonObject reply = new JsonObject();
+        reply.addProperty("t", "hello");
+        reply.addProperty("v", 1);
+        reply.addProperty("lads", LadsVersion.VERSION);
+        reply.addProperty("mc", minecraftVersion != null ? minecraftVersion : "");
+        return reply;
+    }
+
+    /** A hello's nonce or server id: 16-64 hex characters, or null. They go to the relay and into what it signs. */
+    private static String attestId(JsonObject json, String key) {
+        JsonElement e = json.get(key);
+        if (e == null || !e.isJsonPrimitive() || !e.getAsJsonPrimitive().isString()) return null;
+        return e.getAsString().matches("[0-9a-f]{16,64}") ? e.getAsString() : null;
+    }
+
+    /**
+     * The relay's token for a nonce (game thread). It goes out once, in a second hello, and only to the server whose hello asked
+     * for it: a token that arrives after a server switch or a disconnect is dropped.
+     */
+    public static void attested(String nonce, String token) {
+        if (!sessionOk || nonce == null || !nonce.equals(attestNonce)) return;
+        attestNonce = null;
+        if (token == null || !token.matches("v1\\.[0-9]{1,12}\\.[A-Za-z0-9_-]{86}")) return;
+        provenNonce = nonce;
+        JsonObject reply = helloReply();
+        reply.addProperty("token", token);
+        sendPayload(reply.toString().getBytes(StandardCharsets.UTF_8));
     }
 
     /** "/hub" or "/server lobby" with its slash, or "" when it is not a plain command: this text gets sent as the player. */
@@ -259,6 +307,7 @@ public final class LadsApiClient {
         LadsApiUi.policyCleared();
         networkGame = "";
         helloReplies = 0;
+        attestNonce = null;
     }
 
     /** Disconnect: everything from the connection goes, the session too. */
@@ -272,6 +321,7 @@ public final class LadsApiClient {
         lastHashedSeed = null;
         lastDimension = null;
         connectionHelloReplies = 0;
+        provenNonce = null;
         clock = System::currentTimeMillis;
     }
 

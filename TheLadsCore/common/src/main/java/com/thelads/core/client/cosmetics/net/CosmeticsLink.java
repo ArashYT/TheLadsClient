@@ -7,6 +7,7 @@ import com.thelads.core.client.bridge.LadsGameBridge;
 import com.thelads.core.client.cosmetics.Emotes;
 import com.thelads.core.client.cosmetics.wearables.CosmeticSlot;
 import com.thelads.core.client.cosmetics.wearables.CosmeticsManager;
+import com.thelads.core.client.ladsapi.LadsApiClient;
 import com.thelads.core.client.ladsapi.LadsPresence;
 import com.thelads.core.config.ShareCodeClient;
 import com.thelads.core.modules.CosmeticsModule;
@@ -43,10 +44,28 @@ public final class CosmeticsLink {
     private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore/Cosmetics");
     private static final CosmeticsLink LINK = new CosmeticsLink(System.getProperty("lads.cosmetics.url", System.getenv("LADS_COSMETICS_URL")));
 
+    static {
+        LadsApiClient.setAttestor(LINK::requestAttest);
+    }
+
     public static CosmeticsLink get() { return LINK; }
 
-    /** Where the link should be: who we are and which server room; null = disconnected. */
+    /** Where the link should be: who we are and which server room (no room: up only to prove the client); null = disconnected. */
     record Want(UUID self, String room) {}
+
+    /** A server's request for proof (PROTOCOL.md section 6): asked of the relay once per connection, gone when answered or too old. */
+    static final class Attest {
+        final String nonce, sid;
+        final long until = System.currentTimeMillis() + ATTEST_WAIT_MS;
+        boolean sent; // link thread only
+
+        Attest(String nonce, String sid) {
+            this.nonce = nonce;
+            this.sid = sid;
+        }
+    }
+
+    static final long ATTEST_WAIT_MS = 30_000;
 
     private final URI endpoint; // null: a bad override turned the link off
     private final boolean local; // ws:// to this PC = QA: no Mojang join (offline accounts), QA env hooks honored
@@ -56,6 +75,8 @@ public final class CosmeticsLink {
     private volatile String localEmote;
     private volatile boolean emoteDirty, equipsDirty, wantLinkCode, showOthers = true, shareMine = true;
     private final Map<String, String> pendingEquips = new LinkedHashMap<>();
+    private volatile Attest attest;
+    private volatile String[] attested; // {nonce, token} for the game thread
     private Thread thread;
     private int ticks; // game thread only, as the two below
     private String lastAddress, lastRoom;
@@ -90,8 +111,35 @@ public final class CosmeticsLink {
         }
     }
 
+    /**
+     * Game thread: a server's hello asked this client to prove itself. The relay signs that Mojang proved our account to it; the
+     * link comes up for that even with both cosmetics switches off (then without a room: nothing is shared or shown).
+     */
+    public void requestAttest(String nonce, String sid) {
+        synchronized (lock) {
+            attest = new Attest(nonce, sid);
+            wake();
+        }
+    }
+
+    /** The relay's answer for the game thread, once: {nonce, token}, or null. */
+    String[] takeAttested() {
+        String[] done = attested;
+        if (done != null) attested = null;
+        return done;
+    }
+
+    private boolean attestUnsent() {
+        Attest ask = attest;
+        return ask != null && !ask.sent;
+    }
+
     private void sample() {
+        String[] done = takeAttested();
+        if (done != null) LadsApiClient.attested(done[0], done[1]);
         if (++ticks % 20 != 0 || endpoint == null) return;
+        Attest ask = attest;
+        if (ask != null && System.currentTimeMillis() > ask.until) attest = ask = null; // the relay never answered
         CosmeticsModule cosmetics = CosmeticsModule.get();
         boolean show = cosmetics.showOthers.get(), share = cosmetics.shareMine.get();
         LadsGameBridge game = LadsGameBridge.get();
@@ -101,8 +149,8 @@ public final class CosmeticsLink {
             lastRoom = room(address);
             LadsPresence.relayClear();
         }
-        LadsGameBridge.Session session = (show || share) && lastRoom != null && game.isIngame() ? game.session() : null;
-        Want next = session == null || session.uuid() == null ? null : new Want(session.uuid(), lastRoom);
+        LadsGameBridge.Session session = (show || share || ask != null) && lastRoom != null && game.isIngame() ? game.session() : null;
+        Want next = session == null || session.uuid() == null ? null : new Want(session.uuid(), show || share ? lastRoom : null);
         Want current = want;
         if (showOthers && !show && current != null) {
             Emotes.clearRemote(current.self());
@@ -160,10 +208,14 @@ public final class CosmeticsLink {
             String nonce = challenge == null ? null : str(challenge, "nonce");
             if (nonce == null || !"challenge".equals(str(challenge, "t"))) throw new ProtocolException("no challenge");
             String serverId = serverId(nonce);
+            JsonElement signs = challenge.get("attest"); // an older relay closes the link on a message it does not know
+            boolean attests = signs != null && signs.isJsonPrimitive() && signs.getAsJsonPrimitive().isBoolean() && signs.getAsBoolean();
+            Attest waiting = attest;
+            if (waiting != null) waiting.sent = false; // a new connection asks again
             if (local) LOGGER.info("Lads cosmetics: local endpoint {}, Mojang join skipped (QA)", endpoint);
             else mojangJoin(session.accessToken(), w.self(), serverId);
             ws.sendText(json("t", "auth", "name", session.name(), "uuid", plain(w.self()), "serverId", serverId));
-            ws.sendText(json("t", "room", "room", w.room()));
+            if (w.room() != null) ws.sendText(json("t", "room", "room", w.room()));
             ws.setReadTimeout(90_000); // our ping below gets a pong at least every 30 s
             Thread reader = new Thread(() -> read(ws, w.self()), "Lads Cosmetics Reader");
             reader.setDaemon(true);
@@ -173,7 +225,7 @@ public final class CosmeticsLink {
 
             // Sync initial equipped cosmetics
             for (CosmeticSlot slot : new CosmeticSlot[]{CosmeticSlot.CAPE, CosmeticSlot.HAT, CosmeticSlot.GLASSES}) {
-                String equipped = CosmeticsManager.get().getLocalEquipped(slot);
+                String equipped = w.room() == null ? null : CosmeticsManager.get().getLocalEquipped(slot);
                 if (equipped != null && !equipped.isBlank()) {
                     ws.sendText(json("t", "equip", "slot", slot.id(), "item", equipped));
                 }
@@ -214,9 +266,15 @@ public final class CosmeticsLink {
                     wantLinkCode = false;
                     ws.sendText(json("t", "link"));
                 }
+                Attest ask = attest;
+                if (ask != null && !ask.sent) {
+                    ask.sent = true;
+                    if (attests) ws.sendText(json("t", "attest", "nonce", ask.nonce, "sid", ask.sid));
+                    else if (attest == ask) attest = null; // this relay signs nothing: the session stays unverified
+                }
                 long wake = qaEmote != null ? Math.min(nextPing, nextQa) : nextPing;
                 synchronized (lock) {
-                    if (!emoteDirty && !equipsDirty && !wantLinkCode && ws.isOpen() && w.equals(want)) {
+                    if (!emoteDirty && !equipsDirty && !wantLinkCode && !attestUnsent() && ws.isOpen() && w.equals(want)) {
                         lock.wait(Math.max(1, wake - System.currentTimeMillis()));
                     }
                 }
@@ -268,6 +326,13 @@ public final class CosmeticsLink {
             if (uuid != null && slot != null) {
                 CosmeticsManager.get().onRemoteEquip(uuid, slot, item);
             }
+        } else if ("attest".equals(type)) {
+            Attest ask = attest;
+            String nonce = str(message, "nonce"), token = str(message, "token");
+            if (ask != null && ask.nonce.equals(nonce)) { // an answer with an error ends the wait too
+                attest = null;
+                if (token != null) attested = new String[] {nonce, token};
+            }
         } else if ("link_code".equals(type)) {
             String code = str(message, "code");
             JsonElement exp = message.get("expires_in");
@@ -298,7 +363,7 @@ public final class CosmeticsLink {
 
     private String lastRoomShort() {
         Want w = want;
-        return w == null ? "-" : w.room().substring(0, 8);
+        return w == null || w.room() == null ? "-" : w.room().substring(0, 8);
     }
 
     private Want awaitWant() {
