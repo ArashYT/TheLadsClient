@@ -45,6 +45,11 @@ public final class EmoteCapture26 {
     private static final List<Float> stopWeights = new ArrayList<>();
     private static long walkAt;
     private static boolean stoppedSeen;
+    // planSolo: its emote once it plays, the other two players, the last frame's time into the emote and how many were photographed
+    private static Emote solo;
+    private static RemotePlayer[] soloOthers;
+    private static double soloShot;
+    private static int soloFrames;
 
     private EmoteCapture26() {}
 
@@ -256,34 +261,49 @@ public final class EmoteCapture26 {
                 mc.level.addEntity(other);
             }
         });
-        long start = 2500;
-        at(start, () -> {
+        at(2500, () -> {
             Emotes.playLocal(self, emote.id);
             for (RemotePlayer other : others) Emotes.onRemote(other.getUUID(), emote.id, 0);
-        });
-        at(start + 1000, () -> {
-            Emotes.Playing playing = Emotes.get(self);
-            EmotePose pose = EmoteAnimator.pose(self, false, 0, 0, 0);
-            check(playing != null && emote.id.equals(playing.id()) && pose != null && pose.weight == 1, emote.name + " plays, blended fully in");
-            boolean posed = true;
-            for (RemotePlayer other : others) posed &= EmoteAnimator.pose(other.getUUID(), true, other.getX(), other.getY(), other.getZ()) != null;
-            check(posed, "both other players are posed with " + emote.name);
-        });
-        long loop = start + (long) emote.periodMs;
-        for (int i = 0; i < 64; i++) shot(loop + Math.round(i * emote.periodMs / 64), String.format(Locale.ROOT, "3p-back-%02d", i));
-        at(loop + (long) emote.periodMs + 200, () -> {
-            check(Emotes.get(self) != null && !Emotes.get(self).stopping(), emote.name + " is still playing after two loops");
-            for (RemotePlayer other : others) { Emotes.onRemote(other.getUUID(), null, 0); other.discard(); }
-            Emotes.stopLocal(self);
-        });
-        at(loop + (long) emote.periodMs + 800, () -> {
-            mc.options.setCameraType(CameraType.FIRST_PERSON);
-            hud(mc, hudWas);
-            done = true;
-            com.thelads.core.client.qa.QaProgress.done();
-            LOGGER.info("Lads emote capture END: {} passed, {} failed; frames in {}", passed, failed, out);
+            soloOthers = others;
+            solo = emote; // soloFrame takes over: it goes by the emote's own clock, so a stutter here cannot shift the frames
         });
     }
+
+    /** planSolo, each completed frame: the second loop photographed (every 40 ms at most, named by its ms into the loop), then the end. */
+    private static void soloFrame(Minecraft mc, RenderTarget target) {
+        UUID self = mc.player.getUUID();
+        Emotes.Playing playing = Emotes.get(self);
+        EmotePose pose = EmoteAnimator.pose(self, false, 0, 0, 0);
+        double t = playing == null || pose == null ? Double.MAX_VALUE : EmoteAnimator.now() - playing.startMs();
+        if (t < solo.periodMs) return;
+        if (t < 2 * solo.periodMs) {
+            if (t - soloShot < 40) return;
+            soloShot = t;
+            if (soloFrames++ == 0) {
+                check(solo.id.equals(playing.id()) && pose.weight == 1, solo.name + " plays, blended fully in (weight " + pose.weight + ")");
+                boolean posed = true;
+                for (RemotePlayer other : soloOthers) posed &= EmoteAnimator.pose(other.getUUID(), true, other.getX(), other.getY(), other.getZ()) != null;
+                check(posed, "both other players are posed with " + solo.name);
+            }
+            String name = String.format(Locale.ROOT, "3p-back-%04d", Math.round(t - solo.periodMs));
+            LOGGER.info(String.format(Locale.ROOT, "Lads emote capture frame %s: body rx %.1f, legs rx %.1f / %.1f, legs rz %.1f / %.1f, head ry %.1f (degrees)", name,
+                deg(pose, Emote.BODY, Emote.RX), deg(pose, Emote.RIGHT_LEG, Emote.RX), deg(pose, Emote.LEFT_LEG, Emote.RX),
+                deg(pose, Emote.RIGHT_LEG, Emote.RZ), deg(pose, Emote.LEFT_LEG, Emote.RZ), deg(pose, Emote.HEAD, Emote.RY)));
+            save(target, name);
+            return;
+        }
+        check(playing != null && !playing.stopping() && soloFrames >= 20, solo.name + " still plays after two loops; " + soloFrames + " frames of the second loop photographed");
+        for (RemotePlayer other : soloOthers) { Emotes.onRemote(other.getUUID(), null, 0); other.discard(); }
+        Emotes.stopLocal(self);
+        mc.options.setCameraType(CameraType.FIRST_PERSON);
+        hud(mc, hudWas);
+        solo = null;
+        done = true;
+        com.thelads.core.client.qa.QaProgress.done();
+        LOGGER.info("Lads emote capture END: {} passed, {} failed; frames in {}", passed, failed, out);
+    }
+
+    private static double deg(EmotePose pose, int part, int axis) { return Math.toDegrees(pose.v[Emote.ch(part, axis)]); }
 
     /** Walk forward at {@code at}: the emote must blend out; every frame for 600 ms is photographed with its weight logged. */
     private static void walk(Minecraft mc, UUID self, long at, String name) {
@@ -353,6 +373,7 @@ public final class EmoteCapture26 {
         }
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
+        if (solo != null) { soloFrame(mc, target); return; }
         Emotes.Playing playing = Emotes.get(mc.player.getUUID());
         if (walkAt > 0 && playing != null && playing.stopping()) stoppedSeen = true;
         String name;
@@ -363,6 +384,10 @@ public final class EmoteCapture26 {
             stopWeights.add(weight);
             LOGGER.info("Lads emote capture frame {}: {} ms after the walk key, weight {}", name, System.currentTimeMillis() - walkAt, String.format(Locale.ROOT, "%.3f", weight));
         } else if ((name = shots.poll()) == null) return;
+        save(target, name);
+    }
+
+    private static void save(RenderTarget target, String name) {
         Path file = out.resolve(name + ".png");
         net.minecraft.client.Screenshot.takeScreenshot(target, image -> {
             try (image) {
