@@ -37,12 +37,12 @@
       "projectSlug": "asynclogger",
       "name": "Async Logger",
       "modId": "asynclogger",
-      "versionId": "jVrQSTSp",
-      "version": "2.2.2+1.21.11-fabric",
-      "fileName": "asynclogger-2.2.2+1.21.11-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/zvNzKfGF/versions/jVrQSTSp/asynclogger-2.2.2%2B1.21.11-fabric.jar",
-      "sha512": "88df926e56b43aeb65b55dbac6853dde5f216d3489355b37bdf4763b7c0397de72b8d30160776a9ef2e8db3b424f5c7736e609d77ab960886fb3dd7a28da9bcb",
-      "size": 595909,
+      "versionId": "P5wu4rZ2",
+      "version": "2.2.3+1.21.11-fabric",
+      "fileName": "asynclogger-2.2.3+1.21.11-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/zvNzKfGF/versions/P5wu4rZ2/asynclogger-2.2.3%2B1.21.11-fabric.jar",
+      "sha512": "c85dca36e9f58981bac003f33e20c5d7dae425cbcb0a3f8af691cfd32f94e11905d50bae631a3d04c77a473dc22f489c6b4920394eb7c556e28996685a28cbf7",
+      "size": 596178,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/decce6/AsyncLogger",
       "projectUrl": "https://modrinth.com/mod/asynclogger"
@@ -112,12 +112,12 @@
       "projectSlug": "better-render-distance",
       "name": "Better Render Distance",
       "modId": "betterrenderdistance",
-      "versionId": "WFE5XTP2",
-      "version": "1.2.0",
-      "fileName": "BetterRenderDistance-1.2.0+mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/iRXmuz7a/versions/WFE5XTP2/BetterRenderDistance-1.2.0%2Bmc1.21.11.jar",
-      "sha512": "7c09130782c5d13e7016bd85f7e3ad136521bcdebb566da7f7717b5a956d92bf5470db6830077ee74c2b189575adac689666e45d34e77a756061f77a1c4aa6d4",
-      "size": 56228,
+      "versionId": "OTLarqSh",
+      "version": "1.2.2",
+      "fileName": "BetterRenderDistance-1.2.2+mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/iRXmuz7a/versions/OTLarqSh/BetterRenderDistance-1.2.2%2Bmc1.21.11.jar",
+      "sha512": "408d02e50315bfc6ef9843ec68177e85c53516ff0b044c3ce365c71a599bd5e46fa1e85366cf9044dca6a5e477ac041479dc16be8bb21bfad693a312b8f221ed",
+      "size": 76149,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": null,
       "projectUrl": "https://modrinth.com/mod/better-render-distance"
@@ -157,12 +157,12 @@
       "projectSlug": "chat-heads",
       "name": "Chat Heads",
       "modId": "chat_heads",
-      "versionId": "TMGGh6uw",
-      "version": "1.3.0",
-      "fileName": "chat_heads-1.3.0-fabric-1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/Wb5oqrBJ/versions/TMGGh6uw/chat_heads-1.3.0-fabric-1.21.11.jar",
-      "sha512": "6a5bdb79c62c66e6273614ab75c673c88a3fdfd840d1afdbf8b10d952e4251786887dd6097c6ccae4e11e9efe8b1dc89ffcd0599058af7d756c64b299eddf9d0",
-      "size": 98327,
+      "versionId": "905FjRkG",
+      "version": "1.3.2",
+      "fileName": "chat_heads-1.3.2-fabric-1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/Wb5oqrBJ/versions/905FjRkG/chat_heads-1.3.2-fabric-1.21.11.jar",
+      "sha512": "4d163de835ad3698ba06d7362f5c3fd7e51394a09cf64dabd29938c312d3bc5ab0c563d6a92cdd6250675e6c734e4b301617fb6675812cb8dd5dc2716fdaa7b5",
+      "size": 100191,
       "license": "MPL-2.0",
       "sourceUrl": "https://github.com/dzwdz/chat_heads",
       "projectUrl": "https://modrinth.com/mod/chat-heads"
@@ -397,12 +397,12 @@
       "projectSlug": "fabric-language-kotlin",
       "name": "Fabric Language Kotlin",
       "modId": "fabric-language-kotlin",
-      "versionId": "eRRZzGMc",
-      "version": "1.14.1+kotlin.2.4.20",
-      "fileName": "fabric-language-kotlin-1.14.1+kotlin.2.4.20.jar",
-      "url": "https://cdn.modrinth.com/data/Ha28R6CL/versions/eRRZzGMc/fabric-language-kotlin-1.14.1%2Bkotlin.2.4.20.jar",
-      "sha512": "91404f87774466ce8604aafea791d8cc97b603bc310dce17c8188f94f7783cca6dc14fc726ce871ca317bfe9033c199d8d858d51284106a00754e952147703b8",
-      "size": 8142858,
+      "versionId": "SKW1BTL3",
+      "version": "1.14.2+kotlin.2.4.21",
+      "fileName": "fabric-language-kotlin-1.14.2+kotlin.2.4.21.jar",
+      "url": "https://cdn.modrinth.com/data/Ha28R6CL/versions/SKW1BTL3/fabric-language-kotlin-1.14.2%2Bkotlin.2.4.21.jar",
+      "sha512": "7fb475c4a7e7bdf8d0aca4b5798a58a354c51443d5b1fbde3e8cf34dfbf7191ef4238b5f07d08ec9490ec180b371624523326c3ad45d4ed2b2be541de9407e5d",
+      "size": 8142878,
       "license": "Apache-2.0",
       "sourceUrl": "https://github.com/FabricMC/fabric-language-kotlin/",
       "projectUrl": "https://modrinth.com/mod/fabric-language-kotlin"
@@ -532,12 +532,12 @@
       "projectSlug": "ixeris",
       "name": "Ixeris",
       "modId": "ixeris",
-      "versionId": "vdJXGhKj",
-      "version": "4.6.8+1.21.11-fabric",
-      "fileName": "Ixeris-4.6.8+1.21.11-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/p8RJPJIC/versions/vdJXGhKj/Ixeris-4.6.8%2B1.21.11-fabric.jar",
-      "sha512": "3fcdbf895e0ccbd5cb74ed2cc26ca274240c6502e0cc74e0c597ed7abdf1c259e6a64b3aa53c35058207de0a59a593bd126f731e08101dfba5c0907b6848ecf8",
-      "size": 776897,
+      "versionId": "RZsBMOEB",
+      "version": "4.6.11+1.21.11-fabric",
+      "fileName": "Ixeris-4.6.11+1.21.11-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/p8RJPJIC/versions/RZsBMOEB/Ixeris-4.6.11%2B1.21.11-fabric.jar",
+      "sha512": "6756d9a77c56b834b05d483f1709cf41ac8754ce34295bec1baf87b066b42f5532703684771fb3e6a1de7e0e4d58842c1343d45579030560cdf01bfc3f027d0b",
+      "size": 786367,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/decce6/Ixeris",
       "projectUrl": "https://modrinth.com/mod/ixeris"
@@ -562,12 +562,12 @@
       "projectSlug": "jasione",
       "name": "Jasione",
       "modId": "jasione",
-      "versionId": "jZLpETqw",
-      "version": "1.0.8+1.21.11-fabric",
-      "fileName": "jasione-1.0.8+1.21.11-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/qlDkBPij/versions/jZLpETqw/jasione-1.0.8%2B1.21.11-fabric.jar",
-      "sha512": "bc67535dde06440702addd5608bfaeebf9311eb9cdd6379512e9bd08d3a6d8d3285f8a938f5cbf0f635043c79c24b159380ad087f8d011eb81038c70707606ba",
-      "size": 762366,
+      "versionId": "Wt4Igqm0",
+      "version": "1.0.9+1.21.11-fabric",
+      "fileName": "jasione-1.0.9+1.21.11-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/qlDkBPij/versions/Wt4Igqm0/jasione-1.0.9%2B1.21.11-fabric.jar",
+      "sha512": "cee9391028af42ef8845a149ff46b1841d89cec9ee2111266c93f5d0cebfeddd0da8813c83fff7a01cb5f9ccfcd02866961e40e66c13942b399b0906a0b3b956",
+      "size": 762784,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/decce6/Jasione",
       "projectUrl": "https://modrinth.com/mod/jasione"
@@ -817,12 +817,12 @@
       "projectSlug": "not-enough-animations",
       "name": "Not Enough Animations",
       "modId": "notenoughanimations",
-      "versionId": "rs2DhiV9",
-      "version": "1.12.6",
-      "fileName": "notenoughanimations-fabric-1.12.6-mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/MPCX6s5C/versions/rs2DhiV9/notenoughanimations-fabric-1.12.6-mc1.21.11.jar",
-      "sha512": "32feb22fcfbd7df2669a5d2405c00f9a6febf08af470855dcd84c5741e3e6d91ca0186a18c2e780b60c5010320843a8fddd5742003c00f3b76e18269283fd1dd",
-      "size": 1883253,
+      "versionId": "qr1Bu9qK",
+      "version": "1.12.7",
+      "fileName": "notenoughanimations-fabric-1.12.7-mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/MPCX6s5C/versions/qr1Bu9qK/notenoughanimations-fabric-1.12.7-mc1.21.11.jar",
+      "sha512": "f3b82fe757c16a969544f30daedc9de4100e93003c7fab328bb506274e86846823e89802b4cecdfea42ec31090827d490f1c40235010f62b6c91f6ec834f7aff",
+      "size": 1886773,
       "license": "LicenseRef-tr7zw-Protective-License",
       "sourceUrl": "https://github.com/tr7zw/NotEnoughAnimations",
       "projectUrl": "https://modrinth.com/mod/not-enough-animations"
@@ -1087,12 +1087,12 @@
       "projectSlug": "wavey-capes",
       "name": "Wavey Capes",
       "modId": "waveycapes",
-      "versionId": "HiXJOcqr",
-      "version": "1.11.2",
-      "fileName": "waveycapes-fabric-1.11.2-mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/kYuIpRLv/versions/HiXJOcqr/waveycapes-fabric-1.11.2-mc1.21.11.jar",
-      "sha512": "9dc36e4b6c8fd2e4bf07765a7b0384a4d0afe83558866d9804aeb4924083fdf8ea794c885ac43d3853aeda210ab7dd61db37f922e9e904583f084903fce82009",
-      "size": 1794934,
+      "versionId": "NR0hCf95",
+      "version": "1.11.3",
+      "fileName": "waveycapes-fabric-1.11.3-mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/kYuIpRLv/versions/NR0hCf95/waveycapes-fabric-1.11.3-mc1.21.11.jar",
+      "sha512": "0e76d901c4dfe83197f6df7d84c925b9c70e3d64215984a74494af438e6ba67fffbb21cbe299389dfc65a8dba52f01fbef4d98243a4f19f9a698e15dae989ac1",
+      "size": 1788406,
       "license": "LicenseRef-tr7zw-Protective-License",
       "sourceUrl": "https://github.com/tr7zw/WaveyCapes",
       "projectUrl": "https://modrinth.com/mod/wavey-capes"
@@ -1144,20 +1144,40 @@
     }
   ],
   "published": {
+    "asynclogger": [
+      "88df926e56b43aeb65b55dbac6853dde5f216d3489355b37bdf4763b7c0397de72b8d30160776a9ef2e8db3b424f5c7736e609d77ab960886fb3dd7a28da9bcb"
+    ],
+    "betterrenderdistance": [
+      "7c09130782c5d13e7016bd85f7e3ad136521bcdebb566da7f7717b5a956d92bf5470db6830077ee74c2b189575adac689666e45d34e77a756061f77a1c4aa6d4"
+    ],
+    "chat_heads": [
+      "6a5bdb79c62c66e6273614ab75c673c88a3fdfd840d1afdbf8b10d952e4251786887dd6097c6ccae4e11e9efe8b1dc89ffcd0599058af7d756c64b299eddf9d0"
+    ],
     "fabric-language-kotlin": [
-      "9a63c35a550b0362b7b25ff045d93709c7b0dae08c89076cba422813fdfb9e5f5dd021ed3afac9f82e74e95b88c249e8f68b240717151540ca3e88cc27fb9c77"
+      "9a63c35a550b0362b7b25ff045d93709c7b0dae08c89076cba422813fdfb9e5f5dd021ed3afac9f82e74e95b88c249e8f68b240717151540ca3e88cc27fb9c77",
+      "91404f87774466ce8604aafea791d8cc97b603bc310dce17c8188f94f7783cca6dc14fc726ce871ca317bfe9033c199d8d858d51284106a00754e952147703b8"
+    ],
+    "ixeris": [
+      "3fcdbf895e0ccbd5cb74ed2cc26ca274240c6502e0cc74e0c597ed7abdf1c259e6a64b3aa53c35058207de0a59a593bd126f731e08101dfba5c0907b6848ecf8"
+    ],
+    "jasione": [
+      "bc67535dde06440702addd5608bfaeebf9311eb9cdd6379512e9bd08d3a6d8d3285f8a938f5cbf0f635043c79c24b159380ad087f8d011eb81038c70707606ba"
     ],
     "modmenu": [
       "146f8c356f86c32e5aab76598e021ac123779c89fc7a51a486fccd2871d2751b02046b4eea3194e52f2e7f38abbb5f78301c8f49bde6e60e1839677db9c84e33"
     ],
     "notenoughanimations": [
-      "32a75704d907c3a6c63d3068971b8d10f2ea666589b14d9de1534d8623cff87a15cd86d999fc1ca4c054b434c104028b6d0fc522dd75af638cc5aebe42621a73"
+      "32a75704d907c3a6c63d3068971b8d10f2ea666589b14d9de1534d8623cff87a15cd86d999fc1ca4c054b434c104028b6d0fc522dd75af638cc5aebe42621a73",
+      "32feb22fcfbd7df2669a5d2405c00f9a6febf08af470855dcd84c5741e3e6d91ca0186a18c2e780b60c5010320843a8fddd5742003c00f3b76e18269283fd1dd"
     ],
     "sodium": [
       "04c43f9e8534b87a52c42ffd51b0e344d4ef92dc9cc52da33d13af6a18bf74b05380d2027f1e0db982698d0aff274c42741c1e21b313b0cd75ed3af005fc98d9"
     ],
     "voicechat": [
       "dab29df8577b220e1c2ad97b784c5acb837501c8ba42d83205c085f44b4a6df75bce2477b8c2c7905285d248fd2d195b3dc77f169cb11a226dc2965e23f5859a"
+    ],
+    "waveycapes": [
+      "9dc36e4b6c8fd2e4bf07765a7b0384a4d0afe83558866d9804aeb4924083fdf8ea794c885ac43d3853aeda210ab7dd61db37f922e9e904583f084903fce82009"
     ],
     "xaerominimap": [
       "7df415f04472bf9de4cf5c2b6d11e640c1018d121829e859ea92bb61c75996c6a7fced5707e70743ac9a33aed725e5501e143f82a03f17fc022a1a8ed32c6238"
