@@ -156,7 +156,10 @@ public final class LadsTitleScreen189 {
     private void ensureLayout() {
         boolean legacy = TitleScreenModule.legacyLayout(), switched = legacy != legacyMode;
         legacyMode = legacy;
-        updateButton.visible = com.thelads.core.client.LauncherUpdate.available() != null;
+        // The launcher's notice comes and goes while this screen is open, and only a full layout places the button.
+        boolean update = com.thelads.core.client.LauncherUpdate.available() != null;
+        switched |= update != updateButton.visible;
+        updateButton.visible = update;
         int targetW = targetWidth();
         int targetH = targetHeight();
         float ms = matrixScale();
