@@ -2,8 +2,6 @@ package com.thelads.core.v1_20_1.hud.chat.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.thelads.core.client.ChatTweaks;
 import com.thelads.core.v1_20_1.hud.chat.ChatTweaks1201;
 import net.minecraft.ChatFormatting;
