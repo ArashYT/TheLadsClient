@@ -10,6 +10,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.entity.Entity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The client's side of a server's spectator mode (LadsClientAPI PROTOCOL.md section 7). The server says whom we watch; this
@@ -23,8 +25,12 @@ public final class Spectate26 {
     public static final KeyMapping PREVIOUS = new KeyMapping("key.theladscore.spectate_previous",
         InputConstants.Type.KEYBOARD, InputConstants.KEY_LEFT, NativeKeyBindings.CATEGORY);
 
+    private static final Logger LOGGER = LoggerFactory.getLogger("TheLadsCore");
+
     /** The entity this class put the camera on, so it only ever takes back its own camera. */
     private static Entity held;
+    /** The last state written to the log. */
+    private static SpectateState logged = SpectateState.active();
 
     private Spectate26() {}
 
@@ -54,7 +60,9 @@ public final class Spectate26 {
             options.keyAttack.setDown(false);
             options.keyUse.setDown(false);
         }
-        if (step != 0 && state.on() && mc.player != null && mc.gui.screen() == null) LadsApiClient.spectateRequest(step > 0);
+        if (step != 0 && state.on() && mc.player != null && mc.gui.screen() == null && LadsApiClient.spectateRequest(step > 0)) {
+            LOGGER.info("Lads spectate: asked the server for the {} player", step > 0 ? "next" : "previous");
+        }
     }
 
     private static int drain(KeyMapping key) {
@@ -73,13 +81,19 @@ public final class Spectate26 {
             return;
         }
         SpectateState state = SpectateState.active();
+        if (state != logged) {
+            logged = state;
+            LOGGER.info("Lads spectate: server says {}{}", state.mode, state.canSwitch ? ", switching offered" : "");
+        }
         Entity target = state.pov() ? mc.level.getEntity(state.target) : null;
         if (target != null && target != mc.player) {
             if (mc.getCameraEntity() != target) mc.setCameraEntity(target);
+            if (held != target) LOGGER.info("Lads spectate: camera on {}", target.getName().getString());
             held = target;
         } else if (held != null && !state.pov()) {
             if (mc.getCameraEntity() == held) mc.setCameraEntity(mc.player);
             held = null;
+            LOGGER.info("Lads spectate: camera back on the player");
         }
     }
 
