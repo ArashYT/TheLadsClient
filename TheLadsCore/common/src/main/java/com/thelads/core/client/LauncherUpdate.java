@@ -32,11 +32,23 @@ public final class LauncherUpdate {
     public static synchronized String available() {
         long now = System.nanoTime();
         if (!checked || now - checkedAt >= RECHECK_NANOS) {
-            cached = available(ClientPaths.getBaseDir(), pid -> ProcessHandle.of(pid).map(ProcessHandle::isAlive).orElse(false));
+            cached = available(ClientPaths.getBaseDir(), LauncherUpdate::alive);
             checkedAt = now;
             checked = true;
         }
         return cached;
+    }
+
+    /** By reflection: the 1.8.9 jar's downgrader swaps a direct ProcessHandle call for its own JNA stub, which fails on that version's
+     *  old JNA (no button at all, seen in game), while the game itself runs on a Java that has the real one. */
+    static boolean alive(long pid) {
+        try {
+            Class<?> handle = Class.forName("java.lang.ProcessHandle");
+            java.util.Optional<?> found = (java.util.Optional<?>) handle.getMethod("of", long.class).invoke(null, pid);
+            return found.isPresent() && (Boolean) handle.getMethod("isAlive").invoke(found.get());
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return false;
+        }
     }
 
     /** {@code alive}: whether that process id still runs. A notice whose launcher is gone counts as none: nobody would install it. */
