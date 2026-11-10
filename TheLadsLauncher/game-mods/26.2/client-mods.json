@@ -7,12 +7,12 @@
       "projectSlug": "architectury-api",
       "name": "Architectury API",
       "modId": "architectury",
-      "versionId": "w3CUWoxd",
-      "version": "21.1.11+fabric",
-      "fileName": "architectury-fabric-21.1.11.jar",
-      "url": "https://cdn.modrinth.com/data/lhGA9TYQ/versions/w3CUWoxd/architectury-fabric-21.1.11.jar",
-      "sha512": "b4c74ce1c0bb47e8ba54cbdd9b24fe8cc7cfc2ed7194f1e451e369adb1f1ae9ac37afc4612124b9793cb5fd7705ebce5634caa80c2825bd23d3dba8eb0bcc53d",
-      "size": 624051,
+      "versionId": "ohb3PBGZ",
+      "version": "21.1.12+fabric",
+      "fileName": "architectury-fabric-21.1.12.jar",
+      "url": "https://cdn.modrinth.com/data/lhGA9TYQ/versions/ohb3PBGZ/architectury-fabric-21.1.12.jar",
+      "sha512": "df244fce6ffe38209e70d88696e05570e261b43780f76bd19e7a1813ffc29e128b21de6776816f3e76e50ffa0dcd32141fc3a09e5c33066f46e35d9d364dc173",
+      "size": 624143,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/architectury/architectury",
       "projectUrl": "https://modrinth.com/mod/architectury-api"
@@ -112,12 +112,12 @@
       "projectSlug": "collective",
       "name": "Collective",
       "modId": "collective",
-      "versionId": "RCPUFFy1",
-      "version": "26.2.0-8.41-fabric+forge+neo",
-      "fileName": "collective-26.2.0-8.41.jar",
-      "url": "https://cdn.modrinth.com/data/e0M1UDsY/versions/RCPUFFy1/collective-26.2.0-8.41.jar",
-      "sha512": "7b1bb2add04a7e35d41b6463d643331fa4870861892d84d47943289266801f10fcca6873fd5c34481213cf298ba45408ad6bcafb38e87a7c3259370a8672254d",
-      "size": 1081455,
+      "versionId": "RlwQ4RGd",
+      "version": "26.2.0-8.67-fabric+forge+neo",
+      "fileName": "collective-26.2.0-8.67.jar",
+      "url": "https://cdn.modrinth.com/data/e0M1UDsY/versions/RlwQ4RGd/collective-26.2.0-8.67.jar",
+      "sha512": "933fdf01efed0b2652dcd69d2606201909f349ffae9b05b4df9cec1fae3ed4009f1811d666acc71a3626bd7ea2908cd5be8735b65616940d6ddb64dab554e53a",
+      "size": 1333274,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/Serilum/Collective",
       "projectUrl": "https://modrinth.com/mod/collective"
@@ -217,12 +217,12 @@
       "projectSlug": "fabric-language-kotlin",
       "name": "Fabric Language Kotlin",
       "modId": "fabric-language-kotlin",
-      "versionId": "eRRZzGMc",
-      "version": "1.14.1+kotlin.2.4.20",
-      "fileName": "fabric-language-kotlin-1.14.1+kotlin.2.4.20.jar",
-      "url": "https://cdn.modrinth.com/data/Ha28R6CL/versions/eRRZzGMc/fabric-language-kotlin-1.14.1%2Bkotlin.2.4.20.jar",
-      "sha512": "91404f87774466ce8604aafea791d8cc97b603bc310dce17c8188f94f7783cca6dc14fc726ce871ca317bfe9033c199d8d858d51284106a00754e952147703b8",
-      "size": 8142858,
+      "versionId": "SKW1BTL3",
+      "version": "1.14.2+kotlin.2.4.21",
+      "fileName": "fabric-language-kotlin-1.14.2+kotlin.2.4.21.jar",
+      "url": "https://cdn.modrinth.com/data/Ha28R6CL/versions/SKW1BTL3/fabric-language-kotlin-1.14.2%2Bkotlin.2.4.21.jar",
+      "sha512": "7fb475c4a7e7bdf8d0aca4b5798a58a354c51443d5b1fbde3e8cf34dfbf7191ef4238b5f07d08ec9490ec180b371624523326c3ad45d4ed2b2be541de9407e5d",
+      "size": 8142878,
       "license": "Apache-2.0",
       "sourceUrl": "https://github.com/FabricMC/fabric-language-kotlin/",
       "projectUrl": "https://modrinth.com/mod/fabric-language-kotlin"
@@ -502,12 +502,12 @@
       "projectSlug": "mru",
       "name": "MRU",
       "modId": "mru",
-      "versionId": "bXhWTAZu",
-      "version": "1.0.41+26.2-fabric",
-      "fileName": "mru-1.0.41+26.2-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/SNVQ2c0g/versions/bXhWTAZu/mru-1.0.41%2B26.2-fabric.jar",
-      "sha512": "3ad629d4f1acf2699b1a3980239ba851e119c90b3da62d80d627b668195d5005c7ebcc7ef137debe0374037a837366d9b9513233c090eb2573f140ec28da1ee1",
-      "size": 155863,
+      "versionId": "YQCP346A",
+      "version": "1.0.45+26.2-fabric",
+      "fileName": "mru-1.0.45+26.2-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/SNVQ2c0g/versions/YQCP346A/mru-1.0.45%2B26.2-fabric.jar",
+      "sha512": "681aae0b11b46f0744ca9ca0bf524df25e43223523a31000cfffc32dd2a8dea354c3b6119c89111b95d3c83e55403aa2bc2819e37601b8d7b8982f0fc8161726",
+      "size": 168239,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/IMB11-Mods/MRU",
       "projectUrl": "https://modrinth.com/mod/mru"
@@ -799,23 +799,31 @@
     }
   ],
   "published": {
+    "architectury": [
+      "b4c74ce1c0bb47e8ba54cbdd9b24fe8cc7cfc2ed7194f1e451e369adb1f1ae9ac37afc4612124b9793cb5fd7705ebce5634caa80c2825bd23d3dba8eb0bcc53d"
+    ],
     "c2me": [
       "76a7c52ea9b22295c15d02be7f1ca4b68fc67368465f1bd3cffb47cd36bf3bf6b9dd925bca02ccb2c7cb2c26df1235538d98ddbac43f85985c39fd183c9f3468"
     ],
     "collective": [
-      "1c35fa28b2ec42cc130c578ad9bb1f320477d881816044a4ba28429ec633c8bd6725fd1378a8ae41b88337ab43aff174d55db0468ed23c5cd16cca776d001c93"
+      "1c35fa28b2ec42cc130c578ad9bb1f320477d881816044a4ba28429ec633c8bd6725fd1378a8ae41b88337ab43aff174d55db0468ed23c5cd16cca776d001c93",
+      "7b1bb2add04a7e35d41b6463d643331fa4870861892d84d47943289266801f10fcca6873fd5c34481213cf298ba45408ad6bcafb38e87a7c3259370a8672254d"
     ],
     "fabric-api": [
       "4d5d9c3daafe19be187f638f2d6de3db26420b8720ef5a266cfa81f79d9019cab8c86e6d47478bbb0b0ee0b8f769204b72c843caa2e4aabd94adc41f3dafb518"
     ],
     "fabric-language-kotlin": [
-      "9a63c35a550b0362b7b25ff045d93709c7b0dae08c89076cba422813fdfb9e5f5dd021ed3afac9f82e74e95b88c249e8f68b240717151540ca3e88cc27fb9c77"
+      "9a63c35a550b0362b7b25ff045d93709c7b0dae08c89076cba422813fdfb9e5f5dd021ed3afac9f82e74e95b88c249e8f68b240717151540ca3e88cc27fb9c77",
+      "91404f87774466ce8604aafea791d8cc97b603bc310dce17c8188f94f7783cca6dc14fc726ce871ca317bfe9033c199d8d858d51284106a00754e952147703b8"
     ],
     "mezz_config": [
       "b4a45d5e3c5f9467ac3ce72c4d311c18cd85422966e8f8c5503d3df13f70dfa829947a33443952205e4d64580fd77399ac7fba7b8f969d15ca5d872e69039d78"
     ],
     "modmenu": [
       "1aa297ab5e6fac71ad6af750fe6f8cd25281bd00c0340e5fe1c1e9d153d1198df03be1df55727a4a2116db97dcaad541d41754f3fc0063abfe4345b60f193fb4"
+    ],
+    "mru": [
+      "3ad629d4f1acf2699b1a3980239ba851e119c90b3da62d80d627b668195d5005c7ebcc7ef137debe0374037a837366d9b9513233c090eb2573f140ec28da1ee1"
     ],
     "notenoughanimations": [
       "41c05f531298cce723a84639fb6b9510bfa25e65ff27a041083d47900d743d44473e1f7bdbcd87d7cd149f1291a1359dc3d8553a176be21c432ea15bbbdda92e"
