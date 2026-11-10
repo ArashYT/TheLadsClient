@@ -43,6 +43,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private boolean ladsLegacy;
     @Unique private Button ladsLayoutToggle;
     @Unique private Button ladsPanoramaButton;
+    @Unique private Button ladsUpdateButton;
     @Unique private TitleScreenTheme.Layout ladsTitleLayout;
     @Unique private boolean ladsCustomTitle;
     @Unique private int ladsLayoutWidth;
@@ -117,6 +118,11 @@ public abstract class TitleScreenMixin extends Screen {
         ladsPanoramaButton = addRenderableWidget(new CompactButton26(0, 6, 20, 20, Component.literal(TitleScreenTheme.CHANGE_PANORAMA),
             () -> "mountain", button -> com.thelads.core.client.title.PanoramaPicker.next()));
         ladsPanoramaButton.setTabOrderGroup(204);
+        ladsUpdateButton = addRenderableWidget(new CompactButton26(0, 6, 20, 20, Component.literal(TitleScreenTheme.UPDATE),
+            () -> "download", button -> com.thelads.core.client.LauncherUpdate.press(() -> minecraft.stop())));
+        ladsUpdateButton.setTabOrderGroup(205);
+        ladsUpdateButton.setTooltip(Tooltip.create(Component.literal(TitleScreenTheme.UPDATE_TOOLTIP)));
+        ladsUpdateButton.visible = false;
 
         ladsLastFrameNanos = 0;
         com.thelads.core.config.BuiltInIntegrations.verifyLoadedAdapters();
@@ -155,6 +161,7 @@ public abstract class TitleScreenMixin extends Screen {
     private void ladsEnsureTitleLayout() {
         boolean legacy = TitleScreenModule.legacyLayout(), switched = legacy != ladsLegacy;
         ladsLegacy = legacy;
+        ladsUpdateButton.visible = com.thelads.core.client.LauncherUpdate.available() != null;
         int targetW = ladsTargetWidth();
         int targetH = ladsTargetHeight();
         boolean changed = ladsTitleLayout == null || switched || ladsLayoutWidth != targetW || ladsLayoutHeight != targetH;
@@ -213,6 +220,8 @@ public abstract class TitleScreenMixin extends Screen {
         ladsPanoramaButton.setRectangle(panoramaWidth, 20, targetW - 50 - 2 * TitleScreenTheme.HEADER_GAP - toggleWidth - panoramaWidth, 6);
         ladsPanoramaButton.setTooltip(panoramaWidth <= 20 ? Tooltip.create(panoramaLabel) : null);
         ladsPanoramaButton.visible = TitleScreenModule.panorama();
+        int updateWidth = TitleScreenTheme.panoramaButtonWidth(targetW, font.width(TitleScreenTheme.UPDATE), ladsLegacy);
+        ladsUpdateButton.setRectangle(updateWidth, 20, TitleScreenTheme.updateButtonX(ladsPanoramaButton.getX(), panoramaWidth, ladsPanoramaButton.visible, updateWidth), 6);
 
         boolean primaryAssigned = false;
         for (AbstractWidget widget : ladsTitleWidgets) removeWidget(widget);
@@ -236,7 +245,7 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private boolean ladsOwnControl(AbstractWidget widget) {
-        return widget == ladsSwitchButton || widget == ladsFullscreenButton || widget == ladsLanguageButton || widget == ladsLayoutToggle || widget == ladsPanoramaButton;
+        return widget == ladsSwitchButton || widget == ladsFullscreenButton || widget == ladsLanguageButton || widget == ladsLayoutToggle || widget == ladsPanoramaButton || widget == ladsUpdateButton;
     }
 
     @Unique

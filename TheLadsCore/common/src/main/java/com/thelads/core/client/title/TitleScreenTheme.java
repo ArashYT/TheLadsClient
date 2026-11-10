@@ -377,6 +377,14 @@ public final class TitleScreenTheme {
         return !legacy && screenWidth >= PANORAMA_LABEL_MIN ? labelWidth + COMPACT_PADDING : HEADER_SIZE;
     }
 
+    /** The Update button, shown only while the launcher has an update ready (LauncherUpdate): as wide as panoramaButtonWidth makes its
+     *  label, left of Change panorama or in its place when that is hidden. */
+    public static final String UPDATE = "Update", UPDATE_TOOLTIP = "Update The Lads Client: the game closes, updates and starts again";
+
+    public static int updateButtonX(int panoramaX, int panoramaWidth, boolean panoramaShown, int width) {
+        return (panoramaShown ? panoramaX - HEADER_GAP : panoramaX + panoramaWidth) - width;
+    }
+
     /** The pause menu's button icons: their size and gap to the label, centred together with it. */
     public static final int LABEL_ICON = 10, LABEL_ICON_GAP = 4;
 
