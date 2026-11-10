@@ -41,7 +41,7 @@ public final class LadsTitleScreen189 {
     private GuiMainMenu screen;
     private List<GuiButton> buttons;
     private GuiButton ladsButton, cosmeticsButton, friendsButton, moreButton, screenshotsButton, switchVersionButton, replaysButton, networkButton;
-    private CompactButton189 switchButton, fullscreenButton, languageButton, layoutToggle, panoramaButton;
+    private CompactButton189 switchButton, fullscreenButton, languageButton, layoutToggle, panoramaButton, updateButton;
     private TitleNoir.Layout noirLayout;
     private boolean legacyMode;
     private java.lang.reflect.Method skybox;
@@ -77,6 +77,7 @@ public final class LadsTitleScreen189 {
         placed.add(languageButton);
         placed.add(layoutToggle);
         placed.add(panoramaButton);
+        if (updateButton.visible) placed.add(updateButton);
         return placed;
     }
 
@@ -144,6 +145,9 @@ public final class LadsTitleScreen189 {
             () -> Minecraft.getMinecraft().displayGuiScreen(new GuiLanguage(title, Minecraft.getMinecraft().gameSettings, Minecraft.getMinecraft().getLanguageManager()))));
         buttons.add(layoutToggle = new CompactButton189(LADS_ID + 7, 0, 6, 20, 20, TitleScreenTheme.layoutToggleLabel(), () -> "layout", TitleScreenModule::toggleLayout));
         buttons.add(panoramaButton = new CompactButton189(LADS_ID + 9, 0, 6, 20, 20, TitleScreenTheme.CHANGE_PANORAMA, () -> "mountain", com.thelads.core.client.title.PanoramaPicker::next));
+        buttons.add(updateButton = new CompactButton189(LADS_ID + 11, 0, 6, 20, 20, TitleScreenTheme.UPDATE, () -> "download",
+            () -> com.thelads.core.client.LauncherUpdate.press(() -> Minecraft.getMinecraft().shutdown())));
+        updateButton.visible = false;
 
         lastFrame = 0;
     }
@@ -152,6 +156,7 @@ public final class LadsTitleScreen189 {
     private void ensureLayout() {
         boolean legacy = TitleScreenModule.legacyLayout(), switched = legacy != legacyMode;
         legacyMode = legacy;
+        updateButton.visible = com.thelads.core.client.LauncherUpdate.available() != null;
         int targetW = targetWidth();
         int targetH = targetHeight();
         float ms = matrixScale();
@@ -159,7 +164,7 @@ public final class LadsTitleScreen189 {
         if (!switched && layout != null && layoutWidth == targetW && layoutHeight == targetH && seen.equals(buttons)) return;
         main.clear();
         for (GuiButton button : new ArrayList<>(buttons)) {
-            if (button == switchButton || button == fullscreenButton || button == languageButton || button == layoutToggle || button == panoramaButton) continue;
+            if (button == switchButton || button == fullscreenButton || button == languageButton || button == layoutToggle || button == panoramaButton || button == updateButton) continue;
             if (button == ladsButton || button == cosmeticsButton || button == friendsButton || button == moreButton || button == screenshotsButton
                 || button == switchVersionButton || button == replaysButton || button == networkButton
                 || vanilla(button, 1, 11, 2, 0, 4, 6)) main.add(button);
@@ -194,8 +199,11 @@ public final class LadsTitleScreen189 {
         layoutToggle.displayString = TitleScreenTheme.layoutToggleLabel();
         place(layoutToggle, languageX - TitleScreenTheme.HEADER_GAP - toggleWidth, 6, toggleWidth, 20, ms);
         int panoramaWidth = TitleScreenTheme.panoramaButtonWidth(targetW, font.getStringWidth(TitleScreenTheme.CHANGE_PANORAMA), legacyMode);
-        place(panoramaButton, languageX - 2 * TitleScreenTheme.HEADER_GAP - toggleWidth - panoramaWidth, 6, panoramaWidth, 20, ms);
+        int panoramaX = languageX - 2 * TitleScreenTheme.HEADER_GAP - toggleWidth - panoramaWidth;
+        place(panoramaButton, panoramaX, 6, panoramaWidth, 20, ms);
         panoramaButton.visible = TitleScreenModule.panorama();
+        int updateWidth = TitleScreenTheme.panoramaButtonWidth(targetW, font.getStringWidth(TitleScreenTheme.UPDATE), legacyMode);
+        place(updateButton, TitleScreenTheme.updateButtonX(panoramaX, panoramaWidth, panoramaButton.visible, updateWidth), 6, updateWidth, 20, ms);
 
         seen.clear();
         seen.addAll(buttons);
@@ -351,6 +359,7 @@ public final class LadsTitleScreen189 {
             if (languageButton != null) languageButton.drawButton(mc, event.mouseX, event.mouseY, ms);
             layoutToggle.drawButton(mc, event.mouseX, event.mouseY, ms);
             if (panoramaButton.visible) panoramaButton.drawButton(mc, event.mouseX, event.mouseY, ms);
+            if (updateButton.visible) updateButton.drawButton(mc, event.mouseX, event.mouseY, ms);
         } finally {
             TitleNoir.endFrame();
         }
@@ -393,7 +402,7 @@ public final class LadsTitleScreen189 {
         else if (event.button == networkButton)
             PauseMultiplayer189.joinNetwork(new GuiMultiplayer(screen));
         else if (event.button.id == 4) mc.displayGuiScreen(new QuitConfirmScreen189(screen));
-        else if (event.button == switchButton || event.button == fullscreenButton || event.button == languageButton || event.button == layoutToggle || event.button == panoramaButton) ((CompactButton189) event.button).press();
+        else if (event.button == switchButton || event.button == fullscreenButton || event.button == languageButton || event.button == layoutToggle || event.button == panoramaButton || event.button == updateButton) ((CompactButton189) event.button).press();
         else return;
         if (clicked) event.button.playPressSound(mc.getSoundHandler());
         event.setCanceled(true);
