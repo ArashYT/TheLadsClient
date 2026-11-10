@@ -56,8 +56,10 @@ public final class EmoteCapture26 {
         if (mc.player == null || mc.getSingleplayerServer() == null) return;
         out = game.getParent().resolve("emote1911").resolve("26.3");
         startedAt = System.currentTimeMillis();
+        Emote solo = EmoteLibrary.get(System.getenv("LADS_QA_EMOTE")); // an emote id instead of 1: that emote alone (planSolo)
+        if (solo != null) out = out.resolve(solo.id.replace(':', '-'));
         LOGGER.info("Lads emote capture BEGIN: {}", out);
-        plan(mc, game);
+        if (solo != null) planSolo(mc, solo); else plan(mc, game);
         com.thelads.core.client.qa.QaProgress.begin("emotes", STEPS.values().stream().mapToInt(List::size).sum()); // one bar step per scheduled action
     }
 
@@ -220,6 +222,63 @@ public final class EmoteCapture26 {
             mc.options.setCameraType(CameraType.FIRST_PERSON);
             hud(mc, hudWas);
             com.thelads.core.v26_2.feature.LocalSkins.reset();
+            done = true;
+            com.thelads.core.client.qa.QaProgress.done();
+            LOGGER.info("Lads emote capture END: {} passed, {} failed; frames in {}", passed, failed, out);
+        });
+    }
+
+    /**
+     * LADS_QA_EMOTE=&lt;emote id&gt; (lads:twerk): that emote alone, one loop in 64 frames from behind (F5 back) after a first loop, with
+     * two client-side players in step beside us: the left one seen from its side, the right one from the back three-quarter.
+     */
+    private static void planSolo(Minecraft mc, Emote emote) {
+        UUID self = mc.player.getUUID();
+        RemotePlayer[] others = new RemotePlayer[2];
+        at(0, () -> {
+            command("time set noon"); command("weather clear"); command("clear @p"); command("effect clear @p");
+            command("tp @p ~40 ~ ~");
+            mc.gui.hud.getChat().clearMessages(false);
+            hudWas = mc.gui.hud.isHidden();
+        });
+        at(1500, () -> {
+            mc.player.setYRot(180); mc.player.setYHeadRot(180); mc.player.setYBodyRot(180); mc.player.setXRot(0);
+            mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            hud(mc, true);
+            double yaw = Math.toRadians(mc.player.getYRot());
+            float[] turn = {90, -40};
+            for (int i = 0; i < 2; i++) {
+                RemotePlayer other = others[i] = new RemotePlayer(mc.level, new GameProfile(UUID.randomUUID(), "LadsDancer" + i));
+                other.setId(-1911 - i);
+                double right = i == 0 ? -1.8 : 1.8;
+                other.snapTo(mc.player.getX() - Math.cos(yaw) * right, mc.player.getY(), mc.player.getZ() - Math.sin(yaw) * right, mc.player.getYRot() + turn[i], 0);
+                other.setYHeadRot(other.getYRot()); other.setYBodyRot(other.getYRot());
+                mc.level.addEntity(other);
+            }
+        });
+        long start = 2500;
+        at(start, () -> {
+            Emotes.playLocal(self, emote.id);
+            for (RemotePlayer other : others) Emotes.onRemote(other.getUUID(), emote.id, 0);
+        });
+        at(start + 1000, () -> {
+            Emotes.Playing playing = Emotes.get(self);
+            EmotePose pose = EmoteAnimator.pose(self, false, 0, 0, 0);
+            check(playing != null && emote.id.equals(playing.id()) && pose != null && pose.weight == 1, emote.name + " plays, blended fully in");
+            boolean posed = true;
+            for (RemotePlayer other : others) posed &= EmoteAnimator.pose(other.getUUID(), true, other.getX(), other.getY(), other.getZ()) != null;
+            check(posed, "both other players are posed with " + emote.name);
+        });
+        long loop = start + (long) emote.periodMs;
+        for (int i = 0; i < 64; i++) shot(loop + Math.round(i * emote.periodMs / 64), String.format(Locale.ROOT, "3p-back-%02d", i));
+        at(loop + (long) emote.periodMs + 200, () -> {
+            check(Emotes.get(self) != null && !Emotes.get(self).stopping(), emote.name + " is still playing after two loops");
+            for (RemotePlayer other : others) { Emotes.onRemote(other.getUUID(), null, 0); other.discard(); }
+            Emotes.stopLocal(self);
+        });
+        at(loop + (long) emote.periodMs + 800, () -> {
+            mc.options.setCameraType(CameraType.FIRST_PERSON);
+            hud(mc, hudWas);
             done = true;
             com.thelads.core.client.qa.QaProgress.done();
             LOGGER.info("Lads emote capture END: {} passed, {} failed; frames in {}", passed, failed, out);
