@@ -28,6 +28,7 @@ public class TheLadsCoreClient12111 implements ClientModInitializer {
         com.thelads.core.v1_21_11.gui.ExternalModSettings.register();
         com.thelads.core.v1_21_11.feature.NativeQualityOfLife.register();
         com.thelads.core.v1_21_11.feature.NativeHypixel.initialize();
+        com.thelads.core.v1_21_11.feature.NativeLadsApi.initialize();
         com.thelads.core.v1_21_11.feature.AddServerProbe.register();
         com.thelads.core.v1_21_11.feature.QaProbe12111.register();
         com.thelads.core.v1_21_11.embedded.EmbeddedMods.clientInit();

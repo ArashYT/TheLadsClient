@@ -66,6 +66,8 @@
     "OldAnimationsEquipmentMixin",
     "OldAnimationsDropMixin",
     "OldAnimationsCameraMixin",
-    "OldAnimationsFireMixin"
+    "OldAnimationsFireMixin",
+    "LadsApiPacketListenerMixin",
+    "LadsApiDisconnectMixin"
   ]
 }
