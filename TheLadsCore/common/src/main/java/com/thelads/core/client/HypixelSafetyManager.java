@@ -418,6 +418,14 @@ public final class HypixelSafetyManager {
         return !qaOverride && (server(address(LadsGameBridge.get())).flags & TRUSTED) != 0;
     }
 
+    /** By address, before a connection exists: this PC, the local network or one of our own servers. */
+    public static boolean isOwnOrLocal(String address) {
+        String host = host(address == null ? "" : address);
+        if (isThisComputer(host) || isLocalNetwork(host)) return true;
+        for (String own : TRUSTED_SERVERS) if (isHost(host, own)) return true;
+        return false;
+    }
+
     /** Any server, LAN or Realms (anything but a local world); "Unknown" counts as a server, so a missed case stays off. */
     public static boolean isMultiplayer() {
         return qaOverride || !"Singleplayer".equalsIgnoreCase(LadsGameBridge.get().getServerAddress()); // the P2P proxy is an address too
