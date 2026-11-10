@@ -18,6 +18,12 @@ can give it high-level instructions without naming files yourself.
 - Players can re-enable a blocked module only per server, through the big red "use at your own risk" bypass warning screen. Never silently.
 - Visual-only client-side features are fine everywhere. Every review (Claude, Antigravity, local AI) checks this rule.
 
+## QA PC Rule (PERMANENT, owner 2026-11-10)
+
+- Never run QA / in-game tests (game clients, test servers, `runClient`) on **Arash-HP**. It hosts the hub, servers and bots.
+- Order: **Arash-Legion** first, **Arash-PC** second, then **Cyrax-PC** if both are unavailable.
+- Arash-HP only as an absolute last resort when every other PC is offline, and then it must not hurt its performance: low priority, small heap, lowest settings, close it right after, and say so in the reply.
+
 ## How to work
 - Explore the repo before editing; figure out the right files yourself.
 - After Java changes, run the Gradle build to confirm it compiles.
