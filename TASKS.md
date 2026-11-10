@@ -28,6 +28,6 @@ Each open item has its own hub chat ("1.13.9 #<n>: ..."), at most 3 working at o
 
 12. [ ] Emote "Twerking" with jiggle physics
 
-13. [~] Anti-spoof handshake: notes read, scheme proposed in the notes doc, not built
+13. [~] Anti-spoof handshake (design: LadsClientAPI/docs/PROTOCOL.md section 6). Merged 11-10: the relay signs attest tokens on the cosmetics socket (cosmetics-server, test_attest.py 14 tests; off without a key file), and plugin 1.2.0 checks them: nonce and server id in the hello, AttestVerifier, `LadsPlayer.verified()`, `%ladsapi_verified%`, `/ladsapi status`, `require-lads-client` kicks a client still unverified after `verify-timeout` (AttestTest 15 tests: good, expired, wrong nonce, wrong uuid, wrong server, hello without a token; the universal jar builds). The relay's key is C:\Users\Administrator\Documents\lads_attest_key.pem on arash-hp, its public key is in the plugin. Nothing is deployed and nothing ran in game. Left: the client (LadsApiClient asks the relay through CosmeticsLink and sends the second hello), deploying relay and plugin, LadsConnect and the lobby perks reading the verified flag, the in-game proof on arash-pc
 
 14. [ ] Bump to 1.13.9, release notes, publish
