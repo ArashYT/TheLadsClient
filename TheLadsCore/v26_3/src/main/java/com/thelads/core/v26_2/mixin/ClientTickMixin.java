@@ -21,6 +21,16 @@ public class ClientTickMixin {
         com.thelads.core.v26_2.feature.NativeOldAnimations.tick(((Minecraft) (Object) this).player);
     }
 
+    // Closing the game while resources reload (the first load, or the reload that drops a server's pack on disconnect): worker
+    // threads still compile render pipelines while close() destroys what they use, and the graphics driver crashes the JVM
+    // (hs_err_pid*.log: nvoglv64.dll under vkCreateGraphicsPipelines, so a non-zero exit code). The workers finish first.
+    // require 0: only tidies the exit, never worth failing the game's start.
+    @Inject(method = "close()V", at = @At("HEAD"), require = 0)
+    private void ladsQuietWorkersBeforeClose(CallbackInfo ci) {
+        if (net.minecraft.util.Util.backgroundExecutor().service() instanceof java.util.concurrent.ForkJoinPool pool)
+            pool.awaitQuiescence(10, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
     // 1.7 Animations, Swing while using items: an attack click that vanilla drops while an item is in use swings the arm (drawn only).
     @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "handleKeybinds", at = @At(value = "INVOKE",
         target = "Lnet/minecraft/client/KeyMapping;consumeClick()Z"), require = 1)
