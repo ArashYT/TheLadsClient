@@ -530,6 +530,17 @@ public final class SocialBridge1201 implements SocialBridge {
         Minecraft.getInstance().execute(task);
     }
 
+    @Override
+    public Path gameDir() {
+        return FabricLoader.getInstance().getGameDir();
+    }
+
+    @Override
+    public void quitGame() {
+        Minecraft mc = Minecraft.getInstance();
+        mc.execute(mc::stop);
+    }
+
     private static GameType parseGameType(String mode) {
         if (mode == null) return GameType.SURVIVAL;
         return switch (mode.toLowerCase(Locale.ROOT)) {
