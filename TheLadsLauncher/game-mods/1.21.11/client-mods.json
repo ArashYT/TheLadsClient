@@ -517,12 +517,12 @@
       "projectSlug": "iris",
       "name": "Iris Shaders",
       "modId": "iris",
-      "versionId": "fDpuVzVr",
-      "version": "1.10.7+1.21.11-fabric",
-      "fileName": "iris-fabric-1.10.7+mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/fDpuVzVr/iris-fabric-1.10.7%2Bmc1.21.11.jar",
-      "sha512": "b009a07ecbdf3eb510b4acacbb435e058406ddbabcc4f1a5efeacad154cd26777474dcf4a2b5a3a92644b150f047977ada5687a9d9172132fbe6d3d036961b7e",
-      "size": 2807547,
+      "versionId": "ka9PDlsN",
+      "version": "1.10.8+1.21.11-fabric",
+      "fileName": "iris-fabric-1.10.8+mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/ka9PDlsN/iris-fabric-1.10.8%2Bmc1.21.11.jar",
+      "sha512": "f0cad4b6af593b6fc25738c4ef5a2b346125f9693d25a0d486858e54798d2ea87b24d1497e1bb4391729d7d9e490f42771f7fb468d4e1420e372d8643f9e2055",
+      "size": 2807718,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/IrisShaders/Iris",
       "projectUrl": "https://modrinth.com/mod/iris"
@@ -907,12 +907,12 @@
       "projectSlug": "reeses-sodium-options",
       "name": "Reese's Sodium Options",
       "modId": "reeses-sodium-options",
-      "versionId": "yIgAFMna",
-      "version": "mc1.21.11-2.0.3+fabric",
-      "fileName": "reeses-sodium-options-fabric-2.0.3+mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/Bh37bMuy/versions/yIgAFMna/reeses-sodium-options-fabric-2.0.3%2Bmc1.21.11.jar",
-      "sha512": "13b54698be3cbecdcf544ff92186423652c6b1e91544864c979f51297a3159137f794db4e3ee21e0bae3abcf651bb4ecc0e2a5b4aa1eab1f1a81d6529fe82e59",
-      "size": 104577,
+      "versionId": "ffpCc8nY",
+      "version": "mc1.21.11-2.2.4+fabric",
+      "fileName": "reeses-sodium-options-fabric-2.2.4+mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/Bh37bMuy/versions/ffpCc8nY/reeses-sodium-options-fabric-2.2.4%2Bmc1.21.11.jar",
+      "sha512": "224e324effcaa03a38582b05c09cbd79a5922e916888b45849d966a6a7f30a7be18a8cc2ea09f44e79e6ea1a8d143a28c3cbfafdb398025b48ab1a1a7d71fd49",
+      "size": 258250,
       "license": "MIT",
       "sourceUrl": "https://github.com/FlashyReese/reeses-sodium-options",
       "projectUrl": "https://modrinth.com/mod/reeses-sodium-options"
@@ -967,12 +967,12 @@
       "projectSlug": "sodium",
       "name": "Sodium",
       "modId": "sodium",
-      "versionId": "UddlN6L4",
-      "version": "mc1.21.11-0.8.7-fabric",
-      "fileName": "sodium-fabric-0.8.7+mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/AANobbMI/versions/UddlN6L4/sodium-fabric-0.8.7%2Bmc1.21.11.jar",
-      "sha512": "d7f035d6112eaac92cf0f11e4426db631fca5a7115dd355c2126efee4255b648a0102552bbf7b22a7eae9203d08f8740435842bfddcd94e2434f51b57ee9c641",
-      "size": 1870358,
+      "versionId": "rkdTcxoT",
+      "version": "mc1.21.11-0.8.14-fabric",
+      "fileName": "sodium-fabric-0.8.14+mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/AANobbMI/versions/rkdTcxoT/sodium-fabric-0.8.14%2Bmc1.21.11.jar",
+      "sha512": "04c43f9e8534b87a52c42ffd51b0e344d4ef92dc9cc52da33d13af6a18bf74b05380d2027f1e0db982698d0aff274c42741c1e21b313b0cd75ed3af005fc98d9",
+      "size": 1909150,
       "license": "LicenseRef-Polyform-Shield-1.0.0",
       "sourceUrl": "https://github.com/CaffeineMC/sodium",
       "projectUrl": "https://modrinth.com/mod/sodium"
@@ -982,12 +982,12 @@
       "projectSlug": "sodium-extra",
       "name": "Sodium Extra",
       "modId": "sodium-extra",
-      "versionId": "yqY1efrC",
-      "version": "mc1.21.11-0.8.3+fabric",
-      "fileName": "sodium-extra-fabric-0.8.3+mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/PtjYWJkn/versions/yqY1efrC/sodium-extra-fabric-0.8.3%2Bmc1.21.11.jar",
-      "sha512": "b268a22ec7d27a45142f839ecf9a902c4ead4a5ef01e480f9e042f700a75a12a0db6346914f5445be68136b849a068de88d54823444c5d13268cfc0661854465",
-      "size": 394219,
+      "versionId": "oqoegXMw",
+      "version": "mc1.21.11-0.9.4+fabric",
+      "fileName": "sodium-extra-fabric-0.9.4+mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/PtjYWJkn/versions/oqoegXMw/sodium-extra-fabric-0.9.4%2Bmc1.21.11.jar",
+      "sha512": "65d1c245ffc89efd8a3c9412efd4f11c2d365be2c15ec8a5edb8da4b9bca5537dea62bf0fd04462c34e2f785a9b3980b54d506a377bdb6f263a177b1d0e06edc",
+      "size": 471588,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/FlashyReese/sodium-extra-fabric",
       "projectUrl": "https://modrinth.com/mod/sodium-extra"
@@ -1160,6 +1160,9 @@
       "9a63c35a550b0362b7b25ff045d93709c7b0dae08c89076cba422813fdfb9e5f5dd021ed3afac9f82e74e95b88c249e8f68b240717151540ca3e88cc27fb9c77",
       "91404f87774466ce8604aafea791d8cc97b603bc310dce17c8188f94f7783cca6dc14fc726ce871ca317bfe9033c199d8d858d51284106a00754e952147703b8"
     ],
+    "iris": [
+      "b009a07ecbdf3eb510b4acacbb435e058406ddbabcc4f1a5efeacad154cd26777474dcf4a2b5a3a92644b150f047977ada5687a9d9172132fbe6d3d036961b7e"
+    ],
     "ixeris": [
       "3fcdbf895e0ccbd5cb74ed2cc26ca274240c6502e0cc74e0c597ed7abdf1c259e6a64b3aa53c35058207de0a59a593bd126f731e08101dfba5c0907b6848ecf8"
     ],
@@ -1179,8 +1182,14 @@
     "raised": [
       "77e696f667896dc1036cb4e42ef7201035e809de3c4e27ae0eee4d57143065ccd99962019563bff97915f4f5a9373b5c8c025ba554b4ea65ec32c6f7f8cf5241"
     ],
+    "reeses-sodium-options": [
+      "13b54698be3cbecdcf544ff92186423652c6b1e91544864c979f51297a3159137f794db4e3ee21e0bae3abcf651bb4ecc0e2a5b4aa1eab1f1a81d6529fe82e59"
+    ],
     "sodium": [
-      "04c43f9e8534b87a52c42ffd51b0e344d4ef92dc9cc52da33d13af6a18bf74b05380d2027f1e0db982698d0aff274c42741c1e21b313b0cd75ed3af005fc98d9"
+      "d7f035d6112eaac92cf0f11e4426db631fca5a7115dd355c2126efee4255b648a0102552bbf7b22a7eae9203d08f8740435842bfddcd94e2434f51b57ee9c641"
+    ],
+    "sodium-extra": [
+      "b268a22ec7d27a45142f839ecf9a902c4ead4a5ef01e480f9e042f700a75a12a0db6346914f5445be68136b849a068de88d54823444c5d13268cfc0661854465"
     ],
     "voicechat": [
       "dab29df8577b220e1c2ad97b784c5acb837501c8ba42d83205c085f44b4a6df75bce2477b8c2c7905285d248fd2d195b3dc77f169cb11a226dc2965e23f5859a"
