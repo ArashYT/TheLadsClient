@@ -135,6 +135,12 @@ class TitleScreenThemeTest {
               }
     }
 
+    /** The Update button ends a gap left of Change panorama, or at that button's right edge when it is hidden. */
+    @Test void theUpdateButtonSitsLeftOfChangePanorama() {
+        assertEquals(300 - TitleScreenTheme.HEADER_GAP - 44, TitleScreenTheme.updateButtonX(300, 90, true, 44));
+        assertEquals(300 + 90 - 44, TitleScreenTheme.updateButtonX(300, 90, false, 44));
+    }
+
     /** The logo keeps its shape and stays clear of the buttons and the header at every Title Scale, in both layouts; without pictures the old artwork draws. */
     @Test void theLogoStaysClearOfTheMenus() {
         for (int w = 320; w <= 1000; w += 20)

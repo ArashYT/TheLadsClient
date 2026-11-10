@@ -40,6 +40,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private boolean ladsLegacy;
     @Unique private Button ladsLayoutToggle;
     @Unique private Button ladsPanoramaButton;
+    @Unique private Button ladsUpdateButton;
     @Unique private TitleScreenTheme.Layout ladsTitleLayout;
     @Unique private boolean ladsCustomTitle;
     @Unique private int ladsLayoutWidth;
@@ -88,6 +89,11 @@ public abstract class TitleScreenMixin extends Screen {
         ladsPanoramaButton = addRenderableWidget(new CompactButton12111(0, 6, 20, 20, Component.literal(TitleScreenTheme.CHANGE_PANORAMA),
             () -> "mountain", button -> com.thelads.core.client.title.PanoramaPicker.next()));
         ladsPanoramaButton.setTabOrderGroup(204);
+        ladsUpdateButton = addRenderableWidget(new CompactButton12111(0, 6, 20, 20, Component.literal(TitleScreenTheme.UPDATE),
+            () -> "download", button -> com.thelads.core.client.LauncherUpdate.press(() -> minecraft.stop())));
+        ladsUpdateButton.setTabOrderGroup(205);
+        ladsUpdateButton.setTooltip(Tooltip.create(Component.literal(TitleScreenTheme.UPDATE_TOOLTIP)));
+        ladsUpdateButton.visible = false;
 
         // Fabric screen events and other init mixins may still add or move widgets after this callback.
         // Leave their native geometry intact until the first draw has the complete widget set.
@@ -118,12 +124,13 @@ public abstract class TitleScreenMixin extends Screen {
     private void ladsEnsureTitleLayout() {
         boolean legacy = TitleScreenModule.legacyLayout(), switched = legacy != ladsLegacy;
         ladsLegacy = legacy;
+        ladsUpdateButton.visible = com.thelads.core.client.LauncherUpdate.available() != null;
         int targetW = ladsTargetWidth(), targetH = ladsTargetHeight();
         boolean changed = ladsTitleLayout == null || switched || ladsLayoutWidth != targetW || ladsLayoutHeight != targetH;
         if (!changed) {
             int index = 0;
             for (GuiEventListener child : children()) {
-                if (!(child instanceof AbstractWidget widget) || ladsOverlayTool(widget) || widget == ladsLayoutToggle || widget == ladsPanoramaButton || widget == ladsSwitchButton) continue;
+                if (!(child instanceof AbstractWidget widget) || ladsOverlayTool(widget) || widget == ladsLayoutToggle || widget == ladsPanoramaButton || widget == ladsUpdateButton || widget == ladsSwitchButton) continue;
                 if (index >= ladsTitleWidgets.size() || ladsTitleWidgets.get(index) != widget) {
                     changed = true;
                     break;
@@ -137,7 +144,7 @@ public abstract class TitleScreenMixin extends Screen {
         ladsTitleWidgets = new ArrayList<>();
         // Reuse every original widget, including restricted multiplayer, demo and late mod actions.
         for (GuiEventListener child : children()) {
-            if (child instanceof AbstractWidget widget && !ladsOverlayTool(widget) && widget != ladsLayoutToggle && widget != ladsPanoramaButton && widget != ladsSwitchButton) ladsTitleWidgets.add(widget);
+            if (child instanceof AbstractWidget widget && !ladsOverlayTool(widget) && widget != ladsLayoutToggle && widget != ladsPanoramaButton && widget != ladsUpdateButton && widget != ladsSwitchButton) ladsTitleWidgets.add(widget);
         }
         // Keep the home screen focused. All secondary native/mod actions remain in More.
         for (AbstractWidget widget : List.copyOf(ladsTitleWidgets)) {
@@ -171,6 +178,8 @@ public abstract class TitleScreenMixin extends Screen {
         ladsPanoramaButton.setRectangle(panoramaWidth, 20, targetW - 6 - toggleWidth - TitleScreenTheme.HEADER_GAP - panoramaWidth, 6);
         ladsPanoramaButton.setTooltip(panoramaWidth <= 20 ? Tooltip.create(panoramaLabel) : null);
         ladsPanoramaButton.visible = TitleScreenModule.panorama();
+        int updateWidth = TitleScreenTheme.panoramaButtonWidth(targetW, font.width(TitleScreenTheme.UPDATE), legacy);
+        ladsUpdateButton.setRectangle(updateWidth, 20, TitleScreenTheme.updateButtonX(ladsPanoramaButton.getX(), panoramaWidth, ladsPanoramaButton.visible, updateWidth), 6);
         boolean primaryAssigned = false;
         for (AbstractWidget widget : ladsTitleWidgets) removeWidget(widget);
         for (int i = 0; i < ladsTitleWidgets.size(); i++) {
