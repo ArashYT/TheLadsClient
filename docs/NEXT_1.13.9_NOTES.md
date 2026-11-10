@@ -8,6 +8,16 @@ API = LadsClientAPI/common/src/main/java/com/thelads/ladsapi. Core = TheLadsCore
 ## Building on arash-hp
 - JAVA_HOME = C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot (the paths in gradle.properties are another PC's).
 - There is no C:\The Lads Client on arash-hp, so nothing can be tested in game here.
+- arash-pc has the game: C:\Users\Arash\AppData\Roaming\.theladsclient\profiles\<version> (logs\, mods\theladscore.jar). Its saves folder is a junction to .minecraft\saves, shared by every profile. Old logs are .log.gz: read them with GZipStream.
+
+## Start Hosting (task 2, fixed 11-10)
+- Evidence: arash-pc's New World\lads-host.json had "scope": "OFF"; the 11-08 15:22 log shows 46 s in the Host screen with no backup, "Started serving" or HostSession line, and no lads-backups folder exists.
+- Cause: the scope row offered OFF. Start Hosting then called HostSession.start with OFF, which means stop and shows no toast.
+
+## Non-zero exit on window close (task 8, 26.3)
+- Evidence: profiles\26.3\hs_err_pid28228.log (11-10 10:13:06) and hs_err_pid34580.log (11-08 23:23:22), each 1-2 s after "Stopping!" in the game log. Both: EXCEPTION_ACCESS_VIOLATION in nvoglv64.dll, thread Worker-Main-N, under VK10.vkCreateGraphicsPipelines from renderpearl PipelineBuilder.compilePipeline.
+- Cause: the game closes while resources reload (11-10: "Reloading ResourceManager" right after "Stopping!", the reload that drops the server pack on disconnect; 11-08: closed during the first load). close() destroys render objects while workers still compile pipelines.
+- Fix (ClientTickMixin, 26.3): Minecraft.close() first waits up to 10 s for the worker pool to go quiet. To check in game: join the lobby, close with X, no new hs_err file.
 
 ## Server integration leftovers
 - Live LadsClientAPI jars (Lobby, Velocity) are the 1.0.0 build of 10-23: deploy a newer one, set `game-name` and `hub-command`.
