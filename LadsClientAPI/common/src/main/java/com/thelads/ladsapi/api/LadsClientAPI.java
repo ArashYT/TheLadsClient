@@ -21,6 +21,15 @@ public interface LadsClientAPI {
         return player(uuid).map(LadsPlayer::verified).orElse(false);
     }
 
+    /**
+     * Whether this player gets the server's Lads Client perks: the one call a perk plugin makes. A verified client; or any client
+     * that answered the hello while this server does not check (verify-client off) or has `perks-need-verified: false`, the time
+     * before every player has a client that can prove itself.
+     */
+    default boolean perks(UUID uuid) {
+        return verified(uuid);
+    }
+
     /** Lane SRV-A sets this when the core starts. */
     final class Holder {
         static volatile LadsClientAPI api;

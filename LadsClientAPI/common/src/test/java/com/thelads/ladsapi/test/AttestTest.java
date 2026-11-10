@@ -206,6 +206,30 @@ public class AttestTest {
     }
 
     @Test
+    public void perksNeedTheTokenUnlessTheServerSaysOtherwise(@TempDir Path dir) {
+        Server server = new Server(dir);
+        FakePlayerHandle old = server.join(ALICE, "OldClient"); // answers the hello, cannot prove itself
+        server.reply(old, null);
+        FakePlayerHandle real = server.join(BOB, "Bob");
+        server.reply(real, null);
+        server.reply(real, server.relayToken(real, BOB));
+        UUID vanilla = UUID.randomUUID();
+        assertFalse(server.manager.perks(ALICE));
+        assertTrue(server.manager.perks(BOB));
+        assertFalse(server.manager.perks(vanilla), "no hello, no perks");
+
+        server.config.setPerksNeedVerified(false); // the time before every player has a client that can prove itself
+        assertTrue(server.manager.perks(ALICE));
+        assertTrue(server.manager.perks(BOB));
+        assertFalse(server.manager.perks(vanilla));
+
+        server.config.setPerksNeedVerified(true);
+        server.config.setVerifyClient(false); // a server that does not check gives perks as before 1.2.0
+        assertTrue(server.manager.perks(ALICE));
+        assertFalse(server.manager.perks(vanilla));
+    }
+
+    @Test
     public void foreignTokensStayUnverified(@TempDir Path dir) {
         Server server = new Server(dir);
         FakePlayerHandle alice = server.join(ALICE, "Alice"), bob = server.join(BOB, "Bob");
