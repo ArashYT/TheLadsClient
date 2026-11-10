@@ -12,6 +12,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketTimeoutException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -49,6 +54,7 @@ class ModSyncWiringTest {
         final Path gameDir;
         final CompletableFuture<Void> quit = new CompletableFuture<>(), connected = new CompletableFuture<>();
         final List<String> toasts = new CopyOnWriteArrayList<>();
+        volatile int port;
 
         Bridge(Path gameDir) {
             this.gameDir = gameDir;
@@ -59,7 +65,7 @@ class ModSyncWiringTest {
         @Override public String worldId() { return "w"; }
         @Override public String worldName() { return "World"; }
         @Override public void quitGame() { quit.complete(null); }
-        @Override public void connectToLocal(int port, String displayName) { connected.complete(null); }
+        @Override public void connectToLocal(int port, String displayName) { this.port = port; connected.complete(null); }
         @Override public void toast(String title, String body, String acceptAction, String denyAction) { toasts.add(title + ": " + body); }
     }
 
@@ -171,21 +177,39 @@ class ModSyncWiringTest {
                 new Presence("hosting", hostGame, null, new Presence.WorldAd("w", "World", "friends", 8, 0)), 0));
         Files.write(jar, new byte[5000 + 1]); // the host's jar changed after the launcher listed it: the host refuses to send it
 
-        HostSession.skipLoopbackForTest = true;
-        host.hostSession().initForTest(new HostOptions(), 25565);
-        host.hostSession().accept(GUEST);
-        P2PSession.IceConfig cfg = new P2PSession.IceConfig(List.of(), List.of(), false);
-        String sid = "modsync-fail-" + System.nanoTime();
-        host.hostSession().handleP2PStart(sid, GUEST, cfg, data -> guest.guestSession().onSignal(data));
-        guest.guestSession().start(sid, HOST, "Hosty", "w", cfg, data -> host.hostSession().onSignal(sid, data));
+        // The host's world: its server drops a connection that has not logged in within 30 s, which would end the session
+        // while the guest still reads the trust question or downloads
+        try (ServerSocket world = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
+            host.hostSession().initForTest(new HostOptions(), world.getLocalPort());
+            host.hostSession().accept(GUEST);
+            P2PSession.IceConfig cfg = new P2PSession.IceConfig(List.of(), List.of(), false);
+            String sid = "modsync-fail-" + System.nanoTime();
+            host.hostSession().handleP2PStart(sid, GUEST, cfg, data -> guest.guestSession().onSignal(data));
+            guest.guestSession().start(sid, HOST, "Hosty", "w", cfg, data -> host.hostSession().onSignal(sid, data));
 
-        await("the trust question", () -> guest.trustQuestion() != null);
-        guest.trustQuestion().answer().complete(true);
-        guestBridge.connected.get(20, TimeUnit.SECONDS);
-        assertFalse(guestBridge.quit.isDone());
-        assertEquals(List.of("Friend's world: Could not get Hosty's mods: joining without them"), guestBridge.toasts);
-        assertFalse(Files.exists(guestDir.resolve(ModSyncFlow.RELAUNCH_FILE)), "no restart is left behind");
-        assertTrue(guest.guestSession().isActive());
+            await("the trust question", () -> guest.trustQuestion() != null);
+            world.setSoTimeout(500);
+            assertThrows(SocketTimeoutException.class, world::accept, "no connection to the world before the guest's game connects");
+            guest.trustQuestion().answer().complete(true);
+            guestBridge.connected.get(20, TimeUnit.SECONDS);
+            assertFalse(guestBridge.quit.isDone());
+            assertEquals(List.of("Friend's world: Could not get Hosty's mods: joining without them"), guestBridge.toasts);
+            assertFalse(Files.exists(guestDir.resolve(ModSyncFlow.RELAUNCH_FILE)), "no restart is left behind");
+            assertTrue(guest.guestSession().isActive());
+
+            // The guest's game connects to its proxy: its first bytes open the host's connection to the world and arrive there
+            world.setSoTimeout(10_000);
+            try (Socket game = new Socket("127.0.0.1", guestBridge.port)) {
+                game.getOutputStream().write("handshake".getBytes(StandardCharsets.UTF_8));
+                game.getOutputStream().flush();
+                try (Socket atWorld = world.accept()) {
+                    assertEquals("handshake", new String(atWorld.getInputStream().readNBytes(9), StandardCharsets.UTF_8));
+                    atWorld.getOutputStream().write("status".getBytes(StandardCharsets.UTF_8));
+                    atWorld.getOutputStream().flush();
+                    assertEquals("status", new String(game.getInputStream().readNBytes(6), StandardCharsets.UTF_8));
+                }
+            }
+        }
         guest.guestSession().close("test over");
     }
 

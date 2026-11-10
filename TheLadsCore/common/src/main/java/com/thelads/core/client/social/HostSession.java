@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Collections;
@@ -350,9 +351,17 @@ public final class HostSession {
     private void bridgeToLoopback(P2PSession p2p, int targetPort) {
         Socket socket = null;
         try {
+            // The world's server drops a connection that has not logged in within 30 s, and the guest may still be fetching our
+            // mods or reading the trust question (ModSync): the socket opens with the guest's first game bytes
+            InputStream fromGuest = p2p.in(P2PSession.MINECRAFT);
+            byte[] first = new byte[8192];
+            int n = fromGuest.read(first);
+            if (n < 0) return; // the guest left before its game connected (it restarts with our mods)
             socket = new Socket("127.0.0.1", targetPort);
             socket.setTcpNoDelay(true);
             Socket finalSocket = socket;
+            socket.getOutputStream().write(first, 0, n);
+            socket.getOutputStream().flush();
 
             // Stream 0 from guest P2P -> loopback TCP socket, then FIN after the guest's last byte: the server reads it and closes its side
             Thread inPipe = new Thread(() -> {
