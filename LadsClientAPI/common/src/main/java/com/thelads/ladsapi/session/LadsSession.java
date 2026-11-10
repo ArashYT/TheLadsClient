@@ -46,6 +46,10 @@ public final class LadsSession {
     private int attestTries = 0;
     /** World/backend the last policy was built for; a respawn into another world needs a new policy. */
     private volatile String syncedWorld = "";
+    private static final String SPECTATE_OFF = "{\"t\":\"spectate\",\"mode\":\"off\"}";
+    /** The spectate message this client has now, or null while it is not spectating (PROTOCOL.md section 7). */
+    private volatile String spectate;
+    private volatile boolean spectateSwitch;
 
     public LadsSession(LadsPlayerHandle handle, SessionManager manager) {
         this.handle = handle;
@@ -194,6 +198,37 @@ public final class LadsSession {
     public void sendReset() {
         handle.send("{\"t\":\"reset\"}".getBytes(StandardCharsets.UTF_8));
     }
+
+    /**
+     * Tells the client whether and whom it is spectating (PROTOCOL.md section 7). {@code mode} is pov, free or off. Nothing goes
+     * out while the client already has exactly this state, so a game plugin may call it on every tick of its own spectator loop.
+     */
+    public void sendSpectate(String mode, UUID target, String name, boolean canSwitch) {
+        if (!lads) return;
+        String json = null;
+        if (!"off".equals(mode)) {
+            JsonObject obj = new JsonObject();
+            obj.addProperty("t", "spectate");
+            obj.addProperty("mode", mode);
+            if (target != null) obj.addProperty("target", target.toString());
+            if (name != null && !name.isEmpty()) obj.addProperty("name", name.length() > 32 ? name.substring(0, 32) : name);
+            if (canSwitch) obj.addProperty("switch", true);
+            json = obj.toString();
+        }
+        if (java.util.Objects.equals(json, spectate)) return;
+        spectate = json;
+        spectateSwitch = json != null && canSwitch;
+        handle.send((json != null ? json : SPECTATE_OFF).getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** A new hello made the client drop its spectate state: it gets the current one again. */
+    public void resendSpectate() {
+        String json = spectate;
+        if (lads && json != null) handle.send(json.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** Whether this client was told it may ask for the next or previous target. */
+    public boolean isSpectateSwitch() { return spectateSwitch; }
 
     public void setApiOverrideModuleState(String module, String state) {
         setScopeModuleState(null, module, state);

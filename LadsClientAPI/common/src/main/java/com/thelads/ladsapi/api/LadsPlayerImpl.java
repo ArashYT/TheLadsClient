@@ -151,6 +151,25 @@ public final class LadsPlayerImpl implements LadsPlayer {
         session.sendPolicy();
     }
 
+    @Override
+    public void spectate(UUID target, String name, boolean canSwitch) {
+        if (target == null) {
+            spectateEnd();
+            return;
+        }
+        session.sendSpectate("pov", target, name, canSwitch);
+    }
+
+    @Override
+    public void spectateFree(boolean canSwitch) {
+        session.sendSpectate("free", null, null, canSwitch);
+    }
+
+    @Override
+    public void spectateEnd() {
+        session.sendSpectate("off", null, null, false);
+    }
+
     public LadsSession getSession() {
         return session;
     }
