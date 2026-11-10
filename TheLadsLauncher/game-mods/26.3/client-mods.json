@@ -397,12 +397,12 @@
       "projectSlug": "moreculling",
       "name": "More Culling",
       "modId": "moreculling",
-      "versionId": "t7vAlfgO",
-      "version": "1.9.0",
-      "fileName": "moreculling-fabric-26.3-1.9.0.jar",
-      "url": "https://cdn.modrinth.com/data/51shyZVL/versions/t7vAlfgO/moreculling-fabric-26.3-1.9.0.jar",
-      "sha512": "b1975ef43606a3baa1c93a040fbef96abfbf46ae6a1e364c60effd03a42568f945ede0bde329241e87adc6a9c2769dd1d13ad286869c689018035eff677442b2",
-      "size": 294320,
+      "versionId": "5jIORlSK",
+      "version": "1.9.1",
+      "fileName": "moreculling-fabric-26.3-1.9.1.jar",
+      "url": "https://cdn.modrinth.com/data/51shyZVL/versions/5jIORlSK/moreculling-fabric-26.3-1.9.1.jar",
+      "sha512": "93ae8cfe7b07391ca2966a86a60798fe7f37c2092545ed52a74d01a405b66cc5ecb236e303dc5c966a5d1ac20480e88c4f35b1d7b75a31c790a32bf58551a909",
+      "size": 297173,
       "license": "GPL-3.0-only",
       "sourceUrl": "https://github.com/fxmorin/moreculling",
       "projectUrl": "https://modrinth.com/mod/moreculling"
@@ -412,12 +412,12 @@
       "projectSlug": "mru",
       "name": "MRU",
       "modId": "mru",
-      "versionId": "fHDvIf3d",
-      "version": "1.0.44+26.3-fabric",
-      "fileName": "mru-1.0.44+26.3-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/SNVQ2c0g/versions/fHDvIf3d/mru-1.0.44%2B26.3-fabric.jar",
-      "sha512": "ed04ad67e85f370a9a8275b604cd78b2c206082ac9b44e983d3884036ccbb59f190288bcd9d6be9f42450c43d5d10d9e9f70774b04d58d7606caa5014119efe7",
-      "size": 158509,
+      "versionId": "22Tvjurn",
+      "version": "1.0.45+26.3-fabric",
+      "fileName": "mru-1.0.45+26.3-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/SNVQ2c0g/versions/22Tvjurn/mru-1.0.45%2B26.3-fabric.jar",
+      "sha512": "9b62918f0a78a719fb98ad5f138e17a5640677b7f97cbe0434204cd51cffb9efa1b6231258e4aaf186b3170297b601e05f121e9157fd878f27e00dab9c35d5dc",
+      "size": 169134,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/IMB11-Mods/JavaEditionMods/tree/main/mru",
       "projectUrl": "https://modrinth.com/mod/mru"
@@ -442,12 +442,12 @@
       "projectSlug": "not-enough-animations",
       "name": "Not Enough Animations",
       "modId": "notenoughanimations",
-      "versionId": "EhSk2OTD",
-      "version": "1.12.6",
-      "fileName": "notenoughanimations-fabric-1.12.6-mc26.3.jar",
-      "url": "https://cdn.modrinth.com/data/MPCX6s5C/versions/EhSk2OTD/notenoughanimations-fabric-1.12.6-mc26.3.jar",
-      "sha512": "a27a2cf8caa57a15871cd1a2c2f37fa1b1f4a55b25345306b87989c3b5030e4d4409c6b50330dbb6902a2381b140c401d0da6f5aed8e2700ed7ca8f9f2365f5c",
-      "size": 1863579,
+      "versionId": "bznXVEiI",
+      "version": "1.12.7",
+      "fileName": "notenoughanimations-fabric-1.12.7-mc26.3.jar",
+      "url": "https://cdn.modrinth.com/data/MPCX6s5C/versions/bznXVEiI/notenoughanimations-fabric-1.12.7-mc26.3.jar",
+      "sha512": "56983d1591b382e0fc2689f639eab9b92a9c3c27cf5269cdcf0363f43c603698c7efa1f4bd287ec939232c179e44297d8130267500df3099d13e853a5c4bb63d",
+      "size": 1866974,
       "license": "LicenseRef-tr7zw-Protective-License",
       "sourceUrl": "https://github.com/tr7zw/NotEnoughAnimations",
       "projectUrl": "https://modrinth.com/mod/not-enough-animations"
@@ -577,12 +577,12 @@
       "projectSlug": "viafabricplus",
       "name": "ViaFabricPlus",
       "modId": "viafabricplus",
-      "versionId": "vV9NPd0U",
-      "version": "5.1.1",
-      "fileName": "ViaFabricPlus-5.1.1.jar",
-      "url": "https://cdn.modrinth.com/data/rIC2XJV4/versions/vV9NPd0U/ViaFabricPlus-5.1.1.jar",
-      "sha512": "6d17337a833ebd6ab8dba31820196569fdda7ac2164f60bd1d05072c858a2840355d08d524decffe7d50bb4f95f489bcf4b0a114fb00fb0bc0d1be455f2c2afa",
-      "size": 10331914,
+      "versionId": "DACOoCin",
+      "version": "5.1.3",
+      "fileName": "ViaFabricPlus-5.1.3.jar",
+      "url": "https://cdn.modrinth.com/data/rIC2XJV4/versions/DACOoCin/ViaFabricPlus-5.1.3.jar",
+      "sha512": "91e60db5183948f88a0cacb65a7492d8dd0c7afc78eb0225f55c0efeb0a5275ac54091863d67f9f8600655b1e47de377f0ed32da93e61d862128c6d4c75743a0",
+      "size": 10370276,
       "license": "GPL-3.0-only",
       "sourceUrl": "https://github.com/ViaVersion/ViaFabricPlus",
       "projectUrl": "https://modrinth.com/mod/viafabricplus"
@@ -592,12 +592,12 @@
       "projectSlug": "simple-voice-chat",
       "name": "Simple Voice Chat",
       "modId": "voicechat",
-      "versionId": "OLnMVWXy",
-      "version": "fabric-2.6.24+26.3",
-      "fileName": "voicechat-fabric-2.6.24+26.3.jar",
-      "url": "https://cdn.modrinth.com/data/9eGKb6K1/versions/OLnMVWXy/voicechat-fabric-2.6.24%2B26.3.jar",
-      "sha512": "414eb51967305fe7740d34016bc8e3e4e2fa1590e1278ad06bcdfa0687f65007b825d345dc09f79a992704a51ec93baf01fe727e0bbc32fdf506828b5a65d85a",
-      "size": 5612855,
+      "versionId": "x9jLR94Q",
+      "version": "fabric-2.6.27+26.3",
+      "fileName": "voicechat-fabric-2.6.27+26.3.jar",
+      "url": "https://cdn.modrinth.com/data/9eGKb6K1/versions/x9jLR94Q/voicechat-fabric-2.6.27%2B26.3.jar",
+      "sha512": "f2de66761c0f249bb0f9a4b348f98b97ab4e89d3ed3fd37638420364b7431b757933aa08c0cc3e7ba3dd85a602d6c2de313c2309fc587e93cabf31fc5f6df27e",
+      "size": 5611159,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/henkelmax/simple-voice-chat",
       "projectUrl": "https://modrinth.com/mod/simple-voice-chat"
@@ -607,12 +607,12 @@
       "projectSlug": "xaeros-minimap",
       "name": "Xaero's Minimap",
       "modId": "xaerominimap",
-      "versionId": "YPkAliDt",
-      "version": "fabric-26.3-26.5.3",
-      "fileName": "xaerominimap-fabric-26.3-26.5.3.jar",
-      "url": "https://cdn.modrinth.com/data/1bokaNcj/versions/YPkAliDt/xaerominimap-fabric-26.3-26.5.3.jar",
-      "sha512": "86de35d7c6ae10441d9a1e7f14656a87dc3cfa17487b122ea5bfa6f322b56bfa1b96662903a36f2ff0e0d579644474510c4463ea21dea8223b8931d6dbf64e61",
-      "size": 2229348,
+      "versionId": "MfxfgXaO",
+      "version": "fabric-26.3-26.6.2",
+      "fileName": "xaerominimap-fabric-26.3-26.6.2.jar",
+      "url": "https://cdn.modrinth.com/data/1bokaNcj/versions/MfxfgXaO/xaerominimap-fabric-26.3-26.6.2.jar",
+      "sha512": "edf57b80cfe0e0fe229728a6babc3b25c364c07a0406bcdb3a21f73fc225b98954c68ff456c7b1af3182c48512f29d47238ddc501dbfd5eaca0a4609fddcc280",
+      "size": 2233189,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": null,
       "projectUrl": "https://modrinth.com/mod/xaeros-minimap"
@@ -622,12 +622,12 @@
       "projectSlug": "xaeros-world-map",
       "name": "Xaero's World Map",
       "modId": "xaeroworldmap",
-      "versionId": "UleMm8za",
-      "version": "fabric-26.3-1.46.4",
-      "fileName": "xaeroworldmap-fabric-26.3-1.46.4.jar",
-      "url": "https://cdn.modrinth.com/data/NcUtCpym/versions/UleMm8za/xaeroworldmap-fabric-26.3-1.46.4.jar",
-      "sha512": "7f77d9bbede1669373293134167378729170c36ab0eb3d28383f517d208de5d465fd3ef1ae32dfc043bac5e3d5f951797db1fa874c1d85375be5c52c3c859d61",
-      "size": 1480980,
+      "versionId": "VM8lNSSM",
+      "version": "fabric-26.3-1.47.2",
+      "fileName": "xaeroworldmap-fabric-26.3-1.47.2.jar",
+      "url": "https://cdn.modrinth.com/data/NcUtCpym/versions/VM8lNSSM/xaeroworldmap-fabric-26.3-1.47.2.jar",
+      "sha512": "cac3c0fb3121ddebc7f073571dcbce5f1811ca001ea94ef03c1da667e8a3413144f570c4b593f632358eff98fa138631ed7907fd1bd5da7d43c037ea782125fb",
+      "size": 1488669,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": null,
       "projectUrl": "https://modrinth.com/mod/xaeros-world-map"
@@ -698,10 +698,15 @@
       "cf0957c09bd0af1be7627cf68d1ceaad92bcb06c529ab85db5c26ae8a4950b236b7c62e5d096fc1b82c718578519b674b0970f8843c2d2178c14f3e63c28fd06"
     ],
     "moreculling": [
-      "9a2e90e65a4ed7d0e332f5c951d603be1d4d60c92b1cd1886483892fcea1330c8c656c29181e6367bd32101b7492d732d93634377bc1bfc04276bdf90664d6c8"
+      "9a2e90e65a4ed7d0e332f5c951d603be1d4d60c92b1cd1886483892fcea1330c8c656c29181e6367bd32101b7492d732d93634377bc1bfc04276bdf90664d6c8",
+      "b1975ef43606a3baa1c93a040fbef96abfbf46ae6a1e364c60effd03a42568f945ede0bde329241e87adc6a9c2769dd1d13ad286869c689018035eff677442b2"
     ],
     "mru": [
-      "b37a8186f73e8bc19767848e9d55935aff22d922d92e4976ef60bf30d16cff25e81596421c95dcf62e7412a06d68ac4f510ead3f77472619c68879151f791702"
+      "b37a8186f73e8bc19767848e9d55935aff22d922d92e4976ef60bf30d16cff25e81596421c95dcf62e7412a06d68ac4f510ead3f77472619c68879151f791702",
+      "ed04ad67e85f370a9a8275b604cd78b2c206082ac9b44e983d3884036ccbb59f190288bcd9d6be9f42450c43d5d10d9e9f70774b04d58d7606caa5014119efe7"
+    ],
+    "notenoughanimations": [
+      "a27a2cf8caa57a15871cd1a2c2f37fa1b1f4a55b25345306b87989c3b5030e4d4409c6b50330dbb6902a2381b140c401d0da6f5aed8e2700ed7ca8f9f2365f5c"
     ],
     "obe": [
       "8aa584fcf0c3d30bfed54ef147bdfa54b270fa52f4f911c6ac9c532b745d7fcfeb19d31bc5deb1ee10b73aef0f62ccb95977bc4de86a06e3a9fa39c0763e3d2c"
@@ -711,6 +716,18 @@
     ],
     "tcdcommons": [
       "39adb15641f7ac8e6d54bcb2c1ee135e403266f3942f51d030949b612f1f6c5a56052d30f9c30ae33c091471fe4c94d7ae8d8613d61a986417259a9a5029854d"
+    ],
+    "viafabricplus": [
+      "6d17337a833ebd6ab8dba31820196569fdda7ac2164f60bd1d05072c858a2840355d08d524decffe7d50bb4f95f489bcf4b0a114fb00fb0bc0d1be455f2c2afa"
+    ],
+    "voicechat": [
+      "414eb51967305fe7740d34016bc8e3e4e2fa1590e1278ad06bcdfa0687f65007b825d345dc09f79a992704a51ec93baf01fe727e0bbc32fdf506828b5a65d85a"
+    ],
+    "xaerominimap": [
+      "86de35d7c6ae10441d9a1e7f14656a87dc3cfa17487b122ea5bfa6f322b56bfa1b96662903a36f2ff0e0d579644474510c4463ea21dea8223b8931d6dbf64e61"
+    ],
+    "xaeroworldmap": [
+      "7f77d9bbede1669373293134167378729170c36ab0eb3d28383f517d208de5d465fd3ef1ae32dfc043bac5e3d5f951797db1fa874c1d85375be5c52c3c859d61"
     ]
   },
   "retired": [
