@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 
 /** The Lads artwork as the Minecraft window/taskbar icon, in vanilla's icons/icon_NxN.png sizes and order. */
 public final class WindowIcons {
-    public static final int[] SIZES = {16, 32, 48, 128, 256};
+    public static final int[] SIZES = {16, 24, 32, 48, 64, 128, 256};
     private static volatile boolean logged;
 
     private WindowIcons() {}
