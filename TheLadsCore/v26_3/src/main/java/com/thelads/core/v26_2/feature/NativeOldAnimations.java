@@ -95,6 +95,28 @@ public final class NativeOldAnimations {
                 pose.translate(0, -0.25f, 0);
                 APPLIED.add(Feature.LOW_SHIELD);
             }
+            int side = arm == HumanoidArm.RIGHT ? 1 : -1;
+            if (use == Use.BLOCK && module.iconPlacement(MODERN, use, held) && !kept(player, item)) {
+                // A block or a 3D model (a pack's, a mod's) blocks: the 1.7 block and its swing move it from where vanilla holds it.
+                pose.popPose();
+                pose.pushPose();
+                float shown = module.swingShown(MODERN, use, swing, attacked);
+                OldAnimations.hand(sink(pose), side, equip, shown, use, player.getUseItemRemainingTicks(), partial, item.getUseDuration(player));
+                OldAnimations.toModernHand(sink(pose), side);
+                if (shown > 0) APPLIED.add(Feature.BLOCKHIT);
+                APPLIED.add(Feature.BLOCK_POSE);
+            } else if (attacked && swing > 0 && player.isUsingItem() && player.getUsedItemHand() == hand
+                && module.active(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING, MODERN)) {
+                // Any other use vanilla or a mod draws (a spyglass, a trident, a shield, a 3D bow): the attack swing turns the whole
+                // use pose about the hand.
+                org.joml.Matrix4f drawn = new org.joml.Matrix4f(pose.last().pose());
+                pose.popPose();
+                pose.pushPose();
+                org.joml.Matrix4f usePose = new org.joml.Matrix4f(pose.last().pose()).invert().mul(drawn); // from the arm origin
+                OldAnimations.swingOverUse(sink(pose), side, swing);
+                pose.mulPose(usePose);
+                APPLIED.add(use == Use.BLOCK ? Feature.BLOCKHIT : Feature.SWING_WHILE_USING);
+            }
             return vanilla;
         }
         int side = arm == HumanoidArm.RIGHT ? 1 : -1;
@@ -175,7 +197,10 @@ public final class NativeOldAnimations {
      */
     public static void attackClicked(LocalPlayer player) {
         OldAnimationsModule module = module();
-        if (module == null || !player.isUsingItem() || !module.swingOnAttack(MODERN, action(player.getUseItem()))) return;
+        if (module == null || !player.isUsingItem()) return;
+        Use use = action(player.getUseItem());
+        // A use with no 1.7 pose (a spyglass, a trident, a mod's own animation) swings too, over the pose vanilla draws.
+        if (use == null || use == Use.NONE ? !module.active(Feature.SWING_WHILE_USING, MODERN) : !module.swingOnAttack(MODERN, use)) return;
         attacked = true;
         player.swing(InteractionHand.MAIN_HAND, player.getMainHandItem().getAttackAnimation(), false);
     }
@@ -195,15 +220,16 @@ public final class NativeOldAnimations {
     }
 
     /**
-     * The 26.x triggers for the 1.7 sword block: a sword in the main hand while the off hand blocks with a shield, or a main-hand
-     * item that blocks itself (vanilla blocking: a server gives swords the blocks_attacks component).
+     * The 26.x triggers for the 1.7 sword block: any item in the main hand (a sword, a tool, a block, a mod's item) while the off
+     * hand blocks with a shield, or a main-hand item that blocks itself (vanilla blocking: a server gives swords the blocks_attacks
+     * component). An empty main hand has nothing to block with: the shield stays.
      */
     static boolean swordBlocking(LivingEntity entity) {
         if (!(active(Feature.BLOCK_POSE) || active(Feature.BLOCKHIT)) || !entity.isUsingItem()) return false;
         ItemStack used = entity.getUseItem();
         if (used.getUseAnimation() != ItemUseAnimation.BLOCK) return false;
         return entity.getUsedItemHand() == InteractionHand.MAIN_HAND ? !(used.getItem() instanceof ShieldItem)
-            : entity.getMainHandItem().is(ItemTags.SWORDS);
+            : !entity.getMainHandItem().isEmpty() && !kept(entity, entity.getMainHandItem());
     }
 
     /** 1.7's EnumAction for this hand: NONE when idle; null for a shield's block (the sword block above draws it, else vanilla). */

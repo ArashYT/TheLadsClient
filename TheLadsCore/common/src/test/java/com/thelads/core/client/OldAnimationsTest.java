@@ -104,6 +104,40 @@ class OldAnimationsTest {
             "a blockhit visibly moves the blocking sword");
     }
 
+    /** Blocks and 3D models: the 1.7 block pose, then back to the frame vanilla draws them in. */
+    @Test void anyModelBlocksFromWhereVanillaHoldsIt() {
+        for (int side : new int[]{1, -1}) {
+            int s = side;
+            // no use, no swing: exactly vanilla's arm transform, so the item does not jump when the block starts from rest
+            assertPose(new Mat().t(side * 0.56, -0.52 - 0.6 * 0.3, -0.72).m,
+                of(m -> { OldAnimations.hand(m, s, 0.3f, 0, Use.NONE, 0, 0, 0); OldAnimations.toModernHand(m, s); }).m, "idle, side " + side);
+            // blocking: the same motion from rest as the flat 1.7 sword's (the block pose, taken back out of the icon frame)
+            Mat sword = hand(side, 0, 0.5f, Use.BLOCK, 0, 0, BOW);
+            Mat model = of(m -> { OldAnimations.hand(m, s, 0, 0.5f, Use.BLOCK, 0, 0, BOW); OldAnimations.toModernHand(m, s); });
+            assertPose(sword.s(2.5).ry(side * -45).m, model.m, "block, side " + side);
+            assertEquals(1, model.det(), 1e-3, "no size change: a block or a 3D model keeps its own scale");
+        }
+    }
+
+    /** Swing while using, over a use pose vanilla or a mod draws: nothing at rest, a turn about the hand in between. */
+    @Test void swingOverAnyUsePoseTurnsAboutTheHand() {
+        for (int side : new int[]{1, -1}) {
+            int s = side;
+            for (float rest : new float[]{0, 1})
+                assertPose(new Mat().m, of(m -> OldAnimations.swingOverUse(m, s, rest)).m, "at rest " + rest + ", side " + side);
+            Mat mid = of(m -> OldAnimations.swingOverUse(m, s, 0.5f));
+            assertEquals(1, mid.det(), 1e-6, "a pure turn");
+            double[] hand = mid.point(side * 0.56, -0.52, -0.72);
+            assertEquals(side * 0.56, hand[0], EPS);
+            assertEquals(-0.52, hand[1], EPS);
+            assertEquals(-0.72, hand[2], EPS);
+            assertTrue(distance(mid.m, new Mat().m) > 0.1, "the swing visibly moves the use pose");
+            // vanilla's own attack swing (applyItemArmAttackTransform) after the arm transform
+            Mat vanilla = new Mat().t(side * 0.56, -0.52, -0.72).ry(side * (45 - 20 * 0.7071068)).rz(side * -20 * 0.7956932).rx(-80 * 0.7956932).ry(side * -45);
+            assertPose(vanilla.m, of(m -> { OldAnimations.swingOverUse(m, s, 0.5f); m.t(s * 0.56, -0.52, -0.72); }).m, "side " + side);
+        }
+    }
+
     @Test void eatingIs1710AtKeyUseTicks() {
         assertPose(idle(0, 0).m, hand(1, 0, 0, Use.EAT_DRINK, FOOD - 1, 0, FOOD).m, "eating starts from the rest pose");
         // 17 ticks left of 32: past 20% so the jiggle |cos(17/4 π)| * 0.1 shows; lift 1 - (17/32)^27 is 0.99999996.
