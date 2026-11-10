@@ -40,7 +40,11 @@ public class MouseHandlerMixin {
     }
     @Inject(method = "onScroll(JDD)V", at = @At("HEAD"), cancellable = true, require = 1)
     private void ladsScroll(long window, double horizontal, double vertical, CallbackInfo ci) {
-        if (window == Minecraft.getInstance().getWindow().handle() && NativeFeatures.scroll(vertical)) ci.cancel();
+        Minecraft mc = Minecraft.getInstance();
+        if (window != mc.getWindow().handle()) return;
+        // POV spectating: the hotbar is the watched player's, the wheel must not move its selection.
+        boolean povLocked = mc.gui.screen() == null && com.thelads.core.v26_2.feature.Spectate26.locksInput();
+        if (povLocked || NativeFeatures.scroll(vertical)) ci.cancel();
     }
     @Inject(method = "onMove", at = @At("HEAD"), require = 1)
     private void lads$activity(long window, double x, double y, double dx, double dy, CallbackInfo ci) {
