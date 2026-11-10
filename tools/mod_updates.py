@@ -98,9 +98,9 @@ def check(games):
         print(f'{game}: {updates} of {len(mods)} pins have a newer build', flush=True)
 
 
-def fetch(file, game):
+def fetch(file, game, hosts=('cdn.modrinth.com',)):
     url = urllib.parse.urlparse(file['url'])
-    if url.scheme != 'https' or url.hostname != 'cdn.modrinth.com':
+    if url.scheme != 'https' or url.hostname not in hosts:
         raise ValueError('Unexpected CDN URL: ' + file['url'])
     path = DOWNLOADS / game / (file['hashes']['sha512'] + '.jar')
     if not path.exists():
@@ -153,7 +153,8 @@ def install(game, folder):
         target = folder / mod['fileName']
         if not target.exists() or hashlib.sha512(target.read_bytes()).hexdigest() != mod['sha512']:
             shutil.copyfile(fetch({'url': mod['url'], 'size': mod['size'], 'filename': mod['fileName'],
-                                   'hashes': {'sha512': mod['sha512']}}, game), target)
+                                   'hashes': {'sha512': mod['sha512']}}, game,
+                                  ('cdn.modrinth.com', 'github.com')), target)  # the hosts ClientModInstaller takes
     print(game, 'installed', len(mods), 'jars in', folder)
 
 
