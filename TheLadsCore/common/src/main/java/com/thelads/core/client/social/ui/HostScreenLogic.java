@@ -44,7 +44,8 @@ public final class HostScreenLogic {
     }
 
     private static final Section[] SECTIONS = Section.values();
-    private static final HostOptions.Scope[] SCOPES = HostOptions.Scope.values();
+    /** Never OFF: Start / Stop Hosting is the switch. With OFF picked (and saved), Start Hosting sent "stop" and did nothing. */
+    private static final HostOptions.Scope[] SCOPES = {HostOptions.Scope.LAN, HostOptions.Scope.FRIENDS, HostOptions.Scope.INVITE};
     private static final HostOptions.Approval[] APPROVALS = HostOptions.Approval.values();
 
     /** A banned player: UUID string and the name to show. */
@@ -156,7 +157,7 @@ public final class HostScreenLogic {
 
     public void loadFrom(HostOptions o) {
         if (o == null) o = new HostOptions();
-        this.scope = o.scope != null ? o.scope : HostOptions.Scope.FRIENDS;
+        setScope(o.scope); // a saved OFF opens to friends
         this.approval = o.approval != null ? o.approval : HostOptions.Approval.ASK;
         this.maxPlayers = Math.max(1, Math.min(16, o.maxPlayers));
         this.guestGameMode = o.guestGameMode != null ? o.guestGameMode : "survival";
@@ -207,7 +208,7 @@ public final class HostScreenLogic {
         return prev != scrollOffset;
     }
 
-    public void setScope(HostOptions.Scope scope) { this.scope = scope != null ? scope : HostOptions.Scope.FRIENDS; }
+    public void setScope(HostOptions.Scope scope) { this.scope = scope != null && scope != HostOptions.Scope.OFF ? scope : HostOptions.Scope.FRIENDS; }
     public void setApproval(HostOptions.Approval approval) { this.approval = approval != null ? approval : HostOptions.Approval.ASK; }
     public void setMaxPlayers(int max) { this.maxPlayers = Math.max(1, Math.min(16, max)); }
     public void setGuestGameMode(String mode) { this.guestGameMode = mode != null ? mode : "survival"; }
@@ -345,7 +346,7 @@ public final class HostScreenLogic {
         // Scope
         g.drawText("Multiplayer Scope", x + 12, itemY + 6, LadsPalette.TEXT, false);
         int optW = 60, optH = 18;
-        int optX = x + w - 4 * (optW + 4) - 12;
+        int optX = x + w - SCOPES.length * (optW + 4) - 12;
         for (HostOptions.Scope s : SCOPES) {
             Box b = new Box(optX, itemY + 2, optW, optH);
             if (b.y + b.h > sy && b.y < sy + sh) clickables.put("scope:" + s.name(), b);

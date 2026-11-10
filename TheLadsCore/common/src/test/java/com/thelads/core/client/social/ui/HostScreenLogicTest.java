@@ -202,6 +202,22 @@ class HostScreenLogicTest {
         assertTrue(callbacks.stoppedHosting);
     }
 
+    /** lads-host.json with scope OFF (the screen used to offer it): Start Hosting sent OFF, which HostSession reads as "stop", so nothing happened. */
+    @Test
+    void startHostingWithSavedScopeOffOpensToFriends() {
+        HostOptions saved = new HostOptions();
+        saved.scope = HostOptions.Scope.OFF;
+        FakeHostCallbacks callbacks = new FakeHostCallbacks(saved);
+        HostScreenLogic logic = new HostScreenLogic(callbacks);
+
+        logic.toggleHosting();
+        assertTrue(callbacks.startedHosting);
+        assertEquals(HostOptions.Scope.FRIENDS, callbacks.options.scope);
+
+        logic.setScope(HostOptions.Scope.OFF);
+        assertEquals(HostOptions.Scope.FRIENDS, logic.buildOptions().scope);
+    }
+
     static class FakeHostCallbacks implements HostScreenLogic.Callbacks {
         HostOptions options;
         boolean hosting = false;
