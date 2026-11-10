@@ -32,13 +32,15 @@ import java.awt.image.BufferedImage;
 
 /**
  * Title Screen's Panorama Version: the six panorama images of any release, fetched from Mojang once and cached in the shared folder
- * (never bundled). Network and disk work runs on one background thread; the versions' title screens call {@link #update()} each
+ * (never bundled). Newer releases keep them in Mojang's asset store (their client jar holds 1x1 placeholders), older ones in the jar. Network and disk work runs on one background thread; the versions' title screens call {@link #update()} each
  * frame on the render thread and rebuild their panorama textures from {@link #images()} when it returns true.
  */
 public final class PanoramaPicker {
     public static final String DEFAULT = "Default";
     static final String MANIFEST = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
     private static final String ENTRY = "assets/minecraft/textures/gui/title/background/panorama_";
+    private static final String OBJECT = "minecraft/textures/gui/title/background/panorama_";
+    private static final String ASSETS = "https://resources.download.minecraft.net/";
 
     private static volatile List<String> releases;            // from the worker, put into the option on the render thread
     private static volatile Map<String, String> urls = Collections.emptyMap(); // release -> its version JSON
@@ -64,15 +66,29 @@ public final class PanoramaPicker {
         return out;
     }
 
-    /** Only HTTPS on Mojang's own hosts (piston-meta, piston-data, launchermeta...). */
+    /** Only HTTPS on Mojang's own hosts (piston-meta, piston-data, launchermeta... and the asset store). */
     static boolean mojang(String url) {
         try {
             URI uri = URI.create(url);
             String host = uri.getHost();
-            return "https".equals(uri.getScheme()) && host != null && (host.equals("mojang.com") || host.endsWith(".mojang.com"));
+            return "https".equals(uri.getScheme()) && host != null && (host.equals("mojang.com") || host.endsWith(".mojang.com") || host.equals("resources.download.minecraft.net"));
         } catch (IllegalArgumentException e) {
             return false;
         }
+    }
+
+    /** The sha1 names of the six panorama images in a release's asset index, null when it lacks one (the jar has them then). */
+    static String[] assetHashes(String indexJson) {
+        JsonElement objects = JsonParser.parseString(indexJson).getAsJsonObject().get("objects");
+        if (objects == null || !objects.isJsonObject()) return null;
+        String[] hashes = new String[6];
+        for (int i = 0; i < 6; i++) {
+            JsonElement entry = objects.getAsJsonObject().get(OBJECT + i + ".png");
+            if (entry == null || !entry.isJsonObject() || !entry.getAsJsonObject().has("hash")) return null;
+            hashes[i] = entry.getAsJsonObject().get("hash").getAsString();
+            if (!hashes[i].matches("[0-9a-f]{40}")) return null;
+        }
+        return hashes;
     }
 
     /** The picked images for a panorama texture path ("textures/gui/title/background/panorama_3.png"), null: the normal one. */
@@ -221,7 +237,7 @@ public final class PanoramaPicker {
         releases = list;
     }
 
-    /** The version's six images: the cache, else its client jar (sha1-checked, deleted after). Null: that version has none. */
+    /** The version's six images: the cache, else Mojang's asset store, else its client jar. Null: that version has none. */
     private static byte[][] fetch(String version) throws Exception {
         if (!version.matches("[0-9A-Za-z._-]+")) throw new IOException("bad version id");
         Path root = root(), dir = root.resolve(version);
@@ -233,11 +249,47 @@ public final class PanoramaPicker {
             url = urls.get(version);
         }
         if (url == null) throw new IOException("unknown version " + version);
-        JsonObject client = JsonParser.parseString(new String(get(url), StandardCharsets.UTF_8)).getAsJsonObject()
-            .getAsJsonObject("downloads").getAsJsonObject("client");
-        String sha1 = client.get("sha1").getAsString();
+        JsonObject json = JsonParser.parseString(new String(get(url), StandardCharsets.UTF_8)).getAsJsonObject();
         Files.createDirectories(root);
-        Path jar = Files.createTempFile(root, "client", ".jar"), temp = null;
+        byte[][] found = fromAssets(json.getAsJsonObject("assetIndex"));
+        if (found == null) found = fromJar(json.getAsJsonObject("downloads").getAsJsonObject("client"), root);
+        if (found == null) return null;
+        Path temp = Files.createTempDirectory(root, version + ".part");
+        try {
+            for (int i = 0; i < 6; i++) Files.write(temp.resolve("panorama_" + i + ".png"), found[i]);
+            if (readCache(dir) == null) clear(dir); // the jar's placeholders, cached by an older build
+            try {
+                Files.move(temp, dir, StandardCopyOption.ATOMIC_MOVE);
+                temp = null;
+            } catch (IOException raced) {
+                if (readCache(dir) == null) throw raced; // another game cached it first
+            }
+            return found;
+        } finally {
+            if (temp != null) clear(temp);
+        }
+    }
+
+    /** The six images from Mojang's asset store, each checked against its sha1 name. Null: the release's index lacks them. */
+    private static byte[][] fromAssets(JsonObject index) throws Exception {
+        if (index == null || !index.has("url") || !index.has("sha1")) return null;
+        MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
+        byte[] list = get(index.get("url").getAsString());
+        if (!index.get("sha1").getAsString().equalsIgnoreCase(hex(sha1.digest(list)))) throw new IOException("asset index checksum mismatch");
+        String[] hashes = assetHashes(new String(list, StandardCharsets.UTF_8));
+        if (hashes == null) return null;
+        byte[][] found = new byte[6][];
+        for (int i = 0; i < 6; i++) {
+            found[i] = get(ASSETS + hashes[i].substring(0, 2) + "/" + hashes[i]);
+            if (!hashes[i].equals(hex(sha1.digest(found[i])))) throw new IOException("panorama checksum mismatch");
+        }
+        return decodes(found) ? found : null;
+    }
+
+    /** The six images from the release's client jar (sha1-checked, deleted after). Null: it has none, or only placeholders. */
+    private static byte[][] fromJar(JsonObject client, Path root) throws Exception {
+        String sha1 = client.get("sha1").getAsString();
+        Path jar = Files.createTempFile(root, "client", ".jar");
         try {
             if (!sha1.equalsIgnoreCase(download(client.get("url").getAsString(), jar))) throw new IOException("client jar checksum mismatch");
             byte[][] found = new byte[6][];
@@ -248,23 +300,17 @@ public final class PanoramaPicker {
                     try (InputStream in = zip.getInputStream(entry)) { found[i] = readAll(in); }
                 }
             }
-            if (!decodes(found)) return null;
-            temp = Files.createTempDirectory(root, version + ".part");
-            for (int i = 0; i < 6; i++) Files.write(temp.resolve("panorama_" + i + ".png"), found[i]);
-            try {
-                Files.move(temp, dir, StandardCopyOption.ATOMIC_MOVE);
-                temp = null;
-            } catch (IOException raced) {
-                if (readCache(dir) == null) throw raced; // another game cached it first
-            }
-            return found;
+            return decodes(found) ? found : null;
         } finally {
             Files.deleteIfExists(jar);
-            if (temp != null) {
-                for (int i = 0; i < 6; i++) Files.deleteIfExists(temp.resolve("panorama_" + i + ".png"));
-                Files.deleteIfExists(temp);
-            }
         }
+    }
+
+    private static void clear(Path dir) {
+        try {
+            for (int i = 0; i < 6; i++) Files.deleteIfExists(dir.resolve("panorama_" + i + ".png"));
+            Files.deleteIfExists(dir);
+        } catch (IOException ignored) {}
     }
 
     private static byte[][] readCache(Path dir) {
@@ -281,7 +327,7 @@ public final class PanoramaPicker {
         }
     }
 
-    /** All six decode, as squares of one size (the cube map needs that). */
+    /** All six decode, as squares of one size (the cube map needs that) and not the 1x1 placeholders of a newer client jar. */
     static boolean decodes(byte[][] found) {
         int size = -1;
         for (byte[] bytes : found) {
@@ -293,7 +339,7 @@ public final class PanoramaPicker {
                 return false;
             }
         }
-        return size > 0;
+        return size > 1;
     }
 
     private static HttpsURLConnection open(String url) throws IOException {
@@ -321,8 +367,12 @@ public final class PanoramaPicker {
                 out.write(buffer, 0, n);
             }
         }
+        return hex(sha1.digest());
+    }
+
+    private static String hex(byte[] bytes) {
         StringBuilder hex = new StringBuilder();
-        for (byte b : sha1.digest()) hex.append(String.format("%02x", b));
+        for (byte b : bytes) hex.append(String.format("%02x", b));
         return hex.toString();
     }
 

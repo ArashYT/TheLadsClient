@@ -34,6 +34,8 @@ class PanoramaPickerTest {
         assertFalse(PanoramaPicker.mojang("https://piston-data.mojang.com.evil.net/client.jar"));
         assertFalse(PanoramaPicker.mojang("https://evilmojang.com/client.jar"));
         assertFalse(PanoramaPicker.mojang("not a url"));
+        assertTrue(PanoramaPicker.mojang("https://resources.download.minecraft.net/f5/f5e0a5cfbc2e7b1e89094d7882dde106b030ec26"));
+        assertFalse(PanoramaPicker.mojang("https://download.minecraft.net/f5/f5e0"));
     }
 
     @Test void pickSavedByNameSurvivesTheListLoadingLater() {
@@ -64,5 +66,27 @@ class PanoramaPickerTest {
         assertEquals(PanoramaPicker.DEFAULT, PanoramaPicker.nextChoice(choices, "26.3"));
         assertEquals(PanoramaPicker.DEFAULT, PanoramaPicker.nextChoice(new String[] {PanoramaPicker.DEFAULT}, PanoramaPicker.DEFAULT), "no list yet");
         assertEquals(PanoramaPicker.DEFAULT, PanoramaPicker.nextChoice(choices, "1.2.5"), "a pick the list lost goes back to Default");
+    }
+
+    /** Newer client jars hold 1x1 placeholder panoramas (26.2 showed as flat grey): the real images are in the asset index. */
+    @Test void newerReleasesTakeThePanoramaFromTheAssetIndexNotTheJarsPlaceholders() throws Exception {
+        String hash = "0123456789abcdef0123456789abcdef0123456";
+        StringBuilder objects = new StringBuilder();
+        for (int i = 0; i < 6; i++) objects.append(i == 0 ? "" : ",").append("\"minecraft/textures/gui/title/background/panorama_").append(i)
+            .append(".png\":{\"hash\":\"").append(hash).append(i).append("\",\"size\":547239}");
+        assertEquals(hash + 5, PanoramaPicker.assetHashes("{\"objects\":{" + objects + "}}")[5]);
+        assertNull(PanoramaPicker.assetHashes("{\"objects\":{\"minecraft/lang/en_gb.json\":{\"hash\":\"ab\",\"size\":1}}}"), "1.13 and older: in the jar");
+        assertNull(PanoramaPicker.assetHashes("{\"objects\":{" + objects.toString().replace(hash + 3, "../../evil") + "}}"), "a hash is 40 hex digits");
+        assertNull(PanoramaPicker.assetHashes("{}"));
+
+        assertFalse(PanoramaPicker.decodes(new byte[][] {png(1), png(1), png(1), png(1), png(1), png(1)}), "the jar's 1x1 placeholders");
+        assertTrue(PanoramaPicker.decodes(new byte[][] {png(8), png(8), png(8), png(8), png(8), png(8)}));
+        assertFalse(PanoramaPicker.decodes(new byte[][] {png(8), png(8), png(4), png(8), png(8), png(8)}), "one size for all six");
+    }
+
+    private static byte[] png(int size) throws java.io.IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(size, size, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", out);
+        return out.toByteArray();
     }
 }
