@@ -397,12 +397,12 @@
       "projectSlug": "moreculling",
       "name": "More Culling",
       "modId": "moreculling",
-      "versionId": "t7vAlfgO",
-      "version": "1.9.0",
-      "fileName": "moreculling-fabric-26.3-1.9.0.jar",
-      "url": "https://cdn.modrinth.com/data/51shyZVL/versions/t7vAlfgO/moreculling-fabric-26.3-1.9.0.jar",
-      "sha512": "b1975ef43606a3baa1c93a040fbef96abfbf46ae6a1e364c60effd03a42568f945ede0bde329241e87adc6a9c2769dd1d13ad286869c689018035eff677442b2",
-      "size": 294320,
+      "versionId": "5jIORlSK",
+      "version": "1.9.1",
+      "fileName": "moreculling-fabric-26.3-1.9.1.jar",
+      "url": "https://cdn.modrinth.com/data/51shyZVL/versions/5jIORlSK/moreculling-fabric-26.3-1.9.1.jar",
+      "sha512": "93ae8cfe7b07391ca2966a86a60798fe7f37c2092545ed52a74d01a405b66cc5ecb236e303dc5c966a5d1ac20480e88c4f35b1d7b75a31c790a32bf58551a909",
+      "size": 297173,
       "license": "GPL-3.0-only",
       "sourceUrl": "https://github.com/fxmorin/moreculling",
       "projectUrl": "https://modrinth.com/mod/moreculling"
@@ -412,12 +412,12 @@
       "projectSlug": "mru",
       "name": "MRU",
       "modId": "mru",
-      "versionId": "fHDvIf3d",
-      "version": "1.0.44+26.3-fabric",
-      "fileName": "mru-1.0.44+26.3-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/SNVQ2c0g/versions/fHDvIf3d/mru-1.0.44%2B26.3-fabric.jar",
-      "sha512": "ed04ad67e85f370a9a8275b604cd78b2c206082ac9b44e983d3884036ccbb59f190288bcd9d6be9f42450c43d5d10d9e9f70774b04d58d7606caa5014119efe7",
-      "size": 158509,
+      "versionId": "22Tvjurn",
+      "version": "1.0.45+26.3-fabric",
+      "fileName": "mru-1.0.45+26.3-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/SNVQ2c0g/versions/22Tvjurn/mru-1.0.45%2B26.3-fabric.jar",
+      "sha512": "9b62918f0a78a719fb98ad5f138e17a5640677b7f97cbe0434204cd51cffb9efa1b6231258e4aaf186b3170297b601e05f121e9157fd878f27e00dab9c35d5dc",
+      "size": 169134,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/IMB11-Mods/JavaEditionMods/tree/main/mru",
       "projectUrl": "https://modrinth.com/mod/mru"
@@ -442,12 +442,12 @@
       "projectSlug": "not-enough-animations",
       "name": "Not Enough Animations",
       "modId": "notenoughanimations",
-      "versionId": "EhSk2OTD",
-      "version": "1.12.6",
-      "fileName": "notenoughanimations-fabric-1.12.6-mc26.3.jar",
-      "url": "https://cdn.modrinth.com/data/MPCX6s5C/versions/EhSk2OTD/notenoughanimations-fabric-1.12.6-mc26.3.jar",
-      "sha512": "a27a2cf8caa57a15871cd1a2c2f37fa1b1f4a55b25345306b87989c3b5030e4d4409c6b50330dbb6902a2381b140c401d0da6f5aed8e2700ed7ca8f9f2365f5c",
-      "size": 1863579,
+      "versionId": "bznXVEiI",
+      "version": "1.12.7",
+      "fileName": "notenoughanimations-fabric-1.12.7-mc26.3.jar",
+      "url": "https://cdn.modrinth.com/data/MPCX6s5C/versions/bznXVEiI/notenoughanimations-fabric-1.12.7-mc26.3.jar",
+      "sha512": "56983d1591b382e0fc2689f639eab9b92a9c3c27cf5269cdcf0363f43c603698c7efa1f4bd287ec939232c179e44297d8130267500df3099d13e853a5c4bb63d",
+      "size": 1866974,
       "license": "LicenseRef-tr7zw-Protective-License",
       "sourceUrl": "https://github.com/tr7zw/NotEnoughAnimations",
       "projectUrl": "https://modrinth.com/mod/not-enough-animations"
@@ -698,10 +698,15 @@
       "cf0957c09bd0af1be7627cf68d1ceaad92bcb06c529ab85db5c26ae8a4950b236b7c62e5d096fc1b82c718578519b674b0970f8843c2d2178c14f3e63c28fd06"
     ],
     "moreculling": [
-      "9a2e90e65a4ed7d0e332f5c951d603be1d4d60c92b1cd1886483892fcea1330c8c656c29181e6367bd32101b7492d732d93634377bc1bfc04276bdf90664d6c8"
+      "9a2e90e65a4ed7d0e332f5c951d603be1d4d60c92b1cd1886483892fcea1330c8c656c29181e6367bd32101b7492d732d93634377bc1bfc04276bdf90664d6c8",
+      "b1975ef43606a3baa1c93a040fbef96abfbf46ae6a1e364c60effd03a42568f945ede0bde329241e87adc6a9c2769dd1d13ad286869c689018035eff677442b2"
     ],
     "mru": [
-      "b37a8186f73e8bc19767848e9d55935aff22d922d92e4976ef60bf30d16cff25e81596421c95dcf62e7412a06d68ac4f510ead3f77472619c68879151f791702"
+      "b37a8186f73e8bc19767848e9d55935aff22d922d92e4976ef60bf30d16cff25e81596421c95dcf62e7412a06d68ac4f510ead3f77472619c68879151f791702",
+      "ed04ad67e85f370a9a8275b604cd78b2c206082ac9b44e983d3884036ccbb59f190288bcd9d6be9f42450c43d5d10d9e9f70774b04d58d7606caa5014119efe7"
+    ],
+    "notenoughanimations": [
+      "a27a2cf8caa57a15871cd1a2c2f37fa1b1f4a55b25345306b87989c3b5030e4d4409c6b50330dbb6902a2381b140c401d0da6f5aed8e2700ed7ca8f9f2365f5c"
     ],
     "obe": [
       "8aa584fcf0c3d30bfed54ef147bdfa54b270fa52f4f911c6ac9c532b745d7fcfeb19d31bc5deb1ee10b73aef0f62ccb95977bc4de86a06e3a9fa39c0763e3d2c"
