@@ -37,12 +37,12 @@
       "projectSlug": "asynclogger",
       "name": "Async Logger",
       "modId": "asynclogger",
-      "versionId": "jVrQSTSp",
-      "version": "2.2.2+1.21.11-fabric",
-      "fileName": "asynclogger-2.2.2+1.21.11-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/zvNzKfGF/versions/jVrQSTSp/asynclogger-2.2.2%2B1.21.11-fabric.jar",
-      "sha512": "88df926e56b43aeb65b55dbac6853dde5f216d3489355b37bdf4763b7c0397de72b8d30160776a9ef2e8db3b424f5c7736e609d77ab960886fb3dd7a28da9bcb",
-      "size": 595909,
+      "versionId": "P5wu4rZ2",
+      "version": "2.2.3+1.21.11-fabric",
+      "fileName": "asynclogger-2.2.3+1.21.11-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/zvNzKfGF/versions/P5wu4rZ2/asynclogger-2.2.3%2B1.21.11-fabric.jar",
+      "sha512": "c85dca36e9f58981bac003f33e20c5d7dae425cbcb0a3f8af691cfd32f94e11905d50bae631a3d04c77a473dc22f489c6b4920394eb7c556e28996685a28cbf7",
+      "size": 596178,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/decce6/AsyncLogger",
       "projectUrl": "https://modrinth.com/mod/asynclogger"
@@ -112,12 +112,12 @@
       "projectSlug": "better-render-distance",
       "name": "Better Render Distance",
       "modId": "betterrenderdistance",
-      "versionId": "WFE5XTP2",
-      "version": "1.2.0",
-      "fileName": "BetterRenderDistance-1.2.0+mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/iRXmuz7a/versions/WFE5XTP2/BetterRenderDistance-1.2.0%2Bmc1.21.11.jar",
-      "sha512": "7c09130782c5d13e7016bd85f7e3ad136521bcdebb566da7f7717b5a956d92bf5470db6830077ee74c2b189575adac689666e45d34e77a756061f77a1c4aa6d4",
-      "size": 56228,
+      "versionId": "OTLarqSh",
+      "version": "1.2.2",
+      "fileName": "BetterRenderDistance-1.2.2+mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/iRXmuz7a/versions/OTLarqSh/BetterRenderDistance-1.2.2%2Bmc1.21.11.jar",
+      "sha512": "408d02e50315bfc6ef9843ec68177e85c53516ff0b044c3ce365c71a599bd5e46fa1e85366cf9044dca6a5e477ac041479dc16be8bb21bfad693a312b8f221ed",
+      "size": 76149,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": null,
       "projectUrl": "https://modrinth.com/mod/better-render-distance"
@@ -157,12 +157,12 @@
       "projectSlug": "chat-heads",
       "name": "Chat Heads",
       "modId": "chat_heads",
-      "versionId": "TMGGh6uw",
-      "version": "1.3.0",
-      "fileName": "chat_heads-1.3.0-fabric-1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/Wb5oqrBJ/versions/TMGGh6uw/chat_heads-1.3.0-fabric-1.21.11.jar",
-      "sha512": "6a5bdb79c62c66e6273614ab75c673c88a3fdfd840d1afdbf8b10d952e4251786887dd6097c6ccae4e11e9efe8b1dc89ffcd0599058af7d756c64b299eddf9d0",
-      "size": 98327,
+      "versionId": "905FjRkG",
+      "version": "1.3.2",
+      "fileName": "chat_heads-1.3.2-fabric-1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/Wb5oqrBJ/versions/905FjRkG/chat_heads-1.3.2-fabric-1.21.11.jar",
+      "sha512": "4d163de835ad3698ba06d7362f5c3fd7e51394a09cf64dabd29938c312d3bc5ab0c563d6a92cdd6250675e6c734e4b301617fb6675812cb8dd5dc2716fdaa7b5",
+      "size": 100191,
       "license": "MPL-2.0",
       "sourceUrl": "https://github.com/dzwdz/chat_heads",
       "projectUrl": "https://modrinth.com/mod/chat-heads"
@@ -322,12 +322,12 @@
       "projectSlug": "durability-tooltip",
       "name": "Durability Tooltip",
       "modId": "durabilitytooltip",
-      "versionId": "dCPa5AFM",
-      "version": "1.1.6-fabric-mc1.21.11",
-      "fileName": "durabilitytooltip-1.1.6-fabric-mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/smUP7V3r/versions/dCPa5AFM/durabilitytooltip-1.1.6-fabric-mc1.21.11.jar",
-      "sha512": "4472d904e60e04dfcc2252fabe089343bb4b684607ff279ca3a8976a8624f8d4c2d3c7c94f25405f8151902378bedacf1708eb1ae4489071528dba106060f800",
-      "size": 20261,
+      "versionId": "INq5cBnm",
+      "version": "1.2.0-fabric-mc1.21.11",
+      "fileName": "durabilitytooltip-1.2.0-fabric-mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/smUP7V3r/versions/INq5cBnm/durabilitytooltip-1.2.0-fabric-mc1.21.11.jar",
+      "sha512": "fe18983b96b86bcf2a8e0f9e4016243230f9835ac81556ed8fbd671b93effc0caec828585134910052eb83ceb05facff79a6a5df20df34bf769f53e234264026",
+      "size": 20846,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/SuperMartijn642/DurabilityTooltip",
       "projectUrl": "https://modrinth.com/mod/durability-tooltip"
@@ -397,12 +397,12 @@
       "projectSlug": "fabric-language-kotlin",
       "name": "Fabric Language Kotlin",
       "modId": "fabric-language-kotlin",
-      "versionId": "eRRZzGMc",
-      "version": "1.14.1+kotlin.2.4.20",
-      "fileName": "fabric-language-kotlin-1.14.1+kotlin.2.4.20.jar",
-      "url": "https://cdn.modrinth.com/data/Ha28R6CL/versions/eRRZzGMc/fabric-language-kotlin-1.14.1%2Bkotlin.2.4.20.jar",
-      "sha512": "91404f87774466ce8604aafea791d8cc97b603bc310dce17c8188f94f7783cca6dc14fc726ce871ca317bfe9033c199d8d858d51284106a00754e952147703b8",
-      "size": 8142858,
+      "versionId": "SKW1BTL3",
+      "version": "1.14.2+kotlin.2.4.21",
+      "fileName": "fabric-language-kotlin-1.14.2+kotlin.2.4.21.jar",
+      "url": "https://cdn.modrinth.com/data/Ha28R6CL/versions/SKW1BTL3/fabric-language-kotlin-1.14.2%2Bkotlin.2.4.21.jar",
+      "sha512": "7fb475c4a7e7bdf8d0aca4b5798a58a354c51443d5b1fbde3e8cf34dfbf7191ef4238b5f07d08ec9490ec180b371624523326c3ad45d4ed2b2be541de9407e5d",
+      "size": 8142878,
       "license": "Apache-2.0",
       "sourceUrl": "https://github.com/FabricMC/fabric-language-kotlin/",
       "projectUrl": "https://modrinth.com/mod/fabric-language-kotlin"
@@ -517,12 +517,12 @@
       "projectSlug": "iris",
       "name": "Iris Shaders",
       "modId": "iris",
-      "versionId": "fDpuVzVr",
-      "version": "1.10.7+1.21.11-fabric",
-      "fileName": "iris-fabric-1.10.7+mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/fDpuVzVr/iris-fabric-1.10.7%2Bmc1.21.11.jar",
-      "sha512": "b009a07ecbdf3eb510b4acacbb435e058406ddbabcc4f1a5efeacad154cd26777474dcf4a2b5a3a92644b150f047977ada5687a9d9172132fbe6d3d036961b7e",
-      "size": 2807547,
+      "versionId": "ka9PDlsN",
+      "version": "1.10.8+1.21.11-fabric",
+      "fileName": "iris-fabric-1.10.8+mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/YL57xq9U/versions/ka9PDlsN/iris-fabric-1.10.8%2Bmc1.21.11.jar",
+      "sha512": "f0cad4b6af593b6fc25738c4ef5a2b346125f9693d25a0d486858e54798d2ea87b24d1497e1bb4391729d7d9e490f42771f7fb468d4e1420e372d8643f9e2055",
+      "size": 2807718,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/IrisShaders/Iris",
       "projectUrl": "https://modrinth.com/mod/iris"
@@ -532,12 +532,12 @@
       "projectSlug": "ixeris",
       "name": "Ixeris",
       "modId": "ixeris",
-      "versionId": "vdJXGhKj",
-      "version": "4.6.8+1.21.11-fabric",
-      "fileName": "Ixeris-4.6.8+1.21.11-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/p8RJPJIC/versions/vdJXGhKj/Ixeris-4.6.8%2B1.21.11-fabric.jar",
-      "sha512": "3fcdbf895e0ccbd5cb74ed2cc26ca274240c6502e0cc74e0c597ed7abdf1c259e6a64b3aa53c35058207de0a59a593bd126f731e08101dfba5c0907b6848ecf8",
-      "size": 776897,
+      "versionId": "RZsBMOEB",
+      "version": "4.6.11+1.21.11-fabric",
+      "fileName": "Ixeris-4.6.11+1.21.11-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/p8RJPJIC/versions/RZsBMOEB/Ixeris-4.6.11%2B1.21.11-fabric.jar",
+      "sha512": "6756d9a77c56b834b05d483f1709cf41ac8754ce34295bec1baf87b066b42f5532703684771fb3e6a1de7e0e4d58842c1343d45579030560cdf01bfc3f027d0b",
+      "size": 786367,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/decce6/Ixeris",
       "projectUrl": "https://modrinth.com/mod/ixeris"
@@ -562,12 +562,12 @@
       "projectSlug": "jasione",
       "name": "Jasione",
       "modId": "jasione",
-      "versionId": "jZLpETqw",
-      "version": "1.0.8+1.21.11-fabric",
-      "fileName": "jasione-1.0.8+1.21.11-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/qlDkBPij/versions/jZLpETqw/jasione-1.0.8%2B1.21.11-fabric.jar",
-      "sha512": "bc67535dde06440702addd5608bfaeebf9311eb9cdd6379512e9bd08d3a6d8d3285f8a938f5cbf0f635043c79c24b159380ad087f8d011eb81038c70707606ba",
-      "size": 762366,
+      "versionId": "Wt4Igqm0",
+      "version": "1.0.9+1.21.11-fabric",
+      "fileName": "jasione-1.0.9+1.21.11-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/qlDkBPij/versions/Wt4Igqm0/jasione-1.0.9%2B1.21.11-fabric.jar",
+      "sha512": "cee9391028af42ef8845a149ff46b1841d89cec9ee2111266c93f5d0cebfeddd0da8813c83fff7a01cb5f9ccfcd02866961e40e66c13942b399b0906a0b3b956",
+      "size": 762784,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/decce6/Jasione",
       "projectUrl": "https://modrinth.com/mod/jasione"
@@ -577,12 +577,12 @@
       "projectSlug": "jei",
       "name": "Just Enough Items (JEI)",
       "modId": "jei",
-      "versionId": "70I1cYhs",
-      "version": "27.35.0.90",
-      "fileName": "jei-1.21.11-fabric-27.35.0.90.jar",
-      "url": "https://cdn.modrinth.com/data/u6dRKJwZ/versions/70I1cYhs/jei-1.21.11-fabric-27.35.0.90.jar",
-      "sha512": "2adce43705d85bf49965d37d4d55a2d694ed6d4f6112645a9f176dba508f57e0d6c4aa13d8048ccfb4c3d4dc81d8f840772b87c36fb72c5fd00edae643eb09ec",
-      "size": 1849251,
+      "versionId": "iykoWl1k",
+      "version": "27.48.0.106",
+      "fileName": "jei-1.21.11-fabric-27.48.0.106.jar",
+      "url": "https://cdn.modrinth.com/data/u6dRKJwZ/versions/iykoWl1k/jei-1.21.11-fabric-27.48.0.106.jar",
+      "sha512": "f747dec422e110fdec26033921b01f52b3dc16f3a307ba1e97634fb2d51fb526d4029383c571949668e9e851927039c30aeda02ec4a7b5323d7c9ecc0899a775",
+      "size": 2419982,
       "license": "MIT",
       "sourceUrl": "https://github.com/mezz/JustEnoughItems",
       "projectUrl": "https://modrinth.com/mod/jei"
@@ -817,12 +817,12 @@
       "projectSlug": "not-enough-animations",
       "name": "Not Enough Animations",
       "modId": "notenoughanimations",
-      "versionId": "rs2DhiV9",
-      "version": "1.12.6",
-      "fileName": "notenoughanimations-fabric-1.12.6-mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/MPCX6s5C/versions/rs2DhiV9/notenoughanimations-fabric-1.12.6-mc1.21.11.jar",
-      "sha512": "32feb22fcfbd7df2669a5d2405c00f9a6febf08af470855dcd84c5741e3e6d91ca0186a18c2e780b60c5010320843a8fddd5742003c00f3b76e18269283fd1dd",
-      "size": 1883253,
+      "versionId": "qr1Bu9qK",
+      "version": "1.12.7",
+      "fileName": "notenoughanimations-fabric-1.12.7-mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/MPCX6s5C/versions/qr1Bu9qK/notenoughanimations-fabric-1.12.7-mc1.21.11.jar",
+      "sha512": "f3b82fe757c16a969544f30daedc9de4100e93003c7fab328bb506274e86846823e89802b4cecdfea42ec31090827d490f1c40235010f62b6c91f6ec834f7aff",
+      "size": 1886773,
       "license": "LicenseRef-tr7zw-Protective-License",
       "sourceUrl": "https://github.com/tr7zw/NotEnoughAnimations",
       "projectUrl": "https://modrinth.com/mod/not-enough-animations"
@@ -832,12 +832,12 @@
       "projectSlug": "obe",
       "name": "Optimized Block Entities [OBE]",
       "modId": "obe",
-      "versionId": "XDnvxkzQ",
-      "version": "1.1.46",
-      "fileName": "obe+1.21.11-1.1.46.jar",
-      "url": "https://cdn.modrinth.com/data/AtOSAunf/versions/XDnvxkzQ/obe%2B1.21.11-1.1.46.jar",
-      "sha512": "56597c030b5ae9b1a804addc9f76181013d770e97bf636364a4d319aa0eb56136048cef902b855df4be3c1c626a8c80473a6f4ddc7e294d05c928c3e51818cb6",
-      "size": 199440,
+      "versionId": "K0N0A6aD",
+      "version": "1.2.0",
+      "fileName": "obe+1.21.11-1.2.0.jar",
+      "url": "https://cdn.modrinth.com/data/AtOSAunf/versions/K0N0A6aD/obe%2B1.21.11-1.2.0.jar",
+      "sha512": "776a5089f6b03242eb712dd7a5df53095d1c088886d6bde013239e0c5d617258090f88c2b9ba9068418a1d7cf2b547f69e255a23fbaa9d6287842675b24ce36c",
+      "size": 252192,
       "license": "LGPL-3.0-or-later",
       "sourceUrl": "https://github.com/maDU59/OptimisedBlockEntities",
       "projectUrl": "https://modrinth.com/mod/obe"
@@ -892,12 +892,12 @@
       "projectSlug": "raised",
       "name": "Raised",
       "modId": "raised",
-      "versionId": "lgLBYQO3",
-      "version": "Fabric-1.21.11-5.1.2",
-      "fileName": "raised-fabric-1.21.11-5.1.2.jar",
-      "url": "https://cdn.modrinth.com/data/nCQRBEiR/versions/lgLBYQO3/raised-fabric-1.21.11-5.1.2.jar",
-      "sha512": "77e696f667896dc1036cb4e42ef7201035e809de3c4e27ae0eee4d57143065ccd99962019563bff97915f4f5a9373b5c8c025ba554b4ea65ec32c6f7f8cf5241",
-      "size": 85205,
+      "versionId": "qI5fwV9q",
+      "version": "Fabric-1.21.11-6.0.2",
+      "fileName": "raised-fabric-1.21.11-6.0.2.jar",
+      "url": "https://cdn.modrinth.com/data/nCQRBEiR/versions/qI5fwV9q/raised-fabric-1.21.11-6.0.2.jar",
+      "sha512": "6cdbfc20cf16b6f39bf01cd3cd8d2d86487f34bd94f75d3cef39526add910eb7fd43f625f051a0ddcbdf469f0168942113527f74f69c49d011965352906c61b8",
+      "size": 131841,
       "license": "LGPL-3.0-or-later",
       "sourceUrl": "https://github.com/yurisuika/Raised",
       "projectUrl": "https://modrinth.com/mod/raised"
@@ -907,12 +907,12 @@
       "projectSlug": "reeses-sodium-options",
       "name": "Reese's Sodium Options",
       "modId": "reeses-sodium-options",
-      "versionId": "yIgAFMna",
-      "version": "mc1.21.11-2.0.3+fabric",
-      "fileName": "reeses-sodium-options-fabric-2.0.3+mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/Bh37bMuy/versions/yIgAFMna/reeses-sodium-options-fabric-2.0.3%2Bmc1.21.11.jar",
-      "sha512": "13b54698be3cbecdcf544ff92186423652c6b1e91544864c979f51297a3159137f794db4e3ee21e0bae3abcf651bb4ecc0e2a5b4aa1eab1f1a81d6529fe82e59",
-      "size": 104577,
+      "versionId": "ffpCc8nY",
+      "version": "mc1.21.11-2.2.4+fabric",
+      "fileName": "reeses-sodium-options-fabric-2.2.4+mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/Bh37bMuy/versions/ffpCc8nY/reeses-sodium-options-fabric-2.2.4%2Bmc1.21.11.jar",
+      "sha512": "224e324effcaa03a38582b05c09cbd79a5922e916888b45849d966a6a7f30a7be18a8cc2ea09f44e79e6ea1a8d143a28c3cbfafdb398025b48ab1a1a7d71fd49",
+      "size": 258250,
       "license": "MIT",
       "sourceUrl": "https://github.com/FlashyReese/reeses-sodium-options",
       "projectUrl": "https://modrinth.com/mod/reeses-sodium-options"
@@ -967,12 +967,12 @@
       "projectSlug": "sodium",
       "name": "Sodium",
       "modId": "sodium",
-      "versionId": "UddlN6L4",
-      "version": "mc1.21.11-0.8.7-fabric",
-      "fileName": "sodium-fabric-0.8.7+mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/AANobbMI/versions/UddlN6L4/sodium-fabric-0.8.7%2Bmc1.21.11.jar",
-      "sha512": "d7f035d6112eaac92cf0f11e4426db631fca5a7115dd355c2126efee4255b648a0102552bbf7b22a7eae9203d08f8740435842bfddcd94e2434f51b57ee9c641",
-      "size": 1870358,
+      "versionId": "rkdTcxoT",
+      "version": "mc1.21.11-0.8.14-fabric",
+      "fileName": "sodium-fabric-0.8.14+mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/AANobbMI/versions/rkdTcxoT/sodium-fabric-0.8.14%2Bmc1.21.11.jar",
+      "sha512": "04c43f9e8534b87a52c42ffd51b0e344d4ef92dc9cc52da33d13af6a18bf74b05380d2027f1e0db982698d0aff274c42741c1e21b313b0cd75ed3af005fc98d9",
+      "size": 1909150,
       "license": "LicenseRef-Polyform-Shield-1.0.0",
       "sourceUrl": "https://github.com/CaffeineMC/sodium",
       "projectUrl": "https://modrinth.com/mod/sodium"
@@ -982,12 +982,12 @@
       "projectSlug": "sodium-extra",
       "name": "Sodium Extra",
       "modId": "sodium-extra",
-      "versionId": "yqY1efrC",
-      "version": "mc1.21.11-0.8.3+fabric",
-      "fileName": "sodium-extra-fabric-0.8.3+mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/PtjYWJkn/versions/yqY1efrC/sodium-extra-fabric-0.8.3%2Bmc1.21.11.jar",
-      "sha512": "b268a22ec7d27a45142f839ecf9a902c4ead4a5ef01e480f9e042f700a75a12a0db6346914f5445be68136b849a068de88d54823444c5d13268cfc0661854465",
-      "size": 394219,
+      "versionId": "oqoegXMw",
+      "version": "mc1.21.11-0.9.4+fabric",
+      "fileName": "sodium-extra-fabric-0.9.4+mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/PtjYWJkn/versions/oqoegXMw/sodium-extra-fabric-0.9.4%2Bmc1.21.11.jar",
+      "sha512": "65d1c245ffc89efd8a3c9412efd4f11c2d365be2c15ec8a5edb8da4b9bca5537dea62bf0fd04462c34e2f785a9b3980b54d506a377bdb6f263a177b1d0e06edc",
+      "size": 471588,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/FlashyReese/sodium-extra-fabric",
       "projectUrl": "https://modrinth.com/mod/sodium-extra"
@@ -1072,12 +1072,12 @@
       "projectSlug": "simple-voice-chat",
       "name": "Simple Voice Chat",
       "modId": "voicechat",
-      "versionId": "MLNG868g",
-      "version": "fabric-1.21.11-2.6.24",
-      "fileName": "voicechat-fabric-1.21.11-2.6.24.jar",
-      "url": "https://cdn.modrinth.com/data/9eGKb6K1/versions/MLNG868g/voicechat-fabric-1.21.11-2.6.24.jar",
-      "sha512": "ffe87edb4655a287175dbd4286281a4b83e30e47649c40940059e43f75d234ee9539a4e665468f39556761f9959096fa28da57682bca613b7875492404a18467",
-      "size": 5608482,
+      "versionId": "arpQQSyx",
+      "version": "fabric-1.21.11-2.6.27",
+      "fileName": "voicechat-fabric-1.21.11-2.6.27.jar",
+      "url": "https://cdn.modrinth.com/data/9eGKb6K1/versions/arpQQSyx/voicechat-fabric-1.21.11-2.6.27.jar",
+      "sha512": "d20183ff6de8248ed7d55492bf3e620fd9531fa1eebcf2992c72e3b530a72fc459499fa6ed7feeb09be845ad5b70f175445690bb8ee5eec182ada564b429e36a",
+      "size": 5609606,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/henkelmax/simple-voice-chat",
       "projectUrl": "https://modrinth.com/mod/simple-voice-chat"
@@ -1087,12 +1087,12 @@
       "projectSlug": "wavey-capes",
       "name": "Wavey Capes",
       "modId": "waveycapes",
-      "versionId": "HiXJOcqr",
-      "version": "1.11.2",
-      "fileName": "waveycapes-fabric-1.11.2-mc1.21.11.jar",
-      "url": "https://cdn.modrinth.com/data/kYuIpRLv/versions/HiXJOcqr/waveycapes-fabric-1.11.2-mc1.21.11.jar",
-      "sha512": "9dc36e4b6c8fd2e4bf07765a7b0384a4d0afe83558866d9804aeb4924083fdf8ea794c885ac43d3853aeda210ab7dd61db37f922e9e904583f084903fce82009",
-      "size": 1794934,
+      "versionId": "NR0hCf95",
+      "version": "1.11.3",
+      "fileName": "waveycapes-fabric-1.11.3-mc1.21.11.jar",
+      "url": "https://cdn.modrinth.com/data/kYuIpRLv/versions/NR0hCf95/waveycapes-fabric-1.11.3-mc1.21.11.jar",
+      "sha512": "0e76d901c4dfe83197f6df7d84c925b9c70e3d64215984a74494af438e6ba67fffbb21cbe299389dfc65a8dba52f01fbef4d98243a4f19f9a698e15dae989ac1",
+      "size": 1788406,
       "license": "LicenseRef-tr7zw-Protective-License",
       "sourceUrl": "https://github.com/tr7zw/WaveyCapes",
       "projectUrl": "https://modrinth.com/mod/wavey-capes"
@@ -1102,12 +1102,12 @@
       "projectSlug": "xaeros-minimap",
       "name": "Xaero's Minimap",
       "modId": "xaerominimap",
-      "versionId": "VNYP3B0c",
-      "version": "fabric-1.21.11-26.5.0",
-      "fileName": "xaerominimap-fabric-1.21.11-26.5.0.jar",
-      "url": "https://cdn.modrinth.com/data/1bokaNcj/versions/VNYP3B0c/xaerominimap-fabric-1.21.11-26.5.0.jar",
-      "sha512": "8d9d2eccd96f5c446ff0e88d7680cc8fee2d7a4a9192a6fdba71cefd503c5c7c419221320628a55576d90431fc86caff215566ff3dd52500a8cc5702d1559394",
-      "size": 2203817,
+      "versionId": "g0LRDWwe",
+      "version": "fabric-1.21.11-26.6.2",
+      "fileName": "xaerominimap-fabric-1.21.11-26.6.2.jar",
+      "url": "https://cdn.modrinth.com/data/1bokaNcj/versions/g0LRDWwe/xaerominimap-fabric-1.21.11-26.6.2.jar",
+      "sha512": "dd6cb67230b0790f22c4eb7c4bd383a3fe7047e5d0cb0c3acf53b263eaef25c6410ede7b6b5789f2a77d7b6cd294f08d7301f3ceea48d85d2328594de02438fd",
+      "size": 2204205,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": null,
       "projectUrl": "https://modrinth.com/mod/xaeros-minimap"
@@ -1117,12 +1117,12 @@
       "projectSlug": "xaeros-world-map",
       "name": "Xaero's World Map",
       "modId": "xaeroworldmap",
-      "versionId": "Jfe3ZJIB",
-      "version": "fabric-1.21.11-1.46.0",
-      "fileName": "xaeroworldmap-fabric-1.21.11-1.46.0.jar",
-      "url": "https://cdn.modrinth.com/data/NcUtCpym/versions/Jfe3ZJIB/xaeroworldmap-fabric-1.21.11-1.46.0.jar",
-      "sha512": "17aa854d8b7b21e4331a8a510ed28ab20617467e7b9b30214380a4c21bcc81145bf42bc57f26ae93fbe5157a0b9d272235c123269e7532c8c7d54239c57c2174",
-      "size": 1469234,
+      "versionId": "ksfmc45B",
+      "version": "fabric-1.21.11-1.47.2",
+      "fileName": "xaeroworldmap-fabric-1.21.11-1.47.2.jar",
+      "url": "https://cdn.modrinth.com/data/NcUtCpym/versions/ksfmc45B/xaeroworldmap-fabric-1.21.11-1.47.2.jar",
+      "sha512": "85fba137b461bd6b68dee71468072082d081d8f8ed2ff2edd13bd57dc3d19bbce5ed77856b360a40384e4a6607fbad48c7c232e179a2504491c215817078aad1",
+      "size": 1473335,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": null,
       "projectUrl": "https://modrinth.com/mod/xaeros-world-map"
@@ -1144,26 +1144,70 @@
     }
   ],
   "published": {
+    "asynclogger": [
+      "88df926e56b43aeb65b55dbac6853dde5f216d3489355b37bdf4763b7c0397de72b8d30160776a9ef2e8db3b424f5c7736e609d77ab960886fb3dd7a28da9bcb"
+    ],
+    "betterrenderdistance": [
+      "7c09130782c5d13e7016bd85f7e3ad136521bcdebb566da7f7717b5a956d92bf5470db6830077ee74c2b189575adac689666e45d34e77a756061f77a1c4aa6d4"
+    ],
+    "chat_heads": [
+      "6a5bdb79c62c66e6273614ab75c673c88a3fdfd840d1afdbf8b10d952e4251786887dd6097c6ccae4e11e9efe8b1dc89ffcd0599058af7d756c64b299eddf9d0"
+    ],
+    "durabilitytooltip": [
+      "4472d904e60e04dfcc2252fabe089343bb4b684607ff279ca3a8976a8624f8d4c2d3c7c94f25405f8151902378bedacf1708eb1ae4489071528dba106060f800"
+    ],
     "fabric-language-kotlin": [
-      "9a63c35a550b0362b7b25ff045d93709c7b0dae08c89076cba422813fdfb9e5f5dd021ed3afac9f82e74e95b88c249e8f68b240717151540ca3e88cc27fb9c77"
+      "9a63c35a550b0362b7b25ff045d93709c7b0dae08c89076cba422813fdfb9e5f5dd021ed3afac9f82e74e95b88c249e8f68b240717151540ca3e88cc27fb9c77",
+      "91404f87774466ce8604aafea791d8cc97b603bc310dce17c8188f94f7783cca6dc14fc726ce871ca317bfe9033c199d8d858d51284106a00754e952147703b8"
+    ],
+    "iris": [
+      "b009a07ecbdf3eb510b4acacbb435e058406ddbabcc4f1a5efeacad154cd26777474dcf4a2b5a3a92644b150f047977ada5687a9d9172132fbe6d3d036961b7e"
+    ],
+    "ixeris": [
+      "3fcdbf895e0ccbd5cb74ed2cc26ca274240c6502e0cc74e0c597ed7abdf1c259e6a64b3aa53c35058207de0a59a593bd126f731e08101dfba5c0907b6848ecf8"
+    ],
+    "jasione": [
+      "bc67535dde06440702addd5608bfaeebf9311eb9cdd6379512e9bd08d3a6d8d3285f8a938f5cbf0f635043c79c24b159380ad087f8d011eb81038c70707606ba"
+    ],
+    "jei": [
+      "2adce43705d85bf49965d37d4d55a2d694ed6d4f6112645a9f176dba508f57e0d6c4aa13d8048ccfb4c3d4dc81d8f840772b87c36fb72c5fd00edae643eb09ec"
     ],
     "modmenu": [
       "146f8c356f86c32e5aab76598e021ac123779c89fc7a51a486fccd2871d2751b02046b4eea3194e52f2e7f38abbb5f78301c8f49bde6e60e1839677db9c84e33"
     ],
     "notenoughanimations": [
-      "32a75704d907c3a6c63d3068971b8d10f2ea666589b14d9de1534d8623cff87a15cd86d999fc1ca4c054b434c104028b6d0fc522dd75af638cc5aebe42621a73"
+      "32a75704d907c3a6c63d3068971b8d10f2ea666589b14d9de1534d8623cff87a15cd86d999fc1ca4c054b434c104028b6d0fc522dd75af638cc5aebe42621a73",
+      "32feb22fcfbd7df2669a5d2405c00f9a6febf08af470855dcd84c5741e3e6d91ca0186a18c2e780b60c5010320843a8fddd5742003c00f3b76e18269283fd1dd"
+    ],
+    "obe": [
+      "56597c030b5ae9b1a804addc9f76181013d770e97bf636364a4d319aa0eb56136048cef902b855df4be3c1c626a8c80473a6f4ddc7e294d05c928c3e51818cb6"
+    ],
+    "raised": [
+      "77e696f667896dc1036cb4e42ef7201035e809de3c4e27ae0eee4d57143065ccd99962019563bff97915f4f5a9373b5c8c025ba554b4ea65ec32c6f7f8cf5241"
+    ],
+    "reeses-sodium-options": [
+      "13b54698be3cbecdcf544ff92186423652c6b1e91544864c979f51297a3159137f794db4e3ee21e0bae3abcf651bb4ecc0e2a5b4aa1eab1f1a81d6529fe82e59"
     ],
     "sodium": [
-      "04c43f9e8534b87a52c42ffd51b0e344d4ef92dc9cc52da33d13af6a18bf74b05380d2027f1e0db982698d0aff274c42741c1e21b313b0cd75ed3af005fc98d9"
+      "d7f035d6112eaac92cf0f11e4426db631fca5a7115dd355c2126efee4255b648a0102552bbf7b22a7eae9203d08f8740435842bfddcd94e2434f51b57ee9c641"
+    ],
+    "sodium-extra": [
+      "b268a22ec7d27a45142f839ecf9a902c4ead4a5ef01e480f9e042f700a75a12a0db6346914f5445be68136b849a068de88d54823444c5d13268cfc0661854465"
     ],
     "voicechat": [
-      "dab29df8577b220e1c2ad97b784c5acb837501c8ba42d83205c085f44b4a6df75bce2477b8c2c7905285d248fd2d195b3dc77f169cb11a226dc2965e23f5859a"
+      "dab29df8577b220e1c2ad97b784c5acb837501c8ba42d83205c085f44b4a6df75bce2477b8c2c7905285d248fd2d195b3dc77f169cb11a226dc2965e23f5859a",
+      "ffe87edb4655a287175dbd4286281a4b83e30e47649c40940059e43f75d234ee9539a4e665468f39556761f9959096fa28da57682bca613b7875492404a18467"
+    ],
+    "waveycapes": [
+      "9dc36e4b6c8fd2e4bf07765a7b0384a4d0afe83558866d9804aeb4924083fdf8ea794c885ac43d3853aeda210ab7dd61db37f922e9e904583f084903fce82009"
     ],
     "xaerominimap": [
-      "7df415f04472bf9de4cf5c2b6d11e640c1018d121829e859ea92bb61c75996c6a7fced5707e70743ac9a33aed725e5501e143f82a03f17fc022a1a8ed32c6238"
+      "7df415f04472bf9de4cf5c2b6d11e640c1018d121829e859ea92bb61c75996c6a7fced5707e70743ac9a33aed725e5501e143f82a03f17fc022a1a8ed32c6238",
+      "8d9d2eccd96f5c446ff0e88d7680cc8fee2d7a4a9192a6fdba71cefd503c5c7c419221320628a55576d90431fc86caff215566ff3dd52500a8cc5702d1559394"
     ],
     "xaeroworldmap": [
-      "cf4a927acdb22e8c6c5febd461e473485b3ae95741be3f2d8fb4cffb544a2e99f7ce523b8c0f09c5bf4b7b9c918e1a478eb162c1af2f05b97acd587774794ff2"
+      "cf4a927acdb22e8c6c5febd461e473485b3ae95741be3f2d8fb4cffb544a2e99f7ce523b8c0f09c5bf4b7b9c918e1a478eb162c1af2f05b97acd587774794ff2",
+      "17aa854d8b7b21e4331a8a510ed28ab20617467e7b9b30214380a4c21bcc81145bf42bc57f26ae93fbe5157a0b9d272235c123269e7532c8c7d54239c57c2174"
     ]
   },
   "retired": [

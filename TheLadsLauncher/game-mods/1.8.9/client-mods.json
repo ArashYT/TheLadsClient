@@ -52,12 +52,12 @@
       "projectSlug": "pylon",
       "name": "Pylon",
       "modId": "pylon",
-      "versionId": "DMvW1Jvx",
-      "version": "0.2.2",
-      "fileName": "pylon-0.2.2.jar",
-      "url": "https://cdn.modrinth.com/data/wx17t6U9/versions/DMvW1Jvx/pylon-0.2.2.jar",
-      "sha512": "aed778b68c861debfe6ed4a7aae320350c119fc40bebeac29f38a7f56d4454ca793455e476c23583eacb1444fee5ddbb7407c9abdfbd178a9c823042dc2d27c1",
-      "size": 13070655,
+      "versionId": "QPGKOis1",
+      "version": "0.2.7",
+      "fileName": "pylon-0.2.7.jar",
+      "url": "https://cdn.modrinth.com/data/wx17t6U9/versions/QPGKOis1/pylon-0.2.7.jar",
+      "sha512": "367840a56e57e85323e613b9c6615a977d763ed9aefa7a7fbb1bbce01727faa0f43d3c6876ae97e4be3550269d436f85bf3e559e1375dd9fabe4bf62438090e3",
+      "size": 15311929,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/notdevcody/pylon",
       "projectUrl": "https://modrinth.com/mod/pylon"
@@ -105,6 +105,9 @@
     }
   ],
   "published": {
+    "pylon": [
+      "aed778b68c861debfe6ed4a7aae320350c119fc40bebeac29f38a7f56d4454ca793455e476c23583eacb1444fee5ddbb7407c9abdfbd178a9c823042dc2d27c1"
+    ],
     "replaymod": [
       "ef49566deeaab0806ed9c282cca49c5edb4e3a79308b9ba479332867fd031a6800ca7b37f7aa6868070b140f1ff64cac3836d207fc83eb2391df837ab57dc5c6"
     ],
