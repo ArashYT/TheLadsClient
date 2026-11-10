@@ -112,6 +112,7 @@ public class SocialState {
     private volatile UUID rejoinHost = parseUuid(System.getProperty(ModSyncFlow.HOST_PROPERTY));
     private final long startedAt = System.currentTimeMillis();
     private boolean leavingServer; // game thread only
+    private TrustQuestion trustShown; // game thread only
     private volatile PendingJoin pendingJoin;
     /** The last Add Friend: its name and the backend's answer for the Friends screen (null while waiting). */
     private volatile String addingName, addResult;
@@ -414,12 +415,19 @@ public class SocialState {
             leavingServer = true;
             bridge.leaveWorld(() -> bridge.toast("Restart to play here", "This game runs your friend's mods. Start it again from the launcher to join servers.", null, null));
         }
+        // ModSync: the trust question is asked on the Friends screen, and an invite accepted from a toast or the chat has not opened it
+        TrustQuestion question = guestSession.trustQuestion();
+        if (question != trustShown) {
+            trustShown = question;
+            if (question != null) bridge.openFriendsScreen();
+        }
         if (++ticks % 20 != 0) return;
         if (!enabled()) {
             client.close();
             return;
         }
         client.start();
+        ModSyncQa.second(this, bridge, activeInvites.values());
         if (hostSession.isHosting() && bridge.worldId() == null) stopHosting();
         refreshPresence();
     }
