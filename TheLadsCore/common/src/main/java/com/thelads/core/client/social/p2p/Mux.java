@@ -10,8 +10,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Multiplexes multiple independent streams over a single underlying ReliableStream.
- * Stream IDs: 0 = Minecraft connection, 1 = control (high-priority, unthrottled). No other id exists (Phase 3's pack transfers will
- * open more, up to 8 in all, through a control-stream handshake). A frame for another id, a frame longer than MAX_CHUNK_SIZE or data
+ * Stream IDs: 0 = Minecraft connection, 1 = control (high-priority, unthrottled), 2 = ModSync (the host's mod list and jars). A
+ * client before 1.13.9 knows only 0 and 1 and ends the session on a frame for 2, so 2 is written only to a peer known to have it (a
+ * host that publishes a modsHash, a guest that asked on 2). A frame for another id, a frame longer than MAX_CHUNK_SIZE or data
  * beyond a stream's buffer is a protocol violation: the Mux closes, which ends the session. Receive buffers are allocated on first data.
  *
  * Implements per-stream credit-based flow control (512 KB window) to prevent
@@ -26,7 +27,7 @@ public final class Mux implements AutoCloseable {
     public static final int MAX_CHUNK_SIZE = 4096;
     public static final int INITIAL_WINDOW_SIZE = 512 * 1024; // 512 KB
     public static final int WINDOW_UPDATE_THRESHOLD = 64 * 1024; // 64 KB
-    static final int STREAMS = 2;
+    static final int STREAMS = 3;
     static final int CONTROL_BUFFER = 64 * 1024; // the control stream has no credit flow: lines are tiny
 
     private final InputStream underIn;
