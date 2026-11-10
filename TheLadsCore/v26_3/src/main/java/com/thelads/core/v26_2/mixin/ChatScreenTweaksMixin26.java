@@ -119,6 +119,12 @@ public abstract class ChatScreenTweaksMixin26 extends Screen {
         }
     }
 
+    /** Up, Down and Tab never move the focus (the search box is a second widget): Up/Down walk the sent history, Tab completes. */
+    @WrapOperation(method = "keyPressed", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/Screen;keyPressed(Lnet/minecraft/client/input/KeyEvent;)Z"), require = 1)
+    private boolean lads$noFocusKeys(Screen self, KeyEvent event, Operation<Boolean> original) {
+        return (event.key() != InputConstants.KEY_UP && event.key() != InputConstants.KEY_DOWN && event.key() != InputConstants.KEY_TAB) && original.call(self, event);
+    }
+
     /** Shift+Enter Keeps Chat Open: vanilla's own stay-open path (the input is cleared); the history position goes past the new line. */
     @ModifyExpressionValue(method = "keyPressed", at = @At(value = "FIELD", target = "Lnet/minecraft/client/gui/screens/ChatScreen;closeOnSubmit:Z"), require = 1)
     private boolean lads$keepOpen(boolean close) {

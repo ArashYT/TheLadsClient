@@ -36,6 +36,29 @@ public static class CrashReporter
         return Directory.GetFiles(dir, "*.txt").Where(f => File.GetLastWriteTime(f) >= since && Marked(f)).OrderBy(File.GetLastWriteTime).ToArray();
     }
 
+    /// <summary>
+    /// Whether a non-zero exit is a real crash. Closing the window (X, Alt+F4, Quit Game) can end the JVM with a non-zero code,
+    /// so that alone is no crash: it needs a crash report or hs_err log written since <paramref name="since"/>, a Windows fault
+    /// status (0xC0000000 and up), a death within <paramref name="startupWindow"/> of starting, or an uncaught exception in latest.log.
+    /// </summary>
+    public static bool IsRealCrash(string gameDirectory, int exitCode, DateTime? since, TimeSpan uptime, TimeSpan startupWindow)
+    {
+        if (exitCode == 0) return false;
+        if ((uint)exitCode >= 0xC0000000u) return true;
+        if (since is not { } start) return true;
+        if (uptime < startupWindow) return true;
+        try
+        {
+            string reports = Path.Combine(gameDirectory, "crash-reports");
+            if (Directory.Exists(reports) && Directory.GetFiles(reports, "*.txt").Any(f => File.GetLastWriteTime(f) >= start)) return true;
+            if (Directory.GetFiles(gameDirectory, "hs_err_pid*.log").Any(f => File.GetLastWriteTime(f) >= start)) return true;
+            string log = Path.Combine(gameDirectory, "logs", "latest.log");
+            if (File.Exists(log) && File.GetLastWriteTime(log) >= start && Read(log, true).Contains("Exception in thread", StringComparison.Ordinal)) return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return true; }
+        return false;
+    }
+
     private static bool Marked(string path)
     {
         try { return File.ReadLines(path).Any(line => line.Contains(CaughtMarker, StringComparison.Ordinal)); }
