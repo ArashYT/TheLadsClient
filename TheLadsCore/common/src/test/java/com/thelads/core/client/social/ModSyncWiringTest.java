@@ -101,6 +101,9 @@ class ModSyncWiringTest {
         guest.addFriendLocally(new FriendEntry(HOST, "Hosty", null,
                 new Presence("hosting", hostGame, null, new Presence.WorldAd("w", "World", "invite", 8, 0)), 0));
         host.addFriendLocally(new FriendEntry(GUEST, "Guesty", null, new Presence("menu", FABRIC, null, null), 0));
+        assertFalse(guest.needsModSync(HOST), "no list from the launcher: nothing would start the game again, so it never syncs");
+        Files.createDirectories(guestDir.resolve(ModSyncFlow.LIST_FILE).getParent());
+        Files.writeString(guestDir.resolve(ModSyncFlow.LIST_FILE), ModSyncList.toJson(List.of()));
         assertTrue(guest.needsModSync(HOST));
         assertFalse(host.needsModSync(GUEST), "a friend without a modsHash is never asked on stream 2");
 
@@ -146,6 +149,44 @@ class ModSyncWiringTest {
         host.onMessage(online);
         assertFalse(sent(hostSent, SocialProtocol.INVITE, "to", GUEST.toString()), "once");
         assertTrue(host.hostSession().acceptedUuids().contains(GUEST));
+    }
+
+    @Test
+    void aSyncThatFailsJoinsWithoutTheHostsMods() throws Exception {
+        Path hostDir = dir.resolve("host"), guestDir = dir.resolve("guest");
+        Files.createDirectories(hostDir.resolve("mods"));
+        Path jar = hostDir.resolve("mods/friend-mod.jar");
+        Files.write(jar, new byte[5000]);
+        ModSyncEntry mod = new ModSyncEntry("friendmod", "Friend Mod", "1.0", "friend-mod.jar", 5000, "", ModSyncHash.sha512(jar), "", "");
+        for (Path game : List.of(hostDir, guestDir)) {
+            Files.createDirectories(game.resolve(ModSyncFlow.LIST_FILE).getParent());
+            Files.writeString(game.resolve(ModSyncFlow.LIST_FILE), ModSyncList.toJson(game == hostDir ? List.of(mod) : List.of()));
+        }
+        Bridge hostBridge = new Bridge(hostDir), guestBridge = new Bridge(guestDir);
+        SocialState host = new SocialState(() -> hostBridge, () -> null, null), guest = new SocialState(() -> guestBridge, () -> null, null);
+        host.setClientSender(m -> {});
+        guest.setClientSender(m -> {});
+        SocialBridge.GameInfo hostGame = new SocialBridge.GameInfo("1.21.11", "fabric", "plain", "", "", host.gameInfo().modsHash(), "1.13.9");
+        guest.addFriendLocally(new FriendEntry(HOST, "Hosty", null,
+                new Presence("hosting", hostGame, null, new Presence.WorldAd("w", "World", "friends", 8, 0)), 0));
+        Files.write(jar, new byte[5000 + 1]); // the host's jar changed after the launcher listed it: the host refuses to send it
+
+        HostSession.skipLoopbackForTest = true;
+        host.hostSession().initForTest(new HostOptions(), 25565);
+        host.hostSession().accept(GUEST);
+        P2PSession.IceConfig cfg = new P2PSession.IceConfig(List.of(), List.of(), false);
+        String sid = "modsync-fail-" + System.nanoTime();
+        host.hostSession().handleP2PStart(sid, GUEST, cfg, data -> guest.guestSession().onSignal(data));
+        guest.guestSession().start(sid, HOST, "Hosty", "w", cfg, data -> host.hostSession().onSignal(sid, data));
+
+        await("the trust question", () -> guest.trustQuestion() != null);
+        guest.trustQuestion().answer().complete(true);
+        guestBridge.connected.get(20, TimeUnit.SECONDS);
+        assertFalse(guestBridge.quit.isDone());
+        assertEquals(List.of("Friend's world: Could not get Hosty's mods: joining without them"), guestBridge.toasts);
+        assertFalse(Files.exists(guestDir.resolve(ModSyncFlow.RELAUNCH_FILE)), "no restart is left behind");
+        assertTrue(guest.guestSession().isActive());
+        guest.guestSession().close("test over");
     }
 
     @Test

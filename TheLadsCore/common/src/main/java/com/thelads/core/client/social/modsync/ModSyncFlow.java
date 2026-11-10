@@ -64,6 +64,14 @@ public final class ModSyncFlow {
         return out;
     }
 
+    /**
+     * The launcher that started this game wrote its mod list, so it also takes the restart request when the game closes. Without
+     * it (an older launcher, a game started another way) the game never syncs: it would close and nothing would start it again.
+     */
+    public static boolean launcherReady(Path gameDir) {
+        return gameDir != null && Files.isRegularFile(gameDir.resolve(LIST_FILE));
+    }
+
     /** presence's game.modsHash for this profile. */
     public static String hash(List<ModSyncServer.Shared> shared) {
         return ModSyncList.hash(shared.stream().map(ModSyncServer.Shared::entry).toList());
