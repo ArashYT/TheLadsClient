@@ -33,6 +33,7 @@ public final class NativeLadsApi {
         }
 
         LadsApiClient.install(NativeLadsApi::send, "1.21.11");
+        com.thelads.core.client.ladsapi.ServerSettings.vanillaHooked(); // ServerOptionMixin answers "Minecraft" option rules
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> LadsApiClient.reset());
         LOGGER.info("LadsClientAPI transport initialized for 1.21.11");
     }

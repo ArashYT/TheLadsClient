@@ -38,6 +38,7 @@ public final class LadsApiTransport1201 {
             return;
         }
         LadsApiClient.install(LadsApiTransport1201::send, "1.20.1");
+        com.thelads.core.client.ladsapi.ServerSettings.vanillaHooked(); // ServerOptionMixin answers "Minecraft" option rules
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> LadsApiClient.reset());
         LOGGER.debug("LadsApi 1.20.1 transport initialized.");
     }
