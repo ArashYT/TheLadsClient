@@ -1072,12 +1072,12 @@
       "projectSlug": "simple-voice-chat",
       "name": "Simple Voice Chat",
       "modId": "voicechat",
-      "versionId": "MLNG868g",
-      "version": "fabric-1.21.11-2.6.24",
-      "fileName": "voicechat-fabric-1.21.11-2.6.24.jar",
-      "url": "https://cdn.modrinth.com/data/9eGKb6K1/versions/MLNG868g/voicechat-fabric-1.21.11-2.6.24.jar",
-      "sha512": "ffe87edb4655a287175dbd4286281a4b83e30e47649c40940059e43f75d234ee9539a4e665468f39556761f9959096fa28da57682bca613b7875492404a18467",
-      "size": 5608482,
+      "versionId": "arpQQSyx",
+      "version": "fabric-1.21.11-2.6.27",
+      "fileName": "voicechat-fabric-1.21.11-2.6.27.jar",
+      "url": "https://cdn.modrinth.com/data/9eGKb6K1/versions/arpQQSyx/voicechat-fabric-1.21.11-2.6.27.jar",
+      "sha512": "d20183ff6de8248ed7d55492bf3e620fd9531fa1eebcf2992c72e3b530a72fc459499fa6ed7feeb09be845ad5b70f175445690bb8ee5eec182ada564b429e36a",
+      "size": 5609606,
       "license": "LicenseRef-All-Rights-Reserved",
       "sourceUrl": "https://github.com/henkelmax/simple-voice-chat",
       "projectUrl": "https://modrinth.com/mod/simple-voice-chat"
@@ -1192,7 +1192,8 @@
       "b268a22ec7d27a45142f839ecf9a902c4ead4a5ef01e480f9e042f700a75a12a0db6346914f5445be68136b849a068de88d54823444c5d13268cfc0661854465"
     ],
     "voicechat": [
-      "dab29df8577b220e1c2ad97b784c5acb837501c8ba42d83205c085f44b4a6df75bce2477b8c2c7905285d248fd2d195b3dc77f169cb11a226dc2965e23f5859a"
+      "dab29df8577b220e1c2ad97b784c5acb837501c8ba42d83205c085f44b4a6df75bce2477b8c2c7905285d248fd2d195b3dc77f169cb11a226dc2965e23f5859a",
+      "ffe87edb4655a287175dbd4286281a4b83e30e47649c40940059e43f75d234ee9539a4e665468f39556761f9959096fa28da57682bca613b7875492404a18467"
     ],
     "waveycapes": [
       "9dc36e4b6c8fd2e4bf07765a7b0384a4d0afe83558866d9804aeb4924083fdf8ea794c885ac43d3853aeda210ab7dd61db37f922e9e904583f084903fce82009"
