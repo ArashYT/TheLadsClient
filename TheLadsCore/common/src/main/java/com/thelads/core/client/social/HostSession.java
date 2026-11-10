@@ -1,6 +1,7 @@
 package com.thelads.core.client.social;
 
 import com.google.gson.JsonObject;
+import com.thelads.core.client.social.modsync.ModSyncServer;
 import com.thelads.core.client.social.p2p.P2PSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -292,6 +294,12 @@ public final class HostSession {
                 pipeThread.setDaemon(true);
                 pipeThread.start();
             }
+            List<ModSyncServer.Shared> shared = owner.modSyncShared();
+            if (!shared.isEmpty()) { // we published a modsHash: this guest may ask for the list and the listed jars
+                Thread modSync = new Thread(() -> serveMods(sid, p2p, shared), "Lads-HostModSync-" + sid);
+                modSync.setDaemon(true);
+                modSync.start();
+            }
         }).exceptionally(ex -> {
             startingSids.remove(sid);
             pendingSignals.remove(sid);
@@ -322,6 +330,21 @@ public final class HostSession {
             }
             return true;
         }
+    }
+
+    /** ModSync on stream 2 until the session ends; a guest that breaks the protocol loses its session. */
+    private void serveMods(String sid, P2PSession p2p, List<ModSyncServer.Shared> shared) {
+        UUID guest = sidToGuest.get(sid);
+        ModSyncServer server = new ModSyncServer(shared);
+        try {
+            server.serve(p2p.in(P2PSession.MODSYNC), p2p.out(P2PSession.MODSYNC));
+        } catch (IOException e) {
+            if (activeP2PSessions.get(sid) == p2p) {
+                LOGGER.warn("HostSession: ModSync with {} ended: {}", guest, e.getMessage());
+                p2p.close("ModSync error");
+            }
+        }
+        if (server.guestRelaunches() && guest != null) owner.guestRelaunches(guest);
     }
 
     private void bridgeToLoopback(P2PSession p2p, int targetPort) {

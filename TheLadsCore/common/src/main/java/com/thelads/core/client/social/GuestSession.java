@@ -2,6 +2,9 @@ package com.thelads.core.client.social;
 
 import com.google.gson.JsonObject;
 import com.thelads.core.client.HypixelSafetyManager;
+import com.thelads.core.client.social.modsync.ModSyncDownloader;
+import com.thelads.core.client.social.modsync.ModSyncEntry;
+import com.thelads.core.client.social.modsync.ModSyncFlow;
 import com.thelads.core.client.social.p2p.P2PSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +15,7 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.List;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.UUID;
@@ -49,6 +53,8 @@ public final class GuestSession {
     private volatile Socket activeSocket;
     private volatile P2PSession p2pSession;
     private volatile String expectedSid; // p2p_start came while the game was still in a world: start(sid) follows once it left
+    private volatile String status; // ModSync: what it is doing, under "Connecting to ..."
+    private volatile SocialState.TrustQuestion trustQuestion; // ModSync: waiting for the player's answer
 
     private static final int MAX_PENDING_SIGNALS = 64;
     private final Queue<JsonObject> pendingSignals = new ConcurrentLinkedQueue<>();
@@ -85,6 +91,17 @@ public final class GuestSession {
         return active && !linkUp ? hostDisplayName : null;
     }
 
+    /** What the connection is doing while the link is up but the game was not told to connect yet (ModSync), else null. */
+    String connectingStatus() {
+        return active && !linkUp ? status : null;
+    }
+
+    /** ModSync's "trust this host's mods?" while it waits for an answer, else null. */
+    SocialState.TrustQuestion trustQuestion() {
+        SocialState.TrustQuestion q = trustQuestion;
+        return q != null && active && !q.answer().isDone() ? q : null;
+    }
+
     public boolean ownsSid(String sid) {
         return sid != null && (active && Objects.equals(this.sid, sid) || Objects.equals(expectedSid, sid));
     }
@@ -110,6 +127,7 @@ public final class GuestSession {
         this.hostDisplayName = hostDisplayName != null ? hostDisplayName : "Friend World";
         this.active = true;
         this.linkUp = false;
+        this.status = null;
         this.ended.set(false);
         expectedSid = null; // after sid/active: ownsSid has no gap for the host's signals
 
@@ -141,11 +159,23 @@ public final class GuestSession {
                 });
 
                 // Listen for Minecraft client TCP connection to proxy, then let the game connect
-                Thread acceptThread = new Thread(() -> acceptAndBridge(sid, proxy, session), "Lads-GuestProxy-" + sid);
-                acceptThread.setDaemon(true);
-                acceptThread.start();
-                linkUp = true;
-                owner.bridge().connectToLocal(localPort, this.hostDisplayName + (session.relayed() ? " (relayed)" : " (direct)"));
+                String shown = this.hostDisplayName + (session.relayed() ? " (relayed)" : " (direct)");
+                Runnable connect = () -> {
+                    Thread acceptThread = new Thread(() -> acceptAndBridge(sid, proxy, session), "Lads-GuestProxy-" + sid);
+                    acceptThread.setDaemon(true);
+                    acceptThread.start();
+                    linkUp = true;
+                    owner.bridge().connectToLocal(localPort, shown);
+                };
+                if (!owner.needsModSync(hostUuid)) {
+                    connect.run();
+                    return;
+                }
+                // The host runs jars we do not: they are fetched first; the game connects only when nothing is missing
+                String hostName = this.hostDisplayName;
+                Thread modSync = new Thread(() -> modSync(sid, hostUuid, hostName, session, connect), "Lads-GuestModSync-" + sid);
+                modSync.setDaemon(true);
+                modSync.start();
             }).exceptionally(ex -> {
                 LOGGER.warn("GuestSession: P2P session failed to start: {}", ex.getMessage());
                 if (Objects.equals(this.sid, sid) && active) owner.bridge().toast("Friend's world", "Could not reach " + hostDisplayName + "'s world", null, null);
@@ -155,6 +185,78 @@ public final class GuestSession {
         } catch (IOException e) {
             LOGGER.error("GuestSession: failed to bind proxy server socket: {}", e.getMessage());
             close("Proxy socket bind failure");
+        }
+    }
+
+    private boolean isSession(String sid) {
+        return active && Objects.equals(this.sid, sid);
+    }
+
+    /**
+     * ModSync before the game connects: nothing missing connects as usual; fetched jars end in a restart through the launcher (the
+     * host lets us back in, SocialState rejoins); Cancel, a refused trust question or a failed fetch ends the session.
+     */
+    private void modSync(String sid, UUID host, String hostName, P2PSession session, Runnable connect) {
+        SocialBridge bridge = owner.bridge();
+        java.nio.file.Path gameDir = bridge.gameDir();
+        ModSyncFlow.Ui ui = new ModSyncFlow.Ui() {
+            @Override public void status(String text) {
+                status = text;
+            }
+
+            @Override public boolean trust(List<ModSyncEntry> jars) {
+                long bytes = 0;
+                for (ModSyncEntry m : jars) bytes += m.size();
+                String size = bytes >= 1024 * 1024 ? (bytes / (1024 * 1024)) + " MB" : Math.max(1, bytes / 1024) + " KB";
+                SocialState.TrustQuestion q = new SocialState.TrustQuestion("Trust " + hostName + "'s mods?",
+                        jars.size() + (jars.size() == 1 ? " mod file (" : " mod files (") + size + ") in " + hostName + "'s world "
+                                + (jars.size() == 1 ? "is" : "are") + " not on Modrinth or CurseForge and would come straight from "
+                                + hostName + "'s PC. A mod is a program: it can do anything on your PC. Continue only if you trust "
+                                + hostName + ". The game restarts with these mods; your own mods and settings stay as they are.",
+                        new CompletableFuture<>());
+                status = "Waiting for your answer";
+                trustQuestion = q;
+                try {
+                    return q.answer().get(3, TimeUnit.MINUTES);
+                } catch (Exception e) { // no answer: no
+                    return false;
+                } finally {
+                    trustQuestion = null;
+                }
+            }
+
+            @Override public boolean cancelled() {
+                return !isSession(sid);
+            }
+        };
+        try {
+            ModSyncFlow.Result result = ModSyncFlow.guest(gameDir, host, session.in(P2PSession.MODSYNC), session.out(P2PSession.MODSYNC),
+                    owner.loadedMods(), ModSyncDownloader.http(), ModSyncFlow.relaunchedFor(host), ui);
+            if (!isSession(sid)) { // cancelled while it ran
+                if (result == ModSyncFlow.Result.RELAUNCH) ModSyncFlow.dropRelaunch(gameDir);
+                return;
+            }
+            switch (result) {
+                case CONNECT -> connect.run();
+                case CANCELLED -> close(sid, "Cancelled");
+                case RELAUNCH -> {
+                    try {
+                        Thread.sleep(1500); // the player reads "Restarting the game with N mods"
+                    } catch (InterruptedException ignored) {
+                    }
+                    if (!isSession(sid)) {
+                        ModSyncFlow.dropRelaunch(gameDir);
+                        return;
+                    }
+                    LOGGER.info("GuestSession: restarting with {}'s mods", host);
+                    close(sid, "Restarting with the host's mods"); // after "bye relaunch": close delivers what was written
+                    bridge.quitGame();
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            LOGGER.warn("GuestSession: ModSync failed: {}", e.toString());
+            if (isSession(sid)) bridge.toast("Friend's world", "Could not get " + hostName + "'s mods", null, null);
+            close(sid, "ModSync failed");
         }
     }
 
@@ -214,6 +316,8 @@ public final class GuestSession {
         expectedSid = null;
         if (!active && proxyServer == null && p2pSession == null && sid == null) return;
         active = false;
+        SocialState.TrustQuestion question = trustQuestion;
+        if (question != null) question.answer().complete(false);
         HypixelSafetyManager.setP2PSession(null, null);
 
         if (proxyServer != null) {
