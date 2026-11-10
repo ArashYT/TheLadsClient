@@ -352,12 +352,12 @@
       "projectSlug": "jei",
       "name": "Just Enough Items (JEI)",
       "modId": "jei",
-      "versionId": "d3HeviSL",
-      "version": "30.29.0.201",
-      "fileName": "jei-26.2-fabric-30.29.0.201.jar",
-      "url": "https://cdn.modrinth.com/data/u6dRKJwZ/versions/d3HeviSL/jei-26.2-fabric-30.29.0.201.jar",
-      "sha512": "2279cb0ec4e41d9eebad80c2ecac76d19c8bc8e5aac69ba13f35b77494625c70d66edc74d59959116012bfb2f464b55806dd69fbf6387f25679b1553953e329a",
-      "size": 1860103,
+      "versionId": "tFOO9moR",
+      "version": "30.42.0.236",
+      "fileName": "jei-26.2-fabric-30.42.0.236.jar",
+      "url": "https://cdn.modrinth.com/data/u6dRKJwZ/versions/tFOO9moR/jei-26.2-fabric-30.42.0.236.jar",
+      "sha512": "f6638adc5265247160437f98c2d52dbc4478a5a76ee30ebd7ec16fb2f8a76795e35cbaedaa75f92ae7b24c188a3e769416c863c927d4f9ce0b7f510ace889c14",
+      "size": 2400936,
       "license": "MIT",
       "sourceUrl": "https://github.com/mezz/JustEnoughItems",
       "projectUrl": "https://modrinth.com/mod/jei"
@@ -818,6 +818,9 @@
     ],
     "ixeris": [
       "61b3a8436db5574b934692fafdf5731b1ece99b562c56269d593195efa825c3707223befb5ca38ba0ac18a629d2176c709c9415a7fe8d138e0bdb3ec3707505f"
+    ],
+    "jei": [
+      "2279cb0ec4e41d9eebad80c2ecac76d19c8bc8e5aac69ba13f35b77494625c70d66edc74d59959116012bfb2f464b55806dd69fbf6387f25679b1553953e329a"
     ],
     "mezz_config": [
       "b4a45d5e3c5f9467ac3ce72c4d311c18cd85422966e8f8c5503d3df13f70dfa829947a33443952205e4d64580fd77399ac7fba7b8f969d15ca5d872e69039d78"
