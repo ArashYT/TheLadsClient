@@ -97,6 +97,13 @@ public final class LadsCore {
         }
     }
 
+    /** Game mode changed (call it once the new mode is in force): per-game-mode rules may differ. */
+    public void gameModeChanged(LadsPlayerHandle player) {
+        if (sessionManager != null) {
+            sessionManager.gameModeChanged(player);
+        }
+    }
+
     /** Fabric/Forge respawn: the player object is new, so the session takes the fresh handle (and resyncs if the world differs). */
     public void respawned(LadsPlayerHandle player) {
         if (sessionManager != null) {

@@ -34,6 +34,7 @@ public final class LadsCommandHandler {
             lines.add("§e/ladsapi set <player> <Module> <state> §7- Set module state (allow|block|on)");
             lines.add("§e/ladsapi set <player> <Module.Option> <rule> §7- Set option rule (max=10, min=0, value=...)");
             lines.add("§e/ladsapi clear <player> §7- Clear all API overrides for a player");
+            lines.add("§e/ladsapi scope <player> <name> [seconds|off] §7- Switch a rules.yml scope on (for some seconds) or off");
             lines.add("§e/ladsapi announce <text> §7- Show a toast on every connected Lads client");
             return lines;
         }
@@ -45,6 +46,7 @@ public final class LadsCommandHandler {
             case "inspect" -> handleInspect(core, args);
             case "set" -> handleSet(core, args);
             case "clear" -> handleClear(core, args);
+            case "scope" -> handleScope(core, args);
             case "announce" -> handleAnnounce(core, args);
             default -> List.of("§cUnknown subcommand: " + args[0] + ". Use /ladsapi help for commands.");
         };
@@ -263,6 +265,39 @@ public final class LadsCommandHandler {
         return List.of("§aCleared all API overrides for " + handle.name());
     }
 
+    /** /ladsapi scope <player> <name> [seconds|off]: switches a rules.yml scope on (for good or for some seconds) or off. */
+    private static List<String> handleScope(LadsCore core, String[] args) {
+        if (args.length < 3) {
+            return List.of("§cUsage: /ladsapi scope <player> <name> [seconds|off]");
+        }
+        LadsPlayerHandle handle = findOnlinePlayer(core, args[1]);
+        if (handle == null) {
+            return List.of("§cPlayer not found: " + args[1]);
+        }
+        Optional<LadsPlayer> optLp = LadsClientAPI.get().player(handle.uuid());
+        if (optLp.isEmpty()) {
+            return List.of("§cPlayer " + handle.name() + " is not running Lads Client.");
+        }
+        LadsPlayer lp = optLp.get();
+        String name = args[2].toLowerCase();
+        if (args.length >= 4 && "off".equalsIgnoreCase(args[3])) {
+            if (!lp.scopes().contains(name)) return List.of("§e" + handle.name() + " is not in scope " + name);
+            lp.scope(name).end();
+            return List.of("§aScope " + name + " ended for " + handle.name());
+        }
+        long seconds = 0;
+        if (args.length >= 4) {
+            try {
+                seconds = Long.parseLong(args[3]);
+            } catch (NumberFormatException e) {
+                return List.of("§cNot a number of seconds: " + args[3]);
+            }
+        }
+        lp.scope(name).expireIn(seconds);
+        String note = core.sessionManager().getRules().getScopes().containsKey(name) ? "" : " §7(rules.yml has no scopes." + name + ": no rules yet)";
+        return List.of("§aScope " + name + " on for " + handle.name() + (seconds > 0 ? " for " + seconds + " s" : "") + note);
+    }
+
     private static LadsPlayerHandle findOnlinePlayer(LadsCore core, String nameOrUuid) {
         if (core.platform().online() == null) return null;
         for (LadsPlayerHandle h : core.platform().online()) {
@@ -289,12 +324,12 @@ public final class LadsCommandHandler {
     public static List<String> suggest(LadsCore core, String[] args, List<String> playerNames) {
         if (args == null || args.length <= 1) {
             String prefix = (args == null || args.length == 0) ? "" : args[0];
-            return filterMatching(List.of("reload", "status", "inspect", "set", "clear"), prefix);
+            return filterMatching(List.of("reload", "status", "inspect", "set", "clear", "scope"), prefix);
         }
 
         String sub = args[0].toLowerCase();
         if (args.length == 2) {
-            if ("inspect".equals(sub) || "set".equals(sub) || "clear".equals(sub)) {
+            if ("inspect".equals(sub) || "set".equals(sub) || "clear".equals(sub) || "scope".equals(sub)) {
                 return filterMatching(playerNames != null ? playerNames : Collections.emptyList(), args[1]);
             }
             return Collections.emptyList();

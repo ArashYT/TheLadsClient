@@ -25,6 +25,10 @@ public final class LadsSession {
     private final SessionManager manager;
     private final RateLimiter rateLimiter = new RateLimiter(8);
     private final Map<String, ModuleRule> apiOverrides = new LinkedHashMap<>();
+    /** Active scopes, oldest first: name (lower case) -> rules set through the API for it. Guarded by apiOverrides. */
+    private final Map<String, Map<String, ModuleRule>> scopes = new LinkedHashMap<>();
+    /** Scope name -> its newest timer: an older timer that fires finds another number and does nothing. */
+    private final Map<String, Integer> scopeTimers = new java.util.HashMap<>();
     private final LadsPlayerImpl ladsPlayer;
 
     private volatile int rev = 0;
@@ -114,13 +118,18 @@ public final class LadsSession {
         rev++;
         syncedWorld = handle.world();
         Map<String, ModuleRule> overridesCopy;
+        Map<String, Map<String, ModuleRule>> scopesCopy = new LinkedHashMap<>();
         synchronized (apiOverrides) {
             overridesCopy = new LinkedHashMap<>(apiOverrides);
+            for (Map.Entry<String, Map<String, ModuleRule>> e : scopes.entrySet()) {
+                scopesCopy.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
+            }
         }
         String json = PolicyBuilder.buildPolicyJson(
                 manager.getRules(),
                 manager.getConfig(),
                 handle,
+                scopesCopy,
                 overridesCopy,
                 rev
         );
@@ -159,26 +168,102 @@ public final class LadsSession {
     }
 
     public void setApiOverrideModuleState(String module, String state) {
-        synchronized (apiOverrides) {
-            apiOverrides.computeIfAbsent(module, k -> new ModuleRule()).setState(state);
-        }
+        setScopeModuleState(null, module, state);
     }
 
     public void setApiOverrideOptionLimit(String module, String option, double min, double max) {
+        setScopeOptionLimit(null, module, option, min, max);
+    }
+
+    public void setApiOverrideOptionForce(String module, String option, Object value) {
+        setScopeOptionForce(null, module, option, value);
+    }
+
+    // ---- scopes: named rule layers under the API overrides. A null scope name means the API overrides themselves. ----
+
+    public static String scopeKey(String scope) {
+        return scope == null ? "" : scope.trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /** Caller holds apiOverrides. Entering a scope that is already active keeps its place and its rules. */
+    private Map<String, ModuleRule> layer(String scope) {
+        return scope == null ? apiOverrides : scopes.computeIfAbsent(scopeKey(scope), k -> new LinkedHashMap<>());
+    }
+
+    /** Switches the scope on (rules.yml scopes.<name> plus whatever the API adds to it). False when it was on already. */
+    public boolean enterScope(String scope) {
         synchronized (apiOverrides) {
-            ModuleRule mr = apiOverrides.computeIfAbsent(module, k -> new ModuleRule());
+            boolean fresh = !scopes.containsKey(scopeKey(scope));
+            layer(scope);
+            return fresh;
+        }
+    }
+
+    /** Switches the scope off, with its API rules and its timer. False when it was not on. */
+    public boolean endScope(String scope) {
+        synchronized (apiOverrides) {
+            scopeTimers.remove(scopeKey(scope));
+            return scopes.remove(scopeKey(scope)) != null;
+        }
+    }
+
+    public java.util.List<String> scopeNames() {
+        synchronized (apiOverrides) {
+            return new java.util.ArrayList<>(scopes.keySet());
+        }
+    }
+
+    /** Ends the scope by itself after this many seconds and sends the policy without it; 0 or less cancels a running timer. */
+    public void expireScope(String scope, long seconds) {
+        String key = scopeKey(scope);
+        int timer;
+        synchronized (apiOverrides) {
+            layer(scope);
+            timer = scopeTimers.merge(key, 1, Integer::sum);
+        }
+        if (seconds <= 0) return;
+        manager.getPlatform().runLater(() -> {
+            synchronized (apiOverrides) {
+                Integer newest = scopeTimers.get(key);
+                if (newest == null || newest != timer) return;
+                scopeTimers.remove(key);
+                if (scopes.remove(key) == null) return;
+            }
+            if (manager.getSessions().get(handle.uuid()) == this) sendPolicy(); // not after the player left
+        }, (int) Math.min(Integer.MAX_VALUE, seconds * 20));
+    }
+
+    public void setScopeModuleState(String scope, String module, String state) {
+        synchronized (apiOverrides) {
+            layer(scope).computeIfAbsent(module, k -> new ModuleRule()).setState(state);
+        }
+    }
+
+    public void setScopeOptionLimit(String scope, String module, String option, double min, double max) {
+        synchronized (apiOverrides) {
+            ModuleRule mr = layer(scope).computeIfAbsent(module, k -> new ModuleRule());
             RuleOption opt = mr.getOptions().computeIfAbsent(option, k -> new RuleOption());
             if (!Double.isNaN(min)) opt.setMin(min);
             if (!Double.isNaN(max)) opt.setMax(max);
         }
     }
 
-    public void setApiOverrideOptionForce(String module, String option, Object value) {
+    public void setScopeOptionForce(String scope, String module, String option, Object value) {
         synchronized (apiOverrides) {
-            ModuleRule mr = apiOverrides.computeIfAbsent(module, k -> new ModuleRule());
+            ModuleRule mr = layer(scope).computeIfAbsent(module, k -> new ModuleRule());
             RuleOption opt = mr.getOptions().computeIfAbsent(option, k -> new RuleOption());
             opt.setValue(value);
             opt.setLock(true);
+        }
+    }
+
+    /** Drops the scope's API rules for one module (null = all of them); the scope itself stays on. */
+    public void clearScopeRules(String scope, String module) {
+        synchronized (apiOverrides) {
+            Map<String, ModuleRule> rules = scopes.get(scopeKey(scope));
+            if (rules == null) return;
+            if (module == null) rules.clear();
+            else rules.remove(module);
         }
     }
 
