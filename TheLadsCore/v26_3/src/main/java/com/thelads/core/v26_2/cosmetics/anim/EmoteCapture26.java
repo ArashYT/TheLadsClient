@@ -45,6 +45,11 @@ public final class EmoteCapture26 {
     private static final List<Float> stopWeights = new ArrayList<>();
     private static long walkAt;
     private static boolean stoppedSeen;
+    // planSolo: its emote once it plays, the other two players, the last frame's time into the emote and how many were photographed
+    private static Emote solo;
+    private static RemotePlayer[] soloOthers;
+    private static double soloShot;
+    private static int soloFrames;
 
     private EmoteCapture26() {}
 
@@ -56,8 +61,10 @@ public final class EmoteCapture26 {
         if (mc.player == null || mc.getSingleplayerServer() == null) return;
         out = game.getParent().resolve("emote1911").resolve("26.3");
         startedAt = System.currentTimeMillis();
+        Emote solo = EmoteLibrary.get(System.getenv("LADS_QA_EMOTE")); // an emote id instead of 1: that emote alone (planSolo)
+        if (solo != null) out = out.resolve(solo.id.replace(':', '-'));
         LOGGER.info("Lads emote capture BEGIN: {}", out);
-        plan(mc, game);
+        if (solo != null) planSolo(mc, solo); else plan(mc, game);
         com.thelads.core.client.qa.QaProgress.begin("emotes", STEPS.values().stream().mapToInt(List::size).sum()); // one bar step per scheduled action
     }
 
@@ -226,6 +233,78 @@ public final class EmoteCapture26 {
         });
     }
 
+    /**
+     * LADS_QA_EMOTE=&lt;emote id&gt; (lads:twerk): that emote alone, one loop in 64 frames from behind (F5 back) after a first loop, with
+     * two client-side players in step beside us: the left one seen from its side, the right one from the back three-quarter.
+     */
+    private static void planSolo(Minecraft mc, Emote emote) {
+        UUID self = mc.player.getUUID();
+        RemotePlayer[] others = new RemotePlayer[2];
+        at(0, () -> {
+            command("time set noon"); command("weather clear"); command("clear @p"); command("effect clear @p");
+            command("tp @p ~40 ~ ~");
+            mc.gui.hud.getChat().clearMessages(false);
+            hudWas = mc.gui.hud.isHidden();
+        });
+        at(1500, () -> {
+            mc.player.setYRot(180); mc.player.setYHeadRot(180); mc.player.setYBodyRot(180); mc.player.setXRot(0);
+            mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+            hud(mc, true);
+            double yaw = Math.toRadians(mc.player.getYRot());
+            float[] turn = {90, -40};
+            for (int i = 0; i < 2; i++) {
+                RemotePlayer other = others[i] = new RemotePlayer(mc.level, new GameProfile(UUID.randomUUID(), "LadsDancer" + i));
+                other.setId(-1911 - i);
+                double right = i == 0 ? -1.8 : 1.8;
+                other.snapTo(mc.player.getX() - Math.cos(yaw) * right, mc.player.getY(), mc.player.getZ() - Math.sin(yaw) * right, mc.player.getYRot() + turn[i], 0);
+                other.setYHeadRot(other.getYRot()); other.setYBodyRot(other.getYRot());
+                mc.level.addEntity(other);
+            }
+        });
+        at(2500, () -> {
+            Emotes.playLocal(self, emote.id);
+            for (RemotePlayer other : others) Emotes.onRemote(other.getUUID(), emote.id, 0);
+            soloOthers = others;
+            solo = emote; // soloFrame takes over: it goes by the emote's own clock, so a stutter here cannot shift the frames
+        });
+    }
+
+    /** planSolo, each completed frame: the second loop photographed (every 40 ms at most, named by its ms into the loop), then the end. */
+    private static void soloFrame(Minecraft mc, RenderTarget target) {
+        UUID self = mc.player.getUUID();
+        Emotes.Playing playing = Emotes.get(self);
+        EmotePose pose = EmoteAnimator.pose(self, false, 0, 0, 0);
+        double t = playing == null || pose == null ? Double.MAX_VALUE : EmoteAnimator.now() - playing.startMs();
+        if (t < solo.periodMs) return;
+        if (t < 2 * solo.periodMs) {
+            if (t - soloShot < 40) return;
+            soloShot = t;
+            if (soloFrames++ == 0) {
+                check(solo.id.equals(playing.id()) && pose.weight == 1, solo.name + " plays, blended fully in (weight " + pose.weight + ")");
+                boolean posed = true;
+                for (RemotePlayer other : soloOthers) posed &= EmoteAnimator.pose(other.getUUID(), true, other.getX(), other.getY(), other.getZ()) != null;
+                check(posed, "both other players are posed with " + solo.name);
+            }
+            String name = String.format(Locale.ROOT, "3p-back-%04d", Math.round(t - solo.periodMs));
+            LOGGER.info(String.format(Locale.ROOT, "Lads emote capture frame %s: body rx %.1f, legs rx %.1f / %.1f, legs rz %.1f / %.1f, head ry %.1f (degrees)", name,
+                deg(pose, Emote.BODY, Emote.RX), deg(pose, Emote.RIGHT_LEG, Emote.RX), deg(pose, Emote.LEFT_LEG, Emote.RX),
+                deg(pose, Emote.RIGHT_LEG, Emote.RZ), deg(pose, Emote.LEFT_LEG, Emote.RZ), deg(pose, Emote.HEAD, Emote.RY)));
+            save(target, name);
+            return;
+        }
+        check(playing != null && !playing.stopping() && soloFrames >= 20, solo.name + " still plays after two loops; " + soloFrames + " frames of the second loop photographed");
+        for (RemotePlayer other : soloOthers) { Emotes.onRemote(other.getUUID(), null, 0); other.discard(); }
+        Emotes.stopLocal(self);
+        mc.options.setCameraType(CameraType.FIRST_PERSON);
+        hud(mc, hudWas);
+        solo = null;
+        done = true;
+        com.thelads.core.client.qa.QaProgress.done();
+        LOGGER.info("Lads emote capture END: {} passed, {} failed; frames in {}", passed, failed, out);
+    }
+
+    private static double deg(EmotePose pose, int part, int axis) { return Math.toDegrees(pose.v[Emote.ch(part, axis)]); }
+
     /** Walk forward at {@code at}: the emote must blend out; every frame for 600 ms is photographed with its weight logged. */
     private static void walk(Minecraft mc, UUID self, long at, String name) {
         at(at - 1, () -> { stopWeights.clear(); stoppedSeen = false; });
@@ -294,6 +373,7 @@ public final class EmoteCapture26 {
         }
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
+        if (solo != null) { soloFrame(mc, target); return; }
         Emotes.Playing playing = Emotes.get(mc.player.getUUID());
         if (walkAt > 0 && playing != null && playing.stopping()) stoppedSeen = true;
         String name;
@@ -304,6 +384,10 @@ public final class EmoteCapture26 {
             stopWeights.add(weight);
             LOGGER.info("Lads emote capture frame {}: {} ms after the walk key, weight {}", name, System.currentTimeMillis() - walkAt, String.format(Locale.ROOT, "%.3f", weight));
         } else if ((name = shots.poll()) == null) return;
+        save(target, name);
+    }
+
+    private static void save(RenderTarget target, String name) {
         Path file = out.resolve(name + ".png");
         net.minecraft.client.Screenshot.takeScreenshot(target, image -> {
             try (image) {
