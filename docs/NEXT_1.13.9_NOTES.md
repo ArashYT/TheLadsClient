@@ -83,6 +83,15 @@ API = LadsClientAPI/common/src/main/java/com/thelads/ladsapi. Core = TheLadsCore
 - Spectators are SURVIVAL, flying and invisible, moved into the target's eyes; the hotbar is mirrored by packets. No lads:api message says "you are spectating".
 - Client: 26.3 only (feature\PovCamera.java, mixin\PovHudMixin.java, commit 9cacfc419).
 - Needed: a lads:api spectate message (target, mode) so the client can run a real camera, HUD and target switcher, with the packet tricks kept as the vanilla fallback.
+- Built 11-10 (wire: LadsClientAPI/docs/PROTOCOL.md section 7):
+  - Server -> client `spectate` (mode pov/free/off, target uuid, HUD name, switch); client -> server only `act: next|prev` on a key press while the server offered the switch. The client names no player. State is dropped on hello, reset, server switch and disconnect; the plugin sends it again after a world change.
+  - Plugin API: `LadsPlayer.spectate/spectateFree/spectateEnd` (a repeat sends nothing), Paper `LadsSpectateRequestEvent`, `LadsPlayer.can("spectate")` (1.3.1, from the client hello's `caps`).
+  - Client: common `ladsapi\SpectateState`, `LadsApiClient.spectateRequest` and `capability(...)`; 26.3 `feature\Spectate26` (camera hold, input lock in POV, bar, keys) on top of PovCamera/PovHudMixin. A version says `caps: ["spectate"]` only where that code is registered.
+  - PvPArena: `listeners\LadsSpectateBridge.java` (sync every 5 ticks and before each camera packet; next/previous over the same targets /spectate offers, the fighters of a running duel first). `CombatMechanics.selfCameraPov` is false for a client that said `spectate`: it gets the vanilla camera packet (the `pov.java-self-camera: false` path) instead of being moved into the target's eyes with the target hidden. Everyone else: unchanged.
+  - Server files, backups, the deploy script and the plan: `C:\Servers\staging\lads-spectate-2026-11-10`. The PvPArena build writes the live jar: build and restart in one go and only on an empty lobby. On 11-10 16:27-16:30 the jars were swapped under the running server with a player online: `ShieldMechanics$2` failed to load (NoClassDefFoundError on every shield break) and kept failing after the old jars were put back, until `pluginmanager reload PvPArena` at 16:32.
+  - Never `spawnnpc clear` on the live lobby (it removes every arena bot and empties saved_npcs.yml).
+  - In-game recipe (cyrax-pc, account TTVArashLIVE, scripts in `C:\Users\Administrator\lads-qa-t28` on arash-hp: prep, start, log, cleanup): `/spectate` in the arena gives free flight, Right/Left arrow ask for a target, in POV the mouse buttons switch, sneak leaves POV, `/spawn` ends it. The log lines start with "Lads spectate:". Screenshots: F2 through ingame-drive.ps1 (a window capture is black there).
+  - Not ported: 26.2, 1.21.11, 1.20.1, 1.8.9 (they need PovCamera, the HUD-player mixin, the mouse lock and the bar; each mixin needs a game start).
 
 ## ModSync (task 6)
 - Invites and joins: cosmetics-server/social.py; Core\client\social (SocialState, HostSession, GuestSession, p2p\Mux).
