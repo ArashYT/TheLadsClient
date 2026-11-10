@@ -113,6 +113,10 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
 - Client 1.13.9: when the server hello carried `nonce` and `sid`, one more hello follows once the relay answered, the same
   fields plus `"token":"v1.<exp>.<sig>"` (section 6). At most one per answered server hello. An older plugin ignores it: its
   session is acked already.
+- Client 1.13.9, optional `"caps":["spectate"]`: what this build of the client does itself. It names code that is in the
+  game version, never a setting, a mod or anything about the player. `spectate`: section 7. The plugin (1.3.1) keeps at most
+  16 names of `[a-z0-9_-]{1,24}` from the first hello it accepts and skips the rest (`LadsPlayer.can`). It is said, not
+  proven: a plugin picks how to show something by it and grants nothing for it.
 
 ### ack
 ```json
@@ -217,6 +221,14 @@ Client -> server:
   (or with nothing). Sent only when the player presses the key, at most one per 200 ms, and only while the current state is
   not `off` and has `switch`. The plugin drops it from a session that was not offered the switch.
 - With `proxy-rules: true` the proxy takes every client message, so the request never reaches a backend: no switcher there.
+
+Which camera the game plugin uses (plugin 1.3.1):
+- A client that does not say `caps: ["spectate"]` (vanilla, Bedrock, an older Lads Client, a game version without the camera
+  code) is shown the plugin's own spectator mode, unchanged. PvPArena moves that spectator into the target's eyes every tick,
+  because a vanilla client with its camera on another player draws only that player's held item.
+- A client that says it gets the vanilla camera packet on the target instead. It holds the camera there and draws hotbar,
+  hearts and bars from its own player, which the server fills with the target's as before. The plugin sends this client
+  nothing a vanilla client would not get in the same mode (PvPArena: `pov.java-self-camera: false`).
 
 What stays as it is:
 - No information is added. The client learns one uuid, of an entity the server already shows it and already points its camera

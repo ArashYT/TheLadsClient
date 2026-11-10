@@ -64,6 +64,8 @@ public final class LadsApiClient {
     /** Spectate target requests: a held key or a fast double click asks once. */
     static final long SPECTATE_REQUEST_GAP_MS = 200;
     private static long spectateAsked = 0;
+    /** What this game version does itself, named in every hello reply as "caps" (PROTOCOL.md section 3). Code, never a setting. */
+    static final java.util.Set<String> capabilities = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private static double rateTokens = RATE_BURST;
     private static long rateLast = 0;
     private static Long lastHashedSeed = null;
@@ -198,7 +200,21 @@ public final class LadsApiClient {
         reply.addProperty("v", 1);
         reply.addProperty("lads", LadsVersion.VERSION);
         reply.addProperty("mc", minecraftVersion != null ? minecraftVersion : "");
+        if (!capabilities.isEmpty()) {
+            com.google.gson.JsonArray caps = new com.google.gson.JsonArray();
+            for (String cap : new java.util.TreeSet<>(capabilities)) caps.add(cap);
+            reply.add("caps", caps);
+        }
         return reply;
+    }
+
+    /**
+     * Called once at startup by a version that has the code, e.g. capability("spectate") where the spectator camera is
+     * registered. A server may then leave that part to the client (PvPArena sends the camera packet instead of moving the
+     * spectator into the target's eyes), so a version without the code must not say it.
+     */
+    public static void capability(String name) {
+        if (name != null && name.matches("[a-z0-9_-]{1,24}")) capabilities.add(name);
     }
 
     /** A hello's nonce or server id: 16-64 hex characters, or null. They go to the relay and into what it signs. */

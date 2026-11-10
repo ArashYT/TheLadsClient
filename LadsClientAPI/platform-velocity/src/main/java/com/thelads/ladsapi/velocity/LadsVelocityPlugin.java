@@ -27,7 +27,7 @@ import java.nio.file.Path;
 @Plugin(
         id = "ladsclientapi",
         name = "LadsClientAPI",
-        version = "1.3.0",
+        version = "1.3.1",
         description = "Lads Client integration for Velocity",
         authors = {"The Lads"}
 )

@@ -347,6 +347,7 @@ public final class SessionManager implements LadsClientAPI {
                 } else {
                     session.setHelloAcked(true);
                     session.setLads(true, ladsVersion, mcVersion);
+                    session.setClientCaps(clientCaps(root));
                     sendFull = true;
                     listeners = new ArrayList<>(readyListeners);
                     if (config.isBadgePresence()) {
@@ -439,6 +440,21 @@ public final class SessionManager implements LadsClientAPI {
     private static String text(JsonObject o, String key) {
         JsonElement e = o.get(key);
         return e != null && e.isJsonPrimitive() && e.getAsJsonPrimitive().isString() ? e.getAsString() : null;
+    }
+
+    /** The hello's {@code caps} (PROTOCOL.md section 3): at most 16 short lower-case names, everything else in it is skipped. */
+    private static java.util.Set<String> clientCaps(JsonObject root) {
+        JsonElement e = root.get("caps");
+        if (e == null || !e.isJsonArray()) return java.util.Set.of();
+        java.util.Set<String> out = new java.util.HashSet<>();
+        int seen = 0;
+        for (JsonElement cap : e.getAsJsonArray()) {
+            if (++seen > 64 || out.size() >= 16) break;
+            if (!cap.isJsonPrimitive() || !cap.getAsJsonPrimitive().isString()) continue;
+            String name = cap.getAsString();
+            if (name.matches("[a-z0-9_-]{1,24}")) out.add(name);
+        }
+        return java.util.Set.copyOf(out);
     }
 
     /** An int field, or {@code fallback} when it is missing, not a number or not a whole number in int range. */

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "ladsclientapi",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "name": "LadsClientAPI",
   "description": "Server-side companion for The Lads Client.",
   "environment": "server",
