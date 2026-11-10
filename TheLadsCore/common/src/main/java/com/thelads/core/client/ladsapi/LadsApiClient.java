@@ -61,6 +61,9 @@ public final class LadsApiClient {
     /** Incoming messages: 8 a second on average, bursts of 16 (a plugin's join-time overrides arrive together, the newest last). */
     static final int RATE_PER_SECOND = 8, RATE_BURST = 16;
     static LongSupplier clock = System::currentTimeMillis;
+    /** Spectate target requests: a held key or a fast double click asks once. */
+    static final long SPECTATE_REQUEST_GAP_MS = 200;
+    private static long spectateAsked = 0;
     private static double rateTokens = RATE_BURST;
     private static long rateLast = 0;
     private static Long lastHashedSeed = null;
@@ -133,7 +136,24 @@ public final class LadsApiClient {
             handlePresence(json);
         } else if ("toast".equalsIgnoreCase(type) || "notification".equalsIgnoreCase(type)) {
             handleToast(json);
+        } else if ("spectate".equalsIgnoreCase(type)) {
+            SpectateState.set(SpectateState.parse(json));
         }
+    }
+
+    /**
+     * The player pressed the key for the next or previous spectate target (PROTOCOL.md section 7). Goes out only while this
+     * server says the player is spectating and offered the switch, at most once per {@link #SPECTATE_REQUEST_GAP_MS}. The server
+     * picks the target: the request names nobody. Returns whether it was sent.
+     */
+    public static boolean spectateRequest(boolean next) {
+        SpectateState state = SpectateState.active();
+        if (!sessionOk || !state.on() || !state.canSwitch) return false;
+        long now = clock.getAsLong();
+        if (now - spectateAsked < SPECTATE_REQUEST_GAP_MS && now >= spectateAsked) return false;
+        spectateAsked = now;
+        sendPayload(("{\"t\":\"spectate\",\"act\":\"" + (next ? "next" : "prev") + "\"}").getBytes(StandardCharsets.UTF_8));
+        return true;
     }
 
     private static void handleHello(JsonObject json) {
@@ -141,6 +161,7 @@ public final class LadsApiClient {
         ServerPolicy.set(null);
         LadsPresence.serverClear();
         LadsApiUi.policyCleared();
+        SpectateState.clear();
         sessionOk = false;
 
         String name = "";
@@ -309,6 +330,7 @@ public final class LadsApiClient {
         ServerPolicy.set(null);
         LadsPresence.serverClear();
         LadsApiUi.policyCleared();
+        SpectateState.clear();
         networkGame = "";
         helloReplies = 0;
     }
@@ -333,6 +355,7 @@ public final class LadsApiClient {
         networkHub = "";
         rateTokens = RATE_BURST;
         rateLast = 0;
+        spectateAsked = 0;
         lastHashedSeed = null;
         lastDimension = null;
         seededRespawn = false;

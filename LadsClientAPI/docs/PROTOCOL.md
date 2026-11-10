@@ -97,6 +97,12 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
 ```
 - Drop policy and presence now. Sent by a proxy install on every `ServerPostConnectEvent`, and by a server on plugin disable.
 
+### spectate
+```json
+{"t":"spectate","mode":"pov","target":"069a79f4-44e9-4726-a5be-fca90e38aaf5","name":"Steve","switch":true}
+```
+- Plugin 1.3.0, client 1.13.9; section 7. Older clients ignore it and follow the server's camera packets as before.
+
 ## 3. Client -> server
 
 ### hello (reply only)
@@ -116,6 +122,12 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
   `refused`: forced changes the player turned off with "Let servers change my Lads settings" (only `on` and `value` rules are
   refusable; `block`, `min`/`max`, `choices` always apply), max 64.
 
+### spectate (request)
+```json
+{"t":"spectate","act":"next"}
+```
+- Client 1.13.9; section 7. Only on a key press, and only while the server's `spectate` state offers `switch`. An older plugin ignores it.
+
 ## 4. Client state rules
 
 - One `ServerPolicy` snapshot (or none) + one presence set + `serverName` + `sessionOk` flag (set by a valid server hello).
@@ -127,6 +139,7 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
 - Dimension change (e.g. 1.8.9 JoinGame/Respawn): strips by-name `allow` rules (anti-ban), keeping blocks and limits.
 - Rate limit: token bucket with refill rate of 8 incoming messages per second and a burst capacity of 16 tokens; extra messages dropped (the next full `policy` fixes any gap).
 - Nothing from a policy is ever written to disk. Config files only ever hold the player's own values.
+- The spectate state (section 7) goes wherever the policy goes: on a server `hello`, a reset, a server switch and a disconnect.
 
 ## 5. Version handling
 
@@ -172,3 +185,47 @@ plugin takes it at any time in the session. A world change on the same server ke
 - The limit: a token proves that a Mojang-proven session of this account is connected to the Lads relay right now. It does not
   prove which program runs on the player's PC, and nothing can on a PC the player owns: someone who rebuilds the relay
   protocol with their own account gets a token too. It stops the cheap fakes (a copied hello, a brand, a channel).
+
+## 7. Spectating (plugin 1.3.0, client 1.13.9)
+
+A game plugin's spectator mode is made of ordinary packets: the spectator flies invisible, the server points the camera at the
+watched player (`SetCamera`) and mirrors that player's hotbar and health. That keeps working for every client. The `spectate`
+message only tells a Lads Client what those packets mean, so it can hold the camera, draw a spectator HUD and offer keys for
+the next and previous target. v stays 1: one new message type each way, which older plugins and clients ignore.
+
+Server -> client, the full state every time (never a diff):
+```json
+{"t":"spectate","mode":"pov","target":"069a79f4-44e9-4726-a5be-fca90e38aaf5","name":"Steve","switch":true}
+{"t":"spectate","mode":"free","switch":true}
+{"t":"spectate","mode":"off"}
+```
+- `mode`: `pov` (the camera is in the target's eyes), `free` (spectating in free flight, no target), `off`.
+- `target` (pov): uuid, dashed or 32 hex, of the player entity the server's camera packet points at. The client attaches its
+  camera to that entity while it is in its world, and to nothing else.
+- `name`: optional text for the HUD, <= 32 chars (the client cuts it and strips formatting codes). Without it the HUD shows the
+  entity's own name. An NPC's shown name can differ from its entity name.
+- `switch`: optional, `true` when the server takes the request below. Anything but a JSON `true` is false.
+- A message the client cannot use is `off`: an unknown `mode` from a newer plugin, a `pov` without a valid `target`.
+- The plugin sends a state only when it differs from the last one, and sends the current one again after every later `hello` of
+  the session (a world change), because the client dropped it there.
+
+Client -> server:
+```json
+{"t":"spectate","act":"next"}
+```
+- `act`: `next` or `prev`. Nothing else: the client names no player, the server picks the target and answers with a new state
+  (or with nothing). Sent only when the player presses the key, at most one per 200 ms, and only while the current state is
+  not `off` and has `switch`. The plugin drops it from a session that was not offered the switch.
+- With `proxy-rules: true` the proxy takes every client message, so the request never reaches a backend: no switcher there.
+
+What stays as it is:
+- No information is added. The client learns one uuid, of an entity the server already shows it and already points its camera
+  at, and a name for it. It gets no positions, no inventories, no list of players. Hotbar, health and effects on screen are
+  the ones the server mirrors to every spectator.
+- The client does nothing by itself: no camera change without a state from the server in this session, no packet without a
+  key press. Leaving is the game plugin's own way (PvPArena: sneak), which a vanilla client has too.
+- The client never sends first: the request follows a server `hello` and a server `spectate` of the same session.
+
+For servers: `LadsPlayer.spectate(target, name, canSwitch)`, `spectateFree(canSwitch)`, `spectateEnd()`; a call that changes
+nothing sends nothing, so a spectator loop may call it every tick. Paper fires `LadsSpectateRequestEvent` (`isNext()`); other
+platforms use `SessionManager.addSpectateListener`.

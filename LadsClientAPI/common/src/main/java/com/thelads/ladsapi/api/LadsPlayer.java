@@ -49,4 +49,19 @@ public interface LadsPlayer {
 
     /** Sends the current policy again. */
     void resend();
+
+    /**
+     * Tells the client it now watches through {@code target}'s eyes (PROTOCOL.md section 7), so it can hold the camera there and
+     * draw its spectator HUD. The camera packet, hotbar and health still come from the game plugin as for any other client: this
+     * only names what the server shows this player anyway. {@code name} is the text for the HUD (null = the entity's own name).
+     * {@code canSwitch}: the client may ask for the next or previous target (Paper: LadsSpectateRequestEvent). A call that
+     * changes nothing sends nothing, so it may run in a loop.
+     */
+    void spectate(UUID target, String name, boolean canSwitch);
+
+    /** Spectating without a target (free flight). */
+    void spectateFree(boolean canSwitch);
+
+    /** Not spectating any more. Also right when the player was never spectating. */
+    void spectateEnd();
 }

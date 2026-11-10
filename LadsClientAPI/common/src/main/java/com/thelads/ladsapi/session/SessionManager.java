@@ -20,6 +20,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
@@ -36,6 +37,7 @@ public final class SessionManager implements LadsClientAPI {
     private final Map<UUID, LadsSession> sessions = new ConcurrentHashMap<>();
     private final List<Consumer<LadsPlayer>> readyListeners = new ArrayList<>();
     private final List<Consumer<LadsPlayer>> verifiedListeners = new ArrayList<>();
+    private final List<BiConsumer<LadsPlayer, String>> spectateListeners = new ArrayList<>();
     private final Object lock = new Object();
     /** Names this server in every hello and in the relay's token; new on every start, it says nothing about the server. */
     private final String serverId = LadsSession.randomId();
@@ -64,6 +66,13 @@ public final class SessionManager implements LadsClientAPI {
     public void addVerifiedListener(Consumer<LadsPlayer> listener) {
         synchronized (lock) {
             verifiedListeners.add(listener);
+        }
+    }
+
+    /** Called with "next" or "prev" when a spectating client asks for another target (PROTOCOL.md section 7). */
+    public void addSpectateListener(BiConsumer<LadsPlayer, String> listener) {
+        synchronized (lock) {
+            spectateListeners.add(listener);
         }
     }
 
@@ -243,6 +252,7 @@ public final class SessionManager implements LadsClientAPI {
         if (config.isBadgePresence()) {
             s.sendPresence(true, getAllLadsPlayerUuids(), Collections.emptyList());
         }
+        s.resendSpectate();
     }
 
     public void receive(LadsPlayerHandle handle, byte[] payload) {
@@ -284,6 +294,30 @@ public final class SessionManager implements LadsClientAPI {
             handleHello(session, handle, root);
         } else if ("ack".equalsIgnoreCase(type)) {
             handleAck(session, handle, root);
+        } else if ("spectate".equalsIgnoreCase(type)) {
+            handleSpectate(session, root);
+        }
+    }
+
+    /**
+     * PROTOCOL.md section 7: the player pressed the key for the next or previous target. Only from a client this server told it
+     * may ask; the game plugin that hears it picks the target, so the client names nobody.
+     */
+    private void handleSpectate(LadsSession session, JsonObject root) {
+        String act = text(root, "act");
+        if (!session.isLads() || !session.isSpectateSwitch() || (!"next".equals(act) && !"prev".equals(act))) return;
+        List<BiConsumer<LadsPlayer, String>> listeners;
+        synchronized (lock) {
+            listeners = new ArrayList<>(spectateListeners);
+        }
+        for (BiConsumer<LadsPlayer, String> listener : listeners) {
+            try {
+                listener.accept(session.getLadsPlayer(), act);
+            } catch (Throwable t) {
+                if (platform.logger() != null) {
+                    platform.logger().warning("[LadsClientAPI] Error in spectate listener: " + t.getMessage());
+                }
+            }
         }
     }
 
