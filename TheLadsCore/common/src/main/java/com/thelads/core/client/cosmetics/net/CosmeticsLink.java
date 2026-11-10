@@ -53,11 +53,13 @@ public final class CosmeticsLink {
     /** Where the link should be: who we are and which server room (no room: up only to prove the client); null = disconnected. */
     record Want(UUID self, String room) {}
 
-    /** A server's request for proof (PROTOCOL.md section 6): asked of the relay once per connection, gone when answered or too old. */
+    /**
+     * A server's request for proof (PROTOCOL.md section 6): asked of the relay once per connection, gone when answered, when the
+     * relay stays silent or when that server is gone. A link that is still coming up is waited for: it can take a minute.
+     */
     static final class Attest {
         final String nonce, sid;
-        final long until = System.currentTimeMillis() + ATTEST_WAIT_MS;
-        boolean sent; // link thread only
+        volatile long sentAt; // when this connection asked; 0: not yet
 
         Attest(String nonce, String sid) {
             this.nonce = nonce;
@@ -65,7 +67,7 @@ public final class CosmeticsLink {
         }
     }
 
-    static final long ATTEST_WAIT_MS = 30_000;
+    static final long ATTEST_WAIT_MS = 30_000; // for the relay's answer, from the moment it was asked
 
     private final URI endpoint; // null: a bad override turned the link off
     private final boolean local; // ws:// to this PC = QA: no Mojang join (offline accounts), QA env hooks honored
@@ -101,6 +103,8 @@ public final class CosmeticsLink {
 
     Want want() { return want; }
 
+    Attest attest() { return attest; }
+
     public void sendEquip(String slot, String itemId) {
         synchronized (lock) {
             pendingEquips.put(slot, itemId == null ? "" : itemId);
@@ -118,11 +122,12 @@ public final class CosmeticsLink {
 
     /**
      * Game thread: a server's hello asked this client to prove itself. The relay signs that Mojang proved our account to it; the
-     * link comes up for that even with both cosmetics switches off (then without a room: nothing is shared or shown).
+     * link comes up for that even with both cosmetics switches off (then without a room: nothing is shared or shown). A null
+     * nonce: that server is gone, the relay is no longer asked.
      */
     public void requestAttest(String nonce, String sid) {
         synchronized (lock) {
-            attest = new Attest(nonce, sid);
+            attest = nonce == null || sid == null ? null : new Attest(nonce, sid);
             wake();
         }
     }
@@ -136,7 +141,7 @@ public final class CosmeticsLink {
 
     private boolean attestUnsent() {
         Attest ask = attest;
-        return ask != null && !ask.sent;
+        return ask != null && ask.sentAt == 0;
     }
 
     void sample(boolean cosmeticsHere) {
@@ -144,7 +149,8 @@ public final class CosmeticsLink {
         if (done != null) LadsApiClient.attested(done[0], done[1]);
         if (++ticks % 20 != 0 || endpoint == null) return;
         Attest ask = attest;
-        if (ask != null && System.currentTimeMillis() > ask.until) attest = ask = null; // the relay never answered
+        long asked = ask == null ? 0 : ask.sentAt;
+        if (asked != 0 && System.currentTimeMillis() - asked > ATTEST_WAIT_MS) attest = ask = null; // the relay never answered
         CosmeticsModule cosmetics = CosmeticsModule.get();
         boolean show = cosmeticsHere && cosmetics.showOthers.get(), share = cosmeticsHere && cosmetics.shareMine.get();
         LadsGameBridge game = LadsGameBridge.get();
@@ -196,6 +202,8 @@ public final class CosmeticsLink {
                 failed = true;
                 LOGGER.info("Lads cosmetics: link down ({})", e.toString());
             } finally {
+                Attest waiting = attest;
+                if (waiting != null) waiting.sentAt = 0; // the next connection asks again
                 Emotes.clearRemote(w.self());
                 LadsPresence.relayClear();
             }
@@ -215,8 +223,6 @@ public final class CosmeticsLink {
             String serverId = serverId(nonce);
             JsonElement signs = challenge.get("attest"); // an older relay closes the link on a message it does not know
             boolean attests = signs != null && signs.isJsonPrimitive() && signs.getAsJsonPrimitive().isBoolean() && signs.getAsBoolean();
-            Attest waiting = attest;
-            if (waiting != null) waiting.sent = false; // a new connection asks again
             if (local) LOGGER.info("Lads cosmetics: local endpoint {}, Mojang join skipped (QA)", endpoint);
             else mojangJoin(session.accessToken(), w.self(), serverId);
             ws.sendText(json("t", "auth", "name", session.name(), "uuid", plain(w.self()), "serverId", serverId));
@@ -272,8 +278,8 @@ public final class CosmeticsLink {
                     ws.sendText(json("t", "link"));
                 }
                 Attest ask = attest;
-                if (ask != null && !ask.sent) {
-                    ask.sent = true;
+                if (ask != null && ask.sentAt == 0) {
+                    ask.sentAt = System.currentTimeMillis();
                     if (attests) ws.sendText(json("t", "attest", "nonce", ask.nonce, "sid", ask.sid));
                     else if (attest == ask) attest = null; // this relay signs nothing: the session stays unverified
                 }

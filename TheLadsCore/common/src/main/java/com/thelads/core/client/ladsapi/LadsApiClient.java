@@ -38,7 +38,8 @@ public final class LadsApiClient {
 
     /**
      * Asks the Lads relay for the token that proves this client to a server (PROTOCOL.md section 6); the answer comes back through
-     * {@link #attested}. Set by CosmeticsLink. Without one the session just stays unverified.
+     * {@link #attested}. Set by CosmeticsLink. Without one the session just stays unverified. A null nonce takes the request back:
+     * the server that asked is gone.
      */
     public interface Attestor {
         void request(String nonce, String sid);
@@ -64,6 +65,8 @@ public final class LadsApiClient {
     private static long rateLast = 0;
     private static Long lastHashedSeed = null;
     private static Integer lastDimension = null;
+    /** 1.20.1 and newer: a Respawn carries the seed, and a proxy switch always comes with a JoinGame ({@link #dimension}). */
+    private static boolean seededRespawn = false;
     private static volatile int sentBeforeHelloCount = 0;
     private static final Gson GSON = new Gson();
 
@@ -121,6 +124,7 @@ public final class LadsApiClient {
             handleHello(json);
         } else if ("reset".equalsIgnoreCase(type)) {
             handleReset();
+            dropProof();
         } else if (!sessionOk) {
             return; // policy, presence and toasts only from a server that said hello (any server can use the channel)
         } else if ("policy".equalsIgnoreCase(type)) {
@@ -307,12 +311,23 @@ public final class LadsApiClient {
         LadsApiUi.policyCleared();
         networkGame = "";
         helloReplies = 0;
+    }
+
+    /**
+     * The server whose hello waits for the relay's token is gone (another backend, a disconnect): a late token is dropped and the
+     * relay is no longer asked. A world change on the same server keeps the wait: its session and nonce are still the same.
+     */
+    private static void dropProof() {
+        if (attestNonce == null) return;
         attestNonce = null;
+        Attestor relay = attestor;
+        if (relay != null) relay.request(null, null);
     }
 
     /** Disconnect: everything from the connection goes, the session too. */
     public static void reset() {
         handleReset();
+        dropProof();
         sessionOk = false;
         serverName = "";
         networkHub = "";
@@ -320,6 +335,7 @@ public final class LadsApiClient {
         rateLast = 0;
         lastHashedSeed = null;
         lastDimension = null;
+        seededRespawn = false;
         connectionHelloReplies = 0;
         provenNonce = null;
         clock = System::currentTimeMillis;
@@ -334,12 +350,14 @@ public final class LadsApiClient {
     /** 26.3 configuration start (a backend switch, or the first join): the old backend's rules go. */
     public static void serverSwitch() {
         handleReset();
+        dropProof();
         lastHashedSeed = null;
         lastDimension = null;
     }
 
     /** Respawn packet: the rules go only when the hashed seed differs from the last one (a proxy switch or another world), not on death. */
     public static void respawn(long hashedSeed) {
+        seededRespawn = true;
         if (lastHashedSeed == null || lastHashedSeed.longValue() != hashedSeed) {
             handleReset();
             lastHashedSeed = hashedSeed;
@@ -355,6 +373,7 @@ public final class LadsApiClient {
         if (lastDimension != null && lastDimension != dimension) {
             ServerPolicy policy = ServerPolicy.active();
             if (policy != null) ServerPolicy.set(policy.withoutAllows());
+            if (!seededRespawn) dropProof(); // 1.8.9: this may be another backend, which never asked for the token
         }
         lastDimension = dimension;
     }
