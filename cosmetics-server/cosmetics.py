@@ -31,7 +31,7 @@ from typing import Any
 import aiohttp
 from aiohttp import web
 
-FREE = ["lads:groove", "lads:wave", "lads:clap", "lads:floss", "lads:cheer", "lads:bow", "lads:facepalm", "lads:salute", "lads:shrug", "lads:dab", "lads:taunt"]  # everyone owns these
+FREE = ["lads:groove", "lads:wave", "lads:clap", "lads:floss", "lads:cheer", "lads:bow", "lads:facepalm", "lads:salute", "lads:shrug", "lads:dab", "lads:taunt", "lads:twerk"]  # everyone owns these
 EMOTES = frozenset(FREE)  # allow-list (the client's EmoteLibrary): any other free emote id is rejected unless owned
 HAS_JOINED = "https://sessionserver.mojang.com/session/minecraft/hasJoined"
 AUTH_TIMEOUT = 15
@@ -94,6 +94,7 @@ EMOTE_NAMES: dict[str, str] = {
     "lads:shrug": "Shrug",
     "lads:dab": "Dab",
     "lads:taunt": "Taunt",
+    "lads:twerk": "Twerking",
 }
 
 

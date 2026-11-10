@@ -8,6 +8,8 @@ package com.thelads.core.client.cosmetics.anim;
  * <p>
  * Sampling also parents the head and arms to the body's rotation (their pivots turn with the torso) and moves the hips with it, then,
  * with groundLock, lifts or lowers the whole body so the lowest foot corner stands on the ground (bent "knees" read as a dip).
+ * A channel can also carry a Jiggle (a spring kicked on beats, added to its track), and plant keeps the feet where they stand, so
+ * whatever the legs do moves the hips.
  */
 public final class Emote {
     public static final int HEAD = 0, BODY = 1, RIGHT_ARM = 2, LEFT_ARM = 3, RIGHT_LEG = 4, LEFT_LEG = 5, PARTS = 6;
@@ -24,12 +26,15 @@ public final class Emote {
     public final float periodMs;
     /** The emote moves this arm, so first person shows it. */
     public final boolean rightArm, leftArm;
-    private final boolean groundLock;
+    private final boolean groundLock, plant;
     private final float[][] times, values, tangents;
     private final Ease[][] eases;
+    /** Per channel, or null when the emote has none. */
+    private final Jiggle[] jiggles;
 
     private Emote(Builder b) {
-        id = b.id; name = b.name; periodMs = b.periodMs; groundLock = b.groundLock;
+        id = b.id; name = b.name; periodMs = b.periodMs; groundLock = b.groundLock; plant = b.plant;
+        jiggles = b.jiggles;
         times = new float[CHANNELS][]; values = new float[CHANNELS][]; tangents = new float[CHANNELS][]; eases = new Ease[CHANNELS][];
         for (int c = 0; c < CHANNELS; c++) {
             java.util.TreeMap<Float, Object[]> keys = b.keys[c];
@@ -57,9 +62,14 @@ public final class Emote {
         float t = (float) (tMs % periodMs);
         if (t < 0) t += periodMs;
         for (int c = 0; c < CHANNELS; c++) out[c] = track(c, t);
+        if (jiggles != null) for (int c = 0; c < CHANNELS; c++) if (jiggles[c] != null) out[c] += jiggles[c].at(t);
         parentToBody(out);
+        if (plant) { out[ROOT] -= feet(out, X); out[ROOT + 2] -= feet(out, Z); }
         if (groundLock) out[ROOT + 1] += GROUND - lowestFoot(out);
     }
+
+    /** A channel's jiggle, or null. */
+    Jiggle jiggle(int channel) { return jiggles == null ? null : jiggles[channel]; }
 
     private float track(int c, float t) {
         float[] ts = times[c];
@@ -123,11 +133,25 @@ public final class Emote {
         return lowest;
     }
 
+    /** How far the midpoint of the two soles is from where it rests, along {@code axis} (X or Z). */
+    private static float feet(float[] o, int axis) {
+        float sum = 0;
+        for (int part = RIGHT_LEG; part <= LEFT_LEG; part++) {
+            int b = part * 6;
+            float z1 = LEG * (float) Math.sin(o[b + RX]);
+            if (axis == Z) { sum += o[b + Z] + z1 * (float) Math.cos(o[b + RY]); continue; }
+            float y1 = LEG * (float) Math.cos(o[b + RX]), x2 = z1 * (float) Math.sin(o[b + RY]);
+            sum += o[b + X] + x2 * (float) Math.cos(o[b + RZ]) - y1 * (float) Math.sin(o[b + RZ]);
+        }
+        return sum / 2;
+    }
+
     /** Tracks authored in beats and degrees. */
     public static final class Builder {
         private final String id, name;
         private final float periodMs, beatMs;
-        private boolean groundLock;
+        private boolean groundLock, plant;
+        private Jiggle[] jiggles;
         @SuppressWarnings("unchecked")
         private final java.util.TreeMap<Float, Object[]>[] keys = new java.util.TreeMap[CHANNELS];
 
@@ -136,6 +160,26 @@ public final class Emote {
         }
 
         public Builder groundLock() { groundLock = true; return this; }
+
+        /** The feet stay where they stand (the midpoint of the soles keeps its x and z): leg moves shift the hips, not the feet. */
+        public Builder plant() { plant = true; return this; }
+
+        /**
+         * A spring on one channel, added to its track: rings at {@code hz} with this damping ratio, kicked at beat, kick, beat,
+         * kick... (degrees for rotations, pixels for offsets; the first swing reaches most of the kick, then it overshoots back).
+         */
+        public Builder jiggle(int channel, float hz, float damping, float... beatKick) {
+            boolean rotation = channel < ROOT && channel % 6 < 3;
+            float[] times = new float[beatKick.length / 2], kicks = new float[times.length];
+            for (int i = 0; i < times.length; i++) {
+                float t = (beatKick[2 * i] * beatMs) % periodMs;
+                times[i] = t < 0 ? t + periodMs : t;
+                kicks[i] = rotation ? (float) Math.toRadians(beatKick[2 * i + 1]) : beatKick[2 * i + 1];
+            }
+            if (jiggles == null) jiggles = new Jiggle[CHANNELS];
+            jiggles[channel] = new Jiggle(periodMs, hz, damping, times, kicks);
+            return this;
+        }
 
         /** Keys on one channel: beat, value, beat, value... (degrees for rotations, pixels for offsets), smooth. */
         public Builder track(int channel, float... beatValue) { return track(channel, Ease.SMOOTH, beatValue); }
