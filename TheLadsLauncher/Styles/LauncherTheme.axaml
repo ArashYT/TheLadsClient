@@ -54,7 +54,7 @@
   <Style Selector="Window.motion Button">
     <Setter Property="Opacity" Value="0.92" />
     <Setter Property="Transitions">
-      <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.12" /></Transitions>
+      <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.15" /></Transitions>
     </Setter>
   </Style>
   <Style Selector="Window.motion Button:pointerover, Window.motion Button:focus-visible">
@@ -280,7 +280,7 @@
   <Style Selector="TextBlock.caption">
     <Setter Property="Foreground" Value="#8F919B"/>
     <Setter Property="FontSize" Value="10"/>
-    <Setter Property="LetterSpacing" Value="1.5"/>
+    <Setter Property="LetterSpacing" Value="0.7"/>
     <Setter Property="FontWeight" Value="SemiBold"/>
   </Style>
   <Style Selector="TextBox">
@@ -388,6 +388,8 @@
   <!-- Page headers. -->
   <Style Selector="TextBlock.pageTitle">
     <Setter Property="FontSize" Value="24"/>
+    <Setter Property="LineHeight" Value="30"/>
+    <Setter Property="LetterSpacing" Value="-0.3"/>
     <Setter Property="FontWeight" Value="Bold"/>
     <Setter Property="Foreground" Value="#FFFFFF"/>
   </Style>
@@ -395,16 +397,19 @@
     <Setter Property="FontSize" Value="12.5"/>
     <Setter Property="Foreground" Value="#8F919C"/>
     <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="LineHeight" Value="18"/>
+    <Setter Property="MaxWidth" Value="640"/>
   </Style>
   <!-- Small accent heading inside a card ("VIDEO & MOUSE"). -->
   <Style Selector="TextBlock.sectionTitle">
     <Setter Property="FontSize" Value="11"/>
     <Setter Property="FontWeight" Value="Bold"/>
-    <Setter Property="LetterSpacing" Value="1.2"/>
+    <Setter Property="LetterSpacing" Value="0.8"/>
     <Setter Property="Foreground" Value="{DynamicResource LadsAccent}"/>
   </Style>
   <Style Selector="TextBlock.muted">
     <Setter Property="FontSize" Value="12"/>
+    <Setter Property="LineHeight" Value="18"/>
     <Setter Property="Foreground" Value="#8F919C"/>
   </Style>
   <!-- Cards: the one surface every page uses. Add "interactive" for hover feedback on clickable cards. -->
