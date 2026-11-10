@@ -20,7 +20,7 @@ Each open item has its own hub chat ("1.13.9 #<n>: ..."), at most 3 working at o
 
 8. [x] Launcher: a non-zero exit with no crash evidence is a normal close. Cause of the non-zero exit found (26.3): a JVM crash in the NVIDIA driver while workers compile render pipelines during close (2 hs_err files on arash-pc). Mod now waits for the workers before close. Seen on 26.3 (11-10): two window closes from a singleplayer world, "Game exited normally", no new hs_err. Not tried: closing right after leaving the lobby (the case that crashed)
 
-9. [ ] Lads API controls every client setting, session-only, per world/gamemode (lobby: Fullbright off). Done 11-10: plugin 1.1.0 (game-mode rules, named and timed scopes, unit tests) is live on the lobby with Fullbright blocked in the lobby world; lads:api transport on 26.2 and 1.21.11 (jars build, not started in game). Open: vanilla and HUD options, the in-game check (arash-pc was offline)
+9. [ ] Lads API controls every client setting, session-only, per world/gamemode (lobby: Fullbright off). Done 11-10: plugin 1.1.0 (game-mode rules, named and timed scopes, unit tests) is live on the lobby with Fullbright blocked in the lobby world; lads:api transport on 26.2 and 1.21.11 (jars build, not started in game); HUD options (Scale, Text Shadow, Soft Shadow, Backgrounds) and vanilla options (FOV, Brightness, Render Distance, View Bobbing, Entity Shadows; 1.20.1 to 26.3, not 1.8.9) as `options` of "HUD" and "Minecraft", unit tests pass, the new mixins are not started in game. Open: the in-game check (arash-pc, cyrax-pc and desktop-57kj0bp offline at 14:00)
 
 10. [ ] True spectator system in the client (PvPArena and others)
 
