@@ -33,7 +33,7 @@ final class ModSyncQa {
             if (peer == null) {
                 if (seconds % 10 == 1) s.addFriend(PEER); // again until the peer is online to be found
                 say("host: asking " + PEER + " to be friends");
-            } else if (bridge.worldId() == null) {
+            } else if (bridge.worldId() == null || !bridge.inWorldOrServer()) { // the world still loads: opening it now fails
                 say("host: friends with " + PEER + ", not in a world yet");
             } else if (!s.hostSession().isHosting()) {
                 if (!opened) {
@@ -50,7 +50,7 @@ final class ModSyncQa {
                 if (online) { invited = true; s.invite(peer.id()); }
                 say("host: hosting, " + PEER + (online ? " invited" : " is offline"));
             } else {
-                say("host: hosting, modsHash " + bridge.gameInfo().modsHash() + ", guests " + s.hostSession().activeGuestCount()
+                say("host: hosting, modsHash " + s.gameInfo().modsHash() + ", guests " + s.hostSession().activeGuestCount()
                     + ", " + PEER + " " + (peer.presence() == null ? "?" : peer.presence().state()));
             }
         } else if ("guest".equals(ROLE)) {
