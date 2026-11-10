@@ -29,6 +29,8 @@ import java.util.zip.ZipFile;
 import javax.imageio.ImageIO;
 import javax.net.ssl.HttpsURLConnection;
 import java.awt.image.BufferedImage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Title Screen's Panorama Version: the six panorama images of any release, fetched from Mojang once and cached in the shared folder
@@ -41,6 +43,7 @@ public final class PanoramaPicker {
     private static final String ENTRY = "assets/minecraft/textures/gui/title/background/panorama_";
     private static final String OBJECT = "minecraft/textures/gui/title/background/panorama_";
     private static final String ASSETS = "https://resources.download.minecraft.net/";
+    private static final Logger LOG = LoggerFactory.getLogger("TheLadsCore");
 
     private static volatile List<String> releases;            // from the worker, put into the option on the render thread
     private static volatile Map<String, String> urls = Collections.emptyMap(); // release -> its version JSON
@@ -156,6 +159,7 @@ public final class PanoramaPicker {
                 byte[][] fetched = fetch(wanted);
                 result = fetched != null ? fetched : wanted + " has no panorama";
             } catch (Exception | LinkageError e) {
+                LOG.warn("Could not get the {} panorama: {}", wanted, e.toString()); // the screen's note cannot say why
                 result = "Could not get the " + wanted + " panorama";
             }
             finished = new Object[] {wanted, result};
