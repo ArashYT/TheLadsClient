@@ -32,6 +32,15 @@ public interface LadsPlayer {
     /** Drops this player's API overrides for one module (null = all modules). */
     void clear(String module);
 
+    /**
+     * Enters the named scope (when not in it yet) and returns it: {@code player.scope("duel")} switches rules.yml's
+     * {@code scopes.duel} on for this player; {@code player.scope("flash").block("Fullbright").expireIn(30)} is a timed rule.
+     */
+    LadsScope scope(String name);
+
+    /** The scopes this player is in, oldest first. */
+    java.util.List<String> scopes();
+
     /** Sends the current policy again. */
     void resend();
 }

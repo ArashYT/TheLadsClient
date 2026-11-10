@@ -20,6 +20,10 @@ public final class LadsRules {
     private volatile Map<String, ModuleRule> modules = new LinkedHashMap<>();
     private volatile Map<String, Map<String, ModuleRule>> worlds = new LinkedHashMap<>();
     private volatile Map<String, Map<String, ModuleRule>> groups = new LinkedHashMap<>();
+    /** By Minecraft game mode, lower case: "survival", "creative", "adventure", "spectator". */
+    private volatile Map<String, Map<String, ModuleRule>> gameModes = new LinkedHashMap<>();
+    /** Named rule sets a plugin or /ladsapi scope switches on per player ("duel", "event"), lower case. */
+    private volatile Map<String, Map<String, ModuleRule>> scopes = new LinkedHashMap<>();
 
     public LadsRules() {
         this(null);
@@ -74,6 +78,8 @@ public final class LadsRules {
             this.modules = Collections.emptyMap();
             this.worlds = Collections.emptyMap();
             this.groups = Collections.emptyMap();
+            this.gameModes = Collections.emptyMap();
+            this.scopes = Collections.emptyMap();
             return;
         }
 
@@ -123,6 +129,25 @@ public final class LadsRules {
         this.modules = Collections.unmodifiableMap(newModules);
         this.worlds = Collections.unmodifiableMap(newWorlds);
         this.groups = Collections.unmodifiableMap(newGroups);
+        this.gameModes = parseSections(data.get("gamemodes"), logger);
+        this.scopes = parseSections(data.get("scopes"), logger);
+    }
+
+    /** "gamemodes" and "scopes": name -> modules, like "worlds", with the name in lower case. */
+    @SuppressWarnings("unchecked")
+    private Map<String, Map<String, ModuleRule>> parseSections(Object section, Logger logger) {
+        Map<String, Map<String, ModuleRule>> out = new LinkedHashMap<>();
+        if (section instanceof Map<?, ?> map) {
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (entry.getValue() instanceof Map<?, ?> content) {
+                    Map<String, ModuleRule> mods = new LinkedHashMap<>();
+                    Object subMods = content.get("modules");
+                    parseModulesMap((Map<String, Object>) (subMods instanceof Map<?, ?> ? subMods : content), mods, logger);
+                    out.put(String.valueOf(entry.getKey()).toLowerCase(java.util.Locale.ROOT), Collections.unmodifiableMap(mods));
+                }
+            }
+        }
+        return Collections.unmodifiableMap(out);
     }
 
     @SuppressWarnings("unchecked")
@@ -298,4 +323,6 @@ public final class LadsRules {
     public Map<String, ModuleRule> getModules() { return modules; }
     public Map<String, Map<String, ModuleRule>> getWorlds() { return worlds; }
     public Map<String, Map<String, ModuleRule>> getGroups() { return groups; }
+    public Map<String, Map<String, ModuleRule>> getGameModes() { return gameModes; }
+    public Map<String, Map<String, ModuleRule>> getScopes() { return scopes; }
 }

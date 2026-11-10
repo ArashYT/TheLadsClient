@@ -61,6 +61,12 @@ Full snapshot. Replaces the previous one entirely (never a diff). Sent after the
 - Name matching: exact first, then case-insensitive, against registered module names and that module's option names.
   Unknown names: ignored + reported.
 - `notice`: optional, <= 256 chars, shown once in the join toast.
+- Scopes (plugin 1.1.0, no wire change): which rules go into a snapshot is the server's business. The plugin merges, later wins:
+  rules.yml `modules` -> `worlds.<world>` -> `gamemodes.<survival|creative|adventure|spectator>` (Paper) -> `groups.<permission>`
+  -> each scope the player is in, oldest first (`scopes.<name>`, then the rules a plugin gave that scope) -> per-player API
+  overrides. A scope is switched on and off per player by a plugin (`LadsPlayer.scope("duel")`, `.expireIn(seconds)`, `.end()`)
+  or by `/ladsapi scope <player> <name> [seconds|off]`. When a world, game mode or scope changes or a timer runs out, the server
+  sends the new full snapshot, so every client version follows scopes and the client keeps no timers.
 
 ### presence
 ```json

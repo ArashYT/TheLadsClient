@@ -33,6 +33,11 @@ public class FakePlayerHandle implements LadsPlayerHandle {
 
     public void setWorld(String world) { this.world = world; }
 
+    private String gameMode;
+    @Override
+    public String gameMode() { return gameMode; }
+    public void setGameMode(String gameMode) { this.gameMode = gameMode; }
+
     @Override
     public boolean hasPermission(String node) {
         return permissions.contains(node);
