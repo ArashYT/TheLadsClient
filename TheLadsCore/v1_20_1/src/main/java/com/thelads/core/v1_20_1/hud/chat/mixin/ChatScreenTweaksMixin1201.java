@@ -1,5 +1,6 @@
 package com.thelads.core.v1_20_1.hud.chat.mixin;
 
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.thelads.core.client.ChatTweaks;
@@ -119,12 +120,12 @@ public abstract class ChatScreenTweaksMixin1201 extends Screen {
 
     /** Up, Down and Tab never move the focus (the search box is a second widget): Up/Down walk the sent history, Tab completes. */
     @WrapOperation(method = "keyPressed", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/Screen;keyPressed(III)Z"), require = 1)
-    private boolean lads$noFocusKeys(Screen self, int key, int scancode, int modifiers, Operation<Boolean> original) {
+    private boolean lads$noFocusKeys(ChatScreen self, int key, int scancode, int modifiers, Operation<Boolean> original) {
         return (key != GLFW.GLFW_KEY_UP && key != GLFW.GLFW_KEY_DOWN && key != GLFW.GLFW_KEY_TAB) && original.call(self, key, scancode, modifiers);
     }
 
     /** Shift+Enter Keeps Chat Open: the message is sent (and kept in the history) and the chat stays open, empty. */
-    @WrapOperation(method = "keyPressed", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;setScreen(Lnet/minecraft/client/gui/screens/Screen;)V", ordinal = 1), require = 1)
+    @WrapWithCondition(method = "keyPressed", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;setScreen(Lnet/minecraft/client/gui/screens/Screen;)V", ordinal = 1), require = 1)
     private boolean lads$keepOpen(Minecraft mc, Screen screen) {
         if (!ChatTweaks.keepOpen || !hasShiftDown()) return true;
         input.setValue("");
