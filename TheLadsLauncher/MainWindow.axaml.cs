@@ -5682,6 +5682,12 @@ public partial class MainWindow : Window
             int exitCode = 0;
             try { exitCode = process.ExitCode; }
             catch (InvalidOperationException ex) { Log($"[Launcher] Could not read the game's exit code: {ex.Message}"); }
+            var gameStarted = GameStart(process);
+            if (exitCode != 0 && !CrashReporter.IsRealCrash(gameDirectory, exitCode, gameStarted, AutoRelaunchPolicy.CalculateUptime(gameStarted), TimeSpan.FromSeconds(20)))
+            {
+                Log($"[Launcher] Game exited with code {exitCode} but left no crash evidence: treated as the player closing it.");
+                exitCode = 0;
+            }
 
             // Re-show the launcher when the game closes, unless the user opted out (a cancel always shows it).
             if ((!settings.KeepClosedOnExit || cancelled) && !relaunchRequested)

@@ -56,4 +56,28 @@ public class CrashReporterTests
         }
         finally { Directory.Delete(game, recursive: true); }
     }
+
+    [Fact]
+    public void NonZeroExitWithoutEvidenceIsAWindowCloseNotACrash()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "crash-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var start = DateTime.Now.AddMinutes(-5);
+            var up = TimeSpan.FromMinutes(5);
+            var window = TimeSpan.FromSeconds(20);
+            Assert.False(CrashReporter.IsRealCrash(dir, 1, start, up, window));
+            Assert.False(CrashReporter.IsRealCrash(dir, 0, start, TimeSpan.Zero, window));
+            Assert.True(CrashReporter.IsRealCrash(dir, 1, start, TimeSpan.FromSeconds(3), window));
+            Assert.True(CrashReporter.IsRealCrash(dir, unchecked((int)0xC0000005), start, up, window));
+            File.WriteAllText(Path.Combine(dir, "hs_err_pid42.log"), "x");
+            Assert.True(CrashReporter.IsRealCrash(dir, 1, start, up, window));
+            File.Delete(Path.Combine(dir, "hs_err_pid42.log"));
+            Directory.CreateDirectory(Path.Combine(dir, "crash-reports"));
+            File.WriteAllText(Path.Combine(dir, "crash-reports", "crash-1.txt"), "x");
+            Assert.True(CrashReporter.IsRealCrash(dir, 1, start, up, window));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
 }
