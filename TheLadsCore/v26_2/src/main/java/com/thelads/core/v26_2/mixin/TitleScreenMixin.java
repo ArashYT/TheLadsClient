@@ -39,6 +39,7 @@ public abstract class TitleScreenMixin extends Screen {
     @Unique private TitleNoir.Layout ladsNoirLayout;
     @Unique private boolean ladsLegacy;
     @Unique private Button ladsLayoutToggle;
+    @Unique private Button ladsPanoramaButton;
     @Unique private TitleScreenTheme.Layout ladsTitleLayout;
     @Unique private boolean ladsCustomTitle;
     @Unique private int ladsLayoutWidth;
@@ -104,6 +105,10 @@ public abstract class TitleScreenMixin extends Screen {
         ladsLayoutToggle = addRenderableWidget(new CompactButton26(0, 6, 20, 20, Component.literal(TitleScreenTheme.layoutToggleLabel()),
             () -> "layout", button -> TitleScreenModule.toggleLayout()));
         ladsLayoutToggle.setTabOrderGroup(203);
+
+        ladsPanoramaButton = addRenderableWidget(new CompactButton26(0, 6, 20, 20, Component.literal(TitleScreenTheme.CHANGE_PANORAMA),
+            () -> "mountain", button -> com.thelads.core.client.title.PanoramaPicker.next()));
+        ladsPanoramaButton.setTabOrderGroup(204);
 
         ladsLastFrameNanos = 0;
         com.thelads.core.config.BuiltInIntegrations.verifyLoadedAdapters();
@@ -195,6 +200,11 @@ public abstract class TitleScreenMixin extends Screen {
         ladsLayoutToggle.setMessage(toggleLabel);
         ladsLayoutToggle.setRectangle(toggleWidth, 20, targetW - 50 - TitleScreenTheme.HEADER_GAP - toggleWidth, 6);
         ladsLayoutToggle.setTooltip(toggleWidth <= 20 ? Tooltip.create(toggleLabel) : null);
+        Component panoramaLabel = Component.literal(TitleScreenTheme.CHANGE_PANORAMA);
+        int panoramaWidth = TitleScreenTheme.panoramaButtonWidth(targetW, font.width(panoramaLabel), ladsLegacy);
+        ladsPanoramaButton.setRectangle(panoramaWidth, 20, targetW - 50 - 2 * TitleScreenTheme.HEADER_GAP - toggleWidth - panoramaWidth, 6);
+        ladsPanoramaButton.setTooltip(panoramaWidth <= 20 ? Tooltip.create(panoramaLabel) : null);
+        ladsPanoramaButton.visible = TitleScreenModule.panorama();
 
         boolean primaryAssigned = false;
         for (AbstractWidget widget : ladsTitleWidgets) removeWidget(widget);
@@ -218,7 +228,7 @@ public abstract class TitleScreenMixin extends Screen {
 
     @Unique
     private boolean ladsOwnControl(AbstractWidget widget) {
-        return widget == ladsSwitchButton || widget == ladsFullscreenButton || widget == ladsLanguageButton || widget == ladsLayoutToggle;
+        return widget == ladsSwitchButton || widget == ladsFullscreenButton || widget == ladsLanguageButton || widget == ladsLayoutToggle || widget == ladsPanoramaButton;
     }
 
     @Unique
