@@ -489,6 +489,7 @@ public final class LadsApiClient {
                 }
 
                 Module mod = findModule(rawModName);
+                if (mod == null) mod = ServerSettings.module(rawModName); // "HUD", "Minecraft": options only, no module state
                 if (mod == null) {
                     if (modEntry.getValue().isJsonObject()) {
                         for (String optKey : modEntry.getValue().getAsJsonObject().keySet()) {

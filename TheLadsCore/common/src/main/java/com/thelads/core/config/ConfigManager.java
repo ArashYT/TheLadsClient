@@ -104,8 +104,8 @@ public class ConfigManager {
         JsonObject hud = new JsonObject();
         hud.addProperty("globalColor", HudSettings.getInstance().getGlobalColor());
         hud.addProperty("globalBackground", HudSettings.getInstance().getGlobalBackground());
-        hud.addProperty("textShadow", HudSettings.getInstance().isTextShadow());
-        hud.addProperty("softShadow", HudSettings.getInstance().isSoftShadow());
+        hud.addProperty("textShadow", HudSettings.getInstance().isTextShadowOwn()); // Own: never a server's value for the session
+        hud.addProperty("softShadow", HudSettings.getInstance().isSoftShadowOwn());
         hud.addProperty("shadowOnDefault", true); // marks the 1.9.1 migration of the old Soft default (applyJson)
         hud.addProperty("hudFpsCapOnDefault", true); // marks the 1.9.2 migration of the old uncapped default (applyJson)
         hud.addProperty(HUD_1910_FLAG, true); // marks the 1.9.10 one-time HUD override (apply1910HudOverride)
@@ -114,7 +114,7 @@ public class ConfigManager {
         hud.addProperty(KEYSTROKES_1914_FLAG, true); // marks the 1.9.14 one-time Keystrokes Clean follow global override (apply1914KeystrokesOverride)
         hud.addProperty(CLOUD_HEIGHT_1914_FLAG, true); // marks the 1.9.14 one-time Cloud Height override (apply1914CloudHeightOverride)
         hud.addProperty(MOB_KILL_BANNER_1914_FLAG, true); // marks the 1.9.14 one-time mob kill banner default (apply1914MobKillBannerOverride)
-        hud.addProperty("backgrounds", HudSettings.getInstance().isBackgrounds());
+        hud.addProperty("backgrounds", HudSettings.getInstance().isBackgroundsOwn());
         hud.addProperty("hudFpsCapOptIn", HudSettings.getInstance().isHudFpsCapEnabled());
         hud.addProperty("hudFpsCapEnabled", HudSettings.getInstance().isHudFpsCapEnabled()); // read by 1.4.4 and older
         hud.addProperty("hudFpsLimit", HudSettings.getInstance().getHudFpsLimit());
@@ -141,7 +141,7 @@ public class ConfigManager {
             anchors.add(e.getKey(), anchor);
         }
         hud.add("anchors", anchors);
-        hud.addProperty("hudScale", HudSettings.getInstance().getHudScale());
+        hud.addProperty("hudScale", HudSettings.getInstance().getHudScaleOwn());
         JsonArray fade = new JsonArray();
         for (int c : HudSettings.getInstance().getFadePlaylist()) {
             fade.add(c);
