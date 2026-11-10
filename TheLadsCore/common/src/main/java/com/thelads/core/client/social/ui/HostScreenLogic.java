@@ -300,7 +300,7 @@ public final class HostScreenLogic {
 
         this.scissorY = contentY + 4;
         this.scissorH = contentH - 8;
-        g.enableScissor(panelX, scissorY, panelW, scissorH);
+        g.enableScissor(panelX, scissorY, panelX + panelW, scissorY + scissorH);
 
         switch (currentSection) {
             case GENERAL -> renderGeneralSection(g, panelX, contentY, panelW, contentH, mouseX, mouseY, scissorY, scissorH);

@@ -10,6 +10,13 @@ API = LadsClientAPI/common/src/main/java/com/thelads/ladsapi. Core = TheLadsCore
 - There is no C:\The Lads Client on arash-hp, so nothing can be tested in game here.
 - arash-pc has the game: C:\Users\Arash\AppData\Roaming\.theladsclient\profiles\<version> (logs\, mods\theladscore.jar). Its saves folder is a junction to .minecraft\saves, shared by every profile. Old logs are .log.gz: read them with GZipStream.
 
+## In-game checks on arash-pc, driven from arash-hp (worked 11-10)
+- The remote shell (ai-hub pc.ts) runs as Arash in his desktop session, so it can start the game, press keys and take screenshots. Check first that he is away (GetLastInputInfo) and that no java.exe runs.
+- The launcher is C:\Users\Arash\AppData\Local\TheLadsClient\current\TheLadsLauncher.exe (start it with explorer.exe and the desktop shortcut). On Play it copies current\game-mods\<version>\theladscore.jar over the profile's jar, so new jars go into game-mods, not into the profile. The jars of the 1.13.8 install are kept in ...\TheLadsClient\game-mods-backup-1108.
+- tools/ingame-drive.ps1 (copy it to the PC) sends keys and clicks and saves screenshots; positions are fractions of the window. At 1920x1080: launcher Play `click 0.89 0.575` (-Proc TheLadsLauncher), title Singleplayer `click 0.19 0.527`, first world `click 0.15 0.21`, Play Selected World `click 0.418 0.921`, pause menu Multiplayer Options `click 0.584 0.523`, Start/Stop Hosting `click 0.291 0.966`. `close` is the window X.
+- After a game crash the launcher shows a "Game Crashed" window over Play: Relaunch is `click 0.358 0.625`.
+- A mixin that compiles can still fail when the game starts (MixinExtras checks handler signatures at apply time): a @WrapOperation on a `super.method()` call takes the mixin's target class as the receiver. Start the game after every mixin change.
+
 ## Start Hosting (task 2, fixed 11-10)
 - Evidence: arash-pc's New World\lads-host.json had "scope": "OFF"; the 11-08 15:22 log shows 46 s in the Host screen with no backup, "Started serving" or HostSession line, and no lads-backups folder exists.
 - Cause: the scope row offered OFF. Start Hosting then called HostSession.start with OFF, which means stop and shows no toast.

@@ -121,7 +121,7 @@ public abstract class ChatScreenTweaksMixin26 extends Screen {
 
     /** Up, Down and Tab never move the focus (the search box is a second widget): Up/Down walk the sent history, Tab completes. */
     @WrapOperation(method = "keyPressed", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/Screen;keyPressed(Lnet/minecraft/client/input/KeyEvent;)Z"), require = 1)
-    private boolean lads$noFocusKeys(Screen self, KeyEvent event, Operation<Boolean> original) {
+    private boolean lads$noFocusKeys(ChatScreen self, KeyEvent event, Operation<Boolean> original) {
         return (event.key() != InputConstants.KEY_UP && event.key() != InputConstants.KEY_DOWN && event.key() != InputConstants.KEY_TAB) && original.call(self, event);
     }
 
