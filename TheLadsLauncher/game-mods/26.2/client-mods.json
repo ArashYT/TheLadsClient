@@ -337,12 +337,12 @@
       "projectSlug": "ixeris",
       "name": "Ixeris",
       "modId": "ixeris",
-      "versionId": "WykVq5o6",
-      "version": "4.6.8+26.2-fabric",
-      "fileName": "Ixeris-4.6.8+26.2-fabric.jar",
-      "url": "https://cdn.modrinth.com/data/p8RJPJIC/versions/WykVq5o6/Ixeris-4.6.8%2B26.2-fabric.jar",
-      "sha512": "61b3a8436db5574b934692fafdf5731b1ece99b562c56269d593195efa825c3707223befb5ca38ba0ac18a629d2176c709c9415a7fe8d138e0bdb3ec3707505f",
-      "size": 762557,
+      "versionId": "qXHd9Vb4",
+      "version": "4.6.11+26.2-fabric",
+      "fileName": "Ixeris-4.6.11+26.2-fabric.jar",
+      "url": "https://cdn.modrinth.com/data/p8RJPJIC/versions/qXHd9Vb4/Ixeris-4.6.11%2B26.2-fabric.jar",
+      "sha512": "cfab4089bc5b14ced83e555c8c675c753217b199cc1e87560d04f5af303fb00fa8f8f041667204553395f91659634f99cd4309e63584e9baad63ff19a0d88adb",
+      "size": 772000,
       "license": "LGPL-3.0-only",
       "sourceUrl": "https://github.com/decce6/Ixeris",
       "projectUrl": "https://modrinth.com/mod/ixeris"
@@ -487,12 +487,12 @@
       "projectSlug": "moreculling",
       "name": "More Culling",
       "modId": "moreculling",
-      "versionId": "D5oVCouK",
-      "version": "1.8.1",
-      "fileName": "moreculling-fabric-26.2-1.8.1.jar",
-      "url": "https://cdn.modrinth.com/data/51shyZVL/versions/D5oVCouK/moreculling-fabric-26.2-1.8.1.jar",
-      "sha512": "9c331ba5f2ce9c322c41aa577f1029f3420d5507d0d942aadbb43fb9bd82e7da6f72e3a0b26c4ad96394669a99a7feb512b5119b3095fde2e0a437bf68c08b40",
-      "size": 363646,
+      "versionId": "Qc7V2eKG",
+      "version": "1.8.2",
+      "fileName": "moreculling-fabric-26.2-1.8.2.jar",
+      "url": "https://cdn.modrinth.com/data/51shyZVL/versions/Qc7V2eKG/moreculling-fabric-26.2-1.8.2.jar",
+      "sha512": "7447bc7f269fdfee917ad99fa93d81db86f9b3379c7098e1172fda8a443e09aa4cfd68074a33f57cf40ea7d44135e74882b6b1a1ec9c8a9cd3e0e8d4ca64ca56",
+      "size": 364112,
       "license": "GPL-3.0-only",
       "sourceUrl": "https://github.com/fxmorin/moreculling",
       "projectUrl": "https://modrinth.com/mod/moreculling"
@@ -532,12 +532,12 @@
       "projectSlug": "not-enough-animations",
       "name": "Not Enough Animations",
       "modId": "notenoughanimations",
-      "versionId": "ocinaOmO",
-      "version": "1.12.5",
-      "fileName": "notenoughanimations-fabric-1.12.5-mc26.2.jar",
-      "url": "https://cdn.modrinth.com/data/MPCX6s5C/versions/ocinaOmO/notenoughanimations-fabric-1.12.5-mc26.2.jar",
-      "sha512": "9f15eddd257f0ee892fc761fbe416fe513dd53a31857a5cafccb28d92ed9598c4a999d11200fdc2d36e8baaa5ccf5e3665081a72289e11471a0c52800735fa30",
-      "size": 1863477,
+      "versionId": "PtkLygDD",
+      "version": "1.12.7",
+      "fileName": "notenoughanimations-fabric-1.12.7-mc26.2.jar",
+      "url": "https://cdn.modrinth.com/data/MPCX6s5C/versions/PtkLygDD/notenoughanimations-fabric-1.12.7-mc26.2.jar",
+      "sha512": "47b7dd513c8388d4cca24571582b64a6a1c73bdefa52155e16dcee3e3a7252c126c8220831ee49084b26150df7bae4b3b08b3da985dd240eb4bd6feec1db3b9f",
+      "size": 1867051,
       "license": "LicenseRef-tr7zw-Protective-License",
       "sourceUrl": "https://github.com/tr7zw/NotEnoughAnimations",
       "projectUrl": "https://modrinth.com/mod/not-enough-animations"
@@ -547,12 +547,12 @@
       "projectSlug": "obe",
       "name": "Optimized Block Entities [OBE]",
       "modId": "obe",
-      "versionId": "qKpOS1SP",
-      "version": "1.1.50",
-      "fileName": "obe+26.2-1.1.50.jar",
-      "url": "https://cdn.modrinth.com/data/AtOSAunf/versions/qKpOS1SP/obe%2B26.2-1.1.50.jar",
-      "sha512": "d0ec86b8e68914c019f5615d5aa79ea9003c01869c47ca18844393f1546c6b39d9943b43b449e949a22149347a84e5ead32e5a39be50d08e2bd6e81a26e304a0",
-      "size": 191155,
+      "versionId": "SpSJBNSj",
+      "version": "1.2.1",
+      "fileName": "obe+26.2-1.2.1.jar",
+      "url": "https://cdn.modrinth.com/data/AtOSAunf/versions/SpSJBNSj/obe%2B26.2-1.2.1.jar",
+      "sha512": "5292ab7e7a73be5e9e66ea4740b25a59bb31570803c5b40c35f901b6b827da599ec21d44d012fd37d0513818f2583a39c5e874c10df0b5af67a8e3a79f14690f",
+      "size": 233911,
       "license": "LGPL-3.0-or-later",
       "sourceUrl": "https://github.com/maDU59/OptimisedBlockEntities",
       "projectUrl": "https://modrinth.com/mod/obe"
@@ -622,12 +622,12 @@
       "projectSlug": "3dskinlayers",
       "name": "3D Skin Layers",
       "modId": "skinlayers3d",
-      "versionId": "AfYGPfcD",
-      "version": "1.11.3",
-      "fileName": "skinlayers3d-fabric-1.11.3-mc26.2.jar",
-      "url": "https://cdn.modrinth.com/data/zV5r3pPn/versions/AfYGPfcD/skinlayers3d-fabric-1.11.3-mc26.2.jar",
-      "sha512": "552bafff617fec708739faeb0a94001f5180aced60dc298710b9217893c3b7448c5acfed926f31d162978b4532e7d85a4887e8128bc6579c48a7e7a55aab79c2",
-      "size": 1890348,
+      "versionId": "w5Ondgft",
+      "version": "1.11.4",
+      "fileName": "skinlayers3d-fabric-1.11.4-mc26.2.jar",
+      "url": "https://cdn.modrinth.com/data/zV5r3pPn/versions/w5Ondgft/skinlayers3d-fabric-1.11.4-mc26.2.jar",
+      "sha512": "5af43c15abf07fb9792a86908ee213d388b611763ec2ec5c15bda695800fae3b07bba68cfe95abb360d427e0f2553d31a338057e8d76d15e6ee3ccf10bd92428",
+      "size": 1892420,
       "license": "LicenseRef-tr7zw-Protective-License",
       "sourceUrl": "https://github.com/tr7zw/3d-skin-layers",
       "projectUrl": "https://modrinth.com/mod/3dskinlayers"
@@ -742,12 +742,12 @@
       "projectSlug": "wavey-capes",
       "name": "Wavey Capes",
       "modId": "waveycapes",
-      "versionId": "lgCaDv04",
-      "version": "1.11.2",
-      "fileName": "waveycapes-fabric-1.11.2-mc26.2.jar",
-      "url": "https://cdn.modrinth.com/data/kYuIpRLv/versions/lgCaDv04/waveycapes-fabric-1.11.2-mc26.2.jar",
-      "sha512": "d027d800275efe2c34a6f5dd90724ac3035bcdb2a952625ac4958f8dbac27ad826515a34098ea42c5dde5bcd0e4a76b38bd51b8225a02e6e743ffed1cb1ba597",
-      "size": 1771414,
+      "versionId": "qADFZPJi",
+      "version": "1.11.3",
+      "fileName": "waveycapes-fabric-1.11.3-mc26.2.jar",
+      "url": "https://cdn.modrinth.com/data/kYuIpRLv/versions/qADFZPJi/waveycapes-fabric-1.11.3-mc26.2.jar",
+      "sha512": "3f47f2deb0f273a7f593bcfac5c23b2d19d5f30ec138f465148a3c5d299022e58ac3a3524be5200f02e561ff3e78d6920b1176b2776f2b5d6e3427e975a9ad78",
+      "size": 1765020,
       "license": "LicenseRef-tr7zw-Protective-License",
       "sourceUrl": "https://github.com/tr7zw/WaveyCapes",
       "projectUrl": "https://modrinth.com/mod/wavey-capes"
@@ -816,26 +816,35 @@
       "9a63c35a550b0362b7b25ff045d93709c7b0dae08c89076cba422813fdfb9e5f5dd021ed3afac9f82e74e95b88c249e8f68b240717151540ca3e88cc27fb9c77",
       "91404f87774466ce8604aafea791d8cc97b603bc310dce17c8188f94f7783cca6dc14fc726ce871ca317bfe9033c199d8d858d51284106a00754e952147703b8"
     ],
+    "ixeris": [
+      "61b3a8436db5574b934692fafdf5731b1ece99b562c56269d593195efa825c3707223befb5ca38ba0ac18a629d2176c709c9415a7fe8d138e0bdb3ec3707505f"
+    ],
     "mezz_config": [
       "b4a45d5e3c5f9467ac3ce72c4d311c18cd85422966e8f8c5503d3df13f70dfa829947a33443952205e4d64580fd77399ac7fba7b8f969d15ca5d872e69039d78"
     ],
     "modmenu": [
       "1aa297ab5e6fac71ad6af750fe6f8cd25281bd00c0340e5fe1c1e9d153d1198df03be1df55727a4a2116db97dcaad541d41754f3fc0063abfe4345b60f193fb4"
     ],
+    "moreculling": [
+      "9c331ba5f2ce9c322c41aa577f1029f3420d5507d0d942aadbb43fb9bd82e7da6f72e3a0b26c4ad96394669a99a7feb512b5119b3095fde2e0a437bf68c08b40"
+    ],
     "mru": [
       "3ad629d4f1acf2699b1a3980239ba851e119c90b3da62d80d627b668195d5005c7ebcc7ef137debe0374037a837366d9b9513233c090eb2573f140ec28da1ee1"
     ],
     "notenoughanimations": [
-      "41c05f531298cce723a84639fb6b9510bfa25e65ff27a041083d47900d743d44473e1f7bdbcd87d7cd149f1291a1359dc3d8553a176be21c432ea15bbbdda92e"
+      "41c05f531298cce723a84639fb6b9510bfa25e65ff27a041083d47900d743d44473e1f7bdbcd87d7cd149f1291a1359dc3d8553a176be21c432ea15bbbdda92e",
+      "9f15eddd257f0ee892fc761fbe416fe513dd53a31857a5cafccb28d92ed9598c4a999d11200fdc2d36e8baaa5ccf5e3665081a72289e11471a0c52800735fa30"
     ],
     "obe": [
-      "41bb5446c884eb474a3f17c47dbb3178e0794dd1b289ad889949618556fe3a6263e2041fe2702c5008ad5718cedce581eccd188f101b65ab3211e69cfa401bd8"
+      "41bb5446c884eb474a3f17c47dbb3178e0794dd1b289ad889949618556fe3a6263e2041fe2702c5008ad5718cedce581eccd188f101b65ab3211e69cfa401bd8",
+      "d0ec86b8e68914c019f5615d5aa79ea9003c01869c47ca18844393f1546c6b39d9943b43b449e949a22149347a84e5ead32e5a39be50d08e2bd6e81a26e304a0"
     ],
     "resourcify": [
       "33d9c35b269daebb031c6a5a80e1a6e528852eb6a151d6dac0dd8a9dab953732ba5d261cb629666e3cee5781a548b1159ae46647a6152a72fe3844b47d4f42c2"
     ],
     "skinlayers3d": [
-      "ead4a257e5ec2b092db84aebc7f5146dfb667a01f5d1362485f9ea9835e4558172949bcfb40c7a0bfbfb36e6c746b96c580f855af4109c806e0fc3591d48ad80"
+      "ead4a257e5ec2b092db84aebc7f5146dfb667a01f5d1362485f9ea9835e4558172949bcfb40c7a0bfbfb36e6c746b96c580f855af4109c806e0fc3591d48ad80",
+      "552bafff617fec708739faeb0a94001f5180aced60dc298710b9217893c3b7448c5acfed926f31d162978b4532e7d85a4887e8128bc6579c48a7e7a55aab79c2"
     ],
     "sodium": [
       "627fbf9625a4b94693c789c84a0686ffe558c0b1ecbeccf2602a903caafa9e126548b644282aa9c391dc798930d378724a383bea6b4397c5294d59ba5c0a6936"
@@ -845,6 +854,9 @@
     ],
     "voicechat": [
       "eb45e75e8b031f3bb27e178ed44fd7b78ba681f077f5972e170726b4837146efd49c7b67d63a95ec4ce87e5672cf76bed85ac8fa7790a9e7ff7309a6c3f424ee"
+    ],
+    "waveycapes": [
+      "d027d800275efe2c34a6f5dd90724ac3035bcdb2a952625ac4958f8dbac27ad826515a34098ea42c5dde5bcd0e4a76b38bd51b8225a02e6e743ffed1cb1ba597"
     ],
     "xaerominimap": [
       "dba00f85308524d9d65c559bc48456c8b65cef58eb54891e069cbaacb6e2f633d279b0d65325f510e3d9e590b67e6f5bdb7c816ada484a0d018850267fbc9131"
