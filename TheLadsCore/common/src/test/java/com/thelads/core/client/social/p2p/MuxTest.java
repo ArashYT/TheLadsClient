@@ -148,7 +148,7 @@ public class MuxTest {
         long before = rt.totalMemory() - rt.freeMemory();
         int sent = 0;
         try {
-            for (int i = 2; i < 65_536; i++) {
+            for (int i = 3; i < 65_536; i++) {
                 feed.write(new byte[] {(byte) (i >> 8), (byte) i, (byte) Mux.FRAME_WINDOW_UPDATE, 0, 0});
                 sent++;
             }
@@ -160,7 +160,7 @@ public class MuxTest {
         System.gc();
         long grewMb = ((rt.totalMemory() - rt.freeMemory()) - before) >> 20;
         assertTrue(grewMb < 16, "heap grew " + grewMb + " MB after " + sent + " frames");
-        assertThrows(IllegalArgumentException.class, () -> mux.out(2), "no stream 2 until Phase 3 opens it");
+        assertThrows(IllegalArgumentException.class, () -> mux.out(3), "streams 0-2 only (2 = ModSync)");
     }
 
     /** F1: data beyond the control stream's buffer (it has no credit flow) ends the mux instead of growing or silently dropping. */
