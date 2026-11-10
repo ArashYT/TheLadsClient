@@ -13,6 +13,9 @@ public interface LadsPlayerHandle {
     /** World/level name for per-world rules ("world", "minecraft:the_nether"); on a proxy: the backend server name. */
     String world();
 
+    /** "survival", "creative", "adventure" or "spectator" for per-game-mode rules; null when the platform cannot tell (a proxy). */
+    default String gameMode() { return null; }
+
     boolean hasPermission(String node);
 
     /** Sends one lads:api payload. Paper: adds lads:api to the player's channel set first (PROTOCOL.md 1). */

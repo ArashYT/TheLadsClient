@@ -34,4 +34,13 @@ public final class PaperEventListener implements Listener {
     public void onWorldChange(PlayerChangedWorldEvent event) {
         core.worldChanged(platform.handleOf(event.getPlayer()));
     }
+
+    /** Fires before the mode changes, so the policy for the new mode goes out a tick later. */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onGameModeChange(org.bukkit.event.player.PlayerGameModeChangeEvent event) {
+        org.bukkit.entity.Player player = event.getPlayer();
+        platform.runLater(() -> {
+            if (player.isOnline()) core.gameModeChanged(platform.handleOf(player));
+        }, 1);
+    }
 }

@@ -146,6 +146,18 @@ public final class SessionManager implements LadsClientAPI {
         refresh(handle, platform.isProxy());
     }
 
+    /** Game mode changed: the client kept its session, so a new policy is enough, and only when rules.yml has per-game-mode rules. */
+    public void gameModeChanged(LadsPlayerHandle handle) {
+        if (handle == null || rules.getGameModes().isEmpty()) return;
+        LadsSession s;
+        synchronized (lock) {
+            s = sessions.get(handle.uuid());
+            if (s == null || !s.isLads()) return;
+            s.setHandle(handle);
+        }
+        s.sendPolicy();
+    }
+
     /** Fabric/Forge build a new player object on respawn: keep the handle current and resync only if the world differs. */
     public void respawned(LadsPlayerHandle handle) {
         refresh(handle, false);

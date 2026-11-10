@@ -29,6 +29,21 @@ public final class PolicyBuilder {
             Map<String, ModuleRule> apiOverrides,
             int rev
     ) {
+        return buildPolicyJson(rules, config, player, null, apiOverrides, rev);
+    }
+
+    /**
+     * @param scopes the player's active scopes in the order they were entered: name (lower case) -> rules set through the API
+     *               for that scope (may be empty). Each also pulls in rules.yml's scopes.&lt;name&gt;.
+     */
+    public static String buildPolicyJson(
+            LadsRules rules,
+            LadsConfig config,
+            LadsPlayerHandle player,
+            Map<String, Map<String, ModuleRule>> scopes,
+            Map<String, ModuleRule> apiOverrides,
+            int rev
+    ) {
         JsonObject root = new JsonObject();
         root.addProperty("t", "policy");
         root.addProperty("rev", rev);
@@ -46,7 +61,8 @@ public final class PolicyBuilder {
                 : "inherit";
         root.addProperty("unlisted", unlisted);
 
-        // Merge order: rules.yml base -> worlds.<world> -> groups.<g> -> API overrides
+        // Merge order, later wins: rules.yml base -> worlds.<world> -> gamemodes.<mode> -> groups.<g>
+        // -> each active scope (scopes.<name>, then its API rules) -> API overrides
         Map<String, ModuleRule> merged = new LinkedHashMap<>();
 
         if (rules != null && rules.getModules() != null) {
@@ -63,6 +79,11 @@ public final class PolicyBuilder {
                 }
             }
 
+            String gameMode = player == null ? null : player.gameMode();
+            if (gameMode != null && rules.getGameModes() != null) {
+                mergeAll(merged, rules.getGameModes().get(gameMode.toLowerCase(java.util.Locale.ROOT)));
+            }
+
             if (player != null && rules.getGroups() != null) {
                 for (Map.Entry<String, Map<String, ModuleRule>> gEntry : rules.getGroups().entrySet()) {
                     String groupName = gEntry.getKey();
@@ -75,11 +96,16 @@ public final class PolicyBuilder {
             }
         }
 
-        if (apiOverrides != null) {
-            for (Map.Entry<String, ModuleRule> e : apiOverrides.entrySet()) {
-                merged.computeIfAbsent(e.getKey(), k -> new ModuleRule()).mergeFrom(e.getValue());
+        if (scopes != null) {
+            for (Map.Entry<String, Map<String, ModuleRule>> scope : scopes.entrySet()) {
+                if (rules != null && rules.getScopes() != null) {
+                    mergeAll(merged, rules.getScopes().get(scope.getKey()));
+                }
+                mergeAll(merged, scope.getValue());
             }
         }
+
+        mergeAll(merged, apiOverrides);
 
         // Build modules and options objects
         JsonObject modulesObj = new JsonObject();
@@ -136,6 +162,13 @@ public final class PolicyBuilder {
         }
 
         return GSON.toJson(root);
+    }
+
+    private static void mergeAll(Map<String, ModuleRule> merged, Map<String, ModuleRule> layer) {
+        if (layer == null) return;
+        for (Map.Entry<String, ModuleRule> e : layer.entrySet()) {
+            merged.computeIfAbsent(e.getKey(), k -> new ModuleRule()).mergeFrom(e.getValue());
+        }
     }
 
     private static JsonPrimitive toJsonPrimitive(Object val) {

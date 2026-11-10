@@ -37,6 +37,11 @@ public final class PaperPlayerHandle implements LadsPlayerHandle {
     }
 
     @Override
+    public String gameMode() {
+        return player.getGameMode().name().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    @Override
     public boolean hasPermission(String node) {
         return player.hasPermission(node);
     }

@@ -46,6 +46,8 @@ public final class RulesGenerator {
 
         sb.append("worlds:                        # per-world overrides on top of the above\n");
         sb.append("groups:                        # players with permission ladsapi.group.<name>\n");
+        sb.append("gamemodes:                     # survival | creative | adventure | spectator (Paper)\n");
+        sb.append("scopes:                        # named sets a plugin or /ladsapi scope <player> <name> [seconds|off] switches on\n");
         return sb.toString();
     }
 
@@ -223,17 +225,25 @@ public final class RulesGenerator {
         }
 
         // Ensure worlds: and groups: exist
-        boolean hasWorlds = false, hasGroups = false;
+        boolean hasWorlds = false, hasGroups = false, hasGameModes = false, hasScopes = false;
         for (String line : result) {
             String trimmed = line.trim();
             if (trimmed.equals("worlds:") || trimmed.startsWith("worlds: ") || trimmed.startsWith("worlds:#")) hasWorlds = true;
             if (trimmed.equals("groups:") || trimmed.startsWith("groups: ") || trimmed.startsWith("groups:#")) hasGroups = true;
+            if (!line.startsWith(" ") && trimmed.startsWith("gamemodes:")) hasGameModes = true;
+            if (!line.startsWith(" ") && trimmed.startsWith("scopes:")) hasScopes = true;
         }
         if (!hasWorlds) {
             result.add("worlds:                        # per-world overrides on top of the above");
         }
         if (!hasGroups) {
             result.add("groups:                        # players with permission ladsapi.group.<name>");
+        }
+        if (!hasGameModes) {
+            result.add("gamemodes:                     # survival | creative | adventure | spectator (Paper)");
+        }
+        if (!hasScopes) {
+            result.add("scopes:                        # named sets a plugin or /ladsapi scope <player> <name> [seconds|off] switches on");
         }
 
         // Safety net: re-parse result and return original lines unless root.modules is a Map containing every schema module as a top-level key
