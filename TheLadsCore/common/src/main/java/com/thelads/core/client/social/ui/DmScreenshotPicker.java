@@ -38,6 +38,8 @@ public final class DmScreenshotPicker {
     public void close() { open = false; }
     public boolean isOpen() { return open; }
     public Path gameDir() { return gameDir.get(); }
+    /** Row i of the list as last drawn (null when not shown). */
+    public Box row(int i) { return i >= 0 && i < rows.size() ? rows.get(i) : null; }
 
     public void render(LadsGraphics g, int x, int y, int w, int h, int mx, int my) {
         if (!open) return;

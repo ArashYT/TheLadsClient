@@ -420,6 +420,7 @@ public final class QaProbe26 {
                 flag.setBoolean(ui, Boolean.parseBoolean(arg(s, 3)));
             }
             case "type" -> rest(s, 2).codePoints().forEach(c -> mc.keyboardHandler.charTyped(mc.getWindow().handle(), new net.minecraft.client.input.CharacterEvent(c)));
+            case "dm" -> dmStep(mc, s);
             case "expect" -> {
                 var enabled = com.mojang.blaze3d.platform.TextInputManager.class.getDeclaredField("textInputEnabled");
                 enabled.setAccessible(true);
@@ -430,6 +431,39 @@ public final class QaProbe26 {
             }
             default -> throw new IllegalArgumentException("textui: " + s[1]);
         }
+    }
+
+    /**
+     * DM pictures through the Friends screen's own handlers (no real input, so another chat's game on this PC is never
+     * disturbed): textui dm open <friend> | shotbutton | pick <row> | paste <text> (clipboard set, then Ctrl+V) | enter | log.
+     */
+    private static void dmStep(Minecraft mc, String[] s) {
+        var screen = (com.thelads.core.v26_2.social.FriendsScreen26) mc.gui.screen();
+        var ui = screen.ui();
+        var social = com.thelads.core.client.social.SocialState.get();
+        switch (arg(s, 2)) {
+            case "open" -> ui.openDm(social.friends().stream().filter(f -> f.name().equalsIgnoreCase(rest(s, 3))).findFirst()
+                    .orElseThrow(() -> new IllegalStateException("no friend " + rest(s, 3) + " in " + social.friends())));
+            case "shotbutton" -> dmClick(ui, ui.screenshotButton());
+            case "pick" -> dmClick(ui, ui.screenshotPicker().row(Integer.parseInt(arg(s, 3))));
+            case "paste" -> {
+                mc.keyboardHandler.setClipboard(rest(s, 3));
+                screen.keyPressed(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_V, 0, com.mojang.blaze3d.platform.InputConstants.MOD_CONTROL));
+                LOGGER.info("Lads 26.3 qa dm input after paste: '{}'", ui.dmInput());
+            }
+            case "enter" -> screen.keyPressed(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));
+            case "log" -> {
+                var friend = ui.activeDmFriend();
+                for (var dm : social.dms(friend.id())) LOGGER.info("Lads 26.3 qa dm: from={} text='{}' img={} gif={}", dm.from().equals(friend.id()) ? friend.name() : "me", dm.text(), dm.img(), dm.gif());
+                LOGGER.info("Lads 26.3 qa dm: picker open={}", ui.screenshotPickerOpen());
+            }
+            default -> throw new IllegalArgumentException("textui dm: " + arg(s, 2));
+        }
+    }
+
+    private static void dmClick(com.thelads.core.client.social.ui.FriendsScreenLogic ui, com.thelads.core.client.social.ui.FriendsScreenLogic.Box box) {
+        if (box == null) throw new IllegalStateException("not on screen");
+        ui.mouseClicked(box.x() + box.w() / 2.0, box.y() + box.h() / 2.0, 0);
     }
 
     static void shot(Minecraft mc, String name) throws IOException {
