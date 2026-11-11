@@ -48,6 +48,18 @@ public final class HostScreen26 extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+        if (ui.mouseDragged(event.x(), event.y(), CommonInput.button(event.button()))) return true;
+        return super.mouseDragged(event, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        if (ui.mouseReleased(event.x(), event.y(), CommonInput.button(event.button()))) return true;
+        return super.mouseReleased(event);
+    }
+
+    @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
         if (ui.mouseScrolled(mouseX, mouseY, verticalAmount)) return true;
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);

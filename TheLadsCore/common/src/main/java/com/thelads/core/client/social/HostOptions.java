@@ -38,6 +38,19 @@ public final class HostOptions {
     public boolean backupOnOpen = true;
     public boolean showJoinable = true;
     public String welcome = "";
+    /** LAN port; 0 = any free port (vanilla's empty port box). */
+    public int port = 0;
+    /** Cheats (commands) for the host; null = keep the world's setting. */
+    public Boolean allowCommands = null;
+    /** The host's own game mode; null = keep it. */
+    public String hostGameMode = null;
+    /** Guests are put in guestGameMode whenever they join (vanilla Force Game Mode). */
+    public boolean forceGameMode = false;
+    /** Guests get the host's resource packs while they are in this world (26.x). */
+    public boolean sharePacks = true;
+    /** All of the host's enabled packs, else only sharedPacks (pack ids such as "file/Faithful.zip"). */
+    public boolean shareAllPacks = true;
+    public java.util.List<String> sharedPacks = new java.util.ArrayList<>();
     /** UUIDs banned from this world: their join requests are denied, they get no invite and the login filter refuses them. */
     public Set<String> banned = new LinkedHashSet<>();
 
@@ -76,6 +89,7 @@ public final class HostOptions {
      */
     private void withoutGrantedPower() {
         guestOpLevel = 0;
+        allowCommands = null;
         if (approval == Approval.AUTO_FRIENDS) approval = Approval.ASK;
         gamerules = new LinkedHashMap<>();
     }
@@ -121,6 +135,8 @@ public final class HostOptions {
         if (gamerules == null) gamerules = new LinkedHashMap<>();
         if (welcome == null) welcome = "";
         if (banned == null) banned = new LinkedHashSet<>();
+        if (sharedPacks == null) sharedPacks = new java.util.ArrayList<>();
+        if (port != 0 && (port < 1024 || port > 65535)) port = 0;
         if (welcome.length() > 256) welcome = welcome.substring(0, 256);
         return this;
     }

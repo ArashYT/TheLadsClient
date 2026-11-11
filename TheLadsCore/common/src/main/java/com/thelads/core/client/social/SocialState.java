@@ -648,6 +648,11 @@ public class SocialState {
         }
     }
 
+    /** Invites received and not yet answered (Friends screen, Invites tab). */
+    public List<Invite> invites() {
+        return new ArrayList<>(activeInvites.values());
+    }
+
     public void acceptInvite(String inviteId) {
         if (inviteId == null) return;
         Invite invite = activeInvites.remove(inviteId);
@@ -755,6 +760,16 @@ public class SocialState {
 
     public HostOptions hostOptions() {
         return hostSession.options();
+    }
+
+    /** Host screen closed: the world takes its settings at once, as vanilla's World Options did, hosting or not. */
+    public void applyHostSettings(HostOptions options) {
+        if (options == null) return;
+        if (hostSession.isHosting()) {
+            hostSession.update(options);
+            refreshPresence();
+        }
+        bridge().applyHostOptions(options);
     }
 
     /** The host's per-player menu: kick and ban also take back the guest's acceptance and end their P2P session. */

@@ -135,7 +135,7 @@ public final class SocialBridge189 implements SocialBridge {
         setLoopbackOnly(true);
         WorldSettings.GameType gameType = WorldSettings.GameType.getByName(options != null && options.guestGameMode != null ? options.guestGameMode : "survival");
         if (gameType == null) gameType = WorldSettings.GameType.SURVIVAL;
-        boolean allowCheats = options != null && options.guestOpLevel > 0;
+        boolean allowCheats = options != null && (options.guestOpLevel > 0 || Boolean.TRUE.equals(options.allowCommands));
         String portStr = server.shareToLAN(gameType, allowCheats);
 
         int port;
@@ -164,7 +164,7 @@ public final class SocialBridge189 implements SocialBridge {
         setLoopbackOnly(false);
         WorldSettings.GameType gameType = WorldSettings.GameType.getByName(options != null && options.guestGameMode != null ? options.guestGameMode : "survival");
         if (gameType == null) gameType = WorldSettings.GameType.SURVIVAL;
-        boolean allowCheats = options != null && options.guestOpLevel > 0;
+        boolean allowCheats = options != null && (options.guestOpLevel > 0 || Boolean.TRUE.equals(options.allowCommands));
 
         server.shareToLAN(gameType, allowCheats);
         applyHostOptions(options);
@@ -257,8 +257,11 @@ public final class SocialBridge189 implements SocialBridge {
                 WorldSettings.GameType gt = WorldSettings.GameType.getByName(options.guestGameMode);
                 if (gt != null) server.setGameType(gt);
             }
-            server.getConfigurationManager().setCommandsAllowedForAll(options.guestOpLevel > 0);
+            server.getConfigurationManager().setCommandsAllowedForAll(options.guestOpLevel > 0 || Boolean.TRUE.equals(options.allowCommands));
             server.setAllowPvp(options.pvp);
+            net.minecraft.entity.player.EntityPlayerMP host = server.getConfigurationManager().getPlayerByUsername(server.getServerOwner());
+            WorldSettings.GameType hostMode = options.hostGameMode == null ? null : WorldSettings.GameType.getByName(options.hostGameMode);
+            if (host != null && hostMode != null && hostMode != WorldSettings.GameType.NOT_SET) host.setGameType(hostMode);
             if (options.difficulty != null) {
                 try {
                     EnumDifficulty diff = EnumDifficulty.valueOf(options.difficulty.toUpperCase(Locale.ROOT));
@@ -279,6 +282,15 @@ public final class SocialBridge189 implements SocialBridge {
                 server.getConfigurationManager().setViewDistance(options.viewDistanceCap);
             }
         });
+    }
+
+    @Override
+    public void fillLiveOptions(HostOptions options) {
+        Minecraft mc = mc();
+        IntegratedServer server = mc == null ? null : mc.getIntegratedServer();
+        if (server == null || options == null || server.getConfigurationManager() == null) return;
+        net.minecraft.entity.player.EntityPlayerMP host = server.getConfigurationManager().getPlayerByUsername(server.getServerOwner());
+        if (host != null) options.hostGameMode = host.theItemInWorldManager.getGameType().getName();
     }
 
     @Override

@@ -35,6 +35,16 @@ public final class HostScreen1201 extends Screen {
     }
 
     @Override
+    public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
+        return ui.mouseDragged(mx, my, button) || super.mouseDragged(mx, my, button, dx, dy);
+    }
+
+    @Override
+    public boolean mouseReleased(double mx, double my, int button) {
+        return ui.mouseReleased(mx, my, button) || super.mouseReleased(mx, my, button);
+    }
+
+    @Override
     public boolean mouseScrolled(double mx, double my, double delta) {
         return ui.mouseScrolled(mx, my, delta) || super.mouseScrolled(mx, my, delta);
     }
