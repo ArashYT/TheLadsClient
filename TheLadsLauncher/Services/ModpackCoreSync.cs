@@ -19,6 +19,9 @@ public static class ModpackCoreSync
 {
     public const string BundledName = "theladscore.jar";
 
+    /// <summary>The <c>reason</c> of <see cref="IsSupported(string?, string?, IEnumerable{string}?, string?, string?, out string?)"/> when only Fabric API is missing: the launcher installs it.</summary>
+    public const string NoFabricApiReason = "This modpack has no Fabric API, which The Lads Core needs.";
+
     /// <summary>Set to 1 to leave every modpack's Core alone, for a run that tests a Core built from source (the QA harness copies
     /// its own build into the instance and the launcher must not swap it back for the bundled one).</summary>
     public const string SkipEnvironmentVariable = "LADS_SKIP_MODPACK_CORE_SYNC";
@@ -248,7 +251,7 @@ public static class ModpackCoreSync
             }
             if (!HasFabricApi(modFiles))
             {
-                reason = "This modpack has no Fabric API, which The Lads Core needs.";
+                reason = NoFabricApiReason;
                 return false;
             }
             reason = null;
@@ -259,7 +262,7 @@ public static class ModpackCoreSync
         {
             if (!HasFabricApi(modFiles))
             {
-                reason = "This modpack has no Fabric API, which The Lads Core needs.";
+                reason = NoFabricApiReason;
                 return false;
             }
 
@@ -323,10 +326,23 @@ public static class ModpackCoreSync
     /// Resolves the default setting for Lads Core on an instance (true when supported).
     /// </summary>
     public static bool ResolveDefaultLadsCore(ModpackInstance instance, string? bundleRoot = null) =>
-        IsSupported(instance, bundleRoot, out _);
+        IsSupported(instance, bundleRoot, out var reason) || reason == NoFabricApiReason; // Fabric API is installed for it
 
     public static bool ResolveDefaultLadsCore(ModpackInstance instance) =>
         ResolveDefaultLadsCore(instance, null);
+
+    /// <summary>Installs Fabric API into an own instance whose Core is on and which lacks it (the only thing that kept the Core unsupported).
+    /// Run before <see cref="Sync(ModpackInstance, string?, Action{string}?)"/>.</summary>
+    public static async System.Threading.Tasks.Task EnsureFabricApiAsync(ModpackInstance instance, System.Net.Http.HttpClient http,
+        Action<string>? status, System.Threading.CancellationToken token, string? bundleRoot = null)
+    {
+        if (instance.IsExternal || instance.LadsCore == false) return;
+        if (Environment.GetEnvironmentVariable(SkipEnvironmentVariable) == "1") return;
+        if (IsSupported(instance, bundleRoot, out var reason) || reason != NoFabricApiReason) return;
+        var loader = (instance.Loader ?? "").Trim().ToLowerInvariant();
+        if (loader is not ("fabric" or "quilt")) return; // Forge + Sinytra needs the forgified build, which the pack brings
+        await FabricApiInstaller.EnsureAsync(http, Path.Combine(instance.GameDirectory, "mods"), instance.McVersion, loader, status, token);
+    }
 
     /// <summary>Brings the Core of an instance up to date according to its <see cref="ModpackInstance.LadsCore"/> setting:
     /// - ON: adds the bundled jar (mods\theladscore.jar) when missing, restores disabled jars, and syncs to bundled build.
