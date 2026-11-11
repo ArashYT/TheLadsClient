@@ -300,8 +300,12 @@ public final class DmMedia {
         return null;
     }
 
-    /** The system clipboard as text (GLFW, which every 1.20+ version ships), "" when there is none: DMs take pasted links. */
+    /** The system clipboard as text, "" when there is none: DMs take pasted links. SDL on 26.x, GLFW on 1.20 and 1.21. */
     public static String clipboard() {
+        try {
+            Object text = Class.forName("org.lwjgl.sdl.SDLClipboard").getMethod("SDL_GetClipboardText").invoke(null);
+            if (text instanceof String s && !s.isEmpty()) return s;
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException ignored) {} // no SDL: an older version
         try {
             Class<?> glfw = Class.forName("org.lwjgl.glfw.GLFW");
             long window = (long) glfw.getMethod("glfwGetCurrentContext").invoke(null);
