@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -42,8 +43,8 @@ public static class PackDefaults
                 else if (target.EndsWith("modernfix-mixins.properties", StringComparison.OrdinalIgnoreCase) && File.Exists(target))
                 {
                     var text = File.ReadAllText(target);
-                    if (text.Contains("mixin.perf.dynamic_resources=true", StringComparison.Ordinal))
-                        File.WriteAllText(target, text.Replace("mixin.perf.dynamic_resources=true", "mixin.perf.dynamic_resources=false", StringComparison.Ordinal));
+                    var merged = MergeModernFix(File.ReadAllText(file), text);
+                    if (merged != text) File.WriteAllText(target, merged);
                 }
                 else if (!File.Exists(target) && !Directory.Exists(target))
                 {
@@ -53,6 +54,19 @@ public static class PackDefaults
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } // that default is skipped, the game keeps its own
         }
+    }
+
+    /// <summary>A player's modernfix-mixins.properties with dynamic_resources forced off (it breaks model loading with our packs) and every
+    /// option of <paramref name="defaults"/> they lack added; options they have are kept as they are.</summary>
+    public static string MergeModernFix(string defaults, string existing)
+    {
+        var text = existing.Replace("mixin.perf.dynamic_resources=true", "mixin.perf.dynamic_resources=false", StringComparison.Ordinal);
+        static IEnumerable<string> Options(string t) => t.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0 && l[0] != '#' && l.Contains('='));
+        static string Key(string line) => line[..line.IndexOf('=')].Trim();
+        var have = Options(text).Select(Key).ToHashSet(StringComparer.Ordinal);
+        var missing = Options(defaults).Where(l => !have.Contains(Key(l))).ToList();
+        if (missing.Count == 0) return text;
+        return (text.Length == 0 || text.EndsWith('\n') ? text : text + "\n") + string.Join("\n", missing) + "\n";
     }
 
     private static void MergeOptions(string defaults, string options)

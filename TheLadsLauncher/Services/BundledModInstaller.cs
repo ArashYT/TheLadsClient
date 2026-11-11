@@ -331,10 +331,8 @@ public static class BundledModInstaller
                 try
                 {
                     var text = File.ReadAllText(dest);
-                    if (text.Contains("mixin.perf.dynamic_resources=true", StringComparison.Ordinal))
-                    {
-                        File.WriteAllText(dest, text.Replace("mixin.perf.dynamic_resources=true", "mixin.perf.dynamic_resources=false", StringComparison.Ordinal));
-                    }
+                    var merged = PackDefaults.MergeModernFix(File.ReadAllText(file), text);
+                    if (merged != text) File.WriteAllText(dest, merged);
                 }
                 catch (IOException) { }
             }
