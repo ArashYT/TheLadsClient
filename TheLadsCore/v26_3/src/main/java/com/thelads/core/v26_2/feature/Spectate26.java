@@ -57,9 +57,15 @@ public final class Spectate26 {
             drain(options.keyPickItem);
             drain(options.keyDrop);
             drain(options.keySwapOffhand);
+            drain(options.keyInventory); // it would only show the mirrored hotbar, with items to drag around
             for (KeyMapping slot : options.keyHotbarSlots) drain(slot);
             options.keyAttack.setDown(false);
             options.keyUse.setDown(false);
+            // Our own body hangs above the target and flying it around only makes the server pull it back. Sneak stays: it leaves.
+            for (KeyMapping move : new KeyMapping[] {options.keyUp, options.keyDown, options.keyLeft, options.keyRight,
+                    options.keyJump, options.keySprint}) {
+                move.setDown(false);
+            }
         }
         if (step != 0 && state.on() && mc.player != null && mc.gui.screen() == null && LadsApiClient.spectateRequest(step > 0)) {
             LOGGER.info("Lads spectate: asked the server for the {} player", step > 0 ? "next" : "previous");
